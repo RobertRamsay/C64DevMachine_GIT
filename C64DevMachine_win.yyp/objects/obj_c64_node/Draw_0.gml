@@ -113,7 +113,7 @@ if (height_dirty) {
     case "MACRO_CLR_SCREEN": height = _G * 4;  break;
 	case "MACRO_MATH":       height = _G * 5;  break;    
     case "NAMED_LOC":   height = _G * 3;  break;         // 60
-    case "NEW_STR":     height = _G * 5;  break;         // 100
+    case "NEW_STR":     height = _G * 4;  break;         // 100
     case "MACRO_JOY":   height = _G * 6;  break;
     case "MACRO_VWAIT": height = _G * 3;  break;        
     case "MACRO_DISPLAY": height = _G * 4;  break;
@@ -1272,6 +1272,40 @@ if (_lod_body) switch (node_type) {
 			            draw_text(draw_x + width - 8, y + header_h + 20, "VIC/SID/CIA");
 			            draw_set_halign(fa_left);
 			        }
+					
+				
+        // FAST-ADD VARIABLE BUTTONS (VARIABLES ORG only)
+        if (node_title == "VARIABLES") {
+            var _btn_defs = [
+                { lbl: "+B",   type: "NEW_UV_BYTE",  sz: 1, enc: "byte" },
+                { lbl: "+sB",  type: "NEW_UV_SBYTE", sz: 1, enc: "sbyte" },
+                { lbl: "+W",   type: "NEW_UV_WORD",  sz: 2, enc: "word" },
+                { lbl: "+BCD", type: "NEW_UV_BCD",   sz: 1, enc: "bcd" },
+                { lbl: "+STR", type: "NEW_STR",      sz: 1, enc: "str" }
+            ];
+            var _bx = draw_x + 8;
+            var _by = y - 30; 
+            var _bw = 26;
+            var _bh = 16;
+            
+            draw_set_font(fnt_c64_tiny);
+            for (var _bi = 0; _bi < array_length(_btn_defs); _bi++) {
+                var _bdef = _btn_defs[_bi];
+                var _bhov = point_in_rectangle(mouse_x, mouse_y, _bx, _by, _bx + _bw, _by + _bh);
+                
+                draw_set_color(_bhov ? make_color_rgb(50, 140, 200) : make_color_rgb(30, 80, 120));
+                draw_rectangle(_bx, _by, _bx + _bw, _by + _bh, false);
+                draw_set_color(c_gray);
+                draw_rectangle(_bx, _by, _bx + _bw, _by + _bh, true);
+                
+                draw_set_color(c_white);
+                draw_set_halign(fa_center);
+                draw_text(_bx + (_bw * 0.5) - 4, _by , _bdef.lbl);
+                draw_set_halign(fa_left);
+                
+                _bx += _bw + 14;
+            }
+        }
 
         // VARIABLES ORG — show byte tally
         if (node_title == "VARIABLES") {

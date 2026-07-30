@@ -1037,95 +1037,129 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
 		
 		
 		
-case "COMMENT":
-    if (!global.comments_visible) break;
-    if (point_in_rectangle(mouse_x, mouse_y, draw_x, y + 20, draw_x + width, y + height)) {
-        with (obj_workspace_manager) {
-            is_entering_text     = true;
-            input_target_node    = other.id;
-            input_target_index   = 0;
-            current_input_string = string(other.instructions[0][1]);
-            keyboard_string      = "";
-            cursor_pos           = string_length(current_input_string);
-        }
-    }
-    break;
+	case "COMMENT":
+	    if (!global.comments_visible) break;
+	    if (point_in_rectangle(mouse_x, mouse_y, draw_x, y + 20, draw_x + width, y + height)) {
+	        with (obj_workspace_manager) {
+	            is_entering_text     = true;
+	            input_target_node    = other.id;
+	            input_target_index   = 0;
+	            current_input_string = string(other.instructions[0][1]);
+	            keyboard_string      = "";
+	            cursor_pos           = string_length(current_input_string);
+	        }
+	    }
+	    break;
     
 
-        case "ORG": {
-            var _chk_x   = draw_x + 10;
-            var _chk_y   = y + 60;
-            var _org_row_y = y + 24 + 6;
+	        case "ORG": {
+	            var _chk_x   = draw_x + 10;
+	            var _chk_y   = y + 60;
+	            var _org_row_y = y + 24 + 6;
+			
+				// Fast-Add Variable Buttons Click Handler
+	            if (node_title == "VARIABLES") {
+		            var _btn_defs = [
+		                { lbl: "+B",   type: "NEW_UV_BYTE",  sz: 1, enc: "byte" },
+		                { lbl: "+sB",  type: "NEW_UV_SBYTE", sz: 1, enc: "sbyte" },
+		                { lbl: "+W",   type: "NEW_UV_WORD",  sz: 2, enc: "word" },
+		                { lbl: "+BCD", type: "NEW_UV_BCD",   sz: 1, enc: "bcd" },
+		                { lbl: "+STR", type: "NEW_STR",      sz: 1, enc: "str" }
+		            ];
+		            var _bx = draw_x + 8;
+		            var _by = y - 30; 
+		            var _bw = 26;
+		            var _bh = 16;
+                
+	                for (var _bi = 0; _bi < array_length(_btn_defs); _bi++) {
+	                    var _bdef = _btn_defs[_bi];
+	                    if (point_in_rectangle(mouse_x, mouse_y, _bx, _by, _bx + _bw, _by + _bh)) {
+	                        with (obj_workspace_manager) {
+	                            uv_pending_size      = _bdef.sz;
+	                            uv_pending_enc       = _bdef.enc;
+	                            is_entering_text     = true;
+	                            input_target_node    = noone;
+	                            input_target_index   = -99;
+	                            current_input_string = "";
+	                            keyboard_string      = "";
+	                            cursor_pos           = 0;
+								other.height_dirty = true;
+	                        }
+	                        exit;
+	                    }
+	                    _bx += _bw + 14;
+	                }
+	            }
 
-            // 0. Wire Dot Click
-            if (node_title != "VARIABLES" && node_title != "HW REGISTERS") {
-                var _dot_r     = 5;
-                var _dot_in_x  = draw_x;
-                var _dot_out_x = draw_x + width;
-                var _dot_y     = y + 10;
-                if (point_in_circle(mouse_x, mouse_y, _dot_in_x, _dot_y, _dot_r + 4)) {
-                    global.wire_drag_node   = id;
-                    global.wire_drag_is_out = false;
-                    exit;
-                }
-                if (point_in_circle(mouse_x, mouse_y, _dot_out_x, _dot_y, _dot_r + 4)) {
-                    global.wire_drag_node   = id;
-                    global.wire_drag_is_out = true;
-                    exit;
-                }
-            }
+	            // 0. Wire Dot Click
+	            if (node_title != "VARIABLES" && node_title != "HW REGISTERS") {
+	                var _dot_r     = 5;
+	                var _dot_in_x  = draw_x;
+	                var _dot_out_x = draw_x + width;
+	                var _dot_y     = y + 10;
+	                if (point_in_circle(mouse_x, mouse_y, _dot_in_x, _dot_y, _dot_r + 4)) {
+	                    global.wire_drag_node   = id;
+	                    global.wire_drag_is_out = false;
+	                    exit;
+	                }
+	                if (point_in_circle(mouse_x, mouse_y, _dot_out_x, _dot_y, _dot_r + 4)) {
+	                    global.wire_drag_node   = id;
+	                    global.wire_drag_is_out = true;
+	                    exit;
+	                }
+	            }
 
-            // 1. Proxy Toggle (Allow for VARIABLES)
-            if (node_title != "HW REGISTERS") {
-                if (point_in_rectangle(mouse_x, mouse_y, _chk_x, _chk_y, _chk_x + 12, _chk_y + 12)) {
+	            // 1. Proxy Toggle (Allow for VARIABLES)
+	            if (node_title != "HW REGISTERS") {
+	                if (point_in_rectangle(mouse_x, mouse_y, _chk_x, _chk_y, _chk_x + 12, _chk_y + 12)) {
                    
-                    if (!proxy) proxy_address = pc_address;
-                    proxy = !proxy;
+	                    if (!proxy) proxy_address = pc_address;
+	                    proxy = !proxy;
                   
-                    global.addresses_dirty = true;
-                    exit;
-                }
-            }
+	                    global.addresses_dirty = true;
+	                    exit;
+	                }
+	            }
 
-            // 2. Address Edit
-            var _in_address_zone = point_in_rectangle(mouse_x, mouse_y, draw_x, _org_row_y, draw_x + width, _org_row_y + 28);
-            if (_in_address_zone && node_title != "HW REGISTERS") {
+	            // 2. Address Edit
+	            var _in_address_zone = point_in_rectangle(mouse_x, mouse_y, draw_x, _org_row_y, draw_x + width, _org_row_y + 28);
+	            if (_in_address_zone && node_title != "HW REGISTERS") {
              
-                proxy = false;
-                with (obj_workspace_manager) {
-                    is_entering_text   = true;
-                    input_target_node  = other.id;
-                    input_target_index = -1;
-                    var _h = decimal_to_hex(other.pc_address);
-                    while (string_length(_h) < 4) _h = "0" + _h;
-                    current_input_string = global.use_hex_display ? ("$" + string_upper(_h)) : string(other.pc_address);
-                    keyboard_string      = "";
-                    cursor_pos           = string_length(current_input_string);
-                }
-                exit;
-            }
-        } break;
+	                proxy = false;
+	                with (obj_workspace_manager) {
+	                    is_entering_text   = true;
+	                    input_target_node  = other.id;
+	                    input_target_index = -1;
+	                    var _h = decimal_to_hex(other.pc_address);
+	                    while (string_length(_h) < 4) _h = "0" + _h;
+	                    current_input_string = global.use_hex_display ? ("$" + string_upper(_h)) : string(other.pc_address);
+	                    keyboard_string      = "";
+	                    cursor_pos           = string_length(current_input_string);
+	                }
+	                exit;
+	            }
+	        } break;
 
-        case "DATA_SID": {
-            var _px = x + 10;
-            var _py = y + 24 + 6;
-            if (point_in_rectangle(mouse_x, mouse_y, _px, _py, x + width - 8, _py + 20)) {
+	        case "DATA_SID": {
+	            var _px = x + 10;
+	            var _py = y + 24 + 6;
+	            if (point_in_rectangle(mouse_x, mouse_y, _px, _py, x + width - 8, _py + 20)) {
                
-                scr_sid64_import(id);
-                exit;
-            }
-        } break;
+	                scr_sid64_import(id);
+	                exit;
+	            }
+	        } break;
 
-        case "SPR64": {
-            var _px = draw_x;
-            var _py = y + 24 + 6;
-            if (point_in_rectangle(mouse_x, mouse_y, _px, _py - 6, _px + (25 * 4), _py + 40)) {
+	        case "SPR64": {
+	            var _px = draw_x;
+	            var _py = y + 24 + 6;
+	            if (point_in_rectangle(mouse_x, mouse_y, _px, _py - 6, _px + (25 * 4), _py + 40)) {
                
-                exit;
-            }
+	                exit;
+	            }
 
-            var _btn_x1      = _px + (24 * 4) + 10;
-            var _frame_idx   = (array_length(instructions[0]) > 3) ? real(instructions[0][3]) : 0;
+	            var _btn_x1      = _px + (24 * 4) + 10;
+	            var _frame_idx   = (array_length(instructions[0]) > 3) ? real(instructions[0][3]) : 0;
             var _chk_y       = _py + 26;
             var _nav_y       = _chk_y + 22;
             var _nav_left_x  = _btn_x1;
