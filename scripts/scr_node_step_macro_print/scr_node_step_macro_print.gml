@@ -191,6 +191,8 @@ function scr_node_step_macro_print(_draw_x) {
                 label_picker_list       = ["[clear]"];
                 label_picker_target     = id;
                 label_picker_index      = 15;
+                label_picker_word_only  = true;  // START offset must be a WORD var
+                label_picker_byte_only  = false;
                 for (var _ki = 0; _ki < array_length(global.named_loc_meta); _ki++) {
                     if (global.named_loc_meta[_ki].type == "UV") {
                         array_push(label_picker_list, global.named_loc_meta[_ki].name);
@@ -231,6 +233,8 @@ function scr_node_step_macro_print(_draw_x) {
                 label_picker_list       = ["[clear]"];
                 label_picker_target     = id;
                 label_picker_index      = 17;
+                label_picker_word_only  = true;  // END offset must be a WORD var
+                label_picker_byte_only  = false;
                 for (var _ki = 0; _ki < array_length(global.named_loc_meta); _ki++) {
                     if (global.named_loc_meta[_ki].type == "UV") {
                         array_push(label_picker_list, global.named_loc_meta[_ki].name);

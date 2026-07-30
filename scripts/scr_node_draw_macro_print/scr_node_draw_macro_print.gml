@@ -222,7 +222,7 @@ function scr_node_draw_macro_print(_draw_x, _y) {
         draw_text(_draw_x + 8, _ply, "START:");
         if (_s_vmode == 1) {
             draw_set_color(c_yellow);
-            draw_text(_draw_x + 60, _ply, (_s_vname != "") ? _s_vname : "<PICK>");
+            draw_text(_draw_x + 60, _ply, (_s_vname != "") ? scr_nloc_display_name(_s_vname) : "<PICK>");
         } else {
             draw_set_color(c_aqua);
             draw_text(_draw_x + 60, _ply, string(_start_off));
@@ -241,7 +241,7 @@ function scr_node_draw_macro_print(_draw_x, _y) {
         draw_text(_draw_x + 8, _ply, "END:");
         if (_e_vmode == 1) {
             draw_set_color(c_yellow);
-            draw_text(_draw_x + 60, _ply, (_e_vname != "") ? _e_vname : "<PICK>");
+            draw_text(_draw_x + 60, _ply, (_e_vname != "") ? scr_nloc_display_name(_e_vname) : "<PICK>");
         } else {
             draw_set_color(_end_off == 0 ? _c_dim : c_aqua);
             draw_text(_draw_x + 60, _ply, _end_off == 0 ? "AUTO" : string(_end_off));
@@ -262,4 +262,8 @@ function scr_node_draw_macro_print(_draw_x, _y) {
     draw_set_color(make_color_rgb(80, 120, 180));
     draw_text(_draw_x + 8, _ply, string(_eff_len) + " BYTES   $" + _loch + " -> $" + _loch_end);
     draw_text(_draw_x + 7, _ply + 12, "IF MC MODE USE UPPER 8 COLS");
+    if (_src_mode == 1) {
+        draw_set_color(make_color_rgb(230, 160, 30));
+        draw_text(_draw_x + 7, _ply + 24, "USE WORD TYPES FOR START / END");
+    }
 }
