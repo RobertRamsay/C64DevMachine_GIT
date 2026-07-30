@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_spred64_v2_batch_paste",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_spred64_v2_batch_paste",
+  "parent":{
+    "name":"SPREDV2",
+    "path":"folders/SCRIPTS/SPREDV2.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

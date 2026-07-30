@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_asset_byte_data_flush",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_asset_byte_data_flush",
+  "parent":{
+    "name":"NEWCORE",
+    "path":"folders/SCRIPTS/CORE/NEWCORE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

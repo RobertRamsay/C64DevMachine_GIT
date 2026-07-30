@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_init_named_locations",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_init_named_locations",
+  "parent":{
+    "name":"NEWCORE",
+    "path":"folders/SCRIPTS/CORE/NEWCORE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

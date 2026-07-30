@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_sid_notes_parse",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_sid_notes_parse",
+  "parent":{
+    "name":"MISC",
+    "path":"folders/SCRIPTS/CORE/MISC.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

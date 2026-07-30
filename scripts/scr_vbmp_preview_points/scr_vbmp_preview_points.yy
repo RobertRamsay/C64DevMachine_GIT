@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_vbmp_preview_points",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_vbmp_preview_points",
+  "parent":{
+    "name":"NEWCORE",
+    "path":"folders/SCRIPTS/CORE/NEWCORE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

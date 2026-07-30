@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"do_windowSizing",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"do_windowSizing",
+  "parent":{
+    "name":"VISUAL",
+    "path":"folders/SCRIPTS/CORE/VISUAL.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

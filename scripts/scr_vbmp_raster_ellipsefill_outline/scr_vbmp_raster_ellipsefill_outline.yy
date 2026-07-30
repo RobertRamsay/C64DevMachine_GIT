@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_vbmp_raster_ellipsefill_outline",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_vbmp_raster_ellipsefill_outline",
+  "parent":{
+    "name":"NEWCORE",
+    "path":"folders/SCRIPTS/CORE/NEWCORE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

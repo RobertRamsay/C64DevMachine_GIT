@@ -1,0 +1,12 @@
+{
+  "$GMShader":"",
+  "%Name":"shd_png_import",
+  "name":"shd_png_import",
+  "parent":{
+    "name":"SHADERS",
+    "path":"folders/GRAPHICS/SHADERS.yy",
+  },
+  "resourceType":"GMShader",
+  "resourceVersion":"2.0",
+  "type":1,
+}

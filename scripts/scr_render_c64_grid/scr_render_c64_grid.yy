@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_render_c64_grid",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_render_c64_grid",
+  "parent":{
+    "name":"MISC",
+    "path":"folders/SCRIPTS/CORE/MISC.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

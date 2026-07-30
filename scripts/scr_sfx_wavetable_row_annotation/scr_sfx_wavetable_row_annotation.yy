@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_sfx_wavetable_row_annotation",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_sfx_wavetable_row_annotation",
+  "parent":{
+    "name":"SFX",
+    "path":"folders/SCRIPTS/CORE/SFX.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

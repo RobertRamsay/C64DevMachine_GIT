@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_note_name_to_freq",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_note_name_to_freq",
+  "parent":{
+    "name":"MISC",
+    "path":"folders/SCRIPTS/CORE/MISC.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

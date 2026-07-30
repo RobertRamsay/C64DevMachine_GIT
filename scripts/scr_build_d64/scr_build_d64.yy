@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_build_d64",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_build_d64",
+  "parent":{
+    "name":"LOADER_SUPPORT",
+    "path":"folders/SCRIPTS/MACROS/LOADER_SUPPORT.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

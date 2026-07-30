@@ -1,0 +1,32 @@
+v099.58.7
+- BITMAP EDITOR : FIXED DIMMING UI, UNDO GLITCH, UNDO APPLIED TO LINE,CIRCLE,RECT and FILLS
+- ORG BLOCK COPY : FIXED CHILD NODES CONNECTION STATE
+- ASSET EDITORS : HIDES WORKSPACE GUI AND NODES WHEN OPENED
+- NEW : SPRITE X FLIP MACRO for FLIPPING SPRITES on demand.
+- UPDATED : MACRO PRINT now has formatting (left/middle/right, top/middle/bottom)
+
+
+
+v099.58.9
+9th bit toggle needs own undo
+
+sprite enabler macro (add / sub / set)
+
+sprite vic warning bank with no bitmap (on its own)...[jsut auto switch]
+
+auto update sprite offsets based on sprite bank?
+
+anim mocro needs positional offsets
+
+show a saving message when saving with CTRL+S / etc
+
+scrolling left/right
+
+hi-res bitmap mode or as new asset..
+
+ORG not JUMPED to warning. (for non-proxy's with no JMP/JSR to or reference)
+
+
+
+
+		

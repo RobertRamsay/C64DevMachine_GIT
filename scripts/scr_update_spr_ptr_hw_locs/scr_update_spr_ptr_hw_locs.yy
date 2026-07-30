@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_update_spr_ptr_hw_locs",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_update_spr_ptr_hw_locs",
+  "parent":{
+    "name":"MISC",
+    "path":"folders/SCRIPTS/CORE/MISC.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

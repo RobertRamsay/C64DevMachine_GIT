@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_fix_vice_permissions_mac",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_fix_vice_permissions_mac",
+  "parent":{
+    "name":"I_O",
+    "path":"folders/SCRIPTS/CORE/I_O.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

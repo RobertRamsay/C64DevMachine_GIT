@@ -1,0 +1,1 @@
+if global.nodepad<40 global.nodepad ++

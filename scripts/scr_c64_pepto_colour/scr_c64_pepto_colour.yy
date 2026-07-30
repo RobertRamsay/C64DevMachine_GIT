@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_c64_pepto_colour",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_c64_pepto_colour",
+  "parent":{
+    "name":"VISUAL",
+    "path":"folders/SCRIPTS/CORE/VISUAL.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

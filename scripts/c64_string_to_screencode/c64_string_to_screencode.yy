@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"c64_string_to_screencode",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"c64_string_to_screencode",
+  "parent":{
+    "name":"MISC",
+    "path":"folders/SCRIPTS/CORE/MISC.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

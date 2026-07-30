@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_asset_sfx_reload",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_asset_sfx_reload",
+  "parent":{
+    "name":"SFX",
+    "path":"folders/SCRIPTS/CORE/SFX.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

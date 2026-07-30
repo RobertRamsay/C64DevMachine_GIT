@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_c64u_overlay_step",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_c64u_overlay_step",
+  "parent":{
+    "name":"ULTIMATE",
+    "path":"folders/SCRIPTS/ULTIMATE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

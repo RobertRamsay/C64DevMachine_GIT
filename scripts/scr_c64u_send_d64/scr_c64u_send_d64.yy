@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_c64u_send_d64",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_c64u_send_d64",
+  "parent":{
+    "name":"ULTIMATE",
+    "path":"folders/SCRIPTS/ULTIMATE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"_code_is_separator",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"_code_is_separator",
+  "parent":{
+    "name":"CODENODE",
+    "path":"folders/SCRIPTS/CODENODE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

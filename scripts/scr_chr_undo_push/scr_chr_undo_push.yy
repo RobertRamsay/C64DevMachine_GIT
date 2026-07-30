@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_chr_undo_push",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_chr_undo_push",
+  "parent":{
+    "name":"UNDOREDO",
+    "path":"folders/SCRIPTS/UNDOREDO.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

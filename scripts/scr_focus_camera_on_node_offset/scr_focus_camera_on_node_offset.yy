@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_focus_camera_on_node_offset",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_focus_camera_on_node_offset",
+  "parent":{
+    "name":"CORE",
+    "path":"folders/SCRIPTS/CORE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

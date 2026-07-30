@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"c64_new_program",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"c64_new_program",
+  "parent":{
+    "name":"CORE",
+    "path":"folders/SCRIPTS/CORE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

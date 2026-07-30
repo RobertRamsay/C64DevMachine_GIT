@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_asset_bmp_hr_repaint_cell_gpu",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_asset_bmp_hr_repaint_cell_gpu",
+  "parent":{
+    "name":"BMP_KLA",
+    "path":"folders/SCRIPTS/BMP_KLA.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

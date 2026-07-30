@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_show_question_bool",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_show_question_bool",
+  "parent":{
+    "name":"CharpadCharset",
+    "path":"folders/SCRIPTS/CORE/I_O/CharpadCharset.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_charpad_ctm_build_meta1x1",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_charpad_ctm_build_meta1x1",
+  "parent":{
+    "name":"CharpadCharset",
+    "path":"folders/SCRIPTS/CORE/I_O/CharpadCharset.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

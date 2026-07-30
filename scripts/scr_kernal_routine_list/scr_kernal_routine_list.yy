@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_kernal_routine_list",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_kernal_routine_list",
+  "parent":{
+    "name":"KERNAL",
+    "path":"folders/SCRIPTS/CORE/KERNAL.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

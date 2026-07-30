@@ -1,0 +1,1 @@
+draw_sprite(spr_snapshot,0,x,y)

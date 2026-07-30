@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_nloc_rebuild_meta_map",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_nloc_rebuild_meta_map",
+  "parent":{
+    "name":"NEWCORE",
+    "path":"folders/SCRIPTS/CORE/NEWCORE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

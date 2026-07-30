@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_code_editor_do_search",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_code_editor_do_search",
+  "parent":{
+    "name":"CODENODE",
+    "path":"folders/SCRIPTS/CODENODE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

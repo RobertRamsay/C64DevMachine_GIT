@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_draw_slider",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_draw_slider",
+  "parent":{
+    "name":"BMP_KLA",
+    "path":"folders/SCRIPTS/BMP_KLA.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

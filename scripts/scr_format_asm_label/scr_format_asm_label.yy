@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_format_asm_label",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_format_asm_label",
+  "parent":{
+    "name":"CODENODE",
+    "path":"folders/SCRIPTS/CODENODE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

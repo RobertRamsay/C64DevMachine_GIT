@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_bitmap_builder_editor",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_bitmap_builder_editor",
+  "parent":{
+    "name":"BITMAP_BUILDER",
+    "path":"folders/SCRIPTS/BITMAP_BUILDER.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

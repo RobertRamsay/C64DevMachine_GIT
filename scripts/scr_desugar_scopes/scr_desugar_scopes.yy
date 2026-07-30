@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_desugar_scopes",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_desugar_scopes",
+  "parent":{
+    "name":"CODENODE",
+    "path":"folders/SCRIPTS/CODENODE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

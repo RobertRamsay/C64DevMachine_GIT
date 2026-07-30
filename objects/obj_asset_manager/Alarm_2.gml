@@ -1,0 +1,1 @@
+global.was_editor_open = false;

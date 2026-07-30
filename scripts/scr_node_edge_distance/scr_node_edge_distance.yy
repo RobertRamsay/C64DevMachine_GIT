@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_node_edge_distance",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_node_edge_distance",
+  "parent":{
+    "name":"VISUAL",
+    "path":"folders/SCRIPTS/CORE/VISUAL.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

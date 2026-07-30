@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_save_workspace_as",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_save_workspace_as",
+  "parent":{
+    "name":"LOAD_SAVE",
+    "path":"folders/SCRIPTS/CORE/I_O/LOAD_SAVE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

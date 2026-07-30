@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_node_draw_macro_clear_bmp_rect",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_node_draw_macro_clear_bmp_rect",
+  "parent":{
+    "name":"MACROS",
+    "path":"folders/SCRIPTS/MACROS.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

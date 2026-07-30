@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_node_draw_macro_irq",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_node_draw_macro_irq",
+  "parent":{
+    "name":"IRQ_BASED",
+    "path":"folders/SCRIPTS/MACROS/IRQ_BASED.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

@@ -1,0 +1,62 @@
+// Cache drag state for nodes to read (workspace manager begin step event here)
+
+global.drag_claim_taken = false;
+	
+global.any_node_dragging = false;
+with (obj_c64_node) {
+    if (is_dragging) { global.any_node_dragging = true; break; }
+}
+
+global.gui_mouse_x = device_mouse_x_to_gui(0);
+global.gui_mouse_y = device_mouse_y_to_gui(0);
+global.gui_w       = display_get_gui_width();
+
+// ---- IDLE DETECTION ----
+var _mx = global.gui_mouse_x;
+var _my = global.gui_mouse_y;
+var _moved   = (_mx != idle_last_mx || _my != idle_last_my);
+var _clicked = mouse_check_button(mb_any) || mouse_wheel_up() || mouse_wheel_down();
+var _keyed   = keyboard_check(vk_anykey);
+idle_last_mx = _mx;
+idle_last_my = _my;
+
+var _idle_was = global.idle_active;
+
+if (_moved || _clicked || _keyed) {
+    idle_timer = 0;
+    global.idle_active = false;
+} else {
+    idle_timer += delta_time / 1000000; // secs
+    if (idle_timer >= idle_threshold) global.idle_active = true;
+}
+
+// ---- IDLE SNAPSHOT (instant switch instead of a fade) ----
+if (global.idle_active && !_idle_was) {
+    // Just went idle this step — grab the last fully rendered frame
+    if (sprite_exists(idle_snapshot_spr)) {
+        sprite_delete(idle_snapshot_spr);
+    }
+    var _snap_w    = surface_get_width(application_surface);
+    var _snap_h    = surface_get_height(application_surface);
+    var _snap_surf = surface_create(_snap_w, _snap_h);
+    surface_copy(_snap_surf, 0, 0, application_surface);
+    idle_snapshot_spr    = sprite_create_from_surface(_snap_surf, 0, 0, _snap_w, _snap_h, false, false, 0, 0);
+    surface_free(_snap_surf);
+    idle_snapshot_active = true;
+}
+
+if (!global.idle_active && _idle_was) {
+    // Just woke up this step — drop the snapshot immediately
+    if (sprite_exists(idle_snapshot_spr)) {
+        sprite_delete(idle_snapshot_spr);
+    }
+    idle_snapshot_spr    = -1;
+    idle_snapshot_active  = false;
+}
+
+// idle_fade kept for the node Step/Draw gating logic — set instantly, no lerp
+if (global.idle_active) {
+    global.idle_fade = 0.0;
+} else {
+    global.idle_fade = 1.0;
+}

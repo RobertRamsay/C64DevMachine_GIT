@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_node_step_bitmap_kla",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_node_step_bitmap_kla",
+  "parent":{
+    "name":"BMP_KLA",
+    "path":"folders/SCRIPTS/BMP_KLA.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

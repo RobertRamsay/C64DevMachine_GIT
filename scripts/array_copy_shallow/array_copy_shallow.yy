@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"array_copy_shallow",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"array_copy_shallow",
+  "parent":{
+    "name":"MISC",
+    "path":"folders/SCRIPTS/CORE/MISC.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

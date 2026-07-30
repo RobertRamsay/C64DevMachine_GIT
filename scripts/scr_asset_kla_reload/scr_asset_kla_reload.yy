@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_asset_kla_reload",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_asset_kla_reload",
+  "parent":{
+    "name":"BMP_KLA",
+    "path":"folders/SCRIPTS/BMP_KLA.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_mbb_emit_mask_cells",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_mbb_emit_mask_cells",
+  "parent":{
+    "name":"MISC",
+    "path":"folders/SCRIPTS/CORE/MISC.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

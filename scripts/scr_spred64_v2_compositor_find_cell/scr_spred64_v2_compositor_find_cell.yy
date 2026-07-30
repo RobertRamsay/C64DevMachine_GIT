@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_spred64_v2_compositor_find_cell",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_spred64_v2_compositor_find_cell",
+  "parent":{
+    "name":"SPREDV2",
+    "path":"folders/SCRIPTS/SPREDV2.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

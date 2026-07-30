@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_asset_spr_add_blank_slot",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_asset_spr_add_blank_slot",
+  "parent":{
+    "name":"SPREDV2",
+    "path":"folders/SCRIPTS/SPREDV2.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

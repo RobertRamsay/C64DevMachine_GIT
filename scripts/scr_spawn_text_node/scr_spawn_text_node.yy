@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_spawn_text_node",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_spawn_text_node",
+  "parent":{
+    "name":"SPAWNS",
+    "path":"folders/SCRIPTS/CORE/SPAWNS.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

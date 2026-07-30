@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"_asm_val",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"_asm_val",
+  "parent":{
+    "name":"CODENODE",
+    "path":"folders/SCRIPTS/CODENODE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}
