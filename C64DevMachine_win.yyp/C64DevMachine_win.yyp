@@ -1,6 +1,6 @@
 {
   "$GMProject":"v1",
-  "%Name":"C64DevMachine_V099_97_win_5_VarChecks",
+  "%Name":"C64DevMachine_win",
   "AudioGroups":[
     {"$GMAudioGroup":"v1","%Name":"audiogroup_default","exportDir":"","name":"audiogroup_default","resourceType":"GMAudioGroup","resourceVersion":"2.0","targets":-1,},
   ],
@@ -916,7 +916,7 @@
   "MetaData":{
     "IDEVersion":"2026.0.0.16",
   },
-  "name":"C64DevMachine_V099_97_win_5_VarChecks",
+  "name":"C64DevMachine_win",
   "resources":[
     {"id":{"name":"execute_shell_simple_ext","path":"extensions/execute_shell_simple_ext/execute_shell_simple_ext.yy",},},
     {"id":{"name":"fnt_big","path":"fonts/fnt_big/fnt_big.yy",},},
