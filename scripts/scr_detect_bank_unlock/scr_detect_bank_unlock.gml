@@ -28,9 +28,11 @@ function scr_detect_bank_unlock() {
     //   _armed        = we have just seen an "lda $01" (A holds the bank byte)
     //   _pending_mask = the AND mask seen since arming
     //   _pending_or   = the ORA value seen since arming (Shallan-style banking)
-    var _armed        = false;
-    var _pending_mask = 0xFF;
-    var _pending_or   = 0x00;
+    var _armed          = false;
+    var _pending_mask   = 0xFF;
+    var _pending_or     = 0x00;
+    var _armed_direct   = false;
+    var _pending_direct = 0x00;
 
     for (var _ni = 0; _ni < array_length(_spine); _ni++) {
         var _node = _spine[_ni];
@@ -107,15 +109,26 @@ function scr_detect_bank_unlock() {
 
             
             if (_m == "lda_zp" && _v == 0x01) {
-                _armed        = true;
-                _pending_mask = 0xFF; // fresh read, no mask applied yet
-                _pending_or   = 0x00;
+                _armed         = true;
+                _armed_direct  = false;
+                _pending_mask  = 0xFF; // fresh read, no mask applied yet
+                _pending_or    = 0x00;
             }
             else if (_armed && _m == "and_imm" && _v >= 0) {
                 _pending_mask = _v;
             }
             else if (_armed && _m == "ora_imm" && _v >= 0) {
                 _pending_or = _v;
+            }
+            else if (_m == "lda_imm" && _v >= 0) {
+                // Direct immediate write path: LDA #imm / STA $01, with no
+                // preceding read of the current $01 value. The immediate IS
+                // the new config byte outright, not a mask applied to it.
+                _armed_direct   = true;
+                _pending_direct = _v;
+                _armed          = false;
+                _pending_mask   = 0xFF;
+                _pending_or     = 0x00;
             }
             else if (_armed && _m == "sta_zp" && _v == 0x01) {
                 // Resolve the value actually written to $01: (read AND mask) OR or-bits.
@@ -130,12 +143,24 @@ function scr_detect_bank_unlock() {
                 _pending_mask = 0xFF;
                 _pending_or   = 0x00;
             }
-            else if (_m == "lda_imm" || _m == "lda_abs" || _m == "lda_zp") {
+            else if (_armed_direct && _m == "sta_zp" && _v == 0x01) {
+                // Direct-write resolution: the immediate value loaded above IS
+                // the config byte, so decode it the same way BANK_SWITCH does.
+                var _dresult    = _pending_direct & 0x07;
+                var _dhiram_set = ((_dresult & 0x02) != 0); // bit 1
+                var _dloram_set = ((_dresult & 0x01) != 0); // bit 0
+                if (!_dhiram_set)                   _found_kernal = true; // KERNAL RAM
+                if (!(_dloram_set && _dhiram_set))  _found_basic  = true; // BASIC RAM unless %11
+                _armed_direct   = false;
+                _pending_direct = 0x00;
+            }
+            else if (_m == "lda_abs" || _m == "lda_zp") {
                 // A reloaded from somewhere that isn't our $01 read -> disarm.
                 // (e.g. the buggy "lda #$00" case: we never armed, so no false unlock.)
                 if (!(_m == "lda_zp" && _v == 0x01)) {
-                    _armed        = false;
-                    _pending_mask = 0xFF;
+                    _armed         = false;
+                    _armed_direct  = false;
+                    _pending_mask  = 0xFF;
                 }
             }
         }

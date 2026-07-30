@@ -5,8 +5,8 @@
   "isDnD":false,
   "name":"scr_format_asm",
   "parent":{
-    "name":"MISC",
-    "path":"folders/SCRIPTS/CORE/MISC.yy",
+    "name":"CODENODE",
+    "path":"folders/SCRIPTS/CODENODE.yy",
   },
   "resourceType":"GMScript",
   "resourceVersion":"2.0",

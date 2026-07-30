@@ -1060,8 +1060,14 @@ var _g_is_valid = false;
         draw_rectangle(_hthumb_x, _hsb_y, _hthumb_x + _hthumb_w, _hsb_y + 6, false);
     }
 
-// ─── Stats bar ───
-    var _stats = code_editor_cached_stats;
+// ─── Type suffix legend ───
+    draw_set_font(fnt_c64_code);
+    draw_set_color(make_color_rgb(120, 120, 120));
+    draw_text(_px + 8, _py + _ph - 49,
+              "VAR.W=WORD(2B)  VAR.B/none=BYTE(1B)  VAR.BCD=3B  VAR.BCD2=2B  VAR.BCD3=3B");
+
+    // ─── Stats bar ───
+    var _stats = code_editor_cached_stats;
     draw_set_font(fnt_c64_code); // Switched to main code font
     draw_set_color(c_aqua);
     // Positioned higher to account for larger font size

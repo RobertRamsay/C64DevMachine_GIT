@@ -120,7 +120,7 @@ function scr_parse_asm_text(_text) {
             }
         }
 
-        // --- Constant assignment: name = $addr / name EQU $addr ---
+        // --- Constant assignment: name = $addr / name EQU $addr [size] ---
         var _eq_pos  = string_pos("=", _line);
         var _equ_pos = string_pos(" EQU ", string_upper(_line));
         if (_eq_pos > 1 || _equ_pos > 1) {
@@ -137,8 +137,46 @@ function scr_parse_asm_text(_text) {
             &&  string_char_at(_asgn_name, 1) != "."
             &&  string_char_at(_asgn_name, 1) != "*"
             &&  _asgn_val_str != "") {
+
+                // --- Strip type suffix from name: .w / .b / .bcd / .bcd2 / .bcd3 ---
+                var _enc      = "byte";
+                var _name_up  = string_upper(_asgn_name);
+                var _suf_list = [".BCD3", ".BCD2", ".BCD", ".W", ".B"];
+                for (var _sfi = 0; _sfi < array_length(_suf_list); _sfi++) {
+                    var _suf     = _suf_list[_sfi];
+                    var _suf_len = string_length(_suf);
+                    var _tstart  = string_length(_name_up) - _suf_len + 1;
+                    if (_tstart > 1 && string_copy(_name_up, _tstart, _suf_len) == _suf) {
+                        var _tag = string_delete(_suf, 1, 1); // drop leading "."
+                        if (_tag == "W")      _enc = "word";
+                        else if (_tag == "B") _enc = "byte";
+                        else                  _enc = string_lower(_tag);
+                        _asgn_name = string_copy(_asgn_name, 1, _tstart - 1);
+                        break;
+                    }
+                }
+                var _size_map = { byte: 1, word: 2, bcd: 3, bcd2: 2, bcd3: 3 };
+                var _sz = _size_map[$ _enc];
+
                 var _asgn_num = _eval_expr(_asgn_val_str);
                 ds_map_set(global.named_loc_map, string_upper(_asgn_name), _asgn_num);
+
+                // --- Register/refresh size+encoding meta so node macros see it too ---
+                var _meta_found = false;
+                for (var _mi = 0; _mi < array_length(global.named_loc_meta); _mi++) {
+                    if (global.named_loc_meta[_mi].name == _asgn_name) {
+                        global.named_loc_meta[_mi].size     = _sz;
+                        global.named_loc_meta[_mi].encoding  = _enc;
+                        global.named_loc_meta[_mi].addr      = _asgn_num;
+                        _meta_found = true;
+                        break;
+                    }
+                }
+                if (!_meta_found) {
+                    array_push(global.named_loc_meta, { name: _asgn_name, addr: _asgn_num, size: _sz, encoding: _enc, type: "UV", chip: "RAM" });
+                }
+                global.named_loc_meta_dirty = true;
+
                 array_push(_result, ["_line_map_", _li + 1]);
                 array_push(_result, ["const", _asgn_name, _asgn_num]);
                 continue;
