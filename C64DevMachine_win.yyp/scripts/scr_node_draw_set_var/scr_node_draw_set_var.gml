@@ -46,10 +46,11 @@ function scr_node_draw_set_var() {
     var _ly     = y + 28;
 
     // Row 1 — variable name (click name to open DEST picker; handled in Step)
+    var _name_disp = scr_nloc_display_name(_name);
     draw_set_font(fnt_c64_tiny);
     var _name_hov = point_in_rectangle(mouse_x, mouse_y, x + 10, _ly - 2, x + width - 44, _ly + 10);
     draw_set_color(_name_hov ? c_lime : c_yellow);
-    draw_text(x + 10, _ly - 2, _name != "" ? _name : "< SELECT >");
+    draw_text(x + 10, _ly - 2, _name_disp != "" ? _name_disp : "< SELECT >");
 
     draw_set_color(make_color_rgb(80, 140, 120));
     draw_text(x + 150, _ly - 4, "[" + string_upper(_enc) + "]");

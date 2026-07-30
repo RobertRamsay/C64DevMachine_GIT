@@ -28,13 +28,14 @@ function scr_node_draw_get_var() {
     if (_src_mode == 0) {
         // ============ VAR MODE (original layout) ============
         // Var name (row 1) — click the text to open the VAR picker
-        var _vname_disp = _name != "" ? _name : "< SELECT >";
+        var _disp_name = scr_nloc_display_name(_name);
+        var _vname_disp = _disp_name != "" ? _disp_name : "< SELECT >";
         var _vname_x    = x + 90;
         var _vname_hov  = point_in_rectangle(mouse_x, mouse_y, _vname_x, _ly - 4, x + width - 8, _ly + 12);
         draw_set_color(_vname_hov ? c_white : c_yellow);
         draw_text(_vname_x, _ly - 2, _vname_disp);
         _ly += _lh;
-
+		
         var _addr = ds_map_exists(global.named_loc_map, _name)
                     ? ds_map_find_value(global.named_loc_map, _name) : -1;
         var _meta = scr_nloc_find_meta(_name);
@@ -120,7 +121,8 @@ function scr_node_draw_get_var() {
                 : string(_off_lit);
             draw_text(_ofb_x2 , _ly - 1, "+" + _off_disp);
         } else if (_off_mode == 1) {
-            var _ovname = _off_var != "" ? _off_var : "< VAR >";
+            var _ov_disp = scr_nloc_display_name(_off_var);
+            var _ovname = _ov_disp != "" ? _ov_disp : "< VAR >";
             var _ov_hov = point_in_rectangle(mouse_x, mouse_y, _ofb_x2 + 8, _ly - 3, x + width - 8, _ly + 12);
             draw_set_color(_ov_hov ? c_white : c_yellow);
             draw_text(_ofb_x2 + 8, _ly - 1, _ovname);
@@ -130,9 +132,13 @@ function scr_node_draw_get_var() {
         }
         _ly += _lh;
 
+
+
+
         // Dest var line (row 4) — click text to pick a UV var (empty = leave in A)
         var _dest_var  = string(instructions[0][7]);
-        var _dst_disp  = _dest_var != "" ? ("-> " + _dest_var) : "LOADS: A";
+        var _dest_disp_name = scr_nloc_display_name(_dest_var);
+        var _dst_disp  = _dest_disp_name != "" ? ("-> " + _dest_disp_name) : "LOADS: A";
         var _dst_x     = x + 10;
         var _dst_hov   = point_in_rectangle(mouse_x, mouse_y, _dst_x, _ly - 3, x + width - 8, _ly + 12);
         if (_dest_var != "") {

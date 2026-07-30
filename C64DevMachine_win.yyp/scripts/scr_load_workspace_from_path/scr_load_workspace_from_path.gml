@@ -810,6 +810,8 @@ with (obj_c64_node) {
         if (!_is_hw) {
             var _enc  = (array_length(instructions[0]) > 2) ? string(instructions[0][2]) : "byte";
             var _size = (_enc == "word" || _enc == "bcd2") ? 2 : ((_enc == "bcd" || _enc == "bcd3") ? 3 : 1);
+            // name: preserved display case (for UI). Map key: canonical uppercase,
+            // so this matches whatever case any SET/GET/INC/DEC_VAR/IF node stored.
             var _meta = {
                 name: _name, type: "UV", addr: pc_address,
                 size: _size, encoding: _enc, chip: ""
@@ -817,7 +819,7 @@ with (obj_c64_node) {
             if (!variable_struct_exists(_meta, "encoding")) { _meta.encoding = "byte"; }
 	array_push(global.named_loc_meta, _meta);
 	global.named_loc_meta_dirty = true;
-            ds_map_replace(global.named_loc_map, _name, pc_address);
+            ds_map_replace(global.named_loc_map, string_upper(_name), pc_address);
         }
     }
 
