@@ -104,6 +104,13 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         _m.instr_name_edit_buf    = "";
         _m.instr_name_edit_cursor = 0;
     }
+    if (!variable_struct_exists(_m, "instr_last_click_time")) {
+        _m.instr_last_click_time = -10000;
+        _m.instr_last_click_idx  = -1;
+    }
+    if (!variable_struct_exists(_m, "instr_name_edit_opened_time")) {
+        _m.instr_name_edit_opened_time = -10000;
+    }
     for (var _adbi = 0; _adbi < array_length(_m.instruments); _adbi++) {
         var _adb_instr = _m.instruments[_adbi];
         if (!variable_struct_exists(_adb_instr, "attack"))      _adb_instr.attack      = 0;

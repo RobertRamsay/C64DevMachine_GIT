@@ -45,11 +45,24 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
 
         var _row_hov = point_in_rectangle(_mx, _my, _ix0, _iry, _ix0 + _list_w, _iry + _list_row_h);
         if (_row_hov && mouse_check_button_pressed(mb_left)) {
+            var _instr_dbl = (_m.instr_last_click_idx == _ii
+                           && (current_time - _m.instr_last_click_time) < 350);
+            _m.instr_last_click_time = current_time;
+            _m.instr_last_click_idx  = _ii;
+
             if (_m.sel_instr != _ii) {
                 _m.instr_edit_active      = false;
                 _m.instr_name_edit_active = false;
             }
             _m.sel_instr = _ii;
+
+            if (_instr_dbl) {
+                _m.instr_name_edit_active      = true;
+                _m.instr_name_edit_buf         = _instr.name;
+                _m.instr_name_edit_cursor      = string_length(_instr.name);
+                _m.instr_edit_active           = false;
+                _m.instr_name_edit_opened_time = current_time;
+            }
         }
     }
 
@@ -179,20 +192,36 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
         draw_set_color(_nm_hov ? c_aqua : c_white);
         draw_text(_nm_x1, _dy, _sel_instr.name);
         if (_nm_hov && mouse_check_button_pressed(mb_left)) {
-            _m.instr_name_edit_active = true;
-            _m.instr_name_edit_buf    = _sel_instr.name;
-            _m.instr_name_edit_cursor = string_length(_sel_instr.name);
-            _m.instr_edit_active      = false;
+            _m.instr_name_edit_active      = true;
+            _m.instr_name_edit_buf         = _sel_instr.name;
+            _m.instr_name_edit_cursor      = string_length(_sel_instr.name);
+            _m.instr_edit_active           = false;
+            _m.instr_name_edit_opened_time = current_time;
         }
     }
 
+    if (_m.instr_name_edit_active && !_nm_hov && mouse_check_button_pressed(mb_left)
+    &&  current_time > _m.instr_name_edit_opened_time) {
+        if (string_trim(_m.instr_name_edit_buf) != "") {
+            _sel_instr.name   = string_trim(_m.instr_name_edit_buf);
+            global.undo_dirty = true;
+        }
+        _m.instr_name_edit_active = false;
+    }
+
     if (_m.instr_name_edit_active) {
+        var _nm_ctrl = keyboard_check(vk_control) || scr_cmd_held();
+
         if (keyboard_check_pressed(vk_enter) || keyboard_check_pressed(vk_escape)) {
             if (keyboard_check_pressed(vk_enter) && string_trim(_m.instr_name_edit_buf) != "") {
                 _sel_instr.name   = string_trim(_m.instr_name_edit_buf);
                 global.undo_dirty = true;
             }
             _m.instr_name_edit_active = false;
+            keyboard_string = "";
+        } else if (_nm_ctrl && (keyboard_check_pressed(vk_backspace) || keyboard_check_pressed(vk_delete))) {
+            _m.instr_name_edit_buf    = "";
+            _m.instr_name_edit_cursor = 0;
             keyboard_string = "";
         } else if (keyboard_check_pressed(vk_backspace) && _m.instr_name_edit_cursor > 0) {
             _m.instr_name_edit_buf    = string_delete(_m.instr_name_edit_buf, _m.instr_name_edit_cursor, 1);
