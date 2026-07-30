@@ -51,12 +51,12 @@ version_banner_dismissed = false;
 // Fire the check on startup, but only once per session.
 version_check_request = http_get(version_check_url);
 
-bkgImg = 0;
-paletteStyle=0
+bkgImg = 1;
+paletteStyle=1
 showGrid=1;
-badgeStyle=0
-buttonStyle=0
-niceSliceFrm = 0;
+badgeStyle=1
+buttonStyle=1
+niceSliceFrm = 1;
 vicedelay=200 // >3 seconds
 global.asset_reload_in_progress = false;
 
