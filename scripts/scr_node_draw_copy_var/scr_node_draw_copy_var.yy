@@ -5,8 +5,8 @@
   "isDnD":false,
   "name":"scr_node_draw_copy_var",
   "parent":{
-    "name":"NEWCORE",
-    "path":"folders/SCRIPTS/CORE/NEWCORE.yy",
+    "name":"MACROS",
+    "path":"folders/SCRIPTS/MACROS.yy",
   },
   "resourceType":"GMScript",
   "resourceVersion":"2.0",
