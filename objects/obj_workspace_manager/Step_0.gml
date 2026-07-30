@@ -479,33 +479,41 @@ if (mouse_check_button_pressed(mb_left)    ||
 	scr_detect_bank_unlock();
 	
 	
+       // Build LABEL lookup table once instead of searching every node
+    var _label_lookup = ds_map_create();
+
+    with (obj_c64_node) {
+        if (node_type == "LABEL") {
+            var _this_label = string_replace_all(string(instructions[0][1]), " ", "_");
+            _label_lookup[? _this_label] = true;
+        }
+    }
+
     with (obj_c64_node) {
         if (node_type != "MACRO_JOY") continue;
+
         if (!variable_instance_exists(id, "joy_label_missing")) {
             joy_label_missing = array_create(10, false);
         }
+
         for (var _ji = 1; _ji <= 10; _ji++) {
+
             var _enabled = real(instructions[_ji][2]);
             var _label   = string(instructions[_ji][1]);
+
             if (!_enabled || _label == "" || _label == "target") {
                 joy_label_missing[_ji - 1] = false;
                 continue;
             }
+
             var _search = string_replace_all(_label, " ", "_");
-            var _found  = false;
-            var _self   = id;
-            with (obj_c64_node) {
-                if (id != _self && node_type == "LABEL") {
-                    var _this_label = string_replace_all(string(instructions[0][1]), " ", "_");
-                    if (_this_label == _search) {
-                        _found = true;
-                        break;
-                    }
-                }
-            }
-            joy_label_missing[_ji - 1] = !_found;
+
+            joy_label_missing[_ji - 1] =
+                !ds_map_exists(_label_lookup, _search);
         }
     }
+
+    ds_map_destroy(_label_lookup);
 }
 
 // =============================================================
@@ -1945,7 +1953,12 @@ if (build_trigger && !global.asset_reload_in_progress) {
     if (global.lite == 1) {
         var _premium_found = false;
         with (obj_c64_node) {
-            if (is_connected && (node_type == "MACRO_CODE" || node_type == "MACRO_IRQ") || node_type == "MACRO_MOVE_MEM") {
+            if ( is_connected && (
+				        node_type == "MACRO_CODE"
+				        || node_type == "MACRO_IRQ"
+				        || node_type == "MACRO_MOVE_MEM"
+				    )
+				) {
                 _premium_found = true;
                 break;
             }
