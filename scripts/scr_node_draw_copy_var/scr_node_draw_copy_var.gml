@@ -4,8 +4,8 @@ function scr_node_draw_copy_var(_draw_x) {
 
     var _src_raw = (array_length(instructions[0]) > 1) ? string(instructions[0][1]) : "";
     var _dst_raw = (array_length(instructions[0]) > 2) ? string(instructions[0][2]) : "";
-    var _src_name = (_src_raw != "") ? _src_raw : "(pick source)";
-    var _dst_name = (_dst_raw != "") ? _dst_raw : "(pick dest)";
+    var _src_name = (_src_raw != "") ? scr_nloc_display_name(_src_raw) : "(pick source)";
+    var _dst_name = (_dst_raw != "") ? scr_nloc_display_name(_dst_raw) : "(pick dest)";
 
     draw_set_font(fnt_c64_tiny);
 

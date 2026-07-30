@@ -10,7 +10,7 @@ function scr_nloc_rebuild_meta_map() {
     }
     ds_map_clear(global.named_loc_meta_map);
     for (var _i = 0; _i < array_length(global.named_loc_meta); _i++) {
-        global.named_loc_meta_map[? global.named_loc_meta[_i].name] = global.named_loc_meta[_i];
+        global.named_loc_meta_map[? string_upper(global.named_loc_meta[_i].name)] = global.named_loc_meta[_i];
     }
     global.named_loc_meta_dirty = false;
 }

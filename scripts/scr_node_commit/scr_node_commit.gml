@@ -385,7 +385,7 @@
 		        if (_input == "[clear]" || _input == "") {
 		            _target.instructions[0][_idx] = "";
 		        } else {
-		            _target.instructions[0][_idx] = _input;
+		            _target.instructions[0][_idx] = string_upper(_input);
 		        }
 		    }
 		    global.addresses_dirty = true;
@@ -412,7 +412,7 @@
 		        if (_input == "[clear]" || _input == "") {
 		            _target.instructions[0][_idx] = "";
 		        } else {
-		            _target.instructions[0][_idx] = _input;
+		            _target.instructions[0][_idx] = string_upper(_input);
 		        }
 		    }
 		    global.addresses_dirty = true;
@@ -508,7 +508,7 @@
 	            if (_input == "[clear]" || _input == "") {
 	                _target.instructions[0][_idx] = "";
 	            } else {
-	                _target.instructions[0][_idx] = _input;
+	                _target.instructions[0][_idx] = string_upper(_input);
 	            }
 	        } else {
 	            // X / Y / Colour — numeric clamped
@@ -534,7 +534,7 @@
 	            if (_input == "[clear]") {
 	                _target.instructions[0][6] = "";
 	            } else {
-	                _target.instructions[0][6] = _input;
+	                _target.instructions[0][6] = string_upper(_input);
 	            }
 	        } else {
 	            // X / Y / Colour — numeric clamped (idx 1=sx, 2=sy, 3=col)
@@ -618,7 +618,7 @@
 	            if (_input == "[clear]" || _input == "") {
 	                _target.instructions[0][_idx] = "";
 	            } else {
-	                _target.instructions[0][_idx] = _input;
+	                _target.instructions[0][_idx] = string_upper(_input);
 	            }
 	        }
 	        global.addresses_dirty = true;
@@ -651,7 +651,7 @@
 	            if (_input == "[clear]" || _input == "") {
 	                _target.instructions[0][_idx] = "";
 	            } else {
-	                _target.instructions[0][_idx] = _input;
+	                _target.instructions[0][_idx] = string_upper(_input);
 	            }
 	        }
 	        global.addresses_dirty = true;
@@ -689,7 +689,7 @@
 	            if (_input == "[clear]" || _input == "") {
 	                _target.instructions[0][_idx] = "";
 	            } else {
-	                _target.instructions[0][_idx] = _input;
+	                _target.instructions[0][_idx] = string_upper(_input);
 	            }
 	        }
 	        global.addresses_dirty = true;
@@ -730,7 +730,7 @@
 	            if (_input == "[clear]" || _input == "") {
 	                _target.instructions[0][7] = "";
 	            } else {
-	                _target.instructions[0][7] = _input;
+	                _target.instructions[0][7] = string_upper(_input);
 	            }
 	        }
 	        global.addresses_dirty = true;
@@ -882,14 +882,14 @@
 	            if (_input == "[clear]") {
 	                _target.instructions[0][1] = "";
 	            } else {
-	                _target.instructions[0][1] = _input;
+	                _target.instructions[0][1] = string_upper(_input);
 	            }
 	        } else if (_idx == 2) {
 	            // DST name
 	            if (_input == "[clear]") {
 	                _target.instructions[0][2] = "";
 	            } else {
-	                _target.instructions[0][2] = _input;
+	                _target.instructions[0][2] = string_upper(_input);
 	            }
 	        }
 	        global.addresses_dirty = true;
@@ -901,7 +901,7 @@
                _target.node_type == "DEC_VAR") {
 				   
 		 if (_idx == 0) {
-        _target.instructions[0][1] = _input;
+        _target.instructions[0][1] = string_upper(_input);
 		} else if (_idx == 5 && _target.node_type == "GET_VAR") {
 		    // GET_VAR asset offset literal — hex or decimal, clamp 0-255
 		    while (array_length(_target.instructions[0]) < 7) array_push(_target.instructions[0], "");
@@ -1050,7 +1050,7 @@
 	            if (_input == "[clear]") {
 	                _target.instructions[0][5] = "";
 	            } else {
-	                _target.instructions[0][5] = _input;
+	                _target.instructions[0][5] = string_upper(_input);
 	            }
 	        }
 
@@ -1075,7 +1075,7 @@
 	            if (_input == "[clear]") {
 	                _target.instructions[0][5] = "";
 	            } else {
-	                _target.instructions[0][5] = _input;
+	                _target.instructions[0][5] = string_upper(_input);
 	            }
 	        }
 		
@@ -1129,7 +1129,7 @@
 	            if (_input == "[clear]") {
 	                _target.instructions[0][35] = "";
 	            } else {
-	                _target.instructions[0][35] = _input;
+	                _target.instructions[0][35] = string_upper(_input);
 	            }
 	        }
 	        global.addresses_dirty = true;
@@ -1210,7 +1210,7 @@
 	                _target.instructions[0][3] = "";
 	                _target.instructions[0][2] = 0;
 	            } else {
-	                _target.instructions[0][3] = _input;
+	                _target.instructions[0][3] = string_upper(_input);
 	            }
 	        }
 	        global.addresses_dirty = true;
@@ -1236,7 +1236,7 @@
 	                _target.instructions[0][3] = "";
 	                _target.instructions[0][2] = 0;
 	            } else {
-	                _target.instructions[0][3] = _input;
+	                _target.instructions[0][3] = string_upper(_input);
 	            }
 	            global.addresses_dirty = true;
 	        }

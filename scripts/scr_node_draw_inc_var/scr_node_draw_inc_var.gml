@@ -14,7 +14,7 @@ function scr_node_draw_inc_var() {
     draw_set_font(fnt_c64_tiny);
     var _name_hov = point_in_rectangle(mouse_x, mouse_y, x + 10, _ly - 2, x + width - 8, _ly + 10);
     draw_set_color(_name_hov ? c_lime : c_yellow);
-    draw_text(x + 10, _ly - 2, _name != "" ? _name : "< SELECT >");
+    draw_text(x + 10, _ly - 2, _name != "" ? scr_nloc_display_name(_name) : "< SELECT >");
     _ly += _lh;
     if (_addr >= 0) {
         var _hex = decimal_to_hex(_addr);

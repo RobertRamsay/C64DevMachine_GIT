@@ -27,7 +27,7 @@ function scr_node_draw_cond_if_word(_draw_x, _y) {
     draw_rectangle(_var_bx1, _cy + 1, _var_bx2, _cy + 11, false);
     draw_set_color(_var == "" ? make_color_rgb(160, 80, 80) : c_white);
     draw_set_halign(fa_center);
-    draw_text((_var_bx1 + _var_bx2) / 2, _cy, _var == "" ? "< SELECT >" : _var);
+    draw_text((_var_bx1 + _var_bx2) / 2, _cy, _var == "" ? "< SELECT >" : scr_nloc_display_name(_var));
     draw_set_halign(fa_left);
     _cy += _line_h;
 
@@ -114,7 +114,7 @@ function scr_node_draw_cond_if_word(_draw_x, _y) {
     }
     draw_set_halign(fa_center);
     if (string_upper(_cmp_var) != "0") {
-        draw_text((_cvar_bx1 + _cvar_bx2) / 2, _cy, _cmp_var);
+        draw_text((_cvar_bx1 + _cvar_bx2) / 2, _cy, scr_nloc_display_name(_cmp_var));
     }
     if (!_has_cmp_var) {
         draw_set_halign(fa_center);

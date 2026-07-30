@@ -2,8 +2,9 @@
 function scr_uv_add(_name, _size, _encoding) {
 	
 	
-    // Guard against duplicates
-    if (ds_map_exists(global.named_loc_map, _name)) {
+    // Guard against duplicates (case-insensitive)
+    var _name_key = string_upper(_name);
+    if (ds_map_exists(global.named_loc_map, _name_key)) {
         show_debug_message("UV ADD: '" + _name + "' already exists, skipping.");
         return;
     }
@@ -17,8 +18,8 @@ function scr_uv_add(_name, _size, _encoding) {
         }
     }
     
-    // Add to map and meta
-    ds_map_add(global.named_loc_map, _name, _next_addr);
+    // Add to map and meta (map key canonical uppercase; display name preserved in meta/node)
+    ds_map_add(global.named_loc_map, _name_key, _next_addr);
     array_push(global.named_loc_meta, {
         name:     _name,
         addr:     _next_addr,
