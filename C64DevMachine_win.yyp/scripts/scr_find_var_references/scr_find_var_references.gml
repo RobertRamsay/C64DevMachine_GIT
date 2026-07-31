@@ -47,7 +47,7 @@ function scr_find_var_references(_var_name, _exclude) {
             var _sidx = _slots[_si];
             if (_sidx >= array_length(instructions[0])) continue;
             var _sval = instructions[0][_sidx];
-            if (is_string(_sval) && _sval == _var_name) {
+            if (is_string(_sval) && string_upper(_sval) == string_upper(_var_name)) {
                 array_push(_matched_slots, _sidx);
             }
         }

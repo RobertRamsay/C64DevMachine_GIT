@@ -97,13 +97,14 @@
 
 	    // Rewrite every node that references the old name
 	    var _refs = scr_find_var_references(_old_name, _target);
+	    var _new_name_upper = string_upper(_new_name);
 	    for (var _ri = 0; _ri < array_length(_refs); _ri++) {
 	        var _rn = _refs[_ri].node;
 	        if (!instance_exists(_rn)) continue;
 	        var _rn_slots = _refs[_ri].slots;
 	        with (_rn) {
 	            for (var _si = 0; _si < array_length(_rn_slots); _si++) {
-	                instructions[0][_rn_slots[_si]] = _new_name;
+	                instructions[0][_rn_slots[_si]] = _new_name_upper;
 	            }
 	        }
 	    }
@@ -974,16 +975,17 @@
 	                        scr_show_message("VAR NAME EXISTS:\n\n" + _new_name + "\n\nChoose a different name.");
 	                    } else {
 	                        var _refs = scr_find_var_references(_old_name, _target);
-	                        for (var _ri = 0; _ri < array_length(_refs); _ri++) {
-	                            var _rn = _refs[_ri].node;
-	                            if (!instance_exists(_rn)) continue;
-	                            var _rn_slots = _refs[_ri].slots;
-	                            with (_rn) {
-	                                for (var _si = 0; _si < array_length(_rn_slots); _si++) {
-	                                    instructions[0][_rn_slots[_si]] = _new_name;
-	                                }
-	                            }
-	                        }
+                        var _new_name_upper2 = string_upper(_new_name);
+                        for (var _ri = 0; _ri < array_length(_refs); _ri++) {
+                            var _rn = _refs[_ri].node;
+                            if (!instance_exists(_rn)) continue;
+                            var _rn_slots = _refs[_ri].slots;
+                            with (_rn) {
+                                for (var _si = 0; _si < array_length(_rn_slots); _si++) {
+                                    instructions[0][_rn_slots[_si]] = _new_name_upper2;
+                                }
+                            }
+                        }
 	                        _target.instructions[0][1] = _new_name;
 	                        _target.node_title = "UV STR";
 	                        global.addresses_dirty = true;
