@@ -1,5 +1,5 @@
 if (welcome_open) {
-    alarm[5] = 10; // wait for the welcome screen to close first
+    alarm[5] = 40; // wait for the welcome screen to close first
     exit;
 }
 

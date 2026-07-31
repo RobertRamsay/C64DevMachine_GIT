@@ -883,7 +883,7 @@ idle_snapshot_active  = false;   // true while the snapshot overlay is being sho
 
 // ---- STARTUP: offer to restore latest autosave (via ini) ----
 // Deferred to alarm[5] so obj_asset_manager is fully initialised first
-alarm[5] = 10;
+alarm[5] = 40;
 
 box_body_dbl_timer = 0;
 box_body_dbl_target = noone;

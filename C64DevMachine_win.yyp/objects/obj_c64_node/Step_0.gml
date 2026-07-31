@@ -62,7 +62,9 @@ if (node_type == "LABEL" && !is_dragging && !global.any_picker_open) {
 
     // Press Enter while this LABEL is broadcasting -> cycle camera through referencing nodes
     if (global.ref_highlight_source == id && keyboard_check_pressed(vk_enter)
-        && !obj_workspace_manager.is_entering_text) {
+        && !obj_workspace_manager.is_entering_text
+		&& !global.mouse_in_asset_panel)
+		{
 
         var _target_name = global.ref_highlight_name;
         var _ref_list    = [];

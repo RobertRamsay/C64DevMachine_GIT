@@ -1,6 +1,6 @@
 /// @desc obj_asset_manager Create
 global.is_any_text_active = false;
-
+global.mouse_in_asset_panel = false;
 // Multi-select state for CHAR_SET grid
 chr_multi_select    = []; // array of char indices currently selected
 chr_clipboard       = []; // array of structs: { bytes: [8 bytes] } per copied char
