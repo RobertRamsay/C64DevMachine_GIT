@@ -189,7 +189,7 @@ function scr_node_draw_set_var() {
         // Click the name itself to open the SRC picker (SRC SET button removed).
         var _srcname_hov = point_in_rectangle(mouse_x, mouse_y, x + 52, _ly, x + width - 4, _ly + 12);
         draw_set_color(_srcname_hov ? c_lime : c_yellow);
-        draw_text(x + 52, _ly, _src_v1 != "" ? ("$" + _src_v1) : "< SRC >");
+        draw_text(x + 52, _ly, _src_v1 != "" ? ("$" + scr_nloc_display_name(_src_v1)) : "< SRC >");
 
     } else {
         // ============ PTR MODE (store byte at *resolved address* of dest word) ============
@@ -227,7 +227,7 @@ function scr_node_draw_set_var() {
             // byte var (picker) — click the name to open the picker (SRC SET button removed)
             var _bsrc_hov = point_in_rectangle(mouse_x, mouse_y, x + 10, _ly, x + width - 4, _ly + 12);
             draw_set_color(_bsrc_hov ? c_lime : c_yellow);
-            draw_text(x + 10, _ly, _src_v1 != "" ? ("$" + _src_v1) : "< BYTE SRC >");
+            draw_text(x + 10, _ly, _src_v1 != "" ? ("$" + scr_nloc_display_name(_src_v1)) : "< BYTE SRC >");
         }
     }
 }

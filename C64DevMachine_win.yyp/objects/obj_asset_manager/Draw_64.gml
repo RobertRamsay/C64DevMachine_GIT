@@ -6645,7 +6645,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	    } break;
 		
 case "BYTE_DATA": {
-    var _sf_on   = _asset.meta.is_save_file;
+    var _sf_on   = variable_struct_exists(_asset.meta, "is_save_file") && _asset.meta.is_save_file;
     var _sfx1    = _vx1 + 10;
     var _sfx2    = _vx1 + 260;
     var _sfy1    = _cy;
@@ -6661,16 +6661,17 @@ case "BYTE_DATA": {
     draw_text(_sfx1 + 125, _sfy1 + 6, "USE AS SAVE FILE: " + (_sf_on ? "ON" : "OFF"));
     draw_set_halign(fa_left);
     if (_sf_hov && mouse_check_button_pressed(mb_left)) {
-        _asset.meta.is_save_file = !_asset.meta.is_save_file;
+        _asset.meta.is_save_file = !_sf_on;
         if (_asset.meta.is_save_file) {
             _asset.meta.inline_edit_open = false;
             global.is_any_text_active    = false;
-            scr_asset_save_file_resize(_asset, _asset.meta.save_file_size);
+            var _sf_size = variable_struct_exists(_asset.meta, "save_file_size") ? _asset.meta.save_file_size : 256;
+            scr_asset_save_file_resize(_asset, _sf_size);
         }
     }
     _cy += 30;
 
-    if (_asset.meta.is_save_file) {
+    if (_sf_on) {
         var _bc_sf = buffer_exists(_asset.buffer) ? buffer_get_size(_asset.buffer) : 0;
         draw_set_font(fnt_c64_tiny);
         draw_set_color(make_color_rgb(80, 80, 80));

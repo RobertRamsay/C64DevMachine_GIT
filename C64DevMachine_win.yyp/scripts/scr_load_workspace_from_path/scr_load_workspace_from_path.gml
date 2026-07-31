@@ -377,6 +377,8 @@ with (obj_c64_node) {
                 if (variable_struct_exists(_sm, "tool"))           _meta.tool           = _sm.tool;
                 if (variable_struct_exists(_sm, "text"))           _meta.text           = _sm.text;
                 if (variable_struct_exists(_sm, "byte_string"))    _meta.byte_string    = _sm.byte_string;
+                if (variable_struct_exists(_sm, "is_save_file"))   _meta.is_save_file   = _sm.is_save_file;
+                if (variable_struct_exists(_sm, "save_file_size")) _meta.save_file_size = _sm.save_file_size;
                 if (variable_struct_exists(_sm, "mc_mode"))        _meta.mc_mode        = _sm.mc_mode;
                 if (variable_struct_exists(_sm, "paint_mc"))       _meta.paint_mc       = _sm.paint_mc;
                 if (variable_struct_exists(_sm, "map_mixed"))      _meta.map_mixed      = _sm.map_mixed;
@@ -448,6 +450,8 @@ with (obj_c64_node) {
 			
             if (_ad.type == "BYTE_DATA") {
                if (!variable_struct_exists(_new_asset.meta, "byte_string")) _new_asset.meta.byte_string = "";
+               if (!variable_struct_exists(_new_asset.meta, "is_save_file")) _new_asset.meta.is_save_file = false;
+               if (!variable_struct_exists(_new_asset.meta, "save_file_size")) _new_asset.meta.save_file_size = 256;
 				_new_asset.meta.inline_edit_open      = false;
 				// Sync the edit buffer with the loaded string so the editor isn't empty
 				_new_asset.meta.inline_edit_text      = _new_asset.meta.byte_string;

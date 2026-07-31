@@ -99,7 +99,7 @@ var _base = "unsaved";
                            "ecm_bg1","ecm_bg2","ecm_bg3",
                            "map_w","map_h","grid_w","grid_h","char_grid","colour_grid","chr_asset",
                            "scroll_x","scroll_y","zoom","active_char","active_colour","tool",
-                           "text","byte_string","paint_mc","map_mixed","override_grid","map_mc_bg","map_mc_col1","map_mc_col2",
+                           "text","byte_string","is_save_file","save_file_size","paint_mc","map_mixed","override_grid","map_mc_bg","map_mc_col1","map_mc_col2",
                            "song_name","sfx_count","instruments","wavetable","source_file",
                            "tile_types"];
             for (var _fi = 0; _fi < array_length(_fields); _fi++) {

@@ -187,6 +187,8 @@
 	        if (variable_struct_exists(_a.meta, "tool"))          _meta_out.tool          = _a.meta.tool;
 	        if (variable_struct_exists(_a.meta, "text"))          _meta_out.text          = _a.meta.text;
 	        if (variable_struct_exists(_a.meta, "byte_string"))   _meta_out.byte_string   = _a.meta.byte_string;
+        if (variable_struct_exists(_a.meta, "is_save_file"))  _meta_out.is_save_file  = _a.meta.is_save_file;
+        if (variable_struct_exists(_a.meta, "save_file_size")) _meta_out.save_file_size = _a.meta.save_file_size;
 	        if (variable_struct_exists(_a.meta, "paint_mc"))      _meta_out.paint_mc      = _a.meta.paint_mc;
 	        if (variable_struct_exists(_a.meta, "map_mixed"))     _meta_out.map_mixed     = _a.meta.map_mixed;
 	        if (variable_struct_exists(_a.meta, "override_grid")) _meta_out.override_grid = _a.meta.override_grid;

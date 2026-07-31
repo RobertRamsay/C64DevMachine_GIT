@@ -84,7 +84,7 @@ if (_n.node_type == "NEW_STR") {
 	            else                                         _size = 1; // byte, sbyte, signed all = 1
 	
 	            _meta.addr = _next_addr;
-	            ds_map_set(global.named_loc_map, _name, _next_addr);
+	            ds_map_set(global.named_loc_map, string_upper(_name), _next_addr);
 	        }
 	        _n.pc_address = _next_addr;
 	        _next_addr += _size;

@@ -1,4 +1,3 @@
-/// scr_uv_add(name, size, encoding)
 function scr_uv_add(_name, _size, _encoding) {
 	
 	
