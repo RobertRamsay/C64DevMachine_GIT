@@ -994,6 +994,7 @@
     {"id":{"name":"scr_asset_sfx_reload","path":"scripts/scr_asset_sfx_reload/scr_asset_sfx_reload.yy",},},
     {"id":{"name":"scr_asset_sid_import","path":"scripts/scr_asset_sid_import/scr_asset_sid_import.yy",},},
     {"id":{"name":"scr_asset_sid_reload","path":"scripts/scr_asset_sid_reload/scr_asset_sid_reload.yy",},},
+    {"id":{"name":"scr_asset_sorted_indices","path":"scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.yy",},},
     {"id":{"name":"scr_asset_spr_add_blank_slot","path":"scripts/scr_asset_spr_add_blank_slot/scr_asset_spr_add_blank_slot.yy",},},
     {"id":{"name":"scr_asset_spr_cache_sprites","path":"scripts/scr_asset_spr_cache_sprites/scr_asset_spr_cache_sprites.yy",},},
     {"id":{"name":"scr_asset_spr_export_binary","path":"scripts/scr_asset_spr_export_binary/scr_asset_spr_export_binary.yy",},},

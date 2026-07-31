@@ -739,7 +739,7 @@ for (var _di = 0; _di < ds_list_size(asset_list); _di++) {
 if (_mouse_in_panel) {
     var _count       = ds_list_size(asset_list);
     var _content_h   = _count * item_h;
-    var _visible_h   = _panel_bottom - 38 - (panel_y + 44);
+    var _visible_h   = _panel_bottom - 38 - (panel_y + 66);
     var _max_visible = floor(_visible_h / item_h) * item_h;
     panel_max_scroll = max(0, _content_h - _max_visible);
     if (mouse_wheel_up())   panel_scroll = max(0, panel_scroll - item_h);
@@ -751,13 +751,16 @@ if (_mouse_in_panel) {
 // HOVER
 // -------------------------------------------------------
 hover_idx = -1;
-if (_mouse_in_panel && _my >= panel_y + 44 && _my <= _panel_bottom - 38) {
-    for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
-        var _iy1 = panel_y + 44 + (_i * item_h) - panel_scroll;
+hover_pos = -1;
+if (_mouse_in_panel && _my >= panel_y + 66 && _my <= _panel_bottom - 38) {
+    var _hov_sorted = scr_asset_sorted_indices();
+    for (var _pos = 0; _pos < ds_list_size(asset_list); _pos++) {
+        var _iy1 = panel_y + 66 + (_pos * item_h) - panel_scroll;
         var _iy2 = _iy1 + item_h;
-        if (_iy2 < panel_y + 44 || _iy1 > _panel_bottom - 38) continue;
+        if (_iy2 < panel_y + 66 || _iy1 > _panel_bottom - 38) continue;
         if (point_in_rectangle(_mx, _my, panel_x, _iy1, panel_x + panel_w, _iy2)) {
-            hover_idx = _i;
+            hover_idx = _hov_sorted[_pos];
+            hover_pos = _pos;
             break;
         }
     }
@@ -2013,8 +2016,8 @@ if (_asset.type == "META_TILESET") {
     // -------------------------------------------------------
     if (_mouse_in_panel && hover_idx >= 0) {
         var _asset  = ds_list_find_value(asset_list, hover_idx);
-        var _list_y = panel_y + 44;
-        var _iy     = _list_y + (hover_idx * item_h) - panel_scroll;
+        var _list_y = panel_y + 66;
+        var _iy     = _list_y + (hover_pos * item_h) - panel_scroll;
         var _addr_x = _panel_right - 58;
         var _edit_x = _addr_x - 30;
 

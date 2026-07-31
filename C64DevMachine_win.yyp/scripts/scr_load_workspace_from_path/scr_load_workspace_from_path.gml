@@ -891,6 +891,8 @@ global.kernal_unlocked = variable_struct_exists(load_data, "kernal_unlocked") ? 
         : 1;
     obj_workspace_manager.map_global_mixed = variable_struct_exists(load_data, "map_global_mixed")
         ? load_data.map_global_mixed : 0;
+    obj_asset_manager.asset_sort_mode = variable_struct_exists(load_data, "asset_sort_mode")
+        ? load_data.asset_sort_mode : "ADDR";
     global.map_tile_bank     = variable_struct_exists(load_data, "map_tile_bank")     ? load_data.map_tile_bank     : [];
     global.map_tile_bank_sel = variable_struct_exists(load_data, "map_tile_bank_sel") ? load_data.map_tile_bank_sel : -1;
     if (!global.kernal_unlocked || !global.basic_unlocked) {

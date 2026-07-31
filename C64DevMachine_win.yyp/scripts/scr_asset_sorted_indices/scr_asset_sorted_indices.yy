@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_asset_sorted_indices",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_asset_sorted_indices",
+  "parent":{
+    "name":"CORE",
+    "path":"folders/SCRIPTS/CORE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

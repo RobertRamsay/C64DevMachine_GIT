@@ -216,7 +216,8 @@ var _root = { nodes:node_data, boxes:box_data, assets:asset_data,
                   map_tile_bank:     variable_global_exists("map_tile_bank") ? global.map_tile_bank : [],
                   map_tile_bank_sel: variable_global_exists("map_tile_bank_sel") ? global.map_tile_bank_sel : -1,
                   next_stable_uid:   variable_global_exists("next_stable_uid")   ? global.next_stable_uid   : 100000,
-                  ignored_conflicts: variable_global_exists("ignored_conflicts") ? global.ignored_conflicts : [] };
+                  ignored_conflicts: variable_global_exists("ignored_conflicts") ? global.ignored_conflicts : [],
+                  asset_sort_mode:   obj_asset_manager.asset_sort_mode };
     var _json = json_stringify(_root);
     var _f = file_text_open_write(_path);
     file_text_write_string(_f, _json);

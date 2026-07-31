@@ -79,16 +79,50 @@ draw_text(panel_x + (_panel_w * 0.5), panel_y + 6, "[ADD ASSET +]");
 draw_set_halign(fa_left);
 
 // -------------------------------------------------------
+// SORT BY control
+// -------------------------------------------------------
+var _sort_row_y = panel_y + 30;
+var _sort_opts  = ["NAME", "TYPE", "ADDR"];
+draw_set_font(fnt_c64_tiny);
+draw_set_color(make_color_rgb(140, 140, 140));
+draw_text(panel_x + 6, _sort_row_y + 4, "SORT BY:");
+var _sort_btn_x = panel_x + 62;
+for (var _soi = 0; _soi < array_length(_sort_opts); _soi++) {
+    var _so_w    = 46;
+    var _so_x1   = _sort_btn_x + (_soi * (_so_w + 4));
+    var _so_x2   = _so_x1 + _so_w;
+    var _so_hov  = point_in_rectangle(_mx, _my, _so_x1, _sort_row_y, _so_x2, _sort_row_y + 16);
+    var _so_on   = (asset_sort_mode == _sort_opts[_soi]);
+    draw_set_color(_so_on ? make_color_rgb(200, 160, 40) : (_so_hov ? make_color_rgb(70, 70, 90) : make_color_rgb(40, 40, 55)));
+    draw_rectangle(_so_x1, _sort_row_y, _so_x2, _sort_row_y + 16, false);
+    draw_set_color(_so_on ? c_black : c_white);
+    draw_set_halign(fa_center);
+    draw_text((_so_x1 + _so_x2) / 2, _sort_row_y + 2, _sort_opts[_soi]);
+    draw_set_halign(fa_left);
+    if (_so_hov && mouse_check_button_pressed(mb_left)) {
+        asset_sort_mode = _sort_opts[_soi];
+    }
+}
+
+// -------------------------------------------------------
 // ASSET LIST
 // -------------------------------------------------------
 var _count  = ds_list_size(asset_list);
-var _list_y = panel_y + 44;
+var _list_y = panel_y + 66;
 
-for (var _i = 0; _i < _count; _i++) {
+// Sort a display-order index array rather than asset_list itself, so the
+// underlying list's real insertion order (relied
+// on everywhere else that indexes asset_list directly) never changes.
+// Shared with Step_0's hit-testing via scr_asset_sorted_indices() so the
+// two can never disagree about display order.
+var _sorted_indices = scr_asset_sorted_indices();
+
+for (var _pos = 0; _pos < _count; _pos++) {
+    var _i     = _sorted_indices[_pos];
     var _asset = ds_list_find_value(asset_list, _i);
-    var _iy    = _list_y + (_i * item_h) - panel_scroll;
+    var _iy    = _list_y + (_pos * item_h) - panel_scroll;
 
-	if (_iy + item_h <= panel_y + 44 || _iy >= _panel_bottom - 38) continue;
+	if (_iy + item_h <= panel_y + 66 || _iy >= _panel_bottom - 38) continue;
 
    // Row background
     var _is_load_org = false;

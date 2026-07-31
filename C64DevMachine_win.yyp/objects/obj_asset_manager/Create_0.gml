@@ -46,6 +46,8 @@ panel_scroll    = 0;
 panel_max_scroll = 0;
 item_h          = 36;
 hover_idx       = -1;
+hover_pos       = -1;
+asset_sort_mode = "ADDR"; // "NAME", "TYPE", or "ADDR" (insertion order)
 // -------------------------------------------------------
 // ADD ASSET DROPDOWN
 // -------------------------------------------------------
