@@ -461,7 +461,14 @@ with (obj_c64_node) {
 				_new_asset.meta.inline_edit_sel_end   = -1;
 				_new_asset.meta.inline_edit_blink     = 0;
 				_new_asset.meta.inline_edit_key_timer = 0;
-                scr_asset_byte_data_flush(_new_asset);
+                if (!_new_asset.meta.is_save_file) {
+                    // Only re-derive the buffer from byte_string for normal BYTE_DATA
+                    // assets. Save-file-mode assets already have their real buffer
+                    // restored from the saved blob above — byte_string there is just
+                    // the stale creation-time default and has nothing to do with the
+                    // actual reserved size.
+                    scr_asset_byte_data_flush(_new_asset);
+                }
             }
             if (_ad.type == "SFX_DATA") {
                 var _sfx_sm = _ad.meta;
