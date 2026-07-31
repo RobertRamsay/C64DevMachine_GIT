@@ -1323,6 +1323,7 @@
     {"id":{"name":"scr_vbmp_raster_line","path":"scripts/scr_vbmp_raster_line/scr_vbmp_raster_line.yy",},},
     {"id":{"name":"scr_vbmp_replay_to_surface","path":"scripts/scr_vbmp_replay_to_surface/scr_vbmp_replay_to_surface.yy",},},
     {"id":{"name":"scr_version_check_parse","path":"scripts/scr_version_check_parse/scr_version_check_parse.yy",},},
+    {"id":{"name":"scr_welcome_save_pref","path":"scripts/scr_welcome_save_pref/scr_welcome_save_pref.yy",},},
     {"id":{"name":"spriteData1","path":"scripts/spriteData1/spriteData1.yy",},},
     {"id":{"name":"shd_png_import","path":"shaders/shd_png_import/shd_png_import.yy",},},
     {"id":{"name":"spr_9s_tile1","path":"sprites/spr_9s_tile1/spr_9s_tile1.yy",},},

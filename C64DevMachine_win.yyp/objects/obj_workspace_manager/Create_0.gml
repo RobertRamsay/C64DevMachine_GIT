@@ -1,5 +1,6 @@
 /// @desc Setup Workspace, Palette & C64 Environment
 global.lite=0;
+global.build_date = "Aug 31, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {
@@ -47,6 +48,44 @@ version_remote_notes    = "";     // line 4+
 version_update_available = false; // true if remote != GM_version
 version_banner_visible  = false;  // user can dismiss the banner
 version_banner_dismissed = false;
+
+// ---- WELCOME SCREEN ----
+// welcome_open is set from the saved "hide_welcome" ini pref further down,
+// once settings are loaded. welcome_hide_checked mirrors the checkbox state.
+welcome_open           = false;
+welcome_hide_checked   = false;
+welcome_credits_y      = 0;
+welcome_whats_new = [
+    "Quick menu Q or W",
+    "Load and Save game Macros",
+    "This panel!",
+];
+welcome_credits_lines = [
+    "CODE and DESIGN",
+    "Robert Ramsay",
+    "",
+    "COMMUNITY INPUT",
+    "51Pegasi",
+    "Analog-X64",
+    "Arlasoft",
+    "Balfourd",
+    "CptGreenwood",
+	"Deano",
+    "funkygallo",
+    "keefnayls",
+    "markc.sherman",
+    "Sch31ßtyp",
+    "SLAXX",
+    "SPEE-DEC",
+    "sTERN",
+    "Stuart Hurst",
+    "TonyWatto",
+    "VxV",
+    "",
+    "And...",
+    "All those who are part of the Discord and those",
+    "who are users and have supported the software!",
+];
 
 // Fire the check on startup, but only once per session.
 version_check_request = http_get(version_check_url);
@@ -861,6 +900,9 @@ bkgImg      = ini_read_real("Settings", "bkgImg",       0);
 showGrid    = ini_read_real("Settings", "showGrid",      0);
 paletteStyle = ini_read_real("Settings", "paletteStyle", 0);
 niceSliceFrm = ini_read_real("Settings", "niceSliceFrm", 0);
+var _hide_welcome = ini_read_real("Settings", "hide_welcome", 0);
+welcome_hide_checked = (_hide_welcome != 0);
+welcome_open          = !welcome_hide_checked;
 
 ini_close();
 

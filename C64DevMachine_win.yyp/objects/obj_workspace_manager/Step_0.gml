@@ -11,6 +11,54 @@ else if (global.question_result == "exit_confirm_no")
      game_end();
     }
 	
+// === WELCOME SCREEN (modal — blocks everything else while open) ===
+if (welcome_open) {
+    var _pw = 560;
+    var _ph = 560;
+    var _px = (global.gui_w - _pw) / 2;
+    var _py = (display_get_gui_height() - _ph) / 2;
+
+    // Auto-scroll the credits crawl
+    var _cr_line_h  = 16;
+    var _cr_total_h = array_length(welcome_credits_lines) * _cr_line_h;
+    var _cr_view_h  = 180;
+    welcome_credits_y += 0.4;
+    if (welcome_credits_y > _cr_total_h + _cr_view_h) {
+        welcome_credits_y = 0;
+    }
+
+    var _wmx = device_mouse_x_to_gui(0);
+    var _wmy = device_mouse_y_to_gui(0);
+
+    // Close button (top-right)
+    var _cbx1 = _px + _pw - 36;
+    var _cby1 = _py + 8;
+    var _cbx2 = _cbx1 + 28;
+    var _cby2 = _cby1 + 28;
+    if (point_in_rectangle(_wmx, _wmy, _cbx1, _cby1, _cbx2, _cby2)
+        && mouse_check_button_pressed(mb_left)) {
+        welcome_open = false;
+    }
+
+    // Checkbox (bottom-left)
+    var _chkx1 = _px + 20;
+    var _chky1 = _py + _ph - 40;
+    var _chkx2 = _chkx1 + 18;
+    var _chky2 = _chky1 + 18;
+    if (point_in_rectangle(_wmx, _wmy, _chkx1, _chky1, _chkx2, _chky2)
+        && mouse_check_button_pressed(mb_left)) {
+        welcome_hide_checked = !welcome_hide_checked;
+        scr_welcome_save_pref(welcome_hide_checked);
+    }
+
+    exit;
+}
+
+// F1 reopens the welcome screen at any time
+if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(vk_f1)) {
+    welcome_open = true;
+}
+
 if (code_editor_open) {
         scr_code_editor_step();
         

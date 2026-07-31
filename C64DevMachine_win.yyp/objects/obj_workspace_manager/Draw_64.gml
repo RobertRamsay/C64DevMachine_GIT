@@ -3335,3 +3335,121 @@ if (uqmenu_active && uqmenu_open) {
     draw_set_color(c_white);
     draw_circle(uqmenu_gui_x, uqmenu_gui_y, 2, false);
 }
+
+// --- WELCOME SCREEN (drawn absolute last, on top of everything) ---
+if (welcome_open) {
+    var _pw = 560;
+    var _ph = 560;
+    var _px = (global.gui_w - _pw) / 2;
+    var _py = (display_get_gui_height() - _ph) / 2;
+
+    draw_set_color(c_black);
+    draw_set_alpha(0.55);
+    draw_rectangle(0, 0, global.gui_w, display_get_gui_height(), false);
+    draw_set_alpha(1.0);
+
+    draw_set_color(make_color_rgb(20, 20, 30));
+    draw_rectangle(_px, _py, _px + _pw, _py + _ph, false);
+    draw_set_color(make_color_rgb(200, 160, 40));
+    draw_rectangle(_px, _py, _px + _pw, _py + _ph, true);
+
+    var _wmx = device_mouse_x_to_gui(0);
+    var _wmy = device_mouse_y_to_gui(0);
+
+    // Title
+    draw_set_font(fnt_C64_Angled);
+    draw_set_halign(fa_center);
+    draw_set_color(c_white);
+    draw_text(_px + _pw / 2, _py + 16, "WELCOME TO C64 DEV MACHINE");
+    draw_set_font(fnt_c64_tiny);
+    draw_set_color(make_color_rgb(200, 160, 40));
+    draw_text(_px + _pw / 2, _py + 40, "VERSION: " + string(GM_version) + "   DATE: " + global.build_date);
+    draw_set_halign(fa_left);
+
+    // What's New
+    var _wy = _py + 70;
+    draw_set_font(fnt_C64_Angled);
+    draw_set_color(make_color_rgb(220, 140, 40));
+    draw_text(_px + 20, _wy, "WHAT'S NEW?");
+    _wy += 22;
+    draw_set_font(fnt_c64_tiny);
+    draw_set_color(c_aqua);
+    for (var _wi = 0; _wi < array_length(welcome_whats_new); _wi++) {
+        draw_text(_px + 30, _wy, "- " + welcome_whats_new[_wi]);
+        _wy += 16;
+    }
+
+    // Credits header
+    _wy += 14;
+    draw_set_font(fnt_C64_Angled);
+    draw_set_color(make_color_rgb(220, 140, 40));
+    draw_set_halign(fa_center);
+    draw_text(_px + _pw / 2, _wy, "CREDITS");
+    draw_set_halign(fa_left);
+    _wy += 22;
+
+    // Scissored, auto-scrolling credits crawl
+    var _cr_x1 = _px + 20;
+    var _cr_y1 = _wy;
+    var _cr_x2 = _px + _pw - 20;
+    var _cr_y2 = _cr_y1 + 180;
+    var _cr_line_h = 16;
+
+    var _sx_sc = window_get_width()  / global.gui_w;
+    var _sy_sc = window_get_height() / display_get_gui_height();
+    gpu_set_scissor(
+        floor(_cr_x1 * _sx_sc),
+        floor(_cr_y1 * _sy_sc),
+        ceil((_cr_x2 - _cr_x1) * _sx_sc),
+        ceil((_cr_y2 - _cr_y1) * _sy_sc)
+    );
+
+    draw_set_font(fnt_c64_tiny);
+    var _cr_start_y = _cr_y2 - welcome_credits_y;
+    for (var _ci = 0; _ci < array_length(welcome_credits_lines); _ci++) {
+        var _cly = _cr_start_y + (_ci * _cr_line_h);
+        if (_cly > _cr_y1 - _cr_line_h && _cly < _cr_y2 + _cr_line_h) {
+            var _ctxt      = welcome_credits_lines[_ci];
+            var _is_header = (_ctxt == "CODE and DESIGN" || _ctxt == "COMMUNITY INPUT" || _ctxt == "And...");
+            draw_set_color(_is_header ? make_color_rgb(220, 140, 40) : c_white);
+            draw_set_halign(fa_center);
+            draw_text(_px + _pw / 2, _cly, _ctxt);
+            draw_set_halign(fa_left);
+        }
+    }
+
+    gpu_set_scissor(0, 0, window_get_width(), window_get_height());
+
+    // Checkbox
+    var _chkx1   = _px + 20;
+    var _chky1   = _py + _ph - 40;
+    var _chkx2   = _chkx1 + 18;
+    var _chky2   = _chky1 + 18;
+    var _chk_hov = point_in_rectangle(_wmx, _wmy, _chkx1, _chky1, _chkx2, _chky2);
+    draw_set_color(_chk_hov ? make_color_rgb(200, 160, 40) : make_color_rgb(90, 90, 90));
+    draw_rectangle(_chkx1, _chky1, _chkx2, _chky2, true);
+    if (welcome_hide_checked) {
+        draw_set_color(make_color_rgb(200, 160, 40));
+        draw_text(_chkx1 + 3, _chky1 - 2, "X");
+    }
+    draw_set_font(fnt_c64_tiny);
+    draw_set_color(c_white);
+    draw_text(_chkx2 + 8, _chky1, "DON'T SHOW ON STARTUP");
+    draw_set_color(make_color_rgb(140, 140, 140));
+    draw_text(_chkx2 + 8, _chky1 + 14, welcome_hide_checked ? "(currently: hidden on startup)" : "(currently: shows on startup)");
+
+    // Close button
+    var _cbx1   = _px + _pw - 36;
+    var _cby1   = _py + 8;
+    var _cbx2   = _cbx1 + 28;
+    var _cby2   = _cby1 + 28;
+    var _cb_hov = point_in_rectangle(_wmx, _wmy, _cbx1, _cby1, _cbx2, _cby2);
+    draw_set_color(_cb_hov ? make_color_rgb(200, 60, 60) : make_color_rgb(90, 90, 90));
+    draw_rectangle(_cbx1, _cby1, _cbx2, _cby2, false);
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_middle);
+    draw_text((_cbx1 + _cbx2) / 2, (_cby1 + _cby2) / 2, "X");
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
+}

@@ -1,3 +1,8 @@
+if (welcome_open) {
+    alarm[5] = 10; // wait for the welcome screen to close first
+    exit;
+}
+
 ini_open("c64devmachine.ini");
 var _last_autosave = ini_read_string("autosave", "last_path", "");
 ini_close();
