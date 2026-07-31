@@ -6642,6 +6642,72 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	    } break;
 		
 case "BYTE_DATA": {
+    var _sf_on   = _asset.meta.is_save_file;
+    var _sfx1    = _vx1 + 10;
+    var _sfx2    = _vx1 + 260;
+    var _sfy1    = _cy;
+    var _sfy2    = _cy + 22;
+    var _sf_hov  = point_in_rectangle(_mx, _my, _sfx1, _sfy1, _sfx2, _sfy2);
+    draw_set_color(_sf_on
+        ? make_color_rgb(200, 120, 40)
+        : (_sf_hov ? make_color_rgb(140, 90, 40) : make_color_rgb(70, 50, 25)));
+    draw_rectangle(_sfx1, _sfy1, _sfx2, _sfy2, false);
+    draw_set_font(fnt_c64_tiny);
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_text(_sfx1 + 125, _sfy1 + 6, "USE AS SAVE FILE: " + (_sf_on ? "ON" : "OFF"));
+    draw_set_halign(fa_left);
+    if (_sf_hov && mouse_check_button_pressed(mb_left)) {
+        _asset.meta.is_save_file = !_asset.meta.is_save_file;
+        if (_asset.meta.is_save_file) {
+            _asset.meta.inline_edit_open = false;
+            global.is_any_text_active    = false;
+            scr_asset_save_file_resize(_asset, _asset.meta.save_file_size);
+        }
+    }
+    _cy += 30;
+
+    if (_asset.meta.is_save_file) {
+        var _bc_sf = buffer_exists(_asset.buffer) ? buffer_get_size(_asset.buffer) : 0;
+        draw_set_font(fnt_c64_tiny);
+        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_text(_vx1 + 10, _cy, "RESERVED: " + string(_bc_sf) + " BYTES   $"
+            + string_upper(decimal_to_hex(_asset.address))
+            + " - $" + string_upper(decimal_to_hex(_asset.address + max(0, _bc_sf - 1))));
+        _cy += 24;
+
+        var _steps = [
+            { label: "-256", delta: -256 }, { label: "-16", delta: -16 }, { label: "-1", delta: -1 },
+            { label: "+1",   delta: 1    }, { label: "+16", delta: 16  }, { label: "+256", delta: 256 }
+        ];
+        var _stp_x = _vx1 + 10;
+        for (var _si = 0; _si < array_length(_steps); _si++) {
+            var _stp_w   = 44;
+            var _stp_x1  = _stp_x + (_si * (_stp_w + 4));
+            var _stp_x2  = _stp_x1 + _stp_w;
+            var _stp_hov = point_in_rectangle(_mx, _my, _stp_x1, _cy, _stp_x2, _cy + 22);
+            draw_set_color(_stp_hov ? make_color_rgb(200, 120, 40) : make_color_rgb(70, 50, 25));
+            draw_rectangle(_stp_x1, _cy, _stp_x2, _cy + 22, false);
+            draw_set_color(c_white);
+            draw_set_halign(fa_center);
+            draw_text(_stp_x1 + (_stp_w / 2), _cy + 6, _steps[_si].label);
+            draw_set_halign(fa_left);
+            if (_stp_hov && mouse_check_button_pressed(mb_left)) {
+                var _new_size = clamp(_bc_sf + _steps[_si].delta, 1, 16384);
+                _asset.meta.save_file_size = _new_size;
+                scr_asset_save_file_resize(_asset, _new_size);
+            }
+        }
+        _cy += 34;
+        draw_set_font(fnt_C64_Angled);
+        draw_set_color(c_ltgray);
+        draw_text(_vx1 + 10, _cy, "Zero-filled placeholder — link into a LOAD_ORG,");
+        _cy += 16;
+        draw_text(_vx1 + 10, _cy, "then MACRO_SAVE_GAME/MACRO_LOAD_GAME write and");
+        _cy += 16;
+        draw_text(_vx1 + 10, _cy, "read this exact address range at runtime.");
+        _cy += 16;
+    } else {
     // ── EDIT BUTTON ──────────────────────────────────────────────────────
 	
 
@@ -6679,6 +6745,7 @@ case "BYTE_DATA": {
                 }
             }
             _asset.meta.inline_edit_open      = true;
+            global.is_any_text_active         = true;
             _asset.meta.inline_edit_text      = _bstr;
             _asset.meta.inline_edit_cursor    = string_length(_bstr);
             _asset.meta.inline_edit_scroll_y  = 0;
@@ -6690,6 +6757,7 @@ case "BYTE_DATA": {
             // Close — parse and save
             scr_asset_byte_data_save(_asset);
             _asset.meta.inline_edit_open = false;
+            global.is_any_text_active    = false;
         }
     }
 
@@ -6753,6 +6821,7 @@ case "BYTE_DATA": {
         
         draw_text_transformed(_vx1 + 10, _cy, _preview, _xscale, 1, 0);
     }
+    }
 } break;
 
 case "TEXT_DATA": {
@@ -6779,6 +6848,7 @@ case "TEXT_DATA": {
             var _txt_src = variable_struct_exists(_asset.meta, "text")
                 ? string(_asset.meta.text) : "";
             _asset.meta.inline_edit_open      = true;
+            global.is_any_text_active         = true;
             _asset.meta.inline_edit_text      = _txt_src;
             _asset.meta.inline_edit_cursor    = string_length(_txt_src);
             _asset.meta.inline_edit_scroll_y  = 0;
@@ -6789,6 +6859,7 @@ case "TEXT_DATA": {
         } else {
             scr_asset_text_data_save(_asset);
             _asset.meta.inline_edit_open = false;
+            global.is_any_text_active    = false;
         }
     }
 

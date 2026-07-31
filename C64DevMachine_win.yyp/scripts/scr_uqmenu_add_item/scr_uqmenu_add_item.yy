@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_uqmenu_add_item",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_uqmenu_add_item",
+  "parent":{
+    "name":"UI",
+    "path":"folders/SCRIPTS/UI.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

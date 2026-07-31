@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_uqmenu_layout_circular",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_uqmenu_layout_circular",
+  "parent":{
+    "name":"UI",
+    "path":"folders/SCRIPTS/UI.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_qmenu_layout",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_qmenu_layout",
+  "parent":{
+    "name":"UI",
+    "path":"folders/SCRIPTS/UI.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

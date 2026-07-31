@@ -1199,6 +1199,131 @@ if (keyboard_check_pressed(ord("N")) && readyToQuit == 1) {
 }
 
 
+// --- Q QUICK-SPAWN MENU ---
+// Start is gated by the standard text-entry/picker guard so it can't
+// fire while typing or with another modal open. The progress/release
+// branch below runs UNCONDITIONALLY once active, so qmenu_active can
+// never get stuck true if that guard flips mid-hold (e.g. a picker
+// opens while Q is still held) — it just cancels without spawning.
+var _qmenu_can_start = !is_entering_text && !global.is_any_text_active && !global.any_picker_open && (gui_menu_open == -1);
+
+if (_qmenu_can_start && keyboard_check_pressed(ord("W")) && !qmenu_active) {
+    qmenu_active   = true;
+    qmenu_open     = false;
+    qmenu_timer    = 0;
+    qmenu_anchor_x = mouse_x;
+    qmenu_anchor_y = mouse_y;
+    qmenu_gui_x    = device_mouse_x_to_gui(0);
+    qmenu_gui_y    = device_mouse_y_to_gui(0);
+    qmenu_hover    = -1;
+}
+
+if (qmenu_active) {
+    if (keyboard_check(ord("W"))) {
+        if (!qmenu_open) {
+            qmenu_timer++;
+            if (qmenu_timer >= 4) { // ~0.07s at 60fps
+                qmenu_open = true;
+            }
+        }
+
+        if (qmenu_open) {
+            var _qmx = device_mouse_x_to_gui(0);
+            var _qmy = device_mouse_y_to_gui(0);
+            qmenu_hover = -1;
+            for (var _qi = 0; _qi < array_length(qmenu_items); _qi++) {
+                var _qr = scr_qmenu_layout(_qi, qmenu_gui_x, qmenu_gui_y);
+                if (point_in_rectangle(_qmx, _qmy, _qr[0], _qr[1], _qr[2], _qr[3])) {
+                    qmenu_hover = _qi;
+                    break;
+                }
+            }
+        }
+    } else {
+        // Q is no longer held (covers a normal release AND edge cases like
+        // focus loss/alt-tab where a "released" event might not fire).
+        // Only spawn if the guard is still clear at this moment.
+        if (qmenu_open && qmenu_hover > -1 && _qmenu_can_start) {
+            scr_node_spawn(qmenu_items[qmenu_hover].type, qmenu_anchor_x, qmenu_anchor_y);
+            global.undo_dirty = true;
+            alarm[3] = 6;
+        }
+        qmenu_active = false;
+        qmenu_open   = false;
+        qmenu_hover  = -1;
+    }
+}
+
+// --- SHIFT+Q: add the hovered MACROS menu item to the custom quick menu ---
+// gui_menu_open == 0 (MACROS dropdown open) and == -1 (nothing open) are
+// mutually exclusive, so this can never collide with the Q-hold-to-open
+// logic below — no extra guarding needed between the two.
+if (gui_menu_open == 0 && hover_macro_type != ""
+    && keyboard_check(vk_shift) && keyboard_check_pressed(ord("Q"))) {
+    scr_uqmenu_add_item(hover_macro_type, hover_macro_title);
+}
+
+// --- Q CUSTOM QUICK-SPAWN MENU (user-built, circular) ---
+var _uqmenu_can_start = !is_entering_text && !global.is_any_text_active && !global.any_picker_open && (gui_menu_open == -1);
+
+if (_uqmenu_can_start && keyboard_check_pressed(ord("Q")) && !uqmenu_active) {
+    uqmenu_active   = true;
+    uqmenu_open     = false;
+    uqmenu_timer    = 0;
+    uqmenu_anchor_x = mouse_x;
+    uqmenu_anchor_y = mouse_y;
+    uqmenu_gui_x    = device_mouse_x_to_gui(0);
+    uqmenu_gui_y    = device_mouse_y_to_gui(0);
+    uqmenu_hover    = -1;
+}
+
+if (uqmenu_active) {
+    if (keyboard_check(ord("Q"))) {
+        if (!uqmenu_open) {
+            uqmenu_timer++;
+            if (uqmenu_timer >= 4) { // ~0.07s at 60fps, matches the W-menu speed
+                uqmenu_open = true;
+            }
+        }
+
+        var _ucount = array_length(global.user_quick_menu);
+        if (uqmenu_open && _ucount > 0) {
+            var _uqmx = device_mouse_x_to_gui(0);
+            var _uqmy = device_mouse_y_to_gui(0);
+            uqmenu_hover = -1;
+            for (var _ui = 0; _ui < _ucount; _ui++) {
+                var _ur = scr_uqmenu_layout_circular(_ui, _ucount, uqmenu_gui_x, uqmenu_gui_y, global.user_quick_menu[_ui].label);
+                if (point_in_rectangle(_uqmx, _uqmy, _ur[0], _ur[1], _ur[2], _ur[3])) {
+                    uqmenu_hover = _ui;
+                    break;
+                }
+            }
+
+            // Right-click a hovered item to remove it from the menu. Closes
+            // the gesture on removal rather than keeping it open, since the
+            // remaining items' indices shift and holding Q for a second
+            // right-click on "the same spot" would silently hit whatever
+            // slid into that position instead.
+            if (uqmenu_hover > -1 && mouse_check_button_pressed(mb_right)) {
+                scr_uqmenu_remove_item(uqmenu_hover);
+                uqmenu_active = false;
+                uqmenu_open   = false;
+                uqmenu_hover  = -1;
+            }
+        }
+    } else {
+        if (uqmenu_open && uqmenu_hover > -1 && _uqmenu_can_start) {
+            var _uitem = global.user_quick_menu[uqmenu_hover];
+            scr_node_spawn(_uitem.type, uqmenu_anchor_x, uqmenu_anchor_y);
+            global.undo_dirty = true;
+            alarm[3] = 6;
+        }
+        uqmenu_active = false;
+        uqmenu_open   = false;
+        uqmenu_hover  = -1;
+    }
+}
+
 // --- NODE SPAWNING (blocked during text entry) ---
 if (!is_entering_text && !global.is_any_text_active) {
 

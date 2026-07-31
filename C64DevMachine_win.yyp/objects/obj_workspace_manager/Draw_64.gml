@@ -1209,6 +1209,8 @@ if (gui_menu_open == 0) {
 
     // ---- Draw items & handle hover + drag ----
     draw_set_font(fnt_C64_Angled);
+    hover_macro_type  = "";
+    hover_macro_title = "";
 
     for (var _mi = 0; _mi < array_length(_mac_list); _mi++) {
         var _mp   = _mac_list[_mi];
@@ -1218,6 +1220,11 @@ if (gui_menu_open == 0) {
         var _ihov = (string_pos("HEADER", _mp.type) == 0 &&
                      gui_mouse_x >= _ix1 && gui_mouse_x < _ix2 &&
                      gui_mouse_y >= _iy   && gui_mouse_y < _iy + _item_h);
+
+        if (_ihov) {
+            hover_macro_type  = _mp.type;
+            hover_macro_title = _mp.title;
+        }
 
         // Row background on hover
         if (_ihov) {
@@ -3274,3 +3281,54 @@ if (global.var_del_warn_active) {
 
 // --- C64U IP entry overlay (drawn last so it sits on top) ---
 scr_c64u_overlay_draw();
+
+// --- Q quick-spawn menu (drawn absolute last so it's always on top) ---
+if (qmenu_active && qmenu_open) {
+    draw_set_font(fnt_c64_tiny);
+    for (var _qi = 0; _qi < array_length(qmenu_items); _qi++) {
+        var _qr  = scr_qmenu_layout(_qi, qmenu_gui_x, qmenu_gui_y);
+        var _hov = (qmenu_hover == _qi);
+        draw_set_color(make_color_rgb(10, 10, 20));
+        draw_rectangle(_qr[0], _qr[1], _qr[2], _qr[3], false);
+        draw_set_color(_hov ? make_color_rgb(200, 160, 40) : make_color_rgb(90, 90, 90));
+        draw_rectangle(_qr[0], _qr[1], _qr[2], _qr[3], true);
+        draw_set_color(_hov ? c_white : c_aqua);
+        draw_set_halign(fa_center);
+        draw_set_valign(fa_middle);
+        draw_text((_qr[0] + _qr[2]) / 2, (_qr[1] + _qr[3]) / 2, qmenu_items[_qi].label);
+    }
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
+    draw_set_color(c_white);
+    draw_circle(qmenu_gui_x, qmenu_gui_y, 2, false);
+}
+
+// --- Q custom quick-spawn menu (user-built, circular) ---
+if (uqmenu_active && uqmenu_open) {
+    var _ucount = array_length(global.user_quick_menu);
+    draw_set_font(fnt_c64_tiny);
+    if (_ucount == 0) {
+        draw_set_halign(fa_center);
+        draw_set_color(c_ltgray);
+        draw_text(uqmenu_gui_x, uqmenu_gui_y - 8, "QUICK MENU EMPTY");
+        draw_text(uqmenu_gui_x, uqmenu_gui_y + 6, "SHIFT+Q A MACRO TO ADD");
+        draw_set_halign(fa_left);
+    } else {
+        for (var _ui = 0; _ui < _ucount; _ui++) {
+            var _ur   = scr_uqmenu_layout_circular(_ui, _ucount, uqmenu_gui_x, uqmenu_gui_y, global.user_quick_menu[_ui].label);
+            var _uhov = (uqmenu_hover == _ui);
+            draw_set_color(make_color_rgb(10, 10, 20));
+            draw_rectangle(_ur[0], _ur[1], _ur[2], _ur[3], false);
+            draw_set_color(_uhov ? make_color_rgb(200, 160, 40) : make_color_rgb(90, 90, 90));
+            draw_rectangle(_ur[0], _ur[1], _ur[2], _ur[3], true);
+            draw_set_color(_uhov ? c_white : c_aqua);
+            draw_set_halign(fa_center);
+            draw_set_valign(fa_middle);
+            draw_text((_ur[0] + _ur[2]) / 2, (_ur[1] + _ur[3]) / 2, global.user_quick_menu[_ui].label);
+        }
+        draw_set_halign(fa_left);
+        draw_set_valign(fa_top);
+    }
+    draw_set_color(c_white);
+    draw_circle(uqmenu_gui_x, uqmenu_gui_y, 2, false);
+}
