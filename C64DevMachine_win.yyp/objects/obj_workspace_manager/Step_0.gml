@@ -37,6 +37,26 @@ if (welcome_open) {
     var _cby2 = _cby1 + 28;
     if (point_in_rectangle(_wmx, _wmy, _cbx1, _cby1, _cbx2, _cby2)
         && mouse_check_button_pressed(mb_left)) {
+        // The particle system works in room space (it tracks node positions
+        // on the canvas), but this panel is drawn in GUI space — convert the
+        // panel's screen rectangle into the equivalent room rectangle so the
+        // burst appears in the right place regardless of camera pan/zoom.
+        if (variable_global_exists("fx_sys") && global.node_destroy_fx && global.visual_fx) {
+            var _vx = camera_get_view_x(view_camera[0]);
+            var _vy = camera_get_view_y(view_camera[0]);
+            var _vw = camera_get_view_width(view_camera[0]);
+            var _vh = camera_get_view_height(view_camera[0]);
+            var _sx = global.gui_w / _vw;
+            var _sy = display_get_gui_height() / _vh;
+
+            var _room_x1 = _vx + (_px / _sx);
+            var _room_y1 = _vy + (_py / _sy);
+            var _room_x2 = _vx + ((_px + _pw) / _sx);
+            var _room_y2 = _vy + ((_py + _ph) / _sy);
+
+            part_emitter_region(global.fx_sys, 0, _room_x1, _room_x2, _room_y1, _room_y2, ps_shape_rectangle, ps_distr_linear);
+            part_emitter_burst(global.fx_sys, 0, global.pt_node_vapor, 640);
+        }
         welcome_open = false;
     }
 
@@ -50,6 +70,13 @@ if (welcome_open) {
         welcome_hide_checked = !welcome_hide_checked;
         scr_welcome_save_pref(welcome_hide_checked);
     }
+
+    // Keep the actual camera view in sync even though everything else is
+    // blocked below — otherwise cam_x/cam_y can still change elsewhere
+    // (window/zoom restore, etc.) while this modal is up, but never get
+    // applied to the real view until Step's normal flow resumes, making
+    // the camera appear frozen here and then jump the instant this closes.
+    camera_set_view_pos(cam_view, cam_x, cam_y);
 
     exit;
 }

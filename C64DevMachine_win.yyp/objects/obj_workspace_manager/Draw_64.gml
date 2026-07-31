@@ -3348,10 +3348,7 @@ if (welcome_open) {
     draw_rectangle(0, 0, global.gui_w, display_get_gui_height(), false);
     draw_set_alpha(1.0);
 
-    draw_set_color(make_color_rgb(20, 20, 30));
-    draw_rectangle(_px, _py, _px + _pw, _py + _ph, false);
-    draw_set_color(make_color_rgb(200, 160, 40));
-    draw_rectangle(_px, _py, _px + _pw, _py + _ph, true);
+    draw_sprite_stretched(spr_welcome_panel, 0, _px, _py, _pw, _ph);
 
     var _wmx = device_mouse_x_to_gui(0);
     var _wmy = device_mouse_y_to_gui(0);

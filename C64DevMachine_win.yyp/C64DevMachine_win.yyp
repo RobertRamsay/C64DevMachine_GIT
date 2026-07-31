@@ -1348,6 +1348,7 @@
     {"id":{"name":"spr_palette_page","path":"sprites/spr_palette_page/spr_palette_page.yy",},},
     {"id":{"name":"spr_palette","path":"sprites/spr_palette/spr_palette.yy",},},
     {"id":{"name":"spr_snapshot","path":"sprites/spr_snapshot/spr_snapshot.yy",},},
+    {"id":{"name":"spr_welcome_panel","path":"sprites/spr_welcome_panel/spr_welcome_panel.yy",},},
   ],
   "resourceType":"GMProject",
   "resourceVersion":"2.0",
