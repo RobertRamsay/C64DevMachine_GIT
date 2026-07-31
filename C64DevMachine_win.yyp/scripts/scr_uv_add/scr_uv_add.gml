@@ -49,6 +49,7 @@ function scr_uv_add(_name, _size, _encoding) {
 	        _n.is_connected = true;
 	        with (_n) { event_user(0); }
 	        global.addresses_dirty = true;
+	        scr_c64_do_update_addresses();
 	        break;
 	    }
 	}

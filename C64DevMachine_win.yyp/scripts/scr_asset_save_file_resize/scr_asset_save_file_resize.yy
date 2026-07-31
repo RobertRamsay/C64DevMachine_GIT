@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_asset_save_file_resize",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_asset_save_file_resize",
+  "parent":{
+    "name":"SAVELOADGAME",
+    "path":"folders/SCRIPTS/MACROS/SAVELOADGAME.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

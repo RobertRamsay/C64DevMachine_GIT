@@ -708,7 +708,10 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     var _lbx2     = _vx1 + 110;
     var _lby1     = _cy;
     var _lby2     = _cy + 20;
-    if (!_hide_import && _asset.type != "LOAD_ORG" && _asset.type != "META_TILESET" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER") {
+    if (!_hide_import && _asset.type != "LOAD_ORG" 
+	&& _asset.type != "META_TILESET" && _asset.type != "BITMAP_BUILDER" 
+	&& _asset.type != "MUSIC_MAKER"
+	&& !(_asset.type == "BYTE_DATA" && variable_struct_exists(_asset.meta, "is_save_file") && _asset.meta.is_save_file)) {
         var _lb_hover = point_in_rectangle(_mx, _my, _lbx1, _lby1, _lbx2, _lby2);
         draw_set_color(_lb_hover ? make_color_rgb(80, 200, 80) : make_color_rgb(30, 90, 40));
         draw_rectangle(_lbx1, _lby1, _lbx2, _lby2, false);

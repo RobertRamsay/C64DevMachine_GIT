@@ -688,6 +688,20 @@ case "LABEL": {
             with (_n) { event_user(0); }
             break;
 
+        case "MACRO_SAVE_GAME":
+            _n.node_title   = "SAVE GAME";
+            _n.instructions = [["macro_save_game", "", "", 0]];
+            _n.pc_address   = global.start_pc;
+            with (_n) { event_user(0); }
+            break;
+
+        case "MACRO_LOAD_GAME":
+            _n.node_title   = "LOAD GAME";
+            _n.instructions = [["macro_load_game", "", "", 0]];
+            _n.pc_address   = global.start_pc;
+            with (_n) { event_user(0); }
+            break;
+
         // -------------------------------------------------------
         // MACRO_IRQ
         // -------------------------------------------------------

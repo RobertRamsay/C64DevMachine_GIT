@@ -819,7 +819,7 @@ with (obj_c64_node) {
             if (!variable_struct_exists(_meta, "encoding")) { _meta.encoding = "byte"; }
 	array_push(global.named_loc_meta, _meta);
 	global.named_loc_meta_dirty = true;
-            ds_map_replace(global.named_loc_map, string_upper(_name), pc_address);
+            ds_map_replace(global.named_loc_map, string_upper(_name), -1);
         }
     }
 

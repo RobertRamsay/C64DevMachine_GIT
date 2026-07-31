@@ -1009,6 +1009,8 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
         case "MACRO_SPR":    scr_node_step_macro_spr(draw_x);    break;
         case "MACRO_SID":    scr_node_step_macro_sid(draw_x);    break;
         case "MACRO_LOADER": scr_node_step_macro_loader(draw_x); break;
+        case "MACRO_SAVE_GAME": scr_node_step_macro_save_game(draw_x); break;
+        case "MACRO_LOAD_GAME": scr_node_step_macro_load_game(draw_x); break;
         case "MACRO_CHR":    scr_macro_chr_step(id);             break;
         case "MACRO_MAP":        scr_node_step_macro_map(id);        break;
 		case "MACRO_METAMAP":    scr_node_step_macro_metamap(id);    break;

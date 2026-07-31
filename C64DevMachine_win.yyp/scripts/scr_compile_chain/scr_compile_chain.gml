@@ -4627,6 +4627,10 @@ case "MACRO_LOADER": {
     array_push(_list, ["jsr",     0xFFD5, _id]); // LOAD
 } break;
 
+
+case "MACRO_LOAD_GAME": scr_compile_macro_load_game(_list, _curr); break;
+case "MACRO_SAVE_GAME": scr_compile_macro_save_game(_list, _curr); break;
+
 // --------------------------------------------------------
 // MACRO_TRACK
 // Runtime track switcher - polls GETIN each frame.

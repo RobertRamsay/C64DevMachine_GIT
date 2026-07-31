@@ -75,16 +75,16 @@ if (_n.node_type == "NEW_STR") {
 	        }
 
 	        var _meta = scr_nloc_find_meta(_name);
+	        show_debug_message("UV REPACK: name=" + _name + " meta_found=" + string(_meta != undefined)
+	            + " map_has_key=" + string(ds_map_exists(global.named_loc_map, _name)) + " next_addr=" + string(_next_addr));
 	        if (_meta != undefined) {
 				var _enc = variable_struct_exists(_meta, "encoding") ? _meta.encoding : "byte";
 	            if (_enc == "bcd" || _enc == "bcd3")        _size = 3;
 	            else if (_enc == "word" || _enc == "bcd2")  _size = 2;
 	            else                                         _size = 1; // byte, sbyte, signed all = 1
-
+	
 	            _meta.addr = _next_addr;
-	            if (ds_map_exists(global.named_loc_map, _name)) {
-	                ds_map_replace(global.named_loc_map, _name, _next_addr);
-	            }
+	            ds_map_set(global.named_loc_map, _name, _next_addr);
 	        }
 	        _n.pc_address = _next_addr;
 	        _next_addr += _size;
@@ -104,7 +104,7 @@ if (_n.node_type == "NEW_STR") {
 	        }
 	    }
 	    if (_m.type == "HW" || _node_exists) array_push(_clean_meta, _m);
-	    else ds_map_delete(global.named_loc_map, _m.name);
+	    else ds_map_delete(global.named_loc_map, string_upper(_m.name));
 	}
 	global.named_loc_meta = _clean_meta;
 	global.named_loc_meta_dirty = true;

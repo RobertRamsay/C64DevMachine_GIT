@@ -88,6 +88,8 @@ if (height_dirty) {
     case "MACRO_SPR":   height = _G * 7;  break;         // 180
     case "MACRO_SID":    height = _G * 5;  break;         //
     case "MACRO_LOADER": height = _G * 5;  break;         // 120 — picker + status rows
+    case "MACRO_SAVE_GAME": height = _G * 5;  break;
+    case "MACRO_LOAD_GAME": height = _G * 5;  break;
     case "MACRO_CHR":   height = _G * 6;  break;         // 120
     case "MACRO_TRACK": height = _G * 3;  break;         // 100
     case "MACRO_PRINT": height = _G * 10;  break;
@@ -798,6 +800,8 @@ switch (node_type) {
 	case "MACRO_GET_CHAR":   _head_col = is_connected ? make_color_rgb(80, 160, 200) : make_color_rgb(40, 80, 100); break;
 	case "MACRO_VECTOR_PAGE": _head_col = is_connected ? make_color_rgb(90, 180, 210) : make_color_rgb(40, 80, 95); break;
     case "MACRO_LOADER": _head_col = is_connected ? make_color_rgb(200, 160, 40) : make_color_rgb(100, 80, 20); break;
+    case "MACRO_SAVE_GAME": _head_col = is_connected ? make_color_rgb(200, 120, 40) : make_color_rgb(100, 60, 20); break;
+    case "MACRO_LOAD_GAME": _head_col = is_connected ? make_color_rgb(200, 190, 40) : make_color_rgb(100, 95, 20); break;
     case "MACRO_CHR":   _head_col = is_connected ? make_color_rgb(100,200, 255) : make_color_rgb( 30, 80, 120); break;
     case "MACRO_VWAIT":         _head_col = is_connected ? make_color_rgb( 40,180, 160) : make_color_rgb( 20, 90,  80); break;
     case "MACRO_DISPLAY":       _head_col = is_connected ? make_color_rgb(220,170,  50) : make_color_rgb(110, 85,  25); break;
@@ -1160,6 +1164,8 @@ if (_lod_body) switch (node_type) {
     case "DATA_SID":    scr_node_draw_data_sid(draw_x, y);                              break;
     case "MACRO_SID":    scr_node_draw_macro_sid(draw_x, y, _cam_x, _cam_y, _cam_zoom);    break;
     case "MACRO_LOADER": scr_node_draw_macro_loader(draw_x, y, _cam_x, _cam_y, _cam_zoom); break;
+    case "MACRO_SAVE_GAME": scr_node_draw_macro_save_game(draw_x, y, _cam_x, _cam_y, _cam_zoom); break;
+    case "MACRO_LOAD_GAME": scr_node_draw_macro_load_game(draw_x, y, _cam_x, _cam_y, _cam_zoom); break;
     case "MACRO_CHR":   scr_node_draw_macro_chr(draw_x, y, _cam_x, _cam_y, _cam_zoom);  break;
     case "MACRO_TRACK": scr_node_draw_macro_track(draw_x, y);                           break;
     case "MACRO_BMP":   scr_node_draw_macro_bmp(draw_x, y);                             break;

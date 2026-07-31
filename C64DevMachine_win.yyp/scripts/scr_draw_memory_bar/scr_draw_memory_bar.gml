@@ -6,7 +6,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     var _pulse      = abs(sin(current_time * 0.01));
 
     var _labels_visible = false;
-    if (global.gui_mouse_y > 1000 and global.gui_mouse_x > 400) {
+    if (global.gui_mouse_y > 1000 and global.gui_mouse_x > 500) {
         _labels_visible = true;
     }
 

@@ -1632,6 +1632,8 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open) {
 				_new_asset.meta.inline_edit_sel_end   = -1;
 				_new_asset.meta.inline_edit_blink     = 0;
 				_new_asset.meta.inline_edit_key_timer = 0;
+				_new_asset.meta.is_save_file           = false;
+				_new_asset.meta.save_file_size          = 256;
                 scr_asset_byte_data_flush(_new_asset);
             }
         if (_type == "MAP_DATA") {

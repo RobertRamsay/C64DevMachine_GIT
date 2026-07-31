@@ -904,11 +904,12 @@ if (gui_menu_open == 2) {
                     trigger_build = true;
                     break;
                 case "EXPORT":
-                    // A connected MACRO_LOADER forces a .d64 build (no .prg dialog).
-                    // The F4 handler detects this and writes program.d64 to export_dir.
+                    // A connected MACRO_LOADER, MACRO_SAVE_GAME, or MACRO_LOAD_GAME
+                    // forces a .d64 build (no .prg dialog). The F4 handler detects
+                    // this and writes program.d64 to export_dir.
                     var _menu_has_loader = false;
                     with (obj_c64_node) {
-                        if (node_type == "MACRO_LOADER" && is_connected) {
+                        if ((node_type == "MACRO_LOADER" || node_type == "MACRO_SAVE_GAME" || node_type == "MACRO_LOAD_GAME") && is_connected) {
                             _menu_has_loader = true;
                         }
                     }
@@ -1176,6 +1177,8 @@ if (gui_menu_open == 0) {
         { title: "SID SONG",     type: "MACRO_SID_SONG"      },
         { title: "--- DISK ---",  type: "HEADER"              },
         { title: "LOADER",       type: "MACRO_LOADER"        },
+        { title: "SAVE GAME",    type: "MACRO_SAVE_GAME"     },
+        { title: "LOAD GAME",    type: "MACRO_LOAD_GAME"     },
     ];
 
     if (!global.lite) {
@@ -1193,7 +1196,7 @@ if (gui_menu_open == 0) {
     }
 
     // ---- 9-slice panel geometry ----
-    var _item_h     = 20;
+    var _item_h     = 19;
     var _panel_w    = 200;
     var _slice_top  = 20;
     var _slice_bot  = 20;

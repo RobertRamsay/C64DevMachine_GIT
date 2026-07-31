@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_compile_macro_save_game",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_compile_macro_save_game",
+  "parent":{
+    "name":"SAVELOADGAME",
+    "path":"folders/SCRIPTS/MACROS/SAVELOADGAME.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}
