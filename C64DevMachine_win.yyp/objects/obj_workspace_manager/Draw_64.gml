@@ -493,13 +493,13 @@ var _mbar_y      = 2;
 var _mbar_btn_w  = 179;
 var _mbar_btn_h  = 42;
 var _mbar_start_x = shelf_width + 60;
-var _menuitems =6;
+var _menuitems =7;
 var _menu_labels = [
-    "MACROS", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TBA", "TBA"
+    "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TBA"
 ];
 
 // OPTIONS DROPDOWN (button 2)
-if (gui_menu_open == 3) {
+if (gui_menu_open == 4) {
     var _opt_list = [
         { title: "HELPER MODE",     action: "HELPER"          },
         { title: "PALETTE HELPER",  action: "PALETTE_HELPER"  },
@@ -516,7 +516,7 @@ if (gui_menu_open == 3) {
     var _item_h_o   = 20;
     var _panel_w_o  = 220;
     var _mbar_btn_gap_o = _mbar_btn_w + 4;
-    var _panel_x_o  = _mbar_start_x + (3 * _mbar_btn_gap_o);
+    var _panel_x_o  = _mbar_start_x + (4 * _mbar_btn_gap_o);
     var _panel_y_o  = _mbar_btn_h;
     var _panel_h_o  = array_length(_opt_list) * _item_h_o + 28;
 
@@ -673,9 +673,76 @@ if (gui_menu_open == 3) {
 var _mbar_btn_gap = _mbar_btn_w + 4;
 
 /////////////////////////////////////////////////////////////////
-///// VARS DROPDOWN (button 1)
+///// EXTRA DROPDOWN (button 1) — only available outside LITE mode
 /////////////////////////////////////////////////////////////////
-if (gui_menu_open == 1) {
+if (gui_menu_open == 1 && !global.lite) {
+
+    var _extra_list = [
+        { title: "IRQ",              type: "MACRO_IRQ"           },
+        { title: "IRQ SHELL",        type: "MACRO_IRQ_HANDLER"   },
+        { title: "CODE (ALT+C)",     type: "MACRO_CODE"          },
+        { title: "MOVE MEM",         type: "MACRO_MOVE_MEM"      },
+        { title: "MOVE BMP BLK",     type: "MACRO_MOVE_BMP_BLOCK"},
+        { title: "BANK SWITCH",      type: "BANK_SWITCH"         },
+        { title: "MATH",             type: "MACRO_MATH"          },
+        { title: "RANDOM",           type: "MACRO_RANDOM"        },
+    ];
+
+    var _item_h_e     = 19;
+    var _panel_w_e    = 200;
+    var _slice_top_e  = 20;
+    var _slice_bot_e  = 20;
+    var _mbar_btn_gap_e = _mbar_btn_w + 4;
+    var _panel_x_e    = _mbar_start_x + (1 * _mbar_btn_gap_e);
+    var _panel_y_e    = _mbar_btn_h;
+    var _panel_h_e    = array_length(_extra_list) * _item_h_e + _slice_top_e + _slice_bot_e;
+
+    draw_sprite_stretched(spr_glassSlice, 0,
+                          _panel_x_e, _panel_y_e,
+                          _panel_w_e, _panel_h_e);
+
+    draw_set_font(fnt_C64_Angled);
+
+    for (var _ei = 0; _ei < array_length(_extra_list); _ei++) {
+        var _ep   = _extra_list[_ei];
+        var _iy   = _panel_y_e + _slice_top_e + (_ei * _item_h_e);
+        var _ix1  = _panel_x_e;
+        var _ix2  = _panel_x_e + _panel_w_e;
+        var _ihov = (gui_mouse_x >= _ix1 && gui_mouse_x < _ix2 &&
+                     gui_mouse_y >= _iy   && gui_mouse_y < _iy + _item_h_e);
+
+        if (_ihov) {
+            draw_set_alpha(0.35);
+            draw_set_color(c_white);
+            draw_rectangle(_ix1 + 4, _iy, _ix2 - 4, _iy + _item_h_e, false);
+            draw_set_alpha(1.0);
+        }
+
+        draw_set_color(_ihov ? c_yellow : c_white);
+        draw_set_halign(fa_left);
+        draw_text(_ix1 + 10, _iy + 3, _ep.title);
+
+        if (_ihov && mouse_check_button_pressed(mb_left)) {
+            gui_menu_open         = -1;
+            gui_menu_drag_active  = true;
+            gui_menu_node_spawned = false;
+            gui_menu_drag_type    = _ep.type;
+            gui_menu_drag_title   = _ep.title;
+        }
+    }
+
+    var _in_panel_e = (gui_mouse_x >= _panel_x_e && gui_mouse_x < _panel_x_e + _panel_w_e &&
+                       gui_mouse_y >= _panel_y_e  && gui_mouse_y < _panel_y_e + _panel_h_e);
+    var _in_bar_e   = (gui_mouse_y >= _mbar_y && gui_mouse_y < _mbar_y + _mbar_btn_h);
+    if (mouse_check_button_pressed(mb_left) && !_in_panel_e && !_in_bar_e) {
+        gui_menu_open = -1;
+    }
+}
+
+/////////////////////////////////////////////////////////////////
+///// VARS DROPDOWN (button 2)
+/////////////////////////////////////////////////////////////////
+if (gui_menu_open == 2) {
 
     var _vars_list = [
         { title: "IF BYTE",     type: "COND_IF"             },
@@ -698,7 +765,7 @@ if (gui_menu_open == 1) {
     var _slice_top_v = 20;
     var _slice_bot_v = 20;
     var _mbar_btn_gap_v = _mbar_btn_w + 4;
-    var _panel_x_v  = _mbar_start_x + (1 * _mbar_btn_gap_v);
+    var _panel_x_v  = _mbar_start_x + (2 * _mbar_btn_gap_v);
     var _panel_y_v  = _mbar_btn_h;
     var _panel_h_v  = array_length(_vars_list) * _item_h_v + _slice_top_v + _slice_bot_v;
 
@@ -749,11 +816,13 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
     var _bx    = _mbar_start_x + (_bi * _mbar_btn_gap);
     var _by    = _mbar_y;
     var _bopen = (gui_menu_open == _bi);
+    var _bdisabled = (_bi == 1 && global.lite);
 
     draw_sprite_ext(spr_menu_button, paletteStyle,
                     _bx, _by, 1, 1, 0, c_white, 1);
 
-    var _bhover = (gui_mouse_x >= _bx && gui_mouse_x < _bx + _mbar_btn_w &&
+    var _bhover = (!_bdisabled &&
+                   gui_mouse_x >= _bx && gui_mouse_x < _bx + _mbar_btn_w &&
                    gui_mouse_y >= _by && gui_mouse_y < _by + _mbar_btn_h);
     if (_bhover || _bopen) {
         gpu_set_blendmode(bm_add);
@@ -764,7 +833,7 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
 
     draw_set_font(fnt_C64_Angled);
     draw_set_halign(fa_center);
-    draw_set_color(_bopen ? c_yellow : c_white);
+    draw_set_color(_bdisabled ? make_color_rgb(90, 90, 90) : (_bopen ? c_yellow : c_white));
     draw_text(_bx + _mbar_btn_w * 0.5, _by + _mbar_btn_h * 0.5 - 6, _menu_labels[_bi]);
     draw_set_halign(fa_left);
 
@@ -779,9 +848,9 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
 }
 
 /////////////////////////////////////////////////////////////////
-///// PROJECT DROPDOWN (button 1)
+///// PROJECT DROPDOWN (button 3)
 /////////////////////////////////////////////////////////////////
-if (gui_menu_open == 2) {
+if (gui_menu_open == 3) {
 
     var _proj_list = [
         { title: "LOAD",            action: "LOAD"            },
@@ -803,7 +872,7 @@ if (gui_menu_open == 2) {
     var _item_h_p   = 20;
     var _panel_w_p  = 220;
     var _mbar_btn_gap = _mbar_btn_w + 4;
-    var _panel_x_p  = _mbar_start_x + (2 * _mbar_btn_gap);
+    var _panel_x_p  = _mbar_start_x + (3 * _mbar_btn_gap);
     var _panel_y_p  = _mbar_btn_h;
     var _panel_h_p  = array_length(_proj_list) * _item_h_p + 28;
 
@@ -995,9 +1064,9 @@ if (gui_menu_open == 2) {
 }
 
 /////////////////////////////////////////////////////////////////
-///// DOCUMENTS DROPDOWN (button 4)
+///// DOCUMENTS DROPDOWN (button 5)
 /////////////////////////////////////////////////////////////////
-if (gui_menu_open == 4) {
+if (gui_menu_open == 5) {
 
     var _docs_list = [
         { title: "MANUAL",          url: "https://drive.google.com/file/d/1r-8fDv_DVx3g08g__E_lPZacmAgLBtsL/view?usp=sharing" }, // link under here
@@ -1018,7 +1087,7 @@ if (gui_menu_open == 4) {
     var _item_h_d   = 20;
     var _panel_w_d  = 220;
     var _mbar_btn_gap_d = _mbar_btn_w + 4;
-    var _panel_x_d  = _mbar_start_x + (4 * _mbar_btn_gap_d);
+    var _panel_x_d  = _mbar_start_x + (5 * _mbar_btn_gap_d);
     var _panel_y_d  = _mbar_btn_h;
     var _panel_h_d  = array_length(_docs_list) * _item_h_d + 28;
 
@@ -1069,9 +1138,9 @@ if (gui_menu_open == 4) {
 }
 
 /////////////////////////////////////////////////////////////////
-///// IMPORT DROPDOWN (button 5)
+///// IMPORT DROPDOWN (button 6)
 /////////////////////////////////////////////////////////////////
-if (gui_menu_open == 5) {
+if (gui_menu_open == 6) {
 
     var _imp_list = [
         { title: "CHARPAD (RAW)",  action: "CHARPAD_RAW" },
@@ -1081,7 +1150,7 @@ if (gui_menu_open == 5) {
     var _item_h_i   = 20;
     var _panel_w_i  = 220;
     var _mbar_btn_gap_i = _mbar_btn_w + 4;
-    var _panel_x_i  = _mbar_start_x + (5 * _mbar_btn_gap_i);
+    var _panel_x_i  = _mbar_start_x + (6 * _mbar_btn_gap_i);
     var _panel_y_i  = _mbar_btn_h;
     var _panel_h_i  = array_length(_imp_list) * _item_h_i + 28;
 
@@ -1181,21 +1250,7 @@ if (gui_menu_open == 0) {
         { title: "LOAD GAME",    type: "MACRO_LOAD_GAME"     },
     ];
 
-    if (!global.lite) {
-        array_push(_mac_list,
-            { title: "--- EXTRA ---",    type: "HEADER"              },
-            { title: "IRQ",              type: "MACRO_IRQ"           },
-            { title: "IRQ SHELL",        type: "MACRO_IRQ_HANDLER"   },
-            { title: "CODE (ALT+C)",             type: "MACRO_CODE"          },
-            { title: "MOVE MEM",         type: "MACRO_MOVE_MEM"      },
-            { title: "MOVE BMP BLK",     type: "MACRO_MOVE_BMP_BLOCK"},
-            { title: "BANK SWITCH",      type: "BANK_SWITCH"         },
-			{ title: "MATH",         type: "MACRO_MATH"				},
-			{ title: "RANDOM",       type: "MACRO_RANDOM"        },
-        );
-    }
-
-    // ---- 9-slice panel geometry ----
+// ---- 9-slice panel geometry ----
     var _item_h     = 19;
     var _panel_w    = 200;
     var _slice_top  = 20;
