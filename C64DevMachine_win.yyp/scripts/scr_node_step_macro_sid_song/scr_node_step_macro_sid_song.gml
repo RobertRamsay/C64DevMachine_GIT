@@ -66,7 +66,7 @@ function scr_node_step_macro_sid_song(_draw_x) {
         exit;
     }
 
-    // ===== ZP base (slot 3, hex) =====
+    // ===== ZP base (slot 3, hex) — same row as HR above, no _ly change =====
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 40, _ly, _draw_x + 116, _ly + 13)) {
         with (obj_workspace_manager) {
             is_entering_text     = true;
@@ -78,6 +78,20 @@ function scr_node_step_macro_sid_song(_draw_x) {
             keyboard_string      = "";
             cursor_pos           = string_length(current_input_string);
         }
+        exit;
+    }
+
+    // ===== SID CHIP (slot 6) — click to cycle 0..3 =====
+    _ly += _lh;
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 10, _ly, _draw_x + width - 6, _ly + 13)) {
+        var _chip_cur = (array_length(instructions[0]) > 5 && is_real(instructions[0][5])) ? real(instructions[0][5]) : 0;
+        _chip_cur += 1;
+        if (_chip_cur > 3) {
+            _chip_cur = 0;
+        }
+        instructions[0][5] = _chip_cur;
+        global.addresses_dirty = true;
+        global.undo_dirty      = true;
         exit;
     }
 }

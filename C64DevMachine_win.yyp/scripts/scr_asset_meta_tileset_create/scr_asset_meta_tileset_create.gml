@@ -47,6 +47,15 @@ function scr_asset_meta_tileset_create(_asset) {
     _asset.meta.pan_anchor_y           = -1;
     _asset.meta.pan_start_ox           = 0;    // offset_x at the moment the grab began
     _asset.meta.pan_start_oy           = 0;    // offset_y at the moment the grab began
+    _asset.meta.map_zoom_px            = 0;    // MAP-mode pixels-per-char zoom; 0 = not yet initialised (auto best-fit at 8px floor on first draw)
+    _asset.meta.map_pan_col            = 0;    // MAP-mode camera pan: leftmost metatile column currently shown
+    _asset.meta.map_pan_row            = 0;    // MAP-mode camera pan: topmost metatile row currently shown
+    _asset.meta.map_pan_anchor_x       = -1;   // mouse metatile-col position where the current MAP-mode drag began (-1 = not panning)
+    _asset.meta.map_pan_anchor_y       = -1;
+    _asset.meta.map_pan_start_col      = 0;    // map_pan_col at the moment the drag began
+    _asset.meta.map_pan_start_row      = 0;    // map_pan_row at the moment the drag began
+    _asset.meta.hsb_drag_active        = false;// MAP-mode horizontal scrollbar thumb currently being dragged
+    _asset.meta.vsb_drag_active        = false;// MAP-mode vertical scrollbar thumb currently being dragged
     _asset.meta.stamp_clip             = [];   // copied metatile cells (char indices) for Ctrl+C / Ctrl+V
     _asset.meta.stamp_clip_valid       = false;// true once a stamp has been copied
     _asset.address                     = 0x8000;

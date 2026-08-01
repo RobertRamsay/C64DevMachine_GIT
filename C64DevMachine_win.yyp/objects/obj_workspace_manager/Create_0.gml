@@ -1,6 +1,6 @@
 /// @desc Setup Workspace, Palette & C64 Environment
 global.lite=0;
-global.build_date = "July 31st, 2026"; // edit this string for each release
+global.build_date = "August 1st, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {
@@ -56,11 +56,10 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-    "Quick menu Q(custom) or W(Var Based)",
-	"VAR quick add buttons (above Var Org)",
-    "Load-game and Save-game Macros to save/load vars",
-    "Asset Sorting options",
-	"This Welcome Panel!!",
+    "SID_SONG select SID Chip 0-3 (C64U)",
+	"META_TILESET - Zoom method improved",
+    "BUGFIX - Character copy issue",
+
 	
 ];
 welcome_credits_lines = [

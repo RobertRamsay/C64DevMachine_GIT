@@ -12851,8 +12851,18 @@ case "MACRO_SID_SONG": {
     // delay on every note, which shifts the whole song equally.
     var _hr         = (array_length(_i0) > 4 && is_real(_i0[4])) ? clamp(real(_i0[4]), 0, 8) : 2;
 
+    // Which physical SID this instance targets: 0 = $D400 (default, matches
+    // every existing song untouched), 1 = $D420, 2 = $D440, 3 = $D460 — the
+    // common $20-spacing convention for stacked/Ultimate multi-SID setups.
+    // Two independent MACRO_SID_SONG nodes, each on its own chip and its
+    // own ZP base (see _zp above — give them at least 44 bytes apart),
+    // play fully independently with no shared state at all.
+    var _chip       = (array_length(_i0) > 5 && is_real(_i0[5])) ? clamp(real(_i0[5]), 0, 3) : 0;
+    var _chip_base  = 0xD400 + (_chip * 0x20);
+
     show_debug_message("SID_SONG ZP: raw=[" + string(_i0[3]) + "] is_real=" + string(is_real(_i0[3]))
-        + " resolved=$" + string_upper(decimal_to_hex(_zp)) + " S_PTR=$" + string_upper(decimal_to_hex(_zp + 25)));
+        + " resolved=$" + string_upper(decimal_to_hex(_zp)) + " S_PTR=$" + string_upper(decimal_to_hex(_zp + 25))
+        + " chip=" + string(_chip) + " base=$" + string_upper(decimal_to_hex(_chip_base)));
 
     // ── Resolve the SOUND_EDITOR asset ──
     var _se = noone;
@@ -13389,7 +13399,7 @@ case "MACRO_SID_SONG": {
     array_push(_list, ["lda_imm", 0x36,   _id]);
     array_push(_list, ["sta_zp",  0x01,   _id]);
     array_push(_list, ["lda_imm", 0x0F,   _id]);
-    array_push(_list, ["sta_abs", 0xD418, _id]);   // full volume, filter off
+    array_push(_list, ["sta_abs", _chip_base + 0x18, _id]);   // full volume, filter off
     array_push(_list, ["pla",     0,      _id]);
     array_push(_list, ["ldx_imm", 0x00,   _id]);   // start at the song's first row
     array_push(_list, ["jmp_abs", _L_seek, _id]);
@@ -13444,7 +13454,7 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["lda_imm", 0x00,    _id]);
         array_push(_list, ["sta_zp",  _vb + 4, _id]);   // hold = 0
         array_push(_list, ["sta_zp",  _vb + 6, _id]);   // inactive
-        array_push(_list, ["sta_abs", 0xD404 + (_vi * 7), _id]);   // silence: gate off, no waveform
+        array_push(_list, ["sta_abs", _chip_base + 0x04 + (_vi * 7), _id]);   // silence: gate off, no waveform
         // A seek mid-countdown would otherwise fire the old song's pending
         // note N frames into the new position.
         array_push(_list, ["sta_zp",  _h_base[_vi] + 2, _id]);   // countdown = idle
@@ -13470,7 +13480,7 @@ case "MACRO_SID_SONG": {
         var _cb      = _c_base[_vi];
         var _vp      = _key + "v" + string(_vi) + "_";
         var _L_vskip = _vp + "skip";
-        var _D400    = 0xD400 + (_vi * 7);
+        var _D400    = _chip_base + (_vi * 7);
 
         // X = this voice's pattern index for the current order row.
         array_push(_list, ["ldx_zp",  _S_ORD,         _id]);
@@ -13730,7 +13740,7 @@ case "MACRO_SID_SONG": {
     array_push(_list, ["sta_zp",  _S_ORD, _id]);
     array_push(_list, ["lda_imm", 0x00,   _id]);
     for (var _vi = 0; _vi < 3; _vi++) {
-        array_push(_list, ["sta_abs", 0xD404 + (_vi * 7), _id]);
+        array_push(_list, ["sta_abs", _chip_base + 0x04 + (_vi * 7), _id]);
         array_push(_list, ["sta_zp",  _v_base[_vi] + 6,   _id]);
         array_push(_list, ["sta_zp",  _h_base[_vi] + 2,   _id]);
         array_push(_list, ["sta_zp",  _c_base[_vi],       _id]);
@@ -13748,7 +13758,7 @@ case "MACRO_SID_SONG": {
         var _ip      = _key + "i" + string(_vi) + "_";
         var _L_idone = _ip + "done";
         var _L_iloop = _ip + "loop";
-        var _D400    = 0xD400 + (_vi * 7);
+        var _D400    = _chip_base + (_vi * 7);
 
         if (_hr > 0) {
             // ── HARD RESTART, PHASE 2 ──

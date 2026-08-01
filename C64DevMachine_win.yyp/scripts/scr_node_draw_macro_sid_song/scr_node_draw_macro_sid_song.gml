@@ -95,6 +95,19 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
     }
     _ly += _lh;
 
+    // ===== SID CHIP (slot 6) — click to cycle 0..3 =====
+    var _chip_val = (array_length(_ins) > 5 && is_real(_ins[5])) ? clamp(real(_ins[5]), 0, 3) : 0;
+    var _chip_addr = 0xD400 + (_chip_val * 0x20);
+    draw_set_color(_c_lbl);
+    draw_text(_draw_x + 10, _ly, "CHIP:");
+    draw_set_color(c_lime);
+    draw_text(_draw_x + 46, _ly, string(_chip_val));
+    draw_set_color(_c_dim);
+    var _cah = decimal_to_hex(_chip_addr);
+    while (string_length(_cah) < 4) _cah = "0" + _cah;
+    draw_text(_draw_x + 66, _ly, "($" + string_upper(_cah) + ")");
+    _ly += _lh;
+
     // ===== Resolve the asset and report what will be emitted =====
     // Everything here is read-only feedback. It exists so an empty song, a
     // renamed asset or a runaway table size is visible on the node rather

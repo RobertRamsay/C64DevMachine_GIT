@@ -2150,7 +2150,7 @@ draw_set_color(_cell_bg_col);
             // --- 1. SELECTION (Control + Left Click/Drag) ---
             if (scr_ctrl_held()) {
                 if (mouse_check_button(mb_left)) {
-                    _m.sel_grid[_pidx] = 1; // Mark as selected
+                    _m.sel_grid[_midx] = 1; // Mark as selected
                 }
             }
             // --- 2. STAMPING (Left Click with stamp data) ---
@@ -8041,6 +8041,15 @@ case "META_TILESET": {
     var _draw_row1 = _test_rows;
     var _view_shift_x = 0;   // pixels: how far the first drawn metatile sits left of the window edge
     var _view_shift_y = 0;
+    var _map_vis_cols = _test_cols;   // metatile columns/rows the MAP-mode panel can show at once (drives scrollbars)
+    var _map_vis_rows = _test_rows;
+    var _test_cs = 8;
+    // Shared zoom ceiling: the pixel-per-char size VIEW mode would use to fit
+    // its view_w x view_h window. MAP mode zooms up to this and no further —
+    // wheel hands off into VIEW mode instead of exceeding it — and zooming
+    // out of VIEW mode drops back into MAP mode starting at this same value,
+    // so the two modes read as one continuous zoom rather than two systems.
+    var _view_zoom_cap = max(4, min(floor(_map_fit_w / max(1, _m.view_w)), floor(_map_fit_h / max(1, _m.view_h))));
     if (_m.edit_view_mode == 1 && _m.active_map >= 0)
     {
         // Char window [offset .. offset+view). First/last metatile that touches it.
@@ -8056,16 +8065,44 @@ case "META_TILESET": {
         // first metatile — used below (in pixels) to shift the draw origin.
         _view_shift_x = _win_cx0 - (_draw_col0 * _m.stamp_w);
         _view_shift_y = _win_cy0 - (_draw_row0 * _m.stamp_h);
+        _test_cs = _view_zoom_cap;
+    }
+    else
+    {
+        // MAP mode: fixed pixel-per-char zoom, floored at 8px and ceilinged
+        // at _view_zoom_cap — only the columns/rows that fit at the current
+        // zoom are drawn, and map_pan_col/map_pan_row scroll the rest into
+        // view (wheel zooms, space/mid-mouse drag pans, scrollbars below).
+        // Backward-compat: old saves default to a one-time best-fit at the
+        // 8px floor.
+        if (!variable_struct_exists(_m, "map_zoom_px") || _m.map_zoom_px <= 0) {
+            var _auto_fit_x = floor(_map_fit_w / max(1, _test_cols * _m.stamp_w));
+            var _auto_fit_y = floor(_map_fit_h / max(1, _test_rows * _m.stamp_h));
+            _m.map_zoom_px = max(8, min(_auto_fit_x, _auto_fit_y));
+        }
+        if (!variable_struct_exists(_m, "map_pan_col")) _m.map_pan_col = 0;
+        if (!variable_struct_exists(_m, "map_pan_row")) _m.map_pan_row = 0;
+        _m.map_zoom_px = clamp(_m.map_zoom_px, 8, max(8, _view_zoom_cap));
+        _test_cs       = _m.map_zoom_px;
+        // floor (not ceil) so the drawn window never overhangs the panel —
+        // that overhang was what got scissored away and looked like the map
+        // was "just shy" of showing its far right/left edge.
+        _map_vis_cols  = max(1, floor(_map_fit_w / (_test_cs * _m.stamp_w)));
+        _map_vis_rows  = max(1, floor(_map_fit_h / (_test_cs * _m.stamp_h)));
+        _m.map_pan_col = clamp(_m.map_pan_col, 0, max(0, _test_cols - _map_vis_cols));
+        _m.map_pan_row = clamp(_m.map_pan_row, 0, max(0, _test_rows - _map_vis_rows));
+        _draw_col0 = _m.map_pan_col;
+        _draw_row0 = _m.map_pan_row;
+        _draw_col1 = min(_test_cols, _draw_col0 + _map_vis_cols);
+        _draw_row1 = min(_test_rows, _draw_row0 + _map_vis_rows);
     }
     var _draw_cols = max(1, _draw_col1 - _draw_col0);
     var _draw_rows = max(1, _draw_row1 - _draw_row0);
 
-    // Cell size: in VIEW mode fit to the exact CHAR window (view_w x view_h),
-    // NOT the metatile-padded draw range, so zoom is char-accurate. In MAP mode
-    // fit the whole drawn grid as before.
+    // Panel footprint in chars: VIEW mode fits the exact CHAR window
+    // (view_w x view_h); MAP mode fits whatever metatile range is drawn.
     var _fit_chars_w = (_m.edit_view_mode == 1 && _m.active_map >= 0) ? _m.view_w : (_draw_cols * _m.stamp_w);
     var _fit_chars_h = (_m.edit_view_mode == 1 && _m.active_map >= 0) ? _m.view_h : (_draw_rows * _m.stamp_h);
-    var _test_cs     = max(4, min(floor(_map_fit_w / max(1, _fit_chars_w)), floor(_map_fit_h / max(1, _fit_chars_h))));
     var _grid_chars_w = _draw_cols * _m.stamp_w;
     var _grid_chars_h = _draw_rows * _m.stamp_h;
     var _test_grid_pw = _fit_chars_w * _test_cs;   // panel footprint = the char window
@@ -8788,17 +8825,41 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         }
     }
 
-    // Mouse wheel over the map area also switches mode: UP = VIEW, DOWN = MAP.
+    // Mouse wheel over the map area zooms continuously: MAP mode zooms up to
+    // (and hands off into VIEW mode at) VIEW's own fit zoom, and zooming out
+    // from VIEW mode drops back into MAP mode at that same zoom level before
+    // continuing to zoom out from there (8px floor). VIEW's W/H spinners
+    // still resize the window itself.
     var _wheel_over_map = point_in_rectangle(_mx, _my, _test_x1, _canvas_y1, _test_x2, _canvas_y2);
     if (_wheel_over_map)
     {
-        if (mouse_wheel_up())
+        if (_m.edit_view_mode == 0)
         {
-            _m.edit_view_mode = 1;
+            if (!variable_struct_exists(_m, "map_zoom_px") || _m.map_zoom_px <= 0) _m.map_zoom_px = 8;
+            var _map_zoom_ceiling = max(8, _view_zoom_cap);
+            if (mouse_wheel_up())
+            {
+                var _next_zoom = _m.map_zoom_px + 4;
+                if (_next_zoom >= _map_zoom_ceiling)
+                {
+                    _m.edit_view_mode = 1;   // zoomed past MAP's cap — hand off to VIEW mode
+                }
+                else
+                {
+                    _m.map_zoom_px = _next_zoom;
+                }
+            }
+            if (mouse_wheel_down())
+            {
+                _m.map_zoom_px = max(8, _m.map_zoom_px - 4);
+            }
         }
-        if (mouse_wheel_down())
+        else if (mouse_wheel_down())
         {
+            // Zooming out from VIEW mode drops into MAP mode at the same
+            // zoom level (seamless), ready to keep zooming out from there.
             _m.edit_view_mode = 0;
+            _m.map_zoom_px    = max(8, _view_zoom_cap);
         }
     }
 
@@ -8942,6 +9003,19 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             ceil(_m.view_w * _test_cs * _vclip_sx), ceil(_m.view_h * _test_cs * _vclip_sy)
         );
     }
+    else
+    {
+        // MAP mode (zoomed-out full map): _test_cs has a 4px-per-char floor,
+        // so a big map (e.g. 300x6 metatiles) can render wider/taller than
+        // the panel. Clip to the panel bounds so overflow is cropped instead
+        // of leaking into the rest of the UI.
+        var _mclip_sx = window_get_width()  / global.gui_w;
+        var _mclip_sy = window_get_height() / display_get_gui_height();
+        gpu_set_scissor(
+            floor(_test_x1 * _mclip_sx), floor(_map_top_fit * _mclip_sy),
+            ceil((_test_x2 - _test_x1) * _mclip_sx), ceil((_canvas_y2 - _map_top_fit) * _mclip_sy)
+        );
+    }
 
     for (var _trow = _draw_row0; _trow < _draw_row1; _trow++) {
         for (var _tcol = _draw_col0; _tcol < _draw_col1; _tcol++) {
@@ -9068,6 +9142,69 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     }
 	gpu_set_scissor(0, 0, window_get_width(), window_get_height());
 
+    // ---- MAP MODE SCROLLBARS (shown only when the map doesn't fit the panel) ----
+    if (_m.edit_view_mode == 0 && _m.active_map >= 0) {
+        var _sb_track_col = make_color_rgb(20, 20, 30);
+        var _sb_thumb_col = make_color_rgb(90, 90, 130);
+        var _sb_thumb_hov = make_color_rgb(130, 130, 190);
+
+        if (_test_cols > _map_vis_cols) {
+            var _hsb_x1 = _test_x1 + 4;
+            var _hsb_x2 = _test_x2 - 4;
+            var _hsb_y1 = _canvas_y2 - 10;
+            var _hsb_y2 = _canvas_y2 - 4;
+            var _hsb_w    = _hsb_x2 - _hsb_x1;
+            var _hthumb_w = max(20, _hsb_w * (_map_vis_cols / _test_cols));
+            var _hthumb_x = _hsb_x1 + (_hsb_w - _hthumb_w) * (_m.map_pan_col / max(1, _test_cols - _map_vis_cols));
+            draw_set_color(_sb_track_col);
+            draw_rectangle(_hsb_x1, _hsb_y1, _hsb_x2, _hsb_y2, false);
+            var _hthumb_hov = point_in_rectangle(_mx, _my, _hthumb_x, _hsb_y1, _hthumb_x + _hthumb_w, _hsb_y2);
+            draw_set_color(_hthumb_hov ? _sb_thumb_hov : _sb_thumb_col);
+            draw_rectangle(_hthumb_x, _hsb_y1, _hthumb_x + _hthumb_w, _hsb_y2, false);
+            if (_hthumb_hov && mouse_check_button_pressed(mb_left)) {
+                _m.hsb_drag_active    = true;
+                _m.hsb_drag_start_mx  = _mx;
+                _m.hsb_drag_start_col = _m.map_pan_col;
+            }
+            if (variable_struct_exists(_m, "hsb_drag_active") && _m.hsb_drag_active) {
+                if (mouse_check_button(mb_left)) {
+                    var _hdx_cols = (_mx - _m.hsb_drag_start_mx) / max(1, _hsb_w - _hthumb_w) * (_test_cols - _map_vis_cols);
+                    _m.map_pan_col = clamp(round(_m.hsb_drag_start_col + _hdx_cols), 0, max(0, _test_cols - _map_vis_cols));
+                } else {
+                    _m.hsb_drag_active = false;
+                }
+            }
+        }
+
+        if (_test_rows > _map_vis_rows) {
+            var _vsb_y1 = _map_top + 4;
+            var _vsb_y2 = _canvas_y2 - 14;
+            var _vsb_x1 = _test_x2 - 10;
+            var _vsb_x2 = _test_x2 - 4;
+            var _vsb_h    = _vsb_y2 - _vsb_y1;
+            var _vthumb_h = max(20, _vsb_h * (_map_vis_rows / _test_rows));
+            var _vthumb_y = _vsb_y1 + (_vsb_h - _vthumb_h) * (_m.map_pan_row / max(1, _test_rows - _map_vis_rows));
+            draw_set_color(_sb_track_col);
+            draw_rectangle(_vsb_x1, _vsb_y1, _vsb_x2, _vsb_y2, false);
+            var _vthumb_hov = point_in_rectangle(_mx, _my, _vsb_x1, _vthumb_y, _vsb_x2, _vthumb_y + _vthumb_h);
+            draw_set_color(_vthumb_hov ? _sb_thumb_hov : _sb_thumb_col);
+            draw_rectangle(_vsb_x1, _vthumb_y, _vsb_x2, _vthumb_y + _vthumb_h, false);
+            if (_vthumb_hov && mouse_check_button_pressed(mb_left)) {
+                _m.vsb_drag_active    = true;
+                _m.vsb_drag_start_my  = _my;
+                _m.vsb_drag_start_row = _m.map_pan_row;
+            }
+            if (variable_struct_exists(_m, "vsb_drag_active") && _m.vsb_drag_active) {
+                if (mouse_check_button(mb_left)) {
+                    var _vdy_rows = (_my - _m.vsb_drag_start_my) / max(1, _vsb_h - _vthumb_h) * (_test_rows - _map_vis_rows);
+                    _m.map_pan_row = clamp(round(_m.vsb_drag_start_row + _vdy_rows), 0, max(0, _test_rows - _map_vis_rows));
+                } else {
+                    _m.vsb_drag_active = false;
+                }
+            }
+        }
+    }
+
 	var _leftSide = 170;
     // Overlay status hint when active
     if (_m.show_types_overlay) {
@@ -9093,65 +9230,6 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 	
     draw_text(_test_x1 + _leftSide, _canvas_y2 + 14, _sk_line1);
     draw_text(_test_x1 + _leftSide, _canvas_y2 + 26, _sk_line2);
-
-    // ---- VIEW WINDOW OVERLAY (replaces the old fixed row-25 clip line) ----
-    // The C64 only shows a view_w x view_h char-cell window into the map, with
-    // its top-left at (offset_x, offset_y) char cells. Everything outside that
-    // window is shaded, and the visible frame is outlined. Only drawn on real
-    // maps (the TEST map has no stored dimensions / offset context).
-    var _mouse_over_map = point_in_rectangle(_mx, _my, _test_x1, _canvas_y1, _test_x2, _canvas_y2);
-    if (_m.active_map >= 0 && _m.edit_view_mode == 0 && _mouse_over_map) {
-        // Grid pixel extents (in char cells * cell size).
-        var _grid_px_x1 = _test_ox;
-        var _grid_px_y1 = _test_oy;
-        var _grid_px_x2 = _test_ox + _test_cols * _m.stamp_w * _test_cs;
-        var _grid_px_y2 = _test_oy + _test_rows * _m.stamp_h * _test_cs;
-
-        // View window pixel extents. _test_cs is the CHAR-cell pixel size (the
-        // render loop multiplies by stamp_w/stamp_h separately), so offset/view
-        // in char cells scale directly by _test_cs.
-        var _vw_x1 = _test_ox + _m.offset_x * _test_cs;
-        var _vw_y1 = _test_oy + _m.offset_y * _test_cs;
-        var _vw_x2 = _vw_x1 + _m.view_w * _test_cs;
-        var _vw_y2 = _vw_y1 + _m.view_h * _test_cs;
-
-        // Shade the four regions outside the window (left / right / top / bottom).
-        draw_set_color(make_color_rgb(0, 0, 0));
-        draw_set_alpha(0.55);
-        // top band (full width, above the window)
-        if (_vw_y1 > _grid_px_y1) {
-            draw_rectangle(_grid_px_x1, _grid_px_y1, _grid_px_x2, _vw_y1, false);
-        }
-        // bottom band (full width, below the window)
-        if (_vw_y2 < _grid_px_y2) {
-            draw_rectangle(_grid_px_x1, _vw_y2, _grid_px_x2, _grid_px_y2, false);
-        }
-        // left band (window height only)
-        if (_vw_x1 > _grid_px_x1) {
-            draw_rectangle(_grid_px_x1, _vw_y1, _vw_x1, _vw_y2, false);
-        }
-        // right band (window height only)
-        if (_vw_x2 < _grid_px_x2) {
-            draw_rectangle(_vw_x2, _vw_y1, _grid_px_x2, _vw_y2, false);
-        }
-        draw_set_alpha(1.0);
-
-        // Outline the visible frame (cyan, 2px).
-        draw_set_color(make_color_rgb(60, 200, 255));
-        draw_line_width(_vw_x1, _vw_y1, _vw_x2, _vw_y1, 2);
-        draw_line_width(_vw_x2, _vw_y1, _vw_x2, _vw_y2, 2);
-        draw_line_width(_vw_x2, _vw_y2, _vw_x1, _vw_y2, 2);
-        draw_line_width(_vw_x1, _vw_y2, _vw_x1, _vw_y1, 2);
-
-        // Label (below the bottom edge of the view rectangle)
-        draw_set_font(fnt_c64_tiny);
-        draw_set_halign(fa_left);
-        draw_set_color(make_color_rgb(120, 220, 255));
-        draw_text(_vw_x1 + 2, _vw_y2 + 4,
-            "VIEW " + string(_m.view_w) + "x" + string(_m.view_h)
-          + " @ " + string(_m.offset_x) + "," + string(_m.offset_y));
-    }
-
 
     // ---- TEST MAP overlay — red border + faded label (only on the test map) ----
     if (_m.active_map < 0) {
@@ -9231,28 +9309,45 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             }
             else
             {
-                // MAP MODE: centre the view window on the hovered cell (in char
-                // cells). Simple snap, as it was originally.
-                var _hover_cx = floor((_mx - _test_ox + _view_px_shift_x) / _test_cs) + (_draw_col0 * _m.stamp_w);
-                var _hover_cy = floor((_my - _test_oy + _view_px_shift_y) / _test_cs) + (_draw_row0 * _m.stamp_h);
+                // MAP MODE: drag-pan the camera in metatile units instead of
+                // moving the (possibly offscreen) view window. Same
+                // grab-release pattern as VIEW mode's pan above, just against
+                // map_pan_col/map_pan_row.
+                var _mouse_mcx = (_mx - _test_ox) / (_test_cs * _m.stamp_w);
+                var _mouse_mcy = (_my - _test_oy) / (_test_cs * _m.stamp_h);
 
-                var _new_ox = _hover_cx - floor(_m.view_w / 2);
-                var _new_oy = _hover_cy - floor(_m.view_h / 2);
+                if (!variable_struct_exists(_m, "map_pan_anchor_x"))  _m.map_pan_anchor_x  = -1;
+                if (!variable_struct_exists(_m, "map_pan_anchor_y"))  _m.map_pan_anchor_y  = -1;
+                if (!variable_struct_exists(_m, "map_pan_start_col")) _m.map_pan_start_col = 0;
+                if (!variable_struct_exists(_m, "map_pan_start_row")) _m.map_pan_start_row = 0;
 
-                var _vm_map_w = _m.map_w[_m.active_map];
-                var _vm_map_h = _m.map_h[_m.active_map];
-                _new_ox = clamp(_new_ox, 0, max(0, _vm_map_w - _m.view_w));
-                _new_oy = clamp(_new_oy, 0, max(0, _vm_map_h - _m.view_h));
+                if (_m.map_pan_anchor_x < 0)
+                {
+                    _m.map_pan_anchor_x  = _mouse_mcx;
+                    _m.map_pan_anchor_y  = _mouse_mcy;
+                    _m.map_pan_start_col = _m.map_pan_col;
+                    _m.map_pan_start_row = _m.map_pan_row;
+                }
 
-                _m.offset_x = _new_ox;
-                _m.offset_y = _new_oy;
+                var _mdrag_dx = _mouse_mcx - _m.map_pan_anchor_x;
+                var _mdrag_dy = _mouse_mcy - _m.map_pan_anchor_y;
+                var _new_pan_col = _m.map_pan_start_col - _mdrag_dx;
+                var _new_pan_row = _m.map_pan_start_row - _mdrag_dy;
+
+                _new_pan_col = clamp(_new_pan_col, 0, max(0, _test_cols - _map_vis_cols));
+                _new_pan_row = clamp(_new_pan_row, 0, max(0, _test_rows - _map_vis_rows));
+
+                _m.map_pan_col = round(_new_pan_col);
+                _m.map_pan_row = round(_new_pan_row);
             }
         }
         else if (_thcol >= 0 && _thcol < _test_cols && _throw >= 0 && _throw < _test_rows) {
-            // Pan ended (not view-moving) — clear the anchor so the next pan
+            // Pan ended (not view-moving) — clear the anchors so the next pan
             // re-anchors at its own start point.
             _m.pan_anchor_x = -1;
             _m.pan_anchor_y = -1;
+            if (variable_struct_exists(_m, "map_pan_anchor_x")) _m.map_pan_anchor_x = -1;
+            if (variable_struct_exists(_m, "map_pan_anchor_y")) _m.map_pan_anchor_y = -1;
             var _thx = _test_ox + (_thcol - _draw_col0) * _m.stamp_w * _test_cs - _view_px_shift_x;
             var _thy = _test_oy + (_throw - _draw_row0) * _m.stamp_h * _test_cs - _view_px_shift_y;
             draw_set_color(c_white);
