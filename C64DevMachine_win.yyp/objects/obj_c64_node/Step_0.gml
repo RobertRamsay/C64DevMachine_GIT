@@ -1880,6 +1880,7 @@ if (global.group_drag_handle == id) {
 
             is_dragging  = true;
             was_dragged  = false;
+            was_connected_before_drag = is_connected;
             drag_start_x = x + x_indent;
             global.active_drag_node = id;
             pre_click_depth = depth;
@@ -1903,12 +1904,31 @@ if (is_dragging && !_is_group_follower) {
         y = mouse_y + drag_offset_y;
 		
 		if (x != _prev_x || y != _prev_y) {
-            was_dragged = true;
-            if (!is_free_node && !_is_macro_child && !mouse_check_button_released(mb_left)) {
-                org_parent   = noone;
-                is_connected = false;
+    was_dragged = true;
+    if (!is_free_node && !_is_macro_child && !mouse_check_button_released(mb_left)) {
+        var _old_org_parent = org_parent;
+        var _old_y          = y;
+        var _old_connected  = is_connected;
+
+        org_parent   = noone;
+        is_connected = false;
+
+        // Close the gap left behind, live, right now — matching whatever
+        // shift the wedge-preview below is about to open at the target,
+        // so there's only ever one node's worth of empty space at a time.
+        if (_old_connected) {
+            var _self_ref_for_gap = id;
+            var _gap_height = ceil(height / 20) * 20;
+
+            with (obj_c64_node) {
+                if (id != _self_ref_for_gap && is_connected && org_parent == _old_org_parent &&
+                    macro_owner == noone && node_type != "ORG" && !is_dragging && y > _old_y) {
+                    y -= _gap_height;
+                }
             }
         }
+    }
+}
 
 // ---- MOVE GROUP FOLLOWERS (delta-based, same as ORG children) ----
         if (global.group_drag_active && id == global.group_drag_handle) {
@@ -2051,7 +2071,7 @@ if (global.wedge_preview_y >= 0) {
             var _pspine = global.wedge_preview_spine;
             var _panch  = global.wedge_preview_anchor;
             var _drag_node = global.active_drag_node;
-            var _is_new_node = instance_exists(_drag_node) && !_drag_node.is_connected;
+            var _is_new_node = instance_exists(_drag_node) && !_drag_node.was_connected_before_drag;
             var _shift = _is_new_node ? _ph : 40;
             with (obj_c64_node) {
                 if (!is_dragging && is_connected && wedge_y_stored < 0) {
