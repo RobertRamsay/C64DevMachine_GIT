@@ -192,12 +192,14 @@ function scr_node_tooltip_text(_node_type) {
         "MACRO_MAP_SWITCH": {
             title: "MAP SWITCH",
             lines: [
-                "Switches the active room/map at runtime by writing",
-                "a new room index to a named VAR and re-triggering",
-                "a METAMAP (VAR mode) redraw.",
+                "Points an existing MACRO_MAP node at a different",
+                "MAP_DATA asset: rewrites its ZP char/colour source",
+                "pointers, resets scroll position to zero, and calls",
+                "the shared map redraw routine.",
                 "",
-                "Use for room-to-room transitions without a full",
-                "map reload."
+                "Needs a MACRO_MAP node already connected on the",
+                "spine to read its ZP base from - this node only",
+                "switches which map that setup is pointing at."
             ]
         },
 
@@ -306,11 +308,21 @@ function scr_node_tooltip_text(_node_type) {
             title: "MOVE (SPRITE)",
             lines: [
                 "Minimal-byte unison sprite movement: applies a",
-                "per-frame X/Y delta to a sprite (or group), with",
-                "optional bounds so it stops or wraps at the edges.",
+                "per-frame X/Y delta to a group of sprites (chosen",
+                "by bitmask), as a literal or a named VAR.",
                 "",
-                "Designed to be as cheap as possible per call so it",
-                "can run every frame without eating the raster budget."
+                "VAR mode reads the delta as a SIGNED byte: its sign",
+                "bit picks the move direction at runtime, so one VAR",
+                "can drive a sprite left/right or up/down just by",
+                "changing sign - no separate direction flag needed.",
+                "",
+                "WRAP vs BOUNDED: by default the position simply",
+                "rolls over at the 8-bit edge. Enable STOP to clamp",
+                "movement at fixed screen walls instead.",
+                "",
+                "WIDE X toggles the $D010 9th-bit MSB register so X",
+                "can range the full 0-343 sprite-visible width rather",
+                "than wrapping at the 8-bit 0-255 boundary."
             ]
         },
 
@@ -379,12 +391,18 @@ function scr_node_tooltip_text(_node_type) {
         "MACRO_ANIM": {
             title: "ANIMATE",
             lines: [
-                "Cycles a sprite's pointer through a sequence of",
-                "frames on a timer, for walk-cycles and similar",
-                "sprite animation.",
+                "Per-sprite-slot animation: up to 8 slots, each with",
+                "its own list of frame values and X/Y position",
+                "offsets (+/-) to step through over time.",
                 "",
-                "Frame list and per-frame hold time are configurable",
-                "per node."
+                "Place the node once before your core game loop to",
+                "set it up - it exposes a JSR entry point that then",
+                "appears in the picker on any JSR node, so the",
+                "actual per-frame advance is called from wherever",
+                "your loop needs it.",
+                "",
+                "DELAY is a frame counter, not a speed value: a lower",
+                "DELAY advances sooner, so lower = faster animation."
             ]
         },
 
@@ -405,20 +423,22 @@ function scr_node_tooltip_text(_node_type) {
             lines: [
                 "Full SID music setup with a raster IRQ: configures",
                 "the player, hooks a raster interrupt, and starts",
-                "playback of a chosen SID/GoatTracker asset.",
+                "playback of an imported SID_MUSIC or SID_SFX asset.",
                 "",
-                "For finer control over multiple songs, restart",
-                "behaviour, and tempo, see SID SONG instead."
+                "For the built-in MUSIC_MAKER authoring tool instead",
+                "of an imported .sid file - with multi-song support,",
+                "hard restart and tempo control - see SID SONG."
             ]
         },
 
         "MACRO_SID_SONG": {
             title: "SID SONG",
             lines: [
-                "Multi-song GoatTracker player with hard-restart",
-                "support, per-asset tempo, and a write-only SID",
-                "register shadow so playback never read-modify-",
-                "writes $D400-$D41C.",
+                "Multi-song player driven by the built-in MUSIC_MAKER",
+                "authoring tool (an asset you compose songs in), with",
+                "hard-restart support, per-asset tempo, and a write-",
+                "only SID register shadow so playback never read-",
+                "modify-writes $D400-$D41C.",
                 "",
                 "Banks BASIC ROM out permanently at init ($01=$36),",
                 "keeping the KERNAL in so $0314/$0315 IRQ chaining",
@@ -556,24 +576,35 @@ function scr_node_tooltip_text(_node_type) {
                 "so the file loads to its own embedded PRG header",
                 "address.",
                 "",
-                "NOTE: must sit before any METAMAP node on the spine",
-                "- ordering matters for this macro."
+                "Called wherever it's needed on the spine - there's",
+                "no fixed load-order requirement for this macro."
             ]
         },
 
         "MACRO_LOAD_GAME": {
             title: "LOAD GAME",
             lines: [
-                "Loads a saved-game file from disk into memory at",
-                "runtime, for restoring progress."
+                "Loads a save file from a LOAD_ORG D64 back into RAM",
+                "at runtime, restoring whatever it holds.",
+                "",
+                "Relies on a BYTE_DATA asset with USE AS SAVE FILE",
+                "enabled and linked into the LOAD_ORG. That block is",
+                "where your persisted VARs actually live - lives,",
+                "coins, stats, or anything else you want to survive",
+                "a reset."
             ]
         },
 
         "MACRO_SAVE_GAME": {
             title: "SAVE GAME",
             lines: [
-                "Writes a save-game file to disk at runtime, for",
-                "persisting progress between sessions."
+                "Writes a BYTE_DATA asset's current contents to disk",
+                "via a LOAD_ORG D64, persisting it between sessions.",
+                "",
+                "The asset must have USE AS SAVE FILE enabled and be",
+                "linked into the LOAD_ORG - that's the block your",
+                "game's persistent VARs (lives, coins, stats, etc.)",
+                "should be reading from and writing to."
             ]
         },
 
