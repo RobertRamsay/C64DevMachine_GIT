@@ -1030,6 +1030,28 @@
 	            global.addresses_dirty = true;
 	        }
 
+	    // --- MACRO_REU ---
+	    // idx 2 = C64 addr (hex, 16-bit), idx 3 = REU addr (hex, 16-bit),
+	    // idx 4 = bank (decimal, 0-255), idx 5 = length (hex, 16-bit).
+	    } else if (_target.node_type == "MACRO_REU") {
+	        while (array_length(_target.instructions[0]) < 9) { array_push(_target.instructions[0], 0); }
+	        if (_idx == 2 || _idx == 3 || _idx == 5) {
+	            var _clean = (string_char_at(_input, 1) == "$")
+	                       ? string_delete(_input, 1, 1) : _input;
+	            var _val = 0;
+	            if (string_char_at(_input, 1) == "$") {
+	                _val = real(hex_to_decimal(string_upper(_clean)));
+	            } else {
+	                var _digits = string_digits(_input);
+	                _val = (_digits != "") ? real(_digits) : 0;
+	            }
+	            _target.instructions[0][_idx] = clamp(_val, 0, 0xFFFF);
+	        } else if (_idx == 4) {
+	            var _digits = string_digits(_input);
+	            _target.instructions[0][4] = clamp((_digits != "") ? real(_digits) : 0, 0, 255);
+	        }
+	        global.addresses_dirty = true;
+
 	    // --- COND_IF ---
 	    } else if (_target.node_type == "COND_IF_WORD") {
 	        if (_idx == 2) {

@@ -400,6 +400,26 @@ case "LABEL": {
 		    break;
 
 		// -------------------------------------------------------
+		// MACRO_REU
+		// REU (RAM Expansion Unit) DMA transfer — $DF00-$DF0A.
+		// instructions[0]: ["macro_reu", op, c64_addr, reu_addr, bank, len, autoload, fix_c64, fix_reu]
+		//   op       = 0 STASH (C64->REU), 1 FETCH (REU->C64), 2 SWAP, 3 COMPARE
+		//   c64_addr = 16-bit C64 RAM address
+		//   reu_addr = 16-bit REU RAM address (within the bank)
+		//   bank     = REU bank (0-255, most REUs only populate bank 0)
+		//   len      = 16-bit transfer length ($0000 = 65536 bytes)
+		//   autoload = 1 = reload start addresses after the transfer completes
+		//   fix_c64  = 1 = don't advance the C64 address (fill/scan pattern)
+		//   fix_reu  = 1 = don't advance the REU address (fill/scan pattern)
+		// -------------------------------------------------------
+		case "MACRO_REU":
+		    _n.node_title   = "REU";
+		    _n.instructions = [["macro_reu", 0, 0xC000, 0x0000, 0, 0x0100, 0, 0, 0]];
+		    _n.pc_address   = global.start_pc;
+		    with (_n) { event_user(0); }
+		    break;
+
+		// -------------------------------------------------------
         // COND_IF
         // -------------------------------------------------------
         case "COND_IF":

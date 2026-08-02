@@ -1,0 +1,557 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index fc4c468..3387cb5 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1144,6 +1144,7 @@
+     {"id":{"name":"scr_node_draw_macro_print","path":"scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.yy",},},
+     {"id":{"name":"scr_node_draw_macro_priority","path":"scripts/scr_node_draw_macro_priority/scr_node_draw_macro_priority.yy",},},
+     {"id":{"name":"scr_node_draw_macro_random","path":"scripts/scr_node_draw_macro_random/scr_node_draw_macro_random.yy",},},
++    {"id":{"name":"scr_node_draw_macro_reu","path":"scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.yy",},},
+     {"id":{"name":"scr_node_draw_macro_save_game","path":"scripts/scr_node_draw_macro_save_game/scr_node_draw_macro_save_game.yy",},},
+     {"id":{"name":"scr_node_draw_macro_scroll","path":"scripts/scr_node_draw_macro_scroll/scr_node_draw_macro_scroll.yy",},},
+     {"id":{"name":"scr_node_draw_macro_seek","path":"scripts/scr_node_draw_macro_seek/scr_node_draw_macro_seek.yy",},},
+@@ -1198,6 +1199,7 @@
+     {"id":{"name":"scr_node_step_macro_print","path":"scripts/scr_node_step_macro_print/scr_node_step_macro_print.yy",},},
+     {"id":{"name":"scr_node_step_macro_priority","path":"scripts/scr_node_step_macro_priority/scr_node_step_macro_priority.yy",},},
+     {"id":{"name":"scr_node_step_macro_random","path":"scripts/scr_node_step_macro_random/scr_node_step_macro_random.yy",},},
++    {"id":{"name":"scr_node_step_macro_reu","path":"scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.yy",},},
+     {"id":{"name":"scr_node_step_macro_save_game","path":"scripts/scr_node_step_macro_save_game/scr_node_step_macro_save_game.yy",},},
+     {"id":{"name":"scr_node_step_macro_scroll","path":"scripts/scr_node_step_macro_scroll/scr_node_step_macro_scroll.yy",},},
+     {"id":{"name":"scr_node_step_macro_seek","path":"scripts/scr_node_step_macro_seek/scr_node_step_macro_seek.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index f3f8828..18dc29c 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -144,6 +144,7 @@ if (height_dirty) {
+     case "COND_IF":          height = _G * 4;  break;
+ 	case "COND_IF_WORD":     height = _G * 4;  break;
+     case "BANK_SWITCH":      height = _G * 6;  break;
++    case "MACRO_REU":        height = _G * 8;  break;
+     case "MACRO_COLLISION":  height = _G * 10;  break;
+ 	case "MACRO_COLL_ADV":   height = _G * 19;  break;    
+     case "MACRO_ANIM":       height = _G * 18;  break;
+@@ -815,6 +816,7 @@ switch (node_type) {
+ 	case "COND_IF":     _head_col = is_connected ? make_color_rgb(180, 120,  40) : make_color_rgb( 90, 60,  20);  break;
+ 	case "COND_IF_WORD": _head_col = is_connected ? make_color_rgb(180,  90,  40) : make_color_rgb( 90, 45,  20);  break;
+ 	case "BANK_SWITCH": _head_col = is_connected ? make_color_rgb(120, 80, 200) : make_color_rgb( 60, 40, 100);  break;
++	case "MACRO_REU":   _head_col = is_connected ? make_color_rgb(120, 80, 200) : make_color_rgb( 60, 40, 100);  break;
+ 	case "GET_VAR":     _head_col = is_connected ? make_color_rgb( 40,120,  80) : make_color_rgb( 20, 60,  40); break;
+     case "SET_VAR":     _head_col = is_connected ? make_color_rgb(140, 60,  40) : make_color_rgb( 70, 30,  20); break;
+     case "INC_VAR":     _head_col = is_connected ? make_color_rgb( 30,100,  50) : make_color_rgb( 15, 50,  25); break;
+@@ -1213,6 +1215,7 @@ if (_lod_body) switch (node_type) {
+ 	case "COND_IF":           scr_node_draw_cond_if(draw_x, y);    break;
+ 	case "COND_IF_WORD":      scr_node_draw_cond_if_word(draw_x, y); break;
+ 	case "BANK_SWITCH":       scr_node_draw_bank_switch(draw_x, y); break;
++	case "MACRO_REU":         scr_node_draw_macro_reu(draw_x, y);   break;
+ 	case "MACRO_COLLISION":   scr_node_draw_macro_collision(draw_x); break;
+ 	case "MACRO_COLL_ADV":    scr_node_draw_macro_coll_adv(draw_x);  break;
+ 	case "MACRO_ANIM":        scr_node_draw_macro_anim(draw_x);      break;
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 650fc9a..a946600 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -1038,6 +1038,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
+         case "COND_IF":      scr_node_step_cond_if(draw_x); break;
+ 		case "COND_IF_WORD": scr_node_step_cond_if_word(draw_x); break;
+         case "BANK_SWITCH":  scr_node_step_bank_switch(draw_x); break;
++        case "MACRO_REU":    scr_node_step_macro_reu(draw_x);   break;
+ 		
+ 		
+ 		
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index fb2e50c..4956883 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -686,6 +686,7 @@ if (gui_menu_open == 1 && !global.lite) {
+         { title: "BANK SWITCH",      type: "BANK_SWITCH"         },
+         { title: "MATH",             type: "MACRO_MATH"          },
+         { title: "RANDOM",           type: "MACRO_RANDOM"        },
++        { title: "REU",              type: "MACRO_REU"           },
+     ];
+ 
+     var _item_h_e     = 19;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 5cb5d4d..8b80a1c 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -6446,7 +6446,64 @@ case "BANK_SWITCH": {
+         array_push(_list, ["cli", 0, _id]);
+     }
+ } break;
+-	
++
++// --------------------------------------------------------
++// MACRO_REU
++// Triggers a DMA transfer on the 17xx/1750/GeoRAM-style REU at $DF00-$DF0A.
++// All six address/length/bank bytes are written first, then the command
++// byte is written last to $DF01 with EXEC (bit7) set, which fires the DMA.
++// FF00 disable (bit5) is always set — without it, a stray write to $FF00
++// (used by some cartridges/carts detection code) can retrigger the last
++// queued transfer, which is a classic REU footgun.
++// --------------------------------------------------------
++case "MACRO_REU": {
++    var _id        = _curr;
++    var _reu_op    = is_real(_curr.instructions[0][1]) ? real(_curr.instructions[0][1]) : 0;
++    var _reu_c64   = is_real(_curr.instructions[0][2]) ? real(_curr.instructions[0][2]) & 0xFFFF : 0xC000;
++    var _reu_addr  = is_real(_curr.instructions[0][3]) ? real(_curr.instructions[0][3]) & 0xFFFF : 0x0000;
++    var _reu_bank  = is_real(_curr.instructions[0][4]) ? real(_curr.instructions[0][4]) & 0xFF   : 0;
++    var _reu_len   = is_real(_curr.instructions[0][5]) ? real(_curr.instructions[0][5]) & 0xFFFF : 0x0100;
++    var _reu_auto  = is_real(_curr.instructions[0][6]) ? real(_curr.instructions[0][6]) : 0;
++    var _reu_fixc  = is_real(_curr.instructions[0][7]) ? real(_curr.instructions[0][7]) : 0;
++    var _reu_fixr  = is_real(_curr.instructions[0][8]) ? real(_curr.instructions[0][8]) : 0;
++
++    // Type field: 00 stash, 01 fetch, 10 swap, 11 compare
++    var _reu_type = clamp(_reu_op, 0, 3);
++
++    var _reu_cmd = 0x80;               // EXEC
++    _reu_cmd    |= 0x20;                // FF00 disable (always on — see note above)
++    if (_reu_auto == 1) { _reu_cmd |= 0x10; }  // autoload
++    _reu_cmd    |= _reu_type;
++
++    var _reu_ctrl = 0x00;
++    if (_reu_fixc == 1) { _reu_ctrl |= 0x80; } // fix C64 address
++    if (_reu_fixr == 1) { _reu_ctrl |= 0x40; } // fix REU address
++
++    array_push(_list, ["lda_imm", _reu_c64 & 0xFF,        _id]);
++    array_push(_list, ["sta_abs", 0xDF02,                 _id]);
++    array_push(_list, ["lda_imm", (_reu_c64 >> 8) & 0xFF, _id]);
++    array_push(_list, ["sta_abs", 0xDF03,                 _id]);
++
++    array_push(_list, ["lda_imm", _reu_addr & 0xFF,        _id]);
++    array_push(_list, ["sta_abs", 0xDF04,                  _id]);
++    array_push(_list, ["lda_imm", (_reu_addr >> 8) & 0xFF, _id]);
++    array_push(_list, ["sta_abs", 0xDF05,                  _id]);
++
++    array_push(_list, ["lda_imm", _reu_bank, _id]);
++    array_push(_list, ["sta_abs", 0xDF06,    _id]);
++
++    array_push(_list, ["lda_imm", _reu_len & 0xFF,        _id]);
++    array_push(_list, ["sta_abs", 0xDF07,                 _id]);
++    array_push(_list, ["lda_imm", (_reu_len >> 8) & 0xFF, _id]);
++    array_push(_list, ["sta_abs", 0xDF08,                 _id]);
++
++    array_push(_list, ["lda_imm", _reu_ctrl, _id]);
++    array_push(_list, ["sta_abs", 0xDF0A,    _id]);
++
++    array_push(_list, ["lda_imm", _reu_cmd, _id]);
++    array_push(_list, ["sta_abs", 0xDF01,   _id]);
++} break;
++
+ // --------------------------------------------------------
+ // MACRO_FLIP_X
+ // Flips selected sprites horizontally using a LUT.
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+index 061e787..d980433 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+@@ -1030,6 +1030,28 @@
+ 	            global.addresses_dirty = true;
+ 	        }
+ 
++	    // --- MACRO_REU ---
++	    // idx 2 = C64 addr (hex, 16-bit), idx 3 = REU addr (hex, 16-bit),
++	    // idx 4 = bank (decimal, 0-255), idx 5 = length (hex, 16-bit).
++	    } else if (_target.node_type == "MACRO_REU") {
++	        while (array_length(_target.instructions[0]) < 9) { array_push(_target.instructions[0], 0); }
++	        if (_idx == 2 || _idx == 3 || _idx == 5) {
++	            var _clean = (string_char_at(_input, 1) == "$")
++	                       ? string_delete(_input, 1, 1) : _input;
++	            var _val = 0;
++	            if (string_char_at(_input, 1) == "$") {
++	                _val = real(hex_to_decimal(string_upper(_clean)));
++	            } else {
++	                var _digits = string_digits(_input);
++	                _val = (_digits != "") ? real(_digits) : 0;
++	            }
++	            _target.instructions[0][_idx] = clamp(_val, 0, 0xFFFF);
++	        } else if (_idx == 4) {
++	            var _digits = string_digits(_input);
++	            _target.instructions[0][4] = clamp((_digits != "") ? real(_digits) : 0, 0, 255);
++	        }
++	        global.addresses_dirty = true;
++
+ 	    // --- COND_IF ---
+ 	    } else if (_target.node_type == "COND_IF_WORD") {
+ 	        if (_idx == 2) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml
+new file mode 100644
+index 0000000..f55b405
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml
+@@ -0,0 +1,168 @@
++/// @desc Draw body content for MACRO_REU node
++function scr_node_draw_macro_reu(_draw_x, _y) {
++
++    var _header_h = 24;
++    var _line_h   = 16;
++    var _inst     = instructions[0];
++
++    while (array_length(_inst) < 9) {
++        array_push(_inst, 0);
++    }
++
++    var _op       = real(_inst[1]);
++    var _c64_addr = real(_inst[2]);
++    var _reu_addr = real(_inst[3]);
++    var _bank     = real(_inst[4]);
++    var _len      = real(_inst[5]);
++    var _autoload = real(_inst[6]);
++    var _fix_c64  = real(_inst[7]);
++    var _fix_reu  = real(_inst[8]);
++
++    var _lx = _draw_x + 8;
++    var _rx = _draw_x + width - 6;
++    var _cy = _y + _header_h + 4;
++
++    var _op_labels = ["STASH (C64->REU)", "FETCH (REU->C64)", "SWAP", "COMPARE"];
++
++    // Row 0: OP dropdown
++    draw_set_font(fnt_C64_Angled_tiny);
++    draw_set_color(c_gray);
++    draw_text(_lx, _cy, "OP:");
++
++    var _op_bx1 = _lx + 30;
++    var _op_bx2 = _rx;
++    var _op_hov = point_in_rectangle(mouse_x, mouse_y, _op_bx1, _cy + 4, _op_bx2, _cy + 10);
++    draw_set_color(_op_hov ? make_color_rgb(90, 60, 160) : make_color_rgb(40, 30, 70));
++    draw_rectangle(_op_bx1, _cy + 1, _op_bx2, _cy + 11, false);
++
++    var _op_txt = (_op >= 0 && _op <= 3) ? _op_labels[_op] : "STASH (C64->REU)";
++    draw_set_color(c_white);
++    draw_set_halign(fa_center);
++    draw_text((_op_bx1 + _op_bx2) / 2, _cy, _op_txt);
++    draw_set_halign(fa_left);
++    _cy += _line_h;
++
++    // Row 1: C64 ADDR
++    draw_set_color(c_gray);
++    draw_text(_lx, _cy, "C64:");
++
++    var _c64_bx1 = _lx + 44;
++    var _c64_bx2 = _rx;
++    var _c64_hov = point_in_rectangle(mouse_x, mouse_y, _c64_bx1, _cy + 4, _c64_bx2, _cy + 10);
++    draw_set_color(_c64_hov ? make_color_rgb(60, 80, 140) : make_color_rgb(34, 44, 64));
++    draw_rectangle(_c64_bx1, _cy + 1, _c64_bx2, _cy + 11, false);
++
++    var _c64_hex = decimal_to_hex(_c64_addr);
++    while (string_length(_c64_hex) < 4) {
++        _c64_hex = "0" + _c64_hex;
++    }
++    draw_set_color(c_yellow);
++    draw_set_halign(fa_center);
++    draw_text((_c64_bx1 + _c64_bx2) / 2, _cy, "$" + string_upper(_c64_hex));
++    draw_set_halign(fa_left);
++    _cy += _line_h;
++
++    // Row 2: REU ADDR
++    draw_set_color(c_gray);
++    draw_text(_lx, _cy, "REU:");
++
++    var _reu_bx1 = _lx + 44;
++    var _reu_bx2 = _rx;
++    var _reu_hov = point_in_rectangle(mouse_x, mouse_y, _reu_bx1, _cy + 4, _reu_bx2, _cy + 10);
++    draw_set_color(_reu_hov ? make_color_rgb(60, 80, 140) : make_color_rgb(34, 44, 64));
++    draw_rectangle(_reu_bx1, _cy + 1, _reu_bx2, _cy + 11, false);
++
++    var _reu_hex = decimal_to_hex(_reu_addr);
++    while (string_length(_reu_hex) < 4) {
++        _reu_hex = "0" + _reu_hex;
++    }
++    draw_set_color(c_yellow);
++    draw_set_halign(fa_center);
++    draw_text((_reu_bx1 + _reu_bx2) / 2, _cy, "$" + string_upper(_reu_hex));
++    draw_set_halign(fa_left);
++    _cy += _line_h;
++
++    // Row 3: BANK
++    draw_set_color(c_gray);
++    draw_text(_lx, _cy, "BANK:");
++
++    var _bank_bx1 = _lx + 44;
++    var _bank_bx2 = _rx;
++    var _bank_hov = point_in_rectangle(mouse_x, mouse_y, _bank_bx1, _cy + 4, _bank_bx2, _cy + 10);
++    draw_set_color(_bank_hov ? make_color_rgb(60, 80, 140) : make_color_rgb(34, 44, 64));
++    draw_rectangle(_bank_bx1, _cy + 1, _bank_bx2, _cy + 11, false);
++
++    draw_set_color(c_aqua);
++    draw_set_halign(fa_center);
++    draw_text((_bank_bx1 + _bank_bx2) / 2, _cy, string(_bank));
++    draw_set_halign(fa_left);
++    _cy += _line_h;
++
++    // Row 4: LEN
++    draw_set_color(c_gray);
++    draw_text(_lx, _cy, "LEN:");
++
++    var _len_bx1 = _lx + 44;
++    var _len_bx2 = _rx;
++    var _len_hov = point_in_rectangle(mouse_x, mouse_y, _len_bx1, _cy + 4, _len_bx2, _cy + 10);
++    draw_set_color(_len_hov ? make_color_rgb(60, 80, 140) : make_color_rgb(34, 44, 64));
++    draw_rectangle(_len_bx1, _cy + 1, _len_bx2, _cy + 11, false);
++
++    var _len_hex = decimal_to_hex(_len);
++    while (string_length(_len_hex) < 4) {
++        _len_hex = "0" + _len_hex;
++    }
++    draw_set_color(c_lime);
++    draw_set_halign(fa_center);
++    draw_text((_len_bx1 + _len_bx2) / 2, _cy, "$" + string_upper(_len_hex));
++    draw_set_halign(fa_left);
++    _cy += _line_h;
++
++    // Row 5: AUTOLOAD toggle
++    var _al_bx1 = _lx;
++    var _al_bx2 = _rx;
++    var _al_hov = point_in_rectangle(mouse_x, mouse_y, _al_bx1, _cy + 4, _al_bx2, _cy + 10);
++    if (_autoload == 1) {
++        draw_set_color(_al_hov ? make_color_rgb(50, 80, 50) : make_color_rgb(30, 50, 30));
++    } else {
++        draw_set_color(_al_hov ? make_color_rgb(80, 60, 40) : make_color_rgb(50, 40, 25));
++    }
++    draw_rectangle(_al_bx1, _cy + 1, _al_bx2, _cy + 11, false);
++    draw_set_color(c_white);
++    draw_set_halign(fa_center);
++    draw_text((_al_bx1 + _al_bx2) / 2, _cy, (_autoload == 1) ? "AUTOLOAD: ON" : "AUTOLOAD: OFF");
++    draw_set_halign(fa_left);
++    _cy += _line_h;
++
++    // Row 6: FIX C64 toggle
++    var _fc_bx1 = _lx;
++    var _fc_bx2 = _rx;
++    var _fc_hov = point_in_rectangle(mouse_x, mouse_y, _fc_bx1, _cy + 4, _fc_bx2, _cy + 10);
++    if (_fix_c64 == 1) {
++        draw_set_color(_fc_hov ? make_color_rgb(50, 80, 50) : make_color_rgb(30, 50, 30));
++    } else {
++        draw_set_color(_fc_hov ? make_color_rgb(80, 60, 40) : make_color_rgb(50, 40, 25));
++    }
++    draw_rectangle(_fc_bx1, _cy + 1, _fc_bx2, _cy + 11, false);
++    draw_set_color(c_white);
++    draw_set_halign(fa_center);
++    draw_text((_fc_bx1 + _fc_bx2) / 2, _cy, (_fix_c64 == 1) ? "FIX C64 ADDR: ON" : "FIX C64 ADDR: OFF");
++    draw_set_halign(fa_left);
++    _cy += _line_h;
++
++    // Row 7: FIX REU toggle
++    var _fr_bx1 = _lx;
++    var _fr_bx2 = _rx;
++    var _fr_hov = point_in_rectangle(mouse_x, mouse_y, _fr_bx1, _cy + 4, _fr_bx2, _cy + 10);
++    if (_fix_reu == 1) {
++        draw_set_color(_fr_hov ? make_color_rgb(50, 80, 50) : make_color_rgb(30, 50, 30));
++    } else {
++        draw_set_color(_fr_hov ? make_color_rgb(80, 60, 40) : make_color_rgb(50, 40, 25));
++    }
++    draw_rectangle(_fr_bx1, _cy + 1, _fr_bx2, _cy + 11, false);
++    draw_set_color(c_white);
++    draw_set_halign(fa_center);
++    draw_text((_fr_bx1 + _fr_bx2) / 2, _cy, (_fix_reu == 1) ? "FIX REU ADDR: ON" : "FIX REU ADDR: OFF");
++    draw_set_halign(fa_left);
++    _cy += _line_h;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.yy b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.yy
+new file mode 100644
+index 0000000..3d10c14
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_node_draw_macro_reu",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_node_draw_macro_reu",
++  "parent":{
++    "name":"MACROS",
++    "path":"folders/SCRIPTS/MACROS.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index f1d5077..d2d830e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -400,6 +400,26 @@ case "LABEL": {
+ 		    break;
+ 
+ 		// -------------------------------------------------------
++		// MACRO_REU
++		// REU (RAM Expansion Unit) DMA transfer — $DF00-$DF0A.
++		// instructions[0]: ["macro_reu", op, c64_addr, reu_addr, bank, len, autoload, fix_c64, fix_reu]
++		//   op       = 0 STASH (C64->REU), 1 FETCH (REU->C64), 2 SWAP, 3 COMPARE
++		//   c64_addr = 16-bit C64 RAM address
++		//   reu_addr = 16-bit REU RAM address (within the bank)
++		//   bank     = REU bank (0-255, most REUs only populate bank 0)
++		//   len      = 16-bit transfer length ($0000 = 65536 bytes)
++		//   autoload = 1 = reload start addresses after the transfer completes
++		//   fix_c64  = 1 = don't advance the C64 address (fill/scan pattern)
++		//   fix_reu  = 1 = don't advance the REU address (fill/scan pattern)
++		// -------------------------------------------------------
++		case "MACRO_REU":
++		    _n.node_title   = "REU";
++		    _n.instructions = [["macro_reu", 0, 0xC000, 0x0000, 0, 0x0100, 0, 0, 0]];
++		    _n.pc_address   = global.start_pc;
++		    with (_n) { event_user(0); }
++		    break;
++
++		// -------------------------------------------------------
+         // COND_IF
+         // -------------------------------------------------------
+         case "COND_IF":
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.gml
+new file mode 100644
+index 0000000..3fc4c79
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.gml
+@@ -0,0 +1,133 @@
++/// @desc Handle LMB clicks for MACRO_REU nodes
++function scr_node_step_macro_reu(_draw_x) {
++
++    var _header_h = 24;
++    var _line_h   = 16;
++    var _inst     = instructions[0];
++    var _lx       = _draw_x + 8;
++    var _rx       = _draw_x + width - 6;
++    var _cy       = y + _header_h + 4;
++
++    while (array_length(_inst) < 9) {
++        array_push(_inst, 0);
++    }
++
++    var _open_hex = function(_idx, _digits) {
++        with (obj_workspace_manager) {
++            is_entering_text     = true;
++            input_target_node    = other.id;
++            input_target_index   = _idx;
++            var _raw = real(other.instructions[0][_idx]);
++            var _h   = string_upper(decimal_to_hex(_raw));
++            while (string_length(_h) < _digits) {
++                _h = "0" + _h;
++            }
++            current_input_string = "$" + _h;
++            keyboard_string      = "";
++            cursor_pos           = string_length(current_input_string);
++        }
++    };
++    var _open_num = function(_idx) {
++        with (obj_workspace_manager) {
++            is_entering_text     = true;
++            input_target_node    = other.id;
++            input_target_index   = _idx;
++            current_input_string = string(real(other.instructions[0][_idx]));
++            keyboard_string      = "";
++            cursor_pos           = string_length(current_input_string);
++        }
++    };
++
++    // Row 0: OP dropdown — cycle STASH -> FETCH -> SWAP -> COMPARE -> STASH
++    var _op_bx1 = _lx + 30;
++    var _op_bx2 = _rx;
++    if (point_in_rectangle(mouse_x, mouse_y, _op_bx1, _cy + 4, _op_bx2, _cy + 10)) {
++        var _cur  = real(_inst[1]);
++        var _next = _cur + 1;
++        if (_next > 3) {
++            _next = 0;
++        }
++        instructions[0][1] = _next;
++        global.addresses_dirty = true;
++        scr_c64_do_update_addresses();
++        exit;
++    }
++    _cy += _line_h;
++
++    // Row 1: C64 ADDR
++    var _c64_bx1 = _lx + 44;
++    var _c64_bx2 = _rx;
++    if (point_in_rectangle(mouse_x, mouse_y, _c64_bx1, _cy + 4, _c64_bx2, _cy + 10)) {
++        _open_hex(2, 4); exit;
++    }
++    _cy += _line_h;
++
++    // Row 2: REU ADDR
++    var _reu_bx1 = _lx + 44;
++    var _reu_bx2 = _rx;
++    if (point_in_rectangle(mouse_x, mouse_y, _reu_bx1, _cy + 4, _reu_bx2, _cy + 10)) {
++        _open_hex(3, 4); exit;
++    }
++    _cy += _line_h;
++
++    // Row 3: BANK
++    var _bank_bx1 = _lx + 44;
++    var _bank_bx2 = _rx;
++    if (point_in_rectangle(mouse_x, mouse_y, _bank_bx1, _cy + 4, _bank_bx2, _cy + 10)) {
++        _open_num(4); exit;
++    }
++    _cy += _line_h;
++
++    // Row 4: LEN
++    var _len_bx1 = _lx + 44;
++    var _len_bx2 = _rx;
++    if (point_in_rectangle(mouse_x, mouse_y, _len_bx1, _cy + 4, _len_bx2, _cy + 10)) {
++        _open_hex(5, 4); exit;
++    }
++    _cy += _line_h;
++
++    // Row 5: AUTOLOAD toggle
++    var _al_bx1 = _lx;
++    var _al_bx2 = _rx;
++    if (point_in_rectangle(mouse_x, mouse_y, _al_bx1, _cy + 4, _al_bx2, _cy + 10)) {
++        if (real(_inst[6]) == 1) {
++            instructions[0][6] = 0;
++        } else {
++            instructions[0][6] = 1;
++        }
++        global.addresses_dirty = true;
++        scr_c64_do_update_addresses();
++        exit;
++    }
++    _cy += _line_h;
++
++    // Row 6: FIX C64 ADDR toggle
++    var _fc_bx1 = _lx;
++    var _fc_bx2 = _rx;
++    if (point_in_rectangle(mouse_x, mouse_y, _fc_bx1, _cy + 4, _fc_bx2, _cy + 10)) {
++        if (real(_inst[7]) == 1) {
++            instructions[0][7] = 0;
++        } else {
++            instructions[0][7] = 1;
++        }
++        global.addresses_dirty = true;
++        scr_c64_do_update_addresses();
++        exit;
++    }
++    _cy += _line_h;
++
++    // Row 7: FIX REU ADDR toggle
++    var _fr_bx1 = _lx;
++    var _fr_bx2 = _rx;
++    if (point_in_rectangle(mouse_x, mouse_y, _fr_bx1, _cy + 4, _fr_bx2, _cy + 10)) {
++        if (real(_inst[8]) == 1) {
++            instructions[0][8] = 0;
++        } else {
++            instructions[0][8] = 1;
++        }
++        global.addresses_dirty = true;
++        scr_c64_do_update_addresses();
++        exit;
++    }
++    _cy += _line_h;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.yy b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.yy
+new file mode 100644
+index 0000000..ed16d1c
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_node_step_macro_reu",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_node_step_macro_reu",
++  "parent":{
++    "name":"MACROS",
++    "path":"folders/SCRIPTS/MACROS.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}

@@ -6446,7 +6446,64 @@ case "BANK_SWITCH": {
         array_push(_list, ["cli", 0, _id]);
     }
 } break;
-	
+
+// --------------------------------------------------------
+// MACRO_REU
+// Triggers a DMA transfer on the 17xx/1750/GeoRAM-style REU at $DF00-$DF0A.
+// All six address/length/bank bytes are written first, then the command
+// byte is written last to $DF01 with EXEC (bit7) set, which fires the DMA.
+// FF00 disable (bit5) is always set — without it, a stray write to $FF00
+// (used by some cartridges/carts detection code) can retrigger the last
+// queued transfer, which is a classic REU footgun.
+// --------------------------------------------------------
+case "MACRO_REU": {
+    var _id        = _curr;
+    var _reu_op    = is_real(_curr.instructions[0][1]) ? real(_curr.instructions[0][1]) : 0;
+    var _reu_c64   = is_real(_curr.instructions[0][2]) ? real(_curr.instructions[0][2]) & 0xFFFF : 0xC000;
+    var _reu_addr  = is_real(_curr.instructions[0][3]) ? real(_curr.instructions[0][3]) & 0xFFFF : 0x0000;
+    var _reu_bank  = is_real(_curr.instructions[0][4]) ? real(_curr.instructions[0][4]) & 0xFF   : 0;
+    var _reu_len   = is_real(_curr.instructions[0][5]) ? real(_curr.instructions[0][5]) & 0xFFFF : 0x0100;
+    var _reu_auto  = is_real(_curr.instructions[0][6]) ? real(_curr.instructions[0][6]) : 0;
+    var _reu_fixc  = is_real(_curr.instructions[0][7]) ? real(_curr.instructions[0][7]) : 0;
+    var _reu_fixr  = is_real(_curr.instructions[0][8]) ? real(_curr.instructions[0][8]) : 0;
+
+    // Type field: 00 stash, 01 fetch, 10 swap, 11 compare
+    var _reu_type = clamp(_reu_op, 0, 3);
+
+    var _reu_cmd = 0x80;               // EXEC
+    _reu_cmd    |= 0x20;                // FF00 disable (always on — see note above)
+    if (_reu_auto == 1) { _reu_cmd |= 0x10; }  // autoload
+    _reu_cmd    |= _reu_type;
+
+    var _reu_ctrl = 0x00;
+    if (_reu_fixc == 1) { _reu_ctrl |= 0x80; } // fix C64 address
+    if (_reu_fixr == 1) { _reu_ctrl |= 0x40; } // fix REU address
+
+    array_push(_list, ["lda_imm", _reu_c64 & 0xFF,        _id]);
+    array_push(_list, ["sta_abs", 0xDF02,                 _id]);
+    array_push(_list, ["lda_imm", (_reu_c64 >> 8) & 0xFF, _id]);
+    array_push(_list, ["sta_abs", 0xDF03,                 _id]);
+
+    array_push(_list, ["lda_imm", _reu_addr & 0xFF,        _id]);
+    array_push(_list, ["sta_abs", 0xDF04,                  _id]);
+    array_push(_list, ["lda_imm", (_reu_addr >> 8) & 0xFF, _id]);
+    array_push(_list, ["sta_abs", 0xDF05,                  _id]);
+
+    array_push(_list, ["lda_imm", _reu_bank, _id]);
+    array_push(_list, ["sta_abs", 0xDF06,    _id]);
+
+    array_push(_list, ["lda_imm", _reu_len & 0xFF,        _id]);
+    array_push(_list, ["sta_abs", 0xDF07,                 _id]);
+    array_push(_list, ["lda_imm", (_reu_len >> 8) & 0xFF, _id]);
+    array_push(_list, ["sta_abs", 0xDF08,                 _id]);
+
+    array_push(_list, ["lda_imm", _reu_ctrl, _id]);
+    array_push(_list, ["sta_abs", 0xDF0A,    _id]);
+
+    array_push(_list, ["lda_imm", _reu_cmd, _id]);
+    array_push(_list, ["sta_abs", 0xDF01,   _id]);
+} break;
+
 // --------------------------------------------------------
 // MACRO_FLIP_X
 // Flips selected sprites horizontally using a LUT.

@@ -686,6 +686,7 @@ if (gui_menu_open == 1 && !global.lite) {
         { title: "BANK SWITCH",      type: "BANK_SWITCH"         },
         { title: "MATH",             type: "MACRO_MATH"          },
         { title: "RANDOM",           type: "MACRO_RANDOM"        },
+        { title: "REU",              type: "MACRO_REU"           },
     ];
 
     var _item_h_e     = 19;
