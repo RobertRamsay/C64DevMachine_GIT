@@ -131,7 +131,7 @@ if (height_dirty) {
 	case "MACRO_MOVE":    height = _G * 7; break;
 	case "MACRO_SEEK":    height = _G * 11; break;
 	case "MACRO_MOVE_MEM":    height = _G * 4; break;
-	case "MACRO_MOVE_BMP_BLOCK": height = _G * 10; break;
+	case "MACRO_MOVE_BMP_BLOCK": height = _G * 11; break;
 	case "MACRO_FLIP_X":  height = _G * 3; break;
 	case "MACRO_PRIORITY":    height = _G * 4; break;
 	case "MACRO_SPR_ENABLE":  height = _G * 4; break;
