@@ -1466,10 +1466,10 @@ if (instance_exists(node_tooltip_node)) {
     var _nt_info = scr_node_tooltip_text(node_tooltip_node.node_type);
     if (_nt_info != undefined) {
         var _font_before2 = draw_get_font();
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font(fnt_c64_code);
 
         var _nt_pad = 8;
-        var _nt_lh  = 12;
+        var _nt_lh  = 14;
         var _nt_w   = string_width(_nt_info.title);
         for (var _nti = 0; _nti < array_length(_nt_info.lines); _nti++) {
             _nt_w = max(_nt_w, string_width(_nt_info.lines[_nti]));
