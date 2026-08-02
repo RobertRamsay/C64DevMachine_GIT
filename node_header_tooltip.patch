@@ -1,0 +1,208 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index 3387cb5..6e6b102 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1220,6 +1220,7 @@
+     {"id":{"name":"scr_node_step_macro_vwait","path":"scripts/scr_node_step_macro_vwait/scr_node_step_macro_vwait.yy",},},
+     {"id":{"name":"scr_node_step_macro_wait","path":"scripts/scr_node_step_macro_wait/scr_node_step_macro_wait.yy",},},
+     {"id":{"name":"scr_node_step_new_str","path":"scripts/scr_node_step_new_str/scr_node_step_new_str.yy",},},
++    {"id":{"name":"scr_node_tooltip_text","path":"scripts/scr_node_tooltip_text/scr_node_tooltip_text.yy",},},
+     {"id":{"name":"scr_note_name_to_freq","path":"scripts/scr_note_name_to_freq/scr_note_name_to_freq.yy",},},
+     {"id":{"name":"scr_note_name_to_hz","path":"scripts/scr_note_name_to_hz/scr_note_name_to_hz.yy",},},
+     {"id":{"name":"scr_opcode_helper","path":"scripts/scr_opcode_helper/scr_opcode_helper.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+index 1a3c9e6..1076b72 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+@@ -238,6 +238,7 @@ drag_indent_stash = 0;
+ // Label-reference hover highlight
+ hover_timer      = 0;       // counts up while mouse is over this node
+ hover_threshold  = 9;       // ~0.15s before highlight fires
++tooltip_hover_timer = 0;    // counts up while mouse is over the header tooltip zone
+ ref_highlight_on = false;   // true while this node is the broadcast source
+ ref_jump_index   = 0;       // cycle position when Enter-jumping through references
+ if (!variable_global_exists("ref_highlight_source")) global.ref_highlight_source = noone;
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index a946600..e9e1c27 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -102,6 +102,32 @@ if (node_type == "LABEL" && !is_dragging && !global.any_picker_open) {
+     }
+ }
+ 
++/////////////////////////////////////////////////////////////////
++// HEADER TOOLTIP HOVER
++// Hovering the right 20% of a node's header bar, with no mouse button
++// held, for node_tooltip_delay frames surfaces a floating description
++// of that node/macro (drawn by obj_workspace_manager in Draw GUI, since
++// that always renders on top of every node's own Draw event).
++/////////////////////////////////////////////////////////////////
++if (!is_dragging && !global.any_picker_open) {
++    var _tt_hdr_x1 = x + x_indent + (width * 0.8);
++    var _tt_hdr_x2 = x + x_indent + width;
++    var _tt_hov = point_in_rectangle(mouse_x, mouse_y, _tt_hdr_x1, y, _tt_hdr_x2, y + 24)
++               && !mouse_check_button(mb_left) && !mouse_check_button(mb_right) && !mouse_check_button(mb_middle);
++
++    if (_tt_hov) {
++        tooltip_hover_timer += 1;
++        if (tooltip_hover_timer >= obj_workspace_manager.node_tooltip_delay) {
++            obj_workspace_manager.node_tooltip_node = id;
++        }
++    } else {
++        tooltip_hover_timer = 0;
++        if (obj_workspace_manager.node_tooltip_node == id) {
++            obj_workspace_manager.node_tooltip_node = noone;
++        }
++    }
++}
++
+ // Check if this node is a group drag follower (used to skip conflicting logic below)
+ var _is_group_follower = false;
+ if (global.group_drag_active && id != global.group_drag_handle) {
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index b0ef26e..81277dd 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -716,6 +716,13 @@ gui_menu_open         = -1;    // -1 = closed, 0..7 = which button is open
+ opcode_hover_key      = "";    // mnemonic currently being hovered
+ opcode_hover_timer    = 0;     // frames hovered so far
+ opcode_hover_delay    = 30;    // frames before tooltip shows (30 = 0.5s at 60fps)
++
++// Node header tooltip — hover the right 20% of a node's header bar with
++// no mouse button held for node_tooltip_delay frames to show a floating
++// description of that node/macro. Set by obj_c64_node's Step event,
++// drawn here in Draw GUI so it always renders on top.
++node_tooltip_node    = noone;
++node_tooltip_delay   = 60;     // frames before tooltip shows (60 = 1s at 60fps)
+ opcode_helper_on      = true;  // toggled via OPTIONS menu
+ gui_menu_drag_active  = false; // true once user starts dragging a macro from the menu
+ gui_menu_node_spawned = false; // guard: spawn only once per drag
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 4956883..0bc66f1 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -1456,6 +1456,56 @@ if (opcode_helper_on && opcode_hover_key != "" && opcode_hover_timer >= opcode_h
+     }
+ }
+ 
++/////////////////////////////////////////////////////////////////
++///// NODE HEADER TOOLTIP
++///// Hover the right 20% of a node's header bar for ~1s (no mouse
++///// button held) to show this. Floats just below the cursor, centred
++///// on the cursor's X. Content comes from scr_node_tooltip_text().
++/////////////////////////////////////////////////////////////////
++if (instance_exists(node_tooltip_node)) {
++    var _nt_info = scr_node_tooltip_text(node_tooltip_node.node_type);
++    if (_nt_info != undefined) {
++        var _font_before2 = draw_get_font();
++        draw_set_font(fnt_c64_tiny);
++
++        var _nt_pad = 8;
++        var _nt_lh  = 12;
++        var _nt_w   = string_width(_nt_info.title);
++        for (var _nti = 0; _nti < array_length(_nt_info.lines); _nti++) {
++            _nt_w = max(_nt_w, string_width(_nt_info.lines[_nti]));
++        }
++        _nt_w += _nt_pad * 2;
++        var _nt_h = (_nt_pad * 2) + _nt_lh + 4 + (array_length(_nt_info.lines) * _nt_lh);
++
++        var _nt_x = gui_mouse_x - (_nt_w * 0.5);
++        var _nt_y = gui_mouse_y + 18;
++        _nt_x = clamp(_nt_x, 4, gui_w - _nt_w - 4);
++        _nt_y = clamp(_nt_y, 4, gui_h - _nt_h - 4);
++
++        draw_set_alpha(0.94);
++        draw_set_color(make_color_rgb(12, 12, 22));
++        draw_rectangle(_nt_x, _nt_y, _nt_x + _nt_w, _nt_y + _nt_h, false);
++        draw_set_alpha(1.0);
++        draw_set_color(make_color_rgb(80, 140, 220));
++        draw_rectangle(_nt_x, _nt_y, _nt_x + _nt_w, _nt_y + _nt_h, true);
++
++        var _nt_tx = _nt_x + _nt_pad;
++        var _nt_ty = _nt_y + _nt_pad;
++
++        draw_set_color(c_yellow);
++        draw_text(_nt_tx, _nt_ty, _nt_info.title);
++        _nt_ty += _nt_lh + 4;
++
++        draw_set_color(c_white);
++        for (var _ntj = 0; _ntj < array_length(_nt_info.lines); _ntj++) {
++            draw_text(_nt_tx, _nt_ty, _nt_info.lines[_ntj]);
++            _nt_ty += _nt_lh;
++        }
++
++        draw_set_font(_font_before2);
++    }
++}
++
+ /////////////////////////////////////////////////////////////////
+ ///// 2. GLOBAL SHORTCUTS (TOP RIGHT)
+ /////////////////////////////////////////////////////////////////
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+new file mode 100644
+index 0000000..e079e93
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+@@ -0,0 +1,43 @@
++/// @desc scr_node_tooltip_text()
++/// Returns a struct { title, lines[] } describing a node type, for the
++/// header-hover tooltip system (hover the right 20% of a node's header
++/// bar for ~1s with no mouse button held). Returns undefined for any
++/// node_type with no entry yet, so unlisted nodes simply show nothing.
++function scr_node_tooltip_text(_node_type) {
++    static _map = {
++        "MACRO_REU": {
++            title: "REU - RAM EXPANSION UNIT",
++            lines: [
++                "DMA transfer between C64 RAM and REU RAM,",
++                "via registers $DF00-$DF0A.",
++                "",
++                "OP  STASH  copies C64 -> REU",
++                "    FETCH  copies REU -> C64",
++                "    SWAP   exchanges both directions",
++                "    COMPARE verifies only, no write",
++                "",
++                "C64   16-bit start address in C64 RAM",
++                "REU   16-bit start address in REU RAM",
++                "BANK  REU bank, 0-255 (most units: bank 0 only)",
++                "LEN   bytes to move, $0000 = 65536",
++                "",
++                "AUTOLOAD reloads the start addresses once the",
++                "transfer finishes, so the node can fire again",
++                "without re-setting anything.",
++                "",
++                "FIX C64 / FIX REU hold that side's address",
++                "still during the transfer - use for fills or",
++                "repeated single-byte reads/writes.",
++                "",
++                "FF00-disable is always set on the command byte:",
++                "without it, a stray write to $FF00 can",
++                "re-trigger the last queued transfer."
++            ]
++        }
++    };
++
++    if (variable_struct_exists(_map, _node_type)) {
++        return _map[$ _node_type];
++    }
++    return undefined;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.yy b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.yy
+new file mode 100644
+index 0000000..625eebf
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_node_tooltip_text",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_node_tooltip_text",
++  "parent":{
++    "name":"MACROS",
++    "path":"folders/SCRIPTS/MACROS.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}

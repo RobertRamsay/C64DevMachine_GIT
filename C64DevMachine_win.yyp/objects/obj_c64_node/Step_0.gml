@@ -102,6 +102,32 @@ if (node_type == "LABEL" && !is_dragging && !global.any_picker_open) {
     }
 }
 
+/////////////////////////////////////////////////////////////////
+// HEADER TOOLTIP HOVER
+// Hovering the right 20% of a node's header bar, with no mouse button
+// held, for node_tooltip_delay frames surfaces a floating description
+// of that node/macro (drawn by obj_workspace_manager in Draw GUI, since
+// that always renders on top of every node's own Draw event).
+/////////////////////////////////////////////////////////////////
+if (!is_dragging && !global.any_picker_open) {
+    var _tt_hdr_x1 = x + x_indent + (width * 0.8);
+    var _tt_hdr_x2 = x + x_indent + width;
+    var _tt_hov = point_in_rectangle(mouse_x, mouse_y, _tt_hdr_x1, y, _tt_hdr_x2, y + 24)
+               && !mouse_check_button(mb_left) && !mouse_check_button(mb_right) && !mouse_check_button(mb_middle);
+
+    if (_tt_hov) {
+        tooltip_hover_timer += 1;
+        if (tooltip_hover_timer >= obj_workspace_manager.node_tooltip_delay) {
+            obj_workspace_manager.node_tooltip_node = id;
+        }
+    } else {
+        tooltip_hover_timer = 0;
+        if (obj_workspace_manager.node_tooltip_node == id) {
+            obj_workspace_manager.node_tooltip_node = noone;
+        }
+    }
+}
+
 // Check if this node is a group drag follower (used to skip conflicting logic below)
 var _is_group_follower = false;
 if (global.group_drag_active && id != global.group_drag_handle) {

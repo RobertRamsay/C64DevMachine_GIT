@@ -238,6 +238,7 @@ drag_indent_stash = 0;
 // Label-reference hover highlight
 hover_timer      = 0;       // counts up while mouse is over this node
 hover_threshold  = 9;       // ~0.15s before highlight fires
+tooltip_hover_timer = 0;    // counts up while mouse is over the header tooltip zone
 ref_highlight_on = false;   // true while this node is the broadcast source
 ref_jump_index   = 0;       // cycle position when Enter-jumping through references
 if (!variable_global_exists("ref_highlight_source")) global.ref_highlight_source = noone;

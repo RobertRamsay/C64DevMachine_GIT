@@ -1457,6 +1457,56 @@ if (opcode_helper_on && opcode_hover_key != "" && opcode_hover_timer >= opcode_h
 }
 
 /////////////////////////////////////////////////////////////////
+///// NODE HEADER TOOLTIP
+///// Hover the right 20% of a node's header bar for ~1s (no mouse
+///// button held) to show this. Floats just below the cursor, centred
+///// on the cursor's X. Content comes from scr_node_tooltip_text().
+/////////////////////////////////////////////////////////////////
+if (instance_exists(node_tooltip_node)) {
+    var _nt_info = scr_node_tooltip_text(node_tooltip_node.node_type);
+    if (_nt_info != undefined) {
+        var _font_before2 = draw_get_font();
+        draw_set_font(fnt_c64_tiny);
+
+        var _nt_pad = 8;
+        var _nt_lh  = 12;
+        var _nt_w   = string_width(_nt_info.title);
+        for (var _nti = 0; _nti < array_length(_nt_info.lines); _nti++) {
+            _nt_w = max(_nt_w, string_width(_nt_info.lines[_nti]));
+        }
+        _nt_w += _nt_pad * 2;
+        var _nt_h = (_nt_pad * 2) + _nt_lh + 4 + (array_length(_nt_info.lines) * _nt_lh);
+
+        var _nt_x = gui_mouse_x - (_nt_w * 0.5);
+        var _nt_y = gui_mouse_y + 18;
+        _nt_x = clamp(_nt_x, 4, gui_w - _nt_w - 4);
+        _nt_y = clamp(_nt_y, 4, gui_h - _nt_h - 4);
+
+        draw_set_alpha(0.94);
+        draw_set_color(make_color_rgb(12, 12, 22));
+        draw_rectangle(_nt_x, _nt_y, _nt_x + _nt_w, _nt_y + _nt_h, false);
+        draw_set_alpha(1.0);
+        draw_set_color(make_color_rgb(80, 140, 220));
+        draw_rectangle(_nt_x, _nt_y, _nt_x + _nt_w, _nt_y + _nt_h, true);
+
+        var _nt_tx = _nt_x + _nt_pad;
+        var _nt_ty = _nt_y + _nt_pad;
+
+        draw_set_color(c_yellow);
+        draw_text(_nt_tx, _nt_ty, _nt_info.title);
+        _nt_ty += _nt_lh + 4;
+
+        draw_set_color(c_white);
+        for (var _ntj = 0; _ntj < array_length(_nt_info.lines); _ntj++) {
+            draw_text(_nt_tx, _nt_ty, _nt_info.lines[_ntj]);
+            _nt_ty += _nt_lh;
+        }
+
+        draw_set_font(_font_before2);
+    }
+}
+
+/////////////////////////////////////////////////////////////////
 ///// 2. GLOBAL SHORTCUTS (TOP RIGHT)
 /////////////////////////////////////////////////////////////////
 var sc_x_end   = gui_w - 2;

@@ -716,6 +716,13 @@ gui_menu_open         = -1;    // -1 = closed, 0..7 = which button is open
 opcode_hover_key      = "";    // mnemonic currently being hovered
 opcode_hover_timer    = 0;     // frames hovered so far
 opcode_hover_delay    = 30;    // frames before tooltip shows (30 = 0.5s at 60fps)
+
+// Node header tooltip — hover the right 20% of a node's header bar with
+// no mouse button held for node_tooltip_delay frames to show a floating
+// description of that node/macro. Set by obj_c64_node's Step event,
+// drawn here in Draw GUI so it always renders on top.
+node_tooltip_node    = noone;
+node_tooltip_delay   = 60;     // frames before tooltip shows (60 = 1s at 60fps)
 opcode_helper_on      = true;  // toggled via OPTIONS menu
 gui_menu_drag_active  = false; // true once user starts dragging a macro from the menu
 gui_menu_node_spawned = false; // guard: spawn only once per drag

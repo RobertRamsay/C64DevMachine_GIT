@@ -1220,6 +1220,7 @@
     {"id":{"name":"scr_node_step_macro_vwait","path":"scripts/scr_node_step_macro_vwait/scr_node_step_macro_vwait.yy",},},
     {"id":{"name":"scr_node_step_macro_wait","path":"scripts/scr_node_step_macro_wait/scr_node_step_macro_wait.yy",},},
     {"id":{"name":"scr_node_step_new_str","path":"scripts/scr_node_step_new_str/scr_node_step_new_str.yy",},},
+    {"id":{"name":"scr_node_tooltip_text","path":"scripts/scr_node_tooltip_text/scr_node_tooltip_text.yy",},},
     {"id":{"name":"scr_note_name_to_freq","path":"scripts/scr_note_name_to_freq/scr_note_name_to_freq.yy",},},
     {"id":{"name":"scr_note_name_to_hz","path":"scripts/scr_note_name_to_hz/scr_note_name_to_hz.yy",},},
     {"id":{"name":"scr_opcode_helper","path":"scripts/scr_opcode_helper/scr_opcode_helper.yy",},},
