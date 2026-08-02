@@ -21,6 +21,9 @@ has_ever_connected = false;
 _has_jumped_label = false;
 label_picker_field_idx = 0;
 was_connected_before_drag = false;
+drag_start_org_parent = noone;
+drag_start_y = 0;
+had_origin_to_close = false;
 // When true, VAR pickers list only 16-bit ("word") encoded UVs.
 // Set by COND_IF_WORD's pickers, cleared by every other VAR picker
 // at open time so the filter can never leak between nodes.
