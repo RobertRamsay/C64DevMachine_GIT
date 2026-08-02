@@ -20,7 +20,6 @@ code_descriptor   = "";
 has_ever_connected = false;
 _has_jumped_label = false;
 label_picker_field_idx = 0;
-was_connected_before_drag = false;
 // When true, VAR pickers list only 16-bit ("word") encoded UVs.
 // Set by COND_IF_WORD's pickers, cleared by every other VAR picker
 // at open time so the filter can never leak between nodes.
