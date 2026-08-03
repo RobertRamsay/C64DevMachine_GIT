@@ -5,7 +5,7 @@ function scr_uqmenu_layout_circular(_index, _count, _cx, _cy, _label) {
     var _btn_w  = max(_min_w, string_width(_label) + 6); // 3px padding each side
 
     if (_count <= 4) {
-        var _radius = 130;
+        var _radius = 80;
         var _angle;
         switch (_count) {
             case 1: _angle = 90; break;
@@ -19,7 +19,7 @@ function scr_uqmenu_layout_circular(_index, _count, _cx, _cy, _label) {
     }
 
     if (_count <= 10) {
-        var _radius = 150 + ((_count - 5) * 10);
+        var _radius = 120 + ((_count - 5) * 10);
         var _angle  = 90 - (_index * (360 / _count));
         var _px = _cx + lengthdir_x(_radius, _angle);
         var _py = _cy + lengthdir_y(_radius, _angle);
