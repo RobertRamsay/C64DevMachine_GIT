@@ -60,7 +60,9 @@ welcome_whats_new = [
 	"TOOLTIPS - Hover the cursor at the top right of a macro",
     "BUGFIX - Version detecion on mac was flawed",
 	"TWEAK - Autosave detection has a 2nd question to stop asking.",
-    "TWEAK - Bitmap editor Line too shows its thickness when drawing."
+    "TWEAK - Adding (shift+Q over macro in menu) or removing (right-click in Q-menu)",
+	"TWEAK - Bitmap editor Line tool now shows correct width when drawing.",
+	"ADDED - Easter egg - Will you find it?"	
 	];
 	
 welcome_credits_lines = [
