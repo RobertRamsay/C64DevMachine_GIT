@@ -56,6 +56,7 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
+	"MANUAL UPDATED to V1.260803",
     "MACRO REU - Handles various RAM Expansion data",
 	"TOOLTIPS - Hover the cursor at the top right of a macro",
     "BUGFIX - Version detecion on mac was flawed",
