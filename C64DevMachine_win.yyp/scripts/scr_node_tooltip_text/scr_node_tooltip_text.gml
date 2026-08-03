@@ -326,7 +326,7 @@ function scr_node_tooltip_text(_node_type) {
                 "rolls over at the 8-bit edge. Enable STOP to clamp",
                 "movement at fixed screen walls instead.",
                 "",
-                "WIDE X toggles the $D010 9th-bit MSB register so X",
+                "Toggle the $D010 9th-bit MSB register so X",
                 "can range the full 0-343 sprite-visible width rather",
                 "than wrapping at the 8-bit 0-255 boundary."
             ]

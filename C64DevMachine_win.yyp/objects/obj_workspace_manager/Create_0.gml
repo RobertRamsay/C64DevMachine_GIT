@@ -59,7 +59,8 @@ welcome_whats_new = [
     "MACRO REU - Handles various RAM Expansion data",
 	"TOOLTIPS - Hover the cursor at the top right of a macro",
     "BUGFIX - Version detecion on mac was flawed",
-	"TWEAK - Autosave detection has a 2nd question to stop asking."
+	"TWEAK - Autosave detection has a 2nd question to stop asking.",
+    "TWEAK - Bitmap editor Line too shows its thickness when drawing."
 	];
 	
 welcome_credits_lines = [

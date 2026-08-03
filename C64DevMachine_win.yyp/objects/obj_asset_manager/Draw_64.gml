@@ -5671,36 +5671,63 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
 	                    var _ov_dinv  = _asset.meta.dither_invert;
                         
 	                    if (_asset.meta.active_tool == "LINE" && _asset.meta.line_x1 >= 0) {
-	                        var _ov_max_x = _bmp_is_hires ? 319 : 318;
-	                        var _lx1o = _asset.meta.line_x1, _ly1o = _asset.meta.line_y1;
-	                        var _lx2o = (_raw_px div _bmp_step) * _bmp_step, _ly2o = _raw_py;
-	                        var _dx_mc = abs((_lx2o div _bmp_step) - (_lx1o div _bmp_step));
-	                        var _dy_o  = abs(_ly2o - _ly1o);
-	                        var _sx_o  = (_lx1o < _lx2o) ? _bmp_step : -_bmp_step;
-	                        var _sy_o  = (_ly1o < _ly2o) ? 1 : -1;
-	                        var _err_o = _dx_mc - _dy_o;
-	                        var _cx_o  = (_lx1o div _bmp_step) * _bmp_step;
-	                        var _cy_o  = _ly1o;
-	                        var _ex_o  = (_lx2o div _bmp_step) * _bmp_step;
-	                        for (var _ls = 0; _ls < 640; _ls++) {
-	                            if (_cx_o >= 0 && _cx_o <= _ov_max_x && _cy_o >= 0 && _cy_o < 200) {
-	                                var _ov_px = _cx_o; var _ov_py = _cy_o;
-	                                var _ov_ok = (_ov_dmode == "NONE") ? true : (((_ov_px >= 0 && _ov_px < 320 && _ov_py >= 0 && _ov_py < 200) && array_length(_dither_cache) > 1) ? _dither_cache[_ov_py * 320 + _ov_px] : scr_check_dither_mask(_ov_dmode, _ov_px, _ov_py, _bmp_is_hires));
-	                                if (_ov_ok) {
-	                                    draw_set_color(make_color_rgb(_ov_r, _ov_g, _ov_b));
-	                                    if (_bmp_is_hires) {
-	                                        draw_rectangle(_cx_o, _cy_o, _cx_o + 1, _cy_o + 1, false);
-	                                    } else {
-	                                        draw_rectangle(_cx_o, _cy_o, _cx_o + 2, _cy_o + 1, false);
-	                                    }
-	                                }
-	                            }
-	                            if (_cx_o == _ex_o && _cy_o == _ly2o) break;
-	                            var _e2_o = 2 * _err_o;
-	                            if (_e2_o > -_dy_o) { _err_o -= _dy_o; _cx_o += _sx_o; }
-	                            if (_e2_o <  _dx_mc) { _err_o += _dx_mc; _cy_o += _sy_o; }
-	                        }
-	                    }
+                        var _ov_max_x = _bmp_is_hires ? 319 : 318;
+                        var _lx1o = _asset.meta.line_x1, _ly1o = _asset.meta.line_y1;
+                        var _lx2o = (_raw_px div _bmp_step) * _bmp_step, _ly2o = _raw_py;
+                        var _dx_mc = abs((_lx2o div _bmp_step) - (_lx1o div _bmp_step));
+                        var _dy_o  = abs(_ly2o - _ly1o);
+                        var _sx_o  = (_lx1o < _lx2o) ? _bmp_step : -_bmp_step;
+                        var _sy_o  = (_ly1o < _ly2o) ? 1 : -1;
+                        var _err_o = _dx_mc - _dy_o;
+                        var _cx_o  = (_lx1o div _bmp_step) * _bmp_step;
+                        var _cy_o  = _ly1o;
+                        var _ex_o  = (_lx2o div _bmp_step) * _bmp_step;
+                        var _ov_brad = _asset.meta.brush_size;
+                        for (var _ls = 0; _ls < 640; _ls++) {
+                            if (_ov_brad == 0) {
+                                // Single pixel (HiRes) or MC pixel pair — thin line
+                                if (_cx_o >= 0 && _cx_o <= _ov_max_x && _cy_o >= 0 && _cy_o < 200) {
+                                    var _ov_px = _cx_o; var _ov_py = _cy_o;
+                                    var _ov_ok = (_ov_dmode == "NONE") ? true : (((_ov_px >= 0 && _ov_px < 320 && _ov_py >= 0 && _ov_py < 200) && array_length(_dither_cache) > 1) ? _dither_cache[_ov_py * 320 + _ov_px] : scr_check_dither_mask(_ov_dmode, _ov_px, _ov_py, _bmp_is_hires));
+                                    if (_ov_ok) {
+                                        draw_set_color(make_color_rgb(_ov_r, _ov_g, _ov_b));
+                                        if (_bmp_is_hires) {
+                                            draw_rectangle(_cx_o, _cy_o, _cx_o + 1, _cy_o + 1, false);
+                                        } else {
+                                            draw_rectangle(_cx_o, _cy_o, _cx_o + 2, _cy_o + 1, false);
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Brush-thickness preview — same circle stamp scr_asset_bmp_draw_line
+                                // uses at commit time, so what you see while dragging is what lands.
+                                for (var _bmy_o = -_ov_brad; _bmy_o <= _ov_brad; _bmy_o++) {
+                                    for (var _bmx_o = -_ov_brad; _bmx_o <= _ov_brad; _bmx_o++) {
+                                        var _ndx_o = _bmp_is_hires ? (_bmx_o / _ov_brad) : ((_bmx_o * 2) / _ov_brad);
+                                        var _ndy_o = _bmy_o / _ov_brad;
+                                        if (_ndx_o * _ndx_o + _ndy_o * _ndy_o > 1.0) continue;
+                                        var _tx_o = ((_cx_o + _bmx_o * _bmp_step) div _bmp_step) * _bmp_step;
+                                        var _ty_o = _cy_o + _bmy_o;
+                                        if (_tx_o < 0 || _tx_o > _ov_max_x || _ty_o < 0 || _ty_o >= 200) continue;
+                                        var _ov_ok = (_ov_dmode == "NONE") ? true : (((_tx_o >= 0 && _tx_o < 320 && _ty_o >= 0 && _ty_o < 200) && array_length(_dither_cache) > 1) ? _dither_cache[_ty_o * 320 + _tx_o] : scr_check_dither_mask(_ov_dmode, _tx_o, _ty_o, _bmp_is_hires));
+                                        if (_ov_ok) {
+                                            draw_set_color(make_color_rgb(_ov_r, _ov_g, _ov_b));
+                                            if (_bmp_is_hires) {
+                                                draw_rectangle(_tx_o, _ty_o, _tx_o + 1, _ty_o + 1, false);
+                                            } else {
+                                                draw_rectangle(_tx_o, _ty_o, _tx_o + 2, _ty_o + 1, false);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (_cx_o == _ex_o && _cy_o == _ly2o) break;
+                            var _e2_o = 2 * _err_o;
+							
+                            if (_e2_o > -_dy_o) { _err_o -= _dy_o; _cx_o += _sx_o; }
+                            if (_e2_o <  _dx_mc) { _err_o += _dx_mc; _cy_o += _sy_o; }
+                        }
+                    }
                         
 	                    if ((_asset.meta.active_tool == "RECT" || _asset.meta.active_tool == "CIRCLE") && _asset.meta.shape_drawing) {
 	                        var _ov_max_x = _bmp_is_hires ? 319 : 318;

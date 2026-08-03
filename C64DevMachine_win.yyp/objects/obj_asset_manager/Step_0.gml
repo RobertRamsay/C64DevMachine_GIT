@@ -726,10 +726,11 @@ for (var _di = 0; _di < ds_list_size(asset_list); _di++) {
     }
 	
     if (keyboard_check_pressed(vk_escape)) {
-        editing_name   = false;
-        editing_idx    = -1;
-        editing_string = "";
-        editing_cursor = 0;
+        editing_name              = false;
+        editing_idx                = -1;
+        editing_string            = "";
+        editing_cursor            = 0;
+        global.is_any_text_active = false;
         keyboard_clear(vk_escape);
     }
     exit;
