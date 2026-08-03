@@ -257,6 +257,12 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     // PLAYBACK — ROW AUDITION (Space / Shift+Space, loops sel_order_row)
     // ═════════════════════════════════════════════════════════════════════
     if (!_m.edit_active) {
+        if (keyboard_check_pressed(vk_space)) {
+            // Always clear whatever's still ringing before applying the new
+            // state below — covers stopping outright, and switching between
+            // row preview and full song, so a held note never lingers.
+            scr_sound_preview_stop_all();
+        }
         if (keyboard_check_pressed(vk_space) && keyboard_check(vk_shift) && !(keyboard_check(vk_control) || scr_cmd_held())) {
             _m.playing      = true;
             _m.song_playing = false;

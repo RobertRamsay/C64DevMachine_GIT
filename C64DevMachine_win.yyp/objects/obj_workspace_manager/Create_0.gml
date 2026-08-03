@@ -585,6 +585,7 @@ qmenu_gui_x    = 0;
 qmenu_gui_y    = 0;
 qmenu_hover    = -1;
 qmenu_items    = [
+    { label: "COPY VAR", type: "COPY_VAR" },
     { label: "GET VAR", type: "GET_VAR" },
     { label: "SET VAR", type: "SET_VAR" },
     { label: "INC VAR", type: "INC_VAR" },
