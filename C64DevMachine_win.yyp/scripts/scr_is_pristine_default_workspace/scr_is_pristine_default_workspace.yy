@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_is_pristine_default_workspace",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_is_pristine_default_workspace",
+  "parent":{
+    "name":"MACROS",
+    "path":"folders/SCRIPTS/MACROS.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

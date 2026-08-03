@@ -2087,6 +2087,7 @@ var build_trigger = keyboard_check_pressed(vk_f5) || trigger_build;
 
 if (build_trigger && !global.asset_reload_in_progress) {
         trigger_build = false;
+        global.egg_temp_node_ids = [];
 
         // =============================================================
         // SAFETY: Block build if any ORG is at $0000 with children
@@ -2150,8 +2151,15 @@ if (build_trigger && !global.asset_reload_in_progress) {
             // linear main-spine chain — a loop can just as validly live
             // inside an ORG block (org_parent != noone), which global.node_chain
             // deliberately excludes from the main traversal.
-            var _loop_labels      = {};
-            var _loop_jmp_targets = [];
+            //
+            // A label+jump pair only counts as a genuine loop if the JMP
+            // sits AFTER (below) its LABEL, in the same context (same
+            // org_parent). A jump that targets a label further down the
+            // spine is a forward jump, not a loop — it still runs off the
+            // end if there's nothing after that label, so it must not be
+            // allowed to silence this check.
+            var _loop_labels = []; // { name, y, org_parent }
+            var _loop_jmps   = []; // { target, y, org_parent }
 
             with (obj_c64_node) {
                 if (!is_connected) continue;
@@ -2159,18 +2167,22 @@ if (build_trigger && !global.asset_reload_in_progress) {
                 var _cmnem = string_lower(string(instructions[0][0]));
 
                 if (_cmnem == "label" && array_length(instructions[0]) > 1) {
-                    _loop_labels[$ string(instructions[0][1])] = true;
+                    array_push(_loop_labels, { name: string(instructions[0][1]), y: y, org_parent: org_parent });
                 } else if ((_cmnem == "jmp" || _cmnem == "jmp_abs" || _cmnem == "jmp_ind")
                         && array_length(instructions[0]) > 1) {
-                    array_push(_loop_jmp_targets, string(instructions[0][1]));
+                    array_push(_loop_jmps, { target: string(instructions[0][1]), y: y, org_parent: org_parent });
                 }
             }
 
             var _core_loop_found = false;
-            for (var _jti = 0; _jti < array_length(_loop_jmp_targets); _jti++) {
-                if (variable_struct_exists(_loop_labels, _loop_jmp_targets[_jti])) {
-                    _core_loop_found = true;
-                    break;
+            for (var _jti = 0; _jti < array_length(_loop_jmps) && !_core_loop_found; _jti++) {
+                var _jmp = _loop_jmps[_jti];
+                for (var _lti = 0; _lti < array_length(_loop_labels); _lti++) {
+                    var _lbl = _loop_labels[_lti];
+                    if (_lbl.name == _jmp.target && _lbl.org_parent == _jmp.org_parent && _lbl.y < _jmp.y) {
+                        _core_loop_found = true;
+                        break;
+                    }
                 }
             }
 
@@ -2208,6 +2220,104 @@ if (build_trigger && !global.asset_reload_in_progress) {
                     // with a chain that no longer matches the graph.
                     trigger_build = true;
                     exit;
+
+                } else if (scr_is_pristine_default_workspace()) {
+                    // Declined the RTS fix, AND the workspace is still
+                    // exactly the untouched default project (see
+                    // scr_is_pristine_default_workspace) — silently attach
+                    // a small pre-authored program below the real SYSTEM
+                    // INIT node instead (the exact MACRO_PRINT/opcode
+                    // nodes tested and saved in C64DM_START.json), so the
+                    // normal compile pipeline picks them up and compiles
+                    // them exactly as it would for a real spine. Falls
+                    // straight through into the normal build — no exit —
+                    // and the temp nodes are destroyed again right after
+                    // scr_compile_chain() returns (see below), before this
+                    // frame ever draws, so the real project is untouched
+                    // and nothing is ever visible in the editor. Only
+                    // reachable when the "no core loop / no RTS" question
+                    // above was answered No — saying Yes just builds the
+                    // (now no-longer-pristine) real project as normal.
+                    var _egg_init = _tail_node; // the tail IS SYSTEM INIT when pristine
+                    var _egg_x    = _egg_init.x;
+                    var _egg_y    = _egg_init.y;
+
+                    var _egg_data = instance_create_depth(_egg_x, _egg_y + 40, -500, obj_c64_node);
+                    _egg_data.node_type    = "NORMAL";
+                    _egg_data.node_title   = "CODE";
+                    // MACRO_PRINT's inline mode is a straight copy loop (LDA addr,X /
+                    // STA screen,X) — it expects the screencode bytes to already sit
+                    // at the literal address given in each PRINT node's field [6], it
+                    // does not embed the string itself. This detours out to $2000 and
+                    // $2020 to lay down those bytes (org -2/-3 save+restore the real
+                    // spine PC around each detour, same pattern used elsewhere in the
+                    // compiler for this), then falls straight back into the normal
+                    // flow before PRINT1 emits.
+                    _egg_data.instructions = [
+                        ["org", -2], ["org", 8192],
+                        ["byte", 42], ["byte", 42], ["byte", 42], ["byte", 42], ["byte", 32],
+                        ["byte", 3], ["byte", 15], ["byte", 13], ["byte", 13], ["byte", 15],
+                        ["byte", 4], ["byte", 15], ["byte", 18], ["byte", 5], ["byte", 32],
+                        ["byte", 54], ["byte", 52], ["byte", 32],
+                        ["byte", 4], ["byte", 5], ["byte", 22], ["byte", 46], ["byte", 13],
+                        ["byte", 1], ["byte", 3], ["byte", 8], ["byte", 32],
+                        ["byte", 42], ["byte", 42], ["byte", 42], ["byte", 42],
+                        ["org", -3],
+                        ["org", -2], ["org", 8224],
+                        ["byte", 54], ["byte", 52], ["byte", 11], ["byte", 32],
+                        ["byte", 18], ["byte", 1], ["byte", 13], ["byte", 32],
+                        ["byte", 19], ["byte", 25], ["byte", 19], ["byte", 20], ["byte", 5], ["byte", 13], ["byte", 32],
+                        ["byte", 45], ["byte", 32],
+                        ["byte", 16], ["byte", 15], ["byte", 12], ["byte", 25], ["byte", 20], ["byte", 18], ["byte", 9], ["byte", 3], ["byte", 9], ["byte", 20], ["byte", 25], ["byte", 32],
+                        ["byte", 40], ["byte", 3], ["byte", 41], ["byte", 32],
+                        ["byte", 50], ["byte", 48], ["byte", 50], ["byte", 54], ["byte", 32],
+                        ["org", -3]
+                    ];
+                    with (_egg_data) { event_user(0); }
+                    _egg_data.pc_address   = 0;
+                    _egg_data.is_connected = true;
+
+                    var _egg_print1 = instance_create_depth(_egg_x, _egg_y + 80, -500, obj_c64_node);
+                    _egg_print1.node_type    = "MACRO_PRINT";
+                    _egg_print1.node_title   = "PRINT";
+                    _egg_print1.instructions = [["macro_print", 4, 1, 13, 0, "**** COMMODORE 64 DEV.MACH ****", 8192, 0, 0, 0, "", 0, 0, 1024, 0, "", 0, ""]];
+                    with (_egg_print1) { event_user(0); }
+                    _egg_print1.pc_address   = 0;
+                    _egg_print1.is_connected = true;
+
+                    var _egg_print2 = instance_create_depth(_egg_x, _egg_y + 280, -500, obj_c64_node);
+                    _egg_print2.node_type    = "MACRO_PRINT";
+                    _egg_print2.node_title   = "PRINT";
+                    _egg_print2.instructions = [["macro_print", 1, 3, 3, 0, "64K RAM SYSTEM - POLYTRICITY (C) 2026 ", 8224, 0, 0, 0, "", 0, 0, 1024, 0, "", 0, ""]];
+                    with (_egg_print2) { event_user(0); }
+                    _egg_print2.pc_address   = 0;
+                    _egg_print2.is_connected = true;
+
+                    var _egg_lda = instance_create_depth(_egg_x, _egg_y + 480, -500, obj_c64_node);
+                    _egg_lda.node_type    = "NORMAL";
+                    _egg_lda.node_title   = "LDA_IMM";
+                    _egg_lda.instructions = [["lda_imm", 4]];
+                    with (_egg_lda) { event_user(0); }
+                    _egg_lda.pc_address   = 0;
+                    _egg_lda.is_connected = true;
+
+                    var _egg_sta = instance_create_depth(_egg_x, _egg_y + 540, -500, obj_c64_node);
+                    _egg_sta.node_type    = "NORMAL";
+                    _egg_sta.node_title   = "STA_ABS";
+                    _egg_sta.instructions = [["sta_abs", 646]];
+                    with (_egg_sta) { event_user(0); }
+                    _egg_sta.pc_address   = 0;
+                    _egg_sta.is_connected = true;
+
+                    var _egg_rts = instance_create_depth(_egg_x, _egg_y + 600, -500, obj_c64_node);
+                    _egg_rts.node_type    = "NORMAL";
+                    _egg_rts.node_title   = "RTS";
+                    _egg_rts.instructions = [["rts", 0]];
+                    with (_egg_rts) { event_user(0); }
+                    _egg_rts.pc_address   = 0;
+                    _egg_rts.is_connected = true;
+
+                    global.egg_temp_node_ids = [_egg_data, _egg_print1, _egg_print2, _egg_lda, _egg_sta, _egg_rts];
                 }
             }
         }
@@ -2282,6 +2392,13 @@ if (build_trigger && !global.asset_reload_in_progress) {
     buffer_write(p_buf, buffer_u16, 0x0000);
 
 	var final_code = scr_compile_chain();
+	if (array_length(global.egg_temp_node_ids) > 0) {
+	    for (var _egi = 0; _egi < array_length(global.egg_temp_node_ids); _egi++) {
+	        var _egg_id = global.egg_temp_node_ids[_egi];
+	        if (instance_exists(_egg_id)) instance_destroy(_egg_id);
+	    }
+	    global.egg_temp_node_ids = [];
+	}
 show_debug_message("COMPILE RESULT: " + string(array_length(final_code)) + " instructions");
 	var p          = c64_new_program();
 

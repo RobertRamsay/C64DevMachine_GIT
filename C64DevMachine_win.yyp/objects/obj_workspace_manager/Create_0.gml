@@ -271,6 +271,7 @@ global.c64_base_addr      = 0x0801;
 global.c64_header_size    = 13;
 global.start_pc           = global.c64_base_addr + global.c64_header_size;
 global.node_chain         = ds_list_create();
+global.egg_temp_node_ids  = [];  // easter-egg: temp node ids attached for one compile pass, see build trigger
 global.use_hex_display    = true;
 global.input_mode_hex     = true;
 global.link_pulse = 0;

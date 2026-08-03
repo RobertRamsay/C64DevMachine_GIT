@@ -1,0 +1,51 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index c95bb77..dbd9c8d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -2150,8 +2150,15 @@ if (build_trigger && !global.asset_reload_in_progress) {
+             // linear main-spine chain — a loop can just as validly live
+             // inside an ORG block (org_parent != noone), which global.node_chain
+             // deliberately excludes from the main traversal.
+-            var _loop_labels      = {};
+-            var _loop_jmp_targets = [];
++            //
++            // A label+jump pair only counts as a genuine loop if the JMP
++            // sits AFTER (below) its LABEL, in the same context (same
++            // org_parent). A jump that targets a label further down the
++            // spine is a forward jump, not a loop — it still runs off the
++            // end if there's nothing after that label, so it must not be
++            // allowed to silence this check.
++            var _loop_labels = []; // { name, y, org_parent }
++            var _loop_jmps   = []; // { target, y, org_parent }
+ 
+             with (obj_c64_node) {
+                 if (!is_connected) continue;
+@@ -2159,18 +2166,22 @@ if (build_trigger && !global.asset_reload_in_progress) {
+                 var _cmnem = string_lower(string(instructions[0][0]));
+ 
+                 if (_cmnem == "label" && array_length(instructions[0]) > 1) {
+-                    _loop_labels[$ string(instructions[0][1])] = true;
++                    array_push(_loop_labels, { name: string(instructions[0][1]), y: y, org_parent: org_parent });
+                 } else if ((_cmnem == "jmp" || _cmnem == "jmp_abs" || _cmnem == "jmp_ind")
+                         && array_length(instructions[0]) > 1) {
+-                    array_push(_loop_jmp_targets, string(instructions[0][1]));
++                    array_push(_loop_jmps, { target: string(instructions[0][1]), y: y, org_parent: org_parent });
+                 }
+             }
+ 
+             var _core_loop_found = false;
+-            for (var _jti = 0; _jti < array_length(_loop_jmp_targets); _jti++) {
+-                if (variable_struct_exists(_loop_labels, _loop_jmp_targets[_jti])) {
+-                    _core_loop_found = true;
+-                    break;
++            for (var _jti = 0; _jti < array_length(_loop_jmps) && !_core_loop_found; _jti++) {
++                var _jmp = _loop_jmps[_jti];
++                for (var _lti = 0; _lti < array_length(_loop_labels); _lti++) {
++                    var _lbl = _loop_labels[_lti];
++                    if (_lbl.name == _jmp.target && _lbl.org_parent == _jmp.org_parent && _lbl.y < _jmp.y) {
++                        _core_loop_found = true;
++                        break;
++                    }
+                 }
+             }
+ 

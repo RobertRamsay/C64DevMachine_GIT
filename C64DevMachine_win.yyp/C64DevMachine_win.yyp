@@ -1084,6 +1084,7 @@
     {"id":{"name":"scr_instrument_parse","path":"scripts/scr_instrument_parse/scr_instrument_parse.yy",},},
     {"id":{"name":"scr_is_address_conflicted","path":"scripts/scr_is_address_conflicted/scr_is_address_conflicted.yy",},},
     {"id":{"name":"scr_is_conflict_ignored","path":"scripts/scr_is_conflict_ignored/scr_is_conflict_ignored.yy",},},
+    {"id":{"name":"scr_is_pristine_default_workspace","path":"scripts/scr_is_pristine_default_workspace/scr_is_pristine_default_workspace.yy",},},
     {"id":{"name":"scr_json_pretty","path":"scripts/scr_json_pretty/scr_json_pretty.yy",},},
     {"id":{"name":"scr_kernal_routine_list","path":"scripts/scr_kernal_routine_list/scr_kernal_routine_list.yy",},},
     {"id":{"name":"scr_kill_vice","path":"scripts/scr_kill_vice/scr_kill_vice.yy",},},
