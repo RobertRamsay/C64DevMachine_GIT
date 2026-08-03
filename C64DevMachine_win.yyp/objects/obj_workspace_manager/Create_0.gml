@@ -243,6 +243,10 @@ global.gui_mouse_y = 0;
 global.gui_w       = 0;
 global.is_any_text_active = false;
 global.user_quick_menu = []; // {type, label} entries added via SHIFT+Q, max 24
+global.qmenu_toast_text = "";
+global.qmenu_toast_t    = 0;   // frames remaining, counts down; 0 = hidden
+global.qmenu_toast_dur  = 90;  // total duration in frames (~1.5s at 60fps)
+global.qmenu_toast_col  = c_white;
 global.nodepad = 40
 _was_entering_text = false;
 box_select_active  = false;

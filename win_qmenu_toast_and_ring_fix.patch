@@ -1,0 +1,137 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index a0e3459..17356f0 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -243,6 +243,10 @@ global.gui_mouse_y = 0;
+ global.gui_w       = 0;
+ global.is_any_text_active = false;
+ global.user_quick_menu = []; // {type, label} entries added via SHIFT+Q, max 24
++global.qmenu_toast_text = "";
++global.qmenu_toast_t    = 0;   // frames remaining, counts down; 0 = hidden
++global.qmenu_toast_dur  = 90;  // total duration in frames (~1.5s at 60fps)
++global.qmenu_toast_col  = c_white;
+ global.nodepad = 40
+ _was_entering_text = false;
+ box_select_active  = false;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index c3cf153..9a57751 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -3245,6 +3245,37 @@ if (global.c64u_status_t > 0) {
+ 	
+ }
+ 
++// --- QUICK MENU add/remove toast — fades in, holds, fades out while
++// floating upward from screen middle. Triggered by SHIFT+Q (add) and
++// right-click-to-remove inside the Q radial menu. ---
++if (global.qmenu_toast_t > 0) {
++    var _qt_dur     = global.qmenu_toast_dur;
++    var _qt_elapsed = _qt_dur - global.qmenu_toast_t;
++    var _qt_norm    = _qt_elapsed / _qt_dur;
++
++    var _qt_alpha = 1.0;
++    if (_qt_norm < 0.15) {
++        _qt_alpha = _qt_norm / 0.15;
++    } else if (_qt_norm > 0.7) {
++        _qt_alpha = 1.0 - ((_qt_norm - 0.7) / 0.3);
++    }
++    _qt_alpha = clamp(_qt_alpha, 0, 1);
++
++    var _qt_float = 60 * _qt_norm; // floats up 60px total over its lifetime
++
++    draw_set_font(fnt_C64_Angled_big);
++    draw_set_halign(fa_center);
++    draw_set_valign(fa_top);
++    draw_set_alpha(_qt_alpha);
++    draw_set_colour(global.qmenu_toast_col);
++    draw_text(1920 / 2, 500 - _qt_float, global.qmenu_toast_text);
++    draw_set_alpha(1.0);
++    draw_set_halign(fa_left);
++    draw_set_valign(fa_top);
++
++    global.qmenu_toast_t -= 1;
++}
++
+ // ============================================================
+ // VARIABLE DELETE — BLOCKED REFERENCE WARNING (left side)
+ // Populated by the RMB-delete guard in obj_c64_node Step.
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index c95bb77..6068b0b 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -1335,7 +1335,11 @@ if (qmenu_active) {
+ // logic below — no extra guarding needed between the two.
+ if (gui_menu_open == 0 && hover_macro_type != ""
+     && keyboard_check(vk_shift) && keyboard_check_pressed(ord("Q"))) {
+-    scr_uqmenu_add_item(hover_macro_type, hover_macro_title);
++    if (scr_uqmenu_add_item(hover_macro_type, hover_macro_title)) {
++        global.qmenu_toast_text = "ADDED \"" + hover_macro_title + "\" to Quick menu (Q)";
++        global.qmenu_toast_col  = c_lime;
++        global.qmenu_toast_t    = global.qmenu_toast_dur;
++    }
+ }
+ 
+ // --- Q CUSTOM QUICK-SPAWN MENU (user-built, circular) ---
+@@ -1380,7 +1384,11 @@ if (uqmenu_active) {
+             // right-click on "the same spot" would silently hit whatever
+             // slid into that position instead.
+             if (uqmenu_hover > -1 && mouse_check_button_pressed(mb_right)) {
++                var _uqmenu_removed_label = global.user_quick_menu[uqmenu_hover].label;
+                 scr_uqmenu_remove_item(uqmenu_hover);
++                global.qmenu_toast_text = "REMOVED \"" + _uqmenu_removed_label + "\" from Quick menu";
++                global.qmenu_toast_col  = make_color_rgb(255, 140, 60);
++                global.qmenu_toast_t    = global.qmenu_toast_dur;
+                 uqmenu_active = false;
+                 uqmenu_open   = false;
+                 uqmenu_hover  = -1;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_uqmenu_add_item/scr_uqmenu_add_item.gml b/C64DevMachine_win.yyp/scripts/scr_uqmenu_add_item/scr_uqmenu_add_item.gml
+index 770e712..d940ae0 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_uqmenu_add_item/scr_uqmenu_add_item.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_uqmenu_add_item/scr_uqmenu_add_item.gml
+@@ -1,12 +1,13 @@
+ function scr_uqmenu_add_item(_type, _label) {
+     for (var _i = 0; _i < array_length(global.user_quick_menu); _i++) {
+         if (global.user_quick_menu[_i].type == _type) {
+-            exit;
++            return false;
+         }
+     }
+     if (array_length(global.user_quick_menu) >= 24) {
+-        exit;
++        return false;
+     }
+     array_push(global.user_quick_menu, { type: _type, label: _label });
+     scr_uqmenu_save();
++    return true;
+ }
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_uqmenu_layout_circular/scr_uqmenu_layout_circular.gml b/C64DevMachine_win.yyp/scripts/scr_uqmenu_layout_circular/scr_uqmenu_layout_circular.gml
+index ffc198d..5e3b9fb 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_uqmenu_layout_circular/scr_uqmenu_layout_circular.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_uqmenu_layout_circular/scr_uqmenu_layout_circular.gml
+@@ -29,15 +29,23 @@ function scr_uqmenu_layout_circular(_index, _count, _cx, _cy, _label) {
+     var _outer_count = min(ceil(_count * 0.6), 14);
+     var _inner_count = _count - _outer_count;
+ 
++    // Radius scales with how many items are actually on that ring, using
++    // the same growth rate as the single-ring tier above — otherwise a
++    // ring that only just tipped into two-ring territory (e.g. 7 items on
++    // the outer ring) ends up spread across a radius sized for far more
++    // items than it actually holds.
++    var _outer_radius = clamp(150 + max(0, _outer_count - 5) * 10, 150, 220);
++    var _inner_radius  = clamp(90  + max(0, _inner_count - 3) * 10, 90, 150);
++
+     var _ring_index, _ring_count, _radius;
+     if (_index < _outer_count) {
+         _ring_index = _index;
+         _ring_count = _outer_count;
+-        _radius     = 190;
++        _radius     = _outer_radius;
+     } else {
+         _ring_index = _index - _outer_count;
+         _ring_count = _inner_count;
+-        _radius     = 110;
++        _radius     = _inner_radius;
+     }
+ 
+     var _angle = 90 - (_ring_index * (360 / _ring_count));

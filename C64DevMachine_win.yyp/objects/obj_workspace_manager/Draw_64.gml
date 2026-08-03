@@ -3245,6 +3245,37 @@ if (global.c64u_status_t > 0) {
 	
 }
 
+// --- QUICK MENU add/remove toast — fades in, holds, fades out while
+// floating upward from screen middle. Triggered by SHIFT+Q (add) and
+// right-click-to-remove inside the Q radial menu. ---
+if (global.qmenu_toast_t > 0) {
+    var _qt_dur     = global.qmenu_toast_dur;
+    var _qt_elapsed = _qt_dur - global.qmenu_toast_t;
+    var _qt_norm    = _qt_elapsed / _qt_dur;
+
+    var _qt_alpha = 1.0;
+    if (_qt_norm < 0.15) {
+        _qt_alpha = _qt_norm / 0.15;
+    } else if (_qt_norm > 0.7) {
+        _qt_alpha = 1.0 - ((_qt_norm - 0.7) / 0.3);
+    }
+    _qt_alpha = clamp(_qt_alpha, 0, 1);
+
+    var _qt_float = 60 * _qt_norm; // floats up 60px total over its lifetime
+
+    draw_set_font(fnt_C64_Angled_big);
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_top);
+    draw_set_alpha(_qt_alpha);
+    draw_set_colour(global.qmenu_toast_col);
+    draw_text(1920 / 2, 500 - _qt_float, global.qmenu_toast_text);
+    draw_set_alpha(1.0);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
+
+    global.qmenu_toast_t -= 1;
+}
+
 // ============================================================
 // VARIABLE DELETE — BLOCKED REFERENCE WARNING (left side)
 // Populated by the RMB-delete guard in obj_c64_node Step.

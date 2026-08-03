@@ -1335,7 +1335,11 @@ if (qmenu_active) {
 // logic below — no extra guarding needed between the two.
 if (gui_menu_open == 0 && hover_macro_type != ""
     && keyboard_check(vk_shift) && keyboard_check_pressed(ord("Q"))) {
-    scr_uqmenu_add_item(hover_macro_type, hover_macro_title);
+    if (scr_uqmenu_add_item(hover_macro_type, hover_macro_title)) {
+        global.qmenu_toast_text = "ADDED \"" + hover_macro_title + "\" to Quick menu (Q)";
+        global.qmenu_toast_col  = c_lime;
+        global.qmenu_toast_t    = global.qmenu_toast_dur;
+    }
 }
 
 // --- Q CUSTOM QUICK-SPAWN MENU (user-built, circular) ---
@@ -1380,7 +1384,11 @@ if (uqmenu_active) {
             // right-click on "the same spot" would silently hit whatever
             // slid into that position instead.
             if (uqmenu_hover > -1 && mouse_check_button_pressed(mb_right)) {
+                var _uqmenu_removed_label = global.user_quick_menu[uqmenu_hover].label;
                 scr_uqmenu_remove_item(uqmenu_hover);
+                global.qmenu_toast_text = "REMOVED \"" + _uqmenu_removed_label + "\" from Quick menu";
+                global.qmenu_toast_col  = make_color_rgb(255, 140, 60);
+                global.qmenu_toast_t    = global.qmenu_toast_dur;
                 uqmenu_active = false;
                 uqmenu_open   = false;
                 uqmenu_hover  = -1;

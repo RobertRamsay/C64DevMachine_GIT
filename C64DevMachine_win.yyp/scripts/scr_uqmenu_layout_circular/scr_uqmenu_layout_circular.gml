@@ -29,15 +29,23 @@ function scr_uqmenu_layout_circular(_index, _count, _cx, _cy, _label) {
     var _outer_count = min(ceil(_count * 0.6), 14);
     var _inner_count = _count - _outer_count;
 
+    // Radius scales with how many items are actually on that ring, using
+    // the same growth rate as the single-ring tier above — otherwise a
+    // ring that only just tipped into two-ring territory (e.g. 7 items on
+    // the outer ring) ends up spread across a radius sized for far more
+    // items than it actually holds.
+    var _outer_radius = clamp(150 + max(0, _outer_count - 5) * 10, 150, 220);
+    var _inner_radius  = clamp(90  + max(0, _inner_count - 3) * 10, 90, 150);
+
     var _ring_index, _ring_count, _radius;
     if (_index < _outer_count) {
         _ring_index = _index;
         _ring_count = _outer_count;
-        _radius     = 190;
+        _radius     = _outer_radius;
     } else {
         _ring_index = _index - _outer_count;
         _ring_count = _inner_count;
-        _radius     = 110;
+        _radius     = _inner_radius;
     }
 
     var _angle = 90 - (_ring_index * (360 / _ring_count));
