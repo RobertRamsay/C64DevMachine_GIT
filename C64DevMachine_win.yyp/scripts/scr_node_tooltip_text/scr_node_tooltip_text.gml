@@ -16,7 +16,8 @@ function scr_node_tooltip_text(_node_type) {
                 "",
                 "Sets screen/char/bitmap base pointers, $D011/$D016",
                 "mode bits, and border/background colours in one node.",
-                "Usually the first macro on the spine after INIT."
+                "Usually the first macro on the spine after INIT.",
+				"Or IRQ based mode changes."
             ]
         },
 
@@ -31,10 +32,10 @@ function scr_node_tooltip_text(_node_type) {
                 "so the printed slice can shift at runtime - e.g.",
                 "paging through a longer block of asset text.",
                 "",
-                "COL sets the single text colour (0-15) - not a fill,",
-                "just the colour the characters print in.",
+                "COL sets the single text colour (0-15),",
+                "\n",
                 "PRE-CLEAR optionally wipes screen RAM before printing.",
-                "",
+				"\n",
                 "H/V alignment can auto-left/centre/right and",
                 "top/mid/bottom the text instead of a fixed X/Y."
             ]
@@ -147,7 +148,12 @@ function scr_node_tooltip_text(_node_type) {
                 "a chosen row, one character-column per call.",
                 "",
                 "Speed, direction, screen row, and a working RAM",
-                "buffer address are all configurable per node."
+                "buffer address are all configurable per node.",
+				"\n",
+				"_col01 , _spd03 , _trk02 , _wait : are current commands you can",
+				"add, they become hidden and applied as the scroller meets them."
+				
+		
             ]
         },
 
