@@ -2136,6 +2136,82 @@ if (build_trigger && !global.asset_reload_in_progress) {
             exit;
         }
 
+        // =============================================================
+        // SAFETY: Warn if the spine has no core loop and doesn't return
+        // A "core loop" is a connected LABEL earlier in the chain whose
+        // name is targeted by a connected JMP/JMP_ABS/JMP_IND further
+        // down it (name-linked, label-before-jump). If none exists and
+        // the spine's last node isn't RTS/RTI either, the C64 will run
+        // off the end of the program into whatever memory follows it —
+        // "bad code." Offer to append an RTS node and re-build.
+        // =============================================================
+        if (!ds_list_empty(global.node_chain)) {
+            // Scan every CONNECTED node in the whole workspace, not just the
+            // linear main-spine chain — a loop can just as validly live
+            // inside an ORG block (org_parent != noone), which global.node_chain
+            // deliberately excludes from the main traversal.
+            var _loop_labels      = {};
+            var _loop_jmp_targets = [];
+
+            with (obj_c64_node) {
+                if (!is_connected) continue;
+                if (array_length(instructions) == 0 || array_length(instructions[0]) == 0) continue;
+                var _cmnem = string_lower(string(instructions[0][0]));
+
+                if (_cmnem == "label" && array_length(instructions[0]) > 1) {
+                    _loop_labels[$ string(instructions[0][1])] = true;
+                } else if ((_cmnem == "jmp" || _cmnem == "jmp_abs" || _cmnem == "jmp_ind")
+                        && array_length(instructions[0]) > 1) {
+                    array_push(_loop_jmp_targets, string(instructions[0][1]));
+                }
+            }
+
+            var _core_loop_found = false;
+            for (var _jti = 0; _jti < array_length(_loop_jmp_targets); _jti++) {
+                if (variable_struct_exists(_loop_labels, _loop_jmp_targets[_jti])) {
+                    _core_loop_found = true;
+                    break;
+                }
+            }
+
+            var _chain_size = ds_list_size(global.node_chain);
+            var _tail_node  = ds_list_find_value(global.node_chain, _chain_size - 1);
+            var _tail_mnem = "";
+            if (array_length(_tail_node.instructions) > 0 && array_length(_tail_node.instructions[0]) > 0) {
+                _tail_mnem = string_lower(string(_tail_node.instructions[0][0]));
+            }
+            var _tail_is_return = (_tail_mnem == "rts" || _tail_mnem == "rti");
+
+            if (!_core_loop_found && !_tail_is_return) {
+                if (scr_show_question_bool("No core loop or RTS found in your spine.\n\nWithout one of these, the C64 will run off the end of your program into whatever memory comes next - usually a crash.\n\nAdd an RTS node at the end so it returns cleanly instead?")) {
+                    var _rts_x = _tail_node.x;
+                    var _rts_y = _tail_node.y + _tail_node.height + 20;
+                    var _rts_n = instance_create_depth(_rts_x, _rts_y, -500, obj_c64_node);
+                    _rts_n.node_title   = "RTS";
+                    _rts_n.node_type    = "NORMAL";
+                    _rts_n.instructions = [["rts"]];
+                    with (_rts_n) { event_user(0); }
+                    _rts_n.pc_address         = 0;
+                    _rts_n.is_connected       = true;
+                    _rts_n.height_dirty       = true;
+                    _rts_n.last_overlap_check = false;
+                    with (obj_c64_node) { last_overlap_check = false; overlap_check_dirty = true; }
+
+                    global.undo_dirty        = true;
+                    global.addresses_dirty   = true;
+                    global.node_change_dirty = true;
+					scr_c64_do_update_addresses();
+                    alarm[3] = 6;
+
+                    // Node just changed — let the spine rebuild and re-run
+                    // the build fresh next frame instead of continuing now
+                    // with a chain that no longer matches the graph.
+                    trigger_build = true;
+                    exit;
+                }
+            }
+        }
+
         show_debug_message("BUILD START: asset_reload_in_progress=" + string(global.asset_reload_in_progress));
         with (obj_asset_manager) {
             for (var _dbi = 0; _dbi < ds_list_size(asset_list); _dbi++) {
