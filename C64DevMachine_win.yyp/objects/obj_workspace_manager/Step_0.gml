@@ -1196,7 +1196,7 @@ if (!global.c64u_overlay_active && !global.any_picker_open) {
 	if (keyboard_check(vk_pageup))   cam_zoom_target -= zoom_speed * _pgzoom_mul;
 	if (keyboard_check(vk_pagedown)) cam_zoom_target += zoom_speed * _pgzoom_mul;
 }
-if (!is_entering_text && !global.is_any_text_active && !global.c64u_overlay_active && !global.any_picker_open) {
+if (!is_entering_text && !global.is_any_text_active && !global.c64u_overlay_active && !global.any_picker_open && !obj_asset_manager.viewer_open) {
     var _pan_mul = 1.0;
     if (keyboard_check(vk_shift)) {
         _pan_mul = 3.0;
@@ -1408,7 +1408,7 @@ if (uqmenu_active) {
 }
 
 // --- NODE SPAWNING (blocked during text entry) ---
-if (!is_entering_text && !global.is_any_text_active) {
+if (!is_entering_text && !global.is_any_text_active and !obj_asset_manager.viewer_open) {
 
     // Block shortcut spawning when hovering a connected node that isn't a
     // NORMAL node (i.e. a macro/data/etc node) — only NORMAL nodes are
@@ -1680,7 +1680,6 @@ if (keyboard_check_pressed(ord("C")) && keyboard_check(vk_shift) && !keyboard_ch
     alarm[3] = 6;
 }
 
-
 if (keyboard_check_pressed(ord("D")) && keyboard_check(vk_shift) && !keyboard_check(vk_control) && !keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
     // DEC family cycle (matches palette grid)
     // Mix of implied (DEX/DEY, no operand) and addressed (DEC_xxx, with operand)
@@ -1807,7 +1806,6 @@ if (keyboard_check_pressed(ord("T")) && !keyboard_check(vk_control) && !keyboard
     alarm[3] = 6;
 }
 
-
 if (keyboard_check_pressed(ord("L")) && !keyboard_check(vk_shift) && !keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
     // LDA addressing-mode cycle order (matches palette grid left-to-right, top-to-bottom)
     var _lda_cycle    = ["lda_imm", "lda_zp", "lda_zpx", "lda_abs", "lda_abx", "lda_aby", "lda_izx", "lda_izy"];
@@ -1885,8 +1883,6 @@ if (keyboard_check_pressed(ord("L")) && keyboard_check(vk_shift) && !obj_workspa
     global.undo_dirty = true;
     alarm[3] = 6;
 }
-
-
 
 if (keyboard_check_pressed(ord("L")) && keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
     // LDY addressing-mode cycle order (no ZPY, no ABY, no IZX/IZY - Y can't index itself)

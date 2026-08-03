@@ -59,6 +59,7 @@ welcome_whats_new = [
     "MACRO REU - Handles various RAM Expansion data",
 	"TOOLTIPS - Hover the cursor at the top right of a macro",
     "BUGFIX - Version detecion on mac was flawed",
+    "BUGFIX - Music Maker keys were landing in mains workspace",
 	"TWEAK - Autosave detection has a 2nd question to stop asking.",
     "TWEAK - Adding (shift+Q over macro in menu) or removing (right-click in Q-menu)",
 	"TWEAK - Bitmap editor Line tool now shows correct width when drawing.",
