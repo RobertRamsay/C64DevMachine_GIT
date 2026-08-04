@@ -2,11 +2,22 @@
 /// Handles LMB input for MACRO_MOVE nodes.
 function scr_node_step_macro_move(_draw_x) {
     // ensure instruction array is long enough
-    while (array_length(instructions[0]) < 11) {
+    while (array_length(instructions[0]) < 15) {
         array_push(instructions[0], 0);
     }
     if (!is_string(instructions[0][8]))  instructions[0][8]  = "";
     if (!is_string(instructions[0][10])) instructions[0][10] = "";
+    // Fresh 0s from the guard above look wrong for x_min/x_max/y_min/y_max on
+    // an older saved node that predates these fields — give them the same
+    // on-screen defaults a new node spawns with.
+    if (real(instructions[0][11]) == 0 && real(instructions[0][12]) == 0) {
+        instructions[0][11] = 24;
+        instructions[0][12] = 231;
+    }
+    if (real(instructions[0][13]) == 0 && real(instructions[0][14]) == 0) {
+        instructions[0][13] = 50;
+        instructions[0][14] = 229;
+    }
 
     var _dx_mod = real(instructions[0][5]);
     var _dy_mod = real(instructions[0][6]);
@@ -78,6 +89,7 @@ function scr_node_step_macro_move(_draw_x) {
         scr_undo_snapshot();
         instructions[0][5] = (_dx_mod == 0) ? 1 : 0;
         global.addresses_dirty = true;
+        height_dirty = true;
         exit;
     }
 
@@ -126,6 +138,7 @@ function scr_node_step_macro_move(_draw_x) {
         scr_undo_snapshot();
         instructions[0][6] = (_dy_mod == 0) ? 1 : 0;
         global.addresses_dirty = true;
+        height_dirty = true;
         exit;
     }
 
@@ -144,6 +157,76 @@ function scr_node_step_macro_move(_draw_x) {
         instructions[0][4] = (real(instructions[0][4]) == 1) ? 0 : 1;
         global.addresses_dirty = true;
         exit;
+    }
+
+    // ---- STOP-mode bound rows — same geometry as the draw script; only
+    // reachable when the matching axis is actually in STOP mode, since
+    // that's the only time these rows are drawn at all. ----
+    var _next_row  = _row4 + 20;
+    var _bnd_lbl_w = 44;
+    var _bnd_bw    = 46;
+    var _bnd_gap   = 6;
+
+    if (_dx_mod == 1) {
+        var _xmin_x1 = _draw_x + 30 + _bnd_lbl_w;
+        var _xmin_x2 = _xmin_x1 + _bnd_bw;
+        var _xmax_x1 = _xmin_x2 + _bnd_gap;
+        var _xmax_x2 = _xmax_x1 + _bnd_bw;
+
+        if (point_in_rectangle(mouse_x, mouse_y, _xmin_x1, _next_row, _xmin_x2, _next_row + 18)) {
+            with (obj_workspace_manager) {
+                is_entering_text     = true;
+                input_target_node    = other.id;
+                input_target_index   = 11;
+                current_input_string = string(other.instructions[0][11]);
+                keyboard_string      = "";
+                cursor_pos           = string_length(current_input_string);
+            }
+            exit;
+        }
+        if (point_in_rectangle(mouse_x, mouse_y, _xmax_x1, _next_row, _xmax_x2, _next_row + 18)) {
+            with (obj_workspace_manager) {
+                is_entering_text     = true;
+                input_target_node    = other.id;
+                input_target_index   = 12;
+                current_input_string = string(other.instructions[0][12]);
+                keyboard_string      = "";
+                cursor_pos           = string_length(current_input_string);
+            }
+            exit;
+        }
+        _next_row += 20;
+    }
+
+    if (_dy_mod == 1) {
+        var _ymin_x1 = _draw_x + 30 + _bnd_lbl_w;
+        var _ymin_x2 = _ymin_x1 + _bnd_bw;
+        var _ymax_x1 = _ymin_x2 + _bnd_gap;
+        var _ymax_x2 = _ymax_x1 + _bnd_bw;
+
+        if (point_in_rectangle(mouse_x, mouse_y, _ymin_x1, _next_row, _ymin_x2, _next_row + 18)) {
+            with (obj_workspace_manager) {
+                is_entering_text     = true;
+                input_target_node    = other.id;
+                input_target_index   = 13;
+                current_input_string = string(other.instructions[0][13]);
+                keyboard_string      = "";
+                cursor_pos           = string_length(current_input_string);
+            }
+            exit;
+        }
+        if (point_in_rectangle(mouse_x, mouse_y, _ymax_x1, _next_row, _ymax_x2, _next_row + 18)) {
+            with (obj_workspace_manager) {
+                is_entering_text     = true;
+                input_target_node    = other.id;
+                input_target_index   = 14;
+                current_input_string = string(other.instructions[0][14]);
+                keyboard_string      = "";
+                cursor_pos           = string_length(current_input_string);
+            }
+            exit;
+        }
+        _next_row += 20;
     }
 
     exit;

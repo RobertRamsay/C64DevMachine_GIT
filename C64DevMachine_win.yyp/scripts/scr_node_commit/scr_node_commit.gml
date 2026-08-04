@@ -349,11 +349,22 @@
 		
 		// --- MACRO_MOVE ---
 		} else if (_target.node_type == "MACRO_MOVE") {
-		    var _is_neg = (string_char_at(_input, 1) == "-");
-		    var _digits = string_digits(_input);
-		    var _val    = (_digits != "") ? real(_digits) : 0;
-		    if (_is_neg) _val = -_val;
-		    _target.instructions[0][_idx] = clamp(_val, -15, 15);
+		    if (_idx == 2 || _idx == 3) {
+		        // DX / DY literal delta — signed, -15..15
+		        var _is_neg = (string_char_at(_input, 1) == "-");
+		        var _digits = string_digits(_input);
+		        var _val    = (_digits != "") ? real(_digits) : 0;
+		        if (_is_neg) _val = -_val;
+		        _target.instructions[0][_idx] = clamp(_val, -15, 15);
+		    } else if (_idx == 11 || _idx == 12) {
+		        // MIN X / MAX X — unsigned, full 9-bit reach for wide-X mode
+		        var _digits = string_digits(_input);
+		        _target.instructions[0][_idx] = clamp((_digits != "") ? real(_digits) : 0, 0, 343);
+		    } else if (_idx == 13 || _idx == 14) {
+		        // MIN Y / MAX Y — unsigned, 0-255
+		        var _digits = string_digits(_input);
+		        _target.instructions[0][_idx] = clamp((_digits != "") ? real(_digits) : 0, 0, 255);
+		    }
 
 		// --- MACRO_SEEK ---
 		} else if (_target.node_type == "MACRO_SEEK") {

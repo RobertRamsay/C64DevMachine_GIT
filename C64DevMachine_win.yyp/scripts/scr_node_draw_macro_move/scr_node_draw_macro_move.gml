@@ -11,6 +11,11 @@
 ///   [8] dx_var_name  : string
 ///   [9] dy_use_var   : 0 or 1
 ///  [10] dy_var_name  : string
+///  [11] x_min        : literal, STOP-mode left/lower bound for X (default 24)
+///  [12] x_max        : literal, STOP-mode right/upper bound for X (default 231; raise
+///                       above 255 yourself once wide_x is on if you want it to travel further)
+///  [13] y_min        : literal, STOP-mode top bound for Y (default 50)
+///  [14] y_max        : literal, STOP-mode bottom bound for Y (default 229)
 function scr_node_draw_macro_move(_draw_x) {
 
     // ---- unpack instructions ----
@@ -24,6 +29,10 @@ function scr_node_draw_macro_move(_draw_x) {
     var _dx_vnm = (array_length(instructions[0]) > 8) ? string(instructions[0][8]) : "";
     var _dy_uv  = (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) ? real(instructions[0][9]) : 0;
     var _dy_vnm = (array_length(instructions[0]) > 10) ? string(instructions[0][10]) : "";
+    var _x_min  = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 24;
+    var _x_max  = (array_length(instructions[0]) > 12 && is_real(instructions[0][12])) ? real(instructions[0][12]) : 231;
+    var _y_min  = (array_length(instructions[0]) > 13 && is_real(instructions[0][13])) ? real(instructions[0][13]) : 50;
+    var _y_max  = (array_length(instructions[0]) > 14 && is_real(instructions[0][14])) ? real(instructions[0][14]) : 229;
 
     // ---- build bit array from mask ----
     var _bits = array_create(8);
@@ -188,4 +197,73 @@ function scr_node_draw_macro_move(_draw_x) {
         draw_set_color(make_color_rgb(120, 100, 80));
     }
     draw_text(_draw_x + 6 + _chk_sz + 5, _row4, "9TH BIT (X>255)");
+
+    // ---- STOP-mode bound rows — only shown for an axis actually in STOP,
+    // so WRAP-only setups don't waste a row on fields they never use. ----
+    var _next_row = _row4 + 20;
+    var _bnd_lbl_w = 44;
+    var _bnd_bw    = 46;
+    var _bnd_gap   = 6;
+
+    if (_dx_mod == 1) {
+        draw_set_font(fnt_c64_pico);
+        draw_set_color(make_color_rgb(160, 160, 160));
+        draw_text(_draw_x + 10, _next_row+4, "MIN/MAX X:");
+draw_set_font(fnt_C64_Angled);
+        var _xmin_x1 = _draw_x + 30 + _bnd_lbl_w;
+        var _xmin_x2 = _xmin_x1 + _bnd_bw;
+        var _xmax_x1 = _xmin_x2 + _bnd_gap;
+        var _xmax_x2 = _xmax_x1 + _bnd_bw;
+
+        var _xmin_hov = point_in_rectangle(mouse_x, mouse_y, _xmin_x1, _next_row, _xmin_x2, _next_row + 18);
+        draw_set_color(_xmin_hov ? make_color_rgb(50, 80, 50) : make_color_rgb(30, 45, 30));
+        draw_rectangle(_xmin_x1, _next_row, _xmin_x2, _next_row + 18, false);
+        draw_set_color(make_color_rgb(60, 100, 60));
+        draw_rectangle(_xmin_x1, _next_row, _xmin_x2, _next_row + 18, true);
+        draw_set_color(make_color_rgb(100, 220, 100));
+        draw_set_halign(fa_center);
+        draw_text(_xmin_x1 + (_xmin_x2 - _xmin_x1) / 2, _next_row + 2, string(_x_min));
+
+        var _xmax_hov = point_in_rectangle(mouse_x, mouse_y, _xmax_x1, _next_row, _xmax_x2, _next_row + 18);
+        draw_set_color(_xmax_hov ? make_color_rgb(50, 80, 50) : make_color_rgb(30, 45, 30));
+        draw_rectangle(_xmax_x1, _next_row, _xmax_x2, _next_row + 18, false);
+        draw_set_color(make_color_rgb(60, 100, 60));
+        draw_rectangle(_xmax_x1, _next_row, _xmax_x2, _next_row + 18, true);
+        draw_set_color(make_color_rgb(100, 220, 100));
+        draw_text(_xmax_x1 + (_xmax_x2 - _xmax_x1) / 2, _next_row + 2, string(_x_max));
+        draw_set_halign(fa_left);
+
+        _next_row += 20;
+    }
+
+    if (_dy_mod == 1) {
+        draw_set_font(fnt_c64_pico);
+        draw_set_color(make_color_rgb(160, 160, 160));
+        draw_text(_draw_x + 10, _next_row+4, "MIN/MAX Y:");
+draw_set_font(fnt_C64_Angled);
+        var _ymin_x1 = _draw_x + 30 + _bnd_lbl_w;
+        var _ymin_x2 = _ymin_x1 + _bnd_bw;
+        var _ymax_x1 = _ymin_x2 + _bnd_gap;
+        var _ymax_x2 = _ymax_x1 + _bnd_bw;
+
+        var _ymin_hov = point_in_rectangle(mouse_x, mouse_y, _ymin_x1, _next_row, _ymin_x2, _next_row + 18);
+        draw_set_color(_ymin_hov ? make_color_rgb(50, 80, 50) : make_color_rgb(30, 45, 30));
+        draw_rectangle(_ymin_x1, _next_row, _ymin_x2, _next_row + 18, false);
+        draw_set_color(make_color_rgb(60, 100, 60));
+        draw_rectangle(_ymin_x1, _next_row, _ymin_x2, _next_row + 18, true);
+        draw_set_color(make_color_rgb(100, 220, 100));
+        draw_set_halign(fa_center);
+        draw_text(_ymin_x1 + (_ymin_x2 - _ymin_x1) / 2, _next_row + 2, string(_y_min));
+
+        var _ymax_hov = point_in_rectangle(mouse_x, mouse_y, _ymax_x1, _next_row, _ymax_x2, _next_row + 18);
+        draw_set_color(_ymax_hov ? make_color_rgb(50, 80, 50) : make_color_rgb(30, 45, 30));
+        draw_rectangle(_ymax_x1, _next_row, _ymax_x2, _next_row + 18, false);
+        draw_set_color(make_color_rgb(60, 100, 60));
+        draw_rectangle(_ymax_x1, _next_row, _ymax_x2, _next_row + 18, true);
+        draw_set_color(make_color_rgb(100, 220, 100));
+        draw_text(_ymax_x1 + (_ymax_x2 - _ymax_x1) / 2, _next_row + 2, string(_y_max));
+        draw_set_halign(fa_left);
+
+        _next_row += 20;
+    }
 }

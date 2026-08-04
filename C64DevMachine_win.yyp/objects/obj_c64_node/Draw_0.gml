@@ -85,8 +85,13 @@ if (height_dirty) {
 	case "INIT":        height = _G * 4; break;          // 80
     case "ORG":         height = _G * 4; break;          // 80
     case "LABEL":       height = _G * 2; break;          // 60
-    case "MACRO_SPR":   height = _G * 7;  break;         // 180
+    case "MACRO_MOVE":
+        var _mm_dx_mod = (array_length(instructions[0]) > 5 && is_real(instructions[0][5])) ? real(instructions[0][5]) : 0;
+        var _mm_dy_mod = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
+        height = _G * 7 + (_mm_dx_mod == 1 ? _G : 0) + (_mm_dy_mod == 1 ? _G : 0);
+        break;
     case "MACRO_SID":    height = _G * 5;  break;         //
+    case "MACRO_SPR":   height = _G * 7;  break;         // 180
     case "MACRO_LOADER": height = _G * 5;  break;         // 120 — picker + status rows
     case "MACRO_SAVE_GAME": height = _G * 5;  break;
     case "MACRO_LOAD_GAME": height = _G * 5;  break;
@@ -128,7 +133,7 @@ if (height_dirty) {
 	case "MACRO_METAMAP":    height = _G * 8;   break;
 	case "MACRO_MAP_SWITCH": height = _G * 5;   break;         
     case "MACRO_VIC":   height = _G * 6; break;         
-	case "MACRO_MOVE":    height = _G * 7; break;
+	
 	case "MACRO_SEEK":    height = _G * 11; break;
 	case "MACRO_MOVE_MEM":    height = _G * 4; break;
 	case "MACRO_MOVE_BMP_BLOCK": height = _G * 11; break;
