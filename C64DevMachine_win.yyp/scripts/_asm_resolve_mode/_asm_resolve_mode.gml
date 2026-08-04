@@ -118,7 +118,7 @@ function _asm_resolve_mode(_mnem, _op) {
         if (_idx_part == "Y") {
             if (_is_label) return [_ml + "_abs_y", _addr_part, _addr_part];
             var _v = _asm_val(_addr_part);
-            var _is_zp = (_v <= 0xFF && (_ml == "ldx" || _ml == "stx"));
+            var _is_zp = (_v <= 0xFF && (_ml == "ldx" || _ml == "stx" || _ml == "lax" || _ml == "sax"));
             return [_ml + (_is_zp ? "_zpy" : "_abs_y"), _v];
         }
     }

@@ -348,6 +348,70 @@ assemble_instruction: function(_mnem, _val) {
 				case "sax_abs":  self.add([0x8F, _val&0xFF, _val>>8]); break;
 				case "sax_zpy":  self.add([0x97, _val]); break;
 				case "sax_izx":  self.add([0x83, _val]); break;
+
+				// ── EXTENDED ILLEGAL OPCODES (demoscene set) ──
+				// The shelf only exposes the 7 "stable" illegals above as fixed-mode
+				// buttons, but the opcode metadata table has always documented byte
+				// values for the rest — this just wires those up so anything typed
+				// as text in the code editor (or added as a node later) actually
+				// assembles instead of silently emitting nothing.
+				case "dcp_zp":   self.add([0xC7, _val]); break;
+				case "dcp_zpx":  self.add([0xD7, _val]); break;
+				case "dcp_abx":  self.add([0xDF, _val&0xFF, _val>>8]); break;
+				case "dcp_aby":  self.add([0xDB, _val&0xFF, _val>>8]); break;
+				case "dcp_izx":  self.add([0xC3, _val]); break;
+				case "dcp_izy":  self.add([0xD3, _val]); break;
+
+				case "isc_zp":   self.add([0xE7, _val]); break;
+				case "isc_zpx":  self.add([0xF7, _val]); break;
+				case "isc_abx":  self.add([0xFF, _val&0xFF, _val>>8]); break;
+				case "isc_aby":  self.add([0xFB, _val&0xFF, _val>>8]); break;
+				case "isc_izx":  self.add([0xE3, _val]); break;
+				case "isc_izy":  self.add([0xF3, _val]); break;
+
+				case "rla_zp":   self.add([0x27, _val]); break;
+				case "rla_zpx":  self.add([0x37, _val]); break;
+				case "rla_abx":  self.add([0x3F, _val&0xFF, _val>>8]); break;
+				case "rla_aby":  self.add([0x3B, _val&0xFF, _val>>8]); break;
+				case "rla_izx":  self.add([0x23, _val]); break;
+				case "rla_izy":  self.add([0x33, _val]); break;
+
+				case "rra_zp":   self.add([0x67, _val]); break;
+				case "rra_zpx":  self.add([0x77, _val]); break;
+				case "rra_abs":  self.add([0x6F, _val&0xFF, _val>>8]); break;
+				case "rra_abx":  self.add([0x7F, _val&0xFF, _val>>8]); break;
+				case "rra_aby":  self.add([0x7B, _val&0xFF, _val>>8]); break;
+				case "rra_izx":  self.add([0x63, _val]); break;
+				case "rra_izy":  self.add([0x73, _val]); break;
+
+				case "slo_zp":   self.add([0x07, _val]); break;
+				case "slo_zpx":  self.add([0x17, _val]); break;
+				case "slo_abx":  self.add([0x1F, _val&0xFF, _val>>8]); break;
+				case "slo_aby":  self.add([0x1B, _val&0xFF, _val>>8]); break;
+				case "slo_izx":  self.add([0x03, _val]); break;
+				case "slo_izy":  self.add([0x13, _val]); break;
+
+				case "sre_zp":   self.add([0x47, _val]); break;
+				case "sre_zpx":  self.add([0x57, _val]); break;
+				case "sre_abx":  self.add([0x5F, _val&0xFF, _val>>8]); break;
+				case "sre_aby":  self.add([0x5B, _val&0xFF, _val>>8]); break;
+				case "sre_izx":  self.add([0x43, _val]); break;
+				case "sre_izy":  self.add([0x53, _val]); break;
+
+				// Immediate-only illegals
+				case "anc_imm":  self.add([0x0B, _val]); break;
+				case "anc2_imm": self.add([0x2B, _val]); break; // same effect as anc_imm, different opcode byte
+				case "alr_imm":  self.add([0x4B, _val]); break;
+				case "arr_imm":  self.add([0x6B, _val]); break;
+				case "axs_imm":  self.add([0xCB, _val]); break;
+
+				// Unofficial NOPs — stable cycle-padding, safe on real hardware
+				case "nop_imm":  self.add([0x80, _val]); break;
+				case "nop_zp":   self.add([0x04, _val]); break;
+				case "nop_zpx":  self.add([0x14, _val]); break;
+				case "nop_abs":  self.add([0x0C, _val&0xFF, _val>>8]); break;
+				case "nop_abx":  self.add([0x1C, _val&0xFF, _val>>8]); break;
+
 				// PALETTE ALIASES - _zp_x / _abs_x / _ind_x style bridging to existing cases
 				// PALETTE ALIASES - only truly missing ones
 				case "adc_zp_x":  self._adc_zpx(_val); break; // $75
