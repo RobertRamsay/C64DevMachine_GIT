@@ -219,10 +219,14 @@ if (code_editor_cache_dirty) {
     var _full_parsed = scr_parse_asm_text(_txt);
     var _fpi = 0;
     
-    var _rep_stack = []; 
+    var _rep_stack = [];
+    code_editor_cached_line_cyc = array_create(_total_lines, 0);
+    code_editor_cached_run_cyc  = array_create(_total_lines, 0);
+    var _running_cyc = 0;
 
     for (var _pi = 0; _pi < _total_lines; _pi++) {
         code_editor_cached_pcs[_pi] = _rpc;
+        code_editor_cached_run_cyc[_pi] = _running_cyc;
         var _pline = string_trim(_lines[_pi]);
         var _p_low = string_lower(_pline);
 
@@ -233,7 +237,7 @@ if (code_editor_cache_dirty) {
             if (_open > 0) {
                 var _digit_str = string_digits(string_copy(_pline, 7, _open - 7));
                 var _cnt = (_digit_str != "") ? real(_digit_str) : 1;
-                array_push(_rep_stack, { s_pc: _rpc, s_fpi: _fpi, count: _cnt });
+                array_push(_rep_stack, { s_pc: _rpc, s_fpi: _fpi, s_cyc: _running_cyc, count: _cnt });
             }
             continue;
         }
@@ -243,8 +247,10 @@ if (code_editor_cache_dirty) {
                 var _rData = array_pop(_rep_stack);
                 var _blockSize = _rpc - _rData.s_pc;
                 var _blockInst = _fpi - _rData.s_fpi;
+                var _blockCyc  = _running_cyc - _rData.s_cyc;
                 _rpc += (_rData.count - 1) * _blockSize;
                 _fpi += (_rData.count - 1) * _blockInst;
+                _running_cyc += (_rData.count - 1) * _blockCyc;
             }
             continue;
         }
@@ -267,6 +273,9 @@ if (code_editor_cache_dirty) {
                 _rpc += array_length(_pinst) - 1;
             } else if (_ptype != "label" && _ptype != "const") {
                 _rpc += obj_opCodeManager.get_size(_ptype);
+                var _cyc = obj_opCodeManager.get_cycles(_ptype);
+                code_editor_cached_line_cyc[_pi] = _cyc;
+                _running_cyc += _cyc;
             }
         }
     }
@@ -1068,14 +1077,19 @@ var _g_is_valid = false;
 
     // ─── Stats bar ───
     var _stats = code_editor_cached_stats;
-    draw_set_font(fnt_c64_code); // Switched to main code font
-    draw_set_color(c_aqua);
-    // Positioned higher to account for larger font size
+    
+    var _cyc_this = 0;
+    var _cyc_to = 0;
+    if (is_array(code_editor_cached_line_cyc) && _cur_line < array_length(code_editor_cached_line_cyc)) {
+        _cyc_this = code_editor_cached_line_cyc[_cur_line];
+        _cyc_to = code_editor_cached_run_cyc[_cur_line] + _cyc_this;
+    }
 
-    draw_set_color(make_color_rgb(200, 170, 140)); // Slightly brighter dim color
-    draw_text(_px + 8, _py + _ph - 34, 
-              "L" + string(_cur_line + 1) + ":" + string(_cur_col + 1) + 
-              "  (" + string(_total_lines) + " LINES)    " + string(_stats[0]) + " BYTES  " + string(_stats[1]) + " CYC");
+    draw_set_font(fnt_c64_code); // Switched to main code font
+    draw_set_color(make_color_rgb(200, 170, 140)); // Slightly brighter dim color
+    draw_text(_px + 8, _py + _ph - 34, 
+              "L" + string(_cur_line + 1) + ":" + string(_cur_col + 1) + 
+              "  (" + string(_total_lines) + " LINES)    " + string(_stats[0]) + " BYTES    " + string(_stats[1]) + " CYC (TOTAL)    CYCLES TO LINE: " + string(_cyc_to) + "    THIS LINE: " + string(_cyc_this));
 
     // ─── Hints bar ───
     draw_set_color(make_color_rgb(100, 180, 200));
