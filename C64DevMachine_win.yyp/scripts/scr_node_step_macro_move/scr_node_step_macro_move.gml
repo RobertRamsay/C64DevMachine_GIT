@@ -11,11 +11,11 @@ function scr_node_step_macro_move(_draw_x) {
     // an older saved node that predates these fields — give them the same
     // on-screen defaults a new node spawns with.
     if (real(instructions[0][11]) == 0 && real(instructions[0][12]) == 0) {
-        instructions[0][11] = 24;
-        instructions[0][12] = 231;
+        instructions[0][11] = 25;
+        instructions[0][12] = 320;
     }
     if (real(instructions[0][13]) == 0 && real(instructions[0][14]) == 0) {
-        instructions[0][13] = 50;
+        instructions[0][13] = 51;
         instructions[0][14] = 229;
     }
 
@@ -154,7 +154,18 @@ function scr_node_step_macro_move(_draw_x) {
     // ---- Wide-X checkbox ----
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 6, _row4, _draw_x + 160, _row4 + 14)) {
         scr_undo_snapshot();
-        instructions[0][4] = (real(instructions[0][4]) == 1) ? 0 : 1;
+        var _mm_widex_now = (real(instructions[0][4]) == 1) ? 0 : 1;
+        instructions[0][4] = _mm_widex_now;
+        if (_mm_widex_now == 0 && real(instructions[0][12]) > 255) {
+            // Turning 9TH BIT off means MAX X can no longer legally sit above
+            // 255 — snap it back down so the node and the compiled output agree.
+            instructions[0][12] = 255;
+        } else if (_mm_widex_now == 1 && real(instructions[0][12]) == 255) {
+            // Turning 9TH BIT on and MAX X is still sitting at the old 8-bit
+            // cap — open it back up to the wide-X default so the extra reach
+            // is actually usable without a manual edit.
+            instructions[0][12] = 320;
+        }
         global.addresses_dirty = true;
         exit;
     }

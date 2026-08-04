@@ -7940,9 +7940,10 @@ case "MACRO_MOVE": {
     var _dy_vnm   = (array_length(_curr.instructions[0]) > 10) ? string(_curr.instructions[0][10]) : "";
     var _id       = _curr;
 
-    var _left_stop  = (array_length(_curr.instructions[0]) > 11 && is_real(_curr.instructions[0][11])) ? real(_curr.instructions[0][11]) : 24;
-    var _right_stop = (array_length(_curr.instructions[0]) > 12 && is_real(_curr.instructions[0][12])) ? real(_curr.instructions[0][12]) : 231;
-    var _top_stop   = (array_length(_curr.instructions[0]) > 13 && is_real(_curr.instructions[0][13])) ? real(_curr.instructions[0][13]) : 50;
+    var _left_stop  = (array_length(_curr.instructions[0]) > 11 && is_real(_curr.instructions[0][11])) ? real(_curr.instructions[0][11]) : 25;
+    var _right_stop = (array_length(_curr.instructions[0]) > 12 && is_real(_curr.instructions[0][12])) ? real(_curr.instructions[0][12]) : 320;
+    if (_widex == 0 && _right_stop > 255) _right_stop = 255;
+    var _top_stop   = (array_length(_curr.instructions[0]) > 13 && is_real(_curr.instructions[0][13])) ? real(_curr.instructions[0][13]) : 51;
     var _bot_stop   = (array_length(_curr.instructions[0]) > 14 && is_real(_curr.instructions[0][14])) ? real(_curr.instructions[0][14]) : 229;
 
     var _bit_values = [1, 2, 4, 8, 16, 32, 64, 128];
