@@ -132,8 +132,7 @@ if (height_dirty) {
     case "MACRO_MAP":        height = _G * 10;  break;
 	case "MACRO_METAMAP":    height = _G * 8;   break;
 	case "MACRO_MAP_SWITCH": height = _G * 5;   break;         
-    case "MACRO_VIC":   height = _G * 6; break;         
-	
+    case "MACRO_VIC":   height = _G * 6; break;         	
 	case "MACRO_SEEK":    height = _G * 11; break;
 	case "MACRO_MOVE_MEM":    height = _G * 4; break;
 	case "MACRO_MOVE_BMP_BLOCK": height = _G * 11; break;
