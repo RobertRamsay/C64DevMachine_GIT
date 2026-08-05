@@ -29,9 +29,9 @@ function scr_node_draw_macro_move(_draw_x) {
     var _dx_vnm = (array_length(instructions[0]) > 8) ? string(instructions[0][8]) : "";
     var _dy_uv  = (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) ? real(instructions[0][9]) : 0;
     var _dy_vnm = (array_length(instructions[0]) > 10) ? string(instructions[0][10]) : "";
-    var _x_min  = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 25;
+    var _x_min  = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 24;
     var _x_max  = (array_length(instructions[0]) > 12 && is_real(instructions[0][12])) ? real(instructions[0][12]) : 320;
-    var _y_min  = (array_length(instructions[0]) > 13 && is_real(instructions[0][13])) ? real(instructions[0][13]) : 51;
+    var _y_min  = (array_length(instructions[0]) > 13 && is_real(instructions[0][13])) ? real(instructions[0][13]) : 50;
     var _y_max  = (array_length(instructions[0]) > 14 && is_real(instructions[0][14])) ? real(instructions[0][14]) : 229;
 
     // ---- build bit array from mask ----

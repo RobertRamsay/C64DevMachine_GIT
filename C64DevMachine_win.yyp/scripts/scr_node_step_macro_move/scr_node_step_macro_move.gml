@@ -11,11 +11,11 @@ function scr_node_step_macro_move(_draw_x) {
     // an older saved node that predates these fields — give them the same
     // on-screen defaults a new node spawns with.
     if (real(instructions[0][11]) == 0 && real(instructions[0][12]) == 0) {
-        instructions[0][11] = 25;
+        instructions[0][11] = 24;
         instructions[0][12] = 320;
     }
     if (real(instructions[0][13]) == 0 && real(instructions[0][14]) == 0) {
-        instructions[0][13] = 51;
+        instructions[0][13] = 50;
         instructions[0][14] = 229;
     }
 

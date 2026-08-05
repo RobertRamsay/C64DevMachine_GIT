@@ -7963,10 +7963,10 @@ case "MACRO_MOVE": {
     var _dy_vnm   = (array_length(_curr.instructions[0]) > 10) ? string(_curr.instructions[0][10]) : "";
     var _id       = _curr;
 
-    var _left_stop  = (array_length(_curr.instructions[0]) > 11 && is_real(_curr.instructions[0][11])) ? real(_curr.instructions[0][11]) : 25;
+    var _left_stop  = (array_length(_curr.instructions[0]) > 11 && is_real(_curr.instructions[0][11])) ? real(_curr.instructions[0][11]) : 24;
     var _right_stop = (array_length(_curr.instructions[0]) > 12 && is_real(_curr.instructions[0][12])) ? real(_curr.instructions[0][12]) : 320;
     if (_widex == 0 && _right_stop > 255) _right_stop = 255;
-    var _top_stop   = (array_length(_curr.instructions[0]) > 13 && is_real(_curr.instructions[0][13])) ? real(_curr.instructions[0][13]) : 51;
+    var _top_stop   = (array_length(_curr.instructions[0]) > 13 && is_real(_curr.instructions[0][13])) ? real(_curr.instructions[0][13]) : 50;
     var _bot_stop   = (array_length(_curr.instructions[0]) > 14 && is_real(_curr.instructions[0][14])) ? real(_curr.instructions[0][14]) : 229;
 
     var _bit_values = [1, 2, 4, 8, 16, 32, 64, 128];
@@ -8014,275 +8014,401 @@ case "MACRO_MOVE": {
 
     // Effective values for "should we emit" check
     var _dx_active = (_dx_uv == 1) ? (_dx_var_addr != 0) : (_dx_lit != 0);
-    var _dy_active = (_dy_uv == 1) ? (_dy_var_addr != 0) : (_dy_lit != 0);
+var _dy_active = (_dy_uv == 1) ? (_dy_var_addr != 0) : (_dy_lit != 0);
 
-    // --- X MOVEMENT ---
-    if (_dx_active || _widex == 1) {
-        var _lbl_dn = _pfx + "xdn";
+// Anonymous helper methods need an explicit context in GameMaker.
+// Otherwise variables such as _id are looked up on obj_workspace_manager.
+var _mm_ctx = {
+    _list       : _list,
+    _id         : _id,
+    _mask       : _mask,
+    _widex      : _widex,
+    _left_stop  : _left_stop,
+    _right_stop : _right_stop,
+    _leader     : _leader,
+    _bit_values : _bit_values,
+    _lead_xreg  : _lead_xreg
+};
 
-        if (_dx_uv == 1 && _dx_var_addr != 0) {
-            // ===== VAR MODE =====
-            // Load var, check sign, branch to neg/pos path
-            var _lbl_neg  = _pfx + "xneg";
-            var _lbl_done = _pfx + "xvdone";
+    // --- EXACT MOVEMENT CLAMP HELPERS ---
+// $FB holds the effective movement magnitude for the current axis.
 
-            // Boundary checks done per-sprite-direction at runtime
-            // STOP mode: peek leader X, compare against bound based on var sign
-            if (_dx_mod == 1) {
-                var _lbl_chk_neg = _pfx + "xcn";
-                var _lbl_chk_end = _pfx + "xce";
-                array_push(_list, ["lda_abs", _dx_var_addr, _id]);
-                array_push(_list, ["bmi",     _lbl_chk_neg, _id]);
-                // Positive: check right wall
-                if (_widex) {
-                    var _lbl_no_stop = _pfx + "xns";
-                    array_push(_list, ["lda_abs", 0xD010, _id]);
-                    array_push(_list, ["and_imm", _bit_values[_leader], _id]);
-                    array_push(_list, ["beq", _lbl_no_stop, _id]);
-                    array_push(_list, ["lda_abs", _lead_xreg, _id]);
-                    array_push(_list, ["cmp_imm", _right_stop & 0xFF, _id]);
-                    array_push(_list, ["bcs", _lbl_dn, _id]);
-                    array_push(_list, ["label", _lbl_no_stop, _id]);
-                } else {
-                    array_push(_list, ["lda_abs", _lead_xreg, _id]);
-                    array_push(_list, ["cmp_imm", _right_stop & 0xFF, _id]);
-                    array_push(_list, ["bcs", _lbl_dn, _id]);
-                }
-                array_push(_list, ["jmp_abs", _lbl_chk_end, _id]);
-                array_push(_list, ["label",   _lbl_chk_neg, _id]);
-                // Negative: check left wall
-                if (_widex) {
-                    var _lbl_no_stop_l = _pfx + "xnsl";
-                    array_push(_list, ["lda_abs", 0xD010, _id]);
-                    array_push(_list, ["and_imm", _bit_values[_leader], _id]);
-                    array_push(_list, ["bne", _lbl_no_stop_l, _id]);
-                    array_push(_list, ["lda_abs", _lead_xreg, _id]);
-                    array_push(_list, ["cmp_imm", _left_stop, _id]);
-                    array_push(_list, ["bcc", _lbl_dn, _id]);
-                    array_push(_list, ["label", _lbl_no_stop_l, _id]);
-                } else {
-                    array_push(_list, ["lda_abs", _lead_xreg, _id]);
-                    array_push(_list, ["cmp_imm", _left_stop, _id]);
-                    array_push(_list, ["bcc", _lbl_dn, _id]);
-                }
-                array_push(_list, ["label", _lbl_chk_end, _id]);
-            }
+// Clamp an 8-bit axis movement against its remaining distance.
+var _mm_clamp8 = method(_mm_ctx, function(_reg, _min_stop, _max_stop, _negative, _done, _tag) {
+    var _fit = _tag + "fit";
 
-            // Re-load var, dispatch on sign
-            array_push(_list, ["lda_abs", _dx_var_addr, _id]);
-            array_push(_list, ["bmi",     _lbl_neg,     _id]);
+    if (!_negative) {
+        // Already at or beyond maximum: do not move.
+        array_push(_list, ["lda_abs", _reg, _id]);
+        array_push(_list, ["cmp_imm", _max_stop & 0xFF, _id]);
+        array_push(_list, ["bcs", _done, _id]);
 
-            // ----- POSITIVE PATH (A holds +delta) -----
-            for (var _si = 0; _si < 8; _si++) {
-                if (_mask & _bit_values[_si]) {
-                    var _reg = 0xD000 + (_si * 2);
-                    var _skip_flip = _pfx + "sfp" + string(_si);
-                    array_push(_list, ["clc",     0,            _id]);
-                    array_push(_list, ["adc_abs", _reg,         _id]); // A = delta + sprite_x
-                    array_push(_list, ["sta_abs", _reg,         _id]);
-                    if (_widex) {
-                        array_push(_list, ["bcc",     _skip_flip, _id]);
-                        array_push(_list, ["pha",     0,          _id]); // preserve A across $D010 work
-                        array_push(_list, ["lda_abs", 0xD010,     _id]);
-                        array_push(_list, ["eor_imm", _bit_values[_si], _id]);
-                        array_push(_list, ["sta_abs", 0xD010,     _id]);
-                        array_push(_list, ["pla",     0,          _id]);
-                        array_push(_list, ["label",   _skip_flip, _id]);
-                    }
-                    // Re-load var for next sprite (delta was clobbered by ADC sum)
-                    array_push(_list, ["lda_abs", _dx_var_addr, _id]);
-                }
-            }
-            array_push(_list, ["jmp_abs", _lbl_done, _id]);
+        // A = maximum - current position.
+        array_push(_list, ["lda_imm", _max_stop & 0xFF, _id]);
+        array_push(_list, ["sec", 0, _id]);
+        array_push(_list, ["sbc_abs", _reg, _id]);
 
-            // ----- NEGATIVE PATH (A holds negative two's-complement delta) -----
-            array_push(_list, ["label", _lbl_neg, _id]);
-            // Convert to positive magnitude in X for SBC use
-            array_push(_list, ["eor_imm", 0xFF, _id]);
-            array_push(_list, ["clc",     0,    _id]);
-            array_push(_list, ["adc_imm", 1,    _id]); // A = abs(delta)
-            array_push(_list, ["tax",     0,    _id]); // X = abs(delta) for reuse
+        // Keep requested movement when remaining >= requested.
+        array_push(_list, ["cmp_zp", 0xFB, _id]);
+        array_push(_list, ["bcs", _fit, _id]);
 
-            for (var _si = 0; _si < 8; _si++) {
-                if (_mask & _bit_values[_si]) {
-                    var _reg = 0xD000 + (_si * 2);
-                    var _skip_flip2 = _pfx + "sfn" + string(_si);
-                    array_push(_list, ["lda_abs", _reg, _id]);
-                    array_push(_list, ["sec",     0,    _id]);
-                    array_push(_list, ["stx_zp",  0xFB, _id]); // scratch zp for SBC source — adjust if you have a reserved scratch
-                    array_push(_list, ["sbc_zp",  0xFB, _id]);
-                    array_push(_list, ["sta_abs", _reg, _id]);
-                    if (_widex) {
-                        array_push(_list, ["bcs",     _skip_flip2, _id]);
-                        array_push(_list, ["lda_abs", 0xD010,      _id]);
-                        array_push(_list, ["eor_imm", _bit_values[_si], _id]);
-                        array_push(_list, ["sta_abs", 0xD010,      _id]);
-                        array_push(_list, ["label",   _skip_flip2, _id]);
-                    }
-                }
-            }
-            array_push(_list, ["label", _lbl_done, _id]);
+        // Otherwise use the remaining distance.
+        array_push(_list, ["sta_zp", 0xFB, _id]);
+    } else {
+        // Already at or below minimum: do not move.
+        array_push(_list, ["lda_abs", _reg, _id]);
+        array_push(_list, ["cmp_imm", _min_stop & 0xFF, _id]);
+        array_push(_list, ["bcc", _done, _id]);
+        array_push(_list, ["beq", _done, _id]);
 
-        } else if (_dx_lit != 0 || _widex == 1) {
-            // ===== LITERAL MODE (original logic preserved) =====
-            var _abs_dx = abs(_dx_lit);
+        // A = current position - minimum.
+        array_push(_list, ["sec", 0, _id]);
+        array_push(_list, ["sbc_imm", _min_stop & 0xFF, _id]);
 
-            if (_dx_mod == 1 && _dx_lit != 0) {
-                array_push(_list, ["lda_abs", _lead_xreg, _id]);
-                if (_dx_lit > 0) {
-                    if (_widex) {
-                        var _lbl_no_stop = _pfx + "xns";
-                        array_push(_list, ["lda_abs", 0xD010, _id]);
-                        array_push(_list, ["and_imm", _bit_values[_leader], _id]);
-                        array_push(_list, ["beq", _lbl_no_stop, _id]);
-                        array_push(_list, ["lda_abs", _lead_xreg, _id]);
-                        array_push(_list, ["cmp_imm", _right_stop & 0xFF, _id]);
-                        array_push(_list, ["bcs", _lbl_dn, _id]);
-                        array_push(_list, ["label", _lbl_no_stop, _id]);
-                    } else {
-                        array_push(_list, ["cmp_imm", _right_stop & 0xFF, _id]);
-                        array_push(_list, ["bcs", _lbl_dn, _id]);
-                    }
-                } else {
-                    if (_widex) {
-                        var _lbl_no_stop_l = _pfx + "xnsl";
-                        array_push(_list, ["lda_abs", 0xD010, _id]);
-                        array_push(_list, ["and_imm", _bit_values[_leader], _id]);
-                        array_push(_list, ["bne", _lbl_no_stop_l, _id]);
-                        array_push(_list, ["lda_abs", _lead_xreg, _id]);
-                        array_push(_list, ["cmp_imm", _left_stop, _id]);
-                        array_push(_list, ["bcc", _lbl_dn, _id]);
-                        array_push(_list, ["label", _lbl_no_stop_l, _id]);
-                    } else {
-                        array_push(_list, ["cmp_imm", _left_stop, _id]);
-                        array_push(_list, ["bcc", _lbl_dn, _id]);
-                    }
-                }
-            }
-
-            if (_dx_lit != 0) {
-                for (var _si = 0; _si < 8; _si++) {
-                    if (_mask & _bit_values[_si]) {
-                        var _reg = 0xD000 + (_si * 2);
-                        var _skip_flip = _pfx + "sf" + string(_si);
-                        array_push(_list, ["lda_abs", _reg, _id]);
-                        if (_dx_lit > 0) {
-                            array_push(_list, ["clc", 0, _id]);
-                            array_push(_list, ["adc_imm", _abs_dx, _id]);
-                            array_push(_list, ["sta_abs", _reg, _id]);
-                            if (_widex) {
-                                array_push(_list, ["bcc", _skip_flip, _id]);
-                            }
-                        } else {
-                            array_push(_list, ["sec", 0, _id]);
-                            array_push(_list, ["sbc_imm", _abs_dx, _id]);
-                            array_push(_list, ["sta_abs", _reg, _id]);
-                            if (_widex) {
-                                array_push(_list, ["bcs", _skip_flip, _id]);
-                            }
-                        }
-                        if (_widex) {
-                            array_push(_list, ["lda_abs", 0xD010, _id]);
-                            array_push(_list, ["eor_imm", _bit_values[_si], _id]);
-                            array_push(_list, ["sta_abs", 0xD010, _id]);
-                            array_push(_list, ["label", _skip_flip, _id]);
-                        }
-                    }
-                }
-            }
-        }
-        array_push(_list, ["label", _lbl_dn, _id]);
+        array_push(_list, ["cmp_zp", 0xFB, _id]);
+        array_push(_list, ["bcs", _fit, _id]);
+        array_push(_list, ["sta_zp", 0xFB, _id]);
     }
 
-    // --- Y MOVEMENT ---
-    if (_dy_active) {
-        var _lbl_ydn = _pfx + "ydn";
+    array_push(_list, ["label", _fit, _id]);
+});
 
-        if (_dy_uv == 1 && _dy_var_addr != 0) {
-            // ===== VAR MODE =====
-            var _lbl_yneg  = _pfx + "yneg";
-            var _lbl_ydone = _pfx + "yvdone";
+_mm_ctx._mm_clamp8 = _mm_clamp8;
 
-            if (_dy_mod == 1) {
-                var _lbl_ychk_neg = _pfx + "ycn";
-                var _lbl_ychk_end = _pfx + "yce";
-                array_push(_list, ["lda_abs", _dy_var_addr, _id]);
-                array_push(_list, ["bmi",     _lbl_ychk_neg, _id]);
-                array_push(_list, ["lda_abs", _lead_yreg, _id]);
-                array_push(_list, ["cmp_imm", _bot_stop, _id]);
-                array_push(_list, ["bcs",     _lbl_ydn, _id]);
-                array_push(_list, ["jmp_abs", _lbl_ychk_end, _id]);
-                array_push(_list, ["label",   _lbl_ychk_neg, _id]);
-                array_push(_list, ["lda_abs", _lead_yreg, _id]);
-                array_push(_list, ["cmp_imm", _top_stop, _id]);
-                array_push(_list, ["bcc",     _lbl_ydn, _id]);
-                array_push(_list, ["label",   _lbl_ychk_end, _id]);
-            }
 
-            array_push(_list, ["lda_abs", _dy_var_addr, _id]);
-            array_push(_list, ["bmi",     _lbl_yneg,    _id]);
+// Clamp 9-bit sprite X using the sprite's corresponding $D010 bit.
+var _mm_clamp_x9 = method(_mm_ctx, function(_negative, _done, _tag) {
+    var _fit       = _tag + "fit";
+    var _high      = _tag + "high";
+    var _remaining = _tag + "rem";
 
-            // POSITIVE PATH
-            for (var _sy = 0; _sy < 8; _sy++) {
-                if (_mask & _bit_values[_sy]) {
-                    var _y_reg = 0xD001 + (_sy * 2);
-                    array_push(_list, ["clc",     0,            _id]);
-                    array_push(_list, ["adc_abs", _y_reg,       _id]);
-                    array_push(_list, ["sta_abs", _y_reg,       _id]);
-                    array_push(_list, ["lda_abs", _dy_var_addr, _id]);
+    var _bound     = _negative ? _left_stop : _right_stop;
+    var _bound_lo  = _bound & 0xFF;
+    var _bound_hi  = (_bound >= 256) ? 1 : 0;
+    var _lead_bit  = _bit_values[_leader];
+
+    array_push(_list, ["lda_abs", 0xD010, _id]);
+    array_push(_list, ["and_imm", _lead_bit, _id]);
+    array_push(_list, ["bne", _high, _id]);
+
+    // ---------------------------------------------------------
+    // Current X is in page 0: 0..255
+    // ---------------------------------------------------------
+    if (!_negative) {
+        if (_bound_hi == 0) {
+            // Same page: remaining = bound low - current low.
+            array_push(_list, ["lda_abs", _lead_xreg, _id]);
+            array_push(_list, ["cmp_imm", _bound_lo, _id]);
+            array_push(_list, ["bcs", _done, _id]);
+
+            array_push(_list, ["lda_imm", _bound_lo, _id]);
+            array_push(_list, ["sec", 0, _id]);
+            array_push(_list, ["sbc_abs", _lead_xreg, _id]);
+            array_push(_list, ["jmp_abs", _remaining, _id]);
+        } else {
+            // Bound is in page 1. If current low <= bound low,
+            // remaining is at least 256, so an 8-bit delta fits.
+            array_push(_list, ["lda_abs", _lead_xreg, _id]);
+            array_push(_list, ["cmp_imm", _bound_lo, _id]);
+            array_push(_list, ["bcc", _fit, _id]);
+            array_push(_list, ["beq", _fit, _id]);
+
+            // current low > bound low:
+            // remaining = 256 + bound low - current low.
+            array_push(_list, ["lda_imm", _bound_lo, _id]);
+            array_push(_list, ["sec", 0, _id]);
+            array_push(_list, ["sbc_abs", _lead_xreg, _id]);
+            array_push(_list, ["jmp_abs", _remaining, _id]);
+        }
+    } else {
+        if (_bound_hi == 0) {
+            // Same page minimum.
+            array_push(_list, ["lda_abs", _lead_xreg, _id]);
+            array_push(_list, ["cmp_imm", _bound_lo, _id]);
+            array_push(_list, ["bcc", _done, _id]);
+            array_push(_list, ["beq", _done, _id]);
+
+            array_push(_list, ["sec", 0, _id]);
+            array_push(_list, ["sbc_imm", _bound_lo, _id]);
+            array_push(_list, ["jmp_abs", _remaining, _id]);
+        } else {
+            // Current is below a page-1 minimum.
+            array_push(_list, ["jmp_abs", _done, _id]);
+        }
+    }
+
+    // ---------------------------------------------------------
+    // Current X is in page 1: 256..511
+    // ---------------------------------------------------------
+    array_push(_list, ["label", _high, _id]);
+
+    if (!_negative) {
+        if (_bound_hi == 0) {
+            // Current is already beyond a page-0 maximum.
+            array_push(_list, ["jmp_abs", _done, _id]);
+        } else {
+            array_push(_list, ["lda_abs", _lead_xreg, _id]);
+            array_push(_list, ["cmp_imm", _bound_lo, _id]);
+            array_push(_list, ["bcs", _done, _id]);
+
+            array_push(_list, ["lda_imm", _bound_lo, _id]);
+            array_push(_list, ["sec", 0, _id]);
+            array_push(_list, ["sbc_abs", _lead_xreg, _id]);
+            array_push(_list, ["jmp_abs", _remaining, _id]);
+        }
+    } else {
+        if (_bound_hi == 1) {
+            // Same page minimum.
+            array_push(_list, ["lda_abs", _lead_xreg, _id]);
+            array_push(_list, ["cmp_imm", _bound_lo, _id]);
+            array_push(_list, ["bcc", _done, _id]);
+            array_push(_list, ["beq", _done, _id]);
+
+            array_push(_list, ["sec", 0, _id]);
+            array_push(_list, ["sbc_imm", _bound_lo, _id]);
+            array_push(_list, ["jmp_abs", _remaining, _id]);
+        } else {
+            // Minimum is in page 0.
+            // If current low >= bound low, remaining is at least 256.
+            array_push(_list, ["lda_abs", _lead_xreg, _id]);
+            array_push(_list, ["cmp_imm", _bound_lo, _id]);
+            array_push(_list, ["bcs", _fit, _id]);
+
+            // remaining = 256 + current low - bound low.
+            array_push(_list, ["sec", 0, _id]);
+            array_push(_list, ["sbc_imm", _bound_lo, _id]);
+            array_push(_list, ["jmp_abs", _remaining, _id]);
+        }
+    }
+
+    // A contains the remaining distance, which is below 256.
+    array_push(_list, ["label", _remaining, _id]);
+    array_push(_list, ["cmp_zp", 0xFB, _id]);
+    array_push(_list, ["bcs", _fit, _id]);
+    array_push(_list, ["sta_zp", 0xFB, _id]);
+
+    array_push(_list, ["label", _fit, _id]);
+});
+
+
+// Apply the effective X movement in $FB to all selected sprites.
+var _mm_apply_x = method(_mm_ctx, function(_negative, _tag) {
+    for (var _mxs = 0; _mxs < 8; _mxs++) {
+        if (_mask & _bit_values[_mxs]) {
+            var _xreg = 0xD000 + (_mxs * 2);
+            var _noflip = _tag + "nf" + string(_mxs);
+
+            array_push(_list, ["lda_abs", _xreg, _id]);
+
+            if (!_negative) {
+                array_push(_list, ["clc", 0, _id]);
+                array_push(_list, ["adc_zp", 0xFB, _id]);
+                array_push(_list, ["sta_abs", _xreg, _id]);
+
+                if (_widex) {
+                    array_push(_list, ["bcc", _noflip, _id]);
+                }
+            } else {
+                array_push(_list, ["sec", 0, _id]);
+                array_push(_list, ["sbc_zp", 0xFB, _id]);
+                array_push(_list, ["sta_abs", _xreg, _id]);
+
+                if (_widex) {
+                    array_push(_list, ["bcs", _noflip, _id]);
                 }
             }
-            array_push(_list, ["jmp_abs", _lbl_ydone, _id]);
 
-            // NEGATIVE PATH
-            array_push(_list, ["label",   _lbl_yneg, _id]);
-            array_push(_list, ["eor_imm", 0xFF, _id]);
-            array_push(_list, ["clc",     0,    _id]);
-            array_push(_list, ["adc_imm", 1,    _id]);
-            array_push(_list, ["tax",     0,    _id]);
-            for (var _sy = 0; _sy < 8; _sy++) {
-                if (_mask & _bit_values[_sy]) {
-                    var _y_reg = 0xD001 + (_sy * 2);
-                    array_push(_list, ["lda_abs", _y_reg, _id]);
-                    array_push(_list, ["sec",     0,      _id]);
-                    array_push(_list, ["stx_zp",  0xFB,   _id]);
-                    array_push(_list, ["sbc_zp",  0xFB,   _id]);
-                    array_push(_list, ["sta_abs", _y_reg, _id]);
-                }
-            }
-            array_push(_list, ["label", _lbl_ydone, _id]);
-
-        } else if (_dy_lit != 0) {
-            // ===== LITERAL MODE (original) =====
-            var _abs_dy = abs(_dy_lit);
-            if (_dy_mod == 1) {
-                array_push(_list, ["lda_abs", _lead_yreg, _id]);
-                if (_dy_lit > 0) {
-                    array_push(_list, ["cmp_imm", _bot_stop, _id]);
-                    array_push(_list, ["bcs", _lbl_ydn, _id]);
-                } else {
-                    array_push(_list, ["cmp_imm", _top_stop, _id]);
-                    array_push(_list, ["bcc", _lbl_ydn, _id]);
-                }
-            }
-            for (var _sy = 0; _sy < 8; _sy++) {
-                if (_mask & _bit_values[_sy]) {
-                    var _y_reg = 0xD001 + (_sy * 2);
-                    array_push(_list, ["lda_abs", _y_reg, _id]);
-                    if (_dy_lit > 0) {
-                        array_push(_list, ["clc", 0, _id]);
-                        array_push(_list, ["adc_imm", _abs_dy, _id]);
-                    } else {
-                        array_push(_list, ["sec", 0, _id]);
-                        array_push(_list, ["sbc_imm", _abs_dy, _id]);
-                    }
-                    array_push(_list, ["sta_abs", _y_reg, _id]);
-                }
+            if (_widex) {
+                array_push(_list, ["lda_abs", 0xD010, _id]);
+                array_push(_list, ["eor_imm", _bit_values[_mxs], _id]);
+                array_push(_list, ["sta_abs", 0xD010, _id]);
+                array_push(_list, ["label", _noflip, _id]);
             }
         }
-        array_push(_list, ["label", _lbl_ydn, _id]);
+     }
+});
+
+
+// --- X MOVEMENT ---
+if (_dx_active) {
+    var _lbl_dn = _pfx + "xdn";
+
+    if (_dx_uv == 1 && _dx_var_addr != 0) {
+        var _lbl_neg = _pfx + "xneg";
+
+        // Zero means no X movement.
+        array_push(_list, ["lda_abs", _dx_var_addr, _id]);
+        array_push(_list, ["beq", _lbl_dn, _id]);
+        array_push(_list, ["bmi", _lbl_neg, _id]);
+
+        // Positive variable magnitude.
+        array_push(_list, ["sta_zp", 0xFB, _id]);
+
+        if (_dx_mod == 1) {
+            if (_widex) {
+                _mm_clamp_x9(false, _lbl_dn, _pfx + "xpv");
+            } else {
+                _mm_clamp8(
+                    _lead_xreg,
+                    _left_stop,
+                    _right_stop,
+                    false,
+                    _lbl_dn,
+                    _pfx + "xpv"
+                );
+            }
+        }
+
+        _mm_apply_x(false, _pfx + "xpv");
+        array_push(_list, ["jmp_abs", _lbl_dn, _id]);
+
+        // Negative variable: convert two's complement to magnitude.
+        array_push(_list, ["label", _lbl_neg, _id]);
+        array_push(_list, ["eor_imm", 0xFF, _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["adc_imm", 1, _id]);
+        array_push(_list, ["sta_zp", 0xFB, _id]);
+
+        if (_dx_mod == 1) {
+            if (_widex) {
+                _mm_clamp_x9(true, _lbl_dn, _pfx + "xnv");
+            } else {
+                _mm_clamp8(
+                    _lead_xreg,
+                    _left_stop,
+                    _right_stop,
+                    true,
+                    _lbl_dn,
+                    _pfx + "xnv"
+                );
+            }
+        }
+
+        _mm_apply_x(true, _pfx + "xnv");
+    } else if (_dx_lit != 0) {
+        var _x_negative = (_dx_lit < 0);
+
+        array_push(_list, ["lda_imm", abs(_dx_lit) & 0xFF, _id]);
+        array_push(_list, ["sta_zp", 0xFB, _id]);
+
+        if (_dx_mod == 1) {
+            if (_widex) {
+                _mm_clamp_x9(
+                    _x_negative,
+                    _lbl_dn,
+                    _pfx + "xl"
+                );
+            } else {
+                _mm_clamp8(
+                    _lead_xreg,
+                    _left_stop,
+                    _right_stop,
+                    _x_negative,
+                    _lbl_dn,
+                    _pfx + "xl"
+                );
+            }
+        }
+
+        _mm_apply_x(_x_negative, _pfx + "xl");
     }
-    break;
+
+    array_push(_list, ["label", _lbl_dn, _id]);
+}
+
+    // Apply the effective Y movement in $FB to all selected sprites.
+var _mm_apply_y = method(_mm_ctx, function(_negative) {
+    for (var _mys = 0; _mys < 8; _mys++) {
+        if (_mask & _bit_values[_mys]) {
+            var _yreg = 0xD001 + (_mys * 2);
+
+            array_push(_list, ["lda_abs", _yreg, _id]);
+
+            if (!_negative) {
+                array_push(_list, ["clc", 0, _id]);
+                array_push(_list, ["adc_zp", 0xFB, _id]);
+            } else {
+                array_push(_list, ["sec", 0, _id]);
+                array_push(_list, ["sbc_zp", 0xFB, _id]);
+            }
+
+            array_push(_list, ["sta_abs", _yreg, _id]);
+        }
+    }
+});
+
+
+// --- Y MOVEMENT ---
+if (_dy_active) {
+    var _lbl_ydn = _pfx + "ydn";
+
+    if (_dy_uv == 1 && _dy_var_addr != 0) {
+        var _lbl_yneg = _pfx + "yneg";
+
+        array_push(_list, ["lda_abs", _dy_var_addr, _id]);
+        array_push(_list, ["beq", _lbl_ydn, _id]);
+        array_push(_list, ["bmi", _lbl_yneg, _id]);
+
+        // Positive variable magnitude.
+        array_push(_list, ["sta_zp", 0xFB, _id]);
+
+        if (_dy_mod == 1) {
+            _mm_clamp8(
+                _lead_yreg,
+                _top_stop,
+                _bot_stop,
+                false,
+                _lbl_ydn,
+                _pfx + "ypv"
+            );
+        }
+
+        _mm_apply_y(false);
+        array_push(_list, ["jmp_abs", _lbl_ydn, _id]);
+
+        // Negative variable: convert to positive magnitude.
+        array_push(_list, ["label", _lbl_yneg, _id]);
+        array_push(_list, ["eor_imm", 0xFF, _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["adc_imm", 1, _id]);
+        array_push(_list, ["sta_zp", 0xFB, _id]);
+
+        if (_dy_mod == 1) {
+            _mm_clamp8(
+                _lead_yreg,
+                _top_stop,
+                _bot_stop,
+                true,
+                _lbl_ydn,
+                _pfx + "ynv"
+            );
+        }
+
+        _mm_apply_y(true);
+    } else if (_dy_lit != 0) {
+        var _y_negative = (_dy_lit < 0);
+
+        array_push(_list, ["lda_imm", abs(_dy_lit) & 0xFF, _id]);
+        array_push(_list, ["sta_zp", 0xFB, _id]);
+
+        if (_dy_mod == 1) {
+            _mm_clamp8(
+                _lead_yreg,
+                _top_stop,
+                _bot_stop,
+                _y_negative,
+                _lbl_ydn,
+                _pfx + "yl"
+            );
+        }
+
+        _mm_apply_y(_y_negative);
+    }
+
+    array_push(_list, ["label", _lbl_ydn, _id]);
+}
+
+break;
 }
 
 /// END OF MACRO MOVE

@@ -668,7 +668,7 @@ case "LABEL": {
             // X 24-231 (231 = 255-24, safe without the 9th bit — raise MAX X
             // yourself once 9TH BIT is on if you want it to travel further),
             // Y 50-229 (229 = 250-21).
-            _n.instructions = [["macro_move", 1, 0, 0, 0, 0, 0, 0, "", 0, "", 25, 320, 51, 229]];
+            _n.instructions = [["macro_move", 1, 0, 0, 0, 0, 0, 0, "", 0, "", 24, 320, 50, 229]];
             _n.pc_address   = global.start_pc;
             with (_n) { event_user(0); }
             break;
