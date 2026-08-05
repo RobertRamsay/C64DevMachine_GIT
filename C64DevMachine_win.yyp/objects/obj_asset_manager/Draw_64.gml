@@ -10313,6 +10313,138 @@ if (loader_file_picker_open && instance_exists(loader_file_picker_node)) {
         }
     }
 }
+	
+	// -------------------------------------------------------
+// LOAD_ORG ASSET PICKER DROPDOWN
+// -------------------------------------------------------
+if (load_org_picker_open) {
+    var _lpx     = _vx1 + 10;
+    var _lpy     = _vy1 + 200;
+    var _lpw     = 240;
+    var _lih     = 20;
+    var _matches = [];
+
+    if (load_org_picker_asset >= 0 &&
+        load_org_picker_asset < ds_list_size(asset_list)) {
+
+        // Build the same unclaimed-asset list used by LOAD_REU.
+        for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
+            var _candidate = ds_list_find_value(asset_list, _i);
+
+            // Manifests cannot be placed inside other manifests.
+            if (_candidate.type == "LOAD_ORG" ||
+                _candidate.type == "LOAD_REU") {
+                continue;
+            }
+
+            var _claimed = false;
+
+            // An asset may belong to only one LOAD_ORG or LOAD_REU.
+            for (var _mi = 0;
+                 _mi < ds_list_size(asset_list);
+                 _mi++) {
+
+                var _manifest =
+                    ds_list_find_value(asset_list, _mi);
+
+                if (_manifest.type != "LOAD_ORG" &&
+                    _manifest.type != "LOAD_REU") {
+                    continue;
+                }
+
+                if (!variable_struct_exists(
+                        _manifest,
+                        "linked_assets")) {
+                    continue;
+                }
+
+                var _manifest_links =
+                    _manifest.linked_assets;
+
+                for (var _li = 0;
+                     _li < array_length(_manifest_links);
+                     _li++) {
+
+                    if (_manifest_links[_li].asset_name ==
+                        _candidate.name) {
+
+                        _claimed = true;
+                        break;
+                    }
+                }
+
+                if (_claimed) break;
+            }
+
+            if (!_claimed) {
+                array_push(_matches, _candidate);
+            }
+        }
+    }
+
+    var _total_h =
+        max(1, array_length(_matches)) * _lih + 24;
+
+    draw_set_color(make_color_rgb(18, 18, 28));
+    draw_rectangle(
+        _lpx,
+        _lpy,
+        _lpx + _lpw,
+        _lpy + _total_h,
+        false
+    );
+
+    draw_set_color(make_color_rgb(200, 160, 40));
+    draw_rectangle(
+        _lpx,
+        _lpy,
+        _lpx + _lpw,
+        _lpy + _total_h,
+        true
+    );
+
+    draw_set_font(fnt_c64_tiny);
+    draw_set_color(make_color_rgb(200, 160, 40));
+    draw_text(_lpx + 6, _lpy + 4, "ADD TO DISK");
+
+    if (array_length(_matches) == 0) {
+        draw_set_color(make_color_rgb(120, 100, 80));
+        draw_text(
+            _lpx + 8,
+            _lpy + 24,
+            "NO UNCLAIMED ASSETS"
+        );
+    } else {
+        for (var _i = 0;
+             _i < array_length(_matches);
+             _i++) {
+
+            var _iy  = _lpy + 20 + (_i * _lih);
+            var _hov = load_org_picker_hover == _i;
+
+            draw_set_color(
+                _hov
+                ? make_color_rgb(80, 60, 20)
+                : make_color_rgb(25, 25, 40)
+            );
+
+            draw_rectangle(
+                _lpx + 2,
+                _iy,
+                _lpx + _lpw - 2,
+                _iy + _lih - 1,
+                false
+            );
+
+            draw_set_color(_hov ? c_white : c_ltgray);
+            draw_text(
+                _lpx + 10,
+                _iy + 3,
+                _matches[_i].name
+            );
+        }
+    }
+}
 
 // -------------------------------------------------------
 // LOAD_REU ASSET PICKER DROPDOWN
@@ -10444,18 +10576,7 @@ if (load_reu_picker_open) {
     }
 }
 
-// LOAD_REU ASSET PICKER DROPDOWN
-if (load_reu_picker_open) {
-    var _lpx=_vx1+10, _lpy=_vy1+200, _lpw=240, _lih=20, _matches=[];
-    if(load_reu_picker_asset>=0&&load_reu_picker_asset<ds_list_size(asset_list)){
-        var _m=ds_list_find_value(asset_list,load_reu_picker_asset), _links=variable_struct_exists(_m,"linked_assets")?_m.linked_assets:[];
-        for(var _i=0;_i<ds_list_size(asset_list);_i++){var _a=ds_list_find_value(asset_list,_i);if(_a.type=="LOAD_ORG"||_a.type=="LOAD_REU")continue;var _has=false;for(var _j=0;_j<array_length(_links);_j++)if(_links[_j].asset_name==_a.name){_has=true;break;}if(!_has)array_push(_matches,_a);}
-    }
-    var _th=max(1,array_length(_matches))*_lih+24;
-    draw_set_color(make_color_rgb(18,25,28));draw_rectangle(_lpx,_lpy,_lpx+_lpw,_lpy+_th,false);draw_set_color(make_color_rgb(100,200,180));draw_rectangle(_lpx,_lpy,_lpx+_lpw,_lpy+_th,true);
-    draw_set_font(fnt_c64_tiny);draw_set_color(make_color_rgb(100,200,180));draw_text(_lpx+6,_lpy+4,"ADD TO REU IMAGE");
-    for(var _i=0;_i<array_length(_matches);_i++){var _iy=_lpy+20+_i*_lih;draw_set_color((load_reu_picker_hover==_i)?make_color_rgb(30,90,75):make_color_rgb(22,30,34));draw_rectangle(_lpx+2,_iy,_lpx+_lpw-2,_iy+_lih-1,false);draw_set_color(c_white);draw_text(_lpx+10,_iy+3,_matches[_i].name);}
-}
+
 
 
 // -------------------------------------------------------

@@ -1,21 +1,5 @@
 /// @desc obj_asset_manager Step
 // Find the max whole-number scale that fits inside the current window size
-// DEBUG — watch for unauthorised writes to the imported .txt
-{
-    var _watch_path = "C:\\Users\\me\\Downloads\\Mechs_Demo.txt";
-    if (file_exists(_watch_path)) {
-        var _new_md5 = md5_file(_watch_path);
-        if (!variable_instance_exists(id, "_watch_md5")) {
-            _watch_md5 = _new_md5;
-            show_debug_message("WATCH: initial MD5 = " + _new_md5);
-        } else if (_watch_md5 != _new_md5) {
-            show_debug_message("!!! WATCH: FILE CHANGED");
-            show_debug_message("    old MD5: " + _watch_md5);
-            show_debug_message("    new MD5: " + _new_md5);
-            _watch_md5 = _new_md5;
-        }
-    }
-}
 
 var _scale_x = window_get_width() div 480;
 var _scale_y = window_get_height() div 300;
@@ -1228,7 +1212,10 @@ if (load_reu_picker_open) {
         var _lo_links = variable_struct_exists(_lo_asset, "linked_assets") ? _lo_asset.linked_assets : [];
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
             var _a = ds_list_find_value(asset_list, _i);
-            if (_a.type == "LOAD_ORG") continue;
+            if (_a.type == "LOAD_ORG" ||
+			    _a.type == "LOAD_REU") {
+			    continue;
+			}
             // Check not already linked
             var _already = false;
             for (var _li = 0; _li < array_length(_lo_links); _li++) {
@@ -1273,22 +1260,7 @@ if (load_reu_picker_open) {
     exit;
 }
 
-// LOAD_REU manifest asset picker
-if (load_reu_picker_open) {
-    var _lpw=240, _lih=20, _lpx=_vx1+10, _lpy=_vy1+200, _matches=[];
-    if(load_reu_picker_asset>=0&&load_reu_picker_asset<ds_list_size(asset_list)){
-        var _m=ds_list_find_value(asset_list,load_reu_picker_asset), _links=variable_struct_exists(_m,"linked_assets")?_m.linked_assets:[];
-        for(var _i=0;_i<ds_list_size(asset_list);_i++){var _a=ds_list_find_value(asset_list,_i);if(_a.type=="LOAD_ORG"||_a.type=="LOAD_REU")continue;var _has=false;for(var _j=0;_j<array_length(_links);_j++)if(_links[_j].asset_name==_a.name){_has=true;break;}if(!_has)array_push(_matches,_a);}
-    }
-    load_reu_picker_hover=-1;
-    for(var _i=0;_i<array_length(_matches);_i++){var _iy=_lpy+20+_i*_lih;if(point_in_rectangle(_mx,_my,_lpx,_iy,_lpx+_lpw,_iy+_lih)){load_reu_picker_hover=_i;break;}}
-    if(mouse_check_button_pressed(mb_left)&&!global.ui_click_consumed&&!global.any_picker_open){
-        if(load_reu_picker_hover>=0){var _m=ds_list_find_value(asset_list,load_reu_picker_asset);array_push(_m.linked_assets,{asset_name:_matches[load_reu_picker_hover].name,reu_address:0x100,auto_pack:true});scr_reu_repack(_m);}
-        load_reu_picker_open=false;load_reu_picker_asset=-1;load_reu_picker_hover=-1;exit;
-    }
-    if(mouse_check_button_pressed(mb_right)){load_reu_picker_open=false;load_reu_picker_asset=-1;load_reu_picker_hover=-1;}
-    exit;
-}
+
 
 // -------------------------------------------------------
 // META TILESET CHARSET PICKER
@@ -2116,7 +2088,10 @@ if (_asset.type == "META_TILESET") {
 
         // ADDRESS click in viewer — LOAD_ORG is a manifest, BITMAP_BUILDER is an
         // internal authoring asset. Neither has an editable load address.
-        if (_asset.type != "LOAD_ORG" && _asset.type != "LOAD_REU" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" &&
+        if (_asset.type != "LOAD_ORG" &&
+    _asset.type != "LOAD_REU" &&
+    _asset.type != "BITMAP_BUILDER" &&
+    _asset.type != "MUSIC_MAKER" &&
             point_in_rectangle(_mx, _my, _vx1 + 74, _vy1 + 65, _vx1 + 162, _vy1 + 79)) {
             editing_address     = true;
             editing_address_idx = viewer_asset;
@@ -2143,7 +2118,10 @@ if (_asset.type == "META_TILESET") {
         if (_asset.type == "SPRITE_SET" && _asset.file != "")
             scr_asset_spr_cache_sprites(_asset);
 
-        if (_asset.type != "LOAD_ORG" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && 
+        if (_asset.type != "LOAD_ORG" &&
+    _asset.type != "LOAD_REU" &&
+    _asset.type != "BITMAP_BUILDER" &&
+    _asset.type != "MUSIC_MAKER" &&
             point_in_rectangle(_mx, _my, _addr_x, _iy, _panel_right, _iy + item_h)) {
             editing_address     = true;
             editing_address_idx = hover_idx;
@@ -2383,24 +2361,6 @@ if (mouse_check_button_pressed(mb_right) && _mouse_in_panel && hover_idx >= 0) {
         }
     }
 
-    // Also block deletion if the asset lives inside any LOAD_ORG's manifest.
-    // (Cosmetic delete cleanup further down also wipes these refs, but we
-    //  want the user to consciously remove from the LOAD_ORG first.)
-    if (!_is_referenced) {
-        for (var _dlci = 0; _dlci < ds_list_size(asset_list); _dlci++) {
-            var _dlca = ds_list_find_value(asset_list, _dlci);
-            if (_dlca.type != "LOAD_ORG" && _dlca.type != "LOAD_REU") continue;
-            if (_dlca == _asset) continue;
-            if (!variable_struct_exists(_dlca, "linked_assets")) continue;
-            for (var _dllki = 0; _dllki < array_length(_dlca.linked_assets); _dllki++) {
-                if (_dlca.linked_assets[_dllki].asset_name == _asset.name) {
-                    _is_referenced = true;
-                    break;
-                }
-            }
-            if (_is_referenced) break;
-        }
-    }
 
     if (_is_referenced) {
         delete_warn_timer  = 180;
