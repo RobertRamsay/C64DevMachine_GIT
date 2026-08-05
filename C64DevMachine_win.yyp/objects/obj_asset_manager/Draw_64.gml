@@ -6317,6 +6317,91 @@ gpu_set_texfilter(false);
 	                    _rty += 20;
 	                }
 
+	                // HiRes role recalibration. The current primary/secondary
+	                // swatches are treated as the intended FG/BG pair. A cell
+	                // is changed only when BOTH colours actually occur in its
+	                // 8x8 pixels; every other cell is left exactly as it was.
+	                if (_bmp_is_hires && !_asset.meta.replace_mode) {
+	                    var _cal_enabled = (_asset.meta.active_color != _asset.meta.secondary_color)
+	                                    && surface_exists(_asset.meta.preview_surf);
+	                    var _cal_hov = _cal_enabled
+	                                && point_in_rectangle(_mx, _my, _rtx, _rty, _rtx + 70, _rty + 16);
+	                    draw_set_color(!_cal_enabled ? make_color_rgb(25, 25, 35)
+	                                   : (_cal_hov ? make_color_rgb(100, 80, 40) : make_color_rgb(60, 45, 25)));
+	                    draw_rectangle(_rtx, _rty, _rtx + 70, _rty + 16, false);
+	                    draw_set_color(!_cal_enabled ? make_color_rgb(50, 50, 60)
+	                                   : (_cal_hov ? c_white : c_orange));
+	                    draw_rectangle(_rtx, _rty, _rtx + 70, _rty + 16, true);
+	                    draw_text(_rtx + 3, _rty, "UPDATE F/B");
+
+	                    if (_cal_hov && mouse_check_button_pressed(mb_left)) {
+	                        var _cal_buf = buffer_create(320 * 200 * 4, buffer_fixed, 1);
+	                        buffer_get_surface(_cal_buf, _asset.meta.preview_surf, 0);
+
+	                        var _cal_fg_rgb = scr_c64_pepto_colour(_asset.meta.active_color);
+	                        var _cal_bg_rgb = scr_c64_pepto_colour(_asset.meta.secondary_color);
+	                        var _cal_fg_r = color_get_red(_cal_fg_rgb);
+	                        var _cal_fg_g = color_get_green(_cal_fg_rgb);
+	                        var _cal_fg_b = color_get_blue(_cal_fg_rgb);
+	                        var _cal_bg_r = color_get_red(_cal_bg_rgb);
+	                        var _cal_bg_g = color_get_green(_cal_bg_rgb);
+	                        var _cal_bg_b = color_get_blue(_cal_bg_rgb);
+	                        var _cal_count = 0;
+
+	                        for (var _cal_cy = 0; _cal_cy < 25; _cal_cy++) {
+	                            for (var _cal_cx = 0; _cal_cx < 40; _cal_cx++) {
+	                                var _cal_has_fg = false;
+	                                var _cal_has_bg = false;
+
+	                                // First pass only tests eligibility.
+	                                for (var _cal_py = 0; _cal_py < 8; _cal_py++) {
+	                                    for (var _cal_px = 0; _cal_px < 8; _cal_px++) {
+	                                        var _cal_x = _cal_cx * 8 + _cal_px;
+	                                        var _cal_y = _cal_cy * 8 + _cal_py;
+	                                        var _cal_off = (_cal_y * 320 + _cal_x) * 4;
+	                                        var _cal_r = buffer_peek(_cal_buf, _cal_off,     buffer_u8);
+	                                        var _cal_g = buffer_peek(_cal_buf, _cal_off + 1, buffer_u8);
+	                                        var _cal_b = buffer_peek(_cal_buf, _cal_off + 2, buffer_u8);
+	                                        if (_cal_r == _cal_fg_r && _cal_g == _cal_fg_g && _cal_b == _cal_fg_b) _cal_has_fg = true;
+	                                        if (_cal_r == _cal_bg_r && _cal_g == _cal_bg_g && _cal_b == _cal_bg_b) _cal_has_bg = true;
+	                                    }
+	                                }
+
+	                                if (_cal_has_fg && _cal_has_bg) {
+	                                    var _cal_cell = _cal_cy * 40 + _cal_cx;
+	                                    _asset.meta.hr_cell_fg_col[_cal_cell] = _asset.meta.active_color;
+	                                    _asset.meta.hr_cell_bg_col[_cal_cell] = _asset.meta.secondary_color;
+
+	                                    // Second pass assigns each selected-colour pixel
+	                                    // to its matching role. Eligible HiRes cells have
+	                                    // this two-colour pair, so non-FG pixels are BG.
+	                                    for (var _cal_ry = 0; _cal_ry < 8; _cal_ry++) {
+	                                        for (var _cal_rx = 0; _cal_rx < 8; _cal_rx++) {
+	                                            var _cal_ax = _cal_cx * 8 + _cal_rx;
+	                                            var _cal_ay = _cal_cy * 8 + _cal_ry;
+	                                            var _cal_roff = (_cal_ay * 320 + _cal_ax) * 4;
+	                                            var _cal_rr = buffer_peek(_cal_buf, _cal_roff,     buffer_u8);
+	                                            var _cal_rg = buffer_peek(_cal_buf, _cal_roff + 1, buffer_u8);
+	                                            var _cal_rb = buffer_peek(_cal_buf, _cal_roff + 2, buffer_u8);
+	                                            _asset.meta.hr_role_mask[_cal_ay * 320 + _cal_ax]
+	                                                = (_cal_rr == _cal_fg_r && _cal_rg == _cal_fg_g && _cal_rb == _cal_fg_b) ? 1 : 0;
+	                                        }
+	                                    }
+	                                    _cal_count++;
+	                                }
+	                            }
+	                        }
+
+	                        buffer_delete(_cal_buf);
+	                        _asset.meta.hr_recalibrated_cells = _cal_count;
+	                        if (_cal_count > 0) {
+	                            _asset.meta.pixels_dirty = true;
+	                            _asset.meta.bmp_unsaved  = true;
+	                        }
+	                    }
+	                    _rty += 20;
+	                }
+
 	                _rty += 5;
 	                draw_set_color(make_color_rgb(60, 60, 80));
 	                draw_line(_rtx, _rty, _rtx + 70, _rty);
