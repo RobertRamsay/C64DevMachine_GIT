@@ -5055,7 +5055,8 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
                         scr_asset_bmp_draw_line(_asset,
                             _asset.meta.shift_last_px, _asset.meta.shift_last_py,
                             _raw_px, _raw_py,
-                            _shift_col, _shift_mask);
+                            _shift_col, _shift_mask,
+                            undefined, true);
                         _asset.meta.pixels_dirty    = true;
                         _asset.meta.bmp_unsaved     = true;
                         _asset.meta.needs_clash_check = true;
@@ -5898,13 +5899,22 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
                     
 // COLOR PICKER (Eye-dropper)
 if (_in_bounds && keyboard_check(vk_alt) && !_png_mode) {
-	if (mouse_check_button(mb_left)) {
-	    var _pick_rgb = surface_getpixel(_asset.meta.preview_surf, _raw_px, _raw_py);
-	    // Loop through the 16 C64 colors to find the match
-	    for (var _i = 0; _i < 16; _i++) {
-	        if (_pick_rgb == scr_c64_pepto_colour(_i)) {
-	            _asset.meta.active_color = _i;
-	            break;
+	if (mouse_check_button_pressed(mb_left)) {
+	    if (_bmp_is_hires) {
+	        // A HiRes character cell owns a two-colour pair. Pick the roles,
+	        // rather than just the RGB beneath the cursor, so the palette UI
+	        // and the next LMB/RMB strokes accurately show FG and BG.
+	        var _pick_cell = ((_raw_py div 8) * 40) + (_raw_px div 8);
+	        _asset.meta.active_color    = _asset.meta.hr_cell_fg_col[_pick_cell];
+	        _asset.meta.secondary_color = _asset.meta.hr_cell_bg_col[_pick_cell];
+	    } else {
+	        var _pick_rgb = surface_getpixel(_asset.meta.preview_surf, _raw_px, _raw_py);
+	        // Loop through the 16 C64 colours to find the match.
+	        for (var _i = 0; _i < 16; _i++) {
+	            if (_pick_rgb == scr_c64_pepto_colour(_i)) {
+	                _asset.meta.active_color = _i;
+	                break;
+	            }
 	        }
 	    }
 	}

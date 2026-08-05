@@ -66,15 +66,24 @@ void main() {
     // Nearest Pepto Palette Match
     float best_d = 999999.0;
     vec3 final_col = u_palette[0];
+    // RGB distance alone lets colours such as brown and yellow act as extra
+    // brightness levels when the source has been desaturated. Keep the
+    // target saturation in the match so SAT=0 genuinely selects greys.
+    float target_sat = rgb2hsv(col).y;
     // Explicit math for the distance to avoid HLSL compiler errors
     for (int i = 0; i < 16; i++) {
         vec3 pal = u_palette[i];
         vec3 diff = col - pal;
+        float pal_sat = rgb2hsv(pal).y;
+        float sat_diff = target_sat - pal_sat;
         
-        // Manual Weighted Distance: R*0.299, G*0.587, B*0.114
+        // Manual weighted RGB distance plus a saturation/chroma penalty.
+        // The fairly strong weight is intentional: the C64 palette has large
+        // grey-level gaps that coloured entries must not fill at low SAT.
         float dist = (diff.r * diff.r * 0.299) + 
                      (diff.g * diff.g * 0.587) + 
-                     (diff.b * diff.b * 0.114);
+                     (diff.b * diff.b * 0.114) +
+                     (sat_diff * sat_diff * 0.75);
         if (dist < best_d) {
             best_d = dist;
             final_col = pal;

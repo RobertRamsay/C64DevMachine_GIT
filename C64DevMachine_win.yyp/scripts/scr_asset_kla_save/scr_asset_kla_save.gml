@@ -265,15 +265,32 @@ function scr_asset_kla_save(_asset) {
                     _c_fg = _sorted[1];
                 }
 
+                // The editor's HiRes role model is authoritative. It records
+                // which colour is FG/BG even when FG happens to be the more
+                // common colour in the cell. The frequency-derived pair above
+                // remains as a fallback for legacy assets without role data.
+                var _has_hr_roles = variable_struct_exists(_asset.meta, "hr_cell_fg_col")
+                                 && variable_struct_exists(_asset.meta, "hr_cell_bg_col")
+                                 && variable_struct_exists(_asset.meta, "hr_role_mask")
+                                 && array_length(_asset.meta.hr_cell_fg_col) > _cell_idx
+                                 && array_length(_asset.meta.hr_cell_bg_col) > _cell_idx
+                                 && array_length(_asset.meta.hr_role_mask) >= 64000;
+                if (_has_hr_roles) {
+                    _c_fg = _asset.meta.hr_cell_fg_col[_cell_idx];
+                    _c_bg = _asset.meta.hr_cell_bg_col[_cell_idx];
+                }
+
                 _scr_ram[_cell_idx] = (_c_fg << 4) | _c_bg;
 
                 for (var _py = 0; _py < 8; _py++) {
                     var _bmp_byte = 0;
                     for (var _px = 0; _px < 8; _px++) {
-                        var _pc = _cell_pixels[_py * 8 + _px];
-                        // Single-colour cells stay all-BG bits — fg==bg there
-                        // anyway, so the pixel renders identically either way.
-                        if (_uniq_n2 > 1 && _pc == _c_fg) {
+                        var _abs_x2 = (_gx * 8) + _px;
+                        var _abs_y2 = (_gy * 8) + _py;
+                        var _is_fg_bit = _has_hr_roles
+                            ? (_asset.meta.hr_role_mask[_abs_y2 * 320 + _abs_x2] == 1)
+                            : (_uniq_n2 > 1 && _cell_pixels[_py * 8 + _px] == _c_fg);
+                        if (_is_fg_bit) {
                             _bmp_byte = _bmp_byte | (0x80 >> _px);
                         }
                     }
