@@ -4,9 +4,7 @@
 
 if obj_workspace_manager.code_editor_open or obj_workspace_manager.hideui exit;
 
-// OLD (nothing here)
 
-// NEW — add this block:
 // Invalidate dither cache when mode/invert changes
 var _am = (viewer_open && viewer_asset >= 0) ? ds_list_find_value(asset_list, viewer_asset) : noone;
 var _cur_mode = (_am != noone && _am.type == "BITMAP" && variable_struct_exists(_am.meta, "dither_mode")) ? _am.meta.dither_mode : "NONE";
