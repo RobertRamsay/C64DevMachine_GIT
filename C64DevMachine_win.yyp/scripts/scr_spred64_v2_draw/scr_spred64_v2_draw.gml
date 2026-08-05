@@ -1907,38 +1907,74 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             }
         }
 
-        // -------- MOUSE-WHEEL LAYER CYCLING --------
-        // While the cursor is over the compositor grid, the wheel steps the
-        // active layer: up toward L7, down toward BASE (L0), clamped at both
-        // ends. Switching layer re-resolves active_cell at the anchor cell
-        // (comp_anchor_*, else the current hover) so the controls column and
-        // brackets follow — mirrors the layer-button click behaviour.
-        var _wheel_over_grid = (_v2.comp_hover_row >= 0 && _v2.comp_hover_col >= 0);
-        if (_wheel_over_grid && !global.any_picker_open) {
-            var _wheel_dir = 0;
-            if (mouse_wheel_up())   { _wheel_dir = 1; }
-            if (mouse_wheel_down()) { _wheel_dir = -1; }
-            if (_wheel_dir != 0) {
-                var _wheel_new = clamp(_comp.active_layer + _wheel_dir, 0, 7);
-                if (_wheel_new != _comp.active_layer) {
-                    _comp.active_layer = _wheel_new;
-                    // Re-resolve the active cell at the anchor (or hover if
-                    // no anchor set yet) on the newly-selected layer.
-                    var _wl_row = _v2.comp_anchor_row;
-                    var _wl_col = _v2.comp_anchor_col;
-                    if (_wl_row < 0 || _wl_col < 0) {
-                        _wl_row = _v2.comp_hover_row;
-                        _wl_col = _v2.comp_hover_col;
-                    }
-                    if (_wl_row >= 0 && _wl_col >= 0) {
-                        _comp.active_cell = scr_spred64_v2_compositor_find_cell(
-                            _cur_frame, _comp.active_layer, _wl_row, _wl_col);
-                    } else {
-                        _comp.active_cell = -1;
-                    }
-                }
-            }
+        // -------- KEYBOARD / MOUSE-WHEEL LAYER CYCLING --------
+// W or wheel up   = move toward L7
+// S or wheel down = move toward BASE
+var _wheel_over_grid =
+    (_v2.comp_hover_row >= 0 && _v2.comp_hover_col >= 0);
+
+var _layer_dir = 0;
+
+// W/S work anywhere inside the SPR64 editor.
+// Modifier check prevents Ctrl/Cmd+S from changing layer.
+if (!global.is_any_text_active
+&&  !global.any_picker_open
+&&  !scr_ctrl_held()
+&&  !keyboard_check(vk_alt)) {
+    if (keyboard_check_pressed(ord("W"))) {
+        _layer_dir = 1;
+        keyboard_clear(ord("W"));
+    }
+
+    if (keyboard_check_pressed(ord("S"))) {
+        _layer_dir = -1;
+        keyboard_clear(ord("S"));
+    }
+}
+
+// Wheel remains restricted to the compositor grid.
+if (_wheel_over_grid && !global.any_picker_open) {
+    if (mouse_wheel_up()) {
+        _layer_dir = 1;
+    }
+
+    if (mouse_wheel_down()) {
+        _layer_dir = -1;
+    }
+}
+
+if (_layer_dir != 0) {
+    var _layer_new = clamp(
+        _comp.active_layer + _layer_dir,
+        0,
+        7
+    );
+
+    if (_layer_new != _comp.active_layer) {
+        _comp.active_layer = _layer_new;
+
+        // Preserve the selected compositor position when switching layer.
+        var _layer_row = _v2.comp_anchor_row;
+        var _layer_col = _v2.comp_anchor_col;
+
+        if (_layer_row < 0 || _layer_col < 0) {
+            _layer_row = _v2.comp_hover_row;
+            _layer_col = _v2.comp_hover_col;
         }
+
+        if (_layer_row >= 0 && _layer_col >= 0) {
+            _comp.active_cell =
+                scr_spred64_v2_compositor_find_cell(
+                    _cur_frame,
+                    _comp.active_layer,
+                    _layer_row,
+                    _layer_col
+                );
+        } else {
+            _comp.active_cell = -1;
+        }
+    }
+}
 
         // -------- PASS 2: LAYER CONTENT, BORDERS, CLICKS --------
         for (var _gr = 0; _gr < 4; _gr++) {

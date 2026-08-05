@@ -2186,12 +2186,17 @@ if (build_trigger && !global.asset_reload_in_progress) {
             // allowed to silence this check. Within the same MACRO_CODE
             // block, "after" is decided by position in the text instead.
             var _loop_labels = []; // { name, node, y, org_parent, sub }
-            var _loop_jmps   = []; // { target, node, y, org_parent, sub }
+var _loop_jmps   = []; // { target, node, y, org_parent, sub }
+var _any_return_found = false;
 
             with (obj_c64_node) {
                 if (!is_connected) continue;
                 if (array_length(instructions) == 0 || array_length(instructions[0]) == 0) continue;
                 var _cmnem = string_lower(string(instructions[0][0]));
+				// Any connected RTS/RTI anywhere is sufficient.
+if (_cmnem == "rts" || _cmnem == "rti") {
+    _any_return_found = true;
+}
 
                 if (_cmnem == "label" && array_length(instructions[0]) > 1) {
                     array_push(_loop_labels, { name: string(instructions[0][1]), node: id, y: y, org_parent: org_parent, sub: 0 });
@@ -2205,6 +2210,9 @@ if (build_trigger && !global.asset_reload_in_progress) {
                         for (var _cpi = 0; _cpi < array_length(_cc_parsed); _cpi++) {
                             var _cinst = _cc_parsed[_cpi];
                             var _ctype = string_lower(string(_cinst[0]));
+							if (_ctype == "rts" || _ctype == "rti") {
+    _any_return_found = true;
+}
                             if (_ctype == "label" && array_length(_cinst) > 1) {
                                 array_push(_loop_labels, { name: string(_cinst[1]), node: id, y: y, org_parent: org_parent, sub: _cpi });
                             } else if ((_ctype == "jmp" || _ctype == "jmp_abs" || _ctype == "jmp_ind")
@@ -2254,7 +2262,7 @@ if (build_trigger && !global.asset_reload_in_progress) {
                 }
             }
 
-            if (!_core_loop_found && !_tail_is_return) {
+            if (!_core_loop_found && !_any_return_found) {
                 if (scr_show_question_bool("No core loop or RTS found in your spine.\n\nWithout one of these, the C64 will run off the end of your program into whatever memory comes next - usually a crash.\n\nAdd an RTS node at the end so it returns cleanly instead?")) {
                     var _rts_x = _tail_node.x;
                     var _rts_y = _tail_node.y + _tail_node.height + 20;
