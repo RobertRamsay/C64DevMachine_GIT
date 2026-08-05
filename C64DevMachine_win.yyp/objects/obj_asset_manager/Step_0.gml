@@ -1554,6 +1554,7 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open) {
 			        bg_col        : 0,
 			        bg_mask       : array_create(64000, 0),
 			        clash_grid    : array_create(1000, false),
+			        coll_types     : array_create(1000, 0),
 			        auto_clean    : true,
 			        is_editing    : false,
 			        needs_mask_init : false,

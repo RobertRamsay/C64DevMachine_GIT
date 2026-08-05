@@ -760,15 +760,19 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         }
     }
     // ── RESOLVE THE SOURCE SHEET'S TAG GRID ──────────────────────────────
-    // Seeded by scr_asset_bmp_build_preview, so it exists for any BITMAP that
-    // has ever had a preview built. A source whose file is missing never reaches
-    // that funnel, so guard rather than assume — TAG mode simply has nothing to
-    // paint on in that case.
+    // Usually seeded when a BITMAP is created or its preview is rebuilt. Older
+    // in-memory assets and freshly imported images can already have a valid
+    // preview surface without ever passing through that initialisation path,
+    // though. Repair the grid here so tagging works immediately and never
+    // depends on a save/reload cycle.
     var _tags = noone;
-    if (_src != noone && variable_struct_exists(_src.meta, "coll_types")) {
-        if (is_array(_src.meta.coll_types) && array_length(_src.meta.coll_types) == 1000) {
-            _tags = _src.meta.coll_types;
+    if (_src != noone) {
+        if (!variable_struct_exists(_src.meta, "coll_types")
+        ||  !is_array(_src.meta.coll_types)
+        ||  array_length(_src.meta.coll_types) != 1000) {
+            _src.meta.coll_types = array_create(1000, 0);
         }
+        _tags = _src.meta.coll_types;
     }
 
     // ── TAG MODE: PAINT TYPES ONTO THE SOURCE SHEET ──────────────────────
