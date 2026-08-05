@@ -27,8 +27,10 @@ draw_sprite_ext(spr_baseGradient, 0,
 	
 	
 // on left
-	draw_sprite_ext(spr_baseGradient, 0,
-    shelf_width, 0 , 2000, 1.5, 270, c_white, 1);
+if (!expert_mode) {
+    draw_sprite_ext(spr_baseGradient, 0,
+        shelf_width, 0 , 2000, 1.5, 270, c_white, 1);
+}
 
 
 
@@ -161,14 +163,19 @@ if (global.box_drag_active) {
 
 
 // Draw the page sprite (replaces all button draw calls)
+// Keep the established shelf/menu boundary stable even when the shelf body
+// is not drawn from a persisted Expert Mode startup.
+shelf_width = (86 * 3) - 20;
 var _sw_plus = shelf_width+30;
 
-draw_sprite(spr_palette_page, paletteStyle, 0, 0);
+if (!expert_mode) draw_sprite(spr_palette_page, paletteStyle, 0, 0);
 
-draw_sprite_ext(spr_baseGradient, 0,
+if (!expert_mode) draw_sprite_ext(spr_baseGradient, 0,
     0, 1080 , _sw_plus, 1, 0, c_white, 0.5);
 	
 draw_sprite(spr_logobadge,badgeStyle,6,5)
+
+if (!expert_mode) {
 
 /////////////////////////////////////////////////////////////////
 ///// OPCODE FINDER BOX
@@ -262,6 +269,7 @@ if (opcode_finder_active && opcode_finder_text != "") {
 // Highlight matching buttons in the palette loop — done via a helper array
 // The actual highlight is applied inside the palette draw loop below by checking
 // if opcode_finder_matches contains the item title.
+}
 
 if point_in_rectangle(gui_mouse_x,gui_mouse_y,12,10,36,32)
 	{
@@ -277,6 +285,8 @@ if point_in_rectangle(gui_mouse_x,gui_mouse_y,12,10,36,32)
 // NEW menu bar here V099.81 
 
 draw_sprite(spr_menu_bar, paletteStyle, _sw_plus ,0)
+
+if (!expert_mode) {
 
 // Combine the active page with common assets
 var active_palette = array_concat(palette_page[shelf_page], common_assets);
@@ -483,6 +493,7 @@ if (shelf_page < p_count - 1) {
 
 /////////////////////////////////////////////////////////////////
 ///// 1B. MACRO COLUMN — COMMENTED OUT (now in menu bar)
+}
 /////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////
@@ -501,6 +512,7 @@ var _menu_labels = [
 // OPTIONS DROPDOWN (button 2)
 if (gui_menu_open == 4) {
     var _opt_list = [
+        { title: "EXPERT MODE",      action: "EXPERT_MODE"    },
         { title: "HELPER MODE",     action: "HELPER"          },
         { title: "PALETTE HELPER",  action: "PALETTE_HELPER"  },
         { title: "GRID",            action: "GRID"            },
@@ -548,6 +560,10 @@ if (gui_menu_open == 4) {
         // State indicator on right
         var _state_str = "";
         var _state_col = c_gray;
+        if (_op.action == "EXPERT_MODE") {
+            _state_str = expert_mode ? "ON" : "OFF";
+            _state_col = expert_mode ? c_lime : c_red;
+        }
         if (_op.action == "HELPER") {
             _state_str = opcode_helper_on ? "ON" : "OFF";
             _state_col = opcode_helper_on ? c_lime : c_red;
@@ -605,7 +621,19 @@ if (gui_menu_open == 4) {
 
         if (_ihov && mouse_check_button_pressed(mb_left)) {
             gui_menu_open = -1;
-            if (_op.action == "HELPER") {
+            if (_op.action == "EXPERT_MODE") {
+                expert_mode = !expert_mode;
+                opcode_finder_active     = false;
+                opcode_finder_was_active = false;
+                opcode_finder_text       = "";
+                opcode_finder_matches    = [];
+                opcode_hover_key         = "";
+                opcode_hover_timer       = 0;
+                ini_open("c64devmachine.ini");
+                ini_write_real("Settings", "expert_mode", expert_mode ? 1 : 0);
+                ini_close();
+            }
+            else if (_op.action == "HELPER") {
                 opcode_helper_on = !opcode_helper_on;
             }
             else if (_op.action == "PALETTE_HELPER") {

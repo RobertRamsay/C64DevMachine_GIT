@@ -8,6 +8,7 @@ ini_write_real("Settings", "bkgImg", bkgImg);
 ini_write_real("Settings", "showGrid", showGrid);
 ini_write_real("Settings", "paletteStyle", paletteStyle);
 ini_write_real("Settings", "niceSliceFrm", niceSliceFrm);
+ini_write_real("Settings", "expert_mode", expert_mode ? 1 : 0);
 ini_close();
 
 if (!global.manual_saved) {

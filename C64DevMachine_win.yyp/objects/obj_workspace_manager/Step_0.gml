@@ -635,6 +635,22 @@ _was_entering_text = is_entering_text;
 // =============================================================
 // OPCODE FINDER KEYBOARD INPUT
 // =============================================================
+// Expert Mode: Ctrl/Cmd+E. The opcode shelf becomes live canvas below Y=47.
+if (scr_ctrl_held() && keyboard_check_pressed(ord("E"))
+    && !is_entering_text && !global.is_any_text_active
+    && !global.any_picker_open && !box_popup_open && !code_editor_open) {
+    expert_mode = !expert_mode;
+    opcode_finder_active     = false;
+    opcode_finder_was_active = false;
+    opcode_finder_text       = "";
+    opcode_finder_matches    = [];
+    opcode_hover_key         = "";
+    opcode_hover_timer       = 0;
+    ini_open("c64devmachine.ini");
+    ini_write_real("Settings", "expert_mode", expert_mode ? 1 : 0);
+    ini_close();
+}
+
 if (opcode_finder_active) {
     if (!opcode_finder_was_active) {
         keyboard_string          = "";
@@ -4144,7 +4160,7 @@ if (!keyboard_check(vk_alt) && keyboard_check_released(ord("M")) && global.show_
             _nav_x, _ry, _nav_x + 200, _ry + _row_h)) {
 
             // Effective viewport in GUI pixels (shelf eats the left side)
-            var _shelf_w  = obj_workspace_manager.shelf_width;
+            var _shelf_w  = expert_mode ? 0 : obj_workspace_manager.shelf_width;
             var _view_w   = 1920 - _shelf_w;   // usable width in GUI px
             var _view_h   = 1080;
 
@@ -4181,7 +4197,7 @@ if (!keyboard_check(vk_alt) && keyboard_check_released(ord("M")) && global.show_
 /////////////////////////////////////////////////////////////////
 // BOX SELECT
 /////////////////////////////////////////////////////////////////
-var _in_gui = (global.gui_mouse_x <= shelf_width)
+var _in_gui = ((global.gui_mouse_x <= shelf_width) && (!expert_mode || global.gui_mouse_y < 47))
            || (global.gui_mouse_x >= (global.gui_w - 20 - 280))
            || is_entering_text
            || box_popup_open
@@ -4295,7 +4311,7 @@ if (mouse_check_button_pressed(mb_left)  && !box_popup_open) {
     if (instance_exists(_hit_box) && keyboard_check(vk_alt)) {
         if (box_body_dbl_timer > 0 && box_body_dbl_target == _hit_box) {
             // Double-click confirmed — zoom to box
-            var _shelf_w  = shelf_width;
+            var _shelf_w  = expert_mode ? 0 : shelf_width;
             var _view_w   = 1920 - _shelf_w;
             var _view_h   = 1080;
             var _fit_w    = (_hit_box.box_w > 0) ? (_view_w * 0.8) / _hit_box.box_w : 1.0;
@@ -4390,4 +4406,3 @@ if (scan_active) {
         show_debug_message("=== SCAN FINISHED ===");
     }
 }
-

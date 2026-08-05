@@ -139,7 +139,7 @@ if (global.group_drag_active && id != global.group_drag_handle) {
 /////////////////////////////////////////////////////////////////
 // DRAG-OVER-SHELF DESTROY
 /////////////////////////////////////////////////////////////////
-if (is_dragging && mouse_check_button_released(mb_left)) {
+if (!obj_workspace_manager.expert_mode && is_dragging && mouse_check_button_released(mb_left)) {
     var _cam_x     = obj_workspace_manager.cam_x;
     var _cam_zoom  = obj_workspace_manager.cam_zoom;
     var _screen_x  = (x - _cam_x) / _cam_zoom;
@@ -356,7 +356,8 @@ var _gui_mouse_x     = global.gui_mouse_x;
 var _gui_mouse_y     = global.gui_mouse_y;
 var _gui_w           = global.gui_w;
 var _shelf_w         = obj_workspace_manager.shelf_width;
-var _mouse_in_shelf     = (_gui_mouse_x <= _shelf_w);
+var _mouse_in_shelf     = (_gui_mouse_x <= _shelf_w)
+                       && (!obj_workspace_manager.expert_mode || _gui_mouse_y < 47);
 var _mouse_in_shortcuts = (_gui_mouse_x >= global.sc_x_start && _gui_mouse_x <= _gui_w);
 
 var _mouse_in_gui = _mouse_in_shelf
@@ -2174,7 +2175,7 @@ if (global.wedge_preview_y >= 0) {
             }
 
             var _sx = (x - _cam_x) / _cam_zoom;
-            if (_sx < obj_workspace_manager.shelf_width) {
+            if (!obj_workspace_manager.expert_mode && _sx < obj_workspace_manager.shelf_width) {
                
                 instance_destroy();
             } else {

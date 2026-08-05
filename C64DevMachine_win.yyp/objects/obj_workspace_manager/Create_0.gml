@@ -33,6 +33,7 @@ global.pending_unlock_init_id  = noone;
 global.canEditNode=1;
 opcode_extra_height=1;
 showPaletteHelper=1;
+expert_mode = false;
 hideui=false;
 // =============================================================
 // Version check state
@@ -920,6 +921,7 @@ bkgImg      = ini_read_real("Settings", "bkgImg",       0);
 showGrid    = ini_read_real("Settings", "showGrid",      0);
 paletteStyle = ini_read_real("Settings", "paletteStyle", 0);
 niceSliceFrm = ini_read_real("Settings", "niceSliceFrm", 0);
+expert_mode  = ini_read_real("Settings", "expert_mode", 0) == 1;
 var _hide_welcome = ini_read_real("Settings", "hide_welcome", 0);
 welcome_hide_checked = (_hide_welcome != 0);
 welcome_open          = !welcome_hide_checked;
@@ -935,6 +937,5 @@ if (_saved_w > 0 && _saved_h > 0)
     window_set_size(_saved_w, _saved_h);
     window_set_position(_saved_x, _saved_y);
 }
-
 
 
