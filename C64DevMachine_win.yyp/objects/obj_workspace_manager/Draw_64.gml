@@ -168,7 +168,25 @@ if (global.box_drag_active) {
 shelf_width = (86 * 3) - 20;
 var _sw_plus = shelf_width+30;
 
-if (!expert_mode) draw_sprite(spr_palette_page, paletteStyle, 0, 0);
+if (expert_mode) {
+    // Keep palette header pixels Y=0..46, except for palette frame 3.
+    if (paletteStyle != 3) {
+        var _expert_header_h = 47;
+        draw_sprite_part(
+            spr_palette_page,
+            paletteStyle,
+            0,
+            0,
+            sprite_get_width(spr_palette_page),
+            _expert_header_h,
+            0,
+            0
+        );
+    }
+} else {
+    draw_sprite(spr_palette_page, paletteStyle, 0, 0);
+
+}
 
 if (!expert_mode) draw_sprite_ext(spr_baseGradient, 0,
     0, 1080 , _sw_plus, 1, 0, c_white, 0.5);
