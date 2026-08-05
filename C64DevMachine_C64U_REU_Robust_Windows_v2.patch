@@ -1,0 +1,173 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64u_async_network/scr_c64u_async_network.gml b/C64DevMachine_win.yyp/scripts/scr_c64u_async_network/scr_c64u_async_network.gml
+index 4406142..4b65904 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64u_async_network/scr_c64u_async_network.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64u_async_network/scr_c64u_async_network.gml
+@@ -4,7 +4,11 @@ function scr_c64u_async_network() {
+     var _type = async_load[? "type"];
+ 
+     if (_type == network_type_non_blocking_connect) {
+-        if (async_load[? "succeeded"] != 1) return scr_c64u_reu_fail("enable Ultimate DMA Service (TCP port 64)");
++        if (async_load[? "succeeded"] != 1) {
++            global.c64u_reu_state = "retry";
++            global.c64u_reu_deadline = current_time;
++            return false;
++        }
+         if (global.c64u_password != "") return scr_c64u_reu_send_auth();
+         return scr_c64u_reu_send_payload();
+     }
+@@ -16,6 +20,24 @@ function scr_c64u_async_network() {
+         return scr_c64u_reu_send_payload();
+     }
+ 
+-    if (_type == network_type_disconnect) return scr_c64u_reu_fail("DMA service disconnected");
++    if (_type == network_type_data && global.c64u_reu_state == "confirm") {
++        if (async_load[? "size"] < 1) {
++            global.c64u_reu_state = "retry";
++            global.c64u_reu_deadline = current_time;
++            return false;
++        }
++        global.c64u_reu_state    = "settle";
++        global.c64u_reu_deadline = current_time + 750;
++        global.c64u_status       = "C64U REU: upload confirmed";
++        global.c64u_status_t     = 240;
++        show_debug_message("C64U REU: Ultimate confirmed upload on attempt " + string(global.c64u_reu_attempt));
++        return true;
++    }
++
++    if (_type == network_type_disconnect) {
++        global.c64u_reu_state = "retry";
++        global.c64u_reu_deadline = current_time;
++        return false;
++    }
+     return true;
+-}
+\ No newline at end of file
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64u_init/scr_c64u_init.gml b/C64DevMachine_win.yyp/scripts/scr_c64u_init/scr_c64u_init.gml
+index 4df91a1..26e0356 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64u_init/scr_c64u_init.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64u_init/scr_c64u_init.gml
+@@ -19,6 +19,8 @@ function scr_c64u_init()
+     global.c64u_reu_after        = "";
+     global.c64u_reu_path_a       = "";
+     global.c64u_reu_path_b       = "";
++    global.c64u_reu_attempt      = 0;
++    global.c64u_reu_max_attempts = 3;
+     global.reu_last_image        = "";
+     global.reu_last_used         = 0;
+     global.reu_build_error       = "";
+@@ -68,4 +70,3 @@ function scr_c64u_init()
+ 
+ 
+ 
+-
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_begin/scr_c64u_reu_begin.gml b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_begin/scr_c64u_reu_begin.gml
+index 422b31f..ed46db1 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_begin/scr_c64u_reu_begin.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_begin/scr_c64u_reu_begin.gml
+@@ -19,6 +19,7 @@ function scr_c64u_reu_begin(_after, _path_a, _path_b) {
+     global.c64u_reu_after    = _after;
+     global.c64u_reu_path_a   = _path_a;
+     global.c64u_reu_path_b   = _path_b;
++    global.c64u_reu_attempt  = 1;
+     global.c64u_busy         = true;
+     global.c64u_status       = "C64U REU: connecting to DMA service...";
+     global.c64u_status_t     = 600;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml
+index 8a8b606..8099c98 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml
+@@ -4,7 +4,9 @@ function scr_c64u_reu_send_payload() {
+ 
+     var _total = min(buffer_get_size(_image), max(0x100, real(global.reu_last_used)));
+     var _offset = 0;
+-    var _chunk_max = 8192;
++    // REUWRITE has a 16-bit payload length. A normal bitmap now travels as
++    // one command, reducing the number of fragile protocol boundaries.
++    var _chunk_max = 60000;
+ 
+     while (_offset < _total) {
+         var _chunk = min(_chunk_max, _total - _offset);
+@@ -24,16 +26,37 @@ function scr_c64u_reu_send_payload() {
+         buffer_delete(_packet);
+         if (_sent != 7 + _chunk) {
+             buffer_delete(_image);
+-            return scr_c64u_reu_fail("network write stopped at $" + string_upper(decimal_to_hex(_offset)));
++            global.c64u_reu_state = "retry";
++            global.c64u_reu_deadline = current_time;
++            global.c64u_status = "C64U REU: network write interrupted, retrying...";
++            return false;
+         }
+         _offset += _chunk;
+     }
+ 
+     buffer_delete(_image);
+-    global.c64u_reu_state    = "settle";
+-    global.c64u_reu_deadline = current_time + 750;
+-    global.c64u_status       = "C64U REU: uploaded " + string(_total) + " bytes";
+-    global.c64u_status_t     = 240;
+-    show_debug_message("C64U REU: uploaded " + string(_total) + " bytes from " + global.reu_last_image);
++
++    // REUWRITE itself has no acknowledgement. IDENTIFY is a completion
++    // barrier: the reply can only arrive after every preceding write has
++    // been received and processed by the Ultimate.
++    var _confirm = buffer_create(4, buffer_fixed, 1);
++    buffer_poke(_confirm, 0, buffer_u8, 0x0E);
++    buffer_poke(_confirm, 1, buffer_u8, 0xFF);
++    buffer_poke(_confirm, 2, buffer_u8, 0x00);
++    buffer_poke(_confirm, 3, buffer_u8, 0x00);
++    var _confirm_sent = network_send_raw(global.c64u_reu_socket, _confirm, 4);
++    buffer_delete(_confirm);
++    if (_confirm_sent != 4) {
++        global.c64u_reu_state = "retry";
++        global.c64u_reu_deadline = current_time;
++        global.c64u_status = "C64U REU: confirmation request failed, retrying...";
++        return false;
++    }
++
++    global.c64u_reu_state    = "confirm";
++    global.c64u_reu_deadline = current_time + 15000;
++    global.c64u_status       = "C64U REU: verifying " + string(_total) + " bytes...";
++    global.c64u_status_t     = 600;
++    show_debug_message("C64U REU: sent " + string(_total) + " bytes, waiting for Ultimate confirmation");
+     return true;
+ }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_step/scr_c64u_reu_step.gml b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_step/scr_c64u_reu_step.gml
+index f930623..5650e9b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_step/scr_c64u_reu_step.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_step/scr_c64u_reu_step.gml
+@@ -3,7 +3,31 @@ function scr_c64u_reu_step() {
+     if (current_time < global.c64u_reu_deadline) return;
+     if (global.c64u_reu_state == "settle") {
+         scr_c64u_reu_continue();
++    } else if (global.c64u_reu_attempt < global.c64u_reu_max_attempts) {
++        if (global.c64u_reu_socket >= 0) network_destroy(global.c64u_reu_socket);
++        global.c64u_reu_socket = -1;
++        global.c64u_reu_attempt += 1;
++
++        var _socket = network_create_socket(network_socket_tcp);
++        if (_socket < 0) {
++            scr_c64u_reu_fail("could not recreate TCP socket");
++            return;
++        }
++
++        global.c64u_reu_socket   = _socket;
++        global.c64u_reu_state    = "connecting";
++        global.c64u_reu_deadline = current_time + 15000;
++        global.c64u_busy         = true;
++        global.c64u_status       = "C64U REU: retry " + string(global.c64u_reu_attempt) + "/" + string(global.c64u_reu_max_attempts);
++        global.c64u_status_t     = 600;
++        show_debug_message(global.c64u_status);
++
++        var _result = network_connect_raw_async(_socket, global.c64u_ip, 64);
++        if (_result < 0) {
++            global.c64u_reu_state = "retry";
++            global.c64u_reu_deadline = current_time + 500;
++        }
+     } else {
+-        scr_c64u_reu_fail("DMA service timed out");
++        scr_c64u_reu_fail("DMA upload failed after " + string(global.c64u_reu_max_attempts) + " attempts");
+     }
+-}
+\ No newline at end of file
++}

@@ -890,7 +890,7 @@ _was_panning = false;
 // ---- IDLE SLEEP SYSTEM ----
 global.idle_active   = false;   // true once idle threshold passed
 idle_timer           = 0;       // seconds of no input
-idle_threshold       = 2;      // seconds before sleep
+idle_threshold       = 5;      // seconds before sleep
 idle_last_mx         = 0;       // last GUI mouse pos
 idle_last_my         = 0;
 global.idle_fade     = 1.0;     // 1 = awake, 0 = fully asleep

@@ -19,6 +19,8 @@ function scr_c64u_init()
     global.c64u_reu_after        = "";
     global.c64u_reu_path_a       = "";
     global.c64u_reu_path_b       = "";
+	global.c64u_reu_attempt      = 0;
+	global.c64u_reu_max_attempts = 3;
     global.reu_last_image        = "";
     global.reu_last_used         = 0;
     global.reu_build_error       = "";

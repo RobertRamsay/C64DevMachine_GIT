@@ -19,6 +19,7 @@ function scr_c64u_reu_begin(_after, _path_a, _path_b) {
     global.c64u_reu_after    = _after;
     global.c64u_reu_path_a   = _path_a;
     global.c64u_reu_path_b   = _path_b;
+	global.c64u_reu_attempt  = 1;
     global.c64u_busy         = true;
     global.c64u_status       = "C64U REU: connecting to DMA service...";
     global.c64u_status_t     = 600;
