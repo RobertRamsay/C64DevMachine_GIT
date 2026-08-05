@@ -414,7 +414,7 @@ case "LABEL": {
 		// -------------------------------------------------------
 		case "MACRO_REU":
 		    _n.node_title   = "REU";
-		    _n.instructions = [["macro_reu", 0, 0xC000, 0x0000, 0, 0x0100, 0, 0, 0]];
+		    _n.instructions = [["macro_reu", 0, 0xC000, 0x0000, 0, 0x0100, 0, 0, 0, 0, "", ""]];
 		    _n.pc_address   = global.start_pc;
 		    with (_n) { event_user(0); }
 		    break;

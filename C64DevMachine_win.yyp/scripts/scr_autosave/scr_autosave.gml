@@ -204,6 +204,9 @@ var _base = "unsaved";
                 meta          : _mo,
                 load_later    : variable_struct_exists(_a, "load_later")    ? _a.load_later    : false,
                 d64_filename  : variable_struct_exists(_a, "d64_filename")  ? _a.d64_filename  : "",
+                reu_filename  : variable_struct_exists(_a, "reu_filename")  ? _a.reu_filename  : "",
+                reu_size      : variable_struct_exists(_a, "reu_size")      ? _a.reu_size      : 0,
+                reu_used      : variable_struct_exists(_a, "reu_used")      ? _a.reu_used      : 0,
                 linked_assets : variable_struct_exists(_a, "linked_assets") ? _a.linked_assets : [],
             });
         }

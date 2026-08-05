@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_reu_support",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_reu_support",
+  "parent":{
+    "name":"LOADER_SUPPORT",
+    "path":"folders/SCRIPTS/MACROS/LOADER_SUPPORT.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

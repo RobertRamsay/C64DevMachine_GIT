@@ -974,7 +974,7 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
 	        var _am_lo = obj_asset_manager;
 	        for (var _loi = 0; _loi < ds_list_size(_am_lo.asset_list); _loi++) {
 	            var _loa = ds_list_find_value(_am_lo.asset_list, _loi);
-	            if (_loa.type != "LOAD_ORG") continue;
+	            if (_loa.type != "LOAD_ORG" && _loa.type != "LOAD_REU") continue;
 	            if (!variable_struct_exists(_loa, "linked_assets")) continue;
 	            for (var _loli = 0; _loli < array_length(_loa.linked_assets); _loli++) {
 	                var _lolink = _loa.linked_assets[_loli];

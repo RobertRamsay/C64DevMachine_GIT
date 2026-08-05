@@ -6449,7 +6449,7 @@ case "BANK_SWITCH": {
 
 // --------------------------------------------------------
 // MACRO_REU
-// Triggers a DMA transfer on the 17xx/1750/GeoRAM-style REU at $DF00-$DF0A.
+// Triggers a DMA transfer on a standard 17xx-compatible REU at $DF00-$DF0A.
 // All six address/length/bank bytes are written first, then the command
 // byte is written last to $DF01 with EXEC (bit7) set, which fires the DMA.
 // FF00 disable (bit5) is always set — without it, a stray write to $FF00
@@ -6466,6 +6466,29 @@ case "MACRO_REU": {
     var _reu_auto  = is_real(_curr.instructions[0][6]) ? real(_curr.instructions[0][6]) : 0;
     var _reu_fixc  = is_real(_curr.instructions[0][7]) ? real(_curr.instructions[0][7]) : 0;
     var _reu_fixr  = is_real(_curr.instructions[0][8]) ? real(_curr.instructions[0][8]) : 0;
+
+    // ASSET mode resolves the three manual transfer fields from a LOAD_REU
+    // manifest. Old workspaces have no slot 9, so they remain DIRECT.
+    var _reu_mode = (array_length(_curr.instructions[0]) > 9 && is_real(_curr.instructions[0][9])) ? real(_curr.instructions[0][9]) : 0;
+    if (_reu_mode == 1) {
+        var _manifest_name = (array_length(_curr.instructions[0]) > 10) ? string(_curr.instructions[0][10]) : "";
+        var _asset_name = (array_length(_curr.instructions[0]) > 11) ? string(_curr.instructions[0][11]) : "";
+        var _resolved = scr_reu_resolve(_manifest_name, _asset_name);
+        if (_resolved.found) {
+            _reu_c64  = _resolved.c64_address & 0xFFFF;
+            _reu_addr = _resolved.reu_address & 0xFFFF;
+            _reu_bank = (_resolved.reu_address >> 16) & 0xFF;
+            _reu_len  = _resolved.size & 0xFFFF;
+            if (_reu_len == 0 && _resolved.size == 0x10000) _reu_len = 0;
+        } else {
+            show_debug_message("MACRO_REU ASSET unresolved: " + _manifest_name + " / " + _asset_name);
+            break;
+        }
+        if (_resolved.size > 0x10000) {
+            show_debug_message("MACRO_REU ASSET too large for one DMA: " + _asset_name + " (" + string(_resolved.size) + " bytes)");
+            break;
+        }
+    }
 
     // Type field: 00 stash, 01 fetch, 10 swap, 11 compare
     var _reu_type = clamp(_reu_op, 0, 3);
@@ -15913,6 +15936,7 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 	    var _am = obj_asset_manager;
 	    for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
 	        var _a = ds_list_find_value(_am.asset_list, _ai);
+			if (scr_reu_asset_is_external(_a.name)) continue;
 
 			if ((_a.type == "BITMAP" || _a.type == "BITMAP_KLA") && (ds_map_exists(_used_bmp, _a.name) && !ds_map_exists(_load_org_linked, _a.name))) array_push(_all_assets, _a);
 			if (_a.type == "SID_MUSIC" || _a.type == "SID_SFX") array_push(_all_assets, _a);

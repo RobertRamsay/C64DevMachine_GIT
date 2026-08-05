@@ -125,11 +125,12 @@ for (var _pos = 0; _pos < _count; _pos++) {
 	if (_iy + item_h <= panel_y + 66 || _iy >= _panel_bottom - 38) continue;
 
    // Row background
-    var _is_load_org = false;
+        var _is_load_org = false;
+    var _is_load_reu = false;
+
     if (variable_struct_exists(_asset, "type")) {
-        if (_asset.type == "LOAD_ORG") {
-            _is_load_org = true;
-        }
+        _is_load_org = (_asset.type == "LOAD_ORG");
+        _is_load_reu = (_asset.type == "LOAD_REU");
     }
     
     var _row_col;
@@ -139,6 +140,13 @@ for (var _pos = 0; _pos < _count; _pos++) {
         }
         else {
             _row_col = make_color_rgb(100, 70, 30);
+        }
+    }
+        else if (_is_load_reu) {
+        if (_i == hover_idx) {
+            _row_col = make_color_rgb(45, 105, 120);
+        } else {
+            _row_col = make_color_rgb(25, 65, 80);
         }
     }
     else {
@@ -276,7 +284,7 @@ for (var _pos = 0; _pos < _count; _pos++) {
         draw_set_color(c_lime);
         var _blink = ((current_time mod 600) < 300) ? "_" : " ";
         draw_text(_panel_right - 6, _iy + 12, editing_addr_string + _blink);
-    } else if (_asset.type == "LOAD_ORG" || _asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER") {
+    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER") {
         // LOAD_ORG is a manifest, not physical data — it has no meaningful
         // load address (each linked asset carries its own). BITMAP_BUILDER is
         // an internal editor asset: it emits a derived BYTE_DATA table which
@@ -297,17 +305,31 @@ for (var _pos = 0; _pos < _count; _pos++) {
 	        var _tag_x = _edit_x - 4;
 	        for (var _tai = 0; _tai < ds_list_size(asset_list); _tai++) {
 	            var _ta = ds_list_find_value(asset_list, _tai);
-	            if (_ta.type != "LOAD_ORG") continue;
+	            if (_ta.type != "LOAD_ORG" && _ta.type != "LOAD_REU") continue;
 	            if (!variable_struct_exists(_ta, "linked_assets")) continue;
 	            for (var _tli = 0; _tli < array_length(_ta.linked_assets); _tli++) {
 	                if (_ta.linked_assets[_tli].asset_name == _asset.name) {
-	                    var _tag_col = make_color_rgb(200, 160, 40);
+	                    var _tag_col = (_ta.type == "LOAD_REU")
+			             ? make_color_rgb(45, 105, 120)
+			             : make_color_rgb(200, 160, 40);
 	                    draw_set_color(_tag_col);
 	                    draw_rectangle(_tag_x - 80, _iy + 4, _tag_x - 2, _iy + item_h - 4, false);
 	                    draw_set_font(fnt_c64_pico);
 	                    draw_set_color(c_white);
 	                    draw_set_halign(fa_center);
-						draw_sprite_ext(spr_disk,0,_tag_x-64, _iy+19,.2,.2,0,c_white,1.0); // the sprite icon 
+						var _tag_sprite = (_ta.type == "LOAD_REU") ? spr_chipRam : spr_disk;
+
+							draw_sprite_ext(
+							    _tag_sprite,
+							    0,
+							    _tag_x - 64,
+							    _iy + 19,
+							    .2,
+							    .2,
+							    0,
+							    c_white,
+							    1.0
+							);
 	                    var _short = string_copy(_ta.name, 1, 12);
 					
 	                    draw_text(_tag_x - 40, _iy + 13, _short);
@@ -742,7 +764,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     var _lbx2     = _vx1 + 110;
     var _lby1     = _cy;
     var _lby2     = _cy + 20;
-    if (!_hide_import && _asset.type != "LOAD_ORG" 
+    if (!_hide_import && _asset.type != "LOAD_ORG" && _asset.type != "LOAD_REU"
 	&& _asset.type != "META_TILESET" && _asset.type != "BITMAP_BUILDER" 
 	&& _asset.type != "MUSIC_MAKER"
 	&& !(_asset.type == "BYTE_DATA" && variable_struct_exists(_asset.meta, "is_save_file") && _asset.meta.is_save_file)) {
@@ -783,7 +805,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         draw_text(_vx1 + 78, _cy, editing_addr_string + _blink);
         draw_set_color(c_gray);
         draw_text(_vx1 + 170, _cy, "ENTER TO CONFIRM");
-    } else if (_asset.type == "LOAD_ORG" || _asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER") {
+    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER") {
         // LOAD_ORG is a manifest — no meaningful load address. BITMAP_BUILDER
         // and SOUND_EDITOR are internal-only; their emitted BYTE_DATA/TEXT_DATA
         // assets hold the real addresses. Show a dash, no hover/edit affordance.
@@ -7159,6 +7181,48 @@ case "SID_MUSIC": {
             _cy += 20;
         } break;
 	
+case "LOAD_REU": {
+    scr_reu_repack(_asset);
+    draw_set_font(fnt_c64_tiny);
+    draw_set_color(c_ltgray); draw_text(_vx1 + 10, _cy, "REU IMAGE:");
+    draw_set_color(make_color_rgb(100,200,180)); draw_text(_vx1 + 90, _cy, variable_struct_exists(_asset,"reu_filename") ? _asset.reu_filename : _asset.name + ".reu");
+    _cy += 20;
+    var _used = variable_struct_exists(_asset,"reu_used") ? _asset.reu_used : 0x100;
+    draw_set_color(c_ltgray); draw_text(_vx1 + 10, _cy, "TARGET: 16 MB     USED: " + string(_used) + " BYTES");
+    _cy += 22;
+    var _cn=_vx1+16, _cc=_vx1+190, _cr=_vx1+280, _cs=_vx1+380, _cm=_vx1+465;
+    draw_set_color(make_color_rgb(120,120,140));
+    draw_text(_cn,_cy,"ASSET"); draw_text(_cc,_cy,"C64"); draw_text(_cr,_cy,"REU"); draw_text(_cs,_cy,"BYTES"); draw_text(_cm,_cy,"PACK");
+    _cy += 14;
+    var _links=variable_struct_exists(_asset,"linked_assets")?_asset.linked_assets:[];
+    load_reu_rows_y = _cy;
+    for(var _li=0;_li<array_length(_links);_li++){
+        var _lk=_links[_li], _la=scr_reu_find_asset(_lk.asset_name), _pl=scr_reu_asset_payload(_la);
+        draw_set_color((_li mod 2==0)?make_color_rgb(22,30,34):make_color_rgb(18,25,29)); draw_rectangle(_vx1+8,_cy,_vx2-8,_cy+20,false);
+        draw_set_color(c_white); draw_text(_cn,_cy+4,_lk.asset_name);
+        var _ch=is_undefined(_la)?"----":string_upper(decimal_to_hex(_la.address)); while(string_length(_ch)<4)_ch="0"+_ch;
+        var _rh=string_upper(decimal_to_hex(real(_lk.reu_address))); while(string_length(_rh)<6)_rh="0"+_rh;
+        draw_set_color(c_yellow); draw_text(_cc,_cy+4,"$"+_ch);
+        var _conflict=variable_struct_exists(_lk,"reu_conflict")?_lk.reu_conflict:false;
+        draw_set_color(_conflict?c_red:c_aqua); draw_text(_cr,_cy+4,"$"+_rh);
+        draw_set_color(c_lime); draw_text(_cs,_cy+4,string(_pl.size));
+        if(buffer_exists(_pl.buffer))buffer_delete(_pl.buffer);
+        var _auto=variable_struct_exists(_lk,"auto_pack")?_lk.auto_pack:true;
+        draw_set_color(_auto?make_color_rgb(25,80,55):make_color_rgb(90,65,25)); draw_rectangle(_cm,_cy+2,_cm+45,_cy+18,false);
+        draw_set_color(c_white); draw_set_halign(fa_center); draw_text(_cm+22,_cy+4,_auto?"AUTO":"MAN"); draw_set_halign(fa_left);
+        draw_set_color(make_color_rgb(45,55,65)); draw_rectangle(_cm+48,_cy+2,_cm+64,_cy+18,false); draw_rectangle(_cm+66,_cy+2,_cm+82,_cy+18,false);
+        draw_set_color(c_white); draw_text(_cm+53,_cy+4,"-"); draw_text(_cm+71,_cy+4,"+");
+        draw_set_color(make_color_rgb(100,30,30)); draw_rectangle(_vx2-26,_cy+2,_vx2-8,_cy+18,false); draw_set_color(c_white); draw_text(_vx2-21,_cy+4,"X");
+        _cy+=22;
+    }
+    load_reu_add_y = _cy;
+    var _hov=point_in_rectangle(_mx,_my,_vx1+10,_cy,_vx1+90,_cy+20);
+    draw_set_color(_hov?make_color_rgb(45,150,100):make_color_rgb(25,75,55)); draw_rectangle(_vx1+10,_cy+2,_vx1+90,_cy+20,false);
+    draw_set_color(c_white); draw_set_halign(fa_center); draw_text(_vx1+50,_cy+5,"[+ ADD]"); draw_set_halign(fa_left);
+    draw_set_color(make_color_rgb(40,70,90)); draw_rectangle(_vx1+100,_cy+2,_vx1+200,_cy+20,false); draw_set_color(c_white); draw_set_halign(fa_center); draw_text(_vx1+150,_cy+5,"[AUTO PACK]"); draw_set_halign(fa_left);
+    _cy += 28;
+} break;
+
 case "LOAD_ORG": {
     // D64 filename row
     draw_set_font(fnt_c64_tiny);
@@ -10251,57 +10315,146 @@ if (loader_file_picker_open && instance_exists(loader_file_picker_node)) {
 }
 
 // -------------------------------------------------------
-// LOAD_ORG ASSET PICKER DROPDOWN (asset viewer panel — "Add to disk")
+// LOAD_REU ASSET PICKER DROPDOWN
 // -------------------------------------------------------
-if (load_org_picker_open) {
-    var _lpx  = _vx1 + 10;
-    var _lpy  = _vy1 + 200;
-    var _lpw  = 220;
-    var _lih  = 20;
+if (load_reu_picker_open) {
+    var _lpx     = _vx1 + 10;
+    var _lpy     = _vy1 + 200;
+    var _lpw     = 240;
+    var _lih     = 20;
+    var _matches = [];
 
-    var _lo_matches = [];
-    if (load_org_picker_asset >= 0 && load_org_picker_asset < ds_list_size(asset_list)) {
-        var _lo_asset = ds_list_find_value(asset_list, load_org_picker_asset);
-        var _lo_links = variable_struct_exists(_lo_asset, "linked_assets") ? _lo_asset.linked_assets : [];
+    if (load_reu_picker_asset >= 0 &&
+        load_reu_picker_asset < ds_list_size(asset_list)) {
+
+        // Use the same ownership filtering as the Step event.
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
-            var _a = ds_list_find_value(asset_list, _i);
-            if (_a.type == "LOAD_ORG") continue;
-            var _already = false;
-            for (var _li = 0; _li < array_length(_lo_links); _li++) {
-                if (_lo_links[_li].asset_name == _a.name) { _already = true; break; }
+            var _candidate = ds_list_find_value(asset_list, _i);
+
+            // Never show LOAD_ORG or LOAD_REU manifests.
+            if (_candidate.type == "LOAD_ORG" ||
+                _candidate.type == "LOAD_REU") {
+                continue;
             }
-            if (!_already) array_push(_lo_matches, _a);
+
+            // Check every external-storage manifest.
+            var _claimed = false;
+
+            for (var _mi = 0;
+                 _mi < ds_list_size(asset_list);
+                 _mi++) {
+
+                var _manifest = ds_list_find_value(asset_list, _mi);
+
+                if (_manifest.type != "LOAD_ORG" &&
+                    _manifest.type != "LOAD_REU") {
+                    continue;
+                }
+
+                if (!variable_struct_exists(
+                        _manifest,
+                        "linked_assets")) {
+                    continue;
+                }
+
+                var _manifest_links = _manifest.linked_assets;
+
+                for (var _li = 0;
+                     _li < array_length(_manifest_links);
+                     _li++) {
+
+                    if (_manifest_links[_li].asset_name ==
+                        _candidate.name) {
+
+                        _claimed = true;
+                        break;
+                    }
+                }
+
+                if (_claimed) break;
+            }
+
+            if (!_claimed) {
+                array_push(_matches, _candidate);
+            }
         }
     }
 
-    var _total_h = max(1, array_length(_lo_matches)) * _lih + 24;
-    draw_set_color(make_color_rgb(18, 18, 28));
-    draw_rectangle(_lpx, _lpy, _lpx + _lpw, _lpy + _total_h, false);
-    draw_set_color(make_color_rgb(200, 160, 40));
-    draw_rectangle(_lpx, _lpy, _lpx + _lpw, _lpy + _total_h, true);
+    var _total_h =
+        max(1, array_length(_matches)) * _lih + 24;
+
+    draw_set_color(make_color_rgb(18, 25, 28));
+    draw_rectangle(
+        _lpx,
+        _lpy,
+        _lpx + _lpw,
+        _lpy + _total_h,
+        false
+    );
+
+    draw_set_color(make_color_rgb(100, 200, 180));
+    draw_rectangle(
+        _lpx,
+        _lpy,
+        _lpx + _lpw,
+        _lpy + _total_h,
+        true
+    );
+
     draw_set_font(fnt_c64_tiny);
-    draw_set_color(make_color_rgb(200, 160, 40));
-    draw_text(_lpx + 6, _lpy + 4, "ADD TO DISK");
+    draw_set_color(make_color_rgb(100, 200, 180));
+    draw_text(_lpx + 6, _lpy + 4, "ADD TO REU IMAGE");
 
-    if (array_length(_lo_matches) == 0) {
-        draw_set_color(make_color_rgb(80, 80, 80));
-        draw_text(_lpx + 8, _lpy + 24, "NO ASSETS AVAILABLE");
+    if (array_length(_matches) == 0) {
+        draw_set_color(make_color_rgb(100, 120, 120));
+        draw_text(
+            _lpx + 8,
+            _lpy + 24,
+            "NO UNCLAIMED ASSETS"
+        );
     } else {
-        for (var _i = 0; _i < array_length(_lo_matches); _i++) {
+        for (var _i = 0;
+             _i < array_length(_matches);
+             _i++) {
+
             var _iy  = _lpy + 20 + (_i * _lih);
-            var _hov = (load_org_picker_hover == _i);
-            draw_set_color(_hov ? make_color_rgb(80, 60, 20) : make_color_rgb(25, 25, 40));
-            draw_rectangle(_lpx + 2, _iy, _lpx + _lpw - 2, _iy + _lih - 1, false);
-            // Type colour tag
-            var _atcol = variable_struct_exists(type_colours, _lo_matches[_i].type)
-                       ? variable_struct_get(type_colours, _lo_matches[_i].type) : c_gray;
-            draw_set_color(_atcol);
-            draw_rectangle(_lpx + 2, _iy, _lpx + 6, _iy + _lih - 1, false);
-            draw_set_font(fnt_c64_code);
-            draw_set_color(_hov ? c_white : c_ltgray);
-            draw_text(_lpx + 10, _iy + 3, _lo_matches[_i].name);
+            var _hov = load_reu_picker_hover == _i;
+
+            draw_set_color(
+                _hov
+                ? make_color_rgb(30, 90, 75)
+                : make_color_rgb(22, 30, 34)
+            );
+
+            draw_rectangle(
+                _lpx + 2,
+                _iy,
+                _lpx + _lpw - 2,
+                _iy + _lih - 1,
+                false
+            );
+
+            draw_set_color(c_white);
+            draw_text(
+                _lpx + 10,
+                _iy + 3,
+                _matches[_i].name
+            );
         }
     }
+}
+
+// LOAD_REU ASSET PICKER DROPDOWN
+if (load_reu_picker_open) {
+    var _lpx=_vx1+10, _lpy=_vy1+200, _lpw=240, _lih=20, _matches=[];
+    if(load_reu_picker_asset>=0&&load_reu_picker_asset<ds_list_size(asset_list)){
+        var _m=ds_list_find_value(asset_list,load_reu_picker_asset), _links=variable_struct_exists(_m,"linked_assets")?_m.linked_assets:[];
+        for(var _i=0;_i<ds_list_size(asset_list);_i++){var _a=ds_list_find_value(asset_list,_i);if(_a.type=="LOAD_ORG"||_a.type=="LOAD_REU")continue;var _has=false;for(var _j=0;_j<array_length(_links);_j++)if(_links[_j].asset_name==_a.name){_has=true;break;}if(!_has)array_push(_matches,_a);}
+    }
+    var _th=max(1,array_length(_matches))*_lih+24;
+    draw_set_color(make_color_rgb(18,25,28));draw_rectangle(_lpx,_lpy,_lpx+_lpw,_lpy+_th,false);draw_set_color(make_color_rgb(100,200,180));draw_rectangle(_lpx,_lpy,_lpx+_lpw,_lpy+_th,true);
+    draw_set_font(fnt_c64_tiny);draw_set_color(make_color_rgb(100,200,180));draw_text(_lpx+6,_lpy+4,"ADD TO REU IMAGE");
+    for(var _i=0;_i<array_length(_matches);_i++){var _iy=_lpy+20+_i*_lih;draw_set_color((load_reu_picker_hover==_i)?make_color_rgb(30,90,75):make_color_rgb(22,30,34));draw_rectangle(_lpx+2,_iy,_lpx+_lpw-2,_iy+_lih-1,false);draw_set_color(c_white);draw_text(_lpx+10,_iy+3,_matches[_i].name);}
 }
 
 

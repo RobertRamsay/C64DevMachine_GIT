@@ -66,6 +66,7 @@ asset_types = [
 	"BITMAP_BUILDER",
 	"MUSIC_MAKER",
     "LOAD_ORG",
+	"LOAD_REU",
 	"META_TILESET",
 ];
 // -------------------------------------------------------
@@ -92,6 +93,7 @@ type_colours = {
     VECTOR_BITMAP : make_color_rgb(120, 200, 220),
     BITMAP_BUILDER : make_color_rgb(230, 140,  90),
     LOAD_ORG      : make_color_rgb(200, 160,  40),
+    LOAD_REU      : make_color_rgb(100, 200, 180),
     META_TILESET  : make_color_rgb(120, 200, 255),
     META_MAP      : make_color_rgb( 80, 140, 255)
 };
@@ -204,6 +206,21 @@ sfx_picker_field = "asset";
 	load_org_picker_open  = false;
 	load_org_picker_asset = -1;
 	load_org_picker_hover = -1;
+
+	// LOAD_REU manifest picker (asset viewer)
+	load_reu_picker_open  = false;
+	load_reu_picker_asset = -1;
+	load_reu_picker_hover = -1;
+	load_reu_rows_y       = 0;
+	load_reu_add_y        = 0;
+
+	// MACRO_REU ASSET-mode pickers
+	reu_manifest_picker_open  = false;
+	reu_manifest_picker_node  = noone;
+	reu_manifest_picker_hover = -1;
+	reu_asset_picker_open     = false;
+	reu_asset_picker_node     = noone;
+	reu_asset_picker_hover    = -1;
 
 	// MACRO_LOADER PICKERS (node-side)
 	loader_org_picker_open  = false;   // pick which LOAD_ORG asset

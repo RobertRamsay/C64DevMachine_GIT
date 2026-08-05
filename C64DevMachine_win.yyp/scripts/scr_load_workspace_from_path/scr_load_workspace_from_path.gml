@@ -398,6 +398,9 @@ with (obj_c64_node) {
                 meta          : _meta,
                 load_later    : variable_struct_exists(_ad, "load_later")    ? _ad.load_later    : false,
                 d64_filename  : variable_struct_exists(_ad, "d64_filename")  ? _ad.d64_filename  : "",
+                reu_filename  : variable_struct_exists(_ad, "reu_filename")  ? _ad.reu_filename  : ((_ad.type == "LOAD_REU") ? _ad.name + ".reu" : ""),
+                reu_size      : variable_struct_exists(_ad, "reu_size")      ? _ad.reu_size      : ((_ad.type == "LOAD_REU") ? 0x1000000 : 0),
+                reu_used      : variable_struct_exists(_ad, "reu_used")      ? _ad.reu_used      : ((_ad.type == "LOAD_REU") ? 0x100 : 0),
                 linked_assets : variable_struct_exists(_ad, "linked_assets") ? _ad.linked_assets : [],
             };
             if (variable_struct_exists(_ad, "source_file") && _ad.source_file != "")

@@ -148,7 +148,7 @@ if (height_dirty) {
     case "COND_IF":          height = _G * 4;  break;
 	case "COND_IF_WORD":     height = _G * 4;  break;
     case "BANK_SWITCH":      height = _G * 6;  break;
-    case "MACRO_REU":        height = _G * 8;  break;
+    case "MACRO_REU":        height = _G * 11; break;
     case "MACRO_COLLISION":  height = _G * 10;  break;
 	case "MACRO_COLL_ADV":   height = _G * 19;  break;    
     case "MACRO_ANIM":       height = _G * 18;  break;

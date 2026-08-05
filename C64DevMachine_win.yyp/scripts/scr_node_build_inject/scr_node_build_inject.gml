@@ -68,6 +68,7 @@ function scr_node_build_inject(_p_buf, _base_pc) {
                 if (!instance_exists(obj_asset_manager)) break;
                 var _asset_name = string(instructions[0][1]);
                 if (_asset_name == "") break;
+                if (scr_reu_asset_is_external(_asset_name)) break;
                 var _am = obj_asset_manager;
                 for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
                     var _asset = ds_list_find_value(_am.asset_list, _ai);

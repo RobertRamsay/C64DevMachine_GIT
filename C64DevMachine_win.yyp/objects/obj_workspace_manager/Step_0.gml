@@ -2721,6 +2721,7 @@ for (var _pi = 0; _pi < 16; _pi++) {
 show_debug_message(_pbuf_dbg);
 
 scr_node_build_inject(p_buf, base_pc);
+scr_reu_build_images(export_dir);
 
 // Check $2000 in p_buf AFTER inject
 var _pbuf_dbg2 = "PRINT@$2000 (p_buf post-inject): ";
@@ -3821,6 +3822,7 @@ for (var i = 0; i < array_length(_exp_code); i++) {
     }
 
     scr_node_build_inject(_exp_buf, _base_pc);
+    scr_reu_build_images(filename_path(_chosen));
 
     var _exp_msg = "";
 
