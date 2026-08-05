@@ -686,7 +686,32 @@ if (gui_menu_open == 4) {
                 bkgImg       = 0;
                 paletteStyle = 0;
                 buttonStyle  = 0;
+                showGrid               = false;
+                expert_mode            = false;
+                opcode_helper_on       = true;
+                showPaletteHelper      = true;
+                global.visual_fx       = true;
+                global.node_destroy_fx = true;
+                global.comments_visible = true;
+                opcode_headers_on      = false;
+                opcode_extra_height    = true;
+                with (obj_c64_node) { height_dirty = true; }
             }
+
+            // Persist every Options-menu state immediately.
+            ini_open("c64devmachine.ini");
+            ini_write_real("Settings", "showGrid", showGrid ? 1 : 0);
+            ini_write_real("Settings", "bkgImg", bkgImg);
+            ini_write_real("Settings", "paletteStyle", paletteStyle);
+            ini_write_real("Settings", "niceSliceFrm", niceSliceFrm);
+            ini_write_real("Settings", "expert_mode", expert_mode ? 1 : 0);
+            ini_write_real("Settings", "opcode_helper", opcode_helper_on ? 1 : 0);
+            ini_write_real("Settings", "palette_helper", showPaletteHelper ? 1 : 0);
+            ini_write_real("Settings", "visual_fx", global.visual_fx ? 1 : 0);
+            ini_write_real("Settings", "comments_visible", global.comments_visible ? 1 : 0);
+            ini_write_real("Settings", "opcode_headers", opcode_headers_on ? 1 : 0);
+            ini_write_real("Settings", "opcode_extra_height", opcode_extra_height ? 1 : 0);
+            ini_close();
         }
     }
 

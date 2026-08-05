@@ -922,6 +922,13 @@ showGrid    = ini_read_real("Settings", "showGrid",      0);
 paletteStyle = ini_read_real("Settings", "paletteStyle", 0);
 niceSliceFrm = ini_read_real("Settings", "niceSliceFrm", 0);
 expert_mode  = ini_read_real("Settings", "expert_mode", 0) == 1;
+opcode_helper_on       = ini_read_real("Settings", "opcode_helper",       1) == 1;
+showPaletteHelper      = ini_read_real("Settings", "palette_helper",      1) == 1;
+global.visual_fx       = ini_read_real("Settings", "visual_fx",           1) == 1;
+global.node_destroy_fx = global.visual_fx;
+global.comments_visible = ini_read_real("Settings", "comments_visible",   1) == 1;
+opcode_headers_on      = ini_read_real("Settings", "opcode_headers",      0) == 1;
+opcode_extra_height    = ini_read_real("Settings", "opcode_extra_height", 1) == 1;
 var _hide_welcome = ini_read_real("Settings", "hide_welcome", 0);
 welcome_hide_checked = (_hide_welcome != 0);
 welcome_open          = !welcome_hide_checked;
@@ -937,5 +944,4 @@ if (_saved_w > 0 && _saved_h > 0)
     window_set_size(_saved_w, _saved_h);
     window_set_position(_saved_x, _saved_y);
 }
-
 
