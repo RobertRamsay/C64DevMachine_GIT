@@ -13,6 +13,6 @@ function scr_c64u_reu_send_auth() {
     buffer_delete(_packet);
     if (_sent != 4 + _len) return scr_c64u_reu_fail("password send failed");
     global.c64u_reu_state    = "auth";
-    global.c64u_reu_deadline = current_time + 5000;
+    global.c64u_reu_deadline = current_time + 15000;
     return true;
 }

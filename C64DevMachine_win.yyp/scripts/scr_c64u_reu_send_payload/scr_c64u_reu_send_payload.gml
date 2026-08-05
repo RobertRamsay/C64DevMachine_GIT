@@ -31,7 +31,7 @@ function scr_c64u_reu_send_payload() {
 
     buffer_delete(_image);
     global.c64u_reu_state    = "settle";
-    global.c64u_reu_deadline = current_time + 250;
+    global.c64u_reu_deadline = current_time + 750;
     global.c64u_status       = "C64U REU: uploaded " + string(_total) + " bytes";
     global.c64u_status_t     = 240;
     show_debug_message("C64U REU: uploaded " + string(_total) + " bytes from " + global.reu_last_image);

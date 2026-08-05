@@ -1,3 +1,6 @@
+// Advance the asynchronous C64U REU upload.
+scr_c64u_reu_step();
+
 // === EXIT CONFIRM HANDLER ===
 if (global.question_result == "exit_confirm_yes")
     {
@@ -2832,7 +2835,7 @@ show_debug_message(_pbuf_dbg2);
             full_save_path = _d64_path;
             if (trigger_c64u) {
                 trigger_c64u = false;
-                scr_c64u_send_d64_and_run(_d64_path, _boot_prg_path);
+                scr_c64u_reu_begin("D64", _d64_path, _boot_prg_path);
             } else {
                 global.vice_path_cache = scr_resolve_vice_path();
                 if (global.vice_path_cache == "") {

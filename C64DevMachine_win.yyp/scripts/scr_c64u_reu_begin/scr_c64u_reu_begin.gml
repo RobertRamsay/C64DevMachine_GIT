@@ -15,7 +15,7 @@ function scr_c64u_reu_begin(_after, _path_a, _path_b) {
 
     global.c64u_reu_socket   = _socket;
     global.c64u_reu_state    = "connecting";
-    global.c64u_reu_deadline = current_time + 5000;
+    global.c64u_reu_deadline = current_time + 15000;
     global.c64u_reu_after    = _after;
     global.c64u_reu_path_a   = _path_a;
     global.c64u_reu_path_b   = _path_b;
