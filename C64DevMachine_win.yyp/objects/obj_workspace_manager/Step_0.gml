@@ -2850,7 +2850,7 @@ show_debug_message(_pbuf_dbg2);
         if (!silent_build) {
             if (trigger_c64u) {
                 trigger_c64u = false;
-                scr_c64u_send_file(full_save_path);
+                scr_c64u_reu_begin("PRG", full_save_path, "");
             } else {
                 global.vice_path_cache = scr_resolve_vice_path();
                 if (global.vice_path_cache == "") {

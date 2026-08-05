@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_c64u_reu_fail",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_c64u_reu_fail",
+  "parent":{
+    "name":"ULTIMATE",
+    "path":"folders/SCRIPTS/ULTIMATE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}
