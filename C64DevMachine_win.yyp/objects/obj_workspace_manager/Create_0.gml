@@ -57,15 +57,15 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-	"MANUAL UPDATED to V1.260803",
-    "MACRO REU - Handles various RAM Expansion data",
-	"TOOLTIPS - Hover the cursor at the top right of a macro",
-    "BUGFIX - Version detecion on mac was flawed",
-    "BUGFIX - Music Maker keys were landing in mains workspace",
-	"TWEAK - Autosave detection has a 2nd question to stop asking.",
-    "TWEAK - Adding (shift+Q over macro in menu) or removing (right-click in Q-menu)",
+	"MANUAL for CODE EDITOR added - See Documents menu.",
+    "MACRO REU - Tested Byte data and Bitmaps on VICE and C64 Ultimate",
+	"More options saved when changed.",
+    "Bitmap editor HiRes editing adjustment (Alt pick / Update cells Fg/Bg)",
+    "Sprite Movement now had clamp options",
+	"Expert mode added (CTRL/CMD + E to toggle) Removes opcode buttons panel",
+    "FIXED: Bitmap buidler tagging was not woring initially.",
 	"TWEAK - Bitmap editor Line tool now shows correct width when drawing.",
-	"ADDED - Easter egg - Will you find it?"	
+	//"REMINDER - Easter egg - Will you find it?"	
 	];
 	
 welcome_credits_lines = [

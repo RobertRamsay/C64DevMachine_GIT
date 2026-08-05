@@ -11,8 +11,8 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     }
 
     draw_sprite_ext(spr_baseGradient, 0,
-        obj_workspace_manager.shelf_width + 30, _y + _map_h + 25,
-        window_get_width(), 1.6, 0, c_white, 1);
+        0, _y + _map_h + 25,
+        1920/sprite_get_width(spr_baseGradient), 1.6, 0, c_white, 1);
 
     // --- DANGER ZONES ---
     var _danger_zones = [
