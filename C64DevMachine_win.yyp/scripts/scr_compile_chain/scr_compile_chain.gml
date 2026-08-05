@@ -6494,9 +6494,9 @@ case "MACRO_REU": {
     var _reu_type = clamp(_reu_op, 0, 3);
 
     var _reu_cmd = 0x80;               // EXEC
-    _reu_cmd    |= 0x20;                // FF00 disable (always on — see note above)
-    if (_reu_auto == 1) { _reu_cmd |= 0x10; }  // autoload
-    _reu_cmd    |= _reu_type;
+	_reu_cmd    |= 0x10;               // Disable $FF00 trigger: execute immediately
+	if (_reu_auto == 1) { _reu_cmd |= 0x20; }  // Autoload address registers
+	_reu_cmd    |= _reu_type;
 
     var _reu_ctrl = 0x00;
     if (_reu_fixc == 1) { _reu_ctrl |= 0x80; } // fix C64 address

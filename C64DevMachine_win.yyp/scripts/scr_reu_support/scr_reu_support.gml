@@ -11,6 +11,29 @@ function scr_reu_find_asset(_name) {
     return undefined;
 }
 
+function scr_reu_manifest_count() {
+    if (!instance_exists(obj_asset_manager)) return 0;
+    var _count = 0;
+    var _am = obj_asset_manager;
+    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
+        if (ds_list_find_value(_am.asset_list, _i).type == "LOAD_REU") _count++;
+    }
+    return _count;
+}
+
+function scr_reu_get_manifest() {
+    if (!instance_exists(obj_asset_manager)) return undefined;
+    var _found = undefined;
+    var _am = obj_asset_manager;
+    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
+        var _asset = ds_list_find_value(_am.asset_list, _i);
+        if (_asset.type != "LOAD_REU") continue;
+        if (!is_undefined(_found)) return undefined; // More than one is invalid.
+        _found = _asset;
+    }
+    return _found;
+}
+
 function scr_reu_asset_payload(_asset) {
     if (is_undefined(_asset)) return { buffer: -1, size: 0, c64_address: 0 };
 
@@ -157,7 +180,17 @@ function scr_reu_asset_is_external(_asset_name) {
 }
 
 function scr_reu_build_images(_out_dir) {
+    global.reu_last_image = "";
+    global.reu_last_used  = 0;
+    global.reu_build_error = "";
+
     if (!instance_exists(obj_asset_manager)) return [];
+    var _manifest_count = scr_reu_manifest_count();
+    if (_manifest_count > 1) {
+        global.reu_build_error = "Only one LOAD_REU asset is supported per project.";
+        show_debug_message("LOAD_REU: build blocked because the project contains " + string(_manifest_count) + " manifests");
+        return [];
+    }
     var _paths = [];
     var _am = obj_asset_manager;
     for (var _mi = 0; _mi < ds_list_size(_am.asset_list); _mi++) {
@@ -177,6 +210,7 @@ function scr_reu_build_images(_out_dir) {
             if (variable_struct_exists(_links[_vi], "reu_conflict") && _links[_vi].reu_conflict) _invalid = true;
         }
         if (_invalid) {
+            global.reu_build_error = "LOAD_REU contains overlapping manual ranges.";
             show_debug_message("LOAD_REU: not exporting " + _m.name + " because manual ranges overlap");
             buffer_delete(_img);
             continue;
@@ -204,6 +238,8 @@ function scr_reu_build_images(_out_dir) {
         buffer_save(_img, _path);
         buffer_delete(_img);
         array_push(_paths, _path);
+        global.reu_last_image = _path;
+        global.reu_last_used  = clamp(real(_m.reu_used), 0x100, _image_size);
         show_debug_message("LOAD_REU: wrote " + _path);
     }
     return _paths;
