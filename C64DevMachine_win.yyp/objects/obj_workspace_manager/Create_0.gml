@@ -65,7 +65,7 @@ welcome_whats_new = [
 	"Expert mode added (CTRL/CMD + E to toggle) Removes opcode buttons panel",
     "FIXED: Bitmap buidler tagging was not woring initially.",
 	"TWEAK - Bitmap editor Line tool now shows correct width when drawing.",
-	//"REMINDER - Easter egg - Will you find it?"	
+	"UPDATED - EASTER EGG -- nobody found it yet??"
 	];
 	
 welcome_credits_lines = [

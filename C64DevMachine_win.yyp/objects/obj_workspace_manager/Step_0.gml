@@ -2299,9 +2299,9 @@ if (_cmnem == "rts" || _cmnem == "rti") {
                     // normal compile pipeline picks them up and compiles
                     // them exactly as it would for a real spine. Falls
                     // straight through into the normal build — no exit —
-                    // and the temp nodes are destroyed again right after
-                    // scr_compile_chain() returns (see below), before this
-                    // frame ever draws, so the real project is untouched
+                    // and the temp nodes are destroyed immediately after
+                    // asset injection (see below), before this frame ever
+                    // draws, so the real project is untouched
                     // and nothing is ever visible in the editor. Only
                     // reachable when the "no core loop / no RTS" question
                     // above was answered No — saying Yes just builds the
@@ -2310,82 +2310,106 @@ if (_cmnem == "rts" || _cmnem == "rti") {
                     var _egg_x    = _egg_init.x;
                     var _egg_y    = _egg_init.y;
 
-                    var _egg_data = instance_create_depth(_egg_x, _egg_y + 40, -500, obj_c64_node);
-                    _egg_data.node_type    = "NORMAL";
-                    _egg_data.node_title   = "CODE";
-                    // MACRO_PRINT's inline mode is a straight copy loop (LDA addr,X /
-                    // STA screen,X) — it expects the screencode bytes to already sit
-                    // at the literal address given in each PRINT node's field [6], it
-                    // does not embed the string itself. This detours out to $2000 and
-                    // $2020 to lay down those bytes (org -2/-3 save+restore the real
-                    // spine PC around each detour, same pattern used elsewhere in the
-                    // compiler for this), then falls straight back into the normal
-                    // flow before PRINT1 emits.
-                    _egg_data.instructions = [
-                        ["org", -2], ["org", 8192],
-                        ["byte", 42], ["byte", 42], ["byte", 42], ["byte", 42], ["byte", 32],
-                        ["byte", 3], ["byte", 15], ["byte", 13], ["byte", 13], ["byte", 15],
-                        ["byte", 4], ["byte", 15], ["byte", 18], ["byte", 5], ["byte", 32],
-                        ["byte", 54], ["byte", 52], ["byte", 32],
-                        ["byte", 4], ["byte", 5], ["byte", 22], ["byte", 46], ["byte", 13],
-                        ["byte", 1], ["byte", 3], ["byte", 8], ["byte", 32],
-                        ["byte", 42], ["byte", 42], ["byte", 42], ["byte", 42],
-                        ["org", -3],
-                        ["org", -2], ["org", 8224],
-                        ["byte", 54], ["byte", 52], ["byte", 11], ["byte", 32],
-                        ["byte", 18], ["byte", 1], ["byte", 13], ["byte", 32],
-                        ["byte", 19], ["byte", 25], ["byte", 19], ["byte", 20], ["byte", 5], ["byte", 13], ["byte", 32],
-                        ["byte", 45], ["byte", 32],
-                        ["byte", 16], ["byte", 15], ["byte", 12], ["byte", 25], ["byte", 20], ["byte", 18], ["byte", 9], ["byte", 3], ["byte", 9], ["byte", 20], ["byte", 25], ["byte", 32],
-                        ["byte", 40], ["byte", 3], ["byte", 41], ["byte", 32],
-                        ["byte", 50], ["byte", 48], ["byte", 50], ["byte", 54], ["byte", 32],
-                        ["org", -3]
+                    // Locate the pristine proxy ORG that becomes the hidden
+                    // moveSprite subroutine container.
+                    var _egg_org = noone;
+                    for (var _eoi = 0; _eoi < instance_number(obj_c64_node); _eoi++) {
+                        var _eon = instance_find(obj_c64_node, _eoi);
+                        if (_eon.node_type == "ORG" && _eon.proxy) {
+                            _egg_org = _eon;
+                            break;
+                        }
+                    }
+
+                    // The pristine proxy ORG still carries the address from
+                    // the tiny default project. The full egg's main spine
+                    // ends at $09A0, so place moveSprite there temporarily.
+                    // Otherwise the secondary ORG pass overwrites the main
+                    // program while it is being assembled.
+                    global.egg_temp_org = _egg_org;
+                    global.egg_temp_org_pc = instance_exists(_egg_org) ? _egg_org.pc_address : 0;
+                    if (instance_exists(_egg_org)) _egg_org.pc_address = 0x09A0;
+
+                    // The sprite asset exists only during this synchronous
+                    // build. It is removed immediately after asset injection,
+                    // before Draw GUI or autosave can expose it to the user.
+                    var _egg_sprite_blob = "b64:AAAAAAAAAPgAA/4AB/4AD/4AHwYAHgH4PAHwPAHgPAAAPAAAPAAAHgAAHwYAD/4AB/4AA/4AAPgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4AAB8AAB+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/gAD/gAH/gAP/gAfAfgeAfA8AeA8AAA8AAA8AAA8AAAeAAAfAAAP/gAH/gAD/gAA/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgAAHwAAH4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAAB/AAH/HgP/fAfweA+AcA8AAB4AAB4AAB4AAB4AAB4AAA8AAA+AAAfwAAP/AAH/AAB/AAAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAHgAAHwAAB4AAAAAAAAAAAAAAAAAAAAAAAAAA+AAD/wAH/wAPzwAPAAAeB+AeD8AeFQAeAAAeAAAPAAAPzwAH/wAD/wAA+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqAAA/AAAfgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+                    var _egg_sprite_buf  = scr_blob_decode(_egg_sprite_blob);
+                    var _egg_asset_name  = "__C64DM_EGG_SPRITES";
+                    var _egg_asset = {
+                        name: _egg_asset_name,
+                        type: "SPRITE_SET",
+                        address: 0x2800,
+                        file: "",
+                        buffer: _egg_sprite_buf,
+                        blob: _egg_sprite_blob,
+                        linked_assets: [],
+                        reu_used: 0,
+                        reu_size: 0,
+                        reu_filename: "",
+                        d64_filename: "",
+                        load_later: false,
+                        egg_temp: true,
+                        meta: {
+                            used_count: 8,
+                            sprite_mcs: [0,0,0,0,0,0,0,0],
+                            sprite_ucs: [6,2,6,2,6,2,6,2],
+                            format: "binary",
+                            total_size: 512,
+                            mc1_col: 1,
+                            mc2_col: 2,
+                            mc_fg: 1,
+                            mc_bg: 0,
+                            mc_col1: 1,
+                            mc_col2: 2,
+                            mc_mode: 0,
+                            bg_col: 0
+                        }
+                    };
+                    ds_list_add(obj_asset_manager.asset_list, _egg_asset);
+                    global.egg_temp_asset = _egg_asset;
+
+                    // Node specification copied from C64DM_START.json. The
+                    // first ten entries extend SYSTEM INIT; the final four are
+                    // children of the proxy ORG and form moveSprite.
+                    var _egg_specs = [
+                        { type:"MACRO_PRINT", title:"PRINT", dy:80, child:false, code:[["macro_print",4,1,13,0,"**** COMMODORE 64 DEV.MACH ****",8192,0,0,0,"",0,0,1024,0,"",0,""]] },
+                        { type:"MACRO_PRINT", title:"PRINT", dy:280, child:false, code:[["macro_print",1,3,3,0,"64K RAM SYSTEM - POLYTRICITY (C) 2026 ",8224,0,0,0,"",0,0,1024,0,"",0,""]] },
+                        { type:"MACRO_SPR", title:"SPRITE", dy:480, child:false, code:[["macro_spr",_egg_asset_name,0,20,231,0,1]] },
+                        { type:"MACRO_SPR", title:"SPRITE", dy:620, child:false, code:[["macro_spr",_egg_asset_name,1,20,231,1,1]] },
+                        { type:"MACRO_ANIM", title:"ANIMATE", dy:760, child:false, alias:"anim100742", code:[["macro_anim",4,"0,2,4,0,6","1,3,5,1,7","","","","","","","1","","","","","","","","","","","","","","","","","","","","","","","","",""]] },
+                        { type:"MACRO_IRQ_HANDLER", title:"IRQ HANDLER", dy:1120, child:false, code:[["macro_irq_handler",0]] },
+                        { type:"MACRO_IRQ", title:"MACRO IRQ", dy:1220, child:false, code:[["macro_irq",96,0,"","irq_0","moveSprite",1,""]] },
+                        { type:"NORMAL", title:"LDA_IMM", dy:1320, child:false, code:[["lda_imm",4]] },
+                        { type:"NORMAL", title:"STA_ABS", dy:1380, child:false, code:[["sta_abs",646]] },
+                        { type:"NORMAL", title:"RTS", dy:1440, child:false, code:[["rts",0]] },
+                        { type:"LABEL", title:"ADDRESS LABEL", dy:80, child:true, code:[["label","moveSprite"]] },
+                        { type:"MACRO_MOVE", title:"MACRO MOVE", dy:120, child:true, code:[["macro_move",3,1,0,1,0,0,0,"",0,"",24,320,50,229]] },
+                        { type:"NORMAL", title:"JSR", dy:260, child:true, code:[["jsr","anim100742_sub"]] },
+                        { type:"NORMAL", title:"RTS", dy:320, child:true, code:[["rts",0]] }
                     ];
-                    with (_egg_data) { event_user(0); }
-                    _egg_data.pc_address   = 0;
-                    _egg_data.is_connected = true;
 
-                    var _egg_print1 = instance_create_depth(_egg_x, _egg_y + 80, -500, obj_c64_node);
-                    _egg_print1.node_type    = "MACRO_PRINT";
-                    _egg_print1.node_title   = "PRINT";
-                    _egg_print1.instructions = [["macro_print", 4, 1, 13, 0, "**** COMMODORE 64 DEV.MACH ****", 8192, 0, 0, 0, "", 0, 0, 1024, 0, "", 0, ""]];
-                    with (_egg_print1) { event_user(0); }
-                    _egg_print1.pc_address   = 0;
-                    _egg_print1.is_connected = true;
-
-                    var _egg_print2 = instance_create_depth(_egg_x, _egg_y + 280, -500, obj_c64_node);
-                    _egg_print2.node_type    = "MACRO_PRINT";
-                    _egg_print2.node_title   = "PRINT";
-                    _egg_print2.instructions = [["macro_print", 1, 3, 3, 0, "64K RAM SYSTEM - POLYTRICITY (C) 2026 ", 8224, 0, 0, 0, "", 0, 0, 1024, 0, "", 0, ""]];
-                    with (_egg_print2) { event_user(0); }
-                    _egg_print2.pc_address   = 0;
-                    _egg_print2.is_connected = true;
-
-                    var _egg_lda = instance_create_depth(_egg_x, _egg_y + 480, -500, obj_c64_node);
-                    _egg_lda.node_type    = "NORMAL";
-                    _egg_lda.node_title   = "LDA_IMM";
-                    _egg_lda.instructions = [["lda_imm", 4]];
-                    with (_egg_lda) { event_user(0); }
-                    _egg_lda.pc_address   = 0;
-                    _egg_lda.is_connected = true;
-
-                    var _egg_sta = instance_create_depth(_egg_x, _egg_y + 540, -500, obj_c64_node);
-                    _egg_sta.node_type    = "NORMAL";
-                    _egg_sta.node_title   = "STA_ABS";
-                    _egg_sta.instructions = [["sta_abs", 646]];
-                    with (_egg_sta) { event_user(0); }
-                    _egg_sta.pc_address   = 0;
-                    _egg_sta.is_connected = true;
-
-                    var _egg_rts = instance_create_depth(_egg_x, _egg_y + 600, -500, obj_c64_node);
-                    _egg_rts.node_type    = "NORMAL";
-                    _egg_rts.node_title   = "RTS";
-                    _egg_rts.instructions = [["rts", 0]];
-                    with (_egg_rts) { event_user(0); }
-                    _egg_rts.pc_address   = 0;
-                    _egg_rts.is_connected = true;
-
-                    global.egg_temp_node_ids = [_egg_data, _egg_print1, _egg_print2, _egg_lda, _egg_sta, _egg_rts];
+                    global.egg_temp_node_ids = [];
+                    for (var _esi = 0; _esi < array_length(_egg_specs); _esi++) {
+                        var _es = _egg_specs[_esi];
+                        var _base_x = _es.child ? _egg_org.x : _egg_x;
+                        var _base_y = _es.child ? _egg_org.y : _egg_y;
+                        var _en = instance_create_depth(_base_x, _base_y + _es.dy, -500, obj_c64_node);
+                        _en.node_type    = _es.type;
+                        _en.node_title   = _es.title;
+                        _en.instructions = _es.code;
+                        _en.pc_address   = 0;
+                        _en.is_connected = true;
+                        _en.egg_temp     = true;
+                        if (variable_struct_exists(_es, "alias")) _en.anim_alias = _es.alias;
+                        with (_en) { event_user(0); }
+                        // User Event 0 performs the node's normal defaults,
+                        // including resetting org_parent. Attach ORG children
+                        // only after that initialization has completed.
+                        if (_es.child) _en.org_parent = _egg_org;
+                        _en.height_dirty = true;
+                        array_push(global.egg_temp_node_ids, _en);
+                    }
                 }
             }
         }
@@ -2407,6 +2431,7 @@ if (_cmnem == "rts" || _cmnem == "rti") {
     if (global.lite == 1) {
         var _premium_found = false;
         with (obj_c64_node) {
+            if (variable_instance_exists(id, "egg_temp") && egg_temp) continue;
             if ( is_connected && (
 				        node_type == "MACRO_CODE"
 				        || node_type == "MACRO_IRQ"
@@ -2460,13 +2485,6 @@ if (_cmnem == "rts" || _cmnem == "rti") {
     buffer_write(p_buf, buffer_u16, 0x0000);
 
 	var final_code = scr_compile_chain();
-	if (array_length(global.egg_temp_node_ids) > 0) {
-	    for (var _egi = 0; _egi < array_length(global.egg_temp_node_ids); _egi++) {
-	        var _egg_id = global.egg_temp_node_ids[_egi];
-	        if (instance_exists(_egg_id)) instance_destroy(_egg_id);
-	    }
-	    global.egg_temp_node_ids = [];
-	}
 show_debug_message("COMPILE RESULT: " + string(array_length(final_code)) + " instructions");
 	var p          = c64_new_program();
 
@@ -2748,6 +2766,31 @@ for (var _pi = 0; _pi < 16; _pi++) {
 show_debug_message(_pbuf_dbg);
 
 scr_node_build_inject(p_buf, base_pc);
+
+// Easter-egg nodes and its private sprite asset must survive until the
+// injection above, then disappear before this frame can draw or autosave.
+if (array_length(global.egg_temp_node_ids) > 0) {
+    for (var _egi = 0; _egi < array_length(global.egg_temp_node_ids); _egi++) {
+        var _egg_id = global.egg_temp_node_ids[_egi];
+        if (instance_exists(_egg_id)) instance_destroy(_egg_id);
+    }
+    global.egg_temp_node_ids = [];
+}
+if (variable_global_exists("egg_temp_asset") && is_struct(global.egg_temp_asset)) {
+    var _egg_asset_ref = global.egg_temp_asset;
+    for (var _eai = ds_list_size(obj_asset_manager.asset_list) - 1; _eai >= 0; _eai--) {
+        var _eat = ds_list_find_value(obj_asset_manager.asset_list, _eai);
+        if (_eat == _egg_asset_ref || (variable_struct_exists(_eat, "egg_temp") && _eat.egg_temp)) {
+            if (buffer_exists(_eat.buffer)) buffer_delete(_eat.buffer);
+            ds_list_delete(obj_asset_manager.asset_list, _eai);
+        }
+    }
+    global.egg_temp_asset = undefined;
+}
+if (variable_global_exists("egg_temp_org") && instance_exists(global.egg_temp_org)) {
+    global.egg_temp_org.pc_address = global.egg_temp_org_pc;
+}
+global.egg_temp_org = noone;
 scr_reu_build_images(export_dir);
 
 // Check $2000 in p_buf AFTER inject
