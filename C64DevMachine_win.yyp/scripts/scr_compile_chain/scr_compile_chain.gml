@@ -6467,9 +6467,114 @@ case "MACRO_REU": {
     var _reu_fixc  = is_real(_curr.instructions[0][7]) ? real(_curr.instructions[0][7]) : 0;
     var _reu_fixr  = is_real(_curr.instructions[0][8]) ? real(_curr.instructions[0][8]) : 0;
 
+    // mode: 0 DIRECT, 1 ASSET (bakes one asset's addr/bank/len as immediates),
+    // 2 INDEXED (builds a bank/lo/hi/len-lo/len-hi table from every asset
+    // linked to the LOAD_REU manifest, then LDX a ZP var to pick the entry
+    // at runtime via LDA table,X hardware indexing).
+    var _reu_mode = (array_length(_curr.instructions[0]) > 9 && is_real(_curr.instructions[0][9])) ? real(_curr.instructions[0][9]) : 0;
+
+    // ---- INDEXED MODE ----
+    if (_reu_mode == 2) {
+        var _manifest_name = (array_length(_curr.instructions[0]) > 10) ? string(_curr.instructions[0][10]) : "";
+        var _index_var      = (array_length(_curr.instructions[0]) > 12) ? string(_curr.instructions[0][12]) : "";
+        var _manifest = scr_reu_find_asset(_manifest_name);
+        if (is_undefined(_manifest) || _manifest.type != "LOAD_REU") {
+            show_debug_message("MACRO_REU INDEXED: manifest unresolved: " + _manifest_name);
+            break;
+        }
+        scr_reu_repack(_manifest);
+        var _links = variable_struct_exists(_manifest, "linked_assets") ? _manifest.linked_assets : [];
+        if (array_length(_links) == 0) {
+            show_debug_message("MACRO_REU INDEXED: manifest has no linked assets: " + _manifest_name);
+            break;
+        }
+        if (array_length(_links) > 256) {
+            show_debug_message("MACRO_REU INDEXED: too many linked assets for an 8-bit index (" + string(array_length(_links)) + "): " + _manifest_name);
+            break;
+        }
+        var _index_addr = scr_resolve_var_addr(_index_var);
+        if (_index_addr == 0) {
+            show_debug_message("MACRO_REU INDEXED: index var unresolved: " + _index_var);
+            break;
+        }
+
+        var _pfx       = "reut" + string(real(_id)) + "_";
+        var _lbl_skip  = _pfx + "skip";
+        var _lbl_bank  = _pfx + "bank";
+        var _lbl_lo    = _pfx + "lo";
+        var _lbl_hi    = _pfx + "hi";
+        var _lbl_lenlo = _pfx + "llo";
+        var _lbl_lenhi = _pfx + "lhi";
+
+        // Jump over the tables — they are data, not code, and sit inline on the spine.
+        array_push(_list, ["jmp_abs", _lbl_skip, _id]);
+
+        array_push(_list, ["label", _lbl_bank]);
+        for (var _i = 0; _i < array_length(_links); _i++) {
+            array_push(_list, ["byte", (real(_links[_i].reu_address) >> 16) & 0xFF, _id]);
+        }
+        array_push(_list, ["label", _lbl_lo]);
+        for (var _i = 0; _i < array_length(_links); _i++) {
+            array_push(_list, ["byte", real(_links[_i].reu_address) & 0xFF, _id]);
+        }
+        array_push(_list, ["label", _lbl_hi]);
+        for (var _i = 0; _i < array_length(_links); _i++) {
+            array_push(_list, ["byte", (real(_links[_i].reu_address) >> 8) & 0xFF, _id]);
+        }
+        array_push(_list, ["label", _lbl_lenlo]);
+        for (var _i = 0; _i < array_length(_links); _i++) {
+            var _asset  = scr_reu_find_asset(_links[_i].asset_name);
+            var _payload = scr_reu_asset_payload(_asset);
+            var _sz = _payload.size & 0xFFFF;
+            if (buffer_exists(_payload.buffer)) buffer_delete(_payload.buffer);
+            array_push(_list, ["byte", _sz & 0xFF, _id]);
+        }
+        array_push(_list, ["label", _lbl_lenhi]);
+        for (var _i = 0; _i < array_length(_links); _i++) {
+            var _asset2  = scr_reu_find_asset(_links[_i].asset_name);
+            var _payload2 = scr_reu_asset_payload(_asset2);
+            var _sz2 = _payload2.size & 0xFFFF;
+            if (buffer_exists(_payload2.buffer)) buffer_delete(_payload2.buffer);
+            array_push(_list, ["byte", (_sz2 >> 8) & 0xFF, _id]);
+        }
+
+        array_push(_list, ["label", _lbl_skip]);
+
+        var _reu_type2 = clamp(_reu_op, 0, 3);
+        var _reu_cmd2  = 0x80;
+        _reu_cmd2     |= 0x10;
+        if (_reu_auto == 1) { _reu_cmd2 |= 0x20; }
+        _reu_cmd2     |= _reu_type2;
+        var _reu_ctrl2 = 0x00;
+        if (_reu_fixc == 1) { _reu_ctrl2 |= 0x80; }
+        if (_reu_fixr == 1) { _reu_ctrl2 |= 0x40; }
+
+        array_push(_list, ["ldx_zp",  _index_addr, _id]);
+        array_push(_list, ["lda_abx", _lbl_bank,   _id]);
+        array_push(_list, ["sta_abs", 0xDF06,      _id]);
+        array_push(_list, ["lda_abx", _lbl_lo,     _id]);
+        array_push(_list, ["sta_abs", 0xDF04,      _id]);
+        array_push(_list, ["lda_abx", _lbl_hi,     _id]);
+        array_push(_list, ["sta_abs", 0xDF05,      _id]);
+        array_push(_list, ["lda_abx", _lbl_lenlo,  _id]);
+        array_push(_list, ["sta_abs", 0xDF07,      _id]);
+        array_push(_list, ["lda_abx", _lbl_lenhi,  _id]);
+        array_push(_list, ["sta_abs", 0xDF08,      _id]);
+
+        array_push(_list, ["lda_imm", _reu_c64 & 0xFF,        _id]);
+        array_push(_list, ["sta_abs", 0xDF02,                 _id]);
+        array_push(_list, ["lda_imm", (_reu_c64 >> 8) & 0xFF, _id]);
+        array_push(_list, ["sta_abs", 0xDF03,                 _id]);
+
+        array_push(_list, ["lda_imm", _reu_ctrl2, _id]);
+        array_push(_list, ["sta_abs", 0xDF0A,     _id]);
+        array_push(_list, ["lda_imm", _reu_cmd2,  _id]);
+        array_push(_list, ["sta_abs", 0xDF01,     _id]);
+        break;
+    }
+
     // ASSET mode resolves the three manual transfer fields from a LOAD_REU
     // manifest. Old workspaces have no slot 9, so they remain DIRECT.
-    var _reu_mode = (array_length(_curr.instructions[0]) > 9 && is_real(_curr.instructions[0][9])) ? real(_curr.instructions[0][9]) : 0;
     if (_reu_mode == 1) {
         var _manifest_name = (array_length(_curr.instructions[0]) > 10) ? string(_curr.instructions[0][10]) : "";
         var _asset_name = (array_length(_curr.instructions[0]) > 11) ? string(_curr.instructions[0][11]) : "";

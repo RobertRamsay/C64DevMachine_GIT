@@ -2,7 +2,7 @@
 /// DIRECT layout; 9=mode, 10=LOAD_REU name, 11=linked asset name.
 function scr_node_draw_macro_reu(_draw_x, _y) {
     var _hh = 24, _lh = 16, _inst = instructions[0];
-    while (array_length(_inst) < 12) array_push(_inst, (array_length(_inst) >= 10) ? "" : 0);
+    while (array_length(_inst) < 13) array_push(_inst, (array_length(_inst) >= 10) ? "" : 0);
     var _mode = is_real(_inst[9]) ? real(_inst[9]) : 0;
     var _lx = _draw_x + 8, _rx = _draw_x + width - 6, _cy = _y + _hh + 4;
     var _button = function(_label, _x1, _x2, _yy, _col) {
@@ -19,10 +19,26 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
 
     draw_set_font(fnt_C64_Angled_tiny);
     draw_set_color(c_gray); draw_text(_lx, _cy, "MODE:");
-    _button((_mode == 1) ? "ASSET" : "DIRECT", _lx + 44, _rx, _cy, (_mode == 1) ? make_color_rgb(30,90,75) : make_color_rgb(40,30,70));
+    var _mode_label = "DIRECT";
+    var _mode_col   = make_color_rgb(40,30,70);
+    if (_mode == 1) { _mode_label = "ASSET";   _mode_col = make_color_rgb(30,90,75); }
+    if (_mode == 2) { _mode_label = "INDEXED"; _mode_col = make_color_rgb(80,60,20); }
+    _button(_mode_label, _lx + 44, _rx, _cy, _mode_col);
     _cy += _lh;
 
-    if (_mode == 1) {
+    if (_mode == 2) {
+        draw_set_color(c_gray); draw_text(_lx, _cy, "REU:");
+        _button(string(_inst[10]) != "" ? string(_inst[10]) : "<SELECT LOAD_REU>", _lx + 44, _rx, _cy, make_color_rgb(25,65,60));
+        _cy += _lh;
+        draw_set_color(c_gray); draw_text(_lx, _cy, "INDEX:");
+        _button(string(_inst[12]) != "" ? string(_inst[12]) : "<SELECT VAR>", _lx + 44, _rx, _cy, make_color_rgb(25,65,60));
+        _cy += _lh;
+        var _idx_manifest = scr_reu_find_asset(string(_inst[10]));
+        var _idx_count = (!is_undefined(_idx_manifest) && variable_struct_exists(_idx_manifest, "linked_assets")) ? array_length(_idx_manifest.linked_assets) : 0;
+        draw_set_color(c_gray); draw_text(_lx, _cy, "SLOTS:");
+        draw_set_color(_idx_count > 0 ? c_lime : c_red); draw_text(_lx + 44, _cy, string(_idx_count));
+        _cy += _lh;
+    } else if (_mode == 1) {
         draw_set_color(c_gray); draw_text(_lx, _cy, "REU:");
         _button(string(_inst[10]) != "" ? string(_inst[10]) : "<SELECT LOAD_REU>", _lx + 44, _rx, _cy, make_color_rgb(25,65,60));
         _cy += _lh;

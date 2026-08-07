@@ -1,0 +1,236 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 11cdfeb..91472c0 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -6467,9 +6467,114 @@ case "MACRO_REU": {
+     var _reu_fixc  = is_real(_curr.instructions[0][7]) ? real(_curr.instructions[0][7]) : 0;
+     var _reu_fixr  = is_real(_curr.instructions[0][8]) ? real(_curr.instructions[0][8]) : 0;
+ 
++    // mode: 0 DIRECT, 1 ASSET (bakes one asset's addr/bank/len as immediates),
++    // 2 INDEXED (builds a bank/lo/hi/len-lo/len-hi table from every asset
++    // linked to the LOAD_REU manifest, then LDX a ZP var to pick the entry
++    // at runtime via LDA table,X hardware indexing).
++    var _reu_mode = (array_length(_curr.instructions[0]) > 9 && is_real(_curr.instructions[0][9])) ? real(_curr.instructions[0][9]) : 0;
++
++    // ---- INDEXED MODE ----
++    if (_reu_mode == 2) {
++        var _manifest_name = (array_length(_curr.instructions[0]) > 10) ? string(_curr.instructions[0][10]) : "";
++        var _index_var      = (array_length(_curr.instructions[0]) > 12) ? string(_curr.instructions[0][12]) : "";
++        var _manifest = scr_reu_find_asset(_manifest_name);
++        if (is_undefined(_manifest) || _manifest.type != "LOAD_REU") {
++            show_debug_message("MACRO_REU INDEXED: manifest unresolved: " + _manifest_name);
++            break;
++        }
++        scr_reu_repack(_manifest);
++        var _links = variable_struct_exists(_manifest, "linked_assets") ? _manifest.linked_assets : [];
++        if (array_length(_links) == 0) {
++            show_debug_message("MACRO_REU INDEXED: manifest has no linked assets: " + _manifest_name);
++            break;
++        }
++        if (array_length(_links) > 256) {
++            show_debug_message("MACRO_REU INDEXED: too many linked assets for an 8-bit index (" + string(array_length(_links)) + "): " + _manifest_name);
++            break;
++        }
++        var _index_addr = scr_resolve_var_addr(_index_var);
++        if (_index_addr == 0) {
++            show_debug_message("MACRO_REU INDEXED: index var unresolved: " + _index_var);
++            break;
++        }
++
++        var _pfx       = "reut" + string(real(_id)) + "_";
++        var _lbl_skip  = _pfx + "skip";
++        var _lbl_bank  = _pfx + "bank";
++        var _lbl_lo    = _pfx + "lo";
++        var _lbl_hi    = _pfx + "hi";
++        var _lbl_lenlo = _pfx + "llo";
++        var _lbl_lenhi = _pfx + "lhi";
++
++        // Jump over the tables — they are data, not code, and sit inline on the spine.
++        array_push(_list, ["jmp_abs", _lbl_skip, _id]);
++
++        array_push(_list, ["label", _lbl_bank]);
++        for (var _i = 0; _i < array_length(_links); _i++) {
++            array_push(_list, ["byte", (real(_links[_i].reu_address) >> 16) & 0xFF, _id]);
++        }
++        array_push(_list, ["label", _lbl_lo]);
++        for (var _i = 0; _i < array_length(_links); _i++) {
++            array_push(_list, ["byte", real(_links[_i].reu_address) & 0xFF, _id]);
++        }
++        array_push(_list, ["label", _lbl_hi]);
++        for (var _i = 0; _i < array_length(_links); _i++) {
++            array_push(_list, ["byte", (real(_links[_i].reu_address) >> 8) & 0xFF, _id]);
++        }
++        array_push(_list, ["label", _lbl_lenlo]);
++        for (var _i = 0; _i < array_length(_links); _i++) {
++            var _asset  = scr_reu_find_asset(_links[_i].asset_name);
++            var _payload = scr_reu_asset_payload(_asset);
++            var _sz = _payload.size & 0xFFFF;
++            if (buffer_exists(_payload.buffer)) buffer_delete(_payload.buffer);
++            array_push(_list, ["byte", _sz & 0xFF, _id]);
++        }
++        array_push(_list, ["label", _lbl_lenhi]);
++        for (var _i = 0; _i < array_length(_links); _i++) {
++            var _asset2  = scr_reu_find_asset(_links[_i].asset_name);
++            var _payload2 = scr_reu_asset_payload(_asset2);
++            var _sz2 = _payload2.size & 0xFFFF;
++            if (buffer_exists(_payload2.buffer)) buffer_delete(_payload2.buffer);
++            array_push(_list, ["byte", (_sz2 >> 8) & 0xFF, _id]);
++        }
++
++        array_push(_list, ["label", _lbl_skip]);
++
++        var _reu_type2 = clamp(_reu_op, 0, 3);
++        var _reu_cmd2  = 0x80;
++        _reu_cmd2     |= 0x10;
++        if (_reu_auto == 1) { _reu_cmd2 |= 0x20; }
++        _reu_cmd2     |= _reu_type2;
++        var _reu_ctrl2 = 0x00;
++        if (_reu_fixc == 1) { _reu_ctrl2 |= 0x80; }
++        if (_reu_fixr == 1) { _reu_ctrl2 |= 0x40; }
++
++        array_push(_list, ["ldx_zp",  _index_addr, _id]);
++        array_push(_list, ["lda_abx", _lbl_bank,   _id]);
++        array_push(_list, ["sta_abs", 0xDF06,      _id]);
++        array_push(_list, ["lda_abx", _lbl_lo,     _id]);
++        array_push(_list, ["sta_abs", 0xDF04,      _id]);
++        array_push(_list, ["lda_abx", _lbl_hi,     _id]);
++        array_push(_list, ["sta_abs", 0xDF05,      _id]);
++        array_push(_list, ["lda_abx", _lbl_lenlo,  _id]);
++        array_push(_list, ["sta_abs", 0xDF07,      _id]);
++        array_push(_list, ["lda_abx", _lbl_lenhi,  _id]);
++        array_push(_list, ["sta_abs", 0xDF08,      _id]);
++
++        array_push(_list, ["lda_imm", _reu_c64 & 0xFF,        _id]);
++        array_push(_list, ["sta_abs", 0xDF02,                 _id]);
++        array_push(_list, ["lda_imm", (_reu_c64 >> 8) & 0xFF, _id]);
++        array_push(_list, ["sta_abs", 0xDF03,                 _id]);
++
++        array_push(_list, ["lda_imm", _reu_ctrl2, _id]);
++        array_push(_list, ["sta_abs", 0xDF0A,     _id]);
++        array_push(_list, ["lda_imm", _reu_cmd2,  _id]);
++        array_push(_list, ["sta_abs", 0xDF01,     _id]);
++        break;
++    }
++
+     // ASSET mode resolves the three manual transfer fields from a LOAD_REU
+     // manifest. Old workspaces have no slot 9, so they remain DIRECT.
+-    var _reu_mode = (array_length(_curr.instructions[0]) > 9 && is_real(_curr.instructions[0][9])) ? real(_curr.instructions[0][9]) : 0;
+     if (_reu_mode == 1) {
+         var _manifest_name = (array_length(_curr.instructions[0]) > 10) ? string(_curr.instructions[0][10]) : "";
+         var _asset_name = (array_length(_curr.instructions[0]) > 11) ? string(_curr.instructions[0][11]) : "";
+diff --git a/C64DevMachine_win.yyp/scripts/scr_find_var_references/scr_find_var_references.gml b/C64DevMachine_win.yyp/scripts/scr_find_var_references/scr_find_var_references.gml
+index 7db58b7..b59435e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_find_var_references/scr_find_var_references.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_find_var_references/scr_find_var_references.gml
+@@ -38,6 +38,7 @@ function scr_find_var_references(_var_name, _exclude) {
+             case "MACRO_SID_SOUND":      _slots = [3, 6, 9, 12, 15, 19, 24, 28]; break;
+             case "MACRO_PRINT_EXT":      _slots = [6];                  break;
+             case "MACRO_MOVE_BMP_BLOCK":  _slots = [9, 10, 11, 12, 18];  break;
++            case "MACRO_REU":             _slots = [12];                 break;
+             default:                     _slots = [];                   break;
+         }
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml
+index 51129fc..6b591e5 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml
+@@ -2,7 +2,7 @@
+ /// DIRECT layout; 9=mode, 10=LOAD_REU name, 11=linked asset name.
+ function scr_node_draw_macro_reu(_draw_x, _y) {
+     var _hh = 24, _lh = 16, _inst = instructions[0];
+-    while (array_length(_inst) < 12) array_push(_inst, (array_length(_inst) >= 10) ? "" : 0);
++    while (array_length(_inst) < 13) array_push(_inst, (array_length(_inst) >= 10) ? "" : 0);
+     var _mode = is_real(_inst[9]) ? real(_inst[9]) : 0;
+     var _lx = _draw_x + 8, _rx = _draw_x + width - 6, _cy = _y + _hh + 4;
+     var _button = function(_label, _x1, _x2, _yy, _col) {
+@@ -19,10 +19,26 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
+ 
+     draw_set_font(fnt_C64_Angled_tiny);
+     draw_set_color(c_gray); draw_text(_lx, _cy, "MODE:");
+-    _button((_mode == 1) ? "ASSET" : "DIRECT", _lx + 44, _rx, _cy, (_mode == 1) ? make_color_rgb(30,90,75) : make_color_rgb(40,30,70));
++    var _mode_label = "DIRECT";
++    var _mode_col   = make_color_rgb(40,30,70);
++    if (_mode == 1) { _mode_label = "ASSET";   _mode_col = make_color_rgb(30,90,75); }
++    if (_mode == 2) { _mode_label = "INDEXED"; _mode_col = make_color_rgb(80,60,20); }
++    _button(_mode_label, _lx + 44, _rx, _cy, _mode_col);
+     _cy += _lh;
+ 
+-    if (_mode == 1) {
++    if (_mode == 2) {
++        draw_set_color(c_gray); draw_text(_lx, _cy, "REU:");
++        _button(string(_inst[10]) != "" ? string(_inst[10]) : "<SELECT LOAD_REU>", _lx + 44, _rx, _cy, make_color_rgb(25,65,60));
++        _cy += _lh;
++        draw_set_color(c_gray); draw_text(_lx, _cy, "INDEX:");
++        _button(string(_inst[12]) != "" ? string(_inst[12]) : "<SELECT VAR>", _lx + 44, _rx, _cy, make_color_rgb(25,65,60));
++        _cy += _lh;
++        var _idx_manifest = scr_reu_find_asset(string(_inst[10]));
++        var _idx_count = (!is_undefined(_idx_manifest) && variable_struct_exists(_idx_manifest, "linked_assets")) ? array_length(_idx_manifest.linked_assets) : 0;
++        draw_set_color(c_gray); draw_text(_lx, _cy, "SLOTS:");
++        draw_set_color(_idx_count > 0 ? c_lime : c_red); draw_text(_lx + 44, _cy, string(_idx_count));
++        _cy += _lh;
++    } else if (_mode == 1) {
+         draw_set_color(c_gray); draw_text(_lx, _cy, "REU:");
+         _button(string(_inst[10]) != "" ? string(_inst[10]) : "<SELECT LOAD_REU>", _lx + 44, _rx, _cy, make_color_rgb(25,65,60));
+         _cy += _lh;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index 1c9b105..bd227ce 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -414,7 +414,7 @@ case "LABEL": {
+ 		// -------------------------------------------------------
+ 		case "MACRO_REU":
+ 		    _n.node_title   = "REU";
+-		    _n.instructions = [["macro_reu", 0, 0xC000, 0x0000, 0, 0x0100, 0, 0, 0, 0, "", ""]];
++		    _n.instructions = [["macro_reu", 0, 0xC000, 0x0000, 0, 0x0100, 0, 0, 0, 0, "", "", ""]];
+ 		    _n.pc_address   = global.start_pc;
+ 		    with (_n) { event_user(0); }
+ 		    break;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.gml
+index 1e7566c..d4fd3eb 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.gml
+@@ -1,14 +1,41 @@
+ /// @desc Handle LMB clicks for MACRO_REU DIRECT/ASSET modes.
+ function scr_node_step_macro_reu(_draw_x) {
+     var _hh=24, _lh=16, _inst=instructions[0], _lx=_draw_x+8, _rx=_draw_x+width-6, _cy=y+_hh+4;
+-    while (array_length(_inst) < 12) array_push(_inst, (array_length(_inst) >= 10) ? "" : 0);
++    while (array_length(_inst) < 13) array_push(_inst, (array_length(_inst) >= 10) ? "" : 0);
+     var _open_hex = function(_idx,_digits) { with (obj_workspace_manager) { is_entering_text=true; input_target_node=other.id; input_target_index=_idx; var _h=string_upper(decimal_to_hex(real(other.instructions[0][_idx]))); while(string_length(_h)<_digits)_h="0"+_h; current_input_string="$"+_h; keyboard_string=""; cursor_pos=string_length(current_input_string); } };
+     var _open_num = function(_idx) { with (obj_workspace_manager) { is_entering_text=true; input_target_node=other.id; input_target_index=_idx; current_input_string=string(real(other.instructions[0][_idx])); keyboard_string=""; cursor_pos=string_length(current_input_string); } };
+     var _hit = function(_x1,_x2,_yy) { return point_in_rectangle(mouse_x,mouse_y,_x1,_yy+4,_x2,_yy+10); };
+ 
+-    if (_hit(_lx+44,_rx,_cy)) { instructions[0][9]=(real(_inst[9])==1)?0:1; if(instructions[0][9]==1)instructions[0][1]=1; global.addresses_dirty=true; scr_c64_do_update_addresses(); exit; }
++    if (_hit(_lx+44,_rx,_cy)) {
++        var _m = (real(_inst[9]) + 1) mod 3;
++        instructions[0][9] = _m;
++        if (_m == 1) instructions[0][1] = 1;
++        global.addresses_dirty = true;
++        scr_c64_do_update_addresses();
++        exit;
++    }
+     _cy += _lh;
+-    if (real(_inst[9]) == 1) {
++    if (real(_inst[9]) == 2) {
++        if (_hit(_lx+44,_rx,_cy)) {
++            var _matches=[]; if(instance_exists(obj_asset_manager)){var _am=obj_asset_manager;for(var _i=0;_i<ds_list_size(_am.asset_list);_i++){var _a=ds_list_find_value(_am.asset_list,_i);if(_a.type=="LOAD_REU")array_push(_matches,_a.name);}}
++            if(array_length(_matches)>0){var _at=-1;for(var _i=0;_i<array_length(_matches);_i++)if(_matches[_i]==string(_inst[10])){_at=_i;break;}_at=(_at+1) mod array_length(_matches);instructions[0][10]=_matches[_at];} exit;
++        } _cy += _lh;
++        if (_hit(_lx+44,_rx,_cy)) {
++            label_picker_open       = true;
++            global.any_picker_open  = true;
++            label_picker_prev_depth = depth;
++            depth                   = -9999;
++            label_picker_mode       = "VAR";
++            label_picker_word_only  = false;
++            label_picker_byte_only  = true;
++            label_picker_tab        = "UV";
++            label_picker_scroll     = 0;
++            label_picker_list       = [];
++            label_picker_target     = id;
++            label_picker_index      = 12;
++            exit;
++        } _cy += _lh*5;
++    } else if (real(_inst[9]) == 1) {
+         if (_hit(_lx+44,_rx,_cy)) {
+             var _matches=[]; if(instance_exists(obj_asset_manager)){var _am=obj_asset_manager;for(var _i=0;_i<ds_list_size(_am.asset_list);_i++){var _a=ds_list_find_value(_am.asset_list,_i);if(_a.type=="LOAD_REU")array_push(_matches,_a.name);}}
+             if(array_length(_matches)>0){var _at=-1;for(var _i=0;_i<array_length(_matches);_i++)if(_matches[_i]==string(_inst[10])){_at=_i;break;}_at=(_at+1) mod array_length(_matches);instructions[0][10]=_matches[_at];instructions[0][11]="";} exit;

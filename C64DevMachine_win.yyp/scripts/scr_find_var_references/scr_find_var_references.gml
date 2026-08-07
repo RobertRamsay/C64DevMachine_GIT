@@ -38,6 +38,7 @@ function scr_find_var_references(_var_name, _exclude) {
             case "MACRO_SID_SOUND":      _slots = [3, 6, 9, 12, 15, 19, 24, 28]; break;
             case "MACRO_PRINT_EXT":      _slots = [6];                  break;
             case "MACRO_MOVE_BMP_BLOCK":  _slots = [9, 10, 11, 12, 18];  break;
+            case "MACRO_REU":             _slots = [12];                 break;
             default:                     _slots = [];                   break;
         }
 
