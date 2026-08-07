@@ -2602,7 +2602,7 @@ draw_set_color(_cell_bg_col);
 		            _m.pan_start_sx = _m.scroll_x;
 		            _m.pan_start_sy = _m.scroll_y;
 		        }
-		       if (mouse_check_button_released(mb_middle) || keyboard_check_released(vk_alt) || !window_has_focus()) {
+		       if (mouse_check_button_released(mb_middle) || keyboard_check_released(vk_alt) || keyboard_check_released(vk_space) || !window_has_focus()) {
 		            _m.pan_active = false;
 		            keyboard_clear(vk_alt);
 		        }
