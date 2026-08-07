@@ -2195,9 +2195,9 @@ draw_set_color(_cell_bg_col);
                         _m.char_grid[_dest_idx]     = _stamp.char;
                         _m.colour_grid[_dest_idx]   = _stamp.col;
                         _m.override_grid[_dest_idx] = _stamp.ov;
+                        scr_asset_map_flush_cell(_asset, _dest_row, _dest_col);
                     }
                 }
-                scr_asset_map_flush(_asset);
             }
             // --- 3. FLOOD FILL (Left Click in fill mode) ---
             else if (_m.fill_mode && mouse_check_button_pressed(mb_left) && !scr_ctrl_held()) {
@@ -2271,7 +2271,7 @@ draw_set_color(_cell_bg_col);
                 _m.map_redo_stack = [];
                 _m.char_grid[_midx]   = _m.active_char;
                 _m.colour_grid[_midx] = _m.active_colour;
-                scr_asset_map_flush(_asset);
+                scr_asset_map_flush_cell(_asset, _mrow, _mcol);
             }
         }
     }
@@ -2413,6 +2413,10 @@ draw_set_color(_cell_bg_col);
 	
 
 // ---- HOVER + UNIFIED PAINT ----
+    if (mouse_check_button_released(mb_left)) {
+        map_paint_last_col = -999999;
+        map_paint_last_row = -999999;
+    }
     if (point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2)) {
         var _hcol = _start_col + (_mx - _cv_x1) div _cs;
         var _hrow = _start_row + (_my - _cv_y1) div _cs;
@@ -2438,7 +2442,7 @@ draw_set_color(_cell_bg_col);
                 }
                 if (_m.override_grid[_pidx] != 0) {
                     _m.override_grid[_pidx] = 0;
-                    scr_asset_map_flush(_asset);
+                    scr_asset_map_flush_cell(_asset, _hrow, _hcol);
                 }
             }
 					
@@ -2449,7 +2453,7 @@ draw_set_color(_cell_bg_col);
                     _m.override_grid = array_create(_gw * _gh, 0);
                 if (_m.override_grid[_pidx] != 1) {
                     _m.override_grid[_pidx] = 1;
-                    scr_asset_map_flush(_asset);
+                    scr_asset_map_flush_cell(_asset, _hrow, _hcol);
                 }
             }
 			
@@ -2457,7 +2461,7 @@ draw_set_color(_cell_bg_col);
                 if (!variable_struct_exists(_m, "override_grid") || array_length(_m.override_grid) != _gw * _gh)
                     _m.override_grid = array_create(_gw * _gh, 0);
                 _m.override_grid[_pidx] = (_m.override_grid[_pidx] == 1) ? 0 : 1;
-                scr_asset_map_flush(_asset);
+                scr_asset_map_flush_cell(_asset, _hrow, _hcol);
             }
             if (keyboard_check_pressed(ord("X")) && _m.stamp_active) {
                 var _max_dx = 0;
@@ -2495,28 +2499,60 @@ draw_set_color(_cell_bg_col);
                         if (variable_struct_exists(_stamp, "ov")) {
                             _m.override_grid[_dest_idx] = _stamp.ov; 
                         }
+                        scr_asset_map_flush_cell(_asset, _dest_row, _dest_col);
                     }
                 }
-                scr_asset_map_flush(_asset);
             }
             // --- 3. NORMAL PAINTING (Left/Right Click without control or stamp) ---
             else {
-                // Left click — paint CHAR and COLOUR
+                // Left click — paint CHAR and COLOUR, interpolated across any
+                // gap since the last painted cell (fast drags otherwise skip
+                // cells the paint loop never got a chance to poll at).
                 if (mouse_check_button(mb_left) && !_m.stamp_active) {
                     var _pmc = variable_struct_exists(_m, "paint_mc") ? _m.paint_mc : 0;
                     var _raw_col = (_global_mixed == 1) ? (_m.active_colour & 0x07) : (_m.active_colour & 0x0F);
-                    
+
                     if (!variable_struct_exists(_m, "override_grid") || array_length(_m.override_grid) != _gw * _gh)
                         _m.override_grid = array_create(_gw * _gh, 0);
 
-                    if (keyboard_check(vk_shift)) {
-                        _m.colour_grid[_pidx] = _raw_col;
-                    } else {
-                        _m.char_grid[_pidx]   = _m.active_char;
-                        _m.colour_grid[_pidx] = _raw_col;
-                        _m.override_grid[_pidx] = (_global_mixed == 1 && _pmc == 1) ? 1 : 0;
+                    var _shift_paint = keyboard_check(vk_shift);
+
+                    if (map_paint_last_col == -999999 || map_paint_last_row == -999999) {
+                        map_paint_last_col = _hcol;
+                        map_paint_last_row = _hrow;
                     }
-                    scr_asset_map_flush(_asset);
+
+                    // Bresenham walk from the last painted cell to the current one.
+                    var _lx0 = map_paint_last_col, _ly0 = map_paint_last_row;
+                    var _lx1 = _hcol,              _ly1 = _hrow;
+                    var _ldx = abs(_lx1 - _lx0), _lsx = (_lx0 < _lx1) ? 1 : -1;
+                    var _ldy = -abs(_ly1 - _ly0), _lsy = (_ly0 < _ly1) ? 1 : -1;
+                    var _lerr = _ldx + _ldy;
+                    var _lcx = _lx0, _lcy = _ly0;
+                    var _lguard = 0; // safety cap — a stroke never needs more steps than map cells
+                    var _lguard_max = _gw + _gh + 4;
+                    while (true) {
+                        if (_lcx >= 0 && _lcx < _mw && _lcy >= 0 && _lcy < _mh) {
+                            var _lidx = _lcy * _gw + _lcx;
+                            if (_shift_paint) {
+                                _m.colour_grid[_lidx] = _raw_col;
+                            } else {
+                                _m.char_grid[_lidx]     = _m.active_char;
+                                _m.colour_grid[_lidx]   = _raw_col;
+                                _m.override_grid[_lidx] = (_global_mixed == 1 && _pmc == 1) ? 1 : 0;
+                            }
+                            scr_asset_map_flush_cell(_asset, _lcy, _lcx);
+                        }
+                        if (_lcx == _lx1 && _lcy == _ly1) break;
+                        _lguard++;
+                        if (_lguard > _lguard_max) break; // defensive — should never trigger
+                        var _le2 = 2 * _lerr;
+                        if (_le2 >= _ldy) { _lerr += _ldy; _lcx += _lsx; }
+                        if (_le2 <= _ldx) { _lerr += _ldx; _lcy += _lsy; }
+                    }
+
+                    map_paint_last_col = _hcol;
+                    map_paint_last_row = _hrow;
                 }
                 
                 // Right click — erase all non-zero chars covered by stamp footprint
@@ -2531,12 +2567,13 @@ draw_set_color(_cell_bg_col);
                                 if (_m.char_grid[_edest_idx] != 0) {
                                     _m.char_grid[_edest_idx] = 0;
                                 }
+                                scr_asset_map_flush_cell(_asset, _edest_row, _edest_col);
                             }
                         }
                     } else {
                         _m.char_grid[_pidx] = 0;
+                        scr_asset_map_flush_cell(_asset, _hrow, _hcol);
                     }
-                    scr_asset_map_flush(_asset);
                 }
             }
         }

@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_asset_map_flush_cell",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_asset_map_flush_cell",
+  "parent":{
+    "name":"I_O",
+    "path":"folders/SCRIPTS/CORE/I_O.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

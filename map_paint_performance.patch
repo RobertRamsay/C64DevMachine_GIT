@@ -1,0 +1,251 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index 185a4d1..a57c228 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -986,6 +986,7 @@
+     {"id":{"name":"scr_asset_kla_reload","path":"scripts/scr_asset_kla_reload/scr_asset_kla_reload.yy",},},
+     {"id":{"name":"scr_asset_kla_save","path":"scripts/scr_asset_kla_save/scr_asset_kla_save.yy",},},
+     {"id":{"name":"scr_asset_map_flush","path":"scripts/scr_asset_map_flush/scr_asset_map_flush.yy",},},
++    {"id":{"name":"scr_asset_map_flush_cell","path":"scripts/scr_asset_map_flush_cell/scr_asset_map_flush_cell.yy",},},
+     {"id":{"name":"scr_asset_map_import","path":"scripts/scr_asset_map_import/scr_asset_map_import.yy",},},
+     {"id":{"name":"scr_asset_map_reload","path":"scripts/scr_asset_map_reload/scr_asset_map_reload.yy",},},
+     {"id":{"name":"scr_asset_meta_map_create","path":"scripts/scr_asset_meta_map_create/scr_asset_meta_map_create.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index 71f65be..6f8dcc3 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -221,6 +221,13 @@ sfx_picker_field = "asset";
+ 	reu_drag_over = -1;
+ 	reu_drag_type = "";
+ 
++	// META_TILESET map painting — last painted cell this stroke, used to
++	// interpolate a line when the mouse moves faster than the paint loop
++	// polls (fast drags otherwise leave gaps between painted cells).
++	// Sentinel (-999999) means "no stroke in progress".
++	map_paint_last_col = -999999;
++	map_paint_last_row = -999999;
++
+ 	// MACRO_REU ASSET-mode pickers
+ 	reu_manifest_picker_open  = false;
+ 	reu_manifest_picker_node  = noone;
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 41d14d7..ab43822 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -2195,9 +2195,9 @@ draw_set_color(_cell_bg_col);
+                         _m.char_grid[_dest_idx]     = _stamp.char;
+                         _m.colour_grid[_dest_idx]   = _stamp.col;
+                         _m.override_grid[_dest_idx] = _stamp.ov;
++                        scr_asset_map_flush_cell(_asset, _dest_row, _dest_col);
+                     }
+                 }
+-                scr_asset_map_flush(_asset);
+             }
+             // --- 3. FLOOD FILL (Left Click in fill mode) ---
+             else if (_m.fill_mode && mouse_check_button_pressed(mb_left) && !scr_ctrl_held()) {
+@@ -2271,7 +2271,7 @@ draw_set_color(_cell_bg_col);
+                 _m.map_redo_stack = [];
+                 _m.char_grid[_midx]   = _m.active_char;
+                 _m.colour_grid[_midx] = _m.active_colour;
+-                scr_asset_map_flush(_asset);
++                scr_asset_map_flush_cell(_asset, _mrow, _mcol);
+             }
+         }
+     }
+@@ -2413,6 +2413,10 @@ draw_set_color(_cell_bg_col);
+ 	
+ 
+ // ---- HOVER + UNIFIED PAINT ----
++    if (mouse_check_button_released(mb_left)) {
++        map_paint_last_col = -999999;
++        map_paint_last_row = -999999;
++    }
+     if (point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2)) {
+         var _hcol = _start_col + (_mx - _cv_x1) div _cs;
+         var _hrow = _start_row + (_my - _cv_y1) div _cs;
+@@ -2438,7 +2442,7 @@ draw_set_color(_cell_bg_col);
+                 }
+                 if (_m.override_grid[_pidx] != 0) {
+                     _m.override_grid[_pidx] = 0;
+-                    scr_asset_map_flush(_asset);
++                    scr_asset_map_flush_cell(_asset, _hrow, _hcol);
+                 }
+             }
+ 					
+@@ -2449,7 +2453,7 @@ draw_set_color(_cell_bg_col);
+                     _m.override_grid = array_create(_gw * _gh, 0);
+                 if (_m.override_grid[_pidx] != 1) {
+                     _m.override_grid[_pidx] = 1;
+-                    scr_asset_map_flush(_asset);
++                    scr_asset_map_flush_cell(_asset, _hrow, _hcol);
+                 }
+             }
+ 			
+@@ -2457,7 +2461,7 @@ draw_set_color(_cell_bg_col);
+                 if (!variable_struct_exists(_m, "override_grid") || array_length(_m.override_grid) != _gw * _gh)
+                     _m.override_grid = array_create(_gw * _gh, 0);
+                 _m.override_grid[_pidx] = (_m.override_grid[_pidx] == 1) ? 0 : 1;
+-                scr_asset_map_flush(_asset);
++                scr_asset_map_flush_cell(_asset, _hrow, _hcol);
+             }
+             if (keyboard_check_pressed(ord("X")) && _m.stamp_active) {
+                 var _max_dx = 0;
+@@ -2495,28 +2499,60 @@ draw_set_color(_cell_bg_col);
+                         if (variable_struct_exists(_stamp, "ov")) {
+                             _m.override_grid[_dest_idx] = _stamp.ov; 
+                         }
++                        scr_asset_map_flush_cell(_asset, _dest_row, _dest_col);
+                     }
+                 }
+-                scr_asset_map_flush(_asset);
+             }
+             // --- 3. NORMAL PAINTING (Left/Right Click without control or stamp) ---
+             else {
+-                // Left click — paint CHAR and COLOUR
++                // Left click — paint CHAR and COLOUR, interpolated across any
++                // gap since the last painted cell (fast drags otherwise skip
++                // cells the paint loop never got a chance to poll at).
+                 if (mouse_check_button(mb_left) && !_m.stamp_active) {
+                     var _pmc = variable_struct_exists(_m, "paint_mc") ? _m.paint_mc : 0;
+                     var _raw_col = (_global_mixed == 1) ? (_m.active_colour & 0x07) : (_m.active_colour & 0x0F);
+-                    
++
+                     if (!variable_struct_exists(_m, "override_grid") || array_length(_m.override_grid) != _gw * _gh)
+                         _m.override_grid = array_create(_gw * _gh, 0);
+ 
+-                    if (keyboard_check(vk_shift)) {
+-                        _m.colour_grid[_pidx] = _raw_col;
+-                    } else {
+-                        _m.char_grid[_pidx]   = _m.active_char;
+-                        _m.colour_grid[_pidx] = _raw_col;
+-                        _m.override_grid[_pidx] = (_global_mixed == 1 && _pmc == 1) ? 1 : 0;
++                    var _shift_paint = keyboard_check(vk_shift);
++
++                    if (map_paint_last_col == -999999 || map_paint_last_row == -999999) {
++                        map_paint_last_col = _hcol;
++                        map_paint_last_row = _hrow;
+                     }
+-                    scr_asset_map_flush(_asset);
++
++                    // Bresenham walk from the last painted cell to the current one.
++                    var _lx0 = map_paint_last_col, _ly0 = map_paint_last_row;
++                    var _lx1 = _hcol,              _ly1 = _hrow;
++                    var _ldx = abs(_lx1 - _lx0), _lsx = (_lx0 < _lx1) ? 1 : -1;
++                    var _ldy = -abs(_ly1 - _ly0), _lsy = (_ly0 < _ly1) ? 1 : -1;
++                    var _lerr = _ldx + _ldy;
++                    var _lcx = _lx0, _lcy = _ly0;
++                    var _lguard = 0; // safety cap — a stroke never needs more steps than map cells
++                    var _lguard_max = _gw + _gh + 4;
++                    while (true) {
++                        if (_lcx >= 0 && _lcx < _mw && _lcy >= 0 && _lcy < _mh) {
++                            var _lidx = _lcy * _gw + _lcx;
++                            if (_shift_paint) {
++                                _m.colour_grid[_lidx] = _raw_col;
++                            } else {
++                                _m.char_grid[_lidx]     = _m.active_char;
++                                _m.colour_grid[_lidx]   = _raw_col;
++                                _m.override_grid[_lidx] = (_global_mixed == 1 && _pmc == 1) ? 1 : 0;
++                            }
++                            scr_asset_map_flush_cell(_asset, _lcy, _lcx);
++                        }
++                        if (_lcx == _lx1 && _lcy == _ly1) break;
++                        _lguard++;
++                        if (_lguard > _lguard_max) break; // defensive — should never trigger
++                        var _le2 = 2 * _lerr;
++                        if (_le2 >= _ldy) { _lerr += _ldy; _lcx += _lsx; }
++                        if (_le2 <= _ldx) { _lerr += _ldx; _lcy += _lsy; }
++                    }
++
++                    map_paint_last_col = _hcol;
++                    map_paint_last_row = _hrow;
+                 }
+                 
+                 // Right click — erase all non-zero chars covered by stamp footprint
+@@ -2531,12 +2567,13 @@ draw_set_color(_cell_bg_col);
+                                 if (_m.char_grid[_edest_idx] != 0) {
+                                     _m.char_grid[_edest_idx] = 0;
+                                 }
++                                scr_asset_map_flush_cell(_asset, _edest_row, _edest_col);
+                             }
+                         }
+                     } else {
+                         _m.char_grid[_pidx] = 0;
++                        scr_asset_map_flush_cell(_asset, _hrow, _hcol);
+                     }
+-                    scr_asset_map_flush(_asset);
+                 }
+             }
+         }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_map_flush_cell/scr_asset_map_flush_cell.gml b/C64DevMachine_win.yyp/scripts/scr_asset_map_flush_cell/scr_asset_map_flush_cell.gml
+new file mode 100644
+index 0000000..8a655ea
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_map_flush_cell/scr_asset_map_flush_cell.gml
+@@ -0,0 +1,48 @@
++/// @desc Fast O(1) buffer update for one painted cell.
++/// scr_asset_map_flush() re-serializes the ENTIRE map (three full passes,
++/// one buffer_poke per cell per pass) — correct after a resize/undo/load,
++/// but wildly wasteful when called every single frame during a paint drag,
++/// which is what made large-map painting laggy. This updates only the one
++/// cell that actually changed. Falls back to the full flush if the buffer
++/// doesn't exist yet or is the wrong size (resize/undo edge cases) or the
++/// cell is out of range, so it's always safe to call.
++function scr_asset_map_flush_cell(_asset, _row, _col) {
++    if (!variable_struct_exists(_asset, "meta")) exit;
++    var _m  = _asset.meta;
++    var _mw = _m.map_w;
++    var _mh = _m.map_h;
++    var _sz = _mw * _mh;
++    var _buf_sz = _sz * 3;
++
++    if (!buffer_exists(_asset.buffer) || buffer_get_size(_asset.buffer) != _buf_sz
++    ||  _row < 0 || _row >= _mh || _col < 0 || _col >= _mw
++    ||  !variable_struct_exists(_m, "char_grid") || !variable_struct_exists(_m, "colour_grid")
++    ||  !variable_struct_exists(_m, "override_grid")) {
++        scr_asset_map_flush(_asset);
++        return;
++    }
++
++    var _gw  = variable_struct_exists(_m, "grid_w") ? _m.grid_w : _mw;
++    var _src = _row * _gw + _col;
++    var _dst = _row * _mw + _col;
++    if (_src < 0 || _src >= array_length(_m.char_grid)
++    ||  _src >= array_length(_m.colour_grid) || _src >= array_length(_m.override_grid)) {
++        scr_asset_map_flush(_asset);
++        return;
++    }
++
++    buffer_poke(_asset.buffer, _dst, buffer_u8, _m.char_grid[_src]);
++
++    // Same colour-byte composition as scr_asset_map_flush — keep in sync if that changes.
++    var _global_mixed = obj_workspace_manager.map_global_mixed;
++    var _ov    = _m.override_grid[_src]; // 0=HR, 1=MC
++    var _byte  = 0;
++    if (_global_mixed == 1) {
++        var _col_val = _m.colour_grid[_src] & 0x07;
++        _byte = (_ov == 1) ? (_col_val | 0x08) : _col_val;
++    } else {
++        _byte = _m.colour_grid[_src] & 0x0F;
++    }
++    buffer_poke(_asset.buffer, _sz     + _dst, buffer_u8, _byte);
++    buffer_poke(_asset.buffer, _sz * 2 + _dst, buffer_u8, _ov);
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_map_flush_cell/scr_asset_map_flush_cell.yy b/C64DevMachine_win.yyp/scripts/scr_asset_map_flush_cell/scr_asset_map_flush_cell.yy
+new file mode 100644
+index 0000000..231c1e9
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_map_flush_cell/scr_asset_map_flush_cell.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_asset_map_flush_cell",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_asset_map_flush_cell",
++  "parent":{
++    "name":"I_O",
++    "path":"folders/SCRIPTS/CORE/I_O.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}

@@ -985,6 +985,7 @@
     {"id":{"name":"scr_asset_kla_process_surface","path":"scripts/scr_asset_kla_process_surface/scr_asset_kla_process_surface.yy",},},
     {"id":{"name":"scr_asset_kla_reload","path":"scripts/scr_asset_kla_reload/scr_asset_kla_reload.yy",},},
     {"id":{"name":"scr_asset_kla_save","path":"scripts/scr_asset_kla_save/scr_asset_kla_save.yy",},},
+    {"id":{"name":"scr_asset_map_flush_cell","path":"scripts/scr_asset_map_flush_cell/scr_asset_map_flush_cell.yy",},},
     {"id":{"name":"scr_asset_map_flush","path":"scripts/scr_asset_map_flush/scr_asset_map_flush.yy",},},
     {"id":{"name":"scr_asset_map_import","path":"scripts/scr_asset_map_import/scr_asset_map_import.yy",},},
     {"id":{"name":"scr_asset_map_reload","path":"scripts/scr_asset_map_reload/scr_asset_map_reload.yy",},},

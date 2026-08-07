@@ -221,6 +221,13 @@ sfx_picker_field = "asset";
 	reu_drag_over = -1;
 	reu_drag_type = "";
 
+	// META_TILESET map painting — last painted cell this stroke, used to
+	// interpolate a line when the mouse moves faster than the paint loop
+	// polls (fast drags otherwise leave gaps between painted cells).
+	// Sentinel (-999999) means "no stroke in progress".
+	map_paint_last_col = -999999;
+	map_paint_last_row = -999999;
+
 	// MACRO_REU ASSET-mode pickers
 	reu_manifest_picker_open  = false;
 	reu_manifest_picker_node  = noone;
