@@ -34,7 +34,14 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
         _button(string(_inst[12]) != "" ? string(_inst[12]) : "<SELECT VAR>", _lx + 44, _rx, _cy, make_color_rgb(25,65,60));
         _cy += _lh;
         var _idx_manifest = scr_reu_find_asset(string(_inst[10]));
-        var _idx_count = (!is_undefined(_idx_manifest) && variable_struct_exists(_idx_manifest, "linked_assets")) ? array_length(_idx_manifest.linked_assets) : 0;
+        var _idx_count = 0;
+        if (!is_undefined(_idx_manifest) && variable_struct_exists(_idx_manifest, "linked_assets")) {
+            var _idx_links = _idx_manifest.linked_assets;
+            for (var _ii = 0; _ii < array_length(_idx_links); _ii++) {
+                var _idx_asset = scr_reu_find_asset(_idx_links[_ii].asset_name);
+                if (!is_undefined(_idx_asset) && (_idx_asset.type == "BITMAP" || _idx_asset.type == "BITMAP_KLA")) _idx_count++;
+            }
+        }
         draw_set_color(c_gray); draw_text(_lx, _cy, "SLOTS:");
         draw_set_color(_idx_count > 0 ? c_lime : c_red); draw_text(_lx + 44, _cy, string(_idx_count));
         _cy += _lh;

@@ -6483,13 +6483,25 @@ case "MACRO_REU": {
             break;
         }
         scr_reu_repack(_manifest);
-        var _links = variable_struct_exists(_manifest, "linked_assets") ? _manifest.linked_assets : [];
+        var _all_links = variable_struct_exists(_manifest, "linked_assets") ? _manifest.linked_assets : [];
+
+        // Only bitmaps are valid indexed-fetch targets. A mixed manifest
+        // (SID data, byte tables, etc.) would poison the index numbering
+        // and each entry's implied destination/size, so non-bitmap links
+        // are skipped rather than occupying a table slot.
+        var _links = [];
+        for (var _li = 0; _li < array_length(_all_links); _li++) {
+            var _lasset = scr_reu_find_asset(_all_links[_li].asset_name);
+            if (!is_undefined(_lasset) && (_lasset.type == "BITMAP" || _lasset.type == "BITMAP_KLA")) {
+                array_push(_links, _all_links[_li]);
+            }
+        }
         if (array_length(_links) == 0) {
-            show_debug_message("MACRO_REU INDEXED: manifest has no linked assets: " + _manifest_name);
+            show_debug_message("MACRO_REU INDEXED: no BITMAP assets linked in manifest: " + _manifest_name);
             break;
         }
         if (array_length(_links) > 256) {
-            show_debug_message("MACRO_REU INDEXED: too many linked assets for an 8-bit index (" + string(array_length(_links)) + "): " + _manifest_name);
+            show_debug_message("MACRO_REU INDEXED: too many bitmap assets for an 8-bit index (" + string(array_length(_links)) + "): " + _manifest_name);
             break;
         }
         var _index_addr = scr_resolve_var_addr(_index_var);
@@ -6498,46 +6510,59 @@ case "MACRO_REU": {
             break;
         }
 
+        // Gather every table column in one pass — one payload fetch per asset.
+        // C64 destination comes from each bitmap's own address (same source
+        // ASSET mode uses), not the node's DIRECT-mode c64 field.
+        var _tn        = array_length(_links);
+        var _tbl_bank  = array_create(_tn, 0);
+        var _tbl_lo    = array_create(_tn, 0);
+        var _tbl_hi    = array_create(_tn, 0);
+        var _tbl_c64lo = array_create(_tn, 0);
+        var _tbl_c64hi = array_create(_tn, 0);
+        var _tbl_lenlo = array_create(_tn, 0);
+        var _tbl_lenhi = array_create(_tn, 0);
+        for (var _i = 0; _i < _tn; _i++) {
+            var _reu_at = real(_links[_i].reu_address);
+            _tbl_bank[_i] = (_reu_at >> 16) & 0xFF;
+            _tbl_lo[_i]   = _reu_at & 0xFF;
+            _tbl_hi[_i]   = (_reu_at >> 8) & 0xFF;
+
+            var _asset   = scr_reu_find_asset(_links[_i].asset_name);
+            var _payload = scr_reu_asset_payload(_asset);
+            var _c64at = real(_payload.c64_address) & 0xFFFF;
+            _tbl_c64lo[_i] = _c64at & 0xFF;
+            _tbl_c64hi[_i] = (_c64at >> 8) & 0xFF;
+            var _sz = _payload.size & 0xFFFF;
+            _tbl_lenlo[_i] = _sz & 0xFF;
+            _tbl_lenhi[_i] = (_sz >> 8) & 0xFF;
+            if (buffer_exists(_payload.buffer)) buffer_delete(_payload.buffer);
+        }
+
         var _pfx       = "reut" + string(real(_id)) + "_";
         var _lbl_skip  = _pfx + "skip";
         var _lbl_bank  = _pfx + "bank";
         var _lbl_lo    = _pfx + "lo";
         var _lbl_hi    = _pfx + "hi";
+        var _lbl_c64lo = _pfx + "c64lo";
+        var _lbl_c64hi = _pfx + "c64hi";
         var _lbl_lenlo = _pfx + "llo";
         var _lbl_lenhi = _pfx + "lhi";
 
-        // Jump over the tables — they are data, not code, and sit inline on the spine.
+        var _emit_table = function(_lst, _lbl, _vals, _tid) {
+            array_push(_lst, ["label", _lbl]);
+            for (var _vi = 0; _vi < array_length(_vals); _vi++) {
+                array_push(_lst, ["byte", _vals[_vi], _tid]);
+            }
+        };
+
         array_push(_list, ["jmp_abs", _lbl_skip, _id]);
-
-        array_push(_list, ["label", _lbl_bank]);
-        for (var _i = 0; _i < array_length(_links); _i++) {
-            array_push(_list, ["byte", (real(_links[_i].reu_address) >> 16) & 0xFF, _id]);
-        }
-        array_push(_list, ["label", _lbl_lo]);
-        for (var _i = 0; _i < array_length(_links); _i++) {
-            array_push(_list, ["byte", real(_links[_i].reu_address) & 0xFF, _id]);
-        }
-        array_push(_list, ["label", _lbl_hi]);
-        for (var _i = 0; _i < array_length(_links); _i++) {
-            array_push(_list, ["byte", (real(_links[_i].reu_address) >> 8) & 0xFF, _id]);
-        }
-        array_push(_list, ["label", _lbl_lenlo]);
-        for (var _i = 0; _i < array_length(_links); _i++) {
-            var _asset  = scr_reu_find_asset(_links[_i].asset_name);
-            var _payload = scr_reu_asset_payload(_asset);
-            var _sz = _payload.size & 0xFFFF;
-            if (buffer_exists(_payload.buffer)) buffer_delete(_payload.buffer);
-            array_push(_list, ["byte", _sz & 0xFF, _id]);
-        }
-        array_push(_list, ["label", _lbl_lenhi]);
-        for (var _i = 0; _i < array_length(_links); _i++) {
-            var _asset2  = scr_reu_find_asset(_links[_i].asset_name);
-            var _payload2 = scr_reu_asset_payload(_asset2);
-            var _sz2 = _payload2.size & 0xFFFF;
-            if (buffer_exists(_payload2.buffer)) buffer_delete(_payload2.buffer);
-            array_push(_list, ["byte", (_sz2 >> 8) & 0xFF, _id]);
-        }
-
+        _emit_table(_list, _lbl_bank,  _tbl_bank,  _id);
+        _emit_table(_list, _lbl_lo,    _tbl_lo,    _id);
+        _emit_table(_list, _lbl_hi,    _tbl_hi,    _id);
+        _emit_table(_list, _lbl_c64lo, _tbl_c64lo, _id);
+        _emit_table(_list, _lbl_c64hi, _tbl_c64hi, _id);
+        _emit_table(_list, _lbl_lenlo, _tbl_lenlo, _id);
+        _emit_table(_list, _lbl_lenhi, _tbl_lenhi, _id);
         array_push(_list, ["label", _lbl_skip]);
 
         var _reu_type2 = clamp(_reu_op, 0, 3);
@@ -6556,15 +6581,14 @@ case "MACRO_REU": {
         array_push(_list, ["sta_abs", 0xDF04,      _id]);
         array_push(_list, ["lda_abx", _lbl_hi,     _id]);
         array_push(_list, ["sta_abs", 0xDF05,      _id]);
+        array_push(_list, ["lda_abx", _lbl_c64lo,  _id]);
+        array_push(_list, ["sta_abs", 0xDF02,      _id]);
+        array_push(_list, ["lda_abx", _lbl_c64hi,  _id]);
+        array_push(_list, ["sta_abs", 0xDF03,      _id]);
         array_push(_list, ["lda_abx", _lbl_lenlo,  _id]);
         array_push(_list, ["sta_abs", 0xDF07,      _id]);
         array_push(_list, ["lda_abx", _lbl_lenhi,  _id]);
         array_push(_list, ["sta_abs", 0xDF08,      _id]);
-
-        array_push(_list, ["lda_imm", _reu_c64 & 0xFF,        _id]);
-        array_push(_list, ["sta_abs", 0xDF02,                 _id]);
-        array_push(_list, ["lda_imm", (_reu_c64 >> 8) & 0xFF, _id]);
-        array_push(_list, ["sta_abs", 0xDF03,                 _id]);
 
         array_push(_list, ["lda_imm", _reu_ctrl2, _id]);
         array_push(_list, ["sta_abs", 0xDF0A,     _id]);
