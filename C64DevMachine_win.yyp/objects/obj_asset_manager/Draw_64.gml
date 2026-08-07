@@ -7188,6 +7188,8 @@ case "LOAD_REU": {
     var _used = variable_struct_exists(_asset,"reu_used") ? _asset.reu_used : 0x100;
     draw_set_color(c_ltgray); draw_text(_vx1 + 10, _cy, "TARGET: 16 MB     USED: " + string(_used) + " BYTES");
     _cy += 22;
+    scr_draw_reu_memory_bar(_vx1 + 10, _vx2 - 10, _cy, _asset);
+    _cy += 40;
     var _cn=_vx1+16, _cc=_vx1+190, _cr=_vx1+280, _cs=_vx1+380, _cm=_vx1+465, _ci=_cm+95;
     draw_set_color(make_color_rgb(120,120,140));
     draw_text(_cn,_cy,"ASSET"); draw_text(_cc,_cy,"C64"); draw_text(_cr,_cy,"REU"); draw_text(_cs,_cy,"BYTES"); draw_text(_cm,_cy,"PACK"); draw_text(_ci,_cy,"IDX");

@@ -1072,6 +1072,7 @@
     {"id":{"name":"scr_detect_bank_unlock","path":"scripts/scr_detect_bank_unlock/scr_detect_bank_unlock.yy",},},
     {"id":{"name":"scr_draw_c64_colour_swatch","path":"scripts/scr_draw_c64_colour_swatch/scr_draw_c64_colour_swatch.yy",},},
     {"id":{"name":"scr_draw_memory_bar","path":"scripts/scr_draw_memory_bar/scr_draw_memory_bar.yy",},},
+    {"id":{"name":"scr_draw_reu_memory_bar","path":"scripts/scr_draw_reu_memory_bar/scr_draw_reu_memory_bar.yy",},},
     {"id":{"name":"scr_draw_slider","path":"scripts/scr_draw_slider/scr_draw_slider.yy",},},
     {"id":{"name":"scr_draw_sprite_preview","path":"scripts/scr_draw_sprite_preview/scr_draw_sprite_preview.yy",},},
     {"id":{"name":"scr_find_var_references","path":"scripts/scr_find_var_references/scr_find_var_references.yy",},},
