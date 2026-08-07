@@ -12,7 +12,7 @@ function scr_node_draw_set_var() {
     // ---- Cached lookups (named_loc_map, meta, hex) ----
     // Rebuild only when the dependent values change. Signature is cheap; the
     // map/meta/hex work it guards is not. Static nodes skip all of it.
-    var _sv_sig = _name + "|" + string(_value) + "|" + string(global.use_hex_display);
+    var _sv_sig = _name + "|" + string(_value) + "|" + string(global.use_hex_display) + "|" + string(global.named_loc_repack_gen);
     if (setvar_cache_sig != _sv_sig) {
         setvar_cache_sig = _sv_sig;
 

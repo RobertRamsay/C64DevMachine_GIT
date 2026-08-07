@@ -285,6 +285,9 @@ global.use_hex_display    = true;
 global.input_mode_hex     = true;
 global.link_pulse = 0;
 global.addresses_dirty = true; // Force first update on load
+global.named_loc_repack_gen = 0; // bumped every scr_c64_do_update_addresses() call — lets
+                                  // per-node draw caches (e.g. SET_VAR) detect a stale address
+                                  // even when the node's own name/value didn't change.
 global.kernal_unlocked = false;
 global.basic_unlocked = false;
 global.breakdown_node = noone;

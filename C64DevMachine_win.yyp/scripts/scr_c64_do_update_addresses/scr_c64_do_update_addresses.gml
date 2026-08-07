@@ -1,5 +1,7 @@
 function scr_c64_do_update_addresses() {
 
+global.named_loc_repack_gen++;
+
 // ================================================================
 // PASS 0: SYNC SPRITE POINTER HW LOCATIONS TO ACTIVE VIC CONFIG
 // ================================================================
