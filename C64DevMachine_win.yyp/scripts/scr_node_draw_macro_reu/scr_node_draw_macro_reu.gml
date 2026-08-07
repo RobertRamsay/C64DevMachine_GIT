@@ -60,7 +60,7 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
             }
         }
         draw_set_color(c_gray); draw_text(_lx, _cy, "SLOTS:");
-        draw_set_color(_idx_count > 0 ? c_lime : c_red); draw_text(_lx + 60, _cy, string(_idx_count));
+        draw_set_color(_idx_count > 0 ? c_lime : c_red); draw_text(_lx + 44, _cy, string(_idx_count));
         _cy += _lh;
     } else if (_mode == 1) {
         draw_set_color(c_gray); draw_text(_lx, _cy, "REU:");
