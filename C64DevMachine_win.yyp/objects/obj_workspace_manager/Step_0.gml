@@ -2611,7 +2611,7 @@ if (_sid_labels_set) {
 }
 // TEMP DEBUG - remove after fix
 var _c000_off = (0xC000 - 0x0801 - 13);
-if (_c000_off < array_length(p.bytes)) {
+if (_c000_off + 2 < array_length(p.bytes)) {
     show_debug_message("PRE-INJECT @$C000: "
         + string(p.bytes[_c000_off]) + " "
         + string(p.bytes[_c000_off+1]) + " "
