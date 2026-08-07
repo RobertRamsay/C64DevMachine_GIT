@@ -1,7 +1,7 @@
 /// @desc Handle LMB clicks for MACRO_REU DIRECT/ASSET modes.
 function scr_node_step_macro_reu(_draw_x) {
     var _hh=24, _lh=16, _inst=instructions[0], _lx=_draw_x+8, _rx=_draw_x+width-6, _cy=y+_hh+4;
-    while (array_length(_inst) < 13) array_push(_inst, (array_length(_inst) >= 10) ? "" : 0);
+    while (array_length(_inst) < 14) array_push(_inst, (array_length(_inst) >= 10) ? "" : ((array_length(_inst) == 13) ? 2 : 0));
     var _open_hex = function(_idx,_digits) { with (obj_workspace_manager) { is_entering_text=true; input_target_node=other.id; input_target_index=_idx; var _h=string_upper(decimal_to_hex(real(other.instructions[0][_idx]))); while(string_length(_h)<_digits)_h="0"+_h; current_input_string="$"+_h; keyboard_string=""; cursor_pos=string_length(current_input_string); } };
     var _open_num = function(_idx) { with (obj_workspace_manager) { is_entering_text=true; input_target_node=other.id; input_target_index=_idx; current_input_string=string(real(other.instructions[0][_idx])); keyboard_string=""; cursor_pos=string_length(current_input_string); } };
     var _hit = function(_x1,_x2,_yy) { return point_in_rectangle(mouse_x,mouse_y,_x1,_yy+4,_x2,_yy+10); };
@@ -34,7 +34,17 @@ function scr_node_step_macro_reu(_draw_x) {
             label_picker_target     = id;
             label_picker_index      = 12;
             exit;
-        } _cy += _lh*5;
+        } _cy += _lh;
+        if (_hit(_lx+44,_rx,_cy)) {
+            instructions[0][13] = (real(_inst[13]) + 1) mod 3;
+            global.addresses_dirty = true;
+            scr_c64_do_update_addresses();
+            exit;
+        } _cy += _lh;
+        if (real(_inst[13]) == 0) {
+            if (_hit(_lx+44,_rx,_cy)) { _open_hex(5,4); exit; } _cy += _lh;
+        }
+        _cy += _lh; // SLOTS row — display only
     } else if (real(_inst[9]) == 1) {
         if (_hit(_lx+44,_rx,_cy)) {
             var _matches=[]; if(instance_exists(obj_asset_manager)){var _am=obj_asset_manager;for(var _i=0;_i<ds_list_size(_am.asset_list);_i++){var _a=ds_list_find_value(_am.asset_list,_i);if(_a.type=="LOAD_REU")array_push(_matches,_a.name);}}

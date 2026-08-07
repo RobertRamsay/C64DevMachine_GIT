@@ -1,8 +1,9 @@
 /// @desc Draw body content for MACRO_REU node. Slots 0-8 are the original
-/// DIRECT layout; 9=mode, 10=LOAD_REU name, 11=linked asset name.
+/// DIRECT layout; 9=mode, 10=LOAD_REU name, 11=linked asset name,
+/// 12=INDEXED index var name, 13=INDEXED size mode (0 CUSTOM, 1 HRBITMAP, 2 MCBITMAP).
 function scr_node_draw_macro_reu(_draw_x, _y) {
     var _hh = 24, _lh = 16, _inst = instructions[0];
-    while (array_length(_inst) < 13) array_push(_inst, (array_length(_inst) >= 10) ? "" : 0);
+    while (array_length(_inst) < 14) array_push(_inst, (array_length(_inst) >= 10) ? "" : ((array_length(_inst) == 13) ? 2 : 0));
     var _mode = is_real(_inst[9]) ? real(_inst[9]) : 0;
     var _lx = _draw_x + 8, _rx = _draw_x + width - 6, _cy = _y + _hh + 4;
     var _button = function(_label, _x1, _x2, _yy, _col) {
@@ -33,6 +34,17 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
         draw_set_color(c_gray); draw_text(_lx, _cy, "INDEX:");
         _button(string(_inst[12]) != "" ? string(_inst[12]) : "<SELECT VAR>", _lx + 44, _rx, _cy, make_color_rgb(25,65,60));
         _cy += _lh;
+        var _size_mode = is_real(_inst[13]) ? real(_inst[13]) : 2;
+        var _size_labels = ["CUSTOM", "HRBITMAP", "MCBITMAP"];
+        var _size_cols   = [make_color_rgb(70,40,40), make_color_rgb(40,70,40), make_color_rgb(40,50,80)];
+        draw_set_color(c_gray); draw_text(_lx, _cy, "SIZE:");
+        _button(_size_labels[clamp(_size_mode,0,2)], _lx + 44, _rx, _cy, _size_cols[clamp(_size_mode,0,2)]);
+        _cy += _lh;
+        if (_size_mode == 0) {
+            draw_set_color(c_gray); draw_text(_lx, _cy, "LEN:");
+            _button(_hex(_inst[5],4), _lx+44,_rx,_cy,make_color_rgb(34,44,64));
+            _cy += _lh;
+        }
         var _idx_manifest = scr_reu_find_asset(string(_inst[10]));
         var _idx_count = 0;
         if (!is_undefined(_idx_manifest) && variable_struct_exists(_idx_manifest, "linked_assets")) {

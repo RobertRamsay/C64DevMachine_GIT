@@ -6477,6 +6477,12 @@ case "MACRO_REU": {
     if (_reu_mode == 2) {
         var _manifest_name = (array_length(_curr.instructions[0]) > 10) ? string(_curr.instructions[0][10]) : "";
         var _index_var      = (array_length(_curr.instructions[0]) > 12) ? string(_curr.instructions[0][12]) : "";
+        // size_mode: 0 CUSTOM (fixed length from the node's own LEN field),
+        // 1 HRBITMAP (bitmap+screen only — HR mode never reads colour RAM),
+        // 2 MCBITMAP (full bitmap+screen+colour span). Missing slot 13
+        // (nodes built before this option existed) defaults to MCBITMAP,
+        // which is the auto-span behaviour they already compiled against.
+        var _size_mode = (array_length(_curr.instructions[0]) > 13 && is_real(_curr.instructions[0][13])) ? real(_curr.instructions[0][13]) : 2;
         var _manifest = scr_reu_find_asset(_manifest_name);
         if (is_undefined(_manifest) || _manifest.type != "LOAD_REU") {
             show_debug_message("MACRO_REU INDEXED: manifest unresolved: " + _manifest_name);
@@ -6510,9 +6516,8 @@ case "MACRO_REU": {
             break;
         }
 
-        // Gather every table column in one pass — one payload fetch per asset.
-        // C64 destination comes from each bitmap's own address (same source
-        // ASSET mode uses), not the node's DIRECT-mode c64 field.
+        // Gather every table column in one pass. CUSTOM/HRBITMAP never touch
+        // scr_reu_asset_payload — only MCBITMAP needs the full span buffer.
         var _tn        = array_length(_links);
         var _tbl_bank  = array_create(_tn, 0);
         var _tbl_lo    = array_create(_tn, 0);
@@ -6527,15 +6532,27 @@ case "MACRO_REU": {
             _tbl_lo[_i]   = _reu_at & 0xFF;
             _tbl_hi[_i]   = (_reu_at >> 8) & 0xFF;
 
-            var _asset   = scr_reu_find_asset(_links[_i].asset_name);
-            var _payload = scr_reu_asset_payload(_asset);
-            var _c64at = real(_payload.c64_address) & 0xFFFF;
+            var _asset = scr_reu_find_asset(_links[_i].asset_name);
+            var _c64at = is_undefined(_asset) ? 0 : (real(_asset.address) & 0xFFFF);
             _tbl_c64lo[_i] = _c64at & 0xFF;
             _tbl_c64hi[_i] = (_c64at >> 8) & 0xFF;
-            var _sz = _payload.size & 0xFFFF;
+
+            var _sz = 0;
+            if (_size_mode == 0) {
+                // CUSTOM — fixed length declared on the node itself.
+                _sz = real(_curr.instructions[0][5]) & 0xFFFF;
+            } else if (_size_mode == 1) {
+                // HRBITMAP — bitmap + screen only.
+                var _br = scr_bmp_regions(_c64at);
+                _sz = (_br.scr_addr + _br.scr_size - _br.bmp_addr) & 0xFFFF;
+            } else {
+                // MCBITMAP — full three-region span (bitmap + screen + colour).
+                var _payload = scr_reu_asset_payload(_asset);
+                _sz = _payload.size & 0xFFFF;
+                if (buffer_exists(_payload.buffer)) buffer_delete(_payload.buffer);
+            }
             _tbl_lenlo[_i] = _sz & 0xFF;
             _tbl_lenhi[_i] = (_sz >> 8) & 0xFF;
-            if (buffer_exists(_payload.buffer)) buffer_delete(_payload.buffer);
         }
 
         var _pfx       = "reut" + string(real(_id)) + "_";
