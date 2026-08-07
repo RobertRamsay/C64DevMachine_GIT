@@ -7203,7 +7203,7 @@ case "LOAD_REU": {
         var _is_dragged = (reu_drag_row == _li);
         if (_is_dragged) draw_set_alpha(0.4);
         draw_set_color((_li mod 2==0)?make_color_rgb(22,30,34):make_color_rgb(18,25,29)); draw_rectangle(_vx1+8,_cy,_vx2-8,_cy+20,false);
-        draw_set_color(make_color_rgb(90,90,100)); draw_text(_vx1+9,_cy+4,"::");
+        draw_set_color(make_color_rgb(130,150,200)); draw_text(_vx1+9,_cy+4,":::");
         draw_set_color(c_white); draw_text(_cn,_cy+4,_lk.asset_name);
         var _ch=is_undefined(_la)?"----":string_upper(decimal_to_hex(_la.address)); while(string_length(_ch)<4)_ch="0"+_ch;
         var _rh=string_upper(decimal_to_hex(real(_lk.reu_address))); while(string_length(_rh)<6)_rh="0"+_rh;
