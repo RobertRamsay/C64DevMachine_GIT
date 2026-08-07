@@ -214,6 +214,13 @@ sfx_picker_field = "asset";
 	load_reu_rows_y       = 0;
 	load_reu_add_y        = 0;
 
+	// LOAD_REU manifest drag-to-reorder — only allowed between rows whose
+	// asset type matches the row being dragged, since MACRO_REU INDEXED
+	// mode's index numbers are assigned per-type in link order.
+	reu_drag_row  = -1;
+	reu_drag_over = -1;
+	reu_drag_type = "";
+
 	// MACRO_REU ASSET-mode pickers
 	reu_manifest_picker_open  = false;
 	reu_manifest_picker_node  = noone;

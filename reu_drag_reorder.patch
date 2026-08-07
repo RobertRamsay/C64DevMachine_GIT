@@ -1,0 +1,134 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index f76d693..71f65be 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -214,6 +214,13 @@ sfx_picker_field = "asset";
+ 	load_reu_rows_y       = 0;
+ 	load_reu_add_y        = 0;
+ 
++	// LOAD_REU manifest drag-to-reorder — only allowed between rows whose
++	// asset type matches the row being dragged, since MACRO_REU INDEXED
++	// mode's index numbers are assigned per-type in link order.
++	reu_drag_row  = -1;
++	reu_drag_over = -1;
++	reu_drag_type = "";
++
+ 	// MACRO_REU ASSET-mode pickers
+ 	reu_manifest_picker_open  = false;
+ 	reu_manifest_picker_node  = noone;
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 5c23f2f..ccd8e16 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -7190,7 +7190,7 @@ case "LOAD_REU": {
+     _cy += 22;
+     scr_draw_reu_memory_bar(_vx1 + 10, _vx2 - 10, _cy, _asset);
+     _cy += 40;
+-    var _cn=_vx1+16, _cc=_vx1+190, _cr=_vx1+280, _cs=_vx1+380, _cm=_vx1+465, _ci=_cm+95;
++    var _cn=_vx1+30, _cc=_vx1+190, _cr=_vx1+280, _cs=_vx1+380, _cm=_vx1+465, _ci=_cm+95;
+     draw_set_color(make_color_rgb(120,120,140));
+     draw_text(_cn,_cy,"ASSET"); draw_text(_cc,_cy,"C64"); draw_text(_cr,_cy,"REU"); draw_text(_cs,_cy,"BYTES"); draw_text(_cm,_cy,"PACK"); draw_text(_ci,_cy,"IDX");
+     _cy += 14;
+@@ -7199,7 +7199,11 @@ case "LOAD_REU": {
+     var _bmp_idx = 0;
+     for(var _li=0;_li<array_length(_links);_li++){
+         var _lk=_links[_li], _la=scr_reu_find_asset(_lk.asset_name), _pl=scr_reu_asset_payload(_la);
++        var _la_type    = is_undefined(_la) ? "" : _la.type;
++        var _is_dragged = (reu_drag_row == _li);
++        if (_is_dragged) draw_set_alpha(0.4);
+         draw_set_color((_li mod 2==0)?make_color_rgb(22,30,34):make_color_rgb(18,25,29)); draw_rectangle(_vx1+8,_cy,_vx2-8,_cy+20,false);
++        draw_set_color(make_color_rgb(90,90,100)); draw_text(_vx1+9,_cy+4,"::");
+         draw_set_color(c_white); draw_text(_cn,_cy+4,_lk.asset_name);
+         var _ch=is_undefined(_la)?"----":string_upper(decimal_to_hex(_la.address)); while(string_length(_ch)<4)_ch="0"+_ch;
+         var _rh=string_upper(decimal_to_hex(real(_lk.reu_address))); while(string_length(_rh)<6)_rh="0"+_rh;
+@@ -7223,6 +7227,16 @@ case "LOAD_REU": {
+             draw_set_color(make_color_rgb(90,90,100)); draw_text(_ci,_cy+4,"--");
+         }
+         draw_set_color(make_color_rgb(100,30,30)); draw_rectangle(_vx2-26,_cy+2,_vx2-8,_cy+18,false); draw_set_color(c_white); draw_text(_vx2-21,_cy+4,"X");
++        draw_set_alpha(1.0);
++        if (reu_drag_row >= 0 && !_is_dragged && _la_type != reu_drag_type) {
++            draw_set_color(c_red); draw_set_alpha(0.15);
++            draw_rectangle(_vx1+8,_cy,_vx2-8,_cy+20,false);
++            draw_set_alpha(1.0);
++        }
++        if (reu_drag_row >= 0 && reu_drag_over == _li) {
++            draw_set_color(c_yellow);
++            draw_line(_vx1+8,_cy,_vx2-8,_cy);
++        }
+         _cy+=22;
+     }
+     load_reu_add_y = _cy;
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index 8e07c8c..f874dea 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -1550,6 +1550,56 @@ if (bmp_picker_open) {
+     exit;
+ }
+ 
++// -------------------------------------------------------
++// LOAD_REU DRAG-REORDER — tracking and release-commit.
++// Runs every frame while a drag is armed, independent of the
++// press-only LMB CLICKS gate below, so hover updates and the
++// release itself both work while the button stays held.
++// -------------------------------------------------------
++if (reu_drag_row >= 0) {
++    var _rd_valid = false;
++    if (viewer_open) {
++        var _rd_asset = ds_list_find_value(asset_list, viewer_asset);
++        if (!is_undefined(_rd_asset) && _rd_asset.type == "LOAD_REU") {
++            _rd_valid = true;
++            var _rd_links = variable_struct_exists(_rd_asset,"linked_assets") ? _rd_asset.linked_assets : [];
++            var _rd_ry = load_reu_rows_y;
++            for (var _rli = 0; _rli < array_length(_rd_links); _rli++) {
++                if (point_in_rectangle(_mx, _my, _vx1+8, _rd_ry, _vx2-8, _rd_ry+20)) {
++                    var _rd_hov_asset = scr_reu_find_asset(_rd_links[_rli].asset_name);
++                    var _rd_hov_type  = is_undefined(_rd_hov_asset) ? "" : _rd_hov_asset.type;
++                    if (_rd_hov_type == reu_drag_type) {
++                        reu_drag_over = _rli;
++                    }
++                    break;
++                }
++                _rd_ry += 22;
++            }
++            if (mouse_check_button_released(mb_left)) {
++                var _rd_from = reu_drag_row;
++                var _rd_to   = reu_drag_over;
++                if (_rd_to >= 0 && _rd_to != _rd_from
++                &&  _rd_from < array_length(_rd_links)
++                &&  _rd_to   < array_length(_rd_links)) {
++                    var _rd_lk = _rd_links[_rd_from];
++                    array_delete(_rd_links, _rd_from, 1);
++                    var _rd_ins = _rd_to;
++                    if (_rd_to > _rd_from) { _rd_ins -= 1; }
++                    array_insert(_rd_links, _rd_ins, _rd_lk);
++                    scr_reu_repack(_rd_asset);
++                    global.autosave_dirty = true;
++                }
++                reu_drag_row  = -1;
++                reu_drag_over = -1;
++            }
++        }
++    }
++    if (!_rd_valid && mouse_check_button_released(mb_left)) {
++        reu_drag_row  = -1;
++        reu_drag_over = -1;
++    }
++}
++
+ // -------------------------------------------------------
+ // LMB CLICKS
+ // -------------------------------------------------------
+@@ -2049,6 +2099,12 @@ if (_asset.type == "META_TILESET") {
+             var _links=variable_struct_exists(_asset,"linked_assets")?_asset.linked_assets:[];
+             var _ry=load_reu_rows_y, _cm=_vx1+465;
+             for(var _li=0;_li<array_length(_links);_li++){
++                if(point_in_rectangle(_mx,_my,_vx1+8,_ry+2,_vx1+22,_ry+18)){
++                    reu_drag_row=_li; reu_drag_over=_li;
++                    var _drag_asset=scr_reu_find_asset(_links[_li].asset_name);
++                    reu_drag_type=is_undefined(_drag_asset)?"":_drag_asset.type;
++                    exit;
++                }
+                 if(point_in_rectangle(_mx,_my,_vx2-26,_ry+2,_vx2-8,_ry+18)){array_delete(_links,_li,1);scr_reu_repack(_asset);exit;}
+                 if(point_in_rectangle(_mx,_my,_cm,_ry+2,_cm+45,_ry+18)){_links[_li].auto_pack=!_links[_li].auto_pack;scr_reu_repack(_asset);exit;}
+                 if(point_in_rectangle(_mx,_my,_cm+48,_ry+2,_cm+64,_ry+18)){_links[_li].auto_pack=false;_links[_li].reu_address=max(0x100,real(_links[_li].reu_address)-0x100);scr_reu_repack(_asset);exit;}

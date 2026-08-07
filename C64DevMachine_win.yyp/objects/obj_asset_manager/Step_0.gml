@@ -1551,6 +1551,56 @@ if (bmp_picker_open) {
 }
 
 // -------------------------------------------------------
+// LOAD_REU DRAG-REORDER — tracking and release-commit.
+// Runs every frame while a drag is armed, independent of the
+// press-only LMB CLICKS gate below, so hover updates and the
+// release itself both work while the button stays held.
+// -------------------------------------------------------
+if (reu_drag_row >= 0) {
+    var _rd_valid = false;
+    if (viewer_open) {
+        var _rd_asset = ds_list_find_value(asset_list, viewer_asset);
+        if (!is_undefined(_rd_asset) && _rd_asset.type == "LOAD_REU") {
+            _rd_valid = true;
+            var _rd_links = variable_struct_exists(_rd_asset,"linked_assets") ? _rd_asset.linked_assets : [];
+            var _rd_ry = load_reu_rows_y;
+            for (var _rli = 0; _rli < array_length(_rd_links); _rli++) {
+                if (point_in_rectangle(_mx, _my, _vx1+8, _rd_ry, _vx2-8, _rd_ry+20)) {
+                    var _rd_hov_asset = scr_reu_find_asset(_rd_links[_rli].asset_name);
+                    var _rd_hov_type  = is_undefined(_rd_hov_asset) ? "" : _rd_hov_asset.type;
+                    if (_rd_hov_type == reu_drag_type) {
+                        reu_drag_over = _rli;
+                    }
+                    break;
+                }
+                _rd_ry += 22;
+            }
+            if (mouse_check_button_released(mb_left)) {
+                var _rd_from = reu_drag_row;
+                var _rd_to   = reu_drag_over;
+                if (_rd_to >= 0 && _rd_to != _rd_from
+                &&  _rd_from < array_length(_rd_links)
+                &&  _rd_to   < array_length(_rd_links)) {
+                    var _rd_lk = _rd_links[_rd_from];
+                    array_delete(_rd_links, _rd_from, 1);
+                    var _rd_ins = _rd_to;
+                    if (_rd_to > _rd_from) { _rd_ins -= 1; }
+                    array_insert(_rd_links, _rd_ins, _rd_lk);
+                    scr_reu_repack(_rd_asset);
+                    global.autosave_dirty = true;
+                }
+                reu_drag_row  = -1;
+                reu_drag_over = -1;
+            }
+        }
+    }
+    if (!_rd_valid && mouse_check_button_released(mb_left)) {
+        reu_drag_row  = -1;
+        reu_drag_over = -1;
+    }
+}
+
+// -------------------------------------------------------
 // LMB CLICKS
 // -------------------------------------------------------
 global.ui_click_block_timer = 0;
@@ -2049,6 +2099,12 @@ if (_asset.type == "META_TILESET") {
             var _links=variable_struct_exists(_asset,"linked_assets")?_asset.linked_assets:[];
             var _ry=load_reu_rows_y, _cm=_vx1+465;
             for(var _li=0;_li<array_length(_links);_li++){
+                if(point_in_rectangle(_mx,_my,_vx1+8,_ry+2,_vx1+22,_ry+18)){
+                    reu_drag_row=_li; reu_drag_over=_li;
+                    var _drag_asset=scr_reu_find_asset(_links[_li].asset_name);
+                    reu_drag_type=is_undefined(_drag_asset)?"":_drag_asset.type;
+                    exit;
+                }
                 if(point_in_rectangle(_mx,_my,_vx2-26,_ry+2,_vx2-8,_ry+18)){array_delete(_links,_li,1);scr_reu_repack(_asset);exit;}
                 if(point_in_rectangle(_mx,_my,_cm,_ry+2,_cm+45,_ry+18)){_links[_li].auto_pack=!_links[_li].auto_pack;scr_reu_repack(_asset);exit;}
                 if(point_in_rectangle(_mx,_my,_cm+48,_ry+2,_cm+64,_ry+18)){_links[_li].auto_pack=false;_links[_li].reu_address=max(0x100,real(_links[_li].reu_address)-0x100);scr_reu_repack(_asset);exit;}

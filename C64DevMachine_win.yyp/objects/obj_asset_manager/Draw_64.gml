@@ -7190,7 +7190,7 @@ case "LOAD_REU": {
     _cy += 22;
     scr_draw_reu_memory_bar(_vx1 + 10, _vx2 - 10, _cy, _asset);
     _cy += 40;
-    var _cn=_vx1+16, _cc=_vx1+190, _cr=_vx1+280, _cs=_vx1+380, _cm=_vx1+465, _ci=_cm+95;
+    var _cn=_vx1+30, _cc=_vx1+190, _cr=_vx1+280, _cs=_vx1+380, _cm=_vx1+465, _ci=_cm+95;
     draw_set_color(make_color_rgb(120,120,140));
     draw_text(_cn,_cy,"ASSET"); draw_text(_cc,_cy,"C64"); draw_text(_cr,_cy,"REU"); draw_text(_cs,_cy,"BYTES"); draw_text(_cm,_cy,"PACK"); draw_text(_ci,_cy,"IDX");
     _cy += 14;
@@ -7199,7 +7199,11 @@ case "LOAD_REU": {
     var _bmp_idx = 0;
     for(var _li=0;_li<array_length(_links);_li++){
         var _lk=_links[_li], _la=scr_reu_find_asset(_lk.asset_name), _pl=scr_reu_asset_payload(_la);
+        var _la_type    = is_undefined(_la) ? "" : _la.type;
+        var _is_dragged = (reu_drag_row == _li);
+        if (_is_dragged) draw_set_alpha(0.4);
         draw_set_color((_li mod 2==0)?make_color_rgb(22,30,34):make_color_rgb(18,25,29)); draw_rectangle(_vx1+8,_cy,_vx2-8,_cy+20,false);
+        draw_set_color(make_color_rgb(90,90,100)); draw_text(_vx1+9,_cy+4,"::");
         draw_set_color(c_white); draw_text(_cn,_cy+4,_lk.asset_name);
         var _ch=is_undefined(_la)?"----":string_upper(decimal_to_hex(_la.address)); while(string_length(_ch)<4)_ch="0"+_ch;
         var _rh=string_upper(decimal_to_hex(real(_lk.reu_address))); while(string_length(_rh)<6)_rh="0"+_rh;
@@ -7223,6 +7227,16 @@ case "LOAD_REU": {
             draw_set_color(make_color_rgb(90,90,100)); draw_text(_ci,_cy+4,"--");
         }
         draw_set_color(make_color_rgb(100,30,30)); draw_rectangle(_vx2-26,_cy+2,_vx2-8,_cy+18,false); draw_set_color(c_white); draw_text(_vx2-21,_cy+4,"X");
+        draw_set_alpha(1.0);
+        if (reu_drag_row >= 0 && !_is_dragged && _la_type != reu_drag_type) {
+            draw_set_color(c_red); draw_set_alpha(0.15);
+            draw_rectangle(_vx1+8,_cy,_vx2-8,_cy+20,false);
+            draw_set_alpha(1.0);
+        }
+        if (reu_drag_row >= 0 && reu_drag_over == _li) {
+            draw_set_color(c_yellow);
+            draw_line(_vx1+8,_cy,_vx2-8,_cy);
+        }
         _cy+=22;
     }
     load_reu_add_y = _cy;
