@@ -3,7 +3,12 @@
 /// 12=INDEXED index var name, 13=INDEXED size mode (0 CUSTOM, 1 HRBITMAP, 2 MCBITMAP).
 function scr_node_draw_macro_reu(_draw_x, _y) {
     var _hh = 24, _lh = 16, _inst = instructions[0];
-    while (array_length(_inst) < 14) array_push(_inst, (array_length(_inst) >= 10) ? "" : ((array_length(_inst) == 13) ? 2 : 0));
+    while (array_length(_inst) < 14) {
+        var _ni = array_length(_inst);
+        if (_ni == 13) { array_push(_inst, 2); }
+        else if (_ni >= 10) { array_push(_inst, ""); }
+        else { array_push(_inst, 0); }
+    }
     var _mode = is_real(_inst[9]) ? real(_inst[9]) : 0;
     var _lx = _draw_x + 8, _rx = _draw_x + width - 6, _cy = _y + _hh + 4;
     var _button = function(_label, _x1, _x2, _yy, _col) {

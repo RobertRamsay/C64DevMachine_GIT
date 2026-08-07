@@ -1,7 +1,12 @@
 /// @desc Handle LMB clicks for MACRO_REU DIRECT/ASSET modes.
 function scr_node_step_macro_reu(_draw_x) {
     var _hh=24, _lh=16, _inst=instructions[0], _lx=_draw_x+8, _rx=_draw_x+width-6, _cy=y+_hh+4;
-    while (array_length(_inst) < 14) array_push(_inst, (array_length(_inst) >= 10) ? "" : ((array_length(_inst) == 13) ? 2 : 0));
+    while (array_length(_inst) < 14) {
+        var _ni = array_length(_inst);
+        if (_ni == 13) { array_push(_inst, 2); }
+        else if (_ni >= 10) { array_push(_inst, ""); }
+        else { array_push(_inst, 0); }
+    }
     var _open_hex = function(_idx,_digits) { with (obj_workspace_manager) { is_entering_text=true; input_target_node=other.id; input_target_index=_idx; var _h=string_upper(decimal_to_hex(real(other.instructions[0][_idx]))); while(string_length(_h)<_digits)_h="0"+_h; current_input_string="$"+_h; keyboard_string=""; cursor_pos=string_length(current_input_string); } };
     var _open_num = function(_idx) { with (obj_workspace_manager) { is_entering_text=true; input_target_node=other.id; input_target_index=_idx; current_input_string=string(real(other.instructions[0][_idx])); keyboard_string=""; cursor_pos=string_length(current_input_string); } };
     var _hit = function(_x1,_x2,_yy) { return point_in_rectangle(mouse_x,mouse_y,_x1,_yy+4,_x2,_yy+10); };
