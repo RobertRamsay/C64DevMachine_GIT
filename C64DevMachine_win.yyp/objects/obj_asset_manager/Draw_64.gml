@@ -1224,7 +1224,9 @@ case "MAP_DATA": {
 			
 
 
-		    var _mw = clamp(_m.map_w,40,216); // temporary fix, maps must be byte sized.
+		    var _mw = max(_m.map_w, 40); // lower bound kept (viewport-width floor); the old
+		                                 // 216 upper clamp is gone — MACRO_SCROLL now auto-
+		                                 // switches to 16-bit column indexing above 255 wide.
 		    var _mh = _m.map_h;
 
 		    // ---- INFO ROW ----
