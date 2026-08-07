@@ -1,0 +1,36 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index ea4c36a..9d7e886 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -7188,12 +7188,13 @@ case "LOAD_REU": {
+     var _used = variable_struct_exists(_asset,"reu_used") ? _asset.reu_used : 0x100;
+     draw_set_color(c_ltgray); draw_text(_vx1 + 10, _cy, "TARGET: 16 MB     USED: " + string(_used) + " BYTES");
+     _cy += 22;
+-    var _cn=_vx1+16, _cc=_vx1+190, _cr=_vx1+280, _cs=_vx1+380, _cm=_vx1+465;
++    var _cn=_vx1+16, _cc=_vx1+190, _cr=_vx1+280, _cs=_vx1+380, _cm=_vx1+465, _ci=_cm+95;
+     draw_set_color(make_color_rgb(120,120,140));
+-    draw_text(_cn,_cy,"ASSET"); draw_text(_cc,_cy,"C64"); draw_text(_cr,_cy,"REU"); draw_text(_cs,_cy,"BYTES"); draw_text(_cm,_cy,"PACK");
++    draw_text(_cn,_cy,"ASSET"); draw_text(_cc,_cy,"C64"); draw_text(_cr,_cy,"REU"); draw_text(_cs,_cy,"BYTES"); draw_text(_cm,_cy,"PACK"); draw_text(_ci,_cy,"IDX");
+     _cy += 14;
+     var _links=variable_struct_exists(_asset,"linked_assets")?_asset.linked_assets:[];
+     load_reu_rows_y = _cy;
++    var _bmp_idx = 0;
+     for(var _li=0;_li<array_length(_links);_li++){
+         var _lk=_links[_li], _la=scr_reu_find_asset(_lk.asset_name), _pl=scr_reu_asset_payload(_la);
+         draw_set_color((_li mod 2==0)?make_color_rgb(22,30,34):make_color_rgb(18,25,29)); draw_rectangle(_vx1+8,_cy,_vx2-8,_cy+20,false);
+@@ -7210,6 +7211,15 @@ case "LOAD_REU": {
+         draw_set_color(c_white); draw_set_halign(fa_center); draw_text(_cm+22,_cy+4,_auto?"AUTO":"MAN"); draw_set_halign(fa_left);
+         draw_set_color(make_color_rgb(45,55,65)); draw_rectangle(_cm+48,_cy+2,_cm+64,_cy+18,false); draw_rectangle(_cm+66,_cy+2,_cm+82,_cy+18,false);
+         draw_set_color(c_white); draw_text(_cm+53,_cy+4,"-"); draw_text(_cm+71,_cy+4,"+");
++        // IDX: position within MACRO_REU INDEXED mode's table — bitmaps only,
++        // in link order, matching scr_compile_chain's filter exactly.
++        var _is_bmp = !is_undefined(_la) && (_la.type == "BITMAP" || _la.type == "BITMAP_KLA");
++        if (_is_bmp) {
++            draw_set_color(c_white); draw_text(_ci,_cy+4,string(_bmp_idx));
++            _bmp_idx++;
++        } else {
++            draw_set_color(make_color_rgb(90,90,100)); draw_text(_ci,_cy+4,"--");
++        }
+         draw_set_color(make_color_rgb(100,30,30)); draw_rectangle(_vx2-26,_cy+2,_vx2-8,_cy+18,false); draw_set_color(c_white); draw_text(_vx2-21,_cy+4,"X");
+         _cy+=22;
+     }
