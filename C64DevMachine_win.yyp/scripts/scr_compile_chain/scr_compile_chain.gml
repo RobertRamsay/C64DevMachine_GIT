@@ -6591,7 +6591,7 @@ case "MACRO_REU": {
         if (_reu_fixc == 1) { _reu_ctrl2 |= 0x80; }
         if (_reu_fixr == 1) { _reu_ctrl2 |= 0x40; }
 
-        array_push(_list, ["ldx_zp",  _index_addr, _id]);
+        array_push(_list, ["ldx_abs", _index_addr, _id]);
         array_push(_list, ["lda_abx", _lbl_bank,   _id]);
         array_push(_list, ["sta_abs", 0xDF06,      _id]);
         array_push(_list, ["lda_abx", _lbl_lo,     _id]);

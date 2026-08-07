@@ -17,6 +17,24 @@ function scr_format_asm_label(_mnem, _label) {
     } else if (string_length(_m) > 7 && string_copy(_m, string_length(_m) - 6, 7) == "_lab_hi") {
         _suffix = "_lab_hi";
         _base = string_copy(_m, 1, string_length(_m) - 7);
+    } else if (string_length(_m) > 6 && string_copy(_m, string_length(_m) - 5, 6) == "_abs_x") {
+        _suffix = "_abx";
+        _base = string_copy(_m, 1, string_length(_m) - 6);
+    } else if (string_length(_m) > 6 && string_copy(_m, string_length(_m) - 5, 6) == "_abs_y") {
+        _suffix = "_aby";
+        _base = string_copy(_m, 1, string_length(_m) - 6);
+    } else if (string_length(_m) > 4 && string_copy(_m, string_length(_m) - 3, 4) == "_abx") {
+        _suffix = "_abx";
+        _base = string_copy(_m, 1, string_length(_m) - 4);
+    } else if (string_length(_m) > 4 && string_copy(_m, string_length(_m) - 3, 4) == "_aby") {
+        _suffix = "_aby";
+        _base = string_copy(_m, 1, string_length(_m) - 4);
+    } else if (string_length(_m) > 4 && string_copy(_m, string_length(_m) - 3, 4) == "_zpx") {
+        _suffix = "_zpx";
+        _base = string_copy(_m, 1, string_length(_m) - 4);
+    } else if (string_length(_m) > 4 && string_copy(_m, string_length(_m) - 3, 4) == "_zpy") {
+        _suffix = "_zpy";
+        _base = string_copy(_m, 1, string_length(_m) - 4);
     } else if (string_length(_m) > 4 && string_copy(_m, string_length(_m) - 3, 4) == "_rel") {
         _suffix = "_rel";
         _base = string_copy(_m, 1, string_length(_m) - 4);
@@ -39,6 +57,12 @@ function scr_format_asm_label(_mnem, _label) {
     }
     if (_suffix == "_lab_hi") {
         return _op + " #>" + _lbl;
+    }
+    if (_suffix == "_abx" || _suffix == "_zpx") {
+        return _op + " " + _lbl + ",X";
+    }
+    if (_suffix == "_aby" || _suffix == "_zpy") {
+        return _op + " " + _lbl + ",Y";
     }
     // _rel, _lab, _abs, and the fallback all emit as: OP label
     return _op + " " + _lbl;
