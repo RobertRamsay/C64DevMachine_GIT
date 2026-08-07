@@ -1,0 +1,247 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 9bd5191..ff8fe0a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -148,7 +148,7 @@ if (height_dirty) {
+     case "COND_IF":          height = _G * 4;  break;
+ 	case "COND_IF_WORD":     height = _G * 4;  break;
+     case "BANK_SWITCH":      height = _G * 6;  break;
+-    case "MACRO_REU":        height = _G * 11; break;
++    case "MACRO_REU":        height = _G * 12; break;
+     case "MACRO_COLLISION":  height = _G * 10;  break;
+ 	case "MACRO_COLL_ADV":   height = _G * 19;  break;    
+     case "MACRO_ANIM":       height = _G * 18;  break;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 7dd1dba..5ef0685 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -6506,15 +6506,25 @@ case "MACRO_REU": {
+             show_debug_message("MACRO_REU INDEXED: no BITMAP assets linked in manifest: " + _manifest_name);
+             break;
+         }
+-        if (array_length(_links) > 256) {
+-            show_debug_message("MACRO_REU INDEXED: too many bitmap assets for an 8-bit index (" + string(array_length(_links)) + "): " + _manifest_name);
+-            break;
+-        }
+         var _index_addr = scr_resolve_var_addr(_index_var);
+         if (_index_addr == 0) {
+             show_debug_message("MACRO_REU INDEXED: index var unresolved: " + _index_var);
+             break;
+         }
++        // Index width decides the addressing scheme: a BYTE var drives an
++        // 8-bit X register directly (LDA table,X — fast, ≤256 entries). A
++        // WORD var can't sit in a hardware index register, so it drives a
++        // 16-bit pointer (table_base + index) computed at runtime and read
++        // via zero-page indirect addressing — slower per lookup, but scales
++        // to 65536 entries. Picked automatically from the variable's own
++        // declared encoding; no separate mode toggle needed.
++        var _idx_meta    = scr_nloc_find_meta(_index_var);
++        var _idx_is_word = (!is_undefined(_idx_meta) && variable_struct_exists(_idx_meta, "encoding") && _idx_meta.encoding == "word");
++        var _idx_cap     = _idx_is_word ? 65536 : 256;
++        if (array_length(_links) > _idx_cap) {
++            show_debug_message("MACRO_REU INDEXED: too many bitmap assets for a " + (_idx_is_word ? "16-bit" : "8-bit") + " index (" + string(array_length(_links)) + "): " + _manifest_name);
++            break;
++        }
+ 
+         // Gather every table column in one pass. CUSTOM/HRBITMAP never touch
+         // scr_reu_asset_payload — only MCBITMAP needs the full span buffer.
+@@ -6591,21 +6601,57 @@ case "MACRO_REU": {
+         if (_reu_fixc == 1) { _reu_ctrl2 |= 0x80; }
+         if (_reu_fixr == 1) { _reu_ctrl2 |= 0x40; }
+ 
+-        array_push(_list, ["ldx_abs", _index_addr, _id]);
+-        array_push(_list, ["lda_abx", _lbl_bank,   _id]);
+-        array_push(_list, ["sta_abs", 0xDF06,      _id]);
+-        array_push(_list, ["lda_abx", _lbl_lo,     _id]);
+-        array_push(_list, ["sta_abs", 0xDF04,      _id]);
+-        array_push(_list, ["lda_abx", _lbl_hi,     _id]);
+-        array_push(_list, ["sta_abs", 0xDF05,      _id]);
+-        array_push(_list, ["lda_abx", _lbl_c64lo,  _id]);
+-        array_push(_list, ["sta_abs", 0xDF02,      _id]);
+-        array_push(_list, ["lda_abx", _lbl_c64hi,  _id]);
+-        array_push(_list, ["sta_abs", 0xDF03,      _id]);
+-        array_push(_list, ["lda_abx", _lbl_lenlo,  _id]);
+-        array_push(_list, ["sta_abs", 0xDF07,      _id]);
+-        array_push(_list, ["lda_abx", _lbl_lenhi,  _id]);
+-        array_push(_list, ["sta_abs", 0xDF08,      _id]);
++        if (_idx_is_word) {
++            // 16-bit indirect lookup: for each table, point a ZP pointer at
++            // the table's compile-time base, add the runtime 16-bit index to
++            // it, then LDA (ptr),Y with Y=0 to fetch the byte. Needs 2 ZP
++            // scratch bytes, configurable per node (slot 14) since any macro
++            // reserving ZP must let the user resolve conflicts — default $03.
++            var _zp_base = (array_length(_curr.instructions[0]) > 14 && is_real(_curr.instructions[0][14])) ? real(_curr.instructions[0][14]) & 0xFF : 0x03;
++            var _ptr_lo  = _zp_base;
++            var _ptr_hi  = _zp_base + 1;
++
++            var _emit_word_lookup = function(_lst, _tbl_lbl, _idx_addr, _plo, _phi, _dest_reg, _tid) {
++                array_push(_lst, ["lda_lab_lo", _tbl_lbl, _tid]);
++                array_push(_lst, ["sta_zp",     _plo,     _tid]);
++                array_push(_lst, ["lda_lab_hi", _tbl_lbl, _tid]);
++                array_push(_lst, ["sta_zp",     _phi,     _tid]);
++                array_push(_lst, ["clc",        0,        _tid]);
++                array_push(_lst, ["lda_zp",     _plo,     _tid]);
++                array_push(_lst, ["adc_abs",    _idx_addr, _tid]);
++                array_push(_lst, ["sta_zp",     _plo,     _tid]);
++                array_push(_lst, ["lda_zp",     _phi,     _tid]);
++                array_push(_lst, ["adc_abs",    _idx_addr + 1, _tid]);
++                array_push(_lst, ["sta_zp",     _phi,     _tid]);
++                array_push(_lst, ["ldy_imm",    0,        _tid]);
++                array_push(_lst, ["lda_izy",    _plo,     _tid]);
++                array_push(_lst, ["sta_abs",    _dest_reg, _tid]);
++            };
++
++            _emit_word_lookup(_list, _lbl_bank,  _index_addr, _ptr_lo, _ptr_hi, 0xDF06, _id);
++            _emit_word_lookup(_list, _lbl_lo,    _index_addr, _ptr_lo, _ptr_hi, 0xDF04, _id);
++            _emit_word_lookup(_list, _lbl_hi,    _index_addr, _ptr_lo, _ptr_hi, 0xDF05, _id);
++            _emit_word_lookup(_list, _lbl_c64lo, _index_addr, _ptr_lo, _ptr_hi, 0xDF02, _id);
++            _emit_word_lookup(_list, _lbl_c64hi, _index_addr, _ptr_lo, _ptr_hi, 0xDF03, _id);
++            _emit_word_lookup(_list, _lbl_lenlo, _index_addr, _ptr_lo, _ptr_hi, 0xDF07, _id);
++            _emit_word_lookup(_list, _lbl_lenhi, _index_addr, _ptr_lo, _ptr_hi, 0xDF08, _id);
++        } else {
++            array_push(_list, ["ldx_abs", _index_addr, _id]);
++            array_push(_list, ["lda_abx", _lbl_bank,   _id]);
++            array_push(_list, ["sta_abs", 0xDF06,      _id]);
++            array_push(_list, ["lda_abx", _lbl_lo,     _id]);
++            array_push(_list, ["sta_abs", 0xDF04,      _id]);
++            array_push(_list, ["lda_abx", _lbl_hi,     _id]);
++            array_push(_list, ["sta_abs", 0xDF05,      _id]);
++            array_push(_list, ["lda_abx", _lbl_c64lo,  _id]);
++            array_push(_list, ["sta_abs", 0xDF02,      _id]);
++            array_push(_list, ["lda_abx", _lbl_c64hi,  _id]);
++            array_push(_list, ["sta_abs", 0xDF03,      _id]);
++            array_push(_list, ["lda_abx", _lbl_lenlo,  _id]);
++            array_push(_list, ["sta_abs", 0xDF07,      _id]);
++            array_push(_list, ["lda_abx", _lbl_lenhi,  _id]);
++            array_push(_list, ["sta_abs", 0xDF08,      _id]);
++        }
+ 
+         array_push(_list, ["lda_imm", _reu_ctrl2, _id]);
+         array_push(_list, ["sta_abs", 0xDF0A,     _id]);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+index 550381c..910d5bc 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+@@ -1049,7 +1049,8 @@
+ 
+ 	    // --- MACRO_REU ---
+ 	    // idx 2 = C64 addr (hex, 16-bit), idx 3 = REU addr (hex, 16-bit),
+-	    // idx 4 = bank (decimal, 0-255), idx 5 = length (hex, 16-bit).
++	    // idx 4 = bank (decimal, 0-255), idx 5 = length (hex, 16-bit),
++	    // idx 14 = INDEXED WORD-mode ZP scratch base (hex, 8-bit).
+ 	    } else if (_target.node_type == "MACRO_REU") {
+ 	        while (array_length(_target.instructions[0]) < 9) { array_push(_target.instructions[0], 0); }
+ 	        if (_idx == 2 || _idx == 3 || _idx == 5) {
+@@ -1066,6 +1067,17 @@
+ 	        } else if (_idx == 4) {
+ 	            var _digits = string_digits(_input);
+ 	            _target.instructions[0][4] = clamp((_digits != "") ? real(_digits) : 0, 0, 255);
++	        } else if (_idx == 14) {
++	            var _zp_clean = (string_char_at(_input, 1) == "$")
++	                       ? string_delete(_input, 1, 1) : _input;
++	            var _zp_val = 0;
++	            if (string_char_at(_input, 1) == "$") {
++	                _zp_val = real(hex_to_decimal(string_upper(_zp_clean)));
++	            } else {
++	                var _zp_digits = string_digits(_input);
++	                _zp_val = (_zp_digits != "") ? real(_zp_digits) : 0;
++	            }
++	            _target.instructions[0][14] = clamp(_zp_val, 0, 0xFF);
+ 	        }
+ 	        global.addresses_dirty = true;
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml
+index 9f2019a..5e2ead1 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml
+@@ -1,11 +1,13 @@
+ /// @desc Draw body content for MACRO_REU node. Slots 0-8 are the original
+ /// DIRECT layout; 9=mode, 10=LOAD_REU name, 11=linked asset name,
+-/// 12=INDEXED index var name, 13=INDEXED size mode (0 CUSTOM, 1 HRBITMAP, 2 MCBITMAP).
++/// 12=INDEXED index var name, 13=INDEXED size mode (0 CUSTOM, 1 HRBITMAP, 2 MCBITMAP),
++/// 14=INDEXED ZP scratch base (2 bytes, only used when the index var is WORD-encoded).
+ function scr_node_draw_macro_reu(_draw_x, _y) {
+     var _hh = 24, _lh = 16, _inst = instructions[0];
+-    while (array_length(_inst) < 14) {
++    while (array_length(_inst) < 15) {
+         var _ni = array_length(_inst);
+         if (_ni == 13) { array_push(_inst, 2); }
++        else if (_ni == 14) { array_push(_inst, 0x03); }
+         else if (_ni >= 10) { array_push(_inst, ""); }
+         else { array_push(_inst, 0); }
+     }
+@@ -50,6 +52,14 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
+             _button(_hex(_inst[5],4), _lx+44,_rx,_cy,make_color_rgb(34,44,64));
+             _cy += _lh;
+         }
++        var _idx_meta    = scr_nloc_find_meta(string(_inst[12]));
++        var _idx_is_word = (!is_undefined(_idx_meta) && variable_struct_exists(_idx_meta, "encoding") && _idx_meta.encoding == "word");
++        var _idx_cap     = _idx_is_word ? 65536 : 256;
++        if (_idx_is_word) {
++            draw_set_color(c_gray); draw_text(_lx, _cy, "ZP:");
++            _button(_hex(_inst[14],2), _lx+44,_rx,_cy,make_color_rgb(34,44,64));
++            _cy += _lh;
++        }
+         var _idx_manifest = scr_reu_find_asset(string(_inst[10]));
+         var _idx_count = 0;
+         if (!is_undefined(_idx_manifest) && variable_struct_exists(_idx_manifest, "linked_assets")) {
+@@ -60,7 +70,8 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
+             }
+         }
+         draw_set_color(c_gray); draw_text(_lx, _cy, "SLOTS:");
+-        draw_set_color(_idx_count > 0 ? c_lime : c_red); draw_text(_lx + 44, _cy, string(_idx_count));
++        draw_set_color((_idx_count > 0 && _idx_count <= _idx_cap) ? c_lime : c_red);
++        draw_text(_lx + 44, _cy, string(_idx_count) + "/" + string(_idx_cap) + (_idx_is_word ? " (WORD)" : " (BYTE)"));
+         _cy += _lh;
+     } else if (_mode == 1) {
+         draw_set_color(c_gray); draw_text(_lx, _cy, "REU:");
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index aa31ae6..e3b9eef 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -414,7 +414,7 @@ case "LABEL": {
+ 		// -------------------------------------------------------
+ 		case "MACRO_REU":
+ 		    _n.node_title   = "REU";
+-		    _n.instructions = [["macro_reu", 0, 0xC000, 0x0000, 0, 0x0100, 0, 0, 0, 0, "", "", "", 2]];
++		    _n.instructions = [["macro_reu", 0, 0xC000, 0x0000, 0, 0x0100, 0, 0, 0, 0, "", "", "", 2, 0x03]];
+ 		    _n.pc_address   = global.start_pc;
+ 		    with (_n) { event_user(0); }
+ 		    break;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.gml
+index 7eb7873..74ffef3 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_reu/scr_node_step_macro_reu.gml
+@@ -1,9 +1,10 @@
+ /// @desc Handle LMB clicks for MACRO_REU DIRECT/ASSET modes.
+ function scr_node_step_macro_reu(_draw_x) {
+     var _hh=24, _lh=16, _inst=instructions[0], _lx=_draw_x+8, _rx=_draw_x+width-6, _cy=y+_hh+4;
+-    while (array_length(_inst) < 14) {
++    while (array_length(_inst) < 15) {
+         var _ni = array_length(_inst);
+         if (_ni == 13) { array_push(_inst, 2); }
++        else if (_ni == 14) { array_push(_inst, 0x03); }
+         else if (_ni >= 10) { array_push(_inst, ""); }
+         else { array_push(_inst, 0); }
+     }
+@@ -32,7 +33,7 @@ function scr_node_step_macro_reu(_draw_x) {
+             depth                   = -9999;
+             label_picker_mode       = "VAR";
+             label_picker_word_only  = false;
+-            label_picker_byte_only  = true;
++            label_picker_byte_only  = false;
+             label_picker_tab        = "UV";
+             label_picker_scroll     = 0;
+             label_picker_list       = [];
+@@ -49,6 +50,11 @@ function scr_node_step_macro_reu(_draw_x) {
+         if (real(_inst[13]) == 0) {
+             if (_hit(_lx+44,_rx,_cy)) { _open_hex(5,4); exit; } _cy += _lh;
+         }
++        var _idx_meta    = scr_nloc_find_meta(string(_inst[12]));
++        var _idx_is_word = (!is_undefined(_idx_meta) && variable_struct_exists(_idx_meta, "encoding") && _idx_meta.encoding == "word");
++        if (_idx_is_word) {
++            if (_hit(_lx+44,_rx,_cy)) { _open_hex(14,2); exit; } _cy += _lh;
++        }
+         _cy += _lh; // SLOTS row — display only
+     } else if (real(_inst[9]) == 1) {
+         if (_hit(_lx+44,_rx,_cy)) {
