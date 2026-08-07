@@ -1224,13 +1224,14 @@ case "MAP_DATA": {
 			
 
 
-		    var _mw = _m.map_w;
+		    var _mw = clamp(_m.map_w,40,216); // temporary fix, maps must be byte sized.
 		    var _mh = _m.map_h;
 
 		    // ---- INFO ROW ----
 		    draw_set_font(fnt_c64_tiny);
 var _gw = variable_struct_exists(_m, "grid_w") ? _m.grid_w : _mw;
 var _gh = variable_struct_exists(_m, "grid_h") ? _m.grid_h : _mh;
+
 
 		// Retrofit selection grid for existing maps
 		    if (!variable_struct_exists(_m, "sel_grid") || array_length(_m.sel_grid) != _gw * _gh) {
