@@ -6506,13 +6506,23 @@ case "MACRO_REU": {
             show_debug_message("MACRO_REU INDEXED: no BITMAP assets linked in manifest: " + _manifest_name);
             break;
         }
-        if (array_length(_links) > 256) {
-            show_debug_message("MACRO_REU INDEXED: too many bitmap assets for an 8-bit index (" + string(array_length(_links)) + "): " + _manifest_name);
-            break;
-        }
         var _index_addr = scr_resolve_var_addr(_index_var);
         if (_index_addr == 0) {
             show_debug_message("MACRO_REU INDEXED: index var unresolved: " + _index_var);
+            break;
+        }
+        // Index width decides the addressing scheme: a BYTE var drives an
+        // 8-bit X register directly (LDA table,X — fast, ≤256 entries). A
+        // WORD var can't sit in a hardware index register, so it drives a
+        // 16-bit pointer (table_base + index) computed at runtime and read
+        // via zero-page indirect addressing — slower per lookup, but scales
+        // to 65536 entries. Picked automatically from the variable's own
+        // declared encoding; no separate mode toggle needed.
+        var _idx_meta    = scr_nloc_find_meta(_index_var);
+        var _idx_is_word = (!is_undefined(_idx_meta) && variable_struct_exists(_idx_meta, "encoding") && _idx_meta.encoding == "word");
+        var _idx_cap     = _idx_is_word ? 65536 : 256;
+        if (array_length(_links) > _idx_cap) {
+            show_debug_message("MACRO_REU INDEXED: too many bitmap assets for a " + (_idx_is_word ? "16-bit" : "8-bit") + " index (" + string(array_length(_links)) + "): " + _manifest_name);
             break;
         }
 
@@ -6591,21 +6601,57 @@ case "MACRO_REU": {
         if (_reu_fixc == 1) { _reu_ctrl2 |= 0x80; }
         if (_reu_fixr == 1) { _reu_ctrl2 |= 0x40; }
 
-        array_push(_list, ["ldx_abs", _index_addr, _id]);
-        array_push(_list, ["lda_abx", _lbl_bank,   _id]);
-        array_push(_list, ["sta_abs", 0xDF06,      _id]);
-        array_push(_list, ["lda_abx", _lbl_lo,     _id]);
-        array_push(_list, ["sta_abs", 0xDF04,      _id]);
-        array_push(_list, ["lda_abx", _lbl_hi,     _id]);
-        array_push(_list, ["sta_abs", 0xDF05,      _id]);
-        array_push(_list, ["lda_abx", _lbl_c64lo,  _id]);
-        array_push(_list, ["sta_abs", 0xDF02,      _id]);
-        array_push(_list, ["lda_abx", _lbl_c64hi,  _id]);
-        array_push(_list, ["sta_abs", 0xDF03,      _id]);
-        array_push(_list, ["lda_abx", _lbl_lenlo,  _id]);
-        array_push(_list, ["sta_abs", 0xDF07,      _id]);
-        array_push(_list, ["lda_abx", _lbl_lenhi,  _id]);
-        array_push(_list, ["sta_abs", 0xDF08,      _id]);
+        if (_idx_is_word) {
+            // 16-bit indirect lookup: for each table, point a ZP pointer at
+            // the table's compile-time base, add the runtime 16-bit index to
+            // it, then LDA (ptr),Y with Y=0 to fetch the byte. Needs 2 ZP
+            // scratch bytes, configurable per node (slot 14) since any macro
+            // reserving ZP must let the user resolve conflicts — default $03.
+            var _zp_base = (array_length(_curr.instructions[0]) > 14 && is_real(_curr.instructions[0][14])) ? real(_curr.instructions[0][14]) & 0xFF : 0x03;
+            var _ptr_lo  = _zp_base;
+            var _ptr_hi  = _zp_base + 1;
+
+            var _emit_word_lookup = function(_lst, _tbl_lbl, _idx_addr, _plo, _phi, _dest_reg, _tid) {
+                array_push(_lst, ["lda_lab_lo", _tbl_lbl, _tid]);
+                array_push(_lst, ["sta_zp",     _plo,     _tid]);
+                array_push(_lst, ["lda_lab_hi", _tbl_lbl, _tid]);
+                array_push(_lst, ["sta_zp",     _phi,     _tid]);
+                array_push(_lst, ["clc",        0,        _tid]);
+                array_push(_lst, ["lda_zp",     _plo,     _tid]);
+                array_push(_lst, ["adc_abs",    _idx_addr, _tid]);
+                array_push(_lst, ["sta_zp",     _plo,     _tid]);
+                array_push(_lst, ["lda_zp",     _phi,     _tid]);
+                array_push(_lst, ["adc_abs",    _idx_addr + 1, _tid]);
+                array_push(_lst, ["sta_zp",     _phi,     _tid]);
+                array_push(_lst, ["ldy_imm",    0,        _tid]);
+                array_push(_lst, ["lda_izy",    _plo,     _tid]);
+                array_push(_lst, ["sta_abs",    _dest_reg, _tid]);
+            };
+
+            _emit_word_lookup(_list, _lbl_bank,  _index_addr, _ptr_lo, _ptr_hi, 0xDF06, _id);
+            _emit_word_lookup(_list, _lbl_lo,    _index_addr, _ptr_lo, _ptr_hi, 0xDF04, _id);
+            _emit_word_lookup(_list, _lbl_hi,    _index_addr, _ptr_lo, _ptr_hi, 0xDF05, _id);
+            _emit_word_lookup(_list, _lbl_c64lo, _index_addr, _ptr_lo, _ptr_hi, 0xDF02, _id);
+            _emit_word_lookup(_list, _lbl_c64hi, _index_addr, _ptr_lo, _ptr_hi, 0xDF03, _id);
+            _emit_word_lookup(_list, _lbl_lenlo, _index_addr, _ptr_lo, _ptr_hi, 0xDF07, _id);
+            _emit_word_lookup(_list, _lbl_lenhi, _index_addr, _ptr_lo, _ptr_hi, 0xDF08, _id);
+        } else {
+            array_push(_list, ["ldx_abs", _index_addr, _id]);
+            array_push(_list, ["lda_abx", _lbl_bank,   _id]);
+            array_push(_list, ["sta_abs", 0xDF06,      _id]);
+            array_push(_list, ["lda_abx", _lbl_lo,     _id]);
+            array_push(_list, ["sta_abs", 0xDF04,      _id]);
+            array_push(_list, ["lda_abx", _lbl_hi,     _id]);
+            array_push(_list, ["sta_abs", 0xDF05,      _id]);
+            array_push(_list, ["lda_abx", _lbl_c64lo,  _id]);
+            array_push(_list, ["sta_abs", 0xDF02,      _id]);
+            array_push(_list, ["lda_abx", _lbl_c64hi,  _id]);
+            array_push(_list, ["sta_abs", 0xDF03,      _id]);
+            array_push(_list, ["lda_abx", _lbl_lenlo,  _id]);
+            array_push(_list, ["sta_abs", 0xDF07,      _id]);
+            array_push(_list, ["lda_abx", _lbl_lenhi,  _id]);
+            array_push(_list, ["sta_abs", 0xDF08,      _id]);
+        }
 
         array_push(_list, ["lda_imm", _reu_ctrl2, _id]);
         array_push(_list, ["sta_abs", 0xDF0A,     _id]);

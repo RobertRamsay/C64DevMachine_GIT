@@ -1,9 +1,10 @@
 /// @desc Handle LMB clicks for MACRO_REU DIRECT/ASSET modes.
 function scr_node_step_macro_reu(_draw_x) {
     var _hh=24, _lh=16, _inst=instructions[0], _lx=_draw_x+8, _rx=_draw_x+width-6, _cy=y+_hh+4;
-    while (array_length(_inst) < 14) {
+    while (array_length(_inst) < 15) {
         var _ni = array_length(_inst);
         if (_ni == 13) { array_push(_inst, 2); }
+        else if (_ni == 14) { array_push(_inst, 0x03); }
         else if (_ni >= 10) { array_push(_inst, ""); }
         else { array_push(_inst, 0); }
     }
@@ -32,7 +33,7 @@ function scr_node_step_macro_reu(_draw_x) {
             depth                   = -9999;
             label_picker_mode       = "VAR";
             label_picker_word_only  = false;
-            label_picker_byte_only  = true;
+            label_picker_byte_only  = false;
             label_picker_tab        = "UV";
             label_picker_scroll     = 0;
             label_picker_list       = [];
@@ -48,6 +49,11 @@ function scr_node_step_macro_reu(_draw_x) {
         } _cy += _lh;
         if (real(_inst[13]) == 0) {
             if (_hit(_lx+44,_rx,_cy)) { _open_hex(5,4); exit; } _cy += _lh;
+        }
+        var _idx_meta    = scr_nloc_find_meta(string(_inst[12]));
+        var _idx_is_word = (!is_undefined(_idx_meta) && variable_struct_exists(_idx_meta, "encoding") && _idx_meta.encoding == "word");
+        if (_idx_is_word) {
+            if (_hit(_lx+44,_rx,_cy)) { _open_hex(14,2); exit; } _cy += _lh;
         }
         _cy += _lh; // SLOTS row — display only
     } else if (real(_inst[9]) == 1) {

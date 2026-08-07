@@ -1,11 +1,13 @@
 /// @desc Draw body content for MACRO_REU node. Slots 0-8 are the original
 /// DIRECT layout; 9=mode, 10=LOAD_REU name, 11=linked asset name,
-/// 12=INDEXED index var name, 13=INDEXED size mode (0 CUSTOM, 1 HRBITMAP, 2 MCBITMAP).
+/// 12=INDEXED index var name, 13=INDEXED size mode (0 CUSTOM, 1 HRBITMAP, 2 MCBITMAP),
+/// 14=INDEXED ZP scratch base (2 bytes, only used when the index var is WORD-encoded).
 function scr_node_draw_macro_reu(_draw_x, _y) {
     var _hh = 24, _lh = 16, _inst = instructions[0];
-    while (array_length(_inst) < 14) {
+    while (array_length(_inst) < 15) {
         var _ni = array_length(_inst);
         if (_ni == 13) { array_push(_inst, 2); }
+        else if (_ni == 14) { array_push(_inst, 0x03); }
         else if (_ni >= 10) { array_push(_inst, ""); }
         else { array_push(_inst, 0); }
     }
@@ -50,6 +52,14 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
             _button(_hex(_inst[5],4), _lx+44,_rx,_cy,make_color_rgb(34,44,64));
             _cy += _lh;
         }
+        var _idx_meta    = scr_nloc_find_meta(string(_inst[12]));
+        var _idx_is_word = (!is_undefined(_idx_meta) && variable_struct_exists(_idx_meta, "encoding") && _idx_meta.encoding == "word");
+        var _idx_cap     = _idx_is_word ? 65536 : 256;
+        if (_idx_is_word) {
+            draw_set_color(c_gray); draw_text(_lx, _cy, "ZP:");
+            _button(_hex(_inst[14],2), _lx+44,_rx,_cy,make_color_rgb(34,44,64));
+            _cy += _lh;
+        }
         var _idx_manifest = scr_reu_find_asset(string(_inst[10]));
         var _idx_count = 0;
         if (!is_undefined(_idx_manifest) && variable_struct_exists(_idx_manifest, "linked_assets")) {
@@ -60,7 +70,8 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
             }
         }
         draw_set_color(c_gray); draw_text(_lx, _cy, "SLOTS:");
-        draw_set_color(_idx_count > 0 ? c_lime : c_red); draw_text(_lx + 60, _cy, string(_idx_count));
+        draw_set_color((_idx_count > 0 && _idx_count <= _idx_cap) ? c_lime : c_red);
+        draw_text(_lx + 60, _cy, string(_idx_count) + "/" + string(_idx_cap) + (_idx_is_word ? " (WORD)" : " (BYTE)"));
         _cy += _lh;
     } else if (_mode == 1) {
         draw_set_color(c_gray); draw_text(_lx, _cy, "REU:");

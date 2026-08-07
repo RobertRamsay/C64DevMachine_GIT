@@ -1049,7 +1049,8 @@
 
 	    // --- MACRO_REU ---
 	    // idx 2 = C64 addr (hex, 16-bit), idx 3 = REU addr (hex, 16-bit),
-	    // idx 4 = bank (decimal, 0-255), idx 5 = length (hex, 16-bit).
+	    // idx 4 = bank (decimal, 0-255), idx 5 = length (hex, 16-bit),
+	    // idx 14 = INDEXED WORD-mode ZP scratch base (hex, 8-bit).
 	    } else if (_target.node_type == "MACRO_REU") {
 	        while (array_length(_target.instructions[0]) < 9) { array_push(_target.instructions[0], 0); }
 	        if (_idx == 2 || _idx == 3 || _idx == 5) {
@@ -1066,6 +1067,17 @@
 	        } else if (_idx == 4) {
 	            var _digits = string_digits(_input);
 	            _target.instructions[0][4] = clamp((_digits != "") ? real(_digits) : 0, 0, 255);
+	        } else if (_idx == 14) {
+	            var _zp_clean = (string_char_at(_input, 1) == "$")
+	                       ? string_delete(_input, 1, 1) : _input;
+	            var _zp_val = 0;
+	            if (string_char_at(_input, 1) == "$") {
+	                _zp_val = real(hex_to_decimal(string_upper(_zp_clean)));
+	            } else {
+	                var _zp_digits = string_digits(_input);
+	                _zp_val = (_zp_digits != "") ? real(_zp_digits) : 0;
+	            }
+	            _target.instructions[0][14] = clamp(_zp_val, 0, 0xFF);
 	        }
 	        global.addresses_dirty = true;
 
