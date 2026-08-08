@@ -69,24 +69,74 @@ function scr_draw_flow_overlay(_edges) {
 
         draw_set_color(_col);
         draw_set_alpha(_alph);
-        draw_line_width(_sx1, _sy1, _sx2, _sy2, _wid);
 
-        // Small arrowhead near the target so direction is readable once
-        // lines start overlapping — expected at any real project size.
-        if (_e.kind != "flow") {
-            var _ang = point_direction(_sx1, _sy1, _sx2, _sy2);
+        // ORG/INIT chain transitions route as a right-angled "S" elbow
+        // instead of a straight diagonal — ORG blocks jump to specific
+        // addresses and are often placed far from their visual neighbour
+        // on the canvas, so a stepped connector reads as "a distinct hop
+        // between contexts" rather than blending in with normal in-place
+        // sequential flow between ordinary macro nodes.
+        var _is_org_chain = (_e.kind == "flow")
+            && (_e.src.node_type == "ORG" || _e.tgt.node_type == "ORG"
+             || _e.src.node_type == "INIT" || _e.tgt.node_type == "INIT");
+
+        if (_is_org_chain) {
+            var _ymid = (_sy1 + _sy2) * 0.5;
+            var _p1x = _sx1, _p1y = _ymid;
+            var _p2x = _sx2, _p2y = _ymid;
+            draw_line_width(_sx1, _sy1, _p1x, _p1y, _wid);
+            draw_line_width(_p1x, _p1y, _p2x, _p2y, _wid);
+            draw_line_width(_p2x, _p2y, _sx2, _sy2, _wid);
+
+            var _ang = point_direction(_p2x, _p2y, _sx2, _sy2);
             var _ahx = _sx2 - lengthdir_x(14, _ang);
             var _ahy = _sy2 - lengthdir_y(14, _ang);
             draw_line_width(_ahx + lengthdir_x(6, _ang + 150), _ahy + lengthdir_y(6, _ang + 150), _sx2, _sy2, _wid);
             draw_line_width(_ahx + lengthdir_x(6, _ang - 150), _ahy + lengthdir_y(6, _ang - 150), _sx2, _sy2, _wid);
-        }
 
-        // Travelling pulse — a small circle sliding from source to target
-        // so the direction of flow reads at a glance even in a tangle.
-        var _px = lerp(_sx1, _sx2, _pulse_phase);
-        var _py = lerp(_sy1, _sy2, _pulse_phase);
-        draw_set_alpha(min(1, _alph + 0.15));
-        draw_circle(_px, _py, _wid + 2, false);
+            // Pulse travels proportionally across all 3 segments by length,
+            // so it moves at a constant visual speed along the whole path.
+            var _len1 = point_distance(_sx1, _sy1, _p1x, _p1y);
+            var _len2 = point_distance(_p1x, _p1y, _p2x, _p2y);
+            var _len3 = point_distance(_p2x, _p2y, _sx2, _sy2);
+            var _total = max(1, _len1 + _len2 + _len3);
+            var _dist  = _pulse_phase * _total;
+            var _px, _py;
+            if (_dist < _len1) {
+                var _t0 = _dist / max(1, _len1);
+                _px = lerp(_sx1, _p1x, _t0);
+                _py = lerp(_sy1, _p1y, _t0);
+            } else if (_dist < _len1 + _len2) {
+                var _t1 = (_dist - _len1) / max(1, _len2);
+                _px = lerp(_p1x, _p2x, _t1);
+                _py = lerp(_p1y, _p2y, _t1);
+            } else {
+                var _t2 = (_dist - _len1 - _len2) / max(1, _len3);
+                _px = lerp(_p2x, _sx2, _t2);
+                _py = lerp(_p2y, _sy2, _t2);
+            }
+            draw_set_alpha(min(1, _alph + 0.15));
+            draw_circle(_px, _py, _wid + 2, false);
+        } else {
+            draw_line_width(_sx1, _sy1, _sx2, _sy2, _wid);
+
+            // Small arrowhead near the target so direction is readable
+            // once lines start overlapping — expected at any real size.
+            if (_e.kind != "flow") {
+                var _ang2 = point_direction(_sx1, _sy1, _sx2, _sy2);
+                var _ahx2 = _sx2 - lengthdir_x(14, _ang2);
+                var _ahy2 = _sy2 - lengthdir_y(14, _ang2);
+                draw_line_width(_ahx2 + lengthdir_x(6, _ang2 + 150), _ahy2 + lengthdir_y(6, _ang2 + 150), _sx2, _sy2, _wid);
+                draw_line_width(_ahx2 + lengthdir_x(6, _ang2 - 150), _ahy2 + lengthdir_y(6, _ang2 - 150), _sx2, _sy2, _wid);
+            }
+
+            // Travelling pulse — a small circle sliding from source to
+            // target so the direction of flow reads at a glance.
+            var _px3 = lerp(_sx1, _sx2, _pulse_phase);
+            var _py3 = lerp(_sy1, _sy2, _pulse_phase);
+            draw_set_alpha(min(1, _alph + 0.15));
+            draw_circle(_px3, _py3, _wid + 2, false);
+        }
     }
     draw_set_alpha(1.0);
 }

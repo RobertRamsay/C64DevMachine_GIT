@@ -70,6 +70,26 @@ function scr_build_flow_graph() {
         return _found;
     };
 
+    // A LABEL node emits zero bytes of its own — it just marks a position,
+    // so its total_node_size is 0 and its pc_address is often identical to
+    // whatever real code immediately follows it. That makes address-range
+    // lookup ambiguous: a LABEL node and the very next macro node can both
+    // claim the same address, and which one wins is just iteration order.
+    // Resolving by the fixup's own label NAME first (same pattern already
+    // used elsewhere in scr_compile_chain.gml) sidesteps that entirely —
+    // if a JMP targets "target_01", find the LABEL node actually named
+    // "target_01" directly, rather than guessing from an address range.
+    var _find_label_node = function(_label_name) {
+        var _found = noone;
+        with (obj_c64_node) {
+            if (node_type == "LABEL" && string(instructions[0][1]) == _label_name) {
+                _found = id;
+                break;
+            }
+        }
+        return _found;
+    };
+
     for (var fi = 0; fi < array_length(p.fixups); fi++) {
         var f = p.fixups[fi];
         if (!ds_map_exists(p.labels, f.label)) continue;
@@ -87,7 +107,8 @@ function scr_build_flow_graph() {
 
         if (_kind != "") {
             var _src_node = _addr_to_node(_src_addr);
-            var _tgt_node = _addr_to_node(_target_addr);
+            var _tgt_node = _find_label_node(f.label);
+            if (_tgt_node == noone) _tgt_node = _addr_to_node(_target_addr);
             if (_src_node != noone && _tgt_node != noone) {
                 array_push(_edges, {kind: _kind, src: _src_node, tgt: _tgt_node});
                 // JSR: also show the return trip. The label a JSR jumps to
@@ -122,7 +143,8 @@ function scr_build_flow_graph() {
         if (f.type == "lo" && f.pos + 3 < _blen
         &&  p.bytes[f.pos + 1] == 0x8D && p.bytes[f.pos + 2] == 0x14 && p.bytes[f.pos + 3] == 0x03) {
             var _irq_src = _addr_to_node(_src_addr);
-            var _irq_tgt = _addr_to_node(_target_addr);
+            var _irq_tgt = _find_label_node(f.label);
+            if (_irq_tgt == noone) _irq_tgt = _addr_to_node(_target_addr);
             if (_irq_src != noone && _irq_tgt != noone) {
                 array_push(_edges, {kind: "irq", src: _irq_src, tgt: _irq_tgt});
             }
