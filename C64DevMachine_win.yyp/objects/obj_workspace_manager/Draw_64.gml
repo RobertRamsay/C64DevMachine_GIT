@@ -545,6 +545,7 @@ if (gui_menu_open == 4) {
         { title: "GRID",            action: "GRID"            },
         { title: "EFFECTS",         action: "EFFECTS"         },
         { title: "COMMENTS",        action: "COMMENTS"        },
+        { title: "FLOW OVERLAY",    action: "FLOW_OVERLAY"    },
         { title: "FULLSCREEN",      action: "FULLSCREEN"      },
         { title: "ADVANCE THEME",   action: "THEME"           },
         { title: "RESET CUSTOM UI",    action: "RESET_UI"           },
@@ -585,8 +586,9 @@ if (gui_menu_open == 4) {
         draw_text(_ix1 + 10, _iy + 3, _op.title);
 
         // State indicator on right
-        var _state_str = "";
-        var _state_col = c_gray;
+        var _state_str    = "";
+        var _state_col    = c_gray;
+        var _shortcut_str = "";
         if (_op.action == "EXPERT_MODE") {
             _state_str = expert_mode ? "ON" : "OFF";
             _state_col = expert_mode ? c_lime : c_red;
@@ -623,7 +625,12 @@ if (gui_menu_open == 4) {
             _state_col = opcode_extra_height ? c_red : c_lime;
 			
         }
-		
+		if (_op.action == "FLOW_OVERLAY") {
+            var _fo_labels = ["OFF", "LOCAL", "GLOBAL"];
+            _state_str    = _fo_labels[flow_overlay_mode mod 3];
+            _state_col    = (flow_overlay_mode == 0) ? c_red : c_lime;
+            _shortcut_str = "F";
+        }
 		
 		
         if (_op.action == "THEME") {
@@ -631,16 +638,21 @@ if (gui_menu_open == 4) {
             _state_str = _theme_labels[paletteStyle mod 4];
             _state_col = make_color_rgb(160, 160, 220);
         }
+        // Shortcut hint sits flush against the right edge; the state (if any)
+        // is drawn just to its left so both can show at once (e.g. FLOW
+        // OVERLAY shows "OFF/LOCAL/GLOBAL" plus its "F" shortcut).
+        var _shortcut_w = 0;
+        if (_shortcut_str != "") {
+            draw_set_halign(fa_right);
+            draw_set_color(make_color_rgb(120, 120, 120));
+            draw_text(_ix2 - 8, _iy + 3, _shortcut_str);
+            draw_set_halign(fa_left);
+            _shortcut_w = string_width(_shortcut_str) + 14;
+        }
         if (_state_str != "") {
             draw_set_halign(fa_right);
             draw_set_color(_state_col);
-            draw_text(_ix2 - 8, _iy + 3, _state_str);
-            draw_set_halign(fa_left);
-        }
-        if (_op.action == "FULLSCREEN") {
-            draw_set_halign(fa_right);
-            draw_set_color(make_color_rgb(120, 120, 120));
-            draw_text(_ix2 - 8, _iy + 3, "F10");
+            draw_text(_ix2 - 8 - _shortcut_w, _iy + 3, _state_str);
             draw_set_halign(fa_left);
         }
 
@@ -675,6 +687,31 @@ if (gui_menu_open == 4) {
             }
             else if (_op.action == "COMMENTS") {
                 global.comments_visible = !global.comments_visible;
+            }
+            else if (_op.action == "FLOW_OVERLAY") {
+                // Mirrors the F-key handler in obj_workspace_manager Step so
+                // both entry points stay in sync.
+                flow_overlay_mode = (flow_overlay_mode + 1) mod 3; // Cycles 0 -> 1 -> 2 -> 0
+
+                if (flow_overlay_mode == 1) {
+                    global.qmenu_toast_text = "FLOW LINES in LOCAL MODE\nHOVER over NODES to VIEW";
+                    global.qmenu_toast_col  = c_yellow;
+                    global.qmenu_toast_t    = global.qmenu_toast_dur;
+                } else if (flow_overlay_mode == 2) {
+                    global.qmenu_toast_text = "FLOW LINES in GLOBAL MODE\nPRESS F to HIDE";
+                    global.qmenu_toast_col  = c_yellow;
+                    global.qmenu_toast_t    = global.qmenu_toast_dur;
+                } else {
+                    global.qmenu_toast_text = "FLOW LINES: OFF";
+                    global.qmenu_toast_col  = c_yellow;
+                    global.qmenu_toast_t    = global.qmenu_toast_dur;
+                }
+
+                if (flow_overlay_mode > 0 && (flow_overlay_dirty || array_length(flow_overlay_edges) == 0)) {
+                    flow_overlay_edges = scr_build_flow_graph();
+                    flow_overlay_dirty = false;
+                    flow_overlay_dirty_notified = false;
+                }
             }
             else if (_op.action == "FULLSCREEN") {
                 do_windowSizing();

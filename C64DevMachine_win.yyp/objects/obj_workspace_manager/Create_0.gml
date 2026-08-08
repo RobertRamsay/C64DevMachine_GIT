@@ -947,6 +947,7 @@ scr_uqmenu_load();
 flow_overlay_mode = 0; // 0 = Off, 1 = Local Hover, 2 = Show All
 flow_overlay_edges  = [];
 flow_overlay_dirty  = true;
+flow_overlay_dirty_notified = false; // edge-trigger guard for the "Toggle F to update FLOW" toast
 
 // Restore window position and size from last session.
 // Only apply if the saved values look sane (w/h > 0).

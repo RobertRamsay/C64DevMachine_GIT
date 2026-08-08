@@ -1,0 +1,235 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Destroy_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Destroy_0.gml
+index d1e9619..13b651d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Destroy_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Destroy_0.gml
+@@ -1,4 +1,4 @@
+-			if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
++			if (is_connected && instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+ 
+ if (variable_global_exists("fx_sys") && global.node_destroy_fx && global.visual_fx) {
+ 			    var _p_count = (width * height) / 200; // Density based on size
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 7bcba49..5bd11e8 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -1933,9 +1933,11 @@ if (is_dragging && !_is_group_follower) {
+ 		if (x != _prev_x || y != _prev_y) {
+ 		    was_dragged = true;
+ 		    if (!is_free_node && !_is_macro_child && !mouse_check_button_released(mb_left)) {
++		        if (is_connected) {
++		            if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
++		        }
+ 		        org_parent   = noone;
+ 		        is_connected = false;
+-		        if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+ 		    }
+ 		}
+ 
+@@ -2198,8 +2200,10 @@ if (global.wedge_preview_y >= 0) {
+                    
+                     if (!_re_attached_to_org && !_near_main) {
+                        
++                        if (is_connected) {
++                            if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
++                        }
+                         is_connected = false;
+-                        if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+                     }
+                     // NAMED_LOC and NEW_STR must never connect to main spine
+                     if (node_type == "NAMED_LOC" || node_type == "NEW_STR") {
+@@ -2228,11 +2232,13 @@ if (global.wedge_preview_y >= 0) {
+                     &&  y >= _spine_bottom
+                     &&  y <= _spine_bottom + _latch_h) {
+                        
++                        if (!is_connected) {
++                            if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
++                        }
+                         is_connected = true;
+                         x            = round(_spine_cx / 20) * 20;
+                       //  x_indent     = 0;
+                         y            = round(_spine_bottom / 20) * 20;
+-                        if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+ 				} else {
+                         // Snap X only if: mouse is over a header node (INIT or ORG) AND dragged from close to spine X
+                         var _mouse_over_header = false;
+@@ -2335,8 +2341,10 @@ var _init_top = 0;
+                
+ 				x        = _spine_x;
+ 				y        = _insert_y;
++				if (!is_connected) {
++					if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
++				}
+ 				is_connected = true;
+-				if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+ 				// Inherit indent from neighbours — prefer the more indented of the two
+                 var _tab_above = instance_exists(_insert_above) ? _insert_above.x_indent : 0;
+                 var _tab_below = instance_exists(_node_below)   ? _node_below.x_indent   : 0;
+@@ -2440,11 +2448,13 @@ var _is_var_node = (node_type == "NAMED_LOC" || node_type == "NEW_STR");
+             x                  = _org_anchor.x;
+             y = (global.wedge_preview_y >= 0 && !global.wedge_preview_spine) ? global.wedge_preview_y : _insert_above.y + _insert_above.height;
+             x_indent            = max(_org_ind_above, _org_ind_below);
++            if (!is_connected) {
++                if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
++            }
+             is_connected        = true;
+             org_parent          = _org_anchor;
+             last_overlap_check = false;
+             global.addresses_dirty = true;
+-            if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+           
+            
+ 
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 6938f33..bce6d8d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -947,6 +947,7 @@ scr_uqmenu_load();
+ flow_overlay_mode = 0; // 0 = Off, 1 = Local Hover, 2 = Show All
+ flow_overlay_edges  = [];
+ flow_overlay_dirty  = true;
++flow_overlay_dirty_notified = false; // edge-trigger guard for the "Toggle F to update FLOW" toast
+ 
+ // Restore window position and size from last session.
+ // Only apply if the saved values look sane (w/h > 0).
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 9291e2f..c8dbfbc 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -545,6 +545,7 @@ if (gui_menu_open == 4) {
+         { title: "GRID",            action: "GRID"            },
+         { title: "EFFECTS",         action: "EFFECTS"         },
+         { title: "COMMENTS",        action: "COMMENTS"        },
++        { title: "FLOW OVERLAY",    action: "FLOW_OVERLAY"    },
+         { title: "FULLSCREEN",      action: "FULLSCREEN"      },
+         { title: "ADVANCE THEME",   action: "THEME"           },
+         { title: "RESET CUSTOM UI",    action: "RESET_UI"           },
+@@ -585,8 +586,9 @@ if (gui_menu_open == 4) {
+         draw_text(_ix1 + 10, _iy + 3, _op.title);
+ 
+         // State indicator on right
+-        var _state_str = "";
+-        var _state_col = c_gray;
++        var _state_str    = "";
++        var _state_col    = c_gray;
++        var _shortcut_str = "";
+         if (_op.action == "EXPERT_MODE") {
+             _state_str = expert_mode ? "ON" : "OFF";
+             _state_col = expert_mode ? c_lime : c_red;
+@@ -623,7 +625,12 @@ if (gui_menu_open == 4) {
+             _state_col = opcode_extra_height ? c_red : c_lime;
+ 			
+         }
+-		
++		if (_op.action == "FLOW_OVERLAY") {
++            var _fo_labels = ["OFF", "LOCAL", "GLOBAL"];
++            _state_str    = _fo_labels[flow_overlay_mode mod 3];
++            _state_col    = (flow_overlay_mode == 0) ? c_red : c_lime;
++            _shortcut_str = "F";
++        }
+ 		
+ 		
+         if (_op.action == "THEME") {
+@@ -631,16 +638,21 @@ if (gui_menu_open == 4) {
+             _state_str = _theme_labels[paletteStyle mod 4];
+             _state_col = make_color_rgb(160, 160, 220);
+         }
+-        if (_state_str != "") {
++        // Shortcut hint sits flush against the right edge; the state (if any)
++        // is drawn just to its left so both can show at once (e.g. FLOW
++        // OVERLAY shows "OFF/LOCAL/GLOBAL" plus its "F" shortcut).
++        var _shortcut_w = 0;
++        if (_shortcut_str != "") {
+             draw_set_halign(fa_right);
+-            draw_set_color(_state_col);
+-            draw_text(_ix2 - 8, _iy + 3, _state_str);
++            draw_set_color(make_color_rgb(120, 120, 120));
++            draw_text(_ix2 - 8, _iy + 3, _shortcut_str);
+             draw_set_halign(fa_left);
++            _shortcut_w = string_width(_shortcut_str) + 14;
+         }
+-        if (_op.action == "FULLSCREEN") {
++        if (_state_str != "") {
+             draw_set_halign(fa_right);
+-            draw_set_color(make_color_rgb(120, 120, 120));
+-            draw_text(_ix2 - 8, _iy + 3, "F10");
++            draw_set_color(_state_col);
++            draw_text(_ix2 - 8 - _shortcut_w, _iy + 3, _state_str);
+             draw_set_halign(fa_left);
+         }
+ 
+@@ -676,6 +688,31 @@ if (gui_menu_open == 4) {
+             else if (_op.action == "COMMENTS") {
+                 global.comments_visible = !global.comments_visible;
+             }
++            else if (_op.action == "FLOW_OVERLAY") {
++                // Mirrors the F-key handler in obj_workspace_manager Step so
++                // both entry points stay in sync.
++                flow_overlay_mode = (flow_overlay_mode + 1) mod 3; // Cycles 0 -> 1 -> 2 -> 0
++
++                if (flow_overlay_mode == 1) {
++                    global.qmenu_toast_text = "FLOW LINES in LOCAL MODE\nHOVER over NODES to VIEW";
++                    global.qmenu_toast_col  = c_yellow;
++                    global.qmenu_toast_t    = global.qmenu_toast_dur;
++                } else if (flow_overlay_mode == 2) {
++                    global.qmenu_toast_text = "FLOW LINES in GLOBAL MODE\nPRESS F to HIDE";
++                    global.qmenu_toast_col  = c_yellow;
++                    global.qmenu_toast_t    = global.qmenu_toast_dur;
++                } else {
++                    global.qmenu_toast_text = "FLOW LINES: OFF";
++                    global.qmenu_toast_col  = c_yellow;
++                    global.qmenu_toast_t    = global.qmenu_toast_dur;
++                }
++
++                if (flow_overlay_mode > 0 && (flow_overlay_dirty || array_length(flow_overlay_edges) == 0)) {
++                    flow_overlay_edges = scr_build_flow_graph();
++                    flow_overlay_dirty = false;
++                    flow_overlay_dirty_notified = false;
++                }
++            }
+             else if (_op.action == "FULLSCREEN") {
+                 do_windowSizing();
+             }
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 3b7956e..2a91dc7 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -116,14 +116,20 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(or
+     if (flow_overlay_mode > 0 && (flow_overlay_dirty || array_length(flow_overlay_edges) == 0)) {
+         flow_overlay_edges = scr_build_flow_graph();
+         flow_overlay_dirty = false;
++        flow_overlay_dirty_notified = false;
+     }
+ }
+ 
+-// Remind the user to update the flow graph if they modify nodes while the overlay is active
+-if (mouse_check_button_released(mb_left) && flow_overlay_mode > 0 && flow_overlay_dirty ) {
++// Remind the user to update the flow graph — but only ONCE per actual
++// node-based change (moved+connected, added+connected, or a connected
++// node deleted), not on every subsequent left-click release while the
++// overlay stays dirty. flow_overlay_dirty_notified is reset above the
++// moment the overlay is rebuilt (or turned back dirty by a fresh change).
++if (mouse_check_button_released(mb_left) && flow_overlay_mode > 0 && flow_overlay_dirty && !flow_overlay_dirty_notified) {
+     global.qmenu_toast_text = "Toggle F to update FLOW";
+     global.qmenu_toast_col  = c_yellow;
+     global.qmenu_toast_t    = global.qmenu_toast_dur;
++    flow_overlay_dirty_notified = true;
+ }
+ 
+ if (code_editor_open) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index 136e234..c743cdd 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -7,8 +7,10 @@
+ 
+ function scr_node_spawn(_type, _xx, _yy) {
+ 
+-    if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+-
++    // A freshly spawned node starts unconnected (is_connected = false in
++    // Create), so it has no effect on the flow graph until it's actually
++    // dragged onto the spine — that connection is what marks the overlay
++    // dirty (see obj_c64_node Step), not the spawn itself.
+     var _n        = instance_create_layer(_xx, _yy, "Layer_Nodes", obj_c64_node);
+     _n.node_type  = _type;
+ 

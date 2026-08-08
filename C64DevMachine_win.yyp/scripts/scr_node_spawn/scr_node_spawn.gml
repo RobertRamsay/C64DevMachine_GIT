@@ -7,8 +7,10 @@
 
 function scr_node_spawn(_type, _xx, _yy) {
 
-    if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
-
+    // A freshly spawned node starts unconnected (is_connected = false in
+    // Create), so it has no effect on the flow graph until it's actually
+    // dragged onto the spine — that connection is what marks the overlay
+    // dirty (see obj_c64_node Step), not the spawn itself.
     var _n        = instance_create_layer(_xx, _yy, "Layer_Nodes", obj_c64_node);
     _n.node_type  = _type;
 

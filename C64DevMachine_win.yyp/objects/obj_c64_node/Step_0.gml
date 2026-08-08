@@ -1933,9 +1933,11 @@ if (is_dragging && !_is_group_follower) {
 		if (x != _prev_x || y != _prev_y) {
 		    was_dragged = true;
 		    if (!is_free_node && !_is_macro_child && !mouse_check_button_released(mb_left)) {
+		        if (is_connected) {
+		            if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+		        }
 		        org_parent   = noone;
 		        is_connected = false;
-		        if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
 		    }
 		}
 
@@ -2198,8 +2200,10 @@ if (global.wedge_preview_y >= 0) {
                    
                     if (!_re_attached_to_org && !_near_main) {
                        
+                        if (is_connected) {
+                            if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+                        }
                         is_connected = false;
-                        if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
                     }
                     // NAMED_LOC and NEW_STR must never connect to main spine
                     if (node_type == "NAMED_LOC" || node_type == "NEW_STR") {
@@ -2228,11 +2232,13 @@ if (global.wedge_preview_y >= 0) {
                     &&  y >= _spine_bottom
                     &&  y <= _spine_bottom + _latch_h) {
                        
+                        if (!is_connected) {
+                            if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+                        }
                         is_connected = true;
                         x            = round(_spine_cx / 20) * 20;
                       //  x_indent     = 0;
                         y            = round(_spine_bottom / 20) * 20;
-                        if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
 				} else {
                         // Snap X only if: mouse is over a header node (INIT or ORG) AND dragged from close to spine X
                         var _mouse_over_header = false;
@@ -2335,8 +2341,10 @@ var _init_top = 0;
                
 				x        = _spine_x;
 				y        = _insert_y;
+				if (!is_connected) {
+					if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+				}
 				is_connected = true;
-				if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
 				// Inherit indent from neighbours — prefer the more indented of the two
                 var _tab_above = instance_exists(_insert_above) ? _insert_above.x_indent : 0;
                 var _tab_below = instance_exists(_node_below)   ? _node_below.x_indent   : 0;
@@ -2440,11 +2448,13 @@ var _is_var_node = (node_type == "NAMED_LOC" || node_type == "NEW_STR");
             x                  = _org_anchor.x;
             y = (global.wedge_preview_y >= 0 && !global.wedge_preview_spine) ? global.wedge_preview_y : _insert_above.y + _insert_above.height;
             x_indent            = max(_org_ind_above, _org_ind_below);
+            if (!is_connected) {
+                if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+            }
             is_connected        = true;
             org_parent          = _org_anchor;
             last_overlap_check = false;
             global.addresses_dirty = true;
-            if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
           
            
 
