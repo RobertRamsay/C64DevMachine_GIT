@@ -1,6 +1,6 @@
 /// @desc Setup Workspace, Palette & C64 Environment
-global.lite=0;
-global.build_date = "August 6th, 2026"; // edit this string for each release
+global.lite=1;
+global.build_date = "August 8th, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {
@@ -58,14 +58,10 @@ welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
 	"MANUAL for CODE EDITOR added - See Documents menu.",
-    "MACRO REU - Tested Byte data and Bitmaps on VICE and C64 Ultimate",
-	"More options saved when changed.",
-    "Bitmap editor HiRes editing adjustment (Alt pick / Update cells Fg/Bg)",
-    "Sprite Movement now had clamp options",
-	"Expert mode added (CTRL/CMD + E to toggle) Removes opcode buttons panel",
-    "FIXED: Bitmap buidler tagging was not woring initially.",
-	"TWEAK - Bitmap editor Line tool now shows correct width when drawing.",
-	"UPDATED - EASTER EGG -- nobody found it yet??"
+    "MACRO REU - Added VAR indexing ref for LOAD_REU",
+	"MAP DATA - Now works on maps >216 width (now dynamic if byte/word width).",
+    "Flow visualiser added, Press F then wait, Local (hover node)/ Global / Off",
+	"EASTER EGG - No-one found it yet? post on social media #c64devmachine"
 	];
 	
 welcome_credits_lines = [
