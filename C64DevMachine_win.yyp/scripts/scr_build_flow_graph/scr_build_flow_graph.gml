@@ -178,6 +178,12 @@ function scr_build_flow_graph() {
     // runs against it.
     var _flow_nodes = [];
     with (obj_c64_node) {
+        // VARIABLES is a fixed anchor ORG parked at $C000 by obj_workspace_manager
+        // at startup — it's never walked by the real spine, so its address is not
+        // representative of program order. Sweeping it in here (it matches
+        // node_type == "ORG" below like any real ORG would) drags a stale address
+        // into the sort and produces a bogus edge with the wrong direction.
+        if (node_title == "VARIABLES") continue;
         if (total_node_size > 0 || node_type == "ORG" || node_type == "INIT") array_push(_flow_nodes, id);
     }
     array_sort(_flow_nodes, function(_a, _b) {
