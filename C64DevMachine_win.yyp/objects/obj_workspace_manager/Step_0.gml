@@ -116,20 +116,20 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(or
     if (flow_overlay_mode > 0 && (flow_overlay_dirty || array_length(flow_overlay_edges) == 0)) {
         flow_overlay_edges = scr_build_flow_graph();
         flow_overlay_dirty = false;
-        flow_overlay_dirty_notified = false;
     }
 }
 
-// Remind the user to update the flow graph — but only ONCE per actual
-// node-based change (moved+connected, added+connected, or a connected
-// node deleted), not on every subsequent left-click release while the
-// overlay stays dirty. flow_overlay_dirty_notified is reset above the
-// moment the overlay is rebuilt (or turned back dirty by a fresh change).
-if (mouse_check_button_released(mb_left) && flow_overlay_mode > 0 && flow_overlay_dirty && !flow_overlay_dirty_notified) {
-    global.qmenu_toast_text = "Toggle F to update FLOW";
+// Auto-refresh the flow overlay the moment a real node-based change makes
+// it stale, right when the drag/edit that caused it ends (mouse release) —
+// no F-key press needed while the overlay is actively showing. The dirty
+// flag is only ever set for a genuine connected move/add/delete (see
+// obj_c64_node), so this fires once per real change, not every release.
+if (mouse_check_button_released(mb_left) && flow_overlay_mode > 0 && flow_overlay_dirty) {
+    flow_overlay_edges = scr_build_flow_graph();
+    flow_overlay_dirty = false;
+    global.qmenu_toast_text = "FLOW LINES updated";
     global.qmenu_toast_col  = c_yellow;
     global.qmenu_toast_t    = global.qmenu_toast_dur;
-    flow_overlay_dirty_notified = true;
 }
 
 if (code_editor_open) {
