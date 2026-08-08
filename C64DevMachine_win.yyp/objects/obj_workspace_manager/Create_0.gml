@@ -1,5 +1,5 @@
 /// @desc Setup Workspace, Palette & C64 Environment
-global.lite=1;
+global.lite=0;
 global.build_date = "August 8th, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
@@ -57,10 +57,8 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-	"MANUAL for CODE EDITOR added - See Documents menu.",
-    "MACRO REU - Added VAR indexing ref for LOAD_REU",
-	"MAP DATA - Now works on maps >216 width (now dynamic if byte/word width).",
-    "Flow visualiser added, Press F then wait, Local (hover node)/ Global / Off",
+	"FIXED - LOADER MACROS - Were Unable to Pick the LOAD ORG Asset",
+    "",
 	"EASTER EGG - No-one found it yet? post on social media #c64devmachine"
 	];
 	
