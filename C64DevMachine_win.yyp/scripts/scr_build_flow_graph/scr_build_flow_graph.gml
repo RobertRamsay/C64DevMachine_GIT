@@ -60,7 +60,7 @@ function scr_build_flow_graph() {
         p.assemble_instruction(_mnem, _val);
         var _addr_after = p.current_pc();
         if (_addr_after > _addr_before && instance_exists(_owner)) {
-            array_push(_owner_ranges, {start: _addr_before, end: _addr_after, node: _owner});
+            array_push(_owner_ranges, {start: _addr_before, stop: _addr_after, node: _owner});
         }
     }
     p.assemble();
@@ -77,7 +77,7 @@ function scr_build_flow_graph() {
     var _addr_to_node = function(_addr) {
         for (var _ri = 0; _ri < array_length(_owner_ranges); _ri++) {
             var _r = _owner_ranges[_ri];
-            if (_addr >= _r.start && _addr < _r.end) return _r.node;
+            if (_addr >= _r.start && _addr < _r.stop) return _r.node;
         }
         var _found = noone;
         with (obj_c64_node) {
