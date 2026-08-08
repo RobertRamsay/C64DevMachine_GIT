@@ -27,12 +27,27 @@ function scr_draw_flow_overlay(_edges) {
     // edges rather than tracked per-edge (simpler, and still reads fine).
     var _pulse_phase = (current_time mod 1200) / 1200;
 
+    // Find which node (if any) is currently under the mouse using its dimensions
+    var _hovered_node = noone;
+    with (obj_c64_node) {
+        if (mouse_x >= x && mouse_x <= x + width && mouse_y >= y && mouse_y <= y + height) {
+            _hovered_node = id;
+            break;
+        }
+    }
+
+    // If we aren't hovering over any node, exit immediately and draw no lines
+    if (_hovered_node == noone) return;
+
     for (var i = 0; i < array_length(_edges); i++) {
         var _e = _edges[i];
         if (!instance_exists(_e.src) || !instance_exists(_e.tgt)) continue;
 		
 		// Skip drawing the regular grey flow lines and orange branch lines entirely
         if (_e.kind == "flow" || _e.kind == "branch" || _e.kind == "irq") continue;
+		
+		// Only show lines that connect to the specifically hovered node
+        if (_e.src != _hovered_node && _e.tgt != _hovered_node) continue;
 
         var _sw = variable_instance_exists(_e.src, "width") ? _e.src.width : 80;
         var _tw = variable_instance_exists(_e.tgt, "width") ? _e.tgt.width : 80;
