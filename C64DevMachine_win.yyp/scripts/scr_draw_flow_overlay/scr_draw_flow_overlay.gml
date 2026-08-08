@@ -70,15 +70,11 @@ function scr_draw_flow_overlay(_edges) {
         draw_set_color(_col);
         draw_set_alpha(_alph);
 
-        // ORG/INIT chain transitions route as a right-angled "S" elbow
-        // instead of a straight diagonal — ORG blocks jump to specific
-        // addresses and are often placed far from their visual neighbour
-        // on the canvas, so a stepped connector reads as "a distinct hop
-        // between contexts" rather than blending in with normal in-place
-        // sequential flow between ordinary macro nodes.
-        var _is_org_chain = (_e.kind == "flow")
-            && (_e.src.node_type == "ORG" || _e.tgt.node_type == "ORG"
-             || _e.src.node_type == "INIT" || _e.tgt.node_type == "INIT");
+        // ORG-caused address discontinuities route as a right-angled "S"
+        // elbow instead of a straight diagonal — see scr_build_flow_graph
+        // for why this is keyed off an actual gap in the compiled address
+        // sequence rather than which node types sit on either end.
+        var _is_org_chain = (_e.kind == "flow") && _e.org_jump;
 
         if (_is_org_chain) {
             var _ymid = (_sy1 + _sy2) * 0.5;
