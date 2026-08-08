@@ -545,7 +545,7 @@ if (gui_menu_open == 4) {
         { title: "GRID",            action: "GRID"            },
         { title: "EFFECTS",         action: "EFFECTS"         },
         { title: "COMMENTS",        action: "COMMENTS"        },
-        { title: "FLOW OVERLAY",    action: "FLOW_OVERLAY"    },
+        { title: "FLOW VIEW",    action: "FLOW_OVERLAY"    },
         { title: "FULLSCREEN",      action: "FULLSCREEN"      },
         { title: "ADVANCE THEME",   action: "THEME"           },
         { title: "RESET CUSTOM UI",    action: "RESET_UI"           },
