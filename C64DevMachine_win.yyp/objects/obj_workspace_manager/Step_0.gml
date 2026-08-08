@@ -89,6 +89,17 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(vk
     welcome_open = true;
 }
 
+// F toggles the flow overlay — always rebuilds on toggle-on so it never
+// shows a stale graph after edits. Deliberately excludes any modifier so
+// it doesn't clash with existing Ctrl/Shift/Cmd+F bindings.
+if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(ord("F"))
+&& !keyboard_check(vk_control) && !keyboard_check(vk_shift) && !keyboard_check(vk_alt) && !scr_cmd_held()) {
+    flow_overlay_active = !flow_overlay_active;
+    if (flow_overlay_active) {
+        flow_overlay_edges = scr_build_flow_graph();
+    }
+}
+
 if (code_editor_open) {
         scr_code_editor_step();
         

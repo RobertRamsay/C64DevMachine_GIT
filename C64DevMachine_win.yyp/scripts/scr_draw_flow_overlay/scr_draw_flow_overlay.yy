@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_draw_flow_overlay",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_draw_flow_overlay",
+  "parent":{
+    "name":"VISUAL",
+    "path":"folders/SCRIPTS/CORE/VISUAL.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}
