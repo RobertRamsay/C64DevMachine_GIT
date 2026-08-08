@@ -20,6 +20,13 @@ function scr_load_workspace_from_path(_path) {
     instance_destroy(obj_mapping_box);
     global.node_destroy_fx = true;
 
+    // Loading a project invalidates any cached flow-overlay edges (they
+    // reference the node instances just destroyed above), so drop back
+    // to Off rather than leaving a stale/empty overlay toggled on.
+    flow_overlay_mode  = 0;
+    flow_overlay_edges = [];
+    flow_overlay_dirty = true;
+
     var _jbuf = buffer_load(path);
     var json  = "";
     if (_jbuf != -1) {

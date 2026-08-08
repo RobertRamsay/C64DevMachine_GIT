@@ -81,7 +81,7 @@ with (obj_c64_node) {
 /////////////////////////////////////////////////////////////////
 if (flow_overlay_mode > 0) {
         // Pass the current mode into the script so it knows when to apply the hover filter
-        scr_draw_flow_overlay(flow_overlay_edges, flow_overlay_mode);
+        scr_draw_flow_overlay(flow_overlay_edges, flow_overlay_mode, flow_line_style);
     }
 
 // Draw selection highlights for committed selection
@@ -546,6 +546,7 @@ if (gui_menu_open == 4) {
         { title: "EFFECTS",         action: "EFFECTS"         },
         { title: "COMMENTS",        action: "COMMENTS"        },
         { title: "FLOW VIEW",    action: "FLOW_OVERLAY"    },
+        { title: "FLOW TYPE",    action: "FLOW_LINE_STYLE" },
         { title: "FULLSCREEN",      action: "FULLSCREEN"      },
         { title: "ADVANCE THEME",   action: "THEME"           },
         { title: "RESET CUSTOM UI",    action: "RESET_UI"           },
@@ -631,6 +632,11 @@ if (gui_menu_open == 4) {
             _state_col    = (flow_overlay_mode == 0) ? c_red : c_lime;
             _shortcut_str = "F";
         }
+		if (_op.action == "FLOW_LINE_STYLE") {
+            var _fls_labels = ["DIRECT", "ANGLED"];
+            _state_str = _fls_labels[flow_line_style mod 2];
+            _state_col = make_color_rgb(160, 160, 220);
+        }
 		
 		
         if (_op.action == "THEME") {
@@ -715,6 +721,21 @@ if (gui_menu_open == 4) {
                     global.qmenu_toast_t    = global.qmenu_toast_dur;
                     flow_overlay_build_pending = true;
                 }
+            }
+            else if (_op.action == "FLOW_LINE_STYLE") {
+                flow_line_style = (flow_line_style + 1) mod 2; // 0 -> 1 -> 0
+
+                if (flow_line_style == 0) {
+                    global.qmenu_toast_text = "FLOW LINES: DIRECT";
+                } else {
+                    global.qmenu_toast_text = "FLOW LINES: ANGLED";
+                }
+                global.qmenu_toast_col = c_yellow;
+                global.qmenu_toast_t   = global.qmenu_toast_dur;
+
+                ini_open("c64devmachine.ini");
+                ini_write_real("Settings", "flow_line_style", flow_line_style);
+                ini_close();
             }
             else if (_op.action == "FULLSCREEN") {
                 do_windowSizing();

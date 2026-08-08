@@ -1,0 +1,127 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index a34830a..3aeafda 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -928,6 +928,7 @@ global.node_destroy_fx = global.visual_fx;
+ global.comments_visible = ini_read_real("Settings", "comments_visible",   1) == 1;
+ opcode_headers_on      = ini_read_real("Settings", "opcode_headers",      0) == 1;
+ opcode_extra_height    = ini_read_real("Settings", "opcode_extra_height", 1) == 1;
++flow_line_style        = ini_read_real("Settings", "flow_line_style",     1);
+ var _hide_welcome = ini_read_real("Settings", "hide_welcome", 0);
+ welcome_hide_checked = (_hide_welcome != 0);
+ welcome_open          = !welcome_hide_checked;
+@@ -943,6 +944,9 @@ scr_uqmenu_load();
+ flow_overlay_mode = 0; // 0 = Off, 1 = Local Hover, 2 = Show All
+ flow_overlay_edges  = [];
+ flow_overlay_dirty  = true;
++// flow_line_style: 0 = Direct (straight lines), 1 = Angled (45-degree
++// chamfered routing, current default). Set above via ini_read_real so
++// it persists across sessions like the other OPTIONS menu toggles.
+ 
+ // Rebuilding runs a full compile+assemble pass and can take a visible
+ // moment on a large spine. Since the engine only presents a frame after
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 2c9e3ef..900a802 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -81,7 +81,7 @@ with (obj_c64_node) {
+ /////////////////////////////////////////////////////////////////
+ if (flow_overlay_mode > 0) {
+         // Pass the current mode into the script so it knows when to apply the hover filter
+-        scr_draw_flow_overlay(flow_overlay_edges, flow_overlay_mode);
++        scr_draw_flow_overlay(flow_overlay_edges, flow_overlay_mode, flow_line_style);
+     }
+ 
+ // Draw selection highlights for committed selection
+@@ -546,6 +546,7 @@ if (gui_menu_open == 4) {
+         { title: "EFFECTS",         action: "EFFECTS"         },
+         { title: "COMMENTS",        action: "COMMENTS"        },
+         { title: "FLOW VIEW",    action: "FLOW_OVERLAY"    },
++        { title: "FLOW TYPE",    action: "FLOW_LINE_STYLE" },
+         { title: "FULLSCREEN",      action: "FULLSCREEN"      },
+         { title: "ADVANCE THEME",   action: "THEME"           },
+         { title: "RESET CUSTOM UI",    action: "RESET_UI"           },
+@@ -631,6 +632,11 @@ if (gui_menu_open == 4) {
+             _state_col    = (flow_overlay_mode == 0) ? c_red : c_lime;
+             _shortcut_str = "F";
+         }
++		if (_op.action == "FLOW_LINE_STYLE") {
++            var _fls_labels = ["DIRECT", "ANGLED"];
++            _state_str = _fls_labels[flow_line_style mod 2];
++            _state_col = make_color_rgb(160, 160, 220);
++        }
+ 		
+ 		
+         if (_op.action == "THEME") {
+@@ -716,6 +722,21 @@ if (gui_menu_open == 4) {
+                     flow_overlay_build_pending = true;
+                 }
+             }
++            else if (_op.action == "FLOW_LINE_STYLE") {
++                flow_line_style = (flow_line_style + 1) mod 2; // 0 -> 1 -> 0
++
++                if (flow_line_style == 0) {
++                    global.qmenu_toast_text = "FLOW LINES: DIRECT";
++                } else {
++                    global.qmenu_toast_text = "FLOW LINES: ANGLED";
++                }
++                global.qmenu_toast_col = c_yellow;
++                global.qmenu_toast_t   = global.qmenu_toast_dur;
++
++                ini_open("c64devmachine.ini");
++                ini_write_real("Settings", "flow_line_style", flow_line_style);
++                ini_close();
++            }
+             else if (_op.action == "FULLSCREEN") {
+                 do_windowSizing();
+             }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml b/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
+index f06eb6b..a34e7e1 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
+@@ -1,4 +1,6 @@
+-/// @desc scr_draw_flow_overlay(_edges)
++/// @desc scr_draw_flow_overlay(_edges, _mode, _style)
++/// _style: 0 = Direct (straight lines), 1 = Angled (45-degree chamfered
++/// routing, default). Set via the OPTIONS menu "FLOW TYPE" toggle.
+ /// Draws the F-key flow overlay: colour-coded lines between every pair of
+ /// nodes each JMP/JSR/BRANCH/IRQ-vector/sequential-flow edge connects,
+ /// each with a small circle travelling along it to show direction.
+@@ -8,7 +10,7 @@
+ /// Called from Draw_64.gml (GUI space) — must run in the same event so it
+ /// always sits over the nodes regardless of camera zoom/pan or instance
+ /// draw order, the same reason the box-select overlay lives there too.
+-function scr_draw_flow_overlay(_edges, _mode) {
++function scr_draw_flow_overlay(_edges, _mode, _style = 1) {
+     // World -> GUI transform, same as the box-select overlay above.
+     var _vx = camera_get_view_x(view_camera[0]);
+     var _vy = camera_get_view_y(view_camera[0]);
+@@ -212,7 +214,9 @@ function scr_draw_flow_overlay(_edges, _mode) {
+             draw_set_alpha(min(1, _alph + 0.15));
+             draw_circle(_px, _py, _wid + 2, false);
+         } else {
+-            var _pts   = _chamfer_points(_sx1, _sy1, _sx2, _sy2);
++            var _pts = (_style == 0)
++                ? [[_sx1, _sy1], [_sx2, _sy2]]
++                : _chamfer_points(_sx1, _sy1, _sx2, _sy2);
+             var _n_pts = array_length(_pts);
+             for (var _pi = 0; _pi < _n_pts - 1; _pi++) {
+                 draw_line_width(_pts[_pi][0], _pts[_pi][1], _pts[_pi+1][0], _pts[_pi+1][1], _wid);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 4760a01..13bd9dc 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -20,6 +20,13 @@ function scr_load_workspace_from_path(_path) {
+     instance_destroy(obj_mapping_box);
+     global.node_destroy_fx = true;
+ 
++    // Loading a project invalidates any cached flow-overlay edges (they
++    // reference the node instances just destroyed above), so drop back
++    // to Off rather than leaving a stale/empty overlay toggled on.
++    flow_overlay_mode  = 0;
++    flow_overlay_edges = [];
++    flow_overlay_dirty = true;
++
+     var _jbuf = buffer_load(path);
+     var json  = "";
+     if (_jbuf != -1) {

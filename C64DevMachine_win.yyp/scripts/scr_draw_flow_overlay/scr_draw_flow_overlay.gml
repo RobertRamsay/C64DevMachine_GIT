@@ -1,4 +1,6 @@
-/// @desc scr_draw_flow_overlay(_edges)
+/// @desc scr_draw_flow_overlay(_edges, _mode, _style)
+/// _style: 0 = Direct (straight lines), 1 = Angled (45-degree chamfered
+/// routing, default). Set via the OPTIONS menu "FLOW TYPE" toggle.
 /// Draws the F-key flow overlay: colour-coded lines between every pair of
 /// nodes each JMP/JSR/BRANCH/IRQ-vector/sequential-flow edge connects,
 /// each with a small circle travelling along it to show direction.
@@ -8,7 +10,7 @@
 /// Called from Draw_64.gml (GUI space) — must run in the same event so it
 /// always sits over the nodes regardless of camera zoom/pan or instance
 /// draw order, the same reason the box-select overlay lives there too.
-function scr_draw_flow_overlay(_edges, _mode) {
+function scr_draw_flow_overlay(_edges, _mode, _style = 1) {
     // World -> GUI transform, same as the box-select overlay above.
     var _vx = camera_get_view_x(view_camera[0]);
     var _vy = camera_get_view_y(view_camera[0]);
@@ -212,7 +214,9 @@ function scr_draw_flow_overlay(_edges, _mode) {
             draw_set_alpha(min(1, _alph + 0.15));
             draw_circle(_px, _py, _wid + 2, false);
         } else {
-            var _pts   = _chamfer_points(_sx1, _sy1, _sx2, _sy2);
+            var _pts = (_style == 0)
+                ? [[_sx1, _sy1], [_sx2, _sy2]]
+                : _chamfer_points(_sx1, _sy1, _sx2, _sy2);
             var _n_pts = array_length(_pts);
             for (var _pi = 0; _pi < _n_pts - 1; _pi++) {
                 draw_line_width(_pts[_pi][0], _pts[_pi][1], _pts[_pi+1][0], _pts[_pi+1][1], _wid);
