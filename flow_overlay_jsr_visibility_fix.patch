@@ -1,0 +1,70 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml b/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
+index e84970d..603c737 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
+@@ -141,7 +141,20 @@ function scr_build_flow_graph() {
+         if (_kind != "") {
+             var _src_node = _addr_to_node(_src_addr, _owner_ranges);
+             var _tgt_node = _find_label_node(f.label);
+-            if (_tgt_node == noone) _tgt_node = _addr_to_node(_target_addr, _owner_ranges);
++            // JMP/BRANCH still fall back to address-range guessing when
++            // there's no matching LABEL node — that's fine, those mostly
++            // land on a real node either way. JSR does NOT: dozens of
++            // internal jsr calls throughout scr_compile_chain (vbmp_plot,
++            // math_mul16, adv_ptr, shcolsub, and similar shared helper
++            // subroutines) target labels the user never wrapped in a
++            // LABEL node — they're pure implementation detail, not
++            // something placed in the graph to call. Falling back for
++            // those just lands the line on whatever node happens to own
++            // that address, which reads as a random, unexplained
++            // connection. Requiring a real LABEL node match keeps JSR
++            // edges limited to calls that are genuinely visible and
++            // callable in the node graph.
++            if (_tgt_node == noone && _kind != "jsr") _tgt_node = _addr_to_node(_target_addr, _owner_ranges);
+             if (_src_node != noone && _tgt_node != noone) {
+                 array_push(_edges, {kind: _kind, src: _src_node, tgt: _tgt_node});
+                 // JSR: also show the return trip. The label a JSR jumps to
+@@ -160,29 +173,23 @@ function scr_build_flow_graph() {
+                     for (var _sb = max(0, _scan_from); _sb < min(_blen, _scan_from + _scan_cap); _sb++) {
+                         if (p.bytes[_sb] == 0x60) {
+                             var _test_node = _addr_to_node(p.base_address + p.header_size + _sb, _owner_ranges);
+-                            if (_test_node != noone) {
+-                                // Prevent false positives from $60 data bytes inside macros (like MOVE BMP BLOCK).
+-                                // An explicit RTS node is exactly 1 byte.
+-                                var _is_rts = (_test_node.total_node_size == 1);
+-                                
+-                                // Fallback for multi-line code nodes: check if it actually contains an RTS instruction.
+-                                if (!_is_rts && variable_instance_exists(_test_node, "instructions")) {
+-                                    for (var _ii = 0; _ii < array_length(_test_node.instructions); _ii++) {
+-                                        if (array_length(_test_node.instructions[_ii]) > 0 && string_upper(string(_test_node.instructions[_ii][0])) == "RTS") {
+-                                            _is_rts = true;
+-                                            break;
+-                                        }
+-                                    }
+-                                }
+-                                
+-                                if (_is_rts) {
+-                                    _rts_node = _test_node;
+-                                    break;
+-                                }
++                            // Only a genuine standalone RTS node counts — an
++                            // explicit RTS instruction is exactly 1 byte on
++                            // its own node. Deliberately NOT falling back to
++                            // "any node whose instructions happen to contain
++                            // an RTS somewhere" — that matches RTS bytes
++                            // that are just part of some other macro's own
++                            // internal multi-instruction body, not a return
++                            // point the user placed or can see as a call
++                            // target, which is exactly the source of the
++                            // stray/unexpected return-trip lines.
++                            if (_test_node != noone && _test_node.total_node_size == 1) {
++                                _rts_node = _test_node;
++                                break;
+                             }
+                         }
+                     }
+-                    if (_rts_node == noone) _rts_node = _tgt_node; // fallback: no RTS found nearby
++                    if (_rts_node == noone) _rts_node = _tgt_node; // fallback: no standalone RTS node found nearby
+                     array_push(_edges, {kind: "jsr_ret", src: _rts_node, tgt: _src_node});
+                 }
+             }
