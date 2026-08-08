@@ -1,0 +1,199 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml b/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
+index ce80efb..cbad063 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
+@@ -39,27 +39,46 @@ function scr_build_flow_graph() {
+         }
+     }
+ 
+-    // Single pass: assemble_instruction() already registers labels as it
+-    // walks and defers fixup resolution to p.assemble() at the end, so
+-    // forward references resolve correctly without the real build's
+-    // separate label-pre-registration pass (that pass exists for other
+-    // reasons — final byte-length-dependent injection — that don't apply
+-    // to a read-only analysis pass like this one).
++    // Track exactly which real node authored each emitted byte, using the
++    // node id every _final_code entry already carries (_final_code[i][2])
++    // and this assembler's own PC before/after each instruction. This is
++    // ground truth for this compile pass — unlike inferring ownership from
++    // each node's total_node_size, which only covers its inline position
++    // on the spine and misses code a macro emits out-of-line. MACRO_IRQ is
++    // the concrete case: it emits "jsr init / jmp skip" inline, then its
++    // actual handler body (including any user "JSR: <label>" call) further
++    // down, past the jmp. That handler code sits well outside the node's
++    // own total_node_size range, so a range-only lookup silently drops the
++    // edge for that JSR — it's real, just not attributed back correctly.
++    var _owner_ranges = [];
+     for (var i = 0; i < array_length(_final_code); i++) {
+         var _mnem = string_lower(_final_code[i][0]);
+         if (_mnem == "_line_map_" || _mnem == "const" || _mnem == "") continue;
+-        var _val = (array_length(_final_code[i]) > 1) ? _final_code[i][1] : 0;
++        var _val   = (array_length(_final_code[i]) > 1) ? _final_code[i][1] : 0;
++        var _owner = (array_length(_final_code[i]) > 2) ? _final_code[i][2] : noone;
++        var _addr_before = p.current_pc();
+         p.assemble_instruction(_mnem, _val);
++        var _addr_after = p.current_pc();
++        if (_addr_after > _addr_before && instance_exists(_owner)) {
++            array_push(_owner_ranges, {start: _addr_before, end: _addr_after, node: _owner});
++        }
+     }
+     p.assemble();
+ 
+     var _edges = [];
+     var _blen  = array_length(p.bytes);
+ 
+-    // Resolve a byte offset (into p.bytes) to the node instance whose
+-    // compiled range contains it. O(n) per lookup — fine for a one-off
+-    // toggle-triggered build, not something running every frame.
++    // Resolve an address to the node that actually emitted the byte there.
++    // Checks the precise per-instruction ownership map first (handles
++    // out-of-line macro bodies correctly), falling back to the coarser
++    // pc_address/total_node_size range check only if nothing in this
++    // compile pass claims that address. O(n) per lookup — fine for a
++    // one-off toggle-triggered build, not something running every frame.
+     var _addr_to_node = function(_addr) {
++        for (var _ri = 0; _ri < array_length(_owner_ranges); _ri++) {
++            var _r = _owner_ranges[_ri];
++            if (_addr >= _r.start && _addr < _r.end) return _r.node;
++        }
+         var _found = noone;
+         with (obj_c64_node) {
+             if (_addr >= pc_address && _addr < pc_address + max(1, total_node_size)) {
+@@ -156,11 +175,16 @@ function scr_build_flow_graph() {
+         }
+ 
+         // IRQ vector write: a "lo" fixup (label's low byte loaded via
+-        // LDA #<label) immediately followed by STA $0314 is the low byte
+-        // of an IRQ vector being pointed at a label. One edge per vector
+-        // (the lo write) is enough — the hi write targets the same pair.
++        // LDA #<label) immediately followed by STA to either IRQ vector is
++        // the low byte of an IRQ vector being pointed at a label. Covers
++        // both vector modes MACRO_IRQ/MACRO_IRQ_HANDLER can write:
++        // $0314 (KERNAL-chained) and $FFFE (Direct hardware vector, used
++        // when the KERNAL is banked out). One edge per vector (the lo
++        // write) is enough — the hi write targets the same pair.
+         if (f.type == "lo" && f.pos + 3 < _blen
+-        &&  p.bytes[f.pos + 1] == 0x8D && p.bytes[f.pos + 2] == 0x14 && p.bytes[f.pos + 3] == 0x03) {
++        &&  p.bytes[f.pos + 1] == 0x8D
++        &&  ( (p.bytes[f.pos + 2] == 0x14 && p.bytes[f.pos + 3] == 0x03)   // $0314
++           || (p.bytes[f.pos + 2] == 0xFE && p.bytes[f.pos + 3] == 0xFF) )) { // $FFFE
+             var _irq_src = _addr_to_node(_src_addr);
+             var _irq_tgt = _find_label_node(f.label);
+             if (_irq_tgt == noone) _irq_tgt = _addr_to_node(_target_addr);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml b/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
+index b4d5d20..4b07ee5 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
+@@ -27,6 +27,59 @@ function scr_draw_flow_overlay(_edges, _mode) {
+     // edges rather than tracked per-edge (simpler, and still reads fine).
+     var _pulse_phase = (current_time mod 1200) / 1200;
+ 
++    // Circuit-board-style path: pure vertical/horizontal runs with a single
++    // exact 45° diagonal absorbing the difference between the two axes —
++    // V-D-V for vertical-dominant edges, H-D-H for horizontal-dominant
++    // ones. Collapses to a single straight or single diagonal segment in
++    // the degenerate cases (one axis ~0, or |dx| == |dy| already).
++    var _chamfer_points = function(_x1, _y1, _x2, _y2) {
++        var _dx = _x2 - _x1, _dy = _y2 - _y1;
++        var _adx = abs(_dx), _ady = abs(_dy);
++        if (_adx < 0.5 || _ady < 0.5 || abs(_adx - _ady) < 0.5) {
++            // Already axis-aligned or already exactly 45° — no chamfer needed.
++            return [[_x1, _y1], [_x2, _y2]];
++        }
++        var _sgnx = sign(_dx), _sgny = sign(_dy);
++        var _d    = min(_adx, _ady);       // diagonal run (exact 45°)
++        var _half = (max(_adx, _ady) - _d) * 0.5;
++        if (_ady >= _adx) {
++            // Vertical-dominant: V - D - V
++            var _ay = _y1 + _sgny * _half;
++            var _by = _ay + _sgny * _d;
++            var _bx = _x1 + _dx; // all of dx happens during the diagonal leg
++            return [[_x1, _y1], [_x1, _ay], [_bx, _by], [_x2, _y2]];
++        } else {
++            // Horizontal-dominant: H - D - H
++            var _ax = _x1 + _sgnx * _half;
++            var _bx = _ax + _sgnx * _d;
++            var _by = _y1 + _dy; // all of dy happens during the diagonal leg
++            return [[_x1, _y1], [_ax, _y1], [_bx, _by], [_x2, _y2]];
++        }
++    };
++
++    // Position along a poly-line at 0..1 phase, moving at constant visual
++    // speed across however many segments _chamfer_points produced.
++    var _poly_pulse_point = function(_pts, _phase) {
++        var _n = array_length(_pts);
++        var _lens  = array_create(_n - 1);
++        var _total = 0;
++        for (var _i = 0; _i < _n - 1; _i++) {
++            _lens[_i] = point_distance(_pts[_i][0], _pts[_i][1], _pts[_i+1][0], _pts[_i+1][1]);
++            _total += _lens[_i];
++        }
++        _total = max(1, _total);
++        var _dist = _phase * _total;
++        var _acc  = 0;
++        for (var _i = 0; _i < _n - 1; _i++) {
++            if (_dist <= _acc + _lens[_i] || _i == _n - 2) {
++                var _t = (_lens[_i] > 0) ? clamp((_dist - _acc) / _lens[_i], 0, 1) : 0;
++                return [lerp(_pts[_i][0], _pts[_i+1][0], _t), lerp(_pts[_i][1], _pts[_i+1][1], _t)];
++            }
++            _acc += _lens[_i];
++        }
++        return [_pts[_n-1][0], _pts[_n-1][1]];
++    };
++
+     var _hovered_node = noone;
+     
+     // Mode 1: Local Hover Mode - find hovered node and abort if empty
+@@ -45,7 +98,7 @@ function scr_draw_flow_overlay(_edges, _mode) {
+         if (!instance_exists(_e.src) || !instance_exists(_e.tgt)) continue;
+ 		
+ 		// Skip drawing the regular grey flow lines and orange branch lines entirely
+-        if (_e.kind == "flow" || _e.kind == "branch" || _e.kind == "irq") continue;
++        if (_e.kind == "flow" || _e.kind == "branch") continue;
+ 		
+ 		// In Mode 1, only show lines that connect to the specifically hovered node
+         if (_mode == 1 && _e.src != _hovered_node && _e.tgt != _hovered_node) continue;
+@@ -143,24 +196,32 @@ function scr_draw_flow_overlay(_edges, _mode) {
+             draw_set_alpha(min(1, _alph + 0.15));
+             draw_circle(_px, _py, _wid + 2, false);
+         } else {
+-            draw_line_width(_sx1, _sy1, _sx2, _sy2, _wid);
++            var _pts   = _chamfer_points(_sx1, _sy1, _sx2, _sy2);
++            var _n_pts = array_length(_pts);
++            for (var _pi = 0; _pi < _n_pts - 1; _pi++) {
++                draw_line_width(_pts[_pi][0], _pts[_pi][1], _pts[_pi+1][0], _pts[_pi+1][1], _wid);
++            }
+ 
+             // Small arrowhead near the target so direction is readable
+             // once lines start overlapping — expected at any real size.
++            // Angled off the final segment so it matches whatever the last
++            // leg of the chamfered path actually is (V, H, or 45°).
+             if (_e.kind != "flow") {
+-                var _ang2 = point_direction(_sx1, _sy1, _sx2, _sy2);
+-                var _ahx2 = _sx2 - lengthdir_x(14, _ang2);
+-                var _ahy2 = _sy2 - lengthdir_y(14, _ang2);
+-                draw_line_width(_ahx2 + lengthdir_x(6, _ang2 + 150), _ahy2 + lengthdir_y(6, _ang2 + 150), _sx2, _sy2, _wid);
+-                draw_line_width(_ahx2 + lengthdir_x(6, _ang2 - 150), _ahy2 + lengthdir_y(6, _ang2 - 150), _sx2, _sy2, _wid);
++                var _last = _pts[_n_pts - 1];
++                var _prev = _pts[_n_pts - 2];
++                var _ang2 = point_direction(_prev[0], _prev[1], _last[0], _last[1]);
++                var _ahx2 = _last[0] - lengthdir_x(14, _ang2);
++                var _ahy2 = _last[1] - lengthdir_y(14, _ang2);
++                draw_line_width(_ahx2 + lengthdir_x(6, _ang2 + 150), _ahy2 + lengthdir_y(6, _ang2 + 150), _last[0], _last[1], _wid);
++                draw_line_width(_ahx2 + lengthdir_x(6, _ang2 - 150), _ahy2 + lengthdir_y(6, _ang2 - 150), _last[0], _last[1], _wid);
+             }
+ 
+-            // Travelling pulse — a small circle sliding from source to
+-            // target so the direction of flow reads at a glance.
+-            var _px3 = lerp(_sx1, _sx2, _pulse_phase);
+-            var _py3 = lerp(_sy1, _sy2, _pulse_phase);
++            // Travelling pulse — a small circle sliding along the chamfered
++            // path from source to target at constant visual speed across
++            // all of its V/D/H segments, so direction reads at a glance.
++            var _pulse_pos = _poly_pulse_point(_pts, _pulse_phase);
+             draw_set_alpha(min(1, _alph + 0.15));
+-            draw_circle(_px3, _py3, _wid + 2, false);
++            draw_circle(_pulse_pos[0], _pulse_pos[1], _wid + 2, false);
+         }
+     }
+     draw_set_alpha(1.0);
