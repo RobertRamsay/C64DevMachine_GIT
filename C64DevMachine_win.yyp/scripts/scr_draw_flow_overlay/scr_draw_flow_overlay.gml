@@ -33,10 +33,17 @@ function scr_draw_flow_overlay(_edges) {
 
         var _sw = variable_instance_exists(_e.src, "width") ? _e.src.width : 80;
         var _tw = variable_instance_exists(_e.tgt, "width") ? _e.tgt.width : 80;
-        var _wx1 = _e.src.x + _sw * 0.5;
+
+        // Regular (non-org-jump) flow lines anchor 10px in from the left
+        // edge instead of the centre — keeps them off to one side instead
+        // of cutting through node content, and out of the way of the
+        // colour-coded jmp/jsr/branch/irq lines which stay centre-anchored.
+        var _left_justify = (_e.kind == "flow") && !_e.org_jump;
+
+        var _wx1 = _left_justify ? (_e.src.x + 10) : (_e.src.x + _sw * 0.5);
         var _wy1 = _e.src.y + 12; // header anchor
 
-        var _wx2 = _e.tgt.x + _tw * 0.5;
+        var _wx2 = _left_justify ? (_e.tgt.x + 10) : (_e.tgt.x + _tw * 0.5);
         // jsr_ret's target is the original JSR caller — anchor at its base
         // (bottom) rather than its header, so the return line doesn't
         // crowd the exact same point the outbound JSR line already uses.

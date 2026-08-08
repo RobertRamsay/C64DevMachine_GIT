@@ -155,17 +155,19 @@ function scr_build_flow_graph() {
     // own compiled position — sorting by pc_address gives the same
     // sequence the program actually runs in when nothing jumps.
     //
-    // A flow edge is only a genuine "fall-through, no JMP/RTS involved"
-    // hop if the next node's address is EXACTLY where the previous one's
-    // compiled bytes end. If there's a gap (or overlap) instead, that
-    // means an ORG repositioned the compile position between them — real
-    // control never "flows" across that boundary in the normal sense,
-    // it's a distinct jump the compiler made, not the CPU. That's the
-    // case that gets the org_jump flag (drawn as the S elbow), regardless
-    // of which specific node types happen to sit on either side of it —
-    // an ORG block's own code usually starts at its LABEL child, not the
-    // ORG container node itself, so checking node types directly misses
-    // exactly this case.
+    // org_jump flags a flow edge as an ORG-boundary hop rather than
+    // ordinary fall-through, by either of two signals:
+    //   1. A genuine address gap/overlap — the next node's address isn't
+    //      exactly where the previous one's bytes end. This catches the
+    //      common case where an ORG repositions the compile PC and its
+    //      own container is zero-size (like a LABEL child), so the flow
+    //      edge lands on the surrounding real nodes instead.
+    //   2. Either node is literally an ORG or INIT node. This catches the
+    //      case a pure gap check misses: an ORG with its own inline code
+    //      (so it has nonzero size and shows up directly in this list)
+    //      that happens to sit naturally contiguous with what precedes
+    //      it — still a distinct addressing context worth calling out,
+    //      even though there's no numeric gap to detect.
     var _flow_nodes = [];
     with (obj_c64_node) {
         if (total_node_size > 0) array_push(_flow_nodes, id);
@@ -177,7 +179,9 @@ function scr_build_flow_graph() {
         var _fa = _flow_nodes[_fi];
         var _fb = _flow_nodes[_fi + 1];
         var _contiguous = (_fb.pc_address == _fa.pc_address + _fa.total_node_size);
-        array_push(_edges, {kind: "flow", src: _fa, tgt: _fb, org_jump: !_contiguous});
+        var _org_edge = (_fa.node_type == "ORG") || (_fb.node_type == "ORG")
+                      || (_fa.node_type == "INIT") || (_fb.node_type == "INIT");
+        array_push(_edges, {kind: "flow", src: _fa, tgt: _fb, org_jump: (!_contiguous || _org_edge)});
     }
 
     return _edges;
