@@ -119,6 +119,13 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(or
     }
 }
 
+// Remind the user to update the flow graph if they modify nodes while the overlay is active
+if (mouse_check_button_released(mb_left) && flow_overlay_mode > 0 && flow_overlay_dirty ) {
+    global.qmenu_toast_text = "Toggle F to update FLOW";
+    global.qmenu_toast_col  = c_yellow;
+    global.qmenu_toast_t    = global.qmenu_toast_dur;
+}
+
 if (code_editor_open) {
         scr_code_editor_step();
         
