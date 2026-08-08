@@ -27,6 +27,59 @@ function scr_draw_flow_overlay(_edges, _mode) {
     // edges rather than tracked per-edge (simpler, and still reads fine).
     var _pulse_phase = (current_time mod 1200) / 1200;
 
+    // Circuit-board-style path: pure vertical/horizontal runs with a single
+    // exact 45° diagonal absorbing the difference between the two axes —
+    // V-D-V for vertical-dominant edges, H-D-H for horizontal-dominant
+    // ones. Collapses to a single straight or single diagonal segment in
+    // the degenerate cases (one axis ~0, or |dx| == |dy| already).
+    var _chamfer_points = function(_x1, _y1, _x2, _y2) {
+        var _dx = _x2 - _x1, _dy = _y2 - _y1;
+        var _adx = abs(_dx), _ady = abs(_dy);
+        if (_adx < 0.5 || _ady < 0.5 || abs(_adx - _ady) < 0.5) {
+            // Already axis-aligned or already exactly 45° — no chamfer needed.
+            return [[_x1, _y1], [_x2, _y2]];
+        }
+        var _sgnx = sign(_dx), _sgny = sign(_dy);
+        var _d    = min(_adx, _ady);       // diagonal run (exact 45°)
+        var _half = (max(_adx, _ady) - _d) * 0.5;
+        if (_ady >= _adx) {
+            // Vertical-dominant: V - D - V
+            var _ay = _y1 + _sgny * _half;
+            var _by = _ay + _sgny * _d;
+            var _bx = _x1 + _dx; // all of dx happens during the diagonal leg
+            return [[_x1, _y1], [_x1, _ay], [_bx, _by], [_x2, _y2]];
+        } else {
+            // Horizontal-dominant: H - D - H
+            var _ax = _x1 + _sgnx * _half;
+            var _bx = _ax + _sgnx * _d;
+            var _by = _y1 + _dy; // all of dy happens during the diagonal leg
+            return [[_x1, _y1], [_ax, _y1], [_bx, _by], [_x2, _y2]];
+        }
+    };
+
+    // Position along a poly-line at 0..1 phase, moving at constant visual
+    // speed across however many segments _chamfer_points produced.
+    var _poly_pulse_point = function(_pts, _phase) {
+        var _n = array_length(_pts);
+        var _lens  = array_create(_n - 1);
+        var _total = 0;
+        for (var _i = 0; _i < _n - 1; _i++) {
+            _lens[_i] = point_distance(_pts[_i][0], _pts[_i][1], _pts[_i+1][0], _pts[_i+1][1]);
+            _total += _lens[_i];
+        }
+        _total = max(1, _total);
+        var _dist = _phase * _total;
+        var _acc  = 0;
+        for (var _i = 0; _i < _n - 1; _i++) {
+            if (_dist <= _acc + _lens[_i] || _i == _n - 2) {
+                var _t = (_lens[_i] > 0) ? clamp((_dist - _acc) / _lens[_i], 0, 1) : 0;
+                return [lerp(_pts[_i][0], _pts[_i+1][0], _t), lerp(_pts[_i][1], _pts[_i+1][1], _t)];
+            }
+            _acc += _lens[_i];
+        }
+        return [_pts[_n-1][0], _pts[_n-1][1]];
+    };
+
     var _hovered_node = noone;
     
     // Mode 1: Local Hover Mode - find hovered node and abort if empty
@@ -143,24 +196,32 @@ function scr_draw_flow_overlay(_edges, _mode) {
             draw_set_alpha(min(1, _alph + 0.15));
             draw_circle(_px, _py, _wid + 2, false);
         } else {
-            draw_line_width(_sx1, _sy1, _sx2, _sy2, _wid);
+            var _pts   = _chamfer_points(_sx1, _sy1, _sx2, _sy2);
+            var _n_pts = array_length(_pts);
+            for (var _pi = 0; _pi < _n_pts - 1; _pi++) {
+                draw_line_width(_pts[_pi][0], _pts[_pi][1], _pts[_pi+1][0], _pts[_pi+1][1], _wid);
+            }
 
             // Small arrowhead near the target so direction is readable
             // once lines start overlapping — expected at any real size.
+            // Angled off the final segment so it matches whatever the last
+            // leg of the chamfered path actually is (V, H, or 45°).
             if (_e.kind != "flow") {
-                var _ang2 = point_direction(_sx1, _sy1, _sx2, _sy2);
-                var _ahx2 = _sx2 - lengthdir_x(14, _ang2);
-                var _ahy2 = _sy2 - lengthdir_y(14, _ang2);
-                draw_line_width(_ahx2 + lengthdir_x(6, _ang2 + 150), _ahy2 + lengthdir_y(6, _ang2 + 150), _sx2, _sy2, _wid);
-                draw_line_width(_ahx2 + lengthdir_x(6, _ang2 - 150), _ahy2 + lengthdir_y(6, _ang2 - 150), _sx2, _sy2, _wid);
+                var _last = _pts[_n_pts - 1];
+                var _prev = _pts[_n_pts - 2];
+                var _ang2 = point_direction(_prev[0], _prev[1], _last[0], _last[1]);
+                var _ahx2 = _last[0] - lengthdir_x(14, _ang2);
+                var _ahy2 = _last[1] - lengthdir_y(14, _ang2);
+                draw_line_width(_ahx2 + lengthdir_x(6, _ang2 + 150), _ahy2 + lengthdir_y(6, _ang2 + 150), _last[0], _last[1], _wid);
+                draw_line_width(_ahx2 + lengthdir_x(6, _ang2 - 150), _ahy2 + lengthdir_y(6, _ang2 - 150), _last[0], _last[1], _wid);
             }
 
-            // Travelling pulse — a small circle sliding from source to
-            // target so the direction of flow reads at a glance.
-            var _px3 = lerp(_sx1, _sx2, _pulse_phase);
-            var _py3 = lerp(_sy1, _sy2, _pulse_phase);
+            // Travelling pulse — a small circle sliding along the chamfered
+            // path from source to target at constant visual speed across
+            // all of its V/D/H segments, so direction reads at a glance.
+            var _pulse_pos = _poly_pulse_point(_pts, _pulse_phase);
             draw_set_alpha(min(1, _alph + 0.15));
-            draw_circle(_px3, _py3, _wid + 2, false);
+            draw_circle(_pulse_pos[0], _pulse_pos[1], _wid + 2, false);
         }
     }
     draw_set_alpha(1.0);
