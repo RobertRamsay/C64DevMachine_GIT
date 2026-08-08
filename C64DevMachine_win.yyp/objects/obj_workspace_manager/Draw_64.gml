@@ -80,8 +80,9 @@ with (obj_c64_node) {
 ///// node instances and this controller.
 /////////////////////////////////////////////////////////////////
 if (flow_overlay_mode > 0) {
-    scr_draw_flow_overlay(flow_overlay_edges);
-}
+        // Pass the current mode into the script so it knows when to apply the hover filter
+        scr_draw_flow_overlay(flow_overlay_edges, flow_overlay_mode);
+    }
 
 // Draw selection highlights for committed selection
 if (array_length(global.selected_nodes) > 0) {

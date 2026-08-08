@@ -47,8 +47,8 @@ function scr_draw_flow_overlay(_edges, _mode) {
 		// Skip drawing the regular grey flow lines and orange branch lines entirely
         if (_e.kind == "flow" || _e.kind == "branch" || _e.kind == "irq") continue;
 		
-		// Only show lines that connect to the specifically hovered node
-        if (_e.src != _hovered_node && _e.tgt != _hovered_node) continue;
+		// In Mode 1, only show lines that connect to the specifically hovered node
+        if (_mode == 1 && _e.src != _hovered_node && _e.tgt != _hovered_node) continue;
 
         var _sw = variable_instance_exists(_e.src, "width") ? _e.src.width : 80;
         var _tw = variable_instance_exists(_e.tgt, "width") ? _e.tgt.width : 80;
