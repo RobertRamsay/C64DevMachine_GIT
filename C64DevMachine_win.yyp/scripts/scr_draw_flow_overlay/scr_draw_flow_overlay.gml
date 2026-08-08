@@ -34,9 +34,21 @@ function scr_draw_flow_overlay(_edges) {
         var _sw = variable_instance_exists(_e.src, "width") ? _e.src.width : 80;
         var _tw = variable_instance_exists(_e.tgt, "width") ? _e.tgt.width : 80;
         var _wx1 = _e.src.x + _sw * 0.5;
-        var _wy1 = _e.src.y + 12;
+        var _wy1 = _e.src.y + 12; // header anchor
+
         var _wx2 = _e.tgt.x + _tw * 0.5;
-        var _wy2 = _e.tgt.y + 12;
+        // jsr_ret's target is the original JSR caller — anchor at its base
+        // (bottom) rather than its header, so the return line doesn't
+        // crowd the exact same point the outbound JSR line already uses.
+        var _th  = variable_instance_exists(_e.tgt, "height") ? _e.tgt.height : 40;
+        var _wy2 = (_e.kind == "jsr_ret") ? (_e.tgt.y + _th) : (_e.tgt.y + 12);
+
+        // Two-lane offset: a line flowing down shifts left, one flowing up
+        // shifts right, so a JSR-out and its jsr_ret return trip run in
+        // parallel lanes instead of sitting exactly on top of each other.
+        var _lane = (_wy2 > _wy1) ? -4 : 4;
+        _wx1 += _lane;
+        _wx2 += _lane;
 
         var _sx1 = (_wx1 - _vx) * _sx;
         var _sy1 = (_wy1 - _vy) * _sy;
@@ -44,15 +56,15 @@ function scr_draw_flow_overlay(_edges) {
         var _sy2 = (_wy2 - _vy) * _sy;
 
         var _col  = _col_flow;
-        var _wid  = 1;
+        var _wid  = 2;
         var _alph = 0.25;
         switch (_e.kind) {
-            case "jmp":     _col = _col_jmp;    _wid = 2; _alph = 0.85; break;
-            case "jsr":     _col = _col_jsr;    _wid = 2; _alph = 0.85; break;
-            case "jsr_ret": _col = _col_jsr;    _wid = 1; _alph = 0.35; break;
-            case "branch":  _col = _col_branch; _wid = 2; _alph = 0.85; break;
-            case "irq":     _col = _col_irq;    _wid = 3; _alph = 0.9;  break;
-            case "flow":    _col = _col_flow;   _wid = 1; _alph = 0.25; break;
+            case "jmp":     _col = _col_jmp;    _wid = 3; _alph = 0.85; break;
+            case "jsr":     _col = _col_jsr;    _wid = 3; _alph = 0.85; break;
+            case "jsr_ret": _col = _col_jsr;    _wid = 3; _alph = 0.4;  break;
+            case "branch":  _col = _col_branch; _wid = 3; _alph = 0.85; break;
+            case "irq":     _col = _col_irq;    _wid = 4; _alph = 0.9;  break;
+            case "flow":    _col = _col_flow;   _wid = 3; _alph = 0.2;  break;
         }
 
         draw_set_color(_col);

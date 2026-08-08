@@ -5,9 +5,10 @@
 /// Safe to call repeatedly on toggle — never touches the real build
 /// pipeline or its side effects.
 /// Returns an array of {kind, src, tgt} structs, where kind is one of
-/// "flow" (sequential spine order), "jmp", "jsr", "jsr_ret" (the return
-/// trip back to a call site), "branch", or "irq", and src/tgt are
-/// obj_c64_node instance ids.
+/// "flow" (sequential spine order), "jmp", "jsr", "jsr_ret" (from the
+/// actual RTS instruction — found by scanning forward, not just the JSR's
+/// immediate jump target — back to the site that called it), "branch",
+/// or "irq", and src/tgt are obj_c64_node instance ids.
 function scr_build_flow_graph() {
     scr_c64_do_update_addresses();
     var _final_code = scr_compile_chain();
@@ -89,11 +90,27 @@ function scr_build_flow_graph() {
             var _tgt_node = _addr_to_node(_target_addr);
             if (_src_node != noone && _tgt_node != noone) {
                 array_push(_edges, {kind: _kind, src: _src_node, tgt: _tgt_node});
-                // JSR: also show the return trip, back to every site that
-                // calls this subroutine — never ambiguous about who calls
-                // whom, even if a shared subroutine gets busy-looking.
+                // JSR: also show the return trip. The label a JSR jumps to
+                // is very often NOT where the RTS actually lives — a JSR
+                // to an ADDRESS_LABEL node can fall through several more
+                // nodes before hitting RTS — so scan forward through the
+                // compiled bytes for the actual $60 opcode rather than
+                // assuming the jump target's own node is the return point.
+                // Capped scan: never runs past the largest subroutines
+                // seen in this codebase, and never runs unbounded into
+                // unrelated code/data that happens to contain a stray $60.
                 if (_kind == "jsr") {
-                    array_push(_edges, {kind: "jsr_ret", src: _tgt_node, tgt: _src_node});
+                    var _rts_node  = noone;
+                    var _scan_from = _target_addr - p.base_address - p.header_size;
+                    var _scan_cap  = 2000;
+                    for (var _sb = max(0, _scan_from); _sb < min(_blen, _scan_from + _scan_cap); _sb++) {
+                        if (p.bytes[_sb] == 0x60) {
+                            _rts_node = _addr_to_node(p.base_address + p.header_size + _sb);
+                            break;
+                        }
+                    }
+                    if (_rts_node == noone) _rts_node = _tgt_node; // fallback: no RTS found nearby
+                    array_push(_edges, {kind: "jsr_ret", src: _rts_node, tgt: _src_node});
                 }
             }
         }
