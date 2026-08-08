@@ -58,7 +58,7 @@ welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
 	"FIXED - LOADER MACROS - Were Unable to Pick the LOAD ORG Asset",
-    "",
+    "ADDED - Flow view now has 2 modes DIRECT and ANGLED (via options menu)",
 	"EASTER EGG - No-one found it yet? post on social media #c64devmachine"
 	];
 	
