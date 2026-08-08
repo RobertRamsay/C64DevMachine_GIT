@@ -126,8 +126,27 @@ function scr_build_flow_graph() {
                     var _scan_cap  = 2000;
                     for (var _sb = max(0, _scan_from); _sb < min(_blen, _scan_from + _scan_cap); _sb++) {
                         if (p.bytes[_sb] == 0x60) {
-                            _rts_node = _addr_to_node(p.base_address + p.header_size + _sb);
-                            break;
+                            var _test_node = _addr_to_node(p.base_address + p.header_size + _sb);
+                            if (_test_node != noone) {
+                                // Prevent false positives from $60 data bytes inside macros (like MOVE BMP BLOCK).
+                                // An explicit RTS node is exactly 1 byte.
+                                var _is_rts = (_test_node.total_node_size == 1);
+                                
+                                // Fallback for multi-line code nodes: check if it actually contains an RTS instruction.
+                                if (!_is_rts && variable_instance_exists(_test_node, "instructions")) {
+                                    for (var _ii = 0; _ii < array_length(_test_node.instructions); _ii++) {
+                                        if (array_length(_test_node.instructions[_ii]) > 0 && string_upper(string(_test_node.instructions[_ii][0])) == "RTS") {
+                                            _is_rts = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                if (_is_rts) {
+                                    _rts_node = _test_node;
+                                    break;
+                                }
+                            }
                         }
                     }
                     if (_rts_node == noone) _rts_node = _tgt_node; // fallback: no RTS found nearby

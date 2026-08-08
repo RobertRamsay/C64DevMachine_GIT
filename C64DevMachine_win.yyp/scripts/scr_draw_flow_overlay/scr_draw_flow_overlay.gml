@@ -30,6 +30,9 @@ function scr_draw_flow_overlay(_edges) {
     for (var i = 0; i < array_length(_edges); i++) {
         var _e = _edges[i];
         if (!instance_exists(_e.src) || !instance_exists(_e.tgt)) continue;
+		
+		// Skip drawing the regular grey flow lines and orange branch lines entirely
+        if (_e.kind == "flow" || _e.kind == "branch" || _e.kind == "irq") continue;
 
         var _sw = variable_instance_exists(_e.src, "width") ? _e.src.width : 80;
         var _tw = variable_instance_exists(_e.tgt, "width") ? _e.tgt.width : 80;
@@ -40,14 +43,17 @@ function scr_draw_flow_overlay(_edges) {
         // colour-coded jmp/jsr/branch/irq lines which stay centre-anchored.
         var _left_justify = (_e.kind == "flow") && !_e.org_jump;
 
+        var _sh = variable_instance_exists(_e.src, "height") ? _e.src.height : 40;
+        var _th = variable_instance_exists(_e.tgt, "height") ? _e.tgt.height : 40;
+
         var _wx1 = _left_justify ? (_e.src.x + 10) : (_e.src.x + _sw * 0.5);
-        var _wy1 = _e.src.y + 12; // header anchor
+        // jsr_ret originates from the base (bottom) of the RTS node, not the header
+        var _wy1 = (_e.kind == "jsr_ret") ? (_e.src.y + _sh) : (_e.src.y + 12);
 
         var _wx2 = _left_justify ? (_e.tgt.x + 10) : (_e.tgt.x + _tw * 0.5);
         // jsr_ret's target is the original JSR caller — anchor at its base
         // (bottom) rather than its header, so the return line doesn't
         // crowd the exact same point the outbound JSR line already uses.
-        var _th  = variable_instance_exists(_e.tgt, "height") ? _e.tgt.height : 40;
         var _wy2 = (_e.kind == "jsr_ret") ? (_e.tgt.y + _th) : (_e.tgt.y + 12);
 
         // Two-lane offset: a line flowing down shifts left, one flowing up
