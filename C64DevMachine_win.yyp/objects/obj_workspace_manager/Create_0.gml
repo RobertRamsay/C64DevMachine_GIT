@@ -944,7 +944,7 @@ scr_uqmenu_load();
 // vector control flow across the spine. Cached and only rebuilt when
 // flow_overlay_dirty is set (by node spawn/destroy) — avoids re-running a
 // full compile+assemble pass on every single toggle when nothing changed.
-flow_overlay_active = false;
+flow_overlay_mode = 0; // 0 = Off, 1 = Local Hover, 2 = Show All
 flow_overlay_edges  = [];
 flow_overlay_dirty  = true;
 

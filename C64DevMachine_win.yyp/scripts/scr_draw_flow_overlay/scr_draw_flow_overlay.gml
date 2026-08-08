@@ -8,7 +8,7 @@
 /// Called from Draw_64.gml (GUI space) — must run in the same event so it
 /// always sits over the nodes regardless of camera zoom/pan or instance
 /// draw order, the same reason the box-select overlay lives there too.
-function scr_draw_flow_overlay(_edges) {
+function scr_draw_flow_overlay(_edges, _mode) {
     var _col_flow   = make_color_rgb(255, 255, 255);
     var _col_jmp    = make_color_rgb(255, 220, 40);
     var _col_jsr    = make_color_rgb(40, 220, 220);
@@ -27,17 +27,18 @@ function scr_draw_flow_overlay(_edges) {
     // edges rather than tracked per-edge (simpler, and still reads fine).
     var _pulse_phase = (current_time mod 1200) / 1200;
 
-    // Find which node (if any) is currently under the mouse using its dimensions
     var _hovered_node = noone;
-    with (obj_c64_node) {
-        if (mouse_x >= x && mouse_x <= x + width && mouse_y >= y && mouse_y <= y + height) {
-            _hovered_node = id;
-            break;
+    
+    // Mode 1: Local Hover Mode - find hovered node and abort if empty
+    if (_mode == 1) {
+        with (obj_c64_node) {
+            if (mouse_x >= x && mouse_x <= x + width && mouse_y >= y && mouse_y <= y + height) {
+                _hovered_node = id;
+                break;
+            }
         }
+        if (_hovered_node == noone) return;
     }
-
-    // If we aren't hovering over any node, exit immediately and draw no lines
-    if (_hovered_node == noone) return;
 
     for (var i = 0; i < array_length(_edges); i++) {
         var _e = _edges[i];

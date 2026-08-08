@@ -79,7 +79,7 @@ with (obj_c64_node) {
 ///// nodes regardless of camera zoom/pan or draw-order quirks between
 ///// node instances and this controller.
 /////////////////////////////////////////////////////////////////
-if (flow_overlay_active) {
+if (flow_overlay_mode > 0) {
     scr_draw_flow_overlay(flow_overlay_edges);
 }
 
