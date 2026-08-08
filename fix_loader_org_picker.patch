@@ -1,0 +1,58 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index f874dea..021792a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -1197,6 +1197,53 @@ if (load_reu_picker_open) {
+ 		}
+ 	}
+ 
++	// MACRO_LOADER — LOAD_ORG picker (pick which LOAD_ORG asset to load from)
++	if (loader_org_picker_open) {
++		if (!instance_exists(loader_org_picker_node)) {
++			loader_org_picker_open  = false;
++			loader_org_picker_node  = noone;
++			loader_org_picker_hover = -1;
++		} else {
++			var _lop_matches = [];
++			for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
++				var _a = ds_list_find_value(asset_list, _i);
++				if (_a.type == "LOAD_ORG") {
++					array_push(_lop_matches, _a);
++				}
++			}
++			loader_org_picker_hover = -1;
++			var _drop_x = loader_org_picker_node.x + 68;
++			var _drop_y = loader_org_picker_node.y + 36;
++			for (var _i = 0; _i < array_length(_lop_matches); _i++) {
++				var _ry = _drop_y + (_i * 16);
++				if (point_in_rectangle(mouse_x, mouse_y, _drop_x, _ry, _drop_x + 180, _ry + 16)) {
++					loader_org_picker_hover = _i;
++					break;
++				}
++			}
++			if (mouse_check_button_pressed(mb_left)) {
++				if (loader_org_picker_hover >= 0) {
++					var _picked   = _lop_matches[loader_org_picker_hover];
++					var _lop_node = loader_org_picker_node;
++					while (array_length(_lop_node.instructions[0]) <= 2) {
++						array_push(_lop_node.instructions[0], "");
++					}
++					_lop_node.instructions[0][1] = _picked.name;
++					_lop_node.instructions[0][2] = "";
++					scr_c64_update_addresses();
++				}
++				loader_org_picker_open  = false;
++				loader_org_picker_node  = noone;
++				loader_org_picker_hover = -1;
++			}
++			if (mouse_check_button_pressed(mb_right) || keyboard_check_pressed(vk_escape)) {
++				loader_org_picker_open  = false;
++				loader_org_picker_node  = noone;
++				loader_org_picker_hover = -1;
++			}
++		}
++	}
++
+ 	// LOAD_ORG ASSET PICKER
+ 	
+ 	if (load_org_picker_open) {
