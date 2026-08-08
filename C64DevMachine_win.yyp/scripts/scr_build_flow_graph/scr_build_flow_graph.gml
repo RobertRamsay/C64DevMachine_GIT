@@ -186,6 +186,7 @@ function scr_build_flow_graph() {
         // $0314 (KERNAL-chained) and $FFFE (Direct hardware vector, used
         // when the KERNAL is banked out). One edge per vector (the lo
         // write) is enough — the hi write targets the same pair.
+        var _matched_irq_vector = false;
         if (f.type == "lo" && f.pos + 3 < _blen
         &&  p.bytes[f.pos + 1] == 0x8D
         &&  ( (p.bytes[f.pos + 2] == 0x14 && p.bytes[f.pos + 3] == 0x03)   // $0314
@@ -195,6 +196,36 @@ function scr_build_flow_graph() {
             if (_irq_tgt == noone) _irq_tgt = _addr_to_node(_target_addr, _owner_ranges);
             if (_irq_src != noone && _irq_tgt != noone) {
                 array_push(_edges, {kind: "irq", src: _irq_src, tgt: _irq_tgt});
+            }
+            _matched_irq_vector = true;
+        }
+
+        // MACRO_IRQ_HANDLER dispatch table: each user "JSR: <label>" call
+        // is stored purely as data — a byte_lab_lo/byte_lab_hi pair in a
+        // per-slot jump table — with the actual JSR's operand patched from
+        // that table by self-modifying code at runtime. The JSR opcode
+        // itself is always compiled with static $00 $00 operand bytes and
+        // carries no fixup, so the opcode-scan above can never see these
+        // calls. Any remaining "lo" fixup whose bytes were emitted by a
+        // MACRO_IRQ_HANDLER node (and isn't the vector write just above)
+        // is one of these dispatch entries — surface it as a "jsr" edge
+        // from the handler to that label. Dedup: 16 table slots always
+        // exist and unused ones mirror the last real target, so the same
+        // (src, tgt) pair shows up many times over — only the first counts.
+        if (!_matched_irq_vector && f.type == "lo") {
+            var _table_addr  = p.base_address + p.header_size + f.pos;
+            var _disp_owner  = _addr_to_node(_table_addr, _owner_ranges);
+            if (_disp_owner != noone && instance_exists(_disp_owner) && _disp_owner.node_type == "MACRO_IRQ_HANDLER") {
+                var _disp_tgt = _find_label_node(f.label);
+                if (_disp_tgt == noone) _disp_tgt = _addr_to_node(_target_addr, _owner_ranges);
+                if (_disp_tgt != noone) {
+                    var _dup = false;
+                    for (var _ei = 0; _ei < array_length(_edges); _ei++) {
+                        var _ee = _edges[_ei];
+                        if (_ee.kind == "jsr" && _ee.src == _disp_owner && _ee.tgt == _disp_tgt) { _dup = true; break; }
+                    }
+                    if (!_dup) array_push(_edges, {kind: "jsr", src: _disp_owner, tgt: _disp_tgt});
+                }
             }
         }
     }

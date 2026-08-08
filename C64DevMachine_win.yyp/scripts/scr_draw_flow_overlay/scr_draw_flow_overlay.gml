@@ -9,12 +9,6 @@
 /// always sits over the nodes regardless of camera zoom/pan or instance
 /// draw order, the same reason the box-select overlay lives there too.
 function scr_draw_flow_overlay(_edges, _mode) {
-    var _col_flow   = make_color_rgb(255, 255, 255);
-    var _col_jmp    = make_color_rgb(255, 220, 40);
-    var _col_jsr    = make_color_rgb(40, 220, 220);
-    var _col_branch = make_color_rgb(255, 140, 0);
-    var _col_irq    = make_color_rgb(60, 220, 60);
-
     // World -> GUI transform, same as the box-select overlay above.
     var _vx = camera_get_view_x(view_camera[0]);
     var _vy = camera_get_view_y(view_camera[0]);
@@ -93,15 +87,23 @@ function scr_draw_flow_overlay(_edges, _mode) {
         if (_hovered_node == noone) return;
     }
 
-    for (var i = 0; i < array_length(_edges); i++) {
-        var _e = _edges[i];
-        if (!instance_exists(_e.src) || !instance_exists(_e.tgt)) continue;
-		
-		// Skip drawing the regular grey flow lines and orange branch lines entirely
-        if (_e.kind == "flow" || _e.kind == "branch") continue;
-		
-		// In Mode 1, only show lines that connect to the specifically hovered node
-        if (_mode == 1 && _e.src != _hovered_node && _e.tgt != _hovered_node) continue;
+    // Pre-pass: which edges actually get drawn (same filters as the loop
+    // below) — needed up front so the hue spread below can be spaced
+    // evenly across however many lines are really on screen, rather than
+    // across the raw _edges array which also holds skipped flow/branch
+    // entries and off-screen mode-1 lines.
+    var _visible = [];
+    for (var _vi = 0; _vi < array_length(_edges); _vi++) {
+        var _ve = _edges[_vi];
+        if (!instance_exists(_ve.src) || !instance_exists(_ve.tgt)) continue;
+        if (_ve.kind == "flow" || _ve.kind == "branch") continue;
+        if (_mode == 1 && _ve.src != _hovered_node && _ve.tgt != _hovered_node) continue;
+        array_push(_visible, _ve);
+    }
+    var _visible_count = array_length(_visible);
+
+    for (var i = 0; i < _visible_count; i++) {
+        var _e = _visible[i];
 
         var _sw = variable_instance_exists(_e.src, "width") ? _e.src.width : 80;
         var _tw = variable_instance_exists(_e.tgt, "width") ? _e.tgt.width : 80;
@@ -137,16 +139,21 @@ function scr_draw_flow_overlay(_edges, _mode) {
         var _sx2 = (_wx2 - _vx) * _sx;
         var _sy2 = (_wy2 - _vy) * _sy;
 
-        var _col  = _col_flow;
+        // Full-spectrum hue spread: each visible line gets its own slice
+        // of the colour wheel based purely on its position in the visible
+        // list, rather than being grouped by kind — makes it far easier
+        // to trace one specific line through a dense tangle of others.
+        // Width/alpha still vary by kind so the important stuff (jmp/jsr/
+        // irq) reads heavier than a faint jsr_ret return trip.
+        var _hue = (_visible_count > 1) ? (i / _visible_count) * 255 : 0;
+        var _col = make_color_hsv(_hue, 200, 255);
         var _wid  = 2;
         var _alph = 0.25;
         switch (_e.kind) {
-            case "jmp":     _col = _col_jmp;    _wid = 3; _alph = 0.85; break;
-            case "jsr":     _col = _col_jsr;    _wid = 3; _alph = 0.85; break;
-            case "jsr_ret": _col = _col_jsr;    _wid = 3; _alph = 0.4;  break;
-            case "branch":  _col = _col_branch; _wid = 3; _alph = 0.85; break;
-            case "irq":     _col = _col_irq;    _wid = 4; _alph = 0.9;  break;
-            case "flow":    _col = _col_flow;   _wid = 3; _alph = 0.2;  break;
+            case "jmp":     _wid = 3; _alph = 0.85; break;
+            case "jsr":     _wid = 3; _alph = 0.85; break;
+            case "jsr_ret": _wid = 3; _alph = 0.4;  break;
+            case "irq":     _wid = 4; _alph = 0.9;  break;
         }
 
         draw_set_color(_col);

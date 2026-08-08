@@ -1,0 +1,128 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml b/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
+index 9f9ae47..fb59098 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
+@@ -186,6 +186,7 @@ function scr_build_flow_graph() {
+         // $0314 (KERNAL-chained) and $FFFE (Direct hardware vector, used
+         // when the KERNAL is banked out). One edge per vector (the lo
+         // write) is enough — the hi write targets the same pair.
++        var _matched_irq_vector = false;
+         if (f.type == "lo" && f.pos + 3 < _blen
+         &&  p.bytes[f.pos + 1] == 0x8D
+         &&  ( (p.bytes[f.pos + 2] == 0x14 && p.bytes[f.pos + 3] == 0x03)   // $0314
+@@ -196,6 +197,36 @@ function scr_build_flow_graph() {
+             if (_irq_src != noone && _irq_tgt != noone) {
+                 array_push(_edges, {kind: "irq", src: _irq_src, tgt: _irq_tgt});
+             }
++            _matched_irq_vector = true;
++        }
++
++        // MACRO_IRQ_HANDLER dispatch table: each user "JSR: <label>" call
++        // is stored purely as data — a byte_lab_lo/byte_lab_hi pair in a
++        // per-slot jump table — with the actual JSR's operand patched from
++        // that table by self-modifying code at runtime. The JSR opcode
++        // itself is always compiled with static $00 $00 operand bytes and
++        // carries no fixup, so the opcode-scan above can never see these
++        // calls. Any remaining "lo" fixup whose bytes were emitted by a
++        // MACRO_IRQ_HANDLER node (and isn't the vector write just above)
++        // is one of these dispatch entries — surface it as a "jsr" edge
++        // from the handler to that label. Dedup: 16 table slots always
++        // exist and unused ones mirror the last real target, so the same
++        // (src, tgt) pair shows up many times over — only the first counts.
++        if (!_matched_irq_vector && f.type == "lo") {
++            var _table_addr  = p.base_address + p.header_size + f.pos;
++            var _disp_owner  = _addr_to_node(_table_addr, _owner_ranges);
++            if (_disp_owner != noone && instance_exists(_disp_owner) && _disp_owner.node_type == "MACRO_IRQ_HANDLER") {
++                var _disp_tgt = _find_label_node(f.label);
++                if (_disp_tgt == noone) _disp_tgt = _addr_to_node(_target_addr, _owner_ranges);
++                if (_disp_tgt != noone) {
++                    var _dup = false;
++                    for (var _ei = 0; _ei < array_length(_edges); _ei++) {
++                        var _ee = _edges[_ei];
++                        if (_ee.kind == "jsr" && _ee.src == _disp_owner && _ee.tgt == _disp_tgt) { _dup = true; break; }
++                    }
++                    if (!_dup) array_push(_edges, {kind: "jsr", src: _disp_owner, tgt: _disp_tgt});
++                }
++            }
+         }
+     }
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml b/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
+index 4b07ee5..2144031 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
+@@ -9,12 +9,6 @@
+ /// always sits over the nodes regardless of camera zoom/pan or instance
+ /// draw order, the same reason the box-select overlay lives there too.
+ function scr_draw_flow_overlay(_edges, _mode) {
+-    var _col_flow   = make_color_rgb(255, 255, 255);
+-    var _col_jmp    = make_color_rgb(255, 220, 40);
+-    var _col_jsr    = make_color_rgb(40, 220, 220);
+-    var _col_branch = make_color_rgb(255, 140, 0);
+-    var _col_irq    = make_color_rgb(60, 220, 60);
+-
+     // World -> GUI transform, same as the box-select overlay above.
+     var _vx = camera_get_view_x(view_camera[0]);
+     var _vy = camera_get_view_y(view_camera[0]);
+@@ -93,15 +87,23 @@ function scr_draw_flow_overlay(_edges, _mode) {
+         if (_hovered_node == noone) return;
+     }
+ 
+-    for (var i = 0; i < array_length(_edges); i++) {
+-        var _e = _edges[i];
+-        if (!instance_exists(_e.src) || !instance_exists(_e.tgt)) continue;
+-		
+-		// Skip drawing the regular grey flow lines and orange branch lines entirely
+-        if (_e.kind == "flow" || _e.kind == "branch") continue;
+-		
+-		// In Mode 1, only show lines that connect to the specifically hovered node
+-        if (_mode == 1 && _e.src != _hovered_node && _e.tgt != _hovered_node) continue;
++    // Pre-pass: which edges actually get drawn (same filters as the loop
++    // below) — needed up front so the hue spread below can be spaced
++    // evenly across however many lines are really on screen, rather than
++    // across the raw _edges array which also holds skipped flow/branch
++    // entries and off-screen mode-1 lines.
++    var _visible = [];
++    for (var _vi = 0; _vi < array_length(_edges); _vi++) {
++        var _ve = _edges[_vi];
++        if (!instance_exists(_ve.src) || !instance_exists(_ve.tgt)) continue;
++        if (_ve.kind == "flow" || _ve.kind == "branch") continue;
++        if (_mode == 1 && _ve.src != _hovered_node && _ve.tgt != _hovered_node) continue;
++        array_push(_visible, _ve);
++    }
++    var _visible_count = array_length(_visible);
++
++    for (var i = 0; i < _visible_count; i++) {
++        var _e = _visible[i];
+ 
+         var _sw = variable_instance_exists(_e.src, "width") ? _e.src.width : 80;
+         var _tw = variable_instance_exists(_e.tgt, "width") ? _e.tgt.width : 80;
+@@ -137,16 +139,21 @@ function scr_draw_flow_overlay(_edges, _mode) {
+         var _sx2 = (_wx2 - _vx) * _sx;
+         var _sy2 = (_wy2 - _vy) * _sy;
+ 
+-        var _col  = _col_flow;
++        // Full-spectrum hue spread: each visible line gets its own slice
++        // of the colour wheel based purely on its position in the visible
++        // list, rather than being grouped by kind — makes it far easier
++        // to trace one specific line through a dense tangle of others.
++        // Width/alpha still vary by kind so the important stuff (jmp/jsr/
++        // irq) reads heavier than a faint jsr_ret return trip.
++        var _hue = (_visible_count > 1) ? (i / _visible_count) * 255 : 0;
++        var _col = make_color_hsv(_hue, 200, 255);
+         var _wid  = 2;
+         var _alph = 0.25;
+         switch (_e.kind) {
+-            case "jmp":     _col = _col_jmp;    _wid = 3; _alph = 0.85; break;
+-            case "jsr":     _col = _col_jsr;    _wid = 3; _alph = 0.85; break;
+-            case "jsr_ret": _col = _col_jsr;    _wid = 3; _alph = 0.4;  break;
+-            case "branch":  _col = _col_branch; _wid = 3; _alph = 0.85; break;
+-            case "irq":     _col = _col_irq;    _wid = 4; _alph = 0.9;  break;
+-            case "flow":    _col = _col_flow;   _wid = 3; _alph = 0.2;  break;
++            case "jmp":     _wid = 3; _alph = 0.85; break;
++            case "jsr":     _wid = 3; _alph = 0.85; break;
++            case "jsr_ret": _wid = 3; _alph = 0.4;  break;
++            case "irq":     _wid = 4; _alph = 0.9;  break;
+         }
+ 
+         draw_set_color(_col);
