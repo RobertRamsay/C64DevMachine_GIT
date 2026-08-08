@@ -97,6 +97,22 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(vk
 if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(ord("F"))
 && !keyboard_check(vk_control) && !keyboard_check(vk_shift) && !keyboard_check(vk_alt) && !scr_cmd_held()) {
     flow_overlay_mode = (flow_overlay_mode + 1) mod 3; // Cycles 0 -> 1 -> 2 -> 0
+    
+    // Set the toast message based on the new mode
+    if (flow_overlay_mode == 1) {
+        global.qmenu_toast_text = "FLOW LINES in LOCAL MODE\nHOVER over NODES to VIEW";
+        global.qmenu_toast_col  = c_yellow;
+        global.qmenu_toast_t    = global.qmenu_toast_dur;
+    } else if (flow_overlay_mode == 2) {
+        global.qmenu_toast_text = "FLOW LINES in GLOBAL MODE\nPRESS F to HIDE";
+        global.qmenu_toast_col  = c_yellow;
+        global.qmenu_toast_t    = global.qmenu_toast_dur;
+    } else {
+        global.qmenu_toast_text = "FLOW LINES: OFF";
+        global.qmenu_toast_col  = c_yellow;
+        global.qmenu_toast_t    = global.qmenu_toast_dur;
+    }
+
     if (flow_overlay_mode > 0 && (flow_overlay_dirty || array_length(flow_overlay_edges) == 0)) {
         flow_overlay_edges = scr_build_flow_graph();
         flow_overlay_dirty = false;
