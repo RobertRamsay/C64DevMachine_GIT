@@ -89,14 +89,17 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(vk
     welcome_open = true;
 }
 
-// F toggles the flow overlay — always rebuilds on toggle-on so it never
-// shows a stale graph after edits. Deliberately excludes any modifier so
-// it doesn't clash with existing Ctrl/Shift/Cmd+F bindings.
+// F toggles the flow overlay — rebuilds only if a node was added/removed
+// since the last build (flow_overlay_dirty), so re-toggling with no graph
+// changes is instant instead of re-running a full compile+assemble pass.
+// Deliberately excludes any modifier so it doesn't clash with existing
+// Ctrl/Shift/Cmd+F bindings.
 if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(ord("F"))
 && !keyboard_check(vk_control) && !keyboard_check(vk_shift) && !keyboard_check(vk_alt) && !scr_cmd_held()) {
     flow_overlay_active = !flow_overlay_active;
-    if (flow_overlay_active) {
+    if (flow_overlay_active && (flow_overlay_dirty || array_length(flow_overlay_edges) == 0)) {
         flow_overlay_edges = scr_build_flow_graph();
+        flow_overlay_dirty = false;
     }
 }
 

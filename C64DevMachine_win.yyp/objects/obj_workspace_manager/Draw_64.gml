@@ -75,6 +75,14 @@ with (obj_c64_node) {
     draw_rectangle(_gx1, _gy1, _gx2, _gy2, true);
 }
 
+///// FLOW OVERLAY (F key) — drawn in GUI space so it always sits over the
+///// nodes regardless of camera zoom/pan or draw-order quirks between
+///// node instances and this controller.
+/////////////////////////////////////////////////////////////////
+if (flow_overlay_active) {
+    scr_draw_flow_overlay(flow_overlay_edges);
+}
+
 // Draw selection highlights for committed selection
 if (array_length(global.selected_nodes) > 0) {
     var _vx = camera_get_view_x(view_camera[0]);

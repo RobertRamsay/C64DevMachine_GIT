@@ -1,9 +1,13 @@
 /// @desc scr_draw_flow_overlay(_edges)
 /// Draws the F-key flow overlay: colour-coded lines between every pair of
-/// nodes each JMP/JSR/BRANCH/IRQ-vector/sequential-flow edge connects.
+/// nodes each JMP/JSR/BRANCH/IRQ-vector/sequential-flow edge connects,
+/// each with a small circle travelling along it to show direction.
 /// Deliberately plain straight lines rather than the ORG-box bezier wire
 /// system — this overlay is built to show a lot of connections at once
 /// for debugging, not to look like a single polished wire.
+/// Called from Draw_64.gml (GUI space) — must run in the same event so it
+/// always sits over the nodes regardless of camera zoom/pan or instance
+/// draw order, the same reason the box-select overlay lives there too.
 function scr_draw_flow_overlay(_edges) {
     var _col_flow   = make_color_rgb(255, 255, 255);
     var _col_jmp    = make_color_rgb(255, 220, 40);
@@ -11,16 +15,33 @@ function scr_draw_flow_overlay(_edges) {
     var _col_branch = make_color_rgb(255, 140, 0);
     var _col_irq    = make_color_rgb(60, 220, 60);
 
+    // World -> GUI transform, same as the box-select overlay above.
+    var _vx = camera_get_view_x(view_camera[0]);
+    var _vy = camera_get_view_y(view_camera[0]);
+    var _vw = camera_get_view_width(view_camera[0]);
+    var _vh = camera_get_view_height(view_camera[0]);
+    var _sx = global.gui_w / _vw;
+    var _sy = display_get_gui_height() / _vh;
+
+    // Shared pulse phase — one sweep every ~1.2s, synchronised across all
+    // edges rather than tracked per-edge (simpler, and still reads fine).
+    var _pulse_phase = (current_time mod 1200) / 1200;
+
     for (var i = 0; i < array_length(_edges); i++) {
         var _e = _edges[i];
         if (!instance_exists(_e.src) || !instance_exists(_e.tgt)) continue;
 
         var _sw = variable_instance_exists(_e.src, "width") ? _e.src.width : 80;
         var _tw = variable_instance_exists(_e.tgt, "width") ? _e.tgt.width : 80;
-        var _sx = _e.src.x + _sw * 0.5;
-        var _sy = _e.src.y + 12;
-        var _tx = _e.tgt.x + _tw * 0.5;
-        var _ty = _e.tgt.y + 12;
+        var _wx1 = _e.src.x + _sw * 0.5;
+        var _wy1 = _e.src.y + 12;
+        var _wx2 = _e.tgt.x + _tw * 0.5;
+        var _wy2 = _e.tgt.y + 12;
+
+        var _sx1 = (_wx1 - _vx) * _sx;
+        var _sy1 = (_wy1 - _vy) * _sy;
+        var _sx2 = (_wx2 - _vx) * _sx;
+        var _sy2 = (_wy2 - _vy) * _sy;
 
         var _col  = _col_flow;
         var _wid  = 1;
@@ -36,17 +57,24 @@ function scr_draw_flow_overlay(_edges) {
 
         draw_set_color(_col);
         draw_set_alpha(_alph);
-        draw_line_width(_sx, _sy, _tx, _ty, _wid);
+        draw_line_width(_sx1, _sy1, _sx2, _sy2, _wid);
 
         // Small arrowhead near the target so direction is readable once
         // lines start overlapping — expected at any real project size.
         if (_e.kind != "flow") {
-            var _ang = point_direction(_sx, _sy, _tx, _ty);
-            var _ahx = _tx - lengthdir_x(14, _ang);
-            var _ahy = _ty - lengthdir_y(14, _ang);
-            draw_line_width(_ahx + lengthdir_x(6, _ang + 150), _ahy + lengthdir_y(6, _ang + 150), _tx, _ty, _wid);
-            draw_line_width(_ahx + lengthdir_x(6, _ang - 150), _ahy + lengthdir_y(6, _ang - 150), _tx, _ty, _wid);
+            var _ang = point_direction(_sx1, _sy1, _sx2, _sy2);
+            var _ahx = _sx2 - lengthdir_x(14, _ang);
+            var _ahy = _sy2 - lengthdir_y(14, _ang);
+            draw_line_width(_ahx + lengthdir_x(6, _ang + 150), _ahy + lengthdir_y(6, _ang + 150), _sx2, _sy2, _wid);
+            draw_line_width(_ahx + lengthdir_x(6, _ang - 150), _ahy + lengthdir_y(6, _ang - 150), _sx2, _sy2, _wid);
         }
+
+        // Travelling pulse — a small circle sliding from source to target
+        // so the direction of flow reads at a glance even in a tangle.
+        var _px = lerp(_sx1, _sx2, _pulse_phase);
+        var _py = lerp(_sy1, _sy2, _pulse_phase);
+        draw_set_alpha(min(1, _alph + 0.15));
+        draw_circle(_px, _py, _wid + 2, false);
     }
     draw_set_alpha(1.0);
 }

@@ -100,7 +100,3 @@ if (scan_active && global.visual_fx) {
 
 // Reset alpha to 1.0 so other UI or objects aren't transparent
 draw_set_alpha(1.0);
-
-if (flow_overlay_active) {
-    scr_draw_flow_overlay(flow_overlay_edges);
-}

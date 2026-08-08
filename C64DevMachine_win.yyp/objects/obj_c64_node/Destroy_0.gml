@@ -1,4 +1,6 @@
-			if (variable_global_exists("fx_sys") && global.node_destroy_fx && global.visual_fx) {
+			if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+
+if (variable_global_exists("fx_sys") && global.node_destroy_fx && global.visual_fx) {
 			    var _p_count = (width * height) / 200; // Density based on size
     
 			    // Create a burst across the rectangular area of the node

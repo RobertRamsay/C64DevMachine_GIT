@@ -941,10 +941,12 @@ ini_close();
 scr_uqmenu_load();
 
 // FLOW OVERLAY (F key) — toggleable visualization of JMP/JSR/BRANCH/IRQ-
-// vector control flow across the spine. Rebuilt fresh each time it's
-// toggled on via scr_build_flow_graph(), never kept stale.
+// vector control flow across the spine. Cached and only rebuilt when
+// flow_overlay_dirty is set (by node spawn/destroy) — avoids re-running a
+// full compile+assemble pass on every single toggle when nothing changed.
 flow_overlay_active = false;
 flow_overlay_edges  = [];
+flow_overlay_dirty  = true;
 
 // Restore window position and size from last session.
 // Only apply if the saved values look sane (w/h > 0).
