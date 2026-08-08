@@ -948,6 +948,17 @@ flow_overlay_mode = 0; // 0 = Off, 1 = Local Hover, 2 = Show All
 flow_overlay_edges  = [];
 flow_overlay_dirty  = true;
 
+// Rebuilding runs a full compile+assemble pass and can take a visible
+// moment on a large spine. Since the engine only presents a frame after
+// Step+Draw both finish, calling scr_build_flow_graph() inline would
+// freeze the screen for that whole pause with nothing shown. Instead the
+// trigger sites below queue the build (flow_overlay_build_pending) and
+// show "CONSTRUCTING FLOW DATA" immediately; the actual build runs first
+// thing next Step, once that frame has had a chance to render.
+flow_overlay_build_pending      = false;
+flow_overlay_pending_toast_text = "";
+flow_overlay_pending_toast_col  = c_yellow;
+
 // Restore window position and size from last session.
 // Only apply if the saved values look sane (w/h > 0).
 if (_saved_w > 0 && _saved_h > 0)

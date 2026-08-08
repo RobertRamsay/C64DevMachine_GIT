@@ -217,23 +217,38 @@ function scr_build_flow_graph() {
         // carries no fixup, so the opcode-scan above can never see these
         // calls. Any remaining "lo" fixup whose bytes were emitted by a
         // MACRO_IRQ_HANDLER node (and isn't the vector write just above)
-        // is one of these dispatch entries — surface it as a "jsr" edge
-        // from the handler to that label. Dedup: 16 table slots always
-        // exist and unused ones mirror the last real target, so the same
-        // (src, tgt) pair shows up many times over — only the first counts.
+        // is one of these dispatch entries — surface it as a "jsr" edge.
+        // The line should come from whichever individual MACRO_IRQ node
+        // actually configured this call, not the shared handler node —
+        // resolve that by re-deriving the exact same fallback-label rule
+        // scr_compile_chain used when it built this table slot (real
+        // call_label field if set, else "irq<id>_handler"), falling back
+        // to the handler node only if no MACRO_IRQ node matches. Dedup:
+        // 16 table slots always exist and unused ones mirror the last
+        // real target, so the same (src, tgt) pair shows up many times
+        // over — only the first counts.
         if (!_matched_irq_vector && f.type == "lo") {
             var _table_addr  = p.base_address + p.header_size + f.pos;
             var _disp_owner  = _addr_to_node(_table_addr, _owner_ranges);
             if (_disp_owner != noone && instance_exists(_disp_owner) && _disp_owner.node_type == "MACRO_IRQ_HANDLER") {
+                var _disp_src = noone;
+                with (obj_c64_node) {
+                    if (node_type == "MACRO_IRQ" && is_connected && org_parent == noone) {
+                        var _cl = (array_length(instructions[0]) > 5 && string(instructions[0][5]) != "")
+                                ? string(instructions[0][5]) : ("irq" + string(real(id)) + "_handler");
+                        if (_cl == f.label) { _disp_src = id; break; }
+                    }
+                }
+                if (_disp_src == noone) _disp_src = _disp_owner; // fallback: no matching MACRO_IRQ node found
                 var _disp_tgt = _find_label_node(f.label);
                 if (_disp_tgt == noone) _disp_tgt = _addr_to_node(_target_addr, _owner_ranges);
                 if (_disp_tgt != noone) {
                     var _dup = false;
                     for (var _ei = 0; _ei < array_length(_edges); _ei++) {
                         var _ee = _edges[_ei];
-                        if (_ee.kind == "jsr" && _ee.src == _disp_owner && _ee.tgt == _disp_tgt) { _dup = true; break; }
+                        if (_ee.kind == "jsr" && _ee.src == _disp_src && _ee.tgt == _disp_tgt) { _dup = true; break; }
                     }
-                    if (!_dup) array_push(_edges, {kind: "jsr", src: _disp_owner, tgt: _disp_tgt});
+                    if (!_dup) array_push(_edges, {kind: "jsr", src: _disp_src, tgt: _disp_tgt});
                 }
             }
         }

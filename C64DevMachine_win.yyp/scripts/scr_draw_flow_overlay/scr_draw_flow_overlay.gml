@@ -108,6 +108,15 @@ function scr_draw_flow_overlay(_edges, _mode) {
         var _sw = variable_instance_exists(_e.src, "width") ? _e.src.width : 80;
         var _tw = variable_instance_exists(_e.tgt, "width") ? _e.tgt.width : 80;
 
+        // obj_c64_node.x is the raw, pre-indent position outside its own
+        // Draw event (which temporarily adds x_indent, draws, then
+        // subtracts it back off) — so a line anchored straight off .x
+        // lands to the left of where an indented node actually renders.
+        // Add each node's own x_indent back in so the anchor matches what
+        // the eye actually sees on screen.
+        var _sxi = variable_instance_exists(_e.src, "x_indent") ? _e.src.x_indent : 0;
+        var _txi = variable_instance_exists(_e.tgt, "x_indent") ? _e.tgt.x_indent : 0;
+
         // Regular (non-org-jump) flow lines anchor 10px in from the left
         // edge instead of the centre — keeps them off to one side instead
         // of cutting through node content, and out of the way of the
@@ -117,11 +126,11 @@ function scr_draw_flow_overlay(_edges, _mode) {
         var _sh = variable_instance_exists(_e.src, "height") ? _e.src.height : 40;
         var _th = variable_instance_exists(_e.tgt, "height") ? _e.tgt.height : 40;
 
-        var _wx1 = _left_justify ? (_e.src.x + 10) : (_e.src.x + _sw * 0.5);
+        var _wx1 = _left_justify ? (_e.src.x + _sxi + 10) : (_e.src.x + _sxi + _sw * 0.5);
         // jsr_ret originates from the base (bottom) of the RTS node, not the header
         var _wy1 = (_e.kind == "jsr_ret") ? (_e.src.y + _sh) : (_e.src.y + 12);
 
-        var _wx2 = _left_justify ? (_e.tgt.x + 10) : (_e.tgt.x + _tw * 0.5);
+        var _wx2 = _left_justify ? (_e.tgt.x + _txi + 10) : (_e.tgt.x + _txi + _tw * 0.5);
         // jsr_ret's target is the original JSR caller — anchor at its base
         // (bottom) rather than its header, so the return line doesn't
         // crowd the exact same point the outbound JSR line already uses.

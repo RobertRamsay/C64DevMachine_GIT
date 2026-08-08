@@ -708,8 +708,12 @@ if (gui_menu_open == 4) {
                 }
 
                 if (flow_overlay_mode > 0 && (flow_overlay_dirty || array_length(flow_overlay_edges) == 0)) {
-                    flow_overlay_edges = scr_build_flow_graph();
-                    flow_overlay_dirty = false;
+                    flow_overlay_pending_toast_text = global.qmenu_toast_text;
+                    flow_overlay_pending_toast_col  = global.qmenu_toast_col;
+                    global.qmenu_toast_text = "CONSTRUCTING FLOW DATA";
+                    global.qmenu_toast_col  = c_yellow;
+                    global.qmenu_toast_t    = global.qmenu_toast_dur;
+                    flow_overlay_build_pending = true;
                 }
             }
             else if (_op.action == "FULLSCREEN") {

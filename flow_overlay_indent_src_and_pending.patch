@@ -1,0 +1,179 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 6938f33..b658196 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -948,6 +948,17 @@ flow_overlay_mode = 0; // 0 = Off, 1 = Local Hover, 2 = Show All
+ flow_overlay_edges  = [];
+ flow_overlay_dirty  = true;
+ 
++// Rebuilding runs a full compile+assemble pass and can take a visible
++// moment on a large spine. Since the engine only presents a frame after
++// Step+Draw both finish, calling scr_build_flow_graph() inline would
++// freeze the screen for that whole pause with nothing shown. Instead the
++// trigger sites below queue the build (flow_overlay_build_pending) and
++// show "CONSTRUCTING FLOW DATA" immediately; the actual build runs first
++// thing next Step, once that frame has had a chance to render.
++flow_overlay_build_pending      = false;
++flow_overlay_pending_toast_text = "";
++flow_overlay_pending_toast_col  = c_yellow;
++
+ // Restore window position and size from last session.
+ // Only apply if the saved values look sane (w/h > 0).
+ if (_saved_w > 0 && _saved_h > 0)
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index acd9d1b..2c9e3ef 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -708,8 +708,12 @@ if (gui_menu_open == 4) {
+                 }
+ 
+                 if (flow_overlay_mode > 0 && (flow_overlay_dirty || array_length(flow_overlay_edges) == 0)) {
+-                    flow_overlay_edges = scr_build_flow_graph();
+-                    flow_overlay_dirty = false;
++                    flow_overlay_pending_toast_text = global.qmenu_toast_text;
++                    flow_overlay_pending_toast_col  = global.qmenu_toast_col;
++                    global.qmenu_toast_text = "CONSTRUCTING FLOW DATA";
++                    global.qmenu_toast_col  = c_yellow;
++                    global.qmenu_toast_t    = global.qmenu_toast_dur;
++                    flow_overlay_build_pending = true;
+                 }
+             }
+             else if (_op.action == "FULLSCREEN") {
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index b2dab81..ea2a18e 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -1,6 +1,19 @@
+ // Advance the asynchronous C64U REU upload.
+ scr_c64u_reu_step();
+ 
++// Deferred flow-overlay rebuild — queued (not run inline) by whichever
++// trigger below needs it, so the "CONSTRUCTING FLOW DATA" toast gets a
++// full frame to actually render before this (potentially slow) compile
++// pass blocks the next one.
++if (flow_overlay_build_pending) {
++    flow_overlay_edges = scr_build_flow_graph();
++    flow_overlay_dirty = false;
++    flow_overlay_build_pending = false;
++    global.qmenu_toast_text = flow_overlay_pending_toast_text;
++    global.qmenu_toast_col  = flow_overlay_pending_toast_col;
++    global.qmenu_toast_t    = global.qmenu_toast_dur;
++}
++
+ // === EXIT CONFIRM HANDLER ===
+ if (global.question_result == "exit_confirm_yes")
+     {
+@@ -114,8 +127,12 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(or
+     }
+ 
+     if (flow_overlay_mode > 0 && (flow_overlay_dirty || array_length(flow_overlay_edges) == 0)) {
+-        flow_overlay_edges = scr_build_flow_graph();
+-        flow_overlay_dirty = false;
++        flow_overlay_pending_toast_text = global.qmenu_toast_text;
++        flow_overlay_pending_toast_col  = global.qmenu_toast_col;
++        global.qmenu_toast_text = "CONSTRUCTING FLOW DATA";
++        global.qmenu_toast_col  = c_yellow;
++        global.qmenu_toast_t    = global.qmenu_toast_dur;
++        flow_overlay_build_pending = true;
+     }
+ }
+ 
+@@ -125,11 +142,12 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(or
+ // flag is only ever set for a genuine connected move/add/delete (see
+ // obj_c64_node), so this fires once per real change, not every release.
+ if (mouse_check_button_released(mb_left) && flow_overlay_mode > 0 && flow_overlay_dirty) {
+-    flow_overlay_edges = scr_build_flow_graph();
+-    flow_overlay_dirty = false;
+-    global.qmenu_toast_text = "FLOW LINES updated";
++    flow_overlay_pending_toast_text = "FLOW LINES updated";
++    flow_overlay_pending_toast_col  = c_yellow;
++    global.qmenu_toast_text = "CONSTRUCTING FLOW DATA";
+     global.qmenu_toast_col  = c_yellow;
+     global.qmenu_toast_t    = global.qmenu_toast_dur;
++    flow_overlay_build_pending = true;
+ }
+ 
+ if (code_editor_open) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml b/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
+index bbe6a12..e84970d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
+@@ -217,23 +217,38 @@ function scr_build_flow_graph() {
+         // carries no fixup, so the opcode-scan above can never see these
+         // calls. Any remaining "lo" fixup whose bytes were emitted by a
+         // MACRO_IRQ_HANDLER node (and isn't the vector write just above)
+-        // is one of these dispatch entries — surface it as a "jsr" edge
+-        // from the handler to that label. Dedup: 16 table slots always
+-        // exist and unused ones mirror the last real target, so the same
+-        // (src, tgt) pair shows up many times over — only the first counts.
++        // is one of these dispatch entries — surface it as a "jsr" edge.
++        // The line should come from whichever individual MACRO_IRQ node
++        // actually configured this call, not the shared handler node —
++        // resolve that by re-deriving the exact same fallback-label rule
++        // scr_compile_chain used when it built this table slot (real
++        // call_label field if set, else "irq<id>_handler"), falling back
++        // to the handler node only if no MACRO_IRQ node matches. Dedup:
++        // 16 table slots always exist and unused ones mirror the last
++        // real target, so the same (src, tgt) pair shows up many times
++        // over — only the first counts.
+         if (!_matched_irq_vector && f.type == "lo") {
+             var _table_addr  = p.base_address + p.header_size + f.pos;
+             var _disp_owner  = _addr_to_node(_table_addr, _owner_ranges);
+             if (_disp_owner != noone && instance_exists(_disp_owner) && _disp_owner.node_type == "MACRO_IRQ_HANDLER") {
++                var _disp_src = noone;
++                with (obj_c64_node) {
++                    if (node_type == "MACRO_IRQ" && is_connected && org_parent == noone) {
++                        var _cl = (array_length(instructions[0]) > 5 && string(instructions[0][5]) != "")
++                                ? string(instructions[0][5]) : ("irq" + string(real(id)) + "_handler");
++                        if (_cl == f.label) { _disp_src = id; break; }
++                    }
++                }
++                if (_disp_src == noone) _disp_src = _disp_owner; // fallback: no matching MACRO_IRQ node found
+                 var _disp_tgt = _find_label_node(f.label);
+                 if (_disp_tgt == noone) _disp_tgt = _addr_to_node(_target_addr, _owner_ranges);
+                 if (_disp_tgt != noone) {
+                     var _dup = false;
+                     for (var _ei = 0; _ei < array_length(_edges); _ei++) {
+                         var _ee = _edges[_ei];
+-                        if (_ee.kind == "jsr" && _ee.src == _disp_owner && _ee.tgt == _disp_tgt) { _dup = true; break; }
++                        if (_ee.kind == "jsr" && _ee.src == _disp_src && _ee.tgt == _disp_tgt) { _dup = true; break; }
+                     }
+-                    if (!_dup) array_push(_edges, {kind: "jsr", src: _disp_owner, tgt: _disp_tgt});
++                    if (!_dup) array_push(_edges, {kind: "jsr", src: _disp_src, tgt: _disp_tgt});
+                 }
+             }
+         }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml b/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
+index 2144031..f06eb6b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
+@@ -108,6 +108,15 @@ function scr_draw_flow_overlay(_edges, _mode) {
+         var _sw = variable_instance_exists(_e.src, "width") ? _e.src.width : 80;
+         var _tw = variable_instance_exists(_e.tgt, "width") ? _e.tgt.width : 80;
+ 
++        // obj_c64_node.x is the raw, pre-indent position outside its own
++        // Draw event (which temporarily adds x_indent, draws, then
++        // subtracts it back off) — so a line anchored straight off .x
++        // lands to the left of where an indented node actually renders.
++        // Add each node's own x_indent back in so the anchor matches what
++        // the eye actually sees on screen.
++        var _sxi = variable_instance_exists(_e.src, "x_indent") ? _e.src.x_indent : 0;
++        var _txi = variable_instance_exists(_e.tgt, "x_indent") ? _e.tgt.x_indent : 0;
++
+         // Regular (non-org-jump) flow lines anchor 10px in from the left
+         // edge instead of the centre — keeps them off to one side instead
+         // of cutting through node content, and out of the way of the
+@@ -117,11 +126,11 @@ function scr_draw_flow_overlay(_edges, _mode) {
+         var _sh = variable_instance_exists(_e.src, "height") ? _e.src.height : 40;
+         var _th = variable_instance_exists(_e.tgt, "height") ? _e.tgt.height : 40;
+ 
+-        var _wx1 = _left_justify ? (_e.src.x + 10) : (_e.src.x + _sw * 0.5);
++        var _wx1 = _left_justify ? (_e.src.x + _sxi + 10) : (_e.src.x + _sxi + _sw * 0.5);
+         // jsr_ret originates from the base (bottom) of the RTS node, not the header
+         var _wy1 = (_e.kind == "jsr_ret") ? (_e.src.y + _sh) : (_e.src.y + 12);
+ 
+-        var _wx2 = _left_justify ? (_e.tgt.x + 10) : (_e.tgt.x + _tw * 0.5);
++        var _wx2 = _left_justify ? (_e.tgt.x + _txi + 10) : (_e.tgt.x + _txi + _tw * 0.5);
+         // jsr_ret's target is the original JSR caller — anchor at its base
+         // (bottom) rather than its header, so the return line doesn't
+         // crowd the exact same point the outbound JSR line already uses.

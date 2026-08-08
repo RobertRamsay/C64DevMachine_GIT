@@ -1,6 +1,19 @@
 // Advance the asynchronous C64U REU upload.
 scr_c64u_reu_step();
 
+// Deferred flow-overlay rebuild — queued (not run inline) by whichever
+// trigger below needs it, so the "CONSTRUCTING FLOW DATA" toast gets a
+// full frame to actually render before this (potentially slow) compile
+// pass blocks the next one.
+if (flow_overlay_build_pending) {
+    flow_overlay_edges = scr_build_flow_graph();
+    flow_overlay_dirty = false;
+    flow_overlay_build_pending = false;
+    global.qmenu_toast_text = flow_overlay_pending_toast_text;
+    global.qmenu_toast_col  = flow_overlay_pending_toast_col;
+    global.qmenu_toast_t    = global.qmenu_toast_dur;
+}
+
 // === EXIT CONFIRM HANDLER ===
 if (global.question_result == "exit_confirm_yes")
     {
@@ -114,8 +127,12 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(or
     }
 
     if (flow_overlay_mode > 0 && (flow_overlay_dirty || array_length(flow_overlay_edges) == 0)) {
-        flow_overlay_edges = scr_build_flow_graph();
-        flow_overlay_dirty = false;
+        flow_overlay_pending_toast_text = global.qmenu_toast_text;
+        flow_overlay_pending_toast_col  = global.qmenu_toast_col;
+        global.qmenu_toast_text = "CONSTRUCTING FLOW DATA";
+        global.qmenu_toast_col  = c_yellow;
+        global.qmenu_toast_t    = global.qmenu_toast_dur;
+        flow_overlay_build_pending = true;
     }
 }
 
@@ -125,11 +142,12 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(or
 // flag is only ever set for a genuine connected move/add/delete (see
 // obj_c64_node), so this fires once per real change, not every release.
 if (mouse_check_button_released(mb_left) && flow_overlay_mode > 0 && flow_overlay_dirty) {
-    flow_overlay_edges = scr_build_flow_graph();
-    flow_overlay_dirty = false;
-    global.qmenu_toast_text = "FLOW LINES updated";
+    flow_overlay_pending_toast_text = "FLOW LINES updated";
+    flow_overlay_pending_toast_col  = c_yellow;
+    global.qmenu_toast_text = "CONSTRUCTING FLOW DATA";
     global.qmenu_toast_col  = c_yellow;
     global.qmenu_toast_t    = global.qmenu_toast_dur;
+    flow_overlay_build_pending = true;
 }
 
 if (code_editor_open) {
