@@ -6862,6 +6862,11 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                    draw_rectangle(_gsx1, _gsy1, _gsx2, _gsy2, true);
 	                    if (_gs_hov && mouse_check_button_pressed(mb_left)) {
 	                        _asset.meta.gradient_custom_cols[_gs] = _asset.meta.active_color;
+	                        // Editing a slot is a clear signal the person wants
+	                        // the custom gradient — flip CUSTOM on automatically
+	                        // so it isn't silently ignored. Still a toggle, so
+	                        // they can turn it back off if they really want to.
+	                        _asset.meta.gradient_custom_active = true;
 	                    }
 	                    // Right-click a slot to set how many stops are actually
 	                    // used, 1-based (slot 0 -> 1 colour / flat fill, slot 2
