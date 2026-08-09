@@ -1,0 +1,74 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml b/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
+index b451afb..34fde20 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
+@@ -264,19 +264,20 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     var _raw_px = clamp(floor((_mx - _box_x) / 2), 0, 255);
+     var _raw_py = clamp(floor((_my - _box_y) / 2), 0, 255);
+ 
+-    // ── TYPE COLOUR TABLE (0-7 mapped to distinct C64 palette entries) ──
+-    // Pepto index kept alongside each colour so the swatch label matches a
+-    // real C64 colour register value for debug (e.g. "type 3 == pepto $06").
+-    var _type_pepto_idx = [-1, 2, 5, 6, 7, 10, 13, 14]; // -1 = white, no pepto index
++    // ── TYPE COLOUR TABLE (type N shown in the actual C64 pen colour N) ──
++    // Direct 1:1: type 0 swatch is pepto colour 0 (black), type 1 is pepto
++    // colour 1 (white), etc. — the swatch itself is the debug readout, since
++    // this is meant to match colour values the person will see/compare
++    // elsewhere (e.g. a border colour set to the result byte).
+     var _type_colours = [
+-        c_white,
+-        scr_c64_pepto_colour(2),  // red
+-        scr_c64_pepto_colour(5),  // green
+-        scr_c64_pepto_colour(6),  // blue
+-        scr_c64_pepto_colour(7),  // yellow
+-        scr_c64_pepto_colour(10), // orange
+-        scr_c64_pepto_colour(13), // lt green
+-        scr_c64_pepto_colour(14)  // lt blue
++        scr_c64_pepto_colour(0), // black
++        scr_c64_pepto_colour(1), // white
++        scr_c64_pepto_colour(2), // red
++        scr_c64_pepto_colour(3), // cyan
++        scr_c64_pepto_colour(4), // purple
++        scr_c64_pepto_colour(5), // green
++        scr_c64_pepto_colour(6), // blue
++        scr_c64_pepto_colour(7)  // yellow
+     ];
+ 
+     // ── DRAW EXISTING LINES ──
+@@ -309,25 +310,22 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         var _tby2 = _tby1 + 18;
+         var _tb_hov = point_in_rectangle(_mx, _my, _tbx1, _tby1, _tbx2, _tby2);
+         var _tb_sel = (_m.active_type == _ti);
++        // Filled swatch is the colour readout itself (type N = pepto colour N).
++        // Always draw a filled swatch, with a brighter outline when selected/
++        // hovered — outline-only (as before) would make the black (type 0)
++        // and near-black swatches invisible against the dark panel.
+         draw_set_color(_type_colours[_ti]);
+-        draw_rectangle(_tbx1, _tby1, _tbx2, _tby2, !_tb_sel);
+-        if (_tb_sel) {
+-            draw_set_color(c_black);
+-        } else {
+-            draw_set_color(_tb_hov ? c_white : _type_colours[_ti]);
+-        }
+-        draw_set_halign(fa_center);
+-        draw_text(_tbx1 + 11, _tby1 + 3, string(_ti));
+-        draw_set_halign(fa_left);
++        draw_rectangle(_tbx1, _tby1, _tbx2, _tby2, false);
++        draw_set_color(_tb_sel ? c_white : (_tb_hov ? make_color_rgb(200, 200, 200) : make_color_rgb(60, 60, 60)));
++        draw_rectangle(_tbx1, _tby1, _tbx2, _tby2, true);
+         if (_tb_hov && mouse_check_button_pressed(mb_left)) {
+             _m.active_type = _ti;
+         }
+-        // Pepto colour index readout beneath each swatch (debug reference —
+-        // matches this type's colour to a real C64 colour register value).
++        // Small index number under the swatch — position alone (1st, 2nd...)
++        // should be enough once memorised, but this avoids any ambiguity.
+         draw_set_halign(fa_center);
+-        draw_set_color(make_color_rgb(130, 130, 130));
+-        var _pepto_label = (_type_pepto_idx[_ti] < 0) ? "-" : ("$" + string(_type_pepto_idx[_ti]));
+-        draw_text(_tbx1 + 11, _tby2 + 2, _pepto_label);
++        draw_set_color(make_color_rgb(140, 140, 140));
++        draw_text(_tbx1 + 11, _tby2 + 2, string(_ti));
+         draw_set_halign(fa_left);
+     }
+ 
