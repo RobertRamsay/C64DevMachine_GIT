@@ -226,14 +226,26 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(make_color_rgb(20, 20, 30));
     draw_rectangle(_box_x, _box_y, _box_x + _box_w, _box_y + _box_h, false);
 
+    // Scissor everything drawn inside the canvas box (reference bitmap, lines,
+    // drag preview) so nothing bleeds into the list column beside it.
+    // gpu_set_scissor works in window px, not GUI px — scale by the same
+    // ratio scr_asset_inline_editor_draw uses for its text-area scissor.
+    var _sx_sc = window_get_width()  / global.gui_w;
+    var _sy_sc = window_get_height() / display_get_gui_height();
+    gpu_set_scissor(
+        floor(_box_x * _sx_sc),
+        floor(_box_y * _sy_sc),
+        ceil(_box_w * _sx_sc),
+        ceil(_box_h * _sy_sc)
+    );
+
     // ── DRAW REFERENCE BITMAP (if enabled and resolved) ──
     if (_m.ref_enabled && _ref_asset != undefined
         && variable_struct_exists(_ref_asset.meta, "preview_surf")
         && surface_exists(_ref_asset.meta.preview_surf)) {
         // Reference bitmap is 320x200 C64 space; LINE_COLL canvas is 256x256.
-        // Draw the bitmap at its offset, scaled 1:1 with the canvas's 2x zoom,
-        // clipped to the canvas box by draw_surface_part_ext.
-        var _bmp_w = 320, _bmp_h = 200;
+        // Drawn at its offset, scaled 1:1 with the canvas's 2x zoom; the
+        // scissor above (not draw_surface_ext itself) keeps it inside the box.
         var _draw_ox = _box_x + (_m.ref_offset_x * 2);
         var _draw_oy = _box_y + (_m.ref_offset_y * 2);
         var _prev_filter2 = gpu_get_texfilter();
@@ -241,9 +253,6 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_surface_ext(_ref_asset.meta.preview_surf, _draw_ox, _draw_oy, 2, 2, 0, c_white, 0.7);
         gpu_set_texfilter(_prev_filter2);
     }
-
-    draw_set_color(make_color_rgb(90, 90, 110));
-    draw_rectangle(_box_x, _box_y, _box_x + _box_w, _box_y + _box_h, true);
 
     var _in_canvas = point_in_rectangle(_mx, _my, _box_x, _box_y, _box_x + _box_w, _box_y + _box_h);
     var _raw_px = clamp(floor((_mx - _box_x) / 2), 0, 255);
@@ -271,6 +280,13 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_set_color(_type_colours[clamp(_ln.type, 0, 7)]);
         draw_line_width(_lx1, _ly1, _lx2, _ly2, 2);
     }
+
+    // Release scissor — everything below (border, type selector, list) sits
+    // outside or spans past the canvas box and must not be clipped.
+    gpu_set_scissor(0, 0, window_get_width(), window_get_height());
+
+    draw_set_color(make_color_rgb(90, 90, 110));
+    draw_rectangle(_box_x, _box_y, _box_x + _box_w, _box_y + _box_h, true);
 
     // ── TYPE SELECTOR (0-7) ──
     var _type_y = _box_y + _box_h + 10;
@@ -312,14 +328,22 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         array_push(_m.lines, { x1: _m.draw_x1, y1: _m.draw_y1, x2: _end_px, y2: _end_py, type: _m.active_type });
         _m.draw_x1 = -1;
         _m.draw_y1 = -1;
-        scr_line_coll_flush(_asset);
+        scr_line_coll_commit(_asset);
     }
-    // In-progress drag preview
+    // In-progress drag preview — re-apply the canvas scissor just for this,
+    // so a drag toward the list column doesn't paint over the list text.
     if (_m.draw_x1 >= 0 && mouse_check_button(mb_left)) {
+        gpu_set_scissor(
+            floor(_box_x * _sx_sc),
+            floor(_box_y * _sy_sc),
+            ceil(_box_w * _sx_sc),
+            ceil(_box_h * _sy_sc)
+        );
         var _px1 = _box_x + (_m.draw_x1 * 2);
         var _py1 = _box_y + (_m.draw_y1 * 2);
         draw_set_color(_type_colours[clamp(_m.active_type, 0, 7)]);
         draw_line_width(_px1, _py1, _mx, _my, 2);
+        gpu_set_scissor(0, 0, window_get_width(), window_get_height());
     }
 
     // ── LINE LIST (with delete) ──
@@ -358,7 +382,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     if (_delete_idx >= 0) {
         array_delete(_m.lines, _delete_idx, 1);
-        scr_line_coll_flush(_asset);
+        scr_line_coll_commit(_asset);
     }
     if (point_in_rectangle(_mx, _my, _list_x1, _list_y1, _list_x2, _list_y1 + (_rows_vis * _row_h))) {
         if (mouse_wheel_up())   _m.line_scroll = max(0, _m.line_scroll - 1);
@@ -374,6 +398,33 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 function scr_line_coll_save(_asset) {
     _asset.meta.line_string = _asset.meta.inline_edit_text;
     scr_line_coll_flush(_asset);
+}
+
+/// @desc scr_line_coll_commit(_asset)
+/// Rebuilds meta.line_string and the compiled buffer FROM meta.lines[] —
+/// the reverse direction of scr_line_coll_flush. Use this after the visual
+/// canvas editor mutates meta.lines[] directly (push/delete): flushing from
+/// text there would re-parse the stale line_string and silently discard the
+/// just-drawn line. Text-edit paths still use scr_line_coll_flush, since
+/// there the text IS the source of truth.
+function scr_line_coll_commit(_asset) {
+    var _lines = variable_struct_exists(_asset.meta, "lines") ? _asset.meta.lines : [];
+    var _out_lines = [];
+    for (var _i = 0; _i < array_length(_lines); _i++) {
+        var _ln = _lines[_i];
+        array_push(_out_lines, string(_ln.x1) + "," + string(_ln.y1) + "," + string(_ln.x2) + "," + string(_ln.y2) + "," + string(_ln.type));
+    }
+    var _serialised = string_join_ext("\n", _out_lines);
+    _asset.meta.line_string      = _serialised;
+    _asset.meta.inline_edit_text = _serialised;
+
+    var _bytes = scr_line_coll_compile(_lines);
+    if (buffer_exists(_asset.buffer)) buffer_delete(_asset.buffer);
+    _asset.buffer = buffer_create(max(1, array_length(_bytes)), buffer_fixed, 1);
+    for (var _bi = 0; _bi < array_length(_bytes); _bi++) {
+        buffer_write(_asset.buffer, buffer_u8, _bytes[_bi]);
+    }
+    _asset.size = array_length(_bytes);
 }
 
 /// @desc scr_line_coll_flush(_asset)

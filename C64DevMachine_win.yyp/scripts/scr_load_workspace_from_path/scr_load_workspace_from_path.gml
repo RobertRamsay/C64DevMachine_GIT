@@ -480,6 +480,30 @@ with (obj_c64_node) {
                     scr_asset_byte_data_flush(_new_asset);
                 }
             }
+            if (_ad.type == "LINE_COLL") {
+                if (!variable_struct_exists(_new_asset.meta, "lines"))          _new_asset.meta.lines = [];
+                if (!variable_struct_exists(_new_asset.meta, "line_string"))    _new_asset.meta.line_string = "";
+                if (!variable_struct_exists(_new_asset.meta, "active_type"))    _new_asset.meta.active_type = 1;
+                if (!variable_struct_exists(_new_asset.meta, "ref_enabled"))    _new_asset.meta.ref_enabled = false;
+                if (!variable_struct_exists(_new_asset.meta, "ref_asset_name")) _new_asset.meta.ref_asset_name = "";
+                if (!variable_struct_exists(_new_asset.meta, "ref_offset_x"))   _new_asset.meta.ref_offset_x = 0;
+                if (!variable_struct_exists(_new_asset.meta, "ref_offset_y"))   _new_asset.meta.ref_offset_y = 0;
+                _new_asset.meta.draw_x1            = -1;
+                _new_asset.meta.draw_y1            = -1;
+                _new_asset.meta.line_scroll        = 0;
+                _new_asset.meta.ref_picker_open    = false;
+                _new_asset.meta.inline_edit_open      = false;
+                _new_asset.meta.inline_edit_text      = _new_asset.meta.line_string;
+                _new_asset.meta.inline_edit_cursor    = 0;
+                _new_asset.meta.inline_edit_scroll_y  = 0;
+                _new_asset.meta.inline_edit_sel_start = -1;
+                _new_asset.meta.inline_edit_sel_end   = -1;
+                _new_asset.meta.inline_edit_blink     = 0;
+                _new_asset.meta.inline_edit_key_timer = 0;
+                // lines[] is the saved source of truth — rebuild the compiled
+                // buffer and line_string from it directly (no text re-parse).
+                scr_line_coll_commit(_new_asset);
+            }
             if (_ad.type == "SFX_DATA") {
                 var _sfx_sm = _ad.meta;
                 if (variable_struct_exists(_sfx_sm, "song_name"))   _new_asset.meta.song_name   = _sfx_sm.song_name;

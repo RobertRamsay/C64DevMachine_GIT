@@ -186,6 +186,13 @@ if (instance_exists(obj_asset_manager)) {
         if (variable_struct_exists(_a.meta, "tool"))          _meta_out.tool          = _a.meta.tool;
         if (variable_struct_exists(_a.meta, "text"))          _meta_out.text          = _a.meta.text;
         if (variable_struct_exists(_a.meta, "byte_string"))   _meta_out.byte_string   = _a.meta.byte_string;
+        if (variable_struct_exists(_a.meta, "line_string"))   _meta_out.line_string   = _a.meta.line_string;
+        if (variable_struct_exists(_a.meta, "lines"))         _meta_out.lines         = _a.meta.lines;
+        if (variable_struct_exists(_a.meta, "active_type"))   _meta_out.active_type   = _a.meta.active_type;
+        if (variable_struct_exists(_a.meta, "ref_enabled"))   _meta_out.ref_enabled   = _a.meta.ref_enabled;
+        if (variable_struct_exists(_a.meta, "ref_asset_name")) _meta_out.ref_asset_name = _a.meta.ref_asset_name;
+        if (variable_struct_exists(_a.meta, "ref_offset_x"))  _meta_out.ref_offset_x  = _a.meta.ref_offset_x;
+        if (variable_struct_exists(_a.meta, "ref_offset_y"))  _meta_out.ref_offset_y  = _a.meta.ref_offset_y;
         if (variable_struct_exists(_a.meta, "is_save_file"))  _meta_out.is_save_file  = _a.meta.is_save_file;
         if (variable_struct_exists(_a.meta, "save_file_size")) _meta_out.save_file_size = _a.meta.save_file_size;
         if (variable_struct_exists(_a.meta, "paint_mc"))      _meta_out.paint_mc      = _a.meta.paint_mc;
