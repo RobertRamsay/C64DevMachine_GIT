@@ -10477,10 +10477,18 @@ case "MACRO_COLL_LINE": {
     array_push(_list, ["label", _loop_lbl]);
 
     // Peek axis-flag byte (record's byte 0) — $FF means sentinel, stop.
+    // Long-range safe: BNE-skip + JMP_ABS trampoline (BEQ direct to _miss_lbl
+    // measured 190 bytes away in practice — well past the ±127 signed-byte
+    // range a 6502 branch allows; the assembler does not range-check this,
+    // it silently wraps, so trampolines are used throughout this routine
+    // rather than only where a distance happens to be measured as unsafe).
+    var _sentinel_ok = "L_LSENOK_" + _uid;
     array_push(_list, ["ldy_imm", 0,       _id]);
     array_push(_list, ["lda_iny", 0xFA,       _id]); // (zp),Y load via $FA/$FB — see note below
     array_push(_list, ["cmp_imm", 0xFF,    _id]);
-    array_push(_list, ["beq",     _miss_lbl, _id]);
+    array_push(_list, ["bne",     _sentinel_ok, _id]);
+    array_push(_list, ["jmp_abs", _miss_lbl,    _id]);
+    array_push(_list, ["label",   _sentinel_ok]);
     array_push(_list, ["sta_zp",  0xF5,    _id]); // axis flag
 
     array_push(_list, ["ldy_imm", 1,       _id]);
@@ -10496,19 +10504,26 @@ case "MACRO_COLL_LINE": {
     array_push(_list, ["lda_iny", 0xFA,       _id]);
     array_push(_list, ["sta_zp",  0xF9,    _id]); // slope byte
 
-    // Branch on axis: 0 = X-major, 1 = Y-major
+    // Branch on axis: 0 = X-major, 1 = Y-major. Both arms already used
+    // JMP_ABS, so this pair was always long-range safe.
     array_push(_list, ["lda_zp",  0xF5,    _id]);
     array_push(_list, ["beq",     _xmaj_lbl, _id]);
     array_push(_list, ["jmp_abs", _ymaj_lbl, _id]);
 
     array_push(_list, ["label", _xmaj_lbl]);
     // major axis = probe X, minor axis compared against probe Y
+    var _xmaj_ok1 = "L_LXOK1_" + _uid;
+    var _xmaj_ok2 = "L_LXOK2_" + _uid;
     array_push(_list, ["lda_abs", _px_addr, _id]);
     array_push(_list, ["cmp_zp",  0xF6,     _id]);
-    array_push(_list, ["bcc",     _next_lbl, _id]); // probe_x < major_start -> skip
+    array_push(_list, ["bcs",     _xmaj_ok1, _id]); // probe_x >= major_start -> continue
+    array_push(_list, ["jmp_abs", _next_lbl, _id]); // probe_x < major_start -> skip
+    array_push(_list, ["label",   _xmaj_ok1]);
     array_push(_list, ["lda_zp",  0xF8,     _id]);
     array_push(_list, ["cmp_abs", _px_addr, _id]);
-    array_push(_list, ["bcc",     _next_lbl, _id]); // major_end < probe_x -> skip
+    array_push(_list, ["bcs",     _xmaj_ok2, _id]); // major_end >= probe_x -> continue
+    array_push(_list, ["jmp_abs", _next_lbl, _id]); // major_end < probe_x -> skip
+    array_push(_list, ["label",   _xmaj_ok2]);
     array_push(_list, ["lda_abs", _px_addr, _id]);
     array_push(_list, ["sec",     0,        _id]);
     array_push(_list, ["sbc_zp",  0xF6,     _id]);
@@ -10517,12 +10532,18 @@ case "MACRO_COLL_LINE": {
 
     array_push(_list, ["label", _ymaj_lbl]);
     // major axis = probe Y, minor axis compared against probe X
+    var _ymaj_ok1 = "L_LYOK1_" + _uid;
+    var _ymaj_ok2 = "L_LYOK2_" + _uid;
     array_push(_list, ["lda_abs", _py_addr, _id]);
     array_push(_list, ["cmp_zp",  0xF6,     _id]);
-    array_push(_list, ["bcc",     _next_lbl, _id]);
+    array_push(_list, ["bcs",     _ymaj_ok1, _id]);
+    array_push(_list, ["jmp_abs", _next_lbl, _id]);
+    array_push(_list, ["label",   _ymaj_ok1]);
     array_push(_list, ["lda_zp",  0xF8,     _id]);
     array_push(_list, ["cmp_abs", _py_addr, _id]);
-    array_push(_list, ["bcc",     _next_lbl, _id]);
+    array_push(_list, ["bcs",     _ymaj_ok2, _id]);
+    array_push(_list, ["jmp_abs", _next_lbl, _id]);
+    array_push(_list, ["label",   _ymaj_ok2]);
     array_push(_list, ["lda_abs", _py_addr, _id]);
     array_push(_list, ["sec",     0,        _id]);
     array_push(_list, ["sbc_zp",  0xF6,     _id]);
@@ -10541,7 +10562,7 @@ case "MACRO_COLL_LINE": {
     array_push(_list, ["tax",     0,        _id]); // X = gradient (loop counter)
     array_push(_list, ["label",   _mulloop_lbl]);
     array_push(_list, ["cpx_imm", 0,        _id]);
-    array_push(_list, ["beq",     _muldone_lbl, _id]);
+    array_push(_list, ["beq",     _muldone_lbl, _id]); // short, stays local — OK direct
     array_push(_list, ["clc",     0,        _id]);
     array_push(_list, ["lda_zp",  0xFD,     _id]);
     array_push(_list, ["adc_zp",  0xFC,     _id]); // acc += step
@@ -10560,7 +10581,7 @@ case "MACRO_COLL_LINE": {
     // Apply sign (bit 6 of slope byte): if set, delta is negative.
     array_push(_list, ["lda_zp",  0xF9,     _id]);
     array_push(_list, ["and_imm", 0x40,     _id]);
-    array_push(_list, ["beq",     _negdone_lbl, _id]);
+    array_push(_list, ["beq",     _negdone_lbl, _id]); // short, stays local — OK direct
     array_push(_list, ["lda_imm", 0,        _id]);
     array_push(_list, ["sec",     0,        _id]);
     array_push(_list, ["sbc_zp",  0xFD,     _id]);
@@ -10574,16 +10595,20 @@ case "MACRO_COLL_LINE": {
 
     // Compare minor_at to the other probe axis. X-major -> compare vs probe_y;
     // Y-major -> compare vs probe_x. Exact match only (byte-precision line).
+    var _cmp_ymaj = _ymaj_lbl + "_CMP";
     array_push(_list, ["lda_zp",  0xF5,     _id]);
-    array_push(_list, ["bne",     _ymaj_lbl + "_CMP", _id]);
+    array_push(_list, ["beq",     "L_LXCMP_" + _uid, _id]); // short, stays local — OK direct
+    array_push(_list, ["jmp_abs", _cmp_ymaj, _id]);
+    array_push(_list, ["label",   "L_LXCMP_" + _uid]);
     array_push(_list, ["lda_zp",  0xFD,     _id]);
     array_push(_list, ["cmp_abs", _py_addr, _id]);
-    array_push(_list, ["beq",     _hit_lbl, _id]);
+    array_push(_list, ["beq",     _hit_lbl, _id]); // short, stays local — OK direct
     array_push(_list, ["jmp_abs", _next_lbl, _id]);
-    array_push(_list, ["label",   _ymaj_lbl + "_CMP"]);
+    array_push(_list, ["label",   _cmp_ymaj]);
     array_push(_list, ["lda_zp",  0xFD,     _id]);
     array_push(_list, ["cmp_abs", _px_addr, _id]);
-    array_push(_list, ["beq",     _hit_lbl, _id]);
+    array_push(_list, ["beq",     _hit_lbl, _id]); // short, stays local — OK direct
+    array_push(_list, ["jmp_abs", _next_lbl, _id]);
 
     array_push(_list, ["label", _next_lbl]);
     // Advance table pointer by 6 bytes (record size) and loop.
