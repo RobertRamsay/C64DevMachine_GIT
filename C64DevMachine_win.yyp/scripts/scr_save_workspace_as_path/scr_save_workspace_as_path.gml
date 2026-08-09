@@ -129,6 +129,13 @@ if (instance_exists(obj_asset_manager)) {
 	        // through save/load as if it were MC, and build_preview's size check
 	        // (9002 vs 10003 bytes) silently fails, leaving the asset looking empty.
 	        if (variable_struct_exists(_a.meta, "bmp_mode"))     _meta_out.bmp_mode     = _a.meta.bmp_mode;
+        // GRADIENT tool CUSTOM stop run — the colours allocated to the 12
+        // slots, the toggle state, and how many of the 12 are actually in
+        // play. Pure tool state (like active_color), but explicitly asked to
+        // survive save/load rather than reset every session.
+        if (variable_struct_exists(_a.meta, "gradient_custom_active")) _meta_out.gradient_custom_active = _a.meta.gradient_custom_active;
+        if (variable_struct_exists(_a.meta, "gradient_custom_cols"))   _meta_out.gradient_custom_cols   = _a.meta.gradient_custom_cols;
+        if (variable_struct_exists(_a.meta, "gradient_custom_count"))  _meta_out.gradient_custom_count  = _a.meta.gradient_custom_count;
         // TONE-SORTED flag — see scr_c64_tone_group. The bytes on disk are
         // already tone-sorted; losing the flag reverts them on the next save.
         if (variable_struct_exists(_a.meta, "tone_sorted"))  _meta_out.tone_sorted  = _a.meta.tone_sorted;

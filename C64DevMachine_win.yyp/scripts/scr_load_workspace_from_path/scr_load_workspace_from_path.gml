@@ -336,6 +336,10 @@ with (obj_c64_node) {
                 if (variable_struct_exists(_sm, "mc2_col"))        _meta.mc2_col        = _sm.mc2_col;
                 if (variable_struct_exists(_sm, "used_count"))     _meta.used_count     = _sm.used_count;
                 if (variable_struct_exists(_sm, "bg_col"))         _meta.bg_col         = _sm.bg_col;
+                // GRADIENT tool CUSTOM stop run — see scr_save_workspace_as.
+                if (variable_struct_exists(_sm, "gradient_custom_active")) _meta.gradient_custom_active = _sm.gradient_custom_active;
+                if (variable_struct_exists(_sm, "gradient_custom_cols"))   _meta.gradient_custom_cols   = _sm.gradient_custom_cols;
+                if (variable_struct_exists(_sm, "gradient_custom_count"))  _meta.gradient_custom_count  = _sm.gradient_custom_count;
                 // Absent = pre-HiRes-support project, which means it was always MC.
                 _meta.bmp_mode = variable_struct_exists(_sm, "bmp_mode") ? _sm.bmp_mode : "MC";
                 // TONE-SORTED flag. Absent = pre-flag project, which means the
