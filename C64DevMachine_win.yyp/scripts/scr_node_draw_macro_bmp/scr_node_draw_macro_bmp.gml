@@ -108,7 +108,7 @@ function scr_node_draw_macro_bmp(_draw_x, _y) {
         _preclear = real(instructions[0][4]);
     }
     draw_set_color(c_gray);
-    draw_text(_draw_x + 10, _ly, "PRECLEAR:");
+    draw_text(_draw_x + 10, _ly, "CLEAR:");
     if (_preclear == 1) {
         draw_set_color(c_lime);
         draw_text(_draw_x + 90, _ly, "YES");
