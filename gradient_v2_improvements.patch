@@ -1,0 +1,258 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index a0ba512..abf2ab0 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -4769,6 +4769,10 @@ surface_reset_target();
+ 	                if (!variable_struct_exists(_asset.meta, "gradient_y1")) _asset.meta.gradient_y1 = -1;
+ 	                if (!variable_struct_exists(_asset.meta, "gradient_drawing")) _asset.meta.gradient_drawing = false;
+ 	                if (!variable_struct_exists(_asset.meta, "gradient_btn")) _asset.meta.gradient_btn = mb_left;
++	                if (!variable_struct_exists(_asset.meta, "gradient_custom_active")) _asset.meta.gradient_custom_active = false;
++	                if (!variable_struct_exists(_asset.meta, "gradient_custom_cols")) {
++	                    _asset.meta.gradient_custom_cols = array_create(12, _asset.meta.active_color);
++	                }
+ 	                if (!variable_struct_exists(_asset.meta, "preview_overlay")) _asset.meta.preview_overlay = -1;
+ 	                if (!variable_struct_exists(_asset.meta, "overlay_dirty")) _asset.meta.overlay_dirty = false;
+                     
+@@ -5659,12 +5663,14 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
+ 	                &&  _asset.meta.gradient_drawing
+ 	                &&  (mouse_check_button_released(mb_left) || mouse_check_button_released(mb_right))) {
+ 	                    // Fixed direction: always col1 (seed end) -> col2 (drag end),
+-	                    // regardless of which button was used to drag.
++	                    // regardless of which button was used to drag. CUSTOM
++	                    // overrides both with the 12-slot stop run when active.
+ 	                    var _grad_col_a = _asset.meta.active_color;    // col1
+ 	                    var _grad_col_b = _asset.meta.secondary_color; // col2
++	                    var _grad_stops = _asset.meta.gradient_custom_active ? _asset.meta.gradient_custom_cols : undefined;
+ 	                    var _grad_x2 = (_raw_px div _bmp_step) * _bmp_step;
+ 	                    var _grad_y2 = _raw_py;
+-	                    scr_asset_bmp_gradient_fill(_asset, _asset.meta.gradient_x1, _asset.meta.gradient_y1, _grad_x2, _grad_y2, _grad_col_a, _grad_col_b);
++	                    scr_asset_bmp_gradient_fill(_asset, _asset.meta.gradient_x1, _asset.meta.gradient_y1, _grad_x2, _grad_y2, _grad_col_a, _grad_col_b, _grad_stops);
+ 	                    _asset.meta.gradient_drawing = false;
+ 	                    _asset.meta.gradient_x1      = -1;
+ 	                    _asset.meta.needs_clash_check = true;
+@@ -6794,6 +6800,51 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
+ 	            }
+ 	            _cy += 16;
+ 
++	            // ── GRADIENT: CUSTOM stop row (shown whenever GRADIENT is the
++	            // active tool; only applied to the fill when the CUSTOM toggle
++	            // is on — otherwise the plain col1->col2 gradient is used). ──
++	            if (_asset.meta.active_tool == "GRADIENT") {
++	                draw_set_font(fnt_c64_tiny);
++	                draw_set_color(make_color_rgb(90, 90, 120));
++	                draw_text(_thumb_x, _cy, "GRADIENT:");
++
++	                var _gc_btn_x1 = _thumb_x + 62;
++	                var _gc_btn_x2 = _gc_btn_x1 + 58;
++	                var _gc_btn_y1 = _cy - 2;
++	                var _gc_btn_y2 = _cy + 12;
++	                var _gc_hov = point_in_rectangle(_mx, _my, _gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2);
++	                draw_set_color(_asset.meta.gradient_custom_active ? make_color_rgb(20, 60, 60) : (_gc_hov ? make_color_rgb(80, 80, 100) : make_color_rgb(40, 40, 60)));
++	                draw_rectangle(_gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2, false);
++	                draw_set_color(_asset.meta.gradient_custom_active ? c_aqua : (_gc_hov ? c_white : c_black));
++	                draw_rectangle(_gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2, true);
++	                draw_set_color(_asset.meta.gradient_custom_active ? c_aqua : c_white);
++	                draw_text(_gc_btn_x1 + 4, _cy, "CUSTOM");
++	                if (_gc_hov && mouse_check_button_pressed(mb_left)) {
++	                    _asset.meta.gradient_custom_active = !_asset.meta.gradient_custom_active;
++	                }
++
++	                // 12 stop slots. Left-click a slot to set it to the current
++	                // col1 (active_color) — pick col1 from the main palette above,
++	                // then click a slot; repeat per slot to build the stop run.
++	                var _gc_sw = 18, _gc_sh = 14, _gc_gap = 2;
++	                var _gc_slots_x = _gc_btn_x2 + 12;
++	                for (var _gs = 0; _gs < 12; _gs++) {
++	                    var _gsx1 = _gc_slots_x + _gs * (_gc_sw + _gc_gap);
++	                    var _gsx2 = _gsx1 + _gc_sw;
++	                    var _gsy1 = _cy - 2;
++	                    var _gsy2 = _cy + 12;
++	                    var _gs_hov = point_in_rectangle(_mx, _my, _gsx1, _gsy1, _gsx2, _gsy2);
++	                    draw_set_color(scr_c64_pepto_colour(_asset.meta.gradient_custom_cols[_gs]));
++	                    draw_rectangle(_gsx1, _gsy1, _gsx2, _gsy2, false);
++	                    draw_set_color(_gs_hov ? c_white : make_color_rgb(90, 90, 110));
++	                    draw_rectangle(_gsx1, _gsy1, _gsx2, _gsy2, true);
++	                    if (_gs_hov && mouse_check_button_pressed(mb_left)) {
++	                        _asset.meta.gradient_custom_cols[_gs] = _asset.meta.active_color;
++	                    }
++	                }
++	                _cy += 20;
++	            }
++
+ 	            // Metadata Details (Pushed below the canvas)
+ 	            draw_set_font(fnt_c64_tiny);
+ 	            if (variable_struct_exists(_asset.meta, "bg_col")) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.gml b/C64DevMachine_win.yyp/scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.gml
+index 1e87757..4092b51 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.gml
+@@ -1,12 +1,22 @@
+-/// @function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _col_end)
++/// @function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _col_end, _custom_stops)
+ /// Amiga Dev Machine style gradient fill for the regular (KLA) bitmap editor.
+ /// Floods the contiguous region matching the seed pixel (_x1,_y1), then paints
+-/// every pixel in that region _col_start or _col_end by projecting its position
+-/// onto the drawn line (_x1,_y1)->(_x2,_y2) and thresholding against an 8x8
+-/// ordered Bayer matrix — a directional dithered gradient, not a fixed-ratio
+-/// pattern. _col_start sits at the seed end (projection 0), _col_end at the
+-/// drag-release end (projection 1). Works in both MC and HiRes.
+-function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _col_end) {
++/// every pixel in that region by projecting its position onto the drawn line
++/// (_x1,_y1)->(_x2,_y2) and thresholding an ordered Bayer matrix — a
++/// directional dithered gradient, not a fixed-ratio pattern.
++///
++/// @param {Array<Real>} [_custom_stops] Optional. When provided (2+ colour
++///        indices), the gradient runs through ALL of them in order instead of
++///        just _col_start->_col_end — _col_start/_col_end are still used as
++///        the flood seed match target but are otherwise ignored once a custom
++///        stop list is given. Undefined/omitted -> plain 2-colour gradient.
++///
++/// MC uses the same 4-column x 8-row (32-level) ordered Bayer matrix as
++/// scr_check_dither_mask's BAYER_* presets, sampled on the MC pair column —
++/// NOT the 8x8 HiRes matrix naively indexed by raw x, which only ever hits 4
++/// of its 8 columns in MC (x is always even) and produces coarser, blockier
++/// banding. HiRes uses the full 8x8/64-level matrix, one threshold per pixel.
++function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _col_end, _custom_stops = undefined) {
+     if (!surface_exists(_asset.meta.preview_surf)) return;
+     var _is_hires = scr_asset_bmp_is_hires(_asset);
+     var _step     = _is_hires ? 1 : 2;
+@@ -16,10 +26,8 @@ function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _co
+     var _buf = buffer_create(320 * 200 * 4, buffer_fixed, 1);
+     buffer_get_surface(_buf, _asset.meta.preview_surf, 0);
+ 
+-    // Standard 8x8 ordered Bayer matrix, 64 threshold levels — same table as
+-    // scr_check_dither_mask's _bayer_hr, sampled with a +0.5 centring offset
+-    // so the 0..63 levels map evenly across the 0..1 projection range.
+-    static _bayer8 = [
++    // Standard 8x8 ordered Bayer matrix, 64 threshold levels — HiRes only.
++    static _bayer_hr = [
+          0,32, 8,40, 2,34,10,42,
+         48,16,56,24,50,18,58,26,
+         12,44, 4,36,14,46, 6,38,
+@@ -29,11 +37,31 @@ function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _co
+         15,47, 7,39,13,45, 5,37,
+         63,31,55,23,61,29,53,21
+     ];
++    // MC-aware Bayer: 4 columns (MC pair index) x 8 rows = 32 threshold
++    // levels. Identical table to scr_check_dither_mask's _bayer_mc, so a
++    // gradient's dither grain matches the fixed-ratio dither tool exactly.
++    static _bayer_mc = [
++         0, 8, 2,10,
++        24,16,26,18,
++        12, 4,14, 6,
++        28,20,30,22,
++         3,11, 1, 9,
++        27,19,25,17,
++        15, 7,13, 5,
++        31,23,29,21
++    ];
+ 
+-    var _start_rgb = scr_c64_pepto_colour(_col_start);
+-    var _end_rgb   = scr_c64_pepto_colour(_col_end);
+-    var _ar = color_get_red(_start_rgb), _ag = color_get_green(_start_rgb), _ab = color_get_blue(_start_rgb);
+-    var _br = color_get_red(_end_rgb),   _bg = color_get_green(_end_rgb),   _bb = color_get_blue(_end_rgb);
++    // Build the stop list: custom multi-colour run if given, else the plain
++    // 2-colour start->end gradient.
++    var _stops = (is_array(_custom_stops) && array_length(_custom_stops) >= 2) ? _custom_stops : [_col_start, _col_end];
++    var _n_stops = array_length(_stops);
++    var _stop_r = array_create(_n_stops), _stop_g = array_create(_n_stops), _stop_b = array_create(_n_stops);
++    for (var _si = 0; _si < _n_stops; _si++) {
++        var _srgb = scr_c64_pepto_colour(_stops[_si]);
++        _stop_r[_si] = color_get_red(_srgb);
++        _stop_g[_si] = color_get_green(_srgb);
++        _stop_b[_si] = color_get_blue(_srgb);
++    }
+ 
+     // Read target (seed) colour.
+     var _off0 = (_y1 * 320 + _x1) * 4;
+@@ -41,8 +69,12 @@ function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _co
+     var _tg = buffer_peek(_buf, _off0 + 1, buffer_u8);
+     var _tb = buffer_peek(_buf, _off0 + 2, buffer_u8);
+ 
+-    // Nothing to change if both gradient colours already equal the seed.
+-    if (_ar == _br && _ag == _bg && _ab == _bb && _tr == _ar && _tg == _ag && _tb == _ab) {
++    // Nothing to change if every stop already equals the seed colour.
++    var _all_match_seed = true;
++    for (var _sci = 0; _sci < _n_stops && _all_match_seed; _sci++) {
++        if (_stop_r[_sci] != _tr || _stop_g[_sci] != _tg || _stop_b[_sci] != _tb) _all_match_seed = false;
++    }
++    if (_all_match_seed) {
+         buffer_delete(_buf);
+         return;
+     }
+@@ -50,7 +82,7 @@ function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _co
+     var _dx = _x2 - _x1;
+     var _dy = _y2 - _y1;
+     var _len_sq = (_dx * _dx) + (_dy * _dy);
+-    if (_len_sq < 1) _len_sq = 1; // zero-length drag -> single hard threshold at 0.5
++    if (_len_sq < 1) _len_sq = 1; // zero-length drag -> single hard threshold at the midpoint
+ 
+     // PASS 1 — run-based scanline flood identifies the connected region into
+     // a flat [x0,y0,x1,y1,...] list. Same shape as scr_asset_bmp_flood_fill,
+@@ -129,10 +161,12 @@ function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _co
+     }
+     ds_stack_destroy(_stack);
+ 
+-    // PASS 2 — paint every visited pixel _col_start/_col_end by projecting
+-    // onto the drawn line and thresholding against the Bayer matrix.
++    // PASS 2 — paint every visited pixel by projecting onto the drawn line,
++    // picking the two adjacent stops that projection falls between, then
++    // dithering between just those two via the Bayer threshold.
+     var _ri = 0;
+     var _region_count = array_length(_region);
++    var _last_seg = _n_stops - 2; // highest valid "lower" stop index
+     while (_ri < _region_count) {
+         var _rx = _region[_ri];
+         var _ry = _region[_ri + 1];
+@@ -140,12 +174,28 @@ function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _co
+ 
+         var _proj = (((_rx - _x1) * _dx) + ((_ry - _y1) * _dy)) / _len_sq;
+         _proj = clamp(_proj, 0, 1);
+-        var _bthr = (_bayer8[(_ry mod 8) * 8 + (_rx mod 8)] + 0.5) / 64;
+-        var _use_end = (_proj >= _bthr);
+ 
+-        var _wr, _wg, _wb, _wcol;
+-        if (_use_end) { _wr = _br; _wg = _bg; _wb = _bb; _wcol = _col_end;   }
+-        else          { _wr = _ar; _wg = _ag; _wb = _ab; _wcol = _col_start; }
++        var _bthr;
++        if (_is_hires) {
++            _bthr = (_bayer_hr[(_ry mod 8) * 8 + (_rx mod 8)] + 0.5) / 64;
++        } else {
++            var _mc_x = (_rx div 2) mod 4;
++            var _mc_y = _ry mod 8;
++            _bthr = (_bayer_mc[_mc_y * 4 + _mc_x] + 0.5) / 32;
++        }
++
++        // Which segment of the stop run does this projection fall in, and
++        // how far across it (0..1) — that fraction is what gets dithered.
++        var _seg = _proj * (_n_stops - 1);
++        var _seg_idx = floor(_seg);
++        if (_seg_idx > _last_seg) _seg_idx = _last_seg;
++        if (_seg_idx < 0) _seg_idx = 0;
++        var _seg_frac = _seg - _seg_idx;
++        var _use_hi = (_seg_frac >= _bthr);
++        var _pick = _use_hi ? (_seg_idx + 1) : _seg_idx;
++
++        var _wr = _stop_r[_pick], _wg = _stop_g[_pick], _wb = _stop_b[_pick];
++        var _wcol = _stops[_pick];
+ 
+         var _o = (_ry * 320 + _rx) * 4;
+         buffer_poke(_buf, _o,     buffer_u8, _wr);
+@@ -155,10 +205,13 @@ function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _co
+ 
+         if (_is_hires) {
+             // Role follows which of the cell's 2 allowed colours (fg =
+-            // active_color, bg = secondary_color) actually landed on this
+-            // pixel — same fg/bg convention scr_asset_bmp_draw_line/_rect/
+-            // _ellipse use, so a gradient that spans both colours in one
+-            // 8x8 cell still gets a correct per-pixel role, not "always fg".
++            // active_color, bg = anything else) landed on this pixel — same
++            // fg/bg convention scr_asset_bmp_draw_line/_rect/_ellipse use.
++            // HiRes hard-limits to 2 colours per 8x8 cell, so a custom stop
++            // run with 3+ distinct colours landing in one cell is a genuine
++            // clash — same as manually painting too many colours by hand —
++            // and gets caught by the existing needs_clash_check/clash_grid
++            // pass after this fill commits, same as any other tool.
+             var _hrcf  = (floor(_ry / 8) * 40) + floor(_rx / 8);
+             var _hrfg  = (_wcol == _asset.meta.active_color);
+             _asset.meta.hr_role_mask[_ry * 320 + _rx] = _hrfg ? 1 : 0;

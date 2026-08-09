@@ -4769,6 +4769,10 @@ surface_reset_target();
 	                if (!variable_struct_exists(_asset.meta, "gradient_y1")) _asset.meta.gradient_y1 = -1;
 	                if (!variable_struct_exists(_asset.meta, "gradient_drawing")) _asset.meta.gradient_drawing = false;
 	                if (!variable_struct_exists(_asset.meta, "gradient_btn")) _asset.meta.gradient_btn = mb_left;
+	                if (!variable_struct_exists(_asset.meta, "gradient_custom_active")) _asset.meta.gradient_custom_active = false;
+	                if (!variable_struct_exists(_asset.meta, "gradient_custom_cols")) {
+	                    _asset.meta.gradient_custom_cols = array_create(12, _asset.meta.active_color);
+	                }
 	                if (!variable_struct_exists(_asset.meta, "preview_overlay")) _asset.meta.preview_overlay = -1;
 	                if (!variable_struct_exists(_asset.meta, "overlay_dirty")) _asset.meta.overlay_dirty = false;
                     
@@ -5659,12 +5663,14 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
 	                &&  _asset.meta.gradient_drawing
 	                &&  (mouse_check_button_released(mb_left) || mouse_check_button_released(mb_right))) {
 	                    // Fixed direction: always col1 (seed end) -> col2 (drag end),
-	                    // regardless of which button was used to drag.
+	                    // regardless of which button was used to drag. CUSTOM
+	                    // overrides both with the 12-slot stop run when active.
 	                    var _grad_col_a = _asset.meta.active_color;    // col1
 	                    var _grad_col_b = _asset.meta.secondary_color; // col2
+	                    var _grad_stops = _asset.meta.gradient_custom_active ? _asset.meta.gradient_custom_cols : undefined;
 	                    var _grad_x2 = (_raw_px div _bmp_step) * _bmp_step;
 	                    var _grad_y2 = _raw_py;
-	                    scr_asset_bmp_gradient_fill(_asset, _asset.meta.gradient_x1, _asset.meta.gradient_y1, _grad_x2, _grad_y2, _grad_col_a, _grad_col_b);
+	                    scr_asset_bmp_gradient_fill(_asset, _asset.meta.gradient_x1, _asset.meta.gradient_y1, _grad_x2, _grad_y2, _grad_col_a, _grad_col_b, _grad_stops);
 	                    _asset.meta.gradient_drawing = false;
 	                    _asset.meta.gradient_x1      = -1;
 	                    _asset.meta.needs_clash_check = true;
@@ -6793,6 +6799,51 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                draw_text(_thumb_x + 60, _cy, "-- NO SELECTION --");
 	            }
 	            _cy += 16;
+
+	            // ── GRADIENT: CUSTOM stop row (shown whenever GRADIENT is the
+	            // active tool; only applied to the fill when the CUSTOM toggle
+	            // is on — otherwise the plain col1->col2 gradient is used). ──
+	            if (_asset.meta.active_tool == "GRADIENT") {
+	                draw_set_font(fnt_c64_tiny);
+	                draw_set_color(make_color_rgb(90, 90, 120));
+	                draw_text(_thumb_x, _cy, "GRADIENT:");
+
+	                var _gc_btn_x1 = _thumb_x + 62;
+	                var _gc_btn_x2 = _gc_btn_x1 + 58;
+	                var _gc_btn_y1 = _cy - 2;
+	                var _gc_btn_y2 = _cy + 12;
+	                var _gc_hov = point_in_rectangle(_mx, _my, _gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2);
+	                draw_set_color(_asset.meta.gradient_custom_active ? make_color_rgb(20, 60, 60) : (_gc_hov ? make_color_rgb(80, 80, 100) : make_color_rgb(40, 40, 60)));
+	                draw_rectangle(_gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2, false);
+	                draw_set_color(_asset.meta.gradient_custom_active ? c_aqua : (_gc_hov ? c_white : c_black));
+	                draw_rectangle(_gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2, true);
+	                draw_set_color(_asset.meta.gradient_custom_active ? c_aqua : c_white);
+	                draw_text(_gc_btn_x1 + 4, _cy, "CUSTOM");
+	                if (_gc_hov && mouse_check_button_pressed(mb_left)) {
+	                    _asset.meta.gradient_custom_active = !_asset.meta.gradient_custom_active;
+	                }
+
+	                // 12 stop slots. Left-click a slot to set it to the current
+	                // col1 (active_color) — pick col1 from the main palette above,
+	                // then click a slot; repeat per slot to build the stop run.
+	                var _gc_sw = 18, _gc_sh = 14, _gc_gap = 2;
+	                var _gc_slots_x = _gc_btn_x2 + 12;
+	                for (var _gs = 0; _gs < 12; _gs++) {
+	                    var _gsx1 = _gc_slots_x + _gs * (_gc_sw + _gc_gap);
+	                    var _gsx2 = _gsx1 + _gc_sw;
+	                    var _gsy1 = _cy - 2;
+	                    var _gsy2 = _cy + 12;
+	                    var _gs_hov = point_in_rectangle(_mx, _my, _gsx1, _gsy1, _gsx2, _gsy2);
+	                    draw_set_color(scr_c64_pepto_colour(_asset.meta.gradient_custom_cols[_gs]));
+	                    draw_rectangle(_gsx1, _gsy1, _gsx2, _gsy2, false);
+	                    draw_set_color(_gs_hov ? c_white : make_color_rgb(90, 90, 110));
+	                    draw_rectangle(_gsx1, _gsy1, _gsx2, _gsy2, true);
+	                    if (_gs_hov && mouse_check_button_pressed(mb_left)) {
+	                        _asset.meta.gradient_custom_cols[_gs] = _asset.meta.active_color;
+	                    }
+	                }
+	                _cy += 20;
+	            }
 
 	            // Metadata Details (Pushed below the canvas)
 	            draw_set_font(fnt_c64_tiny);
