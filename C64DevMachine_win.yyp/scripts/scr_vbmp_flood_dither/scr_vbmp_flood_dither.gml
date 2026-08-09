@@ -1,4 +1,4 @@
-/// @function scr_vbmp_flood_dither(_asset, _start_x, _start_y, _colA_idx, _colB_idx, _pattern)
+/// @function scr_vbmp_flood_dither(_asset, _start_x, _start_y, _colA_idx, _colB_idx, _pattern, _mix)
 /// Preview-only parity flood matching the C64 vbmp_fill runtime EXACTLY. One
 /// flood identifies the connected region (seed-colour matched, MC 2px steps);
 /// every reached pixel is painted colA or colB by pixel parity — both colours
@@ -6,10 +6,17 @@
 /// outline, or colA with no special-casing (unlike the old pre-fill-then-flood
 /// approach in scr_asset_bmp_flood_fill, which can only paint fillcol OR leave
 /// the target colour).
-///   _pattern: 1 = checker  parity = ((x>>1) + y) & 1   (matches vbmp_fp_dith)
-///             2 = interlace parity = (y & 1)
-/// Parity 0 -> colA, parity 1 -> colB.
-function scr_vbmp_flood_dither(_asset, _start_x, _start_y, _colA_idx, _colB_idx, _pattern) {
+///   _pattern: 1 = checker    parity = ((x>>1) + y) & 1     (matches vbmp_fp_dith)
+///             2 = interlace  parity = (y & 1)
+///             3 = bayer      4x4 ordered-dither gradient, thresholded by _mix
+/// Parity/threshold 0 -> colA, 1 -> colB.
+///   _mix: BAYER-only. 0..15 threshold against the 4x4 Bayer matrix value —
+///         0 = all colA, 15 = (almost) all colB. Ignored for other patterns.
+function scr_vbmp_flood_dither(_asset, _start_x, _start_y, _colA_idx, _colB_idx, _pattern, _mix) {
+    // Standard 4x4 Bayer ordered-dither matrix (row-major, y*4+x). Must match
+    // the vbmp_bayer_lut table emitted by the compile chain EXACTLY.
+    static _bayer4x4 = [0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5];
+    if (is_undefined(_mix)) _mix = 8;
     var _m = _asset.meta;
     if (!surface_exists(_m.preview_surf)) return;
     _start_x = (_start_x div 2) * 2; // MC snap
@@ -98,7 +105,10 @@ function scr_vbmp_flood_dither(_asset, _start_x, _start_y, _colA_idx, _colB_idx,
             if (!_visited[_rowb + _px]) continue;
 
             var _par;
-            if (_pattern == 2) {
+            if (_pattern == 3) {
+                var _bidx = ((_py & 3) * 4) + (_px & 3);  // matches vbmp_fp_bayer (raw x&3, y&3)
+                _par = (_bayer4x4[_bidx] < _mix) ? 1 : 0; // bayer: thresholded gradient
+            } else if (_pattern == 2) {
                 _par = _py & 1;                    // interlace: y & 1
             } else {
                 _par = ((_px div 2) + _py) & 1;    // checker: (x>>1 + y) & 1

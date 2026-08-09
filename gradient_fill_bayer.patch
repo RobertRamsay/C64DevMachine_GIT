@@ -1,0 +1,284 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml b/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml
+index ca69478..c182fe2 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml
+@@ -321,7 +321,7 @@ var _addr_total = 65536;
+                                     case "rectfill":    _sbytes += 5; break; // native $04 opcode
+                                     case "ellipse":     _sbytes += 5; break; // native $05 opcode
+                                     case "ellipsefill": _sbytes += 5; break; // native $06 opcode
+-                                    case "fill":        _sbytes += 5; break; // $07 + x y pattern colb
++                                    case "fill":        _sbytes += 6; break; // $07 + x y pattern colb mix
+                                     default: break;
+                                 }
+                             }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 895827d..30dbf8f 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -12123,6 +12123,22 @@ case "MACRO_VECTOR_BMP": {
+         // (x, 0, y). $E3 = target colour. $EF/$F0 = stack top ptr.
+         // MC step = 2 px per pair. X range 0..254, Y range 0..199.
+         // ════════════════════════════════════════════════════════════
++        // Standard 4x4 Bayer ordered-dither matrix, row-major (y*4+x). Must
++        // match the _bayer4x4 array in scr_vbmp_flood_dither EXACTLY — both
++        // sides compute the same table_val < mix threshold. Pure data: jumped
++        // over so it's never executed.
++        array_push(_list, ["jmp_abs", "vbmp_bayer_lut_skip", _id]);
++        array_push(_list, ["label", "vbmp_bayer_lut"]);
++        array_push(_list, ["byte", 0x00, _id]); array_push(_list, ["byte", 0x08, _id]);
++        array_push(_list, ["byte", 0x02, _id]); array_push(_list, ["byte", 0x0A, _id]);
++        array_push(_list, ["byte", 0x0C, _id]); array_push(_list, ["byte", 0x04, _id]);
++        array_push(_list, ["byte", 0x0E, _id]); array_push(_list, ["byte", 0x06, _id]);
++        array_push(_list, ["byte", 0x03, _id]); array_push(_list, ["byte", 0x0B, _id]);
++        array_push(_list, ["byte", 0x01, _id]); array_push(_list, ["byte", 0x09, _id]);
++        array_push(_list, ["byte", 0x0F, _id]); array_push(_list, ["byte", 0x07, _id]);
++        array_push(_list, ["byte", 0x0D, _id]); array_push(_list, ["byte", 0x05, _id]);
++        array_push(_list, ["label", "vbmp_bayer_lut_skip"]);
++
+         array_push(_list, ["label", "vbmp_fill"]);
+         // read seed colour -> $E3
+         array_push(_list, ["lda_zp",  0xEB, _id]);
+@@ -12242,6 +12258,8 @@ case "MACRO_VECTOR_BMP": {
+         array_push(_list, ["sta_zp",  0xD1, _id]);
+         array_push(_list, ["jmp_abs", "vbmp_fp_doplot", _id]);
+         array_push(_list, ["label", "vbmp_fp_dith"]);
++        array_push(_list, ["cmp_imm", 0x03, _id]);
++        array_push(_list, ["beq",     "vbmp_fp_bayer", _id]);
+         array_push(_list, ["cmp_imm", 0x02, _id]);
+         array_push(_list, ["beq",     "vbmp_fp_interlace", _id]);
+         // checker: parity = ((x>>1) + y) & 1. x is in $E4.
+@@ -12251,6 +12269,26 @@ case "MACRO_VECTOR_BMP": {
+         array_push(_list, ["adc_zp",  0xEC, _id]); // + y
+         array_push(_list, ["and_imm", 0x01, _id]);
+         array_push(_list, ["jmp_abs", "vbmp_fp_pick", _id]);
++        // bayer: gradient dither. index = ((y&3)*4) + (x&3) into vbmp_bayer_lut;
++        // table_val < mix ($D3) -> colB, else colA. mix 0..15: 0 = all colA,
++        // 15 = almost all colB (matches scr_vbmp_flood_dither preview exactly).
++        array_push(_list, ["label", "vbmp_fp_bayer"]);
++        array_push(_list, ["lda_zp",  0xEC, _id]); // y
++        array_push(_list, ["and_imm", 0x03, _id]);
++        array_push(_list, ["asl_a",   0,    _id]);
++        array_push(_list, ["asl_a",   0,    _id]); // (y&3)*4
++        array_push(_list, ["sta_zp",  0xD4, _id]);
++        array_push(_list, ["lda_zp",  0xE4, _id]); // x cursor
++        array_push(_list, ["and_imm", 0x03, _id]);
++        array_push(_list, ["clc",     0,    _id]);
++        array_push(_list, ["adc_zp",  0xD4, _id]);
++        array_push(_list, ["tax",     0,    _id]);
++        array_push(_list, ["lda_abx", "vbmp_bayer_lut", _id]);
++        array_push(_list, ["cmp_zp",  0xD3, _id]);
++        array_push(_list, ["bcc",     "vbmp_fp_bayer_b", _id]);
++        array_push(_list, ["jmp_abs", "vbmp_fp_useA", _id]);
++        array_push(_list, ["label",   "vbmp_fp_bayer_b"]);
++        array_push(_list, ["jmp_abs", "vbmp_fp_useB", _id]);
+         array_push(_list, ["label", "vbmp_fp_interlace"]);
+         // interlace: parity = y & 1
+         array_push(_list, ["lda_zp",  0xEC, _id]);
+@@ -12258,6 +12296,7 @@ case "MACRO_VECTOR_BMP": {
+         array_push(_list, ["label", "vbmp_fp_pick"]);
+         array_push(_list, ["beq",     "vbmp_fp_useA", _id]);
+         // parity 1 -> colB
++        array_push(_list, ["label", "vbmp_fp_useB"]);
+         array_push(_list, ["lda_zp",  0xD2, _id]);
+         array_push(_list, ["sta_zp",  0xD1, _id]);
+         array_push(_list, ["jmp_abs", "vbmp_fp_doplot", _id]);
+@@ -12677,10 +12716,12 @@ case "MACRO_VECTOR_BMP": {
+         array_push(_list, ["jmp_abs", "vbmp_render_loop", _id]);
+         array_push(_list, ["label",   "vbmp_render_not_efill"]);
+ 
+-        // FILL ($07) — args cx cy pattern colB (4 arg bytes). advance ptr by 5.
+-        // pattern -> $D0 (0 solid, 1 checker, 2 interlace). colB -> $D2 (second
+-        // dither colour 0..3). colA is the active selector $F8. Both colours are
+-        // explicit per-command, so no setcol-run heuristic.
++        // FILL ($07) — args cx cy pattern colB mix (5 arg bytes). advance ptr by 6.
++        // pattern -> $D0 (0 solid, 1 checker, 2 interlace, 3 bayer). colB -> $D2
++        // (second dither colour 0..3). mix -> $D3 (BAYER gradient threshold 0..15,
++        // unused by other patterns but always present). colA is the active
++        // selector $F8. Both colours are explicit per-command, so no setcol-run
++        // heuristic.
+         array_push(_list, ["cmp_imm", 0x07, _id]);
+         array_push(_list, ["bne",     "vbmp_render_not_fill", _id]);
+         array_push(_list, ["ldy_imm", 0x01, _id]);
+@@ -12696,9 +12737,12 @@ case "MACRO_VECTOR_BMP": {
+         array_push(_list, ["lda_izy", 0xFB, _id]); // colB
+         array_push(_list, ["and_imm", 0x03, _id]);
+         array_push(_list, ["sta_zp",  0xD2, _id]); // $D2 = second dither colour
++        array_push(_list, ["ldy_imm", 0x05, _id]);
++        array_push(_list, ["lda_izy", 0xFB, _id]); // mix
++        array_push(_list, ["sta_zp",  0xD3, _id]); // $D3 = bayer gradient mix threshold
+         array_push(_list, ["clc",     0,    _id]);
+         array_push(_list, ["lda_zp",  0xFB, _id]);
+-        array_push(_list, ["adc_imm", 0x05, _id]);
++        array_push(_list, ["adc_imm", 0x06, _id]);
+         array_push(_list, ["sta_zp",  0xFB, _id]);
+         array_push(_list, ["lda_zp",  0xFC, _id]);
+         array_push(_list, ["adc_imm", 0x00, _id]);
+@@ -13285,19 +13329,23 @@ case "MACRO_VECTOR_BMP": {
+         } break;
+ 
+             case "fill": {
+-                // Native $07: cx cy pattern colB (seed + dither). Flood matches
++                // Native $07: cx cy pattern colB mix (seed + dither). Flood matches
+                 // the seed colour, fills with colA (active selector) / colB by
+-                // the dither pattern. pattern: 0 solid, 1 checker, 2 interlace.
++                // the dither pattern. pattern: 0 solid, 1 checker, 2 interlace,
++                // 3 bayer (gradient). mix (0..15) is the BAYER threshold — ignored
++                // by the other patterns but always emitted to keep the arg count fixed.
+                 var _flx = clamp(real(_cmd.x), 0, 255);
+                 var _fly = clamp(real(_cmd.y), 0, 199);
+                 if (_vb_mode == 1) _flx = (_flx div 2) * 2; // MC even-X snap
+                 var _fpat = variable_struct_exists(_cmd, "pattern") ? (real(_cmd.pattern) & 0x03) : 0;
+                 var _fcolb = variable_struct_exists(_cmd, "colb") ? (real(_cmd.colb) & 0x03) : 0;
++                var _fmix = variable_struct_exists(_cmd, "mix") ? clamp(real(_cmd.mix), 0, 15) : 8;
+                 array_push(_list, ["byte", 0x07]);
+                 array_push(_list, ["byte", _flx & 0xFF]);
+                 array_push(_list, ["byte", _fly & 0xFF]);
+                 array_push(_list, ["byte", _fpat]);
+                 array_push(_list, ["byte", _fcolb]);
++                array_push(_list, ["byte", _fmix]);
+             } break;
+ 
+             // ── RECOLOUR OVERRIDES — colour/screen RAM cell rewrites. ──
+diff --git a/C64DevMachine_win.yyp/scripts/scr_vbmp_editor/scr_vbmp_editor.gml b/C64DevMachine_win.yyp/scripts/scr_vbmp_editor/scr_vbmp_editor.gml
+index c05189a..5d34ce2 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_vbmp_editor/scr_vbmp_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_vbmp_editor/scr_vbmp_editor.gml
+@@ -15,7 +15,8 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         if (_o == "setcol") return 2;
+         if (_o == "plot") return 4;
+         if (_o == "line" || _o == "rect" || _o == "rectfill"
+-         || _o == "ellipse" || _o == "ellipsefill" || _o == "fill") return 5;
++         || _o == "ellipse" || _o == "ellipsefill") return 5;
++        if (_o == "fill") return 6; // seed x,y + pattern + colB + mix
+         if (_o == "recolor_cram" || _o == "recolor_sram") return 6;
+         if (_o == "copyregion") return 7;
+         return 0;
+@@ -34,8 +35,9 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     if (!variable_struct_exists(_m, "col2"))          _m.col2 = 2;
+     if (!variable_struct_exists(_m, "col3"))          _m.col3 = 3;
+     if (!variable_struct_exists(_m, "last_emitted_col")) _m.last_emitted_col = -1;
+-    if (!variable_struct_exists(_m, "dither_pat")) _m.dither_pat = 0; // 0 solid,1 checker,2 interlace
++    if (!variable_struct_exists(_m, "dither_pat")) _m.dither_pat = 0; // 0 solid,1 checker,2 interlace,3 bayer
+     if (!variable_struct_exists(_m, "dither_colb")) _m.dither_colb = 2; // second dither colour 0..3
++    if (!variable_struct_exists(_m, "dither_mix")) _m.dither_mix = 8; // BAYER mix threshold 0..15 (gradient ratio)
+     if (!variable_struct_exists(_m, "vbmp_zoom")) _m.vbmp_zoom = 0; // 0 = full surface, 1 = zoom into 192x120 window
+     if (!variable_struct_exists(_m, "vbmp_grid")) _m.vbmp_grid = false; // char-cell grid overlay on/off
+ 
+@@ -395,10 +397,10 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         draw_set_color(c_ltgray);
+         draw_text(_tx, _ty, "DITHER:");
+         _ty += 16;
+-        // Pattern mode buttons: SOLID / CHECKER / INTERLACE
+-        var _pat_lbls = ["SOLID", "CHECKER", "INTERLACE"];
++        // Pattern mode buttons: SOLID / CHECKER / INTERLACE / BAYER
++        var _pat_lbls = ["SOLID", "CHECKER", "INTERLACE", "BAYER"];
+         var _pat_bw = 88;
+-        for (var _p = 0; _p < 3; _p++) {
++        for (var _p = 0; _p < 4; _p++) {
+             var _pbx = _tx;
+             var _pby = _ty + _p * 20;
+             var _pact = (_m.dither_pat == _p);
+@@ -411,7 +413,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+             draw_text(_pbx + 4, _pby + 3, _pat_lbls[_p]);
+             if (_phov && mouse_check_button_pressed(mb_left)) _m.dither_pat = _p;
+         }
+-        _ty += 3 * 20 + 4;
++        _ty += 4 * 20 + 4;
+         // Second colour swatch (only meaningful when pattern > 0)
+         draw_set_color(c_ltgray);
+         draw_text(_tx, _ty, "2ND COL:");
+@@ -429,6 +431,20 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         }
+         _ty += 22;
+ 
++        // BAYER mix ratio (gradient fill tool only meaningful when pattern == BAYER).
++        // 0 = all colA, 15 = all colB. L=+1, R=-1.
++        if (_m.dither_pat == 3) {
++            draw_set_color(c_ltgray);
++            draw_text(_tx, _ty, "GRADIENT MIX:");
++            var _mxx = _tx + 100;
++            var _mxhov = point_in_rectangle(_mx, _my, _mxx, _ty - 2, _mxx + 40, _ty + 16);
++            draw_set_color(_mxhov ? c_aqua : c_white);
++            draw_text(_mxx, _ty, string(_m.dither_mix) + "/15");
++            if (_mxhov && mouse_check_button_pressed(mb_left))  _m.dither_mix = min(15, _m.dither_mix + 1);
++            if (_mxhov && mouse_check_button_pressed(mb_right)) _m.dither_mix = max(0,  _m.dither_mix - 1);
++            _ty += 22;
++        }
++
+         // Blocked-fill warning line (auto-clears). Shown only while the timer
+         // is running; counts down once per drawn frame.
+         if (vbmp_fill_warn_timer > 0) {
+@@ -673,7 +689,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+                 if (_tool == "PLOT") {
+                     array_push(_m.commands, { op: "plot", x: _snap_px, y: _raw_py });
+                 } else {
+-                    array_push(_m.commands, { op: "fill", x: _snap_px, y: _raw_py, pattern: _m.dither_pat, colb: _m.dither_colb });
++                    array_push(_m.commands, { op: "fill", x: _snap_px, y: _raw_py, pattern: _m.dither_pat, colb: _m.dither_colb, mix: _m.dither_mix });
+                 }
+                 _m.vbmp_dirty = true;
+             }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_vbmp_flood_dither/scr_vbmp_flood_dither.gml b/C64DevMachine_win.yyp/scripts/scr_vbmp_flood_dither/scr_vbmp_flood_dither.gml
+index c7243b8..7340c48 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_vbmp_flood_dither/scr_vbmp_flood_dither.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_vbmp_flood_dither/scr_vbmp_flood_dither.gml
+@@ -1,4 +1,4 @@
+-/// @function scr_vbmp_flood_dither(_asset, _start_x, _start_y, _colA_idx, _colB_idx, _pattern)
++/// @function scr_vbmp_flood_dither(_asset, _start_x, _start_y, _colA_idx, _colB_idx, _pattern, _mix)
+ /// Preview-only parity flood matching the C64 vbmp_fill runtime EXACTLY. One
+ /// flood identifies the connected region (seed-colour matched, MC 2px steps);
+ /// every reached pixel is painted colA or colB by pixel parity — both colours
+@@ -6,10 +6,17 @@
+ /// outline, or colA with no special-casing (unlike the old pre-fill-then-flood
+ /// approach in scr_asset_bmp_flood_fill, which can only paint fillcol OR leave
+ /// the target colour).
+-///   _pattern: 1 = checker  parity = ((x>>1) + y) & 1   (matches vbmp_fp_dith)
+-///             2 = interlace parity = (y & 1)
+-/// Parity 0 -> colA, parity 1 -> colB.
+-function scr_vbmp_flood_dither(_asset, _start_x, _start_y, _colA_idx, _colB_idx, _pattern) {
++///   _pattern: 1 = checker    parity = ((x>>1) + y) & 1     (matches vbmp_fp_dith)
++///             2 = interlace  parity = (y & 1)
++///             3 = bayer      4x4 ordered-dither gradient, thresholded by _mix
++/// Parity/threshold 0 -> colA, 1 -> colB.
++///   _mix: BAYER-only. 0..15 threshold against the 4x4 Bayer matrix value —
++///         0 = all colA, 15 = (almost) all colB. Ignored for other patterns.
++function scr_vbmp_flood_dither(_asset, _start_x, _start_y, _colA_idx, _colB_idx, _pattern, _mix) {
++    // Standard 4x4 Bayer ordered-dither matrix (row-major, y*4+x). Must match
++    // the vbmp_bayer_lut table emitted by the compile chain EXACTLY.
++    static _bayer4x4 = [0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5];
++    if (is_undefined(_mix)) _mix = 8;
+     var _m = _asset.meta;
+     if (!surface_exists(_m.preview_surf)) return;
+     _start_x = (_start_x div 2) * 2; // MC snap
+@@ -98,7 +105,10 @@ function scr_vbmp_flood_dither(_asset, _start_x, _start_y, _colA_idx, _colB_idx,
+             if (!_visited[_rowb + _px]) continue;
+ 
+             var _par;
+-            if (_pattern == 2) {
++            if (_pattern == 3) {
++                var _bidx = ((_py & 3) * 4) + (_px & 3);  // matches vbmp_fp_bayer (raw x&3, y&3)
++                _par = (_bayer4x4[_bidx] < _mix) ? 1 : 0; // bayer: thresholded gradient
++            } else if (_pattern == 2) {
+                 _par = _py & 1;                    // interlace: y & 1
+             } else {
+                 _par = ((_px div 2) + _py) & 1;    // checker: (x>>1 + y) & 1
+diff --git a/C64DevMachine_win.yyp/scripts/scr_vbmp_replay_to_surface/scr_vbmp_replay_to_surface.gml b/C64DevMachine_win.yyp/scripts/scr_vbmp_replay_to_surface/scr_vbmp_replay_to_surface.gml
+index eadb47f..c5eeed3 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_vbmp_replay_to_surface/scr_vbmp_replay_to_surface.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_vbmp_replay_to_surface/scr_vbmp_replay_to_surface.gml
+@@ -196,6 +196,7 @@ function scr_vbmp_replay_to_surface(_asset) {
+                 var _fy = variable_struct_exists(_cmd, "y") ? real(_cmd.y) : 0;
+                 var _fpat  = variable_struct_exists(_cmd, "pattern") ? real(_cmd.pattern) : 0;
+                 var _fcolb = variable_struct_exists(_cmd, "colb")    ? real(_cmd.colb)    : 0;
++                var _fmix  = variable_struct_exists(_cmd, "mix")     ? real(_cmd.mix)     : 8;
+                 if (_fpat == 0) {
+                     // Solid fill — single flood, existing helper.
+                     _m.dither_mode = "NONE";
+@@ -204,7 +205,7 @@ function scr_vbmp_replay_to_surface(_asset) {
+                     // Dither fill — ONE parity flood painting colA/colB per pixel,
+                     // matching the C64 vbmp_fill runtime exactly. No pre-fill pass,
+                     // so colB may equal bg / outline / colA with no special-casing.
+-                    scr_vbmp_flood_dither(_asset, _fx, _fy, _sel_to_col[_active_sel], _sel_to_col[_fcolb], _fpat);
++                    scr_vbmp_flood_dither(_asset, _fx, _fy, _sel_to_col[_active_sel], _sel_to_col[_fcolb], _fpat, _fmix);
+                 }
+                 buffer_get_surface(_shared_buf, _m.preview_surf, 0);
+             } break;

@@ -15,7 +15,8 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         if (_o == "setcol") return 2;
         if (_o == "plot") return 4;
         if (_o == "line" || _o == "rect" || _o == "rectfill"
-         || _o == "ellipse" || _o == "ellipsefill" || _o == "fill") return 5;
+         || _o == "ellipse" || _o == "ellipsefill") return 5;
+        if (_o == "fill") return 6; // seed x,y + pattern + colB + mix
         if (_o == "recolor_cram" || _o == "recolor_sram") return 6;
         if (_o == "copyregion") return 7;
         return 0;
@@ -34,8 +35,9 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     if (!variable_struct_exists(_m, "col2"))          _m.col2 = 2;
     if (!variable_struct_exists(_m, "col3"))          _m.col3 = 3;
     if (!variable_struct_exists(_m, "last_emitted_col")) _m.last_emitted_col = -1;
-    if (!variable_struct_exists(_m, "dither_pat")) _m.dither_pat = 0; // 0 solid,1 checker,2 interlace
+    if (!variable_struct_exists(_m, "dither_pat")) _m.dither_pat = 0; // 0 solid,1 checker,2 interlace,3 bayer
     if (!variable_struct_exists(_m, "dither_colb")) _m.dither_colb = 2; // second dither colour 0..3
+    if (!variable_struct_exists(_m, "dither_mix")) _m.dither_mix = 8; // BAYER mix threshold 0..15 (gradient ratio)
     if (!variable_struct_exists(_m, "vbmp_zoom")) _m.vbmp_zoom = 0; // 0 = full surface, 1 = zoom into 192x120 window
     if (!variable_struct_exists(_m, "vbmp_grid")) _m.vbmp_grid = false; // char-cell grid overlay on/off
 
@@ -395,10 +397,10 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_set_color(c_ltgray);
         draw_text(_tx, _ty, "DITHER:");
         _ty += 16;
-        // Pattern mode buttons: SOLID / CHECKER / INTERLACE
-        var _pat_lbls = ["SOLID", "CHECKER", "INTERLACE"];
+        // Pattern mode buttons: SOLID / CHECKER / INTERLACE / BAYER
+        var _pat_lbls = ["SOLID", "CHECKER", "INTERLACE", "BAYER"];
         var _pat_bw = 88;
-        for (var _p = 0; _p < 3; _p++) {
+        for (var _p = 0; _p < 4; _p++) {
             var _pbx = _tx;
             var _pby = _ty + _p * 20;
             var _pact = (_m.dither_pat == _p);
@@ -411,7 +413,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             draw_text(_pbx + 4, _pby + 3, _pat_lbls[_p]);
             if (_phov && mouse_check_button_pressed(mb_left)) _m.dither_pat = _p;
         }
-        _ty += 3 * 20 + 4;
+        _ty += 4 * 20 + 4;
         // Second colour swatch (only meaningful when pattern > 0)
         draw_set_color(c_ltgray);
         draw_text(_tx, _ty, "2ND COL:");
@@ -428,6 +430,20 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             _m.dither_colb = (_m.dither_colb + 1) mod 4;
         }
         _ty += 22;
+
+        // BAYER mix ratio (gradient fill tool only meaningful when pattern == BAYER).
+        // 0 = all colA, 15 = all colB. L=+1, R=-1.
+        if (_m.dither_pat == 3) {
+            draw_set_color(c_ltgray);
+            draw_text(_tx, _ty, "GRADIENT MIX:");
+            var _mxx = _tx + 100;
+            var _mxhov = point_in_rectangle(_mx, _my, _mxx, _ty - 2, _mxx + 40, _ty + 16);
+            draw_set_color(_mxhov ? c_aqua : c_white);
+            draw_text(_mxx, _ty, string(_m.dither_mix) + "/15");
+            if (_mxhov && mouse_check_button_pressed(mb_left))  _m.dither_mix = min(15, _m.dither_mix + 1);
+            if (_mxhov && mouse_check_button_pressed(mb_right)) _m.dither_mix = max(0,  _m.dither_mix - 1);
+            _ty += 22;
+        }
 
         // Blocked-fill warning line (auto-clears). Shown only while the timer
         // is running; counts down once per drawn frame.
@@ -673,7 +689,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
                 if (_tool == "PLOT") {
                     array_push(_m.commands, { op: "plot", x: _snap_px, y: _raw_py });
                 } else {
-                    array_push(_m.commands, { op: "fill", x: _snap_px, y: _raw_py, pattern: _m.dither_pat, colb: _m.dither_colb });
+                    array_push(_m.commands, { op: "fill", x: _snap_px, y: _raw_py, pattern: _m.dither_pat, colb: _m.dither_colb, mix: _m.dither_mix });
                 }
                 _m.vbmp_dirty = true;
             }
