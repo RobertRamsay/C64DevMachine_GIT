@@ -6808,17 +6808,17 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                draw_set_color(make_color_rgb(90, 90, 120));
 	                draw_text(_thumb_x, _cy, "GRADIENT:");
 
-	                var _gc_btn_x1 = _thumb_x + 62;
-	                var _gc_btn_x2 = _gc_btn_x1 + 58;
-	                var _gc_btn_y1 = _cy - 2;
-	                var _gc_btn_y2 = _cy + 12;
+	                var _gc_btn_x1 = _thumb_x + 63;
+	                var _gc_btn_x2 = _gc_btn_x1 + 60;
+	                var _gc_btn_y1 = _cy ;
+	                var _gc_btn_y2 = _cy + 14;
 	                var _gc_hov = point_in_rectangle(_mx, _my, _gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2);
 	                draw_set_color(_asset.meta.gradient_custom_active ? make_color_rgb(20, 60, 60) : (_gc_hov ? make_color_rgb(80, 80, 100) : make_color_rgb(40, 40, 60)));
 	                draw_rectangle(_gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2, false);
 	                draw_set_color(_asset.meta.gradient_custom_active ? c_aqua : (_gc_hov ? c_white : c_black));
 	                draw_rectangle(_gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2, true);
 	                draw_set_color(_asset.meta.gradient_custom_active ? c_aqua : c_white);
-	                draw_text(_gc_btn_x1 + 4, _cy, "CUSTOM");
+	                draw_text(_gc_btn_x1 + 8, _cy, "CUSTOM");
 	                if (_gc_hov && mouse_check_button_pressed(mb_left)) {
 	                    _asset.meta.gradient_custom_active = !_asset.meta.gradient_custom_active;
 	                }
@@ -6829,7 +6829,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                var _gc_sw = 18, _gc_sh = 14, _gc_gap = 2;
 	                var _gc_slots_x = _gc_btn_x2 + 12;
 	                for (var _gs = 0; _gs < 12; _gs++) {
-	                    var _gsx1 = _gc_slots_x + _gs * (_gc_sw + _gc_gap);
+	                    var _gsx1 = 6+ _gc_slots_x + _gs * (_gc_sw + _gc_gap);
 	                    var _gsx2 = _gsx1 + _gc_sw;
 	                    var _gsy1 = _cy - 2;
 	                    var _gsy2 = _cy + 12;
