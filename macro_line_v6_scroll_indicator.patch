@@ -1,0 +1,38 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml b/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
+index 76102ce..6437c47 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
+@@ -357,10 +357,32 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+ 
+     var _total_lines = array_length(_m.lines);
+     _m.line_scroll = clamp(_m.line_scroll, 0, max(0, _total_lines - _rows_vis));
++
++    // "N more above" indicator — replaces the top row slot when scrolled down.
++    var _more_above = _m.line_scroll;
++    var _row_start  = 0;
++    if (_more_above > 0) {
++        draw_set_font(fnt_c64_tiny);
++        draw_set_color(make_color_rgb(140, 140, 140));
++        draw_text(_list_x1 + 10, _list_y1 + 3, "^ " + string(_more_above) + " more above");
++        _row_start = 1;
++    }
++
+     var _delete_idx = -1;
+-    for (var _vi = 0; _vi < _rows_vis; _vi++) {
++    for (var _vi = _row_start; _vi < _rows_vis; _vi++) {
+         var _idx = _vi + _m.line_scroll;
+         if (_idx >= _total_lines) break;
++        // Reserve the last visible slot for a "more below" indicator if there
++        // are additional rows past what fits — unless this is the final one.
++        var _remaining_after = _total_lines - _idx - 1;
++        var _is_last_slot     = (_vi == _rows_vis - 1);
++        if (_is_last_slot && _remaining_after > 0) {
++            var _fy1 = _list_y1 + (_vi * _row_h);
++            draw_set_font(fnt_c64_tiny);
++            draw_set_color(make_color_rgb(140, 140, 140));
++            draw_text(_list_x1 + 10, _fy1 + 3, "v " + string(_remaining_after + 1) + " more below");
++            break;
++        }
+         var _row_ln = _m.lines[_idx];
+         var _ry1 = _list_y1 + (_vi * _row_h);
+         var _ry2 = _ry1 + _row_h - 2;
