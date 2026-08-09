@@ -1376,6 +1376,7 @@ if (gui_menu_open == 0) {
         { title: "SEEK",         type: "MACRO_SEEK"          },
         { title: "COLLIDE",      type: "MACRO_COLLISION"     },
         { title: "COLL.ADV",     type: "MACRO_COLL_ADV"      },
+        { title: "COLL.LINE",    type: "MACRO_COLL_LINE"     },
         { title: "PRIORITY",     type: "MACRO_PRIORITY"      },
         { title: "ENABLER",      type: "MACRO_SPR_ENABLE"    },
         { title: "EXPANDER",     type: "MACRO_SPR_EXPAND"    },

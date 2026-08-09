@@ -399,14 +399,16 @@ if (label_picker_open) {
 }
 
 if (label_picker_open && mouse_check_button_pressed(mb_left)) {
-   // ---- ASSET PICKER (BYTE_DATA / TEXT_DATA) ----
+   // ---- ASSET PICKER (BYTE_DATA / TEXT_DATA / LINE_COLL) ----
     if (label_picker_mode == "BYTE_ASSET" || label_picker_mode == "TEXT_ASSET"
-	 || label_picker_mode == "SOUND_ASSET") {
+	 || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET") {
         var _want_type = "BYTE_DATA";
         if (label_picker_mode == "TEXT_ASSET") {
             _want_type = "TEXT_DATA";
         } else if (label_picker_mode == "SOUND_ASSET") {
             _want_type = "MUSIC_MAKER";
+        } else if (label_picker_mode == "LINE_ASSET") {
+            _want_type = "LINE_COLL";
         }
         var _px      = draw_x + width + 8;
         var _py      = y + 36;
@@ -1054,6 +1056,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
 		case "MACRO_SPR_EXPAND":  scr_node_step_macro_spr_expand(draw_x);  break;
         case "MACRO_COLLISION":   scr_node_step_macro_collision(draw_x);   break;
 		case "MACRO_COLL_ADV":    scr_node_step_macro_coll_adv(draw_x);    break;
+		case "MACRO_COLL_LINE":   scr_node_step_macro_coll_line(draw_x);   break;
         case "MACRO_ANIM":        scr_node_step_macro_anim(draw_x);        break;
         case "MACRO_SFX":         scr_node_step_macro_sfx(draw_x);         break;
         case "MACRO_CODE":        scr_node_step_macro_code(draw_x);        break;

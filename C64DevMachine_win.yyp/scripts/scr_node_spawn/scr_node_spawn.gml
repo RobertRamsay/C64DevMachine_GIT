@@ -778,13 +778,13 @@ case "LABEL": {
             break;
 
 		// -------------------------------------------------------
-		// MACRO_LINE
+		// MACRO_COLL_LINE
 		// Probe-point vs. line-collision-table check.
-		// instructions[0]: ["macro_line", line_coll_asset_name, probe_x_var, probe_y_var, result_type_var]
+		// instructions[0]: ["macro_coll_line", line_coll_asset_name, probe_x_var, probe_y_var, result_type_var]
 		// -------------------------------------------------------
-		case "MACRO_LINE":
-		    _n.node_title   = "LINE COLL";
-		    _n.instructions = [["macro_line", "", "", "", ""]];
+		case "MACRO_COLL_LINE":
+		    _n.node_title   = "COLL-LINE";
+		    _n.instructions = [["macro_coll_line", "", "", "", ""]];
 		    _n.pc_address   = global.start_pc;
 		    with (_n) { event_user(0); }
 		    break;

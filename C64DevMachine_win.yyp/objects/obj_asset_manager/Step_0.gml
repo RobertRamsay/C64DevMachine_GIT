@@ -659,6 +659,12 @@ for (var _di = 0; _di < ds_list_size(asset_list); _di++) {
                             string(instructions[0][4]) == _old_name)
                             instructions[0][4] = _proposed;
                         break;
+                    case "MACRO_COLL_LINE":
+                        // slot 1 = LINE_COLL asset name
+                        if (array_length(instructions[0]) > 1 &&
+                            string(instructions[0][1]) == _old_name)
+                            instructions[0][1] = _proposed;
+                        break;
                     case "GET_VAR":
                         // slot 3 = BYTE_DATA asset name (asset src mode only)
                         if (array_length(instructions[0]) > 3 &&

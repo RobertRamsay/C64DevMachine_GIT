@@ -136,6 +136,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
 
     var _ref_asset = undefined;
+    var _ref_dropdown_bottom = _cy + 20; // grows if the picker dropdown is open
     if (_m.ref_enabled) {
         // Reference asset name picker (BITMAP only)
         var _rpbx1 = _ref_toggle_x2 + 10;
@@ -158,8 +159,9 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
                 if (_rp_a.type == "BITMAP") array_push(_rp_list, _rp_a.name);
             }
             var _rp_y = _rpby2 + 2;
+            var _rp_h = (array_length(_rp_list) * 18) + 4;
             draw_set_color(make_color_rgb(15, 15, 15));
-            draw_rectangle(_rpbx1, _rp_y, _rpbx2, _rp_y + (array_length(_rp_list) * 18) + 4, false);
+            draw_rectangle(_rpbx1, _rp_y, _rpbx2, _rp_y + _rp_h, false);
             for (var _rpj = 0; _rpj < array_length(_rp_list); _rpj++) {
                 var _rp_row_y1 = _rp_y + 2 + (_rpj * 18);
                 var _rp_row_y2 = _rp_row_y1 + 18;
@@ -173,10 +175,14 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
                     _m.ref_picker_open = false;
                 }
             }
+            // Push the dropdown's bottom edge past everything below it so the
+            // offset steppers (and canvas) never sit underneath the open list.
+            _ref_dropdown_bottom = _rp_y + _rp_h;
         }
 
-        // X/Y offset steppers
-        var _off_y = _cy + 24;
+        // X/Y offset steppers — placed below the toggle/picker row, and below
+        // the picker dropdown too when it's open, so nothing overlaps.
+        var _off_y = _ref_dropdown_bottom + 10;
         var _off_labels = [
             { label: "REF X: " + string(_m.ref_offset_x), field: "ref_offset_x" },
             { label: "REF Y: " + string(_m.ref_offset_y), field: "ref_offset_y" }

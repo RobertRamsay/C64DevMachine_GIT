@@ -10213,7 +10213,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         with (obj_c64_node) {
             var _ref_name = "";
             switch (node_type) {
-                case "MACRO_BMP": case "MACRO_SPR": case "MACRO_SID": case "MACRO_SFX": case "MACRO_MAP": case "MACRO_CHR": case "MACRO_LOADER": case "MACRO_SID_SONG":
+                case "MACRO_BMP": case "MACRO_SPR": case "MACRO_SID": case "MACRO_SFX": case "MACRO_MAP": case "MACRO_CHR": case "MACRO_LOADER": case "MACRO_SID_SONG": case "MACRO_COLL_LINE":
                     if (array_length(instructions[0]) > 1)
                         _ref_name = string(instructions[0][1]);
                     break;

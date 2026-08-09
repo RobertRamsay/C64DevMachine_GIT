@@ -10400,7 +10400,7 @@ case "MACRO_COLL_ADV": {
 } break;
 
 // -------------------------------------------------------
-// MACRO_LINE
+// MACRO_COLL_LINE
 // Probe-point vs. line-collision-table check. Walks a LINE_COLL asset's
 // compiled record block (see scr_line_coll_support) from its base address
 // until the $FF sentinel, testing the probe point against each record.
@@ -10408,9 +10408,9 @@ case "MACRO_COLL_ADV": {
 // if no line was hit. No movement/response logic — caller decides what to
 // do with the result (mirrors MACRO_COLL_ADV's probe-then-branch pattern).
 //
-// instructions[0]: ["macro_line", line_coll_asset_name, probe_x_var, probe_y_var, result_type_var]
+// instructions[0]: ["macro_coll_line", line_coll_asset_name, probe_x_var, probe_y_var, result_type_var]
 // -------------------------------------------------------
-case "MACRO_LINE": {
+case "MACRO_COLL_LINE": {
     var _id          = _curr;
     var _lc_name     = (array_length(_id.instructions[0]) > 1) ? string(_id.instructions[0][1]) : "";
     var _px_var      = (array_length(_id.instructions[0]) > 2) ? string(_id.instructions[0][2]) : "";
@@ -10430,7 +10430,7 @@ case "MACRO_LINE": {
     var _result_addr = (_result_var != "") ? scr_resolve_var_addr(_result_var) : 0;
 
     if (is_undefined(_lc_asset) || _px_addr == 0 || _py_addr == 0 || _result_addr == 0) {
-        show_debug_message("MACRO_LINE: skipping — asset=[" + _lc_name + "] px=" + string(_px_addr) + " py=" + string(_py_addr) + " result=" + string(_result_addr));
+        show_debug_message("MACRO_COLL_LINE: skipping — asset=[" + _lc_name + "] px=" + string(_px_addr) + " py=" + string(_py_addr) + " result=" + string(_result_addr));
         if (_result_addr != 0) {
             array_push(_list, ["lda_imm", 0,            _id]);
             array_push(_list, ["sta_abs", _result_addr, _id]);

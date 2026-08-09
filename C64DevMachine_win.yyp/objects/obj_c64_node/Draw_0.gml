@@ -202,10 +202,11 @@ switch (node_type) {
 if (label_picker_open) {
 
     if (label_picker_mode == "BYTE_ASSET" || label_picker_mode == "TEXT_ASSET"
-     || label_picker_mode == "SOUND_ASSET") {
-        // One picker, three asset types. TEXT_ASSET lists TEXT_DATA (SID SOUND
+     || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET") {
+        // One picker, four asset types. TEXT_ASSET lists TEXT_DATA (SID SOUND
         // note lists, MACRO_PRINT text); BYTE_ASSET lists BYTE_DATA;
-        // SOUND_ASSET lists SOUND_EDITOR songs (MACRO_SID_SONG).
+        // SOUND_ASSET lists SOUND_EDITOR songs (MACRO_SID_SONG);
+        // LINE_ASSET lists LINE_COLL (MACRO_COLL_LINE).
         var _want_type = "BYTE_DATA";
         var _pick_hdr  = "BYTE_DATA ASSETS";
         if (label_picker_mode == "TEXT_ASSET") {
@@ -214,6 +215,9 @@ if (label_picker_open) {
         } else if (label_picker_mode == "SOUND_ASSET") {
             _want_type = "MUSIC_MAKER";
             _pick_hdr  = "SONG ASSETS";
+        } else if (label_picker_mode == "LINE_ASSET") {
+            _want_type = "LINE_COLL";
+            _pick_hdr  = "LINE_COLL ASSETS";
         }
         var _px      = draw_x + width + 8;
         var _py      = y + 36;
@@ -1222,6 +1226,7 @@ if (_lod_body) switch (node_type) {
 	case "MACRO_REU":         scr_node_draw_macro_reu(draw_x, y);   break;
 	case "MACRO_COLLISION":   scr_node_draw_macro_collision(draw_x); break;
 	case "MACRO_COLL_ADV":    scr_node_draw_macro_coll_adv(draw_x);  break;
+	case "MACRO_COLL_LINE":   scr_node_draw_macro_coll_line(draw_x, y); break;
 	case "MACRO_ANIM":        scr_node_draw_macro_anim(draw_x);      break;
 	case "MACRO_SFX":         scr_node_draw_macro_sfx(draw_x);       break;
 	case "MACRO_CODE":        scr_node_draw_macro_code(draw_x, y);   break;   
