@@ -29,6 +29,10 @@ function scr_asset_inline_editor_commit_all() {
                 if (variable_struct_exists(_a.meta, "inline_edit_open") && _a.meta.inline_edit_open) {
                     scr_asset_byte_data_save(_a);
                 }
+            } else if (_a.type == "LINE_COLL") {
+                if (variable_struct_exists(_a.meta, "inline_edit_open") && _a.meta.inline_edit_open) {
+                    scr_line_coll_save(_a);
+                }
             } else if (_a.type == "TEXT_DATA") {
                 if (variable_struct_exists(_a.meta, "inline_edit_open") && _a.meta.inline_edit_open) {
                     scr_asset_text_data_save(_a);

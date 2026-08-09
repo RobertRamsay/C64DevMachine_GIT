@@ -7188,6 +7188,114 @@ case "TEXT_DATA": {
 
 } break;
 
+case "LINE_COLL": {
+    // ── EDIT BUTTON ──────────────────────────────────────────────────────
+    var _ebx1   = _vx1 + 10;
+    var _ebx2   = _vx1 + 80;
+    var _eby1   = _cy;
+    var _eby2   = _cy + 22;
+    var _eb_hov = point_in_rectangle(_mx, _my, _ebx1, _eby1, _ebx2, _eby2);
+    var _ed_open = _asset.meta.inline_edit_open;
+
+    draw_set_color(_ed_open
+        ? make_color_rgb(200, 60, 60)
+        : (_eb_hov ? make_color_rgb(255, 100, 100) : make_color_rgb(120, 30, 30)));
+    draw_rectangle(_ebx1, _eby1, _ebx2, _eby2, false);
+    draw_set_font(fnt_c64_tiny);
+    draw_set_color(_eb_hov ? c_black : c_white);
+    draw_set_halign(fa_center);
+    draw_text(_ebx1 + 35, _eby1 + 6, _ed_open ? "CLOSE" : "EDIT");
+    draw_set_halign(fa_left);
+
+    if (_eb_hov && mouse_check_button_pressed(mb_left)) {
+        if (!_ed_open) {
+            // Open — load working text from line_string to preserve original formatting
+            var _lstr = variable_struct_exists(_asset.meta, "line_string") ? string(_asset.meta.line_string) : "";
+            _asset.meta.inline_edit_open      = true;
+            global.is_any_text_active         = true;
+            _asset.meta.inline_edit_text      = _lstr;
+            _asset.meta.inline_edit_cursor    = string_length(_lstr);
+            _asset.meta.inline_edit_scroll_y  = 0;
+            _asset.meta.inline_edit_sel_start = -1;
+            _asset.meta.inline_edit_sel_end   = -1;
+            _asset.meta.inline_edit_blink     = 0;
+            _asset.meta.inline_edit_key_timer = 0;
+        } else {
+            // Close — parse and save
+            scr_line_coll_save(_asset);
+            _asset.meta.inline_edit_open = false;
+            global.is_any_text_active    = false;
+        }
+    }
+
+    // ── SAVE BUTTON (only when editor open) ──────────────────────────────
+    if (_ed_open) {
+        var _sbx1   = _ebx2 + 8;
+        var _sbx2   = _sbx1 + 60;
+        var _sb_hov = point_in_rectangle(_mx, _my, _sbx1, _eby1, _sbx2, _eby2);
+        draw_set_color(_sb_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
+        draw_rectangle(_sbx1, _eby1, _sbx2, _eby2, false);
+        draw_set_font(fnt_c64_tiny);
+        draw_set_color(c_white);
+        draw_set_halign(fa_center);
+        draw_text(_sbx1 + 30, _eby1 + 6, "SAVE");
+        draw_set_halign(fa_left);
+        if (_sb_hov && mouse_check_button_pressed(mb_left)) {
+            scr_line_coll_save(_asset);
+        }
+    }
+
+    _cy += 30;
+
+    // ── LINE COUNT / ADDRESS BAR ────────────────────────────────────────
+    var _lc_count = variable_struct_exists(_asset.meta, "lines") ? array_length(_asset.meta.lines) : 0;
+    var _lc_bytes = (_lc_count * 6) + 3; // 6 bytes/record + 3-byte sentinel
+    draw_set_font(fnt_c64_tiny);
+    draw_set_color(make_color_rgb(80, 80, 80));
+    draw_text(_vx1 + 10, _cy, string(_lc_count) + " LINES   " + string(_lc_bytes) + " BYTES   $"
+        + string_upper(decimal_to_hex(_asset.address))
+        + " - $" + string_upper(decimal_to_hex(_asset.address + max(0, _lc_bytes - 1))));
+    _cy += 24;
+    draw_set_font(fnt_C64_Angled);
+    draw_set_color(c_ltgray);
+    draw_text(_vx1 + 10, _cy, "One line per row: x1,y1,x2,y2,type (type 0-7).");
+    _cy += 30;
+
+    // ── INLINE EDITOR ─────────────────────────────────────────────────────
+    if (_ed_open) {
+        var _ed_x1 = _vx1 + 180;
+        var _ed_x2 = _vx2 - 80;
+        var _ed_y1 = _cy - 80;
+        var _ed_y2 = _vy2 - 120;
+        scr_asset_inline_editor_draw(_asset, _ed_x1, _ed_y1, _ed_x2, _ed_y2,
+            _mx, _my, make_color_rgb(255, 100, 100), "LINE COLL DATA");
+        scr_asset_inline_editor_step(_asset, _mx, _my, _ed_x1, _ed_y1, _ed_x2, _ed_y2);
+    } else {
+        // Preview when closed
+        draw_set_font(fnt_C64_Angled);
+        draw_set_color(c_ltgray);
+        draw_text(_vx1 + 10, _cy, "CONTENT:");
+        _cy += 14;
+        draw_set_color(make_color_rgb(255, 100, 100));
+        var _lstr2 = variable_struct_exists(_asset.meta, "line_string")
+            ? string(_asset.meta.line_string) : "";
+        var _preview2 = _lstr2;
+        if (string_length(_preview2) > 600) _preview2 = string_copy(_preview2, 1, 600) + "...";
+
+        var _linemaxwidth2 = 1400;
+        var _str_w2 = string_width(_preview2);
+        var _xscale2 = 1;
+        if (_str_w2 > _linemaxwidth2) {
+            _xscale2 = _linemaxwidth2 / _str_w2;
+        }
+        draw_text_transformed(_vx1 + 10, _cy, _preview2, _xscale2, 1, 0);
+    }
+
+    if (!_ed_open) {
+        keyboard_string = "";
+    }
+} break;
+
 case "SID_MUSIC": {
             if (!buffer_exists(_asset.buffer)) {
                 draw_set_font(fnt_c64_tiny);
@@ -10112,14 +10220,14 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 
 // REFERENCED BY (for BITMAP, default cases — SPRITE_SET and MAP_DATA handle their own above)
     if (_asset.type == "SFX_DATA") _cy = _vy2 - 100;
-	 if (_asset.type == "BYTE_DATA" || _asset.type == "TEXT_DATA") _cy = _vy2 - 100;
+	 if (_asset.type == "BYTE_DATA" || _asset.type == "TEXT_DATA" || _asset.type == "LINE_COLL") _cy = _vy2 - 100;
    if (_asset.type != "SPRITE_SET" && _asset.type != "MAP_DATA" && _asset.type != "BITMAP" && _asset.type != "META_TILESET" && _asset.type != "META_MAP" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER") {
         draw_set_font(fnt_c64_code);
         draw_set_color(make_color_rgb(60,60,80));
         draw_line(_vx1 + 10, _cy, _vx2 - 10, _cy);
         _cy += 16;
         draw_set_color(c_ltgray);
-        var _header_text = (_asset.type == "BYTE_DATA") ? "AUTOMATICALLY INJECTED" : "REFERENCED BY:";
+        var _header_text = (_asset.type == "BYTE_DATA" || _asset.type == "LINE_COLL") ? "AUTOMATICALLY INJECTED" : "REFERENCED BY:";
         draw_text(_vx1 + 10, _cy, _header_text);
         _cy += 18;
         var _ref_count = 0;
@@ -10150,7 +10258,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         if (_ref_count == 0) {
             draw_set_font(fnt_c64_tiny);
             draw_set_color(make_color_rgb(80, 80, 80));
-            var _status_msg = (_asset.type == "BYTE_DATA" || _asset.type == "TEXT_DATA") ? "OCCUPIES RAM AT STATED ADDRESSES" : "NONE - ASSET NOT IN USE";
+            var _status_msg = (_asset.type == "BYTE_DATA" || _asset.type == "TEXT_DATA" || _asset.type == "LINE_COLL") ? "OCCUPIES RAM AT STATED ADDRESSES" : "NONE - ASSET NOT IN USE";
             draw_text(_vx1 + 20, _cy, _status_msg);
             _cy += 20;
         } else {

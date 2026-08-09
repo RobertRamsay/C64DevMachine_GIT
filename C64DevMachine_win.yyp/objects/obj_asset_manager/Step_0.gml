@@ -1817,6 +1817,19 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open) {
 				_new_asset.meta.save_file_size          = 256;
                 scr_asset_byte_data_flush(_new_asset);
             }
+           if (_type == "LINE_COLL") {
+                _new_asset.meta.line_string           = "";
+				_new_asset.meta.lines                 = [];
+				_new_asset.meta.inline_edit_open      = false;
+				_new_asset.meta.inline_edit_text      = _new_asset.meta.line_string;
+				_new_asset.meta.inline_edit_cursor    = 0;
+				_new_asset.meta.inline_edit_scroll_y  = 0;
+				_new_asset.meta.inline_edit_sel_start = -1;
+				_new_asset.meta.inline_edit_sel_end   = -1;
+				_new_asset.meta.inline_edit_blink     = 0;
+				_new_asset.meta.inline_edit_key_timer = 0;
+                scr_line_coll_flush(_new_asset);
+            }
         if (_type == "MAP_DATA") {
             _new_asset.meta = {
                 map_w             : 40,

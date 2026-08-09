@@ -10399,6 +10399,215 @@ case "MACRO_COLL_ADV": {
     array_push(_list, ["label", _skip]);
 } break;
 
+// -------------------------------------------------------
+// MACRO_LINE
+// Probe-point vs. line-collision-table check. Walks a LINE_COLL asset's
+// compiled record block (see scr_line_coll_support) from its base address
+// until the $FF sentinel, testing the probe point against each record.
+// First hit wins; result_type_var receives the matched type (1-7), or 0
+// if no line was hit. No movement/response logic — caller decides what to
+// do with the result (mirrors MACRO_COLL_ADV's probe-then-branch pattern).
+//
+// instructions[0]: ["macro_line", line_coll_asset_name, probe_x_var, probe_y_var, result_type_var]
+// -------------------------------------------------------
+case "MACRO_LINE": {
+    var _id          = _curr;
+    var _lc_name     = (array_length(_id.instructions[0]) > 1) ? string(_id.instructions[0][1]) : "";
+    var _px_var      = (array_length(_id.instructions[0]) > 2) ? string(_id.instructions[0][2]) : "";
+    var _py_var      = (array_length(_id.instructions[0]) > 3) ? string(_id.instructions[0][3]) : "";
+    var _result_var  = (array_length(_id.instructions[0]) > 4) ? string(_id.instructions[0][4]) : "";
+
+    var _uid = string(_id.id);
+    _uid = string_replace_all(_uid, " ", "_");
+    _uid = string_replace_all(_uid, "[", "");
+    _uid = string_replace_all(_uid, "]", "");
+    var _skip     = "L_LEXIT_" + _uid;
+    var _sub_lbl  = "L_LSUB_"  + _uid;
+    var _lc_asset = scr_line_coll_find_asset(_lc_name);
+
+    var _px_addr = (_px_var != "") ? scr_resolve_var_addr(_px_var) : 0;
+    var _py_addr = (_py_var != "") ? scr_resolve_var_addr(_py_var) : 0;
+    var _result_addr = (_result_var != "") ? scr_resolve_var_addr(_result_var) : 0;
+
+    if (is_undefined(_lc_asset) || _px_addr == 0 || _py_addr == 0 || _result_addr == 0) {
+        show_debug_message("MACRO_LINE: skipping — asset=[" + _lc_name + "] px=" + string(_px_addr) + " py=" + string(_py_addr) + " result=" + string(_result_addr));
+        if (_result_addr != 0) {
+            array_push(_list, ["lda_imm", 0,            _id]);
+            array_push(_list, ["sta_abs", _result_addr, _id]);
+        }
+        break;
+    }
+
+    var _lut_label = _lc_name + "_LINE_LUT";
+
+    array_push(_list, ["jsr_abs", _sub_lbl,     _id]);
+    array_push(_list, ["sta_abs", _result_addr, _id]);
+    array_push(_list, ["jmp_abs", _skip,        _id]);
+
+    // ---- Probe subroutine ----
+    // ZP scratch used (all clobbered, no persistence across calls):
+    //   $F5 = record axis flag        $F6 = record major_start
+    //   $F7 = record minor_start      $F8 = record major_end
+    //   $F9 = record slope byte       $FA = table pointer lo
+    //   $FB = table pointer hi        $FC = step (probe major - major_start)
+    //   $FD = gradient shift-add accumulator lo   $FE = accumulator hi
+    array_push(_list, ["label", _sub_lbl]);
+
+    // $FA/$FB = LUT base pointer
+    array_push(_list, ["lda_imm", 0, _id]);
+    array_push(_list, ["sta_zp",  0xFA, _id]);
+    array_push(_list, ["lda_imm", 0, _id]);
+    array_push(_list, ["sta_zp",  0xFB, _id]);
+    array_push(_list, ["lda_lab_lo", _lut_label, _id]);
+    array_push(_list, ["sta_zp",     0xFA,       _id]);
+    array_push(_list, ["lda_lab_hi", _lut_label, _id]);
+    array_push(_list, ["sta_zp",     0xFB,       _id]);
+
+    var _loop_lbl   = "L_LLOOP_" + _uid;
+    var _next_lbl   = "L_LNEXT_" + _uid;
+    var _hit_lbl    = "L_LHIT_"  + _uid;
+    var _miss_lbl   = "L_LMISS_" + _uid;
+    var _xmaj_lbl   = "L_LXMAJ_" + _uid;
+    var _ymaj_lbl   = "L_LYMAJ_" + _uid;
+    var _test_lbl   = "L_LTEST_" + _uid;
+    var _mulloop_lbl= "L_LMUL_"  + _uid;
+    var _muldone_lbl= "L_LMULD_" + _uid;
+    var _negdone_lbl= "L_LNEGD_" + _uid;
+
+    array_push(_list, ["label", _loop_lbl]);
+
+    // Peek axis-flag byte (record's byte 0) — $FF means sentinel, stop.
+    array_push(_list, ["ldy_imm", 0,       _id]);
+    array_push(_list, ["lda_iny", 0xFA,       _id]); // (zp),Y load via $FA/$FB — see note below
+    array_push(_list, ["cmp_imm", 0xFF,    _id]);
+    array_push(_list, ["beq",     _miss_lbl, _id]);
+    array_push(_list, ["sta_zp",  0xF5,    _id]); // axis flag
+
+    array_push(_list, ["ldy_imm", 1,       _id]);
+    array_push(_list, ["lda_iny", 0xFA,       _id]);
+    array_push(_list, ["sta_zp",  0xF6,    _id]); // major_start
+    array_push(_list, ["ldy_imm", 2,       _id]);
+    array_push(_list, ["lda_iny", 0xFA,       _id]);
+    array_push(_list, ["sta_zp",  0xF7,    _id]); // minor_start
+    array_push(_list, ["ldy_imm", 3,       _id]);
+    array_push(_list, ["lda_iny", 0xFA,       _id]);
+    array_push(_list, ["sta_zp",  0xF8,    _id]); // major_end
+    array_push(_list, ["ldy_imm", 4,       _id]);
+    array_push(_list, ["lda_iny", 0xFA,       _id]);
+    array_push(_list, ["sta_zp",  0xF9,    _id]); // slope byte
+
+    // Branch on axis: 0 = X-major, 1 = Y-major
+    array_push(_list, ["lda_zp",  0xF5,    _id]);
+    array_push(_list, ["beq",     _xmaj_lbl, _id]);
+    array_push(_list, ["jmp_abs", _ymaj_lbl, _id]);
+
+    array_push(_list, ["label", _xmaj_lbl]);
+    // major axis = probe X, minor axis compared against probe Y
+    array_push(_list, ["lda_abs", _px_addr, _id]);
+    array_push(_list, ["cmp_zp",  0xF6,     _id]);
+    array_push(_list, ["bcc",     _next_lbl, _id]); // probe_x < major_start -> skip
+    array_push(_list, ["lda_zp",  0xF8,     _id]);
+    array_push(_list, ["cmp_abs", _px_addr, _id]);
+    array_push(_list, ["bcc",     _next_lbl, _id]); // major_end < probe_x -> skip
+    array_push(_list, ["lda_abs", _px_addr, _id]);
+    array_push(_list, ["sec",     0,        _id]);
+    array_push(_list, ["sbc_zp",  0xF6,     _id]);
+    array_push(_list, ["sta_zp",  0xFC,     _id]); // step = probe_x - major_start
+    array_push(_list, ["jmp_abs", _test_lbl, _id]);
+
+    array_push(_list, ["label", _ymaj_lbl]);
+    // major axis = probe Y, minor axis compared against probe X
+    array_push(_list, ["lda_abs", _py_addr, _id]);
+    array_push(_list, ["cmp_zp",  0xF6,     _id]);
+    array_push(_list, ["bcc",     _next_lbl, _id]);
+    array_push(_list, ["lda_zp",  0xF8,     _id]);
+    array_push(_list, ["cmp_abs", _py_addr, _id]);
+    array_push(_list, ["bcc",     _next_lbl, _id]);
+    array_push(_list, ["lda_abs", _py_addr, _id]);
+    array_push(_list, ["sec",     0,        _id]);
+    array_push(_list, ["sbc_zp",  0xF6,     _id]);
+    array_push(_list, ["sta_zp",  0xFC,     _id]); // step = probe_y - major_start
+
+    array_push(_list, ["label", _test_lbl]);
+    // minor_at = minor_start + ((step * gradient) >> 4), signed by bit 6 of slope.
+    // Shift-add multiply: gradient is 0-31 (5 bits), so at most 5 add/shift
+    // passes. Accumulate step*gradient in $FD/$FE (16-bit), then shift the
+    // whole 16-bit result right 4 to divide by 16.
+    array_push(_list, ["lda_imm", 0,        _id]);
+    array_push(_list, ["sta_zp",  0xFD,     _id]); // acc lo
+    array_push(_list, ["sta_zp",  0xFE,     _id]); // acc hi
+    array_push(_list, ["lda_zp",  0xF9,     _id]);
+    array_push(_list, ["and_imm", 0x1F,     _id]); // isolate gradient bits
+    array_push(_list, ["tax",     0,        _id]); // X = gradient (loop counter)
+    array_push(_list, ["label",   _mulloop_lbl]);
+    array_push(_list, ["cpx_imm", 0,        _id]);
+    array_push(_list, ["beq",     _muldone_lbl, _id]);
+    array_push(_list, ["clc",     0,        _id]);
+    array_push(_list, ["lda_zp",  0xFD,     _id]);
+    array_push(_list, ["adc_zp",  0xFC,     _id]); // acc += step
+    array_push(_list, ["sta_zp",  0xFD,     _id]);
+    array_push(_list, ["lda_zp",  0xFE,     _id]);
+    array_push(_list, ["adc_imm", 0,        _id]);
+    array_push(_list, ["sta_zp",  0xFE,     _id]);
+    array_push(_list, ["dex",     0,        _id]);
+    array_push(_list, ["jmp_abs", _mulloop_lbl, _id]);
+    array_push(_list, ["label",   _muldone_lbl]);
+    // Shift $FE:$FD right 4 bits (>>4) to scale by gradient/16.
+    for (var _sh = 0; _sh < 4; _sh++) {
+        array_push(_list, ["lsr_zp", 0xFE, _id]);
+        array_push(_list, ["ror_zp", 0xFD, _id]);
+    }
+    // Apply sign (bit 6 of slope byte): if set, delta is negative.
+    array_push(_list, ["lda_zp",  0xF9,     _id]);
+    array_push(_list, ["and_imm", 0x40,     _id]);
+    array_push(_list, ["beq",     _negdone_lbl, _id]);
+    array_push(_list, ["lda_imm", 0,        _id]);
+    array_push(_list, ["sec",     0,        _id]);
+    array_push(_list, ["sbc_zp",  0xFD,     _id]);
+    array_push(_list, ["sta_zp",  0xFD,     _id]); // $FD = -delta (8-bit wraps; gradient span kept small by design)
+    array_push(_list, ["label",   _negdone_lbl]);
+    // minor_at = (minor_start + delta) & 0xFF
+    array_push(_list, ["lda_zp",  0xF7,     _id]);
+    array_push(_list, ["clc",     0,        _id]);
+    array_push(_list, ["adc_zp",  0xFD,     _id]);
+    array_push(_list, ["sta_zp",  0xFD,     _id]); // reuse $FD as minor_at result
+
+    // Compare minor_at to the other probe axis. X-major -> compare vs probe_y;
+    // Y-major -> compare vs probe_x. Exact match only (byte-precision line).
+    array_push(_list, ["lda_zp",  0xF5,     _id]);
+    array_push(_list, ["bne",     _ymaj_lbl + "_CMP", _id]);
+    array_push(_list, ["lda_zp",  0xFD,     _id]);
+    array_push(_list, ["cmp_abs", _py_addr, _id]);
+    array_push(_list, ["beq",     _hit_lbl, _id]);
+    array_push(_list, ["jmp_abs", _next_lbl, _id]);
+    array_push(_list, ["label",   _ymaj_lbl + "_CMP"]);
+    array_push(_list, ["lda_zp",  0xFD,     _id]);
+    array_push(_list, ["cmp_abs", _px_addr, _id]);
+    array_push(_list, ["beq",     _hit_lbl, _id]);
+
+    array_push(_list, ["label", _next_lbl]);
+    // Advance table pointer by 6 bytes (record size) and loop.
+    array_push(_list, ["clc",     0,        _id]);
+    array_push(_list, ["lda_zp",  0xFA,     _id]);
+    array_push(_list, ["adc_imm", 6,        _id]);
+    array_push(_list, ["sta_zp",  0xFA,     _id]);
+    array_push(_list, ["lda_zp",  0xFB,     _id]);
+    array_push(_list, ["adc_imm", 0,        _id]);
+    array_push(_list, ["sta_zp",  0xFB,     _id]);
+    array_push(_list, ["jmp_abs", _loop_lbl, _id]);
+
+    array_push(_list, ["label", _hit_lbl]);
+    array_push(_list, ["ldy_imm", 5,        _id]);
+    array_push(_list, ["lda_iny", 0xFA,        _id]); // record's type byte
+    array_push(_list, ["rts",     0,        _id]);
+
+    array_push(_list, ["label", _miss_lbl]);
+    array_push(_list, ["lda_imm", 0,        _id]);
+    array_push(_list, ["rts",     0,        _id]);
+
+    array_push(_list, ["label", _skip]);
+} break;
+
 // NEW
 case "MACRO_ANIM": {
     var _id    = _curr;
@@ -16355,6 +16564,7 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 		    if (_a.type == "MAP_DATA"   && (ds_map_exists(_used_map, _a.name) || ds_map_exists(_load_org_linked, _a.name))) array_push(_all_assets, _a);
 			if (_a.type == "TEXT_DATA"  && (ds_map_exists(_used_str,  _a.name) || ds_map_exists(_load_org_linked, _a.name))) array_push(_all_assets, _a);
 			if (_a.type == "BYTE_DATA"  ) array_push(_all_assets, _a);
+			if (_a.type == "LINE_COLL"  ) array_push(_all_assets, _a);
 			if (_a.type == "SFX_DATA" && ds_map_exists(_used_sfx, _a.name) && !ds_map_exists(_load_org_linked, _a.name)) array_push(_all_assets, _a);
 			if (_a.type == "SFX_DATA" && ds_map_exists(_load_org_linked, _a.name)) array_push(_all_assets, _a);
 	    }
@@ -16378,6 +16588,9 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 	        if (_sz < 1) continue;
 
 array_push(instruction_list, ["org", _a.address]);
+if (_a.type == "LINE_COLL") {
+    array_push(instruction_list, ["label", _a.name + "_LINE_LUT"]);
+}
 
 if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
     // Region layout is owned by scr_bmp_regions — do NOT recompute it here.
@@ -16448,7 +16661,7 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
 		    for (var _bb = 0; _bb < _chr_inject_sz; _bb++) {
 		        array_push(instruction_list, ["byte", buffer_peek(_buf, _bb, buffer_u8)]);
 		    }
-			} else if (_a.type == "BYTE_DATA") {
+			} else if (_a.type == "BYTE_DATA" || _a.type == "LINE_COLL") {
 			    for (var _bb = 0; _bb < _sz; _bb++) {
 			        array_push(instruction_list, ["byte", buffer_peek(_buf, _bb, buffer_u8)]);
 			    }

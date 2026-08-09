@@ -17,6 +17,8 @@ function scr_asset_inline_editor_close_all() {
             }
             if (_a.type == "BYTE_DATA") {
                 scr_asset_byte_data_save(_a);
+            } else if (_a.type == "LINE_COLL") {
+                scr_line_coll_save(_a);
             } else if (_a.type == "TEXT_DATA") {
                 scr_asset_text_data_save(_a);
             }
