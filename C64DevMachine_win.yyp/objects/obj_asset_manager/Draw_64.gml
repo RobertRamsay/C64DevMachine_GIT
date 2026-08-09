@@ -4773,6 +4773,7 @@ surface_reset_target();
 	                if (!variable_struct_exists(_asset.meta, "gradient_custom_cols")) {
 	                    _asset.meta.gradient_custom_cols = array_create(12, variable_struct_exists(_asset.meta, "active_color") ? _asset.meta.active_color : 1);
 	                }
+	                if (!variable_struct_exists(_asset.meta, "gradient_custom_count")) _asset.meta.gradient_custom_count = 12;
 	                if (!variable_struct_exists(_asset.meta, "preview_overlay")) _asset.meta.preview_overlay = -1;
 	                if (!variable_struct_exists(_asset.meta, "overlay_dirty")) _asset.meta.overlay_dirty = false;
                     
@@ -5667,7 +5668,19 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
 	                    // overrides both with the 12-slot stop run when active.
 	                    var _grad_col_a = _asset.meta.active_color;    // col1
 	                    var _grad_col_b = _asset.meta.secondary_color; // col2
-	                    var _grad_stops = _asset.meta.gradient_custom_active ? _asset.meta.gradient_custom_cols : undefined;
+	                    var _grad_stops = undefined;
+	                    if (_asset.meta.gradient_custom_active) {
+	                        var _grad_cnt = variable_struct_exists(_asset.meta, "gradient_custom_count") ? clamp(_asset.meta.gradient_custom_count, 1, 12) : 12;
+	                        if (_grad_cnt == 1) {
+	                            // Single stop -> flat fill, no dither. Duplicate it
+	                            // so the 2-stop path in scr_asset_bmp_gradient_fill
+	                            // always resolves to that one colour.
+	                            _grad_stops = [_asset.meta.gradient_custom_cols[0], _asset.meta.gradient_custom_cols[0]];
+	                        } else {
+	                            _grad_stops = array_create(_grad_cnt);
+	                            array_copy(_grad_stops, 0, _asset.meta.gradient_custom_cols, 0, _grad_cnt);
+	                        }
+	                    }
 	                    var _grad_x2 = (_raw_px div _bmp_step) * _bmp_step;
 	                    var _grad_y2 = _raw_py;
 	                    scr_asset_bmp_gradient_fill(_asset, _asset.meta.gradient_x1, _asset.meta.gradient_y1, _grad_x2, _grad_y2, _grad_col_a, _grad_col_b, _grad_stops);
@@ -6850,8 +6863,19 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                    if (_gs_hov && mouse_check_button_pressed(mb_left)) {
 	                        _asset.meta.gradient_custom_cols[_gs] = _asset.meta.active_color;
 	                    }
+	                    // Right-click a slot to set how many stops are actually
+	                    // used, 1-based (slot 0 -> 1 colour / flat fill, slot 2
+	                    // -> 3 colours, etc). Trailing slots stay editable but
+	                    // are ignored by the fill until included again.
+	                    if (_gs_hov && mouse_check_button_pressed(mb_right)) {
+	                        _asset.meta.gradient_custom_count = _gs + 1;
+	                    }
+	                    if (_gs == _asset.meta.gradient_custom_count - 1) {
+	                        draw_set_color(c_yellow);
+	                        draw_text(_gsx1 + (_gc_sw * 0.5) - 3, _gsy2 + 2, "^");
+	                    }
 	                }
-	                _cy += 20;
+	                _cy += 30;
 	            }
 
 	            // Metadata Details (Pushed below the canvas)
