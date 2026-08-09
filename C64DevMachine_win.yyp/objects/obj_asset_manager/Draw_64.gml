@@ -6803,7 +6803,16 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	            // ── GRADIENT: CUSTOM stop row (shown whenever GRADIENT is the
 	            // active tool; only applied to the fill when the CUSTOM toggle
 	            // is on — otherwise the plain col1->col2 gradient is used). ──
-	            if (_asset.meta.active_tool == "GRADIENT") {
+	            // Guarded with variable_struct_exists: this draw path can run
+	            // for an asset before its meta struct has been through the
+	            // input-handling init block (e.g. an autoload frame), same as
+	            // the active_color safety check above — reading active_tool
+	            // directly there crashes with "not set before reading it".
+	            if (variable_struct_exists(_asset.meta, "active_tool") && _asset.meta.active_tool == "GRADIENT") {
+	                if (!variable_struct_exists(_asset.meta, "gradient_custom_active")) _asset.meta.gradient_custom_active = false;
+	                if (!variable_struct_exists(_asset.meta, "gradient_custom_cols")) {
+	                    _asset.meta.gradient_custom_cols = array_create(12, variable_struct_exists(_asset.meta, "active_color") ? _asset.meta.active_color : 1);
+	                }
 	                draw_set_font(fnt_c64_tiny);
 	                draw_set_color(make_color_rgb(90, 90, 120));
 	                draw_text(_thumb_x, _cy, "GRADIENT:");
