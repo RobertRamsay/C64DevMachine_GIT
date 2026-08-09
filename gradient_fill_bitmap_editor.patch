@@ -1,0 +1,358 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index e5c79e9..baecd9d 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -964,6 +964,7 @@
+     {"id":{"name":"scr_asset_bmp_draw_rect","path":"scripts/scr_asset_bmp_draw_rect/scr_asset_bmp_draw_rect.yy",},},
+     {"id":{"name":"scr_asset_bmp_flip","path":"scripts/scr_asset_bmp_flip/scr_asset_bmp_flip.yy",},},
+     {"id":{"name":"scr_asset_bmp_flood_fill","path":"scripts/scr_asset_bmp_flood_fill/scr_asset_bmp_flood_fill.yy",},},
++    {"id":{"name":"scr_asset_bmp_gradient_fill","path":"scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.yy",},},
+     {"id":{"name":"scr_asset_bmp_hr_get_stamp_pair","path":"scripts/scr_asset_bmp_hr_get_stamp_pair/scr_asset_bmp_hr_get_stamp_pair.yy",},},
+     {"id":{"name":"scr_asset_bmp_hr_repaint_cell_gpu","path":"scripts/scr_asset_bmp_hr_repaint_cell_gpu/scr_asset_bmp_hr_repaint_cell_gpu.yy",},},
+     {"id":{"name":"scr_asset_bmp_hr_repaint_cell_in_buffer","path":"scripts/scr_asset_bmp_hr_repaint_cell_in_buffer/scr_asset_bmp_hr_repaint_cell_in_buffer.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index bc594b4..a0ba512 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -4765,6 +4765,10 @@ surface_reset_target();
+ 	                if (!variable_struct_exists(_asset.meta, "shape_y1")) _asset.meta.shape_y1 = -1;
+ 	                if (!variable_struct_exists(_asset.meta, "shape_drawing")) _asset.meta.shape_drawing = false;
+ 	                if (!variable_struct_exists(_asset.meta, "shape_btn")) _asset.meta.shape_btn = mb_left;
++	                if (!variable_struct_exists(_asset.meta, "gradient_x1")) _asset.meta.gradient_x1 = -1;
++	                if (!variable_struct_exists(_asset.meta, "gradient_y1")) _asset.meta.gradient_y1 = -1;
++	                if (!variable_struct_exists(_asset.meta, "gradient_drawing")) _asset.meta.gradient_drawing = false;
++	                if (!variable_struct_exists(_asset.meta, "gradient_btn")) _asset.meta.gradient_btn = mb_left;
+ 	                if (!variable_struct_exists(_asset.meta, "preview_overlay")) _asset.meta.preview_overlay = -1;
+ 	                if (!variable_struct_exists(_asset.meta, "overlay_dirty")) _asset.meta.overlay_dirty = false;
+                     
+@@ -5617,9 +5621,58 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
+ 	                        _asset.meta.needs_clash_check = true;
+ 							_asset.meta.pixels_dirty = true;
+ 							_asset.meta.bmp_unsaved = true;
++	                    } else if ((mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right)) && _asset.meta.active_tool == "GRADIENT") {
++	                        // Press sets the flood seed AND the gradient line's first point.
++	                        // Either button starts the drag — direction is always col1->col2.
++	                        _asset.meta.gradient_x1      = (_raw_px div _bmp_step) * _bmp_step;
++	                        _asset.meta.gradient_y1      = _raw_py;
++	                        _asset.meta.gradient_drawing = true;
++	                        _asset.meta.gradient_btn     = mouse_check_button_pressed(mb_left) ? mb_left : mb_right;
++	                        // Push pre-gradient snapshot in new struct format
++	                        if (variable_struct_exists(_asset.meta, "preview_surf") && surface_exists(_asset.meta.preview_surf)) {
++	                            var _grad_buf = buffer_create(320 * 200 * 4, buffer_fixed, 1);
++	                            buffer_get_surface(_grad_buf, _asset.meta.preview_surf, 0);
++	                            var _grad_mask_snap = array_create(64000, 0);
++	                            array_copy(_grad_mask_snap, 0, _asset.meta.bg_mask, 0, 64000);
++	                            var _grad_entry = { buf: _grad_buf, mask: _grad_mask_snap, bg_col: _asset.meta.bg_col };
++	                            array_push(_asset.meta.undo_stack, _grad_entry);
++	                            if (array_length(_asset.meta.undo_stack) > 25) {
++	                                var _gdrop0 = _asset.meta.undo_stack[0];
++	                                if (is_struct(_gdrop0) && buffer_exists(_gdrop0.buf)) {
++	                                    buffer_delete(_gdrop0.buf);
++	                                } else if (buffer_exists(_gdrop0)) {
++	                                    buffer_delete(_gdrop0);
++	                                }
++	                                array_delete(_asset.meta.undo_stack, 0, 1);
++	                            }
++	                            _asset.meta.redo_stack = [];
++	                        }
+ 	                    }
+ 	                }
+ 
++	                // ── GRADIENT RELEASE (fires even if the cursor has left the canvas) ──
++	                // Flood-fills the region matching the seed pixel's colour, then paints
++	                // each pixel col1/col2 by an 8x8 Bayer threshold against how far that
++	                // pixel projects onto the drawn line — a directional dithered gradient,
++	                // same approach as the Amiga Dev Machine bitmap editor's GRADIENT tool.
++	                if (_asset.meta.active_tool == "GRADIENT"
++	                &&  _asset.meta.gradient_drawing
++	                &&  (mouse_check_button_released(mb_left) || mouse_check_button_released(mb_right))) {
++	                    // Fixed direction: always col1 (seed end) -> col2 (drag end),
++	                    // regardless of which button was used to drag.
++	                    var _grad_col_a = _asset.meta.active_color;    // col1
++	                    var _grad_col_b = _asset.meta.secondary_color; // col2
++	                    var _grad_x2 = (_raw_px div _bmp_step) * _bmp_step;
++	                    var _grad_y2 = _raw_py;
++	                    scr_asset_bmp_gradient_fill(_asset, _asset.meta.gradient_x1, _asset.meta.gradient_y1, _grad_x2, _grad_y2, _grad_col_a, _grad_col_b);
++	                    _asset.meta.gradient_drawing = false;
++	                    _asset.meta.gradient_x1      = -1;
++	                    _asset.meta.needs_clash_check = true;
++	                    _asset.meta.pixels_dirty = true;
++	                    _asset.meta.bmp_unsaved = true;
++	                    if (surface_exists(_asset.meta.preview_overlay)) { surface_free(_asset.meta.preview_overlay); _asset.meta.preview_overlay = -1; }
++	                }
++
+ 	                // ── SHAPE RELEASE (fires even if the cursor has left the canvas) ──
+ 	                // _raw_px/_raw_py stay clamped to 0..319 / 0..199 regardless of where
+ 	                // the mouse actually is, so releasing outside the bitmap still commits
+@@ -5691,6 +5744,7 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
+ 	                var _need_overlay = false;
+ 	                if (_asset.meta.active_tool == "LINE" && _asset.meta.line_x1 >= 0) _need_overlay = true;
+ 	                if ((_asset.meta.active_tool == "RECT" || _asset.meta.active_tool == "CIRCLE") && _asset.meta.shape_drawing) _need_overlay = true;
++	                if (_asset.meta.active_tool == "GRADIENT" && _asset.meta.gradient_drawing) _need_overlay = true;
+                     
+ 	                if (_need_overlay) {
+ 	                    // Rebuild overlay surface at canvas resolution (320x200)
+@@ -5889,6 +5943,19 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
+ 	                        }
+ 	                    }
+                         
++	                    if (_asset.meta.active_tool == "GRADIENT" && _asset.meta.gradient_drawing) {
++	                        // Lightweight direction indicator only (not a pixel-accurate
++	                        // brush stamp) — a thin line from seed to current endpoint,
++	                        // plus a small marker at each end, same idea as the Amiga
++	                        // Dev Machine bitmap editor's gradient-line preview.
++	                        var _gx1o = _asset.meta.gradient_x1, _gy1o = _asset.meta.gradient_y1;
++	                        var _gx2o = (_raw_px div _bmp_step) * _bmp_step, _gy2o = _raw_py;
++	                        draw_set_color(c_white);
++	                        draw_line(_gx1o, _gy1o, _gx2o, _gy2o);
++	                        draw_rectangle(_gx1o - 1, _gy1o - 1, _gx1o + 1, _gy1o + 1, false);
++	                        draw_rectangle(_gx2o - 1, _gy2o - 1, _gx2o + 1, _gy2o + 1, true);
++	                    }
++
+ 	                    surface_reset_target();
+ 						}
+                         
+@@ -6345,7 +6412,7 @@ gpu_set_texfilter(false);
+ 	                var _rtx = _thumb_x + _thumb_w + 45;
+ 	                var _rty = _thumb_y;
+ 
+-	                var _tools_r = ["DRAW", "LINE", "CIRCLE", "RECT", "FILL"];
++	                var _tools_r = ["DRAW", "LINE", "CIRCLE", "RECT", "FILL", "GRADIENT"];
+ 	                for(var _i = 0; _i < array_length(_tools_r); _i++) {
+ 	                    var _tname = _tools_r[_i];
+ 	                    var _active = (_asset.meta.active_tool == _tname);
+@@ -6527,15 +6594,18 @@ gpu_set_texfilter(false);
+ 						draw_set_color(scr_c64_pepto_colour(_c));
+ 						draw_rectangle(_px, _pyc, _px + _pw, _pyc + _ph, false);
+ 						if (_asset.meta.active_color == _c) {
++	                        // Primary (LMB / col1) — white double-border box outline.
+ 	                        draw_set_color(c_white);
+ 	                        draw_rectangle(_px-2, _pyc-2, _px + _pw+2, _pyc + _ph+2, true);
+-	                    }
+-	                    if (_bmp_is_hires && !_asset.meta.replace_mode && _asset.meta.secondary_color == _c) {
+-	                        // Secondary (RMB) colour — HiRes only. Drawn as a wider inset
+-	                        // border so it's still visible when primary == secondary.
+-	                        draw_set_color(c_orange);
+ 	                        draw_rectangle(_px-4, _pyc-4, _px + _pw+4, _pyc + _ph+4, true);
+ 	                    }
++	                    if (!_asset.meta.replace_mode && _asset.meta.secondary_color == _c) {
++	                        // Secondary (RMB / col2) — aqua double-border box outline.
++	                        // Shown in MC too (not just HiRes) now that GRADIENT reads it.
++	                        draw_set_color(c_aqua);
++	                        draw_rectangle(_px-2, _pyc-2, _px + _pw+2, _pyc + _ph+2, true);
++	                        draw_rectangle(_px-6, _pyc-6, _px + _pw+6, _pyc + _ph+6, true);
++	                    }
+ 	                    if (_asset.meta.replace_mode) {
+ 	                        if (_asset.meta.replace_col_detect == _c) {
+ 	                            draw_set_color(c_lime);
+@@ -6549,7 +6619,7 @@ gpu_set_texfilter(false);
+ 	                        if (_phov && mouse_check_button_pressed(mb_right)) _asset.meta.replace_col_target = _c;
+ 	                    } else {
+ 	                        if (_phov && mouse_check_button_pressed(mb_left)) _asset.meta.active_color = _c;
+-	                        if (_bmp_is_hires && _phov && mouse_check_button_pressed(mb_right)) _asset.meta.secondary_color = _c;
++	                        if (_phov && mouse_check_button_pressed(mb_right)) _asset.meta.secondary_color = _c;
+ 	                    }
+ 	                }
+ 	              
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.gml b/C64DevMachine_win.yyp/scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.gml
+new file mode 100644
+index 0000000..1e87757
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.gml
+@@ -0,0 +1,177 @@
++/// @function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _col_end)
++/// Amiga Dev Machine style gradient fill for the regular (KLA) bitmap editor.
++/// Floods the contiguous region matching the seed pixel (_x1,_y1), then paints
++/// every pixel in that region _col_start or _col_end by projecting its position
++/// onto the drawn line (_x1,_y1)->(_x2,_y2) and thresholding against an 8x8
++/// ordered Bayer matrix — a directional dithered gradient, not a fixed-ratio
++/// pattern. _col_start sits at the seed end (projection 0), _col_end at the
++/// drag-release end (projection 1). Works in both MC and HiRes.
++function scr_asset_bmp_gradient_fill(_asset, _x1, _y1, _x2, _y2, _col_start, _col_end) {
++    if (!surface_exists(_asset.meta.preview_surf)) return;
++    var _is_hires = scr_asset_bmp_is_hires(_asset);
++    var _step     = _is_hires ? 1 : 2;
++    var _max_x    = _is_hires ? 319 : 318;
++    if (!_is_hires) _x1 = (_x1 div 2) * 2; // MC snap seed
++
++    var _buf = buffer_create(320 * 200 * 4, buffer_fixed, 1);
++    buffer_get_surface(_buf, _asset.meta.preview_surf, 0);
++
++    // Standard 8x8 ordered Bayer matrix, 64 threshold levels — same table as
++    // scr_check_dither_mask's _bayer_hr, sampled with a +0.5 centring offset
++    // so the 0..63 levels map evenly across the 0..1 projection range.
++    static _bayer8 = [
++         0,32, 8,40, 2,34,10,42,
++        48,16,56,24,50,18,58,26,
++        12,44, 4,36,14,46, 6,38,
++        60,28,52,20,62,30,54,22,
++         3,35,11,43, 1,33, 9,41,
++        51,19,59,27,49,17,57,25,
++        15,47, 7,39,13,45, 5,37,
++        63,31,55,23,61,29,53,21
++    ];
++
++    var _start_rgb = scr_c64_pepto_colour(_col_start);
++    var _end_rgb   = scr_c64_pepto_colour(_col_end);
++    var _ar = color_get_red(_start_rgb), _ag = color_get_green(_start_rgb), _ab = color_get_blue(_start_rgb);
++    var _br = color_get_red(_end_rgb),   _bg = color_get_green(_end_rgb),   _bb = color_get_blue(_end_rgb);
++
++    // Read target (seed) colour.
++    var _off0 = (_y1 * 320 + _x1) * 4;
++    var _tr = buffer_peek(_buf, _off0,     buffer_u8);
++    var _tg = buffer_peek(_buf, _off0 + 1, buffer_u8);
++    var _tb = buffer_peek(_buf, _off0 + 2, buffer_u8);
++
++    // Nothing to change if both gradient colours already equal the seed.
++    if (_ar == _br && _ag == _bg && _ab == _bb && _tr == _ar && _tg == _ag && _tb == _ab) {
++        buffer_delete(_buf);
++        return;
++    }
++
++    var _dx = _x2 - _x1;
++    var _dy = _y2 - _y1;
++    var _len_sq = (_dx * _dx) + (_dy * _dy);
++    if (_len_sq < 1) _len_sq = 1; // zero-length drag -> single hard threshold at 0.5
++
++    // PASS 1 — run-based scanline flood identifies the connected region into
++    // a flat [x0,y0,x1,y1,...] list. Same shape as scr_asset_bmp_flood_fill,
++    // but nothing is painted here: the gradient colour depends on x/y, not
++    // just region membership, so painting happens in PASS 2 once the whole
++    // region is known.
++    var _visited = array_create(64000, false);
++    var _region  = [];
++    var _stack = ds_stack_create();
++    ds_stack_push(_stack, _x1, _y1);
++
++    while (!ds_stack_empty(_stack)) {
++        var _cy = ds_stack_pop(_stack);
++        var _cx = ds_stack_pop(_stack);
++
++        if (_cx < 0 || _cx > _max_x || _cy < 0 || _cy >= 200) continue;
++        if (_visited[_cy * 320 + _cx]) continue;
++
++        var _soff = (_cy * 320 + _cx) * 4;
++        if (buffer_peek(_buf, _soff,     buffer_u8) != _tr) continue;
++        if (buffer_peek(_buf, _soff + 1, buffer_u8) != _tg) continue;
++        if (buffer_peek(_buf, _soff + 2, buffer_u8) != _tb) continue;
++
++        var _lx = _cx;
++        while (_lx - _step >= 0) {
++            var _lo = (_cy * 320 + _lx - _step) * 4;
++            if (_visited[_cy * 320 + _lx - _step]) break;
++            if (buffer_peek(_buf, _lo,     buffer_u8) != _tr) break;
++            if (buffer_peek(_buf, _lo + 1, buffer_u8) != _tg) break;
++            if (buffer_peek(_buf, _lo + 2, buffer_u8) != _tb) break;
++            _lx -= _step;
++        }
++
++        var _above_in = false;
++        var _below_in = false;
++        var _x = _lx;
++        while (_x <= _max_x) {
++            var _o = (_cy * 320 + _x) * 4;
++            if (_visited[_cy * 320 + _x]) break;
++            if (buffer_peek(_buf, _o,     buffer_u8) != _tr) break;
++            if (buffer_peek(_buf, _o + 1, buffer_u8) != _tg) break;
++            if (buffer_peek(_buf, _o + 2, buffer_u8) != _tb) break;
++            _visited[_cy * 320 + _x] = true;
++            array_push(_region, _x, _cy);
++
++            if (_cy > 0) {
++                var _ao = ((_cy - 1) * 320 + _x) * 4;
++                var _amatch = !_visited[(_cy - 1) * 320 + _x]
++                           && (buffer_peek(_buf, _ao,     buffer_u8) == _tr)
++                           && (buffer_peek(_buf, _ao + 1, buffer_u8) == _tg)
++                           && (buffer_peek(_buf, _ao + 2, buffer_u8) == _tb);
++                if (_amatch && !_above_in) {
++                    ds_stack_push(_stack, _x, _cy - 1);
++                    _above_in = true;
++                } else if (!_amatch) {
++                    _above_in = false;
++                }
++            }
++
++            if (_cy < 199) {
++                var _bo = ((_cy + 1) * 320 + _x) * 4;
++                var _bmatch = !_visited[(_cy + 1) * 320 + _x]
++                           && (buffer_peek(_buf, _bo,     buffer_u8) == _tr)
++                           && (buffer_peek(_buf, _bo + 1, buffer_u8) == _tg)
++                           && (buffer_peek(_buf, _bo + 2, buffer_u8) == _tb);
++                if (_bmatch && !_below_in) {
++                    ds_stack_push(_stack, _x, _cy + 1);
++                    _below_in = true;
++                } else if (!_bmatch) {
++                    _below_in = false;
++                }
++            }
++
++            _x += _step;
++        }
++    }
++    ds_stack_destroy(_stack);
++
++    // PASS 2 — paint every visited pixel _col_start/_col_end by projecting
++    // onto the drawn line and thresholding against the Bayer matrix.
++    var _ri = 0;
++    var _region_count = array_length(_region);
++    while (_ri < _region_count) {
++        var _rx = _region[_ri];
++        var _ry = _region[_ri + 1];
++        _ri += 2;
++
++        var _proj = (((_rx - _x1) * _dx) + ((_ry - _y1) * _dy)) / _len_sq;
++        _proj = clamp(_proj, 0, 1);
++        var _bthr = (_bayer8[(_ry mod 8) * 8 + (_rx mod 8)] + 0.5) / 64;
++        var _use_end = (_proj >= _bthr);
++
++        var _wr, _wg, _wb, _wcol;
++        if (_use_end) { _wr = _br; _wg = _bg; _wb = _bb; _wcol = _col_end;   }
++        else          { _wr = _ar; _wg = _ag; _wb = _ab; _wcol = _col_start; }
++
++        var _o = (_ry * 320 + _rx) * 4;
++        buffer_poke(_buf, _o,     buffer_u8, _wr);
++        buffer_poke(_buf, _o + 1, buffer_u8, _wg);
++        buffer_poke(_buf, _o + 2, buffer_u8, _wb);
++        _asset.meta.bg_mask[_ry * 320 + _rx] = 1;
++
++        if (_is_hires) {
++            // Role follows which of the cell's 2 allowed colours (fg =
++            // active_color, bg = secondary_color) actually landed on this
++            // pixel — same fg/bg convention scr_asset_bmp_draw_line/_rect/
++            // _ellipse use, so a gradient that spans both colours in one
++            // 8x8 cell still gets a correct per-pixel role, not "always fg".
++            var _hrcf  = (floor(_ry / 8) * 40) + floor(_rx / 8);
++            var _hrfg  = (_wcol == _asset.meta.active_color);
++            _asset.meta.hr_role_mask[_ry * 320 + _rx] = _hrfg ? 1 : 0;
++            if (_hrfg) { _asset.meta.hr_cell_fg_col[_hrcf] = _wcol; }
++            else       { _asset.meta.hr_cell_bg_col[_hrcf] = _wcol; }
++        } else {
++            buffer_poke(_buf, _o + 4, buffer_u8, _wr);
++            buffer_poke(_buf, _o + 5, buffer_u8, _wg);
++            buffer_poke(_buf, _o + 6, buffer_u8, _wb);
++            _asset.meta.bg_mask[_ry * 320 + _rx + 1] = 1;
++        }
++    }
++
++    buffer_set_surface(_buf, _asset.meta.preview_surf, 0);
++    buffer_delete(_buf);
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.yy b/C64DevMachine_win.yyp/scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.yy
+new file mode 100644
+index 0000000..b45c735
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_asset_bmp_gradient_fill",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_asset_bmp_gradient_fill",
++  "parent":{
++    "name":"BMP_KLA",
++    "path":"folders/SCRIPTS/BMP_KLA.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}

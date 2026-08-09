@@ -964,6 +964,7 @@
     {"id":{"name":"scr_asset_bmp_draw_rect","path":"scripts/scr_asset_bmp_draw_rect/scr_asset_bmp_draw_rect.yy",},},
     {"id":{"name":"scr_asset_bmp_flip","path":"scripts/scr_asset_bmp_flip/scr_asset_bmp_flip.yy",},},
     {"id":{"name":"scr_asset_bmp_flood_fill","path":"scripts/scr_asset_bmp_flood_fill/scr_asset_bmp_flood_fill.yy",},},
+    {"id":{"name":"scr_asset_bmp_gradient_fill","path":"scripts/scr_asset_bmp_gradient_fill/scr_asset_bmp_gradient_fill.yy",},},
     {"id":{"name":"scr_asset_bmp_hr_get_stamp_pair","path":"scripts/scr_asset_bmp_hr_get_stamp_pair/scr_asset_bmp_hr_get_stamp_pair.yy",},},
     {"id":{"name":"scr_asset_bmp_hr_repaint_cell_gpu","path":"scripts/scr_asset_bmp_hr_repaint_cell_gpu/scr_asset_bmp_hr_repaint_cell_gpu.yy",},},
     {"id":{"name":"scr_asset_bmp_hr_repaint_cell_in_buffer","path":"scripts/scr_asset_bmp_hr_repaint_cell_in_buffer/scr_asset_bmp_hr_repaint_cell_in_buffer.yy",},},

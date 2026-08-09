@@ -4765,6 +4765,10 @@ surface_reset_target();
 	                if (!variable_struct_exists(_asset.meta, "shape_y1")) _asset.meta.shape_y1 = -1;
 	                if (!variable_struct_exists(_asset.meta, "shape_drawing")) _asset.meta.shape_drawing = false;
 	                if (!variable_struct_exists(_asset.meta, "shape_btn")) _asset.meta.shape_btn = mb_left;
+	                if (!variable_struct_exists(_asset.meta, "gradient_x1")) _asset.meta.gradient_x1 = -1;
+	                if (!variable_struct_exists(_asset.meta, "gradient_y1")) _asset.meta.gradient_y1 = -1;
+	                if (!variable_struct_exists(_asset.meta, "gradient_drawing")) _asset.meta.gradient_drawing = false;
+	                if (!variable_struct_exists(_asset.meta, "gradient_btn")) _asset.meta.gradient_btn = mb_left;
 	                if (!variable_struct_exists(_asset.meta, "preview_overlay")) _asset.meta.preview_overlay = -1;
 	                if (!variable_struct_exists(_asset.meta, "overlay_dirty")) _asset.meta.overlay_dirty = false;
                     
@@ -5617,7 +5621,56 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
 	                        _asset.meta.needs_clash_check = true;
 							_asset.meta.pixels_dirty = true;
 							_asset.meta.bmp_unsaved = true;
+	                    } else if ((mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right)) && _asset.meta.active_tool == "GRADIENT") {
+	                        // Press sets the flood seed AND the gradient line's first point.
+	                        // Either button starts the drag — direction is always col1->col2.
+	                        _asset.meta.gradient_x1      = (_raw_px div _bmp_step) * _bmp_step;
+	                        _asset.meta.gradient_y1      = _raw_py;
+	                        _asset.meta.gradient_drawing = true;
+	                        _asset.meta.gradient_btn     = mouse_check_button_pressed(mb_left) ? mb_left : mb_right;
+	                        // Push pre-gradient snapshot in new struct format
+	                        if (variable_struct_exists(_asset.meta, "preview_surf") && surface_exists(_asset.meta.preview_surf)) {
+	                            var _grad_buf = buffer_create(320 * 200 * 4, buffer_fixed, 1);
+	                            buffer_get_surface(_grad_buf, _asset.meta.preview_surf, 0);
+	                            var _grad_mask_snap = array_create(64000, 0);
+	                            array_copy(_grad_mask_snap, 0, _asset.meta.bg_mask, 0, 64000);
+	                            var _grad_entry = { buf: _grad_buf, mask: _grad_mask_snap, bg_col: _asset.meta.bg_col };
+	                            array_push(_asset.meta.undo_stack, _grad_entry);
+	                            if (array_length(_asset.meta.undo_stack) > 25) {
+	                                var _gdrop0 = _asset.meta.undo_stack[0];
+	                                if (is_struct(_gdrop0) && buffer_exists(_gdrop0.buf)) {
+	                                    buffer_delete(_gdrop0.buf);
+	                                } else if (buffer_exists(_gdrop0)) {
+	                                    buffer_delete(_gdrop0);
+	                                }
+	                                array_delete(_asset.meta.undo_stack, 0, 1);
+	                            }
+	                            _asset.meta.redo_stack = [];
+	                        }
 	                    }
+	                }
+
+	                // ── GRADIENT RELEASE (fires even if the cursor has left the canvas) ──
+	                // Flood-fills the region matching the seed pixel's colour, then paints
+	                // each pixel col1/col2 by an 8x8 Bayer threshold against how far that
+	                // pixel projects onto the drawn line — a directional dithered gradient,
+	                // same approach as the Amiga Dev Machine bitmap editor's GRADIENT tool.
+	                if (_asset.meta.active_tool == "GRADIENT"
+	                &&  _asset.meta.gradient_drawing
+	                &&  (mouse_check_button_released(mb_left) || mouse_check_button_released(mb_right))) {
+	                    // Fixed direction: always col1 (seed end) -> col2 (drag end),
+	                    // regardless of which button was used to drag.
+	                    var _grad_col_a = _asset.meta.active_color;    // col1
+	                    var _grad_col_b = _asset.meta.secondary_color; // col2
+	                    var _grad_x2 = (_raw_px div _bmp_step) * _bmp_step;
+	                    var _grad_y2 = _raw_py;
+	                    scr_asset_bmp_gradient_fill(_asset, _asset.meta.gradient_x1, _asset.meta.gradient_y1, _grad_x2, _grad_y2, _grad_col_a, _grad_col_b);
+	                    _asset.meta.gradient_drawing = false;
+	                    _asset.meta.gradient_x1      = -1;
+	                    _asset.meta.needs_clash_check = true;
+	                    _asset.meta.pixels_dirty = true;
+	                    _asset.meta.bmp_unsaved = true;
+	                    if (surface_exists(_asset.meta.preview_overlay)) { surface_free(_asset.meta.preview_overlay); _asset.meta.preview_overlay = -1; }
 	                }
 
 	                // ── SHAPE RELEASE (fires even if the cursor has left the canvas) ──
@@ -5691,6 +5744,7 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
 	                var _need_overlay = false;
 	                if (_asset.meta.active_tool == "LINE" && _asset.meta.line_x1 >= 0) _need_overlay = true;
 	                if ((_asset.meta.active_tool == "RECT" || _asset.meta.active_tool == "CIRCLE") && _asset.meta.shape_drawing) _need_overlay = true;
+	                if (_asset.meta.active_tool == "GRADIENT" && _asset.meta.gradient_drawing) _need_overlay = true;
                     
 	                if (_need_overlay) {
 	                    // Rebuild overlay surface at canvas resolution (320x200)
@@ -5889,6 +5943,19 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
 	                        }
 	                    }
                         
+	                    if (_asset.meta.active_tool == "GRADIENT" && _asset.meta.gradient_drawing) {
+	                        // Lightweight direction indicator only (not a pixel-accurate
+	                        // brush stamp) — a thin line from seed to current endpoint,
+	                        // plus a small marker at each end, same idea as the Amiga
+	                        // Dev Machine bitmap editor's gradient-line preview.
+	                        var _gx1o = _asset.meta.gradient_x1, _gy1o = _asset.meta.gradient_y1;
+	                        var _gx2o = (_raw_px div _bmp_step) * _bmp_step, _gy2o = _raw_py;
+	                        draw_set_color(c_white);
+	                        draw_line(_gx1o, _gy1o, _gx2o, _gy2o);
+	                        draw_rectangle(_gx1o - 1, _gy1o - 1, _gx1o + 1, _gy1o + 1, false);
+	                        draw_rectangle(_gx2o - 1, _gy2o - 1, _gx2o + 1, _gy2o + 1, true);
+	                    }
+
 	                    surface_reset_target();
 						}
                         
@@ -6345,7 +6412,7 @@ gpu_set_texfilter(false);
 	                var _rtx = _thumb_x + _thumb_w + 45;
 	                var _rty = _thumb_y;
 
-	                var _tools_r = ["DRAW", "LINE", "CIRCLE", "RECT", "FILL"];
+	                var _tools_r = ["DRAW", "LINE", "CIRCLE", "RECT", "FILL", "GRADIENT"];
 	                for(var _i = 0; _i < array_length(_tools_r); _i++) {
 	                    var _tname = _tools_r[_i];
 	                    var _active = (_asset.meta.active_tool == _tname);
@@ -6527,14 +6594,17 @@ gpu_set_texfilter(false);
 						draw_set_color(scr_c64_pepto_colour(_c));
 						draw_rectangle(_px, _pyc, _px + _pw, _pyc + _ph, false);
 						if (_asset.meta.active_color == _c) {
+	                        // Primary (LMB / col1) — white double-border box outline.
 	                        draw_set_color(c_white);
 	                        draw_rectangle(_px-2, _pyc-2, _px + _pw+2, _pyc + _ph+2, true);
-	                    }
-	                    if (_bmp_is_hires && !_asset.meta.replace_mode && _asset.meta.secondary_color == _c) {
-	                        // Secondary (RMB) colour — HiRes only. Drawn as a wider inset
-	                        // border so it's still visible when primary == secondary.
-	                        draw_set_color(c_orange);
 	                        draw_rectangle(_px-4, _pyc-4, _px + _pw+4, _pyc + _ph+4, true);
+	                    }
+	                    if (!_asset.meta.replace_mode && _asset.meta.secondary_color == _c) {
+	                        // Secondary (RMB / col2) — aqua double-border box outline.
+	                        // Shown in MC too (not just HiRes) now that GRADIENT reads it.
+	                        draw_set_color(c_aqua);
+	                        draw_rectangle(_px-2, _pyc-2, _px + _pw+2, _pyc + _ph+2, true);
+	                        draw_rectangle(_px-6, _pyc-6, _px + _pw+6, _pyc + _ph+6, true);
 	                    }
 	                    if (_asset.meta.replace_mode) {
 	                        if (_asset.meta.replace_col_detect == _c) {
@@ -6549,7 +6619,7 @@ gpu_set_texfilter(false);
 	                        if (_phov && mouse_check_button_pressed(mb_right)) _asset.meta.replace_col_target = _c;
 	                    } else {
 	                        if (_phov && mouse_check_button_pressed(mb_left)) _asset.meta.active_color = _c;
-	                        if (_bmp_is_hires && _phov && mouse_check_button_pressed(mb_right)) _asset.meta.secondary_color = _c;
+	                        if (_phov && mouse_check_button_pressed(mb_right)) _asset.meta.secondary_color = _c;
 	                    }
 	                }
 	              
