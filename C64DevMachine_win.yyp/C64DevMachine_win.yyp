@@ -1102,6 +1102,7 @@
     {"id":{"name":"scr_kla_encode_surface","path":"scripts/scr_kla_encode_surface/scr_kla_encode_surface.yy",},},
     {"id":{"name":"scr_label_search_run","path":"scripts/scr_label_search_run/scr_label_search_run.yy",},},
     {"id":{"name":"scr_launch_vice","path":"scripts/scr_launch_vice/scr_launch_vice.yy",},},
+    {"id":{"name":"scr_line_coll_support","path":"scripts/scr_line_coll_support/scr_line_coll_support.yy",},},
     {"id":{"name":"scr_load_workspace_dialogue","path":"scripts/scr_load_workspace_dialogue/scr_load_workspace_dialogue.yy",},},
     {"id":{"name":"scr_load_workspace_from_path","path":"scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.yy",},},
     {"id":{"name":"scr_macro_chr_step","path":"scripts/scr_macro_chr_step/scr_macro_chr_step.yy",},},
