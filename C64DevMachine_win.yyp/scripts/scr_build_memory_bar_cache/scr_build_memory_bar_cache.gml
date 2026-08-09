@@ -321,7 +321,7 @@ var _addr_total = 65536;
                                     case "rectfill":    _sbytes += 5; break; // native $04 opcode
                                     case "ellipse":     _sbytes += 5; break; // native $05 opcode
                                     case "ellipsefill": _sbytes += 5; break; // native $06 opcode
-                                    case "fill":        _sbytes += 6; break; // $07 + x y pattern colb mix
+                                    case "fill":        _sbytes += 5; break; // $07 + x y pattern colb
                                     default: break;
                                 }
                             }

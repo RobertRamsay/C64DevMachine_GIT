@@ -12123,22 +12123,6 @@ case "MACRO_VECTOR_BMP": {
         // (x, 0, y). $E3 = target colour. $EF/$F0 = stack top ptr.
         // MC step = 2 px per pair. X range 0..254, Y range 0..199.
         // ════════════════════════════════════════════════════════════
-        // Standard 4x4 Bayer ordered-dither matrix, row-major (y*4+x). Must
-        // match the _bayer4x4 array in scr_vbmp_flood_dither EXACTLY — both
-        // sides compute the same table_val < mix threshold. Pure data: jumped
-        // over so it's never executed.
-        array_push(_list, ["jmp_abs", "vbmp_bayer_lut_skip", _id]);
-        array_push(_list, ["label", "vbmp_bayer_lut"]);
-        array_push(_list, ["byte", 0x00, _id]); array_push(_list, ["byte", 0x08, _id]);
-        array_push(_list, ["byte", 0x02, _id]); array_push(_list, ["byte", 0x0A, _id]);
-        array_push(_list, ["byte", 0x0C, _id]); array_push(_list, ["byte", 0x04, _id]);
-        array_push(_list, ["byte", 0x0E, _id]); array_push(_list, ["byte", 0x06, _id]);
-        array_push(_list, ["byte", 0x03, _id]); array_push(_list, ["byte", 0x0B, _id]);
-        array_push(_list, ["byte", 0x01, _id]); array_push(_list, ["byte", 0x09, _id]);
-        array_push(_list, ["byte", 0x0F, _id]); array_push(_list, ["byte", 0x07, _id]);
-        array_push(_list, ["byte", 0x0D, _id]); array_push(_list, ["byte", 0x05, _id]);
-        array_push(_list, ["label", "vbmp_bayer_lut_skip"]);
-
         array_push(_list, ["label", "vbmp_fill"]);
         // read seed colour -> $E3
         array_push(_list, ["lda_zp",  0xEB, _id]);
@@ -12258,8 +12242,6 @@ case "MACRO_VECTOR_BMP": {
         array_push(_list, ["sta_zp",  0xD1, _id]);
         array_push(_list, ["jmp_abs", "vbmp_fp_doplot", _id]);
         array_push(_list, ["label", "vbmp_fp_dith"]);
-        array_push(_list, ["cmp_imm", 0x03, _id]);
-        array_push(_list, ["beq",     "vbmp_fp_bayer", _id]);
         array_push(_list, ["cmp_imm", 0x02, _id]);
         array_push(_list, ["beq",     "vbmp_fp_interlace", _id]);
         // checker: parity = ((x>>1) + y) & 1. x is in $E4.
@@ -12269,26 +12251,6 @@ case "MACRO_VECTOR_BMP": {
         array_push(_list, ["adc_zp",  0xEC, _id]); // + y
         array_push(_list, ["and_imm", 0x01, _id]);
         array_push(_list, ["jmp_abs", "vbmp_fp_pick", _id]);
-        // bayer: gradient dither. index = ((y&3)*4) + (x&3) into vbmp_bayer_lut;
-        // table_val < mix ($D3) -> colB, else colA. mix 0..15: 0 = all colA,
-        // 15 = almost all colB (matches scr_vbmp_flood_dither preview exactly).
-        array_push(_list, ["label", "vbmp_fp_bayer"]);
-        array_push(_list, ["lda_zp",  0xEC, _id]); // y
-        array_push(_list, ["and_imm", 0x03, _id]);
-        array_push(_list, ["asl_a",   0,    _id]);
-        array_push(_list, ["asl_a",   0,    _id]); // (y&3)*4
-        array_push(_list, ["sta_zp",  0xD4, _id]);
-        array_push(_list, ["lda_zp",  0xE4, _id]); // x cursor
-        array_push(_list, ["and_imm", 0x03, _id]);
-        array_push(_list, ["clc",     0,    _id]);
-        array_push(_list, ["adc_zp",  0xD4, _id]);
-        array_push(_list, ["tax",     0,    _id]);
-        array_push(_list, ["lda_abx", "vbmp_bayer_lut", _id]);
-        array_push(_list, ["cmp_zp",  0xD3, _id]);
-        array_push(_list, ["bcc",     "vbmp_fp_bayer_b", _id]);
-        array_push(_list, ["jmp_abs", "vbmp_fp_useA", _id]);
-        array_push(_list, ["label",   "vbmp_fp_bayer_b"]);
-        array_push(_list, ["jmp_abs", "vbmp_fp_useB", _id]);
         array_push(_list, ["label", "vbmp_fp_interlace"]);
         // interlace: parity = y & 1
         array_push(_list, ["lda_zp",  0xEC, _id]);
@@ -12296,7 +12258,6 @@ case "MACRO_VECTOR_BMP": {
         array_push(_list, ["label", "vbmp_fp_pick"]);
         array_push(_list, ["beq",     "vbmp_fp_useA", _id]);
         // parity 1 -> colB
-        array_push(_list, ["label", "vbmp_fp_useB"]);
         array_push(_list, ["lda_zp",  0xD2, _id]);
         array_push(_list, ["sta_zp",  0xD1, _id]);
         array_push(_list, ["jmp_abs", "vbmp_fp_doplot", _id]);
@@ -12716,12 +12677,10 @@ case "MACRO_VECTOR_BMP": {
         array_push(_list, ["jmp_abs", "vbmp_render_loop", _id]);
         array_push(_list, ["label",   "vbmp_render_not_efill"]);
 
-        // FILL ($07) — args cx cy pattern colB mix (5 arg bytes). advance ptr by 6.
-        // pattern -> $D0 (0 solid, 1 checker, 2 interlace, 3 bayer). colB -> $D2
-        // (second dither colour 0..3). mix -> $D3 (BAYER gradient threshold 0..15,
-        // unused by other patterns but always present). colA is the active
-        // selector $F8. Both colours are explicit per-command, so no setcol-run
-        // heuristic.
+        // FILL ($07) — args cx cy pattern colB (4 arg bytes). advance ptr by 5.
+        // pattern -> $D0 (0 solid, 1 checker, 2 interlace). colB -> $D2 (second
+        // dither colour 0..3). colA is the active selector $F8. Both colours are
+        // explicit per-command, so no setcol-run heuristic.
         array_push(_list, ["cmp_imm", 0x07, _id]);
         array_push(_list, ["bne",     "vbmp_render_not_fill", _id]);
         array_push(_list, ["ldy_imm", 0x01, _id]);
@@ -12737,12 +12696,9 @@ case "MACRO_VECTOR_BMP": {
         array_push(_list, ["lda_izy", 0xFB, _id]); // colB
         array_push(_list, ["and_imm", 0x03, _id]);
         array_push(_list, ["sta_zp",  0xD2, _id]); // $D2 = second dither colour
-        array_push(_list, ["ldy_imm", 0x05, _id]);
-        array_push(_list, ["lda_izy", 0xFB, _id]); // mix
-        array_push(_list, ["sta_zp",  0xD3, _id]); // $D3 = bayer gradient mix threshold
         array_push(_list, ["clc",     0,    _id]);
         array_push(_list, ["lda_zp",  0xFB, _id]);
-        array_push(_list, ["adc_imm", 0x06, _id]);
+        array_push(_list, ["adc_imm", 0x05, _id]);
         array_push(_list, ["sta_zp",  0xFB, _id]);
         array_push(_list, ["lda_zp",  0xFC, _id]);
         array_push(_list, ["adc_imm", 0x00, _id]);
@@ -13329,23 +13285,19 @@ case "MACRO_VECTOR_BMP": {
         } break;
 
             case "fill": {
-                // Native $07: cx cy pattern colB mix (seed + dither). Flood matches
+                // Native $07: cx cy pattern colB (seed + dither). Flood matches
                 // the seed colour, fills with colA (active selector) / colB by
-                // the dither pattern. pattern: 0 solid, 1 checker, 2 interlace,
-                // 3 bayer (gradient). mix (0..15) is the BAYER threshold — ignored
-                // by the other patterns but always emitted to keep the arg count fixed.
+                // the dither pattern. pattern: 0 solid, 1 checker, 2 interlace.
                 var _flx = clamp(real(_cmd.x), 0, 255);
                 var _fly = clamp(real(_cmd.y), 0, 199);
                 if (_vb_mode == 1) _flx = (_flx div 2) * 2; // MC even-X snap
                 var _fpat = variable_struct_exists(_cmd, "pattern") ? (real(_cmd.pattern) & 0x03) : 0;
                 var _fcolb = variable_struct_exists(_cmd, "colb") ? (real(_cmd.colb) & 0x03) : 0;
-                var _fmix = variable_struct_exists(_cmd, "mix") ? clamp(real(_cmd.mix), 0, 15) : 8;
                 array_push(_list, ["byte", 0x07]);
                 array_push(_list, ["byte", _flx & 0xFF]);
                 array_push(_list, ["byte", _fly & 0xFF]);
                 array_push(_list, ["byte", _fpat]);
                 array_push(_list, ["byte", _fcolb]);
-                array_push(_list, ["byte", _fmix]);
             } break;
 
             // ── RECOLOUR OVERRIDES — colour/screen RAM cell rewrites. ──

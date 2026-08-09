@@ -196,7 +196,6 @@ function scr_vbmp_replay_to_surface(_asset) {
                 var _fy = variable_struct_exists(_cmd, "y") ? real(_cmd.y) : 0;
                 var _fpat  = variable_struct_exists(_cmd, "pattern") ? real(_cmd.pattern) : 0;
                 var _fcolb = variable_struct_exists(_cmd, "colb")    ? real(_cmd.colb)    : 0;
-                var _fmix  = variable_struct_exists(_cmd, "mix")     ? real(_cmd.mix)     : 8;
                 if (_fpat == 0) {
                     // Solid fill — single flood, existing helper.
                     _m.dither_mode = "NONE";
@@ -205,7 +204,7 @@ function scr_vbmp_replay_to_surface(_asset) {
                     // Dither fill — ONE parity flood painting colA/colB per pixel,
                     // matching the C64 vbmp_fill runtime exactly. No pre-fill pass,
                     // so colB may equal bg / outline / colA with no special-casing.
-                    scr_vbmp_flood_dither(_asset, _fx, _fy, _sel_to_col[_active_sel], _sel_to_col[_fcolb], _fpat, _fmix);
+                    scr_vbmp_flood_dither(_asset, _fx, _fy, _sel_to_col[_active_sel], _sel_to_col[_fcolb], _fpat);
                 }
                 buffer_get_surface(_shared_buf, _m.preview_surf, 0);
             } break;
