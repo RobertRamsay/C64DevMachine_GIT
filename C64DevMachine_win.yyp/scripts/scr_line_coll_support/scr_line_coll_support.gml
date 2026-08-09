@@ -90,6 +90,282 @@ function scr_line_coll_compile(_lines) {
     return _out;
 }
 
+/// @function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+/// Dedicated visual editor for LINE_COLL assets. Click-drag on the canvas
+/// places a line (mousedown = start, mouseup = end); the active TYPE
+/// selector (0-7) is baked into each new line. An optional BITMAP reference
+/// can be shown underneath at a configurable X/Y offset to trace over.
+/// meta.lines[] is the single source of truth — every change re-flushes
+/// through scr_line_coll_flush so the compiled buffer stays in sync.
+function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+    var _m = _asset.meta;
+
+    // ── Ensure editor state exists ──
+    if (!variable_struct_exists(_m, "lines"))          _m.lines = [];
+    if (!variable_struct_exists(_m, "active_type"))    _m.active_type = 1;
+    if (!variable_struct_exists(_m, "draw_x1"))        _m.draw_x1 = -1;
+    if (!variable_struct_exists(_m, "draw_y1"))        _m.draw_y1 = -1;
+    if (!variable_struct_exists(_m, "ref_enabled"))    _m.ref_enabled = false;
+    if (!variable_struct_exists(_m, "ref_asset_name")) _m.ref_asset_name = "";
+    if (!variable_struct_exists(_m, "ref_offset_x"))   _m.ref_offset_x = 0;
+    if (!variable_struct_exists(_m, "ref_offset_y"))   _m.ref_offset_y = 0;
+    if (!variable_struct_exists(_m, "line_scroll"))    _m.line_scroll = 0;
+    if (!variable_struct_exists(_m, "ref_picker_open")) _m.ref_picker_open = false;
+
+    // ── CANVAS BOX — 256x256 byte-limited coordinate space ──
+    var _box_x = _vx1 + 20;
+    var _box_y = _cy + 40;
+    var _box_w = 256 * 2; // 512 on-screen px
+    var _box_h = 256 * 2;
+
+    // ── OPTIONAL BITMAP REFERENCE ──
+    var _ref_toggle_x1 = _vx1 + 10;
+    var _ref_toggle_x2 = _ref_toggle_x1 + 140;
+    var _ref_toggle_y1 = _cy;
+    var _ref_toggle_y2 = _cy + 20;
+    var _ref_toggle_hov = point_in_rectangle(_mx, _my, _ref_toggle_x1, _ref_toggle_y1, _ref_toggle_x2, _ref_toggle_y2);
+    draw_set_color(_m.ref_enabled ? make_color_rgb(60, 160, 90) : (_ref_toggle_hov ? make_color_rgb(80, 80, 80) : make_color_rgb(40, 40, 40)));
+    draw_rectangle(_ref_toggle_x1, _ref_toggle_y1, _ref_toggle_x2, _ref_toggle_y2, false);
+    draw_set_font(fnt_c64_tiny);
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_text(_ref_toggle_x1 + 70, _ref_toggle_y1 + 4, "REFERENCE: " + (_m.ref_enabled ? "ON" : "OFF"));
+    draw_set_halign(fa_left);
+    if (_ref_toggle_hov && mouse_check_button_pressed(mb_left)) {
+        _m.ref_enabled = !_m.ref_enabled;
+    }
+
+    var _ref_asset = undefined;
+    if (_m.ref_enabled) {
+        // Reference asset name picker (BITMAP only)
+        var _rpbx1 = _ref_toggle_x2 + 10;
+        var _rpbx2 = _rpbx1 + 160;
+        var _rpby1 = _cy;
+        var _rpby2 = _cy + 20;
+        var _rpbhov = point_in_rectangle(_mx, _my, _rpbx1, _rpby1, _rpbx2, _rpby2);
+        draw_set_color(_rpbhov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
+        draw_rectangle(_rpbx1, _rpby1, _rpbx2, _rpby2, false);
+        draw_set_color(_m.ref_asset_name != "" ? c_lime : make_color_rgb(150, 150, 150));
+        draw_text(_rpbx1 + 6, _rpby1 + 4, _m.ref_asset_name != "" ? _m.ref_asset_name : "-- PICK BITMAP --");
+        if (_rpbhov && mouse_check_button_pressed(mb_left)) {
+            _m.ref_picker_open = !_m.ref_picker_open;
+        }
+
+        if (_m.ref_picker_open) {
+            var _rp_list = [];
+            for (var _rpi = 0; _rpi < ds_list_size(asset_list); _rpi++) {
+                var _rp_a = ds_list_find_value(asset_list, _rpi);
+                if (_rp_a.type == "BITMAP") array_push(_rp_list, _rp_a.name);
+            }
+            var _rp_y = _rpby2 + 2;
+            draw_set_color(make_color_rgb(15, 15, 15));
+            draw_rectangle(_rpbx1, _rp_y, _rpbx2, _rp_y + (array_length(_rp_list) * 18) + 4, false);
+            for (var _rpj = 0; _rpj < array_length(_rp_list); _rpj++) {
+                var _rp_row_y1 = _rp_y + 2 + (_rpj * 18);
+                var _rp_row_y2 = _rp_row_y1 + 18;
+                var _rp_row_hov = point_in_rectangle(_mx, _my, _rpbx1, _rp_row_y1, _rpbx2, _rp_row_y2);
+                draw_set_color(_rp_row_hov ? make_color_rgb(50, 90, 70) : make_color_rgb(15, 15, 15));
+                draw_rectangle(_rpbx1, _rp_row_y1, _rpbx2, _rp_row_y2, false);
+                draw_set_color(c_white);
+                draw_text(_rpbx1 + 6, _rp_row_y1 + 3, _rp_list[_rpj]);
+                if (_rp_row_hov && mouse_check_button_pressed(mb_left)) {
+                    _m.ref_asset_name  = _rp_list[_rpj];
+                    _m.ref_picker_open = false;
+                }
+            }
+        }
+
+        // X/Y offset steppers
+        var _off_y = _cy + 24;
+        var _off_labels = [
+            { label: "REF X: " + string(_m.ref_offset_x), field: "ref_offset_x" },
+            { label: "REF Y: " + string(_m.ref_offset_y), field: "ref_offset_y" }
+        ];
+        for (var _oi = 0; _oi < 2; _oi++) {
+            var _obx1 = _ref_toggle_x1 + (_oi * 160);
+            var _obx2 = _obx1 + 70;
+            var _obm1 = _obx2 + 4;
+            var _obm2 = _obm1 + 20;
+            var _obp1 = _obm2 + 4;
+            var _obp2 = _obp1 + 20;
+            draw_set_color(make_color_rgb(30, 30, 30));
+            draw_rectangle(_obx1, _off_y, _obx2, _off_y + 18, false);
+            draw_set_color(c_white);
+            draw_text(_obx1 + 4, _off_y + 3, _off_labels[_oi].label);
+            var _minus_hov = point_in_rectangle(_mx, _my, _obm1, _off_y, _obm2, _off_y + 18);
+            draw_set_color(_minus_hov ? make_color_rgb(90, 40, 40) : make_color_rgb(50, 20, 20));
+            draw_rectangle(_obm1, _off_y, _obm2, _off_y + 18, false);
+            draw_set_color(c_white);
+            draw_set_halign(fa_center);
+            draw_text(_obm1 + 10, _off_y + 3, "-");
+            var _plus_hov = point_in_rectangle(_mx, _my, _obp1, _off_y, _obp2, _off_y + 18);
+            draw_set_color(_plus_hov ? make_color_rgb(40, 90, 40) : make_color_rgb(20, 50, 20));
+            draw_rectangle(_obp1, _off_y, _obp2, _off_y + 18, false);
+            draw_set_color(c_white);
+            draw_text(_obp1 + 10, _off_y + 3, "+");
+            draw_set_halign(fa_left);
+            if (_minus_hov && mouse_check_button_pressed(mb_left)) {
+                _m[$ _off_labels[_oi].field] = clamp(_m[$ _off_labels[_oi].field] - 1, -255, 255);
+            }
+            if (_plus_hov && mouse_check_button_pressed(mb_left)) {
+                _m[$ _off_labels[_oi].field] = clamp(_m[$ _off_labels[_oi].field] + 1, -255, 255);
+            }
+        }
+        _box_y = _off_y + 26;
+
+        // Resolve the reference asset each frame (names can change elsewhere)
+        if (_m.ref_asset_name != "") {
+            for (var _rai = 0; _rai < ds_list_size(asset_list); _rai++) {
+                var _ra2 = ds_list_find_value(asset_list, _rai);
+                if (_ra2.type == "BITMAP" && _ra2.name == _m.ref_asset_name) { _ref_asset = _ra2; break; }
+            }
+        }
+    }
+
+    // ── DRAW CANVAS BACKGROUND ──
+    draw_set_color(make_color_rgb(20, 20, 30));
+    draw_rectangle(_box_x, _box_y, _box_x + _box_w, _box_y + _box_h, false);
+
+    // ── DRAW REFERENCE BITMAP (if enabled and resolved) ──
+    if (_m.ref_enabled && _ref_asset != undefined
+        && variable_struct_exists(_ref_asset.meta, "preview_surf")
+        && surface_exists(_ref_asset.meta.preview_surf)) {
+        // Reference bitmap is 320x200 C64 space; LINE_COLL canvas is 256x256.
+        // Draw the bitmap at its offset, scaled 1:1 with the canvas's 2x zoom,
+        // clipped to the canvas box by draw_surface_part_ext.
+        var _bmp_w = 320, _bmp_h = 200;
+        var _draw_ox = _box_x + (_m.ref_offset_x * 2);
+        var _draw_oy = _box_y + (_m.ref_offset_y * 2);
+        var _prev_filter2 = gpu_get_texfilter();
+        gpu_set_texfilter(false);
+        draw_surface_ext(_ref_asset.meta.preview_surf, _draw_ox, _draw_oy, 2, 2, 0, c_white, 0.7);
+        gpu_set_texfilter(_prev_filter2);
+    }
+
+    draw_set_color(make_color_rgb(90, 90, 110));
+    draw_rectangle(_box_x, _box_y, _box_x + _box_w, _box_y + _box_h, true);
+
+    var _in_canvas = point_in_rectangle(_mx, _my, _box_x, _box_y, _box_x + _box_w, _box_y + _box_h);
+    var _raw_px = clamp(floor((_mx - _box_x) / 2), 0, 255);
+    var _raw_py = clamp(floor((_my - _box_y) / 2), 0, 255);
+
+    // ── TYPE COLOUR TABLE (0-7 mapped to distinct C64 palette entries) ──
+    var _type_colours = [
+        c_white,
+        scr_c64_pepto_colour(2),  // red
+        scr_c64_pepto_colour(5),  // green
+        scr_c64_pepto_colour(6),  // blue
+        scr_c64_pepto_colour(7),  // yellow
+        scr_c64_pepto_colour(10), // orange
+        scr_c64_pepto_colour(13), // lt green
+        scr_c64_pepto_colour(14)  // lt blue
+    ];
+
+    // ── DRAW EXISTING LINES ──
+    for (var _li = 0; _li < array_length(_m.lines); _li++) {
+        var _ln = _m.lines[_li];
+        var _lx1 = _box_x + (_ln.x1 * 2);
+        var _ly1 = _box_y + (_ln.y1 * 2);
+        var _lx2 = _box_x + (_ln.x2 * 2);
+        var _ly2 = _box_y + (_ln.y2 * 2);
+        draw_set_color(_type_colours[clamp(_ln.type, 0, 7)]);
+        draw_line_width(_lx1, _ly1, _lx2, _ly2, 2);
+    }
+
+    // ── TYPE SELECTOR (0-7) ──
+    var _type_y = _box_y + _box_h + 10;
+    draw_set_font(fnt_c64_tiny);
+    draw_set_color(c_ltgray);
+    draw_text(_box_x, _type_y, "TYPE:");
+    for (var _ti = 0; _ti < 8; _ti++) {
+        var _tbx1 = _box_x + 40 + (_ti * 26);
+        var _tbx2 = _tbx1 + 22;
+        var _tby1 = _type_y - 2;
+        var _tby2 = _tby1 + 18;
+        var _tb_hov = point_in_rectangle(_mx, _my, _tbx1, _tby1, _tbx2, _tby2);
+        var _tb_sel = (_m.active_type == _ti);
+        draw_set_color(_type_colours[_ti]);
+        draw_rectangle(_tbx1, _tby1, _tbx2, _tby2, !_tb_sel);
+        if (_tb_sel) {
+            draw_set_color(c_black);
+        } else {
+            draw_set_color(_tb_hov ? c_white : _type_colours[_ti]);
+        }
+        draw_set_halign(fa_center);
+        draw_text(_tbx1 + 11, _tby1 + 3, string(_ti));
+        draw_set_halign(fa_left);
+        if (_tb_hov && mouse_check_button_pressed(mb_left)) {
+            _m.active_type = _ti;
+        }
+    }
+
+    // ── CLICK-DRAG LINE PLACEMENT ──
+    if (_in_canvas) {
+        if (mouse_check_button_pressed(mb_left)) {
+            _m.draw_x1 = _raw_px;
+            _m.draw_y1 = _raw_py;
+        }
+    }
+    if (_m.draw_x1 >= 0 && mouse_check_button_released(mb_left)) {
+        var _end_px = _in_canvas ? _raw_px : clamp(floor((_mx - _box_x) / 2), 0, 255);
+        var _end_py = _in_canvas ? _raw_py : clamp(floor((_my - _box_y) / 2), 0, 255);
+        array_push(_m.lines, { x1: _m.draw_x1, y1: _m.draw_y1, x2: _end_px, y2: _end_py, type: _m.active_type });
+        _m.draw_x1 = -1;
+        _m.draw_y1 = -1;
+        scr_line_coll_flush(_asset);
+    }
+    // In-progress drag preview
+    if (_m.draw_x1 >= 0 && mouse_check_button(mb_left)) {
+        var _px1 = _box_x + (_m.draw_x1 * 2);
+        var _py1 = _box_y + (_m.draw_y1 * 2);
+        draw_set_color(_type_colours[clamp(_m.active_type, 0, 7)]);
+        draw_line_width(_px1, _py1, _mx, _my, 2);
+    }
+
+    // ── LINE LIST (with delete) ──
+    var _list_x1 = _box_x + _box_w + 20;
+    var _list_x2 = min(_vx2 - 10, _list_x1 + 220);
+    var _list_y1 = _box_y;
+    var _row_h   = 20;
+    var _rows_vis = max(1, floor((_box_h - 20) / _row_h));
+    draw_set_color(c_ltgray);
+    draw_text(_list_x1, _list_y1 - 20, "LINES (" + string(array_length(_m.lines)) + "):");
+
+    var _total_lines = array_length(_m.lines);
+    _m.line_scroll = clamp(_m.line_scroll, 0, max(0, _total_lines - _rows_vis));
+    var _delete_idx = -1;
+    for (var _vi = 0; _vi < _rows_vis; _vi++) {
+        var _idx = _vi + _m.line_scroll;
+        if (_idx >= _total_lines) break;
+        var _row_ln = _m.lines[_idx];
+        var _ry1 = _list_y1 + (_vi * _row_h);
+        var _ry2 = _ry1 + _row_h - 2;
+        draw_set_color(make_color_rgb(25, 25, 25));
+        draw_rectangle(_list_x1, _ry1, _list_x2, _ry2, false);
+        draw_set_color(_type_colours[clamp(_row_ln.type, 0, 7)]);
+        draw_rectangle(_list_x1, _ry1, _list_x1 + 6, _ry2, false);
+        draw_set_color(c_white);
+        draw_set_font(fnt_c64_tiny);
+        draw_text(_list_x1 + 10, _ry1 + 3,
+            string(_row_ln.x1) + "," + string(_row_ln.y1) + " -> " + string(_row_ln.x2) + "," + string(_row_ln.y2) + " T" + string(_row_ln.type));
+        var _delx1 = _list_x2 - 20;
+        var _del_hov = point_in_rectangle(_mx, _my, _delx1, _ry1, _list_x2, _ry2);
+        draw_set_color(_del_hov ? c_red : make_color_rgb(120, 60, 60));
+        draw_text(_delx1 + 2, _ry1 + 3, "X");
+        if (_del_hov && mouse_check_button_pressed(mb_left)) {
+            _delete_idx = _idx;
+        }
+    }
+    if (_delete_idx >= 0) {
+        array_delete(_m.lines, _delete_idx, 1);
+        scr_line_coll_flush(_asset);
+    }
+    if (point_in_rectangle(_mx, _my, _list_x1, _list_y1, _list_x2, _list_y1 + (_rows_vis * _row_h))) {
+        if (mouse_wheel_up())   _m.line_scroll = max(0, _m.line_scroll - 1);
+        if (mouse_wheel_down()) _m.line_scroll = min(max(0, _total_lines - _rows_vis), _m.line_scroll + 1);
+    }
+}
+
 /// @desc scr_line_coll_save(_asset)
 /// Commits the shared inline text editor's working text (meta.inline_edit_text,
 /// one "x1,y1,x2,y2,type" row per line) into meta.lines[] and the compiled

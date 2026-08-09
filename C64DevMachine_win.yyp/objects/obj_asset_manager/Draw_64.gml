@@ -7189,9 +7189,9 @@ case "TEXT_DATA": {
 } break;
 
 case "LINE_COLL": {
-    // ── EDIT BUTTON ──────────────────────────────────────────────────────
+    // ── TEXT EDIT TOGGLE (bulk paste path — same data as the visual canvas) ──
     var _ebx1   = _vx1 + 10;
-    var _ebx2   = _vx1 + 80;
+    var _ebx2   = _vx1 + 90;
     var _eby1   = _cy;
     var _eby2   = _cy + 22;
     var _eb_hov = point_in_rectangle(_mx, _my, _ebx1, _eby1, _ebx2, _eby2);
@@ -7204,7 +7204,7 @@ case "LINE_COLL": {
     draw_set_font(fnt_c64_tiny);
     draw_set_color(_eb_hov ? c_black : c_white);
     draw_set_halign(fa_center);
-    draw_text(_ebx1 + 35, _eby1 + 6, _ed_open ? "CLOSE" : "EDIT");
+    draw_text(_ebx1 + 40, _eby1 + 6, _ed_open ? "CLOSE" : "TEXT EDIT");
     draw_set_halign(fa_left);
 
     if (_eb_hov && mouse_check_button_pressed(mb_left)) {
@@ -7228,7 +7228,6 @@ case "LINE_COLL": {
         }
     }
 
-    // ── SAVE BUTTON (only when editor open) ──────────────────────────────
     if (_ed_open) {
         var _sbx1   = _ebx2 + 8;
         var _sbx2   = _sbx1 + 60;
@@ -7255,44 +7254,21 @@ case "LINE_COLL": {
     draw_text(_vx1 + 10, _cy, string(_lc_count) + " LINES   " + string(_lc_bytes) + " BYTES   $"
         + string_upper(decimal_to_hex(_asset.address))
         + " - $" + string_upper(decimal_to_hex(_asset.address + max(0, _lc_bytes - 1))));
-    _cy += 24;
-    draw_set_font(fnt_C64_Angled);
-    draw_set_color(c_ltgray);
-    draw_text(_vx1 + 10, _cy, "One line per row: x1,y1,x2,y2,type (type 0-7).");
     _cy += 30;
 
-    // ── INLINE EDITOR ─────────────────────────────────────────────────────
     if (_ed_open) {
+        // ── TEXT EDITOR (bulk paste) ────────────────────────────────────
         var _ed_x1 = _vx1 + 180;
         var _ed_x2 = _vx2 - 80;
-        var _ed_y1 = _cy - 80;
+        var _ed_y1 = _cy - 20;
         var _ed_y2 = _vy2 - 120;
         scr_asset_inline_editor_draw(_asset, _ed_x1, _ed_y1, _ed_x2, _ed_y2,
-            _mx, _my, make_color_rgb(255, 100, 100), "LINE COLL DATA");
+            _mx, _my, make_color_rgb(255, 100, 100), "LINE COLL DATA (x1,y1,x2,y2,type)");
         scr_asset_inline_editor_step(_asset, _mx, _my, _ed_x1, _ed_y1, _ed_x2, _ed_y2);
+        keyboard_string = ""; // editor step owns the keyboard buffer while open
     } else {
-        // Preview when closed
-        draw_set_font(fnt_C64_Angled);
-        draw_set_color(c_ltgray);
-        draw_text(_vx1 + 10, _cy, "CONTENT:");
-        _cy += 14;
-        draw_set_color(make_color_rgb(255, 100, 100));
-        var _lstr2 = variable_struct_exists(_asset.meta, "line_string")
-            ? string(_asset.meta.line_string) : "";
-        var _preview2 = _lstr2;
-        if (string_length(_preview2) > 600) _preview2 = string_copy(_preview2, 1, 600) + "...";
-
-        var _linemaxwidth2 = 1400;
-        var _str_w2 = string_width(_preview2);
-        var _xscale2 = 1;
-        if (_str_w2 > _linemaxwidth2) {
-            _xscale2 = _linemaxwidth2 / _str_w2;
-        }
-        draw_text_transformed(_vx1 + 10, _cy, _preview2, _xscale2, 1, 0);
-    }
-
-    if (!_ed_open) {
-        keyboard_string = "";
+        // ── VISUAL CANVAS EDITOR ─────────────────────────────────────────
+        scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my);
     }
 } break;
 
