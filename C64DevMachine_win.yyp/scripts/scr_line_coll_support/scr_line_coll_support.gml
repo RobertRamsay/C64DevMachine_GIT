@@ -265,6 +265,9 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _raw_py = clamp(floor((_my - _box_y) / 2), 0, 255);
 
     // ── TYPE COLOUR TABLE (0-7 mapped to distinct C64 palette entries) ──
+    // Pepto index kept alongside each colour so the swatch label matches a
+    // real C64 colour register value for debug (e.g. "type 3 == pepto $06").
+    var _type_pepto_idx = [-1, 2, 5, 6, 7, 10, 13, 14]; // -1 = white, no pepto index
     var _type_colours = [
         c_white,
         scr_c64_pepto_colour(2),  // red
@@ -319,6 +322,13 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         if (_tb_hov && mouse_check_button_pressed(mb_left)) {
             _m.active_type = _ti;
         }
+        // Pepto colour index readout beneath each swatch (debug reference —
+        // matches this type's colour to a real C64 colour register value).
+        draw_set_halign(fa_center);
+        draw_set_color(make_color_rgb(130, 130, 130));
+        var _pepto_label = (_type_pepto_idx[_ti] < 0) ? "-" : ("$" + string(_type_pepto_idx[_ti]));
+        draw_text(_tbx1 + 11, _tby2 + 2, _pepto_label);
+        draw_set_halign(fa_left);
     }
 
     // ── CLICK-DRAG LINE PLACEMENT ──
@@ -360,6 +370,26 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _rows_vis = max(1, floor((_box_h - 20) / _row_h));
     draw_set_color(c_ltgray);
     draw_text(_list_x1, _list_y1 - 20, "LINES (" + string(array_length(_m.lines)) + "):");
+
+    // CLEAR button — wipes every line in this LINE_COLL asset.
+    var _clr_w = 50;
+    var _clr_x2 = _list_x2;
+    var _clr_x1 = _clr_x2 - _clr_w;
+    var _clr_y1 = _list_y1 - 21;
+    var _clr_y2 = _clr_y1 + 16;
+    var _has_lines = array_length(_m.lines) > 0;
+    var _clr_hov = _has_lines && point_in_rectangle(_mx, _my, _clr_x1, _clr_y1, _clr_x2, _clr_y2);
+    draw_set_color(_has_lines ? (_clr_hov ? make_color_rgb(200, 60, 60) : make_color_rgb(110, 30, 30)) : make_color_rgb(40, 40, 40));
+    draw_rectangle(_clr_x1, _clr_y1, _clr_x2, _clr_y2, false);
+    draw_set_color(_has_lines ? c_white : make_color_rgb(90, 90, 90));
+    draw_set_halign(fa_center);
+    draw_text(_clr_x1 + (_clr_w / 2), _clr_y1 + 3, "CLEAR");
+    draw_set_halign(fa_left);
+    if (_has_lines && _clr_hov && mouse_check_button_pressed(mb_left)) {
+        _m.lines = [];
+        _m.line_scroll = 0;
+        scr_line_coll_commit(_asset);
+    }
 
     var _total_lines = array_length(_m.lines);
     _m.line_scroll = clamp(_m.line_scroll, 0, max(0, _total_lines - _rows_vis));
