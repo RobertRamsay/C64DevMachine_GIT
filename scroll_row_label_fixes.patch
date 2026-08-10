@@ -1,0 +1,44 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_scroll/scr_node_draw_macro_scroll.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_scroll/scr_node_draw_macro_scroll.gml
+index b0505e7..2c2df4a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_scroll/scr_node_draw_macro_scroll.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_scroll/scr_node_draw_macro_scroll.gml
+@@ -137,7 +137,7 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
+         draw_set_color(c_gray);
+         draw_text(_px, _ly, "BASE ADDR:");
+         draw_set_color(c_aqua);
+-        draw_text(_px + 76, _ly, "$" + string_upper(decimal_to_hex(_mm_base_addr)));
++        draw_text(_px + 100, _ly, "$" + string_upper(decimal_to_hex(_mm_base_addr)));
+         _ly += _lh;
+ 
+         // Resolve the tileset to check for ignored colour overrides
+@@ -175,10 +175,10 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
+     draw_text(_px, _ly, "CLR UNUSED:");
+     if (_mm_clamp_blank == 0) {
+         draw_set_color(c_orange);
+-        draw_text(_px + 90, _ly, "OFF");
++        draw_text(_px + 104, _ly, "OFF");
+     } else {
+         draw_set_color(c_lime);
+-        draw_text(_px + 90, _ly, "ON");
++        draw_text(_px + 104, _ly, "ON");
+     }
+     _ly += _lh;
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_scroll/scr_node_step_macro_scroll.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_scroll/scr_node_step_macro_scroll.gml
+index 7ec29a4..13020c6 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_scroll/scr_node_step_macro_scroll.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_scroll/scr_node_step_macro_scroll.gml
+@@ -83,9 +83,10 @@ var _ry = [
+     var _mm_src_mode = is_real(instructions[0][6]) ? real(instructions[0][6]) : 0;
+ 
+     // CLR UNUSED sits right after whatever the draw function drew last —
+-    // 6 base rows, +3 when META_TILESET is active, +1 more if that
+-    // tileset carries a stamp override. Must mirror draw exactly.
+-    var _mm_clamp_row_offset = 6;
++    // row 7 is one past SOURCE's own row (6), +3 when META_TILESET is
++    // active, +1 more if that tileset carries a stamp override. Must
++    // mirror draw exactly.
++    var _mm_clamp_row_offset = 7;
+     if (_mm_src_mode == 1) {
+         _mm_clamp_row_offset += 3;
+         var _mm_tileset_name_chk = is_string(instructions[0][7]) ? string(instructions[0][7]) : "";

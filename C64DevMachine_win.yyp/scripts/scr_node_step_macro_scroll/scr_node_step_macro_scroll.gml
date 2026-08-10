@@ -83,9 +83,10 @@ var _ry = [
     var _mm_src_mode = is_real(instructions[0][6]) ? real(instructions[0][6]) : 0;
 
     // CLR UNUSED sits right after whatever the draw function drew last —
-    // 6 base rows, +3 when META_TILESET is active, +1 more if that
-    // tileset carries a stamp override. Must mirror draw exactly.
-    var _mm_clamp_row_offset = 6;
+    // row 7 is one past SOURCE's own row (6), +3 when META_TILESET is
+    // active, +1 more if that tileset carries a stamp override. Must
+    // mirror draw exactly.
+    var _mm_clamp_row_offset = 7;
     if (_mm_src_mode == 1) {
         _mm_clamp_row_offset += 3;
         var _mm_tileset_name_chk = is_string(instructions[0][7]) ? string(instructions[0][7]) : "";

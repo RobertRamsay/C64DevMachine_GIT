@@ -137,7 +137,7 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
         draw_set_color(c_gray);
         draw_text(_px, _ly, "BASE ADDR:");
         draw_set_color(c_aqua);
-        draw_text(_px + 76, _ly, "$" + string_upper(decimal_to_hex(_mm_base_addr)));
+        draw_text(_px + 100, _ly, "$" + string_upper(decimal_to_hex(_mm_base_addr)));
         _ly += _lh;
 
         // Resolve the tileset to check for ignored colour overrides
@@ -175,10 +175,10 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     draw_text(_px, _ly, "CLR UNUSED:");
     if (_mm_clamp_blank == 0) {
         draw_set_color(c_orange);
-        draw_text(_px + 90, _ly, "OFF");
+        draw_text(_px + 104, _ly, "OFF");
     } else {
         draw_set_color(c_lime);
-        draw_text(_px + 90, _ly, "ON");
+        draw_text(_px + 104, _ly, "ON");
     }
     _ly += _lh;
 
