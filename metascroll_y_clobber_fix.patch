@@ -1,0 +1,21 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index b456f55..d147080 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -3483,9 +3483,15 @@ case "MACRO_SCROLL": {
+             } else {
+                 array_push(_lst, ["lda_aby", _row_src, _p_id]);
+             }
+-            // A holds the char at this cell — look up its colour nibble
++            // A holds the char at this cell — look up its colour nibble.
++            // TAY clobbers Y, which (in byte mode) still holds the scroll
++            // column offset every subsequent row's fetch depends on — stash
++            // and restore it around the lookup so later rows/columns don't
++            // read from a drifting, wrong offset.
++            array_push(_lst, ["sty_zp",  0xF5,     _p_id]);
+             array_push(_lst, ["tay",     0,        _p_id]);
+             array_push(_lst, ["lda_aby", _lut_lbl, _p_id]);
++            array_push(_lst, ["ldy_zp",  0xF5,     _p_id]);
+             array_push(_lst, ["sta_abx", _dest_base + ((_r + _p_srow) * 40), _p_id]);
+         }
+         if (_p_word) {
