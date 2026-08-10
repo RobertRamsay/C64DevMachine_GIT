@@ -3802,7 +3802,7 @@ case "MACRO_SCROLL": {
     // mode avoids runtime multiplication.
     // ════════════════════════════════════════════════════════
     if (_mm_var_switch) {
-        var _lbl_setmap = _p + "setmap";
+        var _lbl_setmap = "Scroller_MapSet";
         array_push(_list, ["label", _lbl_setmap]);
         array_push(_list, ["lda_abs", _mm_var_addr, _id]);
         array_push(_list, ["tax",     0,            _id]);

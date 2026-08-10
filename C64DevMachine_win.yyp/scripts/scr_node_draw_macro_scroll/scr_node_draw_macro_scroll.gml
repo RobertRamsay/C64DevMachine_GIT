@@ -159,7 +159,7 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
             draw_set_color(c_gray);
             draw_text(_px, _ly, "SETMAP:");
             draw_set_color(c_yellow);
-            draw_text(_px + 76, _ly, scroll_alias + "_setmap");
+            draw_text(_px + 76, _ly, "Scroller_MapSet");
             _ly += _lh;
         }
 

@@ -87,6 +87,11 @@ function scr_node_step_macro_collision(_draw_x) {
             if (node_type == "MACRO_SCROLL") {
                     array_push(other.label_picker_list, "Scroller_L");
                     array_push(other.label_picker_list, "Scroller_R");
+                    var _sc_src = (array_length(instructions[0]) > 6  && is_real(instructions[0][6]))  ? real(instructions[0][6])  : 0;
+                    var _sc_vm  = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 0;
+                    if (_sc_src == 1 && _sc_vm == 1) {
+                        array_push(other.label_picker_list, "Scroller_MapSet");
+                    }
                 }
                 if (node_type == "MACRO_SID_SONG") {
                     array_push(other.label_picker_list, "sng" + string(stable_uid) + "_play");
