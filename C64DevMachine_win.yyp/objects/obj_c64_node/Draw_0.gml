@@ -141,7 +141,7 @@ if (height_dirty) {
 	case "MACRO_SPR_ENABLE":  height = _G * 4; break;
 	case "MACRO_SPR_EXPAND":  height = _G * 6; break;
     case "MACRO_SCROLL": {
-        var _sc_rows     = 9;
+        var _sc_rows     = 10; // +1 base for the always-visible CLR UNUSED row
         var _sc_src_mode = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
         if (_sc_src_mode == 1) {
             _sc_rows += 3; // TILESET row + MAP IDX row + BASE ADDR row

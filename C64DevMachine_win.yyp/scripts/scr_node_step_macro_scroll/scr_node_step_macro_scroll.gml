@@ -79,7 +79,35 @@ var _ry = [
     if (array_length(instructions[0]) < 8)  { array_push(instructions[0], ""); }
     if (array_length(instructions[0]) < 9)  { array_push(instructions[0], 0); }
     if (array_length(instructions[0]) < 10) { array_push(instructions[0], 0xA000); }
+    if (array_length(instructions[0]) < 11) { array_push(instructions[0], 1); }
     var _mm_src_mode = is_real(instructions[0][6]) ? real(instructions[0][6]) : 0;
+
+    // CLR UNUSED sits right after whatever the draw function drew last —
+    // 6 base rows, +3 when META_TILESET is active, +1 more if that
+    // tileset carries a stamp override. Must mirror draw exactly.
+    var _mm_clamp_row_offset = 6;
+    if (_mm_src_mode == 1) {
+        _mm_clamp_row_offset += 3;
+        var _mm_tileset_name_chk = is_string(instructions[0][7]) ? string(instructions[0][7]) : "";
+        if (_mm_tileset_name_chk != "" && instance_exists(obj_asset_manager)) {
+            var _mm_am_chk = obj_asset_manager;
+            for (var _mm_ai_chk = 0; _mm_ai_chk < ds_list_size(_mm_am_chk.asset_list); _mm_ai_chk++) {
+                var _mm_a_chk = ds_list_find_value(_mm_am_chk.asset_list, _mm_ai_chk);
+                if (_mm_a_chk.type == "META_TILESET" && _mm_a_chk.name == _mm_tileset_name_chk) {
+                    if (variable_struct_exists(_mm_a_chk.meta, "stamp_override")) {
+                        for (var _mm_oi_chk = 0; _mm_oi_chk < array_length(_mm_a_chk.meta.stamp_override); _mm_oi_chk++) {
+                            if (_mm_a_chk.meta.stamp_override[_mm_oi_chk] != 0x80) {
+                                _mm_clamp_row_offset += 1;
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    var _ly_clamp = (_ly0 + _lh * _mm_clamp_row_offset - _cam_y) / _cam_zoom;
 
     // SOURCE row — toggle MAP_DATA <-> META_TILESET, index [6]
     if (_in_col && _mgy >= _ly_source && _mgy < _ly_source + _lh_g) {
@@ -90,6 +118,19 @@ var _ry = [
         }
         instructions[0][8] = 0; // reset map index on source change
         height_dirty = true;
+        scr_c64_update_addresses();
+        return;
+    }
+
+    // CLR UNUSED row — toggle blank-excluded-rows pass, index [10].
+    // Always shown regardless of source mode.
+    if (_in_col && _mgy >= _ly_clamp && _mgy < _ly_clamp + _lh_g) {
+        var _mm_cur_clamp = is_real(instructions[0][10]) ? real(instructions[0][10]) : 1;
+        if (_mm_cur_clamp == 0) {
+            instructions[0][10] = 1;
+        } else {
+            instructions[0][10] = 0;
+        }
         scr_c64_update_addresses();
         return;
     }

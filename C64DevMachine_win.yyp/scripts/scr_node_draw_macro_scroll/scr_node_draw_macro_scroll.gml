@@ -168,6 +168,20 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
         }
     }
 
+    // ROW — CLR UNUSED (click to toggle), index [10]. Always shown —
+    // applies to MAP_DATA source too, not just META_TILESET.
+    var _mm_clamp_blank = (array_length(instructions[0]) > 10 && is_real(instructions[0][10])) ? real(instructions[0][10]) : 1;
+    draw_set_color(c_gray);
+    draw_text(_px, _ly, "CLR UNUSED:");
+    if (_mm_clamp_blank == 0) {
+        draw_set_color(c_orange);
+        draw_text(_px + 90, _ly, "OFF");
+    } else {
+        draw_set_color(c_lime);
+        draw_text(_px + 90, _ly, "ON");
+    }
+    _ly += _lh;
+
 /*
     // ROW 5 — USE SID IRQ (checkbox)
     var _chk_x      = _px;
