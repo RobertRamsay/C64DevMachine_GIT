@@ -334,28 +334,28 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
 	
     // ---- 16 TYPE SLOTS ----
     draw_set_color(make_color_rgb(120, 220, 120));
-    draw_text(_draw_x + 6, y + 136, "JSR DISPATCH (TILE TYPES 1-16):");
+    draw_text(_draw_x + 6, y + 136, "JSR (TYPES 1-16):");
 
     // DIRECT toggle — right-aligned on this row. When on, the probe reads the
     // byte at $0400 + offset as the collision type outright (that's what
     // MOVE_BMP_BLOCK's WRITE COLL wrote from the source tags) and skips scanning
     // the MAP's TILE_TYPES. The MAP row above becomes advisory in this mode.
-    var _dir_bx1 = _draw_x + width - 62;
+    var _dir_bx1 = _draw_x + width - 66;
     var _dir_bx2 = _draw_x + width - 6;
     var _dir_hov = point_in_rectangle(mouse_x, mouse_y, _dir_bx1, y + 134, _dir_bx2, y + 150);
     if (_direct == 1) {
         draw_set_color(_dir_hov ? make_color_rgb(220, 110, 90) : make_color_rgb(150, 55, 40));
-        draw_rectangle(_dir_bx1, y + 134, _dir_bx2, y + 150, false);
+        draw_rectangle(_dir_bx1, y + 136, _dir_bx2, y + 150, false);
         draw_set_color(make_color_rgb(255, 190, 170));
-        draw_rectangle(_dir_bx1, y + 134, _dir_bx2, y + 150, true);
+        draw_rectangle(_dir_bx1, y + 137, _dir_bx2, y + 150, true);
         draw_set_halign(fa_center);
         draw_text((_dir_bx1 + _dir_bx2) * 0.5, y + 135, "DIRECT");
         draw_set_halign(fa_left);
     } else {
         draw_set_color(_dir_hov ? make_color_rgb(70, 70, 95) : make_color_rgb(32, 32, 46));
-        draw_rectangle(_dir_bx1, y + 134, _dir_bx2, y + 150, false);
+        draw_rectangle(_dir_bx1, y + 137, _dir_bx2, y + 150, false);
         draw_set_color(make_color_rgb(110, 110, 140));
-        draw_rectangle(_dir_bx1, y + 134, _dir_bx2, y + 150, true);
+        draw_rectangle(_dir_bx1, y + 136, _dir_bx2, y + 150, true);
         draw_set_halign(fa_center);
         draw_text((_dir_bx1 + _dir_bx2) * 0.5, y + 135, "SCAN");
         draw_set_halign(fa_left);
