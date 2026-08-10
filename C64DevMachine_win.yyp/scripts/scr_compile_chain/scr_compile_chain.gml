@@ -4422,10 +4422,10 @@ case "MACRO_VSCROLL": {
     // Init — run once at startup
     //
     // 1. scrollY=0, fine=0, $D011=yscroll 0
-    // 2. Clear full screen to space ($20)
+    // 2. Clear full screen to blank (0)
     // 3. Copy _num_rows map rows → screen rows 1.._num_rows col _col_start
-    // 4. Write space ($20) to col 0 and col 39 of every row — edge fade
-    // 5. Write space ($20) to row 0 and row 24 — top/bottom fade
+    // 4. Write blank ($00) to col 0 and col 39 of every row — edge fade
+    // 5. Write blank ($00) to row 0 and row 24 — top/bottom fade
     // ══════════════════════════════════════════════════════
     array_push(_list, ["label",   _lbl_init]);
 
@@ -4439,8 +4439,8 @@ case "MACRO_VSCROLL": {
     array_push(_list, ["lda_imm", 0x00,            _id]);
     array_push(_list, ["sta_abs", 0xD016,          _id]);
 
-    // Clear full screen RAM to space
-    array_push(_list, ["lda_imm", 0x20,            _id]);
+    // Clear full screen RAM to char 0
+    array_push(_list, ["lda_imm", 0x00,            _id]);
     array_push(_list, ["ldx_imm", 0x00,            _id]);
     array_push(_list, ["label",   _lbl_zero1]);
     array_push(_list, ["sta_abx", _scr,            _id]);
@@ -4476,9 +4476,9 @@ case "MACRO_VSCROLL": {
     array_push(_list, ["sta_lab", _lbl_sh_rowcnt,                             _id]);
     array_push(_list, ["jsr",     _lbl_shift_sub,                             _id]);
 
-    // Write space to col 0 and col 39 for all 25 rows — permanent edge blank
+    // Write blank char to col 0 and col 39 for all 25 rows — permanent edge blank
     // Use X as row index 0..24, write _scr + row*40 + 0 and _scr + row*40 + 39
-    array_push(_list, ["lda_imm", 0x20,            _id]);
+    array_push(_list, ["lda_imm", 0x00,            _id]);
     var _lbl_blank_cols = _p + "blkcols";
     array_push(_list, ["ldx_imm", 0x00,            _id]);
     array_push(_list, ["label",   _lbl_blank_cols]);
