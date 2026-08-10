@@ -140,7 +140,32 @@ if (height_dirty) {
 	case "MACRO_PRIORITY":    height = _G * 4; break;
 	case "MACRO_SPR_ENABLE":  height = _G * 4; break;
 	case "MACRO_SPR_EXPAND":  height = _G * 6; break;
-    case "MACRO_SCROLL":      height = _G * 9; break;   
+    case "MACRO_SCROLL": {
+        var _sc_rows     = 9;
+        var _sc_src_mode = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
+        if (_sc_src_mode == 1) {
+            _sc_rows += 2; // TILESET row + MAP IDX row
+            var _sc_tileset_name = (array_length(instructions[0]) > 7 && is_string(instructions[0][7])) ? string(instructions[0][7]) : "";
+            if (_sc_tileset_name != "" && instance_exists(obj_asset_manager)) {
+                var _sc_am = obj_asset_manager;
+                for (var _sc_ai = 0; _sc_ai < ds_list_size(_sc_am.asset_list); _sc_ai++) {
+                    var _sc_a = ds_list_find_value(_sc_am.asset_list, _sc_ai);
+                    if (_sc_a.type == "META_TILESET" && _sc_a.name == _sc_tileset_name) {
+                        if (variable_struct_exists(_sc_a.meta, "stamp_override")) {
+                            for (var _sc_oi = 0; _sc_oi < array_length(_sc_a.meta.stamp_override); _sc_oi++) {
+                                if (_sc_a.meta.stamp_override[_sc_oi] != 0x80) {
+                                    _sc_rows += 1; // override warning row
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        height = _G * _sc_rows;
+    } break;
 	case "MACRO_VSCROLL": height = _G * 6;  break;         // 160
     case "MACRO_TEXT_SCROLL": height = _G * 9; break;  
     case "MACRO_IRQ":         height = _G * 5;  break;   

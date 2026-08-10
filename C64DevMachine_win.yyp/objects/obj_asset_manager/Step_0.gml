@@ -1497,6 +1497,7 @@ if (metamap_picker_open) {
                 }
                 _node.instructions[0][_name_idx]   = _matches[metamap_picker_hover].name;
                 _node.instructions[0][_mapidx_idx] = 0; // reset map index when tileset changes
+                _node.height_dirty      = true;
                 global.addresses_dirty = true;
             }
             metamap_picker_open = false; metamap_picker_node = noone; metamap_picker_hover = -1;

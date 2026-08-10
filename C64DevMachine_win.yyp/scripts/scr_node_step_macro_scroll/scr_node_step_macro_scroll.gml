@@ -83,6 +83,7 @@ var _ry = [
             instructions[0][6] = 0;
         }
         instructions[0][8] = 0; // reset map index on source change
+        height_dirty = true;
         scr_c64_update_addresses();
         return;
     }
