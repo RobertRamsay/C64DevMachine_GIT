@@ -1,0 +1,67 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 57715b0..26ba2c3 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -3407,7 +3407,7 @@ case "MACRO_SCROLL": {
+     // ════════════════════════════════════════════════════════
+     var _emit_scroll_loader = function(_lst, _lbl_entry, _dest_base, _colour_extra,
+                                         _p_word, _p_rows, _p_base, _p_srow, _p_mapw,
+-                                        _p_id, _p_sx, _p_sxhi, _p_camw) {
++                                        _p_id, _p_sx, _p_sxhi, _p_camw, _p_blankfn) {
+         var _lbl_cols   = _lbl_entry + "cols";
+         var _lbl_nowrap = _lbl_entry + "nowrap";
+         var _lbl_dowrap = _lbl_entry + "dowrap";
+@@ -3474,7 +3474,7 @@ case "MACRO_SCROLL": {
+         array_push(_lst, ["beq",     _lbl_done,   _p_id]);
+         array_push(_lst, ["jmp_abs", _lbl_cols,   _p_id]);
+         array_push(_lst, ["label",   _lbl_done]);
+-        _emit_blank_rows(_lst, _lbl_entry, _dest_base, _p_srow, _p_rows, _p_id);
++        _p_blankfn(_lst, _lbl_entry, _dest_base, _p_srow, _p_rows, _p_id);
+         array_push(_lst, ["rts",     0,           _p_id]);
+     };
+ 
+@@ -3483,7 +3483,7 @@ case "MACRO_SCROLL": {
+     // char->colour table instead of a second memory read.
+     var _emit_scroll_loader_lut = function(_lst, _lbl_entry, _dest_base, _lut_lbl,
+                                             _p_word, _p_rows, _p_base, _p_srow, _p_mapw,
+-                                            _p_id, _p_sx, _p_sxhi, _p_camw) {
++                                            _p_id, _p_sx, _p_sxhi, _p_camw, _p_blankfn) {
+         var _lbl_cols   = _lbl_entry + "cols";
+         var _lbl_nowrap = _lbl_entry + "nowrap";
+         var _lbl_dowrap = _lbl_entry + "dowrap";
+@@ -3559,30 +3559,30 @@ case "MACRO_SCROLL": {
+         array_push(_lst, ["beq",     _lbl_done,   _p_id]);
+         array_push(_lst, ["jmp_abs", _lbl_cols,   _p_id]);
+         array_push(_lst, ["label",   _lbl_done]);
+-        _emit_blank_rows(_lst, _lbl_entry, _dest_base, _p_srow, _p_rows, _p_id);
++        _p_blankfn(_lst, _lbl_entry, _dest_base, _p_srow, _p_rows, _p_id);
+         array_push(_lst, ["rts",     0,           _p_id]);
+     };
+ 
+     // loadMap_screen_1 — _row_count rows from _start_row into $0400
+     _emit_scroll_loader(_list, _lbl_scr1, _scr1, 0,
+         _map_w_is_word, _row_count, _map_base, _start_row, _map_w,
+-        _id, _lbl_scrollx, _lbl_scrollx_hi, _cam_w);
++        _id, _lbl_scrollx, _lbl_scrollx_hi, _cam_w, _emit_blank_rows);
+ 
+     // loadMap_screen_2 — _row_count rows from _start_row into $0C00
+     _emit_scroll_loader(_list, _lbl_scr2, _scr2, 0,
+         _map_w_is_word, _row_count, _map_base, _start_row, _map_w,
+-        _id, _lbl_scrollx, _lbl_scrollx_hi, _cam_w);
++        _id, _lbl_scrollx, _lbl_scrollx_hi, _cam_w, _emit_blank_rows);
+ 
+     // colorMap — _row_count rows of colour into $D800
+     if (_col_mode != 0) {
+         if (_mm_use_lut) {
+             _emit_scroll_loader_lut(_list, _lbl_color, 0xD800, _mm_lut_label,
+                 _map_w_is_word, _row_count, _map_base, _start_row, _map_w,
+-                _id, _lbl_scrollx, _lbl_scrollx_hi, _cam_w);
++                _id, _lbl_scrollx, _lbl_scrollx_hi, _cam_w, _emit_blank_rows);
+         } else {
+             _emit_scroll_loader(_list, _lbl_color, 0xD800, _msz,
+                 _map_w_is_word, _row_count, _map_base, _start_row, _map_w,
+-                _id, _lbl_scrollx, _lbl_scrollx_hi, _cam_w);
++                _id, _lbl_scrollx, _lbl_scrollx_hi, _cam_w, _emit_blank_rows);
+         }
+     }
+ 
