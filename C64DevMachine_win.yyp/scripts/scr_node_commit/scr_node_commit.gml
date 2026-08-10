@@ -311,6 +311,28 @@
 		            show_debug_message("MACRO_SCROLL WARN: INLINE colour with " + string(_clamped)
 		                               + " rows may overrun vblank. Consider DEFERRED.");
 		        }
+		    } else if (_idx == 8) {
+		        // MAP IDX: decimal, clamp to the chosen tileset's map_count
+		        var _mm_max_idx = 0;
+		        var _mm_tileset_name = (array_length(_target.instructions[0]) > 7 && is_string(_target.instructions[0][7])) ? string(_target.instructions[0][7]) : "";
+		        if (_mm_tileset_name != "" && instance_exists(obj_asset_manager)) {
+		            var _mm_am = obj_asset_manager;
+		            for (var _mm_ai = 0; _mm_ai < ds_list_size(_mm_am.asset_list); _mm_ai++) {
+		                var _mm_a = ds_list_find_value(_mm_am.asset_list, _mm_ai);
+		                if (_mm_a.type == "META_TILESET" && _mm_a.name == _mm_tileset_name) {
+		                    if (variable_struct_exists(_mm_a.meta, "map_count")) {
+		                        _mm_max_idx = max(0, _mm_a.meta.map_count - 1);
+		                    }
+		                    break;
+		                }
+		            }
+		        }
+		        _target.instructions[0][8] = clamp(_val, 0, _mm_max_idx);
+		    } else if (_idx == 9) {
+		        // BASE ADDR: hex input ($xxxx or plain hex digits), floor $0400
+		        var _mm_clean    = (string_char_at(_input, 1) == "$") ? string_delete(_input, 1, 1) : _input;
+		        var _mm_addr_val = real(hex_to_decimal(string_upper(_mm_clean)));
+		        _target.instructions[0][9] = clamp(_mm_addr_val, 0x0400, 0xFFFF);
 		    }
 		
 		// --- MACRO_TEXT_SCROLL ---
