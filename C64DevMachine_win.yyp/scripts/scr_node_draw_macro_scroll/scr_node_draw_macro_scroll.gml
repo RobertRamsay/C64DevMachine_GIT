@@ -133,6 +133,13 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
         draw_text(_px + 76, _ly, string(_mm_map_index));
         _ly += _lh;
 
+        var _mm_base_addr = (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) ? real(instructions[0][9]) : 0xA000;
+        draw_set_color(c_gray);
+        draw_text(_px, _ly, "BASE ADDR:");
+        draw_set_color(c_aqua);
+        draw_text(_px + 76, _ly, "$" + string_upper(decimal_to_hex(_mm_base_addr)));
+        _ly += _lh;
+
         // Resolve the tileset to check for ignored colour overrides
         var _mm_has_override = false;
         if (_mm_tileset_name != "" && instance_exists(obj_asset_manager)) {

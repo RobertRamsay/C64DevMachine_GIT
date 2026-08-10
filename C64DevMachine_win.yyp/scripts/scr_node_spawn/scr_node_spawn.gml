@@ -182,7 +182,7 @@ case "LABEL": {
 		case "MACRO_SCROLL":
             _n.node_title   = "MAP H SCROLL";
             // [6]=src_mode(0=MAP_DATA,1=META_TILESET) [7]=tileset_name [8]=map_index [9]=base_addr
-            _n.instructions = [["MACRO_SCROLL", 0, 25, 1, 1, 1, 0, "", 0, 0x8000]];
+            _n.instructions = [["MACRO_SCROLL", 0, 25, 1, 1, 1, 0, "", 0, 0xA000]];
             _n.pc_address   = global.start_pc;
             _n.scroll_alias = "scr" + string(instance_number(obj_c64_node));
             with (_n) { event_user(0); }

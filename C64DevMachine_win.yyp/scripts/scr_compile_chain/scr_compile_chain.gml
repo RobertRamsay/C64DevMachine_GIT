@@ -2846,9 +2846,13 @@ case "MACRO_SCROLL": {
     if (array_length(_id.instructions[0]) > 8 && is_real(_id.instructions[0][8])) {
         _mm_map_index = real(_id.instructions[0][8]);
     }
-    var _mm_base_addr = 0x8000;
+    var _mm_base_addr = 0xA000;
     if (array_length(_id.instructions[0]) > 9 && is_real(_id.instructions[0][9])) {
         _mm_base_addr = real(_id.instructions[0][9]);
+    }
+    if (_mm_base_addr < 0x0400) {
+        show_debug_message("MACRO_SCROLL(META): base_addr $" + string_upper(decimal_to_hex(_mm_base_addr)) + " is invalid — falling back to $A000. Set BASE ADDR on the node to a free region clear of your code and other assets.");
+        _mm_base_addr = 0xA000;
     }
     var _mm_use_lut   = false;
     var _mm_lut_label = "";

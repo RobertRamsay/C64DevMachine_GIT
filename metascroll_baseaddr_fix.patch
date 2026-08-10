@@ -1,0 +1,116 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index b26bc2e..98fb16a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -144,7 +144,7 @@ if (height_dirty) {
+         var _sc_rows     = 9;
+         var _sc_src_mode = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
+         if (_sc_src_mode == 1) {
+-            _sc_rows += 2; // TILESET row + MAP IDX row
++            _sc_rows += 3; // TILESET row + MAP IDX row + BASE ADDR row
+             var _sc_tileset_name = (array_length(instructions[0]) > 7 && is_string(instructions[0][7])) ? string(instructions[0][7]) : "";
+             if (_sc_tileset_name != "" && instance_exists(obj_asset_manager)) {
+                 var _sc_am = obj_asset_manager;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 2ebedc8..b456f55 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -2846,10 +2846,14 @@ case "MACRO_SCROLL": {
+     if (array_length(_id.instructions[0]) > 8 && is_real(_id.instructions[0][8])) {
+         _mm_map_index = real(_id.instructions[0][8]);
+     }
+-    var _mm_base_addr = 0x8000;
++    var _mm_base_addr = 0xA000;
+     if (array_length(_id.instructions[0]) > 9 && is_real(_id.instructions[0][9])) {
+         _mm_base_addr = real(_id.instructions[0][9]);
+     }
++    if (_mm_base_addr < 0x0400) {
++        show_debug_message("MACRO_SCROLL(META): base_addr $" + string_upper(decimal_to_hex(_mm_base_addr)) + " is invalid — falling back to $A000. Set BASE ADDR on the node to a free region clear of your code and other assets.");
++        _mm_base_addr = 0xA000;
++    }
+     var _mm_use_lut   = false;
+     var _mm_lut_label = "";
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_scroll/scr_node_draw_macro_scroll.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_scroll/scr_node_draw_macro_scroll.gml
+index 68fe6db..7c911ef 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_scroll/scr_node_draw_macro_scroll.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_scroll/scr_node_draw_macro_scroll.gml
+@@ -133,6 +133,13 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
+         draw_text(_px + 76, _ly, string(_mm_map_index));
+         _ly += _lh;
+ 
++        var _mm_base_addr = (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) ? real(instructions[0][9]) : 0xA000;
++        draw_set_color(c_gray);
++        draw_text(_px, _ly, "BASE ADDR:");
++        draw_set_color(c_aqua);
++        draw_text(_px + 76, _ly, "$" + string_upper(decimal_to_hex(_mm_base_addr)));
++        _ly += _lh;
++
+         // Resolve the tileset to check for ignored colour overrides
+         var _mm_has_override = false;
+         if (_mm_tileset_name != "" && instance_exists(obj_asset_manager)) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index 3d7b9ab..0e052e8 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -182,7 +182,7 @@ case "LABEL": {
+ 		case "MACRO_SCROLL":
+             _n.node_title   = "MAP H SCROLL";
+             // [6]=src_mode(0=MAP_DATA,1=META_TILESET) [7]=tileset_name [8]=map_index [9]=base_addr
+-            _n.instructions = [["MACRO_SCROLL", 0, 25, 1, 1, 1, 0, "", 0, 0x8000]];
++            _n.instructions = [["MACRO_SCROLL", 0, 25, 1, 1, 1, 0, "", 0, 0xA000]];
+             _n.pc_address   = global.start_pc;
+             _n.scroll_alias = "scr" + string(instance_number(obj_c64_node));
+             with (_n) { event_user(0); }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_scroll/scr_node_step_macro_scroll.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_scroll/scr_node_step_macro_scroll.gml
+index 46339f5..713b980 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_scroll/scr_node_step_macro_scroll.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_scroll/scr_node_step_macro_scroll.gml
+@@ -65,14 +65,20 @@ var _ry = [
+     }
+ 
+     // Rows below JSR LEFT/RIGHT (rows 4,5) — SOURCE at row 6, TILESET at
+-    // row 7, MAP IDX at row 8. Must mirror the draw function's _ly sequence.
+-    var _ly_source  = (_ly0 + _lh * 6 - _cam_y) / _cam_zoom;
+-    var _ly_tileset = (_ly0 + _lh * 7 - _cam_y) / _cam_zoom;
+-    var _ly_mapidx  = (_ly0 + _lh * 8 - _cam_y) / _cam_zoom;
++    // row 7, MAP IDX at row 8, BASE ADDR at row 9. Must mirror the draw
++    // function's _ly sequence.
++    var _ly_source    = (_ly0 + _lh * 6 - _cam_y) / _cam_zoom;
++    var _ly_tileset   = (_ly0 + _lh * 7 - _cam_y) / _cam_zoom;
++    var _ly_mapidx    = (_ly0 + _lh * 8 - _cam_y) / _cam_zoom;
++    var _ly_baseaddr  = (_ly0 + _lh * 9 - _cam_y) / _cam_zoom;
+ 
+-    while (array_length(instructions[0]) < 10) {
+-        array_push(instructions[0], 0);
+-    }
++    // Pad missing slots individually with their real defaults — never
++    // blind-zero index [9] (base_addr), a real $0000 target silently
++    // drops every byte of the flattened char plane at assemble time.
++    if (array_length(instructions[0]) < 7)  { array_push(instructions[0], 0); }
++    if (array_length(instructions[0]) < 8)  { array_push(instructions[0], ""); }
++    if (array_length(instructions[0]) < 9)  { array_push(instructions[0], 0); }
++    if (array_length(instructions[0]) < 10) { array_push(instructions[0], 0xA000); }
+     var _mm_src_mode = is_real(instructions[0][6]) ? real(instructions[0][6]) : 0;
+ 
+     // SOURCE row — toggle MAP_DATA <-> META_TILESET, index [6]
+@@ -128,5 +134,18 @@ var _ry = [
+             scr_c64_update_addresses();
+             return;
+         }
++
++        // BASE ADDR row — spinner in $1000 steps, floor $0400
++        if (_in_col && _mgy >= _ly_baseaddr && _mgy < _ly_baseaddr + _lh_g) {
++            var _mm_cur_addr = is_real(instructions[0][9]) ? real(instructions[0][9]) : 0xA000;
++            var _mm_mid_x    = (_px + width - 44 - _cam_x) / _cam_zoom;
++            if (_mgx < _mm_mid_x) {
++                instructions[0][9] = max(0x0400, _mm_cur_addr - 0x1000);
++            } else {
++                instructions[0][9] = min(0xFFFF, _mm_cur_addr + 0x1000);
++            }
++            scr_c64_update_addresses();
++            return;
++        }
+     }
+ }
+\ No newline at end of file
