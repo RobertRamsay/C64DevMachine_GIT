@@ -63,4 +63,69 @@ var _ry = [
         scr_c64_update_addresses();
         return;
     }
+
+    // Rows below JSR LEFT/RIGHT (rows 4,5) — SOURCE at row 6, TILESET at
+    // row 7, MAP IDX at row 8. Must mirror the draw function's _ly sequence.
+    var _ly_source  = (_ly0 + _lh * 6 - _cam_y) / _cam_zoom;
+    var _ly_tileset = (_ly0 + _lh * 7 - _cam_y) / _cam_zoom;
+    var _ly_mapidx  = (_ly0 + _lh * 8 - _cam_y) / _cam_zoom;
+
+    while (array_length(instructions[0]) < 10) {
+        array_push(instructions[0], 0);
+    }
+    var _mm_src_mode = is_real(instructions[0][6]) ? real(instructions[0][6]) : 0;
+
+    // SOURCE row — toggle MAP_DATA <-> META_TILESET, index [6]
+    if (_in_col && _mgy >= _ly_source && _mgy < _ly_source + _lh_g) {
+        if (_mm_src_mode == 0) {
+            instructions[0][6] = 1;
+        } else {
+            instructions[0][6] = 0;
+        }
+        instructions[0][8] = 0; // reset map index on source change
+        scr_c64_update_addresses();
+        return;
+    }
+
+    if (_mm_src_mode == 1) {
+        // TILESET row — open the shared META_TILESET picker targeting [7]/[8]
+        if (_in_col && _mgy >= _ly_tileset && _mgy < _ly_tileset + _lh_g) {
+            with (obj_asset_manager) {
+                metamap_picker_open       = true;
+                metamap_picker_node       = other.id;
+                metamap_picker_hover      = -1;
+                metamap_picker_name_idx   = 7;
+                metamap_picker_mapidx_idx = 8;
+            }
+            return;
+        }
+
+        // MAP IDX row — spinner clamped to the tileset's map_count
+        if (_in_col && _mgy >= _ly_mapidx && _mgy < _ly_mapidx + _lh_g) {
+            var _mm_tileset_name = is_string(instructions[0][7]) ? string(instructions[0][7]) : "";
+            var _mm_map_count    = 0;
+            if (_mm_tileset_name != "" && instance_exists(obj_asset_manager)) {
+                var _mm_am = obj_asset_manager;
+                for (var _mm_ai = 0; _mm_ai < ds_list_size(_mm_am.asset_list); _mm_ai++) {
+                    var _mm_a = ds_list_find_value(_mm_am.asset_list, _mm_ai);
+                    if (_mm_a.type == "META_TILESET" && _mm_a.name == _mm_tileset_name) {
+                        if (variable_struct_exists(_mm_a.meta, "map_count")) {
+                            _mm_map_count = _mm_a.meta.map_count;
+                        }
+                        break;
+                    }
+                }
+            }
+            var _mm_max_idx = max(0, _mm_map_count - 1);
+            var _mm_cur_idx = is_real(instructions[0][8]) ? real(instructions[0][8]) : 0;
+            var _mm_mid_x   = (_px + width - 44 - _cam_x) / _cam_zoom;
+            if (_mgx < _mm_mid_x) {
+                instructions[0][8] = max(0, _mm_cur_idx - 1);
+            } else {
+                instructions[0][8] = min(_mm_max_idx, _mm_cur_idx + 1);
+            }
+            scr_c64_update_addresses();
+            return;
+        }
+    }
 }

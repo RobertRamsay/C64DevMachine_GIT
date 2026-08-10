@@ -182,9 +182,11 @@ chr_edit_tile    = 0;     // Currently selected tile for editing (if you add a p
 // MAP ASSET
 // -------------------------------------------------------
 map_picker_open  = false;
-metamap_picker_open  = false;
-metamap_picker_node  = noone;
-metamap_picker_hover = -1;
+metamap_picker_open       = false;
+metamap_picker_node       = noone;
+metamap_picker_hover      = -1;
+metamap_picker_name_idx   = 1;   // instructions[0] index the picked tileset name writes to
+metamap_picker_mapidx_idx = 2;   // instructions[0] index that gets reset to 0 on tileset change
 map_picker_node  = noone;
 map_picker_hover = -1;
 editing_map_dim       = false;  // true while editing W or H

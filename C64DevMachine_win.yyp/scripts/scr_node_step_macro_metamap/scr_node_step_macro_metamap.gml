@@ -11,9 +11,11 @@ function scr_node_step_macro_metamap(_node) {
             _node.x + 64, _pb_y - 2,
             _node.x + _node.width - 8, _pb_y + 14)) {
         with (obj_asset_manager) {
-            metamap_picker_open  = true;
-            metamap_picker_node  = _node;
-            metamap_picker_hover = -1;
+            metamap_picker_open       = true;
+            metamap_picker_node       = _node;
+            metamap_picker_hover      = -1;
+            metamap_picker_name_idx   = 1;
+            metamap_picker_mapidx_idx = 2;
         }
         exit;
     }

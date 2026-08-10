@@ -2829,6 +2829,30 @@ case "MACRO_SCROLL": {
 
     var _col_mode  = (array_length(_id.instructions[0]) > 3 && is_real(_id.instructions[0][3])) ? real(_id.instructions[0][3]) : 1;
 
+    // ── METAMAP_HSCROLL source-mode fields ──
+    // [6] src_mode: 0 = MAP_DATA (existing), 1 = META_TILESET
+    // [7] tileset_name (string, META_TILESET mode only)
+    // [8] map_index    (real,   META_TILESET mode only)
+    // [9] base_addr    (real,   META_TILESET mode only — flattened char plane destination)
+    var _mm_src_mode = 0;
+    if (array_length(_id.instructions[0]) > 6 && is_real(_id.instructions[0][6])) {
+        _mm_src_mode = real(_id.instructions[0][6]);
+    }
+    var _mm_tileset_name = "";
+    if (array_length(_id.instructions[0]) > 7 && is_string(_id.instructions[0][7])) {
+        _mm_tileset_name = string(_id.instructions[0][7]);
+    }
+    var _mm_map_index = 0;
+    if (array_length(_id.instructions[0]) > 8 && is_real(_id.instructions[0][8])) {
+        _mm_map_index = real(_id.instructions[0][8]);
+    }
+    var _mm_base_addr = 0x8000;
+    if (array_length(_id.instructions[0]) > 9 && is_real(_id.instructions[0][9])) {
+        _mm_base_addr = real(_id.instructions[0][9]);
+    }
+    var _mm_use_lut   = false;
+    var _mm_lut_label = "";
+
     // Resolve HR/Mixed from global workspace flag — single source of truth
     var _scroll_map_mode = obj_workspace_manager.map_global_mixed;
     // bits 7-4 of $D016 we always want set: $C0, plus the mode bit in bit 4
@@ -2842,56 +2866,179 @@ case "MACRO_SCROLL": {
     var _max_rows  = 25 - _start_row;
     var _row_count = (array_length(_id.instructions[0]) > 2 && is_real(_id.instructions[0][2])) ? clamp(real(_id.instructions[0][2]), 1, _max_rows) : _max_rows;
 
-    // Resolve MAP_DATA asset
-    // Priority: MACRO_MAP_SWITCH (last on spine) > MACRO_MAP (last on spine) > first asset
     var _map_w    = 40;
     var _map_h    = 25;
     var _map_base = 0x8000;
-    var _scroll_map_name = "";
-    // Use MACRO_MAP_SWITCH if present, otherwise MACRO_MAP — just needs to be connected
-    with (obj_c64_node) {
-        if (node_type == "MACRO_MAP_SWITCH" && is_connected) {
-            if (array_length(instructions[0]) > 1) {
-                _scroll_map_name = string(instructions[0][1]);
-                break;
+
+    if (_mm_src_mode == 1) {
+        // ── META_TILESET source (METAMAP_HSCROLL) ──
+        // Flattens the chosen map to a full char plane at _mm_base_addr —
+        // no colour plane. Colour is derived at scroll time from a 256-byte
+        // char->colour LUT built from the tileset's char_lut (see below).
+        var _mm_ts = noone;
+        if (_mm_tileset_name != "" && instance_exists(obj_asset_manager)) {
+            var _mm_am = obj_asset_manager;
+            for (var _mm_ai = 0; _mm_ai < ds_list_size(_mm_am.asset_list); _mm_ai++) {
+                var _mm_a = ds_list_find_value(_mm_am.asset_list, _mm_ai);
+                if (_mm_a.type == "META_TILESET" && _mm_a.name == _mm_tileset_name) {
+                    _mm_ts = _mm_a;
+                    break;
+                }
             }
         }
-    }
-    if (_scroll_map_name == "") {
+        if (_mm_ts == noone) {
+            show_debug_message("MACRO_SCROLL(META): tileset '" + _mm_tileset_name + "' not found — skipping");
+            break;
+        }
+
+        var _mm_tm         = _mm_ts.meta;
+        var _mm_sw         = _mm_tm.stamp_w;
+        var _mm_sh         = _mm_tm.stamp_h;
+        var _mm_stamp_data = _mm_tm.stamp_data;
+        var _mm_cells_per  = _mm_sw * _mm_sh;
+
+        var _mm_grid = noone;
+        if (_mm_map_index >= 0 && _mm_map_index < _mm_tm.map_count) {
+            _mm_grid = _mm_tm.maps[_mm_map_index];
+        }
+        if (_mm_grid == noone) {
+            show_debug_message("MACRO_SCROLL(META): map index " + string(_mm_map_index) + " out of range — skipping");
+            break;
+        }
+
+        var _mm_w_ch = 40;
+        if (_mm_map_index >= 0 && _mm_map_index < array_length(_mm_tm.map_w)) {
+            _mm_w_ch = _mm_tm.map_w[_mm_map_index];
+        }
+        var _mm_cols = floor(_mm_w_ch / _mm_sw);
+        if (_mm_cols < 1) {
+            _mm_cols = 1;
+        }
+        var _mm_rows_mt = floor(array_length(_mm_grid) / _mm_cols);
+
+        _map_w = _mm_w_ch;
+        _map_h = _mm_rows_mt * _mm_sh;
+
+        // Build-log warning — LUT-derived colour follows char only, so any
+        // per-stamp colour override in the tileset cannot be honoured here.
+        var _mm_has_override = false;
+        if (variable_struct_exists(_mm_tm, "stamp_override")) {
+            for (var _mm_oi = 0; _mm_oi < array_length(_mm_tm.stamp_override); _mm_oi++) {
+                if (_mm_tm.stamp_override[_mm_oi] != 0x80) {
+                    _mm_has_override = true;
+                    break;
+                }
+            }
+        }
+        if (_mm_has_override) {
+            show_debug_message("MACRO_SCROLL(META): tileset '" + _mm_tileset_name + "' has per-stamp colour overrides — IGNORED during scroll (colour follows char_lut only)");
+        }
+
+        // Flatten the metatile grid to a full char plane — no 40x25 clamp
+        var _mm_char_plane = array_create(_map_w * _map_h, 0);
+        for (var _mm_gy = 0; _mm_gy < _mm_rows_mt; _mm_gy++) {
+            for (var _mm_gx = 0; _mm_gx < _mm_cols; _mm_gx++) {
+                var _mm_mt = _mm_grid[_mm_gy * _mm_cols + _mm_gx];
+                if (_mm_mt < 0) {
+                    continue;
+                }
+                if (_mm_mt >= _mm_tm.stamp_count) {
+                    continue;
+                }
+                for (var _mm_cy = 0; _mm_cy < _mm_sh; _mm_cy++) {
+                    for (var _mm_cx = 0; _mm_cx < _mm_sw; _mm_cx++) {
+                        var _mm_cell      = _mm_cy * _mm_sw + _mm_cx;
+                        var _mm_data_base = (_mm_mt * _mm_cells_per + _mm_cell);
+                        if (_mm_data_base >= array_length(_mm_stamp_data)) {
+                            continue;
+                        }
+                        var _mm_ch      = _mm_stamp_data[_mm_data_base];
+                        var _mm_scr_col = _mm_gx * _mm_sw + _mm_cx;
+                        var _mm_scr_row = _mm_gy * _mm_sh + _mm_cy;
+                        var _mm_idx     = _mm_scr_row * _map_w + _mm_scr_col;
+                        _mm_char_plane[_mm_idx] = _mm_ch;
+                    }
+                }
+            }
+        }
+
+        // Emit the flattened char plane at _mm_base_addr, org-bracketed —
+        // no colour plane emitted.
+        _map_base = _mm_base_addr;
+        array_push(_list, ["org", -2]);
+        array_push(_list, ["org", _map_base]);
+        var _mm_id_save = _id;
+        var _id = noone;
+        for (var _mm_bi = 0; _mm_bi < array_length(_mm_char_plane); _mm_bi++) {
+            array_push(_list, ["byte", _mm_char_plane[_mm_bi] & 0xFF]);
+        }
+        array_push(_list, ["org", -3]);
+        var _id = _mm_id_save;
+
+        // Emit the 256-byte char->colour LUT (nibble only, 0-15). Global
+        // mixed-mode masking already happens once via _ctrl_bits/$D016 for
+        // the whole scroller, matching how MAP_HSCROLL handles MC vs HR.
+        _mm_lut_label = _p + "lut";
+        array_push(_list, ["jmp_abs", _p + "lutskip", _id]);
+        array_push(_list, ["label",   _mm_lut_label]);
+        for (var _mm_li = 0; _mm_li < 256; _mm_li++) {
+            var _mm_raw = 0;
+            if (_mm_li < array_length(_mm_tm.char_lut)) {
+                _mm_raw = _mm_tm.char_lut[_mm_li];
+            }
+            array_push(_list, ["byte", _mm_raw & 0x0F, _id]);
+        }
+        array_push(_list, ["label", _p + "lutskip"]);
+        _mm_use_lut = true;
+
+    } else {
+        // ── MAP_DATA source (existing behaviour) ──
+        // Priority: MACRO_MAP_SWITCH (last on spine) > MACRO_MAP (last on spine) > first asset
+        var _scroll_map_name = "";
         with (obj_c64_node) {
-            if (node_type == "MACRO_MAP" && is_connected) {
+            if (node_type == "MACRO_MAP_SWITCH" && is_connected) {
                 if (array_length(instructions[0]) > 1) {
                     _scroll_map_name = string(instructions[0][1]);
                     break;
                 }
             }
         }
-    }
-    if (instance_exists(obj_asset_manager) && _scroll_map_name != "") {
-        var _am = obj_asset_manager;
-        for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
-            var _a = ds_list_find_value(_am.asset_list, _ai);
-            if (_a.type == "MAP_DATA" && _a.name == _scroll_map_name) {
-                _map_base = _a.address;
-                if (variable_struct_exists(_a, "meta")) {
-                    if (variable_struct_exists(_a.meta, "map_w")) _map_w = _a.meta.map_w;
-                    if (variable_struct_exists(_a.meta, "map_h")) _map_h = _a.meta.map_h;
+        if (_scroll_map_name == "") {
+            with (obj_c64_node) {
+                if (node_type == "MACRO_MAP" && is_connected) {
+                    if (array_length(instructions[0]) > 1) {
+                        _scroll_map_name = string(instructions[0][1]);
+                        break;
+                    }
                 }
-                break;
             }
         }
-    } else if (instance_exists(obj_asset_manager)) {
-        // Last resort fallback: first MAP_DATA asset in list
-        var _am = obj_asset_manager;
-        for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
-            var _a = ds_list_find_value(_am.asset_list, _ai);
-            if (_a.type == "MAP_DATA") {
-                _map_base = _a.address;
-                if (variable_struct_exists(_a, "meta")) {
-                    if (variable_struct_exists(_a.meta, "map_w")) _map_w = _a.meta.map_w;
-                    if (variable_struct_exists(_a.meta, "map_h")) _map_h = _a.meta.map_h;
+        if (instance_exists(obj_asset_manager) && _scroll_map_name != "") {
+            var _am = obj_asset_manager;
+            for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
+                var _a = ds_list_find_value(_am.asset_list, _ai);
+                if (_a.type == "MAP_DATA" && _a.name == _scroll_map_name) {
+                    _map_base = _a.address;
+                    if (variable_struct_exists(_a, "meta")) {
+                        if (variable_struct_exists(_a.meta, "map_w")) _map_w = _a.meta.map_w;
+                        if (variable_struct_exists(_a.meta, "map_h")) _map_h = _a.meta.map_h;
+                    }
+                    break;
                 }
-                break;
+            }
+        } else if (instance_exists(obj_asset_manager)) {
+            // Last resort fallback: first MAP_DATA asset in list
+            var _am = obj_asset_manager;
+            for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
+                var _a = ds_list_find_value(_am.asset_list, _ai);
+                if (_a.type == "MAP_DATA") {
+                    _map_base = _a.address;
+                    if (variable_struct_exists(_a, "meta")) {
+                        if (variable_struct_exists(_a.meta, "map_w")) _map_w = _a.meta.map_w;
+                        if (variable_struct_exists(_a.meta, "map_h")) _map_h = _a.meta.map_h;
+                    }
+                    break;
+                }
             }
         }
     }
@@ -3295,6 +3442,84 @@ case "MACRO_SCROLL": {
         array_push(_lst, ["rts",     0,           _p_id]);
     };
 
+    // LUT variant — reads the SAME char plane as the char loaders (no
+    // separate colour block) and derives the colour byte via a 256-entry
+    // char->colour table instead of a second memory read.
+    var _emit_scroll_loader_lut = function(_lst, _lbl_entry, _dest_base, _lut_lbl,
+                                            _p_word, _p_rows, _p_base, _p_srow, _p_mapw,
+                                            _p_id, _p_sx, _p_sxhi, _p_camw) {
+        var _lbl_cols   = _lbl_entry + "cols";
+        var _lbl_nowrap = _lbl_entry + "nowrap";
+        var _lbl_dowrap = _lbl_entry + "dowrap";
+        var _lbl_done   = _lbl_entry + "done";
+
+        array_push(_lst, ["label", _lbl_entry]);
+        if (_p_word) {
+            array_push(_lst, ["lda_lab", _p_sx,    _p_id]);
+            array_push(_lst, ["sta_zp",  0xFD,     _p_id]);
+            array_push(_lst, ["lda_lab", _p_sxhi,  _p_id]);
+            array_push(_lst, ["sta_zp",  0xFE,     _p_id]);
+        } else {
+            array_push(_lst, ["ldy_lab", _p_sx, _p_id]);
+        }
+        array_push(_lst, ["ldx_imm", 0x00, _p_id]);
+        array_push(_lst, ["label", _lbl_cols]);
+        for (var _r = 0; _r < _p_rows; _r++) {
+            var _row_src = _p_base + ((_r + _p_srow) * _p_mapw);
+            if (_p_word) {
+                array_push(_lst, ["lda_imm", _row_src & 0xFF,        _p_id]);
+                array_push(_lst, ["clc",     0,                      _p_id]);
+                array_push(_lst, ["adc_zp",  0xFD,                   _p_id]);
+                array_push(_lst, ["sta_zp",  0xF3,                   _p_id]);
+                array_push(_lst, ["lda_imm", (_row_src >> 8) & 0xFF, _p_id]);
+                array_push(_lst, ["adc_zp",  0xFE,                   _p_id]);
+                array_push(_lst, ["sta_zp",  0xF4,                   _p_id]);
+                array_push(_lst, ["ldy_imm", 0x00,                   _p_id]);
+                array_push(_lst, ["lda_izy", 0xF3,                   _p_id]);
+            } else {
+                array_push(_lst, ["lda_aby", _row_src, _p_id]);
+            }
+            // A holds the char at this cell — look up its colour nibble
+            array_push(_lst, ["tay",     0,        _p_id]);
+            array_push(_lst, ["lda_aby", _lut_lbl, _p_id]);
+            array_push(_lst, ["sta_abx", _dest_base + ((_r + _p_srow) * 40), _p_id]);
+        }
+        if (_p_word) {
+            array_push(_lst, ["lda_zp",  0xFD,                 _p_id]);
+            array_push(_lst, ["clc",     0,                    _p_id]);
+            array_push(_lst, ["adc_imm", 0x01,                 _p_id]);
+            array_push(_lst, ["sta_zp",  0xFD,                 _p_id]);
+            array_push(_lst, ["lda_zp",  0xFE,                 _p_id]);
+            array_push(_lst, ["adc_imm", 0x00,                 _p_id]);
+            array_push(_lst, ["sta_zp",  0xFE,                 _p_id]);
+            array_push(_lst, ["lda_zp",  0xFE,                 _p_id]);
+            array_push(_lst, ["cmp_imm", (_p_mapw >> 8) & 0xFF, _p_id]);
+            array_push(_lst, ["bcc",     _lbl_nowrap,          _p_id]);
+            array_push(_lst, ["bne",     _lbl_dowrap,          _p_id]);
+            array_push(_lst, ["lda_zp",  0xFD,                 _p_id]);
+            array_push(_lst, ["cmp_imm", _p_mapw & 0xFF,       _p_id]);
+            array_push(_lst, ["bcc",     _lbl_nowrap,          _p_id]);
+            array_push(_lst, ["label",   _lbl_dowrap]);
+            array_push(_lst, ["lda_imm", 0x00,                 _p_id]);
+            array_push(_lst, ["sta_zp",  0xFD,                 _p_id]);
+            array_push(_lst, ["lda_imm", 0x00,                 _p_id]);
+            array_push(_lst, ["sta_zp",  0xFE,                 _p_id]);
+            array_push(_lst, ["label",   _lbl_nowrap]);
+        } else {
+            array_push(_lst, ["iny",     0,              _p_id]);
+            array_push(_lst, ["cpy_imm", _p_mapw & 0xFF,  _p_id]);
+            array_push(_lst, ["bcc",     _lbl_nowrap,     _p_id]);
+            array_push(_lst, ["ldy_imm", 0x00,            _p_id]);
+            array_push(_lst, ["label",   _lbl_nowrap]);
+        }
+        array_push(_lst, ["inx",     0,           _p_id]);
+        array_push(_lst, ["cpx_imm", _p_camw,     _p_id]);
+        array_push(_lst, ["beq",     _lbl_done,   _p_id]);
+        array_push(_lst, ["jmp_abs", _lbl_cols,   _p_id]);
+        array_push(_lst, ["label",   _lbl_done]);
+        array_push(_lst, ["rts",     0,           _p_id]);
+    };
+
     // loadMap_screen_1 — _row_count rows from _start_row into $0400
     _emit_scroll_loader(_list, _lbl_scr1, _scr1, 0,
         _map_w_is_word, _row_count, _map_base, _start_row, _map_w,
@@ -3307,9 +3532,15 @@ case "MACRO_SCROLL": {
 
     // colorMap — _row_count rows of colour into $D800
     if (_col_mode != 0) {
-        _emit_scroll_loader(_list, _lbl_color, 0xD800, _msz,
-            _map_w_is_word, _row_count, _map_base, _start_row, _map_w,
-            _id, _lbl_scrollx, _lbl_scrollx_hi, _cam_w);
+        if (_mm_use_lut) {
+            _emit_scroll_loader_lut(_list, _lbl_color, 0xD800, _mm_lut_label,
+                _map_w_is_word, _row_count, _map_base, _start_row, _map_w,
+                _id, _lbl_scrollx, _lbl_scrollx_hi, _cam_w);
+        } else {
+            _emit_scroll_loader(_list, _lbl_color, 0xD800, _msz,
+                _map_w_is_word, _row_count, _map_base, _start_row, _map_w,
+                _id, _lbl_scrollx, _lbl_scrollx_hi, _cam_w);
+        }
     }
 
     // ── Spine resumes here after init ────────────────────────

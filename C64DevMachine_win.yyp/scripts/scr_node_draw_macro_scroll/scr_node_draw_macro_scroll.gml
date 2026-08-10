@@ -101,6 +101,66 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     draw_text(_px + 90, _ly, "Scroller_R");
     _ly += _lh;
 
+    // ROW — SOURCE (click to toggle MAP_DATA <-> META_TILESET), index [6]
+    var _mm_src_mode = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
+    draw_set_color(c_gray);
+    draw_text(_px, _ly, "SOURCE:");
+    draw_set_color(c_aqua);
+    if (_mm_src_mode == 0) {
+        draw_text(_px + 76, _ly, "MAP_DATA");
+    } else {
+        draw_text(_px + 76, _ly, "META_TILESET");
+    }
+    _ly += _lh;
+
+    if (_mm_src_mode == 1) {
+        var _mm_tileset_name = (array_length(instructions[0]) > 7 && is_string(instructions[0][7])) ? string(instructions[0][7]) : "";
+        var _mm_map_index    = (array_length(instructions[0]) > 8 && is_real(instructions[0][8])) ? real(instructions[0][8]) : 0;
+
+        draw_set_color(c_gray);
+        draw_text(_px, _ly, "TILESET:");
+        draw_set_color(c_yellow);
+        if (_mm_tileset_name == "") {
+            draw_text(_px + 76, _ly, "(NONE)");
+        } else {
+            draw_text(_px + 76, _ly, _mm_tileset_name);
+        }
+        _ly += _lh;
+
+        draw_set_color(c_gray);
+        draw_text(_px, _ly, "MAP IDX:");
+        draw_set_color(c_aqua);
+        draw_text(_px + 76, _ly, string(_mm_map_index));
+        _ly += _lh;
+
+        // Resolve the tileset to check for ignored colour overrides
+        var _mm_has_override = false;
+        if (_mm_tileset_name != "" && instance_exists(obj_asset_manager)) {
+            var _mm_am = obj_asset_manager;
+            for (var _mm_ai = 0; _mm_ai < ds_list_size(_mm_am.asset_list); _mm_ai++) {
+                var _mm_a = ds_list_find_value(_mm_am.asset_list, _mm_ai);
+                if (_mm_a.type == "META_TILESET" && _mm_a.name == _mm_tileset_name) {
+                    if (variable_struct_exists(_mm_a.meta, "stamp_override")) {
+                        for (var _mm_oi = 0; _mm_oi < array_length(_mm_a.meta.stamp_override); _mm_oi++) {
+                            if (_mm_a.meta.stamp_override[_mm_oi] != 0x80) {
+                                _mm_has_override = true;
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        if (_mm_has_override) {
+            draw_set_font(fnt_c64_tiny);
+            draw_set_color(c_orange);
+            draw_text(_px, _ly, "! STAMP COLOUR OVERRIDES IGNORED");
+            draw_set_font(fnt_c64_code);
+            _ly += _lh;
+        }
+    }
+
 /*
     // ROW 5 — USE SID IRQ (checkbox)
     var _chk_x      = _px;

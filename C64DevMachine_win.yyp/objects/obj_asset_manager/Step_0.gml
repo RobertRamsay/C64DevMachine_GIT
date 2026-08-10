@@ -1490,8 +1490,13 @@ if (metamap_picker_open) {
         }
         if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
             if (metamap_picker_hover >= 0) {
-                _node.instructions[0][1] = _matches[metamap_picker_hover].name;
-                _node.instructions[0][2] = 0; // reset map index when tileset changes
+                var _name_idx   = metamap_picker_name_idx;
+                var _mapidx_idx = metamap_picker_mapidx_idx;
+                while (array_length(_node.instructions[0]) <= max(_name_idx, _mapidx_idx)) {
+                    array_push(_node.instructions[0], 0);
+                }
+                _node.instructions[0][_name_idx]   = _matches[metamap_picker_hover].name;
+                _node.instructions[0][_mapidx_idx] = 0; // reset map index when tileset changes
                 global.addresses_dirty = true;
             }
             metamap_picker_open = false; metamap_picker_node = noone; metamap_picker_hover = -1;
