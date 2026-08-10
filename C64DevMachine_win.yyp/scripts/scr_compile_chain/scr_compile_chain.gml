@@ -2076,6 +2076,10 @@ case "MACRO_METAMAP": {
                     _sch = _stamp_data[_sdb];
                     // Colour from char_lut[char] (bits 0-3), override wins.
                     // Mode is per-char via char_lut bit 4 (0 = HR, 1 = MC), not per-stamp.
+                    var _raw_col = (_sch < array_length(_tm.char_lut)) ? (_tm.char_lut[_sch] & 0x0F) : 0;
+                    if (_sd_ov >= 0) {
+                        _raw_col = _sd_ov;
+                    }
                     var _cell_is_mc = (_mm_mode == 1
                                     && _sch < array_length(_tm.char_lut)
                                     && ((_tm.char_lut[_sch] >> 4) & 0x01) == 1);
