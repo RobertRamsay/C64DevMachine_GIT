@@ -80,15 +80,22 @@ var _ry = [
     if (array_length(instructions[0]) < 9)  { array_push(instructions[0], 0); }
     if (array_length(instructions[0]) < 10) { array_push(instructions[0], 0xA000); }
     if (array_length(instructions[0]) < 11) { array_push(instructions[0], 1); }
+    if (array_length(instructions[0]) < 12) { array_push(instructions[0], 0); }
+    if (array_length(instructions[0]) < 13) { array_push(instructions[0], ""); }
     var _mm_src_mode = is_real(instructions[0][6]) ? real(instructions[0][6]) : 0;
 
     // CLR UNUSED sits right after whatever the draw function drew last —
     // row 7 is one past SOURCE's own row (6), +3 when META_TILESET is
-    // active, +1 more if that tileset carries a stamp override. Must
-    // mirror draw exactly.
+    // active (TILESET/MAP IDX/BASE ADDR), +1 more if MAP IDX is in VAR
+    // mode (SETMAP info row), +1 more if that tileset carries a stamp
+    // override. Must mirror draw exactly.
     var _mm_clamp_row_offset = 7;
     if (_mm_src_mode == 1) {
         _mm_clamp_row_offset += 3;
+        var _mm_map_idx_mode_chk = is_real(instructions[0][11]) ? real(instructions[0][11]) : 0;
+        if (_mm_map_idx_mode_chk == 1) {
+            _mm_clamp_row_offset += 1;
+        }
         var _mm_tileset_name_chk = is_string(instructions[0][7]) ? string(instructions[0][7]) : "";
         if (_mm_tileset_name_chk != "" && instance_exists(obj_asset_manager)) {
             var _mm_am_chk = obj_asset_manager;
@@ -149,13 +156,43 @@ var _ry = [
             return;
         }
 
-        // MAP IDX row — open text entry for index [8]
+        // MAP IDX row — left part toggles LIT/VAR (index [11]); right part
+        // opens a text-entry modal in LIT mode or the UV var picker in VAR
+        // mode, matching the toggle/value split MACRO_METAMAP's own MAP
+        // row already uses.
         if (_in_col && _mgy >= _ly_mapidx && _mgy < _ly_mapidx + _lh_g) {
-            obj_workspace_manager.input_target_node    = id;
-            obj_workspace_manager.input_target_index   = 8;
-            obj_workspace_manager.current_input_string = string(is_real(instructions[0][8]) ? real(instructions[0][8]) : 0);
-            obj_workspace_manager.cursor_pos           = string_length(obj_workspace_manager.current_input_string);
-            obj_workspace_manager.is_entering_text     = true;
+            var _mm_map_idx_mode = is_real(instructions[0][11]) ? real(instructions[0][11]) : 0;
+            var _mm_mi_toggle_x2 = (_px + 104 - _cam_x) / _cam_zoom;
+            if (_mgx < _mm_mi_toggle_x2) {
+                if (_mm_map_idx_mode == 0) {
+                    instructions[0][11] = 1;
+                } else {
+                    instructions[0][11] = 0;
+                }
+                height_dirty = true;
+                scr_c64_update_addresses();
+                return;
+            }
+            if (_mm_map_idx_mode == 0) {
+                obj_workspace_manager.input_target_node    = id;
+                obj_workspace_manager.input_target_index   = 8;
+                obj_workspace_manager.current_input_string = string(is_real(instructions[0][8]) ? real(instructions[0][8]) : 0);
+                obj_workspace_manager.cursor_pos           = string_length(obj_workspace_manager.current_input_string);
+                obj_workspace_manager.is_entering_text     = true;
+            } else {
+                label_picker_open       = true;
+                global.any_picker_open  = true;
+                label_picker_prev_depth = depth;
+                depth                   = -9999;
+                label_picker_mode       = "VAR";
+                label_picker_word_only  = false;
+                label_picker_byte_only  = true;
+                label_picker_tab        = "UV";
+                label_picker_scroll     = 0;
+                label_picker_list       = [];
+                label_picker_target     = id;
+                label_picker_index      = 12;
+            }
             return;
         }
 

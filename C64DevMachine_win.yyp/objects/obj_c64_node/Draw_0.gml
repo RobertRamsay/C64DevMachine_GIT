@@ -145,6 +145,10 @@ if (height_dirty) {
         var _sc_src_mode = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
         if (_sc_src_mode == 1) {
             _sc_rows += 3; // TILESET row + MAP IDX row + BASE ADDR row
+            var _sc_map_idx_mode = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 0;
+            if (_sc_map_idx_mode == 1) {
+                _sc_rows += 1; // SETMAP info row
+            }
             var _sc_tileset_name = (array_length(instructions[0]) > 7 && is_string(instructions[0][7])) ? string(instructions[0][7]) : "";
             if (_sc_tileset_name != "" && instance_exists(obj_asset_manager)) {
                 var _sc_am = obj_asset_manager;
