@@ -78,7 +78,7 @@ var _ry = [
     if (array_length(instructions[0]) < 7)  { array_push(instructions[0], 0); }
     if (array_length(instructions[0]) < 8)  { array_push(instructions[0], ""); }
     if (array_length(instructions[0]) < 9)  { array_push(instructions[0], 0); }
-    if (array_length(instructions[0]) < 10) { array_push(instructions[0], 0xA000); }
+    if (array_length(instructions[0]) < 10) { array_push(instructions[0], 0x4000); }
     if (array_length(instructions[0]) < 11) { array_push(instructions[0], 1); }
     if (array_length(instructions[0]) < 12) { array_push(instructions[0], 0); }
     if (array_length(instructions[0]) < 13) { array_push(instructions[0], ""); }
@@ -200,7 +200,7 @@ var _ry = [
         // zero-padded, no $ — matches the convention other hex-address
         // fields in this codebase use for their modal pre-fill)
         if (_in_col && _mgy >= _ly_baseaddr && _mgy < _ly_baseaddr + _lh_g) {
-            var _mm_cur_addr = is_real(instructions[0][9]) ? real(instructions[0][9]) : 0xA000;
+            var _mm_cur_addr = is_real(instructions[0][9]) ? real(instructions[0][9]) : 0x4000;
             var _mm_hex      = string_upper(decimal_to_hex(_mm_cur_addr));
             while (string_length(_mm_hex) < 4) {
                 _mm_hex = "0" + _mm_hex;
