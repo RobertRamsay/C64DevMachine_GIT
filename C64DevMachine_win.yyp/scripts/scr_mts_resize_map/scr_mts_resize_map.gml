@@ -42,4 +42,5 @@ function scr_mts_resize_map(_m, _map_idx, _new_w_ch, _new_h_ch) {
     }
 
     _m.is_dirty = true;
+    global.memory_bar_dirty = true;
 }

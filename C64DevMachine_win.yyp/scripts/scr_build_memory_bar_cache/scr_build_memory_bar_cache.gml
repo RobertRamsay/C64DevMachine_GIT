@@ -201,6 +201,83 @@ var _addr_total = 65536;
                     while (string_length(_pc_hex) < 4) _pc_hex = "0" + _pc_hex;
                     array_push(_segments, { addr: pc_address, size: total_node_size, col: make_color_rgb(40, 180, 160), type: "MACRO", name: _n_name + " AT $" + _pc_hex, lines: [], node_id: id, no_conflict: false, conflict: false });
                 }
+
+                // META_TILESET source mode is flattened by MACRO_SCROLL at
+                // compile time. Those bytes really occupy the BASE range from
+                // instructions[0][9], but previously the memory bar showed the
+                // editor-only packed META_TILESET at its asset address instead.
+                // Mirror the compiler's geometry exactly: LIT packs the chosen
+                // map; VAR packs every map sequentially into one contiguous
+                // character-plane allocation.
+                var _flat_src_mode = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
+                if (_flat_src_mode == 1) {
+                    var _flat_ts_name = (array_length(instructions[0]) > 7) ? string(instructions[0][7]) : "";
+                    var _flat_map_idx = (array_length(instructions[0]) > 8 && is_real(instructions[0][8])) ? real(instructions[0][8]) : 0;
+                    var _flat_base    = (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) ? real(instructions[0][9]) : 0x4000;
+                    var _flat_varmode = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 0;
+                    if (_flat_base < 0x0400) _flat_base = 0x4000;
+
+                    var _flat_ts = noone;
+                    if (_flat_ts_name != "" && instance_exists(obj_asset_manager)) {
+                        var _flat_am = obj_asset_manager;
+                        for (var _flat_ai = 0; _flat_ai < ds_list_size(_flat_am.asset_list); _flat_ai++) {
+                            var _flat_a = ds_list_find_value(_flat_am.asset_list, _flat_ai);
+                            if (_flat_a.type == "META_TILESET" && _flat_a.name == _flat_ts_name) {
+                                _flat_ts = _flat_a;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (_flat_ts != noone) {
+                        var _flat_tm    = _flat_ts.meta;
+                        var _flat_sw    = max(1, _flat_tm.stamp_w);
+                        var _flat_sh    = max(1, _flat_tm.stamp_h);
+                        var _flat_size  = 0;
+                        var _flat_count = 0;
+                        var _flat_first = (_flat_varmode == 1) ? 0 : _flat_map_idx;
+                        var _flat_last  = (_flat_varmode == 1) ? (_flat_tm.map_count - 1) : _flat_map_idx;
+
+                        for (var _flat_mi = _flat_first; _flat_mi <= _flat_last; _flat_mi++) {
+                            if (_flat_mi < 0 || _flat_mi >= _flat_tm.map_count) continue;
+                            if (_flat_mi >= array_length(_flat_tm.maps)) continue;
+                            var _flat_grid = _flat_tm.maps[_flat_mi];
+                            var _flat_w    = 40;
+                            if (_flat_mi < array_length(_flat_tm.map_w)) {
+                                _flat_w = _flat_tm.map_w[_flat_mi];
+                            }
+                            var _flat_cols = max(1, floor(_flat_w / _flat_sw));
+                            var _flat_rows = floor(array_length(_flat_grid) / _flat_cols);
+                            var _flat_h    = _flat_rows * _flat_sh;
+                            _flat_size += _flat_w * _flat_h;
+                            _flat_count++;
+                        }
+
+                        if (_flat_size > 0) {
+                            var _flat_hex = string_upper(decimal_to_hex(_flat_base));
+                            while (string_length(_flat_hex) < 4) _flat_hex = "0" + _flat_hex;
+                            var _flat_end_hex = string_upper(decimal_to_hex(_flat_base + _flat_size - 1));
+                            while (string_length(_flat_end_hex) < 4) _flat_end_hex = "0" + _flat_end_hex;
+                            var _flat_mode_name = (_flat_varmode == 1)
+                                ? ("VAR " + string(_flat_count) + " MAPS")
+                                : ("LIT MAP " + string(_flat_map_idx));
+                            array_push(_segments, {
+                                addr:        _flat_base,
+                                size:        _flat_size,
+                                col:         make_color_rgb(245, 210, 70),
+                                type:        "ASSET",
+                                name:        _flat_ts_name + " HSCROLL FLAT DATA " + _flat_mode_name
+                                           + " $" + _flat_hex + "-$" + _flat_end_hex
+                                           + " (" + string(_flat_size) + " BYTES)",
+                                lines:       [],
+                                node_id:     id,
+                                no_conflict: false,
+                                conflict:    false
+                            });
+                        }
+                    }
+                }
+
                 // Buffer 2 sits at screen RAM base + $0800 — resolve from MACRO_VIC
                 var _scroll_scr1 = scr_resolve_screen_ram();
                 var _scroll_buf2 = _scroll_scr1 + 0x0800;
@@ -497,44 +574,11 @@ var _addr_total = 65536;
                         array_push(_segments, { addr: _a.address + _msz, size: _msz, col: make_color_rgb(40, 120, 200), type: "ASSET", name: _a.name + " (ATTR)", lines: [], node_id: noone, no_conflict: _a_is_load_later, conflict: false, load_later: _a_is_load_later });
                     }
                     break;
-				case "META_TILESET": {
-				    // Full footprint = metatile size (2) + metatile data (cells*3)
-				    // + per-map (1 count byte + placed*3). Prefer the cached total
-				    // computed by the viewer; fall back to computing it here so the
-				    // bar is correct even when the viewer hasn't been opened.
-				    var _ts_size = 0;
-				    if (variable_struct_exists(_a.meta, "total_bytes")) {
-				        _ts_size = _a.meta.total_bytes;
-				    } else {
-				        _ts_size = 2 + _a.meta.stamp_count * (_a.meta.stamp_w * _a.meta.stamp_h * 3);
-				        if (variable_struct_exists(_a.meta, "maps")) {
-				            for (var _mtm = 0; _mtm < array_length(_a.meta.maps); _mtm++) {
-				                var _mtg = _a.meta.maps[_mtm];
-				                var _mtp = 0;
-				                for (var _mtc = 0; _mtc < array_length(_mtg); _mtc++) {
-				                    if (_mtg[_mtc] != -1) _mtp++;
-				                }
-				                _ts_size += 1 + (_mtp * 3);
-				            }
-				        }
-				    }
-				    if (_ts_size > 0) {
-				        var _ts_hex = string_upper(decimal_to_hex(_a.address));
-				        while (string_length(_ts_hex) < 4) _ts_hex = "0" + _ts_hex;
-				        array_push(_segments, {
-				            addr:      _a.address,
-				            size:      _ts_size,
-				            col:       make_color_rgb(120, 200, 255),
-				            type:      "ASSET",
-				            name:      _a.name + " (META+MAPS) AT $" + _ts_hex,
-				            lines:     [],
-				            node_id:   noone,
-				            no_conflict: _a_is_load_later,
-				            conflict:  false,
-				            load_later: _a_is_load_later
-				        });
-				    }
-				} break;
+				case "META_TILESET":
+				    // Editor/source data only. Runtime macros emit their real C64
+				    // representation separately, so reserving the asset's nominal
+				    // address here creates a false memory-bar allocation.
+				    break;
 
 			case "META_MAP": {
 			    var _mm_ts = noone;
