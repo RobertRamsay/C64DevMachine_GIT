@@ -1,20 +1,12 @@
-/// @desc Alarm 0: Relaunch VICE only after final build/reload is quiet
+/// @desc Alarm 0: Relaunch VICE after the requested build output exists
 
 if (!vice_launch_pending) {
     exit;
 }
 
-// Large MAP/METAMAP/H-scroll projects can schedule follow-up processing.
-// Do not touch VICE until the build queue and asset reload pipeline are quiet.
-if (trigger_build || global.asset_reload_in_progress) {
-    vice_launch_phase = 0;
-    vice_launch_retry = 0;
-    alarm[0] = 1;
-    exit;
-}
-
-// The build path is synchronous, but require the exact output file to exist.
-// If filesystem visibility is delayed, retry briefly instead of launching stale data.
+// The build path arms vice_launch_target only after the synchronous PRG/D64
+// save has completed.  From this point on, the output file is the source of
+// truth: post-build asset flags must not be allowed to suppress VICE forever.
 if (vice_launch_target == "" || !file_exists(vice_launch_target)) {
     vice_launch_retry += 1;
 
@@ -32,6 +24,7 @@ if (vice_launch_target == "" || !file_exists(vice_launch_target)) {
 
     vice_launch_pending = false;
     vice_launch_phase = 0;
+    vice_launch_retry = 0;
     exit;
 }
 
@@ -45,35 +38,29 @@ if (global.vice_path_cache == "" || !file_exists(global.vice_path_cache)) {
 
     vice_launch_pending = false;
     vice_launch_phase = 0;
+    vice_launch_retry = 0;
     exit;
 }
 
-// Phase 0:
-// The final output exists and the build pipeline is quiet.
-// Only NOW kill the old VICE process.
+// Phase 0: the exact requested output exists.  Only now terminate any old
+// VICE instance, then give Windows/macOS a short window to release the process.
 if (vice_launch_phase == 0) {
-    show_debug_message("VICE deferred launch: output ready, terminating old VICE.");
+    show_debug_message("VICE deferred launch: output ready: " + vice_launch_target);
+    show_debug_message("VICE deferred launch: terminating old VICE.");
     scr_kill_vice();
 
     vice_launch_phase = 1;
-    alarm[0] = vicedelay;
+    alarm[0] = max(1, vicedelay);
     exit;
 }
 
-// Something may have retriggered while Windows was shutting VICE down.
-if (trigger_build || global.asset_reload_in_progress) {
-    show_debug_message("VICE deferred launch: build/reload retriggered, waiting again.");
-    vice_launch_phase = 0;
-    vice_launch_retry = 0;
-    alarm[0] = 1;
-    exit;
-}
-
-// Phase 1:
-// Old VICE has had time to terminate. Launch exactly once with the finished file.
+// Phase 1: launch exactly once with the finished PRG/D64.  Do not gate this on
+// trigger_build or asset_reload_in_progress; those can legitimately change as
+// large MAP/METAMAP/H-scroll data settles after the completed build.
 show_debug_message("VICE deferred launch: starting " + vice_launch_target);
 
-if (!scr_launch_vice(global.vice_path_cache, vice_launch_target)) {
+var _vice_started = scr_launch_vice(global.vice_path_cache, vice_launch_target);
+if (!_vice_started) {
     scr_show_message("VICE launch failed.\n\nBuild output:\n" + vice_launch_target);
 }
 
