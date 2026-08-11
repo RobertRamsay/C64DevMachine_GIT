@@ -2523,10 +2523,15 @@ if (_cmnem == "rts" || _cmnem == "rti") {
 
 
 // -------------------------------------------------------------
-// VICE launch sequencing
-// Do NOT kill VICE before an expensive build. The old VICE instance is
-// terminated only after the final PRG/D64 exists and the build queue is quiet.
-// -------------------------------------------------------------
+    // VICE pre-build kill (cross-platform)
+    // Releases any file lock VICE has on the previously emitted .prg/.d64.
+    // Actual launch happens later via alarm[0] -> scr_launch_vice().
+    // -------------------------------------------------------------
+    if (!silent_build) {
+        scr_kill_vice();
+    }
+	
+
     if (ds_list_empty(global.node_chain)) {
         scr_show_message("BUILD FAILED: Spine is empty");
         exit;
@@ -2972,11 +2977,7 @@ show_debug_message(_pbuf_dbg2);
                 if (global.vice_path_cache == "") {
                     show_debug_message("VICE not found - check installation or set override path.");
                 }
-                vice_launch_target  = full_save_path;
-                    vice_launch_pending = true;
-                    vice_launch_phase   = 0;
-                    vice_launch_retry   = 0;
-                    alarm[0] = 1;
+                alarm[0] = vicedelay;
             }
         }
 		
@@ -2994,11 +2995,7 @@ show_debug_message(_pbuf_dbg2);
                 if (global.vice_path_cache == "") {
                     show_debug_message("VICE not found - check installation or set override path.");
                 } else {
-                    vice_launch_target  = full_save_path;
-                    vice_launch_pending = true;
-                    vice_launch_phase   = 0;
-                    vice_launch_retry   = 0;
-                    alarm[0] = 1;
+                    alarm[0] = vicedelay;
                 }
             }
         }
