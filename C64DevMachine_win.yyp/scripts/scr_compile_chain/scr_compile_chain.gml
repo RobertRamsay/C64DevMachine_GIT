@@ -2850,13 +2850,13 @@ case "MACRO_SCROLL": {
     if (array_length(_id.instructions[0]) > 8 && is_real(_id.instructions[0][8])) {
         _mm_map_index = real(_id.instructions[0][8]);
     }
-    var _mm_base_addr = 0x4000;
+    var _mm_base_addr = 0xA000;
     if (array_length(_id.instructions[0]) > 9 && is_real(_id.instructions[0][9])) {
         _mm_base_addr = real(_id.instructions[0][9]);
     }
     if (_mm_base_addr < 0x0400) {
-        show_debug_message("MACRO_SCROLL(META): base_addr $" + string_upper(decimal_to_hex(_mm_base_addr)) + " is invalid — falling back to $4000. Set BASE ADDR on the node to a free region clear of your code and other assets.");
-        _mm_base_addr = 0x4000;
+        show_debug_message("MACRO_SCROLL(META): base_addr $" + string_upper(decimal_to_hex(_mm_base_addr)) + " is invalid — falling back to $A000. Set BASE ADDR on the node to a free region clear of your code and other assets.");
+        _mm_base_addr = 0xA000;
     }
     var _mm_use_lut   = false;
     var _mm_lut_label = "";
@@ -2969,29 +2969,6 @@ case "MACRO_SCROLL": {
             var _mm_map_widths = [];
             var _mm_run_addr   = _mm_base_addr;
 
-            // Empty META maps do not need independent expanded char planes.
-            // Reserve ONE shared zero plane large enough for the biggest empty map.
-            // Empty maps keep their own width table entries but share this base.
-            var _mm_blank_base  = -1;
-            var _mm_blank_size  = 0;
-            var _mm_blank_count = 0;
-            for (var _mm_bm = 0; _mm_bm < _mm_tm.map_count; _mm_bm++) {
-                var _mm_bg = _mm_tm.maps[_mm_bm];
-                var _mm_empty = true;
-                for (var _mm_be = 0; _mm_be < array_length(_mm_bg); _mm_be++) {
-                    if (_mm_bg[_mm_be] >= 0) { _mm_empty = false; break; }
-                }
-                if (!_mm_empty) continue;
-
-                var _mm_bw = 40;
-                if (_mm_bm < array_length(_mm_tm.map_w)) _mm_bw = _mm_tm.map_w[_mm_bm];
-                var _mm_bc = max(1, floor(_mm_bw / _mm_sw));
-                var _mm_br = floor(array_length(_mm_bg) / _mm_bc);
-                var _mm_bh = _mm_br * _mm_sh;
-                _mm_blank_size = max(_mm_blank_size, _mm_bw * _mm_bh);
-                _mm_blank_count++;
-            }
-
             for (var _mm_mi = 0; _mm_mi < _mm_tm.map_count; _mm_mi++) {
                 var _mm_grid_v = _mm_tm.maps[_mm_mi];
                 var _mm_w_ch_v = 40;
@@ -3005,42 +2982,6 @@ case "MACRO_SCROLL": {
                 var _mm_rows_v = floor(array_length(_mm_grid_v) / _mm_cols_v);
                 var _mm_w_v = _mm_w_ch_v;
                 var _mm_h_v = _mm_rows_v * _mm_sh;
-
-                // Completely empty maps share one expanded zero plane. This keeps
-                // base + row*width + column addressing unchanged on the C64.
-                var _mm_is_empty_v = true;
-                for (var _mm_ev = 0; _mm_ev < array_length(_mm_grid_v); _mm_ev++) {
-                    if (_mm_grid_v[_mm_ev] >= 0) { _mm_is_empty_v = false; break; }
-                }
-                if (_mm_is_empty_v) {
-                    if (_mm_blank_base < 0) {
-                        _mm_blank_base = _mm_run_addr;
-                        array_push(_list, ["org", -2]);
-                        array_push(_list, ["org", _mm_blank_base]);
-                        var _mm_id_save_blank = _id;
-                        var _id = noone;
-                        for (var _mm_z = 0; _mm_z < _mm_blank_size; _mm_z++) {
-                            array_push(_list, ["byte", 0]);
-                        }
-                        array_push(_list, ["org", -3]);
-                        var _id = _mm_id_save_blank;
-                        _mm_run_addr += _mm_blank_size;
-                        show_debug_message("MACRO_SCROLL: shared " + string(_mm_blank_count)
-                            + " empty map(s) in one " + string(_mm_blank_size) + " byte blank plane @ $"
-                            + string_upper(decimal_to_hex(_mm_blank_base)));
-                    }
-
-                    array_push(_mm_map_bases,  _mm_blank_base);
-                    array_push(_mm_map_widths, _mm_w_v);
-                    if (_mm_w_v > _mm_max_switch_w) _mm_max_switch_w = _mm_w_v;
-
-                    if (_mm_mi == _mm_map_index) {
-                        _map_w    = _mm_w_v;
-                        _map_h    = _mm_h_v;
-                        _map_base = _mm_blank_base;
-                    }
-                    continue;
-                }
 
                 if (_mm_w_v > _mm_max_switch_w) {
                     _mm_max_switch_w = _mm_w_v;

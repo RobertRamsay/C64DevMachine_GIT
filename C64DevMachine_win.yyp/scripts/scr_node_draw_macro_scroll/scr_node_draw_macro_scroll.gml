@@ -148,7 +148,7 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
         }
         _ly += _lh;
 
-        var _mm_base_addr = (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) ? real(instructions[0][9]) : 0x4000;
+        var _mm_base_addr = (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) ? real(instructions[0][9]) : 0xA000;
         draw_set_color(c_gray);
         draw_text(_px, _ly, "BASE ADDR:");
         draw_set_color(c_aqua);
