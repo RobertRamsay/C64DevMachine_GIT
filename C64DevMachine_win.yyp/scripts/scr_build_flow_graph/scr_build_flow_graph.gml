@@ -80,7 +80,11 @@ function scr_build_flow_graph() {
     // _owner_ranges directly crashes at runtime as an unset instance var
     // read on whichever object happened to call this script.
     var _addr_to_node = function(_addr, _ranges) {
-        for (var _ri = 0; _ri < array_length(_ranges); _ri++) {
+        // Search newest-to-oldest. ORG restore blocks and long conditional
+        // springboards can cause a later instruction to reuse an address that
+        // appeared in an earlier ownership range. The later emitted byte is
+        // what survives in the assembled program and therefore owns the edge.
+        for (var _ri = array_length(_ranges) - 1; _ri >= 0; _ri--) {
             var _r = _ranges[_ri];
             if (_addr >= _r.start && _addr < _r.stop) return _r.node;
         }
@@ -273,6 +277,78 @@ function scr_build_flow_graph() {
                     if (!_dup) array_push(_edges, {kind: "jsr", src: _disp_src, tgt: _disp_tgt});
                 }
             }
+        }
+    }
+
+    // Verification pass for explicit, user-placed JSR nodes. The assembled
+    // fixup scan above is still the authority for macros and generated code,
+    // but overlapping/reused ownership addresses can make one of two adjacent
+    // JSR nodes calling the same label disappear. A visible JSR node must
+    // always have its own call edge and its own return edge.
+    var _placed_jsrs = [];
+    with (obj_c64_node) {
+        if (!is_connected || !variable_instance_exists(id, "instructions")) continue;
+        for (var _pji = 0; _pji < array_length(instructions); _pji++) {
+            if (array_length(instructions[_pji]) < 2) continue;
+            var _pjm = string_lower(string(instructions[_pji][0]));
+            if (_pjm != "jsr" && _pjm != "jsr_abs" && _pjm != "jsr_lab") continue;
+            var _pjl = string(instructions[_pji][1]);
+            if (_pjl != "") array_push(other._placed_jsrs, {src:id, label:_pjl});
+        }
+    }
+
+    for (var _pji = 0; _pji < array_length(_placed_jsrs); _pji++) {
+        var _pj = _placed_jsrs[_pji];
+        var _pj_tgt = _find_label_node(_pj.label);
+        if (_pj_tgt == noone) continue;
+
+        var _pj_has_call = false;
+        var _pj_has_ret  = false;
+        for (var _pje = 0; _pje < array_length(_edges); _pje++) {
+            var _pjed = _edges[_pje];
+            if (_pjed.kind == "jsr" && _pjed.src == _pj.src && _pjed.tgt == _pj_tgt) {
+                _pj_has_call = true;
+            }
+            if (_pjed.kind == "jsr_ret" && _pjed.tgt == _pj.src) _pj_has_ret = true;
+        }
+        if (_pj_has_call && _pj_has_ret) continue;
+
+        // Reuse the return node already discovered for another call to this
+        // same label. This is the exact duplicate-call case shown in the UI.
+        var _pj_rts = noone;
+        for (var _pje = 0; _pje < array_length(_edges); _pje++) {
+            var _pj_call = _edges[_pje];
+            if (_pj_call.kind != "jsr" || _pj_call.tgt != _pj_tgt) continue;
+            for (var _pjr = 0; _pjr < array_length(_edges); _pjr++) {
+                var _pj_ret = _edges[_pjr];
+                if (_pj_ret.kind == "jsr_ret" && _pj_ret.tgt == _pj_call.src) {
+                    _pj_rts = _pj_ret.src;
+                    break;
+                }
+            }
+            if (_pj_rts != noone) break;
+        }
+
+        // Fallback for the first/only explicit call: locate the nearest visible
+        // standalone RTS below the target label in the same spine/ORG context.
+        if (_pj_rts == noone) {
+            var _pj_best_y = 1000000000;
+            var _pj_org    = _pj_tgt.org_parent;
+            var _pj_y      = _pj_tgt.y;
+            with (obj_c64_node) {
+                if (!is_connected || org_parent != _pj_org || y <= _pj_y || y >= other._pj_best_y) continue;
+                if (total_node_size != 1 || array_length(instructions) < 1 || array_length(instructions[0]) < 1) continue;
+                if (string_lower(string(instructions[0][0])) != "rts") continue;
+                other._pj_rts    = id;
+                other._pj_best_y = y;
+            }
+        }
+
+        if (!_pj_has_call) {
+            array_push(_edges, {kind:"jsr", src:_pj.src, tgt:_pj_tgt});
+        }
+        if (!_pj_has_ret && _pj_rts != noone) {
+            array_push(_edges, {kind:"jsr_ret", src:_pj_rts, tgt:_pj.src});
         }
     }
 
