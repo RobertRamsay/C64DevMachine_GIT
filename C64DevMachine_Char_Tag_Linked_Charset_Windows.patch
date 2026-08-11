@@ -1,0 +1,45 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index f89f8c1..9a960bd 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -17369,14 +17369,21 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
+ 		    }
+ 
+ 		    // ── COLL_ADV support: tile-type table + global row LUTs ──
+-		    // Source tile_types from first CHAR_SET asset (same source as legacy MACRO_COLLISION).
+-		    // Emitted only if the charset actually has non-zero tile_types.
++		    // Source tile_types from THIS map's linked CHAR_SET. The editor writes
++		    // tags onto that linked charset, so taking the first CHAR_SET here can
++		    // compile a different table from the one shown in the editor. Keep the
++		    // first-charset lookup only as a legacy fallback for maps with no link.
+ 		    var _ca_tile_types = undefined;
++		    var _ca_wanted_name = "";
++		    if (variable_struct_exists(_a.meta, "chr_asset")) {
++		        _ca_wanted_name = string(_a.meta.chr_asset);
++		    }
+ 		    if (instance_exists(obj_asset_manager)) {
+ 		        var _am_ca = obj_asset_manager;
+ 		        for (var _cai = 0; _cai < ds_list_size(_am_ca.asset_list); _cai++) {
+ 		            var _ca = ds_list_find_value(_am_ca.asset_list, _cai);
+-		            if (_ca.type == "CHAR_SET") {
++		            if (_ca.type == "CHAR_SET"
++		            && (_ca_wanted_name == "" || _ca.name == _ca_wanted_name)) {
+ 		                if (variable_struct_exists(_ca.meta, "tile_types") && is_array(_ca.meta.tile_types)) {
+ 		                    _ca_tile_types = _ca.meta.tile_types;
+ 		                }
+@@ -17420,7 +17427,7 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
+ 		            show_debug_message("MAP_DATA: emitted COLL_ROW_LO + COLL_ROW_HI (global, first map)");
+ 		        }
+ 		    } else {
+-		        show_debug_message("MAP_DATA: skipping " + string(_a.name) + "_TILE_TYPES (no tile_types in first CHAR_SET)");
++		        show_debug_message("MAP_DATA: skipping " + string(_a.name) + "_TILE_TYPES (linked CHAR_SET has no tile_types)");
+ 			    }
+ 			}
+ 		}
+@@ -17452,4 +17459,4 @@ buffer_delete(_null_buf);
+     }
+ 
+     return instruction_list;
+-}
+\ No newline at end of file
++}
