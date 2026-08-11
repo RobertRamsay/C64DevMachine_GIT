@@ -118,6 +118,22 @@ function scr_build_flow_graph() {
         return _found;
     };
 
+    // Address ranges can overlap at zero-sized labels and at the boundary
+    // between adjacent nodes. Before assigning an assembled JSR to a visible
+    // node, verify that the node really contains that explicit call.
+    var _node_has_jsr_to = function(_node, _label_name) {
+        if (!instance_exists(_node) ||
+            !variable_instance_exists(_node, "instructions")) return false;
+        for (var _nji = 0; _nji < array_length(_node.instructions); _nji++) {
+            var _nin = _node.instructions[_nji];
+            if (array_length(_nin) < 2) continue;
+            var _nmn = string_lower(string(_nin[0]));
+            if ((_nmn == "jsr" || _nmn == "jsr_abs" || _nmn == "jsr_lab") &&
+                string(_nin[1]) == _label_name) return true;
+        }
+        return false;
+    };
+
     for (var fi = 0; fi < array_length(p.fixups); fi++) {
         var f = p.fixups[fi];
         if (!ds_map_exists(p.labels, f.label)) continue;
@@ -144,6 +160,20 @@ function scr_build_flow_graph() {
 
         if (_kind != "") {
             var _src_node = _addr_to_node(_src_addr, _owner_ranges);
+            var _src_has_explicit_jsr = (_kind == "jsr") &&
+                                        _node_has_jsr_to(_src_node, f.label);
+
+            // A plain visible node may only own a JSR that is actually in its
+            // instruction list. If range overlap assigned the opcode to the
+            // node immediately above the real JSR, discard that attribution;
+            // the explicit-JSR verification pass below recreates the edge
+            // from the correct node. Macro nodes are allowed to own generated
+            // internal JSRs that are not represented in their instruction UI.
+            if (_kind == "jsr" && !_src_has_explicit_jsr &&
+                (_src_node == noone ||
+                 string_pos("MACRO_", string_upper(string(_src_node.node_type))) != 1)) {
+                continue;
+            }
 
             // COND_IF / COND_IF_WORD deliberately use an absolute JMP as a
             // long-range springboard. It is still a conditional branch in the
@@ -175,7 +205,10 @@ function scr_build_flow_graph() {
             // connection. Requiring a real LABEL node match keeps JSR
             // edges limited to calls that are genuinely visible and
             // callable in the node graph.
-            if (_tgt_node == noone && _kind != "jsr") _tgt_node = _addr_to_node(_target_addr, _owner_ranges);
+            if (_tgt_node == noone &&
+                (_kind != "jsr" || _src_has_explicit_jsr)) {
+                _tgt_node = _addr_to_node(_target_addr, _owner_ranges);
+            }
             // Internal IF springboard labels resolve back into the IF node
             // itself. They are compiler plumbing, not useful user flow edges.
             if (_src_node != noone && _tgt_node != noone &&
@@ -308,6 +341,13 @@ function scr_build_flow_graph() {
     for (var _pji = 0; _pji < array_length(_placed_jsrs); _pji++) {
         var _pj = _placed_jsrs[_pji];
         var _pj_tgt = _find_label_node(_pj.label);
+        // Some public entry points (Scroller_R/Scroller_L, for example) are
+        // labels emitted inside a macro rather than separate LABEL nodes.
+        // Explicit user JSRs should still point to the macro that owns that
+        // compiled entry address.
+        if (_pj_tgt == noone && ds_map_exists(p.labels, _pj.label)) {
+            _pj_tgt = _addr_to_node(p.labels[? _pj.label], _owner_ranges);
+        }
         if (_pj_tgt == noone) continue;
 
         var _pj_has_call = false;
@@ -324,6 +364,12 @@ function scr_build_flow_graph() {
         // Reuse the return node already discovered for another call to this
         // same label. This is the exact duplicate-call case shown in the UI.
         var _pj_rts = noone;
+        // A macro-owned entry point returns from inside that macro. Represent
+        // the return trip at macro level instead of borrowing an unrelated
+        // standalone RTS node that merely happens to be lower on screen.
+        if (string_pos("MACRO_", string_upper(string(_pj_tgt.node_type))) == 1) {
+            _pj_rts = _pj_tgt;
+        }
         for (var _pje = 0; _pje < array_length(_edges); _pje++) {
             var _pj_call = _edges[_pje];
             if (_pj_call.kind != "jsr" || _pj_call.tgt != _pj_tgt) continue;
