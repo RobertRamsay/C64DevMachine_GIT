@@ -98,11 +98,20 @@ function scr_draw_flow_overlay(_edges, _mode, _style = 1) {
     for (var _vi = 0; _vi < array_length(_edges); _vi++) {
         var _ve = _edges[_vi];
         if (!instance_exists(_ve.src) || !instance_exists(_ve.tgt)) continue;
-        if (_ve.kind == "flow" || _ve.kind == "branch") continue;
+        if (_ve.kind == "flow") continue;
         if (_mode == 1 && _ve.src != _hovered_node && _ve.tgt != _hovered_node) continue;
         array_push(_visible, _ve);
     }
     var _visible_count = array_length(_visible);
+
+    // Branches use their own fixed colour and therefore must not alter the
+    // rainbow slots assigned to JMP/JSR/RTS/IRQ lines. This keeps every call
+    // route visually stable when an IF BYTE/IF WORD node is added or removed.
+    var _call_visible_count = 0;
+    for (var _vci = 0; _vci < _visible_count; _vci++) {
+        if (_visible[_vci].kind != "branch") _call_visible_count++;
+    }
+    var _call_colour_i = 0;
 
     for (var i = 0; i < _visible_count; i++) {
         var _e = _visible[i];
@@ -156,14 +165,19 @@ function scr_draw_flow_overlay(_edges, _mode, _style = 1) {
         // to trace one specific line through a dense tangle of others.
         // Width/alpha still vary by kind so the important stuff (jmp/jsr/
         // irq) reads heavier than a faint jsr_ret return trip.
-        var _hue = (_visible_count > 1) ? (i / _visible_count) * 255 : 0;
-        var _col = make_color_hsv(_hue, 200, 255);
+        var _hue = (_call_visible_count > 1)
+            ? (_call_colour_i / _call_visible_count) * 255 : 0;
+        var _col = (_e.kind == "branch")
+            ? make_color_rgb(255, 150, 40)
+            : make_color_hsv(_hue, 200, 255);
+        if (_e.kind != "branch") _call_colour_i++;
         var _wid  = 2;
         var _alph = 0.25;
         switch (_e.kind) {
             case "jmp":     _wid = 3; _alph = 0.85; break;
             case "jsr":     _wid = 3; _alph = 0.85; break;
             case "jsr_ret": _wid = 3; _alph = 0.4;  break;
+            case "branch":  _wid = 2; _alph = 0.75; break;
             case "irq":     _wid = 4; _alph = 0.9;  break;
         }
 

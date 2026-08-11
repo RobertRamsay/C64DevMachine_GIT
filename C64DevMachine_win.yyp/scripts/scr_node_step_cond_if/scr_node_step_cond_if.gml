@@ -41,6 +41,9 @@ function scr_node_step_cond_if(_draw_x) {
         global.addresses_dirty = true;
 		global.undo_dirty      = true;
         scr_c64_do_update_addresses();
+        if (instance_exists(obj_workspace_manager)) {
+            obj_workspace_manager.flow_overlay_dirty = true;
+        }
         exit;
     }
 

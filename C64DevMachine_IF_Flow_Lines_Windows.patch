@@ -1,0 +1,168 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index bd6464a..d64ad15 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -764,7 +764,12 @@ if (label_picker_open && mouse_check_button_pressed(mb_left)) {
+                 global.was_editor_open      = true;
+                 obj_asset_manager.alarm[2]  = 60;
+                 label_picker_filter_char    = "";
+-                if (node_type == "COND_IF" || node_type == "COND_IF_WORD") scr_c64_do_update_addresses();
++                if (node_type == "COND_IF" || node_type == "COND_IF_WORD") {
++                    scr_c64_do_update_addresses();
++                    if (instance_exists(obj_workspace_manager)) {
++                        obj_workspace_manager.flow_overlay_dirty = true;
++                    }
++                }
+                 exit;
+             }
+         }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml b/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
+index 603c737..fe8ebb4 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_build_flow_graph/scr_build_flow_graph.gml
+@@ -140,6 +140,18 @@ function scr_build_flow_graph() {
+ 
+         if (_kind != "") {
+             var _src_node = _addr_to_node(_src_addr, _owner_ranges);
++
++            // COND_IF / COND_IF_WORD deliberately use an absolute JMP as a
++            // long-range springboard. It is still a conditional branch in the
++            // user's graph, not a normal JMP node. Classify by the node that
++            // emitted it so the overlay cannot confuse it with ordinary JMP
++            // flow or disturb the JSR/RTS call-line set.
++            if (_src_node != noone &&
++                (_src_node.node_type == "COND_IF" ||
++                 _src_node.node_type == "COND_IF_WORD")) {
++                _kind = "branch";
++            }
++
+             var _tgt_node = _find_label_node(f.label);
+             // JMP/BRANCH still fall back to address-range guessing when
+             // there's no matching LABEL node — that's fine, those mostly
+@@ -155,7 +167,10 @@ function scr_build_flow_graph() {
+             // edges limited to calls that are genuinely visible and
+             // callable in the node graph.
+             if (_tgt_node == noone && _kind != "jsr") _tgt_node = _addr_to_node(_target_addr, _owner_ranges);
+-            if (_src_node != noone && _tgt_node != noone) {
++            // Internal IF springboard labels resolve back into the IF node
++            // itself. They are compiler plumbing, not useful user flow edges.
++            if (_src_node != noone && _tgt_node != noone &&
++                !(_kind == "branch" && _src_node == _tgt_node)) {
+                 array_push(_edges, {kind: _kind, src: _src_node, tgt: _tgt_node});
+                 // JSR: also show the return trip. The label a JSR jumps to
+                 // is very often NOT where the RTS actually lives — a JSR
+diff --git a/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml b/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
+index a34e7e1..64b5720 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_draw_flow_overlay/scr_draw_flow_overlay.gml
+@@ -98,12 +98,21 @@ function scr_draw_flow_overlay(_edges, _mode, _style = 1) {
+     for (var _vi = 0; _vi < array_length(_edges); _vi++) {
+         var _ve = _edges[_vi];
+         if (!instance_exists(_ve.src) || !instance_exists(_ve.tgt)) continue;
+-        if (_ve.kind == "flow" || _ve.kind == "branch") continue;
++        if (_ve.kind == "flow") continue;
+         if (_mode == 1 && _ve.src != _hovered_node && _ve.tgt != _hovered_node) continue;
+         array_push(_visible, _ve);
+     }
+     var _visible_count = array_length(_visible);
+ 
++    // Branches use their own fixed colour and therefore must not alter the
++    // rainbow slots assigned to JMP/JSR/RTS/IRQ lines. This keeps every call
++    // route visually stable when an IF BYTE/IF WORD node is added or removed.
++    var _call_visible_count = 0;
++    for (var _vci = 0; _vci < _visible_count; _vci++) {
++        if (_visible[_vci].kind != "branch") _call_visible_count++;
++    }
++    var _call_colour_i = 0;
++
+     for (var i = 0; i < _visible_count; i++) {
+         var _e = _visible[i];
+ 
+@@ -156,14 +165,19 @@ function scr_draw_flow_overlay(_edges, _mode, _style = 1) {
+         // to trace one specific line through a dense tangle of others.
+         // Width/alpha still vary by kind so the important stuff (jmp/jsr/
+         // irq) reads heavier than a faint jsr_ret return trip.
+-        var _hue = (_visible_count > 1) ? (i / _visible_count) * 255 : 0;
+-        var _col = make_color_hsv(_hue, 200, 255);
++        var _hue = (_call_visible_count > 1)
++            ? (_call_colour_i / _call_visible_count) * 255 : 0;
++        var _col = (_e.kind == "branch")
++            ? make_color_rgb(255, 150, 40)
++            : make_color_hsv(_hue, 200, 255);
++        if (_e.kind != "branch") _call_colour_i++;
+         var _wid  = 2;
+         var _alph = 0.25;
+         switch (_e.kind) {
+             case "jmp":     _wid = 3; _alph = 0.85; break;
+             case "jsr":     _wid = 3; _alph = 0.85; break;
+             case "jsr_ret": _wid = 3; _alph = 0.4;  break;
++            case "branch":  _wid = 2; _alph = 0.75; break;
+             case "irq":     _wid = 4; _alph = 0.9;  break;
+         }
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+index a934d47..7c26607 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+@@ -1105,6 +1105,9 @@
+ 
+ 	    // --- COND_IF ---
+ 	    } else if (_target.node_type == "COND_IF_WORD") {
++	        if (instance_exists(obj_workspace_manager)) {
++	            obj_workspace_manager.flow_overlay_dirty = true;
++	        }
+ 	        if (_idx == 2) {
+ 	            // cmp_value — 16-bit; $ prefix = hex, bare number = decimal
+ 	            var _val = 0;
+@@ -1130,6 +1133,9 @@
+ 	        }
+ 
+ 	    } else if (_target.node_type == "COND_IF") {
++	        if (instance_exists(obj_workspace_manager)) {
++	            obj_workspace_manager.flow_overlay_dirty = true;
++	        }
+ 	        if (_idx == 2) {
+ 	            // cmp_value — $ prefix = hex, bare number = always decimal
+ 	            var _val = 0;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_cond_if/scr_node_step_cond_if.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_cond_if/scr_node_step_cond_if.gml
+index f5a7da5..b615f5c 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_cond_if/scr_node_step_cond_if.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_cond_if/scr_node_step_cond_if.gml
+@@ -41,6 +41,9 @@ function scr_node_step_cond_if(_draw_x) {
+         global.addresses_dirty = true;
+ 		global.undo_dirty      = true;
+         scr_c64_do_update_addresses();
++        if (instance_exists(obj_workspace_manager)) {
++            obj_workspace_manager.flow_overlay_dirty = true;
++        }
+         exit;
+     }
+ 
+@@ -122,4 +125,4 @@ function scr_node_step_cond_if(_draw_x) {
+ 
+     // ── Row 3: Springboard toggle ────────────────────────────
+ 
+-}
+\ No newline at end of file
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_cond_if_word/scr_node_step_cond_if_word.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_cond_if_word/scr_node_step_cond_if_word.gml
+index 4d6a6bb..93db0ba 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_cond_if_word/scr_node_step_cond_if_word.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_cond_if_word/scr_node_step_cond_if_word.gml
+@@ -43,6 +43,9 @@ function scr_node_step_cond_if_word(_draw_x) {
+         global.addresses_dirty = true;
+ 		global.undo_dirty      = true;
+         scr_c64_do_update_addresses();
++        if (instance_exists(obj_workspace_manager)) {
++            obj_workspace_manager.flow_overlay_dirty = true;
++        }
+         exit;
+     }
+ 
+@@ -116,4 +119,4 @@ function scr_node_step_cond_if_word(_draw_x) {
+     }
+     _cy += _line_h;
+ 
+-}
+\ No newline at end of file
++}

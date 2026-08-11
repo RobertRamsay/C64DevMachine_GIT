@@ -140,6 +140,18 @@ function scr_build_flow_graph() {
 
         if (_kind != "") {
             var _src_node = _addr_to_node(_src_addr, _owner_ranges);
+
+            // COND_IF / COND_IF_WORD deliberately use an absolute JMP as a
+            // long-range springboard. It is still a conditional branch in the
+            // user's graph, not a normal JMP node. Classify by the node that
+            // emitted it so the overlay cannot confuse it with ordinary JMP
+            // flow or disturb the JSR/RTS call-line set.
+            if (_src_node != noone &&
+                (_src_node.node_type == "COND_IF" ||
+                 _src_node.node_type == "COND_IF_WORD")) {
+                _kind = "branch";
+            }
+
             var _tgt_node = _find_label_node(f.label);
             // JMP/BRANCH still fall back to address-range guessing when
             // there's no matching LABEL node — that's fine, those mostly
@@ -155,7 +167,10 @@ function scr_build_flow_graph() {
             // edges limited to calls that are genuinely visible and
             // callable in the node graph.
             if (_tgt_node == noone && _kind != "jsr") _tgt_node = _addr_to_node(_target_addr, _owner_ranges);
-            if (_src_node != noone && _tgt_node != noone) {
+            // Internal IF springboard labels resolve back into the IF node
+            // itself. They are compiler plumbing, not useful user flow edges.
+            if (_src_node != noone && _tgt_node != noone &&
+                !(_kind == "branch" && _src_node == _tgt_node)) {
                 array_push(_edges, {kind: _kind, src: _src_node, tgt: _tgt_node});
                 // JSR: also show the return trip. The label a JSR jumps to
                 // is very often NOT where the RTS actually lives — a JSR

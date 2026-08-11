@@ -1105,6 +1105,9 @@
 
 	    // --- COND_IF ---
 	    } else if (_target.node_type == "COND_IF_WORD") {
+	        if (instance_exists(obj_workspace_manager)) {
+	            obj_workspace_manager.flow_overlay_dirty = true;
+	        }
 	        if (_idx == 2) {
 	            // cmp_value — 16-bit; $ prefix = hex, bare number = decimal
 	            var _val = 0;
@@ -1130,6 +1133,9 @@
 	        }
 
 	    } else if (_target.node_type == "COND_IF") {
+	        if (instance_exists(obj_workspace_manager)) {
+	            obj_workspace_manager.flow_overlay_dirty = true;
+	        }
 	        if (_idx == 2) {
 	            // cmp_value — $ prefix = hex, bare number = always decimal
 	            var _val = 0;

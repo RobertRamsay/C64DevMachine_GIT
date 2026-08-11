@@ -764,7 +764,12 @@ if (label_picker_open && mouse_check_button_pressed(mb_left)) {
                 global.was_editor_open      = true;
                 obj_asset_manager.alarm[2]  = 60;
                 label_picker_filter_char    = "";
-                if (node_type == "COND_IF" || node_type == "COND_IF_WORD") scr_c64_do_update_addresses();
+                if (node_type == "COND_IF" || node_type == "COND_IF_WORD") {
+                    scr_c64_do_update_addresses();
+                    if (instance_exists(obj_workspace_manager)) {
+                        obj_workspace_manager.flow_overlay_dirty = true;
+                    }
+                }
                 exit;
             }
         }
