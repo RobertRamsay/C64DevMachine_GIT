@@ -153,6 +153,11 @@ function scr_build_flow_graph() {
             if (_src_node != noone &&
                 (_src_node.node_type == "COND_IF" ||
                  _src_node.node_type == "COND_IF_WORD")) {
+                // Neither conditional compiler emits a JSR. If address-range
+                // ownership assigned one here, it belongs to the following
+                // explicit JSR node and the verification pass below will add
+                // that edge with the correct source.
+                if (_kind == "jsr") continue;
                 _kind = "branch";
             }
 
