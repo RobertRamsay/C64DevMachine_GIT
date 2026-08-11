@@ -180,6 +180,7 @@ if (height_dirty) {
     case "MACRO_REU":        height = _G * 9; break;
     case "MACRO_COLLISION":  height = _G * 10;  break;
 	case "MACRO_COLL_ADV":   height = _G * 19;  break;    
+	case "MACRO_COLL_LINE":  height = _G * 7;   break;
     case "MACRO_ANIM":       height = _G * 18;  break;
     case "MACRO_SFX":        height = _G * 6;   break;
 	case "MACRO_CODE":       height = _G * 5;   break;

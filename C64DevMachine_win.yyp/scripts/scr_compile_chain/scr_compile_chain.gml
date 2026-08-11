@@ -11079,7 +11079,8 @@ case "MACRO_COLL_ADV": {
 // if no line was hit. No movement/response logic — caller decides what to
 // do with the result (mirrors MACRO_COLL_ADV's probe-then-branch pattern).
 //
-// instructions[0]: ["macro_coll_line", line_coll_asset_name, probe_x_var, probe_y_var, result_type_var]
+// instructions[0]: ["macro_coll_line", line_coll_asset_name, probe_x_var,
+//                  probe_y_var, result_type_var, offset_x_var, offset_y_var]
 // -------------------------------------------------------
 case "MACRO_COLL_LINE": {
     var _id          = _curr;
@@ -11087,6 +11088,8 @@ case "MACRO_COLL_LINE": {
     var _px_var      = (array_length(_id.instructions[0]) > 2) ? string(_id.instructions[0][2]) : "";
     var _py_var      = (array_length(_id.instructions[0]) > 3) ? string(_id.instructions[0][3]) : "";
     var _result_var  = (array_length(_id.instructions[0]) > 4) ? string(_id.instructions[0][4]) : "";
+    var _off_x_var   = (array_length(_id.instructions[0]) > 5) ? string(_id.instructions[0][5]) : "";
+    var _off_y_var   = (array_length(_id.instructions[0]) > 6) ? string(_id.instructions[0][6]) : "";
 
     var _uid = string(_id.id);
     _uid = string_replace_all(_uid, " ", "_");
@@ -11099,6 +11102,8 @@ case "MACRO_COLL_LINE": {
     var _px_addr = (_px_var != "") ? scr_resolve_var_addr(_px_var) : 0;
     var _py_addr = (_py_var != "") ? scr_resolve_var_addr(_py_var) : 0;
     var _result_addr = (_result_var != "") ? scr_resolve_var_addr(_result_var) : 0;
+    var _off_x_addr = (_off_x_var != "" && _off_x_var != "[clear]") ? scr_resolve_var_addr(_off_x_var) : 0;
+    var _off_y_addr = (_off_y_var != "" && _off_y_var != "[clear]") ? scr_resolve_var_addr(_off_y_var) : 0;
 
     if (is_undefined(_lc_asset) || _px_addr == 0 || _py_addr == 0 || _result_addr == 0) {
         show_debug_message("MACRO_COLL_LINE: skipping — asset=[" + _lc_name + "] px=" + string(_px_addr) + " py=" + string(_py_addr) + " result=" + string(_result_addr));
@@ -11117,12 +11122,31 @@ case "MACRO_COLL_LINE": {
 
     // ---- Probe subroutine ----
     // ZP scratch used (all clobbered, no persistence across calls):
+    //   $F3 = adjusted probe X        $F4 = adjusted probe Y
     //   $F5 = record axis flag        $F6 = record major_start
     //   $F7 = record minor_start      $F8 = record major_end
     //   $F9 = record slope byte       $FA = table pointer lo
     //   $FB = table pointer hi        $FC = step (probe major - major_start)
     //   $FD = gradient shift-add accumulator lo   $FE = accumulator hi
     array_push(_list, ["label", _sub_lbl]);
+
+    // Latch the effective probe once per call. Optional offsets are ordinary
+    // byte/signed-byte variables; 6502 ADC naturally provides the desired
+    // modulo-256 coordinate behaviour. Caching also prevents gameplay code or
+    // an IRQ changing PX/PY halfway through a multi-record table scan.
+    array_push(_list, ["lda_abs", _px_addr, _id]);
+    if (_off_x_addr != 0) {
+        array_push(_list, ["clc",     0,           _id]);
+        array_push(_list, ["adc_abs", _off_x_addr, _id]);
+    }
+    array_push(_list, ["sta_zp", 0xF3, _id]);
+
+    array_push(_list, ["lda_abs", _py_addr, _id]);
+    if (_off_y_addr != 0) {
+        array_push(_list, ["clc",     0,           _id]);
+        array_push(_list, ["adc_abs", _off_y_addr, _id]);
+    }
+    array_push(_list, ["sta_zp", 0xF4, _id]);
 
     // $FA/$FB = LUT base pointer
     array_push(_list, ["lda_imm", 0, _id]);
@@ -11185,17 +11209,17 @@ case "MACRO_COLL_LINE": {
     // major axis = probe X, minor axis compared against probe Y
     var _xmaj_ok1 = "L_LXOK1_" + _uid;
     var _xmaj_ok2 = "L_LXOK2_" + _uid;
-    array_push(_list, ["lda_abs", _px_addr, _id]);
+    array_push(_list, ["lda_zp",  0xF3,     _id]);
     array_push(_list, ["cmp_zp",  0xF6,     _id]);
     array_push(_list, ["bcs",     _xmaj_ok1, _id]); // probe_x >= major_start -> continue
     array_push(_list, ["jmp_abs", _next_lbl, _id]); // probe_x < major_start -> skip
     array_push(_list, ["label",   _xmaj_ok1]);
     array_push(_list, ["lda_zp",  0xF8,     _id]);
-    array_push(_list, ["cmp_abs", _px_addr, _id]);
+    array_push(_list, ["cmp_zp",  0xF3,     _id]);
     array_push(_list, ["bcs",     _xmaj_ok2, _id]); // major_end >= probe_x -> continue
     array_push(_list, ["jmp_abs", _next_lbl, _id]); // major_end < probe_x -> skip
     array_push(_list, ["label",   _xmaj_ok2]);
-    array_push(_list, ["lda_abs", _px_addr, _id]);
+    array_push(_list, ["lda_zp",  0xF3,     _id]);
     array_push(_list, ["sec",     0,        _id]);
     array_push(_list, ["sbc_zp",  0xF6,     _id]);
     array_push(_list, ["sta_zp",  0xFC,     _id]); // step = probe_x - major_start
@@ -11205,17 +11229,17 @@ case "MACRO_COLL_LINE": {
     // major axis = probe Y, minor axis compared against probe X
     var _ymaj_ok1 = "L_LYOK1_" + _uid;
     var _ymaj_ok2 = "L_LYOK2_" + _uid;
-    array_push(_list, ["lda_abs", _py_addr, _id]);
+    array_push(_list, ["lda_zp",  0xF4,     _id]);
     array_push(_list, ["cmp_zp",  0xF6,     _id]);
     array_push(_list, ["bcs",     _ymaj_ok1, _id]);
     array_push(_list, ["jmp_abs", _next_lbl, _id]);
     array_push(_list, ["label",   _ymaj_ok1]);
     array_push(_list, ["lda_zp",  0xF8,     _id]);
-    array_push(_list, ["cmp_abs", _py_addr, _id]);
+    array_push(_list, ["cmp_zp",  0xF4,     _id]);
     array_push(_list, ["bcs",     _ymaj_ok2, _id]);
     array_push(_list, ["jmp_abs", _next_lbl, _id]);
     array_push(_list, ["label",   _ymaj_ok2]);
-    array_push(_list, ["lda_abs", _py_addr, _id]);
+    array_push(_list, ["lda_zp",  0xF4,     _id]);
     array_push(_list, ["sec",     0,        _id]);
     array_push(_list, ["sbc_zp",  0xF6,     _id]);
     array_push(_list, ["sta_zp",  0xFC,     _id]); // step = probe_y - major_start
@@ -11272,12 +11296,12 @@ case "MACRO_COLL_LINE": {
     array_push(_list, ["jmp_abs", _cmp_ymaj, _id]);
     array_push(_list, ["label",   "L_LXCMP_" + _uid]);
     array_push(_list, ["lda_zp",  0xFD,     _id]);
-    array_push(_list, ["cmp_abs", _py_addr, _id]);
+    array_push(_list, ["cmp_zp",  0xF4,     _id]);
     array_push(_list, ["beq",     _hit_lbl, _id]); // short, stays local — OK direct
     array_push(_list, ["jmp_abs", _next_lbl, _id]);
     array_push(_list, ["label",   _cmp_ymaj]);
     array_push(_list, ["lda_zp",  0xFD,     _id]);
-    array_push(_list, ["cmp_abs", _px_addr, _id]);
+    array_push(_list, ["cmp_zp",  0xF3,     _id]);
     array_push(_list, ["beq",     _hit_lbl, _id]); // short, stays local — OK direct
     array_push(_list, ["jmp_abs", _next_lbl, _id]);
 
