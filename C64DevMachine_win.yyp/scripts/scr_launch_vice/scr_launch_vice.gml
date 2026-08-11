@@ -36,45 +36,9 @@ function scr_launch_vice(_vice_path, _file_path)
         show_debug_message("VICE MAC CMD: " + _cmd);
         ProcessExecuteAsync(_cmd);
     } else {
-        // Windows: launch through a detached CMD helper and leave diagnostics
-        // outside the GameMaker runner so we can see whether x64sc starts and
-        // survives for at least two seconds.
-        var _vice_dir = filename_dir(_vice_path);
-        var _diag_dir = "C:\\C64Temp";
-        var _bat_path = _diag_dir + "\\c64dm_launch_vice.cmd";
-        var _log_path = _diag_dir + "\\vice_launch_debug.txt";
-
-        var _fh = file_text_open_write(_bat_path);
-        if (_fh < 0) {
-            show_debug_message("VICE DEBUG: could not create launcher: " + _bat_path);
-            return false;
-        }
-
-        file_text_write_string(_fh, "@echo off"); file_text_writeln(_fh);
-        file_text_write_string(_fh, "setlocal"); file_text_writeln(_fh);
-        file_text_write_string(_fh, "echo ============================================== >> \"" + _log_path + "\""); file_text_writeln(_fh);
-        file_text_write_string(_fh, "echo C64DM VICE launch %DATE% %TIME% >> \"" + _log_path + "\""); file_text_writeln(_fh);
-        file_text_write_string(_fh, "echo EXE: " + _vice_path + " >> \"" + _log_path + "\""); file_text_writeln(_fh);
-        file_text_write_string(_fh, "echo FILE: " + _file_path + " >> \"" + _log_path + "\""); file_text_writeln(_fh);
-        file_text_write_string(_fh, "if exist \"" + _vice_path + "\" (echo EXE_EXISTS=YES >> \"" + _log_path + "\") else (echo EXE_EXISTS=NO >> \"" + _log_path + "\")"); file_text_writeln(_fh);
-        file_text_write_string(_fh, "if exist \"" + _file_path + "\" (echo FILE_EXISTS=YES >> \"" + _log_path + "\") else (echo FILE_EXISTS=NO >> \"" + _log_path + "\")"); file_text_writeln(_fh);
-        file_text_write_string(_fh, "cd /d \"" + _vice_dir + "\""); file_text_writeln(_fh);
-        file_text_write_string(_fh, "echo CWD=%CD% >> \"" + _log_path + "\""); file_text_writeln(_fh);
-        file_text_write_string(_fh, "start \"\" /b \"" + _vice_path + "\" " + _args + " >> \"" + _log_path + "\" 2>&1"); file_text_writeln(_fh);
-        file_text_write_string(_fh, "echo START_ERRORLEVEL=%ERRORLEVEL% >> \"" + _log_path + "\""); file_text_writeln(_fh);
-        file_text_write_string(_fh, "timeout /t 2 /nobreak >nul"); file_text_writeln(_fh);
-        file_text_write_string(_fh, "echo TASKLIST_AFTER_2S: >> \"" + _log_path + "\""); file_text_writeln(_fh);
-        file_text_write_string(_fh, "tasklist /FI \"IMAGENAME eq x64sc.exe\" >> \"" + _log_path + "\" 2>&1"); file_text_writeln(_fh);
-        file_text_write_string(_fh, "echo. >> \"" + _log_path + "\""); file_text_writeln(_fh);
-        file_text_write_string(_fh, "endlocal"); file_text_writeln(_fh);
-        file_text_close(_fh);
-
-        var _cmd_args = "/d /c start \"\" /b \"" + _bat_path + "\"";
-        show_debug_message("VICE WIN LAUNCHER: " + _bat_path);
-        show_debug_message("VICE WIN LOG:      " + _log_path);
-        show_debug_message("VICE WIN CMD:      cmd.exe " + _cmd_args);
-
-        execute_shell_simple("cmd.exe", _cmd_args);
+        // Windows: launch VICE directly. Do not route through cmd.exe or a
+        // helper batch file, otherwise a console window can remain visible.
+        execute_shell_simple(_vice_path, _args);
     }
     return true;
 }
