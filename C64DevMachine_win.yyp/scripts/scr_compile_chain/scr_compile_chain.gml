@@ -3126,6 +3126,55 @@ case "MACRO_SCROLL": {
         array_push(_list, ["label", _p + "lutskip"]);
         _mm_use_lut = true;
 
+        // COLL_ADV SCAN support for METAMAP_HSCROLL. Unlike MACRO_METAMAP,
+        // the scrolling path previously emitted no <tileset>_TILE_TYPES
+        // table at all, so SCAN had no valid lookup data. DIRECT appeared to
+        // react, but only because it interpreted the screen code itself as a
+        // collision type (char $01 = T1, char $02 = T2, and so on).
+        //
+        // Tags belong to the CHAR_SET linked by this META_TILESET. Emit the
+        // same sparse [char,type] pairs COLL_ADV already expects.
+        var _mm_tag_types = undefined;
+        if (variable_struct_exists(_mm_tm, "chr_asset")
+        &&  _mm_tm.chr_asset != ""
+        &&  instance_exists(obj_asset_manager)) {
+            var _mm_tag_am = obj_asset_manager;
+            for (var _mm_tag_i = 0; _mm_tag_i < ds_list_size(_mm_tag_am.asset_list); _mm_tag_i++) {
+                var _mm_tag_chr = ds_list_find_value(_mm_tag_am.asset_list, _mm_tag_i);
+                if (_mm_tag_chr.type == "CHAR_SET" && _mm_tag_chr.name == _mm_tm.chr_asset) {
+                    if (variable_struct_exists(_mm_tag_chr.meta, "tile_types")
+                    &&  is_array(_mm_tag_chr.meta.tile_types)) {
+                        _mm_tag_types = _mm_tag_chr.meta.tile_types;
+                    }
+                    break;
+                }
+            }
+        }
+
+        var _mm_has_tag_types = false;
+        if (is_array(_mm_tag_types)) {
+            for (var _mm_tag_i = 0; _mm_tag_i < array_length(_mm_tag_types); _mm_tag_i++) {
+                if (_mm_tag_types[_mm_tag_i] != 0) {
+                    _mm_has_tag_types = true;
+                    break;
+                }
+            }
+        }
+
+        if (_mm_has_tag_types) {
+            var _mm_tag_skip = _p + "ttskip";
+            array_push(_list, ["jmp_abs", _mm_tag_skip, _id]);
+            array_push(_list, ["label", string(_mm_tileset_name) + "_TILE_TYPES"]);
+            for (var _mm_tag_i = 0; _mm_tag_i < array_length(_mm_tag_types); _mm_tag_i++) {
+                if (_mm_tag_types[_mm_tag_i] != 0) {
+                    array_push(_list, ["byte", _mm_tag_i & 0xFF,                       _id]);
+                    array_push(_list, ["byte", real(_mm_tag_types[_mm_tag_i]) & 0xFF, _id]);
+                }
+            }
+            array_push(_list, ["byte", 0xFF, _id]);
+            array_push(_list, ["label", _mm_tag_skip]);
+        }
+
         // Emit the per-map base/width switch tables (VAR mode only). Width
         // is always emitted as a lo/hi pair — even for an all-byte-mode
         // switch set the hi byte is just always 0, which keeps the setmap
