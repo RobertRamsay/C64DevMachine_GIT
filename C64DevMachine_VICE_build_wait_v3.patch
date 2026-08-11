@@ -1,0 +1,23 @@
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Alarm_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Alarm_0.gml
+@@ -1,10 +1,18 @@
+ /// @desc Alarm 0: Relaunch VICE (cross-platform via scr_launch_vice)
+ show_debug_message("FILE EXISTS: " + string(file_exists(full_save_path)));
+ 
+-if (global.vice_path_cache == "" || !file_exists(global.vice_path_cache)) {
++// The build output must exist before VICE is allowed to start. F5/build-and-run
++// only reaches this alarm after the synchronous compile/save path has completed,
++// so a missing target here is a build failure, not something VICE should race.
++if (full_save_path == "" || !file_exists(full_save_path)) {
++    show_debug_message("VICE launch cancelled: build output missing: " + full_save_path);
++    scr_show_message("BUILD FAILED: output file was not created.\n\nVICE was not launched.\n\nExpected:\n" + full_save_path);
++} else if (global.vice_path_cache == "" || !file_exists(global.vice_path_cache)) {
+     scr_show_message("VICE not found.\n\nChecked:\n" + global.vice_path_cache
+         + "\n\nInstall VICE, drop it in the working directory under /vice/,"
+         + "\nor set an override path in c64devmachine.ini under [vice] path=...");
+ } else {
+-    scr_launch_vice(global.vice_path_cache, full_save_path);
++    if (!scr_launch_vice(global.vice_path_cache, full_save_path)) {
++        scr_show_message("VICE launch failed.\n\nBuild output:\n" + full_save_path);
++    }
+ }

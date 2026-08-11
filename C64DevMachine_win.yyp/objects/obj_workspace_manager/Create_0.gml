@@ -101,7 +101,12 @@ showGrid=1;
 badgeStyle=1
 buttonStyle=1
 niceSliceFrm = 1;
-vicedelay=200 // >3 seconds
+vicedelay=30 // shutdown settle delay; build time is no longer part of VICE timing
+vice_launch_phase = 0;          // 0=idle/waiting, 1=VICE killed and waiting to relaunch
+vice_launch_pending = false;
+vice_launch_target = "";
+vice_launch_retry = 0;
+vice_launch_retry_max = 600;    // safety timeout (~10s at 60fps)
 global.asset_reload_in_progress = false;
 
 trigger_build = false;

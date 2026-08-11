@@ -1,0 +1,18 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index d9df3da..3f50588 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -2171,6 +2171,13 @@ scr_c64u_overlay_step();
+ 
+ var build_trigger = keyboard_check_pressed(vk_f5) || trigger_build;
+ 
++// If F5 arrives while an asynchronous asset/MetaMap reload is still active,
++// latch the request instead of losing the one-frame keypress. trigger_build
++// remains set until the reload completes, then the normal build path runs.
++if (keyboard_check_pressed(vk_f5) && global.asset_reload_in_progress) {
++    trigger_build = true;
++}
++
+ if (build_trigger && !global.asset_reload_in_progress) {
+         trigger_build = false;
+         global.egg_temp_node_ids = [];
