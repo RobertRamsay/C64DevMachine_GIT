@@ -286,14 +286,17 @@ function scr_build_flow_graph() {
     // JSR nodes calling the same label disappear. A visible JSR node must
     // always have its own call edge and its own return edge.
     var _placed_jsrs = [];
-    with (obj_c64_node) {
-        if (!is_connected || !variable_instance_exists(id, "instructions")) continue;
-        for (var _pji = 0; _pji < array_length(instructions); _pji++) {
-            if (array_length(instructions[_pji]) < 2) continue;
-            var _pjm = string_lower(string(instructions[_pji][0]));
+    var _pjn_count = instance_number(obj_c64_node);
+    for (var _pjni = 0; _pjni < _pjn_count; _pjni++) {
+        var _pjn = instance_find(obj_c64_node, _pjni);
+        if (!instance_exists(_pjn) || !_pjn.is_connected ||
+            !variable_instance_exists(_pjn, "instructions")) continue;
+        for (var _pjii = 0; _pjii < array_length(_pjn.instructions); _pjii++) {
+            if (array_length(_pjn.instructions[_pjii]) < 2) continue;
+            var _pjm = string_lower(string(_pjn.instructions[_pjii][0]));
             if (_pjm != "jsr" && _pjm != "jsr_abs" && _pjm != "jsr_lab") continue;
-            var _pjl = string(instructions[_pji][1]);
-            if (_pjl != "") array_push(other._placed_jsrs, {src:id, label:_pjl});
+            var _pjl = string(_pjn.instructions[_pjii][1]);
+            if (_pjl != "") array_push(_placed_jsrs, {src:_pjn, label:_pjl});
         }
     }
 
@@ -335,12 +338,18 @@ function scr_build_flow_graph() {
             var _pj_best_y = 1000000000;
             var _pj_org    = _pj_tgt.org_parent;
             var _pj_y      = _pj_tgt.y;
-            with (obj_c64_node) {
-                if (!is_connected || org_parent != _pj_org || y <= _pj_y || y >= other._pj_best_y) continue;
-                if (total_node_size != 1 || array_length(instructions) < 1 || array_length(instructions[0]) < 1) continue;
-                if (string_lower(string(instructions[0][0])) != "rts") continue;
-                other._pj_rts    = id;
-                other._pj_best_y = y;
+            var _pjrn_count = instance_number(obj_c64_node);
+            for (var _pjrni = 0; _pjrni < _pjrn_count; _pjrni++) {
+                var _pjrn = instance_find(obj_c64_node, _pjrni);
+                if (!instance_exists(_pjrn) || !_pjrn.is_connected ||
+                    _pjrn.org_parent != _pj_org ||
+                    _pjrn.y <= _pj_y || _pjrn.y >= _pj_best_y) continue;
+                if (_pjrn.total_node_size != 1 ||
+                    array_length(_pjrn.instructions) < 1 ||
+                    array_length(_pjrn.instructions[0]) < 1) continue;
+                if (string_lower(string(_pjrn.instructions[0][0])) != "rts") continue;
+                _pj_rts    = _pjrn;
+                _pj_best_y = _pjrn.y;
             }
         }
 
