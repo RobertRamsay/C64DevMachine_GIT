@@ -57,9 +57,9 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-	"FIXED - LOADER MACROS - Were Unable to Pick the LOAD ORG Asset",
-    "ADDED - Flow view now has 2 modes DIRECT and ANGLED (via options menu)",
-	"EASTER EGG - No-one found it yet? post on social media #c64devmachine"
+	"ADDED - LINE COLLISION - For use with bitmaps only",
+    "ADDED - METAMAPS now scroll and can be >255 tiles long",
+	"SOMEONE FOUND THE EASTER EGG... CAN YOU?"
 	];
 	
 welcome_credits_lines = [
@@ -77,6 +77,7 @@ welcome_credits_lines = [
     "keefnayls",
     "markc.sherman",
     "Sch31Btyp",
+	"SirWizAlot",
     "SLAXX",
     "SPEE-DEC",
     "sTERN",
