@@ -222,6 +222,16 @@ for (var _pos = 0; _pos < _count; _pos++) {
     draw_set_color(_row_col);
     draw_rectangle(panel_x, _iy, _panel_right, _iy + item_h, false);
 
+    // Memory-bar ownership highlight. Keep the asset-list position unchanged;
+    // if the row is visible, this outline ties it directly to the hovered range.
+    if (variable_global_exists("memory_bar_hover_asset") &&
+        global.memory_bar_hover_asset == _i) {
+        draw_set_color(c_aqua);
+        draw_set_alpha(0.95);
+        draw_rectangle(panel_x + 1, _iy + 1, _panel_right - 1, _iy + item_h - 1, true);
+        draw_set_alpha(1.0);
+    }
+
     // Type colour tag (left edge)
     var _tcol = variable_struct_exists(type_colours, _asset.type)
               ? variable_struct_get(type_colours, _asset.type)

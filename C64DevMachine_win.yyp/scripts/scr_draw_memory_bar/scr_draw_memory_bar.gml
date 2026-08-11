@@ -1,4 +1,8 @@
 function scr_draw_memory_bar(_x1, _x2, _y) {
+    // Clear the cross-object hover every frame. Nodes and the asset list use
+    // these values only to draw a non-destructive ownership highlight.
+    global.memory_bar_hover_node  = noone;
+    global.memory_bar_hover_asset = -1;
 	if obj_asset_manager.viewer_open exit
     var _map_w      = _x2 - _x1;
     var _map_h      = 15;
@@ -369,6 +373,37 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     // are pulled into RAM on demand by MACRO_LOADER — they share the
     // address with whatever is currently resident there.
     // -------------------------------------------------------
+    var _bar_mx       = global.gui_mouse_x;
+    var _bar_my       = global.gui_mouse_y;
+    var _bar_hovered  = point_in_rectangle(_bar_mx, _bar_my, _x1, _y, _x2, _y + _map_h);
+    var _hover_addr   = -1;
+    var _hover_seg_i  = -1;
+    var _hover_seg    = noone;
+
+    if (_bar_hovered) {
+        _hover_addr = clamp(floor(((_bar_mx - _x1) / _map_w) * _addr_total), 0, 65535);
+
+        // Later segments are painted over earlier ones, so search backwards and
+        // report exactly the allocation the pointer appears to be resting on.
+        for (var _hsi = _seg_total - 1; _hsi >= 0; _hsi--) {
+            var _hs = _segments[_hsi];
+            if (_hover_addr >= _hs.addr && _hover_addr < _hs.addr + max(1, _hs.size)) {
+                _hover_seg_i = _hsi;
+                _hover_seg   = _hs;
+                break;
+            }
+        }
+
+        if (is_struct(_hover_seg)) {
+            if (variable_struct_exists(_hover_seg, "node_id") &&
+                instance_exists(_hover_seg.node_id)) {
+                global.memory_bar_hover_node = _hover_seg.node_id;
+            } else if (variable_struct_exists(_hover_seg, "asset_index")) {
+                global.memory_bar_hover_asset = _hover_seg.asset_index;
+            }
+        }
+    }
+
     for (var _si = 0; _si < _seg_total; _si++) {
         var _seg = _segments[_si];
         var _sx1 = _x1 + (_seg.addr / _addr_total) * _map_w;
@@ -388,6 +423,12 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         } else {
             draw_set_color(_seg.col);
             draw_rectangle(_sx1, _y, _sx2, _y + _map_h, false);
+        }
+
+        if (_si == _hover_seg_i) {
+            draw_set_alpha(1.0);
+            draw_set_color(c_white);
+            draw_rectangle(_sx1 - 1, _y - 2, _sx2 + 1, _y + _map_h + 2, true);
         }
     }
 
@@ -559,8 +600,8 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     var _gui_my = global.gui_mouse_y;
     if (_gui_my >= _y - 15 && _gui_my <= _y + _map_h + 5 &&
         _gui_mx >= _x1 && _gui_mx <= _x2) {
-        var _hover_addr = floor(((_gui_mx - _x1) / _map_w) * _addr_total);
-        var _hover_hex  = string_upper(decimal_to_hex(_hover_addr));
+        var _cursor_addr = floor(((_gui_mx - _x1) / _map_w) * _addr_total);
+        var _hover_hex  = string_upper(decimal_to_hex(_cursor_addr));
         while (string_length(_hover_hex) < 4) _hover_hex = "0" + _hover_hex;
         draw_set_color(c_white);
         draw_set_alpha(0.8);
@@ -568,7 +609,39 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         draw_set_alpha(1.0);
         draw_set_halign(fa_center);
         draw_text(_gui_mx, _y - 36, "$" + _hover_hex);
+
+        if (_bar_hovered && is_struct(_hover_seg)) {
+            var _owner_kind = _hover_seg.type;
+            if (_owner_kind == "NODE" || _owner_kind == "CODE") _owner_kind = "CODE";
+            else if (_owner_kind == "VARIABLE_BLOCK") _owner_kind = "VARS";
+            var _owner_text = _owner_kind + ": " + _hover_seg.name;
+            draw_set_color(c_white);
+            draw_text(_gui_mx, _y - 52, _owner_text);
+        }
         draw_set_halign(fa_left);
+    }
+
+    // Navigate from the allocation itself. A node is centred in the workspace;
+    // an asset opens in the normal asset viewer. The click is consumed so it
+    // cannot also trigger controls behind the Draw-GUI memory bar.
+    if (_bar_hovered && is_struct(_hover_seg) &&
+        mouse_check_button_pressed(mb_left) &&
+        !global.ui_click_consumed && !global.conflict_popup_open) {
+        if (variable_struct_exists(_hover_seg, "node_id") &&
+            instance_exists(_hover_seg.node_id)) {
+            scr_focus_camera_on_node(_hover_seg.node_id);
+            global.ui_click_consumed = true;
+        } else if (variable_struct_exists(_hover_seg, "asset_index") &&
+                   instance_exists(obj_asset_manager)) {
+            var _open_ai = _hover_seg.asset_index;
+            if (_open_ai >= 0 && _open_ai < ds_list_size(obj_asset_manager.asset_list)) {
+                obj_asset_manager.viewer_asset  = _open_ai;
+                obj_asset_manager.viewer_open   = true;
+                obj_asset_manager.bb_return_asset = -1;
+                keyboard_string = "";
+                global.ui_click_consumed = true;
+            }
+        }
     }
 
     // -------------------------------------------------------

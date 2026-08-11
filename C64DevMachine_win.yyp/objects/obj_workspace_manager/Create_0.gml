@@ -135,6 +135,8 @@ global.memory_bar_segments   = [];
 global.memory_bar_conflicts  = [];
 global.memory_bar_disk_assets = [];
 global.memory_bar_dirty     = true;
+global.memory_bar_hover_node  = noone;
+global.memory_bar_hover_asset = -1;
 
 // Conflict ignore system: workspace-scoped list of suppressed conflicts.
 // Each entry: { range_start, range_end, owner_a_uid, owner_b_uid }
@@ -972,4 +974,3 @@ if (_saved_w > 0 && _saved_h > 0)
     window_set_size(_saved_w, _saved_h);
     window_set_position(_saved_x, _saved_y);
 }
-

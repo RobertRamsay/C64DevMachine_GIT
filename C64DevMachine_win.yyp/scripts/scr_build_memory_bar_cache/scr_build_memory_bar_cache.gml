@@ -471,6 +471,10 @@ var _addr_total = 65536;
             }
         }
         for (var _ai = 0; _ai < _am_len; _ai++) {
+            // Remember which segments this asset creates. Once its switch has
+            // finished, stamp those segments with the stable asset-list index so
+            // the memory bar can identify/open the owning asset after sorting.
+            var _asset_seg_first = array_length(_segments);
             var _a        = ds_list_find_value(_am.asset_list, _ai);
             var _seg_size = 0;
             var _seg_col  = 0;
@@ -616,6 +620,10 @@ var _addr_total = 65536;
             }
             if (_seg_size > 0)
                 array_push(_segments, { addr: _a.address, size: _seg_size, col: _seg_col, type: "ASSET", name: _a.name, lines: [], node_id: noone, no_conflict: _a_is_load_later, conflict: false, load_later: _a_is_load_later });
+
+            for (var _asi = _asset_seg_first; _asi < array_length(_segments); _asi++) {
+                _segments[_asi].asset_index = _ai;
+            }
         }
 
         global.memory_bar_disk_assets = [];
