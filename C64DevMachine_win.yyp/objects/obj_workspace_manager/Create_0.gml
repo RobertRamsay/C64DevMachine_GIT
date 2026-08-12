@@ -1,6 +1,6 @@
 /// @desc Setup Workspace, Palette & C64 Environment
 global.lite=0;
-global.build_date = "August 11th, 2026"; // edit this string for each release
+global.build_date = "August 12th, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {
@@ -57,11 +57,14 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-	"ADDED - LINE COLLISION - For use with bitmaps only",
-    "ADDED - METAMAPS now scroll and can be >255 tiles long",
-	"ADDED - Custom Gradients to Bitmap Editor",
+	"ADDED - LINE COLLISION - For use with bitmaps only.",
+    "ADDED - METAMAPS now scroll and can be >255 tiles long.",
+	"ADDED - Custom Gradients to Bitmap Editor.",
+	"ADDED - Memory Bar Info+Click to go to code or asset.",
+	"FIXED - Flow lines improvements.",
+	"FIXED - Tags were firing wrongly for Meta Tileset.",
 	"",
-	"SOMEONE FOUND THE EASTER EGG... CAN YOU?"
+	"SOMEONE FOUND THE LITTLE EASTER EGG!... CAN YOU?"
 	];
 	
 welcome_credits_lines = [
