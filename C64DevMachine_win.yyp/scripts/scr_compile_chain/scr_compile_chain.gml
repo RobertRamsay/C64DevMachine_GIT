@@ -3923,6 +3923,14 @@ case "MACRO_SCROLL": {
     if (_mm_var_switch) {
         var _lbl_setmap = "Scroller_MapSet";
         array_push(_list, ["label", _lbl_setmap]);
+        // Scroller_L/R run from a raster IRQ (IRQ_SCROLL). Without this,
+        // that IRQ firing mid-patch would read a torn state — some rows
+        // already pointing at the new map, others still at the old one —
+        // for however long the interrupt window lands. SEI/CLI makes the
+        // whole switch (patch + reload) atomic against it, matching how
+        // MACRO_METAMAP's own bake routine already guards its critical
+        // section the same way.
+        array_push(_list, ["sei",     0,            _id]);
         array_push(_list, ["lda_abs", _mm_var_addr, _id]);
         array_push(_list, ["tax",     0,            _id]);
 
@@ -3978,6 +3986,7 @@ case "MACRO_SCROLL": {
         }
 
         array_push(_list, ["jsr", _lbl_init, _id]);
+        array_push(_list, ["cli", 0,         _id]);
         array_push(_list, ["rts", 0,         _id]);
     }
 
