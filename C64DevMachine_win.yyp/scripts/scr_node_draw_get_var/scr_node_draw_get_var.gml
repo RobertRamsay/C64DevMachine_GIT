@@ -36,7 +36,7 @@ function scr_node_draw_get_var() {
         draw_text(_vname_x, _ly - 2, _vname_disp);
         _ly += _lh;
 		
-        show_debug_message("GET_VAR LOOKUP: name='" + _name + "' exists=" + string(ds_map_exists(global.named_loc_map, _name)));
+       // show_debug_message("GET_VAR LOOKUP: name='" + _name + "' exists=" + string(ds_map_exists(global.named_loc_map, _name)));
         var _addr = ds_map_exists(global.named_loc_map, _name)
                     ? ds_map_find_value(global.named_loc_map, _name) : -1;
         var _meta = scr_nloc_find_meta(_name);
