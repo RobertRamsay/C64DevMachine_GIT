@@ -9859,6 +9859,13 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             draw_set_alpha(1.0);
             draw_rectangle(_thx, _thy, _thx + _m.stamp_w * _test_cs, _thy + _m.stamp_h * _test_cs, true);
             var _tgidx = _throw * _test_cols + _thcol;
+            // Suppress all canvas interaction while a scrollbar thumb is
+            // actively being dragged — otherwise a drag that happens to
+            // pass back over the grid (the scrollbars sit right at the
+            // canvas edge) is misread as painting/erasing too.
+            var _sb_dragging = (variable_struct_exists(_m, "hsb_drag_active") && _m.hsb_drag_active)
+                             || (variable_struct_exists(_m, "vsb_drag_active") && _m.vsb_drag_active);
+            if (!_sb_dragging) {
             if (mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right)) {
                 if (!variable_struct_exists(_m, "mt_undo_stack")) _m.mt_undo_stack = [];
                 if (!variable_struct_exists(_m, "mt_redo_stack")) _m.mt_redo_stack = [];
@@ -9895,6 +9902,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             if (mouse_check_button(mb_right)) {
                 _active_grid[_tgidx] = -1;
                 _m.is_dirty = true;
+            }
             }
         }
     }
