@@ -311,8 +311,12 @@ function scr_parse_asm_text(_text) {
                     var _lo_is_asm   = (variable_struct_exists(global.code_block_labels, _lo_base)
                                      || variable_struct_exists(global.code_block_labels, string_upper(_lo_base)))
                                     && !ds_map_exists(global.named_loc_map, string_upper(_lo_base));
-                    var _lo_is_const = ds_map_exists(global.named_loc_map, string_upper(_lo_base));
-                    if (!_lo_is_asm && (_lo_is_const || _lo_split > 1)) {
+                    var _lo_is_const   = ds_map_exists(global.named_loc_map, string_upper(_lo_base));
+                    // Raw literal check — #<$D800, #<%00010, #<12345 (no label/const lookup needed)
+                    var _lo_is_literal = (string_char_at(_lo_base, 1) == "$"
+                                       || string_char_at(_lo_base, 1) == "%"
+                                       || _asm_is_dec(_lo_base));
+                    if (!_lo_is_asm && (_lo_is_const || _lo_split > 1 || _lo_is_literal)) {
                         var _lo_val = _eval_expr(_lo_clean) & 0xFF;
                         array_push(_result, ["_line_map_", _li + 1]);
                         array_push(_result, [_mnem_raw == "LDX" ? "ldx_imm" : (_mnem_raw == "LDY" ? "ldy_imm" : "lda_imm"), _lo_val]);
@@ -338,8 +342,12 @@ function scr_parse_asm_text(_text) {
                     var _hi_is_asm   = (variable_struct_exists(global.code_block_labels, _hi_base)
                                      || variable_struct_exists(global.code_block_labels, string_upper(_hi_base)))
                                     && !ds_map_exists(global.named_loc_map, string_upper(_hi_base));
-                    var _hi_is_const = ds_map_exists(global.named_loc_map, string_upper(_hi_base));
-                    if (!_hi_is_asm && (_hi_is_const || _hi_split > 1)) {
+                    var _hi_is_const   = ds_map_exists(global.named_loc_map, string_upper(_hi_base));
+                    // Raw literal check — #>$D800, #>%00010, #>12345 (no label/const lookup needed)
+                    var _hi_is_literal = (string_char_at(_hi_base, 1) == "$"
+                                       || string_char_at(_hi_base, 1) == "%"
+                                       || _asm_is_dec(_hi_base));
+                    if (!_hi_is_asm && (_hi_is_const || _hi_split > 1 || _hi_is_literal)) {
                         var _hi_val = (_eval_expr(_hi_clean) >> 8) & 0xFF;
                         array_push(_result, ["_line_map_", _li + 1]);
                         array_push(_result, [_mnem_raw == "LDX" ? "ldx_imm" : (_mnem_raw == "LDY" ? "ldy_imm" : "lda_imm"), _hi_val]);

@@ -57,14 +57,9 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-	"ADDED - LINE COLLISION - For use with bitmaps only.",
-    "ADDED - METAMAPS now scroll and can be >255 tiles long.",
-	"ADDED - Custom Gradients to Bitmap Editor.",
-	"ADDED - Memory Bar Info+Click to go to code or asset.",
-	"FIXED - Flow lines improvements.",
-	"FIXED - Tags were firing wrongly for Meta Tileset.",
+	"ADDED (CODE NODE) - Support for #<$literal/#>$literal in immediate operands.",
 	"",
-	"SOMEONE FOUND THE LITTLE EASTER EGG!... CAN YOU?"
+
 	];
 	
 welcome_credits_lines = [

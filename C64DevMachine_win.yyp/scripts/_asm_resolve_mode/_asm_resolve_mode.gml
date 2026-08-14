@@ -19,16 +19,22 @@ function _asm_resolve_mode(_mnem, _op) {
     // ─── Immediate: #$xx / #xx / #%xxxx / #<label / #>label / #LABEL ───
     if (string_char_at(_op, 1) == "#") {
         var _v = string_delete(_op, 1, 1);
-        // #<label — lo byte
+        // #<label / #<$literal — lo byte
         if (string_char_at(_v, 1) == "<") {
             var _lname = string_delete(_v, 1, 1);
             _lname = string_replace_all(_lname, "[", "");
             _lname = string_replace_all(_lname, "]", "");
-            // Only resolve if it is a named constant — never an assembly label
-            if (ds_map_exists(global.named_loc_map, string_upper(_lname))
+            // Resolve as a value if it's a named constant, OR a raw literal
+            // ($xx / %xxxx / decimal) — never an assembly label
+            var _lname_is_literal = (string_char_at(_lname, 1) == "$"
+                                   || string_char_at(_lname, 1) == "%"
+                                   || _asm_is_dec(_lname));
+            if ((ds_map_exists(global.named_loc_map, string_upper(_lname)) || _lname_is_literal)
             &&  !variable_struct_exists(global.code_block_labels, string_upper(_lname))
             &&  !variable_struct_exists(global.code_block_labels, _lname)) {
-                var _resolved = ds_map_find_value(global.named_loc_map, string_upper(_lname));
+                var _resolved = ds_map_exists(global.named_loc_map, string_upper(_lname))
+                              ? ds_map_find_value(global.named_loc_map, string_upper(_lname))
+                              : _asm_val(_lname);
                 return [_ml + "_imm", _resolved & 0xFF];
             }
             var _suffix = "lda_lab_lo";
@@ -36,16 +42,20 @@ function _asm_resolve_mode(_mnem, _op) {
             else if (_ml == "ldy") _suffix = "ldy_lab_lo";
             return [_suffix, _lname, _lname];
         }
-        // #>label — hi byte
+        // #>label / #>$literal — hi byte
         if (string_char_at(_v, 1) == ">") {
             var _lname = string_delete(_v, 1, 1);
             _lname = string_replace_all(_lname, "[", "");
             _lname = string_replace_all(_lname, "]", "");
-            // Only resolve if it is a named constant — never an assembly label
-            if (ds_map_exists(global.named_loc_map, string_upper(_lname))
+            var _lname_is_literal = (string_char_at(_lname, 1) == "$"
+                                   || string_char_at(_lname, 1) == "%"
+                                   || _asm_is_dec(_lname));
+            if ((ds_map_exists(global.named_loc_map, string_upper(_lname)) || _lname_is_literal)
             &&  !variable_struct_exists(global.code_block_labels, string_upper(_lname))
             &&  !variable_struct_exists(global.code_block_labels, _lname)) {
-                var _resolved = ds_map_find_value(global.named_loc_map, string_upper(_lname));
+                var _resolved = ds_map_exists(global.named_loc_map, string_upper(_lname))
+                              ? ds_map_find_value(global.named_loc_map, string_upper(_lname))
+                              : _asm_val(_lname);
                 return [_ml + "_imm", (_resolved >> 8) & 0xFF];
             }
             var _suffix = "lda_lab_hi";
