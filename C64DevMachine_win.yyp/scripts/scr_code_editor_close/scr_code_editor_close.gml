@@ -16,6 +16,15 @@ function scr_code_editor_close(_commit) {
                 if (node_type == "MACRO_CODE") code_cache_dirty = true;
             }
         }
+        // Per-node undo/redo — save this session's history onto the node
+        // itself before we lose the reference, so navigating away and
+        // back within the same session doesn't wipe it. Only cleared by
+        // an actual reload/reopen of the file, never just by closing the
+        // editor modal.
+        if (instance_exists(code_editor_node)) {
+            code_editor_node.undo_stack = code_editor_undo_stack;
+            code_editor_node.redo_stack = code_editor_redo_stack;
+        }
         code_editor_open        = false;
     code_editor_max_line_px = 0;
     if (ds_exists(code_editor_local_labels,  ds_type_map)) ds_map_destroy(code_editor_local_labels);

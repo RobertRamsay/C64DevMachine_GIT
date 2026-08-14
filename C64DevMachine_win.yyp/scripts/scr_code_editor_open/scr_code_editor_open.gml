@@ -17,8 +17,12 @@ keyboard_string              = "";
         code_editor_mouse_selecting  = false;
         code_editor_scrollbar_dragging   = false;
         code_editor_hscrollbar_dragging  = false;
-        code_editor_undo_stack       = [];
-        code_editor_redo_stack       = [];
+        // Per-node undo/redo — restore this node's own history if it has
+        // any (from earlier in this session), rather than always starting
+        // fresh. variable_instance_exists guards nodes saved before this
+        // feature existed, or ones never opened yet.
+        code_editor_undo_stack = variable_instance_exists(_node, "undo_stack") ? _node.undo_stack : [];
+        code_editor_redo_stack = variable_instance_exists(_node, "redo_stack") ? _node.redo_stack : [];
         keyboard_clear(vk_anykey);
     }
 }

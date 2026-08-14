@@ -459,6 +459,8 @@ case "LABEL": {
             _n.instructions    = [["code_block", ""]];
             _n.code_descriptor = "Code Block";
             _n.pc_address      = global.start_pc;
+            _n.undo_stack      = [];
+            _n.redo_stack      = [];
             with (_n) { event_user(0); }
             break;
 
