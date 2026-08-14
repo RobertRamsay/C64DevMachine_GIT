@@ -58,6 +58,7 @@ welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
 	"ADDED (CODE NODE) - Support for #<$literal/#>$literal in immediate operands.",
+	"FIXED (CODE NODE) - Inline Byte tables now contributing to the program counter.",
 	];
 	
 welcome_credits_lines = [
