@@ -15443,18 +15443,31 @@ case "MACRO_CODE": {
                     for (var _dbi = 0; _dbi < array_length(_parsed); _dbi++) {
                         show_debug_message("PARSED[" + string(_dbi) + "] = " + string(_parsed[_dbi]));
                     }
+                    // A .pc/*.= directive is a one-way relocation (emits
+                    // straight to "org" below) — bytes emitted AFTER one
+                    // genuinely live at that separate address and are
+                    // correctly excluded from this node's own size by
+                    // tagging them noone, same as every other org-
+                    // bracketed table in this compiler already relies on.
+                    // Bytes BEFORE any .pc are still in this node's own
+                    // normal sequential space and keep their real _id so
+                    // they're counted — an inline data table protected by
+                    // a JMP rather than relocated is real, in-place bytes.
+                    var _relocated = false;
                     for (var _pi = 0; _pi < array_length(_parsed); _pi++) {
                         var _inst = _parsed[_pi];
                         if (_inst[0] == "label") {
                             // Labels pass through untagged
                             array_push(_list, _inst);
-                        } else if (_inst[0] == "pc") {
+                        } else if (_inst[0] == "pc" || _inst[0] == "org") {
                             // .pc / *. / .* → org (untagged, matches assembler format)
                             array_push(_list, ["org", _inst[1]]);
+                            _relocated = true;
                         } else if (_inst[0] == "byte" && array_length(_inst) > 2) {
                             // .byte v,v,v → expand into individual tagged byte entries
+                            var _byte_id = _relocated ? noone : _id;
                             for (var _bxi = 1; _bxi < array_length(_inst); _bxi++) {
-                                array_push(_list, ["byte", _inst[_bxi], _id]);
+                                array_push(_list, ["byte", _inst[_bxi], _byte_id]);
                             }
                         } else {
                            if (_inst[0] == "_line_map_" || _inst[0] == "const") continue;

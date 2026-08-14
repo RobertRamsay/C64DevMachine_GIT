@@ -211,13 +211,14 @@ global.compile_sizing_pass = false;
     if (_mnem == "bpl")      _mnem = "bmi";
     if (_mnem == "bvc")      _mnem = "bvs";
 
-	    // For MACRO_CODE nodes: exclude raw data bytes from node size
-    // (they live at their .pc address, not contiguous with the code)
+    // Bytes genuinely detached by a .pc relocation are already tagged
+    // noone by the compile chain and filtered out above via
+    // instance_exists(_src_id) — no MACRO_CODE-specific rule needed here
+    // anymore. (Previously this blanket-excluded ALL byte data for every
+    // MACRO_CODE node regardless of relocation, silently undercounting
+    // any inline data table protected by a JMP rather than an org.)
     if (!object_is_ancestor(_src_id.object_index, obj_c64_node) && _src_id.object_index != obj_c64_node) continue;
 
-
-	if (_mnem == "byte" && _src_id.node_type == "MACRO_CODE") continue;
-	
     if (_src_id.node_type == "COND_IF") continue;
 
     var _sz = obj_opCodeManager.get_size(_mnem);
