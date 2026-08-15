@@ -100,7 +100,7 @@ badgeStyle=1
 buttonStyle=1
 niceSliceFrm = 1;
 ini_open("c64devmachine.ini");
-vicedelay = ini_read_real("vice", "delay", 30) // shutdown settle delay in steps; build time is no longer part of VICE timing. Override via [vice] delay= in c64devmachine.ini on machines where taskkill/process teardown is slower.
+vicedelay = ini_read_real("vice", "delay", 120) // shutdown settle delay in steps; build time is no longer part of VICE timing. Override via [vice] delay= in c64devmachine.ini on machines where taskkill/process teardown is slower.
 vice_launch_phase = 0;          // 0=idle/waiting, 1=VICE killed and waiting to relaunch
 vice_launch_pending = false;
 vice_launch_target = "";
