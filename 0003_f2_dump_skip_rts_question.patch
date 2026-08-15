@@ -1,0 +1,13 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 366f569..91e4305 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -2333,7 +2333,7 @@ if (_cmnem == "rts" || _cmnem == "rti") {
+                 }
+             }
+ 
+-            if (!_core_loop_found && !_any_return_found) {
++            if (!_core_loop_found && !_any_return_found && !silent_build) {
+                 if (scr_show_question_bool("No core loop or RTS found in your spine.\n\nWithout one of these, the C64 will run off the end of your program into whatever memory comes next - usually a crash.\n\nAdd an RTS node at the end so it returns cleanly instead?")) {
+                     var _rts_x = _tail_node.x;
+                     var _rts_y = _tail_node.y + _tail_node.height + 20;
