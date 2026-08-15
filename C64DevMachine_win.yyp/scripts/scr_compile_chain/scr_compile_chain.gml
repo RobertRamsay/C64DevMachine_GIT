@@ -4989,7 +4989,7 @@ if (_jsr_mode == 0) {
 array_push(_list, ["label",   _SINIT]);
     // Clear scroll row in screen RAM to spaces
     var _clr = _p + "clr";
-    array_push(_list, ["lda_imm", 0x00,         _id]);
+    array_push(_list, ["lda_imm", 0x20,         _id]);
     array_push(_list, ["ldx_imm", 0x27,         _id]);
     array_push(_list, ["label",   _clr              ]);
     array_push(_list, ["sta_abx", _scr_row,     _id]);
