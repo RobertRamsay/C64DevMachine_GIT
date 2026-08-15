@@ -4804,6 +4804,12 @@ var _use_sid = 0;
     }
 var _jsr_mode = (array_length(_curr.instructions[0]) > 11 && is_real(_curr.instructions[0][11])) ? real(_curr.instructions[0][11]) : 0;
 
+// [14] hires_col_override - 1 = keep _colNN colour bytes literal (0-7,
+// hi-res per-cell VIC override) even when the map is MC. Does NOT affect
+// _ts_d016 below: $D016 MCM is a screen-wide register and must still
+// match the map regardless of this node's own colour-byte choice.
+var _ts_hires_override = (array_length(_curr.instructions[0]) > 14 && is_real(_curr.instructions[0][14])) ? real(_curr.instructions[0][14]) : 0;
+
 
 // Resolve multicolour mode early — needed for $D016 save/restore values
     var _ts_map_mode = 0;
@@ -4817,7 +4823,7 @@ var _jsr_mode = (array_length(_curr.instructions[0]) > 11 && is_real(_curr.instr
     }
 	// C64 Hardware Rule: In MC mode, Colour RAM bit 3 must be SET (value >= 8) 
     // for the character to actually render in multicolour.
-    if (_ts_map_mode == 1) {
+    if (_ts_map_mode == 1 && _ts_hires_override == 0) {
         _colour = (_colour & 7) | 8;
     }
 	
@@ -5093,7 +5099,7 @@ array_push(_list, ["label",   _SINIT]);
     array_push(_list, ["lda_lab", _v_saveA,  _id]);
     array_push(_list, ["cmp_imm", 0xE0,      _id]);
     array_push(_list, ["bcc",     _nocol,    _id]);
-    if (_ts_map_mode == 1) {
+    if (_ts_map_mode == 1 && _ts_hires_override == 0) {
         array_push(_list, ["and_imm", 0x07,      _id]); // Mask to base colour (0-7)
         array_push(_list, ["ora_imm", 0x08,      _id]); // Force MC bit 3 on
     } else {

@@ -201,7 +201,12 @@ case "LABEL": {
 		
 		case "MACRO_TEXT_SCROLL":
 		    _n.node_title   = "TEXT SCROLL";
-		    _n.instructions = [["macro_text_scroll", 23, 1, 2, 0, 0xC000, "HELLO WORLD ", 6, 27]];
+		    // [14] hires_col_override: 0 = legacy (colour codes forced to MC
+		    //      bit3-set whenever the map is MC), 1 = colour codes stay
+		    //      literal 0-7 hi-res values even on an MC map (per-cell
+		    //      colour-RAM bit3 VIC override - $D016 MCM stays matched
+		    //      to the map either way, only the colour byte differs).
+		    _n.instructions = [["macro_text_scroll", 23, 1, 2, 0, 0xC000, "HELLO WORLD ", 6, 27, 0, "", 0, "", "", 0]];
 		    _n.pc_address   = global.start_pc;
 		    with (_n) { event_user(0); }
 		    break;
