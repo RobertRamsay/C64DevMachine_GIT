@@ -1,0 +1,111 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml
+index 8e844b0..29f94f1 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml
+@@ -1,5 +1,24 @@
+-function scr_c64u_reu_send_payload()
++/// @function scr_c64u_reu_send_payload(_skip_reset)
++/// @description Streams the generated REU image to the Ultimate over SocketDMA.
++///              Called twice per attempt: first with no argument, which issues
++///              the C64 reset and parks in the "reset_wait" state, then again
++///              from scr_c64u_reu_step() with _skip_reset = true once the
++///              Ultimate has had time to finish resetting and return to
++///              reading its socket.
++function scr_c64u_reu_send_payload(_skip_reset)
+ {
++    var _do_reset = true;
++
++    if (argument_count > 0)
++    {
++        if (_skip_reset == true)
++        {
++            _do_reset = false;
++        }
++    }
++
++    if (_do_reset == true)
++    {
+     // Reset the C64 core before changing REU contents.
+     // SocketDMA command $FF04, zero-length payload.
+     var _reset_packet = buffer_create(
+@@ -58,10 +77,31 @@ function scr_c64u_reu_send_payload()
+         return false;
+     }
+ 
++    // The Ultimate performs the reset on the same thread that reads this
++    // socket, so it consumes nothing while the C64 restarts. Streaming the
++    // image straight away fills the OS send buffer (~64K) and then stalls
++    // permanently. Park here and let scr_c64u_reu_step() resume the upload.
++    global.c64u_reu_state =
++        "reset_wait";
++
++    global.c64u_reu_deadline =
++        current_time + 2000;
++
++    global.c64u_reu_trace =
++        "C64 reset sent, waiting for Ultimate";
++
++    global.c64u_status =
++        "C64U REU: resetting C64...";
++
++    global.c64u_status_t = 240;
++
+     show_debug_message(
+         "C64U REU: C64 reset requested"
+     );
+ 
++    return true;
++    }
++
+     var _image = buffer_load(global.reu_last_image);
+ 
+     if (_image < 0) {
+@@ -153,9 +193,14 @@ function scr_c64u_reu_send_payload()
+         // simply pushed as a continuation of the same command.
+         var _packet_size = 7 + _chunk;
+         var _sent_total  = 0;
+-        var _stall       = 0;
+         var _sent        = 0;
+ 
++        // Wall-clock budget, not an iteration count. The kernel transmits
++        // independently of this loop, so we keep offering the tail until the
++        // Ultimate opens its receive window again. The old counter expired in
++        // about a millisecond, long before the Ultimate could respond.
++        var _wait_until = current_time + 10000;
++
+         while (_sent_total < _packet_size)
+         {
+             var _remain = _packet_size - _sent_total;
+@@ -173,13 +218,11 @@ function scr_c64u_reu_send_payload()
+             if (_pushed > 0)
+             {
+                 _sent_total += _pushed;
+-                _stall = 0;
++                _wait_until = current_time + 10000;
+             }
+             else
+             {
+-                _stall += 1;
+-
+-                if (_stall > 5000)
++                if (current_time > _wait_until)
+                 {
+                     break;
+                 }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_step/scr_c64u_reu_step.gml b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_step/scr_c64u_reu_step.gml
+index 5759881..5e89f47 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_step/scr_c64u_reu_step.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_step/scr_c64u_reu_step.gml
+@@ -15,6 +15,12 @@ function scr_c64u_reu_step()
+         return;
+     }
+ 
++    if (global.c64u_reu_state == "reset_wait")
++    {
++        scr_c64u_reu_send_payload(true);
++        return;
++    }
++
+     if (global.c64u_reu_state != "retry")
+     {
+         global.c64u_reu_trace =

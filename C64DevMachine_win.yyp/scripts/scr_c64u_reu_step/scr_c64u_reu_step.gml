@@ -15,6 +15,12 @@ function scr_c64u_reu_step()
         return;
     }
 
+    if (global.c64u_reu_state == "reset_wait")
+    {
+        scr_c64u_reu_send_payload(true);
+        return;
+    }
+
     if (global.c64u_reu_state != "retry")
     {
         global.c64u_reu_trace =
