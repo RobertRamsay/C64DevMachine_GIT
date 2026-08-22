@@ -16,6 +16,11 @@ function scr_c64u_async_network()
     {
         if (async_load[? "succeeded"] != 1)
         {
+            global.c64u_reu_trace =
+                "connect to "
+                + string(global.c64u_ip)
+                + ":64 refused";
+
             global.c64u_reu_state =
                 "retry";
 
@@ -58,6 +63,11 @@ function scr_c64u_async_network()
     {
         if (async_load[? "size"] < 1)
         {
+            global.c64u_reu_trace =
+                "empty IDENTIFY reply after "
+                + string(global.c64u_reu_sent)
+                + " bytes";
+
             global.c64u_reu_state =
                 "retry";
 
@@ -88,6 +98,19 @@ function scr_c64u_async_network()
 
     if (_type == network_type_disconnect)
     {
+        global.c64u_reu_trace =
+            "Ultimate closed the socket during '"
+            + string(global.c64u_reu_state)
+            + "' after "
+            + string(global.c64u_reu_sent)
+            + " of "
+            + string(global.c64u_reu_total)
+            + " bytes";
+
+        show_debug_message(
+            "C64U REU: " + global.c64u_reu_trace
+        );
+
         global.c64u_reu_state =
             "retry";
 

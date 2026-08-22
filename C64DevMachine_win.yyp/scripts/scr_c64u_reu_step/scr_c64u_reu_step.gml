@@ -15,6 +15,22 @@ function scr_c64u_reu_step()
         return;
     }
 
+    if (global.c64u_reu_state != "retry")
+    {
+        global.c64u_reu_trace =
+            "timed out in '"
+            + string(global.c64u_reu_state)
+            + "' after "
+            + string(global.c64u_reu_sent)
+            + " of "
+            + string(global.c64u_reu_total)
+            + " bytes";
+
+        show_debug_message(
+            "C64U REU: " + global.c64u_reu_trace
+        );
+    }
+
     if (global.c64u_reu_attempt <
         global.c64u_reu_max_attempts)
     {

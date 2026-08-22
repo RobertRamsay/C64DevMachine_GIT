@@ -75,6 +75,13 @@ function scr_c64u_reu_send_payload()
         max(0x100, real(global.reu_last_used))
     );
 
+    global.c64u_reu_total   = _total;
+    global.c64u_reu_sent    = 0;
+    global.c64u_reu_packets = 0;
+    global.c64u_reu_trace   = "reset ok, starting "
+                            + string(_total)
+                            + " byte upload";
+
     var _offset    = 0;
     var _chunk_max = 8192;
 
@@ -181,14 +188,17 @@ function scr_c64u_reu_send_payload()
 
         if (_sent_total != _packet_size)
         {
-            show_debug_message(
-                "C64U REU: short write at offset "
-                + string(_offset)
+            global.c64u_reu_trace =
+                "short write at REU $"
+                + string_upper(decimal_to_hex(_offset))
                 + " ("
                 + string(_sent_total)
                 + " of "
                 + string(_packet_size)
-                + " bytes)"
+                + " bytes)";
+
+            show_debug_message(
+                "C64U REU: " + global.c64u_reu_trace
             );
         }
 
@@ -211,6 +221,9 @@ function scr_c64u_reu_send_payload()
 
             return false;
         }
+
+        global.c64u_reu_sent    += _chunk;
+        global.c64u_reu_packets += 1;
 
         _offset += _chunk;
     }
@@ -251,6 +264,13 @@ function scr_c64u_reu_send_payload()
 
         return false;
     }
+
+    global.c64u_reu_trace =
+        "all "
+        + string(_total)
+        + " bytes written in "
+        + string(global.c64u_reu_packets)
+        + " packets, awaiting IDENTIFY";
 
     global.c64u_reu_state =
         "confirm";

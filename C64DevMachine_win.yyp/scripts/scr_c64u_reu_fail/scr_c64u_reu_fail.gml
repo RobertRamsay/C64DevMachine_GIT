@@ -6,8 +6,15 @@ function scr_c64u_reu_fail(_message) {
     global.c64u_reu_path_a   = "";
     global.c64u_reu_path_b   = "";
     global.c64u_busy         = false;
-    global.c64u_status       = "C64U REU: " + _message;
-    global.c64u_status_t     = 360;
-    show_debug_message("C64U REU upload failed: " + _message);
+    var _detail = "";
+
+    if (global.c64u_reu_trace != "")
+    {
+        _detail = " [" + global.c64u_reu_trace + "]";
+    }
+
+    global.c64u_status       = "C64U REU: " + _message + _detail;
+    global.c64u_status_t     = 600;
+    show_debug_message("C64U REU upload failed: " + _message + _detail);
     return false;
 }

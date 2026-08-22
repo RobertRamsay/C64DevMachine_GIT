@@ -25,6 +25,12 @@ function scr_c64u_init()
     global.reu_last_used         = 0;
     global.reu_build_error       = "";
 
+    // --- Upload diagnostics (surfaced in the HUD on failure) ---
+    global.c64u_reu_trace        = "";
+    global.c64u_reu_sent         = 0;
+    global.c64u_reu_packets      = 0;
+    global.c64u_reu_total        = 0;
+
     // --- Overlay state ---
     global.c64u_overlay_active = false;
     global.c64u_overlay_text   = "";
