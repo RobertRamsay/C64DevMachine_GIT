@@ -1,0 +1,83 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml
+index 50a96d8..9d3bfc8 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64u_reu_send_payload/scr_c64u_reu_send_payload.gml
+@@ -76,7 +76,7 @@ function scr_c64u_reu_send_payload()
+     );
+ 
+     var _offset    = 0;
+-    var _chunk_max = 60000;
++    var _chunk_max = 8192;
+ 
+     while (_offset < _total)
+     {
+@@ -140,15 +140,63 @@ function scr_c64u_reu_send_payload()
+             7
+         );
+ 
+-        var _sent = network_send_raw(
+-            global.c64u_reu_socket,
+-            _packet,
+-            7 + _chunk
+-        );
++        // network_send_raw() can accept fewer bytes than requested once the
++        // OS send buffer fills. That is NOT fatal: the Ultimate blocks in
++        // readSocket() until it has the full declared length, so the tail is
++        // simply pushed as a continuation of the same command.
++        var _packet_size = 7 + _chunk;
++        var _sent_total  = 0;
++        var _stall       = 0;
++        var _sent        = 0;
++
++        while (_sent_total < _packet_size)
++        {
++            var _remain = _packet_size - _sent_total;
++            var _out    = buffer_create(_remain, buffer_fixed, 1);
++            buffer_copy(_packet, _sent_total, _remain, _out, 0);
++
++            var _pushed = network_send_raw(
++                global.c64u_reu_socket,
++                _out,
++                _remain
++            );
++
++            buffer_delete(_out);
++
++            if (_pushed > 0)
++            {
++                _sent_total += _pushed;
++                _stall = 0;
++            }
++            else
++            {
++                _stall += 1;
++
++                if (_stall > 5000)
++                {
++                    break;
++                }
++            }
++        }
++
++        if (_sent_total != _packet_size)
++        {
++            show_debug_message(
++                "C64U REU: short write at offset "
++                + string(_offset)
++                + " ("
++                + string(_sent_total)
++                + " of "
++                + string(_packet_size)
++                + " bytes)"
++            );
++        }
++
++        _sent = _sent_total;
+ 
+         buffer_delete(_packet);
+ 
+-        if (_sent != 7 + _chunk)
++        if (_sent != _packet_size)
+         {
+             buffer_delete(_image);
+ 
