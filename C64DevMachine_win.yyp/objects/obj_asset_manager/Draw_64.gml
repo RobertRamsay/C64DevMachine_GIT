@@ -7491,7 +7491,7 @@ case "LOAD_REU": {
     load_reu_rows_y = _cy;
     var _bmp_idx = 0;
     for(var _li=0;_li<array_length(_links);_li++){
-        var _lk=_links[_li], _la=scr_reu_find_asset(_lk.asset_name), _pl=scr_reu_asset_payload(_la);
+        var _lk=_links[_li], _la=scr_reu_find_asset(_lk.asset_name), _pl=scr_reu_asset_size(_la);
         var _la_type    = is_undefined(_la) ? "" : _la.type;
         var _is_dragged = (reu_drag_row == _li);
         if (_is_dragged) draw_set_alpha(0.4);
@@ -7504,7 +7504,6 @@ case "LOAD_REU": {
         var _conflict=variable_struct_exists(_lk,"reu_conflict")?_lk.reu_conflict:false;
         draw_set_color(_conflict?c_red:c_aqua); draw_text(_cr,_cy+4,"$"+_rh);
         draw_set_color(c_lime); draw_text(_cs,_cy+4,string(_pl.size));
-        if(buffer_exists(_pl.buffer))buffer_delete(_pl.buffer);
         var _auto=variable_struct_exists(_lk,"auto_pack")?_lk.auto_pack:true;
         draw_set_color(_auto?make_color_rgb(25,80,55):make_color_rgb(90,65,25)); draw_rectangle(_cm,_cy+2,_cm+45,_cy+18,false);
         draw_set_color(c_white); draw_set_halign(fa_center); draw_text(_cm+22,_cy+4,_auto?"AUTO":"MAN"); draw_set_halign(fa_left);

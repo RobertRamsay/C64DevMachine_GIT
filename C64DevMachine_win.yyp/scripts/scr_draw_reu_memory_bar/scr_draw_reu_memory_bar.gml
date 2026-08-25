@@ -22,9 +22,7 @@ function scr_draw_reu_memory_bar(_x1, _x2, _y, _asset) {
     for (var _li = 0; _li < array_length(_links); _li++) {
         var _lk = _links[_li];
         var _la = scr_reu_find_asset(_lk.asset_name);
-        var _pl = scr_reu_asset_payload(_la);
-        var _sz = max(1, _pl.size);
-        if (buffer_exists(_pl.buffer)) buffer_delete(_pl.buffer);
+        var _sz = max(1, scr_reu_asset_size(_la).size);
 
         var _addr = real(_lk.reu_address);
         var _sx1 = _x1 + (_addr / _target) * _map_w;
