@@ -27,6 +27,13 @@ function scr_opcode_helper(_key) {
         "ldy_abs": { hex:"AC", bytes:3, cycles:4,  format:"LDY $hhll",   mode:"Absolute. Loads Y from full address.",                            use:"Read Y from RAM variable." },
         "ldy_abx": { hex:"BC", bytes:3, cycles:4,  format:"LDY $hhll,X", mode:"Absolute,X. Loads Y from address + X.",                          use:"X-indexed table read into Y." },
 
+        "lda_lab_lo": { hex:"A9", bytes:2, cycles:2,  format:"LDA #<LABEL", mode:"Immediate. Loads the LOW byte of a label address into A.",    use:"Build a pointer - pair with #> and store both to ZP." },
+        "lda_lab_hi": { hex:"A9", bytes:2, cycles:2,  format:"LDA #>LABEL", mode:"Immediate. Loads the HIGH byte of a label address into A.",   use:"Build a pointer - pair with #< and store both to ZP." },
+        "ldx_lab_lo": { hex:"A2", bytes:2, cycles:2,  format:"LDX #<LABEL", mode:"Immediate. Loads the LOW byte of a label address into X.",    use:"Seed X with a table start without hardcoding the address." },
+        "ldx_lab_hi": { hex:"A2", bytes:2, cycles:2,  format:"LDX #>LABEL", mode:"Immediate. Loads the HIGH byte of a label address into X.",   use:"Page number of a label - handy for page-aligned tables." },
+        "ldy_lab_lo": { hex:"A0", bytes:2, cycles:2,  format:"LDY #<LABEL", mode:"Immediate. Loads the LOW byte of a label address into Y.",    use:"Seed Y with a label offset for (ZP),Y pointer walks." },
+        "ldy_lab_hi": { hex:"A0", bytes:2, cycles:2,  format:"LDY #>LABEL", mode:"Immediate. Loads the HIGH byte of a label address into Y.",   use:"Page number of a label, held in Y." },
+
         "sta_zp":  { hex:"85", bytes:2, cycles:3,  format:"STA $zz",     mode:"Zero Page. Stores A to ZP address.",                              use:"Save A to a ZP variable — fastest store." },
         "sta_zpx": { hex:"95", bytes:2, cycles:4,  format:"STA $zz,X",   mode:"Zero Page,X. Stores A to ZP + X.",                               use:"Write into small ZP arrays using X." },
         "sta_abs": { hex:"8D", bytes:3, cycles:4,  format:"STA $hhll",   mode:"Absolute. Stores A to full 16-bit address.",                      use:"Write to VIC registers, colour RAM, or variables." },
