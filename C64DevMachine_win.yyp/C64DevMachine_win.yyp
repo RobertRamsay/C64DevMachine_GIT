@@ -927,6 +927,7 @@
     {"id":{"name":"fnt_C64_Angled","path":"fonts/fnt_C64_Angled/fnt_C64_Angled.yy",},},
     {"id":{"name":"fnt_c64_code","path":"fonts/fnt_c64_code/fnt_c64_code.yy",},},
     {"id":{"name":"fnt_c64_nano","path":"fonts/fnt_c64_nano/fnt_c64_nano.yy",},},
+    {"id":{"name":"fnt_c64_opCode","path":"fonts/fnt_c64_opCode/fnt_c64_opCode.yy",},},
     {"id":{"name":"fnt_c64_pico","path":"fonts/fnt_c64_pico/fnt_c64_pico.yy",},},
     {"id":{"name":"fnt_c64_tiny","path":"fonts/fnt_c64_tiny/fnt_c64_tiny.yy",},},
     {"id":{"name":"fnt_c64","path":"fonts/fnt_c64/fnt_c64.yy",},},

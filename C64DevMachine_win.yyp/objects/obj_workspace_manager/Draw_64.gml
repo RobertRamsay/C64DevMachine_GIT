@@ -377,7 +377,7 @@ for (var i = 0; i < array_length(active_palette); i++) {
     }
 
     // Draw mnemonic label
-    draw_set_font(fnt_c64_code);
+    draw_set_font(fnt_c64_opCode);
     draw_set_halign(fa_center);
     draw_set_color((is_hover || _is_finder_match) ? c_yellow : c_white);
     draw_text(btn_x + btn_w * 0.5, btn_y + (btn_h * 0.5) - 6, item.title);
