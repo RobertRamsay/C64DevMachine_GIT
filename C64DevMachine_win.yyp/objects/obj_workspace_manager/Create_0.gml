@@ -58,6 +58,8 @@ welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
 	"FIXED - REU packet size and timing fix for Bitmap data",
+	"NEW - Low / Hi LDA entries on OPCODE panel",
+	"NEW - NOP repeat macro - for NOP padding in one node",
 
 	];
 	
