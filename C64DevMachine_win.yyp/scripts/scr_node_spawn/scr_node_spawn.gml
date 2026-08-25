@@ -94,6 +94,18 @@ case "LABEL": {
             break;
 
         // -------------------------------------------------------
+        // MACRO_NOP_REPEAT
+        // Unrolled run of NOPs for raster / cycle padding.
+        //                                   [0]              [1]count
+        // -------------------------------------------------------
+        case "MACRO_NOP_REPEAT":
+            _n.node_title   = "NOP REPEAT";
+            _n.instructions = [["macro_nop_repeat", 8]];
+            _n.pc_address   = global.start_pc;
+            with (_n) { event_user(0); }
+            break;
+
+        // -------------------------------------------------------
         // MACRO_VWAIT
         // -------------------------------------------------------
         case "MACRO_VWAIT":

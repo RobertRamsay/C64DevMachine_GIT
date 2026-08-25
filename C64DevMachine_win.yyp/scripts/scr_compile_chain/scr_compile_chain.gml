@@ -1405,6 +1405,27 @@ case "MACRO_DISPLAY": {
 
 
 // --------------------------------------------------------
+// MACRO_NOP_REPEAT
+// Unrolled run of N x NOP ($EA) for raster / cycle padding.
+// Cost is exactly N bytes and N*2 cycles - sizing and cycle
+// totals fall out of the normal per-instruction accumulation
+// in scr_c64_do_update_addresses, so nothing is hardcoded here.
+// Count is literal only (0-255): the run is unrolled at build
+// time, so a var could not be resolved.
+// Touches no registers, no ZP and no flags.
+// --------------------------------------------------------
+case "MACRO_NOP_REPEAT": {
+    var _id = _curr;
+    var _nop_count = 0;
+    if (array_length(_curr.instructions[0]) > 1 && is_real(_curr.instructions[0][1])) {
+        _nop_count = clamp(floor(real(_curr.instructions[0][1])), 0, 255);
+    }
+    for (var _nri = 0; _nri < _nop_count; _nri++) {
+        array_push(_list, ["nop", 0, _id]);
+    }
+} break;
+
+// --------------------------------------------------------
 // MACRO_WAIT
 // Blocking frame delay. Counts raster wraps at line $FF,
 // gated on $D011 bit 8 (must be clear) so we only latch the

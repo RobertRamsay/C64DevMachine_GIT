@@ -1178,6 +1178,8 @@
     {"id":{"name":"scr_node_draw_macro_vic","path":"scripts/scr_node_draw_macro_vic/scr_node_draw_macro_vic.yy",},},
     {"id":{"name":"scr_node_draw_macro_vscroll","path":"scripts/scr_node_draw_macro_vscroll/scr_node_draw_macro_vscroll.yy",},},
     {"id":{"name":"scr_node_draw_macro_vwait","path":"scripts/scr_node_draw_macro_vwait/scr_node_draw_macro_vwait.yy",},},
+    {"id":{"name":"scr_node_draw_macro_nop_repeat","path":"scripts/scr_node_draw_macro_nop_repeat/scr_node_draw_macro_nop_repeat.yy",},},
+    {"id":{"name":"scr_node_step_macro_nop_repeat","path":"scripts/scr_node_step_macro_nop_repeat/scr_node_step_macro_nop_repeat.yy",},},
     {"id":{"name":"scr_node_draw_macro_wait","path":"scripts/scr_node_draw_macro_wait/scr_node_draw_macro_wait.yy",},},
     {"id":{"name":"scr_node_draw_named_loc","path":"scripts/scr_node_draw_named_loc/scr_node_draw_named_loc.yy",},},
     {"id":{"name":"scr_node_draw_new_str","path":"scripts/scr_node_draw_new_str/scr_node_draw_new_str.yy",},},

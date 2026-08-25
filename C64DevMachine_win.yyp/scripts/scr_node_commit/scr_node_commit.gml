@@ -1262,6 +1262,22 @@
 	            global.addresses_dirty = true;
 	        }
 
+	    // --- MACRO_NOP_REPEAT ---
+	    } else if (_target.node_type == "MACRO_NOP_REPEAT") {
+	        while (array_length(_target.instructions[0]) < 2) {
+	            array_push(_target.instructions[0], 0);
+	        }
+	        if (_idx == 1) {
+	            // NOP COUNT - decimal, 0-255. Each NOP is 1 byte / 2 cycles.
+	            var _nr_digits = string_digits(_input);
+	            var _nr_val = 0;
+	            if (_nr_digits != "") {
+	                _nr_val = real(_nr_digits);
+	            }
+	            _target.instructions[0][1] = clamp(_nr_val, 0, 255);
+	            global.addresses_dirty = true;
+	        }
+
 	    // --- MACRO_WAIT ---
 	    } else if (_target.node_type == "MACRO_WAIT") {
 	        while (array_length(_target.instructions[0]) < 4) {

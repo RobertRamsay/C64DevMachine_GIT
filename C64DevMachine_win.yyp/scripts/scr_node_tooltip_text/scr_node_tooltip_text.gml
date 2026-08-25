@@ -117,6 +117,20 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_NOP_REPEAT": {
+            title: "NOP REPEAT",
+            lines: [
+                "Emits an unrolled run of NOP ($EA), 0-255 of them.",
+                "Cost is exactly 1 byte and 2 cycles per NOP, so a",
+                "count of 8 costs 8 bytes / 16 cycles.",
+                "",
+                "Touches no registers, no ZP and no flags - safe to",
+                "drop anywhere you need raster or cycle padding.",
+                "",
+                "Count is literal only: the run is unrolled at build",
+                "time, so a variable could not be resolved."
+            ]
+        },
         "MACRO_WAIT": {
             title: "WAIT",
             lines: [

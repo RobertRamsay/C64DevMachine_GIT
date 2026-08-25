@@ -125,6 +125,7 @@ if (height_dirty) {
     case "MACRO_VWAIT": height = _G * 3;  break;        
     case "MACRO_DISPLAY": height = _G * 4;  break;
     case "MACRO_WAIT":    height = _G * 5;  break;        
+    case "MACRO_NOP_REPEAT": height = _G * 4;  break;
     case "MACRO_BMP":   height = _G * 6;  break;         
     case "MACRO_VECTOR_BMP": height = _G * 6;  break;    // 6 rows + header + pad
 	case "MACRO_VECTOR_PAGE": height = _G * 4;  break;   // asset + page + status         
@@ -850,6 +851,7 @@ switch (node_type) {
     case "MACRO_VWAIT":         _head_col = is_connected ? make_color_rgb( 40,180, 160) : make_color_rgb( 20, 90,  80); break;
     case "MACRO_DISPLAY":       _head_col = is_connected ? make_color_rgb(220,170,  50) : make_color_rgb(110, 85,  25); break;
     case "MACRO_WAIT":          _head_col = is_connected ? make_color_rgb( 60,190, 210) : make_color_rgb( 30, 95, 105); break;
+    case "MACRO_NOP_REPEAT":    _head_col = is_connected ? make_color_rgb(130,130, 145) : make_color_rgb( 65, 65,  72); break;
     case "MACRO_IRQ_HANDLER":   _head_col = is_connected ? make_color_rgb(220, 80,  40) : make_color_rgb(110, 40,  20); break;
     case "MACRO_COLLISION":   _head_col = is_connected ? make_color_rgb(180, 60,  60) : make_color_rgb( 90, 30,  30); break;
 	case "MACRO_COLL_ADV":    _head_col = is_connected ? make_color_rgb(220, 100, 40) : make_color_rgb(110, 50, 20); break;
@@ -1231,6 +1233,7 @@ if (_lod_body) switch (node_type) {
     case "MACRO_VWAIT": scr_node_draw_macro_vwait(draw_x, y);                           break;
     case "MACRO_DISPLAY": scr_node_draw_macro_display(draw_x, y);                       break;
     case "MACRO_WAIT":    scr_node_draw_macro_wait(draw_x, y);                          break;
+    case "MACRO_NOP_REPEAT": scr_node_draw_macro_nop_repeat(draw_x, y);                 break;
 	case "GET_VAR":     scr_node_draw_get_var();										break;
     case "SET_VAR":     scr_node_draw_set_var();									    break;
     case "INC_VAR":     scr_node_draw_inc_var();										break;

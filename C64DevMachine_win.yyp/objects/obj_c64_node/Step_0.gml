@@ -1025,6 +1025,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
         case "MACRO_VWAIT":  scr_node_step_macro_vwait(draw_x);  break;
         case "MACRO_DISPLAY": scr_node_step_macro_display(draw_x); break;
         case "MACRO_WAIT":    scr_node_step_macro_wait(draw_x);    break;
+        case "MACRO_NOP_REPEAT": scr_node_step_macro_nop_repeat(draw_x); break;
         case "MACRO_JOY":    scr_node_step_macro_joy(draw_x);    break;
         case "MACRO_PRINT":  scr_node_step_macro_print(draw_x);  break;
 		case "MACRO_CLEAR_BMP_RECT": scr_node_step_macro_clear_bmp_rect(draw_x); break;

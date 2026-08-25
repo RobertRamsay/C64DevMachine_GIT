@@ -1358,6 +1358,7 @@ if (gui_menu_open == 0) {
         { title: "CLR BMP RECT", type: "MACRO_CLEAR_BMP_RECT" },
         { title: "VWAIT (ALT+V)",        type: "MACRO_VWAIT"         },
         { title: "WAIT",         type: "MACRO_WAIT"          },
+        { title: "NOP REPEAT",   type: "MACRO_NOP_REPEAT"    },
         { title: "DISPLAY",      type: "MACRO_DISPLAY"       },
         { title: "TXT SCROLL",   type: "MACRO_TEXT_SCROLL"   },
         { title: "CHARSET",      type: "MACRO_CHR"           },

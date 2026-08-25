@@ -232,6 +232,10 @@ function scr_cleanup_nodes()
         {
             instance_destroy();
         }
+        if (node_type == "MACRO_NOP_REPEAT" && !is_connected)
+        {
+            instance_destroy();
+        }
         if (node_type == "MACRO_DISPLAY" && !is_connected)
         {
             instance_destroy();
