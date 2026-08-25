@@ -1645,7 +1645,10 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
                             _inst_lower == "bne"     || _inst_lower == "beq"     ||
                             _inst_lower == "bcc"     || _inst_lower == "bcs"     ||
                             _inst_lower == "bpl"     || _inst_lower == "bmi"     ||
-                            _inst_lower == "bvc"     || _inst_lower == "bvs"
+                            _inst_lower == "bvc"     || _inst_lower == "bvs"     ||
+                            _inst_lower == "lda_lab_lo" || _inst_lower == "lda_lab_hi" ||
+                            _inst_lower == "ldx_lab_lo" || _inst_lower == "ldx_lab_hi" ||
+                            _inst_lower == "ldy_lab_lo" || _inst_lower == "ldy_lab_hi"
                         );
                         if (_op_is_jump) {
                             label_picker_open       = true;

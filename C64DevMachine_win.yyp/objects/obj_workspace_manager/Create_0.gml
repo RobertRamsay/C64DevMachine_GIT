@@ -374,6 +374,14 @@ palette_page[0] = [
     { title: "LDA_IZX", type: "NORMAL", instructions: [["lda_izx", 0]] },
     { title: "LDA_IZY", type: "NORMAL", instructions: [["lda_izy", 0]] },
 
+    { title: " LABEL LO/HI BYTE ", type: "HEADER" },
+    { title: "LDA #<LAB", type: "NORMAL", instructions: [["lda_lab_lo", "label"]] },
+    { title: "LDA #>LAB", type: "NORMAL", instructions: [["lda_lab_hi", "label"]] },
+    { title: "LDX #<LAB", type: "NORMAL", instructions: [["ldx_lab_lo", "label"]] },
+    { title: "LDX #>LAB", type: "NORMAL", instructions: [["ldx_lab_hi", "label"]] },
+    { title: "LDY #<LAB", type: "NORMAL", instructions: [["ldy_lab_lo", "label"]] },
+    { title: "LDY #>LAB", type: "NORMAL", instructions: [["ldy_lab_hi", "label"]] },
+
     { title: " STORE GROUP (A-X-Y) ", type: "HEADER" },
     { title: "STA_ZP",  type: "NORMAL", instructions: [["sta_zp",  0]] },
     { title: "STX_ZP",  type: "NORMAL", instructions: [["stx_zp",  0]] },

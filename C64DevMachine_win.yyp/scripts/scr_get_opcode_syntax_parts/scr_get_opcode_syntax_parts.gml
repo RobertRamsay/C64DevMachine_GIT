@@ -8,6 +8,10 @@ function scr_get_opcode_syntax_parts(_mn) { // _LDA_imm
     var _base = (_split > 0) ? string_copy(_m, 1, _split - 1) : _m;
     _base = string_upper(_base);
 
+    // Label lo/hi byte immediates - must be tested before the generic checks below
+    if (string_pos("_lab_lo", _m)) return [_base + " #<", ""];
+    if (string_pos("_lab_hi", _m)) return [_base + " #>", ""];
+
     // Immediate
     if (string_pos("_imm", _m)) return [_base + " #", ""];
     
