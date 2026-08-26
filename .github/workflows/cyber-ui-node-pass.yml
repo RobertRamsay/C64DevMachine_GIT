@@ -1,0 +1,158 @@
+name: Cyber UI node/menu pass
+
+on:
+  push:
+    paths:
+      - '.github/workflows/cyber-ui-node-pass.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Patch UI theme controls and node renderer
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f"missing exact patch target: {label}")
+              return text.replace(old, new, 1)
+
+          def sub_once(text, pattern, repl, label, flags=0):
+              out, n = re.subn(pattern, repl, text, count=1, flags=flags)
+              if n != 1:
+                  raise SystemExit(f"regex patch target count {n}: {label}")
+              return out
+
+          # ---------------------------------------------------------
+          # 1) Remove UI theme shortcuts 7/8/9; retain 0 as reset.
+          # ---------------------------------------------------------
+          p = Path('C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml')
+          s = p.read_text(encoding='utf-8')
+          s = sub_once(
+              s,
+              r'\n\tif keyboard_check_pressed\(ord\("7"\)\) \n\t\{paletteStyle\+\+;.*?\n\tif keyboard_check_pressed\(ord\("9"\)\) \{ uiChromeStyle = \(uiChromeStyle \+ 1\) mod 2; niceSliceFrm = \(uiChromeStyle == 0\) \? 0 : sprite_get_number\(spr_glassSlice\)-1; \}\n',
+              '\n\t// UI appearance is selected from OPTIONS; 7/8/9 are intentionally free.\n',
+              'remove 7/8/9 UI shortcuts',
+              re.S,
+          )
+          s = replace_once(
+              s,
+              '\tif keyboard_check_pressed(ord("0")) {uiChromeStyle=0;niceSliceFrm=0;bkgImg=0;paletteStyle=0;buttonStyle=0}',
+              '\tif keyboard_check_pressed(ord("0")) {uiChromeStyle=0;niceSliceFrm=0;bkgImg=0;paletteStyle=0;badgeStyle=0;buttonStyle=0;nodeStyle=0;macroStyle=0}',
+              'extend 0 reset',
+          )
+          p.write_text(s, encoding='utf-8')
+
+          # ---------------------------------------------------------
+          # 2) Persist the independent appearance families.
+          # ---------------------------------------------------------
+          p = Path('C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml')
+          s = p.read_text(encoding='utf-8')
+          s = replace_once(
+              s,
+              'badgeStyle=1\nbuttonStyle=1\nniceSliceFrm = 0;\nuiChromeStyle = 0; // 0 existing chrome, 1 appended Cyber chrome',
+              'badgeStyle=1\nbuttonStyle=1\nnodeStyle=0;  // 0..spr_9s_tile1 frames, final virtual index = Cyber renderer\nmacroStyle=0; // 0 classic menu rows, 1 appended Cyber macro-button pair\nniceSliceFrm = 0;\nuiChromeStyle = 0; // 0 existing chrome, 1 appended Cyber chrome',
+              'initial appearance state',
+          )
+          old_settings = '''bkgImg      = ini_read_real("Settings", "bkgImg",       0);\nshowGrid    = ini_read_real("Settings", "showGrid",      0);\npaletteStyle = ini_read_real("Settings", "paletteStyle", 0);\nniceSliceFrm = ini_read_real("Settings", "niceSliceFrm", 0);'''
+          new_settings = '''bkgImg       = clamp(ini_read_real("Settings", "bkgImg",       0), 0, max(0, sprite_get_number(spr_bkg) - 1));\nshowGrid     = ini_read_real("Settings", "showGrid",      0);\npaletteStyle = clamp(ini_read_real("Settings", "paletteStyle", 0), 0, max(0, sprite_get_number(spr_palette_page) - 1));\nbadgeStyle   = clamp(ini_read_real("Settings", "badgeStyle",   0), 0, max(0, sprite_get_number(spr_logobadge) - 1));\nbuttonStyle  = clamp(ini_read_real("Settings", "buttonStyle",  0), 0, max(0, sprite_get_number(spr_opcode_button) - 2));\nniceSliceFrm = clamp(ini_read_real("Settings", "niceSliceFrm", 0), 0, max(0, sprite_get_number(spr_glassSlice) - 1));\nuiChromeStyle = clamp(ini_read_real("Settings", "uiChromeStyle", 0), 0, 1);\nnodeStyle     = clamp(ini_read_real("Settings", "nodeStyle", 0), 0, sprite_get_number(spr_9s_tile1));\nmacroStyle    = clamp(ini_read_real("Settings", "macroStyle", 0), 0, 1);'''
+          s = replace_once(s, old_settings, new_settings, 'restore appearance settings')
+          p.write_text(s, encoding='utf-8')
+
+          # ---------------------------------------------------------
+          # 3) Options menu becomes the sole UI-theme control surface.
+          # ---------------------------------------------------------
+          p = Path('C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml')
+          s = p.read_text(encoding='utf-8')
+          s = replace_once(
+              s,
+              '        { title: "ADVANCE THEME",   action: "THEME"           },\n        { title: "RESET CUSTOM UI",    action: "RESET_UI"           },',
+              '''        { title: "CYBER PRESET",      action: "CYBER_PRESET"    },\n        { title: "PALETTE STYLE",      action: "PALETTE_STYLE"    },\n        { title: "OPCODE BUTTONS",     action: "OPCODE_STYLE"     },\n        { title: "MACRO BUTTONS",      action: "MACRO_STYLE"      },\n        { title: "LOGO STYLE",         action: "BADGE_STYLE"      },\n        { title: "BACKGROUND STYLE",   action: "BACKGROUND_STYLE" },\n        { title: "MENU CHROME",        action: "MENU_CHROME"      },\n        { title: "PANEL STYLE",        action: "PANEL_STYLE"      },\n        { title: "NODE STYLE",         action: "NODE_STYLE"       },\n        { title: "RESET CUSTOM UI",    action: "RESET_UI"         },''',
+              'options appearance rows',
+          )
+
+          old_theme_state = '''        if (_op.action == "THEME") {\n            var _theme_labels = ["1", "2", "3", "4", "CYBER"];\n            _state_str = _theme_labels[paletteStyle mod array_length(_theme_labels)];\n            _state_col = make_color_rgb(160, 160, 220);\n        }'''
+          new_theme_state = '''        if (_op.action == "CYBER_PRESET") {\n            var _cy_btn_state = max(0, sprite_get_number(spr_opcode_button) - 2);\n            var _cy_node_state = sprite_get_number(spr_9s_tile1);\n            var _cy_all_state = (paletteStyle == sprite_get_number(spr_palette_page) - 1 &&\n                                 badgeStyle == sprite_get_number(spr_logobadge) - 1 &&\n                                 buttonStyle == _cy_btn_state &&\n                                 bkgImg == sprite_get_number(spr_bkg) - 1 &&\n                                 uiChromeStyle == 1 &&\n                                 niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 &&\n                                 nodeStyle == _cy_node_state && macroStyle == 1);\n            _state_str = _cy_all_state ? "ON" : "MIX";\n            _state_col = _cy_all_state ? c_yellow : make_color_rgb(80, 180, 200);\n        }\n        if (_op.action == "PALETTE_STYLE") {\n            _state_str = (paletteStyle == sprite_get_number(spr_palette_page) - 1) ? "CYBER" : string(paletteStyle + 1);\n            _state_col = make_color_rgb(160, 160, 220);\n        }\n        if (_op.action == "OPCODE_STYLE") {\n            var _cy_btn_label = max(0, sprite_get_number(spr_opcode_button) - 2);\n            _state_str = (buttonStyle == _cy_btn_label) ? "CYBER" : string(buttonStyle + 1);\n            _state_col = make_color_rgb(160, 160, 220);\n        }\n        if (_op.action == "MACRO_STYLE") {\n            _state_str = macroStyle ? "CYBER" : "CLASSIC";\n            _state_col = macroStyle ? c_yellow : c_gray;\n        }\n        if (_op.action == "BADGE_STYLE") {\n            _state_str = (badgeStyle == sprite_get_number(spr_logobadge) - 1) ? "CYBER" : string(badgeStyle + 1);\n            _state_col = make_color_rgb(160, 160, 220);\n        }\n        if (_op.action == "BACKGROUND_STYLE") {\n            _state_str = (bkgImg == sprite_get_number(spr_bkg) - 1) ? "CYBER" : string(bkgImg + 1);\n            _state_col = make_color_rgb(160, 160, 220);\n        }\n        if (_op.action == "MENU_CHROME") {\n            _state_str = uiChromeStyle ? "CYBER" : "CLASSIC";\n            _state_col = uiChromeStyle ? c_yellow : c_gray;\n        }\n        if (_op.action == "PANEL_STYLE") {\n            _state_str = (niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 && niceSliceFrm > 0) ? "CYBER" : string(niceSliceFrm + 1);\n            _state_col = (niceSliceFrm > 0) ? c_yellow : c_gray;\n        }\n        if (_op.action == "NODE_STYLE") {\n            _state_str = (nodeStyle >= sprite_get_number(spr_9s_tile1)) ? "CYBER" : string(nodeStyle + 1);\n            _state_col = (nodeStyle >= sprite_get_number(spr_9s_tile1)) ? c_yellow : make_color_rgb(160, 160, 220);\n        }'''
+          s = replace_once(s, old_theme_state, new_theme_state, 'theme state indicators')
+
+          s = sub_once(
+              s,
+              r'            else if \(_op\.action == "THEME"\) \{.*?\n            \}\n            else if \(_op\.action == "OPCODE_HEADERS"\)',
+              '''            else if (_op.action == "CYBER_PRESET") {\n                var _cy_btn_action = max(0, sprite_get_number(spr_opcode_button) - 2);\n                var _cy_node_action = sprite_get_number(spr_9s_tile1);\n                var _cy_all_action = (paletteStyle == sprite_get_number(spr_palette_page) - 1 &&\n                                      badgeStyle == sprite_get_number(spr_logobadge) - 1 &&\n                                      buttonStyle == _cy_btn_action &&\n                                      bkgImg == sprite_get_number(spr_bkg) - 1 &&\n                                      uiChromeStyle == 1 &&\n                                      niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 &&\n                                      nodeStyle == _cy_node_action && macroStyle == 1);\n                if (_cy_all_action) {\n                    paletteStyle = 0; badgeStyle = 0; buttonStyle = 0; bkgImg = 0;\n                    uiChromeStyle = 0; niceSliceFrm = 0; nodeStyle = 0; macroStyle = 0;\n                } else {\n                    paletteStyle = max(0, sprite_get_number(spr_palette_page) - 1);\n                    badgeStyle = max(0, sprite_get_number(spr_logobadge) - 1);\n                    buttonStyle = _cy_btn_action;\n                    bkgImg = max(0, sprite_get_number(spr_bkg) - 1);\n                    uiChromeStyle = 1;\n                    niceSliceFrm = max(0, sprite_get_number(spr_glassSlice) - 1);\n                    nodeStyle = _cy_node_action;\n                    macroStyle = 1;\n                }\n            }\n            else if (_op.action == "PALETTE_STYLE") {\n                paletteStyle = (paletteStyle + 1) mod max(1, sprite_get_number(spr_palette_page));\n            }\n            else if (_op.action == "OPCODE_STYLE") {\n                var _cy_btn_cycle = max(0, sprite_get_number(spr_opcode_button) - 2);\n                if (buttonStyle == 0) buttonStyle = min(1, _cy_btn_cycle);\n                else if (buttonStyle == 1) buttonStyle = min(2, _cy_btn_cycle);\n                else if (buttonStyle == 2 && _cy_btn_cycle > 2) buttonStyle = _cy_btn_cycle;\n                else buttonStyle = 0;\n            }\n            else if (_op.action == "MACRO_STYLE") {\n                macroStyle = (macroStyle + 1) mod 2;\n            }\n            else if (_op.action == "BADGE_STYLE") {\n                badgeStyle = (badgeStyle + 1) mod max(1, sprite_get_number(spr_logobadge));\n            }\n            else if (_op.action == "BACKGROUND_STYLE") {\n                bkgImg = (bkgImg + 1) mod max(1, sprite_get_number(spr_bkg));\n            }\n            else if (_op.action == "MENU_CHROME") {\n                uiChromeStyle = (uiChromeStyle + 1) mod 2;\n            }\n            else if (_op.action == "PANEL_STYLE") {\n                niceSliceFrm = (niceSliceFrm + 1) mod max(1, sprite_get_number(spr_glassSlice));\n            }\n            else if (_op.action == "NODE_STYLE") {\n                nodeStyle = (nodeStyle + 1) mod (sprite_get_number(spr_9s_tile1) + 1);\n            }\n            else if (_op.action == "OPCODE_HEADERS")''',
+              'appearance actions',
+              re.S,
+          )
+
+          s = replace_once(
+              s,
+              '''                niceSliceFrm = 0;\n                bkgImg       = 0;\n                paletteStyle = 0;\n                buttonStyle  = 0;''',
+              '''                niceSliceFrm = 0;\n                uiChromeStyle = 0;\n                bkgImg       = 0;\n                paletteStyle = 0;\n                badgeStyle   = 0;\n                buttonStyle  = 0;\n                nodeStyle    = 0;\n                macroStyle   = 0;''',
+              'reset custom UI families',
+          )
+
+          s = replace_once(
+              s,
+              '            ini_write_real("Settings", "niceSliceFrm", niceSliceFrm);',
+              '''            ini_write_real("Settings", "niceSliceFrm", niceSliceFrm);\n            ini_write_real("Settings", "badgeStyle", badgeStyle);\n            ini_write_real("Settings", "buttonStyle", buttonStyle);\n            ini_write_real("Settings", "uiChromeStyle", uiChromeStyle);\n            ini_write_real("Settings", "nodeStyle", nodeStyle);\n            ini_write_real("Settings", "macroStyle", macroStyle);''',
+              'persist appearance families',
+          )
+
+          old_hover = '''        // Row background on hover\n        if (_ihov) {\n            draw_set_alpha(0.35);\n            draw_set_color(c_white);\n            draw_rectangle(_ix1 + 4, _iy, _ix2 - 4, _iy + _item_h, false);\n            draw_set_alpha(1.0);\n        }'''
+          new_hover = '''        // Macro row skin: use the appended Cyber normal/hover pair when selected.\n        if (macroStyle == 1 && _mp.type != "HEADER") {\n            var _macro_cy_base = max(0, sprite_get_number(spr_macroButton) - 2);\n            var _macro_cy_frame = _ihov ? min(_macro_cy_base + 1, sprite_get_number(spr_macroButton) - 1) : _macro_cy_base;\n            draw_sprite_stretched(spr_macroButton, _macro_cy_frame, _ix1 + 4, _iy, _panel_w - 8, _item_h);\n        }\n        else if (_ihov) {\n            draw_set_alpha(0.35);\n            draw_set_color(c_white);\n            draw_rectangle(_ix1 + 4, _iy, _ix2 - 4, _iy + _item_h, false);\n            draw_set_alpha(1.0);\n        }'''
+          s = replace_once(s, old_hover, new_hover, 'Cyber macro dropdown buttons')
+          p.write_text(s, encoding='utf-8')
+
+          # ---------------------------------------------------------
+          # 4) Shared node renderer: keep styles 0..3, add virtual Cyber style.
+          # ---------------------------------------------------------
+          p = Path('C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml')
+          s = p.read_text(encoding='utf-8')
+
+          body_pattern = r'if obj_workspace_manager\.niceSliceFrm==0\s*\{.*?\n\t\}\n\n\nvar _first_inst'
+          body_repl = '''var _node_style = obj_workspace_manager.nodeStyle;\nvar _node_cyber = (_node_style >= sprite_get_number(spr_9s_tile1));\n\nif (_node_cyber) {\n    var _cy_body_top = is_connected ? make_color_rgb(22, 24, 26) : make_color_rgb(13, 14, 16);\n    var _cy_body_bot = is_connected ? make_color_rgb(10, 12, 14) : make_color_rgb(7, 8, 9);\n    draw_set_alpha(_box_alpha);\n    draw_rectangle_color(draw_x, y, draw_x + width, y + height,\n                         _cy_body_top, _cy_body_top, _cy_body_bot, _cy_body_bot, false);\n    // Industrial accent rail + restrained status edge.\n    draw_set_color(make_color_rgb(238, 197, 38));\n    draw_rectangle(draw_x, y, draw_x + 3, y + height, false);\n    draw_set_color(is_connected ? make_color_rgb(35, 178, 198) : make_color_rgb(62, 62, 58));\n    draw_rectangle(draw_x + 3, y + height - 2, draw_x + width - 12, y + height, false);\n    // Cut the lower-right corner to keep the silhouette angular.\n    draw_set_color(make_color_rgb(7, 8, 9));\n    draw_triangle(draw_x + width - 12, y + height, draw_x + width, y + height - 12, draw_x + width, y + height, false);\n    draw_set_alpha(1.0);\n}\nelse if (_node_style == 0) {\n    draw_set_alpha(_box_alpha);\n    if node_type!="LABEL" {draw_rectangle_color(draw_x, y, draw_x + width, y + height,\n     _body_col, _body_col, _dark_col, _dark_col, false);}\n    else{\n         draw_rectangle_color(draw_x, y, draw_x + width, y + height,\n        _body_col, _label_edge_col, _label_edge_col, _dark_col, false);}\n}\nelse {\n    draw_sprite_stretched_ext(spr_9s_tile1, clamp(_node_style, 1, sprite_get_number(spr_9s_tile1) - 1),\n                              draw_x, y, width, height, _body_col, _box_alpha);\n}\n\n\nvar _first_inst'''
+          s = sub_once(s, body_pattern, body_repl, 'node body style split', re.S)
+
+          header_pattern = r'if obj_workspace_manager\.niceSliceFrm==0\s*\{\s*\tdraw_set_color\(_head_col\);.*?\n\t\}\n\n// =============================================================\n// H2\. WIRE DOTS'
+          header_repl = '''if (_node_cyber) {\n    var _cy_head_base = merge_colour(_head_col, make_color_rgb(18, 20, 22), 0.72);\n    draw_set_alpha(_box_alpha);\n    draw_set_color(_cy_head_base);\n    draw_rectangle(draw_x, y, draw_x + width, y + header_h, false);\n    // Preserve semantic node colour as a thin ID strip, with Cyber yellow framing.\n    draw_set_color(_head_col);\n    draw_rectangle(draw_x + 3, y + header_h - 3, draw_x + width - 10, y + header_h, false);\n    draw_set_color(make_color_rgb(238, 197, 38));\n    draw_rectangle(draw_x, y, draw_x + 4, y + header_h, false);\n    draw_rectangle(draw_x + width - 30, y + 2, draw_x + width - 12, y + 4, false);\n    draw_set_color(make_color_rgb(7, 8, 9));\n    draw_triangle(draw_x + width - 12, y, draw_x + width, y, draw_x + width, y + 12, false);\n    draw_set_alpha(1.0);\n}\nelse if (_node_style == 0) {\n    draw_set_color(_head_col);\n    draw_set_alpha(_box_alpha);\n    draw_rectangle(draw_x, y, draw_x + width, y + header_h, false);\n    draw_set_alpha(1.0);\n}\nelse {\n    draw_sprite_stretched_ext(spr_9s_tile1, clamp(_node_style, 1, sprite_get_number(spr_9s_tile1) - 1),\n                              draw_x, y, width, header_h, _head_col, _box_alpha);\n}\n\n// =============================================================\n// H2. WIRE DOTS'''
+          s = sub_once(s, header_pattern, header_repl, 'node header style split', re.S)
+          p.write_text(s, encoding='utf-8')
+
+          # Sanity checks: shortcuts gone and new controls present.
+          checks = {
+              'C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml': ['ord("7")', 'ord("8")', 'ord("9")'],
+          }
+          step_text = Path(next(iter(checks))).read_text(encoding='utf-8')
+          for forbidden in checks[next(iter(checks))]:
+              if forbidden in step_text:
+                  raise SystemExit(f'forbidden UI shortcut still present: {forbidden}')
+          draw_text = Path('C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml').read_text(encoding='utf-8')
+          for required in ['CYBER_PRESET', 'NODE_STYLE', 'MACRO_STYLE', 'uiChromeStyle', 'macroStyle']:
+              if required not in draw_text:
+                  raise SystemExit(f'missing menu wiring: {required}')
+          node_text = Path('C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml').read_text(encoding='utf-8')
+          if '_node_cyber' not in node_text or '238, 197, 38' not in node_text:
+              raise SystemExit('Cyber node renderer not installed')
+          PY
+
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "C64DevMachine UI patch"
+          git config user.email "actions@users.noreply.github.com"
+          rm -f .github/workflows/cyber-ui-node-pass.yml
+          git add -A
+          git diff --cached --check
+          git commit -m "Cyber UI phase 3: menu themes and node chrome"
+          git push origin main
