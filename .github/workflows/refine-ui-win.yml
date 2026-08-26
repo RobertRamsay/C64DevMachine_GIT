@@ -1,0 +1,82 @@
+name: Apply corrected five-theme UI patch
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/refine-ui-win.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync latest main
+        shell: pwsh
+        run: git pull --rebase origin main
+
+      - name: Patch UI
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml')
+          s = p.read_text(encoding='utf-8')
+          def cut(start, end, replacement, label):
+              global s
+              a = s.find(start)
+              if a < 0: raise SystemExit(label + ' start not found')
+              b = s.find(end, a)
+              if b < 0: raise SystemExit(label + ' end not found')
+              s = s[:a] + replacement + s[b:]
+          def rep(old, new, label, required=True):
+              global s
+              if old not in s:
+                  if required: raise SystemExit(label + ' not found')
+                  return
+              s = s.replace(old, new, 1)
+          rep('        { title: "MACRO BUTTONS",      action: "MACRO_STYLE"      },\n', '', 'macro option', False)
+          rep('        { title: "MENU CHROME",        action: "MENU_CHROME"      },\n', '', 'chrome option', False)
+          sync1 = '// Menu-bar chrome is owned by Panel Style; keep old saved settings in sync too.\nuiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;'
+          sync2 = '// Panel Style owns menu-bar chrome.\nuiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;'
+          if sync1 in s: s = s.replace(sync1, sync2, 1)
+          elif sync2 not in s:
+              anchor = 'var _menu_labels = [\n    "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TBA"\n];'
+              rep(anchor, anchor + '\n\n' + sync2, 'menu sync')
+          preset_state = '\n'.join(['        if (_op.action == "CYBER_PRESET") {','            var _preset_count = max(1, sprite_get_number(spr_palette_page));','            _state_str = string(clamp(paletteStyle, 0, _preset_count - 1) + 1);','            _state_col = (paletteStyle == _preset_count - 1) ? c_yellow : make_color_rgb(160, 160, 220);','        }',''])
+          cut('        if (_op.action == "CYBER_PRESET") {', '        if (_op.action == "PALETTE_STYLE") {', preset_state, 'preset state')
+          s = s.replace('        if (_op.action == "MACRO_STYLE") {\n            _state_str = string(macroStyle + 1);\n            _state_col = macroStyle ? c_yellow : c_gray;\n        }\n', '')
+          s = s.replace('        if (_op.action == "MENU_CHROME") {\n            _state_str = string(uiChromeStyle + 1);\n            _state_col = uiChromeStyle ? c_yellow : c_gray;\n        }\n', '')
+          preset_action = '\n'.join(['            else if (_op.action == "CYBER_PRESET") {','                var _preset_count = max(1, sprite_get_number(spr_palette_page));','                var _preset = (clamp(paletteStyle, 0, _preset_count - 1) + 1) mod _preset_count;','                var _is_cyber_preset = (_preset == _preset_count - 1);','                paletteStyle = _preset;','                bkgImg = min(_preset, max(0, sprite_get_number(spr_bkg) - 1));','                nodeStyle = min(_preset, sprite_get_number(spr_9s_tile1));','                if (_is_cyber_preset) {','                    badgeStyle = max(0, sprite_get_number(spr_logobadge) - 1);','                    buttonStyle = max(0, sprite_get_number(spr_opcode_button) - 2);','                    niceSliceFrm = max(0, sprite_get_number(spr_glassSlice) - 1);','                } else {','                    var _legacy_badge_max = max(0, sprite_get_number(spr_logobadge) - 2);','                    badgeStyle = min(_preset, _legacy_badge_max);','                    var _legacy_opcode_pairs = max(1, floor((sprite_get_number(spr_opcode_button) - 2) / 2));','                    var _legacy_opcode_style = min(_preset, _legacy_opcode_pairs - 1);','                    buttonStyle = _legacy_opcode_style * 2;','                    niceSliceFrm = 0;','                }','                uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;','            }',''])
+          cut('            else if (_op.action == "CYBER_PRESET") {', '            else if (_op.action == "PALETTE_STYLE") {', preset_action, 'preset action')
+          s = s.replace('            else if (_op.action == "MACRO_STYLE") {\n                macroStyle = (macroStyle + 1) mod 2;\n            }\n', '')
+          s = s.replace('            else if (_op.action == "MENU_CHROME") {\n                uiChromeStyle = (uiChromeStyle + 1) mod 2;\n            }\n', '')
+          panel_old = '            else if (_op.action == "PANEL_STYLE") {\n                niceSliceFrm = (niceSliceFrm + 1) mod max(1, sprite_get_number(spr_glassSlice));\n            }'
+          panel_new = '            else if (_op.action == "PANEL_STYLE") {\n                niceSliceFrm = (niceSliceFrm + 1) mod max(1, sprite_get_number(spr_glassSlice));\n                uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;\n            }'
+          if panel_old in s: s = s.replace(panel_old, panel_new, 1)
+          button_draw = '\n'.join(['    // Button background sprite. Cyber keeps its base and layers the highlight frame over it.','    var _cyber_btn_style = max(0, sprite_get_number(spr_opcode_button) - 2);','    var _is_cyber_button = (buttonStyle == _cyber_btn_style);','    if (_is_cyber_button) {','        draw_sprite_ext(spr_opcode_button, buttonStyle, btn_x, btn_y, 1, 1, 0, c_white, 1);','        if (is_hover || _is_finder_match) {','            draw_sprite_ext(spr_opcode_button, buttonStyle+1, btn_x, btn_y, 1, 1, 0, c_white, 0.55);','        }','    } else if (is_hover) {','        draw_sprite_ext(spr_opcode_button, buttonStyle+1, btn_x, btn_y, 1, 1, 0, c_white, 1);','    } else {','        draw_sprite_ext(spr_opcode_button, buttonStyle, btn_x, btn_y, 1, 1, 0, c_white, 1);','    }','',''])
+          cut('    // Button background sprite', '    // Draw mnemonic label\n', button_draw, 'button draw')
+          glow = '\n'.join(['    // Opcode hover/finder glow. Cyber overlays use normal blending only.','    if (is_hover || _is_finder_match) {','        if (_is_cyber_button) {','            draw_set_alpha(0.22);','            draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);','            draw_set_alpha(1.0);','        } else {','            gpu_set_blendmode(bm_add);','            draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);','            gpu_set_blendmode(bm_normal);','        }','    }','    // Finder pulse. Cyber remains normal-blend here as well.','    if (_is_finder_match && !is_hover) {','        var _pulse_scale = 1.0 + 0.2 * sin(degtorad(current_time * 0.4));','        var _pulse_alpha = 0.5 + 0.4 * sin(degtorad(current_time * 0.4));','        if (_is_cyber_button) {','            draw_set_alpha(_pulse_alpha * 0.20);','        } else {','            gpu_set_blendmode(bm_add);','            draw_set_alpha(_pulse_alpha);','        }','        draw_sprite_ext(spr_hover_glow, 0,','            btn_x + btn_w * 0.5, btn_y + btn_h * 0.5,','            _pulse_scale, _pulse_scale,','            0, c_aqua, 1.0);','        draw_set_alpha(1.0);','        if (!_is_cyber_button) gpu_set_blendmode(bm_normal);','    }','',''])
+          starts = ['    // Opcode hover/finder highlight. Cyber uses a restrained normal-blend glow.\n','    // Opcode hover/finder glow. Cyber overlays are normal-blend only.\n']
+          for gs in starts:
+              if gs in s:
+                  cut(gs, '    // Spawn on click\n', glow, 'opcode glow')
+                  break
+          else: raise SystemExit('opcode glow start not found')
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit and clean helpers
+        shell: pwsh
+        run: |
+          Remove-Item -Force .github/workflows/refine-ui-win.yml
+          if (Test-Path .github/workflows/refine-ui-preset-opcode-panel.yml) { Remove-Item -Force .github/workflows/refine-ui-preset-opcode-panel.yml }
+          git config user.name "C64DevMachine UI patch"
+          git config user.email "actions@users.noreply.github.com"
+          git add C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml .github/workflows/refine-ui-win.yml .github/workflows/refine-ui-preset-opcode-panel.yml
+          git commit -m "Cycle five UI presets and refine Cyber opcode highlight"
+          git push origin HEAD:main
