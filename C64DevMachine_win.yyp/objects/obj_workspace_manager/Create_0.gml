@@ -99,7 +99,8 @@ paletteStyle=1
 showGrid=1;
 badgeStyle=1
 buttonStyle=1
-niceSliceFrm = 1;
+niceSliceFrm = 0;
+uiChromeStyle = 0; // 0 existing chrome, 1 appended Cyber chrome
 ini_open("c64devmachine.ini");
 vicedelay = ini_read_real("vice", "delay", 120) // shutdown settle delay in steps; build time is no longer part of VICE timing. Override via [vice] delay= in c64devmachine.ini on machines where taskkill/process teardown is slower.
 vice_launch_phase = 0;          // 0=idle/waiting, 1=VICE killed and waiting to relaunch

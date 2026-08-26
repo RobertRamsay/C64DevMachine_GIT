@@ -311,7 +311,7 @@ if point_in_rectangle(gui_mouse_x,gui_mouse_y,12,10,36,32)
 	
 // NEW menu bar here V099.81 
 
-draw_sprite(spr_menu_bar, paletteStyle, _sw_plus ,0)
+draw_sprite(spr_menu_bar, (uiChromeStyle == 0) ? paletteStyle : sprite_get_number(spr_menu_bar)-1, _sw_plus ,0)
 
 if (!expert_mode) {
 
@@ -561,7 +561,7 @@ if (gui_menu_open == 4) {
     var _panel_y_o  = _mbar_btn_h;
     var _panel_h_o  = array_length(_opt_list) * _item_h_o + 28;
 
-    draw_sprite_stretched(spr_glassSlice, 0,
+    draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_o, _panel_y_o,
                           _panel_w_o, _panel_h_o);
 
@@ -839,7 +839,7 @@ if (gui_menu_open == 1 && !global.lite) {
     var _panel_y_e    = _mbar_btn_h;
     var _panel_h_e    = array_length(_extra_list) * _item_h_e + _slice_top_e + _slice_bot_e;
 
-    draw_sprite_stretched(spr_glassSlice, 0,
+    draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_e, _panel_y_e,
                           _panel_w_e, _panel_h_e);
 
@@ -911,7 +911,7 @@ if (gui_menu_open == 2) {
     var _panel_y_v  = _mbar_btn_h;
     var _panel_h_v  = array_length(_vars_list) * _item_h_v + _slice_top_v + _slice_bot_v;
 
-    draw_sprite_stretched(spr_glassSlice, 0,
+    draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_v, _panel_y_v,
                           _panel_w_v, _panel_h_v);
 
@@ -960,7 +960,7 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
     var _bopen = (gui_menu_open == _bi);
     var _bdisabled = (_bi == 1 && global.lite);
 
-    draw_sprite_ext(spr_menu_button, paletteStyle,
+    draw_sprite_ext(spr_menu_button, (uiChromeStyle == 0) ? paletteStyle : sprite_get_number(spr_menu_button)-1,
                     _bx, _by, 1, 1, 0, c_white, 1);
 
     var _bhover = (!_bdisabled &&
@@ -968,7 +968,7 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
                    gui_mouse_y >= _by && gui_mouse_y < _by + _mbar_btn_h);
     if (_bhover || _bopen) {
         gpu_set_blendmode(bm_add);
-        draw_sprite_ext(spr_menu_button, paletteStyle,
+        draw_sprite_ext(spr_menu_button, (uiChromeStyle == 0) ? paletteStyle : sprite_get_number(spr_menu_button)-1,
                         _bx, _by, 1, 1, 0, c_white, 0.2);
         gpu_set_blendmode(bm_normal);
     }
@@ -1018,7 +1018,7 @@ if (gui_menu_open == 3) {
     var _panel_y_p  = _mbar_btn_h;
     var _panel_h_p  = array_length(_proj_list) * _item_h_p + 28;
 
-    draw_sprite_stretched(spr_glassSlice, 0,
+    draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_p, _panel_y_p,
                           _panel_w_p, _panel_h_p);
 
@@ -1234,7 +1234,7 @@ if (gui_menu_open == 5) {
     var _panel_y_d  = _mbar_btn_h;
     var _panel_h_d  = array_length(_docs_list) * _item_h_d + 28;
 
-    draw_sprite_stretched(spr_glassSlice, 0,
+    draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_d, _panel_y_d,
                           _panel_w_d, _panel_h_d);
 
@@ -1297,7 +1297,7 @@ if (gui_menu_open == 6) {
     var _panel_y_i  = _mbar_btn_h;
     var _panel_h_i  = array_length(_imp_list) * _item_h_i + 28;
 
-    draw_sprite_stretched(spr_glassSlice, 0,
+    draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_i, _panel_y_i,
                           _panel_w_i, _panel_h_i);
 
@@ -1406,7 +1406,7 @@ if (gui_menu_open == 0) {
     var _panel_h    = array_length(_mac_list) * _item_h + _slice_top + _slice_bot;
 
     // Draw spr_glassSlice using nine-slice stretching
-    draw_sprite_stretched(spr_glassSlice, 0,
+    draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x, _panel_y,
                           _panel_w, _panel_h);
 

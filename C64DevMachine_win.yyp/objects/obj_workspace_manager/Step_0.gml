@@ -1312,8 +1312,8 @@ if (!is_entering_text && !global.is_any_text_active && !global.c64u_overlay_acti
 	{bkgImg++;
 		if bkgImg>sprite_get_number(spr_bkg)-1 bkgImg=0
 	}	
-	if keyboard_check_pressed(ord("9")) niceSliceFrm ++;
-	if keyboard_check_pressed(ord("0")) {niceSliceFrm=0;bkgImg=0;paletteStyle=0;buttonStyle=0}
+	if keyboard_check_pressed(ord("9")) { uiChromeStyle = (uiChromeStyle + 1) mod 2; niceSliceFrm = (uiChromeStyle == 0) ? 0 : sprite_get_number(spr_glassSlice)-1; }
+	if keyboard_check_pressed(ord("0")) {uiChromeStyle=0;niceSliceFrm=0;bkgImg=0;paletteStyle=0;buttonStyle=0}
 	
 }
 
