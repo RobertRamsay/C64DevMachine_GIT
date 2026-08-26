@@ -24,7 +24,7 @@
   "height":49,
   "HTile":false,
   "layers":[
-    {"$GMImageLayer":"","%Name":"9ecfd1c7-a3b6-456c-a3f2-2a86f575b105","blendMode":0,"displayName":"default","isLocked":false,"name":"9ecfd1c7-a3b6-456c-a3f2-2a86f575b105","opacity":100.0,"resourceType":"GMImageLayer","resourceVersion":"2.0","visible":true,},
+    {"$GMImageLayer":"","%Name":"9ecfd1c7-a3b6-456c-a3f2-2a86f575b105","blendMode":0,"displayName":"default","isLocked":false,"name":"9ecfd1c7-a3b6-456c-a3f2-2a86f575b105","opacity":47.0,"resourceType":"GMImageLayer","resourceVersion":"2.0","visible":true,},
   ],
   "name":"spr_opcode_button",
   "nineSlice":null,
