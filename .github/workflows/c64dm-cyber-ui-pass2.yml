@@ -1,0 +1,156 @@
+name: C64DM Cyber UI pass 2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/c64dm-cyber-ui-pass2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Generate and append Cyber UI frames
+        shell: bash
+        run: |
+          python -m pip install --quiet pillow
+          python <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont
+          import re, uuid
+
+          ROOT = Path('C64DevMachine_win.yyp')
+          YELLOW=(246,221,40,255); CYAN=(0,216,220,255); RED=(235,52,66,255)
+          DARK=(8,13,15,255); DARK2=(15,22,25,255); LINE=(55,66,67,255)
+
+          def font(size, bold=False):
+              p='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' if bold else '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+              return ImageFont.truetype(p,size)
+
+          def clipped_poly(w,h,cut=10,margin=1):
+              return [(margin+cut,margin),(w-margin-cut,margin),(w-margin,margin+cut),(w-margin,h-margin-cut),(w-margin-cut,h-margin),(margin+cut,h-margin),(margin,h-margin-cut),(margin,margin+cut)]
+
+          def add_noise_lines(d,w,h,step=16,alpha=30):
+              for y in range(0,h,step): d.line((0,y,w,y), fill=(90,105,105,alpha), width=1)
+              for x in range(0,w,step*2): d.line((x,0,x,h), fill=(70,90,90,alpha), width=1)
+
+          def mk_palette(w,h):
+              im=Image.new('RGBA',(w,h),DARK); d=ImageDraw.Draw(im,'RGBA')
+              add_noise_lines(d,w,h,32,18)
+              d.rectangle((0,0,w-1,h-1), outline=(106,104,48,255), width=2)
+              d.line((0,48,w-1,48), fill=YELLOW, width=2)
+              d.polygon([(0,0),(70,0),(52,18),(0,18)], fill=(246,221,40,45))
+              d.polygon([(w-1,h-130),(w-1,h-1),(w-70,h-1)], fill=(235,52,66,30))
+              for yy in range(80,h,96):
+                  d.line((8,yy,w-9,yy), fill=(246,221,40,25), width=1)
+              return im
+
+          def mk_button(w,h,hover=False,macro=False):
+              im=Image.new('RGBA',(w,h),(0,0,0,0)); d=ImageDraw.Draw(im,'RGBA')
+              poly=clipped_poly(w,h,8,2)
+              d.polygon(poly, fill=(14,20,22,245))
+              d.line(poly+[poly[0]], fill=YELLOW if not macro else CYAN, width=2)
+              d.line((8,h-7,w-10,h-7), fill=RED if not macro else YELLOW, width=2)
+              d.polygon([(w-20,2),(w-2,2),(w-2,18)], fill=(0,216,220,75))
+              if hover:
+                  d.polygon(poly, fill=(246,221,40,35))
+                  d.line((10,5,w-14,5), fill=(255,247,170,230), width=2)
+              return im
+
+          def mk_logo(w,h):
+              im=Image.new('RGBA',(w,h),(0,0,0,0)); d=ImageDraw.Draw(im,'RGBA')
+              poly=[(2,4),(18,4),(24,0),(w-16,0),(w-2,10),(w-10,h-2),(18,h-2),(2,h-12)]
+              d.polygon(poly,fill=(15,20,21,245)); d.line(poly+[poly[0]],fill=YELLOW,width=2)
+              d.rectangle((8,8,18,h-9), fill=YELLOW)
+              d.rectangle((11,11,18,h-12), fill=DARK)
+              d.text((27,7),'C64 DEV MACHINE',font=font(15,True),fill=(238,238,220,255))
+              d.line((178,h-7,232,h-7),fill=CYAN,width=2); d.line((234,h-7,248,h-7),fill=RED,width=2)
+              return im
+
+          def mk_bg(w,h):
+              im=Image.new('RGBA',(w,h),DARK); d=ImageDraw.Draw(im,'RGBA')
+              # subtle vertical gradient
+              for y in range(h):
+                  t=y/(h-1); v=int(8+8*t)
+                  d.line((0,y,w,y),fill=(v,v+5,v+7,255))
+              # grid
+              for x in range(0,w,32): d.line((x,0,x,h),fill=(40,60,61,45))
+              for y in range(0,h,32): d.line((0,y,w,y),fill=(40,60,61,45))
+              # tech traces
+              d.line((300,120,900,120,980,200,1450,200),fill=(0,216,220,35),width=2)
+              d.line((420,870,1000,870,1080,790,1600,790),fill=(246,221,40,28),width=2)
+              d.polygon([(1500,0),(1920,0),(1920,80),(1580,80)],fill=(246,221,40,16))
+              d.polygon([(0,980),(0,1080),(420,1080),(340,1000)],fill=(235,52,66,13))
+              # sparse warning ticks
+              for x in range(1250,1700,40): d.line((x,1010,x+18,990),fill=(246,221,40,32),width=3)
+              return im
+
+          def transparent(w,h): return Image.new('RGBA',(w,h),(0,0,0,0))
+
+          def append_frames(sprite, images):
+              folder=ROOT/'sprites'/sprite; yy=folder/f'{sprite}.yy'; s=yy.read_text(encoding='utf-8')
+              m=re.search(r'"width":(\d+)',s); n=re.search(r'"height":(\d+)',s)
+              w,h=int(m.group(1)),int(n.group(1))
+              layer_ids=re.findall(r'\{"\$GMImageLayer":"","%Name":"([^"]+)"',s)
+              old_frames=re.findall(r'\{"\$GMSpriteFrame":"v1","%Name":"([^"]+)"',s)
+              new_ids=[]
+              for im in images:
+                  assert im.size==(w,h),(sprite,im.size,(w,h))
+                  fid=str(uuid.uuid4()); new_ids.append(fid)
+                  im.save(folder/f'{fid}.png')
+                  ldir=folder/'layers'/fid; ldir.mkdir(parents=True,exist_ok=True)
+                  # Keep editor layers valid: composite on bottom/default layer, transparent on others.
+                  for li,lid in enumerate(layer_ids):
+                      layer_im = im if li==len(layer_ids)-1 else transparent(w,h)
+                      layer_im.save(ldir/f'{lid}.png')
+              frame_lines=''.join(f'    {{"$GMSpriteFrame":"v1","%Name":"{fid}","name":"{fid}","resourceType":"GMSpriteFrame","resourceVersion":"2.0",}},\n' for fid in new_ids)
+              anchor='  ],\n  "gridX":0,'
+              if anchor not in s: raise SystemExit(f'frames anchor missing {sprite}')
+              s=s.replace(anchor,frame_lines+anchor,1)
+              new_count=len(old_frames)+len(new_ids)
+              s=re.sub(r'("length":)\d+(?:\.0)?',lambda m:m.group(1)+f'{new_count}.0',s,count=1)
+              kf_anchor='          ],"resourceType":"KeyframeStore<SpriteFrameKeyframe>"'
+              if kf_anchor not in s: raise SystemExit(f'keyframe anchor missing {sprite}')
+              kfs=''
+              for j,fid in enumerate(new_ids):
+                  key=len(old_frames)+j
+                  kid=str(uuid.uuid4())
+                  kfs += ('            {"$Keyframe<SpriteFrameKeyframe>":"","Channels":{\n'
+                          f'                "0":{{"$SpriteFrameKeyframe":"","Id":{{"name":"{fid}","path":"sprites/{sprite}/{sprite}.yy",}},"resourceType":"SpriteFrameKeyframe","resourceVersion":"2.0",}},\n'
+                          f'              }},"Disabled":false,"id":"{kid}","IsCreationKey":false,"Key":{key}.0,"Length":1.0,"resourceType":"Keyframe<SpriteFrameKeyframe>","resourceVersion":"2.0","Stretch":false,}},\n')
+              s=s.replace(kf_anchor,kfs+kf_anchor,1)
+              yy.write_text(s,encoding='utf-8')
+              return new_ids
+
+          append_frames('spr_palette_page',[mk_palette(267,1080)])
+          append_frames('spr_opcode_button',[mk_button(96,49,False),mk_button(96,49,True)])
+          append_frames('spr_macroButton',[mk_button(82,36,False,True),mk_button(82,36,True,True)])
+          append_frames('spr_logobadge',[mk_logo(256,34)])
+          append_frames('spr_bkg',[mk_bg(1920,1080)])
+
+          # Make the new palette style select the appended badge + opcode pair.
+          step=ROOT/'objects/obj_workspace_manager/Step_0.gml'; s=step.read_text(encoding='utf-8')
+          old='''\t\tbadgeStyle=0\n\t\tif paletteStyle>1 badgeStyle=1 \n\t\tbuttonStyle=0\n\t\tif paletteStyle>1 buttonStyle=2 '''
+          new='''\t\tbadgeStyle=0\n\t\tbuttonStyle=0\n\t\tif (paletteStyle == sprite_get_number(spr_palette_page)-1) {\n\t\t\tbadgeStyle = sprite_get_number(spr_logobadge)-1;\n\t\t\tbuttonStyle = sprite_get_number(spr_opcode_button)-2;\n\t\t} else if (paletteStyle>1) {\n\t\t\tbadgeStyle=1;\n\t\t\tbuttonStyle=2;\n\t\t} '''
+          if old not in s: raise SystemExit('Step theme block not found')
+          step.write_text(s.replace(old,new,1),encoding='utf-8')
+
+          draw=ROOT/'objects/obj_workspace_manager/Draw_64.gml'; s=draw.read_text(encoding='utf-8')
+          s=s.replace('var _theme_labels = ["1", "2", "3", "4"];\n            _state_str = _theme_labels[paletteStyle mod 4];',
+                      'var _theme_labels = ["1", "2", "3", "4", "CYBER"];\n            _state_str = _theme_labels[paletteStyle mod array_length(_theme_labels)];',1)
+          old2='''                badgeStyle = 0;\n                if (paletteStyle > 1) {\n                    badgeStyle = 1;\n                }\n                buttonStyle = 0;\n                if (paletteStyle > 1) {\n                    buttonStyle = 2;\n                }'''
+          new2='''                badgeStyle = 0;\n                buttonStyle = 0;\n                if (paletteStyle == sprite_get_number(spr_palette_page) - 1) {\n                    badgeStyle = sprite_get_number(spr_logobadge) - 1;\n                    buttonStyle = sprite_get_number(spr_opcode_button) - 2;\n                } else if (paletteStyle > 1) {\n                    badgeStyle = 1;\n                    buttonStyle = 2;\n                }'''
+          if old2 not in s: raise SystemExit('Options theme block not found')
+          draw.write_text(s.replace(old2,new2,1),encoding='utf-8')
+          PY
+
+          git config user.name 'C64DM UI Bot'
+          git config user.email 'actions@github.com'
+          git add C64DevMachine_win.yyp
+          git commit -m 'Append Cyber palette button logo and background styles'
+          git push
