@@ -383,24 +383,36 @@ for (var i = 0; i < array_length(active_palette); i++) {
     draw_text(btn_x + btn_w * 0.5, btn_y + (btn_h * 0.5) - 6, item.title);
     draw_set_halign(fa_left);
 
-    // Additive hover glow (hover or finder highlight)
+    // Opcode hover/finder highlight. Cyber uses a restrained normal-blend glow.
     if (is_hover || _is_finder_match) {
-        gpu_set_blendmode(bm_add);
-        draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);
-        gpu_set_blendmode(bm_normal);
+        var _cyber_btn_style = max(0, sprite_get_number(spr_opcode_button) - 2);
+        if (buttonStyle == _cyber_btn_style) {
+            draw_set_alpha(0.32);
+            draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);
+            draw_set_alpha(1.0);
+        } else {
+            gpu_set_blendmode(bm_add);
+            draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);
+            gpu_set_blendmode(bm_normal);
+        }
     }
-    // Finder pulse glow
+    // Finder pulse glow. Cyber stays normal-blend and deliberately subtle.
     if (_is_finder_match && !is_hover) {
         var _pulse_scale = 1.0 + 0.2 * sin(degtorad(current_time * 0.4));
         var _pulse_alpha = 0.5 + 0.4 * sin(degtorad(current_time * 0.4));
-        gpu_set_blendmode(bm_add);
-        draw_set_alpha(_pulse_alpha);
+        var _cyber_btn_style_pulse = max(0, sprite_get_number(spr_opcode_button) - 2);
+        if (buttonStyle == _cyber_btn_style_pulse) {
+            draw_set_alpha(_pulse_alpha * 0.28);
+        } else {
+            gpu_set_blendmode(bm_add);
+            draw_set_alpha(_pulse_alpha);
+        }
         draw_sprite_ext(spr_hover_glow, 0,
             btn_x + btn_w * 0.5, btn_y + btn_h * 0.5,
             _pulse_scale, _pulse_scale,
             0, c_aqua, 1.0);
         draw_set_alpha(1.0);
-        gpu_set_blendmode(bm_normal);
+        if (buttonStyle != _cyber_btn_style_pulse) gpu_set_blendmode(bm_normal);
     }
 
     // Spawn on click
@@ -1523,13 +1535,8 @@ if (gui_menu_open == 0) {
             hover_macro_title = _mp.title;
         }
 
-        // Macro row skin: use the appended Cyber normal/hover pair when selected.
-        if (macroStyle == 1 && _mp.type != "HEADER") {
-            var _macro_cy_base = max(0, sprite_get_number(spr_macroButton) - 2);
-            var _macro_cy_frame = _ihov ? min(_macro_cy_base + 1, sprite_get_number(spr_macroButton) - 1) : _macro_cy_base;
-            draw_sprite_stretched(spr_macroButton, _macro_cy_frame, _ix1 + 4, _iy, _panel_w - 8, _item_h);
-        }
-        else if (_ihov) {
+        // Keep macro menu rows clean: no button sprite behind menu entries.
+        if (_ihov) {
             draw_set_alpha(0.35);
             draw_set_color(c_white);
             draw_rectangle(_ix1 + 4, _iy, _ix2 - 4, _iy + _item_h, false);
