@@ -717,7 +717,6 @@ if (gui_menu_open == 4) {
         
 
         if (_ihov && mouse_check_button_pressed(mb_left)) {
-            gui_menu_open = -1;
             if (_op.action == "EXPERT_MODE") {
                 expert_mode = !expert_mode;
                 opcode_finder_active     = false;
@@ -1061,10 +1060,11 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
                    gui_mouse_x >= _bx && gui_mouse_x < _bx + _mbar_btn_w &&
                    gui_mouse_y >= _by && gui_mouse_y < _by + _mbar_btn_h);
     if (_bhover || _bopen) {
-        gpu_set_blendmode(bm_add);
+        var _menu_overlay_additive = (uiChromeStyle == 0);
+        if (_menu_overlay_additive) gpu_set_blendmode(bm_add);
         draw_sprite_ext(spr_menu_button, (uiChromeStyle == 0) ? paletteStyle : sprite_get_number(spr_menu_button)-1,
                         _bx, _by, 1, 1, 0, c_white, 0.2);
-        gpu_set_blendmode(bm_normal);
+        if (_menu_overlay_additive) gpu_set_blendmode(bm_normal);
     }
 
     draw_set_font(fnt_C64_Angled);
