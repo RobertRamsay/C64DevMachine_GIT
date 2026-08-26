@@ -640,8 +640,8 @@ if (gui_menu_open == 4) {
 		
 		
         if (_op.action == "THEME") {
-            var _theme_labels = ["1", "2", "3", "4"];
-            _state_str = _theme_labels[paletteStyle mod 4];
+            var _theme_labels = ["1", "2", "3", "4", "CYBER"];
+            _state_str = _theme_labels[paletteStyle mod array_length(_theme_labels)];
             _state_col = make_color_rgb(160, 160, 220);
         }
         // Shortcut hint sits flush against the right edge; the state (if any)
@@ -746,11 +746,12 @@ if (gui_menu_open == 4) {
                     paletteStyle = 0;
                 }
                 badgeStyle = 0;
-                if (paletteStyle > 1) {
-                    badgeStyle = 1;
-                }
                 buttonStyle = 0;
-                if (paletteStyle > 1) {
+                if (paletteStyle == sprite_get_number(spr_palette_page) - 1) {
+                    badgeStyle = sprite_get_number(spr_logobadge) - 1;
+                    buttonStyle = sprite_get_number(spr_opcode_button) - 2;
+                } else if (paletteStyle > 1) {
+                    badgeStyle = 1;
                     buttonStyle = 2;
                 }
                 bkgImg++;

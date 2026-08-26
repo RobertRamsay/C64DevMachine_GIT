@@ -1304,9 +1304,14 @@ if (!is_entering_text && !global.is_any_text_active && !global.c64u_overlay_acti
 	{paletteStyle++;
 		if paletteStyle>sprite_get_number(spr_bkg)-1 paletteStyle=0
 		badgeStyle=0
-		if paletteStyle>1 badgeStyle=1 
 		buttonStyle=0
-		if paletteStyle>1 buttonStyle=2 
+		if (paletteStyle == sprite_get_number(spr_palette_page)-1) {
+			badgeStyle = sprite_get_number(spr_logobadge)-1;
+			buttonStyle = sprite_get_number(spr_opcode_button)-2;
+		} else if (paletteStyle>1) {
+			badgeStyle=1;
+			buttonStyle=2;
+		} 
 	}	
 	if keyboard_check_pressed(ord("8")) 
 	{bkgImg++;
