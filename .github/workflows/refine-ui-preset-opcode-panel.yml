@@ -23,10 +23,8 @@ jobs:
           git pull --rebase origin main
           python3 - <<'PY'
           from pathlib import Path
-
           p = Path('C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml')
           s = p.read_text(encoding='utf-8')
-
           def cut(start, end, replacement, label):
               global s
               a = s.find(start)
@@ -34,122 +32,26 @@ jobs:
               b = s.find(end, a)
               if b < 0: raise SystemExit(label + ' end not found')
               s = s[:a] + replacement + s[b:]
-
           def rep(old, new, label):
               global s
               if old not in s: raise SystemExit(label + ' not found')
               s = s.replace(old, new, 1)
-
-          # Panel Style owns the menu bar chrome. This also heals old mismatched INI values.
           rep('var _menu_labels = [\n    "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TBA"\n];', 'var _menu_labels = [\n    "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TBA"\n];\n\n// Panel Style owns menu-bar chrome.\nuiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;', 'menu sync')
-
-          # Remove redundant controls from Options.
           rep('        { title: "MACRO BUTTONS",      action: "MACRO_STYLE"      },\n', '', 'macro option')
           rep('        { title: "MENU CHROME",        action: "MENU_CHROME"      },\n', '', 'chrome option')
-
-          # UI PRESET state is deliberately only 1 or 2; no MIX state.
-          preset_state = '''        if (_op.action == "CYBER_PRESET") {
-            var _cy_btn_state = max(0, sprite_get_number(spr_opcode_button) - 2);
-            var _cy_node_state = sprite_get_number(spr_9s_tile1);
-            var _cy_all_state = (paletteStyle == sprite_get_number(spr_palette_page) - 1 &&
-                                 badgeStyle == sprite_get_number(spr_logobadge) - 1 &&
-                                 buttonStyle == _cy_btn_state &&
-                                 bkgImg == sprite_get_number(spr_bkg) - 1 &&
-                                 uiChromeStyle == 1 &&
-                                 niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 &&
-                                 nodeStyle == _cy_node_state);
-            _state_str = _cy_all_state ? "2" : "1";
-            _state_col = _cy_all_state ? c_yellow : c_gray;
-        }
-'''
+          preset_state = '\n'.join(['        if (_op.action == "CYBER_PRESET") {','            var _cy_btn_state = max(0, sprite_get_number(spr_opcode_button) - 2);','            var _cy_node_state = sprite_get_number(spr_9s_tile1);','            var _cy_all_state = (paletteStyle == sprite_get_number(spr_palette_page) - 1 &&','                                 badgeStyle == sprite_get_number(spr_logobadge) - 1 &&','                                 buttonStyle == _cy_btn_state &&','                                 bkgImg == sprite_get_number(spr_bkg) - 1 &&','                                 uiChromeStyle == 1 &&','                                 niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 &&','                                 nodeStyle == _cy_node_state);','            _state_str = _cy_all_state ? "2" : "1";','            _state_col = _cy_all_state ? c_yellow : c_gray;','        }',''])
           cut('        if (_op.action == "CYBER_PRESET") {', '        if (_op.action == "PALETTE_STYLE") {', preset_state, 'preset state')
-
-          # Remove hidden/dead Macro Style and Menu Chrome state blocks.
           rep('        if (_op.action == "MACRO_STYLE") {\n            _state_str = string(macroStyle + 1);\n            _state_col = macroStyle ? c_yellow : c_gray;\n        }\n', '', 'macro state')
           rep('        if (_op.action == "MENU_CHROME") {\n            _state_str = string(uiChromeStyle + 1);\n            _state_col = uiChromeStyle ? c_yellow : c_gray;\n        }\n', '', 'chrome state')
-
-          # UI PRESET toggles the complete base/cyber sets, excluding menu-item styling.
-          preset_action = '''            else if (_op.action == "CYBER_PRESET") {
-                var _cy_btn_action = max(0, sprite_get_number(spr_opcode_button) - 2);
-                var _cy_node_action = sprite_get_number(spr_9s_tile1);
-                var _cy_all_action = (paletteStyle == sprite_get_number(spr_palette_page) - 1 &&
-                                      badgeStyle == sprite_get_number(spr_logobadge) - 1 &&
-                                      buttonStyle == _cy_btn_action &&
-                                      bkgImg == sprite_get_number(spr_bkg) - 1 &&
-                                      uiChromeStyle == 1 &&
-                                      niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 &&
-                                      nodeStyle == _cy_node_action);
-                if (_cy_all_action) {
-                    paletteStyle = 0; badgeStyle = 0; buttonStyle = 0; bkgImg = 0;
-                    uiChromeStyle = 0; niceSliceFrm = 0; nodeStyle = 0;
-                } else {
-                    paletteStyle = max(0, sprite_get_number(spr_palette_page) - 1);
-                    badgeStyle = max(0, sprite_get_number(spr_logobadge) - 1);
-                    buttonStyle = _cy_btn_action;
-                    bkgImg = max(0, sprite_get_number(spr_bkg) - 1);
-                    niceSliceFrm = max(0, sprite_get_number(spr_glassSlice) - 1);
-                    uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
-                    nodeStyle = _cy_node_action;
-                }
-            }
-'''
+          preset_action = '\n'.join(['            else if (_op.action == "CYBER_PRESET") {','                var _cy_btn_action = max(0, sprite_get_number(spr_opcode_button) - 2);','                var _cy_node_action = sprite_get_number(spr_9s_tile1);','                var _cy_all_action = (paletteStyle == sprite_get_number(spr_palette_page) - 1 &&','                                      badgeStyle == sprite_get_number(spr_logobadge) - 1 &&','                                      buttonStyle == _cy_btn_action &&','                                      bkgImg == sprite_get_number(spr_bkg) - 1 &&','                                      uiChromeStyle == 1 &&','                                      niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 &&','                                      nodeStyle == _cy_node_action);','                if (_cy_all_action) {','                    paletteStyle = 0; badgeStyle = 0; buttonStyle = 0; bkgImg = 0;','                    uiChromeStyle = 0; niceSliceFrm = 0; nodeStyle = 0;','                } else {','                    paletteStyle = max(0, sprite_get_number(spr_palette_page) - 1);','                    badgeStyle = max(0, sprite_get_number(spr_logobadge) - 1);','                    buttonStyle = _cy_btn_action;','                    bkgImg = max(0, sprite_get_number(spr_bkg) - 1);','                    niceSliceFrm = max(0, sprite_get_number(spr_glassSlice) - 1);','                    uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;','                    nodeStyle = _cy_node_action;','                }','            }',''])
           cut('            else if (_op.action == "CYBER_PRESET") {', '            else if (_op.action == "PALETTE_STYLE") {', preset_action, 'preset action')
-
           rep('            else if (_op.action == "MACRO_STYLE") {\n                macroStyle = (macroStyle + 1) mod 2;\n            }\n', '', 'macro action')
           rep('            else if (_op.action == "MENU_CHROME") {\n                uiChromeStyle = (uiChromeStyle + 1) mod 2;\n            }\n', '', 'chrome action')
           rep('            else if (_op.action == "PANEL_STYLE") {\n                niceSliceFrm = (niceSliceFrm + 1) mod max(1, sprite_get_number(spr_glassSlice));\n            }', '            else if (_op.action == "PANEL_STYLE") {\n                niceSliceFrm = (niceSliceFrm + 1) mod max(1, sprite_get_number(spr_glassSlice));\n                uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;\n            }', 'panel action')
-
-          # Cyber opcode: base art remains; highlight frame is layered above it with normal alpha blending.
-          button_draw = '''    // Button background sprite. Cyber keeps its base and layers the highlight frame over it.
-    var _cyber_btn_style = max(0, sprite_get_number(spr_opcode_button) - 2);
-    var _is_cyber_button = (buttonStyle == _cyber_btn_style);
-    if (_is_cyber_button) {
-        draw_sprite_ext(spr_opcode_button, buttonStyle, btn_x, btn_y, 1, 1, 0, c_white, 1);
-        if (is_hover || _is_finder_match) {
-            draw_sprite_ext(spr_opcode_button, buttonStyle+1, btn_x, btn_y, 1, 1, 0, c_white, 1);
-        }
-    } else if (is_hover) {
-        draw_sprite_ext(spr_opcode_button, buttonStyle+1, btn_x, btn_y, 1, 1, 0, c_white, 1);
-    } else {
-        draw_sprite_ext(spr_opcode_button, buttonStyle, btn_x, btn_y, 1, 1, 0, c_white, 1);
-    }
-
-'''
+          button_draw = '\n'.join(['    // Button background sprite. Cyber keeps its base and layers the highlight frame over it.','    var _cyber_btn_style = max(0, sprite_get_number(spr_opcode_button) - 2);','    var _is_cyber_button = (buttonStyle == _cyber_btn_style);','    if (_is_cyber_button) {','        draw_sprite_ext(spr_opcode_button, buttonStyle, btn_x, btn_y, 1, 1, 0, c_white, 1);','        if (is_hover || _is_finder_match) {','            draw_sprite_ext(spr_opcode_button, buttonStyle+1, btn_x, btn_y, 1, 1, 0, c_white, 1);','        }','    } else if (is_hover) {','        draw_sprite_ext(spr_opcode_button, buttonStyle+1, btn_x, btn_y, 1, 1, 0, c_white, 1);','    } else {','        draw_sprite_ext(spr_opcode_button, buttonStyle, btn_x, btn_y, 1, 1, 0, c_white, 1);','    }','',''])
           cut('    // Button background sprite\n', '    // Draw mnemonic label\n', button_draw, 'button draw')
-
-          glow = '''    // Opcode hover/finder glow. Cyber overlays are normal-blend only.
-    if (is_hover || _is_finder_match) {
-        if (_is_cyber_button) {
-            draw_set_alpha(0.32);
-            draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);
-            draw_set_alpha(1.0);
-        } else {
-            gpu_set_blendmode(bm_add);
-            draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);
-            gpu_set_blendmode(bm_normal);
-        }
-    }
-    // Finder pulse. Cyber is also normal-blend here.
-    if (_is_finder_match && !is_hover) {
-        var _pulse_scale = 1.0 + 0.2 * sin(degtorad(current_time * 0.4));
-        var _pulse_alpha = 0.5 + 0.4 * sin(degtorad(current_time * 0.4));
-        if (_is_cyber_button) {
-            draw_set_alpha(_pulse_alpha * 0.28);
-        } else {
-            gpu_set_blendmode(bm_add);
-            draw_set_alpha(_pulse_alpha);
-        }
-        draw_sprite_ext(spr_hover_glow, 0,
-            btn_x + btn_w * 0.5, btn_y + btn_h * 0.5,
-            _pulse_scale, _pulse_scale,
-            0, c_aqua, 1.0);
-        draw_set_alpha(1.0);
-        if (!_is_cyber_button) gpu_set_blendmode(bm_normal);
-    }
-
-'''
+          glow = '\n'.join(['    // Opcode hover/finder glow. Cyber overlays are normal-blend only.','    if (is_hover || _is_finder_match) {','        if (_is_cyber_button) {','            draw_set_alpha(0.32);','            draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);','            draw_set_alpha(1.0);','        } else {','            gpu_set_blendmode(bm_add);','            draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);','            gpu_set_blendmode(bm_normal);','        }','    }','    // Finder pulse. Cyber is also normal-blend here.','    if (_is_finder_match && !is_hover) {','        var _pulse_scale = 1.0 + 0.2 * sin(degtorad(current_time * 0.4));','        var _pulse_alpha = 0.5 + 0.4 * sin(degtorad(current_time * 0.4));','        if (_is_cyber_button) {','            draw_set_alpha(_pulse_alpha * 0.28);','        } else {','            gpu_set_blendmode(bm_add);','            draw_set_alpha(_pulse_alpha);','        }','        draw_sprite_ext(spr_hover_glow, 0,','            btn_x + btn_w * 0.5, btn_y + btn_h * 0.5,','            _pulse_scale, _pulse_scale,','            0, c_aqua, 1.0);','        draw_set_alpha(1.0);','        if (!_is_cyber_button) gpu_set_blendmode(bm_normal);','    }','',''])
           cut('    // Opcode hover/finder highlight. Cyber uses a restrained normal-blend glow.\n', '    // Spawn on click\n', glow, 'opcode glow')
-
           p.write_text(s, encoding='utf-8')
           PY
 
