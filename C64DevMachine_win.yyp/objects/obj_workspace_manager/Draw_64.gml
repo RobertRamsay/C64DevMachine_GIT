@@ -369,8 +369,15 @@ for (var i = 0; i < array_length(active_palette); i++) {
         }
     }
 
-    // Button background sprite
-    if (is_hover) {
+    // Button background sprite. Cyber keeps its base and layers the highlight frame over it.
+    var _cyber_btn_style = max(0, sprite_get_number(spr_opcode_button) - 2);
+    var _is_cyber_button = (buttonStyle == _cyber_btn_style);
+    if (_is_cyber_button) {
+        draw_sprite_ext(spr_opcode_button, buttonStyle, btn_x, btn_y, 1, 1, 0, c_white, 1);
+        if (is_hover || _is_finder_match) {
+            draw_sprite_ext(spr_opcode_button, buttonStyle+1, btn_x, btn_y, 1, 1, 0, c_white, 0.55);
+        }
+    } else if (is_hover) {
         draw_sprite_ext(spr_opcode_button, buttonStyle+1, btn_x, btn_y, 1, 1, 0, c_white, 1);
     } else {
         draw_sprite_ext(spr_opcode_button, buttonStyle, btn_x, btn_y, 1, 1, 0, c_white, 1);
@@ -383,11 +390,10 @@ for (var i = 0; i < array_length(active_palette); i++) {
     draw_text(btn_x + btn_w * 0.5, btn_y + (btn_h * 0.5) - 6, item.title);
     draw_set_halign(fa_left);
 
-    // Opcode hover/finder highlight. Cyber uses a restrained normal-blend glow.
+    // Opcode hover/finder glow. Cyber overlays use normal blending only.
     if (is_hover || _is_finder_match) {
-        var _cyber_btn_style = max(0, sprite_get_number(spr_opcode_button) - 2);
-        if (buttonStyle == _cyber_btn_style) {
-            draw_set_alpha(0.32);
+        if (_is_cyber_button) {
+            draw_set_alpha(0.22);
             draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);
             draw_set_alpha(1.0);
         } else {
@@ -396,13 +402,12 @@ for (var i = 0; i < array_length(active_palette); i++) {
             gpu_set_blendmode(bm_normal);
         }
     }
-    // Finder pulse glow. Cyber stays normal-blend and deliberately subtle.
+    // Finder pulse. Cyber remains normal-blend here as well.
     if (_is_finder_match && !is_hover) {
         var _pulse_scale = 1.0 + 0.2 * sin(degtorad(current_time * 0.4));
         var _pulse_alpha = 0.5 + 0.4 * sin(degtorad(current_time * 0.4));
-        var _cyber_btn_style_pulse = max(0, sprite_get_number(spr_opcode_button) - 2);
-        if (buttonStyle == _cyber_btn_style_pulse) {
-            draw_set_alpha(_pulse_alpha * 0.28);
+        if (_is_cyber_button) {
+            draw_set_alpha(_pulse_alpha * 0.20);
         } else {
             gpu_set_blendmode(bm_add);
             draw_set_alpha(_pulse_alpha);
@@ -412,7 +417,7 @@ for (var i = 0; i < array_length(active_palette); i++) {
             _pulse_scale, _pulse_scale,
             0, c_aqua, 1.0);
         draw_set_alpha(1.0);
-        if (buttonStyle != _cyber_btn_style_pulse) gpu_set_blendmode(bm_normal);
+        if (!_is_cyber_button) gpu_set_blendmode(bm_normal);
     }
 
     // Spawn on click
@@ -548,6 +553,9 @@ var _menu_labels = [
     "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TBA"
 ];
 
+// Panel Style owns menu-bar chrome.
+uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
+
 // OPTIONS DROPDOWN (button 2)
 if (gui_menu_open == 4) {
     var _opt_list = [
@@ -563,10 +571,8 @@ if (gui_menu_open == 4) {
         { title: "UI PRESET",         action: "CYBER_PRESET"    },
         { title: "PALETTE STYLE",      action: "PALETTE_STYLE"    },
         { title: "OPCODE BUTTONS",     action: "OPCODE_STYLE"     },
-        { title: "MACRO BUTTONS",      action: "MACRO_STYLE"      },
         { title: "LOGO STYLE",         action: "BADGE_STYLE"      },
         { title: "BACKGROUND STYLE",   action: "BACKGROUND_STYLE" },
-        { title: "MENU CHROME",        action: "MENU_CHROME"      },
         { title: "PANEL STYLE",        action: "PANEL_STYLE"      },
         { title: "NODE STYLE",         action: "NODE_STYLE"       },
         { title: "RESET CUSTOM UI",    action: "RESET_UI"         },
@@ -660,20 +666,9 @@ if (gui_menu_open == 4) {
 		
 		
         if (_op.action == "CYBER_PRESET") {
-            var _cy_btn_state = max(0, sprite_get_number(spr_opcode_button) - 2);
-            var _cy_node_state = sprite_get_number(spr_9s_tile1);
-            var _cy_all_state = (paletteStyle == sprite_get_number(spr_palette_page) - 1 &&
-                                 badgeStyle == sprite_get_number(spr_logobadge) - 1 &&
-                                 buttonStyle == _cy_btn_state &&
-                                 bkgImg == sprite_get_number(spr_bkg) - 1 &&
-                                 uiChromeStyle == 1 &&
-                                 niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 &&
-                                 nodeStyle == _cy_node_state && macroStyle == 1);
-            var _base_all_state = (paletteStyle == 0 && badgeStyle == 0 && buttonStyle == 0 &&
-                                   bkgImg == 0 && uiChromeStyle == 0 && niceSliceFrm == 0 &&
-                                   nodeStyle == 0 && macroStyle == 0);
-            _state_str = _cy_all_state ? "2" : (_base_all_state ? "1" : "MIX");
-            _state_col = _cy_all_state ? c_yellow : (_base_all_state ? c_gray : make_color_rgb(80, 180, 200));
+            var _preset_count = max(1, sprite_get_number(spr_palette_page));
+            _state_str = string(clamp(paletteStyle, 0, _preset_count - 1) + 1);
+            _state_col = (paletteStyle == _preset_count - 1) ? c_yellow : make_color_rgb(160, 160, 220);
         }
         if (_op.action == "PALETTE_STYLE") {
             _state_str = string(paletteStyle + 1);
@@ -684,10 +679,6 @@ if (gui_menu_open == 4) {
             _state_str = string(buttonStyle + 1);
             _state_col = make_color_rgb(160, 160, 220);
         }
-        if (_op.action == "MACRO_STYLE") {
-            _state_str = string(macroStyle + 1);
-            _state_col = macroStyle ? c_yellow : c_gray;
-        }
         if (_op.action == "BADGE_STYLE") {
             _state_str = string(badgeStyle + 1);
             _state_col = make_color_rgb(160, 160, 220);
@@ -695,10 +686,6 @@ if (gui_menu_open == 4) {
         if (_op.action == "BACKGROUND_STYLE") {
             _state_str = string(bkgImg + 1);
             _state_col = make_color_rgb(160, 160, 220);
-        }
-        if (_op.action == "MENU_CHROME") {
-            _state_str = string(uiChromeStyle + 1);
-            _state_col = uiChromeStyle ? c_yellow : c_gray;
         }
         if (_op.action == "PANEL_STYLE") {
             _state_str = string(niceSliceFrm + 1);
@@ -804,28 +791,25 @@ if (gui_menu_open == 4) {
                 do_windowSizing();
             }
             else if (_op.action == "CYBER_PRESET") {
-                var _cy_btn_action = max(0, sprite_get_number(spr_opcode_button) - 2);
-                var _cy_node_action = sprite_get_number(spr_9s_tile1);
-                var _cy_all_action = (paletteStyle == sprite_get_number(spr_palette_page) - 1 &&
-                                      badgeStyle == sprite_get_number(spr_logobadge) - 1 &&
-                                      buttonStyle == _cy_btn_action &&
-                                      bkgImg == sprite_get_number(spr_bkg) - 1 &&
-                                      uiChromeStyle == 1 &&
-                                      niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 &&
-                                      nodeStyle == _cy_node_action && macroStyle == 1);
-                if (_cy_all_action) {
-                    paletteStyle = 0; badgeStyle = 0; buttonStyle = 0; bkgImg = 0;
-                    uiChromeStyle = 0; niceSliceFrm = 0; nodeStyle = 0; macroStyle = 0;
-                } else {
-                    paletteStyle = max(0, sprite_get_number(spr_palette_page) - 1);
+                var _preset_count = max(1, sprite_get_number(spr_palette_page));
+                var _preset = (clamp(paletteStyle, 0, _preset_count - 1) + 1) mod _preset_count;
+                var _is_cyber_preset = (_preset == _preset_count - 1);
+                paletteStyle = _preset;
+                bkgImg = min(_preset, max(0, sprite_get_number(spr_bkg) - 1));
+                nodeStyle = min(_preset, sprite_get_number(spr_9s_tile1));
+                if (_is_cyber_preset) {
                     badgeStyle = max(0, sprite_get_number(spr_logobadge) - 1);
-                    buttonStyle = _cy_btn_action;
-                    bkgImg = max(0, sprite_get_number(spr_bkg) - 1);
-                    uiChromeStyle = 1;
+                    buttonStyle = max(0, sprite_get_number(spr_opcode_button) - 2);
                     niceSliceFrm = max(0, sprite_get_number(spr_glassSlice) - 1);
-                    nodeStyle = _cy_node_action;
-                    macroStyle = 1;
+                } else {
+                    var _legacy_badge_max = max(0, sprite_get_number(spr_logobadge) - 2);
+                    badgeStyle = min(_preset, _legacy_badge_max);
+                    var _legacy_opcode_pairs = max(1, floor((sprite_get_number(spr_opcode_button) - 2) / 2));
+                    var _legacy_opcode_style = min(_preset, _legacy_opcode_pairs - 1);
+                    buttonStyle = _legacy_opcode_style * 2;
+                    niceSliceFrm = 0;
                 }
+                uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
             }
             else if (_op.action == "PALETTE_STYLE") {
                 paletteStyle = (paletteStyle + 1) mod max(1, sprite_get_number(spr_palette_page));
@@ -837,20 +821,15 @@ if (gui_menu_open == 4) {
                 else if (buttonStyle == 2 && _cy_btn_cycle > 2) buttonStyle = _cy_btn_cycle;
                 else buttonStyle = 0;
             }
-            else if (_op.action == "MACRO_STYLE") {
-                macroStyle = (macroStyle + 1) mod 2;
-            }
             else if (_op.action == "BADGE_STYLE") {
                 badgeStyle = (badgeStyle + 1) mod max(1, sprite_get_number(spr_logobadge));
             }
             else if (_op.action == "BACKGROUND_STYLE") {
                 bkgImg = (bkgImg + 1) mod max(1, sprite_get_number(spr_bkg));
             }
-            else if (_op.action == "MENU_CHROME") {
-                uiChromeStyle = (uiChromeStyle + 1) mod 2;
-            }
             else if (_op.action == "PANEL_STYLE") {
                 niceSliceFrm = (niceSliceFrm + 1) mod max(1, sprite_get_number(spr_glassSlice));
+                uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
             }
             else if (_op.action == "NODE_STYLE") {
                 nodeStyle = (nodeStyle + 1) mod (sprite_get_number(spr_9s_tile1) + 1);
