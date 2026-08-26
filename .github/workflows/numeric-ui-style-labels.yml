@@ -1,0 +1,77 @@
+name: Numeric UI style labels
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/numeric-ui-style-labels.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch visible UI style labels
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = {
+              '{ title: "CYBER PRESET",      action: "CYBER_PRESET"    },':
+              '{ title: "UI PRESET",         action: "CYBER_PRESET"    },',
+              '_state_str = (paletteStyle == sprite_get_number(spr_palette_page) - 1) ? "CYBER" : string(paletteStyle + 1);':
+              '_state_str = string(paletteStyle + 1);',
+              '_state_str = (buttonStyle == _cy_btn_label) ? "CYBER" : string(buttonStyle + 1);':
+              '_state_str = string(buttonStyle + 1);',
+              '_state_str = macroStyle ? "CYBER" : "CLASSIC";':
+              '_state_str = string(macroStyle + 1);',
+              '_state_str = (badgeStyle == sprite_get_number(spr_logobadge) - 1) ? "CYBER" : string(badgeStyle + 1);':
+              '_state_str = string(badgeStyle + 1);',
+              '_state_str = (bkgImg == sprite_get_number(spr_bkg) - 1) ? "CYBER" : string(bkgImg + 1);':
+              '_state_str = string(bkgImg + 1);',
+              '_state_str = uiChromeStyle ? "CYBER" : "CLASSIC";':
+              '_state_str = string(uiChromeStyle + 1);',
+              '_state_str = (niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 && niceSliceFrm > 0) ? "CYBER" : string(niceSliceFrm + 1);':
+              '_state_str = string(niceSliceFrm + 1);',
+              '_state_str = (nodeStyle >= sprite_get_number(spr_9s_tile1)) ? "CYBER" : string(nodeStyle + 1);':
+              '_state_str = string(nodeStyle + 1);',
+          }
+
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'Expected text not found: {old}')
+              text = text.replace(old, new, 1)
+
+          old_preset = '''            _state_str = _cy_all_state ? "ON" : "MIX";
+            _state_col = _cy_all_state ? c_yellow : make_color_rgb(80, 180, 200);'''
+          new_preset = '''            var _base_all_state = (paletteStyle == 0 && badgeStyle == 0 && buttonStyle == 0 &&
+                                   bkgImg == 0 && uiChromeStyle == 0 && niceSliceFrm == 0 &&
+                                   nodeStyle == 0 && macroStyle == 0);
+            _state_str = _cy_all_state ? "2" : (_base_all_state ? "1" : "MIX");
+            _state_col = _cy_all_state ? c_yellow : (_base_all_state ? c_gray : make_color_rgb(80, 180, 200));'''
+          if old_preset not in text:
+              raise SystemExit('Expected preset state block not found')
+          text = text.replace(old_preset, new_preset, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/numeric-ui-style-labels.yml
+          git config user.name "C64DevMachine UI patch"
+          git config user.email "actions@users.noreply.github.com"
+          git add C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml .github/workflows/numeric-ui-style-labels.yml
+          git commit -m "Use numeric UI style labels"
+          git push origin HEAD:main
