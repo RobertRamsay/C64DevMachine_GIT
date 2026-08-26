@@ -785,20 +785,37 @@ var _box_alpha = clamp(1.0 - (_cam_zoom - 2.5) / 0.75, 0, 1);
 _box_alpha *= global.idle_fade;
 if (_box_alpha < 0.1) { x -= x_indent; draw_set_alpha(1.0); exit; }
 
-if obj_workspace_manager.niceSliceFrm==0
-	{
-	draw_set_alpha(_box_alpha);
-	if node_type!="LABEL" {draw_rectangle_color(draw_x, y, draw_x + width, y + height, 
-	 _body_col, _body_col, _dark_col, _dark_col, false);}
-	else{
-		 draw_rectangle_color(draw_x, y, draw_x + width, y + height, 
-	    _body_col, _label_edge_col, _label_edge_col, _dark_col, false);}
-	
-	}
-	else
-	{
-	draw_sprite_stretched_ext(spr_9s_tile1, obj_workspace_manager.niceSliceFrm, draw_x, y, width, height, _body_col, _box_alpha);
-	}
+var _node_style = obj_workspace_manager.nodeStyle;
+var _node_cyber = (_node_style >= sprite_get_number(spr_9s_tile1));
+
+if (_node_cyber) {
+    var _cy_body_top = is_connected ? make_color_rgb(22, 24, 26) : make_color_rgb(13, 14, 16);
+    var _cy_body_bot = is_connected ? make_color_rgb(10, 12, 14) : make_color_rgb(7, 8, 9);
+    draw_set_alpha(_box_alpha);
+    draw_rectangle_color(draw_x, y, draw_x + width, y + height,
+                         _cy_body_top, _cy_body_top, _cy_body_bot, _cy_body_bot, false);
+    // Industrial accent rail + restrained status edge.
+    draw_set_color(make_color_rgb(238, 197, 38));
+    draw_rectangle(draw_x, y, draw_x + 3, y + height, false);
+    draw_set_color(is_connected ? make_color_rgb(35, 178, 198) : make_color_rgb(62, 62, 58));
+    draw_rectangle(draw_x + 3, y + height - 2, draw_x + width - 12, y + height, false);
+    // Cut the lower-right corner to keep the silhouette angular.
+    draw_set_color(make_color_rgb(7, 8, 9));
+    draw_triangle(draw_x + width - 12, y + height, draw_x + width, y + height - 12, draw_x + width, y + height, false);
+    draw_set_alpha(1.0);
+}
+else if (_node_style == 0) {
+    draw_set_alpha(_box_alpha);
+    if node_type!="LABEL" {draw_rectangle_color(draw_x, y, draw_x + width, y + height,
+     _body_col, _body_col, _dark_col, _dark_col, false);}
+    else{
+         draw_rectangle_color(draw_x, y, draw_x + width, y + height,
+        _body_col, _label_edge_col, _label_edge_col, _dark_col, false);}
+}
+else {
+    draw_sprite_stretched_ext(spr_9s_tile1, clamp(_node_style, 1, sprite_get_number(spr_9s_tile1) - 1),
+                              draw_x, y, width, height, _body_col, _box_alpha);
+}
 
 
 var _first_inst = (array_length(instructions) > 0) ? string_lower(instructions[0][0]) : "";
@@ -895,17 +912,31 @@ switch (node_type) {
         break;
 }
 
-if obj_workspace_manager.niceSliceFrm==0
-	{
-	draw_set_color(_head_col);
-	draw_set_alpha(_box_alpha);
-	draw_rectangle(draw_x, y, draw_x + width, y + header_h, false);
-	draw_set_alpha(1.0);
-	}
-	else
-	{
-	draw_sprite_stretched_ext(spr_9s_tile1, obj_workspace_manager.niceSliceFrm, draw_x, y, width, header_h, _head_col, _box_alpha);
-	}
+if (_node_cyber) {
+    var _cy_head_base = merge_colour(_head_col, make_color_rgb(18, 20, 22), 0.72);
+    draw_set_alpha(_box_alpha);
+    draw_set_color(_cy_head_base);
+    draw_rectangle(draw_x, y, draw_x + width, y + header_h, false);
+    // Preserve semantic node colour as a thin ID strip, with Cyber yellow framing.
+    draw_set_color(_head_col);
+    draw_rectangle(draw_x + 3, y + header_h - 3, draw_x + width - 10, y + header_h, false);
+    draw_set_color(make_color_rgb(238, 197, 38));
+    draw_rectangle(draw_x, y, draw_x + 4, y + header_h, false);
+    draw_rectangle(draw_x + width - 30, y + 2, draw_x + width - 12, y + 4, false);
+    draw_set_color(make_color_rgb(7, 8, 9));
+    draw_triangle(draw_x + width - 12, y, draw_x + width, y, draw_x + width, y + 12, false);
+    draw_set_alpha(1.0);
+}
+else if (_node_style == 0) {
+    draw_set_color(_head_col);
+    draw_set_alpha(_box_alpha);
+    draw_rectangle(draw_x, y, draw_x + width, y + header_h, false);
+    draw_set_alpha(1.0);
+}
+else {
+    draw_sprite_stretched_ext(spr_9s_tile1, clamp(_node_style, 1, sprite_get_number(spr_9s_tile1) - 1),
+                              draw_x, y, width, header_h, _head_col, _box_alpha);
+}
 
 // =============================================================
 // H2. WIRE DOTS (ORG nodes only)

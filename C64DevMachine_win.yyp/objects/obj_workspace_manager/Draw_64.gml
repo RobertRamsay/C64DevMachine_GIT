@@ -548,8 +548,16 @@ if (gui_menu_open == 4) {
         { title: "FLOW VIEW",    action: "FLOW_OVERLAY"    },
         { title: "FLOW TYPE",    action: "FLOW_LINE_STYLE" },
         { title: "FULLSCREEN",      action: "FULLSCREEN"      },
-        { title: "ADVANCE THEME",   action: "THEME"           },
-        { title: "RESET CUSTOM UI",    action: "RESET_UI"           },
+        { title: "CYBER PRESET",      action: "CYBER_PRESET"    },
+        { title: "PALETTE STYLE",      action: "PALETTE_STYLE"    },
+        { title: "OPCODE BUTTONS",     action: "OPCODE_STYLE"     },
+        { title: "MACRO BUTTONS",      action: "MACRO_STYLE"      },
+        { title: "LOGO STYLE",         action: "BADGE_STYLE"      },
+        { title: "BACKGROUND STYLE",   action: "BACKGROUND_STYLE" },
+        { title: "MENU CHROME",        action: "MENU_CHROME"      },
+        { title: "PANEL STYLE",        action: "PANEL_STYLE"      },
+        { title: "NODE STYLE",         action: "NODE_STYLE"       },
+        { title: "RESET CUSTOM UI",    action: "RESET_UI"         },
         { title: "OPCODE HEADERS",     action: "OPCODE_HEADERS"     },
 		{ title: "OPCODE COMPACT",     action: "OPCODE_EXTRA_H"     },
 		
@@ -639,10 +647,51 @@ if (gui_menu_open == 4) {
         }
 		
 		
-        if (_op.action == "THEME") {
-            var _theme_labels = ["1", "2", "3", "4", "CYBER"];
-            _state_str = _theme_labels[paletteStyle mod array_length(_theme_labels)];
+        if (_op.action == "CYBER_PRESET") {
+            var _cy_btn_state = max(0, sprite_get_number(spr_opcode_button) - 2);
+            var _cy_node_state = sprite_get_number(spr_9s_tile1);
+            var _cy_all_state = (paletteStyle == sprite_get_number(spr_palette_page) - 1 &&
+                                 badgeStyle == sprite_get_number(spr_logobadge) - 1 &&
+                                 buttonStyle == _cy_btn_state &&
+                                 bkgImg == sprite_get_number(spr_bkg) - 1 &&
+                                 uiChromeStyle == 1 &&
+                                 niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 &&
+                                 nodeStyle == _cy_node_state && macroStyle == 1);
+            _state_str = _cy_all_state ? "ON" : "MIX";
+            _state_col = _cy_all_state ? c_yellow : make_color_rgb(80, 180, 200);
+        }
+        if (_op.action == "PALETTE_STYLE") {
+            _state_str = (paletteStyle == sprite_get_number(spr_palette_page) - 1) ? "CYBER" : string(paletteStyle + 1);
             _state_col = make_color_rgb(160, 160, 220);
+        }
+        if (_op.action == "OPCODE_STYLE") {
+            var _cy_btn_label = max(0, sprite_get_number(spr_opcode_button) - 2);
+            _state_str = (buttonStyle == _cy_btn_label) ? "CYBER" : string(buttonStyle + 1);
+            _state_col = make_color_rgb(160, 160, 220);
+        }
+        if (_op.action == "MACRO_STYLE") {
+            _state_str = macroStyle ? "CYBER" : "CLASSIC";
+            _state_col = macroStyle ? c_yellow : c_gray;
+        }
+        if (_op.action == "BADGE_STYLE") {
+            _state_str = (badgeStyle == sprite_get_number(spr_logobadge) - 1) ? "CYBER" : string(badgeStyle + 1);
+            _state_col = make_color_rgb(160, 160, 220);
+        }
+        if (_op.action == "BACKGROUND_STYLE") {
+            _state_str = (bkgImg == sprite_get_number(spr_bkg) - 1) ? "CYBER" : string(bkgImg + 1);
+            _state_col = make_color_rgb(160, 160, 220);
+        }
+        if (_op.action == "MENU_CHROME") {
+            _state_str = uiChromeStyle ? "CYBER" : "CLASSIC";
+            _state_col = uiChromeStyle ? c_yellow : c_gray;
+        }
+        if (_op.action == "PANEL_STYLE") {
+            _state_str = (niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 && niceSliceFrm > 0) ? "CYBER" : string(niceSliceFrm + 1);
+            _state_col = (niceSliceFrm > 0) ? c_yellow : c_gray;
+        }
+        if (_op.action == "NODE_STYLE") {
+            _state_str = (nodeStyle >= sprite_get_number(spr_9s_tile1)) ? "CYBER" : string(nodeStyle + 1);
+            _state_col = (nodeStyle >= sprite_get_number(spr_9s_tile1)) ? c_yellow : make_color_rgb(160, 160, 220);
         }
         // Shortcut hint sits flush against the right edge; the state (if any)
         // is drawn just to its left so both can show at once (e.g. FLOW
@@ -740,25 +789,57 @@ if (gui_menu_open == 4) {
             else if (_op.action == "FULLSCREEN") {
                 do_windowSizing();
             }
-            else if (_op.action == "THEME") {
-                paletteStyle++;
-                if (paletteStyle > sprite_get_number(spr_bkg) - 1) {
-                    paletteStyle = 0;
+            else if (_op.action == "CYBER_PRESET") {
+                var _cy_btn_action = max(0, sprite_get_number(spr_opcode_button) - 2);
+                var _cy_node_action = sprite_get_number(spr_9s_tile1);
+                var _cy_all_action = (paletteStyle == sprite_get_number(spr_palette_page) - 1 &&
+                                      badgeStyle == sprite_get_number(spr_logobadge) - 1 &&
+                                      buttonStyle == _cy_btn_action &&
+                                      bkgImg == sprite_get_number(spr_bkg) - 1 &&
+                                      uiChromeStyle == 1 &&
+                                      niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 &&
+                                      nodeStyle == _cy_node_action && macroStyle == 1);
+                if (_cy_all_action) {
+                    paletteStyle = 0; badgeStyle = 0; buttonStyle = 0; bkgImg = 0;
+                    uiChromeStyle = 0; niceSliceFrm = 0; nodeStyle = 0; macroStyle = 0;
+                } else {
+                    paletteStyle = max(0, sprite_get_number(spr_palette_page) - 1);
+                    badgeStyle = max(0, sprite_get_number(spr_logobadge) - 1);
+                    buttonStyle = _cy_btn_action;
+                    bkgImg = max(0, sprite_get_number(spr_bkg) - 1);
+                    uiChromeStyle = 1;
+                    niceSliceFrm = max(0, sprite_get_number(spr_glassSlice) - 1);
+                    nodeStyle = _cy_node_action;
+                    macroStyle = 1;
                 }
-                badgeStyle = 0;
-                buttonStyle = 0;
-                if (paletteStyle == sprite_get_number(spr_palette_page) - 1) {
-                    badgeStyle = sprite_get_number(spr_logobadge) - 1;
-                    buttonStyle = sprite_get_number(spr_opcode_button) - 2;
-                } else if (paletteStyle > 1) {
-                    badgeStyle = 1;
-                    buttonStyle = 2;
-                }
-                bkgImg++;
-                if (bkgImg > sprite_get_number(spr_bkg) - 1) {
-                    bkgImg = 0;
-                }
-                niceSliceFrm++;
+            }
+            else if (_op.action == "PALETTE_STYLE") {
+                paletteStyle = (paletteStyle + 1) mod max(1, sprite_get_number(spr_palette_page));
+            }
+            else if (_op.action == "OPCODE_STYLE") {
+                var _cy_btn_cycle = max(0, sprite_get_number(spr_opcode_button) - 2);
+                if (buttonStyle == 0) buttonStyle = min(1, _cy_btn_cycle);
+                else if (buttonStyle == 1) buttonStyle = min(2, _cy_btn_cycle);
+                else if (buttonStyle == 2 && _cy_btn_cycle > 2) buttonStyle = _cy_btn_cycle;
+                else buttonStyle = 0;
+            }
+            else if (_op.action == "MACRO_STYLE") {
+                macroStyle = (macroStyle + 1) mod 2;
+            }
+            else if (_op.action == "BADGE_STYLE") {
+                badgeStyle = (badgeStyle + 1) mod max(1, sprite_get_number(spr_logobadge));
+            }
+            else if (_op.action == "BACKGROUND_STYLE") {
+                bkgImg = (bkgImg + 1) mod max(1, sprite_get_number(spr_bkg));
+            }
+            else if (_op.action == "MENU_CHROME") {
+                uiChromeStyle = (uiChromeStyle + 1) mod 2;
+            }
+            else if (_op.action == "PANEL_STYLE") {
+                niceSliceFrm = (niceSliceFrm + 1) mod max(1, sprite_get_number(spr_glassSlice));
+            }
+            else if (_op.action == "NODE_STYLE") {
+                nodeStyle = (nodeStyle + 1) mod (sprite_get_number(spr_9s_tile1) + 1);
             }
             else if (_op.action == "OPCODE_HEADERS") {
                 opcode_headers_on = !opcode_headers_on;
@@ -772,9 +853,13 @@ if (gui_menu_open == 4) {
 			
             else if (_op.action == "RESET_UI") {
                 niceSliceFrm = 0;
+                uiChromeStyle = 0;
                 bkgImg       = 0;
                 paletteStyle = 0;
+                badgeStyle   = 0;
                 buttonStyle  = 0;
+                nodeStyle    = 0;
+                macroStyle   = 0;
                 showGrid               = false;
                 expert_mode            = false;
                 opcode_helper_on       = true;
@@ -793,6 +878,11 @@ if (gui_menu_open == 4) {
             ini_write_real("Settings", "bkgImg", bkgImg);
             ini_write_real("Settings", "paletteStyle", paletteStyle);
             ini_write_real("Settings", "niceSliceFrm", niceSliceFrm);
+            ini_write_real("Settings", "badgeStyle", badgeStyle);
+            ini_write_real("Settings", "buttonStyle", buttonStyle);
+            ini_write_real("Settings", "uiChromeStyle", uiChromeStyle);
+            ini_write_real("Settings", "nodeStyle", nodeStyle);
+            ini_write_real("Settings", "macroStyle", macroStyle);
             ini_write_real("Settings", "expert_mode", expert_mode ? 1 : 0);
             ini_write_real("Settings", "opcode_helper", opcode_helper_on ? 1 : 0);
             ini_write_real("Settings", "palette_helper", showPaletteHelper ? 1 : 0);
@@ -1430,8 +1520,13 @@ if (gui_menu_open == 0) {
             hover_macro_title = _mp.title;
         }
 
-        // Row background on hover
-        if (_ihov) {
+        // Macro row skin: use the appended Cyber normal/hover pair when selected.
+        if (macroStyle == 1 && _mp.type != "HEADER") {
+            var _macro_cy_base = max(0, sprite_get_number(spr_macroButton) - 2);
+            var _macro_cy_frame = _ihov ? min(_macro_cy_base + 1, sprite_get_number(spr_macroButton) - 1) : _macro_cy_base;
+            draw_sprite_stretched(spr_macroButton, _macro_cy_frame, _ix1 + 4, _iy, _panel_w - 8, _item_h);
+        }
+        else if (_ihov) {
             draw_set_alpha(0.35);
             draw_set_color(c_white);
             draw_rectangle(_ix1 + 4, _iy, _ix2 - 4, _iy + _item_h, false);

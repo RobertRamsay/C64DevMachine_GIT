@@ -99,6 +99,8 @@ paletteStyle=1
 showGrid=1;
 badgeStyle=1
 buttonStyle=1
+nodeStyle=0;  // 0..spr_9s_tile1 frames, final virtual index = Cyber renderer
+macroStyle=0; // 0 classic menu rows, 1 appended Cyber macro-button pair
 niceSliceFrm = 0;
 uiChromeStyle = 0; // 0 existing chrome, 1 appended Cyber chrome
 ini_open("c64devmachine.ini");
@@ -933,10 +935,15 @@ var _saved_w = ini_read_real("window", "w", 1920);
 var _saved_h = ini_read_real("window", "h", 1000);
 
 code_editor_font_index = clamp(ini_read_real("editor", "font_index", 3), 0, array_length(code_editor_fonts) - 1);
-bkgImg      = ini_read_real("Settings", "bkgImg",       0);
-showGrid    = ini_read_real("Settings", "showGrid",      0);
-paletteStyle = ini_read_real("Settings", "paletteStyle", 0);
-niceSliceFrm = ini_read_real("Settings", "niceSliceFrm", 0);
+bkgImg       = clamp(ini_read_real("Settings", "bkgImg",       0), 0, max(0, sprite_get_number(spr_bkg) - 1));
+showGrid     = ini_read_real("Settings", "showGrid",      0);
+paletteStyle = clamp(ini_read_real("Settings", "paletteStyle", 0), 0, max(0, sprite_get_number(spr_palette_page) - 1));
+badgeStyle   = clamp(ini_read_real("Settings", "badgeStyle",   0), 0, max(0, sprite_get_number(spr_logobadge) - 1));
+buttonStyle  = clamp(ini_read_real("Settings", "buttonStyle",  0), 0, max(0, sprite_get_number(spr_opcode_button) - 2));
+niceSliceFrm = clamp(ini_read_real("Settings", "niceSliceFrm", 0), 0, max(0, sprite_get_number(spr_glassSlice) - 1));
+uiChromeStyle = clamp(ini_read_real("Settings", "uiChromeStyle", 0), 0, 1);
+nodeStyle     = clamp(ini_read_real("Settings", "nodeStyle", 0), 0, sprite_get_number(spr_9s_tile1));
+macroStyle    = clamp(ini_read_real("Settings", "macroStyle", 0), 0, 1);
 expert_mode  = ini_read_real("Settings", "expert_mode", 0) == 1;
 opcode_helper_on       = ini_read_real("Settings", "opcode_helper",       1) == 1;
 showPaletteHelper      = ini_read_real("Settings", "palette_helper",      1) == 1;
