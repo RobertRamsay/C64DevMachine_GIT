@@ -1,0 +1,88 @@
+name: Options panel and Cyber blend
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/options-panel-cyber-blend.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch options panel and Cyber button blending
+        shell: bash
+        run: |
+          git pull --rebase origin main
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml')
+          text = path.read_text(encoding='utf-8')
+
+          # Options only: changing a setting should not dismiss the panel.
+          old = '''        if (_ihov && mouse_check_button_pressed(mb_left)) {
+            gui_menu_open = -1;
+            if (_op.action == "EXPERT_MODE") {'''
+          new = '''        if (_ihov && mouse_check_button_pressed(mb_left)) {
+            if (_op.action == "EXPERT_MODE") {'''
+          if old not in text:
+              raise SystemExit('Options click-close block not found')
+          text = text.replace(old, new, 1)
+
+          # Cyber top-menu button overlay: regular alpha blend, preserve legacy additive styles.
+          old = '''    if (_bhover || _bopen) {
+        gpu_set_blendmode(bm_add);
+        draw_sprite_ext(spr_menu_button, (uiChromeStyle == 0) ? paletteStyle : sprite_get_number(spr_menu_button)-1,
+                        _bx, _by, 1, 1, 0, c_white, 0.2);
+        gpu_set_blendmode(bm_normal);
+    }'''
+          new = '''    if (_bhover || _bopen) {
+        var _menu_overlay_additive = (uiChromeStyle == 0);
+        if (_menu_overlay_additive) gpu_set_blendmode(bm_add);
+        draw_sprite_ext(spr_menu_button, (uiChromeStyle == 0) ? paletteStyle : sprite_get_number(spr_menu_button)-1,
+                        _bx, _by, 1, 1, 0, c_white, 0.2);
+        if (_menu_overlay_additive) gpu_set_blendmode(bm_normal);
+    }'''
+          if old not in text:
+              raise SystemExit('Menu overlay blend block not found')
+          text = text.replace(old, new, 1)
+
+          # Cyber opcode hover overlay: regular blend, preserve legacy additive glow.
+          old = '''    // Additive hover glow (hover or finder highlight)
+    if (is_hover || _is_finder_match) {
+        gpu_set_blendmode(bm_add);
+        draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);
+        gpu_set_blendmode(bm_normal);
+    }'''
+          new = '''    // Hover glow (Cyber uses normal blending; legacy styles keep additive).
+    if (is_hover || _is_finder_match) {
+        var _cyber_btn_style = max(0, sprite_get_number(spr_opcode_button) - 2);
+        var _hover_additive = (buttonStyle != _cyber_btn_style);
+        if (_hover_additive) gpu_set_blendmode(bm_add);
+        draw_sprite(spr_hover_glow, 0, btn_x + btn_w * 0.5, btn_y + btn_h * 0.5);
+        if (_hover_additive) gpu_set_blendmode(bm_normal);
+    }'''
+          if old not in text:
+              raise SystemExit('Opcode hover blend block not found')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/options-panel-cyber-blend.yml
+          git config user.name "C64DevMachine UI patch"
+          git config user.email "actions@users.noreply.github.com"
+          git add C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml .github/workflows/options-panel-cyber-blend.yml
+          git commit -m "Keep Options open and soften Cyber overlays"
+          git push origin HEAD:main
