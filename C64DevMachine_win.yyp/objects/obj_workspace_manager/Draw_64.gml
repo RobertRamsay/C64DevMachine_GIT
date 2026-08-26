@@ -548,7 +548,7 @@ if (gui_menu_open == 4) {
         { title: "FLOW VIEW",    action: "FLOW_OVERLAY"    },
         { title: "FLOW TYPE",    action: "FLOW_LINE_STYLE" },
         { title: "FULLSCREEN",      action: "FULLSCREEN"      },
-        { title: "CYBER PRESET",      action: "CYBER_PRESET"    },
+        { title: "UI PRESET",         action: "CYBER_PRESET"    },
         { title: "PALETTE STYLE",      action: "PALETTE_STYLE"    },
         { title: "OPCODE BUTTONS",     action: "OPCODE_STYLE"     },
         { title: "MACRO BUTTONS",      action: "MACRO_STYLE"      },
@@ -657,40 +657,43 @@ if (gui_menu_open == 4) {
                                  uiChromeStyle == 1 &&
                                  niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 &&
                                  nodeStyle == _cy_node_state && macroStyle == 1);
-            _state_str = _cy_all_state ? "ON" : "MIX";
-            _state_col = _cy_all_state ? c_yellow : make_color_rgb(80, 180, 200);
+            var _base_all_state = (paletteStyle == 0 && badgeStyle == 0 && buttonStyle == 0 &&
+                                   bkgImg == 0 && uiChromeStyle == 0 && niceSliceFrm == 0 &&
+                                   nodeStyle == 0 && macroStyle == 0);
+            _state_str = _cy_all_state ? "2" : (_base_all_state ? "1" : "MIX");
+            _state_col = _cy_all_state ? c_yellow : (_base_all_state ? c_gray : make_color_rgb(80, 180, 200));
         }
         if (_op.action == "PALETTE_STYLE") {
-            _state_str = (paletteStyle == sprite_get_number(spr_palette_page) - 1) ? "CYBER" : string(paletteStyle + 1);
+            _state_str = string(paletteStyle + 1);
             _state_col = make_color_rgb(160, 160, 220);
         }
         if (_op.action == "OPCODE_STYLE") {
             var _cy_btn_label = max(0, sprite_get_number(spr_opcode_button) - 2);
-            _state_str = (buttonStyle == _cy_btn_label) ? "CYBER" : string(buttonStyle + 1);
+            _state_str = string(buttonStyle + 1);
             _state_col = make_color_rgb(160, 160, 220);
         }
         if (_op.action == "MACRO_STYLE") {
-            _state_str = macroStyle ? "CYBER" : "CLASSIC";
+            _state_str = string(macroStyle + 1);
             _state_col = macroStyle ? c_yellow : c_gray;
         }
         if (_op.action == "BADGE_STYLE") {
-            _state_str = (badgeStyle == sprite_get_number(spr_logobadge) - 1) ? "CYBER" : string(badgeStyle + 1);
+            _state_str = string(badgeStyle + 1);
             _state_col = make_color_rgb(160, 160, 220);
         }
         if (_op.action == "BACKGROUND_STYLE") {
-            _state_str = (bkgImg == sprite_get_number(spr_bkg) - 1) ? "CYBER" : string(bkgImg + 1);
+            _state_str = string(bkgImg + 1);
             _state_col = make_color_rgb(160, 160, 220);
         }
         if (_op.action == "MENU_CHROME") {
-            _state_str = uiChromeStyle ? "CYBER" : "CLASSIC";
+            _state_str = string(uiChromeStyle + 1);
             _state_col = uiChromeStyle ? c_yellow : c_gray;
         }
         if (_op.action == "PANEL_STYLE") {
-            _state_str = (niceSliceFrm == sprite_get_number(spr_glassSlice) - 1 && niceSliceFrm > 0) ? "CYBER" : string(niceSliceFrm + 1);
+            _state_str = string(niceSliceFrm + 1);
             _state_col = (niceSliceFrm > 0) ? c_yellow : c_gray;
         }
         if (_op.action == "NODE_STYLE") {
-            _state_str = (nodeStyle >= sprite_get_number(spr_9s_tile1)) ? "CYBER" : string(nodeStyle + 1);
+            _state_str = string(nodeStyle + 1);
             _state_col = (nodeStyle >= sprite_get_number(spr_9s_tile1)) ? c_yellow : make_color_rgb(160, 160, 220);
         }
         // Shortcut hint sits flush against the right edge; the state (if any)
