@@ -1,6 +1,6 @@
 /// @desc Setup Workspace, Palette & C64 Environment
 global.lite=0;
-global.build_date = "August 25th, 2026"; // edit this string for each release
+global.build_date = "August 27th, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {
@@ -57,10 +57,8 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-	"FIXED - REU packet size and timing fix for Bitmap data",
-	"NEW - Low / Hi LDA entries on OPCODE panel",
-	"NEW - NOP repeat macro - for NOP padding in one node",
-
+	"FIXED - REU macro performance hit",
+	"NEW - Cyberpunk style UI",
 	];
 	
 welcome_credits_lines = [
