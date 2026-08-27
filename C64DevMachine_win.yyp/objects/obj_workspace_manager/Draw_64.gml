@@ -2049,12 +2049,12 @@ draw_set_halign(fa_right);
 
 draw_set_colour(c_black);
 draw_set_alpha(0.6);
-draw_text(room_width-5, 8, (global.lite ? "LITE " : "FULL ") + "VERSION: "+string(GM_version)+"\n (C) POLYTRICITY LTD 2026");
+draw_text(room_width-35, 11, (global.lite ? "LITE " : "FULL ") + "VERSION: "+string(GM_version)+"\n (C) POLYTRICITY LTD 2026");
 
 draw_set_colour(c_white);
 draw_set_alpha(1);
 if global.lite draw_set_colour(c_lime);
-draw_text(room_width-4, 7, (global.lite ? "LITE " : "FULL ") + "VERSION: "+string(GM_version)+"\n (C) POLYTRICITY LTD 2026");
+draw_text(room_width-34, 10, (global.lite ? "LITE " : "FULL ") + "VERSION: "+string(GM_version)+"\n (C) POLYTRICITY LTD 2026");
 
 
 // --- New version available banner ---
