@@ -4,6 +4,8 @@
 // Only covers the workspace/node canvas — this was captured from application_surface,
 // which never includes Draw GUI content. Every panel below draws over it normally,
 // live and interactive, exactly as it does when awake.
+
+
 if (idle_snapshot_active && sprite_exists(idle_snapshot_spr)) {
     draw_sprite_stretched(idle_snapshot_spr, 0, 0, 0, global.gui_w, display_get_gui_height());
 }
@@ -37,6 +39,9 @@ if (!expert_mode) {
         shelf_width, 0 , 2000, 1.5, 270, c_white, 1);
 }
 
+//color ref palette:
+var _psc = 0.8
+if showPaletteHelper draw_sprite_ext(spr_palette,0, 1640,980,_psc,_psc,0,c_white,1)
 
 
 /////////////////////////////////////////////////////////////////
@@ -3470,9 +3475,7 @@ draw_set_font(fnt_c64_tiny);
 draw_set_color(c_white);
 draw_text(10, 1040, "ZOOM: " + string(cam_zoom));
 
-//color ref palette:
-var _psc = 0.8
-if showPaletteHelper draw_sprite_ext(spr_palette,0, 1640,980,_psc,_psc,0,c_white,1)
+
 
 // --- C64U status toast ---
 if (global.c64u_status_t > 0) {
