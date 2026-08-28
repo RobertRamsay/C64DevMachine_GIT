@@ -11,6 +11,12 @@ global.gui_mouse_x = device_mouse_x_to_gui(0);
 global.gui_mouse_y = device_mouse_y_to_gui(0);
 global.gui_w       = display_get_gui_width();
 
+// SHOW CODE panel: decide here, not in Draw, whether the panel owns the pointer
+// — Draw runs after every Step, so a flag set there is a frame stale and the
+// nodes underneath would still act on the first click. Also resolves which node
+// the pointer is over, for the listing highlight.
+scr_show_code_hit();
+
 // ---- IDLE DETECTION ----
 var _mx = global.gui_mouse_x;
 var _my = global.gui_mouse_y;

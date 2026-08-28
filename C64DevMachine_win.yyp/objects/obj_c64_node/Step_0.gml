@@ -7,6 +7,13 @@ if global.gui_mouse_y<50 exit; // skip menu bars clicks from hitting buttons etc
 if !global.canEditNode exit;
 if (obj_workspace_manager.gui_menu_open != -1) exit;
 
+// SHOW CODE panel owns the pointer — no node reacts to anything under it.
+// This has to sit up here rather than in the _mouse_in_gui test further down:
+// the INIT [CLEAR] button, the LABEL hover highlight, the tooltip trigger and
+// the right-click delete all run BEFORE that test. An in-progress drag is
+// allowed to continue so a node can never be stranded mid-move.
+if (global.showcode_mouse_over && !is_dragging) exit;
+
 // =============================================================
 // INIT NODE [CLEAR] BUTTON
 // =============================================================

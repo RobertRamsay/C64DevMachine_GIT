@@ -979,10 +979,16 @@ showcode_drag_dx   = 0;
 showcode_drag_dy   = 0;
 showcode_resize    = 0;     // 0 none, 1 left edge, 2 right edge, 3 bottom edge
 showcode_rs_edge   = 0;     // right edge pinned during a left-edge resize
+showcode_sb_drag   = false; // scrollbar thumb being dragged
+showcode_sb_off    = 0;     // grab offset inside the thumb
+showcode_last_hover = "";   // node the listing last auto-scrolled to
 
 // Read by obj_c64_node and the camera zoom guard so a click or a wheel over the
-// panel never reaches the workspace underneath.
+// panel never reaches the workspace underneath. Recomputed every Begin Step by
+// scr_show_code_hit(), which also resolves showcode_hover_node.
 global.showcode_mouse_over = false;
+global.showcode_live       = false;  // panel actually on screen this frame
+global.showcode_hover_node = noone;  // workspace node under the pointer
 
 scr_uqmenu_load();
 
