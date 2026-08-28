@@ -960,13 +960,13 @@ welcome_open          = !welcome_hide_checked;
 // shortcuts column the first time it runs, then this holds the dragged position.
 showcode_x    = ini_read_real("showcode", "x",    -1);
 showcode_y    = ini_read_real("showcode", "y",    50);
+showcode_w    = clamp(ini_read_real("showcode", "w",    420), 300, 900);
+showcode_rows = clamp(ini_read_real("showcode", "rows",  20),   5,  64);
 showcode_open = (ini_read_real("showcode", "open", 1) == 1);
 showcode_mode = clamp(ini_read_real("showcode", "mode", 0), 0, 1);
 
 ini_close();
 
-showcode_w         = 420;   // panel width in GUI px
-showcode_rows      = 20;    // visible listing rows before it scrolls
 showcode_scroll    = 0;
 showcode_flat      = [];    // every emitted line, unfolded
 showcode_lines     = [];    // the visible rows, after macro folding
@@ -976,6 +976,8 @@ showcode_dirty     = true;
 showcode_dragging  = false;
 showcode_drag_dx   = 0;
 showcode_drag_dy   = 0;
+showcode_resize    = 0;     // 0 none, 1 left edge, 2 right edge, 3 bottom edge
+showcode_rs_edge   = 0;     // right edge pinned during a left-edge resize
 
 // Read by obj_c64_node and the camera zoom guard so a click or a wheel over the
 // panel never reaches the workspace underneath.
