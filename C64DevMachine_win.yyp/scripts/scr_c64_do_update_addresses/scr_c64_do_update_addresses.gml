@@ -1396,4 +1396,10 @@ with (obj_c64_node) {
 
 	    bmp_shadow_warn = _sw_hit;
 	}
+
+// ---- SHOW CODE PANEL ----
+// Second half of the listing build, deliberately down here rather than beside
+// scr_show_code_build(): attributing rows to LABEL and plain opcode nodes needs
+// pc_address, and those are not assigned until the passes above have run.
+scr_show_code_attribute();
 }

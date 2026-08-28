@@ -57,8 +57,12 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-	"FIXED - REU macro performance hit",
-	"NEW - Cyberpunk style UI",
+	"NEW - SHOW CODE panel - live listing of the whole program",
+	"NEW - VICE monitor style, or readable assembly - your pick",
+	"NEW - Macros and byte tables fold away, click to expand",
+	"NEW - Hover a node to highlight and jump to its code",
+	"NEW - Panel drags, resizes and remembers where you left it",
+	"FIXED - ESC not registering after adding or viewing an asset",
 	];
 	
 welcome_credits_lines = [
