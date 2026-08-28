@@ -1245,6 +1245,7 @@
     {"id":{"name":"scr_note_name_to_hz","path":"scripts/scr_note_name_to_hz/scr_note_name_to_hz.yy",},},
     {"id":{"name":"scr_opcode_helper","path":"scripts/scr_opcode_helper/scr_opcode_helper.yy",},},
     {"id":{"name":"scr_opcode_hex","path":"scripts/scr_opcode_hex/scr_opcode_hex.yy",},},
+    {"id":{"name":"scr_show_code_panel","path":"scripts/scr_show_code_panel/scr_show_code_panel.yy",},},
     {"id":{"name":"scr_open_text_editor","path":"scripts/scr_open_text_editor/scr_open_text_editor.yy",},},
     {"id":{"name":"scr_parse_asm_byte_count","path":"scripts/scr_parse_asm_byte_count/scr_parse_asm_byte_count.yy",},},
     {"id":{"name":"scr_parse_asm_text","path":"scripts/scr_parse_asm_text/scr_parse_asm_text.yy",},},

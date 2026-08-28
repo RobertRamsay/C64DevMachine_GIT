@@ -955,7 +955,31 @@ var _hide_welcome = ini_read_real("Settings", "hide_welcome", 0);
 welcome_hide_checked = (_hide_welcome != 0);
 welcome_open          = !welcome_hide_checked;
 
+// ---- SHOW CODE PANEL (floating live listing, left of the shortcuts column) ----
+// -1 on x is the "never positioned" marker; the draw script parks it beside the
+// shortcuts column the first time it runs, then this holds the dragged position.
+showcode_x    = ini_read_real("showcode", "x",    -1);
+showcode_y    = ini_read_real("showcode", "y",    50);
+showcode_open = (ini_read_real("showcode", "open", 1) == 1);
+showcode_mode = clamp(ini_read_real("showcode", "mode", 0), 0, 1);
+
 ini_close();
+
+showcode_w         = 420;   // panel width in GUI px
+showcode_rows      = 20;    // visible listing rows before it scrolls
+showcode_scroll    = 0;
+showcode_flat      = [];    // every emitted line, unfolded
+showcode_lines     = [];    // the visible rows, after macro folding
+showcode_expanded  = [];    // node keys of the macro groups currently open
+showcode_gen       = -1;    // named_loc_repack_gen the flat list was built from
+showcode_dirty     = true;
+showcode_dragging  = false;
+showcode_drag_dx   = 0;
+showcode_drag_dy   = 0;
+
+// Read by obj_c64_node and the camera zoom guard so a click or a wheel over the
+// panel never reaches the workspace underneath.
+global.showcode_mouse_over = false;
 
 scr_uqmenu_load();
 

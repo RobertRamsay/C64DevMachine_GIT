@@ -7,6 +7,11 @@
 if (idle_snapshot_active && sprite_exists(idle_snapshot_spr)) {
     draw_sprite_stretched(idle_snapshot_spr, 0, 0, 0, global.gui_w, display_get_gui_height());
 }
+// SHOW CODE panel: cleared here so the workspace input guards never stay
+// latched when this event bails out early (hidden UI / asset viewer open).
+// scr_show_code_draw() sets it again further down when the panel is live.
+global.showcode_mouse_over = false;
+
 if hideui exit;
 // Block draw + interaction when asset viewer is open
 if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) {
@@ -1735,6 +1740,13 @@ if (instance_exists(node_tooltip_node)) {
         draw_set_font(_font_before2);
     }
 }
+
+/////////////////////////////////////////////////////////////////
+///// 1.9 SHOW CODE PANEL (floating, left of the shortcuts column)
+/////////////////////////////////////////////////////////////////
+// Draws before the shortcuts so the shortcuts column always wins any
+// overlap, and hides itself whenever a dropdown menu is open.
+scr_show_code_draw();
 
 /////////////////////////////////////////////////////////////////
 ///// 2. GLOBAL SHORTCUTS (TOP RIGHT)

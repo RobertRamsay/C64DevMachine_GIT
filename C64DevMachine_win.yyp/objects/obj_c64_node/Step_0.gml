@@ -362,6 +362,7 @@ var _mouse_in_shortcuts = (_gui_mouse_x >= global.sc_x_start && _gui_mouse_x <= 
 
 var _mouse_in_gui = _mouse_in_shelf
                  || _mouse_in_shortcuts
+                 || global.showcode_mouse_over
                  || obj_workspace_manager.is_entering_text
                  || obj_workspace_manager.box_popup_open
                  || global.show_info_window

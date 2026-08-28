@@ -179,6 +179,12 @@ with (obj_c64_node) {
 	global.compile_sizing_pass = true;
 var _compiled = scr_compile_chain();
 global.compile_sizing_pass = false;
+
+// ---- SHOW CODE PANEL ----
+// Hand this sizing pass straight to the floating listing. The panel never
+// runs a compile of its own, so keeping it live costs one array walk here
+// rather than a second full compile inside the Draw event.
+scr_show_code_build(_compiled);
 	
 	for (var _ci = 0; _ci < array_length(_compiled); _ci++) {
 	    var _entry = _compiled[_ci];

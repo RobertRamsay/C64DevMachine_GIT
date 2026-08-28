@@ -4045,11 +4045,12 @@ var zoom_speed   = 0.1;
 
 
 
-if (!instance_exists(obj_asset_manager) || 
+if (!global.showcode_mouse_over &&
+   (!instance_exists(obj_asset_manager) || 
     !point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y,
      obj_asset_manager.panel_x, obj_asset_manager.panel_y,
      obj_asset_manager.panel_x + obj_asset_manager.panel_w,
-     display_get_gui_height() - 100)) {
+     display_get_gui_height() - 100))) {
 		// Check if any node has a picker open
 		var _any_picker = false;
 		var _picker_node = noone;
@@ -4321,6 +4322,7 @@ if (!keyboard_check(vk_alt) && keyboard_check_released(ord("M")) && global.show_
 /////////////////////////////////////////////////////////////////
 var _in_gui = ((global.gui_mouse_x <= shelf_width) && (!expert_mode || global.gui_mouse_y < 47))
            || (global.gui_mouse_x >= (global.gui_w - 20 - 280))
+           || global.showcode_mouse_over
            || is_entering_text
            || box_popup_open
            || global.show_info_window
