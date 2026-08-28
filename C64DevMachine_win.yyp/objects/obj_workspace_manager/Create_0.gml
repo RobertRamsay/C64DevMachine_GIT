@@ -961,7 +961,7 @@ welcome_open          = !welcome_hide_checked;
 showcode_x    = ini_read_real("showcode", "x",    -1);
 showcode_y    = ini_read_real("showcode", "y",    50);
 showcode_w    = clamp(ini_read_real("showcode", "w",    420), 300, 900);
-showcode_rows = clamp(ini_read_real("showcode", "rows",  20),   5,  64);
+showcode_rows = clamp(ini_read_real("showcode", "rows",  20),   5,  60);
 showcode_open = (ini_read_real("showcode", "open", 1) == 1);
 showcode_mode = clamp(ini_read_real("showcode", "mode", 0), 0, 1);
 
