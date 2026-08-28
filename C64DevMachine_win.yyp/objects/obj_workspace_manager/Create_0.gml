@@ -1,6 +1,6 @@
 /// @desc Setup Workspace, Palette & C64 Environment
 global.lite=0;
-global.build_date = "August 27th, 2026"; // edit this string for each release
+global.build_date = "August 28th, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {
