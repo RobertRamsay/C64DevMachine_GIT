@@ -1,0 +1,55 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 7e65ea0..8fbae64 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -300,6 +300,11 @@ global.named_loc_repack_gen = 0; // bumped every scr_c64_do_update_addresses() c
+ global.kernal_unlocked = false;
+ global.basic_unlocked = false;
+ global.breakdown_node = noone;
++
++// Normally created by obj_c64_node's Create, but the Begin Step label-highlight
++// clear reads them and must never run first against an undefined global.
++if (!variable_global_exists("ref_highlight_source")) global.ref_highlight_source = noone;
++if (!variable_global_exists("ref_highlight_name"))   global.ref_highlight_name   = "";
+ global.show_info_window = false;
+ global.info_node = noone;
+ global.current_filename = "No File Loaded"
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
+index e4c386c..ac51fde 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
+@@ -26,6 +26,34 @@ var _keyed   = keyboard_check(vk_anykey);
+ idle_last_mx = _mx;
+ idle_last_my = _my;
+ 
++// ---- LABEL REFERENCE HIGHLIGHT: drop it once the pointer leaves the node ----
++// The highlight is switched ON by the LABEL node's own Step, but it has to be
++// switched OFF from here rather than from that node's else branch. That event
++// has several early exits above the hover block — asset viewer, info window,
++// label search, the SHOW CODE panel — so a pointer that leaves the label by
++// crossing onto one of those never reaches the node's own clear.
++//
++// Only re-tested when the pointer actually MOVES. Pressing Enter cycles the
++// camera through the references, which slides a different node under a
++// stationary cursor; re-testing on a camera move would kill the highlight
++// halfway through the cycle.
++if (_moved && global.ref_highlight_source != noone) {
++    var _ref_still_hovered = false;
++
++    if (instance_exists(global.ref_highlight_source)) {
++        with (global.ref_highlight_source) {
++            _ref_still_hovered = point_in_rectangle(mouse_x, mouse_y,
++                                                    x + x_indent, y,
++                                                    x + x_indent + width, y + height);
++        }
++    }
++
++    if (!_ref_still_hovered) {
++        global.ref_highlight_source = noone;
++        global.ref_highlight_name   = "";
++    }
++}
++
+ var _idle_was = global.idle_active;
+ 
+ if (_moved || _clicked || _keyed) {

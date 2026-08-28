@@ -300,6 +300,11 @@ global.named_loc_repack_gen = 0; // bumped every scr_c64_do_update_addresses() c
 global.kernal_unlocked = false;
 global.basic_unlocked = false;
 global.breakdown_node = noone;
+
+// Normally created by obj_c64_node's Create, but the Begin Step label-highlight
+// clear reads them and must never run first against an undefined global.
+if (!variable_global_exists("ref_highlight_source")) global.ref_highlight_source = noone;
+if (!variable_global_exists("ref_highlight_name"))   global.ref_highlight_name   = "";
 global.show_info_window = false;
 global.info_node = noone;
 global.current_filename = "No File Loaded"
