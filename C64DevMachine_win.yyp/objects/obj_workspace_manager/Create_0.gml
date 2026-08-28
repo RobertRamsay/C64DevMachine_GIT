@@ -973,6 +973,9 @@ showcode_w    = clamp(ini_read_real("showcode", "w",    420), 300, 900);
 showcode_rows = clamp(ini_read_real("showcode", "rows",  20),   5,  60);
 showcode_open = (ini_read_real("showcode", "open", 1) == 1);
 showcode_mode = clamp(ini_read_real("showcode", "mode", 0), 0, 1);
+// MISC: byte tables, <LABEL/>LABEL pointer bytes and macro scaffolding labels.
+// Off by default — the lean view is just the code.
+showcode_misc = (ini_read_real("showcode", "misc", 0) == 1);
 
 ini_close();
 

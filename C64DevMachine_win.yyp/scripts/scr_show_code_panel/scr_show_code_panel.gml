@@ -11,7 +11,12 @@
 /// in a listing and they used to chop one macro into a dozen fragments.
 ///
 /// Byte tables fold too: a run of 4+ plain bytes becomes one collapsible
-/// "[+] NAME $4000-$5F3F  8000B" row.
+/// "[+] NAME $4000-$5F3F  8000B" row — but only with MISC on.
+///
+/// MISC (header button, OFF by default) governs everything that is not code you
+/// wrote: byte tables, the <LABEL / >LABEL pointer bytes that index them, and a
+/// macro's own scaffolding labels. Off, the listing is just the instruction
+/// stream, your ADDRESS LABELs and the ORG markers.
 ///
 /// Two display modes, picked with the two-segment switch in the header (the
 /// active one is filled, so there is nothing to infer from a single label):
@@ -54,7 +59,7 @@
 ///   scr_show_code_hi(_val)               high byte
 ///   scr_show_code_hex(_val, _digits)     zero-padded uppercase hex
 ///   scr_show_code_is_branch(_mnem)       relative-addressing test
-///   scr_show_code_row_hidden(_ln, _mode) label visibility rule for this mode
+///   scr_show_code_row_hidden(...)        row visibility for this mode + MISC
 ///   scr_show_code_is_open(_key)          is this group expanded?
 ///   scr_show_code_toggle(_key)           expand / collapse one group
 ///   scr_show_code_bytes(_ln)             "F0 05" style raw byte column
@@ -592,11 +597,25 @@ function scr_show_code_build(_compiled) {
 // nodes always show. A macro's own scaffolding label shows only when something
 // actually branches to it — an unreferenced one is noise in any mode.
 // =====================================================================
-function scr_show_code_row_hidden(_ln, _mode) {
+function scr_show_code_row_hidden(_ln, _mode, _misc) {
+
+    // MISC covers everything that is not code you wrote: the byte tables a
+    // macro parks off-spine, the <LABEL / >LABEL pointer bytes that index them,
+    // and the macro's own scaffolding labels. Off by default, because none of
+    // it is what you came to the listing to read.
+    if (_ln.kind == "data") { return !_misc; }
+    if (_ln.kind == "byte") { return !_misc; }
+
     if (_ln.kind != "label") { return false; }
-    if (_mode != 1)          { return true;  }
-    if (!_ln.internal)       { return false; }
-    if (!_ln.used)           { return true;  }
+
+    // VICE is a monitor dump: no label rows at all, yours included.
+    if (_mode != 1) { return true; }
+
+    // Your own ADDRESS LABEL nodes are never MISC.
+    if (!_ln.internal) { return false; }
+
+    if (!_misc)    { return true; }
+    if (!_ln.used) { return true; }
     return false;
 }
 
@@ -695,10 +714,10 @@ function scr_show_code_attribute() {
 // group; a short one just lists. Arrays are reference types in GML 2.3+,
 // so the pushes onto _out are seen by the caller.
 // =====================================================================
-function scr_show_code_emit(_out, _flat, _idx, _indent, _mode) {
+function scr_show_code_emit(_out, _flat, _idx, _indent, _mode, _misc) {
     var _ln = _flat[_idx];
 
-    if (scr_show_code_row_hidden(_ln, _mode)) {
+    if (scr_show_code_row_hidden(_ln, _mode, _misc)) {
         return;
     }
 
@@ -742,7 +761,7 @@ function scr_show_code_fold() {
             var _ln = showcode_flat[_i];
 
             if (_ln.key == "") {
-                scr_show_code_emit(_out, showcode_flat, _i, 0, showcode_mode);
+                scr_show_code_emit(_out, showcode_flat, _i, 0, showcode_mode, showcode_misc);
                 _i += 1;
                 continue;
             }
@@ -763,14 +782,32 @@ function scr_show_code_fold() {
 
             if (_open) {
                 for (var _g = _i; _g < _j; _g++) {
-                    scr_show_code_emit(_out, showcode_flat, _g, 10, showcode_mode);
+                    scr_show_code_emit(_out, showcode_flat, _g, 10, showcode_mode, showcode_misc);
                 }
             }
 
             _i = _j;
         }
 
-        showcode_lines  = _out;
+        // With MISC off the data blocks vanish, which can leave two ORG markers
+        // back to back with nothing between them. Keep the one that actually
+        // introduces something.
+        var _clean = [];
+        var _on    = array_length(_out);
+        for (var _o = 0; _o < _on; _o++) {
+            var _orow = _out[_o];
+            if (_orow.kind == "line" && _o + 1 < _on) {
+                if (showcode_flat[_orow.idx].kind == "org") {
+                    var _nrow = _out[_o + 1];
+                    if (_nrow.kind == "line") {
+                        if (showcode_flat[_nrow.idx].kind == "org") { continue; }
+                    }
+                }
+            }
+            array_push(_clean, _orow);
+        }
+
+        showcode_lines  = _clean;
         showcode_dirty  = false;
 
         var _maxs = max(0, array_length(showcode_lines) - showcode_rows);
@@ -927,12 +964,17 @@ function scr_show_code_draw() {
         var _mod_w     = _seg_w * 2;
         var _btn_mod_x = _btn_min_x - 6 - _mod_w;
 
+        // MISC sits between the title and the mode switch.
+        var _msc_w     = 46;
+        var _btn_msc_x = _btn_mod_x - 6 - _msc_w;
+
         var _hdr_hover = (_mx >= _px && _mx < _px + _pw && _my >= _py && _my < _py + _hdr_h);
         var _in_hdr_v  = (_my >= _py + 4 && _my < _py + _hdr_h - 4);
         var _on_min = (_mx >= _btn_min_x && _mx < _btn_min_x + _btn_w && _in_hdr_v);
         var _on_seg0 = (_mx >= _btn_mod_x           && _mx < _btn_mod_x + _seg_w && _in_hdr_v);
         var _on_seg1 = (_mx >= _btn_mod_x + _seg_w  && _mx < _btn_mod_x + _mod_w && _in_hdr_v);
         var _on_mod  = (_on_seg0 || _on_seg1);
+        var _on_msc  = (_mx >= _btn_msc_x && _mx < _btn_msc_x + _msc_w && _in_hdr_v);
 
         // ---- resize edges ---------------------------------------------
         // Live only while the panel is open, and only below the header so a
@@ -961,6 +1003,11 @@ function scr_show_code_draw() {
         if (mouse_check_button_pressed(mb_left) && !showcode_sb_drag) {
             if (_on_min) {
                 showcode_open = !showcode_open;
+                scr_show_code_save_ini();
+            } else if (_on_msc && showcode_open) {
+                showcode_misc  = !showcode_misc;
+                // Visibility changes the fold, not just the paint.
+                showcode_dirty = true;
                 scr_show_code_save_ini();
             } else if (_on_mod && showcode_open) {
                 var _newmode = showcode_mode;
@@ -1009,6 +1056,7 @@ function scr_show_code_draw() {
 
                 _btn_min_x = _px + _pw - 10 - _btn_w;
                 _btn_mod_x = _btn_min_x - 6 - _mod_w;
+                _btn_msc_x = _btn_mod_x - 6 - _msc_w;
             } else {
                 showcode_resize = 0;
                 scr_show_code_save_ini();
@@ -1035,6 +1083,7 @@ function scr_show_code_draw() {
 
                 _btn_min_x = _px + _pw - 10 - _btn_w;
                 _btn_mod_x = _btn_min_x - 6 - _mod_w;
+                _btn_msc_x = _btn_mod_x - 6 - _msc_w;
             } else {
                 showcode_dragging = false;
                 scr_show_code_save_ini();
@@ -1072,6 +1121,25 @@ function scr_show_code_draw() {
             var _sy1 = _py + 4;
             var _sy2 = _py + _hdr_h - 4;
             var _acc = make_color_rgb(255, 210, 80);
+
+            // MISC — same visual language as the mode switch: filled when on.
+            if (showcode_misc) {
+                draw_set_color(_acc);
+                draw_rectangle(_btn_msc_x + 1, _sy1 + 1, _btn_msc_x + _msc_w - 1, _sy2 - 1, false);
+            }
+            draw_set_color(make_color_rgb(120, 120, 130));
+            draw_rectangle(_btn_msc_x, _sy1, _btn_msc_x + _msc_w, _sy2, true);
+
+            var _cm = make_color_rgb(140, 140, 150);
+            if (showcode_misc) {
+                _cm = c_black;
+            } else if (_on_msc) {
+                _cm = c_white;
+            }
+            draw_set_color(_cm);
+            draw_set_halign(fa_center);
+            draw_text_transformed(_btn_msc_x + (_msc_w / 2), _py + 6, "MISC", 1.0, 1.0, 0);
+            draw_set_halign(fa_left);
 
             // Active segment filled, inactive segment just outlined.
             var _act_x = _btn_mod_x;
@@ -1419,6 +1487,11 @@ function scr_show_code_save_ini() {
         ini_write_real("showcode", "rows", showcode_rows);
         ini_write_real("showcode", "open", _open_flag);
         ini_write_real("showcode", "mode", showcode_mode);
+        var _misc_flag = 0;
+        if (showcode_misc) {
+            _misc_flag = 1;
+        }
+        ini_write_real("showcode", "misc", _misc_flag);
         ini_close();
     }
 }
