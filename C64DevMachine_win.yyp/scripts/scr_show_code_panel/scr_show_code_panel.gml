@@ -1114,7 +1114,7 @@ function scr_show_code_draw() {
         // crowding the buttons.
         if (showcode_open && _pw >= 380) {
             draw_set_color(make_color_rgb(120, 130, 150));
-            draw_text_transformed(_px + 108, _py + 6, string(showcode_total) + " B", 1.0, 1.0, 0);
+            draw_text_transformed(_px + 114, _py + 6, string(showcode_total) + " B", 1.0, 1.0, 0);
         }
 
         if (showcode_open) {
