@@ -2,6 +2,13 @@
 
 	    var _default_name = (global.workspace_path != "") ? filename_name(global.workspace_path) : "my_project.json";
 	    var path = get_save_filename("C64 Node Project|*.json", _default_name);
+	    // A native file dialog takes focus, so the key-up that ends the keypress is
+	    // delivered to the dialog and not to the game. GameMaker is left thinking the
+	    // key is still held, and keyboard_check_pressed() needs an up->down edge — so
+	    // ESC silently stops working until the input state is reset. This is why ESC
+	    // only failed after SOME asset operations: scr_asset_sid_import already did
+	    // this, every other importer did not.
+	    io_clear();
 	    if (path == "") return;
 
 	global.workspace_path = path;

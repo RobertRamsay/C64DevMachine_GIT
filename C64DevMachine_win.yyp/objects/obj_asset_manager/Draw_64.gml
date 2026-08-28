@@ -3214,6 +3214,13 @@ case "SPRITE_SET": {
         && !global.ui_click_consumed && !global.any_picker_open) {
             var _spr_base = _asset.name;
             var _spr_path = get_save_filename("Spred64 Text (*.txt)|*.txt", _spr_base + ".txt");
+            // A native file dialog takes focus, so the key-up that ends the keypress is
+            // delivered to the dialog and not to the game. GameMaker is left thinking the
+            // key is still held, and keyboard_check_pressed() needs an up->down edge — so
+            // ESC silently stops working until the input state is reset. This is why ESC
+            // only failed after SOME asset operations: scr_asset_sid_import already did
+            // this, every other importer did not.
+            io_clear();
             if (_spr_path != "") {
                 scr_asset_spr_export_spred64(_asset, _spr_path);
             }
@@ -3761,6 +3768,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	                var _png_ext  = filename_ext(_png_base);
 	                _png_base = string_copy(_png_base, 1, string_length(_png_base) - string_length(_png_ext));
 	                var _png_path = get_save_filename("PNG Image (*.png)|*.png", _png_base + ".png");
+	                io_clear();
 	                if (_png_path != "" && variable_struct_exists(_asset.meta, "preview_surf") && surface_exists(_asset.meta.preview_surf)) {
 	                    surface_save(_asset.meta.preview_surf, _png_path);
 	                }
@@ -3778,6 +3786,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            draw_text(_ex_x3 + 4, _ex_y , "EXPORT KLA");
 	            if (_ekla_hov && mouse_check_button_pressed(mb_left)) {
 	                var _kla_path = get_save_filename("Koala Painter (*.kla)|*.kla", filename_name(_asset.file));
+	                io_clear();
 	                if (_kla_path != "") {
 	                    scr_asset_kla_save(_asset);
 	                    file_copy(_asset.file, _kla_path);

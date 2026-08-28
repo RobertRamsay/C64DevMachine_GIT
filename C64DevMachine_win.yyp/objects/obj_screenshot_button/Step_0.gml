@@ -15,6 +15,13 @@ if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.
     if (point_in_rectangle(_gui_x, _gui_y, x - 20, y - 20, x + 20, y + 20)) {
         // Prompt the user for a save location
         var _filepath = get_save_filename("PNG Image (*.png)|*.png", "C64DM_screenshot_");
+        // A native file dialog takes focus, so the key-up that ends the keypress is
+        // delivered to the dialog and not to the game. GameMaker is left thinking the
+        // key is still held, and keyboard_check_pressed() needs an up->down edge — so
+        // ESC silently stops working until the input state is reset. This is why ESC
+        // only failed after SOME asset operations: scr_asset_sid_import already did
+        // this, every other importer did not.
+        io_clear();
 
         // Check if the user selected a path
         if (_filepath != "") {

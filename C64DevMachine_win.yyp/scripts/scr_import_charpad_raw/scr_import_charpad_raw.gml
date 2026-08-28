@@ -39,6 +39,13 @@ function scr_import_charpad_raw() {
 
     // ---- 1) Pick the Chars.bin file ----
     var _chars_path = get_open_filename("CharPad Chars|*Chars*.bin;*.bin", "");
+    // A native file dialog takes focus, so the key-up that ends the keypress is
+    // delivered to the dialog and not to the game. GameMaker is left thinking the
+    // key is still held, and keyboard_check_pressed() needs an up->down edge — so
+    // ESC silently stops working until the input state is reset. This is why ESC
+    // only failed after SOME asset operations: scr_asset_sid_import already did
+    // this, every other importer did not.
+    io_clear();
     if (_chars_path == "") exit;
 
     var _dir = filename_dir(_chars_path) + "/";
@@ -94,6 +101,7 @@ function scr_import_charpad_raw() {
     var _load_raw = function(_path, _label) {
         if (!file_exists(_path)) {
             _path = get_open_filename("CharPad " + _label + "|*.bin", "");
+            io_clear();
             if (_path == "" || !file_exists(_path)) return -1;
         }
         var _b = buffer_load(_path);

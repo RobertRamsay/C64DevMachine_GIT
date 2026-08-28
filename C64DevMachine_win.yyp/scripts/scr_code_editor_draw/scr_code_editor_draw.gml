@@ -96,6 +96,13 @@ draw_set_halign(fa_center);
 	if (_exp_hover && mouse_check_button_pressed(mb_left)) {
 		var _def_name = instance_exists(code_editor_node) ? code_editor_node.code_descriptor + ".asm" : "code_export.txt";
 		var _filename = get_save_filename("Assembly Files|*.asm;*.txt|All Files|*.*", _def_name);
+		// A native file dialog takes focus, so the key-up that ends the keypress is
+		// delivered to the dialog and not to the game. GameMaker is left thinking the
+		// key is still held, and keyboard_check_pressed() needs an up->down edge — so
+		// ESC silently stops working until the input state is reset. This is why ESC
+		// only failed after SOME asset operations: scr_asset_sid_import already did
+		// this, every other importer did not.
+		io_clear();
 		if (_filename != "") {
 			var _buf = buffer_create(string_byte_length(code_editor_text), buffer_fixed, 1);
 			buffer_write(_buf, buffer_text, code_editor_text);

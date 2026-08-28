@@ -3827,12 +3827,20 @@ if (export_trigger) {
     if (_exp_build_d64) {
         if (_chosen == "") {
             _chosen = get_save_filename("C64 Disk Image|*.d64", "program");
+            // A native file dialog takes focus, so the key-up that ends the keypress is
+            // delivered to the dialog and not to the game. GameMaker is left thinking the
+            // key is still held, and keyboard_check_pressed() needs an up->down edge — so
+            // ESC silently stops working until the input state is reset. This is why ESC
+            // only failed after SOME asset operations: scr_asset_sid_import already did
+            // this, every other importer did not.
+            io_clear();
             if (_chosen == "") exit;
             if (string_lower(filename_ext(_chosen)) != ".d64") _chosen += ".d64";
         }
     } else {
         if (_chosen == "") {
             _chosen = get_save_filename("C64 Program|*.prg", "export");
+            io_clear();
             if (_chosen == "") exit;
             if (string_lower(filename_ext(_chosen)) != ".prg") _chosen += ".prg";
         }

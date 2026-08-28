@@ -1221,6 +1221,13 @@ if (gui_menu_open == 3) {
                     }
                     if (_menu_has_loader) {
                         var _d64_path_menu = get_save_filename("C64 Disk Image|*.d64", "program");
+                        // A native file dialog takes focus, so the key-up that ends the keypress is
+                        // delivered to the dialog and not to the game. GameMaker is left thinking the
+                        // key is still held, and keyboard_check_pressed() needs an up->down edge — so
+                        // ESC silently stops working until the input state is reset. This is why ESC
+                        // only failed after SOME asset operations: scr_asset_sid_import already did
+                        // this, every other importer did not.
+                        io_clear();
                         if (_d64_path_menu != "") {
                             if (string_lower(filename_ext(_d64_path_menu)) != ".d64") {
                                 _d64_path_menu += ".d64";
@@ -1230,6 +1237,7 @@ if (gui_menu_open == 3) {
                         }
                     } else {
                         var _export_path = get_save_filename("C64 Program|*.prg", "export");
+                        io_clear();
                         if (_export_path != "") {
                             if (string_lower(filename_ext(_export_path)) != ".prg") {
                                 _export_path += ".prg";
@@ -1889,6 +1897,7 @@ for (var j = 0; j < array_length(shortcuts); j++) {
 			break;
 			case "EXPORT .PRG": {
 			    var _export_path = get_save_filename("C64 Program|*.prg", "export");
+			    io_clear();
 			    if (_export_path != "") {
 			        // Ensure .prg extension
 			        if (string_lower(filename_ext(_export_path)) != ".prg") {

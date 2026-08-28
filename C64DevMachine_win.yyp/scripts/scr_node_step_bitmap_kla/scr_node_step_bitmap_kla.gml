@@ -39,6 +39,13 @@ function scr_node_step_bitmap_kla(_draw_x) {
 
     if (point_in_rectangle(mouse_x, mouse_y, _btn_x1, _btn_y1, _btn_x2, _btn_y2)) {
         var _path = get_open_filename("Koala Painter (*.kla)|*.kla", "");
+        // A native file dialog takes focus, so the key-up that ends the keypress is
+        // delivered to the dialog and not to the game. GameMaker is left thinking the
+        // key is still held, and keyboard_check_pressed() needs an up->down edge — so
+        // ESC silently stops working until the input state is reset. This is why ESC
+        // only failed after SOME asset operations: scr_asset_sid_import already did
+        // this, every other importer did not.
+        io_clear();
         if (_path != "") {
             if (variable_instance_exists(id, "kla_buffer") && kla_buffer != -1 && buffer_exists(kla_buffer)) buffer_delete(kla_buffer);
             if (variable_instance_exists(id, "preview_surf") && surface_exists(preview_surf)) surface_free(preview_surf);

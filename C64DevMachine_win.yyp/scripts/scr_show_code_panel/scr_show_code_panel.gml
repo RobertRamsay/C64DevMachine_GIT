@@ -21,12 +21,12 @@
 /// VICE mode resolves every label operand to a real address using a label map
 /// built in the same pass as the listing, and computes true relative offsets
 /// for branches — so what the panel shows is what the VICE monitor will show.
-/// Scaffolding labels stay hidden there, since the address makes them noise.
+/// It lists NO label rows at all: a monitor never prints one, and every operand
+/// is already an address.
 ///
 /// ASM mode instead keeps the names AND declares each referenced label on its
 /// own line, hanging left of the code it names, so a branch never points at a
-/// label the listing never shows. Labels nothing refers to stay hidden in both
-/// modes.
+/// label the listing never shows. Labels nothing refers to stay hidden.
 ///
 /// Resize: drag the LEFT or RIGHT edge for width, the BOTTOM edge for row
 /// count (5..60 lines).
@@ -559,16 +559,18 @@ function scr_show_code_build(_compiled) {
 // =====================================================================
 // Should this flat entry be hidden in the current mode?
 //
-// User ADDRESS LABEL nodes always show — they are spine landmarks. A macro's
-// own scaffolding label shows only in ASM mode (mode 1) and only when
-// something actually branches to it: in VICE mode the branch already prints a
-// resolved address, so the name would be noise, and an unreferenced label is
-// noise in either mode.
+// VICE mode is a monitor dump: every operand is already a resolved $nnnn, so a
+// label row adds nothing a monitor would ever print. No labels there at all,
+// yours included.
+//
+// ASM mode is the readable one, so it declares labels. Your own ADDRESS LABEL
+// nodes always show. A macro's own scaffolding label shows only when something
+// actually branches to it — an unreferenced one is noise in any mode.
 // =====================================================================
 function scr_show_code_row_hidden(_ln, _mode) {
     if (_ln.kind != "label") { return false; }
-    if (!_ln.internal)       { return false; }
     if (_mode != 1)          { return true;  }
+    if (!_ln.internal)       { return false; }
     if (!_ln.used)           { return true;  }
     return false;
 }
