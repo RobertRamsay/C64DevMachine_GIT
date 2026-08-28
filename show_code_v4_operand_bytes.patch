@@ -1,0 +1,269 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 96483c0..f6eaf2f 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -971,6 +971,7 @@ showcode_scroll    = 0;
+ showcode_flat      = [];    // every emitted line, unfolded
+ showcode_lines     = [];    // the visible rows, after macro folding
+ showcode_expanded  = [];    // node keys of the macro groups currently open
++showcode_total     = 0;     // total emitted bytes, shown in the header
+ showcode_gen       = -1;    // named_loc_repack_gen the flat list was built from
+ showcode_dirty     = true;
+ showcode_dragging  = false;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml b/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
+index 521e199..2483f0b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
+@@ -10,6 +10,9 @@
+ /// spawns for its own branches) are resolved but never listed — they are noise
+ /// in a listing and they used to chop one macro into a dozen fragments.
+ ///
++/// Byte tables fold too: a run of 4+ plain bytes becomes one collapsible
++/// "[+] NAME $4000-$5F3F  8000B" row.
++///
+ /// Two display modes:
+ ///   0 = VICE   .0810  F0 05     BEQ $0817
+ ///   1 = ASM    .0810            BEQ L_LEXIT_REF_INSTANCE_100064
+@@ -29,13 +32,18 @@
+ ///
+ /// Functions in this file:
+ ///   scr_show_code_norm(_mnem)           mnemonic -> obj_opCodeManager key
++///   scr_show_code_num(_val)              any numeric type -> plain real
++///   scr_show_code_wrap16(_val)           wrap to 0..65535 without bitwise ops
++///   scr_show_code_lo(_val)               low byte  (two's complement safe)
++///   scr_show_code_hi(_val)               high byte
+ ///   scr_show_code_hex(_val, _digits)     zero-padded uppercase hex
+-///   scr_show_code_is_open(_key)          is this macro group expanded?
+-///   scr_show_code_toggle(_key)           expand / collapse one macro group
+ ///   scr_show_code_is_branch(_mnem)       relative-addressing test
++///   scr_show_code_is_open(_key)          is this group expanded?
++///   scr_show_code_toggle(_key)           expand / collapse one group
+ ///   scr_show_code_bytes(_ln)             "F0 05" style raw byte column
+ ///   scr_show_code_text(_ln, _mode)       "BEQ $0817" style disassembly column
+ ///   scr_show_code_build(_compiled)       compiled array -> showcode_flat
++///   scr_show_code_emit(...)              one flat entry -> display rows
+ ///   scr_show_code_fold()                 showcode_flat -> showcode_lines
+ ///   scr_show_code_draw()                 draw + all panel input
+ ///   scr_show_code_save_ini()             persist geometry / open state / mode
+@@ -64,6 +72,16 @@ function scr_show_code_norm(_mnem) {
+         _n = string_copy(_n, 1, 3) + "_abs";
+     }
+ 
++    // The _rep family (lda_abs_rep, sta_zp_rep, tax_rep, …) is a pure alias —
++    // c64_new_program emits the identical opcode for each. Without this,
++    // fifteen mnemonics that scr_define_opcodes sizes correctly still had no
++    // entry in scr_opcode_hex and printed "??" for their opcode byte.
++    if (string_length(_n) > 4) {
++        if (string_copy(_n, string_length(_n) - 3, 4) == "_rep") {
++            _n = string_copy(_n, 1, string_length(_n) - 4);
++        }
++    }
++
+     if (_n == "jmp")     { _n = "jmp_abs"; }
+     if (_n == "jsr_abs") { _n = "jsr";     }
+ 
+@@ -71,12 +89,45 @@ function scr_show_code_norm(_mnem) {
+ }
+ 
+ // =====================================================================
+-function scr_show_code_hex(_val, _digits) {
+-    var _v = _val;
+-    if (!is_real(_v)) { _v = 0; }
+-    _v = floor(_v) & $FFFF;
++// Numeric coercion for everything below.
++//
++// GML's bitwise operators return int64, and is_real() is FALSE for an
++// int64. That is what made every operand byte in this listing print as 00:
++// the value arrived here as `something & $FF`, is_real() rejected it, and
++// it was zeroed. The address column survived only because a PC is a plain
++// real when it is passed in. So: nothing in this file masks with & or >>
++// any more — the lo/hi helpers below use arithmetic — and the guard accepts
++// the int types as well, since the compile chain itself emits hundreds of
++// operands built from bitwise expressions.
++// =====================================================================
++function scr_show_code_num(_val) {
++    if (is_real(_val))  { return floor(_val); }
++    if (is_int64(_val)) { return floor(real(_val)); }
++    if (is_int32(_val)) { return floor(real(_val)); }
++    return 0;
++}
+ 
+-    var _h = string_upper(decimal_to_hex(_v));
++function scr_show_code_wrap16(_val) {
++    var _v = scr_show_code_num(_val) mod 65536;
++    if (_v < 0) {
++        _v += 65536;
++    }
++    return _v;
++}
++
++// Low byte. Handles negative input (branch offsets) as two's complement.
++function scr_show_code_lo(_val) {
++    return scr_show_code_wrap16(_val) mod 256;
++}
++
++// High byte.
++function scr_show_code_hi(_val) {
++    return floor(scr_show_code_wrap16(_val) / 256);
++}
++
++// =====================================================================
++function scr_show_code_hex(_val, _digits) {
++    var _h = string_upper(decimal_to_hex(scr_show_code_wrap16(_val)));
+     while (string_length(_h) < _digits) {
+         _h = "0" + _h;
+     }
+@@ -139,14 +190,14 @@ function scr_show_code_bytes(_ln) {
+     if (_ln.kind == "byte") {
+         if (_ln.lbl != "" && _ln.hasres) {
+             if (string_pos("_lab_hi", _ln.raw) > 0) {
+-                return scr_show_code_hex((_ln.res >> 8) & $FF, 2);
++                return scr_show_code_hex(scr_show_code_hi(_ln.res), 2);
+             }
+-            return scr_show_code_hex(_ln.res & $FF, 2);
++            return scr_show_code_hex(scr_show_code_lo(_ln.res), 2);
+         }
+         if (_ln.lbl != "") {
+             return "??";
+         }
+-        return scr_show_code_hex(_ln.val, 2);
++        return scr_show_code_hex(scr_show_code_lo(_ln.val), 2);
+     }
+ 
+     var _op = scr_opcode_hex(_ln.mnem);
+@@ -155,8 +206,6 @@ function scr_show_code_bytes(_ln) {
+         return _op;
+     }
+ 
+-    var _v = _ln.val;
+-
+     if (_ln.lbl != "") {
+         if (!_ln.hasres) {
+             if (_ln.sz == 2) {
+@@ -166,34 +215,28 @@ function scr_show_code_bytes(_ln) {
+         }
+ 
+         // Relative branch: the operand byte is target - (pc + 2), the same
+-        // arithmetic c64_new_program's "rel" fixup performs.
++        // arithmetic c64_new_program's "rel" fixup performs. scr_show_code_lo
++        // wraps a negative offset to two's complement for us.
+         if (scr_show_code_is_branch(_ln.mnem)) {
+-            var _off = _ln.res - (_ln.pc + 2);
+-            if (_off < 0) {
+-                _off = 256 + _off;
+-            }
+-            return _op + " " + scr_show_code_hex(_off & $FF, 2);
++            return _op + " " + scr_show_code_hex(scr_show_code_lo(_ln.res - (_ln.pc + 2)), 2);
+         }
+ 
+         if (_ln.sz == 2) {
+             if (string_pos("_lab_hi", _ln.raw) > 0) {
+-                return _op + " " + scr_show_code_hex((_ln.res >> 8) & $FF, 2);
++                return _op + " " + scr_show_code_hex(scr_show_code_hi(_ln.res), 2);
+             }
+-            return _op + " " + scr_show_code_hex(_ln.res & $FF, 2);
++            return _op + " " + scr_show_code_hex(scr_show_code_lo(_ln.res), 2);
+         }
+ 
+-        return _op + " " + scr_show_code_hex(_ln.res & $FF, 2)
+-                   + " " + scr_show_code_hex((_ln.res >> 8) & $FF, 2);
++        return _op + " " + scr_show_code_hex(scr_show_code_lo(_ln.res), 2)
++                   + " " + scr_show_code_hex(scr_show_code_hi(_ln.res), 2);
+     }
+ 
+-    if (!is_real(_v)) { _v = 0; }
+-    _v = floor(_v) & $FFFF;
+-
+     if (_ln.sz == 2) {
+-        return _op + " " + scr_show_code_hex(_v & $FF, 2);
++        return _op + " " + scr_show_code_hex(scr_show_code_lo(_ln.val), 2);
+     }
+-    return _op + " " + scr_show_code_hex(_v & $FF, 2)
+-               + " " + scr_show_code_hex((_v >> 8) & $FF, 2);
++    return _op + " " + scr_show_code_hex(scr_show_code_lo(_ln.val), 2)
++               + " " + scr_show_code_hex(scr_show_code_hi(_ln.val), 2);
+ }
+ 
+ // =====================================================================
+@@ -217,9 +260,9 @@ function scr_show_code_text(_ln, _mode) {
+     if (_ln.kind == "byte") {
+         if (_ln.lbl != "" && _ln.hasres && _mode == 0) {
+             if (string_pos("_lab_hi", _ln.raw) > 0) {
+-                return ".BYTE $" + scr_show_code_hex((_ln.res >> 8) & $FF, 2);
++                return ".BYTE $" + scr_show_code_hex(scr_show_code_hi(_ln.res), 2);
+             }
+-            return ".BYTE $" + scr_show_code_hex(_ln.res & $FF, 2);
++            return ".BYTE $" + scr_show_code_hex(scr_show_code_lo(_ln.res), 2);
+         }
+         if (_ln.lbl != "") {
+             if (string_pos("_lab_hi", _ln.raw) > 0) {
+@@ -227,7 +270,7 @@ function scr_show_code_text(_ln, _mode) {
+             }
+             return ".BYTE <" + string_upper(_ln.lbl);
+         }
+-        return ".BYTE $" + scr_show_code_hex(_ln.val, 2);
++        return ".BYTE $" + scr_show_code_hex(scr_show_code_lo(_ln.val), 2);
+     }
+ 
+     var _raw = _ln.raw;
+@@ -237,10 +280,10 @@ function scr_show_code_text(_ln, _mode) {
+         // VICE mode: show what the monitor shows — the resolved address.
+         if (_mode == 0 && _ln.hasres) {
+             if (string_pos("_lab_lo", _raw) > 0) {
+-                return _op3 + " #$" + scr_show_code_hex(_ln.res & $FF, 2);
++                return _op3 + " #$" + scr_show_code_hex(scr_show_code_lo(_ln.res), 2);
+             }
+             if (string_pos("_lab_hi", _raw) > 0) {
+-                return _op3 + " #$" + scr_show_code_hex((_ln.res >> 8) & $FF, 2);
++                return _op3 + " #$" + scr_show_code_hex(scr_show_code_hi(_ln.res), 2);
+             }
+             return _op3 + " $" + scr_show_code_hex(_ln.res, 4);
+         }
+@@ -342,6 +385,13 @@ function scr_show_code_build(_compiled) {
+                 _v   = 0;
+             }
+ 
++            // Over three hundred operands in the compile chain are built from
++            // bitwise expressions (`_addr & 0xFF`, `(_v >> 8) & 0xFF`), so they
++            // arrive as int64. scr_format_asm() gates on is_real() and would
++            // render those as a bare decimal or as $0000. Flatten to a plain
++            // real once, here, and every consumer downstream is safe.
++            _v = scr_show_code_num(_v);
++
+             // [2] is the owning node instance, or — on the branch/jump forms
+             // that carry their target there instead — a string label.
+             var _key   = "";
+@@ -449,9 +499,16 @@ function scr_show_code_build(_compiled) {
+         ds_map_destroy(_lblmap);
+         ds_map_destroy(_userlbl);
+ 
+-        showcode_flat  = _flat;
+-        showcode_gen   = global.named_loc_repack_gen;
+-        showcode_dirty = true;
++        // Total emitted bytes, for the header readout.
++        var _tot = 0;
++        for (var _t = 0; _t < array_length(_flat); _t++) {
++            _tot += _flat[_t].sz;
++        }
++
++        showcode_flat   = _flat;
++        showcode_total  = _tot;
++        showcode_gen    = global.named_loc_repack_gen;
++        showcode_dirty  = true;
+     }
+ }
+ 
+@@ -730,6 +787,13 @@ function scr_show_code_draw() {
+         draw_set_color(c_white);
+         draw_text_transformed(_px + 12, _py + 6, "SHOW CODE", 1.0, 1.0, 0);
+ 
++        // Program size, only when the panel is wide enough to hold it without
++        // crowding the buttons.
++        if (showcode_open && _pw >= 380) {
++            draw_set_color(make_color_rgb(120, 130, 150));
++            draw_text_transformed(_px + 108, _py + 6, string(showcode_total) + " B", 1.0, 1.0, 0);
++        }
++
+         if (showcode_open) {
+             var _mode_lbl = "VICE";
+             if (showcode_mode == 1) {

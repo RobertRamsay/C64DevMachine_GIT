@@ -971,6 +971,7 @@ showcode_scroll    = 0;
 showcode_flat      = [];    // every emitted line, unfolded
 showcode_lines     = [];    // the visible rows, after macro folding
 showcode_expanded  = [];    // node keys of the macro groups currently open
+showcode_total     = 0;     // total emitted bytes, shown in the header
 showcode_gen       = -1;    // named_loc_repack_gen the flat list was built from
 showcode_dirty     = true;
 showcode_dragging  = false;
