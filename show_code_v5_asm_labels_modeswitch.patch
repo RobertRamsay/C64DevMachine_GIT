@@ -1,0 +1,324 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml b/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
+index 2483f0b..6489f15 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
+@@ -13,13 +13,20 @@
+ /// Byte tables fold too: a run of 4+ plain bytes becomes one collapsible
+ /// "[+] NAME $4000-$5F3F  8000B" row.
+ ///
+-/// Two display modes:
++/// Two display modes, picked with the two-segment switch in the header (the
++/// active one is filled, so there is nothing to infer from a single label):
+ ///   0 = VICE   .0810  F0 05     BEQ $0817
+-///   1 = ASM    .0810            BEQ L_LEXIT_REF_INSTANCE_100064
++///   1 = ASM    .081E            BEQ WAIT_EDGE_100148
+ ///
+ /// VICE mode resolves every label operand to a real address using a label map
+ /// built in the same pass as the listing, and computes true relative offsets
+ /// for branches — so what the panel shows is what the VICE monitor will show.
++/// Scaffolding labels stay hidden there, since the address makes them noise.
++///
++/// ASM mode instead keeps the names AND declares each referenced label on its
++/// own line, hanging left of the code it names, so a branch never points at a
++/// label the listing never shows. Labels nothing refers to stay hidden in both
++/// modes.
+ ///
+ /// Resize: drag the LEFT or RIGHT edge for width, the BOTTOM edge for row
+ /// count (5..60 lines).
+@@ -38,6 +45,7 @@
+ ///   scr_show_code_hi(_val)               high byte
+ ///   scr_show_code_hex(_val, _digits)     zero-padded uppercase hex
+ ///   scr_show_code_is_branch(_mnem)       relative-addressing test
++///   scr_show_code_row_hidden(_ln, _mode) label visibility rule for this mode
+ ///   scr_show_code_is_open(_key)          is this group expanded?
+ ///   scr_show_code_toggle(_key)           expand / collapse one group
+ ///   scr_show_code_bytes(_ln)             "F0 05" style raw byte column
+@@ -370,7 +378,7 @@ function scr_show_code_build(_compiled) {
+ 
+                 _pc  = _o;
+                 _run = -1;
+-                array_push(_flat, { kind:"org", key:"", name:"", owner:"", pc:_pc, raw:_m, mnem:_m, val:0, lbl:"", sz:0, res:0, hasres:false, count:0, vals:[], dkey:"" });
++                array_push(_flat, { kind:"org", key:"", name:"", owner:"", pc:_pc, raw:_m, mnem:_m, val:0, lbl:"", sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:false, used:false });
+                 continue;
+             }
+ 
+@@ -418,11 +426,17 @@ function scr_show_code_build(_compiled) {
+             if (_m == "label") {
+                 ds_map_set(_lblmap, _lbl, _pc);
+                 _run = -1;
+-                // Hidden scaffolding labels are recorded above and dropped
+-                // here, which also stops them fragmenting a macro's run.
++
++                // Every label now gets a row. Scaffolding labels are flagged
++                // internal and are filtered later — hidden in VICE mode, where
++                // the branch already shows a resolved address and the name is
++                // noise, and shown in ASM mode, where a branch to a label that
++                // is never declared makes the listing unreadable.
++                var _isint = true;
+                 if (ds_map_exists(_userlbl, _lbl)) {
+-                    array_push(_flat, { kind:"label", key:_key, name:_name, owner:_owner, pc:_pc, raw:_m, mnem:_m, val:0, lbl:_lbl, sz:0, res:0, hasres:false, count:0, vals:[], dkey:"" });
++                    _isint = false;
+                 }
++                array_push(_flat, { kind:"label", key:_key, name:_name, owner:_owner, pc:_pc, raw:_m, mnem:_m, val:0, lbl:_lbl, sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:_isint, used:false });
+                 continue;
+             }
+ 
+@@ -432,7 +446,7 @@ function scr_show_code_build(_compiled) {
+                 // pointer, not table filler, and it needs its own resolution.
+                 if (_lbl != "") {
+                     _run = -1;
+-                    array_push(_flat, { kind:"byte", key:_key, name:_name, owner:_owner, pc:_pc, raw:_m, mnem:"byte", val:_v, lbl:_lbl, sz:1, res:0, hasres:false, count:1, vals:[], dkey:"" });
++                    array_push(_flat, { kind:"byte", key:_key, name:_name, owner:_owner, pc:_pc, raw:_m, mnem:"byte", val:_v, lbl:_lbl, sz:1, res:0, hasres:false, count:1, vals:[], dkey:"", internal:false, used:false });
+                     _pc += 1;
+                     continue;
+                 }
+@@ -459,7 +473,7 @@ function scr_show_code_build(_compiled) {
+                     if (_owner != "") {
+                         _dname = _owner;
+                     }
+-                    array_push(_flat, { kind:"data", key:_key, name:_dname, owner:_owner, pc:_pc, raw:"byte", mnem:"byte", val:0, lbl:"", sz:1, res:0, hasres:false, count:1, vals:[_v], dkey:"D:" + _owner + "@" + scr_show_code_hex(_pc, 4) });
++                    array_push(_flat, { kind:"data", key:_key, name:_dname, owner:_owner, pc:_pc, raw:"byte", mnem:"byte", val:0, lbl:"", sz:1, res:0, hasres:false, count:1, vals:[_v], dkey:"D:" + _owner + "@" + scr_show_code_hex(_pc, 4), internal:false, used:false });
+                     _run = array_length(_flat) - 1;
+                 }
+ 
+@@ -481,21 +495,51 @@ function scr_show_code_build(_compiled) {
+             }
+ 
+             _run = -1;
+-            array_push(_flat, { kind:"op", key:_key, name:_name, owner:_owner, pc:_pc, raw:_m, mnem:_norm, val:_v, lbl:_lbl, sz:_sz, res:0, hasres:false, count:1, vals:[], dkey:"" });
++            array_push(_flat, { kind:"op", key:_key, name:_name, owner:_owner, pc:_pc, raw:_m, mnem:_norm, val:_v, lbl:_lbl, sz:_sz, res:0, hasres:false, count:1, vals:[], dkey:"", internal:false, used:false });
+             _pc += _sz;
+         }
+ 
+         // ---- PASS 2: resolve label operands now every label address is known.
+-        // Forward branches are the whole reason this is a second pass.
++        // Forward branches are the whole reason this is a second pass. The same
++        // walk records which label names anything actually refers to.
++        var _refs = ds_map_create();
+         for (var _r = 0; _r < array_length(_flat); _r++) {
+             var _ln = _flat[_r];
+             if (_ln.lbl == "")       { continue; }
+             if (_ln.kind == "label") { continue; }
++            ds_map_set(_refs, _ln.lbl, 1);
+             if (!ds_map_exists(_lblmap, _ln.lbl)) { continue; }
+             _ln.res    = ds_map_find_value(_lblmap, _ln.lbl);
+             _ln.hasres = true;
+         }
+ 
++        // ---- PASS 3: label housekeeping.
++        //  * used  — is this label the target of anything in the listing? An
++        //            unreferenced scaffolding label is pure noise even in ASM
++        //            mode, so it never gets shown.
++        //  * key   — a label names what FOLLOWS it, so an internal label adopts
++        //            the macro key of the next real entry. Without this, a
++        //            label sitting inside a macro's run has no key and chops
++        //            that macro into two separate [+] groups.
++        var _fn = array_length(_flat);
++        for (var _r2 = 0; _r2 < _fn; _r2++) {
++            var _lr = _flat[_r2];
++            if (_lr.kind != "label") { continue; }
++
++            _lr.used = ds_map_exists(_refs, _lr.lbl);
++
++            if (_lr.internal && _lr.key == "") {
++                for (var _f = _r2 + 1; _f < _fn; _f++) {
++                    if (_flat[_f].kind == "label") { continue; }
++                    _lr.key  = _flat[_f].key;
++                    _lr.name = _flat[_f].name;
++                    break;
++                }
++            }
++        }
++
++        ds_map_destroy(_refs);
++
+         ds_map_destroy(_lblmap);
+         ds_map_destroy(_userlbl);
+ 
+@@ -512,15 +556,36 @@ function scr_show_code_build(_compiled) {
+     }
+ }
+ 
++// =====================================================================
++// Should this flat entry be hidden in the current mode?
++//
++// User ADDRESS LABEL nodes always show — they are spine landmarks. A macro's
++// own scaffolding label shows only in ASM mode (mode 1) and only when
++// something actually branches to it: in VICE mode the branch already prints a
++// resolved address, so the name would be noise, and an unreferenced label is
++// noise in either mode.
++// =====================================================================
++function scr_show_code_row_hidden(_ln, _mode) {
++    if (_ln.kind != "label") { return false; }
++    if (!_ln.internal)       { return false; }
++    if (_mode != 1)          { return true;  }
++    if (!_ln.used)           { return true;  }
++    return false;
++}
++
+ // =====================================================================
+ // Emit the display rows for ONE flat entry at the given indent.
+ // A byte table long enough to be worth hiding becomes its own collapsible
+ // group; a short one just lists. Arrays are reference types in GML 2.3+,
+ // so the pushes onto _out are seen by the caller.
+ // =====================================================================
+-function scr_show_code_emit(_out, _flat, _idx, _indent) {
++function scr_show_code_emit(_out, _flat, _idx, _indent, _mode) {
+     var _ln = _flat[_idx];
+ 
++    if (scr_show_code_row_hidden(_ln, _mode)) {
++        return;
++    }
++
+     if (_ln.kind != "data") {
+         array_push(_out, { kind:"line", idx:_idx, sub:0, indent:_indent, key:"", name:"", pc:_ln.pc, sz:_ln.sz, count:1, open:false });
+         return;
+@@ -561,7 +626,7 @@ function scr_show_code_fold() {
+             var _ln = showcode_flat[_i];
+ 
+             if (_ln.key == "") {
+-                scr_show_code_emit(_out, showcode_flat, _i, 0);
++                scr_show_code_emit(_out, showcode_flat, _i, 0, showcode_mode);
+                 _i += 1;
+                 continue;
+             }
+@@ -582,7 +647,7 @@ function scr_show_code_fold() {
+ 
+             if (_open) {
+                 for (var _g = _i; _g < _j; _g++) {
+-                    scr_show_code_emit(_out, showcode_flat, _g, 10);
++                    scr_show_code_emit(_out, showcode_flat, _g, 10, showcode_mode);
+                 }
+             }
+ 
+@@ -664,11 +729,20 @@ function scr_show_code_draw() {
+         // ---- header buttons -------------------------------------------
+         var _btn_w     = 30;
+         var _btn_min_x = _px + _pw - 10 - _btn_w;
+-        var _btn_mod_x = _btn_min_x - 6 - 52;
++        // Mode control is a two-segment switch, not a one-word button: the old
++        // button showed the CURRENT mode, which reads just as easily as "click
++        // to switch TO this". Both options are on screen now, the active one
++        // filled, so there is nothing to infer.
++        var _seg_w     = 42;
++        var _mod_w     = _seg_w * 2;
++        var _btn_mod_x = _btn_min_x - 6 - _mod_w;
+ 
+         var _hdr_hover = (_mx >= _px && _mx < _px + _pw && _my >= _py && _my < _py + _hdr_h);
+-        var _on_min = (_mx >= _btn_min_x && _mx < _btn_min_x + _btn_w && _my >= _py + 4 && _my < _py + _hdr_h - 4);
+-        var _on_mod = (_mx >= _btn_mod_x && _mx < _btn_mod_x + 52   && _my >= _py + 4 && _my < _py + _hdr_h - 4);
++        var _in_hdr_v  = (_my >= _py + 4 && _my < _py + _hdr_h - 4);
++        var _on_min = (_mx >= _btn_min_x && _mx < _btn_min_x + _btn_w && _in_hdr_v);
++        var _on_seg0 = (_mx >= _btn_mod_x           && _mx < _btn_mod_x + _seg_w && _in_hdr_v);
++        var _on_seg1 = (_mx >= _btn_mod_x + _seg_w  && _mx < _btn_mod_x + _mod_w && _in_hdr_v);
++        var _on_mod  = (_on_seg0 || _on_seg1);
+ 
+         // ---- resize edges ---------------------------------------------
+         // Live only while the panel is open, and only below the header so a
+@@ -697,8 +771,16 @@ function scr_show_code_draw() {
+                 showcode_open = !showcode_open;
+                 scr_show_code_save_ini();
+             } else if (_on_mod && showcode_open) {
+-                showcode_mode = (showcode_mode + 1) mod 2;
+-                scr_show_code_save_ini();
++                var _newmode = showcode_mode;
++                if (_on_seg0) { _newmode = 0; }
++                if (_on_seg1) { _newmode = 1; }
++                if (_newmode != showcode_mode) {
++                    showcode_mode  = _newmode;
++                    // Label visibility depends on the mode, so the fold has to
++                    // be rebuilt — not just redrawn.
++                    showcode_dirty = true;
++                    scr_show_code_save_ini();
++                }
+             } else if (_edge_b) {
+                 showcode_resize  = 3;
+             } else if (_edge_l) {
+@@ -734,7 +816,7 @@ function scr_show_code_draw() {
+                 _ph     = _hdr_h + _pad_t + _body_h + _pad_b;
+ 
+                 _btn_min_x = _px + _pw - 10 - _btn_w;
+-                _btn_mod_x = _btn_min_x - 6 - 52;
++                _btn_mod_x = _btn_min_x - 6 - _mod_w;
+             } else {
+                 showcode_resize = 0;
+                 scr_show_code_save_ini();
+@@ -760,7 +842,7 @@ function scr_show_code_draw() {
+                 }
+ 
+                 _btn_min_x = _px + _pw - 10 - _btn_w;
+-                _btn_mod_x = _btn_min_x - 6 - 52;
++                _btn_mod_x = _btn_min_x - 6 - _mod_w;
+             } else {
+                 showcode_dragging = false;
+                 scr_show_code_save_ini();
+@@ -795,19 +877,43 @@ function scr_show_code_draw() {
+         }
+ 
+         if (showcode_open) {
+-            var _mode_lbl = "VICE";
++            var _sy1 = _py + 4;
++            var _sy2 = _py + _hdr_h - 4;
++            var _acc = make_color_rgb(255, 210, 80);
++
++            // Active segment filled, inactive segment just outlined.
++            var _act_x = _btn_mod_x;
+             if (showcode_mode == 1) {
+-                _mode_lbl = "ASM";
++                _act_x = _btn_mod_x + _seg_w;
+             }
++            draw_set_color(_acc);
++            draw_rectangle(_act_x + 1, _sy1 + 1, _act_x + _seg_w - 1, _sy2 - 1, false);
++
++            draw_set_color(make_color_rgb(120, 120, 130));
++            draw_rectangle(_btn_mod_x, _sy1, _btn_mod_x + _mod_w, _sy2, true);
++            draw_line(_btn_mod_x + _seg_w, _sy1, _btn_mod_x + _seg_w, _sy2);
+ 
+-            var _mod_col = make_color_rgb(120, 120, 130);
+-            if (_on_mod) {
+-                _mod_col = c_white;
+-            }
+-            draw_set_color(_mod_col);
+-            draw_rectangle(_btn_mod_x, _py + 4, _btn_mod_x + 52, _py + _hdr_h - 4, true);
+             draw_set_halign(fa_center);
+-            draw_text_transformed(_btn_mod_x + 26, _py + 6, _mode_lbl, 1.0, 1.0, 0);
++
++            // VICE segment
++            var _c0 = make_color_rgb(140, 140, 150);
++            if (showcode_mode == 0) {
++                _c0 = c_black;
++            } else if (_on_seg0) {
++                _c0 = c_white;
++            }
++            draw_set_color(_c0);
++            draw_text_transformed(_btn_mod_x + (_seg_w / 2), _py + 6, "VICE", 1.0, 1.0, 0);
++
++            // ASM segment
++            var _c1 = make_color_rgb(140, 140, 150);
++            if (showcode_mode == 1) {
++                _c1 = c_black;
++            } else if (_on_seg1) {
++                _c1 = c_white;
++            }
++            draw_set_color(_c1);
++            draw_text_transformed(_btn_mod_x + _seg_w + (_seg_w / 2), _py + 6, "ASM", 1.0, 1.0, 0);
+         }
+ 
+         var _min_lbl = "-";
+@@ -957,8 +1063,15 @@ function scr_show_code_draw() {
+                 draw_text_transformed(_col_byte + _indent, _ry, scr_show_code_bytes(_ln), 1.0, 1.0, 0);
+             }
+ 
++            // A label hangs left of the code it names, the way it reads in a
++            // source listing.
++            var _tx_indent = _indent;
++            if (_ln.kind == "label") {
++                _tx_indent = max(0, _indent - 10);
++            }
++
+             draw_set_color(_tint);
+-            draw_text_transformed(_col_text + _indent, _ry, scr_show_code_text(_ln, showcode_mode), 1.0, 1.0, 0);
++            draw_text_transformed(_col_text + _tx_indent, _ry, scr_show_code_text(_ln, showcode_mode), 1.0, 1.0, 0);
+         }
+ 
+         if (_clicked_key != "") {
