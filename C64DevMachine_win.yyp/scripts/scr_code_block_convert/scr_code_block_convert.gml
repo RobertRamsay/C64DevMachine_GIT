@@ -229,11 +229,36 @@ function scr_cbc_extract(_sel) {
             }
 
             _pc = _o;
-            if (ds_map_exists(_keys, _owner)) {
+
+            // A BRACKETED org — one sitting inside org -2 / org -3 — is a macro
+            // relocating its own data table, and that data belongs to whoever
+            // is currently emitting. A BARE org is structural: an ORG node, or
+            // the ASSET EXPORT pass that scr_compile_chain runs immediately
+            // after the node walk with nothing pushed in between.
+            //
+            // Ownership must not survive a bare org. _owner is sticky, so a
+            // selection that happened to be the last thing emitting still owned
+            // it when the asset export began — every exported asset then had
+            // its ["org", address] treated as one of the selection's own
+            // relocated tables, and its bytes were swept into the code block.
+            // Neither safety gate could see it: the byte-count cross-check only
+            // covers spine bytes (relocated ones are excluded on purpose, that
+            // is how macro data tables get through), and the round trip merely
+            // proves the text matches whatever was extracted.
+            //
+            // global.compile_sizing_pass does not suppress that export either —
+            // both references to it in scr_compile_chain are dead (one behind
+            // `false &&`, one commented out) — so this is the only thing
+            // standing between a conversion and a block with the entire sprite
+            // set baked into it.
+            if (array_length(_pcstack) > 0 && ds_map_exists(_keys, _owner)) {
                 _reloc = { addr: _o, entries: [] };
                 array_push(_res.reloc, _reloc);
             } else {
                 _reloc = noone;
+                if (array_length(_pcstack) == 0) {
+                    _owner = "";
+                }
             }
             continue;
         }
@@ -424,47 +449,147 @@ function scr_cbc_str_decode(_bytes) {
 // reading empty memory at $2000, which is exactly the "did not print anything"
 // case. Same shape for CHAR_SET, MAP_DATA, SPRITE_SET and the rest.
 //
-// Returns [ { name, addr, size } ] for every asset-mode reference found.
+// Returns [ { name, addr, size, kind } ] — kind "text" is offered for inlining,
+// kind "keep" is declared with an // @asset line and left where it is.
 // =====================================================================
 function scr_cbc_asset_deps(_sel) {
-    var _out = [];
+    var _out  = [];
+    var _seen = ds_map_create();
 
     for (var _i = 0; _i < array_length(_sel); _i++) {
         var _n = _sel[_i];
         if (!instance_exists(_n))              { continue; }
-        if (_n.node_type != "MACRO_PRINT")     { continue; }
         if (array_length(_n.instructions) < 1) { continue; }
 
-        var _row = _n.instructions[0];
-        if (array_length(_row) < 11) { continue; }
+        var _row  = _n.instructions[0];
+        var _type = string(_n.node_type);
 
-        var _mode = 0;
-        if (is_real(_row[9])) { _mode = real(_row[9]); }
-        if (_mode != 1)       { continue; }
+        // Names this node is the ONLY thing vouching for. Every one of these
+        // gates an export in scr_compile_chain's _used_* pass, so converting
+        // the node away drops the asset out of the build and the block reads
+        // empty memory — the same failure as the lost PRINT text, just wearing
+        // a different node type.
+        //
+        // MACRO_SID and BYTE_DATA_NODE are deliberately absent: SID_MUSIC,
+        // SID_SFX, BYTE_DATA and LINE_COLL are pushed into _all_assets
+        // unconditionally, so their _used_* maps are collected and never
+        // consulted. Nothing to preserve.
+        var _keep = [];
 
-        var _name = string(_row[10]);
-        if (_name == "") { continue; }
+        // Only TEXT_DATA behind a MACRO_PRINT is offered for inlining — it is
+        // the one whose bytes we know how to re-emit as .string and prove by
+        // round trip. Everything else is declared and left where it is.
+        var _text = "";
 
-        var _addr = 0;
-        var _size = 0;
-        if (instance_exists(obj_asset_manager)) {
-            var _am = obj_asset_manager;
-            for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
-                var _a = ds_list_find_value(_am.asset_list, _ai);
-                if (_a.type != "TEXT_DATA") { continue; }
-                if (_a.name != _name)       { continue; }
-                _addr = _a.address;
-                if (buffer_exists(_a.buffer)) {
-                    _size = buffer_get_size(_a.buffer);
+        if (_type == "MACRO_PRINT") {
+            var _mode_p = 0;
+            if (array_length(_row) > 9 && is_real(_row[9])) {
+                _mode_p = real(_row[9]);
+            }
+            if (_mode_p == 1 && array_length(_row) > 10) {
+                _text = string(_row[10]);
+            }
+        } else if (_type == "MACRO_SPR" || _type == "MACRO_CHR"
+                || _type == "MACRO_SFX" || _type == "MACRO_BMP") {
+            if (array_length(_row) > 1) {
+                array_push(_keep, string(_row[1]));
+            }
+        } else if (_type == "MACRO_MAP") {
+            // The map itself, plus the charset the MAP_DATA asset names —
+            // scr_compile_chain marks that one on the map's behalf, so it is
+            // orphaned by the same conversion.
+            if (array_length(_row) > 1) {
+                var _map_name = string(_row[1]);
+                array_push(_keep, _map_name);
+                var _map_a = scr_cbc_find_asset(_map_name);
+                if (!is_undefined(_map_a)) {
+                    if (variable_struct_exists(_map_a, "meta")) {
+                        if (variable_struct_exists(_map_a.meta, "chr_asset")) {
+                            array_push(_keep, string(_map_a.meta.chr_asset));
+                        }
+                    }
                 }
-                break;
+            }
+        } else if (_type == "MACRO_TEXT_SCROLL") {
+            if (array_length(_row) > 13) {
+                array_push(_keep, string(_row[13]));
+            }
+            var _mode_s = 0;
+            if (array_length(_row) > 9 && is_real(_row[9])) {
+                _mode_s = real(_row[9]);
+            }
+            if (_mode_s == 1 && array_length(_row) > 10) {
+                // Declared rather than offered for inlining: the scroll macro
+                // reads this at runtime and I have not traced its layout the
+                // way I traced MACRO_PRINT's. Keeping the asset is correct and
+                // loses nothing.
+                array_push(_keep, string(_row[10]));
+            }
+        } else if (_type == "MACRO_LOADER") {
+            // Slot 1 is the LOAD_ORG manifest, which is not a binary asset.
+            // Slot 2 is the linked file, which is.
+            if (array_length(_row) > 2) {
+                array_push(_keep, string(_row[2]));
+            }
+        } else if (_type == "NEW_STR") {
+            var _mode_v = 0;
+            if (array_length(_row) > 4 && is_real(_row[4])) {
+                _mode_v = real(_row[4]);
+            }
+            if (_mode_v == 1 && array_length(_row) > 5) {
+                array_push(_keep, string(_row[5]));
             }
         }
 
-        array_push(_out, { name: _name, addr: _addr, size: _size });
+        // ---- declared dependencies ----
+        for (var _k = 0; _k < array_length(_keep); _k++) {
+            var _kn = _keep[_k];
+            if (_kn == "")                    { continue; }
+            if (ds_map_exists(_seen, _kn))    { continue; }
+            // An @asset line for a name that is not an asset would be silently
+            // skipped by the reader, but writing one is still noise.
+            if (is_undefined(scr_cbc_find_asset(_kn))) { continue; }
+            ds_map_set(_seen, _kn, 1);
+            array_push(_out, { name: _kn, addr: 0, size: 0, kind: "keep" });
+        }
+
+        // ---- promptable TEXT_DATA ----
+        if (_text != "" && !ds_map_exists(_seen, _text)) {
+            var _addr = 0;
+            var _size = 0;
+            var _ta   = scr_cbc_find_asset(_text);
+            if (!is_undefined(_ta)) {
+                if (_ta.type == "TEXT_DATA") {
+                    _addr = _ta.address;
+                    if (buffer_exists(_ta.buffer)) {
+                        _size = buffer_get_size(_ta.buffer);
+                    }
+                }
+            }
+            ds_map_set(_seen, _text, 1);
+            array_push(_out, { name: _text, addr: _addr, size: _size, kind: "text" });
+        }
     }
 
+    ds_map_destroy(_seen);
     return _out;
+}
+
+// =====================================================================
+// Asset by name, or undefined. One lookup instead of the four hand-rolled
+// walks this file used to carry.
+// =====================================================================
+function scr_cbc_find_asset(_name) {
+    if (!instance_exists(obj_asset_manager)) {
+        return undefined;
+    }
+    var _am = obj_asset_manager;
+    for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
+        var _a = ds_list_find_value(_am.asset_list, _ai);
+        if (!is_struct(_a))   { continue; }
+        if (_a.name == _name) { return _a; }
+    }
+    return undefined;
 }
 
 // =====================================================================
@@ -810,7 +935,17 @@ function scr_cbc_convert() {
     var _deps_keep = [];
 
     for (var _d = 0; _d < array_length(_deps_all); _d++) {
-        var _dp   = _deps_all[_d];
+        var _dp = _deps_all[_d];
+
+        // Sprite sets, charsets, maps, bitmaps, SFX and scroll text are
+        // declared, not offered — there is no prompt to answer. Only TEXT_DATA
+        // behind a MACRO_PRINT can be re-emitted as .string and proved by the
+        // round trip, so only that one asks.
+        if (_dp.kind != "text") {
+            array_push(_deps_keep, _dp);
+            continue;
+        }
+
         var _dhex = scr_show_code_hex(_dp.addr, 4);
 
         var _q = "TEXT DATA \"" + _dp.name + "\"  ($" + _dhex + ", "
