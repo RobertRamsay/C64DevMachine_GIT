@@ -4495,7 +4495,19 @@ if (keyboard_check_pressed(vk_tab) && array_length(global.selected_nodes) > 0 &&
 
 // 1. Handle Release Logic (Snapshots and Autosave)
 if (mouse_check_button_released(mb_any)) {
-    alarm[1] = 6;
+    // Alarm 1 does `global.addresses_dirty = true; scr_c64_do_update_addresses();`
+    // — a FULL recompile, unconditionally, six frames after ANY mouse release.
+    // A click on empty canvas therefore paid for the whole compile chain, and
+    // with the code panel open it also paid for the panel build, the address
+    // sort and the attribution walk on top. That is the click-in-space cost.
+    //
+    // Arming it only when something is actually dirty loses nothing: if nothing
+    // was dirty at release then nothing changed, and anything that becomes
+    // dirty later is already caught by the every-frame addresses_dirty test
+    // further down.
+    if (global.undo_dirty || global.addresses_dirty) {
+        alarm[1] = 6;
+    }
     with (obj_c64_node) { stats_cache_dirty = true; }
     
     // If we were dragging or changing things, finalize the addresses now

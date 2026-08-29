@@ -1,0 +1,167 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index d97452d..9b77956 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -2054,6 +2054,8 @@ if (is_dragging && !_is_group_follower) {
+                 var _pa = noone; var _pb = noone;
+                 var _bay = -999999; var _bby = 999999;
+ 				with (obj_c64_node) {
++                    // A folded spine has nothing on screen to wedge between.
++                    if (scr_node_is_hidden(id)) { continue; }
+                     if (id != other.id && !is_dragging && is_connected && org_parent == noone &&
+                         macro_owner == noone && node_type != "EXECUTE" && node_type != "ORG") {
+                         if (y <= other.y && y > _bay) { _bay = y; _pa = id; }
+@@ -2079,15 +2081,27 @@ if (_pa != noone && _pb != noone) {
+ 						var _org_cx_prev   = x + width * 0.5;
+                         var _cby_prev      = y + height;
+                         var _oref_prev     = id;
+-                        with (obj_c64_node) {
+-                            if (org_parent == _oref_prev && is_connected)
+-                                if (y + height > _cby_prev) _cby_prev = y + height;
++                        // Folded: the block IS the header. Without this its
++                        // catch area still reached down over the invisible
++                        // column its children are parked in.
++                        var _folded_prev   = collapsed;
++                        if (!_folded_prev) {
++                            with (obj_c64_node) {
++                                if (org_parent == _oref_prev && is_connected)
++                                    if (y + height > _cby_prev) _cby_prev = y + height;
++                            }
+                         }
+                         var _nearest_y_prev = clamp(other.y, y, _cby_prev + _latch_h);
+                         var _pd = point_distance(other.x + other.width * 0.5, other.y, _org_cx_prev, _nearest_y_prev);
+                         if (_pd < _bd) { _bd = _pd; _oa = id; }
+                     }
+                 }
++				// No wedge preview into a folded block: there is nothing visible
++                // to insert between, and drawing insertion points across empty
++                // space is what made a fold look broken. The drop below lands
++                // at the bottom instead.
++                if (_oa != noone && _oa.collapsed) { _oa = noone; }
++
+ 				if (_oa != noone) {
+                     var _ia = _oa; var _iby = -999999;
+                     with (obj_c64_node) {
+@@ -2351,17 +2365,31 @@ var _init_top = 0;
+                 if (node_type == "INIT") { _insert_above = id; break; }
+             }
+ 
++            // A folded INIT hides the whole spine, so — exactly as for a
++            // folded ORG — there is nothing on screen to insert between and the
++            // drop latches to the BOTTOM of the run. _node_below stays noone so
++            // no wedge is taken, and the INIT is opened below with the new node
++            // already in place.
++            var _spine_folded = global.init_collapsed;
++
+             with (obj_c64_node) {
+                 if (id != other.id && is_connected && org_parent == noone &&
+                     (macro_owner == noone) &&
+                     node_type != "EXECUTE" && node_type != "ORG") {
+-					if (y <= _this_y + 20 && y > _best_above_y) {
+-					    _best_above_y = y;
+-					    _insert_above = id;
+-					}
+-                    if (y > _this_y && y < _best_below_y) {
+-                        _best_below_y = y;
+-                        _node_below   = id;
++                    if (_spine_folded) {
++                        if (y > _best_above_y) {
++                            _best_above_y = y;
++                            _insert_above = id;
++                        }
++                    } else {
++                        if (y <= _this_y + 20 && y > _best_above_y) {
++                            _best_above_y = y;
++                            _insert_above = id;
++                        }
++                        if (y > _this_y && y < _best_below_y) {
++                            _best_below_y = y;
++                            _node_below   = id;
++                        }
+                     }
+                 }
+             }
+@@ -2380,6 +2408,19 @@ var _init_top = 0;
+ 					if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
+ 				}
+ 				is_connected = true;
++
++				// Dropping onto a folded spine opens it, so the node you just
++				// latched is visible where it landed.
++				if (_spine_folded) {
++					with (obj_c64_node) {
++						if (node_type == "INIT") {
++							collapsed = false;
++							break;
++						}
++					}
++					global.init_collapsed = false;
++				}
++
+ 				// Inherit indent from neighbours — prefer the more indented of the two
+                 var _tab_above = instance_exists(_insert_above) ? _insert_above.x_indent : 0;
+                 var _tab_below = instance_exists(_node_below)   ? _node_below.x_indent   : 0;
+@@ -2433,9 +2474,12 @@ var _cby     = y + height;
+                     var _oref    = id;
+                     var _org_cx2 = x + width * 0.5;
+                     var _org_cy2 = y + height * 0.5;
+-                    with (obj_c64_node) {
+-                        if (org_parent == _oref && is_connected)
+-                            if (y + height > _cby) _cby = y + height;
++                    var _folded  = collapsed;
++                    if (!_folded) {
++                        with (obj_c64_node) {
++                            if (org_parent == _oref && is_connected)
++                                if (y + height > _cby) _cby = y + height;
++                        }
+                     }
+ 					var _in_latch  = (_this_y >= _cby - height && _this_y <= _cby + _latch_h);
+                     var _in_chain  = (_this_y >= y && _this_y < _cby);
+@@ -2469,10 +2513,20 @@ var _is_var_node = (node_type == "NAMED_LOC" || node_type == "NEW_STR");
+             var _best_above_y = _org_anchor.y;
+             var _best_below_y = 999999;
+ 
++            // A folded block gives you nothing to aim between, so the drop
++            // always latches to the BOTTOM of the chain — _insert_above becomes
++            // the last child and _insert_below stays noone. The auto-expand
++            // further down then opens the block with the new node in place.
++            var _anchor_folded = _org_anchor.collapsed;
++
+             with (obj_c64_node) {
+                 if (org_parent == _org_anchor && is_connected && (macro_owner == noone)) {
+-                    if (y <= _this_y && y > _best_above_y) { _best_above_y = y; _insert_above = id; }
+-                    if (y > _this_y  && y < _best_below_y) { _best_below_y = y; _insert_below = id; }
++                    if (_anchor_folded) {
++                        if (y > _best_above_y) { _best_above_y = y; _insert_above = id; }
++                    } else {
++                        if (y <= _this_y && y > _best_above_y) { _best_above_y = y; _insert_above = id; }
++                        if (y > _this_y  && y < _best_below_y) { _best_below_y = y; _insert_below = id; }
++                    }
+                 }
+             }
+ 
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 782b289..b86946d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -4495,7 +4495,19 @@ if (keyboard_check_pressed(vk_tab) && array_length(global.selected_nodes) > 0 &&
+ 
+ // 1. Handle Release Logic (Snapshots and Autosave)
+ if (mouse_check_button_released(mb_any)) {
+-    alarm[1] = 6;
++    // Alarm 1 does `global.addresses_dirty = true; scr_c64_do_update_addresses();`
++    // — a FULL recompile, unconditionally, six frames after ANY mouse release.
++    // A click on empty canvas therefore paid for the whole compile chain, and
++    // with the code panel open it also paid for the panel build, the address
++    // sort and the attribution walk on top. That is the click-in-space cost.
++    //
++    // Arming it only when something is actually dirty loses nothing: if nothing
++    // was dirty at release then nothing changed, and anything that becomes
++    // dirty later is already caught by the every-frame addresses_dirty test
++    // further down.
++    if (global.undo_dirty || global.addresses_dirty) {
++        alarm[1] = 6;
++    }
+     with (obj_c64_node) { stats_cache_dirty = true; }
+     
+     // If we were dragging or changing things, finalize the addresses now
