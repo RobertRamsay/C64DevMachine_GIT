@@ -204,6 +204,15 @@ function scr_cbc_extract(_sel) {
             _v   = 0;
         }
 
+        // Hundreds of operands in the compile chain are built from bitwise
+        // expressions (`_scr_base & 0xFF00`), so they arrive as int64 — and
+        // is_real() is FALSE for an int64. scr_format_asm() gates on is_real(),
+        // so an unflattened operand rendered as "STA $0000,X", which the parser
+        // then read back as sta_zpx: _asm_resolve_mode picks zero page by VALUE
+        // (_v <= 0xFF), not by digit count. That is exactly the
+        // "sta_zpx:0 vs sta_abx:1024" the verifier refused to accept.
+        _v = scr_show_code_num(_v);
+
         // ---- ORG: relocation and the PC save/restore markers ----
         if (_m == "org") {
             var _o = _v;
