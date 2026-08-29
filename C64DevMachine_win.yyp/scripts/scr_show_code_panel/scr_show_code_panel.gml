@@ -451,7 +451,12 @@ function scr_show_code_build(_compiled) {
                     _oinst = _brkinst;
                 }
 
-                array_push(_flat, { kind:"org", key:_okey, name:_oname, owner:"", inst:_oinst, pc:_pc, raw:_m, mnem:_m, val:0, lbl:"", sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:false, used:false, used_code:false });
+                // `top` separates a real block boundary from a macro parking a table
+                // off-spine inside a save/restore bracket. Only the former may
+                // cut the listing into re-orderable segments — the bracketed
+                // ones are the "inline stuff" and must stay exactly where they
+                // are, inside the run that owns them.
+                array_push(_flat, { kind:"org", key:_okey, name:_oname, owner:"", inst:_oinst, pc:_pc, raw:_m, mnem:_m, val:0, lbl:"", sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:false, used:false, used_code:false, top:(array_length(_pcstack) == 0) });
                 continue;
             }
 
@@ -533,7 +538,7 @@ function scr_show_code_build(_compiled) {
                 if (ds_map_exists(_userlbl, _lbl)) {
                     _isint = false;
                 }
-                array_push(_flat, { kind:"label", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:_m, val:0, lbl:_lbl, sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:_isint, used:false, used_code:false });
+                array_push(_flat, { kind:"label", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:_m, val:0, lbl:_lbl, sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:_isint, used:false, used_code:false, top:false });
                 continue;
             }
 
@@ -543,7 +548,7 @@ function scr_show_code_build(_compiled) {
                 // pointer, not table filler, and it needs its own resolution.
                 if (_lbl != "") {
                     _run = -1;
-                    array_push(_flat, { kind:"byte", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:"byte", val:_v, lbl:_lbl, sz:1, res:0, hasres:false, count:1, vals:[], dkey:"", internal:false, used:false, used_code:false });
+                    array_push(_flat, { kind:"byte", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:"byte", val:_v, lbl:_lbl, sz:1, res:0, hasres:false, count:1, vals:[], dkey:"", internal:false, used:false, used_code:false, top:false });
                     _pc += 1;
                     continue;
                 }
@@ -570,7 +575,7 @@ function scr_show_code_build(_compiled) {
                     if (_owner != "") {
                         _dname = _owner;
                     }
-                    array_push(_flat, { kind:"data", key:_key, name:_dname, owner:_owner, inst:_inst, pc:_pc, raw:"byte", mnem:"byte", val:0, lbl:"", sz:1, res:0, hasres:false, count:1, vals:[_v], dkey:"D:" + _inst + "@" + scr_show_code_hex(_pc, 4), internal:false, used:false, used_code:false });
+                    array_push(_flat, { kind:"data", key:_key, name:_dname, owner:_owner, inst:_inst, pc:_pc, raw:"byte", mnem:"byte", val:0, lbl:"", sz:1, res:0, hasres:false, count:1, vals:[_v], dkey:"D:" + _inst + "@" + scr_show_code_hex(_pc, 4), internal:false, used:false, used_code:false, top:false });
                     _run = array_length(_flat) - 1;
                 }
 
@@ -592,7 +597,7 @@ function scr_show_code_build(_compiled) {
             }
 
             _run = -1;
-            array_push(_flat, { kind:"op", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:_norm, val:_v, lbl:_lbl, sz:_sz, res:0, hasres:false, count:1, vals:[], dkey:"", internal:false, used:false, used_code:false });
+            array_push(_flat, { kind:"op", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:_norm, val:_v, lbl:_lbl, sz:_sz, res:0, hasres:false, count:1, vals:[], dkey:"", internal:false, used:false, used_code:false, top:false });
             _pc += _sz;
         }
 
@@ -683,6 +688,61 @@ function scr_show_code_build(_compiled) {
         for (var _t = 0; _t < array_length(_flat); _t++) {
             _tot += _flat[_t].sz;
         }
+
+        // ---- PASS 4: put the listing in ADDRESS order.
+        //
+        // scr_compile_chain emits ORG blocks sorted by their node's canvas y:
+        //
+        //     array_sort(_org_nodes, function(a, b) { return a.y - b.y; });
+        //
+        // so the stream follows where you happened to drag the blocks, not
+        // where the code actually lives, and reading down the panel jumped
+        // around the memory map. The asset export tail then arrives after every
+        // block regardless of address, jumping again.
+        //
+        // This reorders the VIEW only. The compile stream is untouched, so
+        // nothing about the built program changes — doing it in the compile
+        // chain would have altered real emission order, and with two ORG blocks
+        // overlapping that decides which one wins.
+        //
+        // Segments are cut at TOP-LEVEL org rows only, so a macro bracketed
+        // data table travels with its owner rather than being flung off to its
+        // own address. The sort carries the original index as a tie-breaker,
+        // because GML array_sort makes no stability promise and two blocks at
+        // one address must not swap places at random between frames.
+        var _segs    = [];
+        var _cur_seg = { pc: global.start_pc, idx: 0, rows: [] };
+
+        for (var _s4 = 0; _s4 < array_length(_flat); _s4++) {
+            var _r4 = _flat[_s4];
+            if (_r4.kind == "org" && _r4.top) {
+                if (array_length(_cur_seg.rows) > 0) {
+                    array_push(_segs, _cur_seg);
+                }
+                _cur_seg = { pc: _r4.pc, idx: array_length(_segs), rows: [] };
+            }
+            array_push(_cur_seg.rows, _r4);
+        }
+        if (array_length(_cur_seg.rows) > 0) {
+            array_push(_segs, _cur_seg);
+        }
+
+        array_sort(_segs, function(_a, _b) {
+            if (_a.pc  < _b.pc)  { return -1; }
+            if (_a.pc  > _b.pc)  { return  1; }
+            if (_a.idx < _b.idx) { return -1; }
+            if (_a.idx > _b.idx) { return  1; }
+            return 0;
+        });
+
+        var _ordered = [];
+        for (var _o4 = 0; _o4 < array_length(_segs); _o4++) {
+            var _rows4 = _segs[_o4].rows;
+            for (var _p4 = 0; _p4 < array_length(_rows4); _p4++) {
+                array_push(_ordered, _rows4[_p4]);
+            }
+        }
+        _flat = _ordered;
 
         showcode_flat   = _flat;
         showcode_total  = _tot;

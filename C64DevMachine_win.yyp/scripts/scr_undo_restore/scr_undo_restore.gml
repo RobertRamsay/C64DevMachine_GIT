@@ -402,6 +402,19 @@ with (obj_c64_node) {
         is_dragging = false;
         if (node_type == "MACRO_CODE") code_cache_dirty = true;
     }
+    // Heights are DERIVED from node type and content, and a restore writes
+    // both straight onto the instances without going through whatever normally
+    // raises height_dirty. Without this the restored graph keeps whatever
+    // heights the pre-undo nodes happened to have, so the layout pass packs to
+    // stale sizes and nodes sit visibly out of place until something unrelated
+    // dirties them. Cheap to just re-derive the lot.
+    with (obj_c64_node) {
+        height_dirty        = true;
+        stats_cache_dirty   = true;
+        overlap_check_dirty = true;
+        last_overlap_check  = false;
+    }
+
     global.addresses_dirty = true;
 	
 	

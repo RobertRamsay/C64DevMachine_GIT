@@ -31,10 +31,22 @@
 /// @desc Is this node inside a folded ORG block? Every node gets `collapsed`
 ///       in its Create event, so this never has to test for the variable.
 function scr_node_is_hidden(_n) {
-    if (!instance_exists(_n))             { return false; }
-    if (_n.org_parent == noone)           { return false; }
-    if (!instance_exists(_n.org_parent))  { return false; }
-    return _n.org_parent.collapsed;
+    if (!instance_exists(_n))       { return false; }
+
+    // Headers never hide themselves.
+    if (_n.node_type == "INIT")     { return false; }
+    if (_n.node_type == "ORG")      { return false; }
+
+    if (_n.org_parent != noone) {
+        if (!instance_exists(_n.org_parent)) { return false; }
+        return _n.org_parent.collapsed;
+    }
+
+    // Main spine — folded by the INIT header. Read from a global rather than
+    // hunting for the INIT node: this runs for every node in both Draw and
+    // Step, and a search per call would make it O(nodes squared) per frame.
+    // scr_org_collapse_hit refreshes it once each Begin Step.
+    return global.init_collapsed;
 }
 
 /// @function scr_org_has_children(_org)
@@ -49,6 +61,23 @@ function scr_org_has_children(_org) {
     if (!instance_exists(_org)) { return false; }
 
     var _found = false;
+
+    // INIT is not a parent the way ORG is — the main spine nodes are its
+    // SIBLINGS, sharing org_parent == noone. It heads that run all the same, so
+    // it folds it. ORG blocks are left alone: they live in their own columns
+    // and have their own tabs.
+    if (_org.node_type == "INIT") {
+        with (obj_c64_node) {
+            if (node_type == "INIT")  { continue; }
+            if (node_type == "ORG")   { continue; }
+            if (org_parent != noone)  { continue; }
+            if (!is_connected)        { continue; }
+            _found = true;
+            break;
+        }
+        return _found;
+    }
+
     with (obj_c64_node) {
         if (org_parent == _org) {
             _found = true;
@@ -70,8 +99,17 @@ function scr_org_collapse_stats(_org) {
         return _res;
     }
 
+    var _init_mode = (_org.node_type == "INIT");
+
     with (obj_c64_node) {
-        if (org_parent != _org) { continue; }
+        if (_init_mode) {
+            if (node_type == "INIT") { continue; }
+            if (node_type == "ORG")  { continue; }
+            if (org_parent != noone) { continue; }
+            if (!is_connected)       { continue; }
+        } else {
+            if (org_parent != _org)  { continue; }
+        }
 
         _res.count += 1;
         _res.bytes += total_node_size;
@@ -109,7 +147,9 @@ function scr_org_collapse_rect(_org) {
     var _w = 26;
     var _h = 16;
 
-    _r.x1 = _org.x + _org.x_indent;
+    // 20px clear of the header's left edge, so the tab reads as a handle on the
+    // block rather than part of its title strip.
+    _r.x1 = _org.x + _org.x_indent - 20;
     _r.y1 = _org.y - _h - 2;
     _r.x2 = _r.x1 + _w;
     _r.y2 = _r.y1 + _h;
@@ -135,6 +175,17 @@ function scr_org_collapse_primary_pressed() {
 function scr_org_collapse_hit() {
     global.org_collapse_hot = noone;
 
+    // Refreshed BEFORE any early exit below: scr_node_is_hidden reads this every
+    // frame from Draw and Step, and a stale value would leave the whole spine
+    // hidden (or shown) while a menu happens to be open.
+    global.init_collapsed = false;
+    with (obj_c64_node) {
+        if (node_type == "INIT") {
+            global.init_collapsed = collapsed;
+            break;
+        }
+    }
+
     if (!instance_exists(obj_workspace_manager)) { exit; }
     if (!global.canEditNode)                     { exit; }
     if (global.idle_active && global.idle_fade < 0.1) { exit; }
@@ -152,8 +203,8 @@ function scr_org_collapse_hit() {
     var _hot = noone;
 
     with (obj_c64_node) {
-        if (node_type != "ORG")           { continue; }
-        if (!scr_org_has_children(id))    { continue; }
+        if (node_type != "ORG" && node_type != "INIT") { continue; }
+        if (!scr_org_has_children(id))                 { continue; }
 
         var _r = scr_org_collapse_rect(id);
         if (point_in_rectangle(_mx, _my, _r.x1, _r.y1, _r.x2, _r.y2)) {
