@@ -95,6 +95,11 @@ function scr_undo_restore(_path) {
             _n.is_draggable = true;
             _n.is_connected = false;
             _n.proxy        = variable_struct_exists(_d, "proxy") ? _d.proxy : true;
+            // Snapshots taken before the fold existed restore expanded.
+            _n.collapsed    = false;
+            if (variable_struct_exists(_d, "collapsed")) {
+                _n.collapsed = _d.collapsed;
+            }
         }
     }
 

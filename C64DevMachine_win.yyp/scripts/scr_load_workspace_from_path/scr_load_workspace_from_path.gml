@@ -180,6 +180,11 @@ function scr_load_workspace_from_path(_path) {
             _n.is_draggable = true;
             _n.is_connected = false;
             _n.proxy        = variable_struct_exists(d, "proxy") ? d.proxy : true;
+            // Older projects have no fold state; expanded is the default.
+            _n.collapsed    = false;
+            if (variable_struct_exists(d, "collapsed")) {
+                _n.collapsed = d.collapsed;
+            }
         }
     }
 ////

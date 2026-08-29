@@ -22,6 +22,10 @@ scr_show_code_hit();
 // BEFORE the Step events run, or it would destroy the selection it acts on.
 scr_cbc_hit();
 
+// ORG fold tabs: same reasoning again — hover and the toggle itself both have
+// to be settled before any Step event runs.
+scr_org_collapse_hit();
+
 // ---- IDLE DETECTION ----
 var _mx = global.gui_mouse_x;
 var _my = global.gui_mouse_y;

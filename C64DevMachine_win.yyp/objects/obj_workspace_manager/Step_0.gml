@@ -4367,6 +4367,10 @@ if (box_select_active) {
 	global.selected_nodes = [];
 	with (obj_c64_node) {
 	            if (node_type == "INIT") continue;
+	            // Folded children sit stacked under their header with their real
+	            // height intact, so without this a lasso across a collapsed block
+	            // would select every node in it while showing none of them.
+	            if (scr_node_is_hidden(id)) continue;
 	            var _passes = (x + x_indent < _rx2 && x + x_indent + width > _rx1 && y < _ry2 && y + height > _ry1);
 	            if (_passes) show_debug_message("SELECTED: " + node_type + " x=" + string(x) + " indent=" + string(x_indent) + " w=" + string(width) + " rx1=" + string(_rx1) + " rx2=" + string(_rx2));
 	            if (_passes) array_push(global.selected_nodes, id);

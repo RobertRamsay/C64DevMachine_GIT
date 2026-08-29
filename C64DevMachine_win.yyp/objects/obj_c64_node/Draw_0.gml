@@ -19,6 +19,10 @@ if (x + x_indent + width < _cam_x - _margin ||
 
 if (node_type == "COMMENT" && !global.comments_visible) exit;
 
+// Inside a folded ORG block — draw nothing. The fold is visual only, so this
+// node still compiles and still owns its address; it just is not on screen.
+if (scr_node_is_hidden(id)) exit;
+
 // Skip drawing if node is too small on screen to be useful
 var _screen_h = height / _cam_zoom;
 var _screen_w = width / _cam_zoom;
@@ -2230,4 +2234,64 @@ if (global.ref_highlight_source != noone && instance_exists(global.ref_highlight
             draw_set_alpha(1.0);
         }
     }
+}
+
+
+// =============================================================
+// ORG BLOCK FOLD TAB
+//
+// Drawn last so nothing overpaints it, and above the header rather than inside
+// it — the ORG title strip already carries the name and two address readouts.
+// =============================================================
+if (node_type == "ORG" && is_connected) {
+
+    var _fr  = scr_org_collapse_rect(id);
+    var _fhv = (global.org_collapse_hot == id);
+
+    draw_set_color(make_color_rgb(20, 14, 26));
+    draw_rectangle(_fr.x1, _fr.y1, _fr.x2, _fr.y2, false);
+
+    var _fcol = make_color_rgb(150, 110, 190);
+    if (_fhv) {
+        _fcol = make_color_rgb(255, 210, 80);
+    }
+    draw_set_color(_fcol);
+    draw_rectangle(_fr.x1, _fr.y1, _fr.x2, _fr.y2, true);
+
+    var _fsym = "[-]";
+    if (collapsed) {
+        _fsym = "[+]";
+    }
+
+    var _font_b   = draw_get_font();
+    var _halign_b = draw_get_halign();
+    var _valign_b = draw_get_valign();
+
+    draw_set_font(fnt_c64_tiny);
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_middle);
+    draw_text(_fr.x1 + ((_fr.x2 - _fr.x1) / 2), _fr.y1 + ((_fr.y2 - _fr.y1) / 2), _fsym);
+
+    // A fold must never be a black hole: say how much is behind it, what it
+    // costs, and where it lives.
+    if (collapsed) {
+        var _fs = scr_org_collapse_stats(id);
+
+        var _ftxt = string(_fs.count) + " NODES  " + string(_fs.bytes) + " BYTES";
+        if (_fs.has_range) {
+            var _flo = string_upper(decimal_to_hex(_fs.lo));
+            var _fhi = string_upper(decimal_to_hex(max(_fs.lo, _fs.hi - 1)));
+            while (string_length(_flo) < 4) { _flo = "0" + _flo; }
+            while (string_length(_fhi) < 4) { _fhi = "0" + _fhi; }
+            _ftxt += "   $" + _flo + " - $" + _fhi;
+        }
+
+        draw_set_halign(fa_left);
+        draw_set_color(make_color_rgb(190, 160, 220));
+        draw_text(_fr.x2 + 6, _fr.y1 + ((_fr.y2 - _fr.y1) / 2), _ftxt);
+    }
+
+    draw_set_font(_font_b);
+    draw_set_halign(_halign_b);
+    draw_set_valign(_valign_b);
 }

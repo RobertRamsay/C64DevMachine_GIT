@@ -209,6 +209,11 @@ prev_height          = 40;
 extra_regions        = [];
 anim_alias           = "";
 height_dirty         = true;
+
+// ORG BLOCK COLLAPSE. Meaningful only on ORG nodes, but every node carries it
+// so scr_node_is_hidden() can read a parent's flag without testing for the
+// variable first. Never assigned by the height recompute — see scr_org_collapse.
+collapsed            = false;
 cached_height        = 40;
 stats_cache_dirty    = true;
 stats_str_bytes      = "";

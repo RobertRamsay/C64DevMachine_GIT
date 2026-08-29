@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_org_collapse",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_org_collapse",
+  "parent":{
+    "name":"CORE",
+    "path":"folders/SCRIPTS/CORE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

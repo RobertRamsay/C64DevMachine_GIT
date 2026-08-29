@@ -82,6 +82,9 @@ function scr_undo_snapshot() {
             org_parent_x:   _op_x,
             org_parent_y:   _op_y,
             has_org_parent: (_op_x != -1),
+            // ORG fold state. Absent in projects saved before the fold
+            // existed, which load expanded — the correct default.
+            collapsed:      _inst.collapsed,
             proxy:          variable_instance_exists(_inst, "proxy")        ? _inst.proxy        : false,
             helper_text:    variable_instance_exists(_inst, "helper_text")  ? _inst.helper_text  : "",
             x_indent:       variable_instance_exists(_inst, "x_indent")     ? _inst.x_indent     : 0,

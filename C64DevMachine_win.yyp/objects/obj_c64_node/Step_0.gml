@@ -13,6 +13,14 @@ if (obj_workspace_manager.gui_menu_open != -1) exit;
 // the right-click delete all run BEFORE that test. An in-progress drag is
 // allowed to continue so a node can never be stranded mid-move.
 if (global.showcode_mouse_over && !is_dragging) exit;
+
+// Folded away: no hover, no drag, no selection, no tooltip. This is what stops
+// a hidden node being interfered with in the empty space its parent leaves.
+if (scr_node_is_hidden(id)) exit;
+
+// The pointer is on an ORG fold tab — the click belongs to the tab, not to the
+// ORG node underneath it, which would otherwise start a drag on the same press.
+if (global.org_collapse_hot != noone && !is_dragging) exit;
 if (global.cbc_button_hot      && !is_dragging) exit;
 
 // =============================================================
@@ -2480,6 +2488,16 @@ var _is_var_node = (node_type == "NAMED_LOC" || node_type == "NEW_STR");
             }
             is_connected        = true;
             org_parent          = _org_anchor;
+
+            // Dropping onto a folded block opens it, so the node you just
+            // latched is visible where it landed rather than vanishing into the
+            // fold. The layout pass re-packs everything on the dirty flag
+            // below, so the y computed above while the block was shut corrects
+            // itself on the same frame.
+            if (_org_anchor.collapsed) {
+                _org_anchor.collapsed = false;
+            }
+
             last_overlap_check = false;
             global.addresses_dirty = true;
           

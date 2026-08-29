@@ -57,6 +57,9 @@ global.workspace_path = path;
             org_parent_x:   _op_x,
             org_parent_y:   _op_y,
             has_org_parent: (_op_x != -1),
+            // ORG fold state. Absent in projects saved before the fold
+            // existed, which load expanded — the correct default.
+            collapsed:      inst.collapsed,
 			proxy:          variable_instance_exists(inst, "proxy") ? inst.proxy : false,
             helper_text:    variable_instance_exists(inst, "helper_text") ? inst.helper_text : "",
 			x_indent:       variable_instance_exists(inst, "x_indent") ? inst.x_indent : 0,
