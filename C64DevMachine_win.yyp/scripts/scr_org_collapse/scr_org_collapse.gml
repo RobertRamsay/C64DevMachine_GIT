@@ -49,6 +49,23 @@ function scr_node_is_hidden(_n) {
     return global.init_collapsed;
 }
 
+/// @function scr_node_mouse_over(_n)
+/// @desc Is the pointer over this node, treating a folded one as not there?
+///
+/// The workspace runs a dozen of these tests directly against x/y/width/height.
+/// Folding does not move a node — it only stops it being drawn — so every one
+/// of those rectangles was still live under the empty space a fold leaves.
+/// The one that bit: the spawn guard blocks N / L / J / A while the pointer is
+/// over a connected node, so hovering the gap left by a collapsed block killed
+/// every node shortcut with nothing on screen to explain it. The in-place
+/// toggles (R / J / S / L) were worse — they would have edited a node you
+/// could not see.
+function scr_node_mouse_over(_n) {
+    if (!instance_exists(_n))   { return false; }
+    if (scr_node_is_hidden(_n)) { return false; }
+    return point_in_rectangle(mouse_x, mouse_y, _n.x, _n.y, _n.x + _n.width, _n.y + _n.height);
+}
+
 /// @function scr_org_has_children(_org)
 /// @desc Does this ORG own anything worth folding? Stops on the first hit.
 ///

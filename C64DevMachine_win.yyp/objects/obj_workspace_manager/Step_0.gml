@@ -1487,7 +1487,7 @@ if (!is_entering_text && !global.is_any_text_active and !obj_asset_manager.viewe
     var _hover_node = noone;
     with (obj_c64_node) {
         if (node_type != "INIT" && is_connected &&
-            point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+            scr_node_mouse_over(id)) {
             _hover_node = id;
             break;
         }
@@ -1515,7 +1515,7 @@ if (keyboard_check_pressed(ord("O")) && !_hover_blocks_spawn) { scr_node_spawn("
         var _toggled = false;
         with (obj_c64_node) {
             if (!_toggled && node_type == "NORMAL" &&
-                point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+                scr_node_mouse_over(id)) {
                 var _mn = string_lower(string(instructions[0][0]));
                 if (_mn == "rts") {
                     instructions[0][0] = "rti";
@@ -1558,7 +1558,7 @@ if (keyboard_check_pressed(ord("J"))  && !keyboard_check(vk_alt) )   {
         var _toggled = false;
         with (obj_c64_node) {
             if (!_toggled && node_type == "NORMAL" &&
-                point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+                scr_node_mouse_over(id)) {
                 var _mn = string_lower(string(instructions[0][0]));
                 if (_mn == "jmp_abs" || _mn == "jmp_ind" || _mn == "jmp") {
                     instructions[0][0] = "jsr";
@@ -1597,7 +1597,7 @@ if (keyboard_check_pressed(ord("S")) && !keyboard_check(vk_control) && !keyboard
     var _toggled = false;
     with (obj_c64_node) {
         if (!_toggled && node_type == "NORMAL" &&
-            point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+            scr_node_mouse_over(id)) {
             var _mn  = string_lower(string(instructions[0][0]));
             var _idx = -1;
             for (var _ci = 0; _ci < array_length(_sta_cycle); _ci++) {
@@ -1636,7 +1636,7 @@ if (keyboard_check_pressed(ord("S")) && keyboard_check(vk_shift) && !keyboard_ch
     var _toggled = false;
     with (obj_c64_node) {
         if (!_toggled && node_type == "NORMAL" &&
-            point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+            scr_node_mouse_over(id)) {
             var _mn  = string_lower(string(instructions[0][0]));
             var _idx = -1;
             for (var _ci = 0; _ci < array_length(_stx_cycle); _ci++) {
@@ -1675,7 +1675,7 @@ if (keyboard_check_pressed(ord("S")) && keyboard_check(vk_lalt) && !keyboard_che
     var _toggled = false;
     with (obj_c64_node) {
         if (!_toggled && node_type == "NORMAL" &&
-            point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+            scr_node_mouse_over(id)) {
             var _mn  = string_lower(string(instructions[0][0]));
             var _idx = -1;
             for (var _ci = 0; _ci < array_length(_sty_cycle); _ci++) {
@@ -1721,7 +1721,7 @@ if (keyboard_check_pressed(ord("C")) && keyboard_check(vk_shift) && !keyboard_ch
     var _toggled = false;
     with (obj_c64_node) {
         if (!_toggled && node_type == "NORMAL" &&
-            point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+            scr_node_mouse_over(id)) {
             var _mn  = string_lower(string(instructions[0][0]));
             var _idx = -1;
             for (var _ci = 0; _ci < array_length(_cmp_cycle); _ci++) {
@@ -1761,7 +1761,7 @@ if (keyboard_check_pressed(ord("D")) && keyboard_check(vk_shift) && !keyboard_ch
     var _toggled = false;
     with (obj_c64_node) {
         if (!_toggled && node_type == "NORMAL" &&
-            point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+            scr_node_mouse_over(id)) {
             var _mn  = string_lower(string(instructions[0][0]));
             var _idx = -1;
             for (var _ci = 0; _ci < array_length(_dec_cycle); _ci++) {
@@ -1805,7 +1805,7 @@ if (keyboard_check_pressed(ord("I")) && keyboard_check(vk_shift) && !keyboard_ch
     var _toggled = false;
     with (obj_c64_node) {
         if (!_toggled && node_type == "NORMAL" &&
-            point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+            scr_node_mouse_over(id)) {
             var _mn  = string_lower(string(instructions[0][0]));
             var _idx = -1;
             for (var _ci = 0; _ci < array_length(_inc_cycle); _ci++) {
@@ -1848,7 +1848,7 @@ if (keyboard_check_pressed(ord("T")) && !keyboard_check(vk_control) && !keyboard
     var _toggled = false;
     with (obj_c64_node) {
         if (!_toggled && node_type == "NORMAL" &&
-            point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+            scr_node_mouse_over(id)) {
             var _mn  = string_lower(string(instructions[0][0]));
             var _idx = -1;
             for (var _ci = 0; _ci < array_length(_t_cycle); _ci++) {
@@ -1886,7 +1886,7 @@ if (keyboard_check_pressed(ord("L")) && !keyboard_check(vk_shift) && !keyboard_c
     var _toggled = false;
     with (obj_c64_node) {
         if (!_toggled && node_type == "NORMAL" &&
-            point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+            scr_node_mouse_over(id)) {
             var _mn  = string_lower(string(instructions[0][0]));
             var _idx = -1;
             for (var _ci = 0; _ci < array_length(_lda_cycle); _ci++) {
@@ -1925,7 +1925,7 @@ if (keyboard_check_pressed(ord("L")) && keyboard_check(vk_shift) && !obj_workspa
     var _toggled = false;
     with (obj_c64_node) {
         if (!_toggled && node_type == "NORMAL" &&
-            point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+            scr_node_mouse_over(id)) {
             var _mn  = string_lower(string(instructions[0][0]));
             var _idx = -1;
             for (var _ci = 0; _ci < array_length(_ldx_cycle); _ci++) {
@@ -1964,7 +1964,7 @@ if (keyboard_check_pressed(ord("L")) && keyboard_check(vk_lalt) && !obj_workspac
     var _toggled = false;
     with (obj_c64_node) {
         if (!_toggled && node_type == "NORMAL" &&
-            point_in_rectangle(mouse_x, mouse_y, x, y, x + width, y + height)) {
+            scr_node_mouse_over(id)) {
             var _mn  = string_lower(string(instructions[0][0]));
             var _idx = -1;
             for (var _ci = 0; _ci < array_length(_ldy_cycle); _ci++) {
@@ -4342,6 +4342,7 @@ if (mouse_check_button_pressed(mb_left) && keyboard_check(vk_control) && !_in_gu
     var _hit = false;
 with (obj_c64_node) {
         if (node_type == "INIT") continue;
+        if (scr_node_is_hidden(id)) continue;
         if (point_in_rectangle(mouse_x, mouse_y, x + x_indent, y, x + x_indent + width, y + height)) { _hit = true; break; }
     }
     if (!_hit) {
@@ -4404,7 +4405,7 @@ box_select_active = false;
 var _clicking_handle = false;
 if (instance_exists(global.group_drag_handle) && mouse_check_button_pressed(mb_left)) {
     var _hn = global.group_drag_handle;
-    if (point_in_rectangle(mouse_x, mouse_y, _hn.x, _hn.y, _hn.x + _hn.width, _hn.y + _hn.height)) {
+    if (scr_node_mouse_over(_hn)) {
         _clicking_handle = true;
     }
 }

@@ -343,6 +343,12 @@ function scr_show_code_build(_compiled) {
     if (!instance_exists(obj_workspace_manager)) { exit; }
 
     with (obj_workspace_manager) {
+        // Shut means shut. This walks the whole compile stream, allocates a
+        // struct per row and now sorts the result into address order, and it
+        // was running on every address update whether or not anything was going
+        // to look at it. The toggle raises global.addresses_dirty so the very
+        // next frame after opening rebuilds it.
+        if (!showcode_open) { exit; }
         var _flat    = [];
         var _pc      = global.start_pc;
         var _pcstack = [];   // mirrors c64_new_program's org(-2)/org(-3) stack
@@ -813,6 +819,7 @@ function scr_show_code_attribute() {
     if (!instance_exists(obj_workspace_manager)) { exit; }
 
     with (obj_workspace_manager) {
+        if (!showcode_open) { exit; }
         var _n = array_length(showcode_flat);
         if (_n == 0) { exit; }
 
@@ -1179,6 +1186,11 @@ function scr_show_code_draw() {
         if (mouse_check_button_pressed(mb_left) && !showcode_sb_drag) {
             if (_on_min) {
                 showcode_open = !showcode_open;
+                // Nothing was built while it was shut, so ask for the pass that
+                // fills it back in.
+                if (showcode_open) {
+                    global.addresses_dirty = true;
+                }
                 scr_show_code_save_ini();
             } else if (_on_msc && showcode_open) {
                 showcode_misc  = !showcode_misc;
