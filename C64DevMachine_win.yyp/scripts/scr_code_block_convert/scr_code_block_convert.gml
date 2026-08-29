@@ -593,6 +593,161 @@ function scr_cbc_find_asset(_name) {
 }
 
 // =====================================================================
+// GATE 3 — removing this selection must not change what any OTHER node emits.
+//
+// Gates 1 and 2 both measure the SELECTION: one proves extraction == selection,
+// the other proves text == extraction. Neither can see a node OUTSIDE the
+// selection whose own output depends on a selected node still existing — and
+// scr_compile_chain is full of those. MACRO_SID, for one, scans the workspace
+// for a live MACRO_TEXT_SCROLL and, if it finds one, emits twelve bytes of
+// raster chain into its OWN stream:
+//
+//     lda_lab_lo ts<id>_scroll / sta_abs $0314
+//     lda_lab_hi ts<id>_scroll / sta_abs $0315
+//
+// Convert the scroll away and the SID silently stops emitting that. The block
+// still defines ts<id>_scroll, but nothing points $0314 at it any more, so the
+// scroll never runs — a program that assembles cleanly and behaves differently,
+// which is precisely what this feature must never produce. There are dozens of
+// scans of that shape across the emission path, so a hardcoded list of
+// dangerous pairs would never stay complete.
+//
+// So this measures it instead: compile once as things stand, hide the selection
+// exactly the way conversion will, compile again, and compare every row TAGGED
+// TO A NODE THAT IS NOT IN THE SELECTION. If one of those rows moved, changed
+// or disappeared, the conversion is not neutral and we refuse.
+//
+// Untagged rows are deliberately excluded. The asset export tail is untagged
+// and DOES legitimately change — the // @asset lines that keep those assets
+// alive live in a block that does not exist yet at this point, so counting them
+// would refuse every conversion that has an asset dependency.
+// =====================================================================
+function scr_cbc_outside_sig(_code, _keys) {
+    var _sig = [];
+
+    for (var _i = 0; _i < array_length(_code); _i++) {
+        var _e = _code[_i];
+        if (array_length(_e) < 3) { continue; }
+
+        var _tag = _e[2];
+        if (is_string(_tag))        { continue; }
+        if (_tag == noone)          { continue; }
+        if (!instance_exists(_tag)) { continue; }
+
+        var _k = string(_tag);
+        if (ds_map_exists(_keys, _k)) { continue; }
+
+        var _m = string_lower(string(_e[0]));
+
+        var _v = "";
+        if (array_length(_e) > 1) {
+            if (is_string(_e[1])) {
+                _v = string_upper(string(_e[1]));
+            } else {
+                _v = string(scr_show_code_num(_e[1]));
+            }
+        }
+
+        array_push(_sig, _k + "|" + string(_tag.node_type) + "|" + _m + ":" + _v);
+    }
+
+    return _sig;
+}
+
+// Pull the node type back out of a signature entry, for the message.
+function scr_cbc_sig_type(_entry) {
+    var _parts = string_split(string(_entry), "|");
+    if (array_length(_parts) > 1) {
+        return _parts[1];
+    }
+    return "ANOTHER NODE";
+}
+
+/// @return "" when the removal is neutral, otherwise the reason to refuse.
+function scr_cbc_side_effects(_sel) {
+    var _keys = ds_map_create();
+    for (var _i = 0; _i < array_length(_sel); _i++) {
+        ds_map_set(_keys, string(_sel[_i]), 1);
+    }
+
+    global.compile_sizing_pass = true;
+    var _before = scr_compile_chain();
+    global.compile_sizing_pass = false;
+    var _sig_b = scr_cbc_outside_sig(_before, _keys);
+
+    // Hide the selection the way conversion will. is_connected alone is not
+    // enough — plenty of these scans test node_type without it — so the type
+    // goes too, and both are restored in a finally so a macro that throws with
+    // its partner missing cannot leave the project mangled.
+    var _saved = [];
+    for (var _s = 0; _s < array_length(_sel); _s++) {
+        var _n = _sel[_s];
+        if (!instance_exists(_n)) { continue; }
+        array_push(_saved, { node: _n, conn: _n.is_connected, type: _n.node_type });
+    }
+
+    var _sig_a = [];
+    var _err   = "";
+
+    try {
+        for (var _h = 0; _h < array_length(_saved); _h++) {
+            _saved[_h].node.is_connected = false;
+            _saved[_h].node.node_type    = "CBC_HIDDEN";
+        }
+        global.compile_sizing_pass = true;
+        var _after = scr_compile_chain();
+        global.compile_sizing_pass = false;
+        _sig_a = scr_cbc_outside_sig(_after, _keys);
+    } catch (_ex) {
+        _err = "CONVERT ABANDONED — the program does not compile with this\nselection removed, so the conversion cannot be shown to be\nsafe.\n\nNothing has been changed.";
+    } finally {
+        for (var _h2 = 0; _h2 < array_length(_saved); _h2++) {
+            _saved[_h2].node.is_connected = _saved[_h2].conn;
+            _saved[_h2].node.node_type    = _saved[_h2].type;
+        }
+        global.compile_sizing_pass = false;
+    }
+
+    ds_map_destroy(_keys);
+
+    if (_err != "") {
+        return _err;
+    }
+
+    var _nb  = array_length(_sig_b);
+    var _na  = array_length(_sig_a);
+    var _lim = min(_nb, _na);
+
+    for (var _c = 0; _c < _lim; _c++) {
+        if (_sig_b[_c] != _sig_a[_c]) {
+            return scr_cbc_side_effect_msg(scr_cbc_sig_type(_sig_b[_c]));
+        }
+    }
+
+    if (_nb != _na) {
+        var _which = "";
+        if (_nb > _na) {
+            _which = _sig_b[_lim];
+        } else {
+            _which = _sig_a[_lim];
+        }
+        return scr_cbc_side_effect_msg(scr_cbc_sig_type(_which));
+    }
+
+    return "";
+}
+
+function scr_cbc_side_effect_msg(_type) {
+    return "CONVERT ABANDONED — " + string(_type) + " changes what it emits\n"
+         + "when this selection is removed, so the converted program\n"
+         + "would not behave the same.\n\n"
+         + "That node builds part of its own code by looking for one of\n"
+         + "the nodes you selected. Select it as well and convert them\n"
+         + "together, and the dependency is captured in the block.\n\n"
+         + "Nothing has been changed.";
+}
+
+// =====================================================================
 // Data that scr_node_build_inject() pokes straight into the built PRG,
 // scanning live nodes — it never passes through scr_compile_chain at all.
 //
@@ -915,6 +1070,15 @@ function scr_cbc_convert() {
         scr_show_message("CONVERT ABANDONED — extracted " + string(_ex.spine_bytes)
             + " inline bytes but the selection reports " + string(_want_bytes)
             + ".\n\nNothing has been changed.");
+        return false;
+    }
+
+    // ---- GATE 3: does anything OUTSIDE the selection depend on it? ----
+    // Runs before the data prompts so a doomed conversion is refused without
+    // asking questions first.
+    var _side = scr_cbc_side_effects(_sel);
+    if (_side != "") {
+        scr_show_message(_side);
         return false;
     }
 
