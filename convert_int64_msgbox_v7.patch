@@ -1,0 +1,193 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_message_box/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_message_box/Draw_64.gml
+index f5a6abc..67167e1 100644
+--- a/C64DevMachine_win.yyp/objects/obj_message_box/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_message_box/Draw_64.gml
+@@ -10,55 +10,76 @@ draw_rectangle(0, 0, _gw, _gh, false);
+ draw_set_alpha(1.0);
+ 
+ // ── Box geometry ──
++// The box grows to fit its message. At the fixed 200px height a five-line
++// message ran straight under the OK button and hid its last line.
++draw_set_font(fnt_c64_code);
++
++var _txt_w   = box_w - 60;
++var _txt_h   = string_height_ext(message, 24, _txt_w);
++
++// OK button is its label plus 4px of padding on every side.
++var _ok_w    = string_width("OK")  + 8;
++var _ok_h    = string_height("OK") + 8;
++
++var _pad_top = 30;   // above the text
++var _pad_gap = 20;   // between text and button
++var _pad_bot = 22;   // below the button
++
++var _bh = max(box_h, _pad_top + _txt_h + _pad_gap + _ok_h + _pad_bot);
++
+ var _bx = (_gw - box_w) * 0.5;
+-var _by = (_gh - box_h) * 0.5;
++var _by = (_gh - _bh)   * 0.5;
+ 
+ // Drop shadow
+ draw_set_alpha(0.5);
+ draw_set_colour(c_black);
+-draw_rectangle(_bx + 6, _by + 6, _bx + box_w + 6, _by + box_h + 6, false);
++draw_rectangle(_bx + 6, _by + 6, _bx + box_w + 6, _by + _bh + 6, false);
+ draw_set_alpha(1.0);
+ 
+ // Box fill
+ draw_set_colour(make_colour_rgb(40, 40, 50));
+-draw_rectangle(_bx, _by, _bx + box_w, _by + box_h, false);
++draw_rectangle(_bx, _by, _bx + box_w, _by + _bh, false);
+ 
+ // Box border (pulsed)
+ var _border_pulse = 0.5 + 0.5 * sin(pulse);
+ var _br = lerp(120, 200, _border_pulse);
+ draw_set_colour(make_colour_rgb(80, _br, 200));
+-draw_rectangle(_bx, _by, _bx + box_w, _by + box_h, true);
+-draw_rectangle(_bx + 1, _by + 1, _bx + box_w - 1, _by + box_h - 1, true);
++draw_rectangle(_bx, _by, _bx + box_w, _by + _bh, true);
++draw_rectangle(_bx + 1, _by + 1, _bx + box_w - 1, _by + _bh - 1, true);
+ 
+ // ── Message text ──
+-draw_set_font(fnt_c64_code);
++// Top-anchored rather than centred, so the button sits below the REAL bottom
++// of the text instead of a guessed offset.
+ draw_set_colour(c_white);
+ draw_set_halign(fa_center);
+-draw_set_valign(fa_middle);
++draw_set_valign(fa_top);
+ 
+ var _msg_x = _bx + box_w * 0.5;
+-var _msg_y = _by + 60;
++var _msg_y = _by + _pad_top;
+ 
+-draw_text_ext(_msg_x, _msg_y, message, 24, box_w - 60);
++draw_text_ext(_msg_x, _msg_y, message, 24, _txt_w);
+ 
+-// ── OK button (single, centred) ──
+-var _btn_y  = _by + box_h - btn_h - 22;
+-var _btn_x  = _bx + (box_w - btn_w) * 0.5;
++// ── OK button (single, centred, sized to its label) ──
++var _btn_w  = _ok_w;
++var _btn_h  = _ok_h;
++var _btn_y  = _msg_y + _txt_h + _pad_gap;
++var _btn_x  = _bx + (box_w - _btn_w) * 0.5;
+ 
+ var _mx = global.gui_mouse_x;
+ var _my = global.gui_mouse_y;
+ 
+-hover_ok = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + btn_w, _btn_y + btn_h);
++hover_ok = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
+ 
+ if (hover_ok) {
+     draw_set_colour(make_colour_rgb(80, 130, 180));
+ } else {
+     draw_set_colour(make_colour_rgb(50, 80, 120));
+ }
+-draw_rectangle(_btn_x, _btn_y, _btn_x + btn_w, _btn_y + btn_h, false);
++draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
+ draw_set_colour(c_white);
+-draw_rectangle(_btn_x, _btn_y, _btn_x + btn_w, _btn_y + btn_h, true);
+-draw_text(_btn_x + btn_w * 0.5, _btn_y + btn_h * 0.5, "OK");
++draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, true);
++draw_set_valign(fa_middle);
++draw_text(_btn_x + _btn_w * 0.5, _btn_y + _btn_h * 0.5, "OK");
+ 
+ draw_set_halign(fa_left);
+ draw_set_valign(fa_top);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_code_block_convert/scr_code_block_convert.gml b/C64DevMachine_win.yyp/scripts/scr_code_block_convert/scr_code_block_convert.gml
+index de96639..33f202d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_code_block_convert/scr_code_block_convert.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_code_block_convert/scr_code_block_convert.gml
+@@ -204,6 +204,15 @@ function scr_cbc_extract(_sel) {
+             _v   = 0;
+         }
+ 
++        // Hundreds of operands in the compile chain are built from bitwise
++        // expressions (`_scr_base & 0xFF00`), so they arrive as int64 — and
++        // is_real() is FALSE for an int64. scr_format_asm() gates on is_real(),
++        // so an unflattened operand rendered as "STA $0000,X", which the parser
++        // then read back as sta_zpx: _asm_resolve_mode picks zero page by VALUE
++        // (_v <= 0xFF), not by digit count. That is exactly the
++        // "sta_zpx:0 vs sta_abx:1024" the verifier refused to accept.
++        _v = scr_show_code_num(_v);
++
+         // ---- ORG: relocation and the PC save/restore markers ----
+         if (_m == "org") {
+             var _o = _v;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml b/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
+index 41ec136..5d27e40 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
+@@ -346,6 +346,12 @@ function scr_show_code_build(_compiled) {
+         var _flat    = [];
+         var _pc      = global.start_pc;
+         var _pcstack = [];   // mirrors c64_new_program's org(-2)/org(-3) stack
++        var _lastkey  = "";  // last macro key seen, for crediting bracketed runs
++        var _lastname = "";
++        var _lastinst = "";
++        var _brkkey   = "";  // …captured when a save/restore bracket opened
++        var _brkname  = "";
++        var _brkinst  = "";
+         var _run     = -1;   // index of the byte run currently being extended
+ 
+         // Every label's address, internal ones included — this is what makes
+@@ -390,6 +396,13 @@ function scr_show_code_build(_compiled) {
+ 
+                 if (_o == -2) {
+                     array_push(_pcstack, _pc);
++                    // A save/restore bracket is an EXCURSION inside one node's
++                    // emission — a code block's .pcsave/.pc/.pcrestore, or a
++                    // macro parking a table off-spine. Remember whose emission
++                    // it interrupted so the rows inside can be credited to it.
++                    _brkkey  = _lastkey;
++                    _brkname = _lastname;
++                    _brkinst = _lastinst;
+                     _run = -1;
+                     continue;
+                 }
+@@ -404,7 +417,21 @@ function scr_show_code_build(_compiled) {
+ 
+                 _pc  = _o;
+                 _run = -1;
+-                array_push(_flat, { kind:"org", key:"", name:"", owner:"", inst:"", pc:_pc, raw:_m, mnem:_m, val:0, lbl:"", sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:false, used:false });
++
++                // Untagged by the compile chain, so without this the ORG row
++                // has no key and the fold pass chops the node it sits inside
++                // into two separate [+] groups — which is exactly what a
++                // converted code block with a .pc data tail was doing.
++                var _okey  = "";
++                var _oname = "";
++                var _oinst = "";
++                if (array_length(_pcstack) > 0) {
++                    _okey  = _brkkey;
++                    _oname = _brkname;
++                    _oinst = _brkinst;
++                }
++
++                array_push(_flat, { kind:"org", key:_okey, name:_oname, owner:"", inst:_oinst, pc:_pc, raw:_m, mnem:_m, val:0, lbl:"", sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:false, used:false });
+                 continue;
+             }
+ 
+@@ -452,6 +479,21 @@ function scr_show_code_build(_compiled) {
+                 }
+             }
+ 
++            // Remember the last real owner, so a save/restore bracket can credit
++            // what happens inside it — and while a bracket is open, let untagged
++            // entries inherit it. The compile chain tags relocated bytes `noone`
++            // on purpose, so without this a code block's .pc data tail has no
++            // key and the fold pass splits the block into two [+] groups.
++            if (_key != "") {
++                _lastkey  = _key;
++                _lastname = _name;
++                _lastinst = _inst;
++            } else if (array_length(_pcstack) > 0) {
++                _key  = _brkkey;
++                _name = _brkname;
++                _inst = _brkinst;
++            }
++
+             if (_m == "label") {
+                 ds_map_set(_lblmap, _lbl, _pc);
+                 _run = -1;
