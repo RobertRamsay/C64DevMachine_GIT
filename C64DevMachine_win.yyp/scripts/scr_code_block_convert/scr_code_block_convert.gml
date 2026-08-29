@@ -67,6 +67,57 @@ function scr_cbc_selection() {
 // =====================================================================
 // Can this selection become one block?
 // =====================================================================
+// =====================================================================
+// SID / IRQ latching — refused up front, by node type.
+//
+// The general neutrality gate below already catches any node whose removal
+// changes another node's output, and catches it precisely: convert a MACRO_CHR
+// nothing branches on and it lets you through. This list exists because the
+// IRQ family is the one place where being precise is not enough.
+//
+// MACRO_SID owns the interrupt. It installs the handler, acks $D019, and emits
+// other nodes' code on their behalf — the raster chain that points $0314/$0315
+// at a scroller is six instructions inside MACRO_SID's own case, keyed on the
+// scroll node's instance id. MACRO_IRQ_HANDLER is its peer; five sites in the
+// emission path treat ownership as (MACRO_SID || MACRO_IRQ_HANDLER).
+// MACRO_TEXT_SCROLL is the other end of that binding and cannot run without an
+// owner at all — its standalone path is a deliberate `jmp *`.
+//
+// Converting any of them is a one-way trapdoor in BOTH directions:
+//
+//   * The block stops seeing the graph. Whatever the scans answered at
+//     conversion time is frozen into text. Convert a scroller with no SID
+//     present and the dead loop is baked in; adding a SID afterwards cannot
+//     revive it.
+//
+//   * The graph stops seeing the block. Convert the owner — even together with
+//     everything that latches to it, which is otherwise the correct move — and
+//     the IRQ role still exists in the binary but no longer exists to any
+//     macro. The next scroller node you drop in finds no owner, sets
+//     _use_sid = 0, and spins forever.
+//
+// The neutrality gate can only prove the first of those, and only for the graph
+// as it stands when you press the button. Nothing inside a convert action can
+// vouch for edits that have not happened yet. So these are refused outright and
+// the button says why, rather than converting cleanly and failing later on
+// hardware with nothing pointing at the cause.
+//
+// @return the offending node type, or "" when the selection is clear.
+// =====================================================================
+function scr_cbc_irq_dependency(_sel) {
+    for (var _i = 0; _i < array_length(_sel); _i++) {
+        var _n = _sel[_i];
+        if (!instance_exists(_n)) { continue; }
+
+        var _t = string(_n.node_type);
+        if (_t == "MACRO_SID")         { return _t; }
+        if (_t == "MACRO_IRQ")         { return _t; }
+        if (_t == "MACRO_IRQ_HANDLER") { return _t; }
+        if (_t == "MACRO_TEXT_SCROLL") { return _t; }
+    }
+    return "";
+}
+
 function scr_cbc_validate() {
     var _res = { ok: false, reason: "", nodes: [] };
 
@@ -78,6 +129,14 @@ function scr_cbc_validate() {
     var _sel = scr_cbc_selection();
     if (array_length(_sel) < 1) {
         _res.reason = "SELECT SOME CONNECTED NODES FIRST";
+        return _res;
+    }
+
+    // Refused by TYPE, before anything is measured, because these are the ones
+    // where the failure is certain, silent and expensive to diagnose. See
+    // scr_cbc_irq_dependency for why each is on the list.
+    if (scr_cbc_irq_dependency(_sel) != "") {
+        _res.reason = "CANNOT CONVERT - SID / IRQ DEPENDENCY";
         return _res;
     }
 
