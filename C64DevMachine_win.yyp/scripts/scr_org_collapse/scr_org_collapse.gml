@@ -37,6 +37,27 @@ function scr_node_is_hidden(_n) {
     return _n.org_parent.collapsed;
 }
 
+/// @function scr_org_has_children(_org)
+/// @desc Does this ORG own anything worth folding? Stops on the first hit.
+///
+/// Note what this does NOT test: is_connected. An ORG node is never connected —
+/// scr_spawn_org_node sets it false and nothing sets it true, which is why
+/// Draw_0 keeps writing `(is_connected || node_type == "ORG")` wherever it wants
+/// "this node is live". Requiring it here disabled the entire fold feature
+/// silently: no tab drawn, nothing clickable.
+function scr_org_has_children(_org) {
+    if (!instance_exists(_org)) { return false; }
+
+    var _found = false;
+    with (obj_c64_node) {
+        if (org_parent == _org) {
+            _found = true;
+            break;
+        }
+    }
+    return _found;
+}
+
 /// @function scr_org_collapse_stats(_org)
 /// @desc What is behind the fold: how many nodes, how many bytes, and the
 ///       address span they occupy. Drawn on the header so a folded block is
@@ -131,8 +152,8 @@ function scr_org_collapse_hit() {
     var _hot = noone;
 
     with (obj_c64_node) {
-        if (node_type != "ORG") { continue; }
-        if (!is_connected)      { continue; }
+        if (node_type != "ORG")           { continue; }
+        if (!scr_org_has_children(id))    { continue; }
 
         var _r = scr_org_collapse_rect(id);
         if (point_in_rectangle(_mx, _my, _r.x1, _r.y1, _r.x2, _r.y2)) {

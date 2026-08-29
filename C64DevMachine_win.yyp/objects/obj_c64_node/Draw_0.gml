@@ -2243,7 +2243,7 @@ if (global.ref_highlight_source != noone && instance_exists(global.ref_highlight
 // Drawn last so nothing overpaints it, and above the header rather than inside
 // it — the ORG title strip already carries the name and two address readouts.
 // =============================================================
-if (node_type == "ORG" && is_connected) {
+if (node_type == "ORG" && scr_org_has_children(id)) {
 
     var _fr  = scr_org_collapse_rect(id);
     var _fhv = (global.org_collapse_hot == id);
