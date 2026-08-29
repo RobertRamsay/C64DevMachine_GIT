@@ -382,8 +382,12 @@ function scr_cbc_str_decode(_bytes) {
         if (_b >= 1 && _b <= 26) {
             _txt += chr(64 + _b);
             _letters += 1;
-        } else if (_b == 32) {
-            _txt += " ";
+        } else if (_b >= 32 && _b <= 63) {
+            // Space, digits and punctuation pass through BOTH encoders
+            // untouched, so they decode straight back to themselves. This is
+            // what lets "FARTIES00" come out as .string rather than ten hex
+            // bytes — the digits were the only thing stopping it.
+            _txt += chr(_b);
         } else {
             return "";
         }
@@ -514,8 +518,20 @@ function scr_cbc_render(_ex, _deps) {
 
     _txt += scr_cbc_render_section(_ex.spine);
 
-    // Relocated blocks go LAST. .pc is a one-way relocation in the block
-    // language, so nothing after them needs to come back to the spine.
+    // Relocated blocks go last, bracketed by .pcsave / .pcrestore.
+    //
+    // The bracket is not optional. A bare .pc is one-way — pc_override stays
+    // put — so without the restore every node BELOW this block on the spine
+    // would assemble at the relocated address instead of its own. An RTS node
+    // placed after the block would be written to $200A and never execute.
+    var _any_reloc = false;
+    for (var _rc = 0; _rc < array_length(_ex.reloc); _rc++) {
+        if (array_length(_ex.reloc[_rc].entries) > 0) { _any_reloc = true; break; }
+    }
+    if (_any_reloc) {
+        _txt += "\n.pcsave\n";
+    }
+
     for (var _r = 0; _r < array_length(_ex.reloc); _r++) {
         var _rl = _ex.reloc[_r];
         if (array_length(_rl.entries) < 1) { continue; }
@@ -526,6 +542,10 @@ function scr_cbc_render(_ex, _deps) {
         _txt += "\n// ---- relocated data ----\n";
         _txt += ".pc $" + _h + "\n";
         _txt += scr_cbc_render_section(_rl.entries);
+    }
+
+    if (_any_reloc) {
+        _txt += ".pcrestore\n";
     }
 
     return _txt;
@@ -645,6 +665,14 @@ function scr_cbc_verify(_txt, _ex) {
         if (_m == "pc" || _m == "org") {
             var _a = _v;
             if (is_string(_a)) { _a = real(_a); }
+
+            // -2 / -3 are the save / restore markers, not addresses.
+            if (_a == -2) { continue; }
+            if (_a == -3) {
+                _cur = noone;
+                continue;
+            }
+
             _cur = { addr: _a, entries: [] };
             array_push(_reloc, _cur);
             continue;

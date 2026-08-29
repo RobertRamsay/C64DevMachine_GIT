@@ -256,6 +256,29 @@ function scr_parse_asm_text(_text) {
             }
         }
 
+        // .pcsave / .pcrestore — bracket a relocated run so the program counter
+        // comes BACK afterwards.
+        //
+        // .pc on its own is a ONE-WAY relocation: c64_new_program's org() sets
+        // pc_override and never restores it, so everything emitted after a .pc
+        // — including every node further down the spine — assembles at the
+        // relocated address. These two map onto the same save/restore markers
+        // the compile chain already uses internally (org -2 / org -3), so a
+        // block can park a data table somewhere and carry on where it left off.
+        //
+        // Must be tested BEFORE the ".PC" prefix check below, or ".PCSAVE"
+        // parses as a .pc directive with the address "SAVE".
+        if (_mnem_raw == ".PCSAVE") {
+            array_push(_result, ["_line_map_", _li + 1]);
+            array_push(_result, ["pc", -2]);
+            continue;
+        }
+        if (_mnem_raw == ".PCRESTORE") {
+            array_push(_result, ["_line_map_", _li + 1]);
+            array_push(_result, ["pc", -3]);
+            continue;
+        }
+
         // .pc / *. / .* / * = directives
         var _is_pc_dir   = false;
         var _pc_addr_str = "";
