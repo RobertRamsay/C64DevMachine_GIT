@@ -48,6 +48,7 @@ function scr_undo_restore(_path) {
         var _d = _nodes[_i];
         if (_d.type == "EXECUTE") continue;
         var _n = instance_create_layer(_d.x, _d.y, "Layer_Nodes", obj_c64_node);
+        _n.load_idx     = _i;
         _n.is_dragging  = true;
         _n.node_title   = _d.title;
         _n.node_type    = _d.type;
@@ -103,25 +104,24 @@ function scr_undo_restore(_path) {
         }
     }
 
-    // Restore ORG parent links (same pattern as scr_load_workspace_dialog 5A)
+    // Restore ORG parent links, by record INDEX rather than by position — see
+    // scr_load_workspace_from_path for the full reasoning. Two nodes sharing a
+    // position made this ambiguous, and an undo step runs far more often than a
+    // load, so the same collision could silently reparent a child on any CTRL+Z.
     with (obj_c64_node) {
         if (node_type == "ORG" || node_type == "INIT") continue;
-        var _linked = false;
-        for (var _li = 0; _li < array_length(_nodes); _li++) {
-            var _ld = _nodes[_li];
-            if (abs(x - _ld.x) < 4 && abs(y - _ld.y) < 4) {
-                if (variable_struct_exists(_ld, "org_parent_x") && _ld.org_parent_x != -1) {
-                    _target_ox = _ld.org_parent_x;
-                    _target_oy = _ld.org_parent_y;
-                    with (obj_c64_node) {
-                        if (node_type == "ORG" && abs(x - other._target_ox) < 4 && abs(y - other._target_oy) < 4) {
-                            other.org_parent   = id;
-                            other.is_connected = true;
-                            other._linked      = true;
-                        }
-                    }
+        if (load_idx < 0)                      { continue; }
+        if (load_idx >= array_length(_nodes))  { continue; }
+
+        var _ld = _nodes[load_idx];
+        if (variable_struct_exists(_ld, "org_parent_x") && _ld.org_parent_x != -1) {
+            _target_ox = _ld.org_parent_x;
+            _target_oy = _ld.org_parent_y;
+            with (obj_c64_node) {
+                if (node_type == "ORG" && abs(x - other._target_ox) < 4 && abs(y - other._target_oy) < 4) {
+                    other.org_parent   = id;
+                    other.is_connected = true;
                 }
-                break;
             }
         }
     }

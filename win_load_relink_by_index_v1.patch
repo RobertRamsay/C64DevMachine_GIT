@@ -1,0 +1,146 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+index 9d37960..22714e1 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+@@ -214,6 +214,12 @@ height_dirty         = true;
+ // so scr_node_is_hidden() can read a parent's flag without testing for the
+ // variable first. Never assigned by the height recompute — see scr_org_collapse.
+ collapsed            = false;
++
++// Index of the saved record this node was created from, or -1 for a node made
++// any other way. The loader and the undo restore use it to find their own
++// record again instead of hunting for one by position — see
++// scr_load_workspace_from_path for why position matching was not safe.
++load_idx             = -1;
+ cached_height        = 40;
+ stats_cache_dirty    = true;
+ stats_str_bytes      = "";
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 1840452..7130025 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -55,6 +55,7 @@ function scr_load_workspace_from_path(_path) {
+         var _n = instance_create_layer(d.x, d.y, "Layer_Nodes", obj_c64_node);
+         _n.is_dragging = true;
+ 
++        _n.load_idx     = i;
+         _n.node_title   = d.title;
+         _n.node_type    = d.type;
+         _n.instructions = d.code;
+@@ -188,34 +189,43 @@ function scr_load_workspace_from_path(_path) {
+         }
+     }
+ ////
+-with (obj_c64_node) {
++// Each node finds ITS OWN record by index. This used to scan the saved
++    // records for the first one within 4px and take that — which is ambiguous
++    // the moment two nodes share a position, and they do: park an unattached
++    // node on top of a child and both live nodes match whichever record comes
++    // first in the array. One of them then inherits the other's parenting.
++    //
++    // That is what produced the "node from the block decided to move over"
++    // artifact. A child that picked up an unattached node's record lost its
++    // org_parent while keeping is_connected, so PASS 3 of
++    // scr_c64_do_update_addresses treated it as a MAIN SPINE node and repacked
++    // its y — while leaving its x alone, stranding it between the columns.
++    //
++    // load_idx is stamped at creation, so the mapping is exact and one-to-one.
++    // The org_uid field in the save format would have done this too, but it is
++    // written as -1 for every node, so it carries nothing to match on.
++    with (obj_c64_node) {
+         if (node_type == "ORG" || node_type == "INIT") continue;
+         var _linked = false;
+-        for (var _li = 0; _li < array_length(_nodes); _li++) {
+-            var _ld = _nodes[_li];
+-            if (abs(x - _ld.x) < 4 && abs(y - _ld.y) < 4) {
+-                if (variable_struct_exists(_ld, "org_parent_x") && _ld.org_parent_x != -1) {
+-                    _target_ox = _ld.org_parent_x;
+-                    _target_oy = _ld.org_parent_y;
+-                    with (obj_c64_node) {
+-                        if (node_type == "ORG" && abs(x - other._target_ox) < 4 && abs(y - other._target_oy) < 4) {
+-                            other.org_parent   = id;
+-                            other.is_connected = true;
+-                            other._linked      = true;
+-                        }
++        if (load_idx >= 0 && load_idx < array_length(_nodes)) {
++            var _ld = _nodes[load_idx];
++            if (variable_struct_exists(_ld, "org_parent_x") && _ld.org_parent_x != -1) {
++                _target_ox = _ld.org_parent_x;
++                _target_oy = _ld.org_parent_y;
++                with (obj_c64_node) {
++                    if (node_type == "ORG" && abs(x - other._target_ox) < 4 && abs(y - other._target_oy) < 4) {
++                        other.org_parent   = id;
++                        other.is_connected = true;
++                        other._linked      = true;
+                     }
+                 }
+-                break;
+             }
+         }
+         if (!_linked && !is_connected) {
+             var _had_org = false;
+-            for (var _li2 = 0; _li2 < array_length(_nodes); _li2++) {
+-                var _ld2 = _nodes[_li2];
+-                if (abs(x - _ld.x) < 4 && abs(y - _ld.y) < 4) {
+-                    _had_org = variable_struct_exists(_ld2, "has_org_parent") && _ld2.has_org_parent;
+-                    break;
+-                }
++            if (load_idx >= 0 && load_idx < array_length(_nodes)) {
++                var _ld2 = _nodes[load_idx];
++                _had_org = variable_struct_exists(_ld2, "has_org_parent") && _ld2.has_org_parent;
+             }
+             if (_had_org) {
+                 var _best_dist = 999999;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml b/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
+index 7daa69a..021e9c2 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
+@@ -48,6 +48,7 @@ function scr_undo_restore(_path) {
+         var _d = _nodes[_i];
+         if (_d.type == "EXECUTE") continue;
+         var _n = instance_create_layer(_d.x, _d.y, "Layer_Nodes", obj_c64_node);
++        _n.load_idx     = _i;
+         _n.is_dragging  = true;
+         _n.node_title   = _d.title;
+         _n.node_type    = _d.type;
+@@ -103,25 +104,24 @@ function scr_undo_restore(_path) {
+         }
+     }
+ 
+-    // Restore ORG parent links (same pattern as scr_load_workspace_dialog 5A)
++    // Restore ORG parent links, by record INDEX rather than by position — see
++    // scr_load_workspace_from_path for the full reasoning. Two nodes sharing a
++    // position made this ambiguous, and an undo step runs far more often than a
++    // load, so the same collision could silently reparent a child on any CTRL+Z.
+     with (obj_c64_node) {
+         if (node_type == "ORG" || node_type == "INIT") continue;
+-        var _linked = false;
+-        for (var _li = 0; _li < array_length(_nodes); _li++) {
+-            var _ld = _nodes[_li];
+-            if (abs(x - _ld.x) < 4 && abs(y - _ld.y) < 4) {
+-                if (variable_struct_exists(_ld, "org_parent_x") && _ld.org_parent_x != -1) {
+-                    _target_ox = _ld.org_parent_x;
+-                    _target_oy = _ld.org_parent_y;
+-                    with (obj_c64_node) {
+-                        if (node_type == "ORG" && abs(x - other._target_ox) < 4 && abs(y - other._target_oy) < 4) {
+-                            other.org_parent   = id;
+-                            other.is_connected = true;
+-                            other._linked      = true;
+-                        }
+-                    }
++        if (load_idx < 0)                      { continue; }
++        if (load_idx >= array_length(_nodes))  { continue; }
++
++        var _ld = _nodes[load_idx];
++        if (variable_struct_exists(_ld, "org_parent_x") && _ld.org_parent_x != -1) {
++            _target_ox = _ld.org_parent_x;
++            _target_oy = _ld.org_parent_y;
++            with (obj_c64_node) {
++                if (node_type == "ORG" && abs(x - other._target_ox) < 4 && abs(y - other._target_oy) < 4) {
++                    other.org_parent   = id;
++                    other.is_connected = true;
+                 }
+-                break;
+             }
+         }
+     }

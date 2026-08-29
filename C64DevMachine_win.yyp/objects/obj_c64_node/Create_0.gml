@@ -214,6 +214,12 @@ height_dirty         = true;
 // so scr_node_is_hidden() can read a parent's flag without testing for the
 // variable first. Never assigned by the height recompute — see scr_org_collapse.
 collapsed            = false;
+
+// Index of the saved record this node was created from, or -1 for a node made
+// any other way. The loader and the undo restore use it to find their own
+// record again instead of hunting for one by position — see
+// scr_load_workspace_from_path for why position matching was not safe.
+load_idx             = -1;
 cached_height        = 40;
 stats_cache_dirty    = true;
 stats_str_bytes      = "";
