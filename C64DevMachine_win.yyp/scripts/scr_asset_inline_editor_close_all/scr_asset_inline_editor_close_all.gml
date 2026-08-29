@@ -37,4 +37,23 @@ function scr_asset_inline_editor_close_all() {
 
     // Drain any pending characters so they don't leak to other systems
     keyboard_string = "";
+
+    // Every inline editor is now closed, so no inline text field can still be
+    // taking input — release the global text-entry lock.
+    //
+    // The three EDIT buttons (BYTE_DATA / TEXT_DATA / LINE_COLL) raise this
+    // flag once when they open and lower it once on their own CLOSE button.
+    // Every OTHER way out of the viewer — ESC, the viewer's [X], clicking
+    // outside it, deleting the asset — routed through here, which closed the
+    // editor but left the flag raised. It gates every single-key shortcut in
+    // obj_workspace_manager (node spawning, F1, F, B, the quick menus, camera
+    // pan), so one ESC out of a text editor disabled L, A, J and the rest for
+    // the remainder of the session.
+    //
+    // Clearing it here cannot steal the flag from a still-active text box:
+    // the name / address / map-dimension / byte-string editors all re-assert
+    // it at the top of their own block in obj_asset_manager's Step and then
+    // exit, so Step never reaches any of this function's call sites while one
+    // of them has focus.
+    global.is_any_text_active = false;
 }

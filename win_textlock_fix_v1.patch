@@ -1,0 +1,46 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index 63a3045..469fde0 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -2275,6 +2275,12 @@ if (_asset.type == "META_TILESET") {
+         }
+ 
+         if (point_in_rectangle(_mx, _my, _edit_x, _iy, _addr_x, _iy + item_h)) {
++            // Switching straight from the list to another asset never reached
++            // the close-outside handler below (this branch exits first), so an
++            // inline editor left open on the PREVIOUS asset kept its unsaved
++            // text and kept the global text lock raised. Close it the same way
++            // every other viewer exit does.
++            scr_asset_inline_editor_close_all();
+             viewer_open  = true;keyboard_string = "";
+             viewer_asset = hover_idx;
+             // Opening any asset straight from the list means we did NOT arrive
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_close_all/scr_asset_inline_editor_close_all.gml b/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_close_all/scr_asset_inline_editor_close_all.gml
+index 236a4a1..5e352c6 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_close_all/scr_asset_inline_editor_close_all.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_close_all/scr_asset_inline_editor_close_all.gml
+@@ -37,4 +37,23 @@ function scr_asset_inline_editor_close_all() {
+ 
+     // Drain any pending characters so they don't leak to other systems
+     keyboard_string = "";
++
++    // Every inline editor is now closed, so no inline text field can still be
++    // taking input — release the global text-entry lock.
++    //
++    // The three EDIT buttons (BYTE_DATA / TEXT_DATA / LINE_COLL) raise this
++    // flag once when they open and lower it once on their own CLOSE button.
++    // Every OTHER way out of the viewer — ESC, the viewer's [X], clicking
++    // outside it, deleting the asset — routed through here, which closed the
++    // editor but left the flag raised. It gates every single-key shortcut in
++    // obj_workspace_manager (node spawning, F1, F, B, the quick menus, camera
++    // pan), so one ESC out of a text editor disabled L, A, J and the rest for
++    // the remainder of the session.
++    //
++    // Clearing it here cannot steal the flag from a still-active text box:
++    // the name / address / map-dimension / byte-string editors all re-assert
++    // it at the top of their own block in obj_asset_manager's Step and then
++    // exit, so Step never reaches any of this function's call sites while one
++    // of them has focus.
++    global.is_any_text_active = false;
+ }
+\ No newline at end of file

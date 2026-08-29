@@ -2275,6 +2275,12 @@ if (_asset.type == "META_TILESET") {
         }
 
         if (point_in_rectangle(_mx, _my, _edit_x, _iy, _addr_x, _iy + item_h)) {
+            // Switching straight from the list to another asset never reached
+            // the close-outside handler below (this branch exits first), so an
+            // inline editor left open on the PREVIOUS asset kept its unsaved
+            // text and kept the global text lock raised. Close it the same way
+            // every other viewer exit does.
+            scr_asset_inline_editor_close_all();
             viewer_open  = true;keyboard_string = "";
             viewer_asset = hover_idx;
             // Opening any asset straight from the list means we did NOT arrive
