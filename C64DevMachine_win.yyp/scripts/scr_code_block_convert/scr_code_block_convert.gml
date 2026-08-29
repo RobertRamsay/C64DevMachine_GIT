@@ -32,6 +32,7 @@
 ///   scr_cbc_extract(_sel)      compile output -> { ok, spine, reloc }
 ///   scr_cbc_sig(_entries)      section -> comparable signature array
 ///   scr_cbc_asset_deps(_sel)   asset-mode references the selection would orphan
+///   scr_cbc_inline_text(_sel)  build-time injected text the stream never carries
 ///   scr_cbc_render(_ex,_deps)  sections -> code block text
 ///   scr_cbc_verify(_txt, _ex)  round trip the text, compare signatures
 ///   scr_cbc_convert()          the whole operation, including the swap
@@ -454,6 +455,50 @@ function scr_cbc_asset_deps(_sel) {
 }
 
 // =====================================================================
+// Data that scr_node_build_inject() pokes straight into the built PRG,
+// scanning live nodes — it never passes through scr_compile_chain at all.
+//
+// MACRO_PRINT in INLINE mode is the one that bites: its message is written at
+// BUILD time from instructions[0][5] to the address in [6]. Those bytes are not
+// in the compile stream, so the extractor cannot see them, and converting the
+// node away loses the text with nothing to warn you. That is the "FARTS never
+// arrives at $2000" case.
+//
+// Encoded here with scr_cbc_str_encode, which is byte-identical to the parser's
+// .STRING branch, so the run renders straight back out as .string "FARTS".
+//
+// Returns [ { addr, text, bytes } ].
+// =====================================================================
+function scr_cbc_inline_text(_sel) {
+    var _out = [];
+
+    for (var _i = 0; _i < array_length(_sel); _i++) {
+        var _n = _sel[_i];
+        if (!instance_exists(_n))              { continue; }
+        if (_n.node_type != "MACRO_PRINT")     { continue; }
+        if (array_length(_n.instructions) < 1) { continue; }
+
+        var _row = _n.instructions[0];
+
+        // Asset mode is handled separately by scr_cbc_asset_deps.
+        var _mode = 0;
+        if (array_length(_row) > 9 && is_real(_row[9])) { _mode = real(_row[9]); }
+        if (_mode == 1) { continue; }
+
+        var _txt = "";
+        if (array_length(_row) > 5) { _txt = string(_row[5]); }
+        if (_txt == "") { continue; }
+
+        var _addr = 8192;
+        if (array_length(_row) > 6 && is_real(_row[6])) { _addr = real(_row[6]); }
+
+        array_push(_out, { addr: _addr, text: _txt, bytes: scr_cbc_str_encode(_txt) });
+    }
+
+    return _out;
+}
+
+// =====================================================================
 // Sections -> code block text.
 // =====================================================================
 function scr_cbc_render(_ex, _deps) {
@@ -709,6 +754,18 @@ function scr_cbc_convert() {
             + " inline bytes but the selection reports " + string(_want_bytes)
             + ".\n\nNothing has been changed.");
         return false;
+    }
+
+    // ---- inline PRINT text: the block has to carry it, there is nowhere
+    // ---- else for it to live once the node is gone ----
+    var _inl = scr_cbc_inline_text(_sel);
+    for (var _t = 0; _t < array_length(_inl); _t++) {
+        var _it = _inl[_t];
+        var _ie = [];
+        for (var _ib = 0; _ib < array_length(_it.bytes); _ib++) {
+            array_push(_ie, { m: "byte", v: _it.bytes[_ib], lbl: "", sz: 1 });
+        }
+        array_push(_ex.reloc, { addr: _it.addr, entries: _ie });
     }
 
     // ---- asset-mode dependencies: inline the data, or keep the asset ----
