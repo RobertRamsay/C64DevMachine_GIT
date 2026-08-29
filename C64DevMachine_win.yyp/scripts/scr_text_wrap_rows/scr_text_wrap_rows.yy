@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_text_wrap_rows",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_text_wrap_rows",
+  "parent":{
+    "name":"CORE",
+    "path":"folders/SCRIPTS/CORE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

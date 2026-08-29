@@ -7203,21 +7203,38 @@ case "BYTE_DATA": {
         draw_text(_vx1 + 10, _cy, "CONTENT:");
         _cy += 14;
         draw_set_color(make_color_rgb(180, 120, 255));
-        var _bstr2 = variable_struct_exists(_asset.meta, "byte_string")
-            ? string(_asset.meta.byte_string) : "";
-        var _preview = _bstr2;
-        if (string_length(_preview) > 600) _preview = string_copy(_preview, 1, 600) + "...";
-        
-        // Adjust this parameter as needed
-        var _linemaxwidth = 1400; 
-        var _str_w = string_width(_preview);
-        var _xscale = 1;
-        
-        if (_str_w > _linemaxwidth) {
-            _xscale = _linemaxwidth / _str_w;
+        var _bstr2 = "";
+        if (variable_struct_exists(_asset.meta, "byte_string")) {
+            _bstr2 = string(_asset.meta.byte_string);
         }
-        
-        draw_text_transformed(_vx1 + 10, _cy, _preview, _xscale, 1, 0);
+
+        // Wrap to the panel instead of squashing. The old path scaled the
+        // whole string down to fit a hardcoded 1400px, which turned any real
+        // byte string into an unreadable smear and still overran the panel
+        // once it was long enough.
+        var _pv_w    = (_vx2 - 10) - (_vx1 + 10);
+        var _pv_lh   = string_height("A") + 2;
+        var _pv_max  = max(1, floor(((_vy2 - 110) - _cy) / _pv_lh));
+        // Only lay out enough characters to fill the rows that can actually
+        // be shown — a 24K byte string would otherwise be wrapped in full
+        // every frame for the sake of a dozen visible rows.
+        var _pv_src = _bstr2;
+        var _pv_cut = false;
+        var _pv_bud = (_pv_max + 2) * 256;
+        if (string_length(_pv_src) > _pv_bud) {
+            _pv_src = string_copy(_pv_src, 1, _pv_bud);
+            _pv_cut = true;
+        }
+        var _pv_rows = scr_text_wrap_rows(_pv_src, _pv_w);
+        var _pv_n    = min(array_length(_pv_rows), _pv_max);
+        for (var _pvi = 0; _pvi < _pv_n; _pvi++) {
+            draw_text(_vx1 + 10, _cy, _pv_rows[_pvi].text);
+            _cy += _pv_lh;
+        }
+        if (_pv_cut || array_length(_pv_rows) > _pv_n) {
+            draw_set_color(make_color_rgb(80, 80, 80));
+            draw_text(_vx1 + 10, _cy, "(MORE - OPEN THE EDITOR TO SEE ALL)");
+        }
     }
     }
 } break;
@@ -7344,17 +7361,30 @@ case "TEXT_DATA": {
         draw_text(_vx1 + 10, _cy, "CONTENT PREVIEW:");
         _cy += 14;
         draw_set_color(make_color_rgb(160, 230, 160));
-        var _preview_lines = string_split(_txt_val, "\n");
-        for (var _pli = 0; _pli < min(array_length(_preview_lines), 6); _pli++) {
-            var _pl = _preview_lines[_pli];
-            if (string_length(_pl) > 600) _pl = string_copy(_pl, 1, 600) + "...";
-            draw_text(_vx1 + 10, _cy, _pl);
-            _cy += 14;
+        // Wrap to the panel. Previously each logical line was drawn raw, so
+        // anything wider than the viewer simply ran out past its right edge.
+        // The overflow note also counted against 20 while the loop stopped at
+        // 6, so it stayed hidden for everything between the two.
+        var _tp_w    = (_vx2 - 10) - (_vx1 + 10);
+        var _tp_lh   = 14;
+        var _tp_max  = max(1, floor(((_vy2 - 110) - _cy) / _tp_lh));
+        // Bounded for the same reason as the BYTE_DATA preview above.
+        var _tp_src = _txt_val;
+        var _tp_cut = false;
+        var _tp_bud = (_tp_max + 2) * 256;
+        if (string_length(_tp_src) > _tp_bud) {
+            _tp_src = string_copy(_tp_src, 1, _tp_bud);
+            _tp_cut = true;
         }
-        if (array_length(_preview_lines) > 20) {
+        var _tp_rows = scr_text_wrap_rows(_tp_src, _tp_w);
+        var _tp_n    = min(array_length(_tp_rows), _tp_max);
+        for (var _tpi = 0; _tpi < _tp_n; _tpi++) {
+            draw_text(_vx1 + 10, _cy, _tp_rows[_tpi].text);
+            _cy += _tp_lh;
+        }
+        if (_tp_cut || array_length(_tp_rows) > _tp_n) {
             draw_set_color(make_color_rgb(80, 80, 80));
-            draw_text(_vx1 + 10, _cy,
-                "(" + string(array_length(_preview_lines) - 6) + " more lines...)");
+            draw_text(_vx1 + 10, _cy, "(MORE - OPEN THE EDITOR TO SEE ALL)");
         }
     }
 	// Consume keyboard input so it doesn't leak to other systems —

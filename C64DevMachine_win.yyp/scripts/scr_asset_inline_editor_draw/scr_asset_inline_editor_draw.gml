@@ -11,7 +11,9 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
     var _gutter = 50;
     var _text_x = _x1 + _gutter + _pad;
     var _text_y = _y1 + _pad;
-    var _text_w = _x2 - _text_x - _pad;
+    // Keep clear of the scrollbar track (6px at _x2) so the last character of
+    // a full row is never drawn underneath it.
+    var _text_w = _x2 - _text_x - _pad - 10;
     var _text_h = _y2 - _y1 - _pad * 2;
     var _max_vis_lines = floor(_text_h / _line_h);
 
@@ -32,44 +34,73 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
     draw_set_color(_accent);
     draw_text(_x1 + _gutter + _pad, _y1 + 3, _label + "  |  CTRL+A SELECT ALL  |  CTRL+C/V  |  ENTER NEW LINE");
 
-    // Split into lines
-    var _lines = (_txt == "") ? [""] : string_split(_txt, "\n");
-    var _total_lines = array_length(_lines);
+    // ── Lay the text out as VISUAL rows ───────────────────────────────────
+    // This replaces the old uniform horizontal squash. That scaled every line
+    // against a hardcoded 1000px budget rather than the real box width, so
+    // text both compressed to an unreadable smear AND still ran past the panel
+    // edge once it was long enough. Rows are measured in the font they are
+    // actually drawn in (fnt_C64_Angled), break on spaces where they can, and
+    // are contiguous in offset terms — which is what lets the caret, the
+    // selection and click-to-place all keep working per row exactly as they
+    // used to per line.
+    //
+    // Cached because the layout only changes when the text or the box width
+    // does, and a large BYTE_DATA string is hundreds of rows — re-measuring
+    // all of them every frame for the dozen that are visible would cost real
+    // frame time. Only one inline editor is ever open at a time, so a single
+    // static slot is enough; the asset is part of the key so switching assets
+    // cannot show a stale layout.
+    draw_set_font(fnt_C64_Angled);
 
-    // Build line start offsets
-    var _line_starts = array_create(_total_lines, 0);
-    var _off = 0;
-    for (var _li = 0; _li < _total_lines; _li++) {
-        _line_starts[_li] = _off;
-        _off += string_length(_lines[_li]) + 1;
+    static _wc_name = "";
+    static _wc_txt  = "";
+    static _wc_w    = -1;
+    static _wc_rows = [];
+
+    // Keyed on the asset NAME rather than the struct so this never depends on
+    // how GML compares struct references.
+    var _wc_key = string(_asset.name);
+
+    if (_wc_name != _wc_key || _wc_txt != _txt || _wc_w != _text_w) {
+        _wc_name = _wc_key;
+        _wc_txt  = _txt;
+        _wc_w    = _text_w;
+        _wc_rows = scr_text_wrap_rows(_txt, _text_w);
     }
 
-    // Find cursor line and col
-    var _cur_line = 0;
-    var _cur_col  = 0;
-    for (var _li = 0; _li < _total_lines; _li++) {
-        if (_li == _total_lines - 1 || _line_starts[_li + 1] > _cur) {
-            _cur_line = _li;
-            _cur_col  = _cur - _line_starts[_li];
+    var _rows       = _wc_rows;
+    var _total_rows = array_length(_rows);
+
+    // Find cursor row and column
+    var _cur_row = 0;
+    var _cur_col = 0;
+    for (var _ri = 0; _ri < _total_rows; _ri++) {
+        if (_ri == _total_rows - 1 || _rows[_ri + 1].off > _cur) {
+            _cur_row = _ri;
+            _cur_col = _cur - _rows[_ri].off;
             break;
         }
     }
 
     // Auto-scroll to keep cursor visible
-    if (_cur_line < _scr_y) {
-        _scr_y = _cur_line;
+    if (_cur_row < _scr_y) {
+        _scr_y = _cur_row;
     }
-    if (_cur_line >= _scr_y + _max_vis_lines) {
-        _scr_y = _cur_line - _max_vis_lines + 1;
+    if (_cur_row >= _scr_y + _max_vis_lines) {
+        _scr_y = _cur_row - _max_vis_lines + 1;
     }
-    _scr_y = clamp(_scr_y, 0, max(0, _total_lines - _max_vis_lines));
+    _scr_y = clamp(_scr_y, 0, max(0, _total_rows - _max_vis_lines));
     _asset.meta.inline_edit_scroll_y = _scr_y;
 
     // Selection state
-    var _has_sel    = (_asset.meta.inline_edit_sel_start != -1
-                    && _asset.meta.inline_edit_sel_start != _asset.meta.inline_edit_sel_end);
-    var _sel_lo     = _has_sel ? min(_asset.meta.inline_edit_sel_start, _asset.meta.inline_edit_sel_end) : 0;
-    var _sel_hi     = _has_sel ? max(_asset.meta.inline_edit_sel_start, _asset.meta.inline_edit_sel_end) : 0;
+    var _has_sel = (_asset.meta.inline_edit_sel_start != -1
+                 && _asset.meta.inline_edit_sel_start != _asset.meta.inline_edit_sel_end);
+    var _sel_lo  = 0;
+    var _sel_hi  = 0;
+    if (_has_sel) {
+        _sel_lo = min(_asset.meta.inline_edit_sel_start, _asset.meta.inline_edit_sel_end);
+        _sel_hi = max(_asset.meta.inline_edit_sel_start, _asset.meta.inline_edit_sel_end);
+    }
 
     // Scissor to text area
     var _sx_sc = window_get_width()  / global.gui_w;
@@ -81,26 +112,24 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
         ceil((_y2 - _y1 - 18) * _sy_sc)
     );
 
-    // Calculate uniform scale based on the longest line to preserve columns
-    draw_set_font(fnt_C64_Angled);
-    var _linemaxwidth = 1000;
-    var _full_w = string_width(_txt);
-    var _xscale = (_full_w > _linemaxwidth) ? (_linemaxwidth / _full_w) : 1;
-
-    draw_set_font(fnt_c64_code);
     for (var _li = 0; _li < _max_vis_lines; _li++) {
-        var _lidx = _li + _scr_y;
-        if (_lidx >= _total_lines) break;
+        var _ridx = _li + _scr_y;
+        if (_ridx >= _total_rows) break;
 
+        var _row        = _rows[_ridx];
         var _ly         = _y1 + 18 + _pad + _li * _line_h;
-        var _line_txt   = _lines[_lidx];
-        var _line_start = _line_starts[_lidx];
+        var _line_txt   = _row.text;
+        var _line_start = _row.off;
 
-        // Gutter line number
-        draw_set_font(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(60, 70, 90));
-        draw_text(_x1 + 4, _ly, string(_lidx + 1));
-        draw_set_font(fnt_C64_Angled	);
+        // Gutter line number — only on the first row of a logical line. A
+        // blank gutter is the signal that a row is a soft-wrap continuation,
+        // so the numbers still count real lines.
+        if (!_row.iscont) {
+            draw_set_font(fnt_c64_tiny);
+            draw_set_color(make_color_rgb(60, 70, 90));
+            draw_text(_x1 + 4, _ly, string(_row.lnum + 1));
+        }
+        draw_set_font(fnt_C64_Angled);
 
         // Selection highlight
         if (_has_sel) {
@@ -108,8 +137,8 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
             if (_sel_lo < _line_end + 1 && _sel_hi > _line_start) {
                 var _hl_s = max(0, _sel_lo - _line_start);
                 var _hl_e = min(string_length(_line_txt), _sel_hi - _line_start);
-                var _hx1  = _text_x + (string_width(string_copy(_line_txt, 1, _hl_s)) * _xscale);
-                var _hx2  = _text_x + (string_width(string_copy(_line_txt, 1, _hl_e)) * _xscale);
+                var _hx1  = _text_x + string_width(string_copy(_line_txt, 1, _hl_s));
+                var _hx2  = _text_x + string_width(string_copy(_line_txt, 1, _hl_e));
                 draw_set_alpha(0.5);
                 draw_set_color(make_color_rgb(80, 230, 255));
                 draw_rectangle(_hx1, _ly, _hx2, _ly + _line_h, false);
@@ -121,11 +150,11 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
 
         // Line text
         draw_set_color(c_white);
-        draw_text_transformed(_text_x, _ly, _line_txt, _xscale, 1, 0);
+        draw_text(_text_x, _ly, _line_txt);
 
         // Cursor
-        if (_lidx == _cur_line && (_asset.meta.inline_edit_blink mod 40 < 25)) {
-            var _cx = _text_x + (string_width(string_copy(_line_txt, 1, _cur_col)) * _xscale);
+        if (_ridx == _cur_row && (_asset.meta.inline_edit_blink mod 40 < 25)) {
+            var _cx = _text_x + string_width(string_copy(_line_txt, 1, _cur_col));
             draw_set_color(c_white);
             draw_line_width(_cx, _ly, _cx, _ly + _line_h, 2);
         }
@@ -138,8 +167,8 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
                 _hit_col = 0;
            } else {
                 for (var _ci = 0; _ci < string_length(_line_txt); _ci++) {
-                    var _cx1 = _text_x + (string_width(string_copy(_line_txt, 1, _ci)) * _xscale);
-                    var _cx2 = _text_x + (string_width(string_copy(_line_txt, 1, _ci + 1)) * _xscale);
+                    var _cx1 = _text_x + string_width(string_copy(_line_txt, 1, _ci));
+                    var _cx2 = _text_x + string_width(string_copy(_line_txt, 1, _ci + 1));
                     if (_mx < (_cx1 + _cx2) * 0.5) {
                         _hit_col = _ci;
                         break;
@@ -158,13 +187,13 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
     gpu_set_scissor(0, 0, window_get_width(), window_get_height());
 
     // Scrollbar
-    if (_total_lines > _max_vis_lines) {
+    if (_total_rows > _max_vis_lines) {
         var _sb_x  = _x2 - 6;
         var _sb_y1 = _y1 + 18;
         var _sb_y2 = _y2;
         var _sb_h  = _sb_y2 - _sb_y1;
-        var _th_h  = max(16, _sb_h * (_max_vis_lines / _total_lines));
-        var _th_y  = _sb_y1 + (_sb_h - _th_h) * (_scr_y / max(1, _total_lines - _max_vis_lines));
+        var _th_h  = max(16, _sb_h * (_max_vis_lines / _total_rows));
+        var _th_y  = _sb_y1 + (_sb_h - _th_h) * (_scr_y / max(1, _total_rows - _max_vis_lines));
         draw_set_color(make_color_rgb(25, 25, 40));
         draw_rectangle(_sb_x, _sb_y1, _sb_x + 6, _sb_y2, false);
         draw_set_color(make_color_rgb(80, 100, 140));
@@ -177,7 +206,7 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
             _asset.meta.inline_edit_scroll_y = max(0, _scr_y - 2);
         }
         if (mouse_wheel_down()) {
-            _asset.meta.inline_edit_scroll_y = min(max(0, _total_lines - _max_vis_lines), _scr_y + 2);
+            _asset.meta.inline_edit_scroll_y = min(max(0, _total_rows - _max_vis_lines), _scr_y + 2);
         }
     }
 

@@ -979,6 +979,7 @@
     {"id":{"name":"scr_asset_chr_reload","path":"scripts/scr_asset_chr_reload/scr_asset_chr_reload.yy",},},
     {"id":{"name":"scr_asset_default_address","path":"scripts/scr_asset_default_address/scr_asset_default_address.yy",},},
     {"id":{"name":"scr_asset_inline_editor_close_all","path":"scripts/scr_asset_inline_editor_close_all/scr_asset_inline_editor_close_all.yy",},},
+    {"id":{"name":"scr_text_wrap_rows","path":"scripts/scr_text_wrap_rows/scr_text_wrap_rows.yy",},},
     {"id":{"name":"scr_asset_inline_editor_commit_all","path":"scripts/scr_asset_inline_editor_commit_all/scr_asset_inline_editor_commit_all.yy",},},
     {"id":{"name":"scr_asset_inline_editor_draw","path":"scripts/scr_asset_inline_editor_draw/scr_asset_inline_editor_draw.yy",},},
     {"id":{"name":"scr_asset_inline_editor_step","path":"scripts/scr_asset_inline_editor_step/scr_asset_inline_editor_step.yy",},},
