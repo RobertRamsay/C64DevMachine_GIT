@@ -352,6 +352,9 @@ function scr_show_code_build(_compiled) {
         var _brkkey   = "";  // …captured when a save/restore bracket opened
         var _brkname  = "";
         var _brkinst  = "";
+        var _brkstack = [];  // one entry per open bracket, so -3 restores the
+                             // context the enclosing bracket had rather than
+                             // leaving the innermost one latched forever
         var _run     = -1;   // index of the byte run currently being extended
 
         // Every label's address, internal ones included — this is what makes
@@ -403,6 +406,7 @@ function scr_show_code_build(_compiled) {
                     _brkkey  = _lastkey;
                     _brkname = _lastname;
                     _brkinst = _lastinst;
+                    array_push(_brkstack, { key: _brkkey, name: _brkname, inst: _brkinst });
                     _run = -1;
                     continue;
                 }
@@ -410,6 +414,22 @@ function scr_show_code_build(_compiled) {
                 if (_o == -3) {
                     if (array_length(_pcstack) > 0) {
                         _pc = array_pop(_pcstack);
+                    }
+                    // Leave the bracket's context behind with the bracket. It
+                    // used to stay latched, so any later stream position that
+                    // still looked bracketed kept crediting a macro that had
+                    // finished emitting long before.
+                    if (array_length(_brkstack) > 0) {
+                        array_pop(_brkstack);
+                    }
+                    _brkkey  = "";
+                    _brkname = "";
+                    _brkinst = "";
+                    if (array_length(_brkstack) > 0) {
+                        var _bt  = _brkstack[array_length(_brkstack) - 1];
+                        _brkkey  = _bt.key;
+                        _brkname = _bt.name;
+                        _brkinst = _bt.inst;
                     }
                     _run = -1;
                     continue;
@@ -431,7 +451,7 @@ function scr_show_code_build(_compiled) {
                     _oinst = _brkinst;
                 }
 
-                array_push(_flat, { kind:"org", key:_okey, name:_oname, owner:"", inst:_oinst, pc:_pc, raw:_m, mnem:_m, val:0, lbl:"", sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:false, used:false });
+                array_push(_flat, { kind:"org", key:_okey, name:_oname, owner:"", inst:_oinst, pc:_pc, raw:_m, mnem:_m, val:0, lbl:"", sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:false, used:false, used_code:false });
                 continue;
             }
 
@@ -484,7 +504,13 @@ function scr_show_code_build(_compiled) {
             // entries inherit it. The compile chain tags relocated bytes `noone`
             // on purpose, so without this a code block's .pc data tail has no
             // key and the fold pass splits the block into two [+] groups.
-            if (_key != "") {
+            // Any row the compile chain TAGGED re-anchors this, macro or not.
+            // Only macros produce a key, so a plain node's row clears it rather
+            // than setting it — previously _lastkey survived every untagged and
+            // non-macro row, so a bracket opened much later snapshotted a macro
+            // that had stopped emitting long before and credited its name to
+            // whatever the bracket contained.
+            if (_inst != "") {
                 _lastkey  = _key;
                 _lastname = _name;
                 _lastinst = _inst;
@@ -507,7 +533,7 @@ function scr_show_code_build(_compiled) {
                 if (ds_map_exists(_userlbl, _lbl)) {
                     _isint = false;
                 }
-                array_push(_flat, { kind:"label", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:_m, val:0, lbl:_lbl, sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:_isint, used:false });
+                array_push(_flat, { kind:"label", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:_m, val:0, lbl:_lbl, sz:0, res:0, hasres:false, count:0, vals:[], dkey:"", internal:_isint, used:false, used_code:false });
                 continue;
             }
 
@@ -517,7 +543,7 @@ function scr_show_code_build(_compiled) {
                 // pointer, not table filler, and it needs its own resolution.
                 if (_lbl != "") {
                     _run = -1;
-                    array_push(_flat, { kind:"byte", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:"byte", val:_v, lbl:_lbl, sz:1, res:0, hasres:false, count:1, vals:[], dkey:"", internal:false, used:false });
+                    array_push(_flat, { kind:"byte", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:"byte", val:_v, lbl:_lbl, sz:1, res:0, hasres:false, count:1, vals:[], dkey:"", internal:false, used:false, used_code:false });
                     _pc += 1;
                     continue;
                 }
@@ -544,7 +570,7 @@ function scr_show_code_build(_compiled) {
                     if (_owner != "") {
                         _dname = _owner;
                     }
-                    array_push(_flat, { kind:"data", key:_key, name:_dname, owner:_owner, inst:_inst, pc:_pc, raw:"byte", mnem:"byte", val:0, lbl:"", sz:1, res:0, hasres:false, count:1, vals:[_v], dkey:"D:" + _inst + "@" + scr_show_code_hex(_pc, 4), internal:false, used:false });
+                    array_push(_flat, { kind:"data", key:_key, name:_dname, owner:_owner, inst:_inst, pc:_pc, raw:"byte", mnem:"byte", val:0, lbl:"", sz:1, res:0, hasres:false, count:1, vals:[_v], dkey:"D:" + _inst + "@" + scr_show_code_hex(_pc, 4), internal:false, used:false, used_code:false });
                     _run = array_length(_flat) - 1;
                 }
 
@@ -566,7 +592,7 @@ function scr_show_code_build(_compiled) {
             }
 
             _run = -1;
-            array_push(_flat, { kind:"op", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:_norm, val:_v, lbl:_lbl, sz:_sz, res:0, hasres:false, count:1, vals:[], dkey:"", internal:false, used:false });
+            array_push(_flat, { kind:"op", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:_norm, val:_v, lbl:_lbl, sz:_sz, res:0, hasres:false, count:1, vals:[], dkey:"", internal:false, used:false, used_code:false });
             _pc += _sz;
         }
 
@@ -574,43 +600,80 @@ function scr_show_code_build(_compiled) {
         // Forward branches are the whole reason this is a second pass. The same
         // walk records which label names anything actually refers to.
         var _refs = ds_map_create();
+
+        // Referenced BY AN INSTRUCTION, as opposed to referenced at all. The
+        // <LABEL / >LABEL pointer bytes in a macro's off-spine table also name
+        // labels, but those rows are MISC-only — so a label known only to them
+        // must not surface while MISC is off, or it would appear with nothing
+        // on screen referring to it.
+        var _refs_op = ds_map_create();
+
         for (var _r = 0; _r < array_length(_flat); _r++) {
             var _ln = _flat[_r];
             if (_ln.lbl == "")       { continue; }
             if (_ln.kind == "label") { continue; }
             ds_map_set(_refs, _ln.lbl, 1);
+            if (_ln.kind == "op") {
+                ds_map_set(_refs_op, _ln.lbl, 1);
+            }
             if (!ds_map_exists(_lblmap, _ln.lbl)) { continue; }
             _ln.res    = ds_map_find_value(_lblmap, _ln.lbl);
             _ln.hasres = true;
         }
 
-        // ---- PASS 3: label housekeeping.
+        // ---- PASS 3: zero-size rows take their owner from what FOLLOWS them.
         //  * used  — is this label the target of anything in the listing? An
         //            unreferenced scaffolding label is pure noise even in ASM
         //            mode, so it never gets shown.
-        //  * key   — a label names what FOLLOWS it, so an internal label adopts
-        //            the macro key of the next real entry. Without this, a
-        //            label sitting inside a macro's run has no key and chops
-        //            that macro into two separate [+] groups.
+        //  * key   — a label and a relocating ORG both NAME WHAT COMES NEXT,
+        //            and neither emits a byte. Attributing one to anything
+        //            other than the run it introduces splits a macro in two —
+        //            or, when the key it carried was stale, invents a whole
+        //            phantom group.
+        //
+        // That phantom is what put "MACRO_VWAIT 0B" immediately above
+        // "MACRO_CHR 15B" at the very same address: the ORG row opening the
+        // charset macro's relocation still carried the key remembered from a
+        // macro several nodes earlier, so the fold pass saw a one-row run of a
+        // different key and gave it its own [+] header. The same shape
+        // repeated at every relocation, which is why one macro appeared over
+        // and over down the listing.
+        //
+        // A TOP-LEVEL org (key "") is deliberately left alone. That is an ORG
+        // BLOCK boundary — "* = $C000" — and it belongs to the listing itself,
+        // not to whatever node happens to follow it.
         var _fn = array_length(_flat);
         for (var _r2 = 0; _r2 < _fn; _r2++) {
             var _lr = _flat[_r2];
-            if (_lr.kind != "label") { continue; }
 
-            _lr.used = ds_map_exists(_refs, _lr.lbl);
+            var _adopt = false;
 
-            if (_lr.internal && _lr.key == "") {
-                for (var _f = _r2 + 1; _f < _fn; _f++) {
-                    if (_flat[_f].kind == "label") { continue; }
-                    _lr.key  = _flat[_f].key;
-                    _lr.name = _flat[_f].name;
-                    _lr.inst = _flat[_f].inst;
-                    break;
+            if (_lr.kind == "label") {
+                _lr.used      = ds_map_exists(_refs,    _lr.lbl);
+                _lr.used_code = ds_map_exists(_refs_op, _lr.lbl);
+                if (_lr.internal && _lr.key == "") {
+                    _adopt = true;
                 }
+            } else if (_lr.kind == "org") {
+                if (_lr.key != "") {
+                    _adopt = true;
+                }
+            }
+
+            if (!_adopt) { continue; }
+
+            for (var _f = _r2 + 1; _f < _fn; _f++) {
+                if (_flat[_f].kind == "label") { continue; }
+                if (_flat[_f].kind == "org")   { continue; }
+                _lr.key  = _flat[_f].key;
+                _lr.name = _flat[_f].name;
+                _lr.inst = _flat[_f].inst;
+                break;
             }
         }
 
         ds_map_destroy(_refs);
+        ds_map_destroy(_refs_op);
 
         ds_map_destroy(_lblmap);
         ds_map_destroy(_userlbl);
@@ -636,8 +699,9 @@ function scr_show_code_build(_compiled) {
 // yours included.
 //
 // ASM mode is the readable one, so it declares labels. Your own ADDRESS LABEL
-// nodes always show. A macro's own scaffolding label shows only when something
-// actually branches to it — an unreferenced one is noise in any mode.
+// nodes always show, and so does any internal label an instruction branches or
+// jumps to — a visible branch to an invisible target is worse than useless.
+// Scaffolding nothing refers to is noise in any mode and never shows.
 // =====================================================================
 function scr_show_code_row_hidden(_ln, _mode, _misc) {
 
@@ -656,6 +720,16 @@ function scr_show_code_row_hidden(_ln, _mode, _misc) {
     // Your own ADDRESS LABEL nodes are never MISC.
     if (!_ln.internal) { return false; }
 
+    // An internal label that an INSTRUCTION branches or jumps to is declared
+    // whether MISC is on or not. It has to be: the listing was showing
+    // "BNE CLRSCR_100015_P012" with the row that defines CLRSCR_100015_P012
+    // nowhere on screen, so nothing said where the branch went. MISC was being
+    // tested BEFORE the unreferenced case, which is what hid every branch
+    // target inside a converted code block.
+    if (_ln.used_code) { return false; }
+
+    // What is left is scaffolding: unreferenced, or named only by the pointer
+    // bytes of an off-spine table that MISC itself controls.
     if (!_misc)    { return true; }
     if (!_ln.used) { return true; }
     return false;

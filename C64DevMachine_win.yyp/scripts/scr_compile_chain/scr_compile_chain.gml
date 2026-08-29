@@ -17107,7 +17107,27 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
             }
             if (instance_exists(_first_child)) {
                 _walk_spine(_first_child, instruction_list, _org_ref);
-                array_push(instruction_list, ["org", -2]); // restore PC after ORG block
+                // There used to be an ["org", -2] here, commented "restore PC
+                // after ORG block". -2 does not restore anything: in
+                // c64_new_program.org() it PUSHES the current PC, and -3 is
+                // what pops. There is no matching -2 before the block's own
+                // ["org", pc_address] either, so this pushed a value nothing
+                // ever popped — one per ORG block, accumulating for the whole
+                // program.
+                //
+                // Harmless to the assembler, which only ever reads pc_stack on
+                // a -3. Not harmless to everything that MIRRORS that stack to
+                // follow the stream: after the first ORG block their depth
+                // counter never returned to zero, so every later untagged row
+                // and every bare org looked like it was inside a macro's
+                // relocation bracket and got credited to whichever macro
+                // happened to be emitting when the push went in. In the code
+                // panel that is what produced the phantom "MACRO_VWAIT 0B"
+                // headers and the same macro appearing over and over.
+                //
+                // Removing it changes no emitted byte — 7 pushes against 6
+                // pops becomes 6 against 6, and the strays sat below every
+                // macro's own balanced pair, so no -3 was ever popping one.
             }
         }
     }
