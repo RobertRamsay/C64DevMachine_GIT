@@ -1002,6 +1002,10 @@ global.showcode_mouse_over = false;
 global.showcode_live       = false;  // panel actually on screen this frame
 global.showcode_hover_node = noone;  // workspace node under the pointer
 
+// CONVERT TO CODE button — set in Begin Step so the click that presses it is
+// not also treated as a click on empty workspace (which clears the selection).
+global.cbc_button_hot = false;
+
 scr_uqmenu_load();
 
 // FLOW OVERLAY (F key) — toggleable visualization of JMP/JSR/BRANCH/IRQ-

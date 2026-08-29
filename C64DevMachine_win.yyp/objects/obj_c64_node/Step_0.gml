@@ -13,6 +13,7 @@ if (obj_workspace_manager.gui_menu_open != -1) exit;
 // the right-click delete all run BEFORE that test. An in-progress drag is
 // allowed to continue so a node can never be stranded mid-move.
 if (global.showcode_mouse_over && !is_dragging) exit;
+if (global.cbc_button_hot      && !is_dragging) exit;
 
 // =============================================================
 // INIT NODE [CLEAR] BUTTON
@@ -370,6 +371,7 @@ var _mouse_in_shortcuts = (_gui_mouse_x >= global.sc_x_start && _gui_mouse_x <= 
 var _mouse_in_gui = _mouse_in_shelf
                  || _mouse_in_shortcuts
                  || global.showcode_mouse_over
+                 || global.cbc_button_hot
                  || obj_workspace_manager.is_entering_text
                  || obj_workspace_manager.box_popup_open
                  || global.show_info_window

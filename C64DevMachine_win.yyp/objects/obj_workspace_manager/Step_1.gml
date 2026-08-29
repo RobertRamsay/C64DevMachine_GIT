@@ -17,6 +17,11 @@ global.gui_w       = display_get_gui_width();
 // the pointer is over, for the listing highlight.
 scr_show_code_hit();
 
+// CONVERT TO CODE button: same reasoning — the workspace clears the selection
+// on any left click that is not over GUI, so the button has to be known hot
+// BEFORE the Step events run, or it would destroy the selection it acts on.
+scr_cbc_hit();
+
 // ---- IDLE DETECTION ----
 var _mx = global.gui_mouse_x;
 var _my = global.gui_mouse_y;

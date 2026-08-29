@@ -1263,6 +1263,7 @@
     {"id":{"name":"scr_sfx_data_instrument_blob","path":"scripts/scr_sfx_data_instrument_blob/scr_sfx_data_instrument_blob.yy",},},
     {"id":{"name":"scr_sfx_note_to_freq","path":"scripts/scr_sfx_note_to_freq/scr_sfx_note_to_freq.yy",},},
     {"id":{"name":"scr_sfx_wavetable_row_annotation","path":"scripts/scr_sfx_wavetable_row_annotation/scr_sfx_wavetable_row_annotation.yy",},},
+    {"id":{"name":"scr_code_block_convert","path":"scripts/scr_code_block_convert/scr_code_block_convert.yy",},},
     {"id":{"name":"scr_show_code_panel","path":"scripts/scr_show_code_panel/scr_show_code_panel.yy",},},
     {"id":{"name":"scr_show_integer","path":"scripts/scr_show_integer/scr_show_integer.yy",},},
     {"id":{"name":"scr_show_message","path":"scripts/scr_show_message/scr_show_message.yy",},},

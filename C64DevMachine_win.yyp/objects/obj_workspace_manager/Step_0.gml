@@ -4331,6 +4331,7 @@ if (!keyboard_check(vk_alt) && keyboard_check_released(ord("M")) && global.show_
 var _in_gui = ((global.gui_mouse_x <= shelf_width) && (!expert_mode || global.gui_mouse_y < 47))
            || (global.gui_mouse_x >= (global.gui_w - 20 - 280))
            || global.showcode_mouse_over
+           || global.cbc_button_hot
            || is_entering_text
            || box_popup_open
            || global.show_info_window

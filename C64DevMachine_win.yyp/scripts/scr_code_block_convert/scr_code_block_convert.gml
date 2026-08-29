@@ -1,0 +1,838 @@
+/// @desc CONVERT SELECTION TO CODE BLOCK  (PRO — gated behind !global.lite)
+///
+/// Turns the selected spine nodes into one MACRO_CODE block whose text assembles
+/// to the identical byte stream, then deletes the originals.
+///
+/// ── Why this is safe to run on macros ────────────────────────────────────────
+/// Macros do not just emit inline code. Several (METAMAP, SCROLL, CHR, LOADER…)
+/// bracket an off-spine data block with the compile chain's PC save/restore
+/// markers — ["org",-2] … ["org",addr] … data … ["org",-3] — and the bytes in
+/// there are deliberately tagged `noone`, so they are NOT part of the node's
+/// slice. Rendering a macro from its slice alone would silently drop its tables.
+///
+/// So the extraction below does not use slices. It walks the compile output
+/// linearly, attributes every entry (tagged or not) to an owning node, and
+/// simulates the PC stack so relocated regions are captured with the address
+/// they belong at. Those come out as ".pc $XXXX" sections appended AFTER the
+/// spine code — one-way relocation, which is exactly what the code-block parser
+/// supports, and it means nothing has to relocate back.
+///
+/// ── And why you can trust the result ─────────────────────────────────────────
+/// Reasoning about which macros are self-contained is not good enough. Instead
+/// the generated text is fed straight back through scr_parse_asm_text() and the
+/// resulting byte stream is compared, entry by entry, against the stream the
+/// selection produced. If they differ ANYWHERE the conversion is abandoned and
+/// nothing is deleted. That turns "is this macro convertible?" from a judgement
+/// call into a measurement.
+///
+/// Functions:
+///   scr_cbc_selection()        selected connected nodes, spine order
+///   scr_cbc_validate()         { ok, reason, nodes }
+///   scr_cbc_owner_map()        label name -> owning LABEL node
+///   scr_cbc_extract(_sel)      compile output -> { ok, spine, reloc }
+///   scr_cbc_sig(_entries)      section -> comparable signature array
+///   scr_cbc_render(_ex)        sections -> code block text
+///   scr_cbc_verify(_txt, _ex)  round trip the text, compare signatures
+///   scr_cbc_convert()          the whole operation, including the swap
+///   scr_cbc_button_rect()      one geometry definition for hit test + draw
+///   scr_cbc_hit()              Begin Step: is the button under the pointer
+///   scr_cbc_draw_button()      the floating CONVERT TO CODE button
+
+// =====================================================================
+// Selected, connected, spine-ordered.
+// =====================================================================
+function scr_cbc_selection() {
+    var _out = [];
+
+    for (var _i = 0; _i < array_length(global.selected_nodes); _i++) {
+        var _n = global.selected_nodes[_i];
+        if (!instance_exists(_n))   { continue; }
+        if (!_n.is_connected)       { continue; }
+        if (_n.node_type == "INIT") { continue; }
+        if (_n.node_type == "ORG")  { continue; }
+        array_push(_out, _n);
+    }
+
+    array_sort(_out, function(_a, _b) {
+        if (_a.y < _b.y) { return -1; }
+        if (_a.y > _b.y) { return  1; }
+        return 0;
+    });
+
+    return _out;
+}
+
+// =====================================================================
+// Can this selection become one block?
+// =====================================================================
+function scr_cbc_validate() {
+    var _res = { ok: false, reason: "", nodes: [] };
+
+    if (global.lite) {
+        _res.reason = "CODE BLOCKS ARE A FULL VERSION FEATURE";
+        return _res;
+    }
+
+    var _sel = scr_cbc_selection();
+    if (array_length(_sel) < 1) {
+        _res.reason = "SELECT SOME CONNECTED NODES FIRST";
+        return _res;
+    }
+
+    // One spine position in, one out — so the run has to be unbroken. Anything
+    // else would silently reorder the program.
+    var _parent = _sel[0].org_parent;
+    for (var _i = 0; _i < array_length(_sel); _i++) {
+        if (_sel[_i].org_parent != _parent) {
+            _res.reason = "SELECTION SPANS MORE THAN ONE ORG BLOCK";
+            return _res;
+        }
+    }
+
+    var _top = _sel[0].y;
+    var _bot = _sel[array_length(_sel) - 1].y;
+    var _sel_ref = _sel;
+    var _gap = noone;
+
+    with (obj_c64_node) {
+        if (!is_connected)          { continue; }
+        if (node_type == "INIT")    { continue; }
+        if (org_parent != _parent)  { continue; }
+        if (y < _top || y > _bot)   { continue; }
+
+        var _in = false;
+        for (var _j = 0; _j < array_length(_sel_ref); _j++) {
+            if (_sel_ref[_j] == id) { _in = true; break; }
+        }
+        if (!_in) {
+            _gap = id;
+            break;
+        }
+    }
+
+    if (_gap != noone) {
+        _res.reason = "SELECTION HAS A GAP — " + string(_gap.node_type) + " IS BETWEEN SELECTED NODES";
+        return _res;
+    }
+
+    _res.ok    = true;
+    _res.nodes = _sel;
+    return _res;
+}
+
+// =====================================================================
+// Label name -> the LABEL node that owns it. The compile chain emits
+// ["label", name] with no node reference at all, so a label can only be
+// attributed by name.
+// =====================================================================
+function scr_cbc_owner_map() {
+    var _m = ds_map_create();
+    with (obj_c64_node) {
+        if (node_type != "LABEL")              { continue; }
+        if (array_length(instructions) < 1)    { continue; }
+        if (array_length(instructions[0]) < 2) { continue; }
+        ds_map_set(_m, string_replace_all(string(instructions[0][1]), " ", "_"), string(id));
+    }
+    return _m;
+}
+
+// =====================================================================
+// Walk the compile output and pull out everything the selection emits —
+// inline code AND any off-spine block it brackets.
+//
+// Returns { ok, reason, spine: [entry], reloc: [ {addr, entries} ] }
+// where an entry is { m, v, lbl, sz } straight from the compile stream.
+// =====================================================================
+function scr_cbc_extract(_sel) {
+    var _res = { ok: false, reason: "", spine: [], reloc: [], spine_bytes: 0, reloc_bytes: 0 };
+
+    var _keys = ds_map_create();
+    for (var _i = 0; _i < array_length(_sel); _i++) {
+        ds_map_set(_keys, string(_sel[_i]), 1);
+    }
+    var _lblowner = scr_cbc_owner_map();
+
+    global.compile_sizing_pass = true;
+    var _code = scr_compile_chain();
+    global.compile_sizing_pass = false;
+
+    // Ordinary NORMAL / BRANCH nodes emit their instruction rows VERBATIM
+    // (see the DEFAULT case in scr_compile_chain) — two elements, no node
+    // reference — so they cannot be attributed by tag. PASS 2 of
+    // scr_c64_do_update_addresses sizes them from their own instructions, so
+    // pc_address is the reliable handle: a node claims the entries starting at
+    // its address until another node claims one. A pc claimed twice (possible
+    // across ORG blocks) is dropped rather than guessed at.
+    var _pcnode = ds_map_create();
+    var _pcdupe = ds_map_create();
+    with (obj_c64_node) {
+        if (node_type == "INIT")  { continue; }
+        if (node_type == "ORG")   { continue; }
+        if (node_type == "LABEL") { continue; }
+        if (!is_connected)        { continue; }
+        if (string_pos("MACRO_", node_type) == 1) { continue; }
+
+        var _pk = string(pc_address);
+        if (ds_map_exists(_pcnode, _pk)) {
+            ds_map_set(_pcdupe, _pk, 1);
+        } else {
+            ds_map_set(_pcnode, _pk, string(id));
+        }
+    }
+
+    var _owner   = "";      // node the stream is currently emitting for
+    var _pc      = global.start_pc;
+    var _pcstack = [];      // mirrors c64_new_program's org(-2) / org(-3)
+    var _reloc   = noone;   // relocated section being filled, or noone
+    var _seen    = false;   // have we entered the selection yet
+    var _left    = false;   // …and come back out again
+
+    for (var _c = 0; _c < array_length(_code); _c++) {
+        var _e = _code[_c];
+        if (array_length(_e) < 1) { continue; }
+
+        var _m = string_lower(string(_e[0]));
+        if (_m == "_node_ref_" || _m == "const" || _m == "_line_map_" || _m == "") { continue; }
+
+        var _v = 0;
+        if (array_length(_e) > 1) { _v = _e[1]; }
+        var _lbl = "";
+        if (is_string(_v) && _v != "" && _v != "0") {
+            _lbl = _v;
+            _v   = 0;
+        }
+
+        // ---- ORG: relocation and the PC save/restore markers ----
+        if (_m == "org") {
+            var _o = _v;
+            if (is_string(_o)) { _o = real(_o); }
+
+            if (_o == -2) {
+                array_push(_pcstack, _pc);
+                continue;
+            }
+            if (_o == -3) {
+                if (array_length(_pcstack) > 0) { _pc = array_pop(_pcstack); }
+                _reloc = noone;
+                continue;
+            }
+
+            _pc = _o;
+            if (ds_map_exists(_keys, _owner)) {
+                _reloc = { addr: _o, entries: [] };
+                array_push(_res.reloc, _reloc);
+            } else {
+                _reloc = noone;
+            }
+            continue;
+        }
+
+        // ---- who owns this entry ----
+        var _tagged = false;
+        if (array_length(_e) > 2) {
+            var _tag = _e[2];
+            if (!is_string(_tag) && _tag != noone) {
+                if (instance_exists(_tag)) {
+                    _owner  = string(_tag);
+                    _tagged = true;
+                }
+            }
+        }
+
+        if (!_tagged) {
+            if (_m == "label") {
+                // A label names what follows it and carries no tag. An ADDRESS
+                // LABEL node's label is matched by name; a macro's own
+                // scaffolding label rides on whatever the stream was emitting.
+                if (ds_map_exists(_lblowner, _lbl)) {
+                    _owner = ds_map_find_value(_lblowner, _lbl);
+                }
+            } else if (_reloc == noone) {
+                var _pk2 = string(_pc);
+                if (ds_map_exists(_pcnode, _pk2) && !ds_map_exists(_pcdupe, _pk2)) {
+                    _owner = ds_map_find_value(_pcnode, _pk2);
+                }
+            }
+        }
+
+        var _mine = ds_map_exists(_keys, _owner);
+
+        if (_mine) {
+            if (_left) {
+                ds_map_destroy(_keys);
+                ds_map_destroy(_lblowner);
+                ds_map_destroy(_pcnode);
+                ds_map_destroy(_pcdupe);
+                _res.reason = "SELECTION IS NOT CONTIGUOUS IN THE COMPILED ORDER";
+                return _res;
+            }
+            _seen = true;
+        } else {
+            if (_seen) { _left = true; }
+        }
+
+        var _sz = 0;
+        if (_m == "label") {
+            _sz = 0;
+        } else if (_m == "byte" || _m == "byt" || _m == "byte_lab_lo" || _m == "byte_lab_hi") {
+            _sz = 1;
+        } else {
+            _sz = obj_opCodeManager.get_size(scr_show_code_norm(_m));
+            if (_sz <= 0) { continue; }
+        }
+
+        if (_mine) {
+            var _entry = { m: _m, v: _v, lbl: _lbl, sz: _sz };
+            if (_reloc != noone) {
+                array_push(_reloc.entries, _entry);
+                _res.reloc_bytes += _sz;
+            } else {
+                array_push(_res.spine, _entry);
+                _res.spine_bytes += _sz;
+            }
+        }
+
+        _pc += _sz;
+    }
+
+    ds_map_destroy(_pcnode);
+    ds_map_destroy(_pcdupe);
+    ds_map_destroy(_keys);
+    ds_map_destroy(_lblowner);
+
+    if (!_seen) {
+        _res.reason = "THE SELECTION EMITS NO CODE";
+        return _res;
+    }
+
+    _res.ok = true;
+    return _res;
+}
+
+// =====================================================================
+// Comparable signature for one section. Mnemonics are normalised so the
+// _rep / _lab / _abs_x spellings all collapse to the same key, which is
+// what makes the round-trip comparison meaningful rather than pedantic.
+// =====================================================================
+function scr_cbc_sig(_entries) {
+    var _sig = [];
+    for (var _i = 0; _i < array_length(_entries); _i++) {
+        var _e = _entries[_i];
+        var _m = string_lower(string(_e.m));
+
+        if (_m == "label") {
+            array_push(_sig, "L:" + string_upper(string(_e.lbl)));
+            continue;
+        }
+
+        if (_m == "byt") { _m = "byte"; }
+        if (_m != "byte" && _m != "byte_lab_lo" && _m != "byte_lab_hi") {
+            _m = scr_show_code_norm(_m);
+        }
+
+        var _operand = "";
+        if (_e.lbl != "") {
+            _operand = string_upper(string(_e.lbl));
+        } else {
+            _operand = string(scr_show_code_num(_e.v));
+        }
+
+        array_push(_sig, _m + ":" + _operand);
+    }
+    return _sig;
+}
+
+// =====================================================================
+// Screen-code encode, byte-for-byte identical to the .STRING branch of
+// scr_parse_asm_text. Used to PROVE a run is text before emitting it as
+// text — encode the candidate back and compare. If it does not match, the
+// run goes out as .byte and nothing is risked on a guess.
+// =====================================================================
+function scr_cbc_str_encode(_txt) {
+    var _out = [];
+    for (var _i = 1; _i <= string_length(_txt); _i++) {
+        var _b = string_ord_at(_txt, _i);
+        if (_b >= 65 && _b <= 90) {
+            _b -= 64;
+        } else if (_b >= 97 && _b <= 122) {
+            _b -= 96;
+        } else if (_b == 163 || _b == 100) {
+            _b = 28;
+        }
+        array_push(_out, scr_show_code_lo(_b));
+    }
+    array_push(_out, 0);
+    return _out;
+}
+
+// Try to read a byte run back as text. Returns "" when it is not text, or
+// when re-encoding the candidate would not reproduce the exact same bytes.
+function scr_cbc_str_decode(_bytes) {
+    var _n = array_length(_bytes);
+    if (_n < 3)                { return ""; }   // needs content plus terminator
+    if (_bytes[_n - 1] != 0)   { return ""; }   // .string always terminates
+
+    var _txt     = "";
+    var _letters = 0;
+
+    for (var _i = 0; _i < _n - 1; _i++) {
+        var _b = _bytes[_i];
+        if (_b >= 1 && _b <= 26) {
+            _txt += chr(64 + _b);
+            _letters += 1;
+        } else if (_b == 32) {
+            _txt += " ";
+        } else {
+            return "";
+        }
+    }
+
+    if (_letters < 2)                  { return ""; }
+    if (string_pos("\"", _txt) > 0)     { return ""; }
+
+    // Prove it: re-encode and compare.
+    var _back = scr_cbc_str_encode(_txt);
+    if (array_length(_back) != _n) { return ""; }
+    for (var _c = 0; _c < _n; _c++) {
+        if (_back[_c] != _bytes[_c]) { return ""; }
+    }
+
+    return _txt;
+}
+
+// =====================================================================
+// Sections -> code block text.
+// =====================================================================
+function scr_cbc_render(_ex) {
+    var _txt = "// ---------------------------------------------\n";
+    _txt += "// CONVERTED FROM NODES — C64 DEV MACHINE\n";
+    _txt += "// ---------------------------------------------\n";
+
+    _txt += scr_cbc_render_section(_ex.spine);
+
+    // Relocated blocks go LAST. .pc is a one-way relocation in the block
+    // language, so nothing after them needs to come back to the spine.
+    for (var _r = 0; _r < array_length(_ex.reloc); _r++) {
+        var _rl = _ex.reloc[_r];
+        if (array_length(_rl.entries) < 1) { continue; }
+
+        var _h = string_upper(decimal_to_hex(scr_show_code_wrap16(_rl.addr)));
+        while (string_length(_h) < 4) { _h = "0" + _h; }
+
+        _txt += "\n// ---- relocated data ----\n";
+        _txt += ".pc $" + _h + "\n";
+        _txt += scr_cbc_render_section(_rl.entries);
+    }
+
+    return _txt;
+}
+
+function scr_cbc_render_section(_entries) {
+    var _txt   = "";
+    var _bytes = [];
+
+    for (var _i = 0; _i < array_length(_entries); _i++) {
+        var _e = _entries[_i];
+        var _m = string_lower(string(_e.m));
+
+        var _is_byte = (_m == "byte" || _m == "byt" || _m == "byte_lab_lo" || _m == "byte_lab_hi");
+
+        // Byte runs pack onto shared .byte lines; flush the run before
+        // anything that is not another byte.
+        if (!_is_byte && array_length(_bytes) > 0) {
+            _txt  += scr_cbc_flush_bytes(_bytes);
+            _bytes = [];
+        }
+
+        if (_m == "label") {
+            _txt += string(_e.lbl) + ":\n";
+            continue;
+        }
+
+        if (_is_byte) {
+            if (_e.lbl != "") {
+                // A pointer byte — <LABEL / >LABEL keeps the reference alive.
+                _txt += scr_cbc_flush_bytes(_bytes);
+                _bytes = [];
+                if (string_pos("_lab_hi", _m) > 0) {
+                    _txt += ".byte >" + string(_e.lbl) + "\n";
+                } else {
+                    _txt += ".byte <" + string(_e.lbl) + "\n";
+                }
+            } else {
+                array_push(_bytes, scr_show_code_lo(_e.v));
+            }
+            continue;
+        }
+
+        if (_e.lbl != "") {
+            _txt += scr_format_asm_label(_m, string(_e.lbl)) + "\n";
+        } else {
+            _txt += scr_format_asm(_m, _e.v) + "\n";
+        }
+    }
+
+    if (array_length(_bytes) > 0) {
+        _txt += scr_cbc_flush_bytes(_bytes);
+    }
+
+    return _txt;
+}
+
+function scr_cbc_flush_bytes(_bytes) {
+    var _txt = "";
+    var _n   = array_length(_bytes);
+
+    // MACRO_PRINT and friends park their message as inline bytes. If the run
+    // reads back as text — and re-encodes to exactly the same bytes — emit it
+    // as .string so the block stays editable as words rather than hex.
+    var _as_text = scr_cbc_str_decode(_bytes);
+    if (_as_text != "") {
+        return ".string \"" + _as_text + "\"\n";
+    }
+
+    var _i = 0;
+
+    while (_i < _n) {
+        var _line = ".byte ";
+        var _c    = 0;
+        while (_i < _n && _c < 16) {
+            if (_c > 0) { _line += ","; }
+            var _h = string_upper(decimal_to_hex(scr_show_code_lo(_bytes[_i])));
+            while (string_length(_h) < 2) { _h = "0" + _h; }
+            _line += "$" + _h;
+            _i += 1;
+            _c += 1;
+        }
+        _txt += _line + "\n";
+    }
+
+    return _txt;
+}
+
+// =====================================================================
+// Round trip: assemble the generated text and prove it matches.
+// =====================================================================
+function scr_cbc_verify(_txt, _ex) {
+    var _parsed = scr_parse_asm_text(_txt);
+
+    // Re-split the parsed stream the same way the extractor split the
+    // original: everything before the first .pc is spine, each .pc opens a
+    // new relocated section.
+    var _spine = [];
+    var _reloc = [];
+    var _cur   = noone;
+
+    for (var _i = 0; _i < array_length(_parsed); _i++) {
+        var _p = _parsed[_i];
+        if (array_length(_p) < 1) { continue; }
+        var _m = string_lower(string(_p[0]));
+
+        if (_m == "comment" || _m == "const" || _m == "_line_map_" || _m == "") { continue; }
+
+        var _v = 0;
+        if (array_length(_p) > 1) { _v = _p[1]; }
+        var _lbl = "";
+        if (is_string(_v) && _v != "" && _v != "0") {
+            _lbl = _v;
+            _v   = 0;
+        }
+
+        if (_m == "pc" || _m == "org") {
+            var _a = _v;
+            if (is_string(_a)) { _a = real(_a); }
+            _cur = { addr: _a, entries: [] };
+            array_push(_reloc, _cur);
+            continue;
+        }
+
+        // A .byte or .string line comes back as ONE entry carrying every byte
+        // it declared — ["byte", b1, b2, b3, …] — whereas the compile stream
+        // emits one entry per byte. Without expanding here, any run longer
+        // than a single byte fails the length check and the whole conversion
+        // is refused: which is exactly what a MACRO_PRINT message would do.
+        if (_m == "byte" || _m == "byt") {
+            if (array_length(_p) > 1 && _lbl == "") {
+                for (var _bi = 1; _bi < array_length(_p); _bi++) {
+                    var _be = { m: "byte", v: _p[_bi], lbl: "", sz: 1 };
+                    if (_cur != noone) {
+                        array_push(_cur.entries, _be);
+                    } else {
+                        array_push(_spine, _be);
+                    }
+                }
+                continue;
+            }
+        }
+
+        var _entry = { m: _m, v: _v, lbl: _lbl, sz: 0 };
+        if (_cur != noone) {
+            array_push(_cur.entries, _entry);
+        } else {
+            array_push(_spine, _entry);
+        }
+    }
+
+    // ---- compare ----
+    var _a_sig = scr_cbc_sig(_ex.spine);
+    var _b_sig = scr_cbc_sig(_spine);
+
+    if (array_length(_a_sig) != array_length(_b_sig)) {
+        return "SPINE LENGTH " + string(array_length(_b_sig)) + " vs " + string(array_length(_a_sig));
+    }
+    for (var _s = 0; _s < array_length(_a_sig); _s++) {
+        if (_a_sig[_s] != _b_sig[_s]) {
+            return "SPINE LINE " + string(_s + 1) + ": " + _b_sig[_s] + " vs " + _a_sig[_s];
+        }
+    }
+
+    // Empty relocated sections are dropped by the renderer, so compare only
+    // the ones that actually made it into the text.
+    var _want = [];
+    for (var _r = 0; _r < array_length(_ex.reloc); _r++) {
+        if (array_length(_ex.reloc[_r].entries) > 0) {
+            array_push(_want, _ex.reloc[_r]);
+        }
+    }
+
+    if (array_length(_want) != array_length(_reloc)) {
+        return "RELOCATED BLOCK COUNT " + string(array_length(_reloc)) + " vs " + string(array_length(_want));
+    }
+
+    for (var _r2 = 0; _r2 < array_length(_want); _r2++) {
+        if (scr_show_code_wrap16(_want[_r2].addr) != scr_show_code_wrap16(_reloc[_r2].addr)) {
+            return "RELOCATED BLOCK " + string(_r2 + 1) + " ADDRESS MISMATCH";
+        }
+        var _c_sig = scr_cbc_sig(_want[_r2].entries);
+        var _d_sig = scr_cbc_sig(_reloc[_r2].entries);
+        if (array_length(_c_sig) != array_length(_d_sig)) {
+            return "RELOCATED BLOCK " + string(_r2 + 1) + " LENGTH " + string(array_length(_d_sig)) + " vs " + string(array_length(_c_sig));
+        }
+        for (var _s2 = 0; _s2 < array_length(_c_sig); _s2++) {
+            if (_c_sig[_s2] != _d_sig[_s2]) {
+                return "RELOCATED BLOCK " + string(_r2 + 1) + " LINE " + string(_s2 + 1) + ": " + _d_sig[_s2] + " vs " + _c_sig[_s2];
+            }
+        }
+    }
+
+    return "";   // empty string == verified
+}
+
+// =====================================================================
+// The whole operation. Nothing is destroyed unless the round trip passed.
+// =====================================================================
+function scr_cbc_convert() {
+    var _val = scr_cbc_validate();
+    if (!_val.ok) {
+        scr_show_message(_val.reason);
+        return false;
+    }
+
+    var _sel = _val.nodes;
+    var _ex  = scr_cbc_extract(_sel);
+    if (!_ex.ok) {
+        scr_show_message("CONVERT FAILED\n\n" + _ex.reason);
+        return false;
+    }
+
+    // Independent cross-check on a different data path: PASS 2 of
+    // scr_c64_do_update_addresses sizes every node from its own instructions,
+    // with no reference to the compile stream. If the extraction swallowed a
+    // neighbour or missed one of ours, these two numbers disagree. The round
+    // trip below only proves text == extraction; this is what proves
+    // extraction == selection.
+    var _want_bytes = 0;
+    for (var _b = 0; _b < array_length(_sel); _b++) {
+        _want_bytes += _sel[_b].total_node_size;
+    }
+    if (_want_bytes != _ex.spine_bytes) {
+        scr_show_message("CONVERT ABANDONED — extracted " + string(_ex.spine_bytes)
+            + " inline bytes but the selection reports " + string(_want_bytes)
+            + ".\n\nNothing has been changed.");
+        return false;
+    }
+
+    var _txt  = scr_cbc_render(_ex);
+    var _fail = scr_cbc_verify(_txt, _ex);
+
+    if (_fail != "") {
+        // The generated text does not assemble to the same bytes. Say so and
+        // change nothing — a silently different program is far worse than a
+        // refused conversion.
+        show_debug_message("CONVERT TO CODE BLOCK — VERIFY FAILED: " + _fail);
+        show_debug_message("---- generated text ----\n" + _txt);
+        scr_show_message("CONVERT ABANDONED — the generated block does not\nassemble to the same bytes.\n\n" + _fail + "\n\nNothing has been changed. The full text is in the\ndebug log.");
+        return false;
+    }
+
+    var _count = array_length(_sel);
+
+    // ---- commit ----
+    // The engine's undo model banks a snapshot when an edit SETTLES: Step_0
+    // sees global.undo_dirty, runs scr_c64_do_update_addresses() and then
+    // scr_undo_snapshot(). Snapshotting here as well would push the
+    // pre-change state a second time and cost an extra, dead CTRL+Z press.
+    //
+    // So: if there is an unsettled edit outstanding, settle it first so the
+    // pre-conversion state is genuinely on the stack, then let the normal
+    // path record the post-conversion tip. Redo then works for free, because
+    // the tip is written by the same code path as every other edit.
+    if (global.undo_dirty) {
+        scr_c64_do_update_addresses();
+        scr_undo_snapshot();
+        global.undo_dirty = false;
+    }
+
+    var _ax     = _sel[0].x;
+    var _ay     = _sel[0].y;
+    var _parent = _sel[0].org_parent;
+
+    for (var _i = 0; _i < array_length(_sel); _i++) {
+        if (instance_exists(_sel[_i])) {
+            instance_destroy(_sel[_i]);
+        }
+    }
+
+    var _cb = scr_node_spawn("MACRO_CODE", _ax, _ay);
+    _cb.instructions[0][1] = _txt;
+    _cb.is_connected       = true;
+    _cb.org_parent         = _parent;
+    _cb.height_dirty       = true;
+    with (_cb) { event_user(0); }
+
+    global.selected_nodes = [];
+
+    // Everything the delete path and the settle block care about.
+    with (obj_c64_node) {
+        stats_cache_dirty   = true;
+        height_dirty        = true;
+        overlap_check_dirty = true;
+        last_overlap_check  = false;
+    }
+    obj_workspace_manager.flow_overlay_dirty = true;
+
+    // Marking dirty rather than calling the update directly is what hands the
+    // undo snapshot to Step_0's settle block — see the note above. It also
+    // re-packs the spine, which is what closes the gap the deleted nodes left.
+    global.addresses_dirty = true;
+    global.undo_dirty      = true;
+    global.autosave_dirty  = true;
+
+    scr_show_message("CONVERTED " + string(_count) + " NODES TO A CODE BLOCK");
+    return true;
+}
+
+// =====================================================================
+// Button geometry — one definition, used by the Begin Step hit test and by
+// the Draw pass, so they cannot disagree.
+// =====================================================================
+function scr_cbc_button_rect() {
+    var _gw = global.gui_w;
+    var _gh = display_get_gui_height();
+    var _bw = 260;
+    var _bh = 34;
+    return {
+        x: floor((_gw - _bw) / 2),
+        y: floor(_gh * 0.8),
+        w: _bw,
+        h: _bh
+    };
+}
+
+// =====================================================================
+// BEGIN STEP hit test.
+//
+// This has to run before the Step events, not during Draw. The workspace
+// clears global.selected_nodes on any left click that is not over GUI — so
+// if the button only became "hot" during Draw, the very click that pressed
+// it would already have emptied the selection it was meant to act on.
+// =====================================================================
+function scr_cbc_hit() {
+    global.cbc_button_hot = false;
+
+    if (global.lite)                             { exit; }
+    if (!instance_exists(obj_workspace_manager)) { exit; }
+
+    with (obj_workspace_manager) {
+        if (hideui)              { exit; }
+        if (gui_menu_open != -1) { exit; }
+        if (is_entering_text)    { exit; }
+        if (global.showcode_mouse_over) { exit; }
+        if (array_length(global.selected_nodes) < 1) { exit; }
+
+        var _r  = scr_cbc_button_rect();
+        var _mx = global.gui_mouse_x;
+        var _my = global.gui_mouse_y;
+
+        if (_mx >= _r.x && _mx < _r.x + _r.w && _my >= _r.y && _my < _r.y + _r.h) {
+            global.cbc_button_hot = true;
+        }
+    }
+}
+
+// =====================================================================
+// Floating CONVERT TO CODE button — appears once a selection exists.
+// Call from obj_workspace_manager's Draw GUI event.
+// =====================================================================
+function scr_cbc_draw_button() {
+    if (global.lite)                             { exit; }
+    if (!instance_exists(obj_workspace_manager)) { exit; }
+
+    var _do_convert = false;
+
+    with (obj_workspace_manager) {
+        if (hideui)              { exit; }
+        if (gui_menu_open != -1) { exit; }
+        if (is_entering_text)    { exit; }
+        if (global.showcode_mouse_over) { exit; }
+        if (array_length(global.selected_nodes) < 1) { exit; }
+
+        var _val = scr_cbc_validate();
+        var _r   = scr_cbc_button_rect();
+        var _hv  = global.cbc_button_hot;
+
+        if (_hv && scr_cbc_primary_pressed() && _val.ok) {
+            _do_convert = true;
+        }
+
+        draw_sprite_stretched(spr_glassSlice, niceSliceFrm, _r.x, _r.y, _r.w, _r.h);
+
+        var _font_before   = draw_get_font();
+        var _halign_before = draw_get_halign();
+        var _valign_before = draw_get_valign();
+
+        draw_set_font(fnt_C64_Angled);
+        draw_set_halign(fa_center);
+        draw_set_valign(fa_middle);
+
+        var _col = make_color_rgb(255, 210, 80);
+        var _lbl = "CONVERT TO CODE";
+        if (!_val.ok) {
+            _col = make_color_rgb(130, 130, 140);
+            _lbl = _val.reason;
+        } else if (_hv) {
+            _col = c_white;
+        }
+
+        draw_set_color(_col);
+        draw_rectangle(_r.x + 2, _r.y + 2, _r.x + _r.w - 2, _r.y + _r.h - 2, true);
+        draw_text_transformed(_r.x + (_r.w / 2), _r.y + (_r.h / 2), _lbl, 1.0, 1.0, 0);
+
+        draw_set_font(_font_before);
+        draw_set_halign(_halign_before);
+        draw_set_valign(_valign_before);
+        draw_set_color(c_white);
+    }
+
+    // Kept outside the with() so the conversion — which spawns, destroys and
+    // recompiles — never runs with obj_workspace_manager as `self`.
+    if (_do_convert) {
+        scr_cbc_convert();
+    }
+}
+
+// Windows uses the raw button; the macOS port swaps the body of this one
+// function for `return scr_primary_pressed();` and nothing else changes.
+function scr_cbc_primary_pressed() {
+    return mouse_check_button_pressed(mb_left);
+}

@@ -91,10 +91,10 @@ index ac51fde..f65ba4a 100644
  var _my = global.gui_mouse_y;
 diff --git a/C64DevMachine_win.yyp/scripts/scr_code_block_convert/scr_code_block_convert.gml b/C64DevMachine_win.yyp/scripts/scr_code_block_convert/scr_code_block_convert.gml
 new file mode 100644
-index 0000000..411a902
+index 0000000..044aa7b
 --- /dev/null
 +++ b/C64DevMachine_win.yyp/scripts/scr_code_block_convert/scr_code_block_convert.gml
-@@ -0,0 +1,724 @@
+@@ -0,0 +1,838 @@
 +/// @desc CONVERT SELECTION TO CODE BLOCK  (PRO — gated behind !global.lite)
 +///
 +/// Turns the selected spine nodes into one MACRO_CODE block whose text assembles
@@ -440,6 +440,64 @@ index 0000000..411a902
 +}
 +
 +// =====================================================================
++// Screen-code encode, byte-for-byte identical to the .STRING branch of
++// scr_parse_asm_text. Used to PROVE a run is text before emitting it as
++// text — encode the candidate back and compare. If it does not match, the
++// run goes out as .byte and nothing is risked on a guess.
++// =====================================================================
++function scr_cbc_str_encode(_txt) {
++    var _out = [];
++    for (var _i = 1; _i <= string_length(_txt); _i++) {
++        var _b = string_ord_at(_txt, _i);
++        if (_b >= 65 && _b <= 90) {
++            _b -= 64;
++        } else if (_b >= 97 && _b <= 122) {
++            _b -= 96;
++        } else if (_b == 163 || _b == 100) {
++            _b = 28;
++        }
++        array_push(_out, scr_show_code_lo(_b));
++    }
++    array_push(_out, 0);
++    return _out;
++}
++
++// Try to read a byte run back as text. Returns "" when it is not text, or
++// when re-encoding the candidate would not reproduce the exact same bytes.
++function scr_cbc_str_decode(_bytes) {
++    var _n = array_length(_bytes);
++    if (_n < 3)                { return ""; }   // needs content plus terminator
++    if (_bytes[_n - 1] != 0)   { return ""; }   // .string always terminates
++
++    var _txt     = "";
++    var _letters = 0;
++
++    for (var _i = 0; _i < _n - 1; _i++) {
++        var _b = _bytes[_i];
++        if (_b >= 1 && _b <= 26) {
++            _txt += chr(64 + _b);
++            _letters += 1;
++        } else if (_b == 32) {
++            _txt += " ";
++        } else {
++            return "";
++        }
++    }
++
++    if (_letters < 2)                  { return ""; }
++    if (string_pos("\"", _txt) > 0)     { return ""; }
++
++    // Prove it: re-encode and compare.
++    var _back = scr_cbc_str_encode(_txt);
++    if (array_length(_back) != _n) { return ""; }
++    for (var _c = 0; _c < _n; _c++) {
++        if (_back[_c] != _bytes[_c]) { return ""; }
++    }
++
++    return _txt;
++}
++
++// =====================================================================
 +// Sections -> code block text.
 +// =====================================================================
 +function scr_cbc_render(_ex) {
@@ -521,7 +579,16 @@ index 0000000..411a902
 +function scr_cbc_flush_bytes(_bytes) {
 +    var _txt = "";
 +    var _n   = array_length(_bytes);
-+    var _i   = 0;
++
++    // MACRO_PRINT and friends park their message as inline bytes. If the run
++    // reads back as text — and re-encodes to exactly the same bytes — emit it
++    // as .string so the block stays editable as words rather than hex.
++    var _as_text = scr_cbc_str_decode(_bytes);
++    if (_as_text != "") {
++        return ".string \"" + _as_text + "\"\n";
++    }
++
++    var _i = 0;
 +
 +    while (_i < _n) {
 +        var _line = ".byte ";
@@ -574,6 +641,25 @@ index 0000000..411a902
 +            _cur = { addr: _a, entries: [] };
 +            array_push(_reloc, _cur);
 +            continue;
++        }
++
++        // A .byte or .string line comes back as ONE entry carrying every byte
++        // it declared — ["byte", b1, b2, b3, …] — whereas the compile stream
++        // emits one entry per byte. Without expanding here, any run longer
++        // than a single byte fails the length check and the whole conversion
++        // is refused: which is exactly what a MACRO_PRINT message would do.
++        if (_m == "byte" || _m == "byt") {
++            if (array_length(_p) > 1 && _lbl == "") {
++                for (var _bi = 1; _bi < array_length(_p); _bi++) {
++                    var _be = { m: "byte", v: _p[_bi], lbl: "", sz: 1 };
++                    if (_cur != noone) {
++                        array_push(_cur.entries, _be);
++                    } else {
++                        array_push(_spine, _be);
++                    }
++                }
++                continue;
++            }
 +        }
 +
 +        var _entry = { m: _m, v: _v, lbl: _lbl, sz: 0 };
@@ -676,8 +762,23 @@ index 0000000..411a902
 +        return false;
 +    }
 +
++    var _count = array_length(_sel);
++
 +    // ---- commit ----
-+    scr_undo_snapshot();
++    // The engine's undo model banks a snapshot when an edit SETTLES: Step_0
++    // sees global.undo_dirty, runs scr_c64_do_update_addresses() and then
++    // scr_undo_snapshot(). Snapshotting here as well would push the
++    // pre-change state a second time and cost an extra, dead CTRL+Z press.
++    //
++    // So: if there is an unsettled edit outstanding, settle it first so the
++    // pre-conversion state is genuinely on the stack, then let the normal
++    // path record the post-conversion tip. Redo then works for free, because
++    // the tip is written by the same code path as every other edit.
++    if (global.undo_dirty) {
++        scr_c64_do_update_addresses();
++        scr_undo_snapshot();
++        global.undo_dirty = false;
++    }
 +
 +    var _ax     = _sel[0].x;
 +    var _ay     = _sel[0].y;
@@ -696,12 +797,25 @@ index 0000000..411a902
 +    _cb.height_dirty       = true;
 +    with (_cb) { event_user(0); }
 +
-+    global.selected_nodes  = [];
-+    global.undo_dirty      = true;
-+    global.addresses_dirty = true;
-+    scr_c64_do_update_addresses();
++    global.selected_nodes = [];
 +
-+    scr_show_message("CONVERTED " + string(array_length(_sel)) + " NODES TO A CODE BLOCK");
++    // Everything the delete path and the settle block care about.
++    with (obj_c64_node) {
++        stats_cache_dirty   = true;
++        height_dirty        = true;
++        overlap_check_dirty = true;
++        last_overlap_check  = false;
++    }
++    obj_workspace_manager.flow_overlay_dirty = true;
++
++    // Marking dirty rather than calling the update directly is what hands the
++    // undo snapshot to Step_0's settle block — see the note above. It also
++    // re-packs the spine, which is what closes the gap the deleted nodes left.
++    global.addresses_dirty = true;
++    global.undo_dirty      = true;
++    global.autosave_dirty  = true;
++
++    scr_show_message("CONVERTED " + string(_count) + " NODES TO A CODE BLOCK");
 +    return true;
 +}
 +
