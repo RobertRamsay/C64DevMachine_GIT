@@ -31,7 +31,8 @@
 ///   scr_cbc_owner_map()        label name -> owning LABEL node
 ///   scr_cbc_extract(_sel)      compile output -> { ok, spine, reloc }
 ///   scr_cbc_sig(_entries)      section -> comparable signature array
-///   scr_cbc_render(_ex)        sections -> code block text
+///   scr_cbc_asset_deps(_sel)   asset-mode references the selection would orphan
+///   scr_cbc_render(_ex,_deps)  sections -> code block text
 ///   scr_cbc_verify(_txt, _ex)  round trip the text, compare signatures
 ///   scr_cbc_convert()          the whole operation, including the swap
 ///   scr_cbc_button_rect()      one geometry definition for hit test + draw
@@ -401,12 +402,70 @@ function scr_cbc_str_decode(_bytes) {
 }
 
 // =====================================================================
+// Assets the selection depends on that nothing else will keep alive.
+//
+// A TEXT_DATA asset is exported only because a live MACRO_PRINT in ASSET mode
+// marks it used (scr_compile_chain, the _used_str gathering pass). Convert that
+// node away and the asset silently drops out of the build — the block is left
+// reading empty memory at $2000, which is exactly the "did not print anything"
+// case. Same shape for CHAR_SET, MAP_DATA, SPRITE_SET and the rest.
+//
+// Returns [ { name, addr, size } ] for every asset-mode reference found.
+// =====================================================================
+function scr_cbc_asset_deps(_sel) {
+    var _out = [];
+
+    for (var _i = 0; _i < array_length(_sel); _i++) {
+        var _n = _sel[_i];
+        if (!instance_exists(_n))              { continue; }
+        if (_n.node_type != "MACRO_PRINT")     { continue; }
+        if (array_length(_n.instructions) < 1) { continue; }
+
+        var _row = _n.instructions[0];
+        if (array_length(_row) < 11) { continue; }
+
+        var _mode = 0;
+        if (is_real(_row[9])) { _mode = real(_row[9]); }
+        if (_mode != 1)       { continue; }
+
+        var _name = string(_row[10]);
+        if (_name == "") { continue; }
+
+        var _addr = 0;
+        var _size = 0;
+        if (instance_exists(obj_asset_manager)) {
+            var _am = obj_asset_manager;
+            for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
+                var _a = ds_list_find_value(_am.asset_list, _ai);
+                if (_a.type != "TEXT_DATA") { continue; }
+                if (_a.name != _name)       { continue; }
+                _addr = _a.address;
+                if (buffer_exists(_a.buffer)) {
+                    _size = buffer_get_size(_a.buffer);
+                }
+                break;
+            }
+        }
+
+        array_push(_out, { name: _name, addr: _addr, size: _size });
+    }
+
+    return _out;
+}
+
+// =====================================================================
 // Sections -> code block text.
 // =====================================================================
-function scr_cbc_render(_ex) {
+function scr_cbc_render(_ex, _deps) {
     var _txt = "// ---------------------------------------------\n";
     _txt += "// CONVERTED FROM NODES — C64 DEV MACHINE\n";
     _txt += "// ---------------------------------------------\n";
+
+    // Declared dependencies keep the asset in the build now that the node that
+    // referenced it is gone. scr_compile_chain reads these.
+    for (var _d = 0; _d < array_length(_deps); _d++) {
+        _txt += "// @asset " + _deps[_d].name + "\n";
+    }
 
     _txt += scr_cbc_render_section(_ex.spine);
 
@@ -652,7 +711,64 @@ function scr_cbc_convert() {
         return false;
     }
 
-    var _txt  = scr_cbc_render(_ex);
+    // ---- asset-mode dependencies: inline the data, or keep the asset ----
+    var _deps_all  = scr_cbc_asset_deps(_sel);
+    var _deps_keep = [];
+
+    for (var _d = 0; _d < array_length(_deps_all); _d++) {
+        var _dp   = _deps_all[_d];
+        var _dhex = scr_show_code_hex(_dp.addr, 4);
+
+        var _q = "TEXT DATA \"" + _dp.name + "\"  ($" + _dhex + ", "
+               + string(_dp.size) + " bytes)\n\n"
+               + "Bring it INTO the code block as .string data?\n\n"
+               + "YES  -  inlined at $" + _dhex + ", block is self-contained\n"
+               + "NO   -  keep the TEXT_DATA asset (a // @asset line is written\n"
+               + "        so it stays in the build)";
+
+        var _inline = show_question(_q);
+        io_clear();
+
+        if (_inline) {
+            var _entries = [];
+            if (instance_exists(obj_asset_manager)) {
+                var _am_i = obj_asset_manager;
+                for (var _ai_i = 0; _ai_i < ds_list_size(_am_i.asset_list); _ai_i++) {
+                    var _a_i = ds_list_find_value(_am_i.asset_list, _ai_i);
+                    if (_a_i.type != "TEXT_DATA") { continue; }
+                    if (_a_i.name != _dp.name)    { continue; }
+
+                    // Same defensive flush the compile chain does, so the
+                    // buffer holds screencodes rather than raw ASCII.
+                    scr_asset_text_flush(_a_i);
+
+                    if (buffer_exists(_a_i.buffer)) {
+                        var _bsz = buffer_get_size(_a_i.buffer);
+                        for (var _bi = 0; _bi < _bsz; _bi++) {
+                            array_push(_entries, {
+                                m: "byte",
+                                v: buffer_peek(_a_i.buffer, _bi, buffer_u8),
+                                lbl: "",
+                                sz: 1
+                            });
+                        }
+                    }
+                    break;
+                }
+            }
+
+            if (array_length(_entries) < 1) {
+                scr_show_message("CONVERT ABANDONED — could not read the bytes of\nTEXT DATA \"" + _dp.name + "\".\n\nNothing has been changed.");
+                return false;
+            }
+
+            array_push(_ex.reloc, { addr: _dp.addr, entries: _entries });
+        } else {
+            array_push(_deps_keep, _dp);
+        }
+    }
+
+    var _txt  = scr_cbc_render(_ex, _deps_keep);
     var _fail = scr_cbc_verify(_txt, _ex);
 
     if (_fail != "") {

@@ -17287,6 +17287,58 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
                 if (_ap != "") _used_str[? _ap] = true;
             }
         }
+
+        if (node_type == "MACRO_CODE") {
+            // A code block can depend on an asset it does not spell out in a way
+            // this pass could ever detect — a converted MACRO_PRINT becomes a
+            // bare "lda $2000,x", and the node that used to mark its TEXT_DATA
+            // used is gone. Without this the asset silently drops out of the
+            // build and the block reads empty memory.
+            //
+            // So a block may declare its dependencies with a comment line:
+            //     // @asset MYTEXT
+            // one name per line, type looked up from the asset itself.
+            var _cbtxt = string(instructions[0][1]);
+            var _cbpos = string_pos("@asset ", _cbtxt);
+
+            while (_cbpos > 0) {
+                var _cbrest = string_delete(_cbtxt, 1, _cbpos + 6);
+                var _cbnl   = string_pos("\n", _cbrest);
+                var _cbnm   = _cbrest;
+                if (_cbnl > 0) {
+                    _cbnm = string_copy(_cbrest, 1, _cbnl - 1);
+                }
+                _cbnm = string_trim(_cbnm);
+
+                if (_cbnm != "" && instance_exists(obj_asset_manager)) {
+                    var _am_cb = obj_asset_manager;
+                    for (var _ai_cb = 0; _ai_cb < ds_list_size(_am_cb.asset_list); _ai_cb++) {
+                        var _a_cb = ds_list_find_value(_am_cb.asset_list, _ai_cb);
+                        if (_a_cb.name != _cbnm) { continue; }
+
+                        if (_a_cb.type == "BITMAP" || _a_cb.type == "BITMAP_KLA") {
+                            _used_bmp[? _cbnm] = true;
+                        } else if (_a_cb.type == "SID_MUSIC" || _a_cb.type == "SID_SFX") {
+                            _used_sid[? _cbnm] = true;
+                        } else if (_a_cb.type == "SPRITE_SET") {
+                            _used_spr[? _cbnm] = true;
+                        } else if (_a_cb.type == "CHAR_SET") {
+                            _used_chr[? _cbnm] = true;
+                        } else if (_a_cb.type == "MAP_DATA") {
+                            _used_map[? _cbnm] = true;
+                        } else if (_a_cb.type == "TEXT_DATA") {
+                            _used_str[? _cbnm] = true;
+                        } else if (_a_cb.type == "SFX_DATA") {
+                            _used_sfx[? _cbnm] = true;
+                        }
+                        break;
+                    }
+                }
+
+                _cbtxt = _cbrest;
+                _cbpos = string_pos("@asset ", _cbtxt);
+            }
+        }
 			if (node_type == "MACRO_MAP") {
 			    var _n = string(instructions[0][1]);
 			    if (_n != "") _used_map[? _n] = true;
