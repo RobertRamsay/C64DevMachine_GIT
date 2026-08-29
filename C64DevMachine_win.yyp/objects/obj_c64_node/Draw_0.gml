@@ -1942,6 +1942,12 @@ if (_any_dragging) {
         var _my_y  = y;
         var _my_h  = height;
         with (obj_c64_node) {
+            // A folded node is not "below me" in any sense the user can see.
+            // With the spine folded every other node drops out of this test, so
+            // INIT becomes the bottom of the run and draws the latch zone
+            // directly under its own header instead of nothing being drawn at
+            // all.
+            if (scr_node_is_hidden(id)) { continue; }
             if (id != _my_id && is_connected && org_parent == noone && !is_dragging &&
                 node_type != "ORG" && node_type != "EXECUTE" && y > _my_y)
                 _is_bottom = false;
@@ -1998,12 +2004,23 @@ if (node_type == "ORG") {
             if (is_dragging && org_parent == _org_ref2) _eligible = false;
         }
 		
-	if (_eligible) {
+if (_eligible) {
             var _chain_bottom = y + height;
             var _org_ref = id;
-            with (obj_c64_node) {
-                if (org_parent == _org_ref && is_connected && y + height > _chain_bottom)
-                    _chain_bottom = y + height;
+
+            // A folded block ends at its header. This is the DROP TO ATTACH
+            // ghost, a separate thing from the wedge preview — it was still
+            // measuring down over the invisible column the children are parked
+            // in, so it drew itself hundreds of pixels below a collapsed block,
+            // out in empty canvas. Clamping it here also lines it up with the
+            // drop-target test in Step_0, which already treats a folded block as
+            // header-only.
+            var _ghost_folded = collapsed;
+            if (!_ghost_folded) {
+                with (obj_c64_node) {
+                    if (org_parent == _org_ref && is_connected && y + height > _chain_bottom)
+                        _chain_bottom = y + height;
+                }
             }
             var _olx1 = x - 10;
             var _olx2 = x + width + 10;

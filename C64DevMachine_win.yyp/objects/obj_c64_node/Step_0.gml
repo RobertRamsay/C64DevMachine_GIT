@@ -2397,7 +2397,22 @@ var _init_top = 0;
            
 
 			var _above_bottom = _insert_above.y + _insert_above.height;
-			var _in_latch_zone = (_this_y >= _above_bottom - height && _this_y <= _above_bottom + _latch_h);
+
+			// Two different bottoms once the spine is folded: the node still
+			// lands AFTER the last one in the run (so program order is kept),
+			// but you aim at the INIT header, which is where the ghost is now
+			// drawn and the only part of the run still on screen.
+			var _catch_bottom = _above_bottom;
+			if (_spine_folded) {
+				with (obj_c64_node) {
+					if (node_type == "INIT") {
+						_catch_bottom = y + height;
+						break;
+					}
+				}
+			}
+
+			var _in_latch_zone = (_this_y >= _catch_bottom - height && _this_y <= _catch_bottom + _latch_h);
 			var _is_mid_insert = (_node_below != noone);
 			if (_insert_above != noone && (_is_mid_insert || _in_latch_zone)) {
 				var _insert_y = (global.wedge_preview_y >= 0) ? global.wedge_preview_y : ceil(_above_bottom / _G) * _G;
