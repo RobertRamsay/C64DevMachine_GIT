@@ -227,6 +227,9 @@ if (code_editor_cache_dirty) {
     var _fpi = 0;
     
     var _rep_stack = [];
+    // Mirrors the assembler's pc_stack so .pcsave / .pcrestore move the gutter
+    // addresses the same way org(-2) / org(-3) move the real program counter.
+    var _pc_stack  = [];
     code_editor_cached_line_cyc = array_create(_total_lines, 0);
     code_editor_cached_run_cyc  = array_create(_total_lines, 0);
     var _running_cyc = 0;
@@ -275,7 +278,18 @@ if (code_editor_cache_dirty) {
             while (_fpi < array_length(_full_parsed) && string_lower(_full_parsed[_fpi][0]) == "_line_map_") _fpi++;
             
             if (_ptype == "pc") {
-                _rpc = _pinst[1];
+                // -2 / -3 are the save / restore markers, not addresses. Without
+                // this the gutter assigns the raw -3 to the next line and every
+                // address below a .pcrestore reads $0000.
+                if (_pinst[1] == -2) {
+                    array_push(_pc_stack, _rpc);
+                } else if (_pinst[1] == -3) {
+                    if (array_length(_pc_stack) > 0) {
+                        _rpc = array_pop(_pc_stack);
+                    }
+                } else {
+                    _rpc = _pinst[1];
+                }
             } else if (_ptype == "byte" || _ptype == "string") {
                 _rpc += array_length(_pinst) - 1;
             } else if (_ptype != "label" && _ptype != "const") {
