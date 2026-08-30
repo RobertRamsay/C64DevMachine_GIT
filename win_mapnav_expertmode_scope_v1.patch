@@ -1,0 +1,91 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index b86946d..5683957 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -4283,45 +4283,65 @@ if (!keyboard_check(vk_alt) && keyboard_check_released(ord("M")) && global.show_
+     var _nav_x = global.map_nav_x;
+     var _nav_y = global.map_nav_y;
+     var _row_h = 20;
+-    var _idx   = 0;
++    var _pw    = 200;
+ 
++    // Build the list in exactly the same order the finder panel draws it.
++    var _boxes = [];
+     with (obj_mapping_box) {
+-        var _ry = _nav_y + 20 + (_idx * _row_h);
++        array_push(_boxes, id);
++    }
++
++    for (var _i = 0; _i < array_length(_boxes); _i++) {
++        var _box = _boxes[_i];
++        var _ry  = _nav_y + 20 + (_i * _row_h);
++
+         if (point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y,
+-            _nav_x, _ry, _nav_x + 200, _ry + _row_h)) {
++            _nav_x, _ry, _nav_x + _pw, _ry + _row_h)) {
+ 
+-            // Effective viewport in GUI pixels (shelf eats the left side)
+-            var _shelf_w  = expert_mode ? 0 : obj_workspace_manager.shelf_width;
+-            var _view_w   = 1920 - _shelf_w;   // usable width in GUI px
+-            var _view_h   = 1080;
++            var _box_w = _box.box_w;
++            var _box_h = _box.box_h;
++
++            // Effective viewport in GUI pixels (shelf eats the left side).
++            // expert_mode / shelf_width live on obj_workspace_manager, which is
++            // the scope this Step event already runs in.
++            var _shelf_w = shelf_width;
++            if (expert_mode) {
++                _shelf_w = 0;
++            }
++
++            var _view_w = 1920 - _shelf_w;   // usable width in GUI px
++            var _view_h = 1080;
+ 
+             // Find zoom so the box fills 80% of the usable area
+-            var _fit_w    = (box_w > 0) ? (_view_w * 0.8) / box_w : 1.0;
+-            var _fit_h    = (box_h > 0) ? (_view_h * 0.8) / box_h : 1.0;
++            var _fit_w = 1.0;
++            if (_box_w > 0) {
++                _fit_w = (_view_w * 0.8) / _box_w;
++            }
++
++            var _fit_h = 1.0;
++            if (_box_h > 0) {
++                _fit_h = (_view_h * 0.8) / _box_h;
++            }
++
+             var _new_zoom = 1.0 / min(_fit_w, _fit_h);
+-            _new_zoom     = clamp(_new_zoom, 0.3, 6.0);
++            _new_zoom = clamp(_new_zoom, 0.3, 6.0);
+ 
+             // Centre of the box in world space
+-            var _cx = x + box_w * 0.5;
+-            var _cy = y + box_h * 0.5;
++            var _cx = _box.x + _box_w * 0.5;
++            var _cy = _box.y + _box_h * 0.5;
+ 
+             // Camera top-left so the box centre lands in the middle of the
+             // usable area (right of shelf), not the middle of the full window.
+-            // cam_x/cam_y are world-space origins of the full 1920x1080 view,
+-            // so we shift right by the shelf width (in world units at new zoom).
+             var _usable_centre_x = _shelf_w + (_view_w * 0.5);  // GUI px from left
+             var _usable_centre_y = _view_h * 0.5;
+ 
+-            obj_workspace_manager.cam_x = _cx - (_usable_centre_x * _new_zoom);
+-            obj_workspace_manager.cam_y = _cy - (_usable_centre_y * _new_zoom);
++            cam_x = _cx - (_usable_centre_x * _new_zoom);
++            cam_y = _cy - (_usable_centre_y * _new_zoom);
+ 
+-			obj_workspace_manager.cam_zoom_target = _new_zoom;
+-            obj_workspace_manager.cam_zoom        = _new_zoom;
+-            global.undo_dirty = true;
+-            alarm[3] = 6;
++            cam_zoom_target = _new_zoom;
++            cam_zoom        = _new_zoom;
+             break;
+         }
+-        _idx++;
+     }
+ }
+ 
