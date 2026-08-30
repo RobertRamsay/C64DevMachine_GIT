@@ -37,6 +37,26 @@ function scr_node_is_hidden(_n) {
     if (_n.node_type == "INIT")     { return false; }
     if (_n.node_type == "ORG")      { return false; }
 
+    // A DETACHED node belongs to no spine, so no fold owns it.
+    //
+    // This test used to run straight from org_parent to the INIT fold, and
+    // org_parent == noone was taken to mean "main spine member". A node dragged
+    // out of the spine has org_parent cleared to noone as well (obj_c64_node
+    // Step_0 clears both on the first drag movement), so it was indistinguishable
+    // from a spine node and vanished whenever INIT was folded — which reads as
+    // the floater remembering the spine it came from. It remembers nothing; it
+    // simply could not be told apart.
+    //
+    // The predicate is the same one scr_load_workspace_from_path uses to build
+    // its unattached-node report, so the nodes the loader offers to clean up are
+    // exactly the nodes a fold now leaves alone. COMMENT and free nodes are
+    // exempt because they are is_connected == false BY DESIGN and are laid out
+    // inside the block they annotate, so they should still fold with it; a macro
+    // child is exempt because it belongs to its owner, not to a spine.
+    if (_n.node_type != "COMMENT" && !_n.is_free_node && _n.macro_owner == noone) {
+        if (!_n.is_connected) { return false; }
+    }
+
     if (_n.org_parent != noone) {
         if (!instance_exists(_n.org_parent)) { return false; }
         return _n.org_parent.collapsed;
@@ -96,7 +116,7 @@ function scr_org_has_children(_org) {
     }
 
     with (obj_c64_node) {
-        if (org_parent == _org) {
+        if (org_parent == _org && is_connected) {
             _found = true;
             break;
         }
@@ -125,7 +145,11 @@ function scr_org_collapse_stats(_org) {
             if (org_parent != noone) { continue; }
             if (!is_connected)       { continue; }
         } else {
+            // is_connected matches the INIT branch above and scr_node_is_hidden:
+            // a detached node parked in an ORG column is not part of the block,
+            // so it must not be counted in the fold's node/byte totals either.
             if (org_parent != _org)  { continue; }
+            if (!is_connected)       { continue; }
         }
 
         _res.count += 1;
