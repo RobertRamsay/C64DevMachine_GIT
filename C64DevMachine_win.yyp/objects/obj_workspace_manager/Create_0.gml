@@ -1026,13 +1026,6 @@ global.init_collapsed = false;
 global.init_spine_x = -999999;
 global.init_spine_w = 160;
 
-// CODE BLOCK IMPORT — the block spawned by IMPORT -> CODE BLOCK (.ASM) rides
-// the pointer until the next click drops it. noone when nothing is latched.
-// code_import_release hands input back a frame after the drop, so the press
-// that placed the block is not also read by obj_c64_node as a grab on it.
-global.code_import_node    = noone;
-global.code_import_release = 0;
-
 scr_uqmenu_load();
 
 // FLOW OVERLAY (F key) — toggleable visualization of JMP/JSR/BRANCH/IRQ-

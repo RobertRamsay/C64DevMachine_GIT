@@ -1392,14 +1392,6 @@ if (gui_menu_open == 6) {
         { title: "CHARPAD (RAW)",  action: "CHARPAD_RAW" },
         { title: "CHARPAD (.CTM)", action: "CHARPAD_CTM" },
     ];
-
-    // Code blocks are a full-version feature, so the entry is not built at all
-    // in Lite rather than drawn greyed out — nothing to click, nothing to
-    // explain. The panel height below is derived from the list, so it closes up
-    // on its own.
-    if (!global.lite) {
-        array_push(_imp_list, { title: "CODE BLOCK (.ASM)", action: "CODE_ASM" });
-    }
 	
     var _item_h_i   = 20;
     var _panel_w_i  = 220;
@@ -1440,9 +1432,6 @@ if (gui_menu_open == 6) {
             }
             else if (_ip.action == "CHARPAD_CTM") {
                 scr_import_charpad_ctm();
-            }
-            else if (_ip.action == "CODE_ASM") {
-                scr_import_code_block_menu();
             }
         }
     }
@@ -1776,11 +1765,6 @@ scr_show_code_draw();
 ///// 1.95 CONVERT TO CODE BLOCK BUTTON (appears with a selection)
 /////////////////////////////////////////////////////////////////
 scr_cbc_draw_button();
-
-/////////////////////////////////////////////////////////////////
-///// 1.96 CODE BLOCK IMPORT — "click to drop it" strip
-/////////////////////////////////////////////////////////////////
-scr_code_import_draw_banner();
 
 /////////////////////////////////////////////////////////////////
 ///// 2. GLOBAL SHORTCUTS (TOP RIGHT)
