@@ -136,12 +136,41 @@ function scr_cbc_irq_dependency(_sel) {
 // stops answering to the alias — so callers still assemble, still JSR, and
 // land somewhere that is no longer the scroller.
 //
+// MACRO_VSCROLL (MAP V SCROLL) is the same node wearing a different axis. It
+// takes the same `scroll_alias` path in the emission code, publishes the same
+// kind of entry points (Scroller_U / Scroller_D), and buffers the same way.
+// Everything true of the horizontal scroller is true of it.
+//
+// MACRO_COLLISION is on the list for a different reason: it shares one piece
+// of per-frame state with every other collision node in the program. Reading
+// $D01E and $D01F CLEARS them, so exactly one node — whichever compiles first
+// — emits the pre-latch that copies both into $F0/$F1, guarded by
+// global.coll_prelatch_done. Every other collision node then tests the ZP
+// copies. Convert the collision nodes and that pre-latch is frozen into text
+// where the guard cannot see it, so the next collision node added to the graph
+// emits a SECOND pre-latch. The second read returns only what has collided
+// since the first one, which is almost nothing, and both the block and the new
+// node quietly stop detecting hits. Nothing fails to assemble; it just stops
+// working, intermittently, with no line to point at.
+//
+// The neutrality gate catches that only while a sibling collision node is
+// still outside the selection. Select them all — the move the gate's own
+// message tells you to make — and it passes cleanly, then breaks on the day
+// you drop a new collision node in.
+//
+// MACRO_COLL_ADV and MACRO_COLL_LINE are deliberately NOT here. They never
+// touch $D01E/$D01F; they read map and tile-type data. What they share is the
+// COLL_ROW_LO / COLL_ROW_HI / COLL_COL_HI tables, and those are fixed 40x25
+// screen-row address constants. A duplicate definition of one silently wins
+// in the assembler's label map, but it is byte-identical to the copy it
+// replaces, so the program behaves the same and only carries the dead bytes.
+//
 // To add a type here, put it in the array. Nothing else needs to change.
 //
 // @return the offending node type, or "" when the selection is clear.
 // =====================================================================
 function scr_cbc_unconvertible(_sel) {
-    var _blocked = ["MACRO_SCROLL"];
+    var _blocked = ["MACRO_SCROLL", "MACRO_VSCROLL", "MACRO_COLLISION"];
 
     for (var _i = 0; _i < array_length(_sel); _i++) {
         var _n = _sel[_i];
