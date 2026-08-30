@@ -1018,6 +1018,14 @@ global.org_collapse_hot = noone;
 // so scr_node_is_hidden can answer in O(1) for every node it is asked about.
 global.init_collapsed = false;
 
+// Where the main spine column sits, and how wide a node in it is. Refreshed by
+// the same Begin Step pass. scr_node_is_hidden needs these to decide whether a
+// COMMENT is annotating the spine or parked out on the canvas — a comment is
+// never is_connected, so position is the only thing that separates the two.
+// -999999 means no INIT node was found, and nothing folds by position.
+global.init_spine_x = -999999;
+global.init_spine_w = 160;
+
 scr_uqmenu_load();
 
 // FLOW OVERLAY (F key) — toggleable visualization of JMP/JSR/BRANCH/IRQ-

@@ -66,7 +66,21 @@ function scr_node_is_hidden(_n) {
     // hunting for the INIT node: this runs for every node in both Draw and
     // Step, and a search per call would make it O(nodes squared) per frame.
     // scr_org_collapse_hit refreshes it once each Begin Step.
-    return global.init_collapsed;
+    if (!global.init_collapsed) { return false; }
+
+    // A COMMENT is the one node the detached test above cannot judge. It is
+    // is_connected == false BY DESIGN — there is no such thing as a connected
+    // comment — so the flag says nothing about whether it belongs to the spine.
+    // Position is all there is, and it is what the eye uses too: a comment
+    // sitting in the spine column is annotating the block and folds with it,
+    // one dragged off to the side is parked and stays put. The band is the
+    // column's own node width, so it tracks the node display width setting.
+    if (_n.node_type == "COMMENT") {
+        if (global.init_spine_x <= -999999) { return false; }
+        return (abs(_n.x - global.init_spine_x) <= global.init_spine_w);
+    }
+
+    return true;
 }
 
 /// @function scr_node_mouse_over(_n)
@@ -220,9 +234,12 @@ function scr_org_collapse_hit() {
     // frame from Draw and Step, and a stale value would leave the whole spine
     // hidden (or shown) while a menu happens to be open.
     global.init_collapsed = false;
+    global.init_spine_x   = -999999;
     with (obj_c64_node) {
         if (node_type == "INIT") {
             global.init_collapsed = collapsed;
+            global.init_spine_x   = x;
+            global.init_spine_w   = width;
             break;
         }
     }
