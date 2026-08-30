@@ -1372,17 +1372,52 @@ function scr_cbc_convert() {
 // Button geometry — one definition, used by the Begin Step hit test and by
 // the Draw pass, so they cannot disagree.
 // =====================================================================
-function scr_cbc_button_rect() {
+/// @function scr_cbc_message_rect(_txt)
+/// @desc The floating plate this feature speaks from — the CONVERT button, the
+///       reason it is refusing, and anything else that wants the same spot.
+///
+/// It was a fixed 260x34 box with the text drawn centred inside it, which is
+/// fine for "CONVERT TO CODE" and useless for the messages that actually
+/// matter: "SELECTION HAS A GAP — MACRO_MAP IS BETWEEN SELECTED NODES" ran off
+/// both ends, so the one line telling you WHY nothing happened was the one line
+/// you could not read. The plate now grows to whatever it is given, and handles
+/// multi-line text, with 260x34 as the floor so the button itself is unchanged.
+///
+/// string_width needs the font that will actually draw the text, so this sets
+/// fnt_C64_Angled and puts the previous font back — it is called from Begin
+/// Step for the hit test as well as from Draw.
+function scr_cbc_message_rect(_txt) {
+    var _font_before = draw_get_font();
+    draw_set_font(fnt_C64_Angled);
+
+    var _lines = string_split(string(_txt), "\n");
+    var _tw    = 0;
+    for (var _i = 0; _i < array_length(_lines); _i++) {
+        _tw = max(_tw, string_width(_lines[_i]));
+    }
+    var _lh = string_height("A");
+    var _th = _lh * max(1, array_length(_lines));
+
+    draw_set_font(_font_before);
+
     var _gw = global.gui_w;
     var _gh = display_get_gui_height();
-    var _bw = 260;
-    var _bh = 34;
+    var _bw = max(260, _tw + 32);
+    var _bh = max(34,  _th + 14);
+
     return {
         x: floor((_gw - _bw) / 2),
         y: floor(_gh * 0.8),
         w: _bw,
         h: _bh
     };
+}
+
+// The clickable button is always the plain label, so the hit rect stays the
+// size of the button and does not swell with a refusal message — which is
+// correct, because a refusal is not clickable in the first place.
+function scr_cbc_button_rect() {
+    return scr_cbc_message_rect("CONVERT TO CODE");
 }
 
 // =====================================================================
@@ -1398,6 +1433,9 @@ function scr_cbc_hit() {
 
     if (global.lite)                             { exit; }
     if (!instance_exists(obj_workspace_manager)) { exit; }
+    // An imported block riding the pointer speaks from this same spot, so the
+    // button stands down rather than drawing over it.
+    if (global.code_import_node != noone)        { exit; }
 
     with (obj_workspace_manager) {
         if (hideui)              { exit; }
@@ -1423,6 +1461,7 @@ function scr_cbc_hit() {
 function scr_cbc_draw_button() {
     if (global.lite)                             { exit; }
     if (!instance_exists(obj_workspace_manager)) { exit; }
+    if (global.code_import_node != noone)        { exit; }
 
     var _do_convert = false;
 
@@ -1434,8 +1473,21 @@ function scr_cbc_draw_button() {
         if (array_length(global.selected_nodes) < 1) { exit; }
 
         var _val = scr_cbc_validate();
-        var _r   = scr_cbc_button_rect();
         var _hv  = global.cbc_button_hot;
+
+        var _col = make_color_rgb(255, 210, 80);
+        var _lbl = "CONVERT TO CODE";
+        if (!_val.ok) {
+            _col = make_color_rgb(130, 130, 140);
+            _lbl = _val.reason;
+        } else if (_hv) {
+            _col = c_white;
+        }
+
+        // Sized to the text that is about to be drawn, not to the button, so a
+        // long refusal is readable. The HIT rect stays scr_cbc_button_rect()
+        // above; only the plate under the message grows.
+        var _r = scr_cbc_message_rect(_lbl);
 
         if (_hv && scr_cbc_primary_pressed() && _val.ok) {
             _do_convert = true;
@@ -1450,15 +1502,6 @@ function scr_cbc_draw_button() {
         draw_set_font(fnt_C64_Angled);
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
-
-        var _col = make_color_rgb(255, 210, 80);
-        var _lbl = "CONVERT TO CODE";
-        if (!_val.ok) {
-            _col = make_color_rgb(130, 130, 140);
-            _lbl = _val.reason;
-        } else if (_hv) {
-            _col = c_white;
-        }
 
         draw_set_color(_col);
         draw_rectangle(_r.x + 2, _r.y + 2, _r.x + _r.w - 2, _r.y + _r.h - 2, true);

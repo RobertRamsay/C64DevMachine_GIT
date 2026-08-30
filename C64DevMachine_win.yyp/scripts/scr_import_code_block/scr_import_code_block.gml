@@ -235,12 +235,15 @@ function scr_code_import_draw_banner() {
     if (global.code_import_node == noone)          { exit; }
     if (!instance_exists(global.code_import_node)) { exit; }
 
-    var _gw = global.gui_w;
-    var _gh = display_get_gui_height();
-    var _bh = 28;
-    var _by = _gh - _bh - 10;
-    var _bw = 620;
-    var _bx = floor((_gw - _bw) / 2);
+    // Same plate the CONVERT button speaks from — one place on screen for
+    // everything this feature has to say, and it sits well clear of the bottom
+    // edge rather than hugging it.
+    var _msg = "IMPORTED CODE LATCHED TO MOUSE - CLICK TO DROP IT   (ESC CANCELS)";
+    var _r   = scr_cbc_message_rect(_msg);
+    var _bx  = _r.x;
+    var _by  = _r.y;
+    var _bw  = _r.w;
+    var _bh  = _r.h;
 
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm, _bx, _by, _bw, _bh);
 
@@ -253,8 +256,7 @@ function scr_code_import_draw_banner() {
     draw_set_valign(fa_middle);
     draw_set_color(make_color_rgb(255, 210, 80));
     draw_rectangle(_bx + 2, _by + 2, _bx + _bw - 2, _by + _bh - 2, true);
-    draw_text(_bx + (_bw / 2), _by + (_bh / 2),
-              "IMPORTED CODE LATCHED TO MOUSE - CLICK TO DROP IT   (ESC CANCELS)");
+    draw_text(_bx + (_bw / 2), _by + (_bh / 2), _msg);
 
     draw_set_font(_font_before);
     draw_set_halign(_halign_before);
