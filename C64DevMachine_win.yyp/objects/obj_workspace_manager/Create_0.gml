@@ -1,6 +1,6 @@
 /// @desc Setup Workspace, Palette & C64 Environment
 global.lite=0;
-global.build_date = "August 30th, 2026"; // edit this string for each release
+global.build_date = "August 31st, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {
@@ -57,15 +57,10 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-	"NEW - Convert selected nodes into a CODE BLOCK (full version)",
-	"NEW - Fold ORG and INIT blocks away with the [-] tab",
-	"NEW - Code panel lists in address order and declares its labels",
-	"FIXED - Shortcut keys dying after editing text in an asset",
-	"FIXED - Text squashed or spilling out of the data editors",
-	"FIXED - One macro appearing many times in the code listing",
-	"FIXED - Undo leaving nodes at the wrong size",
-	"FIXED - Nodes sharing a spot swapping owners on load and undo",
-	"FASTER - Idle clicks and a closed code panel cost nothing now",
+	"NEW (PRO) - Code blocks IMPORT / EXPORT fully functional",
+	"NEW (PRO) - Import ASM added to import menu - creates a code block with custom code.",
+	"",
+	"SHARE your Custom Code blocks like a PRO!",
 	];
 	
 welcome_credits_lines = [
