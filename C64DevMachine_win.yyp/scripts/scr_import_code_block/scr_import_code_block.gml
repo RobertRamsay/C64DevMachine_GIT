@@ -20,6 +20,72 @@
 ///   scr_code_import_primary_pressed() one platform seam, as elsewhere
 /// ====================================================================
 
+/// ====================================================================
+/// BLOCK NAME CARRIED IN THE FILE
+///
+/// code_descriptor is the name on the node header — the thing you rename
+/// by clicking the title. It lives on the instance, not in the text, so a
+/// plain .asm export dropped it and every import came back as "Code Block".
+///
+/// So the export writes it as a `// @name <descriptor>` line at the top and
+/// the import reads it back. scr_parse_asm_text skips `//` lines outright,
+/// so the marker is inert in every other consumer — the assembler, the byte
+/// counter, the label picker and the round-trip verifier all ignore it.
+///
+/// It is STRIPPED from the text on import rather than left in place, so the
+/// descriptor stays the single source of truth: rename the block afterwards
+/// and the next export writes the new name, with no stale line to disagree
+/// with the header.
+/// ====================================================================
+
+/// @function scr_code_block_name_read(_txt)
+/// @desc Pull the `// @name ...` value out of a code listing.
+/// @return {String} the name, or "" when the file does not carry one.
+function scr_code_block_name_read(_txt) {
+    var _lines = string_split(string(_txt), "\n");
+    for (var _i = 0; _i < array_length(_lines); _i++) {
+        var _l = string_trim(_lines[_i]);
+        if (string_length(_l) < 8) {
+            continue;
+        }
+        if (string_upper(string_copy(_l, 1, 8)) != "// @NAME") {
+            continue;
+        }
+        return string_trim(string_delete(_l, 1, 8));
+    }
+    return "";
+}
+
+/// @function scr_code_block_name_strip(_txt)
+/// @desc Remove every `// @name ...` line, so re-exporting cannot stack them up.
+function scr_code_block_name_strip(_txt) {
+    var _lines = string_split(string(_txt), "\n");
+    var _out   = "";
+    var _first = true;
+    for (var _i = 0; _i < array_length(_lines); _i++) {
+        var _l = string_trim(_lines[_i]);
+        if (string_length(_l) >= 8 && string_upper(string_copy(_l, 1, 8)) == "// @NAME") {
+            continue;
+        }
+        if (!_first) {
+            _out += "\n";
+        }
+        _out += _lines[_i];
+        _first = false;
+    }
+    return _out;
+}
+
+/// @function scr_code_block_name_apply(_txt, _name)
+/// @desc Put one `// @name` line at the top of a listing, replacing any it had.
+function scr_code_block_name_apply(_txt, _name) {
+    var _clean = scr_code_block_name_strip(_txt);
+    if (string_trim(string(_name)) == "") {
+        return _clean;
+    }
+    return "// @name " + string_trim(string(_name)) + "\n" + _clean;
+}
+
 /// @function scr_import_code_block_read()
 /// @desc Open a file dialog and read an assembly listing whole.
 /// @return {String} the file text, or "" when cancelled or unreadable.
@@ -83,8 +149,16 @@ function scr_import_code_block_menu() {
     }
 
     var _n = scr_node_spawn("MACRO_CODE", mouse_x, mouse_y);
+    // The file names the block when it carries a `// @name` line — which is
+    // what this project's own exports write — so a block exported as
+    // "Border Flash" comes back as "Border Flash" and not "Code Block".
+    var _name = scr_code_block_name_read(_txt);
+    _txt = scr_code_block_name_strip(_txt);
+    if (_name == "") {
+        _name = "IMPORTED CODE";
+    }
+    _n.code_descriptor    = _name;
     _n.instructions[0][1] = _txt;
-    _n.code_descriptor    = "IMPORTED CODE";
     _n.code_cache_dirty   = true;
     _n.height_dirty       = true;
     with (_n) { event_user(0); }

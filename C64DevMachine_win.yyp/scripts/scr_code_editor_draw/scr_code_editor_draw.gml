@@ -123,18 +123,33 @@ draw_set_halign(fa_center);
 			// block back exactly as it was — an import is an edit like any other.
 			scr_code_editor_push_undo();
 
+			// The name rides in the file as a `// @name` line. It is taken off
+			// the text and put on the node, so the header is the only place the
+			// name lives and a later rename cannot be contradicted by a stale
+			// line in the listing.
+			var _imp_name = scr_code_block_name_read(_imp_txt);
+			_imp_txt      = scr_code_block_name_strip(_imp_txt);
+
 			if (string_trim(code_editor_text) == "") {
 				// Nothing to lose, so no question worth asking.
 				code_editor_text = _imp_txt;
+				if (_imp_name != "" && instance_exists(code_editor_node)) {
+					code_editor_node.code_descriptor = _imp_name;
+				}
 			} else {
 				var _append = scr_show_question_bool(
 					"THIS CODE BLOCK ALREADY HAS CODE\n\n"
 				  + "YES = APPEND the imported file to the end\n"
 				  + "NO  = REPLACE everything with the imported file");
 				if (_append) {
+					// Appending merges into a block that already has an identity,
+					// so the incoming name is deliberately not adopted.
 					code_editor_text += "\n" + _imp_txt;
 				} else {
 					code_editor_text = _imp_txt;
+					if (_imp_name != "" && instance_exists(code_editor_node)) {
+						code_editor_node.code_descriptor = _imp_name;
+					}
 				}
 			}
 
@@ -180,8 +195,13 @@ draw_set_halign(fa_center);
 		// this, every other importer did not.
 		io_clear();
 		if (_filename != "") {
-			var _buf = buffer_create(string_byte_length(code_editor_text), buffer_fixed, 1);
-			buffer_write(_buf, buffer_text, code_editor_text);
+			// Carry the block's name in the file. code_descriptor lives on the
+			// node, not in the text, so without this every exported block came
+			// back from an import called "Code Block".
+			var _exp_desc = instance_exists(code_editor_node) ? code_editor_node.code_descriptor : "";
+			var _exp_txt  = scr_code_block_name_apply(code_editor_text, _exp_desc);
+			var _buf = buffer_create(string_byte_length(_exp_txt) + 1, buffer_fixed, 1);
+			buffer_write(_buf, buffer_text, _exp_txt);
 			buffer_save(_buf, _filename);
 			buffer_delete(_buf);
 		}

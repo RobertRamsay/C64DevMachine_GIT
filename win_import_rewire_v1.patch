@@ -1,0 +1,226 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 433b081..eacdb8e 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -1026,6 +1026,13 @@ global.init_collapsed = false;
+ global.init_spine_x = -999999;
+ global.init_spine_w = 160;
+ 
++// CODE BLOCK IMPORT — the block spawned by IMPORT -> CODE BLOCK (.ASM) rides
++// the pointer until the next click drops it. noone when nothing is latched.
++// code_import_release hands input back a frame after the drop, so the press
++// that placed the block is not also read by obj_c64_node as a grab on it.
++global.code_import_node    = noone;
++global.code_import_release = 0;
++
+ scr_uqmenu_load();
+ 
+ // FLOW OVERLAY (F key) — toggleable visualization of JMP/JSR/BRANCH/IRQ-
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 98c0965..365f7fe 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -1392,6 +1392,14 @@ if (gui_menu_open == 6) {
+         { title: "CHARPAD (RAW)",  action: "CHARPAD_RAW" },
+         { title: "CHARPAD (.CTM)", action: "CHARPAD_CTM" },
+     ];
++
++    // Code blocks are a full-version feature, so the entry is not built at all
++    // in Lite rather than drawn greyed out — nothing to click, nothing to
++    // explain. The panel height below is derived from the list, so it closes up
++    // on its own.
++    if (global.lite == 0) {
++        array_push(_imp_list, { title: "CODE BLOCK (.ASM)", action: "CODE_ASM" });
++    }
+ 	
+     var _item_h_i   = 20;
+     var _panel_w_i  = 220;
+@@ -1433,6 +1441,9 @@ if (gui_menu_open == 6) {
+             else if (_ip.action == "CHARPAD_CTM") {
+                 scr_import_charpad_ctm();
+             }
++            else if (_ip.action == "CODE_ASM") {
++                scr_import_code_block_menu();
++            }
+         }
+     }
+ 
+@@ -1766,6 +1777,11 @@ scr_show_code_draw();
+ /////////////////////////////////////////////////////////////////
+ scr_cbc_draw_button();
+ 
++/////////////////////////////////////////////////////////////////
++///// 1.96 CODE BLOCK IMPORT — "click to drop it" strip
++/////////////////////////////////////////////////////////////////
++scr_code_import_draw_banner();
++
+ /////////////////////////////////////////////////////////////////
+ ///// 2. GLOBAL SHORTCUTS (TOP RIGHT)
+ /////////////////////////////////////////////////////////////////
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 5683957..0680843 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -165,6 +165,13 @@ if (code_editor_open) {
+         }
+     }
+ 	 
++// A code block latched to the pointer owns the frame, the same way the code
++// editor above does — otherwise every workspace shortcut fires under a block
++// the user is still positioning.
++if (scr_code_import_step()) {
++    exit;
++}
++
+ 	if (save_pending) {
+     save_pending = false;
+     if (keyboard_check(vk_shift)) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_code_editor_draw/scr_code_editor_draw.gml b/C64DevMachine_win.yyp/scripts/scr_code_editor_draw/scr_code_editor_draw.gml
+index 30cfb0e..5114c3a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_code_editor_draw/scr_code_editor_draw.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_code_editor_draw/scr_code_editor_draw.gml
+@@ -123,18 +123,33 @@ draw_set_halign(fa_center);
+ 			// block back exactly as it was — an import is an edit like any other.
+ 			scr_code_editor_push_undo();
+ 
++			// The name rides in the file as a `// @name` line. It is taken off
++			// the text and put on the node, so the header is the only place the
++			// name lives and a later rename cannot be contradicted by a stale
++			// line in the listing.
++			var _imp_name = scr_code_block_name_read(_imp_txt);
++			_imp_txt      = scr_code_block_name_strip(_imp_txt);
++
+ 			if (string_trim(code_editor_text) == "") {
+ 				// Nothing to lose, so no question worth asking.
+ 				code_editor_text = _imp_txt;
++				if (_imp_name != "" && instance_exists(code_editor_node)) {
++					code_editor_node.code_descriptor = _imp_name;
++				}
+ 			} else {
+ 				var _append = scr_show_question_bool(
+ 					"THIS CODE BLOCK ALREADY HAS CODE\n\n"
+ 				  + "YES = APPEND the imported file to the end\n"
+ 				  + "NO  = REPLACE everything with the imported file");
+ 				if (_append) {
++					// Appending merges into a block that already has an identity,
++					// so the incoming name is deliberately not adopted.
+ 					code_editor_text += "\n" + _imp_txt;
+ 				} else {
+ 					code_editor_text = _imp_txt;
++					if (_imp_name != "" && instance_exists(code_editor_node)) {
++						code_editor_node.code_descriptor = _imp_name;
++					}
+ 				}
+ 			}
+ 
+@@ -180,8 +195,13 @@ draw_set_halign(fa_center);
+ 		// this, every other importer did not.
+ 		io_clear();
+ 		if (_filename != "") {
+-			var _buf = buffer_create(string_byte_length(code_editor_text), buffer_fixed, 1);
+-			buffer_write(_buf, buffer_text, code_editor_text);
++			// Carry the block's name in the file. code_descriptor lives on the
++			// node, not in the text, so without this every exported block came
++			// back from an import called "Code Block".
++			var _exp_desc = instance_exists(code_editor_node) ? code_editor_node.code_descriptor : "";
++			var _exp_txt  = scr_code_block_name_apply(code_editor_text, _exp_desc);
++			var _buf = buffer_create(string_byte_length(_exp_txt) + 1, buffer_fixed, 1);
++			buffer_write(_buf, buffer_text, _exp_txt);
+ 			buffer_save(_buf, _filename);
+ 			buffer_delete(_buf);
+ 		}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.gml b/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.gml
+index 44b7efd..2a3d2f2 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.gml
+@@ -20,6 +20,72 @@
+ ///   scr_code_import_primary_pressed() one platform seam, as elsewhere
+ /// ====================================================================
+ 
++/// ====================================================================
++/// BLOCK NAME CARRIED IN THE FILE
++///
++/// code_descriptor is the name on the node header — the thing you rename
++/// by clicking the title. It lives on the instance, not in the text, so a
++/// plain .asm export dropped it and every import came back as "Code Block".
++///
++/// So the export writes it as a `// @name <descriptor>` line at the top and
++/// the import reads it back. scr_parse_asm_text skips `//` lines outright,
++/// so the marker is inert in every other consumer — the assembler, the byte
++/// counter, the label picker and the round-trip verifier all ignore it.
++///
++/// It is STRIPPED from the text on import rather than left in place, so the
++/// descriptor stays the single source of truth: rename the block afterwards
++/// and the next export writes the new name, with no stale line to disagree
++/// with the header.
++/// ====================================================================
++
++/// @function scr_code_block_name_read(_txt)
++/// @desc Pull the `// @name ...` value out of a code listing.
++/// @return {String} the name, or "" when the file does not carry one.
++function scr_code_block_name_read(_txt) {
++    var _lines = string_split(string(_txt), "\n");
++    for (var _i = 0; _i < array_length(_lines); _i++) {
++        var _l = string_trim(_lines[_i]);
++        if (string_length(_l) < 8) {
++            continue;
++        }
++        if (string_upper(string_copy(_l, 1, 8)) != "// @NAME") {
++            continue;
++        }
++        return string_trim(string_delete(_l, 1, 8));
++    }
++    return "";
++}
++
++/// @function scr_code_block_name_strip(_txt)
++/// @desc Remove every `// @name ...` line, so re-exporting cannot stack them up.
++function scr_code_block_name_strip(_txt) {
++    var _lines = string_split(string(_txt), "\n");
++    var _out   = "";
++    var _first = true;
++    for (var _i = 0; _i < array_length(_lines); _i++) {
++        var _l = string_trim(_lines[_i]);
++        if (string_length(_l) >= 8 && string_upper(string_copy(_l, 1, 8)) == "// @NAME") {
++            continue;
++        }
++        if (!_first) {
++            _out += "\n";
++        }
++        _out += _lines[_i];
++        _first = false;
++    }
++    return _out;
++}
++
++/// @function scr_code_block_name_apply(_txt, _name)
++/// @desc Put one `// @name` line at the top of a listing, replacing any it had.
++function scr_code_block_name_apply(_txt, _name) {
++    var _clean = scr_code_block_name_strip(_txt);
++    if (string_trim(string(_name)) == "") {
++        return _clean;
++    }
++    return "// @name " + string_trim(string(_name)) + "\n" + _clean;
++}
++
+ /// @function scr_import_code_block_read()
+ /// @desc Open a file dialog and read an assembly listing whole.
+ /// @return {String} the file text, or "" when cancelled or unreadable.
+@@ -83,8 +149,16 @@ function scr_import_code_block_menu() {
+     }
+ 
+     var _n = scr_node_spawn("MACRO_CODE", mouse_x, mouse_y);
++    // The file names the block when it carries a `// @name` line — which is
++    // what this project's own exports write — so a block exported as
++    // "Border Flash" comes back as "Border Flash" and not "Code Block".
++    var _name = scr_code_block_name_read(_txt);
++    _txt = scr_code_block_name_strip(_txt);
++    if (_name == "") {
++        _name = "IMPORTED CODE";
++    }
++    _n.code_descriptor    = _name;
+     _n.instructions[0][1] = _txt;
+-    _n.code_descriptor    = "IMPORTED CODE";
+     _n.code_cache_dirty   = true;
+     _n.height_dirty       = true;
+     with (_n) { event_user(0); }
