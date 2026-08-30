@@ -189,48 +189,6 @@ function scr_cbc_unconvertible(_sel) {
     return "";
 }
 
-// =====================================================================
-// Node types that can never be converted, for reasons of their own.
-//
-// The neutrality gate proves that removing a node does not change what the
-// nodes AROUND it emit. That is not the same as proving the node survives
-// being frozen into text. A node fails here when its own emission depends on
-// something that keeps moving after the conversion — a live scan of the
-// graph, an alias other nodes resolve at compile time, or a buffer whose
-// address the memory-bar allocator hands out on each rebuild.
-//
-// MACRO_SCROLL (MAP H SCROLL) is all three at once. It publishes JSR entry
-// points other nodes call through `scroll_alias`, it re-reads its MAP_DATA or
-// META_TILESET source on every compile to size and lay out its double buffers,
-// and the allocator can hand it a different base on the next rebuild. Frozen
-// to text, the block keeps the addresses it happened to get on the day and
-// stops answering to the alias — so callers still assemble, still JSR, and
-// land somewhere that is no longer the scroller.
-//
-// To add a type here, put it in the array. Nothing else needs to change.
-//
-// @return the offending node type, or "" when the selection is clear.
-// =====================================================================
-function scr_cbc_unconvertible(_sel) {
-    var _blocked = ["MACRO_SCROLL"];
-
-    for (var _i = 0; _i < array_length(_sel); _i++) {
-        var _n = _sel[_i];
-        if (!instance_exists(_n)) {
-            continue;
-        }
-
-        var _t = string(_n.node_type);
-        for (var _b = 0; _b < array_length(_blocked); _b++) {
-            if (_t == _blocked[_b]) {
-                return _t;
-            }
-        }
-    }
-
-    return "";
-}
-
 function scr_cbc_validate() {
     var _res = { ok: false, reason: "", nodes: [] };
 
@@ -250,13 +208,6 @@ function scr_cbc_validate() {
     // scr_cbc_irq_dependency for why each is on the list.
     if (scr_cbc_irq_dependency(_sel) != "") {
         _res.reason = "CANNOT CONVERT - SID / IRQ DEPENDENCY";
-        return _res;
-    }
-
-    // Refused by TYPE for node-specific reasons — see scr_cbc_unconvertible.
-    var _unconv = scr_cbc_unconvertible(_sel);
-    if (_unconv != "") {
-        _res.reason = "CANNOT CONVERT - " + _unconv;
         return _res;
     }
 
