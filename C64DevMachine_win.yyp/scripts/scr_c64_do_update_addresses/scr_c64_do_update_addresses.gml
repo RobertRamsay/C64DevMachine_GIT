@@ -1077,6 +1077,14 @@ if (s1.finish <= s2.start) break;
 	        if (scr_is_conflict_ignored(_c_start, _c_end, s1.owner, s2.owner)) continue;
 
 	        array_push(global.conflict_ranges, { addr_start: _c_start, addr_end: _c_end });
+	        // Six separate passes in this script can set is_conflicted, so a red
+	        // node on its own says nothing about which one fired. Name the pair
+	        // and the range here; the operand passes below log their own.
+	        show_debug_message("CONFLICT PASS 6: $" + string_upper(decimal_to_hex(_c_start))
+	            + "-$" + string_upper(decimal_to_hex(_c_end)) + "  "
+	            + (instance_exists(s1.owner) ? string(s1.owner.node_type) + "#" + string(s1.owner) : "ASSET " + (variable_struct_exists(s1, "name") ? string(s1.name) : "?"))
+	            + "  vs  "
+	            + (instance_exists(s2.owner) ? string(s2.owner.node_type) + "#" + string(s2.owner) : "ASSET " + (variable_struct_exists(s2, "name") ? string(s2.name) : "?")));
 	        if (instance_exists(s1.owner)) s1.owner.is_conflicted = true;
 	        if (instance_exists(s2.owner)) s2.owner.is_conflicted = true;
 	    }
@@ -1098,8 +1106,15 @@ with (obj_c64_node) {
 	// PASS 7: ZERO-BYTE PHANTOM CATCHER
 	// ================================================================
 	// Catch zero-byte nodes (like NAMED_LOC) that point into a danger zone
+	//
+	// Restricted to the nodes it was written for. A node that HAS a body is
+	// already measured against every other segment by the pairwise pass above,
+	// which compares whole ranges. Re-testing its start address alone added
+	// nothing and mis-fired: a conflict between two unrelated nodes flagged
+	// every sized node whose pc_address happened to fall inside that range,
+	// turning one real conflict into a row of red boxes with no shared cause.
 with (obj_c64_node) {
-	    if (!is_conflicted && !is_dragging) {
+	    if (!is_conflicted && !is_dragging && total_node_size == 0) {
 	        is_conflicted = scr_is_address_conflicted(pc_address);
 	    }
 	}
@@ -1178,6 +1193,8 @@ with (obj_c64_node) {
 	        else if (is_real(instructions[_ii][1]))
 	            _opval = real(instructions[_ii][1]);
 			if (_opval >= 0 && _is_danger_p8(_opval)) {
+	            show_debug_message("CONFLICT PASS 8: " + string(node_type) + "#" + string(id)
+	                + " writes $" + string_upper(decimal_to_hex(_opval)) + " (" + _mop + ")");
 	            // Sprite pointer table exception: last 8 bytes of any 1K screen block
 	            var _spr_ptr_offset = _opval & 0x03FF;
 	            var _is_spr_ptr8    = (_spr_ptr_offset >= 0x03F8 && _spr_ptr_offset <= 0x03FF);
@@ -1315,6 +1332,9 @@ with (obj_c64_node) {
 	                    if (_asz9 <= 0) continue;
 
 			 		    if (!_is_me && !_is_spr_ptr && !_is_screen_ram && _addr9 >= _a9.address && _addr9 < _a9.address + _asz9) {
+	                        show_debug_message("CONFLICT PASS 10: MACRO_CODE#" + string(id)
+	                            + " writes $" + string_upper(decimal_to_hex(_addr9))
+	                            + " (" + _op + ") inside asset " + string(_a9.name));
 	                        is_conflicted = true;
 	                        break;
 	                    }
