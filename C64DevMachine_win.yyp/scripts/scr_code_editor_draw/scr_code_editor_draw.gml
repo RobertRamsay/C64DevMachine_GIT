@@ -127,8 +127,15 @@ draw_set_halign(fa_center);
 			// the text and put on the node, so the header is the only place the
 			// name lives and a later rename cannot be contradicted by a stale
 			// line in the listing.
-			var _imp_name = scr_code_block_name_read(_imp_txt);
-			_imp_txt      = scr_code_block_name_strip(_imp_txt);
+			var _imp_name    = scr_code_block_name_read(_imp_txt);
+			var _imp_noscope = scr_code_block_is_noscope(_imp_txt);
+			_imp_txt         = scr_code_block_name_strip(_imp_txt);
+			// Appending merges into a block that already has its own labels, so
+			// the incoming listing is scoped whatever it says — that is the case
+			// a collision is most likely, not least.
+			if (!_imp_noscope) {
+				_imp_txt = scr_code_block_scope_wrap(_imp_txt);
+			}
 
 			if (string_trim(code_editor_text) == "") {
 				// Nothing to lose, so no question worth asking.
@@ -200,6 +207,12 @@ draw_set_halign(fa_center);
 			// back from an import called "Code Block".
 			var _exp_desc = instance_exists(code_editor_node) ? code_editor_node.code_descriptor : "";
 			var _exp_txt  = scr_code_block_name_apply(code_editor_text, _exp_desc);
+			// An unscoped block may be publishing labels other nodes JSR, so say
+			// so in the file — the importer wraps by default and would otherwise
+			// rename those labels out from under their callers on the way back in.
+			if (!scr_code_block_is_scoped(_exp_txt)) {
+				_exp_txt = "// @noscope\n" + _exp_txt;
+			}
 			var _buf = buffer_create(string_byte_length(_exp_txt) + 1, buffer_fixed, 1);
 			buffer_write(_buf, buffer_text, _exp_txt);
 			buffer_save(_buf, _filename);
