@@ -165,6 +165,13 @@ if (code_editor_open) {
         }
     }
 	 
+// A code block latched to the pointer owns the frame, the same way the code
+// editor above does — otherwise every workspace shortcut fires under a block
+// the user is still positioning.
+if (scr_code_import_step()) {
+    exit;
+}
+
 	if (save_pending) {
     save_pending = false;
     if (keyboard_check(vk_shift)) {

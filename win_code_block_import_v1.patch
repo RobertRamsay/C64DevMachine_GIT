@@ -1,0 +1,396 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index bd41335..234389e 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1093,6 +1093,7 @@
+     {"id":{"name":"scr_get_opcode_syntax_parts","path":"scripts/scr_get_opcode_syntax_parts/scr_get_opcode_syntax_parts.yy",},},
+     {"id":{"name":"scr_import_charpad_ctm_legacy","path":"scripts/scr_import_charpad_ctm_legacy/scr_import_charpad_ctm_legacy.yy",},},
+     {"id":{"name":"scr_import_charpad_ctm","path":"scripts/scr_import_charpad_ctm/scr_import_charpad_ctm.yy",},},
++    {"id":{"name":"scr_import_code_block","path":"scripts/scr_import_code_block/scr_import_code_block.yy",},},
+     {"id":{"name":"scr_import_charpad_raw","path":"scripts/scr_import_charpad_raw/scr_import_charpad_raw.yy",},},
+     {"id":{"name":"scr_init_named_locations","path":"scripts/scr_init_named_locations/scr_init_named_locations.yy",},},
+     {"id":{"name":"scr_instrument_parse","path":"scripts/scr_instrument_parse/scr_instrument_parse.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 433b081..eacdb8e 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -1026,6 +1026,13 @@ global.init_collapsed = false;
+ global.init_spine_x = -999999;
+ global.init_spine_w = 160;
+ 
++// CODE BLOCK IMPORT — the block spawned by IMPORT -> CODE BLOCK (.ASM) rides
++// the pointer until the next click drops it. noone when nothing is latched.
++// code_import_release hands input back a frame after the drop, so the press
++// that placed the block is not also read by obj_c64_node as a grab on it.
++global.code_import_node    = noone;
++global.code_import_release = 0;
++
+ scr_uqmenu_load();
+ 
+ // FLOW OVERLAY (F key) — toggleable visualization of JMP/JSR/BRANCH/IRQ-
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 98c0965..d86ce81 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -1392,6 +1392,14 @@ if (gui_menu_open == 6) {
+         { title: "CHARPAD (RAW)",  action: "CHARPAD_RAW" },
+         { title: "CHARPAD (.CTM)", action: "CHARPAD_CTM" },
+     ];
++
++    // Code blocks are a full-version feature, so the entry is not built at all
++    // in Lite rather than drawn greyed out — nothing to click, nothing to
++    // explain. The panel height below is derived from the list, so it closes up
++    // on its own.
++    if (!global.lite) {
++        array_push(_imp_list, { title: "CODE BLOCK (.ASM)", action: "CODE_ASM" });
++    }
+ 	
+     var _item_h_i   = 20;
+     var _panel_w_i  = 220;
+@@ -1433,6 +1441,9 @@ if (gui_menu_open == 6) {
+             else if (_ip.action == "CHARPAD_CTM") {
+                 scr_import_charpad_ctm();
+             }
++            else if (_ip.action == "CODE_ASM") {
++                scr_import_code_block_menu();
++            }
+         }
+     }
+ 
+@@ -1766,6 +1777,11 @@ scr_show_code_draw();
+ /////////////////////////////////////////////////////////////////
+ scr_cbc_draw_button();
+ 
++/////////////////////////////////////////////////////////////////
++///// 1.96 CODE BLOCK IMPORT — "click to drop it" strip
++/////////////////////////////////////////////////////////////////
++scr_code_import_draw_banner();
++
+ /////////////////////////////////////////////////////////////////
+ ///// 2. GLOBAL SHORTCUTS (TOP RIGHT)
+ /////////////////////////////////////////////////////////////////
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 5683957..0680843 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -165,6 +165,13 @@ if (code_editor_open) {
+         }
+     }
+ 	 
++// A code block latched to the pointer owns the frame, the same way the code
++// editor above does — otherwise every workspace shortcut fires under a block
++// the user is still positioning.
++if (scr_code_import_step()) {
++    exit;
++}
++
+ 	if (save_pending) {
+     save_pending = false;
+     if (keyboard_check(vk_shift)) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_code_editor_draw/scr_code_editor_draw.gml b/C64DevMachine_win.yyp/scripts/scr_code_editor_draw/scr_code_editor_draw.gml
+index f39edec..30cfb0e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_code_editor_draw/scr_code_editor_draw.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_code_editor_draw/scr_code_editor_draw.gml
+@@ -92,6 +92,82 @@ draw_set_halign(fa_center);
+ 	draw_set_valign(fa_middle);
+ 	draw_text(_exp_x + _exp_w / 2, _exp_y + _exp_h / 2, "EXPORT");
+ 	
++	// ─── Import button ───
++	// Mirrors EXPORT, sitting to its left. Appends or replaces the block being
++	// edited; the file dialog and the whole-file read live in
++	// scr_import_code_block so the IMPORT menu path shares them.
++	var _imp_w = 80;
++	var _imp_h = 22;
++	var _imp_x = _exp_x - _imp_w - 10;
++	var _imp_y = _py + 3;
++	var _imp_hover = (_mx >= _imp_x && _mx <= _imp_x + _imp_w
++	                 && _my >= _imp_y && _my <= _imp_y + _imp_h);
++
++	draw_set_color(_imp_hover ? make_color_rgb(50, 100, 180) : make_color_rgb(30, 50, 80));
++	draw_rectangle(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, false);
++	draw_set_color(_imp_hover ? c_white : make_color_rgb(120, 160, 220));
++	draw_rectangle(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, true);
++
++	draw_set_font(fnt_c64_code);
++	draw_set_halign(fa_center);
++	draw_set_valign(fa_middle);
++	draw_text(_imp_x + _imp_w / 2, _imp_y + _imp_h / 2, "IMPORT");
++	draw_set_halign(fa_left);
++	draw_set_valign(fa_top);
++
++	// Import Click Logic
++	if (_imp_hover && mouse_check_button_pressed(mb_left)) {
++		var _imp_txt = scr_import_code_block_read();
++		if (_imp_txt != "") {
++			// Undo is pushed BEFORE the text changes, so one CTRL+Z puts the
++			// block back exactly as it was — an import is an edit like any other.
++			scr_code_editor_push_undo();
++
++			if (string_trim(code_editor_text) == "") {
++				// Nothing to lose, so no question worth asking.
++				code_editor_text = _imp_txt;
++			} else {
++				var _append = scr_show_question_bool(
++					"THIS CODE BLOCK ALREADY HAS CODE\n\n"
++				  + "YES = APPEND the imported file to the end\n"
++				  + "NO  = REPLACE everything with the imported file");
++				if (_append) {
++					code_editor_text += "\n" + _imp_txt;
++				} else {
++					code_editor_text = _imp_txt;
++				}
++			}
++
++			// Same tail the CTRL+V paste path runs: the caches and the line-start
++			// index are derived from the text and are stale the moment it moves.
++			code_editor_cursor      = string_length(code_editor_text);
++			code_editor_sel_start   = -1;
++			code_editor_sel_end     = -1;
++			code_editor_preferred_col = 0;
++			code_editor_blink       = 1;
++			code_editor_cache_dirty = true;
++			code_editor_symbol_cache_dirty = true;
++			keyboard_string         = "";
++
++			var _is_lines = string_split(code_editor_text, "\n");
++			var _is_count = array_length(_is_lines);
++			code_editor_line_starts = array_create(_is_count, 0);
++			var _is_off = 0;
++			for (var _isi = 0; _isi < _is_count; _isi++) {
++				code_editor_line_starts[_isi] = _is_off;
++				_is_off += string_length(_is_lines[_isi]) + 1;
++			}
++
++			if (instance_exists(code_editor_node)) {
++				code_editor_node.code_cache_dirty = true;
++				code_editor_node.height_dirty     = true;
++			}
++			global.addresses_dirty = true;
++			global.undo_dirty      = true;
++			global.autosave_dirty  = true;
++		}
++	}
++
+ 	// Export Click Logic
+ 	if (_exp_hover && mouse_check_button_pressed(mb_left)) {
+ 		var _def_name = instance_exists(code_editor_node) ? code_editor_node.code_descriptor + ".asm" : "code_export.txt";
+diff --git a/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.gml b/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.gml
+new file mode 100644
+index 0000000..44b7efd
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.gml
+@@ -0,0 +1,195 @@
++/// ====================================================================
++/// CODE BLOCK IMPORT  (PRO — gated behind !global.lite)
++///
++/// The mirror of the EXPORT button in scr_code_editor_draw. Two ways in:
++///
++///   * IMPORT button, inside the code editor. Acts on the block being
++///     edited: appends or replaces, and asks which when the block already
++///     holds code.
++///
++///   * IMPORT menu -> CODE BLOCK (.ASM). Spawns a NEW code block holding
++///     the file and latches it to the pointer, so the drop position is a
++///     click rather than a guess. The menu entry is built only when
++///     !global.lite, so there is nothing to choose in the Lite build.
++///
++/// Functions:
++///   scr_import_code_block_read()     file dialog -> text ("" on cancel)
++///   scr_import_code_block_menu()     menu entry: spawn + latch
++///   scr_code_import_step()           ride the pointer, drop, cancel
++///   scr_code_import_draw_banner()    the "click to drop it" strip
++///   scr_code_import_primary_pressed() one platform seam, as elsewhere
++/// ====================================================================
++
++/// @function scr_import_code_block_read()
++/// @desc Open a file dialog and read an assembly listing whole.
++/// @return {String} the file text, or "" when cancelled or unreadable.
++function scr_import_code_block_read() {
++    var _path = get_open_filename("Assembly Files|*.asm;*.txt|All Files|*.*", "");
++    // A native file dialog takes focus, so the key-up that ends the keypress is
++    // delivered to the dialog and not to the game. GameMaker is left thinking the
++    // key is still held, and keyboard_check_pressed() needs an up->down edge — so
++    // ESC silently stops working until the input state is reset. Every importer
++    // in this project does this immediately after its dialog returns.
++    io_clear();
++
++    if (_path == "") {
++        return "";
++    }
++    if (!file_exists(_path)) {
++        scr_show_message("CODE IMPORT\n\nThat file could not be found.");
++        return "";
++    }
++
++    // buffer_load + buffer_text reads the whole file as one string, newlines
++    // intact. The file_text_read_string loop the asset importers use drops the
++    // line breaks, which is fine for a byte list and useless for source.
++    var _buf = buffer_load(_path);
++    if (_buf < 0) {
++        scr_show_message("CODE IMPORT\n\nThat file could not be read.");
++        return "";
++    }
++    var _txt = buffer_read(_buf, buffer_text);
++    buffer_delete(_buf);
++
++    // A Windows-authored .asm opened on macOS otherwise carries CRs into
++    // scr_parse_asm_text, which reads them as part of the operand.
++    _txt = string_replace_all(_txt, "\r\n", "\n");
++    _txt = string_replace_all(_txt, "\r",   "\n");
++
++    if (string_trim(_txt) == "") {
++        scr_show_message("CODE IMPORT\n\nThat file is empty.");
++        return "";
++    }
++    return _txt;
++}
++
++/// @function scr_import_code_block_menu()
++/// @desc IMPORT menu entry. Reads a file, spawns a code block holding it, and
++///       latches that block to the pointer until the next click drops it.
++function scr_import_code_block_menu() {
++    // The menu does not offer this in Lite, but the guard stays: a menu list is
++    // one edit away from being built unconditionally again.
++    if (global.lite) {
++        scr_show_message("CODE BLOCKS ARE A FULL VERSION FEATURE");
++        return;
++    }
++    if (global.code_import_node != noone) {
++        return;   // one in flight is enough
++    }
++
++    var _txt = scr_import_code_block_read();
++    if (_txt == "") {
++        return;
++    }
++
++    var _n = scr_node_spawn("MACRO_CODE", mouse_x, mouse_y);
++    _n.instructions[0][1] = _txt;
++    _n.code_descriptor    = "IMPORTED CODE";
++    _n.code_cache_dirty   = true;
++    _n.height_dirty       = true;
++    with (_n) { event_user(0); }
++
++    global.code_import_node    = _n;
++    global.code_import_release = 0;
++
++    // obj_c64_node's Step exits wholesale on this, so the latched block cannot
++    // be grabbed, dragged or edited by the very click meant to drop it.
++    global.canEditNode = false;
++}
++
++/// @function scr_code_import_step()
++/// @desc Call early in obj_workspace_manager's Step. While a block is latched
++///       this owns the frame, the same way the code editor and welcome screen
++///       do, so no workspace shortcut fires under the pointer.
++/// @return {Bool} true while the import owns the frame.
++function scr_code_import_step() {
++    // Input is handed back a frame late on purpose. Instance Step order is not
++    // defined, so releasing canEditNode in the same frame as the drop click can
++    // let obj_c64_node see that same press and start a drag on the block that
++    // was just placed.
++    if (global.code_import_release > 0) {
++        global.code_import_release -= 1;
++        if (global.code_import_release == 0) {
++            global.canEditNode = true;
++        }
++        return true;
++    }
++
++    if (global.code_import_node == noone) {
++        return false;
++    }
++    if (!instance_exists(global.code_import_node)) {
++        global.code_import_node = noone;
++        global.canEditNode      = true;
++        return false;
++    }
++
++    var _n = global.code_import_node;
++    _n.x = mouse_x - (_n.width / 2);
++    _n.y = mouse_y - 12;
++
++    // ESC abandons the import rather than leaving a block stuck to the pointer
++    // with no way off it.
++    if (keyboard_check_pressed(vk_escape)) {
++        instance_destroy(_n);
++        global.code_import_node = noone;
++        global.canEditNode      = true;
++        keyboard_clear(vk_escape);
++        return true;
++    }
++
++    if (scr_code_import_primary_pressed()) {
++        global.code_import_node    = noone;
++        global.code_import_release = 2;
++
++        global.addresses_dirty = true;
++        global.undo_dirty      = true;
++        global.autosave_dirty  = true;
++
++        with (obj_c64_node) {
++            stats_cache_dirty = true;
++            height_dirty      = true;
++        }
++    }
++    return true;
++}
++
++/// @function scr_code_import_draw_banner()
++/// @desc The strip along the bottom of the GUI while a block is latched.
++///       Call from obj_workspace_manager's Draw GUI.
++function scr_code_import_draw_banner() {
++    if (global.code_import_node == noone)          { exit; }
++    if (!instance_exists(global.code_import_node)) { exit; }
++
++    var _gw = global.gui_w;
++    var _gh = display_get_gui_height();
++    var _bh = 28;
++    var _by = _gh - _bh - 10;
++    var _bw = 620;
++    var _bx = floor((_gw - _bw) / 2);
++
++    draw_sprite_stretched(spr_glassSlice, niceSliceFrm, _bx, _by, _bw, _bh);
++
++    var _font_before   = draw_get_font();
++    var _halign_before = draw_get_halign();
++    var _valign_before = draw_get_valign();
++
++    draw_set_font(fnt_C64_Angled);
++    draw_set_halign(fa_center);
++    draw_set_valign(fa_middle);
++    draw_set_color(make_color_rgb(255, 210, 80));
++    draw_rectangle(_bx + 2, _by + 2, _bx + _bw - 2, _by + _bh - 2, true);
++    draw_text(_bx + (_bw / 2), _by + (_bh / 2),
++              "IMPORTED CODE LATCHED TO MOUSE - CLICK TO DROP IT   (ESC CANCELS)");
++
++    draw_set_font(_font_before);
++    draw_set_halign(_halign_before);
++    draw_set_valign(_valign_before);
++    draw_set_color(c_white);
++}
++
++// Windows uses the raw button; the macOS port swaps the body of this one
++// function for `return scr_primary_pressed();` and nothing else changes.
++function scr_code_import_primary_pressed() {
++    return mouse_check_button_pressed(mb_left);
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.yy b/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.yy
+new file mode 100644
+index 0000000..76c0bd2
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_import_code_block",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_import_code_block",
++  "parent":{
++    "name":"CORE",
++    "path":"folders/SCRIPTS/CORE.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}

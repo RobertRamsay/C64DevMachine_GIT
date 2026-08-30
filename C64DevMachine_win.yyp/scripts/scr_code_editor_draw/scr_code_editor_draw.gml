@@ -92,6 +92,82 @@ draw_set_halign(fa_center);
 	draw_set_valign(fa_middle);
 	draw_text(_exp_x + _exp_w / 2, _exp_y + _exp_h / 2, "EXPORT");
 	
+	// ─── Import button ───
+	// Mirrors EXPORT, sitting to its left. Appends or replaces the block being
+	// edited; the file dialog and the whole-file read live in
+	// scr_import_code_block so the IMPORT menu path shares them.
+	var _imp_w = 80;
+	var _imp_h = 22;
+	var _imp_x = _exp_x - _imp_w - 10;
+	var _imp_y = _py + 3;
+	var _imp_hover = (_mx >= _imp_x && _mx <= _imp_x + _imp_w
+	                 && _my >= _imp_y && _my <= _imp_y + _imp_h);
+
+	draw_set_color(_imp_hover ? make_color_rgb(50, 100, 180) : make_color_rgb(30, 50, 80));
+	draw_rectangle(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, false);
+	draw_set_color(_imp_hover ? c_white : make_color_rgb(120, 160, 220));
+	draw_rectangle(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, true);
+
+	draw_set_font(fnt_c64_code);
+	draw_set_halign(fa_center);
+	draw_set_valign(fa_middle);
+	draw_text(_imp_x + _imp_w / 2, _imp_y + _imp_h / 2, "IMPORT");
+	draw_set_halign(fa_left);
+	draw_set_valign(fa_top);
+
+	// Import Click Logic
+	if (_imp_hover && mouse_check_button_pressed(mb_left)) {
+		var _imp_txt = scr_import_code_block_read();
+		if (_imp_txt != "") {
+			// Undo is pushed BEFORE the text changes, so one CTRL+Z puts the
+			// block back exactly as it was — an import is an edit like any other.
+			scr_code_editor_push_undo();
+
+			if (string_trim(code_editor_text) == "") {
+				// Nothing to lose, so no question worth asking.
+				code_editor_text = _imp_txt;
+			} else {
+				var _append = scr_show_question_bool(
+					"THIS CODE BLOCK ALREADY HAS CODE\n\n"
+				  + "YES = APPEND the imported file to the end\n"
+				  + "NO  = REPLACE everything with the imported file");
+				if (_append) {
+					code_editor_text += "\n" + _imp_txt;
+				} else {
+					code_editor_text = _imp_txt;
+				}
+			}
+
+			// Same tail the CTRL+V paste path runs: the caches and the line-start
+			// index are derived from the text and are stale the moment it moves.
+			code_editor_cursor      = string_length(code_editor_text);
+			code_editor_sel_start   = -1;
+			code_editor_sel_end     = -1;
+			code_editor_preferred_col = 0;
+			code_editor_blink       = 1;
+			code_editor_cache_dirty = true;
+			code_editor_symbol_cache_dirty = true;
+			keyboard_string         = "";
+
+			var _is_lines = string_split(code_editor_text, "\n");
+			var _is_count = array_length(_is_lines);
+			code_editor_line_starts = array_create(_is_count, 0);
+			var _is_off = 0;
+			for (var _isi = 0; _isi < _is_count; _isi++) {
+				code_editor_line_starts[_isi] = _is_off;
+				_is_off += string_length(_is_lines[_isi]) + 1;
+			}
+
+			if (instance_exists(code_editor_node)) {
+				code_editor_node.code_cache_dirty = true;
+				code_editor_node.height_dirty     = true;
+			}
+			global.addresses_dirty = true;
+			global.undo_dirty      = true;
+			global.autosave_dirty  = true;
+		}
+	}
+
 	// Export Click Logic
 	if (_exp_hover && mouse_check_button_pressed(mb_left)) {
 		var _def_name = instance_exists(code_editor_node) ? code_editor_node.code_descriptor + ".asm" : "code_export.txt";
