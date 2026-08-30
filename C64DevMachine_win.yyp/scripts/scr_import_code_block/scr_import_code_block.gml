@@ -64,9 +64,9 @@ function scr_code_block_name_strip(_txt) {
     var _first = true;
     for (var _i = 0; _i < array_length(_lines); _i++) {
         var _l = string_trim(_lines[_i]);
-        var _lu = string_upper(_l);
-        if (string_length(_l) >= 8  && string_copy(_lu, 1, 8)  == "// @NAME")    { continue; }
-        if (string_length(_l) >= 11 && string_copy(_lu, 1, 11) == "// @NOSCOPE") { continue; }
+        if (string_length(_l) >= 8 && string_upper(string_copy(_l, 1, 8)) == "// @NAME") {
+            continue;
+        }
         if (!_first) {
             _out += "\n";
         }
@@ -84,74 +84,6 @@ function scr_code_block_name_apply(_txt, _name) {
         return _clean;
     }
     return "// @name " + string_trim(string(_name)) + "\n" + _clean;
-}
-
-/// ====================================================================
-/// SCOPING AN IMPORTED LISTING
-///
-/// A { } block is desugared by scr_desugar_scopes BEFORE anything else
-/// parses the text. What it rewrites is narrow and worth being precise
-/// about, because it is easy to credit it with more than it does:
-///
-///   * LABEL DECLARATIONS become `__sN_name:`.
-///   * FLOW OPERANDS naming a bare label — jmp jsr bne beq bcc bcs bpl
-///     bmi bvc bvs — are prefixed to match.
-///
-/// That is all. `name = $value` assignments are NOT scoped: they go into
-/// global.named_loc_map under their own name and are visible to every
-/// block and macro in the project, so two listings that both declare
-/// `col1` still fight over it. They appear to work per-block only
-/// because the assignment is read before the use inside the same parse.
-///
-/// The collision braces DO fix is the label one, and it is silent: the
-/// assembler's label map is a plain `self.labels[? name] = pc`, so a
-/// second definition overwrites the first with no error. Import the same
-/// listing twice unscoped and both copies' `jmp bf_start` resolve to the
-/// SECOND copy — one block runs the other's code, and nothing warns you.
-///
-/// So imported code is wrapped by default. The two exceptions:
-///
-///   * The listing already contains braces — it manages its own scoping,
-///     or has a `repeat` block, and a second wrap would be presumptuous.
-///   * It carries `// @noscope` — which is exactly what this project's
-///     own EXPORT writes for an unscoped block, so a block that
-///     deliberately publishes an entry point for other nodes to JSR
-///     survives an export/import round trip with its label intact.
-/// ====================================================================
-
-/// @function scr_code_block_is_scoped(_txt)
-/// @desc Does this listing already use braces of its own?
-function scr_code_block_is_scoped(_txt) {
-    var _lines = string_split(string(_txt), "\n");
-    for (var _i = 0; _i < array_length(_lines); _i++) {
-        var _l = string_trim(_lines[_i]);
-        if (_l == "")                                       { continue; }
-        if (string_char_at(_l, 1) == ";")                   { continue; }
-        if (string_length(_l) >= 2 && string_copy(_l, 1, 2) == "//") { continue; }
-        if (string_pos("{", _l) > 0 || string_pos("}", _l) > 0) { return true; }
-    }
-    return false;
-}
-
-/// @function scr_code_block_is_noscope(_txt)
-/// @desc Has the listing explicitly opted out of being wrapped?
-function scr_code_block_is_noscope(_txt) {
-    var _lines = string_split(string(_txt), "\n");
-    for (var _i = 0; _i < array_length(_lines); _i++) {
-        var _l = string_upper(string_trim(_lines[_i]));
-        if (string_length(_l) >= 11 && string_copy(_l, 1, 11) == "// @NOSCOPE") {
-            return true;
-        }
-    }
-    return false;
-}
-
-/// @function scr_code_block_scope_wrap(_txt)
-/// @desc Wrap a listing in a { } scope unless it says otherwise.
-function scr_code_block_scope_wrap(_txt) {
-    if (scr_code_block_is_noscope(_txt)) { return _txt; }
-    if (scr_code_block_is_scoped(_txt))  { return _txt; }
-    return "{\n" + string(_txt) + "\n}";
 }
 
 /// @function scr_import_code_block_read()
@@ -220,12 +152,8 @@ function scr_import_code_block_menu() {
     // The file names the block when it carries a `// @name` line — which is
     // what this project's own exports write — so a block exported as
     // "Border Flash" comes back as "Border Flash" and not "Code Block".
-    var _name    = scr_code_block_name_read(_txt);
-    var _noscope = scr_code_block_is_noscope(_txt);
+    var _name = scr_code_block_name_read(_txt);
     _txt = scr_code_block_name_strip(_txt);
-    if (!_noscope) {
-        _txt = scr_code_block_scope_wrap(_txt);
-    }
     if (_name == "") {
         _name = "IMPORTED CODE";
     }
