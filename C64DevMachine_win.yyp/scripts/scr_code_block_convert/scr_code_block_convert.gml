@@ -1256,7 +1256,7 @@ function scr_cbc_convert() {
                + "NO   -  keep the TEXT_DATA asset (a // @asset line is written\n"
                + "        so it stays in the build)";
 
-        var _inline = show_question(_q);
+        var _inline = scr_show_question_bool(_q);
         io_clear();
 
         if (_inline) {

@@ -1009,7 +1009,7 @@ global.kernal_unlocked = variable_struct_exists(load_data, "kernal_unlocked") ? 
         _lmsg += "One parked over a collapsed block looks like the fold\n";
         _lmsg += "has left something behind.\n\nRemove them?";
 
-        if (show_question(_lmsg)) {
+        if (scr_show_question_bool(_lmsg)) {
             for (var _lr = 0; _lr < _lcount; _lr++) {
                 if (instance_exists(_loose[_lr])) {
                     instance_destroy(_loose[_lr]);

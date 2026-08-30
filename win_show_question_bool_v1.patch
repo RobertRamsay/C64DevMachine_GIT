@@ -1,0 +1,39 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_charpad_ctm_build_meta1x1/scr_charpad_ctm_build_meta1x1.gml b/C64DevMachine_win.yyp/scripts/scr_charpad_ctm_build_meta1x1/scr_charpad_ctm_build_meta1x1.gml
+index ab18f06..523a786 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_charpad_ctm_build_meta1x1/scr_charpad_ctm_build_meta1x1.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_charpad_ctm_build_meta1x1/scr_charpad_ctm_build_meta1x1.gml
+@@ -209,7 +209,7 @@ function scr_charpad_ctm_build_meta1x1(
+     var _oversized = (_map_w > 40) || (_map_h > 25);
+     var _do_slice  = false;
+     if (_oversized) {
+-        _do_slice = show_question(
++        _do_slice = scr_show_question_bool(
+             "CharPad map is " + string(_map_w) + "x" + string(_map_h)
+           + " (bigger than a 40x25 screen).\n\n"
+           + "How should it be imported?\n"
+diff --git a/C64DevMachine_win.yyp/scripts/scr_code_block_convert/scr_code_block_convert.gml b/C64DevMachine_win.yyp/scripts/scr_code_block_convert/scr_code_block_convert.gml
+index 88ec4b0..685f1b7 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_code_block_convert/scr_code_block_convert.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_code_block_convert/scr_code_block_convert.gml
+@@ -1256,7 +1256,7 @@ function scr_cbc_convert() {
+                + "NO   -  keep the TEXT_DATA asset (a // @asset line is written\n"
+                + "        so it stays in the build)";
+ 
+-        var _inline = show_question(_q);
++        var _inline = scr_show_question_bool(_q);
+         io_clear();
+ 
+         if (_inline) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 7130025..fd20042 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -1009,7 +1009,7 @@ global.kernal_unlocked = variable_struct_exists(load_data, "kernal_unlocked") ?
+         _lmsg += "One parked over a collapsed block looks like the fold\n";
+         _lmsg += "has left something behind.\n\nRemove them?";
+ 
+-        if (show_question(_lmsg)) {
++        if (scr_show_question_bool(_lmsg)) {
+             for (var _lr = 0; _lr < _lcount; _lr++) {
+                 if (instance_exists(_loose[_lr])) {
+                     instance_destroy(_loose[_lr]);

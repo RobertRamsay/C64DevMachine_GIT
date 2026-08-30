@@ -209,7 +209,7 @@ function scr_charpad_ctm_build_meta1x1(
     var _oversized = (_map_w > 40) || (_map_h > 25);
     var _do_slice  = false;
     if (_oversized) {
-        _do_slice = show_question(
+        _do_slice = scr_show_question_bool(
             "CharPad map is " + string(_map_w) + "x" + string(_map_h)
           + " (bigger than a 40x25 screen).\n\n"
           + "How should it be imported?\n"
