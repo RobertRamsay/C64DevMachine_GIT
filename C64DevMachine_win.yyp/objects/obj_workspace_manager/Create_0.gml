@@ -972,9 +972,13 @@ welcome_open          = !welcome_hide_checked;
 // -1 on x is the "never positioned" marker; the draw script parks it beside the
 // shortcuts column the first time it runs, then this holds the dragged position.
 showcode_x    = ini_read_real("showcode", "x",    -1);
-showcode_y    = ini_read_real("showcode", "y",    50);
-showcode_w    = clamp(ini_read_real("showcode", "w",    420), 300, 900);
-showcode_rows = clamp(ini_read_real("showcode", "rows",  20),   5,  60);
+showcode_y    = ini_read_real("showcode", "y",    53);
+// SHOWCODE_W_MIN/MAX rather than the literals this used to carry. The panel's
+// floor moved to 225 when it was allowed to narrow further, but this clamp kept
+// its own 300 — so a saved width below 300 was quietly widened on every load
+// and the narrow panel never survived a restart.
+showcode_w    = clamp(ini_read_real("showcode", "w",   248), SHOWCODE_W_MIN, SHOWCODE_W_MAX);
+showcode_rows = clamp(ini_read_real("showcode", "rows",  22),   5,  SHOWCODE_MAX_ROWS);
 showcode_open = (ini_read_real("showcode", "open", 1) == 1);
 showcode_mode = clamp(ini_read_real("showcode", "mode", 0), 0, 1);
 // MISC: byte tables, <LABEL/>LABEL pointer bytes and macro scaffolding labels.

@@ -575,6 +575,7 @@ if (gui_menu_open == 4) {
         { title: "GRID",            action: "GRID"            },
         { title: "EFFECTS",         action: "EFFECTS"         },
         { title: "COMMENTS",        action: "COMMENTS"        },
+        { title: "SHOW CODE",       action: "SHOW_CODE"       },
         { title: "FLOW VIEW",    action: "FLOW_OVERLAY"    },
         { title: "FLOW TYPE",    action: "FLOW_LINE_STYLE" },
         { title: "FULLSCREEN",      action: "FULLSCREEN"      },
@@ -649,6 +650,13 @@ if (gui_menu_open == 4) {
         if (_op.action == "COMMENTS") {
             _state_str = global.comments_visible ? "ON" : "OFF";
             _state_col = global.comments_visible ? c_lime : c_red;
+        }
+        if (_op.action == "SHOW_CODE") {
+            // Drives showcode_open directly. That flag is already persisted as
+            // [showcode] open, so this needs no key of its own — a second one
+            // would just be a second source of truth for the same thing.
+            _state_str = showcode_open ? "ON" : "OFF";
+            _state_col = showcode_open ? c_lime : c_red;
         }
         if (_op.action == "FULLSCREEN") {
             _shortcut_str = "F10";
@@ -753,6 +761,10 @@ if (gui_menu_open == 4) {
             }
             else if (_op.action == "COMMENTS") {
                 global.comments_visible = !global.comments_visible;
+            }
+            else if (_op.action == "SHOW_CODE") {
+                showcode_open = !showcode_open;
+                scr_show_code_save_ini();
             }
             else if (_op.action == "FLOW_OVERLAY") {
                 // Mirrors the F-key handler in obj_workspace_manager Step so
