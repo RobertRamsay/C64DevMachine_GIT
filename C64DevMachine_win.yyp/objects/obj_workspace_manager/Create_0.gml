@@ -1028,6 +1028,13 @@ global.init_spine_w = 160;
 global.code_import_node    = noone;
 global.code_import_release = 0;
 
+// Frames of layout pass still owed. Heights are DERIVED in obj_c64_node's Draw,
+// but the layout pass runs in Step — so anything that writes heights straight
+// onto instances (a restore, a load) gets packed against values that are one
+// frame out of date. Whoever does that asks for a couple of extra passes here
+// instead of trying to re-derive every height itself.
+global.relayout_frames = 0;
+
 scr_uqmenu_load();
 
 // FLOW OVERLAY (F key) — toggleable visualization of JMP/JSR/BRANCH/IRQ-

@@ -2050,6 +2050,16 @@ if (keyboard_check_pressed(ord("V"))) {
 // =============================================================
 // 2. LIVE PC BROADCAST & SPINE TRAVERSAL (DIRTY FLAG GATED)
 // =============================================================
+// A restore or a load has written heights that Draw has not re-derived yet, so
+// the pass below would pack against stale sizes. Draw runs between two Steps,
+// so asking again on the next frame is enough — and asking twice covers a node
+// whose height depends on another node's (INIT's auto-RTS row is the one that
+// found this).
+if (global.relayout_frames > 0) {
+    global.relayout_frames -= 1;
+    global.addresses_dirty  = true;
+}
+
 if (global.addresses_dirty) {
     global.addresses_dirty = false;
 

@@ -416,6 +416,12 @@ with (obj_c64_node) {
     }
 
     global.addresses_dirty = true;
+
+    // height_dirty above only marks them; the values are not re-derived until
+    // obj_c64_node's Draw runs, which is AFTER the layout pass in Step. So the
+    // first pack after a restore uses whatever heights the snapshot happened to
+    // carry. Ask for two more passes once Draw has caught up.
+    global.relayout_frames = 2;
 	
 	
 	with (obj_c64_node) {
