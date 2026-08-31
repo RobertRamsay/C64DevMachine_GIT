@@ -1002,7 +1002,22 @@ function scr_show_code_fold() {
         showcode_lines  = _clean;
         showcode_dirty  = false;
 
-        var _maxs = max(0, array_length(showcode_lines) - showcode_rows);
+        // Clamp only against the list length, NOT against showcode_rows.
+        //
+        // showcode_rows is the row count the user ASKED for; the draw pass uses
+        // a fitted count that is capped by the height actually available, and
+        // when the panel is short the fitted count is the smaller of the two.
+        // Clamping here to (length - showcode_rows) therefore produced a
+        // SMALLER ceiling than the draw pass allows, so every rebuild pulled
+        // the scroll back up — and the panel rebuilds often. Scrolling up
+        // always looked fine because it was being helped; scrolling down was
+        // quietly undone a frame later, which is why hovering a node lower in
+        // the program never seemed to move the panel.
+        //
+        // The draw pass clamps accurately against its own fitted count every
+        // frame, so there is nothing for this one to do beyond keeping the
+        // value inside the list.
+        var _maxs = max(0, array_length(showcode_lines) - 1);
         showcode_scroll = clamp(showcode_scroll, 0, _maxs);
     }
 }
@@ -1442,7 +1457,14 @@ function scr_show_code_draw() {
                 }
                 if (_find >= 0) {
                     if (_find < showcode_scroll || _find >= showcode_scroll + _rows) {
+                        var _sc_was = showcode_scroll;
                         showcode_scroll = clamp(_find - 3, 0, _maxs);
+                        if (showcode_scroll != _sc_was) {
+                            show_debug_message("SHOWCODE HOVER: row " + string(_find)
+                                + " of " + string(_total) + " - scroll " + string(_sc_was)
+                                + " -> " + string(showcode_scroll)
+                                + "  (rows " + string(_rows) + ", max " + string(_maxs) + ")");
+                        }
                     }
                 }
             }

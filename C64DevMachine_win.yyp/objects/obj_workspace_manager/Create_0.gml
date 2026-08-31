@@ -757,7 +757,7 @@ opcode_hover_delay    = 30;    // frames before tooltip shows (30 = 0.5s at 60fp
 // description of that node/macro. Set by obj_c64_node's Step event,
 // drawn here in Draw GUI so it always renders on top.
 node_tooltip_node    = noone;
-node_tooltip_delay   = 60;     // frames before tooltip shows (60 = 1s at 60fps)
+node_tooltip_delay   = 30;     // frames before tooltip shows (30 = 0.5s at 60fps)
 opcode_helper_on      = true;  // toggled via OPTIONS menu
 gui_menu_drag_active  = false; // true once user starts dragging a macro from the menu
 gui_menu_node_spawned = false; // guard: spawn only once per drag
