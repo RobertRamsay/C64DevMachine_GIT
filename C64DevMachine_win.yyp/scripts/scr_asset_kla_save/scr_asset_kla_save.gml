@@ -328,7 +328,14 @@ _asset.buffer = _buf;
     // Broadcast the update...
     with (all) {
         if (variable_instance_exists(id, "instructions")) {
-            if (is_array(instructions) && array_length(instructions) > 0 && is_array(instructions[0])) {
+            // array_length(instructions[0]) > 1 matters: this runs `with (all)`,
+            // so it inspects EVERY instance in the room, and an inner array of
+            // length 1 is legal — the RTS node the build-time "no core loop or
+            // RTS found" prompt spawns was exactly that. Reading [1] off it is
+            // an index-out-of-range, which is why saving a KLA crashed after
+            // accepting that prompt.
+            if (is_array(instructions) && array_length(instructions) > 0 && is_array(instructions[0])
+             && array_length(instructions[0]) > 1) {
                 // If the Node's label matches the asset name, force the update!
                 if (string(instructions[0][1]) == _asset.name) {
                     

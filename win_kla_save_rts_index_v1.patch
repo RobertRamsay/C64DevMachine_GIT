@@ -1,0 +1,37 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index e636530..1c7450b 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -2373,7 +2373,11 @@ if (_cmnem == "rts" || _cmnem == "rti") {
+                     var _rts_n = instance_create_depth(_rts_x, _rts_y, -500, obj_c64_node);
+                     _rts_n.node_title   = "RTS";
+                     _rts_n.node_type    = "NORMAL";
+-                    _rts_n.instructions = [["rts"]];
++                    // ["rts", 0], not ["rts"]. Every other RTS in the project
++                    // carries the operand slot — the palette entry, the R key
++                    // spawn, the starter template — and code that walks nodes
++                    // reasonably expects instructions[0][1] to be there.
++                    _rts_n.instructions = [["rts", 0]];
+                     with (_rts_n) { event_user(0); }
+                     _rts_n.pc_address         = 0;
+                     _rts_n.is_connected       = true;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_kla_save/scr_asset_kla_save.gml b/C64DevMachine_win.yyp/scripts/scr_asset_kla_save/scr_asset_kla_save.gml
+index 75af77b..338fd66 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_kla_save/scr_asset_kla_save.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_kla_save/scr_asset_kla_save.gml
+@@ -328,7 +328,14 @@ _asset.buffer = _buf;
+     // Broadcast the update...
+     with (all) {
+         if (variable_instance_exists(id, "instructions")) {
+-            if (is_array(instructions) && array_length(instructions) > 0 && is_array(instructions[0])) {
++            // array_length(instructions[0]) > 1 matters: this runs `with (all)`,
++            // so it inspects EVERY instance in the room, and an inner array of
++            // length 1 is legal — the RTS node the build-time "no core loop or
++            // RTS found" prompt spawns was exactly that. Reading [1] off it is
++            // an index-out-of-range, which is why saving a KLA crashed after
++            // accepting that prompt.
++            if (is_array(instructions) && array_length(instructions) > 0 && is_array(instructions[0])
++             && array_length(instructions[0]) > 1) {
+                 // If the Node's label matches the asset name, force the update!
+                 if (string(instructions[0][1]) == _asset.name) {
+                     

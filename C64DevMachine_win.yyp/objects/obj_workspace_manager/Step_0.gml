@@ -2373,7 +2373,11 @@ if (_cmnem == "rts" || _cmnem == "rti") {
                     var _rts_n = instance_create_depth(_rts_x, _rts_y, -500, obj_c64_node);
                     _rts_n.node_title   = "RTS";
                     _rts_n.node_type    = "NORMAL";
-                    _rts_n.instructions = [["rts"]];
+                    // ["rts", 0], not ["rts"]. Every other RTS in the project
+                    // carries the operand slot — the palette entry, the R key
+                    // spawn, the starter template — and code that walks nodes
+                    // reasonably expects instructions[0][1] to be there.
+                    _rts_n.instructions = [["rts", 0]];
                     with (_rts_n) { event_user(0); }
                     _rts_n.pc_address         = 0;
                     _rts_n.is_connected       = true;
