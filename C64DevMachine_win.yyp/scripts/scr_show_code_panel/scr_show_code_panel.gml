@@ -82,6 +82,15 @@
 #macro SHOWCODE_GRAB  5
 #macro SHOWCODE_MAX_ROWS 60
 
+// How narrow the panel may be dragged. 300 was the old floor and is still the
+// width everything is laid out for; below it the only thing that does not fit
+// is the right-justified "NNB" size on a group header, which is the least
+// important number on the row — the address and the name both survive. So the
+// floor drops another 25% and the size is simply not drawn under SHOWCODE_W_FULL.
+#macro SHOWCODE_W_MIN  225
+#macro SHOWCODE_W_FULL 300
+#macro SHOWCODE_W_MAX  900
+
 // =====================================================================
 // Normalise a compile-chain mnemonic to an obj_opCodeManager key.
 // =====================================================================
@@ -1033,7 +1042,7 @@ function scr_show_code_hit() {
         }
 
         var _gh = display_get_gui_height();
-        var _pw = clamp(showcode_w, 300, 900);
+        var _pw = clamp(showcode_w, SHOWCODE_W_MIN, SHOWCODE_W_MAX);
 
         var _px = showcode_x;
         if (_px < 0) {
@@ -1107,7 +1116,7 @@ function scr_show_code_draw() {
         var _pad_b = SHOWCODE_PAD_B;
         var _grab  = SHOWCODE_GRAB;
 
-        showcode_w    = clamp(showcode_w, 300, 900);
+        showcode_w    = clamp(showcode_w, SHOWCODE_W_MIN, SHOWCODE_W_MAX);
         showcode_rows = clamp(showcode_rows, 5, SHOWCODE_MAX_ROWS);
 
         var _pw = showcode_w;
@@ -1226,11 +1235,11 @@ function scr_show_code_draw() {
         if (showcode_resize != 0) {
             if (mouse_check_button(mb_left)) {
                 if (showcode_resize == 1) {
-                    var _newx = clamp(_mx, 0, showcode_rs_edge - 300);
-                    showcode_w = clamp(showcode_rs_edge - _newx, 300, 900);
+                    var _newx = clamp(_mx, 0, showcode_rs_edge - SHOWCODE_W_MIN);
+                    showcode_w = clamp(showcode_rs_edge - _newx, SHOWCODE_W_MIN, SHOWCODE_W_MAX);
                     showcode_x = showcode_rs_edge - showcode_w;
                 } else if (showcode_resize == 2) {
-                    showcode_w = clamp(_mx - _px, 300, 900);
+                    showcode_w = clamp(_mx - _px, SHOWCODE_W_MIN, SHOWCODE_W_MAX);
                 } else {
                     var _body_top = _py + _hdr_h + _pad_t;
                     showcode_rows = clamp(round((_my - _pad_b - _body_top) / _row_h), 5, SHOWCODE_MAX_ROWS);
@@ -1504,10 +1513,16 @@ function scr_show_code_draw() {
                 draw_set_color(_gcol);
                 draw_text_transformed(_col_byte + _indent, _ry, _gtitle, 1.0, 1.0, 0);
 
-                draw_set_halign(fa_right);
-                draw_set_color(make_color_rgb(110, 130, 150));
-                draw_text_transformed(_px + _pw - 20, _ry, string(_row.sz) + "B", 1.0, 1.0, 0);
-                draw_set_halign(fa_left);
+                // Below the full width the group title would run under this,
+                // so the size goes rather than the name. Group sizes are also
+                // the one figure here you can get elsewhere — the node itself
+                // and the memory bar both carry it.
+                if (_pw >= SHOWCODE_W_FULL) {
+                    draw_set_halign(fa_right);
+                    draw_set_color(make_color_rgb(110, 130, 150));
+                    draw_text_transformed(_px + _pw - 20, _ry, string(_row.sz) + "B", 1.0, 1.0, 0);
+                    draw_set_halign(fa_left);
+                }
 
                 continue;
             }
