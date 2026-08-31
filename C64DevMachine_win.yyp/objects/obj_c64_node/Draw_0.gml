@@ -1119,6 +1119,15 @@ if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTE
 // =============================================================
 // I. HEADER TITLE & STATS
 // =============================================================
+// node_type is not known in Create (spawn sets it, then calls event_user), so
+// the badge test is resolved here on the first draw and kept.
+if (info_badge < 0) {
+    info_badge = 0;
+    if (!is_undefined(scr_node_tooltip_text(node_type))) {
+        info_badge = 1;
+    }
+}
+
 draw_set_font(fnt_c64_code);
 draw_set_color(_text_col);
 if (_lod_header) {
@@ -1162,6 +1171,15 @@ if (_lod_header) {
             }
 
             var _title_max_w = width - 16;
+            if (info_badge == 1) {
+                // Keep the title clear of the [INFO] badge, or a long one runs
+                // underneath it. Measured rather than guessed, since the badge
+                // is drawn in a different font from the title.
+                var _tw_font = draw_get_font();
+                draw_set_font(fnt_c64_pico);
+                _title_max_w -= (string_width("[INFO]") + 8);
+                draw_set_font(_tw_font);
+            }
             if (string_width(_disp_title) > _title_max_w && string_length(_disp_title) > 1) {
                 while (string_length(_disp_title) > 1 && string_width(_disp_title) > _title_max_w) {
                     _disp_title = string_copy(_disp_title, 1, string_length(_disp_title) - 1);
@@ -1187,6 +1205,38 @@ if (_lod_header) {
         }
 
         draw_set_font(fnt_c64_code);
+    }
+
+    // ---- [INFO] BADGE ----
+    // Hovering the right fifth of the header surfaces the node's description
+    // (obj_c64_node Step_0 holds that hotspot and the dwell timer). Nothing on
+    // screen said so, which made the feature findable only by accident.
+    //
+    // Drawn only where a tooltip actually exists, so the badge never offers
+    // something that is not there, and lit while the pointer is inside the
+    // hotspot — including the four pixels below the header bar that the hotspot
+    // also covers, because that is where the tooltip really does trigger.
+    if (info_badge == 1) {
+        var _inf_hot = point_in_rectangle(mouse_x, mouse_y,
+                                          draw_x + (width * 0.8), y,
+                                          draw_x + width, y + 24);
+
+        var _inf_font   = draw_get_font();
+        var _inf_halign = draw_get_halign();
+
+        draw_set_font(fnt_c64_pico);
+        draw_set_halign(fa_right);
+
+        if (_inf_hot) {
+            draw_set_color(c_white);
+        } else {
+            draw_set_color(merge_colour(_text_col, _head_col, 0.55));
+        }
+        draw_text(draw_x + width - 5, y + 5, "[INFO]");
+
+        draw_set_halign(_inf_halign);
+        draw_set_font(_inf_font);
+        draw_set_color(_text_col);
     }
 }
 

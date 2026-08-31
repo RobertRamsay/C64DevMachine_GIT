@@ -293,6 +293,12 @@ if (stable_uid == -1) {
 // and needs one grid row of height to fit it. Cached because the height switch
 // runs at the top of Draw and the marker at the bottom — the marker raises
 // height_dirty when this changes, so the row is there on the next frame.
+// Does this node type have a tooltip, and therefore an [INFO] badge? Resolved
+// once on the first draw rather than per frame: scr_node_tooltip_text builds a
+// large struct literal every call, and asking it for every node every frame is
+// not something to do for a six-character label. -1 = not resolved yet.
+info_badge = -1;
+
 init_rts_marker = false;
 
 prev_height = height; // must be last
