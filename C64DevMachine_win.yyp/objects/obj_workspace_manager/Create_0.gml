@@ -1,6 +1,6 @@
 /// @desc Setup Workspace, Palette & C64 Environment
 global.lite=0;
-global.build_date = "August 31st, 2026"; // edit this string for each release
+global.build_date = "September 1st, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {
@@ -57,16 +57,17 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-    "NEW - Keyboard Macros: A-Z, 0-9/Fn and Misc, read straight from the matrix.",
-    "NEW - Mouse Macro (1351) for proportional mouse input.",
-    "NEW - Import .ASM into a Code Block, or drop one in as a new block.",
-    "NEW - [INFO] on a macro header - hover it for what that node does.",
-    "REFINED - INIT block and RTS auto injecting.",
-    "REFINED - Code Panel narrows further, and follows the node you hover.",
-    "REFINED - Convert to Code refuses the nodes that cannot survive it.",
-    "FIXED - Mapping box jump list crash, and phantom memory conflicts.",
+    "ADDED - C64 Ultimate register group: turbo, SuperCPU, REU and UCI.",
+    "ADDED - SHOW CODE on/off in OPTIONS, saved to the ini.",
+    "CHANGED - Colour picker on Text Scroll and VIC, no more click cycling.",
+    "FIXED - Banking macros now restore your $01, not a hardcoded $37.",
+    "FIXED - Code blocks sharing a workspace variable no longer flash red.",
+    "FIXED - Collapsed blocks no longer block drags, flow lines or hovers.",
+    "FIXED - KLA save crash after accepting the RTS injection prompt.",
+    "REFINED - Code Panel width and position now survive a restart.",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
+    "SUPPORT the development by leaving a review on ITCH and byuing the PRO version.",
     ];
 	
 welcome_credits_lines = [
