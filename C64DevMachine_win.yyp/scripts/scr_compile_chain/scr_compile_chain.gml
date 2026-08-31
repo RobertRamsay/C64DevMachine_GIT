@@ -5339,9 +5339,6 @@ case "MACRO_MOUSE": {
     var _m_yhi  = _zp + 5;
     var _m_tmp  = _zp + 6;
 
-    // CIA1 port A bits 7-6 pick which control port the SID pots see:
-    // %01 = port 1, %10 = port 2. The BUTTONS are read from the other
-    // register, the same way round as MACRO_JOY.
     var _m_btn = 0xDC00;
     var _m_sel = 0x80;
     if (_port == 1) {
@@ -5349,11 +5346,24 @@ case "MACRO_MOUSE": {
         _m_sel = 0x40;
     }
 
-    var _m_uid  = string(real(_id));
-    var _m_xpos = "mse_xpos_" + _m_uid;
-    var _m_xadd = "mse_xadd_" + _m_uid;
-    var _m_ypos = "mse_ypos_" + _m_uid;
-    var _m_yadd = "mse_yadd_" + _m_uid;
+    var _m_uid = string(real(_id));
+
+    // ---- which movement calls are wanted ----
+    // Slots 3..6 are LF / RT / UP / DN. A slot only counts as live when it is
+    // enabled AND names something, so an empty label cannot emit a JSR to a
+    // label that was never declared.
+    var _m_call = ["", "", "", ""];
+    for (var _mci = 0; _mci < 4; _mci++) {
+        var _mslot = 3 + _mci;
+        if (_mslot >= array_length(_id.instructions)) { continue; }
+        var _mrow2 = _id.instructions[_mslot];
+        if (array_length(_mrow2) < 3) { continue; }
+        if (_mrow2[2] != 1)           { continue; }
+        if (string(_mrow2[1]) == "")  { continue; }
+        _m_call[_mci] = string(_mrow2[1]);
+    }
+    var _m_x_dir = (_m_call[0] != "" || _m_call[1] != "");
+    var _m_y_dir = (_m_call[2] != "" || _m_call[3] != "");
 
     // ---- point the pots at the chosen port ----
     // Read-modify-write, not a plain store: the low six bits of $DC00 are the
@@ -5365,78 +5375,136 @@ case "MACRO_MOUSE": {
     array_push(_list, ["sta_abs", 0xDC00,  _id]);
 
     // ---- X AXIS ----
+    // X holds this frame's raw reading the whole way through, so the previous
+    // reading can be updated with one STX at the end and the scratch byte is
+    // free to carry the signed delta into the direction test.
     array_push(_list, ["lda_abs", 0xD419,  _id]);   // POTX
     array_push(_list, ["and_imm", 0x7F,    _id]);
-    array_push(_list, ["sta_zp",  _m_tmp,  _id]);
+    array_push(_list, ["tax",     0,       _id]);
     array_push(_list, ["sec",     0,       _id]);
     array_push(_list, ["sbc_zp",  _m_oldx, _id]);
-    // Six-bit delta. Anything at or above $20 is a move the other way, so it
-    // is sign-extended into a full negative byte and Y carries the $FF that
-    // the high byte of the 16-bit add needs.
+    // Six-bit delta. Anything at or above $20 is a move the other way, so it is
+    // sign-extended into a full negative byte and Y carries the $FF the high
+    // half of the 16-bit add needs.
     array_push(_list, ["and_imm", 0x3F,    _id]);
     array_push(_list, ["cmp_imm", 0x20,    _id]);
-    array_push(_list, ["bcc",     _m_xpos, _id]);
+    array_push(_list, ["bcc",     "mse_xpos_" + _m_uid, _id]);
     array_push(_list, ["ora_imm", 0xC0,    _id]);
     array_push(_list, ["ldy_imm", 0xFF,    _id]);
-    array_push(_list, ["jmp",     _m_xadd, _id]);
-    array_push(_list, ["label",   _m_xpos       ]);
+    array_push(_list, ["jmp",     "mse_xadd_" + _m_uid, _id]);
+    array_push(_list, ["label",   "mse_xpos_" + _m_uid       ]);
     array_push(_list, ["ldy_imm", 0x00,    _id]);
-    array_push(_list, ["label",   _m_xadd       ]);
+    array_push(_list, ["label",   "mse_xadd_" + _m_uid       ]);
+    if (_m_x_dir) {
+        array_push(_list, ["sta_zp", _m_tmp, _id]);
+    }
     array_push(_list, ["clc",     0,       _id]);
     array_push(_list, ["adc_zp",  _m_xlo,  _id]);
     array_push(_list, ["sta_zp",  _m_xlo,  _id]);
     array_push(_list, ["tya",     0,       _id]);
     array_push(_list, ["adc_zp",  _m_xhi,  _id]);
     array_push(_list, ["sta_zp",  _m_xhi,  _id]);
-    array_push(_list, ["lda_zp",  _m_tmp,  _id]);
-    array_push(_list, ["sta_zp",  _m_oldx, _id]);
+    array_push(_list, ["stx_zp",  _m_oldx, _id]);
+
+    // ---- X DIRECTION CALLS ----
+    // Done after the accumulate, because a JSR is free to clobber A and Y.
+    if (_m_x_dir) {
+        var _m_xskip = "mse_xdone_" + _m_uid;
+        var _m_xneg  = "mse_xneg_"  + _m_uid;
+        array_push(_list, ["lda_zp", _m_tmp,   _id]);
+        array_push(_list, ["beq",    _m_xskip, _id]);   // no movement, no call
+        array_push(_list, ["bmi",    _m_xneg,  _id]);
+        if (_m_call[1] != "") {
+            array_push(_list, ["jsr", _m_call[1], _id]);   // RT
+        }
+        array_push(_list, ["jmp",   _m_xskip, _id]);
+        array_push(_list, ["label", _m_xneg        ]);
+        if (_m_call[0] != "") {
+            array_push(_list, ["jsr", _m_call[0], _id]);   // LF
+        }
+        array_push(_list, ["label", _m_xskip       ]);
+    }
 
     // ---- Y AXIS ----
     array_push(_list, ["lda_abs", 0xD41A,  _id]);   // POTY
     array_push(_list, ["and_imm", 0x7F,    _id]);
-    array_push(_list, ["sta_zp",  _m_tmp,  _id]);
+    array_push(_list, ["tax",     0,       _id]);
     if (_yinv == 1) {
         // POTY counts UP as the mouse moves up, and screens count down. Taking
         // the subtraction the other way round costs nothing; negating the
-        // sign-extended delta afterwards would cost six more bytes a frame.
+        // sign-extended delta afterwards would cost more every frame. The
+        // scratch byte is borrowed for one instruction to do it.
+        array_push(_list, ["stx_zp",  _m_tmp,  _id]);
         array_push(_list, ["lda_zp",  _m_oldy, _id]);
         array_push(_list, ["sec",     0,       _id]);
         array_push(_list, ["sbc_zp",  _m_tmp,  _id]);
     } else {
-        array_push(_list, ["lda_zp",  _m_tmp,  _id]);
         array_push(_list, ["sec",     0,       _id]);
         array_push(_list, ["sbc_zp",  _m_oldy, _id]);
     }
     array_push(_list, ["and_imm", 0x3F,    _id]);
     array_push(_list, ["cmp_imm", 0x20,    _id]);
-    array_push(_list, ["bcc",     _m_ypos, _id]);
+    array_push(_list, ["bcc",     "mse_ypos_" + _m_uid, _id]);
     array_push(_list, ["ora_imm", 0xC0,    _id]);
     array_push(_list, ["ldy_imm", 0xFF,    _id]);
-    array_push(_list, ["jmp",     _m_yadd, _id]);
-    array_push(_list, ["label",   _m_ypos       ]);
+    array_push(_list, ["jmp",     "mse_yadd_" + _m_uid, _id]);
+    array_push(_list, ["label",   "mse_ypos_" + _m_uid       ]);
     array_push(_list, ["ldy_imm", 0x00,    _id]);
-    array_push(_list, ["label",   _m_yadd       ]);
+    array_push(_list, ["label",   "mse_yadd_" + _m_uid       ]);
+    if (_m_y_dir) {
+        array_push(_list, ["sta_zp", _m_tmp, _id]);
+    }
     array_push(_list, ["clc",     0,       _id]);
     array_push(_list, ["adc_zp",  _m_ylo,  _id]);
     array_push(_list, ["sta_zp",  _m_ylo,  _id]);
     array_push(_list, ["tya",     0,       _id]);
     array_push(_list, ["adc_zp",  _m_yhi,  _id]);
     array_push(_list, ["sta_zp",  _m_yhi,  _id]);
-    array_push(_list, ["lda_zp",  _m_tmp,  _id]);
-    array_push(_list, ["sta_zp",  _m_oldy, _id]);
+    array_push(_list, ["stx_zp",  _m_oldy, _id]);
+
+    // ---- Y DIRECTION CALLS ----
+    // UP and DN are named for what the user sees, so which branch calls which
+    // depends on the Y AXIS setting: with SCREEN sense a positive delta is
+    // downward, with RAW sense a positive delta is upward.
+    if (_m_y_dir) {
+        var _m_yskip = "mse_ydone_" + _m_uid;
+        var _m_yneg  = "mse_yneg_"  + _m_uid;
+
+        var _m_ypos_call = _m_call[2];   // RAW: positive means up
+        var _m_yneg_call = _m_call[3];
+        if (_yinv == 1) {                // SCREEN: positive means down
+            _m_ypos_call = _m_call[3];
+            _m_yneg_call = _m_call[2];
+        }
+
+        array_push(_list, ["lda_zp", _m_tmp,   _id]);
+        array_push(_list, ["beq",    _m_yskip, _id]);
+        array_push(_list, ["bmi",    _m_yneg,  _id]);
+        if (_m_ypos_call != "") {
+            array_push(_list, ["jsr", _m_ypos_call, _id]);
+        }
+        array_push(_list, ["jmp",   _m_yskip, _id]);
+        array_push(_list, ["label", _m_yneg        ]);
+        if (_m_yneg_call != "") {
+            array_push(_list, ["jsr", _m_yneg_call, _id]);
+        }
+        array_push(_list, ["label", _m_yskip       ]);
+    }
 
     // ---- BUTTONS ----
     // Both arrive on the joystick lines of the same port, active low: the left
     // button on FIRE ($10) and the right on UP ($01).
-    for (var _mbi = 1; _mbi < array_length(_id.instructions); _mbi++) {
+    for (var _mbi = 1; _mbi <= 2; _mbi++) {
+        if (_mbi >= array_length(_id.instructions)) { break; }
+
         var _mrow = _id.instructions[_mbi];
         if (array_length(_mrow) < 3) { continue; }
 
         var _mmask = 0x10;
         if (is_real(_mrow[0])) { _mmask = real(_mrow[0]); }
         var _mtarget = string(_mrow[1]);
-        if (_mrow[2] != 1)     { continue; }
-        if (_mtarget == "")    { continue; }
+        if (_mrow[2] != 1)  { continue; }
+        if (_mtarget == "") { continue; }
 
         var _mskip = "mse_skip_" + string(_mbi) + "_" + _m_uid;
         array_push(_list, ["lda_abs", _m_btn,   _id]);

@@ -1,0 +1,455 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index bae7164..bc7048c 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -184,7 +184,7 @@ if (height_dirty) {
+     case "NAMED_LOC":   height = _G * 3;  break;         // 60
+     case "NEW_STR":     height = _G * 4;  break;         // 100
+     case "MACRO_JOY":   height = _G * 6;  break;
+-    case "MACRO_MOUSE": height = _G * 7;  break;
++    case "MACRO_MOUSE": height = _G * 8;  break;
+     case "MACRO_VWAIT": height = _G * 3;  break;        
+     case "MACRO_DISPLAY": height = _G * 4;  break;
+     case "MACRO_WAIT":    height = _G * 5;  break;        
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index a0248c3..c658c86 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -3374,7 +3374,7 @@ if (global.show_helper_window && instance_exists(global.helper_node)) {
+     } else if (_node.node_type == "MACRO_PRINT") {
+         _desc = "Writes a text string to the C64 screen at a specified X/Y position and colour. Converts PETSCII in a tight indexed loop - optional clear screen wipes $0400 to $07E7 preserving sprite pointers at $07F8.";
+     } else if (_node.node_type == "MACRO_MOUSE") {
+-        _desc = "Reads a Commodore 1351 proportional mouse. Selects the port on CIA1 with a safe read-modify-write so the keyboard scan survives, takes the 6-bit deltas from SID's POTX/POTY, sign-extends them and accumulates a signed 16-bit X and Y in zero page. Left and right buttons arrive on the joystick FIRE and UP lines and can JSR a label each.";
++        _desc = "Reads a Commodore 1351 proportional mouse. Selects the port on CIA1 with a safe read-modify-write so the keyboard scan survives, takes the 6-bit deltas from SID's POTX/POTY, sign-extends them and accumulates a signed 16-bit X and Y in zero page. Left and right buttons arrive on the joystick FIRE and UP lines. LMB/RMB and LF/RT/UP/DN can each JSR a label - the movement calls fire once per frame while that axis is moving, so they report movement rather than a held direction.";
+     } else if (_node.node_type == "MACRO_JOY") {
+         _desc = "Reads a joystick port via the CIA chip and branches to labelled destinations based on directional input and fire combinations. Stores the live state to a zero page address for fast re-reads elsewhere in your code.";
+ 	} else if (_node.node_type == "MACRO_VIC") {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index ad8c7f8..df192b7 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -5339,9 +5339,6 @@ case "MACRO_MOUSE": {
+     var _m_yhi  = _zp + 5;
+     var _m_tmp  = _zp + 6;
+ 
+-    // CIA1 port A bits 7-6 pick which control port the SID pots see:
+-    // %01 = port 1, %10 = port 2. The BUTTONS are read from the other
+-    // register, the same way round as MACRO_JOY.
+     var _m_btn = 0xDC00;
+     var _m_sel = 0x80;
+     if (_port == 1) {
+@@ -5349,11 +5346,24 @@ case "MACRO_MOUSE": {
+         _m_sel = 0x40;
+     }
+ 
+-    var _m_uid  = string(real(_id));
+-    var _m_xpos = "mse_xpos_" + _m_uid;
+-    var _m_xadd = "mse_xadd_" + _m_uid;
+-    var _m_ypos = "mse_ypos_" + _m_uid;
+-    var _m_yadd = "mse_yadd_" + _m_uid;
++    var _m_uid = string(real(_id));
++
++    // ---- which movement calls are wanted ----
++    // Slots 3..6 are LF / RT / UP / DN. A slot only counts as live when it is
++    // enabled AND names something, so an empty label cannot emit a JSR to a
++    // label that was never declared.
++    var _m_call = ["", "", "", ""];
++    for (var _mci = 0; _mci < 4; _mci++) {
++        var _mslot = 3 + _mci;
++        if (_mslot >= array_length(_id.instructions)) { continue; }
++        var _mrow2 = _id.instructions[_mslot];
++        if (array_length(_mrow2) < 3) { continue; }
++        if (_mrow2[2] != 1)           { continue; }
++        if (string(_mrow2[1]) == "")  { continue; }
++        _m_call[_mci] = string(_mrow2[1]);
++    }
++    var _m_x_dir = (_m_call[0] != "" || _m_call[1] != "");
++    var _m_y_dir = (_m_call[2] != "" || _m_call[3] != "");
+ 
+     // ---- point the pots at the chosen port ----
+     // Read-modify-write, not a plain store: the low six bits of $DC00 are the
+@@ -5365,78 +5375,136 @@ case "MACRO_MOUSE": {
+     array_push(_list, ["sta_abs", 0xDC00,  _id]);
+ 
+     // ---- X AXIS ----
++    // X holds this frame's raw reading the whole way through, so the previous
++    // reading can be updated with one STX at the end and the scratch byte is
++    // free to carry the signed delta into the direction test.
+     array_push(_list, ["lda_abs", 0xD419,  _id]);   // POTX
+     array_push(_list, ["and_imm", 0x7F,    _id]);
+-    array_push(_list, ["sta_zp",  _m_tmp,  _id]);
++    array_push(_list, ["tax",     0,       _id]);
+     array_push(_list, ["sec",     0,       _id]);
+     array_push(_list, ["sbc_zp",  _m_oldx, _id]);
+-    // Six-bit delta. Anything at or above $20 is a move the other way, so it
+-    // is sign-extended into a full negative byte and Y carries the $FF that
+-    // the high byte of the 16-bit add needs.
++    // Six-bit delta. Anything at or above $20 is a move the other way, so it is
++    // sign-extended into a full negative byte and Y carries the $FF the high
++    // half of the 16-bit add needs.
+     array_push(_list, ["and_imm", 0x3F,    _id]);
+     array_push(_list, ["cmp_imm", 0x20,    _id]);
+-    array_push(_list, ["bcc",     _m_xpos, _id]);
++    array_push(_list, ["bcc",     "mse_xpos_" + _m_uid, _id]);
+     array_push(_list, ["ora_imm", 0xC0,    _id]);
+     array_push(_list, ["ldy_imm", 0xFF,    _id]);
+-    array_push(_list, ["jmp",     _m_xadd, _id]);
+-    array_push(_list, ["label",   _m_xpos       ]);
++    array_push(_list, ["jmp",     "mse_xadd_" + _m_uid, _id]);
++    array_push(_list, ["label",   "mse_xpos_" + _m_uid       ]);
+     array_push(_list, ["ldy_imm", 0x00,    _id]);
+-    array_push(_list, ["label",   _m_xadd       ]);
++    array_push(_list, ["label",   "mse_xadd_" + _m_uid       ]);
++    if (_m_x_dir) {
++        array_push(_list, ["sta_zp", _m_tmp, _id]);
++    }
+     array_push(_list, ["clc",     0,       _id]);
+     array_push(_list, ["adc_zp",  _m_xlo,  _id]);
+     array_push(_list, ["sta_zp",  _m_xlo,  _id]);
+     array_push(_list, ["tya",     0,       _id]);
+     array_push(_list, ["adc_zp",  _m_xhi,  _id]);
+     array_push(_list, ["sta_zp",  _m_xhi,  _id]);
+-    array_push(_list, ["lda_zp",  _m_tmp,  _id]);
+-    array_push(_list, ["sta_zp",  _m_oldx, _id]);
++    array_push(_list, ["stx_zp",  _m_oldx, _id]);
++
++    // ---- X DIRECTION CALLS ----
++    // Done after the accumulate, because a JSR is free to clobber A and Y.
++    if (_m_x_dir) {
++        var _m_xskip = "mse_xdone_" + _m_uid;
++        var _m_xneg  = "mse_xneg_"  + _m_uid;
++        array_push(_list, ["lda_zp", _m_tmp,   _id]);
++        array_push(_list, ["beq",    _m_xskip, _id]);   // no movement, no call
++        array_push(_list, ["bmi",    _m_xneg,  _id]);
++        if (_m_call[1] != "") {
++            array_push(_list, ["jsr", _m_call[1], _id]);   // RT
++        }
++        array_push(_list, ["jmp",   _m_xskip, _id]);
++        array_push(_list, ["label", _m_xneg        ]);
++        if (_m_call[0] != "") {
++            array_push(_list, ["jsr", _m_call[0], _id]);   // LF
++        }
++        array_push(_list, ["label", _m_xskip       ]);
++    }
+ 
+     // ---- Y AXIS ----
+     array_push(_list, ["lda_abs", 0xD41A,  _id]);   // POTY
+     array_push(_list, ["and_imm", 0x7F,    _id]);
+-    array_push(_list, ["sta_zp",  _m_tmp,  _id]);
++    array_push(_list, ["tax",     0,       _id]);
+     if (_yinv == 1) {
+         // POTY counts UP as the mouse moves up, and screens count down. Taking
+         // the subtraction the other way round costs nothing; negating the
+-        // sign-extended delta afterwards would cost six more bytes a frame.
++        // sign-extended delta afterwards would cost more every frame. The
++        // scratch byte is borrowed for one instruction to do it.
++        array_push(_list, ["stx_zp",  _m_tmp,  _id]);
+         array_push(_list, ["lda_zp",  _m_oldy, _id]);
+         array_push(_list, ["sec",     0,       _id]);
+         array_push(_list, ["sbc_zp",  _m_tmp,  _id]);
+     } else {
+-        array_push(_list, ["lda_zp",  _m_tmp,  _id]);
+         array_push(_list, ["sec",     0,       _id]);
+         array_push(_list, ["sbc_zp",  _m_oldy, _id]);
+     }
+     array_push(_list, ["and_imm", 0x3F,    _id]);
+     array_push(_list, ["cmp_imm", 0x20,    _id]);
+-    array_push(_list, ["bcc",     _m_ypos, _id]);
++    array_push(_list, ["bcc",     "mse_ypos_" + _m_uid, _id]);
+     array_push(_list, ["ora_imm", 0xC0,    _id]);
+     array_push(_list, ["ldy_imm", 0xFF,    _id]);
+-    array_push(_list, ["jmp",     _m_yadd, _id]);
+-    array_push(_list, ["label",   _m_ypos       ]);
++    array_push(_list, ["jmp",     "mse_yadd_" + _m_uid, _id]);
++    array_push(_list, ["label",   "mse_ypos_" + _m_uid       ]);
+     array_push(_list, ["ldy_imm", 0x00,    _id]);
+-    array_push(_list, ["label",   _m_yadd       ]);
++    array_push(_list, ["label",   "mse_yadd_" + _m_uid       ]);
++    if (_m_y_dir) {
++        array_push(_list, ["sta_zp", _m_tmp, _id]);
++    }
+     array_push(_list, ["clc",     0,       _id]);
+     array_push(_list, ["adc_zp",  _m_ylo,  _id]);
+     array_push(_list, ["sta_zp",  _m_ylo,  _id]);
+     array_push(_list, ["tya",     0,       _id]);
+     array_push(_list, ["adc_zp",  _m_yhi,  _id]);
+     array_push(_list, ["sta_zp",  _m_yhi,  _id]);
+-    array_push(_list, ["lda_zp",  _m_tmp,  _id]);
+-    array_push(_list, ["sta_zp",  _m_oldy, _id]);
++    array_push(_list, ["stx_zp",  _m_oldy, _id]);
++
++    // ---- Y DIRECTION CALLS ----
++    // UP and DN are named for what the user sees, so which branch calls which
++    // depends on the Y AXIS setting: with SCREEN sense a positive delta is
++    // downward, with RAW sense a positive delta is upward.
++    if (_m_y_dir) {
++        var _m_yskip = "mse_ydone_" + _m_uid;
++        var _m_yneg  = "mse_yneg_"  + _m_uid;
++
++        var _m_ypos_call = _m_call[2];   // RAW: positive means up
++        var _m_yneg_call = _m_call[3];
++        if (_yinv == 1) {                // SCREEN: positive means down
++            _m_ypos_call = _m_call[3];
++            _m_yneg_call = _m_call[2];
++        }
++
++        array_push(_list, ["lda_zp", _m_tmp,   _id]);
++        array_push(_list, ["beq",    _m_yskip, _id]);
++        array_push(_list, ["bmi",    _m_yneg,  _id]);
++        if (_m_ypos_call != "") {
++            array_push(_list, ["jsr", _m_ypos_call, _id]);
++        }
++        array_push(_list, ["jmp",   _m_yskip, _id]);
++        array_push(_list, ["label", _m_yneg        ]);
++        if (_m_yneg_call != "") {
++            array_push(_list, ["jsr", _m_yneg_call, _id]);
++        }
++        array_push(_list, ["label", _m_yskip       ]);
++    }
+ 
+     // ---- BUTTONS ----
+     // Both arrive on the joystick lines of the same port, active low: the left
+     // button on FIRE ($10) and the right on UP ($01).
+-    for (var _mbi = 1; _mbi < array_length(_id.instructions); _mbi++) {
++    for (var _mbi = 1; _mbi <= 2; _mbi++) {
++        if (_mbi >= array_length(_id.instructions)) { break; }
++
+         var _mrow = _id.instructions[_mbi];
+         if (array_length(_mrow) < 3) { continue; }
+ 
+         var _mmask = 0x10;
+         if (is_real(_mrow[0])) { _mmask = real(_mrow[0]); }
+         var _mtarget = string(_mrow[1]);
+-        if (_mrow[2] != 1)     { continue; }
+-        if (_mtarget == "")    { continue; }
++        if (_mrow[2] != 1)  { continue; }
++        if (_mtarget == "") { continue; }
+ 
+         var _mskip = "mse_skip_" + string(_mbi) + "_" + _m_uid;
+         array_push(_list, ["lda_abs", _m_btn,   _id]);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_mouse/scr_node_draw_macro_mouse.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_mouse/scr_node_draw_macro_mouse.gml
+index 1784353..e374d01 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_mouse/scr_node_draw_macro_mouse.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_mouse/scr_node_draw_macro_mouse.gml
+@@ -60,28 +60,38 @@ function scr_node_draw_macro_mouse(_draw_x, _y) {
+             + "  Y $" + scr_mouse_hex2(_zp + 4) + "/$" + scr_mouse_hex2(_zp + 5));
+     _my += _line_h + 6;
+ 
+-    // ---- BUTTON CALLS ----
++    // ---- CALL GRID ----
++    // Two rows, five columns, same pitch as the MACRO_JOY grid.
++    //   row 0: buttons     LMB RMB
++    //   row 1: movement    LF RT UP DN
+     draw_set_font(fnt_C64_Angled);
+-    var _btn_labels = ["LMB", "RMB"];
+-    var _col_w      = (width - 4) / 5;
+ 
+-    for (var _bi = 1; _bi <= 2; _bi++) {
+-        if (_bi >= array_length(instructions)) {
+-            break;
+-        }
+-        var _enabled = false;
+-        if (array_length(instructions[_bi]) > 2 && real(instructions[_bi][2]) == 1) {
+-            _enabled = true;
+-        }
++    var _grid_labels = [
++        ["LMB", "RMB"],
++        ["LF ", "RT ", "UP ", "DN "]
++    ];
++    var _grid_idx = [
++        [1, 2],
++        [3, 4, 5, 6]
++    ];
++
++    var _col_w = (width - 4) / 5;
++
++    for (var _r = 0; _r < array_length(_grid_idx); _r++) {
++        var _row_data = _grid_idx[_r];
++        for (var _c = 0; _c < array_length(_row_data); _c++) {
++            var _ins_idx = _row_data[_c];
++            if (_ins_idx >= array_length(instructions)) {
++                continue;
++            }
+ 
+-        draw_set_color(_enabled ? c_yellow : make_color_rgb(110, 90, 90));
+-        draw_text(_draw_x + 6 + ((_bi - 1) * _col_w), _my, _btn_labels[_bi - 1]);
++            var _enabled = false;
++            if (array_length(instructions[_ins_idx]) > 2 && real(instructions[_ins_idx][2]) == 1) {
++                _enabled = true;
++            }
+ 
+-        if (_enabled) {
+-            draw_set_font(fnt_c64_tiny);
+-            draw_set_color(c_aqua);
+-            draw_text(_draw_x + 6 + (2 * _col_w), _my + 2, string(instructions[_bi][1]));
+-            draw_set_font(fnt_C64_Angled);
++            draw_set_color(_enabled ? c_yellow : make_color_rgb(110, 90, 90));
++            draw_text(_draw_x + 6 + (_c * _col_w), _my, _grid_labels[_r][_c]);
+         }
+         _my += _line_h + 2;
+     }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index 08adceb..3c9f164 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -230,6 +230,8 @@ case "LABEL": {
+ 		// [0] = ["macro_mouse", port, zp_base, y_invert]
+ 		// [1] = [0x10, label, enabled]   left button  (joystick FIRE line)
+ 		// [2] = [0x01, label, enabled]   right button (joystick UP line)
++		// [3..6] = [dir, label, enabled] LF / RT / UP / DN, called when the
++		//          delta for that axis is non-zero and has that sign
+ 		//
+ 		// zp_base names a SEVEN byte block and nothing else is hard-coded, so
+ 		// the whole of this macro's zero page can be moved from the node:
+@@ -244,7 +246,11 @@ case "LABEL": {
+ 		    _n.instructions = [
+ 		        ["macro_mouse", 1, 0xF7, 1],
+ 		        [0x10, "MSE_LMB", 0],
+-		        [0x01, "MSE_RMB", 0]
++		        [0x01, "MSE_RMB", 0],
++		        [0,    "MSE_LF",  0],
++		        [1,    "MSE_RT",  0],
++		        [2,    "MSE_UP",  0],
++		        [3,    "MSE_DN",  0]
+ 		    ];
+ 		    _n.pc_address   = global.start_pc;
+ 		    with (_n) { event_user(0); }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_mouse/scr_node_step_macro_mouse.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_mouse/scr_node_step_macro_mouse.gml
+index b749aad..86c7949 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_mouse/scr_node_step_macro_mouse.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_mouse/scr_node_step_macro_mouse.gml
+@@ -45,67 +45,74 @@ function scr_node_step_macro_mouse(_draw_x) {
+         exit;
+     }
+ 
+-    // ---- BUTTON CALLS ----
++    // ---- CALL GRID ----
+     // Skips the address readout row, which is not interactive.
+     _fy += (_line_h + 2) + (_line_h + 6);
+ 
++    var _grid_idx = [
++        [1, 2],
++        [3, 4, 5, 6]
++    ];
+     var _col_w = (width - 4) / 5;
+ 
+-    for (var _bi = 1; _bi <= 2; _bi++) {
+-        if (_bi >= array_length(instructions)) {
+-            break;
+-        }
++    for (var _r = 0; _r < array_length(_grid_idx); _r++) {
++        var _row_data = _grid_idx[_r];
++        for (var _c = 0; _c < array_length(_row_data); _c++) {
++            var _ins_idx = _row_data[_c];
++            if (_ins_idx >= array_length(instructions)) {
++                continue;
++            }
+ 
+-        var _x1 = _draw_x + 8 + ((_bi - 1) * _col_w);
+-        if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x1 + _col_w - 4, _fy + _line_h + 2)) {
+-            var _was_enabled = (real(instructions[_bi][2]) == 1);
+-            if (_was_enabled) {
+-                instructions[_bi][2] = 0;
+-            } else {
+-                instructions[_bi][2] = 1;
++            var _x1 = _draw_x + 8 + (_c * _col_w);
++            if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x1 + _col_w - 4, _fy + _line_h + 2)) {
++                var _was_enabled = (real(instructions[_ins_idx][2]) == 1);
++                if (_was_enabled) {
++                    instructions[_ins_idx][2] = 0;
++                } else {
++                    instructions[_ins_idx][2] = 1;
+ 
+-                // Same courtesy as MACRO_JOY: turning a call on with nothing to
+-                // call is a dead end, so drop a LABEL node beside the macro
+-                // unless one already answers to that name.
+-                var _btn_name     = string(instructions[_bi][1]);
+-                var _label_exists = false;
+-                with (obj_c64_node) {
+-                    if (node_type == "LABEL" && string(instructions[0][1]) == _btn_name) {
+-                        _label_exists = true;
+-                        break;
++                    // Same courtesy as MACRO_JOY: turning a call on with nothing
++                    // to call is a dead end, so drop a LABEL node beside the
++                    // macro unless one already answers to that name.
++                    var _call_name   = string(instructions[_ins_idx][1]);
++                    var _label_exists = false;
++                    with (obj_c64_node) {
++                        if (node_type == "LABEL" && string(instructions[0][1]) == _call_name) {
++                            _label_exists = true;
++                            break;
++                        }
+                     }
+-                }
+ 
+-                if (!_label_exists) {
+-                    var _spawn_x = round((x + 220) / 20) * 20;
+-                    var _spawn_y = round((y + ((_bi - 1) * 40)) / 20) * 20;
++                    if (!_label_exists) {
++                        var _spawn_x = round((x + 220) / 20) * 20;
++                        var _spawn_y = round((y + ((_ins_idx - 1) * 40)) / 20) * 20;
+ 
+-                    var _spawn_clear    = false;
+-                    var _spawn_attempts = 0;
+-                    while (!_spawn_clear && _spawn_attempts < 64) {
+-                        _spawn_clear = true;
+-                        with (obj_c64_node) {
+-                            if (is_connected || org_parent != noone) { continue; }
+-                            if (is_dragging) { continue; }
+-                            if (x == _spawn_x && y == _spawn_y) {
+-                                _spawn_clear = false;
+-                                _spawn_y += ceil(height / 20) * 20;
+-                                break;
++                        var _spawn_clear    = false;
++                        var _spawn_attempts = 0;
++                        while (!_spawn_clear && _spawn_attempts < 64) {
++                            _spawn_clear = true;
++                            with (obj_c64_node) {
++                                if (is_connected || org_parent != noone) { continue; }
++                                if (is_dragging) { continue; }
++                                if (x == _spawn_x && y == _spawn_y) {
++                                    _spawn_clear = false;
++                                    _spawn_y += ceil(height / 20) * 20;
++                                    break;
++                                }
+                             }
++                            _spawn_attempts++;
+                         }
+-                        _spawn_attempts++;
+-                    }
+ 
+-                    var _new_label = scr_node_spawn("LABEL", _spawn_x, _spawn_y);
+-                    _new_label.instructions[0][1] = _btn_name;
++                        var _new_label = scr_node_spawn("LABEL", _spawn_x, _spawn_y);
++                        _new_label.instructions[0][1] = _call_name;
++                    }
+                 }
+-            }
+ 
+-            height_dirty = true;
+-            scr_undo_snapshot();
+-            exit;
++                height_dirty = true;
++                scr_undo_snapshot();
++                exit;
++            }
+         }
+-
+         _fy += _line_h + 2;
+     }
+ }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+index e4c7ea9..61fed8d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+@@ -437,6 +437,10 @@ function scr_node_tooltip_text(_node_type) {
+                 "ZP names a 7 byte block: +2/+3 is X, +4/+5 is Y —",
+                 "those are the addresses your own code reads.",
+                 "",
++                "LF/RT/UP/DN fire once per frame while the mouse is",
++                "moving on that axis — they are a movement report,",
++                "not a held direction like the joystick's.",
++                "",
+                 "Call this once per frame. Reading the pots needs",
+                 "CIA1 $DC00 bits 6-7 pointed at the port, which the",
+                 "KERNAL keyboard scan also writes."

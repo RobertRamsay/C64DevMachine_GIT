@@ -437,6 +437,10 @@ function scr_node_tooltip_text(_node_type) {
                 "ZP names a 7 byte block: +2/+3 is X, +4/+5 is Y —",
                 "those are the addresses your own code reads.",
                 "",
+                "LF/RT/UP/DN fire once per frame while the mouse is",
+                "moving on that axis — they are a movement report,",
+                "not a held direction like the joystick's.",
+                "",
                 "Call this once per frame. Reading the pots needs",
                 "CIA1 $DC00 bits 6-7 pointed at the port, which the",
                 "KERNAL keyboard scan also writes."

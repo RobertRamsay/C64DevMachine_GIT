@@ -184,7 +184,7 @@ if (height_dirty) {
     case "NAMED_LOC":   height = _G * 3;  break;         // 60
     case "NEW_STR":     height = _G * 4;  break;         // 100
     case "MACRO_JOY":   height = _G * 6;  break;
-    case "MACRO_MOUSE": height = _G * 7;  break;
+    case "MACRO_MOUSE": height = _G * 8;  break;
     case "MACRO_VWAIT": height = _G * 3;  break;        
     case "MACRO_DISPLAY": height = _G * 4;  break;
     case "MACRO_WAIT":    height = _G * 5;  break;        

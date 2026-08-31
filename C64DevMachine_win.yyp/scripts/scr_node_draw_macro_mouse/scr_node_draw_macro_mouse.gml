@@ -60,28 +60,38 @@ function scr_node_draw_macro_mouse(_draw_x, _y) {
             + "  Y $" + scr_mouse_hex2(_zp + 4) + "/$" + scr_mouse_hex2(_zp + 5));
     _my += _line_h + 6;
 
-    // ---- BUTTON CALLS ----
+    // ---- CALL GRID ----
+    // Two rows, five columns, same pitch as the MACRO_JOY grid.
+    //   row 0: buttons     LMB RMB
+    //   row 1: movement    LF RT UP DN
     draw_set_font(fnt_C64_Angled);
-    var _btn_labels = ["LMB", "RMB"];
-    var _col_w      = (width - 4) / 5;
 
-    for (var _bi = 1; _bi <= 2; _bi++) {
-        if (_bi >= array_length(instructions)) {
-            break;
-        }
-        var _enabled = false;
-        if (array_length(instructions[_bi]) > 2 && real(instructions[_bi][2]) == 1) {
-            _enabled = true;
-        }
+    var _grid_labels = [
+        ["LMB", "RMB"],
+        ["LF ", "RT ", "UP ", "DN "]
+    ];
+    var _grid_idx = [
+        [1, 2],
+        [3, 4, 5, 6]
+    ];
 
-        draw_set_color(_enabled ? c_yellow : make_color_rgb(110, 90, 90));
-        draw_text(_draw_x + 6 + ((_bi - 1) * _col_w), _my, _btn_labels[_bi - 1]);
+    var _col_w = (width - 4) / 5;
 
-        if (_enabled) {
-            draw_set_font(fnt_c64_tiny);
-            draw_set_color(c_aqua);
-            draw_text(_draw_x + 6 + (2 * _col_w), _my + 2, string(instructions[_bi][1]));
-            draw_set_font(fnt_C64_Angled);
+    for (var _r = 0; _r < array_length(_grid_idx); _r++) {
+        var _row_data = _grid_idx[_r];
+        for (var _c = 0; _c < array_length(_row_data); _c++) {
+            var _ins_idx = _row_data[_c];
+            if (_ins_idx >= array_length(instructions)) {
+                continue;
+            }
+
+            var _enabled = false;
+            if (array_length(instructions[_ins_idx]) > 2 && real(instructions[_ins_idx][2]) == 1) {
+                _enabled = true;
+            }
+
+            draw_set_color(_enabled ? c_yellow : make_color_rgb(110, 90, 90));
+            draw_text(_draw_x + 6 + (_c * _col_w), _my, _grid_labels[_r][_c]);
         }
         _my += _line_h + 2;
     }

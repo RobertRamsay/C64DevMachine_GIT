@@ -3374,7 +3374,7 @@ if (global.show_helper_window && instance_exists(global.helper_node)) {
     } else if (_node.node_type == "MACRO_PRINT") {
         _desc = "Writes a text string to the C64 screen at a specified X/Y position and colour. Converts PETSCII in a tight indexed loop - optional clear screen wipes $0400 to $07E7 preserving sprite pointers at $07F8.";
     } else if (_node.node_type == "MACRO_MOUSE") {
-        _desc = "Reads a Commodore 1351 proportional mouse. Selects the port on CIA1 with a safe read-modify-write so the keyboard scan survives, takes the 6-bit deltas from SID's POTX/POTY, sign-extends them and accumulates a signed 16-bit X and Y in zero page. Left and right buttons arrive on the joystick FIRE and UP lines and can JSR a label each.";
+        _desc = "Reads a Commodore 1351 proportional mouse. Selects the port on CIA1 with a safe read-modify-write so the keyboard scan survives, takes the 6-bit deltas from SID's POTX/POTY, sign-extends them and accumulates a signed 16-bit X and Y in zero page. Left and right buttons arrive on the joystick FIRE and UP lines. LMB/RMB and LF/RT/UP/DN can each JSR a label - the movement calls fire once per frame while that axis is moving, so they report movement rather than a held direction.";
     } else if (_node.node_type == "MACRO_JOY") {
         _desc = "Reads a joystick port via the CIA chip and branches to labelled destinations based on directional input and fire combinations. Stores the live state to a zero page address for fast re-reads elsewhere in your code.";
 	} else if (_node.node_type == "MACRO_VIC") {

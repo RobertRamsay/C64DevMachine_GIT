@@ -230,6 +230,8 @@ case "LABEL": {
 		// [0] = ["macro_mouse", port, zp_base, y_invert]
 		// [1] = [0x10, label, enabled]   left button  (joystick FIRE line)
 		// [2] = [0x01, label, enabled]   right button (joystick UP line)
+		// [3..6] = [dir, label, enabled] LF / RT / UP / DN, called when the
+		//          delta for that axis is non-zero and has that sign
 		//
 		// zp_base names a SEVEN byte block and nothing else is hard-coded, so
 		// the whole of this macro's zero page can be moved from the node:
@@ -244,7 +246,11 @@ case "LABEL": {
 		    _n.instructions = [
 		        ["macro_mouse", 1, 0xF7, 1],
 		        [0x10, "MSE_LMB", 0],
-		        [0x01, "MSE_RMB", 0]
+		        [0x01, "MSE_RMB", 0],
+		        [0,    "MSE_LF",  0],
+		        [1,    "MSE_RT",  0],
+		        [2,    "MSE_UP",  0],
+		        [3,    "MSE_DN",  0]
 		    ];
 		    _n.pc_address   = global.start_pc;
 		    with (_n) { event_user(0); }
