@@ -185,7 +185,7 @@ if (height_dirty) {
     case "NEW_STR":     height = _G * 4;  break;         // 100
     case "MACRO_JOY":   height = _G * 6;  break;
     case "MACRO_LETTERS":   height = _G * 6;  break;   // 26 keys, 6 across = 5 rows
-    case "MACRO_FNNUMBERS": height = _G * 5;  break;   // 16 keys, 6 across = 3 rows
+    case "MACRO_FNNUMBERS": height = _G * 6;  break;   // 16 keys, 4 across = 4 rows
     case "MACRO_MISCKEYS":  height = _G * 7;  break;   // 24 keys, 4 across = 6 rows
     case "MACRO_MOUSE": height = _G * 6;  break;
     case "MACRO_VWAIT": height = _G * 3;  break;        

@@ -106,7 +106,10 @@ function scr_key_category_list(_node_type) {
 
     if (_node_type == "MACRO_FNNUMBERS") {
         return {
-            cols: 6,
+            // Four across, not six: LSH and RSH are three characters and a
+            // sixth-of-a-node column is only ~25px, so they ran into each
+            // other. Sixteen keys divides into four rows of four exactly.
+            cols: 4,
             // LSHIFT/RSHIFT live here as well as in MISC, on purpose. F2 is
             // SHIFT+F1, and with the shifts on THIS node their held-bits land
             // in the same ZP byte as the F-keys (bits 0-7 are the digits 0-7,
@@ -138,9 +141,12 @@ function scr_key_slot_label(_key) {
     var _k = string_upper(string(_key));
     if (_k == "PLUS")    { return "+";    }
     if (_k == "MINUS")   { return "-";    }
-    if (_k == "POUND")   { return "£";  }
+    // The C64 font has no glyph for the pound sign, so drawing it gives an
+    // empty box. Name the key instead.
+    if (_k == "POUND")   { return "PND";  }
     if (_k == "UARROW")  { return "UP^";  }
     if (_k == "LARROW")  { return "<-";   }
+    if (_k == "SPACE")   { return "SPC";  }   // "SPACE" is wider than a column
     if (_k == "RUNSTOP") { return "STOP"; }
     if (_k == "CRSRUD")  { return "CRUD"; }
     if (_k == "CRSRLR")  { return "CRLR"; }

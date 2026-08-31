@@ -1,0 +1,43 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 133dcaa..db4b348 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -185,7 +185,7 @@ if (height_dirty) {
+     case "NEW_STR":     height = _G * 4;  break;         // 100
+     case "MACRO_JOY":   height = _G * 6;  break;
+     case "MACRO_LETTERS":   height = _G * 6;  break;   // 26 keys, 6 across = 5 rows
+-    case "MACRO_FNNUMBERS": height = _G * 5;  break;   // 16 keys, 6 across = 3 rows
++    case "MACRO_FNNUMBERS": height = _G * 6;  break;   // 16 keys, 4 across = 4 rows
+     case "MACRO_MISCKEYS":  height = _G * 7;  break;   // 24 keys, 4 across = 6 rows
+     case "MACRO_MOUSE": height = _G * 6;  break;
+     case "MACRO_VWAIT": height = _G * 3;  break;        
+diff --git a/C64DevMachine_win.yyp/scripts/scr_key_matrix_lookup/scr_key_matrix_lookup.gml b/C64DevMachine_win.yyp/scripts/scr_key_matrix_lookup/scr_key_matrix_lookup.gml
+index 3a3182f..680e02b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_key_matrix_lookup/scr_key_matrix_lookup.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_key_matrix_lookup/scr_key_matrix_lookup.gml
+@@ -106,7 +106,10 @@ function scr_key_category_list(_node_type) {
+ 
+     if (_node_type == "MACRO_FNNUMBERS") {
+         return {
+-            cols: 6,
++            // Four across, not six: LSH and RSH are three characters and a
++            // sixth-of-a-node column is only ~25px, so they ran into each
++            // other. Sixteen keys divides into four rows of four exactly.
++            cols: 4,
+             // LSHIFT/RSHIFT live here as well as in MISC, on purpose. F2 is
+             // SHIFT+F1, and with the shifts on THIS node their held-bits land
+             // in the same ZP byte as the F-keys (bits 0-7 are the digits 0-7,
+@@ -138,9 +141,12 @@ function scr_key_slot_label(_key) {
+     var _k = string_upper(string(_key));
+     if (_k == "PLUS")    { return "+";    }
+     if (_k == "MINUS")   { return "-";    }
+-    if (_k == "POUND")   { return "£";  }
++    // The C64 font has no glyph for the pound sign, so drawing it gives an
++    // empty box. Name the key instead.
++    if (_k == "POUND")   { return "PND";  }
+     if (_k == "UARROW")  { return "UP^";  }
+     if (_k == "LARROW")  { return "<-";   }
++    if (_k == "SPACE")   { return "SPC";  }   // "SPACE" is wider than a column
+     if (_k == "RUNSTOP") { return "STOP"; }
+     if (_k == "CRSRUD")  { return "CRUD"; }
+     if (_k == "CRSRLR")  { return "CRLR"; }
