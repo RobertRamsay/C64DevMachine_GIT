@@ -57,8 +57,14 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
+    "NEW - Keyboard Macros: A-Z, 0-9/Fn and Misc, read straight from the matrix.",
+    "NEW - Mouse Macro (1351) for proportional mouse input.",
+    "NEW - Import .ASM into a Code Block, or drop one in as a new block.",
+    "NEW - [INFO] on a macro header - hover it for what that node does.",
     "REFINED - INIT block and RTS auto injecting.",
-    "NEW - Mouse Macro for mouse based input.",
+    "REFINED - Code Panel narrows further, and follows the node you hover.",
+    "REFINED - Convert to Code refuses the nodes that cannot survive it.",
+    "FIXED - Mapping box jump list crash, and phantom memory conflicts.",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
     ];

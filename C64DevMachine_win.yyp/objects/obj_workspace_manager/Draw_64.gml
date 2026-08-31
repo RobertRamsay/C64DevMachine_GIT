@@ -3794,6 +3794,12 @@ if (welcome_open) {
     draw_set_font(fnt_c64_tiny);
     draw_set_color(c_aqua);
     for (var _wi = 0; _wi < array_length(welcome_whats_new); _wi++) {
+        // An empty entry is a spacer, not a bullet. Without this it drew a
+        // lone "- " on its own line above the SHARE note.
+        if (welcome_whats_new[_wi] == "") {
+            _wy += 16;
+            continue;
+        }
         draw_text(_px + 30, _wy, "- " + welcome_whats_new[_wi]);
         _wy += 16;
     }
