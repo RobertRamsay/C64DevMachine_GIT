@@ -848,8 +848,7 @@ global.hw_picker_categories = [
             "HW_JOY1", "HW_JOY2",
             "HW_CIA2_PRA", "HW_CIA2_PRB",
             "HW_CIA1_ICR", "HW_CIA2_ICR",
-            "HW_IRQ_STATUS", "HW_IRQ_MASK", "HW_IRQ_VEC_LO", "HW_IRQ_VEC_HI",
-			"HW_C64U_SPEED"
+            "HW_IRQ_STATUS", "HW_IRQ_MASK", "HW_IRQ_VEC_LO", "HW_IRQ_VEC_HI"
         ]
     },
     {
@@ -857,6 +856,27 @@ global.hw_picker_categories = [
         items: [
             "HW_CHROUT", "HW_GETIN",
             "HW_JIFFIES_LO", "HW_JIFFIES_MID", "HW_JIFFIES_HI"
+        ]
+    },
+    {
+        // Ultimate-64 only. Everything here reads $FF on a stock C64, and
+        // the turbo group additionally needs Turbo Mode enabled in the
+        // Ultimate's own config menu.
+        name: "C64U: SPEED",
+        items: [
+            "HW_C64U_TURBO", "HW_C64U_SPEED",
+            "HW_SCPU_NORMAL", "HW_SCPU_TURBO", "HW_SCPU_DETECT"
+        ]
+    },
+    {
+        name: "C64U: REU & UCI",
+        items: [
+            "HW_REU_STATUS", "HW_REU_CMD",
+            "HW_REU_C64_LO", "HW_REU_C64_HI",
+            "HW_REU_ADDR_LO", "HW_REU_ADDR_HI", "HW_REU_BANK",
+            "HW_REU_LEN_LO", "HW_REU_LEN_HI",
+            "HW_REU_IRQMASK", "HW_REU_CTRL",
+            "HW_UCI_CTRL", "HW_UCI_CMD", "HW_UCI_RESP", "HW_UCI_STAT"
         ]
     }
 ];

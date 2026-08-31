@@ -53,12 +53,23 @@ function scr_node_step_macro_text_scroll() {
         return;
     }
 
-    // ROW 1 — COLOUR: cycle 0→15→0 (index [2])
+    // ROW 1 — COLOUR: open the 16-colour picker (index [2]).
+    // Was click-to-cycle 0→15→0, i.e. up to fifteen clicks to land on the
+    // colour you wanted. Same picker MACRO_PRINT and MACRO_CHR already use.
     if (_in_col && _mgy >= _ry[1] && _mgy < _ry[1] + _lh_g) {
+        // The picker writes straight into instructions[0][2], so the slot
+        // has to exist before it is spawned.
         while (array_length(instructions[0]) <= 2) array_push(instructions[0], 1);
-        var _cur = is_real(instructions[0][2]) ? real(instructions[0][2]) : 1;
-        instructions[0][2] = (_cur + 1) mod 16;
-        scr_c64_update_addresses();
+
+        instance_destroy(obj_ui_color_picker);
+        var _picker_w      = 256;
+        var _swatch_center = _px + 100;                  // over the colour text
+        var _spawn_x       = _swatch_center - (_picker_w / 2);
+        var _picker        = instance_create_depth(_spawn_x, _ly0 + _lh * 2, -9999, obj_ui_color_picker);
+        _picker.target_node = id;
+        _picker.target_row  = 0;
+        _picker.target_col  = 2;
+        mouse_clear(mb_left);
         return;
     }
 

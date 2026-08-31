@@ -143,37 +143,58 @@ function scr_node_step_macro_vic(_draw_x) {
     var _swy = _fy + 1;
     var _gap = 40;
     
-    // BDR
-    if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
-        instructions[0][5] = (real(instructions[0][5]) + 1) mod 16; exit;
-    }
-    _swx += _gap + 4;
+    // All four swatches open the 16-colour picker instead of advancing one
+    // step per click. _sw is the swatch width, so the 256px bar is centred
+    // over whichever swatch was hit and drops just under the swatch row.
+    // Same picker MACRO_PRINT and MACRO_CHR already use.
+    var _spawn_picker = function(_node, _sw_left, _sw_size, _sw_top, _col) {
+        instance_destroy(obj_ui_color_picker);
+        var _picker_w = 256;
+        var _spawn_x  = (_sw_left + (_sw_size / 2)) - (_picker_w / 2);
+        var _picker   = instance_create_depth(_spawn_x, _sw_top + _sw_size + 2, -9999, obj_ui_color_picker);
+        _picker.target_node = _node;
+        _picker.target_row  = 0;
+        _picker.target_col  = _col;
+        mouse_clear(mb_left);
+    };
 
-    // BKG (was labeled BG in step, now BKG to match draw)
-    if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
-        instructions[0][6] = (real(instructions[0][6]) + 1) mod 16; exit;
-    }
-    _swx += _gap + 4;
-    
-    if (_mode == "MCT" || _mode == "MCB") {
+    // BDR
+    if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
+        _spawn_picker(id, _swx, _sw, _swy, 5);
+        exit;
+    }
+    _swx += _gap + 4;
+
+    // BKG (was labeled BG in step, now BKG to match draw)
+    if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
+        _spawn_picker(id, _swx, _sw, _swy, 6);
+        exit;
+    }
+    _swx += _gap + 4;
+
+    if (_mode == "MCT" || _mode == "MCB") {
         // MC1
-        if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
-            instructions[0][7] = (real(instructions[0][7]) + 1) mod 16; exit;
-        }
-        _swx += _gap + 4;
+        if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
+            _spawn_picker(id, _swx, _sw, _swy, 7);
+            exit;
+        }
+        _swx += _gap + 4;
         // MC2
-        if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
-            instructions[0][8] = (real(instructions[0][8]) + 1) mod 16; exit;
-        }
-    } else if (_mode == "ECM") {
+        if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
+            _spawn_picker(id, _swx, _sw, _swy, 8);
+            exit;
+        }
+    } else if (_mode == "ECM") {
         // BG1
-        if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
-            instructions[0][7] = (real(instructions[0][7]) + 1) mod 16; exit;
-        }
-        _swx += _gap + 4;
+        if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
+            _spawn_picker(id, _swx, _sw, _swy, 7);
+            exit;
+        }
+        _swx += _gap + 4;
         // BG2
-        if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
-            instructions[0][8] = (real(instructions[0][8]) + 1) mod 16; exit;
-        }
-    }
+        if (point_in_rectangle(mouse_x, mouse_y, _swx, _swy, _swx + _sw, _swy + _sw)) {
+            _spawn_picker(id, _swx, _sw, _swy, 8);
+            exit;
+        }
+    }
 }

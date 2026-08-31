@@ -140,7 +140,43 @@ function scr_init_named_locations() {
     scr_nloc_hw("HW_IRQ_VEC_HI", 0x0315, "KERNAL", "IRQ vector high byte");
     scr_nloc_hw("HW_NMI_VEC_LO", 0x0318, "KERNAL", "NMI vector low byte");
     scr_nloc_hw("HW_NMI_VEC_HI", 0x0319, "KERNAL", "NMI vector high byte");
-	scr_nloc_hw("HW_C64U_SPEED", 0xD031, "KERNAL", "C64U Speed byte 0-15");
+
+    // ---- C64 ULTIMATE ----
+    // Ultimate-64 only. On a stock C64 (and in VICE without a U64 core)
+    // these read back as $FF, so anything using them should either be
+    // guarded or accepted as U64-targeted code.
+    //
+    // The turbo registers additionally need Turbo Mode in the Ultimate's
+    // config menu set to "U64 Turbo Registers" or "Turbo Enable Bit" —
+    // with the selector off they are inert and also read $FF.
+    scr_nloc_hw("HW_C64U_TURBO",  0xD030, "C64U", "Turbo enable: 0=1MHz+badlines, 1=menu speed");
+    scr_nloc_hw("HW_C64U_SPEED",  0xD031, "C64U", "Speed index bits 0-3, bit 7 = badlines off");
+    scr_nloc_hw("HW_SCPU_NORMAL", 0xD07A, "C64U", "SuperCPU speed select - normal (write only)");
+    scr_nloc_hw("HW_SCPU_TURBO",  0xD07B, "C64U", "SuperCPU speed select - 20MHz (write only)");
+    scr_nloc_hw("HW_SCPU_DETECT", 0xD0BC, "C64U", "SuperCPU mode detect (read only)");
+
+    // Ultimate Command Interface — the same four registers the UII+ uses.
+    // Write a command to CMD, pulse bit 0 of CTRL to push it, then poll
+    // CTRL for DATA_AV / STAT_AV and read RESP / STAT.
+    scr_nloc_hw("HW_UCI_CTRL",    0xDF1C, "C64U", "UCI control (w) / status (r)");
+    scr_nloc_hw("HW_UCI_CMD",     0xDF1D, "C64U", "UCI command data (write)");
+    scr_nloc_hw("HW_UCI_RESP",    0xDF1E, "C64U", "UCI response data (read)");
+    scr_nloc_hw("HW_UCI_STAT",    0xDF1F, "C64U", "UCI status data (read)");
+
+    // REU. Not U64-invented — it is the 1750/1764 register set — but the
+    // Ultimate has one built in, which is the only way most projects will
+    // ever meet it. MACRO_REU already writes $DF02-$DF08 directly.
+    scr_nloc_hw("HW_REU_STATUS",  0xDF00, "C64U", "REU status (read clears IRQ flags)");
+    scr_nloc_hw("HW_REU_CMD",     0xDF01, "C64U", "REU command: $90 stash, $91 fetch, $92 swap");
+    scr_nloc_hw("HW_REU_C64_LO",  0xDF02, "C64U", "REU C64 base address low");
+    scr_nloc_hw("HW_REU_C64_HI",  0xDF03, "C64U", "REU C64 base address high");
+    scr_nloc_hw("HW_REU_ADDR_LO", 0xDF04, "C64U", "REU expansion address low");
+    scr_nloc_hw("HW_REU_ADDR_HI", 0xDF05, "C64U", "REU expansion address high");
+    scr_nloc_hw("HW_REU_BANK",    0xDF06, "C64U", "REU expansion bank");
+    scr_nloc_hw("HW_REU_LEN_LO",  0xDF07, "C64U", "REU transfer length low");
+    scr_nloc_hw("HW_REU_LEN_HI",  0xDF08, "C64U", "REU transfer length high");
+    scr_nloc_hw("HW_REU_IRQMASK", 0xDF09, "C64U", "REU interrupt mask");
+    scr_nloc_hw("HW_REU_CTRL",    0xDF0A, "C64U", "REU address control (fix C64 / fix REU)");
 
     // ---- KERNAL ----
     scr_nloc_hw("HW_CHROUT",     0xFFD2, "KERNAL", "Output char in A to current device");
