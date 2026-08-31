@@ -87,8 +87,8 @@
 // is the right-justified "NNB" size on a group header, which is the least
 // important number on the row — the address and the name both survive. So the
 // floor drops another 25% and the size is simply not drawn under SHOWCODE_W_FULL.
-#macro SHOWCODE_W_MIN  225
-#macro SHOWCODE_W_FULL 300
+#macro SHOWCODE_W_MIN  240
+#macro SHOWCODE_W_FULL 260
 #macro SHOWCODE_W_MAX  900
 
 // =====================================================================
