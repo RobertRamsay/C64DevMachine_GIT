@@ -1032,6 +1032,16 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
 	    if (!variable_instance_exists(id, "code_seg_cache")) continue;
 	    for (var _sci = 0; _sci < array_length(code_seg_cache); _sci++) {
 	        var _cs = code_seg_cache[_sci];
+	        // no_conflict marks a segment that is a REFERENCE to an address
+	        // rather than a claim on it. "sta UV_SCORE" records where the block
+	        // writes; it does not mean the block owns those two bytes. Pushing
+	        // those into the pool meant two code blocks both writing the same
+	        // workspace variable produced two owned-looking segments at the
+	        // same address, overlapped, and flashed each other red — a false
+	        // positive, since the variable is shared storage by design.
+	        // scr_build_memory_bar_cache has set this flag all along and the
+	        // memory bar honours it; this pass was the one place that did not.
+	        if (_cs.no_conflict) { continue; }
 	        if (_cs.size > 0) {
 	            array_push(_segs, { start: _cs.addr, finish: _cs.addr + _cs.size, owner: id, node_id: id });
 	        }

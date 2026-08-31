@@ -336,13 +336,13 @@ var _parsed = scr_parse_asm_text(_ct);
                 _cur_line = _parsed[_pi][1];
             } else if (_pt == "pc") {
                 if (_data_pc >= 0 && _data_sz > 0)
-                    array_push(code_seg_cache, { addr: _data_pc, size: _data_sz, lines: _data_lines });
+                    array_push(code_seg_cache, { addr: _data_pc, size: _data_sz, lines: _data_lines, no_conflict: false });
                 _data_pc = _parsed[_pi][1];
                 _data_sz = 0;
                 _data_lines = [];
             } else if (_pt == "const") {
                 if (array_length(_parsed[_pi]) > 2 && is_real(_parsed[_pi][2]))
-                    array_push(code_seg_cache, { addr: _parsed[_pi][2], size: 2, lines: [_cur_line] });
+                    array_push(code_seg_cache, { addr: _parsed[_pi][2], size: 2, lines: [_cur_line], no_conflict: false });
             } else if (_pt == "byte") {
                 _data_sz += array_length(_parsed[_pi]) - 1;
             } else if (_pt != "label") {
@@ -350,12 +350,13 @@ var _parsed = scr_parse_asm_text(_ct);
                 else _data_sz += 3;
                 if (array_length(_parsed[_pi]) > 1 && is_real(_parsed[_pi][1])) {
                     if (string_pos("_abs", _pt) > 0 || string_pos("_ind", _pt) > 0 || string_pos("_zp", _pt) > 0)
-                        array_push(code_seg_cache, { addr: _parsed[_pi][1], size: 2, lines: [_cur_line] });
+                        // Operand reference, not owned storage — see PASS 6.
+                        array_push(code_seg_cache, { addr: _parsed[_pi][1], size: 2, lines: [_cur_line], no_conflict: true });
                 }
             }
         }
         if (_data_pc >= 0 && _data_sz > 0)
-            array_push(code_seg_cache, { addr: _data_pc, size: _data_sz, lines: _data_lines });
+            array_push(code_seg_cache, { addr: _data_pc, size: _data_sz, lines: _data_lines, no_conflict: false });
         code_cache_dirty = false;
     }
 

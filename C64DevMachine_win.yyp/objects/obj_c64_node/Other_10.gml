@@ -42,7 +42,7 @@ if (node_type == "MACRO_CODE" && array_length(instructions) > 0 && array_length(
             var _pt = string_lower(_parsed[_pi][0]);
             if (_pt == "pc") {
                 if (_data_pc >= 0 && _data_sz > 0)
-                    array_push(code_seg_cache, { addr: _data_pc, size: _data_sz });
+                    array_push(code_seg_cache, { addr: _data_pc, size: _data_sz, no_conflict: false });
                 _data_pc = _parsed[_pi][1];
                 _data_sz = 0;
             } else if (_pt == "byte") {
@@ -50,7 +50,7 @@ if (node_type == "MACRO_CODE" && array_length(instructions) > 0 && array_length(
             }
         }
         if (_data_pc >= 0 && _data_sz > 0)
-            array_push(code_seg_cache, { addr: _data_pc, size: _data_sz });
+            array_push(code_seg_cache, { addr: _data_pc, size: _data_sz, no_conflict: false });
         code_cache_dirty = false;
     }
 }
