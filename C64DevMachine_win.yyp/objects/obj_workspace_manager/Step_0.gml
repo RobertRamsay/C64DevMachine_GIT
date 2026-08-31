@@ -2328,8 +2328,29 @@ if (_cmnem == "rts" || _cmnem == "rti") {
                 }
             }
 
+            // scr_compile_chain appends its own RTS when nothing is connected
+            // below SYSTEM INIT, so an empty spine already returns cleanly and
+            // there is nothing to warn about. This mirrors the _has_any_nodes /
+            // _init_has_body test there — keep the two in step.
+            //
+            // It also hands the easter egg a cleaner door: it used to be
+            // reachable only by answering No to a question that should never
+            // have been asked on a pristine project. Now the question is
+            // skipped and the egg branch below is simply where a pristine build
+            // goes.
+            var _auto_rts_spine = false;
+            var _auto_rts_init  = false;
+            with (obj_c64_node) {
+                if (node_type == "INIT") {
+                    if (array_length(instructions) > 0) { _auto_rts_init = true; }
+                    continue;
+                }
+                if (is_connected && org_parent == noone) { _auto_rts_spine = true; }
+            }
+            var _auto_rts_covers = (!_auto_rts_spine && _auto_rts_init);
+
             if (!_core_loop_found && !_any_return_found && !silent_build) {
-                if (scr_show_question_bool("No core loop or RTS found in your spine.\n\nWithout one of these, the C64 will run off the end of your program into whatever memory comes next - usually a crash.\n\nAdd an RTS node at the end so it returns cleanly instead?")) {
+                if (!_auto_rts_covers && scr_show_question_bool("No core loop or RTS found in your spine.\n\nWithout one of these, the C64 will run off the end of your program into whatever memory comes next - usually a crash.\n\nAdd an RTS node at the end so it returns cleanly instead?")) {
                     var _rts_x = _tail_node.x;
                     var _rts_y = _tail_node.y + _tail_node.height + 20;
                     var _rts_n = instance_create_depth(_rts_x, _rts_y, -500, obj_c64_node);

@@ -289,5 +289,11 @@ if (stable_uid == -1) {
     global.next_stable_uid += 1;
 }
 
+// SYSTEM INIT draws a "+ RTS (AUTO)" row while nothing is connected below it,
+// and needs one grid row of height to fit it. Cached because the height switch
+// runs at the top of Draw and the marker at the bottom — the marker raises
+// height_dirty when this changes, so the row is there on the next frame.
+init_rts_marker = false;
+
 prev_height = height; // must be last
 is_conflicted = false;

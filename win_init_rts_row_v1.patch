@@ -1,0 +1,122 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+index 22714e1..cc6e86b 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+@@ -289,5 +289,11 @@ if (stable_uid == -1) {
+     global.next_stable_uid += 1;
+ }
+ 
++// SYSTEM INIT draws a "+ RTS (AUTO)" row while nothing is connected below it,
++// and needs one grid row of height to fit it. Cached because the height switch
++// runs at the top of Draw and the marker at the bottom — the marker raises
++// height_dirty when this changes, so the row is there on the next frame.
++init_rts_marker = false;
++
+ prev_height = height; // must be last
+ is_conflicted = false;
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 13d25dd..09708db 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -86,7 +86,14 @@ if (height_dirty) {
+         height = ceil(_raw_h / _G) * _G;
+         break;
+     case "EXECUTE":     height = _G * 2; break;          // 40
+-	case "INIT":        height = _G * 4; break;          // 80
++	case "INIT":
++	    // One extra row when the auto RTS row is showing, or it draws on top of
++	    // the last instruction instead of below it.
++	    height = _G * 4;
++	    if (init_rts_marker) {
++	        height = _G * 5;
++	    }
++	    break;
+     case "ORG":         height = _G * 4; break;          // 80
+     case "LABEL":       height = _G * 2; break;          // 60
+     case "MACRO_MOVE":
+@@ -2218,22 +2225,40 @@ if (node_type == "INIT" && array_length(instructions) == 0) {
+ // Say it here instead, on the block it belongs to. It disappears the
+ // moment a node is connected below (the compile chain stops emitting it),
+ // and CLEAR takes it away with the rest of INIT's body.
+-if (node_type == "INIT" && array_length(instructions) > 0) {
+-    var _spine_empty = true;
+-    with (obj_c64_node) {
+-        if (is_connected && org_parent == noone && node_type != "INIT") {
+-            _spine_empty = false;
+-            break;
++if (node_type == "INIT") {
++    var _spine_empty = (array_length(instructions) > 0);
++    if (_spine_empty) {
++        with (obj_c64_node) {
++            if (is_connected && org_parent == noone && node_type != "INIT") {
++                _spine_empty = false;
++                break;
++            }
+         }
+     }
+ 
++    // The height switch at the top of this event has already run for this
++    // frame, so a change here shows up on the next one.
++    if (init_rts_marker != _spine_empty) {
++        init_rts_marker = _spine_empty;
++        height_dirty    = true;
++    }
++
+     if (_spine_empty) {
++        // Drawn as the next instruction row, in the same font and on the same
++        // 12px pitch as the real ones, because that is what it is — the compile
++        // chain emits it immediately after these.
++        var _rts_y       = y + header_h + (array_length(instructions) * 12) + 8;
+         var _font_before = draw_get_font();
+-        draw_set_font(fnt_c64_tiny);
++
++        draw_set_font(fnt_C64_Angled_tiny);
+         draw_set_halign(fa_left);
+         draw_set_valign(fa_top);
+-        draw_set_color(make_color_rgb(120, 150, 100));
+-        draw_text(draw_x + 8, y + height - 20, "+ RTS (AUTO)");
++
++        draw_set_color(make_color_rgb(150, 150, 160));
++        draw_text(draw_x + 8, _rts_y, "RTS");
++        draw_set_color(make_color_rgb(90, 120, 80));
++        draw_text(draw_x + 52, _rts_y, "(AUTO)");
++
+         draw_set_color(c_white);
+         draw_set_font(_font_before);
+     }
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 0680843..06b61de 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -2328,8 +2328,29 @@ if (_cmnem == "rts" || _cmnem == "rti") {
+                 }
+             }
+ 
++            // scr_compile_chain appends its own RTS when nothing is connected
++            // below SYSTEM INIT, so an empty spine already returns cleanly and
++            // there is nothing to warn about. This mirrors the _has_any_nodes /
++            // _init_has_body test there — keep the two in step.
++            //
++            // It also hands the easter egg a cleaner door: it used to be
++            // reachable only by answering No to a question that should never
++            // have been asked on a pristine project. Now the question is
++            // skipped and the egg branch below is simply where a pristine build
++            // goes.
++            var _auto_rts_spine = false;
++            var _auto_rts_init  = false;
++            with (obj_c64_node) {
++                if (node_type == "INIT") {
++                    if (array_length(instructions) > 0) { _auto_rts_init = true; }
++                    continue;
++                }
++                if (is_connected && org_parent == noone) { _auto_rts_spine = true; }
++            }
++            var _auto_rts_covers = (!_auto_rts_spine && _auto_rts_init);
++
+             if (!_core_loop_found && !_any_return_found && !silent_build) {
+-                if (scr_show_question_bool("No core loop or RTS found in your spine.\n\nWithout one of these, the C64 will run off the end of your program into whatever memory comes next - usually a crash.\n\nAdd an RTS node at the end so it returns cleanly instead?")) {
++                if (!_auto_rts_covers && scr_show_question_bool("No core loop or RTS found in your spine.\n\nWithout one of these, the C64 will run off the end of your program into whatever memory comes next - usually a crash.\n\nAdd an RTS node at the end so it returns cleanly instead?")) {
+                     var _rts_x = _tail_node.x;
+                     var _rts_y = _tail_node.y + _tail_node.height + 20;
+                     var _rts_n = instance_create_depth(_rts_x, _rts_y, -500, obj_c64_node);
