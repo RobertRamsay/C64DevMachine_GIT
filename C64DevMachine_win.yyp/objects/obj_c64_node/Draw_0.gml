@@ -72,6 +72,37 @@ var _near_centre = ((_dx * _dx + _dy * _dy) < 640000); // 800^2, no zoom gate0^2
 // above 4.0 — header colour box only, no text at all
 
 // =============================================================
+// C2. SYSTEM INIT AUTO-RTS ROW
+// =============================================================
+// Decided here, ahead of the height switch below, because both the switch and
+// the row that draws near the bottom of this event have to agree within the
+// SAME frame. Deciding it down there meant height was a frame behind, and the
+// spine had already been laid out against the taller INIT — which is the gap
+// left under SYSTEM INIT after an undo or redo of adding the first macro.
+//
+// global.addresses_dirty is what closes that gap: node positions belong to the
+// layout pass, so INIT changing height is a request for a repack, not something
+// to fix up here. Only raised when the state actually flips, so it costs one
+// pass on the frame the first node is connected or the last one removed.
+if (node_type == "INIT") {
+    var _rts_row = (array_length(instructions) > 0);
+    if (_rts_row) {
+        with (obj_c64_node) {
+            if (is_connected && org_parent == noone && node_type != "INIT") {
+                _rts_row = false;
+                break;
+            }
+        }
+    }
+
+    if (init_rts_marker != _rts_row) {
+        init_rts_marker        = _rts_row;
+        height_dirty           = true;
+        global.addresses_dirty = true;
+    }
+}
+
+// =============================================================
 // D. DYNAMIC HEIGHT  (cached, only recalculates when dirty)
 // =============================================================
 var _G = 20;
@@ -2226,24 +2257,8 @@ if (node_type == "INIT" && array_length(instructions) == 0) {
 // moment a node is connected below (the compile chain stops emitting it),
 // and CLEAR takes it away with the rest of INIT's body.
 if (node_type == "INIT") {
-    var _spine_empty = (array_length(instructions) > 0);
-    if (_spine_empty) {
-        with (obj_c64_node) {
-            if (is_connected && org_parent == noone && node_type != "INIT") {
-                _spine_empty = false;
-                break;
-            }
-        }
-    }
-
-    // The height switch at the top of this event has already run for this
-    // frame, so a change here shows up on the next one.
-    if (init_rts_marker != _spine_empty) {
-        init_rts_marker = _spine_empty;
-        height_dirty    = true;
-    }
-
-    if (_spine_empty) {
+    // State and height were both settled in section C2 above.
+    if (init_rts_marker) {
         // Drawn as the next instruction row, in the same font and on the same
         // 12px pitch as the real ones, because that is what it is — the compile
         // chain emits it immediately after these.
