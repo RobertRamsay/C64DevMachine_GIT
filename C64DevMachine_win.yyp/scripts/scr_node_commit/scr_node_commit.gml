@@ -268,6 +268,19 @@
 	            _target.instructions[0][6] = _zp_val;
 	        }
 
+		// --- MACRO_MOUSE ---
+	    } else if (_target.node_type == "MACRO_MOUSE") {
+	        if (_idx == 100) {
+	            // ZP BASE. Clamped so base+6 cannot run off the end of zero
+	            // page — the block is seven bytes and the last one is scratch.
+	            var _mse_clean = (string_char_at(_input, 1) == "$")
+	                           ? string_delete(_input, 1, 1) : _input;
+	            var _mse_zp = real(hex_to_decimal(string_upper(_mse_clean)));
+	            _target.instructions[0][2] = clamp(_mse_zp, 0x02, 0xF9);
+	        } else if (_idx >= 200) {
+	            _target.instructions[_idx - 200][1] = _input;
+	        }
+
 		// --- MACRO_JOY ---
 	    } else if (_target.node_type == "MACRO_JOY") {
 	        if (_idx == 100) {

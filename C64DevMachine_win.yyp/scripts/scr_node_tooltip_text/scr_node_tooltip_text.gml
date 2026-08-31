@@ -426,6 +426,23 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_MOUSE": {
+            title: "MOUSE (1351)",
+            lines: [
+                "Reads a Commodore 1351 in proportional mode.",
+                "POTX/POTY give a 6-bit delta each frame, which is",
+                "sign-extended and added to a signed 16-bit X/Y",
+                "held in zero page.",
+                "",
+                "ZP names a 7 byte block: +2/+3 is X, +4/+5 is Y —",
+                "those are the addresses your own code reads.",
+                "",
+                "Call this once per frame. Reading the pots needs",
+                "CIA1 $DC00 bits 6-7 pointed at the port, which the",
+                "KERNAL keyboard scan also writes."
+            ]
+        },
+
         "MACRO_JOY": {
             title: "JOYSTICK",
             lines: [

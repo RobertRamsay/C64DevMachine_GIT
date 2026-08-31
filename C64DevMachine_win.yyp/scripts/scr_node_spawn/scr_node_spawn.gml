@@ -224,6 +224,32 @@ case "LABEL": {
 		    break;
 
 		// -------------------------------------------------------
+		// -------------------------------------------------------
+		// MACRO_MOUSE — Commodore 1351 proportional mouse
+		//
+		// [0] = ["macro_mouse", port, zp_base, y_invert]
+		// [1] = [0x10, label, enabled]   left button  (joystick FIRE line)
+		// [2] = [0x01, label, enabled]   right button (joystick UP line)
+		//
+		// zp_base names a SEVEN byte block and nothing else is hard-coded, so
+		// the whole of this macro's zero page can be moved from the node:
+		//   +0 old X reading   +1 old Y reading
+		//   +2 X lo  +3 X hi   +4 Y lo  +5 Y hi
+		//   +6 scratch (this frame's raw pot reading)
+		// $F7 keeps clear of the $FB-$FE macro map and the $F0-$F1 collision
+		// latch, and of MACRO_MATH's $F2-$F8 working registers.
+		// -------------------------------------------------------
+		case "MACRO_MOUSE":
+		    _n.node_title   = "MOUSE (1351)";
+		    _n.instructions = [
+		        ["macro_mouse", 1, 0xF7, 1],
+		        [0x10, "MSE_LMB", 0],
+		        [0x01, "MSE_RMB", 0]
+		    ];
+		    _n.pc_address   = global.start_pc;
+		    with (_n) { event_user(0); }
+		    break;
+
 		// MACRO_JOY
 		// -------------------------------------------------------
 		case "MACRO_JOY":

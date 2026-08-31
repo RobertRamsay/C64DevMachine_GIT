@@ -220,6 +220,10 @@ function scr_cleanup_nodes()
         {
             instance_destroy();
         }
+        if (node_type == "MACRO_MOUSE" && !is_connected)
+        {
+            instance_destroy();
+        }
         if (node_type == "MACRO_PRINT" && !is_connected && !instance_exists(print_link))
         {
             instance_destroy();

@@ -1149,6 +1149,8 @@
     {"id":{"name":"scr_node_draw_macro_irq_handler","path":"scripts/scr_node_draw_macro_irq_handler/scr_node_draw_macro_irq_handler.yy",},},
     {"id":{"name":"scr_node_draw_macro_irq","path":"scripts/scr_node_draw_macro_irq/scr_node_draw_macro_irq.yy",},},
     {"id":{"name":"scr_node_draw_macro_joy","path":"scripts/scr_node_draw_macro_joy/scr_node_draw_macro_joy.yy",},},
+    {"id":{"name":"scr_node_draw_macro_mouse","path":"scripts/scr_node_draw_macro_mouse/scr_node_draw_macro_mouse.yy",},},
+    {"id":{"name":"scr_node_step_macro_mouse","path":"scripts/scr_node_step_macro_mouse/scr_node_step_macro_mouse.yy",},},
     {"id":{"name":"scr_node_draw_macro_load_game","path":"scripts/scr_node_draw_macro_load_game/scr_node_draw_macro_load_game.yy",},},
     {"id":{"name":"scr_node_draw_macro_loader","path":"scripts/scr_node_draw_macro_loader/scr_node_draw_macro_loader.yy",},},
     {"id":{"name":"scr_node_draw_macro_map_switch","path":"scripts/scr_node_draw_macro_map_switch/scr_node_draw_macro_map_switch.yy",},},
