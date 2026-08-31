@@ -2207,6 +2207,39 @@ if (node_type == "INIT" && array_length(instructions) == 0) {
 }
 
 // =============================================================
+// INIT NODE AUTO-RTS MARKER
+// =============================================================
+// With nothing connected below it, the compile chain appends a bare RTS
+// so the program returns rather than running into whatever follows it in
+// memory. That instruction has no node on the canvas, so until now the
+// only place you met it was the code panel — where it reads as having
+// come from nowhere.
+//
+// Say it here instead, on the block it belongs to. It disappears the
+// moment a node is connected below (the compile chain stops emitting it),
+// and CLEAR takes it away with the rest of INIT's body.
+if (node_type == "INIT" && array_length(instructions) > 0) {
+    var _spine_empty = true;
+    with (obj_c64_node) {
+        if (is_connected && org_parent == noone && node_type != "INIT") {
+            _spine_empty = false;
+            break;
+        }
+    }
+
+    if (_spine_empty) {
+        var _font_before = draw_get_font();
+        draw_set_font(fnt_c64_tiny);
+        draw_set_halign(fa_left);
+        draw_set_valign(fa_top);
+        draw_set_color(make_color_rgb(120, 150, 100));
+        draw_text(draw_x + 8, y + height - 20, "+ RTS (AUTO)");
+        draw_set_color(c_white);
+        draw_set_font(_font_before);
+    }
+}
+
+// =============================================================
 // LABEL-REFERENCE HIGHLIGHT OVERLAY
 // =============================================================
 if (global.ref_highlight_source != noone && instance_exists(global.ref_highlight_source)

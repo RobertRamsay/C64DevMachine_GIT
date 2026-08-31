@@ -17055,7 +17055,19 @@ case "MACRO_MOVE_MEM": {
 		            break;
 		        }
 		    }
-		    if (!_has_any_nodes) {
+		    // This RTS exists so an otherwise empty program returns instead of
+		    // running off the end of itself. It is INIT's — nothing else on the
+		    // canvas put it there — so CLEAR takes it with the rest of INIT's
+		    // body. An emptied INIT is the author saying they do not want the
+		    // boilerplate, and silently keeping one instruction of it back is
+		    // the kind of thing you only discover in the monitor.
+		    //
+		    // Nothing is lost by letting it go: the build already refuses to run
+		    // quietly past a spine with no core loop and no return, and asks
+		    // whether to add an RTS node.
+		    var _init_has_body = (instance_exists(_start_node)
+		                       && array_length(_start_node.instructions) > 0);
+		    if (!_has_any_nodes && _init_has_body) {
 		        array_push(_list, ["rts", 0]);
 		    }
 		}
