@@ -1,0 +1,111 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 501953f..827fb53 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -972,9 +972,24 @@ welcome_open          = !welcome_hide_checked;
+ // -1 on x is the "never positioned" marker; the draw script parks it beside the
+ // shortcuts column the first time it runs, then this holds the dragged position.
+ showcode_x    = ini_read_real("showcode", "x",    -1);
+-showcode_y    = ini_read_real("showcode", "y",    50);
+-showcode_w    = clamp(ini_read_real("showcode", "w",    420), 300, 900);
+-showcode_rows = clamp(ini_read_real("showcode", "rows",  20),   5,  60);
++showcode_y    = ini_read_real("showcode", "y",    53);
++// SHOWCODE_W_MIN/MAX rather than the literals this used to carry. The panel's
++// floor moved to 225 when it was allowed to narrow further, but this clamp kept
++// its own 300 — so a saved width below 300 was quietly widened on every load
++// and the narrow panel never survived a restart.
++showcode_w    = clamp(ini_read_real("showcode", "w",   248), SHOWCODE_W_MIN, SHOWCODE_W_MAX);
++showcode_rows = clamp(ini_read_real("showcode", "rows",  22),   5,  SHOWCODE_MAX_ROWS);
++
++// TWO SEPARATE THINGS, deliberately:
++//   showcode_enabled — is the panel part of the workspace at all. OPTIONS owns
++//                      this. Off means nothing is drawn, header included, and
++//                      nothing responds to the pointer.
++//   showcode_open    — is the panel expanded or rolled up to its header. The
++//                      minimise control on the header itself owns this.
++// Collapsing them into one flag would mean minimising from the header had to
++// un-tick a menu option, and re-ticking it would have to guess which state to
++// come back to.
++showcode_enabled = (ini_read_real("showcode", "enabled", 1) == 1);
+ showcode_open = (ini_read_real("showcode", "open", 1) == 1);
+ showcode_mode = clamp(ini_read_real("showcode", "mode", 0), 0, 1);
+ // MISC: byte tables, <LABEL/>LABEL pointer bytes and macro scaffolding labels.
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index f1e6417..5000c1b 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -575,6 +575,7 @@ if (gui_menu_open == 4) {
+         { title: "GRID",            action: "GRID"            },
+         { title: "EFFECTS",         action: "EFFECTS"         },
+         { title: "COMMENTS",        action: "COMMENTS"        },
++        { title: "SHOW CODE",       action: "SHOW_CODE"       },
+         { title: "FLOW VIEW",    action: "FLOW_OVERLAY"    },
+         { title: "FLOW TYPE",    action: "FLOW_LINE_STYLE" },
+         { title: "FULLSCREEN",      action: "FULLSCREEN"      },
+@@ -650,6 +651,10 @@ if (gui_menu_open == 4) {
+             _state_str = global.comments_visible ? "ON" : "OFF";
+             _state_col = global.comments_visible ? c_lime : c_red;
+         }
++        if (_op.action == "SHOW_CODE") {
++            _state_str = showcode_enabled ? "ON" : "OFF";
++            _state_col = showcode_enabled ? c_lime : c_red;
++        }
+         if (_op.action == "FULLSCREEN") {
+             _shortcut_str = "F10";
+         }
+@@ -754,6 +759,12 @@ if (gui_menu_open == 4) {
+             else if (_op.action == "COMMENTS") {
+                 global.comments_visible = !global.comments_visible;
+             }
++            else if (_op.action == "SHOW_CODE") {
++                // The master switch, not the minimise. showcode_open is left
++                // untouched so the panel comes back the way it went away.
++                showcode_enabled = !showcode_enabled;
++                scr_show_code_save_ini();
++            }
+             else if (_op.action == "FLOW_OVERLAY") {
+                 // Mirrors the F-key handler in obj_workspace_manager Step so
+                 // both entry points stay in sync.
+diff --git a/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml b/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
+index 0fbb826..b7af412 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
+@@ -1041,6 +1041,11 @@ function scr_show_code_hit() {
+ 
+     if (!instance_exists(obj_workspace_manager)) { exit; }
+ 
++    // Turned off in OPTIONS: the panel is not there, so it cannot own the
++    // pointer or nominate a hovered node. The three globals above are already
++    // cleared, which is what the rest of the workspace reads.
++    if (!obj_workspace_manager.showcode_enabled) { exit; }
++
+     with (obj_workspace_manager) {
+ 
+         // Mirror every condition that stops Draw putting the panel on screen.
+@@ -1103,6 +1108,14 @@ function scr_show_code_hit() {
+ function scr_show_code_draw() {
+     if (!instance_exists(obj_workspace_manager)) { exit; }
+ 
++    // Turned off in OPTIONS: draw nothing at all, header and minimise control
++    // included. showcode_open is left exactly as it was, so switching the panel
++    // back on restores it expanded or rolled up as you left it.
++    if (!obj_workspace_manager.showcode_enabled) {
++        global.showcode_mouse_over = false;
++        exit;
++    }
++
+     with (obj_workspace_manager) {
+ 
+         global.showcode_mouse_over = false;
+@@ -1722,6 +1735,11 @@ function scr_show_code_save_ini() {
+         ini_write_real("showcode", "w",    floor(showcode_w));
+         ini_write_real("showcode", "rows", showcode_rows);
+         ini_write_real("showcode", "open", _open_flag);
++        var _enabled_flag = 0;
++        if (showcode_enabled) {
++            _enabled_flag = 1;
++        }
++        ini_write_real("showcode", "enabled", _enabled_flag);
+         ini_write_real("showcode", "mode", showcode_mode);
+         var _misc_flag = 0;
+         if (showcode_misc) {

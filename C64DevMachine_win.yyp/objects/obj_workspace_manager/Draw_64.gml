@@ -652,11 +652,14 @@ if (gui_menu_open == 4) {
             _state_col = global.comments_visible ? c_lime : c_red;
         }
         if (_op.action == "SHOW_CODE") {
-            // Drives showcode_open directly. That flag is already persisted as
-            // [showcode] open, so this needs no key of its own — a second one
-            // would just be a second source of truth for the same thing.
-            _state_str = showcode_open ? "ON" : "OFF";
-            _state_col = showcode_open ? c_lime : c_red;
+            // showcode_enabled, not showcode_open. Open is the header's
+            // minimise; this is whether the panel is on screen at all.
+            _state_str = "OFF";
+            _state_col = c_red;
+            if (showcode_enabled) {
+                _state_str = "ON";
+                _state_col = c_lime;
+            }
         }
         if (_op.action == "FULLSCREEN") {
             _shortcut_str = "F10";
@@ -763,7 +766,7 @@ if (gui_menu_open == 4) {
                 global.comments_visible = !global.comments_visible;
             }
             else if (_op.action == "SHOW_CODE") {
-                showcode_open = !showcode_open;
+                showcode_enabled = !showcode_enabled;
                 scr_show_code_save_ini();
             }
             else if (_op.action == "FLOW_OVERLAY") {

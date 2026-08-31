@@ -980,6 +980,11 @@ showcode_y    = ini_read_real("showcode", "y",    53);
 showcode_w    = clamp(ini_read_real("showcode", "w",   248), SHOWCODE_W_MIN, SHOWCODE_W_MAX);
 showcode_rows = clamp(ini_read_real("showcode", "rows",  22),   5,  SHOWCODE_MAX_ROWS);
 showcode_open = (ini_read_real("showcode", "open", 1) == 1);
+// Two separate things, deliberately. showcode_open is the header's minimise
+// chevron: the panel is still there, rolled up to its title bar. This one is
+// the master switch from OPTIONS -> SHOW CODE: off means the panel does not
+// exist on screen at all, header included, and claims no mouse.
+showcode_enabled = (ini_read_real("showcode", "enabled", 1) == 1);
 showcode_mode = clamp(ini_read_real("showcode", "mode", 0), 0, 1);
 // MISC: byte tables, <LABEL/>LABEL pointer bytes and macro scaffolding labels.
 // Off by default — the lean view is just the code.
