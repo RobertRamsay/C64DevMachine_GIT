@@ -5515,6 +5515,113 @@ case "MACRO_MOUSE": {
     }
 } break;
 
+// --------------------------------------------------------
+// KEYBOARD MATRIX — MACRO_LETTERS / MACRO_FNNUMBERS / MACRO_MISCKEYS
+//
+// One emission for all three; only the key list differs, and that comes from
+// scr_key_category_list via the node's own slots.
+//
+// [0]    = ["macro_keys", zp_base]
+// [1..N] = [key_name, jsr_label, enabled]
+//
+// The scan is the standard one: drive a column low on CIA1 port A ($DC00),
+// read the rows back from port B ($DC01), both active low. Nothing here needs
+// the KERNAL, and any number of keys can be held at once — which is the whole
+// point of scanning rather than calling GETIN.
+//
+// ZERO PAGE: one bit per key in this node's list, bit 0 of the first byte
+// being the first key in the grid. The block is cleared at the top of every
+// scan, so it always describes THIS frame. Width follows the category — four
+// bytes for the letters, two for the numbers — and the base comes from the
+// node, so all of it moves together.
+//
+// CONTENTION WITH MACRO_MOUSE: writing a column mask to $DC00 also writes bits
+// 6-7, which are what select the control port SID's pots are wired to. A
+// keyboard scan therefore leaves the pot select at %11 (neither port), and the
+// pots need time to settle after it is put back. Run the mouse macro BEFORE
+// this one in the frame and the reading it takes is the one made before the
+// scan disturbed anything.
+// --------------------------------------------------------
+case "MACRO_LETTERS":
+case "MACRO_FNNUMBERS":
+case "MACRO_MISCKEYS": {
+    var _id  = _curr;
+    var _ki0 = _id.instructions[0];
+
+    var _k_zp = 0xF0;
+    if (array_length(_ki0) > 1 && is_real(_ki0[1])) { _k_zp = real(_ki0[1]); }
+
+    var _k_count = array_length(_id.instructions) - 1;
+    var _k_bytes = ceil(_k_count / 8);
+    _k_zp = clamp(_k_zp, 0x02, 0xFF - _k_bytes);
+
+    var _k_uid = string(real(_id));
+
+    // ---- clear the held-bits block ----
+    // Only emitted when something is actually enabled, so a node with nothing
+    // switched on costs nothing at all.
+    var _k_any = false;
+    for (var _kc = 1; _kc < array_length(_id.instructions); _kc++) {
+        if (array_length(_id.instructions[_kc]) < 3) { continue; }
+        if (_id.instructions[_kc][2] == 1)           { _k_any = true; break; }
+    }
+    if (!_k_any) { break; }
+
+    array_push(_list, ["lda_imm", 0x00, _id]);
+    for (var _kb = 0; _kb < _k_bytes; _kb++) {
+        array_push(_list, ["sta_zp", _k_zp + _kb, _id]);
+    }
+
+    // ---- one test per enabled key ----
+    for (var _ki = 1; _ki < array_length(_id.instructions); _ki++) {
+        var _krow = _id.instructions[_ki];
+        if (array_length(_krow) < 3) { continue; }
+        if (_krow[2] != 1)           { continue; }
+
+        var _kname = string(_krow[0]);
+
+        if (scr_key_matrix_is_nmi(_kname)) {
+            show_debug_message("KEYBOARD: " + _kname + " is on the NMI line and cannot be scanned - slot skipped.");
+            continue;
+        }
+
+        var _kpos = scr_key_matrix_lookup(_kname);
+        if (!_kpos.ok) {
+            show_debug_message("KEYBOARD: no matrix position for '" + _kname + "' - slot skipped.");
+            continue;
+        }
+
+        var _pa_mask = (~(1 << _kpos.pa)) & 0xFF;   // column driven LOW
+        var _pb_mask = (1 << _kpos.pb) & 0xFF;      // row reads LOW when held
+
+        var _slot     = _ki - 1;
+        var _bit_byte = _k_zp + (_slot div 8);
+        var _bit_mask = (1 << (_slot mod 8)) & 0xFF;
+
+        var _kskip = "key_skip_" + string(_ki) + "_" + _k_uid;
+
+        // The column select is written per key rather than cached across a run
+        // of keys in the same column. A JSR target is free to touch $DC00 —
+        // MACRO_MOUSE does exactly that — so a cached select would be reading
+        // whatever the last callee left behind.
+        array_push(_list, ["lda_imm", _pa_mask, _id]);
+        array_push(_list, ["sta_abs", 0xDC00,   _id]);
+        array_push(_list, ["lda_abs", 0xDC01,   _id]);
+        array_push(_list, ["and_imm", _pb_mask, _id]);
+        array_push(_list, ["bne",     _kskip,   _id]);   // bit still high = not held
+
+        array_push(_list, ["lda_zp",  _bit_byte, _id]);
+        array_push(_list, ["ora_imm", _bit_mask, _id]);
+        array_push(_list, ["sta_zp",  _bit_byte, _id]);
+
+        var _ktarget = string(_krow[1]);
+        if (_ktarget != "") {
+            array_push(_list, ["jsr", _ktarget, _id]);
+        }
+
+        array_push(_list, ["label", _kskip]);
+    }
+} break;
 case "MACRO_JOY": {
 	var _id        = _curr;
 	var _port      = is_real(_id.instructions[0][1]) ? real(_id.instructions[0][1]) : 2;

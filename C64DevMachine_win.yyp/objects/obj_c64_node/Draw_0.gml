@@ -184,6 +184,9 @@ if (height_dirty) {
     case "NAMED_LOC":   height = _G * 3;  break;         // 60
     case "NEW_STR":     height = _G * 4;  break;         // 100
     case "MACRO_JOY":   height = _G * 6;  break;
+    case "MACRO_LETTERS":   height = _G * 6;  break;   // 26 keys, 6 across = 5 rows
+    case "MACRO_FNNUMBERS": height = _G * 5;  break;   // 16 keys, 6 across = 3 rows
+    case "MACRO_MISCKEYS":  height = _G * 7;  break;   // 24 keys, 4 across = 6 rows
     case "MACRO_MOUSE": height = _G * 6;  break;
     case "MACRO_VWAIT": height = _G * 3;  break;        
     case "MACRO_DISPLAY": height = _G * 4;  break;
@@ -914,6 +917,9 @@ switch (node_type) {
 	case "MACRO_PRINT_EXT":
     case "MACRO_JOY":
     case "MACRO_MOUSE":
+    case "MACRO_LETTERS":
+    case "MACRO_FNNUMBERS":
+    case "MACRO_MISCKEYS":
     case "MACRO_BMP":   _head_col = is_connected ? make_color_rgb(180, 60, 180) : make_color_rgb( 90, 30,  90); break;
     case "MACRO_VECTOR_BMP": _head_col = is_connected ? make_color_rgb(120, 200, 220) : make_color_rgb(50, 90, 100); break;
     case "MACRO_PLACE_CHAR": _head_col = is_connected ? make_color_rgb(200, 140, 80) : make_color_rgb(100, 70, 40); break;
@@ -1324,6 +1330,9 @@ if (_lod_body) switch (node_type) {
 	case "MACRO_SID_SONG":   scr_node_draw_macro_sid_song(draw_x, y);                   break;
 	case "MACRO_GET_CHAR":   scr_node_draw_macro_get_char(draw_x, y);                   break;
     case "MACRO_JOY":   scr_node_draw_macro_joy(draw_x, y);                             break;
+    case "MACRO_LETTERS":
+    case "MACRO_FNNUMBERS":
+    case "MACRO_MISCKEYS": scr_node_draw_macro_keys(draw_x, y);                            break;
     case "MACRO_MOUSE": scr_node_draw_macro_mouse(draw_x, y);                           break;
 	case "MACRO_VIC":   scr_node_draw_macro_vic(draw_x);							    break;
     case "MACRO_VWAIT": scr_node_draw_macro_vwait(draw_x, y);                           break;

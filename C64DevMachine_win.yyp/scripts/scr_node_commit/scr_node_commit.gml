@@ -268,6 +268,21 @@
 	            _target.instructions[0][6] = _zp_val;
 	        }
 
+		// --- KEYBOARD MATRIX NODES ---
+	    } else if (_target.node_type == "MACRO_LETTERS"
+	            || _target.node_type == "MACRO_FNNUMBERS"
+	            || _target.node_type == "MACRO_MISCKEYS") {
+	        if (_idx == 100) {
+	            // ZP BASE. Clamped so the whole held-bits block stays inside
+	            // zero page, whichever category this is.
+	            var _kb_clean = (string_char_at(_input, 1) == "$")
+	                          ? string_delete(_input, 1, 1) : _input;
+	            var _kb_zp    = real(hex_to_decimal(string_upper(_kb_clean)));
+	            var _kb_cat   = scr_key_category_list(_target.node_type);
+	            var _kb_need  = ceil(array_length(_kb_cat.keys) / 8);
+	            _target.instructions[0][1] = clamp(_kb_zp, 0x02, 0xFF - _kb_need);
+	        }
+
 		// --- MACRO_MOUSE ---
 	    } else if (_target.node_type == "MACRO_MOUSE") {
 	        if (_idx == 100) {

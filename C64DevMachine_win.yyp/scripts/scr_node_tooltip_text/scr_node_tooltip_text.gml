@@ -426,6 +426,54 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_LETTERS": {
+            title: "KEYS A-Z",
+            lines: [
+                "Direct CIA1 matrix scan: a column is driven low on",
+                "$DC00 and the rows read back from $DC01, so any",
+                "number of keys can be held at once.",
+                "",
+                "Each enabled key sets its own bit in the ZP block",
+                "and can JSR a label. Bit 0 is the first key in the",
+                "grid, reading left to right.",
+                "",
+                "Not scannable: RESTORE (NMI line), and F2/F4/F6/F8",
+                "(SHIFT plus F1/F3/F5/F7, not matrix positions)."
+            ]
+        },
+
+        "MACRO_FNNUMBERS": {
+            title: "KEYS 0-9 / Fn",
+            lines: [
+                "Direct CIA1 matrix scan: a column is driven low on",
+                "$DC00 and the rows read back from $DC01, so any",
+                "number of keys can be held at once.",
+                "",
+                "Each enabled key sets its own bit in the ZP block",
+                "and can JSR a label. Bit 0 is the first key in the",
+                "grid, reading left to right.",
+                "",
+                "Not scannable: RESTORE (NMI line), and F2/F4/F6/F8",
+                "(SHIFT plus F1/F3/F5/F7, not matrix positions)."
+            ]
+        },
+
+        "MACRO_MISCKEYS": {
+            title: "KEYS MISC",
+            lines: [
+                "Direct CIA1 matrix scan: a column is driven low on",
+                "$DC00 and the rows read back from $DC01, so any",
+                "number of keys can be held at once.",
+                "",
+                "Each enabled key sets its own bit in the ZP block",
+                "and can JSR a label. Bit 0 is the first key in the",
+                "grid, reading left to right.",
+                "",
+                "Not scannable: RESTORE (NMI line), and F2/F4/F6/F8",
+                "(SHIFT plus F1/F3/F5/F7, not matrix positions)."
+            ]
+        },
+
         "MACRO_MOUSE": {
             title: "MOUSE (1351)",
             lines: [

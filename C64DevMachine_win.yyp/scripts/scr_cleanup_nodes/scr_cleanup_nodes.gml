@@ -224,6 +224,11 @@ function scr_cleanup_nodes()
         {
             instance_destroy();
         }
+        if ((node_type == "MACRO_LETTERS" || node_type == "MACRO_FNNUMBERS"
+          || node_type == "MACRO_MISCKEYS") && !is_connected)
+        {
+            instance_destroy();
+        }
         if (node_type == "MACRO_PRINT" && !is_connected && !instance_exists(print_link))
         {
             instance_destroy();

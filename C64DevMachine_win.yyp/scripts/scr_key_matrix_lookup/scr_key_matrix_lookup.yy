@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_key_matrix_lookup",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_key_matrix_lookup",
+  "parent":{
+    "name":"MACROS",
+    "path":"folders/SCRIPTS/MACROS.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

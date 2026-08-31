@@ -256,6 +256,43 @@ case "LABEL": {
 		    with (_n) { event_user(0); }
 		    break;
 
+		// -------------------------------------------------------
+		// KEYBOARD MATRIX NODES
+		//
+		// Three node types, one behaviour. The keys each one offers come from
+		// scr_key_category_list, so the grid, the hit test and the emission
+		// are shared and only the list differs.
+		//
+		// [0]    = ["macro_keys", zp_base]
+		// [1..N] = [key_name, jsr_label, enabled]
+		//
+		// zp_base names ONE BIT PER KEY in that node's list, so the block is
+		// as wide as the category needs: 4 bytes for the 26 letters, 2 for the
+		// numbers and F-keys, 3 for the misc set. Bit 0 of the first byte is
+		// the first key in the grid. Every address comes from the node, so the
+		// whole block moves.
+		// -------------------------------------------------------
+		case "MACRO_LETTERS":
+		case "MACRO_FNNUMBERS":
+		case "MACRO_MISCKEYS":
+		    if (_type == "MACRO_LETTERS")   { _n.node_title = "KEYS A-Z";    }
+		    if (_type == "MACRO_FNNUMBERS") { _n.node_title = "KEYS 0-9/Fn"; }
+		    if (_type == "MACRO_MISCKEYS")  { _n.node_title = "KEYS MISC";   }
+
+		    var _kcat  = scr_key_category_list(_type);
+		    var _kbase = 0xF0;
+		    if (_type == "MACRO_FNNUMBERS") { _kbase = 0xF4; }
+		    if (_type == "MACRO_MISCKEYS")  { _kbase = 0xF6; }
+
+		    _n.instructions = [["macro_keys", _kbase]];
+		    for (var _ki = 0; _ki < array_length(_kcat.keys); _ki++) {
+		        array_push(_n.instructions,
+		                   [_kcat.keys[_ki], "KEY_" + string(_kcat.keys[_ki]), 0]);
+		    }
+		    _n.pc_address = global.start_pc;
+		    with (_n) { event_user(0); }
+		    break;
+
 		// MACRO_JOY
 		// -------------------------------------------------------
 		case "MACRO_JOY":
