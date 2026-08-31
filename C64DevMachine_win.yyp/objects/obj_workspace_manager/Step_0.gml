@@ -2057,7 +2057,14 @@ if (keyboard_check_pressed(ord("V"))) {
 // found this).
 if (global.relayout_frames > 0) {
     global.relayout_frames -= 1;
-    global.addresses_dirty  = true;
+    // Call the pass, do not just raise the flag. global.addresses_dirty drives
+    // the spine-traversal block immediately below and is cleared by it — it has
+    // never triggered scr_c64_do_update_addresses(), which is what actually
+    // packs node y positions. That pass runs from alarm[1], armed six frames
+    // after a MOUSE RELEASE, which is why the gap sat there through a keyboard
+    // undo/redo and vanished the moment another node was added.
+    global.addresses_dirty = true;
+    scr_c64_do_update_addresses();
 }
 
 if (global.addresses_dirty) {
