@@ -1,0 +1,22 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 09708db..fccbf23 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -2254,10 +2254,14 @@ if (node_type == "INIT") {
+         draw_set_halign(fa_left);
+         draw_set_valign(fa_top);
+ 
+-        draw_set_color(make_color_rgb(150, 150, 160));
+-        draw_text(draw_x + 8, _rts_y, "RTS");
++        // draw_x + 10 and c_ltgray are what the real mnemonic rows above use
++        // (see the prefix draw in the instruction loop), so this sits in the
++        // same column and reads as the same kind of thing. Only the "(AUTO)"
++        // note is dimmed, to mark where it came from.
++        draw_set_color(c_ltgray);
++        draw_text(draw_x + 10, _rts_y, "RTS");
+         draw_set_color(make_color_rgb(90, 120, 80));
+-        draw_text(draw_x + 52, _rts_y, "(AUTO)");
++        draw_text(draw_x + 54, _rts_y, "(AUTO)");
+ 
+         draw_set_color(c_white);
+         draw_set_font(_font_before);
