@@ -1089,6 +1089,10 @@ function scr_show_code_hit() {
 
         with (obj_c64_node) {
             if (node_type == "INIT") { continue; }
+            // Folding does not move a node, it only stops it drawing, so its
+            // rectangle is still live under the empty space a fold leaves.
+            // The listing was jumping to code for a node that is not on screen.
+            if (scr_node_is_hidden(id)) { continue; }
             if (point_in_rectangle(mouse_x, mouse_y, x + x_indent, y, x + x_indent + width, y + height)) {
                 global.showcode_hover_node = id;
                 break;

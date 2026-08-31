@@ -81,7 +81,9 @@ function scr_draw_flow_overlay(_edges, _mode, _style = 1) {
     // Mode 1: Local Hover Mode - find hovered node and abort if empty
     if (_mode == 1) {
         with (obj_c64_node) {
-            if (mouse_x >= x && mouse_x <= x + width && mouse_y >= y && mouse_y <= y + height) {
+            // scr_node_mouse_over is the same rectangle test with the fold
+            // check in front of it — a folded node must not answer the hover.
+            if (scr_node_mouse_over(id)) {
                 _hovered_node = id;
                 break;
             }
@@ -98,6 +100,11 @@ function scr_draw_flow_overlay(_edges, _mode, _style = 1) {
     for (var _vi = 0; _vi < array_length(_edges); _vi++) {
         var _ve = _edges[_vi];
         if (!instance_exists(_ve.src) || !instance_exists(_ve.tgt)) continue;
+        // An edge with either end inside a folded block drew a line off into
+        // empty canvas, since the node it pointed at is not rendered. Drop the
+        // whole edge rather than half of it. The flow GRAPH is untouched — a
+        // fold is visual only, and unfolding brings the line straight back.
+        if (scr_node_is_hidden(_ve.src) || scr_node_is_hidden(_ve.tgt)) continue;
         if (_ve.kind == "flow") continue;
         if (_mode == 1 && _ve.src != _hovered_node && _ve.tgt != _hovered_node) continue;
         array_push(_visible, _ve);

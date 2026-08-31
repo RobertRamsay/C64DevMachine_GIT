@@ -63,6 +63,10 @@ if (box_select_active) {
     // Highlight overlapping nodes
 with (obj_c64_node) {
         if (node_type == "INIT") continue;
+        // These boxes are drawn in GUI space from raw x/y/width/height, so
+        // they ignored the fold entirely — zooming out over a collapsed block
+        // painted its hidden children back onto the screen.
+        if (scr_node_is_hidden(id)) continue;
         var _nx1 = (x + x_indent - _vx) * _sx;
         var _ny1 = (y - _vy) * _sy;
         var _nx2 = (x + x_indent + width  - _vx) * _sx;
@@ -105,6 +109,9 @@ if (array_length(global.selected_nodes) > 0) {
     for (var _si = 0; _si < array_length(global.selected_nodes); _si++) {
         var _sn = global.selected_nodes[_si];
         if (!instance_exists(_sn)) continue;
+        // A node selected before the fold is still in the array. Keep it
+        // selected — unfolding should restore it — but do not paint it.
+        if (scr_node_is_hidden(_sn)) continue;
 		var _nx1 = (_sn.x + _sn.x_indent - _vx) * _sx;
         var _ny1 = (_sn.y - _vy) * _sy;
         var _nx2 = (_sn.x + _sn.x_indent + _sn.width  - _vx) * _sx;

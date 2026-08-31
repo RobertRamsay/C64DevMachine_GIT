@@ -1934,6 +1934,10 @@ if (global.group_drag_handle == id) {
             with (obj_c64_node) {
                 if (id == _self_ref) continue;
                 if (is_dragging) continue;
+                // A folded node still has its header rectangle sitting in the
+                // gap the fold leaves, so it kept claiming drags in empty space and
+                // the node you were actually holding refused to move.
+                if (scr_node_is_hidden(id)) continue;
                 if (depth < _self_ref.depth) {
                     var _hdr_x = x + x_indent;
                     if (point_in_rectangle(mouse_x, mouse_y, _hdr_x, y, _hdr_x + width, y + 24)) {
