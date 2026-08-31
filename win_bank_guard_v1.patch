@@ -1,0 +1,187 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index a7f2ba6..9bd2ef5 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -16,6 +16,32 @@
+ ///      offset), shifts to recover the actual address, adds $03F8+slot, and stores there.
+ ///      Zero-page $FB/$FC are used as scratch (clobbered, documented below).
+ 
++/// $01 BANK GUARD  [BANKGUARD]
++/// ---------------------------------------------------------------------
++/// Several macros need RAM under ROM for the duration of their work, and
++/// used to put $01 back with a flat "lda #$37 / sta $01". That is not a
++/// restore, it is an assumption. A project that had already banked BASIC
++/// out with a BANK SWITCH node (say $36) got $37 written over the top of
++/// it the first time one of these macros ran, and BASIC ROM reappeared
++/// underneath its own data.
++///
++/// The sites below now save and restore for real. The save reads $01 as
++/// it actually is and stores it into the immediate byte of the restore's
++/// LDA; the restore therefore puts back whatever was there on entry. The
++/// $37 those LDAs assemble with is a placeholder that is overwritten
++/// before it can ever execute.
++///
++/// Self-modifying rather than PHA/PLA on purpose: some of these brackets
++/// span hundreds of emitted bytes and carry their own JSR/RTS inside, so
++/// a value pushed at the top would have to survive all of it.
++///
++/// Deliberately NOT guarded:
++///   BANK_SWITCH  - the user's own explicit write to $01. That node IS
++///                  the banking state; guarding it would undo the point.
++///   MACRO_IRQ_HANDLER hardware-vector path - $01 stays at $35 on purpose
++///                  so the CPU fetches $FFFE/$FFFF from RAM.
++///   MACRO_SID_SONG init - documented as banking BASIC out permanently.
++///   sid_irq - already saves and restores $01 through the stack.
+ function scr_compile_chain() {
+     var instruction_list = [];
+     global.inject_null_sid = false;
+@@ -5837,12 +5863,21 @@ if (!_found_valid_sid) {
+ 	    array_push(_list, ["bpl",      "sid_clear", _id]);
+ 
+ // --- Init default track ---
++    // [BANKGUARD] The SID init routine wants standard banking, but this used
++    // to force $37 and then simply walk away, leaving the project banked
++    // however the player wanted rather than however the project wanted.
++    array_push(_list, ["lda_zp",   0x01,            _id]);
++    array_push(_list, ["sta_lab",  "sidinit_bgval", _id]);
+     array_push(_list, ["lda_imm",  0x37,            _id]);
+     array_push(_list, ["sta_zp",   0x01,            _id]);
+     array_push(_list, ["lda_imm",  _track,          _id]);
+     array_push(_list, ["ldx_imm",  0,               _id]);
+     array_push(_list, ["ldy_imm",  0,               _id]);
+ 	array_push(_list, ["jsr",      real(_init_addr), _id]);
++    array_push(_list, ["byte",     0xA9,            _id]);   // LDA #imm
++    array_push(_list, ["label",    "sidinit_bgval"      ]);
++    array_push(_list, ["byte",     0x37,            _id]);   // <- patched
++    array_push(_list, ["sta_zp",   0x01,            _id]);
+     // Raw INS2SND2 SFX needs no init — sfx_play subroutine emitted by MACRO_SFX
+     var _sfx_init_addr = 0; // kept for IRQ tick check below
+ 
+@@ -5995,6 +6030,9 @@ if (_has_irq_nodes) {
+ 	    array_push(_list, ["label",   "sid_init_entry"           ]);
+ 	    array_push(_list, ["sta_zp",  0xFE,              _id]);   // stash track number
+ 	    array_push(_list, ["sei",     0,                 _id]);
++	    // [BANKGUARD] save entry banking; restored just before the CLI below.
++	    array_push(_list, ["lda_zp",  0x01,              _id]);
++	    array_push(_list, ["sta_lab", "sidie_bgval",     _id]);
+ 	    array_push(_list, ["lda_imm", 0x37,              _id]);
+ 	    array_push(_list, ["sta_zp",  0x01,              _id]);
+ 	    array_push(_list, ["lda_imm", 0xFF,              _id]);
+@@ -6003,7 +6041,10 @@ if (_has_irq_nodes) {
+ 	    array_push(_list, ["ldx_imm", 0,                 _id]);
+ 	    array_push(_list, ["ldy_imm", 0,                 _id]);
+ 	    array_push(_list, ["jsr",     real(_init_addr),  _id]);
+-	    array_push(_list, ["lda_imm", 0x37,              _id]);
++	    // [BANKGUARD] restore, operand patched by the save above.
++	    array_push(_list, ["byte",    0xA9,              _id]);   // LDA #imm
++	    array_push(_list, ["label",   "sidie_bgval"          ]);
++	    array_push(_list, ["byte",    0x37,              _id]);   // <- patched
+ 	    array_push(_list, ["sta_zp",  0x01,              _id]);
+ 	    array_push(_list, ["cli",     0,                 _id]);
+ 	    array_push(_list, ["rts",     0,                 _id]);
+@@ -7101,6 +7142,11 @@ case "MACRO_BMP": {
+ 
+ 	array_push(_list, ["sei", 0, _id]);
+ 
++	// [BANKGUARD] Save the $01 we were handed before taking it over.
++	var _bmp_bg = "bmpbank_" + string(real(_id)) + "_";
++	array_push(_list, ["lda_zp",  0x01,            _id]);
++	array_push(_list, ["sta_lab", _bmp_bg + "val", _id]);
++
+ 	// 1. BANKING: Switch to RAM + I/O ($35) 
+ 	// This allows us to read RAM under ROM ($E000-$FFFF) and write to Color RAM ($D800)
+ 	array_push(_list, ["lda_imm", 0x35, _id]);
+@@ -7214,8 +7260,12 @@ case "MACRO_BMP": {
+ 	array_push(_list, ["bpl",     _lbl_zclr_b, _id]);
+ 	*/
+ 
+-array_push(_list, ["lda_imm", 0x37, _id]);
+-	array_push(_list, ["sta_zp",  0x01, _id]);
++	// [BANKGUARD] Put back what was there, not what we assume was there.
++	// The operand byte below is patched at runtime by the save above.
++	array_push(_list, ["byte",   0xA9,            _id]);   // LDA #imm
++	array_push(_list, ["label",  _bmp_bg + "val"      ]);
++	array_push(_list, ["byte",   0x37,            _id]);   // <- patched
++	array_push(_list, ["sta_zp", 0x01,            _id]);
+ 
+ 	// Only emit CLI if no MACRO_IRQ nodes will handle it
+ 	var _bmp_has_irq = false;
+@@ -10844,14 +10894,21 @@ var _first_raster_var      = (array_length(_irq_nodes[0].instructions[0]) > 7) ?
+                 { _irq_has_sid2 = true; break; }
+         }
+         if (!_irq_has_sid2) {
++            // [BANKGUARD] $35 only long enough to write the hardware vector
++            // into RAM; then back to whatever the project was running under.
++            var _irq_bg = _p + "bg";
++            array_push(_list, ["lda_zp",  0x01,            _id]);
++            array_push(_list, ["sta_lab", _irq_bg + "val", _id]);
+             array_push(_list, ["lda_imm", 0x35,            _id]);
+             array_push(_list, ["sta_zp",  0x01,            _id]);
+             array_push(_list, ["lda_lab_lo", _lbl_handler, _id]);
+             array_push(_list, ["sta_abs",    0xFFFE,        _id]);
+             array_push(_list, ["lda_lab_hi", _lbl_handler, _id]);
+             array_push(_list, ["sta_abs",    0xFFFF,        _id]);
+-            array_push(_list, ["lda_imm", 0x37,            _id]);
+-            array_push(_list, ["sta_zp",  0x01,            _id]);
++            array_push(_list, ["byte",   0xA9,             _id]);   // LDA #imm
++            array_push(_list, ["label",  _irq_bg + "val"       ]);
++            array_push(_list, ["byte",   0x37,             _id]);   // <- patched
++            array_push(_list, ["sta_zp", 0x01,             _id]);
+         }
+     }
+     array_push(_list, ["rts",     0,           _id]);
+@@ -15893,7 +15950,11 @@ case "MACRO_CLEAR_BMP_RECT": {
+     // mid-wipe would corrupt the pointer and scatter zeroes across memory.
+     array_push(_list, ["sei", 0, _id]);
+ 
++    // [BANKGUARD] declared outside the if so the restore below can see it.
++    var _cbr_bg = _cbr_pfx + "bg";
+     if (_cbr_basic_off) {
++        array_push(_list, ["lda_zp",  0x01,           _id]);
++        array_push(_list, ["sta_lab", _cbr_bg + "val", _id]);
+         array_push(_list, ["lda_imm", 0x36, _id]); // RAM under BASIC, Kernal + I/O on
+         array_push(_list, ["sta_zp",  0x01, _id]);
+     }
+@@ -15953,8 +16014,11 @@ case "MACRO_CLEAR_BMP_RECT": {
+     array_push(_list, ["bne",     _cbr_pfx + "row",   _id]);
+ 
+     if (_cbr_basic_off) {
+-        array_push(_list, ["lda_imm", 0x37, _id]);
+-        array_push(_list, ["sta_zp",  0x01, _id]);
++        // [BANKGUARD] restore, operand patched by the save above.
++        array_push(_list, ["byte",   0xA9,            _id]);   // LDA #imm
++        array_push(_list, ["label",  _cbr_bg + "val"      ]);
++        array_push(_list, ["byte",   0x37,            _id]);   // <- patched
++        array_push(_list, ["sta_zp", 0x01,            _id]);
+     }
+ 
+     array_push(_list, ["cli", 0, _id]);
+@@ -16159,7 +16223,11 @@ case "MACRO_MOVE_BMP_BLOCK": {
+     // brackets its copy for the same reason.
+     array_push(_list, ["sei", 0, _id]);
+ 
++    // [BANKGUARD] declared outside the if so the restore below can see it.
++    var _mbb_bg = "mbb_" + string(real(_id)) + "_bg";
+     if (_needs_basic_off) {
++        array_push(_list, ["lda_zp",  0x01,            _id]);
++        array_push(_list, ["sta_lab", _mbb_bg + "val", _id]);
+         array_push(_list, ["lda_imm", 0x36, _id]); // RAM under BASIC, Kernal + I/O on
+         array_push(_list, ["sta_zp",  0x01, _id]);
+     }
+@@ -17268,10 +17336,13 @@ case "MACRO_MOVE_BMP_BLOCK": {
+        }
+     }
+ 
+-    // Restore default banking if we changed it
++    // [BANKGUARD] Restore the entry banking if we changed it. Not "default"
++    // banking - the operand byte is patched at runtime by the save above.
+     if (_needs_basic_off) {
+-        array_push(_list, ["lda_imm", 0x37, _id]);
+-        array_push(_list, ["sta_zp",  0x01, _id]);
++        array_push(_list, ["byte",   0xA9,            _id]);   // LDA #imm
++        array_push(_list, ["label",  _mbb_bg + "val"      ]);
++        array_push(_list, ["byte",   0x37,            _id]);   // <- patched
++        array_push(_list, ["sta_zp", 0x01,            _id]);
+     }
+ 
+     array_push(_list, ["cli", 0, _id]);
