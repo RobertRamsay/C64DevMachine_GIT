@@ -1305,7 +1305,7 @@ function scr_show_code_draw() {
         draw_set_font(fnt_C64_Angled);
         draw_set_halign(fa_left);
         draw_set_color(c_white);
-        draw_text_transformed(_px + 12, _py + 6, "SHOW CODE", 1.0, 1.0, 0);
+        draw_text_transformed(_px + 10, _py + 6, "CODE", 1.0, 1.0, 0);
 
         // Program size, only when the panel is wide enough to hold it without
         // crowding the buttons.
