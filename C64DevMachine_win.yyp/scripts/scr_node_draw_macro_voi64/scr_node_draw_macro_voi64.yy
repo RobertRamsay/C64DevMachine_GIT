@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_node_draw_macro_voi64",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_node_draw_macro_voi64",
+  "parent":{
+    "name":"VOI64",
+    "path":"folders/SCRIPTS/VOI64.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

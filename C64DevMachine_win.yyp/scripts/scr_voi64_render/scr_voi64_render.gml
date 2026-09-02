@@ -74,30 +74,20 @@ function scr_voi64_frame_params(_ph, _blend_to, _t) {
     return _p;
 }
 
-/// @function scr_voi64_render_buffer(_phonemes, _pitch, _speed, _throat, _mouth)
-/// @desc Render a space-separated phoneme string to a 16-bit mono buffer.
-/// @return {struct} { buf, snd, samples } or undefined if there is nothing to say
-function scr_voi64_render_buffer(_phonemes, _pitch = 120, _speed = 128, _throat = 128, _mouth = 128) {
+/// @function scr_voi64_build_frames(_phonemes, _speed)
+/// @desc Turn a phoneme string into 100Hz parameter frames, with diphthong
+///       glides and coarticulation already applied.
+///
+///       SHARED, and that is the point. The preview renders these frames to
+///       audio; scr_voi64_sid converts the SAME frames to SID writes. One code
+///       path means tuning the phoneme table moves the C64 and the preview
+///       together. If these ever fork, the preview stops predicting the
+///       hardware and is worth nothing.
+function scr_voi64_build_frames(_phonemes, _speed = 128) {
     var _names = string_split(string_upper(string(_phonemes)), " ", true);
-    if (array_length(_names) == 0) {
-        return undefined;
-    }
-
-    // Knob mapping. Throat and mouth are multipliers around 1.0 at 128,
-    // deliberately gentle — a formant moved more than about 40% stops
-    // sounding like a different voice and starts sounding like a
-    // different vowel, which makes the speech wrong rather than characterful.
-    var _throat_mul = 0.6 + (clamp(_throat, 0, 255) / 255) * 0.8;
-    var _mouth_mul  = 0.6 + (clamp(_mouth,  0, 255) / 255) * 0.8;
-    var _speed_mul  = 0.5 + (clamp(_speed,  0, 255) / 255) * 1.5;   // 128 -> ~1.25
-    var _pitch_hz   = clamp(_pitch, 50, 400);
-
-    // floor, not the raw quotient: 22050/100 is 220.5, and a fractional loop
-    // bound writes 221 samples per frame while the buffer was sized on 220.5.
-    // That overruns a buffer_fixed. One integer, used for both.
-    var _spf = floor(VOI64_RATE / VOI64_FRAME_HZ);
-
-    // ── Pass 1: build the frame list ──────────────────────────────────
+    if (array_length(_names) == 0) { return []; }
+    var _speed_mul = 0.5 + (clamp(_speed, 0, 255) / 255) * 1.5;
+    // ── build the frame list ──────────────────────────────────
     // Frames are resolved before any audio is generated so the buffer can
     // be allocated once at the right size. buffer_grow on tens of
     // thousands of samples is the slow way to do this.
@@ -157,6 +147,29 @@ function scr_voi64_render_buffer(_phonemes, _pitch = 120, _speed = 128, _throat 
             _prev = _cur;
         }
     }
+
+    return _frames;
+}
+
+/// @function scr_voi64_render_buffer(_phonemes, _pitch, _speed, _throat, _mouth)
+/// @desc Render a space-separated phoneme string to a 16-bit mono buffer.
+/// @return {struct} { buf, snd, samples } or undefined if there is nothing to say
+function scr_voi64_render_buffer(_phonemes, _pitch = 120, _speed = 128, _throat = 128, _mouth = 128) {
+    // Knob mapping. Throat and mouth are multipliers around 1.0 at 128,
+    // deliberately gentle — a formant moved more than about 40% stops
+    // sounding like a different voice and starts sounding like a
+    // different vowel, which makes the speech wrong rather than characterful.
+    var _throat_mul = 0.6 + (clamp(_throat, 0, 255) / 255) * 0.8;
+    var _mouth_mul  = 0.6 + (clamp(_mouth,  0, 255) / 255) * 0.8;
+    var _speed_mul  = 0.5 + (clamp(_speed,  0, 255) / 255) * 1.5;   // 128 -> ~1.25
+    var _pitch_hz   = clamp(_pitch, 50, 400);
+
+    // floor, not the raw quotient: 22050/100 is 220.5, and a fractional loop
+    // bound writes 221 samples per frame while the buffer was sized on 220.5.
+    // That overruns a buffer_fixed. One integer, used for both.
+    var _spf = floor(VOI64_RATE / VOI64_FRAME_HZ);
+
+    var _frames = scr_voi64_build_frames(_phonemes, _speed);
 
     var _nframes = array_length(_frames);
     if (_nframes == 0) {

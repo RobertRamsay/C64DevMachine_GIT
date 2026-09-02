@@ -1,0 +1,120 @@
+/// @desc Click handling for both Voi64 nodes. Row anchors mirror the draw
+///       script exactly — if one moves, the other has to move with it.
+
+function scr_node_step_macro_voi64_master(_draw_x) {
+    var _lh = 14;
+    var _fy = y + 28;
+    var _x1 = _draw_x + 8;
+    var _x2 = _draw_x + width - 8;
+
+    // Rows 0-4 are all numeric entry: pitch, speed, throat, mouth, zp.
+    // Index 5 (zp) is hex, the rest decimal — scr_node_commit sorts that
+    // out; this only has to open the editor on the right slot.
+    var _slots = [1, 2, 3, 4, 5];
+    for (var _k = 0; _k < 5; _k++) {
+        if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
+            var _idx = _slots[_k];
+            while (array_length(instructions[0]) <= _idx) {
+                array_push(instructions[0], 0);
+            }
+            var _cur = is_real(instructions[0][_idx]) ? real(instructions[0][_idx]) : 0;
+            with (obj_workspace_manager) {
+                is_entering_text     = true;
+                input_target_node    = other.id;
+                input_target_index   = _idx;
+                if (_idx == 5) {
+                    var _h = string_upper(decimal_to_hex(_cur));
+                    while (string_length(_h) < 2) { _h = "0" + _h; }
+                    current_input_string = _h;
+                } else {
+                    current_input_string = string(_cur);
+                }
+                keyboard_string = "";
+                cursor_pos      = string_length(current_input_string);
+            }
+            exit;
+        }
+        _fy += _lh;
+    }
+}
+
+function scr_node_step_macro_voi64_say(_draw_x) {
+    var _lh = 14;
+    var _fy = y + 28;
+    var _x1 = _draw_x + 8;
+    var _x2 = _draw_x + width - 8;
+
+    // Row 0 — MODE toggle
+    if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
+        while (array_length(instructions[0]) <= 3) { array_push(instructions[0], 0); }
+        var _m = is_real(instructions[0][3]) ? real(instructions[0][3]) : 0;
+        instructions[0][3] = (_m == 1) ? 0 : 1;
+        global.addresses_dirty = true;
+        exit;
+    }
+    _fy += _lh;
+
+    // Row 1 — SRC toggle
+    if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
+        while (array_length(instructions[0]) <= 4) { array_push(instructions[0], 0); }
+        var _s = is_real(instructions[0][4]) ? real(instructions[0][4]) : 0;
+        instructions[0][4] = (_s == 1) ? 0 : 1;
+        global.addresses_dirty = true;
+        exit;
+    }
+    _fy += _lh;
+
+    // Row 2 — the text itself. Inline mode types here; TEXT_DATA mode
+    // types the asset name.
+    if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
+        var _src = 0;
+        if (array_length(instructions[0]) > 4 && is_real(instructions[0][4])) {
+            _src = real(instructions[0][4]);
+        }
+        var _idx = (_src == 1) ? 6 : 5;
+        while (array_length(instructions[0]) <= _idx) { array_push(instructions[0], ""); }
+        with (obj_workspace_manager) {
+            is_entering_text     = true;
+            input_target_node    = other.id;
+            input_target_index   = _idx;
+            current_input_string = string(other.instructions[0][_idx]);
+            keyboard_string      = "";
+            cursor_pos           = string_length(current_input_string);
+        }
+        exit;
+    }
+    _fy += _lh;
+
+    // Rows 3-6 — per-say overrides. Right click clears one back to
+    // inherit; typing -1 does the same thing from the keyboard.
+    for (var _k = 0; _k < 4; _k++) {
+        if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
+            var _oi = 7 + _k;
+            while (array_length(instructions[0]) <= _oi) { array_push(instructions[0], -1); }
+            var _cv = is_real(instructions[0][_oi]) ? real(instructions[0][_oi]) : -1;
+            with (obj_workspace_manager) {
+                is_entering_text     = true;
+                input_target_node    = other.id;
+                input_target_index   = _oi;
+                current_input_string = (_cv < 0) ? "" : string(_cv);
+                keyboard_string      = "";
+                cursor_pos           = string_length(current_input_string);
+            }
+            exit;
+        }
+        _fy += _lh;
+    }
+
+    // Row 7 — PREVIEW VOICE
+    if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy + 1, _x2, _fy + 14)) {
+        var _ph = scr_voi64_say_phoneme_string(id);
+        if (string_trim(_ph) == "") {
+            show_debug_message("VOI64 PREVIEW: nothing to say");
+        } else {
+            var _v = scr_voi64_effective_voice(id);
+            show_debug_message("VOI64 PREVIEW: " + _ph);
+            scr_voi64_say_phonemes(_ph, _v.pitch, _v.speed, _v.throat, _v.mouth);
+        }
+        exit;
+    }
+}

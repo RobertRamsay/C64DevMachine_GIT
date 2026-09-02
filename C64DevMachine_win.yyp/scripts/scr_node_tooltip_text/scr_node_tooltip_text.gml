@@ -576,6 +576,49 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_VOI64_MASTER": {
+            title: "VOI64 MASTER",
+            lines: [
+                "Sets the SID up for speech and emits the Voi64 player",
+                "once. Every VOI64 SAY in the project needs one of these",
+                "connected - without it a SAY emits nothing.",
+                "",
+                "PITCH is the glottal rate in Hz. THROAT scales the first",
+                "formant (deeper / chestier), MOUTH scales the second and",
+                "third (brighter / more forward). SPEED is 0-255 with 128",
+                "nominal, and HIGHER IS FASTER.",
+                "",
+                "The player is BLOCKING: it owns the CPU until the phrase",
+                "ends, so no raster effects and no music while it speaks.",
+                "",
+                "Voices: V3 is a silent pitch source, V1 is the first",
+                "formant hard-synced to it, V2 is the second. On unvoiced",
+                "sounds V3 switches to noise and carries the frication."
+            ]
+        },
+
+        "MACRO_VOI64_SAY": {
+            title: "VOI64 SAY",
+            lines: [
+                "Speaks a phrase. TEXT mode runs English letter-to-sound",
+                "on the PC at build time, so the C64 never sees a letter -",
+                "only the finished frames. PHONEME mode takes a phoneme",
+                "string verbatim, which is how you fix a word the rules",
+                "get wrong.",
+                "",
+                "Source is either typed inline or a TEXT_DATA asset. Both",
+                "are known at build time, which is what keeps the runtime",
+                "cost to eight bytes per 1/50th second.",
+                "",
+                "PITCH / SPEED / THROAT / MOUTH show a dash when they are",
+                "inherited from the master. Type a value to override it",
+                "for this phrase only.",
+                "",
+                "PREVIEW VOICE plays it through the tool using the same",
+                "phoneme string the build will emit."
+            ]
+        },
+
         "MACRO_RANDOM": {
             title: "RANDOM",
             lines: [

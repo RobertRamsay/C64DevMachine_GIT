@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_voi64_sid",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_voi64_sid",
+  "parent":{
+    "name":"VOI64",
+    "path":"folders/SCRIPTS/VOI64.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

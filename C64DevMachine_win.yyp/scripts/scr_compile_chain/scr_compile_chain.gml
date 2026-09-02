@@ -54,6 +54,7 @@ function scr_compile_chain() {
     global.bmpblk_lut_emitted        = false; // reset per compile so MBB multiply LUTs emit once
     global.math_helpers_emitted      = false; // reset per compile so MATH mul16/div16 emit once
     global.sidsong_notetab_emitted   = false; // reset per compile so the SID song note table emits once
+    global.voi64_player_emitted      = false; // reset per compile so the Voi64 player emits once
     // Pre-scan: only emit the mul16/div16 helpers if some MATH node actually
     // uses MUL (op 2) or DIV (op 3). Pure ADD/SUB/ONEMINUS/INVSIGN projects
     // then carry zero multiply/divide code.
@@ -7637,6 +7638,232 @@ case "BANK_SWITCH": {
 // (used by some cartridges/carts detection code) can retrigger the last
 // queued transfer, which is a classic REU footgun.
 // --------------------------------------------------------
+// ════════════════════════════════════════════════════════════════════
+// VOI64 — SPEECH
+//
+// MACRO_VOI64_MASTER sets the SID up for speech and emits the player
+// once. MACRO_VOI64_SAY emits a frame stream and calls it.
+//
+// The player does NO arithmetic. Every frame is eight bytes that go
+// straight to eight SID registers, because the letter-to-sound pass, the
+// formant model, the coarticulation and the Hz-to-SID conversion all
+// happen in GML at compile time. That is the whole design: a
+// cross-development tool can put the hard part on the PC, which is the
+// one thing a 1982 speech synth could never do.
+//
+// See scr_voi64_sid for the frame format and the voice topology,
+// including the one honest compromise in it (only F1 can be pitched).
+// ════════════════════════════════════════════════════════════════════
+case "MACRO_VOI64_MASTER": {
+    var _id = _curr;
+    var _i0 = _curr.instructions[0];
+
+    // [5] zp_base — two bytes for the frame pointer, one for flags.
+    var _zp = 0xFB;
+    if (array_length(_i0) > 5 && is_real(_i0[5])) { _zp = real(_i0[5]) & 0xFF; }
+    var _zpf = (_zp + 2) & 0xFF;
+
+    // ── SID setup. Runs in the spine, once. ──────────────────────────
+    // AD = 0 on all three voices: instant attack, no decay, so the level
+    // is whatever SUSTAIN says and a frame's amplitude change takes
+    // effect immediately. That is what lets the player set loudness by
+    // writing one nibble per voice with the gate left alone — retriggering
+    // the gate every frame would click at 50Hz.
+    array_push(_list, ["lda_imm", 0x00,   _id]);
+    array_push(_list, ["sta_abs", 0xD405, _id]);   // V1 AD
+    array_push(_list, ["sta_abs", 0xD40C, _id]);   // V2 AD
+    array_push(_list, ["sta_abs", 0xD413, _id]);   // V3 AD
+    array_push(_list, ["sta_abs", 0xD406, _id]);   // V1 SR — silent to start
+    array_push(_list, ["sta_abs", 0xD40D, _id]);   // V2 SR
+    array_push(_list, ["sta_abs", 0xD414, _id]);   // V3 SR
+    array_push(_list, ["sta_abs", 0xD402, _id]);   // V1 PW lo
+    array_push(_list, ["sta_abs", 0xD409, _id]);   // V2 PW lo
+    array_push(_list, ["lda_imm", 0x08,   _id]);
+    array_push(_list, ["sta_abs", 0xD403, _id]);   // V1 PW hi -> 50% duty
+    array_push(_list, ["sta_abs", 0xD40A, _id]);   // V2 PW hi
+    // Volume 15, filter off, voice 3 NOT muted — V3 carries the frication
+    // on unvoiced frames, so bit 7 must stay clear.
+    array_push(_list, ["lda_imm", 0x0F,   _id]);
+    array_push(_list, ["sta_abs", 0xD418, _id]);
+
+    // ── The player, emitted once and jumped over ─────────────────────
+    if (!global.voi64_player_emitted) {
+        global.voi64_player_emitted = true;
+
+        array_push(_list, ["jmp_abs", "voi64_skip", _id]);
+
+        // voi64_play — A = frame data lo, X = hi. Blocking: it owns the
+        // CPU until the utterance ends. v1 is deliberately blocking so it
+        // cannot fight a MACRO_IRQ setup; an IRQ-driven mode is a later
+        // MODE on this same node, not a rewrite.
+        array_push(_list, ["label",   "voi64_play"]);
+        array_push(_list, ["sta_zp",  _zp,           _id]);
+        array_push(_list, ["stx_zp",  (_zp + 1) & 0xFF, _id]);
+
+        array_push(_list, ["label",   "voi64_frame"]);
+        // Terminator check first: byte 7 == $FF ends the stream.
+        array_push(_list, ["ldy_imm", 7,    _id]);
+        array_push(_list, ["lda_izy", _zp,  _id]);
+        array_push(_list, ["cmp_imm", 0xFF, _id]);
+        array_push(_list, ["beq",     "voi64_done", _id]);
+
+        // Frequencies: F1 -> V1, F2 -> V2, pitch-or-noise -> V3.
+        array_push(_list, ["ldy_imm", 0,    _id]);
+        array_push(_list, ["lda_izy", _zp,  _id]);
+        array_push(_list, ["sta_abs", 0xD400, _id]);
+        array_push(_list, ["iny",     0,    _id]);
+        array_push(_list, ["lda_izy", _zp,  _id]);
+        array_push(_list, ["sta_abs", 0xD401, _id]);
+        array_push(_list, ["iny",     0,    _id]);
+        array_push(_list, ["lda_izy", _zp,  _id]);
+        array_push(_list, ["sta_abs", 0xD407, _id]);
+        array_push(_list, ["iny",     0,    _id]);
+        array_push(_list, ["lda_izy", _zp,  _id]);
+        array_push(_list, ["sta_abs", 0xD408, _id]);
+        array_push(_list, ["iny",     0,    _id]);
+        array_push(_list, ["lda_izy", _zp,  _id]);
+        array_push(_list, ["sta_abs", 0xD40E, _id]);
+        array_push(_list, ["iny",     0,    _id]);
+        array_push(_list, ["lda_izy", _zp,  _id]);
+        array_push(_list, ["sta_abs", 0xD40F, _id]);
+
+        // Byte 6 = (a1 << 4) | a2. The sustain nibble IS the amplitude,
+        // which is why the phoneme table stores amplitudes 0-15.
+        array_push(_list, ["iny",     0,    _id]);
+        array_push(_list, ["lda_izy", _zp,  _id]);
+        array_push(_list, ["pha",     0,    _id]);
+        array_push(_list, ["and_imm", 0xF0, _id]);
+        array_push(_list, ["sta_abs", 0xD406, _id]);   // V1 sustain = a1
+        array_push(_list, ["pla",     0,    _id]);
+        array_push(_list, ["asl_a",   0,    _id]);
+        array_push(_list, ["asl_a",   0,    _id]);
+        array_push(_list, ["asl_a",   0,    _id]);
+        array_push(_list, ["asl_a",   0,    _id]);
+        array_push(_list, ["sta_abs", 0xD40D, _id]);   // V2 sustain = a2
+
+        // Byte 7 = (a3 << 4) | flags.
+        array_push(_list, ["iny",     0,    _id]);
+        array_push(_list, ["lda_izy", _zp,  _id]);
+        array_push(_list, ["pha",     0,    _id]);
+        array_push(_list, ["and_imm", 0xF0, _id]);
+        array_push(_list, ["sta_abs", 0xD414, _id]);   // V3 sustain
+        array_push(_list, ["pla",     0,    _id]);
+        array_push(_list, ["and_imm", 0x0F, _id]);
+        array_push(_list, ["sta_zp",  _zpf, _id]);     // stash flags
+
+        // V1 control. Pulse + gate, plus SYNC when the frame is voiced —
+        // that is the bit that makes F1 a pitched formant rather than a
+        // bare tone.
+        array_push(_list, ["and_imm", 0x01, _id]);
+        array_push(_list, ["beq",     "voi64_nosync", _id]);
+        array_push(_list, ["lda_imm", 0x43, _id]);     // pulse + sync + gate
+        array_push(_list, ["jmp_abs", "voi64_v1", _id]);
+        array_push(_list, ["label",   "voi64_nosync"]);
+        array_push(_list, ["lda_imm", 0x41, _id]);     // pulse + gate
+        array_push(_list, ["label",   "voi64_v1"]);
+        array_push(_list, ["sta_abs", 0xD404, _id]);
+
+        array_push(_list, ["lda_imm", 0x41, _id]);
+        array_push(_list, ["sta_abs", 0xD40B, _id]);   // V2 always pulse + gate
+
+        // V3: noise when the frame is frication, triangle when it is the
+        // silent pitch source.
+        array_push(_list, ["lda_zp",  _zpf, _id]);
+        array_push(_list, ["and_imm", 0x02, _id]);
+        array_push(_list, ["beq",     "voi64_v3tri", _id]);
+        array_push(_list, ["lda_imm", 0x81, _id]);     // noise + gate
+        array_push(_list, ["jmp_abs", "voi64_v3", _id]);
+        array_push(_list, ["label",   "voi64_v3tri"]);
+        array_push(_list, ["lda_imm", 0x11, _id]);     // triangle + gate
+        array_push(_list, ["label",   "voi64_v3"]);
+        array_push(_list, ["sta_abs", 0xD412, _id]);
+
+        // One PAL frame. Line 200 and not line 0: PAL has 312 lines, so
+        // $D012 reads 0 at BOTH line 0 and line 256 and waiting on it
+        // would fire twice a frame at uneven spacing. Lines 56-255 occur
+        // exactly once.
+        array_push(_list, ["lda_imm", 0xC8, _id]);
+        array_push(_list, ["label",   "voi64_w1"]);
+        array_push(_list, ["cmp_abs", 0xD012, _id]);
+        array_push(_list, ["bne",     "voi64_w1", _id]);
+        array_push(_list, ["label",   "voi64_w2"]);
+        array_push(_list, ["cmp_abs", 0xD012, _id]);
+        array_push(_list, ["beq",     "voi64_w2", _id]);
+
+        // Next frame = pointer + 8.
+        array_push(_list, ["clc",     0,    _id]);
+        array_push(_list, ["lda_zp",  _zp,  _id]);
+        array_push(_list, ["adc_imm", 8,    _id]);
+        array_push(_list, ["sta_zp",  _zp,  _id]);
+        array_push(_list, ["bcc",     "voi64_nocarry", _id]);
+        array_push(_list, ["inc_zp",  (_zp + 1) & 0xFF, _id]);
+        array_push(_list, ["label",   "voi64_nocarry"]);
+        array_push(_list, ["jmp_abs", "voi64_frame", _id]);
+
+        // Silence everything on the way out — leaving a gate open leaves
+        // the last formant ringing under the rest of the program.
+        array_push(_list, ["label",   "voi64_done"]);
+        array_push(_list, ["lda_imm", 0x00,   _id]);
+        array_push(_list, ["sta_abs", 0xD406, _id]);
+        array_push(_list, ["sta_abs", 0xD40D, _id]);
+        array_push(_list, ["sta_abs", 0xD414, _id]);
+        array_push(_list, ["sta_abs", 0xD404, _id]);
+        array_push(_list, ["sta_abs", 0xD40B, _id]);
+        array_push(_list, ["sta_abs", 0xD412, _id]);
+        array_push(_list, ["rts",     0,      _id]);
+
+        array_push(_list, ["label",   "voi64_skip"]);
+    }
+} break;
+
+case "MACRO_VOI64_SAY": {
+    var _id = _curr;
+
+    // No master means no player routine and no default voice, so there is
+    // nothing sensible to emit. Say so in the log and emit nothing rather
+    // than emitting a JSR to a label that will never exist.
+    var _vm = scr_voi64_find_master();
+    if (!instance_exists(_vm)) {
+        show_debug_message("VOI64 SAY#" + string(_id) + ": no connected MACRO_VOI64_MASTER - nothing emitted");
+        break;
+    }
+
+    var _phon = scr_voi64_say_phoneme_string(_id);
+    if (string_trim(_phon) == "") {
+        show_debug_message("VOI64 SAY#" + string(_id) + ": nothing to say");
+        break;
+    }
+
+    var _v  = scr_voi64_effective_voice(_id);
+    var _fr = scr_voi64_sid_frames(_phon, _v.pitch, _v.speed, _v.throat, _v.mouth);
+    if (array_length(_fr) == 0) {
+        break;
+    }
+
+    var _p    = "voi64s" + string(real(_id)) + "_";
+    var _data = _p + "data";
+
+    array_push(_list, ["jmp_abs", _p + "skip", _id]);
+    array_push(_list, ["label",   _data]);
+    for (var _fi = 0; _fi < array_length(_fr); _fi++) {
+        var _f = _fr[_fi];
+        for (var _bi = 0; _bi < 8; _bi++) {
+            array_push(_list, ["byte", _f[_bi], _id]);
+        }
+    }
+    // Terminator frame. The player reads byte 7 first, so only that byte
+    // has to be $FF, but a full eight keeps the stream a clean multiple.
+    for (var _ti = 0; _ti < 7; _ti++) {
+        array_push(_list, ["byte", 0x00, _id]);
+    }
+    array_push(_list, ["byte", 0xFF, _id]);
+    array_push(_list, ["label",   _p + "skip"]);
+
+    array_push(_list, ["lda_lab_lo", _data, _id]);
+    array_push(_list, ["ldx_lab_hi", _data, _id]);
+    array_push(_list, ["jsr",        "voi64_play", _id]);
+} break;
+
 case "MACRO_REU": {
     var _id        = _curr;
     var _reu_op    = is_real(_curr.instructions[0][1]) ? real(_curr.instructions[0][1]) : 0;

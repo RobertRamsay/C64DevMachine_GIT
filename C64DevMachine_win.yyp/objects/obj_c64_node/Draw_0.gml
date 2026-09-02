@@ -164,6 +164,10 @@ if (height_dirty) {
     case "MACRO_PRINT_EXT": height = _G * 8;  break; 
     case "MACRO_PLACE_CHAR": height = _G * 9;  break;
 	case "MACRO_RANDOM":     height = _G * 8;  break;
+	// 7 rows + header. SAY is taller: 3 setting rows, 4 override rows,
+	// the preview button, and room for the no-master warning.
+	case "MACRO_VOI64_MASTER": height = _G * 8;  break;
+	case "MACRO_VOI64_SAY":    height = _G * 10; break;
 	// 8 base rows, +2 for each list that's in ASSET mode (list row, index row,
 	// info row). Recomputed whenever height_dirty fires, so the mode buttons
 	// just need to set it.
@@ -927,6 +931,8 @@ switch (node_type) {
     case "MACRO_MATH":       _head_col = is_connected ? make_color_rgb(60, 170, 140) : make_color_rgb(30, 85, 70); break;
     case "MACRO_CLEAR_BMP_RECT": _head_col = is_connected ? make_color_rgb(200, 70, 90) : make_color_rgb(100, 35, 45); break;
     case "MACRO_RANDOM":     _head_col = is_connected ? make_color_rgb(150, 90, 200) : make_color_rgb(70, 45, 95); break;
+    case "MACRO_VOI64_MASTER": _head_col = is_connected ? make_color_rgb(200, 120, 60) : make_color_rgb(95, 58, 30); break;
+    case "MACRO_VOI64_SAY":    _head_col = is_connected ? make_color_rgb(225, 150, 70) : make_color_rgb(105, 70, 34); break;
 	case "MACRO_SID_SOUND":  _head_col = is_connected ? make_color_rgb(200, 80, 170) : make_color_rgb(95, 40, 80); break;
 	case "MACRO_SID_SONG":   _head_col = is_connected ? make_color_rgb(230, 60, 140) : make_color_rgb(110, 30, 65); break;
 	case "MACRO_GET_CHAR":   _head_col = is_connected ? make_color_rgb(80, 160, 200) : make_color_rgb(40, 80, 100); break;
@@ -1376,6 +1382,8 @@ if (_lod_body) switch (node_type) {
     case "MACRO_CLR_SCREEN": scr_node_draw_macro_clr_screen(draw_x, y); break;
     case "MACRO_MATH":       scr_node_draw_macro_math(draw_x, y); break;
     case "MACRO_RANDOM":     scr_node_draw_macro_random(draw_x, y);                     break;
+    case "MACRO_VOI64_MASTER": scr_node_draw_macro_voi64_master(draw_x, y);              break;
+    case "MACRO_VOI64_SAY":    scr_node_draw_macro_voi64_say(draw_x, y);                 break;
 	case "MACRO_SID_SOUND":  scr_node_draw_macro_sid_sound(draw_x, y);                  break;
 	case "MACRO_SID_SONG":   scr_node_draw_macro_sid_song(draw_x, y);                   break;
 	case "MACRO_GET_CHAR":   scr_node_draw_macro_get_char(draw_x, y);                   break;
