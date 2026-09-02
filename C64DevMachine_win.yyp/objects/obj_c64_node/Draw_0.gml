@@ -166,8 +166,8 @@ if (height_dirty) {
 	case "MACRO_RANDOM":     height = _G * 8;  break;
 	// 7 rows + header. SAY is taller: 3 setting rows, 4 override rows,
 	// the preview button, and room for the no-master warning.
-	case "MACRO_VOI64_MASTER": height = _G * 8;  break;
-	case "MACRO_VOI64_SAY":    height = _G * 10; break;
+	case "MACRO_VOI64_MASTER": height = _G * 7;  break;
+	case "MACRO_VOI64_SAY":    height = _G * 7; break;
 	// 8 base rows, +2 for each list that's in ASSET mode (list row, index row,
 	// info row). Recomputed whenever height_dirty fires, so the mode buttons
 	// just need to set it.
