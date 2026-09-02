@@ -944,7 +944,6 @@ if (gui_menu_open == 1 && !global.lite) {
         { title: "MATH",             type: "MACRO_MATH"          },
         { title: "RANDOM",           type: "MACRO_RANDOM"        },
         { title: "REU",              type: "MACRO_REU"           },
-        { title: "SID PAUSE",        type: "MACRO_SID_PAUSE"     },
         { title: "VOI64 MASTER",     type: "MACRO_VOI64_MASTER"  },
         { title: "VOI64 SAY",        type: "MACRO_VOI64_SAY"     },
     ];
@@ -1532,6 +1531,7 @@ if (gui_menu_open == 0) {
         { title: "SFX",          type: "MACRO_SFX"           },
 		{ title: "SID SOUND",    type: "MACRO_SID_SOUND"     },
         { title: "SID SONG",     type: "MACRO_SID_SONG"      },
+        { title: "SID PAUSE",    type: "MACRO_SID_PAUSE"     },
         { title: "--- DISK ---",  type: "HEADER"              },
         { title: "LOADER",       type: "MACRO_LOADER"        },
         { title: "SAVE GAME",    type: "MACRO_SAVE_GAME"     },

@@ -7789,9 +7789,23 @@ case "MACRO_VOI64_MASTER": {
         array_push(_list, ["sta_abs", 0xD413, _id]);   // V3 AD
         array_push(_list, ["sta_abs", 0xD402, _id]);   // V1 PW lo
         array_push(_list, ["sta_abs", 0xD409, _id]);   // V2 PW lo
+        // THE FILTER, and it stays in this block because A is still zero
+        // here. $D417's low nibble routes voices INTO the filter, and the
+        // player sets $D418 with no filter mode selected - so any voice a
+        // tune had routed there has its output thrown away entirely. Leave a
+        // tune's $D417 in place and F1 simply vanishes from the speech, which
+        // is why it sounded thin and wrong after music had been playing.
+        // Cutoff goes with it so nothing inherits the tune's sweep position.
+        array_push(_list, ["sta_abs", 0xD415, _id]);   // cutoff lo
+        array_push(_list, ["sta_abs", 0xD416, _id]);   // cutoff hi
+        array_push(_list, ["sta_abs", 0xD417, _id]);   // resonance + routing: nothing filtered
+        array_push(_list, ["sta_abs", 0xD410, _id]);   // V3 PW lo - unused by V3's waveforms,
+        array_push(_list, ["sta_abs", 0xD411, _id]);   // V3 PW hi   but cheap to make deterministic
+
         array_push(_list, ["lda_imm", 0x08,   _id]);
         array_push(_list, ["sta_abs", 0xD403, _id]);   // V1 PW hi -> 50% duty
         array_push(_list, ["sta_abs", 0xD40A, _id]);   // V2 PW hi
+
         array_push(_list, ["lda_imm", 0x0F,   _id]);
         array_push(_list, ["sta_abs", 0xD418, _id]);   // full volume, filter off, V3 audible
         // Shadows start clear so the first frame's gate-off writes a

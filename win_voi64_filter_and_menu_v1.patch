@@ -1,0 +1,48 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 565647c..382a7c6 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -944,7 +944,6 @@ if (gui_menu_open == 1 && !global.lite) {
+         { title: "MATH",             type: "MACRO_MATH"          },
+         { title: "RANDOM",           type: "MACRO_RANDOM"        },
+         { title: "REU",              type: "MACRO_REU"           },
+-        { title: "SID PAUSE",        type: "MACRO_SID_PAUSE"     },
+         { title: "VOI64 MASTER",     type: "MACRO_VOI64_MASTER"  },
+         { title: "VOI64 SAY",        type: "MACRO_VOI64_SAY"     },
+     ];
+@@ -1532,6 +1531,7 @@ if (gui_menu_open == 0) {
+         { title: "SFX",          type: "MACRO_SFX"           },
+ 		{ title: "SID SOUND",    type: "MACRO_SID_SOUND"     },
+         { title: "SID SONG",     type: "MACRO_SID_SONG"      },
++        { title: "SID PAUSE",    type: "MACRO_SID_PAUSE"     },
+         { title: "--- DISK ---",  type: "HEADER"              },
+         { title: "LOADER",       type: "MACRO_LOADER"        },
+         { title: "SAVE GAME",    type: "MACRO_SAVE_GAME"     },
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 0c5cbe2..9686341 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -7789,9 +7789,23 @@ case "MACRO_VOI64_MASTER": {
+         array_push(_list, ["sta_abs", 0xD413, _id]);   // V3 AD
+         array_push(_list, ["sta_abs", 0xD402, _id]);   // V1 PW lo
+         array_push(_list, ["sta_abs", 0xD409, _id]);   // V2 PW lo
++        // THE FILTER, and it stays in this block because A is still zero
++        // here. $D417's low nibble routes voices INTO the filter, and the
++        // player sets $D418 with no filter mode selected - so any voice a
++        // tune had routed there has its output thrown away entirely. Leave a
++        // tune's $D417 in place and F1 simply vanishes from the speech, which
++        // is why it sounded thin and wrong after music had been playing.
++        // Cutoff goes with it so nothing inherits the tune's sweep position.
++        array_push(_list, ["sta_abs", 0xD415, _id]);   // cutoff lo
++        array_push(_list, ["sta_abs", 0xD416, _id]);   // cutoff hi
++        array_push(_list, ["sta_abs", 0xD417, _id]);   // resonance + routing: nothing filtered
++        array_push(_list, ["sta_abs", 0xD410, _id]);   // V3 PW lo - unused by V3's waveforms,
++        array_push(_list, ["sta_abs", 0xD411, _id]);   // V3 PW hi   but cheap to make deterministic
++
+         array_push(_list, ["lda_imm", 0x08,   _id]);
+         array_push(_list, ["sta_abs", 0xD403, _id]);   // V1 PW hi -> 50% duty
+         array_push(_list, ["sta_abs", 0xD40A, _id]);   // V2 PW hi
++
+         array_push(_list, ["lda_imm", 0x0F,   _id]);
+         array_push(_list, ["sta_abs", 0xD418, _id]);   // full volume, filter off, V3 audible
+         // Shadows start clear so the first frame's gate-off writes a
