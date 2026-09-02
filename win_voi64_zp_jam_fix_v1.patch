@@ -1,0 +1,126 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_step/scr_asset_inline_editor_step.gml b/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_step/scr_asset_inline_editor_step.gml
+index 6987b86..8fbe118 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_step/scr_asset_inline_editor_step.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_step/scr_asset_inline_editor_step.gml
+@@ -218,11 +218,25 @@ function scr_asset_inline_editor_step(_asset, _mx, _my, _x1, _y1, _x2, _y2) {
+         // would fire every frame, and there is nothing left to clear after
+         // the first one anyway.
+         if (_ctrl && keyboard_check_pressed(vk_backspace)) {
+-            _asset.meta.inline_edit_text      = "";
+-            _asset.meta.inline_edit_cursor    = 0;
++            // The line the caret sits on, and only that line. The newlines
++            // either side are left alone, so with one phrase per line the
++            // line numbers a VOI64 SAY points at do not all shift up.
++            var _cl_s = _cur;
++            while (_cl_s > 0 && string_char_at(_txt, _cl_s) != "\n") {
++                _cl_s -= 1;
++            }
++            var _cl_e = _cur;
++            var _cl_n = string_length(_txt);
++            while (_cl_e < _cl_n && string_char_at(_txt, _cl_e + 1) != "\n") {
++                _cl_e += 1;
++            }
++            if (_cl_e > _cl_s) {
++                _txt = string_delete(_txt, _cl_s + 1, _cl_e - _cl_s);
++            }
++            _asset.meta.inline_edit_text      = _txt;
++            _asset.meta.inline_edit_cursor    = _cl_s;
+             _asset.meta.inline_edit_sel_start = -1;
+             _asset.meta.inline_edit_sel_end   = -1;
+-            _asset.meta.inline_edit_scroll_y  = 0;
+             _asset.meta.inline_edit_blink     = 0;
+             keyboard_string = "";
+             exit;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index c2c1045..246bf4e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -7659,8 +7659,17 @@ case "MACRO_VOI64_MASTER": {
+     var _i0 = _curr.instructions[0];
+ 
+     // [5] zp_base — two bytes for the frame pointer, one for flags.
+-    var _zp = 0xFB;
++    var _zp = 0xF5;
+     if (array_length(_i0) > 5 && is_real(_i0[5])) { _zp = real(_i0[5]) & 0xFF; }
++    // The block is NINE bytes and every offset below was masked to a byte,
++    // so a base of $FB wrapped: ctl3 landed on $00 (the CPU port DDR) and
++    // the range cursor on $01 (the BANKING register), which the var-driven
++    // loop then rewrote on every iteration. That is the $01FF jam.
++    //
++    // Clamped here rather than only in the node's commit, because every
++    // workspace saved before the block grew still has $FB stored in it and
++    // would otherwise keep jamming after the default changed.
++    _zp = clamp(_zp, 0x02, 0xF7);
+     var _zpf = (_zp + 2) & 0xFF;
+     // Three control-register shadows. The player writes each voice's
+     // control byte twice a frame - once with the gate cleared, once with
+@@ -7735,6 +7744,13 @@ case "MACRO_VOI64_MASTER": {
+         // clock are the same clock, which is what a formant synthesiser
+         // actually wants.
+         array_push(_list, ["label",   "voi64_play"]);
++        // The node has always said NO IRQ; now it is true. Without this an
++        // IRQ landing mid-utterance would run whatever handler is installed,
++        // and the usual suspects scratch the same $FB-$FE region the frame
++        // pointer lives in. php/plp rather than sei/cli so a caller that
++        // already had interrupts off gets them back off.
++        array_push(_list, ["php",     0, _id]);
++        array_push(_list, ["sei",     0, _id]);
+         array_push(_list, ["sta_zp",  _zp,              _id]);
+         array_push(_list, ["stx_zp",  (_zp + 1) & 0xFF, _id]);
+         // Shadows start clear so the first frame's gate-off writes a
+@@ -7871,6 +7887,7 @@ case "MACRO_VOI64_MASTER": {
+         array_push(_list, ["sta_abs", 0xD404, _id]);
+         array_push(_list, ["sta_abs", 0xD40B, _id]);
+         array_push(_list, ["sta_abs", 0xD412, _id]);
++        array_push(_list, ["plp",     0,      _id]);
+         array_push(_list, ["rts",     0,      _id]);
+ 
+         array_push(_list, ["label",   "voi64_skip"]);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+index e6d4f21..7728bc9 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+@@ -771,10 +771,11 @@
+ 	        if (_idx == 5) {
+ 	            var _vz = (string_char_at(_input, 1) == "$")
+ 	                    ? string_delete(_input, 1, 1) : _input;
+-	            // Six consecutive bytes: pointer lo/hi, flags, and three
+-	            // control-register shadows. $FA is the highest base that
+-	            // keeps all six inside page zero.
+-	            _target.instructions[0][5] = clamp(hex_to_decimal(_vz), 0x02, 0xFA);
++	            // Nine consecutive bytes: pointer lo/hi, flags, three control
++	            // shadows, and the range loop's cursor/end/temp. $F7 is the
++	            // highest base that keeps all nine inside page zero — above
++	            // that they wrap onto $00 and $01.
++	            _target.instructions[0][5] = clamp(hex_to_decimal(_vz), 0x02, 0xF7);
+ 	        } else if (_idx == 1) {
+ 	            // Outside 50-400Hz it stops reading as a voice: too low and
+ 	            // the sync source cannot excite the formant once per period,
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+index 49f33be..f7fbf3b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+@@ -47,7 +47,7 @@ function scr_node_draw_macro_voi64_master(_draw_x, _y) {
+     var _zh = string_upper(decimal_to_hex(_zp));
+     while (string_length(_zh) < 2) { _zh = "0" + _zh; }
+     draw_set_color(_c_lbl); draw_text(_px, _ly, "ZP:");
+-    draw_set_color(_c_val); draw_text(_px + 62, _ly, "$" + _zh + " (6)");
++    draw_set_color(_c_val); draw_text(_px + 62, _ly, "$" + _zh + " (9)");
+     _ly += _lh;
+ 
+     // The player is blocking. Say it on the face of the node — a user who
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index a5f88aa..a993991 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -753,7 +753,9 @@ case "LABEL": {
+         // -------------------------------------------------------
+         case "MACRO_VOI64_MASTER":
+             _n.node_title   = "VOI64 MASTER";
+-            _n.instructions = [["macro_voi64_master", 120, 128, 128, 128, 0xFB]];
++            // $F5, not $FB: the ZP block is nine bytes and $FB would run
++            // off the end of page zero into $00/$01.
++            _n.instructions = [["macro_voi64_master", 120, 128, 128, 128, 0xF5]];
+             _n.pc_address   = global.start_pc;
+             with (_n) { event_user(0); }
+             break;

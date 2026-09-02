@@ -753,7 +753,9 @@ case "LABEL": {
         // -------------------------------------------------------
         case "MACRO_VOI64_MASTER":
             _n.node_title   = "VOI64 MASTER";
-            _n.instructions = [["macro_voi64_master", 120, 128, 128, 128, 0xFB]];
+            // $F5, not $FB: the ZP block is nine bytes and $FB would run
+            // off the end of page zero into $00/$01.
+            _n.instructions = [["macro_voi64_master", 120, 128, 128, 128, 0xF5]];
             _n.pc_address   = global.start_pc;
             with (_n) { event_user(0); }
             break;

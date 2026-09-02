@@ -47,7 +47,7 @@ function scr_node_draw_macro_voi64_master(_draw_x, _y) {
     var _zh = string_upper(decimal_to_hex(_zp));
     while (string_length(_zh) < 2) { _zh = "0" + _zh; }
     draw_set_color(_c_lbl); draw_text(_px, _ly, "ZP:");
-    draw_set_color(_c_val); draw_text(_px + 62, _ly, "$" + _zh + " (6)");
+    draw_set_color(_c_val); draw_text(_px + 62, _ly, "$" + _zh + " (9)");
     _ly += _lh;
 
     // The player is blocking. Say it on the face of the node — a user who

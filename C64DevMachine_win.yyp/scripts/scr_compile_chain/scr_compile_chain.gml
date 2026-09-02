@@ -7659,8 +7659,17 @@ case "MACRO_VOI64_MASTER": {
     var _i0 = _curr.instructions[0];
 
     // [5] zp_base — two bytes for the frame pointer, one for flags.
-    var _zp = 0xFB;
+    var _zp = 0xF5;
     if (array_length(_i0) > 5 && is_real(_i0[5])) { _zp = real(_i0[5]) & 0xFF; }
+    // The block is NINE bytes and every offset below was masked to a byte,
+    // so a base of $FB wrapped: ctl3 landed on $00 (the CPU port DDR) and
+    // the range cursor on $01 (the BANKING register), which the var-driven
+    // loop then rewrote on every iteration. That is the $01FF jam.
+    //
+    // Clamped here rather than only in the node's commit, because every
+    // workspace saved before the block grew still has $FB stored in it and
+    // would otherwise keep jamming after the default changed.
+    _zp = clamp(_zp, 0x02, 0xF7);
     var _zpf = (_zp + 2) & 0xFF;
     // Three control-register shadows. The player writes each voice's
     // control byte twice a frame - once with the gate cleared, once with
@@ -7735,6 +7744,13 @@ case "MACRO_VOI64_MASTER": {
         // clock are the same clock, which is what a formant synthesiser
         // actually wants.
         array_push(_list, ["label",   "voi64_play"]);
+        // The node has always said NO IRQ; now it is true. Without this an
+        // IRQ landing mid-utterance would run whatever handler is installed,
+        // and the usual suspects scratch the same $FB-$FE region the frame
+        // pointer lives in. php/plp rather than sei/cli so a caller that
+        // already had interrupts off gets them back off.
+        array_push(_list, ["php",     0, _id]);
+        array_push(_list, ["sei",     0, _id]);
         array_push(_list, ["sta_zp",  _zp,              _id]);
         array_push(_list, ["stx_zp",  (_zp + 1) & 0xFF, _id]);
         // Shadows start clear so the first frame's gate-off writes a
@@ -7871,6 +7887,7 @@ case "MACRO_VOI64_MASTER": {
         array_push(_list, ["sta_abs", 0xD404, _id]);
         array_push(_list, ["sta_abs", 0xD40B, _id]);
         array_push(_list, ["sta_abs", 0xD412, _id]);
+        array_push(_list, ["plp",     0,      _id]);
         array_push(_list, ["rts",     0,      _id]);
 
         array_push(_list, ["label",   "voi64_skip"]);

@@ -218,11 +218,25 @@ function scr_asset_inline_editor_step(_asset, _mx, _my, _x1, _y1, _x2, _y2) {
         // would fire every frame, and there is nothing left to clear after
         // the first one anyway.
         if (_ctrl && keyboard_check_pressed(vk_backspace)) {
-            _asset.meta.inline_edit_text      = "";
-            _asset.meta.inline_edit_cursor    = 0;
+            // The line the caret sits on, and only that line. The newlines
+            // either side are left alone, so with one phrase per line the
+            // line numbers a VOI64 SAY points at do not all shift up.
+            var _cl_s = _cur;
+            while (_cl_s > 0 && string_char_at(_txt, _cl_s) != "\n") {
+                _cl_s -= 1;
+            }
+            var _cl_e = _cur;
+            var _cl_n = string_length(_txt);
+            while (_cl_e < _cl_n && string_char_at(_txt, _cl_e + 1) != "\n") {
+                _cl_e += 1;
+            }
+            if (_cl_e > _cl_s) {
+                _txt = string_delete(_txt, _cl_s + 1, _cl_e - _cl_s);
+            }
+            _asset.meta.inline_edit_text      = _txt;
+            _asset.meta.inline_edit_cursor    = _cl_s;
             _asset.meta.inline_edit_sel_start = -1;
             _asset.meta.inline_edit_sel_end   = -1;
-            _asset.meta.inline_edit_scroll_y  = 0;
             _asset.meta.inline_edit_blink     = 0;
             keyboard_string = "";
             exit;

@@ -771,10 +771,11 @@
 	        if (_idx == 5) {
 	            var _vz = (string_char_at(_input, 1) == "$")
 	                    ? string_delete(_input, 1, 1) : _input;
-	            // Six consecutive bytes: pointer lo/hi, flags, and three
-	            // control-register shadows. $FA is the highest base that
-	            // keeps all six inside page zero.
-	            _target.instructions[0][5] = clamp(hex_to_decimal(_vz), 0x02, 0xFA);
+	            // Nine consecutive bytes: pointer lo/hi, flags, three control
+	            // shadows, and the range loop's cursor/end/temp. $F7 is the
+	            // highest base that keeps all nine inside page zero — above
+	            // that they wrap onto $00 and $01.
+	            _target.instructions[0][5] = clamp(hex_to_decimal(_vz), 0x02, 0xF7);
 	        } else if (_idx == 1) {
 	            // Outside 50-400Hz it stops reading as a voice: too low and
 	            // the sync source cannot excite the formant once per period,
