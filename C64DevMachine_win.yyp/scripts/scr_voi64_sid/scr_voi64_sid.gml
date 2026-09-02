@@ -153,10 +153,16 @@ function scr_voi64_say_source_text(_node) {
         var _a = obj_asset_manager.asset_list[| _ai];
         if (_a.name != _name) { continue; }
         if (_a.type != "TEXT_DATA") { continue; }
-        if (variable_struct_exists(_a, "text")) { return string(_a.text); }
-        if (buffer_exists(_a.buffer)) {
-            buffer_seek(_a.buffer, buffer_seek_start, 0);
-            return buffer_read(_a.buffer, buffer_text);
+        // meta.text is where a TEXT_DATA asset actually keeps its string —
+        // it is what MACRO_PRINT and MACRO_SID_SOUND both read. The earlier
+        // version guessed at a top-level .text and then at the raw buffer,
+        // found neither, and handed back an empty string. An empty phrase
+        // makes the SAY case emit nothing, which is why the node measured
+        // 0 BYTES.
+        if (variable_struct_exists(_a, "meta")) {
+            if (variable_struct_exists(_a.meta, "text")) {
+                return string(_a.meta.text);
+            }
         }
         return "";
     }

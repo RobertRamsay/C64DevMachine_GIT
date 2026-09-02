@@ -1,0 +1,40 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+index 34c0690..01dfe61 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+@@ -132,5 +132,10 @@ function scr_node_draw_macro_voi64_say(_draw_x, _y) {
+     if (!instance_exists(scr_voi64_find_master())) {
+         draw_set_color(make_color_rgb(220, 110, 90));
+         draw_text(_px, _ly, "NO VOI64 MASTER CONNECTED");
++    } else if (_src == 1 && string_trim(scr_voi64_say_source_text(id)) == "") {
++        // Named asset missing, renamed, or empty. Without this the only
++        // symptom is a node reading 0 BYTES and a silent build.
++        draw_set_color(make_color_rgb(220, 110, 90));
++        draw_text(_px, _ly, (_asset == "") ? "NO ASSET PICKED" : "ASSET EMPTY OR MISSING");
+     }
+ }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
+index f229fc7..7d79ad9 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
+@@ -153,10 +153,16 @@ function scr_voi64_say_source_text(_node) {
+         var _a = obj_asset_manager.asset_list[| _ai];
+         if (_a.name != _name) { continue; }
+         if (_a.type != "TEXT_DATA") { continue; }
+-        if (variable_struct_exists(_a, "text")) { return string(_a.text); }
+-        if (buffer_exists(_a.buffer)) {
+-            buffer_seek(_a.buffer, buffer_seek_start, 0);
+-            return buffer_read(_a.buffer, buffer_text);
++        // meta.text is where a TEXT_DATA asset actually keeps its string —
++        // it is what MACRO_PRINT and MACRO_SID_SOUND both read. The earlier
++        // version guessed at a top-level .text and then at the raw buffer,
++        // found neither, and handed back an empty string. An empty phrase
++        // makes the SAY case emit nothing, which is why the node measured
++        // 0 BYTES.
++        if (variable_struct_exists(_a, "meta")) {
++            if (variable_struct_exists(_a.meta, "text")) {
++                return string(_a.meta.text);
++            }
+         }
+         return "";
+     }

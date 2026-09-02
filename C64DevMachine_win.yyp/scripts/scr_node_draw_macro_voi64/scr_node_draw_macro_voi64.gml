@@ -132,5 +132,10 @@ function scr_node_draw_macro_voi64_say(_draw_x, _y) {
     if (!instance_exists(scr_voi64_find_master())) {
         draw_set_color(make_color_rgb(220, 110, 90));
         draw_text(_px, _ly, "NO VOI64 MASTER CONNECTED");
+    } else if (_src == 1 && string_trim(scr_voi64_say_source_text(id)) == "") {
+        // Named asset missing, renamed, or empty. Without this the only
+        // symptom is a node reading 0 BYTES and a silent build.
+        draw_set_color(make_color_rgb(220, 110, 90));
+        draw_text(_px, _ly, (_asset == "") ? "NO ASSET PICKED" : "ASSET EMPTY OR MISSING");
     }
 }
