@@ -1,0 +1,348 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index 1ae8025..dce5963 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1116,6 +1116,7 @@
+     {"id":{"name":"scr_macro_chr_step","path":"scripts/scr_macro_chr_step/scr_macro_chr_step.yy",},},
+     {"id":{"name":"scr_macro_chr_sync","path":"scripts/scr_macro_chr_sync/scr_macro_chr_sync.yy",},},
+     {"id":{"name":"scr_macro_map_sync","path":"scripts/scr_macro_map_sync/scr_macro_map_sync.yy",},},
++    {"id":{"name":"scr_macro_sid_pause","path":"scripts/scr_macro_sid_pause/scr_macro_sid_pause.yy",},},
+     {"id":{"name":"scr_macro_sid_sync","path":"scripts/scr_macro_sid_sync/scr_macro_sid_sync.yy",},},
+     {"id":{"name":"scr_macro_spr_sync","path":"scripts/scr_macro_spr_sync/scr_macro_spr_sync.yy",},},
+     {"id":{"name":"scr_make_unique_node_name","path":"scripts/scr_make_unique_node_name/scr_make_unique_node_name.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index f0c61eb..85791aa 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -166,6 +166,7 @@ if (height_dirty) {
+ 	case "MACRO_RANDOM":     height = _G * 8;  break;
+ 	// 7 rows + header. SAY is taller: 3 setting rows, 4 override rows,
+ 	// the preview button, and room for the no-master warning.
++	case "MACRO_SID_PAUSE":    height = _G * 4;  break;
+ 	case "MACRO_VOI64_MASTER": height = _G * 7;  break;
+ 	// +2 rows for the LINES range, which only exists in TEXT DATA mode.
+ 	// Same pattern as MACRO_SID_SOUND: recomputed whenever height_dirty
+@@ -942,6 +943,7 @@ switch (node_type) {
+     case "MACRO_MATH":       _head_col = is_connected ? make_color_rgb(60, 170, 140) : make_color_rgb(30, 85, 70); break;
+     case "MACRO_CLEAR_BMP_RECT": _head_col = is_connected ? make_color_rgb(200, 70, 90) : make_color_rgb(100, 35, 45); break;
+     case "MACRO_RANDOM":     _head_col = is_connected ? make_color_rgb(150, 90, 200) : make_color_rgb(70, 45, 95); break;
++    case "MACRO_SID_PAUSE":    _head_col = is_connected ? make_color_rgb(190, 70, 150) : make_color_rgb(90, 34, 72); break;
+     case "MACRO_VOI64_MASTER": _head_col = is_connected ? make_color_rgb(200, 120, 60) : make_color_rgb(95, 58, 30); break;
+     case "MACRO_VOI64_SAY":    _head_col = is_connected ? make_color_rgb(225, 150, 70) : make_color_rgb(105, 70, 34); break;
+ 	case "MACRO_SID_SOUND":  _head_col = is_connected ? make_color_rgb(200, 80, 170) : make_color_rgb(95, 40, 80); break;
+@@ -1393,6 +1395,7 @@ if (_lod_body) switch (node_type) {
+     case "MACRO_CLR_SCREEN": scr_node_draw_macro_clr_screen(draw_x, y); break;
+     case "MACRO_MATH":       scr_node_draw_macro_math(draw_x, y); break;
+     case "MACRO_RANDOM":     scr_node_draw_macro_random(draw_x, y);                     break;
++    case "MACRO_SID_PAUSE":    scr_node_draw_macro_sid_pause(draw_x, y);                 break;
+     case "MACRO_VOI64_MASTER": scr_node_draw_macro_voi64_master(draw_x, y);              break;
+     case "MACRO_VOI64_SAY":    scr_node_draw_macro_voi64_say(draw_x, y);                 break;
+ 	case "MACRO_SID_SOUND":  scr_node_draw_macro_sid_sound(draw_x, y);                  break;
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 7b0187a..8b8fec5 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -1056,6 +1056,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
+         case "MACRO_CLR_SCREEN": scr_node_step_macro_clr_screen(draw_x); break;
+         case "MACRO_MATH":       scr_node_step_macro_math(draw_x); break;
+         case "MACRO_RANDOM":     scr_node_step_macro_random(draw_x);     break;
++        case "MACRO_SID_PAUSE":    scr_node_step_macro_sid_pause(draw_x);    break;
+         case "MACRO_VOI64_MASTER": scr_node_step_macro_voi64_master(draw_x); break;
+         case "MACRO_VOI64_SAY":    scr_node_step_macro_voi64_say(draw_x);    break;
+ 		case "MACRO_SID_SOUND":  scr_node_step_macro_sid_sound(draw_x);  break;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index eb48cbd..565647c 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -944,6 +944,7 @@ if (gui_menu_open == 1 && !global.lite) {
+         { title: "MATH",             type: "MACRO_MATH"          },
+         { title: "RANDOM",           type: "MACRO_RANDOM"        },
+         { title: "REU",              type: "MACRO_REU"           },
++        { title: "SID PAUSE",        type: "MACRO_SID_PAUSE"     },
+         { title: "VOI64 MASTER",     type: "MACRO_VOI64_MASTER"  },
+         { title: "VOI64 SAY",        type: "MACRO_VOI64_SAY"     },
+     ];
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 786e209..74bacae 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -58,6 +58,18 @@ function scr_compile_chain() {
+     // Pre-scan: only emit the mul16/div16 helpers if some MATH node actually
+     // uses MUL (op 2) or DIV (op 3). Pure ADD/SUB/ONEMINUS/INVSIGN projects
+     // then carry zero multiply/divide code.
++    // Pre-scan for MACRO_SID_PAUSE. The three play-call guards below are
++    // three bytes and four cycles each per IRQ, so a project that never
++    // pauses its music should not carry them at all.
++    global.sid_pause_present = false;
++    global.sid_pause_flag_emitted = false;
++    with (obj_c64_node) {
++        if (node_type == "MACRO_SID_PAUSE" && is_connected) {
++            global.sid_pause_present = true;
++            break;
++        }
++    }
++
+     global.math_needs_muldiv = false;
+     with (obj_c64_node) {
+         if (node_type == "MACRO_MATH" && array_length(instructions[0]) > 1) {
+@@ -5968,7 +5980,17 @@ if (!_found_valid_sid) {
+ 		}
+ 		array_push(_list, ["lda_abs",  0xD019,   _id]);
+ 		array_push(_list, ["sta_abs",  0xD019,   _id]);
++		// [SIDPAUSE] skip the tick while paused. The IRQ still fires, so
++		// raster splits and anything else in the handler keep running —
++		// only the music stops advancing.
++		if (global.sid_pause_present) {
++			array_push(_list, ["lda_abs", "sid_pause_flag", _id]);
++			array_push(_list, ["bne",     "sid_irq_nomusic", _id]);
++		}
+ 		array_push(_list, ["jsr",      real(_play_addr), _id]);
++		if (global.sid_pause_present) {
++			array_push(_list, ["label",   "sid_irq_nomusic"]);
++		}
+ 
+ 
+ 			with (obj_c64_node) {
+@@ -8075,6 +8097,58 @@ case "MACRO_VOI64_SAY": {
+     array_push(_list, ["jsr",        "voi64_play", _id]);
+ } break;
+ 
++// ════════════════════════════════════════════════════════════════════
++// MACRO_SID_PAUSE — stop and restart the music tick
++//
++// Sets a flag that every SID play call is guarded by, so the IRQ keeps
++// firing (raster splits, sprite work, anything else in the handler is
++// untouched) and only the music stops advancing. That frees all three SID
++// voices for something else — VOI64 speech, sound effects, whatever —
++// and RESUME hands them straight back.
++//
++// Resuming needs no state restore: SID players rewrite the whole register
++// set every frame, so the first tick after RESUME puts the chip back the
++// way the tune wants it. The tune picks up where it paused rather than
++// restarting, because its own counters live in RAM and were never touched.
++// ════════════════════════════════════════════════════════════════════
++case "MACRO_SID_PAUSE": {
++    var _id = _curr;
++    var _i0 = _curr.instructions[0];
++
++    var _state = 0;   // 0 = PAUSE, 1 = RESUME
++    if (array_length(_i0) > 1 && is_real(_i0[1])) { _state = real(_i0[1]); }
++
++    // The flag lives in the spine, emitted once and jumped over.
++    if (!global.sid_pause_flag_emitted) {
++        global.sid_pause_flag_emitted = true;
++        array_push(_list, ["jmp_abs", "sid_pause_flag_skip", _id]);
++        array_push(_list, ["label",   "sid_pause_flag"]);
++        array_push(_list, ["byte",    0x00, _id]);
++        array_push(_list, ["label",   "sid_pause_flag_skip"]);
++    }
++
++    if (_state == 1) {
++        array_push(_list, ["lda_imm", 0x00, _id]);
++        array_push(_list, ["sta_abs", "sid_pause_flag", _id]);
++    } else {
++        array_push(_list, ["lda_imm", 0x01, _id]);
++        array_push(_list, ["sta_abs", "sid_pause_flag", _id]);
++
++        // Silence what the tune left sounding. SID registers are WRITE
++        // ONLY, so there is no read-modify-write here — a known-safe zero
++        // goes in instead. Control 0 drops the gate and clears the
++        // waveform; SR 0 makes the release instant, so a note with a long
++        // release tail cannot drone on underneath whatever comes next.
++        array_push(_list, ["lda_imm", 0x00,   _id]);
++        array_push(_list, ["sta_abs", 0xD404, _id]);
++        array_push(_list, ["sta_abs", 0xD40B, _id]);
++        array_push(_list, ["sta_abs", 0xD412, _id]);
++        array_push(_list, ["sta_abs", 0xD406, _id]);
++        array_push(_list, ["sta_abs", 0xD40D, _id]);
++        array_push(_list, ["sta_abs", 0xD414, _id]);
++    }
++} break;
++
+ case "MACRO_REU": {
+     var _id        = _curr;
+     var _reu_op    = is_real(_curr.instructions[0][1]) ? real(_curr.instructions[0][1]) : 0;
+@@ -10962,6 +11036,11 @@ case "MACRO_IRQ_HANDLER": {
+         array_push(_list, ["lda_imm", _sid_slot,          _id]);
+         array_push(_list, ["cmp_lab", _lbl_index,         _id]);
+         array_push(_list, ["bne",     _lbl_skip_sid,      _id]);
++        // [SIDPAUSE] see the note on the sid_irq guard.
++        if (global.sid_pause_present) {
++            array_push(_list, ["lda_abs", "sid_pause_flag", _id]);
++            array_push(_list, ["bne",     _lbl_skip_sid,    _id]);
++        }
+         array_push(_list, ["jsr",     real(_play_addr_h), _id]);
+         array_push(_list, ["label",   _lbl_skip_sid]);
+     }
+@@ -11238,7 +11317,16 @@ array_push(_list, ["label",   _lbl_handler]);
+     }
+     // User payload
+     if (_play_music) {
++        // [SIDPAUSE] see the note on the sid_irq guard.
++        var _lbl_nomus = _p + "nomusic";
++        if (global.sid_pause_present) {
++            array_push(_list, ["lda_abs", "sid_pause_flag", _id]);
++            array_push(_list, ["bne",     _lbl_nomus,       _id]);
++        }
+         array_push(_list, ["jsr", real(_play_addr), _id]);
++        if (global.sid_pause_present) {
++            array_push(_list, ["label", _lbl_nomus]);
++        }
+     }
+     if (_call_label != "") {
+         array_push(_list, ["jsr", _call_label, _id]);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_macro_sid_pause/scr_macro_sid_pause.gml b/C64DevMachine_win.yyp/scripts/scr_macro_sid_pause/scr_macro_sid_pause.gml
+new file mode 100644
+index 0000000..3e978cf
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_macro_sid_pause/scr_macro_sid_pause.gml
+@@ -0,0 +1,72 @@
++/// @desc Draw and click handling for MACRO_SID_PAUSE.
++/// instructions[0]: ["macro_sid_pause", 1 state]   0 = PAUSE, 1 = RESUME
++
++function scr_node_draw_macro_sid_pause(_draw_x, _y) {
++    var _ins = instructions[0];
++
++    var _state = 0;
++    if (array_length(_ins) > 1 && is_real(_ins[1])) { _state = real(_ins[1]); }
++
++    var _lh = 14;
++    var _ly = _y + 28;
++    var _px = _draw_x + 8;
++
++    draw_set_font(fnt_c64_tiny);
++    draw_set_halign(fa_left);
++
++    draw_set_color(make_color_rgb(140, 160, 200));
++    draw_text(_px, _ly, "STATE:");
++    if (_state == 1) {
++        draw_set_color(make_color_rgb(120, 230, 140));
++        draw_text(_px + 62, _ly, "RESUME");
++    } else {
++        draw_set_color(make_color_rgb(240, 170, 90));
++        draw_text(_px + 62, _ly, "PAUSE");
++    }
++    _ly += _lh;
++
++    draw_set_color(make_color_rgb(90, 90, 100));
++    if (_state == 1) {
++        draw_text(_px, _ly, "MUSIC TICK RESUMES");
++    } else {
++        draw_text(_px, _ly, "SID FREE - IRQ STILL RUNS");
++    }
++    _ly += _lh;
++
++    // Without a tune there is no play call to guard, so this node would
++    // compile to a flag nothing ever reads.
++    var _has_sid = false;
++    with (obj_c64_node) {
++        if (!is_connected) { continue; }
++        if (node_type == "MACRO_SID" || node_type == "MACRO_IRQ_HANDLER" || node_type == "MACRO_IRQ") {
++            _has_sid = true;
++            break;
++        }
++    }
++    if (!_has_sid) {
++        draw_set_color(make_color_rgb(220, 110, 90));
++        draw_text(_px, _ly, "NO SID / IRQ NODE TO PAUSE");
++    }
++}
++
++function scr_node_step_macro_sid_pause(_draw_x) {
++    var _fy = y + 28;
++    var _x1 = _draw_x + 8;
++    var _x2 = _draw_x + width - 8;
++
++    if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
++        while (array_length(instructions[0]) <= 1) {
++            array_push(instructions[0], 0);
++        }
++        var _s = 0;
++        if (is_real(instructions[0][1])) { _s = real(instructions[0][1]); }
++        if (_s == 1) {
++            instructions[0][1] = 0;
++        } else {
++            instructions[0][1] = 1;
++        }
++        global.addresses_dirty = true;
++        global.undo_dirty      = true;
++        exit;
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_macro_sid_pause/scr_macro_sid_pause.yy b/C64DevMachine_win.yyp/scripts/scr_macro_sid_pause/scr_macro_sid_pause.yy
+new file mode 100644
+index 0000000..5b4f4fe
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_macro_sid_pause/scr_macro_sid_pause.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_macro_sid_pause",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_macro_sid_pause",
++  "parent":{
++    "name":"MACROS",
++    "path":"folders/SCRIPTS/MACROS.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index a993991..22a7807 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -751,6 +751,16 @@ case "LABEL": {
+         //        [5] inline text [6] asset name
+         //        [7..10] pitch/speed/throat/mouth, -1 = inherit master
+         // -------------------------------------------------------
++        // -------------------------------------------------------
++        // MACRO_SID_PAUSE  [1] state: 0 = PAUSE, 1 = RESUME
++        // -------------------------------------------------------
++        case "MACRO_SID_PAUSE":
++            _n.node_title   = "SID PAUSE";
++            _n.instructions = [["macro_sid_pause", 0]];
++            _n.pc_address   = global.start_pc;
++            with (_n) { event_user(0); }
++            break;
++
+         case "MACRO_VOI64_MASTER":
+             _n.node_title   = "VOI64 MASTER";
+             // $F5, not $FB: the ZP block is nine bytes and $FB would run
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+index cf6018d..618e28b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+@@ -576,6 +576,32 @@ function scr_node_tooltip_text(_node_type) {
+             ]
+         },
+ 
++        "MACRO_SID_PAUSE": {
++            title: "SID PAUSE",
++            lines: [
++                "Stops and restarts the music tick. PAUSE sets a flag that",
++                "every SID play call is guarded by, so the IRQ keeps firing",
++                "- raster splits and everything else in the handler are",
++                "untouched - and only the music stops advancing.",
++                "",
++                "That hands all three SID voices to whatever you want them",
++                "for: VOI64 speech, sound effects, a jingle. RESUME gives",
++                "them straight back.",
++                "",
++                "PAUSE also silences the three voices, because a note with",
++                "a long release would otherwise drone on underneath.",
++                "",
++                "Nothing needs restoring on RESUME: SID players rewrite the",
++                "whole register set every frame, so the first tick after",
++                "puts the chip back. The tune continues from where it",
++                "paused rather than restarting - its counters live in RAM",
++                "and were never touched.",
++                "",
++                "Costs nothing unless used: with no SID PAUSE node in the",
++                "project the guards are not emitted at all."
++            ]
++        },
++
+         "MACRO_VOI64_MASTER": {
+             title: "VOI64 MASTER",
+             lines: [

@@ -1,0 +1,38 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 74bacae..0c5cbe2 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -7767,6 +7767,33 @@ case "MACRO_VOI64_MASTER": {
+         array_push(_list, ["sei",     0, _id]);
+         array_push(_list, ["sta_zp",  _zp,              _id]);
+         array_push(_list, ["stx_zp",  (_zp + 1) & 0xFF, _id]);
++
++        // CLAIM THE CHIP, every utterance.
++        //
++        // These eight registers used to be written once, in the master's
++        // init. That is fine for a program with no music - but a SID tune
++        // rewrites AD and the volume on its own schedule, so after even one
++        // bar of music the chip no longer looks the way the player assumes.
++        //
++        // AD is the one that actually breaks it. The whole amplitude scheme
++        // depends on attack 0 and decay 0, so the gate retrigger jumps
++        // straight to the sustain nibble. Inherit a tune's slower envelope
++        // and every frame ramps instead of stepping, which is the same
++        // silent-speech failure as the original sustain bug wearing a hat.
++        //
++        // Twenty-odd bytes, run once per phrase. The master keeps its copy
++        // for the case where Voi64 speaks before any tune has started.
++        array_push(_list, ["lda_imm", 0x00,   _id]);
++        array_push(_list, ["sta_abs", 0xD405, _id]);   // V1 AD - instant attack, no decay
++        array_push(_list, ["sta_abs", 0xD40C, _id]);   // V2 AD
++        array_push(_list, ["sta_abs", 0xD413, _id]);   // V3 AD
++        array_push(_list, ["sta_abs", 0xD402, _id]);   // V1 PW lo
++        array_push(_list, ["sta_abs", 0xD409, _id]);   // V2 PW lo
++        array_push(_list, ["lda_imm", 0x08,   _id]);
++        array_push(_list, ["sta_abs", 0xD403, _id]);   // V1 PW hi -> 50% duty
++        array_push(_list, ["sta_abs", 0xD40A, _id]);   // V2 PW hi
++        array_push(_list, ["lda_imm", 0x0F,   _id]);
++        array_push(_list, ["sta_abs", 0xD418, _id]);   // full volume, filter off, V3 audible
+         // Shadows start clear so the first frame's gate-off writes a
+         // harmless zero rather than whatever was in page zero.
+         array_push(_list, ["lda_imm", 0x00, _id]);

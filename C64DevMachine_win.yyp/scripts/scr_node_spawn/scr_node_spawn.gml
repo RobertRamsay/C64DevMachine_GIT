@@ -751,6 +751,16 @@ case "LABEL": {
         //        [5] inline text [6] asset name
         //        [7..10] pitch/speed/throat/mouth, -1 = inherit master
         // -------------------------------------------------------
+        // -------------------------------------------------------
+        // MACRO_SID_PAUSE  [1] state: 0 = PAUSE, 1 = RESUME
+        // -------------------------------------------------------
+        case "MACRO_SID_PAUSE":
+            _n.node_title   = "SID PAUSE";
+            _n.instructions = [["macro_sid_pause", 0]];
+            _n.pc_address   = global.start_pc;
+            with (_n) { event_user(0); }
+            break;
+
         case "MACRO_VOI64_MASTER":
             _n.node_title   = "VOI64 MASTER";
             // $F5, not $FB: the ZP block is nine bytes and $FB would run

@@ -576,6 +576,32 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_SID_PAUSE": {
+            title: "SID PAUSE",
+            lines: [
+                "Stops and restarts the music tick. PAUSE sets a flag that",
+                "every SID play call is guarded by, so the IRQ keeps firing",
+                "- raster splits and everything else in the handler are",
+                "untouched - and only the music stops advancing.",
+                "",
+                "That hands all three SID voices to whatever you want them",
+                "for: VOI64 speech, sound effects, a jingle. RESUME gives",
+                "them straight back.",
+                "",
+                "PAUSE also silences the three voices, because a note with",
+                "a long release would otherwise drone on underneath.",
+                "",
+                "Nothing needs restoring on RESUME: SID players rewrite the",
+                "whole register set every frame, so the first tick after",
+                "puts the chip back. The tune continues from where it",
+                "paused rather than restarting - its counters live in RAM",
+                "and were never touched.",
+                "",
+                "Costs nothing unless used: with no SID PAUSE node in the",
+                "project the guards are not emitted at all."
+            ]
+        },
+
         "MACRO_VOI64_MASTER": {
             title: "VOI64 MASTER",
             lines: [

@@ -58,6 +58,18 @@ function scr_compile_chain() {
     // Pre-scan: only emit the mul16/div16 helpers if some MATH node actually
     // uses MUL (op 2) or DIV (op 3). Pure ADD/SUB/ONEMINUS/INVSIGN projects
     // then carry zero multiply/divide code.
+    // Pre-scan for MACRO_SID_PAUSE. The three play-call guards below are
+    // three bytes and four cycles each per IRQ, so a project that never
+    // pauses its music should not carry them at all.
+    global.sid_pause_present = false;
+    global.sid_pause_flag_emitted = false;
+    with (obj_c64_node) {
+        if (node_type == "MACRO_SID_PAUSE" && is_connected) {
+            global.sid_pause_present = true;
+            break;
+        }
+    }
+
     global.math_needs_muldiv = false;
     with (obj_c64_node) {
         if (node_type == "MACRO_MATH" && array_length(instructions[0]) > 1) {
@@ -5968,7 +5980,17 @@ if (!_found_valid_sid) {
 		}
 		array_push(_list, ["lda_abs",  0xD019,   _id]);
 		array_push(_list, ["sta_abs",  0xD019,   _id]);
+		// [SIDPAUSE] skip the tick while paused. The IRQ still fires, so
+		// raster splits and anything else in the handler keep running —
+		// only the music stops advancing.
+		if (global.sid_pause_present) {
+			array_push(_list, ["lda_abs", "sid_pause_flag", _id]);
+			array_push(_list, ["bne",     "sid_irq_nomusic", _id]);
+		}
 		array_push(_list, ["jsr",      real(_play_addr), _id]);
+		if (global.sid_pause_present) {
+			array_push(_list, ["label",   "sid_irq_nomusic"]);
+		}
 
 
 			with (obj_c64_node) {
@@ -7745,6 +7767,33 @@ case "MACRO_VOI64_MASTER": {
         array_push(_list, ["sei",     0, _id]);
         array_push(_list, ["sta_zp",  _zp,              _id]);
         array_push(_list, ["stx_zp",  (_zp + 1) & 0xFF, _id]);
+
+        // CLAIM THE CHIP, every utterance.
+        //
+        // These eight registers used to be written once, in the master's
+        // init. That is fine for a program with no music - but a SID tune
+        // rewrites AD and the volume on its own schedule, so after even one
+        // bar of music the chip no longer looks the way the player assumes.
+        //
+        // AD is the one that actually breaks it. The whole amplitude scheme
+        // depends on attack 0 and decay 0, so the gate retrigger jumps
+        // straight to the sustain nibble. Inherit a tune's slower envelope
+        // and every frame ramps instead of stepping, which is the same
+        // silent-speech failure as the original sustain bug wearing a hat.
+        //
+        // Twenty-odd bytes, run once per phrase. The master keeps its copy
+        // for the case where Voi64 speaks before any tune has started.
+        array_push(_list, ["lda_imm", 0x00,   _id]);
+        array_push(_list, ["sta_abs", 0xD405, _id]);   // V1 AD - instant attack, no decay
+        array_push(_list, ["sta_abs", 0xD40C, _id]);   // V2 AD
+        array_push(_list, ["sta_abs", 0xD413, _id]);   // V3 AD
+        array_push(_list, ["sta_abs", 0xD402, _id]);   // V1 PW lo
+        array_push(_list, ["sta_abs", 0xD409, _id]);   // V2 PW lo
+        array_push(_list, ["lda_imm", 0x08,   _id]);
+        array_push(_list, ["sta_abs", 0xD403, _id]);   // V1 PW hi -> 50% duty
+        array_push(_list, ["sta_abs", 0xD40A, _id]);   // V2 PW hi
+        array_push(_list, ["lda_imm", 0x0F,   _id]);
+        array_push(_list, ["sta_abs", 0xD418, _id]);   // full volume, filter off, V3 audible
         // Shadows start clear so the first frame's gate-off writes a
         // harmless zero rather than whatever was in page zero.
         array_push(_list, ["lda_imm", 0x00, _id]);
@@ -8073,6 +8122,58 @@ case "MACRO_VOI64_SAY": {
     array_push(_list, ["lda_lab_lo", _data, _id]);
     array_push(_list, ["ldx_lab_hi", _data, _id]);
     array_push(_list, ["jsr",        "voi64_play", _id]);
+} break;
+
+// ════════════════════════════════════════════════════════════════════
+// MACRO_SID_PAUSE — stop and restart the music tick
+//
+// Sets a flag that every SID play call is guarded by, so the IRQ keeps
+// firing (raster splits, sprite work, anything else in the handler is
+// untouched) and only the music stops advancing. That frees all three SID
+// voices for something else — VOI64 speech, sound effects, whatever —
+// and RESUME hands them straight back.
+//
+// Resuming needs no state restore: SID players rewrite the whole register
+// set every frame, so the first tick after RESUME puts the chip back the
+// way the tune wants it. The tune picks up where it paused rather than
+// restarting, because its own counters live in RAM and were never touched.
+// ════════════════════════════════════════════════════════════════════
+case "MACRO_SID_PAUSE": {
+    var _id = _curr;
+    var _i0 = _curr.instructions[0];
+
+    var _state = 0;   // 0 = PAUSE, 1 = RESUME
+    if (array_length(_i0) > 1 && is_real(_i0[1])) { _state = real(_i0[1]); }
+
+    // The flag lives in the spine, emitted once and jumped over.
+    if (!global.sid_pause_flag_emitted) {
+        global.sid_pause_flag_emitted = true;
+        array_push(_list, ["jmp_abs", "sid_pause_flag_skip", _id]);
+        array_push(_list, ["label",   "sid_pause_flag"]);
+        array_push(_list, ["byte",    0x00, _id]);
+        array_push(_list, ["label",   "sid_pause_flag_skip"]);
+    }
+
+    if (_state == 1) {
+        array_push(_list, ["lda_imm", 0x00, _id]);
+        array_push(_list, ["sta_abs", "sid_pause_flag", _id]);
+    } else {
+        array_push(_list, ["lda_imm", 0x01, _id]);
+        array_push(_list, ["sta_abs", "sid_pause_flag", _id]);
+
+        // Silence what the tune left sounding. SID registers are WRITE
+        // ONLY, so there is no read-modify-write here — a known-safe zero
+        // goes in instead. Control 0 drops the gate and clears the
+        // waveform; SR 0 makes the release instant, so a note with a long
+        // release tail cannot drone on underneath whatever comes next.
+        array_push(_list, ["lda_imm", 0x00,   _id]);
+        array_push(_list, ["sta_abs", 0xD404, _id]);
+        array_push(_list, ["sta_abs", 0xD40B, _id]);
+        array_push(_list, ["sta_abs", 0xD412, _id]);
+        array_push(_list, ["sta_abs", 0xD406, _id]);
+        array_push(_list, ["sta_abs", 0xD40D, _id]);
+        array_push(_list, ["sta_abs", 0xD414, _id]);
+    }
 } break;
 
 case "MACRO_REU": {
@@ -10962,6 +11063,11 @@ case "MACRO_IRQ_HANDLER": {
         array_push(_list, ["lda_imm", _sid_slot,          _id]);
         array_push(_list, ["cmp_lab", _lbl_index,         _id]);
         array_push(_list, ["bne",     _lbl_skip_sid,      _id]);
+        // [SIDPAUSE] see the note on the sid_irq guard.
+        if (global.sid_pause_present) {
+            array_push(_list, ["lda_abs", "sid_pause_flag", _id]);
+            array_push(_list, ["bne",     _lbl_skip_sid,    _id]);
+        }
         array_push(_list, ["jsr",     real(_play_addr_h), _id]);
         array_push(_list, ["label",   _lbl_skip_sid]);
     }
@@ -11238,7 +11344,16 @@ array_push(_list, ["label",   _lbl_handler]);
     }
     // User payload
     if (_play_music) {
+        // [SIDPAUSE] see the note on the sid_irq guard.
+        var _lbl_nomus = _p + "nomusic";
+        if (global.sid_pause_present) {
+            array_push(_list, ["lda_abs", "sid_pause_flag", _id]);
+            array_push(_list, ["bne",     _lbl_nomus,       _id]);
+        }
         array_push(_list, ["jsr", real(_play_addr), _id]);
+        if (global.sid_pause_present) {
+            array_push(_list, ["label", _lbl_nomus]);
+        }
     }
     if (_call_label != "") {
         array_push(_list, ["jsr", _call_label, _id]);
