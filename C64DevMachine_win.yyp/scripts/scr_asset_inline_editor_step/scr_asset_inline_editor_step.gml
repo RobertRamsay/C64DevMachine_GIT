@@ -211,8 +211,25 @@ function scr_asset_inline_editor_step(_asset, _mx, _my, _x1, _y1, _x2, _y2) {
             _asset.meta.inline_edit_blink = 0;
         }
 
+        // ── CTRL+BACKSPACE — clear the lot ────────────────────────────────
+        // Ahead of the plain backspace below and returning early, so the
+        // same keypress cannot also delete a character out of the now-empty
+        // string. keyboard_check_pressed, not keyboard_check: held down it
+        // would fire every frame, and there is nothing left to clear after
+        // the first one anyway.
+        if (_ctrl && keyboard_check_pressed(vk_backspace)) {
+            _asset.meta.inline_edit_text      = "";
+            _asset.meta.inline_edit_cursor    = 0;
+            _asset.meta.inline_edit_sel_start = -1;
+            _asset.meta.inline_edit_sel_end   = -1;
+            _asset.meta.inline_edit_scroll_y  = 0;
+            _asset.meta.inline_edit_blink     = 0;
+            keyboard_string = "";
+            exit;
+        }
+
         // ── Backspace ─────────────────────────────────────────────────────
-        if (keyboard_check(vk_backspace)) {
+        if (keyboard_check(vk_backspace) && !_ctrl) {
             if (_has_sel) {
                 _txt = string_delete(_txt, _sel_lo + 1, _sel_hi - _sel_lo);
                 _cur = _sel_lo;

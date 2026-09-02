@@ -624,7 +624,7 @@ function scr_node_tooltip_text(_node_type) {
                 "COST: a var-driven SAY compiles EVERY line of the asset",
                 "and indexes them through a pointer table, because the",
                 "range is not known until the program runs. A fixed range",
-                "compiles only the lines it names."
+                "compiles only the lines it names.",
                 "",
                 "PITCH / SPEED / THROAT / MOUTH show a dash when they are",
                 "inherited from the master. Type a value to override it",

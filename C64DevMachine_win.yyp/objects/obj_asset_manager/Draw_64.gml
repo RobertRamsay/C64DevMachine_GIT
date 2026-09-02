@@ -7128,29 +7128,7 @@ case "BYTE_DATA": {
 
     if (_eb_hov && mouse_check_button_pressed(mb_left)) {
         if (!_ed_open) {
-            // Open — load working text from byte_string to preserve original formatting
-            var _bstr = "";
-            if (variable_struct_exists(_asset.meta, "byte_string") && string_length(string(_asset.meta.byte_string)) > 0) {
-                _bstr = string(_asset.meta.byte_string);
-            } else if (buffer_exists(_asset.buffer)) {
-                var _bsz = buffer_get_size(_asset.buffer);
-                for (var _bi = 0; _bi < _bsz; _bi++) {
-                    var _bval = buffer_peek(_asset.buffer, _bi, buffer_u8);
-                    var _hex  = string_upper(decimal_to_hex(_bval));
-                    if (string_length(_hex) < 2) _hex = "0" + _hex;
-                    _bstr += "$" + _hex;
-                    if (_bi < _bsz - 1) _bstr += ", ";
-                }
-            }
-            _asset.meta.inline_edit_open      = true;
-            global.is_any_text_active         = true;
-            _asset.meta.inline_edit_text      = _bstr;
-            _asset.meta.inline_edit_cursor    = string_length(_bstr);
-            _asset.meta.inline_edit_scroll_y  = 0;
-            _asset.meta.inline_edit_sel_start = -1;
-            _asset.meta.inline_edit_sel_end   = -1;
-            _asset.meta.inline_edit_blink     = 0;
-            _asset.meta.inline_edit_key_timer = 0;
+            scr_asset_inline_edit_open(_asset);
         } else {
             // Close — parse and save
             scr_asset_byte_data_save(_asset);
@@ -7200,8 +7178,9 @@ case "BYTE_DATA": {
         // Preview when closed
         draw_set_font(fnt_C64_Angled);
         draw_set_color(c_ltgray);
-        draw_text(_vx1 + 10, _cy, "CONTENT:");
+        draw_text(_vx1 + 10, _cy, "CONTENT:  (CLICK TO EDIT)");
         _cy += 14;
+        var _pv_hit_y1 = _cy;
         draw_set_color(make_color_rgb(180, 120, 255));
         var _bstr2 = "";
         if (variable_struct_exists(_asset.meta, "byte_string")) {
@@ -7235,6 +7214,12 @@ case "BYTE_DATA": {
             draw_set_color(make_color_rgb(80, 80, 80));
             draw_text(_vx1 + 10, _cy, "(MORE - OPEN THE EDITOR TO SEE ALL)");
         }
+
+        var _pv_hit_y2 = max(_cy + _pv_lh, _pv_hit_y1 + _pv_lh);
+        if (point_in_rectangle(_mx, _my, _vx1 + 10, _pv_hit_y1, _vx2 - 10, _pv_hit_y2)
+         && mouse_check_button_pressed(mb_left)) {
+            scr_asset_inline_edit_open(_asset);
+        }
     }
     }
 } break;
@@ -7260,17 +7245,7 @@ case "TEXT_DATA": {
 
     if (_eb_hov && mouse_check_button_pressed(mb_left)) {
         if (!_ed_open) {
-            var _txt_src = variable_struct_exists(_asset.meta, "text")
-                ? string(_asset.meta.text) : "";
-            _asset.meta.inline_edit_open      = true;
-            global.is_any_text_active         = true;
-            _asset.meta.inline_edit_text      = _txt_src;
-            _asset.meta.inline_edit_cursor    = string_length(_txt_src);
-            _asset.meta.inline_edit_scroll_y  = 0;
-            _asset.meta.inline_edit_sel_start = -1;
-            _asset.meta.inline_edit_sel_end   = -1;
-            _asset.meta.inline_edit_blink     = 0;
-            _asset.meta.inline_edit_key_timer = 0;
+            scr_asset_inline_edit_open(_asset);
         } else {
             scr_asset_text_data_save(_asset);
             _asset.meta.inline_edit_open = false;
@@ -7358,8 +7333,12 @@ case "TEXT_DATA": {
         // Preview when closed
         draw_set_font(fnt_C64_Angled);
         draw_set_color(c_ltgray);
-        draw_text(_vx1 + 10, _cy, "CONTENT PREVIEW:");
+        draw_text(_vx1 + 10, _cy, "CONTENT PREVIEW:  (CLICK TO EDIT)");
         _cy += 14;
+        // Remembered so the whole preview block becomes a click target for
+        // opening the editor — the same thing the EDIT button does, but
+        // where the eye already is.
+        var _tp_hit_y1 = _cy;
         draw_set_color(make_color_rgb(160, 230, 160));
         // Wrap to the panel. Previously each logical line was drawn raw, so
         // anything wider than the viewer simply ran out past its right edge.
@@ -7385,6 +7364,14 @@ case "TEXT_DATA": {
         if (_tp_cut || array_length(_tp_rows) > _tp_n) {
             draw_set_color(make_color_rgb(80, 80, 80));
             draw_text(_vx1 + 10, _cy, "(MORE - OPEN THE EDITOR TO SEE ALL)");
+        }
+
+        // An empty asset draws no rows at all, so give the hit area a
+        // minimum height or a blank TEXT_DATA would have nothing to click.
+        var _tp_hit_y2 = max(_cy + _tp_lh, _tp_hit_y1 + _tp_lh);
+        if (point_in_rectangle(_mx, _my, _vx1 + 10, _tp_hit_y1, _vx2 - 10, _tp_hit_y2)
+         && mouse_check_button_pressed(mb_left)) {
+            scr_asset_inline_edit_open(_asset);
         }
     }
 	// Consume keyboard input so it doesn't leak to other systems —
