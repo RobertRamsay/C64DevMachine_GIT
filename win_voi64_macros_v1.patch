@@ -1,0 +1,2355 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index 61f0706..ce22213 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -38,6 +38,7 @@
+     {"$GMFolder":"","%Name":"LOADER_SUPPORT","folderPath":"folders/SCRIPTS/MACROS/LOADER_SUPPORT.yy","name":"LOADER_SUPPORT","resourceType":"GMFolder","resourceVersion":"2.0",},
+     {"$GMFolder":"","%Name":"SAVELOADGAME","folderPath":"folders/SCRIPTS/MACROS/SAVELOADGAME.yy","name":"SAVELOADGAME","resourceType":"GMFolder","resourceVersion":"2.0",},
+     {"$GMFolder":"","%Name":"SOUND_EDITOR","folderPath":"folders/SCRIPTS/SOUND_EDITOR.yy","name":"SOUND_EDITOR","resourceType":"GMFolder","resourceVersion":"2.0",},
++    {"$GMFolder":"","%Name":"VOI64","folderPath":"folders/SCRIPTS/VOI64.yy","name":"VOI64","resourceType":"GMFolder","resourceVersion":"2.0",},
+     {"$GMFolder":"","%Name":"SPREDV2","folderPath":"folders/SCRIPTS/SPREDV2.yy","name":"SPREDV2","resourceType":"GMFolder","resourceVersion":"2.0",},
+     {"$GMFolder":"","%Name":"UI","folderPath":"folders/SCRIPTS/UI.yy","name":"UI","resourceType":"GMFolder","resourceVersion":"2.0",},
+     {"$GMFolder":"","%Name":"ULTIMATE","folderPath":"folders/SCRIPTS/ULTIMATE.yy","name":"ULTIMATE","resourceType":"GMFolder","resourceVersion":"2.0",},
+@@ -1290,6 +1291,12 @@
+     {"id":{"name":"scr_sound_preview_cache_key","path":"scripts/scr_sound_preview_cache_key/scr_sound_preview_cache_key.yy",},},
+     {"id":{"name":"scr_sound_preview_free_channel","path":"scripts/scr_sound_preview_free_channel/scr_sound_preview_free_channel.yy",},},
+     {"id":{"name":"scr_sound_preview_play","path":"scripts/scr_sound_preview_play/scr_sound_preview_play.yy",},},
++    {"id":{"name":"scr_voi64_phonemes","path":"scripts/scr_voi64_phonemes/scr_voi64_phonemes.yy",},},
++    {"id":{"name":"scr_voi64_sid","path":"scripts/scr_voi64_sid/scr_voi64_sid.yy",},},
++    {"id":{"name":"scr_node_draw_macro_voi64","path":"scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.yy",},},
++    {"id":{"name":"scr_node_step_macro_voi64","path":"scripts/scr_node_step_macro_voi64/scr_node_step_macro_voi64.yy",},},
++    {"id":{"name":"scr_voi64_render","path":"scripts/scr_voi64_render/scr_voi64_render.yy",},},
++    {"id":{"name":"scr_voi64_text_to_phonemes","path":"scripts/scr_voi64_text_to_phonemes/scr_voi64_text_to_phonemes.yy",},},
+     {"id":{"name":"scr_sound_preview_stop_all","path":"scripts/scr_sound_preview_stop_all/scr_sound_preview_stop_all.yy",},},
+     {"id":{"name":"scr_spawn_comment_node","path":"scripts/scr_spawn_comment_node/scr_spawn_comment_node.yy",},},
+     {"id":{"name":"scr_spawn_org_node","path":"scripts/scr_spawn_org_node/scr_spawn_org_node.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 82a1446..4555ee9 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -164,6 +164,10 @@ if (height_dirty) {
+     case "MACRO_PRINT_EXT": height = _G * 8;  break; 
+     case "MACRO_PLACE_CHAR": height = _G * 9;  break;
+ 	case "MACRO_RANDOM":     height = _G * 8;  break;
++	// 7 rows + header. SAY is taller: 3 setting rows, 4 override rows,
++	// the preview button, and room for the no-master warning.
++	case "MACRO_VOI64_MASTER": height = _G * 8;  break;
++	case "MACRO_VOI64_SAY":    height = _G * 10; break;
+ 	// 8 base rows, +2 for each list that's in ASSET mode (list row, index row,
+ 	// info row). Recomputed whenever height_dirty fires, so the mode buttons
+ 	// just need to set it.
+@@ -927,6 +931,8 @@ switch (node_type) {
+     case "MACRO_MATH":       _head_col = is_connected ? make_color_rgb(60, 170, 140) : make_color_rgb(30, 85, 70); break;
+     case "MACRO_CLEAR_BMP_RECT": _head_col = is_connected ? make_color_rgb(200, 70, 90) : make_color_rgb(100, 35, 45); break;
+     case "MACRO_RANDOM":     _head_col = is_connected ? make_color_rgb(150, 90, 200) : make_color_rgb(70, 45, 95); break;
++    case "MACRO_VOI64_MASTER": _head_col = is_connected ? make_color_rgb(200, 120, 60) : make_color_rgb(95, 58, 30); break;
++    case "MACRO_VOI64_SAY":    _head_col = is_connected ? make_color_rgb(225, 150, 70) : make_color_rgb(105, 70, 34); break;
+ 	case "MACRO_SID_SOUND":  _head_col = is_connected ? make_color_rgb(200, 80, 170) : make_color_rgb(95, 40, 80); break;
+ 	case "MACRO_SID_SONG":   _head_col = is_connected ? make_color_rgb(230, 60, 140) : make_color_rgb(110, 30, 65); break;
+ 	case "MACRO_GET_CHAR":   _head_col = is_connected ? make_color_rgb(80, 160, 200) : make_color_rgb(40, 80, 100); break;
+@@ -1376,6 +1382,8 @@ if (_lod_body) switch (node_type) {
+     case "MACRO_CLR_SCREEN": scr_node_draw_macro_clr_screen(draw_x, y); break;
+     case "MACRO_MATH":       scr_node_draw_macro_math(draw_x, y); break;
+     case "MACRO_RANDOM":     scr_node_draw_macro_random(draw_x, y);                     break;
++    case "MACRO_VOI64_MASTER": scr_node_draw_macro_voi64_master(draw_x, y);              break;
++    case "MACRO_VOI64_SAY":    scr_node_draw_macro_voi64_say(draw_x, y);                 break;
+ 	case "MACRO_SID_SOUND":  scr_node_draw_macro_sid_sound(draw_x, y);                  break;
+ 	case "MACRO_SID_SONG":   scr_node_draw_macro_sid_song(draw_x, y);                   break;
+ 	case "MACRO_GET_CHAR":   scr_node_draw_macro_get_char(draw_x, y);                   break;
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 2acd6dd..ae6bdf5 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -1056,6 +1056,8 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
+         case "MACRO_CLR_SCREEN": scr_node_step_macro_clr_screen(draw_x); break;
+         case "MACRO_MATH":       scr_node_step_macro_math(draw_x); break;
+         case "MACRO_RANDOM":     scr_node_step_macro_random(draw_x);     break;
++        case "MACRO_VOI64_MASTER": scr_node_step_macro_voi64_master(draw_x); break;
++        case "MACRO_VOI64_SAY":    scr_node_step_macro_voi64_say(draw_x);    break;
+ 		case "MACRO_SID_SOUND":  scr_node_step_macro_sid_sound(draw_x);  break;
+ 		case "MACRO_SID_SONG":   scr_node_step_macro_sid_song(draw_x);   break;
+ 		case "MACRO_GET_CHAR":   scr_node_step_macro_get_char(draw_x);   break;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index d0936e5..6d20d51 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -934,6 +934,8 @@ if (gui_menu_open == 1 && !global.lite) {
+         { title: "MATH",             type: "MACRO_MATH"          },
+         { title: "RANDOM",           type: "MACRO_RANDOM"        },
+         { title: "REU",              type: "MACRO_REU"           },
++        { title: "VOI64 MASTER",     type: "MACRO_VOI64_MASTER"  },
++        { title: "VOI64 SAY",        type: "MACRO_VOI64_SAY"     },
+     ];
+ 
+     var _item_h_e     = 19;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 1c7450b..b0ee8e3 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -777,6 +777,7 @@ if (is_entering_text) {
+ 		else if (_ntype == "MACRO_CLR_SCREEN"   && _nidx == 1)                   { _is_address_field = true; }
+ 		else if (_ntype == "MACRO_GET_CHAR"     && (_nidx == 10 || _nidx == 11)) { _is_address_field = true; }
+ 		else if (_ntype == "MACRO_RANDOM"       && (_nidx == 2  || _nidx == 8))  { _is_address_field = true; }
++		else if (_ntype == "MACRO_VOI64_MASTER" && _nidx == 5)                   { _is_address_field = true; }
+ 		else if (_ntype == "MACRO_SID_SOUND"    && (_nidx == 8  || _nidx == 11 || _nidx == 14 || _nidx == 18 || _nidx == 20)) { _is_address_field = true; }
+         else if (_ntype == "MACRO_TEXT_SCROLL"  && _nidx == 5) { _is_address_field = true; }
+         else if (_ntype == "MACRO_SID"          && _nidx == 1) { _is_address_field = true; }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index a7f2ba6..fca835a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -28,6 +28,7 @@ function scr_compile_chain() {
+     global.bmpblk_lut_emitted        = false; // reset per compile so MBB multiply LUTs emit once
+     global.math_helpers_emitted      = false; // reset per compile so MATH mul16/div16 emit once
+     global.sidsong_notetab_emitted   = false; // reset per compile so the SID song note table emits once
++    global.voi64_player_emitted      = false; // reset per compile so the Voi64 player emits once
+     // Pre-scan: only emit the mul16/div16 helpers if some MATH node actually
+     // uses MUL (op 2) or DIV (op 3). Pure ADD/SUB/ONEMINUS/INVSIGN projects
+     // then carry zero multiply/divide code.
+@@ -7587,6 +7588,232 @@ case "BANK_SWITCH": {
+ // (used by some cartridges/carts detection code) can retrigger the last
+ // queued transfer, which is a classic REU footgun.
+ // --------------------------------------------------------
++// ════════════════════════════════════════════════════════════════════
++// VOI64 — SPEECH
++//
++// MACRO_VOI64_MASTER sets the SID up for speech and emits the player
++// once. MACRO_VOI64_SAY emits a frame stream and calls it.
++//
++// The player does NO arithmetic. Every frame is eight bytes that go
++// straight to eight SID registers, because the letter-to-sound pass, the
++// formant model, the coarticulation and the Hz-to-SID conversion all
++// happen in GML at compile time. That is the whole design: a
++// cross-development tool can put the hard part on the PC, which is the
++// one thing a 1982 speech synth could never do.
++//
++// See scr_voi64_sid for the frame format and the voice topology,
++// including the one honest compromise in it (only F1 can be pitched).
++// ════════════════════════════════════════════════════════════════════
++case "MACRO_VOI64_MASTER": {
++    var _id = _curr;
++    var _i0 = _curr.instructions[0];
++
++    // [5] zp_base — two bytes for the frame pointer, one for flags.
++    var _zp = 0xFB;
++    if (array_length(_i0) > 5 && is_real(_i0[5])) { _zp = real(_i0[5]) & 0xFF; }
++    var _zpf = (_zp + 2) & 0xFF;
++
++    // ── SID setup. Runs in the spine, once. ──────────────────────────
++    // AD = 0 on all three voices: instant attack, no decay, so the level
++    // is whatever SUSTAIN says and a frame's amplitude change takes
++    // effect immediately. That is what lets the player set loudness by
++    // writing one nibble per voice with the gate left alone — retriggering
++    // the gate every frame would click at 50Hz.
++    array_push(_list, ["lda_imm", 0x00,   _id]);
++    array_push(_list, ["sta_abs", 0xD405, _id]);   // V1 AD
++    array_push(_list, ["sta_abs", 0xD40C, _id]);   // V2 AD
++    array_push(_list, ["sta_abs", 0xD413, _id]);   // V3 AD
++    array_push(_list, ["sta_abs", 0xD406, _id]);   // V1 SR — silent to start
++    array_push(_list, ["sta_abs", 0xD40D, _id]);   // V2 SR
++    array_push(_list, ["sta_abs", 0xD414, _id]);   // V3 SR
++    array_push(_list, ["sta_abs", 0xD402, _id]);   // V1 PW lo
++    array_push(_list, ["sta_abs", 0xD409, _id]);   // V2 PW lo
++    array_push(_list, ["lda_imm", 0x08,   _id]);
++    array_push(_list, ["sta_abs", 0xD403, _id]);   // V1 PW hi -> 50% duty
++    array_push(_list, ["sta_abs", 0xD40A, _id]);   // V2 PW hi
++    // Volume 15, filter off, voice 3 NOT muted — V3 carries the frication
++    // on unvoiced frames, so bit 7 must stay clear.
++    array_push(_list, ["lda_imm", 0x0F,   _id]);
++    array_push(_list, ["sta_abs", 0xD418, _id]);
++
++    // ── The player, emitted once and jumped over ─────────────────────
++    if (!global.voi64_player_emitted) {
++        global.voi64_player_emitted = true;
++
++        array_push(_list, ["jmp_abs", "voi64_skip", _id]);
++
++        // voi64_play — A = frame data lo, X = hi. Blocking: it owns the
++        // CPU until the utterance ends. v1 is deliberately blocking so it
++        // cannot fight a MACRO_IRQ setup; an IRQ-driven mode is a later
++        // MODE on this same node, not a rewrite.
++        array_push(_list, ["label",   "voi64_play"]);
++        array_push(_list, ["sta_zp",  _zp,           _id]);
++        array_push(_list, ["stx_zp",  (_zp + 1) & 0xFF, _id]);
++
++        array_push(_list, ["label",   "voi64_frame"]);
++        // Terminator check first: byte 7 == $FF ends the stream.
++        array_push(_list, ["ldy_imm", 7,    _id]);
++        array_push(_list, ["lda_izy", _zp,  _id]);
++        array_push(_list, ["cmp_imm", 0xFF, _id]);
++        array_push(_list, ["beq",     "voi64_done", _id]);
++
++        // Frequencies: F1 -> V1, F2 -> V2, pitch-or-noise -> V3.
++        array_push(_list, ["ldy_imm", 0,    _id]);
++        array_push(_list, ["lda_izy", _zp,  _id]);
++        array_push(_list, ["sta_abs", 0xD400, _id]);
++        array_push(_list, ["iny",     0,    _id]);
++        array_push(_list, ["lda_izy", _zp,  _id]);
++        array_push(_list, ["sta_abs", 0xD401, _id]);
++        array_push(_list, ["iny",     0,    _id]);
++        array_push(_list, ["lda_izy", _zp,  _id]);
++        array_push(_list, ["sta_abs", 0xD407, _id]);
++        array_push(_list, ["iny",     0,    _id]);
++        array_push(_list, ["lda_izy", _zp,  _id]);
++        array_push(_list, ["sta_abs", 0xD408, _id]);
++        array_push(_list, ["iny",     0,    _id]);
++        array_push(_list, ["lda_izy", _zp,  _id]);
++        array_push(_list, ["sta_abs", 0xD40E, _id]);
++        array_push(_list, ["iny",     0,    _id]);
++        array_push(_list, ["lda_izy", _zp,  _id]);
++        array_push(_list, ["sta_abs", 0xD40F, _id]);
++
++        // Byte 6 = (a1 << 4) | a2. The sustain nibble IS the amplitude,
++        // which is why the phoneme table stores amplitudes 0-15.
++        array_push(_list, ["iny",     0,    _id]);
++        array_push(_list, ["lda_izy", _zp,  _id]);
++        array_push(_list, ["pha",     0,    _id]);
++        array_push(_list, ["and_imm", 0xF0, _id]);
++        array_push(_list, ["sta_abs", 0xD406, _id]);   // V1 sustain = a1
++        array_push(_list, ["pla",     0,    _id]);
++        array_push(_list, ["asl_a",   0,    _id]);
++        array_push(_list, ["asl_a",   0,    _id]);
++        array_push(_list, ["asl_a",   0,    _id]);
++        array_push(_list, ["asl_a",   0,    _id]);
++        array_push(_list, ["sta_abs", 0xD40D, _id]);   // V2 sustain = a2
++
++        // Byte 7 = (a3 << 4) | flags.
++        array_push(_list, ["iny",     0,    _id]);
++        array_push(_list, ["lda_izy", _zp,  _id]);
++        array_push(_list, ["pha",     0,    _id]);
++        array_push(_list, ["and_imm", 0xF0, _id]);
++        array_push(_list, ["sta_abs", 0xD414, _id]);   // V3 sustain
++        array_push(_list, ["pla",     0,    _id]);
++        array_push(_list, ["and_imm", 0x0F, _id]);
++        array_push(_list, ["sta_zp",  _zpf, _id]);     // stash flags
++
++        // V1 control. Pulse + gate, plus SYNC when the frame is voiced —
++        // that is the bit that makes F1 a pitched formant rather than a
++        // bare tone.
++        array_push(_list, ["and_imm", 0x01, _id]);
++        array_push(_list, ["beq",     "voi64_nosync", _id]);
++        array_push(_list, ["lda_imm", 0x43, _id]);     // pulse + sync + gate
++        array_push(_list, ["jmp_abs", "voi64_v1", _id]);
++        array_push(_list, ["label",   "voi64_nosync"]);
++        array_push(_list, ["lda_imm", 0x41, _id]);     // pulse + gate
++        array_push(_list, ["label",   "voi64_v1"]);
++        array_push(_list, ["sta_abs", 0xD404, _id]);
++
++        array_push(_list, ["lda_imm", 0x41, _id]);
++        array_push(_list, ["sta_abs", 0xD40B, _id]);   // V2 always pulse + gate
++
++        // V3: noise when the frame is frication, triangle when it is the
++        // silent pitch source.
++        array_push(_list, ["lda_zp",  _zpf, _id]);
++        array_push(_list, ["and_imm", 0x02, _id]);
++        array_push(_list, ["beq",     "voi64_v3tri", _id]);
++        array_push(_list, ["lda_imm", 0x81, _id]);     // noise + gate
++        array_push(_list, ["jmp_abs", "voi64_v3", _id]);
++        array_push(_list, ["label",   "voi64_v3tri"]);
++        array_push(_list, ["lda_imm", 0x11, _id]);     // triangle + gate
++        array_push(_list, ["label",   "voi64_v3"]);
++        array_push(_list, ["sta_abs", 0xD412, _id]);
++
++        // One PAL frame. Line 200 and not line 0: PAL has 312 lines, so
++        // $D012 reads 0 at BOTH line 0 and line 256 and waiting on it
++        // would fire twice a frame at uneven spacing. Lines 56-255 occur
++        // exactly once.
++        array_push(_list, ["lda_imm", 0xC8, _id]);
++        array_push(_list, ["label",   "voi64_w1"]);
++        array_push(_list, ["cmp_abs", 0xD012, _id]);
++        array_push(_list, ["bne",     "voi64_w1", _id]);
++        array_push(_list, ["label",   "voi64_w2"]);
++        array_push(_list, ["cmp_abs", 0xD012, _id]);
++        array_push(_list, ["beq",     "voi64_w2", _id]);
++
++        // Next frame = pointer + 8.
++        array_push(_list, ["clc",     0,    _id]);
++        array_push(_list, ["lda_zp",  _zp,  _id]);
++        array_push(_list, ["adc_imm", 8,    _id]);
++        array_push(_list, ["sta_zp",  _zp,  _id]);
++        array_push(_list, ["bcc",     "voi64_nocarry", _id]);
++        array_push(_list, ["inc_zp",  (_zp + 1) & 0xFF, _id]);
++        array_push(_list, ["label",   "voi64_nocarry"]);
++        array_push(_list, ["jmp_abs", "voi64_frame", _id]);
++
++        // Silence everything on the way out — leaving a gate open leaves
++        // the last formant ringing under the rest of the program.
++        array_push(_list, ["label",   "voi64_done"]);
++        array_push(_list, ["lda_imm", 0x00,   _id]);
++        array_push(_list, ["sta_abs", 0xD406, _id]);
++        array_push(_list, ["sta_abs", 0xD40D, _id]);
++        array_push(_list, ["sta_abs", 0xD414, _id]);
++        array_push(_list, ["sta_abs", 0xD404, _id]);
++        array_push(_list, ["sta_abs", 0xD40B, _id]);
++        array_push(_list, ["sta_abs", 0xD412, _id]);
++        array_push(_list, ["rts",     0,      _id]);
++
++        array_push(_list, ["label",   "voi64_skip"]);
++    }
++} break;
++
++case "MACRO_VOI64_SAY": {
++    var _id = _curr;
++
++    // No master means no player routine and no default voice, so there is
++    // nothing sensible to emit. Say so in the log and emit nothing rather
++    // than emitting a JSR to a label that will never exist.
++    var _vm = scr_voi64_find_master();
++    if (!instance_exists(_vm)) {
++        show_debug_message("VOI64 SAY#" + string(_id) + ": no connected MACRO_VOI64_MASTER - nothing emitted");
++        break;
++    }
++
++    var _phon = scr_voi64_say_phoneme_string(_id);
++    if (string_trim(_phon) == "") {
++        show_debug_message("VOI64 SAY#" + string(_id) + ": nothing to say");
++        break;
++    }
++
++    var _v  = scr_voi64_effective_voice(_id);
++    var _fr = scr_voi64_sid_frames(_phon, _v.pitch, _v.speed, _v.throat, _v.mouth);
++    if (array_length(_fr) == 0) {
++        break;
++    }
++
++    var _p    = "voi64s" + string(real(_id)) + "_";
++    var _data = _p + "data";
++
++    array_push(_list, ["jmp_abs", _p + "skip", _id]);
++    array_push(_list, ["label",   _data]);
++    for (var _fi = 0; _fi < array_length(_fr); _fi++) {
++        var _f = _fr[_fi];
++        for (var _bi = 0; _bi < 8; _bi++) {
++            array_push(_list, ["byte", _f[_bi], _id]);
++        }
++    }
++    // Terminator frame. The player reads byte 7 first, so only that byte
++    // has to be $FF, but a full eight keeps the stream a clean multiple.
++    for (var _ti = 0; _ti < 7; _ti++) {
++        array_push(_list, ["byte", 0x00, _id]);
++    }
++    array_push(_list, ["byte", 0xFF, _id]);
++    array_push(_list, ["label",   _p + "skip"]);
++
++    array_push(_list, ["lda_lab_lo", _data, _id]);
++    array_push(_list, ["ldx_lab_hi", _data, _id]);
++    array_push(_list, ["jsr",        "voi64_play", _id]);
++} break;
++
+ case "MACRO_REU": {
+     var _id        = _curr;
+     var _reu_op    = is_real(_curr.instructions[0][1]) ? real(_curr.instructions[0][1]) : 0;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+index f35bba7..d51f7ee 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+@@ -762,6 +762,58 @@
+ 	        }
+ 	        global.addresses_dirty = true;
+ 
++	    // --- VOI64 MASTER ---
++	    // [1] pitch Hz  [2] speed  [3] throat  [4] mouth  [5] zp_base (hex)
++	    } else if (_target.node_type == "MACRO_VOI64_MASTER") {
++	        while (array_length(_target.instructions[0]) <= 5) {
++	            array_push(_target.instructions[0], 0);
++	        }
++	        if (_idx == 5) {
++	            var _vz = (string_char_at(_input, 1) == "$")
++	                    ? string_delete(_input, 1, 1) : _input;
++	            // Three consecutive bytes: pointer lo/hi and a flags byte.
++	            // $FD is the highest base that keeps all three inside page zero.
++	            _target.instructions[0][5] = clamp(hex_to_decimal(_vz), 0x02, 0xFD);
++	        } else if (_idx == 1) {
++	            // Outside 50-400Hz it stops reading as a voice: too low and
++	            // the sync source cannot excite the formant once per period,
++	            // too high and the formants alias into each other.
++	            _target.instructions[0][1] = clamp(real(string_digits(_input)), 50, 400);
++	        } else {
++	            _target.instructions[0][_idx] = clamp(real(string_digits(_input)), 0, 255);
++	        }
++	        global.addresses_dirty = true;
++
++	    // --- VOI64 SAY ---
++	    // [5] inline text  [6] asset name  [7..10] voice overrides
++	    } else if (_target.node_type == "MACRO_VOI64_SAY") {
++	        while (array_length(_target.instructions[0]) <= 10) {
++	            var _vn = array_length(_target.instructions[0]);
++	            if (_vn == 5 || _vn == 6) {
++	                array_push(_target.instructions[0], "");
++	            } else if (_vn >= 7) {
++	                array_push(_target.instructions[0], -1);
++	            } else {
++	                array_push(_target.instructions[0], 0);
++	            }
++	        }
++	        if (_idx == 5 || _idx == 6) {
++	            _target.instructions[0][_idx] = _input;
++	        } else if (_idx >= 7 && _idx <= 10) {
++	            // Empty clears the override back to "inherit from master",
++	            // which is what the node draws as a dash. Without this there
++	            // would be no way to undo an override once one was typed.
++	            var _vt = string_trim(_input);
++	            if (_vt == "" || _vt == "-") {
++	                _target.instructions[0][_idx] = -1;
++	            } else if (_idx == 7) {
++	                _target.instructions[0][7] = clamp(real(string_digits(_vt)), 50, 400);
++	            } else {
++	                _target.instructions[0][_idx] = clamp(real(string_digits(_vt)), 0, 255);
++	            }
++	        }
++	        global.addresses_dirty = true;
++
+ 	    // --- MACRO_RANDOM ---
+ 	    // [2] freq (hex 16-bit)  [4] clamp_min  [5] clamp_max
+ 	    // [7] dst_var  [8] zp_base (hex)
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+new file mode 100644
+index 0000000..58d20cb
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+@@ -0,0 +1,136 @@
++/// @desc Draw for both Voi64 nodes.
++///
++/// MACRO_VOI64_MASTER instructions[0]:
++///   ["macro_voi64_master", 1 pitch, 2 speed, 3 throat, 4 mouth, 5 zp_base]
++///
++/// MACRO_VOI64_SAY instructions[0]:
++///   ["macro_voi64_say", 1 -, 2 -, 3 mode(0=TEXT,1=PHONEME),
++///    4 src(0=INLINE,1=TEXT_DATA), 5 inline_text, 6 asset_name,
++///    7 pitch, 8 speed, 9 throat, 10 mouth]     -1 in 7-10 means inherit
++
++function scr_node_draw_macro_voi64_master(_draw_x, _y) {
++    var _ins = instructions[0];
++
++    var _pitch  = 120; if (array_length(_ins) > 1 && is_real(_ins[1])) { _pitch  = real(_ins[1]); }
++    var _speed  = 128; if (array_length(_ins) > 2 && is_real(_ins[2])) { _speed  = real(_ins[2]); }
++    var _throat = 128; if (array_length(_ins) > 3 && is_real(_ins[3])) { _throat = real(_ins[3]); }
++    var _mouth  = 128; if (array_length(_ins) > 4 && is_real(_ins[4])) { _mouth  = real(_ins[4]); }
++    var _zp     = 0xFB; if (array_length(_ins) > 5 && is_real(_ins[5])) { _zp    = real(_ins[5]) & 0xFF; }
++
++    var _lh = 14;
++    var _ly = _y + 28;
++    var _px = _draw_x + 8;
++
++    var _c_lbl = make_color_rgb(140, 160, 200);
++    var _c_val = make_color_rgb(230, 210, 120);
++    var _c_dim = make_color_rgb(90, 90, 100);
++
++    draw_set_font(fnt_c64_tiny);
++    draw_set_halign(fa_left);
++
++    draw_set_color(_c_lbl); draw_text(_px, _ly, "PITCH:");
++    draw_set_color(_c_val); draw_text(_px + 62, _ly, string(_pitch) + " HZ");
++    _ly += _lh;
++
++    draw_set_color(_c_lbl); draw_text(_px, _ly, "SPEED:");
++    draw_set_color(_c_val); draw_text(_px + 62, _ly, string(_speed));
++    _ly += _lh;
++
++    draw_set_color(_c_lbl); draw_text(_px, _ly, "THROAT:");
++    draw_set_color(_c_val); draw_text(_px + 62, _ly, string(_throat));
++    _ly += _lh;
++
++    draw_set_color(_c_lbl); draw_text(_px, _ly, "MOUTH:");
++    draw_set_color(_c_val); draw_text(_px + 62, _ly, string(_mouth));
++    _ly += _lh;
++
++    var _zh = string_upper(decimal_to_hex(_zp));
++    while (string_length(_zh) < 2) { _zh = "0" + _zh; }
++    draw_set_color(_c_lbl); draw_text(_px, _ly, "ZP:");
++    draw_set_color(_c_val); draw_text(_px + 62, _ly, "$" + _zh + " (3)");
++    _ly += _lh;
++
++    // The player is blocking. Say it on the face of the node — a user who
++    // finds this out from a stalled raster split has already lost an hour.
++    draw_set_color(make_color_rgb(220, 110, 90));
++    draw_text(_px, _ly, "BLOCKS: NO IRQ / NO MUSIC");
++    _ly += _lh;
++
++    draw_set_color(_c_dim);
++    draw_text(_px, _ly, "SETS UP SID + PLAYER");
++}
++
++function scr_node_draw_macro_voi64_say(_draw_x, _y) {
++    var _ins = instructions[0];
++
++    var _mode = 0; if (array_length(_ins) > 3 && is_real(_ins[3])) { _mode = real(_ins[3]); }
++    var _src  = 0; if (array_length(_ins) > 4 && is_real(_ins[4])) { _src  = real(_ins[4]); }
++    var _text = ""; if (array_length(_ins) > 5) { _text = string(_ins[5]); }
++    var _asset = ""; if (array_length(_ins) > 6) { _asset = string(_ins[6]); }
++
++    var _lh = 14;
++    var _ly = _y + 28;
++    var _px = _draw_x + 8;
++
++    var _c_lbl = make_color_rgb(140, 160, 200);
++    var _c_val = make_color_rgb(230, 210, 120);
++    var _c_dim = make_color_rgb(90, 90, 100);
++
++    draw_set_font(fnt_c64_tiny);
++    draw_set_halign(fa_left);
++
++    draw_set_color(_c_lbl); draw_text(_px, _ly, "MODE:");
++    draw_set_color(_c_val); draw_text(_px + 62, _ly, (_mode == 1) ? "PHONEME" : "TEXT");
++    _ly += _lh;
++
++    draw_set_color(_c_lbl); draw_text(_px, _ly, "SRC:");
++    draw_set_color(_c_val); draw_text(_px + 62, _ly, (_src == 1) ? "TEXT DATA" : "INLINE");
++    _ly += _lh;
++
++    var _shown = (_src == 1) ? _asset : _text;
++    if (_shown == "") { _shown = (_src == 1) ? "<NO ASSET>" : "<CLICK TO TYPE>"; }
++    if (string_length(_shown) > 22) { _shown = string_copy(_shown, 1, 21) + "*"; }
++    draw_set_color(_c_lbl); draw_text(_px, _ly, "SAY:");
++    draw_set_color((_shown == "<NO ASSET>" || _shown == "<CLICK TO TYPE>") ? _c_dim : _c_val);
++    draw_text(_px + 32, _ly, _shown);
++    _ly += _lh;
++
++    // Per-say voice overrides. A dash means "inherit from the master",
++    // which is the default and by far the common case — showing an actual
++    // number here would imply this node is setting one when it is not.
++    var _lbls = ["PITCH", "SPEED", "THROAT", "MOUTH"];
++    for (var _k = 0; _k < 4; _k++) {
++        var _v = -1;
++        if (array_length(_ins) > (7 + _k) && is_real(_ins[7 + _k])) { _v = real(_ins[7 + _k]); }
++        draw_set_color(_c_lbl); draw_text(_px, _ly, _lbls[_k] + ":");
++        if (_v < 0) {
++            draw_set_color(_c_dim); draw_text(_px + 62, _ly, "-");
++        } else {
++            draw_set_color(_c_val); draw_text(_px + 62, _ly, string(_v));
++        }
++        _ly += _lh;
++    }
++
++    // Preview button. Plays through the GML synth using the same phoneme
++    // string the compiler will emit, so what you hear here is what the
++    // build will say.
++    var _bx1 = _draw_x + 8;
++    var _by1 = _ly + 1;
++    var _bx2 = _draw_x + width - 8;
++    var _by2 = _by1 + 13;
++    var _hov = point_in_rectangle(mouse_x, mouse_y, _bx1, _by1, _bx2, _by2);
++    draw_set_color(_hov ? make_color_rgb(60, 140, 90) : make_color_rgb(24, 70, 48));
++    draw_rectangle(_bx1, _by1, _bx2, _by2, false);
++    draw_set_color(c_white);
++    draw_set_halign(fa_center);
++    draw_text((_bx1 + _bx2) / 2, _by1 + 2, "PREVIEW VOICE");
++    draw_set_halign(fa_left);
++    _ly += _lh;
++
++    // No master, no player routine and no default voice, so the build
++    // emits nothing for this node. Flag it here rather than in the log.
++    if (!instance_exists(scr_voi64_find_master())) {
++        draw_set_color(make_color_rgb(220, 110, 90));
++        draw_text(_px, _ly, "NO VOI64 MASTER CONNECTED");
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.yy b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.yy
+new file mode 100644
+index 0000000..f4e93ee
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_node_draw_macro_voi64",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_node_draw_macro_voi64",
++  "parent":{
++    "name":"VOI64",
++    "path":"folders/SCRIPTS/VOI64.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index 2ab07ee..4ab365e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -744,6 +744,27 @@ case "LABEL": {
+         // [6] dst_mode  (0 = A, 1 = VAR)
+         // [7] dst_var   [8] zp_base
+         // -------------------------------------------------------
++        // -------------------------------------------------------
++        // VOI64 SPEECH
++        // MASTER [1] pitch [2] speed [3] throat [4] mouth [5] zp_base
++        // SAY    [3] mode(0=TEXT,1=PHONEME) [4] src(0=INLINE,1=TEXT_DATA)
++        //        [5] inline text [6] asset name
++        //        [7..10] pitch/speed/throat/mouth, -1 = inherit master
++        // -------------------------------------------------------
++        case "MACRO_VOI64_MASTER":
++            _n.node_title   = "VOI64 MASTER";
++            _n.instructions = [["macro_voi64_master", 120, 128, 128, 128, 0xFB]];
++            _n.pc_address   = global.start_pc;
++            with (_n) { event_user(0); }
++            break;
++
++        case "MACRO_VOI64_SAY":
++            _n.node_title   = "VOI64 SAY";
++            _n.instructions = [["macro_voi64_say", 0, 0, 0, 0, "HELLO WORLD", "", -1, -1, -1, -1]];
++            _n.pc_address   = global.start_pc;
++            with (_n) { event_user(0); }
++            break;
++
+         case "MACRO_RANDOM":
+             _n.node_title   = "RANDOM";
+             _n.instructions = [["macro_random", 1, 0xFFFF, 0, 0, 255, 0, "", 0xFB]];
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_voi64/scr_node_step_macro_voi64.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_voi64/scr_node_step_macro_voi64.gml
+new file mode 100644
+index 0000000..c7e6148
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_voi64/scr_node_step_macro_voi64.gml
+@@ -0,0 +1,120 @@
++/// @desc Click handling for both Voi64 nodes. Row anchors mirror the draw
++///       script exactly — if one moves, the other has to move with it.
++
++function scr_node_step_macro_voi64_master(_draw_x) {
++    var _lh = 14;
++    var _fy = y + 28;
++    var _x1 = _draw_x + 8;
++    var _x2 = _draw_x + width - 8;
++
++    // Rows 0-4 are all numeric entry: pitch, speed, throat, mouth, zp.
++    // Index 5 (zp) is hex, the rest decimal — scr_node_commit sorts that
++    // out; this only has to open the editor on the right slot.
++    var _slots = [1, 2, 3, 4, 5];
++    for (var _k = 0; _k < 5; _k++) {
++        if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
++            var _idx = _slots[_k];
++            while (array_length(instructions[0]) <= _idx) {
++                array_push(instructions[0], 0);
++            }
++            var _cur = is_real(instructions[0][_idx]) ? real(instructions[0][_idx]) : 0;
++            with (obj_workspace_manager) {
++                is_entering_text     = true;
++                input_target_node    = other.id;
++                input_target_index   = _idx;
++                if (_idx == 5) {
++                    var _h = string_upper(decimal_to_hex(_cur));
++                    while (string_length(_h) < 2) { _h = "0" + _h; }
++                    current_input_string = _h;
++                } else {
++                    current_input_string = string(_cur);
++                }
++                keyboard_string = "";
++                cursor_pos      = string_length(current_input_string);
++            }
++            exit;
++        }
++        _fy += _lh;
++    }
++}
++
++function scr_node_step_macro_voi64_say(_draw_x) {
++    var _lh = 14;
++    var _fy = y + 28;
++    var _x1 = _draw_x + 8;
++    var _x2 = _draw_x + width - 8;
++
++    // Row 0 — MODE toggle
++    if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
++        while (array_length(instructions[0]) <= 3) { array_push(instructions[0], 0); }
++        var _m = is_real(instructions[0][3]) ? real(instructions[0][3]) : 0;
++        instructions[0][3] = (_m == 1) ? 0 : 1;
++        global.addresses_dirty = true;
++        exit;
++    }
++    _fy += _lh;
++
++    // Row 1 — SRC toggle
++    if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
++        while (array_length(instructions[0]) <= 4) { array_push(instructions[0], 0); }
++        var _s = is_real(instructions[0][4]) ? real(instructions[0][4]) : 0;
++        instructions[0][4] = (_s == 1) ? 0 : 1;
++        global.addresses_dirty = true;
++        exit;
++    }
++    _fy += _lh;
++
++    // Row 2 — the text itself. Inline mode types here; TEXT_DATA mode
++    // types the asset name.
++    if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
++        var _src = 0;
++        if (array_length(instructions[0]) > 4 && is_real(instructions[0][4])) {
++            _src = real(instructions[0][4]);
++        }
++        var _idx = (_src == 1) ? 6 : 5;
++        while (array_length(instructions[0]) <= _idx) { array_push(instructions[0], ""); }
++        with (obj_workspace_manager) {
++            is_entering_text     = true;
++            input_target_node    = other.id;
++            input_target_index   = _idx;
++            current_input_string = string(other.instructions[0][_idx]);
++            keyboard_string      = "";
++            cursor_pos           = string_length(current_input_string);
++        }
++        exit;
++    }
++    _fy += _lh;
++
++    // Rows 3-6 — per-say overrides. Right click clears one back to
++    // inherit; typing -1 does the same thing from the keyboard.
++    for (var _k = 0; _k < 4; _k++) {
++        if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
++            var _oi = 7 + _k;
++            while (array_length(instructions[0]) <= _oi) { array_push(instructions[0], -1); }
++            var _cv = is_real(instructions[0][_oi]) ? real(instructions[0][_oi]) : -1;
++            with (obj_workspace_manager) {
++                is_entering_text     = true;
++                input_target_node    = other.id;
++                input_target_index   = _oi;
++                current_input_string = (_cv < 0) ? "" : string(_cv);
++                keyboard_string      = "";
++                cursor_pos           = string_length(current_input_string);
++            }
++            exit;
++        }
++        _fy += _lh;
++    }
++
++    // Row 7 — PREVIEW VOICE
++    if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy + 1, _x2, _fy + 14)) {
++        var _ph = scr_voi64_say_phoneme_string(id);
++        if (string_trim(_ph) == "") {
++            show_debug_message("VOI64 PREVIEW: nothing to say");
++        } else {
++            var _v = scr_voi64_effective_voice(id);
++            show_debug_message("VOI64 PREVIEW: " + _ph);
++            scr_voi64_say_phonemes(_ph, _v.pitch, _v.speed, _v.throat, _v.mouth);
++        }
++        exit;
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_voi64/scr_node_step_macro_voi64.yy b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_voi64/scr_node_step_macro_voi64.yy
+new file mode 100644
+index 0000000..6fb6fd5
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_voi64/scr_node_step_macro_voi64.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_node_step_macro_voi64",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_node_step_macro_voi64",
++  "parent":{
++    "name":"VOI64",
++    "path":"folders/SCRIPTS/VOI64.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+index aa34ff0..f886626 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+@@ -576,6 +576,49 @@ function scr_node_tooltip_text(_node_type) {
+             ]
+         },
+ 
++        "MACRO_VOI64_MASTER": {
++            title: "VOI64 MASTER",
++            lines: [
++                "Sets the SID up for speech and emits the Voi64 player",
++                "once. Every VOI64 SAY in the project needs one of these",
++                "connected - without it a SAY emits nothing.",
++                "",
++                "PITCH is the glottal rate in Hz. THROAT scales the first",
++                "formant (deeper / chestier), MOUTH scales the second and",
++                "third (brighter / more forward). SPEED is 0-255 with 128",
++                "nominal, and HIGHER IS FASTER.",
++                "",
++                "The player is BLOCKING: it owns the CPU until the phrase",
++                "ends, so no raster effects and no music while it speaks.",
++                "",
++                "Voices: V3 is a silent pitch source, V1 is the first",
++                "formant hard-synced to it, V2 is the second. On unvoiced",
++                "sounds V3 switches to noise and carries the frication."
++            ]
++        },
++
++        "MACRO_VOI64_SAY": {
++            title: "VOI64 SAY",
++            lines: [
++                "Speaks a phrase. TEXT mode runs English letter-to-sound",
++                "on the PC at build time, so the C64 never sees a letter -",
++                "only the finished frames. PHONEME mode takes a phoneme",
++                "string verbatim, which is how you fix a word the rules",
++                "get wrong.",
++                "",
++                "Source is either typed inline or a TEXT_DATA asset. Both",
++                "are known at build time, which is what keeps the runtime",
++                "cost to eight bytes per 1/50th second.",
++                "",
++                "PITCH / SPEED / THROAT / MOUTH show a dash when they are",
++                "inherited from the master. Type a value to override it",
++                "for this phrase only.",
++                "",
++                "PREVIEW VOICE plays it through the tool using the same",
++                "phoneme string the build will emit."
++            ]
++        },
++
+         "MACRO_RANDOM": {
+             title: "RANDOM",
+             lines: [
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_phonemes/scr_voi64_phonemes.gml b/C64DevMachine_win.yyp/scripts/scr_voi64_phonemes/scr_voi64_phonemes.gml
+new file mode 100644
+index 0000000..02530c1
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_phonemes/scr_voi64_phonemes.gml
+@@ -0,0 +1,188 @@
++/// ====================================================================
++/// VOI64 — PHONEME MODEL
++///
++/// An original formant model, written from published acoustic phonetics.
++/// Nothing here derives from SAM or any disassembly of it: the vowel
++/// targets are the Peterson & Barney (1952) adult-male formant means,
++/// the consonant figures are standard textbook values, and the synthesis
++/// model is a three-resonator PARALLEL bank.
++///
++/// Parallel, not cascade, on purpose. Three resonators summed is exactly
++/// what three SID voices summed will be, so the GML preview in
++/// scr_voi64_render and the eventual 6502 player describe the same
++/// machine. Tune the numbers here, hear them on the PC, and the SID
++/// player inherits the tuning rather than needing its own.
++///
++/// PHONEME RECORD
++///   nm    name, ARPABET-style
++///   kind  "VOW" vowel   "DIP" diphthong  "NAS" nasal   "LIQ" liquid/glide
++///         "STP" stop    "FRI" fricative  "AFF" affricate "SIL" silence
++///   f1..3 formant centres, Hz
++///   b1..3 formant bandwidths, Hz — wider = duller, narrower = more nasal
++///   a1..3 formant amplitudes 0-15. Chosen 0-15 so each drops straight
++///         into a SID sustain nibble with no rescaling on the C64 side.
++///   dur   nominal length in 100Hz frames (the player's frame rate)
++///   vcd   glottal excitation 0-15  (voicing)
++///   nz    noise excitation 0-15    (frication / aspiration / burst)
++///   nf    noise centre, Hz. 0 means "use f2".
++///   gl    glide target phoneme for diphthongs, "" otherwise
++///   sil   leading silence in frames — stops need a closure before the burst
++///
++/// AMPLITUDE CONVENTION
++/// a1 dominates for vowels and a3 is always the quietest; that falling
++/// tilt is what makes a formant stack read as a voice rather than as a
++/// chord. Resist the urge to level them.
++/// ====================================================================
++
++/// @function scr_voi64_ph(_nm, _kind, _f1, _f2, _f3, _a1, _a2, _a3, _dur, _vcd, _nz, _nf, _gl, _sil)
++/// @desc One phoneme record. Bandwidths are derived rather than passed —
++///       F1 sits narrow, F2 and F3 progressively wider, which is the usual
++///       shape and one less column to hand-maintain across 45 entries.
++function scr_voi64_ph(_nm, _kind, _f1, _f2, _f3, _a1, _a2, _a3, _dur, _vcd, _nz, _nf, _gl, _sil) {
++    return {
++        nm:   _nm,
++        kind: _kind,
++        f1:   _f1,  f2: _f2,  f3: _f3,
++        b1:   90,   b2: 110,  b3: 170,
++        a1:   _a1,  a2: _a2,  a3: _a3,
++        dur:  _dur,
++        vcd:  _vcd,
++        nz:   _nz,
++        nf:   _nf,
++        gl:   _gl,
++        sil:  _sil
++    };
++}
++
++/// @function scr_voi64_phoneme_table()
++/// @desc The whole set, built once and cached on a global. Returns a struct
++///       keyed by phoneme name so lookup is a hash rather than a scan —
++///       scr_voi64_render asks for one per frame and a sentence is hundreds
++///       of frames.
++function scr_voi64_phoneme_table() {
++    if (variable_global_exists("voi64_ph_table")) {
++        return global.voi64_ph_table;
++    }
++
++    var _t = {};
++
++    // ── VOWELS ────────────────────────────────────────────────────────
++    // Peterson & Barney adult-male means. These are the load-bearing
++    // numbers: if the voice is unintelligible, it is almost always F2 on
++    // the front vowels, not the consonants.
++    //                       nm     kind   f1    f2    f3   a1 a2 a3  dur vcd nz  nf  gl  sil
++    _t[$ "IY"] = scr_voi64_ph("IY", "VOW",  270, 2290, 3010, 15, 11,  7, 12, 15,  0,  0, "", 0);
++    _t[$ "IH"] = scr_voi64_ph("IH", "VOW",  390, 1990, 2550, 15, 11,  7,  9, 15,  0,  0, "", 0);
++    _t[$ "EH"] = scr_voi64_ph("EH", "VOW",  530, 1840, 2480, 15, 12,  7,  9, 15,  0,  0, "", 0);
++    _t[$ "AE"] = scr_voi64_ph("AE", "VOW",  660, 1720, 2410, 15, 12,  6, 12, 15,  0,  0, "", 0);
++    _t[$ "AA"] = scr_voi64_ph("AA", "VOW",  730, 1090, 2440, 15, 10,  5, 13, 15,  0,  0, "", 0);
++    _t[$ "AO"] = scr_voi64_ph("AO", "VOW",  570,  840, 2410, 15,  9,  5, 12, 15,  0,  0, "", 0);
++    _t[$ "UH"] = scr_voi64_ph("UH", "VOW",  440, 1020, 2240, 15,  9,  5,  8, 15,  0,  0, "", 0);
++    _t[$ "UW"] = scr_voi64_ph("UW", "VOW",  300,  870, 2240, 15,  8,  4, 12, 15,  0,  0, "", 0);
++    _t[$ "AH"] = scr_voi64_ph("AH", "VOW",  640, 1190, 2390, 15, 10,  5,  9, 15,  0,  0, "", 0);
++    _t[$ "ER"] = scr_voi64_ph("ER", "VOW",  490, 1350, 1690, 15, 12,  9, 11, 15,  0,  0, "", 0);
++    // Schwa. Short, weak, and everywhere — every unstressed vowel in
++    // English collapses to this, which is most of why reduced speech
++    // sounds natural and fully-articulated speech sounds like a robot.
++    _t[$ "AX"] = scr_voi64_ph("AX", "VOW",  500, 1500, 2500, 12,  9,  5,  6, 15,  0,  0, "", 0);
++
++    // ── DIPHTHONGS ────────────────────────────────────────────────────
++    // Held at the first target, then glided to gl over the back half.
++    // scr_voi64_render owns the glide; these only name the destination.
++    _t[$ "EY"] = scr_voi64_ph("EY", "DIP",  530, 1840, 2480, 15, 12,  7, 16, 15,  0,  0, "IY", 0);
++    _t[$ "AY"] = scr_voi64_ph("AY", "DIP",  730, 1090, 2440, 15, 10,  5, 17, 15,  0,  0, "IY", 0);
++    _t[$ "OY"] = scr_voi64_ph("OY", "DIP",  570,  840, 2410, 15,  9,  5, 18, 15,  0,  0, "IY", 0);
++    _t[$ "AW"] = scr_voi64_ph("AW", "DIP",  730, 1090, 2440, 15, 10,  5, 17, 15,  0,  0, "UH", 0);
++    _t[$ "OW"] = scr_voi64_ph("OW", "DIP",  570,  840, 2410, 15,  9,  5, 16, 15,  0,  0, "UW", 0);
++
++    // ── NASALS ────────────────────────────────────────────────────────
++    // Low F1 and a weak upper stack: the mouth is shut, so the energy is
++    // all in the nasal cavity. The place of articulation lives in F2.
++    _t[$ "M" ] = scr_voi64_ph("M",  "NAS",  250, 1100, 2300, 12,  5,  3,  8, 14,  0,  0, "", 0);
++    _t[$ "N" ] = scr_voi64_ph("N",  "NAS",  250, 1700, 2600, 12,  6,  3,  8, 14,  0,  0, "", 0);
++    _t[$ "NG"] = scr_voi64_ph("NG", "NAS",  250, 2300, 2750, 12,  6,  3,  9, 14,  0,  0, "", 0);
++
++    // ── LIQUIDS AND GLIDES ────────────────────────────────────────────
++    // R is the one that matters: F3 dropping to ~1400 and nearly touching
++    // F2 is the whole cue. Get F3 wrong and it turns into a W.
++    _t[$ "L" ] = scr_voi64_ph("L",  "LIQ",  360, 1300, 2700, 14,  8,  5,  8, 15,  0,  0, "", 0);
++    _t[$ "R" ] = scr_voi64_ph("R",  "LIQ",  310, 1060, 1380, 14, 10,  8,  9, 15,  0,  0, "", 0);
++    _t[$ "W" ] = scr_voi64_ph("W",  "LIQ",  300,  610, 2200, 14,  8,  4,  7, 15,  0,  0, "", 0);
++    _t[$ "Y" ] = scr_voi64_ph("Y",  "LIQ",  280, 2200, 3000, 14, 10,  6,  6, 15,  0,  0, "", 0);
++
++    // ── UNVOICED FRICATIVES ───────────────────────────────────────────
++    // Pure noise, no glottal source. S is the loudest and highest thing
++    // in English speech — if S is quiet the whole voice sounds muffled.
++    _t[$ "F" ] = scr_voi64_ph("F",  "FRI", 1000, 1500, 2500,  3,  5,  5, 11,  0,  7, 1500, "", 0);
++    _t[$ "TH"] = scr_voi64_ph("TH", "FRI", 1000, 1800, 2600,  3,  5,  5, 11,  0,  6, 1800, "", 0);
++    _t[$ "S" ] = scr_voi64_ph("S",  "FRI",  900, 5500, 6500,  2,  9, 11, 12,  0, 14, 5500, "", 0);
++    _t[$ "SH"] = scr_voi64_ph("SH", "FRI",  900, 2800, 4200,  2, 11,  8, 12,  0, 13, 2800, "", 0);
++    // Aspiration. Ideally H borrows the formants of whatever follows it;
++    // this holds a neutral shape instead, which is the usual simplification
++    // and costs surprisingly little intelligibility.
++    _t[$ "HH"] = scr_voi64_ph("HH", "FRI",  500, 1500, 2500,  4,  5,  4,  7,  0,  6,    0, "", 0);
++
++    // ── VOICED FRICATIVES ─────────────────────────────────────────────
++    // Same noise shape as the unvoiced pair, plus a glottal source. The
++    // voicing is the ONLY difference between S/Z and F/V.
++    _t[$ "V" ] = scr_voi64_ph("V",  "FRI",  400, 1500, 2500,  8,  4,  4, 10, 10,  5, 1500, "", 0);
++    _t[$ "DH"] = scr_voi64_ph("DH", "FRI",  400, 1800, 2600,  8,  4,  4, 10, 10,  4, 1800, "", 0);
++    _t[$ "Z" ] = scr_voi64_ph("Z",  "FRI",  400, 5500, 6500,  8,  7,  8, 11, 10, 11, 5500, "", 0);
++    _t[$ "ZH"] = scr_voi64_ph("ZH", "FRI",  400, 2800, 4200,  8,  9,  6, 11, 10, 10, 2800, "", 0);
++
++    // ── UNVOICED STOPS ────────────────────────────────────────────────
++    // A stop is a silence followed by a burst. The sil column is the
++    // closure — drop it and the consonant vanishes, because the ear reads
++    // the gap, not the click.
++    _t[$ "P" ] = scr_voi64_ph("P",  "STP",  400, 1100, 2200,  3,  5,  4,  3,  0, 10, 1200, "", 5);
++    _t[$ "T" ] = scr_voi64_ph("T",  "STP",  400, 1800, 2600,  3,  6,  7,  3,  0, 12, 4000, "", 5);
++    _t[$ "K" ] = scr_voi64_ph("K",  "STP",  400, 1900, 2500,  3,  8,  6,  4,  0, 12, 2200, "", 5);
++
++    // ── VOICED STOPS ──────────────────────────────────────────────────
++    // Quieter burst, shorter closure, and a voice bar running through it.
++    _t[$ "B" ] = scr_voi64_ph("B",  "STP",  300, 1100, 2200,  7,  4,  3,  3,  9,  5, 1200, "", 3);
++    _t[$ "D" ] = scr_voi64_ph("D",  "STP",  300, 1800, 2600,  7,  5,  5,  3,  9,  6, 4000, "", 3);
++    _t[$ "G" ] = scr_voi64_ph("G",  "STP",  300, 1900, 2500,  7,  6,  4,  4,  9,  6, 2200, "", 3);
++
++    // ── AFFRICATES ────────────────────────────────────────────────────
++    // A stop burst running straight into a fricative. Modelled as one unit
++    // with a long noisy tail rather than as two phonemes, so the timing
++    // cannot drift apart.
++    _t[$ "CH"] = scr_voi64_ph("CH", "AFF",  900, 2800, 4200,  2, 11,  8, 12,  0, 13, 2800, "", 5);
++    _t[$ "JH"] = scr_voi64_ph("JH", "AFF",  400, 2800, 4200,  7,  9,  6, 11,  9, 10, 2800, "", 3);
++
++    // ── SILENCE ───────────────────────────────────────────────────────
++    // SIL is an inter-word gap; PA is a longer sentence-level pause.
++    _t[$ "SIL"] = scr_voi64_ph("SIL", "SIL", 500, 1500, 2500, 0, 0, 0,  6, 0, 0, 0, "", 0);
++    _t[$ "PA" ] = scr_voi64_ph("PA",  "SIL", 500, 1500, 2500, 0, 0, 0, 20, 0, 0, 0, "", 0);
++
++    global.voi64_ph_table = _t;
++    return _t;
++}
++
++/// @function scr_voi64_phoneme(_nm)
++/// @desc Look one up. Unknown names return the schwa rather than undefined —
++///       a rule table with a typo in it should mumble, not crash a build.
++function scr_voi64_phoneme(_nm) {
++    var _t  = scr_voi64_phoneme_table();
++    var _up = string_upper(string(_nm));
++    if (variable_struct_exists(_t, _up)) {
++        return _t[$ _up];
++    }
++    return _t[$ "AX"];
++}
++
++/// @function scr_voi64_phoneme_names()
++/// @desc Every phoneme name, for the picker on MACRO_VOI64_SAY's phoneme
++///       mode and for validating a hand-typed phoneme string.
++function scr_voi64_phoneme_names() {
++    return variable_struct_get_names(scr_voi64_phoneme_table());
++}
++
++/// @function scr_voi64_phoneme_valid(_nm)
++/// @desc Does this name exist? Used by the SAY node to flag a typo in a
++///       phoneme string instead of silently substituting schwa.
++function scr_voi64_phoneme_valid(_nm) {
++    var _t = scr_voi64_phoneme_table();
++    return variable_struct_exists(_t, string_upper(string(_nm)));
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_phonemes/scr_voi64_phonemes.yy b/C64DevMachine_win.yyp/scripts/scr_voi64_phonemes/scr_voi64_phonemes.yy
+new file mode 100644
+index 0000000..3a8e655
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_phonemes/scr_voi64_phonemes.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_voi64_phonemes",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_voi64_phonemes",
++  "parent":{
++    "name":"VOI64",
++    "path":"folders/SCRIPTS/VOI64.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_render/scr_voi64_render.gml b/C64DevMachine_win.yyp/scripts/scr_voi64_render/scr_voi64_render.gml
+new file mode 100644
+index 0000000..69b627b
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_render/scr_voi64_render.gml
+@@ -0,0 +1,299 @@
++/// ====================================================================
++/// VOI64 — SYNTHESIS AND PREVIEW
++///
++/// A parallel three-resonator formant synthesiser, plus a fourth
++/// resonator carrying the frication noise. It renders a 16-bit mono
++/// buffer and plays it through audio_create_buffer_sound, the same way
++/// scr_sound_preview_play does for note previews.
++///
++/// WHY THIS EXISTS BEFORE ANY 6502
++/// The formant table IS the project. The player is mechanical; the
++/// numbers in scr_voi64_phonemes are what decide whether a listener
++/// understands the word. Tuning those in VICE is a minute per attempt.
++/// Tuning them here is instant, so this comes first and the SID player
++/// inherits a table that has already been made to work.
++///
++/// HOW IT MAPS ONTO THE SID
++/// Three resonators summed is three SID voices summed. Each formant's
++/// centre becomes a voice frequency, each amplitude a sustain nibble
++/// (which is why they are 0-15 in the table), and the noise resonator
++/// becomes the noise waveform on whichever voice is free. Glottal pitch
++/// is not an oscillator — the oscillators are AT the formant frequencies —
++/// so on the C64 it becomes a gate/volume pulse at the pitch rate from
++/// the timer IRQ. That is why the excitation below is an impulse train
++/// rather than a tone: it is the thing the C64 can actually reproduce.
++///
++/// KNOBS
++///   pitch   glottal frequency in Hz. ~90 low, ~120 nominal, ~180 high.
++///   speed   0-255, 128 nominal. HIGHER IS FASTER, unlike SAM's inverted
++///           convention — no reason to inherit a confusing one.
++///   throat  0-255, 128 neutral. Scales F1: lower = deeper, chestier.
++///   mouth   0-255, 128 neutral. Scales F2/F3: higher = brighter, more
++///           forward. This is the knob that changes "who" is speaking.
++/// ====================================================================
++
++#macro VOI64_RATE       22050
++#macro VOI64_FRAME_HZ     100      // parameter frame rate; the SID player's IRQ rate
++#macro VOI64_TRANS_FRAC  0.35      // fraction of a phoneme spent gliding in from the last
++
++/// @function scr_voi64_reso_coef(_f, _bw)
++/// @desc Two-pole resonator coefficients (Klatt form) for centre _f and
++///       bandwidth _bw at VOI64_RATE. Recomputed once per 100Hz frame,
++///       never per sample — that is the whole reason this renders fast
++///       enough to feel instant.
++function scr_voi64_reso_coef(_f, _bw) {
++    var _fs = VOI64_RATE;
++    var _c  = -exp(-2 * pi * _bw / _fs);
++    var _b  =  2 * exp(-pi * _bw / _fs) * cos(2 * pi * _f / _fs);
++    var _a  =  1 - _b - _c;
++    return { a: _a, b: _b, c: _c };
++}
++
++/// @function scr_voi64_frame_params(_ph, _blend_to, _t)
++/// @desc The parameter set for one phoneme at glide position _t (0..1),
++///       already blended toward its diphthong target where it has one.
++function scr_voi64_frame_params(_ph, _blend_to, _t) {
++    var _p = {
++        f1: _ph.f1, f2: _ph.f2, f3: _ph.f3,
++        b1: _ph.b1, b2: _ph.b2, b3: _ph.b3,
++        a1: _ph.a1, a2: _ph.a2, a3: _ph.a3,
++        vcd: _ph.vcd, nz: _ph.nz,
++        nf: (_ph.nf > 0) ? _ph.nf : _ph.f2
++    };
++    if (is_undefined(_blend_to)) {
++        return _p;
++    }
++    // Diphthong glide. Held at the first target, then swept — the sweep is
++    // the cue, not the endpoints, so a linear ramp is enough.
++    _p.f1 = lerp(_ph.f1, _blend_to.f1, _t);
++    _p.f2 = lerp(_ph.f2, _blend_to.f2, _t);
++    _p.f3 = lerp(_ph.f3, _blend_to.f3, _t);
++    _p.a1 = lerp(_ph.a1, _blend_to.a1, _t);
++    _p.a2 = lerp(_ph.a2, _blend_to.a2, _t);
++    _p.a3 = lerp(_ph.a3, _blend_to.a3, _t);
++    return _p;
++}
++
++/// @function scr_voi64_build_frames(_phonemes, _speed)
++/// @desc Turn a phoneme string into 100Hz parameter frames, with diphthong
++///       glides and coarticulation already applied.
++///
++///       SHARED, and that is the point. The preview renders these frames to
++///       audio; scr_voi64_sid converts the SAME frames to SID writes. One code
++///       path means tuning the phoneme table moves the C64 and the preview
++///       together. If these ever fork, the preview stops predicting the
++///       hardware and is worth nothing.
++function scr_voi64_build_frames(_phonemes, _speed = 128) {
++    var _names = string_split(string_upper(string(_phonemes)), " ", true);
++    if (array_length(_names) == 0) { return []; }
++    var _speed_mul = 0.5 + (clamp(_speed, 0, 255) / 255) * 1.5;
++    // ── build the frame list ──────────────────────────────────
++    // Frames are resolved before any audio is generated so the buffer can
++    // be allocated once at the right size. buffer_grow on tens of
++    // thousands of samples is the slow way to do this.
++    var _frames = [];
++    var _prev   = undefined;
++
++    for (var _i = 0; _i < array_length(_names); _i++) {
++        var _ph = scr_voi64_phoneme(_names[_i]);
++
++        // Stop closure: real silence before the burst. The ear identifies a
++        // stop by the GAP, not by the click, so cutting this to save frames
++        // is how P, T and K turn into nothing.
++        var _sil_n = round(_ph.sil / _speed_mul);
++        for (var _s = 0; _s < _sil_n; _s++) {
++            array_push(_frames, { f1: 400, f2: 1200, f3: 2400, b1: 90, b2: 110, b3: 170,
++                                  a1: 0, a2: 0, a3: 0, vcd: 0, nz: 0, nf: 1200 });
++        }
++
++        var _glide = undefined;
++        if (_ph.gl != "") {
++            _glide = scr_voi64_phoneme(_ph.gl);
++        }
++
++        var _n     = max(1, round(_ph.dur / _speed_mul));
++        var _trans = max(1, round(_n * VOI64_TRANS_FRAC));
++
++        for (var _f = 0; _f < _n; _f++) {
++            // Diphthong sweep occupies the back half.
++            var _gt = 0;
++            if (!is_undefined(_glide)) {
++                _gt = clamp((_f - _n * 0.4) / max(1, _n * 0.6), 0, 1);
++            }
++            var _tgt = scr_voi64_frame_params(_ph, _glide, _gt);
++
++            // Coarticulation: glide in from wherever the last phoneme
++            // ended rather than jumping. This is the single biggest
++            // intelligibility win in the whole renderer — without it the
++            // output is a row of isolated sounds and the ear refuses to
++            // assemble them into words.
++            var _cur = _tgt;
++            if (!is_undefined(_prev) && _f < _trans) {
++                var _bt = (_f + 1) / _trans;
++                _cur = {
++                    f1: lerp(_prev.f1, _tgt.f1, _bt),
++                    f2: lerp(_prev.f2, _tgt.f2, _bt),
++                    f3: lerp(_prev.f3, _tgt.f3, _bt),
++                    b1: _tgt.b1, b2: _tgt.b2, b3: _tgt.b3,
++                    a1: lerp(_prev.a1, _tgt.a1, _bt),
++                    a2: lerp(_prev.a2, _tgt.a2, _bt),
++                    a3: lerp(_prev.a3, _tgt.a3, _bt),
++                    vcd: lerp(_prev.vcd, _tgt.vcd, _bt),
++                    nz:  lerp(_prev.nz,  _tgt.nz,  _bt),
++                    nf:  lerp(_prev.nf,  _tgt.nf,  _bt)
++                };
++            }
++            array_push(_frames, _cur);
++            _prev = _cur;
++        }
++    }
++
++    return _frames;
++}
++
++/// @function scr_voi64_render_buffer(_phonemes, _pitch, _speed, _throat, _mouth)
++/// @desc Render a space-separated phoneme string to a 16-bit mono buffer.
++/// @return {struct} { buf, snd, samples } or undefined if there is nothing to say
++function scr_voi64_render_buffer(_phonemes, _pitch = 120, _speed = 128, _throat = 128, _mouth = 128) {
++    // Knob mapping. Throat and mouth are multipliers around 1.0 at 128,
++    // deliberately gentle — a formant moved more than about 40% stops
++    // sounding like a different voice and starts sounding like a
++    // different vowel, which makes the speech wrong rather than characterful.
++    var _throat_mul = 0.6 + (clamp(_throat, 0, 255) / 255) * 0.8;
++    var _mouth_mul  = 0.6 + (clamp(_mouth,  0, 255) / 255) * 0.8;
++    var _speed_mul  = 0.5 + (clamp(_speed,  0, 255) / 255) * 1.5;   // 128 -> ~1.25
++    var _pitch_hz   = clamp(_pitch, 50, 400);
++
++    // floor, not the raw quotient: 22050/100 is 220.5, and a fractional loop
++    // bound writes 221 samples per frame while the buffer was sized on 220.5.
++    // That overruns a buffer_fixed. One integer, used for both.
++    var _spf = floor(VOI64_RATE / VOI64_FRAME_HZ);
++
++    var _frames = scr_voi64_build_frames(_phonemes, _speed);
++
++    var _nframes = array_length(_frames);
++    if (_nframes == 0) {
++        return undefined;
++    }
++
++    // A short tail so the last formant can ring out instead of being cut.
++    var _tail = 6;
++    var _total = (_nframes + _tail) * _spf;
++    var _buf   = buffer_create(_total * 2, buffer_fixed, 2);
++
++    // ── Pass 2: synthesise ────────────────────────────────────────────
++    var _g1 = 0, _g2 = 0;      // resonator 1 history
++    var _h1 = 0, _h2 = 0;      // resonator 2
++    var _i1 = 0, _i2 = 0;      // resonator 3
++    var _n1 = 0, _n2 = 0;      // noise resonator
++    var _gphase = 0;
++    var _gstep  = _pitch_hz / VOI64_RATE;
++    var _written = 0;
++
++    for (var _fi = 0; _fi < _nframes; _fi++) {
++        var _p = _frames[_fi];
++
++        var _c1 = scr_voi64_reso_coef(clamp(_p.f1 * _throat_mul, 120, 1200), _p.b1);
++        var _c2 = scr_voi64_reso_coef(clamp(_p.f2 * _mouth_mul,  400, 3400), _p.b2);
++        var _c3 = scr_voi64_reso_coef(clamp(_p.f3 * _mouth_mul,  900, 4200), _p.b3);
++        var _cn = scr_voi64_reso_coef(clamp(_p.nf * _mouth_mul,  600, 8000), 900);
++
++        var _av1 = _p.a1 / 15;
++        var _av2 = _p.a2 / 15;
++        var _av3 = _p.a3 / 15;
++        var _avc = _p.vcd / 15;
++        var _anz = _p.nz  / 15;
++
++        for (var _s = 0; _s < _spf; _s++) {
++            // Glottal excitation: an impulse train, not a tone. On the C64
++            // this is the volume/gate pulse from the IRQ, so modelling it
++            // any richer here would flatter a voice the target cannot make.
++            var _glot = 0;
++            _gphase += _gstep;
++            if (_gphase >= 1) {
++                _gphase -= 1;
++                _glot = _avc;
++            }
++
++            var _noise = 0;
++            if (_anz > 0) {
++                _noise = random_range(-1, 1) * _anz;
++            }
++
++            var _y1 = _c1.a * _glot + _c1.b * _g1 + _c1.c * _g2;  _g2 = _g1; _g1 = _y1;
++            var _y2 = _c2.a * _glot + _c2.b * _h1 + _c2.c * _h2;  _h2 = _h1; _h1 = _y2;
++            var _y3 = _c3.a * _glot + _c3.b * _i1 + _c3.c * _i2;  _i2 = _i1; _i1 = _y3;
++            var _yn = _cn.a * _noise + _cn.b * _n1 + _cn.c * _n2; _n2 = _n1; _n1 = _yn;
++
++            // Gain staging, measured rather than guessed. A narrow F1 with a
++            // 90Hz bandwidth resonates hard, and the fricatives are hotter
++            // still — at a flat 6.0/1.6 the front vowels clipped a couple of
++            // percent of samples and S clipped seventeen. Lower gains plus a
++            // soft saturator keeps the loudness without ever squaring off a
++            // peak, and leaves S as the loudest phoneme, which is correct.
++            var _out = (_y1 * _av1 + _y2 * _av2 + _y3 * _av3) * 4.0 + _yn * 0.55;
++            _out = _out / (1.0 + abs(_out) * 0.6);
++            var _val = clamp(round(_out * 0.45 * 32767), -32768, 32767);
++            buffer_write(_buf, buffer_s16, _val);
++            _written += 1;
++        }
++    }
++
++    // Tail: let the resonators decay with no excitation, then a short fade
++    // so the buffer never ends on a non-zero sample and clicks.
++    var _tail_n = _total - _written;
++    var _c1t = scr_voi64_reso_coef(500, 90);
++    for (var _s = 0; _s < _tail_n; _s++) {
++        var _y1t = _c1t.b * _g1 + _c1t.c * _g2;  _g2 = _g1; _g1 = _y1t;
++        var _env = 1 - (_s / max(1, _tail_n));
++        var _valt = clamp(round(_y1t * _env * 0.30 * 32767), -32768, 32767);
++        buffer_write(_buf, buffer_s16, _valt);
++    }
++
++    var _snd = audio_create_buffer_sound(_buf, buffer_s16, VOI64_RATE, 0,
++                                         buffer_get_size(_buf), audio_mono);
++    return { buf: _buf, snd: _snd, samples: _total };
++}
++
++/// @function scr_voi64_stop()
++/// @desc Stop and free whatever Voi64 is currently saying. Safe to call
++///       when nothing is playing.
++function scr_voi64_stop() {
++    if (!variable_global_exists("voi64_play")) {
++        global.voi64_play = undefined;
++        return;
++    }
++    if (is_undefined(global.voi64_play)) {
++        return;
++    }
++    var _p = global.voi64_play;
++    if (audio_is_playing(_p.inst)) {
++        audio_stop_sound(_p.inst);
++    }
++    audio_free_buffer_sound(_p.snd);
++    buffer_delete(_p.buf);
++    global.voi64_play = undefined;
++}
++
++/// @function scr_voi64_say_phonemes(_phonemes, _pitch, _speed, _throat, _mouth)
++/// @desc Speak a phoneme string. Monophonic on purpose — a second call
++///       cuts the first, which is what MACRO_VOI64_SAY will do on the C64
++///       and what makes rapid preview clicks behave.
++function scr_voi64_say_phonemes(_phonemes, _pitch = 120, _speed = 128, _throat = 128, _mouth = 128) {
++    scr_voi64_stop();
++    var _r = scr_voi64_render_buffer(_phonemes, _pitch, _speed, _throat, _mouth);
++    if (is_undefined(_r)) {
++        return false;
++    }
++    global.voi64_play = { snd: _r.snd, buf: _r.buf, inst: audio_play_sound(_r.snd, 1, false) };
++    return true;
++}
++
++/// @function scr_voi64_say(_text, _pitch, _speed, _throat, _mouth)
++/// @desc Speak English text. Runs the letter-to-sound pass first, so this
++///       is the call that proves the whole chain end to end.
++function scr_voi64_say(_text, _pitch = 120, _speed = 128, _throat = 128, _mouth = 128) {
++    var _ph = scr_voi64_text_to_phonemes(_text);
++    show_debug_message("VOI64: \"" + string(_text) + "\"  ->  " + _ph);
++    return scr_voi64_say_phonemes(_ph, _pitch, _speed, _throat, _mouth);
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_render/scr_voi64_render.yy b/C64DevMachine_win.yyp/scripts/scr_voi64_render/scr_voi64_render.yy
+new file mode 100644
+index 0000000..d44e828
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_render/scr_voi64_render.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_voi64_render",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_voi64_render",
++  "parent":{
++    "name":"VOI64",
++    "path":"folders/SCRIPTS/VOI64.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
+new file mode 100644
+index 0000000..a7ab956
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
+@@ -0,0 +1,215 @@
++/// ====================================================================
++/// VOI64 — SID FRAME EMITTER
++///
++/// Converts the parameter frames from scr_voi64_build_frames into the
++/// exact bytes the C64 player writes to the SID, at compile time. The
++/// 6502 side does no arithmetic at all: it copies eight bytes to eight
++/// registers, waits a raster frame, and repeats. That is the whole
++/// player, and it is the cross-development trick applied twice — first
++/// to the letter-to-sound rules, now to the synthesis itself.
++///
++/// VOICE TOPOLOGY, AND ITS ONE HONEST COMPROMISE
++/// A voice needs a PITCH and it needs FORMANTS, and the SID cannot give
++/// you both on three voices without help. Hard sync is the help: an
++/// oscillator with SYNC set restarts on its sync source's period, so it
++/// rings at ITS OWN frequency while repeating at the SOURCE's. That is
++/// formant synthesis in one bit.
++///
++/// The sync ring is fixed in silicon — V1 syncs to V3, V2 to V1, V3 to
++/// V2 — so exactly one voice can be synced to a pitch source:
++///
++///     V3  glottal pitch. Triangle, sustain 0, so it is SILENT and
++///         exists only as V1's sync source. Sync reads the oscillator,
++///         not the envelope, so a muted voice still drives it.
++///     V1  F1, pulse, SYNC set -> a properly pitched first formant.
++///     V2  F2, pulse, free-running.
++///
++/// So F1 is pitched and F2 is a tone. F1 carries most of the energy, so
++/// this buys most of the benefit; F2 sitting unpitched next to it is the
++/// compromise, and it is the main reason the C64 will sound harder and
++/// more metallic than the GML preview. F3 has no voice left and is
++/// dropped for voiced frames.
++///
++/// Unvoiced frames have no pitch to preserve, so V3 is freed for the
++/// noise waveform and carries the frication, which is where all the
++/// energy of an S or an SH lives anyway.
++///
++/// FRAME FORMAT — 8 bytes, and byte 7 = $FF terminates
++///     0,1  V1 frequency lo/hi   (F1)
++///     2,3  V2 frequency lo/hi   (F2)
++///     4,5  V3 frequency lo/hi   (pitch, or noise rate)
++///     6    (a1 << 4) | a2       sustain nibbles, straight from the table
++///     7    (a3 << 4) | flags    bit0 = voiced (sync V1, triangle V3)
++///                               bit1 = V3 is noise
++/// ====================================================================
++
++#macro VOI64_C64_FRAME_HZ 50      // one PAL raster frame per parameter frame
++
++/// @function scr_voi64_sid_freq(_hz)
++/// @desc Hz to a SID 16-bit frequency word, PAL.
++///       Fout = Fn * clock / 16777216 with clock 985248, so
++///       Fn = Hz * 17.0284. NTSC would be 16.4 — if NTSC output is ever
++///       wanted this is the one constant that has to change, which is why
++///       it is a named function rather than a sprinkled magic number.
++function scr_voi64_sid_freq(_hz) {
++    return clamp(round(_hz * 17.0284), 0, 65535);
++}
++
++/// @function scr_voi64_sid_frames(_phonemes, _pitch, _speed, _throat, _mouth)
++/// @desc Build the byte stream the C64 player consumes.
++/// @return {array} array of 8-element byte arrays, terminator NOT included
++function scr_voi64_sid_frames(_phonemes, _pitch = 120, _speed = 128, _throat = 128, _mouth = 128) {
++    var _frames = scr_voi64_build_frames(_phonemes, _speed);
++    var _out    = [];
++    if (array_length(_frames) == 0) {
++        return _out;
++    }
++
++    var _throat_mul = 0.6 + (clamp(_throat, 0, 255) / 255) * 0.8;
++    var _mouth_mul  = 0.6 + (clamp(_mouth,  0, 255) / 255) * 0.8;
++    var _pitch_hz   = clamp(_pitch, 50, 400);
++    var _pw3        = scr_voi64_sid_freq(_pitch_hz);
++
++    // The builder works at 100Hz; the player runs at one PAL frame, 50Hz.
++    // Take every second frame rather than averaging — a formant track is
++    // already smooth, and averaging would round off the stop bursts, which
++    // are the shortest and most important events in the stream.
++    var _step = 2;
++
++    for (var _i = 0; _i < array_length(_frames); _i += _step) {
++        var _p = _frames[_i];
++
++        var _voiced = (_p.vcd > 3);
++        var _noise  = (_p.nz  > 3);
++
++        var _f1 = scr_voi64_sid_freq(clamp(_p.f1 * _throat_mul, 120, 1200));
++        var _f2 = scr_voi64_sid_freq(clamp(_p.f2 * _mouth_mul,  400, 3400));
++
++        // V3 is the pitch source when voiced, and the noise generator when
++        // not. Noise rate sets the spectral centre of the hiss, so an S and
++        // an F differ here by exactly this word.
++        var _f3 = _pw3;
++        if (!_voiced && _noise) {
++            var _nf = _p.nf;
++            if (_nf <= 0) { _nf = _p.f2; }
++            _f3 = scr_voi64_sid_freq(clamp(_nf * _mouth_mul, 600, 8000) * 0.5);
++        }
++
++        var _a1 = clamp(round(_p.a1), 0, 15);
++        var _a2 = clamp(round(_p.a2), 0, 15);
++        var _a3 = clamp(round(_p.nz), 0, 15);   // V3 carries frication, not F3
++        if (_voiced) {
++            _a3 = 0;                            // silent pitch source
++        }
++
++        var _flags = 0;
++        if (_voiced) { _flags = _flags | 0x01; }
++        if (!_voiced && _noise) { _flags = _flags | 0x02; }
++
++        array_push(_out, [
++            _f1 & 0xFF, (_f1 >> 8) & 0xFF,
++            _f2 & 0xFF, (_f2 >> 8) & 0xFF,
++            _f3 & 0xFF, (_f3 >> 8) & 0xFF,
++            ((_a1 & 0x0F) << 4) | (_a2 & 0x0F),
++            ((_a3 & 0x0F) << 4) | (_flags & 0x0F)
++        ]);
++    }
++
++    return _out;
++}
++
++/// @function scr_voi64_say_source_text(_node)
++/// @desc Resolve a MACRO_VOI64_SAY node to the text it should speak,
++///       whichever source mode it is in. Both sources are known at build
++///       time, which is what lets the letters stay on the PC.
++///       [4] src mode: 0 = inline, 1 = TEXT_DATA asset
++///       [5] inline text   [6] asset name
++function scr_voi64_say_source_text(_node) {
++    var _i0 = _node.instructions[0];
++    var _src = 0;
++    if (array_length(_i0) > 4 && is_real(_i0[4])) { _src = real(_i0[4]); }
++
++    if (_src == 0) {
++        if (array_length(_i0) > 5) { return string(_i0[5]); }
++        return "";
++    }
++
++    var _name = "";
++    if (array_length(_i0) > 6) { _name = string(_i0[6]); }
++    if (_name == "" || !instance_exists(obj_asset_manager)) { return ""; }
++
++    for (var _ai = 0; _ai < ds_list_size(obj_asset_manager.asset_list); _ai++) {
++        var _a = obj_asset_manager.asset_list[| _ai];
++        if (_a.name != _name) { continue; }
++        if (_a.type != "TEXT_DATA") { continue; }
++        if (variable_struct_exists(_a, "text")) { return string(_a.text); }
++        if (buffer_exists(_a.buffer)) {
++            buffer_seek(_a.buffer, buffer_seek_start, 0);
++            return buffer_read(_a.buffer, buffer_text);
++        }
++        return "";
++    }
++    return "";
++}
++
++/// @function scr_voi64_say_phoneme_string(_node, _master)
++/// @desc The phoneme string a SAY node will emit, resolving TEXT vs
++///       PHONEME mode. Used by both the compiler and the node's own
++///       preview button, so what you hear in the tool is what gets built.
++///       [3] mode: 0 = TEXT (run letter-to-sound), 1 = PHONEME (verbatim)
++function scr_voi64_say_phoneme_string(_node) {
++    var _i0 = _node.instructions[0];
++    var _mode = 0;
++    if (array_length(_i0) > 3 && is_real(_i0[3])) { _mode = real(_i0[3]); }
++
++    var _txt = scr_voi64_say_source_text(_node);
++    if (_txt == "") { return ""; }
++    if (_mode == 1) {
++        return string_upper(_txt);
++    }
++    return scr_voi64_text_to_phonemes(_txt);
++}
++
++/// @function scr_voi64_find_master()
++/// @desc The connected MACRO_VOI64_MASTER, or noone. SAY is meaningless
++///       without one: the master owns the player routine and the default
++///       voice, so a SAY with no master is a build error, not a warning.
++function scr_voi64_find_master() {
++    var _m = noone;
++    with (obj_c64_node) {
++        if (node_type == "MACRO_VOI64_MASTER" && is_connected) {
++            _m = id;
++            break;
++        }
++    }
++    return _m;
++}
++
++/// @function scr_voi64_effective_voice(_node)
++/// @desc Resolve a SAY node's voice: master defaults, with any per-say
++///       override applied. A value of -1 in a SAY slot means inherit,
++///       which is what the node draws as a dash.
++/// @return {struct} { pitch, speed, throat, mouth }
++function scr_voi64_effective_voice(_node) {
++    var _v = { pitch: 120, speed: 128, throat: 128, mouth: 128 };
++
++    var _m = scr_voi64_find_master();
++    if (instance_exists(_m)) {
++        var _mi = _m.instructions[0];
++        if (array_length(_mi) > 1 && is_real(_mi[1])) { _v.pitch  = real(_mi[1]); }
++        if (array_length(_mi) > 2 && is_real(_mi[2])) { _v.speed  = real(_mi[2]); }
++        if (array_length(_mi) > 3 && is_real(_mi[3])) { _v.throat = real(_mi[3]); }
++        if (array_length(_mi) > 4 && is_real(_mi[4])) { _v.mouth  = real(_mi[4]); }
++    }
++
++    if (_node.node_type == "MACRO_VOI64_SAY") {
++        var _i0 = _node.instructions[0];
++        // [7] pitch  [8] speed  [9] throat  [10] mouth, -1 = inherit
++        if (array_length(_i0) >  7 && is_real(_i0[ 7]) && real(_i0[ 7]) >= 0) { _v.pitch  = real(_i0[ 7]); }
++        if (array_length(_i0) >  8 && is_real(_i0[ 8]) && real(_i0[ 8]) >= 0) { _v.speed  = real(_i0[ 8]); }
++        if (array_length(_i0) >  9 && is_real(_i0[ 9]) && real(_i0[ 9]) >= 0) { _v.throat = real(_i0[ 9]); }
++        if (array_length(_i0) > 10 && is_real(_i0[10]) && real(_i0[10]) >= 0) { _v.mouth  = real(_i0[10]); }
++    }
++
++    return _v;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.yy b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.yy
+new file mode 100644
+index 0000000..d22ca6b
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_voi64_sid",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_voi64_sid",
++  "parent":{
++    "name":"VOI64",
++    "path":"folders/SCRIPTS/VOI64.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_text_to_phonemes/scr_voi64_text_to_phonemes.gml b/C64DevMachine_win.yyp/scripts/scr_voi64_text_to_phonemes/scr_voi64_text_to_phonemes.gml
+new file mode 100644
+index 0000000..cf97838
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_text_to_phonemes/scr_voi64_text_to_phonemes.gml
+@@ -0,0 +1,757 @@
++/// ====================================================================
++/// VOI64 — LETTER TO SOUND
++///
++/// This runs in GML, on the PC, at COMPILE TIME. It is the reason Voi64
++/// can be small on the C64: SAM had to carry ~6K of rules because in 1982
++/// the target machine was the only machine. Here, both text sources are
++/// known at build time — an inline string on the node, or the contents of
++/// a TEXT_DATA asset — so the letters never reach the 64. MACRO_VOI64_SAY
++/// emits a phoneme stream and the player only ever plays phonemes.
++///
++/// RULE FORMAT
++/// The engine is the context-rule scheme from the Naval Research
++/// Laboratory work on English letter-to-sound (Elovitz et al., NRL Report
++/// 7948, 1976), which is the standard approach and has been independently
++/// reimplemented many times. Each rule is four strings:
++///
++///     [ left context, matched text, right context, phonemes out ]
++///
++/// The engine walks the word left to right. At each position it takes the
++/// rules for the current letter IN ORDER and fires the first whose match
++/// and both contexts hold, then advances past the matched text. Order is
++/// everything: specific rules must precede general ones, and the last rule
++/// for each letter is the unconditional fallback.
++///
++/// CONTEXT CLASSES (usable in the left and right context strings)
++///     #   one or more vowels
++///     .   one voiced consonant
++///     ^   one consonant
++///     +   one front vowel: E I Y
++///     :   zero or more consonants
++///     %   a suffix: E ES ED ER ING ELY
++///     &   one sibilant: S C G Z X, or CH SH
++///     @   one consonant after which long U is pronounced:
++///         T S R D L Z N J, or TH CH SH
++///     (space) a word boundary
++///
++/// EXTENDING IT
++/// The rules are data, not code. To fix a mispronounced word, either add a
++/// whole-word rule near the top of that letter's group, or put it in the
++/// exceptions map below, which is checked first and costs nothing at
++/// runtime on the C64 because none of this ships.
++/// ====================================================================
++
++/// @function scr_voi64_lts_is_vowel(_c)
++function scr_voi64_lts_is_vowel(_c) {
++    return (_c == "A" || _c == "E" || _c == "I" || _c == "O" || _c == "U");
++}
++
++/// @function scr_voi64_lts_is_cons(_c)
++/// @desc A consonant is any letter that is not a vowel. Y counts as a
++///       consonant here; the Y rules handle its vowel behaviour themselves.
++function scr_voi64_lts_is_cons(_c) {
++    if (_c == "") { return false; }
++    if (string_pos(_c, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") == 0) { return false; }
++    return !scr_voi64_lts_is_vowel(_c);
++}
++
++/// @function scr_voi64_lts_class(_cls, _c)
++/// @desc Does one character satisfy one single-character class?
++function scr_voi64_lts_class(_cls, _c) {
++    switch (_cls) {
++        case "#": return scr_voi64_lts_is_vowel(_c);
++        case "^": return scr_voi64_lts_is_cons(_c);
++        case "+": return (_c == "E" || _c == "I" || _c == "Y");
++        case ".": return (string_pos(_c, "BDVGJLMNRWZ") > 0 && _c != "");
++        case "&": return (string_pos(_c, "SCGZXJ") > 0 && _c != "");
++        case "@": return (string_pos(_c, "TSRDLZNJ") > 0 && _c != "");
++        case " ": return (_c == " " || _c == "");
++    }
++    return (_cls == _c);
++}
++
++/// @function scr_voi64_lts_match_right(_txt, _pos, _ctx)
++/// @desc Does the right context hold, reading forward from _pos?
++///       _pos is 1-based and points at the first character AFTER the match.
++function scr_voi64_lts_match_right(_txt, _pos, _ctx) {
++    var _p = _pos;
++    var _n = string_length(_txt);
++    for (var _i = 1; _i <= string_length(_ctx); _i++) {
++        var _cls = string_char_at(_ctx, _i);
++        var _c   = (_p <= _n) ? string_char_at(_txt, _p) : "";
++
++        if (_cls == "#") {
++            // One or more vowels — greedy, but must take at least one.
++            if (!scr_voi64_lts_is_vowel(_c)) { return false; }
++            while (_p <= _n && scr_voi64_lts_is_vowel(string_char_at(_txt, _p))) { _p += 1; }
++            continue;
++        }
++        if (_cls == ":") {
++            // Zero or more consonants — never fails, just consumes.
++            while (_p <= _n && scr_voi64_lts_is_cons(string_char_at(_txt, _p))) { _p += 1; }
++            continue;
++        }
++        if (_cls == "%") {
++            // A suffix. Longest first, or "ES" would match as "E" and leave
++            // an S behind for the next rule to trip over.
++            if (string_copy(_txt, _p, 3) == "ING") { _p += 3; continue; }
++            if (string_copy(_txt, _p, 3) == "ELY") { _p += 3; continue; }
++            if (string_copy(_txt, _p, 2) == "ES")  { _p += 2; continue; }
++            if (string_copy(_txt, _p, 2) == "ED")  { _p += 2; continue; }
++            if (string_copy(_txt, _p, 2) == "ER")  { _p += 2; continue; }
++            if (string_copy(_txt, _p, 1) == "E")   { _p += 1; continue; }
++            return false;
++        }
++        if (_cls == "&") {
++            if (string_copy(_txt, _p, 2) == "CH" || string_copy(_txt, _p, 2) == "SH") { _p += 2; continue; }
++            if (!scr_voi64_lts_class("&", _c)) { return false; }
++            _p += 1;
++            continue;
++        }
++        if (_cls == "@") {
++            if (string_copy(_txt, _p, 2) == "TH" || string_copy(_txt, _p, 2) == "CH"
++             || string_copy(_txt, _p, 2) == "SH") { _p += 2; continue; }
++            if (!scr_voi64_lts_class("@", _c)) { return false; }
++            _p += 1;
++            continue;
++        }
++
++        if (!scr_voi64_lts_class(_cls, _c)) { return false; }
++        _p += 1;
++    }
++    return true;
++}
++
++/// @function scr_voi64_lts_match_left(_txt, _pos, _ctx)
++/// @desc Does the left context hold, reading BACKWARD from _pos?
++///       _pos is 1-based and points at the first character OF the match, so
++///       the character immediately to the left is at _pos - 1. The context
++///       string is written left-to-right as it reads on the page, so it is
++///       walked from its last character to its first.
++function scr_voi64_lts_match_left(_txt, _pos, _ctx) {
++    var _p = _pos - 1;
++    for (var _i = string_length(_ctx); _i >= 1; _i--) {
++        var _cls = string_char_at(_ctx, _i);
++        var _c   = (_p >= 1) ? string_char_at(_txt, _p) : "";
++
++        if (_cls == "#") {
++            if (!scr_voi64_lts_is_vowel(_c)) { return false; }
++            while (_p >= 1 && scr_voi64_lts_is_vowel(string_char_at(_txt, _p))) { _p -= 1; }
++            continue;
++        }
++        if (_cls == ":") {
++            while (_p >= 1 && scr_voi64_lts_is_cons(string_char_at(_txt, _p))) { _p -= 1; }
++            continue;
++        }
++        if (!scr_voi64_lts_class(_cls, _c)) { return false; }
++        _p -= 1;
++    }
++    return true;
++}
++
++/// @function scr_voi64_lts_exceptions()
++/// @desc Whole words the rules get wrong and always will. Checked before
++///       any rule fires, so one entry here beats fighting the rule order.
++///       Keys are upper case, values are space-separated phonemes.
++function scr_voi64_lts_exceptions() {
++    if (variable_global_exists("voi64_lts_exc")) {
++        return global.voi64_lts_exc;
++    }
++    var _e = {};
++    _e[$ "THE"]     = "DH AX";
++    _e[$ "A"]       = "AX";
++    _e[$ "OF"]      = "AH V";
++    _e[$ "TO"]      = "T UW";
++    _e[$ "IS"]      = "IH Z";
++    _e[$ "ARE"]     = "AA R";
++    _e[$ "WAS"]     = "W AA Z";
++    _e[$ "ONE"]     = "W AH N";
++    _e[$ "TWO"]     = "T UW";
++    _e[$ "ONCE"]    = "W AH N S";
++    _e[$ "SAID"]    = "S EH D";
++    _e[$ "AGAIN"]   = "AX G EH N";
++    _e[$ "ANY"]     = "EH N IY";
++    _e[$ "MANY"]    = "M EH N IY";
++    _e[$ "WHO"]     = "HH UW";
++    _e[$ "WHOSE"]   = "HH UW Z";
++    _e[$ "DO"]      = "D UW";
++    _e[$ "DOES"]    = "D AH Z";
++    _e[$ "DONE"]    = "D AH N";
++    _e[$ "GONE"]    = "G AO N";
++    _e[$ "COME"]    = "K AH M";
++    _e[$ "SOME"]    = "S AH M";
++    _e[$ "THERE"]   = "DH EH R";
++    _e[$ "WHERE"]   = "W EH R";
++    _e[$ "THEIR"]   = "DH EH R";
++    _e[$ "YOUR"]    = "Y AO R";
++    _e[$ "PUT"]     = "P UH T";
++    _e[$ "COULD"]   = "K UH D";
++    _e[$ "WOULD"]   = "W UH D";
++    _e[$ "SHOULD"]  = "SH UH D";
++    _e[$ "LIVE"]    = "L IH V";
++    _e[$ "GIVE"]    = "G IH V";
++    _e[$ "HAVE"]    = "HH AE V";
++    _e[$ "MOVE"]    = "M UW V";
++    _e[$ "LOVE"]    = "L AH V";
++    _e[$ "EYE"]     = "AY";
++    _e[$ "IRON"]    = "AY ER N";
++    // The -OWN words that the OW/AW split above gets wrong. Cheaper as
++    // exceptions than as four more context rules that would each need
++    // their own counter-exception.
++    _e[$ "OWN"]     = "OW N";
++    _e[$ "OWNER"]   = "OW N ER";
++    _e[$ "OWE"]     = "OW";
++    _e[$ "GROWN"]   = "G R OW N";
++    _e[$ "KNOWN"]   = "N OW N";
++    _e[$ "SHOWN"]   = "SH OW N";
++    _e[$ "THROWN"]  = "TH R OW N";
++    _e[$ "BLOWN"]   = "B L OW N";
++    _e[$ "FLOWN"]   = "F L OW N";
++    _e[$ "BOWL"]    = "B OW L";
++    _e[$ "COMMODORE"] = "K AA M AX D AO R";
++    global.voi64_lts_exc = _e;
++    return _e;
++}
++
++/// @function scr_voi64_lts_rules()
++/// @desc The rule table, grouped by leading character. Within a group,
++///       ORDER IS THE ALGORITHM — the first rule that fits wins, so the
++///       specific cases sit above the general ones and each group ends
++///       with an unconditional fallback.
++function scr_voi64_lts_rules() {
++    if (variable_global_exists("voi64_lts_rules")) {
++        return global.voi64_lts_rules;
++    }
++    var _r = {};
++
++    _r[$ " "] = [
++        [" ", " ", "",   "SIL"]
++    ];
++
++    _r[$ "A"] = [
++        [" ", "ARE", " ",  "AA R"],
++        [" ", "AR",  "O",  "AX R"],
++        ["",  "AR",  "#",  "EH R"],
++        ["^", "AS",  "#",  "EY S"],
++        ["",  "A",   "WA", "AX"],
++        ["",  "AW",  "",   "AO"],
++        [" :","ANY", "",   "EH N IY"],
++        ["",  "A",   "^+#","EY"],
++        ["#:","ALLY","",   "AX L IY"],
++        [" ", "AL",  "#",  "AX L"],
++        ["",  "AGAIN","",  "AX G EH N"],
++        ["#:","AG",  "E",  "IH JH"],
++        ["",  "A",   "^+:#","AE"],
++        [" :","A",   "^+ ", "EY"],
++        ["",  "A",   "^%",  "EY"],
++        ["",  "ARR", "",    "AX R"],
++        ["",  "AR",  "",    "AA R"],
++        ["",  "AIR", "",    "EH R"],
++        ["",  "AI",  "",    "EY"],
++        ["",  "AY",  "",    "EY"],
++        ["",  "AU",  "",    "AO"],
++        ["#:","AL",  " ",   "AX L"],
++        ["#:","ALS", " ",   "AX L Z"],
++        ["",  "ALK", "",    "AO K"],
++        ["",  "AL",  "^",   "AO L"],
++        [" :","ABLE","",    "EY B AX L"],
++        ["",  "ABLE","",    "AX B AX L"],
++        ["",  "ANG", "+",   "EY N JH"],
++        ["",  "A",   " ",   "AX"],
++        ["",  "A",   "",    "AE"]
++    ];
++
++    _r[$ "B"] = [
++        [" ", "BE", "^#",  "B IH"],
++        [" ", "BEING", "", "B IY IH NG"],
++        [" ", "BOTH", " ", "B OW TH"],
++        [" ", "BUS", "#",  "B IH Z"],
++        ["",  "BUIL", "",  "B IH L"],
++        ["",  "BB",  "",   "B"],
++        ["",  "B",   "",   "B"]
++    ];
++
++    _r[$ "C"] = [
++        [" ", "CH", "^",  "K"],
++        ["^E","CH", "",   "K"],
++        ["",  "CH", "",   "CH"],
++        [" S","CI", "#",  "S AY"],
++        ["",  "CI", "A",  "SH"],
++        ["",  "CI", "O",  "SH"],
++        ["",  "CI", "EN", "SH"],
++        ["",  "CK", "",   "K"],
++        ["",  "CO", "M",  "K AA"],
++        ["",  "CC", "+",  "K S"],
++        ["",  "C",  "+",  "S"],
++        ["",  "C",  "",   "K"]
++    ];
++
++    _r[$ "D"] = [
++        [" ", "DR",  "",   "D R"],
++        ["#:","DED", " ",  "D IH D"],
++        [".E","D",   " ",  "D"],
++        ["#:^","E",  "D ",  "AX"],
++        [" ", "DE",  "^#", "D IH"],
++        [" ", "DO",  " ",  "D UW"],
++        [" ", "DOES","",   "D AH Z"],
++        [" ", "DOING","",  "D UW IH NG"],
++        [" ", "DOW", "",   "D AW"],
++        ["",  "DU",  "A",  "JH UW"],
++        ["",  "DG",  "+",  "JH"],
++        ["",  "DD",  "",   "D"],
++        ["",  "D",   "",   "D"]
++    ];
++
++    _r[$ "E"] = [
++        ["#:","E",   " ",   ""],
++        ["' ^:","E", " ",   ""],
++        [" :^","E",  " ",   "IY"],
++        ["#","ED",   " ",   "D"],
++        ["#:","E",   "D ",  ""],
++        ["",  "EV",  "ER",  "EH V"],
++        ["",  "ERR", "",    "EH R"],
++        ["",  "E",   "^%",  "IY"],
++        ["",  "ERI", "#",   "IY R IY"],
++        ["",  "ERI", "",    "EH R IH"],
++        ["#:","ER",  "#",   "ER"],
++        ["",  "ER",  "#",   "EH R"],
++        ["",  "ER",  "",    "ER"],
++        [" ", "EVEN","",    "IY V EH N"],
++        ["#:","E",   "W",   ""],
++        ["@", "EW",  "",    "UW"],
++        ["",  "EW",  "",    "Y UW"],
++        ["",  "E",   "O",   "IY"],
++        ["#:&","ES", " ",   "IH Z"],
++        ["#:","E",   "S ",  ""],
++        ["#:","ELY", " ",   "L IY"],
++        ["#:","EMENT","",   "M EH N T"],
++        ["",  "EFUL","",    "F UH L"],
++        ["",  "EE",  "",    "IY"],
++        ["",  "EARN","",    "ER N"],
++        [" ", "EAR", "^",   "ER"],
++        ["",  "EAD", "",    "EH D"],
++        ["#:","EA",  " ",   "IY AX"],
++        ["",  "EA",  "SU",  "EH"],
++        ["",  "EA",  "",    "IY"],
++        ["",  "EIGH","",    "EY"],
++        ["",  "EI",  "",    "IY"],
++        [" ", "EYE", "",    "AY"],
++        ["",  "EY",  "",    "IY"],
++        ["",  "EU",  "",    "Y UW"],
++        ["",  "E",   "",    "EH"]
++    ];
++
++    _r[$ "F"] = [
++        ["",  "FUL", "",   "F UH L"],
++        ["",  "FF",  "",   "F"],
++        ["",  "F",   "",   "F"]
++    ];
++
++    _r[$ "G"] = [
++        ["",  "GIV", "",   "G IH V"],
++        [" ", "G",   "I^", "G"],
++        ["",  "GE",  "T",  "G EH"],
++        ["SU","GGES","",   "G JH EH S"],
++        ["",  "GG",  "",   "G"],
++        [" B#","G",  "",   "G"],
++        ["",  "G",   "+",  "JH"],
++        ["",  "GREAT","",  "G R EY T"],
++        ["#","GH",   "",   ""],
++        ["",  "G",   "",   "G"]
++    ];
++
++    _r[$ "H"] = [
++        [" ", "HAV", "",   "HH AE V"],
++        [" ", "HERE","",   "HH IY R"],
++        [" ", "HOUR","",   "AW ER"],
++        ["",  "HOW", "",   "HH AW"],
++        ["",  "H",   "#",  "HH"],
++        ["",  "H",   "",   ""]
++    ];
++
++    _r[$ "I"] = [
++        [" ", "IN",  "",   "IH N"],
++        [" ", "I",   " ",  "AY"],
++        ["",  "IN",  "D",  "AY N"],
++        ["",  "IER", "",   "IY ER"],
++        ["#:R","IED"," ",  "IY D"],
++        ["",  "IED", " ",  "AY D"],
++        ["",  "IEN", "",   "IY EH N"],
++        ["",  "IE",  "T",  "AY EH"],
++        [" :","I",   "%",  "AY"],
++        ["",  "I",   "%",  "IY"],
++        ["",  "IE",  "",   "IY"],
++        ["",  "I",   "^+:#","IH"],
++        ["",  "IR",  "#",  "AY R"],
++        ["",  "IZ",  "%",  "AY Z"],
++        ["",  "IS",  "%",  "AY Z"],
++        ["",  "I",   "D%", "AY"],
++        ["+^","I",   "^+", "IH"],
++        ["",  "I",   "T%", "AY"],
++        ["#:^","I",  "^+", "IH"],
++        ["",  "I",   "^+", "AY"],
++        ["",  "IR",  "",   "ER"],
++        ["",  "IGH", "",   "AY"],
++        ["",  "ILD", "",   "AY L D"],
++        ["",  "IGN", " ",  "AY N"],
++        ["",  "IGN", "^",  "AY N"],
++        ["",  "IGN", "%",  "AY N"],
++        ["",  "IQUE","",   "IY K"],
++        ["",  "I",   "",   "IH"]
++    ];
++
++    _r[$ "J"] = [ ["", "J", "", "JH"] ];
++
++    _r[$ "K"] = [
++        [" ", "K",  "N",  ""],
++        ["",  "K",  "",   "K"]
++    ];
++
++    _r[$ "L"] = [
++        ["",  "LO", "C#", "L OW"],
++        ["L", "L",  "",   ""],
++        ["#:^","L", "%",  "AX L"],
++        ["",  "LEAD","",  "L IY D"],
++        ["",  "L",  "",   "L"]
++    ];
++
++    _r[$ "M"] = [
++        ["",  "MOV","",  "M UW V"],
++        ["",  "MM", "",  "M"],
++        ["",  "M",  "",  "M"]
++    ];
++
++    _r[$ "N"] = [
++        ["E", "NG", "+", "N JH"],
++        ["",  "NG", "R", "NG G"],
++        ["",  "NG", "#", "NG G"],
++        ["",  "NGL","%", "NG G AX L"],
++        ["",  "NG", "",  "NG"],
++        ["",  "NK", "",  "NG K"],
++        [" ", "NOW"," ", "N AW"],
++        ["",  "NN", "",  "N"],
++        ["",  "N",  "",  "N"]
++    ];
++
++    _r[$ "O"] = [
++        ["",  "OF",  " ",  "AH V"],
++        ["",  "OROUGH","", "ER OW"],
++        ["#:","OR",  " ",  "ER"],
++        ["#:","ORS", " ",  "ER Z"],
++        ["",  "OR",  "",   "AO R"],
++        [" ", "ONE", "",   "W AH N"],
++        ["",  "OW",  " ",  "OW"],
++        ["",  "OW",  "^",  "AW"],
++        ["",  "OW",  "",   "OW"],
++        [" ", "OVER","",   "OW V ER"],
++        ["",  "OV",  "",   "AH V"],
++        ["",  "O",   "^%", "OW"],
++        ["",  "O",   "^EN","OW"],
++        ["",  "O",   "^I#","OW"],
++        ["",  "OL",  "D",  "OW L"],
++        ["",  "OUGHT","",  "AO T"],
++        ["",  "OUGH","",   "AH F"],
++        [" ", "OU",  "",   "AW"],
++        ["H", "OU",  "S#", "AW"],
++        ["",  "OUS", "",   "AX S"],
++        ["",  "OUR", "",   "AO R"],
++        ["",  "OULD","",   "UH D"],
++        ["^", "OU",  "^L", "AH"],
++        ["",  "OUP", "",   "UW P"],
++        ["",  "OU",  "",   "AW"],
++        ["",  "OY",  "",   "OY"],
++        ["",  "OING","",   "OW IH NG"],
++        ["",  "OI",  "",   "OY"],
++        ["",  "OOR", "",   "AO R"],
++        ["",  "OOK", "",   "UH K"],
++        ["",  "OOD", "",   "UH D"],
++        ["",  "OO",  "",   "UW"],
++        ["",  "O",   "E",  "OW"],
++        ["",  "O",   " ",  "OW"],
++        ["",  "OA",  "",   "OW"],
++        [" ", "ONLY","",   "OW N L IY"],
++        [" ", "ONCE","",   "W AH N S"],
++        ["",  "ON'T","",   "OW N T"],
++        ["C", "O",   "N",  "AA"],
++        ["",  "O",   "NG", "AO"],
++        [" :^","O",  "N",  "AH"],
++        ["I", "ON",  "",   "AX N"],
++        ["#:","ON",  " ",  "AX N"],
++        ["#^","ON",  "",   "AX N"],
++        ["",  "O",   "ST ","OW"],
++        ["",  "OF",  "^",  "AO F"],
++        ["",  "OTHER","",  "AH DH ER"],
++        ["",  "OSS", " ",  "AO S"],
++        ["#:^","OM", "",   "AH M"],
++        ["",  "O",   "",   "AA"]
++    ];
++
++    _r[$ "P"] = [
++        ["",  "PH", "",  "F"],
++        ["",  "PEOP","", "P IY P"],
++        ["",  "POW","",  "P AW"],
++        ["",  "PUT"," ", "P UH T"],
++        ["",  "PP", "",  "P"],
++        ["",  "P",  "",  "P"]
++    ];
++
++    _r[$ "Q"] = [
++        ["",  "QUAR","", "K W AO R"],
++        ["",  "QU",  "", "K W"],
++        ["",  "Q",   "", "K"]
++    ];
++
++    _r[$ "R"] = [
++        [" ", "RE", "^#", "R IY"],
++        ["",  "RR", "",   "R"],
++        ["",  "R",  "",   "R"]
++    ];
++
++    _r[$ "S"] = [
++        ["",  "SH",  "",   "SH"],
++        ["#", "SION","",   "ZH AX N"],
++        ["",  "SOME","",   "S AH M"],
++        ["#", "SUR", "#",  "ZH ER"],
++        ["",  "SUR", "#",  "SH ER"],
++        ["#", "SU",  "#",  "ZH UW"],
++        ["#", "SSU", "#",  "SH UW"],
++        ["#", "SED", " ",  "Z D"],
++        ["#", "S",   "#",  "Z"],
++        ["",  "SAID","",   "S EH D"],
++        ["^", "SION","",   "SH AX N"],
++        ["",  "S",   "S",  ""],
++        [".", "S",   " ",  "Z"],
++        ["#:.E","S", " ",  "Z"],
++        ["#:^^","S", " ",  "S"],
++        ["#", "S",   " ",  "Z"],
++        ["",  "SCH", "",   "S K"],
++        ["",  "S",   "C+", ""],
++        ["#", "SM",  "",   "Z M"],
++        ["#", "SN",  "'",  "Z AX N"],
++        ["",  "S",   "",   "S"]
++    ];
++
++    _r[$ "T"] = [
++        [" ", "THE", " ",  "DH AX"],
++        ["",  "TO",  " ",  "T UW"],
++        ["",  "THAT"," ",  "DH AE T"],
++        [" ", "THIS"," ",  "DH IH S"],
++        [" ", "THEY","",   "DH EY"],
++        [" ", "THERE","",  "DH EH R"],
++        ["",  "THER","",   "DH ER"],
++        ["",  "THEIR","",  "DH EH R"],
++        [" ", "THAN"," ",  "DH AE N"],
++        [" ", "THEM"," ",  "DH EH M"],
++        ["",  "THESE"," ", "DH IY Z"],
++        [" ", "THEN","",   "DH EH N"],
++        ["",  "THROUGH","","TH R UW"],
++        ["",  "THOSE","",  "DH OW Z"],
++        ["",  "THOUGH"," ","DH OW"],
++        [" ", "THUS","",   "DH AH S"],
++        ["",  "TH",  "",   "TH"],
++        ["#:","TED", " ",  "T IH D"],
++        ["S", "TI",  "#N", "CH"],
++        ["",  "TI",  "O",  "SH"],
++        ["",  "TI",  "A",  "SH"],
++        ["",  "TIEN","",   "SH AX N"],
++        ["",  "TUR", "#",  "CH ER"],
++        ["",  "TU",  "A",  "CH UW"],
++        [" ", "TWO", "",   "T UW"],
++        ["",  "TT",  "",   "T"],
++        ["",  "T",   "",   "T"]
++    ];
++
++    _r[$ "U"] = [
++        [" ", "UN",  "I",  "Y UW N"],
++        [" ", "UN",  "",   "AH N"],
++        [" ", "UPON","",   "AX P AO N"],
++        ["@", "UR",  "#",  "UH R"],
++        ["",  "UR",  "#",  "Y UH R"],
++        ["",  "UR",  "",   "ER"],
++        ["",  "U",   "^ ", "AH"],
++        ["",  "U",   "^^", "AH"],
++        ["",  "UY",  "",   "AY"],
++        [" G","U",   "#",  ""],
++        ["G", "U",   "%",  ""],
++        ["G", "U",   "#",  "W"],
++        ["#N","U",   "",   "Y UW"],
++        ["@", "U",   "",   "UW"],
++        ["",  "U",   "",   "Y UW"]
++    ];
++
++    _r[$ "V"] = [
++        ["",  "VIEW","",  "V Y UW"],
++        ["",  "V",   "",  "V"]
++    ];
++
++    _r[$ "W"] = [
++        [" ", "WERE","",  "W ER"],
++        ["",  "WA",  "S", "W AA"],
++        ["",  "WA",  "T", "W AA"],
++        ["",  "WHERE","", "W EH R"],
++        ["",  "WHAT","",  "W AA T"],
++        ["",  "WHOL","",  "HH OW L"],
++        ["",  "WHO", "",  "HH UW"],
++        ["",  "WH",  "",  "W"],
++        ["",  "WAR", "",  "W AO R"],
++        ["",  "WOR", "^", "W ER"],
++        ["",  "WR",  "",  "R"],
++        ["",  "W",   "",  "W"]
++    ];
++
++    _r[$ "X"] = [ ["", "X", "", "K S"] ];
++
++    _r[$ "Y"] = [
++        ["",  "YOUNG","", "Y AH NG"],
++        [" ", "YOU", "",  "Y UW"],
++        [" ", "YES", "",  "Y EH S"],
++        [" ", "Y",   "",  "Y"],
++        ["#:^","Y",  " ", "IY"],
++        ["#:^","Y",  "I", "IY"],
++        [" :","Y",   " ", "AY"],
++        [" :","Y",   "#", "AY"],
++        [" :","Y",   "^+:#","IH"],
++        [" :","Y",   "^#","AY"],
++        ["",  "Y",   "",  "IH"]
++    ];
++
++    _r[$ "Z"] = [
++        ["", "ZZ", "", "Z"],
++        ["", "Z",  "", "Z"]
++    ];
++
++    // Digits, spoken as words. Anything not listed anywhere is dropped by
++    // the walker rather than guessed at.
++    _r[$ "0"] = [ ["", "0", "", "Z IY R OW"] ];
++    _r[$ "1"] = [ ["", "1", "", "W AH N"] ];
++    _r[$ "2"] = [ ["", "2", "", "T UW"] ];
++    _r[$ "3"] = [ ["", "3", "", "TH R IY"] ];
++    _r[$ "4"] = [ ["", "4", "", "F AO R"] ];
++    _r[$ "5"] = [ ["", "5", "", "F AY V"] ];
++    _r[$ "6"] = [ ["", "6", "", "S IH K S"] ];
++    _r[$ "7"] = [ ["", "7", "", "S EH V AX N"] ];
++    _r[$ "8"] = [ ["", "8", "", "EY T"] ];
++    _r[$ "9"] = [ ["", "9", "", "N AY N"] ];
++
++    global.voi64_lts_rules = _r;
++    return _r;
++}
++
++/// @function scr_voi64_text_to_phonemes(_txt)
++/// @desc Convert English text to a space-separated phoneme string.
++///       Runs on the PC at compile time; nothing here reaches the C64.
++///
++///       The word-boundary contexts need real spaces either side, so the
++///       text is padded with one at each end before the walk and the
++///       positions below are all against that padded copy.
++function scr_voi64_text_to_phonemes(_txt) {
++    var _rules = scr_voi64_lts_rules();
++    var _exc   = scr_voi64_lts_exceptions();
++    var _out   = [];
++
++    // Normalise: upper case, sentence punctuation to pauses, everything
++    // else that is not a letter, digit or apostrophe to a space.
++    var _src = string_upper(string(_txt));
++    var _clean = "";
++    for (var _i = 1; _i <= string_length(_src); _i++) {
++        var _c = string_char_at(_src, _i);
++        if (_c == "." || _c == "!" || _c == "?" || _c == "," || _c == ";" || _c == ":") {
++            _clean += " | ";
++        } else if (string_pos(_c, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'") > 0) {
++            _clean += _c;
++        } else {
++            _clean += " ";
++        }
++    }
++
++    // Whole-word exception pass. Done per word before any rule runs, so an
++    // entry in the map always wins over the rule table.
++    var _words = string_split(_clean, " ", true);
++    var _rebuilt = [];
++    for (var _wi = 0; _wi < array_length(_words); _wi++) {
++        var _w = _words[_wi];
++        if (_w == "") { continue; }
++        if (_w == "|") {
++            array_push(_rebuilt, "|");
++            continue;
++        }
++        if (variable_struct_exists(_exc, _w)) {
++            array_push(_rebuilt, "=" + _exc[$ _w]);
++        } else {
++            array_push(_rebuilt, _w);
++        }
++    }
++
++    for (var _wi = 0; _wi < array_length(_rebuilt); _wi++) {
++        var _w = _rebuilt[_wi];
++
++        if (_w == "|") {
++            array_push(_out, "PA");
++            continue;
++        }
++        if (string_char_at(_w, 1) == "=") {
++            // Pre-resolved by the exception map.
++            var _ph = string_split(string_delete(_w, 1, 1), " ", true);
++            for (var _pi = 0; _pi < array_length(_ph); _pi++) {
++                if (_ph[_pi] != "") { array_push(_out, _ph[_pi]); }
++            }
++            array_push(_out, "SIL");
++            continue;
++        }
++
++        var _pad = " " + _w + " ";
++        var _pos = 2;                        // first real character
++        var _end = string_length(_pad);      // trailing pad
++        var _guard = 0;
++
++        while (_pos < _end) {
++            _guard += 1;
++            if (_guard > 512) { break; }     // a malformed rule must not hang a build
++
++            var _ch  = string_char_at(_pad, _pos);
++            var _grp = variable_struct_exists(_rules, _ch) ? _rules[$ _ch] : undefined;
++
++            if (is_undefined(_grp)) {
++                _pos += 1;                   // apostrophes and anything unlisted
++                continue;
++            }
++
++            var _fired = false;
++            for (var _ri = 0; _ri < array_length(_grp); _ri++) {
++                var _rule  = _grp[_ri];
++                var _left  = _rule[0];
++                var _match = _rule[1];
++                var _right = _rule[2];
++                var _phon  = _rule[3];
++
++                if (string_copy(_pad, _pos, string_length(_match)) != _match) { continue; }
++                if (!scr_voi64_lts_match_left(_pad, _pos, _left)) { continue; }
++                if (!scr_voi64_lts_match_right(_pad, _pos + string_length(_match), _right)) { continue; }
++
++                if (_phon != "") {
++                    var _pl = string_split(_phon, " ", true);
++                    for (var _pi = 0; _pi < array_length(_pl); _pi++) {
++                        if (_pl[_pi] != "") { array_push(_out, _pl[_pi]); }
++                    }
++                }
++                _pos += string_length(_match);
++                _fired = true;
++                break;
++            }
++
++            // Every group ends in an unconditional fallback, so this should
++            // be unreachable. Advancing anyway means a bad edit to the table
++            // costs a dropped letter rather than an infinite loop.
++            if (!_fired) { _pos += 1; }
++        }
++
++        array_push(_out, "SIL");
++    }
++
++    // Trim a trailing word gap — the caller adds its own tail silence.
++    while (array_length(_out) > 0 && _out[array_length(_out) - 1] == "SIL") {
++        array_pop(_out);
++    }
++
++    return string_join_ext(" ", _out);
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_text_to_phonemes/scr_voi64_text_to_phonemes.yy b/C64DevMachine_win.yyp/scripts/scr_voi64_text_to_phonemes/scr_voi64_text_to_phonemes.yy
+new file mode 100644
+index 0000000..d946927
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_text_to_phonemes/scr_voi64_text_to_phonemes.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_voi64_text_to_phonemes",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_voi64_text_to_phonemes",
++  "parent":{
++    "name":"VOI64",
++    "path":"folders/SCRIPTS/VOI64.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
