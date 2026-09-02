@@ -88,10 +88,10 @@ function scr_node_draw_macro_voi64_say(_draw_x, _y) {
     _ly += _lh;
 
     var _shown = (_src == 1) ? _asset : _text;
-    if (_shown == "") { _shown = (_src == 1) ? "<NO ASSET>" : "<CLICK TO TYPE>"; }
+    if (_shown == "") { _shown = (_src == 1) ? "<CLICK TO PICK>" : "<CLICK TO TYPE>"; }
     if (string_length(_shown) > 22) { _shown = string_copy(_shown, 1, 21) + "*"; }
     draw_set_color(_c_lbl); draw_text(_px, _ly, "SAY:");
-    draw_set_color((_shown == "<NO ASSET>" || _shown == "<CLICK TO TYPE>") ? _c_dim : _c_val);
+    draw_set_color((_shown == "<CLICK TO PICK>" || _shown == "<CLICK TO TYPE>") ? _c_dim : _c_val);
     draw_text(_px + 32, _ly, _shown);
     _ly += _lh;
 

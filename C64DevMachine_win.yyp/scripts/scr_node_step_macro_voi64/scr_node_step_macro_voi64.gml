@@ -64,20 +64,38 @@ function scr_node_step_macro_voi64_say(_draw_x) {
     }
     _fy += _lh;
 
-    // Row 2 — the text itself. Inline mode types here; TEXT_DATA mode
-    // types the asset name.
+    // Row 2 — the phrase. INLINE mode opens the text editor; TEXT_DATA
+    // mode opens the asset picker, because an asset is chosen, not typed.
     if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
         var _src = 0;
         if (array_length(instructions[0]) > 4 && is_real(instructions[0][4])) {
             _src = real(instructions[0][4]);
         }
-        var _idx = (_src == 1) ? 6 : 5;
-        while (array_length(instructions[0]) <= _idx) { array_push(instructions[0], ""); }
+        while (array_length(instructions[0]) <= 6) { array_push(instructions[0], ""); }
+
+        if (_src == 1) {
+            // The shared TEXT_ASSET picker — the same scrolling list
+            // MACRO_SID_SOUND uses for its note lists. It filters the asset
+            // list to TEXT_DATA and writes the chosen name into
+            // instructions[0][label_picker_index] on commit, so nothing
+            // node-specific is needed beyond pointing it at slot 6.
+            label_picker_open       = true;
+            global.any_picker_open  = true;
+            label_picker_prev_depth = depth;
+            depth                   = -9999;
+            label_picker_mode       = "TEXT_ASSET";
+            label_picker_scroll     = 0;
+            label_picker_list       = [];
+            label_picker_target     = id;
+            label_picker_index      = 6;
+            exit;
+        }
+
         with (obj_workspace_manager) {
             is_entering_text     = true;
             input_target_node    = other.id;
-            input_target_index   = _idx;
-            current_input_string = string(other.instructions[0][_idx]);
+            input_target_index   = 5;
+            current_input_string = string(other.instructions[0][5]);
             keyboard_string      = "";
             cursor_pos           = string_length(current_input_string);
         }
