@@ -760,7 +760,8 @@ case "LABEL": {
 
         case "MACRO_VOI64_SAY":
             _n.node_title   = "VOI64 SAY";
-            _n.instructions = [["macro_voi64_say", 0, 0, 0, 0, "HELLO WORLD", "", -1, -1, -1, -1]];
+            // [11] first line, [12] last line — 0/0 means the whole asset.
+            _n.instructions = [["macro_voi64_say", 0, 0, 0, 0, "HELLO WORLD", "", -1, -1, -1, -1, 0, 0]];
             _n.pc_address   = global.start_pc;
             with (_n) { event_user(0); }
             break;

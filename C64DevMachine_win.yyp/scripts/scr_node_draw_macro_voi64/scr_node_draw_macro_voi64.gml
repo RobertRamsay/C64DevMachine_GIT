@@ -95,6 +95,37 @@ function scr_node_draw_macro_voi64_say(_draw_x, _y) {
     draw_text(_px + 32, _ly, _shown);
     _ly += _lh;
 
+    // LINES range — TEXT DATA mode only. One phrase per line turns a single
+    // asset into a phrase bank several SAY nodes can share.
+    if (_src == 1) {
+        var _lf = 0;
+        var _lt = 0;
+        if (array_length(_ins) > 11 && is_real(_ins[11])) { _lf = real(_ins[11]); }
+        if (array_length(_ins) > 12 && is_real(_ins[12])) { _lt = real(_ins[12]); }
+        var _lc = scr_voi64_asset_line_count(id);
+
+        draw_set_color(_c_lbl); draw_text(_px, _ly, "LINE FROM:");
+        if (_lf <= 0) {
+            draw_set_color(_c_dim); draw_text(_px + 78, _ly, "1 (START)");
+        } else {
+            draw_set_color(_c_val); draw_text(_px + 78, _ly, string(_lf));
+        }
+        _ly += _lh;
+
+        draw_set_color(_c_lbl); draw_text(_px, _ly, "LINE TO:");
+        if (_lt <= 0) {
+            draw_set_color(_c_dim);
+            if (_lc > 0) {
+                draw_text(_px + 78, _ly, string(_lc) + " (END)");
+            } else {
+                draw_text(_px + 78, _ly, "END");
+            }
+        } else {
+            draw_set_color(_c_val); draw_text(_px + 78, _ly, string(_lt));
+        }
+        _ly += _lh;
+    }
+
     // Per-say voice overrides. A dash means "inherit from the master",
     // which is the default and by far the common case — showing an actual
     // number here would imply this node is setting one when it is not.

@@ -167,7 +167,18 @@ if (height_dirty) {
 	// 7 rows + header. SAY is taller: 3 setting rows, 4 override rows,
 	// the preview button, and room for the no-master warning.
 	case "MACRO_VOI64_MASTER": height = _G * 7;  break;
-	case "MACRO_VOI64_SAY":    height = _G * 7; break;
+	// +2 rows for the LINES range, which only exists in TEXT DATA mode.
+	// Same pattern as MACRO_SID_SOUND: recomputed whenever height_dirty
+	// fires, so the SRC toggle only has to raise the flag.
+	case "MACRO_VOI64_SAY": {
+	    // Base height is yours; the range rows add exactly two 14px rows
+	    // rather than another _G unit, so the tuning below is untouched.
+	    var _vh = _G * 7;
+	    if (array_length(instructions[0]) > 4 && is_real(instructions[0][4])) {
+	        if (real(instructions[0][4]) == 1) { _vh = (_G * 7) + 28; }
+	    }
+	    height = _vh;
+	} break;
 	// 8 base rows, +2 for each list that's in ASSET mode (list row, index row,
 	// info row). Recomputed whenever height_dirty fires, so the mode buttons
 	// just need to set it.

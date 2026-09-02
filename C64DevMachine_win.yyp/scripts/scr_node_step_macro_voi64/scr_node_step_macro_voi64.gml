@@ -57,9 +57,21 @@ function scr_node_step_macro_voi64_say(_draw_x) {
     // Row 1 — SRC toggle
     if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
         while (array_length(instructions[0]) <= 4) { array_push(instructions[0], 0); }
-        var _s = is_real(instructions[0][4]) ? real(instructions[0][4]) : 0;
-        instructions[0][4] = (_s == 1) ? 0 : 1;
+        var _s = 0;
+        if (is_real(instructions[0][4])) { _s = real(instructions[0][4]); }
+        if (_s == 1) {
+            instructions[0][4] = 0;
+        } else {
+            instructions[0][4] = 1;
+        }
+        // The range rows appear and disappear with this toggle, so the node
+        // changes height. Height is derived in Draw and the layout runs in
+        // Step, so raising the flag alone leaves a gap under the node until
+        // something else moves; relayout_frames is the mechanism that
+        // actually re-runs the pass.
+        height_dirty           = true;
         global.addresses_dirty = true;
+        global.relayout_frames = 3;
         exit;
     }
     _fy += _lh;
@@ -102,6 +114,38 @@ function scr_node_step_macro_voi64_say(_draw_x) {
         exit;
     }
     _fy += _lh;
+
+    // LINES range rows, TEXT DATA mode only — they are not drawn in INLINE
+    // mode, so they must not be clickable there either or every override
+    // row below would be off by two.
+    var _srcm = 0;
+    if (array_length(instructions[0]) > 4 && is_real(instructions[0][4])) {
+        _srcm = real(instructions[0][4]);
+    }
+    if (_srcm == 1) {
+        for (var _r = 0; _r < 2; _r++) {
+            if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
+                var _ri = 11 + _r;
+                while (array_length(instructions[0]) <= _ri) { array_push(instructions[0], 0); }
+                var _rv = 0;
+                if (is_real(instructions[0][_ri])) { _rv = real(instructions[0][_ri]); }
+                with (obj_workspace_manager) {
+                    is_entering_text     = true;
+                    input_target_node    = other.id;
+                    input_target_index   = _ri;
+                    if (_rv <= 0) {
+                        current_input_string = "";
+                    } else {
+                        current_input_string = string(_rv);
+                    }
+                    keyboard_string = "";
+                    cursor_pos      = string_length(current_input_string);
+                }
+                exit;
+            }
+            _fy += _lh;
+        }
+    }
 
     // Rows 3-6 — per-say overrides. Right click clears one back to
     // inherit; typing -1 does the same thing from the keyboard.

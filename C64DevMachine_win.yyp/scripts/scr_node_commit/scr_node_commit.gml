@@ -788,11 +788,11 @@
 	    // --- VOI64 SAY ---
 	    // [5] inline text  [6] asset name  [7..10] voice overrides
 	    } else if (_target.node_type == "MACRO_VOI64_SAY") {
-	        while (array_length(_target.instructions[0]) <= 10) {
+	        while (array_length(_target.instructions[0]) <= 12) {
 	            var _vn = array_length(_target.instructions[0]);
 	            if (_vn == 5 || _vn == 6) {
 	                array_push(_target.instructions[0], "");
-	            } else if (_vn >= 7) {
+	            } else if (_vn >= 7 && _vn <= 10) {
 	                array_push(_target.instructions[0], -1);
 	            } else {
 	                array_push(_target.instructions[0], 0);
@@ -800,6 +800,16 @@
 	        }
 	        if (_idx == 5 || _idx == 6) {
 	            _target.instructions[0][_idx] = _input;
+	        } else if (_idx == 11 || _idx == 12) {
+	            // Blank means "the end you did not specify" — 0 reads as line 1
+	            // for FROM and as the last line for TO, so an untouched node
+	            // speaks the whole asset.
+	            var _lt = string_trim(_input);
+	            if (_lt == "" || _lt == "-") {
+	                _target.instructions[0][_idx] = 0;
+	            } else {
+	                _target.instructions[0][_idx] = clamp(real(string_digits(_lt)), 0, 9999);
+	            }
 	        } else if (_idx >= 7 && _idx <= 10) {
 	            // Empty clears the override back to "inherit from master",
 	            // which is what the node draws as a dash. Without this there

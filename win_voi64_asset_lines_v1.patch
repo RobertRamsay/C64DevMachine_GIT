@@ -1,0 +1,315 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 4555ee9..25be67d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -167,7 +167,16 @@ if (height_dirty) {
+ 	// 7 rows + header. SAY is taller: 3 setting rows, 4 override rows,
+ 	// the preview button, and room for the no-master warning.
+ 	case "MACRO_VOI64_MASTER": height = _G * 8;  break;
+-	case "MACRO_VOI64_SAY":    height = _G * 10; break;
++	// +2 rows for the LINES range, which only exists in TEXT DATA mode.
++	// Same pattern as MACRO_SID_SOUND: recomputed whenever height_dirty
++	// fires, so the SRC toggle only has to raise the flag.
++	case "MACRO_VOI64_SAY": {
++	    var _vh = _G * 10;
++	    if (array_length(instructions[0]) > 4 && is_real(instructions[0][4])) {
++	        if (real(instructions[0][4]) == 1) { _vh = _G * 12; }
++	    }
++	    height = _vh;
++	} break;
+ 	// 8 base rows, +2 for each list that's in ASSET mode (list row, index row,
+ 	// info row). Recomputed whenever height_dirty fires, so the mode buttons
+ 	// just need to set it.
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+index b978793..de6ef65 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+@@ -788,11 +788,11 @@
+ 	    // --- VOI64 SAY ---
+ 	    // [5] inline text  [6] asset name  [7..10] voice overrides
+ 	    } else if (_target.node_type == "MACRO_VOI64_SAY") {
+-	        while (array_length(_target.instructions[0]) <= 10) {
++	        while (array_length(_target.instructions[0]) <= 12) {
+ 	            var _vn = array_length(_target.instructions[0]);
+ 	            if (_vn == 5 || _vn == 6) {
+ 	                array_push(_target.instructions[0], "");
+-	            } else if (_vn >= 7) {
++	            } else if (_vn >= 7 && _vn <= 10) {
+ 	                array_push(_target.instructions[0], -1);
+ 	            } else {
+ 	                array_push(_target.instructions[0], 0);
+@@ -800,6 +800,16 @@
+ 	        }
+ 	        if (_idx == 5 || _idx == 6) {
+ 	            _target.instructions[0][_idx] = _input;
++	        } else if (_idx == 11 || _idx == 12) {
++	            // Blank means "the end you did not specify" — 0 reads as line 1
++	            // for FROM and as the last line for TO, so an untouched node
++	            // speaks the whole asset.
++	            var _lt = string_trim(_input);
++	            if (_lt == "" || _lt == "-") {
++	                _target.instructions[0][_idx] = 0;
++	            } else {
++	                _target.instructions[0][_idx] = clamp(real(string_digits(_lt)), 0, 9999);
++	            }
+ 	        } else if (_idx >= 7 && _idx <= 10) {
+ 	            // Empty clears the override back to "inherit from master",
+ 	            // which is what the node draws as a dash. Without this there
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+index 01dfe61..ca72701 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+@@ -95,6 +95,37 @@ function scr_node_draw_macro_voi64_say(_draw_x, _y) {
+     draw_text(_px + 32, _ly, _shown);
+     _ly += _lh;
+ 
++    // LINES range — TEXT DATA mode only. One phrase per line turns a single
++    // asset into a phrase bank several SAY nodes can share.
++    if (_src == 1) {
++        var _lf = 0;
++        var _lt = 0;
++        if (array_length(_ins) > 11 && is_real(_ins[11])) { _lf = real(_ins[11]); }
++        if (array_length(_ins) > 12 && is_real(_ins[12])) { _lt = real(_ins[12]); }
++        var _lc = scr_voi64_asset_line_count(id);
++
++        draw_set_color(_c_lbl); draw_text(_px, _ly, "LINE FROM:");
++        if (_lf <= 0) {
++            draw_set_color(_c_dim); draw_text(_px + 78, _ly, "1 (START)");
++        } else {
++            draw_set_color(_c_val); draw_text(_px + 78, _ly, string(_lf));
++        }
++        _ly += _lh;
++
++        draw_set_color(_c_lbl); draw_text(_px, _ly, "LINE TO:");
++        if (_lt <= 0) {
++            draw_set_color(_c_dim);
++            if (_lc > 0) {
++                draw_text(_px + 78, _ly, string(_lc) + " (END)");
++            } else {
++                draw_text(_px + 78, _ly, "END");
++            }
++        } else {
++            draw_set_color(_c_val); draw_text(_px + 78, _ly, string(_lt));
++        }
++        _ly += _lh;
++    }
++
+     // Per-say voice overrides. A dash means "inherit from the master",
+     // which is the default and by far the common case — showing an actual
+     // number here would imply this node is setting one when it is not.
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index 4ab365e..f1207ba 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -760,7 +760,8 @@ case "LABEL": {
+ 
+         case "MACRO_VOI64_SAY":
+             _n.node_title   = "VOI64 SAY";
+-            _n.instructions = [["macro_voi64_say", 0, 0, 0, 0, "HELLO WORLD", "", -1, -1, -1, -1]];
++            // [11] first line, [12] last line — 0/0 means the whole asset.
++            _n.instructions = [["macro_voi64_say", 0, 0, 0, 0, "HELLO WORLD", "", -1, -1, -1, -1, 0, 0]];
+             _n.pc_address   = global.start_pc;
+             with (_n) { event_user(0); }
+             break;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_voi64/scr_node_step_macro_voi64.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_voi64/scr_node_step_macro_voi64.gml
+index 59aed35..5e1495e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_voi64/scr_node_step_macro_voi64.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_voi64/scr_node_step_macro_voi64.gml
+@@ -57,9 +57,21 @@ function scr_node_step_macro_voi64_say(_draw_x) {
+     // Row 1 — SRC toggle
+     if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
+         while (array_length(instructions[0]) <= 4) { array_push(instructions[0], 0); }
+-        var _s = is_real(instructions[0][4]) ? real(instructions[0][4]) : 0;
+-        instructions[0][4] = (_s == 1) ? 0 : 1;
++        var _s = 0;
++        if (is_real(instructions[0][4])) { _s = real(instructions[0][4]); }
++        if (_s == 1) {
++            instructions[0][4] = 0;
++        } else {
++            instructions[0][4] = 1;
++        }
++        // The range rows appear and disappear with this toggle, so the node
++        // changes height. Height is derived in Draw and the layout runs in
++        // Step, so raising the flag alone leaves a gap under the node until
++        // something else moves; relayout_frames is the mechanism that
++        // actually re-runs the pass.
++        height_dirty           = true;
+         global.addresses_dirty = true;
++        global.relayout_frames = 3;
+         exit;
+     }
+     _fy += _lh;
+@@ -103,6 +115,38 @@ function scr_node_step_macro_voi64_say(_draw_x) {
+     }
+     _fy += _lh;
+ 
++    // LINES range rows, TEXT DATA mode only — they are not drawn in INLINE
++    // mode, so they must not be clickable there either or every override
++    // row below would be off by two.
++    var _srcm = 0;
++    if (array_length(instructions[0]) > 4 && is_real(instructions[0][4])) {
++        _srcm = real(instructions[0][4]);
++    }
++    if (_srcm == 1) {
++        for (var _r = 0; _r < 2; _r++) {
++            if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
++                var _ri = 11 + _r;
++                while (array_length(instructions[0]) <= _ri) { array_push(instructions[0], 0); }
++                var _rv = 0;
++                if (is_real(instructions[0][_ri])) { _rv = real(instructions[0][_ri]); }
++                with (obj_workspace_manager) {
++                    is_entering_text     = true;
++                    input_target_node    = other.id;
++                    input_target_index   = _ri;
++                    if (_rv <= 0) {
++                        current_input_string = "";
++                    } else {
++                        current_input_string = string(_rv);
++                    }
++                    keyboard_string = "";
++                    cursor_pos      = string_length(current_input_string);
++                }
++                exit;
++            }
++            _fy += _lh;
++        }
++    }
++
+     // Rows 3-6 — per-say overrides. Right click clears one back to
+     // inherit; typing -1 does the same thing from the keyboard.
+     for (var _k = 0; _k < 4; _k++) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+index f886626..d60efae 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+@@ -608,7 +608,14 @@ function scr_node_tooltip_text(_node_type) {
+                 "",
+                 "Source is either typed inline or a TEXT_DATA asset. Both",
+                 "are known at build time, which is what keeps the runtime",
+-                "cost to eight bytes per 1/50th second.",
++                "cost to eight bytes per glottal period.",
++                "",
++                "In TEXT DATA mode, LINE FROM / LINE TO pick a slice of the",
++                "asset - one phrase per line, so a single asset becomes a",
++                "phrase bank several SAY nodes share. Leave both blank for",
++                "the whole thing. Lines rather than the byte offsets PRINT",
++                "uses: the asset never reaches the C64, so a byte range",
++                "would only let you cut a word in half.",
+                 "",
+                 "PITCH / SPEED / THROAT / MOUTH show a dash when they are",
+                 "inherited from the master. Type a value to override it",
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
+index 7d79ad9..44957fc 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
+@@ -129,22 +129,24 @@ function scr_voi64_sid_frames(_phonemes, _pitch = 120, _speed = 128, _throat = 1
+     return _out;
+ }
+ 
+-/// @function scr_voi64_say_source_text(_node)
+-/// @desc Resolve a MACRO_VOI64_SAY node to the text it should speak,
+-///       whichever source mode it is in. Both sources are known at build
+-///       time, which is what lets the letters stay on the PC.
+-///       [4] src mode: 0 = inline, 1 = TEXT_DATA asset
+-///       [5] inline text   [6] asset name
+-function scr_voi64_say_source_text(_node) {
++/// @function scr_voi64_asset_line_count(_node)
++/// @desc How many lines the referenced TEXT_DATA asset holds. Drawn on the
++///       node so the range fields have something to be relative to.
++function scr_voi64_asset_line_count(_node) {
+     var _i0 = _node.instructions[0];
+     var _src = 0;
+     if (array_length(_i0) > 4 && is_real(_i0[4])) { _src = real(_i0[4]); }
++    if (_src != 1) { return 0; }
++    var _raw = scr_voi64_asset_raw_text(_node);
++    if (_raw == "") { return 0; }
++    return array_length(string_split(string_replace_all(_raw, "\r", ""), "\n"));
++}
+ 
+-    if (_src == 0) {
+-        if (array_length(_i0) > 5) { return string(_i0[5]); }
+-        return "";
+-    }
+-
++/// @function scr_voi64_asset_raw_text(_node)
++/// @desc The referenced TEXT_DATA asset's whole string, before any range is
++///       applied. Split out so the line counter and the slicer agree.
++function scr_voi64_asset_raw_text(_node) {
++    var _i0 = _node.instructions[0];
+     var _name = "";
+     if (array_length(_i0) > 6) { _name = string(_i0[6]); }
+     if (_name == "" || !instance_exists(obj_asset_manager)) { return ""; }
+@@ -153,12 +155,6 @@ function scr_voi64_say_source_text(_node) {
+         var _a = obj_asset_manager.asset_list[| _ai];
+         if (_a.name != _name) { continue; }
+         if (_a.type != "TEXT_DATA") { continue; }
+-        // meta.text is where a TEXT_DATA asset actually keeps its string —
+-        // it is what MACRO_PRINT and MACRO_SID_SOUND both read. The earlier
+-        // version guessed at a top-level .text and then at the raw buffer,
+-        // found neither, and handed back an empty string. An empty phrase
+-        // makes the SAY case emit nothing, which is why the node measured
+-        // 0 BYTES.
+         if (variable_struct_exists(_a, "meta")) {
+             if (variable_struct_exists(_a.meta, "text")) {
+                 return string(_a.meta.text);
+@@ -169,6 +165,60 @@ function scr_voi64_say_source_text(_node) {
+     return "";
+ }
+ 
++/// @function scr_voi64_say_source_text(_node)
++/// @desc Resolve a MACRO_VOI64_SAY node to the text it should speak,
++///       whichever source mode it is in. Both sources are known at build
++///       time, which is what lets the letters stay on the PC.
++///       [4] src mode: 0 = inline, 1 = TEXT_DATA asset
++///       [5] inline text   [6] asset name
++///       [11] first line   [12] last line  (1-based, inclusive; 0 = ends)
++///
++/// LINES, NOT BYTE OFFSETS
++/// MACRO_PRINT slices an asset by byte offset because it points the C64 at
++/// the asset's real address plus that offset — bytes are the only unit it
++/// could use. Voi64 never ships the asset at all; it slices the string here
++/// on the PC. Bytes would buy nothing and would happily cut a word in half,
++/// so the range is in lines: one phrase per line, and one asset becomes a
++/// phrase bank that several SAY nodes can share.
++function scr_voi64_say_source_text(_node) {
++    var _i0 = _node.instructions[0];
++    var _src = 0;
++    if (array_length(_i0) > 4 && is_real(_i0[4])) { _src = real(_i0[4]); }
++
++    if (_src == 0) {
++        if (array_length(_i0) > 5) { return string(_i0[5]); }
++        return "";
++    }
++
++    // meta.text is where a TEXT_DATA asset actually keeps its string — it is
++    // what MACRO_PRINT and MACRO_SID_SOUND both read.
++    var _raw = scr_voi64_asset_raw_text(_node);
++    if (_raw == "") { return ""; }
++
++    var _lines = string_split(string_replace_all(_raw, "\r", ""), "\n");
++    var _n     = array_length(_lines);
++
++    var _from = 0;
++    var _to   = 0;
++    if (array_length(_i0) > 11 && is_real(_i0[11])) { _from = real(_i0[11]); }
++    if (array_length(_i0) > 12 && is_real(_i0[12])) { _to   = real(_i0[12]); }
++
++    // 0 means "the end you did not specify", so the default 0/0 speaks the
++    // whole asset and neither field has to be filled in to get started.
++    if (_from <= 0) { _from = 1; }
++    if (_to   <= 0) { _to   = _n; }
++    _from = clamp(_from, 1, _n);
++    _to   = clamp(_to,   1, _n);
++    if (_to < _from) { _to = _from; }
++
++    var _out = "";
++    for (var _li = _from - 1; _li <= _to - 1; _li++) {
++        if (_out != "") { _out += " "; }
++        _out += _lines[_li];
++    }
++    return _out;
++}
++
+ /// @function scr_voi64_say_phoneme_string(_node, _master)
+ /// @desc The phoneme string a SAY node will emit, resolving TEXT vs
+ ///       PHONEME mode. Used by both the compiler and the node's own

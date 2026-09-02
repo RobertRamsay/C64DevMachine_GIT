@@ -129,12 +129,57 @@ function scr_voi64_sid_frames(_phonemes, _pitch = 120, _speed = 128, _throat = 1
     return _out;
 }
 
+/// @function scr_voi64_asset_line_count(_node)
+/// @desc How many lines the referenced TEXT_DATA asset holds. Drawn on the
+///       node so the range fields have something to be relative to.
+function scr_voi64_asset_line_count(_node) {
+    var _i0 = _node.instructions[0];
+    var _src = 0;
+    if (array_length(_i0) > 4 && is_real(_i0[4])) { _src = real(_i0[4]); }
+    if (_src != 1) { return 0; }
+    var _raw = scr_voi64_asset_raw_text(_node);
+    if (_raw == "") { return 0; }
+    return array_length(string_split(string_replace_all(_raw, "\r", ""), "\n"));
+}
+
+/// @function scr_voi64_asset_raw_text(_node)
+/// @desc The referenced TEXT_DATA asset's whole string, before any range is
+///       applied. Split out so the line counter and the slicer agree.
+function scr_voi64_asset_raw_text(_node) {
+    var _i0 = _node.instructions[0];
+    var _name = "";
+    if (array_length(_i0) > 6) { _name = string(_i0[6]); }
+    if (_name == "" || !instance_exists(obj_asset_manager)) { return ""; }
+
+    for (var _ai = 0; _ai < ds_list_size(obj_asset_manager.asset_list); _ai++) {
+        var _a = obj_asset_manager.asset_list[| _ai];
+        if (_a.name != _name) { continue; }
+        if (_a.type != "TEXT_DATA") { continue; }
+        if (variable_struct_exists(_a, "meta")) {
+            if (variable_struct_exists(_a.meta, "text")) {
+                return string(_a.meta.text);
+            }
+        }
+        return "";
+    }
+    return "";
+}
+
 /// @function scr_voi64_say_source_text(_node)
 /// @desc Resolve a MACRO_VOI64_SAY node to the text it should speak,
 ///       whichever source mode it is in. Both sources are known at build
 ///       time, which is what lets the letters stay on the PC.
 ///       [4] src mode: 0 = inline, 1 = TEXT_DATA asset
 ///       [5] inline text   [6] asset name
+///       [11] first line   [12] last line  (1-based, inclusive; 0 = ends)
+///
+/// LINES, NOT BYTE OFFSETS
+/// MACRO_PRINT slices an asset by byte offset because it points the C64 at
+/// the asset's real address plus that offset — bytes are the only unit it
+/// could use. Voi64 never ships the asset at all; it slices the string here
+/// on the PC. Bytes would buy nothing and would happily cut a word in half,
+/// so the range is in lines: one phrase per line, and one asset becomes a
+/// phrase bank that several SAY nodes can share.
 function scr_voi64_say_source_text(_node) {
     var _i0 = _node.instructions[0];
     var _src = 0;
@@ -145,28 +190,33 @@ function scr_voi64_say_source_text(_node) {
         return "";
     }
 
-    var _name = "";
-    if (array_length(_i0) > 6) { _name = string(_i0[6]); }
-    if (_name == "" || !instance_exists(obj_asset_manager)) { return ""; }
+    // meta.text is where a TEXT_DATA asset actually keeps its string — it is
+    // what MACRO_PRINT and MACRO_SID_SOUND both read.
+    var _raw = scr_voi64_asset_raw_text(_node);
+    if (_raw == "") { return ""; }
 
-    for (var _ai = 0; _ai < ds_list_size(obj_asset_manager.asset_list); _ai++) {
-        var _a = obj_asset_manager.asset_list[| _ai];
-        if (_a.name != _name) { continue; }
-        if (_a.type != "TEXT_DATA") { continue; }
-        // meta.text is where a TEXT_DATA asset actually keeps its string —
-        // it is what MACRO_PRINT and MACRO_SID_SOUND both read. The earlier
-        // version guessed at a top-level .text and then at the raw buffer,
-        // found neither, and handed back an empty string. An empty phrase
-        // makes the SAY case emit nothing, which is why the node measured
-        // 0 BYTES.
-        if (variable_struct_exists(_a, "meta")) {
-            if (variable_struct_exists(_a.meta, "text")) {
-                return string(_a.meta.text);
-            }
-        }
-        return "";
+    var _lines = string_split(string_replace_all(_raw, "\r", ""), "\n");
+    var _n     = array_length(_lines);
+
+    var _from = 0;
+    var _to   = 0;
+    if (array_length(_i0) > 11 && is_real(_i0[11])) { _from = real(_i0[11]); }
+    if (array_length(_i0) > 12 && is_real(_i0[12])) { _to   = real(_i0[12]); }
+
+    // 0 means "the end you did not specify", so the default 0/0 speaks the
+    // whole asset and neither field has to be filled in to get started.
+    if (_from <= 0) { _from = 1; }
+    if (_to   <= 0) { _to   = _n; }
+    _from = clamp(_from, 1, _n);
+    _to   = clamp(_to,   1, _n);
+    if (_to < _from) { _to = _from; }
+
+    var _out = "";
+    for (var _li = _from - 1; _li <= _to - 1; _li++) {
+        if (_out != "") { _out += " "; }
+        _out += _lines[_li];
     }
-    return "";
+    return _out;
 }
 
 /// @function scr_voi64_say_phoneme_string(_node, _master)
