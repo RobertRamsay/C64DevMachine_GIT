@@ -117,13 +117,13 @@ function scr_node_draw_macro_voi64_say(_draw_x, _y) {
     var _bx1 = _draw_x + 8;
     var _by1 = _ly + 1;
     var _bx2 = _draw_x + width - 8;
-    var _by2 = _by1 + 13;
+    var _by2 = _by1 + 12;
     var _hov = point_in_rectangle(mouse_x, mouse_y, _bx1, _by1, _bx2, _by2);
     draw_set_color(_hov ? make_color_rgb(60, 140, 90) : make_color_rgb(24, 70, 48));
     draw_rectangle(_bx1, _by1, _bx2, _by2, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text((_bx1 + _bx2) / 2, _by1 + 2, "PREVIEW VOICE");
+    draw_text((_bx1 + _bx2) / 2, _by1 -2, "PREVIEW VOICE");
     draw_set_halign(fa_left);
     _ly += _lh;
 
