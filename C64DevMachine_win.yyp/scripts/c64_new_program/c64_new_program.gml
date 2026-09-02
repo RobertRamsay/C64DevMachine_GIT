@@ -711,6 +711,18 @@ if (is_real(lab)) {
         } else if (type == "rel") {
             var _pc_next = self.base_address + self.header_size + pos + 1;
             var _off = lab - _pc_next;
+            // A 6502 relative branch reaches -128..+127. Storing anything
+            // else produces a branch to an arbitrary address that still
+            // assembles cleanly, which is about the worst failure mode an
+            // assembler has. Say so loudly rather than emitting it quietly.
+            if (_off < -128 || _off > 127) {
+                show_debug_message("ASM ERROR: branch out of range by "
+                    + string(_off) + " bytes at $"
+                    + string_upper(decimal_to_hex(_pc_next - 1))
+                    + " -> $" + string_upper(decimal_to_hex(lab))
+                    + "  (use BNE over a JMP instead)");
+                global.asm_branch_error = true;
+            }
             self.bytes[pos] = (_off < 0) ? (256 + _off) : (_off & 0xFF);
         } else {
             self.bytes[pos] = lab & 0xFF;
@@ -750,6 +762,18 @@ assemble: function() {
 		        if (f.type == "rel") {
 		            var pc_next = self.base_address + self.header_size + f.pos + 1;
 		            var off = target - pc_next;
+		            // Same range check as the immediate path above. This is
+		            // the one that fires for forward branches to a label,
+		            // which is exactly where a long branch comes from.
+		            if (off < -128 || off > 127) {
+		                show_debug_message("ASM ERROR: branch out of range by "
+		                    + string(off) + " bytes at $"
+		                    + string_upper(decimal_to_hex(pc_next - 1))
+		                    + " -> [" + string(f.label) + "] $"
+		                    + string_upper(decimal_to_hex(target))
+		                    + "  (use BNE over a JMP instead)");
+		                global.asm_branch_error = true;
+		            }
 		            self.bytes[f.pos] = (off < 0) ? (256 + off) : off;
 		        } else if (f.type == "lo") {
 		            self.bytes[f.pos] = target & 0xFF;

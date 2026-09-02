@@ -884,6 +884,10 @@ global.hw_picker_categories = [
 
 // Tracking variable for the two-step menu (-1 means show categories)
 global.hw_picker_active_category = -1;
+// Raised by c64_new_program when a relative branch will not reach. The
+// console line names the site; this flag exists so a build can be failed
+// on it later rather than shipping a program that jumps into nowhere.
+global.asm_branch_error = false;
 
 // Start positioning comments below the header
 

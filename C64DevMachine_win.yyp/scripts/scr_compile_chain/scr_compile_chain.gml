@@ -7705,7 +7705,14 @@ case "MACRO_VOI64_MASTER": {
         array_push(_list, ["ldy_imm", 7,    _id]);
         array_push(_list, ["lda_izy", _zp,  _id]);
         array_push(_list, ["cmp_imm", 0xFF, _id]);
-        array_push(_list, ["beq",     "voi64_done", _id]);
+        // bne-over-jmp, not "beq voi64_done". The exit is ~385 bytes ahead
+        // of this test and a 6502 relative branch only reaches -128..+127,
+        // so the direct branch wrapped and landed below the program. Any
+        // branch that has to cross the whole player body has to go through
+        // an absolute jmp.
+        array_push(_list, ["bne",     "voi64_go", _id]);
+        array_push(_list, ["jmp_abs", "voi64_done", _id]);
+        array_push(_list, ["label",   "voi64_go"]);
 
         // Frequencies: F1 -> V1, F2 -> V2, pitch-or-noise -> V3.
         array_push(_list, ["ldy_imm", 0,    _id]);

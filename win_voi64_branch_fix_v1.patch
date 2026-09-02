@@ -1,0 +1,90 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index d4f9209..cba9f8a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -884,6 +884,10 @@ global.hw_picker_categories = [
+ 
+ // Tracking variable for the two-step menu (-1 means show categories)
+ global.hw_picker_active_category = -1;
++// Raised by c64_new_program when a relative branch will not reach. The
++// console line names the site; this flag exists so a build can be failed
++// on it later rather than shipping a program that jumps into nowhere.
++global.asm_branch_error = false;
+ 
+ // Start positioning comments below the header
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/c64_new_program/c64_new_program.gml b/C64DevMachine_win.yyp/scripts/c64_new_program/c64_new_program.gml
+index f1f3011..0c32d70 100644
+--- a/C64DevMachine_win.yyp/scripts/c64_new_program/c64_new_program.gml
++++ b/C64DevMachine_win.yyp/scripts/c64_new_program/c64_new_program.gml
+@@ -711,6 +711,18 @@ if (is_real(lab)) {
+         } else if (type == "rel") {
+             var _pc_next = self.base_address + self.header_size + pos + 1;
+             var _off = lab - _pc_next;
++            // A 6502 relative branch reaches -128..+127. Storing anything
++            // else produces a branch to an arbitrary address that still
++            // assembles cleanly, which is about the worst failure mode an
++            // assembler has. Say so loudly rather than emitting it quietly.
++            if (_off < -128 || _off > 127) {
++                show_debug_message("ASM ERROR: branch out of range by "
++                    + string(_off) + " bytes at $"
++                    + string_upper(decimal_to_hex(_pc_next - 1))
++                    + " -> $" + string_upper(decimal_to_hex(lab))
++                    + "  (use BNE over a JMP instead)");
++                global.asm_branch_error = true;
++            }
+             self.bytes[pos] = (_off < 0) ? (256 + _off) : (_off & 0xFF);
+         } else {
+             self.bytes[pos] = lab & 0xFF;
+@@ -750,6 +762,18 @@ assemble: function() {
+ 		        if (f.type == "rel") {
+ 		            var pc_next = self.base_address + self.header_size + f.pos + 1;
+ 		            var off = target - pc_next;
++		            // Same range check as the immediate path above. This is
++		            // the one that fires for forward branches to a label,
++		            // which is exactly where a long branch comes from.
++		            if (off < -128 || off > 127) {
++		                show_debug_message("ASM ERROR: branch out of range by "
++		                    + string(off) + " bytes at $"
++		                    + string_upper(decimal_to_hex(pc_next - 1))
++		                    + " -> [" + string(f.label) + "] $"
++		                    + string_upper(decimal_to_hex(target))
++		                    + "  (use BNE over a JMP instead)");
++		                global.asm_branch_error = true;
++		            }
+ 		            self.bytes[f.pos] = (off < 0) ? (256 + off) : off;
+ 		        } else if (f.type == "lo") {
+ 		            self.bytes[f.pos] = target & 0xFF;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index b6ea8b1..63685c6 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -7705,7 +7705,14 @@ case "MACRO_VOI64_MASTER": {
+         array_push(_list, ["ldy_imm", 7,    _id]);
+         array_push(_list, ["lda_izy", _zp,  _id]);
+         array_push(_list, ["cmp_imm", 0xFF, _id]);
+-        array_push(_list, ["beq",     "voi64_done", _id]);
++        // bne-over-jmp, not "beq voi64_done". The exit is ~385 bytes ahead
++        // of this test and a 6502 relative branch only reaches -128..+127,
++        // so the direct branch wrapped and landed below the program. Any
++        // branch that has to cross the whole player body has to go through
++        // an absolute jmp.
++        array_push(_list, ["bne",     "voi64_go", _id]);
++        array_push(_list, ["jmp_abs", "voi64_done", _id]);
++        array_push(_list, ["label",   "voi64_go"]);
+ 
+         // Frequencies: F1 -> V1, F2 -> V2, pitch-or-noise -> V3.
+         array_push(_list, ["ldy_imm", 0,    _id]);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_render/scr_voi64_render.gml b/C64DevMachine_win.yyp/scripts/scr_voi64_render/scr_voi64_render.gml
+index 69b627b..e22fc6a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_voi64_render/scr_voi64_render.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_render/scr_voi64_render.gml
+@@ -86,7 +86,7 @@ function scr_voi64_frame_params(_ph, _blend_to, _t) {
+ function scr_voi64_build_frames(_phonemes, _speed = 128) {
+     var _names = string_split(string_upper(string(_phonemes)), " ", true);
+     if (array_length(_names) == 0) { return []; }
+-    var _speed_mul = 0.5 + (clamp(_speed, 0, 255) / 255) * 1.5;
++    var _speed_mul = 0.5 + (clamp(_speed, 0, 255) / 255);
+     // ── build the frame list ──────────────────────────────────
+     // Frames are resolved before any audio is generated so the buffer can
+     // be allocated once at the right size. buffer_grow on tens of

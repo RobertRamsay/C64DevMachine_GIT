@@ -86,7 +86,7 @@ function scr_voi64_frame_params(_ph, _blend_to, _t) {
 function scr_voi64_build_frames(_phonemes, _speed = 128) {
     var _names = string_split(string_upper(string(_phonemes)), " ", true);
     if (array_length(_names) == 0) { return []; }
-    var _speed_mul = 0.5 + (clamp(_speed, 0, 255) / 255) * 1.5;
+    var _speed_mul = 0.5 + (clamp(_speed, 0, 255) / 255);
     // ── build the frame list ──────────────────────────────────
     // Frames are resolved before any audio is generated so the buffer can
     // be allocated once at the right size. buffer_grow on tens of
