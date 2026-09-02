@@ -104,26 +104,52 @@ function scr_node_draw_macro_voi64_say(_draw_x, _y) {
         if (array_length(_ins) > 12 && is_real(_ins[12])) { _lt = real(_ins[12]); }
         var _lc = scr_voi64_asset_line_count(id);
 
-        draw_set_color(_c_lbl); draw_text(_px, _ly, "LINE FROM:");
-        if (_lf <= 0) {
-            draw_set_color(_c_dim); draw_text(_px + 78, _ly, "1 (START)");
-        } else {
-            draw_set_color(_c_val); draw_text(_px + 78, _ly, string(_lf));
-        }
-        _ly += _lh;
+        var _fmode = 0;
+        var _tmode = 0;
+        var _fvar  = "";
+        var _tvar  = "";
+        if (array_length(_ins) > 13 && is_real(_ins[13])) { _fmode = real(_ins[13]); }
+        if (array_length(_ins) > 14) { _fvar = string(_ins[14]); }
+        if (array_length(_ins) > 15 && is_real(_ins[15])) { _tmode = real(_ins[15]); }
+        if (array_length(_ins) > 16) { _tvar = string(_ins[16]); }
 
-        draw_set_color(_c_lbl); draw_text(_px, _ly, "LINE TO:");
-        if (_lt <= 0) {
-            draw_set_color(_c_dim);
-            if (_lc > 0) {
-                draw_text(_px + 78, _ly, string(_lc) + " (END)");
+        // VAR / LIT button on the right of each row, same shape as the one
+        // on MACRO_SID_SOUND's index row.
+        var _vbw = 30;
+        var _vbx = _draw_x + width - 8 - _vbw;
+
+        var _rows = [
+            { lab: "LINE FROM:", mode: _fmode, vname: _fvar, lit: _lf, dflt: "1 (START)" },
+            { lab: "LINE TO:",   mode: _tmode, vname: _tvar, lit: _lt,
+              dflt: (_lc > 0) ? (string(_lc) + " (END)") : "END" }
+        ];
+        for (var _ri = 0; _ri < 2; _ri++) {
+            var _rw = _rows[_ri];
+            draw_set_color(_c_lbl); draw_text(_px, _ly, _rw.lab);
+            if (_rw.mode == 1) {
+                if (_rw.vname == "") {
+                    draw_set_color(make_color_rgb(220, 110, 90));
+                    draw_text(_px + 78, _ly, "<PICK VAR>");
+                } else if (scr_resolve_var_addr(_rw.vname) == 0) {
+                    draw_set_color(make_color_rgb(220, 110, 90));
+                    draw_text(_px + 78, _ly, _rw.vname + " ?");
+                } else {
+                    draw_set_color(make_color_rgb(180, 230, 140));
+                    draw_text(_px + 78, _ly, _rw.vname);
+                }
+            } else if (_rw.lit <= 0) {
+                draw_set_color(_c_dim); draw_text(_px + 78, _ly, _rw.dflt);
             } else {
-                draw_text(_px + 78, _ly, "END");
+                draw_set_color(_c_val); draw_text(_px + 78, _ly, string(_rw.lit));
             }
-        } else {
-            draw_set_color(_c_val); draw_text(_px + 78, _ly, string(_lt));
+            draw_set_color((_rw.mode == 1) ? make_color_rgb(60, 110, 60) : make_color_rgb(40, 40, 55));
+            draw_rectangle(_vbx, _ly + 1, _vbx + _vbw, _ly + 11, false);
+            draw_set_color(c_white);
+            draw_set_halign(fa_center);
+            draw_text(_vbx + (_vbw / 2), _ly - 1, (_rw.mode == 1) ? "VAR" : "LIT");
+            draw_set_halign(fa_left);
+            _ly += _lh;
         }
-        _ly += _lh;
     }
 
     // Per-say voice overrides. A dash means "inherit from the master",

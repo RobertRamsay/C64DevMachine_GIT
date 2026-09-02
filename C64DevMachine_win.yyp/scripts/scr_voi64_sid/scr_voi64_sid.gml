@@ -142,6 +142,58 @@ function scr_voi64_asset_line_count(_node) {
     return array_length(string_split(string_replace_all(_raw, "\r", ""), "\n"));
 }
 
+/// @function scr_voi64_asset_lines(_node)
+/// @desc The referenced asset split into lines, blanks dropped. One phrase
+///       per line is the whole convention, so an empty line would compile
+///       to an empty frame block and shift every index after it.
+function scr_voi64_asset_lines(_node) {
+    var _raw = scr_voi64_asset_raw_text(_node);
+    if (_raw == "") { return []; }
+    var _all = string_split(string_replace_all(_raw, "\r", ""), "\n");
+    var _out = [];
+    for (var _i = 0; _i < array_length(_all); _i++) {
+        if (string_trim(_all[_i]) != "") { array_push(_out, _all[_i]); }
+    }
+    return _out;
+}
+
+/// @function scr_voi64_say_is_var_range(_node)
+/// @desc Is either end of the line range driven by a variable? If so the
+///       whole asset has to be compiled, because the range is not known
+///       until the program runs.
+///       [13] from mode (0 = literal, 1 = var)   [14] from var name
+///       [15] to mode                            [16] to var name
+function scr_voi64_say_is_var_range(_node) {
+    var _i0 = _node.instructions[0];
+    var _src = 0;
+    if (array_length(_i0) > 4 && is_real(_i0[4])) { _src = real(_i0[4]); }
+    if (_src != 1) { return false; }
+    if (array_length(_i0) > 13 && is_real(_i0[13]) && real(_i0[13]) == 1) { return true; }
+    if (array_length(_i0) > 15 && is_real(_i0[15]) && real(_i0[15]) == 1) { return true; }
+    return false;
+}
+
+/// @function scr_voi64_range_src(_node, _which)
+/// @desc Where one end of the range comes from. _which 0 = FROM, 1 = TO.
+/// @return {struct} { is_var, addr, lit, name }
+function scr_voi64_range_src(_node, _which) {
+    var _i0 = _node.instructions[0];
+    var _mode_i = (_which == 0) ? 13 : 15;
+    var _var_i  = (_which == 0) ? 14 : 16;
+    var _lit_i  = (_which == 0) ? 11 : 12;
+
+    var _r = { is_var: false, addr: 0, lit: 0, name: "" };
+    if (array_length(_i0) > _lit_i && is_real(_i0[_lit_i])) { _r.lit = real(_i0[_lit_i]); }
+    if (array_length(_i0) > _mode_i && is_real(_i0[_mode_i]) && real(_i0[_mode_i]) == 1) {
+        if (array_length(_i0) > _var_i) { _r.name = string(_i0[_var_i]); }
+        _r.addr   = scr_resolve_var_addr(_r.name);
+        // An unresolved name would compile to "lda $0000", so fall back to
+        // the literal and let the node show the problem instead.
+        _r.is_var = (_r.addr != 0);
+    }
+    return _r;
+}
+
 /// @function scr_voi64_asset_raw_text(_node)
 /// @desc The referenced TEXT_DATA asset's whole string, before any range is
 ///       applied. Split out so the line counter and the slicer agree.

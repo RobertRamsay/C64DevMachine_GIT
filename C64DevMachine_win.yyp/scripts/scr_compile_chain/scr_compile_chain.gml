@@ -7668,6 +7668,11 @@ case "MACRO_VOI64_MASTER": {
     var _c1  = (_zp + 3) & 0xFF;
     var _c2  = (_zp + 4) & 0xFF;
     var _c3  = (_zp + 5) & 0xFF;
+    // Range-loop state. Shared rather than per-node because the player
+    // blocks: only one SAY can ever be mid-utterance.
+    var _rcur = (_zp + 6) & 0xFF;
+    var _rend = (_zp + 7) & 0xFF;
+    var _rtmp = (_zp + 8) & 0xFF;
 
     // ── SID setup. Runs in the spine, once. ──────────────────────────
     // AD = 0 on all three voices: instant attack, no decay, so the level
@@ -7884,13 +7889,136 @@ case "MACRO_VOI64_SAY": {
         break;
     }
 
+    var _v  = scr_voi64_effective_voice(_id);
+
+    // ── VAR-DRIVEN LINE RANGE ────────────────────────────────────────
+    // When either end of the range comes from a variable, the range is
+    // not known until runtime, so every line of the asset is compiled to
+    // its own frame block and indexed through a pointer table. That is
+    // the only shape that works: the letters cannot reach the C64, so the
+    // frames for a line have to exist before the machine asks for it.
+    //
+    // The cost is real and worth saying out loud - a var-driven SAY pays
+    // for the WHOLE asset, not one line. The node prints the byte count.
+    if (scr_voi64_say_is_var_range(_id)) {
+        var _vlines = scr_voi64_asset_lines(_id);
+        var _vn     = array_length(_vlines);
+        if (_vn == 0) {
+            show_debug_message("VOI64 SAY#" + string(_id) + ": asset empty - nothing emitted");
+            break;
+        }
+        if (_vn > 255) {
+            show_debug_message("VOI64 SAY#" + string(_id) + ": asset has " + string(_vn)
+                + " lines; only the first 255 are addressable by a byte var");
+            _vn = 255;
+        }
+
+        var _vp = "voi64v" + string(real(_id)) + "_";
+        array_push(_list, ["jmp_abs", _vp + "skip", _id]);
+
+        // One frame block per line, each with its own terminator so the
+        // player stops at the end of the line it was pointed at.
+        for (var _li = 0; _li < _vn; _li++) {
+            var _lph = scr_voi64_text_to_phonemes(_vlines[_li]);
+            var _lfr = scr_voi64_sid_frames(_lph, _v.pitch, _v.speed, _v.throat, _v.mouth);
+            array_push(_list, ["label", _vp + "l" + string(_li)]);
+            for (var _fi = 0; _fi < array_length(_lfr); _fi++) {
+                var _lf = _lfr[_fi];
+                for (var _bi = 0; _bi < 8; _bi++) {
+                    array_push(_list, ["byte", _lf[_bi], _id]);
+                }
+            }
+            for (var _ti = 0; _ti < 7; _ti++) { array_push(_list, ["byte", 0x00, _id]); }
+            array_push(_list, ["byte", 0xFF, _id]);
+        }
+
+        // Split lo/hi tables: one indexed load each, no multiply.
+        array_push(_list, ["label", _vp + "tlo"]);
+        for (var _li = 0; _li < _vn; _li++) {
+            array_push(_list, ["byte_lab_lo", _vp + "l" + string(_li), _id]);
+        }
+        array_push(_list, ["label", _vp + "thi"]);
+        for (var _li = 0; _li < _vn; _li++) {
+            array_push(_list, ["byte_lab_hi", _vp + "l" + string(_li), _id]);
+        }
+        array_push(_list, ["label", _vp + "skip"]);
+
+        // Timer period, same as the static path.
+        var _vper = scr_voi64_sid_timer_period(_v.pitch);
+        array_push(_list, ["lda_imm", _vper & 0xFF,        _id]);
+        array_push(_list, ["sta_abs", 0xDD04,              _id]);
+        array_push(_list, ["lda_imm", (_vper >> 8) & 0xFF, _id]);
+        array_push(_list, ["sta_abs", 0xDD05,              _id]);
+        array_push(_list, ["lda_imm", 0x11,                _id]);
+        array_push(_list, ["sta_abs", 0xDD0E,              _id]);
+
+        // FROM into the cursor, either an immediate or a byte var.
+        var _fm = scr_voi64_range_src(_id, 0);
+        if (_fm.is_var) {
+            array_push(_list, ["lda_abs", _fm.addr, _id]);
+        } else {
+            array_push(_list, ["lda_imm", _fm.lit & 0xFF, _id]);
+        }
+        array_push(_list, ["sta_zp", _rcur, _id]);
+
+        var _tm = scr_voi64_range_src(_id, 1);
+        if (_tm.is_var) {
+            array_push(_list, ["lda_abs", _tm.addr, _id]);
+        } else {
+            array_push(_list, ["lda_imm", _tm.lit & 0xFF, _id]);
+        }
+        array_push(_list, ["sta_zp", _rend, _id]);
+
+        // Clamp. 0 keeps meaning "the end you did not specify", and an
+        // out-of-range var must not index past the table into whatever
+        // follows it in memory.
+        array_push(_list, ["lda_zp",  _rcur, _id]);
+        array_push(_list, ["bne",     _vp + "cok", _id]);
+        array_push(_list, ["lda_imm", 1, _id]);
+        array_push(_list, ["sta_zp",  _rcur, _id]);
+        array_push(_list, ["label",   _vp + "cok"]);
+        array_push(_list, ["lda_zp",  _rend, _id]);
+        array_push(_list, ["bne",     _vp + "eok", _id]);
+        array_push(_list, ["lda_imm", _vn, _id]);
+        array_push(_list, ["sta_zp",  _rend, _id]);
+        array_push(_list, ["label",   _vp + "eok"]);
+        if (_vn < 255) {
+            array_push(_list, ["lda_zp",  _rend, _id]);
+            array_push(_list, ["cmp_imm", _vn + 1, _id]);
+            array_push(_list, ["bcc",     _vp + "eok2", _id]);
+            array_push(_list, ["lda_imm", _vn, _id]);
+            array_push(_list, ["sta_zp",  _rend, _id]);
+            array_push(_list, ["label",   _vp + "eok2"]);
+        }
+
+        // for cur = from to end: play line cur
+        array_push(_list, ["label",   _vp + "loop"]);
+        array_push(_list, ["lda_zp",  _rcur, _id]);
+        array_push(_list, ["cmp_zp",  _rend, _id]);
+        array_push(_list, ["bcc",     _vp + "go", _id]);
+        array_push(_list, ["beq",     _vp + "go", _id]);
+        array_push(_list, ["jmp_abs", _vp + "done", _id]);
+        array_push(_list, ["label",   _vp + "go"]);
+        array_push(_list, ["ldy_zp",  _rcur, _id]);
+        array_push(_list, ["dey",     0,     _id]);          // 1-based -> table index
+        array_push(_list, ["lda_aby", _vp + "tlo", _id]);
+        array_push(_list, ["sta_zp",  _rtmp, _id]);
+        array_push(_list, ["lda_aby", _vp + "thi", _id]);
+        array_push(_list, ["tax",     0,     _id]);
+        array_push(_list, ["lda_zp",  _rtmp, _id]);
+        array_push(_list, ["jsr",     "voi64_play", _id]);
+        array_push(_list, ["inc_zp",  _rcur, _id]);
+        array_push(_list, ["jmp_abs", _vp + "loop", _id]);
+        array_push(_list, ["label",   _vp + "done"]);
+        break;
+    }
+
     var _phon = scr_voi64_say_phoneme_string(_id);
     if (string_trim(_phon) == "") {
         show_debug_message("VOI64 SAY#" + string(_id) + ": nothing to say");
         break;
     }
 
-    var _v  = scr_voi64_effective_voice(_id);
     var _fr = scr_voi64_sid_frames(_phon, _v.pitch, _v.speed, _v.throat, _v.mouth);
     if (array_length(_fr) == 0) {
         break;

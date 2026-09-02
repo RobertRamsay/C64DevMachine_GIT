@@ -123,16 +123,62 @@ function scr_node_step_macro_voi64_say(_draw_x) {
         _srcm = real(instructions[0][4]);
     }
     if (_srcm == 1) {
+        var _vbw = 30;
+        var _vbx = _draw_x + width - 8 - _vbw;
         for (var _r = 0; _r < 2; _r++) {
-            if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _x2, _fy + 12)) {
-                var _ri = 11 + _r;
-                while (array_length(instructions[0]) <= _ri) { array_push(instructions[0], 0); }
+            var _mi = 13 + (_r * 2);          // 13 = FROM mode, 15 = TO mode
+            var _vi = 14 + (_r * 2);          // 14 = FROM var,  16 = TO var
+            var _li = 11 + _r;                // 11 = FROM lit,  12 = TO lit
+            while (array_length(instructions[0]) <= 16) {
+                var _pn = array_length(instructions[0]);
+                if (_pn == 14 || _pn == 16) {
+                    array_push(instructions[0], "");
+                } else {
+                    array_push(instructions[0], 0);
+                }
+            }
+
+            // VAR / LIT toggle
+            if (point_in_rectangle(mouse_x, mouse_y, _vbx, _fy + 1, _vbx + _vbw, _fy + 11)) {
+                var _cm = 0;
+                if (is_real(instructions[0][_mi])) { _cm = real(instructions[0][_mi]); }
+                if (_cm == 1) {
+                    instructions[0][_mi] = 0;
+                    instructions[0][_vi] = "";
+                } else {
+                    instructions[0][_mi] = 1;
+                }
+                global.addresses_dirty = true;
+                global.undo_dirty      = true;
+                exit;
+            }
+
+            // Value: picker in VAR mode, numeric entry in LIT mode.
+            if (point_in_rectangle(mouse_x, mouse_y, _x1, _fy, _vbx - 2, _fy + 12)) {
+                var _m2 = 0;
+                if (is_real(instructions[0][_mi])) { _m2 = real(instructions[0][_mi]); }
+                if (_m2 == 1) {
+                    label_picker_open       = true;
+                    global.any_picker_open  = true;
+                    label_picker_prev_depth = depth;
+                    depth                   = -9999;
+                    label_picker_mode       = "VAR";
+                    label_picker_tab        = "UV";
+                    label_picker_scroll     = 0;
+                    label_picker_list       = [];
+                    label_picker_target     = id;
+                    label_picker_index      = _vi;
+                    // Line numbers are byte values, so only byte vars are
+                    // offered - a word var would silently use its low byte.
+                    label_picker_byte_only  = true;
+                    exit;
+                }
                 var _rv = 0;
-                if (is_real(instructions[0][_ri])) { _rv = real(instructions[0][_ri]); }
+                if (is_real(instructions[0][_li])) { _rv = real(instructions[0][_li]); }
                 with (obj_workspace_manager) {
                     is_entering_text     = true;
                     input_target_node    = other.id;
-                    input_target_index   = _ri;
+                    input_target_index   = _li;
                     if (_rv <= 0) {
                         current_input_string = "";
                     } else {
