@@ -1,0 +1,293 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 63685c6..d6fe594 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -7662,6 +7662,12 @@ case "MACRO_VOI64_MASTER": {
+     var _zp = 0xFB;
+     if (array_length(_i0) > 5 && is_real(_i0[5])) { _zp = real(_i0[5]) & 0xFF; }
+     var _zpf = (_zp + 2) & 0xFF;
++    // Three control-register shadows. The player writes each voice's
++    // control byte twice a frame - once with the gate cleared, once with
++    // it set - and needs somewhere to keep the value between the two.
++    var _c1  = (_zp + 3) & 0xFF;
++    var _c2  = (_zp + 4) & 0xFF;
++    var _c3  = (_zp + 5) & 0xFF;
+ 
+     // ── SID setup. Runs in the spine, once. ──────────────────────────
+     // AD = 0 on all three voices: instant attack, no decay, so the level
+@@ -7686,6 +7692,12 @@ case "MACRO_VOI64_MASTER": {
+     array_push(_list, ["lda_imm", 0x0F,   _id]);
+     array_push(_list, ["sta_abs", 0xD418, _id]);
+ 
++    // CIA2 Timer A is the frame clock, and the frame rate is the glottal
++    // pitch. Mask every CIA2 interrupt source first: the player POLLS the
++    // underflow flag, and an unmasked timer here would fire an NMI.
++    array_push(_list, ["lda_imm", 0x7F,   _id]);
++    array_push(_list, ["sta_abs", 0xDD0D, _id]);
++
+     // ── The player, emitted once and jumped over ─────────────────────
+     if (!global.voi64_player_emitted) {
+         global.voi64_player_emitted = true;
+@@ -7696,24 +7708,60 @@ case "MACRO_VOI64_MASTER": {
+         // CPU until the utterance ends. v1 is deliberately blocking so it
+         // cannot fight a MACRO_IRQ setup; an IRQ-driven mode is a later
+         // MODE on this same node, not a rewrite.
++        // ── voi64_play ───────────────────────────────────────────────
++        // A = frame data lo, X = hi. Blocking.
++        //
++        // ZP map from the node's base: +0/+1 frame pointer, +2 flags,
++        // +3/+4/+5 the three control-register shadows.
++        //
++        // WHY THE GATE IS RETRIGGERED EVERY FRAME
++        // The first build set the gate once and varied SUSTAIN per frame.
++        // That does not work: a SID envelope in the sustain phase follows
++        // the sustain register DOWNWARD only. Raising sustain after the
++        // decay has finished does nothing without a new attack. The
++        // leading silence of the first phoneme drove the envelope to zero
++        // and it stayed there — one click on the opening attack, then
++        // nothing, for the whole utterance.
++        //
++        // Retriggering also buys the thing the first version was missing.
++        // Frames now run at the GLOTTAL PITCH off a CIA timer rather than
++        // at 50Hz off the raster, so the attack-decay burst at the start
++        // of every frame IS the glottal pulse. Pitch and the parameter
++        // clock are the same clock, which is what a formant synthesiser
++        // actually wants.
+         array_push(_list, ["label",   "voi64_play"]);
+-        array_push(_list, ["sta_zp",  _zp,           _id]);
++        array_push(_list, ["sta_zp",  _zp,              _id]);
+         array_push(_list, ["stx_zp",  (_zp + 1) & 0xFF, _id]);
++        // Shadows start clear so the first frame's gate-off writes a
++        // harmless zero rather than whatever was in page zero.
++        array_push(_list, ["lda_imm", 0x00, _id]);
++        array_push(_list, ["sta_zp",  _c1,  _id]);
++        array_push(_list, ["sta_zp",  _c2,  _id]);
++        array_push(_list, ["sta_zp",  _c3,  _id]);
+ 
+         array_push(_list, ["label",   "voi64_frame"]);
+-        // Terminator check first: byte 7 == $FF ends the stream.
+         array_push(_list, ["ldy_imm", 7,    _id]);
+         array_push(_list, ["lda_izy", _zp,  _id]);
+         array_push(_list, ["cmp_imm", 0xFF, _id]);
+-        // bne-over-jmp, not "beq voi64_done". The exit is ~385 bytes ahead
+-        // of this test and a 6502 relative branch only reaches -128..+127,
+-        // so the direct branch wrapped and landed below the program. Any
+-        // branch that has to cross the whole player body has to go through
+-        // an absolute jmp.
++        // bne over a jmp: the exit is far past a relative branch's reach.
+         array_push(_list, ["bne",     "voi64_go", _id]);
+         array_push(_list, ["jmp_abs", "voi64_done", _id]);
+         array_push(_list, ["label",   "voi64_go"]);
+ 
++        // Gate OFF first, from last frame's shadows, so the envelopes are
++        // in release for the whole parameter write below. Doing it here
++        // rather than immediately before the gate-on gives the ADSR a wide
++        // window to see the edge instead of a handful of cycles.
++        array_push(_list, ["lda_zp",  _c1,  _id]);
++        array_push(_list, ["and_imm", 0xFE, _id]);
++        array_push(_list, ["sta_abs", 0xD404, _id]);
++        array_push(_list, ["lda_zp",  _c2,  _id]);
++        array_push(_list, ["and_imm", 0xFE, _id]);
++        array_push(_list, ["sta_abs", 0xD40B, _id]);
++        array_push(_list, ["lda_zp",  _c3,  _id]);
++        array_push(_list, ["and_imm", 0xFE, _id]);
++        array_push(_list, ["sta_abs", 0xD412, _id]);
++
+         // Frequencies: F1 -> V1, F2 -> V2, pitch-or-noise -> V3.
+         array_push(_list, ["ldy_imm", 0,    _id]);
+         array_push(_list, ["lda_izy", _zp,  _id]);
+@@ -7734,33 +7782,30 @@ case "MACRO_VOI64_MASTER": {
+         array_push(_list, ["lda_izy", _zp,  _id]);
+         array_push(_list, ["sta_abs", 0xD40F, _id]);
+ 
+-        // Byte 6 = (a1 << 4) | a2. The sustain nibble IS the amplitude,
+-        // which is why the phoneme table stores amplitudes 0-15.
++        // Byte 6 = (a1 << 4) | a2 -> the two sustain nibbles.
+         array_push(_list, ["iny",     0,    _id]);
+         array_push(_list, ["lda_izy", _zp,  _id]);
+         array_push(_list, ["pha",     0,    _id]);
+         array_push(_list, ["and_imm", 0xF0, _id]);
+-        array_push(_list, ["sta_abs", 0xD406, _id]);   // V1 sustain = a1
++        array_push(_list, ["sta_abs", 0xD406, _id]);
+         array_push(_list, ["pla",     0,    _id]);
+         array_push(_list, ["asl_a",   0,    _id]);
+         array_push(_list, ["asl_a",   0,    _id]);
+         array_push(_list, ["asl_a",   0,    _id]);
+         array_push(_list, ["asl_a",   0,    _id]);
+-        array_push(_list, ["sta_abs", 0xD40D, _id]);   // V2 sustain = a2
++        array_push(_list, ["sta_abs", 0xD40D, _id]);
+ 
+         // Byte 7 = (a3 << 4) | flags.
+         array_push(_list, ["iny",     0,    _id]);
+         array_push(_list, ["lda_izy", _zp,  _id]);
+         array_push(_list, ["pha",     0,    _id]);
+         array_push(_list, ["and_imm", 0xF0, _id]);
+-        array_push(_list, ["sta_abs", 0xD414, _id]);   // V3 sustain
++        array_push(_list, ["sta_abs", 0xD414, _id]);
+         array_push(_list, ["pla",     0,    _id]);
+         array_push(_list, ["and_imm", 0x0F, _id]);
+-        array_push(_list, ["sta_zp",  _zpf, _id]);     // stash flags
++        array_push(_list, ["sta_zp",  _zpf, _id]);
+ 
+-        // V1 control. Pulse + gate, plus SYNC when the frame is voiced —
+-        // that is the bit that makes F1 a pitched formant rather than a
+-        // bare tone.
++        // Build the three control bytes into the shadows.
+         array_push(_list, ["and_imm", 0x01, _id]);
+         array_push(_list, ["beq",     "voi64_nosync", _id]);
+         array_push(_list, ["lda_imm", 0x43, _id]);     // pulse + sync + gate
+@@ -7768,13 +7813,11 @@ case "MACRO_VOI64_MASTER": {
+         array_push(_list, ["label",   "voi64_nosync"]);
+         array_push(_list, ["lda_imm", 0x41, _id]);     // pulse + gate
+         array_push(_list, ["label",   "voi64_v1"]);
+-        array_push(_list, ["sta_abs", 0xD404, _id]);
++        array_push(_list, ["sta_zp",  _c1,  _id]);
+ 
+         array_push(_list, ["lda_imm", 0x41, _id]);
+-        array_push(_list, ["sta_abs", 0xD40B, _id]);   // V2 always pulse + gate
++        array_push(_list, ["sta_zp",  _c2,  _id]);
+ 
+-        // V3: noise when the frame is frication, triangle when it is the
+-        // silent pitch source.
+         array_push(_list, ["lda_zp",  _zpf, _id]);
+         array_push(_list, ["and_imm", 0x02, _id]);
+         array_push(_list, ["beq",     "voi64_v3tri", _id]);
+@@ -7783,19 +7826,25 @@ case "MACRO_VOI64_MASTER": {
+         array_push(_list, ["label",   "voi64_v3tri"]);
+         array_push(_list, ["lda_imm", 0x11, _id]);     // triangle + gate
+         array_push(_list, ["label",   "voi64_v3"]);
++        array_push(_list, ["sta_zp",  _c3,  _id]);
++
++        // Gate ON. Each voice takes a fresh attack, which is the glottal
++        // pulse for this frame.
++        array_push(_list, ["lda_zp",  _c1,  _id]);
++        array_push(_list, ["sta_abs", 0xD404, _id]);
++        array_push(_list, ["lda_zp",  _c2,  _id]);
++        array_push(_list, ["sta_abs", 0xD40B, _id]);
++        array_push(_list, ["lda_zp",  _c3,  _id]);
+         array_push(_list, ["sta_abs", 0xD412, _id]);
+ 
+-        // One PAL frame. Line 200 and not line 0: PAL has 312 lines, so
+-        // $D012 reads 0 at BOTH line 0 and line 256 and waiting on it
+-        // would fire twice a frame at uneven spacing. Lines 56-255 occur
+-        // exactly once.
+-        array_push(_list, ["lda_imm", 0xC8, _id]);
+-        array_push(_list, ["label",   "voi64_w1"]);
+-        array_push(_list, ["cmp_abs", 0xD012, _id]);
+-        array_push(_list, ["bne",     "voi64_w1", _id]);
+-        array_push(_list, ["label",   "voi64_w2"]);
+-        array_push(_list, ["cmp_abs", 0xD012, _id]);
+-        array_push(_list, ["beq",     "voi64_w2", _id]);
++        // Wait for CIA2 Timer A to underflow. The period was written by
++        // the SAY node and equals one glottal period. Reading $DD0D clears
++        // the flag; CIA2 interrupts are masked off in the master setup, so
++        // this never becomes an NMI.
++        array_push(_list, ["label",   "voi64_wait"]);
++        array_push(_list, ["lda_abs", 0xDD0D, _id]);
++        array_push(_list, ["and_imm", 0x01,   _id]);
++        array_push(_list, ["beq",     "voi64_wait", _id]);
+ 
+         // Next frame = pointer + 8.
+         array_push(_list, ["clc",     0,    _id]);
+@@ -7807,7 +7856,7 @@ case "MACRO_VOI64_MASTER": {
+         array_push(_list, ["label",   "voi64_nocarry"]);
+         array_push(_list, ["jmp_abs", "voi64_frame", _id]);
+ 
+-        // Silence everything on the way out — leaving a gate open leaves
++        // Silence on the way out, gate included — a gate left high leaves
+         // the last formant ringing under the rest of the program.
+         array_push(_list, ["label",   "voi64_done"]);
+         array_push(_list, ["lda_imm", 0x00,   _id]);
+@@ -7866,6 +7915,16 @@ case "MACRO_VOI64_SAY": {
+     array_push(_list, ["byte", 0xFF, _id]);
+     array_push(_list, ["label",   _p + "skip"]);
+ 
++    // One glottal period per frame. Written per SAY so a per-say pitch
++    // override changes the clock as well as the frame data.
++    var _per = scr_voi64_sid_timer_period(_v.pitch);
++    array_push(_list, ["lda_imm", _per & 0xFF,        _id]);
++    array_push(_list, ["sta_abs", 0xDD04,             _id]);
++    array_push(_list, ["lda_imm", (_per >> 8) & 0xFF, _id]);
++    array_push(_list, ["sta_abs", 0xDD05,             _id]);
++    array_push(_list, ["lda_imm", 0x11,               _id]);  // force load + start, continuous
++    array_push(_list, ["sta_abs", 0xDD0E,             _id]);
++
+     array_push(_list, ["lda_lab_lo", _data, _id]);
+     array_push(_list, ["ldx_lab_hi", _data, _id]);
+     array_push(_list, ["jsr",        "voi64_play", _id]);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+index d51f7ee..b978793 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+@@ -771,9 +771,10 @@
+ 	        if (_idx == 5) {
+ 	            var _vz = (string_char_at(_input, 1) == "$")
+ 	                    ? string_delete(_input, 1, 1) : _input;
+-	            // Three consecutive bytes: pointer lo/hi and a flags byte.
+-	            // $FD is the highest base that keeps all three inside page zero.
+-	            _target.instructions[0][5] = clamp(hex_to_decimal(_vz), 0x02, 0xFD);
++	            // Six consecutive bytes: pointer lo/hi, flags, and three
++	            // control-register shadows. $FA is the highest base that
++	            // keeps all six inside page zero.
++	            _target.instructions[0][5] = clamp(hex_to_decimal(_vz), 0x02, 0xFA);
+ 	        } else if (_idx == 1) {
+ 	            // Outside 50-400Hz it stops reading as a voice: too low and
+ 	            // the sync source cannot excite the formant once per period,
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+index 58d20cb..6b6ed26 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+@@ -47,7 +47,7 @@ function scr_node_draw_macro_voi64_master(_draw_x, _y) {
+     var _zh = string_upper(decimal_to_hex(_zp));
+     while (string_length(_zh) < 2) { _zh = "0" + _zh; }
+     draw_set_color(_c_lbl); draw_text(_px, _ly, "ZP:");
+-    draw_set_color(_c_val); draw_text(_px + 62, _ly, "$" + _zh + " (3)");
++    draw_set_color(_c_val); draw_text(_px + 62, _ly, "$" + _zh + " (6)");
+     _ly += _lh;
+ 
+     // The player is blocking. Say it on the face of the node — a user who
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
+index a7ab956..f229fc7 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
+@@ -43,7 +43,14 @@
+ ///                               bit1 = V3 is noise
+ /// ====================================================================
+ 
+-#macro VOI64_C64_FRAME_HZ 50      // one PAL raster frame per parameter frame
++/// @function scr_voi64_sid_timer_period(_pitch)
++/// @desc CIA2 Timer A period for one glottal cycle, PAL. The timer counts
++///       down to zero inclusive, so the divisor is period+1 and the value
++///       written is one less than the cycle count.
++function scr_voi64_sid_timer_period(_pitch) {
++    var _hz = clamp(_pitch, 50, 400);
++    return clamp(round(985248 / _hz) - 1, 1, 65535);
++}
+ 
+ /// @function scr_voi64_sid_freq(_hz)
+ /// @desc Hz to a SID 16-bit frequency word, PAL.
+@@ -70,13 +77,17 @@ function scr_voi64_sid_frames(_phonemes, _pitch = 120, _speed = 128, _throat = 1
+     var _pitch_hz   = clamp(_pitch, 50, 400);
+     var _pw3        = scr_voi64_sid_freq(_pitch_hz);
+ 
+-    // The builder works at 100Hz; the player runs at one PAL frame, 50Hz.
+-    // Take every second frame rather than averaging — a formant track is
+-    // already smooth, and averaging would round off the stop bursts, which
+-    // are the shortest and most important events in the stream.
+-    var _step = 2;
+-
+-    for (var _i = 0; _i < array_length(_frames); _i += _step) {
++    // The builder works at 100Hz. The player's frame rate is the GLOTTAL
++    // PITCH, because the envelope retrigger at the top of each frame is
++    // what produces voicing — so pitch and the parameter clock have to be
++    // the same clock. Resample by nearest source frame rather than
++    // averaging: averaging rounds off the stop bursts, which are the
++    // shortest and most important events in the stream.
++    var _src_n = array_length(_frames);
++    var _out_n = max(1, round(_src_n * _pitch_hz / 100));
++
++    for (var _o = 0; _o < _out_n; _o++) {
++        var _i = clamp(floor(_o * 100 / _pitch_hz), 0, _src_n - 1);
+         var _p = _frames[_i];
+ 
+         var _voiced = (_p.vcd > 3);

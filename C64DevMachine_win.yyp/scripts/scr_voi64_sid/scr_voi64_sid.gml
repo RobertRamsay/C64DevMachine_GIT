@@ -43,7 +43,14 @@
 ///                               bit1 = V3 is noise
 /// ====================================================================
 
-#macro VOI64_C64_FRAME_HZ 50      // one PAL raster frame per parameter frame
+/// @function scr_voi64_sid_timer_period(_pitch)
+/// @desc CIA2 Timer A period for one glottal cycle, PAL. The timer counts
+///       down to zero inclusive, so the divisor is period+1 and the value
+///       written is one less than the cycle count.
+function scr_voi64_sid_timer_period(_pitch) {
+    var _hz = clamp(_pitch, 50, 400);
+    return clamp(round(985248 / _hz) - 1, 1, 65535);
+}
 
 /// @function scr_voi64_sid_freq(_hz)
 /// @desc Hz to a SID 16-bit frequency word, PAL.
@@ -70,13 +77,17 @@ function scr_voi64_sid_frames(_phonemes, _pitch = 120, _speed = 128, _throat = 1
     var _pitch_hz   = clamp(_pitch, 50, 400);
     var _pw3        = scr_voi64_sid_freq(_pitch_hz);
 
-    // The builder works at 100Hz; the player runs at one PAL frame, 50Hz.
-    // Take every second frame rather than averaging — a formant track is
-    // already smooth, and averaging would round off the stop bursts, which
-    // are the shortest and most important events in the stream.
-    var _step = 2;
+    // The builder works at 100Hz. The player's frame rate is the GLOTTAL
+    // PITCH, because the envelope retrigger at the top of each frame is
+    // what produces voicing — so pitch and the parameter clock have to be
+    // the same clock. Resample by nearest source frame rather than
+    // averaging: averaging rounds off the stop bursts, which are the
+    // shortest and most important events in the stream.
+    var _src_n = array_length(_frames);
+    var _out_n = max(1, round(_src_n * _pitch_hz / 100));
 
-    for (var _i = 0; _i < array_length(_frames); _i += _step) {
+    for (var _o = 0; _o < _out_n; _o++) {
+        var _i = clamp(floor(_o * 100 / _pitch_hz), 0, _src_n - 1);
         var _p = _frames[_i];
 
         var _voiced = (_p.vcd > 3);
