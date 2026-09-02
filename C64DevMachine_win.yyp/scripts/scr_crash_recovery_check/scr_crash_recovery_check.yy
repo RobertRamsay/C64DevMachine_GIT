@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_crash_recovery_check",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_crash_recovery_check",
+  "parent":{
+    "name":"CORE",
+    "path":"folders/SCRIPTS/CORE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

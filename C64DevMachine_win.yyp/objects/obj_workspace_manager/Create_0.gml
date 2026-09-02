@@ -8,11 +8,33 @@ exception_unhandled_handler(function(_ex) {
     show_debug_message("FATAL CRASH INTERCEPTED: " + string(_ex.message));
     show_debug_message("STACK TRACE: " + string(_ex.stacktrace));
     
-    // Attempt an emergency rescue of the user's workspace
-    if (variable_global_exists("autosave_dirty") && variable_global_exists("autosave_mode")) {
-        if (global.autosave_dirty && global.autosave_mode != 3) {
-            scr_autosave();
-            show_debug_message("Emergency autosave triggered successfully.");
+    // Rescue the workspace UNCONDITIONALLY. This used to require
+    // autosave_dirty and an autosave mode other than 3, which meant a crash
+    // with autosave switched off - or before anything had been marked dirty -
+    // wrote nothing at all. That is precisely the session you least want to
+    // lose. Wrapped so a failure in the rescue cannot mask the real error.
+    var _rescued = "";
+    try {
+        scr_autosave();
+        if (variable_global_exists("autosave_last_path")) {
+            _rescued = string(global.autosave_last_path);
+        }
+        show_debug_message("Emergency autosave triggered successfully.");
+    } catch (_e_save) {
+        show_debug_message("Emergency autosave FAILED: " + string(_e_save.message));
+    }
+
+    // Leave a marker the next launch can act on. crash_path is written ONLY
+    // here, never by a routine autosave, so its presence unambiguously means
+    // the last run died - see scr_crash_recovery_check.
+    if (_rescued != "") {
+        try {
+            ini_open("c64devmachine.ini");
+            ini_write_string("autosave", "crash_path", _rescued);
+            ini_write_string("autosave", "crash_msg",  string(_ex.message));
+            ini_close();
+        } catch (_e_mark) {
+            show_debug_message("Crash marker FAILED: " + string(_e_mark.message));
         }
     }
     
@@ -24,6 +46,9 @@ exception_unhandled_handler(function(_ex) {
 });
 
 global.question_result = "";
+// One-shot: the recovery prompt runs from Step, not here, so the room and
+// every global it might load into are fully set up first.
+recovery_checked = false;
 // Deferred RAM unlock state (used by memory bar danger zone clicks)
 global.pending_unlock_type     = "";       // "BASIC" or "KERNAL"
 global.pending_unlock_inject_x = 0;

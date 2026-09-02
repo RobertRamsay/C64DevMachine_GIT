@@ -1072,6 +1072,7 @@
     {"id":{"name":"scr_compile_chain","path":"scripts/scr_compile_chain/scr_compile_chain.yy",},},
     {"id":{"name":"scr_compile_macro_load_game","path":"scripts/scr_compile_macro_load_game/scr_compile_macro_load_game.yy",},},
     {"id":{"name":"scr_compile_macro_save_game","path":"scripts/scr_compile_macro_save_game/scr_compile_macro_save_game.yy",},},
+    {"id":{"name":"scr_crash_recovery_check","path":"scripts/scr_crash_recovery_check/scr_crash_recovery_check.yy",},},
     {"id":{"name":"scr_ctrl_held","path":"scripts/scr_ctrl_held/scr_ctrl_held.yy",},},
     {"id":{"name":"scr_define_opcodes","path":"scripts/scr_define_opcodes/scr_define_opcodes.yy",},},
     {"id":{"name":"scr_desugar_multi_labels","path":"scripts/scr_desugar_multi_labels/scr_desugar_multi_labels.yy",},},

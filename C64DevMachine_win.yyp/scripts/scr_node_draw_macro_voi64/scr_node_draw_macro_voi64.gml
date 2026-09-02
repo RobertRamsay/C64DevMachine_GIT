@@ -44,6 +44,10 @@ function scr_node_draw_macro_voi64_master(_draw_x, _y) {
     draw_set_color(_c_val); draw_text(_px + 62, _ly, string(_mouth));
     _ly += _lh;
 
+    // Show the CLAMPED base, because that is what the build uses. A node
+    // still holding $FB from before the block grew would otherwise read
+    // $FB while the emitted code used $F7.
+    _zp = clamp(_zp, 0x02, 0xF7);
     var _zh = string_upper(decimal_to_hex(_zp));
     while (string_length(_zh) < 2) { _zh = "0" + _zh; }
     draw_set_color(_c_lbl); draw_text(_px, _ly, "ZP:");

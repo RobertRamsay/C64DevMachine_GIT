@@ -1,0 +1,263 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index d4146f5..1ae8025 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1072,6 +1072,7 @@
+     {"id":{"name":"scr_compile_chain","path":"scripts/scr_compile_chain/scr_compile_chain.yy",},},
+     {"id":{"name":"scr_compile_macro_load_game","path":"scripts/scr_compile_macro_load_game/scr_compile_macro_load_game.yy",},},
+     {"id":{"name":"scr_compile_macro_save_game","path":"scripts/scr_compile_macro_save_game/scr_compile_macro_save_game.yy",},},
++    {"id":{"name":"scr_crash_recovery_check","path":"scripts/scr_crash_recovery_check/scr_crash_recovery_check.yy",},},
+     {"id":{"name":"scr_ctrl_held","path":"scripts/scr_ctrl_held/scr_ctrl_held.yy",},},
+     {"id":{"name":"scr_define_opcodes","path":"scripts/scr_define_opcodes/scr_define_opcodes.yy",},},
+     {"id":{"name":"scr_desugar_multi_labels","path":"scripts/scr_desugar_multi_labels/scr_desugar_multi_labels.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index cba9f8a..388486a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -8,11 +8,33 @@ exception_unhandled_handler(function(_ex) {
+     show_debug_message("FATAL CRASH INTERCEPTED: " + string(_ex.message));
+     show_debug_message("STACK TRACE: " + string(_ex.stacktrace));
+     
+-    // Attempt an emergency rescue of the user's workspace
+-    if (variable_global_exists("autosave_dirty") && variable_global_exists("autosave_mode")) {
+-        if (global.autosave_dirty && global.autosave_mode != 3) {
+-            scr_autosave();
+-            show_debug_message("Emergency autosave triggered successfully.");
++    // Rescue the workspace UNCONDITIONALLY. This used to require
++    // autosave_dirty and an autosave mode other than 3, which meant a crash
++    // with autosave switched off - or before anything had been marked dirty -
++    // wrote nothing at all. That is precisely the session you least want to
++    // lose. Wrapped so a failure in the rescue cannot mask the real error.
++    var _rescued = "";
++    try {
++        scr_autosave();
++        if (variable_global_exists("autosave_last_path")) {
++            _rescued = string(global.autosave_last_path);
++        }
++        show_debug_message("Emergency autosave triggered successfully.");
++    } catch (_e_save) {
++        show_debug_message("Emergency autosave FAILED: " + string(_e_save.message));
++    }
++
++    // Leave a marker the next launch can act on. crash_path is written ONLY
++    // here, never by a routine autosave, so its presence unambiguously means
++    // the last run died - see scr_crash_recovery_check.
++    if (_rescued != "") {
++        try {
++            ini_open("c64devmachine.ini");
++            ini_write_string("autosave", "crash_path", _rescued);
++            ini_write_string("autosave", "crash_msg",  string(_ex.message));
++            ini_close();
++        } catch (_e_mark) {
++            show_debug_message("Crash marker FAILED: " + string(_e_mark.message));
+         }
+     }
+     
+@@ -24,6 +46,9 @@ exception_unhandled_handler(function(_ex) {
+ });
+ 
+ global.question_result = "";
++// One-shot: the recovery prompt runs from Step, not here, so the room and
++// every global it might load into are fully set up first.
++recovery_checked = false;
+ // Deferred RAM unlock state (used by memory bar danger zone clicks)
+ global.pending_unlock_type     = "";       // "BASIC" or "KERNAL"
+ global.pending_unlock_inject_x = 0;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index b0ee8e3..e955af5 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -1,3 +1,10 @@
++// First frame only: offer back an emergency save if the last run crashed.
++// In Step rather than Create so everything the loader touches already exists.
++if (!recovery_checked) {
++    recovery_checked = true;
++    scr_crash_recovery_check();
++}
++
+ // Advance the asynchronous C64U REU upload.
+ scr_c64u_reu_step();
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 246bf4e..786e209 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -7659,17 +7659,12 @@ case "MACRO_VOI64_MASTER": {
+     var _i0 = _curr.instructions[0];
+ 
+     // [5] zp_base — two bytes for the frame pointer, one for flags.
+-    var _zp = 0xF5;
+-    if (array_length(_i0) > 5 && is_real(_i0[5])) { _zp = real(_i0[5]) & 0xFF; }
+-    // The block is NINE bytes and every offset below was masked to a byte,
+-    // so a base of $FB wrapped: ctl3 landed on $00 (the CPU port DDR) and
+-    // the range cursor on $01 (the BANKING register), which the var-driven
+-    // loop then rewrote on every iteration. That is the $01FF jam.
+-    //
+-    // Clamped here rather than only in the node's commit, because every
+-    // workspace saved before the block grew still has $FB stored in it and
+-    // would otherwise keep jamming after the default changed.
+-    _zp = clamp(_zp, 0x02, 0xF7);
++    // Nine bytes, clamped: above $F7 the block wraps and ctl3 lands on $00
++    // (the CPU port DDR) with the range cursor on $01 (the BANKING
++    // register). Clamped in the helper rather than only in the node's
++    // commit, because a workspace saved before the block grew still has
++    // $FB stored in it.
++    var _zp  = scr_voi64_zp_base();
+     var _zpf = (_zp + 2) & 0xFF;
+     // Three control-register shadows. The player writes each voice's
+     // control byte twice a frame - once with the gate cleared, once with
+@@ -7677,11 +7672,8 @@ case "MACRO_VOI64_MASTER": {
+     var _c1  = (_zp + 3) & 0xFF;
+     var _c2  = (_zp + 4) & 0xFF;
+     var _c3  = (_zp + 5) & 0xFF;
+-    // Range-loop state. Shared rather than per-node because the player
+-    // blocks: only one SAY can ever be mid-utterance.
+-    var _rcur = (_zp + 6) & 0xFF;
+-    var _rend = (_zp + 7) & 0xFF;
+-    var _rtmp = (_zp + 8) & 0xFF;
++    // +6/+7/+8 are the range loop's cursor, end and pointer temp. They
++    // belong to the SAY case, which works them out for itself.
+ 
+     // ── SID setup. Runs in the spine, once. ──────────────────────────
+     // AD = 0 on all three voices: instant attack, no decay, so the level
+@@ -7908,6 +7900,14 @@ case "MACRO_VOI64_SAY": {
+ 
+     var _v  = scr_voi64_effective_voice(_id);
+ 
++    // Read the ZP block here rather than inheriting the master case's
++    // locals — see scr_voi64_zp_base. A SAY inside an ORG block is walked
++    // as its own chain, where those locals were never assigned.
++    var _szp  = scr_voi64_zp_base();
++    var _rcur = (_szp + 6) & 0xFF;
++    var _rend = (_szp + 7) & 0xFF;
++    var _rtmp = (_szp + 8) & 0xFF;
++
+     // ── VAR-DRIVEN LINE RANGE ────────────────────────────────────────
+     // When either end of the range comes from a variable, the range is
+     // not known until runtime, so every line of the asset is compiled to
+diff --git a/C64DevMachine_win.yyp/scripts/scr_crash_recovery_check/scr_crash_recovery_check.gml b/C64DevMachine_win.yyp/scripts/scr_crash_recovery_check/scr_crash_recovery_check.gml
+new file mode 100644
+index 0000000..28882a4
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_crash_recovery_check/scr_crash_recovery_check.gml
+@@ -0,0 +1,50 @@
++/// @function scr_crash_recovery_check()
++/// @desc Once per launch: if the last session died, offer the emergency
++///       save back.
++///
++/// The crash handler in obj_workspace_manager's Create event already wrote
++/// a rescue file — but nothing ever told anyone it existed, so it sat in
++/// the autosave folder and the session was lost anyway. This is the other
++/// half of that feature.
++///
++/// [autosave] crash_path is written ONLY by the crash handler, never by a
++/// routine autosave, so its presence means "the last run ended badly" with
++/// no timestamp comparison needed. It is cleared whichever way the user
++/// answers, so a declined recovery cannot ask again on every launch.
++function scr_crash_recovery_check() {
++    ini_open("c64devmachine.ini");
++    var _path = ini_read_string("autosave", "crash_path", "");
++    var _msg  = ini_read_string("autosave", "crash_msg",  "");
++    ini_close();
++
++    if (_path == "") {
++        return;
++    }
++
++    // Clear first. If the recovery load itself crashes, the next launch
++    // must not offer the same poisoned file again and again.
++    ini_open("c64devmachine.ini");
++    ini_write_string("autosave", "crash_path", "");
++    ini_write_string("autosave", "crash_msg",  "");
++    ini_close();
++
++    if (!file_exists(_path)) {
++        show_debug_message("CRASH RECOVERY: marker pointed at a missing file - " + _path);
++        return;
++    }
++
++    var _q = "C64 Dev Machine closed unexpectedly last time.\n\n"
++           + "An emergency save was written:\n"
++           + filename_name(_path) + "\n\n";
++    if (_msg != "") {
++        _q += "Error: " + _msg + "\n\n";
++    }
++    _q += "Recover it now?";
++
++    if (show_question(_q)) {
++        scr_load_workspace_from_path(_path);
++        show_debug_message("CRASH RECOVERY: loaded " + _path);
++    } else {
++        show_debug_message("CRASH RECOVERY: declined; file kept at " + _path);
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_crash_recovery_check/scr_crash_recovery_check.yy b/C64DevMachine_win.yyp/scripts/scr_crash_recovery_check/scr_crash_recovery_check.yy
+new file mode 100644
+index 0000000..eb12fcf
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_crash_recovery_check/scr_crash_recovery_check.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_crash_recovery_check",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_crash_recovery_check",
++  "parent":{
++    "name":"CORE",
++    "path":"folders/SCRIPTS/CORE.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+index f7fbf3b..92ecd7d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_voi64/scr_node_draw_macro_voi64.gml
+@@ -44,6 +44,10 @@ function scr_node_draw_macro_voi64_master(_draw_x, _y) {
+     draw_set_color(_c_val); draw_text(_px + 62, _ly, string(_mouth));
+     _ly += _lh;
+ 
++    // Show the CLAMPED base, because that is what the build uses. A node
++    // still holding $FB from before the block grew would otherwise read
++    // $FB while the emitted code used $F7.
++    _zp = clamp(_zp, 0x02, 0xF7);
+     var _zh = string_upper(decimal_to_hex(_zp));
+     while (string_length(_zh) < 2) { _zh = "0" + _zh; }
+     draw_set_color(_c_lbl); draw_text(_px, _ly, "ZP:");
+diff --git a/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
+index 5173904..6a97a45 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_voi64_sid/scr_voi64_sid.gml
+@@ -289,6 +289,31 @@ function scr_voi64_say_phoneme_string(_node) {
+     return scr_voi64_text_to_phonemes(_txt);
+ }
+ 
++/// @function scr_voi64_zp_base()
++/// @desc The clamped zero-page base for the Voi64 block, read from the
++///       connected master.
++///
++/// WHY THIS IS NOT A LOCAL
++/// MACRO_VOI64_MASTER and MACRO_VOI64_SAY are separate cases in the compile
++/// switch, and a `var` set in one is simply not set when the other runs.
++/// The master usually runs first on the main spine so it looked fine — but
++/// an ORG block is walked as its own chain, so a SAY dropped into one ran
++/// with the master's locals never having been assigned. That is the
++/// "_rcur not set before reading it" crash.
++///
++/// It also keeps the player and the range loops agreeing on the same nine
++/// bytes even if the instance order ever differs from the spine order.
++function scr_voi64_zp_base() {
++    var _m = scr_voi64_find_master();
++    var _b = 0xF5;
++    if (instance_exists(_m)) {
++        var _mi = _m.instructions[0];
++        if (array_length(_mi) > 5 && is_real(_mi[5])) { _b = real(_mi[5]) & 0xFF; }
++    }
++    // Nine bytes: above $F7 the block wraps onto $00 and $01.
++    return clamp(_b, 0x02, 0xF7);
++}
++
+ /// @function scr_voi64_find_master()
+ /// @desc The connected MACRO_VOI64_MASTER, or noone. SAY is meaningless
+ ///       without one: the master owns the player routine and the default

@@ -1,3 +1,10 @@
+// First frame only: offer back an emergency save if the last run crashed.
+// In Step rather than Create so everything the loader touches already exists.
+if (!recovery_checked) {
+    recovery_checked = true;
+    scr_crash_recovery_check();
+}
+
 // Advance the asynchronous C64U REU upload.
 scr_c64u_reu_step();
 

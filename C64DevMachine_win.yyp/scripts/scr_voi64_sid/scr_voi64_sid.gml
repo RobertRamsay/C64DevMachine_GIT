@@ -289,6 +289,31 @@ function scr_voi64_say_phoneme_string(_node) {
     return scr_voi64_text_to_phonemes(_txt);
 }
 
+/// @function scr_voi64_zp_base()
+/// @desc The clamped zero-page base for the Voi64 block, read from the
+///       connected master.
+///
+/// WHY THIS IS NOT A LOCAL
+/// MACRO_VOI64_MASTER and MACRO_VOI64_SAY are separate cases in the compile
+/// switch, and a `var` set in one is simply not set when the other runs.
+/// The master usually runs first on the main spine so it looked fine — but
+/// an ORG block is walked as its own chain, so a SAY dropped into one ran
+/// with the master's locals never having been assigned. That is the
+/// "_rcur not set before reading it" crash.
+///
+/// It also keeps the player and the range loops agreeing on the same nine
+/// bytes even if the instance order ever differs from the spine order.
+function scr_voi64_zp_base() {
+    var _m = scr_voi64_find_master();
+    var _b = 0xF5;
+    if (instance_exists(_m)) {
+        var _mi = _m.instructions[0];
+        if (array_length(_mi) > 5 && is_real(_mi[5])) { _b = real(_mi[5]) & 0xFF; }
+    }
+    // Nine bytes: above $F7 the block wraps onto $00 and $01.
+    return clamp(_b, 0x02, 0xF7);
+}
+
 /// @function scr_voi64_find_master()
 /// @desc The connected MACRO_VOI64_MASTER, or noone. SAY is meaningless
 ///       without one: the master owns the player routine and the default

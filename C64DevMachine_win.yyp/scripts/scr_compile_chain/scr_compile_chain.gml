@@ -7659,17 +7659,12 @@ case "MACRO_VOI64_MASTER": {
     var _i0 = _curr.instructions[0];
 
     // [5] zp_base — two bytes for the frame pointer, one for flags.
-    var _zp = 0xF5;
-    if (array_length(_i0) > 5 && is_real(_i0[5])) { _zp = real(_i0[5]) & 0xFF; }
-    // The block is NINE bytes and every offset below was masked to a byte,
-    // so a base of $FB wrapped: ctl3 landed on $00 (the CPU port DDR) and
-    // the range cursor on $01 (the BANKING register), which the var-driven
-    // loop then rewrote on every iteration. That is the $01FF jam.
-    //
-    // Clamped here rather than only in the node's commit, because every
-    // workspace saved before the block grew still has $FB stored in it and
-    // would otherwise keep jamming after the default changed.
-    _zp = clamp(_zp, 0x02, 0xF7);
+    // Nine bytes, clamped: above $F7 the block wraps and ctl3 lands on $00
+    // (the CPU port DDR) with the range cursor on $01 (the BANKING
+    // register). Clamped in the helper rather than only in the node's
+    // commit, because a workspace saved before the block grew still has
+    // $FB stored in it.
+    var _zp  = scr_voi64_zp_base();
     var _zpf = (_zp + 2) & 0xFF;
     // Three control-register shadows. The player writes each voice's
     // control byte twice a frame - once with the gate cleared, once with
@@ -7677,11 +7672,8 @@ case "MACRO_VOI64_MASTER": {
     var _c1  = (_zp + 3) & 0xFF;
     var _c2  = (_zp + 4) & 0xFF;
     var _c3  = (_zp + 5) & 0xFF;
-    // Range-loop state. Shared rather than per-node because the player
-    // blocks: only one SAY can ever be mid-utterance.
-    var _rcur = (_zp + 6) & 0xFF;
-    var _rend = (_zp + 7) & 0xFF;
-    var _rtmp = (_zp + 8) & 0xFF;
+    // +6/+7/+8 are the range loop's cursor, end and pointer temp. They
+    // belong to the SAY case, which works them out for itself.
 
     // ── SID setup. Runs in the spine, once. ──────────────────────────
     // AD = 0 on all three voices: instant attack, no decay, so the level
@@ -7907,6 +7899,14 @@ case "MACRO_VOI64_SAY": {
     }
 
     var _v  = scr_voi64_effective_voice(_id);
+
+    // Read the ZP block here rather than inheriting the master case's
+    // locals — see scr_voi64_zp_base. A SAY inside an ORG block is walked
+    // as its own chain, where those locals were never assigned.
+    var _szp  = scr_voi64_zp_base();
+    var _rcur = (_szp + 6) & 0xFF;
+    var _rend = (_szp + 7) & 0xFF;
+    var _rtmp = (_szp + 8) & 0xFF;
 
     // ── VAR-DRIVEN LINE RANGE ────────────────────────────────────────
     // When either end of the range comes from a variable, the range is
