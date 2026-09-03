@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_boot_resident_ranges",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_boot_resident_ranges",
+  "parent":{
+    "name":"BITMAP_BUILDER",
+    "path":"folders/SCRIPTS/BITMAP_BUILDER.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

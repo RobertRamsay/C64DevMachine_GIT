@@ -2967,6 +2967,13 @@ show_debug_message(_pbuf_dbg2);
             }
         }
 
+        // Assets that are BAKED INTO the image. An address can belong to a
+        // LOAD_ORG asset AND to a resident one at the same time (a resident
+        // BITMAP_3 at $4000 next to a LOAD_ORG BITMAP also at $4000). When
+        // both claim a byte the resident one wins — those bytes really are
+        // in BOOT, and skipping them truncated the image.
+        var _boot_res_ranges = scr_boot_resident_ranges();
+
         // Walk p.bytes backwards, find the last byte that is NOT inside a
         // LOAD_ORG region AND is NOT trailing zero padding.
         var _true_end_idx = -1;
@@ -2978,6 +2985,14 @@ show_debug_message(_pbuf_dbg2);
                 if (_byte_addr >= _load_org_ranges[_ri].s && _byte_addr < _load_org_ranges[_ri].e) {
                     _in_load = true;
                     break;
+                }
+            }
+            if (_in_load) {
+                for (var _rri = 0; _rri < array_length(_boot_res_ranges); _rri++) {
+                    if (_byte_addr >= _boot_res_ranges[_rri].s && _byte_addr < _boot_res_ranges[_rri].e) {
+                        _in_load = false;
+                        break;
+                    }
                 }
             }
             if (_in_load) continue;
@@ -2993,7 +3008,8 @@ show_debug_message(_pbuf_dbg2);
         var _boot_size = 15 + _trimmed_byte_count;
         show_debug_message("D64 BOOT: raw bytes=" + string(_byte_count)
             + " trimmed=" + string(_trimmed_byte_count)
-            + " load_org_ranges=" + string(array_length(_load_org_ranges)));
+            + " load_org_ranges=" + string(array_length(_load_org_ranges))
+            + " resident_ranges=" + string(array_length(_boot_res_ranges)));
 
         ds_map_destroy(p.labels);
 
@@ -4064,6 +4080,10 @@ for (var i = 0; i < array_length(_exp_code); i++) {
             }
         }
 
+        // Resident (baked-in) ranges override a LOAD_ORG range at the same
+        // address — see the F5 path above for why.
+        var _exp_res_ranges = scr_boot_resident_ranges();
+
         // Walk emitted bytes backwards for last resident, non-padding byte.
         var _exp_true_end = -1;
         var _exp_bcount   = array_length(_exp_p.bytes);
@@ -4074,6 +4094,14 @@ for (var i = 0; i < array_length(_exp_code); i++) {
                 if (_ebyte_addr >= _exp_lor_ranges[_eri].s && _ebyte_addr < _exp_lor_ranges[_eri].e) {
                     _ein_load = true;
                     break;
+                }
+            }
+            if (_ein_load) {
+                for (var _erri = 0; _erri < array_length(_exp_res_ranges); _erri++) {
+                    if (_ebyte_addr >= _exp_res_ranges[_erri].s && _ebyte_addr < _exp_res_ranges[_erri].e) {
+                        _ein_load = false;
+                        break;
+                    }
                 }
             }
             if (_ein_load) continue;
@@ -4087,7 +4115,8 @@ for (var i = 0; i < array_length(_exp_code); i++) {
         var _exp_boot_size = 15 + _exp_trimmed;
         show_debug_message("D64 EXPORT: raw bytes=" + string(_exp_bcount)
             + " trimmed=" + string(_exp_trimmed)
-            + " lor_ranges=" + string(array_length(_exp_lor_ranges)));
+            + " lor_ranges=" + string(array_length(_exp_lor_ranges))
+            + " resident_ranges=" + string(array_length(_exp_res_ranges)));
 
         var _exp_d64_path = scr_build_d64(_exp_buf, _base_pc, _exp_boot_size, _chosen);
         _exp_msg = "D64 exported to:\n" + _exp_d64_path;
