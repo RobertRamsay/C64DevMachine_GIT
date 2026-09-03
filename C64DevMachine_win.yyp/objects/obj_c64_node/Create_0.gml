@@ -183,6 +183,9 @@ print_link_ready = false;
 // 10. LABEL LIST 
 // =============================================================
 
+// MACRO_METASCROLL: the draw event fills this with one entry per clickable
+// JSR name, [x1, y1, x2, y2, label]; the step event hit-tests against it.
+msc_entry_rects          = [];
 label_picker_open        = false;
 coll_adv_dragging_probe  = false;
 label_picker_prev_depth  = depth;

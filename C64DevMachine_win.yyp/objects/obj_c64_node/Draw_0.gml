@@ -250,7 +250,7 @@ if (height_dirty) {
         }
         height = _G * _sc_rows;
     } break;
-	case "MACRO_METASCROLL": height = _G * 12; break;
+	case "MACRO_METASCROLL": height = _G * 13; break;
 	case "MACRO_VSCROLL": height = _G * 6;  break;         // 160
     case "MACRO_TEXT_SCROLL": height = _G * 9; break;  
     case "MACRO_IRQ":         height = _G * 5;  break;   
@@ -643,6 +643,13 @@ var _active_list = [];
                 if (node_type == "MACRO_VSCROLL") {
                     array_push(other.label_picker_list, "Scroller_U");
                     array_push(other.label_picker_list, "Scroller_D");
+                }
+                if (node_type == "MACRO_METASCROLL") {
+                    array_push(other.label_picker_list, "MSC_L");
+                    array_push(other.label_picker_list, "MSC_R");
+                    array_push(other.label_picker_list, "MSC_U");
+                    array_push(other.label_picker_list, "MSC_D");
+                    array_push(other.label_picker_list, "MSC_Update");
                 }
                 if (node_type == "MACRO_TEXT_SCROLL") {
                     var _jsr_m = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 0;

@@ -1,19 +1,34 @@
-/// @desc Step MACRO_METASCROLL node - tileset picker, map spinner, addresses
+/// @desc Step MACRO_METASCROLL node - pickers, toggles, and the JSR drops
 function scr_node_step_macro_metascroll(_draw_x) {
 
     if (!mouse_check_button_pressed(mb_left)) return;
     if (global.ui_click_consumed) return;
     if (global.any_picker_open) return;
 
-    var header_h = 28;
-    var pad      = 8;
-    var line_h   = 18;
+    // Row geometry - must match scr_node_draw_macro_metascroll exactly.
+    var _lh  = 18;
+    var _ly0 = y + 24 + 4;
+    var _rx  = _draw_x + width - 8;
+    var _vx  = _draw_x + 8 + max(56, floor(width * 0.34));
+    if (_vx > _rx - 40) {
+        _vx = _rx - 40;
+    }
 
-    var _ly0 = y + header_h + pad;
+    // ── The five JSR entry names (rows 7-9) ───────────────
+    // The draw event records where each one landed; clicking one drops a
+    // ready-made JSR node beside this one, the way the JOYSTICK macro drops
+    // its direction labels.
+    for (var _ei = 0; _ei < array_length(msc_entry_rects); _ei++) {
+        var _er = msc_entry_rects[_ei];
+        if (point_in_rectangle(mouse_x, mouse_y, _er[0], _er[1], _er[2], _er[3])) {
+            scr_msc_drop_jsr(_er[4]);
+            exit;
+        }
+    }
 
-    // ROW 0 - TILESET PICKER
-    if (point_in_rectangle(mouse_x, mouse_y,
-            _draw_x + 64, _ly0 - 2, _draw_x + width - 8, _ly0 + 14)) {
+    // ── ROW 0 - TILESET PICKER ────────────────────────────
+    var _ts_ly = _ly0;
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _ts_ly - 2, _rx, _ts_ly + 14)) {
         with (obj_asset_manager) {
             metamap_picker_open       = true;
             metamap_picker_node       = other.id;
@@ -24,47 +39,43 @@ function scr_node_step_macro_metascroll(_draw_x) {
         exit;
     }
 
-    // ROW 1 - MAP INDEX spinner ( - on the left half, + on the right )
-    var _mi_ly = _ly0 + line_h;
-    var _mi_x1 = _draw_x + width - 80;
-    var _mi_md = _draw_x + width - 44;
-    var _mi_x2 = _draw_x + width - 8;
+    // ── ROW 1 - MAP INDEX: left half steps back, right half steps on ──
+    var _mi_ly  = _ly0 + _lh;
+    var _mi_x2  = _vx + 64;
+    var _mi_mid = _vx + 32;
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _mi_ly - 2, _mi_x2, _mi_ly + 14)) {
 
-    // Resolve map_count so the spinner can clamp
-    var _map_count = 0;
-    var _tn = "";
-    if (array_length(instructions[0]) > 1) _tn = string(instructions[0][1]);
-    if (_tn != "" && instance_exists(obj_asset_manager)) {
-        var _am = obj_asset_manager;
-        for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
-            var _a = ds_list_find_value(_am.asset_list, _ai);
-            if (_a.type == "META_TILESET" && _a.name == _tn) {
-                if (variable_struct_exists(_a.meta, "map_count")) _map_count = _a.meta.map_count;
-                break;
+        // Resolve map_count so the step can clamp
+        var _map_count = 0;
+        var _tn = "";
+        if (array_length(instructions[0]) > 1) _tn = string(instructions[0][1]);
+        if (_tn != "" && instance_exists(obj_asset_manager)) {
+            var _am = obj_asset_manager;
+            for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
+                var _a = ds_list_find_value(_am.asset_list, _ai);
+                if (_a.type == "META_TILESET" && _a.name == _tn) {
+                    if (variable_struct_exists(_a.meta, "map_count")) _map_count = _a.meta.map_count;
+                    break;
+                }
             }
         }
-    }
-    var _max_idx = max(0, _map_count - 1);
-    var _cur     = 0;
-    if (array_length(instructions[0]) > 2 && is_real(instructions[0][2])) _cur = real(instructions[0][2]);
+        var _max_idx = max(0, _map_count - 1);
+        var _cur     = 0;
+        if (array_length(instructions[0]) > 2 && is_real(instructions[0][2])) _cur = real(instructions[0][2]);
 
-    if (point_in_rectangle(mouse_x, mouse_y, _mi_x1, _mi_ly - 2, _mi_md - 1, _mi_ly + 14)) {
-        instructions[0][2]     = max(0, _cur - 1);
-        global.addresses_dirty = true;
-        global.undo_dirty      = true;
-        exit;
-    }
-    if (point_in_rectangle(mouse_x, mouse_y, _mi_md, _mi_ly - 2, _mi_x2, _mi_ly + 14)) {
-        instructions[0][2]     = min(_max_idx, _cur + 1);
+        if (mouse_x < _mi_mid) {
+            instructions[0][2] = max(0, _cur - 1);
+        } else {
+            instructions[0][2] = min(_max_idx, _cur + 1);
+        }
         global.addresses_dirty = true;
         global.undo_dirty      = true;
         exit;
     }
 
-    // ROW 2 - PLANE BASE ADDRESS (hex input)
-    var _ba_ly = _ly0 + line_h * 2;
-    if (point_in_rectangle(mouse_x, mouse_y,
-            _draw_x + 64, _ba_ly - 2, _draw_x + 200, _ba_ly + 14)) {
+    // ── ROW 2 - PLANE BASE ADDRESS (hex input) ────────────
+    var _ba_ly = _ly0 + _lh * 2;
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _ba_ly - 2, _rx, _ba_ly + 14)) {
         var _ba_cur = 0x4000;
         if (array_length(instructions[0]) > 3 && is_real(instructions[0][3])) _ba_cur = real(instructions[0][3]);
         var _ba_hex = string_upper(decimal_to_hex(_ba_cur));
@@ -77,10 +88,9 @@ function scr_node_step_macro_metascroll(_draw_x) {
         exit;
     }
 
-    // ROW 4 - ZP BASE (hex input)
-    var _zp_ly = _ly0 + line_h * 4;
-    if (point_in_rectangle(mouse_x, mouse_y,
-            _draw_x + 140, _zp_ly - 2, _draw_x + 200, _zp_ly + 14)) {
+    // ── ROW 4 - ZP BASE (hex input) ───────────────────────
+    var _zp_ly = _ly0 + _lh * 4;
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _zp_ly - 2, _vx + 48, _zp_ly + 14)) {
         var _zp_cur = 0x60;
         if (array_length(instructions[0]) > 4 && is_real(instructions[0][4])) _zp_cur = real(instructions[0][4]);
         var _zp_hex = string_upper(decimal_to_hex(_zp_cur));
@@ -93,10 +103,9 @@ function scr_node_step_macro_metascroll(_draw_x) {
         exit;
     }
 
-    // ROW 5 - COLOUR MODE toggle (left half) / fixed nibble cycle (right half)
-    var _cm_ly = _ly0 + line_h * 5;
-    if (point_in_rectangle(mouse_x, mouse_y,
-            _draw_x + 140, _cm_ly - 2, _draw_x + 196, _cm_ly + 14)) {
+    // ── ROW 5 - COLOUR MODE toggle, and the fixed nibble ──
+    var _cm_ly = _ly0 + _lh * 5;
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _cm_ly - 2, _vx + 56, _cm_ly + 14)) {
         var _cm_cur = 0;
         if (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) _cm_cur = real(instructions[0][6]);
         if (_cm_cur == 1) {
@@ -108,12 +117,11 @@ function scr_node_step_macro_metascroll(_draw_x) {
         global.undo_dirty      = true;
         exit;
     }
-    if (point_in_rectangle(mouse_x, mouse_y,
-            _draw_x + 200, _cm_ly - 2, _draw_x + width - 8, _cm_ly + 14)) {
+    // right-hand value: cycles the FIXED nibble, -1 (auto) then 0..15
+    if (point_in_rectangle(mouse_x, mouse_y, _rx - 70, _cm_ly - 2, _rx, _cm_ly + 14)) {
         var _cm_now = 0;
         if (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) _cm_now = real(instructions[0][6]);
         if (_cm_now == 0) {
-            // cycle -1 (auto) then 0..15
             var _fc_cur = -1;
             if (array_length(instructions[0]) > 7 && is_real(instructions[0][7])) _fc_cur = real(instructions[0][7]);
             _fc_cur = _fc_cur + 1;
@@ -126,10 +134,9 @@ function scr_node_step_macro_metascroll(_draw_x) {
         exit;
     }
 
-    // ROW 6 - CLAMP toggle
-    var _cl_ly = _ly0 + line_h * 6;
-    if (point_in_rectangle(mouse_x, mouse_y,
-            _draw_x + 140, _cl_ly - 2, _draw_x + 200, _cl_ly + 14)) {
+    // ── ROW 6 - CLAMP toggle ──────────────────────────────
+    var _cl_ly = _ly0 + _lh * 6;
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _cl_ly - 2, _vx + 48, _cl_ly + 14)) {
         var _cl_cur = 1;
         if (array_length(instructions[0]) > 5 && is_real(instructions[0][5])) _cl_cur = real(instructions[0][5]);
         if (_cl_cur == 1) {
@@ -140,4 +147,36 @@ function scr_node_step_macro_metascroll(_draw_x) {
         global.undo_dirty = true;
         exit;
     }
+}
+
+/// @desc Drop a JSR node for one METASCROLL entry beside this node.
+/// Mirrors how the JOYSTICK macro drops its direction labels: place it to
+/// the right, then nudge down until the cell is free.
+function scr_msc_drop_jsr(_name) {
+
+    var _spawn_x = round((x + width + 60) / 20) * 20;
+    var _spawn_y = round(y / 20) * 20;
+
+    var _spawn_clear    = false;
+    var _spawn_attempts = 0;
+    while (!_spawn_clear && _spawn_attempts < 64) {
+        _spawn_clear = true;
+        with (obj_c64_node) {
+            if (is_connected || org_parent != noone) continue;
+            if (is_dragging) continue;
+            if (x == _spawn_x && y == _spawn_y) {
+                _spawn_clear = false;
+                _spawn_y += ceil(height / 20) * 20;
+                break;
+            }
+        }
+        _spawn_attempts++;
+    }
+
+    var _n          = scr_node_spawn("NORMAL", _spawn_x, _spawn_y);
+    _n.node_title   = "JSR " + _name;
+    _n.instructions = [["jsr_lab", _name]];
+
+    global.undo_dirty = true;
+    scr_undo_snapshot();
 }

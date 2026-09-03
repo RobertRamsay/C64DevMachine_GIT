@@ -1714,6 +1714,13 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
                                     array_push(other.label_picker_list, "Scroller_U");
                                     array_push(other.label_picker_list, "Scroller_D");
                                 }
+                                if (node_type == "MACRO_METASCROLL") {
+                                    array_push(other.label_picker_list, "MSC_L");
+                                    array_push(other.label_picker_list, "MSC_R");
+                                    array_push(other.label_picker_list, "MSC_U");
+                                    array_push(other.label_picker_list, "MSC_D");
+                                    array_push(other.label_picker_list, "MSC_Update");
+                                }
                                 if (node_type == "MACRO_TEXT_SCROLL") {
                                     var _jsr_m = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 0;
                                     if (_jsr_m == 1) {

@@ -4718,8 +4718,9 @@ case "MACRO_VSCROLL": {
 //   [4]=zp_base (10 bytes, default $60) [5]=clamp (1 = stop at the map edges)
 //
 // Entry points, all JSR-able from your frame routine:
-//   Metascroll_L / _R / _U / _D   move the camera one pixel that way
-//   Metascroll_Update             services a pending coarse step only
+//   MSC_L / MSC_R / MSC_U / MSC_D   move the camera one pixel that way
+//   MSC_Update                      services a pending coarse step only
+// Click any of them on the node to drop a ready-made JSR node.
 //
 // Geometry follows MACRO_VSCROLL: the visible window is screen rows 1..23,
 // cols 1..38; row 0/24 and col 0/39 stay blank so the scroll edges never
@@ -4976,9 +4977,9 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["jmp_abs", _l_after, _id]);
 
     // ══════════════════════════════════════════════════════
-    // Metascroll_Update - service a pending coarse step
+    // MSC_Update - service a pending coarse step
     // ══════════════════════════════════════════════════════
-    array_push(_list, ["label",   "Metascroll_Update"]);
+    array_push(_list, ["label",   "MSC_Update"]);
     var _l_up_none = _p + "up_none";
     array_push(_list, ["lda_zp",  _zp_phase, _id]);
     array_push(_list, ["bne",     _l_up_none, _id]);
@@ -4992,9 +4993,9 @@ case "MACRO_METASCROLL": {
     // camera stays correct even if the caller stops asking to move.
     // ══════════════════════════════════════════════════════
 
-    // ---- Metascroll_R : camera right, content moves left ----
+    // ---- MSC_R : camera right, content moves left ----
     var _l_r_go = _p + "r_go", _l_r_ok = _p + "r_ok", _l_r_cs = _p + "r_cs";
-    array_push(_list, ["label",   "Metascroll_R"]);
+    array_push(_list, ["label",   "MSC_R"]);
     array_push(_list, ["lda_zp",  _zp_phase, _id]);
     array_push(_list, ["beq",     _l_r_go,   _id]);
     array_push(_list, ["jmp_abs", _l_pend,   _id]);
@@ -5021,9 +5022,9 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["sta_zp",  _zp_phase, _id]);
     array_push(_list, ["rts",     0,         _id]);
 
-    // ---- Metascroll_L : camera left, content moves right ----
+    // ---- MSC_L : camera left, content moves right ----
     var _l_l_go = _p + "l_go", _l_l_ok = _p + "l_ok", _l_l_cs = _p + "l_cs";
-    array_push(_list, ["label",   "Metascroll_L"]);
+    array_push(_list, ["label",   "MSC_L"]);
     array_push(_list, ["lda_zp",  _zp_phase, _id]);
     array_push(_list, ["beq",     _l_l_go,   _id]);
     array_push(_list, ["jmp_abs", _l_pend,   _id]);
@@ -5050,9 +5051,9 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["sta_zp",  _zp_phase, _id]);
     array_push(_list, ["rts",     0,         _id]);
 
-    // ---- Metascroll_D : camera down, content moves up ----
+    // ---- MSC_D : camera down, content moves up ----
     var _l_d_go = _p + "d_go", _l_d_ok = _p + "d_ok", _l_d_cs = _p + "d_cs";
-    array_push(_list, ["label",   "Metascroll_D"]);
+    array_push(_list, ["label",   "MSC_D"]);
     array_push(_list, ["lda_zp",  _zp_phase, _id]);
     array_push(_list, ["beq",     _l_d_go,   _id]);
     array_push(_list, ["jmp_abs", _l_pend,   _id]);
@@ -5080,9 +5081,9 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["sta_zp",  _zp_phase, _id]);
     array_push(_list, ["rts",     0,         _id]);
 
-    // ---- Metascroll_U : camera up, content moves down ----
+    // ---- MSC_U : camera up, content moves down ----
     var _l_u_go = _p + "u_go", _l_u_ok = _p + "u_ok", _l_u_cs = _p + "u_cs";
-    array_push(_list, ["label",   "Metascroll_U"]);
+    array_push(_list, ["label",   "MSC_U"]);
     array_push(_list, ["lda_zp",  _zp_phase, _id]);
     array_push(_list, ["beq",     _l_u_go,   _id]);
     array_push(_list, ["jmp_abs", _l_pend,   _id]);

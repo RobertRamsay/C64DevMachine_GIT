@@ -258,6 +258,13 @@ function scr_node_step_macro_coll_adv(_draw_x) {
                         array_push(other.label_picker_list, "Scroller_U");
                         array_push(other.label_picker_list, "Scroller_D");
                     }
+                    if (node_type == "MACRO_METASCROLL") {
+                        array_push(other.label_picker_list, "MSC_L");
+                        array_push(other.label_picker_list, "MSC_R");
+                        array_push(other.label_picker_list, "MSC_U");
+                        array_push(other.label_picker_list, "MSC_D");
+                        array_push(other.label_picker_list, "MSC_Update");
+                    }
                 }
                 exit;
             }
