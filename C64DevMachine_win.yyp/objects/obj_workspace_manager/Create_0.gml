@@ -82,7 +82,7 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-    "REFINED - PRE-ASSIGNED Bitmaps to LOAD with BOOT when LAOD_ORG is used.",
+    "REFINED - PRE-ASSIGNED Bitmaps to LOAD with BOOT when LOAD_ORG is used.",
     "",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
