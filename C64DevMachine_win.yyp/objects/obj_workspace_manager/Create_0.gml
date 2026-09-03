@@ -1,5 +1,5 @@
 /// @desc Setup Workspace, Palette & C64 Environment
-global.lite=1;
+global.lite=0;
 global.build_date = "September 3rd, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
@@ -82,8 +82,8 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-    "ADDED - SID PAUSE: Used to PAUSE or RESUME SID Music",
-    "ADDED - VOI64: A Synthetic Phoenomic Voice so your C64 can TALK!",
+    "REFINED - PRE-ASSIGNED Bitmaps to LOAD with BOOT when LAOD_ORG is used.",
+    "",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
     "SUPPORT the development by leaving a review on ITCH and buying the PRO version.",
