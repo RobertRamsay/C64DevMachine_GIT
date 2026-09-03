@@ -1,5 +1,5 @@
 /// @desc Setup Workspace, Palette & C64 Environment
-global.lite=0;
+global.lite=1;
 global.build_date = "September 3rd, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
@@ -86,7 +86,7 @@ welcome_whats_new = [
     "ADDED - VOI64: A Synthetic Phoenomic Voice so your C64 can TALK!",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
-    "SUPPORT the development by leaving a review on ITCH and byuing the PRO version.",
+    "SUPPORT the development by leaving a review on ITCH and buying the PRO version.",
     ];
 	
 welcome_credits_lines = [
@@ -95,12 +95,12 @@ welcome_credits_lines = [
     "",
     "COMMUNITY INPUT",
     "51Pegasi",
+	"Alessandro 'funkygallo' Montoli",
     "Analog-X64",
     "Arlasoft",
     "Balfourd",
     "CptGreenwood",
 	"Deano",
-    "funkygallo",
     "keefnayls",
     "markc.sherman",
     "Sch31Btyp",
