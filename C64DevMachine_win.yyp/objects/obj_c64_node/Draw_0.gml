@@ -250,6 +250,7 @@ if (height_dirty) {
         }
         height = _G * _sc_rows;
     } break;
+	case "MACRO_METASCROLL": height = _G * 12; break;
 	case "MACRO_VSCROLL": height = _G * 6;  break;         // 160
     case "MACRO_TEXT_SCROLL": height = _G * 9; break;  
     case "MACRO_IRQ":         height = _G * 5;  break;   
@@ -978,6 +979,7 @@ switch (node_type) {
         break;
 	case "MACRO_MAP":        _head_col = is_connected ? make_color_rgb(40, 180, 100) : make_color_rgb(20,  90, 50); break;
 	case "MACRO_MAP_SWITCH": _head_col = is_connected ? make_color_rgb(40, 160, 180) : make_color_rgb(20,  80, 90); break;
+	case "MACRO_METASCROLL": _head_col = is_connected ? make_color_rgb(150, 100, 220) : make_color_rgb(70, 45, 110); break;
 	case "MACRO_VSCROLL": _head_col = is_connected ? make_color_rgb(40, 140, 200) : make_color_rgb(20, 70, 100); break;
     case "MACRO_SCROLL": _head_col = is_connected ? make_color_rgb(40, 180, 100) : make_color_rgb( 20, 90,  50); break;
 	case "NEW_STR":     _head_col = make_color_rgb(30, 120, 180);  break;
@@ -1427,6 +1429,7 @@ if (_lod_body) switch (node_type) {
 	case "MACRO_PRIORITY":    scr_node_draw_macro_priority(draw_x);    break;
 	case "MACRO_SPR_ENABLE":  scr_node_draw_macro_spr_enable(draw_x);  break;
 	case "MACRO_SPR_EXPAND":  scr_node_draw_macro_spr_expand(draw_x);  break;
+	case "MACRO_METASCROLL": scr_node_draw_macro_metascroll(draw_x, y, _cam_x, _cam_y, _cam_zoom); break;
 	case "MACRO_VSCROLL":  scr_node_draw_macro_vscroll(draw_x, y, _cam_x, _cam_y, _cam_zoom); break;
 	case "MACRO_SCROLL": scr_node_draw_macro_scroll(draw_x, y, _cam_x, _cam_y, _cam_zoom); break;
 	case "MACRO_IRQ":         scr_node_draw_macro_irq(draw_x, y, _cam_x, _cam_y, _cam_zoom);         break;

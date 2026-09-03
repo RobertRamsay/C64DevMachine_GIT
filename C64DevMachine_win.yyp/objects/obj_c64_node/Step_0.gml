@@ -1076,6 +1076,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
         case "MACRO_CHR":    scr_macro_chr_step(id);             break;
         case "MACRO_MAP":        scr_node_step_macro_map(id);        break;
 		case "MACRO_METAMAP":    scr_node_step_macro_metamap(draw_x);    break;
+		case "MACRO_METASCROLL": scr_node_step_macro_metascroll(draw_x); break;
 		case "MACRO_MAP_SWITCH": scr_node_step_macro_map_switch(id); break;
         case "NEW_STR":      scr_node_step_new_str();            break;
        

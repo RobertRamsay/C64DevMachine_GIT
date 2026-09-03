@@ -236,6 +236,31 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_METASCROLL": {
+            title: "METASCROLL",
+            lines: [
+                "Four-way pixel-smooth camera over a META_TILESET",
+                "room. The room is flattened at compile time into a",
+                "char plane and a colour plane, so nothing decodes",
+                "stamps at runtime.",
+                "",
+                "JSR Metascroll_L / _R / _U / _D to move one pixel,",
+                "and JSR Metascroll_Update every frame so a coarse",
+                "step still finishes when nothing is moving.",
+                "",
+                "Window is rows 1-23, cols 1-38; the outer row and",
+                "column stay blank to hide the scroll edges.",
+                "",
+                "COLOUR FIXED (stock C64): the nibble is written once",
+                "at init and $D800 is never touched again - the MC",
+                "set lives in $D021/$D022/$D023. One-frame coarse",
+                "step, and no colour plane in memory.",
+                "",
+                "COLOUR SHIFT: colour RAM scrolls per cell, coarse",
+                "step split over two frames. For turbo machines."
+            ]
+        },
+
         "MACRO_VSCROLL": {
             title: "V-SCROLL",
             lines: [

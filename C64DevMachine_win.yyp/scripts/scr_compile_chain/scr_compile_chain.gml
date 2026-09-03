@@ -4710,6 +4710,884 @@ case "MACRO_VSCROLL": {
 
 } break;
 // --------------------------------------------------------
+// MACRO_METASCROLL - 4-way pixel-smooth camera over a META_TILESET map
+//
+// instructions[0]:
+//   [0]="MACRO_METASCROLL" [1]=tileset_name [2]=map_index
+//   [3]=base_addr (baked char plane; colour plane follows, page aligned)
+//   [4]=zp_base (10 bytes, default $60) [5]=clamp (1 = stop at the map edges)
+//
+// Entry points, all JSR-able from your frame routine:
+//   Metascroll_L / _R / _U / _D   move the camera one pixel that way
+//   Metascroll_Update             services a pending coarse step only
+//
+// Geometry follows MACRO_VSCROLL: the visible window is screen rows 1..23,
+// cols 1..38; row 0/24 and col 0/39 stay blank so the scroll edges never
+// show. Fine scroll is $D016 XSCROLL (38-col mode) and $D011 YSCROLL
+// (24-row mode).
+//
+// A coarse step is deferred over two frames so neither frame overruns:
+//   phase 1 - snap the fine register, shift chars, fill the new char edge
+//   phase 2 - shift colour RAM, fill the new colour edge
+// Eight fine steps per coarse step, so the shifts cost ~18% of a frame
+// amortised. Proven cycle-exact in VICE before being emitted here.
+// --------------------------------------------------------
+case "MACRO_METASCROLL": {
+
+    var _id = _curr;
+
+    if (!variable_instance_exists(_id, "scroll_alias") || _id.scroll_alias == "")
+    {
+        _id.scroll_alias = "ms" + string(real(_id));
+    }
+    var _p = _id.scroll_alias + "_";
+
+    // ── Node settings ─────────────────────────────────────
+    var _ts_name   = (array_length(_id.instructions[0]) > 1) ? string(_id.instructions[0][1]) : "";
+    var _map_index = (array_length(_id.instructions[0]) > 2 && is_real(_id.instructions[0][2])) ? real(_id.instructions[0][2]) : 0;
+    var _base_addr = (array_length(_id.instructions[0]) > 3 && is_real(_id.instructions[0][3])) ? real(_id.instructions[0][3]) : 0x4000;
+    var _zp        = (array_length(_id.instructions[0]) > 4 && is_real(_id.instructions[0][4])) ? real(_id.instructions[0][4]) : 0x60;
+    var _clamp     = (array_length(_id.instructions[0]) > 5 && is_real(_id.instructions[0][5])) ? real(_id.instructions[0][5]) : 1;
+    // [6] colour mode: 0 = FIXED (stock C64), 1 = SHIFT (needs the headroom)
+    var _col_mode  = (array_length(_id.instructions[0]) > 6 && is_real(_id.instructions[0][6])) ? real(_id.instructions[0][6]) : 0;
+    // [7] the FIXED nibble, or -1 to take the commonest colour in the room
+    var _fixed_col = (array_length(_id.instructions[0]) > 7 && is_real(_id.instructions[0][7])) ? real(_id.instructions[0][7]) : -1;
+
+    // ── Resolve the META_TILESET asset ────────────────────
+    var _ts = noone;
+    if (_ts_name != "" && instance_exists(obj_asset_manager))
+    {
+        var _am = obj_asset_manager;
+        for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++)
+        {
+            var _a = ds_list_find_value(_am.asset_list, _ai);
+            if (_a.type == "META_TILESET" && _a.name == _ts_name) { _ts = _a; break; }
+        }
+    }
+    if (_ts == noone)
+    {
+        show_debug_message("MACRO_METASCROLL: tileset '" + _ts_name + "' not found - skipping");
+        break;
+    }
+
+    var _tm         = _ts.meta;
+    var _sw         = _tm.stamp_w;
+    var _sh         = _tm.stamp_h;
+    var _stamp_data = _tm.stamp_data;
+    var _cells_per  = _sw * _sh;
+
+    // Linked charset - used to spot ECM, exactly as MACRO_METAMAP does
+    var _ms_chr_ref = noone;
+    if (variable_struct_exists(_tm, "chr_asset") && _tm.chr_asset != "" && instance_exists(obj_asset_manager))
+    {
+        var _ms_amc = obj_asset_manager;
+        for (var _mci = 0; _mci < ds_list_size(_ms_amc.asset_list); _mci++)
+        {
+            var _mca = ds_list_find_value(_ms_amc.asset_list, _mci);
+            if (_mca.type == "CHAR_SET" && _mca.name == _tm.chr_asset) { _ms_chr_ref = _mca; break; }
+        }
+    }
+    var _ms_is_ecm = (_ms_chr_ref != noone)
+                  && variable_struct_exists(_ms_chr_ref.meta, "mc_mode")
+                  && (_ms_chr_ref.meta.mc_mode == 2);
+    var _ms_mode = obj_workspace_manager.map_global_mixed;
+
+    var _grid = noone;
+    if (_map_index >= 0 && _map_index < _tm.map_count) { _grid = _tm.maps[_map_index]; }
+    if (_grid == noone)
+    {
+        show_debug_message("MACRO_METASCROLL: map index " + string(_map_index) + " out of range - skipping");
+        break;
+    }
+
+    var _lit_w_ch = 40;
+    if (_map_index >= 0 && _map_index < array_length(_tm.map_w)) { _lit_w_ch = _tm.map_w[_map_index]; }
+    var _cols_g = floor(_lit_w_ch / _sw);
+    if (_cols_g < 1) { _cols_g = 1; }
+    var _rows_g = floor(array_length(_grid) / _cols_g);
+
+    var _mapw = _cols_g * _sw;      // map width  in chars
+    var _maph = _rows_g * _sh;      // map height in chars
+
+    // ── Window geometry (matches MACRO_VSCROLL) ───────────
+    var _num_rows  = 23;
+    var _num_cols  = 38;
+    var _row_start = 1;
+    var _col_start = 1;
+    var _scr       = 0x0400;
+    var _cram      = 0xD800;
+
+    if (_mapw > 255)
+    {
+        show_debug_message("MACRO_METASCROLL: map is " + string(_mapw)
+            + " chars wide - the camera column is a single byte, max 255. Skipping.");
+        break;
+    }
+    if (_mapw < _num_cols || _maph < _num_rows)
+    {
+        show_debug_message("MACRO_METASCROLL: map " + string(_mapw) + "x" + string(_maph)
+            + " chars is smaller than the " + string(_num_cols) + "x" + string(_num_rows)
+            + " window - skipping.");
+        break;
+    }
+
+    var _max_camx = _mapw - _num_cols;
+    var _max_camy = _maph - _num_rows;
+
+    // ── Zero page ─────────────────────────────────────────
+    var _zp_camx  = _zp + 0;
+    var _zp_camy  = _zp + 1;
+    var _zp_finex = _zp + 2;
+    var _zp_finey = _zp + 3;
+    var _zp_phase = _zp + 4;
+    var _zp_pdir  = _zp + 5;
+    var _zp_src   = _zp + 6;   // + 7
+    var _zp_dst   = _zp + 8;   // + 9
+
+    // ── Flatten the room into char + colour planes ────────
+    var _plane_sz = _mapw * _maph;
+    var _ch_plane = array_create(_plane_sz, 0);
+    var _co_plane = array_create(_plane_sz, 0);
+
+    for (var _gy = 0; _gy < _rows_g; _gy++)
+    {
+        for (var _gx = 0; _gx < _cols_g; _gx++)
+        {
+            var _mt = _grid[_gy * _cols_g + _gx];
+            if (_mt < 0) { continue; }
+            if (_mt >= _tm.stamp_count) { continue; }
+
+            var _ov_col = -1;
+            if (variable_struct_exists(_tm, "stamp_override")
+             && _mt < array_length(_tm.stamp_override)
+             && _tm.stamp_override[_mt] != 0x80)
+            {
+                _ov_col = _tm.stamp_override[_mt];
+            }
+
+            for (var _cy = 0; _cy < _sh; _cy++)
+            {
+                for (var _cx = 0; _cx < _sw; _cx++)
+                {
+                    var _cell = _cy * _sw + _cx;
+                    var _db   = _mt * _cells_per + _cell;
+                    if (_db >= array_length(_stamp_data)) { continue; }
+
+                    var _ch  = _stamp_data[_db];
+                    var _col = (_ch < array_length(_tm.char_lut)) ? (_tm.char_lut[_ch] & 0x0F) : 0;
+                    if (_ov_col >= 0) { _col = _ov_col; }
+
+                    var _cell_is_mc = (_ms_mode == 1
+                                    && _ch < array_length(_tm.char_lut)
+                                    && ((_tm.char_lut[_ch] >> 4) & 0x01) == 1);
+                    var _mcol;
+                    if (_ms_is_ecm)      { _mcol = _col & 0x0F; }
+                    else if (_ms_mode == 0) { _mcol = _col & 0x0F; }
+                    else if (_cell_is_mc)   { _mcol = (_col & 0x07) | 0x08; }
+                    else                    { _mcol = _col & 0x07; }
+
+                    var _mx = _gx * _sw + _cx;
+                    var _my = _gy * _sh + _cy;
+                    if (_mx >= _mapw || _my >= _maph) { continue; }
+                    var _mi = _my * _mapw + _mx;
+                    _ch_plane[_mi] = _ch   & 0xFF;
+                    _co_plane[_mi] = _mcol & 0xFF;
+                }
+            }
+        }
+    }
+
+    // ── FIXED mode: pick the one nibble the whole screen will carry ───
+    // In multicolour text mode the three shared colours come from $D021,
+    // $D022 and $D023; the colour-RAM nibble only supplies the fourth. A
+    // room drawn from one palette therefore needs no colour scrolling at
+    // all - so FIXED writes the nibble once at init and never touches
+    // $D800 again. That halves the coarse step (one frame, chars only) and
+    // drops the colour plane from memory entirely.
+    var _fx_nib = 0;
+    if (_col_mode == 0)
+    {
+        if (_fixed_col >= 0)
+        {
+            _fx_nib = _fixed_col & 0x0F;
+        }
+        else
+        {
+            // auto: the commonest colour byte across the flattened room
+            var _tally = array_create(16, 0);
+            for (var _ti = 0; _ti < _plane_sz; _ti++)
+            {
+                _tally[_co_plane[_ti] & 0x0F]++;
+            }
+            var _best = 0;
+            for (var _tj = 1; _tj < 16; _tj++)
+            {
+                if (_tally[_tj] > _tally[_best]) { _best = _tj; }
+            }
+            _fx_nib = _best;
+        }
+    }
+
+    // Colour plane starts on a page boundary after the char plane, so the
+    // runtime can reach it by adding a constant to the high byte alone.
+    var _pages    = ceil(_plane_sz / 256);
+    var _co_base  = _base_addr + _pages * 256;
+    var _co_hiadd = _pages & 0xFF;
+
+    // ── Off-spine data: the baked planes ──────────────────
+    // FIXED mode emits the char plane only - the colour plane is not built.
+    array_push(_list, ["org", -2]);
+    array_push(_list, ["org", _base_addr]);
+    for (var _bi = 0; _bi < _plane_sz; _bi++) { array_push(_list, ["byte", _ch_plane[_bi]]); }
+    if (_col_mode == 1)
+    {
+        array_push(_list, ["org", _co_base]);
+        for (var _bj = 0; _bj < _plane_sz; _bj++) { array_push(_list, ["byte", _co_plane[_bj]]); }
+    }
+    array_push(_list, ["org", -3]);   // restore spine PC
+
+    // ── Labels ────────────────────────────────────────────
+    var _l_skip   = _p + "skip";
+    var _l_after  = _p + "after";
+    var _l_init   = _p + "init";
+    var _l_rowlo  = _p + "rowlo";
+    var _l_rowhi  = _p + "rowhi";
+    var _l_maddr  = _p + "maddr";
+    var _l_maddrc = _p + "maddrc";
+    var _l_pend   = _p + "pend";
+    var _l_repnt  = _p + "repaint";
+
+    // ══════════════════════════════════════════════════════
+    // Static tables - jumped over at runtime
+    // ══════════════════════════════════════════════════════
+    array_push(_list, ["jmp_abs", _l_skip, _id]);
+
+    array_push(_list, ["label", _l_rowlo]);
+    for (var _r = 0; _r < _maph; _r++) { array_push(_list, ["byte", (_base_addr + _r * _mapw) & 0xFF, _id]); }
+    array_push(_list, ["label", _l_rowhi]);
+    for (var _r2 = 0; _r2 < _maph; _r2++) { array_push(_list, ["byte", ((_base_addr + _r2 * _mapw) >> 8) & 0xFF, _id]); }
+
+    array_push(_list, ["label", _l_skip]);
+
+    // ══════════════════════════════════════════════════════
+    // Entry - init once, then fall past the routines
+    // ══════════════════════════════════════════════════════
+    array_push(_list, ["jsr",     _l_init,  _id]);
+    array_push(_list, ["jmp_abs", _l_after, _id]);
+
+    // ══════════════════════════════════════════════════════
+    // Metascroll_Update - service a pending coarse step
+    // ══════════════════════════════════════════════════════
+    array_push(_list, ["label",   "Metascroll_Update"]);
+    var _l_up_none = _p + "up_none";
+    array_push(_list, ["lda_zp",  _zp_phase, _id]);
+    array_push(_list, ["bne",     _l_up_none, _id]);
+    array_push(_list, ["rts",     0,          _id]);
+    array_push(_list, ["label",   _l_up_none]);
+    array_push(_list, ["jmp_abs", _l_pend,    _id]);
+
+    // ══════════════════════════════════════════════════════
+    // The four direction entries.
+    // Each one first finishes any coarse step still in flight, so the
+    // camera stays correct even if the caller stops asking to move.
+    // ══════════════════════════════════════════════════════
+
+    // ---- Metascroll_R : camera right, content moves left ----
+    var _l_r_go = _p + "r_go", _l_r_ok = _p + "r_ok", _l_r_cs = _p + "r_cs";
+    array_push(_list, ["label",   "Metascroll_R"]);
+    array_push(_list, ["lda_zp",  _zp_phase, _id]);
+    array_push(_list, ["beq",     _l_r_go,   _id]);
+    array_push(_list, ["jmp_abs", _l_pend,   _id]);
+    array_push(_list, ["label",   _l_r_go]);
+    if (_clamp == 1)
+    {
+        array_push(_list, ["lda_zp",  _zp_camx,        _id]);
+        array_push(_list, ["cmp_imm", _max_camx & 0xFF,_id]);
+        array_push(_list, ["bcc",     _l_r_ok,         _id]);
+        array_push(_list, ["rts",     0,               _id]);
+        array_push(_list, ["label",   _l_r_ok]);
+    }
+    array_push(_list, ["lda_zp",  _zp_finex, _id]);
+    array_push(_list, ["beq",     _l_r_cs,   _id]);
+    array_push(_list, ["dec_zp",  _zp_finex, _id]);
+    array_push(_list, ["lda_zp",  _zp_finex, _id]);
+    array_push(_list, ["sta_abs", 0xD016,    _id]);
+    array_push(_list, ["rts",     0,         _id]);
+    array_push(_list, ["label",   _l_r_cs]);
+    array_push(_list, ["inc_zp",  _zp_camx,  _id]);
+    array_push(_list, ["lda_imm", 2,         _id]);
+    array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
+    array_push(_list, ["lda_imm", 1,         _id]);
+    array_push(_list, ["sta_zp",  _zp_phase, _id]);
+    array_push(_list, ["rts",     0,         _id]);
+
+    // ---- Metascroll_L : camera left, content moves right ----
+    var _l_l_go = _p + "l_go", _l_l_ok = _p + "l_ok", _l_l_cs = _p + "l_cs";
+    array_push(_list, ["label",   "Metascroll_L"]);
+    array_push(_list, ["lda_zp",  _zp_phase, _id]);
+    array_push(_list, ["beq",     _l_l_go,   _id]);
+    array_push(_list, ["jmp_abs", _l_pend,   _id]);
+    array_push(_list, ["label",   _l_l_go]);
+    if (_clamp == 1)
+    {
+        array_push(_list, ["lda_zp",  _zp_camx, _id]);
+        array_push(_list, ["bne",     _l_l_ok,  _id]);
+        array_push(_list, ["rts",     0,        _id]);
+        array_push(_list, ["label",   _l_l_ok]);
+    }
+    array_push(_list, ["lda_zp",  _zp_finex, _id]);
+    array_push(_list, ["cmp_imm", 0x07,      _id]);
+    array_push(_list, ["beq",     _l_l_cs,   _id]);
+    array_push(_list, ["inc_zp",  _zp_finex, _id]);
+    array_push(_list, ["lda_zp",  _zp_finex, _id]);
+    array_push(_list, ["sta_abs", 0xD016,    _id]);
+    array_push(_list, ["rts",     0,         _id]);
+    array_push(_list, ["label",   _l_l_cs]);
+    array_push(_list, ["dec_zp",  _zp_camx,  _id]);
+    array_push(_list, ["lda_imm", 1,         _id]);
+    array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
+    array_push(_list, ["lda_imm", 1,         _id]);
+    array_push(_list, ["sta_zp",  _zp_phase, _id]);
+    array_push(_list, ["rts",     0,         _id]);
+
+    // ---- Metascroll_D : camera down, content moves up ----
+    var _l_d_go = _p + "d_go", _l_d_ok = _p + "d_ok", _l_d_cs = _p + "d_cs";
+    array_push(_list, ["label",   "Metascroll_D"]);
+    array_push(_list, ["lda_zp",  _zp_phase, _id]);
+    array_push(_list, ["beq",     _l_d_go,   _id]);
+    array_push(_list, ["jmp_abs", _l_pend,   _id]);
+    array_push(_list, ["label",   _l_d_go]);
+    if (_clamp == 1)
+    {
+        array_push(_list, ["lda_zp",  _zp_camy,        _id]);
+        array_push(_list, ["cmp_imm", _max_camy & 0xFF,_id]);
+        array_push(_list, ["bcc",     _l_d_ok,         _id]);
+        array_push(_list, ["rts",     0,               _id]);
+        array_push(_list, ["label",   _l_d_ok]);
+    }
+    array_push(_list, ["lda_zp",  _zp_finey, _id]);
+    array_push(_list, ["beq",     _l_d_cs,   _id]);
+    array_push(_list, ["dec_zp",  _zp_finey, _id]);
+    array_push(_list, ["lda_zp",  _zp_finey, _id]);
+    array_push(_list, ["ora_imm", 0x10,      _id]);
+    array_push(_list, ["sta_abs", 0xD011,    _id]);
+    array_push(_list, ["rts",     0,         _id]);
+    array_push(_list, ["label",   _l_d_cs]);
+    array_push(_list, ["inc_zp",  _zp_camy,  _id]);
+    array_push(_list, ["lda_imm", 4,         _id]);
+    array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
+    array_push(_list, ["lda_imm", 1,         _id]);
+    array_push(_list, ["sta_zp",  _zp_phase, _id]);
+    array_push(_list, ["rts",     0,         _id]);
+
+    // ---- Metascroll_U : camera up, content moves down ----
+    var _l_u_go = _p + "u_go", _l_u_ok = _p + "u_ok", _l_u_cs = _p + "u_cs";
+    array_push(_list, ["label",   "Metascroll_U"]);
+    array_push(_list, ["lda_zp",  _zp_phase, _id]);
+    array_push(_list, ["beq",     _l_u_go,   _id]);
+    array_push(_list, ["jmp_abs", _l_pend,   _id]);
+    array_push(_list, ["label",   _l_u_go]);
+    if (_clamp == 1)
+    {
+        array_push(_list, ["lda_zp",  _zp_camy, _id]);
+        array_push(_list, ["bne",     _l_u_ok,  _id]);
+        array_push(_list, ["rts",     0,        _id]);
+        array_push(_list, ["label",   _l_u_ok]);
+    }
+    array_push(_list, ["lda_zp",  _zp_finey, _id]);
+    array_push(_list, ["cmp_imm", 0x07,      _id]);
+    array_push(_list, ["beq",     _l_u_cs,   _id]);
+    array_push(_list, ["inc_zp",  _zp_finey, _id]);
+    array_push(_list, ["lda_zp",  _zp_finey, _id]);
+    array_push(_list, ["ora_imm", 0x10,      _id]);
+    array_push(_list, ["sta_abs", 0xD011,    _id]);
+    array_push(_list, ["rts",     0,         _id]);
+    array_push(_list, ["label",   _l_u_cs]);
+    array_push(_list, ["dec_zp",  _zp_camy,  _id]);
+    array_push(_list, ["lda_imm", 3,         _id]);
+    array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
+    array_push(_list, ["lda_imm", 1,         _id]);
+    array_push(_list, ["sta_zp",  _zp_phase, _id]);
+    array_push(_list, ["rts",     0,         _id]);
+
+    // ══════════════════════════════════════════════════════
+    // pend - the deferred coarse work
+    //   phase 1: snap the fine register, shift chars, fill char edge
+    //   phase 2: shift colour RAM, fill colour edge
+    // ══════════════════════════════════════════════════════
+    var _l_ph2   = _p + "ph2";
+    var _l_p1a   = _p + "p1a",  _l_p1b = _p + "p1b", _l_p1c = _p + "p1c";
+    var _l_p1end = _p + "p1end";
+    var _l_p2a   = _p + "p2a",  _l_p2b = _p + "p2b", _l_p2c = _p + "p2c";
+    var _l_p2end = _p + "p2end";
+
+    array_push(_list, ["label",   _l_pend]);
+    if (_col_mode == 1)
+    {
+        array_push(_list, ["lda_zp",  _zp_phase, _id]);
+        array_push(_list, ["cmp_imm", 0x02,      _id]);
+        array_push(_list, ["beq",     _l_ph2,    _id]);
+    }
+
+    // ---- phase 1 ----
+    array_push(_list, ["lda_zp",  _zp_pdir,  _id]);
+    array_push(_list, ["cmp_imm", 2,         _id]);
+    array_push(_list, ["bne",     _l_p1a,    _id]);
+    array_push(_list, ["lda_imm", 0x07,      _id]);
+    array_push(_list, ["sta_zp",  _zp_finex, _id]);
+    array_push(_list, ["sta_abs", 0xD016,    _id]);
+    array_push(_list, ["jsr",     _p + "shl_ch",   _id]);
+    array_push(_list, ["jsr",     _p + "fil_r_ch", _id]);
+    array_push(_list, ["jmp_abs", _l_p1end,  _id]);
+
+    array_push(_list, ["label",   _l_p1a]);
+    array_push(_list, ["cmp_imm", 1,         _id]);
+    array_push(_list, ["bne",     _l_p1b,    _id]);
+    array_push(_list, ["lda_imm", 0x00,      _id]);
+    array_push(_list, ["sta_zp",  _zp_finex, _id]);
+    array_push(_list, ["sta_abs", 0xD016,    _id]);
+    array_push(_list, ["jsr",     _p + "shr_ch",   _id]);
+    array_push(_list, ["jsr",     _p + "fil_l_ch", _id]);
+    array_push(_list, ["jmp_abs", _l_p1end,  _id]);
+
+    array_push(_list, ["label",   _l_p1b]);
+    array_push(_list, ["cmp_imm", 4,         _id]);
+    array_push(_list, ["bne",     _l_p1c,    _id]);
+    array_push(_list, ["lda_imm", 0x07,      _id]);
+    array_push(_list, ["sta_zp",  _zp_finey, _id]);
+    array_push(_list, ["ora_imm", 0x10,      _id]);
+    array_push(_list, ["sta_abs", 0xD011,    _id]);
+    array_push(_list, ["jsr",     _p + "shu_ch",   _id]);
+    array_push(_list, ["jsr",     _p + "fil_d_ch", _id]);
+    array_push(_list, ["jmp_abs", _l_p1end,  _id]);
+
+    array_push(_list, ["label",   _l_p1c]);
+    array_push(_list, ["lda_imm", 0x00,      _id]);
+    array_push(_list, ["sta_zp",  _zp_finey, _id]);
+    array_push(_list, ["ora_imm", 0x10,      _id]);
+    array_push(_list, ["sta_abs", 0xD011,    _id]);
+    array_push(_list, ["jsr",     _p + "shd_ch",   _id]);
+    array_push(_list, ["jsr",     _p + "fil_u_ch", _id]);
+
+    array_push(_list, ["label",   _l_p1end]);
+    // FIXED mode is done here - there is no colour pass, so the coarse step
+    // costs a single frame. SHIFT mode hands over to phase 2 next frame.
+    var _p1_next = 0x00;
+    if (_col_mode == 1) { _p1_next = 0x02; }
+    array_push(_list, ["lda_imm", _p1_next,  _id]);
+    array_push(_list, ["sta_zp",  _zp_phase, _id]);
+    array_push(_list, ["rts",     0,         _id]);
+
+    // ---- phase 2 (SHIFT mode only) ----
+    if (_col_mode == 1) {
+    array_push(_list, ["label",   _l_ph2]);
+    array_push(_list, ["lda_zp",  _zp_pdir,  _id]);
+    array_push(_list, ["cmp_imm", 2,         _id]);
+    array_push(_list, ["bne",     _l_p2a,    _id]);
+    array_push(_list, ["jsr",     _p + "shl_co",   _id]);
+    array_push(_list, ["jsr",     _p + "fil_r_co", _id]);
+    array_push(_list, ["jmp_abs", _l_p2end,  _id]);
+
+    array_push(_list, ["label",   _l_p2a]);
+    array_push(_list, ["cmp_imm", 1,         _id]);
+    array_push(_list, ["bne",     _l_p2b,    _id]);
+    array_push(_list, ["jsr",     _p + "shr_co",   _id]);
+    array_push(_list, ["jsr",     _p + "fil_l_co", _id]);
+    array_push(_list, ["jmp_abs", _l_p2end,  _id]);
+
+    array_push(_list, ["label",   _l_p2b]);
+    array_push(_list, ["cmp_imm", 4,         _id]);
+    array_push(_list, ["bne",     _l_p2c,    _id]);
+    array_push(_list, ["jsr",     _p + "shu_co",   _id]);
+    array_push(_list, ["jsr",     _p + "fil_d_co", _id]);
+    array_push(_list, ["jmp_abs", _l_p2end,  _id]);
+
+    array_push(_list, ["label",   _l_p2c]);
+    array_push(_list, ["jsr",     _p + "shd_co",   _id]);
+    array_push(_list, ["jsr",     _p + "fil_u_co", _id]);
+
+    array_push(_list, ["label",   _l_p2end]);
+    array_push(_list, ["lda_imm", 0x00,      _id]);
+    array_push(_list, ["sta_zp",  _zp_phase, _id]);
+    array_push(_list, ["rts",     0,         _id]);
+    }   // end SHIFT-mode phase 2
+
+    // ══════════════════════════════════════════════════════
+    // The eight shifts. X walks the moving axis; the other axis is
+    // unrolled at compile time so the inner cost is lda abs,x / sta abs,x.
+    // ══════════════════════════════════════════════════════
+    // FIXED mode never touches colour RAM, so the four _co variants are
+    // simply not emitted.
+    var _sh_names  = [_p + "shl_ch", _p + "shr_ch"];
+    var _sh_bases  = [_scr,          _scr];
+    var _sh_left   = [1,             0];
+    if (_col_mode == 1)
+    {
+        _sh_names = [_p + "shl_ch", _p + "shl_co", _p + "shr_ch", _p + "shr_co"];
+        _sh_bases = [_scr,          _cram,         _scr,          _cram];
+        _sh_left  = [1,             1,             0,             0];
+    }
+
+    for (var _si = 0; _si < array_length(_sh_names); _si++)
+    {
+        var _nm = _sh_names[_si];
+        var _bs = _sh_bases[_si];
+        array_push(_list, ["label", _nm]);
+        if (_sh_left[_si] == 1)
+        {
+            // content moves left: cols 2..38 -> 1..37
+            array_push(_list, ["ldx_imm", 0x00, _id]);
+            array_push(_list, ["label",   _nm + "_lp"]);
+            for (var _rr = _row_start; _rr < _row_start + _num_rows; _rr++)
+            {
+                array_push(_list, ["lda_abx", _bs + _rr * 40 + _col_start + 1, _id]);
+                array_push(_list, ["sta_abx", _bs + _rr * 40 + _col_start,     _id]);
+            }
+            array_push(_list, ["inx",     0,              _id]);
+            array_push(_list, ["cpx_imm", _num_cols - 1,  _id]);
+            array_push(_list, ["beq",     _nm + "_end",   _id]);
+            array_push(_list, ["jmp_abs", _nm + "_lp",    _id]);
+        }
+        else
+        {
+            // content moves right: cols 1..37 -> 2..38, high column first
+            array_push(_list, ["ldx_imm", _num_cols - 2, _id]);
+            array_push(_list, ["label",   _nm + "_lp"]);
+            for (var _rr2 = _row_start; _rr2 < _row_start + _num_rows; _rr2++)
+            {
+                array_push(_list, ["lda_abx", _bs + _rr2 * 40 + _col_start,     _id]);
+                array_push(_list, ["sta_abx", _bs + _rr2 * 40 + _col_start + 1, _id]);
+            }
+            array_push(_list, ["dex",     0,            _id]);
+            array_push(_list, ["bmi",     _nm + "_end", _id]);
+            array_push(_list, ["jmp_abs", _nm + "_lp",  _id]);
+        }
+        array_push(_list, ["label", _nm + "_end"]);
+        array_push(_list, ["rts",   0, _id]);
+    }
+
+    var _sv_names = [_p + "shu_ch", _p + "shd_ch"];
+    var _sv_bases = [_scr,          _scr];
+    var _sv_up    = [1,             0];
+    if (_col_mode == 1)
+    {
+        _sv_names = [_p + "shu_ch", _p + "shu_co", _p + "shd_ch", _p + "shd_co"];
+        _sv_bases = [_scr,          _cram,         _scr,          _cram];
+        _sv_up    = [1,             1,             0,             0];
+    }
+
+    for (var _vi = 0; _vi < array_length(_sv_names); _vi++)
+    {
+        var _vn = _sv_names[_vi];
+        var _vb = _sv_bases[_vi];
+        array_push(_list, ["label",   _vn]);
+        array_push(_list, ["ldx_imm", _col_start, _id]);
+        array_push(_list, ["label",   _vn + "_lp"]);
+        if (_sv_up[_vi] == 1)
+        {
+            // content moves up: rows 2..23 -> 1..22
+            for (var _vr = _row_start; _vr < _row_start + _num_rows - 1; _vr++)
+            {
+                array_push(_list, ["lda_abx", _vb + (_vr + 1) * 40, _id]);
+                array_push(_list, ["sta_abx", _vb + _vr * 40,       _id]);
+            }
+        }
+        else
+        {
+            // content moves down: rows 1..22 -> 2..23, bottom row first
+            for (var _vr2 = _row_start + _num_rows - 2; _vr2 >= _row_start; _vr2--)
+            {
+                array_push(_list, ["lda_abx", _vb + _vr2 * 40,       _id]);
+                array_push(_list, ["sta_abx", _vb + (_vr2 + 1) * 40, _id]);
+            }
+        }
+        array_push(_list, ["inx",     0,                      _id]);
+        array_push(_list, ["cpx_imm", _col_start + _num_cols, _id]);
+        array_push(_list, ["beq",     _vn + "_end",           _id]);
+        array_push(_list, ["jmp_abs", _vn + "_lp",            _id]);
+        array_push(_list, ["label",   _vn + "_end"]);
+        array_push(_list, ["rts",     0, _id]);
+    }
+
+    // ══════════════════════════════════════════════════════
+    // maddr - src pointer = rowtable[camy + A] + camx
+    // No runtime multiply: the row bases are baked above.
+    // maddrc does the same then steps up to the colour plane.
+    // ══════════════════════════════════════════════════════
+    array_push(_list, ["label",   _l_maddr]);
+    array_push(_list, ["clc",     0,          _id]);
+    array_push(_list, ["adc_zp",  _zp_camy,   _id]);
+    array_push(_list, ["tax",     0,          _id]);
+    array_push(_list, ["lda_abx", _l_rowlo,   _id]);
+    array_push(_list, ["sta_zp",  _zp_src,    _id]);
+    array_push(_list, ["lda_abx", _l_rowhi,   _id]);
+    array_push(_list, ["sta_zp",  _zp_src + 1,_id]);
+    array_push(_list, ["lda_zp",  _zp_src,    _id]);
+    array_push(_list, ["clc",     0,          _id]);
+    array_push(_list, ["adc_zp",  _zp_camx,   _id]);
+    array_push(_list, ["sta_zp",  _zp_src,    _id]);
+    array_push(_list, ["lda_zp",  _zp_src + 1,_id]);
+    array_push(_list, ["adc_imm", 0x00,       _id]);
+    array_push(_list, ["sta_zp",  _zp_src + 1,_id]);
+    array_push(_list, ["rts",     0,          _id]);
+
+    if (_col_mode == 1)
+    {
+        array_push(_list, ["label",   _l_maddrc]);
+        array_push(_list, ["jsr",     _l_maddr,   _id]);
+        array_push(_list, ["lda_zp",  _zp_src + 1,_id]);
+        array_push(_list, ["clc",     0,          _id]);
+        array_push(_list, ["adc_imm", _co_hiadd,  _id]);
+        array_push(_list, ["sta_zp",  _zp_src + 1,_id]);
+        array_push(_list, ["rts",     0,          _id]);
+    }
+
+    // ══════════════════════════════════════════════════════
+    // Edge fills - a new column (23 cells) or a new row (38 cells)
+    // ══════════════════════════════════════════════════════
+    var _fc_names = [_p + "fil_r_ch", _p + "fil_l_ch"];
+    var _fc_col   = [0,               0];
+    var _fc_base  = [_scr,            _scr];
+    var _fc_edge  = [_col_start + _num_cols - 1, _col_start];
+    if (_col_mode == 1)
+    {
+        _fc_names = [_p + "fil_r_ch", _p + "fil_r_co", _p + "fil_l_ch", _p + "fil_l_co"];
+        _fc_col   = [0,               1,               0,               1];
+        _fc_base  = [_scr,            _cram,           _scr,            _cram];
+        _fc_edge  = [_col_start + _num_cols - 1, _col_start + _num_cols - 1, _col_start, _col_start];
+    }
+
+    for (var _fi = 0; _fi < array_length(_fc_names); _fi++)
+    {
+        var _fn   = _fc_names[_fi];
+        var _fb   = _fc_base[_fi];
+        var _fe   = _fc_edge[_fi];
+        var _fsub = (_fc_col[_fi] == 1) ? _l_maddrc : _l_maddr;
+        var _fdst = _fb + _row_start * 40 + _fe;
+
+        array_push(_list, ["label",   _fn]);
+        array_push(_list, ["lda_imm", 0x00,  _id]);
+        array_push(_list, ["jsr",     _fsub, _id]);
+        array_push(_list, ["lda_zp",  _zp_src,     _id]);
+        array_push(_list, ["clc",     0,           _id]);
+        array_push(_list, ["adc_imm", (_fe - _col_start) & 0xFF, _id]);
+        array_push(_list, ["sta_zp",  _zp_src,     _id]);
+        array_push(_list, ["lda_zp",  _zp_src + 1, _id]);
+        array_push(_list, ["adc_imm", 0x00,        _id]);
+        array_push(_list, ["sta_zp",  _zp_src + 1, _id]);
+        array_push(_list, ["lda_imm", _fdst & 0xFF,        _id]);
+        array_push(_list, ["sta_lab", _fn + "_sa",         _id]);
+        array_push(_list, ["lda_imm", (_fdst >> 8) & 0xFF, _id]);
+        array_push(_list, ["sta_lab", _fn + "_sa1",        _id]);
+        array_push(_list, ["ldx_imm", _num_rows,   _id]);
+        array_push(_list, ["ldy_imm", 0x00,        _id]);
+        array_push(_list, ["label",   _fn + "_lp"]);
+        array_push(_list, ["lda_izy", _zp_src,     _id]);
+        array_push(_list, ["byte",    0x8D, _id]);              // STA abs, patched below
+        array_push(_list, ["label",   _fn + "_sa"]);
+        array_push(_list, ["byte",    0x00, _id]);
+        array_push(_list, ["label",   _fn + "_sa1"]);
+        array_push(_list, ["byte",    0x00, _id]);
+        array_push(_list, ["lda_lab", _fn + "_sa",  _id]);
+        array_push(_list, ["clc",     0,            _id]);
+        array_push(_list, ["adc_imm", 40,           _id]);
+        array_push(_list, ["sta_lab", _fn + "_sa",  _id]);
+        array_push(_list, ["lda_lab", _fn + "_sa1", _id]);
+        array_push(_list, ["adc_imm", 0x00,         _id]);
+        array_push(_list, ["sta_lab", _fn + "_sa1", _id]);
+        array_push(_list, ["lda_zp",  _zp_src,      _id]);
+        array_push(_list, ["clc",     0,            _id]);
+        array_push(_list, ["adc_imm", _mapw & 0xFF, _id]);
+        array_push(_list, ["sta_zp",  _zp_src,      _id]);
+        array_push(_list, ["lda_zp",  _zp_src + 1,  _id]);
+        array_push(_list, ["adc_imm", 0x00,         _id]);
+        array_push(_list, ["sta_zp",  _zp_src + 1,  _id]);
+        array_push(_list, ["dex",     0,            _id]);
+        array_push(_list, ["bne",     _fn + "_lp",  _id]);
+        array_push(_list, ["rts",     0,            _id]);
+    }
+
+    var _fr_names = [_p + "fil_d_ch", _p + "fil_u_ch"];
+    var _fr_col   = [0,               0];
+    var _fr_base  = [_scr,            _scr];
+    var _fr_row   = [_row_start + _num_rows - 1, _row_start];
+    var _fr_off   = [_num_rows - 1,   0];
+    if (_col_mode == 1)
+    {
+        _fr_names = [_p + "fil_d_ch", _p + "fil_d_co", _p + "fil_u_ch", _p + "fil_u_co"];
+        _fr_col   = [0,               1,               0,               1];
+        _fr_base  = [_scr,            _cram,           _scr,            _cram];
+        _fr_row   = [_row_start + _num_rows - 1, _row_start + _num_rows - 1, _row_start, _row_start];
+        _fr_off   = [_num_rows - 1,   _num_rows - 1,   0,               0];
+    }
+
+    for (var _gi = 0; _gi < array_length(_fr_names); _gi++)
+    {
+        var _gn   = _fr_names[_gi];
+        var _gb   = _fr_base[_gi];
+        var _gsub = (_fr_col[_gi] == 1) ? _l_maddrc : _l_maddr;
+        array_push(_list, ["label",   _gn]);
+        array_push(_list, ["lda_imm", _fr_off[_gi] & 0xFF, _id]);
+        array_push(_list, ["jsr",     _gsub,               _id]);
+        array_push(_list, ["ldy_imm", _num_cols - 1,       _id]);
+        array_push(_list, ["label",   _gn + "_lp"]);
+        array_push(_list, ["lda_izy", _zp_src, _id]);
+        array_push(_list, ["sta_aby", _gb + _fr_row[_gi] * 40 + _col_start, _id]);
+        array_push(_list, ["dey",     0,           _id]);
+        array_push(_list, ["bpl",     _gn + "_lp", _id]);
+        array_push(_list, ["rts",     0,           _id]);
+    }
+
+    // ══════════════════════════════════════════════════════
+    // repaint - draw the whole window from the current camera
+    // ══════════════════════════════════════════════════════
+    var _rp_s0 = _scr  + _row_start * 40 + _col_start;
+    var _rp_c0 = _cram + _row_start * 40 + _col_start;
+
+    array_push(_list, ["label",   _l_repnt]);
+    array_push(_list, ["lda_imm", 0x00,        _id]);
+    array_push(_list, ["jsr",     _l_maddr,    _id]);
+    if (_col_mode == 1)
+    {
+        array_push(_list, ["lda_zp",  _zp_src,     _id]);
+        array_push(_list, ["sta_zp",  _zp_dst,     _id]);
+        array_push(_list, ["lda_zp",  _zp_src + 1, _id]);
+        array_push(_list, ["clc",     0,           _id]);
+        array_push(_list, ["adc_imm", _co_hiadd,   _id]);
+        array_push(_list, ["sta_zp",  _zp_dst + 1, _id]);
+    }
+    array_push(_list, ["lda_imm", _rp_s0 & 0xFF,        _id]);
+    array_push(_list, ["sta_lab", _p + "rp_s",  _id]);
+    array_push(_list, ["lda_imm", (_rp_s0 >> 8) & 0xFF, _id]);
+    array_push(_list, ["sta_lab", _p + "rp_s1", _id]);
+    if (_col_mode == 1)
+    {
+        array_push(_list, ["lda_imm", _rp_c0 & 0xFF,        _id]);
+        array_push(_list, ["sta_lab", _p + "rp_c",  _id]);
+        array_push(_list, ["lda_imm", (_rp_c0 >> 8) & 0xFF, _id]);
+        array_push(_list, ["sta_lab", _p + "rp_c1", _id]);
+    }
+    array_push(_list, ["ldx_imm", _num_rows,    _id]);
+    array_push(_list, ["label",   _p + "rp_row"]);
+    array_push(_list, ["ldy_imm", _num_cols - 1, _id]);
+    array_push(_list, ["label",   _p + "rp_cell"]);
+    array_push(_list, ["lda_izy", _zp_src, _id]);
+    array_push(_list, ["byte",    0x99, _id]);              // STA abs,Y - screen
+    array_push(_list, ["label",   _p + "rp_s"]);
+    array_push(_list, ["byte",    0x00, _id]);
+    array_push(_list, ["label",   _p + "rp_s1"]);
+    array_push(_list, ["byte",    0x00, _id]);
+    if (_col_mode == 1)
+    {
+        array_push(_list, ["lda_izy", _zp_dst, _id]);
+        array_push(_list, ["byte",    0x99, _id]);          // STA abs,Y - colour
+        array_push(_list, ["label",   _p + "rp_c"]);
+        array_push(_list, ["byte",    0x00, _id]);
+        array_push(_list, ["label",   _p + "rp_c1"]);
+        array_push(_list, ["byte",    0x00, _id]);
+    }
+    array_push(_list, ["dey",     0,             _id]);
+    array_push(_list, ["bpl",     _p + "rp_cell",_id]);
+    array_push(_list, ["lda_zp",  _zp_src,      _id]);
+    array_push(_list, ["clc",     0,            _id]);
+    array_push(_list, ["adc_imm", _mapw & 0xFF, _id]);
+    array_push(_list, ["sta_zp",  _zp_src,      _id]);
+    array_push(_list, ["lda_zp",  _zp_src + 1,  _id]);
+    array_push(_list, ["adc_imm", 0x00,         _id]);
+    array_push(_list, ["sta_zp",  _zp_src + 1,  _id]);
+    if (_col_mode == 1)
+    {
+        array_push(_list, ["lda_zp",  _zp_dst,      _id]);
+        array_push(_list, ["clc",     0,            _id]);
+        array_push(_list, ["adc_imm", _mapw & 0xFF, _id]);
+        array_push(_list, ["sta_zp",  _zp_dst,      _id]);
+        array_push(_list, ["lda_zp",  _zp_dst + 1,  _id]);
+        array_push(_list, ["adc_imm", 0x00,         _id]);
+        array_push(_list, ["sta_zp",  _zp_dst + 1,  _id]);
+    }
+    array_push(_list, ["lda_lab", _p + "rp_s",  _id]);
+    array_push(_list, ["clc",     0,            _id]);
+    array_push(_list, ["adc_imm", 40,           _id]);
+    array_push(_list, ["sta_lab", _p + "rp_s",  _id]);
+    array_push(_list, ["lda_lab", _p + "rp_s1", _id]);
+    array_push(_list, ["adc_imm", 0x00,         _id]);
+    array_push(_list, ["sta_lab", _p + "rp_s1", _id]);
+    if (_col_mode == 1)
+    {
+        array_push(_list, ["lda_lab", _p + "rp_c",  _id]);
+        array_push(_list, ["clc",     0,            _id]);
+        array_push(_list, ["adc_imm", 40,           _id]);
+        array_push(_list, ["sta_lab", _p + "rp_c",  _id]);
+        array_push(_list, ["lda_lab", _p + "rp_c1", _id]);
+        array_push(_list, ["adc_imm", 0x00,         _id]);
+        array_push(_list, ["sta_lab", _p + "rp_c1", _id]);
+    }
+    array_push(_list, ["dex",     0,            _id]);
+    array_push(_list, ["bne",     _p + "rp_row",_id]);
+    array_push(_list, ["rts",     0,            _id]);
+
+    // ══════════════════════════════════════════════════════
+    // init - 38 col / 24 row mode, blank the whole screen, paint the window
+    // ══════════════════════════════════════════════════════
+    array_push(_list, ["label",   _l_init]);
+
+    array_push(_list, ["lda_imm", 0x00,       _id]);
+    array_push(_list, ["sta_zp",  _zp_camx,   _id]);
+    array_push(_list, ["sta_zp",  _zp_camy,   _id]);
+    array_push(_list, ["sta_zp",  _zp_phase,  _id]);
+    array_push(_list, ["sta_zp",  _zp_pdir,   _id]);
+    array_push(_list, ["lda_imm", 0x07,       _id]);
+    array_push(_list, ["sta_zp",  _zp_finex,  _id]);
+    array_push(_list, ["sta_zp",  _zp_finey,  _id]);
+    array_push(_list, ["sta_abs", 0xD016,     _id]);   // 38-col mode, xscroll 7
+    array_push(_list, ["lda_imm", 0x17,       _id]);   // 24-row mode, yscroll 7, DEN
+    array_push(_list, ["sta_abs", 0xD011,     _id]);
+
+    // blank screen RAM
+    array_push(_list, ["lda_imm", 0x20,       _id]);
+    array_push(_list, ["ldx_imm", 0x00,       _id]);
+    array_push(_list, ["label",   _p + "cl1"]);
+    for (var _pg = 0; _pg < 4; _pg++) { array_push(_list, ["sta_abx", _scr + _pg * 0x100, _id]); }
+    array_push(_list, ["inx",     0,          _id]);
+    array_push(_list, ["bne",     _p + "cl1", _id]);
+
+    // colour RAM: FIXED mode paints the whole screen with the one nibble and
+    // never touches $D800 again; SHIFT mode just clears it before repaint.
+    var _cl_fill = 0x00;
+    if (_col_mode == 0) { _cl_fill = _fx_nib & 0x0F; }
+    array_push(_list, ["lda_imm", _cl_fill,   _id]);
+    array_push(_list, ["ldx_imm", 0x00,       _id]);
+    array_push(_list, ["label",   _p + "cl2"]);
+    for (var _pg2 = 0; _pg2 < 4; _pg2++) { array_push(_list, ["sta_abx", _cram + _pg2 * 0x100, _id]); }
+    array_push(_list, ["inx",     0,          _id]);
+    array_push(_list, ["bne",     _p + "cl2", _id]);
+
+    array_push(_list, ["jsr",     _l_repnt,   _id]);
+    array_push(_list, ["rts",     0,          _id]);
+
+    // ── Spine resumes ─────────────────────────────────────
+    array_push(_list, ["label", _l_after]);
+
+    var _cm_txt = "COLOUR FIXED $" + string_upper(decimal_to_hex(_fx_nib))
+                + " (1-frame coarse, char plane only, "
+                + string(_plane_sz) + " bytes)";
+    if (_col_mode == 1)
+    {
+        _cm_txt = "COLOUR SHIFT (2-frame coarse, char + colour planes, "
+                + string(_plane_sz * 2) + " bytes, planes $"
+                + string_upper(decimal_to_hex(_base_addr)) + " / $"
+                + string_upper(decimal_to_hex(_co_base)) + ")";
+    }
+    show_debug_message("MACRO_METASCROLL: map '" + _ts_name + "' #" + string(_map_index)
+        + "  " + string(_mapw) + "x" + string(_maph) + " chars"
+        + "  base $" + string_upper(decimal_to_hex(_base_addr))
+        + "  window " + string(_num_cols) + "x" + string(_num_rows)
+        + "  zp $" + string_upper(decimal_to_hex(_zp))
+        + "  " + _cm_txt);
+
+} break;
+
+// --------------------------------------------------------
 // MACRO_CHR - Set up character set and colours
 // --------------------------------------------------------
 case "MACRO_CHR": {

@@ -170,7 +170,7 @@ function scr_cbc_irq_dependency(_sel) {
 // @return the offending node type, or "" when the selection is clear.
 // =====================================================================
 function scr_cbc_unconvertible(_sel) {
-    var _blocked = ["MACRO_SCROLL", "MACRO_VSCROLL", "MACRO_COLLISION"];
+    var _blocked = ["MACRO_SCROLL", "MACRO_VSCROLL", "MACRO_METASCROLL", "MACRO_COLLISION"];
 
     for (var _i = 0; _i < array_length(_sel); _i++) {
         var _n = _sel[_i];
