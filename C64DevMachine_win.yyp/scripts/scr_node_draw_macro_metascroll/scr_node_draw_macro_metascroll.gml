@@ -12,6 +12,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     var _clamp     = (array_length(instructions[0]) > 5 && is_real(instructions[0][5])) ? real(instructions[0][5]) : 1;
     var _col_mode  = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
     var _fixed_col = (array_length(instructions[0]) > 7 && is_real(instructions[0][7])) ? real(instructions[0][7]) : -1;
+    var _blank_ch  = (array_length(instructions[0]) > 8 && is_real(instructions[0][8])) ? real(instructions[0][8]) : 0;
 
     // Resolve the tileset so the node can show the real map size
     var _map_count = 0;
@@ -146,7 +147,19 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     draw_set_halign(fa_left);
     _ly += _lh;
 
-    // ROW 6 — clamp
+    // ROW 6 — blank char. The border cells keep this for the whole run, so
+    // it has to be an empty glyph in the linked charset.
+    draw_set_color(c_gray);
+    draw_text(_lx, _ly, "BLANK CH:");
+    draw_set_color(c_aqua);
+    draw_text(_vx, _ly, string(_blank_ch));
+    draw_set_color(make_color_rgb(70, 130, 140));
+    draw_set_halign(fa_right);
+    draw_text(_rx, _ly, "EDGE FILL");
+    draw_set_halign(fa_left);
+    _ly += _lh;
+
+    // ROW 7 — clamp
     draw_set_color(c_gray);
     draw_text(_lx, _ly, "CLAMP:");
     var _cl_col = c_gray;
@@ -159,7 +172,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     draw_text(_vx, _ly, _cl_txt);
     _ly += _lh;
 
-    // ROWS 7-9 — the JSR entry points. Each name is clickable and drops a
+    // ROWS 8-10 — the JSR entry points. Each name is clickable and drops a
     // ready-made JSR node, so its rect is recorded for the step event.
     draw_set_color(c_gray);
     draw_text(_lx, _ly, "JSR L/R:");
@@ -178,7 +191,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     scr_msc_entry(_vx, _ly, "MSC_Update");
     _ly += _lh;
 
-    // ROWS 10-11 — register ownership, split over two lines so it fits
+    // ROWS 11-12 — register ownership, split over two lines so it fits
     draw_set_font(fnt_c64_tiny);
     draw_set_color(make_color_rgb(100, 100, 160));
     draw_text(_lx, _ly, "OWNS $D016 + $D011 BITS 0-2");

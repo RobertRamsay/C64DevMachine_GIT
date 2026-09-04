@@ -4753,6 +4753,12 @@ case "MACRO_METASCROLL": {
     var _col_mode  = (array_length(_id.instructions[0]) > 6 && is_real(_id.instructions[0][6])) ? real(_id.instructions[0][6]) : 0;
     // [7] the FIXED nibble, or -1 to take the commonest colour in the room
     var _fixed_col = (array_length(_id.instructions[0]) > 7 && is_real(_id.instructions[0][7])) ? real(_id.instructions[0][7]) : -1;
+    // [8] the blank character. 38-col / 24-row mode hides only 7 pixels on the
+    // left and 4 top and bottom, so a sliver of the outer row and column is
+    // always on screen - it has to be a character that is genuinely empty in
+    // YOUR charset. Char 0 by default, not $20: $20 is only a space in the
+    // ROM charset, and in a custom set it is usually a real glyph.
+    var _blank_ch  = (array_length(_id.instructions[0]) > 8 && is_real(_id.instructions[0][8])) ? real(_id.instructions[0][8]) : 0;
 
     // ── Resolve the META_TILESET asset ────────────────────
     var _ts = noone;
@@ -5544,13 +5550,24 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["lda_imm", 0x17,       _id]);   // 24-row mode, yscroll 7, DEN
     array_push(_list, ["sta_abs", 0xD011,     _id]);
 
-    // blank screen RAM
-    array_push(_list, ["lda_imm", 0x20,       _id]);
+    // Blank screen RAM with the node's blank character. The hidden border
+    // cells - row 0, row 24, col 0, col 39 - keep this value for the whole
+    // run, and the fine scroll always leaves a few pixels of them showing,
+    // so it must be an empty glyph in the linked charset.
+    // Pages 0-2 in full, then 232 bytes of page 3, so the sprite pointers at
+    // $07F8-$07FF survive - same guard MACRO_VSCROLL uses.
+    array_push(_list, ["lda_imm", _blank_ch & 0xFF, _id]);
     array_push(_list, ["ldx_imm", 0x00,       _id]);
     array_push(_list, ["label",   _p + "cl1"]);
-    for (var _pg = 0; _pg < 4; _pg++) { array_push(_list, ["sta_abx", _scr + _pg * 0x100, _id]); }
+    for (var _pg = 0; _pg < 3; _pg++) { array_push(_list, ["sta_abx", _scr + _pg * 0x100, _id]); }
     array_push(_list, ["inx",     0,          _id]);
     array_push(_list, ["bne",     _p + "cl1", _id]);
+    array_push(_list, ["ldx_imm", 0x00,       _id]);
+    array_push(_list, ["label",   _p + "cl1b"]);
+    array_push(_list, ["sta_abx", _scr + 3 * 0x100, _id]);
+    array_push(_list, ["inx",     0,          _id]);
+    array_push(_list, ["cpx_imm", 0xE8,       _id]);
+    array_push(_list, ["bne",     _p + "cl1b", _id]);
 
     // colour RAM: FIXED mode paints the whole screen with the one nibble and
     // never touches $D800 again; SHIFT mode just clears it before repaint.
@@ -5559,9 +5576,15 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["lda_imm", _cl_fill,   _id]);
     array_push(_list, ["ldx_imm", 0x00,       _id]);
     array_push(_list, ["label",   _p + "cl2"]);
-    for (var _pg2 = 0; _pg2 < 4; _pg2++) { array_push(_list, ["sta_abx", _cram + _pg2 * 0x100, _id]); }
+    for (var _pg2 = 0; _pg2 < 3; _pg2++) { array_push(_list, ["sta_abx", _cram + _pg2 * 0x100, _id]); }
     array_push(_list, ["inx",     0,          _id]);
     array_push(_list, ["bne",     _p + "cl2", _id]);
+    array_push(_list, ["ldx_imm", 0x00,       _id]);
+    array_push(_list, ["label",   _p + "cl2b"]);
+    array_push(_list, ["sta_abx", _cram + 3 * 0x100, _id]);
+    array_push(_list, ["inx",     0,          _id]);
+    array_push(_list, ["cpx_imm", 0xE8,       _id]);
+    array_push(_list, ["bne",     _p + "cl2b", _id]);
 
     array_push(_list, ["jsr",     _l_repnt,   _id]);
     array_push(_list, ["rts",     0,          _id]);
@@ -5584,6 +5607,7 @@ case "MACRO_METASCROLL": {
         + "  base $" + string_upper(decimal_to_hex(_base_addr))
         + "  window " + string(_num_cols) + "x" + string(_num_rows)
         + "  zp $" + string_upper(decimal_to_hex(_zp))
+        + "  blank char " + string(_blank_ch)
         + "  " + _cm_txt);
 
 } break;

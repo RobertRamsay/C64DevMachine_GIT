@@ -134,8 +134,21 @@ function scr_node_step_macro_metascroll(_draw_x) {
         exit;
     }
 
-    // ── ROW 6 - CLAMP toggle ──────────────────────────────
-    var _cl_ly = _ly0 + _lh * 6;
+    // ── ROW 6 - BLANK CHAR (decimal input) ────────────────
+    var _bc_ly = _ly0 + _lh * 6;
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _bc_ly - 2, _vx + 48, _bc_ly + 14)) {
+        var _bc_cur = 0;
+        if (array_length(instructions[0]) > 8 && is_real(instructions[0][8])) _bc_cur = real(instructions[0][8]);
+        obj_workspace_manager.input_target_node    = id;
+        obj_workspace_manager.input_target_index   = 8;
+        obj_workspace_manager.current_input_string = string(_bc_cur);
+        obj_workspace_manager.cursor_pos           = string_length(obj_workspace_manager.current_input_string);
+        obj_workspace_manager.is_entering_text     = true;
+        exit;
+    }
+
+    // ── ROW 7 - CLAMP toggle ──────────────────────────────
+    var _cl_ly = _ly0 + _lh * 7;
     if (point_in_rectangle(mouse_x, mouse_y, _vx, _cl_ly - 2, _vx + 48, _cl_ly + 14)) {
         var _cl_cur = 1;
         if (array_length(instructions[0]) > 5 && is_real(instructions[0][5])) _cl_cur = real(instructions[0][5]);
