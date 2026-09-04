@@ -4777,7 +4777,7 @@ case "MACRO_METASCROLL": {
     // flipping $D018 in the border removes it completely: this is exactly
     // what the original Boulder Dash does, alternating $0C00 and $2C00.
     var _dbuf      = (array_length(_id.instructions[0]) > 9  && is_real(_id.instructions[0][9]))  ? real(_id.instructions[0][9])  : 0;
-    var _scr_b     = (array_length(_id.instructions[0]) > 10 && is_real(_id.instructions[0][10])) ? real(_id.instructions[0][10]) : 0x2800;
+    var _scr_b     = (array_length(_id.instructions[0]) > 10 && is_real(_id.instructions[0][10])) ? real(_id.instructions[0][10]) : 0x0C00;
 
     // ── Resolve the META_TILESET asset ────────────────────
     var _ts = noone;
@@ -4821,9 +4821,7 @@ case "MACRO_METASCROLL": {
     // Colour RAM cannot be double buffered - there is only one $D800 - so it
     // would have to change in the same instant as the flip, which does not
     // fit in the border. DBUF therefore implies FIXED colour, which is the
-    // stock-C64 answer for colour anyway. The requested mode is kept so it can
-    // be handed back if the DBUF address turns out to be unusable below.
-    var _col_mode_req = _col_mode;
+    // stock-C64 answer for colour anyway.
     if (_dbuf == 1 && _col_mode != 0)
     {
         show_debug_message("MACRO_METASCROLL: DBUF forces COLOUR FIXED - colour RAM cannot be double buffered.");
@@ -4992,79 +4990,6 @@ case "MACRO_METASCROLL": {
     var _pages    = ceil(_plane_sz / 256);
     var _co_base  = _base_addr + _pages * 256;
     var _co_hiadd = _pages & 0xFF;
-
-    // ── Double-buffer address validation ──────────────────
-    // Buffer B is 1000 bytes of screen RAM that the VIC has to be able to
-    // see, and the init clear writes every one of them with the blank char.
-    // Point it anywhere else - program code above all - and the clear blanks
-    // that instead: execution falls into the hole, hits a BRK and the machine
-    // drops back to READY with no clue as to why. None of these mistakes show
-    // up until the PRG runs, so they are caught here and DBUF is switched off
-    // for the build rather than shipped broken.
-    _id.msc_dbuf_error = "";
-    if (_dbuf == 1)
-    {
-        var _b_end = _scr_b + 1000;
-
-        // METASCROLL's own emit is about this big before anything else in the
-        // chain is counted: the routine itself plus the two row tables.
-        var _code_lo = global.start_pc;
-        var _code_hi = global.start_pc + 2400 + (_maph * 2);
-
-        if ((_scr_b & 0x03FF) != 0)
-        {
-            _id.msc_dbuf_error = "NOT $400 ALIGNED";
-        }
-        else if (_scr_b == _scr_a)
-        {
-            _id.msc_dbuf_error = "SAME AS BUFFER A";
-        }
-        else if (_scr_b < 0x0800 || _scr_b > 0x3C00)
-        {
-            _id.msc_dbuf_error = "NOT IN VIC BANK 0";
-        }
-        else if (_scr_b < _code_hi && _b_end > _code_lo)
-        {
-            _id.msc_dbuf_error = "INSIDE PROGRAM CODE";
-        }
-        else if (_scr_b < (_base_addr + _plane_sz) && _b_end > _base_addr)
-        {
-            _id.msc_dbuf_error = "INSIDE CHAR PLANE";
-        }
-        else if (_col_mode >= 1 && _scr_b < (_co_base + _plane_sz) && _b_end > _co_base)
-        {
-            _id.msc_dbuf_error = "INSIDE COLOUR PLANE";
-        }
-        else if (instance_exists(obj_asset_manager))
-        {
-            var _am_v = obj_asset_manager;
-            for (var _av = 0; _av < ds_list_size(_am_v.asset_list); _av++)
-            {
-                var _aa    = ds_list_find_value(_am_v.asset_list, _av);
-                var _aa_lo = 0;
-                var _aa_sz = 0;
-                if (is_real(_aa.address)) { _aa_lo = _aa.address; }
-                if (buffer_exists(_aa.buffer)) { _aa_sz = buffer_get_size(_aa.buffer); }
-                if (_aa_lo > 0 && _aa_sz > 0 && _scr_b < (_aa_lo + _aa_sz) && _b_end > _aa_lo)
-                {
-                    _id.msc_dbuf_error = "OVER ASSET " + string(_aa.name);
-                    break;
-                }
-            }
-        }
-
-        if (_id.msc_dbuf_error != "")
-        {
-            show_debug_message("MACRO_METASCROLL: DBUF buffer $"
-                + string_upper(decimal_to_hex(_scr_b)) + " is " + _id.msc_dbuf_error
-                + " - double buffering switched OFF for this build.");
-            show_debug_message("MACRO_METASCROLL: buffer B needs 1000 free bytes on a"
-                + " $400 boundary inside VIC bank 0 ($0000-$3FFF), clear of your code,"
-                + " your planes and every asset. $2800 and $3000 are usually free.");
-            _dbuf     = 0;
-            _col_mode = _col_mode_req;   // hand back the colour mode DBUF took
-        }
-    }
 
     // ── Off-spine data: the baked planes ──────────────────
     // FIXED mode emits the char plane only - the colour plane is not built.
@@ -5323,18 +5248,6 @@ case "MACRO_METASCROLL": {
         array_push(_list, ["label",   _l_fl_don]);
         array_push(_list, ["ora_lab", _p + "chrbits", _id]);
         array_push(_list, ["sta_abs", 0xD018,       _id]);
-
-        // Sprite pointers live in the last 8 bytes of whichever screen the
-        // VIC is reading, so buffer B needs its own copy. Everything else in
-        // the app writes $07F8, so buffer A stays the master and its eight
-        // bytes are pushed into B on every flip - 8 loads and 8 stores, about
-        // 50 cycles, and it means MACRO_SPR and hand-written pointer writes
-        // keep working unchanged with DBUF on.
-        for (var _sp = 0; _sp < 8; _sp++)
-        {
-            array_push(_list, ["lda_abs", _scr_a + 0x3F8 + _sp, _id]);
-            array_push(_list, ["sta_abs", _scr_b + 0x3F8 + _sp, _id]);
-        }
 
         // snap the fine register for the direction we just stepped
         array_push(_list, ["lda_zp",  _zp_pdir,  _id]);

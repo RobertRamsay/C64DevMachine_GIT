@@ -277,25 +277,7 @@ function scr_node_tooltip_text(_node_type) {
                 "step, and no colour plane in memory.",
                 "",
                 "COLOUR SHIFT: colour RAM scrolls per cell, coarse",
-                "step split over two frames. For turbo machines.",
-                "",
-                "DBUF builds the coarse step into a second screen",
-                "and flips $D018 in the border, which is how Boulder",
-                "Dash kills the top-right tear. It forces COLOUR",
-                "FIXED - there is only one $D800 to flip.",
-                "",
-                "Buffer B needs 1000 free bytes on a $400 boundary",
-                "inside VIC bank 0 ($0000-$3FFF), clear of your code,",
-                "your planes and every asset. The init clear writes",
-                "all 1000 of them, so a bad address blanks whatever",
-                "is really there - land it on code and the PRG dies",
-                "back to READY. $2800 and $3000 are usually free.",
-                "If the compile refuses the address it says why in",
-                "red on the node and builds single-buffered instead.",
-                "",
-                "Sprite pointers stay at $07F8: buffer A is the",
-                "master and its eight bytes are copied into B on",
-                "every flip, so MACRO_SPR needs no change."
+                "step split over two frames. For turbo machines."
             ]
         },
 

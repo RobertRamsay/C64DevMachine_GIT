@@ -162,7 +162,7 @@ function scr_node_step_macro_metascroll(_draw_x) {
         exit;
     }
     if (point_in_rectangle(mouse_x, mouse_y, _vx + 42, _db_ly - 2, _rx, _db_ly + 12)) {
-        var _sb_cur = 0x2800;
+        var _sb_cur = 0x0C00;
         if (array_length(instructions[0]) > 10 && is_real(instructions[0][10])) _sb_cur = real(instructions[0][10]);
         var _sb_hex = string_upper(decimal_to_hex(_sb_cur));
         while (string_length(_sb_hex) < 4) _sb_hex = "0" + _sb_hex;
