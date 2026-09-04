@@ -174,7 +174,13 @@ function scr_load_workspace_from_path(_path) {
         } else {
             _n.height = header_h + (array_length(_n.instructions) * line_h) + pad;
         }
-        if (variable_struct_exists(d, "height")) _n.height = d.height;
+        if (_n.node_type == "COMMENT") {
+            // Old saves can carry the squeezed one-line height. Derive it before repacking.
+            scr_comment_sync_layout(_n);
+            _n.height_dirty = true;
+        } else if (variable_struct_exists(d, "height")) {
+            _n.height = d.height;
+        }
 
         if (_n.node_type == "INIT") _n.is_draggable = false;
         if (_n.node_type == "ORG") {

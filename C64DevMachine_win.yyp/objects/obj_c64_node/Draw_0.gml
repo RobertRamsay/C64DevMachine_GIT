@@ -1,5 +1,7 @@
 /// @desc Render Node (Unified Gutter, Stats, Out-dent, ORG & Comment Nodes)
 if obj_workspace_manager.code_editor_open or obj_asset_manager.viewer_open exit;
+if (node_type == "COMMENT") scr_comment_sync_layout(id);
+
 global.ui_click_consumed = (global.ui_click_block_timer > 0);
 // =============================================================
 // A. VIEW CULL — early exit before any setup cost
@@ -131,10 +133,8 @@ if (height_dirty) {
     height_dirty = false;
     switch (node_type) {
     case "COMMENT":
-        draw_set_font(fnt_c64_code);
-        var _comment_raw = (array_length(instructions) > 0) ? string(instructions[0][1]) : "";
-        var _raw_h = header_h + max(line_h, string_height_ext(_comment_raw, line_h, text_w)) + 8;
-        height = ceil(_raw_h / _G) * _G;
+        // scr_comment_sync_layout already measured the wrapped body.
+        height = cached_height;
         break;
     case "EXECUTE":     height = _G * 2; break;          // 40
 	case "INIT":
@@ -294,6 +294,9 @@ var _raw_h = header_h + (array_length(instructions) * _line_gap) + _bottom_pad +
 // E. DYNAMIC WIDTH
 // =============================================================
 switch (node_type) {
+    case "COMMENT":
+        width = comment_text_width + 20;
+        break;
     case "DATA_TEXT":
         draw_set_font(fnt_c64_code);
         var _txt_raw = (array_length(instructions) > 0) ? string(instructions[0][1]) : "";
@@ -1800,17 +1803,8 @@ if (_lod_body) switch (node_type) {
             }
             if (node_type == "COMMENT") {
                 draw_set_color(c_yellow);
-                var _cmt_str    = string(_raw_val);
-                var _cmt_area_w = width - 10;
-                var _cmt_txt_w  = string_width(_cmt_str);
-                var _cmt_scl    = (_cmt_txt_w > _cmt_area_w && _cmt_txt_w > 0)
-                                  ? (_cmt_area_w / _cmt_txt_w)
-                                  : 1.0;
-                if (_cmt_scl < 1.0) {
-                    draw_text_transformed(draw_x + 5, _yy, _cmt_str, _cmt_scl, 1.0, 0);
-                } else {
-                    draw_text_ext(draw_x + 5, _yy, _cmt_str, line_h, width - 10);
-                }
+                draw_set_font(fnt_c64_code);
+                draw_text_ext(draw_x + 10, _yy, comment_display_text, line_h, -1);
                 continue;
             }
 

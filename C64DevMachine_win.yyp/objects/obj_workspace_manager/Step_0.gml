@@ -862,7 +862,7 @@ if (is_entering_text) {
             }
             // Force wrap scan on pasted content
             if (is_comment || _is_long_text) {
-                var _wrap_limit = _is_long_text ? 50 : 25;
+                var _wrap_limit = _is_long_text ? 50 : 40;
                 var _line_limit = _is_long_text ? 20 : 6;
                 var _pass = 0;
                 while (_pass < 40) {
@@ -1201,6 +1201,7 @@ if (is_entering_text) {
     }
     if (_do_commit) {
         scr_node_commit(input_target_node, input_target_index, current_input_string);
+        if (is_comment) scr_comment_sync_layout(input_target_node);
         if (instance_exists(input_target_node)) input_target_node.height_dirty = true;
         is_entering_text = false;
         input_sel_start  = -1;

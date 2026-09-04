@@ -1,0 +1,188 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+index f8369b2..e4743f9 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+@@ -212,6 +212,9 @@ prev_height          = 40;
+ extra_regions        = [];
+ anim_alias           = "";
+ height_dirty         = true;
++comment_source_cache = undefined;
++comment_display_text = "";
++comment_text_width   = 0;
+ 
+ // ORG BLOCK COLLAPSE. Meaningful only on ORG nodes, but every node carries it
+ // so scr_node_is_hidden() can read a parent's flag without testing for the
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 8858595..587a0cc 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -1,5 +1,7 @@
+ /// @desc Render Node (Unified Gutter, Stats, Out-dent, ORG & Comment Nodes)
+ if obj_workspace_manager.code_editor_open or obj_asset_manager.viewer_open exit;
++if (node_type == "COMMENT") scr_comment_sync_layout(id);
++
+ global.ui_click_consumed = (global.ui_click_block_timer > 0);
+ // =============================================================
+ // A. VIEW CULL — early exit before any setup cost
+@@ -131,10 +133,8 @@ if (height_dirty) {
+     height_dirty = false;
+     switch (node_type) {
+     case "COMMENT":
+-        draw_set_font(fnt_c64_code);
+-        var _comment_raw = (array_length(instructions) > 0) ? string(instructions[0][1]) : "";
+-        var _raw_h = header_h + max(line_h, string_height_ext(_comment_raw, line_h, text_w)) + 8;
+-        height = ceil(_raw_h / _G) * _G;
++        // scr_comment_sync_layout already measured the wrapped body.
++        height = cached_height;
+         break;
+     case "EXECUTE":     height = _G * 2; break;          // 40
+ 	case "INIT":
+@@ -294,6 +294,9 @@ var _raw_h = header_h + (array_length(instructions) * _line_gap) + _bottom_pad +
+ // E. DYNAMIC WIDTH
+ // =============================================================
+ switch (node_type) {
++    case "COMMENT":
++        width = comment_text_width + 20;
++        break;
+     case "DATA_TEXT":
+         draw_set_font(fnt_c64_code);
+         var _txt_raw = (array_length(instructions) > 0) ? string(instructions[0][1]) : "";
+@@ -1800,17 +1803,8 @@ if (_lod_body) switch (node_type) {
+             }
+             if (node_type == "COMMENT") {
+                 draw_set_color(c_yellow);
+-                var _cmt_str    = string(_raw_val);
+-                var _cmt_area_w = width - 10;
+-                var _cmt_txt_w  = string_width(_cmt_str);
+-                var _cmt_scl    = (_cmt_txt_w > _cmt_area_w && _cmt_txt_w > 0)
+-                                  ? (_cmt_area_w / _cmt_txt_w)
+-                                  : 1.0;
+-                if (_cmt_scl < 1.0) {
+-                    draw_text_transformed(draw_x + 5, _yy, _cmt_str, _cmt_scl, 1.0, 0);
+-                } else {
+-                    draw_text_ext(draw_x + 5, _yy, _cmt_str, line_h, width - 10);
+-                }
++                draw_set_font(fnt_c64_code);
++                draw_text_ext(draw_x + 10, _yy, comment_display_text, line_h, -1);
+                 continue;
+             }
+ 
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_64.gml
+index 93529bf..a064e9c 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_64.gml
+@@ -41,10 +41,10 @@ if (node_type == "COMMENT") {
+     draw_set_valign(fa_middle);
+     draw_set_alpha(_alpha_comment * _edge_alpha * 0.6);
+     draw_set_color(c_black);
+-    draw_text(_sx + 1, _sy + 1, _text);
++    draw_text_ext(_sx + 1, _sy + 1, comment_display_text, 12, -1);
+     draw_set_alpha(_alpha_comment * _edge_alpha);
+     draw_set_color(_is_editing ? c_lime : c_yellow);
+-    draw_text(_sx, _sy, _text);
++    draw_text_ext(_sx, _sy, comment_display_text, 12, -1);
+ 
+ } else if (string_pos("MACRO", node_type) > 0) {
+     var _wx = x + x_indent + width * 0.5;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 9bb2f7f..9cfd5fb 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -862,7 +862,7 @@ if (is_entering_text) {
+             }
+             // Force wrap scan on pasted content
+             if (is_comment || _is_long_text) {
+-                var _wrap_limit = _is_long_text ? 50 : 25;
++                var _wrap_limit = _is_long_text ? 50 : 40;
+                 var _line_limit = _is_long_text ? 20 : 6;
+                 var _pass = 0;
+                 while (_pass < 40) {
+@@ -1201,6 +1201,7 @@ if (is_entering_text) {
+     }
+     if (_do_commit) {
+         scr_node_commit(input_target_node, input_target_index, current_input_string);
++        if (is_comment) scr_comment_sync_layout(input_target_node);
+         if (instance_exists(input_target_node)) input_target_node.height_dirty = true;
+         is_entering_text = false;
+         input_sel_start  = -1;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index ab414a0..3cc03aa 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -174,7 +174,13 @@ function scr_load_workspace_from_path(_path) {
+         } else {
+             _n.height = header_h + (array_length(_n.instructions) * line_h) + pad;
+         }
+-        if (variable_struct_exists(d, "height")) _n.height = d.height;
++        if (_n.node_type == "COMMENT") {
++            // Old saves can carry the squeezed one-line height. Derive it before repacking.
++            scr_comment_sync_layout(_n);
++            _n.height_dirty = true;
++        } else if (variable_struct_exists(d, "height")) {
++            _n.height = d.height;
++        }
+ 
+         if (_n.node_type == "INIT") _n.is_draggable = false;
+         if (_n.node_type == "ORG") {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index a5ea52e..e965428 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -52,7 +52,7 @@ case "LABEL": {
+         case "COMMENT":
+             _n.node_title   = "COMMENT";
+             _n.instructions = [["Comment", ""]];
+-            _n.width        = 240;
++            scr_comment_sync_layout(_n);
+             _n.pc_address   = 0x1200;
+             break;
+ 
+@@ -1022,3 +1022,48 @@ case "LABEL": {
+ 
+     return _n;
+ }
++
++
++/// Comments wrap for display only; never insert newlines into saved instructions.
++/// Keep measurement and drawing on the same font, padding and 40-column width.
++function scr_comment_sync_layout(_node) {
++    var _raw = (array_length(_node.instructions) > 0)
++        ? string(_node.instructions[0][1]) : "";
++    var _font = draw_get_font();
++    draw_set_font(fnt_c64_code);
++    var _text_w = string_width(string_repeat("M", 40));
++    if (_node.comment_source_cache != _raw || _node.comment_text_width != _text_w) {
++        var _lines = string_split(string_replace_all(string_replace_all(_raw, "\r\n", "\n"), "\r", "\n"), "\n");
++        var _wrapped = [];
++        for (var _i = 0; _i < array_length(_lines); _i++) {
++            var _rest = _lines[_i];
++            while (string_length(_rest) > 40) {
++                var _space = string_last_pos(" ", string_copy(_rest, 1, 41));
++                var _take = (_space > 1) ? _space - 1 : 40;
++                array_push(_wrapped, string_copy(_rest, 1, _take));
++                _rest = string_delete(_rest, 1, (_space > 1) ? _space : _take);
++            }
++            array_push(_wrapped, _rest);
++        }
++        var _display = "";
++        for (var _i = 0; _i < array_length(_wrapped); _i++) {
++            if (_i > 0) _display += "\n";
++            _display += _wrapped[_i];
++        }
++        _node.comment_source_cache = _raw;
++        _node.comment_display_text = _display;
++        _node.comment_text_width = _text_w;
++        _node.height_dirty = true;
++    }
++    var _height = ceil((28 + max(18, string_height_ext(_node.comment_display_text, 18, -1)) + 10) / 20) * 20;
++    if (_node.height != _height) {
++        _node.height_dirty = true;
++        // Use the normal spine repack, not a second delta push on the next Step.
++        if (_node.is_connected) global.addresses_dirty = true;
++        _node.prev_height = _height;
++    }
++    _node.width = _text_w + 20;
++    _node.height = _height;
++    _node.cached_height = _height;
++    draw_set_font(_font);
++}

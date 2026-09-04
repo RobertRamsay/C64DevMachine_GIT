@@ -212,6 +212,9 @@ prev_height          = 40;
 extra_regions        = [];
 anim_alias           = "";
 height_dirty         = true;
+comment_source_cache = undefined;
+comment_display_text = "";
+comment_text_width   = 0;
 
 // ORG BLOCK COLLAPSE. Meaningful only on ORG nodes, but every node carries it
 // so scr_node_is_hidden() can read a parent's flag without testing for the

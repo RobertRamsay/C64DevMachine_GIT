@@ -41,10 +41,10 @@ if (node_type == "COMMENT") {
     draw_set_valign(fa_middle);
     draw_set_alpha(_alpha_comment * _edge_alpha * 0.6);
     draw_set_color(c_black);
-    draw_text(_sx + 1, _sy + 1, _text);
+    draw_text_ext(_sx + 1, _sy + 1, comment_display_text, 12, -1);
     draw_set_alpha(_alpha_comment * _edge_alpha);
     draw_set_color(_is_editing ? c_lime : c_yellow);
-    draw_text(_sx, _sy, _text);
+    draw_text_ext(_sx, _sy, comment_display_text, 12, -1);
 
 } else if (string_pos("MACRO", node_type) > 0) {
     var _wx = x + x_indent + width * 0.5;
