@@ -83,6 +83,7 @@ welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
     "REFINED - PRE-ASSIGNED Bitmaps to LOAD with BOOT when LOAD_ORG is used.",
+	"ADDED - METASCROLL Macro - SCROLLS in 4 directions (Used FIXED for non C64U)",
     "",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
