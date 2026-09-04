@@ -526,6 +526,22 @@ if (code_editor_cache_dirty) {
                 ds_map_add(_glob_lab_map, string(instructions[0][1]), true);
             }
         }
+
+        // Macro nodes publish entry points of their own - MSC_L, Scroller_U,
+        // sng3_init and so on - but those labels only come into existence when
+        // the chain is compiled, so before the first build the editor had no
+        // way to know they were real and drew every reference to them in error
+        // red. A converted CODE block full of JSR MSC_U looked broken until you
+        // compiled and then fixed itself, which is a confusing thing for an
+        // editor to do. Ask the macro nodes directly instead - they know what
+        // they are going to emit without having to emit it.
+        var _entry_labs = scr_macro_entry_labels();
+        var _entry_keys = variable_struct_get_names(_entry_labs);
+        for (var _eli = 0; _eli < array_length(_entry_keys); _eli++) {
+            if (!ds_map_exists(_glob_lab_map, _entry_keys[_eli])) {
+                ds_map_add(_glob_lab_map, _entry_keys[_eli], true);
+            }
+        }
     }
     var _local_labels  = code_editor_local_labels;
     var _local_consts  = code_editor_local_consts;

@@ -1116,6 +1116,7 @@
     {"id":{"name":"scr_load_workspace_from_path","path":"scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.yy",},},
     {"id":{"name":"scr_macro_chr_step","path":"scripts/scr_macro_chr_step/scr_macro_chr_step.yy",},},
     {"id":{"name":"scr_macro_chr_sync","path":"scripts/scr_macro_chr_sync/scr_macro_chr_sync.yy",},},
+    {"id":{"name":"scr_macro_entry_labels","path":"scripts/scr_macro_entry_labels/scr_macro_entry_labels.yy",},},
     {"id":{"name":"scr_macro_map_sync","path":"scripts/scr_macro_map_sync/scr_macro_map_sync.yy",},},
     {"id":{"name":"scr_macro_sid_pause","path":"scripts/scr_macro_sid_pause/scr_macro_sid_pause.yy",},},
     {"id":{"name":"scr_macro_sid_sync","path":"scripts/scr_macro_sid_sync/scr_macro_sid_sync.yy",},},
