@@ -1,0 +1,252 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 362bc6d..fd7414a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -4750,7 +4750,15 @@ case "MACRO_METASCROLL": {
+     var _base_addr = (array_length(_id.instructions[0]) > 3 && is_real(_id.instructions[0][3])) ? real(_id.instructions[0][3]) : 0x4000;
+     var _zp        = (array_length(_id.instructions[0]) > 4 && is_real(_id.instructions[0][4])) ? real(_id.instructions[0][4]) : 0x60;
+     var _clamp     = (array_length(_id.instructions[0]) > 5 && is_real(_id.instructions[0][5])) ? real(_id.instructions[0][5]) : 1;
+-    // [6] colour mode: 0 = FIXED (stock C64), 1 = SHIFT (needs the headroom)
++    // [6] colour mode: 0 = FIXED (stock C64)
++    //                  1 = SHIFT, coarse step split over two frames
++    //                  2 = SHIFT 1F, chars and colour in the SAME frame.
++    // Mode 1 shifts colour a frame after the chars, so for one frame in eight
++    // every cell wears its neighbour's colour. No amount of CPU speed removes
++    // that - it is the sequencing, not the cycles. Mode 2 does both passes
++    // together and needs a fast machine: ~15700 cycles, which fits a PAL frame
++    // but not the ~3800 of vertical blank, so on a stock C64 it trades the
++    // colour fringe for a tear. On a C64 Ultimate in turbo it is clean.
+     var _col_mode  = (array_length(_id.instructions[0]) > 6 && is_real(_id.instructions[0][6])) ? real(_id.instructions[0][6]) : 0;
+     // [7] the FIXED nibble, or -1 to take the commonest colour in the room
+     var _fixed_col = (array_length(_id.instructions[0]) > 7 && is_real(_id.instructions[0][7])) ? real(_id.instructions[0][7]) : -1;
+@@ -4967,7 +4975,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["org", -2]);
+     array_push(_list, ["org", _base_addr]);
+     for (var _bi = 0; _bi < _plane_sz; _bi++) { array_push(_list, ["byte", _ch_plane[_bi]]); }
+-    if (_col_mode == 1)
++    if (_col_mode >= 1)
+     {
+         array_push(_list, ["org", _co_base]);
+         for (var _bj = 0; _bj < _plane_sz; _bj++) { array_push(_list, ["byte", _co_plane[_bj]]); }
+@@ -5166,6 +5174,11 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["sta_abs", 0xD016,    _id]);
+     array_push(_list, ["jsr",     _p + "shl_ch",   _id]);
+     array_push(_list, ["jsr",     _p + "fil_r_ch", _id]);
++    if (_col_mode == 2)
++    {
++        array_push(_list, ["jsr", _p + "shl_co",   _id]);
++        array_push(_list, ["jsr", _p + "fil_r_co", _id]);
++    }
+     array_push(_list, ["jmp_abs", _l_p1end,  _id]);
+ 
+     array_push(_list, ["label",   _l_p1a]);
+@@ -5176,6 +5189,11 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["sta_abs", 0xD016,    _id]);
+     array_push(_list, ["jsr",     _p + "shr_ch",   _id]);
+     array_push(_list, ["jsr",     _p + "fil_l_ch", _id]);
++    if (_col_mode == 2)
++    {
++        array_push(_list, ["jsr", _p + "shr_co",   _id]);
++        array_push(_list, ["jsr", _p + "fil_l_co", _id]);
++    }
+     array_push(_list, ["jmp_abs", _l_p1end,  _id]);
+ 
+     array_push(_list, ["label",   _l_p1b]);
+@@ -5187,6 +5205,11 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["sta_abs", 0xD011,    _id]);
+     array_push(_list, ["jsr",     _p + "shu_ch",   _id]);
+     array_push(_list, ["jsr",     _p + "fil_d_ch", _id]);
++    if (_col_mode == 2)
++    {
++        array_push(_list, ["jsr", _p + "shu_co",   _id]);
++        array_push(_list, ["jsr", _p + "fil_d_co", _id]);
++    }
+     array_push(_list, ["jmp_abs", _l_p1end,  _id]);
+ 
+     array_push(_list, ["label",   _l_p1c]);
+@@ -5196,6 +5219,11 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["sta_abs", 0xD011,    _id]);
+     array_push(_list, ["jsr",     _p + "shd_ch",   _id]);
+     array_push(_list, ["jsr",     _p + "fil_u_ch", _id]);
++    if (_col_mode == 2)
++    {
++        array_push(_list, ["jsr", _p + "shd_co",   _id]);
++        array_push(_list, ["jsr", _p + "fil_u_co", _id]);
++    }
+ 
+     array_push(_list, ["label",   _l_p1end]);
+     // FIXED mode is done here - there is no colour pass, so the coarse step
+@@ -5249,7 +5277,7 @@ case "MACRO_METASCROLL": {
+     var _sh_names  = [_p + "shl_ch", _p + "shr_ch"];
+     var _sh_bases  = [_scr,          _scr];
+     var _sh_left   = [1,             0];
+-    if (_col_mode == 1)
++    if (_col_mode >= 1)
+     {
+         _sh_names = [_p + "shl_ch", _p + "shl_co", _p + "shr_ch", _p + "shr_co"];
+         _sh_bases = [_scr,          _cram,         _scr,          _cram];
+@@ -5297,7 +5325,7 @@ case "MACRO_METASCROLL": {
+     var _sv_names = [_p + "shu_ch", _p + "shd_ch"];
+     var _sv_bases = [_scr,          _scr];
+     var _sv_up    = [1,             0];
+-    if (_col_mode == 1)
++    if (_col_mode >= 1)
+     {
+         _sv_names = [_p + "shu_ch", _p + "shu_co", _p + "shd_ch", _p + "shd_co"];
+         _sv_bases = [_scr,          _cram,         _scr,          _cram];
+@@ -5359,7 +5387,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["sta_zp",  _zp_src + 1,_id]);
+     array_push(_list, ["rts",     0,          _id]);
+ 
+-    if (_col_mode == 1)
++    if (_col_mode >= 1)
+     {
+         array_push(_list, ["label",   _l_maddrc]);
+         array_push(_list, ["jsr",     _l_maddr,   _id]);
+@@ -5377,7 +5405,7 @@ case "MACRO_METASCROLL": {
+     var _fc_col   = [0,               0];
+     var _fc_base  = [_scr,            _scr];
+     var _fc_edge  = [_col_start + _num_cols - 1, _col_start];
+-    if (_col_mode == 1)
++    if (_col_mode >= 1)
+     {
+         _fc_names = [_p + "fil_r_ch", _p + "fil_r_co", _p + "fil_l_ch", _p + "fil_l_co"];
+         _fc_col   = [0,               1,               0,               1];
+@@ -5440,7 +5468,7 @@ case "MACRO_METASCROLL": {
+     var _fr_base  = [_scr,            _scr];
+     var _fr_row   = [_row_start + _num_rows - 1, _row_start];
+     var _fr_off   = [_num_rows - 1,   0];
+-    if (_col_mode == 1)
++    if (_col_mode >= 1)
+     {
+         _fr_names = [_p + "fil_d_ch", _p + "fil_d_co", _p + "fil_u_ch", _p + "fil_u_co"];
+         _fr_col   = [0,               1,               0,               1];
+@@ -5475,7 +5503,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["label",   _l_repnt]);
+     array_push(_list, ["lda_imm", 0x00,        _id]);
+     array_push(_list, ["jsr",     _l_maddr,    _id]);
+-    if (_col_mode == 1)
++    if (_col_mode >= 1)
+     {
+         array_push(_list, ["lda_zp",  _zp_src,     _id]);
+         array_push(_list, ["sta_zp",  _zp_dst,     _id]);
+@@ -5488,7 +5516,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["sta_lab", _p + "rp_s",  _id]);
+     array_push(_list, ["lda_imm", (_rp_s0 >> 8) & 0xFF, _id]);
+     array_push(_list, ["sta_lab", _p + "rp_s1", _id]);
+-    if (_col_mode == 1)
++    if (_col_mode >= 1)
+     {
+         array_push(_list, ["lda_imm", _rp_c0 & 0xFF,        _id]);
+         array_push(_list, ["sta_lab", _p + "rp_c",  _id]);
+@@ -5505,7 +5533,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["byte",    0x00, _id]);
+     array_push(_list, ["label",   _p + "rp_s1"]);
+     array_push(_list, ["byte",    0x00, _id]);
+-    if (_col_mode == 1)
++    if (_col_mode >= 1)
+     {
+         array_push(_list, ["lda_izy", _zp_dst, _id]);
+         array_push(_list, ["byte",    0x99, _id]);          // STA abs,Y - colour
+@@ -5523,7 +5551,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["lda_zp",  _zp_src + 1,  _id]);
+     array_push(_list, ["adc_imm", 0x00,         _id]);
+     array_push(_list, ["sta_zp",  _zp_src + 1,  _id]);
+-    if (_col_mode == 1)
++    if (_col_mode >= 1)
+     {
+         array_push(_list, ["lda_zp",  _zp_dst,      _id]);
+         array_push(_list, ["clc",     0,            _id]);
+@@ -5540,7 +5568,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["lda_lab", _p + "rp_s1", _id]);
+     array_push(_list, ["adc_imm", 0x00,         _id]);
+     array_push(_list, ["sta_lab", _p + "rp_s1", _id]);
+-    if (_col_mode == 1)
++    if (_col_mode >= 1)
+     {
+         array_push(_list, ["lda_lab", _p + "rp_c",  _id]);
+         array_push(_list, ["clc",     0,            _id]);
+@@ -5617,7 +5645,12 @@ case "MACRO_METASCROLL": {
+     var _cm_txt = "COLOUR FIXED $" + string_upper(decimal_to_hex(_fx_nib))
+                 + " (1-frame coarse, char plane only, "
+                 + string(_plane_sz) + " bytes)";
+-    if (_col_mode == 1)
++    if (_col_mode == 2)
++    {
++        _cm_txt = "COLOUR SHIFT 1F (1-frame coarse, chars + colour together, "
++                + string(_plane_sz * 2) + " bytes - needs a fast machine)";
++    }
++    else if (_col_mode == 1)
+     {
+         _cm_txt = "COLOUR SHIFT (2-frame coarse, char + colour planes, "
+                 + string(_plane_sz * 2) + " bytes, planes $"
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml
+index b5a3fc2..909234e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml
+@@ -43,7 +43,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+     var _pages    = ceil(_plane_sz / 256);
+     var _co_base  = _base_addr + _pages * 256;
+     var _bytes    = _plane_sz;
+-    if (_col_mode == 1) {
++    if (_col_mode >= 1) {
+         _bytes = _plane_sz * 2;
+     }
+ 
+@@ -94,7 +94,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+     draw_text(_lx, _ly, "PLANES:");
+     draw_set_color(c_yellow);
+     var _pl_txt = "$" + string_upper(decimal_to_hex(_base_addr));
+-    if (_col_mode == 1) {
++    if (_col_mode >= 1) {
+         _pl_txt = _pl_txt + " / $" + string_upper(decimal_to_hex(_co_base));
+     }
+     draw_text(_vx, _ly, _pl_txt);
+@@ -104,7 +104,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+     draw_set_font(fnt_c64_tiny);
+     draw_set_color(make_color_rgb(180, 100, 30));
+     var _sz_txt = string(_bytes) + " BYTES, CHAR PLANE";
+-    if (_col_mode == 1) {
++    if (_col_mode >= 1) {
+         _sz_txt = string(_bytes) + " BYTES, CHAR + COLOUR";
+     }
+     draw_text(_lx, _ly, _sz_txt);
+@@ -131,12 +131,18 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+         _cm_col = c_orange;
+         _cm_txt = "SHIFT";
+     }
++    if (_col_mode == 2) {
++        _cm_col = c_red;
++        _cm_txt = "SHIFT 1F";
++    }
+     draw_set_color(_cm_col);
+     draw_text(_vx, _ly, _cm_txt);
+     draw_set_color(make_color_rgb(70, 130, 140));
+     draw_set_halign(fa_right);
+     if (_col_mode == 1) {
+         draw_text(_rx, _ly, "2-FRAME");
++    } else if (_col_mode == 2) {
++        draw_text(_rx, _ly, "NEEDS TURBO");
+     } else {
+         var _fc_txt = "AUTO";
+         if (_fixed_col >= 0) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml
+index 1714e93..9bcfed7 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml
+@@ -108,11 +108,11 @@ function scr_node_step_macro_metascroll(_draw_x) {
+     if (point_in_rectangle(mouse_x, mouse_y, _vx, _cm_ly - 2, _vx + 56, _cm_ly + 14)) {
+         var _cm_cur = 0;
+         if (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) _cm_cur = real(instructions[0][6]);
+-        if (_cm_cur == 1) {
+-            instructions[0][6] = 0;
+-        } else {
+-            instructions[0][6] = 1;
++        _cm_cur = _cm_cur + 1;
++        if (_cm_cur > 2) {
++            _cm_cur = 0;
+         }
++        instructions[0][6] = _cm_cur;
+         global.addresses_dirty = true;
+         global.undo_dirty      = true;
+         exit;

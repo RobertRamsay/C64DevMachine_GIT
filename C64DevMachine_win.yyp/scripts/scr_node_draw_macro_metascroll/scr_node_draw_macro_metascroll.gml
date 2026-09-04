@@ -43,7 +43,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     var _pages    = ceil(_plane_sz / 256);
     var _co_base  = _base_addr + _pages * 256;
     var _bytes    = _plane_sz;
-    if (_col_mode == 1) {
+    if (_col_mode >= 1) {
         _bytes = _plane_sz * 2;
     }
 
@@ -94,7 +94,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     draw_text(_lx, _ly, "PLANES:");
     draw_set_color(c_yellow);
     var _pl_txt = "$" + string_upper(decimal_to_hex(_base_addr));
-    if (_col_mode == 1) {
+    if (_col_mode >= 1) {
         _pl_txt = _pl_txt + " / $" + string_upper(decimal_to_hex(_co_base));
     }
     draw_text(_vx, _ly, _pl_txt);
@@ -104,7 +104,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     draw_set_font(fnt_c64_tiny);
     draw_set_color(make_color_rgb(180, 100, 30));
     var _sz_txt = string(_bytes) + " BYTES, CHAR PLANE";
-    if (_col_mode == 1) {
+    if (_col_mode >= 1) {
         _sz_txt = string(_bytes) + " BYTES, CHAR + COLOUR";
     }
     draw_text(_lx, _ly, _sz_txt);
@@ -131,12 +131,18 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
         _cm_col = c_orange;
         _cm_txt = "SHIFT";
     }
+    if (_col_mode == 2) {
+        _cm_col = c_red;
+        _cm_txt = "SHIFT 1F";
+    }
     draw_set_color(_cm_col);
     draw_text(_vx, _ly, _cm_txt);
     draw_set_color(make_color_rgb(70, 130, 140));
     draw_set_halign(fa_right);
     if (_col_mode == 1) {
         draw_text(_rx, _ly, "2-FRAME");
+    } else if (_col_mode == 2) {
+        draw_text(_rx, _ly, "NEEDS TURBO");
     } else {
         var _fc_txt = "AUTO";
         if (_fixed_col >= 0) {

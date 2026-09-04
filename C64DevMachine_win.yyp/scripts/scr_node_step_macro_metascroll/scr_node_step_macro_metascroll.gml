@@ -108,11 +108,11 @@ function scr_node_step_macro_metascroll(_draw_x) {
     if (point_in_rectangle(mouse_x, mouse_y, _vx, _cm_ly - 2, _vx + 56, _cm_ly + 14)) {
         var _cm_cur = 0;
         if (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) _cm_cur = real(instructions[0][6]);
-        if (_cm_cur == 1) {
-            instructions[0][6] = 0;
-        } else {
-            instructions[0][6] = 1;
+        _cm_cur = _cm_cur + 1;
+        if (_cm_cur > 2) {
+            _cm_cur = 0;
         }
+        instructions[0][6] = _cm_cur;
         global.addresses_dirty = true;
         global.undo_dirty      = true;
         exit;
