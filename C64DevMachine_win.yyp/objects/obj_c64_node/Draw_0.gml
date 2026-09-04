@@ -295,7 +295,7 @@ var _raw_h = header_h + (array_length(instructions) * _line_gap) + _bottom_pad +
 // =============================================================
 switch (node_type) {
     case "COMMENT":
-        width = comment_text_width + 20;
+        width = global.node_display_width;
         break;
     case "DATA_TEXT":
         draw_set_font(fnt_c64_code);

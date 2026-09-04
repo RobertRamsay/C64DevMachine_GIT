@@ -862,7 +862,7 @@ if (is_entering_text) {
             }
             // Force wrap scan on pasted content
             if (is_comment || _is_long_text) {
-                var _wrap_limit = _is_long_text ? 50 : 40;
+                var _wrap_limit = _is_long_text ? 50 : 25;
                 var _line_limit = _is_long_text ? 20 : 6;
                 var _pass = 0;
                 while (_pass < 40) {
