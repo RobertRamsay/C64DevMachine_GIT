@@ -147,8 +147,35 @@ function scr_node_step_macro_metascroll(_draw_x) {
         exit;
     }
 
-    // ── ROW 7 - CLAMP toggle ──────────────────────────────
-    var _cl_ly = _ly0 + _lh * 7;
+    // ── ROW 7 - DBUF: left half toggles, right half edits the B address ──
+    var _db_ly = _ly0 + _lh * 7;
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _db_ly - 2, _vx + 40, _db_ly + 12)) {
+        var _db_cur = 0;
+        if (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) _db_cur = real(instructions[0][9]);
+        if (_db_cur == 1) {
+            instructions[0][9] = 0;
+        } else {
+            instructions[0][9] = 1;
+        }
+        global.addresses_dirty = true;
+        global.undo_dirty      = true;
+        exit;
+    }
+    if (point_in_rectangle(mouse_x, mouse_y, _vx + 42, _db_ly - 2, _rx, _db_ly + 12)) {
+        var _sb_cur = 0x0C00;
+        if (array_length(instructions[0]) > 10 && is_real(instructions[0][10])) _sb_cur = real(instructions[0][10]);
+        var _sb_hex = string_upper(decimal_to_hex(_sb_cur));
+        while (string_length(_sb_hex) < 4) _sb_hex = "0" + _sb_hex;
+        obj_workspace_manager.input_target_node    = id;
+        obj_workspace_manager.input_target_index   = 10;
+        obj_workspace_manager.current_input_string = _sb_hex;
+        obj_workspace_manager.cursor_pos           = string_length(obj_workspace_manager.current_input_string);
+        obj_workspace_manager.is_entering_text     = true;
+        exit;
+    }
+
+    // ── ROW 8 - CLAMP toggle ──────────────────────────────
+    var _cl_ly = _ly0 + _lh * 8;
     if (point_in_rectangle(mouse_x, mouse_y, _vx, _cl_ly - 2, _vx + 40, _cl_ly + 12)) {
         var _cl_cur = 1;
         if (array_length(instructions[0]) > 5 && is_real(instructions[0][5])) _cl_cur = real(instructions[0][5]);

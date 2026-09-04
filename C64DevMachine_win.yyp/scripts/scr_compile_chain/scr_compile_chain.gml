@@ -4768,6 +4768,16 @@ case "MACRO_METASCROLL": {
     // YOUR charset. Char 0 by default, not $20: $20 is only a space in the
     // ROM charset, and in a custom set it is usually a real glyph.
     var _blank_ch  = (array_length(_id.instructions[0]) > 8 && is_real(_id.instructions[0][8])) ? real(_id.instructions[0][8]) : 0;
+    // [9] double buffer on/off, [10] the second screen address.
+    // With one screen the coarse copy writes the buffer the VIC is drawing
+    // from, and it takes ~124 raster lines against the ~112 available before
+    // the raster re-enters the display - so the last columns it touches are
+    // rewritten after the top rows have already been drawn. That is the
+    // top-right tear. Building into the buffer that is NOT on screen and
+    // flipping $D018 in the border removes it completely: this is exactly
+    // what the original Boulder Dash does, alternating $0C00 and $2C00.
+    var _dbuf      = (array_length(_id.instructions[0]) > 9  && is_real(_id.instructions[0][9]))  ? real(_id.instructions[0][9])  : 0;
+    var _scr_b     = (array_length(_id.instructions[0]) > 10 && is_real(_id.instructions[0][10])) ? real(_id.instructions[0][10]) : 0x0C00;
 
     // ── Resolve the META_TILESET asset ────────────────────
     var _ts = noone;
@@ -4807,6 +4817,16 @@ case "MACRO_METASCROLL": {
                   && variable_struct_exists(_ms_chr_ref.meta, "mc_mode")
                   && (_ms_chr_ref.meta.mc_mode == 2);
     var _ms_mode = obj_workspace_manager.map_global_mixed;
+
+    // Colour RAM cannot be double buffered - there is only one $D800 - so it
+    // would have to change in the same instant as the flip, which does not
+    // fit in the border. DBUF therefore implies FIXED colour, which is the
+    // stock-C64 answer for colour anyway.
+    if (_dbuf == 1 && _col_mode != 0)
+    {
+        show_debug_message("MACRO_METASCROLL: DBUF forces COLOUR FIXED - colour RAM cannot be double buffered.");
+        _col_mode = 0;
+    }
 
     var _grid = noone;
     if (_map_index >= 0 && _map_index < _tm.map_count) { _grid = _tm.maps[_map_index]; }
@@ -4851,6 +4871,7 @@ case "MACRO_METASCROLL": {
     var _row_start = 0;
     var _col_start = 0;
     var _scr       = 0x0400;
+    var _scr_a     = 0x0400;   // buffer A; B comes from the node setting
     var _cram      = 0xD800;
 
     if (_mapw > 255)
@@ -5003,6 +5024,17 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["label", _l_rowhi]);
     for (var _r2 = 0; _r2 < _maph; _r2++) { array_push(_list, ["byte", ((_base_addr + _r2 * _mapw) >> 8) & 0xFF, _id]); }
 
+    if (_dbuf == 1)
+    {
+        // front = 0 when screen A is being displayed, 1 when B is.
+        // chrbits keeps $D018 bits 1-3 so the flip preserves whatever
+        // charset MACRO_CHR or MACRO_VIC pointed the VIC at.
+        array_push(_list, ["label", _p + "front"]);
+        array_push(_list, ["byte",  0x00, _id]);
+        array_push(_list, ["label", _p + "chrbits"]);
+        array_push(_list, ["byte",  0x00, _id]);
+    }
+
     array_push(_list, ["label", _l_skip]);
 
     // ══════════════════════════════════════════════════════
@@ -5053,7 +5085,15 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["inc_zp",  _zp_camx,  _id]);
     array_push(_list, ["lda_imm", 2,         _id]);
     array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
-    array_push(_list, ["lda_imm", 1,         _id]);
+    if (_dbuf == 1)
+    {
+        array_push(_list, ["jsr", _p + "docopy", _id]);
+        array_push(_list, ["lda_imm", 2,         _id]);
+    }
+    else
+    {
+        array_push(_list, ["lda_imm", 1,         _id]);
+    }
     array_push(_list, ["sta_zp",  _zp_phase, _id]);
     array_push(_list, ["rts",     0,         _id]);
 
@@ -5082,7 +5122,15 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["dec_zp",  _zp_camx,  _id]);
     array_push(_list, ["lda_imm", 1,         _id]);
     array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
-    array_push(_list, ["lda_imm", 1,         _id]);
+    if (_dbuf == 1)
+    {
+        array_push(_list, ["jsr", _p + "docopy", _id]);
+        array_push(_list, ["lda_imm", 2,         _id]);
+    }
+    else
+    {
+        array_push(_list, ["lda_imm", 1,         _id]);
+    }
     array_push(_list, ["sta_zp",  _zp_phase, _id]);
     array_push(_list, ["rts",     0,         _id]);
 
@@ -5112,7 +5160,15 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["inc_zp",  _zp_camy,  _id]);
     array_push(_list, ["lda_imm", 4,         _id]);
     array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
-    array_push(_list, ["lda_imm", 1,         _id]);
+    if (_dbuf == 1)
+    {
+        array_push(_list, ["jsr", _p + "docopy", _id]);
+        array_push(_list, ["lda_imm", 2,         _id]);
+    }
+    else
+    {
+        array_push(_list, ["lda_imm", 1,         _id]);
+    }
     array_push(_list, ["sta_zp",  _zp_phase, _id]);
     array_push(_list, ["rts",     0,         _id]);
 
@@ -5142,7 +5198,15 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["dec_zp",  _zp_camy,  _id]);
     array_push(_list, ["lda_imm", 3,         _id]);
     array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
-    array_push(_list, ["lda_imm", 1,         _id]);
+    if (_dbuf == 1)
+    {
+        array_push(_list, ["jsr", _p + "docopy", _id]);
+        array_push(_list, ["lda_imm", 2,         _id]);
+    }
+    else
+    {
+        array_push(_list, ["lda_imm", 1,         _id]);
+    }
     array_push(_list, ["sta_zp",  _zp_phase, _id]);
     array_push(_list, ["rts",     0,         _id]);
 
@@ -5158,6 +5222,105 @@ case "MACRO_METASCROLL": {
     var _l_p2end = _p + "p2end";
 
     array_push(_list, ["label",   _l_pend]);
+
+    if (_dbuf == 1)
+    {
+        // ── DBUF: phase 2 is just the flip ────────────────
+        // The back buffer was finished in the frame the coarse step was
+        // detected, so all that is left is to point the VIC at it and snap
+        // the fine register. Both happen here, in the border, in a handful
+        // of cycles - the raster can never catch this.
+        var _l_fl_b   = _p + "fl_b";
+        var _l_fl_don = _p + "fl_don";
+        var _l_fn_a   = _p + "fn_a", _l_fn_b = _p + "fn_b", _l_fn_c = _p + "fn_c";
+        var _l_fn_end = _p + "fn_end";
+        var _ptr_a = ((_scr_a & 0x3FFF) >> 10) << 4;
+        var _ptr_b = ((_scr_b & 0x3FFF) >> 10) << 4;
+
+        array_push(_list, ["lda_lab", _p + "front", _id]);
+        array_push(_list, ["eor_imm", 0x01,         _id]);
+        array_push(_list, ["sta_lab", _p + "front", _id]);
+        array_push(_list, ["beq",     _l_fl_b,      _id]);
+        array_push(_list, ["lda_imm", _ptr_b,       _id]);   // front=1 -> show B
+        array_push(_list, ["jmp_abs", _l_fl_don,    _id]);
+        array_push(_list, ["label",   _l_fl_b]);
+        array_push(_list, ["lda_imm", _ptr_a,       _id]);   // front=0 -> show A
+        array_push(_list, ["label",   _l_fl_don]);
+        array_push(_list, ["ora_lab", _p + "chrbits", _id]);
+        array_push(_list, ["sta_abs", 0xD018,       _id]);
+
+        // snap the fine register for the direction we just stepped
+        array_push(_list, ["lda_zp",  _zp_pdir,  _id]);
+        array_push(_list, ["cmp_imm", 2,         _id]);
+        array_push(_list, ["bne",     _l_fn_a,   _id]);
+        array_push(_list, ["lda_imm", 0x07,      _id]);
+        array_push(_list, ["sta_zp",  _zp_finex, _id]);
+        array_push(_list, ["sta_abs", 0xD016,    _id]);
+        array_push(_list, ["jmp_abs", _l_fn_end, _id]);
+        array_push(_list, ["label",   _l_fn_a]);
+        array_push(_list, ["cmp_imm", 1,         _id]);
+        array_push(_list, ["bne",     _l_fn_b,   _id]);
+        array_push(_list, ["lda_imm", 0x00,      _id]);
+        array_push(_list, ["sta_zp",  _zp_finex, _id]);
+        array_push(_list, ["sta_abs", 0xD016,    _id]);
+        array_push(_list, ["jmp_abs", _l_fn_end, _id]);
+        array_push(_list, ["label",   _l_fn_b]);
+        array_push(_list, ["cmp_imm", 4,         _id]);
+        array_push(_list, ["bne",     _l_fn_c,   _id]);
+        array_push(_list, ["lda_imm", 0x07,      _id]);
+        array_push(_list, ["sta_zp",  _zp_finey, _id]);
+        array_push(_list, ["ora_imm", 0x10,      _id]);
+        array_push(_list, ["sta_abs", 0xD011,    _id]);
+        array_push(_list, ["jmp_abs", _l_fn_end, _id]);
+        array_push(_list, ["label",   _l_fn_c]);
+        array_push(_list, ["lda_imm", 0x00,      _id]);
+        array_push(_list, ["sta_zp",  _zp_finey, _id]);
+        array_push(_list, ["ora_imm", 0x10,      _id]);
+        array_push(_list, ["sta_abs", 0xD011,    _id]);
+        array_push(_list, ["label",   _l_fn_end]);
+
+        array_push(_list, ["lda_imm", 0x00,      _id]);
+        array_push(_list, ["sta_zp",  _zp_phase, _id]);
+        array_push(_list, ["rts",     0,         _id]);
+
+        // ── docopy: build the back buffer for the pending direction ──
+        var _l_dc_b = _p + "dc_b";
+        array_push(_list, ["label",   _p + "docopy"]);
+        array_push(_list, ["lda_lab", _p + "front", _id]);
+        array_push(_list, ["bne",     _l_dc_b,      _id]);
+        array_push(_list, ["jmp_abs", _p + "cp_ab", _id]);
+        array_push(_list, ["label",   _l_dc_b]);
+        array_push(_list, ["jmp_abs", _p + "cp_ba", _id]);
+
+        // one dispatch per buffer pairing
+        var _cp_sfx = ["_ab", "_ba"];
+        for (var _cp = 0; _cp < 2; _cp++)
+        {
+            var _sx = _cp_sfx[_cp];
+            var _l_c1 = _p + "cp1" + _sx, _l_c2 = _p + "cp2" + _sx, _l_c3 = _p + "cp3" + _sx;
+            array_push(_list, ["label",   _p + "cp" + _sx]);
+            array_push(_list, ["lda_zp",  _zp_pdir, _id]);
+            array_push(_list, ["cmp_imm", 2,        _id]);
+            array_push(_list, ["bne",     _l_c1,    _id]);
+            array_push(_list, ["jsr",     _p + "shl_ch" + _sx,   _id]);
+            array_push(_list, ["jmp_abs", _p + "fil_r_ch" + _sx, _id]);
+            array_push(_list, ["label",   _l_c1]);
+            array_push(_list, ["cmp_imm", 1,        _id]);
+            array_push(_list, ["bne",     _l_c2,    _id]);
+            array_push(_list, ["jsr",     _p + "shr_ch" + _sx,   _id]);
+            array_push(_list, ["jmp_abs", _p + "fil_l_ch" + _sx, _id]);
+            array_push(_list, ["label",   _l_c2]);
+            array_push(_list, ["cmp_imm", 4,        _id]);
+            array_push(_list, ["bne",     _l_c3,    _id]);
+            array_push(_list, ["jsr",     _p + "shu_ch" + _sx,   _id]);
+            array_push(_list, ["jmp_abs", _p + "fil_d_ch" + _sx, _id]);
+            array_push(_list, ["label",   _l_c3]);
+            array_push(_list, ["jsr",     _p + "shd_ch" + _sx,   _id]);
+            array_push(_list, ["jmp_abs", _p + "fil_u_ch" + _sx, _id]);
+        }
+    }
+    else
+    {
     if (_col_mode == 1)
     {
         array_push(_list, ["lda_zp",  _zp_phase, _id]);
@@ -5267,6 +5430,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["sta_zp",  _zp_phase, _id]);
     array_push(_list, ["rts",     0,         _id]);
     }   // end SHIFT-mode phase 2
+    }   // end single-buffer pend
 
     // ══════════════════════════════════════════════════════
     // The eight shifts. X walks the moving axis; the other axis is
@@ -5274,20 +5438,34 @@ case "MACRO_METASCROLL": {
     // ══════════════════════════════════════════════════════
     // FIXED mode never touches colour RAM, so the four _co variants are
     // simply not emitted.
+    // Source and destination buffers. With one screen they are the same and
+    // this is an in-place shift; with DBUF the chars cross from the live
+    // buffer to the spare one, which also removes the overlap ordering
+    // constraint - nothing is read after it has been written.
     var _sh_names  = [_p + "shl_ch", _p + "shr_ch"];
-    var _sh_bases  = [_scr,          _scr];
+    var _sh_src    = [_scr_a,        _scr_a];
+    var _sh_dst    = [_scr_a,        _scr_a];
     var _sh_left   = [1,             0];
-    if (_col_mode >= 1)
+    if (_dbuf == 1)
+    {
+        _sh_names = [_p + "shl_ch_ab", _p + "shr_ch_ab", _p + "shl_ch_ba", _p + "shr_ch_ba"];
+        _sh_src   = [_scr_a,           _scr_a,           _scr_b,           _scr_b];
+        _sh_dst   = [_scr_b,           _scr_b,           _scr_a,           _scr_a];
+        _sh_left  = [1,                0,                1,                0];
+    }
+    else if (_col_mode >= 1)
     {
         _sh_names = [_p + "shl_ch", _p + "shl_co", _p + "shr_ch", _p + "shr_co"];
-        _sh_bases = [_scr,          _cram,         _scr,          _cram];
+        _sh_src   = [_scr_a,        _cram,         _scr_a,        _cram];
+        _sh_dst   = [_scr_a,        _cram,         _scr_a,        _cram];
         _sh_left  = [1,             1,             0,             0];
     }
 
     for (var _si = 0; _si < array_length(_sh_names); _si++)
     {
         var _nm = _sh_names[_si];
-        var _bs = _sh_bases[_si];
+        var _bs = _sh_src[_si];
+        var _bd = _sh_dst[_si];
         array_push(_list, ["label", _nm]);
         if (_sh_left[_si] == 1)
         {
@@ -5297,7 +5475,7 @@ case "MACRO_METASCROLL": {
             for (var _rr = _row_start; _rr < _row_start + _num_rows; _rr++)
             {
                 array_push(_list, ["lda_abx", _bs + _rr * 40 + _col_start + 1, _id]);
-                array_push(_list, ["sta_abx", _bs + _rr * 40 + _col_start,     _id]);
+                array_push(_list, ["sta_abx", _bd + _rr * 40 + _col_start,     _id]);
             }
             array_push(_list, ["inx",     0,              _id]);
             array_push(_list, ["cpx_imm", _num_cols - 1,  _id]);
@@ -5312,7 +5490,7 @@ case "MACRO_METASCROLL": {
             for (var _rr2 = _row_start; _rr2 < _row_start + _num_rows; _rr2++)
             {
                 array_push(_list, ["lda_abx", _bs + _rr2 * 40 + _col_start,     _id]);
-                array_push(_list, ["sta_abx", _bs + _rr2 * 40 + _col_start + 1, _id]);
+                array_push(_list, ["sta_abx", _bd + _rr2 * 40 + _col_start + 1, _id]);
             }
             array_push(_list, ["dex",     0,            _id]);
             array_push(_list, ["bmi",     _nm + "_end", _id]);
@@ -5323,19 +5501,29 @@ case "MACRO_METASCROLL": {
     }
 
     var _sv_names = [_p + "shu_ch", _p + "shd_ch"];
-    var _sv_bases = [_scr,          _scr];
+    var _sv_src   = [_scr_a,        _scr_a];
+    var _sv_dst   = [_scr_a,        _scr_a];
     var _sv_up    = [1,             0];
-    if (_col_mode >= 1)
+    if (_dbuf == 1)
+    {
+        _sv_names = [_p + "shu_ch_ab", _p + "shd_ch_ab", _p + "shu_ch_ba", _p + "shd_ch_ba"];
+        _sv_src   = [_scr_a,           _scr_a,           _scr_b,           _scr_b];
+        _sv_dst   = [_scr_b,           _scr_b,           _scr_a,           _scr_a];
+        _sv_up    = [1,                0,                1,                0];
+    }
+    else if (_col_mode >= 1)
     {
         _sv_names = [_p + "shu_ch", _p + "shu_co", _p + "shd_ch", _p + "shd_co"];
-        _sv_bases = [_scr,          _cram,         _scr,          _cram];
+        _sv_src   = [_scr_a,        _cram,         _scr_a,        _cram];
+        _sv_dst   = [_scr_a,        _cram,         _scr_a,        _cram];
         _sv_up    = [1,             1,             0,             0];
     }
 
     for (var _vi = 0; _vi < array_length(_sv_names); _vi++)
     {
         var _vn = _sv_names[_vi];
-        var _vb = _sv_bases[_vi];
+        var _vb = _sv_src[_vi];
+        var _vd = _sv_dst[_vi];
         array_push(_list, ["label",   _vn]);
         array_push(_list, ["ldx_imm", _col_start, _id]);
         array_push(_list, ["label",   _vn + "_lp"]);
@@ -5345,7 +5533,7 @@ case "MACRO_METASCROLL": {
             for (var _vr = _row_start; _vr < _row_start + _num_rows - 1; _vr++)
             {
                 array_push(_list, ["lda_abx", _vb + (_vr + 1) * 40, _id]);
-                array_push(_list, ["sta_abx", _vb + _vr * 40,       _id]);
+                array_push(_list, ["sta_abx", _vd + _vr * 40,       _id]);
             }
         }
         else
@@ -5354,7 +5542,7 @@ case "MACRO_METASCROLL": {
             for (var _vr2 = _row_start + _num_rows - 2; _vr2 >= _row_start; _vr2--)
             {
                 array_push(_list, ["lda_abx", _vb + _vr2 * 40,       _id]);
-                array_push(_list, ["sta_abx", _vb + (_vr2 + 1) * 40, _id]);
+                array_push(_list, ["sta_abx", _vd + (_vr2 + 1) * 40, _id]);
             }
         }
         array_push(_list, ["inx",     0,                      _id]);
@@ -5403,13 +5591,20 @@ case "MACRO_METASCROLL": {
     // ══════════════════════════════════════════════════════
     var _fc_names = [_p + "fil_r_ch", _p + "fil_l_ch"];
     var _fc_col   = [0,               0];
-    var _fc_base  = [_scr,            _scr];
+    var _fc_base  = [_scr_a,          _scr_a];
     var _fc_edge  = [_col_start + _num_cols - 1, _col_start];
-    if (_col_mode >= 1)
+    if (_dbuf == 1)
+    {
+        _fc_names = [_p + "fil_r_ch_ab", _p + "fil_l_ch_ab", _p + "fil_r_ch_ba", _p + "fil_l_ch_ba"];
+        _fc_col   = [0,                  0,                  0,                  0];
+        _fc_base  = [_scr_b,             _scr_b,             _scr_a,             _scr_a];
+        _fc_edge  = [_col_start + _num_cols - 1, _col_start, _col_start + _num_cols - 1, _col_start];
+    }
+    else if (_col_mode >= 1)
     {
         _fc_names = [_p + "fil_r_ch", _p + "fil_r_co", _p + "fil_l_ch", _p + "fil_l_co"];
         _fc_col   = [0,               1,               0,               1];
-        _fc_base  = [_scr,            _cram,           _scr,            _cram];
+        _fc_base  = [_scr_a,          _cram,           _scr_a,          _cram];
         _fc_edge  = [_col_start + _num_cols - 1, _col_start + _num_cols - 1, _col_start, _col_start];
     }
 
@@ -5465,14 +5660,22 @@ case "MACRO_METASCROLL": {
 
     var _fr_names = [_p + "fil_d_ch", _p + "fil_u_ch"];
     var _fr_col   = [0,               0];
-    var _fr_base  = [_scr,            _scr];
+    var _fr_base  = [_scr_a,          _scr_a];
     var _fr_row   = [_row_start + _num_rows - 1, _row_start];
     var _fr_off   = [_num_rows - 1,   0];
-    if (_col_mode >= 1)
+    if (_dbuf == 1)
+    {
+        _fr_names = [_p + "fil_d_ch_ab", _p + "fil_u_ch_ab", _p + "fil_d_ch_ba", _p + "fil_u_ch_ba"];
+        _fr_col   = [0,                  0,                  0,                  0];
+        _fr_base  = [_scr_b,             _scr_b,             _scr_a,             _scr_a];
+        _fr_row   = [_row_start + _num_rows - 1, _row_start, _row_start + _num_rows - 1, _row_start];
+        _fr_off   = [_num_rows - 1,      0,                  _num_rows - 1,      0];
+    }
+    else if (_col_mode >= 1)
     {
         _fr_names = [_p + "fil_d_ch", _p + "fil_d_co", _p + "fil_u_ch", _p + "fil_u_co"];
         _fr_col   = [0,               1,               0,               1];
-        _fr_base  = [_scr,            _cram,           _scr,            _cram];
+        _fr_base  = [_scr_a,          _cram,           _scr_a,          _cram];
         _fr_row   = [_row_start + _num_rows - 1, _row_start + _num_rows - 1, _row_start, _row_start];
         _fr_off   = [_num_rows - 1,   _num_rows - 1,   0,               0];
     }
@@ -5606,18 +5809,37 @@ case "MACRO_METASCROLL": {
     // so it must be an empty glyph in the linked charset.
     // Pages 0-2 in full, then 232 bytes of page 3, so the sprite pointers at
     // $07F8-$07FF survive - same guard MACRO_VSCROLL uses.
-    array_push(_list, ["lda_imm", _blank_ch & 0xFF, _id]);
-    array_push(_list, ["ldx_imm", 0x00,       _id]);
-    array_push(_list, ["label",   _p + "cl1"]);
-    for (var _pg = 0; _pg < 3; _pg++) { array_push(_list, ["sta_abx", _scr + _pg * 0x100, _id]); }
-    array_push(_list, ["inx",     0,          _id]);
-    array_push(_list, ["bne",     _p + "cl1", _id]);
-    array_push(_list, ["ldx_imm", 0x00,       _id]);
-    array_push(_list, ["label",   _p + "cl1b"]);
-    array_push(_list, ["sta_abx", _scr + 3 * 0x100, _id]);
-    array_push(_list, ["inx",     0,          _id]);
-    array_push(_list, ["cpx_imm", 0xE8,       _id]);
-    array_push(_list, ["bne",     _p + "cl1b", _id]);
+    var _clr_bufs = [_scr_a];
+    var _clr_sfx   = [""];
+    if (_dbuf == 1)
+    {
+        // keep the charset half of $D018 so the flip can rebuild the whole
+        // register without knowing where MACRO_CHR put the charset
+        array_push(_list, ["lda_abs", 0xD018,         _id]);
+        array_push(_list, ["and_imm", 0x0E,           _id]);
+        array_push(_list, ["sta_lab", _p + "chrbits", _id]);
+        array_push(_list, ["lda_imm", 0x00,           _id]);
+        array_push(_list, ["sta_lab", _p + "front",   _id]);
+        _clr_bufs = [_scr_a, _scr_b];
+        _clr_sfx  = ["", "_b2"];   // NOT "b": that would collide with the cl1b label
+    }
+    for (var _cb = 0; _cb < array_length(_clr_bufs); _cb++)
+    {
+        var _cbb = _clr_bufs[_cb];
+        var _cbs = _clr_sfx[_cb];
+        array_push(_list, ["lda_imm", _blank_ch & 0xFF, _id]);
+        array_push(_list, ["ldx_imm", 0x00,       _id]);
+        array_push(_list, ["label",   _p + "cl1" + _cbs]);
+        for (var _pg = 0; _pg < 3; _pg++) { array_push(_list, ["sta_abx", _cbb + _pg * 0x100, _id]); }
+        array_push(_list, ["inx",     0,          _id]);
+        array_push(_list, ["bne",     _p + "cl1" + _cbs, _id]);
+        array_push(_list, ["ldx_imm", 0x00,       _id]);
+        array_push(_list, ["label",   _p + "cl1b" + _cbs]);
+        array_push(_list, ["sta_abx", _cbb + 3 * 0x100, _id]);
+        array_push(_list, ["inx",     0,          _id]);
+        array_push(_list, ["cpx_imm", 0xE8,       _id]);
+        array_push(_list, ["bne",     _p + "cl1b" + _cbs, _id]);
+    }
 
     // colour RAM: FIXED mode paints the whole screen with the one nibble and
     // never touches $D800 again; SHIFT mode just clears it before repaint.
@@ -5637,11 +5859,37 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["bne",     _p + "cl2b", _id]);
 
     array_push(_list, ["jsr",     _l_repnt,   _id]);
+
+    if (_dbuf == 1)
+    {
+        // both buffers start identical, so the very first flip shows the
+        // same picture rather than a frame of whatever was in RAM
+        array_push(_list, ["ldx_imm", 0x00,        _id]);
+        array_push(_list, ["label",   _p + "mirr"]);
+        for (var _mp = 0; _mp < 4; _mp++)
+        {
+            array_push(_list, ["lda_abx", _scr_a + _mp * 0x100, _id]);
+            array_push(_list, ["sta_abx", _scr_b + _mp * 0x100, _id]);
+        }
+        array_push(_list, ["inx",     0,           _id]);
+        array_push(_list, ["bne",     _p + "mirr", _id]);
+        // show buffer A
+        array_push(_list, ["lda_imm", ((_scr_a & 0x3FFF) >> 10) << 4, _id]);
+        array_push(_list, ["ora_lab", _p + "chrbits", _id]);
+        array_push(_list, ["sta_abs", 0xD018,      _id]);
+    }
+
     array_push(_list, ["rts",     0,          _id]);
 
     // ── Spine resumes ─────────────────────────────────────
     array_push(_list, ["label", _l_after]);
 
+    var _buf_txt = "  single buffer $0400";
+    if (_dbuf == 1)
+    {
+        _buf_txt = "  DBUF $" + string_upper(decimal_to_hex(_scr_a))
+                 + " / $" + string_upper(decimal_to_hex(_scr_b));
+    }
     var _cm_txt = "COLOUR FIXED $" + string_upper(decimal_to_hex(_fx_nib))
                 + " (1-frame coarse, char plane only, "
                 + string(_plane_sz) + " bytes)";
@@ -5662,6 +5910,7 @@ case "MACRO_METASCROLL": {
         + "  base $" + string_upper(decimal_to_hex(_base_addr))
         + "  window " + string(_num_cols) + "x" + string(_num_rows)
         + "  zp $" + string_upper(decimal_to_hex(_zp))
+        + _buf_txt
         + "  blank char " + string(_blank_ch)
         + "  " + _cm_txt);
 
@@ -7320,6 +7569,7 @@ case "MACRO_SPR": {
 	// screen 1 ($0400) and screen 2 ($0C00). Write the sprite pointer to BOTH
 	// pointer tables so whichever buffer the VIC is showing has correct data.
 	var _spr_has_scroll = false;
+	var _spr_scr2       = 0x0C00;   // MACRO_SCROLL's fixed second buffer
 	var _ptr_reg_alt    = -1;
 	with (obj_c64_node) {
 		if (node_type == "MACRO_SCROLL" && is_connected) {
@@ -7327,10 +7577,25 @@ case "MACRO_SPR": {
 			break;
 		}
 	}
+	// MACRO_METASCROLL does the same when DBUF is on, but its second buffer
+	// is a node setting rather than a fixed address.
+	if (!_spr_has_scroll) {
+		with (obj_c64_node) {
+			if (node_type == "MACRO_METASCROLL" && is_connected
+			 && array_length(instructions[0]) > 9 && is_real(instructions[0][9])
+			 && real(instructions[0][9]) == 1) {
+				_spr_has_scroll = true;
+				if (array_length(instructions[0]) > 10 && is_real(instructions[0][10])) {
+					_spr_scr2 = real(instructions[0][10]);
+				}
+				break;
+			}
+		}
+	}
 	if (_spr_has_scroll) {
 		// MACRO_SCROLL hardcodes scr1=$0400, scr2=$0C00
 		var _scr1_fixed = 0x0400;
-		var _scr2_fixed = 0x0C00;
+		var _scr2_fixed = _spr_scr2;
 		// Pick the "other" pointer table — whichever of the two _ptr_reg isn't already
 		if (_screen_ram == _scr1_fixed) {
 			_ptr_reg_alt = _scr2_fixed + 0x03F8 + _slot;

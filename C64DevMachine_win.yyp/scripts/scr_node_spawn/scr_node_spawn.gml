@@ -206,7 +206,8 @@ case "LABEL": {
             // [1]=tileset [2]=map_index [3]=plane base [4]=zp base [5]=clamp
             // [6]=colour mode (0=FIXED stock C64, 1=SHIFT) [7]=fixed nibble (-1=auto)
             // [8]=blank char for the hidden border cells (0, NOT $20)
-            _n.instructions = [["MACRO_METASCROLL", "", 0, 0x4000, 0x60, 1, 0, -1, 0]];
+            // [9]=double buffer on/off  [10]=second screen address
+            _n.instructions = [["MACRO_METASCROLL", "", 0, 0x4000, 0x60, 1, 0, -1, 0, 0, 0x0C00]];
             _n.pc_address   = global.start_pc;
 			with (_n) { event_user(0); }
         break;
