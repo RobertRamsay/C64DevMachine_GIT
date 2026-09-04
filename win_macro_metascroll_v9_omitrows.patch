@@ -1,0 +1,421 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 525048c..0bd8713 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -250,7 +250,7 @@ if (height_dirty) {
+         }
+         height = _G * _sc_rows;
+     } break;
+-	case "MACRO_METASCROLL": height = _G * 10; break;
++	case "MACRO_METASCROLL": height = _G * 11; break;   // 15 tiny-font rows + header
+ 	case "MACRO_VSCROLL": height = _G * 6;  break;         // 160
+     case "MACRO_TEXT_SCROLL": height = _G * 9; break;  
+     case "MACRO_IRQ":         height = _G * 5;  break;   
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index def9bd6..7ee8910 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -3418,7 +3418,7 @@ if (global.show_helper_window && instance_exists(global.helper_node)) {
+     } else if (_node.node_type == "MACRO_SCROLL") {
+         _desc = "Horizontal map scroller using dual screen buffers at $0400 and $0C00. JSR Scroller_L each frame to scroll left, JSR Scroller_R to scroll right. Fine scroll via $D016 bits 0-2, coarse step loads one new column from MAP_DATA and flips $D018. Colour mode 0=none, 1=deferred, 2=inline. Combine with MACRO_VSCROLL by JSRing both entry points per frame.";
+     } else if (_node.node_type == "MACRO_METASCROLL") {
+-        _desc = "Four-way pixel-smooth camera over a META_TILESET room. The room is flattened at compile time into a char plane and a colour plane, so the runtime never decodes stamps. JSR MSC_L/MSC_R/MSC_U/MSC_D to move the camera one pixel that way, and JSR MSC_Update every frame so a coarse step still finishes when nothing is moving. Clicking any of those five names on the node drops a ready-made JSR node for it. Fine scroll is $D016 for L/R and $D011 for U/D. The window is cols 0-38 and rows 0-24 - the outer cells scroll too, because a new column or row has to be loaded into a cell the border is covering or it appears at full width the instant it is written. 38-column mode covers 7 pixels on the left and 9 on the right, 24-row mode 4 top and 4 bottom, so col 38 and row 24 reveal perfectly from 0 to 7 pixels, while col 0 and row 0 leave a single pixel of pop - the left cover is 7 pixels and a character is 8, so that last pixel is a hardware limit; cover it with a sprite if it shows. Col 39 is the only pad and is invisible at every fine-scroll value. BLANK CH is the character the screen is cleared to at init and the one left in col 39; it defaults to char 0 rather than $20, because $20 is a space only in the ROM charset and is usually a real glyph in a custom one. COLOUR MODE decides what happens to colour RAM. FIXED is the stock C64 setting: in multicolour text mode the three shared colours come from $D021/$D022/$D023 and the colour-RAM nibble only supplies the fourth, so a room drawn from one palette needs no colour scrolling at all - the nibble is written once at init, the coarse step costs a single frame and the colour plane is never built. SHIFT scrolls colour RAM per cell for maps that really do vary, splitting the coarse step over two frames - chars first, then colour. That split is sequencing rather than cycles, so the one-frame colour lag it causes shows on a fast machine too. SHIFT C64U does both passes in the same frame and removes the lag, at roughly twice the cost - about 80 percent of a PAL frame, which fits inside a frame at 1 MHz but runs down the visible display, so it is clean on a C64 Ultimate in turbo and tears on stock hardware.";
++        _desc = "Four-way pixel-smooth camera over a META_TILESET room. The room is flattened at compile time into a char plane and a colour plane, so the runtime never decodes stamps. JSR MSC_L/MSC_R/MSC_U/MSC_D to move the camera one pixel that way, and JSR MSC_Update every frame so a coarse step still finishes when nothing is moving. Clicking any of those five names on the node drops a ready-made JSR node for it. Fine scroll is $D016 for L/R and $D011 for U/D. The window is cols 0-38 and rows 0-24 - the outer cells scroll too, because a new column or row has to be loaded into a cell the border is covering or it appears at full width the instant it is written. 38-column mode covers 7 pixels on the left and 9 on the right, 24-row mode 4 top and 4 bottom, so col 38 and row 24 reveal perfectly from 0 to 7 pixels, while col 0 and row 0 leave a single pixel of pop - the left cover is 7 pixels and a character is 8, so that last pixel is a hardware limit; cover it with a sprite if it shows. Col 39 is the only pad and is invisible at every fine-scroll value. BLANK CH is the character the screen is cleared to at init and the one left in col 39; it defaults to char 0 rather than $20, because $20 is a space only in the ROM charset and is usually a real glyph in a custom one. COLOUR MODE decides what happens to colour RAM. FIXED is the stock C64 setting: in multicolour text mode the three shared colours come from $D021/$D022/$D023 and the colour-RAM nibble only supplies the fourth, so a room drawn from one palette needs no colour scrolling at all - the nibble is written once at init, the coarse step costs a single frame and the colour plane is never built. SHIFT C64U scrolls colour RAM per cell for maps that really do vary, doing both passes in the same frame at roughly twice the cost - about 80 percent of a PAL frame, which fits inside a frame at 1 MHz but runs down the visible display, so it is clean on a C64 Ultimate in turbo and tears on stock hardware. There is no longer a two-frame SHIFT: splitting the passes was sequencing rather than cycles, so the one-frame colour lag it caused showed on a fast machine too; projects saved with it load as FIXED. OMIT TOP and OMIT BOTTOM shrink the scroll window by up to 8 rows at each end. Those rows keep the blank char and are never touched again, so they are free space for a HUD, and the coarse step stops copying them. Top rows are worth more than bottom rows: dropping one from the top removes the same work and also gives the raster 8 more lines to travel before it reaches the first row that scrolls, so the copy gets a later deadline as well - roughly 13.9 raster lines of headroom per top row against 5.9 per bottom row, against the 41 or so the top-right tear needs back. Three rows off the top usually clears it on its own, and the node shows the coarse-step cost against the budget in lines, red while it still overruns. Two consequences to plan for: the first row that scrolls is fully visible, so a vertical coarse step pops a whole character at that seam, and $D011 YSCROLL moves the whole screen, so a char-based HUD rides with the vertical fine scroll unless you split the raster over it or draw it with sprites.";
+     } else if (_node.node_type == "MACRO_VSCROLL") {
+         _desc = "Vertical map scroller using dual screen buffers at $0400 and $0C00. JSR Scroller_U each frame to scroll up, JSR Scroller_D to scroll down. Fine scroll via $D011 bits 0-2 shadow register, coarse step copies 24 rows into inactive buffer shifted by one row, loads new edge row, flips $D018. Safe to combine with MACRO_SCROLL - JSR both entry points in the same frame routine.";
+     }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 75b552a..140a8ac 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -4751,15 +4751,20 @@ case "MACRO_METASCROLL": {
+     var _zp        = (array_length(_id.instructions[0]) > 4 && is_real(_id.instructions[0][4])) ? real(_id.instructions[0][4]) : 0x60;
+     var _clamp     = (array_length(_id.instructions[0]) > 5 && is_real(_id.instructions[0][5])) ? real(_id.instructions[0][5]) : 1;
+     // [6] colour mode: 0 = FIXED (stock C64)
+-    //                  1 = SHIFT, coarse step split over two frames
+     //                  2 = SHIFT C64U, chars and colour in the SAME frame.
+-    // Mode 1 shifts colour a frame after the chars, so for one frame in eight
+-    // every cell wears its neighbour's colour. No amount of CPU speed removes
+-    // that - it is the sequencing, not the cycles. Mode 2 does both passes
+-    // together and needs a fast machine: ~15700 cycles, which fits a PAL frame
+-    // but not the ~3800 of vertical blank, so on a stock C64 it trades the
+-    // colour fringe for a tear. On a C64 Ultimate in turbo it is clean.
++    // There is no mode 1 any more. It shifted colour a frame after the chars,
++    // so for one frame in eight every cell wore its neighbour's colour - CPU
++    // speed could never fix that, it was the sequencing. Mode 2 does both
++    // passes together: ~15700 cycles, which fits a PAL frame but not the
++    // ~3800 of vertical blank, so it is clean on a C64 Ultimate in turbo and
++    // tears on a stock machine. The setting now reads as what it actually
++    // is: FIXED for a stock C64, SHIFT C64U for an accelerated one.
++    // Projects saved with the old mode 1 load as FIXED.
+     var _col_mode  = (array_length(_id.instructions[0]) > 6 && is_real(_id.instructions[0][6])) ? real(_id.instructions[0][6]) : 0;
++    if (_col_mode == 1)
++    {
++        _col_mode = 0;
++    }
+     // [7] the FIXED nibble, or -1 to take the commonest colour in the room
+     var _fixed_col = (array_length(_id.instructions[0]) > 7 && is_real(_id.instructions[0][7])) ? real(_id.instructions[0][7]) : -1;
+     // [8] the blank character. 38-col / 24-row mode hides only 7 pixels on the
+@@ -4768,6 +4773,19 @@ case "MACRO_METASCROLL": {
+     // YOUR charset. Char 0 by default, not $20: $20 is only a space in the
+     // ROM charset, and in a custom set it is usually a real glyph.
+     var _blank_ch  = (array_length(_id.instructions[0]) > 8 && is_real(_id.instructions[0][8])) ? real(_id.instructions[0][8]) : 0;
++    // [11] / [12] rows omitted from the top and bottom of the scroll window.
++    // They are blanked once at init and never touched again, so they are
++    // yours for a HUD - and every row removed is work the coarse step no
++    // longer does. Top rows are worth more than bottom rows: dropping one
++    // from the top also gives the raster 8 more lines to travel before it
++    // reaches the first row that scrolls, so the copy gets a later deadline
++    // as well as less to do. Roughly 13.9 raster lines of headroom per top
++    // row against 5.9 per bottom row, and the top-right tear needs about 41
++    // of them back. Three off the top is usually enough on its own.
++    var _omit_t    = (array_length(_id.instructions[0]) > 11 && is_real(_id.instructions[0][11])) ? real(_id.instructions[0][11]) : 0;
++    var _omit_b    = (array_length(_id.instructions[0]) > 12 && is_real(_id.instructions[0][12])) ? real(_id.instructions[0][12]) : 0;
++    _omit_t = clamp(floor(_omit_t), 0, 8);
++    _omit_b = clamp(floor(_omit_b), 0, 8);
+ 
+     // ── Resolve the META_TILESET asset ────────────────────
+     var _ts = noone;
+@@ -4846,10 +4864,25 @@ case "MACRO_METASCROLL": {
+     // last pixel with a sprite if it matters.
+     //
+     // Only col 39 stays a pad: it is invisible at every fine-scroll value.
+-    var _num_rows  = 25;
++    //
++    // OMIT TOP / OMIT BOTTOM shrink this window. The omitted rows keep the
++    // blank char the init wrote and are never touched again, so they are a
++    // free static HUD. Note that the first row that DOES scroll is then
++    // fully visible, so a vertical coarse step pops a whole character at
++    // that seam - the hidden-cell trick only works at rows 0 and 24.
++    var _num_rows  = 25 - _omit_t - _omit_b;
+     var _num_cols  = 39;
+-    var _row_start = 0;
++    var _row_start = _omit_t;
+     var _col_start = 0;
++
++    if (_num_rows < 5)
++    {
++        show_debug_message("MACRO_METASCROLL: OMIT TOP " + string(_omit_t)
++            + " + OMIT BOTTOM " + string(_omit_b)
++            + " leaves only " + string(_num_rows)
++            + " scrolling rows - 5 is the minimum. Skipping.");
++        break;
++    }
+     var _scr       = 0x0400;
+     var _cram      = 0xD800;
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+index a952105..de70799 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+@@ -256,6 +256,50 @@
+ 	            }
+ 	        }
+ 
++	   // --- MACRO_METASCROLL ---
++	   // Every typed field on this node lives in instructions[0][idx], so
++	   // without this branch they fell through to the generic operand
++	   // handler at the bottom, which writes instructions[idx][1] - a slot
++	   // that does not exist on a macro node. PLANE BASE, ZP BASE and
++	   // BLANK CH were all landing there.
++	    } else if (_target.node_type == "MACRO_METASCROLL") {
++	        while (array_length(_target.instructions[0]) < 13) {
++	            array_push(_target.instructions[0], 0);
++	        }
++	        var _ms_clean = _input;
++	        if (string_char_at(_ms_clean, 1) == "$") {
++	            _ms_clean = string_delete(_ms_clean, 1, 1);
++	        }
++	        if (_idx == 3) {
++	            // Baked char plane base. The colour plane, when there is one,
++	            // follows it on the next page boundary.
++	            var _ms_base = real(hex_to_decimal(string_upper(_ms_clean)));
++	            _target.instructions[0][3] = clamp(_ms_base, 0x0000, 0xFFFF);
++	        } else if (_idx == 4) {
++	            // ZP base. The block is 10 bytes, so it has to start low
++	            // enough that base+9 is still inside zero page.
++	            var _ms_zp = real(hex_to_decimal(string_upper(_ms_clean)));
++	            _target.instructions[0][4] = clamp(_ms_zp, 0x02, 0xF6);
++	        } else if (_idx == 8) {
++	            // Blank char - decimal, one screen code.
++	            var _ms_bc = string_digits(_input);
++	            if (_ms_bc == "") {
++	                _target.instructions[0][8] = 0;
++	            } else {
++	                _target.instructions[0][8] = clamp(real(_ms_bc), 0, 255);
++	            }
++	        } else if (_idx == 11 || _idx == 12) {
++	            // OMIT TOP / OMIT BOTTOM - decimal rows, 0 to 8. The compile
++	            // chain refuses anything that leaves fewer than 5 scrolling
++	            // rows, so the pair is capped again there.
++	            var _ms_om = string_digits(_input);
++	            if (_ms_om == "") {
++	                _target.instructions[0][_idx] = 0;
++	            } else {
++	                _target.instructions[0][_idx] = clamp(real(_ms_om), 0, 8);
++	            }
++	        }
++
+ 	   // --- MACRO_MAP ---
+ 	    } else if (_target.node_type == "MACRO_MAP") {
+ 	        if (_idx == 6) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml
+index 8ba0b50..0beeb46 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml
+@@ -4,7 +4,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+     // instructions[0] layout:
+     //   [0]="MACRO_METASCROLL" [1]=tileset_name [2]=map_index
+     //   [3]=base_addr [4]=zp_base [5]=clamp [6]=colour_mode [7]=fixed_nibble
+-    //   [8]=blank_char
++    //   [8]=blank_char [11]=omit_top [12]=omit_bottom
+ 
+     var _ts_name   = (array_length(instructions[0]) > 1) ? string(instructions[0][1]) : "";
+     var _map_index = (array_length(instructions[0]) > 2 && is_real(instructions[0][2])) ? real(instructions[0][2]) : 0;
+@@ -14,6 +14,23 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+     var _col_mode  = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
+     var _fixed_col = (array_length(instructions[0]) > 7 && is_real(instructions[0][7])) ? real(instructions[0][7]) : -1;
+     var _blank_ch  = (array_length(instructions[0]) > 8 && is_real(instructions[0][8])) ? real(instructions[0][8]) : 0;
++    var _omit_t    = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 0;
++    var _omit_b    = (array_length(instructions[0]) > 12 && is_real(instructions[0][12])) ? real(instructions[0][12]) : 0;
++    _omit_t = clamp(floor(_omit_t), 0, 8);
++    _omit_b = clamp(floor(_omit_b), 0, 8);
++    if (_col_mode == 1) {
++        _col_mode = 0;   // the old 2-frame SHIFT is gone; it loads as FIXED
++    }
++    var _rows_live = 25 - _omit_t - _omit_b;
++
++    // Rough cost of one coarse step against the raster budget, both in PAL
++    // lines. Cost is the horizontal shift (38 columns x (9 cycles x rows + 7))
++    // plus the edge-fill column; budget is the 112 lines from VWAIT $FB to
++    // the top of the display, plus 8 more for every row omitted at the top
++    // because the raster has that much further to travel before it reaches
++    // the first row that scrolls. Estimates, not measurements: +/- 5%.
++    var _step_lines   = floor((38 * (9 * _rows_live + 7) + 30 * _rows_live + 60) / 63);
++    var _budget_lines = 112 + 8 * _omit_t;
+ 
+     // Resolve the tileset so the node can show the real map size
+     var _map_count = 0;
+@@ -122,11 +139,6 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+     var _cm_col = c_lime;
+     var _cm_txt = "FIXED";
+     var _cm_note = "1 FRAME";
+-    if (_col_mode == 1) {
+-        _cm_col  = c_orange;
+-        _cm_txt  = "SHIFT";
+-        _cm_note = "2 FRAME";
+-    }
+     if (_col_mode == 2) {
+         _cm_col  = c_red;
+         _cm_txt  = "SHIFT C64U";
+@@ -166,7 +178,34 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+     draw_text(_vx, _ly, _cl_txt);
+     _ly += _lh;
+ 
+-    // ROWS 8-10 — the JSR entry points. Each name is clickable and drops a
++    // ROW 8 — OMIT TOP. Worth more than OMIT BOTTOM: it removes work AND
++    // pushes the raster deadline 8 lines later, so the note shows the whole
++    // budget rather than just the row count.
++    draw_set_color(c_gray);
++    draw_text(_lx, _ly, "OMIT TOP:");
++    draw_set_color(c_aqua);
++    var _ot_txt = string(_omit_t);
++    draw_text(_vx, _ly, _ot_txt);
++    scr_msc_note(_vx + string_width(_ot_txt), _ly, _rx,
++          string(_rows_live) + " ROWS LIVE", make_color_rgb(70, 130, 140));
++    _ly += _lh;
++
++    // ROW 9 — OMIT BOTTOM, with the coarse-step cost against the budget.
++    // Green when the step clears the raster, red when it still overruns.
++    draw_set_color(c_gray);
++    draw_text(_lx, _ly, "OMIT BOT:");
++    draw_set_color(c_aqua);
++    var _ob_txt = string(_omit_b);
++    draw_text(_vx, _ly, _ob_txt);
++    var _cost_col = c_lime;
++    if (_step_lines > _budget_lines) {
++        _cost_col = c_red;
++    }
++    scr_msc_note(_vx + string_width(_ob_txt), _ly, _rx,
++          string(_step_lines) + "/" + string(_budget_lines) + " LINES", _cost_col);
++    _ly += _lh;
++
++    // ROWS 10-12 — the JSR entry points. Each name is clickable and drops a
+     // ready-made JSR node, so its rect is recorded for the step event.
+     draw_set_color(c_gray);
+     draw_text(_lx, _ly, "JSR L/R:");
+@@ -186,7 +225,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+     scr_msc_entry(_vx, _ly, "MSC_Update");
+     _ly += _lh;
+ 
+-    // ROWS 11-12 — register ownership
++    // ROWS 13-14 — register ownership
+     draw_set_color(make_color_rgb(100, 100, 160));
+     draw_text(_lx, _ly, "OWNS $D016 + $D011 BITS 0-2");
+     _ly += _lh;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index f84f50b..e089cd8 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -204,9 +204,13 @@ case "LABEL": {
+             _n.node_title   = "METASCROLL";
+             _n.scroll_alias = "";
+             // [1]=tileset [2]=map_index [3]=plane base [4]=zp base [5]=clamp
+-            // [6]=colour mode (0=FIXED stock C64, 1=SHIFT) [7]=fixed nibble (-1=auto)
++            // [6]=colour mode (0=FIXED stock C64, 2=SHIFT C64U turbo)
++            // [7]=fixed nibble (-1=auto)
+             // [8]=blank char for the hidden border cells (0, NOT $20)
+-            _n.instructions = [["MACRO_METASCROLL", "", 0, 0x4000, 0x60, 1, 0, -1, 0]];
++            // [9] and [10] reserved
++            // [11]=omit top rows [12]=omit bottom rows (0-8, HUD space and
++            // cycles back; every top row also buys 8 raster lines of deadline)
++            _n.instructions = [["MACRO_METASCROLL", "", 0, 0x4000, 0x60, 1, 0, -1, 0, 0, 0, 0, 0]];
+             _n.pc_address   = global.start_pc;
+ 			with (_n) { event_user(0); }
+         break;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml
+index 662da01..48b1c41 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml
+@@ -14,7 +14,7 @@ function scr_node_step_macro_metascroll(_draw_x) {
+     var _rx  = _draw_x + width - 8;
+     var _vx  = _draw_x + 8 + string_width("BLANK CH:") + 8;
+ 
+-    // ── The five JSR entry names (rows 7-9) ───────────────
++    // ── The five JSR entry names (rows 10-12) ─────────────
+     // The draw event records where each one landed; clicking one drops a
+     // ready-made JSR node beside this one, the way the JOYSTICK macro drops
+     // its direction labels.
+@@ -106,11 +106,16 @@ function scr_node_step_macro_metascroll(_draw_x) {
+     // ── ROW 5 - COLOUR MODE toggle, and the fixed nibble ──
+     var _cm_ly = _ly0 + _lh * 5;
+     if (point_in_rectangle(mouse_x, mouse_y, _vx, _cm_ly - 2, _vx + 64, _cm_ly + 12)) {
++        // Two modes only: 0 FIXED (stock C64) and 2 SHIFT C64U (turbo).
++        // The old mode 1 (2-frame SHIFT) is gone - it always wore one frame
++        // in eight of the neighbour's colour, whatever the CPU speed. A
++        // project saved with it toggles straight to SHIFT C64U from FIXED.
+         var _cm_cur = 0;
+         if (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) _cm_cur = real(instructions[0][6]);
+-        _cm_cur = _cm_cur + 1;
+-        if (_cm_cur > 2) {
++        if (_cm_cur == 2) {
+             _cm_cur = 0;
++        } else {
++            _cm_cur = 2;
+         }
+         instructions[0][6] = _cm_cur;
+         global.addresses_dirty = true;
+@@ -160,6 +165,44 @@ function scr_node_step_macro_metascroll(_draw_x) {
+         global.undo_dirty = true;
+         exit;
+     }
++
++    // ── ROW 8 - OMIT TOP (decimal input, 0-8) ─────────────
++    var _ot_ly = _ly0 + _lh * 8;
++    if (point_in_rectangle(mouse_x, mouse_y, _vx, _ot_ly - 2, _vx + 40, _ot_ly + 12)) {
++        var _ot_cur = 0;
++        if (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) _ot_cur = real(instructions[0][11]);
++        scr_msc_pad_slots();
++        obj_workspace_manager.input_target_node    = id;
++        obj_workspace_manager.input_target_index   = 11;
++        obj_workspace_manager.current_input_string = string(_ot_cur);
++        obj_workspace_manager.cursor_pos           = string_length(obj_workspace_manager.current_input_string);
++        obj_workspace_manager.is_entering_text     = true;
++        exit;
++    }
++
++    // ── ROW 9 - OMIT BOTTOM (decimal input, 0-8) ──────────
++    var _ob_ly = _ly0 + _lh * 9;
++    if (point_in_rectangle(mouse_x, mouse_y, _vx, _ob_ly - 2, _vx + 40, _ob_ly + 12)) {
++        var _ob_cur = 0;
++        if (array_length(instructions[0]) > 12 && is_real(instructions[0][12])) _ob_cur = real(instructions[0][12]);
++        scr_msc_pad_slots();
++        obj_workspace_manager.input_target_node    = id;
++        obj_workspace_manager.input_target_index   = 12;
++        obj_workspace_manager.current_input_string = string(_ob_cur);
++        obj_workspace_manager.cursor_pos           = string_length(obj_workspace_manager.current_input_string);
++        obj_workspace_manager.is_entering_text     = true;
++        exit;
++    }
++}
++
++/// @desc Make sure instructions[0] is long enough to hold slots 9-12 before
++/// the text modal writes one of them. Nodes saved before OMIT TOP / OMIT
++/// BOTTOM existed only have 9 entries, and the modal assigns by index rather
++/// than growing the array itself. Slots 9 and 10 are reserved.
++function scr_msc_pad_slots() {
++    while (array_length(instructions[0]) < 13) {
++        array_push(instructions[0], 0);
++    }
+ }
+ 
+ /// @desc Drop a JSR node for one METASCROLL entry beside this node.
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+index 5ae6919..f6895bd 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+@@ -259,25 +259,50 @@ function scr_node_tooltip_text(_node_type) {
+                 "a char is 8, so that one is hardware. Hide it with",
+                 "a sprite if it shows.",
+                 "",
+-                "COLOUR: FIXED writes one nibble at init and never",
+-                "touches $D800 again. SHIFT scrolls colour a frame",
+-                "after the chars, so for one frame in eight a cell",
+-                "wears its neighbour's colour - CPU speed cannot fix",
+-                "that, it is the sequencing. SHIFT C64U does both in",
+-                "one frame: clean on a C64 Ultimate in turbo, but it",
+-                "runs into the display on a stock 1 MHz machine.",
++                "COLOUR is a two-way choice, and it is really a",
++                "choice of machine. FIXED writes one nibble at init",
++                "and never touches $D800 again - the multicolour set",
++                "lives in $D021/$D022/$D023, so on a stock C64 you",
++                "lose nothing and the coarse step is one frame with",
++                "no colour plane in memory. SHIFT C64U scrolls colour",
++                "cell by cell in the same frame as the chars: clean",
++                "on a C64 Ultimate in turbo, runs into the display on",
++                "a stock 1 MHz machine.",
++                "",
++                "The old 2-frame SHIFT is gone. It moved colour a",
++                "frame behind the chars, so one frame in eight every",
++                "cell wore its neighbour's colour - that was the",
++                "sequencing, not the cycles, so no machine could fix",
++                "it. Projects saved with it load as FIXED.",
+                 "",
+                 "BLANK CH fills the screen at init and stays in col",
+                 "39, which is never visible. Char 0, not $20: $20 is",
+                 "a space only in the ROM charset.",
+                 "",
+-                "COLOUR FIXED (stock C64): the nibble is written once",
+-                "at init and $D800 is never touched again - the MC",
+-                "set lives in $D021/$D022/$D023. One-frame coarse",
+-                "step, and no colour plane in memory.",
+-                "",
+-                "COLOUR SHIFT: colour RAM scrolls per cell, coarse",
+-                "step split over two frames. For turbo machines."
++                "OMIT TOP / OMIT BOTTOM shrink the scroll window by",
++                "up to 8 rows at each end. The omitted rows keep the",
++                "blank char and are never touched again, so they are",
++                "free space for a HUD - and the coarse step no longer",
++                "copies them.",
++                "",
++                "Top rows are worth more than bottom rows. Dropping",
++                "one from the top removes the same work AND gives the",
++                "raster 8 more lines to travel before it reaches the",
++                "first row that scrolls, so the copy gets a later",
++                "deadline too: about 13.9 raster lines of headroom",
++                "per top row against 5.9 per bottom row. The",
++                "top-right tear needs roughly 41 back, so three off",
++                "the top usually clears it on its own. The node shows",
++                "the cost against the budget in lines, red when the",
++                "step still overruns.",
++                "",
++                "Two things to expect. The first row that scrolls is",
++                "fully visible, so a vertical coarse step pops a",
++                "whole character at that seam - the hidden-cell trick",
++                "only works at rows 0 and 24. And $D011 YSCROLL moves",
++                "the whole screen, so a char-based HUD rides up and",
++                "down with the vertical fine scroll unless you split",
++                "the raster over it or draw it with sprites."
+             ]
+         },
+ 

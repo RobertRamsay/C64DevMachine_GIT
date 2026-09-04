@@ -4751,15 +4751,20 @@ case "MACRO_METASCROLL": {
     var _zp        = (array_length(_id.instructions[0]) > 4 && is_real(_id.instructions[0][4])) ? real(_id.instructions[0][4]) : 0x60;
     var _clamp     = (array_length(_id.instructions[0]) > 5 && is_real(_id.instructions[0][5])) ? real(_id.instructions[0][5]) : 1;
     // [6] colour mode: 0 = FIXED (stock C64)
-    //                  1 = SHIFT, coarse step split over two frames
     //                  2 = SHIFT C64U, chars and colour in the SAME frame.
-    // Mode 1 shifts colour a frame after the chars, so for one frame in eight
-    // every cell wears its neighbour's colour. No amount of CPU speed removes
-    // that - it is the sequencing, not the cycles. Mode 2 does both passes
-    // together and needs a fast machine: ~15700 cycles, which fits a PAL frame
-    // but not the ~3800 of vertical blank, so on a stock C64 it trades the
-    // colour fringe for a tear. On a C64 Ultimate in turbo it is clean.
+    // There is no mode 1 any more. It shifted colour a frame after the chars,
+    // so for one frame in eight every cell wore its neighbour's colour - CPU
+    // speed could never fix that, it was the sequencing. Mode 2 does both
+    // passes together: ~15700 cycles, which fits a PAL frame but not the
+    // ~3800 of vertical blank, so it is clean on a C64 Ultimate in turbo and
+    // tears on a stock machine. The setting now reads as what it actually
+    // is: FIXED for a stock C64, SHIFT C64U for an accelerated one.
+    // Projects saved with the old mode 1 load as FIXED.
     var _col_mode  = (array_length(_id.instructions[0]) > 6 && is_real(_id.instructions[0][6])) ? real(_id.instructions[0][6]) : 0;
+    if (_col_mode == 1)
+    {
+        _col_mode = 0;
+    }
     // [7] the FIXED nibble, or -1 to take the commonest colour in the room
     var _fixed_col = (array_length(_id.instructions[0]) > 7 && is_real(_id.instructions[0][7])) ? real(_id.instructions[0][7]) : -1;
     // [8] the blank character. 38-col / 24-row mode hides only 7 pixels on the
@@ -4768,6 +4773,19 @@ case "MACRO_METASCROLL": {
     // YOUR charset. Char 0 by default, not $20: $20 is only a space in the
     // ROM charset, and in a custom set it is usually a real glyph.
     var _blank_ch  = (array_length(_id.instructions[0]) > 8 && is_real(_id.instructions[0][8])) ? real(_id.instructions[0][8]) : 0;
+    // [11] / [12] rows omitted from the top and bottom of the scroll window.
+    // They are blanked once at init and never touched again, so they are
+    // yours for a HUD - and every row removed is work the coarse step no
+    // longer does. Top rows are worth more than bottom rows: dropping one
+    // from the top also gives the raster 8 more lines to travel before it
+    // reaches the first row that scrolls, so the copy gets a later deadline
+    // as well as less to do. Roughly 13.9 raster lines of headroom per top
+    // row against 5.9 per bottom row, and the top-right tear needs about 41
+    // of them back. Three off the top is usually enough on its own.
+    var _omit_t    = (array_length(_id.instructions[0]) > 11 && is_real(_id.instructions[0][11])) ? real(_id.instructions[0][11]) : 0;
+    var _omit_b    = (array_length(_id.instructions[0]) > 12 && is_real(_id.instructions[0][12])) ? real(_id.instructions[0][12]) : 0;
+    _omit_t = clamp(floor(_omit_t), 0, 8);
+    _omit_b = clamp(floor(_omit_b), 0, 8);
 
     // ── Resolve the META_TILESET asset ────────────────────
     var _ts = noone;
@@ -4846,10 +4864,25 @@ case "MACRO_METASCROLL": {
     // last pixel with a sprite if it matters.
     //
     // Only col 39 stays a pad: it is invisible at every fine-scroll value.
-    var _num_rows  = 25;
+    //
+    // OMIT TOP / OMIT BOTTOM shrink this window. The omitted rows keep the
+    // blank char the init wrote and are never touched again, so they are a
+    // free static HUD. Note that the first row that DOES scroll is then
+    // fully visible, so a vertical coarse step pops a whole character at
+    // that seam - the hidden-cell trick only works at rows 0 and 24.
+    var _num_rows  = 25 - _omit_t - _omit_b;
     var _num_cols  = 39;
-    var _row_start = 0;
+    var _row_start = _omit_t;
     var _col_start = 0;
+
+    if (_num_rows < 5)
+    {
+        show_debug_message("MACRO_METASCROLL: OMIT TOP " + string(_omit_t)
+            + " + OMIT BOTTOM " + string(_omit_b)
+            + " leaves only " + string(_num_rows)
+            + " scrolling rows - 5 is the minimum. Skipping.");
+        break;
+    }
     var _scr       = 0x0400;
     var _cram      = 0xD800;
 

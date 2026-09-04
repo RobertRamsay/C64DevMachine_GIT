@@ -256,6 +256,50 @@
 	            }
 	        }
 
+	   // --- MACRO_METASCROLL ---
+	   // Every typed field on this node lives in instructions[0][idx], so
+	   // without this branch they fell through to the generic operand
+	   // handler at the bottom, which writes instructions[idx][1] - a slot
+	   // that does not exist on a macro node. PLANE BASE, ZP BASE and
+	   // BLANK CH were all landing there.
+	    } else if (_target.node_type == "MACRO_METASCROLL") {
+	        while (array_length(_target.instructions[0]) < 13) {
+	            array_push(_target.instructions[0], 0);
+	        }
+	        var _ms_clean = _input;
+	        if (string_char_at(_ms_clean, 1) == "$") {
+	            _ms_clean = string_delete(_ms_clean, 1, 1);
+	        }
+	        if (_idx == 3) {
+	            // Baked char plane base. The colour plane, when there is one,
+	            // follows it on the next page boundary.
+	            var _ms_base = real(hex_to_decimal(string_upper(_ms_clean)));
+	            _target.instructions[0][3] = clamp(_ms_base, 0x0000, 0xFFFF);
+	        } else if (_idx == 4) {
+	            // ZP base. The block is 10 bytes, so it has to start low
+	            // enough that base+9 is still inside zero page.
+	            var _ms_zp = real(hex_to_decimal(string_upper(_ms_clean)));
+	            _target.instructions[0][4] = clamp(_ms_zp, 0x02, 0xF6);
+	        } else if (_idx == 8) {
+	            // Blank char - decimal, one screen code.
+	            var _ms_bc = string_digits(_input);
+	            if (_ms_bc == "") {
+	                _target.instructions[0][8] = 0;
+	            } else {
+	                _target.instructions[0][8] = clamp(real(_ms_bc), 0, 255);
+	            }
+	        } else if (_idx == 11 || _idx == 12) {
+	            // OMIT TOP / OMIT BOTTOM - decimal rows, 0 to 8. The compile
+	            // chain refuses anything that leaves fewer than 5 scrolling
+	            // rows, so the pair is capped again there.
+	            var _ms_om = string_digits(_input);
+	            if (_ms_om == "") {
+	                _target.instructions[0][_idx] = 0;
+	            } else {
+	                _target.instructions[0][_idx] = clamp(real(_ms_om), 0, 8);
+	            }
+	        }
+
 	   // --- MACRO_MAP ---
 	    } else if (_target.node_type == "MACRO_MAP") {
 	        if (_idx == 6) {
