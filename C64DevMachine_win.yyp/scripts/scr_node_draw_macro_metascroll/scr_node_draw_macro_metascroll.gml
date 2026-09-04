@@ -4,7 +4,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     // instructions[0] layout:
     //   [0]="MACRO_METASCROLL" [1]=tileset_name [2]=map_index
     //   [3]=base_addr [4]=zp_base [5]=clamp [6]=colour_mode [7]=fixed_nibble
-    //   [8]=blank_char
+    //   [8]=blank_char [11]=omit_top [12]=omit_bottom
 
     var _ts_name   = (array_length(instructions[0]) > 1) ? string(instructions[0][1]) : "";
     var _map_index = (array_length(instructions[0]) > 2 && is_real(instructions[0][2])) ? real(instructions[0][2]) : 0;
@@ -14,6 +14,23 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     var _col_mode  = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
     var _fixed_col = (array_length(instructions[0]) > 7 && is_real(instructions[0][7])) ? real(instructions[0][7]) : -1;
     var _blank_ch  = (array_length(instructions[0]) > 8 && is_real(instructions[0][8])) ? real(instructions[0][8]) : 0;
+    var _omit_t    = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 0;
+    var _omit_b    = (array_length(instructions[0]) > 12 && is_real(instructions[0][12])) ? real(instructions[0][12]) : 0;
+    _omit_t = clamp(floor(_omit_t), 0, 8);
+    _omit_b = clamp(floor(_omit_b), 0, 8);
+    if (_col_mode == 1) {
+        _col_mode = 0;   // the old 2-frame SHIFT is gone; it loads as FIXED
+    }
+    var _rows_live = 25 - _omit_t - _omit_b;
+
+    // Rough cost of one coarse step against the raster budget, both in PAL
+    // lines. Cost is the horizontal shift (38 columns x (9 cycles x rows + 7))
+    // plus the edge-fill column; budget is the 112 lines from VWAIT $FB to
+    // the top of the display, plus 8 more for every row omitted at the top
+    // because the raster has that much further to travel before it reaches
+    // the first row that scrolls. Estimates, not measurements: +/- 5%.
+    var _step_lines   = floor((38 * (9 * _rows_live + 7) + 30 * _rows_live + 60) / 63);
+    var _budget_lines = 112 + 8 * _omit_t;
 
     // Resolve the tileset so the node can show the real map size
     var _map_count = 0;
@@ -122,11 +139,6 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     var _cm_col = c_lime;
     var _cm_txt = "FIXED";
     var _cm_note = "1 FRAME";
-    if (_col_mode == 1) {
-        _cm_col  = c_orange;
-        _cm_txt  = "SHIFT";
-        _cm_note = "2 FRAME";
-    }
     if (_col_mode == 2) {
         _cm_col  = c_red;
         _cm_txt  = "SHIFT C64U";
@@ -166,7 +178,34 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     draw_text(_vx, _ly, _cl_txt);
     _ly += _lh;
 
-    // ROWS 8-10 — the JSR entry points. Each name is clickable and drops a
+    // ROW 8 — OMIT TOP. Worth more than OMIT BOTTOM: it removes work AND
+    // pushes the raster deadline 8 lines later, so the note shows the whole
+    // budget rather than just the row count.
+    draw_set_color(c_gray);
+    draw_text(_lx, _ly, "OMIT TOP:");
+    draw_set_color(c_aqua);
+    var _ot_txt = string(_omit_t);
+    draw_text(_vx, _ly, _ot_txt);
+    scr_msc_note(_vx + string_width(_ot_txt), _ly, _rx,
+          string(_rows_live) + " ROWS LIVE", make_color_rgb(70, 130, 140));
+    _ly += _lh;
+
+    // ROW 9 — OMIT BOTTOM, with the coarse-step cost against the budget.
+    // Green when the step clears the raster, red when it still overruns.
+    draw_set_color(c_gray);
+    draw_text(_lx, _ly, "OMIT BOT:");
+    draw_set_color(c_aqua);
+    var _ob_txt = string(_omit_b);
+    draw_text(_vx, _ly, _ob_txt);
+    var _cost_col = c_lime;
+    if (_step_lines > _budget_lines) {
+        _cost_col = c_red;
+    }
+    scr_msc_note(_vx + string_width(_ob_txt), _ly, _rx,
+          string(_step_lines) + "/" + string(_budget_lines) + " LINES", _cost_col);
+    _ly += _lh;
+
+    // ROWS 10-12 — the JSR entry points. Each name is clickable and drops a
     // ready-made JSR node, so its rect is recorded for the step event.
     draw_set_color(c_gray);
     draw_text(_lx, _ly, "JSR L/R:");
@@ -186,7 +225,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     scr_msc_entry(_vx, _ly, "MSC_Update");
     _ly += _lh;
 
-    // ROWS 11-12 — register ownership
+    // ROWS 13-14 — register ownership
     draw_set_color(make_color_rgb(100, 100, 160));
     draw_text(_lx, _ly, "OWNS $D016 + $D011 BITS 0-2");
     _ly += _lh;

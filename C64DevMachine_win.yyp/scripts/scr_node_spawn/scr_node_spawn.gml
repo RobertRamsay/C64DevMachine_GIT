@@ -204,9 +204,13 @@ case "LABEL": {
             _n.node_title   = "METASCROLL";
             _n.scroll_alias = "";
             // [1]=tileset [2]=map_index [3]=plane base [4]=zp base [5]=clamp
-            // [6]=colour mode (0=FIXED stock C64, 1=SHIFT) [7]=fixed nibble (-1=auto)
+            // [6]=colour mode (0=FIXED stock C64, 2=SHIFT C64U turbo)
+            // [7]=fixed nibble (-1=auto)
             // [8]=blank char for the hidden border cells (0, NOT $20)
-            _n.instructions = [["MACRO_METASCROLL", "", 0, 0x4000, 0x60, 1, 0, -1, 0]];
+            // [9] and [10] reserved
+            // [11]=omit top rows [12]=omit bottom rows (0-8, HUD space and
+            // cycles back; every top row also buys 8 raster lines of deadline)
+            _n.instructions = [["MACRO_METASCROLL", "", 0, 0x4000, 0x60, 1, 0, -1, 0, 0, 0, 0, 0]];
             _n.pc_address   = global.start_pc;
 			with (_n) { event_user(0); }
         break;

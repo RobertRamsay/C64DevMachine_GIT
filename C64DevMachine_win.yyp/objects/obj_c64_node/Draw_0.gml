@@ -250,7 +250,7 @@ if (height_dirty) {
         }
         height = _G * _sc_rows;
     } break;
-	case "MACRO_METASCROLL": height = _G * 10; break;
+	case "MACRO_METASCROLL": height = _G * 11; break;   // 15 tiny-font rows + header
 	case "MACRO_VSCROLL": height = _G * 6;  break;         // 160
     case "MACRO_TEXT_SCROLL": height = _G * 9; break;  
     case "MACRO_IRQ":         height = _G * 5;  break;   

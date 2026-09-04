@@ -14,7 +14,7 @@ function scr_node_step_macro_metascroll(_draw_x) {
     var _rx  = _draw_x + width - 8;
     var _vx  = _draw_x + 8 + string_width("BLANK CH:") + 8;
 
-    // ── The five JSR entry names (rows 7-9) ───────────────
+    // ── The five JSR entry names (rows 10-12) ─────────────
     // The draw event records where each one landed; clicking one drops a
     // ready-made JSR node beside this one, the way the JOYSTICK macro drops
     // its direction labels.
@@ -106,11 +106,16 @@ function scr_node_step_macro_metascroll(_draw_x) {
     // ── ROW 5 - COLOUR MODE toggle, and the fixed nibble ──
     var _cm_ly = _ly0 + _lh * 5;
     if (point_in_rectangle(mouse_x, mouse_y, _vx, _cm_ly - 2, _vx + 64, _cm_ly + 12)) {
+        // Two modes only: 0 FIXED (stock C64) and 2 SHIFT C64U (turbo).
+        // The old mode 1 (2-frame SHIFT) is gone - it always wore one frame
+        // in eight of the neighbour's colour, whatever the CPU speed. A
+        // project saved with it toggles straight to SHIFT C64U from FIXED.
         var _cm_cur = 0;
         if (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) _cm_cur = real(instructions[0][6]);
-        _cm_cur = _cm_cur + 1;
-        if (_cm_cur > 2) {
+        if (_cm_cur == 2) {
             _cm_cur = 0;
+        } else {
+            _cm_cur = 2;
         }
         instructions[0][6] = _cm_cur;
         global.addresses_dirty = true;
@@ -159,6 +164,44 @@ function scr_node_step_macro_metascroll(_draw_x) {
         }
         global.undo_dirty = true;
         exit;
+    }
+
+    // ── ROW 8 - OMIT TOP (decimal input, 0-8) ─────────────
+    var _ot_ly = _ly0 + _lh * 8;
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _ot_ly - 2, _vx + 40, _ot_ly + 12)) {
+        var _ot_cur = 0;
+        if (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) _ot_cur = real(instructions[0][11]);
+        scr_msc_pad_slots();
+        obj_workspace_manager.input_target_node    = id;
+        obj_workspace_manager.input_target_index   = 11;
+        obj_workspace_manager.current_input_string = string(_ot_cur);
+        obj_workspace_manager.cursor_pos           = string_length(obj_workspace_manager.current_input_string);
+        obj_workspace_manager.is_entering_text     = true;
+        exit;
+    }
+
+    // ── ROW 9 - OMIT BOTTOM (decimal input, 0-8) ──────────
+    var _ob_ly = _ly0 + _lh * 9;
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _ob_ly - 2, _vx + 40, _ob_ly + 12)) {
+        var _ob_cur = 0;
+        if (array_length(instructions[0]) > 12 && is_real(instructions[0][12])) _ob_cur = real(instructions[0][12]);
+        scr_msc_pad_slots();
+        obj_workspace_manager.input_target_node    = id;
+        obj_workspace_manager.input_target_index   = 12;
+        obj_workspace_manager.current_input_string = string(_ob_cur);
+        obj_workspace_manager.cursor_pos           = string_length(obj_workspace_manager.current_input_string);
+        obj_workspace_manager.is_entering_text     = true;
+        exit;
+    }
+}
+
+/// @desc Make sure instructions[0] is long enough to hold slots 9-12 before
+/// the text modal writes one of them. Nodes saved before OMIT TOP / OMIT
+/// BOTTOM existed only have 9 entries, and the modal assigns by index rather
+/// than growing the array itself. Slots 9 and 10 are reserved.
+function scr_msc_pad_slots() {
+    while (array_length(instructions[0]) < 13) {
+        array_push(instructions[0], 0);
     }
 }
 
