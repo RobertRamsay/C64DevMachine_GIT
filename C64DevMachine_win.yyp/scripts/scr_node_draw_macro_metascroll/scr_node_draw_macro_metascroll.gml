@@ -15,7 +15,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     var _fixed_col = (array_length(instructions[0]) > 7 && is_real(instructions[0][7])) ? real(instructions[0][7]) : -1;
     var _blank_ch  = (array_length(instructions[0]) > 8 && is_real(instructions[0][8])) ? real(instructions[0][8]) : 0;
     var _dbuf      = (array_length(instructions[0]) > 9  && is_real(instructions[0][9]))  ? real(instructions[0][9])  : 0;
-    var _scr_b     = (array_length(instructions[0]) > 10 && is_real(instructions[0][10])) ? real(instructions[0][10]) : 0x0C00;
+    var _scr_b     = (array_length(instructions[0]) > 10 && is_real(instructions[0][10])) ? real(instructions[0][10]) : 0x2800;
 
     // Resolve the tileset so the node can show the real map size
     var _map_count = 0;
@@ -166,6 +166,14 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
         _db_col  = c_lime;
         _db_txt  = "$0400/$" + string_upper(decimal_to_hex(_scr_b));
         _db_note = "NO TEAR";
+        // The compile refuses a buffer B that lands on code, on a plane or on
+        // an asset, because the init clear would blank it and the PRG would
+        // die back to READY. Say so on the node - the debug log is easy to miss.
+        if (msc_dbuf_error != "") {
+            _db_col  = c_red;
+            _db_txt  = "$" + string_upper(decimal_to_hex(_scr_b)) + " BAD";
+            _db_note = msc_dbuf_error;
+        }
     }
     draw_set_color(_db_col);
     draw_text(_vx, _ly, _db_txt);

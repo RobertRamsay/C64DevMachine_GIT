@@ -39,6 +39,12 @@ total_node_size   = 0;
 sprite_buffer     = noone;
 kla_buffer        = noone;
 
+// MACRO_METASCROLL — the clickable JSR entry hit rects, rebuilt every draw,
+// and the reason (if any) the last compile refused to double buffer. Both
+// live here so the step event can never read them before a draw has run.
+msc_entry_rects   = [];
+msc_dbuf_error    = "";
+
 // MACRO_CODE cache
 code_seg_cache    = [];
 code_cache_dirty  = true;
