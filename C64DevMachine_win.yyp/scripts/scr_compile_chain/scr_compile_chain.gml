@@ -4752,7 +4752,7 @@ case "MACRO_METASCROLL": {
     var _clamp     = (array_length(_id.instructions[0]) > 5 && is_real(_id.instructions[0][5])) ? real(_id.instructions[0][5]) : 1;
     // [6] colour mode: 0 = FIXED (stock C64)
     //                  1 = SHIFT, coarse step split over two frames
-    //                  2 = SHIFT 1F, chars and colour in the SAME frame.
+    //                  2 = SHIFT C64U, chars and colour in the SAME frame.
     // Mode 1 shifts colour a frame after the chars, so for one frame in eight
     // every cell wears its neighbour's colour. No amount of CPU speed removes
     // that - it is the sequencing, not the cycles. Mode 2 does both passes
@@ -5647,7 +5647,7 @@ case "MACRO_METASCROLL": {
                 + string(_plane_sz) + " bytes)";
     if (_col_mode == 2)
     {
-        _cm_txt = "COLOUR SHIFT 1F (1-frame coarse, chars + colour together, "
+        _cm_txt = "COLOUR SHIFT C64U (1-frame coarse, chars + colour together, "
                 + string(_plane_sz * 2) + " bytes - needs a fast machine)";
     }
     else if (_col_mode == 1)

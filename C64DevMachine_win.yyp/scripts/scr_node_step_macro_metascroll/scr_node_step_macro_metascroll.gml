@@ -6,13 +6,13 @@ function scr_node_step_macro_metascroll(_draw_x) {
     if (global.any_picker_open) return;
 
     // Row geometry - must match scr_node_draw_macro_metascroll exactly.
-    var _lh  = 18;
+    // The font is set here too, because the value column is measured from the
+    // widest label and string_width reports against whatever font is current.
+    draw_set_font(fnt_c64_tiny);
+    var _lh  = 12;
     var _ly0 = y + 24 + 4;
     var _rx  = _draw_x + width - 8;
-    var _vx  = _draw_x + 8 + max(56, floor(width * 0.34));
-    if (_vx > _rx - 40) {
-        _vx = _rx - 40;
-    }
+    var _vx  = _draw_x + 8 + string_width("BLANK CH:") + 8;
 
     // ── The five JSR entry names (rows 7-9) ───────────────
     // The draw event records where each one landed; clicking one drops a
@@ -28,7 +28,7 @@ function scr_node_step_macro_metascroll(_draw_x) {
 
     // ── ROW 0 - TILESET PICKER ────────────────────────────
     var _ts_ly = _ly0;
-    if (point_in_rectangle(mouse_x, mouse_y, _vx, _ts_ly - 2, _rx, _ts_ly + 14)) {
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _ts_ly - 2, _rx, _ts_ly + 12)) {
         with (obj_asset_manager) {
             metamap_picker_open       = true;
             metamap_picker_node       = other.id;
@@ -41,9 +41,9 @@ function scr_node_step_macro_metascroll(_draw_x) {
 
     // ── ROW 1 - MAP INDEX: left half steps back, right half steps on ──
     var _mi_ly  = _ly0 + _lh;
-    var _mi_x2  = _vx + 64;
-    var _mi_mid = _vx + 32;
-    if (point_in_rectangle(mouse_x, mouse_y, _vx, _mi_ly - 2, _mi_x2, _mi_ly + 14)) {
+    var _mi_x2  = _vx + 48;
+    var _mi_mid = _vx + 24;
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _mi_ly - 2, _mi_x2, _mi_ly + 12)) {
 
         // Resolve map_count so the step can clamp
         var _map_count = 0;
@@ -75,7 +75,7 @@ function scr_node_step_macro_metascroll(_draw_x) {
 
     // ── ROW 2 - PLANE BASE ADDRESS (hex input) ────────────
     var _ba_ly = _ly0 + _lh * 2;
-    if (point_in_rectangle(mouse_x, mouse_y, _vx, _ba_ly - 2, _rx, _ba_ly + 14)) {
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _ba_ly - 2, _rx, _ba_ly + 12)) {
         var _ba_cur = 0x4000;
         if (array_length(instructions[0]) > 3 && is_real(instructions[0][3])) _ba_cur = real(instructions[0][3]);
         var _ba_hex = string_upper(decimal_to_hex(_ba_cur));
@@ -90,7 +90,7 @@ function scr_node_step_macro_metascroll(_draw_x) {
 
     // ── ROW 4 - ZP BASE (hex input) ───────────────────────
     var _zp_ly = _ly0 + _lh * 4;
-    if (point_in_rectangle(mouse_x, mouse_y, _vx, _zp_ly - 2, _vx + 48, _zp_ly + 14)) {
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _zp_ly - 2, _vx + 40, _zp_ly + 12)) {
         var _zp_cur = 0x60;
         if (array_length(instructions[0]) > 4 && is_real(instructions[0][4])) _zp_cur = real(instructions[0][4]);
         var _zp_hex = string_upper(decimal_to_hex(_zp_cur));
@@ -105,7 +105,7 @@ function scr_node_step_macro_metascroll(_draw_x) {
 
     // ── ROW 5 - COLOUR MODE toggle, and the fixed nibble ──
     var _cm_ly = _ly0 + _lh * 5;
-    if (point_in_rectangle(mouse_x, mouse_y, _vx, _cm_ly - 2, _vx + 56, _cm_ly + 14)) {
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _cm_ly - 2, _vx + 64, _cm_ly + 12)) {
         var _cm_cur = 0;
         if (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) _cm_cur = real(instructions[0][6]);
         _cm_cur = _cm_cur + 1;
@@ -118,7 +118,7 @@ function scr_node_step_macro_metascroll(_draw_x) {
         exit;
     }
     // right-hand value: cycles the FIXED nibble, -1 (auto) then 0..15
-    if (point_in_rectangle(mouse_x, mouse_y, _rx - 70, _cm_ly - 2, _rx, _cm_ly + 14)) {
+    if (point_in_rectangle(mouse_x, mouse_y, _rx - 60, _cm_ly - 2, _rx, _cm_ly + 12)) {
         var _cm_now = 0;
         if (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) _cm_now = real(instructions[0][6]);
         if (_cm_now == 0) {
@@ -136,7 +136,7 @@ function scr_node_step_macro_metascroll(_draw_x) {
 
     // ── ROW 6 - BLANK CHAR (decimal input) ────────────────
     var _bc_ly = _ly0 + _lh * 6;
-    if (point_in_rectangle(mouse_x, mouse_y, _vx, _bc_ly - 2, _vx + 48, _bc_ly + 14)) {
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _bc_ly - 2, _vx + 40, _bc_ly + 12)) {
         var _bc_cur = 0;
         if (array_length(instructions[0]) > 8 && is_real(instructions[0][8])) _bc_cur = real(instructions[0][8]);
         obj_workspace_manager.input_target_node    = id;
@@ -149,7 +149,7 @@ function scr_node_step_macro_metascroll(_draw_x) {
 
     // ── ROW 7 - CLAMP toggle ──────────────────────────────
     var _cl_ly = _ly0 + _lh * 7;
-    if (point_in_rectangle(mouse_x, mouse_y, _vx, _cl_ly - 2, _vx + 48, _cl_ly + 14)) {
+    if (point_in_rectangle(mouse_x, mouse_y, _vx, _cl_ly - 2, _vx + 40, _cl_ly + 12)) {
         var _cl_cur = 1;
         if (array_length(instructions[0]) > 5 && is_real(instructions[0][5])) _cl_cur = real(instructions[0][5]);
         if (_cl_cur == 1) {
