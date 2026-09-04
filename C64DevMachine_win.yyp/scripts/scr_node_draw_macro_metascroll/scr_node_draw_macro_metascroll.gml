@@ -14,8 +14,6 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     var _col_mode  = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
     var _fixed_col = (array_length(instructions[0]) > 7 && is_real(instructions[0][7])) ? real(instructions[0][7]) : -1;
     var _blank_ch  = (array_length(instructions[0]) > 8 && is_real(instructions[0][8])) ? real(instructions[0][8]) : 0;
-    var _dbuf      = (array_length(instructions[0]) > 9  && is_real(instructions[0][9]))  ? real(instructions[0][9])  : 0;
-    var _scr_b     = (array_length(instructions[0]) > 10 && is_real(instructions[0][10])) ? real(instructions[0][10]) : 0x0C00;
 
     // Resolve the tileset so the node can show the real map size
     var _map_count = 0;
@@ -155,24 +153,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     scr_msc_note(_vx + string_width(_bc_txt), _ly, _rx, "EDGE FILL", make_color_rgb(70, 130, 140));
     _ly += _lh;
 
-    // ROW 7 — double buffer. Off means the coarse copy writes the screen the
-    // VIC is drawing, which is what tears the top right on a stock machine.
-    draw_set_color(c_gray);
-    draw_text(_lx, _ly, "DBUF:");
-    var _db_col = c_gray;
-    var _db_txt = "OFF";
-    var _db_note = "MAY TEAR";
-    if (_dbuf == 1) {
-        _db_col  = c_lime;
-        _db_txt  = "$0400/$" + string_upper(decimal_to_hex(_scr_b));
-        _db_note = "NO TEAR";
-    }
-    draw_set_color(_db_col);
-    draw_text(_vx, _ly, _db_txt);
-    scr_msc_note(_vx + string_width(_db_txt), _ly, _rx, _db_note, make_color_rgb(70, 130, 140));
-    _ly += _lh;
-
-    // ROW 8 — clamp
+    // ROW 7 — clamp
     draw_set_color(c_gray);
     draw_text(_lx, _ly, "CLAMP:");
     var _cl_col = c_gray;
@@ -185,7 +166,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     draw_text(_vx, _ly, _cl_txt);
     _ly += _lh;
 
-    // ROWS 9-11 — the JSR entry points. Each name is clickable and drops a
+    // ROWS 8-10 — the JSR entry points. Each name is clickable and drops a
     // ready-made JSR node, so its rect is recorded for the step event.
     draw_set_color(c_gray);
     draw_text(_lx, _ly, "JSR L/R:");
@@ -205,7 +186,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     scr_msc_entry(_vx, _ly, "MSC_Update");
     _ly += _lh;
 
-    // ROWS 12-13 — register ownership
+    // ROWS 11-12 — register ownership
     draw_set_color(make_color_rgb(100, 100, 160));
     draw_text(_lx, _ly, "OWNS $D016 + $D011 BITS 0-2");
     _ly += _lh;
