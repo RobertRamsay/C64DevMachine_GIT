@@ -4722,10 +4722,11 @@ case "MACRO_VSCROLL": {
 //   MSC_Update                      services a pending coarse step only
 // Click any of them on the node to drop a ready-made JSR node.
 //
-// Geometry follows MACRO_VSCROLL: the visible window is screen rows 1..23,
-// cols 1..38; row 0/24 and col 0/39 stay blank so the scroll edges never
-// show. Fine scroll is $D016 XSCROLL (38-col mode) and $D011 YSCROLL
-// (24-row mode).
+// The window is screen cols 0..38 and rows 0..24 - the outer cells scroll
+// too. New content is loaded into whichever cell the border is covering, so
+// it fine scrolls in rather than appearing a whole character wide. Col 39 is
+// the only pad; it is invisible at every fine-scroll value.
+// Fine scroll is $D016 XSCROLL (38-col mode) and $D011 YSCROLL (24-row).
 //
 // A coarse step is deferred over two frames so neither frame overruns:
 //   phase 1 - snap the fine register, shift chars, fill the new char edge
@@ -4816,11 +4817,31 @@ case "MACRO_METASCROLL": {
     var _mapw = _cols_g * _sw;      // map width  in chars
     var _maph = _rows_g * _sh;      // map height in chars
 
-    // ── Window geometry (matches MACRO_VSCROLL) ───────────
-    var _num_rows  = 23;
-    var _num_cols  = 38;
-    var _row_start = 1;
-    var _col_start = 1;
+    // ── Window geometry ───────────────────────────────────
+    // The window is cols 0..38 and rows 0..24 - the OUTER cells are part of
+    // the scroll, not blank padding. That is what makes new content fine
+    // scroll in instead of popping a whole character wide.
+    //
+    // 38-col mode covers 7 pixels on the left and 9 on the right; 24-row mode
+    // covers 4 top and 4 bottom. So of the 40x25 cells only these are ever
+    // partly hidden (pixels visible, for fine scroll 0..7):
+    //
+    //   col 0    1 2 3 4 5 6 7 8      col 38   7 6 5 4 3 2 1 0
+    //   row 0    1 2 3 4 5 6 7 8      row 24   7 6 5 4 3 2 1 0
+    //   col 39   always 0             everything else always 8
+    //
+    // A new column or row therefore has to be loaded into one of those four
+    // cells, or it appears at full width the instant it is written. Loading
+    // into col 38 / row 24 gives a perfect 0->7 pixel reveal; loading into
+    // col 0 / row 0 leaves a single pixel of pop, which is the hardware
+    // limit - the left cover is 7 pixels and a character is 8. Cover that
+    // last pixel with a sprite if it matters.
+    //
+    // Only col 39 stays a pad: it is invisible at every fine-scroll value.
+    var _num_rows  = 25;
+    var _num_cols  = 39;
+    var _row_start = 0;
+    var _col_start = 0;
     var _scr       = 0x0400;
     var _cram      = 0xD800;
 
@@ -5534,7 +5555,8 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["rts",     0,            _id]);
 
     // ══════════════════════════════════════════════════════
-    // init - 38 col / 24 row mode, blank the whole screen, paint the window
+    // init - 38 col / 24 row mode, blank the screen, paint the window.
+    // Only col 39 stays blank afterwards; every other cell scrolls.
     // ══════════════════════════════════════════════════════
     array_push(_list, ["label",   _l_init]);
 
