@@ -30,13 +30,13 @@ function scr_find_var_references(_var_name, _exclude) {
             case "MACRO_METAMAP":        _slots = [6, 7];               break;
             case "MACRO_ANIM":           _slots = [35];                 break;
             case "MACRO_COLL_ADV":       _slots = [13, 14, 15, 16, 17]; break;
-            case "MACRO_PRINT":          _slots = [15, 17];             break;
+            case "MACRO_PRINT":          _slots = [15, 17, 19, 21, 23];             break;
             case "MACRO_PLACE_CHAR":     _slots = [3, 6, 9, 13, 19];        break;
             case "MACRO_MATH":           _slots = [2, 5, 6];            break;
             case "MACRO_GET_CHAR":       _slots = [3, 6, 7, 9];         break;
             case "MACRO_RANDOM":         _slots = [7];                 break;
             case "MACRO_SID_SOUND":      _slots = [3, 6, 9, 12, 15, 19, 24, 28]; break;
-            case "MACRO_PRINT_EXT":      _slots = [6];                  break;
+            case "MACRO_PRINT_EXT":      _slots = [6, 13, 15, 17];                  break;
             case "MACRO_MOVE_BMP_BLOCK":  _slots = [9, 10, 11, 12, 18];  break;
             case "MACRO_REU":             _slots = [12];                 break;
             default:                     _slots = [];                   break;

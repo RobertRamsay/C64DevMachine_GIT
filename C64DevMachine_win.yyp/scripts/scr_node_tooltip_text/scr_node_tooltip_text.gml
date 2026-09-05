@@ -24,6 +24,10 @@ function scr_node_tooltip_text(_node_type) {
         "MACRO_PRINT": {
             title: "PRINT",
             lines: [
+                "X / Y / COL: LIT or VAR; old saves default to LIT.",
+                "VAR X/Y clamp to 39/24; colour uses low 4 bits.",
+                "Alignment overrides X/Y; choose DEF for presets.",
+                "Runtime position also uses ZP $F5-$F8.",
                 "Prints text to screen RAM at a given row/column.",
                 "",
                 "SOURCE: INLINE fixed text, or an ASSET (TEXT_DATA)",
@@ -44,6 +48,10 @@ function scr_node_tooltip_text(_node_type) {
         "MACRO_PRINT_EXT": {
             title: "PRINT EXT",
             lines: [
+                "X / Y / COL: LIT or VAR; old saves default to LIT.",
+                "VAR X/Y clamp to 39/24; colour uses low 4 bits.",
+                "Alignment overrides X/Y; choose DEF for presets.",
+                "Runtime position also uses ZP $F5-$F8.",
                 "Prints a numeric value - a named VAR or a CPU",
                 "register (A/X/Y/SP/FLAGS) - to screen RAM.",
                 "",

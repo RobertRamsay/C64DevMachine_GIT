@@ -30,16 +30,16 @@ function scr_node_draw_macro_print_ext(_draw_x, _y) {
     draw_set_color(make_color_rgb(140, 160, 200));
     draw_text(_draw_x + 10, _ry, "X:");
     draw_set_color(_x_overridden ? make_color_rgb(220, 40, 220) : c_yellow);
-    draw_text(_draw_x + 28, _ry, string(_sx));
+    draw_text(_draw_x + 28, _ry, ((array_length(instructions[0]) > 12 && instructions[0][12] == 1) ? "VAR" : string(_sx)));
     draw_set_color(make_color_rgb(140, 160, 200));
     draw_text(_draw_x + 70, _ry, "Y:");
     draw_set_color(_y_overridden ? make_color_rgb(220, 40, 220) : c_yellow);
-    draw_text(_draw_x + 88, _ry, string(_sy));
+    draw_text(_draw_x + 88, _ry, ((array_length(instructions[0]) > 14 && instructions[0][14] == 1) ? "VAR" : string(_sy)));
     // colour swatch
     draw_set_color(make_color_rgb(140, 160, 200));
     draw_text(_draw_x + 128, _ry, "COL:");
     draw_set_color(c_yellow);
-    draw_text(_draw_x + 162, _ry, string(_col));
+    draw_text(_draw_x + 162, _ry, ((array_length(instructions[0]) > 16 && instructions[0][16] == 1) ? "VAR" : string(_col)));
     _ry += _row_h;
 
     // ── Row 2: SOURCE toggle ──
@@ -156,4 +156,5 @@ function scr_node_draw_macro_print_ext(_draw_x, _y) {
     draw_text(_cbx+8 , _ry , "PRE-CLEAR?");
     draw_set_font(fnt_c64_code);
     _ry += _row_h;
+    scr_print_dynamic_draw(_draw_x, _y + height - 56, 12);
 }

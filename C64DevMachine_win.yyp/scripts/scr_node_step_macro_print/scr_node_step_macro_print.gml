@@ -1,4 +1,6 @@
 function scr_node_step_macro_print(_draw_x) {
+    if (scr_print_dynamic_step(_draw_x, y + height - 56, 18, 7, 8)) exit;
+
     var _header_h = 24;
     var _line_h   = 12;
     var _fy       = y + _header_h + 4;
@@ -14,6 +16,7 @@ function scr_node_step_macro_print(_draw_x) {
             is_entering_text     = true;
             input_target_node    = other.id;
             input_target_index   = 1;
+            if (array_length(other.instructions[0]) > 18) other.instructions[0][18] = 0;
             current_input_string = string(other.instructions[0][1]);
             keyboard_string      = "";
             cursor_pos           = string_length(current_input_string);
@@ -29,6 +32,7 @@ function scr_node_step_macro_print(_draw_x) {
             is_entering_text     = true;
             input_target_node    = other.id;
             input_target_index   = 2;
+            if (array_length(other.instructions[0]) > 20) other.instructions[0][20] = 0;
             current_input_string = string(other.instructions[0][2]);
             keyboard_string      = "";
             cursor_pos           = string_length(current_input_string);
@@ -55,6 +59,7 @@ function scr_node_step_macro_print(_draw_x) {
 
     // Row 2: COL swatch
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 50, _fy, _draw_x + 110, _fy + 16)) {
+        if (array_length(instructions[0]) > 22) instructions[0][22] = 0;
         instance_destroy(obj_ui_color_picker);
         var _picker_w     = 256;
         var _swatch_center = _draw_x + 60;

@@ -124,7 +124,7 @@ case "LABEL": {
             //   5  inline text  6  inline addr 7  align_h     8  align_v
             //   9  src mode (0=inline, 1=asset)
             //  10  asset name   11 start off   12 end off (0=auto)
-            _n.instructions = [["macro_print", 0, 0, 1, 0, "", 0x2000, 0, 0, 0, "", 0, 0, 0x0400, 0, "", 0, ""]];
+            _n.instructions = [["macro_print", 0, 0, 1, 0, "", 0x2000, 0, 0, 0, "", 0, 0, 0x0400, 0, "", 0, "", 0, "", 0, "", 0, ""]];
             _n.pc_address   = global.start_pc;
             with (_n) { event_user(0); }
             break;
@@ -138,7 +138,7 @@ case "LABEL": {
             //   6  var_name     7  reg_id (0=A 1=X 2=Y 3=SP 4=FLAGS)
             //   8  fmt (0=DEC 1=HEX 2=BIN 3=BCD)
             //   9  align_h      10 align_v     11 pad (0=zeros, 1=spaces)
-            _n.instructions = [["macro_print_ext", 0, 0, 1, 0, 0, "", 0, 1, 0, 0, 0]];
+            _n.instructions = [["macro_print_ext", 0, 0, 1, 0, 0, "", 0, 1, 0, 0, 0, 0, "", 0, "", 0, ""]];
             _n.pc_address   = global.start_pc;
             with (_n) { event_user(0); }
             break;

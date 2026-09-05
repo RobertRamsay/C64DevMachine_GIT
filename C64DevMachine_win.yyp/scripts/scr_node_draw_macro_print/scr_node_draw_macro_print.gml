@@ -64,11 +64,11 @@ function scr_node_draw_macro_print(_draw_x, _y) {
     draw_set_color(_c_edit);
     draw_text(_draw_x + 8, _ply, "X:");
     draw_set_color(_col_x_determined ? make_color_rgb(220, 40, 220) : c_aqua);
-    draw_text(_draw_x + 28, _ply, string(_sx));
+    draw_text(_draw_x + 28, _ply, ((array_length(instructions[0]) > 18 && instructions[0][18] == 1) ? "VAR" : string(_sx)));
     draw_set_color(_c_edit);
     draw_text(_draw_x + 65, _ply, "Y:");
     draw_set_color(_col_y_determined ? make_color_rgb(220, 40, 220) : c_aqua);
-    draw_text(_draw_x + 85, _ply, string(_sy));
+    draw_text(_draw_x + 85, _ply, ((array_length(instructions[0]) > 20 && instructions[0][20] == 1) ? "VAR" : string(_sy)));
 
     // LOC field is dim in asset mode (driven by asset addr + start offset)
     if (_src_mode == 1) {
@@ -90,7 +90,7 @@ function scr_node_draw_macro_print(_draw_x, _y) {
     draw_set_color(scr_c64_pepto_colour(_col));
     draw_rectangle(_draw_x + 50, _ply + 5, _draw_x + 70, _ply + _line_h, false);
     draw_set_color(c_yellow);
-    draw_text(_draw_x + 76, _ply, string(_col));
+    draw_text(_draw_x + 76, _ply, ((array_length(instructions[0]) > 22 && instructions[0][22] == 1) ? "VAR" : string(_col)));
 
     var _cell_off = (_sy * 40) + _sx;
     var _scr_addr = _scr_base + _cell_off;
@@ -104,7 +104,7 @@ function scr_node_draw_macro_print(_draw_x, _y) {
     draw_set_color(_c_dim);
     draw_text(_draw_x + 100, _ply + 3, "ADDR:");
     draw_set_color(c_orange);
-    draw_text(_draw_x + 130, _ply + 3, "$" + _scr_hex + " $" + _col_hex);
+    draw_text(_draw_x + 130, _ply + 3, ((array_length(instructions[0]) > 20 && (instructions[0][18] == 1 || instructions[0][20] == 1)) ? "RUNTIME" : "$" + _scr_hex + " $" + _col_hex));
     _ply += _line_h;
 
     // Row 2b: SCR BASE (VIC screen-matrix base for the copy loop)
@@ -266,4 +266,70 @@ function scr_node_draw_macro_print(_draw_x, _y) {
         draw_set_color(make_color_rgb(230, 160, 30));
         draw_text(_draw_x + 7, _ply + 24, "USE WORD TYPES FOR START / END");
     }
+    scr_print_dynamic_draw(_draw_x, _y + height - 56, 18);
+}
+// Appended field pairs: PRINT 18..23, PRINT VALUE 12..17.
+function scr_print_dynamic_draw(_dx, _dy, _slot) {
+    var _names = ["X", "Y", "COL"];
+    draw_set_font(fnt_c64_tiny);
+    for (var _d = 0; _d < 3; _d++) {
+        var _m = _slot + _d * 2;
+        var _var = array_length(instructions[0]) > _m && instructions[0][_m] == 1;
+        var _value = _var ? ((array_length(instructions[0]) > _m + 1 && string(instructions[0][_m + 1]) != "") ? string(instructions[0][_m + 1]) : "<PICK>") : string(instructions[0][_d + 1]);
+        while (string_width(_value) > width - 100 && string_length(_value) > 1) _value = string_delete(_value, string_length(_value), 1);
+        draw_set_color(c_ltgray);
+        draw_text(_dx + 10, _dy, _names[_d] + ":");
+        draw_set_color(_var ? c_yellow : c_aqua);
+        draw_text(_dx + 44, _dy, _value);
+        draw_set_color(_var ? make_color_rgb(180, 140, 30) : make_color_rgb(50, 50, 60));
+        draw_rectangle(_dx + width - 38, _dy + 1, _dx + width - 10, _dy + 13, false);
+        draw_set_color(c_yellow);
+        draw_set_halign(fa_center);
+        draw_text(_dx + width - 24, _dy, _var ? "VAR" : "LIT");
+        draw_set_halign(fa_left);
+        _dy += 18;
+    }
+}
+
+function scr_print_dynamic_step(_dx, _dy, _slot, _ah, _av) {
+    if (!point_in_rectangle(mouse_x, mouse_y, _dx + 4, _dy, _dx + width - 8, _dy + 50)) return false;
+    var _d = floor((mouse_y - _dy) / 18);
+    if (_d < 0 || _d > 2 || (mouse_y - _dy) mod 18 > 13) return false;
+    while (array_length(instructions[0]) < _slot) {
+        var _n = array_length(instructions[0]);
+        array_push(instructions[0], (_slot == 18 && (_n == 10 || _n == 15 || _n == 17)) ? "" : ((_slot == 18 && _n == 13) ? 0x0400 : 0));
+    }
+    while (array_length(instructions[0]) < _slot + 6) {
+        array_push(instructions[0], ((array_length(instructions[0]) - _slot) mod 2 == 0) ? 0 : "");
+    }
+    var _m = _slot + _d * 2;
+    if (mouse_x >= _dx + width - 38) {
+        instructions[0][_m] = instructions[0][_m] == 1 ? 0 : 1;
+        if (_d < 2) instructions[0][_d == 0 ? _ah : _av] = 0;
+    } else if (instructions[0][_m] == 1) {
+        if (_d < 2) instructions[0][_d == 0 ? _ah : _av] = 0;
+        label_picker_open = true;
+        global.any_picker_open = true;
+        label_picker_prev_depth = depth;
+        depth = -9999;
+        label_picker_mode = "VAR";
+        label_picker_tab = "UV";
+        label_picker_scroll = 0;
+        label_picker_list = [];
+        label_picker_target = id;
+        label_picker_index = _m + 1;
+    } else {
+        if (_d < 2) instructions[0][_d == 0 ? _ah : _av] = 0;
+        with (obj_workspace_manager) {
+            is_entering_text = true;
+            input_target_node = other.id;
+            input_target_index = _d + 1;
+            current_input_string = string(other.instructions[0][_d + 1]);
+            keyboard_string = "";
+            cursor_pos = string_length(current_input_string);
+        }
+    }
+    global.addresses_dirty = true;
+    global.undo_dirty = true;
+    return true;
 }

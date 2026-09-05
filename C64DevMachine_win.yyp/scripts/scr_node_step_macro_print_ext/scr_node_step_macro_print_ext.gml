@@ -4,6 +4,8 @@
 ///                    var_name, reg_id, fmt, align_h, align_v, pad]
 
 function scr_node_step_macro_print_ext(_draw_x) {
+    if (scr_print_dynamic_step(_draw_x, y + height - 56, 12, 9, 10)) exit;
+
 
     var _row_h = 18;
     var _ry    = y + 28;
@@ -20,6 +22,7 @@ function scr_node_step_macro_print_ext(_draw_x) {
             is_entering_text     = true;
             input_target_node    = other.id;
             input_target_index   = 1;
+            if (array_length(other.instructions[0]) > 12) other.instructions[0][12] = 0;
             current_input_string = string(other.instructions[0][1]);
             keyboard_string      = "";
             cursor_pos           = string_length(current_input_string);
@@ -37,6 +40,7 @@ function scr_node_step_macro_print_ext(_draw_x) {
             is_entering_text     = true;
             input_target_node    = other.id;
             input_target_index   = 2;
+            if (array_length(other.instructions[0]) > 14) other.instructions[0][14] = 0;
             current_input_string = string(other.instructions[0][2]);
             keyboard_string      = "";
             cursor_pos           = string_length(current_input_string);
@@ -50,6 +54,7 @@ function scr_node_step_macro_print_ext(_draw_x) {
             is_entering_text     = true;
             input_target_node    = other.id;
             input_target_index   = 3;
+            if (array_length(other.instructions[0]) > 16) other.instructions[0][16] = 0;
             current_input_string = string(other.instructions[0][3]);
             keyboard_string      = "";
             cursor_pos           = string_length(current_input_string);
