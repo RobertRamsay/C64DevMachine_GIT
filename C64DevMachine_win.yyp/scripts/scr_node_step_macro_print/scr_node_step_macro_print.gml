@@ -1,5 +1,5 @@
 function scr_node_step_macro_print(_draw_x) {
-    if (scr_print_dynamic_step(_draw_x, y + height - 56, 18, 7, 8)) exit;
+    if (scr_print_dynamic_step(_draw_x, y + scr_print_controls_offset(id), 18, 7, 8)) exit;
 
     var _header_h = 24;
     var _line_h   = 12;

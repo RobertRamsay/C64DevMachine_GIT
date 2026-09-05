@@ -1,0 +1,97 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml
+index f8b6cdb..4672c2f 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml
+@@ -257,16 +257,7 @@ function scr_node_draw_macro_print(_draw_x, _y) {
+         _ply += 8;
+     }
+ 
+-    // Row 8: byte count / range
+-    draw_set_font(fnt_c64_pico);
+-    draw_set_color(make_color_rgb(80, 120, 180));
+-    draw_text(_draw_x + 8, _ply, string(_eff_len) + " BYTES   $" + _loch + " -> $" + _loch_end);
+-    draw_text(_draw_x + 7, _ply + 12, "IF MC MODE USE UPPER 8 COLS");
+-    if (_src_mode == 1) {
+-        draw_set_color(make_color_rgb(230, 160, 30));
+-        draw_text(_draw_x + 7, _ply + 24, "USE WORD TYPES FOR START / END");
+-    }
+-    scr_print_dynamic_draw(_draw_x, _y + height - 56, 18);
++    scr_print_dynamic_draw(_draw_x, _y + scr_print_controls_offset(id), 18);
+ }
+ // Appended field pairs: PRINT 18..23, PRINT VALUE 12..17.
+ function scr_print_dynamic_draw(_dx, _dy, _slot) {
+@@ -333,3 +324,20 @@ function scr_print_dynamic_step(_dx, _dy, _slot, _ah, _av) {
+     global.undo_dirty = true;
+     return true;
+ }
++
++// Keep drawing, click targets and height calculations on the same layout.
++function scr_print_controls_offset(_n) {
++    var _asset = array_length(_n.instructions[0]) > 9 && _n.instructions[0][9] == 1;
++    return _asset ? 162 : 138;
++}
++
++function scr_print_sync_height(_n) {
++    var _wanted = ceil((scr_print_controls_offset(_n) + 50 + 8) / 20) * 20;
++    if (!variable_instance_exists(_n, "print_layout_height") ||
++        _n.print_layout_height != _wanted || _n.height != _wanted) {
++        _n.print_layout_height = _wanted;
++        _n.height = _wanted;
++        _n.height_dirty = true;
++        global.addresses_dirty = true;
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_print/scr_node_step_macro_print.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_print/scr_node_step_macro_print.gml
+index 793a4ab..8a6adc4 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_print/scr_node_step_macro_print.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_print/scr_node_step_macro_print.gml
+@@ -1,5 +1,5 @@
+ function scr_node_step_macro_print(_draw_x) {
+-    if (scr_print_dynamic_step(_draw_x, y + height - 56, 18, 7, 8)) exit;
++    if (scr_print_dynamic_step(_draw_x, y + scr_print_controls_offset(id), 18, 7, 8)) exit;
+ 
+     var _header_h = 24;
+     var _line_h   = 12;
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index c80bdee..19b2bc3 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -1,6 +1,7 @@
+ /// @desc Render Node (Unified Gutter, Stats, Out-dent, ORG & Comment Nodes)
+ if obj_workspace_manager.code_editor_open or obj_asset_manager.viewer_open exit;
+ if (node_type == "COMMENT") scr_comment_sync_layout(id);
++if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
+ 
+ global.ui_click_consumed = (global.ui_click_block_timer > 0);
+ // =============================================================
+@@ -159,7 +160,7 @@ if (height_dirty) {
+     case "MACRO_LOAD_GAME": height = _G * 5;  break;
+     case "MACRO_CHR":   height = _G * 6;  break;         // 120
+     case "MACRO_TRACK": height = _G * 3;  break;         // 100
+-    case "MACRO_PRINT": height = _G * 13;  break;
++    case "MACRO_PRINT": height = ceil((scr_print_controls_offset(id) + 58) / _G) * _G;  break;
+ 	case "MACRO_CLEAR_BMP_RECT": height = _G * 4;  break;   
+     case "MACRO_PRINT_EXT": height = _G * 11;  break;
+     case "MACRO_PLACE_CHAR": height = _G * 9;  break;
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index a2d70af..aa40796 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -1,3 +1,5 @@
++// Update off-screen PRINT nodes too, so their spines repack after a mode change.
++if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
+ /// @desc Node Step Event - Input, Dragging, Wedge Insertion & ORG Child Dragging
+ 
+ // Skip all per-node logic once asleep (wakes instantly on input via Begin Step)
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 3cc03aa..04e0dd7 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -182,6 +182,7 @@ function scr_load_workspace_from_path(_path) {
+             _n.height = d.height;
+         }
+ 
++        if (_n.node_type == "MACRO_PRINT") scr_print_sync_height(_n);
+         if (_n.node_type == "INIT") _n.is_draggable = false;
+         if (_n.node_type == "ORG") {
+             _n.is_draggable = true;

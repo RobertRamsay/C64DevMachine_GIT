@@ -182,6 +182,7 @@ function scr_load_workspace_from_path(_path) {
             _n.height = d.height;
         }
 
+        if (_n.node_type == "MACRO_PRINT") scr_print_sync_height(_n);
         if (_n.node_type == "INIT") _n.is_draggable = false;
         if (_n.node_type == "ORG") {
             _n.is_draggable = true;

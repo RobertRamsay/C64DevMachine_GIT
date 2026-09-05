@@ -1,6 +1,7 @@
 /// @desc Render Node (Unified Gutter, Stats, Out-dent, ORG & Comment Nodes)
 if obj_workspace_manager.code_editor_open or obj_asset_manager.viewer_open exit;
 if (node_type == "COMMENT") scr_comment_sync_layout(id);
+if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
 
 global.ui_click_consumed = (global.ui_click_block_timer > 0);
 // =============================================================
@@ -159,7 +160,7 @@ if (height_dirty) {
     case "MACRO_LOAD_GAME": height = _G * 5;  break;
     case "MACRO_CHR":   height = _G * 6;  break;         // 120
     case "MACRO_TRACK": height = _G * 3;  break;         // 100
-    case "MACRO_PRINT": height = _G * 13;  break;
+    case "MACRO_PRINT": height = ceil((scr_print_controls_offset(id) + 58) / _G) * _G;  break;
 	case "MACRO_CLEAR_BMP_RECT": height = _G * 4;  break;   
     case "MACRO_PRINT_EXT": height = _G * 11;  break;
     case "MACRO_PLACE_CHAR": height = _G * 9;  break;

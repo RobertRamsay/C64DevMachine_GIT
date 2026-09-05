@@ -1,3 +1,5 @@
+// Update off-screen PRINT nodes too, so their spines repack after a mode change.
+if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
 /// @desc Node Step Event - Input, Dragging, Wedge Insertion & ORG Child Dragging
 
 // Skip all per-node logic once asleep (wakes instantly on input via Begin Step)

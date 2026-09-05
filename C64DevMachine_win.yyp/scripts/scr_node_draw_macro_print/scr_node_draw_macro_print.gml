@@ -257,16 +257,7 @@ function scr_node_draw_macro_print(_draw_x, _y) {
         _ply += 8;
     }
 
-    // Row 8: byte count / range
-    draw_set_font(fnt_c64_pico);
-    draw_set_color(make_color_rgb(80, 120, 180));
-    draw_text(_draw_x + 8, _ply, string(_eff_len) + " BYTES   $" + _loch + " -> $" + _loch_end);
-    draw_text(_draw_x + 7, _ply + 12, "IF MC MODE USE UPPER 8 COLS");
-    if (_src_mode == 1) {
-        draw_set_color(make_color_rgb(230, 160, 30));
-        draw_text(_draw_x + 7, _ply + 24, "USE WORD TYPES FOR START / END");
-    }
-    scr_print_dynamic_draw(_draw_x, _y + height - 56, 18);
+    scr_print_dynamic_draw(_draw_x, _y + scr_print_controls_offset(id), 18);
 }
 // Appended field pairs: PRINT 18..23, PRINT VALUE 12..17.
 function scr_print_dynamic_draw(_dx, _dy, _slot) {
@@ -332,4 +323,21 @@ function scr_print_dynamic_step(_dx, _dy, _slot, _ah, _av) {
     global.addresses_dirty = true;
     global.undo_dirty = true;
     return true;
+}
+
+// Keep drawing, click targets and height calculations on the same layout.
+function scr_print_controls_offset(_n) {
+    var _asset = array_length(_n.instructions[0]) > 9 && _n.instructions[0][9] == 1;
+    return _asset ? 162 : 138;
+}
+
+function scr_print_sync_height(_n) {
+    var _wanted = ceil((scr_print_controls_offset(_n) + 50 + 8) / 20) * 20;
+    if (!variable_instance_exists(_n, "print_layout_height") ||
+        _n.print_layout_height != _wanted || _n.height != _wanted) {
+        _n.print_layout_height = _wanted;
+        _n.height = _wanted;
+        _n.height_dirty = true;
+        global.addresses_dirty = true;
+    }
 }
