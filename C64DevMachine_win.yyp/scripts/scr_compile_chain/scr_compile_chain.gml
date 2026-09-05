@@ -680,6 +680,14 @@ case "MACRO_PLACE_CHAR": {
     var _scr_base  = (array_length(_i0) > 16 && is_real(_i0[16])) ? real(_i0[16]) : 0x0400;
     var _zp        = (array_length(_i0) > 17 && is_real(_i0[17])) ? real(_i0[17]) : 0xFB;
 
+    // Appended slots keep old 18-slot projects in literal mode.
+    var _colour_vmode = (array_length(_i0) > 18 && is_real(_i0[18])) ? real(_i0[18]) : 0;
+    var _colour_var = (array_length(_i0) > 19) ? string(_i0[19]) : "";
+    var _colour_addr = (_set_col == 1 && _colour_vmode == 1) ? scr_resolve_var_addr(_colour_var) : 0;
+    if (_set_col == 1 && _colour_vmode == 1 && _colour_addr == 0) {
+        show_debug_message("MACRO_PLACE_CHAR WARNING: colour var '" + _colour_var + "' not resolved; using literal colour.");
+    }
+
     var _zp_sl = _zp;
     var _zp_sh = _zp + 1;
     var _zp_cl = _zp + 2;
@@ -797,7 +805,12 @@ case "MACRO_PLACE_CHAR": {
     array_push(_list, ["sta_izy", _zp_sl, _id]);
 
     if (_set_col == 1) {
-        array_push(_list, ["lda_imm", _col_val, _id]);
+        if (_colour_vmode == 1 && _colour_addr != 0) {
+            array_push(_list, ["lda_abs", _colour_addr, _id]);
+            array_push(_list, ["and_imm", 0x0F, _id]);
+        } else {
+            array_push(_list, ["lda_imm", _col_val, _id]);
+        }
         array_push(_list, ["sta_izy", _zp_cl,   _id]);
     }
 } break;

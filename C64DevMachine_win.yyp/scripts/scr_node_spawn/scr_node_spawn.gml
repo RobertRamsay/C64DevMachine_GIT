@@ -641,9 +641,10 @@ case "LABEL": {
         // [14] set_col  [15] col_val
         // [16] scr_base [17] zp_base
         // -------------------------------------------------------
+        // [18] colour_vmode (0=LIT 1=VAR), [19] colour_var
         case "MACRO_PLACE_CHAR":
             _n.node_title   = "PLACE CHAR";
-            _n.instructions = [["macro_place_char", 0, 0, "", 0, 0, "", 0, 32, "", "", 0, 0, "", 1, 1, 0x0400, 0xFB]];
+            _n.instructions = [["macro_place_char", 0, 0, "", 0, 0, "", 0, 32, "", "", 0, 0, "", 1, 1, 0x0400, 0xFB, 0, ""]];
             _n.pc_address   = global.start_pc;
             with (_n) { event_user(0); }
             break;

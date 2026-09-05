@@ -4,9 +4,9 @@
 function scr_node_step_macro_place_char(_draw_x) {
 
     // Backfill old saves to full slot count
-    while (array_length(instructions[0]) <= 17) {
+    while (array_length(instructions[0]) <= 19) {
         var _n = array_length(instructions[0]);
-        if (_n == 3 || _n == 6 || _n == 9 || _n == 10 || _n == 13) {
+        if (_n == 3 || _n == 6 || _n == 9 || _n == 10 || _n == 13 || _n == 19) {
             array_push(instructions[0], "");
         } else {
             array_push(instructions[0], 0);
@@ -184,22 +184,45 @@ function scr_node_step_macro_place_char(_draw_x) {
         global.undo_dirty      = true;
         exit;
     }
-    if (real(instructions[0][14]) == 1) {
-        if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 98, _ly, _draw_x + 140, _ly + 13)) {
-            instance_destroy(obj_ui_color_picker);
-            var _picker_w = 256;
-            var _spawn_x  = (_draw_x + 110) - (_picker_w / 2);
-            var _picker   = instance_create_depth(_spawn_x, _ly + _lh, -9999, obj_ui_color_picker);
-            _picker.target_node = id;
-            _picker.target_row  = 0;
-            _picker.target_col  = 15;
-            mouse_clear(mb_left);
-            exit;
-        }
+    var _colour_bx = _draw_x + width - 38;
+    if (real(instructions[0][14]) == 1 &&
+        point_in_rectangle(mouse_x, mouse_y, _colour_bx, _ly + 1, _colour_bx + _vbtn_w, _ly + 13)) {
+        instructions[0][18] = (real(instructions[0][18]) == 0) ? 1 : 0;
+        global.addresses_dirty = true;
+        global.undo_dirty = true;
+        exit;
     }
     _ly += _lh;
 
-    // ── Row 7: SCR BASE / ZP hex entry ──
+    // Row 7: retain both values when switching between LIT and VAR.
+    if (real(instructions[0][14]) == 1 &&
+        point_in_rectangle(mouse_x, mouse_y, _draw_x + 48, _ly, _draw_x + width - 10, _ly + 13)) {
+        if (real(instructions[0][18]) == 1) {
+            label_picker_open       = true;
+            global.any_picker_open  = true;
+            label_picker_prev_depth = depth;
+            depth                   = -9999;
+            label_picker_mode       = "VAR";
+            label_picker_tab        = "UV";
+            label_picker_scroll     = 0;
+            label_picker_list       = [];
+            label_picker_target     = id;
+            label_picker_index      = 19;
+        } else {
+            instance_destroy(obj_ui_color_picker);
+            var _picker_w = 256;
+            var _spawn_x = (_draw_x + 62) - (_picker_w / 2);
+            var _picker = instance_create_depth(_spawn_x, _ly + _lh, -9999, obj_ui_color_picker);
+            _picker.target_node = id;
+            _picker.target_row = 0;
+            _picker.target_col = 15;
+            mouse_clear(mb_left);
+        }
+        exit;
+    }
+    _ly += _lh;
+
+    // ── Row 8: SCR BASE / ZP hex entry ──
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 48, _ly, _draw_x + 112, _ly + 13)) {
         with (obj_workspace_manager) {
             is_entering_text     = true;

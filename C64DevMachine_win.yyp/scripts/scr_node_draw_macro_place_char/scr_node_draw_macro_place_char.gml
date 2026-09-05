@@ -4,7 +4,8 @@
 ///   4 row_lit, 5 row_vmode, 6 row_var,
 ///   7 char_src (0=LIT 1=VAR 2=ASSET), 8 char_lit, 9 char_var, 10 char_asset,
 ///   11 idx_vmode, 12 idx_lit, 13 idx_var,
-///   14 set_col, 15 col_val, 16 scr_base, 17 zp_base]
+///   14 set_col, 15 col_val, 16 scr_base, 17 zp_base,
+///   18 colour_vmode (0=LIT 1=VAR), 19 colour_var]
 
 function scr_node_draw_macro_place_char(_draw_x, _y) {
 
@@ -27,6 +28,9 @@ function scr_node_draw_macro_place_char(_draw_x, _y) {
     var _col_val   = (array_length(_ins) > 15 && is_real(_ins[15])) ? clamp(real(_ins[15]), 0, 15) : 1;
     var _scr_base  = (array_length(_ins) > 16 && is_real(_ins[16])) ? real(_ins[16]) : 0x0400;
     var _zp        = (array_length(_ins) > 17 && is_real(_ins[17])) ? real(_ins[17]) : 0xFB;
+
+    var _colour_vmode = (array_length(_ins) > 18 && is_real(_ins[18])) ? real(_ins[18]) : 0;
+    var _colour_var = (array_length(_ins) > 19) ? string(_ins[19]) : "";
 
     var _lh = 14;
     var _ly = _y + 28;
@@ -188,17 +192,39 @@ function scr_node_draw_macro_place_char(_draw_x, _y) {
     }
     draw_text(_cbx + 18, _ly, "SET COL");
 
-    if (_set_col == 1) {
-        draw_set_color(scr_c64_pepto_colour(_col_val));
-        draw_rectangle(_draw_x + 100, _ly + 2, _draw_x + 120, _ly + 13, false);
-        draw_set_color(c_gray);
-        draw_rectangle(_draw_x + 100, _ly + 2, _draw_x + 120, _ly + 13, true);
+    var _colour_bx = _draw_x + width - 38;
+    draw_set_color((_set_col == 1 && _colour_vmode == 1) ? make_color_rgb(180, 140, 30) : make_color_rgb(50, 50, 60));
+    draw_rectangle(_colour_bx, _ly + 1, _colour_bx + _vbtn_w, _ly + 13, false);
+    draw_set_color((_set_col == 1) ? c_yellow : _c_dim);
+    draw_set_halign(fa_center);
+    draw_text(_colour_bx + _vbtn_w * 0.5, _ly, (_colour_vmode == 1) ? "VAR" : "LIT");
+    draw_set_halign(fa_left);
+    _ly += _lh;
+
+    // Row 7: colour value, separate from the enable checkbox and mode switch.
+    draw_set_color(_c_lbl);
+    draw_text(_draw_x + 10, _ly, "COL:");
+    if (_set_col != 1) {
+        draw_set_color(_c_dim);
+        draw_text(_draw_x + 52, _ly, "OFF");
+    } else if (_colour_vmode == 1) {
         draw_set_color(c_yellow);
-        draw_text(_draw_x + 126, _ly, string(_col_val));
+        var _colour_label = (_colour_var != "") ? _colour_var : "<PICK>";
+        while (string_width(_colour_label) > width - 68 && string_length(_colour_label) > 1) {
+            _colour_label = string_delete(_colour_label, string_length(_colour_label), 1);
+        }
+        draw_text(_draw_x + 52, _ly, _colour_label);
+    } else {
+        draw_set_color(scr_c64_pepto_colour(_col_val));
+        draw_rectangle(_draw_x + 52, _ly + 2, _draw_x + 72, _ly + 13, false);
+        draw_set_color(c_gray);
+        draw_rectangle(_draw_x + 52, _ly + 2, _draw_x + 72, _ly + 13, true);
+        draw_set_color(c_yellow);
+        draw_text(_draw_x + 78, _ly, string(_col_val));
     }
     _ly += _lh;
 
-    // ── Row 7: SCR BASE + ZP ──
+    // ── Row 8: SCR BASE + ZP ──
     var _sb_hex = decimal_to_hex(_scr_base);
     while (string_length(_sb_hex) < 4) _sb_hex = "0" + _sb_hex;
     var _zp_hex = decimal_to_hex(_zp);

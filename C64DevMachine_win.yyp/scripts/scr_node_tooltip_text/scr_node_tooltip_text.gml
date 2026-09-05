@@ -59,6 +59,8 @@ function scr_node_tooltip_text(_node_type) {
             lines: [
                 "Writes one screencode (and optionally a colour) at",
                 "a given row/column of screen + colour RAM.",
+                "SET COL: LIT uses the palette; VAR reads a variable.",
+                "Variable colour uses its low four bits (0-15).",
                 "",
                 "Address maths is shift-add (row*40 = row<<5 + row<<3),",
                 "so it works against any screen base, not just $0400."

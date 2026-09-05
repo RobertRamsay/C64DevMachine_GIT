@@ -31,7 +31,7 @@ function scr_find_var_references(_var_name, _exclude) {
             case "MACRO_ANIM":           _slots = [35];                 break;
             case "MACRO_COLL_ADV":       _slots = [13, 14, 15, 16, 17]; break;
             case "MACRO_PRINT":          _slots = [15, 17];             break;
-            case "MACRO_PLACE_CHAR":     _slots = [3, 6, 9, 13];        break;
+            case "MACRO_PLACE_CHAR":     _slots = [3, 6, 9, 13, 19];        break;
             case "MACRO_MATH":           _slots = [2, 5, 6];            break;
             case "MACRO_GET_CHAR":       _slots = [3, 6, 7, 9];         break;
             case "MACRO_RANDOM":         _slots = [7];                 break;
