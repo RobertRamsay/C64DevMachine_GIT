@@ -2216,6 +2216,11 @@ if (_asset.type == "META_TILESET") {
 				case "META_MAP":      scr_asset_meta_map_create(_asset);      break;
                 case "TEXT_DATA":  scr_asset_txt_import(_asset); break;
                 case "BYTE_DATA":  scr_asset_byte_import_as_text(_asset); break;
+                // Vector bitmaps import their own JSON, written by the EXPORT VBM
+                // button beside this one. Without this case the click fell through
+                // the switch to the exit below, so the button looked live - it even
+                // hover-highlighted - and did nothing at all.
+                case "VECTOR_BITMAP": scr_asset_vbmp_import(_asset); break;
             }
             exit;
         }

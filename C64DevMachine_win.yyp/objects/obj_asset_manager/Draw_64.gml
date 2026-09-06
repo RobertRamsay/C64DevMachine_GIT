@@ -795,6 +795,41 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
             draw_text(_lbx2 + 10, _lby1 + 16, "! BINARY: NO COLOUR DATA");
         }
     }
+
+    // ── EXPORT VBM — right of IMPORT, vector bitmaps only ─────────────────
+    // A VECTOR_BITMAP has no binary payload (asset.buffer is -1); the picture
+    // is a replayable command list, so the whole asset round-trips as JSON.
+    // That makes it the one asset type that can be shared between projects
+    // without exporting a rendering of itself. IMPORT beside this button is
+    // wired to the matching reader.
+    if (_asset.type == "VECTOR_BITMAP") {
+        var _vex1 = _lbx2 + 10;
+        var _vex2 = _vex1 + 110;
+        var _ve_hov = point_in_rectangle(_mx, _my, _vex1, _lby1, _vex2, _lby2);
+        var _ve_fill = make_color_rgb(20, 80, 40);
+        var _ve_edge = c_ltgray;
+        if (_ve_hov) {
+            _ve_fill = make_color_rgb(40, 140, 80);
+            _ve_edge = c_white;
+        }
+        draw_set_color(_ve_fill);
+        draw_rectangle(_vex1, _lby1, _vex2, _lby2, false);
+        draw_set_color(_ve_edge);
+        draw_rectangle(_vex1, _lby1, _vex2, _lby2, true);
+        draw_set_font(fnt_c64_tiny);
+        draw_set_color(_ve_edge);
+        draw_set_halign(fa_center);
+        draw_text(_vex1 + 55, _lby1 + 5, "EXPORT VBM");
+        draw_set_halign(fa_left);
+
+        if (_ve_hov && mouse_check_button_pressed(mb_left)
+        && !global.ui_click_consumed && !global.any_picker_open) {
+            scr_asset_vbmp_export(_asset);
+            global.ui_click_consumed = true;
+        }
+    }
+    // ── END EXPORT VBM ────────────────────────────────────────────────────
+
     _cy += 28;
 
     // META INFO ROW (address editable). BITMAP_BUILDER is an internal authoring
