@@ -1,0 +1,804 @@
+diff --git a/C64Devmachine/objects/obj_c64_node/Draw_0.gml b/C64Devmachine/objects/obj_c64_node/Draw_0.gml
+index 87183ec..9db5368 100644
+--- a/C64Devmachine/objects/obj_c64_node/Draw_0.gml
++++ b/C64Devmachine/objects/obj_c64_node/Draw_0.gml
+@@ -1,6 +1,7 @@
+ /// @desc Render Node (Unified Gutter, Stats, Out-dent, ORG & Comment Nodes)
+ if obj_workspace_manager.code_editor_open or obj_asset_manager.viewer_open exit;
+ if (node_type == "COMMENT") scr_comment_sync_layout(id);
++if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
+ 
+ global.ui_click_consumed = (global.ui_click_block_timer > 0);
+ // =============================================================
+@@ -160,9 +161,9 @@ if (height_dirty) {
+     case "MACRO_LOAD_GAME": height = _G * 5;  break;
+     case "MACRO_CHR":   height = _G * 6;  break;         // 120
+     case "MACRO_TRACK": height = _G * 3;  break;         // 100
+-    case "MACRO_PRINT": height = _G * 10;  break;
++    case "MACRO_PRINT": height = ceil((scr_print_controls_offset(id) + 58) / _G) * _G;  break;
+ 	case "MACRO_CLEAR_BMP_RECT": height = _G * 4;  break;   
+-    case "MACRO_PRINT_EXT": height = _G * 8;  break; 
++    case "MACRO_PRINT_EXT": height = _G * 11;  break;
+     case "MACRO_PLACE_CHAR": height = _G * 9;  break;
+ 	case "MACRO_RANDOM":     height = _G * 8;  break;
+ 	// 7 rows + header. SAY is taller: 3 setting rows, 4 override rows,
+diff --git a/C64Devmachine/objects/obj_c64_node/Step_0.gml b/C64Devmachine/objects/obj_c64_node/Step_0.gml
+index a8dddcf..f2c6b64 100644
+--- a/C64Devmachine/objects/obj_c64_node/Step_0.gml
++++ b/C64Devmachine/objects/obj_c64_node/Step_0.gml
+@@ -1,3 +1,5 @@
++// Update off-screen PRINT nodes too, so their spines repack after a mode change.
++if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
+ /// @desc Node Step Event - Input, Dragging, Wedge Insertion & ORG Child Dragging
+ 
+ // Skip all per-node logic once asleep (wakes instantly on input via Begin Step)
+diff --git a/C64Devmachine/scripts/scr_compile_chain/scr_compile_chain.gml b/C64Devmachine/scripts/scr_compile_chain/scr_compile_chain.gml
+index 298633e..7ab9765 100644
+--- a/C64Devmachine/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64Devmachine/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -680,6 +680,14 @@ case "MACRO_PLACE_CHAR": {
+     var _scr_base  = (array_length(_i0) > 16 && is_real(_i0[16])) ? real(_i0[16]) : 0x0400;
+     var _zp        = (array_length(_i0) > 17 && is_real(_i0[17])) ? real(_i0[17]) : 0xFB;
+ 
++    // Appended slots keep old 18-slot projects in literal mode.
++    var _colour_vmode = (array_length(_i0) > 18 && is_real(_i0[18])) ? real(_i0[18]) : 0;
++    var _colour_var = (array_length(_i0) > 19) ? string(_i0[19]) : "";
++    var _colour_addr = (_set_col == 1 && _colour_vmode == 1) ? scr_resolve_var_addr(_colour_var) : 0;
++    if (_set_col == 1 && _colour_vmode == 1 && _colour_addr == 0) {
++        show_debug_message("MACRO_PLACE_CHAR WARNING: colour var '" + _colour_var + "' not resolved; using literal colour.");
++    }
++
+     var _zp_sl = _zp;
+     var _zp_sh = _zp + 1;
+     var _zp_cl = _zp + 2;
+@@ -797,7 +805,12 @@ case "MACRO_PLACE_CHAR": {
+     array_push(_list, ["sta_izy", _zp_sl, _id]);
+ 
+     if (_set_col == 1) {
+-        array_push(_list, ["lda_imm", _col_val, _id]);
++        if (_colour_vmode == 1 && _colour_addr != 0) {
++            array_push(_list, ["lda_abs", _colour_addr, _id]);
++            array_push(_list, ["and_imm", 0x0F, _id]);
++        } else {
++            array_push(_list, ["lda_imm", _col_val, _id]);
++        }
+         array_push(_list, ["sta_izy", _zp_cl,   _id]);
+     }
+ } break;
+@@ -7446,6 +7459,9 @@ case "MACRO_PRINT": {
+     var _align_h     = (array_length(_curr.instructions[0]) > 7) ? real(_curr.instructions[0][7]) : 0;
+     var _align_v     = (array_length(_curr.instructions[0]) > 8) ? real(_curr.instructions[0][8]) : 0;
+ 
++    // Appended X/Y/colour LIT/VAR pairs; missing fields mean LIT.
++    var _pd = scr_print_dynamic_config(_curr.instructions[0], 18, _align_h, _align_v);
++
+     // [9]  source mode: 0 = INLINE (existing behaviour), 1 = ASSET
+     // [10] asset name (TEXT_DATA), used when [9] == 1
+     // [11] start offset into asset
+@@ -7548,8 +7564,10 @@ case "MACRO_PRINT": {
+         array_push(_list, ["bne",     _lbl_cls2,  _id]);
+     }
+ 
++    _list = scr_print_position_emit(_list, _id, _pd, _sx, _sy, _scr_base);
++
+     // Set cursor colour
+-    array_push(_list, ["lda_imm", _col,    _id]);
++    _list = scr_print_colour_emit(_list, _id, _pd, _col);
+     array_push(_list, ["sta_abs", 0x0286,  _id]);
+ 
+     // ── Resolve runtime var addresses (asset mode only) ───────────
+@@ -7583,6 +7601,8 @@ case "MACRO_PRINT": {
+             _asset_base = _text_addr - _start_off;
+         }
+ 
++        if (!_use_svar) _asset_base += _start_off;
++
+         // ptr_lo = <base + start_lo ; ptr_hi = >base + start_hi + carry
+         array_push(_list, ["clc",     0,                         _id]);
+         array_push(_list, ["lda_imm", _asset_base & 0xFF,        _id]);
+@@ -7617,23 +7637,23 @@ case "MACRO_PRINT": {
+         array_push(_list, ["ldy_imm", 0,                         _id]);
+         array_push(_list, ["label",   _lbl_loop                     ]);
+         array_push(_list, ["lda_izy", 0xFB,                      _id]); // lda ($FB),Y
+-        array_push(_list, ["sta_aby", _screen_dest,              _id]);
+-        array_push(_list, ["lda_imm", _col,                      _id]);
+-        array_push(_list, ["sta_aby", _colour_dest,              _id]);
++        array_push(_list, [_pd.position ? "sta_izy" : "sta_aby", _pd.position ? 0xF5 : _screen_dest, _id]);
++        _list = scr_print_colour_emit(_list, _id, _pd, _col);
++        array_push(_list, [_pd.position ? "sta_izy" : "sta_aby", _pd.position ? 0xF7 : _colour_dest, _id]);
+         array_push(_list, ["iny",     0,                         _id]);
+         array_push(_list, ["cpy_zp",  0x02,                      _id]); // cpy count
+         array_push(_list, ["bne",     _lbl_loop,                 _id]);
+         array_push(_list, ["label",   _lbl_pskip                    ]);
+     } else if (_len > 0) {
+         // Original constant-length path (inline + literal-offset asset)
+-        array_push(_list, ["ldx_imm", 0,             _id]);
++        array_push(_list, [_pd.position ? "ldy_imm" : "ldx_imm", 0, _id]);
+         array_push(_list, ["label",   _lbl_loop          ]);
+-        array_push(_list, ["lda_abx", _text_addr,    _id]);
+-        array_push(_list, ["sta_abx", _screen_dest,  _id]);
+-        array_push(_list, ["lda_imm", _col,          _id]);
+-        array_push(_list, ["sta_abx", _colour_dest,  _id]);
+-        array_push(_list, ["inx",     0,             _id]);
+-        array_push(_list, ["cpx_imm", _len,          _id]);
++        array_push(_list, [_pd.position ? "lda_aby" : "lda_abx", _text_addr, _id]);
++        array_push(_list, [_pd.position ? "sta_izy" : "sta_abx", _pd.position ? 0xF5 : _screen_dest, _id]);
++        _list = scr_print_colour_emit(_list, _id, _pd, _col);
++        array_push(_list, [_pd.position ? "sta_izy" : "sta_abx", _pd.position ? 0xF7 : _colour_dest, _id]);
++        array_push(_list, [_pd.position ? "iny" : "inx", 0, _id]);
++        array_push(_list, [_pd.position ? "cpy_imm" : "cpx_imm", _len, _id]);
+         array_push(_list, ["bne",     _lbl_loop,     _id]);
+     }
+ } break;
+@@ -7666,6 +7686,9 @@ case "MACRO_PRINT_EXT": {
+     var _align_v  = (array_length(_curr.instructions[0]) > 10 && is_real(_curr.instructions[0][10])) ? real(_curr.instructions[0][10]) : 0;
+     var _pad      = (array_length(_curr.instructions[0]) > 11 && is_real(_curr.instructions[0][11])) ? real(_curr.instructions[0][11]) : 0;
+ 
++    // Appended X/Y/colour LIT/VAR pairs; missing fields mean LIT.
++    var _pd = scr_print_dynamic_config(_curr.instructions[0], 12, _align_h, _align_v);
++
+     // ── Resolve value width ────────────────────────────────────────
+     // Registers are always 1 byte. Vars follow UV/HW meta size.
+     var _size = 1;
+@@ -7894,8 +7917,10 @@ case "MACRO_PRINT_EXT": {
+         }
+     }
+ 
++    _list = scr_print_position_emit(_list, _id, _pd, _sx, _sy, 0x0400);
++
+     // Set cursor colour (legacy, harmless)
+-    array_push(_list, ["lda_imm", _col,   _id]);
++    _list = scr_print_colour_emit(_list, _id, _pd, _col);
+     array_push(_list, ["sta_abs", 0x0286, _id]);
+ 
+     // ════════════════════════════════════════════════════════════════
+@@ -7930,7 +7955,7 @@ case "MACRO_PRINT_EXT": {
+                 // Last digit: always print as '0'..'9' regardless of leading state
+                 array_push(_list, ["clc",     0,    _id]);
+                 array_push(_list, ["adc_imm", 0x30, _id]);
+-                array_push(_list, ["sta_abs", _scr_pos, _id]);
++                _list = scr_print_store_emit(_list, _id, _pd, _scr_pos, _screen_dest, 0xF5);
+             } else {
+                 // Leading-suppress: if A==0 AND no real digit yet, print pad char
+                 var _real = _p + "dr" + string(_di);
+@@ -7942,20 +7967,20 @@ case "MACRO_PRINT_EXT": {
+                 array_push(_list, ["bne",     _real, _id]); // already printing digits
+                 // still leading -> pad
+                 array_push(_list, ["lda_imm", _pad_screencode, _id]);
+-                array_push(_list, ["sta_abs", _scr_pos, _id]);
++                _list = scr_print_store_emit(_list, _id, _pd, _scr_pos, _screen_dest, 0xF5);
+                 array_push(_list, ["jmp_abs", _wend, _id]);
+                 // real digit
+                 array_push(_list, ["label",   _real]);
+                 array_push(_list, ["clc",     0,    _id]);
+                 array_push(_list, ["adc_imm", 0x30, _id]);
+-                array_push(_list, ["sta_abs", _scr_pos, _id]);
++                _list = scr_print_store_emit(_list, _id, _pd, _scr_pos, _screen_dest, 0xF5);
+                 array_push(_list, ["lda_imm", 0x01, _id]); // mark real digit seen
+                 array_push(_list, ["sta_zp",  0xF9, _id]);
+                 array_push(_list, ["label",   _wend]);
+             }
+             // Colour
+-            array_push(_list, ["lda_imm", _col,    _id]);
+-            array_push(_list, ["sta_abs", _col_pos, _id]);
++            _list = scr_print_colour_emit(_list, _id, _pd, _col);
++            _list = scr_print_store_emit(_list, _id, _pd, _col_pos, _colour_dest, 0xF7);
+         }
+ 
+     } else if (_fmt == 1) {
+@@ -7977,18 +8002,18 @@ case "MACRO_PRINT_EXT": {
+             array_push(_list, ["lsr_a",   0,     _id]);
+             array_push(_list, ["tax",     0,     _id]);
+             array_push(_list, ["lda_abx", "pext_hexlut", _id]);
+-            array_push(_list, ["sta_abs", _screen_dest + _char_i, _id]);
+-            array_push(_list, ["lda_imm", _col,  _id]);
+-            array_push(_list, ["sta_abs", _colour_dest + _char_i, _id]);
++            _list = scr_print_store_emit(_list, _id, _pd, _screen_dest + _char_i, _screen_dest, 0xF5);
++            _list = scr_print_colour_emit(_list, _id, _pd, _col);
++            _list = scr_print_store_emit(_list, _id, _pd, _colour_dest + _char_i, _colour_dest, 0xF7);
+             _char_i++;
+             // low nibble
+             array_push(_list, ["lda_zp",  _zp,   _id]);
+             array_push(_list, ["and_imm", 0x0F,  _id]);
+             array_push(_list, ["tax",     0,     _id]);
+             array_push(_list, ["lda_abx", "pext_hexlut", _id]);
+-            array_push(_list, ["sta_abs", _screen_dest + _char_i, _id]);
+-            array_push(_list, ["lda_imm", _col,  _id]);
+-            array_push(_list, ["sta_abs", _colour_dest + _char_i, _id]);
++            _list = scr_print_store_emit(_list, _id, _pd, _screen_dest + _char_i, _screen_dest, 0xF5);
++            _list = scr_print_colour_emit(_list, _id, _pd, _col);
++            _list = scr_print_store_emit(_list, _id, _pd, _colour_dest + _char_i, _colour_dest, 0xF7);
+             _char_i++;
+         }
+ 
+@@ -8009,9 +8034,9 @@ case "MACRO_PRINT_EXT": {
+                 array_push(_list, ["bcc",     _b1,   _id]);
+                 array_push(_list, ["lda_imm", 0x31,  _id]); // '1'
+                 array_push(_list, ["label",   _b1]);
+-                array_push(_list, ["sta_abs", _screen_dest + _bit_i, _id]);
+-                array_push(_list, ["lda_imm", _col,  _id]);
+-                array_push(_list, ["sta_abs", _colour_dest + _bit_i, _id]);
++                _list = scr_print_store_emit(_list, _id, _pd, _screen_dest + _bit_i, _screen_dest, 0xF5);
++                _list = scr_print_colour_emit(_list, _id, _pd, _col);
++                _list = scr_print_store_emit(_list, _id, _pd, _colour_dest + _bit_i, _colour_dest, 0xF7);
+                 _bit_i++;
+             }
+         }
+@@ -8025,9 +8050,9 @@ case "MACRO_PRINT_EXT": {
+             var _legend = [0x0E, 0x16, 0x2D, 0x02, 0x04, 0x09, 0x1A, 0x03];
+             for (var _li2 = 0; _li2 < 8; _li2++) {
+                 array_push(_list, ["lda_imm", _legend[_li2],          _id]);
+-                array_push(_list, ["sta_abs", _legend_dest + _li2,    _id]);
+-                array_push(_list, ["lda_imm", _col,                   _id]);
+-                array_push(_list, ["sta_abs", _legend_col + _li2,     _id]);
++                _list = scr_print_store_emit(_list, _id, _pd, _legend_dest + _li2, _screen_dest, 0xF5);
++                _list = scr_print_colour_emit(_list, _id, _pd, _col);
++                _list = scr_print_store_emit(_list, _id, _pd, _legend_col + _li2, _colour_dest, 0xF7);
+             }
+         }
+ 
+@@ -8049,18 +8074,18 @@ case "MACRO_PRINT_EXT": {
+             array_push(_list, ["lsr_a",   0,     _id]);
+             array_push(_list, ["clc",     0,     _id]);
+             array_push(_list, ["adc_imm", 0x30,  _id]);
+-            array_push(_list, ["sta_abs", _screen_dest + _char_i3, _id]);
+-            array_push(_list, ["lda_imm", _col,  _id]);
+-            array_push(_list, ["sta_abs", _colour_dest + _char_i3, _id]);
++            _list = scr_print_store_emit(_list, _id, _pd, _screen_dest + _char_i3, _screen_dest, 0xF5);
++            _list = scr_print_colour_emit(_list, _id, _pd, _col);
++            _list = scr_print_store_emit(_list, _id, _pd, _colour_dest + _char_i3, _colour_dest, 0xF7);
+             _char_i3++;
+             // low nibble
+             array_push(_list, ["lda_zp",  _zp3,  _id]);
+             array_push(_list, ["and_imm", 0x0F,  _id]);
+             array_push(_list, ["clc",     0,     _id]);
+             array_push(_list, ["adc_imm", 0x30,  _id]);
+-            array_push(_list, ["sta_abs", _screen_dest + _char_i3, _id]);
+-            array_push(_list, ["lda_imm", _col,  _id]);
+-            array_push(_list, ["sta_abs", _colour_dest + _char_i3, _id]);
++            _list = scr_print_store_emit(_list, _id, _pd, _screen_dest + _char_i3, _screen_dest, 0xF5);
++            _list = scr_print_colour_emit(_list, _id, _pd, _col);
++            _list = scr_print_store_emit(_list, _id, _pd, _colour_dest + _char_i3, _colour_dest, 0xF7);
+             _char_i3++;
+         }
+     }
+@@ -19616,3 +19641,61 @@ buffer_delete(_null_buf);
+ 
+     return instruction_list;
+ }
++
++// PRINT dynamic fields are appended, preserving every legacy slot.
++function scr_print_dynamic_config(_ins, _slot, _ah, _av) {
++    var _addresses = [0, 0, 0];
++    for (var _d = 0; _d < 3; _d++) {
++        var _m = _slot + _d * 2;
++        if (array_length(_ins) <= _m + 1 || !is_real(_ins[_m]) || _ins[_m] != 1) continue;
++        // Explicit alignment continues to override its coordinate.
++        if ((_d == 0 && _ah != 0) || (_d == 1 && _av != 0)) continue;
++        var _name = string(_ins[_m + 1]);
++        _addresses[_d] = scr_resolve_var_addr(_name);
++        if (_addresses[_d] == 0) show_debug_message("PRINT WARNING: dynamic variable '" + _name + "' not resolved; using literal.");
++    }
++    return { xa: _addresses[0], ya: _addresses[1], ca: _addresses[2], position: (_addresses[0] != 0 || _addresses[1] != 0) };
++}
++
++function scr_print_colour_emit(_list, _id, _pd, _literal) {
++    if (_pd.ca != 0) {
++        array_push(_list, ["lda_abs", _pd.ca, _id]);
++        array_push(_list, ["and_imm", 15, _id]);
++    } else array_push(_list, ["lda_imm", _literal, _id]);
++    return _list;
++}
++
++// Runtime destination pointers: $F5/$F6 screen, $F7/$F8 colour.
++// Does not touch PRINT's source pointer or PRINT VALUE's conversion scratch.
++function scr_print_position_emit(_list, _id, _pd, _sx, _sy, _base) {
++    if (!_pd.position) return _list;
++    var _p = "print_pos_" + string(real(_id)) + "_";
++    if (_pd.xa != 0) array_push(_list, ["lda_abs", _pd.xa, _id]);
++    else array_push(_list, ["lda_imm", clamp(_sx, 0, 39), _id]);
++    array_push(_list, ["cmp_imm", 40, _id], ["bcc", _p + "x", _id], ["lda_imm", 39, _id]);
++    array_push(_list, ["label", _p + "x"], ["sta_zp", 0xF7, _id]);
++    if (_pd.ya != 0) array_push(_list, ["lda_abs", _pd.ya, _id]);
++    else array_push(_list, ["lda_imm", clamp(_sy, 0, 24), _id]);
++    array_push(_list, ["cmp_imm", 25, _id], ["bcc", _p + "y", _id], ["lda_imm", 24, _id]);
++    array_push(_list, ["label", _p + "y"], ["tax", 0, _id]);
++    array_push(_list, ["lda_imm", 0, _id], ["sta_zp", 0xF5, _id], ["sta_zp", 0xF6, _id]);
++    array_push(_list, ["cpx_imm", 0, _id], ["beq", _p + "offset", _id]);
++    array_push(_list, ["label", _p + "row"]);
++    array_push(_list, ["clc", 0, _id], ["lda_zp", 0xF5, _id], ["adc_imm", 40, _id], ["sta_zp", 0xF5, _id]);
++    array_push(_list, ["lda_zp", 0xF6, _id], ["adc_imm", 0, _id], ["sta_zp", 0xF6, _id]);
++    array_push(_list, ["dex", 0, _id], ["bne", _p + "row", _id], ["label", _p + "offset"]);
++    array_push(_list, ["clc", 0, _id], ["lda_zp", 0xF5, _id], ["adc_zp", 0xF7, _id], ["sta_zp", 0xF5, _id]);
++    array_push(_list, ["lda_zp", 0xF6, _id], ["adc_imm", 0, _id], ["sta_zp", 0xF6, _id]);
++    array_push(_list, ["lda_zp", 0xF5, _id], ["sta_zp", 0xF7, _id]);
++    array_push(_list, ["lda_zp", 0xF6, _id], ["clc", 0, _id], ["adc_imm", 0xD8, _id], ["sta_zp", 0xF8, _id]);
++    array_push(_list, ["clc", 0, _id], ["lda_zp", 0xF5, _id], ["adc_imm", _base & 255, _id], ["sta_zp", 0xF5, _id]);
++    array_push(_list, ["lda_zp", 0xF6, _id], ["adc_imm", (_base >> 8) & 255, _id], ["sta_zp", 0xF6, _id]);
++    return _list;
++}
++
++function scr_print_store_emit(_list, _id, _pd, _address, _origin, _zp) {
++    if (_pd.position) {
++        array_push(_list, ["ldy_imm", _address - _origin, _id], ["sta_izy", _zp, _id]);
++    } else array_push(_list, ["sta_abs", _address, _id]);
++    return _list;
++}
+diff --git a/C64Devmachine/scripts/scr_find_var_references/scr_find_var_references.gml b/C64Devmachine/scripts/scr_find_var_references/scr_find_var_references.gml
+index b59435e..7aebe69 100644
+--- a/C64Devmachine/scripts/scr_find_var_references/scr_find_var_references.gml
++++ b/C64Devmachine/scripts/scr_find_var_references/scr_find_var_references.gml
+@@ -30,13 +30,13 @@ function scr_find_var_references(_var_name, _exclude) {
+             case "MACRO_METAMAP":        _slots = [6, 7];               break;
+             case "MACRO_ANIM":           _slots = [35];                 break;
+             case "MACRO_COLL_ADV":       _slots = [13, 14, 15, 16, 17]; break;
+-            case "MACRO_PRINT":          _slots = [15, 17];             break;
+-            case "MACRO_PLACE_CHAR":     _slots = [3, 6, 9, 13];        break;
++            case "MACRO_PRINT":          _slots = [15, 17, 19, 21, 23];             break;
++            case "MACRO_PLACE_CHAR":     _slots = [3, 6, 9, 13, 19];        break;
+             case "MACRO_MATH":           _slots = [2, 5, 6];            break;
+             case "MACRO_GET_CHAR":       _slots = [3, 6, 7, 9];         break;
+             case "MACRO_RANDOM":         _slots = [7];                 break;
+             case "MACRO_SID_SOUND":      _slots = [3, 6, 9, 12, 15, 19, 24, 28]; break;
+-            case "MACRO_PRINT_EXT":      _slots = [6];                  break;
++            case "MACRO_PRINT_EXT":      _slots = [6, 13, 15, 17];                  break;
+             case "MACRO_MOVE_BMP_BLOCK":  _slots = [9, 10, 11, 12, 18];  break;
+             case "MACRO_REU":             _slots = [12];                 break;
+             default:                     _slots = [];                   break;
+diff --git a/C64Devmachine/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64Devmachine/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 3cc03aa..04e0dd7 100644
+--- a/C64Devmachine/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64Devmachine/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -182,6 +182,7 @@ function scr_load_workspace_from_path(_path) {
+             _n.height = d.height;
+         }
+ 
++        if (_n.node_type == "MACRO_PRINT") scr_print_sync_height(_n);
+         if (_n.node_type == "INIT") _n.is_draggable = false;
+         if (_n.node_type == "ORG") {
+             _n.is_draggable = true;
+diff --git a/C64Devmachine/scripts/scr_node_draw_macro_place_char/scr_node_draw_macro_place_char.gml b/C64Devmachine/scripts/scr_node_draw_macro_place_char/scr_node_draw_macro_place_char.gml
+index ed77ea7..3217685 100644
+--- a/C64Devmachine/scripts/scr_node_draw_macro_place_char/scr_node_draw_macro_place_char.gml
++++ b/C64Devmachine/scripts/scr_node_draw_macro_place_char/scr_node_draw_macro_place_char.gml
+@@ -4,7 +4,8 @@
+ ///   4 row_lit, 5 row_vmode, 6 row_var,
+ ///   7 char_src (0=LIT 1=VAR 2=ASSET), 8 char_lit, 9 char_var, 10 char_asset,
+ ///   11 idx_vmode, 12 idx_lit, 13 idx_var,
+-///   14 set_col, 15 col_val, 16 scr_base, 17 zp_base]
++///   14 set_col, 15 col_val, 16 scr_base, 17 zp_base,
++///   18 colour_vmode (0=LIT 1=VAR), 19 colour_var]
+ 
+ function scr_node_draw_macro_place_char(_draw_x, _y) {
+ 
+@@ -28,6 +29,9 @@ function scr_node_draw_macro_place_char(_draw_x, _y) {
+     var _scr_base  = (array_length(_ins) > 16 && is_real(_ins[16])) ? real(_ins[16]) : 0x0400;
+     var _zp        = (array_length(_ins) > 17 && is_real(_ins[17])) ? real(_ins[17]) : 0xFB;
+ 
++    var _colour_vmode = (array_length(_ins) > 18 && is_real(_ins[18])) ? real(_ins[18]) : 0;
++    var _colour_var = (array_length(_ins) > 19) ? string(_ins[19]) : "";
++
+     var _lh = 14;
+     var _ly = _y + 28;
+ 
+@@ -188,17 +192,39 @@ function scr_node_draw_macro_place_char(_draw_x, _y) {
+     }
+     draw_text(_cbx + 18, _ly, "SET COL");
+ 
+-    if (_set_col == 1) {
++    var _colour_bx = _draw_x + width - 38;
++    draw_set_color((_set_col == 1 && _colour_vmode == 1) ? make_color_rgb(180, 140, 30) : make_color_rgb(50, 50, 60));
++    draw_rectangle(_colour_bx, _ly + 1, _colour_bx + _vbtn_w, _ly + 13, false);
++    draw_set_color((_set_col == 1) ? c_yellow : _c_dim);
++    draw_set_halign(fa_center);
++    draw_text(_colour_bx + _vbtn_w * 0.5, _ly, (_colour_vmode == 1) ? "VAR" : "LIT");
++    draw_set_halign(fa_left);
++    _ly += _lh;
++
++    // Row 7: colour value, separate from the enable checkbox and mode switch.
++    draw_set_color(_c_lbl);
++    draw_text(_draw_x + 10, _ly, "COL:");
++    if (_set_col != 1) {
++        draw_set_color(_c_dim);
++        draw_text(_draw_x + 52, _ly, "OFF");
++    } else if (_colour_vmode == 1) {
++        draw_set_color(c_yellow);
++        var _colour_label = (_colour_var != "") ? _colour_var : "<PICK>";
++        while (string_width(_colour_label) > width - 68 && string_length(_colour_label) > 1) {
++            _colour_label = string_delete(_colour_label, string_length(_colour_label), 1);
++        }
++        draw_text(_draw_x + 52, _ly, _colour_label);
++    } else {
+         draw_set_color(scr_c64_pepto_colour(_col_val));
+-        draw_rectangle(_draw_x + 100, _ly + 2, _draw_x + 120, _ly + 13, false);
++        draw_rectangle(_draw_x + 52, _ly + 2, _draw_x + 72, _ly + 13, false);
+         draw_set_color(c_gray);
+-        draw_rectangle(_draw_x + 100, _ly + 2, _draw_x + 120, _ly + 13, true);
++        draw_rectangle(_draw_x + 52, _ly + 2, _draw_x + 72, _ly + 13, true);
+         draw_set_color(c_yellow);
+-        draw_text(_draw_x + 126, _ly, string(_col_val));
++        draw_text(_draw_x + 78, _ly, string(_col_val));
+     }
+     _ly += _lh;
+ 
+-    // ── Row 7: SCR BASE + ZP ──
++    // ── Row 8: SCR BASE + ZP ──
+     var _sb_hex = decimal_to_hex(_scr_base);
+     while (string_length(_sb_hex) < 4) _sb_hex = "0" + _sb_hex;
+     var _zp_hex = decimal_to_hex(_zp);
+diff --git a/C64Devmachine/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml b/C64Devmachine/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml
+index a768bf6..4672c2f 100644
+--- a/C64Devmachine/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml
++++ b/C64Devmachine/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml
+@@ -64,11 +64,11 @@ function scr_node_draw_macro_print(_draw_x, _y) {
+     draw_set_color(_c_edit);
+     draw_text(_draw_x + 8, _ply, "X:");
+     draw_set_color(_col_x_determined ? make_color_rgb(220, 40, 220) : c_aqua);
+-    draw_text(_draw_x + 28, _ply, string(_sx));
++    draw_text(_draw_x + 28, _ply, ((array_length(instructions[0]) > 18 && instructions[0][18] == 1) ? "VAR" : string(_sx)));
+     draw_set_color(_c_edit);
+     draw_text(_draw_x + 65, _ply, "Y:");
+     draw_set_color(_col_y_determined ? make_color_rgb(220, 40, 220) : c_aqua);
+-    draw_text(_draw_x + 85, _ply, string(_sy));
++    draw_text(_draw_x + 85, _ply, ((array_length(instructions[0]) > 20 && instructions[0][20] == 1) ? "VAR" : string(_sy)));
+ 
+     // LOC field is dim in asset mode (driven by asset addr + start offset)
+     if (_src_mode == 1) {
+@@ -90,7 +90,7 @@ function scr_node_draw_macro_print(_draw_x, _y) {
+     draw_set_color(scr_c64_pepto_colour(_col));
+     draw_rectangle(_draw_x + 50, _ply + 5, _draw_x + 70, _ply + _line_h, false);
+     draw_set_color(c_yellow);
+-    draw_text(_draw_x + 76, _ply, string(_col));
++    draw_text(_draw_x + 76, _ply, ((array_length(instructions[0]) > 22 && instructions[0][22] == 1) ? "VAR" : string(_col)));
+ 
+     var _cell_off = (_sy * 40) + _sx;
+     var _scr_addr = _scr_base + _cell_off;
+@@ -104,7 +104,7 @@ function scr_node_draw_macro_print(_draw_x, _y) {
+     draw_set_color(_c_dim);
+     draw_text(_draw_x + 100, _ply + 3, "ADDR:");
+     draw_set_color(c_orange);
+-    draw_text(_draw_x + 130, _ply + 3, "$" + _scr_hex + " $" + _col_hex);
++    draw_text(_draw_x + 130, _ply + 3, ((array_length(instructions[0]) > 20 && (instructions[0][18] == 1 || instructions[0][20] == 1)) ? "RUNTIME" : "$" + _scr_hex + " $" + _col_hex));
+     _ply += _line_h;
+ 
+     // Row 2b: SCR BASE (VIC screen-matrix base for the copy loop)
+@@ -257,13 +257,87 @@ function scr_node_draw_macro_print(_draw_x, _y) {
+         _ply += 8;
+     }
+ 
+-    // Row 8: byte count / range
+-    draw_set_font(fnt_c64_pico);
+-    draw_set_color(make_color_rgb(80, 120, 180));
+-    draw_text(_draw_x + 8, _ply, string(_eff_len) + " BYTES   $" + _loch + " -> $" + _loch_end);
+-    draw_text(_draw_x + 7, _ply + 12, "IF MC MODE USE UPPER 8 COLS");
+-    if (_src_mode == 1) {
+-        draw_set_color(make_color_rgb(230, 160, 30));
+-        draw_text(_draw_x + 7, _ply + 24, "USE WORD TYPES FOR START / END");
++    scr_print_dynamic_draw(_draw_x, _y + scr_print_controls_offset(id), 18);
++}
++// Appended field pairs: PRINT 18..23, PRINT VALUE 12..17.
++function scr_print_dynamic_draw(_dx, _dy, _slot) {
++    var _names = ["X", "Y", "COL"];
++    draw_set_font(fnt_c64_tiny);
++    for (var _d = 0; _d < 3; _d++) {
++        var _m = _slot + _d * 2;
++        var _var = array_length(instructions[0]) > _m && instructions[0][_m] == 1;
++        var _value = _var ? ((array_length(instructions[0]) > _m + 1 && string(instructions[0][_m + 1]) != "") ? string(instructions[0][_m + 1]) : "<PICK>") : string(instructions[0][_d + 1]);
++        while (string_width(_value) > width - 100 && string_length(_value) > 1) _value = string_delete(_value, string_length(_value), 1);
++        draw_set_color(c_ltgray);
++        draw_text(_dx + 10, _dy, _names[_d] + ":");
++        draw_set_color(_var ? c_yellow : c_aqua);
++        draw_text(_dx + 44, _dy, _value);
++        draw_set_color(_var ? make_color_rgb(180, 140, 30) : make_color_rgb(50, 50, 60));
++        draw_rectangle(_dx + width - 38, _dy + 1, _dx + width - 10, _dy + 13, false);
++        draw_set_color(c_yellow);
++        draw_set_halign(fa_center);
++        draw_text(_dx + width - 24, _dy, _var ? "VAR" : "LIT");
++        draw_set_halign(fa_left);
++        _dy += 18;
++    }
++}
++
++function scr_print_dynamic_step(_dx, _dy, _slot, _ah, _av) {
++    if (!point_in_rectangle(mouse_x, mouse_y, _dx + 4, _dy, _dx + width - 8, _dy + 50)) return false;
++    var _d = floor((mouse_y - _dy) / 18);
++    if (_d < 0 || _d > 2 || (mouse_y - _dy) mod 18 > 13) return false;
++    while (array_length(instructions[0]) < _slot) {
++        var _n = array_length(instructions[0]);
++        array_push(instructions[0], (_slot == 18 && (_n == 10 || _n == 15 || _n == 17)) ? "" : ((_slot == 18 && _n == 13) ? 0x0400 : 0));
++    }
++    while (array_length(instructions[0]) < _slot + 6) {
++        array_push(instructions[0], ((array_length(instructions[0]) - _slot) mod 2 == 0) ? 0 : "");
++    }
++    var _m = _slot + _d * 2;
++    if (mouse_x >= _dx + width - 38) {
++        instructions[0][_m] = instructions[0][_m] == 1 ? 0 : 1;
++        if (_d < 2) instructions[0][_d == 0 ? _ah : _av] = 0;
++    } else if (instructions[0][_m] == 1) {
++        if (_d < 2) instructions[0][_d == 0 ? _ah : _av] = 0;
++        label_picker_open = true;
++        global.any_picker_open = true;
++        label_picker_prev_depth = depth;
++        depth = -9999;
++        label_picker_mode = "VAR";
++        label_picker_tab = "UV";
++        label_picker_scroll = 0;
++        label_picker_list = [];
++        label_picker_target = id;
++        label_picker_index = _m + 1;
++    } else {
++        if (_d < 2) instructions[0][_d == 0 ? _ah : _av] = 0;
++        with (obj_workspace_manager) {
++            is_entering_text = true;
++            input_target_node = other.id;
++            input_target_index = _d + 1;
++            current_input_string = string(other.instructions[0][_d + 1]);
++            keyboard_string = "";
++            cursor_pos = string_length(current_input_string);
++        }
++    }
++    global.addresses_dirty = true;
++    global.undo_dirty = true;
++    return true;
++}
++
++// Keep drawing, click targets and height calculations on the same layout.
++function scr_print_controls_offset(_n) {
++    var _asset = array_length(_n.instructions[0]) > 9 && _n.instructions[0][9] == 1;
++    return _asset ? 162 : 138;
++}
++
++function scr_print_sync_height(_n) {
++    var _wanted = ceil((scr_print_controls_offset(_n) + 50 + 8) / 20) * 20;
++    if (!variable_instance_exists(_n, "print_layout_height") ||
++        _n.print_layout_height != _wanted || _n.height != _wanted) {
++        _n.print_layout_height = _wanted;
++        _n.height = _wanted;
++        _n.height_dirty = true;
++        global.addresses_dirty = true;
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/C64Devmachine/scripts/scr_node_draw_macro_print_ext/scr_node_draw_macro_print_ext.gml b/C64Devmachine/scripts/scr_node_draw_macro_print_ext/scr_node_draw_macro_print_ext.gml
+index a7e4270..420a589 100644
+--- a/C64Devmachine/scripts/scr_node_draw_macro_print_ext/scr_node_draw_macro_print_ext.gml
++++ b/C64Devmachine/scripts/scr_node_draw_macro_print_ext/scr_node_draw_macro_print_ext.gml
+@@ -30,16 +30,16 @@ function scr_node_draw_macro_print_ext(_draw_x, _y) {
+     draw_set_color(make_color_rgb(140, 160, 200));
+     draw_text(_draw_x + 10, _ry, "X:");
+     draw_set_color(_x_overridden ? make_color_rgb(220, 40, 220) : c_yellow);
+-    draw_text(_draw_x + 28, _ry, string(_sx));
++    draw_text(_draw_x + 28, _ry, ((array_length(instructions[0]) > 12 && instructions[0][12] == 1) ? "VAR" : string(_sx)));
+     draw_set_color(make_color_rgb(140, 160, 200));
+     draw_text(_draw_x + 70, _ry, "Y:");
+     draw_set_color(_y_overridden ? make_color_rgb(220, 40, 220) : c_yellow);
+-    draw_text(_draw_x + 88, _ry, string(_sy));
++    draw_text(_draw_x + 88, _ry, ((array_length(instructions[0]) > 14 && instructions[0][14] == 1) ? "VAR" : string(_sy)));
+     // colour swatch
+     draw_set_color(make_color_rgb(140, 160, 200));
+     draw_text(_draw_x + 128, _ry, "COL:");
+     draw_set_color(c_yellow);
+-    draw_text(_draw_x + 162, _ry, string(_col));
++    draw_text(_draw_x + 162, _ry, ((array_length(instructions[0]) > 16 && instructions[0][16] == 1) ? "VAR" : string(_col)));
+     _ry += _row_h;
+ 
+     // ── Row 2: SOURCE toggle ──
+@@ -156,4 +156,5 @@ function scr_node_draw_macro_print_ext(_draw_x, _y) {
+     draw_text(_cbx+8 , _ry , "PRE-CLEAR?");
+     draw_set_font(fnt_c64_code);
+     _ry += _row_h;
++    scr_print_dynamic_draw(_draw_x, _y + height - 56, 12);
+ }
+\ No newline at end of file
+diff --git a/C64Devmachine/scripts/scr_node_spawn/scr_node_spawn.gml b/C64Devmachine/scripts/scr_node_spawn/scr_node_spawn.gml
+index eab47ca..029f87f 100644
+--- a/C64Devmachine/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64Devmachine/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -120,7 +120,7 @@ case "LABEL": {
+             //   5  inline text  6  inline addr 7  align_h     8  align_v
+             //   9  src mode (0=inline, 1=asset)
+             //  10  asset name   11 start off   12 end off (0=auto)
+-            _n.instructions = [["macro_print", 0, 0, 1, 0, "", 0x2000, 0, 0, 0, "", 0, 0, 0x0400, 0, "", 0, ""]];
++            _n.instructions = [["macro_print", 0, 0, 1, 0, "", 0x2000, 0, 0, 0, "", 0, 0, 0x0400, 0, "", 0, "", 0, "", 0, "", 0, ""]];
+             _n.pc_address   = global.start_pc;
+             with (_n) { event_user(0); }
+             break;
+@@ -134,7 +134,7 @@ case "LABEL": {
+             //   6  var_name     7  reg_id (0=A 1=X 2=Y 3=SP 4=FLAGS)
+             //   8  fmt (0=DEC 1=HEX 2=BIN 3=BCD)
+             //   9  align_h      10 align_v     11 pad (0=zeros, 1=spaces)
+-            _n.instructions = [["macro_print_ext", 0, 0, 1, 0, 0, "", 0, 1, 0, 0, 0]];
++            _n.instructions = [["macro_print_ext", 0, 0, 1, 0, 0, "", 0, 1, 0, 0, 0, 0, "", 0, "", 0, ""]];
+             _n.pc_address   = global.start_pc;
+             with (_n) { event_user(0); }
+             break;
+@@ -636,9 +636,10 @@ case "LABEL": {
+         // [14] set_col  [15] col_val
+         // [16] scr_base [17] zp_base
+         // -------------------------------------------------------
++        // [18] colour_vmode (0=LIT 1=VAR), [19] colour_var
+         case "MACRO_PLACE_CHAR":
+             _n.node_title   = "PLACE CHAR";
+-            _n.instructions = [["macro_place_char", 0, 0, "", 0, 0, "", 0, 32, "", "", 0, 0, "", 1, 1, 0x0400, 0xFB]];
++            _n.instructions = [["macro_place_char", 0, 0, "", 0, 0, "", 0, 32, "", "", 0, 0, "", 1, 1, 0x0400, 0xFB, 0, ""]];
+             _n.pc_address   = global.start_pc;
+             with (_n) { event_user(0); }
+             break;
+diff --git a/C64Devmachine/scripts/scr_node_step_macro_place_char/scr_node_step_macro_place_char.gml b/C64Devmachine/scripts/scr_node_step_macro_place_char/scr_node_step_macro_place_char.gml
+index df49b79..7a342fb 100644
+--- a/C64Devmachine/scripts/scr_node_step_macro_place_char/scr_node_step_macro_place_char.gml
++++ b/C64Devmachine/scripts/scr_node_step_macro_place_char/scr_node_step_macro_place_char.gml
+@@ -4,9 +4,9 @@
+ function scr_node_step_macro_place_char(_draw_x) {
+ 
+     // Backfill old saves to full slot count
+-    while (array_length(instructions[0]) <= 17) {
++    while (array_length(instructions[0]) <= 19) {
+         var _n = array_length(instructions[0]);
+-        if (_n == 3 || _n == 6 || _n == 9 || _n == 10 || _n == 13) {
++        if (_n == 3 || _n == 6 || _n == 9 || _n == 10 || _n == 13 || _n == 19) {
+             array_push(instructions[0], "");
+         } else {
+             array_push(instructions[0], 0);
+@@ -184,22 +184,45 @@ function scr_node_step_macro_place_char(_draw_x) {
+         global.undo_dirty      = true;
+         exit;
+     }
+-    if (real(instructions[0][14]) == 1) {
+-        if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 98, _ly, _draw_x + 140, _ly + 13)) {
++    var _colour_bx = _draw_x + width - 38;
++    if (real(instructions[0][14]) == 1 &&
++        point_in_rectangle(mouse_x, mouse_y, _colour_bx, _ly + 1, _colour_bx + _vbtn_w, _ly + 13)) {
++        instructions[0][18] = (real(instructions[0][18]) == 0) ? 1 : 0;
++        global.addresses_dirty = true;
++        global.undo_dirty = true;
++        exit;
++    }
++    _ly += _lh;
++
++    // Row 7: retain both values when switching between LIT and VAR.
++    if (real(instructions[0][14]) == 1 &&
++        point_in_rectangle(mouse_x, mouse_y, _draw_x + 48, _ly, _draw_x + width - 10, _ly + 13)) {
++        if (real(instructions[0][18]) == 1) {
++            label_picker_open       = true;
++            global.any_picker_open  = true;
++            label_picker_prev_depth = depth;
++            depth                   = -9999;
++            label_picker_mode       = "VAR";
++            label_picker_tab        = "UV";
++            label_picker_scroll     = 0;
++            label_picker_list       = [];
++            label_picker_target     = id;
++            label_picker_index      = 19;
++        } else {
+             instance_destroy(obj_ui_color_picker);
+             var _picker_w = 256;
+-            var _spawn_x  = (_draw_x + 110) - (_picker_w / 2);
+-            var _picker   = instance_create_depth(_spawn_x, _ly + _lh, -9999, obj_ui_color_picker);
++            var _spawn_x = (_draw_x + 62) - (_picker_w / 2);
++            var _picker = instance_create_depth(_spawn_x, _ly + _lh, -9999, obj_ui_color_picker);
+             _picker.target_node = id;
+-            _picker.target_row  = 0;
+-            _picker.target_col  = 15;
++            _picker.target_row = 0;
++            _picker.target_col = 15;
+             mouse_clear(mb_left);
+-            exit;
+         }
++        exit;
+     }
+     _ly += _lh;
+ 
+-    // ── Row 7: SCR BASE / ZP hex entry ──
++    // ── Row 8: SCR BASE / ZP hex entry ──
+     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 48, _ly, _draw_x + 112, _ly + 13)) {
+         with (obj_workspace_manager) {
+             is_entering_text     = true;
+diff --git a/C64Devmachine/scripts/scr_node_step_macro_print/scr_node_step_macro_print.gml b/C64Devmachine/scripts/scr_node_step_macro_print/scr_node_step_macro_print.gml
+index 4ef8431..8a6adc4 100644
+--- a/C64Devmachine/scripts/scr_node_step_macro_print/scr_node_step_macro_print.gml
++++ b/C64Devmachine/scripts/scr_node_step_macro_print/scr_node_step_macro_print.gml
+@@ -1,4 +1,6 @@
+ function scr_node_step_macro_print(_draw_x) {
++    if (scr_print_dynamic_step(_draw_x, y + scr_print_controls_offset(id), 18, 7, 8)) exit;
++
+     var _header_h = 24;
+     var _line_h   = 12;
+     var _fy       = y + _header_h + 4;
+@@ -14,6 +16,7 @@ function scr_node_step_macro_print(_draw_x) {
+             is_entering_text     = true;
+             input_target_node    = other.id;
+             input_target_index   = 1;
++            if (array_length(other.instructions[0]) > 18) other.instructions[0][18] = 0;
+             current_input_string = string(other.instructions[0][1]);
+             keyboard_string      = "";
+             cursor_pos           = string_length(current_input_string);
+@@ -29,6 +32,7 @@ function scr_node_step_macro_print(_draw_x) {
+             is_entering_text     = true;
+             input_target_node    = other.id;
+             input_target_index   = 2;
++            if (array_length(other.instructions[0]) > 20) other.instructions[0][20] = 0;
+             current_input_string = string(other.instructions[0][2]);
+             keyboard_string      = "";
+             cursor_pos           = string_length(current_input_string);
+@@ -55,6 +59,7 @@ function scr_node_step_macro_print(_draw_x) {
+ 
+     // Row 2: COL swatch
+     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 50, _fy, _draw_x + 110, _fy + 16)) {
++        if (array_length(instructions[0]) > 22) instructions[0][22] = 0;
+         instance_destroy(obj_ui_color_picker);
+         var _picker_w     = 256;
+         var _swatch_center = _draw_x + 60;
+diff --git a/C64Devmachine/scripts/scr_node_step_macro_print_ext/scr_node_step_macro_print_ext.gml b/C64Devmachine/scripts/scr_node_step_macro_print_ext/scr_node_step_macro_print_ext.gml
+index a1b7d0a..388905c 100644
+--- a/C64Devmachine/scripts/scr_node_step_macro_print_ext/scr_node_step_macro_print_ext.gml
++++ b/C64Devmachine/scripts/scr_node_step_macro_print_ext/scr_node_step_macro_print_ext.gml
+@@ -4,6 +4,8 @@
+ ///                    var_name, reg_id, fmt, align_h, align_v, pad]
+ 
+ function scr_node_step_macro_print_ext(_draw_x) {
++    if (scr_print_dynamic_step(_draw_x, y + height - 56, 12, 9, 10)) exit;
++
+ 
+     var _row_h = 18;
+     var _ry    = y + 28;
+@@ -20,6 +22,7 @@ function scr_node_step_macro_print_ext(_draw_x) {
+             is_entering_text     = true;
+             input_target_node    = other.id;
+             input_target_index   = 1;
++            if (array_length(other.instructions[0]) > 12) other.instructions[0][12] = 0;
+             current_input_string = string(other.instructions[0][1]);
+             keyboard_string      = "";
+             cursor_pos           = string_length(current_input_string);
+@@ -37,6 +40,7 @@ function scr_node_step_macro_print_ext(_draw_x) {
+             is_entering_text     = true;
+             input_target_node    = other.id;
+             input_target_index   = 2;
++            if (array_length(other.instructions[0]) > 14) other.instructions[0][14] = 0;
+             current_input_string = string(other.instructions[0][2]);
+             keyboard_string      = "";
+             cursor_pos           = string_length(current_input_string);
+@@ -50,6 +54,7 @@ function scr_node_step_macro_print_ext(_draw_x) {
+             is_entering_text     = true;
+             input_target_node    = other.id;
+             input_target_index   = 3;
++            if (array_length(other.instructions[0]) > 16) other.instructions[0][16] = 0;
+             current_input_string = string(other.instructions[0][3]);
+             keyboard_string      = "";
+             cursor_pos           = string_length(current_input_string);
+diff --git a/C64Devmachine/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml b/C64Devmachine/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+index 7e5c8b0..06d681e 100644
+--- a/C64Devmachine/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
++++ b/C64Devmachine/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+@@ -24,6 +24,10 @@ function scr_node_tooltip_text(_node_type) {
+         "MACRO_PRINT": {
+             title: "PRINT",
+             lines: [
++                "X / Y / COL: LIT or VAR; old saves default to LIT.",
++                "VAR X/Y clamp to 39/24; colour uses low 4 bits.",
++                "Alignment overrides X/Y; choose DEF for presets.",
++                "Runtime position also uses ZP $F5-$F8.",
+                 "Prints text to screen RAM at a given row/column.",
+                 "",
+                 "SOURCE: INLINE fixed text, or an ASSET (TEXT_DATA)",
+@@ -44,6 +48,10 @@ function scr_node_tooltip_text(_node_type) {
+         "MACRO_PRINT_EXT": {
+             title: "PRINT EXT",
+             lines: [
++                "X / Y / COL: LIT or VAR; old saves default to LIT.",
++                "VAR X/Y clamp to 39/24; colour uses low 4 bits.",
++                "Alignment overrides X/Y; choose DEF for presets.",
++                "Runtime position also uses ZP $F5-$F8.",
+                 "Prints a numeric value - a named VAR or a CPU",
+                 "register (A/X/Y/SP/FLAGS) - to screen RAM.",
+                 "",
+@@ -59,6 +67,8 @@ function scr_node_tooltip_text(_node_type) {
+             lines: [
+                 "Writes one screencode (and optionally a colour) at",
+                 "a given row/column of screen + colour RAM.",
++                "SET COL: LIT uses the palette; VAR reads a variable.",
++                "Variable colour uses its low four bits (0-15).",
+                 "",
+                 "Address maths is shift-add (row*40 = row<<5 + row<<3),",
+                 "so it works against any screen base, not just $0400."

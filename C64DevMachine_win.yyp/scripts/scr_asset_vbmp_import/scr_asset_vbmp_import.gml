@@ -44,22 +44,31 @@ function scr_asset_vbmp_import(_asset, _path = "") {
         return false;
     }
 
-    var _f = file_text_open_read(_path);
-    if (_f < 0)
+    // buffer_load + one buffer_text read, the same way scr_load_workspace_from_path
+    // reads a project. The file_text_* family is line-based and caps a single
+    // read, so on json_stringify output - which is one enormous line with no
+    // newlines in it at all - a read-until-eof loop never reaches the end and
+    // spins forever. That is what made IMPORT appear to hang rather than fail.
+    var _jbuf = buffer_load(_path);
+    if (_jbuf == -1)
     {
         scr_show_message("VBMP IMPORT: could not open " + filename_name(_path));
         return false;
     }
     var _raw = "";
-    while (!file_text_eof(_f))
+    if (buffer_get_size(_jbuf) > 0)
     {
-        _raw += file_text_read_string(_f);
-        if (!file_text_eof(_f))
-        {
-            file_text_readln(_f);
-        }
+        // buffer_read(buffer_text) runs to the terminator, so guarantee one:
+        // a .vbm written by the exporter has no trailing null of its own.
+        var _jsz = buffer_get_size(_jbuf);
+        var _tbuf = buffer_create(_jsz + 1, buffer_fixed, 1);
+        buffer_copy(_jbuf, 0, _jsz, _tbuf, 0);
+        buffer_poke(_tbuf, _jsz, buffer_u8, 0);
+        buffer_seek(_tbuf, buffer_seek_start, 0);
+        _raw = buffer_read(_tbuf, buffer_text);
+        buffer_delete(_tbuf);
     }
-    file_text_close(_f);
+    buffer_delete(_jbuf);
 
     // json_parse throws on malformed input, and a shared file is exactly where
     // malformed input comes from.

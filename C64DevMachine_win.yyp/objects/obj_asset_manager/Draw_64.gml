@@ -782,7 +782,13 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         draw_set_font(fnt_c64_tiny);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
-        draw_text(_lbx1 + 50, _lby1 + 5, "IMPORT");
+        // Vector bitmaps import their own .vbm rather than a foreign binary,
+        // so the button says which, matching EXPORT VBM beside it.
+        var _imp_label = "IMPORT";
+        if (_asset.type == "VECTOR_BITMAP") {
+            _imp_label = "IMPORT VBM";
+        }
+        draw_text(_lbx1 + 50, _lby1 + 5, _imp_label);
         draw_set_halign(fa_left);
         draw_set_color(_asset.file != "" ? c_lime : make_color_rgb(100, 200, 120));
         draw_set_font(fnt_c64_tiny);
