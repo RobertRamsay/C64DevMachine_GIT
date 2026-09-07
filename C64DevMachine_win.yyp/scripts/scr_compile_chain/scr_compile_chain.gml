@@ -19054,7 +19054,7 @@ case "MACRO_MOVE_MEM": {
 		    var _init_has_body = (instance_exists(_start_node)
 		                       && array_length(_start_node.instructions) > 0);
 		    if (!_has_any_nodes && _init_has_body) {
-		        array_push(_list, ["rts", 0]);
+		        array_push(_list, ["rts", 0, _start_node]);
 		    }
 		}
 		
