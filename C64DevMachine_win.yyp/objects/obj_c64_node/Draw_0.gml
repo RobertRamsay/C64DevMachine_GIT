@@ -161,7 +161,7 @@ if (height_dirty) {
     case "MACRO_CHR":   height = _G * 6;  break;         // 120
     case "MACRO_TRACK": height = _G * 3;  break;         // 100
     case "MACRO_PRINT": height = ceil((scr_print_controls_offset(id) + 58) / _G) * _G;  break;
-	case "MACRO_CLEAR_BMP_RECT": height = _G * 7;  break;   // 3 value rows + 4 var rows + footer
+	case "MACRO_CLEAR_BMP_RECT": height = _G * 6;  break;   // 3 value rows + 4 var rows + footer
     case "MACRO_PRINT_EXT": height = _G * 11;  break;
     case "MACRO_PLACE_CHAR": height = _G * 9;  break;
 	case "MACRO_RANDOM":     height = _G * 8;  break;

@@ -97,13 +97,9 @@ function scr_node_draw_macro_clear_bmp_rect(_draw_x, _y) {
         _ply += _line_h;
     }
 
-    if (_any_var) {
-        // Runtime rect — the byte count isn't knowable here, and no trimming
-        // happens at runtime either, so say so.
-        draw_set_font(fnt_c64_pico);
-        draw_set_color(make_color_rgb(80, 120, 180));
-        draw_text(_draw_x + 8, _ply, "RUNTIME RECT - NO GRID TRIM  ->  BG ($D021)");
-    } else {
+    // Footer only when the rect is fully literal — with a var the byte count
+    // isn't knowable here, so nothing is drawn.
+    if (!_any_var) {
         // Warn when the rect spills off the 40x25 grid — compile trims it, so the
         // node would silently clear less than the numbers claim.
         if (_col + _w > 40 || _row + _h > 25) {
