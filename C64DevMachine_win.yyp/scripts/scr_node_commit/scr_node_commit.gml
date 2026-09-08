@@ -562,7 +562,8 @@
 	    // Slots 2-5 are char-cell coords: clamped to the 40x25 grid here so a
 	    // typo can't produce a rect the compile has to silently trim.
 	    } else if (_target.node_type == "MACRO_CLEAR_BMP_RECT") {
-	        while (array_length(_target.instructions[0]) < 6) { array_push(_target.instructions[0], 0); }
+	        while (array_length(_target.instructions[0]) < 6)  { array_push(_target.instructions[0], 0);  }
+	        while (array_length(_target.instructions[0]) < 10) { array_push(_target.instructions[0], ""); }
 	        if (_idx == 1) {
 	            var _clean = (string_char_at(_input, 1) == "$")
 	                       ? string_delete(_input, 1, 1) : _input;

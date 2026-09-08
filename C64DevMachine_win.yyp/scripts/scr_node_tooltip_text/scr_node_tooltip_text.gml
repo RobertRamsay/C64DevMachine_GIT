@@ -110,7 +110,14 @@ function scr_node_tooltip_text(_node_type) {
                 "",
                 "Drop it before MOVE BMP BLK to pre-clear a room's",
                 "target area, since MASK00 blending lets old pixels",
-                "show through any gaps left by a previous room."
+                "show through any gaps left by a previous room.",
+                "",
+                "COL/ROW/W/H each take an optional byte VAR. With a",
+                "var set the literal is ignored and the value is read",
+                "at runtime, so one node can wipe a moving rect (a",
+                "falling tile, a wipe transition). No grid trim in",
+                "var mode - keep col+w <= 40 and row+h <= 25. A var",
+                "of 0 for W or H clears nothing."
             ]
         },
 

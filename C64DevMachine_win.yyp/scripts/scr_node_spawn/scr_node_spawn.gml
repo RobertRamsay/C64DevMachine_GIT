@@ -1001,12 +1001,15 @@ case "LABEL": {
         // survive in the gaps.
         //
         // [0] name  [1] bmp_addr  [2] col  [3] row  [4] w  [5] h
+        // [6] col var  [7] row var  [8] w var  [9] h var  ("" = use literal)
+        // Any assigned var switches the compile to a runtime rect, so one node
+        // can wipe a moving area (falling tile, transition) frame after frame.
         // Defaults to the whole 40x25 screen at the same bitmap MOVE_BMP_BLOCK
         // defaults its DEST to.
         // -------------------------------------------------------
         case "MACRO_CLEAR_BMP_RECT":
             _n.node_title   = "CLEAR BMP RECT";
-            _n.instructions = [["macro_clear_bmp_rect", 0x4000, 0, 0, 40, 25]];
+            _n.instructions = [["macro_clear_bmp_rect", 0x4000, 0, 0, 40, 25, "", "", "", ""]];
             _n.pc_address   = global.start_pc;
             with (_n) { event_user(0); }
             break;

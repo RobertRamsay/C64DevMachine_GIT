@@ -17550,38 +17550,60 @@ case "MACRO_CODE": {
 // the destination show through the source's holes, so without a wipe the
 // previous room's pixels survive in the gaps.
 //
-// Layout: instructions[0] = ["macro_clear_bmp_rect", bmp_addr, col, row, w, h]
+// Layout: instructions[0] = ["macro_clear_bmp_rect", bmp_addr, col, row, w, h,
+//                            col_var, row_var, w_var, h_var]
+// Slots 6-9 are byte-var names ("" = use the literal). Any non-empty var
+// switches the node to the RUNTIME path, where that field is read from
+// memory each time the node runs — one node can then wipe a moving rect
+// (falling tile, wipe transition) instead of needing a node per position.
 //
-// The cells of a char row are contiguous in the bitmap (w cells = w*8
-// bytes), so each row is one inner Y-loop; the outer X-loop steps char rows
-// by adding 320 to the ZP pointer. Same shape as MOVE_BMP_BLOCK's fast path.
+// LITERAL path — the cells of a char row are contiguous in the bitmap
+// (w cells = w*8 bytes), so each row is one inner Y-loop; the outer X-loop
+// steps char rows by adding 320 to the ZP pointer. Same shape as
+// MOVE_BMP_BLOCK's fast path.
 //   $FB/$FC = dest pointer
 //   $02     = page counter (only when w >= 32, i.e. row span > 255)
+//
+// RUNTIME path — base = bmp + row*320 + col*8 is built in 6502 with short
+// add-loops (row <= 24, col <= 39, so at most 24+39 iterations), then each
+// char row walks w cells of 8 bytes on a working copy of the row pointer,
+// which keeps any w (1..40) inside 8-bit maths with no page counting.
+//   $FB/$FC = row pointer      $FD/$FE = cell pointer (copy of row ptr)
+//   $02     = cell counter (w) for the current row
+// No grid trimming at runtime: a var that walks the rect off the 40x25 grid
+// writes past the bitmap. h == 0 or w == 0 clears nothing.
 // --------------------------------------------------------
 case "MACRO_CLEAR_BMP_RECT": {
     var _id       = _curr;
+
+    while (array_length(_curr.instructions[0]) < 6)  { array_push(_curr.instructions[0], 0);  }
+    while (array_length(_curr.instructions[0]) < 10) { array_push(_curr.instructions[0], ""); }
+
     var _cbr_bmp  = is_real(_curr.instructions[0][1]) ? real(_curr.instructions[0][1]) : 0x4000;
     var _cbr_col  = is_real(_curr.instructions[0][2]) ? clamp(real(_curr.instructions[0][2]), 0, 39) : 0;
     var _cbr_row  = is_real(_curr.instructions[0][3]) ? clamp(real(_curr.instructions[0][3]), 0, 24) : 0;
     var _cbr_w    = is_real(_curr.instructions[0][4]) ? real(_curr.instructions[0][4]) : 40;
     var _cbr_h    = is_real(_curr.instructions[0][5]) ? real(_curr.instructions[0][5]) : 25;
 
-    // Trim the rect to the 40x25 grid so a bad w/h can't walk the pointer
-    // off the end of the bitmap and scribble over whatever follows it.
-    if (_cbr_w < 1) _cbr_w = 1;
-    if (_cbr_h < 1) _cbr_h = 1;
-    if (_cbr_col + _cbr_w > 40) _cbr_w = 40 - _cbr_col;
-    if (_cbr_row + _cbr_h > 25) _cbr_h = 25 - _cbr_row;
+    // Resolve the optional byte vars (0 = not assigned / not found).
+    var _cbr_resolve = function(_nm) {
+        if (_nm == "") return 0;
+        if (ds_map_exists(global.named_loc_map, _nm))
+            return ds_map_find_value(global.named_loc_map, _nm);
+        return 0;
+    };
+    var _cbr_col_addr = _cbr_resolve(string(_curr.instructions[0][6]));
+    var _cbr_row_addr = _cbr_resolve(string(_curr.instructions[0][7]));
+    var _cbr_w_addr   = _cbr_resolve(string(_curr.instructions[0][8]));
+    var _cbr_h_addr   = _cbr_resolve(string(_curr.instructions[0][9]));
+
+    var _cbr_has_col = (_cbr_col_addr != 0);
+    var _cbr_has_row = (_cbr_row_addr != 0);
+    var _cbr_has_w   = (_cbr_w_addr   != 0);
+    var _cbr_has_h   = (_cbr_h_addr   != 0);
+    var _cbr_runtime = (_cbr_has_col || _cbr_has_row || _cbr_has_w || _cbr_has_h);
 
     var _cbr_pfx = "cbr_" + string(real(_id)) + "_";
-
-    // Top-left byte of the rect: base + row*320 + col*8.
-    var _cbr_base = _cbr_bmp + (_cbr_row * 320) + (_cbr_col * 8);
-
-    // Bytes per char row of the rect, and how they split across pages.
-    var _cbr_span  = _cbr_w * 8;             // 8..320
-    var _cbr_pages = _cbr_span div 256;
-    var _cbr_rem   = _cbr_span mod 256;
 
     // A VIC bank 2 bitmap ($8000-$BFFF) sits under BASIC ROM in the CPU's
     // view, so writes would land in ROM shadow rather than RAM. Bank BASIC
@@ -17601,59 +17623,195 @@ case "MACRO_CLEAR_BMP_RECT": {
         array_push(_list, ["sta_zp",  0x01, _id]);
     }
 
-    array_push(_list, ["lda_imm", _cbr_base & 0xFF,        _id]);
-    array_push(_list, ["sta_zp",  0xFB,                    _id]);
-    array_push(_list, ["lda_imm", (_cbr_base >> 8) & 0xFF, _id]);
-    array_push(_list, ["sta_zp",  0xFC,                    _id]);
+    if (!_cbr_runtime) {
+        // ══════════════════════════════════════════════════════════════
+        // LITERAL PATH — everything known at compile time.
+        // ══════════════════════════════════════════════════════════════
 
-    array_push(_list, ["ldx_imm", _cbr_h,          _id]);   // X = char-row counter
-    array_push(_list, ["label",   _cbr_pfx + "row"     ]);
+        // Trim the rect to the 40x25 grid so a bad w/h can't walk the pointer
+        // off the end of the bitmap and scribble over whatever follows it.
+        if (_cbr_w < 1) _cbr_w = 1;
+        if (_cbr_h < 1) _cbr_h = 1;
+        if (_cbr_col + _cbr_w > 40) _cbr_w = 40 - _cbr_col;
+        if (_cbr_row + _cbr_h > 25) _cbr_h = 25 - _cbr_row;
 
-    // Full 256-byte pages first (only when w >= 32), via Y wrap.
-    if (_cbr_pages > 0) {
-        array_push(_list, ["lda_imm", _cbr_pages,        _id]);
-        array_push(_list, ["sta_zp",  0x02,              _id]);
-        array_push(_list, ["lda_imm", 0x00,              _id]);
-        array_push(_list, ["ldy_imm", 0,                 _id]);
-        array_push(_list, ["label",   _cbr_pfx + "pg"        ]);
-        array_push(_list, ["sta_izy", 0xFB,              _id]);
-        array_push(_list, ["iny",     0,                 _id]);
-        array_push(_list, ["bne",     _cbr_pfx + "pg",   _id]);
-        array_push(_list, ["inc_zp",  0xFC,              _id]);   // Y wrapped -> next page
-        array_push(_list, ["dec_zp",  0x02,              _id]);
-        array_push(_list, ["bne",     _cbr_pfx + "pg",   _id]);
+        // Top-left byte of the rect: base + row*320 + col*8.
+        var _cbr_base = _cbr_bmp + (_cbr_row * 320) + (_cbr_col * 8);
+
+        // Bytes per char row of the rect, and how they split across pages.
+        var _cbr_span  = _cbr_w * 8;             // 8..320
+        var _cbr_pages = _cbr_span div 256;
+        var _cbr_rem   = _cbr_span mod 256;
+
+        array_push(_list, ["lda_imm", _cbr_base & 0xFF,        _id]);
+        array_push(_list, ["sta_zp",  0xFB,                    _id]);
+        array_push(_list, ["lda_imm", (_cbr_base >> 8) & 0xFF, _id]);
+        array_push(_list, ["sta_zp",  0xFC,                    _id]);
+
+        array_push(_list, ["ldx_imm", _cbr_h,          _id]);   // X = char-row counter
+        array_push(_list, ["label",   _cbr_pfx + "row"     ]);
+
+        // Full 256-byte pages first (only when w >= 32), via Y wrap.
+        if (_cbr_pages > 0) {
+            array_push(_list, ["lda_imm", _cbr_pages,        _id]);
+            array_push(_list, ["sta_zp",  0x02,              _id]);
+            array_push(_list, ["lda_imm", 0x00,              _id]);
+            array_push(_list, ["ldy_imm", 0,                 _id]);
+            array_push(_list, ["label",   _cbr_pfx + "pg"        ]);
+            array_push(_list, ["sta_izy", 0xFB,              _id]);
+            array_push(_list, ["iny",     0,                 _id]);
+            array_push(_list, ["bne",     _cbr_pfx + "pg",   _id]);
+            array_push(_list, ["inc_zp",  0xFC,              _id]);   // Y wrapped -> next page
+            array_push(_list, ["dec_zp",  0x02,              _id]);
+            array_push(_list, ["bne",     _cbr_pfx + "pg",   _id]);
+        }
+
+        // Remainder bytes. Y is 0 here after a wrap, or fresh if there were no pages.
+        if (_cbr_rem > 0) {
+            array_push(_list, ["lda_imm", 0x00,              _id]);
+            array_push(_list, ["ldy_imm", 0,                 _id]);
+            array_push(_list, ["label",   _cbr_pfx + "rm"        ]);
+            array_push(_list, ["sta_izy", 0xFB,              _id]);
+            array_push(_list, ["iny",     0,                 _id]);
+            array_push(_list, ["cpy_imm", _cbr_rem,          _id]);
+            array_push(_list, ["bne",     _cbr_pfx + "rm",   _id]);
+        }
+
+        // Next char row. The page loop bumped the HI byte _cbr_pages times, so
+        // back those out before adding the true 320-byte row stride — otherwise
+        // the pointer lands _cbr_pages pages too far down.
+        if (_cbr_pages > 0) {
+            array_push(_list, ["lda_zp",  0xFC,        _id]);
+            array_push(_list, ["sec",     0,           _id]);
+            array_push(_list, ["sbc_imm", _cbr_pages,  _id]);
+            array_push(_list, ["sta_zp",  0xFC,        _id]);
+        }
+        array_push(_list, ["clc",     0,    _id]);
+        array_push(_list, ["lda_zp",  0xFB, _id]);
+        array_push(_list, ["adc_imm", 64,   _id]);   // 320 & $FF
+        array_push(_list, ["sta_zp",  0xFB, _id]);
+        array_push(_list, ["lda_zp",  0xFC, _id]);
+        array_push(_list, ["adc_imm", 1,    _id]);   // 320 >> 8
+        array_push(_list, ["sta_zp",  0xFC, _id]);
+
+        array_push(_list, ["dex",     0,                  _id]);
+        array_push(_list, ["bne",     _cbr_pfx + "row",   _id]);
+
+    } else {
+        // ══════════════════════════════════════════════════════════════
+        // RUNTIME PATH — at least one field comes from a byte var.
+        // ══════════════════════════════════════════════════════════════
+
+        // Fold whichever of col/row ARE literal into the compile-time base;
+        // the var ones are added in 6502 below.
+        var _cbr_rt_base = _cbr_bmp;
+        if (!_cbr_has_row) { _cbr_rt_base += _cbr_row * 320; }
+        if (!_cbr_has_col) { _cbr_rt_base += _cbr_col * 8;   }
+
+        array_push(_list, ["lda_imm", _cbr_rt_base & 0xFF,        _id]);
+        array_push(_list, ["sta_zp",  0xFB,                       _id]);
+        array_push(_list, ["lda_imm", (_cbr_rt_base >> 8) & 0xFF, _id]);
+        array_push(_list, ["sta_zp",  0xFC,                       _id]);
+
+        // + col*8 : add 8, col times (16-bit, carry into HI).
+        if (_cbr_has_col) {
+            array_push(_list, ["ldx_abs", _cbr_col_addr,          _id]);
+            array_push(_list, ["beq",     _cbr_pfx + "colskp",    _id]);
+            array_push(_list, ["label",   _cbr_pfx + "colmul"         ]);
+            array_push(_list, ["clc",     0,                      _id]);
+            array_push(_list, ["lda_zp",  0xFB,                   _id]);
+            array_push(_list, ["adc_imm", 8,                      _id]);
+            array_push(_list, ["sta_zp",  0xFB,                   _id]);
+            array_push(_list, ["bcc",     _cbr_pfx + "colnc",     _id]);
+            array_push(_list, ["inc_zp",  0xFC,                   _id]);
+            array_push(_list, ["label",   _cbr_pfx + "colnc"          ]);
+            array_push(_list, ["dex",     0,                      _id]);
+            array_push(_list, ["bne",     _cbr_pfx + "colmul",    _id]);
+            array_push(_list, ["label",   _cbr_pfx + "colskp"         ]);
+        }
+
+        // + row*320 : add 320 ($0140), row times.
+        if (_cbr_has_row) {
+            array_push(_list, ["ldx_abs", _cbr_row_addr,          _id]);
+            array_push(_list, ["beq",     _cbr_pfx + "rowskp",    _id]);
+            array_push(_list, ["label",   _cbr_pfx + "rowmul"         ]);
+            array_push(_list, ["clc",     0,                      _id]);
+            array_push(_list, ["lda_zp",  0xFB,                   _id]);
+            array_push(_list, ["adc_imm", 64,                     _id]);   // 320 & $FF
+            array_push(_list, ["sta_zp",  0xFB,                   _id]);
+            array_push(_list, ["lda_zp",  0xFC,                   _id]);
+            array_push(_list, ["adc_imm", 1,                      _id]);   // 320 >> 8
+            array_push(_list, ["sta_zp",  0xFC,                   _id]);
+            array_push(_list, ["dex",     0,                      _id]);
+            array_push(_list, ["bne",     _cbr_pfx + "rowmul",    _id]);
+            array_push(_list, ["label",   _cbr_pfx + "rowskp"         ]);
+        }
+
+        // X = char-row counter. A var of 0 clears nothing at all.
+        if (_cbr_has_h) {
+            array_push(_list, ["ldx_abs", _cbr_h_addr,            _id]);
+            array_push(_list, ["beq",     _cbr_pfx + "done",      _id]);
+        } else {
+            if (_cbr_h < 1) _cbr_h = 1;
+            array_push(_list, ["ldx_imm", _cbr_h,                 _id]);
+        }
+
+        array_push(_list, ["label",   _cbr_pfx + "row"                ]);
+
+        // Working copy of the row pointer — the cell walk advances $FD/$FE
+        // by 8 per cell, leaving $FB/$FC untouched for the row stride.
+        array_push(_list, ["lda_zp",  0xFB,                       _id]);
+        array_push(_list, ["sta_zp",  0xFD,                       _id]);
+        array_push(_list, ["lda_zp",  0xFC,                       _id]);
+        array_push(_list, ["sta_zp",  0xFE,                       _id]);
+
+        // $02 = cells left in this row. A var of 0 skips the row's stores.
+        if (_cbr_has_w) {
+            array_push(_list, ["lda_abs", _cbr_w_addr,            _id]);
+            array_push(_list, ["beq",     _cbr_pfx + "next",      _id]);
+            array_push(_list, ["sta_zp",  0x02,                   _id]);
+        } else {
+            if (_cbr_w < 1) _cbr_w = 1;
+            array_push(_list, ["lda_imm", _cbr_w,                 _id]);
+            array_push(_list, ["sta_zp",  0x02,                   _id]);
+        }
+
+        // One cell = 8 contiguous bytes at ($FD),Y for Y = 7..0.
+        array_push(_list, ["label",   _cbr_pfx + "cell"               ]);
+        array_push(_list, ["lda_imm", 0x00,                       _id]);
+        array_push(_list, ["ldy_imm", 7,                          _id]);
+        array_push(_list, ["label",   _cbr_pfx + "cb"                 ]);
+        array_push(_list, ["sta_izy", 0xFD,                       _id]);
+        array_push(_list, ["dey",     0,                          _id]);
+        array_push(_list, ["bpl",     _cbr_pfx + "cb",            _id]);
+
+        // cell ptr += 8
+        array_push(_list, ["clc",     0,                          _id]);
+        array_push(_list, ["lda_zp",  0xFD,                       _id]);
+        array_push(_list, ["adc_imm", 8,                          _id]);
+        array_push(_list, ["sta_zp",  0xFD,                       _id]);
+        array_push(_list, ["bcc",     _cbr_pfx + "cellnc",        _id]);
+        array_push(_list, ["inc_zp",  0xFE,                       _id]);
+        array_push(_list, ["label",   _cbr_pfx + "cellnc"             ]);
+
+        array_push(_list, ["dec_zp",  0x02,                       _id]);
+        array_push(_list, ["bne",     _cbr_pfx + "cell",          _id]);
+
+        // Next char row: row ptr += 320.
+        array_push(_list, ["label",   _cbr_pfx + "next"               ]);
+        array_push(_list, ["clc",     0,                          _id]);
+        array_push(_list, ["lda_zp",  0xFB,                       _id]);
+        array_push(_list, ["adc_imm", 64,                         _id]);   // 320 & $FF
+        array_push(_list, ["sta_zp",  0xFB,                       _id]);
+        array_push(_list, ["lda_zp",  0xFC,                       _id]);
+        array_push(_list, ["adc_imm", 1,                          _id]);   // 320 >> 8
+        array_push(_list, ["sta_zp",  0xFC,                       _id]);
+
+        array_push(_list, ["dex",     0,                          _id]);
+        array_push(_list, ["bne",     _cbr_pfx + "row",           _id]);
+
+        array_push(_list, ["label",   _cbr_pfx + "done"               ]);
     }
-
-    // Remainder bytes. Y is 0 here after a wrap, or fresh if there were no pages.
-    if (_cbr_rem > 0) {
-        array_push(_list, ["lda_imm", 0x00,              _id]);
-        array_push(_list, ["ldy_imm", 0,                 _id]);
-        array_push(_list, ["label",   _cbr_pfx + "rm"        ]);
-        array_push(_list, ["sta_izy", 0xFB,              _id]);
-        array_push(_list, ["iny",     0,                 _id]);
-        array_push(_list, ["cpy_imm", _cbr_rem,          _id]);
-        array_push(_list, ["bne",     _cbr_pfx + "rm",   _id]);
-    }
-
-    // Next char row. The page loop bumped the HI byte _cbr_pages times, so
-    // back those out before adding the true 320-byte row stride — otherwise
-    // the pointer lands _cbr_pages pages too far down.
-    if (_cbr_pages > 0) {
-        array_push(_list, ["lda_zp",  0xFC,        _id]);
-        array_push(_list, ["sec",     0,           _id]);
-        array_push(_list, ["sbc_imm", _cbr_pages,  _id]);
-        array_push(_list, ["sta_zp",  0xFC,        _id]);
-    }
-    array_push(_list, ["clc",     0,    _id]);
-    array_push(_list, ["lda_zp",  0xFB, _id]);
-    array_push(_list, ["adc_imm", 64,   _id]);   // 320 & $FF
-    array_push(_list, ["sta_zp",  0xFB, _id]);
-    array_push(_list, ["lda_zp",  0xFC, _id]);
-    array_push(_list, ["adc_imm", 1,    _id]);   // 320 >> 8
-    array_push(_list, ["sta_zp",  0xFC, _id]);
-
-    array_push(_list, ["dex",     0,                  _id]);
-    array_push(_list, ["bne",     _cbr_pfx + "row",   _id]);
 
     if (_cbr_basic_off) {
         // [BANKGUARD] restore, operand patched by the save above.

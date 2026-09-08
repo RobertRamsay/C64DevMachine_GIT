@@ -7,6 +7,9 @@ function scr_node_step_macro_clear_bmp_rect(_draw_x) {
     while (array_length(instructions[0]) < 6) {
         array_push(instructions[0], 0);
     }
+    while (array_length(instructions[0]) < 10) {
+        array_push(instructions[0], "");
+    }
 
     var _open_addr = function(_idx) {
         with (obj_workspace_manager) {
@@ -31,6 +34,21 @@ function scr_node_step_macro_clear_bmp_rect(_draw_x) {
             cursor_pos           = string_length(current_input_string);
         }
     };
+    // Byte-var picker on the UV tab; the picker writes the name straight into
+    // instructions[0][_idx] ("" on [clear]).
+    var _open_var = function(_idx) {
+        label_picker_open       = true;
+        label_picker_mode       = "VAR";
+        label_picker_tab        = "UV";
+        label_picker_word_only  = false;
+        label_picker_byte_only  = true;
+        label_picker_target     = id;
+        label_picker_scroll     = 0;
+        label_picker_prev_depth = depth;
+        depth                   = -10000;
+        global.any_picker_open  = true;
+        label_picker_index      = _idx;
+    };
 
     // Row 1: BMP addr
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 66, _fy, _draw_x + 130, _fy + 12)) {
@@ -46,4 +64,15 @@ function scr_node_step_macro_clear_bmp_rect(_draw_x) {
     // Row 3: W / H
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 36,  _fy, _draw_x + 66,  _fy + 12)) { _open_num(4); exit; }
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 98,  _fy, _draw_x + 128, _fy + 12)) { _open_num(5); exit; }
+    _fy += _line_h;
+
+    // Rows 4-7: COL / ROW / W / H var pickers
+    var _var_indices = [6, 7, 8, 9];
+    for (var _vi = 0; _vi < 4; _vi++) {
+        if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _fy, _draw_x + width - 8, _fy + 12)) {
+            _open_var(_var_indices[_vi]);
+            exit;
+        }
+        _fy += _line_h;
+    }
 }
