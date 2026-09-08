@@ -9,7 +9,7 @@ if (instance_exists(obj_asset_manager)) {
 var _cam_zoom = obj_workspace_manager.cam_zoom;
 if (_cam_zoom < 2.0) exit;
 if (node_type == "COMMENT" && !global.comments_visible) exit;
-// Comment text is only drawn at zoom 1 (Draw_0). No tiny overlay copy when
+// Comment text is only drawn up to zoom 2.5 (Draw_0). No tiny overlay copy
 // zoomed out - it was unreadable and just cluttered the map view.
 if (node_type == "COMMENT") exit;
 if (obj_workspace_manager.is_entering_text) exit;
