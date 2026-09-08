@@ -1,6 +1,6 @@
 /// @desc Setup Workspace, Palette & C64 Environment
 global.lite=0;
-global.build_date = "September 6th, 2026"; // edit this string for each release
+global.build_date = "September 8th, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {
@@ -82,8 +82,8 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-    "REFINED - PRE-ASSIGNED Bitmaps to LOAD with BOOT when LOAD_ORG is used.",
-    "ADDED - METASCROLL Macro - SCROLLS in 4 directions (Used FIXED for non C64U)",
+    "ADDED - KUP , KDN , KLF , KRT to Misc keys macro (cursor keys)",
+    "FIXED - Convert to nodes issue with nothing added to INIT column.",
     "VECTOR BITMAP - Import and Export buttons functional, share your vbmp files!",
     "PLACE CHAR and PRINT macros extended to use LIT or VAR for position and colour",
     "",
