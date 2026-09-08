@@ -1,0 +1,27 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 1fe44fe..ee4e470 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -1049,4 +1049,22 @@ global.kernal_unlocked = variable_struct_exists(load_data, "kernal_unlocked") ?
+         obj_workspace_manager.scan_active = false;
+         obj_workspace_manager.scan_y = 0;
+     }
++
++    // ---- POST-LOAD ADDRESS PASSES ----------------------------------------
++    // The scr_c64_do_update_addresses() call above runs inside the load,
++    // before obj_c64_node's Draw has re-derived heights / code-block caches
++    // and before PASS 9 has filled the cross-block label registry that the
++    // same pass needs. A freshly loaded project therefore sat with that first
++    // pass's sizes and addresses (no code in the panel, build/run off) until
++    // a node was dragged and released - which is exactly the path that runs
++    // the pass again (mouse release + alarm[1]). Ask for it the same way a
++    // restore does: two more passes once Draw has caught up, plus the six-
++    // frame alarm the release path arms. Everything the load reads from disk
++    // is already in memory here (buffer_load / json_parse are synchronous),
++    // so these passes can never run ahead of the file.
++    global.relayout_frames = 2;
++    if (instance_exists(obj_workspace_manager)) {
++        obj_workspace_manager.alarm[1] = 6;
++    }
++
+ }
