@@ -1,3 +1,8 @@
+// DRAW GUI BEGIN (was Draw GUI). This object sits at a nearer depth than
+// obj_workspace_manager, so as a plain Draw GUI event its overlay was painted
+// AFTER the menus, menu bar and code panel - on top of them. Draw GUI Begin
+// runs for every instance before any Draw GUI event, so the manager's GUI
+// (and the asset panel / message boxes) now always paints over this.
 var _cam_zoom = obj_workspace_manager.cam_zoom;
 var _alpha = clamp((_cam_zoom - 2.5) / 0.5, 0, 1);
 if (_alpha <= 0) exit;

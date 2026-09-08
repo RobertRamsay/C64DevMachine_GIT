@@ -1,3 +1,8 @@
+// DRAW GUI BEGIN (was Draw GUI). This object sits at a nearer depth than
+// obj_workspace_manager, so as a plain Draw GUI event its overlay was painted
+// AFTER the menus, menu bar and code panel - on top of them. Draw GUI Begin
+// runs for every instance before any Draw GUI event, so the manager's GUI
+// (and the asset panel / message boxes) now always paints over this.
 if obj_workspace_manager.code_editor_open exit;
 // Any asset editor (the viewer hosts them all: bitmap, builder, byte data,
 // sprites...) and SPRED64 take the whole screen - the zoomed-out node

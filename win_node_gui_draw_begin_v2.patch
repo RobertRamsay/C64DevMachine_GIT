@@ -1,0 +1,58 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_72.gml
+similarity index 95%
+rename from C64DevMachine_win.yyp/objects/obj_c64_node/Draw_64.gml
+rename to C64DevMachine_win.yyp/objects/obj_c64_node/Draw_72.gml
+index 22aa4f2..292970c 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_72.gml
+@@ -1,3 +1,8 @@
++// DRAW GUI BEGIN (was Draw GUI). This object sits at a nearer depth than
++// obj_workspace_manager, so as a plain Draw GUI event its overlay was painted
++// AFTER the menus, menu bar and code panel - on top of them. Draw GUI Begin
++// runs for every instance before any Draw GUI event, so the manager's GUI
++// (and the asset panel / message boxes) now always paints over this.
+ if obj_workspace_manager.code_editor_open exit;
+ // Any asset editor (the viewer hosts them all: bitmap, builder, byte data,
+ // sprites...) and SPRED64 take the whole screen - the zoomed-out node
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/obj_c64_node.yy b/C64DevMachine_win.yyp/objects/obj_c64_node/obj_c64_node.yy
+index d8a2813..4fc7df7 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/obj_c64_node.yy
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/obj_c64_node.yy
+@@ -9,7 +9,7 @@
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":1,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":12,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":2,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+-    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":64,"eventType":8,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
++    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":72,"eventType":8,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+   ],
+   "managed":true,
+   "name":"obj_c64_node",
+diff --git a/C64DevMachine_win.yyp/objects/obj_mapping_box/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_mapping_box/Draw_72.gml
+similarity index 65%
+rename from C64DevMachine_win.yyp/objects/obj_mapping_box/Draw_64.gml
+rename to C64DevMachine_win.yyp/objects/obj_mapping_box/Draw_72.gml
+index 89faa0b..560d529 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mapping_box/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mapping_box/Draw_72.gml
+@@ -1,3 +1,8 @@
++// DRAW GUI BEGIN (was Draw GUI). This object sits at a nearer depth than
++// obj_workspace_manager, so as a plain Draw GUI event its overlay was painted
++// AFTER the menus, menu bar and code panel - on top of them. Draw GUI Begin
++// runs for every instance before any Draw GUI event, so the manager's GUI
++// (and the asset panel / message boxes) now always paints over this.
+ var _cam_zoom = obj_workspace_manager.cam_zoom;
+ var _alpha = clamp((_cam_zoom - 2.5) / 0.5, 0, 1);
+ if (_alpha <= 0) exit;
+diff --git a/C64DevMachine_win.yyp/objects/obj_mapping_box/obj_mapping_box.yy b/C64DevMachine_win.yyp/objects/obj_mapping_box/obj_mapping_box.yy
+index 03a81e9..9c12ab9 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mapping_box/obj_mapping_box.yy
++++ b/C64DevMachine_win.yyp/objects/obj_mapping_box/obj_mapping_box.yy
+@@ -5,7 +5,7 @@
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":0,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":3,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":8,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+-    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":64,"eventType":8,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
++    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":72,"eventType":8,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+   ],
+   "managed":true,
+   "name":"obj_mapping_box",
