@@ -283,7 +283,7 @@ case "LABEL": {
 		//
 		// zp_base names ONE BIT PER KEY in that node's list, so the block is
 		// as wide as the category needs: 4 bytes for the 26 letters, 2 for the
-		// numbers and F-keys, 3 for the misc set. Bit 0 of the first byte is
+		// numbers and F-keys, 4 for the misc set. Bit 0 of the first byte is
 		// the first key in the grid. Every address comes from the node, so the
 		// whole block moves.
 		// -------------------------------------------------------

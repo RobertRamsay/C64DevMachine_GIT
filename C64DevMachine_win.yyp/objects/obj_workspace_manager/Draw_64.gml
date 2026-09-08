@@ -3405,7 +3405,7 @@ if (global.show_helper_window && instance_exists(global.helper_node)) {
     } else if (_node.node_type == "MACRO_LETTERS"
              || _node.node_type == "MACRO_FNNUMBERS"
              || _node.node_type == "MACRO_MISCKEYS") {
-        _desc = "Scans the CIA1 keyboard matrix directly - drives a column low on $DC00, reads the rows back from $DC01 - so several keys can be held at once with no KERNAL and no repeat delay. Each key you enable sets its own bit in a zero page block and can JSR a label. F2/F4/F6/F8 are SHIFT plus F1/F3/F5/F7 rather than matrix positions, and RESTORE is on the NMI line, so neither can be scanned.";
+        _desc = "Scans the CIA1 keyboard matrix directly - drives a column low on $DC00, reads the rows back from $DC01 - so several keys can be held at once with no KERNAL and no repeat delay. Each key you enable sets its own bit in a zero page block and can JSR a label. KEYS MISC also offers KUP/KDN/KLF/KRT - the four cursor directions with the shift test already built in. F2/F4/F6/F8 are SHIFT plus F1/F3/F5/F7 rather than matrix positions, and RESTORE is on the NMI line, so neither can be scanned.";
     } else if (_node.node_type == "MACRO_MOUSE") {
         _desc = "Reads a Commodore 1351 proportional mouse. Selects the port on CIA1 with a safe read-modify-write so the keyboard scan survives, takes the 6-bit deltas from SID's POTX/POTY, sign-extends them and accumulates a signed 16-bit X and Y in zero page. Left and right buttons arrive on the joystick FIRE and UP lines. LMB/RMB and LF/RT/UP/DN can each JSR a label - the movement calls fire once per frame while that axis is moving, so they report movement rather than a held direction.";
     } else if (_node.node_type == "MACRO_JOY") {

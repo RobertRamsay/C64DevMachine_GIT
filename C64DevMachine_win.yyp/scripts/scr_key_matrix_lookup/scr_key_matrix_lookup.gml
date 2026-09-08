@@ -25,6 +25,12 @@
 /// Nor are the SHIFTED keys separate positions: F2 is SHIFT+F1, INST is
 /// SHIFT+DEL, CRSR UP is SHIFT+CRSR U/D. Ask for the unshifted key and
 /// test LSHIFT/RSHIFT as a second slot if the difference matters.
+///
+/// The one exception is the four CURSOR DIRECTIONS. KUP / KDN / KLF / KRT
+/// are VIRTUAL keys offered by KEYS MISC: each is a CRSR key plus a shift
+/// test rolled into one slot, because "cursor up" is what people actually
+/// want and building it from CRSRUD + LSHIFT + RSHIFT by hand is tedious.
+/// They are resolved by scr_key_matrix_virtual, not by the table below.
 /// ====================================================================
 
 /// @function scr_key_matrix_lookup(_name)
@@ -69,6 +75,24 @@ function scr_key_matrix_lookup(_name) {
     }
 
     return { ok: false, pa: 0, pb: 0, name: _n };
+}
+
+/// @function scr_key_matrix_virtual(_name)
+/// @desc The four cursor DIRECTIONS. The C64 has two cursor keys, not four:
+///       CRSR U/D is DOWN on its own and UP with either shift, CRSR L/R is
+///       RIGHT on its own and LEFT with either shift. These names let a
+///       KEYS MISC slot mean the direction rather than the physical key.
+/// @return {struct} { ok, base, shifted } — base is the matrix key to scan,
+///         shifted is true when a shift must ALSO be held (false = must NOT).
+function scr_key_matrix_virtual(_name) {
+    var _n = string_upper(string_trim(string(_name)));
+
+    if (_n == "KUP") { return { ok: true, base: "CRSRUD", shifted: true  }; }
+    if (_n == "KDN") { return { ok: true, base: "CRSRUD", shifted: false }; }
+    if (_n == "KLF") { return { ok: true, base: "CRSRLR", shifted: true  }; }
+    if (_n == "KRT") { return { ok: true, base: "CRSRLR", shifted: false }; }
+
+    return { ok: false, base: "", shifted: false };
 }
 
 /// @function scr_key_matrix_is_nmi(_name)
@@ -123,6 +147,12 @@ function scr_key_category_list(_node_type) {
     }
 
     // MACRO_MISCKEYS
+    //
+    // KUP / KDN / KLF / KRT are the last four ON PURPOSE. They are virtual
+    // (CRSR key + shift test, see scr_key_matrix_virtual) and were added
+    // after the node shipped, so they sit after the original 24 to keep the
+    // held-bit numbering of every saved node exactly as it was. The load
+    // migration appends them to older nodes in this same order.
     return {
         cols: 4,
         keys: ["SPACE","RETURN","DEL","HOME",
@@ -130,7 +160,8 @@ function scr_key_category_list(_node_type) {
                "RSHIFT","CRSRUD","CRSRLR","PLUS",
                "MINUS",".",",",":",
                ";","@","/","*",
-               "=","UARROW","LARROW","POUND"]
+               "=","UARROW","LARROW","POUND",
+               "KUP","KDN","KLF","KRT"]
     };
 }
 

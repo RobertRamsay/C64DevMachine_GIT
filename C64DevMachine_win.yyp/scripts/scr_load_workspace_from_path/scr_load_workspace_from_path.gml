@@ -81,6 +81,18 @@ function scr_load_workspace_from_path(_path) {
                 array_push(_n.instructions, [0xFF, "NON", 0]);
             }
         }
+        // KEYS MISC gained KUP / KDN / KLF / KRT after it shipped. Older
+        // saves have 24 key rows; append the missing ones, disabled, in
+        // category order so existing held-bit numbering is untouched.
+        if (_n.node_type == "MACRO_MISCKEYS") {
+            _n.height_dirty = true;
+            var _mk_cat  = scr_key_category_list("MACRO_MISCKEYS");
+            var _mk_have = array_length(_n.instructions) - 1;
+            for (var _mk = _mk_have; _mk < array_length(_mk_cat.keys); _mk++) {
+                array_push(_n.instructions,
+                           [_mk_cat.keys[_mk], "KEY_" + string(_mk_cat.keys[_mk]), 0]);
+            }
+        }
         if (_n.node_type == "MACRO_TEXT_SCROLL" && array_length(_n.instructions[0]) > 12 && is_string(_n.instructions[0][12]) && string(_n.instructions[0][12]) != "") {
             _n.ts_alias = string(_n.instructions[0][12]);
         }

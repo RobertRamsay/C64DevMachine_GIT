@@ -549,6 +549,10 @@ function scr_node_tooltip_text(_node_type) {
                 "and can JSR a label. Bit 0 is the first key in the",
                 "grid, reading left to right.",
                 "",
+                "KUP/KDN/KLF/KRT are the cursor DIRECTIONS: the CRSR",
+                "key with the shift test built in (KUP = CRSR U/D +",
+                "shift, KDN = CRSR U/D with no shift, and so on).",
+                "",
                 "Not scannable: RESTORE (NMI line), and F2/F4/F6/F8",
                 "(SHIFT plus F1/F3/F5/F7, not matrix positions)."
             ]

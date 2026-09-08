@@ -6575,8 +6575,11 @@ case "MACRO_MOUSE": {
 // ZERO PAGE: one bit per key in this node's list, bit 0 of the first byte
 // being the first key in the grid. The block is cleared at the top of every
 // scan, so it always describes THIS frame. Width follows the category — four
-// bytes for the letters, two for the numbers — and the base comes from the
-// node, so all of it moves together.
+// bytes for the letters, two for the numbers, four for misc — and the base
+// comes from the node, so all of it moves together.
+//
+// KEYS MISC also carries four VIRTUAL slots, KUP / KDN / KLF / KRT: a CRSR
+// key plus a shift test, so "cursor up" is one toggle rather than three.
 //
 // CONTENTION WITH MACRO_MOUSE: writing a column mask to $DC00 also writes bits
 // 6-7, which are what select the control port SID's pots are wired to. A
@@ -6628,30 +6631,86 @@ case "MACRO_MISCKEYS": {
             continue;
         }
 
-        var _kpos = scr_key_matrix_lookup(_kname);
-        if (!_kpos.ok) {
-            show_debug_message("KEYBOARD: no matrix position for '" + _kname + "' - slot skipped.");
-            continue;
-        }
-
-        var _pa_mask = (~(1 << _kpos.pa)) & 0xFF;   // column driven LOW
-        var _pb_mask = (1 << _kpos.pb) & 0xFF;      // row reads LOW when held
-
         var _slot     = _ki - 1;
         var _bit_byte = _k_zp + (_slot div 8);
         var _bit_mask = (1 << (_slot mod 8)) & 0xFF;
 
         var _kskip = "key_skip_" + string(_ki) + "_" + _k_uid;
 
-        // The column select is written per key rather than cached across a run
-        // of keys in the same column. A JSR target is free to touch $DC00 —
-        // MACRO_MOUSE does exactly that — so a cached select would be reading
-        // whatever the last callee left behind.
-        array_push(_list, ["lda_imm", _pa_mask, _id]);
-        array_push(_list, ["sta_abs", 0xDC00,   _id]);
-        array_push(_list, ["lda_abs", 0xDC01,   _id]);
-        array_push(_list, ["and_imm", _pb_mask, _id]);
-        array_push(_list, ["bne",     _kskip,   _id]);   // bit still high = not held
+        // ---- VIRTUAL CURSOR DIRECTIONS: KUP / KDN / KLF / KRT ----
+        // A CRSR key plus a shift test in one slot. The physical key is
+        // scanned first; then LSHIFT and RSHIFT are each scanned in turn
+        // (they are on different columns, so that is two more selects).
+        //   unshifted (KDN / KRT): EITHER shift held  -> not this direction
+        //   shifted   (KUP / KLF): NEITHER shift held -> not this direction
+        var _kvirt = scr_key_matrix_virtual(_kname);
+        if (_kvirt.ok) {
+            var _kvbase = scr_key_matrix_lookup(_kvirt.base);
+            var _kvlsh  = scr_key_matrix_lookup("LSHIFT");
+            var _kvrsh  = scr_key_matrix_lookup("RSHIFT");
+
+            var _kvb_pa = (~(1 << _kvbase.pa)) & 0xFF;
+            var _kvb_pb = (1 << _kvbase.pb) & 0xFF;
+            var _kvl_pa = (~(1 << _kvlsh.pa)) & 0xFF;
+            var _kvl_pb = (1 << _kvlsh.pb) & 0xFF;
+            var _kvr_pa = (~(1 << _kvrsh.pa)) & 0xFF;
+            var _kvr_pb = (1 << _kvrsh.pb) & 0xFF;
+
+            // the cursor key itself
+            array_push(_list, ["lda_imm", _kvb_pa, _id]);
+            array_push(_list, ["sta_abs", 0xDC00,  _id]);
+            array_push(_list, ["lda_abs", 0xDC01,  _id]);
+            array_push(_list, ["and_imm", _kvb_pb, _id]);
+            array_push(_list, ["bne",     _kskip,  _id]);   // cursor key not held
+
+            if (_kvirt.shifted) {
+                // Want a shift. LSHIFT held (bit LOW) -> straight to the set.
+                // Otherwise RSHIFT must be held or this is not our direction.
+                var _kshft = "key_shft_" + string(_ki) + "_" + _k_uid;
+                array_push(_list, ["lda_imm", _kvl_pa, _id]);
+                array_push(_list, ["sta_abs", 0xDC00,  _id]);
+                array_push(_list, ["lda_abs", 0xDC01,  _id]);
+                array_push(_list, ["and_imm", _kvl_pb, _id]);
+                array_push(_list, ["beq",     _kshft,  _id]);   // LSHIFT held
+                array_push(_list, ["lda_imm", _kvr_pa, _id]);
+                array_push(_list, ["sta_abs", 0xDC00,  _id]);
+                array_push(_list, ["lda_abs", 0xDC01,  _id]);
+                array_push(_list, ["and_imm", _kvr_pb, _id]);
+                array_push(_list, ["bne",     _kskip,  _id]);   // RSHIFT not held either
+                array_push(_list, ["label",   _kshft       ]);
+            } else {
+                // Want NO shift. Either shift held (bit LOW) -> skip.
+                array_push(_list, ["lda_imm", _kvl_pa, _id]);
+                array_push(_list, ["sta_abs", 0xDC00,  _id]);
+                array_push(_list, ["lda_abs", 0xDC01,  _id]);
+                array_push(_list, ["and_imm", _kvl_pb, _id]);
+                array_push(_list, ["beq",     _kskip,  _id]);   // LSHIFT held
+                array_push(_list, ["lda_imm", _kvr_pa, _id]);
+                array_push(_list, ["sta_abs", 0xDC00,  _id]);
+                array_push(_list, ["lda_abs", 0xDC01,  _id]);
+                array_push(_list, ["and_imm", _kvr_pb, _id]);
+                array_push(_list, ["beq",     _kskip,  _id]);   // RSHIFT held
+            }
+        } else {
+            var _kpos = scr_key_matrix_lookup(_kname);
+            if (!_kpos.ok) {
+                show_debug_message("KEYBOARD: no matrix position for '" + _kname + "' - slot skipped.");
+                continue;
+            }
+
+            var _pa_mask = (~(1 << _kpos.pa)) & 0xFF;   // column driven LOW
+            var _pb_mask = (1 << _kpos.pb) & 0xFF;      // row reads LOW when held
+
+            // The column select is written per key rather than cached across a run
+            // of keys in the same column. A JSR target is free to touch $DC00 —
+            // MACRO_MOUSE does exactly that — so a cached select would be reading
+            // whatever the last callee left behind.
+            array_push(_list, ["lda_imm", _pa_mask, _id]);
+            array_push(_list, ["sta_abs", 0xDC00,   _id]);
+            array_push(_list, ["lda_abs", 0xDC01,   _id]);
+            array_push(_list, ["and_imm", _pb_mask, _id]);
+            array_push(_list, ["bne",     _kskip,   _id]);   // bit still high = not held
+        }
 
         array_push(_list, ["lda_zp",  _bit_byte, _id]);
         array_push(_list, ["ora_imm", _bit_mask, _id]);
