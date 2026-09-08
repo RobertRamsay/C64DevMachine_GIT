@@ -1,0 +1,44 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 59c11ad..7bc9eab 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -1803,9 +1803,14 @@ if (_lod_body) switch (node_type) {
+                 continue;
+             }
+             if (node_type == "COMMENT") {
+-                draw_set_color(c_yellow);
+-                draw_set_font(fnt_c64_code);
+-                draw_text_ext(draw_x + 10, _yy, comment_display_text, line_h, -1);
++                // Text only at zoom 1 (small tolerance for the zoom lerp).
++                // Zoomed out it is unreadable anyway; the box still draws so
++                // the comment keeps its place in the column.
++                if (_cam_zoom <= 1.05) {
++                    draw_set_color(c_yellow);
++                    draw_set_font(fnt_c64_code);
++                    draw_text_ext(draw_x + 10, _yy, comment_display_text, line_h, -1);
++                }
+                 continue;
+             }
+ 
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_64.gml
+index a064e9c..beb0b83 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_64.gml
+@@ -1,8 +1,17 @@
+ if obj_workspace_manager.code_editor_open exit;
++// Any asset editor (the viewer hosts them all: bitmap, builder, byte data,
++// sprites...) and SPRED64 take the whole screen - the zoomed-out node
++// overlay must not draw over them. Draw_0 already exits on viewer_open.
++if (instance_exists(obj_asset_manager)) {
++    if (obj_asset_manager.viewer_open || obj_asset_manager.spred64_open) exit;
++}
+ 
+ var _cam_zoom = obj_workspace_manager.cam_zoom;
+ if (_cam_zoom < 2.0) exit;
+ if (node_type == "COMMENT" && !global.comments_visible) exit;
++// Comment text is only drawn at zoom 1 (Draw_0). No tiny overlay copy when
++// zoomed out - it was unreadable and just cluttered the map view.
++if (node_type == "COMMENT") exit;
+ if (obj_workspace_manager.is_entering_text) exit;
+ 
+ var _cam_x = obj_workspace_manager.cam_x;

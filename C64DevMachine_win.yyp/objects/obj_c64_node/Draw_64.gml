@@ -1,8 +1,17 @@
 if obj_workspace_manager.code_editor_open exit;
+// Any asset editor (the viewer hosts them all: bitmap, builder, byte data,
+// sprites...) and SPRED64 take the whole screen - the zoomed-out node
+// overlay must not draw over them. Draw_0 already exits on viewer_open.
+if (instance_exists(obj_asset_manager)) {
+    if (obj_asset_manager.viewer_open || obj_asset_manager.spred64_open) exit;
+}
 
 var _cam_zoom = obj_workspace_manager.cam_zoom;
 if (_cam_zoom < 2.0) exit;
 if (node_type == "COMMENT" && !global.comments_visible) exit;
+// Comment text is only drawn at zoom 1 (Draw_0). No tiny overlay copy when
+// zoomed out - it was unreadable and just cluttered the map view.
+if (node_type == "COMMENT") exit;
 if (obj_workspace_manager.is_entering_text) exit;
 
 var _cam_x = obj_workspace_manager.cam_x;
