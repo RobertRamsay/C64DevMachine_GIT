@@ -703,6 +703,8 @@ var _addr_total = 65536;
         for (var _j = _i + 1; _j < _seg_total; _j++) {
             var _s1 = _segments[_i];
             var _s2 = _segments[_j];
+            // Sorted by start: neither this nor any later segment can overlap.
+            if (_s2.addr >= _s1.addr + _s1.size) break;
             if (_s1.node_id == _s2.node_id && _s1.node_id != noone) continue;
             if (_s1.name == _s2.name && _s1.node_id == noone && _s2.node_id == noone) continue;
             var _s1_org = (_s1.type == "NODE" || _s1.type == "VARIABLE_BLOCK");

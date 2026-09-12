@@ -1227,6 +1227,7 @@ function scr_show_code_draw() {
                 // Nothing was built while it was shut, so ask for the pass that
                 // fills it back in.
                 if (showcode_open) {
+                    showcode_refresh_requested = true;
                     global.addresses_dirty = true;
                 }
                 scr_show_code_save_ini();
