@@ -3,6 +3,17 @@
 function _asm_val(_str) {
     _str = string_trim(_str);
     if (_str == "") return 0;
+
+    // Normalize a C-style prefix only at the START of this numeric token.
+    // Replacing "0b" across an expression corrupts hex such as $0b/$d0b0.
+    if (string_length(_str) > 2) {
+        var _prefix = string_lower(string_copy(_str, 1, 2));
+        if (_prefix == "0x") {
+            _str = "$" + string_delete(_str, 1, 2);
+        } else if (_prefix == "0b") {
+            _str = "%" + string_delete(_str, 1, 2);
+        }
+    }
     if (string_char_at(_str, 1) == "$") {
         var _hex = string_upper(string_delete(_str, 1, 1));
         var _val = 0;

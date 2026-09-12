@@ -1,0 +1,35 @@
+diff --git a/C64DevMachine_win.yyp/scripts/_asm_val/_asm_val.gml b/C64DevMachine_win.yyp/scripts/_asm_val/_asm_val.gml
+--- a/C64DevMachine_win.yyp/scripts/_asm_val/_asm_val.gml
++++ b/C64DevMachine_win.yyp/scripts/_asm_val/_asm_val.gml
+@@ -3,6 +3,17 @@
+ function _asm_val(_str) {
+     _str = string_trim(_str);
+     if (_str == "") return 0;
++
++    // Normalize a C-style prefix only at the START of this numeric token.
++    // Replacing "0b" across an expression corrupts hex such as $0b/$d0b0.
++    if (string_length(_str) > 2) {
++        var _prefix = string_lower(string_copy(_str, 1, 2));
++        if (_prefix == "0x") {
++            _str = "$" + string_delete(_str, 1, 2);
++        } else if (_prefix == "0b") {
++            _str = "%" + string_delete(_str, 1, 2);
++        }
++    }
+     if (string_char_at(_str, 1) == "$") {
+         var _hex = string_upper(string_delete(_str, 1, 1));
+         var _val = 0;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_parse_asm_text/scr_parse_asm_text.gml b/C64DevMachine_win.yyp/scripts/scr_parse_asm_text/scr_parse_asm_text.gml
+--- a/C64DevMachine_win.yyp/scripts/scr_parse_asm_text/scr_parse_asm_text.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_parse_asm_text/scr_parse_asm_text.gml
+@@ -49,8 +49,8 @@
+     var _eval_expr = function(_expr) {
+         _expr = string_replace_all(_expr, " ", "");
+         if (_expr == "") return 0;
+-        _expr = string_replace_all(_expr, "0x", "$");
+-        _expr = string_replace_all(_expr, "0b", "%");
++        // Leave numeric prefixes and symbol names intact while tokenizing.
++        // _asm_val handles 0x/0b on a numeric token, after symbol lookup.
+ 
+         var _total = 0;
+         var _sign  = 1;

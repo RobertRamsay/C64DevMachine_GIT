@@ -49,8 +49,8 @@ function scr_parse_asm_text(_text) {
     var _eval_expr = function(_expr) {
         _expr = string_replace_all(_expr, " ", "");
         if (_expr == "") return 0;
-        _expr = string_replace_all(_expr, "0x", "$");
-        _expr = string_replace_all(_expr, "0b", "%");
+        // Leave numeric prefixes and symbol names intact while tokenizing.
+        // _asm_val handles 0x/0b on a numeric token, after symbol lookup.
 
         var _total = 0;
         var _sign  = 1;
