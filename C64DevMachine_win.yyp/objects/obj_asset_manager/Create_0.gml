@@ -211,6 +211,35 @@ sfx_picker_field = "asset";
 	load_org_picker_asset = -1;
 	load_org_picker_hover = -1;
 
+	// PNG STRIP -> SPRITE_SET import confirm panel (scr_asset_spr_import_png_strip)
+	pngstrip = {
+		open     : false,
+		asset    : -1,
+		path     : "",
+		spr      : -1,
+		w        : 0,
+		h        : 0,
+		cols     : 0,
+		rows     : 0,
+		count    : 0,
+		cell_w   : 24,
+		px       : [],
+		hist     : array_create(16, 0),
+		order    : [0, 1, 2],
+		bg       : 0,
+		col1     : 1,
+		col2     : 2,
+		bg_i     : 0,
+		col1_i   : 1,
+		col2_i   : 2,
+		mode     : 0,
+		frame_mc : array_create(64, 0),
+		frame_uc : array_create(64, 1),
+		warn     : 0,
+		hr_count : 0,
+		mc_count : 0
+	};
+
 	// LOAD_REU manifest picker (asset viewer)
 	load_reu_picker_open  = false;
 	load_reu_picker_asset = -1;

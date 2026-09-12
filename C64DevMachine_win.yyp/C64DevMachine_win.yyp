@@ -1008,6 +1008,7 @@
     {"id":{"name":"scr_asset_spr_import_from_path","path":"scripts/scr_asset_spr_import_from_path/scr_asset_spr_import_from_path.yy",},},
     {"id":{"name":"scr_asset_spr_import_spred64_text","path":"scripts/scr_asset_spr_import_spred64_text/scr_asset_spr_import_spred64_text.yy",},},
     {"id":{"name":"scr_asset_spr_import","path":"scripts/scr_asset_spr_import/scr_asset_spr_import.yy",},},
+    {"id":{"name":"scr_asset_spr_import_png_strip","path":"scripts/scr_asset_spr_import_png_strip/scr_asset_spr_import_png_strip.yy",},},
     {"id":{"name":"scr_asset_text_data_save","path":"scripts/scr_asset_text_data_save/scr_asset_text_data_save.yy",},},
     {"id":{"name":"scr_asset_text_flush","path":"scripts/scr_asset_text_flush/scr_asset_text_flush.yy",},},
     {"id":{"name":"scr_asset_txt_import","path":"scripts/scr_asset_txt_import/scr_asset_txt_import.yy",},},

@@ -1025,6 +1025,65 @@ if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.
 }
 
 // -------------------------------------------------------
+// PNG STRIP IMPORT CONFIRM PANEL — modal, eats all input while open.
+// Geometry mirrors the Draw_64 block exactly.
+// -------------------------------------------------------
+if (pngstrip.open) {
+    var _ppx = _vx1 + 10;
+    var _ppy = _vy1 + 70;
+    var _ppw = 360;
+    var _pv_scale = min(340 / max(1, pngstrip.w), 84 / max(1, pngstrip.h), 3);
+    if (_pv_scale >= 1) _pv_scale = floor(_pv_scale);
+    var _pv_h = ceil(pngstrip.h * _pv_scale);
+    var _pph = 200 + _pv_h;
+    var _pb_y = _ppy + _pph - 30;
+
+    if (mouse_check_button_pressed(mb_left)) {
+        var _changed = false;
+        // mode buttons
+        for (var _mi = 0; _mi < 3; _mi++) {
+            var _mbx = _ppx + 60 + _mi * 64;
+            if (point_in_rectangle(_mx, _my, _mbx, _ppy + 44, _mbx + 60, _ppy + 62)) {
+                pngstrip.mode = _mi;
+                _changed = true;
+            }
+        }
+        // swatch cyclers
+        var _n_ord = array_length(pngstrip.order);
+        if (point_in_rectangle(_mx, _my, _ppx + 60, _ppy + 70, _ppx + 84, _ppy + 88)) {
+            pngstrip.bg_i = (pngstrip.bg_i + 1) mod _n_ord;
+            pngstrip.bg   = pngstrip.order[pngstrip.bg_i];
+            _changed = true;
+        }
+        if (point_in_rectangle(_mx, _my, _ppx + 60, _ppy + 92, _ppx + 84, _ppy + 110)) {
+            pngstrip.col1_i = (pngstrip.col1_i + 1) mod _n_ord;
+            pngstrip.col1   = pngstrip.order[pngstrip.col1_i];
+            _changed = true;
+        }
+        if (point_in_rectangle(_mx, _my, _ppx + 60, _ppy + 114, _ppx + 84, _ppy + 132)) {
+            pngstrip.col2_i = (pngstrip.col2_i + 1) mod _n_ord;
+            pngstrip.col2   = pngstrip.order[pngstrip.col2_i];
+            _changed = true;
+        }
+        if (_changed) scr_asset_spr_png_recount();
+
+        if (point_in_rectangle(_mx, _my, _ppx + 10, _pb_y, _ppx + 110, _pb_y + 20)) {
+            scr_asset_spr_png_commit();
+            exit;
+        }
+        if (point_in_rectangle(_mx, _my, _ppx + 120, _pb_y, _ppx + 220, _pb_y + 20)) {
+            scr_asset_spr_png_close();
+            exit;
+        }
+    }
+    if (mouse_check_button_pressed(mb_right) || keyboard_check_pressed(vk_escape)) {
+        keyboard_clear(vk_escape);
+        scr_asset_spr_png_close();
+    }
+    exit;
+}
+
+// -------------------------------------------------------
 // LOAD_REU MANIFEST ASSET PICKER
 // -------------------------------------------------------
 if (load_reu_picker_open) {
@@ -2222,6 +2281,14 @@ if (_asset.type == "META_TILESET") {
                 // hover-highlighted - and did nothing at all.
                 case "VECTOR_BITMAP": scr_asset_vbmp_import(_asset); break;
             }
+            exit;
+        }
+
+        // IMPORT PNG — SPRITE_SET only, right of IMPORT. Opens the strip
+        // confirm panel; nothing is written to the asset until IMPORT there.
+        if (!_v2_blocking_import && _asset.type == "SPRITE_SET"
+        &&  point_in_rectangle(_mx, _my, _lbx2 + 10, _lby1, _lbx2 + 110, _lby2)) {
+            scr_asset_spr_png_analyse(viewer_asset);
             exit;
         }
 

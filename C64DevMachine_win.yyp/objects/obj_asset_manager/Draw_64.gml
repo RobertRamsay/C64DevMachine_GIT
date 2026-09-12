@@ -800,6 +800,24 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
             draw_set_color(c_orange);
             draw_text(_lbx2 + 10, _lby1 + 16, "! BINARY: NO COLOUR DATA");
         }
+
+        // IMPORT PNG — sprite strip importer, SPRITE_SET only
+        if (_asset.type == "SPRITE_SET") {
+            var _pngx1 = _lbx2 + 10;
+            var _pngx2 = _lbx2 + 110;
+            var _png_hov = point_in_rectangle(_mx, _my, _pngx1, _lby1, _pngx2, _lby2);
+            if (_png_hov) {
+                draw_set_color(make_color_rgb(80, 200, 80));
+            } else {
+                draw_set_color(make_color_rgb(30, 90, 40));
+            }
+            draw_rectangle(_pngx1, _lby1, _pngx2, _lby2, false);
+            draw_set_font(fnt_c64_tiny);
+            draw_set_color(c_white);
+            draw_set_halign(fa_center);
+            draw_text(_pngx1 + 50, _lby1 + 5, "IMPORT PNG");
+            draw_set_halign(fa_left);
+        }
     }
 
     // ── EXPORT VBM — right of IMPORT, vector bitmaps only ─────────────────
@@ -10969,6 +10987,118 @@ if (load_reu_picker_open) {
 
 
 
+
+// -------------------------------------------------------
+// PNG STRIP IMPORT CONFIRM PANEL
+// Geometry mirrors the Step_0 block exactly.
+// -------------------------------------------------------
+if (pngstrip.open) {
+    var _ppx = _vx1 + 10;
+    var _ppy = _vy1 + 70;
+    var _ppw = 360;
+    var _pv_scale = min(340 / max(1, pngstrip.w), 84 / max(1, pngstrip.h), 3);
+    if (_pv_scale >= 1) _pv_scale = floor(_pv_scale);
+    var _pv_h = ceil(pngstrip.h * _pv_scale);
+    var _pph = 200 + _pv_h;
+    var _pb_y = _ppy + _pph - 30;
+
+    draw_set_color(make_color_rgb(18, 18, 30));
+    draw_rectangle(_ppx, _ppy, _ppx + _ppw, _ppy + _pph, false);
+    draw_set_color(make_color_rgb(120, 200, 255));
+    draw_rectangle(_ppx, _ppy, _ppx + _ppw, _ppy + _pph, true);
+
+    draw_set_font(fnt_c64_tiny);
+    draw_set_halign(fa_left);
+    draw_set_color(c_white);
+    draw_text(_ppx + 10, _ppy + 6, "IMPORT PNG STRIP: " + filename_name(pngstrip.path));
+    draw_set_color(c_ltgray);
+    var _size_txt = "SIZE " + string(pngstrip.w) + "x" + string(pngstrip.h)
+        + "  FRAMES " + string(pngstrip.cols) + "x" + string(pngstrip.rows)
+        + " = " + string(pngstrip.count);
+    if (pngstrip.cell_w == 12) _size_txt += "  (12PX MC)";
+    draw_text(_ppx + 10, _ppy + 26, _size_txt);
+
+    // mode buttons
+    draw_set_color(c_ltgray);
+    draw_text(_ppx + 10, _ppy + 48, "MODE");
+    var _mode_names = ["AUTO", "HIRES", "MC"];
+    for (var _mi = 0; _mi < 3; _mi++) {
+        var _mbx = _ppx + 60 + _mi * 64;
+        var _m_hov = point_in_rectangle(_mx, _my, _mbx, _ppy + 44, _mbx + 60, _ppy + 62);
+        var _m_on  = (pngstrip.mode == _mi);
+        var _m_fill = make_color_rgb(30, 30, 50);
+        if (_m_on) _m_fill = make_color_rgb(40, 120, 70);
+        else if (_m_hov) _m_fill = make_color_rgb(50, 50, 80);
+        draw_set_color(_m_fill);
+        draw_rectangle(_mbx, _ppy + 44, _mbx + 60, _ppy + 62, false);
+        if (_m_on) draw_set_color(c_white); else draw_set_color(c_ltgray);
+        draw_rectangle(_mbx, _ppy + 44, _mbx + 60, _ppy + 62, true);
+        draw_set_halign(fa_center);
+        draw_text(_mbx + 30, _ppy + 48, _mode_names[_mi]);
+        draw_set_halign(fa_left);
+    }
+
+    // swatch rows — click to cycle through the strip's colours by frequency
+    var _sw_lab = ["BKG", "COL1", "COL2"];
+    var _sw_col = [pngstrip.bg, pngstrip.col1, pngstrip.col2];
+    var _sw_reg = ["$D021", "$D025", "$D026"];
+    for (var _si = 0; _si < 3; _si++) {
+        var _sy = _ppy + 70 + _si * 22;
+        var _s_hov = point_in_rectangle(_mx, _my, _ppx + 60, _sy, _ppx + 84, _sy + 18);
+        draw_set_color(c_ltgray);
+        draw_text(_ppx + 10, _sy + 4, _sw_lab[_si]);
+        draw_set_color(scr_c64_pepto_colour(_sw_col[_si]));
+        draw_rectangle(_ppx + 60, _sy, _ppx + 84, _sy + 18, false);
+        if (_s_hov) draw_set_color(c_white); else draw_set_color(c_dkgray);
+        draw_rectangle(_ppx + 60, _sy, _ppx + 84, _sy + 18, true);
+        draw_set_color(c_ltgray);
+        draw_text(_ppx + 92, _sy + 4, string(_sw_col[_si]) + "  " + _sw_reg[_si]
+            + "  " + string(pngstrip.hist[_sw_col[_si]]) + "PX");
+    }
+
+    // summary
+    draw_set_color(c_ltgray);
+    draw_text(_ppx + 10, _ppy + 140, "HIRES " + string(pngstrip.hr_count) + "   MC " + string(pngstrip.mc_count));
+    if (pngstrip.warn > 0) {
+        draw_set_color(c_orange);
+        draw_text(_ppx + 130, _ppy + 140, "! " + string(pngstrip.warn) + " FRAMES HAVE EXTRA COLOURS -> SPRITE COL");
+    } else {
+        draw_set_color(c_lime);
+        draw_text(_ppx + 130, _ppy + 140, "ALL FRAMES RESOLVE");
+    }
+
+    // preview of the raw strip
+    if (pngstrip.spr >= 0 && sprite_exists(pngstrip.spr)) {
+        draw_set_color(scr_c64_pepto_colour(pngstrip.bg));
+        draw_rectangle(_ppx + 10, _ppy + 160, _ppx + 10 + pngstrip.w * _pv_scale, _ppy + 160 + _pv_h, false);
+        draw_sprite_ext(pngstrip.spr, 0, _ppx + 10, _ppy + 160, _pv_scale, _pv_scale, 0, c_white, 1);
+        // frame grid over the preview
+        draw_set_color(make_color_rgb(120, 200, 255));
+        draw_set_alpha(0.5);
+        for (var _gx = 0; _gx <= pngstrip.cols; _gx++) {
+            var _lx = _ppx + 10 + _gx * pngstrip.cell_w * _pv_scale;
+            draw_line(_lx, _ppy + 160, _lx, _ppy + 160 + _pv_h);
+        }
+        for (var _gy = 0; _gy <= pngstrip.rows; _gy++) {
+            var _ly = _ppy + 160 + _gy * 21 * _pv_scale;
+            draw_line(_ppx + 10, _ly, _ppx + 10 + pngstrip.w * _pv_scale, _ly);
+        }
+        draw_set_alpha(1);
+    }
+
+    // buttons
+    var _imp_hov = point_in_rectangle(_mx, _my, _ppx + 10, _pb_y, _ppx + 110, _pb_y + 20);
+    if (_imp_hov) draw_set_color(make_color_rgb(80, 200, 80)); else draw_set_color(make_color_rgb(30, 90, 40));
+    draw_rectangle(_ppx + 10, _pb_y, _ppx + 110, _pb_y + 20, false);
+    var _can_hov = point_in_rectangle(_mx, _my, _ppx + 120, _pb_y, _ppx + 220, _pb_y + 20);
+    if (_can_hov) draw_set_color(make_color_rgb(200, 80, 80)); else draw_set_color(make_color_rgb(90, 30, 30));
+    draw_rectangle(_ppx + 120, _pb_y, _ppx + 220, _pb_y + 20, false);
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_text(_ppx + 60, _pb_y + 5, "IMPORT");
+    draw_text(_ppx + 170, _pb_y + 5, "CANCEL");
+    draw_set_halign(fa_left);
+}
 
 // -------------------------------------------------------
 // META TILESET CHARSET PICKER DROPDOWN
