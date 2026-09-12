@@ -353,67 +353,16 @@ function scr_show_code_text(_ln, _mode) {
 // Called from scr_c64_do_update_addresses() with the sizing-pass array it
 // already has in hand, so this costs a walk and nothing more.
 // =====================================================================
-function scr_show_code_build(_compiled) {
-    if (!instance_exists(obj_workspace_manager)) { exit; }
-
-    with (obj_workspace_manager) {
-        // Shut means shut. This walks the whole compile stream, allocates a
-        // struct per row and now sorts the result into address order, and it
-        // was running on every address update whether or not anything was going
-        // to look at it. The toggle raises global.addresses_dirty so the very
-        // next frame after opening rebuilds it.
-        if (!showcode_open) { exit; }
-        // Keep the existing listing when its complete build inputs match.
-        // Relative node order and membership matter; absolute canvas position
-        // does not. New instance IDs after load/undo invalidate this too.
-        var _nodes = [];
-        with (obj_c64_node) { array_push(_nodes, id); }
-        array_sort(_nodes, function(_a, _b) {
-            if (_a.y != _b.y) return _a.y - _b.y;
-            return real(_a) - real(_b);
-        });
-        var _owners = [];
-        for (var _oi = 0; _oi < array_length(_nodes); _oi++) {
-            var _on = _nodes[_oi];
-            array_push(_owners, [string(_on), _on.node_type, _on.is_connected,
-                string(_on.org_parent), _on.node_type == "LABEL" ? _on.instructions : []]);
-        }
-        var _signature = json_stringify([_compiled, global.start_pc, _owners, obj_opCodeManager.opcode_info]);
-        if (variable_instance_exists(id, "showcode_input_signature") &&
-            showcode_input_signature == _signature && array_length(showcode_flat) > 0) {
-            showcode_gen = global.named_loc_repack_gen;
-            exit;
-        }
-        var _flat    = [];
-        var _pc      = global.start_pc;
-        var _pcstack = [];   // mirrors c64_new_program's org(-2)/org(-3) stack
-        var _lastkey  = "";  // last macro key seen, for crediting bracketed runs
-        var _lastname = "";
-        var _lastinst = "";
-        var _brkkey   = "";  // …captured when a save/restore bracket opened
-        var _brkname  = "";
-        var _brkinst  = "";
-        var _brkstack = [];  // one entry per open bracket, so -3 restores the
-                             // context the enclosing bracket had rather than
-                             // leaving the innermost one latched forever
-        var _run     = -1;   // index of the byte run currently being extended
-
-        // Every label's address, internal ones included — this is what makes
-        // VICE mode able to resolve a branch target.
-        var _lblmap = ds_map_create();
-
-        // Names the user actually authored on ADDRESS LABEL nodes. Only these
-        // get a row in the listing; every other label the compile chain spawns
-        // is scaffolding and stays hidden.
-        var _userlbl = ds_map_create();
-        with (obj_c64_node) {
-            if (node_type != "LABEL") { continue; }
-            if (array_length(instructions) < 1)    { continue; }
-            if (array_length(instructions[0]) < 2) { continue; }
-            var _un = string_replace_all(string(instructions[0][1]), " ", "_");
-            ds_map_set(_userlbl, _un, 1);
-        }
-
+// Build immutable, unresolved rows for a top-level ORG section. Global label
+// resolution and node attribution happen after all sections have been joined.
+function scr_show_code_build_chunk(_compiled, _state, _userlbl) {
+    var _flat = [];
+    var _pc = _state[0];
+    var _pcstack = variable_clone(_state[1]);
+    var _lastkey = _state[2], _lastname = _state[3], _lastinst = _state[4];
+    var _brkkey = _state[5], _brkname = _state[6], _brkinst = _state[7];
+    var _brkstack = variable_clone(_state[8]);
+    var _run = -1;
         for (var _i = 0; _i < array_length(_compiled); _i++) {
             var _e = _compiled[_i];
             if (array_length(_e) < 1) { continue; }
@@ -567,7 +516,7 @@ function scr_show_code_build(_compiled) {
             }
 
             if (_m == "label") {
-                ds_map_set(_lblmap, _lbl, _pc);
+
                 _run = -1;
 
                 // Every label now gets a row. Scaffolding labels are flagged
@@ -640,6 +589,128 @@ function scr_show_code_build(_compiled) {
             _run = -1;
             array_push(_flat, { kind:"op", key:_key, name:_name, owner:_owner, inst:_inst, pc:_pc, raw:_m, mnem:_norm, val:_v, lbl:_lbl, sz:_sz, res:0, hasres:false, count:1, vals:[], dkey:"", internal:false, used:false, used_code:false, top:false });
             _pc += _sz;
+        }
+
+
+    return {rows:_flat, state:[_pc, _pcstack, _lastkey, _lastname, _lastinst,
+        _brkkey, _brkname, _brkinst, _brkstack]};
+}
+
+function scr_show_code_build(_compiled) {
+    if (!instance_exists(obj_workspace_manager)) { exit; }
+
+    with (obj_workspace_manager) {
+        // Shut means shut. This walks the whole compile stream, allocates a
+        // struct per row and now sorts the result into address order, and it
+        // was running on every address update whether or not anything was going
+        // to look at it. The toggle raises global.addresses_dirty so the very
+        // next frame after opening rebuilds it.
+        if (!showcode_open) { exit; }
+        // Keep the existing listing when its complete build inputs match.
+        // Relative node order and membership matter; absolute canvas position
+        // does not. New instance IDs after load/undo invalidate this too.
+        var _nodes = [];
+        with (obj_c64_node) { array_push(_nodes, id); }
+        array_sort(_nodes, function(_a, _b) {
+            if (_a.y != _b.y) return _a.y - _b.y;
+            return real(_a) - real(_b);
+        });
+        var _owners = [];
+        for (var _oi = 0; _oi < array_length(_nodes); _oi++) {
+            var _on = _nodes[_oi];
+            array_push(_owners, [string(_on), _on.node_type, _on.is_connected,
+                string(_on.org_parent), _on.node_type == "LABEL" ? _on.instructions : []]);
+        }
+        var _signature = json_stringify([_compiled, global.start_pc, _owners, obj_opCodeManager.opcode_info]);
+        if (variable_instance_exists(id, "showcode_input_signature") &&
+            showcode_input_signature == _signature && array_length(showcode_flat) > 0) {
+            showcode_gen = global.named_loc_repack_gen;
+            exit;
+        }
+        var _flat    = [];
+        // Every label's address, internal ones included — this is what makes
+        // VICE mode able to resolve a branch target.
+        var _lblmap = ds_map_create();
+
+        // Names the user actually authored on ADDRESS LABEL nodes. Only these
+        // get a row in the listing; every other label the compile chain spawns
+        // is scaffolding and stays hidden.
+        var _userlbl = ds_map_create();
+        with (obj_c64_node) {
+            if (node_type != "LABEL") { continue; }
+            if (array_length(instructions) < 1)    { continue; }
+            if (array_length(instructions[0]) < 2) { continue; }
+            var _un = string_replace_all(string(instructions[0][1]), " ", "_");
+            ds_map_set(_userlbl, _un, 1);
+        }
+
+        // Partition only at real, top-level ORGs. Save/restore excursions
+        // stay inside their section, preserving nested PC/owner state.
+        var _old_chunks = variable_instance_exists(id, "showcode_chunks") ? showcode_chunks : [];
+        var _new_chunks = [];
+        var _state = [global.start_pc, [], "", "", "", "", "", "", []];
+        var _op_signature = json_stringify(obj_opCodeManager.opcode_info);
+        var _label_signature = ds_map_write(_userlbl);
+        var _chunk_start = 0;
+        var _depth = 0;
+        var _count = array_length(_compiled);
+        showcode_chunk_hits = 0;
+        showcode_chunk_misses = 0;
+        for (var _ci = 0; _ci <= _count; _ci++) {
+            var _split = (_ci == _count);
+            if (_ci < _count && array_length(_compiled[_ci]) > 1 &&
+                string_lower(string(_compiled[_ci][0])) == "org") {
+                var _org = _compiled[_ci][1];
+                if (is_string(_org)) _org = real(_org);
+                if (_org == -2) _depth++;
+                else if (_org == -3) _depth = max(0, _depth - 1);
+                else if (_depth == 0 && _ci > _chunk_start) _split = true;
+            }
+            if (!_split || _ci == _chunk_start) continue;
+            var _chunk = [];
+            array_copy(_chunk, 0, _compiled, _chunk_start, _ci - _chunk_start);
+            var _types = {};
+            for (var _ti = 0; _ti < array_length(_chunk); _ti++) {
+                if (array_length(_chunk[_ti]) <= 2) continue;
+                var _tag = _chunk[_ti][2];
+                if (!is_string(_tag) && _tag != noone && instance_exists(_tag))
+                    _types[$ string(_tag)] = string(_tag.node_type);
+            }
+            var _key_state = variable_clone(_state);
+            // A real ORG sets its own PC; the preceding section's final PC
+            // cannot affect it. Other incoming owner/stack state still can.
+            if (array_length(_chunk[0]) > 1 && string_lower(string(_chunk[0][0])) == "org" &&
+                array_length(_state[1]) == 0) {
+                var _first_org = _chunk[0][1];
+                if (is_string(_first_org)) _first_org = real(_first_org);
+                if (_first_org != -2 && _first_org != -3) _key_state[0] = 0;
+            }
+            var _key = json_stringify([_chunk, _key_state, _types, _op_signature, _label_signature]);
+            var _cached = undefined;
+            for (var _ki = 0; _ki < array_length(_old_chunks); _ki++) {
+                if (_old_chunks[_ki].key == _key) { _cached = _old_chunks[_ki]; break; }
+            }
+            var _built;
+            if (!is_undefined(_cached)) {
+                _built = {rows:variable_clone(_cached.rows), state:variable_clone(_cached.state)};
+                showcode_chunk_hits++;
+            } else {
+                _built = scr_show_code_build_chunk(_chunk, _state, _userlbl);
+                // Later passes mutate row ownership and resolved operands.
+                // Keep an independent, unresolved copy for subsequent edits.
+                _cached = {key:_key, rows:variable_clone(_built.rows), state:variable_clone(_built.state)};
+                showcode_chunk_misses++;
+            }
+            array_push(_new_chunks, _cached);
+            _state = _built.state;
+            for (var _ri = 0; _ri < array_length(_built.rows); _ri++) {
+                var _row = _built.rows[_ri];
+                array_push(_flat, _row);
+                // Re-resolve ALL labels after joining, including forward
+                // references from a cached section into an edited section.
+                if (_row.kind == "label") ds_map_set(_lblmap, _row.lbl, _row.pc);
+            }
+            _chunk_start = _ci;
         }
 
         // ---- PASS 2: resolve label operands now every label address is known.
@@ -785,6 +856,7 @@ function scr_show_code_build(_compiled) {
         }
         _flat = _ordered;
 
+        showcode_chunks = _new_chunks; // retain only the current project sections
         showcode_input_signature = _signature;
         showcode_flat   = _flat;
         showcode_total  = _tot;

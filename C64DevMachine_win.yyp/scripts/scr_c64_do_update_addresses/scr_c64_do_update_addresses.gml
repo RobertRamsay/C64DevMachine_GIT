@@ -186,6 +186,9 @@ global.compile_sizing_pass = false;
 // rather than a second full compile inside the Draw event.
 scr_show_code_build(_compiled);
 	
+    // Metadata is stable during this pass. Resolve each mnemonic once,
+    // then reuse its byte/cycle pair for every instruction of that kind.
+    var _sizing_metadata = {};
 	for (var _ci = 0; _ci < array_length(_compiled); _ci++) {
 	    var _entry = _compiled[_ci];
 	    if (array_length(_entry) < 3) continue;
@@ -197,6 +200,21 @@ scr_show_code_build(_compiled);
 	    if (is_string(_src_id)) continue;
 	    if (!instance_exists(_src_id)) continue;
 
+    // Bytes genuinely detached by a .pc relocation are already tagged
+    // noone by the compile chain and filtered out above via
+    // instance_exists(_src_id) — no MACRO_CODE-specific rule needed here
+    // anymore. (Previously this blanket-excluded ALL byte data for every
+    // MACRO_CODE node regardless of relocation, silently undercounting
+    // any inline data table protected by a JMP rather than an org.)
+    if (!object_is_ancestor(_src_id.object_index, obj_c64_node) && _src_id.object_index != obj_c64_node) continue;
+
+    if (_src_id.node_type == "COND_IF") continue;
+
+    var _metadata;
+    if (variable_struct_exists(_sizing_metadata, _mnem)) {
+        _metadata = _sizing_metadata[$ _mnem];
+    } else {
+        var _raw_mnem = _mnem;
 	    _mnem = string_replace_all(_mnem, "_abs_x",   "_abx");
 	    _mnem = string_replace_all(_mnem, "_abs_y",   "_aby");
 	    _mnem = string_replace_all(_mnem, "_zp_x",    "_zpx");
@@ -217,20 +235,12 @@ scr_show_code_build(_compiled);
     if (_mnem == "bpl")      _mnem = "bmi";
     if (_mnem == "bvc")      _mnem = "bvs";
 
-    // Bytes genuinely detached by a .pc relocation are already tagged
-    // noone by the compile chain and filtered out above via
-    // instance_exists(_src_id) — no MACRO_CODE-specific rule needed here
-    // anymore. (Previously this blanket-excluded ALL byte data for every
-    // MACRO_CODE node regardless of relocation, silently undercounting
-    // any inline data table protected by a JMP rather than an org.)
-    if (!object_is_ancestor(_src_id.object_index, obj_c64_node) && _src_id.object_index != obj_c64_node) continue;
 
-    if (_src_id.node_type == "COND_IF") continue;
-
-    var _sz = obj_opCodeManager.get_size(_mnem);
-    //if (_sz == 0) show_debug_message("MACRO SIZE ZERO: " + _mnem);
-    _src_id.total_node_size += _sz;
-    _src_id.node_cycles     += obj_opCodeManager.get_cycles(_mnem);
+        _metadata = [obj_opCodeManager.get_size(_mnem), obj_opCodeManager.get_cycles(_mnem)];
+        _sizing_metadata[$ _raw_mnem] = _metadata;
+    }
+    _src_id.total_node_size += _metadata[0];
+    _src_id.node_cycles     += _metadata[1];
 	}
 
 	with (obj_c64_node) {
@@ -1246,6 +1256,7 @@ with (obj_c64_node) {
 	// ================================================================
 	// PASS 10: MACRO_CODE CONFLICT CHECK
 	// ================================================================
+    var _writer_kinds = {}; // classifier cache is local to this update
 	with (obj_c64_node) {
 	    if (node_type != "MACRO_CODE") continue;
 	    if (!is_connected) continue;
@@ -1262,14 +1273,16 @@ with (obj_c64_node) {
 	        var _inst = _full_parsed[_fi];
 	        var _op = string_lower(_inst[0]);
 	            
-	        // Do not flag jumps/calls/branches as collisions
-	        var _is_jump = (string_pos("jsr", _op) > 0 || string_pos("jmp", _op) > 0 ||
+        var _check_writer;
+        if (variable_struct_exists(_writer_kinds, _op)) {
+            _check_writer = _writer_kinds[$ _op];
+        } else {
+            var _is_jump = (string_pos("jsr", _op) > 0 || string_pos("jmp", _op) > 0 ||
 	                        string_pos("bne", _op) > 0 || string_pos("beq", _op) > 0 ||
 	                        string_pos("bcc", _op) > 0 || string_pos("bcs", _op) > 0 ||
 	                        string_pos("bpl", _op) > 0 || string_pos("bmi", _op) > 0);
-	        if (_is_jump) continue;
 
-	        var _is_writer9 = (
+            var _is_writer9 = (
 	            string_pos("sta", _op) == 1 || string_pos("stx", _op) == 1 || string_pos("sty", _op) == 1 ||
 	            string_pos("inc", _op) == 1 || string_pos("dec", _op) == 1 ||
 	            (string_pos("asl", _op) == 1 && _op != "asl_a") ||
@@ -1279,12 +1292,13 @@ with (obj_c64_node) {
 	            _op == "const"
 	        );
 
-	        // DEBUG: log all instructions being checked
 
-
-	        if (!_is_writer9) continue;
-	        if (string_pos("_abs", _op) == 0 && string_pos("_ind", _op) == 0 &&
-	            string_pos("_zp",  _op) == 0 && _op != "const") continue;
+            _check_writer = !_is_jump && _is_writer9 &&
+                (string_pos("_abs", _op) > 0 || string_pos("_ind", _op) > 0 ||
+                 string_pos("_zp", _op) > 0 || _op == "const");
+            _writer_kinds[$ _op] = _check_writer;
+        }
+        if (!_check_writer) continue;
 
 	        if (array_length(_inst) > 1 && is_real(_inst[1])) {
 	            var _addr9 = real(_inst[1]);
