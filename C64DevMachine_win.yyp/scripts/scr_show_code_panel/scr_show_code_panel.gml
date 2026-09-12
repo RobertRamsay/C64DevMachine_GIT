@@ -95,6 +95,9 @@
 // Normalise a compile-chain mnemonic to an obj_opCodeManager key.
 // =====================================================================
 function scr_show_code_norm(_mnem) {
+    static _names = {};
+    var _key = string(_mnem);
+    if (variable_struct_exists(_names, _key)) return _names[$ _key];
     var _n = string_trim(string_lower(string(_mnem)));
 
     _n = string_replace_all(_n, "_abs_x",   "_abx");
@@ -128,6 +131,8 @@ function scr_show_code_norm(_mnem) {
     if (_n == "jmp")     { _n = "jmp_abs"; }
     if (_n == "jsr_abs") { _n = "jsr";     }
 
+    if (array_length(variable_struct_get_names(_names)) >= 512) _names = {};
+    _names[$ _key] = _n;
     return _n;
 }
 
@@ -358,6 +363,27 @@ function scr_show_code_build(_compiled) {
         // to look at it. The toggle raises global.addresses_dirty so the very
         // next frame after opening rebuilds it.
         if (!showcode_open) { exit; }
+        // Keep the existing listing when its complete build inputs match.
+        // Relative node order and membership matter; absolute canvas position
+        // does not. New instance IDs after load/undo invalidate this too.
+        var _nodes = [];
+        with (obj_c64_node) { array_push(_nodes, id); }
+        array_sort(_nodes, function(_a, _b) {
+            if (_a.y != _b.y) return _a.y - _b.y;
+            return real(_a) - real(_b);
+        });
+        var _owners = [];
+        for (var _oi = 0; _oi < array_length(_nodes); _oi++) {
+            var _on = _nodes[_oi];
+            array_push(_owners, [string(_on), _on.node_type, _on.is_connected,
+                string(_on.org_parent), _on.node_type == "LABEL" ? _on.instructions : []]);
+        }
+        var _signature = json_stringify([_compiled, global.start_pc, _owners, obj_opCodeManager.opcode_info]);
+        if (variable_instance_exists(id, "showcode_input_signature") &&
+            showcode_input_signature == _signature && array_length(showcode_flat) > 0) {
+            showcode_gen = global.named_loc_repack_gen;
+            exit;
+        }
         var _flat    = [];
         var _pc      = global.start_pc;
         var _pcstack = [];   // mirrors c64_new_program's org(-2)/org(-3) stack
@@ -759,6 +785,7 @@ function scr_show_code_build(_compiled) {
         }
         _flat = _ordered;
 
+        showcode_input_signature = _signature;
         showcode_flat   = _flat;
         showcode_total  = _tot;
         showcode_gen    = global.named_loc_repack_gen;

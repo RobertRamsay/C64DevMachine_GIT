@@ -4,6 +4,8 @@
 ///              chaining (!--, !++). MUST run AFTER repeat-expansion so each unrolled
 ///              iteration gets its own labels.
 function scr_desugar_multi_labels(_text) {
+    // Ordinary assembly has no Kick-style anonymous/named multi-labels.
+    if (string_pos("!", _text) == 0) return _text;
     var _lines = string_split(_text, "\n");
     var _n     = array_length(_lines);
 

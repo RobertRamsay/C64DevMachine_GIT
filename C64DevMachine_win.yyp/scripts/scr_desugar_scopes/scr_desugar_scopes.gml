@@ -4,6 +4,8 @@
 ///              strips the scope braces. Leaves `repeat N { }` braces intact for the
 ///              repeat expander. MUST run BEFORE repeat-expansion.
 function scr_desugar_scopes(_text) {
+    // Without braces there are no scope/repeat delimiters to rewrite.
+    if (string_pos("{", _text) == 0 && string_pos("}", _text) == 0) return _text;
     var _lines    = string_split(_text, "\n");
     var _n        = array_length(_lines);
     var _out      = "";

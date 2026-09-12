@@ -17498,6 +17498,9 @@ case "MACRO_CODE": {
                 var _code_text = string(_curr.instructions[0][1]);
                 if (_code_text != "") {
                     var _parsed = scr_parse_asm_text(_code_text);
+                    // Instruction dumps are opt-in; large blocks otherwise flood
+                    // the IDE output on every editor sizing pass.
+                    if (variable_global_exists("debug_dump_parsed_asm") && global.debug_dump_parsed_asm)
                     for (var _dbi = 0; _dbi < array_length(_parsed); _dbi++) {
                         show_debug_message("PARSED[" + string(_dbi) + "] = " + string(_parsed[_dbi]));
                     }

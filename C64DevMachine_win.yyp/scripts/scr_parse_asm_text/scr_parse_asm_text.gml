@@ -1,5 +1,47 @@
-/// @function scr_parse_asm_text(_text)
+/// Parse results depend on symbols as well as source text. Cache only calls
+/// that leave the symbol/metadata context unchanged; assignments that change
+/// it still run normally. Return independent arrays because callers edit rows.
 function scr_parse_asm_text(_text) {
+    static _cache = [];
+    static _next = 0;
+    if (_text == "" || _text == undefined) return [];
+    if (!variable_global_exists("named_loc_map") ||
+        !variable_global_exists("named_loc_meta") ||
+        !variable_global_exists("code_block_labels") ||
+        !ds_exists(global.named_loc_map, ds_type_map) ||
+        string_length(_text) > 262144) return scr_parse_asm_text_uncached(_text);
+
+    var _context = scr_asm_parse_context();
+    for (var _i = 0; _i < array_length(_cache); _i++) {
+        var _entry = _cache[_i];
+        if (_entry.text == _text && _entry.context == _context) {
+            if (_entry.meta_dirty) global.named_loc_meta_dirty = true;
+            return variable_clone(_entry.parsed);
+        }
+    }
+    var _parsed = scr_parse_asm_text_uncached(_text);
+    // A changed context means this call has semantic side effects. Do not
+    // skip those on a later call, including constant declarations after load.
+    if (array_length(_parsed) <= 16384 && string_length(_context) <= 262144 &&
+        _context == scr_asm_parse_context()) {
+        var _dirty = variable_global_exists("named_loc_meta_dirty") && global.named_loc_meta_dirty;
+        var _entry = {text:_text, context:_context, parsed:variable_clone(_parsed), meta_dirty:_dirty};
+        if (array_length(_cache) < 32) array_push(_cache, _entry);
+        else { _cache[_next] = _entry; _next = (_next + 1) mod 32; }
+    }
+    return _parsed;
+}
+
+function scr_asm_parse_context() {
+    // Exact snapshots, not hash-only keys: any changed value or metadata
+    // invalidates the cached result. Map serialization order can cause a
+    // harmless miss, never a false match.
+    return json_stringify([ds_map_write(global.named_loc_map),
+        global.code_block_labels, global.named_loc_meta]);
+}
+
+/// @function scr_parse_asm_text(_text)
+function scr_parse_asm_text_uncached(_text) {
     var _result = [];
     if (_text == "" || _text == undefined) return _result;
 

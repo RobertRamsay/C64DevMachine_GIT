@@ -156,11 +156,11 @@ var _addr_total = 65536;
                             } else if (_pt == "byte" || _pt == "string") {
                                 _data_sz += array_length(_parsed[_pi]) - 1;
                                 if (_cur_line > 0) {
-                                    var _has_line = false;
-                                    for (var _li = 0; _li < array_length(_data_lines); _li++) {
-                                        if (_data_lines[_li] == _cur_line) { _has_line = true; break; }
-                                    }
-                                    if (!_has_line) array_push(_data_lines, _cur_line);
+                                    // Parser line maps are in source order. A duplicate
+                                    // can only be the last line already recorded.
+                                    var _line_count = array_length(_data_lines);
+                                    if (_line_count == 0 || _data_lines[_line_count - 1] != _cur_line)
+                                        array_push(_data_lines, _cur_line);
                                 }
                             } else if (_pt != "label") {
                                 if (instance_exists(obj_opCodeManager)) _data_sz += obj_opCodeManager.get_size(_pt);
@@ -171,11 +171,11 @@ var _addr_total = 65536;
                                     }
                                 }
                                 if (_cur_line > 0) {
-                                    var _has_line = false;
-                                    for (var _li = 0; _li < array_length(_data_lines); _li++) {
-                                        if (_data_lines[_li] == _cur_line) { _has_line = true; break; }
-                                    }
-                                    if (!_has_line) array_push(_data_lines, _cur_line);
+                                    // Parser line maps are in source order. A duplicate
+                                    // can only be the last line already recorded.
+                                    var _line_count = array_length(_data_lines);
+                                    if (_line_count == 0 || _data_lines[_line_count - 1] != _cur_line)
+                                        array_push(_data_lines, _cur_line);
                                 }
                             }
                         }
