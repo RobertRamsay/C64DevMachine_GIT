@@ -155,14 +155,12 @@ var _addr_total = 65536;
                                 }
                             } else if (_pt == "byte" || _pt == "string") {
                                 _data_sz += array_length(_parsed[_pi]) - 1;
-                                // Parser line maps increase monotonically. Entries from the
-                                // same source line are adjacent; a full history scan is quadratic.
-                                // Before an explicit .pc these lines are never emitted at all.
-                                if (_data_pc >= 0 && _cur_line > 0) {
-                                    var _last_data_line = array_length(_data_lines) - 1;
-                                    if (_last_data_line < 0 || _data_lines[_last_data_line] != _cur_line) {
-                                        array_push(_data_lines, _cur_line);
+                                if (_cur_line > 0) {
+                                    var _has_line = false;
+                                    for (var _li = 0; _li < array_length(_data_lines); _li++) {
+                                        if (_data_lines[_li] == _cur_line) { _has_line = true; break; }
                                     }
+                                    if (!_has_line) array_push(_data_lines, _cur_line);
                                 }
                             } else if (_pt != "label") {
                                 if (instance_exists(obj_opCodeManager)) _data_sz += obj_opCodeManager.get_size(_pt);
@@ -172,14 +170,12 @@ var _addr_total = 65536;
                                         array_push(code_seg_cache, { addr: _parsed[_pi][1], size: 2, lines: [_cur_line], no_conflict: true });
                                     }
                                 }
-                                // Parser line maps increase monotonically. Entries from the
-                                // same source line are adjacent; a full history scan is quadratic.
-                                // Before an explicit .pc these lines are never emitted at all.
-                                if (_data_pc >= 0 && _cur_line > 0) {
-                                    var _last_data_line = array_length(_data_lines) - 1;
-                                    if (_last_data_line < 0 || _data_lines[_last_data_line] != _cur_line) {
-                                        array_push(_data_lines, _cur_line);
+                                if (_cur_line > 0) {
+                                    var _has_line = false;
+                                    for (var _li = 0; _li < array_length(_data_lines); _li++) {
+                                        if (_data_lines[_li] == _cur_line) { _has_line = true; break; }
                                     }
+                                    if (!_has_line) array_push(_data_lines, _cur_line);
                                 }
                             }
                         }

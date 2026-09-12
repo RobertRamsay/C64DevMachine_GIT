@@ -4,9 +4,6 @@
 ///              chaining (!--, !++). MUST run AFTER repeat-expansion so each unrolled
 ///              iteration gets its own labels.
 function scr_desugar_multi_labels(_text) {
-    // Without a bang there are no multi-label declarations or references.
-    // Keep the existing resolver for every source that might contain them.
-    if (string_pos("!", _text) == 0) return _text;
     var _lines = string_split(_text, "\n");
     var _n     = array_length(_lines);
 

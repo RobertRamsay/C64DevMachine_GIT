@@ -1,18 +1,6 @@
 /// scr_undo_step(_direction)
 /// _direction: -1 = undo, +1 = redo
 function scr_undo_step(_direction) {
-    // A keyboard undo can beat the deferred post-drop snapshot. Commit the
-    // current edit first so undo moves back exactly one state and redo can
-    // restore it. This is an explicit synchronous barrier, not per-frame work.
-    if (global.undo_dirty) {
-        if (instance_exists(obj_workspace_manager)) {
-            obj_workspace_manager.alarm[1] = -1;
-            obj_workspace_manager.alarm[3] = -1;
-        }
-        scr_c64_do_update_addresses();
-        scr_undo_snapshot();
-        global.undo_dirty = false;
-    }
     var _undo_dir       = working_directory + "temp/undo/";
     var _manifest_path  = _undo_dir + "manifest.json";
     if (!file_exists(_manifest_path)) exit;
