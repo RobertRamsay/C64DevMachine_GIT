@@ -1,3 +1,10 @@
+// State used by Step and End Step must exist before recovery/load runs.
+editor_release_pending = false;
+editor_release_dirty = false;
+editor_release_panning = false;
+showcode_refresh_requested = false;
+editor_layout_refresh_requested = false;
+
 /// @desc Setup Workspace, Palette & C64 Environment
 global.lite=0;
 global.build_date = "September 10th, 2026"; // edit this string for each release
