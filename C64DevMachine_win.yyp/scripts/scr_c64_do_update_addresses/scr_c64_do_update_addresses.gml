@@ -1,4 +1,18 @@
 function scr_c64_do_update_addresses() {
+    // Synchronizers such as scr_macro_chr_sync() also mark addresses dirty.
+    // Their changes belong to this pass, not to another deferred compile.
+    var _was_refreshing = variable_global_exists("c64_address_refresh_active")
+                       && global.c64_address_refresh_active;
+    global.c64_address_refresh_active = true;
+    try {
+        return scr_c64_do_update_addresses_impl();
+    } finally {
+        // Preserve nesting and do not suppress later edits after an exception.
+        global.c64_address_refresh_active = _was_refreshing;
+    }
+}
+
+function scr_c64_do_update_addresses_impl() {
 
 global.named_loc_repack_gen++;
 

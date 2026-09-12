@@ -12,7 +12,8 @@ scr_c64u_reu_step();
 // trigger below needs it, so the "CONSTRUCTING FLOW DATA" toast gets a
 // full frame to actually render before this (potentially slow) compile
 // pass blocks the next one.
-if (flow_overlay_build_pending) {
+if (flow_overlay_build_pending && alarm[1] < 0
+    && !mouse_check_button(mb_any) && !mouse_check_button_released(mb_any)) {
     flow_overlay_edges = scr_build_flow_graph();
     flow_overlay_dirty = false;
     flow_overlay_build_pending = false;
@@ -2200,7 +2201,14 @@ if (keyboard_check_pressed(vk_f5) && global.asset_reload_in_progress) {
     trigger_build = true;
 }
 
-if (build_trigger && !global.asset_reload_in_progress) {
+// F5 may arrive on the drop frame or while the deferred refresh is pending.
+// Keep the request latched; never assemble/launch using pre-drop addresses.
+var _build_waiting_for_edit = (alarm[1] >= 0
+    || mouse_check_button(mb_any) || mouse_check_button_released(mb_any));
+if (build_trigger && _build_waiting_for_edit) {
+    trigger_build = true;
+}
+if (build_trigger && !global.asset_reload_in_progress && !_build_waiting_for_edit) {
         trigger_build = false;
         global.egg_temp_node_ids = [];
 
@@ -4602,31 +4610,15 @@ if (keyboard_check_pressed(vk_tab) && array_length(global.selected_nodes) > 0 &&
 
 // 1. Handle Release Logic (Snapshots and Autosave)
 if (mouse_check_button_released(mb_any)) {
-    // Alarm 1 does `global.addresses_dirty = true; scr_c64_do_update_addresses();`
-    // — a FULL recompile, unconditionally, six frames after ANY mouse release.
-    // A click on empty canvas therefore paid for the whole compile chain, and
-    // with the code panel open it also paid for the panel build, the address
-    // sort and the attribution walk on top. That is the click-in-space cost.
-    //
-    // Arming it only when something is actually dirty loses nothing: if nothing
-    // was dirty at release then nothing changed, and anything that becomes
-    // dirty later is already caught by the every-frame addresses_dirty test
-    // further down.
-    if (global.undo_dirty || global.addresses_dirty) {
-        alarm[1] = 6;
-    }
     with (obj_c64_node) { stats_cache_dirty = true; }
-    
-    // If we were dragging or changing things, finalize the addresses now
+
     if (global.undo_dirty || global.addresses_dirty) {
-        scr_c64_do_update_addresses();
-        global.addresses_dirty = false;
-        
-        // Snapshot the stable state
-        scr_undo_snapshot();
-        global.undo_dirty = false;
-        
-// Handle Autosave timer
+        // Node Step events can run AFTER this event on the release frame.
+        // Queue one settled refresh instead of compiling here and again six
+        // frames later. Alarm 1 also writes the final undo snapshot.
+        alarm[1] = 2;
+
+        // Handle Autosave timer
         if (!_was_panning && !is_panning && global.autosave_mode != 3) {
             var _was_clean = !global.autosave_dirty;
             global.autosave_dirty = true;
@@ -4639,14 +4631,12 @@ if (mouse_check_button_released(mb_any)) {
     _was_panning = false;
 }
 
-// 2. Catch-all for non-mouse changes (Keyboard/Dirty Flags)
-// NOTICE: mouse_check_button_pressed is REMOVED from here to stop the flash.
-if (keyboard_check_pressed(vk_enter) || 
-    keyboard_check_pressed(vk_escape) || 
+// 2. Coalesce non-mouse changes into the same refresh. Leave addresses_dirty
+// for the cheap spine traversal; it is NOT an independent compile request.
+if (keyboard_check_pressed(vk_enter) ||
+    keyboard_check_pressed(vk_escape) ||
     global.addresses_dirty) {
-    
-    scr_c64_do_update_addresses();
-    global.addresses_dirty = false;
+    alarm[1] = 2;
 }
 
 // Move the scanline downwards
