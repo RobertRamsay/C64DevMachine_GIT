@@ -421,7 +421,8 @@ if (label_picker_open) {
 if (label_picker_open && mouse_check_button_pressed(mb_left)) {
    // ---- ASSET PICKER (BYTE_DATA / TEXT_DATA / LINE_COLL) ----
     if (label_picker_mode == "BYTE_ASSET" || label_picker_mode == "TEXT_ASSET"
-	 || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET") {
+	 || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET"
+	 || label_picker_mode == "HUD_ASSET") {
         var _want_type = "BYTE_DATA";
         if (label_picker_mode == "TEXT_ASSET") {
             _want_type = "TEXT_DATA";
@@ -429,6 +430,8 @@ if (label_picker_open && mouse_check_button_pressed(mb_left)) {
             _want_type = "MUSIC_MAKER";
         } else if (label_picker_mode == "LINE_ASSET") {
             _want_type = "LINE_COLL";
+        } else if (label_picker_mode == "HUD_ASSET") {
+            _want_type = "HUD";
         }
         var _px      = draw_x + width + 8;
         var _py      = y + 36;
@@ -1063,6 +1066,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
         case "MACRO_VOI64_SAY":    scr_node_step_macro_voi64_say(draw_x);    break;
 		case "MACRO_SID_SOUND":  scr_node_step_macro_sid_sound(draw_x);  break;
 		case "MACRO_SID_SONG":   scr_node_step_macro_sid_song(draw_x);   break;
+		case "MACRO_HUD":        scr_node_step_macro_hud(draw_x);        break;
 		case "MACRO_GET_CHAR":   scr_node_step_macro_get_char(draw_x);   break;
 		case "MACRO_MOVE_MEM": scr_node_step_macro_move_mem(draw_x); break;
 		case "MACRO_MOVE_BMP_BLOCK": scr_node_step_macro_move_bmp_block(draw_x); break;

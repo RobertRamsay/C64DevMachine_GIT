@@ -58,6 +58,39 @@ function scr_macro_entry_labels() {
                 _out[$ "sng" + string(stable_uid) + "_seek"] = true;
             break;
 
+            case "MACRO_HUD":
+                var _hud_key = "hud" + string(stable_uid) + "_";
+                _out[$ _hud_key + "draw"] = true;
+                // One per DIGITS/BAR field. TEXT fields emit no routine, so
+                // publishing a label for them would send a JSR to a symbol the
+                // compile chain never creates.
+                var _hud_name = "";
+                if (array_length(instructions[0]) > 1) {
+                    _hud_name = string(instructions[0][1]);
+                }
+                if (_hud_name != "" && instance_exists(obj_asset_manager)) {
+                    var _hud_am = obj_asset_manager;
+                    for (var _hai = 0; _hai < ds_list_size(_hud_am.asset_list); _hai++) {
+                        var _hua = ds_list_find_value(_hud_am.asset_list, _hai);
+                        if (_hua.type != "HUD" || _hua.name != _hud_name) {
+                            continue;
+                        }
+                        if (!variable_struct_exists(_hua.meta, "fields")) {
+                            break;
+                        }
+                        var _hud_fields = _hua.meta.fields;
+                        for (var _hfi = 0; _hfi < array_length(_hud_fields); _hfi++) {
+                            var _huf = _hud_fields[_hfi];
+                            if (real(_huf.kind) == 0) {
+                                continue;
+                            }
+                            _out[$ _hud_key + string(_huf.name)] = true;
+                        }
+                        break;
+                    }
+                }
+            break;
+
             case "MACRO_ANIM":
                 var _an_alias = anim_alias;
                 if (_an_alias == "")

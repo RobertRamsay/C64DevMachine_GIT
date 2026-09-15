@@ -52,6 +52,9 @@ function scr_boot_resident_ranges() {
         var _a = ds_list_find_value(_am.asset_list, _ai);
         if (_a.type == "LOAD_ORG") continue;
         if (_a.type == "LOAD_REU") continue;
+        // Authoring asset with no address of its own — its bytes reach the
+        // image through MACRO_HUD, already counted as that node's size.
+        if (_a.type == "HUD") continue;
         if (ds_map_exists(_deferred, _a.name)) continue;
         if (!buffer_exists(_a.buffer)) continue;
 

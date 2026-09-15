@@ -137,6 +137,28 @@ var _base = "unsaved";
                 _mo.map_w        = variable_struct_exists(_me, "map_w")        ? _me.map_w        : [];
                 _mo.map_h        = variable_struct_exists(_me, "map_h")        ? _me.map_h        : [];
             }
+            if (_a.type == "HUD") {
+                // Same field set as scr_save_workspace_as — surfaces excluded.
+                _mo.hud_x         = _me.hud_x;
+                _mo.hud_y         = _me.hud_y;
+                _mo.hud_w         = _me.hud_w;
+                _mo.hud_h         = _me.hud_h;
+                _mo.char_grid     = _me.char_grid;
+                _mo.colour_grid   = _me.colour_grid;
+                _mo.chr_asset     = _me.chr_asset;
+                _mo.fields        = _me.fields;
+                _mo.sel_field     = _me.sel_field;
+                _mo.active_char   = _me.active_char;
+                _mo.active_colour = _me.active_colour;
+                _mo.paint_mc      = _me.paint_mc;
+                _mo.hud_mc_bg     = _me.hud_mc_bg;
+                _mo.hud_mc_col1   = _me.hud_mc_col1;
+                _mo.hud_mc_col2   = _me.hud_mc_col2;
+                _mo.zoom          = _me.zoom;
+                _mo.cur_x         = _me.cur_x;
+                _mo.cur_y         = _me.cur_y;
+                _mo.show_grid     = _me.show_grid;
+            }
             if (_a.type == "MUSIC_MAKER") {
                 _mo.instruments      = variable_struct_exists(_me, "instruments")      ? _me.instruments      : [];
                 _mo.sel_instr        = variable_struct_exists(_me, "sel_instr")        ? _me.sel_instr        : -1;

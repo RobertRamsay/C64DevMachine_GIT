@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_hud_create",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_hud_create",
+  "parent":{
+    "name":"HUD",
+    "path":"folders/SCRIPTS/HUD.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

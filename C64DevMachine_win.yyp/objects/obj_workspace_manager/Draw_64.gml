@@ -1494,6 +1494,7 @@ if (gui_menu_open == 0) {
         { title: "PLACE CHAR",   type: "MACRO_PLACE_CHAR"    },
 		{ title: "GET CHAR",     type: "MACRO_GET_CHAR"      },
         { title: "CLR SCRN RAM", type: "MACRO_CLR_SCREEN"    },
+        { title: "HUD",          type: "MACRO_HUD"           },
         { title: "CLR BMP RECT", type: "MACRO_CLEAR_BMP_RECT" },
         { title: "VWAIT (ALT+V)",        type: "MACRO_VWAIT"         },
         { title: "WAIT",         type: "MACRO_WAIT"          },

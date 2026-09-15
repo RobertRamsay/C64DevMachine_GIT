@@ -254,6 +254,31 @@
         }
 		
 		
+		 if (_a.type == "HUD") {
+            // The rectangle, the two grids and the fields ARE the asset. The
+            // glyph atlases in meta are surfaces — never serialised, rebuilt
+            // on first draw.
+            _meta_out.hud_x         = _a.meta.hud_x;
+            _meta_out.hud_y         = _a.meta.hud_y;
+            _meta_out.hud_w         = _a.meta.hud_w;
+            _meta_out.hud_h         = _a.meta.hud_h;
+            _meta_out.char_grid     = _a.meta.char_grid;
+            _meta_out.colour_grid   = _a.meta.colour_grid;
+            _meta_out.chr_asset     = _a.meta.chr_asset;
+            _meta_out.fields        = _a.meta.fields;
+            _meta_out.sel_field     = _a.meta.sel_field;
+            _meta_out.active_char   = _a.meta.active_char;
+            _meta_out.active_colour = _a.meta.active_colour;
+            _meta_out.paint_mc      = _a.meta.paint_mc;
+            _meta_out.hud_mc_bg     = _a.meta.hud_mc_bg;
+            _meta_out.hud_mc_col1   = _a.meta.hud_mc_col1;
+            _meta_out.hud_mc_col2   = _a.meta.hud_mc_col2;
+            _meta_out.zoom          = _a.meta.zoom;
+            _meta_out.cur_x         = _a.meta.cur_x;
+            _meta_out.cur_y         = _a.meta.cur_y;
+            _meta_out.show_grid     = _a.meta.show_grid;
+        }
+
 		 if (_a.type == "MUSIC_MAKER") {
             _meta_out.instruments      = variable_struct_exists(_a.meta, "instruments")      ? _a.meta.instruments      : [];
             _meta_out.sel_instr        = variable_struct_exists(_a.meta, "sel_instr")        ? _a.meta.sel_instr        : -1;

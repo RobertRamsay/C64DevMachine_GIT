@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_node_draw_macro_hud",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_node_draw_macro_hud",
+  "parent":{
+    "name":"HUD",
+    "path":"folders/SCRIPTS/HUD.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

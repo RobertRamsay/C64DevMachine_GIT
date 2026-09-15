@@ -17491,6 +17491,353 @@ case "MACRO_SID_SONG": {
 	
 	
 // --------------------------------------------------------
+// MACRO_HUD — stamps a HUD asset onto the text screen and gives
+// every FIELD on it an entry point.
+//
+// instructions[0]: ["macro_hud", asset_name, screen_base, colour_base,
+//                   auto_draw, write_colour]
+//
+// ENTRY POINTS:
+//   <key>_draw     copies the panel's chars (and colours) into screen RAM.
+//                  No arguments, ends in RTS. Call it once after the screen
+//                  is set up, and again after anything overwrites the panel.
+//   <key>_<FIELD>  one per DIGITS or BAR field — A carries the value.
+//                  TEXT fields emit no code; they are positions, and the node
+//                  lists their screen address for code blocks to use.
+//
+// The data sits on the spine, jumped over, tagged with _id so Pass 1.5 counts
+// it into total_node_size — the same arrangement MACRO_SID_SONG uses.
+//
+// THE COPY. When the panel spans the full width of the screen its cells are
+// contiguous in screen RAM, so the copy is one loop per 256 bytes and nothing
+// else — 32 bytes of code for a 440-cell panel. Any other rectangle is copied
+// a row at a time, which costs 13 bytes per row (22 with colour). Both paths
+// index with X from a per-row or per-page label, because a label plus an
+// offset is not something the assembler's fixups can express.
+// --------------------------------------------------------
+case "MACRO_HUD": {
+    var _id = _curr;
+    var _i0 = _curr.instructions[0];
+
+    var _asset_name = "";
+    if (array_length(_i0) > 1) {
+        _asset_name = string(_i0[1]);
+    }
+    var _scr_base = 0x0400;
+    if (array_length(_i0) > 2 && is_real(_i0[2])) {
+        _scr_base = real(_i0[2]) & 0xFFFF;
+    }
+    var _col_base = 0xD800;
+    if (array_length(_i0) > 3 && is_real(_i0[3])) {
+        _col_base = real(_i0[3]) & 0xFFFF;
+    }
+    var _auto_draw = 0;
+    if (array_length(_i0) > 4 && is_real(_i0[4])) {
+        _auto_draw = real(_i0[4]);
+    }
+    var _do_col = 1;
+    if (array_length(_i0) > 5 && is_real(_i0[5])) {
+        _do_col = real(_i0[5]);
+    }
+
+    // ── Resolve the HUD asset ──
+    var _hu = noone;
+    if (_asset_name != "" && instance_exists(obj_asset_manager)) {
+        var _am_hd = obj_asset_manager;
+        for (var _ai = 0; _ai < ds_list_size(_am_hd.asset_list); _ai++) {
+            var _a = ds_list_find_value(_am_hd.asset_list, _ai);
+            if (_a.type == "HUD" && _a.name == _asset_name) {
+                _hu = _a;
+                break;
+            }
+        }
+    }
+    if (_hu == noone) {
+        show_debug_message("MACRO_HUD: asset '" + _asset_name + "' not found — skipping");
+        break;
+    }
+
+    var _hm = _hu.meta;
+    var _hw = _hm.hud_w;
+    var _hh = _hm.hud_h;
+    var _hx = _hm.hud_x;
+    var _hy = _hm.hud_y;
+    var _total = _hw * _hh;
+
+    if (_hw <= 0 || _hh <= 0 || _total <= 0) {
+        show_debug_message("MACRO_HUD: '" + _asset_name + "' has an empty rectangle — skipping");
+        break;
+    }
+    if (array_length(_hm.char_grid) < _total || array_length(_hm.colour_grid) < _total) {
+        show_debug_message("MACRO_HUD: '" + _asset_name + "' grids are shorter than "
+            + string(_hw) + "x" + string(_hh) + " — open it once in the asset manager to repair it");
+        break;
+    }
+
+    var _key = "hud" + string(_id.stable_uid) + "_";
+
+    // Contiguous only when the panel is the full width of the screen: a
+    // narrower rectangle has a gap at the end of every row.
+    var _contig = false;
+    if (_hx == 0 && _hw == 40) {
+        _contig = true;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // DATA — chars, then colours. Labelled at every row start AND every
+    // 256-byte boundary, so the row copier and the page copier can each
+    // index from a label without needing label+offset arithmetic.
+    // ════════════════════════════════════════════════════════════════
+    var _lbl_dskip = _key + "dskip";
+    array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
+
+    for (var _i = 0; _i < _total; _i++) {
+        if (_i mod _hw == 0) {
+            array_push(_list, ["label", _key + "r" + string(_i div _hw)]);
+        }
+        if (_i mod 256 == 0) {
+            array_push(_list, ["label", _key + "c" + string(_i div 256)]);
+        }
+        array_push(_list, ["byte", _hm.char_grid[_i] & 0xFF, _id]);
+    }
+
+    if (_do_col == 1) {
+        for (var _i = 0; _i < _total; _i++) {
+            if (_i mod _hw == 0) {
+                array_push(_list, ["label", _key + "kr" + string(_i div _hw)]);
+            }
+            if (_i mod 256 == 0) {
+                array_push(_list, ["label", _key + "kc" + string(_i div 256)]);
+            }
+            array_push(_list, ["byte", _hm.colour_grid[_i] & 0x0F, _id]);
+        }
+    }
+
+    array_push(_list, ["label", _lbl_dskip]);
+
+    // ════════════════════════════════════════════════════════════════
+    // RUNTIME
+    // ════════════════════════════════════════════════════════════════
+    var _L_skip = _key + "rtskip";
+    var _L_draw = _key + "draw";
+    array_push(_list, ["jmp_abs", _L_skip, _id]);
+
+    array_push(_list, ["label", _L_draw]);
+
+    if (_contig) {
+        var _dst  = (_scr_base + (_hy * 40) + _hx) & 0xFFFF;
+        var _cdst = (_col_base + (_hy * 40) + _hx) & 0xFFFF;
+        var _pages = (_total + 255) div 256;
+
+        for (var _p = 0; _p < _pages; _p++) {
+            var _count = _total - (_p * 256);
+            if (_count > 256) {
+                _count = 256;
+            }
+            var _lp = _key + "lp" + string(_p);
+
+            array_push(_list, ["ldx_imm", 0x00, _id]);
+            array_push(_list, ["label",   _lp]);
+            array_push(_list, ["lda_abx", _key + "c" + string(_p), _id]);
+            array_push(_list, ["sta_abx", (_dst + (_p * 256)) & 0xFFFF, _id]);
+            if (_do_col == 1) {
+                array_push(_list, ["lda_abx", _key + "kc" + string(_p), _id]);
+                array_push(_list, ["sta_abx", (_cdst + (_p * 256)) & 0xFFFF, _id]);
+            }
+            array_push(_list, ["inx", 0, _id]);
+            if (_count >= 256) {
+                // X wraps to zero after 256 cells — no compare needed, and the
+                // next page's loop starts from zero for free.
+                array_push(_list, ["bne", _lp, _id]);
+            } else {
+                array_push(_list, ["cpx_imm", _count & 0xFF, _id]);
+                array_push(_list, ["bne", _lp, _id]);
+            }
+        }
+    } else {
+        for (var _r = 0; _r < _hh; _r++) {
+            var _rdst  = (_scr_base + ((_hy + _r) * 40) + _hx) & 0xFFFF;
+            var _rcdst = (_col_base + ((_hy + _r) * 40) + _hx) & 0xFFFF;
+            var _lr = _key + "lr" + string(_r);
+
+            array_push(_list, ["ldx_imm", 0x00, _id]);
+            array_push(_list, ["label",   _lr]);
+            array_push(_list, ["lda_abx", _key + "r" + string(_r), _id]);
+            array_push(_list, ["sta_abx", _rdst, _id]);
+            if (_do_col == 1) {
+                array_push(_list, ["lda_abx", _key + "kr" + string(_r), _id]);
+                array_push(_list, ["sta_abx", _rcdst, _id]);
+            }
+            array_push(_list, ["inx", 0, _id]);
+            array_push(_list, ["cpx_imm", _hw & 0xFF, _id]);
+            array_push(_list, ["bne", _lr, _id]);
+        }
+    }
+    array_push(_list, ["rts", 0, _id]);
+
+    // ════════════════════════════════════════════════════════════════
+    // FIELD ENTRY POINTS
+    // ════════════════════════════════════════════════════════════════
+    var _fields = [];
+    if (variable_struct_exists(_hm, "fields") && is_array(_hm.fields)) {
+        _fields = _hm.fields;
+    }
+
+    for (var _fi = 0; _fi < array_length(_fields); _fi++) {
+
+        var _f = _fields[_fi];
+
+        var _fname = string(_f.name);
+        if (_fname == "") {
+            continue;
+        }
+        var _fkind = real(_f.kind);
+        if (_fkind == 0) {
+            continue;                       // TEXT — a position, not a routine
+        }
+
+        var _flen = real(_f.flen);
+        if (_flen < 1) {
+            _flen = 1;
+        }
+        var _fx = real(_f.fx);
+        var _fy = real(_f.fy);
+        if (_fx < 0 || _fy < 0 || _fy >= _hh || _fx + _flen > _hw) {
+            show_debug_message("MACRO_HUD: field '" + _fname + "' falls outside the panel — skipped");
+            continue;
+        }
+
+        // Screen address of the field's first cell.
+        var _fa = (_scr_base + ((_hy + _fy) * 40) + _hx + _fx) & 0xFFFF;
+        var _fl = _key + _fname;
+
+        array_push(_list, ["label", _fl]);
+
+        if (_fkind == 1) {
+            // ── DIGITS ── A = 0-255, written right-aligned as decimal.
+            var _base = 48;
+            if (variable_struct_exists(_f, "base")) {
+                _base = real(_f.base) & 0xFF;
+            }
+            var _pad = 0;
+            if (variable_struct_exists(_f, "pad")) {
+                _pad = real(_f.pad);
+            }
+            var _nd = _flen;
+            if (_nd > 3) {
+                _nd = 3;                    // A is one byte: 255 is three digits
+            }
+
+            if (_pad == 1) {
+                array_push(_list, ["ldy_imm", 0x00, _id]);   // "a digit has printed"
+            }
+
+            // Hundreds. Always computed — without it a two-cell field would
+            // show 150 as the raw remainder rather than as 50.
+            array_push(_list, ["ldx_imm", 0xFF, _id]);
+            array_push(_list, ["sec",     0,    _id]);
+            array_push(_list, ["label",   _fl + "_h"]);
+            array_push(_list, ["inx",     0,    _id]);
+            array_push(_list, ["sbc_imm", 100,  _id]);
+            array_push(_list, ["bcs",     _fl + "_h", _id]);
+            array_push(_list, ["adc_imm", 100,  _id]);
+
+            if (_nd >= 3) {
+                array_push(_list, ["pha", 0, _id]);
+                if (_pad == 1) {
+                    array_push(_list, ["cpx_imm", 0x00, _id]);
+                    array_push(_list, ["bne", _fl + "_hnz", _id]);
+                    array_push(_list, ["lda_imm", 0x20, _id]);   // blank
+                    array_push(_list, ["jmp_abs", _fl + "_hst", _id]);
+                    array_push(_list, ["label", _fl + "_hnz"]);
+                    array_push(_list, ["ldy_imm", 0x01, _id]);
+                }
+                array_push(_list, ["txa", 0, _id]);
+                array_push(_list, ["clc", 0, _id]);
+                array_push(_list, ["adc_imm", _base, _id]);
+                if (_pad == 1) {
+                    array_push(_list, ["label", _fl + "_hst"]);
+                }
+                array_push(_list, ["sta_abs", (_fa + _flen - 3) & 0xFFFF, _id]);
+                array_push(_list, ["pla", 0, _id]);
+            }
+
+            // Tens.
+            array_push(_list, ["ldx_imm", 0xFF, _id]);
+            array_push(_list, ["sec",     0,    _id]);
+            array_push(_list, ["label",   _fl + "_t"]);
+            array_push(_list, ["inx",     0,    _id]);
+            array_push(_list, ["sbc_imm", 10,   _id]);
+            array_push(_list, ["bcs",     _fl + "_t", _id]);
+            array_push(_list, ["adc_imm", 10,   _id]);
+
+            if (_nd >= 2) {
+                array_push(_list, ["pha", 0, _id]);
+                if (_pad == 1) {
+                    array_push(_list, ["cpx_imm", 0x00, _id]);
+                    array_push(_list, ["bne", _fl + "_tnz", _id]);
+                    array_push(_list, ["cpy_imm", 0x00, _id]);
+                    array_push(_list, ["bne", _fl + "_tnz", _id]);
+                    array_push(_list, ["lda_imm", 0x20, _id]);
+                    array_push(_list, ["jmp_abs", _fl + "_tst", _id]);
+                    array_push(_list, ["label", _fl + "_tnz"]);
+                }
+                array_push(_list, ["txa", 0, _id]);
+                array_push(_list, ["clc", 0, _id]);
+                array_push(_list, ["adc_imm", _base, _id]);
+                if (_pad == 1) {
+                    array_push(_list, ["label", _fl + "_tst"]);
+                }
+                array_push(_list, ["sta_abs", (_fa + _flen - 2) & 0xFFFF, _id]);
+                array_push(_list, ["pla", 0, _id]);
+            }
+
+            // Units — always printed, so a zero value still reads as "0".
+            array_push(_list, ["clc", 0, _id]);
+            array_push(_list, ["adc_imm", _base, _id]);
+            array_push(_list, ["sta_abs", (_fa + _flen - 1) & 0xFFFF, _id]);
+            array_push(_list, ["rts", 0, _id]);
+        }
+
+        if (_fkind == 2) {
+            // ── BAR ── A = how many cells to fill.
+            var _full = 81;
+            if (variable_struct_exists(_f, "full")) {
+                _full = real(_f.full) & 0xFF;
+            }
+            var _empty = 32;
+            if (variable_struct_exists(_f, "empty")) {
+                _empty = real(_f.empty) & 0xFF;
+            }
+
+            array_push(_list, ["tax", 0, _id]);
+            array_push(_list, ["ldy_imm", 0x00, _id]);
+            array_push(_list, ["label", _fl + "_l"]);
+            array_push(_list, ["cpy_imm", _flen & 0xFF, _id]);
+            array_push(_list, ["beq", _fl + "_e", _id]);
+            array_push(_list, ["lda_imm", _empty, _id]);
+            array_push(_list, ["cpx_imm", 0x00, _id]);
+            array_push(_list, ["beq", _fl + "_p", _id]);
+            array_push(_list, ["lda_imm", _full, _id]);
+            array_push(_list, ["dex", 0, _id]);
+            array_push(_list, ["label", _fl + "_p"]);
+            array_push(_list, ["sta_aby", _fa, _id]);
+            array_push(_list, ["iny", 0, _id]);
+            array_push(_list, ["jmp_abs", _fl + "_l", _id]);
+            array_push(_list, ["label", _fl + "_e"]);
+            array_push(_list, ["rts", 0, _id]);
+        }
+    }
+
+    array_push(_list, ["label", _L_skip]);
+
+    // Drop-and-go: stamp the panel where the node sits on the spine.
+    if (_auto_draw == 1) {
+        array_push(_list, ["jsr", _L_draw, _id]);
+    }
+} break;
+
+// --------------------------------------------------------
 // MACRO_CODE — freeform assembly text block
 // --------------------------------------------------------
 case "MACRO_CODE": {

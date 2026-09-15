@@ -1942,6 +1942,13 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open) {
             _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
             scr_bitmap_builder_create(_new_asset);
         }
+        if (_type == "HUD") {
+            // Authoring asset: the buffer is only there so the workspace saver
+            // has something to blob out — MACRO_HUD reads the grids in meta.
+            if (buffer_exists(_new_asset.buffer)) buffer_delete(_new_asset.buffer);
+            _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
+            scr_hud_create(_new_asset);
+        }
         if (_type == "MUSIC_MAKER") {
             // Authoring asset — no C64 payload of its own, same family as
             // BITMAP_BUILDER. GENERATE emits the real BYTE_DATA/TEXT_DATA

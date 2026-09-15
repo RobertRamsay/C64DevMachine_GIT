@@ -741,6 +741,22 @@ case "LABEL": {
         // The node only inits. Call <key>_play once per frame from your main
         // loop or a MACRO_IRQ handler — the label is shown on the node.
         // -------------------------------------------------------
+        // -------------------------------------------------------
+        // MACRO_HUD
+        // [1] asset_name (HUD)      [2] screen base   [3] colour base
+        // [4] auto_draw (0/1)       [5] write_colour (0/1)
+        //
+        // AUTO DRAW is off by default: a HUD is normally stamped once, after
+        // the screen has been cleared and the charset is in place, which is
+        // rarely where the node happens to sit. JSR <key>_draw from there.
+        // -------------------------------------------------------
+        case "MACRO_HUD":
+            _n.node_title   = "HUD";
+            _n.instructions = [["macro_hud", "", 0x0400, 0xD800, 0, 1]];
+            _n.pc_address   = global.start_pc;
+            with (_n) { event_user(0); }
+            break;
+
         case "MACRO_SID_SONG":
             _n.node_title   = "SID SONG";
             //                                              [4] = hard restart frames

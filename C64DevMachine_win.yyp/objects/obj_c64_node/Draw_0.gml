@@ -192,6 +192,7 @@ if (height_dirty) {
 	    height = _G * _ss_rows;
 	} break;
 	case "MACRO_SID_SONG":   height = _G * 8;  break;   // 3 rows + 5-line pico footer
+	case "MACRO_HUD":        height = _G * 9;  break;   // 3 rows + size/entry-point report
 	case "MACRO_GET_CHAR":   height = _G * 7;  break; 
     case "MACRO_CLR_SCREEN": height = _G * 4;  break;
 	case "MACRO_MATH":       height = _G * 5;  break;    
@@ -317,7 +318,8 @@ switch (node_type) {
 if (label_picker_open) {
 
     if (label_picker_mode == "BYTE_ASSET" || label_picker_mode == "TEXT_ASSET"
-     || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET") {
+     || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET"
+     || label_picker_mode == "HUD_ASSET") {
         // One picker, four asset types. TEXT_ASSET lists TEXT_DATA (SID SOUND
         // note lists, MACRO_PRINT text); BYTE_ASSET lists BYTE_DATA;
         // SOUND_ASSET lists SOUND_EDITOR songs (MACRO_SID_SONG);
@@ -333,6 +335,9 @@ if (label_picker_open) {
         } else if (label_picker_mode == "LINE_ASSET") {
             _want_type = "LINE_COLL";
             _pick_hdr  = "LINE_COLL ASSETS";
+        } else if (label_picker_mode == "HUD_ASSET") {
+            _want_type = "HUD";
+            _pick_hdr  = "HUD ASSETS";
         }
         var _px      = draw_x + width + 8;
         var _py      = y + 36;
@@ -957,6 +962,7 @@ switch (node_type) {
     case "MACRO_VOI64_SAY":    _head_col = is_connected ? make_color_rgb(225, 150, 70) : make_color_rgb(105, 70, 34); break;
 	case "MACRO_SID_SOUND":  _head_col = is_connected ? make_color_rgb(200, 80, 170) : make_color_rgb(95, 40, 80); break;
 	case "MACRO_SID_SONG":   _head_col = is_connected ? make_color_rgb(230, 60, 140) : make_color_rgb(110, 30, 65); break;
+	case "MACRO_HUD":        _head_col = is_connected ? make_color_rgb( 90, 220, 190) : make_color_rgb(40, 100, 90); break;
 	case "MACRO_GET_CHAR":   _head_col = is_connected ? make_color_rgb(80, 160, 200) : make_color_rgb(40, 80, 100); break;
 	case "MACRO_VECTOR_PAGE": _head_col = is_connected ? make_color_rgb(90, 180, 210) : make_color_rgb(40, 80, 95); break;
     case "MACRO_LOADER": _head_col = is_connected ? make_color_rgb(200, 160, 40) : make_color_rgb(100, 80, 20); break;
@@ -1410,6 +1416,7 @@ if (_lod_body) switch (node_type) {
     case "MACRO_VOI64_SAY":    scr_node_draw_macro_voi64_say(draw_x, y);                 break;
 	case "MACRO_SID_SOUND":  scr_node_draw_macro_sid_sound(draw_x, y);                  break;
 	case "MACRO_SID_SONG":   scr_node_draw_macro_sid_song(draw_x, y);                   break;
+	case "MACRO_HUD":        scr_node_draw_macro_hud(draw_x, y);                        break;
 	case "MACRO_GET_CHAR":   scr_node_draw_macro_get_char(draw_x, y);                   break;
     case "MACRO_JOY":   scr_node_draw_macro_joy(draw_x, y);                             break;
     case "MACRO_LETTERS":
