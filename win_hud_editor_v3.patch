@@ -1,0 +1,193 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index c57c1e1..b64695e 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -10552,7 +10552,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+ // REFERENCED BY (for BITMAP, default cases — SPRITE_SET and MAP_DATA handle their own above)
+     if (_asset.type == "SFX_DATA") _cy = _vy2 - 100;
+ 	 if (_asset.type == "BYTE_DATA" || _asset.type == "TEXT_DATA" || _asset.type == "LINE_COLL") _cy = _vy2 - 100;
+-   if (_asset.type != "SPRITE_SET" && _asset.type != "MAP_DATA" && _asset.type != "BITMAP" && _asset.type != "META_TILESET" && _asset.type != "META_MAP" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER") {
++   if (_asset.type != "SPRITE_SET" && _asset.type != "MAP_DATA" && _asset.type != "BITMAP" && _asset.type != "META_TILESET" && _asset.type != "META_MAP" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "HUD") {
+         draw_set_font(fnt_c64_code);
+         draw_set_color(make_color_rgb(60,60,80));
+         draw_line(_vx1 + 10, _cy, _vx2 - 10, _cy);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_atlas/scr_hud_atlas.gml b/C64DevMachine_win.yyp/scripts/scr_hud_atlas/scr_hud_atlas.gml
+index 0d10c3e..d0b7e64 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_hud_atlas/scr_hud_atlas.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_atlas/scr_hud_atlas.gml
+@@ -105,7 +105,7 @@ function scr_hud_atlas(_asset, _chr) {
+                 }
+                 var _px = _ax + (_b * _scale);
+                 var _py = _ay + (_r * _scale);
+-                draw_rectangle(_px, _py, _px + _scale - 1, _py + _scale - 1, false);
++                draw_rectangle(_px, _py, _px + _scale, _py + _scale, false);
+             }
+         }
+     }
+@@ -134,7 +134,7 @@ function scr_hud_atlas(_asset, _chr) {
+                 draw_set_color(_pair_cols[_bits]);
+                 var _px = _ax + (_p * 2 * _scale);
+                 var _py = _ay + (_r * _scale);
+-                draw_rectangle(_px, _py, _px + (2 * _scale) - 1, _py + _scale - 1, false);
++                draw_rectangle(_px, _py, _px + (2 * _scale), _py + _scale, false);
+             }
+         }
+     }
+@@ -162,7 +162,7 @@ function scr_hud_atlas(_asset, _chr) {
+                 }
+                 var _px = _ax + (_p * 2 * _scale);
+                 var _py = _ay + (_r * _scale);
+-                draw_rectangle(_px, _py, _px + (2 * _scale) - 1, _py + _scale - 1, false);
++                draw_rectangle(_px, _py, _px + (2 * _scale), _py + _scale, false);
+             }
+         }
+     }
+@@ -216,7 +216,7 @@ function scr_hud_atlas_char(_asset, _chr, _c) {
+         gpu_set_blendmode_ext(bm_one, bm_zero);
+         draw_set_alpha(0);
+         draw_set_color(c_black);
+-        draw_rectangle(_ax, _ay, _ax + _cell - 1, _ay + _cell - 1, false);
++        draw_rectangle(_ax, _ay, _ax + _cell, _ay + _cell, false);
+         draw_set_alpha(1);
+         gpu_set_blendmode(bm_normal);
+ 
+@@ -229,7 +229,7 @@ function scr_hud_atlas_char(_asset, _chr, _c) {
+                 for (var _b = 0; _b < 8; _b++) {
+                     if ((_byte & (0x80 >> _b)) == 0) { continue; }
+                     var _px = _ax + (_b * _scale);
+-                    draw_rectangle(_px, _py, _px + _scale - 1, _py + _scale - 1, false);
++                    draw_rectangle(_px, _py, _px + _scale, _py + _scale, false);
+                 }
+             } else {
+                 for (var _p = 0; _p < 4; _p++) {
+@@ -245,7 +245,7 @@ function scr_hud_atlas_char(_asset, _chr, _c) {
+                     }
+                     if (!_want) { continue; }
+                     var _px2 = _ax + (_p * 2 * _scale);
+-                    draw_rectangle(_px2, _py, _px2 + (2 * _scale) - 1, _py + _scale - 1, false);
++                    draw_rectangle(_px2, _py, _px2 + (2 * _scale), _py + _scale, false);
+                 }
+             }
+         }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_editor/scr_hud_editor.gml b/C64DevMachine_win.yyp/scripts/scr_hud_editor/scr_hud_editor.gml
+index 9c85cad..7d1673f 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_hud_editor/scr_hud_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_editor/scr_hud_editor.gml
+@@ -2,7 +2,7 @@
+ /// @desc Inline editor for HUD assets.
+ ///
+ /// LAYOUT
+-///   toolbar      RECT x/y/w/h · CHARSET · SCREEN HR/MC · GRID · ZOOM
++///   toolbar      RECT x/y/w/h · CHARSET · SCREEN HR/MC · ZOOM
+ ///   left         the whole 40x25 screen, panel live, outside dimmed;
+ ///                under it the 256-char strip
+ ///   right        TILE  — the charset's own 8x8 tile editor on the active char
+@@ -228,13 +228,6 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     }
+     _tx += 100;
+ 
+-    // GRID
+-    var _g_lbl = "GRID";
+-    if (_button(_tx, _tool_y, 50, 16, _g_lbl, (_m.show_grid == 1), _mx, _my, _c_btn, _c_btnh, make_color_rgb(40, 40, 70), make_color_rgb(170, 170, 210))) {
+-        _m.show_grid = 1 - _m.show_grid;
+-    }
+-    _tx += 60;
+-
+     // ZOOM
+     draw_set_color(_c_lbl);
+     draw_text(_tx, _tool_y + 3, "ZOOM");
+@@ -281,12 +274,6 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+                 draw_text(_px + _cs * 0.5, _py + _cs * 0.5 - 4, string(_char));
+                 draw_set_halign(fa_left);
+             }
+-            if (_m.show_grid == 1) {
+-                draw_set_color(make_color_rgb(45, 45, 60));
+-                draw_set_alpha(0.45);
+-                draw_rectangle(_px, _py, _px + _cs - 1, _py + _cs - 1, true);
+-                draw_set_alpha(1.0);
+-            }
+         }
+     }
+ 
+@@ -465,7 +452,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+ 
+     // ── PAINT ──
+     var _py0 = _ry0 + _tile_h + 10;
+-    var _paint_h = 96;
++    var _paint_h = 118;
+     draw_set_color(_c_box);
+     draw_rectangle(_rcx, _py0, _rcx + _rcw, _py0 + _paint_h, false);
+     draw_set_color(_c_edge);
+@@ -473,6 +460,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     draw_set_color(_c_head);
+     draw_text(_rcx + 8, _py0 + 5, "PAINT");
+ 
++    // Row 1: active swatch, readout, 16 colours in two rows, cell kind button
+     var _swx = _rcx + 10;
+     var _swy = _py0 + 22;
+     var _swz = 40;
+@@ -488,7 +476,6 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     draw_set_color(_c_dim);
+     draw_text(_swx + _swz + 8, _swy + 26, _cell_lbl);
+ 
+-    // 16 colour swatches, two rows of 8
+     var _colx = _swx + _swz + 74;
+     for (var _ci = 0; _ci < 16; _ci++) {
+         var _cx1 = _colx + (_ci mod 8) * 21;
+@@ -515,35 +502,44 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+             _m.atlas_key = "";
+         }
+     }
+-    draw_set_color(_c_dim);
+-    draw_text(_colx, _swy + 44, "LEFT PAINT COLOUR   RIGHT $D021 BG (" + string(_bg_col) + ")");
+ 
+-    // CELL HR/MC — only meaningful on an MC screen
++    // CELL HR/MC sits to the right of the colours, clear of everything else.
++    var _cellx = _colx + 8 * 21 + 12;
+     if (_scr_mc) {
+         var _mc_on = ((_m.active_colour & 8) != 0);
+         var _mcl = "CELL HR";
+         if (_mc_on) { _mcl = "CELL MC"; }
+-        if (_button(_colx + 176, _swy + 40, 70, 16, _mcl, _mc_on, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) {
++        if (_button(_cellx, _swy, 76, 16, _mcl, _mc_on, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) {
+             _m.active_colour = _m.active_colour ^ 8;
+         }
++        draw_set_color(_c_dim);
++        draw_text(_cellx, _swy + 22, "BIT 3 OF");
++        draw_text(_cellx, _swy + 33, "COLOUR RAM");
+     }
+-    // Shared MC colours ($D022 / $D023) — click to step through the palette.
++
++    // Row 2: what the mouse buttons do
++    var _hy2 = _swy + _swz + 8;
++    draw_set_color(_c_dim);
++    draw_text(_swx, _hy2, "LEFT = PAINT COLOUR   RIGHT = SCREEN BACKGROUND $D021 (" + string(_bg_col) + ")");
++
++    // Row 3: shared MC colours ($D022 / $D023) — click to step through the palette
+     if (_scr_mc) {
++        var _hy3 = _hy2 + 16;
+         draw_set_color(_c_dim);
+-        draw_text(_swx, _swy + 60, "C1");
++        draw_text(_swx, _hy3 + 3, "C1");
+         draw_set_color(scr_c64_pepto_colour(_col1));
+-        draw_rectangle(_swx + 18, _swy + 58, _swx + 34, _swy + 74, false);
++        draw_rectangle(_swx + 20, _hy3, _swx + 36, _hy3 + 16, false);
+         draw_set_color(_c_dim);
+-        draw_text(_swx + 42, _swy + 60, "C2");
++        draw_text(_swx + 46, _hy3 + 3, "C2");
+         draw_set_color(scr_c64_pepto_colour(_col2));
+-        draw_rectangle(_swx + 60, _swy + 58, _swx + 76, _swy + 74, false);
++        draw_rectangle(_swx + 66, _hy3, _swx + 82, _hy3 + 16, false);
+         draw_set_color(_c_dim);
+-        draw_text(_swx + 84, _swy + 60, "CLICK = NEXT COLOUR ($D022 / $D023)");
+-        if (mouse_check_button_pressed(mb_left) && point_in_rectangle(_mx, _my, _swx + 18, _swy + 58, _swx + 34, _swy + 74)) {
++        draw_text(_swx + 92, _hy3 + 3, "SHARED MC COLOURS $D022 / $D023  -  CLICK = NEXT");
++        if (mouse_check_button_pressed(mb_left) && point_in_rectangle(_mx, _my, _swx + 20, _hy3, _swx + 36, _hy3 + 16)) {
+             _m.hud_mc_col1 = (_col1 + 1) mod 16;
+             _m.atlas_key = "";
+         }
+-        if (mouse_check_button_pressed(mb_left) && point_in_rectangle(_mx, _my, _swx + 60, _swy + 58, _swx + 76, _swy + 74)) {
++        if (mouse_check_button_pressed(mb_left) && point_in_rectangle(_mx, _my, _swx + 66, _hy3, _swx + 82, _hy3 + 16)) {
+             _m.hud_mc_col2 = (_col2 + 1) mod 16;
+             _m.atlas_key = "";
+         }

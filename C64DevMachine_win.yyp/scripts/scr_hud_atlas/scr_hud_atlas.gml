@@ -105,7 +105,7 @@ function scr_hud_atlas(_asset, _chr) {
                 }
                 var _px = _ax + (_b * _scale);
                 var _py = _ay + (_r * _scale);
-                draw_rectangle(_px, _py, _px + _scale - 1, _py + _scale - 1, false);
+                draw_rectangle(_px, _py, _px + _scale, _py + _scale, false);
             }
         }
     }
@@ -134,7 +134,7 @@ function scr_hud_atlas(_asset, _chr) {
                 draw_set_color(_pair_cols[_bits]);
                 var _px = _ax + (_p * 2 * _scale);
                 var _py = _ay + (_r * _scale);
-                draw_rectangle(_px, _py, _px + (2 * _scale) - 1, _py + _scale - 1, false);
+                draw_rectangle(_px, _py, _px + (2 * _scale), _py + _scale, false);
             }
         }
     }
@@ -162,7 +162,7 @@ function scr_hud_atlas(_asset, _chr) {
                 }
                 var _px = _ax + (_p * 2 * _scale);
                 var _py = _ay + (_r * _scale);
-                draw_rectangle(_px, _py, _px + (2 * _scale) - 1, _py + _scale - 1, false);
+                draw_rectangle(_px, _py, _px + (2 * _scale), _py + _scale, false);
             }
         }
     }
@@ -216,7 +216,7 @@ function scr_hud_atlas_char(_asset, _chr, _c) {
         gpu_set_blendmode_ext(bm_one, bm_zero);
         draw_set_alpha(0);
         draw_set_color(c_black);
-        draw_rectangle(_ax, _ay, _ax + _cell - 1, _ay + _cell - 1, false);
+        draw_rectangle(_ax, _ay, _ax + _cell, _ay + _cell, false);
         draw_set_alpha(1);
         gpu_set_blendmode(bm_normal);
 
@@ -229,7 +229,7 @@ function scr_hud_atlas_char(_asset, _chr, _c) {
                 for (var _b = 0; _b < 8; _b++) {
                     if ((_byte & (0x80 >> _b)) == 0) { continue; }
                     var _px = _ax + (_b * _scale);
-                    draw_rectangle(_px, _py, _px + _scale - 1, _py + _scale - 1, false);
+                    draw_rectangle(_px, _py, _px + _scale, _py + _scale, false);
                 }
             } else {
                 for (var _p = 0; _p < 4; _p++) {
@@ -245,7 +245,7 @@ function scr_hud_atlas_char(_asset, _chr, _c) {
                     }
                     if (!_want) { continue; }
                     var _px2 = _ax + (_p * 2 * _scale);
-                    draw_rectangle(_px2, _py, _px2 + (2 * _scale) - 1, _py + _scale - 1, false);
+                    draw_rectangle(_px2, _py, _px2 + (2 * _scale), _py + _scale, false);
                 }
             }
         }
