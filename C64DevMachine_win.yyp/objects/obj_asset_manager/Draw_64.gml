@@ -1734,6 +1734,39 @@ draw_set_color(c_ltgray);
 	            _m.paint_mc = (_paint_mc == 0) ? 1 : 0;
 	        }
 	    }
+
+	    // RAW CHARS toggle — emit the char plane only (map_w bytes per row,
+	    // map_h rows) with no colour plane and no transposed copy. For engines
+	    // that index the map themselves. MACRO_MAP / MACRO_SCROLL need the
+	    // full layout, so leave this off for maps they use.
+	    if (!variable_struct_exists(_m, "raw_chars")) {
+	        _m.raw_chars = 0;
+	    }
+	    var _raw_on     = (real(_m.raw_chars) == 1) ? 1 : 0;
+	    var _rw_labels  = ["FULL MAP", "RAW CHARS"];
+	    var _rw_cols    = [make_color_rgb(30,30,45), make_color_rgb(90,40,20)];
+	    var _rw_tcols   = [make_color_rgb(80,80,100), make_color_rgb(255,170,80)];
+	    var _rwx1  = _gbx1 + 196;
+	    var _rwx2  = _rwx1 + 90;
+	    var _rwy1  = _cy;
+	    var _rwy2  = _cy + 16;
+	    var _rwhov = point_in_rectangle(_mx, _my, _rwx1, _rwy1, _rwx2, _rwy2);
+	    draw_set_color(_rw_cols[_raw_on]);
+	    draw_rectangle(_rwx1, _rwy1, _rwx2, _rwy2, false);
+	    draw_set_font(fnt_c64_tiny);
+	    draw_set_color(_rw_tcols[_raw_on]);
+	    draw_set_halign(fa_center);
+	    draw_text(_rwx1 + 45, _rwy1 + 3, _rw_labels[_raw_on]);
+	    draw_set_halign(fa_left);
+	    if (_rwhov && mouse_check_button_pressed(mb_left)) {
+	        if (_raw_on == 1) {
+	            _m.raw_chars = 0;
+	        } else {
+	            _m.raw_chars = 1;
+	        }
+	        _m.is_dirty = true;
+	        global.addresses_dirty = true;
+	    }
 	 }
 _cy += 22;
 

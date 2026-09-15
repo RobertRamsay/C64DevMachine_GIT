@@ -218,6 +218,7 @@
         if (variable_struct_exists(_a.meta, "save_file_size")) _meta_out.save_file_size = _a.meta.save_file_size;
 	        if (variable_struct_exists(_a.meta, "paint_mc"))      _meta_out.paint_mc      = _a.meta.paint_mc;
 	        if (variable_struct_exists(_a.meta, "map_mixed"))     _meta_out.map_mixed     = _a.meta.map_mixed;
+	        if (variable_struct_exists(_a.meta, "raw_chars"))     _meta_out.raw_chars     = _a.meta.raw_chars;
 	        if (variable_struct_exists(_a.meta, "override_grid")) _meta_out.override_grid = _a.meta.override_grid;
 	        if (variable_struct_exists(_a.meta, "map_mc_bg"))     _meta_out.map_mc_bg     = _a.meta.map_mc_bg;
 	        if (variable_struct_exists(_a.meta, "map_mc_col1"))   _meta_out.map_mc_col1   = _a.meta.map_mc_col1;

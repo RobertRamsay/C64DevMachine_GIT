@@ -580,8 +580,15 @@ var _addr_total = 65536;
                 case "MAP_DATA":
                     if (variable_struct_exists(_a, "meta") && variable_struct_exists(_a.meta, "map_w") && _a.meta.map_w > 0 && _a.meta.map_h > 0) {
                         var _msz = _a.meta.map_w * _a.meta.map_h;
+                        var _map_raw_seg = 0;
+                        if (variable_struct_exists(_a.meta, "raw_chars") && is_real(_a.meta.raw_chars)) {
+                            _map_raw_seg = real(_a.meta.raw_chars);
+                        }
                         array_push(_segments, { addr: _a.address, size: _msz, col: make_color_rgb(40, 200, 180), type: "ASSET", name: _a.name, lines: [], node_id: noone, no_conflict: _a_is_load_later, conflict: false, load_later: _a_is_load_later });
-                        array_push(_segments, { addr: _a.address + _msz, size: _msz, col: make_color_rgb(40, 120, 200), type: "ASSET", name: _a.name + " (ATTR)", lines: [], node_id: noone, no_conflict: _a_is_load_later, conflict: false, load_later: _a_is_load_later });
+                        // RAW CHARS maps have no colour plane
+                        if (_map_raw_seg == 0) {
+                            array_push(_segments, { addr: _a.address + _msz, size: _msz, col: make_color_rgb(40, 120, 200), type: "ASSET", name: _a.name + " (ATTR)", lines: [], node_id: noone, no_conflict: _a_is_load_later, conflict: false, load_later: _a_is_load_later });
+                        }
                     }
                     break;
 				case "META_TILESET":

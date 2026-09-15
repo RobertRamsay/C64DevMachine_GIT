@@ -34,7 +34,7 @@ function scr_opcode_hex(_key) {
         "eor_zpx": "55", "eor_abx": "5D", "eor_aby": "59",
         "bit_abs": "2C", "cpx_abs": "EC", "cpy_abs": "CC",
         "cmp_zp":  "C5", "cmp_abs": "CD", "cmp_zpx": "D5",
-        "cmp_abx": "DD", "cmp_aby": "D9", "cmp_izx": "C1", "cmp_izy": "D1",
+        "cmp_abx": "DD", "cmp_aby": "D9", "cmp_abs_x": "DD", "cmp_abs_y": "D9", "cmp_izx": "C1", "cmp_izy": "D1",
         "and_izx": "21", "and_izy": "31",
         "ora_izx": "01", "ora_izy": "11",
         "eor_izx": "41", "eor_izy": "51",

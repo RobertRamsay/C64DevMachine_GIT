@@ -141,6 +141,8 @@ function scr_define_opcodes() {
         "cmp_zpx":     [2, 4], // $D5 |           | Compare A ZP, X
         "cmp_abx":     [3, 4], // $DD |           | Compare A Abs, X
         "cmp_aby":     [3, 4], // $D9 |           | Compare A Abs, Y
+        "cmp_abs_x":   [3, 4], // $DD | Alias for cmp_abx | what scr_parse_asm_text emits for cmp $xxxx,x
+        "cmp_abs_y":   [3, 4], // $D9 | Alias for cmp_aby | what scr_parse_asm_text emits for cmp $xxxx,y
 "cmp_izx":     [2, 6], // $C1 |           | Compare A (Ind, X)
         "cmp_izy":     [2, 5], // $D1 |           | Compare A (Ind), Y
 "and_izx":     [2, 6], // $21 |           | AND (Ind, X)

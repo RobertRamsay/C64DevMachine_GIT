@@ -86,7 +86,8 @@ assemble_instruction: function(_mnem, _val) {
                                + "lda_abx,lda_absx,lda_aby,ldx_aby,ldy_abx,sta_abx,sta_aby,"
                                + "lda_abs_x,lda_abs_y,sta_abs_x,sta_abs_y,"
                                + "adc_abs,sbc_abs,and_abs,ora_abs,eor_abs,cmp_abs,"
-                               + "adc_abx,adc_aby,sbc_abx,sbc_aby,inc_abs,dec_abs,";
+                               + "adc_abx,adc_aby,sbc_abx,sbc_aby,inc_abs,dec_abs,"
+                               + "cmp_abx,cmp_aby,cmp_abs_x,cmp_abs_y,";
                 if (string_pos("," + _mnem + ",", _abs_mnems) > 0) {
                     var _fp = (self.pc_override >= 0)
                         ? (self.pc_override + 1) - self.base_address - self.header_size
@@ -105,6 +106,7 @@ assemble_instruction: function(_mnem, _val) {
                         adc_abx: 0x7D, adc_aby: 0x79,
                         sbc_abx: 0xFD, sbc_aby: 0xF9,
                         inc_abs: 0xEE, dec_abs: 0xCE,
+                        cmp_abx: 0xDD, cmp_abs_x: 0xDD, cmp_aby: 0xD9, cmp_abs_y: 0xD9,
                     };
                     var _op = variable_struct_exists(_op_map, _mnem) ? _op_map[$ _mnem] : 0xAD;
                     self.add([_op, 0x00, 0x00]);
@@ -327,7 +329,9 @@ assemble_instruction: function(_mnem, _val) {
 				case "cmp_abs":  self._cmp_abs(_val);  break; // $CD
 				case "cmp_zp":   self._cmp_zp(_val);   break; // $C5
 				case "cmp_zpx":  self.add([0xD5, _val]); break; // $D5
+				case "cmp_abs_x":
 				case "cmp_abx":  self.add([0xDD, _val&0xFF, _val>>8]); break; // $DD
+				case "cmp_abs_y":
 				case "cmp_aby":  self.add([0xD9, _val&0xFF, _val>>8]); break; // $D9
 				case "cmp_izx":  self.add([0xC1, _val]); break; // $C1
 				case "cmp_izy":  self.add([0xD1, _val]); break; // $D1

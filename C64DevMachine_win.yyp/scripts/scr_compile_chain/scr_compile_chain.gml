@@ -19753,15 +19753,34 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
                 }
 				
 			} else if (_a.type == "MAP_DATA") {
+		    var _mw  = _a.meta.map_w;
+		    var _mh  = _a.meta.map_h;
+		    var _msz = _mw * _mh;
+
+		    // RAW CHARS map: emit the char plane only — map_w bytes per row,
+		    // map_h rows, nothing else. No colour plane, no transposed copy.
+		    // For hand-written engines that index the map themselves (a
+		    // 256-wide map puts one row per page, so row = hi byte, column =
+		    // lo byte). MACRO_MAP / MACRO_SCROLL need the full layout and
+		    // must not be pointed at a RAW map.
+		    var _map_raw = 0;
+		    if (variable_struct_exists(_a.meta, "raw_chars") && is_real(_a.meta.raw_chars)) {
+		        _map_raw = real(_a.meta.raw_chars);
+		    }
+		    if (_map_raw == 1) {
+		        var _raw_n = min(_msz, _sz);
+		        for (var _bb = 0; _bb < _raw_n; _bb++) {
+		            array_push(instruction_list, ["byte", buffer_peek(_buf, _bb, buffer_u8)]);
+		        }
+		        continue;
+		    }
+
 		    // Original raw inject — untouched, MACRO_MAP uses this
 		    for (var _bb = 0; _bb < _sz; _bb++) {
 		        array_push(instruction_list, ["byte", buffer_peek(_buf, _bb, buffer_u8)]);
 		    }
 
 		    // Transposed copy immediately after — MACRO_SCROLL uses this
-		    var _mw  = _a.meta.map_w;
-		    var _mh  = _a.meta.map_h;
-		    var _msz = _mw * _mh;
 		    var _transposed_base = _a.address + (_msz * 2); // after both planes
 		    array_push(instruction_list, ["org", _transposed_base]);
 

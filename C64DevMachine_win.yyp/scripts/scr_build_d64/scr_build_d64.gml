@@ -173,11 +173,20 @@ function scr_build_d64(_prg_buf, _base_pc, _boot_actual_size, _out_path = "") {
                         }
                     } else {
                         var _addr = _b.address;
-                        _lsz  = _raw_sz + 2;
+                        var _copy_sz = _raw_sz;
+                        // RAW CHARS map: the file is the char plane only, same
+                        // bytes the compile chain bakes for this asset.
+                        if (_b.type == "MAP_DATA"
+                        &&  variable_struct_exists(_b.meta, "raw_chars")
+                        &&  is_real(_b.meta.raw_chars)
+                        &&  real(_b.meta.raw_chars) == 1) {
+                            _copy_sz = min(_raw_sz, _b.meta.map_w * _b.meta.map_h);
+                        }
+                        _lsz  = _copy_sz + 2;
                         _lbuf = buffer_create(_lsz, buffer_fixed, 1);
                         buffer_poke(_lbuf, 0, buffer_u8, _addr & 0xFF);
                         buffer_poke(_lbuf, 1, buffer_u8, (_addr >> 8) & 0xFF);
-                        buffer_copy(_b.buffer, 0, _raw_sz, _lbuf, 2);
+                        buffer_copy(_b.buffer, 0, _copy_sz, _lbuf, 2);
                     }
 
                     array_push(_tmp_bufs, _lbuf);
