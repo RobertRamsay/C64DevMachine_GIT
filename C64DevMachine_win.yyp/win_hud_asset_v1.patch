@@ -1,0 +1,2546 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index f3b6411..81fef86 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -33,6 +33,7 @@
+     {"$GMFolder":"","%Name":"SFX","folderPath":"folders/SCRIPTS/CORE/SFX.yy","name":"SFX","resourceType":"GMFolder","resourceVersion":"2.0",},
+     {"$GMFolder":"","%Name":"SPAWNS","folderPath":"folders/SCRIPTS/CORE/SPAWNS.yy","name":"SPAWNS","resourceType":"GMFolder","resourceVersion":"2.0",},
+     {"$GMFolder":"","%Name":"VISUAL","folderPath":"folders/SCRIPTS/CORE/VISUAL.yy","name":"VISUAL","resourceType":"GMFolder","resourceVersion":"2.0",},
++    {"$GMFolder":"","%Name":"HUD","folderPath":"folders/SCRIPTS/HUD.yy","name":"HUD","resourceType":"GMFolder","resourceVersion":"2.0",},
+     {"$GMFolder":"","%Name":"MACROS","folderPath":"folders/SCRIPTS/MACROS.yy","name":"MACROS","resourceType":"GMFolder","resourceVersion":"2.0",},
+     {"$GMFolder":"","%Name":"IRQ_BASED","folderPath":"folders/SCRIPTS/MACROS/IRQ_BASED.yy","name":"IRQ_BASED","resourceType":"GMFolder","resourceVersion":"2.0",},
+     {"$GMFolder":"","%Name":"LOADER_SUPPORT","folderPath":"folders/SCRIPTS/MACROS/LOADER_SUPPORT.yy","name":"LOADER_SUPPORT","resourceType":"GMFolder","resourceVersion":"2.0",},
+@@ -1098,6 +1099,11 @@
+     {"id":{"name":"scr_get_hex_val","path":"scripts/scr_get_hex_val/scr_get_hex_val.yy",},},
+     {"id":{"name":"scr_get_node_uid","path":"scripts/scr_get_node_uid/scr_get_node_uid.yy",},},
+     {"id":{"name":"scr_get_opcode_syntax_parts","path":"scripts/scr_get_opcode_syntax_parts/scr_get_opcode_syntax_parts.yy",},},
++    {"id":{"name":"scr_hud_atlas","path":"scripts/scr_hud_atlas/scr_hud_atlas.yy",},},
++    {"id":{"name":"scr_hud_create","path":"scripts/scr_hud_create/scr_hud_create.yy",},},
++    {"id":{"name":"scr_hud_editor","path":"scripts/scr_hud_editor/scr_hud_editor.yy",},},
++    {"id":{"name":"scr_hud_flush","path":"scripts/scr_hud_flush/scr_hud_flush.yy",},},
++    {"id":{"name":"scr_hud_screen_code","path":"scripts/scr_hud_screen_code/scr_hud_screen_code.yy",},},
+     {"id":{"name":"scr_import_charpad_ctm_legacy","path":"scripts/scr_import_charpad_ctm_legacy/scr_import_charpad_ctm_legacy.yy",},},
+     {"id":{"name":"scr_import_charpad_ctm","path":"scripts/scr_import_charpad_ctm/scr_import_charpad_ctm.yy",},},
+     {"id":{"name":"scr_import_charpad_raw","path":"scripts/scr_import_charpad_raw/scr_import_charpad_raw.yy",},},
+@@ -1156,6 +1162,7 @@
+     {"id":{"name":"scr_node_draw_macro_display","path":"scripts/scr_node_draw_macro_display/scr_node_draw_macro_display.yy",},},
+     {"id":{"name":"scr_node_draw_macro_flip_x","path":"scripts/scr_node_draw_macro_flip_x/scr_node_draw_macro_flip_x.yy",},},
+     {"id":{"name":"scr_node_draw_macro_get_char","path":"scripts/scr_node_draw_macro_get_char/scr_node_draw_macro_get_char.yy",},},
++    {"id":{"name":"scr_node_draw_macro_hud","path":"scripts/scr_node_draw_macro_hud/scr_node_draw_macro_hud.yy",},},
+     {"id":{"name":"scr_node_draw_macro_irq_handler","path":"scripts/scr_node_draw_macro_irq_handler/scr_node_draw_macro_irq_handler.yy",},},
+     {"id":{"name":"scr_node_draw_macro_irq","path":"scripts/scr_node_draw_macro_irq/scr_node_draw_macro_irq.yy",},},
+     {"id":{"name":"scr_node_draw_macro_joy","path":"scripts/scr_node_draw_macro_joy/scr_node_draw_macro_joy.yy",},},
+@@ -1217,6 +1224,7 @@
+     {"id":{"name":"scr_node_step_macro_display","path":"scripts/scr_node_step_macro_display/scr_node_step_macro_display.yy",},},
+     {"id":{"name":"scr_node_step_macro_flip_x","path":"scripts/scr_node_step_macro_flip_x/scr_node_step_macro_flip_x.yy",},},
+     {"id":{"name":"scr_node_step_macro_get_char","path":"scripts/scr_node_step_macro_get_char/scr_node_step_macro_get_char.yy",},},
++    {"id":{"name":"scr_node_step_macro_hud","path":"scripts/scr_node_step_macro_hud/scr_node_step_macro_hud.yy",},},
+     {"id":{"name":"scr_node_step_macro_irq_handler","path":"scripts/scr_node_step_macro_irq_handler/scr_node_step_macro_irq_handler.yy",},},
+     {"id":{"name":"scr_node_step_macro_irq","path":"scripts/scr_node_step_macro_irq/scr_node_step_macro_irq.yy",},},
+     {"id":{"name":"scr_node_step_macro_joy","path":"scripts/scr_node_step_macro_joy/scr_node_step_macro_joy.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index 96ff720..857f5b2 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -69,6 +69,7 @@ asset_types = [
+ 	"LOAD_REU",
+ 	"META_TILESET",
+ 	"LINE_COLL",
++	"HUD",
+ ];
+ // -------------------------------------------------------
+ // ASSET VIEWER
+@@ -97,7 +98,8 @@ type_colours = {
+     LOAD_REU      : make_color_rgb(100, 200, 180),
+     META_TILESET  : make_color_rgb(120, 200, 255),
+     META_MAP      : make_color_rgb( 80, 140, 255),
+-    LINE_COLL     : make_color_rgb(255, 100, 100)
++    LINE_COLL     : make_color_rgb(255, 100, 100),
++    HUD           : make_color_rgb( 90, 220, 190)
+ };
+ // -------------------------------------------------------
+ // NAME EDITING
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 5b25fa2..c57c1e1 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -292,7 +292,7 @@ for (var _pos = 0; _pos < _count; _pos++) {
+         draw_set_color(c_lime);
+         var _blink = ((current_time mod 600) < 300) ? "_" : " ";
+         draw_text(_panel_right - 6, _iy + 12, editing_addr_string + _blink);
+-    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER") {
++    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER" || _asset.type == "HUD") {
+         // LOAD_ORG is a manifest, not physical data — it has no meaningful
+         // load address (each linked asset carries its own). BITMAP_BUILDER is
+         // an internal editor asset: it emits a derived BYTE_DATA table which
+@@ -722,7 +722,7 @@ if (metamap_picker_open && instance_exists(metamap_picker_node)) {
+ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
+     var _asset = ds_list_find_value(asset_list, viewer_asset);
+ 
+-	var _wide_editor = (_asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER");
++	var _wide_editor = (_asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER" || _asset.type == "HUD");
+ 	var _vx1 = _wide_editor ? 30 : 288;
+ 	var _vy1 = 108;
+ 	var _vx2 = _wide_editor ? (panel_x + 20) : (panel_x - 10);
+@@ -774,7 +774,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+     var _lby2     = _cy + 20;
+     if (!_hide_import && _asset.type != "LOAD_ORG" && _asset.type != "LOAD_REU"
+ 	&& _asset.type != "META_TILESET" && _asset.type != "BITMAP_BUILDER" 
+-	&& _asset.type != "MUSIC_MAKER"
++	&& _asset.type != "MUSIC_MAKER" && _asset.type != "HUD"
+ 	&& !(_asset.type == "BYTE_DATA" && variable_struct_exists(_asset.meta, "is_save_file") && _asset.meta.is_save_file)) {
+         var _lb_hover = point_in_rectangle(_mx, _my, _lbx1, _lby1, _lbx2, _lby2);
+         draw_set_color(_lb_hover ? make_color_rgb(80, 200, 80) : make_color_rgb(30, 90, 40));
+@@ -860,7 +860,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+     // asset with no C64 payload — suppress the label entirely rather than
+     // showing an empty field.
+     draw_set_font(fnt_c64_tiny);
+-    if (_asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER") {
++    if (_asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "HUD") {
+         draw_set_color(c_ltgray); draw_text(_vx1 + 10, _cy, "ADDRESS:");
+     }
+ 
+@@ -872,7 +872,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+         draw_text(_vx1 + 78, _cy, editing_addr_string + _blink);
+         draw_set_color(c_gray);
+         draw_text(_vx1 + 170, _cy, "ENTER TO CONFIRM");
+-    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER") {
++    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER" || _asset.type == "HUD") {
+         // LOAD_ORG is a manifest — no meaningful load address. BITMAP_BUILDER
+         // and SOUND_EDITOR are internal-only; their emitted BYTE_DATA/TEXT_DATA
+         // assets hold the real addresses. Show a dash, no hover/edit affordance.
+@@ -934,6 +934,12 @@ case "MUSIC_MAKER": {
+     // Same wide-panel treatment as BITMAP_BUILDER — _vx1 is already 30 here.
+     scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my);
+ } break;
++
++case "HUD": {
++    // Wide panel as well: the editor draws the whole 40x25 screen so a panel
++    // can be judged against the space the game actually leaves for it.
++    scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my);
++} break;
+ 		
+ case "CHAR_SET": {
+     // Rebuild all three charset surfaces if any are lost (F11 / surface loss)
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index 924476f..bbaa48d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -1942,6 +1942,13 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open) {
+             _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
+             scr_bitmap_builder_create(_new_asset);
+         }
++        if (_type == "HUD") {
++            // Authoring asset: the buffer is only there so the workspace saver
++            // has something to blob out — MACRO_HUD reads the grids in meta.
++            if (buffer_exists(_new_asset.buffer)) buffer_delete(_new_asset.buffer);
++            _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
++            scr_hud_create(_new_asset);
++        }
+         if (_type == "MUSIC_MAKER") {
+             // Authoring asset — no C64 payload of its own, same family as
+             // BITMAP_BUILDER. GENERATE emits the real BYTE_DATA/TEXT_DATA
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 30317f1..8fb778d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -192,6 +192,7 @@ if (height_dirty) {
+ 	    height = _G * _ss_rows;
+ 	} break;
+ 	case "MACRO_SID_SONG":   height = _G * 8;  break;   // 3 rows + 5-line pico footer
++	case "MACRO_HUD":        height = _G * 9;  break;   // 3 rows + size/entry-point report
+ 	case "MACRO_GET_CHAR":   height = _G * 7;  break; 
+     case "MACRO_CLR_SCREEN": height = _G * 4;  break;
+ 	case "MACRO_MATH":       height = _G * 5;  break;    
+@@ -317,7 +318,8 @@ switch (node_type) {
+ if (label_picker_open) {
+ 
+     if (label_picker_mode == "BYTE_ASSET" || label_picker_mode == "TEXT_ASSET"
+-     || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET") {
++     || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET"
++     || label_picker_mode == "HUD_ASSET") {
+         // One picker, four asset types. TEXT_ASSET lists TEXT_DATA (SID SOUND
+         // note lists, MACRO_PRINT text); BYTE_ASSET lists BYTE_DATA;
+         // SOUND_ASSET lists SOUND_EDITOR songs (MACRO_SID_SONG);
+@@ -333,6 +335,9 @@ if (label_picker_open) {
+         } else if (label_picker_mode == "LINE_ASSET") {
+             _want_type = "LINE_COLL";
+             _pick_hdr  = "LINE_COLL ASSETS";
++        } else if (label_picker_mode == "HUD_ASSET") {
++            _want_type = "HUD";
++            _pick_hdr  = "HUD ASSETS";
+         }
+         var _px      = draw_x + width + 8;
+         var _py      = y + 36;
+@@ -957,6 +962,7 @@ switch (node_type) {
+     case "MACRO_VOI64_SAY":    _head_col = is_connected ? make_color_rgb(225, 150, 70) : make_color_rgb(105, 70, 34); break;
+ 	case "MACRO_SID_SOUND":  _head_col = is_connected ? make_color_rgb(200, 80, 170) : make_color_rgb(95, 40, 80); break;
+ 	case "MACRO_SID_SONG":   _head_col = is_connected ? make_color_rgb(230, 60, 140) : make_color_rgb(110, 30, 65); break;
++	case "MACRO_HUD":        _head_col = is_connected ? make_color_rgb( 90, 220, 190) : make_color_rgb(40, 100, 90); break;
+ 	case "MACRO_GET_CHAR":   _head_col = is_connected ? make_color_rgb(80, 160, 200) : make_color_rgb(40, 80, 100); break;
+ 	case "MACRO_VECTOR_PAGE": _head_col = is_connected ? make_color_rgb(90, 180, 210) : make_color_rgb(40, 80, 95); break;
+     case "MACRO_LOADER": _head_col = is_connected ? make_color_rgb(200, 160, 40) : make_color_rgb(100, 80, 20); break;
+@@ -1410,6 +1416,7 @@ if (_lod_body) switch (node_type) {
+     case "MACRO_VOI64_SAY":    scr_node_draw_macro_voi64_say(draw_x, y);                 break;
+ 	case "MACRO_SID_SOUND":  scr_node_draw_macro_sid_sound(draw_x, y);                  break;
+ 	case "MACRO_SID_SONG":   scr_node_draw_macro_sid_song(draw_x, y);                   break;
++	case "MACRO_HUD":        scr_node_draw_macro_hud(draw_x, y);                        break;
+ 	case "MACRO_GET_CHAR":   scr_node_draw_macro_get_char(draw_x, y);                   break;
+     case "MACRO_JOY":   scr_node_draw_macro_joy(draw_x, y);                             break;
+     case "MACRO_LETTERS":
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 2d72844..fdabe4b 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -421,7 +421,8 @@ if (label_picker_open) {
+ if (label_picker_open && mouse_check_button_pressed(mb_left)) {
+    // ---- ASSET PICKER (BYTE_DATA / TEXT_DATA / LINE_COLL) ----
+     if (label_picker_mode == "BYTE_ASSET" || label_picker_mode == "TEXT_ASSET"
+-	 || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET") {
++	 || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET"
++	 || label_picker_mode == "HUD_ASSET") {
+         var _want_type = "BYTE_DATA";
+         if (label_picker_mode == "TEXT_ASSET") {
+             _want_type = "TEXT_DATA";
+@@ -429,6 +430,8 @@ if (label_picker_open && mouse_check_button_pressed(mb_left)) {
+             _want_type = "MUSIC_MAKER";
+         } else if (label_picker_mode == "LINE_ASSET") {
+             _want_type = "LINE_COLL";
++        } else if (label_picker_mode == "HUD_ASSET") {
++            _want_type = "HUD";
+         }
+         var _px      = draw_x + width + 8;
+         var _py      = y + 36;
+@@ -1063,6 +1066,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
+         case "MACRO_VOI64_SAY":    scr_node_step_macro_voi64_say(draw_x);    break;
+ 		case "MACRO_SID_SOUND":  scr_node_step_macro_sid_sound(draw_x);  break;
+ 		case "MACRO_SID_SONG":   scr_node_step_macro_sid_song(draw_x);   break;
++		case "MACRO_HUD":        scr_node_step_macro_hud(draw_x);        break;
+ 		case "MACRO_GET_CHAR":   scr_node_step_macro_get_char(draw_x);   break;
+ 		case "MACRO_MOVE_MEM": scr_node_step_macro_move_mem(draw_x); break;
+ 		case "MACRO_MOVE_BMP_BLOCK": scr_node_step_macro_move_bmp_block(draw_x); break;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 96bcfef..d5cb33c 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -1494,6 +1494,7 @@ if (gui_menu_open == 0) {
+         { title: "PLACE CHAR",   type: "MACRO_PLACE_CHAR"    },
+ 		{ title: "GET CHAR",     type: "MACRO_GET_CHAR"      },
+         { title: "CLR SCRN RAM", type: "MACRO_CLR_SCREEN"    },
++        { title: "HUD",          type: "MACRO_HUD"           },
+         { title: "CLR BMP RECT", type: "MACRO_CLEAR_BMP_RECT" },
+         { title: "VWAIT (ALT+V)",        type: "MACRO_VWAIT"         },
+         { title: "WAIT",         type: "MACRO_WAIT"          },
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_default_address/scr_asset_default_address.gml b/C64DevMachine_win.yyp/scripts/scr_asset_default_address/scr_asset_default_address.gml
+index 3a161e8..2c726cc 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_default_address/scr_asset_default_address.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_default_address/scr_asset_default_address.gml
+@@ -35,6 +35,9 @@ function scr_asset_default_address(_type) {
+         // BITMAP_BUILDER is an AUTHORING asset — it emits a BYTE_DATA table and
+         // occupies no C64 memory itself. Address is cosmetic only.
+ 		case "MUSIC_MAKER": return 0x0000;
++        // HUD is an AUTHORING asset too — MACRO_HUD emits its chars and
++        // colours inline on the spine, so it owns no address of its own.
++        case "HUD":         return 0x0000;
+         case "BITMAP_BUILDER": return 0x0000;
+         case "LOAD_ORG":   return 0x0000;
+         default:           return 0x2400;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+index 5cfe4ff..bfa5329 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+@@ -137,6 +137,28 @@ var _base = "unsaved";
+                 _mo.map_w        = variable_struct_exists(_me, "map_w")        ? _me.map_w        : [];
+                 _mo.map_h        = variable_struct_exists(_me, "map_h")        ? _me.map_h        : [];
+             }
++            if (_a.type == "HUD") {
++                // Same field set as scr_save_workspace_as — surfaces excluded.
++                _mo.hud_x         = _me.hud_x;
++                _mo.hud_y         = _me.hud_y;
++                _mo.hud_w         = _me.hud_w;
++                _mo.hud_h         = _me.hud_h;
++                _mo.char_grid     = _me.char_grid;
++                _mo.colour_grid   = _me.colour_grid;
++                _mo.chr_asset     = _me.chr_asset;
++                _mo.fields        = _me.fields;
++                _mo.sel_field     = _me.sel_field;
++                _mo.active_char   = _me.active_char;
++                _mo.active_colour = _me.active_colour;
++                _mo.paint_mc      = _me.paint_mc;
++                _mo.hud_mc_bg     = _me.hud_mc_bg;
++                _mo.hud_mc_col1   = _me.hud_mc_col1;
++                _mo.hud_mc_col2   = _me.hud_mc_col2;
++                _mo.zoom          = _me.zoom;
++                _mo.cur_x         = _me.cur_x;
++                _mo.cur_y         = _me.cur_y;
++                _mo.show_grid     = _me.show_grid;
++            }
+             if (_a.type == "MUSIC_MAKER") {
+                 _mo.instruments      = variable_struct_exists(_me, "instruments")      ? _me.instruments      : [];
+                 _mo.sel_instr        = variable_struct_exists(_me, "sel_instr")        ? _me.sel_instr        : -1;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml b/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml
+index ca842a3..dd185de 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml
+@@ -52,6 +52,9 @@ function scr_boot_resident_ranges() {
+         var _a = ds_list_find_value(_am.asset_list, _ai);
+         if (_a.type == "LOAD_ORG") continue;
+         if (_a.type == "LOAD_REU") continue;
++        // Authoring asset with no address of its own — its bytes reach the
++        // image through MACRO_HUD, already counted as that node's size.
++        if (_a.type == "HUD") continue;
+         if (ds_map_exists(_deferred, _a.name)) continue;
+         if (!buffer_exists(_a.buffer)) continue;
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index ef01821..dfe1c49 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -17490,6 +17490,353 @@ case "MACRO_SID_SONG": {
+ 	
+ 	
+ 	
++// --------------------------------------------------------
++// MACRO_HUD — stamps a HUD asset onto the text screen and gives
++// every FIELD on it an entry point.
++//
++// instructions[0]: ["macro_hud", asset_name, screen_base, colour_base,
++//                   auto_draw, write_colour]
++//
++// ENTRY POINTS:
++//   <key>_draw     copies the panel's chars (and colours) into screen RAM.
++//                  No arguments, ends in RTS. Call it once after the screen
++//                  is set up, and again after anything overwrites the panel.
++//   <key>_<FIELD>  one per DIGITS or BAR field — A carries the value.
++//                  TEXT fields emit no code; they are positions, and the node
++//                  lists their screen address for code blocks to use.
++//
++// The data sits on the spine, jumped over, tagged with _id so Pass 1.5 counts
++// it into total_node_size — the same arrangement MACRO_SID_SONG uses.
++//
++// THE COPY. When the panel spans the full width of the screen its cells are
++// contiguous in screen RAM, so the copy is one loop per 256 bytes and nothing
++// else — 32 bytes of code for a 440-cell panel. Any other rectangle is copied
++// a row at a time, which costs 13 bytes per row (22 with colour). Both paths
++// index with X from a per-row or per-page label, because a label plus an
++// offset is not something the assembler's fixups can express.
++// --------------------------------------------------------
++case "MACRO_HUD": {
++    var _id = _curr;
++    var _i0 = _curr.instructions[0];
++
++    var _asset_name = "";
++    if (array_length(_i0) > 1) {
++        _asset_name = string(_i0[1]);
++    }
++    var _scr_base = 0x0400;
++    if (array_length(_i0) > 2 && is_real(_i0[2])) {
++        _scr_base = real(_i0[2]) & 0xFFFF;
++    }
++    var _col_base = 0xD800;
++    if (array_length(_i0) > 3 && is_real(_i0[3])) {
++        _col_base = real(_i0[3]) & 0xFFFF;
++    }
++    var _auto_draw = 0;
++    if (array_length(_i0) > 4 && is_real(_i0[4])) {
++        _auto_draw = real(_i0[4]);
++    }
++    var _do_col = 1;
++    if (array_length(_i0) > 5 && is_real(_i0[5])) {
++        _do_col = real(_i0[5]);
++    }
++
++    // ── Resolve the HUD asset ──
++    var _hu = noone;
++    if (_asset_name != "" && instance_exists(obj_asset_manager)) {
++        var _am_hd = obj_asset_manager;
++        for (var _ai = 0; _ai < ds_list_size(_am_hd.asset_list); _ai++) {
++            var _a = ds_list_find_value(_am_hd.asset_list, _ai);
++            if (_a.type == "HUD" && _a.name == _asset_name) {
++                _hu = _a;
++                break;
++            }
++        }
++    }
++    if (_hu == noone) {
++        show_debug_message("MACRO_HUD: asset '" + _asset_name + "' not found — skipping");
++        break;
++    }
++
++    var _hm = _hu.meta;
++    var _hw = _hm.hud_w;
++    var _hh = _hm.hud_h;
++    var _hx = _hm.hud_x;
++    var _hy = _hm.hud_y;
++    var _total = _hw * _hh;
++
++    if (_hw <= 0 || _hh <= 0 || _total <= 0) {
++        show_debug_message("MACRO_HUD: '" + _asset_name + "' has an empty rectangle — skipping");
++        break;
++    }
++    if (array_length(_hm.char_grid) < _total || array_length(_hm.colour_grid) < _total) {
++        show_debug_message("MACRO_HUD: '" + _asset_name + "' grids are shorter than "
++            + string(_hw) + "x" + string(_hh) + " — open it once in the asset manager to repair it");
++        break;
++    }
++
++    var _key = "hud" + string(_id.stable_uid) + "_";
++
++    // Contiguous only when the panel is the full width of the screen: a
++    // narrower rectangle has a gap at the end of every row.
++    var _contig = false;
++    if (_hx == 0 && _hw == 40) {
++        _contig = true;
++    }
++
++    // ════════════════════════════════════════════════════════════════
++    // DATA — chars, then colours. Labelled at every row start AND every
++    // 256-byte boundary, so the row copier and the page copier can each
++    // index from a label without needing label+offset arithmetic.
++    // ════════════════════════════════════════════════════════════════
++    var _lbl_dskip = _key + "dskip";
++    array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
++
++    for (var _i = 0; _i < _total; _i++) {
++        if (_i mod _hw == 0) {
++            array_push(_list, ["label", _key + "r" + string(_i div _hw)]);
++        }
++        if (_i mod 256 == 0) {
++            array_push(_list, ["label", _key + "c" + string(_i div 256)]);
++        }
++        array_push(_list, ["byte", _hm.char_grid[_i] & 0xFF, _id]);
++    }
++
++    if (_do_col == 1) {
++        for (var _i = 0; _i < _total; _i++) {
++            if (_i mod _hw == 0) {
++                array_push(_list, ["label", _key + "kr" + string(_i div _hw)]);
++            }
++            if (_i mod 256 == 0) {
++                array_push(_list, ["label", _key + "kc" + string(_i div 256)]);
++            }
++            array_push(_list, ["byte", _hm.colour_grid[_i] & 0x0F, _id]);
++        }
++    }
++
++    array_push(_list, ["label", _lbl_dskip]);
++
++    // ════════════════════════════════════════════════════════════════
++    // RUNTIME
++    // ════════════════════════════════════════════════════════════════
++    var _L_skip = _key + "rtskip";
++    var _L_draw = _key + "draw";
++    array_push(_list, ["jmp_abs", _L_skip, _id]);
++
++    array_push(_list, ["label", _L_draw]);
++
++    if (_contig) {
++        var _dst  = (_scr_base + (_hy * 40) + _hx) & 0xFFFF;
++        var _cdst = (_col_base + (_hy * 40) + _hx) & 0xFFFF;
++        var _pages = (_total + 255) div 256;
++
++        for (var _p = 0; _p < _pages; _p++) {
++            var _count = _total - (_p * 256);
++            if (_count > 256) {
++                _count = 256;
++            }
++            var _lp = _key + "lp" + string(_p);
++
++            array_push(_list, ["ldx_imm", 0x00, _id]);
++            array_push(_list, ["label",   _lp]);
++            array_push(_list, ["lda_abx", _key + "c" + string(_p), _id]);
++            array_push(_list, ["sta_abx", (_dst + (_p * 256)) & 0xFFFF, _id]);
++            if (_do_col == 1) {
++                array_push(_list, ["lda_abx", _key + "kc" + string(_p), _id]);
++                array_push(_list, ["sta_abx", (_cdst + (_p * 256)) & 0xFFFF, _id]);
++            }
++            array_push(_list, ["inx", 0, _id]);
++            if (_count >= 256) {
++                // X wraps to zero after 256 cells — no compare needed, and the
++                // next page's loop starts from zero for free.
++                array_push(_list, ["bne", _lp, _id]);
++            } else {
++                array_push(_list, ["cpx_imm", _count & 0xFF, _id]);
++                array_push(_list, ["bne", _lp, _id]);
++            }
++        }
++    } else {
++        for (var _r = 0; _r < _hh; _r++) {
++            var _rdst  = (_scr_base + ((_hy + _r) * 40) + _hx) & 0xFFFF;
++            var _rcdst = (_col_base + ((_hy + _r) * 40) + _hx) & 0xFFFF;
++            var _lr = _key + "lr" + string(_r);
++
++            array_push(_list, ["ldx_imm", 0x00, _id]);
++            array_push(_list, ["label",   _lr]);
++            array_push(_list, ["lda_abx", _key + "r" + string(_r), _id]);
++            array_push(_list, ["sta_abx", _rdst, _id]);
++            if (_do_col == 1) {
++                array_push(_list, ["lda_abx", _key + "kr" + string(_r), _id]);
++                array_push(_list, ["sta_abx", _rcdst, _id]);
++            }
++            array_push(_list, ["inx", 0, _id]);
++            array_push(_list, ["cpx_imm", _hw & 0xFF, _id]);
++            array_push(_list, ["bne", _lr, _id]);
++        }
++    }
++    array_push(_list, ["rts", 0, _id]);
++
++    // ════════════════════════════════════════════════════════════════
++    // FIELD ENTRY POINTS
++    // ════════════════════════════════════════════════════════════════
++    var _fields = [];
++    if (variable_struct_exists(_hm, "fields") && is_array(_hm.fields)) {
++        _fields = _hm.fields;
++    }
++
++    for (var _fi = 0; _fi < array_length(_fields); _fi++) {
++
++        var _f = _fields[_fi];
++
++        var _fname = string(_f.name);
++        if (_fname == "") {
++            continue;
++        }
++        var _fkind = real(_f.kind);
++        if (_fkind == 0) {
++            continue;                       // TEXT — a position, not a routine
++        }
++
++        var _flen = real(_f.flen);
++        if (_flen < 1) {
++            _flen = 1;
++        }
++        var _fx = real(_f.fx);
++        var _fy = real(_f.fy);
++        if (_fx < 0 || _fy < 0 || _fy >= _hh || _fx + _flen > _hw) {
++            show_debug_message("MACRO_HUD: field '" + _fname + "' falls outside the panel — skipped");
++            continue;
++        }
++
++        // Screen address of the field's first cell.
++        var _fa = (_scr_base + ((_hy + _fy) * 40) + _hx + _fx) & 0xFFFF;
++        var _fl = _key + _fname;
++
++        array_push(_list, ["label", _fl]);
++
++        if (_fkind == 1) {
++            // ── DIGITS ── A = 0-255, written right-aligned as decimal.
++            var _base = 48;
++            if (variable_struct_exists(_f, "base")) {
++                _base = real(_f.base) & 0xFF;
++            }
++            var _pad = 0;
++            if (variable_struct_exists(_f, "pad")) {
++                _pad = real(_f.pad);
++            }
++            var _nd = _flen;
++            if (_nd > 3) {
++                _nd = 3;                    // A is one byte: 255 is three digits
++            }
++
++            if (_pad == 1) {
++                array_push(_list, ["ldy_imm", 0x00, _id]);   // "a digit has printed"
++            }
++
++            // Hundreds. Always computed — without it a two-cell field would
++            // show 150 as the raw remainder rather than as 50.
++            array_push(_list, ["ldx_imm", 0xFF, _id]);
++            array_push(_list, ["sec",     0,    _id]);
++            array_push(_list, ["label",   _fl + "_h"]);
++            array_push(_list, ["inx",     0,    _id]);
++            array_push(_list, ["sbc_imm", 100,  _id]);
++            array_push(_list, ["bcs",     _fl + "_h", _id]);
++            array_push(_list, ["adc_imm", 100,  _id]);
++
++            if (_nd >= 3) {
++                array_push(_list, ["pha", 0, _id]);
++                if (_pad == 1) {
++                    array_push(_list, ["cpx_imm", 0x00, _id]);
++                    array_push(_list, ["bne", _fl + "_hnz", _id]);
++                    array_push(_list, ["lda_imm", 0x20, _id]);   // blank
++                    array_push(_list, ["jmp_abs", _fl + "_hst", _id]);
++                    array_push(_list, ["label", _fl + "_hnz"]);
++                    array_push(_list, ["ldy_imm", 0x01, _id]);
++                }
++                array_push(_list, ["txa", 0, _id]);
++                array_push(_list, ["clc", 0, _id]);
++                array_push(_list, ["adc_imm", _base, _id]);
++                if (_pad == 1) {
++                    array_push(_list, ["label", _fl + "_hst"]);
++                }
++                array_push(_list, ["sta_abs", (_fa + _flen - 3) & 0xFFFF, _id]);
++                array_push(_list, ["pla", 0, _id]);
++            }
++
++            // Tens.
++            array_push(_list, ["ldx_imm", 0xFF, _id]);
++            array_push(_list, ["sec",     0,    _id]);
++            array_push(_list, ["label",   _fl + "_t"]);
++            array_push(_list, ["inx",     0,    _id]);
++            array_push(_list, ["sbc_imm", 10,   _id]);
++            array_push(_list, ["bcs",     _fl + "_t", _id]);
++            array_push(_list, ["adc_imm", 10,   _id]);
++
++            if (_nd >= 2) {
++                array_push(_list, ["pha", 0, _id]);
++                if (_pad == 1) {
++                    array_push(_list, ["cpx_imm", 0x00, _id]);
++                    array_push(_list, ["bne", _fl + "_tnz", _id]);
++                    array_push(_list, ["cpy_imm", 0x00, _id]);
++                    array_push(_list, ["bne", _fl + "_tnz", _id]);
++                    array_push(_list, ["lda_imm", 0x20, _id]);
++                    array_push(_list, ["jmp_abs", _fl + "_tst", _id]);
++                    array_push(_list, ["label", _fl + "_tnz"]);
++                }
++                array_push(_list, ["txa", 0, _id]);
++                array_push(_list, ["clc", 0, _id]);
++                array_push(_list, ["adc_imm", _base, _id]);
++                if (_pad == 1) {
++                    array_push(_list, ["label", _fl + "_tst"]);
++                }
++                array_push(_list, ["sta_abs", (_fa + _flen - 2) & 0xFFFF, _id]);
++                array_push(_list, ["pla", 0, _id]);
++            }
++
++            // Units — always printed, so a zero value still reads as "0".
++            array_push(_list, ["clc", 0, _id]);
++            array_push(_list, ["adc_imm", _base, _id]);
++            array_push(_list, ["sta_abs", (_fa + _flen - 1) & 0xFFFF, _id]);
++            array_push(_list, ["rts", 0, _id]);
++        }
++
++        if (_fkind == 2) {
++            // ── BAR ── A = how many cells to fill.
++            var _full = 81;
++            if (variable_struct_exists(_f, "full")) {
++                _full = real(_f.full) & 0xFF;
++            }
++            var _empty = 32;
++            if (variable_struct_exists(_f, "empty")) {
++                _empty = real(_f.empty) & 0xFF;
++            }
++
++            array_push(_list, ["tax", 0, _id]);
++            array_push(_list, ["ldy_imm", 0x00, _id]);
++            array_push(_list, ["label", _fl + "_l"]);
++            array_push(_list, ["cpy_imm", _flen & 0xFF, _id]);
++            array_push(_list, ["beq", _fl + "_e", _id]);
++            array_push(_list, ["lda_imm", _empty, _id]);
++            array_push(_list, ["cpx_imm", 0x00, _id]);
++            array_push(_list, ["beq", _fl + "_p", _id]);
++            array_push(_list, ["lda_imm", _full, _id]);
++            array_push(_list, ["dex", 0, _id]);
++            array_push(_list, ["label", _fl + "_p"]);
++            array_push(_list, ["sta_aby", _fa, _id]);
++            array_push(_list, ["iny", 0, _id]);
++            array_push(_list, ["jmp_abs", _fl + "_l", _id]);
++            array_push(_list, ["label", _fl + "_e"]);
++            array_push(_list, ["rts", 0, _id]);
++        }
++    }
++
++    array_push(_list, ["label", _L_skip]);
++
++    // Drop-and-go: stamp the panel where the node sits on the spine.
++    if (_auto_draw == 1) {
++        array_push(_list, ["jsr", _L_draw, _id]);
++    }
++} break;
++
+ // --------------------------------------------------------
+ // MACRO_CODE — freeform assembly text block
+ // --------------------------------------------------------
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_atlas/scr_hud_atlas.gml b/C64DevMachine_win.yyp/scripts/scr_hud_atlas/scr_hud_atlas.gml
+new file mode 100644
+index 0000000..a89cd74
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_atlas/scr_hud_atlas.gml
+@@ -0,0 +1,183 @@
++/// @function scr_hud_atlas(_asset, _chr)
++/// @desc Builds (or refreshes) the three glyph atlases the HUD canvas draws
++///       from, and returns true when they are ready to use.
++///
++/// WHY ATLASES
++/// A HUD cell's colour comes from colour RAM, so every cell can be a different
++/// colour — the charset's own preview surfaces bake one foreground colour in
++/// and can't be reused. Drawing each cell bit-by-bit instead costs 8x8 filled
++/// rectangles per cell, which for a 40x25 screen is 64000 draw calls a frame.
++///
++/// So the glyphs are rendered ONCE into surfaces with a transparent
++/// background, and each cell is then one tinted draw_surface_part_ext:
++///
++///   atlas_hr   hi-res: set bits white, clear bits transparent.
++///              Cell = background rect, then the glyph tinted with colour RAM.
++///   atlas_mcs  multicolour, the two SHARED colours only ($D022 / $D023).
++///              Bit-pairs 01 and 10 in their real colours, 00 and 11 clear.
++///   atlas_mcf  multicolour, bit-pair 11 in white, everything else clear.
++///              Tinted with colour RAM, drawn over atlas_mcs.
++///
++/// Splitting multicolour across two surfaces is what makes the tint legal:
++/// only the 11 pairs follow colour RAM, and they are the only thing on the
++/// surface that gets tinted.
++///
++/// The atlases are rebuilt when the key below changes — charset identity, its
++/// size, the mode, or either shared colour — and when a surface is lost (a
++/// resolution change or alt-tab frees them). They are never serialised.
++///
++/// @param {Struct} _asset  the HUD asset
++/// @param {Id}     _chr    the linked CHAR_SET asset, or noone
++/// @return {Bool}  true when atlas_hr / atlas_mcs / atlas_mcf are usable
++function scr_hud_atlas(_asset, _chr) {
++
++    var _m = _asset.meta;
++
++    if (_chr == noone) {
++        return false;
++    }
++    if (!buffer_exists(_chr.buffer)) {
++        return false;
++    }
++
++    var _n_chars = buffer_get_size(_chr.buffer) div 8;
++    if (_n_chars <= 0) {
++        return false;
++    }
++    if (_n_chars > 256) {
++        _n_chars = 256;
++    }
++
++    var _mc_mode = 0;
++    if (variable_struct_exists(_chr.meta, "mc_mode")) {
++        if (_chr.meta.mc_mode == 1) {
++            _mc_mode = 1;
++        }
++    }
++
++    var _col1 = _m.hud_mc_col1;
++    if (_col1 < 0) {
++        _col1 = 1;
++        if (variable_struct_exists(_chr.meta, "mc_col1")) {
++            _col1 = _chr.meta.mc_col1;
++        }
++    }
++    var _col2 = _m.hud_mc_col2;
++    if (_col2 < 0) {
++        _col2 = 2;
++        if (variable_struct_exists(_chr.meta, "mc_col2")) {
++            _col2 = _chr.meta.mc_col2;
++        }
++    }
++
++    var _key = _chr.name + "|" + string(buffer_get_size(_chr.buffer)) + "|"
++             + string(_mc_mode) + "|" + string(_col1) + "|" + string(_col2);
++
++    var _have = surface_exists(_m.atlas_hr)
++             && surface_exists(_m.atlas_mcs)
++             && surface_exists(_m.atlas_mcf);
++
++    if (_have && _m.atlas_key == _key) {
++        return true;
++    }
++
++    if (surface_exists(_m.atlas_hr))  { surface_free(_m.atlas_hr);  }
++    if (surface_exists(_m.atlas_mcs)) { surface_free(_m.atlas_mcs); }
++    if (surface_exists(_m.atlas_mcf)) { surface_free(_m.atlas_mcf); }
++
++    var _scale = 2;                       // 8x8 glyph -> 16x16 atlas cell
++    var _cell  = 8 * _scale;
++    var _rows  = 16;                      // always 16x16 cells = every code 0-255
++    var _sw    = 16 * _cell;
++    var _sh    = _rows * _cell;
++
++    // ---------------------------------------------------------------
++    // HI-RES: set bits white, clear bits transparent
++    // ---------------------------------------------------------------
++    var _s_hr = surface_create(_sw, _sh);
++    surface_set_target(_s_hr);
++    draw_clear_alpha(c_black, 0);
++    draw_set_color(c_white);
++    for (var _c = 0; _c < _n_chars; _c++) {
++        var _ax = (_c mod 16) * _cell;
++        var _ay = (_c div 16) * _cell;
++        for (var _r = 0; _r < 8; _r++) {
++            var _byte = buffer_peek(_chr.buffer, (_c * 8) + _r, buffer_u8);
++            if (_byte == 0) {
++                continue;
++            }
++            for (var _b = 0; _b < 8; _b++) {
++                if ((_byte & (0x80 >> _b)) == 0) {
++                    continue;
++                }
++                var _px = _ax + (_b * _scale);
++                var _py = _ay + (_r * _scale);
++                draw_rectangle(_px, _py, _px + _scale - 1, _py + _scale - 1, false);
++            }
++        }
++    }
++    surface_reset_target();
++
++    // ---------------------------------------------------------------
++    // MULTICOLOUR, SHARED PAIRS: 01 -> $D022, 10 -> $D023
++    // ---------------------------------------------------------------
++    var _s_mcs = surface_create(_sw, _sh);
++    surface_set_target(_s_mcs);
++    draw_clear_alpha(c_black, 0);
++    var _pair_cols = [c_black, scr_c64_pepto_colour(_col1), scr_c64_pepto_colour(_col2), c_black];
++    for (var _c = 0; _c < _n_chars; _c++) {
++        var _ax = (_c mod 16) * _cell;
++        var _ay = (_c div 16) * _cell;
++        for (var _r = 0; _r < 8; _r++) {
++            var _byte = buffer_peek(_chr.buffer, (_c * 8) + _r, buffer_u8);
++            if (_byte == 0) {
++                continue;
++            }
++            for (var _p = 0; _p < 4; _p++) {
++                var _bits = (_byte >> (6 - _p * 2)) & 0x03;
++                if (_bits == 0 || _bits == 3) {
++                    continue;
++                }
++                draw_set_color(_pair_cols[_bits]);
++                var _px = _ax + (_p * 2 * _scale);
++                var _py = _ay + (_r * _scale);
++                draw_rectangle(_px, _py, _px + (2 * _scale) - 1, _py + _scale - 1, false);
++            }
++        }
++    }
++    surface_reset_target();
++
++    // ---------------------------------------------------------------
++    // MULTICOLOUR, COLOUR-RAM PAIR: 11 -> white, tinted per cell
++    // ---------------------------------------------------------------
++    var _s_mcf = surface_create(_sw, _sh);
++    surface_set_target(_s_mcf);
++    draw_clear_alpha(c_black, 0);
++    draw_set_color(c_white);
++    for (var _c = 0; _c < _n_chars; _c++) {
++        var _ax = (_c mod 16) * _cell;
++        var _ay = (_c div 16) * _cell;
++        for (var _r = 0; _r < 8; _r++) {
++            var _byte = buffer_peek(_chr.buffer, (_c * 8) + _r, buffer_u8);
++            if (_byte == 0) {
++                continue;
++            }
++            for (var _p = 0; _p < 4; _p++) {
++                var _bits = (_byte >> (6 - _p * 2)) & 0x03;
++                if (_bits != 3) {
++                    continue;
++                }
++                var _px = _ax + (_p * 2 * _scale);
++                var _py = _ay + (_r * _scale);
++                draw_rectangle(_px, _py, _px + (2 * _scale) - 1, _py + _scale - 1, false);
++            }
++        }
++    }
++    surface_reset_target();
++
++    _m.atlas_hr  = _s_hr;
++    _m.atlas_mcs = _s_mcs;
++    _m.atlas_mcf = _s_mcf;
++    _m.atlas_key = _key;
++    return true;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_atlas/scr_hud_atlas.yy b/C64DevMachine_win.yyp/scripts/scr_hud_atlas/scr_hud_atlas.yy
+new file mode 100644
+index 0000000..83f58b9
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_atlas/scr_hud_atlas.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_hud_atlas",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_hud_atlas",
++  "parent":{
++    "name":"HUD",
++    "path":"folders/SCRIPTS/HUD.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_create/scr_hud_create.gml b/C64DevMachine_win.yyp/scripts/scr_hud_create/scr_hud_create.gml
+new file mode 100644
+index 0000000..7ad69ef
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_create/scr_hud_create.gml
+@@ -0,0 +1,83 @@
++/// @function scr_hud_create(_asset)
++/// @desc Seeds the meta for a fresh HUD asset. Every field the editor or the
++///       compile chain touches is initialised here, so neither has to test for
++///       a missing member at runtime.
++///
++/// A HUD is a RECTANGLE OF SCREEN — a char grid plus a colour grid covering
++/// cells (hud_x, hud_y) to (hud_x + hud_w - 1, hud_y + hud_h - 1) of the 40x25
++/// text screen. That is what a status panel actually is on a C64: a block of
++/// screen RAM and matching colour RAM that the game stamps down once and then
++/// pokes individual cells of as the score, lives or keys change.
++///
++/// MACRO_HUD emits the two grids inline, plus a <key>_draw entry point that
++/// stamps them into screen/colour RAM, plus one entry point per FIELD.
++///
++/// FIELDS are the cells the game writes at runtime:
++///   kind 0 TEXT   — position only. No code emitted; the label is there so a
++///                   code block can find the cell without counting rows.
++///   kind 1 DIGITS — <key>_<name> takes a value 0-255 in A and writes it as
++///                   decimal digits, right-aligned across the field.
++///   kind 2 BAR    — <key>_<name> takes a count in A and fills that many cells
++///                   with `full`, the rest with `empty` (lives, energy, ammo).
++///
++/// The asset carries no address of its own: the data is emitted by the node,
++/// on the spine, jumped over — the same arrangement MACRO_SID_SONG uses for a
++/// MUSIC_MAKER asset.
++function scr_hud_create(_asset) {
++
++    var _w = 40;
++    var _h = 5;
++
++    _asset.meta = {
++        // ── SCREEN RECT ──
++        hud_x         : 0,
++        hud_y         : 20,
++        hud_w         : _w,
++        hud_h         : _h,
++
++        // ── CONTENT ── one entry per cell, row-major, hud_w wide.
++        char_grid     : array_create(_w * _h, 32),   // 32 = space
++        colour_grid   : array_create(_w * _h, 1),    // 1 = white
++
++        // ── LINKED CHARSET ── "" renders the ROM font shape-for-shape, which
++        // is close enough to place text against before the real set exists.
++        chr_asset     : "",
++
++        // ── FIELDS ── see the header. fx/fy are RELATIVE to the rect.
++        fields        : [],
++        sel_field     : -1,
++
++        // ── EDITOR STATE ──
++        active_char   : 32,
++        active_colour : 1,
++        paint_mc      : 0,       // 1 = painted cells are multicolour cells
++        hud_mc_bg     : -1,      // -1 = inherit from the linked charset
++        hud_mc_col1   : -1,
++        hud_mc_col2   : -1,
++        zoom          : 2,
++        cur_x         : 0,       // typing cursor, relative to the rect
++        cur_y         : 0,
++        show_grid     : 1,
++        show_screen   : 1,       // draw the whole 40x25 screen, rect highlighted
++
++        // ── GLYPH ATLASES ── built lazily by scr_hud_atlas, never serialised.
++        atlas_hr      : -1,
++        atlas_mcs     : -1,
++        atlas_mcf     : -1,
++        atlas_key     : "",
++
++        // ── NAME EDIT ──
++        name_edit_active : false,
++        name_edit_buf    : "",
++
++        // ── UNDO / REDO ── session-only, same shape as the map editor's.
++        undo_stack    : [],
++        redo_stack    : [],
++
++        // ── WARNING LINE ──
++        warn_msg      : "",
++        warn_timer    : 0
++    };
++
++    scr_hud_flush(_asset);
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_create/scr_hud_create.yy b/C64DevMachine_win.yyp/scripts/scr_hud_create/scr_hud_create.yy
+new file mode 100644
+index 0000000..f979a8b
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_create/scr_hud_create.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_hud_create",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_hud_create",
++  "parent":{
++    "name":"HUD",
++    "path":"folders/SCRIPTS/HUD.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_editor/scr_hud_editor.gml b/C64DevMachine_win.yyp/scripts/scr_hud_editor/scr_hud_editor.gml
+new file mode 100644
+index 0000000..985d30e
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_editor/scr_hud_editor.gml
+@@ -0,0 +1,880 @@
++/// @function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
++/// @desc Inline editor for HUD assets — the whole 40x25 text screen drawn with
++///       the game's own charset, with the HUD's rectangle live and everything
++///       outside it dimmed, so a status panel can be laid out where it will
++///       actually appear instead of being poked in blind.
++///
++/// MOUSE
++///   left            paint the active char + colour, and move the type cursor
++///   left drag       keep painting
++///   right           erase to space (colour is left alone)
++///   alt + left      pick the char and colour under the cursor
++///   shift + left    move the selected FIELD here
++///
++/// KEYBOARD (canvas)
++///   typing          writes at the cursor and advances — this is how the text
++///                   of a panel gets in; click where it starts and type it
++///   backspace       step back and clear
++///   arrows          move the cursor
++///   ctrl+Z / ctrl+Y undo / redo
++///
++/// FIELDS are the cells the game rewrites at runtime. They are listed on the
++/// right, drawn as outlined runs on the canvas, and each one becomes an entry
++/// point on the MACRO_HUD node — see scr_hud_create for what the kinds mean.
++function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
++
++    var _m = _asset.meta;
++
++    // ── Everything below assumes a full meta. An asset from an older save is
++    //    seeded by the loader, so the only gap that can reach here is a field
++    //    added after this build shipped.
++    if (!variable_struct_exists(_m, "hud_w"))    { scr_hud_create(_asset); _m = _asset.meta; }
++    if (!variable_struct_exists(_m, "cur_x"))    { _m.cur_x = 0; _m.cur_y = 0; }
++    if (!variable_struct_exists(_m, "atlas_hr")) { _m.atlas_hr = -1; _m.atlas_mcs = -1; _m.atlas_mcf = -1; _m.atlas_key = ""; }
++
++    var _ctrl  = scr_ctrl_held();
++    var _shift = keyboard_check(vk_shift);
++    var _alt   = keyboard_check(vk_alt);
++
++    // ── LINKED CHARSET ──
++    var _chr = noone;
++    if (_m.chr_asset != "" && instance_exists(obj_asset_manager)) {
++        var _am = obj_asset_manager;
++        for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
++            var _a = ds_list_find_value(_am.asset_list, _ai);
++            if (_a.type == "CHAR_SET" && _a.name == _m.chr_asset) {
++                _chr = _a;
++                break;
++            }
++        }
++    }
++
++    var _chr_mc = false;
++    if (_chr != noone) {
++        if (variable_struct_exists(_chr.meta, "mc_mode")) {
++            if (_chr.meta.mc_mode == 1) {
++                _chr_mc = true;
++            }
++        }
++    }
++
++    var _bg_col = _m.hud_mc_bg;
++    if (_bg_col < 0) {
++        _bg_col = 0;
++        if (_chr != noone && variable_struct_exists(_chr.meta, "mc_bg")) {
++            _bg_col = _chr.meta.mc_bg;
++        }
++    }
++
++    var _have_atlas = scr_hud_atlas(_asset, _chr);
++
++    // ── UNDO ──
++    var _push_undo = function(_mm) {
++        array_push(_mm.undo_stack, {
++            char_grid   : array_copy_shallow(_mm.char_grid),
++            colour_grid : array_copy_shallow(_mm.colour_grid)
++        });
++        if (array_length(_mm.undo_stack) > 60) {
++            array_delete(_mm.undo_stack, 0, 1);
++        }
++        _mm.redo_stack = [];
++    };
++
++    draw_set_font(fnt_c64_tiny);
++
++    // ===============================================================
++    // HEADER — rect, charset, view toggles
++    // ===============================================================
++    var _hy  = _cy;
++    var _hx  = _vx1 + 10;
++
++    var _rect_fields = ["X", "Y", "W", "H"];
++    var _rect_vals   = [_m.hud_x, _m.hud_y, _m.hud_w, _m.hud_h];
++    var _rect_max    = [39, 24, 40, 25];
++    var _rect_min    = [0, 0, 1, 1];
++
++    draw_set_color(c_ltgray);
++    draw_text(_hx, _hy + 3, "RECT:");
++
++    var _fx = _hx + 46;
++    for (var _ri = 0; _ri < 4; _ri++) {
++        draw_set_color(make_color_rgb(120, 120, 140));
++        draw_text(_fx, _hy + 3, _rect_fields[_ri]);
++
++        var _mbx1 = _fx + 14;
++        var _mbx2 = _mbx1 + 14;
++        var _pbx1 = _mbx2 + 30;
++        var _pbx2 = _pbx1 + 14;
++
++        var _mhov = point_in_rectangle(_mx, _my, _mbx1, _hy, _mbx2, _hy + 16);
++        var _phov = point_in_rectangle(_mx, _my, _pbx1, _hy, _pbx2, _hy + 16);
++
++        draw_set_color(make_color_rgb(40, 40, 60));
++        if (_mhov) { draw_set_color(make_color_rgb(70, 70, 100)); }
++        draw_rectangle(_mbx1, _hy, _mbx2, _hy + 16, false);
++        draw_set_color(make_color_rgb(40, 40, 60));
++        if (_phov) { draw_set_color(make_color_rgb(70, 70, 100)); }
++        draw_rectangle(_pbx1, _hy, _pbx2, _hy + 16, false);
++
++        draw_set_color(c_white);
++        draw_set_halign(fa_center);
++        draw_text(_mbx1 + 7, _hy + 3, "-");
++        draw_text(_pbx1 + 7, _hy + 3, "+");
++        draw_set_color(c_aqua);
++        draw_text(_mbx2 + 15, _hy + 3, string(_rect_vals[_ri]));
++        draw_set_halign(fa_left);
++
++        var _delta = 0;
++        if (_mhov && mouse_check_button_pressed(mb_left)) { _delta = -1; }
++        if (_phov && mouse_check_button_pressed(mb_left)) { _delta =  1; }
++        if (_delta != 0) {
++            var _nv = clamp(_rect_vals[_ri] + _delta, _rect_min[_ri], _rect_max[_ri]);
++            if (_ri == 0) { _m.hud_x = min(_nv, 40 - _m.hud_w); }
++            if (_ri == 1) { _m.hud_y = min(_nv, 25 - _m.hud_h); }
++            if (_ri == 2) {
++                // Grow/shrink keeps the cells that survive: rebuild row by row
++                // rather than letting the flat array slide sideways a cell per
++                // row, which would shear the whole panel.
++                var _ow = _m.hud_w;
++                var _nw = min(_nv, 40 - _m.hud_x);
++                if (_nw != _ow) {
++                    _push_undo(_m);
++                    var _nc = array_create(_nw * _m.hud_h, 32);
++                    var _nk = array_create(_nw * _m.hud_h, _m.active_colour);
++                    for (var _r = 0; _r < _m.hud_h; _r++) {
++                        for (var _c = 0; _c < min(_ow, _nw); _c++) {
++                            _nc[_r * _nw + _c] = _m.char_grid[_r * _ow + _c];
++                            _nk[_r * _nw + _c] = _m.colour_grid[_r * _ow + _c];
++                        }
++                    }
++                    _m.char_grid   = _nc;
++                    _m.colour_grid = _nk;
++                    _m.hud_w       = _nw;
++                }
++            }
++            if (_ri == 3) {
++                var _nh = min(_nv, 25 - _m.hud_y);
++                if (_nh != _m.hud_h) {
++                    _push_undo(_m);
++                    _m.hud_h = _nh;
++                }
++            }
++            _m.cur_x = clamp(_m.cur_x, 0, _m.hud_w - 1);
++            _m.cur_y = clamp(_m.cur_y, 0, _m.hud_h - 1);
++            scr_hud_flush(_asset);
++            global.addresses_dirty = true;
++        }
++        _fx = _pbx2 + 40;
++    }
++
++    // ── CHARSET PICKER — click cycles, right-click clears ──
++    var _cbx1 = _fx + 10;
++    var _cbx2 = _cbx1 + 190;
++    var _chov = point_in_rectangle(_mx, _my, _cbx1, _hy, _cbx2, _hy + 16);
++    draw_set_color(make_color_rgb(20, 35, 25));
++    if (_chov) { draw_set_color(make_color_rgb(40, 80, 60)); }
++    draw_rectangle(_cbx1, _hy, _cbx2, _hy + 16, false);
++    draw_set_color(make_color_rgb(150, 150, 150));
++    if (_m.chr_asset != "") { draw_set_color(c_lime); }
++    var _cb_label = "CHARSET: -- PICK --";
++    if (_m.chr_asset != "") { _cb_label = "CHARSET: " + _m.chr_asset; }
++    draw_text(_cbx1 + 6, _hy + 3, _cb_label);
++
++    if (_chov && (mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right))) {
++        var _sets = [];
++        if (instance_exists(obj_asset_manager)) {
++            var _am2 = obj_asset_manager;
++            for (var _si = 0; _si < ds_list_size(_am2.asset_list); _si++) {
++                var _sa = ds_list_find_value(_am2.asset_list, _si);
++                if (_sa.type == "CHAR_SET") {
++                    array_push(_sets, _sa.name);
++                }
++            }
++        }
++        if (mouse_check_button_pressed(mb_right) || array_length(_sets) == 0) {
++            _m.chr_asset = "";
++        } else {
++            var _cur = -1;
++            for (var _si = 0; _si < array_length(_sets); _si++) {
++                if (_sets[_si] == _m.chr_asset) {
++                    _cur = _si;
++                    break;
++                }
++            }
++            _m.chr_asset = _sets[(_cur + 1) mod array_length(_sets)];
++        }
++        _m.atlas_key = "";
++    }
++
++    // ── PAINT MC toggle (multicolour charsets only) ──
++    var _mcx1 = _cbx2 + 10;
++    var _mcx2 = _mcx1 + 80;
++    if (_chr_mc) {
++        var _mc_on = 0;
++        if ((_m.active_colour & 8) != 0) { _mc_on = 1; }
++        var _mhov2 = point_in_rectangle(_mx, _my, _mcx1, _hy, _mcx2, _hy + 16);
++        var _mc_cols  = [make_color_rgb(30, 30, 45), make_color_rgb(160, 80, 20)];
++        var _mc_tcols = [make_color_rgb(80, 80, 100), make_color_rgb(255, 160, 60)];
++        draw_set_color(_mc_cols[_mc_on]);
++        draw_rectangle(_mcx1, _hy, _mcx2, _hy + 16, false);
++        draw_set_color(_mc_tcols[_mc_on]);
++        draw_set_halign(fa_center);
++        var _mc_lbl = "CELL HR";
++        if (_mc_on == 1) { _mc_lbl = "CELL MC"; }
++        draw_text((_mcx1 + _mcx2) * 0.5, _hy + 3, _mc_lbl);
++        draw_set_halign(fa_left);
++        if (_mhov2 && mouse_check_button_pressed(mb_left)) {
++            _m.active_colour = _m.active_colour ^ 8;
++        }
++    }
++
++    // ── GRID toggle ──
++    var _gbx1 = _mcx2 + 10;
++    var _gbx2 = _gbx1 + 70;
++    var _ghov = point_in_rectangle(_mx, _my, _gbx1, _hy, _gbx2, _hy + 16);
++    draw_set_color(make_color_rgb(30, 30, 45));
++    if (_ghov) { draw_set_color(make_color_rgb(60, 60, 80)); }
++    draw_rectangle(_gbx1, _hy, _gbx2, _hy + 16, false);
++    draw_set_color(make_color_rgb(150, 150, 170));
++    draw_set_halign(fa_center);
++    var _g_lbl = "GRID OFF";
++    if (_m.show_grid == 1) { _g_lbl = "GRID ON"; }
++    draw_text((_gbx1 + _gbx2) * 0.5, _hy + 3, _g_lbl);
++    draw_set_halign(fa_left);
++    if (_ghov && mouse_check_button_pressed(mb_left)) {
++        _m.show_grid = 1 - _m.show_grid;
++    }
++
++    _cy = _hy + 24;
++
++    // ===============================================================
++    // CANVAS — the whole 40x25 screen
++    // ===============================================================
++    var _cs  = 8 * _m.zoom * 1.5;      // zoom 2 -> 24px cells
++    _cs = floor(_cs);
++    var _cvx = _vx1 + 10;
++    var _cvy = _cy;
++    var _cvw = 40 * _cs;
++    var _cvh = 25 * _cs;
++
++    // Border frame around the screen, the way a C64 shows it.
++    draw_set_color(scr_c64_pepto_colour(_bg_col));
++    draw_rectangle(_cvx - 8, _cvy - 8, _cvx + _cvw + 8, _cvy + _cvh + 8, false);
++    draw_set_color(make_color_rgb(70, 70, 90));
++    draw_rectangle(_cvx - 8, _cvy - 8, _cvx + _cvw + 8, _cvy + _cvh + 8, true);
++
++    var _atl_cell = 16;   // scr_hud_atlas cell size
++
++    for (var _sr = 0; _sr < 25; _sr++) {
++        for (var _sc = 0; _sc < 40; _sc++) {
++
++            var _px = _cvx + _sc * _cs;
++            var _py = _cvy + _sr * _cs;
++
++            var _in_rect = (_sc >= _m.hud_x && _sc < _m.hud_x + _m.hud_w
++                         && _sr >= _m.hud_y && _sr < _m.hud_y + _m.hud_h);
++
++            if (!_in_rect) {
++                // Outside the panel: just the background, dimmed, so the HUD
++                // reads as sitting on a screen rather than floating.
++                draw_set_color(scr_c64_pepto_colour(_bg_col));
++                draw_rectangle(_px, _py, _px + _cs - 1, _py + _cs - 1, false);
++                draw_set_color(c_black);
++                draw_set_alpha(0.45);
++                draw_rectangle(_px, _py, _px + _cs - 1, _py + _cs - 1, false);
++                draw_set_alpha(1.0);
++                continue;
++            }
++
++            var _idx  = (_sr - _m.hud_y) * _m.hud_w + (_sc - _m.hud_x);
++            var _char = _m.char_grid[_idx]   & 0xFF;
++            var _colv = _m.colour_grid[_idx] & 0x0F;
++
++            draw_set_color(scr_c64_pepto_colour(_bg_col));
++            draw_rectangle(_px, _py, _px + _cs - 1, _py + _cs - 1, false);
++
++            if (_have_atlas) {
++                var _ax = (_char mod 16) * _atl_cell;
++                var _ay = (_char div 16) * _atl_cell;
++                var _sx = _cs / _atl_cell;
++
++                var _cell_mc = false;
++                if (_chr_mc && (_colv & 8) != 0) {
++                    _cell_mc = true;
++                }
++                if (_cell_mc) {
++                    draw_surface_part_ext(_m.atlas_mcs, _ax, _ay, _atl_cell, _atl_cell,
++                                          _px, _py, _sx, _sx, c_white, 1);
++                    draw_surface_part_ext(_m.atlas_mcf, _ax, _ay, _atl_cell, _atl_cell,
++                                          _px, _py, _sx, _sx, scr_c64_pepto_colour(_colv & 7), 1);
++                } else {
++                    draw_surface_part_ext(_m.atlas_hr, _ax, _ay, _atl_cell, _atl_cell,
++                                          _px, _py, _sx, _sx, scr_c64_pepto_colour(_colv), 1);
++                }
++            } else {
++                // No charset linked yet — show the code, so a panel imported
++                // from a real game is still readable as data.
++                if (_char != 32 && _cs >= 14) {
++                    draw_set_color(scr_c64_pepto_colour(_colv));
++                    draw_set_halign(fa_center);
++                    draw_text(_px + _cs * 0.5, _py + _cs * 0.5 - 4, string(_char));
++                    draw_set_halign(fa_left);
++                }
++            }
++
++            if (_m.show_grid == 1) {
++                draw_set_color(make_color_rgb(45, 45, 60));
++                draw_set_alpha(0.5);
++                draw_rectangle(_px, _py, _px + _cs - 1, _py + _cs - 1, true);
++                draw_set_alpha(1.0);
++            }
++        }
++    }
++
++    // Panel outline
++    draw_set_color(make_color_rgb(90, 200, 255));
++    draw_rectangle(_cvx + _m.hud_x * _cs, _cvy + _m.hud_y * _cs,
++                   _cvx + (_m.hud_x + _m.hud_w) * _cs - 1,
++                   _cvy + (_m.hud_y + _m.hud_h) * _cs - 1, true);
++
++    // ── FIELD OVERLAYS ──
++    for (var _fi = 0; _fi < array_length(_m.fields); _fi++) {
++        var _f  = _m.fields[_fi];
++        var _fx1 = _cvx + (_m.hud_x + _f.fx) * _cs;
++        var _fy1 = _cvy + (_m.hud_y + _f.fy) * _cs;
++        var _fx2 = _fx1 + _f.flen * _cs - 1;
++        var _fy2 = _fy1 + _cs - 1;
++
++        var _fcol = make_color_rgb(255, 200, 60);
++        if (_fi == _m.sel_field) {
++            _fcol = make_color_rgb(255, 80, 160);
++        }
++        draw_set_color(_fcol);
++        draw_set_alpha(0.18);
++        draw_rectangle(_fx1, _fy1, _fx2, _fy2, false);
++        draw_set_alpha(1.0);
++        draw_rectangle(_fx1, _fy1, _fx2, _fy2, true);
++        draw_set_font(fnt_c64_tiny);
++        draw_text(_fx1 + 1, _fy1 - 11, _f.name);
++    }
++
++    // ── TYPE CURSOR ──
++    if ((current_time mod 700) < 420) {
++        draw_set_color(c_white);
++        var _tcx = _cvx + (_m.hud_x + _m.cur_x) * _cs;
++        var _tcy = _cvy + (_m.hud_y + _m.cur_y) * _cs;
++        draw_rectangle(_tcx, _tcy + _cs - 3, _tcx + _cs - 1, _tcy + _cs - 1, false);
++    }
++
++    // ── CANVAS INPUT ──
++    var _hov_cell = point_in_rectangle(_mx, _my, _cvx, _cvy, _cvx + _cvw - 1, _cvy + _cvh - 1);
++    var _hcol = -1;
++    var _hrow = -1;
++    if (_hov_cell) {
++        _hcol = (_mx - _cvx) div _cs;
++        _hrow = (_my - _cvy) div _cs;
++    }
++
++    var _in_panel = (_hcol >= _m.hud_x && _hcol < _m.hud_x + _m.hud_w
++                  && _hrow >= _m.hud_y && _hrow < _m.hud_y + _m.hud_h);
++
++    if (_hov_cell && _in_panel && !_m.name_edit_active) {
++
++        var _rx  = _hcol - _m.hud_x;
++        var _ry  = _hrow - _m.hud_y;
++        var _idx = _ry * _m.hud_w + _rx;
++
++        // Hover highlight
++        draw_set_color(c_white);
++        draw_set_alpha(0.22);
++        draw_rectangle(_cvx + _hcol * _cs, _cvy + _hrow * _cs,
++                       _cvx + _hcol * _cs + _cs - 1, _cvy + _hrow * _cs + _cs - 1, false);
++        draw_set_alpha(1.0);
++
++        if (_alt) {
++            // PICK — same gesture as the map editor's tile picker.
++            if (mouse_check_button_pressed(mb_left)) {
++                _m.active_char   = _m.char_grid[_idx];
++                _m.active_colour = _m.colour_grid[_idx];
++            }
++        } else if (_shift) {
++            // MOVE THE SELECTED FIELD
++            if (mouse_check_button_pressed(mb_left) && _m.sel_field >= 0
++            &&  _m.sel_field < array_length(_m.fields)) {
++                var _sf = _m.fields[_m.sel_field];
++                _sf.fx = min(_rx, _m.hud_w - _sf.flen);
++                _sf.fy = _ry;
++                if (_sf.fx < 0) { _sf.fx = 0; }
++            }
++        } else {
++            if (mouse_check_button_pressed(mb_left)) {
++                _push_undo(_m);
++                _m.cur_x = _rx;
++                _m.cur_y = _ry;
++            }
++            if (mouse_check_button(mb_left)) {
++                _m.char_grid[_idx]   = _m.active_char;
++                _m.colour_grid[_idx] = _m.active_colour;
++                scr_hud_flush(_asset);
++            }
++            if (mouse_check_button_pressed(mb_right)) {
++                _push_undo(_m);
++            }
++            if (mouse_check_button(mb_right)) {
++                _m.char_grid[_idx] = 32;
++                scr_hud_flush(_asset);
++            }
++        }
++    }
++
++    // ── KEYBOARD: TYPE INTO THE PANEL ──
++    if (!_m.name_edit_active) {
++
++        if (keyboard_check_pressed(vk_left))  { _m.cur_x = max(0, _m.cur_x - 1); }
++        if (keyboard_check_pressed(vk_right)) { _m.cur_x = min(_m.hud_w - 1, _m.cur_x + 1); }
++        if (keyboard_check_pressed(vk_up))    { _m.cur_y = max(0, _m.cur_y - 1); }
++        if (keyboard_check_pressed(vk_down))  { _m.cur_y = min(_m.hud_h - 1, _m.cur_y + 1); }
++
++        if (keyboard_check_pressed(vk_backspace)) {
++            _push_undo(_m);
++            _m.cur_x = max(0, _m.cur_x - 1);
++            _m.char_grid[_m.cur_y * _m.hud_w + _m.cur_x] = 32;
++            scr_hud_flush(_asset);
++        }
++
++        if (_ctrl && keyboard_check_pressed(ord("Z")) && array_length(_m.undo_stack) > 0) {
++            var _snap = array_pop(_m.undo_stack);
++            array_push(_m.redo_stack, {
++                char_grid   : array_copy_shallow(_m.char_grid),
++                colour_grid : array_copy_shallow(_m.colour_grid)
++            });
++            _m.char_grid   = _snap.char_grid;
++            _m.colour_grid = _snap.colour_grid;
++            scr_hud_flush(_asset);
++        }
++        if (_ctrl && keyboard_check_pressed(ord("Y")) && array_length(_m.redo_stack) > 0) {
++            var _snap2 = array_pop(_m.redo_stack);
++            array_push(_m.undo_stack, {
++                char_grid   : array_copy_shallow(_m.char_grid),
++                colour_grid : array_copy_shallow(_m.colour_grid)
++            });
++            _m.char_grid   = _snap2.char_grid;
++            _m.colour_grid = _snap2.colour_grid;
++            scr_hud_flush(_asset);
++        }
++
++        if (!_ctrl && keyboard_string != "") {
++            var _typed = scr_strip_key_ghosts(keyboard_string);
++            if (_typed != "") {
++                _push_undo(_m);
++                for (var _ti = 1; _ti <= string_length(_typed); _ti++) {
++                    var _sc_code = scr_hud_screen_code(ord(string_char_at(_typed, _ti)));
++                    _m.char_grid[_m.cur_y * _m.hud_w + _m.cur_x]   = _sc_code;
++                    _m.colour_grid[_m.cur_y * _m.hud_w + _m.cur_x] = _m.active_colour;
++                    _m.cur_x += 1;
++                    if (_m.cur_x >= _m.hud_w) {
++                        _m.cur_x = 0;
++                        _m.cur_y = min(_m.hud_h - 1, _m.cur_y + 1);
++                    }
++                }
++                scr_hud_flush(_asset);
++            }
++            keyboard_string = "";
++        }
++    }
++
++    // ===============================================================
++    // CHAR STRIP + COLOUR STRIP (under the canvas)
++    // ===============================================================
++    var _sy = _cvy + _cvh + 18;
++
++    draw_set_color(c_ltgray);
++    draw_text(_cvx, _sy + 3, "PAINT:");
++
++    // Active char swatch
++    var _swx = _cvx + 56;
++    var _swz = 28;
++    draw_set_color(scr_c64_pepto_colour(_bg_col));
++    draw_rectangle(_swx, _sy, _swx + _swz, _sy + _swz, false);
++    if (_have_atlas) {
++        var _sax = (_m.active_char mod 16) * _atl_cell;
++        var _say = (_m.active_char div 16) * _atl_cell;
++        var _scale_sw = _swz / _atl_cell;
++        if (_chr_mc && (_m.active_colour & 8) != 0) {
++            draw_surface_part_ext(_m.atlas_mcs, _sax, _say, _atl_cell, _atl_cell,
++                                  _swx, _sy, _scale_sw, _scale_sw, c_white, 1);
++            draw_surface_part_ext(_m.atlas_mcf, _sax, _say, _atl_cell, _atl_cell,
++                                  _swx, _sy, _scale_sw, _scale_sw, scr_c64_pepto_colour(_m.active_colour & 7), 1);
++        } else {
++            draw_surface_part_ext(_m.atlas_hr, _sax, _say, _atl_cell, _atl_cell,
++                                  _swx, _sy, _scale_sw, _scale_sw, scr_c64_pepto_colour(_m.active_colour & 0x0F), 1);
++        }
++    }
++    draw_set_color(c_white);
++    draw_rectangle(_swx, _sy, _swx + _swz, _sy + _swz, true);
++    draw_text(_swx + _swz + 6, _sy + 3, "CHR " + string(_m.active_char));
++    draw_text(_swx + _swz + 6, _sy + 15, "COL " + string(_m.active_colour));
++
++    // Colour swatches
++    var _colx = _swx + _swz + 80;
++    for (var _ci = 0; _ci < 16; _ci++) {
++        var _cx1 = _colx + _ci * 20;
++        var _chov2 = point_in_rectangle(_mx, _my, _cx1, _sy, _cx1 + 18, _sy + 18);
++        draw_set_color(scr_c64_pepto_colour(_ci));
++        draw_rectangle(_cx1, _sy, _cx1 + 18, _sy + 18, false);
++        draw_set_color(make_color_rgb(60, 60, 80));
++        if ((_m.active_colour & 0x0F) == _ci) { draw_set_color(c_white); }
++        if (_chov2) { draw_set_color(c_yellow); }
++        draw_rectangle(_cx1, _sy, _cx1 + 18, _sy + 18, true);
++        if (_chov2 && mouse_check_button_pressed(mb_left)) {
++            _m.active_colour = _ci;
++        }
++        if (_chov2 && mouse_check_button_pressed(mb_right)) {
++            _m.hud_mc_bg = _ci;
++            _m.atlas_key = "";
++        }
++    }
++    draw_set_color(make_color_rgb(110, 110, 130));
++    draw_text(_colx, _sy + 22, "LEFT = PAINT COLOUR   RIGHT = SCREEN BACKGROUND ($D021 = " + string(_bg_col) + ")");
++
++    // Char strip — every code 0-255, 32 per row
++    var _csy = _sy + 40;
++    var _cssz = 18;
++    draw_set_color(c_ltgray);
++    draw_text(_cvx, _csy - 12, "CHARSET  (CLICK A CHAR, OR ALT+CLICK THE PANEL TO PICK ONE)");
++    for (var _ki = 0; _ki < 256; _ki++) {
++        var _kx = _cvx + (_ki mod 32) * _cssz;
++        var _ky = _csy + (_ki div 32) * _cssz;
++        draw_set_color(scr_c64_pepto_colour(_bg_col));
++        draw_rectangle(_kx, _ky, _kx + _cssz - 1, _ky + _cssz - 1, false);
++        if (_have_atlas) {
++            var _kax = (_ki mod 16) * _atl_cell;
++            var _kay = (_ki div 16) * _atl_cell;
++            var _ksc = _cssz / _atl_cell;
++            draw_surface_part_ext(_m.atlas_hr, _kax, _kay, _atl_cell, _atl_cell,
++                                  _kx, _ky, _ksc, _ksc, scr_c64_pepto_colour(_m.active_colour & 0x0F), 1);
++        }
++        var _khov = point_in_rectangle(_mx, _my, _kx, _ky, _kx + _cssz - 1, _ky + _cssz - 1);
++        if (_ki == _m.active_char) {
++            draw_set_color(c_white);
++            draw_rectangle(_kx, _ky, _kx + _cssz - 1, _ky + _cssz - 1, true);
++        } else if (_khov) {
++            draw_set_color(c_yellow);
++            draw_rectangle(_kx, _ky, _kx + _cssz - 1, _ky + _cssz - 1, true);
++        }
++        if (_khov && mouse_check_button_pressed(mb_left)) {
++            _m.active_char = _ki;
++        }
++    }
++
++    // ===============================================================
++    // FIELDS PANEL (right of the canvas)
++    // ===============================================================
++    var _fpx = _cvx + _cvw + 26;
++    var _fpw = 360;
++    if (_fpx + _fpw > _vx2 - 10) {
++        _fpw = (_vx2 - 10) - _fpx;
++    }
++    var _fpy = _cvy;
++
++    if (_fpw > 120) {
++
++        draw_set_color(make_color_rgb(26, 26, 40));
++        draw_rectangle(_fpx, _fpy, _fpx + _fpw, _fpy + 420, false);
++        draw_set_color(make_color_rgb(60, 60, 85));
++        draw_rectangle(_fpx, _fpy, _fpx + _fpw, _fpy + 420, true);
++
++        draw_set_color(make_color_rgb(255, 200, 60));
++        draw_text(_fpx + 8, _fpy + 6, "FIELDS  —  CELLS THE GAME WRITES");
++        draw_set_color(make_color_rgb(110, 110, 130));
++        draw_text(_fpx + 8, _fpy + 20, "EACH ONE BECOMES AN ENTRY POINT ON THE HUD NODE");
++
++        // ADD / DEL
++        var _abx1 = _fpx + 8;
++        var _abx2 = _abx1 + 90;
++        var _aby  = _fpy + 36;
++        var _ahov = point_in_rectangle(_mx, _my, _abx1, _aby, _abx2, _aby + 18);
++        draw_set_color(make_color_rgb(30, 80, 40));
++        if (_ahov) { draw_set_color(make_color_rgb(60, 160, 80)); }
++        draw_rectangle(_abx1, _aby, _abx2, _aby + 18, false);
++        draw_set_color(c_white);
++        draw_set_halign(fa_center);
++        draw_text((_abx1 + _abx2) * 0.5, _aby + 4, "+ FIELD");
++        draw_set_halign(fa_left);
++        if (_ahov && mouse_check_button_pressed(mb_left)) {
++            array_push(_m.fields, {
++                name  : "FIELD" + string(array_length(_m.fields)),
++                fx    : _m.cur_x,
++                fy    : _m.cur_y,
++                flen  : 2,
++                kind  : 1,          // DIGITS — the common case
++                base  : 48,         // screen code of '0' in a stock charset
++                pad   : 0,
++                full  : 81,
++                empty : 32
++            });
++            _m.sel_field = array_length(_m.fields) - 1;
++            global.addresses_dirty = true;
++        }
++
++        var _dbx1 = _abx2 + 10;
++        var _dbx2 = _dbx1 + 70;
++        var _dhov = point_in_rectangle(_mx, _my, _dbx1, _aby, _dbx2, _aby + 18);
++        draw_set_color(make_color_rgb(80, 30, 30));
++        if (_dhov) { draw_set_color(make_color_rgb(170, 60, 60)); }
++        draw_rectangle(_dbx1, _aby, _dbx2, _aby + 18, false);
++        draw_set_color(c_white);
++        draw_set_halign(fa_center);
++        draw_text((_dbx1 + _dbx2) * 0.5, _aby + 4, "DELETE");
++        draw_set_halign(fa_left);
++        if (_dhov && mouse_check_button_pressed(mb_left) && _m.sel_field >= 0
++        &&  _m.sel_field < array_length(_m.fields)) {
++            array_delete(_m.fields, _m.sel_field, 1);
++            _m.sel_field = -1;
++            _m.name_edit_active = false;
++            global.addresses_dirty = true;
++        }
++
++        // LIST
++        var _ly = _aby + 26;
++        for (var _fi = 0; _fi < array_length(_m.fields); _fi++) {
++            if (_fi >= 12) {
++                break;
++            }
++            var _f    = _m.fields[_fi];
++            var _ry1  = _ly + _fi * 16;
++            var _rhov = point_in_rectangle(_mx, _my, _fpx + 8, _ry1, _fpx + _fpw - 8, _ry1 + 14);
++
++            if (_fi == _m.sel_field) {
++                draw_set_color(make_color_rgb(60, 30, 60));
++                draw_rectangle(_fpx + 8, _ry1, _fpx + _fpw - 8, _ry1 + 14, false);
++            } else if (_rhov) {
++                draw_set_color(make_color_rgb(40, 40, 60));
++                draw_rectangle(_fpx + 8, _ry1, _fpx + _fpw - 8, _ry1 + 14, false);
++            }
++
++            var _kind_names = ["TEXT", "DIGITS", "BAR"];
++            draw_set_color(c_white);
++            draw_text(_fpx + 12, _ry1 + 2, _f.name);
++            draw_set_color(make_color_rgb(140, 140, 170));
++            draw_text(_fpx + 150, _ry1 + 2, _kind_names[_f.kind]);
++            draw_text(_fpx + 220, _ry1 + 2, string(_f.fx) + "," + string(_f.fy));
++            draw_text(_fpx + 285, _ry1 + 2, "LEN " + string(_f.flen));
++
++            if (_rhov && mouse_check_button_pressed(mb_left)) {
++                _m.sel_field        = _fi;
++                _m.name_edit_active = false;
++            }
++        }
++
++        // SELECTED FIELD PROPERTIES
++        if (_m.sel_field >= 0 && _m.sel_field < array_length(_m.fields)) {
++
++            var _f2  = _m.fields[_m.sel_field];
++            var _py2 = _ly + 12 * 16 + 14;
++
++            draw_set_color(make_color_rgb(255, 80, 160));
++            draw_text(_fpx + 8, _py2, "SELECTED FIELD");
++            _py2 += 16;
++
++            // NAME (click to edit)
++            draw_set_color(c_ltgray);
++            draw_text(_fpx + 8, _py2 + 3, "NAME:");
++            var _nbx1 = _fpx + 60;
++            var _nbx2 = _fpx + _fpw - 10;
++            var _nhov = point_in_rectangle(_mx, _my, _nbx1, _py2, _nbx2, _py2 + 16);
++            draw_set_color(make_color_rgb(20, 35, 25));
++            if (_m.name_edit_active) { draw_set_color(make_color_rgb(20, 60, 30)); }
++            draw_rectangle(_nbx1, _py2, _nbx2, _py2 + 16, false);
++            draw_set_color(c_lime);
++            if (_m.name_edit_active) {
++                var _blink = " ";
++                if ((current_time mod 600) < 300) { _blink = "_"; }
++                draw_text(_nbx1 + 5, _py2 + 3, _m.name_edit_buf + _blink);
++            } else {
++                draw_text(_nbx1 + 5, _py2 + 3, _f2.name);
++            }
++            if (_nhov && mouse_check_button_pressed(mb_left) && !_m.name_edit_active) {
++                _m.name_edit_active = true;
++                _m.name_edit_buf    = _f2.name;
++                keyboard_string     = "";
++            }
++            _py2 += 22;
++
++            if (_m.name_edit_active) {
++                if (keyboard_check_pressed(vk_backspace) && string_length(_m.name_edit_buf) > 0) {
++                    _m.name_edit_buf = string_delete(_m.name_edit_buf, string_length(_m.name_edit_buf), 1);
++                }
++                if (keyboard_string != "") {
++                    var _nt = scr_strip_key_ghosts(keyboard_string);
++                    for (var _ni = 1; _ni <= string_length(_nt); _ni++) {
++                        var _nch = string_upper(string_char_at(_nt, _ni));
++                        var _ok  = false;
++                        if (_nch >= "A" && _nch <= "Z") { _ok = true; }
++                        if (_nch >= "0" && _nch <= "9" && string_length(_m.name_edit_buf) > 0) { _ok = true; }
++                        if (_nch == "_") { _ok = true; }
++                        if (_ok && string_length(_m.name_edit_buf) < 16) {
++                            _m.name_edit_buf += _nch;
++                        }
++                    }
++                    keyboard_string = "";
++                }
++                if (keyboard_check_pressed(vk_enter) || keyboard_check_pressed(vk_escape)) {
++                    if (keyboard_check_pressed(vk_enter) && _m.name_edit_buf != "") {
++                        _f2.name = _m.name_edit_buf;
++                        global.addresses_dirty = true;
++                    }
++                    _m.name_edit_active = false;
++                    keyboard_string     = "";
++                }
++            }
++
++            // KIND
++            var _kbx1 = _fpx + 60;
++            var _kbx2 = _kbx1 + 110;
++            var _khov2 = point_in_rectangle(_mx, _my, _kbx1, _py2, _kbx2, _py2 + 16);
++            draw_set_color(c_ltgray);
++            draw_text(_fpx + 8, _py2 + 3, "KIND:");
++            draw_set_color(make_color_rgb(40, 40, 70));
++            if (_khov2) { draw_set_color(make_color_rgb(70, 70, 110)); }
++            draw_rectangle(_kbx1, _py2, _kbx2, _py2 + 16, false);
++            draw_set_color(c_aqua);
++            var _kind_names2 = ["TEXT", "DIGITS", "BAR"];
++            draw_set_halign(fa_center);
++            draw_text((_kbx1 + _kbx2) * 0.5, _py2 + 3, _kind_names2[_f2.kind]);
++            draw_set_halign(fa_left);
++            if (_khov2 && mouse_check_button_pressed(mb_left)) {
++                _f2.kind = (_f2.kind + 1) mod 3;
++                global.addresses_dirty = true;
++            }
++            _py2 += 22;
++
++            // LENGTH
++            draw_set_color(c_ltgray);
++            draw_text(_fpx + 8, _py2 + 3, "LEN:");
++            var _lmx1 = _fpx + 60;
++            var _lpx1 = _fpx + 110;
++            var _lmhov = point_in_rectangle(_mx, _my, _lmx1, _py2, _lmx1 + 16, _py2 + 16);
++            var _lphov = point_in_rectangle(_mx, _my, _lpx1, _py2, _lpx1 + 16, _py2 + 16);
++            draw_set_color(make_color_rgb(40, 40, 60));
++            if (_lmhov) { draw_set_color(make_color_rgb(70, 70, 100)); }
++            draw_rectangle(_lmx1, _py2, _lmx1 + 16, _py2 + 16, false);
++            draw_set_color(make_color_rgb(40, 40, 60));
++            if (_lphov) { draw_set_color(make_color_rgb(70, 70, 100)); }
++            draw_rectangle(_lpx1, _py2, _lpx1 + 16, _py2 + 16, false);
++            draw_set_color(c_white);
++            draw_set_halign(fa_center);
++            draw_text(_lmx1 + 8, _py2 + 3, "-");
++            draw_text(_lpx1 + 8, _py2 + 3, "+");
++            draw_set_color(c_aqua);
++            draw_text(_lmx1 + 33, _py2 + 3, string(_f2.flen));
++            draw_set_halign(fa_left);
++            if (_lmhov && mouse_check_button_pressed(mb_left)) {
++                _f2.flen = max(1, _f2.flen - 1);
++                global.addresses_dirty = true;
++            }
++            if (_lphov && mouse_check_button_pressed(mb_left)) {
++                _f2.flen = min(_m.hud_w - _f2.fx, _f2.flen + 1);
++                global.addresses_dirty = true;
++            }
++            _py2 += 22;
++
++            if (_f2.kind == 1) {
++                // DIGITS: which glyph is '0', and what the leading cells show
++                draw_set_color(c_ltgray);
++                draw_text(_fpx + 8, _py2 + 3, "ZERO CHR:");
++                var _zbx1 = _fpx + 90;
++                var _zbx2 = _zbx1 + 130;
++                var _zhov = point_in_rectangle(_mx, _my, _zbx1, _py2, _zbx2, _py2 + 16);
++                draw_set_color(make_color_rgb(40, 40, 70));
++                if (_zhov) { draw_set_color(make_color_rgb(70, 70, 110)); }
++                draw_rectangle(_zbx1, _py2, _zbx2, _py2 + 16, false);
++                draw_set_color(c_aqua);
++                draw_set_halign(fa_center);
++                draw_text((_zbx1 + _zbx2) * 0.5, _py2 + 3, string(_f2.base) + "  < TAKE ACTIVE");
++                draw_set_halign(fa_left);
++                if (_zhov && mouse_check_button_pressed(mb_left)) {
++                    _f2.base = _m.active_char;
++                }
++                _py2 += 22;
++
++                draw_set_color(c_ltgray);
++                draw_text(_fpx + 8, _py2 + 3, "LEAD:");
++                var _pbx1b = _fpx + 90;
++                var _pbx2b = _pbx1b + 130;
++                var _phov2 = point_in_rectangle(_mx, _my, _pbx1b, _py2, _pbx2b, _py2 + 16);
++                draw_set_color(make_color_rgb(40, 40, 70));
++                if (_phov2) { draw_set_color(make_color_rgb(70, 70, 110)); }
++                draw_rectangle(_pbx1b, _py2, _pbx2b, _py2 + 16, false);
++                draw_set_color(c_aqua);
++                draw_set_halign(fa_center);
++                var _pad_lbl = "ZEROS";
++                if (_f2.pad == 1) { _pad_lbl = "BLANK"; }
++                draw_text((_pbx1b + _pbx2b) * 0.5, _py2 + 3, _pad_lbl);
++                draw_set_halign(fa_left);
++                if (_phov2 && mouse_check_button_pressed(mb_left)) {
++                    _f2.pad = 1 - _f2.pad;
++                    global.addresses_dirty = true;
++                }
++                _py2 += 22;
++
++                draw_set_color(make_color_rgb(110, 110, 130));
++                draw_text(_fpx + 8, _py2, "A = VALUE 0-255, WRITTEN RIGHT-ALIGNED");
++            }
++
++            if (_f2.kind == 2) {
++                // BAR: full and empty glyphs
++                draw_set_color(c_ltgray);
++                draw_text(_fpx + 8, _py2 + 3, "FULL CHR:");
++                var _fbx1 = _fpx + 90;
++                var _fbx2 = _fbx1 + 130;
++                var _fhov2 = point_in_rectangle(_mx, _my, _fbx1, _py2, _fbx2, _py2 + 16);
++                draw_set_color(make_color_rgb(40, 40, 70));
++                if (_fhov2) { draw_set_color(make_color_rgb(70, 70, 110)); }
++                draw_rectangle(_fbx1, _py2, _fbx2, _py2 + 16, false);
++                draw_set_color(c_aqua);
++                draw_set_halign(fa_center);
++                draw_text((_fbx1 + _fbx2) * 0.5, _py2 + 3, string(_f2.full) + "  < TAKE ACTIVE");
++                draw_set_halign(fa_left);
++                if (_fhov2 && mouse_check_button_pressed(mb_left)) {
++                    _f2.full = _m.active_char;
++                }
++                _py2 += 22;
++
++                draw_set_color(c_ltgray);
++                draw_text(_fpx + 8, _py2 + 3, "EMPTY CHR:");
++                var _ebx1 = _fpx + 90;
++                var _ebx2 = _ebx1 + 130;
++                var _ehov = point_in_rectangle(_mx, _my, _ebx1, _py2, _ebx2, _py2 + 16);
++                draw_set_color(make_color_rgb(40, 40, 70));
++                if (_ehov) { draw_set_color(make_color_rgb(70, 70, 110)); }
++                draw_rectangle(_ebx1, _py2, _ebx2, _py2 + 16, false);
++                draw_set_color(c_aqua);
++                draw_set_halign(fa_center);
++                draw_text((_ebx1 + _ebx2) * 0.5, _py2 + 3, string(_f2.empty) + "  < TAKE ACTIVE");
++                draw_set_halign(fa_left);
++                if (_ehov && mouse_check_button_pressed(mb_left)) {
++                    _f2.empty = _m.active_char;
++                }
++                _py2 += 22;
++
++                draw_set_color(make_color_rgb(110, 110, 130));
++                draw_text(_fpx + 8, _py2, "A = HOW MANY CELLS TO FILL");
++            }
++
++            if (_f2.kind == 0) {
++                draw_set_color(make_color_rgb(110, 110, 130));
++                draw_text(_fpx + 8, _py2, "POSITION ONLY — NO CODE EMITTED.");
++                draw_text(_fpx + 8, _py2 + 12, "THE NODE SHOWS ITS SCREEN ADDRESS.");
++            }
++
++            draw_set_color(make_color_rgb(90, 90, 110));
++            draw_text(_fpx + 8, _fpy + 398, "SHIFT+CLICK THE PANEL TO MOVE THIS FIELD");
++        }
++    }
++
++    // ── HELP LINE ──
++    draw_set_color(make_color_rgb(90, 90, 110));
++    draw_text(_cvx, _csy + 8 * 18 + 6,
++        "CLICK = PAINT + SET CURSOR   TYPE = TEXT   RIGHT = ERASE   ALT+CLICK = PICK   CTRL+Z/Y = UNDO/REDO");
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_editor/scr_hud_editor.yy b/C64DevMachine_win.yyp/scripts/scr_hud_editor/scr_hud_editor.yy
+new file mode 100644
+index 0000000..a7ad1f2
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_editor/scr_hud_editor.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_hud_editor",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_hud_editor",
++  "parent":{
++    "name":"HUD",
++    "path":"folders/SCRIPTS/HUD.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_flush/scr_hud_flush.gml b/C64DevMachine_win.yyp/scripts/scr_hud_flush/scr_hud_flush.gml
+new file mode 100644
+index 0000000..cafea60
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_flush/scr_hud_flush.gml
+@@ -0,0 +1,47 @@
++/// @function scr_hud_flush(_asset)
++/// @desc Serialises a HUD asset's two grids into its buffer: hud_w * hud_h
++///       char bytes followed by the same count of colour bytes.
++///
++/// The compile chain reads the GRIDS, not the buffer — but the buffer is what
++/// the workspace saver blobs out and what the asset list sizes itself from, so
++/// it has to stay in step with every edit. Call this after any change to
++/// char_grid, colour_grid or the rect.
++function scr_hud_flush(_asset) {
++    if (!variable_struct_exists(_asset, "meta")) exit;
++
++    var _m  = _asset.meta;
++    var _sz = _m.hud_w * _m.hud_h;
++    if (_sz <= 0) exit;
++
++    // A resize leaves the grids the wrong length — pad with space/white rather
++    // than writing past the end of them.
++    if (array_length(_m.char_grid) != _sz) {
++        var _old_c = _m.char_grid;
++        _m.char_grid = array_create(_sz, 32);
++        var _n_c = min(array_length(_old_c), _sz);
++        for (var _i = 0; _i < _n_c; _i++) {
++            _m.char_grid[_i] = _old_c[_i];
++        }
++    }
++    if (array_length(_m.colour_grid) != _sz) {
++        var _old_k = _m.colour_grid;
++        _m.colour_grid = array_create(_sz, 1);
++        var _n_k = min(array_length(_old_k), _sz);
++        for (var _i = 0; _i < _n_k; _i++) {
++            _m.colour_grid[_i] = _old_k[_i];
++        }
++    }
++
++    if (buffer_exists(_asset.buffer) && buffer_get_size(_asset.buffer) != _sz * 2) {
++        buffer_delete(_asset.buffer);
++        _asset.buffer = -1;
++    }
++    if (!buffer_exists(_asset.buffer)) {
++        _asset.buffer = buffer_create(_sz * 2, buffer_fixed, 1);
++    }
++
++    for (var _i = 0; _i < _sz; _i++) {
++        buffer_poke(_asset.buffer, _i,       buffer_u8, _m.char_grid[_i]   & 0xFF);
++        buffer_poke(_asset.buffer, _sz + _i, buffer_u8, _m.colour_grid[_i] & 0x0F);
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_flush/scr_hud_flush.yy b/C64DevMachine_win.yyp/scripts/scr_hud_flush/scr_hud_flush.yy
+new file mode 100644
+index 0000000..ace881e
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_flush/scr_hud_flush.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_hud_flush",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_hud_flush",
++  "parent":{
++    "name":"HUD",
++    "path":"folders/SCRIPTS/HUD.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_screen_code/scr_hud_screen_code.gml b/C64DevMachine_win.yyp/scripts/scr_hud_screen_code/scr_hud_screen_code.gml
+new file mode 100644
+index 0000000..0ab4986
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_screen_code/scr_hud_screen_code.gml
+@@ -0,0 +1,27 @@
++/// @function scr_hud_screen_code(_ascii)
++/// @desc Maps one typed ASCII character to its C64 SCREEN code — what actually
++///       goes in screen RAM, which is not PETSCII and not ASCII.
++///
++///   @ A-Z [ \ ] ^ _   ->  0-31    (letters land at 1-26)
++///   space ! " ... ?   ->  32-63   (same value as ASCII)
++///   anything else     ->  32      (space)
++///
++/// Lower case is folded to upper: a HUD is drawn with a game's own charset,
++/// where codes 1-26 are whatever glyphs the artist put there.
++/// @param {Real} _ascii  ord() of the typed character
++/// @return {Real} screen code 0-63
++function scr_hud_screen_code(_ascii) {
++
++    var _a = _ascii;
++
++    if (_a >= 97 && _a <= 122) {
++        _a -= 32;                 // fold lower case to upper
++    }
++    if (_a >= 64 && _a <= 95) {
++        return _a - 64;           // @ A-Z [ \ ] ^ _
++    }
++    if (_a >= 32 && _a <= 63) {
++        return _a;                // space, punctuation, digits
++    }
++    return 32;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_hud_screen_code/scr_hud_screen_code.yy b/C64DevMachine_win.yyp/scripts/scr_hud_screen_code/scr_hud_screen_code.yy
+new file mode 100644
+index 0000000..03ffb0b
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_hud_screen_code/scr_hud_screen_code.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_hud_screen_code",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_hud_screen_code",
++  "parent":{
++    "name":"HUD",
++    "path":"folders/SCRIPTS/HUD.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 22c0b5f..6cc1b69 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -836,6 +836,36 @@ function scr_load_workspace_from_path(_path) {
+ 	            _new_asset.meta.dither_invert = false;
+ 	            _new_asset.meta.brush_size    = 0;
+ 	        }
++	        if (_ad.type == "HUD") {
++	            // Seed a complete meta first, then lay the saved fields over it —
++	            // an asset written by an older build simply keeps the defaults for
++	            // anything it never had, and the editor never sees a gap.
++	            scr_hud_create(_new_asset);
++	            var _hdm = {};
++	            if (variable_struct_exists(_ad, "meta")) {
++	                _hdm = _ad.meta;
++	            }
++	            var _hd_keys = ["hud_x","hud_y","hud_w","hud_h","char_grid","colour_grid",
++	                            "chr_asset","fields","sel_field","active_char","active_colour",
++	                            "paint_mc","hud_mc_bg","hud_mc_col1","hud_mc_col2",
++	                            "zoom","cur_x","cur_y","show_grid"];
++	            for (var _hki = 0; _hki < array_length(_hd_keys); _hki++) {
++	                var _hk = _hd_keys[_hki];
++	                if (variable_struct_exists(_hdm, _hk)) {
++	                    _new_asset.meta[$ _hk] = _hdm[$ _hk];
++	                }
++	            }
++	            // json_parse hands numbers back as reals but a field struct that
++	            // came from an older file may be missing the newer members.
++	            for (var _hfi = 0; _hfi < array_length(_new_asset.meta.fields); _hfi++) {
++	                var _hf = _new_asset.meta.fields[_hfi];
++	                if (!variable_struct_exists(_hf, "base"))  { _hf.base  = 48; }
++	                if (!variable_struct_exists(_hf, "pad"))   { _hf.pad   = 0;  }
++	                if (!variable_struct_exists(_hf, "full"))  { _hf.full  = 81; }
++	                if (!variable_struct_exists(_hf, "empty")) { _hf.empty = 32; }
++	            }
++	            scr_hud_flush(_new_asset);
++	        }
+ 	        if (_ad.type == "MUSIC_MAKER") {
+ 	            scr_sound_editor_create(_new_asset);
+ 	            var _sem = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
+diff --git a/C64DevMachine_win.yyp/scripts/scr_macro_entry_labels/scr_macro_entry_labels.gml b/C64DevMachine_win.yyp/scripts/scr_macro_entry_labels/scr_macro_entry_labels.gml
+index 8b5a2e8..4b14e0c 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_macro_entry_labels/scr_macro_entry_labels.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_macro_entry_labels/scr_macro_entry_labels.gml
+@@ -58,6 +58,39 @@ function scr_macro_entry_labels() {
+                 _out[$ "sng" + string(stable_uid) + "_seek"] = true;
+             break;
+ 
++            case "MACRO_HUD":
++                var _hud_key = "hud" + string(stable_uid) + "_";
++                _out[$ _hud_key + "draw"] = true;
++                // One per DIGITS/BAR field. TEXT fields emit no routine, so
++                // publishing a label for them would send a JSR to a symbol the
++                // compile chain never creates.
++                var _hud_name = "";
++                if (array_length(instructions[0]) > 1) {
++                    _hud_name = string(instructions[0][1]);
++                }
++                if (_hud_name != "" && instance_exists(obj_asset_manager)) {
++                    var _hud_am = obj_asset_manager;
++                    for (var _hai = 0; _hai < ds_list_size(_hud_am.asset_list); _hai++) {
++                        var _hua = ds_list_find_value(_hud_am.asset_list, _hai);
++                        if (_hua.type != "HUD" || _hua.name != _hud_name) {
++                            continue;
++                        }
++                        if (!variable_struct_exists(_hua.meta, "fields")) {
++                            break;
++                        }
++                        var _hud_fields = _hua.meta.fields;
++                        for (var _hfi = 0; _hfi < array_length(_hud_fields); _hfi++) {
++                            var _huf = _hud_fields[_hfi];
++                            if (real(_huf.kind) == 0) {
++                                continue;
++                            }
++                            _out[$ _hud_key + string(_huf.name)] = true;
++                        }
++                        break;
++                    }
++                }
++            break;
++
+             case "MACRO_ANIM":
+                 var _an_alias = anim_alias;
+                 if (_an_alias == "")
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_hud/scr_node_draw_macro_hud.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_hud/scr_node_draw_macro_hud.gml
+new file mode 100644
+index 0000000..a16b5fd
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_hud/scr_node_draw_macro_hud.gml
+@@ -0,0 +1,207 @@
++/// @desc scr_node_draw_macro_hud(_draw_x, _y)
++/// instructions[0]: ["macro_hud",
++///   1 asset_name, 2 screen_base, 3 colour_base, 4 auto_draw, 5 write_colour]
++///
++/// The HUD asset carries the picture and the field list; this node says where
++/// on the machine it lands and reports the entry points it will publish, so a
++/// code block can be written against them before the first build.
++function scr_node_draw_macro_hud(_draw_x, _y) {
++
++    var _ins = instructions[0];
++
++    var _asset_name = "";
++    if (array_length(_ins) > 1) {
++        _asset_name = string(_ins[1]);
++    }
++    var _scr_base = 0x0400;
++    if (array_length(_ins) > 2 && is_real(_ins[2])) {
++        _scr_base = real(_ins[2]) & 0xFFFF;
++    }
++    var _col_base = 0xD800;
++    if (array_length(_ins) > 3 && is_real(_ins[3])) {
++        _col_base = real(_ins[3]) & 0xFFFF;
++    }
++    var _auto_draw = 0;
++    if (array_length(_ins) > 4 && is_real(_ins[4])) {
++        _auto_draw = real(_ins[4]);
++    }
++    var _do_col = 1;
++    if (array_length(_ins) > 5 && is_real(_ins[5])) {
++        _do_col = real(_ins[5]);
++    }
++
++    var _lh = 14;
++    var _ly = _y + 28;
++
++    var _c_lbl  = make_color_rgb(140, 160, 200);
++    var _c_dim  = make_color_rgb(90, 90, 100);
++    var _c_ast  = make_color_rgb(255, 190, 90);
++    var _c_bad  = make_color_rgb(230, 90, 90);
++    var _c_info = make_color_rgb(80, 150, 140);
++
++    draw_set_font(fnt_c64_tiny);
++
++    // ── Resolve the asset so the node can report real numbers ──
++    var _hu = noone;
++    if (_asset_name != "" && instance_exists(obj_asset_manager)) {
++        var _am = obj_asset_manager;
++        for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
++            var _a = ds_list_find_value(_am.asset_list, _ai);
++            if (_a.type == "HUD" && _a.name == _asset_name) {
++                _hu = _a;
++                break;
++            }
++        }
++    }
++
++    // ===== HUD asset picker =====
++    draw_set_color(_c_lbl);
++    draw_text(_draw_x + 10, _ly, "HUD:");
++    if (_asset_name == "" || _asset_name == "[clear]") {
++        draw_set_color(_c_bad);
++        draw_text(_draw_x + 62, _ly, "< PICK HUD >");
++    } else if (_hu == noone) {
++        draw_set_color(_c_bad);
++        draw_text(_draw_x + 62, _ly, _asset_name + " ?");
++    } else {
++        draw_set_color(_c_ast);
++        var _disp = _asset_name;
++        if (string_length(_disp) > 14) {
++            _disp = string_copy(_disp, 1, 14) + "...";
++        }
++        draw_text(_draw_x + 62, _ly, _disp);
++    }
++    _ly += _lh;
++
++    // ===== SCREEN / COLOUR base =====
++    var _scr_edit = (obj_workspace_manager.is_entering_text &&
++                     obj_workspace_manager.input_target_node  == id &&
++                     obj_workspace_manager.input_target_index == 2);
++    var _col_edit = (obj_workspace_manager.is_entering_text &&
++                     obj_workspace_manager.input_target_node  == id &&
++                     obj_workspace_manager.input_target_index == 3);
++
++    draw_set_color(_c_lbl);
++    draw_text(_draw_x + 10, _ly, "SCR:");
++    if (_scr_edit) {
++        draw_set_color(c_lime);
++        draw_text(_draw_x + 46, _ly, obj_workspace_manager.current_input_string);
++    } else {
++        var _sh = decimal_to_hex(_scr_base);
++        while (string_length(_sh) < 4) { _sh = "0" + _sh; }
++        draw_set_color(c_aqua);
++        draw_text(_draw_x + 46, _ly, "$" + string_upper(_sh));
++    }
++
++    draw_set_color(_c_lbl);
++    draw_text(_draw_x + 120, _ly, "COL:");
++    if (_col_edit) {
++        draw_set_color(c_lime);
++        draw_text(_draw_x + 156, _ly, obj_workspace_manager.current_input_string);
++    } else {
++        var _ch = decimal_to_hex(_col_base);
++        while (string_length(_ch) < 4) { _ch = "0" + _ch; }
++        draw_set_color(c_aqua);
++        draw_text(_draw_x + 156, _ly, "$" + string_upper(_ch));
++    }
++    _ly += _lh;
++
++    // ===== AUTO DRAW + WRITE COLOUR =====
++    var _cbx = _draw_x + 10;
++    if (_auto_draw == 1) {
++        draw_set_color(c_lime);
++    } else {
++        draw_set_color(make_color_rgb(60, 60, 60));
++    }
++    draw_rectangle(_cbx, _ly + 1, _cbx + 12, _ly + 13, false);
++    draw_set_color(c_gray);
++    draw_rectangle(_cbx, _ly + 1, _cbx + 12, _ly + 13, true);
++    if (_auto_draw == 1) {
++        draw_set_color(c_lime);
++    } else {
++        draw_set_color(c_gray);
++    }
++    draw_text(_cbx + 18, _ly, "AUTO DRAW");
++
++    var _cbx2 = _draw_x + 120;
++    if (_do_col == 1) {
++        draw_set_color(c_lime);
++    } else {
++        draw_set_color(make_color_rgb(60, 60, 60));
++    }
++    draw_rectangle(_cbx2, _ly + 1, _cbx2 + 12, _ly + 13, false);
++    draw_set_color(c_gray);
++    draw_rectangle(_cbx2, _ly + 1, _cbx2 + 12, _ly + 13, true);
++    if (_do_col == 1) {
++        draw_set_color(c_lime);
++    } else {
++        draw_set_color(c_gray);
++    }
++    draw_text(_cbx2 + 18, _ly, "COLOUR");
++    _ly += _lh;
++
++    // ===== WHAT IT WILL EMIT =====
++    if (_hu == noone) {
++        draw_set_color(_c_dim);
++        draw_text(_draw_x + 10, _ly, "NO HUD ASSET - NOTHING EMITTED");
++        _ly += _lh;
++    } else {
++        var _hm = _hu.meta;
++        var _cells = _hm.hud_w * _hm.hud_h;
++        var _bytes = _cells;
++        if (_do_col == 1) {
++            _bytes = _cells * 2;
++        }
++
++        draw_set_color(_c_info);
++        draw_text(_draw_x + 10, _ly,
++            string(_hm.hud_w) + "x" + string(_hm.hud_h) + " AT " + string(_hm.hud_x) + "," + string(_hm.hud_y)
++            + "   " + string(_bytes) + " BYTES");
++        _ly += _lh;
++
++        // First screen address the panel touches — the number a code block
++        // needs when it poking cells directly.
++        var _first = (_scr_base + (_hm.hud_y * 40) + _hm.hud_x) & 0xFFFF;
++        var _fh = decimal_to_hex(_first);
++        while (string_length(_fh) < 4) { _fh = "0" + _fh; }
++        draw_set_color(_c_dim);
++        draw_text(_draw_x + 10, _ly, "TOP LEFT $" + string_upper(_fh));
++        _ly += _lh;
++
++        // ===== ENTRY POINTS =====
++        var _key = "hud" + string(stable_uid) + "_";
++        draw_set_color(make_color_rgb(120, 220, 160));
++        draw_text(_draw_x + 10, _ly, _key + "draw");
++        _ly += _lh;
++
++        var _fields = [];
++        if (variable_struct_exists(_hm, "fields") && is_array(_hm.fields)) {
++            _fields = _hm.fields;
++        }
++        var _shown = 0;
++        for (var _fi = 0; _fi < array_length(_fields); _fi++) {
++            if (_shown >= 4) {
++                draw_set_color(_c_dim);
++                draw_text(_draw_x + 10, _ly, "+" + string(array_length(_fields) - _shown) + " MORE");
++                break;
++            }
++            var _f = _fields[_fi];
++            var _fa = (_scr_base + ((_hm.hud_y + real(_f.fy)) * 40) + _hm.hud_x + real(_f.fx)) & 0xFFFF;
++            var _fah = decimal_to_hex(_fa);
++            while (string_length(_fah) < 4) { _fah = "0" + _fah; }
++
++            if (real(_f.kind) == 0) {
++                // TEXT: a position, no routine — show the address instead.
++                draw_set_color(_c_dim);
++                draw_text(_draw_x + 10, _ly, _f.name + "  $" + string_upper(_fah));
++            } else {
++                draw_set_color(make_color_rgb(120, 220, 160));
++                draw_text(_draw_x + 10, _ly, _key + _f.name);
++                draw_set_color(_c_dim);
++                draw_text(_draw_x + 150, _ly, "A=VAL");
++            }
++            _ly += _lh;
++            _shown += 1;
++        }
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_hud/scr_node_draw_macro_hud.yy b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_hud/scr_node_draw_macro_hud.yy
+new file mode 100644
+index 0000000..117dd78
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_hud/scr_node_draw_macro_hud.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_node_draw_macro_hud",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_node_draw_macro_hud",
++  "parent":{
++    "name":"HUD",
++    "path":"folders/SCRIPTS/HUD.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index e9c3516..f047080 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -741,6 +741,22 @@ case "LABEL": {
+         // The node only inits. Call <key>_play once per frame from your main
+         // loop or a MACRO_IRQ handler — the label is shown on the node.
+         // -------------------------------------------------------
++        // -------------------------------------------------------
++        // MACRO_HUD
++        // [1] asset_name (HUD)      [2] screen base   [3] colour base
++        // [4] auto_draw (0/1)       [5] write_colour (0/1)
++        //
++        // AUTO DRAW is off by default: a HUD is normally stamped once, after
++        // the screen has been cleared and the charset is in place, which is
++        // rarely where the node happens to sit. JSR <key>_draw from there.
++        // -------------------------------------------------------
++        case "MACRO_HUD":
++            _n.node_title   = "HUD";
++            _n.instructions = [["macro_hud", "", 0x0400, 0xD800, 0, 1]];
++            _n.pc_address   = global.start_pc;
++            with (_n) { event_user(0); }
++            break;
++
+         case "MACRO_SID_SONG":
+             _n.node_title   = "SID SONG";
+             //                                              [4] = hard restart frames
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_hud/scr_node_step_macro_hud.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_hud/scr_node_step_macro_hud.gml
+new file mode 100644
+index 0000000..9f035e9
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_hud/scr_node_step_macro_hud.gml
+@@ -0,0 +1,101 @@
++/// @desc scr_node_step_macro_hud(_draw_x)
++/// Click handling for MACRO_HUD. Row anchors mirror the draw script.
++function scr_node_step_macro_hud(_draw_x) {
++
++    // Backfill older saves to the full slot count (0..5).
++    while (array_length(instructions[0]) <= 5) {
++        var _n = array_length(instructions[0]);
++        if (_n == 1) {
++            array_push(instructions[0], "");        // asset name
++        } else if (_n == 2) {
++            array_push(instructions[0], 0x0400);    // screen base
++        } else if (_n == 3) {
++            array_push(instructions[0], 0xD800);    // colour base
++        } else if (_n == 4) {
++            array_push(instructions[0], 0);         // auto draw off
++        } else {
++            array_push(instructions[0], 1);         // write colour on
++        }
++    }
++
++    var _lh = 14;
++    var _ly = y + 28;
++
++    // ===== HUD picker (slot 1) =====
++    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _ly, _draw_x + width - 6, _ly + 13)) {
++        label_picker_open       = true;
++        global.any_picker_open  = true;
++        label_picker_prev_depth = depth;
++        depth                   = -9999;
++        label_picker_mode       = "HUD_ASSET";
++        label_picker_scroll     = 0;
++        label_picker_list       = [];
++        label_picker_target     = id;
++        label_picker_index      = 1;
++        exit;
++    }
++    _ly += _lh;
++
++    // ===== SCREEN base (slot 2, hex) =====
++    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 40, _ly, _draw_x + 110, _ly + 13)) {
++        with (obj_workspace_manager) {
++            is_entering_text     = true;
++            input_target_node    = other.id;
++            input_target_index   = 2;
++            var _hex = string_upper(decimal_to_hex(real(other.instructions[0][2])));
++            while (string_length(_hex) < 4) { _hex = "0" + _hex; }
++            current_input_string = "$" + _hex;
++            keyboard_string      = "";
++            cursor_pos           = string_length(current_input_string);
++        }
++        exit;
++    }
++
++    // ===== COLOUR base (slot 3, hex) — same row =====
++    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 150, _ly, _draw_x + width - 6, _ly + 13)) {
++        with (obj_workspace_manager) {
++            is_entering_text     = true;
++            input_target_node    = other.id;
++            input_target_index   = 3;
++            var _hex2 = string_upper(decimal_to_hex(real(other.instructions[0][3])));
++            while (string_length(_hex2) < 4) { _hex2 = "0" + _hex2; }
++            current_input_string = "$" + _hex2;
++            keyboard_string      = "";
++            cursor_pos           = string_length(current_input_string);
++        }
++        exit;
++    }
++    _ly += _lh;
++
++    // ===== AUTO DRAW (slot 4) =====
++    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 8, _ly, _draw_x + 110, _ly + 13)) {
++        var _auto = 0;
++        if (is_real(instructions[0][4])) {
++            _auto = real(instructions[0][4]);
++        }
++        if (_auto == 0) {
++            instructions[0][4] = 1;
++        } else {
++            instructions[0][4] = 0;
++        }
++        global.addresses_dirty = true;
++        global.undo_dirty      = true;
++        exit;
++    }
++
++    // ===== WRITE COLOUR (slot 5) — same row =====
++    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 118, _ly, _draw_x + width - 6, _ly + 13)) {
++        var _dc = 1;
++        if (is_real(instructions[0][5])) {
++            _dc = real(instructions[0][5]);
++        }
++        if (_dc == 0) {
++            instructions[0][5] = 1;
++        } else {
++            instructions[0][5] = 0;
++        }
++        global.addresses_dirty = true;
++        global.undo_dirty      = true;
++        exit;
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_hud/scr_node_step_macro_hud.yy b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_hud/scr_node_step_macro_hud.yy
+new file mode 100644
+index 0000000..76a648e
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_hud/scr_node_step_macro_hud.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_node_step_macro_hud",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_node_step_macro_hud",
++  "parent":{
++    "name":"HUD",
++    "path":"folders/SCRIPTS/HUD.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+index 19d2d44..62f7bba 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+@@ -254,6 +254,31 @@
+         }
+ 		
+ 		
++		 if (_a.type == "HUD") {
++            // The rectangle, the two grids and the fields ARE the asset. The
++            // glyph atlases in meta are surfaces — never serialised, rebuilt
++            // on first draw.
++            _meta_out.hud_x         = _a.meta.hud_x;
++            _meta_out.hud_y         = _a.meta.hud_y;
++            _meta_out.hud_w         = _a.meta.hud_w;
++            _meta_out.hud_h         = _a.meta.hud_h;
++            _meta_out.char_grid     = _a.meta.char_grid;
++            _meta_out.colour_grid   = _a.meta.colour_grid;
++            _meta_out.chr_asset     = _a.meta.chr_asset;
++            _meta_out.fields        = _a.meta.fields;
++            _meta_out.sel_field     = _a.meta.sel_field;
++            _meta_out.active_char   = _a.meta.active_char;
++            _meta_out.active_colour = _a.meta.active_colour;
++            _meta_out.paint_mc      = _a.meta.paint_mc;
++            _meta_out.hud_mc_bg     = _a.meta.hud_mc_bg;
++            _meta_out.hud_mc_col1   = _a.meta.hud_mc_col1;
++            _meta_out.hud_mc_col2   = _a.meta.hud_mc_col2;
++            _meta_out.zoom          = _a.meta.zoom;
++            _meta_out.cur_x         = _a.meta.cur_x;
++            _meta_out.cur_y         = _a.meta.cur_y;
++            _meta_out.show_grid     = _a.meta.show_grid;
++        }
++
+ 		 if (_a.type == "MUSIC_MAKER") {
+             _meta_out.instruments      = variable_struct_exists(_a.meta, "instruments")      ? _a.meta.instruments      : [];
+             _meta_out.sel_instr        = variable_struct_exists(_a.meta, "sel_instr")        ? _a.meta.sel_instr        : -1;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+index e622b7f..0e508cb 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+@@ -243,6 +243,31 @@ if (instance_exists(obj_asset_manager)) {
+         }
+ 		
+ 		
++		 if (_a.type == "HUD") {
++            // The rectangle, the two grids and the fields ARE the asset. The
++            // glyph atlases in meta are surfaces — never serialised, rebuilt
++            // on first draw.
++            _meta_out.hud_x         = _a.meta.hud_x;
++            _meta_out.hud_y         = _a.meta.hud_y;
++            _meta_out.hud_w         = _a.meta.hud_w;
++            _meta_out.hud_h         = _a.meta.hud_h;
++            _meta_out.char_grid     = _a.meta.char_grid;
++            _meta_out.colour_grid   = _a.meta.colour_grid;
++            _meta_out.chr_asset     = _a.meta.chr_asset;
++            _meta_out.fields        = _a.meta.fields;
++            _meta_out.sel_field     = _a.meta.sel_field;
++            _meta_out.active_char   = _a.meta.active_char;
++            _meta_out.active_colour = _a.meta.active_colour;
++            _meta_out.paint_mc      = _a.meta.paint_mc;
++            _meta_out.hud_mc_bg     = _a.meta.hud_mc_bg;
++            _meta_out.hud_mc_col1   = _a.meta.hud_mc_col1;
++            _meta_out.hud_mc_col2   = _a.meta.hud_mc_col2;
++            _meta_out.zoom          = _a.meta.zoom;
++            _meta_out.cur_x         = _a.meta.cur_x;
++            _meta_out.cur_y         = _a.meta.cur_y;
++            _meta_out.show_grid     = _a.meta.show_grid;
++        }
++
+ 		 if (_a.type == "MUSIC_MAKER") {
+             _meta_out.instruments      = variable_struct_exists(_a.meta, "instruments")      ? _a.meta.instruments      : [];
+             _meta_out.sel_instr        = variable_struct_exists(_a.meta, "sel_instr")        ? _a.meta.sel_instr        : -1;
