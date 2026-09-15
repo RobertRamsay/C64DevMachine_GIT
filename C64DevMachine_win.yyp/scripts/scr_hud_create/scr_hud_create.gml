@@ -50,7 +50,8 @@ function scr_hud_create(_asset) {
         // ── EDITOR STATE ──
         active_char   : 32,
         active_colour : 1,
-        paint_mc      : 0,       // 1 = painted cells are multicolour cells
+        paint_mc      : 0,       // (unused, kept for older saves)
+        hud_mc_mode   : 0,       // screen mode the panel is shown in: 0 = HR text, 1 = MC text ($D016 bit 4)
         hud_mc_bg     : -1,      // -1 = inherit from the linked charset
         hud_mc_col1   : -1,
         hud_mc_col2   : -1,

@@ -847,7 +847,7 @@ function scr_load_workspace_from_path(_path) {
 	            }
 	            var _hd_keys = ["hud_x","hud_y","hud_w","hud_h","char_grid","colour_grid",
 	                            "chr_asset","fields","sel_field","active_char","active_colour",
-	                            "paint_mc","hud_mc_bg","hud_mc_col1","hud_mc_col2",
+	                            "paint_mc","hud_mc_mode","hud_mc_bg","hud_mc_col1","hud_mc_col2",
 	                            "zoom","cur_x","cur_y","show_grid"];
 	            for (var _hki = 0; _hki < array_length(_hd_keys); _hki++) {
 	                var _hk = _hd_keys[_hki];

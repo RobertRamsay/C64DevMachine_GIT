@@ -3,7 +3,10 @@
 /// Handles HR and MC rendering. Buttons: Flip X, Flip Y, Clear.
 /// Click handling is done inline (Draw GUI can call this from both
 /// the inline viewer and the undocked panel).
-function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true) {
+/// _own_undo: false lets a host editor with its own undo stack (the HUD
+/// editor, whose grid undo is also on ctrl+Z) take the keys while the mouse
+/// is over its canvas, so one press doesn't pop both stacks at once.
+function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true, _own_undo = true) {
 
     var _mx = global.gui_mouse_x;
     var _my = global.gui_mouse_y;
@@ -171,7 +174,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true)
     }
 
     // ---- UNDO / REDO ----
-    if (scr_ctrl_held() && keyboard_check_pressed(ord("Z"))) {
+    if (_own_undo && scr_ctrl_held() && keyboard_check_pressed(ord("Z"))) {
         if (array_length(_asset.meta.undo_stack) > 0) {
             var _last  = array_length(_asset.meta.undo_stack) - 1;
             var _entry = _asset.meta.undo_stack[_last];
@@ -208,7 +211,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true)
         }
     }
 
-    if (scr_ctrl_held() && keyboard_check_pressed(ord("Y"))) {
+    if (_own_undo && scr_ctrl_held() && keyboard_check_pressed(ord("Y"))) {
         if (array_length(_asset.meta.redo_stack) > 0) {
             var _last  = array_length(_asset.meta.redo_stack) - 1;
             var _entry = _asset.meta.redo_stack[_last];

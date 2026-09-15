@@ -151,6 +151,7 @@ var _base = "unsaved";
                 _mo.active_char   = _me.active_char;
                 _mo.active_colour = _me.active_colour;
                 _mo.paint_mc      = _me.paint_mc;
+                _mo.hud_mc_mode   = _me.hud_mc_mode;
                 _mo.hud_mc_bg     = _me.hud_mc_bg;
                 _mo.hud_mc_col1   = _me.hud_mc_col1;
                 _mo.hud_mc_col2   = _me.hud_mc_col2;

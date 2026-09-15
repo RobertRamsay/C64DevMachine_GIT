@@ -259,6 +259,7 @@ if (instance_exists(obj_asset_manager)) {
             _meta_out.active_char   = _a.meta.active_char;
             _meta_out.active_colour = _a.meta.active_colour;
             _meta_out.paint_mc      = _a.meta.paint_mc;
+            _meta_out.hud_mc_mode   = _a.meta.hud_mc_mode;
             _meta_out.hud_mc_bg     = _a.meta.hud_mc_bg;
             _meta_out.hud_mc_col1   = _a.meta.hud_mc_col1;
             _meta_out.hud_mc_col2   = _a.meta.hud_mc_col2;
