@@ -164,6 +164,14 @@ for (var _pos = 0; _pos < _count; _pos++) {
     // Conflict Flashing
     var _has_conflict = false;
     var _my_size = buffer_exists(_asset.buffer) ? buffer_get_size(_asset.buffer) : 0;
+    // RAW CHARS exports only the character plane. The editor buffer also holds
+    // colour and override planes, which must not trigger memory conflicts.
+    if (_asset.type == "MAP_DATA" && variable_struct_exists(_asset, "meta")
+    && variable_struct_exists(_asset.meta, "raw_chars") && is_real(_asset.meta.raw_chars)
+    && real(_asset.meta.raw_chars) == 1
+    && variable_struct_exists(_asset.meta, "map_w") && variable_struct_exists(_asset.meta, "map_h")) {
+        _my_size = min(_my_size, max(0, _asset.meta.map_w * _asset.meta.map_h));
+    }
     var _my_end = _asset.address + _my_size;
 
 // Check against nodes — only flag if the node physically overlaps
@@ -321,7 +329,8 @@ for (var _pos = 0; _pos < _count; _pos++) {
 			             ? make_color_rgb(45, 105, 120)
 			             : make_color_rgb(200, 160, 40);
 	                    draw_set_color(_tag_col);
-	                    draw_rectangle(_tag_x - 80, _iy + 4, _tag_x - 2, _iy + item_h - 4, false);
+	                    // Keep the badge above the asset name (which starts at y + 16).
+	                    draw_rectangle(_tag_x - 80, _iy + 1, _tag_x - 2, _iy + 15, false);
 	                    draw_set_font(fnt_c64_pico);
 	                    draw_set_color(c_white);
 	                    draw_set_halign(fa_center);
@@ -330,17 +339,17 @@ for (var _pos = 0; _pos < _count; _pos++) {
 							draw_sprite_ext(
 							    _tag_sprite,
 							    0,
-							    _tag_x - 64,
-							    _iy + 19,
-							    .2,
-							    .2,
+							    _tag_x - 73,
+							    _iy + 8,
+							    .1,
+							    .1,
 							    0,
 							    c_white,
 							    1.0
 							);
 	                    var _short = string_copy(_ta.name, 1, 12);
 					
-	                    draw_text(_tag_x - 40, _iy + 13, _short);
+	                    draw_text(_tag_x - 34, _iy + 2, _short);
 						draw_set_halign(fa_left);
 	                   
 	                    break;

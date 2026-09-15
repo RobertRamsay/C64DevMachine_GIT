@@ -12,7 +12,7 @@
 /// A rest ("---" or "") or an unparseable note plays nothing and returns
 /// quietly — this is a preview aid, not a validator (scr_note_name_to_freq
 /// already owns validation at commit time).
-function scr_sound_preview_play(_note_name, _waveform = "SQUARE", _channel = 0, _pulse_width = 2048) {
+function scr_sound_preview_play(_note_name, _waveform = "SQUARE", _channel = 0, _pulse_width = 2048, _prepare_only = false) {
     if (_note_name == "" || _note_name == "---") {
         return;
     }
@@ -35,7 +35,7 @@ function scr_sound_preview_play(_note_name, _waveform = "SQUARE", _channel = 0, 
     // Stop the previous sound on THIS channel only — other channels keep
     // ringing undisturbed. Nothing is freed here: rendered sounds are owned
     // by the cache below and replayed rather than rebuilt.
-    scr_sound_preview_free_channel(_channel);
+    if (!_prepare_only) scr_sound_preview_free_channel(_channel);
 
     // ── CACHE LOOKUP ──
     // This is the fallback for steps with no instrument assigned, so the same
@@ -49,6 +49,8 @@ function scr_sound_preview_play(_note_name, _waveform = "SQUARE", _channel = 0, 
     var _ck = "P|" + string(_note_name) + "|" + string(_waveform) + "|" + string(round(_pulse_width));
     if (ds_map_exists(global.snd_preview_cache, _ck)) {
         var _hit = global.snd_preview_cache[? _ck];
+        _hit.last_used = get_timer();
+        if (_prepare_only) return;
         global.snd_preview_asset[_channel]    = _hit.snd;
         global.snd_preview_buffer[_channel]   = _hit.buf;
         global.snd_preview_instance[_channel] = audio_play_sound(_hit.snd, 1, false);
@@ -106,10 +108,8 @@ function scr_sound_preview_play(_note_name, _waveform = "SQUARE", _channel = 0, 
 
      var _snd = audio_create_buffer_sound(_buf, buffer_s16, _rate, 0, buffer_get_size(_buf), audio_mono);
 
-    if (ds_map_size(global.snd_preview_cache) >= 128) {
-        scr_sound_preview_cache_clear();
-    }
-    global.snd_preview_cache[? _ck] = { snd: _snd, buf: _buf };
+    scr_sound_preview_cache_store(_ck, _snd, _buf);
+    if (_prepare_only) return;
 
     global.snd_preview_asset[_channel]    = _snd;
     global.snd_preview_buffer[_channel]   = _buf;

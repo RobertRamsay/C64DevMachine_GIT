@@ -57,12 +57,17 @@ var _mouse_in_viewer = viewer_open && point_in_rectangle(_mx, _my, _vx1, _vy1, _
 // -------------------------------------------------------
 var _focused = window_has_focus();
 
-// Check for Spred64 save every frame (md5 polling — not focus dependent)
+// Watch external edits at 4 Hz instead of hashing the file every frame.
+// Focus recovery still checks immediately; the next poll is at most 250 ms away.
+if (!variable_instance_exists(id, "spr_edit_poll_us")) spr_edit_poll_us = 0;
+var _spr_poll_now = get_timer();
 
-if (spr_edit_path != "" &&
+if ((_spr_poll_now >= spr_edit_poll_us || (_focused && !_last_focus)) &&
+    spr_edit_path != "" &&
     spr_edit_md5   != "" &&
     spr_edit_asset >= 0  &&
     spr_edit_asset < ds_list_size(asset_list)) {
+    spr_edit_poll_us = _spr_poll_now + 250000;
     if (file_exists(spr_edit_path)) {
         var _current_md5 = md5_file(spr_edit_path);
         if (_current_md5 != spr_edit_md5) {

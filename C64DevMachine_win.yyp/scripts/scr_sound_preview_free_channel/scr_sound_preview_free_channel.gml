@@ -35,7 +35,7 @@ function scr_sound_preview_free_channel(_channel) {
     // audition is owned by global.snd_preview_cache and replayed on the next
     // press of the same note, so freeing on channel takeover would destroy an
     // asset the cache still hands out. scr_sound_preview_cache_clear() is the
-    // single owner of teardown; it runs at the entry cap and on editor close.
+    // explicit teardown path; normal cache eviction frees only unused entries.
     //
     // The per-channel asset/buffer globals are now just a record of what last
     // played on the channel, kept because both preview scripts write them.

@@ -13,7 +13,7 @@
 /// cost lands on the single frame the row advances. Callers that know the
 /// row duration pass it; a bare audition (clicking a key) passes nothing and
 /// gets the full tail as before.
-function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _max_sec = -1) {
+function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _max_sec = -1, _prepare_only = false) {
     if (_note_name == "" || _note_name == "---") {
         return;
     }
@@ -37,8 +37,10 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
     }
     var _ck = scr_sound_preview_cache_key(_instr, _note_name, _max_sec);
     if (ds_map_exists(global.snd_preview_cache, _ck)) {
-        scr_sound_preview_free_channel(_channel);
+        if (!_prepare_only) scr_sound_preview_free_channel(_channel);
         var _hit = global.snd_preview_cache[? _ck];
+        _hit.last_used = get_timer();
+        if (_prepare_only) return;
         global.snd_preview_asset[_channel]    = _hit.snd;
         global.snd_preview_buffer[_channel]   = _hit.buf;
         global.snd_preview_instance[_channel] = audio_play_sound(_hit.snd, 1, false);
@@ -186,7 +188,7 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
 
     // Free the PREVIOUS audition on this channel — asset and buffer both.
     // Shared with scr_sound_preview_play, which writes the same globals.
-    scr_sound_preview_free_channel(_channel);
+    if (!_prepare_only) scr_sound_preview_free_channel(_channel);
 
     var _buf = buffer_create(_buf_n * 2, buffer_fixed, 2);   // 16-bit mono
 
@@ -196,8 +198,10 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
     var _phase       = 0;
     var _phase_step  = _segs[0].hz / _rate;
 
+    var _seg_count = array_length(_segs);
+    var _rel_n_eff = max(1, _release_n * _lvl_gate_off);
     for (var _i = 0; _i < _buf_n; _i++) {
-        if (_i < _gate_on_n && _seg_remain <= 0 && _seg_idx < array_length(_segs) - 1) {
+        if (_i < _gate_on_n && _seg_remain <= 0 && _seg_idx < _seg_count - 1) {
             _seg_idx    += 1;
             _seg_remain  = _segs[_seg_idx].n;
             _seg_wave    = _seg_wave_name(_segs[_seg_idx].wave);
@@ -231,38 +235,11 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
         } else if (_i < _gate_on_n) {
             _env = _sus_level;
         } else {
-            // Release starts from wherever the envelope ACTUALLY was when the
-            // gate dropped, not from _sus_level. With a short instrument the
-            // decay ramp may not have reached sustain yet; with sustain 0 the
-            // level may already be silent. Recompute the level at gate-off so
-            // the preview matches what the SID does.
-            var _lvl_at_gate_off = _sus_level;
-            if (_gate_on_n < _attack_n) {
-                _lvl_at_gate_off = _gate_on_n / _attack_n;
-            } else if (_gate_on_n < _attack_n + _decay_n) {
-                var _dp_off = (_gate_on_n - _attack_n) / _decay_n;
-                var _dc_off = max(0, 1 - _dp_off);
-                _dc_off     = _dc_off * _dc_off * _dc_off;
-                _lvl_at_gate_off = _sus_level + ((1 - _sus_level) * _dc_off);
-            }
-            // The SID's envelope generator traverses at a fixed RATE, not
-            // over a fixed duration — the published release times assume a
-            // full-scale fall from peak. Releasing from a lower level covers
-            // less ground and finishes proportionally sooner, so scale the
-            // ramp length by where the envelope actually was at gate-off.
-            // Without this a half-height release still took the full table
-            // duration, which is most of why the preview outran VICE.
-            // The SID's envelope output is exponential, not linear: it falls
-            // steeply at first then crawls, so it is perceptually gone long
-            // before the nominal release time elapses. A linear ramp stays
-            // audible almost to the end, which is why the preview's tails
-            // outlasted VICE's even after scaling for the gate-off level.
-            // Cubing the linear progress approximates the curve closely
-            // enough for an audition without modelling the real counter.
-            var _rel_n_eff = max(1, _release_n * _lvl_at_gate_off);
+            // Gate-off level and effective release length are invariant.
+            // Reuse the values computed once before the sample loop.
             var _rprog     = (_i - _gate_on_n) / _rel_n_eff;
             var _rcurve    = max(0, 1 - _rprog);
-            _env           = _lvl_at_gate_off * _rcurve * _rcurve * _rcurve;
+            _env           = _lvl_gate_off * _rcurve * _rcurve * _rcurve;
         }
 
         var _amp = 0.30;
@@ -277,17 +254,8 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
 
     var _snd = audio_create_buffer_sound(_buf, buffer_s16, _rate, 0, buffer_get_size(_buf), audio_mono);
 
-    // Store before playing. Entries are owned by the CACHE from here on —
-    // scr_sound_preview_free_channel only stops playback, it must not free
-    // these, or the next hit would play a destroyed asset.
-    //
-    // Flushed wholesale at the cap rather than evicted LRU: tracking access
-    // order costs more bookkeeping than it saves, and a full rebuild of the
-    // dozen notes actually in use is a fraction of a second.
-    if (ds_map_size(global.snd_preview_cache) >= 128) {
-        scr_sound_preview_cache_clear();
-    }
-    global.snd_preview_cache[? _ck] = { snd: _snd, buf: _buf };
+    scr_sound_preview_cache_store(_ck, _snd, _buf);
+    if (_prepare_only) return;
 
     global.snd_preview_asset[_channel]    = _snd;
     global.snd_preview_buffer[_channel]   = _buf;

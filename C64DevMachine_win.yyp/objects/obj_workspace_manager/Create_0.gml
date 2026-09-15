@@ -90,6 +90,8 @@ welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
 	"TWEAKED - Map editor to support the *Zyrons Escape project* (*PRO ONLY)",
+	"TWEAKED - Music editor now pre-compiles for better playback, buttons added.",
+	"IN PROGRESS - HUD Asset editor",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
     "SUPPORT the development by leaving a review on ITCH and buying the PRO version.",

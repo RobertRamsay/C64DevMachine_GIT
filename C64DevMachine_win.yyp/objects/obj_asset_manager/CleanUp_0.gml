@@ -1,3 +1,6 @@
+// Stop preview instances before releasing their cached sound assets/buffers.
+scr_sound_preview_cache_clear();
+
 /// @desc obj_asset_manager CLEANUP
 
 // Free all loaded sprite previews

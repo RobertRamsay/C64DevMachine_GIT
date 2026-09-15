@@ -9,6 +9,13 @@ function scr_asset_inline_editor_close_all() {
             if (!variable_struct_exists(_a, "meta")) {
                 continue;
             }
+            if (_a.type == "MUSIC_MAKER") {
+                _a.meta.playing = false;
+                _a.meta.song_playing = false;
+                _a.meta.preview_jobs = [];
+                _a.meta.preview_job_index = 0;
+                _a.meta.preview_next_us = 0;
+            }
             if (!variable_struct_exists(_a.meta, "inline_edit_open")) {
                 continue;
             }
