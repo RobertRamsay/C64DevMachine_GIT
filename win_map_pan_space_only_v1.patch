@@ -1,0 +1,27 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index b64695e..ce592d8 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -2758,16 +2758,19 @@ draw_set_color(_cell_bg_col);
+ 		        if (mouse_wheel_up())   _m.zoom = min(6, _zoom + 1);
+ 		        if (mouse_wheel_down()) _m.zoom = max(1, _zoom - 1);
+ 
+-				if (mouse_check_button_pressed(mb_middle) || keyboard_check_pressed(vk_alt) || keyboard_check_pressed(vk_space) ) {
++				// PAN is SPACE (or the middle button) only. ALT used to pan as
++				// well, which fought with ALT+CLICK picking a tile: holding ALT
++				// to pick started a pan at the same time, so the map slid out
++				// from under the cell being picked.
++				if (mouse_check_button_pressed(mb_middle) || keyboard_check_pressed(vk_space)) {
+ 		            _m.pan_active   = true;
+ 		            _m.pan_start_mx = _mx;
+ 		            _m.pan_start_my = _my;
+ 		            _m.pan_start_sx = _m.scroll_x;
+ 		            _m.pan_start_sy = _m.scroll_y;
+ 		        }
+-		       if (mouse_check_button_released(mb_middle) || keyboard_check_released(vk_alt) || keyboard_check_released(vk_space) || !window_has_focus()) {
++		       if (mouse_check_button_released(mb_middle) || keyboard_check_released(vk_space) || !window_has_focus()) {
+ 		            _m.pan_active = false;
+-		            keyboard_clear(vk_alt);
+ 		        }
+ 				if (variable_struct_exists(_m, "pan_active") && _m.pan_active && window_has_focus()) {
+ 		            var _dx = (_m.pan_start_mx - _mx) div _cs;
