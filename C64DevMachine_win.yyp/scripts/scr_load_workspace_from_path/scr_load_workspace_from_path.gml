@@ -435,6 +435,7 @@ function scr_load_workspace_from_path(_path) {
                 if (variable_struct_exists(_sm, "paint_mc"))       _meta.paint_mc       = _sm.paint_mc;
                 if (variable_struct_exists(_sm, "map_mixed"))      _meta.map_mixed      = _sm.map_mixed;
                 if (variable_struct_exists(_sm, "raw_chars"))      _meta.raw_chars      = _sm.raw_chars;
+                if (variable_struct_exists(_sm, "erase_char"))     _meta.erase_char     = _sm.erase_char;
                 if (variable_struct_exists(_sm, "override_grid"))  _meta.override_grid  = _sm.override_grid;
                 if (variable_struct_exists(_sm, "map_mc_bg"))      _meta.map_mc_bg      = _sm.map_mc_bg;
                 if (variable_struct_exists(_sm, "map_mc_col1"))    _meta.map_mc_col1    = _sm.map_mc_col1;
@@ -593,6 +594,7 @@ function scr_load_workspace_from_path(_path) {
                 if (!variable_struct_exists(_new_asset.meta, "paint_mc"))          _new_asset.meta.paint_mc          = 0;
                 if (!variable_struct_exists(_new_asset.meta, "map_mixed"))         _new_asset.meta.map_mixed         = obj_workspace_manager.map_global_mixed;
                 if (!variable_struct_exists(_new_asset.meta, "raw_chars"))         _new_asset.meta.raw_chars         = 0;
+                if (!variable_struct_exists(_new_asset.meta, "erase_char"))        _new_asset.meta.erase_char        = 0;
                 if (!variable_struct_exists(_new_asset.meta, "map_mc_bg"))         _new_asset.meta.map_mc_bg         = -1;
                 if (!variable_struct_exists(_new_asset.meta, "map_mc_col1"))       _new_asset.meta.map_mc_col1       = -1;
                 if (!variable_struct_exists(_new_asset.meta, "map_mc_col2"))       _new_asset.meta.map_mc_col2       = -1;

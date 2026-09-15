@@ -2964,6 +2964,20 @@ show_debug_message(_pbuf_dbg2);
                         if (_lb.type == "BITMAP") {
                             _lend = _lstart + 0x27D0;
                         }
+                        // RAW CHARS map: only the char plane (map_w * map_h)
+                        // goes to disk. The asset buffer is three planes
+                        // (char + colour + override), so using its size here
+                        // claimed 3x the map — a 256x90 map at $4000 claimed
+                        // $4000-$14E00, every code block above the map was
+                        // treated as "loads from disk", and BOOT was cut off
+                        // before the game code. Crash to READY on JMP.
+                        if (_lb.type == "MAP_DATA"
+                        &&  variable_struct_exists(_lb, "meta")
+                        &&  variable_struct_exists(_lb.meta, "raw_chars")
+                        &&  is_real(_lb.meta.raw_chars)
+                        &&  real(_lb.meta.raw_chars) == 1) {
+                            _lend = _lstart + (_lb.meta.map_w * _lb.meta.map_h);
+                        }
                         array_push(_load_org_ranges, { s: _lstart, e: _lend });
                         break;
                     }
@@ -4076,6 +4090,14 @@ for (var i = 0; i < array_length(_exp_code); i++) {
                         var _elend   = _elstart + buffer_get_size(_elb.buffer);
                         if (_elb.type == "BITMAP") {
                             _elend = _elstart + 0x27D0;
+                        }
+                        // RAW CHARS map: char plane only — see the F5 path.
+                        if (_elb.type == "MAP_DATA"
+                        &&  variable_struct_exists(_elb, "meta")
+                        &&  variable_struct_exists(_elb.meta, "raw_chars")
+                        &&  is_real(_elb.meta.raw_chars)
+                        &&  real(_elb.meta.raw_chars) == 1) {
+                            _elend = _elstart + (_elb.meta.map_w * _elb.meta.map_h);
                         }
                         array_push(_exp_lor_ranges, { s: _elstart, e: _elend });
                         break;

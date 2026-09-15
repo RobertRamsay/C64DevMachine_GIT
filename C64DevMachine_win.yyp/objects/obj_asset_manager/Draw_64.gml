@@ -1767,6 +1767,35 @@ draw_set_color(c_ltgray);
 	        _m.is_dirty = true;
 	        global.addresses_dirty = true;
 	    }
+
+	    // ERASE CHAR — the char right-click paints. Defaults to 0, but a
+	    // charset whose char 0 is a real tile (Zyron: char 0 is an animated
+	    // tile, blank is $20) needs a different one. Click to take the
+	    // current ACTIVE char as the erase char.
+	    if (!variable_struct_exists(_m, "erase_char")) {
+	        _m.erase_char = 0;
+	    }
+	    var _ecx1  = _rwx2 + 8;
+	    var _ecx2  = _ecx1 + 90;
+	    var _echov = point_in_rectangle(_mx, _my, _ecx1, _rwy1, _ecx2, _rwy2);
+	    var _ec_v      = real(_m.erase_char);
+	    var _ec_digits = "0123456789ABCDEF";
+	    var _ec_hex    = string_char_at(_ec_digits, ((_ec_v >> 4) & 15) + 1) + string_char_at(_ec_digits, (_ec_v & 15) + 1);
+	    var _ec_bg = make_color_rgb(40,30,50);
+	    if (_echov) {
+	        _ec_bg = make_color_rgb(60,40,70);
+	    }
+	    draw_set_color(_ec_bg);
+	    draw_rectangle(_ecx1, _rwy1, _ecx2, _rwy2, false);
+	    draw_set_font(fnt_c64_tiny);
+	    draw_set_color(make_color_rgb(200,150,255));
+	    draw_set_halign(fa_center);
+	    draw_text(_ecx1 + 45, _rwy1 + 3, "ERASE $" + _ec_hex);
+	    draw_set_halign(fa_left);
+	    if (_echov && mouse_check_button_pressed(mb_left)) {
+	        _m.erase_char = _m.active_char;
+	        _m.is_dirty = true;
+	    }
 	 }
 _cy += 22;
 
@@ -2657,8 +2686,13 @@ draw_set_color(_cell_bg_col);
                     map_paint_last_row = _hrow;
                 }
                 
-                // Right click — erase all non-zero chars covered by stamp footprint
+                // Right click — erase all chars covered by stamp footprint.
+                // The erase char is per map (_m.erase_char, default 0).
                 if (mouse_check_button(mb_right)) {
+                    var _erase_ch = 0;
+                    if (variable_struct_exists(_m, "erase_char")) {
+                        _erase_ch = real(_m.erase_char);
+                    }
                     if (_m.stamp_active && array_length(_m.stamp_data) > 0) {
                         for (var _er = 0; _er < array_length(_m.stamp_data); _er++) {
                             var _estamp   = _m.stamp_data[_er];
@@ -2666,14 +2700,14 @@ draw_set_color(_cell_bg_col);
                             var _edest_row = _hrow + _estamp.dy;
                             if (_edest_col >= 0 && _edest_col < _gw && _edest_row >= 0 && _edest_row < _gh) {
                                 var _edest_idx = _edest_row * _gw + _edest_col;
-                                if (_m.char_grid[_edest_idx] != 0) {
-                                    _m.char_grid[_edest_idx] = 0;
+                                if (_m.char_grid[_edest_idx] != _erase_ch) {
+                                    _m.char_grid[_edest_idx] = _erase_ch;
                                 }
                                 scr_asset_map_flush_cell(_asset, _edest_row, _edest_col);
                             }
                         }
                     } else {
-                        _m.char_grid[_pidx] = 0;
+                        _m.char_grid[_pidx] = _erase_ch;
                         scr_asset_map_flush_cell(_asset, _hrow, _hcol);
                     }
                 }

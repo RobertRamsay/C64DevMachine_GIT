@@ -1,0 +1,182 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 9e7b9ed..e563293 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -1767,6 +1767,35 @@ draw_set_color(c_ltgray);
+ 	        _m.is_dirty = true;
+ 	        global.addresses_dirty = true;
+ 	    }
++
++	    // ERASE CHAR — the char right-click paints. Defaults to 0, but a
++	    // charset whose char 0 is a real tile (Zyron: char 0 is an animated
++	    // tile, blank is $20) needs a different one. Click to take the
++	    // current ACTIVE char as the erase char.
++	    if (!variable_struct_exists(_m, "erase_char")) {
++	        _m.erase_char = 0;
++	    }
++	    var _ecx1  = _rwx2 + 8;
++	    var _ecx2  = _ecx1 + 90;
++	    var _echov = point_in_rectangle(_mx, _my, _ecx1, _rwy1, _ecx2, _rwy2);
++	    var _ec_v      = real(_m.erase_char);
++	    var _ec_digits = "0123456789ABCDEF";
++	    var _ec_hex    = string_char_at(_ec_digits, ((_ec_v >> 4) & 15) + 1) + string_char_at(_ec_digits, (_ec_v & 15) + 1);
++	    var _ec_bg = make_color_rgb(40,30,50);
++	    if (_echov) {
++	        _ec_bg = make_color_rgb(60,40,70);
++	    }
++	    draw_set_color(_ec_bg);
++	    draw_rectangle(_ecx1, _rwy1, _ecx2, _rwy2, false);
++	    draw_set_font(fnt_c64_tiny);
++	    draw_set_color(make_color_rgb(200,150,255));
++	    draw_set_halign(fa_center);
++	    draw_text(_ecx1 + 45, _rwy1 + 3, "ERASE $" + _ec_hex);
++	    draw_set_halign(fa_left);
++	    if (_echov && mouse_check_button_pressed(mb_left)) {
++	        _m.erase_char = _m.active_char;
++	        _m.is_dirty = true;
++	    }
+ 	 }
+ _cy += 22;
+ 
+@@ -2657,8 +2686,13 @@ draw_set_color(_cell_bg_col);
+                     map_paint_last_row = _hrow;
+                 }
+                 
+-                // Right click — erase all non-zero chars covered by stamp footprint
++                // Right click — erase all chars covered by stamp footprint.
++                // The erase char is per map (_m.erase_char, default 0).
+                 if (mouse_check_button(mb_right)) {
++                    var _erase_ch = 0;
++                    if (variable_struct_exists(_m, "erase_char")) {
++                        _erase_ch = real(_m.erase_char);
++                    }
+                     if (_m.stamp_active && array_length(_m.stamp_data) > 0) {
+                         for (var _er = 0; _er < array_length(_m.stamp_data); _er++) {
+                             var _estamp   = _m.stamp_data[_er];
+@@ -2666,14 +2700,14 @@ draw_set_color(_cell_bg_col);
+                             var _edest_row = _hrow + _estamp.dy;
+                             if (_edest_col >= 0 && _edest_col < _gw && _edest_row >= 0 && _edest_row < _gh) {
+                                 var _edest_idx = _edest_row * _gw + _edest_col;
+-                                if (_m.char_grid[_edest_idx] != 0) {
+-                                    _m.char_grid[_edest_idx] = 0;
++                                if (_m.char_grid[_edest_idx] != _erase_ch) {
++                                    _m.char_grid[_edest_idx] = _erase_ch;
+                                 }
+                                 scr_asset_map_flush_cell(_asset, _edest_row, _edest_col);
+                             }
+                         }
+                     } else {
+-                        _m.char_grid[_pidx] = 0;
++                        _m.char_grid[_pidx] = _erase_ch;
+                         scr_asset_map_flush_cell(_asset, _hrow, _hcol);
+                     }
+                 }
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index 8e08344..924476f 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -1925,6 +1925,7 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open) {
+                 map_mc_col1       : -1,
+                 map_mc_col2       : -1,
+                 raw_chars         : 0,
++                erase_char        : 0,
+                 stamp_data        : [],
+                 stamp_active      : false,
+                 sel_grid          : array_create(40 * 25, 0),
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 65eae92..e6902d3 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -2961,6 +2961,20 @@ show_debug_message(_pbuf_dbg2);
+                         if (_lb.type == "BITMAP") {
+                             _lend = _lstart + 0x27D0;
+                         }
++                        // RAW CHARS map: only the char plane (map_w * map_h)
++                        // goes to disk. The asset buffer is three planes
++                        // (char + colour + override), so using its size here
++                        // claimed 3x the map — a 256x90 map at $4000 claimed
++                        // $4000-$14E00, every code block above the map was
++                        // treated as "loads from disk", and BOOT was cut off
++                        // before the game code. Crash to READY on JMP.
++                        if (_lb.type == "MAP_DATA"
++                        &&  variable_struct_exists(_lb, "meta")
++                        &&  variable_struct_exists(_lb.meta, "raw_chars")
++                        &&  is_real(_lb.meta.raw_chars)
++                        &&  real(_lb.meta.raw_chars) == 1) {
++                            _lend = _lstart + (_lb.meta.map_w * _lb.meta.map_h);
++                        }
+                         array_push(_load_org_ranges, { s: _lstart, e: _lend });
+                         break;
+                     }
+@@ -4074,6 +4088,14 @@ for (var i = 0; i < array_length(_exp_code); i++) {
+                         if (_elb.type == "BITMAP") {
+                             _elend = _elstart + 0x27D0;
+                         }
++                        // RAW CHARS map: char plane only — see the F5 path.
++                        if (_elb.type == "MAP_DATA"
++                        &&  variable_struct_exists(_elb, "meta")
++                        &&  variable_struct_exists(_elb.meta, "raw_chars")
++                        &&  is_real(_elb.meta.raw_chars)
++                        &&  real(_elb.meta.raw_chars) == 1) {
++                            _elend = _elstart + (_elb.meta.map_w * _elb.meta.map_h);
++                        }
+                         array_push(_exp_lor_ranges, { s: _elstart, e: _elend });
+                         break;
+                     }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+index 5d10c86..5cfe4ff 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+@@ -102,7 +102,7 @@ var _base = "unsaved";
+                            "ecm_bg1","ecm_bg2","ecm_bg3",
+                            "map_w","map_h","grid_w","grid_h","char_grid","colour_grid","chr_asset",
+                            "scroll_x","scroll_y","zoom","active_char","active_colour","tool",
+-                           "text","byte_string","is_save_file","save_file_size","paint_mc","map_mixed","raw_chars","override_grid","map_mc_bg","map_mc_col1","map_mc_col2",
++                           "text","byte_string","is_save_file","save_file_size","paint_mc","map_mixed","raw_chars","erase_char","override_grid","map_mc_bg","map_mc_col1","map_mc_col2",
+                            "song_name","sfx_count","instruments","wavetable","source_file",
+                            "tile_types",
+                            "line_string","lines","active_type","ref_enabled","ref_asset_name","ref_offset_x","ref_offset_y",
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 2758543..22c0b5f 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -435,6 +435,7 @@ function scr_load_workspace_from_path(_path) {
+                 if (variable_struct_exists(_sm, "paint_mc"))       _meta.paint_mc       = _sm.paint_mc;
+                 if (variable_struct_exists(_sm, "map_mixed"))      _meta.map_mixed      = _sm.map_mixed;
+                 if (variable_struct_exists(_sm, "raw_chars"))      _meta.raw_chars      = _sm.raw_chars;
++                if (variable_struct_exists(_sm, "erase_char"))     _meta.erase_char     = _sm.erase_char;
+                 if (variable_struct_exists(_sm, "override_grid"))  _meta.override_grid  = _sm.override_grid;
+                 if (variable_struct_exists(_sm, "map_mc_bg"))      _meta.map_mc_bg      = _sm.map_mc_bg;
+                 if (variable_struct_exists(_sm, "map_mc_col1"))    _meta.map_mc_col1    = _sm.map_mc_col1;
+@@ -593,6 +594,7 @@ function scr_load_workspace_from_path(_path) {
+                 if (!variable_struct_exists(_new_asset.meta, "paint_mc"))          _new_asset.meta.paint_mc          = 0;
+                 if (!variable_struct_exists(_new_asset.meta, "map_mixed"))         _new_asset.meta.map_mixed         = obj_workspace_manager.map_global_mixed;
+                 if (!variable_struct_exists(_new_asset.meta, "raw_chars"))         _new_asset.meta.raw_chars         = 0;
++                if (!variable_struct_exists(_new_asset.meta, "erase_char"))        _new_asset.meta.erase_char        = 0;
+                 if (!variable_struct_exists(_new_asset.meta, "map_mc_bg"))         _new_asset.meta.map_mc_bg         = -1;
+                 if (!variable_struct_exists(_new_asset.meta, "map_mc_col1"))       _new_asset.meta.map_mc_col1       = -1;
+                 if (!variable_struct_exists(_new_asset.meta, "map_mc_col2"))       _new_asset.meta.map_mc_col2       = -1;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+index ea261e3..19d2d44 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+@@ -219,6 +219,7 @@
+ 	        if (variable_struct_exists(_a.meta, "paint_mc"))      _meta_out.paint_mc      = _a.meta.paint_mc;
+ 	        if (variable_struct_exists(_a.meta, "map_mixed"))     _meta_out.map_mixed     = _a.meta.map_mixed;
+ 	        if (variable_struct_exists(_a.meta, "raw_chars"))     _meta_out.raw_chars     = _a.meta.raw_chars;
++	        if (variable_struct_exists(_a.meta, "erase_char"))    _meta_out.erase_char    = _a.meta.erase_char;
+ 	        if (variable_struct_exists(_a.meta, "override_grid")) _meta_out.override_grid = _a.meta.override_grid;
+ 	        if (variable_struct_exists(_a.meta, "map_mc_bg"))     _meta_out.map_mc_bg     = _a.meta.map_mc_bg;
+ 	        if (variable_struct_exists(_a.meta, "map_mc_col1"))   _meta_out.map_mc_col1   = _a.meta.map_mc_col1;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+index 7dd39da..e622b7f 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+@@ -208,6 +208,7 @@ if (instance_exists(obj_asset_manager)) {
+         if (variable_struct_exists(_a.meta, "paint_mc"))      _meta_out.paint_mc      = _a.meta.paint_mc;
+         if (variable_struct_exists(_a.meta, "map_mixed"))     _meta_out.map_mixed     = _a.meta.map_mixed;
+         if (variable_struct_exists(_a.meta, "raw_chars"))     _meta_out.raw_chars     = _a.meta.raw_chars;
++        if (variable_struct_exists(_a.meta, "erase_char"))    _meta_out.erase_char    = _a.meta.erase_char;
+         if (variable_struct_exists(_a.meta, "override_grid")) _meta_out.override_grid = _a.meta.override_grid;
+         if (variable_struct_exists(_a.meta, "map_mc_bg"))     _meta_out.map_mc_bg     = _a.meta.map_mc_bg;
+         if (variable_struct_exists(_a.meta, "map_mc_col1"))   _meta_out.map_mc_col1   = _a.meta.map_mc_col1;
