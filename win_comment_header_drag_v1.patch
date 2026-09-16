@@ -1,0 +1,17 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index fd179a5..4447bb9 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -1112,7 +1112,11 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
+ 		
+ 	case "COMMENT":
+ 	    if (!global.comments_visible) break;
+-	    if (point_in_rectangle(mouse_x, mouse_y, draw_x, y + 20, draw_x + width, y + height)) {
++	    // Body only, from y + 24 down: the header band (y .. y + 24) belongs to
++	    // the drag start further down this event, and it used to overlap this
++	    // rectangle by 4px so a header click both opened the editor and
++	    // started a drag.
++	    if (point_in_rectangle(mouse_x, mouse_y, draw_x, y + 24, draw_x + width, y + height)) {
+ 	        // Edited in place on the node, not in the centre-screen modal.
+ 	        // is_entering_text still goes up, because every keyboard shortcut
+ 	        // in the workspace is guarded on it - the difference is that
