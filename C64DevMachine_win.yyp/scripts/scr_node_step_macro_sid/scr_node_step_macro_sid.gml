@@ -47,15 +47,9 @@ _fy += _line_h; // irq line - editable
     }
     if (is_connected && org_parent == noone && !_has_irq_handler) {
         // Same rule as the per-frame pass in scr_node_step_macro_sid_frame:
-        // below this node and below every MACRO_IRQ, and left where the user
-        // put it once it already is. See scr_sid_exit_settle for why.
-        var _target_y = y + height;
-        with (obj_c64_node) {
-            if (node_type == "MACRO_IRQ" && is_connected && org_parent == noone) {
-                if (y + height > _target_y) _target_y = y + height;
-            }
-        }
-        scr_sid_exit_settle(_target_y);
+        // directly below this node, and left where the user put it once it
+        // already is. See scr_sid_exit_settle for why.
+        scr_sid_exit_settle(y + height);
     }
 	
 	

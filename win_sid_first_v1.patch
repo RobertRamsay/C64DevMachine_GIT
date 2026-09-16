@@ -1,0 +1,133 @@
+From be934b368e15165ae9cc364fc5ce5106aac09a60 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 16 Sep 2026 18:45:45 +0000
+Subject: [PATCH] sid_exit: make SID MUSIC first on the spine a workable rule
+
+Two things stopped MACRO_SID being the first node on the spine.
+
+The no-handler repositioner forced sid_exit below every connected
+MACRO_IRQ as well as below the SID node. With the SID node first, that
+drags the label past the whole setup column - sid_main_loop's JMP then
+jumps over VIC mode, the charset, the sprite bank and GAME INIT, none of
+which ever run. It never needed that rule: MACRO_IRQ wraps its own
+handler body in JSR init / JMP skip ... skip:, so it jumps over itself.
+The only run sid_exit has to clear is what MACRO_SID emits inline after
+the JMP, which ends at the SID node. Target is now just SID.y + height,
+the same one the IRQ_HANDLER branch already used.
+
+The respawn in Step_0 pushed every spine node below the SID node down by
+a hardcoded 60 whether or not anything was in the way. sid_exit
+self-destructs whenever MACRO_SID is briefly disconnected - dragging it
+does that - so with the SID node first, every drag walked the entire
+program 60px down the workspace. It now pushes only when the slot is
+really occupied, and by the label's actual height rather than 60.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_019fUXqwJRpJfMBEpWBdeE1d
+---
+ .../objects/obj_c64_node/Step_0.gml           | 29 +++++++++++++++----
+ .../scr_node_step_macro_sid.gml               | 12 ++------
+ .../scr_node_step_macro_sid_frame.gml         | 21 ++++++--------
+ 3 files changed, 36 insertions(+), 26 deletions(-)
+
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 42ca615..fd179a5 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -2930,14 +2930,33 @@ if (node_type == "MACRO_SID" && is_connected && !exit_spawned && org_parent == n
+        
+ 
+ var _label_ref  = _nl;
+-		var _label_push = 60; // LABEL fixed height = _G * 3
++        // The label's real height, not the 60 this used to assume — event_user(0)
++        // has run by now, so it is known, and a LABEL is 40. Assuming 60 made
++        // the node below the label look like a collision when it was merely
++        // adjacent, which is the common case.
++		var _label_push = max(20, _label_ref.height);
+         var _push_y     = _self_ref.y + _self_ref.height; // push from MACRO_SID bottom
+-       
++
++        // Only shove the rest of the spine down if the slot is genuinely
++        // taken. This used to push unconditionally, which is invisible when
++        // MACRO_SID sits low down and ruinous when it sits first: the label
++        // self-destructs whenever the SID node is briefly disconnected — a
++        // drag does it — and every respawn moved the ENTIRE program 60px
++        // further down the workspace.
++        var _slot_taken = false;
+         with (obj_c64_node) {
+             if (id != _self_ref && id != _label_ref && is_connected &&
+-                org_parent == noone && y >= _push_y) {
+-               
+-                y += _label_push;
++                org_parent == noone && y >= _push_y && y < _push_y + _label_push) {
++                _slot_taken = true;
++            }
++        }
++        if (_slot_taken) {
++            with (obj_c64_node) {
++                if (id != _self_ref && id != _label_ref && is_connected &&
++                    org_parent == noone && y >= _push_y) {
++
++                    y += _label_push;
++                }
+             }
+         }
+         scr_c64_update_addresses();
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_sid/scr_node_step_macro_sid.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_sid/scr_node_step_macro_sid.gml
+index 7ffa806..5a94c3a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_sid/scr_node_step_macro_sid.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_sid/scr_node_step_macro_sid.gml
+@@ -47,15 +47,9 @@ _fy += _line_h; // irq line - editable
+     }
+     if (is_connected && org_parent == noone && !_has_irq_handler) {
+         // Same rule as the per-frame pass in scr_node_step_macro_sid_frame:
+-        // below this node and below every MACRO_IRQ, and left where the user
+-        // put it once it already is. See scr_sid_exit_settle for why.
+-        var _target_y = y + height;
+-        with (obj_c64_node) {
+-            if (node_type == "MACRO_IRQ" && is_connected && org_parent == noone) {
+-                if (y + height > _target_y) _target_y = y + height;
+-            }
+-        }
+-        scr_sid_exit_settle(_target_y);
++        // directly below this node, and left where the user put it once it
++        // already is. See scr_sid_exit_settle for why.
++        scr_sid_exit_settle(y + height);
+     }
+ 	
+ 	
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_sid_frame/scr_node_step_macro_sid_frame.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_sid_frame/scr_node_step_macro_sid_frame.gml
+index 21a03d0..58f3551 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_sid_frame/scr_node_step_macro_sid_frame.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_sid_frame/scr_node_step_macro_sid_frame.gml
+@@ -80,17 +80,14 @@ function scr_node_step_macro_sid_frame() {
+ 	}
+ 
+ 	if (!_has_irq_handler && !is_dragging) {
+-	    // Without a MACRO_IRQ_HANDLER, MACRO_SID emits its own sid_irq handler
+-	    // and each MACRO_IRQ emits a handler body of its own, all of them
+-	    // between the JMP and the label. So sid_exit has to clear the bottom of
+-	    // this node AND the bottom of every connected MACRO_IRQ — the deepest
+-	    // one wins, which is not necessarily the one with the largest Y.
+-	    var _target_y = y + height;
+-	    with (obj_c64_node) {
+-	        if (node_type == "MACRO_IRQ" && is_connected && org_parent == noone) {
+-	            if (y + height > _target_y) _target_y = y + height;
+-	        }
+-	    }
+-	    scr_sid_exit_settle(_target_y);
++	    // Directly below this node, and that is the whole rule — the same one
++	    // the IRQ_HANDLER branch uses, so MACRO_SID behaves identically either
++	    // way. It used to be forced below every MACRO_IRQ as well, which made
++	    // the label unplaceable whenever the SID node came first on the spine.
++	    // It does not need to be: MACRO_IRQ wraps its own handler body in
++	    // JSR init / JMP skip ... skip:, so it jumps over itself. The only run
++	    // sid_exit has to clear is the one MACRO_SID emits inline after the
++	    // JMP - sid_irq and sid_init_entry - and that ends at this node.
++	    scr_sid_exit_settle(y + height);
+ 	}
+ }
+\ No newline at end of file
+-- 
+2.43.0
+

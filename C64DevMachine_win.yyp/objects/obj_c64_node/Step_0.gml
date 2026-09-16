@@ -2930,14 +2930,33 @@ if (node_type == "MACRO_SID" && is_connected && !exit_spawned && org_parent == n
        
 
 var _label_ref  = _nl;
-		var _label_push = 60; // LABEL fixed height = _G * 3
+        // The label's real height, not the 60 this used to assume — event_user(0)
+        // has run by now, so it is known, and a LABEL is 40. Assuming 60 made
+        // the node below the label look like a collision when it was merely
+        // adjacent, which is the common case.
+		var _label_push = max(20, _label_ref.height);
         var _push_y     = _self_ref.y + _self_ref.height; // push from MACRO_SID bottom
-       
+
+        // Only shove the rest of the spine down if the slot is genuinely
+        // taken. This used to push unconditionally, which is invisible when
+        // MACRO_SID sits low down and ruinous when it sits first: the label
+        // self-destructs whenever the SID node is briefly disconnected — a
+        // drag does it — and every respawn moved the ENTIRE program 60px
+        // further down the workspace.
+        var _slot_taken = false;
         with (obj_c64_node) {
             if (id != _self_ref && id != _label_ref && is_connected &&
-                org_parent == noone && y >= _push_y) {
-               
-                y += _label_push;
+                org_parent == noone && y >= _push_y && y < _push_y + _label_push) {
+                _slot_taken = true;
+            }
+        }
+        if (_slot_taken) {
+            with (obj_c64_node) {
+                if (id != _self_ref && id != _label_ref && is_connected &&
+                    org_parent == noone && y >= _push_y) {
+
+                    y += _label_push;
+                }
             }
         }
         scr_c64_update_addresses();

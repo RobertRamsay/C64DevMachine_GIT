@@ -80,17 +80,14 @@ function scr_node_step_macro_sid_frame() {
 	}
 
 	if (!_has_irq_handler && !is_dragging) {
-	    // Without a MACRO_IRQ_HANDLER, MACRO_SID emits its own sid_irq handler
-	    // and each MACRO_IRQ emits a handler body of its own, all of them
-	    // between the JMP and the label. So sid_exit has to clear the bottom of
-	    // this node AND the bottom of every connected MACRO_IRQ — the deepest
-	    // one wins, which is not necessarily the one with the largest Y.
-	    var _target_y = y + height;
-	    with (obj_c64_node) {
-	        if (node_type == "MACRO_IRQ" && is_connected && org_parent == noone) {
-	            if (y + height > _target_y) _target_y = y + height;
-	        }
-	    }
-	    scr_sid_exit_settle(_target_y);
+	    // Directly below this node, and that is the whole rule — the same one
+	    // the IRQ_HANDLER branch uses, so MACRO_SID behaves identically either
+	    // way. It used to be forced below every MACRO_IRQ as well, which made
+	    // the label unplaceable whenever the SID node came first on the spine.
+	    // It does not need to be: MACRO_IRQ wraps its own handler body in
+	    // JSR init / JMP skip ... skip:, so it jumps over itself. The only run
+	    // sid_exit has to clear is the one MACRO_SID emits inline after the
+	    // JMP - sid_irq and sid_init_entry - and that ends at this node.
+	    scr_sid_exit_settle(y + height);
 	}
 }
