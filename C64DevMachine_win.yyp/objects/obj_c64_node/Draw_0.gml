@@ -1821,7 +1821,8 @@ if (_lod_body) switch (node_type) {
                     // to the node and re-wraps, and no modal is shown.
                     var _cm_edit = (instance_exists(obj_workspace_manager)
                                  && obj_workspace_manager.is_entering_text
-                                 && obj_workspace_manager.input_target_node == id);
+                                 && obj_workspace_manager.input_target_node == id
+                                 && obj_workspace_manager.input_target_index == 0);
 
                     draw_set_font(fnt_c64_code);
                     draw_set_color(_cm_edit ? c_white : c_yellow);
@@ -1954,7 +1955,8 @@ draw_set_font(fnt_c64_code);
 // the test has to be made again here.
 var _cw_editing = (instance_exists(obj_workspace_manager)
                 && obj_workspace_manager.is_entering_text
-                && obj_workspace_manager.input_target_node == id);
+                && obj_workspace_manager.input_target_node == id
+                && obj_workspace_manager.input_target_index == 0);
 
 if (node_type == "COMMENT" && global.comments_visible && !_cw_editing) {
     var _cw_mult = 1;

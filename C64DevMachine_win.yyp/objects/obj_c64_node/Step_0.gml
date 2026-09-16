@@ -384,7 +384,8 @@ var _mouse_in_shortcuts = (_gui_mouse_x >= global.sc_x_start && _gui_mouse_x <= 
 // only closed the editor and a second one was needed to move the node.
 var _cm_inline_edit = obj_workspace_manager.is_entering_text
                    && instance_exists(obj_workspace_manager.input_target_node)
-                   && obj_workspace_manager.input_target_node.node_type == "COMMENT";
+                   && obj_workspace_manager.input_target_node.node_type == "COMMENT"
+                   && obj_workspace_manager.input_target_index == 0;
 var _cm_header_hit  = _cm_inline_edit
                    && point_in_rectangle(mouse_x, mouse_y, x + x_indent, y, x + x_indent + width, y + 24);
 
@@ -1929,7 +1930,8 @@ if (mouse_check_button_pressed(mb_left) && !_mouse_in_gui && !obj_workspace_mana
             // handles then, and an invisible one must not be clickable.
             var _cwm_edit = (instance_exists(obj_workspace_manager)
                           && obj_workspace_manager.is_entering_text
-                          && obj_workspace_manager.input_target_node == id);
+                          && obj_workspace_manager.input_target_node == id
+                          && obj_workspace_manager.input_target_index == 0);
 
             if (node_type == "COMMENT" && !_cwm_edit
             &&  point_in_rectangle(mouse_x, mouse_y,

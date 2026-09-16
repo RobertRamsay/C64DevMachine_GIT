@@ -1,0 +1,88 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 6b2a5af..b4957db 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -1821,7 +1821,8 @@ if (_lod_body) switch (node_type) {
+                     // to the node and re-wraps, and no modal is shown.
+                     var _cm_edit = (instance_exists(obj_workspace_manager)
+                                  && obj_workspace_manager.is_entering_text
+-                                 && obj_workspace_manager.input_target_node == id);
++                                 && obj_workspace_manager.input_target_node == id
++                                 && obj_workspace_manager.input_target_index == 0);
+ 
+                     draw_set_font(fnt_c64_code);
+                     draw_set_color(_cm_edit ? c_white : c_yellow);
+@@ -1954,7 +1955,8 @@ draw_set_font(fnt_c64_code);
+ // the test has to be made again here.
+ var _cw_editing = (instance_exists(obj_workspace_manager)
+                 && obj_workspace_manager.is_entering_text
+-                && obj_workspace_manager.input_target_node == id);
++                && obj_workspace_manager.input_target_node == id
++                && obj_workspace_manager.input_target_index == 0);
+ 
+ if (node_type == "COMMENT" && global.comments_visible && !_cw_editing) {
+     var _cw_mult = 1;
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_72.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_72.gml
+index 292970c..91dfed1 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_72.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_72.gml
+@@ -46,7 +46,8 @@ if (node_type == "COMMENT") {
+     var _edge_alpha = clamp((_sx - _shelf_edge) / 30.0, 0, 1)
+                     * clamp((_sc_edge - _sx)    / 30.0, 0, 1);
+     var _is_editing = (obj_workspace_manager.is_entering_text &&
+-                       obj_workspace_manager.input_target_node == id);
++                       obj_workspace_manager.input_target_node == id &&
++                       obj_workspace_manager.input_target_index == 0);
+     var _text = _is_editing
+                 ? obj_workspace_manager.current_input_string
+                 : ((array_length(instructions) > 0) ? string(instructions[0][1]) : "");
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 557c2bb..c85a3c3 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -384,7 +384,8 @@ var _mouse_in_shortcuts = (_gui_mouse_x >= global.sc_x_start && _gui_mouse_x <=
+ // only closed the editor and a second one was needed to move the node.
+ var _cm_inline_edit = obj_workspace_manager.is_entering_text
+                    && instance_exists(obj_workspace_manager.input_target_node)
+-                   && obj_workspace_manager.input_target_node.node_type == "COMMENT";
++                   && obj_workspace_manager.input_target_node.node_type == "COMMENT"
++                   && obj_workspace_manager.input_target_index == 0;
+ var _cm_header_hit  = _cm_inline_edit
+                    && point_in_rectangle(mouse_x, mouse_y, x + x_indent, y, x + x_indent + width, y + 24);
+ 
+@@ -1929,7 +1930,8 @@ if (mouse_check_button_pressed(mb_left) && !_mouse_in_gui && !obj_workspace_mana
+             // handles then, and an invisible one must not be clickable.
+             var _cwm_edit = (instance_exists(obj_workspace_manager)
+                           && obj_workspace_manager.is_entering_text
+-                          && obj_workspace_manager.input_target_node == id);
++                          && obj_workspace_manager.input_target_node == id
++                          && obj_workspace_manager.input_target_index == 0);
+ 
+             if (node_type == "COMMENT" && !_cwm_edit
+             &&  point_in_rectangle(mouse_x, mouse_y,
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 2e1753b..8670d0a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -708,7 +708,8 @@ if (is_entering_text && !_was_entering_text) {
+     // is edited in place and wants the caret where the pointer was. Its
+     // opening step already worked that out; this would throw it away.
+     var _open_is_comment = (instance_exists(input_target_node)
+-                         && input_target_node.node_type == "COMMENT");
++                         && input_target_node.node_type == "COMMENT"
++                         && input_target_index == 0);
+     if (!_open_is_comment) {
+         cursor_pos = string_length(current_input_string);
+     }
+@@ -769,7 +770,10 @@ if (is_entering_text) {
+ 
+     var target        = input_target_node;
+     var idx           = input_target_index;
+-    var is_comment    = (instance_exists(target) && target.node_type == "COMMENT");
++    // Index 0 is the comment's text, edited in place. A header double-click
++    // renames it through the normal modal (idx -77) and must not be treated as
++    // the inline editor, or the title lands in the comment's text.
++    var is_comment    = (instance_exists(target) && target.node_type == "COMMENT" && input_target_index == 0);
+     var _is_long_text = (input_target_node != noone &&
+                          input_target_node.node_type == "MACRO_TEXT_SCROLL" &&
+                          input_target_index == 6);

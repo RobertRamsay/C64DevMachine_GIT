@@ -46,7 +46,8 @@ if (node_type == "COMMENT") {
     var _edge_alpha = clamp((_sx - _shelf_edge) / 30.0, 0, 1)
                     * clamp((_sc_edge - _sx)    / 30.0, 0, 1);
     var _is_editing = (obj_workspace_manager.is_entering_text &&
-                       obj_workspace_manager.input_target_node == id);
+                       obj_workspace_manager.input_target_node == id &&
+                       obj_workspace_manager.input_target_index == 0);
     var _text = _is_editing
                 ? obj_workspace_manager.current_input_string
                 : ((array_length(instructions) > 0) ? string(instructions[0][1]) : "");

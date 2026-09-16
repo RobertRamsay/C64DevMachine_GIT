@@ -708,7 +708,8 @@ if (is_entering_text && !_was_entering_text) {
     // is edited in place and wants the caret where the pointer was. Its
     // opening step already worked that out; this would throw it away.
     var _open_is_comment = (instance_exists(input_target_node)
-                         && input_target_node.node_type == "COMMENT");
+                         && input_target_node.node_type == "COMMENT"
+                         && input_target_index == 0);
     if (!_open_is_comment) {
         cursor_pos = string_length(current_input_string);
     }
@@ -769,7 +770,10 @@ if (is_entering_text) {
 
     var target        = input_target_node;
     var idx           = input_target_index;
-    var is_comment    = (instance_exists(target) && target.node_type == "COMMENT");
+    // Index 0 is the comment's text, edited in place. A header double-click
+    // renames it through the normal modal (idx -77) and must not be treated as
+    // the inline editor, or the title lands in the comment's text.
+    var is_comment    = (instance_exists(target) && target.node_type == "COMMENT" && input_target_index == 0);
     var _is_long_text = (input_target_node != noone &&
                          input_target_node.node_type == "MACRO_TEXT_SCROLL" &&
                          input_target_index == 6);
