@@ -106,6 +106,10 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _mx, _my) {
             code_editor_sel_start = -1;
             code_editor_sel_end   = -1;
             code_editor_symbol_cache_dirty = true;
+            // A replacement can be a different length, or carry a newline, so
+            // the line-start cache and the measured line widths are both out
+            // of date the moment this runs.
+            code_editor_cache_dirty        = true;
         }
     }
     _bx += _bt_w + _gap;

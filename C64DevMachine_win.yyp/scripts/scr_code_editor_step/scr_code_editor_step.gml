@@ -317,6 +317,11 @@ if (code_editor_find_open && code_editor_find_active_field > 0) {
 
     if (_do_action) {
 
+        // BACKSPACE and DELETE are the only keys in here that change the
+        // text, and they used to leave code_editor_line_starts alone. See
+        // the rebuild at the bottom of this block for why that matters.
+        var _edit_before = code_editor_text;
+
         // ─── LEFT ───
         if (keyboard_check(vk_left)) {
             code_editor_preferred_col = 0;
@@ -431,6 +436,25 @@ if (code_editor_find_open && code_editor_find_active_field > 0) {
             code_editor_cursor = _cur;
             code_editor_blink  = 0;
 			
+        }
+
+        // A stale line-start cache is not a cosmetic problem. The draw looks
+        // the cursor's line up in it, and when the cached length no longer
+        // matches the real line count that lookup was skipped with the line
+        // still 0 - so the auto-scroll snapped the view to the top of the
+        // file. That is what backspacing over a line end looked like.
+        // ENTER, CUT and PASTE already rebuild it here; BACKSPACE and DELETE
+        // now do too.
+        if (code_editor_text != _edit_before) {
+            code_editor_cache_dirty = true;
+            var _bs_lines = string_split(code_editor_text, "\n");
+            var _bs_count = array_length(_bs_lines);
+            code_editor_line_starts = array_create(_bs_count, 0);
+            var _bs_off = 0;
+            for (var _bsi = 0; _bsi < _bs_count; _bsi++) {
+                code_editor_line_starts[_bsi] = _bs_off;
+                _bs_off += string_length(_bs_lines[_bsi]) + 1;
+            }
         }
     }
 

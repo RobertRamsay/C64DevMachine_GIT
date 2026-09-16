@@ -227,6 +227,10 @@ code_editor_max_line_px            = 0;
 code_editor_symbol_cache_dirty     = true;
 code_editor_indent_cache           = [];
 code_editor_line_starts            = [];
+// -1 = nothing to centre. FIND sets it to the line the match is on and the
+// draw, which is the only place that knows how many lines fit on screen,
+// turns it back into a scroll position and clears it.
+code_editor_center_line            = -1;
 code_editor_local_labels           = ds_map_create();
 code_editor_local_consts           = ds_map_create();
 code_editor_global_labels          = ds_map_create();

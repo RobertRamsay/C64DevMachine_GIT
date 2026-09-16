@@ -246,25 +246,45 @@ if (_close_hover && mouse_check_button_pressed(mb_left)) {
 // ─── Find cursor line and column using cached line starts ───
     var _cur_line = 0;
     var _cur_col  = 0;
-    if (array_length(code_editor_line_starts) == _total_lines) {
-        var _lo = 0;
-        var _hi = _total_lines - 1;
-        while (_lo < _hi) {
-            var _mid = _lo + ((_hi - _lo + 1) >> 1);
-            if (code_editor_line_starts[_mid] <= _cur) {
-                _lo = _mid;
-            } else {
-                _hi = _mid - 1;
-            }
+    // The cache has to be correct BEFORE the lookup, not after it. This used
+    // to bail out when the cached length did not match, leaving _cur_line at
+    // 0 - and the auto-scroll below then obediently scrolled to line 0. Any
+    // edit that changes the line count and does not rebuild the cache showed
+    // up as the view jumping to the top. Rebuild it here instead of giving
+    // up, so no caller can cause that again.
+    if (array_length(code_editor_line_starts) != _total_lines) {
+        code_editor_line_starts = array_create(_total_lines, 0);
+        var _ls_off = 0;
+        for (var _lsi = 0; _lsi < _total_lines; _lsi++) {
+            code_editor_line_starts[_lsi] = _ls_off;
+            _ls_off += string_length(_lines[_lsi]) + 1;
         }
-        _cur_line = _lo;
-        _cur_col  = _cur - code_editor_line_starts[_lo];
     }
+    var _lo = 0;
+    var _hi = _total_lines - 1;
+    while (_lo < _hi) {
+        var _mid = _lo + ((_hi - _lo + 1) >> 1);
+        if (code_editor_line_starts[_mid] <= _cur) {
+            _lo = _mid;
+        } else {
+            _hi = _mid - 1;
+        }
+    }
+    _cur_line = _lo;
+    _cur_col  = _cur - code_editor_line_starts[_lo];
 
     // Auto-scroll only when cursor moves, not while scrollbar dragging
     if (!code_editor_scrollbar_dragging && code_editor_cursor != code_editor_last_cursor) {
         if (_cur_line < code_editor_scroll_y) code_editor_scroll_y = _cur_line;
         if (_cur_line >= code_editor_scroll_y + _max_lines) code_editor_scroll_y = _cur_line - _max_lines + 1;
+    }
+    // FIND asks for its match to sit in the middle of the view. The minimal
+    // auto-scroll above would leave a forward match on the last visible line,
+    // which is the worst place to read a hit from - there is no context under
+    // it. The clamp on the next line deals with a match near either end.
+    if (code_editor_center_line >= 0) {
+        code_editor_scroll_y    = code_editor_center_line - floor(_max_lines / 2);
+        code_editor_center_line = -1;
     }
 	code_editor_scroll_y = clamp(code_editor_scroll_y, 0, max(0, _total_lines - _max_lines));
 

@@ -48,5 +48,9 @@ function scr_code_editor_do_search(_dir) {
         code_editor_sel_end   = _found - 1 + _slen;
         code_editor_cursor    = code_editor_sel_end;
         code_editor_blink     = 0;
+        // Which line the match is on. The draw turns this into a scroll
+        // position, because it is the only place that knows how many lines
+        // fit in the panel.
+        code_editor_center_line = string_count("\n", string_copy(code_editor_text, 1, _found - 1));
     }
 }
