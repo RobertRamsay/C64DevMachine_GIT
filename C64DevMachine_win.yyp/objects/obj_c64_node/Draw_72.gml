@@ -22,8 +22,9 @@ if (obj_workspace_manager.is_entering_text) exit;
 var _cam_x = obj_workspace_manager.cam_x;
 var _cam_y = obj_workspace_manager.cam_y;
 var _alpha_comment = clamp((_cam_zoom - 2.5) / 1.5, 0, 1);
-var _alpha_header  = clamp((_cam_zoom - 2.0) / 1.0, 0, 1)
-                   * clamp(1.0 - (_cam_zoom - 4.5) / 1.0, 0, 1);
+// Fades in between zoom 2 and 3 and then stays: the camera goes out to
+// 6.0 and the old fade-out past 4.5 left the far view with no labels at all.
+var _alpha_header  = clamp((_cam_zoom - 2.0) / 1.0, 0, 1);
 
 var _shelf_edge = obj_workspace_manager.shelf_width + 40;
 var _sc_edge    = global.sc_x_start - 40;
