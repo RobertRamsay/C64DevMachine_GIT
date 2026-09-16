@@ -1,4 +1,6 @@
-// DRAW GUI BEGIN (was Draw GUI). This object sits at a nearer depth than
+// DRAW GUI BEGIN - event 74. (Draw_72 is Draw BEGIN, room space: the 8 Sep
+// move landed there by mistake, so this overlay drew in the wrong space and
+// was effectively invisible.) Was Draw GUI. This object sits at a nearer depth than
 // obj_workspace_manager, so as a plain Draw GUI event its overlay was painted
 // AFTER the menus, menu bar and code panel - on top of them. Draw GUI Begin
 // runs for every instance before any Draw GUI event, so the manager's GUI
