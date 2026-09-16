@@ -801,13 +801,13 @@ function scr_node_tooltip_text(_node_type) {
                 "",
                 "Exposes two labels other nodes can JSR to: the",
                 "handler entry point, and an init routine that hooks",
-                "the vector. Needs an IRQ SHELL elsewhere on the",
+                "the vector. Needs an IRQ HANDLER elsewhere on the",
                 "spine to actually dispatch to it."
             ]
         },
 
         "MACRO_IRQ_HANDLER": {
-            title: "IRQ SHELL",
+            title: "IRQ HANDLER",
             lines: [
                 "Emits the unified table-driven raster IRQ dispatcher.",
                 "",

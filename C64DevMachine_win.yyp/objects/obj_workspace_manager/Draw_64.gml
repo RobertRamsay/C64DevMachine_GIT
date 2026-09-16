@@ -936,7 +936,7 @@ if (gui_menu_open == 1 && !global.lite) {
 
     var _extra_list = [
         { title: "IRQ",              type: "MACRO_IRQ"           },
-        { title: "IRQ SHELL",        type: "MACRO_IRQ_HANDLER"   },
+        { title: "IRQ HANDLER",      type: "MACRO_IRQ_HANDLER"   },
         { title: "CODE (ALT+C)",     type: "MACRO_CODE"          },
         { title: "METASCROLL",       type: "MACRO_METASCROLL"    },
         { title: "MOVE MEM",         type: "MACRO_MOVE_MEM"      },
