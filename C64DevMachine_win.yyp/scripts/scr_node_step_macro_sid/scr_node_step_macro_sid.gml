@@ -46,41 +46,17 @@ _fy += _line_h; // irq line - editable
         }
     }
     if (is_connected && org_parent == noone && !_has_irq_handler) {
-        var _exit_node = noone;
-        var _lowest_irq = noone;
-        var _lowest_irq_y = -1;
+        // Same rule as the per-frame pass in scr_node_step_macro_sid_frame:
+        // below this node and below every MACRO_IRQ, and left where the user
+        // put it once it already is. See scr_sid_exit_settle for why.
+        var _target_y = y + height;
         with (obj_c64_node) {
-            if (is_connected && org_parent == noone) {
-                if (node_type == "LABEL" && array_length(instructions) > 0 && array_length(instructions[0]) > 1 && string(instructions[0][1]) == "sid_exit") {
-                    _exit_node = id;
-                }
-                if (node_type == "MACRO_IRQ") {
-                    if (y > _lowest_irq_y) {
-                        _lowest_irq_y = y;
-                        _lowest_irq = id;
-                    }
-                }
+            if (node_type == "MACRO_IRQ" && is_connected && org_parent == noone) {
+                if (y + height > _target_y) _target_y = y + height;
             }
         }
-		
-		
-        if (_exit_node != noone && _lowest_irq != noone) {
-            var _new_y = _lowest_irq.y + _lowest_irq.height;
-            if (_exit_node.y != _new_y) {
-                var _old_y  = _exit_node.y;
-                var _lbl_id = _exit_node;
-                with (obj_c64_node) {
-                    if (id != _lbl_id && is_connected && org_parent == noone &&
-                        y >= _new_y && y < _old_y) {
-                        y += _lbl_id.height;
-                    }
-                }
-                _exit_node.y = _new_y;
-                _exit_node.is_auto_adjusting = true;
-                scr_c64_update_addresses();
-            }
-        }
-    }
+        scr_sid_exit_settle(_target_y);
+    }
 	
 	
 }

@@ -2879,28 +2879,14 @@ with (obj_c64_node) {
     }
 }
 
-if (_has_irq_handler && exit_spawned) {
-    var _self_ref = id;
-    with (obj_c64_node) {
-        if (node_type == "LABEL" && is_connected && org_parent == noone &&
-            array_length(instructions) > 0 && array_length(instructions[0]) > 1 &&
-            string(instructions[0][1]) == "sid_exit") {
-            var _target_y = _self_ref.y + _self_ref.height;
-            if (y != _target_y) {
-                var _old_y  = y;
-                var _lbl_id = id;
-                // Push nodes that are at the target position down to make room
-                with (obj_c64_node) {
-                    if (id != _lbl_id && id != _self_ref && is_connected &&
-                        org_parent == noone && y >= _target_y && y < _old_y) {
-                        y += _lbl_id.height;
-                    }
-                }
-                y = _target_y;
-                scr_c64_update_addresses();
-            }
-        }
-    }
+// With a MACRO_IRQ_HANDLER connected, MACRO_SID emits nothing between its JMP
+// and the label except sid_init_entry, so sid_exit only has to clear this node.
+// exit_spawned is set on any MACRO_SID that has seen the label exist, including
+// one just loaded from a file, so this used to re-snap the label on load and on
+// every height recalculation. scr_sid_exit_settle now leaves it alone unless it
+// is genuinely too high.
+if (_has_irq_handler && exit_spawned && node_type == "MACRO_SID") {
+    scr_sid_exit_settle(y + height);
 }
 
 
