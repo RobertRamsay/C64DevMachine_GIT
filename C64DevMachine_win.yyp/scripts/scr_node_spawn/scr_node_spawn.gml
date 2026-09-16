@@ -1051,15 +1051,25 @@ function scr_comment_sync_layout(_node) {
         ? string(_node.instructions[0][1]) : "";
     var _font = draw_get_font();
     draw_set_font(fnt_c64_code);
-    var _text_w = max(1, global.node_display_width - 20);
+    // A comment is 1, 2 or 3 standard node widths across - whole steps only,
+    // so a row of them still lines up with everything else on the canvas.
+    // The wrap width follows the node, which is what makes widening reflow
+    // the text instead of just stretching the box around the old line breaks.
+    var _mult = 1;
+    if (variable_instance_exists(_node, "comment_w_mult")) {
+        _mult = clamp(round(_node.comment_w_mult), 1, 3);
+    }
+    var _node_w = global.node_display_width * _mult;
+    var _text_w = max(1, _node_w - 20);
+    var _max_ch = 25 * _mult;
     if (_node.comment_source_cache != _raw || _node.comment_text_width != _text_w) {
         var _lines = string_split(string_replace_all(string_replace_all(_raw, "\r\n", "\n"), "\r", "\n"), "\n");
         var _wrapped = [];
         for (var _i = 0; _i < array_length(_lines); _i++) {
             var _rest = _lines[_i];
-            while (string_length(_rest) > 25 || string_width(_rest) > _text_w) {
+            while (string_length(_rest) > _max_ch || string_width(_rest) > _text_w) {
                 // Limit by both character count and actual glyph width.
-                var _fit = min(25, string_length(_rest));
+                var _fit = min(_max_ch, string_length(_rest));
                 while (_fit > 1 && string_width(string_copy(_rest, 1, _fit)) > _text_w) _fit--;
                 var _space = string_last_pos(" ", string_copy(_rest, 1, _fit + 1));
                 var _take = (_space > 1) ? _space - 1 : _fit;
@@ -1085,7 +1095,7 @@ function scr_comment_sync_layout(_node) {
         if (_node.is_connected) global.addresses_dirty = true;
         _node.prev_height = _height;
     }
-    _node.width = global.node_display_width;
+    _node.width = _node_w;
     _node.height = _height;
     _node.cached_height = _height;
     draw_set_font(_font);

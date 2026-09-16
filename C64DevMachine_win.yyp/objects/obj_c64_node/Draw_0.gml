@@ -297,7 +297,9 @@ var _raw_h = header_h + (array_length(instructions) * _line_gap) + _bottom_pad +
 // =============================================================
 switch (node_type) {
     case "COMMENT":
-        width = global.node_display_width;
+        // scr_comment_sync_layout (top of this event) has already set width
+        // from comment_w_mult. Re-forcing the standard width here would throw
+        // that away every frame.
         break;
     case "DATA_TEXT":
         draw_set_font(fnt_c64_code);
@@ -1915,6 +1917,46 @@ draw_set_font(fnt_c64_code);
 		draw_set_color((node_type == "ORG") ? c_orange : make_color_rgb(30, 200, 80));
         if (is_connected || node_type == "ORG") draw_text(draw_x - 60, y + height - 18, _badge_str);
     }
+}
+
+// =============================================================
+// K2. COMMENT WIDTH HANDLES  < >
+// One standard node width per step, 1x to 3x. Drawn last so nothing
+// painted earlier in this event sits on top of them.
+// =============================================================
+if (node_type == "COMMENT" && global.comments_visible) {
+    var _cw_mult = 1;
+    if (variable_instance_exists(id, "comment_w_mult")) {
+        _cw_mult = clamp(round(comment_w_mult), 1, 3);
+    }
+    var _cw_h  = 16;
+    var _cw_y  = y + 4;
+    var _cw_rx = draw_x + width - 20;
+    var _cw_lx = draw_x + width - 38;
+
+    var _cw_l_on  = (_cw_mult > 1);
+    var _cw_r_on  = (_cw_mult < 3);
+    var _cw_l_hov = _cw_l_on && point_in_rectangle(mouse_x, mouse_y, _cw_lx, _cw_y, _cw_lx + 16, _cw_y + _cw_h);
+    var _cw_r_hov = _cw_r_on && point_in_rectangle(mouse_x, mouse_y, _cw_rx, _cw_y, _cw_rx + 16, _cw_y + _cw_h);
+
+    draw_set_font(fnt_c64_tiny);
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_middle);
+
+    draw_set_color(_cw_l_hov ? make_color_rgb(95, 95, 95) : make_color_rgb(48, 48, 48));
+    draw_rectangle(_cw_lx, _cw_y, _cw_lx + 16, _cw_y + _cw_h, false);
+    draw_set_color(_cw_l_on ? (_cw_l_hov ? c_white : make_color_rgb(205, 205, 205))
+                            : make_color_rgb(85, 85, 85));
+    draw_text(_cw_lx + 8, _cw_y + _cw_h * 0.5, "<");
+
+    draw_set_color(_cw_r_hov ? make_color_rgb(95, 95, 95) : make_color_rgb(48, 48, 48));
+    draw_rectangle(_cw_rx, _cw_y, _cw_rx + 16, _cw_y + _cw_h, false);
+    draw_set_color(_cw_r_on ? (_cw_r_hov ? c_white : make_color_rgb(205, 205, 205))
+                            : make_color_rgb(85, 85, 85));
+    draw_text(_cw_rx + 8, _cw_y + _cw_h * 0.5, ">");
+
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
 }
 
 // =============================================================

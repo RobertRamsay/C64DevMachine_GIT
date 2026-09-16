@@ -1876,6 +1876,39 @@ if (mouse_check_button_pressed(mb_left) && !_mouse_in_gui && !obj_workspace_mana
          if (point_in_rectangle(mouse_x, mouse_y, draw_x, y, draw_x + width, y + 24) &&
             !(node_type == "LABEL" && array_length(instructions) > 0 && array_length(instructions[0]) > 1 && string(instructions[0][1]) == "sid_exit")) {
 
+            // ---- COMMENT WIDTH HANDLES ----
+            // First thing inside the header hit-test, so a click on < or >
+            // resizes instead of starting a drag.
+            if (node_type == "COMMENT"
+            &&  point_in_rectangle(mouse_x, mouse_y,
+                                   draw_x + width - 38, y + 4,
+                                   draw_x + width - 4,  y + 20)) {
+                var _cwm_old = 1;
+                if (variable_instance_exists(id, "comment_w_mult")) {
+                    _cwm_old = clamp(round(comment_w_mult), 1, 3);
+                }
+                var _cwm_new = _cwm_old;
+                if (mouse_x < draw_x + width - 20) {
+                    _cwm_new = max(1, _cwm_old - 1);
+                } else {
+                    _cwm_new = min(3, _cwm_old + 1);
+                }
+                if (_cwm_new != _cwm_old) {
+                    scr_undo_snapshot();
+                    comment_w_mult = _cwm_new;
+                    // Force the rewrap: sync_layout only re-measures when the
+                    // source text or the wrap width it last used has changed.
+                    comment_text_width = 0;
+                    height_dirty       = true;
+                    global.undo_dirty  = true;
+                    with (obj_c64_node) {
+                        last_overlap_check  = false;
+                        overlap_check_dirty = true;
+                    }
+                }
+                exit;
+            }
+
             // ---- GROUP MOVE DRAG ----
             if (id == global.group_drag_handle && array_length(global.selected_nodes) > 1
                 && !(keyboard_check(vk_control) || scr_cmd_held())) {

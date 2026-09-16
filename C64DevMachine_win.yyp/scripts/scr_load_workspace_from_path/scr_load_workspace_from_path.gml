@@ -64,6 +64,7 @@ function scr_load_workspace_from_path(_path) {
         if (variable_struct_exists(d, "pc_address"))   _n.pc_address   = d.pc_address;
         if (variable_struct_exists(d, "end_address"))  _n.end_address  = d.end_address;
         if (variable_struct_exists(d, "x_indent"))     _n.x_indent     = d.x_indent;
+        if (variable_struct_exists(d, "comment_w_mult")) _n.comment_w_mult = clamp(round(d.comment_w_mult), 1, 3);
         if (variable_struct_exists(d, "anim_alias")   && d.anim_alias   != "") _n.anim_alias   = d.anim_alias;
         if (variable_struct_exists(d, "scroll_alias") && d.scroll_alias != "") _n.scroll_alias = d.scroll_alias;
 		if (variable_struct_exists(d, "code_descriptor")) _n.code_descriptor = d.code_descriptor;

@@ -1,0 +1,256 @@
+From fa5f8a87674cd0655ab7f595cec9c40db9de7e3e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 16 Sep 2026 14:36:15 +0000
+Subject: [PATCH] comment nodes: 1x-3x width handles, body rewraps to match
+
+---
+ .../objects/obj_c64_node/Create_0.gml         |  4 ++
+ .../objects/obj_c64_node/Draw_0.gml           | 44 ++++++++++++++++++-
+ .../objects/obj_c64_node/Step_0.gml           | 33 ++++++++++++++
+ .../scripts/scr_autosave/scr_autosave.gml     |  1 +
+ .../scr_load_workspace_from_path.gml          |  1 +
+ .../scripts/scr_node_spawn/scr_node_spawn.gml | 18 ++++++--
+ .../scr_save_workspace_as.gml                 |  1 +
+ .../scr_save_workspace_as_path.gml            |  1 +
+ .../scr_undo_restore/scr_undo_restore.gml     |  1 +
+ .../scr_undo_snapshot/scr_undo_snapshot.gml   |  1 +
+ 10 files changed, 100 insertions(+), 5 deletions(-)
+
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+index e4743f9..5cb4a31 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+@@ -215,6 +215,10 @@ height_dirty         = true;
+ comment_source_cache = undefined;
+ comment_display_text = "";
+ comment_text_width   = 0;
++// COMMENT width, in whole standard node widths: 1, 2 or 3. The < > handles
++// on the header step it, and scr_comment_sync_layout rewraps the body to
++// match, so a wider comment reflows rather than being clipped.
++comment_w_mult       = 1;
+ 
+ // ORG BLOCK COLLAPSE. Meaningful only on ORG nodes, but every node carries it
+ // so scr_node_is_hidden() can read a parent's flag without testing for the
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 8fb778d..3fd0bac 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -297,7 +297,9 @@ var _raw_h = header_h + (array_length(instructions) * _line_gap) + _bottom_pad +
+ // =============================================================
+ switch (node_type) {
+     case "COMMENT":
+-        width = global.node_display_width;
++        // scr_comment_sync_layout (top of this event) has already set width
++        // from comment_w_mult. Re-forcing the standard width here would throw
++        // that away every frame.
+         break;
+     case "DATA_TEXT":
+         draw_set_font(fnt_c64_code);
+@@ -1917,6 +1919,46 @@ draw_set_font(fnt_c64_code);
+     }
+ }
+ 
++// =============================================================
++// K2. COMMENT WIDTH HANDLES  < >
++// One standard node width per step, 1x to 3x. Drawn last so nothing
++// painted earlier in this event sits on top of them.
++// =============================================================
++if (node_type == "COMMENT" && global.comments_visible) {
++    var _cw_mult = 1;
++    if (variable_instance_exists(id, "comment_w_mult")) {
++        _cw_mult = clamp(round(comment_w_mult), 1, 3);
++    }
++    var _cw_h  = 16;
++    var _cw_y  = y + 4;
++    var _cw_rx = draw_x + width - 20;
++    var _cw_lx = draw_x + width - 38;
++
++    var _cw_l_on  = (_cw_mult > 1);
++    var _cw_r_on  = (_cw_mult < 3);
++    var _cw_l_hov = _cw_l_on && point_in_rectangle(mouse_x, mouse_y, _cw_lx, _cw_y, _cw_lx + 16, _cw_y + _cw_h);
++    var _cw_r_hov = _cw_r_on && point_in_rectangle(mouse_x, mouse_y, _cw_rx, _cw_y, _cw_rx + 16, _cw_y + _cw_h);
++
++    draw_set_font(fnt_c64_tiny);
++    draw_set_halign(fa_center);
++    draw_set_valign(fa_middle);
++
++    draw_set_color(_cw_l_hov ? make_color_rgb(95, 95, 95) : make_color_rgb(48, 48, 48));
++    draw_rectangle(_cw_lx, _cw_y, _cw_lx + 16, _cw_y + _cw_h, false);
++    draw_set_color(_cw_l_on ? (_cw_l_hov ? c_white : make_color_rgb(205, 205, 205))
++                            : make_color_rgb(85, 85, 85));
++    draw_text(_cw_lx + 8, _cw_y + _cw_h * 0.5, "<");
++
++    draw_set_color(_cw_r_hov ? make_color_rgb(95, 95, 95) : make_color_rgb(48, 48, 48));
++    draw_rectangle(_cw_rx, _cw_y, _cw_rx + 16, _cw_y + _cw_h, false);
++    draw_set_color(_cw_r_on ? (_cw_r_hov ? c_white : make_color_rgb(205, 205, 205))
++                            : make_color_rgb(85, 85, 85));
++    draw_text(_cw_rx + 8, _cw_y + _cw_h * 0.5, ">");
++
++    draw_set_halign(fa_left);
++    draw_set_valign(fa_top);
++}
++
+ // =============================================================
+ // L. OUTLINE + MEMORY OVERLAP WARNING
+ // Simply use the conflict status determined by the global scanner
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index fdabe4b..e82243a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -1876,6 +1876,39 @@ if (mouse_check_button_pressed(mb_left) && !_mouse_in_gui && !obj_workspace_mana
+          if (point_in_rectangle(mouse_x, mouse_y, draw_x, y, draw_x + width, y + 24) &&
+             !(node_type == "LABEL" && array_length(instructions) > 0 && array_length(instructions[0]) > 1 && string(instructions[0][1]) == "sid_exit")) {
+ 
++            // ---- COMMENT WIDTH HANDLES ----
++            // First thing inside the header hit-test, so a click on < or >
++            // resizes instead of starting a drag.
++            if (node_type == "COMMENT"
++            &&  point_in_rectangle(mouse_x, mouse_y,
++                                   draw_x + width - 38, y + 4,
++                                   draw_x + width - 4,  y + 20)) {
++                var _cwm_old = 1;
++                if (variable_instance_exists(id, "comment_w_mult")) {
++                    _cwm_old = clamp(round(comment_w_mult), 1, 3);
++                }
++                var _cwm_new = _cwm_old;
++                if (mouse_x < draw_x + width - 20) {
++                    _cwm_new = max(1, _cwm_old - 1);
++                } else {
++                    _cwm_new = min(3, _cwm_old + 1);
++                }
++                if (_cwm_new != _cwm_old) {
++                    scr_undo_snapshot();
++                    comment_w_mult = _cwm_new;
++                    // Force the rewrap: sync_layout only re-measures when the
++                    // source text or the wrap width it last used has changed.
++                    comment_text_width = 0;
++                    height_dirty       = true;
++                    global.undo_dirty  = true;
++                    with (obj_c64_node) {
++                        last_overlap_check  = false;
++                        overlap_check_dirty = true;
++                    }
++                }
++                exit;
++            }
++
+             // ---- GROUP MOVE DRAG ----
+             if (id == global.group_drag_handle && array_length(global.selected_nodes) > 1
+                 && !(keyboard_check(vk_control) || scr_cmd_held())) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+index 6cb7d1b..4429855 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+@@ -64,6 +64,7 @@ var _base = "unsaved";
+             collapsed:      inst.collapsed,
+             proxy:        variable_instance_exists(inst, "proxy")       ? inst.proxy       : false,
+             x_indent:     variable_instance_exists(inst, "x_indent")    ? inst.x_indent    : 0,
++            comment_w_mult: variable_instance_exists(inst, "comment_w_mult") ? inst.comment_w_mult : 1,
+ 			helper_text:  variable_instance_exists(inst, "helper_text") ? inst.helper_text : "",
+ 			anim_alias:      variable_instance_exists(inst, "anim_alias")       ? inst.anim_alias       : "",
+             scroll_alias:    variable_instance_exists(inst, "scroll_alias")     ? inst.scroll_alias     : "",
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index aa38b93..427d430 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -64,6 +64,7 @@ function scr_load_workspace_from_path(_path) {
+         if (variable_struct_exists(d, "pc_address"))   _n.pc_address   = d.pc_address;
+         if (variable_struct_exists(d, "end_address"))  _n.end_address  = d.end_address;
+         if (variable_struct_exists(d, "x_indent"))     _n.x_indent     = d.x_indent;
++        if (variable_struct_exists(d, "comment_w_mult")) _n.comment_w_mult = clamp(round(d.comment_w_mult), 1, 3);
+         if (variable_struct_exists(d, "anim_alias")   && d.anim_alias   != "") _n.anim_alias   = d.anim_alias;
+         if (variable_struct_exists(d, "scroll_alias") && d.scroll_alias != "") _n.scroll_alias = d.scroll_alias;
+ 		if (variable_struct_exists(d, "code_descriptor")) _n.code_descriptor = d.code_descriptor;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index f047080..098e109 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -1051,15 +1051,25 @@ function scr_comment_sync_layout(_node) {
+         ? string(_node.instructions[0][1]) : "";
+     var _font = draw_get_font();
+     draw_set_font(fnt_c64_code);
+-    var _text_w = max(1, global.node_display_width - 20);
++    // A comment is 1, 2 or 3 standard node widths across - whole steps only,
++    // so a row of them still lines up with everything else on the canvas.
++    // The wrap width follows the node, which is what makes widening reflow
++    // the text instead of just stretching the box around the old line breaks.
++    var _mult = 1;
++    if (variable_instance_exists(_node, "comment_w_mult")) {
++        _mult = clamp(round(_node.comment_w_mult), 1, 3);
++    }
++    var _node_w = global.node_display_width * _mult;
++    var _text_w = max(1, _node_w - 20);
++    var _max_ch = 25 * _mult;
+     if (_node.comment_source_cache != _raw || _node.comment_text_width != _text_w) {
+         var _lines = string_split(string_replace_all(string_replace_all(_raw, "\r\n", "\n"), "\r", "\n"), "\n");
+         var _wrapped = [];
+         for (var _i = 0; _i < array_length(_lines); _i++) {
+             var _rest = _lines[_i];
+-            while (string_length(_rest) > 25 || string_width(_rest) > _text_w) {
++            while (string_length(_rest) > _max_ch || string_width(_rest) > _text_w) {
+                 // Limit by both character count and actual glyph width.
+-                var _fit = min(25, string_length(_rest));
++                var _fit = min(_max_ch, string_length(_rest));
+                 while (_fit > 1 && string_width(string_copy(_rest, 1, _fit)) > _text_w) _fit--;
+                 var _space = string_last_pos(" ", string_copy(_rest, 1, _fit + 1));
+                 var _take = (_space > 1) ? _space - 1 : _fit;
+@@ -1085,7 +1095,7 @@ function scr_comment_sync_layout(_node) {
+         if (_node.is_connected) global.addresses_dirty = true;
+         _node.prev_height = _height;
+     }
+-    _node.width = global.node_display_width;
++    _node.width = _node_w;
+     _node.height = _height;
+     _node.cached_height = _height;
+     draw_set_font(_font);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+index 1630844..d903fa0 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+@@ -71,6 +71,7 @@
+ 				proxy:          variable_instance_exists(inst, "proxy") ? inst.proxy : false,
+ 	            helper_text:    variable_instance_exists(inst, "helper_text") ? inst.helper_text : "",
+ 				x_indent:       variable_instance_exists(inst, "x_indent") ? inst.x_indent : 0,
++				comment_w_mult: variable_instance_exists(inst, "comment_w_mult") ? inst.comment_w_mult : 1,
+ 	            anim_alias:     variable_instance_exists(inst, "anim_alias") ? inst.anim_alias : "",
+ 	            scroll_alias:   variable_instance_exists(inst, "scroll_alias") ? inst.scroll_alias : "",
+ 				code_descriptor: variable_instance_exists(inst, "code_descriptor") ? inst.code_descriptor : "Code Block",
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+index 1506394..ad87876 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+@@ -63,6 +63,7 @@ global.workspace_path = path;
+ 			proxy:          variable_instance_exists(inst, "proxy") ? inst.proxy : false,
+             helper_text:    variable_instance_exists(inst, "helper_text") ? inst.helper_text : "",
+ 			x_indent:       variable_instance_exists(inst, "x_indent") ? inst.x_indent : 0,
++			comment_w_mult: variable_instance_exists(inst, "comment_w_mult") ? inst.comment_w_mult : 1,
+             anim_alias:     variable_instance_exists(inst, "anim_alias") ? inst.anim_alias : "",
+             scroll_alias:   variable_instance_exists(inst, "scroll_alias") ? inst.scroll_alias : "",
+ 			code_descriptor: variable_instance_exists(inst, "code_descriptor") ? inst.code_descriptor : "Code Block",
+diff --git a/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml b/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
+index 33c5db2..876db6e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
+@@ -57,6 +57,7 @@ function scr_undo_restore(_path) {
+         if (variable_struct_exists(_d, "pc_address"))   _n.pc_address   = _d.pc_address;
+         if (variable_struct_exists(_d, "end_address"))  _n.end_address  = _d.end_address;
+         if (variable_struct_exists(_d, "x_indent"))     _n.x_indent     = _d.x_indent;
++        if (variable_struct_exists(_d, "comment_w_mult")) _n.comment_w_mult = clamp(round(_d.comment_w_mult), 1, 3);
+         if (variable_struct_exists(_d, "stable_uid"))   _n.stable_uid   = _d.stable_uid;
+ 		if (variable_struct_exists(_d, "anim_alias") && _d.anim_alias != "")         _n.anim_alias       = _d.anim_alias;
+         if (variable_struct_exists(_d, "scroll_alias") && _d.scroll_alias != "")     _n.scroll_alias     = _d.scroll_alias;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml b/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
+index 4c399d3..9847caa 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
+@@ -88,6 +88,7 @@ function scr_undo_snapshot() {
+             proxy:          variable_instance_exists(_inst, "proxy")        ? _inst.proxy        : false,
+             helper_text:    variable_instance_exists(_inst, "helper_text")  ? _inst.helper_text  : "",
+             x_indent:       variable_instance_exists(_inst, "x_indent")     ? _inst.x_indent     : 0,
++            comment_w_mult: variable_instance_exists(_inst, "comment_w_mult") ? _inst.comment_w_mult : 1,
+ 			anim_alias:      variable_instance_exists(_inst, "anim_alias")      ? _inst.anim_alias      : "",
+             scroll_alias:    variable_instance_exists(_inst, "scroll_alias")     ? _inst.scroll_alias    : "",
+             code_descriptor: variable_instance_exists(_inst, "code_descriptor")  ? _inst.code_descriptor : "",
+-- 
+2.43.0
+

@@ -57,6 +57,7 @@ function scr_undo_restore(_path) {
         if (variable_struct_exists(_d, "pc_address"))   _n.pc_address   = _d.pc_address;
         if (variable_struct_exists(_d, "end_address"))  _n.end_address  = _d.end_address;
         if (variable_struct_exists(_d, "x_indent"))     _n.x_indent     = _d.x_indent;
+        if (variable_struct_exists(_d, "comment_w_mult")) _n.comment_w_mult = clamp(round(_d.comment_w_mult), 1, 3);
         if (variable_struct_exists(_d, "stable_uid"))   _n.stable_uid   = _d.stable_uid;
 		if (variable_struct_exists(_d, "anim_alias") && _d.anim_alias != "")         _n.anim_alias       = _d.anim_alias;
         if (variable_struct_exists(_d, "scroll_alias") && _d.scroll_alias != "")     _n.scroll_alias     = _d.scroll_alias;

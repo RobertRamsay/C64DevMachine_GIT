@@ -215,6 +215,10 @@ height_dirty         = true;
 comment_source_cache = undefined;
 comment_display_text = "";
 comment_text_width   = 0;
+// COMMENT width, in whole standard node widths: 1, 2 or 3. The < > handles
+// on the header step it, and scr_comment_sync_layout rewraps the body to
+// match, so a wider comment reflows rather than being clipped.
+comment_w_mult       = 1;
 
 // ORG BLOCK COLLAPSE. Meaningful only on ORG nodes, but every node carries it
 // so scr_node_is_hidden() can read a parent's flag without testing for the
