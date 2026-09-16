@@ -1230,8 +1230,10 @@ if (is_entering_text) {
         // closing it again on the same frame.
         if (mouse_check_button_pressed(mb_left) && _was_entering_text) {
             var _cm_dx = input_target_node.x + input_target_node.x_indent;
+            // Body only: the header is the drag handle, so a click there
+            // closes the editor (committing the text) and lets the node move.
             var _cm_in = point_in_rectangle(mouse_x, mouse_y,
-                                            _cm_dx, input_target_node.y,
+                                            _cm_dx, input_target_node.y + 24,
                                             _cm_dx + input_target_node.width,
                                             input_target_node.y + input_target_node.height);
             if (_cm_in) {

@@ -378,11 +378,21 @@ var _mouse_in_shelf     = (_gui_mouse_x <= _shelf_w)
                        && (!obj_workspace_manager.expert_mode || _gui_mouse_y < 47);
 var _mouse_in_shortcuts = (_gui_mouse_x >= global.sc_x_start && _gui_mouse_x <= _gui_w);
 
+// A comment being edited in place is not a modal: a click on any node's
+// header while it is open must still start that node's drag (the workspace
+// closes the editor on the same click). Without this the first header click
+// only closed the editor and a second one was needed to move the node.
+var _cm_inline_edit = obj_workspace_manager.is_entering_text
+                   && instance_exists(obj_workspace_manager.input_target_node)
+                   && obj_workspace_manager.input_target_node.node_type == "COMMENT";
+var _cm_header_hit  = _cm_inline_edit
+                   && point_in_rectangle(mouse_x, mouse_y, x + x_indent, y, x + x_indent + width, y + 24);
+
 var _mouse_in_gui = _mouse_in_shelf
                  || _mouse_in_shortcuts
                  || global.showcode_mouse_over
                  || global.cbc_button_hot
-                 || obj_workspace_manager.is_entering_text
+                 || (obj_workspace_manager.is_entering_text && !_cm_header_hit)
                  || obj_workspace_manager.box_popup_open
                  || global.show_info_window
                  || global.show_helper_window
@@ -1133,6 +1143,15 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
 	            }
 	        }
 	        if (_cm_covered) break;
+	        // Clicked, so it comes to the front: one below the frontmost
+	        // comment (dragged nodes park at -500, so never above that).
+	        var _cm_rz = -500;
+	        with (obj_c64_node) {
+	            if (node_type == "COMMENT" && id != _cm_self && !is_dragging && depth < _cm_rz) _cm_rz = depth;
+	        }
+	        _cm_rz -= 1;
+	        if (_cm_rz < -15000) _cm_rz = -15000;
+	        depth = _cm_rz;
 	        // Edited in place on the node, not in the centre-screen modal.
 	        // is_entering_text still goes up, because every keyboard shortcut
 	        // in the workspace is guarded on it - the difference is that
@@ -2041,6 +2060,19 @@ if (global.group_drag_handle == id) {
             drag_start_x = x + x_indent;
             global.active_drag_node = id;
             pre_click_depth = depth;
+            if (node_type == "COMMENT") {
+                // A comment comes to the front when its header is clicked,
+                // dragged or not: it lands one below the frontmost comment
+                // on release instead of at the shared -500.
+                var _dr_rz   = -500;
+                var _dr_self = id;
+                with (obj_c64_node) {
+                    if (node_type == "COMMENT" && id != _dr_self && !is_dragging && depth < _dr_rz) _dr_rz = depth;
+                }
+                _dr_rz -= 1;
+                if (_dr_rz < -15000) _dr_rz = -15000;
+                pre_click_depth = _dr_rz;
+            }
             depth           = -2000;
             // Stash indent and zero it for the duration of the drag so the Draw
             // event's "x += x_indent" does not double-apply while moving.
@@ -2257,7 +2289,7 @@ if (global.wedge_preview_y >= 0) {
                 if (!was_dragged) { x_indent = drag_indent_stash; }
 
 				is_dragging            = false;
-				depth                  = was_dragged ? -500 : pre_click_depth;
+				depth                  = (was_dragged && node_type != "COMMENT") ? -500 : pre_click_depth;
 				if (was_dragged) scr_c64_update_addresses();
 				if (was_dragged) {
 				    x = round(x / 20) * 20;
