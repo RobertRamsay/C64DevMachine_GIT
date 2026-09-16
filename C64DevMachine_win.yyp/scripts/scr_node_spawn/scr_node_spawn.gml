@@ -1044,6 +1044,99 @@ case "LABEL": {
 }
 
 
+/// @function scr_comment_commit_inline(_node, _idx, _text)
+/// @desc Ends an in-place comment edit. The text is already on the node - the
+///       editor writes it every frame - so this is the bookkeeping: commit it
+///       properly, re-measure, and tell the workspace something changed.
+function scr_comment_commit_inline(_node, _idx, _text) {
+    if (!instance_exists(_node)) { return; }
+    scr_node_commit(_node, _idx, _text);
+    scr_comment_sync_layout(_node);
+    _node.height_dirty = true;
+    global.undo_dirty        = true;
+    global.node_change_dirty = true;
+    global.addresses_dirty   = true;
+    if (instance_exists(obj_workspace_manager)) { obj_workspace_manager.alarm[3] = 6; }
+    scr_c64_do_update_addresses();
+    with (obj_c64_node) {
+        last_overlap_check  = false;
+        overlap_check_dirty = true;
+        stats_cache_dirty   = true;
+    }
+}
+
+
+/// COMMENT IN-PLACE EDITING
+/// The body is drawn with draw_text_ext at a line height of 18 (obj_c64_node's
+/// Draw event, `line_h`). Both helpers take the body's room origin from the
+/// CALLER rather than working it out: the Draw event temporarily folds
+/// x_indent into x, so no single expression is right from both events.
+
+/// @function scr_comment_caret_at(_node, _bx, _by, _mx, _my)
+/// @desc Room position -> caret index into the RAW comment text, so a click in
+///       the body puts the caret where the pointer is.
+/// @return {Real} 0 .. length of the raw string
+function scr_comment_caret_at(_node, _bx, _by, _mx, _my) {
+    var _raw = (array_length(_node.instructions) > 0)
+             ? string(_node.instructions[0][1]) : "";
+    var _len = string_length(_raw);
+    if (!variable_instance_exists(_node, "comment_line_start")) { return _len; }
+    var _starts = _node.comment_line_start;
+    var _disp   = string_split(_node.comment_display_text, "\n");
+    var _n      = min(array_length(_disp), array_length(_starts));
+    if (_n <= 0) { return _len; }
+
+    var _li = floor((_my - _by) / 18);
+    if (_li < 0)   { _li = 0; }
+    if (_li >= _n) { _li = _n - 1; }
+
+    var _font = draw_get_font();
+    draw_set_font(fnt_c64_code);
+    var _line = _disp[_li];
+    var _col  = string_length(_line);
+    for (var _c = 0; _c <= string_length(_line); _c++) {
+        // Land on whichever character boundary the pointer is nearest.
+        if (_bx + string_width(string_copy(_line, 1, _c)) >= _mx - 3) {
+            _col = _c;
+            break;
+        }
+    }
+    draw_set_font(_font);
+
+    return clamp(_starts[_li] + _col, 0, _len);
+}
+
+
+/// @function scr_comment_caret_pos(_node, _caret, _bx, _by)
+/// @desc The inverse: caret index -> where to draw the bar.
+/// @return {Struct} cx, cy, line
+function scr_comment_caret_pos(_node, _caret, _bx, _by) {
+    var _out = { cx : _bx, cy : _by, line : 0 };
+    if (!variable_instance_exists(_node, "comment_line_start")) { return _out; }
+    var _starts = _node.comment_line_start;
+    var _disp   = string_split(_node.comment_display_text, "\n");
+    var _n      = min(array_length(_disp), array_length(_starts));
+    if (_n <= 0) { return _out; }
+
+    // The last display line that starts at or before the caret.
+    var _li = 0;
+    for (var _i = 0; _i < _n; _i++) {
+        if (_starts[_i] <= _caret) { _li = _i; } else { break; }
+    }
+    var _col = _caret - _starts[_li];
+    if (_col < 0) { _col = 0; }
+    if (_col > string_length(_disp[_li])) { _col = string_length(_disp[_li]); }
+
+    var _font = draw_get_font();
+    draw_set_font(fnt_c64_code);
+    _out.cx = _bx + string_width(string_copy(_disp[_li], 1, _col));
+    draw_set_font(_font);
+    _out.cy   = _by + (_li * 18);
+    _out.line = _li;
+    return _out;
+}
+
+
 /// Comments wrap for display only; never insert newlines into saved instructions.
 /// Keep measurement and drawing on the same font, padding and standard node width.
 function scr_comment_sync_layout(_node) {
@@ -1065,8 +1158,15 @@ function scr_comment_sync_layout(_node) {
     if (_node.comment_source_cache != _raw || _node.comment_text_width != _text_w) {
         var _lines = string_split(string_replace_all(string_replace_all(_raw, "\r\n", "\n"), "\r", "\n"), "\n");
         var _wrapped = [];
+        // Where each DISPLAY line starts in the RAW text, 0-based. The wrap is
+        // display-only, so without this there is no way back from "the caret is
+        // on display line 3, column 8" to an index into the stored string - and
+        // in-place editing needs exactly that, in both directions.
+        var _starts  = [];
+        var _raw_pos = 0;
         for (var _i = 0; _i < array_length(_lines); _i++) {
-            var _rest = _lines[_i];
+            var _rest     = _lines[_i];
+            var _line_raw = _raw_pos;
             while (string_length(_rest) > _max_ch || string_width(_rest) > _text_w) {
                 // Limit by both character count and actual glyph width.
                 var _fit = min(_max_ch, string_length(_rest));
@@ -1074,9 +1174,14 @@ function scr_comment_sync_layout(_node) {
                 var _space = string_last_pos(" ", string_copy(_rest, 1, _fit + 1));
                 var _take = (_space > 1) ? _space - 1 : _fit;
                 array_push(_wrapped, string_copy(_rest, 1, _take));
-                _rest = string_delete(_rest, 1, (_space > 1) ? _space : _take);
+                array_push(_starts, _line_raw);
+                var _eaten = (_space > 1) ? _space : _take;
+                _rest      = string_delete(_rest, 1, _eaten);
+                _line_raw += _eaten;
             }
             array_push(_wrapped, _rest);
+            array_push(_starts, _line_raw);
+            _raw_pos += string_length(_lines[_i]) + 1;   // +1 for the newline
         }
         var _display = "";
         for (var _i = 0; _i < array_length(_wrapped); _i++) {
@@ -1085,6 +1190,7 @@ function scr_comment_sync_layout(_node) {
         }
         _node.comment_source_cache = _raw;
         _node.comment_display_text = _display;
+        _node.comment_line_start   = _starts;
         _node.comment_text_width = _text_w;
         _node.height_dirty = true;
     }

@@ -704,8 +704,14 @@ if (is_entering_text && !_was_entering_text) {
     input_sel_end   = -1;
     input_key_timer = 0;
     // Cursor always lands at end of the seeded value, regardless of
-    // whether the opening step script set it.
-    cursor_pos      = string_length(current_input_string);
+    // whether the opening step script set it - except for a COMMENT, which
+    // is edited in place and wants the caret where the pointer was. Its
+    // opening step already worked that out; this would throw it away.
+    var _open_is_comment = (instance_exists(input_target_node)
+                         && input_target_node.node_type == "COMMENT");
+    if (!_open_is_comment) {
+        cursor_pos = string_length(current_input_string);
+    }
 }
 _was_entering_text = is_entering_text;
 
@@ -794,7 +800,9 @@ if (is_entering_text) {
         
     }
 
-    var char_limit = is_comment ? 160 : (_is_long_text ? 512 : (_is_address_field ? 5 : 40));
+    // 160 was the old modal box's capacity. A comment is a paragraph now, and
+    // the node grows to fit it.
+    var char_limit = is_comment ? 4096 : (_is_long_text ? 512 : (_is_address_field ? 5 : 40));
 
     var _shift = keyboard_check(vk_shift);
     var _ctrl  = keyboard_check(vk_control);
@@ -1046,9 +1054,18 @@ if (is_entering_text) {
             }
             keyboard_clear(vk_enter);
         }
+    } else if (is_comment) {
+        // In place on the node there is no OK button to reach for, so ENTER is
+        // just a new line - plain or shifted. Clicking off the node is what
+        // ends the edit. The old 5-line cap went with the modal box.
+        if (keyboard_check_pressed(vk_enter)) {
+            current_input_string = string_insert("\n", current_input_string, cursor_pos + 1);
+            cursor_pos++;
+            keyboard_clear(vk_enter);
+        }
     } else {
         if (keyboard_check_pressed(vk_enter) && _shift) {
-            if (is_comment || _is_long_text) {
+            if (_is_long_text) {
                 if (string_count("\n", current_input_string) < 5) {
                     current_input_string = string_insert("\n", current_input_string, cursor_pos + 1);
                     cursor_pos++;
@@ -1058,8 +1075,14 @@ if (is_entering_text) {
         }
     }
 
-// ── Auto word-wrap for comment/long text ──
-    if ((is_comment || _is_long_text) && !keyboard_check(vk_backspace)) {
+// ── Auto word-wrap for long text ──
+    // Comments are deliberately not in here any more. This inserts real
+    // newlines at 25 characters and hard-trims anything past them, which is
+    // the opposite of what scr_comment_sync_layout does - that wraps for
+    // DISPLAY only and never touches the stored string, so the same text
+    // reflows when the node is widened to 2x or 3x. Running both meant a
+    // comment came back from an edit chopped to 6 lines of 25.
+    if (_is_long_text && !keyboard_check(vk_backspace)) {
         var _lines         = string_split(current_input_string, "\n");
         var _temp_len      = 0;
         var _curr_line_idx = 0;
@@ -1097,10 +1120,10 @@ if (is_entering_text) {
     // Skipped on the frame the modal opens: the click that opened the field
     // is still "pressed" this step and would drag the caret to wherever the
     // node's value happened to sit on screen.
-    if (mouse_check_button_pressed(mb_left) && _was_entering_text) {
+    if (mouse_check_button_pressed(mb_left) && _was_entering_text && !is_comment) {
         var _gmx    = global.gui_mouse_x;
         var _gmy    = global.gui_mouse_y;
-        var _is_ml  = (is_comment || _is_long_text || _is_code_editor);
+        var _is_ml  = (_is_long_text || _is_code_editor);
         var _txt_x  = _is_ml ? ((input_target_node != noone && (input_target_node.node_type == "MACRO_TEXT_SCROLL" || input_target_node.node_type == "MACRO_CODE")) ? (global.gui_w / 2) - 180 : (global.gui_w / 2) - 125) : (global.gui_w / 2);
         var _txt_y0 = (display_get_gui_height() / 2) - 60;
         var _lh_px  = 18 * 1.2;
@@ -1192,6 +1215,43 @@ if (is_entering_text) {
         keyboard_string = "";
     }
 
+    // ── COMMENT: live on the node, and clicking away is what ends it ──
+    if (is_comment && instance_exists(input_target_node)) {
+
+        // What is on the node IS what you are typing - wrapped, and grown to
+        // fit - because nothing else is showing it now.
+        if (string(input_target_node.instructions[0][1]) != current_input_string) {
+            input_target_node.instructions[0][1] = current_input_string;
+            scr_comment_sync_layout(input_target_node);
+            input_target_node.height_dirty = true;
+        }
+
+        // _was_entering_text keeps the click that OPENED the editor from
+        // closing it again on the same frame.
+        if (mouse_check_button_pressed(mb_left) && _was_entering_text) {
+            var _cm_dx = input_target_node.x + input_target_node.x_indent;
+            var _cm_in = point_in_rectangle(mouse_x, mouse_y,
+                                            _cm_dx, input_target_node.y,
+                                            _cm_dx + input_target_node.width,
+                                            input_target_node.y + input_target_node.height);
+            if (_cm_in) {
+                // Still on the node: move the caret to the pointer.
+                cursor_pos      = scr_comment_caret_at(input_target_node,
+                                                       _cm_dx + 10,
+                                                       input_target_node.y + 28,
+                                                       mouse_x, mouse_y);
+                input_sel_start = -1;
+                input_sel_end   = -1;
+            } else {
+                scr_comment_commit_inline(input_target_node, input_target_index, current_input_string);
+                is_entering_text = false;
+                input_sel_start  = -1;
+                input_sel_end    = -1;
+                keyboard_string  = "";
+            }
+        }
+    }
+
     // ── Commit ──
     var _do_commit = false;
     if (_is_code_editor) {
@@ -1217,6 +1277,11 @@ if (is_entering_text) {
 
     // ── Escape ──
     if (keyboard_check_pressed(vk_escape)) {
+        if (is_comment && instance_exists(input_target_node)) {
+            // Same ending as clicking away - there is no "cancel" for a
+            // comment, the text on the node is already the text.
+            scr_comment_commit_inline(input_target_node, input_target_index, current_input_string);
+        }
         if (input_target_node != noone &&
             input_target_node.node_type == "MACRO_CODE" &&
             input_target_index == 0) {

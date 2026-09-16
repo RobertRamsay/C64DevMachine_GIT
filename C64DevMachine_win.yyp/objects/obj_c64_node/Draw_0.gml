@@ -1816,9 +1816,31 @@ if (_lod_body) switch (node_type) {
                 // Zoomed out it is unreadable anyway; the box still draws so
                 // the comment keeps its place in the column.
                 if (_cam_zoom <= 2.55) {
-                    draw_set_color(c_yellow);
+                    // While this comment has the keyboard, what is drawn here
+                    // IS the editor - the workspace writes each keystroke back
+                    // to the node and re-wraps, and no modal is shown.
+                    var _cm_edit = (instance_exists(obj_workspace_manager)
+                                 && obj_workspace_manager.is_entering_text
+                                 && obj_workspace_manager.input_target_node == id);
+
                     draw_set_font(fnt_c64_code);
+                    draw_set_color(_cm_edit ? c_white : c_yellow);
                     draw_text_ext(draw_x + 10, _yy, comment_display_text, line_h, -1);
+
+                    if (_cm_edit) {
+                        var _cm_cp = scr_comment_caret_pos(id,
+                                                           obj_workspace_manager.cursor_pos,
+                                                           draw_x + 10, _yy);
+                        if ((current_time div 500) mod 2 == 0) {
+                            draw_set_color(c_white);
+                            draw_rectangle(_cm_cp.cx,     _cm_cp.cy - 1,
+                                           _cm_cp.cx + 1, _cm_cp.cy + line_h - 4, false);
+                        }
+                        // A frame, so it is obvious which comment is taking
+                        // the typing when several sit in a column.
+                        draw_set_color(make_color_rgb(120, 200, 255));
+                        draw_rectangle(draw_x, y, draw_x + width, y + height, true);
+                    }
                 }
                 continue;
             }

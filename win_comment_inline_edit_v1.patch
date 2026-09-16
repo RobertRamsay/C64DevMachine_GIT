@@ -1,0 +1,405 @@
+From 59eaee0cf8a2dff3fb4bd4b18e2e339daf65ccb7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 16 Sep 2026 14:59:00 +0000
+Subject: [PATCH] comment nodes: type on the node, click away to finish
+
+---
+ .../objects/obj_c64_node/Create_0.gml         |   3 +
+ .../objects/obj_c64_node/Draw_0.gml           |  24 +++-
+ .../objects/obj_c64_node/Step_0.gml           |   9 +-
+ .../objects/obj_workspace_manager/Draw_64.gml |  12 +-
+ .../objects/obj_workspace_manager/Step_0.gml  |  81 +++++++++++--
+ .../scripts/scr_node_spawn/scr_node_spawn.gml | 110 +++++++++++++++++-
+ 6 files changed, 223 insertions(+), 16 deletions(-)
+
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+index 5cb4a31..16e60b2 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+@@ -215,6 +215,9 @@ height_dirty         = true;
+ comment_source_cache = undefined;
+ comment_display_text = "";
+ comment_text_width   = 0;
++// Raw index each wrapped display line starts at - scr_comment_sync_layout
++// fills it, the in-place editor maps clicks and the caret through it.
++comment_line_start   = [];
+ // COMMENT width, in whole standard node widths: 1, 2 or 3. The < > handles
+ // on the header step it, and scr_comment_sync_layout rewraps the body to
+ // match, so a wider comment reflows rather than being clipped.
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 3fd0bac..ff67b0d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -1816,9 +1816,31 @@ if (_lod_body) switch (node_type) {
+                 // Zoomed out it is unreadable anyway; the box still draws so
+                 // the comment keeps its place in the column.
+                 if (_cam_zoom <= 2.55) {
+-                    draw_set_color(c_yellow);
++                    // While this comment has the keyboard, what is drawn here
++                    // IS the editor - the workspace writes each keystroke back
++                    // to the node and re-wraps, and no modal is shown.
++                    var _cm_edit = (instance_exists(obj_workspace_manager)
++                                 && obj_workspace_manager.is_entering_text
++                                 && obj_workspace_manager.input_target_node == id);
++
+                     draw_set_font(fnt_c64_code);
++                    draw_set_color(_cm_edit ? c_white : c_yellow);
+                     draw_text_ext(draw_x + 10, _yy, comment_display_text, line_h, -1);
++
++                    if (_cm_edit) {
++                        var _cm_cp = scr_comment_caret_pos(id,
++                                                           obj_workspace_manager.cursor_pos,
++                                                           draw_x + 10, _yy);
++                        if ((current_time div 500) mod 2 == 0) {
++                            draw_set_color(c_white);
++                            draw_rectangle(_cm_cp.cx,     _cm_cp.cy - 1,
++                                           _cm_cp.cx + 1, _cm_cp.cy + line_h - 4, false);
++                        }
++                        // A frame, so it is obvious which comment is taking
++                        // the typing when several sit in a column.
++                        draw_set_color(make_color_rgb(120, 200, 255));
++                        draw_rectangle(draw_x, y, draw_x + width, y + height, true);
++                    }
+                 }
+                 continue;
+             }
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index e82243a..f39f716 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -1113,13 +1113,20 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
+ 	case "COMMENT":
+ 	    if (!global.comments_visible) break;
+ 	    if (point_in_rectangle(mouse_x, mouse_y, draw_x, y + 20, draw_x + width, y + height)) {
++	        // Edited in place on the node, not in the centre-screen modal.
++	        // is_entering_text still goes up, because every keyboard shortcut
++	        // in the workspace is guarded on it - the difference is that
++	        // nothing draws the modal and the node owns the caret.
++	        var _cm_caret = scr_comment_caret_at(id, draw_x + 10, y + 28, mouse_x, mouse_y);
+ 	        with (obj_workspace_manager) {
+ 	            is_entering_text     = true;
+ 	            input_target_node    = other.id;
+ 	            input_target_index   = 0;
+ 	            current_input_string = string(other.instructions[0][1]);
+ 	            keyboard_string      = "";
+-	            cursor_pos           = string_length(current_input_string);
++	            cursor_pos           = _cm_caret;
++	            input_sel_start      = -1;
++	            input_sel_end        = -1;
+ 	        }
+ 	    }
+ 	    break;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 48d2ffd..5fa728a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -2289,15 +2289,19 @@ scr_draw_memory_bar(_bar_x1, _bar_x2, gui_h - 40);
+ /////////////////////////////////////////////////////////////////
+ ///// 4. DYNAMIC MODALS (EDITING & QUIT)
+ /////////////////////////////////////////////////////////////////
+-if (is_entering_text) {
++// A COMMENT is typed on the node itself now, so the centre-screen modal is
++// skipped entirely for one - obj_c64_node draws the live text and the caret.
++// Everything else still gets the modal.
++var _modal_is_comment = (is_entering_text && instance_exists(input_target_node)
++                      && (input_target_node.node_type == "COMMENT"
++                       || input_target_node.node_title == "COMMENT"));
++if (is_entering_text && !_modal_is_comment) {
+     if (global.show_info_window) is_entering_text = false;
+ 
+     var mid_x      = gui_w / 2;
+     var mid_y      = gui_h / 2;
+ 	
+-	var is_comment    = (instance_exists(input_target_node) &&
+-                        (input_target_node.node_type == "COMMENT" ||
+-                         input_target_node.node_title == "COMMENT"));
++	var is_comment    = false;
+ 	var is_scrolltxt  = (instance_exists(input_target_node) &&
+                          input_target_node.node_type == "MACRO_TEXT_SCROLL" &&
+                          input_target_index == 6);
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 3d0df7a..8b60adb 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -704,8 +704,14 @@ if (is_entering_text && !_was_entering_text) {
+     input_sel_end   = -1;
+     input_key_timer = 0;
+     // Cursor always lands at end of the seeded value, regardless of
+-    // whether the opening step script set it.
+-    cursor_pos      = string_length(current_input_string);
++    // whether the opening step script set it - except for a COMMENT, which
++    // is edited in place and wants the caret where the pointer was. Its
++    // opening step already worked that out; this would throw it away.
++    var _open_is_comment = (instance_exists(input_target_node)
++                         && input_target_node.node_type == "COMMENT");
++    if (!_open_is_comment) {
++        cursor_pos = string_length(current_input_string);
++    }
+ }
+ _was_entering_text = is_entering_text;
+ 
+@@ -794,7 +800,9 @@ if (is_entering_text) {
+         
+     }
+ 
+-    var char_limit = is_comment ? 160 : (_is_long_text ? 512 : (_is_address_field ? 5 : 40));
++    // 160 was the old modal box's capacity. A comment is a paragraph now, and
++    // the node grows to fit it.
++    var char_limit = is_comment ? 4096 : (_is_long_text ? 512 : (_is_address_field ? 5 : 40));
+ 
+     var _shift = keyboard_check(vk_shift);
+     var _ctrl  = keyboard_check(vk_control);
+@@ -1046,9 +1054,18 @@ if (is_entering_text) {
+             }
+             keyboard_clear(vk_enter);
+         }
++    } else if (is_comment) {
++        // In place on the node there is no OK button to reach for, so ENTER is
++        // just a new line - plain or shifted. Clicking off the node is what
++        // ends the edit. The old 5-line cap went with the modal box.
++        if (keyboard_check_pressed(vk_enter)) {
++            current_input_string = string_insert("\n", current_input_string, cursor_pos + 1);
++            cursor_pos++;
++            keyboard_clear(vk_enter);
++        }
+     } else {
+         if (keyboard_check_pressed(vk_enter) && _shift) {
+-            if (is_comment || _is_long_text) {
++            if (_is_long_text) {
+                 if (string_count("\n", current_input_string) < 5) {
+                     current_input_string = string_insert("\n", current_input_string, cursor_pos + 1);
+                     cursor_pos++;
+@@ -1058,8 +1075,14 @@ if (is_entering_text) {
+         }
+     }
+ 
+-// ── Auto word-wrap for comment/long text ──
+-    if ((is_comment || _is_long_text) && !keyboard_check(vk_backspace)) {
++// ── Auto word-wrap for long text ──
++    // Comments are deliberately not in here any more. This inserts real
++    // newlines at 25 characters and hard-trims anything past them, which is
++    // the opposite of what scr_comment_sync_layout does - that wraps for
++    // DISPLAY only and never touches the stored string, so the same text
++    // reflows when the node is widened to 2x or 3x. Running both meant a
++    // comment came back from an edit chopped to 6 lines of 25.
++    if (_is_long_text && !keyboard_check(vk_backspace)) {
+         var _lines         = string_split(current_input_string, "\n");
+         var _temp_len      = 0;
+         var _curr_line_idx = 0;
+@@ -1097,10 +1120,10 @@ if (is_entering_text) {
+     // Skipped on the frame the modal opens: the click that opened the field
+     // is still "pressed" this step and would drag the caret to wherever the
+     // node's value happened to sit on screen.
+-    if (mouse_check_button_pressed(mb_left) && _was_entering_text) {
++    if (mouse_check_button_pressed(mb_left) && _was_entering_text && !is_comment) {
+         var _gmx    = global.gui_mouse_x;
+         var _gmy    = global.gui_mouse_y;
+-        var _is_ml  = (is_comment || _is_long_text || _is_code_editor);
++        var _is_ml  = (_is_long_text || _is_code_editor);
+         var _txt_x  = _is_ml ? ((input_target_node != noone && (input_target_node.node_type == "MACRO_TEXT_SCROLL" || input_target_node.node_type == "MACRO_CODE")) ? (global.gui_w / 2) - 180 : (global.gui_w / 2) - 125) : (global.gui_w / 2);
+         var _txt_y0 = (display_get_gui_height() / 2) - 60;
+         var _lh_px  = 18 * 1.2;
+@@ -1192,6 +1215,43 @@ if (is_entering_text) {
+         keyboard_string = "";
+     }
+ 
++    // ── COMMENT: live on the node, and clicking away is what ends it ──
++    if (is_comment && instance_exists(input_target_node)) {
++
++        // What is on the node IS what you are typing - wrapped, and grown to
++        // fit - because nothing else is showing it now.
++        if (string(input_target_node.instructions[0][1]) != current_input_string) {
++            input_target_node.instructions[0][1] = current_input_string;
++            scr_comment_sync_layout(input_target_node);
++            input_target_node.height_dirty = true;
++        }
++
++        // _was_entering_text keeps the click that OPENED the editor from
++        // closing it again on the same frame.
++        if (mouse_check_button_pressed(mb_left) && _was_entering_text) {
++            var _cm_dx = input_target_node.x + input_target_node.x_indent;
++            var _cm_in = point_in_rectangle(mouse_x, mouse_y,
++                                            _cm_dx, input_target_node.y,
++                                            _cm_dx + input_target_node.width,
++                                            input_target_node.y + input_target_node.height);
++            if (_cm_in) {
++                // Still on the node: move the caret to the pointer.
++                cursor_pos      = scr_comment_caret_at(input_target_node,
++                                                       _cm_dx + 10,
++                                                       input_target_node.y + 28,
++                                                       mouse_x, mouse_y);
++                input_sel_start = -1;
++                input_sel_end   = -1;
++            } else {
++                scr_comment_commit_inline(input_target_node, input_target_index, current_input_string);
++                is_entering_text = false;
++                input_sel_start  = -1;
++                input_sel_end    = -1;
++                keyboard_string  = "";
++            }
++        }
++    }
++
+     // ── Commit ──
+     var _do_commit = false;
+     if (_is_code_editor) {
+@@ -1217,6 +1277,11 @@ if (is_entering_text) {
+ 
+     // ── Escape ──
+     if (keyboard_check_pressed(vk_escape)) {
++        if (is_comment && instance_exists(input_target_node)) {
++            // Same ending as clicking away - there is no "cancel" for a
++            // comment, the text on the node is already the text.
++            scr_comment_commit_inline(input_target_node, input_target_index, current_input_string);
++        }
+         if (input_target_node != noone &&
+             input_target_node.node_type == "MACRO_CODE" &&
+             input_target_index == 0) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index 098e109..d51bfce 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -1044,6 +1044,99 @@ case "LABEL": {
+ }
+ 
+ 
++/// @function scr_comment_commit_inline(_node, _idx, _text)
++/// @desc Ends an in-place comment edit. The text is already on the node - the
++///       editor writes it every frame - so this is the bookkeeping: commit it
++///       properly, re-measure, and tell the workspace something changed.
++function scr_comment_commit_inline(_node, _idx, _text) {
++    if (!instance_exists(_node)) { return; }
++    scr_node_commit(_node, _idx, _text);
++    scr_comment_sync_layout(_node);
++    _node.height_dirty = true;
++    global.undo_dirty        = true;
++    global.node_change_dirty = true;
++    global.addresses_dirty   = true;
++    if (instance_exists(obj_workspace_manager)) { obj_workspace_manager.alarm[3] = 6; }
++    scr_c64_do_update_addresses();
++    with (obj_c64_node) {
++        last_overlap_check  = false;
++        overlap_check_dirty = true;
++        stats_cache_dirty   = true;
++    }
++}
++
++
++/// COMMENT IN-PLACE EDITING
++/// The body is drawn with draw_text_ext at a line height of 18 (obj_c64_node's
++/// Draw event, `line_h`). Both helpers take the body's room origin from the
++/// CALLER rather than working it out: the Draw event temporarily folds
++/// x_indent into x, so no single expression is right from both events.
++
++/// @function scr_comment_caret_at(_node, _bx, _by, _mx, _my)
++/// @desc Room position -> caret index into the RAW comment text, so a click in
++///       the body puts the caret where the pointer is.
++/// @return {Real} 0 .. length of the raw string
++function scr_comment_caret_at(_node, _bx, _by, _mx, _my) {
++    var _raw = (array_length(_node.instructions) > 0)
++             ? string(_node.instructions[0][1]) : "";
++    var _len = string_length(_raw);
++    if (!variable_instance_exists(_node, "comment_line_start")) { return _len; }
++    var _starts = _node.comment_line_start;
++    var _disp   = string_split(_node.comment_display_text, "\n");
++    var _n      = min(array_length(_disp), array_length(_starts));
++    if (_n <= 0) { return _len; }
++
++    var _li = floor((_my - _by) / 18);
++    if (_li < 0)   { _li = 0; }
++    if (_li >= _n) { _li = _n - 1; }
++
++    var _font = draw_get_font();
++    draw_set_font(fnt_c64_code);
++    var _line = _disp[_li];
++    var _col  = string_length(_line);
++    for (var _c = 0; _c <= string_length(_line); _c++) {
++        // Land on whichever character boundary the pointer is nearest.
++        if (_bx + string_width(string_copy(_line, 1, _c)) >= _mx - 3) {
++            _col = _c;
++            break;
++        }
++    }
++    draw_set_font(_font);
++
++    return clamp(_starts[_li] + _col, 0, _len);
++}
++
++
++/// @function scr_comment_caret_pos(_node, _caret, _bx, _by)
++/// @desc The inverse: caret index -> where to draw the bar.
++/// @return {Struct} cx, cy, line
++function scr_comment_caret_pos(_node, _caret, _bx, _by) {
++    var _out = { cx : _bx, cy : _by, line : 0 };
++    if (!variable_instance_exists(_node, "comment_line_start")) { return _out; }
++    var _starts = _node.comment_line_start;
++    var _disp   = string_split(_node.comment_display_text, "\n");
++    var _n      = min(array_length(_disp), array_length(_starts));
++    if (_n <= 0) { return _out; }
++
++    // The last display line that starts at or before the caret.
++    var _li = 0;
++    for (var _i = 0; _i < _n; _i++) {
++        if (_starts[_i] <= _caret) { _li = _i; } else { break; }
++    }
++    var _col = _caret - _starts[_li];
++    if (_col < 0) { _col = 0; }
++    if (_col > string_length(_disp[_li])) { _col = string_length(_disp[_li]); }
++
++    var _font = draw_get_font();
++    draw_set_font(fnt_c64_code);
++    _out.cx = _bx + string_width(string_copy(_disp[_li], 1, _col));
++    draw_set_font(_font);
++    _out.cy   = _by + (_li * 18);
++    _out.line = _li;
++    return _out;
++}
++
++
+ /// Comments wrap for display only; never insert newlines into saved instructions.
+ /// Keep measurement and drawing on the same font, padding and standard node width.
+ function scr_comment_sync_layout(_node) {
+@@ -1065,8 +1158,15 @@ function scr_comment_sync_layout(_node) {
+     if (_node.comment_source_cache != _raw || _node.comment_text_width != _text_w) {
+         var _lines = string_split(string_replace_all(string_replace_all(_raw, "\r\n", "\n"), "\r", "\n"), "\n");
+         var _wrapped = [];
++        // Where each DISPLAY line starts in the RAW text, 0-based. The wrap is
++        // display-only, so without this there is no way back from "the caret is
++        // on display line 3, column 8" to an index into the stored string - and
++        // in-place editing needs exactly that, in both directions.
++        var _starts  = [];
++        var _raw_pos = 0;
+         for (var _i = 0; _i < array_length(_lines); _i++) {
+-            var _rest = _lines[_i];
++            var _rest     = _lines[_i];
++            var _line_raw = _raw_pos;
+             while (string_length(_rest) > _max_ch || string_width(_rest) > _text_w) {
+                 // Limit by both character count and actual glyph width.
+                 var _fit = min(_max_ch, string_length(_rest));
+@@ -1074,9 +1174,14 @@ function scr_comment_sync_layout(_node) {
+                 var _space = string_last_pos(" ", string_copy(_rest, 1, _fit + 1));
+                 var _take = (_space > 1) ? _space - 1 : _fit;
+                 array_push(_wrapped, string_copy(_rest, 1, _take));
+-                _rest = string_delete(_rest, 1, (_space > 1) ? _space : _take);
++                array_push(_starts, _line_raw);
++                var _eaten = (_space > 1) ? _space : _take;
++                _rest      = string_delete(_rest, 1, _eaten);
++                _line_raw += _eaten;
+             }
+             array_push(_wrapped, _rest);
++            array_push(_starts, _line_raw);
++            _raw_pos += string_length(_lines[_i]) + 1;   // +1 for the newline
+         }
+         var _display = "";
+         for (var _i = 0; _i < array_length(_wrapped); _i++) {
+@@ -1085,6 +1190,7 @@ function scr_comment_sync_layout(_node) {
+         }
+         _node.comment_source_cache = _raw;
+         _node.comment_display_text = _display;
++        _node.comment_line_start   = _starts;
+         _node.comment_text_width = _text_w;
+         _node.height_dirty = true;
+     }
+-- 
+2.43.0
+

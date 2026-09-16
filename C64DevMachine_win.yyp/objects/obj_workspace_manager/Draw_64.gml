@@ -2289,15 +2289,19 @@ scr_draw_memory_bar(_bar_x1, _bar_x2, gui_h - 40);
 /////////////////////////////////////////////////////////////////
 ///// 4. DYNAMIC MODALS (EDITING & QUIT)
 /////////////////////////////////////////////////////////////////
-if (is_entering_text) {
+// A COMMENT is typed on the node itself now, so the centre-screen modal is
+// skipped entirely for one - obj_c64_node draws the live text and the caret.
+// Everything else still gets the modal.
+var _modal_is_comment = (is_entering_text && instance_exists(input_target_node)
+                      && (input_target_node.node_type == "COMMENT"
+                       || input_target_node.node_title == "COMMENT"));
+if (is_entering_text && !_modal_is_comment) {
     if (global.show_info_window) is_entering_text = false;
 
     var mid_x      = gui_w / 2;
     var mid_y      = gui_h / 2;
 	
-	var is_comment    = (instance_exists(input_target_node) &&
-                        (input_target_node.node_type == "COMMENT" ||
-                         input_target_node.node_title == "COMMENT"));
+	var is_comment    = false;
 	var is_scrolltxt  = (instance_exists(input_target_node) &&
                          input_target_node.node_type == "MACRO_TEXT_SCROLL" &&
                          input_target_index == 6);

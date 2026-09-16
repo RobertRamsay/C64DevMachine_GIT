@@ -1113,13 +1113,20 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
 	case "COMMENT":
 	    if (!global.comments_visible) break;
 	    if (point_in_rectangle(mouse_x, mouse_y, draw_x, y + 20, draw_x + width, y + height)) {
+	        // Edited in place on the node, not in the centre-screen modal.
+	        // is_entering_text still goes up, because every keyboard shortcut
+	        // in the workspace is guarded on it - the difference is that
+	        // nothing draws the modal and the node owns the caret.
+	        var _cm_caret = scr_comment_caret_at(id, draw_x + 10, y + 28, mouse_x, mouse_y);
 	        with (obj_workspace_manager) {
 	            is_entering_text     = true;
 	            input_target_node    = other.id;
 	            input_target_index   = 0;
 	            current_input_string = string(other.instructions[0][1]);
 	            keyboard_string      = "";
-	            cursor_pos           = string_length(current_input_string);
+	            cursor_pos           = _cm_caret;
+	            input_sel_start      = -1;
+	            input_sel_end        = -1;
 	        }
 	    }
 	    break;
