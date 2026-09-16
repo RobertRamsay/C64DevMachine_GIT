@@ -877,6 +877,13 @@ if ((_alt_click || _dbl_click) && !is_dragging && !_mouse_in_gui) {
         if (_is_opcode_node) {
             exit;
         }
+        // A comment has no title to rename - its text IS the node, edited by
+        // clicking the body. Routing the header double-click into the -77
+        // rename left the workspace waiting on a modal that never draws for
+        // comments, which read as a hang.
+        if (node_type == "COMMENT") {
+            exit;
+        }
 
         var _title_src = node_title;
         if (custom_title != "") {
