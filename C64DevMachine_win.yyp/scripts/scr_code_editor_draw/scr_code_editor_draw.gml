@@ -1248,6 +1248,6 @@ var _g_is_valid = false;
     draw_set_color(make_color_rgb(100, 180, 200));
     draw_text(_px + 8, _py + _ph - 19, "(CTRL+ENTER) or ESCAPE to  CLOSE  |  F5: BUILD  |  CTRL+C/X/V  |  CTRL+A  |  TAB |  F12 : FONT  Z CTRL/(+SHIFT)+F FIND+REPLACE");
 	
-	if (code_editor_find_open) scr_code_editor_draw_find_dialogue(_px, _py, _pw, _mx, _my);
+	if (code_editor_find_open) scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my);
 	
 }
