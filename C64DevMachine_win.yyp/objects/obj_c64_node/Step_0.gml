@@ -1886,7 +1886,13 @@ if (mouse_check_button_pressed(mb_left) && !_mouse_in_gui && !obj_workspace_mana
             // ---- COMMENT WIDTH HANDLES ----
             // First thing inside the header hit-test, so a click on < or >
             // resizes instead of starting a drag.
-            if (node_type == "COMMENT"
+            // Not while this comment is being typed into - Draw_0 hides the
+            // handles then, and an invisible one must not be clickable.
+            var _cwm_edit = (instance_exists(obj_workspace_manager)
+                          && obj_workspace_manager.is_entering_text
+                          && obj_workspace_manager.input_target_node == id);
+
+            if (node_type == "COMMENT" && !_cwm_edit
             &&  point_in_rectangle(mouse_x, mouse_y,
                                    draw_x + width - 38, y + 4,
                                    draw_x + width - 4,  y + 20)) {

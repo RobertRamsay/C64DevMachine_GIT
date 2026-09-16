@@ -1833,8 +1833,10 @@ if (_lod_body) switch (node_type) {
                                                            draw_x + 10, _yy);
                         if ((current_time div 500) mod 2 == 0) {
                             draw_set_color(c_white);
-                            draw_rectangle(_cm_cp.cx,     _cm_cp.cy - 1,
-                                           _cm_cp.cx + 1, _cm_cp.cy + line_h - 4, false);
+                            // +3 on both ends: the bar sat high against the
+                            // glyphs, this drops it onto the text baseline.
+                            draw_rectangle(_cm_cp.cx,     _cm_cp.cy + 2,
+                                           _cm_cp.cx + 1, _cm_cp.cy + line_h - 1, false);
                         }
                         // A frame, so it is obvious which comment is taking
                         // the typing when several sit in a column.
@@ -1946,7 +1948,15 @@ draw_set_font(fnt_c64_code);
 // One standard node width per step, 1x to 3x. Drawn last so nothing
 // painted earlier in this event sits on top of them.
 // =============================================================
-if (node_type == "COMMENT" && global.comments_visible) {
+// While this comment is being typed into, the handles are hidden - the header
+// is part of the click-away/caret area then, and a stray < or > would resize
+// the node mid-sentence. This block is separate from the body draw above, so
+// the test has to be made again here.
+var _cw_editing = (instance_exists(obj_workspace_manager)
+                && obj_workspace_manager.is_entering_text
+                && obj_workspace_manager.input_target_node == id);
+
+if (node_type == "COMMENT" && global.comments_visible && !_cw_editing) {
     var _cw_mult = 1;
     if (variable_instance_exists(id, "comment_w_mult")) {
         _cw_mult = clamp(round(comment_w_mult), 1, 3);
