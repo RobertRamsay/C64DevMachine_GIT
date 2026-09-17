@@ -1,0 +1,20 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 9642424..97c4804 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -1353,8 +1353,14 @@ if (gui_menu_open == 3) {
+ /////////////////////////////////////////////////////////////////
+ if (gui_menu_open == 5) {
+ 
++    // The manual has an English and a Chinese edition; pick by the UI language.
++    var _manual_url = "https://drive.google.com/file/d/1r-8fDv_DVx3g08g__E_lPZacmAgLBtsL/view?usp=sharing";
++    if (global.lang == 1) {
++        _manual_url = "https://drive.google.com/file/d/1Y4WcrA-s4ApHVYiMVeTyhHkCb2LbRRmc/view?usp=drive_link";
++    }
++
+     var _docs_list = [
+-        { title: "MANUAL",          url: "https://drive.google.com/file/d/1r-8fDv_DVx3g08g__E_lPZacmAgLBtsL/view?usp=sharing" }, // link under here
++        { title: "MANUAL",          url: _manual_url }, // link under here
+ 		{ title: "ITCH PAGE",			url: "https://polytricity.itch.io/the-c64-dev-machine" }, // link under here	
+ 		{ title: "TUTORIALS",			url: "https://www.youtube.com/playlist?list=PLDwNUwlf8I7ejOY_kKW8uw60fUdK0YqU7" }, // link under here	
+ 		{ title: "CODE ED MANUAL",          url: "https://drive.google.com/file/d/120G8C8hGg0UAC1NIZwYK62_IZSwjHzCU/view?usp=drive_link" }, // link under here
