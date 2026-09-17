@@ -47,7 +47,7 @@ function scr_node_draw_macro_spr(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     draw_set_color(_has_asset ? make_color_rgb(20, 60, 20) : make_color_rgb(60, 20, 20));
     draw_rectangle(_draw_x + 68, _mly + 3, _draw_x + width - 8, _mly + 13  , false);
     draw_set_color(_has_asset ? c_lime : (_name_hover ? c_white : make_color_rgb(200, 80, 80)));
-    draw_text_l(_draw_x + 72, _mly, _asset_name == "" ? "CLICK TO SET" : _asset_name );
+    draw_text_l(_draw_x + 72, _mly, _asset_name == "" ? L("CLICK TO SET") : _asset_name );
     _mly += _line_h;
 
 // Row 2: Address / PTR
@@ -132,7 +132,7 @@ if (_spr_vic_bank == 3) _draw_screen_ram = _spr_bank_base + 0x0400;
         draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(60, 60, 80));
         draw_set_halign(fa_center);
-        draw_text_l(_prev_x + _cell_w * 0.5, _prev_y + _cell_h * 0.5 - 4, _has_asset ? "NO CACHE" : "NO ASSET");
+        draw_text_l(_prev_x + _cell_w * 0.5, _prev_y + _cell_h * 0.5 - 4, _has_asset ? L("NO CACHE") : L("NO ASSET"));
         draw_set_halign(fa_left);
     }
 	// Warning message — tell user if sprite bank mismatches active VIC config

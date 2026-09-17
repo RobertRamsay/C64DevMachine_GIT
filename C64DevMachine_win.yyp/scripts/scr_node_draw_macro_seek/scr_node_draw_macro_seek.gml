@@ -472,7 +472,7 @@ function scr_node_draw_macro_seek(_draw_x) {
     draw_set_halign(fa_center);
     draw_set_font_l(fnt_c64_pico);
     if (_tspr != 0) {
-        draw_text_l(_tspr_x + 21, _row6 + 2, "TARGET\nSPRITE\n  " + string(_tspr - 1));
+        draw_text_l(_tspr_x + 21, _row6 + 2, L("TARGET\nSPRITE\n  ") + string(_tspr - 1));
     } else {
         draw_text_l(_tspr_x + 21, _row6 + 2, "TARGET\nSPRITE\nOFF");
     }

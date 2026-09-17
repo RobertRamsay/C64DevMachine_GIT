@@ -26,7 +26,7 @@ function scr_node_draw_data_sid(_draw_x, _y) {
     if (_has) {
         draw_set_color(c_yellow);  draw_text_l(_px, _py + 26, variable_instance_exists(id, "sid_title")  ? sid_title  : "");
         draw_set_color(c_ltgray);  draw_text_l(_px, _py + 38, variable_instance_exists(id, "sid_author") ? sid_author : "");
-        draw_set_color(c_aqua);    draw_text_l(_px, _py + 50, "TRACKS: " + string(variable_instance_exists(id, "sid_songs") ? sid_songs : 0));
+        draw_set_color(c_aqua);    draw_text_l(_px, _py + 50, L("TRACKS: ") + string(variable_instance_exists(id, "sid_songs") ? sid_songs : 0));
         var _lh = decimal_to_hex(variable_instance_exists(id, "sid_load_addr") ? sid_load_addr : 0);
         draw_set_color(c_ltgray);  draw_text_l(_px, _py + 62, "LOAD: $" + string_upper(_lh));
         var _cia = variable_instance_exists(id, "sid_uses_cia") ? sid_uses_cia : false;

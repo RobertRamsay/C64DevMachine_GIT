@@ -26,7 +26,7 @@ function scr_node_draw_cond_if(_draw_x, _y) {
     draw_set_color(_var == "" ? make_color_rgb(160, 80, 80) : c_white);
     draw_set_halign(fa_center);
 
-    draw_text_l((_var_bx1 + _var_bx2) / 2, _cy , _var == "" ? "< SELECT >" : scr_nloc_display_name(_var));
+    draw_text_l((_var_bx1 + _var_bx2) / 2, _cy , _var == "" ? L("< SELECT >") : scr_nloc_display_name(_var));
     draw_set_halign(fa_left);
     _cy += _line_h;
 
@@ -136,7 +136,7 @@ function scr_node_draw_cond_if(_draw_x, _y) {
     var _tgt_display = string(instructions[0][3]);
 	draw_set_font_l(fnt_C64_Angled_tiny);
     draw_text_l((_tgt_bx1 + _tgt_bx2) / 2, _cy ,
-              (_tgt_display == "") ? "< LABEL >" : _tgt_display);
+              (_tgt_display == "") ? L("< LABEL >") : _tgt_display);
     draw_set_halign(fa_left);
     _cy += _line_h;
 

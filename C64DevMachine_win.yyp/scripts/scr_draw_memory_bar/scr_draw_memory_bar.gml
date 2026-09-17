@@ -55,7 +55,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     if (global.lite) {
         _basic_locked_txt = "MACRO CONTROLLED (PRO ONLY)";
     }
-    draw_text_l((_bx1 + _bx2) / 2, _y + _map_h / 2, global.basic_unlocked ? "UNLOCKED" : _basic_locked_txt);
+    draw_text_l((_bx1 + _bx2) / 2, _y + _map_h / 2, global.basic_unlocked ? L("UNLOCKED") : _basic_locked_txt);
 
     var _kx1 = _x1 + (0xD000 / _addr_total) * _map_w;
     var _kx2 = _x1 + (0xFFFF / _addr_total) * _map_w;
@@ -66,7 +66,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     if (global.lite) {
         _kernal_locked_txt = "MACRO CONTROLLED (PRO ONLY)";
     }
-    draw_text_l((_kx1 + _kx2) / 2, _y + _map_h / 2, global.kernal_unlocked ? "UNLOCKED" : _kernal_locked_txt);
+    draw_text_l((_kx1 + _kx2) / 2, _y + _map_h / 2, global.kernal_unlocked ? L("UNLOCKED") : _kernal_locked_txt);
 
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
@@ -126,7 +126,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         draw_set_alpha(1.0);
         draw_set_halign(fa_center);
         draw_set_color(_bcol);
-        draw_text_l((_vbx1 + _vbx2) / 2, _by + _leg - 3, "VIC BANK " + string(_vb));
+        draw_text_l((_vbx1 + _vbx2) / 2, _by + _leg - 3, L("VIC BANK ") + string(_vb));
         draw_set_halign(fa_left);
     }
 
@@ -747,7 +747,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             if (string_length(_asset_name) > 28) {
                 _asset_name = string_copy(_asset_name, 1, 25) + "...";
             }
-            draw_text_l((_btn_x1 + _btn_x2) / 2, _note_y + 18, "CHECK ASSET: " + _asset_name);
+            draw_text_l((_btn_x1 + _btn_x2) / 2, _note_y + 18, L("CHECK ASSET: ") + _asset_name);
         }
 
         draw_set_halign(fa_left);

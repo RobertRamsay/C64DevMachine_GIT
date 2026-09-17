@@ -214,7 +214,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_fhov ? c_white : make_color_rgb(90, 90, 110));
     draw_rectangle(_tx, _ty, _tx + _tw, _ty + _th, true);
     draw_set_color(c_aqua);
-    draw_text_l(_tx + 4, _ty + 3, (_m.vbmp_zoom == 1) ? "VIEW: ZOOM" : "VIEW: FULL");
+    draw_text_l(_tx + 4, _ty + 3, (_m.vbmp_zoom == 1) ? L("VIEW: ZOOM") : L("VIEW: FULL"));
     if (_fhov && mouse_check_button_pressed(mb_left)) {
         _m.vbmp_zoom = (_m.vbmp_zoom + 1) mod 2;
         _m.draw_x1 = -1; // cancel any in-progress op on view change
@@ -228,7 +228,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_ghov ? c_white : (_m.vbmp_grid ? c_aqua : make_color_rgb(90, 90, 110)));
     draw_rectangle(_tx, _ty, _tx + _tw, _ty + _th, true);
     draw_set_color(_m.vbmp_grid ? c_aqua : c_white);
-    draw_text_l(_tx + 4, _ty + 3, _m.vbmp_grid ? "GRID: ON" : "GRID: OFF");
+    draw_text_l(_tx + 4, _ty + 3, _m.vbmp_grid ? L("GRID: ON") : L("GRID: OFF"));
     if (_ghov && mouse_check_button_pressed(mb_left)) {
         _m.vbmp_grid = !_m.vbmp_grid;
     }
@@ -447,7 +447,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // meta — one recolour palette shared across the editor session.
     if (_m.tool == "RECOL_C" || _m.tool == "RECOL_S") {
         draw_set_color(c_ltgray);
-        draw_text_l(_tx, _ty, (_m.tool == "RECOL_C") ? "RECOLOUR CRAM (col3):" : "RECOLOUR SRAM (col1/col2):");
+        draw_text_l(_tx, _ty, (_m.tool == "RECOL_C") ? L("RECOLOUR CRAM (col3):") : L("RECOLOUR SRAM (col1/col2):"));
         _ty += 16;
 
         if (_m.tool == "RECOL_C") {
@@ -553,10 +553,10 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
 
     draw_set_color(c_ltgray);
-    draw_text_l(_clx, _cly, "COMMANDS (" + string(_total) + "):");
+    draw_text_l(_clx, _cly, L("COMMANDS (") + string(_total) + "):");
     // Byte readout: this page, then all pages combined.
     draw_set_color(make_color_rgb(150, 200, 150));
-    draw_text_l(_clx, _cly - 14, "PAGE " + string(_page_bytes) + "b   ALL " + string(_all_pages) + "pg " + string(_all_bytes) + "b");
+    draw_text_l(_clx, _cly - 14, L("PAGE ") + string(_page_bytes) + "b   ALL " + string(_all_pages) + "pg " + string(_all_bytes) + "b");
     var _cly_list = _cly + 18;
 
     var _list_h   = ((_box_y + _box_h) - _cly_list) * 1.3; // taller list column
@@ -948,7 +948,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_line(_mx, _box_y, _mx, _box_y + _box_h);
         draw_set_alpha(1.0);
         draw_set_color(c_yellow);
-        draw_text_l(_tx - 860, _box_y + _box_h + 6, "X POS:" + string(_snap_px) + " Y POS: " + string(_raw_py));
+        draw_text_l(_tx - 860, _box_y + _box_h + 6, L("X POS:") + string(_snap_px) + L(" Y POS: ") + string(_raw_py));
     }
 	draw_set_color(c_aqua);
 	draw_text_l( _tx - 860,930,"PLEASE NOTE THE FINAL RESULT MAY DIFFER DUE TO DIFFERENT\nALGORTHIMS USED IN RUN TIME AS WELL AS COLOUR CLASH")

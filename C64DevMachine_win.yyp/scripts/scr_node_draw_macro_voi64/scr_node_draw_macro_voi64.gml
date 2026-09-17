@@ -84,11 +84,11 @@ function scr_node_draw_macro_voi64_say(_draw_x, _y) {
     draw_set_halign(fa_left);
 
     draw_set_color(_c_lbl); draw_text_l(_px, _ly, "MODE:");
-    draw_set_color(_c_val); draw_text_l(_px + 62, _ly, (_mode == 1) ? "PHONEME" : "TEXT");
+    draw_set_color(_c_val); draw_text_l(_px + 62, _ly, (_mode == 1) ? "PHONEME" : L("TEXT"));
     _ly += _lh;
 
     draw_set_color(_c_lbl); draw_text_l(_px, _ly, "SRC:");
-    draw_set_color(_c_val); draw_text_l(_px + 62, _ly, (_src == 1) ? "TEXT DATA" : "INLINE");
+    draw_set_color(_c_val); draw_text_l(_px + 62, _ly, (_src == 1) ? L("TEXT DATA") : L("INLINE"));
     _ly += _lh;
 
     var _shown = (_src == 1) ? _asset : _text;
@@ -150,7 +150,7 @@ function scr_node_draw_macro_voi64_say(_draw_x, _y) {
             draw_rectangle(_vbx, _ly + 1, _vbx + _vbw, _ly + 11, false);
             draw_set_color(c_white);
             draw_set_halign(fa_center);
-            draw_text_l(_vbx + (_vbw / 2), _ly - 1, (_rw.mode == 1) ? "VAR" : "LIT");
+            draw_text_l(_vbx + (_vbw / 2), _ly - 1, (_rw.mode == 1) ? L("VAR") : "LIT");
             draw_set_halign(fa_left);
             _ly += _lh;
         }
@@ -197,6 +197,6 @@ function scr_node_draw_macro_voi64_say(_draw_x, _y) {
         // Named asset missing, renamed, or empty. Without this the only
         // symptom is a node reading 0 BYTES and a silent build.
         draw_set_color(make_color_rgb(220, 110, 90));
-        draw_text_l(_px, _ly, (_asset == "") ? "NO ASSET PICKED" : "ASSET EMPTY OR MISSING");
+        draw_text_l(_px, _ly, (_asset == "") ? L("NO ASSET PICKED") : L("ASSET EMPTY OR MISSING"));
     }
 }

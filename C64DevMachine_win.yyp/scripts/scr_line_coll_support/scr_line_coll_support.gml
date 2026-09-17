@@ -129,7 +129,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_ref_toggle_x1 + 70, _ref_toggle_y1 + 4, "REFERENCE: " + (_m.ref_enabled ? "ON" : "OFF"));
+    draw_text_l(_ref_toggle_x1 + 70, _ref_toggle_y1 + 4, L("REFERENCE: ") + (_m.ref_enabled ? L("ON") : L("OFF")));
     draw_set_halign(fa_left);
     if (_ref_toggle_hov && mouse_check_button_pressed(mb_left)) {
         _m.ref_enabled = !_m.ref_enabled;
@@ -147,7 +147,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_set_color(_rpbhov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
         draw_rectangle(_rpbx1, _rpby1, _rpbx2, _rpby2, false);
         draw_set_color(_m.ref_asset_name != "" ? c_lime : make_color_rgb(150, 150, 150));
-        draw_text_l(_rpbx1 + 6, _rpby1 + 4, _m.ref_asset_name != "" ? _m.ref_asset_name : "-- PICK BITMAP --");
+        draw_text_l(_rpbx1 + 6, _rpby1 + 4, _m.ref_asset_name != "" ? _m.ref_asset_name : L("-- PICK BITMAP --"));
         if (_rpbhov && mouse_check_button_pressed(mb_left)) {
             _m.ref_picker_open = !_m.ref_picker_open;
         }
@@ -367,7 +367,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _row_h   = 20;
     var _rows_vis = max(1, floor((_box_h - 20) / _row_h));
     draw_set_color(c_ltgray);
-    draw_text_l(_list_x1, _list_y1 - 20, "LINES (" + string(array_length(_m.lines)) + "):");
+    draw_text_l(_list_x1, _list_y1 - 20, L("LINES (") + string(array_length(_m.lines)) + "):");
 
     // CLEAR button — wipes every line in this LINE_COLL asset.
     var _clr_w = 50;
@@ -398,7 +398,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     if (_more_above > 0) {
         draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(140, 140, 140));
-        draw_text_l(_list_x1 + 10, _list_y1 + 3, "^ " + string(_more_above) + " more above");
+        draw_text_l(_list_x1 + 10, _list_y1 + 3, "^ " + string(_more_above) + L(" more above"));
         _row_start = 1;
     }
 
@@ -414,7 +414,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             var _fy1 = _list_y1 + (_vi * _row_h);
             draw_set_font_l(fnt_c64_tiny);
             draw_set_color(make_color_rgb(140, 140, 140));
-            draw_text_l(_list_x1 + 10, _fy1 + 3, "v " + string(_remaining_after + 1) + " more below");
+            draw_text_l(_list_x1 + 10, _fy1 + 3, "v " + string(_remaining_after + 1) + L(" more below"));
             break;
         }
         var _row_ln = _m.lines[_idx];

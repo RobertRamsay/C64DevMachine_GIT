@@ -39,7 +39,7 @@ function scr_draw_reu_memory_bar(_x1, _x2, _y, _asset) {
         if (point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y, _sx1, _y, _sx2, _y + _map_h)) {
             var _ah = string_upper(decimal_to_hex(_addr));
             while (string_length(_ah) < 6) _ah = "0" + _ah;
-            _hover_tip = _lk.asset_name + " @ $" + _ah + " (" + string(_sz) + " bytes)";
+            _hover_tip = _lk.asset_name + " @ $" + _ah + " (" + string(_sz) + L(" bytes)");
             _hover_col = _col;
         }
     }

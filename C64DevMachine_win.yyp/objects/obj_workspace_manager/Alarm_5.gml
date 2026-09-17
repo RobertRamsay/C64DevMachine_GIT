@@ -10,7 +10,7 @@ ini_close();
 if global.autosave_mode!=3
 	{
 	if (_last_autosave != "" && file_exists(_last_autosave)) {
-	    if (scr_show_question_bool("Autosave detected:\n" + filename_name(_last_autosave) + "\n\nLoad it?")) {
+	    if (scr_show_question_bool(L("Autosave detected:\n") + filename_name(_last_autosave) + L("\n\nLoad it?"))) {
 	        scr_load_workspace_from_path(_last_autosave);
 	    } else {
 	        // Declined the load — offer to clear it so this prompt

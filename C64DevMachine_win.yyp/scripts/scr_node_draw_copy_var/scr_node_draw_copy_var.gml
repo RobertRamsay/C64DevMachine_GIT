@@ -68,9 +68,9 @@ function scr_node_draw_copy_var(_draw_x) {
         draw_text_l(_draw_x + 8, y + 74, "ENC MISMATCH: " + _senc + " -> " + _denc);
     } else if (_ssz != _dsz) {
         draw_set_color(c_orange);
-        draw_text_l(_draw_x + 8, y + 74, "SIZE: " + string(_ssz) + " -> " + string(_dsz));
+        draw_text_l(_draw_x + 8, y + 74, L("SIZE: ") + string(_ssz) + " -> " + string(_dsz));
     } else {
         draw_set_color(make_color_rgb(120, 180, 120));
-        draw_text_l(_draw_x + 8, y + 74, "COPY " + string(_ssz) + " BYTE" + ((_ssz > 1) ? "S" : "") + " (" + _senc + ")");
+        draw_text_l(_draw_x + 8, y + 74, L("COPY ") + string(_ssz) + L(" BYTE") + ((_ssz > 1) ? "S" : "") + " (" + _senc + ")");
     }
 }

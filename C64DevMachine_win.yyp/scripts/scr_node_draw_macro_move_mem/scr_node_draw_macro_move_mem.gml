@@ -48,7 +48,7 @@ function scr_node_draw_macro_move_mem(_draw_x, _y) {
     // Row 3: byte count
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(80, 120, 180));
-    draw_text_l(_draw_x + 8, _ply, string(_bytes) + " BYTES");
+    draw_text_l(_draw_x + 8, _ply, string(_bytes) + L(" BYTES"));
     if (_capped) {
         draw_set_color(c_red);
         draw_text_l(_draw_x + 80, _ply, "(CAPPED @1024)");
@@ -58,9 +58,9 @@ function scr_node_draw_macro_move_mem(_draw_x, _y) {
     // Row 4: cost preview
     draw_set_color(make_color_rgb(80, 120, 180));
     if (_bytes <= 8) {
-        draw_text_l(_draw_x + 8, _ply-2, "UNROLLED (" + string(_bytes * 6) + " B)");
+        draw_text_l(_draw_x + 8, _ply-2, L("UNROLLED (") + string(_bytes * 6) + " B)");
     } else {
         var _pages = ceil(_bytes / 256);
-        draw_text_l(_draw_x + 8, _ply-3, "LOOP x" + string(_pages) + " PAGE" + ((_pages > 1) ? "S" : ""));
+        draw_text_l(_draw_x + 8, _ply-3, L("LOOP x") + string(_pages) + L(" PAGE") + ((_pages > 1) ? "S" : ""));
     }
 }

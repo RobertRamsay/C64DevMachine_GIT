@@ -47,7 +47,7 @@ function scr_node_draw_macro_bmp(_draw_x, _y) {
     draw_set_color(_has_asset ? make_color_rgb(20, 60, 20) : make_color_rgb(60, 20, 20));
    // draw_rectangle(_draw_x + 68, _ly - 1, _draw_x + width - 8, _ly, false);
     draw_set_color(_has_asset ? c_lime : (_name_hover ? c_white : make_color_rgb(200, 80, 80)));
-    draw_text_l(_draw_x + 72, _ly, _asset_name == "" ? "CLICK TO SET \/" : _asset_name + " \/");
+    draw_text_l(_draw_x + 72, _ly, _asset_name == "" ? L("CLICK TO SET \/") : _asset_name + " \/");
     _ly += _line_h;
 
     // Row 2: Bitmap addr

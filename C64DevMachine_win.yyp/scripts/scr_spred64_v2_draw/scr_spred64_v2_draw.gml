@@ -342,8 +342,8 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         draw_set_font_l(fnt_c64_code);
         draw_set_color(make_color_rgb(255, 200, 120));
         draw_text_l(_ed_x1 + 8, _ed_y1 + 6,
-            "SLOT " + string(_v2.selected_slot)
-            + "   MODE: " + ((_v2.sprite_modes[_v2.selected_slot] == 1) ? "MULTICOLOUR" : "HIRES"));
+            L("SLOT ") + string(_v2.selected_slot)
+            + L("   MODE: ") + ((_v2.sprite_modes[_v2.selected_slot] == 1) ? L("MULTICOLOUR") : L("HIRES")));
 
         // ----- HR/MC TOGGLE ROW (on the same line as the title, to the right) -----
         // Sits on the title row to save vertical space — the canvas moves up.
@@ -363,7 +363,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         draw_rectangle(_hmx1, _hmy1, _hmx2, _hmy2, false);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
-        draw_text_l(_hmx1 + 50, _hmy1 + 2, _hm_is_mc ? "MC MODE" : "HR MODE");
+        draw_text_l(_hmx1 + 50, _hmy1 + 2, _hm_is_mc ? L("MC MODE") : L("HR MODE"));
         draw_set_halign(fa_left);
         if (_hm_hov && mouse_check_button_pressed(mb_left)
         && !global.ui_click_consumed && !global.any_picker_open) {
@@ -1819,7 +1819,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _fr_x = _lyr_x + 8 * (_lyr_btn_w + _lyr_btn_g) + 50;
         draw_set_color(make_color_rgb(160, 160, 200));
         draw_text_l(_fr_x, _ts_y1 + 8,
-            "FRAME " + string(_comp.active_frame+1)
+            L("FRAME ") + string(_comp.active_frame+1)
             + " / " + string(array_length(_comp.frames)));
 
         // ----- HORIZONTAL SPLIT : LEFT CONTROLS / RIGHT GRID -----
@@ -2441,8 +2441,8 @@ if (_layer_dir != 0) {
             var _ph_cy = (_ctrl_y1 + _ctrl_y2) * 0.5;
             draw_text_l(_ph_cx, _ph_cy - 16, "CLICK A GRID");
             draw_text_l(_ph_cx, _ph_cy + 0,  "CELL TO PLACE");
-            draw_text_l(_ph_cx, _ph_cy + 16, "SLOT "+ string(_v2.selected_slot));
-			draw_text_l(_ph_cx, _ph_cy + 32, " ON LAYER " + string(_comp.active_layer));
+            draw_text_l(_ph_cx, _ph_cy + 16, L("SLOT ")+ string(_v2.selected_slot));
+			draw_text_l(_ph_cx, _ph_cy + 32, L(" ON LAYER ") + string(_comp.active_layer));
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
         }

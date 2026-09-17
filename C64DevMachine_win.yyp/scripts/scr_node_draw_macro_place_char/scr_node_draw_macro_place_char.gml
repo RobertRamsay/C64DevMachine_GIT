@@ -46,7 +46,7 @@ function scr_node_draw_macro_place_char(_draw_x, _y) {
     draw_text_l(_draw_x + 10, _ly, "COL:");
     if (_col_vmode == 1) {
         draw_set_color(c_yellow);
-        draw_text_l(_draw_x + 52, _ly, (_col_var != "") ? _col_var : "<PICK>");
+        draw_text_l(_draw_x + 52, _ly, (_col_var != "") ? _col_var : L("<PICK>"));
     } else {
         draw_set_color(c_aqua);
         draw_text_l(_draw_x + 52, _ly, string(_col_lit));
@@ -73,7 +73,7 @@ function scr_node_draw_macro_place_char(_draw_x, _y) {
     draw_text_l(_draw_x + 10, _ly, "ROW:");
     if (_row_vmode == 1) {
         draw_set_color(c_yellow);
-        draw_text_l(_draw_x + 52, _ly, (_row_var != "") ? _row_var : "<PICK>");
+        draw_text_l(_draw_x + 52, _ly, (_row_var != "") ? _row_var : L("<PICK>"));
     } else {
         draw_set_color(c_aqua);
         draw_text_l(_draw_x + 52, _ly, string(_row_lit));
@@ -149,7 +149,7 @@ function scr_node_draw_macro_place_char(_draw_x, _y) {
         draw_text_l(_draw_x + 10, _ly, "IDX:");
         if (_idx_vmode == 1) {
             draw_set_color(c_yellow);
-            draw_text_l(_draw_x + 52, _ly, (_idx_var != "") ? _idx_var : "<PICK>");
+            draw_text_l(_draw_x + 52, _ly, (_idx_var != "") ? _idx_var : L("<PICK>"));
         } else {
             draw_set_color(c_aqua);
             draw_text_l(_draw_x + 52, _ly, string(_idx_lit));
@@ -197,7 +197,7 @@ function scr_node_draw_macro_place_char(_draw_x, _y) {
     draw_rectangle(_colour_bx, _ly + 1, _colour_bx + _vbtn_w, _ly + 13, false);
     draw_set_color((_set_col == 1) ? c_yellow : _c_dim);
     draw_set_halign(fa_center);
-    draw_text_l(_colour_bx + _vbtn_w * 0.5, _ly, (_colour_vmode == 1) ? "VAR" : "LIT");
+    draw_text_l(_colour_bx + _vbtn_w * 0.5, _ly, (_colour_vmode == 1) ? L("VAR") : "LIT");
     draw_set_halign(fa_left);
     _ly += _lh;
 
@@ -269,6 +269,6 @@ function scr_node_draw_macro_place_char(_draw_x, _y) {
         while (string_length(_ch) < 4) _ch = "0" + _ch;
         draw_text_l(_draw_x + 8, _ly, "CELL $" + string_upper(_ch) + "   ZP $" + string_upper(_zp_hex) + "-$" + string_upper(_zp2));
     } else {
-        draw_text_l(_draw_x + 8, _ly, "CELL RUNTIME   ZP $" + string_upper(_zp_hex) + "-$" + string_upper(_zp2));
+        draw_text_l(_draw_x + 8, _ly, L("CELL RUNTIME   ZP $") + string_upper(_zp_hex) + "-$" + string_upper(_zp2));
     }
 }

@@ -38,7 +38,7 @@ function scr_node_draw_macro_mouse(_draw_x, _y) {
     draw_set_color(_c_edit);
     draw_text_l(_draw_x + 8, _my, "ZP:");
     draw_set_color(c_aqua);
-    draw_text_l(_draw_x + 60, _my, "$" + scr_mouse_hex2(_zp) + " (7 BYTES)");
+    draw_text_l(_draw_x + 60, _my, "$" + scr_mouse_hex2(_zp) + L(" (7 BYTES)"));
     _my += _line_h + 2;
 
     // ---- Y AXIS SENSE ----

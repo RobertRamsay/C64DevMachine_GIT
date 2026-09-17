@@ -138,7 +138,7 @@ if (global.box_drag_active) {
     draw_set_font_l(fnt_C64_Angled);
     draw_set_color(c_yellow);
     draw_set_halign(fa_left);
-    draw_text_l(_gmx + 18, _gmy - 8, box_drag_live ? "DRAGGING..." : "CLICK AND DRAG");
+    draw_text_l(_gmx + 18, _gmy - 8, box_drag_live ? L("DRAGGING...") : L("CLICK AND DRAG"));
     draw_set_color(c_white);
     draw_line(_gmx - 8, _gmy, _gmx + 8, _gmy);
     draw_line(_gmx, _gmy - 8, _gmx, _gmy + 8);
@@ -304,7 +304,7 @@ if (opcode_finder_active && opcode_finder_text != "") {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_mc == 0 ? c_red : (_mc == 1 ? c_lime : c_aqua));
     draw_set_halign(fa_right);
-    draw_text_l(_finder_x2 - 2, _finder_y1 + 2, string(_mc) + " MATCH" + (_mc == 1 ? "" : "ES"));
+    draw_text_l(_finder_x2 - 2, _finder_y1 + 2, string(_mc) + L(" MATCH") + (_mc == 1 ? "" : "ES"));
     draw_set_halign(fa_left);
 }
 
@@ -1742,7 +1742,7 @@ if (opcode_helper_on && opcode_hover_key != "" && opcode_hover_timer >= opcode_h
         draw_set_color(c_yellow);
         draw_text_l(_tx, _ty,
             string_upper(opcode_hover_key) + "  $" + string_upper(_info.hex) +
-            "   " + string(_info.bytes) + " bytes  " + string(_info.cycles) + " cycles");
+            "   " + string(_info.bytes) + L(" bytes  ") + string(_info.cycles) + L(" cycles"));
 
         // Line 2: format
         draw_set_color(c_aqua);
@@ -2279,7 +2279,7 @@ if (gui_menu_open == -1) {
         {
             _m = "0" + _m;
         }
-        var _auto_str = "AUTOSAVE: " + autosave_last_path + "   TIME: " + _h + ":" + _m;
+        var _auto_str = L("AUTOSAVE: ") + autosave_last_path + L("   TIME: ") + _h + ":" + _m;
         var _auto_w = string_width_l(_auto_str);
         var _auto_scl = 1.0;
         if (_auto_w > 1328)
@@ -2338,7 +2338,7 @@ if (is_entering_text && !_modal_is_comment) {
 
    // draw_set_halign(fa_center);
    // draw_set_color(c_white);
-   // draw_text_l(mid_x, mid_y - (box_h - 25), "EDITING " + string_upper(input_target_node.node_title));
+   // draw_text_l(mid_x, mid_y - (box_h - 25), L("EDITING ") + string_upper(input_target_node.node_title));
 	
 	draw_set_halign(fa_center);
 	draw_set_color(c_white);
@@ -2350,7 +2350,7 @@ if (is_entering_text && !_modal_is_comment) {
 	} else if (input_target_index == -78) {
 	    _modal_title = "RENAME VARIABLE (MUST BE UNIQUE)";
 	} else if (instance_exists(input_target_node)) {
-	    _modal_title = "EDITING " + string_upper(input_target_node.node_title);
+	    _modal_title = L("EDITING ") + string_upper(input_target_node.node_title);
 	}
 	draw_text_l(mid_x, mid_y - (box_h - 25), _modal_title);
 
@@ -2582,7 +2582,7 @@ if (instance_exists(global.breakdown_node)) {
         var _bank_hex = "$" + string_upper(decimal_to_hex(_bank_addr));
         var _scr_hex  = "$" + string_upper(decimal_to_hex(_screen_ram));
         draw_text_l(_col1_x, _ly,
-            "ASSET: " + _asset_name + "  BANK: " + string(_vic_bank)
+            L("ASSET: ") + _asset_name + "  BANK: " + string(_vic_bank)
             + "  DATA@" + _bank_hex + "  SCRRAM@" + _scr_hex);
         _ly += _lh + 2;
 
@@ -2622,7 +2622,7 @@ if (instance_exists(global.breakdown_node)) {
         draw_set_color(c_white);
         draw_text_l(_col4_x, _ly, "TOTAL:");
         draw_set_color(c_lime);
-        draw_text_l(_col5_x, _ly, string(_total_bytes) + " BYTES");
+        draw_text_l(_col5_x, _ly, string(_total_bytes) + L(" BYTES"));
 
         // Dismiss hint
         draw_set_font_l(fnt_c64_tiny);
@@ -2987,7 +2987,7 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    draw_set_color(c_white);
 	    draw_set_halign(fa_center);
 	    draw_text_l(_px + _pw * 0.5, _py + 4,
-	              box_popup_is_edit ? "EDIT MAPPING BOX" : "NEW MAPPING BOX");
+	              box_popup_is_edit ? L("EDIT MAPPING BOX") : L("NEW MAPPING BOX"));
 	    draw_set_halign(fa_left);
 
 	    // NAME label
@@ -3411,7 +3411,7 @@ if (global.show_helper_window && instance_exists(global.helper_node)) {
     draw_set_font_l(fnt_C64_Angled_big);
     draw_set_color(make_color_rgb(40, 200, 80));
     draw_set_halign(fa_center);
-    draw_text_l(gui_w / 2, _hy1 + 16, string_upper(_node.node_type) + " - WHAT DOES THIS DO?");
+    draw_text_l(gui_w / 2, _hy1 + 16, string_upper(_node.node_type) + L(" - WHAT DOES THIS DO?"));
 
     var _desc = "";
     if (_node.node_type == "MACRO_SPR") {
@@ -3663,7 +3663,7 @@ if (global.var_del_warn_active) {
         draw_set_font_l(fnt_C64_Angled);
         draw_set_halign(fa_left);
         draw_set_color(make_color_rgb(255, 90, 90));
-        draw_text_l(_vw_x1 + 10, _vw_y1 + 6, "CANNOT DELETE " + global.var_del_warn_name);
+        draw_text_l(_vw_x1 + 10, _vw_y1 + 6, L("CANNOT DELETE ") + global.var_del_warn_name);
 
         var _vw_plural = "S";
         if (_vw_count == 1) {
@@ -3909,7 +3909,7 @@ if (welcome_open) {
     draw_set_color(c_white);
     draw_text_l(_chkx2 + 8, _chky1, "DON'T SHOW ON STARTUP");
     draw_set_color(make_color_rgb(140, 140, 140));
-    draw_text_l(_chkx2 + 8, _chky1 + 14, welcome_hide_checked ? "(currently: hidden on startup)" : "(currently: shows on startup)");
+    draw_text_l(_chkx2 + 8, _chky1 + 14, welcome_hide_checked ? L("(currently: hidden on startup)") : L("(currently: shows on startup)"));
 
     // Close button
     var _cbx1   = _px + _pw - 36;

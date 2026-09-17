@@ -578,7 +578,7 @@ if (sfx_picker_open && instance_exists(sfx_picker_node)) {
     if (array_length(_match_labels) == 0) {
         draw_set_color(make_color_rgb(80, 80, 80));
         draw_text_l(_pdx + 8, _pdy + 24,
-            sfx_picker_field == "asset" ? "NO SFX_DATA ASSETS" : "NO INSTRUMENTS");
+            sfx_picker_field == "asset" ? L("NO SFX_DATA ASSETS") : L("NO INSTRUMENTS"));
     } else {
         for (var _i = 0; _i < array_length(_match_labels); _i++) {
             var _iy  = _pdy + 20 + (_i * _ih);
@@ -802,7 +802,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         draw_set_color(_asset.file != "" ? c_lime : make_color_rgb(100, 200, 120));
         draw_set_font_l(fnt_c64_tiny);
         draw_text_l(_lbx2 + 580, _lby1 + 5,
-                  _asset.file != "" ? filename_name(_asset.file) : "CUSTOM: " + _asset.name);
+                  _asset.file != "" ? filename_name(_asset.file) : L("CUSTOM: ") + _asset.name);
         if (_asset.type == "SPRITE_SET" &&
             variable_struct_exists(_asset.meta, "has_colour") &&
             !_asset.meta.has_colour) {
@@ -1127,11 +1127,11 @@ case "CHAR_SET": {
 	var _ins_y = _cy ;
 	draw_set_color(c_ltgrey);
 	draw_text_l(_ins_x,_ins_y,
-	"INSTRUCTIONS:\n"+
+	L("INSTRUCTIONS:\n")+
 	"\n"+
-	"CTRL + Click / Drag to multi select\n"+
-	"Delete or Backspace to clear selected\n"+
-	"CTRL + C to COPY and CTRL + V to PASTE");
+	L("CTRL + Click / Drag to multi select\n")+
+	L("Delete or Backspace to clear selected\n")+
+	L("CTRL + C to COPY and CTRL + V to PASTE"));
 	// end instructions. Modfy for mac os
 	
 	
@@ -1364,7 +1364,7 @@ var _map_row_y = _vy1 + 58;
     }
 
     draw_set_color(c_ltgray);
-    draw_text_l(_hbx2 + 6, _map_row_y, "(" + string(_mw * _mh) + " CELLS)");
+    draw_text_l(_hbx2 + 6, _map_row_y, "(" + string(_mw * _mh) + L(" CELLS)"));
     if (_gw != _mw || _gh != _mh) {
         draw_set_color(make_color_rgb(100, 100, 60));
         draw_text_l(_hbx2 + 100, _map_row_y, "PHYS: " + string(_gw) + "x" + string(_gh));
@@ -1402,7 +1402,7 @@ draw_set_color(c_ltgray);
 		    draw_set_color(_cpbhov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
 		    draw_rectangle(_cpbx1, _cpby1, _cpbx2, _cpby2, false);
 		    draw_set_color(_chr_name != "" ? c_lime : make_color_rgb(150, 150, 150));
-		    draw_text_l(_cpbx1 + 10, _cy-2, _chr_name != "" ? _chr_name : "-- PICK --");
+		    draw_text_l(_cpbx1 + 10, _cy-2, _chr_name != "" ? _chr_name : L("-- PICK --"));
 
 		    // ---- TILE STORE BANK ----
 		    var _bank_max   = 128;
@@ -2880,9 +2880,9 @@ draw_set_color(_cell_bg_col);
 	    draw_set_color(make_color_rgb(200, 255, 255));
 	    draw_text_l(_cv_x1, _pal_y, "COLOUR");
 	    draw_text_l(_cv_x1 + 460, _pal_y - 6,
-		"[ CTRL = SELECT ] [ SHIFT = COLOUR ONLY ] [ SPACEBAR = PAN ] [M = TOGGLE MC/HR MODEs ]  [ALT + LMB/RMB = TILE TYPES ]\n"+
+		L("[ CTRL = SELECT ] [ SHIFT = COLOUR ONLY ] [ SPACEBAR = PAN ] [M = TOGGLE MC/HR MODEs ]  [ALT + LMB/RMB = TILE TYPES ]\n")+
 		
-		"[HOLD A = MAKE HR ] [HOLD S = MAKE MC ]  [ P = PAINT MODEs ] [X/Y = FLIP STAMP ORDER]");
+		L("[HOLD A = MAKE HR ] [HOLD S = MAKE MC ]  [ P = PAINT MODEs ] [X/Y = FLIP STAMP ORDER]"));
 
 var _pal_count = (_global_mixed == 1) ? 8 : 16;
     var _pal_sw    = (_global_mixed == 1) ? _sw : _sw;
@@ -3229,7 +3229,7 @@ case "SFX_DATA": {
     // Section label + arrow hints
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(130, 120, 90));
-    draw_text_l(_vx1 + 10, _cy, "WAVETABLE  (" + string(_wtn) + " rows)");
+    draw_text_l(_vx1 + 10, _cy, L("WAVETABLE  (") + string(_wtn) + L(" rows)"));
     if (_icount > _vis_cols) {
         draw_set_color(_col_offset > 0
             ? make_color_rgb(200, 160, 255) : make_color_rgb(50, 50, 70));
@@ -3266,7 +3266,7 @@ case "SFX_DATA": {
         draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(100, 100, 120));
        // var _nr2 = array_length(_instrs[_ii].wavetable_rows);
-       // draw_text_l(_cx2 + 4, _cy + 18, string(_nr2) + " rows");
+       // draw_text_l(_cx2 + 4, _cy + 18, string(_nr2) + L(" rows"));
     }
     _cy += _hdr_h;
 
@@ -3332,7 +3332,7 @@ case "SFX_DATA": {
         draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(80, 80, 100));
         draw_text_l(_vx1 + 10, _cy + _vis_rows * _row_h + 2,
-            "... " + string(_max_rows - _vis_rows - _row_offset) + " more rows  (SCROLL)");
+            "... " + string(_max_rows - _vis_rows - _row_offset) + L(" more rows  (SCROLL)"));
     }
 } break;
 
@@ -3593,7 +3593,7 @@ switch (node_type) {
             draw_set_color(c_white);   draw_text_l(_vx1 + 68,  _info_y, string(_hover_si));
             draw_set_color(c_ltgray);  draw_text_l(_vx1 + 100, _info_y, "MODE:");
             draw_set_color(_hmc ? make_color_rgb(200,120,40) : c_aqua);
-            draw_text_l(_vx1 + 144, _info_y, _hmc ? "MULTICOLOUR" : "HIRES");
+            draw_text_l(_vx1 + 144, _info_y, _hmc ? L("MULTICOLOUR") : L("HIRES"));
             draw_set_color(c_ltgray);  draw_text_l(_vx1 + 240, _info_y, "UC:");
             draw_set_color(scr_c64_pepto_colour(_huc));
             draw_rectangle(_vx1 + 266, _info_y, _vx1 + 280, _info_y + 10, false);
@@ -4302,7 +4302,7 @@ if (_eb_hov && mouse_check_button_pressed(mb_left)) {
 	            draw_set_color(_ac_hov ? make_color_rgb(100, 200, 100) : (_ac_on ? make_color_rgb(40, 100, 40) : make_color_rgb(60, 60, 60)));
 	            draw_rectangle(_acx1, _btn_y, _acx2, _btn_y + 20, false);
 	            draw_set_color(c_white);
-	            draw_text_l(_acx1 + 45, _btn_y + 5, "AUTO:" + (_ac_on ? "ON" : "OFF"));
+	            draw_text_l(_acx1 + 45, _btn_y + 5, L("AUTO:") + (_ac_on ? L("ON") : L("OFF")));
                 
 	            if (_ac_hov && mouse_check_button_pressed(mb_left)) {
 	                _asset.meta.auto_clean = !_asset.meta.auto_clean;
@@ -4317,7 +4317,7 @@ if (_eb_hov && mouse_check_button_pressed(mb_left)) {
 	            draw_set_color(_mm_hov ? make_color_rgb(200, 140, 60) : (_mm_hires ? make_color_rgb(120, 70, 20) : make_color_rgb(30, 60, 90)));
 	            draw_rectangle(_mmx1, _btn_y, _mmx2, _btn_y + 20, false);
 	            draw_set_color(c_white);
-	            draw_text_l(_mmx1 + 38, _btn_y + 5, _mm_hires ? "HIRES" : "MC MODE");
+	            draw_text_l(_mmx1 + 38, _btn_y + 5, _mm_hires ? L("HIRES") : L("MC MODE"));
                 
 	            if (_mm_hov && mouse_check_button_pressed(mb_left)) {
 	                if (_png_mode) {
@@ -4592,7 +4592,7 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
 	draw_set_font_l(fnt_c64_tiny);
 	draw_set_color(make_color_rgb(100, 100, 140));
 	var _zoom_hud_y = min(_hbar_y + _sb_th + 50, _gui_h - 14);
-	draw_text_l(_sx + 80, _zoom_hud_y, "ZOOM: " + string(floor(_pxz * 100)) + "%  [SCROLL=ZOOM]  [MMB/SPACEBAR=PAN]  [G=GRAB]  [D=DRAW]  [R=REPLACE]  [X=FLIP X]  [Y=FLIP Y]  [ [ / ] =BRUSH SIZE] [ALT+LCLICK=PICK] [CTRL=TINT STAMP]");
+	draw_text_l(_sx + 80, _zoom_hud_y, L("ZOOM: ") + string(floor(_pxz * 100)) + L("%  [SCROLL=ZOOM]  [MMB/SPACEBAR=PAN]  [G=GRAB]  [D=DRAW]  [R=REPLACE]  [X=FLIP X]  [Y=FLIP Y]  [ [ / ] =BRUSH SIZE] [ALT+LCLICK=PICK] [CTRL=TINT STAMP]"));
 }
                 
 // EDITOR TOOLS & PALETTE OVERLAYS
@@ -6965,7 +6965,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                draw_set_color(c_ltgray);  draw_text_l(_thumb_x + 276, _cy, "CELL:");
 	                draw_set_color(c_yellow);
 	                draw_text_l(_thumb_x + 318, _cy,
-	                    "COL " + string(_scol) + "  ROW " + string(_srow)
+	                    "COL " + string(_scol) + L("  ROW ") + string(_srow)
 	                    + "  W " + string(_scw) + "  H " + string(_sch));
 	                _sel_shown = true;
 	            }
@@ -7178,7 +7178,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	            draw_rectangle(_pw_x, _pw_y, _pw_x + _pw_w, _pw_y + _hdr_h, true);
 	            draw_set_color(_asset.meta.prev_win_drag ? c_yellow : c_ltgray);
 	            draw_set_font_l(fnt_c64_tiny);
-	            draw_text_l(_pw_x + 6, _pw_y + (_hdr_h * 0.15), "PREVIEW  320x200  --- drag to move "+string(_pw_x)+":"+string(_pw_y));
+	            draw_text_l(_pw_x + 6, _pw_y + (_hdr_h * 0.15), L("PREVIEW  320x200  --- drag to move ")+string(_pw_x)+":"+string(_pw_y));
 
 	            // ── CANVAS BORDER ─────────────────────────────────────────────────
 	            draw_set_color(make_color_rgb(80,80,140));
@@ -7217,7 +7217,7 @@ case "BYTE_DATA": {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_sfx1 + 125, _sfy1 + 6, "USE AS SAVE FILE: " + (_sf_on ? "ON" : "OFF"));
+    draw_text_l(_sfx1 + 125, _sfy1 + 6, L("USE AS SAVE FILE: ") + (_sf_on ? L("ON") : L("OFF")));
     draw_set_halign(fa_left);
     if (_sf_hov && mouse_check_button_pressed(mb_left)) {
         _asset.meta.is_save_file = !_sf_on;
@@ -7234,7 +7234,7 @@ case "BYTE_DATA": {
         var _bc_sf = buffer_exists(_asset.buffer) ? buffer_get_size(_asset.buffer) : 0;
         draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(80, 80, 80));
-        draw_text_l(_vx1 + 10, _cy, "RESERVED: " + string(_bc_sf) + " BYTES   $"
+        draw_text_l(_vx1 + 10, _cy, L("RESERVED: ") + string(_bc_sf) + L(" BYTES   $")
             + string_upper(decimal_to_hex(_asset.address))
             + " - $" + string_upper(decimal_to_hex(_asset.address + max(0, _bc_sf - 1))));
         _cy += 24;
@@ -7288,7 +7288,7 @@ case "BYTE_DATA": {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_eb_hov ? c_black : c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_ebx1 + 35, _eby1 + 6, _ed_open ? "CLOSE" : "EDIT");
+    draw_text_l(_ebx1 + 35, _eby1 + 6, _ed_open ? L("CLOSE") : L("EDIT"));
     draw_set_halign(fa_left);
 
     if (_eb_hov && mouse_check_button_pressed(mb_left)) {
@@ -7325,7 +7325,7 @@ case "BYTE_DATA": {
     var _bc = buffer_exists(_asset.buffer) ? buffer_get_size(_asset.buffer) : 0;
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(80, 80, 80));
-    draw_text_l(_vx1 + 10, _cy, string(_bc) + " BYTES   $"
+    draw_text_l(_vx1 + 10, _cy, string(_bc) + L(" BYTES   $")
         + string_upper(decimal_to_hex(_asset.address))
         + " - $" + string_upper(decimal_to_hex(_asset.address + max(0, _bc - 1))));
     _cy += 38;
@@ -7405,7 +7405,7 @@ case "TEXT_DATA": {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_eb_hov ? c_black : c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_ebx1 + 35, _eby1 + 6, _ed_open ? "CLOSE" : "EDIT");
+    draw_text_l(_ebx1 + 35, _eby1 + 6, _ed_open ? L("CLOSE") : L("EDIT"));
     draw_set_halign(fa_left);
 
     if (_eb_hov && mouse_check_button_pressed(mb_left)) {
@@ -7443,8 +7443,8 @@ case "TEXT_DATA": {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(120, 180, 240));
     draw_text_l(_vx1 + 10, _cy,
-        string(string_length(_txt_val)) + " CHARS   "
-        + string(_bc) + " BYTES\n (INC. NULL)");
+        string(string_length(_txt_val)) + L(" CHARS   ")
+        + string(_bc) + L(" BYTES\n (INC. NULL)"));
     _cy += 38;
 
     // ── CARET / SELECTION OFFSET READOUT (for START/END in MACRO_PRINT) ────
@@ -7467,8 +7467,8 @@ case "TEXT_DATA": {
             var _span = _hi - _lo;
             draw_set_color(c_yellow);
             draw_text_l(_vx1 + 10, _cy,
-                "SEL  START:" + string(_lo) + "  END:" + string(_hi)
-                + "\nSPAN:" + string(_span));
+                L("SEL  START:") + string(_lo) + L("  END:") + string(_hi)
+                + L("\nSPAN:") + string(_span));
             _cy += 12;
             // Span guard for the 8-bit copy loop
             if (_span > 255) {
@@ -7479,7 +7479,7 @@ case "TEXT_DATA": {
         } else {
             // No selection — just the caret offset
             draw_set_color(make_color_rgb(120, 200, 220));
-            draw_text_l(_vx1 + 10, _cy, "CHAR POS: " + string(_cur_pos));
+            draw_text_l(_vx1 + 10, _cy, L("CHAR POS: ") + string(_cur_pos));
             _cy += 12;
         }
     }
@@ -7564,7 +7564,7 @@ case "LINE_COLL": {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_eb_hov ? c_black : c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_ebx1 + 40, _eby1 + 6, _ed_open ? "CLOSE" : "TEXT EDIT");
+    draw_text_l(_ebx1 + 40, _eby1 + 6, _ed_open ? L("CLOSE") : L("TEXT EDIT"));
     draw_set_halign(fa_left);
 
     if (_eb_hov && mouse_check_button_pressed(mb_left)) {
@@ -7611,7 +7611,7 @@ case "LINE_COLL": {
     var _lc_bytes = (_lc_count * 6) + 3; // 6 bytes/record + 3-byte sentinel
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(80, 80, 80));
-    draw_text_l(_vx1 + 10, _cy, string(_lc_count) + " LINES   " + string(_lc_bytes) + " BYTES   $"
+    draw_text_l(_vx1 + 10, _cy, string(_lc_count) + L(" LINES   ") + string(_lc_bytes) + L(" BYTES   $")
         + string_upper(decimal_to_hex(_asset.address))
         + " - $" + string_upper(decimal_to_hex(_asset.address + max(0, _lc_bytes - 1))));
     _cy += 30;
@@ -7657,7 +7657,7 @@ case "SID_MUSIC": {
             draw_set_color(c_aqua);    draw_text_l(_vx1 + 190, _cy, "$" + _play_hex);
             _cy += 16;
             draw_set_color(c_ltgray);  draw_text_l(_vx1 + 10, _cy, "SIZE:");
-            draw_set_color(c_white);   draw_text_l(_vx1 + 60, _cy, string(_sid_len) + " BYTES");
+            draw_set_color(c_white);   draw_text_l(_vx1 + 60, _cy, string(_sid_len) + L(" BYTES"));
             draw_set_color(c_ltgray);  draw_text_l(_vx1 + 140, _cy, "END:");
             draw_set_color(c_aqua);    draw_text_l(_vx1 + 190, _cy, "$" + _end_hex);
             _cy += 20;
@@ -7670,7 +7670,7 @@ case "LOAD_REU": {
     draw_set_color(make_color_rgb(100,200,180)); draw_text_l(_vx1 + 90, _cy, variable_struct_exists(_asset,"reu_filename") ? _asset.reu_filename : _asset.name + ".reu");
     _cy += 20;
     var _used = variable_struct_exists(_asset,"reu_used") ? _asset.reu_used : 0x100;
-    draw_set_color(c_ltgray); draw_text_l(_vx1 + 10, _cy, "TARGET: 16 MB     USED: " + string(_used) + " BYTES");
+    draw_set_color(c_ltgray); draw_text_l(_vx1 + 10, _cy, L("TARGET: 16 MB     USED: ") + string(_used) + L(" BYTES"));
     _cy += 22;
     scr_draw_reu_memory_bar(_vx1 + 10, _vx2 - 10, _cy, _asset);
     _cy += 40;
@@ -7697,7 +7697,7 @@ case "LOAD_REU": {
         draw_set_color(c_lime); draw_text_l(_cs,_cy+4,string(_pl.size));
         var _auto=variable_struct_exists(_lk,"auto_pack")?_lk.auto_pack:true;
         draw_set_color(_auto?make_color_rgb(25,80,55):make_color_rgb(90,65,25)); draw_rectangle(_cm,_cy+2,_cm+45,_cy+18,false);
-        draw_set_color(c_white); draw_set_halign(fa_center); draw_text_l(_cm+22,_cy+4,_auto?"AUTO":"MAN"); draw_set_halign(fa_left);
+        draw_set_color(c_white); draw_set_halign(fa_center); draw_text_l(_cm+22,_cy+4,_auto?L("AUTO"):"MAN"); draw_set_halign(fa_left);
         draw_set_color(make_color_rgb(45,55,65)); draw_rectangle(_cm+48,_cy+2,_cm+64,_cy+18,false); draw_rectangle(_cm+66,_cy+2,_cm+82,_cy+18,false);
         draw_set_color(c_white); draw_text_l(_cm+53,_cy+4,"-"); draw_text_l(_cm+71,_cy+4,"+");
         // IDX: position within MACRO_REU INDEXED mode's table — bitmaps only,
@@ -7737,7 +7737,7 @@ case "LOAD_ORG": {
     draw_text_l(_vx1 + 10, _cy, "D64 NAME:");
     var _dname = variable_struct_exists(_asset, "d64_filename") ? _asset.d64_filename : "";
     draw_set_color(make_color_rgb(200, 160, 40));
-    draw_text_l(_vx1 + 80, _cy, _dname != "" ? _dname : "-- NOT SET --");
+    draw_text_l(_vx1 + 80, _cy, _dname != "" ? _dname : L("-- NOT SET --"));
     _cy += 20;
 
     // Linked assets list
@@ -7928,17 +7928,17 @@ case "LOAD_ORG": {
         // BOOT-time loads (not load_later)
         draw_set_color(c_ltgray);
         draw_text_l(_vx1 + 16, _sum_y1 + 22,
-            "BOOT LOAD : " + string(_link_count_now) + " file(s)   "
-            + string(_tot_bytes_now)  + " bytes   "
-            + string(_tot_blocks_now) + " blocks");
+            L("BOOT LOAD : ") + string(_link_count_now) + L(" file(s)   ")
+            + string(_tot_bytes_now)  + L(" bytes   ")
+            + string(_tot_blocks_now) + L(" blocks"));
 
         // Disk-loaded later
         if (_link_count_later > 0) {
             draw_set_color(make_color_rgb(120, 160, 220));
             draw_text_l(_vx1 + 16, _sum_y1 + 36,
-                "ON DEMAND : " + string(_link_count_later) + " file(s)   "
-                + string(_tot_bytes_later)  + " bytes   "
-                + string(_tot_blocks_later) + " blocks");
+                L("ON DEMAND : ") + string(_link_count_later) + L(" file(s)   ")
+                + string(_tot_bytes_later)  + L(" bytes   ")
+                + string(_tot_blocks_later) + L(" blocks"));
         }
 
         // BOOT PRG size from last build (assembled code + 15-byte PRG/BASIC header)
@@ -8043,8 +8043,8 @@ case "LOAD_ORG": {
         draw_set_color(make_color_rgb(200, 220, 160));
         if (_boot_bytes > 0) {
             draw_text_l(_vx1 + 16, _sum_y1 + 52,
-                "BOOT PRG  : " + string(_boot_bytes)  + " bytes   "
-                + string(_boot_blocks) + " blocks   (build first to update)");
+                L("BOOT PRG  : ") + string(_boot_bytes)  + L(" bytes   ")
+                + string(_boot_blocks) + L(" blocks   (build first to update)"));
         } else {
             draw_text_l(_vx1 + 16, _sum_y1 + 52,
                 "BOOT PRG  : -- not built yet --");
@@ -8052,9 +8052,9 @@ case "LOAD_ORG": {
 
         draw_set_color(c_ltgray);
         draw_text_l(_vx1 + 16, _sum_y1 + 66,
-            "DISK USE  : " + string(_tot_blocks_all) + " / " + string(_d64_cap)
-            + " blocks   (" + string_format(_pct_used, 1, 1) + "%)   "
-            + string(_free_blocks) + " free");
+            L("DISK USE  : ") + string(_tot_blocks_all) + " / " + string(_d64_cap)
+            + L(" blocks   (") + string_format(_pct_used, 1, 1) + "%)   "
+            + string(_free_blocks) + L(" free"));
 
         // Capacity bar
         var _bar_x1 = _vx1 + 16;
@@ -8405,7 +8405,7 @@ case "META_TILESET": {
     draw_set_color(_tscphov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
     draw_rectangle(_tscpx1, _tscpy1, _tscpx2, _tscpy2, false);
     draw_set_color(_chr_name != "" ? c_lime : make_color_rgb(150, 150, 150));
-    draw_text_l(_tscpx1 + 4, _cy - 2, _chr_name != "" ? _chr_name : "-- PICK --");
+    draw_text_l(_tscpx1 + 4, _cy - 2, _chr_name != "" ? _chr_name : L("-- PICK --"));
 
     // ---- STAMP COUNT / CAP ----
     // 9b route: stamp-def is 1 byte/cell.
@@ -8414,7 +8414,7 @@ case "META_TILESET": {
     var _stamp_cap       = floor((8192 - _meta_idx_size) / max(1, _bytes_per_stamp));
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(120, 200, 255));
-    draw_text_l(_tscpx2 + 10, _cy + 30, "STAMPS: " + string(_m.stamp_count) + " / " + string(_stamp_cap));
+    draw_text_l(_tscpx2 + 10, _cy + 30, L("STAMPS: ") + string(_m.stamp_count) + " / " + string(_stamp_cap));
     // Byte breakdown (uses _m.total_bytes computed below; falls back to 0 first frame)
     var _tb_disp  = variable_struct_exists(_m, "total_bytes") ? _m.total_bytes : 0;
     var _mtd_disp  = variable_struct_exists(_m, "mt_data_bytes_disp") ? _m.mt_data_bytes_disp : 0;
@@ -9504,7 +9504,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     draw_rectangle(_mvt_x1, _vo_y, _mvt_x2, _vo_y + 18, true);
     draw_set_color(_mvt_is_view ? make_color_rgb(80, 200, 255) : make_color_rgb(120, 220, 150));
     draw_set_halign(fa_center);
-    draw_text_l((_mvt_x1 + _mvt_x2) * 0.5, _vo_y + 2, _mvt_is_view ? "VIEW MODE" : "MAP MODE");
+    draw_text_l((_mvt_x1 + _mvt_x2) * 0.5, _vo_y + 2, _mvt_is_view ? L("VIEW MODE") : L("MAP MODE"));
     draw_set_halign(fa_left);
     if (_mvt_hov && mouse_check_button_pressed(mb_left))
     {
@@ -9570,7 +9570,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     draw_rectangle(_test_x1, _map_top, _test_x2, _canvas_y2, true);
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(80, 200, 255));
-    draw_text_l(_test_x1 - 64, _map_top - 3, (_m.active_map < 0) ? "TEST MAP" : "MAP " + string(_m.active_map));
+    draw_text_l(_test_x1 - 64, _map_top - 3, (_m.active_map < 0) ? L("TEST MAP") : L("MAP ") + string(_m.active_map));
 
 // ---- MAP SELECTOR ROW (wraps + scrolls; 4 visible rows) ----
     var _msel_x0      = _test_x1 + 20;
@@ -9616,7 +9616,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             draw_rectangle(_scx, _scy, _scx + _msel_bw, _scy + _msel_bh, false);
             draw_set_color(_sel ? c_white : make_color_rgb(120, 180, 140));
             draw_set_halign(fa_center);
-            draw_text_l(_scx + _msel_bw * 0.5, _scy , "MAP " + string(_mbi));
+            draw_text_l(_scx + _msel_bw * 0.5, _scy , L("MAP ") + string(_mbi));
             draw_set_halign(fa_left);
             if (_shov && mouse_check_button_pressed(mb_left)) _m.active_map = _mbi;
             if (_shov && mouse_check_button_pressed(mb_right) && _m.map_count > 0) {
@@ -10187,7 +10187,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         draw_text_l(_ced_x, _ced_y - 16, "CHAR EDIT PANEL");
         var _mtd_b = variable_struct_exists(_m, "mt_data_bytes_disp") ? _m.mt_data_bytes_disp : 0;
         draw_set_color(make_color_rgb(140, 160, 180));
-        draw_text_l(_ced_x , _ced_y - 46, "METATILE DATA: " + string(_mtd_b) + " b");
+        draw_text_l(_ced_x , _ced_y - 46, L("METATILE DATA: ") + string(_mtd_b) + " b");
 		;
 
         // ---- PER-CHAR HR/MC TOGGLE (writes char_lut bit 4, preserves colour) ----
@@ -10500,7 +10500,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             _cy += 20;
             draw_set_color(c_ltgray); draw_text_l(_vx1 + 10, _cy, "FILE:");
             draw_set_color(_asset.file != "" ? c_lime : make_color_rgb(200,60,60));
-            draw_text_l(_vx1 + 360, _cy, _asset.file != "" ? _asset.file : "NO FILE LOADED");
+            draw_text_l(_vx1 + 360, _cy, _asset.file != "" ? _asset.file : L("NO FILE LOADED"));
             _cy += 30;
         } break;
 
@@ -10527,7 +10527,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _ashov = point_in_rectangle(_mx, _my, _as_x, _as_y, _as_x + 100, _as_y + 16);
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_asset.meta.autosave ? make_color_rgb(255, 255, 255) : make_color_rgb(100, 100, 100));
-    draw_text_l(_as_x, _as_y, "AUTOSAVE: " + (_asset.meta.autosave ? "ON" : "OFF"));
+    draw_text_l(_as_x, _as_y, L("AUTOSAVE: ") + (_asset.meta.autosave ? L("ON") : L("OFF")));
     if (_ashov && mouse_check_button_pressed(mb_left)) {
         _asset.meta.autosave = !_asset.meta.autosave;
     }
@@ -10699,7 +10699,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             var _fmt = variable_struct_exists(_asset.meta, "format")     ? string_upper(_asset.meta.format) : "BINARY";
             var _cnt = variable_struct_exists(_asset.meta, "char_count") ? string(_asset.meta.char_count)   : "256";
             var _sz  = variable_struct_exists(_asset.meta, "total_size") ? string(_asset.meta.total_size)   : "2048";
-            draw_text_l(_vx1 + _vw * 0.5, _cy, "CHARS: " + _cnt + "   FORMAT: " + _fmt + "   SIZE: " + _sz + " BYTES");
+            draw_text_l(_vx1 + _vw * 0.5, _cy, L("CHARS: ") + _cnt + L("   FORMAT: ") + _fmt + L("   SIZE: ") + _sz + L(" BYTES"));
             draw_set_halign(fa_left);
         } else {
             draw_set_color(make_color_rgb(40, 40, 60));
@@ -11116,7 +11116,7 @@ if (pngstrip.open) {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_left);
     draw_set_color(c_white);
-    draw_text_l(_ppx + 10, _ppy + 6, "IMPORT PNG STRIP: " + filename_name(pngstrip.path));
+    draw_text_l(_ppx + 10, _ppy + 6, L("IMPORT PNG STRIP: ") + filename_name(pngstrip.path));
     draw_set_color(c_ltgray);
     var _size_txt = "SIZE " + string(pngstrip.w) + "x" + string(pngstrip.h)
         + "  FRAMES " + string(pngstrip.cols) + "x" + string(pngstrip.rows)
@@ -11164,10 +11164,10 @@ if (pngstrip.open) {
 
     // summary
     draw_set_color(c_ltgray);
-    draw_text_l(_ppx + 10, _ppy + 140, "HIRES " + string(pngstrip.hr_count) + "   MC " + string(pngstrip.mc_count));
+    draw_text_l(_ppx + 10, _ppy + 140, L("HIRES ") + string(pngstrip.hr_count) + "   MC " + string(pngstrip.mc_count));
     if (pngstrip.warn > 0) {
         draw_set_color(c_orange);
-        draw_text_l(_ppx + 130, _ppy + 140, "! " + string(pngstrip.warn) + " FRAMES HAVE EXTRA COLOURS -> SPRITE COL");
+        draw_text_l(_ppx + 130, _ppy + 140, "! " + string(pngstrip.warn) + L(" FRAMES HAVE EXTRA COLOURS -> SPRITE COL"));
     } else {
         draw_set_color(c_lime);
         draw_text_l(_ppx + 130, _ppy + 140, "ALL FRAMES RESOLVE");

@@ -61,7 +61,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
     draw_text_l(_draw_x + 10, _ly, "VOICE:");
     if (_voice_mode == 1) {
         draw_set_color(c_yellow);
-        draw_text_l(_draw_x + 62, _ly, (_voice_var != "") ? _voice_var : "<PICK>");
+        draw_text_l(_draw_x + 62, _ly, (_voice_var != "") ? _voice_var : L("<PICK>"));
     } else {
         draw_set_color(c_aqua);
         draw_text_l(_draw_x + 62, _ly, "V" + string(_voice_lit + 1));
@@ -88,7 +88,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
         draw_text_l(_draw_x + 62, _ly, "LIST");
     } else if (_note_mode == 1) {
         draw_set_color(c_yellow);
-        draw_text_l(_draw_x + 62, _ly, (_note_var != "") ? _note_var : "<PICK>");
+        draw_text_l(_draw_x + 62, _ly, (_note_var != "") ? _note_var : L("<PICK>"));
     } else if (_note_edit) {
         draw_set_color(c_lime);
         draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
@@ -146,7 +146,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
         draw_text_l(_draw_x + 10, _ly, "IDX:");
         if (_off_mode == 1) {
             draw_set_color(c_yellow);
-            draw_text_l(_draw_x + 62, _ly, (_off_var != "") ? _off_var : "<PICK>");
+            draw_text_l(_draw_x + 62, _ly, (_off_var != "") ? _off_var : L("<PICK>"));
         } else if (_off_edit) {
             draw_set_color(c_lime);
             draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
@@ -193,7 +193,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
             draw_text_l(_draw_x + 8, _ly, "! LIST NOT FOUND");
         } else {
             draw_set_color(make_color_rgb(80, 120, 180));
-            draw_text_l(_draw_x + 8, _ly, string(_n_count) + " NOTES   " + string(_n_count * 3) + "B TABLE");
+            draw_text_l(_draw_x + 8, _ly, string(_n_count) + L(" NOTES   ") + string(_n_count * 3) + "B TABLE");
         }
         draw_set_font_l(fnt_c64_tiny);
         _ly += _lh;
@@ -213,7 +213,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
         draw_text_l(_draw_x + 62, _ly, "LIST");
     } else if (_wave_mode == 1) {
         draw_set_color(c_yellow);
-        draw_text_l(_draw_x + 62, _ly, (_wave_var != "") ? _wave_var : "<PICK>");
+        draw_text_l(_draw_x + 62, _ly, (_wave_var != "") ? _wave_var : L("<PICK>"));
     } else if (_wave_edit) {
         draw_set_color(c_lime);
         draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
@@ -271,7 +271,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
         draw_text_l(_draw_x + 10, _ly, "WIDX:");
         if (_woff_mode == 1) {
             draw_set_color(c_yellow);
-            draw_text_l(_draw_x + 62, _ly, (_woff_var != "") ? _woff_var : "<PICK>");
+            draw_text_l(_draw_x + 62, _ly, (_woff_var != "") ? _woff_var : L("<PICK>"));
         } else if (_woff_edit) {
             draw_set_color(c_lime);
             draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
@@ -331,7 +331,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
     draw_text_l(_draw_x + 10, _ly, "AD:");
     if (_ad_mode == 1) {
         draw_set_color(c_yellow);
-        draw_text_l(_draw_x + 62, _ly, (_ad_var != "") ? _ad_var : "<PICK>");
+        draw_text_l(_draw_x + 62, _ly, (_ad_var != "") ? _ad_var : L("<PICK>"));
     } else if (_ad_edit) {
         draw_set_color(c_lime);
         draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
@@ -357,7 +357,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
     draw_text_l(_draw_x + 10, _ly, "SR:");
     if (_sr_mode == 1) {
         draw_set_color(c_yellow);
-        draw_text_l(_draw_x + 62, _ly, (_sr_var != "") ? _sr_var : "<PICK>");
+        draw_text_l(_draw_x + 62, _ly, (_sr_var != "") ? _sr_var : L("<PICK>"));
     } else if (_sr_edit) {
         draw_set_color(c_lime);
         draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
@@ -402,7 +402,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
         draw_text_l(_draw_x + 10, _ly, "PW:");
         if (_pw_mode == 1) {
             draw_set_color(c_yellow);
-            draw_text_l(_draw_x + 62, _ly, (_pw_var != "") ? _pw_var : "<PICK>");
+            draw_text_l(_draw_x + 62, _ly, (_pw_var != "") ? _pw_var : L("<PICK>"));
         } else if (_pw_edit) {
             draw_set_color(c_lime);
             draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);

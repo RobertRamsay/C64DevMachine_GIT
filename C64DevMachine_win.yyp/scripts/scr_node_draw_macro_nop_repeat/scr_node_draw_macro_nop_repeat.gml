@@ -48,6 +48,6 @@ function scr_node_draw_macro_nop_repeat(_draw_x, _y) {
     } else {
         draw_set_color(make_color_rgb(110, 160, 120));
         draw_text_l(_draw_x + 8, _info_y,
-                  string(_count) + " BYTES / " + string(_count * 2) + " CYCLES");
+                  string(_count) + L(" BYTES / ") + string(_count * 2) + L(" CYCLES"));
     }
 }

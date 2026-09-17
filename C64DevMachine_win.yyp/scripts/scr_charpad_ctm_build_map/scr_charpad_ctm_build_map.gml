@@ -38,7 +38,7 @@ function scr_charpad_ctm_build_map(
     var _map_cells = _map_w * _map_h;
 
     if (_map_w <= 0 || _map_h <= 0) {
-        scr_show_message("CTM map import: bad map dimensions "
+        scr_show_message(L("CTM map import: bad map dimensions ")
             + string(_map_w) + "x" + string(_map_h));
         exit;
     }
@@ -201,7 +201,7 @@ function scr_charpad_ctm_build_map(
 
     global.undo_dirty = true;
 
-    scr_show_message("CTM map import OK: " + string(_char_count) + " chars, "
-        + string(_map_w) + "x" + string(_map_h) + " map ("
-        + string(_map_cells) + " cells)");
+    scr_show_message(L("CTM map import OK: ") + string(_char_count) + L(" chars, ")
+        + string(_map_w) + "x" + string(_map_h) + L(" map (")
+        + string(_map_cells) + L(" cells)"));
 }

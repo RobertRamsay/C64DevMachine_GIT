@@ -71,7 +71,7 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
         }
         draw_set_color(c_gray); draw_text_l(_lx, _cy, "SLOTS:");
         draw_set_color((_idx_count > 0 && _idx_count <= _idx_cap) ? c_lime : c_red);
-        draw_text_l(_lx + 60, _cy, string(_idx_count) + "/" + string(_idx_cap) + (_idx_is_word ? " (WORD)" : " (BYTE)"));
+        draw_text_l(_lx + 60, _cy, string(_idx_count) + "/" + string(_idx_cap) + (_idx_is_word ? L(" (WORD)") : L(" (BYTE)")));
         _cy += _lh;
     } else if (_mode == 1) {
         draw_set_color(c_gray); draw_text_l(_lx, _cy, "REU:");
@@ -82,13 +82,13 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
         _cy += _lh;
         var _resolved = scr_reu_resolve(string(_inst[10]), string(_inst[11]));
         draw_set_color(c_gray); draw_text_l(_lx, _cy, "C64:");
-        draw_set_color(_resolved.found ? c_yellow : c_red); draw_text_l(_lx + 44, _cy, _resolved.found ? _hex(_resolved.c64_address, 4) : "UNRESOLVED");
+        draw_set_color(_resolved.found ? c_yellow : c_red); draw_text_l(_lx + 44, _cy, _resolved.found ? _hex(_resolved.c64_address, 4) : L("UNRESOLVED"));
         _cy += _lh;
         draw_set_color(c_gray); draw_text_l(_lx, _cy, "REU:");
-        draw_set_color(_resolved.found ? c_aqua : c_red); draw_text_l(_lx + 44, _cy, _resolved.found ? _hex(_resolved.reu_address, 6) : "UNRESOLVED");
+        draw_set_color(_resolved.found ? c_aqua : c_red); draw_text_l(_lx + 44, _cy, _resolved.found ? _hex(_resolved.reu_address, 6) : L("UNRESOLVED"));
         _cy += _lh;
         draw_set_color(c_gray); draw_text_l(_lx, _cy, "LEN:");
-        draw_set_color(_resolved.found ? c_lime : c_red); draw_text_l(_lx + 44, _cy, _resolved.found ? _hex(_resolved.size, 4) : "UNRESOLVED");
+        draw_set_color(_resolved.found ? c_lime : c_red); draw_text_l(_lx + 44, _cy, _resolved.found ? _hex(_resolved.size, 4) : L("UNRESOLVED"));
         _cy += _lh;
     } else {
         var _ops = ["STASH (C64->REU)", "FETCH (REU->C64)", "SWAP", "COMPARE"];

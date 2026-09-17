@@ -51,7 +51,7 @@ function scr_node_draw_macro_vector_page(_draw_x, _y) {
     draw_set_color(make_color_rgb(120, 220, 120));
     draw_text_l(_draw_x + 10, _ly, "ASSET:");
     draw_set_color(_has_asset ? c_lime : (_name_hover ? c_white : make_color_rgb(200, 80, 80)));
-    draw_text_l(_draw_x + 72, _ly, _asset_name == "" ? "CLICK TO SET" : _asset_name);
+    draw_text_l(_draw_x + 72, _ly, _asset_name == "" ? L("CLICK TO SET") : _asset_name);
     _ly += _line_h;
 
     // Row 2: Page selector (literal) OR var name (var-driven) + VAR toggle button
@@ -63,7 +63,7 @@ function scr_node_draw_macro_vector_page(_draw_x, _y) {
         draw_set_color(make_color_rgb(120, 220, 120));; draw_text_l(_draw_x + 10, _ly, "VAR:");
         var _has_var = (_var_name != "");
         draw_set_color(_has_var ? c_aqua : (_pg_hover ? c_white : make_color_rgb(200, 60, 60)));
-        draw_text_l(_draw_x + 60, _ly, _has_var ? _var_name : "CLICK TO SET");
+        draw_text_l(_draw_x + 60, _ly, _has_var ? _var_name : L("CLICK TO SET"));
     } else {
         draw_set_color(c_gray); draw_text_l(_draw_x + 10, _ly, "PAGE:");
         draw_set_color(_page_valid ? (_pg_hover ? c_white : c_yellow) : make_color_rgb(200, 60, 60));
@@ -103,14 +103,14 @@ function scr_node_draw_macro_vector_page(_draw_x, _y) {
             }
         } else {
             draw_set_color(make_color_rgb(200, 60, 60));
-            draw_text_l(_draw_x + 60, _ly, _has_asset ? "BAD PAGE" : "NO ASSET");
+            draw_text_l(_draw_x + 60, _ly, _has_asset ? L("BAD PAGE") : L("NO ASSET"));
         }
         _ly += _line_h;
         // Row 4: command count for this page
         draw_set_color(c_gray); draw_text_l(_draw_x + 10, _ly, "CMDS:");
         if (_page_valid) {
             draw_set_color(_cmd_count > 0 ? make_color_rgb(80, 200, 80) : c_orange);
-            draw_text_l(_draw_x + 52, _ly, string(_cmd_count) + (_cmd_count > 0 ? " primitives" : " (EMPTY)"));
+            draw_text_l(_draw_x + 52, _ly, string(_cmd_count) + (_cmd_count > 0 ? L(" primitives") : L(" (EMPTY)")));
         } else {
             draw_set_color(make_color_rgb(120, 120, 120));
             draw_text_l(_draw_x + 52, _ly, "-");

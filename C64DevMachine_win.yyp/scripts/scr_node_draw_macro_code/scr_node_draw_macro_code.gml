@@ -35,11 +35,11 @@ if (code_cache_dirty) {
     }
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_aqua);
-    draw_text_l(_px, _ly, string(total_node_size) + " BYTES");
+    draw_text_l(_px, _ly, string(total_node_size) + L(" BYTES"));
     draw_set_color(c_orange);
-    draw_text_l(_px + 70, _ly, string(node_cycles) + " CYC");
+    draw_text_l(_px + 70, _ly, string(node_cycles) + L(" CYC"));
     if (code_cached_lines > 0) {
         draw_set_color(make_color_rgb(80, 120, 200));
-        draw_text_l(_px + 125, _ly, string(code_cached_lines) + " LINES");
+        draw_text_l(_px + 125, _ly, string(code_cached_lines) + L(" LINES"));
     }
 }

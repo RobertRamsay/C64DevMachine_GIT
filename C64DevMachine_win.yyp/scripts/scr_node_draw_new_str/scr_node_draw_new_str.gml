@@ -15,7 +15,7 @@ node_title = "UV STR";
 
     draw_set_font_l(fnt_c64_code);
     draw_set_color(make_color_rgb(230, 200, 120));
-    draw_text_l(x + 8, _ly, _name != "" ? _name : "< NO NAME >");
+    draw_text_l(x + 8, _ly, _name != "" ? _name : L("< NO NAME >"));
 
     // Address
     var _hex = decimal_to_hex(pc_address);
@@ -31,7 +31,7 @@ node_title = "UV STR";
 
     // Source toggle label
     draw_set_color(_use_as == 0 ? make_color_rgb(180, 180, 80) : make_color_rgb(80, 180, 180));
-    draw_text_l(x + 60, _ly + 14, _use_as == 0 ? "[INLINE]" : "[ASSET]");
+    draw_text_l(x + 60, _ly + 14, _use_as == 0 ? L("[INLINE]") : L("[ASSET]"));
 
     // Content preview
     draw_set_font_l(fnt_c64_tiny);
@@ -59,5 +59,5 @@ node_title = "UV STR";
         }
     }
     draw_set_color(make_color_rgb(100, 100, 140));
-    draw_text_l(x + 8, _ly + 40, string(_byte_count) + " BYTES [STR]");
+    draw_text_l(x + 8, _ly + 40, string(_byte_count) + L(" BYTES [STR]"));
 }

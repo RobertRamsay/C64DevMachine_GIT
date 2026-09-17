@@ -51,7 +51,7 @@ function scr_node_draw_macro_text_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
     draw_set_color(_c_edit); 
     draw_text_l(_px, _ly, "SPEED:");
     draw_set_color(c_aqua); // Value remains Aqua
-    draw_text_l(_px + 66, _ly, string(_speed) + " PX/FRAME");
+    draw_text_l(_px + 66, _ly, string(_speed) + L(" PX/FRAME"));
     _ly += _lh;
 
     // ROW 4 — TEXT ADDRESS
@@ -73,19 +73,19 @@ function scr_node_draw_macro_text_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
     draw_set_color(_c_edit); 
     draw_text_l(_px, _ly, "CHARSET:");
     draw_set_color(_charset_nm != "" ? c_lime : c_orange);
-    draw_text_l(_px + 80, _ly, _charset_nm != "" ? _charset_nm : "ROM DEFAULT");
+    draw_text_l(_px + 80, _ly, _charset_nm != "" ? _charset_nm : L("ROM DEFAULT"));
     _ly += _lh;
 
     // ROW 6 — TEXT SRC toggle
     draw_set_color(_c_edit); 
     draw_text_l(_px, _ly, "TEXT SRC:");
     draw_set_color(_text_src == 0 ? c_aqua : c_lime);
-    draw_text_l(_px + 86, _ly, _text_src == 0 ? "INLINE" : "ASSET");
+    draw_text_l(_px + 86, _ly, _text_src == 0 ? L("INLINE") : L("ASSET"));
     _ly += _lh;
 
     // ROW 6 — TEXT/ASSET CONTENT
     draw_set_color(_c_edit); 
-    draw_text_l(_px, _ly, (_text_src == 0 ? "TEXT:" : "ASSET:"));
+    draw_text_l(_px, _ly, (_text_src == 0 ? L("TEXT:") : L("ASSET:")));
     if (_text_src == 0) {
         draw_set_color(make_color_rgb(160, 230, 160));
         var _preview = string_copy(_txt, 1, 12);
@@ -93,7 +93,7 @@ function scr_node_draw_macro_text_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
         draw_text_l(_px + 40, _ly, "'' " + _preview + " ''");
     } else {
         draw_set_color(_asset_name == "" ? c_orange : c_lime);
-        draw_text_l(_px + 60, _ly, _asset_name == "" ? "< NONE >" : _asset_name);
+        draw_text_l(_px + 60, _ly, _asset_name == "" ? L("< NONE >") : _asset_name);
     }
     _ly += _lh;
 
@@ -101,14 +101,14 @@ function scr_node_draw_macro_text_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
     draw_set_color(_c_edit); 
     draw_text_l(_px, _ly, "PRE-NOP:");
     draw_set_color(make_color_rgb(255, 180, 80));
-    draw_text_l(_px + 80, _ly, string(_pre_nop) + " CYCLES");
+    draw_text_l(_px + 80, _ly, string(_pre_nop) + L(" CYCLES"));
     _ly += _lh;
 
     // ROW 8 — POST-NOP
     draw_set_color(_c_edit); 
     draw_text_l(_px, _ly, "POST-NOP:");
     draw_set_color(make_color_rgb(255, 180, 80));
-    draw_text_l(_px + 85, _ly, string(_post_nop) + " CYCLES");
+    draw_text_l(_px + 85, _ly, string(_post_nop) + L(" CYCLES"));
     _ly += _lh;
 
     // ROW 9 — JSR MODE

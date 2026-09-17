@@ -14,6 +14,7 @@ global.lang_unset       = false;  // true = no choice in the ini yet -> show pic
 global.lang_map         = ds_map_create();
 global.lang_font_map    = ds_map_create();
 global.lang_missing     = ds_map_create();
+global.lang_done        = ds_map_create(); // every Chinese value, so it is never logged as missing
 global.lang_font_picker = -1;
 
 #macro LANG_FONT_FILE  "C64DMResources/FONT/NotoSansSC-Medium-subset.ttf"
@@ -72,6 +73,10 @@ function scr_lang_init() {
         if (_map != -1) {
             ds_map_destroy(global.lang_map);
             global.lang_map = _map;
+            var _vals = ds_map_values_to_array(_map);
+            for (var _v = 0; _v < array_length(_vals); _v++) {
+                ds_map_set(global.lang_done, _vals[_v], 1);
+            }
         }
     }
 }
@@ -118,6 +123,10 @@ function L(_s) {
     }
     var _t = ds_map_find_value(global.lang_map, _s);
     if (is_undefined(_t)) {
+        // Already Chinese (an L() result passed through a *_l wrapper): done.
+        if (ds_map_exists(global.lang_done, _s)) {
+            return _s;
+        }
         // Remember untranslated UI strings so they can be dumped on exit.
         // Anything with a digit in it is almost certainly a dynamic value.
         if (ds_map_size(global.lang_missing) < 4000) {

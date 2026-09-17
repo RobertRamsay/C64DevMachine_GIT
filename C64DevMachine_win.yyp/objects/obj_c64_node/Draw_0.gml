@@ -476,7 +476,7 @@ var _active_list = [];
             draw_set_font_l(fnt_c64_tiny);
             draw_set_halign(fa_center);
             draw_text_l(_tx + _tab_w * 0.5, _py + 3,
-                      _tab_labels[_ti] == "UV" ? "UV VARS" : "HW REGS");
+                      _tab_labels[_ti] == "UV" ? L("UV VARS") : L("HW REGS"));
             draw_set_halign(fa_left);
         }
 
@@ -515,7 +515,7 @@ var _active_list = [];
             if (label_picker_word_only) {
                 _uv_hdr = "UV WORD VARS";
             }
-            draw_text_l(_px + 4, _py + _tab_h + 3, label_picker_tab == "UV" ? _uv_hdr : "HW CATEGORIES");
+            draw_text_l(_px + 4, _py + _tab_h + 3, label_picker_tab == "UV" ? _uv_hdr : L("HW CATEGORIES"));
         }
 
         // Rows
@@ -547,7 +547,7 @@ var _active_list = [];
             draw_set_font_l(fnt_c64_tiny);
             draw_set_halign(fa_center);
             draw_set_color(c_lime);
-            draw_text_l(_px + (_pw * 0.5), _arrow_y + 20, "FILTERED: '" + label_picker_filter_char + "'");
+            draw_text_l(_px + (_pw * 0.5), _arrow_y + 20, L("FILTERED: '") + label_picker_filter_char + "'");
             draw_set_color(make_color_rgb(140, 140, 140));
             draw_text_l(_px + (_pw * 0.5), _arrow_y + 32, "BACKSPACE TO CLEAR");
             draw_set_halign(fa_left);
@@ -740,7 +740,7 @@ var _active_list = [];
             draw_set_font_l(fnt_c64_tiny);
             draw_set_halign(fa_center);
             draw_set_color(c_lime);
-            draw_text_l(_px + (_pw * 0.5), _arrow_y + 20, "FILTERED: '" + label_picker_filter_char + "'");
+            draw_text_l(_px + (_pw * 0.5), _arrow_y + 20, L("FILTERED: '") + label_picker_filter_char + "'");
             draw_set_color(make_color_rgb(140, 140, 140));
             draw_text_l(_px + (_pw * 0.5), _arrow_y + 32, "BACKSPACE TO CLEAR");
             draw_set_halign(fa_left);
@@ -1296,7 +1296,7 @@ if (_lod_full && (is_connected || string_pos("DATA", node_type) > 0 || node_type
             if (node_type == "MACRO_DISPLAY" && _size_to_draw == 0) _size_to_draw = 8;
             if (node_type == "MACRO_WAIT"    && _size_to_draw == 0) _size_to_draw = 24;
             if (node_type == "MACRO_BMP"   && _size_to_draw == 0) _size_to_draw = 163;
-            stats_str_bytes = string(_size_to_draw) + " BYTES"; // BYTES INFO
+            stats_str_bytes = string(_size_to_draw) + L(" BYTES"); // BYTES INFO
 
             var _is_var_node = (node_type == "SET_VAR" || node_type == "GET_VAR" ||
                                 node_type == "INC_VAR" || node_type == "DEC_VAR" ||
@@ -1307,7 +1307,7 @@ if (_lod_full && (is_connected || string_pos("DATA", node_type) > 0 || node_type
 			var _cumul_cyc_pal  = round(cumulative_scanlines * 63);
             var _cumul_cyc_ntsc = round(cumulative_scanlines * 65); // Real NTSC timing
             
-            stats_str_cyc       = string(node_cycles) + " / " + string(_cumul_cyc_pal) + " CYC";
+            stats_str_cyc       = string(node_cycles) + " / " + string(_cumul_cyc_pal) + L(" CYC");
 			stats_pal_line_cyc  = _cumul_cyc_pal mod 63;
             stats_ntsc_line_cyc = _cumul_cyc_ntsc mod 65;
 			*/
@@ -1318,7 +1318,7 @@ if (_lod_full && (is_connected || string_pos("DATA", node_type) > 0 || node_type
             var _cumul_cyc_pal  = round(cumulative_scanlines * 63);
             var _cumul_cyc_ntsc = round(cumulative_scanlines * 65); 
             
-            stats_str_cyc       = string(node_cycles) + " / " + string(_cumul_cyc_pal) + " CYC";
+            stats_str_cyc       = string(node_cycles) + " / " + string(_cumul_cyc_pal) + L(" CYC");
             stats_pal_line_cyc  = _cumul_cyc_pal  mod 63;
             stats_ntsc_line_cyc = _cumul_cyc_ntsc mod 65;
 			
@@ -1584,7 +1584,7 @@ if (_lod_body) switch (node_type) {
             draw_set_font_l(fnt_c64_pico);
             draw_set_color(make_color_rgb(120, 220, 250));
             draw_text_l(draw_x + 6, y + height - 16,
-                string(_child_count) + " VARS / " + string(_total_bytes) + " BYTES  [$" +
+                string(_child_count) + L(" VARS / ") + string(_total_bytes) + L(" BYTES  [$") +
                 string_upper(_org_hex) + "-$" + string_upper(_end_hex) + "]");
         }
 
@@ -1600,7 +1600,7 @@ if (_lod_body) switch (node_type) {
         if (_count > 6) _preview += "...";
         draw_set_font_l(fnt_c64_code);
         draw_set_color(make_color_rgb(180, 220, 255));
-        draw_text_l(draw_x + 10, y + header_h + 4, string(_count) + " BYTES: ");
+        draw_text_l(draw_x + 10, y + header_h + 4, string(_count) + L(" BYTES: "));
         draw_set_color(c_yellow);
         draw_text_l(draw_x + 110, y + header_h + 4, _preview);
     } break;
@@ -1720,7 +1720,7 @@ if (_lod_body) switch (node_type) {
         draw_set_halign(fa_left);
         var _src_path = (array_length(instructions[0]) > 2) ? string(instructions[0][2]) : "";
         draw_set_color(_src_path != "" ? make_color_rgb(140, 140, 100) : make_color_rgb(80, 80, 80));
-        draw_text_l(_ibx1 - 105, _iby1 + 85, (_src_path != "") ? filename_name(_src_path) : "NO FILE");
+        draw_text_l(_ibx1 - 105, _iby1 + 85, (_src_path != "") ? filename_name(_src_path) : L("NO FILE"));
     } break;
 
     default: {
@@ -2059,8 +2059,8 @@ if (array_length(global.selected_nodes) > 1 && instance_exists(global.group_drag
                 draw_set_halign(fa_center);
                 draw_text_l(draw_x + width * 0.5, y - 14,
                     _is_clone
-                    ? "CLONE GROUP (" + string(array_length(global.selected_nodes)) + ")"
-                    : "DRAG GROUP (" + string(array_length(global.selected_nodes)) + ") | CTRL=CLONE");
+                    ? L("CLONE GROUP (") + string(array_length(global.selected_nodes)) + ")"
+                    : L("DRAG GROUP (") + string(array_length(global.selected_nodes)) + L(") | CTRL=CLONE"));
                 draw_set_halign(fa_left);
             }
         }
@@ -2565,7 +2565,7 @@ if ((node_type == "ORG" || node_type == "INIT") && scr_org_has_children(id)) {
     if (collapsed) {
         var _fs = scr_org_collapse_stats(id);
 
-        var _ftxt = string(_fs.count) + " NODES  " + string(_fs.bytes) + " BYTES";
+        var _ftxt = string(_fs.count) + L(" NODES  ") + string(_fs.bytes) + L(" BYTES");
         if (_fs.has_range) {
             var _flo = string_upper(decimal_to_hex(_fs.lo));
             var _fhi = string_upper(decimal_to_hex(max(_fs.lo, _fs.hi - 1)));

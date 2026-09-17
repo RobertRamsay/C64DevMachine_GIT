@@ -32,7 +32,7 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
     draw_rectangle(_x1, _y1, _x2, _y1 + 18, false);
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_accent);
-    draw_text_l(_x1 + _gutter + _pad, _y1 + 3, _label + "  |  CTRL+A SELECT ALL  |  CTRL+C/V  |  ENTER NEW LINE");
+    draw_text_l(_x1 + _gutter + _pad, _y1 + 3, _label + L("  |  CTRL+A SELECT ALL  |  CTRL+C/V  |  ENTER NEW LINE"));
 
     // ── Lay the text out as VISUAL rows ───────────────────────────────────
     // This replaces the old uniform horizontal squash. That scaled every line

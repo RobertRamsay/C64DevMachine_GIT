@@ -401,7 +401,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_c_head);
     draw_text_l(_rcx + 8, _ry0 + 5, "TILE");
     draw_set_color(_c_dim);
-    draw_text_l(_rcx + 44, _ry0 + 5, "CHR " + string(_m.active_char) + "  -  EDITS " + _m.chr_asset);
+    draw_text_l(_rcx + 44, _ry0 + 5, "CHR " + string(_m.active_char) + L("  -  EDITS ") + _m.chr_asset);
 
     var _tile_ox = _rcx + 10;
     var _tile_oy = _ry0 + 22;
@@ -520,7 +520,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // Row 2: what the mouse buttons do
     var _hy2 = _swy + _swz + 8;
     draw_set_color(_c_dim);
-    draw_text_l(_swx, _hy2, "LEFT = PAINT COLOUR   RIGHT = SCREEN BACKGROUND $D021 (" + string(_bg_col) + ")");
+    draw_text_l(_swx, _hy2, L("LEFT = PAINT COLOUR   RIGHT = SCREEN BACKGROUND $D021 (") + string(_bg_col) + ")");
 
     // Row 3: shared MC colours ($D022 / $D023) — click to step through the palette
     if (_scr_mc) {

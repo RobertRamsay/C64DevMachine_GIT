@@ -23,7 +23,7 @@ function scr_node_draw_get_var() {
     draw_set_color(_sm_hov ? make_color_rgb(60, 120, 80) : make_color_rgb(30, 60, 40));
     draw_rectangle(_sm_x1, _ly, _sm_x2+2, _ly + 14, false);
     draw_set_color(c_lime);
-    draw_text_l(_sm_x1 + 4, _ly - 2, (_src_mode == 0) ? "SRC:VAR " : "SRC:ASSET ");
+    draw_text_l(_sm_x1 + 4, _ly - 2, (_src_mode == 0) ? L("SRC:VAR ") : L("SRC:ASSET "));
 
     if (_src_mode == 0) {
         // ============ VAR MODE (original layout) ============
@@ -129,7 +129,7 @@ function scr_node_draw_get_var() {
             draw_text_l(_ofb_x2 + 8, _ly - 1, _ovname);
         } else {
             draw_set_color(make_color_rgb(120, 180, 120));
-            draw_text_l(_ofb_x2 + 8, _ly - 1, (_off_mode == 2) ? "via X" : "via Y");
+            draw_text_l(_ofb_x2 + 8, _ly - 1, (_off_mode == 2) ? L("via X") : L("via Y"));
         }
         _ly += _lh;
 
@@ -139,7 +139,7 @@ function scr_node_draw_get_var() {
         // Dest var line (row 4) — click text to pick a UV var (empty = leave in A)
         var _dest_var  = string(instructions[0][7]);
         var _dest_disp_name = scr_nloc_display_name(_dest_var);
-        var _dst_disp  = _dest_disp_name != "" ? ("-> " + _dest_disp_name) : "LOADS: A";
+        var _dst_disp  = _dest_disp_name != "" ? ("-> " + _dest_disp_name) : L("LOADS: A");
         var _dst_x     = x + 10;
         var _dst_hov   = point_in_rectangle(mouse_x, mouse_y, _dst_x, _ly - 3, x + width - 8, _ly + 12);
         if (_dest_var != "") {

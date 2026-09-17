@@ -38,7 +38,7 @@ function scr_charpad_ctm_build_meta1x1(
     var _map_cells = _map_w * _map_h;
 
     if (_map_w <= 0 || _map_h <= 0) {
-        scr_show_message("CTM meta import: bad map dimensions "
+        scr_show_message(L("CTM meta import: bad map dimensions ")
             + string(_map_w) + "x" + string(_map_h));
         exit;
     }
@@ -210,11 +210,11 @@ function scr_charpad_ctm_build_meta1x1(
     var _do_slice  = false;
     if (_oversized) {
         _do_slice = scr_show_question_bool(
-            "CharPad map is " + string(_map_w) + "x" + string(_map_h)
-          + " (bigger than a 40x25 screen).\n\n"
-          + "How should it be imported?\n"
-          + "  YES = SLICE into 40x25 rooms\n"
-          + "  NO  = BIGMAP (one oversized room)"
+            L("CharPad map is ") + string(_map_w) + "x" + string(_map_h)
+          + L(" (bigger than a 40x25 screen).\n\n")
+          + L("How should it be imported?\n")
+          + L("  YES = SLICE into 40x25 rooms\n")
+          + L("  NO  = BIGMAP (one oversized room)")
         );
     }
 
@@ -305,7 +305,7 @@ function scr_charpad_ctm_build_meta1x1(
     ds_list_add(_am.asset_list, _ts_asset);
     global.undo_dirty = true;
 
-    scr_show_message("CTM meta import OK (1x1): " + string(_char_count) + " chars, "
-        + string(_char_count) + " stamps, "
-        + string(_map_w) + "x" + string(_map_h) + " map");
+    scr_show_message(L("CTM meta import OK (1x1): ") + string(_char_count) + L(" chars, ")
+        + string(_char_count) + L(" stamps, ")
+        + string(_map_w) + "x" + string(_map_h) + L(" map"));
 }

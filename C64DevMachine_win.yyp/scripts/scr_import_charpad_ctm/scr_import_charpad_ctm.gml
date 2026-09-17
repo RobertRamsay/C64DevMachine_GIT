@@ -165,10 +165,10 @@ function scr_import_charpad_ctm() {
     if (!_tilesys) {
         // show_question returns a boolean: YES = MAP_DATA, NO = 1x1 metatile.
         var _use_mapdata = scr_show_question_bool(
-	        "CharPad v" + string(_ver) + " map has no tiles (1x1 chars).\n\n"
-	      + "Build as MAP_DATA?\n"
-	      + "  YES = MAP_DATA (per-cell colour freedom)\n"
-	      + "  NO  = 1x1 META_TILESET (chars hold colour)"
+	        "CharPad v" + string(_ver) + L(" map has no tiles (1x1 chars).\n\n")
+	      + L("Build as MAP_DATA?\n")
+	      + L("  YES = MAP_DATA (per-cell colour freedom)\n")
+	      + L("  NO  = 1x1 META_TILESET (chars hold colour)")
 	    );
         if (_use_mapdata) {
             scr_charpad_ctm_build_map(
@@ -456,8 +456,8 @@ function scr_import_charpad_ctm() {
     ds_list_add(_am.asset_list, _ts_asset);
     global.undo_dirty = true;
 
-    scr_show_message("CTM import OK: " + string(_char_count) + " chars, "
-        + string(_stamp_count) + " tiles, "
-        + string(_imported) + " map"
-        + (_skipped > 0 ? " (" + string(_skipped) + " skipped)" : ""));
+    scr_show_message(L("CTM import OK: ") + string(_char_count) + L(" chars, ")
+        + string(_stamp_count) + L(" tiles, ")
+        + string(_imported) + L(" map")
+        + (_skipped > 0 ? " (" + string(_skipped) + L(" skipped)") : ""));
 }

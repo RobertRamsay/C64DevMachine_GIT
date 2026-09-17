@@ -109,7 +109,7 @@ function scr_node_draw_macro_move(_draw_x) {
         draw_set_color(c_yellow);
         draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
-        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row2 + 3, (_dx_vnm != "") ? _dx_vnm : "<PICK>");
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row2 + 3, (_dx_vnm != "") ? _dx_vnm : L("<PICK>"));
     } else {
         draw_set_color(make_color_rgb(100, 220, 100));
         draw_set_halign(fa_center);
@@ -123,7 +123,7 @@ function scr_node_draw_macro_move(_draw_x) {
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_set_font_l(fnt_c64_tiny);
-    draw_text_l(_tog_x + _tw * 0.5, _row2 + 2, (_dx_mod == 1) ? "STOP" : "WRAP");
+    draw_text_l(_tog_x + _tw * 0.5, _row2 + 2, (_dx_mod == 1) ? L("STOP") : L("WRAP"));
 
     // VAR toggle
     draw_set_color((_dx_uv == 1) ? make_color_rgb(180, 140, 30) : make_color_rgb(50, 50, 60));
@@ -151,7 +151,7 @@ function scr_node_draw_macro_move(_draw_x) {
         draw_set_color(c_yellow);
         draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
-        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row3 + 3, (_dy_vnm != "") ? _dy_vnm : "<PICK>");
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row3 + 3, (_dy_vnm != "") ? _dy_vnm : L("<PICK>"));
     } else {
         draw_set_color(make_color_rgb(100, 220, 100));
         draw_set_halign(fa_center);
@@ -165,7 +165,7 @@ function scr_node_draw_macro_move(_draw_x) {
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_set_font_l(fnt_c64_tiny);
-    draw_text_l(_tog_x + _tw * 0.5, _row3 + 2, (_dy_mod == 1) ? "STOP" : "WRAP");
+    draw_text_l(_tog_x + _tw * 0.5, _row3 + 2, (_dy_mod == 1) ? L("STOP") : L("WRAP"));
 
     // VAR toggle
     draw_set_color((_dy_uv == 1) ? make_color_rgb(180, 140, 30) : make_color_rgb(50, 50, 60));

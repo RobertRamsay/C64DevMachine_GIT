@@ -47,7 +47,7 @@ function scr_node_draw_macro_map(draw_x, draw_y, cam_x, cam_y, cam_zoom) {
     draw_set_color(_has_asset ? c_lime : make_color_rgb(150, 150, 150));
     draw_set_halign(fa_center);
     draw_text_l(_pb_x1 + (_pb_x2 - _pb_x1) * 0.5, _ly,
-              _has_asset ? _asset_name : "[ PICK MAP ]");
+              _has_asset ? _asset_name : L("[ PICK MAP ]"));
     draw_set_halign(fa_left);
     _ly += line_h + 2;
 
@@ -56,7 +56,7 @@ function scr_node_draw_macro_map(draw_x, draw_y, cam_x, cam_y, cam_zoom) {
     draw_text_l(draw_x + 8, _ly, "SIZE:");
     draw_set_color(c_white);
     draw_text_l(draw_x + 50, _ly, string(_map_w) + " x " + string(_map_h)
-              + "  (" + string(_map_w * _map_h) + " CELLS)");
+              + "  (" + string(_map_w * _map_h) + L(" CELLS)"));
     _ly += line_h;
 
     // SCREEN RAM / COLOUR RAM targets
@@ -114,7 +114,7 @@ draw_text_l(_zp_x1 + (_zp_x2 - _zp_x1) * 0.5, _ly, "$" + _zp_hex);
 draw_set_halign(fa_left);
 _ly += line_h;
 draw_set_color(make_color_rgb(100, 100, 100));
-draw_text_l(draw_x + 8, _ly, "USES $" + _zp_hex + "-$" + _zp_end_hex + " (4 BYTES)");
+draw_text_l(draw_x + 8, _ly, L("USES $") + _zp_hex + "-$" + _zp_end_hex + L(" (4 BYTES)"));
 _ly += line_h + 4;
 
 // HR / MIXED TOGGLE — read from asset meta (single source of truth)
@@ -134,7 +134,7 @@ draw_set_color(_map_mode == 1
     draw_set_color(make_color_rgb(180, 180, 180));
     draw_set_halign(fa_center);
     draw_text_l(_tog_x1 + (_tog_x2 - _tog_x1) * 0.5, _ly ,
-              _map_mode == 1 ? "MIXED (HR + MC)" : "HR (16 COLOUR)");
+              _map_mode == 1 ? L("MIXED (HR + MC)") : L("HR (16 COLOUR)"));
     draw_set_halign(fa_left);
     _ly += line_h + 4;
     // Border

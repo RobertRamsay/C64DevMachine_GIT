@@ -1808,7 +1808,7 @@ function scr_show_code_draw() {
         if (showcode_resize == 3) {
             draw_set_halign(fa_center);
             draw_set_color(c_white);
-            draw_text_transformed_l(_px + (_pw / 2), _py + _ph + 4, string(showcode_rows) + " LINES", 1.0, 1.0, 0);
+            draw_text_transformed_l(_px + (_pw / 2), _py + _ph + 4, string(showcode_rows) + L(" LINES"), 1.0, 1.0, 0);
             draw_set_halign(fa_left);
         }
 

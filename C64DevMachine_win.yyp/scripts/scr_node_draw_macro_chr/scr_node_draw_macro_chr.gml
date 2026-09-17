@@ -30,7 +30,7 @@ function scr_node_draw_macro_chr(_x, _y, _cam_x, _cam_y, _cam_zoom) {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_center);
     draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3,
-              _asset_name != "" ? _asset_name : "-- SELECT CHARSET --");
+              _asset_name != "" ? _asset_name : L("-- SELECT CHARSET --"));
     draw_set_halign(fa_left);
 
     if (_btn_hov && mouse_check_button_pressed(mb_left)) {
@@ -62,7 +62,7 @@ function scr_node_draw_macro_chr(_x, _y, _cam_x, _cam_y, _cam_zoom) {
         draw_set_color(_mc_flag ? make_color_rgb(255, 160, 60) : make_color_rgb(80, 80, 100));
         draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
-        draw_text_l(_mc_x + _mc_w * 0.5, _mc_y + 3, _mc_flag ? "MULTICOLOUR  ON" : "MULTICOLOUR OFF");
+        draw_text_l(_mc_x + _mc_w * 0.5, _mc_y + 3, _mc_flag ? L("MULTICOLOUR  ON") : L("MULTICOLOUR OFF"));
         draw_set_halign(fa_left);
     }
 

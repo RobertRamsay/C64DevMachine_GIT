@@ -37,7 +37,7 @@ function scr_node_draw_macro_sid(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     draw_set_color(_has_asset ? make_color_rgb(20, 40, 60) : make_color_rgb(60, 20, 60));
     draw_rectangle(_draw_x + 68, _ly +2, _draw_x + width - 8, _ly + 15, false);
     draw_set_color(_has_asset ? c_aqua : (_name_hover ? c_white : make_color_rgb(180, 80, 180)));
-    draw_text_l(_draw_x + 72, _ly, _asset_name == "" ? "CLICK TO SET" : _asset_name );
+    draw_text_l(_draw_x + 72, _ly, _asset_name == "" ? L("CLICK TO SET") : _asset_name );
     _ly += _line_h;
 
     // Row 2: SID address

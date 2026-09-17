@@ -114,7 +114,7 @@ function scr_asset_vbmp_export(_asset, _path = "") {
     var _f = file_text_open_write(_path);
     if (_f < 0)
     {
-        scr_show_message("VBMP EXPORT: could not write " + filename_name(_path));
+        scr_show_message(L("VBMP EXPORT: could not write ") + filename_name(_path));
         return false;
     }
     file_text_write_string(_f, json_stringify(_root));

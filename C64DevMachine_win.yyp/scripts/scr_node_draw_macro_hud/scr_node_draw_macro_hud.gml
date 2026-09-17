@@ -155,8 +155,8 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
 
         draw_set_color(_c_info);
         draw_text_l(_draw_x + 10, _ly,
-            string(_hm.hud_w) + "x" + string(_hm.hud_h) + " AT " + string(_hm.hud_x) + "," + string(_hm.hud_y)
-            + "   " + string(_bytes) + " BYTES");
+            string(_hm.hud_w) + "x" + string(_hm.hud_h) + L(" AT ") + string(_hm.hud_x) + "," + string(_hm.hud_y)
+            + "   " + string(_bytes) + L(" BYTES"));
         _ly += _lh;
 
         // First screen address the panel touches — the number a code block
@@ -165,7 +165,7 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
         var _fh = decimal_to_hex(_first);
         while (string_length(_fh) < 4) { _fh = "0" + _fh; }
         draw_set_color(_c_dim);
-        draw_text_l(_draw_x + 10, _ly, "TOP LEFT $" + string_upper(_fh));
+        draw_text_l(_draw_x + 10, _ly, L("TOP LEFT $") + string_upper(_fh));
         _ly += _lh;
 
         // ===== ENTRY POINTS =====
@@ -182,7 +182,7 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
         for (var _fi = 0; _fi < array_length(_fields); _fi++) {
             if (_shown >= 4) {
                 draw_set_color(_c_dim);
-                draw_text_l(_draw_x + 10, _ly, "+" + string(array_length(_fields) - _shown) + " MORE");
+                draw_text_l(_draw_x + 10, _ly, "+" + string(array_length(_fields) - _shown) + L(" MORE"));
                 break;
             }
             var _f = _fields[_fi];

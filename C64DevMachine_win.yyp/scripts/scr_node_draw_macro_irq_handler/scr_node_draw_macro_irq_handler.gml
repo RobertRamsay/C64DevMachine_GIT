@@ -67,7 +67,7 @@ function scr_node_draw_macro_irq_handler(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
     draw_text_l(_px, _ly, "SID:");
     draw_set_color(_has_sid ? c_lime : make_color_rgb(120, 60, 60));
     // Aligned to 60 to match SLOTS row
-    draw_text_l(_px + 36, _ly, _has_sid ? "PLAY ON LAST SLOT" : "NOT PRESENT");
+    draw_text_l(_px + 36, _ly, _has_sid ? L("PLAY ON LAST SLOT") : L("NOT PRESENT"));
     _ly += _lh;
 
     // Row 3 spacing adjustment
@@ -101,6 +101,6 @@ draw_set_font_l(fnt_c64_tiny);
     }
     if (_irq_count > 16) {
         draw_set_color(_warn_col);
-        draw_text_l(_px, _ly, "! MAX 16 IRQs REMOVE " + string(_irq_count - 16) + " !");
+        draw_text_l(_px, _ly, L("! MAX 16 IRQs REMOVE ") + string(_irq_count - 16) + " !");
     }
 }

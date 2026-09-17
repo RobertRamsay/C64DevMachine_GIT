@@ -65,7 +65,7 @@ function scr_node_draw_macro_spr_enable(_draw_x) {
     draw_set_color(c_white);
     draw_set_halign(fa_center);
 
-    draw_text_l(_tog_x + _tog_w * 0.5, _row2 -2, (_mode == 0) ? "ENABLE" : "DISABLE");
+    draw_text_l(_tog_x + _tog_w * 0.5, _row2 -2, (_mode == 0) ? L("ENABLE") : L("DISABLE"));
     draw_set_halign(fa_left);
     // ---- CLEAR button (to the right of ENABLE/DISABLE toggle) ----
     var _clr_w   = 44;

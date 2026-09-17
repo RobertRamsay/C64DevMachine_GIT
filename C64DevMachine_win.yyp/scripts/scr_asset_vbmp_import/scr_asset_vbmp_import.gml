@@ -52,7 +52,7 @@ function scr_asset_vbmp_import(_asset, _path = "") {
     var _jbuf = buffer_load(_path);
     if (_jbuf == -1)
     {
-        scr_show_message("VBMP IMPORT: could not open " + filename_name(_path));
+        scr_show_message(L("VBMP IMPORT: could not open ") + filename_name(_path));
         return false;
     }
     var _raw = "";
@@ -79,7 +79,7 @@ function scr_asset_vbmp_import(_asset, _path = "") {
     }
     catch (_e)
     {
-        scr_show_message("VBMP IMPORT: " + filename_name(_path) + " is not valid JSON.");
+        scr_show_message(L("VBMP IMPORT: ") + filename_name(_path) + L(" is not valid JSON."));
         return false;
     }
 
@@ -98,8 +98,8 @@ function scr_asset_vbmp_import(_asset, _path = "") {
     }
     if (_ver > 1)
     {
-        scr_show_message("VBMP IMPORT: file is version " + string(_ver)
-            + ", this build understands version 1. Update C64 Dev Machine.");
+        scr_show_message(L("VBMP IMPORT: file is version ") + string(_ver)
+            + L(", this build understands version 1. Update C64 Dev Machine."));
         return false;
     }
 
@@ -220,8 +220,8 @@ function scr_asset_vbmp_import(_asset, _path = "") {
 
     if (_dropped > 0)
     {
-        scr_show_message("VBMP IMPORT: loaded " + string(_total) + " primitives. "
-            + string(_dropped) + " unreadable entries were skipped.");
+        scr_show_message(L("VBMP IMPORT: loaded ") + string(_total) + L(" primitives. ")
+            + string(_dropped) + L(" unreadable entries were skipped."));
     }
     return true;
 }

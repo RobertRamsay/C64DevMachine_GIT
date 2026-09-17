@@ -360,8 +360,8 @@ function scr_import_charpad_raw() {
     ds_list_add(_am.asset_list, _ts_asset);
     global.undo_dirty = true;
 
-    scr_show_message("CharPad import OK: " + string(_char_count) + " chars, "
-        + string(_stamp_count) + " tiles, "
-        + string(_imported) + " maps"
-        + (_skipped > 0 ? " (" + string(_skipped) + " skipped)" : ""));
+    scr_show_message(L("CharPad import OK: ") + string(_char_count) + L(" chars, ")
+        + string(_stamp_count) + L(" tiles, ")
+        + string(_imported) + L(" maps")
+        + (_skipped > 0 ? " (" + string(_skipped) + L(" skipped)") : ""));
 }

@@ -37,7 +37,7 @@ function scr_node_draw_macro_sfx(_draw_x) {
     draw_set_halign(fa_center);
     draw_set_color(_asset_set ? c_white : c_gray);
     draw_text_l(_val_x1 + (_val_x2 - _val_x1) * 0.5, _ay ,
-              _asset_set ? _asset_name : "PICK SFX");
+              _asset_set ? _asset_name : L("PICK SFX"));
     draw_set_halign(fa_left);
 
     // ── Instrument field — shows "N: NAME" ────────────────────────────────
@@ -100,7 +100,7 @@ function scr_node_draw_macro_sfx(_draw_x) {
                 draw_text_l(_vbx2 + 8, _vy2_ + 2,
                     "AD=$" + string_upper(decimal_to_hex(_ins2.ad))
                     + " SR=$" + string_upper(decimal_to_hex(_ins2.sr))
-                    + "  " + string(array_length(_ins2.wavetable_rows)) + " rows");
+                    + "  " + string(array_length(_ins2.wavetable_rows)) + L(" rows"));
             }
         }
     }

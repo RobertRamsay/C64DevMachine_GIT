@@ -15,7 +15,7 @@ function scr_asset_spr_import(_asset) {
     io_clear();
     if (_path == "") exit;
     if (!file_exists(_path)) {
-        scr_show_message("SPRITE IMPORT: File not found:\n" + _path);
+        scr_show_message(L("SPRITE IMPORT: File not found:\n") + _path);
         exit;
     }
 

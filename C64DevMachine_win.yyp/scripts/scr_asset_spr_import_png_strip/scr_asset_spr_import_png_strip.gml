@@ -21,7 +21,7 @@ function scr_asset_spr_png_analyse(_asset_index) {
     io_clear();
     if (_path == "") exit;
     if (!file_exists(_path)) {
-        scr_show_message("PNG STRIP: File not found:\n" + _path);
+        scr_show_message(L("PNG STRIP: File not found:\n") + _path);
         exit;
     }
 
@@ -48,8 +48,8 @@ function scr_asset_spr_png_analyse(_asset_index) {
     }
     if (_cell_w == 0 || (_h mod 21) != 0) {
         sprite_delete(_spr);
-        scr_show_message("PNG STRIP: Size " + string(_w) + "x" + string(_h)
-            + " is not a sprite grid.\nWidth must be a multiple of 24 (or 12 for MC),\nheight a multiple of 21.");
+        scr_show_message(L("PNG STRIP: Size ") + string(_w) + "x" + string(_h)
+            + L(" is not a sprite grid.\nWidth must be a multiple of 24 (or 12 for MC),\nheight a multiple of 21."));
         exit;
     }
 
@@ -58,7 +58,7 @@ function scr_asset_spr_png_analyse(_asset_index) {
     var _count = _cols * _rows;
     if (_count > 64) {
         sprite_delete(_spr);
-        scr_show_message("PNG STRIP: " + string(_count) + " frames — a sprite set holds 64.");
+        scr_show_message(L("PNG STRIP: ") + string(_count) + L(" frames — a sprite set holds 64."));
         exit;
     }
 

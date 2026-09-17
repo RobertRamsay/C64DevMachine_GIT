@@ -66,7 +66,7 @@ function scr_asset_chr_import(_asset) {
     }
     if (_size < 8) {
         buffer_delete(_buf);
-        scr_show_message("File too small (" + string(_size) + " bytes) — minimum 8 bytes (1 char).");
+        scr_show_message(L("File too small (") + string(_size) + L(" bytes) — minimum 8 bytes (1 char)."));
         exit;
     }
     if (variable_struct_exists(_asset, "buffer") && buffer_exists(_asset.buffer))

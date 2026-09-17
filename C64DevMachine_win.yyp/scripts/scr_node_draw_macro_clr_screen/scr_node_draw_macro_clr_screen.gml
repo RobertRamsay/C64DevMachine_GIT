@@ -58,5 +58,5 @@ function scr_node_draw_macro_clr_screen(_draw_x, _y) {
     while (string_length(_eh) < 4) _eh = "0" + _eh;
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(80, 120, 180));
-    draw_text_l(_draw_x + 8, _ly, "WIPES $" + string_upper(_sb_hex) + "-$" + string_upper(_eh));
+    draw_text_l(_draw_x + 8, _ly, L("WIPES $") + string_upper(_sb_hex) + "-$" + string_upper(_eh));
 }

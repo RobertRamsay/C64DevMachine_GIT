@@ -17,8 +17,8 @@ if (vice_launch_target == "" || !file_exists(vice_launch_target)) {
 
     show_debug_message("VICE launch cancelled: output never appeared: " + vice_launch_target);
     scr_show_message(
-        "BUILD FAILED: output file was not created.\n\n"
-        + "VICE was not launched.\n\nExpected:\n"
+        L("BUILD FAILED: output file was not created.\n\n")
+        + L("VICE was not launched.\n\nExpected:\n")
         + vice_launch_target
     );
 
@@ -30,10 +30,10 @@ if (vice_launch_target == "" || !file_exists(vice_launch_target)) {
 
 if (global.vice_path_cache == "" || !file_exists(global.vice_path_cache)) {
     scr_show_message(
-        "VICE not found.\n\nChecked:\n"
+        L("VICE not found.\n\nChecked:\n")
         + global.vice_path_cache
-        + "\n\nInstall VICE, drop it in the working directory under /vice/,"
-        + "\nor set an override path in c64devmachine.ini under [vice] path=..."
+        + L("\n\nInstall VICE, drop it in the working directory under /vice/,")
+        + L("\nor set an override path in c64devmachine.ini under [vice] path=...")
     );
 
     vice_launch_pending = false;
@@ -61,7 +61,7 @@ show_debug_message("VICE deferred launch: starting " + vice_launch_target);
 
 var _vice_started = scr_launch_vice(global.vice_path_cache, vice_launch_target);
 if (!_vice_started) {
-    scr_show_message("VICE launch failed.\n\nBuild output:\n" + vice_launch_target);
+    scr_show_message(L("VICE launch failed.\n\nBuild output:\n") + vice_launch_target);
 }
 
 vice_launch_pending = false;

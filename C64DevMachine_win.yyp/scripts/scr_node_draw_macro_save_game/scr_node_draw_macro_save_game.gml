@@ -45,7 +45,7 @@ function scr_node_draw_macro_save_game(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     draw_set_color((_org_asset != undefined) ? make_color_rgb(20, 40, 60) : make_color_rgb(60, 20, 60));
     draw_rectangle(_draw_x + 68, _ly + 2, _draw_x + width - 8, _ly + 15, false);
     draw_set_color((_org_asset != undefined) ? c_aqua : (_org_hov ? c_white : make_color_rgb(180, 80, 180)));
-    draw_text_l(_draw_x + 72, _ly, (_org_name == "") ? "CLICK TO SET" : _org_name);
+    draw_text_l(_draw_x + 72, _ly, (_org_name == "") ? L("CLICK TO SET") : _org_name);
     _ly += _line_h;
 
     var _file_hov = point_in_rectangle(mouse_x, mouse_y, _draw_x + 68, _ly, _draw_x + width - 8, _ly + 16);
@@ -54,7 +54,7 @@ function scr_node_draw_macro_save_game(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     draw_set_color((_file_name != "") ? make_color_rgb(20, 40, 60) : make_color_rgb(40, 40, 40));
     draw_rectangle(_draw_x + 68, _ly + 2, _draw_x + width - 8, _ly + 15, false);
     draw_set_color((_file_name != "") ? c_yellow : (_file_hov ? c_white : make_color_rgb(100, 100, 100)));
-    draw_text_l(_draw_x + 72, _ly, (_file_name == "") ? "-- NONE --" : _file_name);
+    draw_text_l(_draw_x + 72, _ly, (_file_name == "") ? L("-- NONE --") : _file_name);
     _ly += _line_h;
 
     var _ah = string_upper(decimal_to_hex(_file_addr));
@@ -66,7 +66,7 @@ function scr_node_draw_macro_save_game(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     draw_set_color(_c_dim);   draw_text_l(_draw_x + 10, _ly, "SIZE:");
     draw_set_color(c_aqua);
     if (_file_size > 0) {
-        draw_text_l(_draw_x + 70, _ly, string(_file_size) + " BYTES");
+        draw_text_l(_draw_x + 70, _ly, string(_file_size) + L(" BYTES"));
     } else {
         draw_text_l(_draw_x + 70, _ly, "--");
     }

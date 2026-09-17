@@ -34,7 +34,7 @@ function scr_node_draw_macro_vector_bmp(_draw_x, _y) {
     draw_set_color(_c_edit);
     draw_text_l(_draw_x + 10, _ly, "ASSET:");
     draw_set_color(_has_asset ? c_lime : (_name_hover ? c_white : make_color_rgb(200, 80, 80)));
-    draw_text_l(_draw_x + 72, _ly, _asset_name == "" ? "CLICK TO SET" : _asset_name);
+    draw_text_l(_draw_x + 72, _ly, _asset_name == "" ? L("CLICK TO SET") : _asset_name);
     _ly += _line_h;
 
     // Row 2: Bitmap addr (synced from asset)
@@ -53,7 +53,7 @@ function scr_node_draw_macro_vector_bmp(_draw_x, _y) {
     draw_set_color(c_gray); draw_text_l(_draw_x + 10, _ly, "CMDS:");
     if (_has_asset) {
         draw_set_color(_cmd_count > 0 ? make_color_rgb(80, 200, 80) : c_orange);
-        draw_text_l(_draw_x + 52, _ly, string(_cmd_count) + (_cmd_count > 0 ? " primitives" : " (EMPTY)"));
+        draw_text_l(_draw_x + 52, _ly, string(_cmd_count) + (_cmd_count > 0 ? L(" primitives") : L(" (EMPTY)")));
     } else {
         draw_set_color(make_color_rgb(200, 60, 60));
         draw_text_l(_draw_x + 52, _ly, "NO ASSET");
@@ -70,7 +70,7 @@ function scr_node_draw_macro_vector_bmp(_draw_x, _y) {
     var _fs_hover = point_in_rectangle(mouse_x, mouse_y, _draw_x + 78, _ly, _draw_x + width - 8, _ly + 11);
     draw_set_color(c_gray); draw_text_l(_draw_x + 10, _ly, "BASE:");
     draw_set_color(_fs_hover ? c_white : c_aqua);
-    draw_text_l(_draw_x + 78, _ly, "$" + _fsh + (_fill_stack == 0 ? " (def)" : ""));
+    draw_text_l(_draw_x + 78, _ly, "$" + _fsh + (_fill_stack == 0 ? L(" (def)") : ""));
     _ly += _line_h;
     // Row 6: derived stream addr (read-only, follows base)
     draw_set_color(c_gray);   draw_text_l(_draw_x + 10, _ly, "STREAM:");

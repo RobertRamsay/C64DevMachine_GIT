@@ -35,7 +35,7 @@ function scr_node_draw_macro_get_char(_draw_x, _y) {
     draw_text_l(_draw_x + 10, _ly, "COL:");
     if (_col_vmode == 1) {
         draw_set_color(c_yellow);
-        draw_text_l(_draw_x + 52, _ly, (_col_var != "") ? _col_var : "<PICK>");
+        draw_text_l(_draw_x + 52, _ly, (_col_var != "") ? _col_var : L("<PICK>"));
     } else {
         draw_set_color(c_aqua);
         draw_text_l(_draw_x + 52, _ly, string(_col_lit));
@@ -62,7 +62,7 @@ function scr_node_draw_macro_get_char(_draw_x, _y) {
     draw_text_l(_draw_x + 10, _ly, "ROW:");
     if (_row_vmode == 1) {
         draw_set_color(c_yellow);
-        draw_text_l(_draw_x + 52, _ly, (_row_var != "") ? _row_var : "<PICK>");
+        draw_text_l(_draw_x + 52, _ly, (_row_var != "") ? _row_var : L("<PICK>"));
     } else {
         draw_set_color(c_aqua);
         draw_text_l(_draw_x + 52, _ly, string(_row_lit));
@@ -174,8 +174,8 @@ function scr_node_draw_macro_get_char(_draw_x, _y) {
         var _cell = _scr_base + (_row_lit * 40) + _col_lit;
         var _ch   = decimal_to_hex(_cell);
         while (string_length(_ch) < 4) _ch = "0" + _ch;
-        draw_text_l(_draw_x + 8, _ly, "READS $" + string_upper(_ch) + "   ZP $" + string_upper(_zp_hex) + "-$" + string_upper(_zp2));
+        draw_text_l(_draw_x + 8, _ly, L("READS $") + string_upper(_ch) + "   ZP $" + string_upper(_zp_hex) + "-$" + string_upper(_zp2));
     } else {
-        draw_text_l(_draw_x + 8, _ly, "READS RUNTIME   ZP $" + string_upper(_zp_hex) + "-$" + string_upper(_zp2));
+        draw_text_l(_draw_x + 8, _ly, L("READS RUNTIME   ZP $") + string_upper(_zp_hex) + "-$" + string_upper(_zp2));
     }
 }

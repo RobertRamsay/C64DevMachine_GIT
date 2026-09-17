@@ -37,7 +37,7 @@ function scr_node_draw_macro_vwait(_draw_x, _y) {
     draw_set_font_l(fnt_c64_tiny);
     if (_use_var == 1) {
         draw_set_color(c_yellow);
-        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _vly + 1, (_vname != "") ? _vname : "<PICK>");
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _vly + 1, (_vname != "") ? _vname : L("<PICK>"));
     } else {
         draw_set_color(make_color_rgb(100, 220, 100));
         var _display_str;

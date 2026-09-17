@@ -65,7 +65,7 @@ function scr_code_editor_draw() {
 	
 draw_set_halign(fa_center);
     var _desc = instance_exists(code_editor_node) ? code_editor_node.code_descriptor : "Code Block";
-    draw_text_l(_px + _pw / 2, _py + 6, "CODE EDITOR: " + string_upper(_desc));
+    draw_text_l(_px + _pw / 2, _py + 6, L("CODE EDITOR: ") + string_upper(_desc));
     draw_set_halign(fa_left);
 
 // ─── Close button [X] ───
@@ -138,9 +138,9 @@ draw_set_halign(fa_center);
 				}
 			} else {
 				var _append = scr_show_question_bool(
-					"THIS CODE BLOCK ALREADY HAS CODE\n\n"
-				  + "YES = APPEND the imported file to the end\n"
-				  + "NO  = REPLACE everything with the imported file");
+					L("THIS CODE BLOCK ALREADY HAS CODE\n\n")
+				  + L("YES = APPEND the imported file to the end\n")
+				  + L("NO  = REPLACE everything with the imported file"));
 				if (_append) {
 					// Appending merges into a block that already has an identity,
 					// so the incoming name is deliberately not adopted.
@@ -1242,7 +1242,7 @@ var _g_is_valid = false;
     draw_set_color(make_color_rgb(200, 170, 140)); // Slightly brighter dim color
     draw_text_l(_px + 8, _py + _ph - 34, 
               "L" + string(_cur_line + 1) + ":" + string(_cur_col + 1) + 
-              "  (" + string(_total_lines) + " LINES)    " + string(_stats[0]) + " BYTES    " + string(_stats[1]) + " CYC (TOTAL)    CYCLES TO LINE: " + string(_cyc_to) + "    THIS LINE: " + string(_cyc_this));
+              "  (" + string(_total_lines) + L(" LINES)    ") + string(_stats[0]) + L(" BYTES    ") + string(_stats[1]) + L(" CYC (TOTAL)    CYCLES TO LINE: ") + string(_cyc_to) + L("    THIS LINE: ") + string(_cyc_this));
 
     // ─── Hints bar ───
     draw_set_color(make_color_rgb(100, 180, 200));

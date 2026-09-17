@@ -158,7 +158,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     draw_set_color(_sb_hov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
     draw_rectangle(_sbx1, _rowy, _sbx2, _rowy + 18, false);
     draw_set_color((_m.src_asset != "") ? c_aqua : make_color_rgb(150, 150, 150));
-    draw_text_l(_sbx1 + 6, _rowy + 4, (_m.src_asset != "") ? _m.src_asset : "-- PICK --");
+    draw_text_l(_sbx1 + 6, _rowy + 4, (_m.src_asset != "") ? _m.src_asset : L("-- PICK --"));
     if (_sb_hov && mouse_check_button_pressed(mb_left)) {
         obj_asset_manager.bbuild_picker_open  = true;
         obj_asset_manager.bbuild_picker_field = "SRC";
@@ -176,7 +176,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     draw_set_color(_db_hov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
     draw_rectangle(_dbx1, _rowy, _dbx2, _rowy + 18, false);
     draw_set_color((_m.dst_asset != "") ? c_yellow : make_color_rgb(150, 150, 150));
-    draw_text_l(_dbx1 + 6, _rowy + 4, (_m.dst_asset != "") ? _m.dst_asset : "-- PICK --");
+    draw_text_l(_dbx1 + 6, _rowy + 4, (_m.dst_asset != "") ? _m.dst_asset : L("-- PICK --"));
     if (_db_hov && mouse_check_button_pressed(mb_left)) {
         obj_asset_manager.bbuild_picker_open  = true;
         obj_asset_manager.bbuild_picker_field = "DST";
@@ -215,7 +215,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     draw_set_color(make_color_rgb(90, 90, 110));
     draw_text_l(_blx2 + 20, _rowy + 4, "TABLE:");
     draw_set_color((_m.bbd_name != "") ? make_color_rgb(180, 120, 255) : make_color_rgb(70, 70, 90));
-    draw_text_l(_blx2 + 66, _rowy + 4, (_m.bbd_name != "") ? _m.bbd_name : "-- NOT GENERATED --");
+    draw_text_l(_blx2 + 66, _rowy + 4, (_m.bbd_name != "") ? _m.bbd_name : L("-- NOT GENERATED --"));
 
     // ── TAG MODE + TYPE PICKER ───────────────────────────────────────────
     // TAG paints collision TYPE IDs onto the SOURCE sheet's char cells. The tags
@@ -339,7 +339,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     draw_set_color(make_color_rgb(90, 90, 110));
     draw_text_l(_tt_nx2 + 16, _rowy + 4, "TAGS:");
     draw_set_color((_m.bbt_name != "") ? make_color_rgb(255, 140, 140) : make_color_rgb(70, 70, 90));
-    draw_text_l(_tt_nx2 + 58, _rowy + 4, (_m.bbt_name != "") ? _m.bbt_name : "-- NO TAGS --");
+    draw_text_l(_tt_nx2 + 58, _rowy + 4, (_m.bbt_name != "") ? _m.bbt_name : L("-- NO TAGS --"));
 
     _rowy += 24;
 
@@ -437,7 +437,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     // Group count readout
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(90, 90, 120));
-    draw_text_l(_gnx2 + 8, _rowy + 6, "OF " + string(_grp_count));
+    draw_text_l(_gnx2 + 8, _rowy + 6, L("OF ") + string(_grp_count));
     draw_set_font_l(fnt_c64_tiny);
 
     // + ADD — closes the current last group with an $FF and opens a fresh one.
@@ -629,15 +629,15 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     if (_m.tag_mode == 1) {
         draw_set_color(make_color_rgb(255, 160, 160));
         draw_text_l(_vx1 + 20, _rowy,
-            "TAG MODE   |   LMB PAINTS T" + string(_m.tag_type)
-            + " ON THE SOURCE SHEET   |   RMB ERASES   |   TAGS TRAVEL WITH EVERY GRAB OF THAT CELL");
+            L("TAG MODE   |   LMB PAINTS T") + string(_m.tag_type)
+            + L(" ON THE SOURCE SHEET   |   RMB ERASES   |   TAGS TRAVEL WITH EVERY GRAB OF THAT CELL"));
     } else if (_m.phase == 0) {
         draw_text_l(_vx1 + 20, _rowy,
             "DRAG A CELL RECT ON THE SOURCE (LEFT)   |   MAX WIDTH 31 CELLS   |   RMB CANCELS");
     } else {
         draw_text_l(_vx1 + 20, _rowy,
-            "SOURCE LOCKED " + string(_m.grab_w) + "x" + string(_m.grab_h)
-            + " CELLS   |   CLICK THE DEST TO PLACE (REPEATS)   |   DRAG SOURCE TO RE-GRAB   |   RMB CANCELS");
+            L("SOURCE LOCKED ") + string(_m.grab_w) + "x" + string(_m.grab_h)
+            + L(" CELLS   |   CLICK THE DEST TO PLACE (REPEATS)   |   DRAG SOURCE TO RE-GRAB   |   RMB CANCELS"));
     }
     draw_set_font_l(fnt_c64_tiny);
 
@@ -1095,7 +1095,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         draw_set_font_l(fnt_c64_pico);
         draw_set_color(c_white);
         draw_text_l(_bx1 + 2, _by1 - 10,
-            (_m.tag_type == 0) ? "ERASE" : ("T" + string(_m.tag_type)));
+            (_m.tag_type == 0) ? L("ERASE") : ("T" + string(_m.tag_type)));
         draw_set_font_l(fnt_c64_tiny);
     }
 
@@ -1136,7 +1136,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     draw_text_l(_sx0, _ry_out, "CELL:");
     if (_in_src) {
         draw_set_color(c_aqua);
-        draw_text_l(_sx0 + 48, _ry_out, "COL " + string(_sc) + "   ROW " + string(_sr));
+        draw_text_l(_sx0 + 48, _ry_out, "COL " + string(_sc) + L("   ROW ") + string(_sr));
     } else {
         draw_set_color(make_color_rgb(60, 60, 80));
         draw_text_l(_sx0 + 48, _ry_out, "--");
@@ -1147,7 +1147,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     draw_text_l(_dx0, _ry_out, "CELL:");
     if (_in_dst) {
         draw_set_color(c_yellow);
-        draw_text_l(_dx0 + 48, _ry_out, "COL " + string(_dc) + "   ROW " + string(_dr));
+        draw_text_l(_dx0 + 48, _ry_out, "COL " + string(_dc) + L("   ROW ") + string(_dr));
     } else {
         draw_set_color(make_color_rgb(60, 60, 80));
         draw_text_l(_dx0 + 48, _ry_out, "--");
@@ -1429,7 +1429,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     // Count
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(90, 90, 120));
-    draw_text_l(_mnx2 + 8, _mgy + 6, "OF " + string(_grp_count));
+    draw_text_l(_mnx2 + 8, _mgy + 6, L("OF ") + string(_grp_count));
     draw_set_font_l(fnt_c64_tiny);
 
     // + ADD — identical behaviour to the toolbar copy: close the current last
@@ -1486,7 +1486,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     // cost on the right, since that's what the BYTE_DATA asset actually
     // occupies. _vcount already includes this group's own $FF terminator (see
     // the _view filter above), so _vcount * 6 is its true byte cost.
-    draw_text_l(_lx0, _ly0 - 54, "GROUP " + string(_cur_grp)
+    draw_text_l(_lx0, _ly0 - 54, L("GROUP ") + string(_cur_grp)
         + " (" + string(_vcount) + ")  "
         + string(_vcount * 6) + "B     ALL: "
         + string(_emit_recs) + "x6 = "

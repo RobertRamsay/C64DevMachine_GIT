@@ -18,14 +18,14 @@ function scr_node_draw_bitmap_kla(_draw_x, _y) {
     draw_set_color(_c_edit); 
     draw_text_l(_draw_x + 10, _ly, "LABEL:");
     draw_set_color(_label == "" ? _c_warn : c_white);
-    draw_text_l(_draw_x + 72, _ly, _label == "" ? "NONE" : _label);
+    draw_text_l(_draw_x + 72, _ly, _label == "" ? L("NONE") : _label);
     _ly += _line_h;
 
     // Row 1: FILE (Your STEP function uses this row to trigger Address Input)
     draw_set_color(_c_edit); 
     draw_text_l(_draw_x + 10, _ly, "FILE:");
     draw_set_color(_has_file ? make_color_rgb(80, 200, 80) : _c_warn);
-    draw_text_l(_draw_x + 60, _ly, _has_file ? kla_filename : "NO FILE");
+    draw_text_l(_draw_x + 60, _ly, _has_file ? kla_filename : L("NO FILE"));
     _ly += _line_h;
 
     // Row 2: Address range (Purely informational/computed)

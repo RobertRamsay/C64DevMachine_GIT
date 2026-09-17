@@ -112,7 +112,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     draw_set_color(c_white);
     var _tile_label = (chr_edit_idx == 0) ? "BKG-TILE" : string(chr_edit_idx);
     var _mode_label = (_mc_mode == 2) ? "ECM" : (_mc_mode == 1 ? "MC" : "HR");
-    draw_text_l(_ox, _oy + _grid_h + 6, "EDITING TILE:\n " + _tile_label
+    draw_text_l(_ox, _oy + _grid_h + 6, L("EDITING TILE:\n ") + _tile_label
         + "  (" + _mode_label + ")");
 
     // ---- COPY & PASTE HANDLER ----
@@ -511,7 +511,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
     draw_set_color(chr_fill_mode ? c_black : c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, chr_fill_mode ? "FILL: ON" : "FILL");
+    draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, chr_fill_mode ? L("FILL: ON") : L("FILL"));
     draw_set_halign(fa_left);
     if (_flhov && mouse_check_button_pressed(mb_left)) {
         chr_fill_mode = chr_fill_mode ? false : true;

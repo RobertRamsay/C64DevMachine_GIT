@@ -40,6 +40,6 @@ function scr_node_draw_named_loc() {
     } else {
         draw_set_color(c_red);
         draw_set_font_l(fnt_c64_code);
-        draw_text_l(x + 8, _ly, _name != "" ? "? " + _name : "< NO NAME >");
+        draw_text_l(x + 8, _ly, _name != "" ? "? " + _name : L("< NO NAME >"));
     }
 }

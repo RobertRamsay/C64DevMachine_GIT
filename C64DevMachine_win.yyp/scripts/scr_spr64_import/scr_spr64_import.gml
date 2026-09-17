@@ -9,7 +9,7 @@ function scr_spr64_import(_node_id) {
     io_clear();
     if (_path == "") exit;
     if (!file_exists(_path)) {
-        scr_show_message("SPR64: File not found:\n" + _path);
+        scr_show_message(L("SPR64: File not found:\n") + _path);
         exit;
     }
 

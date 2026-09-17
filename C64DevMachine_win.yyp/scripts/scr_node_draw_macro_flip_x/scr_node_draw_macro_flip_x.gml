@@ -24,7 +24,7 @@ function scr_node_draw_macro_flip_x(_draw_x) {
     draw_set_color(_c_edit);
     draw_text_l(_draw_x + 6, y + 28, "FROM:                    ");
 	draw_set_color(_c_dim);
-	draw_text_l(_draw_x + 110, y + 28,"TO:  "+_end_str);
+	draw_text_l(_draw_x + 110, y + 28,L("TO:  ")+_end_str);
 	
     var _hov_from = point_in_rectangle(mouse_x, mouse_y, _draw_x + 54, y + 26, _draw_x + 90, y + 44);
     draw_set_color(_hov_from ? make_color_rgb(255, 255, 255) : make_color_rgb(150, 150, 215));

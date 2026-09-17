@@ -50,7 +50,7 @@ function scr_node_draw_set_var() {
     draw_set_font_l(fnt_c64_tiny);
     var _name_hov = point_in_rectangle(mouse_x, mouse_y, x + 10, _ly - 2, x + width - 44, _ly + 10);
     draw_set_color(_name_hov ? c_lime : c_yellow);
-    draw_text_l(x + 10, _ly - 2, _name_disp != "" ? _name_disp : "< SELECT >");
+    draw_text_l(x + 10, _ly - 2, _name_disp != "" ? _name_disp : L("< SELECT >"));
 
     draw_set_color(make_color_rgb(80, 140, 120));
     draw_text_l(x + 150, _ly - 4, "[" + string_upper(_enc) + "]");
@@ -133,7 +133,7 @@ function scr_node_draw_set_var() {
     if (_src_mode == 0) {
         // ============ LITERAL MODE ============
         draw_set_color(make_color_rgb(120, 120, 180));
-        draw_text_l(x + 52, _ly, _mode == 0 ? "VALUE:" : (_sign == 0 ? "OFFSET+:" : "OFFSET-:"));
+        draw_text_l(x + 52, _ly, _mode == 0 ? L("VALUE:") : (_sign == 0 ? "OFFSET+:" : "OFFSET-:"));
 
         draw_set_color(c_yellow);
         draw_set_halign(fa_right);
@@ -189,7 +189,7 @@ function scr_node_draw_set_var() {
         // Click the name itself to open the SRC picker (SRC SET button removed).
         var _srcname_hov = point_in_rectangle(mouse_x, mouse_y, x + 52, _ly, x + width - 4, _ly + 12);
         draw_set_color(_srcname_hov ? c_lime : c_yellow);
-        draw_text_l(x + 52, _ly, _src_v1 != "" ? ("$" + scr_nloc_display_name(_src_v1)) : "< SRC >");
+        draw_text_l(x + 52, _ly, _src_v1 != "" ? ("$" + scr_nloc_display_name(_src_v1)) : L("< SRC >"));
 
     } else {
         // ============ PTR MODE (store byte at *resolved address* of dest word) ============
@@ -204,7 +204,7 @@ function scr_node_draw_set_var() {
         draw_rectangle(_bt_x, _ly, _bt_x + 38, _ly + 14, false);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
-        draw_text_l(_bt_x + 19, _ly, _ptr_byte_mode == 0 ? "LIT" : "VAR");
+        draw_text_l(_bt_x + 19, _ly, _ptr_byte_mode == 0 ? "LIT" : L("VAR"));
         draw_set_halign(fa_left);
 
         // Next row — the byte source itself
@@ -227,7 +227,7 @@ function scr_node_draw_set_var() {
             // byte var (picker) — click the name to open the picker (SRC SET button removed)
             var _bsrc_hov = point_in_rectangle(mouse_x, mouse_y, x + 10, _ly, x + width - 4, _ly + 12);
             draw_set_color(_bsrc_hov ? c_lime : c_yellow);
-            draw_text_l(x + 10, _ly, _src_v1 != "" ? ("$" + scr_nloc_display_name(_src_v1)) : "< BYTE SRC >");
+            draw_text_l(x + 10, _ly, _src_v1 != "" ? ("$" + scr_nloc_display_name(_src_v1)) : L("< BYTE SRC >"));
         }
     }
 }

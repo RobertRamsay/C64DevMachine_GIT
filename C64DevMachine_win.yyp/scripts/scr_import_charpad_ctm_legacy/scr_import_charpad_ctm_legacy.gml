@@ -40,7 +40,7 @@ function scr_import_charpad_ctm_legacy(_buf, _sz, _name_stem, _am, _ver, _rd_u8,
                 break;
             }
         }
-        if (_pos < 0) { scr_show_message("CTM import: no blocks found (v" + string(_ver) + ")"); exit; }
+        if (_pos < 0) { scr_show_message(L("CTM import: no blocks found (v") + string(_ver) + ")"); exit; }
     }
 
     // ---- collect every block offset up front so we can find the LAST one ----
@@ -54,7 +54,7 @@ function scr_import_charpad_ctm_legacy(_buf, _sz, _name_stem, _am, _ver, _rd_u8,
     }
     var _marker_total = array_length(_marker_offs);
     if (_marker_total < 3) {
-        scr_show_message("CTM import: legacy file missing blocks (found " + string(_marker_total) + ")");
+        scr_show_message(L("CTM import: legacy file missing blocks (found ") + string(_marker_total) + ")");
         exit;
     }
     var _map_marker_off = _marker_offs[_marker_total - 1];   // map is ALWAYS last
@@ -119,10 +119,10 @@ function scr_import_charpad_ctm_legacy(_buf, _sz, _name_stem, _am, _ver, _rd_u8,
     // Hand off to the SAME 1x1 builders the v9 path uses. _pos now points at the
     // map dimensions (u16 w, u16 h) exactly as those builders expect.
     var _use_mapdata = scr_show_question_bool(
-            "CharPad map has no tiles (1x1 chars).\n\n"
-          + "Build as MAP_DATA?\n"
-          + "  YES = MAP_DATA (per-cell colour freedom)\n"
-          + "  NO  = 1x1 META_TILESET (chars hold colour)"
+            L("CharPad map has no tiles (1x1 chars).\n\n")
+          + L("Build as MAP_DATA?\n")
+          + L("  YES = MAP_DATA (per-cell colour freedom)\n")
+          + L("  NO  = 1x1 META_TILESET (chars hold colour)")
         );
     if (_use_mapdata) {
         scr_charpad_ctm_build_map(

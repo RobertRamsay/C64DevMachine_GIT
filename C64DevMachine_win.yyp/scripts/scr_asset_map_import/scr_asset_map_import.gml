@@ -61,9 +61,9 @@ if (array_length(_parts) >= 2) {
     // Validate file is large enough for the char grid
     var _map_sz = _w * _h;
     if (_map_sz > _sz) {
-        scr_show_message("MAP IMPORT: File too small for "
-            + string(_w) + "x" + string(_h) + " map.\n"
-            + "Expected " + string(_map_sz) + " bytes, got " + string(_sz));
+        scr_show_message(L("MAP IMPORT: File too small for ")
+            + string(_w) + "x" + string(_h) + L(" map.\n")
+            + L("Expected ") + string(_map_sz) + L(" bytes, got ") + string(_sz));
         buffer_delete(_buf);
         exit;
     }

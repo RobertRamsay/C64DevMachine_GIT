@@ -62,7 +62,7 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     draw_set_color(c_aqua);
     draw_text_l(_px + 100, _ly, string(_row_count));
     draw_set_color(make_color_rgb(70, 130, 140));
-    draw_text_l(_px + 130, _ly, string(_start_row) + " to " + string(_start_row + _row_count - 1));
+    draw_text_l(_px + 130, _ly, string(_start_row) + L(" to ") + string(_start_row + _row_count - 1));
     _ly += _lh;
 
     // ROW 2 — COLOUR MODE (click to cycle 0→1→2→0)
@@ -257,7 +257,7 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
 draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_scr2_col);
     var _scr2_display = _scr1_draw + 0x0800;
-    draw_text_l(_px, _ly, "USES $" + string_upper(decimal_to_hex(_scr2_display)) + "-$" + string_upper(decimal_to_hex(_scr2_display + 0x03FF)) + " (SCR BUF 2)");
+    draw_text_l(_px, _ly, L("USES $") + string_upper(decimal_to_hex(_scr2_display)) + "-$" + string_upper(decimal_to_hex(_scr2_display + 0x03FF)) + " (SCR BUF 2)");
 
     draw_set_font_l(fnt_c64_code);
 }

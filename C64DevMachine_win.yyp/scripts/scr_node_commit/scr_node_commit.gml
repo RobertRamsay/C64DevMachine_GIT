@@ -91,7 +91,7 @@
 	        }
 	    }
 	    if (_dupe) {
-	        scr_show_message("VAR NAME EXISTS:\n\n" + _new_name + "\n\nChoose a different name.");
+	        scr_show_message(L("VAR NAME EXISTS:\n\n") + _new_name + L("\n\nChoose a different name."));
 	        return;
 	    }
 
@@ -1150,7 +1150,7 @@
 	                        }
 	                    }
 	                    if (_dupe) {
-	                        scr_show_message("VAR NAME EXISTS:\n\n" + _new_name + "\n\nChoose a different name.");
+	                        scr_show_message(L("VAR NAME EXISTS:\n\n") + _new_name + L("\n\nChoose a different name."));
 	                    } else {
 	                        var _refs = scr_find_var_references(_old_name, _target);
                         var _new_name_upper2 = string_upper(_new_name);

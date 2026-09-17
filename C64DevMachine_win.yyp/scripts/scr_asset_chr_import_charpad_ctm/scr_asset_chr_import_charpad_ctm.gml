@@ -108,6 +108,6 @@ function scr_asset_chr_import_charpad_ctm(_asset, _path) {
     global.undo_dirty = true;
     _asset.meta._mtime = md5_file(_asset.file);
 
-    scr_show_message("CTM charset import OK: " + string(_char_count) + " chars ("
-        + string(_used_size) + " bytes)");
+    scr_show_message(L("CTM charset import OK: ") + string(_char_count) + L(" chars (")
+        + string(_used_size) + L(" bytes)"));
 }

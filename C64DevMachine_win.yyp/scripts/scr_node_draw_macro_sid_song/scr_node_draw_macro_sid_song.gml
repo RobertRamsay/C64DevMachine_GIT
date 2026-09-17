@@ -212,7 +212,7 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
         _ly += 10;
         draw_set_color(_c_info);
         draw_text_l(_draw_x + 8, _ly,
-            string(_bytes) + "B DATA   SPD " + string(_speed) + (_loops ? "   LOOP" : "   ONCE"));
+            string(_bytes) + "B DATA   SPD " + string(_speed) + (_loops ? L("   LOOP") : L("   ONCE")));
     }
     _ly += 10;
 
@@ -224,7 +224,7 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
     _ly += 10;
 
     draw_set_color(make_color_rgb(90, 110, 150));
-    draw_text_l(_draw_x + 8, _ly, "JSR " + "sng" + string(stable_uid) + "_play  EACH FRAME");
+    draw_text_l(_draw_x + 8, _ly, "JSR " + "sng" + string(stable_uid) + L("_play  EACH FRAME"));
     _ly += 10;
     draw_set_color(make_color_rgb(90, 110, 150));
     draw_text_l(_draw_x + 8, _ly, "A=SONG X=ROW  JSR " + "sng" + string(stable_uid) + "_seek");
