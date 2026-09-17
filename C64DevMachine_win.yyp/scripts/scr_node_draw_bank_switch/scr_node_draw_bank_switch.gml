@@ -16,9 +16,9 @@ function scr_node_draw_bank_switch(_draw_x, _y) {
     var _mode_labels = ["ALL RAM (24)", "ALL RAM (25)", "CHR+K (26)", "CHR+BAS+K (27)", "RAM+IO (28)", "RAM+IO (29)", "NO BASIC (30)", "DEFAULT (31)"];
 
     // Row 0: MODE dropdown
-    draw_set_font(fnt_C64_Angled_tiny);
+    draw_set_font_l(fnt_C64_Angled_tiny);
     draw_set_color(c_gray);
-    draw_text(_lx, _cy, "MODE:");
+    draw_text_l(_lx, _cy, "MODE:");
 
     var _mode_bx1 = _lx + 44;
     var _mode_bx2 = _rx;
@@ -36,13 +36,13 @@ function scr_node_draw_bank_switch(_draw_x, _y) {
     }
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text((_mode_bx1 + _mode_bx2) / 2, _cy, _mode_txt);
+    draw_text_l((_mode_bx1 + _mode_bx2) / 2, _cy, _mode_txt);
     draw_set_halign(fa_left);
     _cy += _line_h;
 
     // Row 1: RAW $01 value
     draw_set_color(c_gray);
-    draw_text(_lx, _cy, "$01:");
+    draw_text_l(_lx, _cy, "$01:");
 
     var _val_bx1 = _lx + 44;
     var _val_bx2 = _rx;
@@ -60,7 +60,7 @@ function scr_node_draw_bank_switch(_draw_x, _y) {
     }
     draw_set_color(c_yellow);
     draw_set_halign(fa_center);
-    draw_text((_val_bx1 + _val_bx2) / 2, _cy, "$" + string_upper(_v_hex));
+    draw_text_l((_val_bx1 + _val_bx2) / 2, _cy, "$" + string_upper(_v_hex));
     draw_set_halign(fa_left);
     _cy += _line_h;
 
@@ -80,7 +80,7 @@ function scr_node_draw_bank_switch(_draw_x, _y) {
     if (_keep_irq == 1) {
         _irq_txt = "KEEP IRQ OFF: ON";
     }
-    draw_text((_irq_bx1 + _irq_bx2) / 2, _cy, _irq_txt);
+    draw_text_l((_irq_bx1 + _irq_bx2) / 2, _cy, _irq_txt);
     draw_set_halign(fa_left);
     _cy += _line_h;
 
@@ -100,7 +100,7 @@ function scr_node_draw_bank_switch(_draw_x, _y) {
     if (_write_ddr == 1) {
         _ddr_txt = "WRITE DDR $00: ON";
     }
-    draw_text((_ddr_bx1 + _ddr_bx2) / 2, _cy, _ddr_txt);
+    draw_text_l((_ddr_bx1 + _ddr_bx2) / 2, _cy, _ddr_txt);
     draw_set_halign(fa_left);
     _cy += _line_h;
 
@@ -116,7 +116,7 @@ function scr_node_draw_bank_switch(_draw_x, _y) {
     draw_rectangle(_wiki_bx1, _cy + 1, _wiki_bx2, _cy + 11, false);
     draw_set_color(c_aqua);
     draw_set_halign(fa_center);
-    draw_text((_wiki_bx1 + _wiki_bx2) / 2, _cy, "OPEN WIKI PAGE");
+    draw_text_l((_wiki_bx1 + _wiki_bx2) / 2, _cy, "OPEN WIKI PAGE");
     draw_set_halign(fa_left);
     _cy += _line_h;
 

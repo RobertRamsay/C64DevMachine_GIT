@@ -23,7 +23,7 @@ function scr_node_draw_macro_sid(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     }
     var _has_asset = (_asset != undefined);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _ly = _y + _header_h + 4;
 	
 	var _c_edit = make_color_rgb(120, 220, 120); // Light Green for editable labels
@@ -33,42 +33,42 @@ function scr_node_draw_macro_sid(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     // Row 1: Asset picker
     var _name_hover = point_in_rectangle(mouse_x, mouse_y, _draw_x + 68, _ly, _draw_x + width - 8, _ly + 16);
     draw_set_color(_c_edit);
-    draw_text(_draw_x + 10, _ly, "ASSET:");
+    draw_text_l(_draw_x + 10, _ly, "ASSET:");
     draw_set_color(_has_asset ? make_color_rgb(20, 40, 60) : make_color_rgb(60, 20, 60));
     draw_rectangle(_draw_x + 68, _ly +2, _draw_x + width - 8, _ly + 15, false);
     draw_set_color(_has_asset ? c_aqua : (_name_hover ? c_white : make_color_rgb(180, 80, 180)));
-    draw_text(_draw_x + 72, _ly, _asset_name == "" ? "CLICK TO SET" : _asset_name );
+    draw_text_l(_draw_x + 72, _ly, _asset_name == "" ? "CLICK TO SET" : _asset_name );
     _ly += _line_h;
 
     // Row 2: SID address
     var _sh = string_upper(decimal_to_hex(_sid_addr));
     while (string_length(_sh) < 4) _sh = "0" + _sh;
-    draw_set_color(_c_dim);   draw_text(_draw_x + 10, _ly, "SID ADDR:");
-    draw_set_color(c_aqua);   draw_text(_draw_x + 90, _ly, "$" + _sh);
+    draw_set_color(_c_dim);   draw_text_l(_draw_x + 10, _ly, "SID ADDR:");
+    draw_set_color(c_aqua);   draw_text_l(_draw_x + 90, _ly, "$" + _sh);
     _ly += _line_h;
 
     // Row 3: Track
-    draw_set_color(_c_edit);   draw_text(_draw_x + 10, _ly, "TRACK:");
-    draw_set_color(c_yellow); draw_text(_draw_x + 70, _ly, string(_track));
+    draw_set_color(_c_edit);   draw_text_l(_draw_x + 10, _ly, "TRACK:");
+    draw_set_color(c_yellow); draw_text_l(_draw_x + 70, _ly, string(_track));
     _ly += _line_h;
 
     // Row 4: Volume
 	var _irq_line_val = (array_length(instructions[0]) > 4 && is_real(instructions[0][4])) ? real(instructions[0][4]) : 0x60;
     var _irq_hex = string_upper(decimal_to_hex(_irq_line_val));
     while (string_length(_irq_hex) < 2) _irq_hex = "0" + _irq_hex;
-    draw_set_color(_c_edit);   draw_text(_draw_x + 10, _ly, "IRQ LINE:");
-    draw_set_color(c_yellow); draw_text(_draw_x + 90, _ly, "$" + _irq_hex);
+    draw_set_color(_c_edit);   draw_text_l(_draw_x + 10, _ly, "IRQ LINE:");
+    draw_set_color(c_yellow); draw_text_l(_draw_x + 90, _ly, "$" + _irq_hex);
     _ly += _line_h;
 
     // Row 5: Status
 global.sid_active = true; // Always true now due to NULLSID fallback
-    draw_set_color(_c_dim); draw_text(_draw_x + 10, _ly, "DATA:");
+    draw_set_color(_c_dim); draw_text_l(_draw_x + 10, _ly, "DATA:");
     if (_has_data) {
         draw_set_color(make_color_rgb(80, 200, 80));
-        draw_text(_draw_x + 60, _ly, filename_name(_asset.file));
+        draw_text_l(_draw_x + 60, _ly, filename_name(_asset.file));
     } else {
         draw_set_color(c_orange);
-        draw_text(_draw_x + 60, _ly, "USING FALLBACK");
+        draw_text_l(_draw_x + 60, _ly, "USING FALLBACK");
     }
 	_ly += _line_h + 4;
 
@@ -96,15 +96,15 @@ global.sid_active = true; // Always true now due to NULLSID fallback
 			draw_set_alpha(1.0);
 			var _flash_col = (current_time mod 600 < 300) ? c_white : c_black;
             draw_set_color(_flash_col);
-            draw_text(_draw_x + (width / 2), _ly-30, "NEEDS TO BE AFTER INIT!");
+            draw_text_l(_draw_x + (width / 2), _ly-30, "NEEDS TO BE AFTER INIT!");
             _ly += _line_h;
-            draw_text(_draw_x + (width / 2), _ly-30, "WITH SID EXIT BELOW IT");
+            draw_text_l(_draw_x + (width / 2), _ly-30, "WITH SID EXIT BELOW IT");
             _ly += _line_h;
 			
         } else {
-			draw_set_font(fnt_c64_nano);
+			draw_set_font_l(fnt_c64_nano);
             draw_set_color(make_color_rgb(80, 200, 80));
-            draw_text(_draw_x + (width / 2), _ly-3, "NODE IN PLACE");
+            draw_text_l(_draw_x + (width / 2), _ly-3, "NODE IN PLACE");
             _ly += _line_h;
         }
         draw_set_halign(fa_left);

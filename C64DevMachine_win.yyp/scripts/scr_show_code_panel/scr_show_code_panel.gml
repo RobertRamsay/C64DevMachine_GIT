@@ -1431,16 +1431,16 @@ function scr_show_code_draw() {
         draw_set_valign(fa_top);
 
         // ---- header ----------------------------------------------------
-        draw_set_font(fnt_C64_Angled);
+        draw_set_font_l(fnt_C64_Angled);
         draw_set_halign(fa_left);
         draw_set_color(c_white);
-        draw_text_transformed(_px + 10, _py + 6, "CODE", 1.0, 1.0, 0);
+        draw_text_transformed_l(_px + 10, _py + 6, "CODE", 1.0, 1.0, 0);
 
         // Program size, only when the panel is wide enough to hold it without
         // crowding the buttons.
         if (showcode_open && _pw >= 380) {
             draw_set_color(make_color_rgb(120, 130, 150));
-            draw_text_transformed(_px + 114, _py + 6, string(showcode_total) + " B", 1.0, 1.0, 0);
+            draw_text_transformed_l(_px + 114, _py + 6, string(showcode_total) + " B", 1.0, 1.0, 0);
         }
 
         if (showcode_open) {
@@ -1464,7 +1464,7 @@ function scr_show_code_draw() {
             }
             draw_set_color(_cm);
             draw_set_halign(fa_center);
-            draw_text_transformed(_btn_msc_x + (_msc_w / 2), _py + 6, "MISC", 1.0, 1.0, 0);
+            draw_text_transformed_l(_btn_msc_x + (_msc_w / 2), _py + 6, "MISC", 1.0, 1.0, 0);
             draw_set_halign(fa_left);
 
             // Active segment filled, inactive segment just outlined.
@@ -1489,7 +1489,7 @@ function scr_show_code_draw() {
                 _c0 = c_white;
             }
             draw_set_color(_c0);
-            draw_text_transformed(_btn_mod_x + (_seg_w / 2), _py + 6, "VICE", 1.0, 1.0, 0);
+            draw_text_transformed_l(_btn_mod_x + (_seg_w / 2), _py + 6, "VICE", 1.0, 1.0, 0);
 
             // ASM segment
             var _c1 = make_color_rgb(140, 140, 150);
@@ -1499,7 +1499,7 @@ function scr_show_code_draw() {
                 _c1 = c_white;
             }
             draw_set_color(_c1);
-            draw_text_transformed(_btn_mod_x + _seg_w + (_seg_w / 2), _py + 6, "ASM", 1.0, 1.0, 0);
+            draw_text_transformed_l(_btn_mod_x + _seg_w + (_seg_w / 2), _py + 6, "ASM", 1.0, 1.0, 0);
         }
 
         var _min_lbl = "-";
@@ -1513,10 +1513,10 @@ function scr_show_code_draw() {
         draw_set_color(_min_col);
         draw_rectangle(_btn_min_x, _py + 4, _btn_min_x + _btn_w, _py + _hdr_h - 4, true);
         draw_set_halign(fa_center);
-        draw_text_transformed(_btn_min_x + (_btn_w / 2), _py + 5, _min_lbl, 1.0, 1.0, 0);
+        draw_text_transformed_l(_btn_min_x + (_btn_w / 2), _py + 5, _min_lbl, 1.0, 1.0, 0);
 
         if (!showcode_open) {
-            draw_set_font(_font_before);
+            draw_set_font_l(_font_before);
             draw_set_halign(_halign_before);
             draw_set_valign(_valign_before);
             exit;
@@ -1584,12 +1584,12 @@ function scr_show_code_draw() {
             }
         }
 
-        draw_set_font(fnt_c64_opCode);
+        draw_set_font_l(fnt_c64_opCode);
         draw_set_halign(fa_left);
 
         if (_total == 0) {
             draw_set_color(make_color_rgb(120, 120, 130));
-            draw_text_transformed(_col_addr, _body_y, "NO CODE — ADD SOME NODES", 1.0, 1.0, 0);
+            draw_text_transformed_l(_col_addr, _body_y, "NO CODE — ADD SOME NODES", 1.0, 1.0, 0);
         }
 
         var _clicked_key = "";
@@ -1644,10 +1644,10 @@ function scr_show_code_draw() {
                 }
 
                 draw_set_color(make_color_rgb(150, 150, 160));
-                draw_text_transformed(_col_addr + _indent, _ry, "." + scr_show_code_hex(_row.pc, 4), 1.0, 1.0, 0);
+                draw_text_transformed_l(_col_addr + _indent, _ry, "." + scr_show_code_hex(_row.pc, 4), 1.0, 1.0, 0);
 
                 draw_set_color(_gcol);
-                draw_text_transformed(_col_byte + _indent, _ry, _gtitle, 1.0, 1.0, 0);
+                draw_text_transformed_l(_col_byte + _indent, _ry, _gtitle, 1.0, 1.0, 0);
 
                 // Below the full width the group title would run under this,
                 // so the size goes rather than the name. Group sizes are also
@@ -1656,7 +1656,7 @@ function scr_show_code_draw() {
                 if (_pw >= SHOWCODE_W_FULL) {
                     draw_set_halign(fa_right);
                     draw_set_color(make_color_rgb(110, 130, 150));
-                    draw_text_transformed(_px + _pw - 20, _ry, string(_row.sz) + "B", 1.0, 1.0, 0);
+                    draw_text_transformed_l(_px + _pw - 20, _ry, string(_row.sz) + "B", 1.0, 1.0, 0);
                     draw_set_halign(fa_left);
                 }
 
@@ -1670,15 +1670,15 @@ function scr_show_code_draw() {
                 var _bv = _ln.vals[_row.sub];
 
                 draw_set_color(make_color_rgb(150, 150, 160));
-                draw_text_transformed(_col_addr + _indent, _ry, "." + scr_show_code_hex(_row.pc, 4), 1.0, 1.0, 0);
+                draw_text_transformed_l(_col_addr + _indent, _ry, "." + scr_show_code_hex(_row.pc, 4), 1.0, 1.0, 0);
 
                 if (showcode_mode == 0) {
                     draw_set_color(make_color_rgb(190, 190, 120));
-                    draw_text_transformed(_col_byte + _indent, _ry, scr_show_code_hex(_bv, 2), 1.0, 1.0, 0);
+                    draw_text_transformed_l(_col_byte + _indent, _ry, scr_show_code_hex(_bv, 2), 1.0, 1.0, 0);
                 }
 
                 draw_set_color(make_color_rgb(180, 170, 210));
-                draw_text_transformed(_col_text + _indent, _ry, ".BYTE $" + scr_show_code_hex(_bv, 2), 1.0, 1.0, 0);
+                draw_text_transformed_l(_col_text + _indent, _ry, ".BYTE $" + scr_show_code_hex(_bv, 2), 1.0, 1.0, 0);
                 continue;
             }
 
@@ -1697,11 +1697,11 @@ function scr_show_code_draw() {
             }
 
             draw_set_color(make_color_rgb(150, 150, 160));
-            draw_text_transformed(_col_addr + _indent, _ry, "." + scr_show_code_hex(_ln.pc, 4), 1.0, 1.0, 0);
+            draw_text_transformed_l(_col_addr + _indent, _ry, "." + scr_show_code_hex(_ln.pc, 4), 1.0, 1.0, 0);
 
             if (showcode_mode == 0 && _ln.kind != "label" && _ln.kind != "org") {
                 draw_set_color(make_color_rgb(190, 190, 120));
-                draw_text_transformed(_col_byte + _indent, _ry, scr_show_code_bytes(_ln), 1.0, 1.0, 0);
+                draw_text_transformed_l(_col_byte + _indent, _ry, scr_show_code_bytes(_ln), 1.0, 1.0, 0);
             }
 
             // A label hangs left of the code it names, the way it reads in a
@@ -1715,15 +1715,15 @@ function scr_show_code_draw() {
             // labels are not drawn in VICE mode, so nothing there is affected.
             var _tx_indent = _indent;
             if (_ln.kind == "label") {
-                _tx_indent = _indent - 10 - string_width("0");
-                var _lbl_min = (_col_addr + string_width(".FFFF") + 4) - _col_text;
+                _tx_indent = _indent - 10 - string_width_l("0");
+                var _lbl_min = (_col_addr + string_width_l(".FFFF") + 4) - _col_text;
                 if (_tx_indent < _lbl_min) {
                     _tx_indent = _lbl_min;
                 }
             }
 
             draw_set_color(_tint);
-            draw_text_transformed(_col_text + _tx_indent, _ry, scr_show_code_text(_ln, showcode_mode), 1.0, 1.0, 0);
+            draw_text_transformed_l(_col_text + _tx_indent, _ry, scr_show_code_text(_ln, showcode_mode), 1.0, 1.0, 0);
         }
 
         if (_clicked_key != "") {
@@ -1808,11 +1808,11 @@ function scr_show_code_draw() {
         if (showcode_resize == 3) {
             draw_set_halign(fa_center);
             draw_set_color(c_white);
-            draw_text_transformed(_px + (_pw / 2), _py + _ph + 4, string(showcode_rows) + " LINES", 1.0, 1.0, 0);
+            draw_text_transformed_l(_px + (_pw / 2), _py + _ph + 4, string(showcode_rows) + " LINES", 1.0, 1.0, 0);
             draw_set_halign(fa_left);
         }
 
-        draw_set_font(_font_before);
+        draw_set_font_l(_font_before);
         draw_set_halign(_halign_before);
         draw_set_valign(_valign_before);
         draw_set_color(c_white);

@@ -31,7 +31,7 @@ var _alpha_header  = clamp((_cam_zoom - 2.0) / 1.0, 0, 1);
 var _shelf_edge = obj_workspace_manager.shelf_width + 40;
 var _sc_edge    = global.sc_x_start - 40;
 
-draw_set_font(fnt_c64_nano);
+draw_set_font_l(fnt_c64_nano);
 draw_set_halign(fa_center);
 
 // Truncate word-style headers to 8 chars + ".."
@@ -55,14 +55,14 @@ if (node_type == "COMMENT") {
                 ? obj_workspace_manager.current_input_string
                 : ((array_length(instructions) > 0) ? string(instructions[0][1]) : "");
     if (_text == "" && !_is_editing) exit;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_valign(fa_middle);
     draw_set_alpha(_alpha_comment * _edge_alpha * 0.6);
     draw_set_color(c_black);
-    draw_text_ext(_sx + 1, _sy + 1, comment_display_text, 12, -1);
+    draw_text_ext_l(_sx + 1, _sy + 1, comment_display_text, 12, -1);
     draw_set_alpha(_alpha_comment * _edge_alpha);
     draw_set_color(_is_editing ? c_lime : c_yellow);
-    draw_text_ext(_sx, _sy, comment_display_text, 12, -1);
+    draw_text_ext_l(_sx, _sy, comment_display_text, 12, -1);
 
 } else if (string_pos("MACRO", node_type) > 0) {
     var _wx = x + x_indent + width * 0.5;
@@ -74,7 +74,7 @@ if (node_type == "COMMENT") {
     var _edge_alpha = clamp((_sx - _shelf_edge) / 30.0, 0, 1)
                     * clamp((_sc_edge - _sx)    / 30.0, 0, 1);
     draw_set_valign(fa_top);
-	draw_set_font(fnt_c64_nano);
+	draw_set_font_l(fnt_c64_nano);
     draw_set_alpha(_alpha_header * _edge_alpha * 0.8);
     draw_set_color(c_black);
 
@@ -85,10 +85,10 @@ if (node_type == "COMMENT") {
     }
     _display_text = _trunc6(_display_text);
 
-    draw_text(_sx + 1, _sy + 7, _display_text);
+    draw_text_l(_sx + 1, _sy + 7, _display_text);
     draw_set_alpha(_alpha_header * _edge_alpha);
     draw_set_color(c_white);
-    draw_text(_sx, _sy+8, _display_text);
+    draw_text_l(_sx, _sy+8, _display_text);
 
 } else {
     var _wx = x + x_indent + width * 0.5;
@@ -107,15 +107,15 @@ if (node_type == "COMMENT") {
             _display = (array_length(instructions) > 0) ? string(instructions[0][1]) : "";
             if (_display == "") break;
             _display = _trunc6(_display);
-            draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black); draw_text(_sx+1, _sy+1, _display);
-            draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_lime);  draw_text(_sx, _sy, _display);
+            draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black); draw_text_l(_sx+1, _sy+1, _display);
+            draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_lime);  draw_text_l(_sx, _sy, _display);
         } break;
 
         case "LABEL": {
             _display = (array_length(instructions) > 0) ? string(instructions[0][1]) : node_title;
             _display = _trunc6(_display);
-            draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black);  draw_text(_sx+1, _sy+1, _display);
-            draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_yellow); draw_text(_sx, _sy, _display);
+            draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black);  draw_text_l(_sx+1, _sy+1, _display);
+            draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_yellow); draw_text_l(_sx, _sy, _display);
         } break;
 
         case "ORG":
@@ -123,8 +123,8 @@ if (node_type == "COMMENT") {
             var _h = decimal_to_hex(pc_address);
             while (string_length(_h) < 4) _h = "0" + _h;
             _display = "$" + string_upper(_h);
-            draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black); draw_text(_sx+1, _sy+1, _display);
-            draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_aqua);  draw_text(_sx, _sy, _display);
+            draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black); draw_text_l(_sx+1, _sy+1, _display);
+            draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_aqua);  draw_text_l(_sx, _sy, _display);
         } break;
 
         case "GET_VAR":
@@ -137,8 +137,8 @@ if (node_type == "COMMENT") {
                        ? string(instructions[0][1]) : node_type;
             if (string_pos("UV_", _display) == 1) _display = string_delete(_display, 1, 3);
             _display = _trunc6(_display);
-            draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black);  draw_text(_sx+1, _sy+1, _display);
-            draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_aqua);   draw_text(_sx, _sy, _display);
+            draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black);  draw_text_l(_sx+1, _sy+1, _display);
+            draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_aqua);   draw_text_l(_sx, _sy, _display);
         } break;
 
         case "NORMAL":
@@ -160,23 +160,23 @@ if (node_type == "COMMENT") {
                 }
                 var _mn_str  = _mn + " ";
                 var _val_str = _val;
-                var _mn_w    = string_width(_mn_str);
-                var _total_w = string_width(_mn_str + _val_str);
+                var _mn_w    = string_width_l(_mn_str);
+                var _total_w = string_width_l(_mn_str + _val_str);
                 draw_set_alpha(_alpha_header * _edge_alpha * 0.6);
                 draw_set_color(c_black);
-                draw_text(_sx + 1, _sy + 1, _mn_str + _val_str);
+                draw_text_l(_sx + 1, _sy + 1, _mn_str + _val_str);
                 draw_set_alpha(_alpha_header * _edge_alpha);
                 draw_set_halign(fa_left);
                 draw_set_color(c_ltgray);
-                draw_text(_sx - _total_w * 0.5, _sy, _mn_str);
+                draw_text_l(_sx - _total_w * 0.5, _sy, _mn_str);
                 draw_set_color(c_yellow);
-                draw_text(_sx - _total_w * 0.5 + _mn_w, _sy, _val_str);
+                draw_text_l(_sx - _total_w * 0.5 + _mn_w, _sy, _val_str);
                 draw_set_halign(fa_center);
             } else {
                 _display = (custom_title != "") ? custom_title : node_title;
                 _display = _trunc6(_display);
-                draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black);  draw_text(_sx+1, _sy+1, _display);
-                draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_ltgray); draw_text(_sx, _sy, _display);
+                draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black);  draw_text_l(_sx+1, _sy+1, _display);
+                draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_ltgray); draw_text_l(_sx, _sy, _display);
             }
         } break;
     }

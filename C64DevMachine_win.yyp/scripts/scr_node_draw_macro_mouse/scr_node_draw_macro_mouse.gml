@@ -22,40 +22,40 @@ function scr_node_draw_macro_mouse(_draw_x, _y) {
     }
 
     var _c_edit = make_color_rgb(120, 220, 120);
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _my = _y + _header_h + 4;
 
     // ---- PORT ----
     draw_set_color(_c_edit);
-    draw_text(_draw_x + 8, _my, "PORT:                           (JSR CALLS)");
+    draw_text_l(_draw_x + 8, _my, "PORT:                           (JSR CALLS)");
     draw_set_color(_port == 1 ? c_yellow : c_gray);
-    draw_text(_draw_x + 60, _my, "1");
+    draw_text_l(_draw_x + 60, _my, "1");
     draw_set_color(_port == 2 ? c_yellow : c_gray);
-    draw_text(_draw_x + 80, _my, "2");
+    draw_text_l(_draw_x + 80, _my, "2");
     _my += _line_h + 2;
 
     // ---- ZP BASE ----
     draw_set_color(_c_edit);
-    draw_text(_draw_x + 8, _my, "ZP:");
+    draw_text_l(_draw_x + 8, _my, "ZP:");
     draw_set_color(c_aqua);
-    draw_text(_draw_x + 60, _my, "$" + scr_mouse_hex2(_zp) + " (7 BYTES)");
+    draw_text_l(_draw_x + 60, _my, "$" + scr_mouse_hex2(_zp) + " (7 BYTES)");
     _my += _line_h + 2;
 
     // ---- Y AXIS SENSE ----
     draw_set_color(_c_edit);
-    draw_text(_draw_x + 8, _my, "Y AXIS:");
+    draw_text_l(_draw_x + 8, _my, "Y AXIS:");
     draw_set_color(c_yellow);
     if (_yinv == 1) {
-        draw_text(_draw_x + 60, _my, "SCREEN (DOWN +)");
+        draw_text_l(_draw_x + 60, _my, "SCREEN (DOWN +)");
     } else {
-        draw_text(_draw_x + 60, _my, "RAW (UP +)");
+        draw_text_l(_draw_x + 60, _my, "RAW (UP +)");
     }
     _my += _line_h + 2;
 
     // ---- WHERE THE RESULT LANDS ----
     // The whole point of the node: these are the addresses your own code reads.
     draw_set_color(make_color_rgb(150, 170, 200));
-    draw_text(_draw_x + 8, _my,
+    draw_text_l(_draw_x + 8, _my,
               "X $" + scr_mouse_hex2(_zp + 2) + "/$" + scr_mouse_hex2(_zp + 3)
             + "  Y $" + scr_mouse_hex2(_zp + 4) + "/$" + scr_mouse_hex2(_zp + 5));
     _my += _line_h + 6;
@@ -64,7 +64,7 @@ function scr_node_draw_macro_mouse(_draw_x, _y) {
     // Two rows, five columns, same pitch as the MACRO_JOY grid.
     //   row 0: buttons     LMB RMB
     //   row 1: movement    LF RT UP DN
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
 
     var _grid_labels = [
         ["LMB", "RMB"],
@@ -91,7 +91,7 @@ function scr_node_draw_macro_mouse(_draw_x, _y) {
             }
 
             draw_set_color(_enabled ? c_yellow : make_color_rgb(110, 90, 90));
-            draw_text(_draw_x + 6 + (_c * _col_w), _my, _grid_labels[_r][_c]);
+            draw_text_l(_draw_x + 6 + (_c * _col_w), _my, _grid_labels[_r][_c]);
         }
         _my += _line_h + 2;
     }

@@ -10,9 +10,9 @@ function scr_node_draw_macro_display(_draw_x, _y) {
 
     var _row_y = _y + _header_h + 12;
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(200, 160, 60));
-    draw_text(_draw_x + 8, _row_y + 3, "SCREEN:");
+    draw_text_l(_draw_x + 8, _row_y + 3, "SCREEN:");
 
     // ---- ON / OFF toggle pair ----
     var _btn_w = 44;
@@ -34,7 +34,7 @@ function scr_node_draw_macro_display(_draw_x, _y) {
     draw_rectangle(_on_x, _row_y, _on_x + _btn_w, _row_y + _btn_h, true);
     draw_set_halign(fa_center);
     draw_set_color((_mode == 1) ? c_white : make_color_rgb(110, 120, 110));
-    draw_text(_on_x + _btn_w * 0.5, _row_y + 1, "ON");
+    draw_text_l(_on_x + _btn_w * 0.5, _row_y + 1, "ON");
 
     // OFF
     if (_mode == 0) {
@@ -46,11 +46,11 @@ function scr_node_draw_macro_display(_draw_x, _y) {
     draw_set_color((_mode == 0) ? make_color_rgb(255, 120, 90) : make_color_rgb(80, 70, 70));
     draw_rectangle(_off_x, _row_y, _off_x + _btn_w, _row_y + _btn_h, true);
     draw_set_color((_mode == 0) ? c_white : make_color_rgb(120, 110, 110));
-    draw_text(_off_x + _btn_w * 0.5, _row_y + 1, "OFF");
+    draw_text_l(_off_x + _btn_w * 0.5, _row_y + 1, "OFF");
     draw_set_halign(fa_left);
 
     // ---- info line ----
     draw_set_color(make_color_rgb(90, 90, 110));
     var _info = "$D011 BIT 4 - RMW SAFE";
-    draw_text(_draw_x + 8, _row_y + _btn_h + 5, _info);
+    draw_text_l(_draw_x + 8, _row_y + _btn_h + 5, _info);
 }

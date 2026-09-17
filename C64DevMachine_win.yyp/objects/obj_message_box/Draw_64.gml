@@ -12,13 +12,13 @@ draw_set_alpha(1.0);
 // ── Box geometry ──
 // The box grows to fit its message. At the fixed 200px height a five-line
 // message ran straight under the OK button and hid its last line.
-draw_set_font(fnt_c64_code);
+draw_set_font_l(fnt_c64_code);
 
 var _txt_w   = box_w - 60;
-var _txt_h   = string_height_ext(message, 24, _txt_w);
+var _txt_h   = string_height_ext_l(message, 24, _txt_w);
 
 // OK button is its label plus 4px of padding on every side.
-var _ok_w    = string_width("OK")  + 8;
+var _ok_w    = string_width_l("OK")  + 8;
 var _ok_h    = string_height("OK") + 8;
 
 var _pad_top = 30;   // above the text
@@ -57,7 +57,7 @@ draw_set_valign(fa_top);
 var _msg_x = _bx + box_w * 0.5;
 var _msg_y = _by + _pad_top;
 
-draw_text_ext(_msg_x, _msg_y, message, 24, _txt_w);
+draw_text_ext_l(_msg_x, _msg_y, message, 24, _txt_w);
 
 // ── OK button (single, centred, sized to its label) ──
 var _btn_w  = _ok_w;
@@ -79,7 +79,7 @@ draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
 draw_set_colour(c_white);
 draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, true);
 draw_set_valign(fa_middle);
-draw_text(_btn_x + _btn_w * 0.5, _btn_y + _btn_h * 0.5, "OK");
+draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + _btn_h * 0.5, "OK");
 
 draw_set_halign(fa_left);
 draw_set_valign(fa_top);

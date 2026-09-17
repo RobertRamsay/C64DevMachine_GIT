@@ -16,9 +16,9 @@ function scr_node_draw_cond_if_word(_draw_x, _y) {
     var _cy = _y + _header_h + 4;
 
     // ── Row 0: VAR ────────────────────────────────────────────────
-    draw_set_font(fnt_C64_Angled_tiny);
+    draw_set_font_l(fnt_C64_Angled_tiny);
     draw_set_color(c_gray);
-    draw_text(_lx, _cy, "VAR:");
+    draw_text_l(_lx, _cy, "VAR:");
 
     var _var_bx1 = _lx + 48;
     var _var_bx2 = _rx;
@@ -27,7 +27,7 @@ function scr_node_draw_cond_if_word(_draw_x, _y) {
     draw_rectangle(_var_bx1, _cy + 1, _var_bx2, _cy + 11, false);
     draw_set_color(_var == "" ? make_color_rgb(160, 80, 80) : c_white);
     draw_set_halign(fa_center);
-    draw_text((_var_bx1 + _var_bx2) / 2, _cy, _var == "" ? "< SELECT >" : scr_nloc_display_name(_var));
+    draw_text_l((_var_bx1 + _var_bx2) / 2, _cy, _var == "" ? "< SELECT >" : scr_nloc_display_name(_var));
     draw_set_halign(fa_left);
     _cy += _line_h;
 
@@ -57,7 +57,7 @@ function scr_node_draw_cond_if_word(_draw_x, _y) {
     draw_rectangle(_op_bx1+5, _cy + 1, _op_bx2-5, _cy + 11, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text((_op_bx1 + _op_bx2) / 2, _cy, _op_label);
+    draw_text_l((_op_bx1 + _op_bx2) / 2, _cy, _op_label);
     draw_set_halign(fa_left);
 
     var _cmp_var     = (array_length(_inst) > 5) ? string(_inst[5]) : "";
@@ -86,7 +86,7 @@ function scr_node_draw_cond_if_word(_draw_x, _y) {
         }
         draw_set_color(c_yellow);
         draw_set_halign(fa_center);
-        draw_text((_cval_bx1 + _cval_bx2) / 2, _cy, _cv_display);
+        draw_text_l((_cval_bx1 + _cval_bx2) / 2, _cy, _cv_display);
         draw_set_halign(fa_left);
     }
 
@@ -114,18 +114,18 @@ function scr_node_draw_cond_if_word(_draw_x, _y) {
     }
     draw_set_halign(fa_center);
     if (string_upper(_cmp_var) != "0") {
-        draw_text((_cvar_bx1 + _cvar_bx2) / 2, _cy, scr_nloc_display_name(_cmp_var));
+        draw_text_l((_cvar_bx1 + _cvar_bx2) / 2, _cy, scr_nloc_display_name(_cmp_var));
     }
     if (!_has_cmp_var) {
         draw_set_halign(fa_center);
-        draw_text((_cvar_bx1 + _cvar_bx2) / 2, _cy, "< WORD >");
+        draw_text_l((_cvar_bx1 + _cvar_bx2) / 2, _cy, "< WORD >");
     }
     draw_set_halign(fa_left);
     _cy += _line_h;
 
     // ── Row 2: GOTO label ─────────────────────────────────────────
     draw_set_color(c_gray);
-    draw_text(_lx, _cy, "GOTO:");
+    draw_text_l(_lx, _cy, "GOTO:");
     var _tgt_bx1 = _lx + 48;
     var _tgt_bx2 = _rx;
     var _tgt_hov = point_in_rectangle(mouse_x, mouse_y, _tgt_bx1, _cy + 4, _tgt_bx2, _cy + 10);
@@ -134,8 +134,8 @@ function scr_node_draw_cond_if_word(_draw_x, _y) {
     draw_set_color(make_color_rgb(80, 220, 80));
     draw_set_halign(fa_center);
     var _tgt_display = string(instructions[0][3]);
-    draw_set_font(fnt_C64_Angled_tiny);
-    draw_text((_tgt_bx1 + _tgt_bx2) / 2, _cy,
+    draw_set_font_l(fnt_C64_Angled_tiny);
+    draw_text_l((_tgt_bx1 + _tgt_bx2) / 2, _cy,
               (_tgt_display == "") ? "< LABEL >" : (_tgt_display));
     draw_set_halign(fa_left);
     _cy += _line_h;

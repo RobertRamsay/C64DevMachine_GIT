@@ -32,7 +32,10 @@ draw_rectangle(_bx + 1, _by + 1, _bx + box_w - 1, _by + box_h - 1, true);
 
 // ── Message text ──
 // Use your existing font - swap fnt_c64_code for whichever font you prefer
-draw_set_font(fnt_c64_code);
+draw_set_font_l(fnt_c64_code);
+if (use_picker_font && font_exists(global.lang_font_picker)) {
+    draw_set_font(global.lang_font_picker);
+}
 draw_set_colour(c_white);
 draw_set_halign(fa_center);
 draw_set_valign(fa_middle);
@@ -41,7 +44,7 @@ var _msg_x = _bx + box_w * 0.5;
 var _msg_y = _by + 70;
 
 // Multi-line draw with manual wrap. Splits on \n already in the message.
-draw_text_ext(_msg_x, _msg_y, message, 24, box_w - 60);
+draw_text_ext_l(_msg_x, _msg_y, message, 24, box_w - 60);
 
 // ── Buttons ──
 var _btn_y    = _by + box_h - btn_h - 28;
@@ -64,7 +67,7 @@ if (hover_yes) {
 draw_rectangle(_btn_yx, _btn_y, _btn_yx + btn_w, _btn_y + btn_h, false);
 draw_set_colour(c_white);
 draw_rectangle(_btn_yx, _btn_y, _btn_yx + btn_w, _btn_y + btn_h, true);
-draw_text(_btn_yx + btn_w * 0.5, _btn_y + btn_h * 0.5, "YES");
+draw_text_l(_btn_yx + btn_w * 0.5, _btn_y + btn_h * 0.5, yes_label);
 
 // NO button
 if (hover_no) {
@@ -75,7 +78,7 @@ if (hover_no) {
 draw_rectangle(_btn_nx, _btn_y, _btn_nx + btn_w, _btn_y + btn_h, false);
 draw_set_colour(c_white);
 draw_rectangle(_btn_nx, _btn_y, _btn_nx + btn_w, _btn_y + btn_h, true);
-draw_text(_btn_nx + btn_w * 0.5, _btn_y + btn_h * 0.5, "NO");
+draw_text_l(_btn_nx + btn_w * 0.5, _btn_y + btn_h * 0.5, no_label);
 
 // Reset draw state
 draw_set_halign(fa_left);
@@ -93,10 +96,13 @@ if (input_armed) {
     }
 
     // Keyboard shortcuts: Enter/Y = Yes, Esc/N = No
-    if (keyboard_check_pressed(vk_enter) || keyboard_check_pressed(ord("Y"))) {
-        result = 1;
-    }
-    if (keyboard_check_pressed(vk_escape) || keyboard_check_pressed(ord("N"))) {
-        result = 0;
+    // The language picker is mouse-only: Y/N/Enter/Esc mean nothing there.
+    if (!use_picker_font) {
+        if (keyboard_check_pressed(vk_enter) || keyboard_check_pressed(ord("Y"))) {
+            result = 1;
+        }
+        if (keyboard_check_pressed(vk_escape) || keyboard_check_pressed(ord("N"))) {
+            result = 0;
+        }
     }
 }

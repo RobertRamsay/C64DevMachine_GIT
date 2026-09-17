@@ -164,9 +164,9 @@ function scr_load_workspace_from_path(_path) {
         }
 
         if (_n.node_type == "DATA_TEXT") {
-            draw_set_font(fnt_c64_code);
+            draw_set_font_l(fnt_c64_code);
             var _txt        = (array_length(_n.instructions) > 0) ? string(_n.instructions[0][1]) : "";
-            var _measured_w = string_width("\"" + _txt + "\"") + 20;
+            var _measured_w = string_width_l("\"" + _txt + "\"") + 20;
             _n.width        = clamp(max(global.node_display_width, _measured_w), 200, 480);
         } else if (_n.node_type == "SPR64") {
             _n.width = 200;
@@ -175,10 +175,10 @@ function scr_load_workspace_from_path(_path) {
         }
 
         if (_n.node_type == "COMMENT") {
-            draw_set_font(fnt_c64_code);
+            draw_set_font_l(fnt_c64_code);
             var _comment_raw = (array_length(_n.instructions) > 0) ? string(_n.instructions[0][1]) : "";
             var _text_w      = global.node_display_width - 20;
-            var _text_body_h = string_height_ext(_comment_raw, line_h, _text_w);
+            var _text_body_h = string_height_ext_l(_comment_raw, line_h, _text_w);
             _n.height        = header_h + max(line_h, _text_body_h) + pad;
         } else if (_n.node_type == "ORG") {
             _n.height = header_h + (line_h * 2) + pad;

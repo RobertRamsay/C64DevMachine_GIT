@@ -126,10 +126,10 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _ref_toggle_hov = point_in_rectangle(_mx, _my, _ref_toggle_x1, _ref_toggle_y1, _ref_toggle_x2, _ref_toggle_y2);
     draw_set_color(_m.ref_enabled ? make_color_rgb(60, 160, 90) : (_ref_toggle_hov ? make_color_rgb(80, 80, 80) : make_color_rgb(40, 40, 40)));
     draw_rectangle(_ref_toggle_x1, _ref_toggle_y1, _ref_toggle_x2, _ref_toggle_y2, false);
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text(_ref_toggle_x1 + 70, _ref_toggle_y1 + 4, "REFERENCE: " + (_m.ref_enabled ? "ON" : "OFF"));
+    draw_text_l(_ref_toggle_x1 + 70, _ref_toggle_y1 + 4, "REFERENCE: " + (_m.ref_enabled ? "ON" : "OFF"));
     draw_set_halign(fa_left);
     if (_ref_toggle_hov && mouse_check_button_pressed(mb_left)) {
         _m.ref_enabled = !_m.ref_enabled;
@@ -147,7 +147,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_set_color(_rpbhov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
         draw_rectangle(_rpbx1, _rpby1, _rpbx2, _rpby2, false);
         draw_set_color(_m.ref_asset_name != "" ? c_lime : make_color_rgb(150, 150, 150));
-        draw_text(_rpbx1 + 6, _rpby1 + 4, _m.ref_asset_name != "" ? _m.ref_asset_name : "-- PICK BITMAP --");
+        draw_text_l(_rpbx1 + 6, _rpby1 + 4, _m.ref_asset_name != "" ? _m.ref_asset_name : "-- PICK BITMAP --");
         if (_rpbhov && mouse_check_button_pressed(mb_left)) {
             _m.ref_picker_open = !_m.ref_picker_open;
         }
@@ -169,7 +169,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
                 draw_set_color(_rp_row_hov ? make_color_rgb(50, 90, 70) : make_color_rgb(15, 15, 15));
                 draw_rectangle(_rpbx1, _rp_row_y1, _rpbx2, _rp_row_y2, false);
                 draw_set_color(c_white);
-                draw_text(_rpbx1 + 6, _rp_row_y1 + 3, _rp_list[_rpj]);
+                draw_text_l(_rpbx1 + 6, _rp_row_y1 + 3, _rp_list[_rpj]);
                 if (_rp_row_hov && mouse_check_button_pressed(mb_left)) {
                     _m.ref_asset_name  = _rp_list[_rpj];
                     _m.ref_picker_open = false;
@@ -197,18 +197,18 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             draw_set_color(make_color_rgb(30, 30, 30));
             draw_rectangle(_obx1, _off_y, _obx2, _off_y + 18, false);
             draw_set_color(c_white);
-            draw_text(_obx1 + 4, _off_y + 3, _off_labels[_oi].label);
+            draw_text_l(_obx1 + 4, _off_y + 3, _off_labels[_oi].label);
             var _minus_hov = point_in_rectangle(_mx, _my, _obm1, _off_y, _obm2, _off_y + 18);
             draw_set_color(_minus_hov ? make_color_rgb(90, 40, 40) : make_color_rgb(50, 20, 20));
             draw_rectangle(_obm1, _off_y, _obm2, _off_y + 18, false);
             draw_set_color(c_white);
             draw_set_halign(fa_center);
-            draw_text(_obm1 + 10, _off_y + 3, "-");
+            draw_text_l(_obm1 + 10, _off_y + 3, "-");
             var _plus_hov = point_in_rectangle(_mx, _my, _obp1, _off_y, _obp2, _off_y + 18);
             draw_set_color(_plus_hov ? make_color_rgb(40, 90, 40) : make_color_rgb(20, 50, 20));
             draw_rectangle(_obp1, _off_y, _obp2, _off_y + 18, false);
             draw_set_color(c_white);
-            draw_text(_obp1 + 10, _off_y + 3, "+");
+            draw_text_l(_obp1 + 10, _off_y + 3, "+");
             draw_set_halign(fa_left);
             if (_minus_hov && mouse_check_button_pressed(mb_left)) {
                 _m[$ _off_labels[_oi].field] = clamp(_m[$ _off_labels[_oi].field] - 1, -255, 255);
@@ -300,9 +300,9 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
     // ── TYPE SELECTOR (0-7) ──
     var _type_y = _box_y + _box_h + 10;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_ltgray);
-    draw_text(_box_x, _type_y, "TYPE:");
+    draw_text_l(_box_x, _type_y, "TYPE:");
     for (var _ti = 0; _ti < 8; _ti++) {
         var _tbx1 = _box_x + 40 + (_ti * 26);
         var _tbx2 = _tbx1 + 22;
@@ -325,7 +325,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         // should be enough once memorised, but this avoids any ambiguity.
         draw_set_halign(fa_center);
         draw_set_color(make_color_rgb(140, 140, 140));
-        draw_text(_tbx1 + 11, _tby2 + 2, string(_ti));
+        draw_text_l(_tbx1 + 11, _tby2 + 2, string(_ti));
         draw_set_halign(fa_left);
     }
 
@@ -367,7 +367,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _row_h   = 20;
     var _rows_vis = max(1, floor((_box_h - 20) / _row_h));
     draw_set_color(c_ltgray);
-    draw_text(_list_x1, _list_y1 - 20, "LINES (" + string(array_length(_m.lines)) + "):");
+    draw_text_l(_list_x1, _list_y1 - 20, "LINES (" + string(array_length(_m.lines)) + "):");
 
     // CLEAR button — wipes every line in this LINE_COLL asset.
     var _clr_w = 50;
@@ -381,7 +381,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_rectangle(_clr_x1, _clr_y1, _clr_x2, _clr_y2, false);
     draw_set_color(_has_lines ? c_white : make_color_rgb(90, 90, 90));
     draw_set_halign(fa_center);
-    draw_text(_clr_x1 + (_clr_w / 2), _clr_y1 + 3, "CLEAR");
+    draw_text_l(_clr_x1 + (_clr_w / 2), _clr_y1 + 3, "CLEAR");
     draw_set_halign(fa_left);
     if (_has_lines && _clr_hov && mouse_check_button_pressed(mb_left)) {
         _m.lines = [];
@@ -396,9 +396,9 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _more_above = _m.line_scroll;
     var _row_start  = 0;
     if (_more_above > 0) {
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(140, 140, 140));
-        draw_text(_list_x1 + 10, _list_y1 + 3, "^ " + string(_more_above) + " more above");
+        draw_text_l(_list_x1 + 10, _list_y1 + 3, "^ " + string(_more_above) + " more above");
         _row_start = 1;
     }
 
@@ -412,9 +412,9 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _is_last_slot     = (_vi == _rows_vis - 1);
         if (_is_last_slot && _remaining_after > 0) {
             var _fy1 = _list_y1 + (_vi * _row_h);
-            draw_set_font(fnt_c64_tiny);
+            draw_set_font_l(fnt_c64_tiny);
             draw_set_color(make_color_rgb(140, 140, 140));
-            draw_text(_list_x1 + 10, _fy1 + 3, "v " + string(_remaining_after + 1) + " more below");
+            draw_text_l(_list_x1 + 10, _fy1 + 3, "v " + string(_remaining_after + 1) + " more below");
             break;
         }
         var _row_ln = _m.lines[_idx];
@@ -425,13 +425,13 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_set_color(_type_colours[clamp(_row_ln.type, 0, 7)]);
         draw_rectangle(_list_x1, _ry1, _list_x1 + 6, _ry2, false);
         draw_set_color(c_white);
-        draw_set_font(fnt_c64_tiny);
-        draw_text(_list_x1 + 10, _ry1 + 3,
+        draw_set_font_l(fnt_c64_tiny);
+        draw_text_l(_list_x1 + 10, _ry1 + 3,
             string(_row_ln.x1) + "," + string(_row_ln.y1) + " -> " + string(_row_ln.x2) + "," + string(_row_ln.y2) + " T" + string(_row_ln.type));
         var _delx1 = _list_x2 - 20;
         var _del_hov = point_in_rectangle(_mx, _my, _delx1, _ry1, _list_x2, _ry2);
         draw_set_color(_del_hov ? c_red : make_color_rgb(120, 60, 60));
-        draw_text(_delx1 + 2, _ry1 + 3, "X");
+        draw_text_l(_delx1 + 2, _ry1 + 3, "X");
         if (_del_hov && mouse_check_button_pressed(mb_left)) {
             _delete_idx = _idx;
         }

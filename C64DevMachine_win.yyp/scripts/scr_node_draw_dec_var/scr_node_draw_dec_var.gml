@@ -11,10 +11,10 @@ function scr_node_draw_dec_var() {
     var _enc   = (_meta != undefined && variable_struct_exists(_meta, "encoding")) ? _meta.encoding : "byte";
     var _lh = 12;
     var _ly = y + 28;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
    var _name_hov = point_in_rectangle(mouse_x, mouse_y, x + 10, _ly - 2, x + width - 8, _ly + 10);
     draw_set_color(_name_hov ? c_lime : c_yellow);
-    draw_text(x + 10, _ly - 2, _name != "" ? scr_nloc_display_name(_name) : "< SELECT >");
+    draw_text_l(x + 10, _ly - 2, _name != "" ? scr_nloc_display_name(_name) : "< SELECT >");
     _ly += _lh;
     if (_addr >= 0) {
         var _hex = decimal_to_hex(_addr);
@@ -23,19 +23,19 @@ function scr_node_draw_dec_var() {
              var _addr_disp = global.use_hex_display
             ? ("@ $" + string_upper(_hex))
             : ("@ " + string(_addr));
-        draw_text(x + 10, _ly, _addr_disp);
+        draw_text_l(x + 10, _ly, _addr_disp);
     } else {
         draw_set_color(c_red);
-        draw_text(x + 10, _ly, "UNKNOWN NAME");
+        draw_text_l(x + 10, _ly, "UNKNOWN NAME");
     }
     _ly += _lh;
     draw_set_color(make_color_rgb(200, 100, 100));
     switch (_size) {
-        case 1: draw_text(x + 10, _ly, "DEC $" + ((_addr >= 0) ? string_upper(decimal_to_hex(_addr)) : "??"));        break;
-        case 2: draw_text(x + 10, _ly, "DEC LO + BNE HI");  break;
-        default: draw_text(x + 10, _ly, "DEC (1 BYTE)");     break;
+        case 1: draw_text_l(x + 10, _ly, "DEC $" + ((_addr >= 0) ? string_upper(decimal_to_hex(_addr)) : "??"));        break;
+        case 2: draw_text_l(x + 10, _ly, "DEC LO + BNE HI");  break;
+        default: draw_text_l(x + 10, _ly, "DEC (1 BYTE)");     break;
     }
     _ly += _lh;
     draw_set_color(make_color_rgb(80, 80, 120));
-    draw_text(x + 10, _ly, "[" + string_upper(_enc) + "]");
+    draw_text_l(x + 10, _ly, "[" + string_upper(_enc) + "]");
 }

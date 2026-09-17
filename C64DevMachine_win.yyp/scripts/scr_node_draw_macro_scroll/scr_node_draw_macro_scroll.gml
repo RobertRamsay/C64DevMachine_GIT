@@ -47,22 +47,22 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     var _px = _draw_x + 8;
     var _ly = _y + 24 + 4;
     var _lh = 18;
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
 
     // ROW 0 — START ROW
     draw_set_color(c_gray);
-    draw_text(_px,       _ly, "START ROW:");
+    draw_text_l(_px,       _ly, "START ROW:");
     draw_set_color(c_aqua);
-    draw_text(_px + 100, _ly, string(_start_row));
+    draw_text_l(_px + 100, _ly, string(_start_row));
     _ly += _lh;
 
 // ROW 1 — ROW COUNT
     draw_set_color(c_gray);
-    draw_text(_px,       _ly, "ROW COUNT:");
+    draw_text_l(_px,       _ly, "ROW COUNT:");
     draw_set_color(c_aqua);
-    draw_text(_px + 100, _ly, string(_row_count));
+    draw_text_l(_px + 100, _ly, string(_row_count));
     draw_set_color(make_color_rgb(70, 130, 140));
-    draw_text(_px + 130, _ly, string(_start_row) + " to " + string(_start_row + _row_count - 1));
+    draw_text_l(_px + 130, _ly, string(_start_row) + " to " + string(_start_row + _row_count - 1));
     _ly += _lh;
 
     // ROW 2 — COLOUR MODE (click to cycle 0→1→2→0)
@@ -72,44 +72,44 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     else if (_inline_warn)      { _cm_col = c_orange; }
     else                        { _cm_col = c_lime; }
     draw_set_color(c_gray);
-    draw_text(_px, _ly, "COLOUR:");
+    draw_text_l(_px, _ly, "COLOUR:");
     draw_set_color(_cm_col);
-    draw_text(_px + 76, _ly, _col_str);
+    draw_text_l(_px + 76, _ly, _col_str);
     if (_inline_warn) {
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(c_orange);
-        draw_text(_px + 76 + string_width(_col_str) + 6, _ly + 2, "! >8 ROWS");
-        draw_set_font(fnt_c64_code);
+        draw_text_l(_px + 76 + string_width_l(_col_str) + 6, _ly + 2, "! >8 ROWS");
+        draw_set_font_l(fnt_c64_code);
     }
     _ly += _lh;
 
     // ROW 3 — SPEED (click to cycle 1-8)
     draw_set_color(c_gray);
-    draw_text(_px, _ly, "SPEED = 1px per JSR");
+    draw_text_l(_px, _ly, "SPEED = 1px per JSR");
     _ly += _lh;
 
     // ROW 4 — JSR entry points (read-only)
     draw_set_color(c_gray);
-    draw_text(_px, _ly, "JSR LEFT :");
+    draw_text_l(_px, _ly, "JSR LEFT :");
     draw_set_color(c_yellow);
-    draw_text(_px + 90, _ly, "Scroller_L");
+    draw_text_l(_px + 90, _ly, "Scroller_L");
     _ly += _lh;
 
     draw_set_color(c_gray);
-    draw_text(_px, _ly, "JSR RIGHT:");
+    draw_text_l(_px, _ly, "JSR RIGHT:");
     draw_set_color(c_yellow);
-    draw_text(_px + 90, _ly, "Scroller_R");
+    draw_text_l(_px + 90, _ly, "Scroller_R");
     _ly += _lh;
 
     // ROW — SOURCE (click to toggle MAP_DATA <-> META_TILESET), index [6]
     var _mm_src_mode = (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) ? real(instructions[0][6]) : 0;
     draw_set_color(c_gray);
-    draw_text(_px, _ly, "SOURCE:");
+    draw_text_l(_px, _ly, "SOURCE:");
     draw_set_color(c_aqua);
     if (_mm_src_mode == 0) {
-        draw_text(_px + 76, _ly, "MAP_DATA");
+        draw_text_l(_px + 76, _ly, "MAP_DATA");
     } else {
-        draw_text(_px + 76, _ly, "META_TILESET");
+        draw_text_l(_px + 76, _ly, "META_TILESET");
     }
     _ly += _lh;
 
@@ -118,48 +118,48 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
         var _mm_map_index    = (array_length(instructions[0]) > 8 && is_real(instructions[0][8])) ? real(instructions[0][8]) : 0;
 
         draw_set_color(c_gray);
-        draw_text(_px, _ly, "TILESET:");
+        draw_text_l(_px, _ly, "TILESET:");
         draw_set_color(c_yellow);
         if (_mm_tileset_name == "") {
-            draw_text(_px + 76, _ly, "(NONE)");
+            draw_text_l(_px + 76, _ly, "(NONE)");
         } else {
-            draw_text(_px + 76, _ly, _mm_tileset_name);
+            draw_text_l(_px + 76, _ly, _mm_tileset_name);
         }
         _ly += _lh;
 
         draw_set_color(c_gray);
-        draw_text(_px, _ly, "MAP IDX:");
+        draw_text_l(_px, _ly, "MAP IDX:");
         var _mm_map_idx_mode = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 0;
         if (_mm_map_idx_mode == 0) {
             draw_set_color(c_aqua);
-            draw_text(_px + 76, _ly, "LIT");
+            draw_text_l(_px + 76, _ly, "LIT");
             draw_set_color(c_yellow);
-            draw_text(_px + 108, _ly, string(_mm_map_index));
+            draw_text_l(_px + 108, _ly, string(_mm_map_index));
         } else {
             var _mm_map_var = (array_length(instructions[0]) > 12 && is_string(instructions[0][12])) ? string(instructions[0][12]) : "";
             draw_set_color(c_lime);
-            draw_text(_px + 76, _ly, "VAR");
+            draw_text_l(_px + 76, _ly, "VAR");
             draw_set_color(c_yellow);
             if (_mm_map_var == "") {
-                draw_text(_px + 108, _ly, "(SET VAR)");
+                draw_text_l(_px + 108, _ly, "(SET VAR)");
             } else {
-                draw_text(_px + 108, _ly, _mm_map_var);
+                draw_text_l(_px + 108, _ly, _mm_map_var);
             }
         }
         _ly += _lh;
 
         var _mm_base_addr = (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) ? real(instructions[0][9]) : 0x4000;
         draw_set_color(c_gray);
-        draw_text(_px, _ly, "BASE ADDR:");
+        draw_text_l(_px, _ly, "BASE ADDR:");
         draw_set_color(c_aqua);
-        draw_text(_px + 100, _ly, "$" + string_upper(decimal_to_hex(_mm_base_addr)));
+        draw_text_l(_px + 100, _ly, "$" + string_upper(decimal_to_hex(_mm_base_addr)));
         _ly += _lh;
 
         if (_mm_map_idx_mode == 1) {
             draw_set_color(c_gray);
-            draw_text(_px, _ly, "SETMAP:");
+            draw_text_l(_px, _ly, "SETMAP:");
             draw_set_color(c_yellow);
-            draw_text(_px + 76, _ly, "Scroller_MapSet");
+            draw_text_l(_px + 76, _ly, "Scroller_MapSet");
             _ly += _lh;
         }
 
@@ -183,10 +183,10 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
             }
         }
         if (_mm_has_override) {
-            draw_set_font(fnt_c64_tiny);
+            draw_set_font_l(fnt_c64_tiny);
             draw_set_color(c_orange);
-            draw_text(_px, _ly, "! STAMP COLOUR OVERRIDES IGNORED");
-            draw_set_font(fnt_c64_code);
+            draw_text_l(_px, _ly, "! STAMP COLOUR OVERRIDES IGNORED");
+            draw_set_font_l(fnt_c64_code);
             _ly += _lh;
         }
     }
@@ -195,13 +195,13 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     // applies to MAP_DATA source too, not just META_TILESET.
     var _mm_clamp_blank = (array_length(instructions[0]) > 10 && is_real(instructions[0][10])) ? real(instructions[0][10]) : 1;
     draw_set_color(c_gray);
-    draw_text(_px, _ly, "CLR UNUSED:");
+    draw_text_l(_px, _ly, "CLR UNUSED:");
     if (_mm_clamp_blank == 0) {
         draw_set_color(c_orange);
-        draw_text(_px + 104, _ly, "OFF");
+        draw_text_l(_px + 104, _ly, "OFF");
     } else {
         draw_set_color(c_lime);
-        draw_text(_px + 104, _ly, "ON");
+        draw_text_l(_px + 104, _ly, "ON");
     }
     _ly += _lh;
 
@@ -221,15 +221,15 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
         draw_line(_chk_x + 2,  _chk_y + 7,  _chk_x + 6,  _chk_y + 12);
         draw_line(_chk_x + 6,  _chk_y + 12, _chk_x + 12, _chk_y + 2);
     }
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _lbl_col;
     if      (!_sid_present) { _lbl_col = c_orange; }
     else if (_chk_active)   { _lbl_col = c_lime; }
     else                    { _lbl_col = c_gray; }
     draw_set_color(_lbl_col);
-    draw_text(_chk_x + 18, _chk_y + 1,
+    draw_text_l(_chk_x + 18, _chk_y + 1,
               _sid_present ? "USE SID IRQ" : "USE SID IRQ (NO SID NODE)");
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
     _ly += _lh;
 	*/
 
@@ -254,10 +254,10 @@ function scr_node_draw_macro_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     } else {
         _scr2_col = make_color_rgb(180, 140, 40);
     }
-draw_set_font(fnt_c64_tiny);
+draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_scr2_col);
     var _scr2_display = _scr1_draw + 0x0800;
-    draw_text(_px, _ly, "USES $" + string_upper(decimal_to_hex(_scr2_display)) + "-$" + string_upper(decimal_to_hex(_scr2_display + 0x03FF)) + " (SCR BUF 2)");
+    draw_text_l(_px, _ly, "USES $" + string_upper(decimal_to_hex(_scr2_display)) + "-$" + string_upper(decimal_to_hex(_scr2_display + 0x03FF)) + " (SCR BUF 2)");
 
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
 }

@@ -39,7 +39,7 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
     var _c_bad  = make_color_rgb(230, 90, 90);
     var _c_info = make_color_rgb(80, 150, 140);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     // ── Resolve the asset so the node can report real numbers ──
     var _hu = noone;
@@ -56,20 +56,20 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
 
     // ===== HUD asset picker =====
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "HUD:");
+    draw_text_l(_draw_x + 10, _ly, "HUD:");
     if (_asset_name == "" || _asset_name == "[clear]") {
         draw_set_color(_c_bad);
-        draw_text(_draw_x + 62, _ly, "< PICK HUD >");
+        draw_text_l(_draw_x + 62, _ly, "< PICK HUD >");
     } else if (_hu == noone) {
         draw_set_color(_c_bad);
-        draw_text(_draw_x + 62, _ly, _asset_name + " ?");
+        draw_text_l(_draw_x + 62, _ly, _asset_name + " ?");
     } else {
         draw_set_color(_c_ast);
         var _disp = _asset_name;
         if (string_length(_disp) > 14) {
             _disp = string_copy(_disp, 1, 14) + "...";
         }
-        draw_text(_draw_x + 62, _ly, _disp);
+        draw_text_l(_draw_x + 62, _ly, _disp);
     }
     _ly += _lh;
 
@@ -82,27 +82,27 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
                      obj_workspace_manager.input_target_index == 3);
 
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "SCR:");
+    draw_text_l(_draw_x + 10, _ly, "SCR:");
     if (_scr_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 46, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 46, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _sh = decimal_to_hex(_scr_base);
         while (string_length(_sh) < 4) { _sh = "0" + _sh; }
         draw_set_color(c_aqua);
-        draw_text(_draw_x + 46, _ly, "$" + string_upper(_sh));
+        draw_text_l(_draw_x + 46, _ly, "$" + string_upper(_sh));
     }
 
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 120, _ly, "COL:");
+    draw_text_l(_draw_x + 120, _ly, "COL:");
     if (_col_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 156, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 156, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _ch = decimal_to_hex(_col_base);
         while (string_length(_ch) < 4) { _ch = "0" + _ch; }
         draw_set_color(c_aqua);
-        draw_text(_draw_x + 156, _ly, "$" + string_upper(_ch));
+        draw_text_l(_draw_x + 156, _ly, "$" + string_upper(_ch));
     }
     _ly += _lh;
 
@@ -121,7 +121,7 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
     } else {
         draw_set_color(c_gray);
     }
-    draw_text(_cbx + 18, _ly, "AUTO DRAW");
+    draw_text_l(_cbx + 18, _ly, "AUTO DRAW");
 
     var _cbx2 = _draw_x + 120;
     if (_do_col == 1) {
@@ -137,13 +137,13 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
     } else {
         draw_set_color(c_gray);
     }
-    draw_text(_cbx2 + 18, _ly, "COLOUR");
+    draw_text_l(_cbx2 + 18, _ly, "COLOUR");
     _ly += _lh;
 
     // ===== WHAT IT WILL EMIT =====
     if (_hu == noone) {
         draw_set_color(_c_dim);
-        draw_text(_draw_x + 10, _ly, "NO HUD ASSET - NOTHING EMITTED");
+        draw_text_l(_draw_x + 10, _ly, "NO HUD ASSET - NOTHING EMITTED");
         _ly += _lh;
     } else {
         var _hm = _hu.meta;
@@ -154,7 +154,7 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
         }
 
         draw_set_color(_c_info);
-        draw_text(_draw_x + 10, _ly,
+        draw_text_l(_draw_x + 10, _ly,
             string(_hm.hud_w) + "x" + string(_hm.hud_h) + " AT " + string(_hm.hud_x) + "," + string(_hm.hud_y)
             + "   " + string(_bytes) + " BYTES");
         _ly += _lh;
@@ -165,13 +165,13 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
         var _fh = decimal_to_hex(_first);
         while (string_length(_fh) < 4) { _fh = "0" + _fh; }
         draw_set_color(_c_dim);
-        draw_text(_draw_x + 10, _ly, "TOP LEFT $" + string_upper(_fh));
+        draw_text_l(_draw_x + 10, _ly, "TOP LEFT $" + string_upper(_fh));
         _ly += _lh;
 
         // ===== ENTRY POINTS =====
         var _key = "hud" + string(stable_uid) + "_";
         draw_set_color(make_color_rgb(120, 220, 160));
-        draw_text(_draw_x + 10, _ly, _key + "draw");
+        draw_text_l(_draw_x + 10, _ly, _key + "draw");
         _ly += _lh;
 
         var _fields = [];
@@ -182,7 +182,7 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
         for (var _fi = 0; _fi < array_length(_fields); _fi++) {
             if (_shown >= 4) {
                 draw_set_color(_c_dim);
-                draw_text(_draw_x + 10, _ly, "+" + string(array_length(_fields) - _shown) + " MORE");
+                draw_text_l(_draw_x + 10, _ly, "+" + string(array_length(_fields) - _shown) + " MORE");
                 break;
             }
             var _f = _fields[_fi];
@@ -193,12 +193,12 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
             if (real(_f.kind) == 0) {
                 // TEXT: a position, no routine — show the address instead.
                 draw_set_color(_c_dim);
-                draw_text(_draw_x + 10, _ly, _f.name + "  $" + string_upper(_fah));
+                draw_text_l(_draw_x + 10, _ly, _f.name + "  $" + string_upper(_fah));
             } else {
                 draw_set_color(make_color_rgb(120, 220, 160));
-                draw_text(_draw_x + 10, _ly, _key + _f.name);
+                draw_text_l(_draw_x + 10, _ly, _key + _f.name);
                 draw_set_color(_c_dim);
-                draw_text(_draw_x + 150, _ly, "A=VAL");
+                draw_text_l(_draw_x + 150, _ly, "A=VAL");
             }
             _ly += _lh;
             _shown += 1;

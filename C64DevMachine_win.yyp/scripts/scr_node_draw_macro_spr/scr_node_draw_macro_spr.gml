@@ -32,7 +32,7 @@ function scr_node_draw_macro_spr(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     while (string_length(_bank_hex) < 4) _bank_hex = "0" + _bank_hex;
     var _vic_ptr = (_asset_addr / 64) + _mframe;
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _mly = _y + _header_h + 4;
 	
 	    // Define colors locally to match the style
@@ -43,19 +43,19 @@ function scr_node_draw_macro_spr(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     // Row 1: Asset name
     var _name_hover = point_in_rectangle(mouse_x, mouse_y, _draw_x + 70, _mly, _draw_x + width - 8, _mly + 16);
     draw_set_color(_c_edit);
-    draw_text(_draw_x + 10, _mly, "ASSET:");
+    draw_text_l(_draw_x + 10, _mly, "ASSET:");
     draw_set_color(_has_asset ? make_color_rgb(20, 60, 20) : make_color_rgb(60, 20, 20));
     draw_rectangle(_draw_x + 68, _mly + 3, _draw_x + width - 8, _mly + 13  , false);
     draw_set_color(_has_asset ? c_lime : (_name_hover ? c_white : make_color_rgb(200, 80, 80)));
-    draw_text(_draw_x + 72, _mly, _asset_name == "" ? "CLICK TO SET" : _asset_name );
+    draw_text_l(_draw_x + 72, _mly, _asset_name == "" ? "CLICK TO SET" : _asset_name );
     _mly += _line_h;
 
 // Row 2: Address / PTR
-    draw_set_color(_c_dim);   draw_text(_draw_x + 10,  _mly, "ADDR:");
+    draw_set_color(_c_dim);   draw_text_l(_draw_x + 10,  _mly, "ADDR:");
     draw_set_color(_has_asset ? c_aqua : c_gray);
-    draw_text(_draw_x + 60, _mly, "$" + _bank_hex);
+    draw_text_l(_draw_x + 60, _mly, "$" + _bank_hex);
     
-    draw_set_color(_c_dim);   draw_text(_draw_x + 110, _mly, "PTR:");
+    draw_set_color(_c_dim);   draw_text_l(_draw_x + 110, _mly, "PTR:");
     draw_set_color(_has_asset ? c_yellow : c_gray);
 
     // Resolve screen RAM using same priority as compile: MACRO_BMP > MACRO_VIC > default
@@ -69,22 +69,22 @@ if (_spr_vic_bank == 3) _draw_screen_ram = _spr_bank_base + 0x0400;
     var _vic_ptr_byte = ((_asset_addr / 64) + _mframe) & 0xFF;
 
     var _ptr_str = "$" + string_upper(decimal_to_hex(_ptr_mem_loc));
-    draw_text(_draw_x + 146, _mly, _ptr_str);
+    draw_text_l(_draw_x + 146, _mly, _ptr_str);
     
     _mly += _line_h;
 
     // Row 3: Slot / Mode
-    draw_set_color(_c_edit);   draw_text(_draw_x + 10,  _mly, "SPRITE:");
-    draw_set_color(c_yellow); draw_text(_draw_x + 60,  _mly, string(_slot));
+    draw_set_color(_c_edit);   draw_text_l(_draw_x + 10,  _mly, "SPRITE:");
+    draw_set_color(c_yellow); draw_text_l(_draw_x + 60,  _mly, string(_slot));
 
-    draw_set_color(_c_edit);  draw_text(_draw_x + 80,  _mly, "X:");
-    draw_set_color(c_aqua);  draw_text(_draw_x + 95,  _mly, string(_msx));
-    draw_set_color(_c_edit);  draw_text(_draw_x + 140,  _mly, "Y:");
-    draw_set_color(c_aqua);  draw_text(_draw_x + 155, _mly, string(_msy));
+    draw_set_color(_c_edit);  draw_text_l(_draw_x + 80,  _mly, "X:");
+    draw_set_color(c_aqua);  draw_text_l(_draw_x + 95,  _mly, string(_msx));
+    draw_set_color(_c_edit);  draw_text_l(_draw_x + 140,  _mly, "Y:");
+    draw_set_color(c_aqua);  draw_text_l(_draw_x + 155, _mly, string(_msy));
     _mly += _line_h;
 
     // Row 4: Frame navigator
-    draw_set_color(_c_edit); draw_text(_draw_x + 10, _mly, "FRAME:");
+    draw_set_color(_c_edit); draw_text_l(_draw_x + 10, _mly, "FRAME:");
 	_mly+=4
     var _nav_lx = _draw_x + 70;
     var _nav_rx = _draw_x + 110;
@@ -97,7 +97,7 @@ if (_spr_vic_bank == 3) _draw_screen_ram = _spr_bank_base + 0x0400;
     draw_set_color(c_yellow);
     draw_set_halign(fa_left);
 	_mly-=4
-    draw_text(_draw_x + 96, _mly, string(_mframe) + "          $" + string_upper(decimal_to_hex(_vic_ptr_byte)));
+    draw_text_l(_draw_x + 96, _mly, string(_mframe) + "          $" + string_upper(decimal_to_hex(_vic_ptr_byte)));
 	_mly+=4
     draw_set_color(_hr ? c_white : c_aqua);
     draw_triangle(_nav_rx, _mly, _nav_rx, _mly + _nav_hh, _nav_rx + _nav_hw, _mly + _nav_hh * 0.5, false);
@@ -129,14 +129,14 @@ if (_spr_vic_bank == 3) _draw_screen_ram = _spr_bank_base + 0x0400;
         draw_sprite(_asset.meta.spr_sprites[_mframe], 0, _prev_x+2, _prev_y+2);
 		gpu_set_tex_filter(true);
     } else {
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(60, 60, 80));
         draw_set_halign(fa_center);
-        draw_text(_prev_x + _cell_w * 0.5, _prev_y + _cell_h * 0.5 - 4, _has_asset ? "NO CACHE" : "NO ASSET");
+        draw_text_l(_prev_x + _cell_w * 0.5, _prev_y + _cell_h * 0.5 - 4, _has_asset ? "NO CACHE" : "NO ASSET");
         draw_set_halign(fa_left);
     }
 	// Warning message — tell user if sprite bank mismatches active VIC config
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _active_bank = 0;
     var _bank_mismatch = false;
     with (obj_c64_node) {
@@ -165,7 +165,7 @@ if (_spr_vic_bank == 3) _draw_screen_ram = _spr_bank_base + 0x0400;
 //    var _msg = _bank_mismatch
 //        ? ("USING VIC BANK " + string(_spr_bank) + "\nMOVE SPR TO $" + _need_hex + "+\nIF USING CHARMAP")
 //        : ("AUTO BANK SWITCH\nBUT WITH BITMAP IT\nEXPECTS VIC BANK 1");
-//    draw_text(_prev_x + _cell_w + 10, _prev_y, _msg);
+//    draw_text_l(_prev_x + _cell_w + 10, _prev_y, _msg);
 	
     _mly += _cell_h + 4;
 
@@ -174,9 +174,9 @@ if (_spr_vic_bank == 3) _draw_screen_ram = _spr_bank_base + 0x0400;
     //var _sgchk_y = _mly;
     //draw_set_color(_set_globals ? c_lime : make_color_rgb(60, 60, 60));
     //draw_rectangle(_sgchk_x, _sgchk_y, _sgchk_x + 16, _sgchk_y + 16, false);
-    //draw_set_font(fnt_c64_tiny);
+    //draw_set_font_l(fnt_c64_tiny);
     //draw_set_color(_set_globals ? c_lime : c_gray);
-    //draw_text(_sgchk_x + 18, _sgchk_y, "SET GLOBALS");
+    //draw_text_l(_sgchk_x + 18, _sgchk_y, "SET GLOBALS");
     //_mly += 20;
 
   //  var _raw_h = _mly - _y + 4;

@@ -25,9 +25,9 @@ function scr_node_draw_macro_priority(_draw_x) {
     ];
 
     // ---- SPRITES label ----
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, y + 27, "SPRITES:          (ONE SHOT CALL)");
+    draw_text_l(_draw_x + 6, y + 27, "SPRITES:          (ONE SHOT CALL)");
 
     // ---- 8 toggle buttons ----
     var _btn_w = 22, _btn_h = 18, _btn_gap = 2;
@@ -56,9 +56,9 @@ function scr_node_draw_macro_priority(_draw_x) {
             draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
         }
         draw_set_halign(fa_center);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(_on ? c_white : c_gray);
-        draw_text(_bx + _btn_w * 0.5, _row1 + 3, string(_si));
+        draw_text_l(_bx + _btn_w * 0.5, _row1 + 3, string(_si));
         draw_set_halign(fa_left);
     }
 
@@ -77,7 +77,7 @@ function scr_node_draw_macro_priority(_draw_x) {
     draw_set_color(c_white);
     draw_set_halign(fa_center);
    
-    draw_text(_tog_x + _tog_w * 0.5, _row2 -2, (_mode == 1) ? "BEHIND BG" : "IN FRONT");
+    draw_text_l(_tog_x + _tog_w * 0.5, _row2 -2, (_mode == 1) ? "BEHIND BG" : "IN FRONT");
     draw_set_halign(fa_left);
 
 }

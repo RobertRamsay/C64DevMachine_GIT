@@ -11,21 +11,21 @@ function scr_node_draw_bitmap_kla(_draw_x, _y) {
     var _c_dim  = make_color_rgb(120, 120, 120); // Grey (Static)
     var _c_warn = make_color_rgb(200, 60, 60);   // Red (None/Missing)
 
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
     var _ly = _y + _header_h + 4;
 
     // Row 0: LABEL (Assuming editable via separate input logic)
     draw_set_color(_c_edit); 
-    draw_text(_draw_x + 10, _ly, "LABEL:");
+    draw_text_l(_draw_x + 10, _ly, "LABEL:");
     draw_set_color(_label == "" ? _c_warn : c_white);
-    draw_text(_draw_x + 72, _ly, _label == "" ? "NONE" : _label);
+    draw_text_l(_draw_x + 72, _ly, _label == "" ? "NONE" : _label);
     _ly += _line_h;
 
     // Row 1: FILE (Your STEP function uses this row to trigger Address Input)
     draw_set_color(_c_edit); 
-    draw_text(_draw_x + 10, _ly, "FILE:");
+    draw_text_l(_draw_x + 10, _ly, "FILE:");
     draw_set_color(_has_file ? make_color_rgb(80, 200, 80) : _c_warn);
-    draw_text(_draw_x + 60, _ly, _has_file ? kla_filename : "NO FILE");
+    draw_text_l(_draw_x + 60, _ly, _has_file ? kla_filename : "NO FILE");
     _ly += _line_h;
 
     // Row 2: Address range (Purely informational/computed)
@@ -34,16 +34,16 @@ function scr_node_draw_bitmap_kla(_draw_x, _y) {
     while (string_length(_sta_h) < 4) _sta_h = "0" + _sta_h;
     while (string_length(_end_h) < 4) _end_h = "0" + _end_h;
     draw_set_color(make_color_rgb(80, 80, 80)); // Deep grey for secondary info
-    draw_text(_draw_x + 10, _ly, "10001 BYTES  $" + _sta_h + "-$" + _end_h);
+    draw_text_l(_draw_x + 10, _ly, "10001 BYTES  $" + _sta_h + "-$" + _end_h);
     _ly += _line_h;
 
     // Row 3: BG Swatch (Interactive cycling)
     draw_set_color(_c_edit); 
-    draw_text(_draw_x + 10, _ly, "BG:");
+    draw_text_l(_draw_x + 10, _ly, "BG:");
     draw_set_color(scr_c64_pepto_colour(_bg_col));
     draw_rectangle(_draw_x + 46, _ly + 1, _draw_x + 62, _ly + _line_h - 2, false);
     draw_set_color(c_white);
-    draw_text(_draw_x + 68, _ly, string(_bg_col));
+    draw_text_l(_draw_x + 68, _ly, string(_bg_col));
     _ly += _line_h + 4;
 
     // KLA preview thumbnail
@@ -92,7 +92,7 @@ function scr_node_draw_bitmap_kla(_draw_x, _y) {
         draw_rectangle(_draw_x + 10, _ly, _draw_x + 10 + _thumb_w, _ly + _thumb_h, true);
         draw_set_color(make_color_rgb(100, 100, 100));
         draw_set_halign(fa_center);
-        draw_text(_draw_x + 10 + _thumb_w / 2, _ly + _thumb_h / 2 - 6, "NO IMAGE");
+        draw_text_l(_draw_x + 10 + _thumb_w / 2, _ly + _thumb_h / 2 - 6, "NO IMAGE");
         draw_set_halign(fa_left);
         _ly += _thumb_h + 6;
     }
@@ -107,7 +107,7 @@ function scr_node_draw_bitmap_kla(_draw_x, _y) {
     draw_set_color(_btn_hover ? make_color_rgb(100, 180, 255) : make_color_rgb(60, 120, 180));
     draw_rectangle(_btn_x1, _btn_y1, _btn_x2, _btn_y2, false);
     draw_set_color(c_white);
-    draw_text(_btn_x1 + 6, _btn_y1 + 2, "LOAD .KLA FILE");
+    draw_text_l(_btn_x1 + 6, _btn_y1 + 2, "LOAD .KLA FILE");
     _ly += 24;
 
 

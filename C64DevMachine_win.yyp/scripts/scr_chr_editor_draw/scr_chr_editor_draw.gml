@@ -108,11 +108,11 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     draw_rectangle(_ox, _oy, _ox + _grid_w, _oy + _grid_h, true);
 
     // ---- TITLE + MODE — drawn below the grid ----
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_white);
     var _tile_label = (chr_edit_idx == 0) ? "BKG-TILE" : string(chr_edit_idx);
     var _mode_label = (_mc_mode == 2) ? "ECM" : (_mc_mode == 1 ? "MC" : "HR");
-    draw_text(_ox, _oy + _grid_h + 6, "EDITING TILE:\n " + _tile_label
+    draw_text_l(_ox, _oy + _grid_h + 6, "EDITING TILE:\n " + _tile_label
         + "  (" + _mode_label + ")");
 
     // ---- COPY & PASTE HANDLER ----
@@ -433,7 +433,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text(_btn_x + _btn_w * 0.5, _btn_y + 3, "FLIP X");
+    draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, "FLIP X");
     draw_set_halign(fa_left);
     if (_fxhov && mouse_check_button_pressed(mb_left)) {
         scr_chr_undo_push(_asset);
@@ -466,7 +466,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text(_btn_x + _btn_w * 0.5, _btn_y + 3, "FLIP Y");
+    draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, "FLIP Y");
     draw_set_halign(fa_left);
     if (_fyhov && mouse_check_button_pressed(mb_left)) {
         scr_chr_undo_push(_asset);
@@ -488,7 +488,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text(_btn_x + _btn_w * 0.5, _btn_y + 3, "CLEAR");
+    draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, "CLEAR");
     draw_set_halign(fa_left);
     if (_clhov && mouse_check_button_pressed(mb_left)) {
         scr_chr_undo_push(_asset);
@@ -511,7 +511,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
     draw_set_color(chr_fill_mode ? c_black : c_white);
     draw_set_halign(fa_center);
-    draw_text(_btn_x + _btn_w * 0.5, _btn_y + 3, chr_fill_mode ? "FILL: ON" : "FILL");
+    draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, chr_fill_mode ? "FILL: ON" : "FILL");
     draw_set_halign(fa_left);
     if (_flhov && mouse_check_button_pressed(mb_left)) {
         chr_fill_mode = chr_fill_mode ? false : true;
@@ -541,7 +541,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
         _sw_keys   = ["mc_bg", "mc_fg"];
     }
     var _sw_sz = 18;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     for (var _swi = 0; _swi < array_length(_sw_labels); _swi++) {
         var _sw_col_idx = variable_struct_exists(_asset.meta, _sw_keys[_swi])
                         ? variable_struct_get(_asset.meta, _sw_keys[_swi]) : 0;
@@ -550,7 +550,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
         var _sw_x1 = _btn_x + 32;
         var _sw_y1 = _btn_y + _swi * (_sw_sz + 3);
         draw_set_color(_sw_selected ? c_yellow : make_color_rgb(100, 100, 140));
-        draw_text(_btn_x, _sw_y1 + 3, _sw_labels[_swi] + ":");
+        draw_text_l(_btn_x, _sw_y1 + 3, _sw_labels[_swi] + ":");
         draw_set_color(scr_c64_pepto_colour(_sw_col_idx));
         draw_rectangle(_sw_x1, _sw_y1, _sw_x1 + _sw_sz, _sw_y1 + _sw_sz, false);
         draw_set_color(_sw_selected ? c_yellow : c_white);

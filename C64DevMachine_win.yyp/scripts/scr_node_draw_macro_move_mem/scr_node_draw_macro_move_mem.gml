@@ -20,47 +20,47 @@ function scr_node_draw_macro_move_mem(_draw_x, _y) {
     var _c_edit = make_color_rgb(120, 220, 120);
     var _c_dim  = make_color_rgb(120, 120, 120);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _ply = _y + _header_h + 4;
 
     // Row 1: FROM
     draw_set_color(_c_edit);
-    draw_text(_draw_x + 8, _ply, "FROM:");
+    draw_text_l(_draw_x + 8, _ply, "FROM:");
     draw_set_color(c_aqua);
-    draw_text(_draw_x + 48, _ply, "$" + _src_s_h);
+    draw_text_l(_draw_x + 48, _ply, "$" + _src_s_h);
     draw_set_color(_c_dim);
-    draw_text(_draw_x + 100, _ply, "->");
+    draw_text_l(_draw_x + 100, _ply, "->");
     draw_set_color(c_aqua);
-    draw_text(_draw_x + 118, _ply, "$" + _src_e_h);
+    draw_text_l(_draw_x + 118, _ply, "$" + _src_e_h);
     _ply += _line_h;
 
     // Row 2: TO
     draw_set_color(_c_edit);
-    draw_text(_draw_x + 8, _ply, "TO:");
+    draw_text_l(_draw_x + 8, _ply, "TO:");
     draw_set_color(c_yellow);
-    draw_text(_draw_x + 48, _ply, "$" + _dst_h);
+    draw_text_l(_draw_x + 48, _ply, "$" + _dst_h);
     draw_set_color(_c_dim);
-    draw_text(_draw_x + 100, _ply, "->");
+    draw_text_l(_draw_x + 100, _ply, "->");
     draw_set_color(c_yellow);
-    draw_text(_draw_x + 118, _ply, "$" + _dst_e_h);
+    draw_text_l(_draw_x + 118, _ply, "$" + _dst_e_h);
     _ply += _line_h;
 
     // Row 3: byte count
-    draw_set_font(fnt_c64_pico);
+    draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(80, 120, 180));
-    draw_text(_draw_x + 8, _ply, string(_bytes) + " BYTES");
+    draw_text_l(_draw_x + 8, _ply, string(_bytes) + " BYTES");
     if (_capped) {
         draw_set_color(c_red);
-        draw_text(_draw_x + 80, _ply, "(CAPPED @1024)");
+        draw_text_l(_draw_x + 80, _ply, "(CAPPED @1024)");
     }
     _ply += _line_h;
 
     // Row 4: cost preview
     draw_set_color(make_color_rgb(80, 120, 180));
     if (_bytes <= 8) {
-        draw_text(_draw_x + 8, _ply-2, "UNROLLED (" + string(_bytes * 6) + " B)");
+        draw_text_l(_draw_x + 8, _ply-2, "UNROLLED (" + string(_bytes * 6) + " B)");
     } else {
         var _pages = ceil(_bytes / 256);
-        draw_text(_draw_x + 8, _ply-3, "LOOP x" + string(_pages) + " PAGE" + ((_pages > 1) ? "S" : ""));
+        draw_text_l(_draw_x + 8, _ply-3, "LOOP x" + string(_pages) + " PAGE" + ((_pages > 1) ? "S" : ""));
     }
 }

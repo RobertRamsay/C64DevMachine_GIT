@@ -32,10 +32,10 @@ function scr_node_draw_macro_spr_expand(_draw_x) {
     var _btn_sx  = _draw_x + 6;
     var _row1    = y + 44;
     var _row2    = y + 76;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     // ---- X EXPAND label ----
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, y + 27, "X EXPAND:        (ONE SHOT CALL)");
+    draw_text_l(_draw_x + 6, y + 27, "X EXPAND:        (ONE SHOT CALL)");
     // ---- X EXPAND 8 toggle buttons ----
     for (var _si = 0; _si < 8; _si++) {
         var _bx  = _btn_sx + _si * (_btn_w + _btn_gap);
@@ -59,12 +59,12 @@ function scr_node_draw_macro_spr_expand(_draw_x) {
         }
         draw_set_halign(fa_center);
         draw_set_color(_on ? c_white : c_gray);
-        draw_text(_bx + _btn_w * 0.5, _row1 + 1, string(_si));
+        draw_text_l(_bx + _btn_w * 0.5, _row1 + 1, string(_si));
         draw_set_halign(fa_left);
     }
     // ---- Y EXPAND label ----
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, y + 59, "Y EXPAND:");
+    draw_text_l(_draw_x + 6, y + 59, "Y EXPAND:");
     // ---- Y EXPAND 8 toggle buttons ----
     for (var _si = 0; _si < 8; _si++) {
         var _bx  = _btn_sx + _si * (_btn_w + _btn_gap);
@@ -88,7 +88,7 @@ function scr_node_draw_macro_spr_expand(_draw_x) {
         }
         draw_set_halign(fa_center);
         draw_set_color(_on ? c_white : c_gray);
-        draw_text(_bx + _btn_w * 0.5, _row2 + 1, string(_si));
+        draw_text_l(_bx + _btn_w * 0.5, _row2 + 1, string(_si));
         draw_set_halign(fa_left);
     }
     // ---- CLEAR button ----
@@ -110,6 +110,6 @@ function scr_node_draw_macro_spr_expand(_draw_x) {
     }
     draw_set_halign(fa_center);
     draw_set_color(_clr_hov ? c_yellow : c_gray);
-    draw_text(_clr_x + _clr_w * 0.5, _clr_y - 2, "CLEAR");
+    draw_text_l(_clr_x + _clr_w * 0.5, _clr_y - 2, "CLEAR");
     draw_set_halign(fa_left);
 }

@@ -11,25 +11,25 @@ function scr_node_draw_macro_sid_pause(_draw_x, _y) {
     var _ly = _y + 28;
     var _px = _draw_x + 8;
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_left);
 
     draw_set_color(make_color_rgb(140, 160, 200));
-    draw_text(_px, _ly, "STATE:");
+    draw_text_l(_px, _ly, "STATE:");
     if (_state == 1) {
         draw_set_color(make_color_rgb(120, 230, 140));
-        draw_text(_px + 62, _ly, "RESUME");
+        draw_text_l(_px + 62, _ly, "RESUME");
     } else {
         draw_set_color(make_color_rgb(240, 170, 90));
-        draw_text(_px + 62, _ly, "PAUSE");
+        draw_text_l(_px + 62, _ly, "PAUSE");
     }
     _ly += _lh;
 
     draw_set_color(make_color_rgb(90, 90, 100));
     if (_state == 1) {
-        draw_text(_px, _ly, "MUSIC TICK RESUMES");
+        draw_text_l(_px, _ly, "MUSIC TICK RESUMES");
     } else {
-        draw_text(_px, _ly, "SID FREE - IRQ STILL RUNS");
+        draw_text_l(_px, _ly, "SID FREE - IRQ STILL RUNS");
     }
     _ly += _lh;
 
@@ -45,7 +45,7 @@ function scr_node_draw_macro_sid_pause(_draw_x, _y) {
     }
     if (!_has_sid) {
         draw_set_color(make_color_rgb(220, 110, 90));
-        draw_text(_px, _ly, "NO SID / IRQ NODE TO PAUSE");
+        draw_text_l(_px, _ly, "NO SID / IRQ NODE TO PAUSE");
     }
 }
 

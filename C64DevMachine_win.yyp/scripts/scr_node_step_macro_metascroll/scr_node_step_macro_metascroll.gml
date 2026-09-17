@@ -8,11 +8,11 @@ function scr_node_step_macro_metascroll(_draw_x) {
     // Row geometry - must match scr_node_draw_macro_metascroll exactly.
     // The font is set here too, because the value column is measured from the
     // widest label and string_width reports against whatever font is current.
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _lh  = 12;
     var _ly0 = y + 24 + 4;
     var _rx  = _draw_x + width - 8;
-    var _vx  = _draw_x + 8 + string_width("BLANK CH:") + 8;
+    var _vx  = _draw_x + 8 + string_width_l("BLANK CH:") + 8;
 
     // ── The five JSR entry names (rows 10-12) ─────────────
     // The draw event records where each one landed; clicking one drops a

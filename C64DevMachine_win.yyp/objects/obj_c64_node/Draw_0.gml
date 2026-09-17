@@ -302,9 +302,9 @@ switch (node_type) {
         // that away every frame.
         break;
     case "DATA_TEXT":
-        draw_set_font(fnt_c64_code);
+        draw_set_font_l(fnt_c64_code);
         var _txt_raw = (array_length(instructions) > 0) ? string(instructions[0][1]) : "";
-        width = max(global.node_display_width, string_width("\"" + _txt_raw + "\"") + 20);
+        width = max(global.node_display_width, string_width_l("\"" + _txt_raw + "\"") + 20);
         break;
     case "SPR64":
         width = 200;
@@ -370,10 +370,10 @@ if (label_picker_open) {
         draw_rectangle(_px, _py - 16, _px + _pw, _py, false);
         draw_set_color(c_gray);
         draw_rectangle(_px, _py - 16, _px + _pw, _py, true);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
-        draw_text(_px + (_pw * 0.5), _py - 17, _pick_hdr);
+        draw_text_l(_px + (_pw * 0.5), _py - 17, _pick_hdr);
         draw_set_halign(fa_left);
 
         for (var _li = 0; _li < _visible; _li++) {
@@ -384,19 +384,19 @@ if (label_picker_open) {
             draw_set_color(_rhov ? make_color_rgb(40, 80, 60) : make_color_rgb(25, 25, 38));
             draw_rectangle(_px + 1, _ry, _px + _pw - 1, _ry + _row_h, false);
             draw_set_color(_rhov ? c_lime : c_yellow);
-            draw_set_font(fnt_c64_tiny);
-            draw_text(_px + 4, _ry + 2, _alist[_idx]);
+            draw_set_font_l(fnt_c64_tiny);
+            draw_text_l(_px + 4, _ry + 2, _alist[_idx]);
         }
 
         var _up_hov   = point_in_rectangle(mouse_x, mouse_y, _px + 4,        _arrow_y, _px + 20,        _arrow_y + 16);
         var _down_hov = point_in_rectangle(mouse_x, mouse_y, _px + _pw - 20, _arrow_y, _px + _pw - 4,   _arrow_y + 16);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(_up_hov   ? c_white : (label_picker_scroll > 0                 ? c_aqua : c_gray));
-        draw_text(_px + 6,        _arrow_y + 2, "^");
+        draw_text_l(_px + 6,        _arrow_y + 2, "^");
         draw_set_color(_down_hov ? c_white : (_count > _visible + label_picker_scroll ? c_aqua : c_gray));
-        draw_text(_px + _pw - 16, _arrow_y + 2, "v");
+        draw_text_l(_px + _pw - 16, _arrow_y + 2, "v");
         draw_set_color(make_color_rgb(60, 60, 80));
-        draw_text(_px + 24, _arrow_y + 2, string(label_picker_scroll + 1) + "-" +
+        draw_text_l(_px + 24, _arrow_y + 2, string(label_picker_scroll + 1) + "-" +
                   string(min(_count, label_picker_scroll + _visible)) + "/" + string(_count));
 
     } else if (label_picker_mode == "VAR" || label_picker_mode == "VAR_SRC") {
@@ -473,9 +473,9 @@ var _active_list = [];
                                    : make_color_rgb(18, 18, 28)));
             draw_rectangle(_tx, _py, _tx + _tab_w, _py + _tab_h, false);
             draw_set_color(_tab_sel ? c_white : c_gray);
-            draw_set_font(fnt_c64_tiny);
+            draw_set_font_l(fnt_c64_tiny);
             draw_set_halign(fa_center);
-            draw_text(_tx + _tab_w * 0.5, _py + 3,
+            draw_text_l(_tx + _tab_w * 0.5, _py + 3,
                       _tab_labels[_ti] == "UV" ? "UV VARS" : "HW REGS");
             draw_set_halign(fa_left);
         }
@@ -491,10 +491,10 @@ var _active_list = [];
         draw_rectangle(_px, _py - 16, _px + _pw, _py, false);
         draw_set_color(c_gray);
         draw_rectangle(_px, _py - 16, _px + _pw, _py, true);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
-        draw_text(_px + (_pw * 0.5), _py - 17, "CLOSE LIST");
+        draw_text_l(_px + (_pw * 0.5), _py - 17, "CLOSE LIST");
         draw_set_halign(fa_left);
         if (_xhov && mouse_check_button_pressed(mb_left)) {
             label_picker_open = false;
@@ -505,17 +505,17 @@ var _active_list = [];
         }
 
    // Sub-header (and Back button for HW items)
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         if (label_picker_tab == "HW" && global.hw_picker_active_category != -1) {
             draw_set_color(c_aqua);
-            draw_text(_px + 4, _py + _tab_h + 3, "< BACK TO GROUPS");
+            draw_text_l(_px + 4, _py + _tab_h + 3, "< BACK TO GROUPS");
         } else {
             draw_set_color(make_color_rgb(120, 120, 180));
             var _uv_hdr = "UV VARS";
             if (label_picker_word_only) {
                 _uv_hdr = "UV WORD VARS";
             }
-            draw_text(_px + 4, _py + _tab_h + 3, label_picker_tab == "UV" ? _uv_hdr : "HW CATEGORIES");
+            draw_text_l(_px + 4, _py + _tab_h + 3, label_picker_tab == "UV" ? _uv_hdr : "HW CATEGORIES");
         }
 
         // Rows
@@ -527,29 +527,29 @@ var _active_list = [];
             draw_set_color(_rhov ? make_color_rgb(40, 80, 60) : make_color_rgb(25, 25, 38));
             draw_rectangle(_px, _ry, _px + _pw -2 , _ry + _row_h, false);
             draw_set_color(_rhov ? c_lime : c_yellow);
-            draw_set_font(fnt_c64_tiny);
-            draw_text(_px + 4, _ry + 2, _active_list[_idx]);
+            draw_set_font_l(fnt_c64_tiny);
+            draw_text_l(_px + 4, _ry + 2, _active_list[_idx]);
         }
 
         // Scroll arrows
         var _up_hov   = point_in_rectangle(mouse_x, mouse_y, _px + 4,        _arrow_y, _px + 20,        _arrow_y + 16);
         var _down_hov = point_in_rectangle(mouse_x, mouse_y, _px + _pw - 20, _arrow_y, _px + _pw - 4,   _arrow_y + 16);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(_up_hov   ? c_white : (label_picker_scroll > 0                   ? c_aqua : c_gray));
-        draw_text(_px + 6,        _arrow_y + 2, "^");
+        draw_text_l(_px + 6,        _arrow_y + 2, "^");
         draw_set_color(_down_hov ? c_white : (_count > _visible + label_picker_scroll   ? c_aqua : c_gray));
-        draw_text(_px + _pw - 16, _arrow_y + 2, "v");
+        draw_text_l(_px + _pw - 16, _arrow_y + 2, "v");
         draw_set_color(make_color_rgb(60, 60, 80));
-        draw_text(_px + 24, _arrow_y + 2, string(label_picker_scroll + 1) + "-" +
+        draw_text_l(_px + 24, _arrow_y + 2, string(label_picker_scroll + 1) + "-" +
                   string(min(_count, label_picker_scroll + _visible)) + "/" + string(_count));
 
         if (label_picker_filter_char != "") {
-            draw_set_font(fnt_c64_tiny);
+            draw_set_font_l(fnt_c64_tiny);
             draw_set_halign(fa_center);
             draw_set_color(c_lime);
-            draw_text(_px + (_pw * 0.5), _arrow_y + 20, "FILTERED: '" + label_picker_filter_char + "'");
+            draw_text_l(_px + (_pw * 0.5), _arrow_y + 20, "FILTERED: '" + label_picker_filter_char + "'");
             draw_set_color(make_color_rgb(140, 140, 140));
-            draw_text(_px + (_pw * 0.5), _arrow_y + 32, "BACKSPACE TO CLEAR");
+            draw_text_l(_px + (_pw * 0.5), _arrow_y + 32, "BACKSPACE TO CLEAR");
             draw_set_halign(fa_left);
         }
 
@@ -576,10 +576,10 @@ var _active_list = [];
         draw_rectangle(_px, _py - 16, _px + _pw, _py, false);
         draw_set_color(c_gray);
         draw_rectangle(_px, _py - 16, _px + _pw, _py, true);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
-        draw_text(_px + (_pw * 0.5), _py - 17, "CLOSE LIST");
+        draw_text_l(_px + (_pw * 0.5), _py - 17, "CLOSE LIST");
         draw_set_halign(fa_left);
         if (_xhov && mouse_check_button_pressed(mb_left)) {
             label_picker_open = false;
@@ -594,8 +594,8 @@ var _active_list = [];
         draw_set_color(label_picker_group == "LABELS" ? make_color_rgb(40, 80, 120) : make_color_rgb(18, 18, 28));
         draw_rectangle(_px + 2, _py + 2, _px + 68, _py + 19, false);
         draw_set_color(label_picker_group == "LABELS" ? c_white : c_gray);
-        draw_set_font(fnt_c64_tiny);
-        draw_text(_px + 6, _py + 3, "LABELS");
+        draw_set_font_l(fnt_c64_tiny);
+        draw_text_l(_px + 6, _py + 3, "LABELS");
         if (_grp_labels_hov && mouse_check_button_pressed(mb_left)) {
             label_picker_group  = "LABELS";
             label_picker_scroll = 0;
@@ -605,7 +605,7 @@ var _active_list = [];
             draw_set_color(label_picker_group == "KERNAL" ? make_color_rgb(80, 40, 100) : make_color_rgb(18, 18, 28));
             draw_rectangle(_px + 74, _py + 2, _px + 141, _py + 19, false);
             draw_set_color(label_picker_group == "KERNAL" ? c_white : c_gray);
-            draw_text(_px + 78, _py + 3, "KERNAL");
+            draw_text_l(_px + 78, _py + 3, "KERNAL");
             if (_grp_krn_hov && mouse_check_button_pressed(mb_left)) {
                 label_picker_group  = "KERNAL";
                 label_picker_scroll = 0;
@@ -622,8 +622,8 @@ var _active_list = [];
             draw_set_color(label_picker_inc_code ? make_color_rgb(30, 80, 30) : make_color_rgb(40, 30, 50));
             draw_rectangle(_tbx1, _tby1, _tbx2, _tby2, false);
             draw_set_color(_tbhov ? c_white : (label_picker_inc_code ? c_lime : c_gray));
-            draw_set_font(fnt_c64_tiny);
-            draw_text(_tbx1 + 12, _tby1 + 1, "INC CODE");
+            draw_set_font_l(fnt_c64_tiny);
+            draw_text_l(_tbx1 + 12, _tby1 + 1, "INC CODE");
         }
         if (_tbhov && mouse_check_button_pressed(mb_left)) {
             label_picker_inc_code = !label_picker_inc_code;
@@ -720,29 +720,29 @@ var _active_list = [];
             draw_set_color(_rhov ? make_color_rgb(40, 80, 60) : make_color_rgb(25, 25, 38));
             draw_rectangle(_px+1, _ry, _px + _pw-1, _ry + _row_h, false);
             draw_set_color(_rhov ? c_lime : (label_picker_group == "KERNAL" ? make_color_rgb(200, 160, 255) : c_yellow));
-            draw_set_font(fnt_c64_tiny);
-            draw_text(_px + 4, _ry + 2, _row_txt);
+            draw_set_font_l(fnt_c64_tiny);
+            draw_text_l(_px + 4, _ry + 2, _row_txt);
         }
 
         // Scroll arrows
         var _up_hov   = point_in_rectangle(mouse_x, mouse_y, _px + 4,        _arrow_y, _px + 20,        _arrow_y + 16);
         var _down_hov = point_in_rectangle(mouse_x, mouse_y, _px + _pw - 20, _arrow_y, _px + _pw - 4,   _arrow_y + 16);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(_up_hov   ? c_white : (label_picker_scroll > 0                 ? c_aqua : c_gray));
-        draw_text(_px + 6,        _arrow_y + 2, "^");
+        draw_text_l(_px + 6,        _arrow_y + 2, "^");
         draw_set_color(_down_hov ? c_white : (_count > _visible + label_picker_scroll ? c_aqua : c_gray));
-        draw_text(_px + _pw - 16, _arrow_y + 2, "v");
+        draw_text_l(_px + _pw - 16, _arrow_y + 2, "v");
         draw_set_color(make_color_rgb(60, 60, 80));
-        draw_text(_px + 24, _arrow_y + 2, string(label_picker_scroll + 1) + "-" +
+        draw_text_l(_px + 24, _arrow_y + 2, string(label_picker_scroll + 1) + "-" +
                   string(min(_count, label_picker_scroll + _visible)) + "/" + string(_count));
 
         if (label_picker_filter_char != "") {
-            draw_set_font(fnt_c64_tiny);
+            draw_set_font_l(fnt_c64_tiny);
             draw_set_halign(fa_center);
             draw_set_color(c_lime);
-            draw_text(_px + (_pw * 0.5), _arrow_y + 20, "FILTERED: '" + label_picker_filter_char + "'");
+            draw_text_l(_px + (_pw * 0.5), _arrow_y + 20, "FILTERED: '" + label_picker_filter_char + "'");
             draw_set_color(make_color_rgb(140, 140, 140));
-            draw_text(_px + (_pw * 0.5), _arrow_y + 32, "BACKSPACE TO CLEAR");
+            draw_text_l(_px + (_pw * 0.5), _arrow_y + 32, "BACKSPACE TO CLEAR");
             draw_set_halign(fa_left);
         }
     }
@@ -750,7 +750,7 @@ var _active_list = [];
 // =============================================================
 // G. ADDRESS GUTTER
 // =============================================================
-draw_set_font(fnt_c64_code);
+draw_set_font_l(fnt_c64_code);
 draw_set_halign(fa_right);
 
 // Detect dangerous ORG with attached children — fires when ORG resolves
@@ -821,7 +821,7 @@ var _addr_str = "";
         var _end_addr = pc_address + _actual_size;
         var _end_str  = global.use_hex_display ? ("$" + string_upper(decimal_to_hex(_end_addr))) : string(_end_addr);
         if (global.use_hex_display) while (string_length(_end_str) < 5) _end_str = string_insert("0", _end_str, 2);
-        draw_text(x - 12, y + 4, _addr_str);
+        draw_text_l(x - 12, y + 4, _addr_str);
         draw_set_color(c_green);
   
 
@@ -836,22 +836,22 @@ var _addr_str = "";
 		
         var _init_end_str = global.use_hex_display ? ("$" + string_upper(decimal_to_hex(_chain_end))) : string(_chain_end); // keep and move down
         while (string_length(_init_end_str) < 5) _init_end_str = string_insert("0", _init_end_str, 2);
-        draw_text(x - 12, y + 4, _addr_str);
-		draw_set_font(fnt_c64_code);
+        draw_text_l(x - 12, y + 4, _addr_str);
+		draw_set_font_l(fnt_c64_code);
         draw_set_color(c_orange);
-        draw_text(x - 8, y + height-20, "> " + _init_end_str);
+        draw_text_l(x - 8, y + height-20, "> " + _init_end_str);
 		
 
     } else if (node_type == "ORG" && end_address > pc_address && !proxy) {
         var _org_end_str = global.use_hex_display ? ("$" + string_upper(decimal_to_hex(end_address))) : string(end_address);
         while (string_length(_org_end_str) < 5) _org_end_str = string_insert("0", _org_end_str, 2);
-        draw_text(x - 12, y + 4, _addr_str);
-		draw_set_font(fnt_c64_code);
+        draw_text_l(x - 12, y + 4, _addr_str);
+		draw_set_font_l(fnt_c64_code);
         draw_set_color(c_orange);
-        draw_text(x - 8, y + 20, "> " + _org_end_str);
+        draw_text_l(x - 8, y + 20, "> " + _org_end_str);
 
    } else {
-        draw_text(x - 12, y + 4, _addr_str); // common instruction address label in gutter
+        draw_text_l(x - 12, y + 4, _addr_str); // common instruction address label in gutter
     }
 
 }
@@ -1165,7 +1165,7 @@ if (info_badge < 0) {
     }
 }
 
-draw_set_font(fnt_c64_code);
+draw_set_font_l(fnt_c64_code);
 draw_set_color(_text_col);
 if (_lod_header) {
     // Determine if this is a plain opcode node (default draw path)
@@ -1202,9 +1202,9 @@ if (_lod_header) {
                 var _hex_byte = scr_opcode_hex(_op_key);
                 _disp_title   = "Opcode: $" + string_upper(_hex_byte);
                 hdr_cache_opcode = true;
-                draw_set_font(fnt_C64_Angled_tiny);
+                draw_set_font_l(fnt_C64_Angled_tiny);
             } else {
-                draw_set_font(fnt_c64_code);
+                draw_set_font_l(fnt_c64_code);
             }
 
             var _title_max_w = width - 16;
@@ -1213,12 +1213,12 @@ if (_lod_header) {
                 // underneath it. Measured rather than guessed, since the badge
                 // is drawn in a different font from the title.
                 var _tw_font = draw_get_font();
-                draw_set_font(fnt_c64_pico);
-                _title_max_w -= (string_width("[INFO]") + 8);
-                draw_set_font(_tw_font);
+                draw_set_font_l(fnt_c64_pico);
+                _title_max_w -= (string_width_l("[INFO]") + 8);
+                draw_set_font_l(_tw_font);
             }
-            if (string_width(_disp_title) > _title_max_w && string_length(_disp_title) > 1) {
-                while (string_length(_disp_title) > 1 && string_width(_disp_title) > _title_max_w) {
+            if (string_width_l(_disp_title) > _title_max_w && string_length(_disp_title) > 1) {
+                while (string_length(_disp_title) > 1 && string_width_l(_disp_title) > _title_max_w) {
                     _disp_title = string_copy(_disp_title, 1, string_length(_disp_title) - 1);
                 }
             }
@@ -1226,22 +1226,22 @@ if (_lod_header) {
         }
 
         if (hdr_cache_opcode) {
-            draw_set_font(fnt_C64_Angled_tiny);
+            draw_set_font_l(fnt_C64_Angled_tiny);
 			
 	        draw_set_color(_text_col);
-	        draw_text(draw_x + 8, y+4 , hdr_cache_title);
+	        draw_text_l(draw_x + 8, y+4 , hdr_cache_title);
 	        
         } else {
-            draw_set_font(fnt_c64_code);
+            draw_set_font_l(fnt_c64_code);
 			 draw_set_color(merge_colour(_head_col, c_black, 0.5));
-		        draw_text(draw_x + 7, y + 3, hdr_cache_title);
-		        draw_text(draw_x + 9, y + 3, hdr_cache_title);
+		        draw_text_l(draw_x + 7, y + 3, hdr_cache_title);
+		        draw_text_l(draw_x + 9, y + 3, hdr_cache_title);
 		        draw_set_color(_text_col);
-		        draw_text(draw_x + 8, y , hdr_cache_title);
+		        draw_text_l(draw_x + 8, y , hdr_cache_title);
 		       
         }
 
-        draw_set_font(fnt_c64_code);
+        draw_set_font_l(fnt_c64_code);
     }
 
     // ---- [INFO] BADGE ----
@@ -1261,7 +1261,7 @@ if (_lod_header) {
         var _inf_font   = draw_get_font();
         var _inf_halign = draw_get_halign();
 
-        draw_set_font(fnt_c64_pico);
+        draw_set_font_l(fnt_c64_pico);
         draw_set_halign(fa_right);
 
         if (_inf_hot) {
@@ -1269,10 +1269,10 @@ if (_lod_header) {
         } else {
             draw_set_color(merge_colour(_text_col, _head_col, 0.55));
         }
-        draw_text(draw_x + width - 5, y + 5, "[INFO]");
+        draw_text_l(draw_x + width - 5, y + 5, "[INFO]");
 
         draw_set_halign(_inf_halign);
-        draw_set_font(_inf_font);
+        draw_set_font_l(_inf_font);
         draw_set_color(_text_col);
     }
 }
@@ -1367,12 +1367,12 @@ if (_lod_full && (is_connected || string_pos("DATA", node_type) > 0 || node_type
 
         // --- draw from cache ---
         if (!global.any_picker_open) {
-            draw_set_font(fnt_c64_pico);
+            draw_set_font_l(fnt_c64_pico);
             draw_set_color(c_black);
-            draw_text(_stats_x, y + 4, stats_str_bytes);
+            draw_text_l(_stats_x, y + 4, stats_str_bytes);
 			draw_set_color(c_white);
-            draw_text(_stats_x+1, y + 3, stats_str_bytes);
-            draw_set_font(fnt_c64_nano);
+            draw_text_l(_stats_x+1, y + 3, stats_str_bytes);
+            draw_set_font_l(fnt_c64_nano);
             draw_set_color(c_orange);
 			// Display scanline cycle position (e.g., 23/63 for PAL)
             var _pal_part  = "PAL : " + string(stats_pal_line_cyc) + "/63  ";
@@ -1381,14 +1381,14 @@ if (_lod_full && (is_connected || string_pos("DATA", node_type) > 0 || node_type
 			draw_set_halign(fa_center)
 			
 			
-            draw_text(draw_x+(width/2), y + 19, _pal_part + _ntsc_part + stats_str_cyc);
+            draw_text_l(draw_x+(width/2), y + 19, _pal_part + _ntsc_part + stats_str_cyc);
 			draw_set_halign(fa_left)
             var _hy = y + 19;
-            if (stats_str_hint1 != "") { draw_set_color(stats_col_hint1); draw_text(_stats_x+60, _hy, stats_str_hint1); _hy += 10; }
-            if (stats_str_hint2 != "") { draw_set_color(stats_col_hint2); draw_text(_stats_x+60, _hy, stats_str_hint2); }
+            if (stats_str_hint1 != "") { draw_set_color(stats_col_hint1); draw_text_l(_stats_x+60, _hy, stats_str_hint1); _hy += 10; }
+            if (stats_str_hint2 != "") { draw_set_color(stats_col_hint2); draw_text_l(_stats_x+60, _hy, stats_str_hint2); }
         }
     }
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
 }
 
 // =============================================================
@@ -1473,24 +1473,24 @@ if (_lod_body) switch (node_type) {
 		//var _chk_y = y + header_h + 24;
 		 var _chk_y   = y + 60;
 		 
-        draw_set_font(fnt_c64_code);
+        draw_set_font_l(fnt_c64_code);
 			// Never draw Proxy checkbox or text for VARIABLES or HW REGISTERS
 			if (node_title != "HW REGISTERS" && node_title != "VARIABLES") {
 			    draw_set_color(proxy ? c_lime : make_color_rgb(60, 60, 60));
 			    draw_rectangle(_chk_x, _chk_y  , _chk_x + 12, _chk_y + 12 , false);
 			    draw_set_color(c_dkgray);
 			    draw_rectangle(_chk_x, _chk_y, _chk_x + 12, _chk_y + 12, true);
-			    draw_set_font(fnt_c64_tiny);
+			    draw_set_font_l(fnt_c64_tiny);
 			    draw_set_color(proxy ? c_lime : c_dkgray);
-			    draw_text(_chk_x + 16, _chk_y -3 , "PROXY");
-			    draw_set_font(fnt_c64_code);
+			    draw_text_l(_chk_x + 16, _chk_y -3 , "PROXY");
+			    draw_set_font_l(fnt_c64_code);
 			}
 
 				
 				
 				if (node_title != "HW REGISTERS") {
 				    draw_set_color(make_color_rgb(180, 100, 220));
-				    draw_text(draw_x + 10, y + header_h + 10, "START ADDR:");
+				    draw_text_l(draw_x + 10, y + header_h + 10, "START ADDR:");
     
 				    // Variables always show Aqua (Normal) because they shouldn't proxy
 				    var _addr_color = (node_title == "VARIABLES") ? c_aqua : (proxy ? c_lime : c_aqua);
@@ -1504,25 +1504,25 @@ if (_lod_body) switch (node_type) {
     
 				    draw_set_halign(fa_right);
 				    var _org_addr_str = global.use_hex_display ? ("$" + string_upper(_org_hex)) : string(pc_address);
-				    draw_text(draw_x + width - 8, y + header_h + 10, _org_addr_str);
+				    draw_text_l(draw_x + width - 8, y + header_h + 10, _org_addr_str);
 
 				    // Warning glyph + text next to address when in danger state
 				    if (_org_at_zero_with_kids) {
 				        draw_set_halign(fa_left);
-				        draw_set_font(fnt_c64_tiny);
+				        draw_set_font_l(fnt_c64_tiny);
 				        draw_set_color(merge_colour(c_red, c_yellow, abs(sin(current_time * 0.006))));
-				        draw_text(draw_x + 10, y + header_h + 26, "!! NOT SENSING - WILL CRASH !!");
-				        draw_set_font(fnt_c64_code);
+				        draw_text_l(draw_x + 10, y + header_h + 26, "!! NOT SENSING - WILL CRASH !!");
+				        draw_set_font_l(fnt_c64_code);
 				    }
 				    draw_set_halign(fa_left);
 
 
 			        } else {
 			            draw_set_color(make_color_rgb(180, 100, 220));
-			            draw_text(draw_x + 10, y + header_h + 20, "HARDWIRED:");
+			            draw_text_l(draw_x + 10, y + header_h + 20, "HARDWIRED:");
 			            draw_set_color(make_color_rgb(120, 180, 140));
 			            draw_set_halign(fa_right);
-			            draw_text(draw_x + width - 8, y + header_h + 20, "VIC/SID/CIA");
+			            draw_text_l(draw_x + width - 8, y + header_h + 20, "VIC/SID/CIA");
 			            draw_set_halign(fa_left);
 			        }
 					
@@ -1541,7 +1541,7 @@ if (_lod_body) switch (node_type) {
             var _bw = 26;
             var _bh = 16;
             
-            draw_set_font(fnt_c64_tiny);
+            draw_set_font_l(fnt_c64_tiny);
             for (var _bi = 0; _bi < array_length(_btn_defs); _bi++) {
                 var _bdef = _btn_defs[_bi];
                 var _bhov = point_in_rectangle(mouse_x, mouse_y, _bx, _by, _bx + _bw, _by + _bh);
@@ -1553,7 +1553,7 @@ if (_lod_body) switch (node_type) {
                 
                 draw_set_color(c_white);
                 draw_set_halign(fa_center);
-                draw_text(_bx + (_bw * 0.5) - 4, _by , _bdef.lbl);
+                draw_text_l(_bx + (_bw * 0.5) - 4, _by , _bdef.lbl);
                 draw_set_halign(fa_left);
                 
                 _bx += _bw + 14;
@@ -1581,9 +1581,9 @@ if (_lod_body) switch (node_type) {
             var _end_uv = pc_address + _total_bytes ;
             var _end_hex = decimal_to_hex(_end_uv);
             while (string_length(_end_hex) < 4) _end_hex = "0" + _end_hex;
-            draw_set_font(fnt_c64_pico);
+            draw_set_font_l(fnt_c64_pico);
             draw_set_color(make_color_rgb(120, 220, 250));
-            draw_text(draw_x + 6, y + height - 16,
+            draw_text_l(draw_x + 6, y + height - 16,
                 string(_child_count) + " VARS / " + string(_total_bytes) + " BYTES  [$" +
                 string_upper(_org_hex) + "-$" + string_upper(_end_hex) + "]");
         }
@@ -1598,11 +1598,11 @@ if (_lod_body) switch (node_type) {
         for (var _bi = 0; _bi < min(_count, 6); _bi++)
             _preview += "$" + string_upper(string_trim(_bytes[_bi])) + " ";
         if (_count > 6) _preview += "...";
-        draw_set_font(fnt_c64_code);
+        draw_set_font_l(fnt_c64_code);
         draw_set_color(make_color_rgb(180, 220, 255));
-        draw_text(draw_x + 10, y + header_h + 4, string(_count) + " BYTES: ");
+        draw_text_l(draw_x + 10, y + header_h + 4, string(_count) + " BYTES: ");
         draw_set_color(c_yellow);
-        draw_text(draw_x + 110, y + header_h + 4, _preview);
+        draw_text_l(draw_x + 110, y + header_h + 4, _preview);
     } break;
 
     case "SPR64": {
@@ -1665,11 +1665,11 @@ if (_lod_body) switch (node_type) {
         } else {
             draw_set_color(make_color_rgb(40, 40, 40));
             draw_rectangle(_spx, _spy, _spx + (24 * _psize), _spy + (21 * _psize), false);
-            draw_set_font(fnt_c64_tiny);
+            draw_set_font_l(fnt_c64_tiny);
             draw_set_color(c_gray);
             draw_set_halign(fa_center);
-            draw_text(_spx + (24 * _psize * 0.5), _spy + (21 * _psize * 0.5) - 6, "NO DATA");
-            draw_text(_spx + (24 * _psize * 0.5), _spy + (21 * _psize * 0.5) + 4, "CLICK TO IMPORT");
+            draw_text_l(_spx + (24 * _psize * 0.5), _spy + (21 * _psize * 0.5) - 6, "NO DATA");
+            draw_text_l(_spx + (24 * _psize * 0.5), _spy + (21 * _psize * 0.5) + 4, "CLICK TO IMPORT");
             draw_set_halign(fa_left);
         }
 
@@ -1684,9 +1684,9 @@ if (_lod_body) switch (node_type) {
         }
         draw_set_color(c_gray);
         draw_rectangle(_schk_x, _schk_y, _schk_x + 12, _schk_y + 12, true);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(spr_cached_mc ? make_color_rgb(200, 120, 40) : c_gray);
-        draw_text(_schk_x + 16, _schk_y, "MC");
+        draw_text_l(_schk_x + 16, _schk_y, "MC");
 
         var _nav_y     = _schk_y + 22;
         var _nav_lx    = _schk_x;
@@ -1698,10 +1698,10 @@ if (_lod_body) switch (node_type) {
         var _hr = point_in_rectangle(mouse_x, mouse_y, _nav_rx, _nav_y, _nav_rx + _arr_w, _nav_y + _arr_h);
         draw_set_color(_hl ? c_white : c_aqua);
         draw_triangle(_nav_lx + _arr_w, _nav_y, _nav_lx + _arr_w, _nav_y + _arr_h, _nav_lx, _nav_y + (_arr_h * 0.5), false);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(c_yellow);
         draw_set_halign(fa_center);
-        draw_text(_nav_mid_x + 4, _nav_y + 8, string(_frame_idx));
+        draw_text_l(_nav_mid_x + 4, _nav_y + 8, string(_frame_idx));
         draw_set_halign(fa_left);
         draw_set_color(_hr ? c_white : c_aqua);
         draw_triangle(_nav_rx, _nav_y, _nav_rx, _nav_y + _arr_h, _nav_rx + _arr_w, _nav_y + (_arr_h * 0.5), false);
@@ -1714,13 +1714,13 @@ if (_lod_body) switch (node_type) {
         draw_set_color(_ibhov ? make_color_rgb(80, 160, 80) : make_color_rgb(40, 80, 40));
         draw_rectangle(_ibx1, _iby1, _ibx2, _iby2, false);
         draw_set_color(c_white);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
-        draw_text(_ibx1 + (_ibx2 - _ibx1) * 0.5, _iby1 + 4, "IMPORT");
+        draw_text_l(_ibx1 + (_ibx2 - _ibx1) * 0.5, _iby1 + 4, "IMPORT");
         draw_set_halign(fa_left);
         var _src_path = (array_length(instructions[0]) > 2) ? string(instructions[0][2]) : "";
         draw_set_color(_src_path != "" ? make_color_rgb(140, 140, 100) : make_color_rgb(80, 80, 80));
-        draw_text(_ibx1 - 105, _iby1 + 85, (_src_path != "") ? filename_name(_src_path) : "NO FILE");
+        draw_text_l(_ibx1 - 105, _iby1 + 85, (_src_path != "") ? filename_name(_src_path) : "NO FILE");
     } break;
 
     default: {
@@ -1808,7 +1808,7 @@ if (_lod_body) switch (node_type) {
 
             if (node_type == "DATA_TEXT" || _inst_lower == "text" || _inst_lower == "ascii") {
                 draw_set_color(c_lime);
-                draw_text(draw_x + 10, _yy, "\"" + string(_raw_val) + "\"");
+                draw_text_l(draw_x + 10, _yy, "\"" + string(_raw_val) + "\"");
                 continue;
             }
             if (node_type == "COMMENT") {
@@ -1824,9 +1824,9 @@ if (_lod_body) switch (node_type) {
                                  && obj_workspace_manager.input_target_node == id
                                  && obj_workspace_manager.input_target_index == 0);
 
-                    draw_set_font(fnt_c64_code);
+                    draw_set_font_l(fnt_c64_code);
                     draw_set_color(_cm_edit ? c_white : c_yellow);
-                    draw_text_ext(draw_x + 10, _yy, comment_display_text, line_h, -1);
+                    draw_text_ext_l(draw_x + 10, _yy, comment_display_text, line_h, -1);
 
                     if (_cm_edit) {
                         var _cm_cp = scr_comment_caret_pos(id,
@@ -1854,13 +1854,13 @@ if (_lod_body) switch (node_type) {
 // FULL SEQUENTIAL DRAWING BLOCK (No big gaps)
 // =============================================================
 if (node_type == "LABEL") {
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 } else {
-    draw_set_font(fnt_C64_Angled_tiny);
+    draw_set_font_l(fnt_C64_Angled_tiny);
 }
 if (node_type == "LABEL") {
     draw_set_color(c_yellow);
-    draw_text(draw_x + 8, _yy-6, "ID: " + _display_val);
+    draw_text_l(draw_x + 8, _yy-6, "ID: " + _display_val);
     
 // (removed: sid_exit auto-adjust hint no longer needed)
 
@@ -1873,20 +1873,20 @@ if (node_type == "LABEL") {
     var _is_illegal = _cache.illegal;
     draw_set_color(_is_illegal ? make_color_rgb(200, 120, 255) : c_ltgray);
     draw_set_halign(fa_left);
-    draw_text(draw_x + 10, _yy, _prefix);
+    draw_text_l(draw_x + 10, _yy, _prefix);
 
     if (!_is_implied) {
-        var _cursor_x = draw_x + 10 + string_width(_prefix);
+        var _cursor_x = draw_x + 10 + string_width_l(_prefix);
 
         // 2. Draw Editable Value immediately after prefix (Yellow)
         draw_set_color(c_yellow);
-        draw_text(_cursor_x, _yy, _display_val);
+        draw_text_l(_cursor_x, _yy, _display_val);
         
         // 3. Draw Suffix immediately after value (e.g., ",X")
         if (_suffix != "") {
-            _cursor_x += string_width(_display_val);
+            _cursor_x += string_width_l(_display_val);
             draw_set_color(_is_illegal ? make_color_rgb(180, 100, 230) : c_ltgray);
-            draw_text(_cursor_x, _yy, _suffix);
+            draw_text_l(_cursor_x, _yy, _suffix);
         }
     }
 }
@@ -1902,7 +1902,7 @@ if (node_type == "LABEL") {
 // K. BOTTOM-LEFT ADDRESS BADGE
 // =============================================================
 if ((_lod_addresses && node_type == "ORG" || (global.show_stats && _near_centre && string_pos("MACRO", node_type) > 0)) && node_title != "HW REGISTERS" && node_title != "VARIABLES") {
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     if (node_type == "ORG" && node_title == "VARIABLES")  {
         var _total_bytes = 0;
@@ -1917,8 +1917,8 @@ if ((_lod_addresses && node_type == "ORG" || (global.show_stats && _near_centre 
         var _uv_hex  = decimal_to_hex(_end_uv);
         while (string_length(_uv_hex) < 4) _uv_hex = "0" + _uv_hex;
         draw_set_color(make_color_rgb(120, 180, 100));
-		draw_set_font(fnt_c64_code);
-        draw_text(draw_x - 60, y + height - 18, ">$" + string_upper(_uv_hex));
+		draw_set_font_l(fnt_c64_code);
+        draw_text_l(draw_x - 60, y + height - 18, ">$" + string_upper(_uv_hex));
 } else {
         // This handles standard ORGs and Macros
         var _end_addr = pc_address + total_node_size;
@@ -1936,11 +1936,11 @@ if (node_type == "ORG") {
         }
         var _ah = decimal_to_hex(_end_addr);
         while (string_length(_ah) < 4) _ah = "0" + _ah;
-draw_set_font(fnt_c64_code);
+draw_set_font_l(fnt_c64_code);
         var _badge_str = global.use_hex_display ? (">$" + string_upper(_ah)) : ("> " + string(_end_addr));
 
 		draw_set_color((node_type == "ORG") ? c_orange : make_color_rgb(30, 200, 80));
-        if (is_connected || node_type == "ORG") draw_text(draw_x - 60, y + height - 18, _badge_str);
+        if (is_connected || node_type == "ORG") draw_text_l(draw_x - 60, y + height - 18, _badge_str);
     }
 }
 
@@ -1973,7 +1973,7 @@ if (node_type == "COMMENT" && global.comments_visible && !_cw_editing) {
     var _cw_l_hov = _cw_l_on && point_in_rectangle(mouse_x, mouse_y, _cw_lx, _cw_y, _cw_lx + 16, _cw_y + _cw_h);
     var _cw_r_hov = _cw_r_on && point_in_rectangle(mouse_x, mouse_y, _cw_rx, _cw_y, _cw_rx + 16, _cw_y + _cw_h);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
 
@@ -1981,13 +1981,13 @@ if (node_type == "COMMENT" && global.comments_visible && !_cw_editing) {
     draw_rectangle(_cw_lx, _cw_y, _cw_lx + 16, _cw_y + _cw_h, false);
     draw_set_color(_cw_l_on ? (_cw_l_hov ? c_white : make_color_rgb(205, 205, 205))
                             : make_color_rgb(85, 85, 85));
-    draw_text(_cw_lx + 8, _cw_y + _cw_h * 0.5, "<");
+    draw_text_l(_cw_lx + 8, _cw_y + _cw_h * 0.5, "<");
 
     draw_set_color(_cw_r_hov ? make_color_rgb(95, 95, 95) : make_color_rgb(48, 48, 48));
     draw_rectangle(_cw_rx, _cw_y, _cw_rx + 16, _cw_y + _cw_h, false);
     draw_set_color(_cw_r_on ? (_cw_r_hov ? c_white : make_color_rgb(205, 205, 205))
                             : make_color_rgb(85, 85, 85));
-    draw_text(_cw_rx + 8, _cw_y + _cw_h * 0.5, ">");
+    draw_text_l(_cw_rx + 8, _cw_y + _cw_h * 0.5, ">");
 
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
@@ -2054,10 +2054,10 @@ if (array_length(global.selected_nodes) > 1 && instance_exists(global.group_drag
             draw_rectangle(draw_x - 4, y - 4, draw_x + width + 4, y + height + 4, true);
             draw_set_alpha(1.0);
             if (_hov_header && !global.group_drag_active) {
-                draw_set_font(fnt_c64_tiny);
+                draw_set_font_l(fnt_c64_tiny);
                 draw_set_color(_ring_col);
                 draw_set_halign(fa_center);
-                draw_text(draw_x + width * 0.5, y - 14,
+                draw_text_l(draw_x + width * 0.5, y - 14,
                     _is_clone
                     ? "CLONE GROUP (" + string(array_length(global.selected_nodes)) + ")"
                     : "DRAG GROUP (" + string(array_length(global.selected_nodes)) + ") | CTRL=CLONE");
@@ -2139,10 +2139,10 @@ if (_draw_line) {
         draw_set_alpha(0.4);
         draw_rectangle(_lx1, _wpy - 6, _lx2, _wpy + 6, false);
         draw_set_alpha(1.0);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(80, 220, 120));
         draw_set_halign(fa_center);
-        draw_text((_lx1 + _lx2) * 0.5, _wpy + 6, ">> INSERT <<");
+        draw_text_l((_lx1 + _lx2) * 0.5, _wpy + 6, ">> INSERT <<");
         draw_set_halign(fa_left);
     }
 }
@@ -2212,9 +2212,9 @@ if (_any_dragging) {
 			if (_in_latch || _in_chain) {
                 draw_set_alpha(0.8);
                 draw_rectangle(_lx1, _ly1, _lx2, _ly1 + 6, false);
-                draw_set_font(fnt_c64_tiny);
+                draw_set_font_l(fnt_c64_tiny);
                 draw_set_alpha(1.0);
-                draw_text(x + 12, _ly1 + 30, "DROP TO ATTACH");
+                draw_text_l(x + 12, _ly1 + 30, "DROP TO ATTACH");
             }
             draw_set_alpha(1.0);
         }
@@ -2279,9 +2279,9 @@ if (_eligible) {
             if (_oin_latch) {
                 draw_set_alpha(0.8);
                 draw_rectangle(_olx1, _oly1, _olx2, _oly1 + 6, false);
-                draw_set_font(fnt_c64_tiny);
+                draw_set_font_l(fnt_c64_tiny);
                 draw_set_alpha(1.0);
-                draw_text(x + 12, _oly1 + 30, "DROP TO ATTACH");
+                draw_text_l(x + 12, _oly1 + 30, "DROP TO ATTACH");
             }
             draw_set_alpha(1.0);
         }
@@ -2366,7 +2366,7 @@ if (global.debug_hud_active) {
     var _s_conn = is_connected ? "T" : "F";
     var _s_drag = is_dragging ? "T" : "F";
 if (node_type == "INIT") {
-    draw_text(x, y - 60, "claim:" + string(global.drag_claim_taken)
+    draw_text_l(x, y - 60, "claim:" + string(global.drag_claim_taken)
         + " pick:" + string(global.any_picker_open)
         + " edit:" + string(global.canEditNode)
         + " wasEd:" + string(global.was_editor_open));
@@ -2377,9 +2377,9 @@ if (node_type == "INIT") {
     
     // Draw text
     draw_set_color(is_conflicted ? c_red : c_yellow);
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _dbg_str = "CON:" + _s_conn + " DRG:" + _s_drag + " CNF:" + _s_conf + " | PC:$" + _hx + " SZ:" + string(total_node_size);
-    draw_text(draw_x + 4, _dbg_y + 4, _dbg_str);
+    draw_text_l(draw_x + 4, _dbg_y + 4, _dbg_str);
 }
 
 // =============================================================
@@ -2413,11 +2413,11 @@ if (node_type == "INIT" && array_length(instructions) > 0) {
     draw_set_color(_br_col);
     draw_rectangle(_btn_x1, _btn_y1, _btn_x2, _btn_y2, true);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
     draw_set_color(_txt_col);
-    draw_text(_btn_x1 + _btn_w * 0.5, _btn_y1 + _btn_h * 0.5, "CLEAR");
+    draw_text_l(_btn_x1 + _btn_w * 0.5, _btn_y1 + _btn_h * 0.5, "CLEAR");
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
     draw_set_alpha(1.0);
@@ -2427,12 +2427,12 @@ if (node_type == "INIT" && array_length(instructions) > 0) {
 // INIT NODE EMPTY-STATE HINT
 // =============================================================
 if (node_type == "INIT" && array_length(instructions) == 0) {
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
     draw_set_alpha(0.4);
     draw_set_color(c_white);
-    draw_text(x + width * 0.5, (y + height * 0.5) +6, "START CODING\nBELOW");
+    draw_text_l(x + width * 0.5, (y + height * 0.5) +6, "START CODING\nBELOW");
     draw_set_alpha(1.0);
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
@@ -2459,7 +2459,7 @@ if (node_type == "INIT") {
         var _rts_y       = y + header_h + (array_length(instructions) * 12) + 8;
         var _font_before = draw_get_font();
 
-        draw_set_font(fnt_C64_Angled_tiny);
+        draw_set_font_l(fnt_C64_Angled_tiny);
         draw_set_halign(fa_left);
         draw_set_valign(fa_top);
 
@@ -2468,12 +2468,12 @@ if (node_type == "INIT") {
         // same column and reads as the same kind of thing. Only the "(AUTO)"
         // note is dimmed, to mark where it came from.
         draw_set_color(c_ltgray);
-        draw_text(draw_x + 10, _rts_y, "RTS");
+        draw_text_l(draw_x + 10, _rts_y, "RTS");
         draw_set_color(make_color_rgb(90, 120, 80));
-        draw_text(draw_x + 54, _rts_y, "(AUTO)");
+        draw_text_l(draw_x + 54, _rts_y, "(AUTO)");
 
         draw_set_color(c_white);
-        draw_set_font(_font_before);
+        draw_set_font_l(_font_before);
     }
 }
 
@@ -2555,10 +2555,10 @@ if ((node_type == "ORG" || node_type == "INIT") && scr_org_has_children(id)) {
     var _halign_b = draw_get_halign();
     var _valign_b = draw_get_valign();
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
-    draw_text(_fr.x1 + ((_fr.x2 - _fr.x1) / 2), _fr.y1 + ((_fr.y2 - _fr.y1) / 2), _fsym);
+    draw_text_l(_fr.x1 + ((_fr.x2 - _fr.x1) / 2), _fr.y1 + ((_fr.y2 - _fr.y1) / 2), _fsym);
 
     // A fold must never be a black hole: say how much is behind it, what it
     // costs, and where it lives.
@@ -2576,10 +2576,10 @@ if ((node_type == "ORG" || node_type == "INIT") && scr_org_has_children(id)) {
 
         draw_set_halign(fa_left);
         draw_set_color(make_color_rgb(190, 160, 220));
-        draw_text(_fr.x2 + 6, _fr.y1 + ((_fr.y2 - _fr.y1) / 2), _ftxt);
+        draw_text_l(_fr.x2 + 6, _fr.y1 + ((_fr.y2 - _fr.y1) / 2), _ftxt);
     }
 
-    draw_set_font(_font_b);
+    draw_set_font_l(_font_b);
     draw_set_halign(_halign_b);
     draw_set_valign(_valign_b);
 }

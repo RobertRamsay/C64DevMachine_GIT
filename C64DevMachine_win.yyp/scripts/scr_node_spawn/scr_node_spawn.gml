@@ -1091,17 +1091,17 @@ function scr_comment_caret_at(_node, _bx, _by, _mx, _my) {
     if (_li >= _n) { _li = _n - 1; }
 
     var _font = draw_get_font();
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
     var _line = _disp[_li];
     var _col  = string_length(_line);
     for (var _c = 0; _c <= string_length(_line); _c++) {
         // Land on whichever character boundary the pointer is nearest.
-        if (_bx + string_width(string_copy(_line, 1, _c)) >= _mx - 3) {
+        if (_bx + string_width_l(string_copy(_line, 1, _c)) >= _mx - 3) {
             _col = _c;
             break;
         }
     }
-    draw_set_font(_font);
+    draw_set_font_l(_font);
 
     return clamp(_starts[_li] + _col, 0, _len);
 }
@@ -1128,9 +1128,9 @@ function scr_comment_caret_pos(_node, _caret, _bx, _by) {
     if (_col > string_length(_disp[_li])) { _col = string_length(_disp[_li]); }
 
     var _font = draw_get_font();
-    draw_set_font(fnt_c64_code);
-    _out.cx = _bx + string_width(string_copy(_disp[_li], 1, _col));
-    draw_set_font(_font);
+    draw_set_font_l(fnt_c64_code);
+    _out.cx = _bx + string_width_l(string_copy(_disp[_li], 1, _col));
+    draw_set_font_l(_font);
     _out.cy   = _by + (_li * 18);
     _out.line = _li;
     return _out;
@@ -1143,7 +1143,7 @@ function scr_comment_sync_layout(_node) {
     var _raw = (array_length(_node.instructions) > 0)
         ? string(_node.instructions[0][1]) : "";
     var _font = draw_get_font();
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
     // A comment is 1, 2 or 3 standard node widths across - whole steps only,
     // so a row of them still lines up with everything else on the canvas.
     // The wrap width follows the node, which is what makes widening reflow
@@ -1167,10 +1167,10 @@ function scr_comment_sync_layout(_node) {
         for (var _i = 0; _i < array_length(_lines); _i++) {
             var _rest     = _lines[_i];
             var _line_raw = _raw_pos;
-            while (string_length(_rest) > _max_ch || string_width(_rest) > _text_w) {
+            while (string_length(_rest) > _max_ch || string_width_l(_rest) > _text_w) {
                 // Limit by both character count and actual glyph width.
                 var _fit = min(_max_ch, string_length(_rest));
-                while (_fit > 1 && string_width(string_copy(_rest, 1, _fit)) > _text_w) _fit--;
+                while (_fit > 1 && string_width_l(string_copy(_rest, 1, _fit)) > _text_w) _fit--;
                 var _space = string_last_pos(" ", string_copy(_rest, 1, _fit + 1));
                 var _take = (_space > 1) ? _space - 1 : _fit;
                 array_push(_wrapped, string_copy(_rest, 1, _take));
@@ -1194,7 +1194,7 @@ function scr_comment_sync_layout(_node) {
         _node.comment_text_width = _text_w;
         _node.height_dirty = true;
     }
-    var _height = ceil((28 + max(18, string_height_ext(_node.comment_display_text, 18, -1)) + 10) / 20) * 20;
+    var _height = ceil((28 + max(18, string_height_ext_l(_node.comment_display_text, 18, -1)) + 10) / 20) * 20;
     if (_node.height != _height) {
         _node.height_dirty = true;
         // Use the normal spine repack, not a second delta push on the next Step.
@@ -1204,5 +1204,5 @@ function scr_comment_sync_layout(_node) {
     _node.width = _node_w;
     _node.height = _height;
     _node.cached_height = _height;
-    draw_set_font(_font);
+    draw_set_font_l(_font);
 }

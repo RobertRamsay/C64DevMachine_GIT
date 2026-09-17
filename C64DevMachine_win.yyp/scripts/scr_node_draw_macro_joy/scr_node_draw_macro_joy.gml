@@ -7,23 +7,23 @@ function scr_node_draw_macro_joy(_draw_x, _y) {
     while (string_length(_zp_hex) < 2) _zp_hex = "0" + _zp_hex;
 
 var _c_edit = make_color_rgb(120, 220, 120); // Light Green (Interactive)
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _jly = _y + _header_h + 4;
 
     // Header UI: Port and ZP
     draw_set_color(_c_edit);
-    draw_text(_draw_x + 8, _jly, "PORT:                           (JSR CALLS)");
+    draw_text_l(_draw_x + 8, _jly, "PORT:                           (JSR CALLS)");
     draw_set_color(_port == 1 ? c_yellow : c_gray);
-    draw_text(_draw_x + 60, _jly, "1");
+    draw_text_l(_draw_x + 60, _jly, "1");
     draw_set_color(_port == 2 ? c_yellow : c_gray);
-    draw_text(_draw_x + 80, _jly, "2");
+    draw_text_l(_draw_x + 80, _jly, "2");
 
 
     _jly += _line_h+2;
 
-    draw_text(_draw_x + 8,  _jly, "ZP:");
+    draw_text_l(_draw_x + 8,  _jly, "ZP:");
     draw_set_color(c_aqua);
-    draw_text(_draw_x + 60, _jly, "$" + _zp_hex);
+    draw_text_l(_draw_x + 60, _jly, "$" + _zp_hex);
     _jly += _line_h+8;
 
     // Grid Layout Definition
@@ -40,7 +40,7 @@ var _c_edit = make_color_rgb(120, 220, 120); // Light Green (Interactive)
         [2, 1, 4, 3, 18]
     ];
 
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     var _col_w = (width - 4) / 5;
 
     for (var _r = 0; _r < array_length(_grid_idx); _r++) {
@@ -55,7 +55,7 @@ var _c_edit = make_color_rgb(120, 220, 120); // Light Green (Interactive)
 
 
             draw_set_color(_enabled ? c_yellow : make_color_rgb(110, 90, 90));
-            draw_text(_draw_x + 6 + (_c * _col_w), _jly, _label);
+            draw_text_l(_draw_x + 6 + (_c * _col_w), _jly, _label);
         }
         _jly += _line_h+2;
     }

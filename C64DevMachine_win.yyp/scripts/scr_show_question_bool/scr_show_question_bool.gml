@@ -7,7 +7,7 @@
 /// @param {String} _msg  the question text to display
 /// @return {Bool} true if the user chose Yes, false otherwise
 function scr_show_question_bool(_msg) {
-    var _result = show_question(_msg);
+    var _result = show_question(L(_msg));
     if (os_type == os_macosx) {
         return (string(_result) == "Yes");
     }

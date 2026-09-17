@@ -1388,17 +1388,17 @@ function scr_cbc_convert() {
 /// Step for the hit test as well as from Draw.
 function scr_cbc_message_rect(_txt) {
     var _font_before = draw_get_font();
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
 
     var _lines = string_split(string(_txt), "\n");
     var _tw    = 0;
     for (var _i = 0; _i < array_length(_lines); _i++) {
-        _tw = max(_tw, string_width(_lines[_i]));
+        _tw = max(_tw, string_width_l(_lines[_i]));
     }
     var _lh = string_height("A");
     var _th = _lh * max(1, array_length(_lines));
 
-    draw_set_font(_font_before);
+    draw_set_font_l(_font_before);
 
     var _gw = global.gui_w;
     var _gh = display_get_gui_height();
@@ -1499,15 +1499,15 @@ function scr_cbc_draw_button() {
         var _halign_before = draw_get_halign();
         var _valign_before = draw_get_valign();
 
-        draw_set_font(fnt_C64_Angled);
+        draw_set_font_l(fnt_C64_Angled);
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
 
         draw_set_color(_col);
         draw_rectangle(_r.x + 2, _r.y + 2, _r.x + _r.w - 2, _r.y + _r.h - 2, true);
-        draw_text_transformed(_r.x + (_r.w / 2), _r.y + (_r.h / 2), _lbl, 1.0, 1.0, 0);
+        draw_text_transformed_l(_r.x + (_r.w / 2), _r.y + (_r.h / 2), _lbl, 1.0, 1.0, 0);
 
-        draw_set_font(_font_before);
+        draw_set_font_l(_font_before);
         draw_set_halign(_halign_before);
         draw_set_valign(_valign_before);
         draw_set_color(c_white);

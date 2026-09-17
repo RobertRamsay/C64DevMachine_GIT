@@ -48,9 +48,9 @@ function scr_node_draw_macro_seek(_draw_x) {
     }
 
     // ---- SPRITES label ----
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, y + 28, "SPRITES:          (ONE SHOT CALL)");
+    draw_text_l(_draw_x + 6, y + 28, "SPRITES:          (ONE SHOT CALL)");
 
     // ---- 8 toggle buttons ----
     var _btn_w   = 22;
@@ -81,13 +81,13 @@ function scr_node_draw_macro_seek(_draw_x) {
             draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
         }
         draw_set_halign(fa_center);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         if (_on) {
             draw_set_color(c_white);
         } else {
             draw_set_color(c_gray);
         }
-        draw_text(_bx + _btn_w * 0.5, _row1 + 1, string(_si));
+        draw_text_l(_bx + _btn_w * 0.5, _row1 + 1, string(_si));
         draw_set_halign(fa_left);
     }
 
@@ -105,9 +105,9 @@ function scr_node_draw_macro_seek(_draw_x) {
 
     // ---- TARGET X row (y+70) ----
     var _row2 = y + 70;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, _row2, "TGT X:");
+    draw_text_l(_draw_x + 6, _row2, "TGT X:");
 
     var _tx_hov = point_in_rectangle(mouse_x, mouse_y, _val_x1, _row2, _val_x2, _row2 + 18);
     if (_tgt_locked) {
@@ -136,23 +136,23 @@ function scr_node_draw_macro_seek(_draw_x) {
     draw_rectangle(_val_x1-17, _row2, _val_x2+17, _row2 + 18, true);
     if (_tgt_locked) {
         draw_set_color(make_color_rgb(110, 110, 130));
-        draw_set_font(fnt_c64_pico);
+        draw_set_font_l(fnt_c64_pico);
         draw_set_halign(fa_center);
-        draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row2 + 3, "SPR " + string(_tspr - 1));
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row2 + 3, "SPR " + string(_tspr - 1));
     } else if (_tx_uv == 1) {
         draw_set_color(c_yellow);
-        draw_set_font(fnt_c64_pico);
+        draw_set_font_l(fnt_c64_pico);
         draw_set_halign(fa_center);
         if (_tx_vnm != "") {
-            draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row2 + 3, _tx_vnm);
+            draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row2 + 3, _tx_vnm);
         } else {
-            draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row2 + 3, "<PICK>");
+            draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row2 + 3, "<PICK>");
         }
     } else {
         draw_set_color(make_color_rgb(100, 180, 220));
-        draw_set_font(fnt_C64_Angled_tiny);
+        draw_set_font_l(fnt_C64_Angled_tiny);
         draw_set_halign(fa_center);
-        draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row2 + 2, string(_tx));
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row2 + 2, string(_tx));
     }
     draw_set_halign(fa_left);
 
@@ -169,15 +169,15 @@ function scr_node_draw_macro_seek(_draw_x) {
         draw_set_color(make_color_rgb(140, 140, 160));
     }
     draw_set_halign(fa_center);
-    draw_set_font(fnt_c64_tiny);
-    draw_text(_var_x + _var_w * 0.5, _row2 + 2, "VAR");
+    draw_set_font_l(fnt_c64_tiny);
+    draw_text_l(_var_x + _var_w * 0.5, _row2 + 2, "VAR");
     draw_set_halign(fa_left);
 
     // ---- TARGET Y row (y+92) ----
     var _row3 = y + 92;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, _row3, "TGT Y:");
+    draw_text_l(_draw_x + 6, _row3, "TGT Y:");
 
     var _ty_hov = point_in_rectangle(mouse_x, mouse_y, _val_x1, _row3, _val_x2, _row3 + 18);
     if (_tgt_locked) {
@@ -206,23 +206,23 @@ function scr_node_draw_macro_seek(_draw_x) {
     draw_rectangle(_val_x1-17, _row3, _val_x2+17, _row3 + 18, true);
     if (_tgt_locked) {
         draw_set_color(make_color_rgb(110, 110, 130));
-        draw_set_font(fnt_c64_pico);
+        draw_set_font_l(fnt_c64_pico);
         draw_set_halign(fa_center);
-        draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row3 + 3, "SPR " + string(_tspr - 1));
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row3 + 3, "SPR " + string(_tspr - 1));
     } else if (_ty_uv == 1) {
         draw_set_color(c_yellow);
-        draw_set_font(fnt_c64_pico);
+        draw_set_font_l(fnt_c64_pico);
         draw_set_halign(fa_center);
         if (_ty_vnm != "") {
-            draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row3 + 3, _ty_vnm);
+            draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row3 + 3, _ty_vnm);
         } else {
-            draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row3 + 3, "<PICK>");
+            draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row3 + 3, "<PICK>");
         }
     } else {
         draw_set_color(make_color_rgb(100, 180, 220));
-        draw_set_font(fnt_C64_Angled_tiny);
+        draw_set_font_l(fnt_C64_Angled_tiny);
         draw_set_halign(fa_center);
-        draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row3 + 2, string(_ty));
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row3 + 2, string(_ty));
     }
     draw_set_halign(fa_left);
 
@@ -239,15 +239,15 @@ function scr_node_draw_macro_seek(_draw_x) {
         draw_set_color(make_color_rgb(140, 140, 160));
     }
     draw_set_halign(fa_center);
-    draw_set_font(fnt_c64_tiny);
-    draw_text(_var_x + _var_w * 0.5, _row3 + 2, "VAR");
+    draw_set_font_l(fnt_c64_tiny);
+    draw_text_l(_var_x + _var_w * 0.5, _row3 + 2, "VAR");
     draw_set_halign(fa_left);
 
     // ---- SPEED row (y+114) ----
     var _row4 = y + 114;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, _row4, "SPEED:");
+    draw_text_l(_draw_x + 6, _row4, "SPEED:");
 
     var _spd_hov = point_in_rectangle(mouse_x, mouse_y, _val_x1, _row4, _val_x2, _row4 + 18);
     if (_spd_hov) {
@@ -259,9 +259,9 @@ function scr_node_draw_macro_seek(_draw_x) {
     draw_set_color(make_color_rgb(60, 100, 60));
     draw_rectangle(_val_x1, _row4, _val_x2, _row4 + 18, true);
     draw_set_color(make_color_rgb(100, 220, 100));
-    draw_set_font(fnt_C64_Angled_tiny);
+    draw_set_font_l(fnt_C64_Angled_tiny);
     draw_set_halign(fa_center);
-    draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row4 + 2, string(_spd));
+    draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row4 + 2, string(_spd));
     draw_set_halign(fa_left);
 
     // MODE toggle (4-DIR / 8-DIR / VECTOR)
@@ -269,19 +269,19 @@ function scr_node_draw_macro_seek(_draw_x) {
     draw_rectangle(_tog_x, _row4, _tog_x + _tog_w + _var_w + 4, _row4 + 16, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _mode_txt = "4-DIR";
     if (_mode != 0) {
         _mode_txt = "8-DIR";
     }
-    draw_text(_tog_x + (_tog_w + _var_w + 4) * 0.5, _row4 + 2, _mode_txt);
+    draw_text_l(_tog_x + (_tog_w + _var_w + 4) * 0.5, _row4 + 2, _mode_txt);
     draw_set_halign(fa_left);
 
     // ---- NEAR DIST row (y+136) ----
     var _row5 = y + 136;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, _row5, "NEAR:");
+    draw_text_l(_draw_x + 6, _row5, "NEAR:");
 
     var _nd_hov = point_in_rectangle(mouse_x, mouse_y, _val_x1, _row5, _val_x2, _row5 + 18);
     if (_nd_hov) {
@@ -293,12 +293,12 @@ function scr_node_draw_macro_seek(_draw_x) {
     draw_set_color(make_color_rgb(120, 100, 50));
     draw_rectangle(_val_x1, _row5, _val_x2, _row5 + 18, true);
     draw_set_color(make_color_rgb(230, 200, 100));
-    draw_set_font(fnt_C64_Angled_tiny);
+    draw_set_font_l(fnt_C64_Angled_tiny);
     draw_set_halign(fa_center);
     if (_ndist == 0) {
-        draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row5 + 2, "OFF");
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row5 + 2, "OFF");
     } else {
-        draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row5 + 2, string(_ndist));
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row5 + 2, string(_ndist));
     }
     draw_set_halign(fa_left);
 
@@ -319,16 +319,16 @@ function scr_node_draw_macro_seek(_draw_x) {
     } else {
         draw_set_color(make_color_rgb(100, 220, 100));
     }
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_center);
-    draw_text(_tog_x + (_tog_w + _var_w + 4) * 0.5, _row5 + 2, "+SPD " + string(_spdn));
+    draw_text_l(_tog_x + (_tog_w + _var_w + 4) * 0.5, _row5 + 2, "+SPD " + string(_spdn));
     draw_set_halign(fa_left);
 
    // ---- DIST OUT row (y+158) ----
     var _row6 = y + 158;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, _row6, "DIST>");
+    draw_text_l(_draw_x + 6, _row6, "DIST>");
 
     var _out_bx1 = _draw_x + 50;
     var _out_bx2 = _out_bx1 + _but_width_n + 30;
@@ -353,26 +353,26 @@ function scr_node_draw_macro_seek(_draw_x) {
         draw_set_color(make_color_rgb(70, 70, 90));
     }
     draw_rectangle(_out_bx1, _row6, _out_bx2, _row6 + 18, true);
-    draw_set_font(fnt_C64_Angled_tiny);
+    draw_set_font_l(fnt_C64_Angled_tiny);
     draw_set_halign(fa_center);
     if (_dist_uv == 1) {
         draw_set_color(c_yellow);
         if (_dist_vnm != "") {
-            draw_text(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row6 + 3, _dist_vnm);
+            draw_text_l(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row6 + 3, _dist_vnm);
         } else {
-            draw_text(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row6 + 3, "<PICK>");
+            draw_text_l(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row6 + 3, "<PICK>");
         }
     } else {
         draw_set_color(make_color_rgb(120, 120, 150));
-        draw_text(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row6 + 3, "OFF");
+        draw_text_l(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row6 + 3, "OFF");
     }
     draw_set_halign(fa_left);
 
     // ---- ANGLE OUT row (y+180) ----
     var _row7 = y + 180;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, _row7, "ANG>");
+    draw_text_l(_draw_x + 6, _row7, "ANG>");
 
     var _ang_hov = point_in_rectangle(mouse_x, mouse_y, _out_bx1, _row7, _out_bx2, _row7 + 18);
     if (_ang_uv == 1) {
@@ -395,18 +395,18 @@ function scr_node_draw_macro_seek(_draw_x) {
         draw_set_color(make_color_rgb(70, 70, 90));
     }
     draw_rectangle(_out_bx1, _row7, _out_bx2, _row7 + 18, true);
-    draw_set_font(fnt_C64_Angled_tiny);
+    draw_set_font_l(fnt_C64_Angled_tiny);
     draw_set_halign(fa_center);
     if (_ang_uv == 1) {
         draw_set_color(c_yellow);
         if (_ang_vnm != "") {
-            draw_text(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row7 + 3, _ang_vnm);
+            draw_text_l(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row7 + 3, _ang_vnm);
         } else {
-            draw_text(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row7 + 3, "<PICK>");
+            draw_text_l(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row7 + 3, "<PICK>");
         }
     } else {
         draw_set_color(make_color_rgb(120, 120, 150));
-        draw_text(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row7 + 3, "OFF");
+        draw_text_l(_out_bx1 + (_out_bx2 - _out_bx1) / 2, _row7 + 3, "OFF");
     }
     draw_set_halign(fa_left);
 
@@ -428,13 +428,13 @@ function scr_node_draw_macro_seek(_draw_x) {
         draw_line(_draw_x + 8,  _row8 + 6,  _draw_x + 11, _row8 + 10);
         draw_line(_draw_x + 11, _row8 + 10, _draw_x + 17, _row8 + 2);
     }
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     if (_widex) {
         draw_set_color(make_color_rgb(100, 180, 240));
     } else {
         draw_set_color(make_color_rgb(90, 100, 120));
     }
-    draw_text(_draw_x + 6 + _chk_sz + 5, _row8, "9TH BIT");
+    draw_text_l(_draw_x + 6 + _chk_sz + 5, _row8, "9TH BIT");
 
     // WRAP/BOUNDED toggle
     var _bnd_x = _draw_x + 90;
@@ -446,11 +446,11 @@ function scr_node_draw_macro_seek(_draw_x) {
     draw_rectangle(_bnd_x, _row8, _bnd_x + 70, _row8 + 16, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     if (_bound == 1) {
-        draw_text(_bnd_x + 35, _row8 + 2, "BOUNDED");
+        draw_text_l(_bnd_x + 35, _row8 + 2, "BOUNDED");
     } else {
-        draw_text(_bnd_x + 35, _row8 + 2, "WRAP");
+        draw_text_l(_bnd_x + 35, _row8 + 2, "WRAP");
     }
     draw_set_halign(fa_left);
 
@@ -470,11 +470,11 @@ function scr_node_draw_macro_seek(_draw_x) {
         draw_set_color(make_color_rgb(110, 120, 140));
     }
     draw_set_halign(fa_center);
-    draw_set_font(fnt_c64_pico);
+    draw_set_font_l(fnt_c64_pico);
     if (_tspr != 0) {
-        draw_text(_tspr_x + 21, _row6 + 2, "TARGET\nSPRITE\n  " + string(_tspr - 1));
+        draw_text_l(_tspr_x + 21, _row6 + 2, "TARGET\nSPRITE\n  " + string(_tspr - 1));
     } else {
-        draw_text(_tspr_x + 21, _row6 + 2, "TARGET\nSPRITE\nOFF");
+        draw_text_l(_tspr_x + 21, _row6 + 2, "TARGET\nSPRITE\nOFF");
     }
     draw_set_halign(fa_left);
 }

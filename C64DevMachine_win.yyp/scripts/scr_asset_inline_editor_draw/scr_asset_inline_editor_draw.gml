@@ -5,7 +5,7 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
     var _cur    = _asset.meta.inline_edit_cursor;
     var _scr_y  = _asset.meta.inline_edit_scroll_y;
 
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     var _line_h = string_height("A") + 3;
     var _pad    = 6;
     var _gutter = 50;
@@ -30,9 +30,9 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
     // Label strip at top
     draw_set_color(make_color_rgb(30, 30, 48));
     draw_rectangle(_x1, _y1, _x2, _y1 + 18, false);
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_accent);
-    draw_text(_x1 + _gutter + _pad, _y1 + 3, _label + "  |  CTRL+A SELECT ALL  |  CTRL+C/V  |  ENTER NEW LINE");
+    draw_text_l(_x1 + _gutter + _pad, _y1 + 3, _label + "  |  CTRL+A SELECT ALL  |  CTRL+C/V  |  ENTER NEW LINE");
 
     // ── Lay the text out as VISUAL rows ───────────────────────────────────
     // This replaces the old uniform horizontal squash. That scaled every line
@@ -50,7 +50,7 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
     // frame time. Only one inline editor is ever open at a time, so a single
     // static slot is enough; the asset is part of the key so switching assets
     // cannot show a stale layout.
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
 
     static _wc_name = "";
     static _wc_txt  = "";
@@ -125,11 +125,11 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
         // blank gutter is the signal that a row is a soft-wrap continuation,
         // so the numbers still count real lines.
         if (!_row.iscont) {
-            draw_set_font(fnt_c64_tiny);
+            draw_set_font_l(fnt_c64_tiny);
             draw_set_color(make_color_rgb(60, 70, 90));
-            draw_text(_x1 + 4, _ly, string(_row.lnum + 1));
+            draw_text_l(_x1 + 4, _ly, string(_row.lnum + 1));
         }
-        draw_set_font(fnt_C64_Angled);
+        draw_set_font_l(fnt_C64_Angled);
 
         // Selection highlight
         if (_has_sel) {
@@ -137,8 +137,8 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
             if (_sel_lo < _line_end + 1 && _sel_hi > _line_start) {
                 var _hl_s = max(0, _sel_lo - _line_start);
                 var _hl_e = min(string_length(_line_txt), _sel_hi - _line_start);
-                var _hx1  = _text_x + string_width(string_copy(_line_txt, 1, _hl_s));
-                var _hx2  = _text_x + string_width(string_copy(_line_txt, 1, _hl_e));
+                var _hx1  = _text_x + string_width_l(string_copy(_line_txt, 1, _hl_s));
+                var _hx2  = _text_x + string_width_l(string_copy(_line_txt, 1, _hl_e));
                 draw_set_alpha(0.5);
                 draw_set_color(make_color_rgb(80, 230, 255));
                 draw_rectangle(_hx1, _ly, _hx2, _ly + _line_h, false);
@@ -150,11 +150,11 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
 
         // Line text
         draw_set_color(c_white);
-        draw_text(_text_x, _ly, _line_txt);
+        draw_text_l(_text_x, _ly, _line_txt);
 
         // Cursor
         if (_ridx == _cur_row && (_asset.meta.inline_edit_blink mod 40 < 25)) {
-            var _cx = _text_x + string_width(string_copy(_line_txt, 1, _cur_col));
+            var _cx = _text_x + string_width_l(string_copy(_line_txt, 1, _cur_col));
             draw_set_color(c_white);
             draw_line_width(_cx, _ly, _cx, _ly + _line_h, 2);
         }
@@ -167,8 +167,8 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
                 _hit_col = 0;
            } else {
                 for (var _ci = 0; _ci < string_length(_line_txt); _ci++) {
-                    var _cx1 = _text_x + string_width(string_copy(_line_txt, 1, _ci));
-                    var _cx2 = _text_x + string_width(string_copy(_line_txt, 1, _ci + 1));
+                    var _cx1 = _text_x + string_width_l(string_copy(_line_txt, 1, _ci));
+                    var _cx2 = _text_x + string_width_l(string_copy(_line_txt, 1, _ci + 1));
                     if (_mx < (_cx1 + _cx2) * 0.5) {
                         _hit_col = _ci;
                         break;

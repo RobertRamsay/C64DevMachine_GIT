@@ -70,20 +70,20 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     // label rather than being a fixed pixel offset, so labels and values can
     // never run into each other however wide the node is. The right-hand
     // annotations are drawn only when they actually fit.
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_left);
 
     var _lh = 12;
     var _lx = _draw_x + 8;
     var _rx = _draw_x + width - 8;
-    var _vx = _lx + string_width("BLANK CH:") + 8;
+    var _vx = _lx + string_width_l("BLANK CH:") + 8;
     var _ly = _draw_y + 24 + 4;
 
     msc_entry_rects = [];
 
     // ROW 0 — TILESET
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "TILESET:");
+    draw_text_l(_lx, _ly, "TILESET:");
     var _ts_col = c_aqua;
     var _ts_txt = _ts_name;
     if (_ts_name == "") {
@@ -91,28 +91,28 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
         _ts_txt = "<PICK>";
     }
     draw_set_color(_ts_col);
-    draw_text_ext(_vx, _ly, _ts_txt, _lh, _rx - _vx);
+    draw_text_ext_l(_vx, _ly, _ts_txt, _lh, _rx - _vx);
     _ly += _lh;
 
     // ROW 1 — MAP index, with the resolved size on the right
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "MAP:");
+    draw_text_l(_lx, _ly, "MAP:");
     draw_set_color(c_aqua);
     var _map_txt = string(_map_index) + " / " + string(max(0, _map_count - 1));
-    draw_text(_vx, _ly, _map_txt);
-    scr_msc_note(_vx + string_width(_map_txt), _ly, _rx,
+    draw_text_l(_vx, _ly, _map_txt);
+    scr_msc_note(_vx + string_width_l(_map_txt), _ly, _rx,
           string(_mapw) + "x" + string(_maph) + " CH", make_color_rgb(70, 130, 140));
     _ly += _lh;
 
     // ROW 2 — plane base, plus the colour plane only when there is one
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "PLANES:");
+    draw_text_l(_lx, _ly, "PLANES:");
     draw_set_color(c_yellow);
     var _pl_txt = "$" + string_upper(decimal_to_hex(_base_addr));
     if (_col_mode >= 1) {
         _pl_txt = _pl_txt + " / $" + string_upper(decimal_to_hex(_co_base));
     }
-    draw_text(_vx, _ly, _pl_txt);
+    draw_text_l(_vx, _ly, _pl_txt);
     _ly += _lh;
 
     // ROW 3 — memory cost
@@ -121,21 +121,21 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     if (_col_mode >= 1) {
         _sz_txt = string(_bytes) + " BYTES, CHAR + COLOUR";
     }
-    draw_text(_lx, _ly, _sz_txt);
+    draw_text_l(_lx, _ly, _sz_txt);
     _ly += _lh;
 
     // ROW 4 — ZP base
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "ZP BASE:");
+    draw_text_l(_lx, _ly, "ZP BASE:");
     draw_set_color(c_aqua);
     var _zp_txt = "$" + string_upper(decimal_to_hex(_zp));
-    draw_text(_vx, _ly, _zp_txt);
-    scr_msc_note(_vx + string_width(_zp_txt), _ly, _rx, "10 BYTES", make_color_rgb(70, 130, 140));
+    draw_text_l(_vx, _ly, _zp_txt);
+    scr_msc_note(_vx + string_width_l(_zp_txt), _ly, _rx, "10 BYTES", make_color_rgb(70, 130, 140));
     _ly += _lh;
 
     // ROW 5 — colour mode, and what it costs
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "COLOUR:");
+    draw_text_l(_lx, _ly, "COLOUR:");
     var _cm_col = c_lime;
     var _cm_txt = "FIXED";
     var _cm_note = "1 FRAME";
@@ -145,7 +145,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
         _cm_note = "TURBO";
     }
     draw_set_color(_cm_col);
-    draw_text(_vx, _ly, _cm_txt);
+    draw_text_l(_vx, _ly, _cm_txt);
     if (_col_mode == 0) {
         var _fc_txt = "NIB AUTO";
         if (_fixed_col >= 0) {
@@ -153,21 +153,21 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
         }
         _cm_note = _fc_txt;
     }
-    scr_msc_note(_vx + string_width(_cm_txt), _ly, _rx, _cm_note, make_color_rgb(70, 130, 140));
+    scr_msc_note(_vx + string_width_l(_cm_txt), _ly, _rx, _cm_note, make_color_rgb(70, 130, 140));
     _ly += _lh;
 
     // ROW 6 — blank char, the cell left in col 39 and the init fill
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "BLANK CH:");
+    draw_text_l(_lx, _ly, "BLANK CH:");
     draw_set_color(c_aqua);
     var _bc_txt = string(_blank_ch);
-    draw_text(_vx, _ly, _bc_txt);
-    scr_msc_note(_vx + string_width(_bc_txt), _ly, _rx, "EDGE FILL", make_color_rgb(70, 130, 140));
+    draw_text_l(_vx, _ly, _bc_txt);
+    scr_msc_note(_vx + string_width_l(_bc_txt), _ly, _rx, "EDGE FILL", make_color_rgb(70, 130, 140));
     _ly += _lh;
 
     // ROW 7 — clamp
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "CLAMP:");
+    draw_text_l(_lx, _ly, "CLAMP:");
     var _cl_col = c_gray;
     var _cl_txt = "OFF";
     if (_clamp == 1) {
@@ -175,69 +175,69 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
         _cl_txt = "ON";
     }
     draw_set_color(_cl_col);
-    draw_text(_vx, _ly, _cl_txt);
+    draw_text_l(_vx, _ly, _cl_txt);
     _ly += _lh;
 
     // ROW 8 — OMIT TOP. Worth more than OMIT BOTTOM: it removes work AND
     // pushes the raster deadline 8 lines later, so the note shows the whole
     // budget rather than just the row count.
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "OMIT TOP:");
+    draw_text_l(_lx, _ly, "OMIT TOP:");
     draw_set_color(c_aqua);
     var _ot_txt = string(_omit_t);
-    draw_text(_vx, _ly, _ot_txt);
-    scr_msc_note(_vx + string_width(_ot_txt), _ly, _rx,
+    draw_text_l(_vx, _ly, _ot_txt);
+    scr_msc_note(_vx + string_width_l(_ot_txt), _ly, _rx,
           string(_rows_live) + " ROWS LIVE", make_color_rgb(70, 130, 140));
     _ly += _lh;
 
     // ROW 9 — OMIT BOTTOM, with the coarse-step cost against the budget.
     // Green when the step clears the raster, red when it still overruns.
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "OMIT BOT:");
+    draw_text_l(_lx, _ly, "OMIT BOT:");
     draw_set_color(c_aqua);
     var _ob_txt = string(_omit_b);
-    draw_text(_vx, _ly, _ob_txt);
+    draw_text_l(_vx, _ly, _ob_txt);
     var _cost_col = c_lime;
     if (_step_lines > _budget_lines) {
         _cost_col = c_red;
     }
-    scr_msc_note(_vx + string_width(_ob_txt), _ly, _rx,
+    scr_msc_note(_vx + string_width_l(_ob_txt), _ly, _rx,
           string(_step_lines) + "/" + string(_budget_lines) + " LINES", _cost_col);
     _ly += _lh;
 
     // ROWS 10-12 — the JSR entry points. Each name is clickable and drops a
     // ready-made JSR node, so its rect is recorded for the step event.
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "JSR L/R:");
-    var _e2 = _vx + string_width("MSC_L") + 10;
+    draw_text_l(_lx, _ly, "JSR L/R:");
+    var _e2 = _vx + string_width_l("MSC_L") + 10;
     scr_msc_entry(_vx, _ly, "MSC_L");
     scr_msc_entry(_e2, _ly, "MSC_R");
     _ly += _lh;
 
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "JSR U/D:");
+    draw_text_l(_lx, _ly, "JSR U/D:");
     scr_msc_entry(_vx, _ly, "MSC_U");
     scr_msc_entry(_e2, _ly, "MSC_D");
     _ly += _lh;
 
     draw_set_color(c_gray);
-    draw_text(_lx, _ly, "EVERY FR:");
+    draw_text_l(_lx, _ly, "EVERY FR:");
     scr_msc_entry(_vx, _ly, "MSC_Update");
     _ly += _lh;
 
     // ROWS 13-14 — register ownership
     draw_set_color(make_color_rgb(100, 100, 160));
-    draw_text(_lx, _ly, "OWNS $D016 + $D011 BITS 0-2");
+    draw_text_l(_lx, _ly, "OWNS $D016 + $D011 BITS 0-2");
     _ly += _lh;
-    draw_text(_lx, _ly, "38 COL / 24 ROW MODE");
+    draw_text_l(_lx, _ly, "38 COL / 24 ROW MODE");
 
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
     draw_set_halign(fa_left);
 }
 
 /// @desc Draw one clickable METASCROLL entry name and record its hit rect.
 function scr_msc_entry(_ex, _ey, _name) {
-    var _w  = string_width(_name);
+    var _w  = string_width_l(_name);
     var _h  = string_height(_name);
     var _x2 = _ex + _w;
     var _y2 = _ey + _h;
@@ -250,7 +250,7 @@ function scr_msc_entry(_ex, _ey, _name) {
     } else {
         draw_set_color(c_yellow);
     }
-    draw_text(_ex, _ey, _name);
+    draw_text_l(_ex, _ey, _name);
 
     array_push(msc_entry_rects, [_ex - 2, _ey - 1, _x2 + 2, _y2, _name]);
     return _is_hov;
@@ -258,11 +258,11 @@ function scr_msc_entry(_ex, _ey, _name) {
 
 /// @desc Right-aligned annotation, drawn only when it clears the value text.
 function scr_msc_note(_nx, _ny, _rxx, _txt, _col) {
-    if (_nx + string_width(_txt) + 6 > _rxx) {
+    if (_nx + string_width_l(_txt) + 6 > _rxx) {
         return;
     }
     draw_set_color(_col);
     draw_set_halign(fa_right);
-    draw_text(_rxx, _ny, _txt);
+    draw_text_l(_rxx, _ny, _txt);
     draw_set_halign(fa_left);
 }

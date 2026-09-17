@@ -60,12 +60,12 @@ function scr_code_editor_draw() {
     // ─── Header ───
     draw_set_color(make_color_rgb(40, 100, 70));
     draw_rectangle(_px, _py, _px + _pw, _py + 28, false);
-    draw_set_font(_code_font);
+    draw_set_font_l(_code_font);
     draw_set_color(c_white);
 	
 draw_set_halign(fa_center);
     var _desc = instance_exists(code_editor_node) ? code_editor_node.code_descriptor : "Code Block";
-    draw_text(_px + _pw / 2, _py + 6, "CODE EDITOR: " + string_upper(_desc));
+    draw_text_l(_px + _pw / 2, _py + 6, "CODE EDITOR: " + string_upper(_desc));
     draw_set_halign(fa_left);
 
 // ─── Close button [X] ───
@@ -87,10 +87,10 @@ draw_set_halign(fa_center);
 	draw_set_color(_exp_hover ? c_white : make_color_rgb(120, 160, 220));
 	draw_rectangle(_exp_x, _exp_y, _exp_x + _exp_w, _exp_y + _exp_h, true);
 	
-	draw_set_font(fnt_c64_code);
+	draw_set_font_l(fnt_c64_code);
 	draw_set_halign(fa_center);
 	draw_set_valign(fa_middle);
-	draw_text(_exp_x + _exp_w / 2, _exp_y + _exp_h / 2, "EXPORT");
+	draw_text_l(_exp_x + _exp_w / 2, _exp_y + _exp_h / 2, "EXPORT");
 	
 	// ─── Import button ───
 	// Mirrors EXPORT, sitting to its left. Appends or replaces the block being
@@ -108,10 +108,10 @@ draw_set_halign(fa_center);
 	draw_set_color(_imp_hover ? c_white : make_color_rgb(120, 160, 220));
 	draw_rectangle(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, true);
 
-	draw_set_font(fnt_c64_code);
+	draw_set_font_l(fnt_c64_code);
 	draw_set_halign(fa_center);
 	draw_set_valign(fa_middle);
-	draw_text(_imp_x + _imp_w / 2, _imp_y + _imp_h / 2, "IMPORT");
+	draw_text_l(_imp_x + _imp_w / 2, _imp_y + _imp_h / 2, "IMPORT");
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 
@@ -212,11 +212,11 @@ draw_set_halign(fa_center);
     draw_rectangle(_close_x, _close_y, _close_x + _close_w, _close_y + _close_h, false);
     draw_set_color(_close_hover ? c_white : make_color_rgb(200, 120, 120));
     draw_rectangle(_close_x, _close_y, _close_x + _close_w, _close_y + _close_h, true);
-    draw_set_font(_code_font);
+    draw_set_font_l(_code_font);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
-	draw_set_font(fnt_c64_code)
-    draw_text(_close_x + _close_w / 2, _close_y + _close_h / 2, "CLOSE");
+	draw_set_font_l(fnt_c64_code)
+    draw_text_l(_close_x + _close_w / 2, _close_y + _close_h / 2, "CLOSE");
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
 
@@ -229,7 +229,7 @@ if (_close_hover && mouse_check_button_pressed(mb_left)) {
     }
 
     // ─── Code area layout ───
-    draw_set_font(_code_font);
+    draw_set_font_l(_code_font);
     var _line_h    = string_height("A") + 4;
     var _gutter_w  = 70;
     var _code_x    = _px + _gutter_w + 30;
@@ -289,11 +289,11 @@ if (_close_hover && mouse_check_button_pressed(mb_left)) {
 	code_editor_scroll_y = clamp(code_editor_scroll_y, 0, max(0, _total_lines - _max_lines));
 
 // ─── Horizontal scroll: compute max line width (cached) ───
-    draw_set_font(_code_font);
+    draw_set_font_l(_code_font);
     if (code_editor_cache_dirty || code_editor_max_line_px == 0) {
         code_editor_max_line_px = 0;
         for (var _mi = 0; _mi < _total_lines; _mi++) {
-            var _lw = string_width(_lines[_mi]) + 40;
+            var _lw = string_width_l(_lines[_mi]) + 40;
             if (_lw > code_editor_max_line_px) code_editor_max_line_px = _lw;
         }
     }
@@ -305,7 +305,7 @@ if (_close_hover && mouse_check_button_pressed(mb_left)) {
 // Auto-scroll horizontally to keep cursor visible (only when cursor moves)
     if (!code_editor_hscrollbar_dragging && code_editor_cursor != code_editor_last_cursor) {
         var _cur_line_text = _lines[_cur_line];
-        var _cursor_px = string_width(string_copy(_cur_line_text, 1, _cur_col));
+        var _cursor_px = string_width_l(string_copy(_cur_line_text, 1, _cur_col));
         // Scrolled off right edge — bring cursor into view with some margin
         if (_cursor_px - code_editor_scroll_x > _code_w - 30)
             code_editor_scroll_x = _cursor_px - _code_w + 40;
@@ -568,7 +568,7 @@ if (code_editor_cache_dirty) {
     var _global_labels = code_editor_global_labels;
 
     // ─── Draw lines (clipped to code area) ───
-    draw_set_font(_code_font);
+    draw_set_font_l(_code_font);
 
 
     for (var _li = 0; _li < _max_lines; _li++) {
@@ -639,7 +639,7 @@ if (code_editor_cache_dirty) {
             }
         }
 
-draw_set_font(_code_font);
+draw_set_font_l(_code_font);
 
       // Clip code text using surface clipping instead of gpu_scissor
         // (gpu_scissor uses display coords, not GUI coords)
@@ -662,8 +662,8 @@ draw_set_font(_code_font);
             if (_sel_lo < _line_end && _sel_hi > _line_start) {
                 var _hl_start = max(0, _sel_lo - _line_start);
                 var _hl_end   = min(string_length(_line_text), _sel_hi - _line_start);
-                var _hx1 = _code_x_s + _auto_indent + string_width(string_copy(_line_text, 1, _hl_start));
-                var _hx2 = _code_x_s + _auto_indent + string_width(string_copy(_line_text, 1, _hl_end));
+                var _hx1 = _code_x_s + _auto_indent + string_width_l(string_copy(_line_text, 1, _hl_start));
+                var _hx2 = _code_x_s + _auto_indent + string_width_l(string_copy(_line_text, 1, _hl_end));
                 draw_set_alpha(0.3);
                 draw_set_color(make_color_rgb(80, 160, 220));
                 draw_rectangle(_hx1, _ly, _hx2, _ly + _line_h, false);
@@ -676,7 +676,7 @@ draw_set_font(_code_font);
         if (_is_comment) {
             // Comments — grey-green
             draw_set_color(make_color_rgb(90, 120, 98));
-            draw_text(_code_x_s + _auto_indent, _ly, _line_text);
+            draw_text_l(_code_x_s + _auto_indent, _ly, _line_text);
 
         } else if (_is_label) {
             var _lbl_name = string_copy(_trimmed, 1, string_pos(":", _trimmed) - 1);
@@ -689,12 +689,12 @@ draw_set_font(_code_font);
             } else {
                 draw_set_color(c_white);
             }
-            draw_text(_code_x_s, _ly, _line_text);
+            draw_text_l(_code_x_s, _ly, _line_text);
 
         } else if (!_is_valid && _trimmed != "") {
             // Nonsense — dark grey
             draw_set_color(make_color_rgb(90, 90, 90));
-            draw_text(_code_x_s + _auto_indent, _ly, _line_text);
+            draw_text_l(_code_x_s + _auto_indent, _ly, _line_text);
 
 } else if (_is_const) {
             // Constant assignment: name = $addr
@@ -726,7 +726,7 @@ var _cname_trim = string_trim(_cname);
 
                 // Draw Variable Name
                 draw_set_color(_const_is_clashing ? merge_color(make_color_rgb(110, 150, 220), c_red, _pulse) : make_color_rgb(110, 150, 220)); 
-                draw_text(_code_x_s, _ly, _cname);
+                draw_text_l(_code_x_s, _ly, _cname);
                 
                 // Draw Value and optional Comment
                 var _val_col = _const_is_clashing ? merge_color(make_color_rgb(200, 120, 160), c_red, _pulse) : make_color_rgb(200, 120, 160);
@@ -735,38 +735,38 @@ var _cname_trim = string_trim(_cname);
                     var _ccmt_part = string_copy(_cval, _c_icmt, string_length(_cval));
                     
                     draw_set_color(_val_col);
-                    draw_text(_code_x_s + string_width(_cname), _ly, _cval_part);
+                    draw_text_l(_code_x_s + string_width_l(_cname), _ly, _cval_part);
                     
                     draw_set_color(make_color_rgb(80, 210, 100)); // Main Comment Green
-                    draw_text(_code_x_s + string_width(_cname) + string_width(_cval_part), _ly, _ccmt_part);
+                    draw_text_l(_code_x_s + string_width_l(_cname) + string_width_l(_cval_part), _ly, _ccmt_part);
                 } else {
                     draw_set_color(_val_col);
-                    draw_text(_code_x_s + string_width(_cname), _ly, _cval);
+                    draw_text_l(_code_x_s + string_width_l(_cname), _ly, _cval);
                 }
             } else {
                 draw_set_color(make_color_rgb(255, 180, 60));
-                draw_text(_code_x_s, _ly, _line_text);
+                draw_text_l(_code_x_s, _ly, _line_text);
             }
 
 } else if (_is_rep_line) {
             // Repeat syntax — purple
             draw_set_color(make_color_rgb(110, 50, 180));
-            draw_text(_code_x_s + _auto_indent, _ly, _line_text);
+            draw_text_l(_code_x_s + _auto_indent, _ly, _line_text);
 
         } else if (_is_byte_dir || _is_org_dir) {
             // Directive line — teal keyword, amber values
             var _sp3    = string_pos(" ", _trimmed);
             var _idt2   = string_length(_line_text) - string_length(string_trim_start(_line_text));
-            var _idt2px = string_width(string_copy(_line_text, 1, _idt2));
+            var _idt2px = string_width_l(string_copy(_line_text, 1, _idt2));
             if (_idt2 > 0) {
                 draw_set_color(make_color_rgb(40, 40, 50));
-                draw_text(_code_x_s + _auto_indent, _ly, string_copy(_line_text, 1, _idt2));
+                draw_text_l(_code_x_s + _auto_indent, _ly, string_copy(_line_text, 1, _idt2));
             }
             draw_set_color(make_color_rgb(0, 210, 180));   // teal keyword
             if (_sp3 > 0) {
                 var _dkw  = string_copy(_trimmed, 1, _sp3 - 1);
                 var _dval = string_copy(_trimmed, _sp3 + 1, string_length(_trimmed) - _sp3);
-                draw_text(_code_x_s + _auto_indent + _idt2px, _ly, _dkw);
+                draw_text_l(_code_x_s + _auto_indent + _idt2px, _ly, _dkw);
                 var _d_icmt = 0;
                 var _d_semi = string_pos(";", _dval);
                 if (_d_semi > 0) _d_icmt = _d_semi;
@@ -776,21 +776,21 @@ var _cname_trim = string_trim(_cname);
           break;
                     }
                 }
-                var _dval_x = _code_x_s + _auto_indent + _idt2px + string_width(_dkw + " ");
+                var _dval_x = _code_x_s + _auto_indent + _idt2px + string_width_l(_dkw + " ");
                 if (_d_icmt > 0) {
                     var _dval_part = string_copy(_dval, 1, _d_icmt - 1);
                     var _dcmt_part = string_copy(_dval, _d_icmt, string_length(_dval));
                     draw_set_color(make_color_rgb(255, 200, 80));
-                    draw_text(_dval_x, _ly, _dval_part);
+                    draw_text_l(_dval_x, _ly, _dval_part);
                     draw_set_color(make_color_rgb(80, 160, 100));
-                    draw_text(_dval_x + string_width(_dval_part), _ly, _dcmt_part);
+                    draw_text_l(_dval_x + string_width_l(_dval_part), _ly, _dcmt_part);
                 } else {
 					var _is_str_dir = (string_copy(string_lower(_trimmed), 1, 7) == ".string");
                     draw_set_color(_is_str_dir ? make_color_rgb(255, 140, 200) : make_color_rgb(255, 200, 80));
-                    draw_text(_dval_x, _ly, _dval);
+                    draw_text_l(_dval_x, _ly, _dval);
                 }
             } else {
-                draw_text(_code_x_s + _auto_indent + _idt2px, _ly, _trimmed);
+                draw_text_l(_code_x_s + _auto_indent + _idt2px, _ly, _trimmed);
             }
 
         } else {
@@ -802,18 +802,18 @@ var _cname_trim = string_trim(_cname);
             if (_sp > 0 && _trimmed != "") {
                 var _indent    = string_length(_line_text) - string_length(string_trim_start(_line_text));
                 var _mnem_end  = _indent + _sp;
-                var _indent_px = string_width(string_copy(_line_text, 1, _indent));
-                var _mnem_px   = string_width(string_copy(_line_text, 1, _mnem_end));
+                var _indent_px = string_width_l(string_copy(_line_text, 1, _indent));
+                var _mnem_px   = string_width_l(string_copy(_line_text, 1, _mnem_end));
 
                 // Leading whitespace (dim)
                 if (_indent > 0) {
                     draw_set_color(make_color_rgb(40, 40, 50));
-                    draw_text(_code_x_s + _auto_indent, _ly, string_copy(_line_text, 1, _indent));
+                    draw_text_l(_code_x_s + _auto_indent, _ly, string_copy(_line_text, 1, _indent));
                 }
 
                 // Mnemonic (blue)
                 draw_set_color(make_color_rgb(140, 200, 255));
-                draw_text(_code_x_s + _auto_indent + _indent_px, _ly, string_copy(_line_text, _indent + 1, _sp - 1));
+                draw_text_l(_code_x_s + _auto_indent + _indent_px, _ly, string_copy(_line_text, _indent + 1, _sp - 1));
 
                 // Operand — tinted by format
                 var _after_mnem = string_delete(_line_text, 1, _mnem_end);
@@ -939,13 +939,13 @@ var _cname_trim = string_trim(_cname);
                     var _op_draw  = string_copy(_after_mnem, 1, _cmt_in_after - 1);
                     var _cmt_draw = string_copy(_after_mnem, _cmt_in_after, string_length(_after_mnem));
                     draw_set_color(_op_col);
-                    draw_text(_code_x_s + _auto_indent + _mnem_px, _ly, _op_draw);
-                    var _cmt_draw_x = _code_x_s + _auto_indent + _mnem_px + string_width(_op_draw);
+                    draw_text_l(_code_x_s + _auto_indent + _mnem_px, _ly, _op_draw);
+                    var _cmt_draw_x = _code_x_s + _auto_indent + _mnem_px + string_width_l(_op_draw);
                     draw_set_color(make_color_rgb(80, 160, 80));
-                    draw_text(_cmt_draw_x, _ly, _cmt_draw);
+                    draw_text_l(_cmt_draw_x, _ly, _cmt_draw);
                 } else {
                     draw_set_color(_op_col);
-                    draw_text(_code_x_s + _auto_indent + _mnem_px, _ly, _after_mnem);
+                    draw_text_l(_code_x_s + _auto_indent + _mnem_px, _ly, _after_mnem);
                 }
 
 			} else if (_trimmed != "") {
@@ -958,13 +958,13 @@ var _cname_trim = string_trim(_cname);
                     draw_set_color(make_color_rgb(140, 200, 255)); // Default Blue
                 }
                 
-                draw_text(_code_x_s + _auto_indent, _ly, _line_text);
+                draw_text_l(_code_x_s + _auto_indent, _ly, _line_text);
             }
         }
 
 // ─── Cursor (drawn unclipped to ensure visibility on empty lines) ───
         if (!code_editor_find_open && _line_idx == _cur_line && (code_editor_blink mod 40 < 25)) {
-            var _cx = _code_x_s + _auto_indent + string_width(string_copy(_line_text, 1, _cur_col));
+            var _cx = _code_x_s + _auto_indent + string_width_l(string_copy(_line_text, 1, _cur_col));
             draw_set_color(c_white);
             draw_line_width(_cx, _ly, _cx, _ly + _line_h, 2);
         }
@@ -982,8 +982,8 @@ var _cname_trim = string_trim(_cname);
                 _hit_col = 0;
             } else {
                 for (var _ci = 0; _ci < string_length(_line_text); _ci++) {
-                    var _cx1 = _base_x + string_width(string_copy(_line_text, 1, _ci));
-                    var _cx2 = _base_x + string_width(string_copy(_line_text, 1, _ci + 1));
+                    var _cx1 = _base_x + string_width_l(string_copy(_line_text, 1, _ci));
+                    var _cx2 = _base_x + string_width_l(string_copy(_line_text, 1, _ci + 1));
                     if (_mx < (_cx1 + _cx2) * 0.5) { _hit_col = _ci; break; }
                 }
             }
@@ -1032,14 +1032,14 @@ draw_set_alpha(0.85);
     draw_rectangle(_px, _py, _px + _pw, _py + _ph, true);
 
 // ─── Redraw gutter on top of left mask ───
-    draw_set_font(fnt_c64_code); 
+    draw_set_font_l(fnt_c64_code); 
     for (var _gi = 0; _gi < _max_lines; _gi++) {
         var _g_line_idx = _gi + code_editor_scroll_y;
         if (_g_line_idx >= _total_lines) break;
         var _g_ly = _code_y + (_gi * _line_h);
         var _g_line_num = string(_g_line_idx + 1);
         draw_set_color(make_color_rgb(50, 100, 70)); // New Gutter Color
-        draw_text(_px + 4, _g_ly, _g_line_num);
+        draw_text_l(_px + 4, _g_ly, _g_line_num);
 		
         // PC address
         var _g_trimmed = string_trim(_lines[_g_line_idx]);
@@ -1082,7 +1082,7 @@ var _g_is_valid = false;
         if (!_g_is_comment && _g_trimmed != "" && _g_is_valid) {
             var _g_pc_hex = decimal_to_hex(_line_pcs[_g_line_idx]);
             while (string_length(_g_pc_hex) < 4) _g_pc_hex = "0" + _g_pc_hex;
-            var _g_addr_x = _px + 4 + string_width(_g_line_num + "  ");
+            var _g_addr_x = _px + 4 + string_width_l(_g_line_num + "  ");
             var _this_pc = _line_pcs[_g_line_idx];
             var _is_clashing = false;
             
@@ -1116,7 +1116,7 @@ var _g_is_valid = false;
 		} else {
 		                draw_set_color(make_color_rgb(45, 155, 90));
             }
-            draw_text(_g_addr_x, _g_ly, "$" + string_upper(_g_pc_hex));
+            draw_text_l(_g_addr_x, _g_ly, "$" + string_upper(_g_pc_hex));
         }
     }
 
@@ -1223,9 +1223,9 @@ var _g_is_valid = false;
     }
 
 // ─── Type suffix legend ───
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
     draw_set_color(make_color_rgb(120, 120, 120));
-    draw_text(_px + 8, _py + _ph - 49,
+    draw_text_l(_px + 8, _py + _ph - 49,
               "VAR.W=WORD(2B)  VAR.B/none=BYTE(1B)  VAR.BCD=3B  VAR.BCD2=2B  VAR.BCD3=3B");
 
     // ─── Stats bar ───
@@ -1238,15 +1238,15 @@ var _g_is_valid = false;
         _cyc_to = code_editor_cached_run_cyc[_cur_line] + _cyc_this;
     }
 
-    draw_set_font(fnt_c64_code); // Switched to main code font
+    draw_set_font_l(fnt_c64_code); // Switched to main code font
     draw_set_color(make_color_rgb(200, 170, 140)); // Slightly brighter dim color
-    draw_text(_px + 8, _py + _ph - 34, 
+    draw_text_l(_px + 8, _py + _ph - 34, 
               "L" + string(_cur_line + 1) + ":" + string(_cur_col + 1) + 
               "  (" + string(_total_lines) + " LINES)    " + string(_stats[0]) + " BYTES    " + string(_stats[1]) + " CYC (TOTAL)    CYCLES TO LINE: " + string(_cyc_to) + "    THIS LINE: " + string(_cyc_this));
 
     // ─── Hints bar ───
     draw_set_color(make_color_rgb(100, 180, 200));
-    draw_text(_px + 8, _py + _ph - 19, "(CTRL+ENTER) or ESCAPE to  CLOSE  |  F5: BUILD  |  CTRL+C/X/V  |  CTRL+A  |  TAB |  F12 : FONT  Z CTRL/(+SHIFT)+F FIND+REPLACE");
+    draw_text_l(_px + 8, _py + _ph - 19, "(CTRL+ENTER) or ESCAPE to  CLOSE  |  F5: BUILD  |  CTRL+C/X/V  |  CTRL+A  |  TAB |  F12 : FONT  Z CTRL/(+SHIFT)+F FIND+REPLACE");
 	
 	if (code_editor_find_open) scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my);
 	

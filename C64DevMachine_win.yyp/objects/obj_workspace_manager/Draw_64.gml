@@ -135,10 +135,10 @@ if (global.box_drag_active) {
     var _gmy = global.gui_mouse_y;
 
     // Crosshair + hint text
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     draw_set_color(c_yellow);
     draw_set_halign(fa_left);
-    draw_text(_gmx + 18, _gmy - 8, box_drag_live ? "DRAGGING..." : "CLICK AND DRAG");
+    draw_text_l(_gmx + 18, _gmy - 8, box_drag_live ? "DRAGGING..." : "CLICK AND DRAG");
     draw_set_color(c_white);
     draw_line(_gmx - 8, _gmy, _gmx + 8, _gmy);
     draw_line(_gmx, _gmy - 8, _gmx, _gmy + 8);
@@ -179,10 +179,10 @@ if (global.box_drag_active) {
         // Size readout in room pixels
         var _rw = abs(mouse_x - box_drag_start_x);
         var _rh = abs(mouse_y - box_drag_start_y);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(c_yellow);
         draw_set_halign(fa_left);
-        draw_text(_rx2 + 6, _ry2 - 12, string(_rw) + " x " + string(_rh));
+        draw_text_l(_rx2 + 6, _ry2 - 12, string(_rw) + " x " + string(_rh));
     }
 }
 
@@ -284,27 +284,27 @@ draw_set_color(opcode_finder_active ? c_aqua : make_color_rgb(60, 60, 80));
 draw_rectangle(_finder_x1, _finder_y1, _finder_x2, _finder_y2, true);
 
 // Label
-draw_set_font(fnt_c64_tiny);
+draw_set_font_l(fnt_c64_tiny);
 draw_set_color(make_color_rgb(100, 100, 140));
 draw_set_halign(fa_left);
-draw_text(_finder_x1 + 4, _finder_y1 + 2, "FIND OPCODE");
+draw_text_l(_finder_x1 + 4, _finder_y1 + 2, "FIND OPCODE");
 
 // Input text with blinker
-draw_set_font(fnt_c64_code);
+draw_set_font_l(fnt_c64_code);
 var _blink_cur = opcode_finder_active ? ((current_time mod 600 < 300) ? "|" : " ") : "";
 var _finder_display = (opcode_finder_text == "" && !opcode_finder_active)
                     ? "TYPE TO SEARCH..."
                     : (opcode_finder_text + _blink_cur);
 draw_set_color(opcode_finder_text == "" ? make_color_rgb(60, 60, 80) : c_yellow);
-draw_text(_finder_x1 + 4, _finder_y1 + 13, _finder_display);
+draw_text_l(_finder_x1 + 4, _finder_y1 + 13, _finder_display);
 
 // Match count hint
 if (opcode_finder_active && opcode_finder_text != "") {
     var _mc = array_length(opcode_finder_matches);
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_mc == 0 ? c_red : (_mc == 1 ? c_lime : c_aqua));
     draw_set_halign(fa_right);
-    draw_text(_finder_x2 - 2, _finder_y1 + 2, string(_mc) + " MATCH" + (_mc == 1 ? "" : "ES"));
+    draw_text_l(_finder_x2 - 2, _finder_y1 + 2, string(_mc) + " MATCH" + (_mc == 1 ? "" : "ES"));
     draw_set_halign(fa_left);
 }
 
@@ -358,12 +358,12 @@ for (var i = 0; i < array_length(active_palette); i++) {
     if (item.type == "HEADER") {
         if (col_index != 0) { current_row++; col_index = 0; }
         var _hdr_y = start_y + (current_row * (btn_h + pad));
-        draw_set_font(fnt_C64_Angled);
+        draw_set_font_l(fnt_C64_Angled);
         draw_set_halign(fa_center);
 		draw_set_color(make_color_rgb(70, 40, 20));
-        draw_text(10 + (col_w * shelf_cols * 0.5) - 6, _hdr_y + (btn_h * 0.5) - 2, item.title);
+        draw_text_l(10 + (col_w * shelf_cols * 0.5) - 6, _hdr_y + (btn_h * 0.5) - 2, item.title);
         draw_set_color(make_color_rgb(200, 80, 40));
-        draw_text(10 + (col_w * shelf_cols * 0.5) - 6, _hdr_y + (btn_h * 0.5) - 3, item.title);
+        draw_text_l(10 + (col_w * shelf_cols * 0.5) - 6, _hdr_y + (btn_h * 0.5) - 3, item.title);
         draw_set_halign(fa_left);
         current_row++;
         continue;
@@ -401,10 +401,10 @@ for (var i = 0; i < array_length(active_palette); i++) {
     }
 
     // Draw mnemonic label
-    draw_set_font(fnt_c64_opCode);
+    draw_set_font_l(fnt_c64_opCode);
     draw_set_halign(fa_center);
     draw_set_color((is_hover || _is_finder_match) ? c_yellow : c_white);
-    draw_text(btn_x + btn_w * 0.5, btn_y + (btn_h * 0.5) - 6, item.title);
+    draw_text_l(btn_x + btn_w * 0.5, btn_y + (btn_h * 0.5) - 6, item.title);
     draw_set_halign(fa_left);
 
     // Opcode hover/finder glow. Cyber overlays use normal blending only.
@@ -596,6 +596,7 @@ if (gui_menu_open == 4) {
         { title: "RESET CUSTOM UI",    action: "RESET_UI"         },
         { title: "OPCODE HEADERS",     action: "OPCODE_HEADERS"     },
 		{ title: "OPCODE COMPACT",     action: "OPCODE_EXTRA_H"     },
+        { title: "LANGUAGE",           action: "LANGUAGE"           },
 		
     ];
     var _item_h_o   = 20;
@@ -609,7 +610,7 @@ if (gui_menu_open == 4) {
                           _panel_x_o, _panel_y_o,
                           _panel_w_o, _panel_h_o);
 
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
 
     for (var _oi = 0; _oi < array_length(_opt_list); _oi++) {
         var _op   = _opt_list[_oi];
@@ -628,7 +629,7 @@ if (gui_menu_open == 4) {
 
         draw_set_color(_ihov ? c_yellow : c_white);
         draw_set_halign(fa_left);
-        draw_text(_ix1 + 10, _iy + 3, _op.title);
+        draw_text_l(_ix1 + 10, _iy + 3, _op.title);
 
         // State indicator on right
         var _state_str    = "";
@@ -680,6 +681,13 @@ if (gui_menu_open == 4) {
             _state_col = opcode_extra_height ? c_red : c_lime;
 			
         }
+        if (_op.action == "LANGUAGE") {
+            _state_str = "ENGLISH";
+            if (global.lang == 1) {
+                _state_str = "中文";
+            }
+            _state_col = make_color_rgb(160, 160, 220);
+        }
 		if (_op.action == "FLOW_OVERLAY") {
             var _fo_labels = ["OFF", "LOCAL", "GLOBAL"];
             _state_str    = _fo_labels[flow_overlay_mode mod 3];
@@ -730,14 +738,14 @@ if (gui_menu_open == 4) {
         if (_shortcut_str != "") {
             draw_set_halign(fa_right);
             draw_set_color(make_color_rgb(120, 120, 120));
-            draw_text(_ix2 - 8, _iy + 3, _shortcut_str);
+            draw_text_l(_ix2 - 8, _iy + 3, _shortcut_str);
             draw_set_halign(fa_left);
-            _shortcut_w = string_width(_shortcut_str) + 14;
+            _shortcut_w = string_width_l(_shortcut_str) + 14;
         }
         if (_state_str != "") {
             draw_set_halign(fa_right);
             draw_set_color(_state_col);
-            draw_text(_ix2 - 8 - _shortcut_w, _iy + 3, _state_str);
+            draw_text_l(_ix2 - 8 - _shortcut_w, _iy + 3, _state_str);
             draw_set_halign(fa_left);
         }
 
@@ -869,6 +877,13 @@ if (gui_menu_open == 4) {
             else if (_op.action == "OPCODE_HEADERS") {
                 opcode_headers_on = !opcode_headers_on;
             }
+            else if (_op.action == "LANGUAGE") {
+                if (global.lang == 1) {
+                    scr_lang_set(0);
+                } else {
+                    scr_lang_set(1);
+                }
+            }
 			else if (_op.action == "OPCODE_EXTRA_H") {
                 opcode_extra_height = !opcode_extra_height;
 				with (obj_c64_node) {
@@ -962,7 +977,7 @@ if (gui_menu_open == 1 && !global.lite) {
                           _panel_x_e, _panel_y_e,
                           _panel_w_e, _panel_h_e);
 
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
 
     for (var _ei = 0; _ei < array_length(_extra_list); _ei++) {
         var _ep   = _extra_list[_ei];
@@ -981,7 +996,7 @@ if (gui_menu_open == 1 && !global.lite) {
 
         draw_set_color(_ihov ? c_yellow : c_white);
         draw_set_halign(fa_left);
-        draw_text(_ix1 + 10, _iy + 3, _ep.title);
+        draw_text_l(_ix1 + 10, _iy + 3, _ep.title);
 
         if (_ihov && mouse_check_button_pressed(mb_left)) {
             gui_menu_open         = -1;
@@ -1034,7 +1049,7 @@ if (gui_menu_open == 2) {
                           _panel_x_v, _panel_y_v,
                           _panel_w_v, _panel_h_v);
 
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
 
     for (var _vi = 0; _vi < array_length(_vars_list); _vi++) {
         var _vp   = _vars_list[_vi];
@@ -1053,7 +1068,7 @@ if (gui_menu_open == 2) {
 
         draw_set_color(_ihov ? c_yellow : c_white);
         draw_set_halign(fa_left);
-        draw_text(_ix1 + 10, _iy + 3, _vp.title);
+        draw_text_l(_ix1 + 10, _iy + 3, _vp.title);
 
         if (_ihov && mouse_check_button_pressed(mb_left)) {
             gui_menu_open         = -1;
@@ -1093,10 +1108,10 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
         if (_menu_overlay_additive) gpu_set_blendmode(bm_normal);
     }
 
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_center);
     draw_set_color(_bdisabled ? make_color_rgb(90, 90, 90) : (_bopen ? c_yellow : c_white));
-    draw_text(_bx + _mbar_btn_w * 0.5, _by + _mbar_btn_h * 0.5 - 6, _menu_labels[_bi]);
+    draw_text_l(_bx + _mbar_btn_w * 0.5, _by + _mbar_btn_h * 0.5 - 6, _menu_labels[_bi]);
     draw_set_halign(fa_left);
 
     // Click to toggle
@@ -1142,7 +1157,7 @@ if (gui_menu_open == 3) {
                           _panel_x_p, _panel_y_p,
                           _panel_w_p, _panel_h_p);
 
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
 
     for (var _pi = 0; _pi < array_length(_proj_list); _pi++) {
         var _pp   = _proj_list[_pi];
@@ -1174,11 +1189,11 @@ if (gui_menu_open == 3) {
                 make_color_rgb(40,  220, 220),
                 make_color_rgb(120, 120, 120)
             ];
-            draw_text(_ix1 + 10, _iy + 3, "AUTOSAVE");
+            draw_text_l(_ix1 + 10, _iy + 3, "AUTOSAVE");
             draw_set_color(_as_title_cols[global.autosave_mode]);
-            draw_text(_ix1 + 10 + string_width("AUTOSAVE "), _iy + 3, _as_title_labels[global.autosave_mode]);
+            draw_text_l(_ix1 + 10 + string_width_l("AUTOSAVE "), _iy + 3, _as_title_labels[global.autosave_mode]);
         } else {
-            draw_text(_ix1 + 10, _iy + 3, _pp.title);
+            draw_text_l(_ix1 + 10, _iy + 3, _pp.title);
         }
 
         // Right-justified shortcut hint
@@ -1199,7 +1214,7 @@ if (gui_menu_open == 3) {
                 _shortcut = "F7";
                 draw_set_halign(fa_right);
                 draw_set_color(make_color_rgb(120, 120, 120));
-                draw_text(_ix2 - 8, _iy + 3, _shortcut);
+                draw_text_l(_ix2 - 8, _iy + 3, _shortcut);
                 draw_set_halign(fa_left);
                 _shortcut = "";
             }
@@ -1207,7 +1222,7 @@ if (gui_menu_open == 3) {
             if (_shortcut != "") {
                 draw_set_halign(fa_right);
                 draw_set_color(make_color_rgb(120, 120, 120));
-                draw_text(_ix2 - 8, _iy + 3, _shortcut);
+                draw_text_l(_ix2 - 8, _iy + 3, _shortcut);
                 draw_set_halign(fa_left);
             }
         }
@@ -1366,7 +1381,7 @@ if (gui_menu_open == 5) {
                           _panel_x_d, _panel_y_d,
                           _panel_w_d, _panel_h_d);
 
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
 
     for (var _di = 0; _di < array_length(_docs_list); _di++) {
         var _dp   = _docs_list[_di];
@@ -1390,7 +1405,7 @@ if (gui_menu_open == 5) {
             draw_set_color(_ihov ? c_yellow : c_white);
         }
         draw_set_halign(fa_left);
-        draw_text(_ix1 + 10, _iy + 3, _dp.title);
+        draw_text_l(_ix1 + 10, _iy + 3, _dp.title);
 
         if (_ihov && mouse_check_button_pressed(mb_left)) {
             gui_menu_open = -1;
@@ -1437,7 +1452,7 @@ if (gui_menu_open == 6) {
                           _panel_x_i, _panel_y_i,
                           _panel_w_i, _panel_h_i);
 
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
 
     for (var _ii = 0; _ii < array_length(_imp_list); _ii++) {
         var _ip   = _imp_list[_ii];
@@ -1456,7 +1471,7 @@ if (gui_menu_open == 6) {
 
         draw_set_color(_ihov ? c_yellow : c_white);
         draw_set_halign(fa_left);
-        draw_text(_ix1 + 10, _iy + 3, _ip.title);
+        draw_text_l(_ix1 + 10, _iy + 3, _ip.title);
 
         if (_ihov && mouse_check_button_pressed(mb_left)) {
             gui_menu_open = -1;
@@ -1556,7 +1571,7 @@ if (gui_menu_open == 0) {
                           _panel_w, _panel_h);
 
     // ---- Draw items & handle hover + drag ----
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     hover_macro_type  = "";
     hover_macro_title = "";
 
@@ -1589,7 +1604,7 @@ if (gui_menu_open == 0) {
             draw_set_color(_ihov ? c_yellow : c_white);
         }
         draw_set_halign(fa_left);
-        draw_text(_ix1 + 10, _iy + 3, _mp.title);
+        draw_text_l(_ix1 + 10, _iy + 3, _mp.title);
 
         // Begin drag on mouse-down (no release needed — matches existing macro drag behaviour)
         if (_ihov && mouse_check_button_pressed(mb_left)) {
@@ -1689,10 +1704,10 @@ if (gui_menu_drag_active && !gui_menu_node_spawned) {
 
 
 // Header
-draw_set_font(fnt_C64_Angled_big);
+draw_set_font_l(fnt_C64_Angled_big);
 //draw_set_color(make_color_rgb(220, 100, 45));
-//draw_text(_mac_x1 + 8, 4, "MACROS");
-draw_set_font(fnt_C64_Angled);
+//draw_text_l(_mac_x1 + 8, 4, "MACROS");
+draw_set_font_l(fnt_C64_Angled);
 
 
 
@@ -1718,30 +1733,30 @@ if (opcode_helper_on && opcode_hover_key != "" && opcode_hover_timer >= opcode_h
         draw_set_color(make_color_rgb(80, 140, 220));
         draw_rectangle(_tip_x, _tip_y, _tip_x + _tip_w, _tip_y + _tip_h, true);
 
-        draw_set_font(fnt_C64_Angled_big);
+        draw_set_font_l(fnt_C64_Angled_big);
         var _lh = 29;
         var _tx = _tip_x + 10;
         var _ty = _tip_y + 8;
 
         // Line 1: name + hex + bytes + cycles
         draw_set_color(c_yellow);
-        draw_text(_tx, _ty,
+        draw_text_l(_tx, _ty,
             string_upper(opcode_hover_key) + "  $" + string_upper(_info.hex) +
             "   " + string(_info.bytes) + " bytes  " + string(_info.cycles) + " cycles");
 
         // Line 2: format
         draw_set_color(c_aqua);
-        draw_text(_tx, _ty + _lh, "FORMAT: " + _info.format);
+        draw_text_l(_tx, _ty + _lh, L("FORMAT: ") + _info.format);
 
         // Line 3: mode
         draw_set_color(c_white);
-        draw_text(_tx, _ty + _lh * 2, _info.mode);
+        draw_text_l(_tx, _ty + _lh * 2, _info.mode);
 
         // Line 4: use
         draw_set_color(make_color_rgb(160, 220, 160));
-        draw_text(_tx, _ty + _lh * 3, _info.use);
+        draw_text_l(_tx, _ty + _lh * 3, _info.use);
 
-        draw_set_font(_font_before);
+        draw_set_font_l(_font_before);
     }
 }
 
@@ -1755,14 +1770,14 @@ if (instance_exists(node_tooltip_node)) {
     var _nt_info = scr_node_tooltip_text(node_tooltip_node.node_type);
     if (_nt_info != undefined) {
         var _font_before2 = draw_get_font();
-        draw_set_font(fnt_c64_code);
+        draw_set_font_l(fnt_c64_code);
 
         var _nt_scale = 1.4;
         var _nt_pad   = 8  * _nt_scale;
         var _nt_lh    = 14 * _nt_scale;
-        var _nt_w     = string_width(_nt_info.title) * _nt_scale;
+        var _nt_w     = string_width_l(_nt_info.title) * _nt_scale;
         for (var _nti = 0; _nti < array_length(_nt_info.lines); _nti++) {
-            _nt_w = max(_nt_w, string_width(_nt_info.lines[_nti]) * _nt_scale);
+            _nt_w = max(_nt_w, string_width_l(_nt_info.lines[_nti]) * _nt_scale);
         }
         _nt_w += _nt_pad * 2;
         var _nt_h = (_nt_pad * 2) + _nt_lh + (4 * _nt_scale) + (array_length(_nt_info.lines) * _nt_lh);
@@ -1783,16 +1798,16 @@ if (instance_exists(node_tooltip_node)) {
         var _nt_ty = _nt_y + _nt_pad;
 
         draw_set_color(c_yellow);
-        draw_text_transformed(_nt_tx, _nt_ty, _nt_info.title, _nt_scale, _nt_scale, 0);
+        draw_text_transformed_l(_nt_tx, _nt_ty, _nt_info.title, _nt_scale, _nt_scale, 0);
         _nt_ty += _nt_lh + (4 * _nt_scale);
 
         draw_set_color(c_white);
         for (var _ntj = 0; _ntj < array_length(_nt_info.lines); _ntj++) {
-            draw_text_transformed(_nt_tx, _nt_ty, _nt_info.lines[_ntj], _nt_scale, _nt_scale, 0);
+            draw_text_transformed_l(_nt_tx, _nt_ty, _nt_info.lines[_ntj], _nt_scale, _nt_scale, 0);
             _nt_ty += _nt_lh;
         }
 
-        draw_set_font(_font_before2);
+        draw_set_font_l(_font_before2);
     }
 }
 
@@ -1862,7 +1877,7 @@ for (var j = 0; j < array_length(shortcuts); j++) {
     var off = btn_click ? 2 : 0;
     draw_set_halign(fa_left);
     draw_set_color(c_white);
-    draw_text_transformed(box_x1 + 15, row_y + 2 + off, shortcuts[j][0], 1.0, 1.2, 0);
+    draw_text_transformed_l(box_x1 + 15, row_y + 2 + off, shortcuts[j][0], 1.0, 1.2, 0);
 
     draw_set_halign(fa_right);
 	
@@ -1899,10 +1914,10 @@ for (var j = 0; j < array_length(shortcuts); j++) {
             mode_text = global.use_hex_display ? "HEXADECIMAL" : "DECIMAL";
         }
         draw_set_color(label_col);
-        draw_text_transformed(box_x2 - 10, row_y + 3 + off, mode_text, 1.0, 1.2, 0);
+        draw_text_transformed_l(box_x2 - 10, row_y + 3 + off, mode_text, 1.0, 1.2, 0);
     } else {
         draw_set_color(btn_hover ? c_aqua : c_gray);
-        draw_text_transformed(box_x2 - 10, row_y + 3 + off, shortcuts[j][1], 1.0, 1.2, 0);
+        draw_text_transformed_l(box_x2 - 10, row_y + 3 + off, shortcuts[j][1], 1.0, 1.2, 0);
     }
     draw_set_halign(fa_left);
 	
@@ -2121,38 +2136,38 @@ case "TOGGLE AUTOSAVE MODE":
 ///// 3. FOOTER & LOGO
 /////////////////////////////////////////////////////////////////
 draw_set_halign(fa_left);
-draw_set_font(fnt_C64_Angled);
+draw_set_font_l(fnt_C64_Angled);
 
 draw_set_halign(fa_right);
 
 draw_set_colour(c_black);
 draw_set_alpha(0.6);
-draw_text(room_width-35, 11, (global.lite ? "LITE " : "FULL ") + "VERSION: "+string(GM_version)+"\n (C) POLYTRICITY LTD 2026");
+draw_text_l(room_width-35, 11, (global.lite ? L("LITE ") : L("FULL ")) + L("VERSION: ")+string(GM_version)+"\n (C) POLYTRICITY LTD 2026");
 
 draw_set_colour(c_white);
 draw_set_alpha(1);
 if global.lite draw_set_colour(c_lime);
-draw_text(room_width-34, 10, (global.lite ? "LITE " : "FULL ") + "VERSION: "+string(GM_version)+"\n (C) POLYTRICITY LTD 2026");
+draw_text_l(room_width-34, 10, (global.lite ? L("LITE ") : L("FULL ")) + L("VERSION: ")+string(GM_version)+"\n (C) POLYTRICITY LTD 2026");
 
 
 // --- New version available banner ---
 if (version_banner_visible && !version_banner_dismissed)
 {
     // Set banner font FIRST so all measurements are correct
-    draw_set_font(fnt_C64_Angled_big);
+    draw_set_font_l(fnt_C64_Angled_big);
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
     
     // Build the three text segments separately so we can hit-test [CLOSE] precisely
-    var _txt_main  = "NEW VERSION AVAILABLE: " + version_remote_string + "  ";
+    var _txt_main  = L("NEW VERSION AVAILABLE: ") + version_remote_string + "  ";
     var _txt_link  = "[GO TO LINK]";
     var _txt_gap   = "  ";
     var _txt_close = "[CLOSE]";
     
-    var _w_main  = string_width(_txt_main);
-    var _w_link  = string_width(_txt_link);
-    var _w_gap   = string_width(_txt_gap);
-    var _w_close = string_width(_txt_close);
+    var _w_main  = string_width_l(_txt_main);
+    var _w_link  = string_width_l(_txt_link);
+    var _w_gap   = string_width_l(_txt_gap);
+    var _w_close = string_width_l(_txt_close);
     var _w_total = _w_main + _w_link + _w_gap + _w_close;
     var _h_total = string_height(_txt_main);
     
@@ -2183,7 +2198,7 @@ if (version_banner_visible && !version_banner_dismissed)
     
     // Draw segments in order, colouring hover state per-segment
     draw_set_colour(c_yellow);
-    draw_text(_banner_x1, _banner_y1, _txt_main);
+    draw_text_l(_banner_x1, _banner_y1, _txt_main);
     
     if (_over_link)
     {
@@ -2193,7 +2208,7 @@ if (version_banner_visible && !version_banner_dismissed)
     {
         draw_set_colour(c_lime);
     }
-    draw_text(_link_x1, _banner_y1, _txt_link);
+    draw_text_l(_link_x1, _banner_y1, _txt_link);
     
     if (_over_close)
     {
@@ -2203,7 +2218,7 @@ if (version_banner_visible && !version_banner_dismissed)
     {
         draw_set_colour(c_red);
     }
-    draw_text(_close_x1, _banner_y1, _txt_close);
+    draw_text_l(_close_x1, _banner_y1, _txt_close);
     
     // Click handling — only the link and close are clickable, not the dead text in between
     if (mouse_check_button_pressed(mb_left))
@@ -2220,7 +2235,7 @@ if (version_banner_visible && !version_banner_dismissed)
     }
     
     // Restore footer font for whatever draws after
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_colour(c_white);
     draw_set_halign(fa_left);
 }
@@ -2228,7 +2243,7 @@ if (version_banner_visible && !version_banner_dismissed)
 if (gui_menu_open == -1) {
     draw_set_colour(c_white);
     draw_set_halign(fa_left);
-	draw_set_font(fnt_C64_Angled_tiny)
+	draw_set_font_l(fnt_C64_Angled_tiny)
     var _path_str = string(global.workspace_path);
     var _path_x1  = shelf_width + 50;
     var _path_x2  = gui_w - 300;
@@ -2241,8 +2256,8 @@ if (gui_menu_open == -1) {
     if (string_length(_ls_h) < 2) _ls_h = "0" + _ls_h;
     if (string_length(_ls_m) < 2) _ls_m = "0" + _ls_m;
     // Combine into one string for scaling
-    var _display_str = "CURRENT FILE: " + _path_str + "    LAST SAVED: " + _ls_h + ":" + _ls_m;
-    var _full_w    = string_width(_display_str);
+    var _display_str = L("CURRENT FILE: ") + _path_str + L("    LAST SAVED: ") + _ls_h + ":" + _ls_m;
+    var _full_w    = string_width_l(_display_str);
     var _path_scl  = (_full_w > _path_w) ? (_path_w / _full_w) : 1.0;
     var _path_lower = string_lower(_path_str);
     var _cur_is_autosave = (string_pos("autosave", _path_lower) > 0);
@@ -2251,7 +2266,7 @@ if (gui_menu_open == -1) {
     } else {
         draw_set_colour(c_white);
     }
-    draw_text_transformed(_path_x1, _file_y, _display_str, _path_scl, 1.0, 0);
+    draw_text_transformed_l(_path_x1, _file_y, _display_str, _path_scl, 1.0, 0);
     if (autosave_last_path != "")
     {
         var _h = string(autosave_hour);
@@ -2265,14 +2280,14 @@ if (gui_menu_open == -1) {
             _m = "0" + _m;
         }
         var _auto_str = "AUTOSAVE: " + autosave_last_path + "   TIME: " + _h + ":" + _m;
-        var _auto_w = string_width(_auto_str);
+        var _auto_w = string_width_l(_auto_str);
         var _auto_scl = 1.0;
         if (_auto_w > 1328)
         {
             _auto_scl = 1328 / _auto_w;
         }
         draw_set_color(make_color_rgb(80, 160, 80));
-        draw_text_transformed(_path_x1, _auto_y, _auto_str, _auto_scl, 1.0, 0);
+        draw_text_transformed_l(_path_x1, _auto_y, _auto_str, _auto_scl, 1.0, 0);
     }
 }
 
@@ -2323,7 +2338,7 @@ if (is_entering_text && !_modal_is_comment) {
 
    // draw_set_halign(fa_center);
    // draw_set_color(c_white);
-   // draw_text(mid_x, mid_y - (box_h - 25), "EDITING " + string_upper(input_target_node.node_title));
+   // draw_text_l(mid_x, mid_y - (box_h - 25), "EDITING " + string_upper(input_target_node.node_title));
 	
 	draw_set_halign(fa_center);
 	draw_set_color(c_white);
@@ -2337,10 +2352,10 @@ if (is_entering_text && !_modal_is_comment) {
 	} else if (instance_exists(input_target_node)) {
 	    _modal_title = "EDITING " + string_upper(input_target_node.node_title);
 	}
-	draw_text(mid_x, mid_y - (box_h - 25), _modal_title);
+	draw_text_l(mid_x, mid_y - (box_h - 25), _modal_title);
 
 // Establish font once for the whole modal text block
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
 
     var _is_ml  = (is_comment || is_scrolltxt || is_code_edit);
     var _txt_x  = _is_ml ? ((is_scrolltxt || is_code_edit) ? mid_x - 250 : mid_x - 195) : mid_x;
@@ -2364,8 +2379,8 @@ if (is_entering_text && !_modal_is_comment) {
                 if (_slo <= _ml_end && _shi > _ml_off) {
                     var _hl_s = max(0, _slo - _ml_off);
                     var _hl_e = min(_ml_len, _shi - _ml_off);
-                    var _hx1  = _txt_x + string_width(string_copy(_ml_line, 1, _hl_s)) * 1.2;
-                    var _hx2  = _txt_x + string_width(string_copy(_ml_line, 1, _hl_e)) * 1.2;
+                    var _hx1  = _txt_x + string_width_l(string_copy(_ml_line, 1, _hl_s)) * 1.2;
+                    var _hx2  = _txt_x + string_width_l(string_copy(_ml_line, 1, _hl_e)) * 1.2;
                     var _hy   = _txt_y0 + (_mli * _lh_px);
                     draw_rectangle(_hx1, _hy, _hx2, _hy + _lh_px, false);
                 }
@@ -2374,9 +2389,9 @@ if (is_entering_text && !_modal_is_comment) {
         } else {
             var _before_sel = string_copy(current_input_string, 1, _slo);
             var _sel_text   = string_copy(current_input_string, _slo + 1, _shi - _slo);
-            var _full_w     = string_width(current_input_string) * 1.5;
-            var _bw         = string_width(_before_sel) * 1.5;
-            var _sw         = string_width(_sel_text)   * 1.5;
+            var _full_w     = string_width_l(current_input_string) * 1.5;
+            var _bw         = string_width_l(_before_sel) * 1.5;
+            var _sw         = string_width_l(_sel_text)   * 1.5;
             var _start_x    = mid_x - _full_w * 0.5;
             draw_rectangle(_start_x + _bw, mid_y - 14, _start_x + _bw + _sw, mid_y + 14, false);
         }
@@ -2389,19 +2404,19 @@ if (is_entering_text && !_modal_is_comment) {
     draw_set_color(c_yellow);
     if (_is_ml) {
         draw_set_halign(fa_left);
-        draw_text_ext_transformed(_txt_x, _txt_y0, _visual_str, 18, 550, 1.2, 1.2, 0);
+        draw_text_ext_transformed_l(_txt_x, _txt_y0, _visual_str, 18, 550, 1.2, 1.2, 0);
     } else {
         draw_set_halign(fa_center);
-        draw_text_transformed(_txt_x, mid_y, _visual_str, 1.5, 1.5, 0);
+        draw_text_transformed_l(_txt_x, mid_y, _visual_str, 1.5, 1.5, 0);
     }
     draw_set_halign(fa_left);
 }
 
 if (readyToQuit == 1) {
-    draw_set_font(fnt_big);
+    draw_set_font_l(fnt_big);
     var msg     = "Ready to quit.. You might need to save? Press Y to leave?";
     var padding = 4;
-    var txt_w   = string_width(msg);
+    var txt_w   = string_width_l(msg);
     var txt_h   = string_height(msg);
     var box_x1  = (gui_w / 2) - (txt_w / 2) - padding;
     var box_y1  = (gui_h / 2) - (txt_h / 2) - padding;
@@ -2413,27 +2428,27 @@ if (readyToQuit == 1) {
     draw_rectangle(box_x1, box_y1, box_x2, box_y2, true);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
-    draw_text(gui_w / 2, gui_h / 2, msg);
+    draw_text_l(gui_w / 2, gui_h / 2, msg);
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
-    draw_set_font(fnt_c64);
+    draw_set_font_l(fnt_c64);
     if (mouse_check_button(mb_left)) readyToQuit = 0;
 }
 
 /////////////////////////////////////////////////////////////////
 ///// 5. PERFORMANCE MONITOR (BOTTOM LEFT)
 /////////////////////////////////////////////////////////////////
-draw_set_font(fnt_c64_tiny);
+draw_set_font_l(fnt_c64_tiny);
 draw_set_halign(fa_left);
 draw_set_valign(fa_bottom);
 draw_set_colour(c_yellow)
-draw_text(10, gui_h - 55, "Mx: " + string(gui_mouse_x) + " : My:  " + string(gui_mouse_y))
-draw_text(10, gui_h - 40, "CAMx: " + string(cam_x) + " : CAMy:  " + string(cam_y))
+draw_text_l(10, gui_h - 55, "Mx: " + string(gui_mouse_x) + " : My:  " + string(gui_mouse_y))
+draw_text_l(10, gui_h - 40, "CAMx: " + string(cam_x) + " : CAMy:  " + string(cam_y))
 var fps_col = (fps >= 55) ? c_lime : ((fps >= 30) ? c_yellow : c_red);
 draw_set_color(fps_col);
-draw_text(10, gui_h - 10, "FPS: " + string(fps) + " (REAL: " + string(fps_real) + ")");
+draw_text_l(10, gui_h - 10, "FPS: " + string(fps) + " (REAL: " + string(fps_real) + ")");
 draw_set_color(c_white);
-draw_text(180, gui_h - 10, "NODES: " + string(instance_number(obj_c64_node)));
+draw_text_l(180, gui_h - 10, L("NODES: ") + string(instance_number(obj_c64_node)));
 draw_set_valign(fa_top);
 draw_set_halign(fa_left);
 
@@ -2468,10 +2483,10 @@ if (instance_exists(global.breakdown_node)) {
         // Header bar
         draw_set_color(make_color_rgb(60, 100, 180));
         draw_rectangle(_px1, _py1, _px2, _py1 + 28, false);
-        draw_set_font(fnt_c64_code);
+        draw_set_font_l(fnt_c64_code);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
-        draw_text(gui_w / 2, _py1 + 6, "MACRO SPRITE — MACHINE CODE BREAKDOWN");
+        draw_text_l(gui_w / 2, _py1 + 6, "MACRO SPRITE — MACHINE CODE BREAKDOWN");
         draw_set_halign(fa_left);
         
         // --- FIXED: resolve spr_ptr from asset manager; ptr_reg shown as runtime-derived ---
@@ -2550,29 +2565,29 @@ if (instance_exists(global.breakdown_node)) {
         var _col5_x  = _px1 + 490;
 
         // Column headers
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(c_gray);
-        draw_text(_col1_x, _ly, "ADDR");
-        draw_text(_col2_x, _ly, "INS");
-        draw_text(_col3_x, _ly, "OPERAND");
-        draw_text(_col4_x, _ly, "COMMENT");
-        draw_text(_col5_x, _ly, "SZ");
+        draw_text_l(_col1_x, _ly, "ADDR");
+        draw_text_l(_col2_x, _ly, "INS");
+        draw_text_l(_col3_x, _ly, "OPERAND");
+        draw_text_l(_col4_x, _ly, "COMMENT");
+        draw_text_l(_col5_x, _ly, "SZ");
         _ly += _lh + 2;
         draw_set_color(make_color_rgb(40, 40, 60));
         draw_rectangle(_px1 + 8, _ly - 2, _px2 - 8, _ly - 1, false);
 
         // Address info subheader
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(80, 120, 80));
         var _bank_hex = "$" + string_upper(decimal_to_hex(_bank_addr));
         var _scr_hex  = "$" + string_upper(decimal_to_hex(_screen_ram));
-        draw_text(_col1_x, _ly,
+        draw_text_l(_col1_x, _ly,
             "ASSET: " + _asset_name + "  BANK: " + string(_vic_bank)
             + "  DATA@" + _bank_hex + "  SCRRAM@" + _scr_hex);
         _ly += _lh + 2;
 
         var _total_bytes = 0;
-        draw_set_font(fnt_c64_code);
+        draw_set_font_l(fnt_c64_code);
         for (var _i = 0; _i < array_length(_rows); _i++) {
             var _row    = _rows[_i];
             var _addr_h = decimal_to_hex(_pc);
@@ -2584,15 +2599,15 @@ if (instance_exists(global.breakdown_node)) {
             }
 
             draw_set_color(c_aqua);
-            draw_text(_col1_x, _ly, "$" + string_upper(_addr_h));
+            draw_text_l(_col1_x, _ly, "$" + string_upper(_addr_h));
             draw_set_color(c_yellow);
-            draw_text(_col2_x, _ly, _row[0]);
+            draw_text_l(_col2_x, _ly, _row[0]);
             draw_set_color(c_white);
-            draw_text(_col3_x, _ly, _row[1]);
+            draw_text_l(_col3_x, _ly, _row[1]);
             draw_set_color(c_gray);
-            draw_text(_col4_x, _ly, "; " + _row[2]);
+            draw_text_l(_col4_x, _ly, "; " + _row[2]);
             draw_set_color(c_lime);
-            draw_text(_col5_x, _ly, string(_row[3]));
+            draw_text_l(_col5_x, _ly, string(_row[3]));
 
             _pc           += _row[3];
             _total_bytes  += _row[3];
@@ -2605,15 +2620,15 @@ if (instance_exists(global.breakdown_node)) {
         draw_rectangle(_px1 + 8, _ly, _px2 - 8, _ly + 1, false);
         _ly += 6;
         draw_set_color(c_white);
-        draw_text(_col4_x, _ly, "TOTAL:");
+        draw_text_l(_col4_x, _ly, "TOTAL:");
         draw_set_color(c_lime);
-        draw_text(_col5_x, _ly, string(_total_bytes) + " BYTES");
+        draw_text_l(_col5_x, _ly, string(_total_bytes) + " BYTES");
 
         // Dismiss hint
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(c_gray);
         draw_set_halign(fa_center);
-        draw_text(gui_w / 2, _py2 - 18, "CLICK ANYWHERE TO CLOSE");
+        draw_text_l(gui_w / 2, _py2 - 18, "CLICK ANYWHERE TO CLOSE");
         draw_set_halign(fa_left);
     }
 }
@@ -2822,9 +2837,9 @@ if (global.show_info_window && instance_exists(global.info_node)) {
     // =========================================================
     // HEADER: TITLE + DESCRIPTION
     // =========================================================
-    draw_set_font(fnt_C64_Angled_big);
+    draw_set_font_l(fnt_C64_Angled_big);
     draw_set_color(c_white);
-    draw_text(win_x + 30, win_y + 16, _title);
+    draw_text_l(win_x + 30, win_y + 16, _title);
 
     var _desc = "";
     if (_node.node_type == "MACRO_SPR") {
@@ -2836,9 +2851,9 @@ if (global.show_info_window && instance_exists(global.info_node)) {
                 "inline. Handler: acks VIC, restores banking, calls play, scans keyboard, RTI. " +
                 "106 bytes total - zero mainloop cost.";
     }
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(80, 180, 80));
-    if (_desc != "") draw_text_ext(win_x + 30, win_y + 44, _desc, 14, win_w - 60);
+    if (_desc != "") draw_text_ext_l(win_x + 30, win_y + 44, _desc, 14, win_w - 60);
 
     // =========================================================
     // COLUMN HEADERS + DIVIDER
@@ -2848,12 +2863,12 @@ if (global.show_info_window && instance_exists(global.info_node)) {
     var _col_ins  = win_x + 290;
     var _col_comm = win_x + 430;
     var _ly_hdr   = win_y + 88;
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     draw_set_color(make_color_rgb(80, 80, 100));
-    draw_text(_col_addr, _ly_hdr, "ADDR");
-    draw_text(_col_hex,  _ly_hdr, "HEX BYTES");
-    draw_text(_col_ins,  _ly_hdr, "ASM");
-    draw_text(_col_comm, _ly_hdr, "; COMMENT");
+    draw_text_l(_col_addr, _ly_hdr, "ADDR");
+    draw_text_l(_col_hex,  _ly_hdr, "HEX BYTES");
+    draw_text_l(_col_ins,  _ly_hdr, "ASM");
+    draw_text_l(_col_comm, _ly_hdr, "; COMMENT");
     draw_set_color(make_color_rgb(40, 40, 60));
     draw_rectangle(win_x + 10, _ly_hdr + 14, win_x + win_w - 10, _ly_hdr + 15, false);
 
@@ -2888,11 +2903,11 @@ if (global.show_info_window && instance_exists(global.info_node)) {
         while (string_length(_s_hex) < 4) _s_hex = "0" + _s_hex;
         var _bytes_str = _rows[i][0] + ((_rows[i][1] != "") ? " " + _rows[i][1] : "");
 
-        draw_set_font(fnt_C64_Angled);
-        draw_set_color(make_color_rgb(100, 100, 140)); draw_text(_col_addr, _row_y, "$" + string_upper(_s_hex));
-        draw_set_color(make_color_rgb(180, 160, 80));  draw_text(_col_hex,  _row_y, string_upper(_bytes_str));
-        draw_set_color(make_color_rgb(80, 180, 255));  draw_text(_col_ins,  _row_y, scr_format_asm(_rows[i][2], _rows[i][3]));
-        draw_set_color(make_color_rgb(120, 80, 80));   draw_text(_col_comm, _row_y, "; " + string(_rows[i][4]));
+        draw_set_font_l(fnt_C64_Angled);
+        draw_set_color(make_color_rgb(100, 100, 140)); draw_text_l(_col_addr, _row_y, "$" + string_upper(_s_hex));
+        draw_set_color(make_color_rgb(180, 160, 80));  draw_text_l(_col_hex,  _row_y, string_upper(_bytes_str));
+        draw_set_color(make_color_rgb(80, 180, 255));  draw_text_l(_col_ins,  _row_y, scr_format_asm(_rows[i][2], _rows[i][3]));
+        draw_set_color(make_color_rgb(120, 80, 80));   draw_text_l(_col_comm, _row_y, "; " + string(_rows[i][4]));
 
         _running_pc += _size;
     }
@@ -2915,10 +2930,10 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 
         if (info_timer < 180) {
             draw_set_alpha(max(0, 1 - (info_timer - 120) / 60));
-            draw_set_font(fnt_c64_tiny);
+            draw_set_font_l(fnt_c64_tiny);
             draw_set_color(c_gray);
             draw_set_halign(fa_center);
-            draw_text(win_x + win_w / 2, _clip_y2 - 16, "SCROLL: MOUSEWHEEL OR UP/DOWN");
+            draw_text_l(win_x + win_w / 2, _clip_y2 - 16, "SCROLL: MOUSEWHEEL OR UP/DOWN");
             draw_set_halign(fa_left);
             draw_set_alpha(1.0);
         }
@@ -2928,10 +2943,10 @@ if (global.show_info_window && instance_exists(global.info_node)) {
     // DISMISS
     // =========================================================
     if (info_timer > 60) {
-        draw_set_font(fnt_big);
+        draw_set_font_l(fnt_big);
         draw_set_color(make_color_rgb(180, 40, 40));
         draw_set_halign(fa_center);
-        draw_text(win_x + (win_w / 2), win_y + win_h - 30, "CLICK ANYWHERE TO DISMISS");
+        draw_text_l(win_x + (win_w / 2), win_y + win_h - 30, "CLICK ANYWHERE TO DISMISS");
         draw_set_halign(fa_left);
         if (mouse_check_button_pressed(mb_any) || keyboard_check_pressed(vk_escape)) {
             global.show_info_window = false;
@@ -2968,17 +2983,17 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    // Header bar
 	    draw_set_color(make_color_rgb(30, 60, 100));
 	    draw_rectangle(_px, _py, _px + _pw, _py + 24, false);
-	    draw_set_font(fnt_C64_Angled);
+	    draw_set_font_l(fnt_C64_Angled);
 	    draw_set_color(c_white);
 	    draw_set_halign(fa_center);
-	    draw_text(_px + _pw * 0.5, _py + 4,
+	    draw_text_l(_px + _pw * 0.5, _py + 4,
 	              box_popup_is_edit ? "EDIT MAPPING BOX" : "NEW MAPPING BOX");
 	    draw_set_halign(fa_left);
 
 	    // NAME label
-	    draw_set_font(fnt_c64_tiny);
+	    draw_set_font_l(fnt_c64_tiny);
 	    draw_set_color(c_gray);
-	    draw_text(_px + 14, _py + 32, "NAME:");
+	    draw_text_l(_px + 14, _py + 32, "NAME:");
 
 	    // Name input field
 	    var _nfx1 = _px + 14;
@@ -2991,21 +3006,21 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    draw_rectangle(_nfx1, _nfy1, _nfx2, _nfy2, true);
 	    var _blinker  = (current_time mod 600 < 300) ? "|" : " ";
 	    var _vis_name = string_insert(_blinker, box_popup_name, box_cursor_pos + 1);
-	    draw_set_font(fnt_c64_code);
+	    draw_set_font_l(fnt_c64_code);
 	    draw_set_color(c_yellow);
-	    draw_text(_nfx1 + 6, _nfy1 + 4, _vis_name);
+	    draw_text_l(_nfx1 + 6, _nfy1 + 4, _vis_name);
 
 	    // Duplicate warning
 	    if (box_popup_name_dupe) {
-	        draw_set_font(fnt_c64_tiny);
+	        draw_set_font_l(fnt_c64_tiny);
 	        draw_set_color(c_red);
-	        draw_text(_nfx1, _nfy2 + 2, "! NAME IN USE - WILL AUTO-NUMBER");
+	        draw_text_l(_nfx1, _nfy2 + 2, "! NAME IN USE - WILL AUTO-NUMBER");
 	    }
 
 	    // COLOUR label
-	    draw_set_font(fnt_c64_tiny);
+	    draw_set_font_l(fnt_c64_tiny);
 	    draw_set_color(c_gray);
-	    draw_text(_px + 14, _py + 80, "COLOUR:");
+	    draw_text_l(_px + 14, _py + 80, "COLOUR:");
 
 	    // Colour names for dropdown
 	    var _col_names = [
@@ -3049,9 +3064,9 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    draw_set_color(_box_colours[box_popup_col_idx]);
 	    draw_rectangle(_ddx1 + 4, _ddy1 + 4, _ddx1 + 20, _ddy2 - 4, false);
 
-	    draw_set_font(fnt_C64_Angled);
+	    draw_set_font_l(fnt_C64_Angled);
 	    draw_set_color(c_white);
-	    draw_text(_ddx1 + 26, _ddy1 + 5, _col_names[box_popup_col_idx]);
+	    draw_text_l(_ddx1 + 26, _ddy1 + 5, _col_names[box_popup_col_idx]);
 
 	    // Arrow
 	    draw_set_color(c_gray);
@@ -3081,9 +3096,9 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	            draw_set_color(_box_colours[_ci]);
 	            draw_rectangle(_lix1 + 4, _liy1 + 3, _lix1 + 18, _liy2 - 3, false);
 
-	            draw_set_font(fnt_C64_Angled);
+	            draw_set_font_l(fnt_C64_Angled);
 	            draw_set_color(_ci == box_popup_col_idx ? c_yellow : c_white);
-	            draw_text(_lix1 + 24, _liy1 + 4, _col_names[_ci]);
+	            draw_text_l(_lix1 + 24, _liy1 + 4, _col_names[_ci]);
 
 	            if (_li_hov && mouse_check_button_pressed(mb_left)) {
 	                box_popup_col_idx = _ci;
@@ -3108,13 +3123,13 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	        draw_rectangle(_ok_x, _ok_y, _ok_x + _ok_w, _ok_y + 24, false);
 	        draw_set_color(_ok_hov ? c_black : c_white);
 	        draw_set_halign(fa_center);
-	        draw_set_font(fnt_C64_Angled);
-	        draw_text(_ok_x + _ok_w * 0.5, _ok_y + 5, "CONFIRM");
+	        draw_set_font_l(fnt_C64_Angled);
+	        draw_text_l(_ok_x + _ok_w * 0.5, _ok_y + 5, "CONFIRM");
 
 	        draw_set_color(_cn_hov ? c_red : make_color_rgb(100, 30, 30));
 	        draw_rectangle(_cn_x, _ok_y, _cn_x + _ok_w, _ok_y + 24, false);
 	        draw_set_color(_cn_hov ? c_black : c_white);
-	        draw_text(_cn_x + _ok_w * 0.5, _ok_y + 5, "CANCEL");
+	        draw_text_l(_cn_x + _ok_w * 0.5, _ok_y + 5, "CANCEL");
 	        draw_set_halign(fa_left);
 
 	        if (_ok_hov && mouse_check_button_released(mb_left)) {
@@ -3218,10 +3233,10 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 
 	    draw_set_color(make_color_rgb(30, 60, 100));
 	    draw_rectangle(_lsx, _lsy, _lsx + _lsw, _lsy + 24, false);
-	    draw_set_font(fnt_C64_Angled);
+	    draw_set_font_l(fnt_C64_Angled);
 	    draw_set_color(c_white);
 	    draw_set_halign(fa_center);
-	    draw_text(_lsx + _lsw * 0.5, _lsy + 4, "FIND LABEL");
+	    draw_text_l(_lsx + _lsw * 0.5, _lsy + 4, "FIND LABEL");
 	    draw_set_halign(fa_left);
 
 	    // Close X
@@ -3229,7 +3244,7 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    var _lsclose_y1 = _lsy + 2;
 	    var _lsclose_hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _lsclose_x1, _lsclose_y1, _lsclose_x1 + 18, _lsclose_y1 + 18);
 	    draw_set_color(_lsclose_hov ? c_red : c_white);
-	    draw_text(_lsclose_x1 + 3, _lsclose_y1, "X");
+	    draw_text_l(_lsclose_x1 + 3, _lsclose_y1, "X");
 	    if (_lsclose_hov && mouse_check_button_pressed(mb_left)) {
 	        label_search_open    = false;
 	        label_search_results = [];
@@ -3237,9 +3252,9 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    }
 
 	    // Hint
-	    draw_set_font(fnt_c64_tiny);
+	    draw_set_font_l(fnt_c64_tiny);
 	    draw_set_color(c_gray);
-	    draw_text(_lsx + 14, _lsy + 32, "NAME / NAME* / *NAME / *NAME*");
+	    draw_text_l(_lsx + 14, _lsy + 32, "NAME / NAME* / *NAME / *NAME*");
 
 	    // Input field
 	    var _lfx1 = _lsx + 14;
@@ -3252,9 +3267,9 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    draw_rectangle(_lfx1, _lfy1, _lfx2, _lfy2, true);
 	    var _ls_blink = (current_time mod 600 < 300) ? "|" : " ";
 	    var _ls_vis   = string_insert(_ls_blink, label_search_query, label_search_cursor + 1);
-	    draw_set_font(fnt_c64_code);
+	    draw_set_font_l(fnt_c64_code);
 	    draw_set_color(c_yellow);
-	    draw_text(_lfx1 + 6, _lfy1 + 4, _ls_vis);
+	    draw_text_l(_lfx1 + 6, _lfy1 + 4, _ls_vis);
 
 	    // Search button
 	    var _lsbx1 = _lsx + 14;
@@ -3265,9 +3280,9 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    draw_set_color(_lsb_hov ? c_lime : make_color_rgb(30, 100, 30));
 	    draw_rectangle(_lsbx1, _lsby1, _lsbx2, _lsby2, false);
 	    draw_set_color(_lsb_hov ? c_black : c_white);
-	    draw_set_font(fnt_C64_Angled);
+	    draw_set_font_l(fnt_C64_Angled);
 	    draw_set_halign(fa_center);
-	    draw_text(_lsbx1 + (_lsbx2 - _lsbx1) * 0.5, _lsby1 + 5, "SEARCH");
+	    draw_text_l(_lsbx1 + (_lsbx2 - _lsbx1) * 0.5, _lsby1 + 5, "SEARCH");
 	    draw_set_halign(fa_left);
 	    if (_lsb_hov && mouse_check_button_pressed(mb_left)) {
 	        label_search_results = scr_label_search_run(label_search_query);
@@ -3283,17 +3298,17 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    var _lsr_y     = _lsby1 + 4;
 	    var _lsr_count = array_length(label_search_results);
 
-	    draw_set_font(fnt_c64_code);
+	    draw_set_font_l(fnt_c64_code);
 	    if (_lsr_count > 0) {
 	        draw_set_color(c_lime);
-	        draw_text(_lsr_x, _lsr_y, string(label_search_index + 1) + " / " + string(_lsr_count));
+	        draw_text_l(_lsr_x, _lsr_y, string(label_search_index + 1) + " / " + string(_lsr_count));
 
 	        // < prev
 	        var _lsp_x1  = _lsr_x + 60;
 	        var _lsp_x2  = _lsp_x1 + 24;
 	        var _lsp_hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _lsp_x1, _lsby1, _lsp_x2, _lsby2);
 	        draw_set_color(_lsp_hov ? c_white : c_aqua);
-	        draw_text(_lsp_x1 + 6, _lsr_y, "<");
+	        draw_text_l(_lsp_x1 + 6, _lsr_y, "<");
 	        if (_lsp_hov && mouse_check_button_pressed(mb_left)) {
 	            label_search_index = (label_search_index - 1 + _lsr_count) mod _lsr_count;
 	            if (instance_exists(label_search_results[label_search_index])) {
@@ -3307,7 +3322,7 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	        var _lsn_x2  = _lsn_x1 + 24;
 	        var _lsn_hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _lsn_x1, _lsby1, _lsn_x2, _lsby2);
 	        draw_set_color(_lsn_hov ? c_white : c_aqua);
-	        draw_text(_lsn_x1 + 6, _lsr_y, ">");
+	        draw_text_l(_lsn_x1 + 6, _lsr_y, ">");
 	        if (_lsn_hov && mouse_check_button_pressed(mb_left)) {
 	            label_search_index = (label_search_index + 1) mod _lsr_count;
 	            if (instance_exists(label_search_results[label_search_index])) {
@@ -3321,13 +3336,13 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	            var _lscur      = label_search_results[label_search_index];
 	            var _lscur_name = (array_length(_lscur.instructions) > 0 && array_length(_lscur.instructions[0]) > 1)
 	                             ? string(_lscur.instructions[0][1]) : "";
-	            draw_set_font(fnt_c64_tiny);
+	            draw_set_font_l(fnt_c64_tiny);
 	            draw_set_color(c_white);
-	            draw_text(_lsr_x, _lsr_y + 20, _lscur_name);
+	            draw_text_l(_lsr_x, _lsr_y + 20, _lscur_name);
 	        }
 	    } else if (label_search_query != "") {
 	        draw_set_color(c_red);
-	        draw_text(_lsr_x, _lsr_y, "NO MATCHES");
+	        draw_text_l(_lsr_x, _lsr_y, "NO MATCHES");
 	    }
 	}
 
@@ -3350,9 +3365,9 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    draw_rectangle(_nav_x, _nav_y, _nav_x + _pw, _nav_y + 20 + array_length(_boxes) * _row_h + 8, true);
 
 	    // header
-	    draw_set_font(fnt_c64_tiny);
+	    draw_set_font_l(fnt_c64_tiny);
 	    draw_set_color(make_color_rgb(120, 120, 180));
-	    draw_text(_nav_x + 4, _nav_y + 4, "JUMP TO MAP BOX");
+	    draw_text_l(_nav_x + 4, _nav_y + 4, "JUMP TO MAP BOX");
 
 	    // rows
 	    for (var _i = 0; _i < array_length(_boxes); _i++) {
@@ -3363,7 +3378,7 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	        draw_set_color(_rhov ? make_color_rgb(40, 80, 120) : make_color_rgb(25, 25, 38));
 	        draw_rectangle(_nav_x, _ry, _nav_x + _pw, _ry + _row_h, false);
 	        draw_set_color(_rhov ? c_white : c_aqua);
-	        draw_text(_nav_x + 6, _ry + 3, _box.box_name);
+	        draw_text_l(_nav_x + 6, _ry + 3, _box.box_name);
 	    }
 	}
 	
@@ -3393,10 +3408,10 @@ if (global.show_helper_window && instance_exists(global.helper_node)) {
 
     var _node = global.helper_node;
 
-    draw_set_font(fnt_C64_Angled_big);
+    draw_set_font_l(fnt_C64_Angled_big);
     draw_set_color(make_color_rgb(40, 200, 80));
     draw_set_halign(fa_center);
-    draw_text(gui_w / 2, _hy1 + 16, string_upper(_node.node_type) + " - WHAT DOES THIS DO?");
+    draw_text_l(gui_w / 2, _hy1 + 16, string_upper(_node.node_type) + " - WHAT DOES THIS DO?");
 
     var _desc = "";
     if (_node.node_type == "MACRO_SPR") {
@@ -3428,16 +3443,16 @@ if (global.show_helper_window && instance_exists(global.helper_node)) {
         _desc = "Vertical map scroller using dual screen buffers at $0400 and $0C00. JSR Scroller_U each frame to scroll up, JSR Scroller_D to scroll down. Fine scroll via $D011 bits 0-2 shadow register, coarse step copies 24 rows into inactive buffer shifted by one row, loads new edge row, flips $D018. Safe to combine with MACRO_SCROLL - JSR both entry points in the same frame routine.";
     }
 
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     draw_set_color(c_white);
     draw_set_halign(fa_left);
-    draw_text_ext(gui_w / 2 - _hw / 2 + 20, _hy1 + 50, _desc, 20, _hw - 40);
+    draw_text_ext_l(gui_w / 2 - _hw / 2 + 20, _hy1 + 50, _desc, 20, _hw - 40);
 
     if (helper_timer > 60) {
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(c_gray);
         draw_set_halign(fa_center);
-        draw_text(gui_w / 2, _hy2 - 18, "CLICK ANYWHERE TO CLOSE");
+        draw_text_l(gui_w / 2, _hy2 - 18, "CLICK ANYWHERE TO CLOSE");
         draw_set_halign(fa_left);
 
         if (mouse_check_button_pressed(mb_any) || keyboard_check_pressed(vk_escape)) {
@@ -3460,10 +3475,10 @@ if (keyboard_check(vk_control)) {
         var _m = json_parse(_raw);
         _state_str = "UNDO STATE " + string(_m.current + 1) + "/" + string(array_length(_m.states))                  
     }
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_yellow);
     draw_set_halign(fa_left);
-    draw_text(global.gui_mouse_x + 14, global.gui_mouse_y + 14, _state_str);
+    draw_text_l(global.gui_mouse_x + 14, global.gui_mouse_y + 14, _state_str);
 }
 
 // DEBUG: zoom level
@@ -3473,8 +3488,8 @@ if (global.autosave_dirty && autosave_countdown > 0 && autosave_countdown <= 5.5
     var _alpha  = lerp(1.0, 0.5, (_cd - 1) / 4.0);
     var _cd_str = (_cd <= 1) ? "SAVING..." : ("AUTOSAVE IN " + string(_cd-1) + "...");
     var _box_col = (_cd <= 1) ? c_lime : c_yellow;
-    draw_set_font(fnt_C64_Angled_big);
-    var _tw  = string_width(_cd_str);
+    draw_set_font_l(fnt_C64_Angled_big);
+    var _tw  = string_width_l(_cd_str);
     var _th  = string_height(_cd_str);
     var _px  = (gui_w / 2) - (_tw / 2) - 20;
     var _py  = (gui_h / 2) - 80;
@@ -3490,7 +3505,7 @@ if (global.autosave_dirty && autosave_countdown > 0 && autosave_countdown <= 5.5
     draw_set_color(_box_col);
 	
     draw_set_halign(fa_center);
-    draw_text(_px + _pw / 2, _py + 10, _cd_str);
+    draw_text_l(_px + _pw / 2, _py + 10, _cd_str);
     draw_set_halign(fa_left);
     draw_set_alpha(1.0);
 }
@@ -3498,8 +3513,8 @@ if (global.autosave_dirty && autosave_countdown > 0 && autosave_countdown <= 5.5
 // Manual save (CTRL+S) in-progress flash
 if (global.isSaving) {
     var _msg = "SAVING...";
-    draw_set_font(fnt_C64_Angled_big);
-    var _tw  = string_width(_msg);
+    draw_set_font_l(fnt_C64_Angled_big);
+    var _tw  = string_width_l(_msg);
     var _th  = string_height(_msg);
     var _px  = (gui_w / 2) - (_tw / 2) - 20;
     var _py  = (gui_h / 2) - 80;
@@ -3513,7 +3528,7 @@ if (global.isSaving) {
     draw_rectangle(_px - 6, _py - 6, _px + _pw + 6, _py + _ph + 6, true);
     draw_set_color(c_lime);
     draw_set_halign(fa_center);
-    draw_text(_px + _pw / 2, _py + 10, _msg);
+    draw_text_l(_px + _pw / 2, _py + 10, _msg);
     draw_set_halign(fa_left);
     draw_set_alpha(1.0);
 }
@@ -3524,8 +3539,8 @@ if (autosave_flash_timer > 0) {
     var _total = game_get_speed(gamespeed_fps) * 3;
     var _fade  = autosave_flash_timer / _total;
     var _msg   = "AUTOSAVED";
-    draw_set_font(fnt_C64_Angled_big);
-    var _tw  = string_width(_msg);
+    draw_set_font_l(fnt_C64_Angled_big);
+    var _tw  = string_width_l(_msg);
     var _th  = string_height(_msg);
     var _px  = (gui_w / 2) - (_tw / 2) - 20;
     var _py  = (gui_h / 2) - 80;
@@ -3539,24 +3554,24 @@ if (autosave_flash_timer > 0) {
     draw_rectangle(_px - 6, _py - 6, _px + _pw + 6, _py + _ph + 6, true);
     draw_set_color(c_lime);
     draw_set_halign(fa_center);
-    draw_text(_px + _pw / 2, _py + 10, _msg);
+    draw_text_l(_px + _pw / 2, _py + 10, _msg);
     draw_set_halign(fa_left);
     draw_set_alpha(1.0);
 }
 
-draw_set_font(fnt_c64_tiny);
+draw_set_font_l(fnt_c64_tiny);
 draw_set_color(c_white);
-draw_text(10, 1040, "ZOOM: " + string(cam_zoom));
+draw_text_l(10, 1040, L("ZOOM: ") + string(cam_zoom));
 
 
 
 // --- C64U status toast ---
 if (global.c64u_status_t > 0) {
-    draw_set_font(fnt_C64_Angled_big);
+    draw_set_font_l(fnt_C64_Angled_big);
     draw_set_halign(fa_center);
     draw_set_valign(fa_top);
     draw_set_colour(c_white);
-    draw_text(1920/2, 80 , global.c64u_status);   
+    draw_text_l(1920/2, 80 , global.c64u_status);   
 	draw_set_halign(fa_left);
 	global.c64u_status_t -= 1;
 	
@@ -3580,12 +3595,12 @@ if (global.qmenu_toast_t > 0) {
 
     var _qt_float = 60 * _qt_norm; // floats up 60px total over its lifetime
 
-    draw_set_font(fnt_C64_Angled_big);
+    draw_set_font_l(fnt_C64_Angled_big);
     draw_set_halign(fa_center);
     draw_set_valign(fa_top);
     draw_set_alpha(_qt_alpha);
     draw_set_colour(global.qmenu_toast_col);
-    draw_text(1920 / 2, 500 - _qt_float, global.qmenu_toast_text);
+    draw_text_l(1920 / 2, 500 - _qt_float, global.qmenu_toast_text);
     draw_set_alpha(1.0);
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
@@ -3645,29 +3660,29 @@ if (global.var_del_warn_active) {
         draw_rectangle(_vw_x1, _vw_y1, _vw_x2, _vw_y1 + _vw_h, true);
 
         // Header
-        draw_set_font(fnt_C64_Angled);
+        draw_set_font_l(fnt_C64_Angled);
         draw_set_halign(fa_left);
         draw_set_color(make_color_rgb(255, 90, 90));
-        draw_text(_vw_x1 + 10, _vw_y1 + 6, "CANNOT DELETE " + global.var_del_warn_name);
+        draw_text_l(_vw_x1 + 10, _vw_y1 + 6, "CANNOT DELETE " + global.var_del_warn_name);
 
         var _vw_plural = "S";
         if (_vw_count == 1) {
             _vw_plural = "";
         }
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(220, 160, 160));
         var _vw_sub = "REFERENCED BY " + string(_vw_count) + " NODE" + _vw_plural + ". CLICK A ROW TO JUMP";
         if (global.var_del_warn_batch > 1) {
             _vw_sub = string(global.var_del_warn_batch) + " VARS REFERENCED BY " +
                       string(_vw_count) + " NODE" + _vw_plural + ". CLICK A ROW TO JUMP";
         }
-        draw_text(_vw_x1 + 10, _vw_y1 + 30, _vw_sub);
+        draw_text_l(_vw_x1 + 10, _vw_y1 + 30, _vw_sub);
 
         // Rows (clipped)
         var _vw_ly      = _vw_y1 + _vw_hdr_h - global.var_del_warn_scroll;
         var _vw_clip_y1 = _vw_y1 + _vw_hdr_h;
         var _vw_clip_y2 = _vw_y1 + _vw_h - 6;
-        draw_set_font(fnt_C64_Angled);
+        draw_set_font_l(fnt_C64_Angled);
 
         for (var _vwi = 0; _vwi < _vw_count; _vwi++) {
             var _vw_ry = _vw_ly + (_vwi * _vw_row_h);
@@ -3695,7 +3710,7 @@ if (global.var_del_warn_active) {
             } else {
                 draw_set_color(make_color_rgb(230, 210, 210));
             }
-            draw_text(_vw_x1 + 12, _vw_ry + 3, string(_vwi + 1) + ". " + string(_vw_ref.label));
+            draw_text_l(_vw_x1 + 12, _vw_ry + 3, string(_vwi + 1) + ". " + string(_vw_ref.label));
 
             if (_vw_hov && mouse_check_button_pressed(mb_left) && instance_exists(_vw_ref.node)) {
                 scr_focus_camera_on_node(_vw_ref.node);
@@ -3742,7 +3757,7 @@ scr_c64u_overlay_draw();
 
 // --- Q quick-spawn menu (drawn absolute last so it's always on top) ---
 if (qmenu_active && qmenu_open) {
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     for (var _qi = 0; _qi < array_length(qmenu_items); _qi++) {
         var _qr  = scr_qmenu_layout(_qi, qmenu_gui_x, qmenu_gui_y);
         var _hov = (qmenu_hover == _qi);
@@ -3753,7 +3768,7 @@ if (qmenu_active && qmenu_open) {
         draw_set_color(_hov ? c_white : c_aqua);
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
-        draw_text((_qr[0] + _qr[2]) / 2, (_qr[1] + _qr[3]) / 2, qmenu_items[_qi].label);
+        draw_text_l((_qr[0] + _qr[2]) / 2, (_qr[1] + _qr[3]) / 2, qmenu_items[_qi].label);
     }
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
@@ -3764,12 +3779,12 @@ if (qmenu_active && qmenu_open) {
 // --- Q custom quick-spawn menu (user-built, circular) ---
 if (uqmenu_active && uqmenu_open) {
     var _ucount = array_length(global.user_quick_menu);
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     if (_ucount == 0) {
         draw_set_halign(fa_center);
         draw_set_color(c_ltgray);
-        draw_text(uqmenu_gui_x, uqmenu_gui_y - 8, "QUICK MENU EMPTY");
-        draw_text(uqmenu_gui_x, uqmenu_gui_y + 6, "SHIFT+Q A MACRO TO ADD");
+        draw_text_l(uqmenu_gui_x, uqmenu_gui_y - 8, "QUICK MENU EMPTY");
+        draw_text_l(uqmenu_gui_x, uqmenu_gui_y + 6, "SHIFT+Q A MACRO TO ADD");
         draw_set_halign(fa_left);
     } else {
         for (var _ui = 0; _ui < _ucount; _ui++) {
@@ -3782,7 +3797,7 @@ if (uqmenu_active && uqmenu_open) {
             draw_set_color(_uhov ? c_white : c_aqua);
             draw_set_halign(fa_center);
             draw_set_valign(fa_middle);
-            draw_text((_ur[0] + _ur[2]) / 2, (_ur[1] + _ur[3]) / 2, global.user_quick_menu[_ui].label);
+            draw_text_l((_ur[0] + _ur[2]) / 2, (_ur[1] + _ur[3]) / 2, global.user_quick_menu[_ui].label);
         }
         draw_set_halign(fa_left);
         draw_set_valign(fa_top);
@@ -3809,22 +3824,22 @@ if (welcome_open) {
     var _wmy = device_mouse_y_to_gui(0);
 
     // Title
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_center);
     draw_set_color(c_white);
-    draw_text(_px + _pw / 2, _py + 16, "WELCOME TO C64 DEV MACHINE");
-    draw_set_font(fnt_c64_tiny);
+    draw_text_l(_px + _pw / 2, _py + 16, "WELCOME TO C64 DEV MACHINE");
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(200, 160, 40));
-    draw_text(_px + _pw / 2, _py + 40, "VERSION: " + string(GM_version) + "   DATE: " + global.build_date);
+    draw_text_l(_px + _pw / 2, _py + 40, L("VERSION: ") + string(GM_version) + L("   DATE: ") + global.build_date);
     draw_set_halign(fa_left);
 
     // What's New
     var _wy = _py + 70;
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     draw_set_color(make_color_rgb(220, 140, 40));
-    draw_text(_px + 20, _wy, "WHAT'S NEW?");
+    draw_text_l(_px + 20, _wy, "WHAT'S NEW?");
     _wy += 22;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_aqua);
     for (var _wi = 0; _wi < array_length(welcome_whats_new); _wi++) {
         // An empty entry is a spacer, not a bullet. Without this it drew a
@@ -3833,16 +3848,16 @@ if (welcome_open) {
             _wy += 16;
             continue;
         }
-        draw_text(_px + 30, _wy, "- " + welcome_whats_new[_wi]);
+        draw_text_l(_px + 30, _wy, "- " + welcome_whats_new[_wi]);
         _wy += 16;
     }
 
     // Credits header
     _wy += 14;
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     draw_set_color(make_color_rgb(220, 140, 40));
     draw_set_halign(fa_center);
-    draw_text(_px + _pw / 2, _wy, "CREDITS");
+    draw_text_l(_px + _pw / 2, _wy, "CREDITS");
     draw_set_halign(fa_left);
     _wy += 22;
 
@@ -3862,7 +3877,7 @@ if (welcome_open) {
         ceil((_cr_y2 - _cr_y1) * _sy_sc)
     );
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _cr_start_y = _cr_y2 - welcome_credits_y;
     for (var _ci = 0; _ci < array_length(welcome_credits_lines); _ci++) {
         var _cly = _cr_start_y + (_ci * _cr_line_h);
@@ -3871,7 +3886,7 @@ if (welcome_open) {
             var _is_header = (_ctxt == "CODE and DESIGN" || _ctxt == "COMMUNITY INPUT" || _ctxt == "And...");
             draw_set_color(_is_header ? make_color_rgb(220, 140, 40) : c_white);
             draw_set_halign(fa_center);
-            draw_text(_px + _pw / 2, _cly, _ctxt);
+            draw_text_l(_px + _pw / 2, _cly, _ctxt);
             draw_set_halign(fa_left);
         }
     }
@@ -3888,13 +3903,13 @@ if (welcome_open) {
     draw_rectangle(_chkx1, _chky1, _chkx2, _chky2, true);
     if (welcome_hide_checked) {
         draw_set_color(make_color_rgb(200, 160, 40));
-        draw_text(_chkx1 + 3, _chky1 - 2, "X");
+        draw_text_l(_chkx1 + 3, _chky1 - 2, "X");
     }
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_white);
-    draw_text(_chkx2 + 8, _chky1, "DON'T SHOW ON STARTUP");
+    draw_text_l(_chkx2 + 8, _chky1, "DON'T SHOW ON STARTUP");
     draw_set_color(make_color_rgb(140, 140, 140));
-    draw_text(_chkx2 + 8, _chky1 + 14, welcome_hide_checked ? "(currently: hidden on startup)" : "(currently: shows on startup)");
+    draw_text_l(_chkx2 + 8, _chky1 + 14, welcome_hide_checked ? "(currently: hidden on startup)" : "(currently: shows on startup)");
 
     // Close button
     var _cbx1   = _px + _pw - 36;
@@ -3907,7 +3922,7 @@ if (welcome_open) {
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
-    draw_text((_cbx1 + _cbx2) / 2, (_cby1 + _cby2) / 2, "X");
+    draw_text_l((_cbx1 + _cbx2) / 2, (_cby1 + _cby2) / 2, "X");
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
 }

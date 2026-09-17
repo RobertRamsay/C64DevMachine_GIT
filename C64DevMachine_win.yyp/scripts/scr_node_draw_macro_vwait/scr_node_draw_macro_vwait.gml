@@ -12,10 +12,10 @@ function scr_node_draw_macro_vwait(_draw_x, _y) {
     var _use_var = real(instructions[0][2]);
     var _vname   = string(instructions[0][3]);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _vly = _y + _header_h ;
     draw_set_color(make_color_rgb(40,200,180));
-    draw_text(_draw_x +8, _vly+6, "RASTER\nLINE:");
+    draw_text_l(_draw_x +8, _vly+6, "RASTER\nLINE:");
 
     // ---- value box ----
     var _val_x1 = _draw_x + 70;
@@ -34,10 +34,10 @@ function scr_node_draw_macro_vwait(_draw_x, _y) {
     draw_rectangle(_val_x1, _vly, _val_x2, _vly + _val_h, true);
 
     draw_set_halign(fa_center);
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     if (_use_var == 1) {
         draw_set_color(c_yellow);
-        draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _vly + 1, (_vname != "") ? _vname : "<PICK>");
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _vly + 1, (_vname != "") ? _vname : "<PICK>");
     } else {
         draw_set_color(make_color_rgb(100, 220, 100));
         var _display_str;
@@ -48,7 +48,7 @@ function scr_node_draw_macro_vwait(_draw_x, _y) {
         } else {
             _display_str = string(_vline);
         }
-        draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _vly + 1, _display_str);
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _vly + 1, _display_str);
     }
     draw_set_halign(fa_left);
 
@@ -59,6 +59,6 @@ function scr_node_draw_macro_vwait(_draw_x, _y) {
     draw_rectangle(_var_x, _vly , _var_x + _var_w, _vly  + _val_h, false);
     draw_set_color((_use_var == 1) ? c_yellow : make_color_rgb(140, 140, 160));
     draw_set_halign(fa_center);
-    draw_text(_var_x + _var_w * 0.5, _vly + 1, "VAR");
+    draw_text_l(_var_x + _var_w * 0.5, _vly + 1, "VAR");
     draw_set_halign(fa_left);
 }

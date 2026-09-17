@@ -11,9 +11,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     var _list_vis   = 6;
     var _list_w     = 260;
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(255, 200, 100));
-    draw_text(_ix0, _iy0 - 20, "INSTRUMENTS");
+    draw_text_l(_ix0, _iy0 - 20, "INSTRUMENTS");
 
     // ── LIST BOX ──
     draw_set_color(make_color_rgb(14, 14, 22));
@@ -38,10 +38,10 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
         draw_set_color(make_color_rgb(120, 120, 160));
         var _id_str = string(_ii);
         while (string_length(_id_str) < 2) { _id_str = "0" + _id_str; }
-        draw_text(_ix0 + 6, _iry + 4, _id_str);
+        draw_text_l(_ix0 + 6, _iry + 4, _id_str);
 
         draw_set_color(_sel ? c_white : make_color_rgb(180, 180, 200));
-        draw_text(_ix0 + 36, _iry + 4, _instr.name);
+        draw_text_l(_ix0 + 36, _iry + 4, _instr.name);
 
         var _row_hov = point_in_rectangle(_mx, _my, _ix0, _iry, _ix0 + _list_w, _iry + _list_row_h);
         if (_row_hov && mouse_check_button_pressed(mb_left)) {
@@ -92,7 +92,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
         draw_rectangle(_bx, _iby, _bx + _this_w, _iby + _btn_h, false);
         draw_set_color(_locked ? make_color_rgb(90, 90, 100) : c_white);
         draw_set_halign(fa_center);
-        draw_text(_bx + _this_w * 0.5, _iby + 4, _btns[_bi]);
+        draw_text_l(_bx + _this_w * 0.5, _iby + 4, _btns[_bi]);
         draw_set_halign(fa_left);
 
         if (!_locked && _hov && mouse_check_button_pressed(mb_left)) {
@@ -178,7 +178,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     var _dy        = _iby + _btn_h + 20;
 
     draw_set_color(make_color_rgb(120, 120, 160));
-    draw_text(_ix0, _dy, "NAME:");
+    draw_text_l(_ix0, _dy, "NAME:");
     var _nm_x1  = _ix0 + 50;
     var _nm_x2  = _nm_x1 + 180;
     var _nm_hov = point_in_rectangle(_mx, _my, _nm_x1, _dy - 2, _nm_x2, _dy + 16);
@@ -187,10 +187,10 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
         var _nm_blink = (current_time mod 600) < 300;
         var _nm_disp  = _nm_blink ? string_insert("|", _m.instr_name_edit_buf, _m.instr_name_edit_cursor + 1) : _m.instr_name_edit_buf;
         draw_set_color(c_lime);
-        draw_text(_nm_x1, _dy, _nm_disp);
+        draw_text_l(_nm_x1, _dy, _nm_disp);
     } else {
         draw_set_color(_nm_hov ? c_aqua : c_white);
-        draw_text(_nm_x1, _dy, _sel_instr.name);
+        draw_text_l(_nm_x1, _dy, _sel_instr.name);
         if (_nm_hov && mouse_check_button_pressed(mb_left)) {
             _m.instr_name_edit_active      = true;
             _m.instr_name_edit_buf         = _sel_instr.name;
@@ -241,19 +241,19 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     var _adsr_lbl = ["A", "D", "S", "R"];
     var _adsr_key = ["attack", "decay", "sustain", "release"];
     draw_set_color(make_color_rgb(120, 120, 160));
-    draw_text(_ix0, _adsr_y, "ADSR:");
+    draw_text_l(_ix0, _adsr_y, "ADSR:");
     var _adsr_x = _ix0 + 50;
     for (var _adi = 0; _adi < 4; _adi++) {
         var _ad_val = _sel_instr[$ _adsr_key[_adi]];
 
         draw_set_color(make_color_rgb(180, 180, 200));
-        draw_text(_adsr_x, _adsr_y, _adsr_lbl[_adi] + ":");
+        draw_text_l(_adsr_x, _adsr_y, _adsr_lbl[_adi] + ":");
 
         var _ad_dnx1 = _adsr_x + 16;
         var _ad_dnx2 = _ad_dnx1 + 14;
         var _ad_hov_dn = point_in_rectangle(_mx, _my, _ad_dnx1, _adsr_y - 2, _ad_dnx2, _adsr_y + 14);
         draw_set_color(_ad_hov_dn ? c_aqua : make_color_rgb(100, 100, 100));
-        draw_text(_ad_dnx1 + 2, _adsr_y, "-");
+        draw_text_l(_ad_dnx1 + 2, _adsr_y, "-");
         if (_ad_hov_dn && mouse_check_button_pressed(mb_left)) {
             _sel_instr[$ _adsr_key[_adi]] = max(0, _ad_val - 1);
             global.undo_dirty      = true;
@@ -263,13 +263,13 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
         draw_set_color(c_white);
         var _ad_str = string(_ad_val);
         while (string_length(_ad_str) < 2) { _ad_str = "0" + _ad_str; }
-        draw_text(_ad_dnx2 + 4, _adsr_y, _ad_str);
+        draw_text_l(_ad_dnx2 + 4, _adsr_y, _ad_str);
 
         var _ad_upx1 = _ad_dnx2 + 26;
         var _ad_upx2 = _ad_upx1 + 14;
         var _ad_hov_up = point_in_rectangle(_mx, _my, _ad_upx1, _adsr_y - 2, _ad_upx2, _adsr_y + 14);
         draw_set_color(_ad_hov_up ? c_aqua : make_color_rgb(100, 100, 100));
-        draw_text(_ad_upx1 + 2, _adsr_y, "+");
+        draw_text_l(_ad_upx1 + 2, _adsr_y, "+");
         if (_ad_hov_up && mouse_check_button_pressed(mb_left)) {
             _sel_instr[$ _adsr_key[_adi]] = min(15, _ad_val + 1);
             global.undo_dirty      = true;
@@ -282,7 +282,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     // ── PULSE WIDTH ──
     var _pw_y = _adsr_y + 24;
     draw_set_color(make_color_rgb(120, 120, 160));
-    draw_text(_ix0, _pw_y, "PULSE:");
+    draw_text_l(_ix0, _pw_y, "PULSE:");
 
     var _pw_val = _sel_instr.pulse_width;
 
@@ -290,7 +290,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     var _pw_dnx2 = _pw_dnx1 + 14;
     var _pw_hov_dn = point_in_rectangle(_mx, _my, _pw_dnx1, _pw_y - 2, _pw_dnx2, _pw_y + 14);
     draw_set_color(_pw_hov_dn ? c_aqua : make_color_rgb(100, 100, 100));
-    draw_text(_pw_dnx1 + 2, _pw_y, "-");
+    draw_text_l(_pw_dnx1 + 2, _pw_y, "-");
     if (_pw_hov_dn && mouse_check_button_pressed(mb_left)) {
         var _step = keyboard_check(vk_shift) ? 16 : 128;
         _sel_instr.pulse_width = max(0, _pw_val - _step);
@@ -301,13 +301,13 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     draw_set_color(c_white);
     var _pw_str = string(_pw_val);
     while (string_length(_pw_str) < 4) { _pw_str = "0" + _pw_str; }
-    draw_text(_pw_dnx2 + 4, _pw_y, _pw_str);
+    draw_text_l(_pw_dnx2 + 4, _pw_y, _pw_str);
 
     var _pw_upx1 = _pw_dnx2 + 42;
     var _pw_upx2 = _pw_upx1 + 14;
     var _pw_hov_up = point_in_rectangle(_mx, _my, _pw_upx1, _pw_y - 2, _pw_upx2, _pw_y + 14);
     draw_set_color(_pw_hov_up ? c_aqua : make_color_rgb(100, 100, 100));
-    draw_text(_pw_upx1 + 2, _pw_y, "+");
+    draw_text_l(_pw_upx1 + 2, _pw_y, "+");
     if (_pw_hov_up && mouse_check_button_pressed(mb_left)) {
         var _step = keyboard_check(vk_shift) ? 16 : 128;
         _sel_instr.pulse_width = min(4095, _pw_val + _step);
@@ -316,9 +316,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     }
 
     draw_set_color(make_color_rgb(110, 110, 130));
-    draw_set_font(fnt_c64_pico);
-    draw_text(_pw_upx2 + 8, _pw_y + 2, "(SHIFT: FINE)");
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_pico);
+    draw_text_l(_pw_upx2 + 8, _pw_y + 2, "(SHIFT: FINE)");
+    draw_set_font_l(fnt_c64_tiny);
 
     // ── SOURCE TEXT BOX ──
     var _tb_y1 = _pw_y + 24;
@@ -348,11 +348,11 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
             var _cl_prefix = string(_click_line);
             while (string_length(_cl_prefix) < 2) { _cl_prefix = "0" + _cl_prefix; }
             _cl_prefix += ": ";
-            var _cl_prefix_w  = string_width(_cl_prefix);
+            var _cl_prefix_w  = string_width_l(_cl_prefix);
             var _cl_line_txt  = _cl_lines[_click_line];
             var _cl_best_col  = string_length(_cl_line_txt);
             for (var _cci = 0; _cci <= string_length(_cl_line_txt); _cci++) {
-                var _cl_sub_w = string_width(string_copy(_cl_line_txt, 1, _cci));
+                var _cl_sub_w = string_width_l(string_copy(_cl_line_txt, 1, _cci));
                 if (_ix0 + 4 + _cl_prefix_w + _cl_sub_w >= _mx) {
                     _cl_best_col = _cci;
                     break;
@@ -398,17 +398,17 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
         var _tb_prefix = string(_tli);
         while (string_length(_tb_prefix) < 2) { _tb_prefix = "0" + _tb_prefix; }
         _tb_prefix += ": ";
-        var _tb_prefix_w = string_width(_tb_prefix);
+        var _tb_prefix_w = string_width_l(_tb_prefix);
 
         draw_set_color(make_color_rgb(90, 90, 120));
-        draw_text(_ix0 + 4, _tb_y1 + 4 + _tli * 16, _tb_prefix);
+        draw_text_l(_ix0 + 4, _tb_y1 + 4 + _tli * 16, _tb_prefix);
 
         var _tb_line_txt = _tb_lines[_tli];
         if (_m.instr_edit_active && _tb_blink && _tli == _tb_cursor_line) {
             _tb_line_txt = string_insert("|", _tb_line_txt, _tb_cursor_col + 1);
         }
         draw_set_color(_m.instr_edit_active ? c_lime : make_color_rgb(160, 160, 180));
-        draw_text(_ix0 + 4 + _tb_prefix_w, _tb_y1 + 4 + _tli * 16, _tb_line_txt);
+        draw_text_l(_ix0 + 4 + _tb_prefix_w, _tb_y1 + 4 + _tli * 16, _tb_line_txt);
 
         // Generate automated side-notes with detailed SID register decoding when not editing
         if (!_m.instr_edit_active) {
@@ -477,7 +477,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
 
             if (_comment != "") {
                 draw_set_color(make_color_rgb(90, 110, 90));
-                draw_text(_ix0 + 80, _tb_y1 + 4 + _tli * 16, _comment);
+                draw_text_l(_ix0 + 80, _tb_y1 + 4 + _tli * 16, _comment);
             }
         }
     }
@@ -527,27 +527,27 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     // ── COMPILED PREVIEW / ERRORS ──
     var _pv_y = _tb_y1 + _tb_h + 16;
     draw_set_color(make_color_rgb(120, 120, 160));
-    draw_text(_ix0, _pv_y, "COMPILED: " + string(array_length(_sel_instr.compiled.bytes)) + " BYTES");
+    draw_text_l(_ix0, _pv_y, "COMPILED: " + string(array_length(_sel_instr.compiled.bytes)) + " BYTES");
     var _err_n = array_length(_sel_instr.compiled.errors);
     if (_err_n > 0) {
-        draw_set_font(fnt_c64_pico);
+        draw_set_font_l(fnt_c64_pico);
         draw_set_color(c_red);
         for (var _eri = 0; _eri < _err_n; _eri++) {
-            draw_text(_ix0, _pv_y + 18 + _eri * 12, _sel_instr.compiled.errors[_eri]);
+            draw_text_l(_ix0, _pv_y + 18 + _eri * 12, _sel_instr.compiled.errors[_eri]);
         }
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
     }
 
     // ── COMMAND LEGEND ──
     var _lg_y = _pv_y + 32 + (_err_n * 12) + 10;
-    draw_set_font(fnt_c64_pico);
+    draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(110, 110, 130));
-    draw_text(_ix0, _lg_y,      "$xx / xx   WAVEFORM / CONTROL BYTE (HEX)");
-    draw_text(_ix0, _lg_y + 12, "N, N+n, N-n   NOTE, OPTIONAL SEMITONE OFFSET");
-    draw_text(_ix0, _lg_y + 24, "Dn   HOLD FOR n TICKS (1-255)");
-    draw_text(_ix0, _lg_y + 36, "Ln   LOOP BACK TO STEP n");
-    draw_text(_ix0, _lg_y + 48, "---   END (GATE OFF + STOP)");
-    draw_set_font(fnt_c64_tiny);
+    draw_text_l(_ix0, _lg_y,      "$xx / xx   WAVEFORM / CONTROL BYTE (HEX)");
+    draw_text_l(_ix0, _lg_y + 12, "N, N+n, N-n   NOTE, OPTIONAL SEMITONE OFFSET");
+    draw_text_l(_ix0, _lg_y + 24, "Dn   HOLD FOR n TICKS (1-255)");
+    draw_text_l(_ix0, _lg_y + 36, "Ln   LOOP BACK TO STEP n");
+    draw_text_l(_ix0, _lg_y + 48, "---   END (GATE OFF + STOP)");
+    draw_set_font_l(fnt_c64_tiny);
 
     draw_set_color(c_white);
 }

@@ -35,7 +35,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     // DANGER ZONES
     // -------------------------------------------------------
     var _danger_r = 180;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
 
@@ -44,7 +44,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     draw_set_color(make_color_rgb(_danger_r, 30, 30));
     draw_rectangle(_fx1, _y, _fx2, _y + _map_h, false);
     draw_set_color(make_color_rgb(60, 0, 0));
-    draw_text((_fx1 + _fx2) / 2, _y + _map_h / 2, "LOCKED");
+    draw_text_l((_fx1 + _fx2) / 2, _y + _map_h / 2, "LOCKED");
 
     var _bx1 = _x1 + (0xA000 / _addr_total) * _map_w;
     var _bx2 = _x1 + (0xBFFF / _addr_total) * _map_w;
@@ -55,7 +55,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     if (global.lite) {
         _basic_locked_txt = "MACRO CONTROLLED (PRO ONLY)";
     }
-    draw_text((_bx1 + _bx2) / 2, _y + _map_h / 2, global.basic_unlocked ? "UNLOCKED" : _basic_locked_txt);
+    draw_text_l((_bx1 + _bx2) / 2, _y + _map_h / 2, global.basic_unlocked ? "UNLOCKED" : _basic_locked_txt);
 
     var _kx1 = _x1 + (0xD000 / _addr_total) * _map_w;
     var _kx2 = _x1 + (0xFFFF / _addr_total) * _map_w;
@@ -66,7 +66,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     if (global.lite) {
         _kernal_locked_txt = "MACRO CONTROLLED (PRO ONLY)";
     }
-    draw_text((_kx1 + _kx2) / 2, _y + _map_h / 2, global.kernal_unlocked ? "UNLOCKED" : _kernal_locked_txt);
+    draw_text_l((_kx1 + _kx2) / 2, _y + _map_h / 2, global.kernal_unlocked ? "UNLOCKED" : _kernal_locked_txt);
 
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
@@ -82,13 +82,13 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             var _cbx2 = _x1 + ((_last.pc_address + _last.total_node_size) / _addr_total) * _map_w;
             draw_set_color(make_color_rgb(30, 200, 40));
             draw_rectangle(_cbx1, _y, _cbx2, _y + _map_h, false);
-            draw_set_font(fnt_c64_tiny);
+            draw_set_font_l(fnt_c64_tiny);
             draw_set_color(make_color_rgb(30, 200, 40));
             draw_set_halign(fa_center);
             draw_line(_cbx1, _y - 10, _cbx1, _y);
             var _sh = string_upper(decimal_to_hex(_first.pc_address));
             while (string_length(_sh) < 4) _sh = "0" + _sh;
-            draw_text(_cbx1, _y - 22, "$" + _sh);
+            draw_text_l(_cbx1, _y - 22, "$" + _sh);
             draw_set_halign(fa_left);
         }
     }
@@ -111,7 +111,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     var _by   = _y + _map_h + 4;
     var _leg  = 6;
     var _bcol = make_color_rgb(80, 220, 255);
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     for (var _vb = 0; _vb < 4; _vb++) {
         var _bank_start = _vb * 0x4000;
@@ -126,14 +126,14 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         draw_set_alpha(1.0);
         draw_set_halign(fa_center);
         draw_set_color(_bcol);
-        draw_text((_vbx1 + _vbx2) / 2, _by + _leg - 3, "VIC BANK " + string(_vb));
+        draw_text_l((_vbx1 + _vbx2) / 2, _by + _leg - 3, "VIC BANK " + string(_vb));
         draw_set_halign(fa_left);
     }
 
     // -------------------------------------------------------
     // DRAW CONFLICT LABELS
     // -------------------------------------------------------
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _drawn_conflicts_x = [];
     var _cfl_total = array_length(_conflicts);
 
@@ -279,7 +279,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         draw_set_alpha(1.0);
 
         draw_set_halign(fa_left);
-        var _total_w = string_width(_full_label);
+        var _total_w = string_width_l(_full_label);
         var _start_x = clamp(_cx_mid - (_total_w / 2), _x1 + 8, (_x2 - 222) - _total_w - 8);
 
         var _pad = 5;
@@ -302,13 +302,13 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         draw_rectangle(_lbx1, _lby1, _lbx2, _lby2, true);
 
         draw_set_color(c_yellow);
-        draw_text(_start_x, _text_y - 6, _str_part1);
+        draw_text_l(_start_x, _text_y - 6, _str_part1);
         if (_name2 != "") {
-            var _px2 = _start_x + string_width(_str_part1);
+            var _px2 = _start_x + string_width_l(_str_part1);
             draw_set_color(make_color_rgb(255, 60, 60));
-            draw_text(_px2, _text_y - 6, _str_part2);
+            draw_text_l(_px2, _text_y - 6, _str_part2);
             draw_set_color(c_yellow);
-            draw_text(_px2 + string_width(_str_part2), _text_y - 6, _str_part3);
+            draw_text_l(_px2 + string_width_l(_str_part2), _text_y - 6, _str_part3);
         }
 
         // CLICK DETECTION: open conflict-options popup on label click
@@ -434,7 +434,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
 
     // Second pass: draw DISK tag labels above ghosted segments so they
     // sit on top of every other segment fill (avoids overdraw obscuring them).
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     for (var _si = 0; _si < _seg_total; _si++) {
         var _seg = _segments[_si];
         if (!variable_struct_exists(_seg, "load_later") || !_seg.load_later) continue;
@@ -444,13 +444,13 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         var _seg_mid = (_sx1 + _sx2) / 2;
         draw_set_halign(fa_center);
         draw_set_color(make_color_rgb(255, 220, 80));
-        draw_text(_seg_mid, _y + _map_h - 9, "DISK");
+        draw_text_l(_seg_mid, _y + _map_h - 9, "DISK");
         draw_set_halign(fa_left);
     }
     // -------------------------------------------------------
     // NAMED BLOCK LABELS
     // -------------------------------------------------------
-    draw_set_font(fnt_c64_pico);
+    draw_set_font_l(fnt_c64_pico);
     draw_set_halign(fa_center);
 
     if (!ds_list_empty(global.node_chain)) {
@@ -458,7 +458,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         if (instance_exists(_first)) {
             var _ix = _x1 + (_first.pc_address / _addr_total) * _map_w;
             draw_set_color(make_color_rgb(30, 200, 40));
-            draw_text(_ix + 4, _y + _map_h + 5, "INIT");
+            draw_text_l(_ix + 4, _y + _map_h + 5, "INIT");
         }
     }
 
@@ -468,11 +468,11 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             if (node_title == "HW REGISTERS") {
                 var _hx = _x1 + (pc_address / _addr_total) * _map_w;
                 draw_set_color(make_color_rgb(70, 100, 105));
-                draw_text(_hx + 4, _y + _map_h + 5, "HW VARS");
+                draw_text_l(_hx + 4, _y + _map_h + 5, "HW VARS");
             } else if (node_title == "VARIABLES") {
                 var _vx = _x1 + (pc_address / _addr_total) * _map_w;
                 draw_set_color(make_color_rgb(60, 140, 200));
-                draw_text(_vx + 4, _y + _map_h + 5, "UV VARS");
+                draw_text_l(_vx + 4, _y + _map_h + 5, "UV VARS");
             }
         }
     }
@@ -500,7 +500,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             draw_set_alpha(1.0);
 
             if (point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y, _dsx1, _stripe_y - 20, _dsx2, _stripe_y + _stripe_h)) {
-                draw_set_font(fnt_c64_tiny);
+                draw_set_font_l(fnt_c64_tiny);
                 draw_set_halign(fa_left);
                 var _addr_lo_hex = string_upper(decimal_to_hex(_ds2.addr));
                 while (string_length(_addr_lo_hex) < 4) _addr_lo_hex = "0" + _addr_lo_hex;
@@ -508,7 +508,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
                 while (string_length(_addr_hi_hex) < 4) _addr_hi_hex = "0" + _addr_hi_hex;
                 var _stripe_label = _ds2.load_org_name + " : " + _ds2.name + " AT $" + _addr_lo_hex + "-$" + _addr_hi_hex;
                 draw_set_color(make_color_rgb(255, 220, 50));
-                draw_text(_dsx1, _stripe_y - string_height(_stripe_label) - 1, _stripe_label);
+                draw_text_l(_dsx1, _stripe_y - string_height(_stripe_label) - 1, _stripe_label);
             }
         }
     }
@@ -518,7 +518,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     // -------------------------------------------------------
     var _c_red  = make_color_rgb(200, 50, 40);
     var _c_grey = make_color_rgb(160, 160, 160);
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     var _full_bank = [
         [0x0000, "ZERO PAGE",   0],
@@ -556,8 +556,8 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         draw_line(_px, _y, _px, _fy + 10);
         draw_set_alpha(1.0);
         var _hex_str = "$" + string_upper(decimal_to_hex(_addr));
-        draw_set_color(_c_grey); draw_text(_px + 4, _fy, _hex_str);
-        draw_set_color(_c_red);  draw_text(_px + 4 + string_width(_hex_str), _fy, ":" + _label);
+        draw_set_color(_c_grey); draw_text_l(_px + 4, _fy, _hex_str);
+        draw_set_color(_c_red);  draw_text_l(_px + 4 + string_width_l(_hex_str), _fy, ":" + _label);
         _last_px = _px;
     }
 
@@ -583,11 +583,11 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             draw_set_alpha(1.0);
             draw_set_color(make_color_rgb(255, 250, 0));
             draw_line(_px1, _y - 4, _px1, _y);
-            draw_set_font(fnt_c64_tiny);
+            draw_set_font_l(fnt_c64_tiny);
             draw_set_halign(fa_left);
             var _ptr_hex = "$" + string_upper(decimal_to_hex(_ptr_base));
             draw_set_color(make_color_rgb(255, 250, 80));
-            draw_text(_px1 + 2, _y - 18, _ptr_hex + " SPR PTRS");
+            draw_text_l(_px1 + 2, _y - 18, _ptr_hex + " SPR PTRS");
         }
     }
 
@@ -608,7 +608,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         draw_line(_gui_mx, _y - 15, _gui_mx, _y + _map_h);
         draw_set_alpha(1.0);
         draw_set_halign(fa_center);
-        draw_text(_gui_mx, _y - 36, "$" + _hover_hex);
+        draw_text_l(_gui_mx, _y - 36, "$" + _hover_hex);
 
         if (_bar_hovered && is_struct(_hover_seg)) {
             var _owner_kind = _hover_seg.type;
@@ -616,7 +616,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             else if (_owner_kind == "VARIABLE_BLOCK") _owner_kind = "VARS";
             var _owner_text = _owner_kind + ": " + _hover_seg.name;
             draw_set_color(c_white);
-            draw_text(_gui_mx, _y - 52, _owner_text);
+            draw_text_l(_gui_mx, _y - 52, _owner_text);
         }
         draw_set_halign(fa_left);
     }
@@ -686,7 +686,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         var _b_right_y  = _b_left_y   + _bh + _gap;
         var _note_y     = _b_right_y  + _bh + _gap;
 
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
 
@@ -697,7 +697,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         draw_rectangle(_btn_x1, _b_ignore_y, _btn_x2, _b_ignore_y + _bh, false);
         draw_set_color(c_yellow);
         draw_rectangle(_btn_x1, _b_ignore_y, _btn_x2, _b_ignore_y + _bh, true);
-        draw_text((_btn_x1 + _btn_x2) / 2, _b_ignore_y + (_bh / 2), "IGNORE THIS CONFLICT");
+        draw_text_l((_btn_x1 + _btn_x2) / 2, _b_ignore_y + (_bh / 2), "IGNORE THIS CONFLICT");
 
         // Button: Go Left — disabled if owner is an asset (no node to pan to)
         var _hov_l = false;
@@ -708,13 +708,13 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             draw_rectangle(_btn_x1, _b_left_y, _btn_x2, _b_left_y + _bh, false);
             draw_set_color(c_aqua);
             draw_rectangle(_btn_x1, _b_left_y, _btn_x2, _b_left_y + _bh, true);
-            draw_text((_btn_x1 + _btn_x2) / 2, _b_left_y + (_bh / 2), "GO TO LEFT SIDE");
+            draw_text_l((_btn_x1 + _btn_x2) / 2, _b_left_y + (_bh / 2), "GO TO LEFT SIDE");
         } else {
             draw_set_color(make_color_rgb(40, 40, 50));
             draw_rectangle(_btn_x1, _b_left_y, _btn_x2, _b_left_y + _bh, false);
             draw_set_color(make_color_rgb(100, 100, 100));
             draw_rectangle(_btn_x1, _b_left_y, _btn_x2, _b_left_y + _bh, true);
-            draw_text((_btn_x1 + _btn_x2) / 2, _b_left_y + (_bh / 2), "(LEFT IS AN ASSET)");
+            draw_text_l((_btn_x1 + _btn_x2) / 2, _b_left_y + (_bh / 2), "(LEFT IS AN ASSET)");
         }
 
         // Button: Go Right — disabled if owner is an asset
@@ -726,19 +726,19 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             draw_rectangle(_btn_x1, _b_right_y, _btn_x2, _b_right_y + _bh, false);
             draw_set_color(c_aqua);
             draw_rectangle(_btn_x1, _b_right_y, _btn_x2, _b_right_y + _bh, true);
-            draw_text((_btn_x1 + _btn_x2) / 2, _b_right_y + (_bh / 2), "GO TO RIGHT SIDE");
+            draw_text_l((_btn_x1 + _btn_x2) / 2, _b_right_y + (_bh / 2), "GO TO RIGHT SIDE");
         } else {
             draw_set_color(make_color_rgb(40, 40, 50));
             draw_rectangle(_btn_x1, _b_right_y, _btn_x2, _b_right_y + _bh, false);
             draw_set_color(make_color_rgb(100, 100, 100));
             draw_rectangle(_btn_x1, _b_right_y, _btn_x2, _b_right_y + _bh, true);
-            draw_text((_btn_x1 + _btn_x2) / 2, _b_right_y + (_bh / 2), "(RIGHT IS AN ASSET)");
+            draw_text_l((_btn_x1 + _btn_x2) / 2, _b_right_y + (_bh / 2), "(RIGHT IS AN ASSET)");
         }
 
         // Asset notice — explains the disabled buttons
         if (_has_asset) {
             draw_set_color(make_color_rgb(200, 180, 80));
-            draw_text((_btn_x1 + _btn_x2) / 2, _note_y + 6, "ASSET CLASH");
+            draw_text_l((_btn_x1 + _btn_x2) / 2, _note_y + 6, "ASSET CLASH");
             draw_set_color(make_color_rgb(160, 160, 160));
             var _asset_name = (global.conflict_popup_asset_a != "")
                             ? global.conflict_popup_asset_a
@@ -747,7 +747,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             if (string_length(_asset_name) > 28) {
                 _asset_name = string_copy(_asset_name, 1, 25) + "...";
             }
-            draw_text((_btn_x1 + _btn_x2) / 2, _note_y + 18, "CHECK ASSET: " + _asset_name);
+            draw_text_l((_btn_x1 + _btn_x2) / 2, _note_y + 18, "CHECK ASSET: " + _asset_name);
         }
 
         draw_set_halign(fa_left);

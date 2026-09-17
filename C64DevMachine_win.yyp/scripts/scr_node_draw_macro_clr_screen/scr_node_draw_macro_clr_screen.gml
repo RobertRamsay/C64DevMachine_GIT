@@ -12,7 +12,7 @@ function scr_node_draw_macro_clr_screen(_draw_x, _y) {
     var _ly    = _y + 28;
     var _c_lbl = make_color_rgb(140, 160, 200);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     // ── Row 1: BASE ──
     var _base_edit = (obj_workspace_manager.is_entering_text &&
@@ -23,13 +23,13 @@ function scr_node_draw_macro_clr_screen(_draw_x, _y) {
     while (string_length(_sb_hex) < 4) _sb_hex = "0" + _sb_hex;
 
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "BASE:");
+    draw_text_l(_draw_x + 10, _ly, "BASE:");
     if (_base_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 52, _ly, "$" + obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 52, _ly, "$" + obj_workspace_manager.current_input_string);
     } else {
         draw_set_color(c_aqua);
-        draw_text(_draw_x + 52, _ly, "$" + string_upper(_sb_hex));
+        draw_text_l(_draw_x + 52, _ly, "$" + string_upper(_sb_hex));
     }
     _ly += _lh;
 
@@ -42,13 +42,13 @@ function scr_node_draw_macro_clr_screen(_draw_x, _y) {
     while (string_length(_f_hex) < 2) _f_hex = "0" + _f_hex;
 
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "FILL:");
+    draw_text_l(_draw_x + 10, _ly, "FILL:");
     if (_fill_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 52, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 52, _ly, obj_workspace_manager.current_input_string);
     } else {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 52, _ly, "$" + string_upper(_f_hex) + "  (" + string(_fill) + ")");
+        draw_text_l(_draw_x + 52, _ly, "$" + string_upper(_f_hex) + "  (" + string(_fill) + ")");
     }
     _ly += _lh;
 
@@ -56,7 +56,7 @@ function scr_node_draw_macro_clr_screen(_draw_x, _y) {
     var _end = _scr_base + 0x3E7;
     var _eh  = decimal_to_hex(_end);
     while (string_length(_eh) < 4) _eh = "0" + _eh;
-    draw_set_font(fnt_c64_pico);
+    draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(80, 120, 180));
-    draw_text(_draw_x + 8, _ly, "WIPES $" + string_upper(_sb_hex) + "-$" + string_upper(_eh));
+    draw_text_l(_draw_x + 8, _ly, "WIPES $" + string_upper(_sb_hex) + "-$" + string_upper(_eh));
 }

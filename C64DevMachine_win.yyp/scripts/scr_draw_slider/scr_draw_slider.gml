@@ -35,10 +35,10 @@ function scr_draw_slider(_mx, _my, _x, _y, _w, _label, _val, _min, _max, _presse
     draw_set_color(make_color_rgb(70, 70, 130));
     draw_rectangle(_knob_x - 4, _y, _knob_x + 4, _y + _h, true);
     // Label
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_ltgray);
     var _disp = string(floor(_val * 10) / 10);
-    draw_text(_x, _y + _h + 2, _label + ": " + _disp);
+    draw_text_l(_x, _y + _h + 2, _label + ": " + _disp);
     // Drag — only the owning slider responds, regardless of where the mouse is now
     if (_is_owner && _pressed) {
         _val = _min + clamp((_mx - _x) / _w, 0, 1) * (_max - _min);

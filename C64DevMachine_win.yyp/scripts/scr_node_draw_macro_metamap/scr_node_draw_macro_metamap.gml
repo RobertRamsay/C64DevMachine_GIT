@@ -48,9 +48,9 @@ function scr_node_draw_macro_metamap(draw_x, draw_y, cam_x, cam_y, cam_zoom) {
     var _ly = draw_y + header_h + pad;
 
     // TILESET PICKER
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_ltgray);
-    draw_text(draw_x + 8, _ly, "TILESET:");
+    draw_text_l(draw_x + 8, _ly, "TILESET:");
     var _pb_x1 = draw_x + 64;
     var _pb_x2 = draw_x + width - 8;
     var _pb_y1 = _ly - 2;
@@ -64,14 +64,14 @@ function scr_node_draw_macro_metamap(draw_x, draw_y, cam_x, cam_y, cam_zoom) {
         draw_rectangle(_pb_x1, _pb_y1, _pb_x2, _pb_y2, true);
         draw_set_color(_ts_flash ? c_white : make_color_rgb(220, 120, 120));
         draw_set_halign(fa_center);
-        draw_text(_pb_x1 + (_pb_x2 - _pb_x1) * 0.5, _ly, _ts_disp + " ?");
+        draw_text_l(_pb_x1 + (_pb_x2 - _pb_x1) * 0.5, _ly, _ts_disp + " ?");
         draw_set_halign(fa_left);
     } else {
         draw_set_color(_pb_hover ? make_color_rgb(80, 200, 120) : make_color_rgb(30, 60, 40));
         draw_rectangle(_pb_x1, _pb_y1, _pb_x2, _pb_y2, false);
         draw_set_color(_has_tileset ? c_lime : make_color_rgb(150, 150, 150));
         draw_set_halign(fa_center);
-        draw_text(_pb_x1 + (_pb_x2 - _pb_x1) * 0.5, _ly, _has_tileset ? _ts_disp : "[ PICK TILESET ]");
+        draw_text_l(_pb_x1 + (_pb_x2 - _pb_x1) * 0.5, _ly, _has_tileset ? _ts_disp : "[ PICK TILESET ]");
         draw_set_halign(fa_left);
     }
     _ly += line_h + 2;
@@ -89,7 +89,7 @@ function scr_node_draw_macro_metamap(draw_x, draw_y, cam_x, cam_y, cam_zoom) {
     var _map_var  = (array_length(instructions[0]) > 7) ? string(instructions[0][7]) : "";
 
     draw_set_color(c_ltgray);
-    draw_text(draw_x + 8, _ly, "MAP:");
+    draw_text_l(draw_x + 8, _ly, "MAP:");
 
     // LIT/VAR source toggle (small button just right of the MAP: label)
     var _ms_x1  = draw_x + 42;
@@ -103,7 +103,7 @@ function scr_node_draw_macro_metamap(draw_x, draw_y, cam_x, cam_y, cam_zoom) {
     draw_rectangle(_ms_x1, _ly , _ms_x2, _ly + 15, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text((_ms_x1 + _ms_x2) * 0.5, _ly , (_src_mode == 1) ? "VAR" : "LIT");
+    draw_text_l((_ms_x1 + _ms_x2) * 0.5, _ly , (_src_mode == 1) ? "VAR" : "LIT");
     draw_set_halign(fa_left);
 
     if (_src_mode == 1) {
@@ -113,7 +113,7 @@ function scr_node_draw_macro_metamap(draw_x, draw_y, cam_x, cam_y, cam_zoom) {
         var _mv_hov = point_in_rectangle(mouse_x, mouse_y, _mv_x1, _ly - 2, _mv_x2, _ly + 12);
         draw_set_color(_mv_hov ? c_lime : c_yellow);
         draw_set_halign(fa_right);
-        draw_text(_mv_x2, _ly, (_map_var != "") ? ("$" + _map_var) : "< MAP VAR >");
+        draw_text_l(_mv_x2, _ly, (_map_var != "") ? ("$" + _map_var) : "< MAP VAR >");
         draw_set_halign(fa_left);
     } else {
         // LIT MODE — existing - n/max + spinner
@@ -128,25 +128,25 @@ function scr_node_draw_macro_metamap(draw_x, draw_y, cam_x, cam_y, cam_zoom) {
         draw_rectangle(_mi_x1, _mi_y1, _mi_x2, _mi_y2, true);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
-        draw_text(_mi_x1 + 10, _ly, "-");
+        draw_text_l(_mi_x1 + 10, _ly, "-");
         if (_map_count > 0) {
-            draw_text(_mi_mid, _ly, string(_map_index) + "/" + string(_map_count - 1));
+            draw_text_l(_mi_mid, _ly, string(_map_index) + "/" + string(_map_count - 1));
         } else {
             draw_set_color(make_color_rgb(150, 150, 150));
-            draw_text(_mi_mid, _ly, "--");
+            draw_text_l(_mi_mid, _ly, "--");
             draw_set_color(c_white);
         }
-        draw_text(_mi_x2 - 10, _ly, "+");
+        draw_text_l(_mi_x2 - 10, _ly, "+");
         draw_set_halign(fa_left);
     }
     _ly += line_h + 2;
 
     // SCREEN TARGETS (fixed, like MACRO_MAP)
     draw_set_color(c_ltgray);
-    draw_text(draw_x + 8, _ly, "CHAR  -> $0400");
+    draw_text_l(draw_x + 8, _ly, "CHAR  -> $0400");
     _ly += line_h;
     draw_set_color(c_ltgray);
-    draw_text(draw_x + 8, _ly, "COLOR -> $D800");
+    draw_text_l(draw_x + 8, _ly, "COLOR -> $D800");
     _ly += line_h;
 
     // FLATTEN INFO
@@ -154,9 +154,9 @@ function scr_node_draw_macro_metamap(draw_x, draw_y, cam_x, cam_y, cam_zoom) {
     if (_stamp_w > 0 && _stamp_h > 0) {
         var _cols = floor(40 / _stamp_w);
         var _rows = floor(25 / _stamp_h);
-        draw_text(draw_x + 8, _ly, string(_cols) + "x" + string(_rows) + " METATILES -> 40x25");
+        draw_text_l(draw_x + 8, _ly, string(_cols) + "x" + string(_rows) + " METATILES -> 40x25");
     } else {
-        draw_text(draw_x + 8, _ly, "PICK A TILESET");
+        draw_text_l(draw_x + 8, _ly, "PICK A TILESET");
     }
     _ly += line_h + 4;
 
@@ -165,7 +165,7 @@ function scr_node_draw_macro_metamap(draw_x, draw_y, cam_x, cam_y, cam_zoom) {
     var _zp_hex  = string_upper(decimal_to_hex(_zp_base));
     if (string_length(_zp_hex) < 2) _zp_hex = "0" + _zp_hex;
     draw_set_color(c_ltgray);
-    draw_text(draw_x + 8, _ly, "MAP SRC ZP:");
+    draw_text_l(draw_x + 8, _ly, "MAP SRC ZP:");
     var _zp_x1 = draw_x + 140;
     var _zp_x2 = draw_x + width - 8;
     var _zp_y1 = _ly ;
@@ -177,7 +177,7 @@ function scr_node_draw_macro_metamap(draw_x, draw_y, cam_x, cam_y, cam_zoom) {
     draw_rectangle(_zp_x1, _zp_y1, _zp_x2, _zp_y2, true);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text(_zp_x1 + (_zp_x2 - _zp_x1) * 0.5, _ly, "$" + _zp_hex);
+    draw_text_l(_zp_x1 + (_zp_x2 - _zp_x1) * 0.5, _ly, "$" + _zp_hex);
     draw_set_halign(fa_left);
     _ly += line_h;
 }

@@ -49,7 +49,7 @@ function scr_draw_reu_memory_bar(_x1, _x2, _y, _asset) {
     draw_rectangle(_x1, _y, _x2, _y + _map_h, true);
 
     // Tick marks every 4MB (falls back to a single end tick for odd target sizes)
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_center);
     var _tick_step = 4 * 1024 * 1024;
     var _tick_addr = 0;
@@ -58,7 +58,7 @@ function scr_draw_reu_memory_bar(_x1, _x2, _y, _asset) {
         draw_set_color(make_color_rgb(90, 100, 120));
         draw_line(_tx, _y, _tx, _y + _map_h + 4);
         draw_set_color(make_color_rgb(140, 150, 170));
-        draw_text(_tx, _y + _map_h + 6, string(_tick_addr div (1024 * 1024)) + "MB");
+        draw_text_l(_tx, _y + _map_h + 6, string(_tick_addr div (1024 * 1024)) + "MB");
         _tick_addr += _tick_step;
     }
     draw_set_halign(fa_left);
@@ -66,6 +66,6 @@ function scr_draw_reu_memory_bar(_x1, _x2, _y, _asset) {
     // Hover tooltip, drawn last so it sits above every segment
     if (_hover_tip != "") {
         draw_set_color(_hover_col);
-        draw_text(_x1, _y - string_height(_hover_tip) - 2, _hover_tip);
+        draw_text_l(_x1, _y - string_height(_hover_tip) - 2, _hover_tip);
     }
 }

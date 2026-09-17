@@ -1,3 +1,7 @@
+// Language first: every text wrapper below depends on it.
+scr_lang_init();
+lang_checked = false;
+
 // State used by Step and End Step must exist before recovery/load runs.
 editor_release_pending = false;
 editor_release_dirty = false;
@@ -945,8 +949,8 @@ _cn.width        = global.node_display_width;
 
 // Force a height recalculation for the new multi-line content
 with(_cn) {
-    draw_set_font(fnt_c64_code);
-    height = 24 + string_height_ext(_combined_text, 18, width - 20) + 8;
+    draw_set_font_l(fnt_c64_code);
+    height = 24 + string_height_ext_l(_combined_text, 18, width - 20) + 8;
 }
 */
 // slight delay for forced updates to nodes

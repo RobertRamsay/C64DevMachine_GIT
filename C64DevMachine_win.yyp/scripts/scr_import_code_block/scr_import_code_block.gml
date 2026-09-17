@@ -251,14 +251,14 @@ function scr_code_import_draw_banner() {
     var _halign_before = draw_get_halign();
     var _valign_before = draw_get_valign();
 
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
     draw_set_color(make_color_rgb(255, 210, 80));
     draw_rectangle(_bx + 2, _by + 2, _bx + _bw - 2, _by + _bh - 2, true);
-    draw_text(_bx + (_bw / 2), _by + (_bh / 2), _msg);
+    draw_text_l(_bx + (_bw / 2), _by + (_bh / 2), _msg);
 
-    draw_set_font(_font_before);
+    draw_set_font_l(_font_before);
     draw_set_halign(_halign_before);
     draw_set_valign(_valign_before);
     draw_set_color(c_white);

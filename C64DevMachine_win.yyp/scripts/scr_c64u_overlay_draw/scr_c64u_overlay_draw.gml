@@ -29,11 +29,11 @@ function scr_c64u_overlay_draw()
     draw_rectangle(_px, _py, _px + _pw, _py + _ph, true);
 
     // --- Title ---
-    draw_set_font(fnt_C64_Angled_big);
+    draw_set_font_l(fnt_C64_Angled_big);
     draw_set_halign(fa_center);
     draw_set_valign(fa_top);
     draw_set_colour(c_white);
-    draw_text(_px + _pw * 0.5, _py + 14, "C64 ULTIMATE - ENTER IP");
+    draw_text_l(_px + _pw * 0.5, _py + 14, "C64 ULTIMATE - ENTER IP");
 
     // --- Input box ---
     var _bx1 = _px + 40;
@@ -54,7 +54,7 @@ function scr_c64u_overlay_draw()
     {
         _display += "_";
     }
-    draw_text(_bx1 + 14, (_by1 + _by2) * 0.5, _display);
+    draw_text_l(_bx1 + 14, (_by1 + _by2) * 0.5, _display);
 
     // --- Status / error line ---
     draw_set_halign(fa_center);
@@ -78,7 +78,7 @@ function scr_c64u_overlay_draw()
         {
             draw_set_colour(make_colour_rgb(255, 230, 140));
         }
-        draw_text(_px + _pw * 0.5, _by2 + 14, _err);
+        draw_text_l(_px + _pw * 0.5, _by2 + 14, _err);
     }
 
     // --- Buttons: Cancel (left) and Save & Test (right) ---
@@ -123,7 +123,7 @@ function scr_c64u_overlay_draw()
     draw_set_colour(c_white);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
-    draw_text((_cancel_x1 + _cancel_x2) * 0.5, (_cancel_y1 + _cancel_y2) * 0.5, "CANCEL (ESC)");
+    draw_text_l((_cancel_x1 + _cancel_x2) * 0.5, (_cancel_y1 + _cancel_y2) * 0.5, "CANCEL (ESC)");
 
     // Save button
     var _save_hover = (global.gui_mouse_x >= _save_x1 && global.gui_mouse_x <= _save_x2
@@ -140,7 +140,7 @@ function scr_c64u_overlay_draw()
     draw_set_colour(make_colour_rgb(120, 200, 120));
     draw_rectangle(_save_x1, _save_y1, _save_x2, _save_y2, true);
     draw_set_colour(c_white);
-    draw_text((_save_x1 + _save_x2) * 0.5, (_save_y1 + _save_y2) * 0.5, "TEST & SAVE");
+    draw_text_l((_save_x1 + _save_x2) * 0.5, (_save_y1 + _save_y2) * 0.5, "TEST & SAVE");
 
     // --- Reset draw state ---
     draw_set_halign(fa_left);

@@ -18,19 +18,19 @@ var _wy = y - 9; // vertically centred in the tab
 var _sx = (_wx - _cam_x) / _cam_zoom;
 var _sy = (_wy - _cam_y) / _cam_zoom;
 
-draw_set_font(fnt_c64_code);
+draw_set_font_l(fnt_c64_code);
 draw_set_halign(fa_center);
 draw_set_valign(fa_middle);
 
 // Shadow
 draw_set_alpha(_alpha * 0.6);
 draw_set_color(c_black);
-draw_text(_sx + 1, _sy + 1, box_name);
+draw_text_l(_sx + 1, _sy + 1, box_name);
 
 // Label
 draw_set_alpha(_alpha);
 draw_set_color(box_colours[box_col_idx]);
-draw_text(_sx, _sy, box_name);
+draw_text_l(_sx, _sy, box_name);
 
 draw_set_alpha(1.0);
 draw_set_halign(fa_left);

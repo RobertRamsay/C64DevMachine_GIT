@@ -1,6 +1,6 @@
 /// @function scr_text_wrap_rows(_txt, _max_w)
 /// @desc Splits a string into VISUAL rows that each fit inside _max_w pixels
-///       in the CURRENTLY SET FONT. Call draw_set_font() before this.
+///       in the CURRENTLY SET FONT. Call draw_set_font_l() before this.
 ///
 /// Rows break on hard newlines first, then soft-wrap on the last space that
 /// still fits, falling back to a hard character break for a single word that
@@ -69,7 +69,7 @@ function scr_text_wrap_rows(_txt, _max_w) {
 
             var _rest = string_copy(_line, _pos + 1, _rest_len);
 
-            if (string_width(_rest) <= _w) {
+            if (string_width_l(_rest) <= _w) {
                 array_push(_rows, {
                     text: _rest,
                     off:  _base + _pos,
@@ -79,7 +79,7 @@ function scr_text_wrap_rows(_txt, _max_w) {
                 break;
             }
 
-            // Largest prefix that fits, by binary search. string_width() is
+            // Largest prefix that fits, by binary search. string_width_l() is
             // the expensive call here, so this is log(n) of them per row
             // rather than one per character.
             var _lo  = 1;
@@ -87,7 +87,7 @@ function scr_text_wrap_rows(_txt, _max_w) {
             var _fit = 1;
             while (_lo <= _hi) {
                 var _mid = floor((_lo + _hi) / 2);
-                if (string_width(string_copy(_rest, 1, _mid)) <= _w) {
+                if (string_width_l(string_copy(_rest, 1, _mid)) <= _w) {
                     _fit = _mid;
                     _lo  = _mid + 1;
                 } else {

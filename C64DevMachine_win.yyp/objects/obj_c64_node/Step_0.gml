@@ -1703,8 +1703,8 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
                     } else {
                         var _parts = scr_get_opcode_syntax_parts(_inst_raw);
                         var _prefix = _parts[0];
-                        draw_set_font(fnt_c64_code);
-                        _click_x1 = draw_x + 10 + string_width(_prefix);
+                        draw_set_font_l(fnt_c64_code);
+                        _click_x1 = draw_x + 10 + string_width_l(_prefix);
                         var _val_str = "";
                         var _bv = instructions[i][1];
                         if (global.use_hex_display && is_real(_bv)) {
@@ -1719,7 +1719,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
                         } else {
                             _val_str = string(_bv);
                         }
-                        _click_x2 = _click_x1 + string_width(_val_str);
+                        _click_x2 = _click_x1 + string_width_l(_val_str);
                     }
 
                     // 1. Operand Click

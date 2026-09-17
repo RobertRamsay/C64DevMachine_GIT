@@ -54,23 +54,23 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
     var _col_off = make_color_rgb(50, 50, 60);
     var _txt_off = make_color_rgb(140, 140, 160);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     // ===== VOICE =====
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "VOICE:");
+    draw_text_l(_draw_x + 10, _ly, "VOICE:");
     if (_voice_mode == 1) {
         draw_set_color(c_yellow);
-        draw_text(_draw_x + 62, _ly, (_voice_var != "") ? _voice_var : "<PICK>");
+        draw_text_l(_draw_x + 62, _ly, (_voice_var != "") ? _voice_var : "<PICK>");
     } else {
         draw_set_color(c_aqua);
-        draw_text(_draw_x + 62, _ly, "V" + string(_voice_lit + 1));
+        draw_text_l(_draw_x + 62, _ly, "V" + string(_voice_lit + 1));
     }
     draw_set_color((_voice_mode == 1) ? _col_on : _col_off);
     draw_rectangle(_vx, _ly + 1, _vx + _vbtn_w, _ly + 12, false);
     draw_set_color((_voice_mode == 1) ? c_yellow : _txt_off);
     draw_set_halign(fa_center);
-    draw_text(_vx + (_vbtn_w * 0.5), _ly, "VAR");
+    draw_text_l(_vx + (_vbtn_w * 0.5), _ly, "VAR");
     draw_set_halign(fa_left);
     _ly += _lh;
 
@@ -82,21 +82,21 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
                       obj_workspace_manager.input_target_index == 5);
     var _c_ast = make_color_rgb(255, 190, 90);
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "NOTE:");
+    draw_text_l(_draw_x + 10, _ly, "NOTE:");
     if (_note_mode == 2) {
         draw_set_color(_c_ast);
-        draw_text(_draw_x + 62, _ly, "LIST");
+        draw_text_l(_draw_x + 62, _ly, "LIST");
     } else if (_note_mode == 1) {
         draw_set_color(c_yellow);
-        draw_text(_draw_x + 62, _ly, (_note_var != "") ? _note_var : "<PICK>");
+        draw_text_l(_draw_x + 62, _ly, (_note_var != "") ? _note_var : "<PICK>");
     } else if (_note_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _nh = decimal_to_hex(_note_lit);
         while (string_length(_nh) < 4) _nh = "0" + _nh;
         draw_set_color(c_aqua);
-        draw_text(_draw_x + 62, _ly, "$" + string_upper(_nh));
+        draw_text_l(_draw_x + 62, _ly, "$" + string_upper(_nh));
     }
     var _nm_lbl = "LIT";
     if (_note_mode == 1) {
@@ -116,7 +116,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
         draw_set_color(c_yellow);
     }
     draw_set_halign(fa_center);
-    draw_text(_vx + (_vbtn_w * 0.5), _ly, _nm_lbl);
+    draw_text_l(_vx + (_vbtn_w * 0.5), _ly, _nm_lbl);
     draw_set_halign(fa_left);
     _ly += _lh;
 
@@ -124,17 +124,17 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
     if (_note_mode == 2) {
         // TEXT_DATA asset holding the note names
         draw_set_color(_c_lbl);
-        draw_text(_draw_x + 10, _ly, "LIST:");
+        draw_text_l(_draw_x + 10, _ly, "LIST:");
         if (_note_ast == "" || _note_ast == "[clear]") {
             draw_set_color(make_color_rgb(230, 90, 90));
-            draw_text(_draw_x + 62, _ly, "< PICK TEXT >");
+            draw_text_l(_draw_x + 62, _ly, "< PICK TEXT >");
         } else {
             draw_set_color(_c_ast);
             var _ast_disp = _note_ast;
             if (string_length(_ast_disp) > 14) {
                 _ast_disp = string_copy(_ast_disp, 1, 14) + "...";
             }
-            draw_text(_draw_x + 62, _ly, _ast_disp);
+            draw_text_l(_draw_x + 62, _ly, _ast_disp);
         }
         _ly += _lh;
 
@@ -143,16 +143,16 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
                          obj_workspace_manager.input_target_node  == id &&
                          obj_workspace_manager.input_target_index == 23);
         draw_set_color(_c_lbl);
-        draw_text(_draw_x + 10, _ly, "IDX:");
+        draw_text_l(_draw_x + 10, _ly, "IDX:");
         if (_off_mode == 1) {
             draw_set_color(c_yellow);
-            draw_text(_draw_x + 62, _ly, (_off_var != "") ? _off_var : "<PICK>");
+            draw_text_l(_draw_x + 62, _ly, (_off_var != "") ? _off_var : "<PICK>");
         } else if (_off_edit) {
             draw_set_color(c_lime);
-            draw_text(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
+            draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
         } else {
             draw_set_color(c_aqua);
-            draw_text(_draw_x + 62, _ly, string(_off_lit));
+            draw_text_l(_draw_x + 62, _ly, string(_off_lit));
         }
         if (_off_mode == 1) {
             draw_set_color(_col_on);
@@ -166,13 +166,13 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
             draw_set_color(_txt_off);
         }
         draw_set_halign(fa_center);
-        draw_text(_vx + (_vbtn_w * 0.5), _ly, "VAR");
+        draw_text_l(_vx + (_vbtn_w * 0.5), _ly, "VAR");
         draw_set_halign(fa_left);
         _ly += _lh;
 
         // Parsed note count — the only compile-time feedback the user gets,
         // and it catches a mistyped asset name immediately.
-        draw_set_font(fnt_c64_pico);
+        draw_set_font_l(fnt_c64_pico);
         var _n_found = false;
         var _n_count = 0;
         if (_note_ast != "" && _note_ast != "[clear]" && instance_exists(obj_asset_manager)) {
@@ -190,12 +190,12 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
         }
         if (!_n_found) {
             draw_set_color(make_color_rgb(230, 90, 90));
-            draw_text(_draw_x + 8, _ly, "! LIST NOT FOUND");
+            draw_text_l(_draw_x + 8, _ly, "! LIST NOT FOUND");
         } else {
             draw_set_color(make_color_rgb(80, 120, 180));
-            draw_text(_draw_x + 8, _ly, string(_n_count) + " NOTES   " + string(_n_count * 3) + "B TABLE");
+            draw_text_l(_draw_x + 8, _ly, string(_n_count) + " NOTES   " + string(_n_count * 3) + "B TABLE");
         }
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         _ly += _lh;
     }
 
@@ -207,21 +207,21 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
                       obj_workspace_manager.input_target_node  == id &&
                       obj_workspace_manager.input_target_index == 8);
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "WAVE:");
+    draw_text_l(_draw_x + 10, _ly, "WAVE:");
     if (_wave_mode == 2) {
         draw_set_color(_c_ast);
-        draw_text(_draw_x + 62, _ly, "LIST");
+        draw_text_l(_draw_x + 62, _ly, "LIST");
     } else if (_wave_mode == 1) {
         draw_set_color(c_yellow);
-        draw_text(_draw_x + 62, _ly, (_wave_var != "") ? _wave_var : "<PICK>");
+        draw_text_l(_draw_x + 62, _ly, (_wave_var != "") ? _wave_var : "<PICK>");
     } else if (_wave_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _wh = decimal_to_hex(_wave_lit);
         while (string_length(_wh) < 2) _wh = "0" + _wh;
         draw_set_color(c_aqua);
-        draw_text(_draw_x + 62, _ly, "$" + string_upper(_wh));
+        draw_text_l(_draw_x + 62, _ly, "$" + string_upper(_wh));
     }
     var _wm_lbl = "LIT";
     if (_wave_mode == 1) {
@@ -241,7 +241,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
         draw_set_color(c_yellow);
     }
     draw_set_halign(fa_center);
-    draw_text(_vx + (_vbtn_w * 0.5), _ly, _wm_lbl);
+    draw_text_l(_vx + (_vbtn_w * 0.5), _ly, _wm_lbl);
     draw_set_halign(fa_left);
     _ly += _lh;
 
@@ -249,17 +249,17 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
     if (_wave_mode == 2) {
         // BYTE_DATA asset holding the control bytes
         draw_set_color(_c_lbl);
-        draw_text(_draw_x + 10, _ly, "WLST:");
+        draw_text_l(_draw_x + 10, _ly, "WLST:");
         if (_wave_ast == "" || _wave_ast == "[clear]") {
             draw_set_color(make_color_rgb(230, 90, 90));
-            draw_text(_draw_x + 62, _ly, "< PICK BYTE >");
+            draw_text_l(_draw_x + 62, _ly, "< PICK BYTE >");
         } else {
             draw_set_color(_c_ast);
             var _wast_disp = _wave_ast;
             if (string_length(_wast_disp) > 14) {
                 _wast_disp = string_copy(_wast_disp, 1, 14) + "...";
             }
-            draw_text(_draw_x + 62, _ly, _wast_disp);
+            draw_text_l(_draw_x + 62, _ly, _wast_disp);
         }
         _ly += _lh;
 
@@ -268,16 +268,16 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
                           obj_workspace_manager.input_target_node  == id &&
                           obj_workspace_manager.input_target_index == 27);
         draw_set_color(_c_lbl);
-        draw_text(_draw_x + 10, _ly, "WIDX:");
+        draw_text_l(_draw_x + 10, _ly, "WIDX:");
         if (_woff_mode == 1) {
             draw_set_color(c_yellow);
-            draw_text(_draw_x + 62, _ly, (_woff_var != "") ? _woff_var : "<PICK>");
+            draw_text_l(_draw_x + 62, _ly, (_woff_var != "") ? _woff_var : "<PICK>");
         } else if (_woff_edit) {
             draw_set_color(c_lime);
-            draw_text(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
+            draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
         } else {
             draw_set_color(c_aqua);
-            draw_text(_draw_x + 62, _ly, string(_woff_lit));
+            draw_text_l(_draw_x + 62, _ly, string(_woff_lit));
         }
         if (_woff_mode == 1) {
             draw_set_color(_col_on);
@@ -291,12 +291,12 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
             draw_set_color(_txt_off);
         }
         draw_set_halign(fa_center);
-        draw_text(_vx + (_vbtn_w * 0.5), _ly, "VAR");
+        draw_text_l(_vx + (_vbtn_w * 0.5), _ly, "VAR");
         draw_set_halign(fa_left);
         _ly += _lh;
 
         // Byte count + the two reserved values, since neither is guessable.
-        draw_set_font(fnt_c64_pico);
+        draw_set_font_l(fnt_c64_pico);
         var _w_found = false;
         var _w_size  = 0;
         if (_wave_ast != "" && _wave_ast != "[clear]" && instance_exists(obj_asset_manager)) {
@@ -314,12 +314,12 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
         }
         if (!_w_found) {
             draw_set_color(make_color_rgb(230, 90, 90));
-            draw_text(_draw_x + 8, _ly, "! WAVE LIST NOT FOUND");
+            draw_text_l(_draw_x + 8, _ly, "! WAVE LIST NOT FOUND");
         } else {
             draw_set_color(make_color_rgb(80, 120, 180));
-            draw_text(_draw_x + 8, _ly, string(_w_size) + "B   $00=OFF  $FF=SKIP");
+            draw_text_l(_draw_x + 8, _ly, string(_w_size) + "B   $00=OFF  $FF=SKIP");
         }
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         _ly += _lh;
     }
 
@@ -328,24 +328,24 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
                     obj_workspace_manager.input_target_node  == id &&
                     obj_workspace_manager.input_target_index == 11);
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "AD:");
+    draw_text_l(_draw_x + 10, _ly, "AD:");
     if (_ad_mode == 1) {
         draw_set_color(c_yellow);
-        draw_text(_draw_x + 62, _ly, (_ad_var != "") ? _ad_var : "<PICK>");
+        draw_text_l(_draw_x + 62, _ly, (_ad_var != "") ? _ad_var : "<PICK>");
     } else if (_ad_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _ah = decimal_to_hex(_ad_lit);
         while (string_length(_ah) < 2) _ah = "0" + _ah;
         draw_set_color(c_aqua);
-        draw_text(_draw_x + 62, _ly, "$" + string_upper(_ah));
+        draw_text_l(_draw_x + 62, _ly, "$" + string_upper(_ah));
     }
     draw_set_color((_ad_mode == 1) ? _col_on : _col_off);
     draw_rectangle(_vx, _ly + 1, _vx + _vbtn_w, _ly + 12, false);
     draw_set_color((_ad_mode == 1) ? c_yellow : _txt_off);
     draw_set_halign(fa_center);
-    draw_text(_vx + (_vbtn_w * 0.5), _ly, "VAR");
+    draw_text_l(_vx + (_vbtn_w * 0.5), _ly, "VAR");
     draw_set_halign(fa_left);
     _ly += _lh;
 
@@ -354,24 +354,24 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
                     obj_workspace_manager.input_target_node  == id &&
                     obj_workspace_manager.input_target_index == 14);
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "SR:");
+    draw_text_l(_draw_x + 10, _ly, "SR:");
     if (_sr_mode == 1) {
         draw_set_color(c_yellow);
-        draw_text(_draw_x + 62, _ly, (_sr_var != "") ? _sr_var : "<PICK>");
+        draw_text_l(_draw_x + 62, _ly, (_sr_var != "") ? _sr_var : "<PICK>");
     } else if (_sr_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _sh = decimal_to_hex(_sr_lit);
         while (string_length(_sh) < 2) _sh = "0" + _sh;
         draw_set_color(c_aqua);
-        draw_text(_draw_x + 62, _ly, "$" + string_upper(_sh));
+        draw_text_l(_draw_x + 62, _ly, "$" + string_upper(_sh));
     }
     draw_set_color((_sr_mode == 1) ? _col_on : _col_off);
     draw_rectangle(_vx, _ly + 1, _vx + _vbtn_w, _ly + 12, false);
     draw_set_color((_sr_mode == 1) ? c_yellow : _txt_off);
     draw_set_halign(fa_center);
-    draw_text(_vx + (_vbtn_w * 0.5), _ly, "VAR");
+    draw_text_l(_vx + (_vbtn_w * 0.5), _ly, "VAR");
     draw_set_halign(fa_left);
     _ly += _lh;
 
@@ -390,7 +390,7 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
     } else {
         draw_set_color(c_gray);
     }
-    draw_text(_cbx + 18, _ly, "PULSE WIDTH");
+    draw_text_l(_cbx + 18, _ly, "PULSE WIDTH");
     _ly += _lh;
 
     // ===== PW (interactive only if pulse on) =====
@@ -399,28 +399,28 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
                     obj_workspace_manager.input_target_index == 18);
     if (_pulse_on == 1) {
         draw_set_color(_c_lbl);
-        draw_text(_draw_x + 10, _ly, "PW:");
+        draw_text_l(_draw_x + 10, _ly, "PW:");
         if (_pw_mode == 1) {
             draw_set_color(c_yellow);
-            draw_text(_draw_x + 62, _ly, (_pw_var != "") ? _pw_var : "<PICK>");
+            draw_text_l(_draw_x + 62, _ly, (_pw_var != "") ? _pw_var : "<PICK>");
         } else if (_pw_edit) {
             draw_set_color(c_lime);
-            draw_text(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
+            draw_text_l(_draw_x + 62, _ly, obj_workspace_manager.current_input_string);
         } else {
             var _ph = decimal_to_hex(_pw_lit);
             while (string_length(_ph) < 3) _ph = "0" + _ph;
             draw_set_color(c_aqua);
-            draw_text(_draw_x + 62, _ly, "$" + string_upper(_ph));
+            draw_text_l(_draw_x + 62, _ly, "$" + string_upper(_ph));
         }
         draw_set_color((_pw_mode == 1) ? _col_on : _col_off);
         draw_rectangle(_vx, _ly + 1, _vx + _vbtn_w, _ly + 12, false);
         draw_set_color((_pw_mode == 1) ? c_yellow : _txt_off);
         draw_set_halign(fa_center);
-        draw_text(_vx + (_vbtn_w * 0.5), _ly, "VAR");
+        draw_text_l(_vx + (_vbtn_w * 0.5), _ly, "VAR");
         draw_set_halign(fa_left);
     } else {
         draw_set_color(_c_dim);
-        draw_text(_draw_x + 10, _ly, "PW: -");
+        draw_text_l(_draw_x + 10, _ly, "PW: -");
     }
     _ly += _lh;
 
@@ -433,10 +433,10 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text(_draw_x + 10, _ly, "ZP:");
+    draw_text_l(_draw_x + 10, _ly, "ZP:");
     if (_zp_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 46, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 46, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _zh = decimal_to_hex(_zp);
         while (string_length(_zh) < 2) _zh = "0" + _zh;
@@ -445,18 +445,18 @@ function scr_node_draw_macro_sid_sound(_draw_x, _y) {
         } else {
             draw_set_color(_c_dim);
         }
-        draw_text(_draw_x + 46, _ly, "$" + string_upper(_zh));
+        draw_text_l(_draw_x + 46, _ly, "$" + string_upper(_zh));
     }
     _ly += _lh;
 
     // ===== Footer =====
-    draw_set_font(fnt_c64_pico);
+    draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(80, 120, 180));
     var _base_hex = decimal_to_hex(0xD400 + (_voice_mode == 0 ? _voice_lit * 7 : 0));
     while (string_length(_base_hex) < 4) _base_hex = "0" + _base_hex;
     if (_voice_mode == 1) {
-        draw_text(_draw_x + 8, _ly, "SID VOICE=VAR  BASE $D400+v*7,X");
+        draw_text_l(_draw_x + 8, _ly, "SID VOICE=VAR  BASE $D400+v*7,X");
     } else {
-        draw_text(_draw_x + 8, _ly, "SID V" + string(_voice_lit + 1) + "  BASE $" + string_upper(_base_hex));
+        draw_text_l(_draw_x + 8, _ly, "SID V" + string(_voice_lit + 1) + "  BASE $" + string_upper(_base_hex));
     }
 }

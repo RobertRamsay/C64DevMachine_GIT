@@ -109,12 +109,12 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _h, false);
         draw_set_color(_tx);
         draw_set_halign(fa_center);
-        draw_text(_x1 + _w * 0.5, _y1 + 3, _label);
+        draw_text_l(_x1 + _w * 0.5, _y1 + 3, _label);
         draw_set_halign(fa_left);
         return (_hov && mouse_check_button_pressed(mb_left));
     };
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     // ===============================================================
     // GEOMETRY — the canvas cell size is the largest zoom that leaves room
@@ -139,19 +139,19 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // ===============================================================
     var _tx = _cvx;
     draw_set_color(_c_lbl);
-    draw_text(_tx, _tool_y + 3, "RECT");
+    draw_text_l(_tx, _tool_y + 3, "RECT");
     _tx += 34;
 
     var _rf_lbl = ["X", "Y", "W", "H"];
     var _rf_val = [_m.hud_x, _m.hud_y, _m.hud_w, _m.hud_h];
     for (var _ri = 0; _ri < 4; _ri++) {
         draw_set_color(_c_dim);
-        draw_text(_tx, _tool_y + 3, _rf_lbl[_ri]);
+        draw_text_l(_tx, _tool_y + 3, _rf_lbl[_ri]);
         var _d = 0;
         if (_button(_tx + 12, _tool_y, 14, 16, "-", false, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) { _d = -1; }
         draw_set_color(c_aqua);
         draw_set_halign(fa_center);
-        draw_text(_tx + 38, _tool_y + 3, string(_rf_val[_ri]));
+        draw_text_l(_tx + 38, _tool_y + 3, string(_rf_val[_ri]));
         draw_set_halign(fa_left);
         if (_button(_tx + 50, _tool_y, 14, 16, "+", false, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) { _d = 1; }
         if (_d != 0) {
@@ -197,7 +197,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(make_color_rgb(150, 150, 150));
     var _cb_label = "CHARSET  -- PICK --";
     if (_m.chr_asset != "") { draw_set_color(c_lime); _cb_label = "CHARSET  " + _m.chr_asset; }
-    draw_text(_tx + 6, _tool_y + 3, _cb_label);
+    draw_text_l(_tx + 6, _tool_y + 3, _cb_label);
     if (_chov && (mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right))) {
         var _sets = [];
         if (instance_exists(obj_asset_manager)) {
@@ -230,10 +230,10 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
     // ZOOM
     draw_set_color(_c_lbl);
-    draw_text(_tx, _tool_y + 3, "ZOOM");
+    draw_text_l(_tx, _tool_y + 3, "ZOOM");
     if (_button(_tx + 36, _tool_y, 14, 16, "-", false, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) { _m.zoom = max(1, _m.zoom - 1); }
     draw_set_color(c_aqua);
-    draw_text(_tx + 55, _tool_y + 3, string(_m.zoom));
+    draw_text_l(_tx + 55, _tool_y + 3, string(_m.zoom));
     if (_button(_tx + 66, _tool_y, 14, 16, "+", false, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) { _m.zoom = min(3, _m.zoom + 1); }
 
     // ===============================================================
@@ -271,7 +271,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             } else if (_char != 32 && _cs >= 14) {
                 draw_set_color(scr_c64_pepto_colour(_colv));
                 draw_set_halign(fa_center);
-                draw_text(_px + _cs * 0.5, _py + _cs * 0.5 - 4, string(_char));
+                draw_text_l(_px + _cs * 0.5, _py + _cs * 0.5 - 4, string(_char));
                 draw_set_halign(fa_left);
             }
         }
@@ -296,7 +296,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_rectangle(_fx1, _fy1, _fx2, _fy2, false);
         draw_set_alpha(1.0);
         draw_rectangle(_fx1, _fy1, _fx2, _fy2, true);
-        draw_text(_fx1 + 1, _fy1 - 11, _f.name);
+        draw_text_l(_fx1 + 1, _fy1 - 11, _f.name);
     }
 
     // Type cursor
@@ -363,9 +363,9 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // ===============================================================
     var _sy = _cvy + _cvh + 16;
     draw_set_color(_c_lbl);
-    draw_text(_cvx, _sy, "CHARSET");
+    draw_text_l(_cvx, _sy, "CHARSET");
     draw_set_color(_c_dim);
-    draw_text(_cvx + 70, _sy, "CLICK = ACTIVE CHAR   ALT+CLICK THE PANEL TO PICK   ARROWS MOVE THE CURSOR   CTRL+Z/Y UNDO");
+    draw_text_l(_cvx + 70, _sy, "CLICK = ACTIVE CHAR   ALT+CLICK THE PANEL TO PICK   ARROWS MOVE THE CURSOR   CTRL+Z/Y UNDO");
     var _csy  = _sy + 14;
     var _cssz = 18;
     for (var _ki = 0; _ki < 256; _ki++) {
@@ -399,9 +399,9 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_c_edge);
     draw_rectangle(_rcx, _ry0, _rcx + _rcw, _ry0 + _tile_h, true);
     draw_set_color(_c_head);
-    draw_text(_rcx + 8, _ry0 + 5, "TILE");
+    draw_text_l(_rcx + 8, _ry0 + 5, "TILE");
     draw_set_color(_c_dim);
-    draw_text(_rcx + 44, _ry0 + 5, "CHR " + string(_m.active_char) + "  -  EDITS " + _m.chr_asset);
+    draw_text_l(_rcx + 44, _ry0 + 5, "CHR " + string(_m.active_char) + "  -  EDITS " + _m.chr_asset);
 
     var _tile_ox = _rcx + 10;
     var _tile_oy = _ry0 + 22;
@@ -447,7 +447,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         }
     } else {
         draw_set_color(_c_dim);
-        draw_text(_tile_ox, _tile_oy + 8, "PICK A CHARSET ABOVE TO EDIT ITS TILES HERE");
+        draw_text_l(_tile_ox, _tile_oy + 8, "PICK A CHARSET ABOVE TO EDIT ITS TILES HERE");
     }
 
     // ── PAINT ──
@@ -458,7 +458,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_c_edge);
     draw_rectangle(_rcx, _py0, _rcx + _rcw, _py0 + _paint_h, true);
     draw_set_color(_c_head);
-    draw_text(_rcx + 8, _py0 + 5, "PAINT");
+    draw_text_l(_rcx + 8, _py0 + 5, "PAINT");
 
     // Row 1: active swatch, readout, 16 colours in two rows, cell kind button
     var _swx = _rcx + 10;
@@ -469,12 +469,12 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     if (_have_atlas) { _draw_glyph(_m, _swx, _swy, _swz, _m.active_char, _m.active_colour, _scr_mc); }
     draw_set_color(c_white);
     draw_rectangle(_swx, _swy, _swx + _swz, _swy + _swz, true);
-    draw_text(_swx + _swz + 8, _swy + 2,  "CHR " + string(_m.active_char));
-    draw_text(_swx + _swz + 8, _swy + 14, "COL " + string(_m.active_colour));
+    draw_text_l(_swx + _swz + 8, _swy + 2,  "CHR " + string(_m.active_char));
+    draw_text_l(_swx + _swz + 8, _swy + 14, "COL " + string(_m.active_colour));
     var _cell_lbl = "HR CELL";
     if (_scr_mc && (_m.active_colour & 8) != 0) { _cell_lbl = "MC CELL"; }
     draw_set_color(_c_dim);
-    draw_text(_swx + _swz + 8, _swy + 26, _cell_lbl);
+    draw_text_l(_swx + _swz + 8, _swy + 26, _cell_lbl);
 
     var _colx = _swx + _swz + 74;
     for (var _ci = 0; _ci < 16; _ci++) {
@@ -513,28 +513,28 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             _m.active_colour = _m.active_colour ^ 8;
         }
         draw_set_color(_c_dim);
-        draw_text(_cellx, _swy + 22, "BIT 3 OF");
-        draw_text(_cellx, _swy + 33, "COLOUR RAM");
+        draw_text_l(_cellx, _swy + 22, "BIT 3 OF");
+        draw_text_l(_cellx, _swy + 33, "COLOUR RAM");
     }
 
     // Row 2: what the mouse buttons do
     var _hy2 = _swy + _swz + 8;
     draw_set_color(_c_dim);
-    draw_text(_swx, _hy2, "LEFT = PAINT COLOUR   RIGHT = SCREEN BACKGROUND $D021 (" + string(_bg_col) + ")");
+    draw_text_l(_swx, _hy2, "LEFT = PAINT COLOUR   RIGHT = SCREEN BACKGROUND $D021 (" + string(_bg_col) + ")");
 
     // Row 3: shared MC colours ($D022 / $D023) — click to step through the palette
     if (_scr_mc) {
         var _hy3 = _hy2 + 16;
         draw_set_color(_c_dim);
-        draw_text(_swx, _hy3 + 3, "C1");
+        draw_text_l(_swx, _hy3 + 3, "C1");
         draw_set_color(scr_c64_pepto_colour(_col1));
         draw_rectangle(_swx + 20, _hy3, _swx + 36, _hy3 + 16, false);
         draw_set_color(_c_dim);
-        draw_text(_swx + 46, _hy3 + 3, "C2");
+        draw_text_l(_swx + 46, _hy3 + 3, "C2");
         draw_set_color(scr_c64_pepto_colour(_col2));
         draw_rectangle(_swx + 66, _hy3, _swx + 82, _hy3 + 16, false);
         draw_set_color(_c_dim);
-        draw_text(_swx + 92, _hy3 + 3, "SHARED MC COLOURS $D022 / $D023  -  CLICK = NEXT");
+        draw_text_l(_swx + 92, _hy3 + 3, "SHARED MC COLOURS $D022 / $D023  -  CLICK = NEXT");
         if (mouse_check_button_pressed(mb_left) && point_in_rectangle(_mx, _my, _swx + 20, _hy3, _swx + 36, _hy3 + 16)) {
             _m.hud_mc_col1 = (_col1 + 1) mod 16;
             _m.atlas_key = "";
@@ -554,9 +554,9 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_c_edge);
     draw_rectangle(_rcx, _fy0, _rcx + _rcw, _fy0 + _fh, true);
     draw_set_color(_c_head);
-    draw_text(_rcx + 8, _fy0 + 5, "FIELDS");
+    draw_text_l(_rcx + 8, _fy0 + 5, "FIELDS");
     draw_set_color(_c_dim);
-    draw_text(_rcx + 60, _fy0 + 5, "CELLS THE GAME WRITES  -  EACH IS AN ENTRY POINT ON THE HUD NODE");
+    draw_text_l(_rcx + 60, _fy0 + 5, "CELLS THE GAME WRITES  -  EACH IS AN ENTRY POINT ON THE HUD NODE");
 
     var _aby = _fy0 + 20;
     if (_button(_rcx + 8, _aby, 70, 16, "+ FIELD", false, _mx, _my, make_color_rgb(30, 80, 40), make_color_rgb(60, 160, 80), _c_on, _c_ontx)) {
@@ -574,7 +574,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         }
     }
     draw_set_color(_c_dim);
-    draw_text(_rcx + 152, _aby + 3, "SHIFT+CLICK THE PANEL TO MOVE THE SELECTED ONE");
+    draw_text_l(_rcx + 152, _aby + 3, "SHIFT+CLICK THE PANEL TO MOVE THE SELECTED ONE");
 
     // List (left half) and properties (right half) side by side
     var _lx  = _rcx + 8;
@@ -595,11 +595,11 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             draw_rectangle(_lx, _ry1, _lx + _lw, _ry1 + 14, false);
         }
         draw_set_color(c_white);
-        draw_text(_lx + 4, _ry1 + 2, _f.name);
+        draw_text_l(_lx + 4, _ry1 + 2, _f.name);
         draw_set_color(make_color_rgb(140, 140, 170));
-        draw_text(_lx + 130, _ry1 + 2, _kind_names[_f.kind]);
-        draw_text(_lx + 190, _ry1 + 2, string(_f.fx) + "," + string(_f.fy));
-        draw_text(_lx + 240, _ry1 + 2, "L" + string(_f.flen));
+        draw_text_l(_lx + 130, _ry1 + 2, _kind_names[_f.kind]);
+        draw_text_l(_lx + 190, _ry1 + 2, string(_f.fx) + "," + string(_f.fy));
+        draw_text_l(_lx + 240, _ry1 + 2, "L" + string(_f.flen));
         if (_rhov && mouse_check_button_pressed(mb_left)) {
             _m.sel_field = _fi;
             _m.name_edit_active = false;
@@ -614,7 +614,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
         // NAME
         draw_set_color(_c_lbl);
-        draw_text(_ppx, _ppy + 3, "NAME");
+        draw_text_l(_ppx, _ppy + 3, "NAME");
         var _nbx1 = _ppx + 50;
         var _nbx2 = _ppx + _ppw;
         var _nhov = point_in_rectangle(_mx, _my, _nbx1, _ppy, _nbx2, _ppy + 16);
@@ -625,9 +625,9 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         if (_m.name_edit_active) {
             var _blink = " ";
             if ((current_time mod 600) < 300) { _blink = "_"; }
-            draw_text(_nbx1 + 5, _ppy + 3, _m.name_edit_buf + _blink);
+            draw_text_l(_nbx1 + 5, _ppy + 3, _m.name_edit_buf + _blink);
         } else {
-            draw_text(_nbx1 + 5, _ppy + 3, _f2.name);
+            draw_text_l(_nbx1 + 5, _ppy + 3, _f2.name);
         }
         if (_nhov && mouse_check_button_pressed(mb_left) && !_m.name_edit_active) {
             _m.name_edit_active = true;
@@ -663,20 +663,20 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
         // KIND + LEN on one row
         draw_set_color(_c_lbl);
-        draw_text(_ppx, _ppy + 3, "KIND");
+        draw_text_l(_ppx, _ppy + 3, "KIND");
         if (_button(_ppx + 50, _ppy, 70, 16, _kind_names[_f2.kind], false, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) {
             _f2.kind = (_f2.kind + 1) mod 3;
             global.addresses_dirty = true;
         }
         draw_set_color(_c_lbl);
-        draw_text(_ppx + 132, _ppy + 3, "LEN");
+        draw_text_l(_ppx + 132, _ppy + 3, "LEN");
         if (_button(_ppx + 162, _ppy, 14, 16, "-", false, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) {
             _f2.flen = max(1, _f2.flen - 1);
             global.addresses_dirty = true;
         }
         draw_set_color(c_aqua);
         draw_set_halign(fa_center);
-        draw_text(_ppx + 188, _ppy + 3, string(_f2.flen));
+        draw_text_l(_ppx + 188, _ppy + 3, string(_f2.flen));
         draw_set_halign(fa_left);
         if (_button(_ppx + 200, _ppy, 14, 16, "+", false, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) {
             _f2.flen = min(_m.hud_w - _f2.fx, _f2.flen + 1);
@@ -686,14 +686,14 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
         if (_f2.kind == 1) {
             draw_set_color(_c_lbl);
-            draw_text(_ppx, _ppy + 3, "ZERO");
+            draw_text_l(_ppx, _ppy + 3, "ZERO");
             if (_button(_ppx + 50, _ppy, 120, 16, "CHR " + string(_f2.base) + "  < ACTIVE", false, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) {
                 _f2.base = _m.active_char;
                 global.addresses_dirty = true;
             }
             _ppy += 20;
             draw_set_color(_c_lbl);
-            draw_text(_ppx, _ppy + 3, "LEAD");
+            draw_text_l(_ppx, _ppy + 3, "LEAD");
             var _pad_lbl = "ZEROS";
             if (_f2.pad == 1) { _pad_lbl = "BLANK"; }
             if (_button(_ppx + 50, _ppy, 70, 16, _pad_lbl, false, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) {
@@ -702,30 +702,30 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             }
             _ppy += 20;
             draw_set_color(_c_dim);
-            draw_text(_ppx, _ppy, "A = 0-255, WRITTEN RIGHT-ALIGNED");
+            draw_text_l(_ppx, _ppy, "A = 0-255, WRITTEN RIGHT-ALIGNED");
         }
         if (_f2.kind == 2) {
             draw_set_color(_c_lbl);
-            draw_text(_ppx, _ppy + 3, "FULL");
+            draw_text_l(_ppx, _ppy + 3, "FULL");
             if (_button(_ppx + 50, _ppy, 120, 16, "CHR " + string(_f2.full) + "  < ACTIVE", false, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) {
                 _f2.full = _m.active_char;
                 global.addresses_dirty = true;
             }
             _ppy += 20;
             draw_set_color(_c_lbl);
-            draw_text(_ppx, _ppy + 3, "EMPTY");
+            draw_text_l(_ppx, _ppy + 3, "EMPTY");
             if (_button(_ppx + 50, _ppy, 120, 16, "CHR " + string(_f2.empty) + "  < ACTIVE", false, _mx, _my, _c_btn, _c_btnh, _c_on, _c_ontx)) {
                 _f2.empty = _m.active_char;
                 global.addresses_dirty = true;
             }
             _ppy += 20;
             draw_set_color(_c_dim);
-            draw_text(_ppx, _ppy, "A = HOW MANY CELLS TO FILL");
+            draw_text_l(_ppx, _ppy, "A = HOW MANY CELLS TO FILL");
         }
         if (_f2.kind == 0) {
             draw_set_color(_c_dim);
-            draw_text(_ppx, _ppy, "POSITION ONLY - NO CODE EMITTED.");
-            draw_text(_ppx, _ppy + 12, "THE NODE SHOWS ITS SCREEN ADDRESS.");
+            draw_text_l(_ppx, _ppy, "POSITION ONLY - NO CODE EMITTED.");
+            draw_text_l(_ppx, _ppy + 12, "THE NODE SHOWS ITS SCREEN ADDRESS.");
         }
     }
 

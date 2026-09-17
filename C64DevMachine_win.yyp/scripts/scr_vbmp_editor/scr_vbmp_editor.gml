@@ -173,7 +173,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _th = 18;
 
     var _tools = ["PLOT", "LINE", "RECT", "RECTFILL", "ELLIPSE", "ELLIPSEFILL", "FILL", "RECOL_C", "RECOL_S", "COPYRGN"];
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     for (var _i = 0; _i < array_length(_tools); _i++) {
         var _tn  = _tools[_i];
         var _act = (_m.tool == _tn);
@@ -183,7 +183,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_set_color(_hov ? c_white : (_act ? c_aqua : make_color_rgb(90, 90, 110)));
         draw_rectangle(_tx, _ty, _tx + _tw, _ty + _th, true);
         draw_set_color(_act ? c_aqua : c_white);
-        draw_text(_tx + 4, _ty + 3, _tn);
+        draw_text_l(_tx + 4, _ty + 3, _tn);
         if (_hov && mouse_check_button_pressed(mb_left)) {
             _m.tool = _tn;
             _m.draw_x1 = -1;    // cancel any in-progress 2-point op
@@ -214,7 +214,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_fhov ? c_white : make_color_rgb(90, 90, 110));
     draw_rectangle(_tx, _ty, _tx + _tw, _ty + _th, true);
     draw_set_color(c_aqua);
-    draw_text(_tx + 4, _ty + 3, (_m.vbmp_zoom == 1) ? "VIEW: ZOOM" : "VIEW: FULL");
+    draw_text_l(_tx + 4, _ty + 3, (_m.vbmp_zoom == 1) ? "VIEW: ZOOM" : "VIEW: FULL");
     if (_fhov && mouse_check_button_pressed(mb_left)) {
         _m.vbmp_zoom = (_m.vbmp_zoom + 1) mod 2;
         _m.draw_x1 = -1; // cancel any in-progress op on view change
@@ -228,7 +228,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_ghov ? c_white : (_m.vbmp_grid ? c_aqua : make_color_rgb(90, 90, 110)));
     draw_rectangle(_tx, _ty, _tx + _tw, _ty + _th, true);
     draw_set_color(_m.vbmp_grid ? c_aqua : c_white);
-    draw_text(_tx + 4, _ty + 3, _m.vbmp_grid ? "GRID: ON" : "GRID: OFF");
+    draw_text_l(_tx + 4, _ty + 3, _m.vbmp_grid ? "GRID: ON" : "GRID: OFF");
     if (_ghov && mouse_check_button_pressed(mb_left)) {
         _m.vbmp_grid = !_m.vbmp_grid;
     }
@@ -255,7 +255,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
     _ty += 6;
     draw_set_color(c_ltgray);
-    draw_text(_tx, _ty, "PAGE:");
+    draw_text_l(_tx, _ty, "PAGE:");
     _ty += 14;
 
     // ◀ button
@@ -266,7 +266,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_prev_hov ? c_white : make_color_rgb(140, 140, 160));
     draw_rectangle(_tx, _ty, _tx + _pw_btn, _ty + 18, true);
     draw_set_color(c_white);
-    draw_text(_tx + 6, _ty + 3, "<");
+    draw_text_l(_tx + 6, _ty + 3, "<");
     if (_prev_hov && mouse_check_button_pressed(mb_left) && _m.active_page > 0) {
         scr_vbmp_page_store(_asset);
         scr_vbmp_page_load(_asset, _m.active_page - 1);
@@ -282,7 +282,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_rectangle(_rd_x, _ty, _rd_x + _rd_w, _ty + 18, true);
     draw_set_color(c_aqua);
     draw_set_halign(fa_center);
-    draw_text(_rd_x + _rd_w / 2, _ty + 3, string(_m.active_page) + "/" + string(_pg_count - 1));
+    draw_text_l(_rd_x + _rd_w / 2, _ty + 3, string(_m.active_page) + "/" + string(_pg_count - 1));
     draw_set_halign(fa_left);
 
     // ▶ button
@@ -293,7 +293,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_next_hov ? c_white : make_color_rgb(140, 140, 160));
     draw_rectangle(_nx_x, _ty, _nx_x + _pw_btn, _ty + 18, true);
     draw_set_color(c_white);
-    draw_text(_nx_x + 6, _ty + 3, ">");
+    draw_text_l(_nx_x + 6, _ty + 3, ">");
     if (_next_hov && mouse_check_button_pressed(mb_left) && _m.active_page < _pg_count - 1) {
         scr_vbmp_page_store(_asset);
         scr_vbmp_page_load(_asset, _m.active_page + 1);
@@ -312,7 +312,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_add_hov ? c_white : make_color_rgb(100, 160, 110));
     draw_rectangle(_add_x, _ty, _add_x + _add_w, _ty + 18, true);
     draw_set_color(c_white);
-    draw_text(_add_x , _ty , "+ADD");
+    draw_text_l(_add_x , _ty , "+ADD");
     if (_add_hov && mouse_check_button_pressed(mb_left)) {
         // Store current, append a fresh blank page inheriting current colours,
         // then jump to it.
@@ -337,7 +337,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_rectangle(_del_x, _ty, _del_x + _del_w, _ty + 18, false);
         draw_set_color(c_white);
         draw_rectangle(_del_x, _ty, _del_x + _del_w, _ty + 18, true);
-        draw_text(_del_x +2 , _ty , "DEL");
+        draw_text_l(_del_x +2 , _ty , "DEL");
         if (_del_hov && mouse_check_button_pressed(mb_left)) {
             // Remove the active page; clamp active_page and load the neighbour.
             var _removed = _m.active_page;
@@ -352,7 +352,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // ── COLOUR SELECTOR (4 slots: bg + 3) ────────────────────────────────
     _ty += 10;
     draw_set_color(c_ltgray);
-    draw_text(_tx, _ty, "COLOUR (selector):");
+    draw_text_l(_tx, _ty, "COLOUR (selector):");
     _ty += 16;
     var _slots = [_m.bg, _m.col1, _m.col2, _m.col3];
     var _slot_lbl = ["0 BG", "1", "2", "3"];
@@ -370,7 +370,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             draw_rectangle(_bx, _ty, _bx + _sw2, _ty + 24, true);
         }
         draw_set_color(c_white);
-        draw_text(_bx + 3, _ty + 26, _slot_lbl[_s]);
+        draw_text_l(_bx + 3, _ty + 26, _slot_lbl[_s]);
         if (_bhov && mouse_check_button_pressed(mb_left)) _m.active_col = _s;
         // Right-click cycles the actual C64 colour of that slot
         if (_bhov && mouse_check_button_pressed(mb_right)) {
@@ -387,13 +387,13 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     _ty += 44;
     draw_set_color(make_color_rgb(70, 70, 90));
-    draw_text(_tx, _ty, "L=select  R=cycle colour");
+    draw_text_l(_tx, _ty, "L=select  R=cycle colour");
     _ty += 20;
 
     // ── DITHER CONTROLS (FILL tool only) ─────────────────────────────────
     if (_m.tool == "FILL") {
         draw_set_color(c_ltgray);
-        draw_text(_tx, _ty, "DITHER:");
+        draw_text_l(_tx, _ty, "DITHER:");
         _ty += 16;
         // Pattern mode buttons: SOLID / CHECKER / INTERLACE
         var _pat_lbls = ["SOLID", "CHECKER", "INTERLACE"];
@@ -408,13 +408,13 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             draw_set_color(_pact ? c_aqua : make_color_rgb(90, 90, 110));
             draw_rectangle(_pbx, _pby, _pbx + _pat_bw, _pby + 18, true);
             draw_set_color(_pact ? c_aqua : c_white);
-            draw_text(_pbx + 4, _pby + 3, _pat_lbls[_p]);
+            draw_text_l(_pbx + 4, _pby + 3, _pat_lbls[_p]);
             if (_phov && mouse_check_button_pressed(mb_left)) _m.dither_pat = _p;
         }
         _ty += 3 * 20 + 4;
         // Second colour swatch (only meaningful when pattern > 0)
         draw_set_color(c_ltgray);
-        draw_text(_tx, _ty, "2ND COL:");
+        draw_text_l(_tx, _ty, "2ND COL:");
         var _d2x = _tx + 74;
         var _d2hov = point_in_rectangle(_mx, _my, _d2x, _ty - 2, _d2x + 18, _ty + 16);
         var _d2slots = [_m.bg, _m.col1, _m.col2, _m.col3];
@@ -422,7 +422,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_rectangle(_d2x, _ty - 2, _d2x + 18, _ty + 16, false);
         draw_set_color(c_white);
         draw_rectangle(_d2x, _ty - 2, _d2x + 18, _ty + 16, true);
-        draw_text(_d2x + 22, _ty, string(_m.dither_colb));
+        draw_text_l(_d2x + 22, _ty, string(_m.dither_colb));
         // Left-click cycles which selector slot (0..3) is the 2nd colour
         if (_d2hov && mouse_check_button_pressed(mb_left)) {
             _m.dither_colb = (_m.dither_colb + 1) mod 4;
@@ -433,7 +433,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         // is running; counts down once per drawn frame.
         if (vbmp_fill_warn_timer > 0) {
             draw_set_color(c_red);
-            draw_text(_tx, _ty, vbmp_fill_warn_msg);
+            draw_text_l(_tx, _ty, vbmp_fill_warn_msg);
             _ty += 36;
             vbmp_fill_warn_timer -= 1;
         }
@@ -447,7 +447,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // meta — one recolour palette shared across the editor session.
     if (_m.tool == "RECOL_C" || _m.tool == "RECOL_S") {
         draw_set_color(c_ltgray);
-        draw_text(_tx, _ty, (_m.tool == "RECOL_C") ? "RECOLOUR CRAM (col3):" : "RECOLOUR SRAM (col1/col2):");
+        draw_text_l(_tx, _ty, (_m.tool == "RECOL_C") ? "RECOLOUR CRAM (col3):" : "RECOLOUR SRAM (col1/col2):");
         _ty += 16;
 
         if (_m.tool == "RECOL_C") {
@@ -457,7 +457,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             draw_rectangle(_rcx, _ty, _rcx + 25, _ty + 24, false);
             draw_set_color(c_white);
             draw_rectangle(_rcx, _ty, _rcx + 25, _ty + 24, true);
-            draw_text(_rcx + 3, _ty + 26, "C3:" + string(vbmp_recol_c3));
+            draw_text_l(_rcx + 3, _ty + 26, "C3:" + string(vbmp_recol_c3));
             if (_rc_hov && mouse_check_button_pressed(mb_right)) vbmp_recol_c3 = (vbmp_recol_c3 + 1) mod 16;
         } else {
             var _rc1x = _tx;
@@ -466,7 +466,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             draw_rectangle(_rc1x, _ty, _rc1x + 25, _ty + 24, false);
             draw_set_color(c_white);
             draw_rectangle(_rc1x, _ty, _rc1x + 25, _ty + 24, true);
-            draw_text(_rc1x + 3, _ty + 26, "C1:" + string(vbmp_recol_c1));
+            draw_text_l(_rc1x + 3, _ty + 26, "C1:" + string(vbmp_recol_c1));
             if (_rc1_hov && mouse_check_button_pressed(mb_right)) vbmp_recol_c1 = (vbmp_recol_c1 + 1) mod 16;
 
             var _rc2x = _tx + 35;
@@ -475,12 +475,12 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             draw_rectangle(_rc2x, _ty, _rc2x + 25, _ty + 24, false);
             draw_set_color(c_white);
             draw_rectangle(_rc2x, _ty, _rc2x + 25, _ty + 24, true);
-            draw_text(_rc2x + 3, _ty + 26, "C2:" + string(vbmp_recol_c2));
+            draw_text_l(_rc2x + 3, _ty + 26, "C2:" + string(vbmp_recol_c2));
             if (_rc2_hov && mouse_check_button_pressed(mb_right)) vbmp_recol_c2 = (vbmp_recol_c2 + 1) mod 16;
         }
         _ty += 44;
         draw_set_color(make_color_rgb(70, 70, 90));
-        draw_text(_tx, _ty, "R=cycle colour  drag=cell area");
+        draw_text_l(_tx, _ty, "R=cycle colour  drag=cell area");
         _ty += 18;
     }
 
@@ -490,7 +490,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_ub_hov ? make_color_rgb(120, 90, 40) : make_color_rgb(70, 50, 20));
     draw_rectangle(_ubx, _ty, _ubx + 80, _ty + 18, false);
     draw_set_color(c_white);
-    draw_text(_ubx + 6, _ty + 3, "UNDO LAST");
+    draw_text_l(_ubx + 6, _ty + 3, "UNDO LAST");
     if (_ub_hov && mouse_check_button_pressed(mb_left) && array_length(_m.commands) > 0) {
         array_delete(_m.commands, array_length(_m.commands) - 1, 1);
         _m.last_emitted_col = -1; // force next commit to re-establish colour
@@ -510,7 +510,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(_cl_hov ? make_color_rgb(200, 60, 60) : make_color_rgb(120, 30, 30));
     draw_rectangle(_clbx, _cl_y, _clbx + _cl_w, _cl_y + 18, false);
     draw_set_color(c_white);
-    draw_text(_clbx + 8, _cl_y + 3, "CLEAR");
+    draw_text_l(_clbx + 8, _cl_y + 3, "CLEAR");
     if (_cl_hov && mouse_check_button_pressed(mb_left)) {
         _m.commands = [];
         _m.last_emitted_col = -1;
@@ -553,10 +553,10 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
 
     draw_set_color(c_ltgray);
-    draw_text(_clx, _cly, "COMMANDS (" + string(_total) + "):");
+    draw_text_l(_clx, _cly, "COMMANDS (" + string(_total) + "):");
     // Byte readout: this page, then all pages combined.
     draw_set_color(make_color_rgb(150, 200, 150));
-    draw_text(_clx, _cly - 14, "PAGE " + string(_page_bytes) + "b   ALL " + string(_all_pages) + "pg " + string(_all_bytes) + "b");
+    draw_text_l(_clx, _cly - 14, "PAGE " + string(_page_bytes) + "b   ALL " + string(_all_pages) + "pg " + string(_all_bytes) + "b");
     var _cly_list = _cly + 18;
 
     var _list_h   = ((_box_y + _box_h) - _cly_list) * 1.3; // taller list column
@@ -595,12 +595,12 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         if (variable_struct_exists(_cmd, "sc"))  _lbl += " s" + string(_cmd.sc) + "," + string(_cmd.sr) + "->" + string(_cmd.dc) + "," + string(_cmd.dr) + " " + string(_cmd.w) + "x" + string(_cmd.h);
         // Per-command stream byte cost, right-aligned-ish before the [X] button.
         _lbl += "  <" + string(_vbmp_cmd_bytes(_cmd)) + "b>";
-        draw_text(_clx + 2, _ry + 1, _lbl);
+        draw_text_l(_clx + 2, _ry + 1, _lbl);
         // Delete button at the column's right edge
         var _delx = _clx + _col_w - 24;
         var _dhov = point_in_rectangle(_mx, _my, _delx, _ry, _delx + 24, _ry + _row_h);
         draw_set_color(_dhov ? c_red : make_color_rgb(120, 60, 60));
-        draw_text(_delx, _ry + 1, "[X]");
+        draw_text_l(_delx, _ry + 1, "[X]");
         if (_dhov && mouse_check_button_pressed(mb_left)) {
             array_delete(_m.commands, _idx, 1);
             _m.vbmp_dirty = true;
@@ -948,10 +948,10 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_line(_mx, _box_y, _mx, _box_y + _box_h);
         draw_set_alpha(1.0);
         draw_set_color(c_yellow);
-        draw_text(_tx - 860, _box_y + _box_h + 6, "X POS:" + string(_snap_px) + " Y POS: " + string(_raw_py));
+        draw_text_l(_tx - 860, _box_y + _box_h + 6, "X POS:" + string(_snap_px) + " Y POS: " + string(_raw_py));
     }
 	draw_set_color(c_aqua);
-	draw_text( _tx - 860,930,"PLEASE NOTE THE FINAL RESULT MAY DIFFER DUE TO DIFFERENT\nALGORTHIMS USED IN RUN TIME AS WELL AS COLOUR CLASH")
+	draw_text_l( _tx - 860,930,"PLEASE NOTE THE FINAL RESULT MAY DIFFER DUE TO DIFFERENT\nALGORTHIMS USED IN RUN TIME AS WELL AS COLOUR CLASH")
 	
 
     // Keep pages[active_page] continuously in sync with the live top-level

@@ -22,31 +22,31 @@ function scr_node_draw_macro_math(_draw_x, _y) {
     var _c_dim = make_color_rgb(100, 100, 100);
     var _vbtn_w = 28;
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     // ── Row 1: OP selector ──
     var _op_names = ["ADD", "SUB", "MUL", "DIV", "1-X", "-X"];
     var _op_lbl   = _op_names[_op];
 
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "OP:");
+    draw_text_l(_draw_x + 10, _ly, "OP:");
     var _obx1 = _draw_x + 52;
     var _obx2 = _draw_x + width - 10;
     draw_set_color(make_color_rgb(30, 70, 55));
     draw_rectangle(_obx1, _ly + 1, _obx2, _ly + 13, false);
     draw_set_color(c_lime);
-    draw_text(_obx1 + 6, _ly, _op_lbl);
+    draw_text_l(_obx1 + 6, _ly, _op_lbl);
     _ly += _lh;
 
     // ── Row 2: IN (VAR1) ──
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "IN:");
+    draw_text_l(_draw_x + 10, _ly, "IN:");
     if (_in_var != "") {
         draw_set_color(c_yellow);
-        draw_text(_draw_x + 52, _ly, _in_var);
+        draw_text_l(_draw_x + 52, _ly, _in_var);
     } else {
         draw_set_color(_c_dim);
-        draw_text(_draw_x + 52, _ly, "-pick var-");
+        draw_text_l(_draw_x + 52, _ly, "-pick var-");
     }
     _ly += _lh;
 
@@ -54,7 +54,7 @@ function scr_node_draw_macro_math(_draw_x, _y) {
     if (_two_input) {
         draw_set_color(_c_lbl);
         var _by_lbl = (_op <= 1) ? "WITH:" : "BY:";
-        draw_text(_draw_x + 10, _ly, _by_lbl);
+        draw_text_l(_draw_x + 10, _ly, _by_lbl);
         // LIT/VAR toggle on the right
         var _tvx = _draw_x + width - 38;
         if (_op_mode == 1) {
@@ -69,36 +69,36 @@ function scr_node_draw_macro_math(_draw_x, _y) {
             draw_set_color(make_color_rgb(140, 140, 160));
         }
         draw_set_halign(fa_center);
-        draw_text(_tvx + (_vbtn_w * 0.5), _ly, "VAR");
+        draw_text_l(_tvx + (_vbtn_w * 0.5), _ly, "VAR");
         draw_set_halign(fa_left);
         // value / var name
         if (_op_mode == 1) {
             if (_op_var != "") {
                 draw_set_color(c_yellow);
-                draw_text(_draw_x + 52, _ly, _op_var);
+                draw_text_l(_draw_x + 52, _ly, _op_var);
             } else {
                 draw_set_color(_c_dim);
-                draw_text(_draw_x + 52, _ly, "-pick var-");
+                draw_text_l(_draw_x + 52, _ly, "-pick var-");
             }
         } else {
             draw_set_color(c_aqua);
-            draw_text(_draw_x + 52, _ly, string(_op_lit));
+            draw_text_l(_draw_x + 52, _ly, string(_op_lit));
         }
     } else {
         draw_set_color(make_color_rgb(60, 60, 70));
-        draw_text(_draw_x + 10, _ly, "BY: -");
+        draw_text_l(_draw_x + 10, _ly, "BY: -");
     }
     _ly += _lh;
 
     // ── Row 4: OUT (VAR3) ──
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "OUT:");
+    draw_text_l(_draw_x + 10, _ly, "OUT:");
     if (_res_var != "") {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 52, _ly, _res_var);
+        draw_text_l(_draw_x + 52, _ly, _res_var);
     } else {
         draw_set_color(c_orange);
-        draw_text(_draw_x + 52, _ly, "< NONE >");
+        draw_text_l(_draw_x + 52, _ly, "< NONE >");
     }
     _ly += _lh;
 
@@ -145,15 +145,15 @@ function scr_node_draw_macro_math(_draw_x, _y) {
             break;
     }
 
-    draw_set_font(fnt_c64_pico);
+    draw_set_font_l(fnt_c64_pico);
     if (_warn_trunc != "") {
         draw_set_color(make_color_rgb(230, 80, 80));
-        draw_text(_draw_x + 8, _ly, "!! " + _warn_trunc);
+        draw_text_l(_draw_x + 8, _ly, "!! " + _warn_trunc);
     } else if (_warn_over != "") {
         draw_set_color(make_color_rgb(220, 170, 60));
-        draw_text(_draw_x + 8, _ly, "! " + _warn_over);
+        draw_text_l(_draw_x + 8, _ly, "! " + _warn_over);
     } else {
         draw_set_color(make_color_rgb(80, 120, 180));
-        draw_text(_draw_x + 8, _ly, "SIGNED  IN " + string(_iw) + "B -> OUT " + string(_rw) + "B");
+        draw_text_l(_draw_x + 8, _ly, "SIGNED  IN " + string(_iw) + "B -> OUT " + string(_rw) + "B");
     }
 }

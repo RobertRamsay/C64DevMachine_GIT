@@ -14,7 +14,7 @@ function scr_node_draw_get_var() {
 
     var _lh = 18;
     var _ly = y + 28;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     // ---- SRC MODE TOGGLE (top-left) ----
     var _sm_x1 = x + 10;
@@ -23,7 +23,7 @@ function scr_node_draw_get_var() {
     draw_set_color(_sm_hov ? make_color_rgb(60, 120, 80) : make_color_rgb(30, 60, 40));
     draw_rectangle(_sm_x1, _ly, _sm_x2+2, _ly + 14, false);
     draw_set_color(c_lime);
-    draw_text(_sm_x1 + 4, _ly - 2, (_src_mode == 0) ? "SRC:VAR " : "SRC:ASSET ");
+    draw_text_l(_sm_x1 + 4, _ly - 2, (_src_mode == 0) ? "SRC:VAR " : "SRC:ASSET ");
 
     if (_src_mode == 0) {
         // ============ VAR MODE (original layout) ============
@@ -33,7 +33,7 @@ function scr_node_draw_get_var() {
         var _vname_x    = x + 90;
         var _vname_hov  = point_in_rectangle(mouse_x, mouse_y, _vname_x, _ly - 4, x + width - 8, _ly + 12);
         draw_set_color(_vname_hov ? c_white : c_yellow);
-        draw_text(_vname_x, _ly - 2, _vname_disp);
+        draw_text_l(_vname_x, _ly - 2, _vname_disp);
         _ly += _lh;
 		
        // show_debug_message("GET_VAR LOOKUP: name='" + _name + "' exists=" + string(ds_map_exists(global.named_loc_map, _name)));
@@ -50,21 +50,21 @@ function scr_node_draw_get_var() {
             var _addr_disp = global.use_hex_display
                 ? ("@ $" + string_upper(_hex))
                 : ("@ " + string(_addr));
-            draw_text(x + 10, _ly, _addr_disp);
+            draw_text_l(x + 10, _ly, _addr_disp);
         } else {
             draw_set_color(c_red);
-            draw_text(x + 10, _ly, "UNKNOWN NAME");
+            draw_text_l(x + 10, _ly, "UNKNOWN NAME");
         }
         _ly += _lh;
         draw_set_color(make_color_rgb(120, 180, 120));
         switch (_size) {
-            case 1: draw_text(x + 10, _ly, "LOADS: A");         break;
-            case 2: draw_text(x + 10, _ly, "LOADS: A=lo X=hi"); break;
-            case 3: draw_text(x + 10, _ly, "LOADS: A X Y");     break;
+            case 1: draw_text_l(x + 10, _ly, "LOADS: A");         break;
+            case 2: draw_text_l(x + 10, _ly, "LOADS: A=lo X=hi"); break;
+            case 3: draw_text_l(x + 10, _ly, "LOADS: A X Y");     break;
         }
         _ly += _lh;
         draw_set_color(make_color_rgb(80, 80, 120));
-        draw_text(x + 10, _ly, "[" + string_upper(_enc) + "]");
+        draw_text_l(x + 10, _ly, "[" + string_upper(_enc) + "]");
 
     } else {
         // ============ ASSET MODE ============
@@ -83,7 +83,7 @@ function scr_node_draw_get_var() {
         var _aname_x    = x + 90;
         var _aname_hov  = point_in_rectangle(mouse_x, mouse_y, _aname_x, _ly - 4, x + width - 8, _ly + 12);
         draw_set_color(_aname_hov ? c_white : c_yellow);
-        draw_text(_aname_x, _ly - 2, _aname_disp);
+        draw_text_l(_aname_x, _ly - 2, _aname_disp);
         _ly += _lh;
 
         // Base address line (row 2)
@@ -91,10 +91,10 @@ function scr_node_draw_get_var() {
             var _hex = decimal_to_hex(_abase);
             while (string_length(_hex) < 4) _hex = "0" + _hex;
             draw_set_color(c_aqua);
-            draw_text(x + 10, _ly, global.use_hex_display ? ("@ $" + string_upper(_hex)) : ("@ " + string(_abase)));
+            draw_text_l(x + 10, _ly, global.use_hex_display ? ("@ $" + string_upper(_hex)) : ("@ " + string(_abase)));
         } else {
             draw_set_color(c_red);
-            draw_text(x + 10, _ly, "UNKNOWN ASSET");
+            draw_text_l(x + 10, _ly, "UNKNOWN ASSET");
         }
         _ly += _lh;
 
@@ -112,7 +112,7 @@ function scr_node_draw_get_var() {
             case 2: _ofl = "OFF:X";   break;
             case 3: _ofl = "OFF:Y";   break;
         }
-        draw_text(_ofb_x1 , _ly - 1, _ofl);
+        draw_text_l(_ofb_x1 , _ly - 1, _ofl);
 
         // Offset value display (row 3, middle) — literal shows value, VAR is clickable text
         if (_off_mode == 0) {
@@ -120,16 +120,16 @@ function scr_node_draw_get_var() {
             var _off_disp = global.use_hex_display
                 ? ("$" + string_upper(decimal_to_hex(_off_lit)))
                 : string(_off_lit);
-            draw_text(_ofb_x2 , _ly - 1, "+" + _off_disp);
+            draw_text_l(_ofb_x2 , _ly - 1, "+" + _off_disp);
         } else if (_off_mode == 1) {
             var _ov_disp = scr_nloc_display_name(_off_var);
             var _ovname = _ov_disp != "" ? _ov_disp : "< VAR >";
             var _ov_hov = point_in_rectangle(mouse_x, mouse_y, _ofb_x2 + 8, _ly - 3, x + width - 8, _ly + 12);
             draw_set_color(_ov_hov ? c_white : c_yellow);
-            draw_text(_ofb_x2 + 8, _ly - 1, _ovname);
+            draw_text_l(_ofb_x2 + 8, _ly - 1, _ovname);
         } else {
             draw_set_color(make_color_rgb(120, 180, 120));
-            draw_text(_ofb_x2 + 8, _ly - 1, (_off_mode == 2) ? "via X" : "via Y");
+            draw_text_l(_ofb_x2 + 8, _ly - 1, (_off_mode == 2) ? "via X" : "via Y");
         }
         _ly += _lh;
 
@@ -147,6 +147,6 @@ function scr_node_draw_get_var() {
         } else {
             draw_set_color(_dst_hov ? c_white : make_color_rgb(80, 80, 120));
         }
-        draw_text(_dst_x, _ly, _dst_disp);
+        draw_text_l(_dst_x, _ly, _dst_disp);
     }
 }

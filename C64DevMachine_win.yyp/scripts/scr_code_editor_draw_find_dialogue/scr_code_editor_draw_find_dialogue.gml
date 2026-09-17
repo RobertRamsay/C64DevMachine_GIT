@@ -11,7 +11,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
     draw_set_color(make_color_rgb(70, 180, 120));
     draw_rectangle(_dx, _dy, _dx + _dw, _dy + _dh, true);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     var _field_h  = 16;
     var _label_x  = _dx + 10;
@@ -22,7 +22,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
     // --- FIND FIELD ---
     var _ty = _dy + 14;
     draw_set_color(make_color_rgb(120, 120, 180));
-    draw_text(_label_x, _ty, "FIND:");
+    draw_text_l(_label_x, _ty, "FIND:");
 
     var _f1_active = (code_editor_find_active_field == 1);
     draw_set_color(make_color_rgb(15, 18, 28));
@@ -31,7 +31,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
     draw_rectangle(_field_x, _ty - 2, _field_x + _field_w, _ty + _field_h, true);
     draw_set_color(_f1_active ? c_white : make_color_rgb(150, 150, 150));
     var _f1_text = code_editor_find_text + ((_f1_active && _blink_on) ? "|" : "");
-    draw_text(_field_x + 5, _ty, _f1_text);
+    draw_text_l(_field_x + 5, _ty, _f1_text);
     if (mouse_check_button_pressed(mb_left) && _mx >= _field_x && _mx <= _field_x + _field_w && _my >= _ty - 2 && _my <= _ty + _field_h) {
         code_editor_find_active_field = 1;
     }
@@ -39,7 +39,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
     // --- REPLACE FIELD ---
     _ty += 28;
     draw_set_color(make_color_rgb(120, 120, 180));
-    draw_text(_label_x, _ty, "REPLACE:");
+    draw_text_l(_label_x, _ty, "REPLACE:");
 
     var _f2_active = (code_editor_find_active_field == 2);
     draw_set_color(make_color_rgb(15, 18, 28));
@@ -48,7 +48,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
     draw_rectangle(_field_x, _ty - 2, _field_x + _field_w, _ty + _field_h, true);
     draw_set_color(_f2_active ? c_white : make_color_rgb(150, 150, 150));
     var _f2_text = code_editor_replace_text + ((_f2_active && _blink_on) ? "|" : "");
-    draw_text(_field_x + 5, _ty, _f2_text);
+    draw_text_l(_field_x + 5, _ty, _f2_text);
     if (mouse_check_button_pressed(mb_left) && _mx >= _field_x && _mx <= _field_x + _field_w && _my >= _ty - 2 && _my <= _ty + _field_h) {
         code_editor_find_active_field = 2;
     }
@@ -66,9 +66,9 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
         draw_rectangle(_x, _y, _x + _w, _y + _bth, false);
         draw_set_color(_hov ? c_white : (_enabled ? make_color_rgb(100, 200, 140) : make_color_rgb(60, 60, 70)));
         draw_rectangle(_x, _y, _x + _w, _y + _bth, true);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
-        draw_text(_x + _w / 2, _y + 4, _label);
+        draw_text_l(_x + _w / 2, _y + 4, _label);
         draw_set_halign(fa_left);
         return (_hov && mouse_check_button_pressed(mb_left));
     };
@@ -139,9 +139,9 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
     }
 
     // Hint
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(70, 90, 80));
-    draw_text(_dx + 8, _bt_y - 25, "TAB: switch field  |  ESC: close  |  ENTER: next");
+    draw_text_l(_dx + 8, _bt_y - 25, "TAB: switch field  |  ESC: close  |  ENTER: next");
 
     // ─── CLICK AWAY ───────────────────────────────────────────────
     // Last thing in the function on purpose: every field and button inside

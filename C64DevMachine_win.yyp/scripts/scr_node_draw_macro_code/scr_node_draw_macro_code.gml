@@ -6,9 +6,9 @@ function scr_node_draw_macro_code(_draw_x, _y) {
     var _ly        = _y + 24 + 4;
 
     // Descriptor
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
     draw_set_color(make_color_rgb(140, 180, 140));
-    draw_text(_px, _ly, _desc);
+    draw_text_l(_px, _ly, _desc);
     _ly += 18;
 
     // EDIT button
@@ -20,9 +20,9 @@ function scr_node_draw_macro_code(_draw_x, _y) {
     draw_set_color(_hover ? make_color_rgb(60, 110, 200) : make_color_rgb(20, 60, 110));
     draw_rectangle(_btn_x1, _btn_y1, _btn_x2, _btn_y2, false);
     draw_set_color(c_white);
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_center);
-    draw_text((_btn_x1 + _btn_x2) / 2, _btn_y1 + 1 , "EDIT ASM CODE");
+    draw_text_l((_btn_x1 + _btn_x2) / 2, _btn_y1 + 1 , "EDIT ASM CODE");
     draw_set_halign(fa_left);
     _ly = _btn_y2 + 6;
 
@@ -33,13 +33,13 @@ if (code_cache_dirty) {
         global.addresses_dirty = true;
         code_cache_dirty  = false;
     }
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_aqua);
-    draw_text(_px, _ly, string(total_node_size) + " BYTES");
+    draw_text_l(_px, _ly, string(total_node_size) + " BYTES");
     draw_set_color(c_orange);
-    draw_text(_px + 70, _ly, string(node_cycles) + " CYC");
+    draw_text_l(_px + 70, _ly, string(node_cycles) + " CYC");
     if (code_cached_lines > 0) {
         draw_set_color(make_color_rgb(80, 120, 200));
-        draw_text(_px + 125, _ly, string(code_cached_lines) + " LINES");
+        draw_text_l(_px + 125, _ly, string(code_cached_lines) + " LINES");
     }
 }

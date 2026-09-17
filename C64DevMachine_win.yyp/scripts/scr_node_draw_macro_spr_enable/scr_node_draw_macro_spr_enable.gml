@@ -20,9 +20,9 @@ function scr_node_draw_macro_spr_enable(_draw_x) {
         ((_mask & 64)  > 0), ((_mask & 128) > 0)
     ];
     // ---- SPRITES label ----
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, y + 27, "SPRITES:          (ONE SHOT CALL)");
+    draw_text_l(_draw_x + 6, y + 27, "SPRITES:          (ONE SHOT CALL)");
     // ---- 8 toggle buttons ----
     var _btn_w   = 22;
     var _btn_h   = 18;
@@ -52,7 +52,7 @@ function scr_node_draw_macro_spr_enable(_draw_x) {
         draw_set_halign(fa_center);
 
         draw_set_color(_on ? c_white : c_gray);
-        draw_text(_bx + _btn_w * 0.5, _row1 + 1, string(_si));
+        draw_text_l(_bx + _btn_w * 0.5, _row1 + 1, string(_si));
         draw_set_halign(fa_left);
     }
     // ---- ENABLE/DISABLE toggle (y+70) ----
@@ -65,7 +65,7 @@ function scr_node_draw_macro_spr_enable(_draw_x) {
     draw_set_color(c_white);
     draw_set_halign(fa_center);
 
-    draw_text(_tog_x + _tog_w * 0.5, _row2 -2, (_mode == 0) ? "ENABLE" : "DISABLE");
+    draw_text_l(_tog_x + _tog_w * 0.5, _row2 -2, (_mode == 0) ? "ENABLE" : "DISABLE");
     draw_set_halign(fa_left);
     // ---- CLEAR button (to the right of ENABLE/DISABLE toggle) ----
     var _clr_w   = 44;
@@ -86,6 +86,6 @@ function scr_node_draw_macro_spr_enable(_draw_x) {
     draw_set_halign(fa_center);
 
     draw_set_color(_clr_hov ? c_yellow : c_gray);
-    draw_text(_clr_x + _clr_w * 0.5, _row2 -2, "CLEAR");
+    draw_text_l(_clr_x + _clr_w * 0.5, _row2 -2, "CLEAR");
     draw_set_halign(fa_left);
 }

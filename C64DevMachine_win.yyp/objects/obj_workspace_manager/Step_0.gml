@@ -1,6 +1,23 @@
 // First frame only: offer back an emergency save if the last run crashed.
 // In Step rather than Create so everything the loader touches already exists.
-if (!recovery_checked) {
+// First run only: ask for a language. The crash-recovery offer waits until
+// the picker has been answered, because question boxes do not stack.
+if (!lang_checked) {
+    lang_checked = true;
+    if (global.lang_unset) {
+        scr_lang_show_picker();
+    }
+}
+if (global.question_result == "lang_pick_yes") {
+    global.question_result = "";
+    scr_lang_set(0);
+}
+if (global.question_result == "lang_pick_no") {
+    global.question_result = "";
+    scr_lang_set(1);
+}
+
+if (!recovery_checked && !global.lang_unset) {
     recovery_checked = true;
     scr_crash_recovery_check();
 }
@@ -1132,7 +1149,7 @@ if (is_entering_text) {
         var _txt_y0 = (display_get_gui_height() / 2) - 60;
         var _lh_px  = 18 * 1.2;
 
-        draw_set_font(fnt_c64_code);
+        draw_set_font_l(fnt_c64_code);
 
         if (_is_ml) {
             var _ml_lines = string_split(current_input_string, "\n");
@@ -1145,8 +1162,8 @@ if (is_entering_text) {
                     var _ml_len  = string_length(_ml_line);
                     var _best_col = _ml_len;
                     for (var _ci = 0; _ci <= _ml_len; _ci++) {
-                        var _cx1 = _txt_x + string_width(string_copy(_ml_line, 1, _ci)) * 1.2;
-                        var _cx2 = _txt_x + string_width(string_copy(_ml_line, 1, _ci + 1)) * 1.2;
+                        var _cx1 = _txt_x + string_width_l(string_copy(_ml_line, 1, _ci)) * 1.2;
+                        var _cx2 = _txt_x + string_width_l(string_copy(_ml_line, 1, _ci + 1)) * 1.2;
                         if (_gmx < (_cx1 + _cx2) * 0.5) {
                             _best_col = _ci;
                             break;
@@ -1161,7 +1178,7 @@ if (is_entering_text) {
             }
         } else {
             var _full_str = current_input_string;
-            var _full_w   = string_width(_full_str) * 1.5;
+            var _full_w   = string_width_l(_full_str) * 1.5;
             var _start_x  = (global.gui_w / 2) - _full_w * 0.5;
             var _row_y1   = (display_get_gui_height() / 2) - 14;
             var _row_y2   = (display_get_gui_height() / 2) + 14;
@@ -1169,8 +1186,8 @@ if (is_entering_text) {
                 var _len     = string_length(_full_str);
                 var _best    = _len;
                 for (var _ci = 0; _ci <= _len; _ci++) {
-                    var _cx1 = _start_x + string_width(string_copy(_full_str, 1, _ci)) * 1.5;
-                    var _cx2 = _start_x + string_width(string_copy(_full_str, 1, _ci + 1)) * 1.5;
+                    var _cx1 = _start_x + string_width_l(string_copy(_full_str, 1, _ci)) * 1.5;
+                    var _cx2 = _start_x + string_width_l(string_copy(_full_str, 1, _ci + 1)) * 1.5;
                     if (_gmx < (_cx1 + _cx2) * 0.5) {
                         _best = _ci;
                         break;
@@ -2177,7 +2194,7 @@ if (global.addresses_dirty) {
                 if (_curr.node_type == "DATA_TEXT" || mnem == "text" || mnem == "ascii") {
                     var txt_content = string(_curr.instructions[j][1]);
                     if (txt_content != "BIN_DATA_ACTIVE") {
-                        var string_w = string_width("\"" + txt_content + "\"") + 220;
+                        var string_w = string_width_l("\"" + txt_content + "\"") + 220;
                         if (string_w > max_content_width) max_content_width = string_w;
                     }
                 }

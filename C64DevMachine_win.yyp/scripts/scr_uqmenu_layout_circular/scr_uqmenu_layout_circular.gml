@@ -1,8 +1,8 @@
 function scr_uqmenu_layout_circular(_index, _count, _cx, _cy, _label) {
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _btn_h  = 24;
     var _min_w  = 46;
-    var _btn_w  = max(_min_w, string_width(_label) + 6); // 3px padding each side
+    var _btn_w  = max(_min_w, string_width_l(_label) + 6); // 3px padding each side
 
     if (_count <= 4) {
         var _radius = 80;

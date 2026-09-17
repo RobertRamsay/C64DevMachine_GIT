@@ -194,22 +194,22 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 }
             }
             if (_slot_empty) {
-                draw_set_font(fnt_c64_tiny);
+                draw_set_font_l(fnt_c64_tiny);
                 draw_set_color(make_color_rgb(160, 160, 80));
-                draw_text(_cx + 2, _cy_p + _pick_cell_h - 14, string(_slot));
+                draw_text_l(_cx + 2, _cy_p + _pick_cell_h - 14, string(_slot));
             }
 
             // ALT-click-to-remove hint — only on the LAST slot, only when
             // it's blank and there's more than one slot. Peels back from
             // the end; clear a sprite first, then ALT-click to drop it.
             if (_slot == _pick_used - 1 && _pick_used > 1 && _slot_empty && _is_hov) {
-                draw_set_font(fnt_c64_tiny);
+                draw_set_font_l(fnt_c64_tiny);
                 draw_set_color(make_color_rgb(255, 120, 120));
                 draw_set_halign(fa_center);
                 draw_set_valign(fa_middle);
-                draw_text(_cx + _pick_cell_w * 0.5, _cy_p + 14, "EMPTY");
-                draw_text(_cx + _pick_cell_w * 0.5, _cy_p + _pick_cell_h * 0.5, "ALT-CLICK");
-                draw_text(_cx + _pick_cell_w * 0.5, _cy_p + _pick_cell_h * 0.5 + 12, "TO REMOVE");
+                draw_text_l(_cx + _pick_cell_w * 0.5, _cy_p + 14, "EMPTY");
+                draw_text_l(_cx + _pick_cell_w * 0.5, _cy_p + _pick_cell_h * 0.5, "ALT-CLICK");
+                draw_text_l(_cx + _pick_cell_w * 0.5, _cy_p + _pick_cell_h * 0.5 + 12, "TO REMOVE");
                 draw_set_halign(fa_left);
                 draw_set_valign(fa_top);
             }
@@ -261,11 +261,11 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             draw_rectangle(_add_cx, _add_cy,
                            _add_cx + _pick_cell_w, _add_cy + _pick_cell_h, true);
 
-            draw_set_font(fnt_c64_code);
+            draw_set_font_l(fnt_c64_code);
             draw_set_color(_pick_add_hover ? c_white : make_color_rgb(120, 200, 130));
             draw_set_halign(fa_center);
             draw_set_valign(fa_middle);
-            draw_text(_add_cx + _pick_cell_w * 0.5,
+            draw_text_l(_add_cx + _pick_cell_w * 0.5,
                       _add_cy + _pick_cell_h * 0.5, "+");
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
@@ -339,9 +339,9 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         //   row 4 (y +88..rest)  : pixel canvas (24x21 cells)
 
 // Header text
-        draw_set_font(fnt_c64_code);
+        draw_set_font_l(fnt_c64_code);
         draw_set_color(make_color_rgb(255, 200, 120));
-        draw_text(_ed_x1 + 8, _ed_y1 + 6,
+        draw_text_l(_ed_x1 + 8, _ed_y1 + 6,
             "SLOT " + string(_v2.selected_slot)
             + "   MODE: " + ((_v2.sprite_modes[_v2.selected_slot] == 1) ? "MULTICOLOUR" : "HIRES"));
 
@@ -363,7 +363,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         draw_rectangle(_hmx1, _hmy1, _hmx2, _hmy2, false);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
-        draw_text(_hmx1 + 50, _hmy1 + 2, _hm_is_mc ? "MC MODE" : "HR MODE");
+        draw_text_l(_hmx1 + 50, _hmy1 + 2, _hm_is_mc ? "MC MODE" : "HR MODE");
         draw_set_halign(fa_left);
         if (_hm_hov && mouse_check_button_pressed(mb_left)
         && !global.ui_click_consumed && !global.any_picker_open) {
@@ -426,9 +426,9 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         draw_set_color(c_white);
         draw_set_halign(fa_center);
         if (_cp_on) {
-            draw_text(_cpx1 + 50, _cpy1 + 2, "COMP ON");
+            draw_text_l(_cpx1 + 50, _cpy1 + 2, "COMP ON");
         } else {
-            draw_text(_cpx1 + 50, _cpy1 + 2, "COMP OFF");
+            draw_text_l(_cpx1 + 50, _cpy1 + 2, "COMP OFF");
         }
         draw_set_halign(fa_left);
         if (_cp_hov && mouse_check_button_pressed(mb_left)
@@ -722,18 +722,18 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                        _canvas_x + _canvas_w, _canvas_y + _canvas_h, true);
 
         // Pan hint underneath the canvas
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         if (_v2.pan_active) {
             draw_set_color(make_color_rgb(120, 255, 120));
             draw_set_halign(fa_center);
-            draw_text(_canvas_x + _canvas_w * 0.5,
+            draw_text_l(_canvas_x + _canvas_w * 0.5,
                       _canvas_y + _canvas_h + 4,
                       "PANNING — RELEASE TO COMMIT");
             draw_set_halign(fa_left);
         } else {
             draw_set_color(make_color_rgb(100, 100, 120));
             draw_set_halign(fa_center);
-            draw_text(_canvas_x + _canvas_w * 0.5,
+            draw_text_l(_canvas_x + _canvas_w * 0.5,
                       _canvas_y + _canvas_h + 4,
                       "[MMB / SPACE+LMB to PAN]");
             draw_set_halign(fa_left);
@@ -841,11 +841,11 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                     // Also hide the OS pointer so it doesn't compete with the
                     // compositor-grid marker that's doing the real work.
                     _hide_os_cursor = true;
-                    draw_set_font(fnt_c64_tiny);
+                    draw_set_font_l(fnt_c64_tiny);
                     draw_set_color(make_color_rgb(120, 255, 120));
                     draw_set_halign(fa_center);
                     draw_set_valign(fa_top);
-                    draw_text(_canvas_x + _canvas_w * 0.5, _canvas_y + 4,
+                    draw_text_l(_canvas_x + _canvas_w * 0.5, _canvas_y + 4,
                         "USE CURSOR IN COMPOSITOR VIEW");
                     draw_set_halign(fa_left);
                     draw_set_valign(fa_top);
@@ -1073,7 +1073,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _fx_btn_h    = 28;
         var _fx_btn_gap  = 6;
         var _fx_lbls     = ["FLIPX", "FLIPY", "ROT90", "CLEAR", "FILL", "LINE"];
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         for (var _fxi = 0; _fxi < array_length(_fx_lbls); _fxi++) {
             var _fbx1 = _fx_strip_x;
             var _fbx2 = _fbx1 + _fx_strip_w;
@@ -1123,7 +1123,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             draw_set_color(c_white);
             draw_set_halign(fa_center);
             draw_set_valign(fa_middle);
-            draw_text((_fbx1 + _fbx2) * 0.5, (_fby1 + _fby2) * 0.5, _fx_lbls[_fxi]);
+            draw_text_l((_fbx1 + _fbx2) * 0.5, (_fby1 + _fby2) * 0.5, _fx_lbls[_fxi]);
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
             // Click handling — fires the relevant FX script on the active slot
@@ -1212,7 +1212,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _pal_lbls = ["UC", "MC1", "MC2", "BG"];
         var _pal_vals = [_v2.sprite_uc[_v2.selected_slot], _v2.mc1_col, _v2.mc2_col, _v2.bg_col];
 
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         for (var _pci = 0; _pci < 4; _pci++) {
             var _pcol_x  = _pal_strip_x + _pci * (_pal_col_w + _pal_col_g);
             var _pcol_x2 = _pcol_x + _pal_col_w;
@@ -1221,7 +1221,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             // Label
             draw_set_color(make_color_rgb(160, 160, 200));
             draw_set_halign(fa_center);
-            draw_text(_pcol_x + _pal_col_w * 0.5, _pal_strip_y -7 , _pal_lbls[_pci]);
+            draw_text_l(_pcol_x + _pal_col_w * 0.5, _pal_strip_y -7 , _pal_lbls[_pci]);
             draw_set_halign(fa_left);
 
             // Current swatch (with index number bottom-right).
@@ -1268,14 +1268,14 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             }
             // Index label — small, on a contrasting strip for legibility
             var _idx_txt = string(_cur_val);
-            var _idx_tw  = string_width(_idx_txt) + 4;
+            var _idx_tw  = string_width_l(_idx_txt) + 4;
             draw_set_color(make_color_rgb(0, 0, 0));
             draw_set_alpha(0.6);
             draw_rectangle(_pcol_x2 - _idx_tw, _cur_y2 - 10,
                            _pcol_x2,             _cur_y2,        false);
             draw_set_alpha(1.0);
             draw_set_color(c_white);
-            draw_text(_pcol_x2 - _idx_tw + 2, _cur_y2 - 11, _idx_txt);
+            draw_text_l(_pcol_x2 - _idx_tw + 2, _cur_y2 - 11, _idx_txt);
 
             // 16 picker swatches stacked vertically
             for (var _pi = 0; _pi < 16; _pi++) {
@@ -1409,11 +1409,11 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             draw_rectangle(_play_x1, _r1_y1, _play_x2, _r1_y2, true);
         }
         draw_set_color(c_white);
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
         var _play_lbl = _v2.anim_playing ? "STOP" : "PLAY";
-        draw_text((_play_x1 + _play_x2) * 0.5, (_r1_y1 + _r1_y2) * 0.5, _play_lbl);
+        draw_text_l((_play_x1 + _play_x2) * 0.5, (_r1_y1 + _r1_y2) * 0.5, _play_lbl);
         draw_set_halign(fa_left);
         draw_set_valign(fa_top);
         if (_play_hov && mouse_check_button_pressed(mb_left)
@@ -1490,7 +1490,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             draw_set_color(c_white);
             draw_set_halign(fa_center);
             draw_set_valign(fa_middle);
-            draw_text((_dx1 + _dx2) * 0.5, (_r1_y1 + _r1_y2) * 0.5, _dir_lbls[_di]);
+            draw_text_l((_dx1 + _dx2) * 0.5, (_r1_y1 + _r1_y2) * 0.5, _dir_lbls[_di]);
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
             if (_d_hov && mouse_check_button_pressed(mb_left)
@@ -1529,7 +1529,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             // Label
             draw_set_color(make_color_rgb(160, 160, 200));
             draw_set_valign(fa_middle);
-            draw_text(_gx, (_r2_y1 + _r2_y2) * 0.5, _sd.lbl);
+            draw_text_l(_gx, (_r2_y1 + _r2_y2) * 0.5, _sd.lbl);
             draw_set_valign(fa_top);
 
 			
@@ -1543,8 +1543,8 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             draw_rectangle(_sm_x1, _r2_y1, _sm_x2, _r2_y2, true);
             draw_set_halign(fa_center);
             draw_set_valign(fa_middle);
-            //draw_text( (_sm_x1 + _sm_x2) * 0.5, (_r2_y1 + _r2_y2) * 0.5, "-");
-			draw_text(((_sm_x1 + _sm_x2) * 0.5) -1, ((_r2_y1 + _r2_y2) * 0.5)-1 , "-");
+            //draw_text_l( (_sm_x1 + _sm_x2) * 0.5, (_r2_y1 + _r2_y2) * 0.5, "-");
+			draw_text_l(((_sm_x1 + _sm_x2) * 0.5) -1, ((_r2_y1 + _r2_y2) * 0.5)-1 , "-");
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
             if (_sm_hov && mouse_check_button_pressed(mb_left)
@@ -1568,7 +1568,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             draw_set_color(c_white);
             draw_set_halign(fa_center);
             draw_set_valign(fa_middle);
-            draw_text((_sn_x1 + _sn_x2) * 0.5, (_r2_y1 + _r2_y2) * 0.5, string(_sd.value));
+            draw_text_l((_sn_x1 + _sn_x2) * 0.5, (_r2_y1 + _r2_y2) * 0.5, string(_sd.value));
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
 
@@ -1582,7 +1582,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             draw_rectangle(_sp_x1, _r2_y1, _sp_x2, _r2_y2, true);
             draw_set_halign(fa_center);
             draw_set_valign(fa_middle);
-            draw_text(((_sp_x1 + _sp_x2) * 0.5) -1, ((_r2_y1 + _r2_y2) * 0.5)-1 , "+");
+            draw_text_l(((_sp_x1 + _sp_x2) * 0.5) -1, ((_r2_y1 + _r2_y2) * 0.5)-1 , "+");
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
             if (_sp_hov && mouse_check_button_pressed(mb_left)
@@ -1631,7 +1631,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         draw_rectangle(_pill_x1+_reposx, _pill_y1+_reposy, _pill_x2+_reposx, _pill_y2+_reposy, true);
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
-        draw_text(_mid_cx+_reposx, ((_pill_y1 + _pill_y2) * 0.5)+_reposy, _state_lbl);
+        draw_text_l(_mid_cx+_reposx, ((_pill_y1 + _pill_y2) * 0.5)+_reposy, _state_lbl);
         draw_set_halign(fa_left);
         draw_set_valign(fa_top);
 
@@ -1653,7 +1653,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         draw_set_color(c_white);
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
-        draw_text((_prev_x1 + _prev_x2) * 0.5, (_pn_y1 + _pn_y2) * 0.5, "< PREV");
+        draw_text_l((_prev_x1 + _prev_x2) * 0.5, (_pn_y1 + _pn_y2) * 0.5, "< PREV");
         draw_set_halign(fa_left);
         draw_set_valign(fa_top);
         if (_prev_hov && mouse_check_button_pressed(mb_left)
@@ -1669,7 +1669,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         draw_set_color(c_white);
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
-        draw_text((_next_x1 + _next_x2) * 0.5, (_pn_y1 + _pn_y2) * 0.5, "NEXT >");
+        draw_text_l((_next_x1 + _next_x2) * 0.5, (_pn_y1 + _pn_y2) * 0.5, "NEXT >");
         draw_set_halign(fa_left);
         draw_set_valign(fa_top);
         if (_next_hov && mouse_check_button_pressed(mb_left)
@@ -1722,7 +1722,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             }
             draw_set_halign(fa_center);
             draw_set_valign(fa_middle);
-            draw_text((_fbx1 + _fbx2) * 0.5, (_fby1 + _fby2) * 0.5, _fb.lbl);
+            draw_text_l((_fbx1 + _fbx2) * 0.5, (_fby1 + _fby2) * 0.5, _fb.lbl);
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
             // Click
@@ -1754,7 +1754,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _lyr_btn_g = 2;
         var _lyr_x     = _rsv_x1 + 8;
 
-        draw_set_font(fnt_c64_tiny);
+        draw_set_font_l(fnt_c64_tiny);
         for (var _ly = 0; _ly < 8; _ly++) {
             var _lbx1 = _lyr_x + _ly * (_lyr_btn_w + _lyr_btn_g);
             var _lbx2 = _lbx1 + _lyr_btn_w;
@@ -1787,7 +1787,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             draw_set_color(c_white);
             draw_set_halign(fa_center);
             var _lbl = (_ly == 0) ? "BASE" : ("L" + string(_ly));
-            draw_text(_lbx1 + _lyr_btn_w * 0.5, _ts_y1 + 2, _lbl);
+            draw_text_l(_lbx1 + _lyr_btn_w * 0.5, _ts_y1 + 2, _lbl);
             draw_set_halign(fa_left);
 
             if (_ly_hov && mouse_check_button_pressed(mb_left)
@@ -1818,7 +1818,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 
         var _fr_x = _lyr_x + 8 * (_lyr_btn_w + _lyr_btn_g) + 50;
         draw_set_color(make_color_rgb(160, 160, 200));
-        draw_text(_fr_x, _ts_y1 + 8,
+        draw_text_l(_fr_x, _ts_y1 + 8,
             "FRAME " + string(_comp.active_frame+1)
             + " / " + string(array_length(_comp.frames)));
 
@@ -2242,7 +2242,7 @@ if (_layer_dir != 0) {
             // Label
             draw_set_color(make_color_rgb(160, 160, 200));
             draw_set_halign(fa_center);
-            draw_text((_ctrl_x1 + _ctrl_x2) * 0.5, _dpad_y-4, "OFFSET");
+            draw_text_l((_ctrl_x1 + _ctrl_x2) * 0.5, _dpad_y-4, "OFFSET");
             draw_set_halign(fa_left);
             _dpad_y += 14;
 
@@ -2273,7 +2273,7 @@ if (_layer_dir != 0) {
                 draw_rectangle(_dbx1, _dby1, _dbx2, _dby2, true);
                 draw_set_halign(fa_center);
                 draw_set_valign(fa_middle);
-                draw_text((_dbx1 + _dbx2) * 0.5, (_dby1 + _dby2) * 0.5, _db.lbl);
+                draw_text_l((_dbx1 + _dbx2) * 0.5, (_dby1 + _dby2) * 0.5, _db.lbl);
                 draw_set_halign(fa_left);
                 draw_set_valign(fa_top);
 
@@ -2294,7 +2294,7 @@ if (_layer_dir != 0) {
             var _readout_y = _dpad_y + 3 * _dpad_btn + 2 * _dpad_gap + 6;
             draw_set_color(make_color_rgb(180, 180, 220));
             draw_set_halign(fa_center);
-            draw_text((_ctrl_x1 + _ctrl_x2) * 0.5, _readout_y,
+            draw_text_l((_ctrl_x1 + _ctrl_x2) * 0.5, _readout_y,
                 "XO: " + string(_ac.xo) + "   YO: " + string(_ac.yo));
             draw_set_halign(fa_left);
 
@@ -2381,7 +2381,7 @@ if (_layer_dir != 0) {
                 }
                 draw_set_halign(fa_center);
                 draw_set_valign(fa_middle);
-                draw_text((_stk_x1 + _stk_x2) * 0.5, (_by1 + _by2) * 0.5, _b.lbl);
+                draw_text_l((_stk_x1 + _stk_x2) * 0.5, (_by1 + _by2) * 0.5, _b.lbl);
                 draw_set_halign(fa_left);
                 draw_set_valign(fa_top);
 
@@ -2420,7 +2420,7 @@ if (_layer_dir != 0) {
             draw_set_color(c_white);
             draw_set_halign(fa_center);
             draw_set_valign(fa_middle);
-            draw_text((_clr_x1 + _clr_x2) * 0.5, (_clr_y1 + _clr_y2) * 0.5, "CLEAR");
+            draw_text_l((_clr_x1 + _clr_x2) * 0.5, (_clr_y1 + _clr_y2) * 0.5, "CLEAR");
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
             // Click
@@ -2439,10 +2439,10 @@ if (_layer_dir != 0) {
             draw_set_valign(fa_middle);
             var _ph_cx = (_ctrl_x1 + _ctrl_x2) * 0.5;
             var _ph_cy = (_ctrl_y1 + _ctrl_y2) * 0.5;
-            draw_text(_ph_cx, _ph_cy - 16, "CLICK A GRID");
-            draw_text(_ph_cx, _ph_cy + 0,  "CELL TO PLACE");
-            draw_text(_ph_cx, _ph_cy + 16, "SLOT "+ string(_v2.selected_slot));
-			draw_text(_ph_cx, _ph_cy + 32, " ON LAYER " + string(_comp.active_layer));
+            draw_text_l(_ph_cx, _ph_cy - 16, "CLICK A GRID");
+            draw_text_l(_ph_cx, _ph_cy + 0,  "CELL TO PLACE");
+            draw_text_l(_ph_cx, _ph_cy + 16, "SLOT "+ string(_v2.selected_slot));
+			draw_text_l(_ph_cx, _ph_cy + 32, " ON LAYER " + string(_comp.active_layer));
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
         }

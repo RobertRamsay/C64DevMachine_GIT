@@ -31,11 +31,11 @@ draw_rectangle(_bx, _by, _bx + box_w, _by + box_h, true);
 draw_rectangle(_bx + 1, _by + 1, _bx + box_w - 1, _by + box_h - 1, true);
 
 // -- Title --
-draw_set_font(fnt_c64_code);
+draw_set_font_l(fnt_c64_code);
 draw_set_colour(c_white);
 draw_set_halign(fa_center);
 draw_set_valign(fa_middle);
-draw_text(_bx + box_w * 0.5, _by + 44, "SLICE INTO ROOMS (W x H)");
+draw_text_l(_bx + box_w * 0.5, _by + 44, "SLICE INTO ROOMS (W x H)");
 
 // -- Field geometry --
 var _flds_total = (fld_w * 2) + fld_gap;
@@ -63,15 +63,15 @@ draw_set_colour(c_white);
 draw_rectangle(_fld_wx, _fld_y, _fld_wx + fld_w, _fld_y + fld_h, true);
 if (active_field == 0) {
     draw_set_colour(c_lime);
-    draw_text(_fld_wx + fld_w * 0.5, _fld_y + fld_h * 0.5, field_w + _caret);
+    draw_text_l(_fld_wx + fld_w * 0.5, _fld_y + fld_h * 0.5, field_w + _caret);
 } else {
     draw_set_colour(c_aqua);
-    draw_text(_fld_wx + fld_w * 0.5, _fld_y + fld_h * 0.5, field_w);
+    draw_text_l(_fld_wx + fld_w * 0.5, _fld_y + fld_h * 0.5, field_w);
 }
 
 // "x" separator
 draw_set_colour(c_white);
-draw_text((_fld_wx + fld_w + _fld_hx) * 0.5, _fld_y + fld_h * 0.5, "x");
+draw_text_l((_fld_wx + fld_w + _fld_hx) * 0.5, _fld_y + fld_h * 0.5, "x");
 
 // H field
 if (active_field == 1) {
@@ -84,10 +84,10 @@ draw_set_colour(c_white);
 draw_rectangle(_fld_hx, _fld_y, _fld_hx + fld_w, _fld_y + fld_h, true);
 if (active_field == 1) {
     draw_set_colour(c_lime);
-    draw_text(_fld_hx + fld_w * 0.5, _fld_y + fld_h * 0.5, field_h + _caret);
+    draw_text_l(_fld_hx + fld_w * 0.5, _fld_y + fld_h * 0.5, field_h + _caret);
 } else {
     draw_set_colour(c_aqua);
-    draw_text(_fld_hx + fld_w * 0.5, _fld_y + fld_h * 0.5, field_h);
+    draw_text_l(_fld_hx + fld_w * 0.5, _fld_y + fld_h * 0.5, field_h);
 }
 
 // -- Buttons --
@@ -108,7 +108,7 @@ if (hover_slice) {
 draw_rectangle(_btn_sx, _btn_y, _btn_sx + btn_w, _btn_y + btn_h, false);
 draw_set_colour(c_white);
 draw_rectangle(_btn_sx, _btn_y, _btn_sx + btn_w, _btn_y + btn_h, true);
-draw_text(_btn_sx + btn_w * 0.5, _btn_y + btn_h * 0.5, "SLICE");
+draw_text_l(_btn_sx + btn_w * 0.5, _btn_y + btn_h * 0.5, "SLICE");
 
 // CANCEL button
 if (hover_cancel) {
@@ -119,7 +119,7 @@ if (hover_cancel) {
 draw_rectangle(_btn_cx, _btn_y, _btn_cx + btn_w, _btn_y + btn_h, false);
 draw_set_colour(c_white);
 draw_rectangle(_btn_cx, _btn_y, _btn_cx + btn_w, _btn_y + btn_h, true);
-draw_text(_btn_cx + btn_w * 0.5, _btn_y + btn_h * 0.5, "CANCEL");
+draw_text_l(_btn_cx + btn_w * 0.5, _btn_y + btn_h * 0.5, "CANCEL");
 
 // Reset draw state
 draw_set_halign(fa_left);

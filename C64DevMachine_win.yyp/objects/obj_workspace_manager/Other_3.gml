@@ -17,6 +17,8 @@ ini_write_real("Settings", "opcode_headers", opcode_headers_on ? 1 : 0);
 ini_write_real("Settings", "opcode_extra_height", opcode_extra_height ? 1 : 0);
 ini_close();
 
+scr_lang_dump_missing();
+
 if (!global.manual_saved) {
     if (scr_show_question("You have unsaved changes.\nSave before closing?")) {
         scr_save_workspace_as();

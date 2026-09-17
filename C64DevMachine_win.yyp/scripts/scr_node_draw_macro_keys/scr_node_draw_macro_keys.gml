@@ -18,21 +18,21 @@ function scr_node_draw_macro_keys(_draw_x, _y) {
     // needs and no wider — 4 bytes for the letters, 2 for the numbers.
     var _zp_bytes = ceil(array_length(_cat.keys) / 8);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _ky = _y + _header_h + 4;
 
     draw_set_color(make_color_rgb(120, 220, 120));
-    draw_text(_draw_x + 8, _ky, "ZP:");
+    draw_text_l(_draw_x + 8, _ky, "ZP:");
     draw_set_color(c_aqua);
     var _zp_hex = string_upper(decimal_to_hex(_zp & 0xFF));
     while (string_length(_zp_hex) < 2) {
         _zp_hex = "0" + _zp_hex;
     }
-    draw_text(_draw_x + 44, _ky, "$" + _zp_hex + "  " + string(_zp_bytes) + "B HELD");
+    draw_text_l(_draw_x + 44, _ky, "$" + _zp_hex + "  " + string(_zp_bytes) + "B HELD");
     _ky += _line_h + 6;
 
     // ---- KEY GRID ----
-    draw_set_font(fnt_C64_Angled);
+    draw_set_font_l(fnt_C64_Angled);
     var _col_w = (width - 8) / _cols;
 
     for (var _si = 1; _si < array_length(instructions); _si++) {
@@ -47,7 +47,7 @@ function scr_node_draw_macro_keys(_draw_x, _y) {
 
         var _enabled = (real(_row[2]) == 1);
         draw_set_color(_enabled ? c_yellow : make_color_rgb(105, 90, 90));
-        draw_text(_draw_x + 6 + (_c * _col_w), _ky + (_r * (_line_h + 2)),
+        draw_text_l(_draw_x + 6 + (_c * _col_w), _ky + (_r * (_line_h + 2)),
                   scr_key_slot_label(string(_row[0])));
     }
 }

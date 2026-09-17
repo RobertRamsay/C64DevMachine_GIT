@@ -48,6 +48,9 @@
   "ForcedPrefabProjectReferences":[],
   "IncludedFiles":[
     {"$GMIncludedFile":"","%Name":"c64dmstart.prg","CopyToMask":-1,"filePath":"datafiles/C64DMResources/PRG","name":"c64dmstart.prg","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
+    {"$GMIncludedFile":"","%Name":"NotoSansSC-Medium-subset.ttf","CopyToMask":-1,"filePath":"datafiles/C64DMResources/FONT","name":"NotoSansSC-Medium-subset.ttf","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
+    {"$GMIncludedFile":"","%Name":"NotoSansSC-OFL.txt","CopyToMask":-1,"filePath":"datafiles/C64DMResources/FONT","name":"NotoSansSC-OFL.txt","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
+    {"$GMIncludedFile":"","%Name":"lang_zh_CN.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/LANG","name":"lang_zh_CN.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"NULLSID.sid","CopyToMask":-1,"filePath":"datafiles/C64DMResources/SID","name":"NULLSID.sid","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"execute_shell_simple_ext.html","CopyToMask":-1,"filePath":"datafiles","name":"execute_shell_simple_ext.html","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"65XEDebugger.exe","CopyToMask":-1,"filePath":"datafiles/vice/win","name":"65XEDebugger.exe","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
@@ -1119,6 +1122,7 @@
     {"id":{"name":"scr_kill_vice","path":"scripts/scr_kill_vice/scr_kill_vice.yy",},},
     {"id":{"name":"scr_kla_encode_surface","path":"scripts/scr_kla_encode_surface/scr_kla_encode_surface.yy",},},
     {"id":{"name":"scr_label_search_run","path":"scripts/scr_label_search_run/scr_label_search_run.yy",},},
+    {"id":{"name":"scr_lang","path":"scripts/scr_lang/scr_lang.yy",},},
     {"id":{"name":"scr_launch_vice","path":"scripts/scr_launch_vice/scr_launch_vice.yy",},},
     {"id":{"name":"scr_line_coll_support","path":"scripts/scr_line_coll_support/scr_line_coll_support.yy",},},
     {"id":{"name":"scr_load_workspace_dialogue","path":"scripts/scr_load_workspace_dialogue/scr_load_workspace_dialogue.yy",},},

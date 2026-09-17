@@ -13,28 +13,28 @@ function scr_node_draw_new_str() {
 node_title = "UV STR";
     var _ly = y + 25;
 
-    draw_set_font(fnt_c64_code);
+    draw_set_font_l(fnt_c64_code);
     draw_set_color(make_color_rgb(230, 200, 120));
-    draw_text(x + 8, _ly, _name != "" ? _name : "< NO NAME >");
+    draw_text_l(x + 8, _ly, _name != "" ? _name : "< NO NAME >");
 
     // Address
     var _hex = decimal_to_hex(pc_address);
     while (string_length(_hex) < 4) _hex = "0" + _hex;
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     if (org_parent == noone) {
         draw_set_color(make_color_rgb(160, 120, 20));
-        draw_text(x + 8, _ly + 14, "$----");
+        draw_text_l(x + 8, _ly + 14, "$----");
     } else {
         draw_set_color(c_aqua);
-        draw_text(x + 8, _ly + 14, "$" + string_upper(_hex));
+        draw_text_l(x + 8, _ly + 14, "$" + string_upper(_hex));
     }
 
     // Source toggle label
     draw_set_color(_use_as == 0 ? make_color_rgb(180, 180, 80) : make_color_rgb(80, 180, 180));
-    draw_text(x + 60, _ly + 14, _use_as == 0 ? "[INLINE]" : "[ASSET]");
+    draw_text_l(x + 60, _ly + 14, _use_as == 0 ? "[INLINE]" : "[ASSET]");
 
     // Content preview
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _preview = "";
     if (_use_as == 0) {
         _preview = string_length(_inline) > 0 ? "\"" + string_copy(_inline, 1, min(string_length(_inline), 22)) + "\"" : "<EMPTY>";
@@ -42,7 +42,7 @@ node_title = "UV STR";
         _preview = _asname != "" ? _asname : "<NO ASSET>";
     }
     draw_set_color(c_ltgray);
-    draw_text(x + 8, _ly + 28, _preview);
+    draw_text_l(x + 8, _ly + 28, _preview);
 
     // Byte count
     //var _byte_count = _use_as == 0 ? (string_length(_inline) + 1) : 0;
@@ -59,5 +59,5 @@ node_title = "UV STR";
         }
     }
     draw_set_color(make_color_rgb(100, 100, 140));
-    draw_text(x + 8, _ly + 40, string(_byte_count) + " BYTES [STR]");
+    draw_text_l(x + 8, _ly + 40, string(_byte_count) + " BYTES [STR]");
 }

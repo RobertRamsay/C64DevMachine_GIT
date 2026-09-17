@@ -20,7 +20,7 @@ function scr_node_draw_macro_wait(_draw_x, _y) {
     }
     var _vname = string(instructions[0][3]);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     // ---- ROW 1: FRAMES value + VAR toggle ----
     var _row_y  = _y + _header_h + 12;
@@ -29,7 +29,7 @@ function scr_node_draw_macro_wait(_draw_x, _y) {
     var _val_x2 = _draw_x + 160;
 
     draw_set_color(make_color_rgb(60, 200, 220));
-    draw_text(_draw_x + 8, _y + _header_h + 4, "WAIT\nFRAMES:");
+    draw_text_l(_draw_x + 8, _y + _header_h + 4, "WAIT\nFRAMES:");
 
     var _hov = point_in_rectangle(mouse_x, mouse_y, _val_x1, _row_y, _val_x2, _row_y + _val_h);
     if (_use_var == 1) {
@@ -48,10 +48,10 @@ function scr_node_draw_macro_wait(_draw_x, _y) {
         if (_vname != "") {
             _vshow = _vname;
         }
-        draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row_y + 1, _vshow);
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row_y + 1, _vshow);
     } else {
         draw_set_color(make_color_rgb(100, 220, 240));
-        draw_text(_val_x1 + (_val_x2 - _val_x1) / 2, _row_y + 1, string(_frames));
+        draw_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row_y + 1, string(_frames));
     }
     draw_set_halign(fa_left);
 
@@ -62,23 +62,23 @@ function scr_node_draw_macro_wait(_draw_x, _y) {
     draw_rectangle(_var_x, _row_y, _var_x + _var_w, _row_y + _val_h, false);
     draw_set_color((_use_var == 1) ? c_yellow : make_color_rgb(140, 140, 160));
     draw_set_halign(fa_center);
-    draw_text(_var_x + _var_w * 0.5, _row_y + 1, "VAR");
+    draw_text_l(_var_x + _var_w * 0.5, _row_y + 1, "VAR");
     draw_set_halign(fa_left);
 
     // ---- ROW 2: real-time readout ----
     var _t_y = _row_y + _val_h + 5;
     if (_use_var == 1) {
         draw_set_color(make_color_rgb(160, 140, 60));
-        draw_text(_draw_x + 8, _t_y, "RUNTIME VALUE - BYTE, MAX 255");
+        draw_text_l(_draw_x + 8, _t_y, "RUNTIME VALUE - BYTE, MAX 255");
     } else {
         var _pal_ms  = round((_frames / 50.0) * 1000);
         var _ntsc_ms = round((_frames / 60.0) * 1000);
         draw_set_color(make_color_rgb(60, 200, 220));
-        draw_text(_draw_x + 8, _t_y, "PAL: " + string(_pal_ms) + "MS   NTSC: " + string(_ntsc_ms) + "MS");
+        draw_text_l(_draw_x + 8, _t_y, "PAL: " + string(_pal_ms) + "MS   NTSC: " + string(_ntsc_ms) + "MS");
     }
 
     // ---- ROW 3: clobber note ----
     var _c_y = _t_y + 11;
     draw_set_color(make_color_rgb(90, 90, 110));
-    draw_text(_draw_x + 8, _c_y, "COUNTS IN X - CLOBBERS A + X");
+    draw_text_l(_draw_x + 8, _c_y, "COUNTS IN X - CLOBBERS A + X");
 }

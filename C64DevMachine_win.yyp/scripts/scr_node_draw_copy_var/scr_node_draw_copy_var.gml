@@ -7,13 +7,13 @@ function scr_node_draw_copy_var(_draw_x) {
     var _src_name = (_src_raw != "") ? scr_nloc_display_name(_src_raw) : "(pick source)";
     var _dst_name = (_dst_raw != "") ? scr_nloc_display_name(_dst_raw) : "(pick dest)";
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     // SRC row
     draw_set_color(make_color_rgb(120, 200, 140));
-    draw_text(_draw_x + 8, y + 30, "FROM:");
+    draw_text_l(_draw_x + 8, y + 30, "FROM:");
     draw_set_color(c_yellow);
-    draw_text(_draw_x + 48, y + 30, _src_name);
+    draw_text_l(_draw_x + 48, y + 30, _src_name);
 
     // SRC lookup button
     var _sbx1 = _draw_x + width - 64;
@@ -25,14 +25,14 @@ function scr_node_draw_copy_var(_draw_x) {
     draw_rectangle(_sbx1, _sby1+2, _sbx2, _sby2, false);
     draw_set_color(_shov ? c_lime : make_color_rgb(80, 160, 80));
 
-    draw_text(_sbx1 + 2, _sby1 , "PICK SRC");
+    draw_text_l(_sbx1 + 2, _sby1 , "PICK SRC");
 
     // DST row
 
     draw_set_color(make_color_rgb(220, 140, 100));
-    draw_text(_draw_x + 8, y + 50, "TO:");
+    draw_text_l(_draw_x + 8, y + 50, "TO:");
     draw_set_color(c_yellow);
-    draw_text(_draw_x + 48, y + 50, _dst_name);
+    draw_text_l(_draw_x + 48, y + 50, _dst_name);
 
     // DST lookup button
     var _dbx1 = _draw_x + width - 64;
@@ -44,7 +44,7 @@ function scr_node_draw_copy_var(_draw_x) {
     draw_rectangle(_dbx1, _dby1+2, _dbx2, _dby2, false);
     draw_set_color(_dhov ? c_orange : make_color_rgb(200, 120, 80));
 
-    draw_text(_dbx1 + 2, _dby1 , "PICK DST");
+    draw_text_l(_dbx1 + 2, _dby1 , "PICK DST");
 
     // Size-mismatch info row
     var _msrc = scr_nloc_find_meta(_src_name);
@@ -65,12 +65,12 @@ function scr_node_draw_copy_var(_draw_x) {
 
     if (_senc != _denc) {
         draw_set_color(c_red);
-        draw_text(_draw_x + 8, y + 74, "ENC MISMATCH: " + _senc + " -> " + _denc);
+        draw_text_l(_draw_x + 8, y + 74, "ENC MISMATCH: " + _senc + " -> " + _denc);
     } else if (_ssz != _dsz) {
         draw_set_color(c_orange);
-        draw_text(_draw_x + 8, y + 74, "SIZE: " + string(_ssz) + " -> " + string(_dsz));
+        draw_text_l(_draw_x + 8, y + 74, "SIZE: " + string(_ssz) + " -> " + string(_dsz));
     } else {
         draw_set_color(make_color_rgb(120, 180, 120));
-        draw_text(_draw_x + 8, y + 74, "COPY " + string(_ssz) + " BYTE" + ((_ssz > 1) ? "S" : "") + " (" + _senc + ")");
+        draw_text_l(_draw_x + 8, y + 74, "COPY " + string(_ssz) + " BYTE" + ((_ssz > 1) ? "S" : "") + " (" + _senc + ")");
     }
 }

@@ -3,6 +3,12 @@ message      = "";
 action       = "default";  // identifier for the caller to match on
 result       = -1;         // -1 pending, 0 No, 1 Yes
 
+// Button captions. The language picker relabels these and asks for the
+// Chinese-capable font so both choices are readable before a language is set.
+yes_label       = "YES";
+no_label        = "NO";
+use_picker_font = false;
+
 // Suppress the initial mouse click that may have spawned this dialog,
 // otherwise the click-through hits a button on frame 1
 input_armed  = false;

@@ -33,7 +33,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     var _dy_has_var   = (_dy_vnm != "" && _dy_vnm != "[clear]");
     var _any_var      = (_dx_has_var || _dy_has_var);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     var _type_cols = [
         make_color_rgb(200,  60,  60),
@@ -63,7 +63,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
 
     // ---- PROBE SPRITE selector ----
     draw_set_color(make_color_rgb(120, 220, 120));
-    draw_text(_draw_x + 6, y + 27, "PROBE SPR:");
+    draw_text_l(_draw_x + 6, y + 27, "PROBE SPR:");
     var _sbtn_w     = 22;
     var _sbtn_h     = 18;
     var _sbtn_gap   = 2;
@@ -93,13 +93,13 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
         } else {
             draw_set_color(c_gray);
         }
-        draw_text(_bx + _sbtn_w * 0.5, y + _sbtn_yoffs + 2, string(_si));
+        draw_text_l(_bx + _sbtn_w * 0.5, y + _sbtn_yoffs + 2, string(_si));
         draw_set_halign(fa_left);
     }
 
     // ---- OFFSET FROM CENTRE ----
     draw_set_color(make_color_rgb(120, 220, 120));
-    draw_text(_draw_x + 6, y + 62, "OFFSET FROM CENTRE:");
+    draw_text_l(_draw_x + 6, y + 62, "OFFSET FROM CENTRE:");
 
     var _h        = 16;
     var _vis_left = _draw_x + width - 58;
@@ -112,7 +112,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     var _dxp1 = _draw_x + 62;
 
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, y + 78, "DX:");
+    draw_text_l(_draw_x + 6, y + 78, "DX:");
 
     if (point_in_rectangle(mouse_x, mouse_y, _dxm1, y + 78, _dxm1 + 18, y + 78 + _h)) {
         draw_set_color(c_white);
@@ -121,7 +121,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     }
 
     draw_set_halign(fa_center);
-    draw_text(_dxm1 + 9, y + 78, "-");
+    draw_text_l(_dxm1 + 9, y + 78, "-");
     draw_set_halign(fa_left);
 
     draw_set_color(make_color_rgb(25, 25, 45));
@@ -130,7 +130,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     draw_rectangle(_dxv1, y + 78, _dxv1 + 20, y + 78 + _h, true);
     draw_set_color(c_yellow);
     draw_set_halign(fa_center);
-    draw_text(_dxv1 + 9, y + 78, string(_probe_dx));
+    draw_text_l(_dxv1 + 9, y + 78, string(_probe_dx));
     draw_set_halign(fa_left);
 
     if (point_in_rectangle(mouse_x, mouse_y, _dxp1, y + 78, _dxp1 + 18, y + 78 + _h)) {
@@ -140,7 +140,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     }
 
     draw_set_halign(fa_center);
-    draw_text(_dxp1 , y + 78, "+");
+    draw_text_l(_dxp1 , y + 78, "+");
     draw_set_halign(fa_left);
 
     // DX pick box
@@ -154,16 +154,16 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     draw_set_color(_dx_has_var ? make_color_rgb(160, 130, 40) : make_color_rgb(80, 60, 120));
     draw_rectangle(_pick_x, y + 78, _pick_x2, y + 78 + _h, true);
     draw_set_halign(fa_center);
-    draw_set_font(fnt_c64_nano);
+    draw_set_font_l(fnt_c64_nano);
     if (_dx_has_var) {
         draw_set_color(c_yellow);
-        draw_text(_pick_x + (_pick_x2 - _pick_x) * 0.5, y + 78 + 2, _dx_vnm);
+        draw_text_l(_pick_x + (_pick_x2 - _pick_x) * 0.5, y + 78 + 2, _dx_vnm);
     } else {
         draw_set_color(c_gray);
-        draw_text(_pick_x + (_pick_x2 - _pick_x) * 0.5, y + 78 + 2, "<PICK>");
+        draw_text_l(_pick_x + (_pick_x2 - _pick_x) * 0.5, y + 78 + 2, "<PICK>");
     }
     draw_set_halign(fa_left);
-	draw_set_font(fnt_c64_tiny);
+	draw_set_font_l(fnt_c64_tiny);
 
     // ---- DY row (y+96) ----
     var _dym1 = _draw_x + 20;
@@ -171,7 +171,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     var _dyp1 = _draw_x + 62;
 
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text(_draw_x + 6, y + 96, "DY:");
+    draw_text_l(_draw_x + 6, y + 96, "DY:");
 
     if (point_in_rectangle(mouse_x, mouse_y, _dym1, y + 96, _dym1 + 18, y + 96 + _h)) {
         draw_set_color(c_white);
@@ -180,7 +180,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     }
 
     draw_set_halign(fa_center);
-    draw_text(_dym1 + 9, y + 96, "-");
+    draw_text_l(_dym1 + 9, y + 96, "-");
     draw_set_halign(fa_left);
 
     draw_set_color(make_color_rgb(25, 25, 45));
@@ -189,7 +189,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     draw_rectangle(_dyv1, y + 96, _dyv1 + 20, y + 96 + _h, true);
     draw_set_color(c_yellow);
     draw_set_halign(fa_center);
-    draw_text(_dyv1 + 9, y + 96, string(_probe_dy));
+    draw_text_l(_dyv1 + 9, y + 96, string(_probe_dy));
     draw_set_halign(fa_left);
 
     if (point_in_rectangle(mouse_x, mouse_y, _dyp1, y + 96, _dyp1 + 18, y + 96 + _h)) {
@@ -199,7 +199,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     }
 
     draw_set_halign(fa_center);
-    draw_text(_dyp1 , y + 96, "+");
+    draw_text_l(_dyp1 , y + 96, "+");
     draw_set_halign(fa_left);
 
     // DY pick box
@@ -213,16 +213,16 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     draw_set_color(_dy_has_var ? make_color_rgb(160, 130, 40) : make_color_rgb(80, 60, 120));
     draw_rectangle(_pick_x, y + 96, _pick_x2, y + 96 + _h, true);
     draw_set_halign(fa_center);
-    draw_set_font(fnt_c64_nano);
+    draw_set_font_l(fnt_c64_nano);
     if (_dy_has_var) {
         draw_set_color(c_yellow);
-        draw_text(_pick_x + (_pick_x2 - _pick_x) * 0.5, y + 96 + 2, _dy_vnm);
+        draw_text_l(_pick_x + (_pick_x2 - _pick_x) * 0.5, y + 96 + 2, _dy_vnm);
     } else {
         draw_set_color(c_gray);
-        draw_text(_pick_x + (_pick_x2 - _pick_x) * 0.5, y + 96 + 2, "<PICK>");
+        draw_text_l(_pick_x + (_pick_x2 - _pick_x) * 0.5, y + 96 + 2, "<PICK>");
     }
     draw_set_halign(fa_left);
-	draw_set_font(fnt_c64_tiny);
+	draw_set_font_l(fnt_c64_tiny);
 
     // ---- VISUALISER ----
     var _vis_x = _draw_x + width - 56;
@@ -241,8 +241,8 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
         draw_set_color(make_color_rgb(220, 160, 40));
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
-        draw_text(_vis_x + _vis_w * 0.5, _vis_y + _vis_h * 0.5 - 4, "USING");
-        draw_text(_vis_x + _vis_w * 0.5, _vis_y + _vis_h * 0.5 + 6, "VARS");
+        draw_text_l(_vis_x + _vis_w * 0.5, _vis_y + _vis_h * 0.5 - 4, "USING");
+        draw_text_l(_vis_x + _vis_w * 0.5, _vis_y + _vis_h * 0.5 + 6, "VARS");
         draw_set_halign(fa_left);
         draw_set_valign(fa_top);
     } else {
@@ -284,9 +284,9 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     var _map_missing = (_map_name != "" && _map_name != "[clear]" && !_map_exists);
     var _map_flash   = ((current_time div 400) mod 2 == 0);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(120, 220, 120));
-    draw_text(_draw_x + 6, y + 116, "MAP:");
+    draw_text_l(_draw_x + 6, y + 116, "MAP:");
     var _mx1 = _draw_x + 40;
     var _mx2 = _draw_x + width - 28;
     var _map_hov = point_in_rectangle(mouse_x, mouse_y, _mx1, y + 116, _mx2, y + 132);
@@ -307,7 +307,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
         draw_rectangle(_mx1, y + 116, _mx2, y + 132, true);
         draw_set_color(_map_flash ? c_white : make_color_rgb(220, 120, 120));
         draw_set_halign(fa_center);
-        draw_text(_mx1 + (_mx2 - _mx1) * 0.5, y + 115, _map_disp + " ?");
+        draw_text_l(_mx1 + (_mx2 - _mx1) * 0.5, y + 115, _map_disp + " ?");
         draw_set_halign(fa_left);
     } else {
         if (_map_hov) {
@@ -325,16 +325,16 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
         }
         draw_set_halign(fa_center);
         if (_map_name != "") {
-            draw_text(_mx1 + (_mx2 - _mx1) * 0.5, y + 115, _map_disp);
+            draw_text_l(_mx1 + (_mx2 - _mx1) * 0.5, y + 115, _map_disp);
         } else {
-            draw_text(_mx1 + (_mx2 - _mx1) * 0.5, y + 115, "< PICK MAP >");
+            draw_text_l(_mx1 + (_mx2 - _mx1) * 0.5, y + 115, "< PICK MAP >");
         }
         draw_set_halign(fa_left);
     }
 	
     // ---- 16 TYPE SLOTS ----
     draw_set_color(make_color_rgb(120, 220, 120));
-    draw_text(_draw_x + 6, y + 136, "JSR (TYPES 1-16):");
+    draw_text_l(_draw_x + 6, y + 136, "JSR (TYPES 1-16):");
 
     // DIRECT toggle — right-aligned on this row. When on, the probe reads the
     // byte at $0400 + offset as the collision type outright (that's what
@@ -349,7 +349,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
         draw_set_color(make_color_rgb(255, 190, 170));
         draw_rectangle(_dir_bx1, y + 137, _dir_bx2, y + 150, true);
         draw_set_halign(fa_center);
-        draw_text((_dir_bx1 + _dir_bx2) * 0.5, y + 135, "DIRECT");
+        draw_text_l((_dir_bx1 + _dir_bx2) * 0.5, y + 135, "DIRECT");
         draw_set_halign(fa_left);
     } else {
         draw_set_color(_dir_hov ? make_color_rgb(70, 70, 95) : make_color_rgb(32, 32, 46));
@@ -357,7 +357,7 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
         draw_set_color(make_color_rgb(110, 110, 140));
         draw_rectangle(_dir_bx1, y + 136, _dir_bx2, y + 150, true);
         draw_set_halign(fa_center);
-        draw_text((_dir_bx1 + _dir_bx2) * 0.5, y + 135, "SCAN");
+        draw_text_l((_dir_bx1 + _dir_bx2) * 0.5, y + 135, "SCAN");
         draw_set_halign(fa_left);
     }
 
@@ -382,8 +382,8 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
             draw_rectangle(_slot_x, _slot_y, _slot_x + _swatch_w, _slot_y + 16, true);
 
             draw_set_color(make_color_rgb(180, 180, 180));
-            draw_set_font(fnt_c64_tiny);
-            draw_text(_slot_x + _swatch_w + 2, _slot_y + 2, "T" + string(_slot_idx + 1) + ":");
+            draw_set_font_l(fnt_c64_tiny);
+            draw_text_l(_slot_x + _swatch_w + 2, _slot_y + 2, "T" + string(_slot_idx + 1) + ":");
 
             var _f_x1 = _slot_x + _swatch_w + _label_w;
             var _f_x2 = _slot_x + _half_w - 6 - _picker_btn_w - 2;
@@ -401,18 +401,18 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
                 draw_set_color(c_gray);
             }
             draw_set_halign(fa_center);
-            draw_set_font(fnt_c64_nano);
+            draw_set_font_l(fnt_c64_nano);
             if (_val != "") {
-                draw_text(_f_x1 + (_f_x2 - _f_x1) * 0.5, _slot_y + 2, _val);
+                draw_text_l(_f_x1 + (_f_x2 - _f_x1) * 0.5, _slot_y + 2, _val);
             } else {
-                draw_text(_f_x1 + (_f_x2 - _f_x1) * 0.5, _slot_y + 2, "---");
+                draw_text_l(_f_x1 + (_f_x2 - _f_x1) * 0.5, _slot_y + 2, "---");
             }
             draw_set_halign(fa_left);
         }
     }
 
     // ---- OUTPUT VARS ----
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _out_y0    = _slot_row_y0 + 8 * _slot_h + 6;
     var _out_lbl_w = 44;
     var _out_x1    = _draw_x + 6 + _out_lbl_w;
@@ -422,9 +422,9 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     // TYPE>
     var _type_var = string(instructions[0][13]);
     draw_set_color(make_color_rgb(120, 220, 120));
-	 draw_set_font(fnt_c64_pico);
-    draw_text(_draw_x + 2, _out_y0 + 2, "TYPE(B)");
-	 draw_set_font(fnt_c64_tiny);
+	 draw_set_font_l(fnt_c64_pico);
+    draw_text_l(_draw_x + 2, _out_y0 + 2, "TYPE(B)");
+	 draw_set_font_l(fnt_c64_tiny);
     if (point_in_rectangle(mouse_x, mouse_y, _out_x1, _out_y0, _out_x2, _out_y0 + _out_h)) {
         draw_set_color(make_color_rgb(40, 55, 40));
     } else {
@@ -435,21 +435,21 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     draw_rectangle(_out_x1, _out_y0, _out_x2, _out_y0 + _out_h, true);
     if (_type_var != "" && _type_var != "[clear]") {
         draw_set_color(c_yellow);
-        draw_text(_out_x1 + 4, _out_y0 , _type_var);
+        draw_text_l(_out_x1 + 4, _out_y0 , _type_var);
     } else {
         draw_set_color(c_gray);
-        draw_text(_out_x1 + 4, _out_y0 , "(none)");
+        draw_text_l(_out_x1 + 4, _out_y0 , "(none)");
     }
 
     // LOC>
     var _out_y1  = _out_y0 + _out_h + 3;
     var _loc_var = string(instructions[0][14]);
     draw_set_color(make_color_rgb(120, 220, 120));
-	 draw_set_font(fnt_c64_pico);
+	 draw_set_font_l(fnt_c64_pico);
 
 
-    draw_text(_draw_x + 2, _out_y1 + 2, "LOC(W)");
-		 draw_set_font(fnt_c64_tiny);
+    draw_text_l(_draw_x + 2, _out_y1 + 2, "LOC(W)");
+		 draw_set_font_l(fnt_c64_tiny);
     if (point_in_rectangle(mouse_x, mouse_y, _out_x1, _out_y1, _out_x2, _out_y1 + _out_h)) {
         draw_set_color(make_color_rgb(40, 55, 40));
     } else {
@@ -460,19 +460,19 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     draw_rectangle(_out_x1, _out_y1, _out_x2, _out_y1 + _out_h, true);
     if (_loc_var != "" && _loc_var != "[clear]") {
         draw_set_color(c_yellow);
-        draw_text(_out_x1 + 4, _out_y1 , _loc_var);
+        draw_text_l(_out_x1 + 4, _out_y1 , _loc_var);
     } else {
         draw_set_color(c_gray);
-        draw_text(_out_x1 + 4, _out_y1 , "(none)");
+        draw_text_l(_out_x1 + 4, _out_y1 , "(none)");
     }
 
     // COL>
     var _out_y2  = _out_y1 + _out_h + 3;
     var _col_var = string(instructions[0][15]);
     draw_set_color(make_color_rgb(120, 220, 120));
-		 draw_set_font(fnt_c64_pico);
-    draw_text(_draw_x + 2, _out_y2 + 2, "COLR(W)");
-		 draw_set_font(fnt_c64_tiny);
+		 draw_set_font_l(fnt_c64_pico);
+    draw_text_l(_draw_x + 2, _out_y2 + 2, "COLR(W)");
+		 draw_set_font_l(fnt_c64_tiny);
     if (point_in_rectangle(mouse_x, mouse_y, _out_x1, _out_y2, _out_x2, _out_y2 + _out_h)) {
         draw_set_color(make_color_rgb(40, 55, 40));
     } else {
@@ -483,10 +483,10 @@ function scr_node_draw_macro_coll_adv(_draw_x) {
     draw_rectangle(_out_x1, _out_y2, _out_x2, _out_y2 + _out_h, true);
     if (_col_var != "" && _col_var != "[clear]") {
         draw_set_color(c_yellow);
-        draw_text(_out_x1 + 4, _out_y2 , _col_var);
+        draw_text_l(_out_x1 + 4, _out_y2 , _col_var);
     } else {
         draw_set_color(c_gray);
-        draw_text(_out_x1 + 4, _out_y2 , "(none)");
+        draw_text_l(_out_x1 + 4, _out_y2 , "(none)");
     }
     draw_set_halign(fa_left);
 }

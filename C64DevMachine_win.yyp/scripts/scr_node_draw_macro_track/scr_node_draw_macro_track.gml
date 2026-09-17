@@ -34,13 +34,13 @@ function scr_node_draw_macro_track(_draw_x, _y) {
     var _c_dim  = make_color_rgb(120, 120, 120); // Grey (Static)
 
 	
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
     var _tly = _y + _header_h + 4;
-    draw_set_color(_c_dim); draw_text(_draw_x + 8,  _tly,           "INIT:");
-    draw_set_color(c_aqua);   draw_text(_draw_x + 60, _tly,           "$" + string_upper(_ih));
-	draw_set_color(_c_edit); draw_text(_draw_x + 8,  _tly + _line_h, "TRACK:");
+    draw_set_color(_c_dim); draw_text_l(_draw_x + 8,  _tly,           "INIT:");
+    draw_set_color(c_aqua);   draw_text_l(_draw_x + 60, _tly,           "$" + string_upper(_ih));
+	draw_set_color(_c_edit); draw_text_l(_draw_x + 8,  _tly + _line_h, "TRACK:");
     var _track_val = is_real(instructions[0][1]) ? real(instructions[0][1]) : 0;
-    draw_set_color(c_yellow); draw_text(_draw_x + 70, _tly + _line_h, string(_track_val));
+    draw_set_color(c_yellow); draw_text_l(_draw_x + 70, _tly + _line_h, string(_track_val));
 
 
 }

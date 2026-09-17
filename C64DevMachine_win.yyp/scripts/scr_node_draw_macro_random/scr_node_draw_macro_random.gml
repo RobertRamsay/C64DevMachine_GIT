@@ -38,7 +38,7 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     var _c_lbl = make_color_rgb(140, 160, 200);
     var _c_dim = make_color_rgb(90, 90, 100);
 
-    draw_set_font(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_tiny);
 
     // ── Row 0: INIT OSC checkbox ──
     var _cbx = _draw_x + 10;
@@ -55,7 +55,7 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     } else {
         draw_set_color(c_gray);
     }
-    draw_text(_cbx + 18, _ly, "SETUP NOISE OSC");
+    draw_text_l(_cbx + 18, _ly, "SETUP NOISE OSC");
     _ly += _lh;
 
     // ── Row 1: FREQ hex ──
@@ -67,10 +67,10 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text(_draw_x + 10, _ly, "FREQ:");
+    draw_text_l(_draw_x + 10, _ly, "FREQ:");
     if (_freq_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 58, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 58, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _fq_hex = decimal_to_hex(_freq);
         while (string_length(_fq_hex) < 4) _fq_hex = "0" + _fq_hex;
@@ -79,7 +79,7 @@ function scr_node_draw_macro_random(_draw_x, _y) {
         } else {
             draw_set_color(_c_dim);
         }
-        draw_text(_draw_x + 58, _ly, "$" + string_upper(_fq_hex));
+        draw_text_l(_draw_x + 58, _ly, "$" + string_upper(_fq_hex));
     }
     _ly += _lh;
 
@@ -98,7 +98,7 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     } else {
         draw_set_color(c_gray);
     }
-    draw_text(_cbx2 + 18, _ly, "CLAMP RANGE");
+    draw_text_l(_cbx2 + 18, _ly, "CLAMP RANGE");
     _ly += _lh;
 
     // ── Row 3: MIN / MAX ──
@@ -113,40 +113,40 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text(_draw_x + 10, _ly, "MIN:");
+    draw_text_l(_draw_x + 10, _ly, "MIN:");
     if (_min_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 52, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 52, _ly, obj_workspace_manager.current_input_string);
     } else {
         if (_clamp_on == 1) {
             draw_set_color(c_aqua);
         } else {
             draw_set_color(_c_dim);
         }
-        draw_text(_draw_x + 52, _ly, string(_clamp_min));
+        draw_text_l(_draw_x + 52, _ly, string(_clamp_min));
     }
     if (_clamp_on == 1) {
         draw_set_color(_c_lbl);
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text(_draw_x + 118, _ly, "MAX:");
+    draw_text_l(_draw_x + 118, _ly, "MAX:");
     if (_max_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 160, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 160, _ly, obj_workspace_manager.current_input_string);
     } else {
         if (_clamp_on == 1) {
             draw_set_color(c_aqua);
         } else {
             draw_set_color(_c_dim);
         }
-        draw_text(_draw_x + 160, _ly, string(_clamp_max));
+        draw_text_l(_draw_x + 160, _ly, string(_clamp_max));
     }
     _ly += _lh;
 
     // ── Row 4: DEST toggle A / VAR ──
     draw_set_color(_c_lbl);
-    draw_text(_draw_x + 10, _ly, "DEST:");
+    draw_text_l(_draw_x + 10, _ly, "DEST:");
     var _ax0 = _draw_x + 58;
     if (_dst_mode == 0) {
         draw_set_color(make_color_rgb(30, 120, 60));
@@ -160,7 +160,7 @@ function scr_node_draw_macro_random(_draw_x, _y) {
         draw_set_color(make_color_rgb(130, 130, 150));
     }
     draw_set_halign(fa_center);
-    draw_text(_ax0 + 14, _ly, "A");
+    draw_text_l(_ax0 + 14, _ly, "A");
     var _vx0 = _draw_x + 92;
     if (_dst_mode == 1) {
         draw_set_color(make_color_rgb(30, 120, 60));
@@ -173,24 +173,24 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     } else {
         draw_set_color(make_color_rgb(130, 130, 150));
     }
-    draw_text(_vx0 + 24, _ly, "VAR");
+    draw_text_l(_vx0 + 24, _ly, "VAR");
     draw_set_halign(fa_left);
     _ly += _lh;
 
     // ── Row 5: DEST VAR picker ──
     if (_dst_mode == 1) {
         draw_set_color(_c_lbl);
-        draw_text(_draw_x + 10, _ly, "-> VAR:");
+        draw_text_l(_draw_x + 10, _ly, "-> VAR:");
         if (_dst_var != "") {
             draw_set_color(c_lime);
-            draw_text(_draw_x + 66, _ly, _dst_var);
+            draw_text_l(_draw_x + 66, _ly, _dst_var);
         } else {
             draw_set_color(c_orange);
-            draw_text(_draw_x + 66, _ly, "-pick var-");
+            draw_text_l(_draw_x + 66, _ly, "-pick var-");
         }
     } else {
         draw_set_color(_c_dim);
-        draw_text(_draw_x + 10, _ly, "-> A (accumulator)");
+        draw_text_l(_draw_x + 10, _ly, "-> A (accumulator)");
     }
     _ly += _lh;
 
@@ -203,10 +203,10 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text(_draw_x + 10, _ly, "ZP:");
+    draw_text_l(_draw_x + 10, _ly, "ZP:");
     if (_zp_edit) {
         draw_set_color(c_lime);
-        draw_text(_draw_x + 46, _ly, obj_workspace_manager.current_input_string);
+        draw_text_l(_draw_x + 46, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _zp_hex = decimal_to_hex(_zp);
         while (string_length(_zp_hex) < 2) _zp_hex = "0" + _zp_hex;
@@ -215,12 +215,12 @@ function scr_node_draw_macro_random(_draw_x, _y) {
         } else {
             draw_set_color(_c_dim);
         }
-        draw_text(_draw_x + 46, _ly, "$" + string_upper(_zp_hex));
+        draw_text_l(_draw_x + 46, _ly, "$" + string_upper(_zp_hex));
     }
     _ly += _lh;
 
     // ── Footer ──
-    draw_set_font(fnt_c64_pico);
+    draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(80, 120, 180));
     var _dst_txt = "-> A";
     if (_dst_mode == 1) {
@@ -231,8 +231,8 @@ function scr_node_draw_macro_random(_draw_x, _y) {
         }
     }
     if (_clamp_on == 1) {
-        draw_text(_draw_x + 8, _ly, "RND $D41B  [" + string(_clamp_min) + ".." + string(_clamp_max) + "]  " + _dst_txt);
+        draw_text_l(_draw_x + 8, _ly, "RND $D41B  [" + string(_clamp_min) + ".." + string(_clamp_max) + "]  " + _dst_txt);
     } else {
-        draw_text(_draw_x + 8, _ly, "RND $D41B  0..255  " + _dst_txt);
+        draw_text_l(_draw_x + 8, _ly, "RND $D41B  0..255  " + _dst_txt);
     }
 }

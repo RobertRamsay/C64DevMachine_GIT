@@ -18,13 +18,13 @@ draw_set_alpha(1.0);
 
 // Tab label (top left, above box)
 var _tab_pad = 8;
-draw_set_font(fnt_c64_code);
-var _tw = string_width(box_name) + (_tab_pad * 2);
+draw_set_font_l(fnt_c64_code);
+var _tw = string_width_l(box_name) + (_tab_pad * 2);
 var _th = 18;
 draw_set_color(_col);
 draw_rectangle(x, y - _th, x + _tw, y, false);
 draw_set_color(c_black);
-draw_text(x + _tab_pad, y - _th + 2, box_name);
+draw_text_l(x + _tab_pad, y - _th + 2, box_name);
 
 // Resize handle triangle (bottom right)
 draw_set_color(_col);
@@ -39,5 +39,5 @@ draw_set_color(make_color_rgb(180, 40, 40));
 draw_rectangle(x + box_w - 18, y - 18, x + box_w, y, false);
 draw_set_color(c_white);
 draw_set_halign(fa_center);
-draw_text(x + box_w - 9, y - 16, "X");
+draw_text_l(x + box_w - 9, y - 16, "X");
 draw_set_halign(fa_left);
