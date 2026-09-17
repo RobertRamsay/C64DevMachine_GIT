@@ -17,6 +17,10 @@ global.lang_missing     = ds_map_create();
 global.lang_font_picker = -1;
 
 #macro LANG_FONT_FILE  "C64DMResources/FONT/NotoSansSC-Medium-subset.ttf"
+// Noto Sans SC sits lower in its line box than the C64 fonts, so top-aligned
+// Chinese text is lifted by this many pixels. One number moves everything.
+#macro LANG_Y_LIFT 4
+
 #macro LANG_TABLE_FILE "C64DMResources/LANG/lang_zh_CN.json"
 
 /// @desc Read the saved language, load the Chinese fonts and the table.
@@ -195,20 +199,32 @@ function draw_set_font_l(_font) {
     draw_set_font(_font);
 }
 
+/// @desc Pixels to lift text by: only in Chinese, only when top-aligned
+///       (middle / bottom alignment already centres on the glyphs).
+function scr_lang_lift() {
+    if (global.lang != 1) {
+        return 0;
+    }
+    if (draw_get_valign() != fa_top) {
+        return 0;
+    }
+    return LANG_Y_LIFT;
+}
+
 function draw_text_l(_x, _y, _s) {
-    draw_text(_x, _y, L(_s));
+    draw_text(_x, _y - scr_lang_lift(), L(_s));
 }
 
 function draw_text_ext_l(_x, _y, _s, _sep, _w) {
-    draw_text_ext(_x, _y, scr_lang_wrap(L(_s), _w), _sep, _w);
+    draw_text_ext(_x, _y - scr_lang_lift(), scr_lang_wrap(L(_s), _w), _sep, _w);
 }
 
 function draw_text_transformed_l(_x, _y, _s, _xs, _ys, _ang) {
-    draw_text_transformed(_x, _y, L(_s), _xs, _ys, _ang);
+    draw_text_transformed(_x, _y - scr_lang_lift() * _ys, L(_s), _xs, _ys, _ang);
 }
 
 function draw_text_ext_transformed_l(_x, _y, _s, _sep, _w, _xs, _ys, _ang) {
-    draw_text_ext_transformed(_x, _y, scr_lang_wrap(L(_s), _w), _sep, _w, _xs, _ys, _ang);
+    draw_text_ext_transformed(_x, _y - scr_lang_lift() * _ys, scr_lang_wrap(L(_s), _w), _sep, _w, _xs, _ys, _ang);
 }
 
 function string_width_l(_s) {
