@@ -426,6 +426,7 @@ probe_project_command = function(_method,_args) {
 };
 
 probe_busy = function() {
+    if (variable_global_exists("text_prompt") && is_struct(global.text_prompt)) return true;
     if (!instance_exists(obj_workspace_manager)) return true;
     if (instance_exists(obj_question_box) || instance_exists(obj_message_box)) return true;
     if (variable_global_exists("any_picker_open") && global.any_picker_open) return true;
@@ -566,7 +567,8 @@ probe_dispatch = function(_method, _args) {
             undo: "Use the normal Ctrl+Z in Dev Machine.", saved: false};
 };
 
-probe_start = function(_fresh = false) {
+/// @param {Bool} _fresh Replace the remembered key from the clipboard.
+probe_start = function(_fresh) {
     if (global.lite != 0) { probe_stop("OFF - Pro edition required"); return; }
     // Explicit shortcut opt-in is the ONLY clipboard access in this object.
     var _key = probe_saved_key;

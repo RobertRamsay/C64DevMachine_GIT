@@ -131,8 +131,7 @@ function scr_asset_bmp_flood_fill(_asset, _start_x, _start_y, _col_idx, _mask_va
                     if (_hr_fg) { _asset.meta.hr_cell_fg_col[_hrcf] = _col_idx; }
                     else        { _asset.meta.hr_cell_bg_col[_hrcf] = _col_idx; }
                 } else {
-                    var _target_idx = _color_hash[$ (_tr << 16) | (_tg << 8) | _tb];
-                    if (_target_idx == undefined) _target_idx = 0;
+                    var _target_idx = _color_hash[$ (_tr << 16) | (_tg << 8) | _tb] ?? 0;
                     _asset.meta.hr_role_mask[_cy * 320 + _x] = _hr_fg ? 0 : 1;
                     if (_hr_fg) { _asset.meta.hr_cell_bg_col[_hrcf] = _target_idx; }
                     else        { _asset.meta.hr_cell_fg_col[_hrcf] = _target_idx; }

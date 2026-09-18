@@ -728,12 +728,14 @@ if (metamap_picker_open && instance_exists(metamap_picker_node)) {
 // ASSET VIEWER
 // -------------------------------------------------------
 
+var _vx1 = 288;
+var _vy1 = 108;
 if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
     var _asset = ds_list_find_value(asset_list, viewer_asset);
 
 	var _wide_editor = (_asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER" || _asset.type == "HUD");
-	var _vx1 = _wide_editor ? 30 : 288;
-	var _vy1 = 108;
+	_vx1 = _wide_editor ? 30 : 288;
+	_vy1 = 108;
 	var _vx2 = _wide_editor ? (panel_x + 20) : (panel_x - 10);
 	var _vy2 = 972;
 	
@@ -1196,7 +1198,7 @@ case "CHAR_SET": {
     var _use_mc_surf  = (_chr_mc == 1) &&
                         variable_struct_exists(_asset.meta, "preview_surf_mc") &&
                         surface_exists(_asset.meta.preview_surf_mc);
-    var _chr_surf_key = _use_mc_surf ? "preview_surf_mc" : "preview_surf";
+    _chr_surf_key = _use_mc_surf ? "preview_surf_mc" : "preview_surf";
 
 
 
@@ -1250,23 +1252,13 @@ case "MAP_DATA": {
     draw_set_halign(fa_left);
 
     if (_crbhov && mouse_check_button_pressed(mb_left)) {
-        var _input_cr = get_string("New map dimensions (e.g. 40,25 or 40x25):", "40,25");
-        if (_input_cr == "") { /* cancelled */ } else {
-        var _gw = 40;
-        var _gh = 25;
-        var _sep_cr = ",";
-        if (string_count("x", string_lower(_input_cr)) > 0 && string_count(",", _input_cr) == 0) {
-            if (string_count("X", _input_cr) > 0) {
-                _sep_cr = "X";
-            } else {
-                _sep_cr = "x";
-            }
-        }
-        var _parts_cr = string_split(_input_cr, _sep_cr);
-        if (array_length(_parts_cr) >= 2) {
-            _gw = clamp(real(string_digits(_parts_cr[0])), 1, 160);
-            _gh = clamp(real(string_digits(_parts_cr[1])), 1, 160);
-        }
+        scr_prompt_text("New map dimensions (e.g. 40,25 or 40x25):", "40,25", function(_input_cr, _context) {
+            if (_input_cr == "") return;
+            var _asset = _context.asset;
+            if (!instance_exists(obj_asset_manager) || ds_list_find_index(obj_asset_manager.asset_list, _asset) < 0) return;
+            var _dims = scr_prompt_dimensions(_input_cr,40,25);
+            var _gw = clamp(_dims.w,1,160);
+            var _gh = clamp(_dims.h,1,160);
         _asset.meta.map_w          = _gw;
         _asset.meta.map_h          = _gh;
         _asset.meta.grid_w         = _gw;
@@ -1292,7 +1284,8 @@ case "MAP_DATA": {
 
         scr_asset_map_flush(_asset);
         global.undo_dirty = true;
-        } // end else (input not cancelled)
+        }, {asset:_asset});
+
     }
 		    if (!variable_struct_exists(_m, "char_grid")) {
 		        draw_set_color(make_color_rgb(40, 40, 60));
@@ -4007,10 +4000,10 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        var _pw_y    = _asset.meta.prev_win_y;
 	        var _pw_w    = _draw_w;
 	        var _pw_h    = _draw_h;
-	        var _mx      = device_mouse_x_to_gui(0);
-	        var _my      = device_mouse_y_to_gui(0);
-	        var _gui_w   = display_get_gui_width();
-	        var _gui_h   = display_get_gui_height();
+	        _mx      = device_mouse_x_to_gui(0);
+	        _my      = device_mouse_y_to_gui(0);
+	        _gui_w   = display_get_gui_width();
+	        _gui_h   = display_get_gui_height();
 
 	        // Input block now that scale vars exist
 	        var _prev_input_blocked = _asset.meta.prev_win_drag ||
@@ -4917,7 +4910,6 @@ surface_reset_target();
 	                }
 	                    
 	                // Skip rest of editor tools while in conversion mode
-	                goto_end_editor = true;
 	            } // end png_import_mode
 	            var goto_end_editor = variable_struct_exists(_asset.meta, "png_import_mode") && _asset.meta.png_import_mode;
 	            if (!goto_end_editor) {
@@ -5470,7 +5462,7 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
 	                                    for (var _gy = 0; _gy < _asset.meta.grab_h; _gy++) {
 	                                        for (var _gx = 0; _gx < _asset.meta.grab_w; _gx += _dith_step) {
 	                                            var _tx = _draw_x + _gx;
-	                                            var _ty = _draw_y + _gy;;
+	                                            var _ty = _draw_y + _gy;
 	                                            if (_tx < 0 || _tx > _dith_max_x || _ty < 0 || _ty >= 200) continue;
                                                 
 												
@@ -5704,8 +5696,8 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
 	                        }
 	                    }
 					} // end _draw_allowed
-	                                } // end if _px in bounds
-	                                if (buffer_exists(_read_buf)) buffer_delete(_read_buf);
+                                    if (buffer_exists(_read_buf)) buffer_delete(_read_buf);
+	                                } // end brush interpolation loop
 	                            } // end steps loop
 	                        gpu_set_blendmode(bm_normal);
 	                        gpu_set_texfilter(_prev_filter);
@@ -6199,7 +6191,7 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
 	                    var _gx1 = floor(min(_asset.meta.grab_x1, _raw_px)) + _asset.meta.grab_off_x1;
 	                            var _gy1 = floor(min(_asset.meta.grab_y1, _raw_py)) + _asset.meta.grab_off_y1;
 	                            var _gx2 = floor(max(_asset.meta.grab_x1, _raw_px)) + _asset.meta.grab_off_x2;
-	                            var _gy2 = floor(max(_asset.meta.grab_y1, _raw_py)) + _asset.meta.grab_off_y2;;
+	                            var _gy2 = floor(max(_asset.meta.grab_y1, _raw_py)) + _asset.meta.grab_off_y2;
                                 
 						_gx1 = (_gx1 div 2) * 2;
 	                    _gx2 = (_gx2 div 2) * 2 + 1; // Last pixel of MC pair — matches capture snap
@@ -6362,8 +6354,8 @@ if (_asset.meta.active_tool == "DRAW" && surface_exists(_asset.meta.grab_surf) &
 	                        _screen_y = floor(_sy + ((_draw_y - _src_y2) / _src_h2 * _sh));
 	                    }
 	                    // Also snap scale_x so each stamp pixel lands on exact screen pixel multiples
-	                    var _scale_x = floor(_scale_x * _asset.meta.grab_w) / _asset.meta.grab_w;
-	                    var _scale_y = floor(_scale_y * _asset.meta.grab_h) / _asset.meta.grab_h;
+	                    _scale_x = floor(_scale_x * _asset.meta.grab_w) / _asset.meta.grab_w;
+	                    _scale_y = floor(_scale_y * _asset.meta.grab_h) / _asset.meta.grab_h;
                         
 gpu_set_texfilter(false);
 	                    if (_asset.meta.dither_mode == "NONE") {
@@ -8625,7 +8617,6 @@ case "META_TILESET": {
     // (same stamp dimensions), so a copy at one size can't corrupt another.
     if (scr_ctrl_held() && keyboard_check_pressed(ord("V"))) {
         var _cv_cells = _m.stamp_w * _m.stamp_h;
-        var _cv_cells = _m.stamp_w * _m.stamp_h;
         if (_m.edit_stamp >= 0
          && _m.stamp_clip_valid
          && array_length(_m.stamp_clip) == _cv_cells) {
@@ -9711,7 +9702,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     }
 
     for (var _trow = _draw_row0; _trow < _draw_row1; _trow++) {
-        for (var _tcol = _draw_col0; _tcol < _draw_col1; _tcol++) {
+        for (_tcol = _draw_col0; _tcol < _draw_col1; _tcol++) {
             var _tidx = _trow * _test_cols + _tcol;
             if (_tidx >= array_length(_active_grid)) continue;
             var _tstamp_idx = _active_grid[_tidx];
@@ -10188,7 +10179,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         var _mtd_b = variable_struct_exists(_m, "mt_data_bytes_disp") ? _m.mt_data_bytes_disp : 0;
         draw_set_color(make_color_rgb(140, 160, 180));
         draw_text_l(_ced_x , _ced_y - 46, L("METATILE DATA: ") + string(_mtd_b) + " b");
-		;
+
 
         // ---- PER-CHAR HR/MC TOGGLE (writes char_lut bit 4, preserves colour) ----
         _m.char_lut_len = _ts_chr_ref.meta.char_count;
@@ -11210,7 +11201,7 @@ if (pngstrip.open) {
 // META TILESET CHARSET PICKER DROPDOWN
 // -------------------------------------------------------
 if (meta_ts_picker_open) {
-    var _vx1   = 288;
+    _vx1   = 288;
     var _tspx  = _vx1 + 74;
     var _tspy  = meta_ts_btn_y + 14;
     var _tspw  = 180;
@@ -11296,7 +11287,7 @@ if (chr_picker_open && instance_exists(chr_picker_node)) {
 if (map_chr_picker_open) {
     draw_set_alpha(1.0);
     gpu_set_scissor(0, 0, window_get_width(), window_get_height());
-    var _vx1  = 288;
+    _vx1  = 288;
     var _mcpx = _vx1 + 268;
     var _mcpy = map_chr_picker_draw_y;
     var _mcpw = 180;

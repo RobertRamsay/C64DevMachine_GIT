@@ -34,7 +34,7 @@ function scr_c64u_async_network()
             return scr_c64u_reu_send_auth();
         }
 
-        return scr_c64u_reu_send_payload();
+        return scr_c64u_reu_send_payload(false);
     }
 
     if (_type == network_type_data &&
@@ -55,7 +55,7 @@ function scr_c64u_async_network()
             );
         }
 
-        return scr_c64u_reu_send_payload();
+        return scr_c64u_reu_send_payload(false);
     }
 
     if (_type == network_type_data &&

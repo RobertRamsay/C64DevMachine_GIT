@@ -22,7 +22,7 @@ if (probe_restart_pending) { game_restart(); exit; }
 if (probe_state == "off") {
     if (probe_auto_pair && probe_saved_key != "" && current_time >= probe_retry_at && !probe_busy()) {
         probe_retry_at = current_time + 5000;
-        probe_start();
+        probe_start(false);
     }
     exit;
 }

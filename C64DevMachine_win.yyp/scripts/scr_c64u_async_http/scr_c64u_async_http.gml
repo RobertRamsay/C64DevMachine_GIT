@@ -73,8 +73,9 @@ function scr_c64u_async_http()
                 {
                     // 403 = network password is set on the device.
                     // Prompt for it, save to ini, and retry the ping with X-Password header.
-                    var _entered = get_string("403 - Enter network password (leave blank to cancel):", global.c64u_password);
-
+                    scr_prompt_text("403 - Enter network password (leave blank to cancel):", global.c64u_password, function(_entered, _context) {
+                        var _candidate = _context.candidate;
+                        var _after = _context.after;
                     if (_entered != "" && _entered != "string_cancel")
                     {
                         // Save password to global + ini
@@ -109,6 +110,7 @@ function scr_c64u_async_http()
                     {
                         global.c64u_overlay_error = "403 - password needed to connect";
                     }
+                    }, {candidate:_candidate,after:_after});
                 }
                 else
                 {

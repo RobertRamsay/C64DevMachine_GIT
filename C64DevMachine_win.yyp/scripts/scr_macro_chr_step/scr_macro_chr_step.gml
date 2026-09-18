@@ -61,7 +61,7 @@ function scr_macro_chr_step(_node) {
         var _mc_flag = (array_length(instructions) > 0 && array_length(instructions[0]) > 2) ? real(instructions[0][2]) : 0;
         
         if (!_map_connected && array_length(instructions) > 10) {
-			var _header_h = 24;
+			_header_h = 24;
 
             var _d018_y   = (y + _header_h + 4) + _line_h + 4 + _line_h + 6; 
             var _d021_y   = _d018_y + 20; // Match the +20 from draw

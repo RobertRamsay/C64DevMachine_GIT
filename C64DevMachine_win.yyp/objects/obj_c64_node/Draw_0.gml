@@ -777,7 +777,7 @@ var _show_gutter = (node_type == "INIT" || node_type == "ORG") ? _lod_addresses 
 if (_show_gutter && node_type != "EXECUTE" && node_type != "COMMENT" && 
     node_type != "NAMED_LOC" && node_type != "NEW_STR" && node_title != "VARIABLES" && 
     x > 160 && proxy) {
-    var _is_data = (string_pos("DATA", node_type) > 0 || node_type == "SPR64" || node_type == "BITMAP_KLA");
+    _is_data = (string_pos("DATA", node_type) > 0 || node_type == "SPR64" || node_type == "BITMAP_KLA");
     
     // --- SYNCED CONFLICT COLOR ---
     var _use_col = (is_connected || _is_data || node_type == "ORG") ? c_aqua : c_gray;
@@ -1134,7 +1134,7 @@ if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTE
                 // Soft glow ring
                 draw_set_color(_glow_col);
                 draw_set_alpha(0.3);
-                draw_circle(_cx, _cy, 6, false);;
+                draw_circle(_cx, _cy, 6, false);
             }
             draw_set_alpha(1.0);
             } // end idle pulse gate

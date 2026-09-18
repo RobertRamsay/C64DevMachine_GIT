@@ -60,7 +60,7 @@ function scr_node_draw_macro_vector_page(_draw_x, _y) {
     var _pg_hover = point_in_rectangle(mouse_x, mouse_y, _draw_x + 60, _ly, _tog_x - 4, _ly + 12);
     var _tog_hover = point_in_rectangle(mouse_x, mouse_y, _tog_x, _ly, _tog_x + _tog_w, _ly + 12);
     if (_use_var == 1) {
-        draw_set_color(make_color_rgb(120, 220, 120));; draw_text_l(_draw_x + 10, _ly, "VAR:");
+        draw_set_color(make_color_rgb(120, 220, 120)); draw_text_l(_draw_x + 10, _ly, "VAR:");
         var _has_var = (_var_name != "");
         draw_set_color(_has_var ? c_aqua : (_pg_hover ? c_white : make_color_rgb(200, 60, 60)));
         draw_text_l(_draw_x + 60, _ly, _has_var ? _var_name : L("CLICK TO SET"));

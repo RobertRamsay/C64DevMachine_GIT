@@ -1183,7 +1183,7 @@ if (is_entering_text) {
             var _row_y1   = (display_get_gui_height() / 2) - 14;
             var _row_y2   = (display_get_gui_height() / 2) + 14;
             if (_gmy >= _row_y1 && _gmy < _row_y2) {
-                var _len     = string_length(_full_str);
+                _len     = string_length(_full_str);
                 var _best    = _len;
                 for (var _ci = 0; _ci <= _len; _ci++) {
                     var _cx1 = _start_x + string_width_l(string_copy(_full_str, 1, _ci)) * 1.5;
@@ -4256,7 +4256,7 @@ for (var i = 0; i < array_length(_exp_code); i++) {
 // =============================================================
 var mouse_room_x = mouse_x;
 var mouse_room_y = mouse_y;
-var zoom_speed   = 0.1;
+zoom_speed   = 0.1;
 
 
 

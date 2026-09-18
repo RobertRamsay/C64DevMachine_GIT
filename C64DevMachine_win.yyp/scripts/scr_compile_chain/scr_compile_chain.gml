@@ -1019,6 +1019,10 @@ case "MACRO_SID_SOUND": {
         }
     }
 
+    var _off_word = false;
+    var _nzp_lo = _zp;
+    var _nzp_hi = _zp + 2;
+    var _nzp_gt = _zp + 4;
     if (_use_asset) {
         // A byte index can only reach 256 entries; a word index reaches the
         // whole table. Clamp to whichever the chosen index actually addresses
@@ -1063,7 +1067,7 @@ case "MACRO_SID_SOUND": {
         // ZP bytes and ~36 bytes of setup, and lifts the ceiling to the whole
         // table. The var's declared size decides — no extra node field.
         var _off_addr = 0;
-        var _off_word = false;
+        _off_word = false;
         if (_off_mode == 1 && _off_var != "") {
             _off_addr = scr_resolve_var_addr(_off_var);
             if (_off_addr != 0) {
@@ -1078,9 +1082,9 @@ case "MACRO_SID_SOUND": {
 
         // ZP pointer trio for the word path. Derived from the node's ZP slot so
         // the user can move them off anything else living down there.
-        var _nzp_lo = _zp;
-        var _nzp_hi = _zp + 2;
-        var _nzp_gt = _zp + 4;
+        _nzp_lo = _zp;
+        _nzp_hi = _zp + 2;
+        _nzp_gt = _zp + 4;
         if (_off_word && _zp > 0xFA) {
             show_debug_message("MACRO_SID_SOUND: ZP $" + string_upper(decimal_to_hex(_zp))
                 + " leaves no room for the 6-byte word-index pointers; using $F2.");
@@ -2128,7 +2132,7 @@ case "MACRO_METAMAP": {
         array_push(_list, ["org", _base_addr]);
 
         var _vid_save = _id;
-        var _id = noone; // suppress node tagging on org-bracketed data
+        _id = noone; // suppress node tagging on org-bracketed data
 
         // 1) STAMP-DEF cell tables: per stamp, _cells_pr * (char, colour).
         //    One label per stamp so the pointer table can reference it.
@@ -2268,7 +2272,7 @@ case "MACRO_METAMAP": {
         }
 
         array_push(_list, ["org", -3]); // restore spine PC
-        var _id = _vid_save;
+        _id = _vid_save;
 
         // ── Ensure COLL_ROW_LO/HI exist (stamper indexes them by screen row) ──
         if (!variable_global_exists("coll_row_luts_emitted") || global.coll_row_luts_emitted == false) {
@@ -2610,11 +2614,11 @@ array_push(_list, ["cli", 0, _id]);
     array_push(_list, ["org", _char_src]);
     array_push(_list, ["label", _mm_pfx + "chardata"]);
     var _mm_id_save = _id;
-    var _id = noone; // suppress node tagging on raw plane data
+    _id = noone; // suppress node tagging on raw plane data
     for (var _bi = 0; _bi < 1000; _bi++) array_push(_list, ["byte", _char_plane[_bi]]);
     for (var _bi = 0; _bi < 1000; _bi++) array_push(_list, ["byte", _col_plane[_bi]]);
     array_push(_list, ["org", -3]); // restore spine PC
-    var _id = _mm_id_save;
+    _id = _mm_id_save;
 
     // ── Resolve screen destination from MACRO_VIC (same as MACRO_MAP) ──
     var _scr_dest = 0x0400;
@@ -3025,6 +3029,8 @@ case "MACRO_SCROLL": {
             show_debug_message("MACRO_SCROLL(META): tileset '" + _mm_tileset_name + "' has per-stamp colour overrides — IGNORED during scroll (colour follows char_lut only)");
         }
 
+        var _mm_map_bases = [];
+        var _mm_map_widths = [];
         if (_mm_map_idx_mode == 1) {
             // ── VAR MODE — bake EVERY map in the tileset, sequentially, and
             // build a small per-map base/width table the runtime switch
@@ -3038,8 +3044,6 @@ case "MACRO_SCROLL": {
                 break;
             }
 
-            var _mm_map_bases  = [];
-            var _mm_map_widths = [];
             var _mm_run_addr   = _mm_base_addr;
 
             for (var _mm_mi = 0; _mm_mi < _mm_tm.map_count; _mm_mi++) {
@@ -3095,12 +3099,12 @@ case "MACRO_SCROLL": {
                 array_push(_list, ["org", -2]);
                 array_push(_list, ["org", _mm_run_addr]);
                 var _mm_id_save_v = _id;
-                var _id = noone;
+                _id = noone;
                 for (var _mm_bi = 0; _mm_bi < array_length(_mm_plane_v); _mm_bi++) {
                     array_push(_list, ["byte", _mm_plane_v[_mm_bi] & 0xFF]);
                 }
                 array_push(_list, ["org", -3]);
-                var _id = _mm_id_save_v;
+                _id = _mm_id_save_v;
 
                 _mm_run_addr += array_length(_mm_plane_v);
 
@@ -3173,12 +3177,12 @@ case "MACRO_SCROLL": {
             array_push(_list, ["org", -2]);
             array_push(_list, ["org", _map_base]);
             var _mm_id_save = _id;
-            var _id = noone;
+            _id = noone;
             for (var _mm_bi = 0; _mm_bi < array_length(_mm_char_plane); _mm_bi++) {
                 array_push(_list, ["byte", _mm_char_plane[_mm_bi] & 0xFF]);
             }
             array_push(_list, ["org", -3]);
-            var _id = _mm_id_save;
+            _id = _mm_id_save;
         }
 
         // Emit the 256-byte char->colour LUT (nibble only, 0-15). Global
@@ -3817,7 +3821,7 @@ case "MACRO_SCROLL": {
         array_push(_lst, ["jmp_abs", _lbl_cols,   _p_id]);
         array_push(_lst, ["label",   _lbl_done]);
         if (_p_blankfn != noone) {
-            _p_blankfn(_lst, _lbl_entry, _dest_base, _p_srow, _p_rows, _p_id);
+            script_execute_ext(_p_blankfn, [_lst, _lbl_entry, _dest_base, _p_srow, _p_rows, _p_id]);
         }
         array_push(_lst, ["rts",     0,           _p_id]);
     };
@@ -3940,7 +3944,7 @@ case "MACRO_SCROLL": {
         array_push(_lst, ["jmp_abs", _lbl_cols,   _p_id]);
         array_push(_lst, ["label",   _lbl_done]);
         if (_p_blankfn != noone) {
-            _p_blankfn(_lst, _lbl_entry, _dest_base, _p_srow, _p_rows, _p_id);
+            script_execute_ext(_p_blankfn, [_lst, _lbl_entry, _dest_base, _p_srow, _p_rows, _p_id]);
         }
         array_push(_lst, ["rts",     0,           _p_id]);
     };
@@ -4699,7 +4703,7 @@ case "MACRO_VSCROLL": {
     // Write blank char to col 0 and col 39 for all 25 rows — permanent edge blank
     // Use X as row index 0..24, write _scr + row*40 + 0 and _scr + row*40 + 39
     array_push(_list, ["lda_imm", 0x00,            _id]);
-    var _lbl_blank_cols = _p + "blkcols";
+    _lbl_blank_cols = _p + "blkcols";
     array_push(_list, ["ldx_imm", 0x00,            _id]);
     array_push(_list, ["label",   _lbl_blank_cols]);
     // Write left edge col 0 and right edge col 39 for this row via abs,X
@@ -6258,7 +6262,7 @@ array_push(_list, ["label",   _v_dd00]);   array_push(_list, ["byte", 0x02,    _
     array_push(_list, ["org",   _txt_addr]);
     array_push(_list, ["label", _p + "dat"]);
     var _id_save = _id;
-    var _id = noone;  // suppress node tagging for text data bytes
+    _id = noone;  // suppress node tagging for text data bytes
 
 	_txt_str = string_replace_all(_txt_str, "\n", "");
 	_txt_str = string_replace_all(_txt_str, "\r", "");
@@ -6325,7 +6329,7 @@ array_push(_list, ["label",   _v_dd00]);   array_push(_list, ["byte", 0x02,    _
     }
     array_push(_list, ["byte", 0x00]);  // no node tag
     array_push(_list, ["org",  -3]);
-    var _id = _id_save;  // restore
+    _id = _id_save;  // restore
 
 } break;
 
@@ -8638,28 +8642,8 @@ case "COND_IF": {
         array_push(_list, ["cmp_imm", _cmp_val, _id]);
     }
 
-    // 4. Calculate if target is within 6502 relative branch range (-128 to 127)
-    // We estimate from the current PC plus the size of LDA/CMP
-    var _branch_from  = _curr.pc_address + 5; 
-    var _offset       = _target_addr - _branch_from;
-    var _in_range     = (_offset >= -126 && _offset <= 126) && (_target_addr != 0);
-    
-    // We force a springboard for complex multi-check logic (GT/LTE) 
-    // or if the target is too far for a BXX instruction.
-    var _is_complex = (_mode == "gt" || _mode == "lte");
-
-    if (false && _in_range && !_is_complex && !global.compile_sizing_pass) {
-        // --- SHORT BRANCH (Direct) ---
-        var _branch = "beq";
-        switch (_mode) {
-            case "eq":  _branch = "beq"; break;
-            case "ne":  _branch = "bne"; break;
-            case "lt":  _branch = "bcc"; break;
-            case "gte": _branch = "bcs"; break;
-        }
-        array_push(_list, [_branch, _target, _id]);
-    } 
-    else {
+    // Always emit the existing springboard path; stable size across compiler passes.
+    {
         // --- SPRINGBOARD / COMPLEX BRANCH ---
         var _skip_lbl = "cif_skip_" + string(real(_id));
 
@@ -20209,8 +20193,8 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
 			    }
 			}
 		}
+        ds_map_destroy(_load_org_linked);
 	}
-	ds_map_destroy(_load_org_linked);
 
 	// ================================================================
     // FALLBACK: INJECT NULLSID.SID IF REQUIRED

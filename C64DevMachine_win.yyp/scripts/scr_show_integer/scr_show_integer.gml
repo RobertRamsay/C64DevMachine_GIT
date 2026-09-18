@@ -34,3 +34,25 @@ function scr_show_integer(_default_w, _default_h, _action)
 
     global.integer_result = ""; // clear previous
 }
+/// @param {String} _message
+/// @param {String} _default
+/// @param {Function} _callback Receives (text, context); cancellation supplies an empty string.
+/// @param {Struct} _context Explicit state, never a closure over caller locals.
+function scr_prompt_text(_message, _default, _callback, _context) {
+    if (variable_global_exists("text_prompt") && is_struct(global.text_prompt)) return false;
+    global.text_prompt = {request:get_string_async(L(_message),_default), callback:_callback, context:_context, owner:id};
+    return true;
+}
+
+function scr_prompt_dimensions(_text, _default_w, _default_h) {
+    var _parts = string_split(string_replace_all(string_lower(string_trim(_text)), "x", ","), ",");
+    var _w = _default_w;
+    var _h = _default_h;
+    if (array_length(_parts) >= 2) {
+        var _wd = string_digits(_parts[0]);
+        var _hd = string_digits(_parts[1]);
+        if (_wd != "" && string_pos("-", _parts[0]) == 0 && real(_wd) > 0) _w = real(_wd);
+        if (_hd != "" && string_pos("-", _parts[1]) == 0 && real(_hd) > 0) _h = real(_hd);
+    }
+    return {w:_w,h:_h};
+}

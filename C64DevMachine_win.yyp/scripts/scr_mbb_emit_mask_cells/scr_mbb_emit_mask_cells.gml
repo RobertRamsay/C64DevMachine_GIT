@@ -290,7 +290,7 @@
 	        array_push(_list, ["beq",     _l_uz, _id]);
 	        array_push(_list, ["tax",     0,     _id]);
 	        // X holds the pair value (1/2/3) — bump that slot's counter.
-	        array_push(_list, ["cpx_imm", 1,      _id]);;
+	        array_push(_list, ["cpx_imm", 1,      _id]);
 	        array_push(_list, ["bne",     _l_u2,  _id]);
 	        array_push(_list, ["inc_abs", _v_cn1, _id]);
 	        array_push(_list, ["jmp_abs", _l_uz,  _id]);

@@ -520,8 +520,8 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     }
 
     // GENERATE — emit / update the BYTE_DATA table.
-    var _gnx1 = _rdx2 + 16;
-    var _gnx2 = _gnx1 + 110;
+    _gnx1 = _rdx2 + 16;
+    _gnx2 = _gnx1 + 110;
     var _gn_hov  = point_in_rectangle(_mx, _my, _gnx1, _rowy, _gnx2, _rowy + 18);
     var _gn_made = (_m.bbd_name != "");
 

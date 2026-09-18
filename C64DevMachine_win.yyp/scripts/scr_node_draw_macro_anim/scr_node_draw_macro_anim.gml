@@ -136,7 +136,7 @@ function scr_node_draw_macro_anim(_draw_x) {
     // ---- Speed / Delay field ----
     var _spd_y    = _slot_start_y + 8 * _slot_gap_y + 4;
     var _loop_val = (string(instructions[0][10]) == "1");
-    var _cb_size  = 12;
+    _cb_size  = 12;
     var _delay_x2 = _draw_x + 80;
 
     draw_set_color(make_color_rgb(160, 160, 160));

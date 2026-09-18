@@ -25,39 +25,20 @@ function scr_asset_map_import(_asset) {
         exit;
     }
 
-    // ----------------------------------------------------------------
-    // AUTO-DETECT OR ASK FOR DIMENSIONS
-    // Common char-only sizes: 1000=40x25, 2000=80x25, 1600=40x40 etc.
-    // If the file is exactly map_w*map_h bytes it is char-only.
-    // Any other size: ask the user.
-    // ----------------------------------------------------------------
-var _w = 40;
-var _h = 25;
-
-
-var _input = get_string(
-    "Map dimensions (" + string(_sz) + " bytes).\n"
-    + "Enter width,height (e.g. 40,25 or 40x25):", "40,25");
-if (_input == "") {
     buffer_delete(_buf);
-    exit;
-}
-// Accept both comma and x/X as separator
-var _sep = ",";
-if (string_count("x", string_lower(_input)) > 0 && string_count(",", _input) == 0) {
-    _sep = string_lower(_input) == _input ? "x" : "X";
-    if (string_count("X", _input) > 0) {
-        _sep = "X";
-    } else {
-        _sep = "x";
-    }
-}
-var _parts = string_split(_input, _sep);
-if (array_length(_parts) >= 2) {
-    _w = clamp(real(string_digits(_parts[0])), 1, 160);
-    _h = clamp(real(string_digits(_parts[1])), 1, 160);
+    scr_prompt_text("Map dimensions (" + string(_sz) + " bytes).\nEnter width,height (e.g. 40,25 or 40x25):", "40,25", scr_asset_map_import_finish, {asset:_asset,path:_path});
 }
 
+function scr_asset_map_import_finish(_input, _context) {
+    if (_input == "") return;
+    var _asset = _context.asset;
+    if (!instance_exists(obj_asset_manager) || ds_list_find_index(obj_asset_manager.asset_list,_asset) < 0) return;
+    var _buf = buffer_load(_context.path);
+    if (!buffer_exists(_buf)) { scr_show_message("MAP IMPORT: Failed to load file."); return; }
+    var _sz = buffer_get_size(_buf);
+    var _dims = scr_prompt_dimensions(_input,40,25);
+    var _w = clamp(_dims.w,1,160);
+    var _h = clamp(_dims.h,1,160);
     // Validate file is large enough for the char grid
     var _map_sz = _w * _h;
     if (_map_sz > _sz) {

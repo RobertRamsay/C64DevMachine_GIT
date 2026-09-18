@@ -820,7 +820,7 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
 	}
 		
 ///////////////////////////////////////////////////
-	    var _pc_before = _org.pc_address;
+	    _pc_before = _org.pc_address;
 
 	    if (_org.proxy) {
 	        if (!_best_found) {
@@ -1262,10 +1262,11 @@ with (obj_c64_node) {
 	    if (!is_connected) continue;
 	    var _code_text = string(instructions[0][1]);
 	    if (_code_text == "") continue;
+        var _full_parsed;
 	    if (!code_cache_dirty && array_length(p9_parsed_cache) > 0) {
-	        var _full_parsed = p9_parsed_cache;
+	        _full_parsed = p9_parsed_cache;
 	    } else {
-	        var _full_parsed = scr_parse_asm_text(_code_text);
+	        _full_parsed = scr_parse_asm_text(_code_text);
 	        p9_parsed_cache = _full_parsed;
 	    }
 	    var _am9 = instance_exists(obj_asset_manager) ? obj_asset_manager : noone;

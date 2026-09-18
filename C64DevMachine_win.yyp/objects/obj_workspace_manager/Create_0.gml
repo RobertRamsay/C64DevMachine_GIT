@@ -1,3 +1,4 @@
+global.text_prompt = undefined;
 // Language first: every text wrapper below depends on it.
 scr_lang_init();
 lang_checked = false;
@@ -13,7 +14,7 @@ editor_layout_refresh_requested = false;
 global.lite=0;
 // MCP is a Pro-only feature; initialize the edition before creating it.
 if (global.lite == 0 && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
-global.build_date = "September 16th, 2026"; // edit this string for each release
+global.build_date = "September 19th, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {
@@ -95,9 +96,9 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-	"TWEAKED - Map editor to support the *Zyrons Escape project* (*PRO ONLY)",
-	"TWEAKED - Music editor now pre-compiles for better playback, buttons added.",
-	"IN PROGRESS - HUD Asset editor",
+	"NEW - MCP Intergration [PRO] - Command via CODEX or similar systems",
+	"NEW - CHINESE SIMPLIFIED Launguage added - Toggle via Options",
+	"NEW - HUD Asset editor",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
     "SUPPORT the development by leaving a review on ITCH and buying the PRO version.",

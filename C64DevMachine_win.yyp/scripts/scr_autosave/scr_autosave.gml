@@ -94,7 +94,7 @@ var _base = "unsaved";
                 _hex = scr_blob_encode(_a.buffer);
             }
             // Full meta mirror — reuse the same field list as scr_save_workspace_as
-            var _mo = {};
+            _mo = {};
             var _me = _a.meta;
             var _fields = ["sprite_mcs","sprite_ucs","mc1_col","mc2_col","used_count","bg_col","bmp_mode","tone_sorted",
                            "sprite_json","compositor","anim",

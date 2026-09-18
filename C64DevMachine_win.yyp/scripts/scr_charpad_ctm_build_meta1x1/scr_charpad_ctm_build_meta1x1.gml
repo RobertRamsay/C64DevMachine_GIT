@@ -218,6 +218,25 @@ function scr_charpad_ctm_build_meta1x1(
         );
     }
 
+    var _context = {tm:_tm,am:_am,ts_asset:_ts_asset,map_w:_map_w,map_h:_map_h,map_cells:_map_cells,map_idx:_map_idx,char_count:_char_count,do_slice:_do_slice};
+    if (_do_slice) {
+        scr_prompt_text("Room size in char cells (width,height):", "40,25", scr_charpad_ctm_finish_meta1x1, _context);
+    } else {
+        scr_charpad_ctm_finish_meta1x1("40,25", _context);
+    }
+}
+
+function scr_charpad_ctm_finish_meta1x1(_input, _context) {
+    if (!instance_exists(_context.am)) return;
+    var _tm = _context.tm;
+    var _am = _context.am;
+    var _ts_asset = _context.ts_asset;
+    var _map_w = _context.map_w;
+    var _map_h = _context.map_h;
+    var _map_cells = _context.map_cells;
+    var _map_idx = _context.map_idx;
+    var _char_count = _context.char_count;
+    var _do_slice = _context.do_slice;
     _tm.maps       = [];
     _tm.map_count  = 0;
     _tm.map_bytes  = [];
@@ -229,8 +248,9 @@ function scr_charpad_ctm_build_meta1x1(
         // Ask for room width and height in char cells. Blank/invalid entries
         // fall back to the C64 screen default. Clamped to at least 1 and no
         // larger than the source map.
-        var _room_w = get_integer("Room WIDTH in char cells (default 40):", 40);
-        var _room_h = get_integer("Room HEIGHT in char cells (default 25):", 25);
+        var _dims = scr_prompt_dimensions(_input,40,25);
+        var _room_w = _dims.w;
+        var _room_h = _dims.h;
         if (_room_w <= 0) {
             _room_w = 40;
         }

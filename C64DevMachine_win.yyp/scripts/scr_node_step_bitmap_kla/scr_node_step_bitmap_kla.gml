@@ -14,7 +14,9 @@ function scr_node_step_bitmap_kla(_draw_x) {
 	// Address field click — hex input
 	var _addr_y = y + 24 + 4 + 18; // row 1 = address row
 	if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 68, _addr_y, _draw_x + width - 8, _addr_y + 16)) {
-	    var _input = get_string("Bitmap load address (hex):", string_upper(decimal_to_hex(pc_address)));
+        scr_prompt_text("Bitmap load address (hex):", string_upper(decimal_to_hex(pc_address)), function(_input, _context) {
+            if (!instance_exists(_context.node)) return;
+            with (_context.node) {
 	    if (_input != "") {
 	        var _val = scr_hex_to_int(_input);
 	        if (_val >= 0 && _val <= 0xFFFF) {
@@ -34,6 +36,8 @@ function scr_node_step_bitmap_kla(_draw_x) {
 	            }
 	        }
 	    }
+            }
+        }, {node:id});
 	    exit;
 	}
 

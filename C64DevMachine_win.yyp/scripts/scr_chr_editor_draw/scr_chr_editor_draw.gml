@@ -256,11 +256,13 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
 
         scr_chr_undo_push(_asset);
 
+        var _start_c;
+        var _replace;
         // Resolve the clicked cell in cell-coords (0..7 for HR/ECM cols, 0..3 for MC pairs)
         if (_pixel_is_mc) {
-            var _start_c = clamp(floor((_mx - _ox) / (_scale * 2)), 0, 3);
+            _start_c = clamp(floor((_mx - _ox) / (_scale * 2)), 0, 3);
         } else {
-            var _start_c = clamp(floor((_mx - _ox) / _scale), 0, 7);
+            _start_c = clamp(floor((_mx - _ox) / _scale), 0, 7);
         }
         var _start_r = clamp(floor((_my - _oy) / _scale), 0, 7);
 
@@ -280,11 +282,11 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
         var _target = _read_cell(_asset.buffer, _tile_base, _pixel_is_mc, _start_c, _start_r);
 
         if (_pixel_is_mc) {
-            var _replace = chr_active_mc_colour & 0x03;
+            _replace = chr_active_mc_colour & 0x03;
         } else if (_mc_mode == 2 && chr_active_ecm_target == "BG") {
-            var _replace = 0; // ECM: BG swatch selected — fill clears to background
+            _replace = 0; // ECM: BG swatch selected — fill clears to background
         } else {
-            var _replace = 1; // HR (or ECM w/ FG selected) fill paints "on"
+            _replace = 1; // HR (or ECM w/ FG selected) fill paints "on"
         }
 
         // Only flood if we'd actually change something.

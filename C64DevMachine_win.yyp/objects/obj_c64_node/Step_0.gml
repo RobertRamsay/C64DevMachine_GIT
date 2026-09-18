@@ -2017,7 +2017,7 @@ if (global.group_drag_handle == id) {
                     }
                     if (_removed_h > 0) {
                         var _gap_y    = _filtered[1].y;
-                        var _handle_spine = _filtered[0].org_parent;
+                        _handle_spine = _filtered[0].org_parent;
                         var _init_bottom_ref = 80; // INIT y=60 + height=20
                         with (obj_c64_node) {
                             if (node_type == "INIT") { _init_bottom_ref = y + height; break; }

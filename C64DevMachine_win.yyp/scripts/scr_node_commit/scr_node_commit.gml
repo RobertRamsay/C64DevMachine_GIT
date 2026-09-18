@@ -1098,17 +1098,18 @@
 			    var _enc2  = (_meta2 != undefined && variable_struct_exists(_meta2, "encoding")) ? _meta2.encoding : "byte";
 			    var _is_neg = (string_char_at(_input, 1) == "-");
 			    var _stripped = _is_neg ? string_delete(_input, 1, 1) : _input;
+            var _literal_value;
 			    if (string_char_at(_stripped, 1) == "$") {
 			        var _clean = string_delete(_stripped, 1, 1);
-			        var _val = real(hex_to_decimal(string_upper(_clean)));
-			        if (_is_neg) _val = -_val;
+			        _literal_value = real(hex_to_decimal(string_upper(_clean)));
+			        if (_is_neg) _literal_value = -_literal_value;
 			    } else {
 			        var _digits = string_digits(_stripped);
-			        var _val = (_digits != "") ? real(_digits) : 0;
-			        if (_is_neg) _val = -_val;
+			        _literal_value = (_digits != "") ? real(_digits) : 0;
+			        if (_is_neg) _literal_value = -_literal_value;
 			    }
-			    if (_enc2 == "sbyte" && _val < 0) _val = 256 + _val;
-			    _target.instructions[0][2] = _val;
+			    if (_enc2 == "sbyte" && _literal_value < 0) _literal_value = 256 + _literal_value;
+			    _target.instructions[0][2] = _literal_value;
 				// Clamp to variable type max
 				var _meta = scr_nloc_find_meta(string(_target.instructions[0][1]));
 			    if (_meta != undefined) {
