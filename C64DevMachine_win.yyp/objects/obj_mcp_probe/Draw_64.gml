@@ -1,0 +1,25 @@
+if (probe_state == "off" && current_time > probe_notice_until) exit;
+// Save/restore draw state so this optional badge cannot affect editor drawing.
+var _font = draw_get_font();
+var _alpha = draw_get_alpha();
+var _colour = draw_get_colour();
+var _ha = draw_get_halign();
+var _va = draw_get_valign();
+draw_set_font(-1);
+draw_set_halign(fa_left);
+draw_set_valign(fa_top);
+var _text = "MCP TEST: " + probe_status;
+var _w = string_width(_text) + 20;
+var _x = max(8, display_get_gui_width() - _w - 12);
+var _y = display_get_gui_height() - 32;
+draw_set_alpha(0.9);
+draw_set_colour(c_black);
+draw_rectangle(_x, _y, _x + _w, _y + 25, false);
+draw_set_alpha(1);
+draw_set_colour(probe_state == "ready" ? c_lime : c_white);
+draw_text(_x + 10, _y + 4, _text);
+draw_set_font(_font);
+draw_set_alpha(_alpha);
+draw_set_colour(_colour);
+draw_set_halign(_ha);
+draw_set_valign(_va);

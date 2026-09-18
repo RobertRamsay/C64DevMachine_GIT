@@ -950,6 +950,7 @@
     {"id":{"name":"obj_question_box","path":"objects/obj_question_box/obj_question_box.yy",},},
     {"id":{"name":"obj_screenshot_button","path":"objects/obj_screenshot_button/obj_screenshot_button.yy",},},
     {"id":{"name":"obj_ui_color_picker","path":"objects/obj_ui_color_picker/obj_ui_color_picker.yy",},},
+    {"id":{"name":"obj_mcp_probe","path":"objects/obj_mcp_probe/obj_mcp_probe.yy",},},
     {"id":{"name":"obj_workspace_manager","path":"objects/obj_workspace_manager/obj_workspace_manager.yy",},},
     {"id":{"name":"MAIN_ROOM","path":"rooms/MAIN_ROOM/MAIN_ROOM.yy",},},
     {"id":{"name":"_asm_is_dec","path":"scripts/_asm_is_dec/_asm_is_dec.yy",},},

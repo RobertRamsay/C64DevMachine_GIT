@@ -2,6 +2,9 @@
 scr_lang_init();
 lang_checked = false;
 
+// Opt-in MCP smoke test; the isolated object remains disconnected by default.
+if (!instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -1000000, obj_mcp_probe);
+
 // State used by Step and End Step must exist before recovery/load runs.
 editor_release_pending = false;
 editor_release_dirty = false;
