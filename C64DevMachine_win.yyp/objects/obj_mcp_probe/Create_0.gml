@@ -30,6 +30,12 @@ probe_stop = function(_reason) {
     probe_retry_at = current_time + 5000;
 };
 
+// Defensive guard if this object is ever instantiated outside Pro startup.
+if (!variable_global_exists("lite") || global.lite != 0) {
+    instance_destroy();
+    exit;
+}
+
 probe_send = function(_text) {
     if (probe_socket < 0) return false;
     // buffer_tell counts UTF-8 bytes, not characters. No trailing NUL is sent.
@@ -460,6 +466,7 @@ probe_node_info = function(_node) {
 };
 
 probe_dispatch = function(_method, _args) {
+    if (global.lite != 0) throw "MCP requires the Pro edition.";
     if (_method == "ping") {
         return {pong: true, application: "C64 Dev Machine", prototype: "0.2.0",
                 workspace_key: probe_workspace_key(), busy: probe_busy()};
@@ -560,6 +567,7 @@ probe_dispatch = function(_method, _args) {
 };
 
 probe_start = function(_fresh = false) {
+    if (global.lite != 0) { probe_stop("OFF - Pro edition required"); return; }
     // Explicit shortcut opt-in is the ONLY clipboard access in this object.
     var _key = probe_saved_key;
     if (_fresh || _key == "") _key = string_trim(clipboard_get_text());

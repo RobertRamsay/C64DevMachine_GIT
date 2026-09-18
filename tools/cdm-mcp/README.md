@@ -1,5 +1,7 @@
 # C64 Dev Machine MCP v0.2
 
+Pro only: MCP is enabled only when global.lite == 0. Lite does not create the MCP controller, read its saved pairing key, show its badge, or listen for its shortcut.
+
 Control a running C64 Dev Machine from a local MCP host, including Codex dictation. The host turns your spoken request into MCP calls; this bridge does not record or transcribe audio.
 
 ## Supported project workflow

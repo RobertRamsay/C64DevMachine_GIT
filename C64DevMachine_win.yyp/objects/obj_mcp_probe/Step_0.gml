@@ -1,3 +1,5 @@
+// Stop immediately if the running editor changes edition.
+if (global.lite != 0) { instance_destroy(); exit; }
 // The normal editor and all networking handlers remain untouched.
 if (keyboard_check(vk_control) && keyboard_check(vk_shift)
     && keyboard_check_pressed(vk_f12)) {

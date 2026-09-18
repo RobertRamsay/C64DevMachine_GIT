@@ -2,9 +2,6 @@
 scr_lang_init();
 lang_checked = false;
 
-// Opt-in MCP smoke test; the isolated object remains disconnected by default.
-if (!instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
-
 // State used by Step and End Step must exist before recovery/load runs.
 editor_release_pending = false;
 editor_release_dirty = false;
@@ -14,6 +11,8 @@ editor_layout_refresh_requested = false;
 
 /// @desc Setup Workspace, Palette & C64 Environment
 global.lite=0;
+// MCP is a Pro-only feature; initialize the edition before creating it.
+if (global.lite == 0 && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
 global.build_date = "September 16th, 2026"; // edit this string for each release
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---

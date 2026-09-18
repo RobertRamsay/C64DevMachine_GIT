@@ -1,3 +1,4 @@
+if (global.lite != 0) exit;
 if (probe_state == "off" && current_time > probe_notice_until) exit;
 // Save/restore draw state so this optional badge cannot affect editor drawing.
 var _font = draw_get_font();
