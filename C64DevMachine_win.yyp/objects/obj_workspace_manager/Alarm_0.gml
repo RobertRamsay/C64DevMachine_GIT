@@ -60,6 +60,10 @@ if (vice_launch_phase == 0) {
 show_debug_message("VICE deferred launch: starting " + vice_launch_target);
 
 var _vice_started = scr_launch_vice(global.vice_path_cache, vice_launch_target);
+if (instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "launch_pending") {
+    obj_mcp_probe.probe_build.state = _vice_started ? "launch_requested" : "failed";
+    obj_mcp_probe.probe_build.message = _vice_started ? "VICE launch requested; emulator execution has not been verified." : "VICE launch failed.";
+}
 if (!_vice_started) {
     scr_show_message(L("VICE launch failed.\n\nBuild output:\n") + vice_launch_target);
 }

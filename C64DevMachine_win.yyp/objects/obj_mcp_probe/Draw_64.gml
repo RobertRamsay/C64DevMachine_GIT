@@ -8,7 +8,7 @@ var _va = draw_get_valign();
 draw_set_font(-1);
 draw_set_halign(fa_left);
 draw_set_valign(fa_top);
-var _text = "MCP TEST: " + probe_status;
+var _text = "MCP: " + probe_status;
 var _w = string_width(_text) + 20;
 var _x = max(8, display_get_gui_width() - _w - 12);
 var _y = display_get_gui_height() - 32;

@@ -7,6 +7,11 @@
 /// @param {String} _msg  the question text to display
 /// @return {Bool} true if the user chose Yes, false otherwise
 function scr_show_question_bool(_msg) {
+    if (instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "building") {
+        obj_mcp_probe.probe_build.state = "attention_required";
+        obj_mcp_probe.probe_build.message = string_copy(_msg,1,2000);
+        return false;
+    }
     var _result = show_question(L(_msg));
     if (os_type == os_macosx) {
         return (string(_result) == "Yes");

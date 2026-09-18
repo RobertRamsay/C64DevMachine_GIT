@@ -8,6 +8,13 @@
 
 function scr_show_message(_msg)
 {
+    if (instance_exists(obj_mcp_probe)) {
+        var _job = obj_mcp_probe.probe_build;
+        if (_job.state == "building" || _job.state == "launch_pending") {
+            _job.state = "attention_required";
+            _job.message = string_copy(string(_msg),1,2000);
+        }
+    }
     // If a message box is already open, replace its content rather than
     // stacking - prevents a flood of overlapping dialogs from rapid clicks
     if (instance_exists(obj_message_box)) {

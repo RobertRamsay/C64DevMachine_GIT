@@ -1,15 +1,29 @@
 // The normal editor and all networking handlers remain untouched.
 if (keyboard_check(vk_control) && keyboard_check(vk_shift)
     && keyboard_check_pressed(vk_f12)) {
-    if (probe_state != "off") probe_stop("OFF - disconnected by user");
-    else if (!probe_busy()) probe_start();
+    if (probe_state != "off" && !keyboard_check(vk_alt)) {
+        probe_auto_pair = false;
+        ini_open("cdm-mcp-pairing.ini"); ini_write_real("pairing","enabled",0); ini_close();
+        probe_stop("OFF - disconnected by user");
+    } else if (!probe_busy()) {
+        probe_stop("CONNECTING");
+        probe_auto_pair = true;
+        probe_start(keyboard_check(vk_alt));
+    }
     else {
         probe_status = "OFF - close dialogs/editors and release the mouse first";
         probe_notice_until = current_time + 8000;
     }
     exit;
 }
-if (probe_state == "off") exit;
+if (probe_restart_pending) { game_restart(); exit; }
+if (probe_state == "off") {
+    if (probe_auto_pair && probe_saved_key != "" && current_time >= probe_retry_at && !probe_busy()) {
+        probe_retry_at = current_time + 5000;
+        probe_start();
+    }
+    exit;
+}
 // Raw TCP clients may not receive a disconnect event. Require heartbeats.
 if (current_time - probe_last_rx > 15000) {
     probe_stop("OFF - connection timed out; check the project before retrying");
@@ -31,7 +45,11 @@ if (variable_struct_exists(_msg, "event")) {
     if (_msg.event == "ready" && probe_state == "handshake"
         && variable_struct_exists(_msg, "protocol") && _msg.protocol == 1) {
         probe_state = "ready";
-        probe_status = "CONNECTED - comments enabled; Ctrl+Shift+F12 disconnects";
+        probe_status = "CONNECTED - project tools enabled; Ctrl+Shift+F12 disconnects";
+        ini_open("cdm-mcp-pairing.ini");
+        ini_write_string("pairing","key",probe_saved_key);
+        ini_write_real("pairing","enabled",1);
+        ini_close();
     } else if (_msg.event == "heartbeat" && probe_state == "ready") {
         probe_send(json_stringify({event: "heartbeat"}));
     } else { probe_stop("OFF - unexpected bridge event"); }

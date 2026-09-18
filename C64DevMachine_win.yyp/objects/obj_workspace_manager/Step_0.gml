@@ -2293,6 +2293,7 @@ if (keyboard_check_pressed(vk_f5) && global.asset_reload_in_progress) {
 if (build_trigger && mouse_check_button_released(mb_any)) trigger_build = true;
 if (build_trigger && !global.asset_reload_in_progress && !mouse_check_button_released(mb_any)) {
         trigger_build = false;
+        if (instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "queued") obj_mcp_probe.probe_build.state = "building";
         global.egg_temp_node_ids = [];
 
         // =============================================================
@@ -3131,7 +3132,7 @@ show_debug_message(_pbuf_dbg2);
 
         buffer_delete(p_buf);
 		
-		if (!silent_build && _d64_path != "") {
+		if (!silent_build && _d64_path != "" && !(instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "attention_required")) {
             full_save_path = _d64_path;
             if (trigger_c64u) {
                 trigger_c64u = false;
@@ -3154,7 +3155,7 @@ show_debug_message(_pbuf_dbg2);
         buffer_save(p_buf, full_save_path);
         buffer_delete(p_buf);
         ds_map_destroy(p.labels);
-        if (!silent_build) {
+        if (!silent_build && !(instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "attention_required")) {
             if (trigger_c64u) {
                 trigger_c64u = false;
                 scr_c64u_reu_begin("PRG", full_save_path, "");
@@ -3919,6 +3920,12 @@ show_debug_message(_pbuf_dbg2);
 	silent_build  = false;
     } // end if (pending_dump)
 silent_build  = false;
+if (instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "building") {
+    var _mcp_job = obj_mcp_probe.probe_build;
+    _mcp_job.output = full_save_path;
+    _mcp_job.state = file_exists(full_save_path) ? (vice_launch_pending ? "launch_pending" : "built") : "failed";
+    if (_mcp_job.run && !vice_launch_pending) { _mcp_job.state = "failed"; _mcp_job.message = "Build completed but VICE launch was not scheduled."; }
+}
 } // end if (build_trigger)
 
 // =============================================================

@@ -614,6 +614,7 @@ common_assets = [];
 // Build is triggered via F5 or the workspace manager Step event.
 var spawn_x = floor(((room_width / 2) - (global.node_display_width / 2)) / 20) * 20;
 
+global.next_stable_uid = 100000;
 var n_init = instance_create_layer(spawn_x, 60, "Layer_Nodes", obj_c64_node);
 n_init.node_title   = "SYSTEM INIT";
 n_init.node_type    = "INIT";
@@ -758,7 +759,7 @@ global.named_loc_meta_map = ds_map_create();
 global.named_loc_meta_dirty = true;
 global.any_picker_open    = false;
 global.next_org_uid       = 1;
-global.next_stable_uid    = 100000;
+// Stable UID allocator is initialized before SYSTEM INIT is spawned.
 global.wire_drag_node     = noone;
 global.wire_drag_is_out   = false;
 scr_init_named_locations();

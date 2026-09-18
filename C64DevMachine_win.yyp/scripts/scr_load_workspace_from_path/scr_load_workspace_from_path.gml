@@ -1,4 +1,4 @@
-function scr_load_workspace_from_path(_path) {
+function scr_load_workspace_from_path(_path, _mcp = false) {
     var path = _path;
     if (path == "" || !file_exists(path)) return;
     io_clear();
@@ -1041,7 +1041,7 @@ global.kernal_unlocked = variable_struct_exists(load_data, "kernal_unlocked") ? 
         array_push(_loose, id);
     }
 
-    if (array_length(_loose) > 0) {
+    if (array_length(_loose) > 0 && !_mcp) {
         var _lcount = array_length(_loose);
         var _lmsg   = string(_lcount) + " UNATTACHED NODE";
         if (_lcount != 1) {

@@ -8,6 +8,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { SharedClient } from './shared-client.mjs';
 import { Lines, EditorLink, McpServer, TOOLS, validateArgs, loadConfig } from './bridge.mjs';
 
 const token = 'a'.repeat(64);
@@ -69,7 +70,7 @@ test('MCP requires initialization and negotiates known revisions', async () => {
   assert.equal(out.pop().result.protocolVersion, '2025-11-25');
   await s.handle({ jsonrpc: '2.0', method: 'notifications/initialized' });
   await s.handle({ jsonrpc: '2.0', id: 3, method: 'tools/list' });
-  assert.equal(out.pop().result.tools.length, 5);
+  assert.equal(out.pop().result.tools.length, TOOLS.length);
   await s.handle({ jsonrpc: '2.0', id: 4, method: 'resources/list' });
   assert.equal(out.pop().error.code, -32601);
 });
@@ -162,12 +163,12 @@ test('actual stdio subprocess: initialize -> tools/list -> simulated read/add/re
     clientInfo: { name: 'unit-test', version: '1' } });
   assert.equal(initialized.result.protocolVersion, '2025-11-25');
   child.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');
-  assert.equal((await rpc('tools/list')).result.tools.length, 5);
+  assert.equal((await rpc('tools/list')).result.tools.length, TOOLS.length);
   const app = net.createConnection({ host: '127.0.0.1', port }); app.on('error', () => {});
   t.after(() => app.destroy()); await once(app, 'connect');
-  let nodeCount = 2; let writes = 0;
+  let nodeCount = 2; let writes = 0; let paired = false;
   const appParser = new Lines(line => {
-    const m = JSON.parse(line); if (!m.method) return;
+    const m = JSON.parse(line); if (m.event === "ready") paired=true; if (!m.method) return;
     let result;
     if (m.method === 'project_summary') result = { node_count: nodeCount, workspace_key: `test:${nodeCount}` };
     else if (m.method === 'add_comment') {
@@ -178,7 +179,7 @@ test('actual stdio subprocess: initialize -> tools/list -> simulated read/add/re
   });
   app.on('data', c => appParser.push(c));
   app.write(JSON.stringify({ event: 'hello', protocol: 1, token: config.token }) + '\n');
-  await waitFor(() => stderr.includes('paired'));
+  await waitFor(() => paired);
   const call = async (name, args = {}) => {
     const r = (await rpc('tools/call', { name, arguments: args })).result;
     assert.equal(r.isError, false); return JSON.parse(r.content[0].text);
@@ -198,6 +199,7 @@ test('a second editor cannot replace an already authenticated editor', async t =
   const second = net.createConnection({ host: '127.0.0.1', port: link.port });
   second.on('error', () => {});
   const closed = once(second, 'close');
+  second.write(JSON.stringify({event:'hello',protocol:1,token})+'\n');
   await closed;
   assert.equal(link.socket, first); assert.equal(socket.destroyed, false);
 });
@@ -218,9 +220,9 @@ test('live smoke client executable completes against a simulated editor', async 
   await waitFor(() => stdout.includes('press Enter to run'));
   const app = net.createConnection({ host: '127.0.0.1', port }); app.on('error', () => {});
   t.after(() => app.destroy()); await once(app, 'connect');
-  let count = 2, mutations = 0;
+  let count = 2, mutations = 0, paired = false;
   const parser = new Lines(line => {
-    const m = JSON.parse(line); if (!m.method) return;
+    const m = JSON.parse(line); if (m.event === "ready") paired=true; if (!m.method) return;
     let result;
     if (m.method === 'ping') result = { pong: true, application: 'C64 Dev Machine' };
     if (m.method === 'project_summary') result = { project: 'MOCK SCRATCH', node_count: count, workspace_key: `mock:${count}` };
@@ -231,10 +233,63 @@ test('live smoke client executable completes against a simulated editor', async 
   });
   app.on('data', c => parser.push(c));
   app.write(JSON.stringify({ event: 'hello', protocol: 1, token: config.token }) + '\n');
-  await waitFor(() => stderr.includes('paired'));
+  await waitFor(() => paired);
   smoke.stdin.write('\n');
   const [code] = await exited;
   assert.equal(code, 0, stderr);
   assert.equal(mutations, 1);
   assert.ok(stdout.includes('PASS: MCP initialize -> tools/list -> ping -> read -> add comment -> read.'));
+});
+
+test('project schemas validate recursive rows, strict booleans, enums and byte budget',()=>{
+  const ctx={expected_workspace:'revision'};
+  assert.doesNotThrow(()=>validateArgs('cdm_create_node',{...ctx,type:'NORMAL',instructions:[['lda_imm',5],['sta_abs',53280]],after_uid:100000}));
+  for(const input of [
+    {type:'UNKNOWN'}, {type:'NORMAL',instructions:[['lda_imm',{}]]},
+    {type:'NORMAL',instructions:[]}, {type:'NORMAL',x:NaN},
+    {type:'NORMAL',instructions:[['lda_imm',Infinity]]},
+    {type:'MACRO_CODE',text:'x'.repeat(12001)},
+    {type:'MACRO_CODE',text:'漢'.repeat(12000)},
+  ]) assert.throws(()=>validateArgs('cdm_create_node',{...ctx,...input}));
+  assert.throws(()=>validateArgs('cdm_build',{...ctx,run:'yes'}));
+  assert.throws(()=>validateArgs('cdm_build',{...ctx,run:1}));
+  assert.throws(()=>validateArgs('cdm_save_project',{...ctx,path:'file.exe'}));
+  assert.throws(()=>validateArgs('cdm_update_node',{...ctx,uid:1,shell:'anything'}));
+});
+
+test('two MCP clients share the editor without stealing pairing or replaying commands',async t=>{
+  const {link,socket}=await connectedLink(t);
+  const config={port:link.port,token};
+  const a=new SharedClient(config,Lines),b=new SharedClient(config,Lines);
+  t.after(()=>a.close());t.after(()=>b.close());
+  await a.connect();await b.connect();
+  assert.equal((await a.status()).editor_connected,true);
+  assert.equal((await b.status()).editor_connected,true);
+  let writes=0;
+  const parser=new Lines(line=>{
+    const m=JSON.parse(line);if(!m.method)return;
+    writes++;
+    socket.write(JSON.stringify({id:m.id,ok:true,result:{received:m.method}})+'\n');
+  });
+  socket.on('data',chunk=>parser.push(chunk));
+  await a.request('add_comment',{expected_workspace:'r',text:'one'},1);
+  await a.close();
+  assert.equal((await b.request('ping',{},2)).received,'ping');
+  assert.equal(writes,2);
+});
+
+test('shared broker rejects bad client authentication',async t=>{
+  const {link}=await connectedLink(t);
+  const bad=new SharedClient({port:link.port,token:'b'.repeat(64)},Lines);
+  t.after(()=>bad.close());
+  await assert.rejects(bad.connect());
+  assert.equal(link.clients.size,0);
+});
+
+test('oversized command rejection does not disconnect an authenticated editor',async t=>{
+  const {link}=await connectedLink(t);
+  const client=new SharedClient({port:link.port,token},Lines);
+  t.after(()=>client.close());await client.connect();
+  await assert.rejects(client.request('create_node',{expected_workspace:'r',type:'MACRO_CODE',text:'漢'.repeat(12000)},1),/28000/);
+  assert.equal((await client.status()).editor_connected,true);
 });
