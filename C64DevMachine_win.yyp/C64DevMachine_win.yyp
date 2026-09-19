@@ -1,4 +1,4 @@
-{
+﻿{
   "$GMProject":"v1",
   "%Name":"C64DevMachine_win",
   "AudioGroups":[
@@ -56,6 +56,8 @@
     {"$GMIncludedFile":"","%Name":"bridge.mjs","CopyToMask":-1,"filePath":"datafiles/tools/cdm-mcp","name":"bridge.mjs","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"project-tools.mjs","CopyToMask":-1,"filePath":"datafiles/tools/cdm-mcp","name":"project-tools.mjs","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"README.md","CopyToMask":-1,"filePath":"datafiles/tools/cdm-mcp","name":"README.md","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
+    {"$GMIncludedFile":"","%Name":"setup-mcp.bat","CopyToMask":-1,"filePath":"datafiles/tools/cdm-mcp","name":"setup-mcp.bat","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
+    {"$GMIncludedFile":"","%Name":"setup-mcp.command","CopyToMask":-1,"filePath":"datafiles/tools/cdm-mcp","name":"setup-mcp.command","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"shared-client.mjs","CopyToMask":-1,"filePath":"datafiles/tools/cdm-mcp","name":"shared-client.mjs","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"smoke.mjs","CopyToMask":-1,"filePath":"datafiles/tools/cdm-mcp","name":"smoke.mjs","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"test.mjs","CopyToMask":-1,"filePath":"datafiles/tools/cdm-mcp","name":"test.mjs","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
