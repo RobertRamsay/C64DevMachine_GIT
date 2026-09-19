@@ -13,8 +13,13 @@ if (global.lite != 0) exit;
 // with a 12px gap top and bottom. The right edge lines up with the snapshot
 // button at gui_w-14.
 
-// Never draw over a modal, the asset viewer, or a hidden UI.
+// With the optional tools/cdm-mcp add-on absent there is nothing the buttons
+// could do, so show no MCP interface at all. An editor that is already paired
+// or connected keeps its buttons either way.
 var _mcp_blocked = false;
+if (setup_helper_path == "" && probe_state == "off" && probe_saved_key == "") _mcp_blocked = true;
+
+// Never draw over a modal, the asset viewer, or a hidden UI.
 if (!instance_exists(obj_workspace_manager)) _mcp_blocked = true;
 else if (obj_workspace_manager.hideui) _mcp_blocked = true;
 if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) _mcp_blocked = true;

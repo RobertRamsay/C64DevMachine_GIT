@@ -1,0 +1,62 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml
+index 7cda76b..4629f70 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml
+@@ -39,6 +39,11 @@ reset_btn_x2      = 0;
+ reset_btn_y2      = 0;
+ setup_status_path = game_save_id + "mcp-setup-status.txt";
+ setup_pair_path   = game_save_id + "mcp-pair.txt";
++// Resolved path of the setup helper, re-checked periodically so the add-on can
++// be dropped in while the editor is running. Empty means the optional
++// tools/cdm-mcp folder was not shipped, and the MCP buttons stay hidden.
++setup_helper_path     = "";
++setup_helper_check_at = 0;
+ // When set, probe_start uses this instead of touching the clipboard.
+ probe_pair_key    = "";
+ 
+@@ -670,7 +675,8 @@ setup_script_path = function() {
+ /// stalls a frame even when Node.js has to be downloaded and installed.
+ setup_run = function() {
+     if (setup_state == "running") return;
+-    var _script = setup_script_path();
++    var _script = setup_helper_path;
++    if (_script == "" || !file_exists(_script)) _script = setup_script_path();
+     if (_script == "") {
+         setup_state  = "failed";
+         setup_status = "MISSING";
+diff --git a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Draw_64.gml
+index 3cf6494..f0bea1d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Draw_64.gml
+@@ -13,8 +13,13 @@ if (global.lite != 0) exit;
+ // with a 12px gap top and bottom. The right edge lines up with the snapshot
+ // button at gui_w-14.
+ 
+-// Never draw over a modal, the asset viewer, or a hidden UI.
++// With the optional tools/cdm-mcp add-on absent there is nothing the buttons
++// could do, so show no MCP interface at all. An editor that is already paired
++// or connected keeps its buttons either way.
+ var _mcp_blocked = false;
++if (setup_helper_path == "" && probe_state == "off" && probe_saved_key == "") _mcp_blocked = true;
++
++// Never draw over a modal, the asset viewer, or a hidden UI.
+ if (!instance_exists(obj_workspace_manager)) _mcp_blocked = true;
+ else if (obj_workspace_manager.hideui) _mcp_blocked = true;
+ if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) _mcp_blocked = true;
+diff --git a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Step_0.gml
+index 016a86a..a34e9d2 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Step_0.gml
+@@ -1,6 +1,12 @@
+ // Stop immediately if the running editor changes edition.
+ if (global.lite != 0) { instance_destroy(); exit; }
+ // --- MCP-CON one-click setup button ---------------------------------------
++// Look for the optional add-on every couple of seconds, so it can be installed
++// without restarting the editor. Draw_64 hides both buttons while it is absent.
++if (current_time >= setup_helper_check_at) {
++    setup_helper_check_at = current_time + 2000;
++    setup_helper_path = setup_script_path();
++}
+ // Poll the helper's status file while it runs. Cheap: twice a second.
+ if (setup_state == "running") {
+     if (current_time >= setup_poll_at) {

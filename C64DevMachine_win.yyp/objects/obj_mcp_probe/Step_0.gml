@@ -1,6 +1,12 @@
 // Stop immediately if the running editor changes edition.
 if (global.lite != 0) { instance_destroy(); exit; }
 // --- MCP-CON one-click setup button ---------------------------------------
+// Look for the optional add-on every couple of seconds, so it can be installed
+// without restarting the editor. Draw_64 hides both buttons while it is absent.
+if (current_time >= setup_helper_check_at) {
+    setup_helper_check_at = current_time + 2000;
+    setup_helper_path = setup_script_path();
+}
 // Poll the helper's status file while it runs. Cheap: twice a second.
 if (setup_state == "running") {
     if (current_time >= setup_poll_at) {

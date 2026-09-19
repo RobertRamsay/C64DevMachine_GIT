@@ -39,6 +39,11 @@ reset_btn_x2      = 0;
 reset_btn_y2      = 0;
 setup_status_path = game_save_id + "mcp-setup-status.txt";
 setup_pair_path   = game_save_id + "mcp-pair.txt";
+// Resolved path of the setup helper, re-checked periodically so the add-on can
+// be dropped in while the editor is running. Empty means the optional
+// tools/cdm-mcp folder was not shipped, and the MCP buttons stay hidden.
+setup_helper_path     = "";
+setup_helper_check_at = 0;
 // When set, probe_start uses this instead of touching the clipboard.
 probe_pair_key    = "";
 
@@ -670,7 +675,8 @@ setup_script_path = function() {
 /// stalls a frame even when Node.js has to be downloaded and installed.
 setup_run = function() {
     if (setup_state == "running") return;
-    var _script = setup_script_path();
+    var _script = setup_helper_path;
+    if (_script == "" || !file_exists(_script)) _script = setup_script_path();
     if (_script == "") {
         setup_state  = "failed";
         setup_status = "MISSING";
