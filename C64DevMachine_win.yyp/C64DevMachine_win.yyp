@@ -1,4 +1,4 @@
-﻿{
+{
   "$GMProject":"v1",
   "%Name":"C64DevMachine_win",
   "AudioGroups":[
@@ -1120,6 +1120,7 @@
     {"id":{"name":"scr_import_charpad_ctm","path":"scripts/scr_import_charpad_ctm/scr_import_charpad_ctm.yy",},},
     {"id":{"name":"scr_import_charpad_raw","path":"scripts/scr_import_charpad_raw/scr_import_charpad_raw.yy",},},
     {"id":{"name":"scr_import_code_block","path":"scripts/scr_import_code_block/scr_import_code_block.yy",},},
+    {"id":{"name":"scr_import_reu_bmp_batch","path":"scripts/scr_import_reu_bmp_batch/scr_import_reu_bmp_batch.yy",},},
     {"id":{"name":"scr_init_named_locations","path":"scripts/scr_init_named_locations/scr_init_named_locations.yy",},},
     {"id":{"name":"scr_instrument_parse","path":"scripts/scr_instrument_parse/scr_instrument_parse.yy",},},
     {"id":{"name":"scr_is_address_conflicted","path":"scripts/scr_is_address_conflicted/scr_is_address_conflicted.yy",},},
@@ -1295,7 +1296,6 @@
     {"id":{"name":"scr_resolve_screen_ram","path":"scripts/scr_resolve_screen_ram/scr_resolve_screen_ram.yy",},},
     {"id":{"name":"scr_resolve_var_addr","path":"scripts/scr_resolve_var_addr/scr_resolve_var_addr.yy",},},
     {"id":{"name":"scr_resolve_vice_path","path":"scripts/scr_resolve_vice_path/scr_resolve_vice_path.yy",},},
-    {"id":{"name":"scr_import_reu_bmp_batch","path":"scripts/scr_import_reu_bmp_batch/scr_import_reu_bmp_batch.yy",},},
     {"id":{"name":"scr_reu_support","path":"scripts/scr_reu_support/scr_reu_support.yy",},},
     {"id":{"name":"scr_safe_num","path":"scripts/scr_safe_num/scr_safe_num.yy",},},
     {"id":{"name":"scr_save_workspace_as_path","path":"scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.yy",},},

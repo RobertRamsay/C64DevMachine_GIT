@@ -1,0 +1,17 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 2793320..952931e 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -292,8 +292,10 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
+         // Group header row: chevron, group name, member count. The row is
+         // still a real asset row, so everything else about it works.
+         var _gopen = ds_map_exists(asset_group_open, _asset.group);
+-        var _gchev = "\u25B8";
+-        if (_gopen) _gchev = "\u25BE";
++        // ASCII only: the C64 fonts carry no arrow glyphs, so a unicode
++        // chevron draws as a missing-glyph box.
++        var _gchev = "[+]";
++        if (_gopen) _gchev = "[-]";
+         draw_set_color(make_color_rgb(100, 200, 180));
+         draw_text_l(panel_x + 8, _iy + 16, _gchev + " " + _asset.group
+                     + " (" + string(_grp_total[_pos]) + ")");
