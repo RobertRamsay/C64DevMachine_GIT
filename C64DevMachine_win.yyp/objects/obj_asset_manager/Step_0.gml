@@ -770,7 +770,7 @@ for (var _di = 0; _di < ds_list_size(asset_list); _di++) {
 if (_mouse_in_panel) {
     // Closed asset groups collapse to one row, so scroll extent follows the
     // display list rather than the raw asset count.
-    var _count       = array_length(scr_asset_sorted_indices());
+    var _count       = array_length(scr_asset_display_rows());
     var _content_h   = _count * item_h;
     var _visible_h   = _panel_bottom - 38 - (panel_y + 66);
     var _max_visible = floor(_visible_h / item_h) * item_h;
@@ -786,15 +786,96 @@ if (_mouse_in_panel) {
 hover_idx = -1;
 hover_pos = -1;
 if (_mouse_in_panel && _my >= panel_y + 66 && _my <= _panel_bottom - 38) {
-    var _hov_sorted = scr_asset_sorted_indices();
-    for (var _pos = 0; _pos < array_length(_hov_sorted); _pos++) {
+    var _hov_rows = scr_asset_display_rows();
+    for (var _pos = 0; _pos < array_length(_hov_rows); _pos++) {
         var _iy1 = panel_y + 66 + (_pos * item_h) - panel_scroll;
         var _iy2 = _iy1 + item_h;
         if (_iy2 < panel_y + 66 || _iy1 > _panel_bottom - 38) continue;
         if (point_in_rectangle(_mx, _my, panel_x, _iy1, panel_x + panel_w, _iy2)) {
-            hover_idx = _hov_sorted[_pos];
             hover_pos = _pos;
+            // Group headers are not assets; they are hit-tested from
+            // asset_group_rows, which Draw_64 rebuilds each frame.
+            hover_idx = -1;
+            if (_hov_rows[_pos].kind == "asset") hover_idx = _hov_rows[_pos].idx;
             break;
+        }
+    }
+}
+
+// -------------------------------------------------------
+// ASSET GROUP HEADERS + DRAG BETWEEN GROUPS
+// asset_group_rows is rebuilt by Draw_64 every frame, so header geometry here
+// is always one frame old at worst and can never drift from what is drawn.
+// -------------------------------------------------------
+asset_drag_over_group = "";
+asset_drag_over_loose = false;
+
+if (asset_drag_idx >= 0) {
+    if (_mouse_in_panel && _my >= panel_y + 66 && _my <= _panel_bottom - 38) {
+        asset_drag_over_loose = true;
+        for (var _dg = 0; _dg < array_length(asset_group_rows); _dg++) {
+            var _dgr = asset_group_rows[_dg];
+            if (_my >= _dgr.y && _my < _dgr.y + item_h) {
+                asset_drag_over_group = _dgr.group;
+                asset_drag_over_loose = false;
+                break;
+            }
+        }
+    }
+    if (!mouse_check_button(mb_left)) {
+        if (asset_drag_idx < ds_list_size(asset_list)
+        && (asset_drag_over_group != "" || asset_drag_over_loose)) {
+            var _moved = ds_list_find_value(asset_list, asset_drag_idx);
+            if (_moved.group != asset_drag_over_group) {
+                _moved.group          = asset_drag_over_group;
+                global.undo_dirty     = true;
+                global.autosave_dirty = true;
+            }
+        }
+        asset_drag_idx        = -1;
+        asset_drag_armed      = false;
+        asset_drag_over_group = "";
+        asset_drag_over_loose = false;
+    }
+}
+
+if (asset_drag_idx < 0 && mouse_check_button_pressed(mb_left) && _mouse_in_panel) {
+    // Header first: fold toggle, and delete while empty.
+    var _hdr_hit = false;
+    for (var _hg = 0; _hg < array_length(asset_group_rows); _hg++) {
+        var _hgr = asset_group_rows[_hg];
+        if (_my < _hgr.y || _my >= _hgr.y + item_h) continue;
+        _hdr_hit = true;
+        if (_hgr.count == 0
+        &&  point_in_rectangle(_mx, _my, _panel_right - 26, _hgr.y + 8, _panel_right - 8, _hgr.y + item_h - 8)) {
+            for (var _rg = 0; _rg < array_length(asset_groups); _rg++) {
+                if (asset_groups[_rg] != _hgr.group) continue;
+                array_delete(asset_groups, _rg, 1);
+                break;
+            }
+            if (ds_map_exists(asset_group_open, _hgr.group)) {
+                ds_map_delete(asset_group_open, _hgr.group);
+            }
+            global.autosave_dirty = true;
+            global.undo_dirty     = true;
+            break;
+        }
+        if (ds_map_exists(asset_group_open, _hgr.group)) {
+            ds_map_delete(asset_group_open, _hgr.group);
+        }
+        else {
+            ds_map_add(asset_group_open, _hgr.group, true);
+        }
+        panel_scroll = clamp(panel_scroll, 0, panel_max_scroll);
+        break;
+    }
+    // Grip on an asset row arms a drag. Keeping it to the grip leaves the
+    // rest of the row free for rename, EDIT, address and opening the viewer.
+    if (!_hdr_hit && hover_idx >= 0 && hover_pos >= 0) {
+        var _grip_y = panel_y + 66 + (hover_pos * item_h) - panel_scroll;
+        if (point_in_rectangle(_mx, _my, panel_x + 4, _grip_y, panel_x + 26, _grip_y + item_h)) {
+            asset_drag_idx   = hover_idx;
+            asset_drag_armed = true;
         }
     }
 }
@@ -2364,33 +2445,15 @@ if (_asset.type == "META_TILESET") {
     // -------------------------------------------------------
     // ASSET LIST CLICKS
     // -------------------------------------------------------
+    // A press that armed a drag, or landed on a group header, has already
+    // been handled above and must not also act on the row underneath.
+    if (asset_drag_idx >= 0) exit;
     if (_mouse_in_panel && hover_idx >= 0) {
         var _asset  = ds_list_find_value(asset_list, hover_idx);
         var _list_y = panel_y + 66;
         var _iy     = _list_y + (hover_pos * item_h) - panel_scroll;
         var _addr_x = _panel_right - 58;
         var _edit_x = _addr_x - 30;
-
-        // Group header row: the name cell is the fold toggle. Only the row
-        // that heads the group takes this, so members behave normally.
-        if (_asset.group != "") {
-            var _is_head  = true;
-            var _clk_disp = scr_asset_sorted_indices();
-            if (hover_pos > 0 && hover_pos < array_length(_clk_disp)) {
-                var _above = ds_list_find_value(asset_list, _clk_disp[hover_pos - 1]);
-                if (_above.group == _asset.group) _is_head = false;
-            }
-            if (_is_head && point_in_rectangle(_mx, _my, panel_x, _iy, _edit_x, _iy + item_h)) {
-                if (ds_map_exists(asset_group_open, _asset.group)) {
-                    ds_map_delete(asset_group_open, _asset.group);
-                }
-                else {
-                    ds_map_add(asset_group_open, _asset.group, true);
-                }
-                panel_scroll = clamp(panel_scroll, 0, panel_max_scroll);
-                exit;
-            }
-        }
 
         if (_asset.type == "SPRITE_SET" && _asset.file != "")
             scr_asset_spr_cache_sprites(_asset);

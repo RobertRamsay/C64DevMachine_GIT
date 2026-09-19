@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_asset_display_rows",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_asset_display_rows",
+  "parent":{
+    "name":"LOADER_SUPPORT",
+    "path":"folders/SCRIPTS/MACROS/LOADER_SUPPORT.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

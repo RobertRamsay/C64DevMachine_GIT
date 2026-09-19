@@ -341,6 +341,15 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
         var _am  = obj_asset_manager;
         var _ads = load_data.assets;
 
+        // Group registry, and the fold state that goes with it. Groups come
+        // back closed, which is what you want for a forty-frame animation.
+        _am.asset_groups = [];
+        if (variable_struct_exists(load_data, "asset_groups")
+        &&  is_array(load_data.asset_groups)) {
+            _am.asset_groups = load_data.asset_groups;
+        }
+        ds_map_clear(_am.asset_group_open);
+
         for (var _ai = ds_list_size(_am.asset_list) - 1; _ai >= 0; _ai--) {
             var _old = ds_list_find_value(_am.asset_list, _ai);
             if (buffer_exists(_old.buffer)) buffer_delete(_old.buffer);

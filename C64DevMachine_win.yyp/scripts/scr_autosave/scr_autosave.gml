@@ -243,6 +243,9 @@ var _base = "unsaved";
     }
 
 var _root = { nodes:node_data, boxes:box_data, assets:asset_data,
+ // Group registry. Project-level, not per-asset, so an empty group
+ // survives a save with nothing in it.
+ asset_groups:       variable_instance_exists(_am, "asset_groups") ? _am.asset_groups : [],
                   basic_unlocked:global.basic_unlocked, kernal_unlocked:global.kernal_unlocked,
                   code_editor_font_index: code_editor_font_index,
                   map_global_mixed: obj_workspace_manager.map_global_mixed,
