@@ -1,0 +1,598 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index ca26a66..2709025 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1013,6 +1013,7 @@
+     {"id":{"name":"scr_asset_sfx_reload","path":"scripts/scr_asset_sfx_reload/scr_asset_sfx_reload.yy",},},
+     {"id":{"name":"scr_asset_sid_import","path":"scripts/scr_asset_sid_import/scr_asset_sid_import.yy",},},
+     {"id":{"name":"scr_asset_sid_reload","path":"scripts/scr_asset_sid_reload/scr_asset_sid_reload.yy",},},
++    {"id":{"name":"scr_asset_display_rows","path":"scripts/scr_asset_display_rows/scr_asset_display_rows.yy",},},
+     {"id":{"name":"scr_asset_sorted_indices","path":"scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.yy",},},
+     {"id":{"name":"scr_asset_spr_add_blank_slot","path":"scripts/scr_asset_spr_add_blank_slot/scr_asset_spr_add_blank_slot.yy",},},
+     {"id":{"name":"scr_asset_spr_cache_sprites","path":"scripts/scr_asset_spr_cache_sprites/scr_asset_spr_cache_sprites.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index be9838a..f5baa78 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -249,6 +249,17 @@ sfx_picker_field = "asset";
+ 	// Asset groups. A group name present in this map is OPEN; absent is
+ 	// closed, so a newly imported group starts folded with nothing to set.
+ 	asset_group_open      = ds_map_create();
++	// Registered group names. Groups live here, never in asset_list, so the
++	// compile chain, memory bar and asset pickers never see them.
++	asset_groups          = [];
++	// Drag an asset row by its grip to move it between groups.
++	asset_drag_idx        = -1;
++	asset_drag_armed      = false;
++	asset_drag_x          = 0;
++	asset_drag_y          = 0;
++	asset_drag_over_group = "";
++	asset_drag_over_loose = false;
++	asset_group_rows      = [];
+ 
+ 	load_reu_rows_y       = 0;
+ 	load_reu_add_y        = 0;
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 952931e..a2e5a3e 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -102,6 +102,34 @@ for (var _soi = 0; _soi < array_length(_sort_opts); _soi++) {
+     }
+ }
+ 
++// [+GRP] — creates an empty group. Sits after the three sort buttons,
++// which end at panel_x + 208 inside a 270-wide panel.
++var _grp_x1  = _sort_btn_x + (3 * 50) + 4;
++var _grp_x2  = _grp_x1 + 48;
++var _grp_hov = point_in_rectangle(_mx, _my, _grp_x1, _sort_row_y, _grp_x2, _sort_row_y + 16);
++draw_set_color(_grp_hov ? make_color_rgb(120, 200, 255) : make_color_rgb(60, 130, 190));
++draw_rectangle(_grp_x1, _sort_row_y, _grp_x2, _sort_row_y + 16, false);
++draw_set_color(c_white);
++draw_set_halign(fa_center);
++draw_set_color(_grp_hov ? c_black : c_white);
++draw_text_l((_grp_x1 + _grp_x2) / 2, _sort_row_y + 2, "+GRP");
++draw_set_halign(fa_left);
++if (_grp_hov && mouse_check_button_pressed(mb_left)) {
++    scr_prompt_text("Group name", "", function(_text, _ctx) {
++        var _name = string_upper(string_trim(_text));
++        if (_name == "") return;
++        with (obj_asset_manager) {
++            for (var _gi = 0; _gi < array_length(asset_groups); _gi++) {
++                if (asset_groups[_gi] == _name) return;
++            }
++            array_push(asset_groups, _name);
++            ds_map_add(asset_group_open, _name, true);
++            global.autosave_dirty = true;
++            global.undo_dirty     = true;
++        }
++    }, {});
++}
++
+ // -------------------------------------------------------
+ // ASSET LIST
+ // -------------------------------------------------------
+@@ -111,36 +139,51 @@ var _list_y = panel_y + 66;
+ // Sort a display-order index array rather than asset_list itself, so the
+ // underlying list's real insertion order (relied
+ // on everywhere else that indexes asset_list directly) never changes.
+-// Shared with Step_0's hit-testing via scr_asset_sorted_indices() so the
++// Shared with Step_0's hit-testing via scr_asset_display_rows() so the
+ // two can never disagree about display order.
+-var _sorted_indices = scr_asset_sorted_indices();
+-// Closed groups collapse to a single row, so the display count is not the
+-// asset count. Everything below walks the display array.
+-var _disp_n = array_length(_sorted_indices);
+-
+-// Mark the row that heads each group, and how many assets it stands for.
+-var _grp_head  = array_create(_disp_n, false);
+-var _grp_total = array_create(_disp_n, 0);
+-var _prev_grp  = "";
+-for (var _gp = 0; _gp < _disp_n; _gp++) {
+-    var _gname = ds_list_find_value(asset_list, _sorted_indices[_gp]).group;
+-    if (_gname != "" && _gname != _prev_grp) {
+-        _grp_head[_gp] = true;
+-        var _gtot = 0;
+-        for (var _gk = 0; _gk < _count; _gk++) {
+-            if (ds_list_find_value(asset_list, _gk).group == _gname) _gtot++;
+-        }
+-        _grp_total[_gp] = _gtot;
+-    }
+-    _prev_grp = _gname;
+-}
++var _rows   = scr_asset_display_rows();
++var _disp_n = array_length(_rows);
++asset_group_rows = [];   // Step_0 hit-tests group headers against this
+ 
+ for (var _pos = 0; _pos < _disp_n; _pos++) {
+-    var _i     = _sorted_indices[_pos];
+-    var _asset = ds_list_find_value(asset_list, _i);
+-    var _iy    = _list_y + (_pos * item_h) - panel_scroll;
++    var _row = _rows[_pos];
++    var _row_y = _list_y + (_pos * item_h) - panel_scroll;
++
++    // ---- GROUP HEADER ROW ----
++    if (_row.kind == "group") {
++        if (_row_y + item_h > panel_y + 66 && _row_y < _panel_bottom - 38) {
++            var _gh_hot = (asset_drag_idx >= 0 && asset_drag_over_group == _row.group);
++            draw_set_color(_gh_hot ? make_color_rgb(45, 110, 95) : make_color_rgb(18, 40, 38));
++            draw_rectangle(panel_x, _row_y, _panel_right, _row_y + item_h, false);
++            draw_set_color(make_color_rgb(100, 200, 180));
++            draw_rectangle(panel_x, _row_y, panel_x + 4, _row_y + item_h, false);
++            draw_set_font_l(fnt_c64_tiny);
++            var _gchev = "[+]";
++            if (_row.open) _gchev = "[-]";
++            draw_text_l(panel_x + 10, _row_y + 12, _gchev);
++            // The label is a separate hit zone from the chevron: chevron folds,
++            // label renames. Highlighted on hover so the split is visible.
++            var _gl_x = panel_x + 44;
++            var _gl_hov = point_in_rectangle(_mx, _my, _gl_x, _row_y, _panel_right - 30, _row_y + item_h);
++            draw_set_color(_gl_hov ? c_yellow : make_color_rgb(100, 200, 180));
++            draw_text_l(_gl_x, _row_y + 12, _row.group + " (" + string(_row.count) + ")");
++            // Delete: only offered while the group is empty, so no asset
++            // can lose its group by accident.
++            if (_row.count == 0) {
++                draw_set_color(make_color_rgb(100, 30, 30));
++                draw_rectangle(_panel_right - 26, _row_y + 8, _panel_right - 8, _row_y + item_h - 8, false);
++                draw_set_color(c_white);
++                draw_text_l(_panel_right - 21, _row_y + 10, "X");
++            }
++        }
++        array_push(asset_group_rows, { group: _row.group, y: _row_y, count: _row.count });
++        continue;
++    }
+ 
+-	if (_iy + item_h <= panel_y + 66 || _iy >= _panel_bottom - 38) continue;
++    var _i     = _row.idx;
++    var _asset = ds_list_find_value(asset_list, _i);
++    var _iy    = _row_y;
++    if (_iy + item_h <= panel_y + 66 || _iy >= _panel_bottom - 38) continue;
+ 
+    // Row background
+         var _is_load_org = false;
+@@ -288,17 +331,6 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
+             draw_set_color(c_white);
+             draw_line(panel_x + 10 + _cw, _iy + 17, panel_x + 10 + _cw, _iy + item_h - 4);
+         }
+-    } else if (_grp_head[_pos]) {
+-        // Group header row: chevron, group name, member count. The row is
+-        // still a real asset row, so everything else about it works.
+-        var _gopen = ds_map_exists(asset_group_open, _asset.group);
+-        // ASCII only: the C64 fonts carry no arrow glyphs, so a unicode
+-        // chevron draws as a missing-glyph box.
+-        var _gchev = "[+]";
+-        if (_gopen) _gchev = "[-]";
+-        draw_set_color(make_color_rgb(100, 200, 180));
+-        draw_text_l(panel_x + 8, _iy + 16, _gchev + " " + _asset.group
+-                    + " (" + string(_grp_total[_pos]) + ")");
+     } else if (_asset.group != "") {
+         draw_set_color(c_white);
+         draw_text_l(panel_x + 20, _iy + 16, _asset.name);
+@@ -407,6 +439,28 @@ if (_count == 0) {
+ }
+ } // end hide panel when viewer open
+ 
++// -------------------------------------------------------
++// GROUP DRAG FEEDBACK
++// A row being dragged follows the cursor as a label. Releasing over a group
++// header joins it; releasing anywhere else in the list leaves the group.
++// -------------------------------------------------------
++if (asset_drag_idx >= 0 && asset_drag_idx < ds_list_size(asset_list)) {
++    var _dg = ds_list_find_value(asset_list, asset_drag_idx);
++    draw_set_font_l(fnt_c64_tiny);
++    draw_set_alpha(0.9);
++    draw_set_color(make_color_rgb(20, 50, 45));
++    draw_rectangle(_mx + 8, _my - 8, _mx + 8 + string_width(_dg.name) + 16, _my + 10, false);
++    draw_set_alpha(1);
++    draw_set_color(make_color_rgb(100, 200, 180));
++    draw_rectangle(_mx + 8, _my - 8, _mx + 8 + string_width(_dg.name) + 16, _my + 10, true);
++    draw_set_color(c_white);
++    draw_text_l(_mx + 16, _my - 6, _dg.name);
++    if (asset_drag_over_group == "" && asset_drag_over_loose) {
++        draw_set_color(make_color_rgb(200, 160, 40));
++        draw_text_l(panel_x + 6, _panel_bottom - 52, "RELEASE TO UNGROUP");
++    }
++}
++
+ // -------------------------------------------------------
+ // ADD DROPDOWN (drawn over list)
+ // -------------------------------------------------------
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index cbe3e4d..0063e5a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -770,7 +770,7 @@ for (var _di = 0; _di < ds_list_size(asset_list); _di++) {
+ if (_mouse_in_panel) {
+     // Closed asset groups collapse to one row, so scroll extent follows the
+     // display list rather than the raw asset count.
+-    var _count       = array_length(scr_asset_sorted_indices());
++    var _count       = array_length(scr_asset_display_rows());
+     var _content_h   = _count * item_h;
+     var _visible_h   = _panel_bottom - 38 - (panel_y + 66);
+     var _max_visible = floor(_visible_h / item_h) * item_h;
+@@ -786,19 +786,132 @@ if (_mouse_in_panel) {
+ hover_idx = -1;
+ hover_pos = -1;
+ if (_mouse_in_panel && _my >= panel_y + 66 && _my <= _panel_bottom - 38) {
+-    var _hov_sorted = scr_asset_sorted_indices();
+-    for (var _pos = 0; _pos < array_length(_hov_sorted); _pos++) {
++    var _hov_rows = scr_asset_display_rows();
++    for (var _pos = 0; _pos < array_length(_hov_rows); _pos++) {
+         var _iy1 = panel_y + 66 + (_pos * item_h) - panel_scroll;
+         var _iy2 = _iy1 + item_h;
+         if (_iy2 < panel_y + 66 || _iy1 > _panel_bottom - 38) continue;
+         if (point_in_rectangle(_mx, _my, panel_x, _iy1, panel_x + panel_w, _iy2)) {
+-            hover_idx = _hov_sorted[_pos];
+             hover_pos = _pos;
++            // Group headers are not assets; they are hit-tested from
++            // asset_group_rows, which Draw_64 rebuilds each frame.
++            hover_idx = -1;
++            if (_hov_rows[_pos].kind == "asset") hover_idx = _hov_rows[_pos].idx;
+             break;
+         }
+     }
+ }
+ 
++// -------------------------------------------------------
++// ASSET GROUP HEADERS + DRAG BETWEEN GROUPS
++// asset_group_rows is rebuilt by Draw_64 every frame, so header geometry here
++// is always one frame old at worst and can never drift from what is drawn.
++// -------------------------------------------------------
++asset_drag_over_group = "";
++asset_drag_over_loose = false;
++
++if (asset_drag_idx >= 0) {
++    if (_mouse_in_panel && _my >= panel_y + 66 && _my <= _panel_bottom - 38) {
++        asset_drag_over_loose = true;
++        for (var _dg = 0; _dg < array_length(asset_group_rows); _dg++) {
++            var _dgr = asset_group_rows[_dg];
++            if (_my >= _dgr.y && _my < _dgr.y + item_h) {
++                asset_drag_over_group = _dgr.group;
++                asset_drag_over_loose = false;
++                break;
++            }
++        }
++    }
++    if (!mouse_check_button(mb_left)) {
++        if (asset_drag_idx < ds_list_size(asset_list)
++        && (asset_drag_over_group != "" || asset_drag_over_loose)) {
++            var _moved = ds_list_find_value(asset_list, asset_drag_idx);
++            if (_moved.group != asset_drag_over_group) {
++                _moved.group          = asset_drag_over_group;
++                global.undo_dirty     = true;
++                global.autosave_dirty = true;
++            }
++        }
++        asset_drag_idx        = -1;
++        asset_drag_armed      = false;
++        asset_drag_over_group = "";
++        asset_drag_over_loose = false;
++    }
++}
++
++if (asset_drag_idx < 0 && mouse_check_button_pressed(mb_left) && _mouse_in_panel) {
++    // Header first: fold toggle, and delete while empty.
++    var _hdr_hit = false;
++    for (var _hg = 0; _hg < array_length(asset_group_rows); _hg++) {
++        var _hgr = asset_group_rows[_hg];
++        if (_my < _hgr.y || _my >= _hgr.y + item_h) continue;
++        _hdr_hit = true;
++        if (_hgr.count == 0
++        &&  point_in_rectangle(_mx, _my, _panel_right - 26, _hgr.y + 8, _panel_right - 8, _hgr.y + item_h - 8)) {
++            for (var _rg = 0; _rg < array_length(asset_groups); _rg++) {
++                if (asset_groups[_rg] != _hgr.group) continue;
++                array_delete(asset_groups, _rg, 1);
++                break;
++            }
++            if (ds_map_exists(asset_group_open, _hgr.group)) {
++                ds_map_delete(asset_group_open, _hgr.group);
++            }
++            global.autosave_dirty = true;
++            global.undo_dirty     = true;
++            break;
++        }
++        // Label zone renames; the chevron on the left folds.
++        if (_mx >= panel_x + 44) {
++            scr_prompt_text("Rename group", _hgr.group, function(_text, _ctx) {
++                var _new = string_upper(string_trim(_text));
++                if (_new == "" || _new == _ctx.old) return;
++                with (obj_asset_manager) {
++                    // A rename that collides with an existing group would merge
++                    // two groups silently, so it is refused instead.
++                    for (var _ci = 0; _ci < array_length(asset_groups); _ci++) {
++                        if (asset_groups[_ci] == _new) return;
++                    }
++                    for (var _gi = 0; _gi < array_length(asset_groups); _gi++) {
++                        if (asset_groups[_gi] != _ctx.old) continue;
++                        asset_groups[_gi] = _new;
++                        break;
++                    }
++                    // Members carry the name, so every one of them moves too.
++                    for (var _ai = 0; _ai < ds_list_size(asset_list); _ai++) {
++                        var _a = ds_list_find_value(asset_list, _ai);
++                        if (_a.group == _ctx.old) _a.group = _new;
++                    }
++                    if (ds_map_exists(asset_group_open, _ctx.old)) {
++                        ds_map_delete(asset_group_open, _ctx.old);
++                        ds_map_add(asset_group_open, _new, true);
++                    }
++                    global.autosave_dirty = true;
++                    global.undo_dirty     = true;
++                }
++            }, { old: _hgr.group });
++            break;
++        }
++        if (ds_map_exists(asset_group_open, _hgr.group)) {
++            ds_map_delete(asset_group_open, _hgr.group);
++        }
++        else {
++            ds_map_add(asset_group_open, _hgr.group, true);
++        }
++        panel_scroll = clamp(panel_scroll, 0, panel_max_scroll);
++        break;
++    }
++    // The UPPER half of an asset row is the drag handle - that is the type
++    // label strip. The lower half carries the name and keeps the rename click.
++    if (!_hdr_hit && hover_idx >= 0 && hover_pos >= 0) {
++        var _drag_y  = panel_y + 66 + (hover_pos * item_h) - panel_scroll;
++        var _drag_x2 = (_panel_right - 58) - 30;   // stop short of EDIT / address
++        if (point_in_rectangle(_mx, _my, panel_x, _drag_y, _drag_x2, _drag_y + (item_h / 2))) {
++            asset_drag_idx   = hover_idx;
++            asset_drag_armed = true;
++        }
++    }
++}
++
+ // -------------------------------------------------------
+ // ADD DROPDOWN HOVER
+ // -------------------------------------------------------
+@@ -2364,6 +2477,9 @@ if (_asset.type == "META_TILESET") {
+     // -------------------------------------------------------
+     // ASSET LIST CLICKS
+     // -------------------------------------------------------
++    // A press that armed a drag, or landed on a group header, has already
++    // been handled above and must not also act on the row underneath.
++    if (asset_drag_idx >= 0) exit;
+     if (_mouse_in_panel && hover_idx >= 0) {
+         var _asset  = ds_list_find_value(asset_list, hover_idx);
+         var _list_y = panel_y + 66;
+@@ -2371,27 +2487,6 @@ if (_asset.type == "META_TILESET") {
+         var _addr_x = _panel_right - 58;
+         var _edit_x = _addr_x - 30;
+ 
+-        // Group header row: the name cell is the fold toggle. Only the row
+-        // that heads the group takes this, so members behave normally.
+-        if (_asset.group != "") {
+-            var _is_head  = true;
+-            var _clk_disp = scr_asset_sorted_indices();
+-            if (hover_pos > 0 && hover_pos < array_length(_clk_disp)) {
+-                var _above = ds_list_find_value(asset_list, _clk_disp[hover_pos - 1]);
+-                if (_above.group == _asset.group) _is_head = false;
+-            }
+-            if (_is_head && point_in_rectangle(_mx, _my, panel_x, _iy, _edit_x, _iy + item_h)) {
+-                if (ds_map_exists(asset_group_open, _asset.group)) {
+-                    ds_map_delete(asset_group_open, _asset.group);
+-                }
+-                else {
+-                    ds_map_add(asset_group_open, _asset.group, true);
+-                }
+-                panel_scroll = clamp(panel_scroll, 0, panel_max_scroll);
+-                exit;
+-            }
+-        }
+-
+         if (_asset.type == "SPRITE_SET" && _asset.file != "")
+             scr_asset_spr_cache_sprites(_asset);
+ 
+@@ -2408,7 +2503,8 @@ if (_asset.type == "META_TILESET") {
+             exit;
+         }
+ 
+-        if (point_in_rectangle(_mx, _my, panel_x, _iy, _edit_x, _iy + item_h)) {
++        // Lower half only: the upper half is the drag handle for grouping.
++        if (point_in_rectangle(_mx, _my, panel_x, _iy + (item_h / 2), _edit_x, _iy + item_h)) {
+             editing_name   = true;
+             editing_idx    = hover_idx;
+             editing_string = _asset.name;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_display_rows/scr_asset_display_rows.gml b/C64DevMachine_win.yyp/scripts/scr_asset_display_rows/scr_asset_display_rows.gml
+new file mode 100644
+index 0000000..35d8321
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_display_rows/scr_asset_display_rows.gml
+@@ -0,0 +1,71 @@
++/// @function scr_asset_display_rows()
++/// @description The asset panel's row list, in display order, including group
++///              headers. Draw_64 renders this and Step_0 hit-tests against it,
++///              so the two can never disagree about what is on screen.
++///
++///              Each entry is one of:
++///                { kind: "group", idx: -1, group: <name>, count: n, open: bool }
++///                { kind: "asset", idx: <asset_list index>, group: <name or ""> }
++///
++///              A group is a name in obj_asset_manager.asset_groups. It lives
++///              there rather than in asset_list on purpose: nothing that walks
++///              the asset list — the compile chain, the memory bar, the asset
++///              pickers, the address sort — ever has to know groups exist.
++
++function scr_asset_display_rows() {
++    var _sorted = scr_asset_sorted_indices();
++    var _rows   = [];
++
++    // Group membership counts, and the order groups first appear in the sort.
++    var _counts = ds_map_create();
++    var _order  = [];
++    for (var _p = 0; _p < array_length(_sorted); _p++) {
++        var _g = ds_list_find_value(asset_list, _sorted[_p]).group;
++        if (_g == "") continue;
++        if (!ds_map_exists(_counts, _g)) {
++            ds_map_add(_counts, _g, 0);
++            array_push(_order, _g);
++        }
++        _counts[? _g] = _counts[? _g] + 1;
++    }
++
++    // Registered groups that hold nothing still get a row, so a group created
++    // from the panel has somewhere to drop assets onto.
++    for (var _ri = 0; _ri < array_length(asset_groups); _ri++) {
++        var _rg = asset_groups[_ri];
++        if (ds_map_exists(_counts, _rg)) continue;
++        ds_map_add(_counts, _rg, 0);
++        array_push(_order, _rg);
++    }
++
++    // Groups first, in the order above, each header followed by its members
++    // when open. Keeping them at the top stops a long open group from burying
++    // the loose assets underneath it.
++    for (var _oi = 0; _oi < array_length(_order); _oi++) {
++        var _gn   = _order[_oi];
++        var _open = ds_map_exists(asset_group_open, _gn);
++        array_push(_rows, {
++            kind  : "group",
++            idx   : -1,
++            group : _gn,
++            count : _counts[? _gn],
++            open  : _open
++        });
++        if (!_open) continue;
++        for (var _q = 0; _q < array_length(_sorted); _q++) {
++            var _mi = _sorted[_q];
++            if (ds_list_find_value(asset_list, _mi).group != _gn) continue;
++            array_push(_rows, { kind: "asset", idx: _mi, group: _gn });
++        }
++    }
++
++    // Then everything ungrouped, in sort order.
++    for (var _u = 0; _u < array_length(_sorted); _u++) {
++        var _ui = _sorted[_u];
++        if (ds_list_find_value(asset_list, _ui).group != "") continue;
++        array_push(_rows, { kind: "asset", idx: _ui, group: "" });
++    }
++
++    ds_map_destroy(_counts);
++    return _rows;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_display_rows/scr_asset_display_rows.yy b/C64DevMachine_win.yyp/scripts/scr_asset_display_rows/scr_asset_display_rows.yy
+new file mode 100644
+index 0000000..f103fbd
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_display_rows/scr_asset_display_rows.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_asset_display_rows",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_asset_display_rows",
++  "parent":{
++    "name":"LOADER_SUPPORT",
++    "path":"folders/SCRIPTS/MACROS/LOADER_SUPPORT.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml b/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml
+index 11d1d38..9fb74a8 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml
+@@ -55,37 +55,5 @@ function scr_asset_sorted_indices() {
+         });
+     }
+ 
+-    // ---- GROUPING --------------------------------------------------------
+-    // Members of a group are pulled together behind whichever of them sorts
+-    // first, so a group stays contiguous in every sort mode. A closed group
+-    // contributes only that first row — Draw_64 renders it as the group
+-    // header, and because Step_0 hit-tests against this same array the two can
+-    // never disagree about what is on screen.
+-    var _display = [];
+-    var _seen    = ds_map_create();
+-    for (var _p = 0; _p < array_length(_sorted); _p++) {
+-        var _idx = _sorted[_p];
+-        var _g   = ds_list_find_value(asset_list, _idx).group;
+-
+-        if (_g == "") {
+-            array_push(_display, _idx);
+-            continue;
+-        }
+-        if (ds_map_exists(_seen, _g)) continue;
+-        ds_map_add(_seen, _g, true);
+-
+-        // Absent from asset_group_open means closed, so a freshly imported
+-        // group arrives folded without anything having to set a flag.
+-        var _open = ds_map_exists(asset_group_open, _g);
+-
+-        for (var _q = _p; _q < array_length(_sorted); _q++) {
+-            var _mi = _sorted[_q];
+-            if (ds_list_find_value(asset_list, _mi).group != _g) continue;
+-            array_push(_display, _mi);
+-            if (!_open) break;
+-        }
+-    }
+-    ds_map_destroy(_seen);
+-
+-    return _display;
++    return _sorted;
+ }
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+index 97ba05d..3ad1e62 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+@@ -243,6 +243,9 @@ var _base = "unsaved";
+     }
+ 
+ var _root = { nodes:node_data, boxes:box_data, assets:asset_data,
++ // Group registry. Project-level, not per-asset, so an empty group
++ // survives a save with nothing in it.
++ asset_groups:       variable_instance_exists(_am, "asset_groups") ? _am.asset_groups : [],
+                   basic_unlocked:global.basic_unlocked, kernal_unlocked:global.kernal_unlocked,
+                   code_editor_font_index: code_editor_font_index,
+                   map_global_mixed: obj_workspace_manager.map_global_mixed,
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 6191be1..68cf4f0 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -341,6 +341,15 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
+         var _am  = obj_asset_manager;
+         var _ads = load_data.assets;
+ 
++        // Group registry, and the fold state that goes with it. Groups come
++        // back closed, which is what you want for a forty-frame animation.
++        _am.asset_groups = [];
++        if (variable_struct_exists(load_data, "asset_groups")
++        &&  is_array(load_data.asset_groups)) {
++            _am.asset_groups = load_data.asset_groups;
++        }
++        ds_map_clear(_am.asset_group_open);
++
+         for (var _ai = ds_list_size(_am.asset_list) - 1; _ai >= 0; _ai--) {
+             var _old = ds_list_find_value(_am.asset_list, _ai);
+             if (buffer_exists(_old.buffer)) buffer_delete(_old.buffer);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+index 4fd4c21..2d4caa3 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+@@ -361,6 +361,9 @@
+ 		        nodes:              node_data,
+ 		        boxes:              box_data,
+ 		        assets:             asset_data,
++		        // Group registry. Project-level, not per-asset, so an empty group
++		        // survives a save with nothing in it.
++		        asset_groups:       variable_instance_exists(_am, "asset_groups") ? _am.asset_groups : [],
+ 		        basic_unlocked:     global.basic_unlocked,
+ 		        kernal_unlocked:    global.kernal_unlocked,
+ 		        code_editor_font_index: code_editor_font_index,
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+index b06ac0c..ead14b5 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+@@ -347,6 +347,9 @@ if (instance_exists(obj_asset_manager)) {
+ 	        nodes:              node_data,
+ 	        boxes:              box_data,
+ 	        assets:             asset_data,
++	        // Group registry. Project-level, not per-asset, so an empty group
++	        // survives a save with nothing in it.
++	        asset_groups:       variable_instance_exists(_am, "asset_groups") ? _am.asset_groups : [],
+ 	        basic_unlocked:     global.basic_unlocked,
+ 	        kernal_unlocked:    global.kernal_unlocked,
+ 	        code_editor_font_index: code_editor_font_index,

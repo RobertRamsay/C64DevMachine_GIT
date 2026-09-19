@@ -102,6 +102,34 @@ for (var _soi = 0; _soi < array_length(_sort_opts); _soi++) {
     }
 }
 
+// [+GRP] — creates an empty group. Sits after the three sort buttons,
+// which end at panel_x + 208 inside a 270-wide panel.
+var _grp_x1  = _sort_btn_x + (3 * 50) + 4;
+var _grp_x2  = _grp_x1 + 48;
+var _grp_hov = point_in_rectangle(_mx, _my, _grp_x1, _sort_row_y, _grp_x2, _sort_row_y + 16);
+draw_set_color(_grp_hov ? make_color_rgb(120, 200, 255) : make_color_rgb(60, 130, 190));
+draw_rectangle(_grp_x1, _sort_row_y, _grp_x2, _sort_row_y + 16, false);
+draw_set_color(c_white);
+draw_set_halign(fa_center);
+draw_set_color(_grp_hov ? c_black : c_white);
+draw_text_l((_grp_x1 + _grp_x2) / 2, _sort_row_y + 2, "+GRP");
+draw_set_halign(fa_left);
+if (_grp_hov && mouse_check_button_pressed(mb_left)) {
+    scr_prompt_text("Group name", "", function(_text, _ctx) {
+        var _name = string_upper(string_trim(_text));
+        if (_name == "") return;
+        with (obj_asset_manager) {
+            for (var _gi = 0; _gi < array_length(asset_groups); _gi++) {
+                if (asset_groups[_gi] == _name) return;
+            }
+            array_push(asset_groups, _name);
+            ds_map_add(asset_group_open, _name, true);
+            global.autosave_dirty = true;
+            global.undo_dirty     = true;
+        }
+    }, {});
+}
+
 // -------------------------------------------------------
 // ASSET LIST
 // -------------------------------------------------------
@@ -111,36 +139,51 @@ var _list_y = panel_y + 66;
 // Sort a display-order index array rather than asset_list itself, so the
 // underlying list's real insertion order (relied
 // on everywhere else that indexes asset_list directly) never changes.
-// Shared with Step_0's hit-testing via scr_asset_sorted_indices() so the
+// Shared with Step_0's hit-testing via scr_asset_display_rows() so the
 // two can never disagree about display order.
-var _sorted_indices = scr_asset_sorted_indices();
-// Closed groups collapse to a single row, so the display count is not the
-// asset count. Everything below walks the display array.
-var _disp_n = array_length(_sorted_indices);
-
-// Mark the row that heads each group, and how many assets it stands for.
-var _grp_head  = array_create(_disp_n, false);
-var _grp_total = array_create(_disp_n, 0);
-var _prev_grp  = "";
-for (var _gp = 0; _gp < _disp_n; _gp++) {
-    var _gname = ds_list_find_value(asset_list, _sorted_indices[_gp]).group;
-    if (_gname != "" && _gname != _prev_grp) {
-        _grp_head[_gp] = true;
-        var _gtot = 0;
-        for (var _gk = 0; _gk < _count; _gk++) {
-            if (ds_list_find_value(asset_list, _gk).group == _gname) _gtot++;
-        }
-        _grp_total[_gp] = _gtot;
-    }
-    _prev_grp = _gname;
-}
+var _rows   = scr_asset_display_rows();
+var _disp_n = array_length(_rows);
+asset_group_rows = [];   // Step_0 hit-tests group headers against this
 
 for (var _pos = 0; _pos < _disp_n; _pos++) {
-    var _i     = _sorted_indices[_pos];
-    var _asset = ds_list_find_value(asset_list, _i);
-    var _iy    = _list_y + (_pos * item_h) - panel_scroll;
+    var _row = _rows[_pos];
+    var _row_y = _list_y + (_pos * item_h) - panel_scroll;
 
-	if (_iy + item_h <= panel_y + 66 || _iy >= _panel_bottom - 38) continue;
+    // ---- GROUP HEADER ROW ----
+    if (_row.kind == "group") {
+        if (_row_y + item_h > panel_y + 66 && _row_y < _panel_bottom - 38) {
+            var _gh_hot = (asset_drag_idx >= 0 && asset_drag_over_group == _row.group);
+            draw_set_color(_gh_hot ? make_color_rgb(45, 110, 95) : make_color_rgb(18, 40, 38));
+            draw_rectangle(panel_x, _row_y, _panel_right, _row_y + item_h, false);
+            draw_set_color(make_color_rgb(100, 200, 180));
+            draw_rectangle(panel_x, _row_y, panel_x + 4, _row_y + item_h, false);
+            draw_set_font_l(fnt_c64_tiny);
+            var _gchev = "[+]";
+            if (_row.open) _gchev = "[-]";
+            draw_text_l(panel_x + 10, _row_y + 12, _gchev);
+            // The label is a separate hit zone from the chevron: chevron folds,
+            // label renames. Highlighted on hover so the split is visible.
+            var _gl_x = panel_x + 44;
+            var _gl_hov = point_in_rectangle(_mx, _my, _gl_x, _row_y, _panel_right - 30, _row_y + item_h);
+            draw_set_color(_gl_hov ? c_yellow : make_color_rgb(100, 200, 180));
+            draw_text_l(_gl_x, _row_y + 12, _row.group + " (" + string(_row.count) + ")");
+            // Delete: only offered while the group is empty, so no asset
+            // can lose its group by accident.
+            if (_row.count == 0) {
+                draw_set_color(make_color_rgb(100, 30, 30));
+                draw_rectangle(_panel_right - 26, _row_y + 8, _panel_right - 8, _row_y + item_h - 8, false);
+                draw_set_color(c_white);
+                draw_text_l(_panel_right - 21, _row_y + 10, "X");
+            }
+        }
+        array_push(asset_group_rows, { group: _row.group, y: _row_y, count: _row.count });
+        continue;
+    }
+
+    var _i     = _row.idx;
+    var _asset = ds_list_find_value(asset_list, _i);
+    var _iy    = _row_y;
+    if (_iy + item_h <= panel_y + 66 || _iy >= _panel_bottom - 38) continue;
 
    // Row background
         var _is_load_org = false;
@@ -288,17 +331,6 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
             draw_set_color(c_white);
             draw_line(panel_x + 10 + _cw, _iy + 17, panel_x + 10 + _cw, _iy + item_h - 4);
         }
-    } else if (_grp_head[_pos]) {
-        // Group header row: chevron, group name, member count. The row is
-        // still a real asset row, so everything else about it works.
-        var _gopen = ds_map_exists(asset_group_open, _asset.group);
-        // ASCII only: the C64 fonts carry no arrow glyphs, so a unicode
-        // chevron draws as a missing-glyph box.
-        var _gchev = "[+]";
-        if (_gopen) _gchev = "[-]";
-        draw_set_color(make_color_rgb(100, 200, 180));
-        draw_text_l(panel_x + 8, _iy + 16, _gchev + " " + _asset.group
-                    + " (" + string(_grp_total[_pos]) + ")");
     } else if (_asset.group != "") {
         draw_set_color(c_white);
         draw_text_l(panel_x + 20, _iy + 16, _asset.name);
@@ -406,6 +438,28 @@ if (_count == 0) {
     draw_set_halign(fa_left);
 }
 } // end hide panel when viewer open
+
+// -------------------------------------------------------
+// GROUP DRAG FEEDBACK
+// A row being dragged follows the cursor as a label. Releasing over a group
+// header joins it; releasing anywhere else in the list leaves the group.
+// -------------------------------------------------------
+if (asset_drag_idx >= 0 && asset_drag_idx < ds_list_size(asset_list)) {
+    var _dg = ds_list_find_value(asset_list, asset_drag_idx);
+    draw_set_font_l(fnt_c64_tiny);
+    draw_set_alpha(0.9);
+    draw_set_color(make_color_rgb(20, 50, 45));
+    draw_rectangle(_mx + 8, _my - 8, _mx + 8 + string_width(_dg.name) + 16, _my + 10, false);
+    draw_set_alpha(1);
+    draw_set_color(make_color_rgb(100, 200, 180));
+    draw_rectangle(_mx + 8, _my - 8, _mx + 8 + string_width(_dg.name) + 16, _my + 10, true);
+    draw_set_color(c_white);
+    draw_text_l(_mx + 16, _my - 6, _dg.name);
+    if (asset_drag_over_group == "" && asset_drag_over_loose) {
+        draw_set_color(make_color_rgb(200, 160, 40));
+        draw_text_l(panel_x + 6, _panel_bottom - 52, "RELEASE TO UNGROUP");
+    }
+}
 
 // -------------------------------------------------------
 // ADD DROPDOWN (drawn over list)

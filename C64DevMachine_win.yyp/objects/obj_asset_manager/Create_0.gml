@@ -249,6 +249,17 @@ sfx_picker_field = "asset";
 	// Asset groups. A group name present in this map is OPEN; absent is
 	// closed, so a newly imported group starts folded with nothing to set.
 	asset_group_open      = ds_map_create();
+	// Registered group names. Groups live here, never in asset_list, so the
+	// compile chain, memory bar and asset pickers never see them.
+	asset_groups          = [];
+	// Drag an asset row by its grip to move it between groups.
+	asset_drag_idx        = -1;
+	asset_drag_armed      = false;
+	asset_drag_x          = 0;
+	asset_drag_y          = 0;
+	asset_drag_over_group = "";
+	asset_drag_over_loose = false;
+	asset_group_rows      = [];
 
 	load_reu_rows_y       = 0;
 	load_reu_add_y        = 0;
