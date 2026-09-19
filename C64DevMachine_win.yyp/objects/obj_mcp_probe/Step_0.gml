@@ -1,5 +1,38 @@
 // Stop immediately if the running editor changes edition.
 if (global.lite != 0) { instance_destroy(); exit; }
+// --- MCP-CON one-click setup button ---------------------------------------
+// Poll the helper's status file while it runs. Cheap: twice a second.
+if (setup_state == "running") {
+    if (current_time >= setup_poll_at) {
+        setup_poll_at = current_time + 500;
+        setup_poll();
+    }
+    if (setup_state == "running" && current_time > setup_deadline) {
+        setup_state  = "failed";
+        setup_status = "TIMEOUT";
+        setup_detail = "setup did not finish; see mcp-setup-log.txt";
+        probe_notice_until = current_time + 12000;
+    }
+}
+// Draw_64 recalculates the rectangle every frame; hit-test against it here.
+setup_hover = false;
+if (setup_btn_x2 > 0
+    && probe_state == "off" && (setup_state == "idle" || setup_state == "failed")) {
+    var _setup_mx = device_mouse_x_to_gui(0);
+    var _setup_my = device_mouse_y_to_gui(0);
+    if (point_in_rectangle(_setup_mx, _setup_my,
+                           setup_btn_x1, setup_btn_y1,
+                           setup_btn_x2, setup_btn_y2)) {
+        setup_hover = true;
+        if (mouse_check_button_pressed(mb_left)
+            && !global.ui_click_consumed && !global.any_picker_open) {
+            global.ui_click_consumed = true;
+            setup_run();
+            exit;
+        }
+    }
+}
+
 // The normal editor and all networking handlers remain untouched.
 if (keyboard_check(vk_control) && keyboard_check(vk_shift)
     && keyboard_check_pressed(vk_f12)) {

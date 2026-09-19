@@ -14,6 +14,27 @@ probe_status = "OFF - Ctrl+Shift+F12 to pair";
 probe_notice_until = current_time + 6000;
 probe_max_line = 32768;
 
+// --- MCP-CON one-click setup (Pro only) ------------------------------------
+// The button runs tools/cdm-mcp/setup-mcp.bat (setup-mcp.command on macOS),
+// which checks for Node.js, registers the bridge with any installed assistant
+// CLI, and leaves a pairing key for this editor to collect. The helper is
+// launched hidden and detached, so the editor never blocks; progress is read
+// back from a two-line status file.
+setup_state       = "idle";   // idle | running | done | failed
+setup_status      = "";       // status token from the helper
+setup_detail      = "";       // one line of UI-safe detail from the helper
+setup_poll_at     = 0;
+setup_deadline    = 0;
+setup_hover       = false;
+setup_btn_x1      = 0;
+setup_btn_y1      = 0;
+setup_btn_x2      = 0;
+setup_btn_y2      = 0;
+setup_status_path = game_save_id + "mcp-setup-status.txt";
+setup_pair_path   = game_save_id + "mcp-pair.txt";
+// When set, probe_start uses this instead of touching the clipboard.
+probe_pair_key    = "";
+
 probe_stop = function(_reason) {
     if (probe_socket >= 0) network_destroy(probe_socket);
     probe_socket = -1;
@@ -572,7 +593,14 @@ probe_start = function(_fresh) {
     if (global.lite != 0) { probe_stop("OFF - Pro edition required"); return; }
     // Explicit shortcut opt-in is the ONLY clipboard access in this object.
     var _key = probe_saved_key;
-    if (_fresh || _key == "") _key = string_trim(clipboard_get_text());
+    if (probe_pair_key != "") {
+        // Collected from the MCP-CON helper; no clipboard access at all.
+        _key = probe_pair_key;
+        probe_pair_key = "";
+    }
+    else if (_fresh || _key == "") {
+        _key = string_trim(clipboard_get_text());
+    }
     var _parts = string_split(_key, ":");
     if (array_length(_parts) != 3 || _parts[0] != "cdm1") {
         probe_stop("OFF - copy the pairing key first (see tools/cdm-mcp/README.md)");
@@ -608,6 +636,111 @@ probe_start = function(_fresh) {
         || network_connect_raw_async(probe_socket, "127.0.0.1", _port) < 0) {
         probe_stop("OFF - connection failed; start the local bridge first");
     }
+};
+
+/// Locate the platform setup helper that the MCP-CON button runs. Returns ""
+/// when the optional tools/cdm-mcp folder was not shipped alongside the editor.
+setup_script_path = function() {
+    var _candidates = [
+        working_directory + "tools\\cdm-mcp\\setup-mcp.bat",
+        working_directory + "tools/cdm-mcp/setup-mcp.bat",
+        program_directory + "tools\\cdm-mcp\\setup-mcp.bat",
+        program_directory + "tools/cdm-mcp/setup-mcp.bat"
+    ];
+    if (os_type != os_windows) {
+        _candidates = [
+            working_directory + "tools/cdm-mcp/setup-mcp.command",
+            program_directory + "tools/cdm-mcp/setup-mcp.command"
+        ];
+    }
+    for (var _i = 0; _i < array_length(_candidates); _i++) {
+        if (file_exists(_candidates[_i])) return _candidates[_i];
+    }
+    return "";
+};
+
+/// Start the one-click setup. ShellExecute returns immediately, so this never
+/// stalls a frame even when Node.js has to be downloaded and installed.
+setup_run = function() {
+    if (setup_state == "running") return;
+    var _script = setup_script_path();
+    if (_script == "") {
+        setup_state  = "failed";
+        setup_status = "MISSING";
+        setup_detail = "setup helper not found in tools/cdm-mcp";
+        probe_notice_until = current_time + 10000;
+        return;
+    }
+    if (file_exists(setup_status_path)) file_delete(setup_status_path);
+    if (file_exists(setup_pair_path)) file_delete(setup_pair_path);
+    setup_state    = "running";
+    setup_status   = "CHECKING";
+    setup_detail   = "Starting setup";
+    setup_poll_at  = current_time + 400;
+    setup_deadline = current_time + 600000;
+    // The helper writes its status files into the folder passed as argument 1,
+    // so both sides agree on one location whatever the edition is called.
+    execute_shell_simple(_script, "\"" + game_save_id + "\"", "open", 0,
+                         filename_dir(_script));
+};
+
+/// Take the pairing key the helper left, then delete it straight away.
+setup_adopt_key = function() {
+    if (!file_exists(setup_pair_path)) {
+        setup_state  = "failed";
+        setup_status = "TOKEN_FAILED";
+        setup_detail = "setup finished but wrote no pairing key";
+        return;
+    }
+    var _key = "";
+    var _file = file_text_open_read(setup_pair_path);
+    if (_file >= 0) {
+        _key = string_trim(file_text_read_string(_file));
+        file_text_close(_file);
+    }
+    file_delete(setup_pair_path);
+    if (_key == "") {
+        setup_state  = "failed";
+        setup_status = "TOKEN_FAILED";
+        setup_detail = "pairing key file was empty";
+        return;
+    }
+    probe_pair_key  = _key;
+    probe_auto_pair = true;
+    probe_start(false);
+};
+
+/// Read the two-line status file the helper rewrites as it progresses.
+setup_poll = function() {
+    if (!file_exists(setup_status_path)) return;
+    var _file = file_text_open_read(setup_status_path);
+    if (_file < 0) return;
+    var _token  = "";
+    var _detail = "";
+    if (!file_text_eof(_file)) {
+        _token = string_trim(file_text_read_string(_file));
+        file_text_readln(_file);
+    }
+    if (!file_text_eof(_file)) {
+        _detail = string_trim(file_text_read_string(_file));
+    }
+    file_text_close(_file);
+    if (_token == "") return;
+    setup_status = _token;
+    setup_detail = string_copy(_detail, 1, 90);
+    if (_token == "DONE") {
+        setup_state = "done";
+        setup_adopt_key();
+        return;
+    }
+    if (_token == "CHECKING" || _token == "REGISTERING"
+        || _token == "NODE_MISSING" || _token == "NODE_INSTALLING") {
+        setup_state = "running";
+        return;
+    }
+    // Anything else is terminal: NO_HOST, NO_WINGET, NODE_TOO_OLD, and so on.
+    setup_state = "failed";
+    probe_notice_until = current_time + 12000;
 };
 
 // Pair once, then reconnect without reading or altering the clipboard. Shift+Alt+Ctrl+F12 replaces the stored key.

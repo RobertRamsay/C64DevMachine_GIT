@@ -1,0 +1,594 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml
+index a34001b..dc71120 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml
+@@ -14,6 +14,27 @@ probe_status = "OFF - Ctrl+Shift+F12 to pair";
+ probe_notice_until = current_time + 6000;
+ probe_max_line = 32768;
+ 
++// --- MCP-CON one-click setup (Pro only) ------------------------------------
++// The button runs tools/cdm-mcp/setup-mcp.bat (setup-mcp.command on macOS),
++// which checks for Node.js, registers the bridge with any installed assistant
++// CLI, and leaves a pairing key for this editor to collect. The helper is
++// launched hidden and detached, so the editor never blocks; progress is read
++// back from a two-line status file.
++setup_state       = "idle";   // idle | running | done | failed
++setup_status      = "";       // status token from the helper
++setup_detail      = "";       // one line of UI-safe detail from the helper
++setup_poll_at     = 0;
++setup_deadline    = 0;
++setup_hover       = false;
++setup_btn_x1      = 0;
++setup_btn_y1      = 0;
++setup_btn_x2      = 0;
++setup_btn_y2      = 0;
++setup_status_path = game_save_id + "mcp-setup-status.txt";
++setup_pair_path   = game_save_id + "mcp-pair.txt";
++// When set, probe_start uses this instead of touching the clipboard.
++probe_pair_key    = "";
++
+ probe_stop = function(_reason) {
+     if (probe_socket >= 0) network_destroy(probe_socket);
+     probe_socket = -1;
+@@ -572,7 +593,14 @@ probe_start = function(_fresh) {
+     if (global.lite != 0) { probe_stop("OFF - Pro edition required"); return; }
+     // Explicit shortcut opt-in is the ONLY clipboard access in this object.
+     var _key = probe_saved_key;
+-    if (_fresh || _key == "") _key = string_trim(clipboard_get_text());
++    if (probe_pair_key != "") {
++        // Collected from the MCP-CON helper; no clipboard access at all.
++        _key = probe_pair_key;
++        probe_pair_key = "";
++    }
++    else if (_fresh || _key == "") {
++        _key = string_trim(clipboard_get_text());
++    }
+     var _parts = string_split(_key, ":");
+     if (array_length(_parts) != 3 || _parts[0] != "cdm1") {
+         probe_stop("OFF - copy the pairing key first (see tools/cdm-mcp/README.md)");
+@@ -610,6 +638,111 @@ probe_start = function(_fresh) {
+     }
+ };
+ 
++/// Locate the platform setup helper that the MCP-CON button runs. Returns ""
++/// when the optional tools/cdm-mcp folder was not shipped alongside the editor.
++setup_script_path = function() {
++    var _candidates = [
++        working_directory + "tools\\cdm-mcp\\setup-mcp.bat",
++        working_directory + "tools/cdm-mcp/setup-mcp.bat",
++        program_directory + "tools\\cdm-mcp\\setup-mcp.bat",
++        program_directory + "tools/cdm-mcp/setup-mcp.bat"
++    ];
++    if (os_type != os_windows) {
++        _candidates = [
++            working_directory + "tools/cdm-mcp/setup-mcp.command",
++            program_directory + "tools/cdm-mcp/setup-mcp.command"
++        ];
++    }
++    for (var _i = 0; _i < array_length(_candidates); _i++) {
++        if (file_exists(_candidates[_i])) return _candidates[_i];
++    }
++    return "";
++};
++
++/// Start the one-click setup. ShellExecute returns immediately, so this never
++/// stalls a frame even when Node.js has to be downloaded and installed.
++setup_run = function() {
++    if (setup_state == "running") return;
++    var _script = setup_script_path();
++    if (_script == "") {
++        setup_state  = "failed";
++        setup_status = "MISSING";
++        setup_detail = "setup helper not found in tools/cdm-mcp";
++        probe_notice_until = current_time + 10000;
++        return;
++    }
++    if (file_exists(setup_status_path)) file_delete(setup_status_path);
++    if (file_exists(setup_pair_path)) file_delete(setup_pair_path);
++    setup_state    = "running";
++    setup_status   = "CHECKING";
++    setup_detail   = "Starting setup";
++    setup_poll_at  = current_time + 400;
++    setup_deadline = current_time + 600000;
++    // The helper writes its status files into the folder passed as argument 1,
++    // so both sides agree on one location whatever the edition is called.
++    execute_shell_simple(_script, "\"" + game_save_id + "\"", "open", 0,
++                         filename_dir(_script));
++};
++
++/// Take the pairing key the helper left, then delete it straight away.
++setup_adopt_key = function() {
++    if (!file_exists(setup_pair_path)) {
++        setup_state  = "failed";
++        setup_status = "TOKEN_FAILED";
++        setup_detail = "setup finished but wrote no pairing key";
++        return;
++    }
++    var _key = "";
++    var _file = file_text_open_read(setup_pair_path);
++    if (_file >= 0) {
++        _key = string_trim(file_text_read_string(_file));
++        file_text_close(_file);
++    }
++    file_delete(setup_pair_path);
++    if (_key == "") {
++        setup_state  = "failed";
++        setup_status = "TOKEN_FAILED";
++        setup_detail = "pairing key file was empty";
++        return;
++    }
++    probe_pair_key  = _key;
++    probe_auto_pair = true;
++    probe_start(false);
++};
++
++/// Read the two-line status file the helper rewrites as it progresses.
++setup_poll = function() {
++    if (!file_exists(setup_status_path)) return;
++    var _file = file_text_open_read(setup_status_path);
++    if (_file < 0) return;
++    var _token  = "";
++    var _detail = "";
++    if (!file_text_eof(_file)) {
++        _token = string_trim(file_text_read_string(_file));
++        file_text_readln(_file);
++    }
++    if (!file_text_eof(_file)) {
++        _detail = string_trim(file_text_read_string(_file));
++    }
++    file_text_close(_file);
++    if (_token == "") return;
++    setup_status = _token;
++    setup_detail = string_copy(_detail, 1, 90);
++    if (_token == "DONE") {
++        setup_state = "done";
++        setup_adopt_key();
++        return;
++    }
++    if (_token == "CHECKING" || _token == "REGISTERING"
++        || _token == "NODE_MISSING" || _token == "NODE_INSTALLING") {
++        setup_state = "running";
++        return;
++    }
++    // Anything else is terminal: NO_HOST, NO_WINGET, NODE_TOO_OLD, and so on.
++    setup_state = "failed";
++    probe_notice_until = current_time + 12000;
++};
++
+ // Pair once, then reconnect without reading or altering the clipboard. Shift+Alt+Ctrl+F12 replaces the stored key.
+ ini_open("cdm-mcp-pairing.ini");
+ probe_saved_key = ini_read_string("pairing", "key", "");
+diff --git a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Draw_64.gml
+index 9143f32..d82a82b 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Draw_64.gml
+@@ -1,4 +1,81 @@
+ if (global.lite != 0) exit;
++
++// --- MCP-CON one-click setup button ---------------------------------------
++// Bottom-right occupancy at this GUI size, measured from the drawing code:
++//   asset panel     y 410 .. gui_h-100   (obj_asset_manager, _panel_bottom)
++//   snapshot button y gui_h-50 .. gui_h-10 (40x40 around 1886,1050)
++//   memory bar      y gui_h-40 .. gui_h-25 (scr_draw_memory_bar)
++//   MCP badge       y gui_h-32 .. gui_h-7  (below)
++// The only clear band is gui_h-100 .. gui_h-50, so the button sits inside it
++// with a 12px gap top and bottom. Right edge stops at gui_w-30, inside the
++// asset panel's own right edge, so nothing is ever covered.
++var _setup_gui_w = display_get_gui_width();
++var _setup_gui_h = display_get_gui_height();
++setup_btn_y1 = _setup_gui_h - 88;
++setup_btn_y2 = _setup_gui_h - 62;
++setup_btn_x2 = _setup_gui_w - 30;
++
++var _setup_label = "";
++var _setup_clickable = false;
++if (probe_state == "off" && setup_state == "idle") {
++    _setup_label = "[ MCP-CON ]";
++    _setup_clickable = true;
++}
++else if (probe_state == "off" && setup_state == "failed") {
++    _setup_label = "[ MCP-CON ] " + setup_detail;
++    _setup_clickable = true;
++}
++else if (setup_state == "running") {
++    _setup_label = "MCP: " + setup_detail;
++}
++else if (setup_state == "done" && probe_state != "ready") {
++    _setup_label = "MCP - awaiting instructions";
++}
++
++// Never draw over a modal, the asset viewer, or a hidden UI.
++var _setup_blocked = false;
++if (!instance_exists(obj_workspace_manager)) _setup_blocked = true;
++else if (obj_workspace_manager.hideui) _setup_blocked = true;
++if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) _setup_blocked = true;
++if (instance_exists(obj_message_box) || instance_exists(obj_question_box)) _setup_blocked = true;
++
++if (_setup_label != "" && !_setup_blocked) {
++    var _s_font = draw_get_font();
++    var _s_alpha = draw_get_alpha();
++    var _s_colour = draw_get_colour();
++    var _s_ha = draw_get_halign();
++    var _s_va = draw_get_valign();
++    draw_set_font(-1);
++    draw_set_halign(fa_left);
++    draw_set_valign(fa_top);
++    var _s_w = string_width(_setup_label) + 20;
++    setup_btn_x1 = max(8, setup_btn_x2 - _s_w);
++    draw_set_alpha(0.9);
++    draw_set_colour(c_black);
++    draw_rectangle(setup_btn_x1, setup_btn_y1, setup_btn_x2, setup_btn_y2, false);
++    draw_set_alpha(1);
++    if (_setup_clickable && setup_hover) draw_set_colour(c_yellow);
++    else draw_set_colour(c_silver);
++    draw_rectangle(setup_btn_x1, setup_btn_y1, setup_btn_x2, setup_btn_y2, true);
++    if (setup_state == "failed") draw_set_colour(c_orange);
++    else if (setup_state == "done") draw_set_colour(c_lime);
++    else if (_setup_clickable && setup_hover) draw_set_colour(c_yellow);
++    else draw_set_colour(c_white);
++    draw_text(setup_btn_x1 + 10, setup_btn_y1 + 4, _setup_label);
++    draw_set_font(_s_font);
++    draw_set_alpha(_s_alpha);
++    draw_set_colour(_s_colour);
++    draw_set_halign(_s_ha);
++    draw_set_valign(_s_va);
++}
++else {
++    // Keep the hit rectangle empty whenever the button is not on screen.
++    setup_btn_x1 = 0;
++    setup_btn_y1 = 0;
++    setup_btn_x2 = 0;
++    setup_btn_y2 = 0;
++}
++
+ if (probe_state == "off" && current_time > probe_notice_until) exit;
+ // Save/restore draw state so this optional badge cannot affect editor drawing.
+ var _font = draw_get_font();
+diff --git a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Step_0.gml
+index 6218cf3..39e7f12 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Step_0.gml
+@@ -1,5 +1,38 @@
+ // Stop immediately if the running editor changes edition.
+ if (global.lite != 0) { instance_destroy(); exit; }
++// --- MCP-CON one-click setup button ---------------------------------------
++// Poll the helper's status file while it runs. Cheap: twice a second.
++if (setup_state == "running") {
++    if (current_time >= setup_poll_at) {
++        setup_poll_at = current_time + 500;
++        setup_poll();
++    }
++    if (setup_state == "running" && current_time > setup_deadline) {
++        setup_state  = "failed";
++        setup_status = "TIMEOUT";
++        setup_detail = "setup did not finish; see mcp-setup-log.txt";
++        probe_notice_until = current_time + 12000;
++    }
++}
++// Draw_64 recalculates the rectangle every frame; hit-test against it here.
++setup_hover = false;
++if (setup_btn_x2 > 0
++    && probe_state == "off" && (setup_state == "idle" || setup_state == "failed")) {
++    var _setup_mx = device_mouse_x_to_gui(0);
++    var _setup_my = device_mouse_y_to_gui(0);
++    if (point_in_rectangle(_setup_mx, _setup_my,
++                           setup_btn_x1, setup_btn_y1,
++                           setup_btn_x2, setup_btn_y2)) {
++        setup_hover = true;
++        if (mouse_check_button_pressed(mb_left)
++            && !global.ui_click_consumed && !global.any_picker_open) {
++            global.ui_click_consumed = true;
++            setup_run();
++            exit;
++        }
++    }
++}
++
+ // The normal editor and all networking handlers remain untouched.
+ if (keyboard_check(vk_control) && keyboard_check(vk_shift)
+     && keyboard_check_pressed(vk_f12)) {
+diff --git a/tools/cdm-mcp/setup-mcp.bat b/tools/cdm-mcp/setup-mcp.bat
+new file mode 100644
+index 0000000..82b5a50
+--- /dev/null
++++ b/tools/cdm-mcp/setup-mcp.bat
+@@ -0,0 +1,168 @@
++@echo off
++setlocal EnableDelayedExpansion
++
++rem ---------------------------------------------------------------------------
++rem  C64 Dev Machine - MCP setup helper (Pro edition)
++rem
++rem  Launched by the MCP-CON button via execute_shell_simple, hidden and
++rem  detached. Reports progress by rewriting a small status file the editor
++rem  polls, so the editor never blocks while this runs.
++rem
++rem  Usage:  setup-mcp.bat [status_folder]
++rem
++rem  Writes into <status_folder>:
++rem      mcp-setup-status.txt   line 1 = status token, line 2 = UI detail
++rem      mcp-pair.txt           the pairing key, consumed and deleted by the
++rem                             editor the moment it is read
++rem      mcp-setup-log.txt      verbose log for troubleshooting
++rem
++rem  Status tokens:
++rem      CHECKING           looking for Node.js
++rem      NODE_MISSING       Node.js not found
++rem      NODE_INSTALLING    winget install running (shows a Windows prompt)
++rem      NODE_INSTALL_FAIL  install did not complete
++rem      NODE_TOO_OLD       found Node.js, but older than v22
++rem      NO_WINGET          no winget available; browser opened at nodejs.org
++rem      BRIDGE_MISSING     bridge.mjs not found next to this script
++rem      TOKEN_FAILED       could not create the local pairing key
++rem      REGISTERING        registering with the assistant CLIs
++rem      NO_HOST            ready, but no Codex or Claude CLI was found
++rem      DONE               ready to connect
++rem
++rem  The pairing key is never written to the log.
++rem ---------------------------------------------------------------------------
++
++set "SCRIPTDIR=%~dp0"
++if "%SCRIPTDIR:~-1%"=="\" set "SCRIPTDIR=%SCRIPTDIR:~0,-1%"
++set "BRIDGE=%SCRIPTDIR%\bridge.mjs"
++
++set "STATUSDIR=%~1"
++if "%STATUSDIR%"=="" set "STATUSDIR=%LOCALAPPDATA%\C64DevMachine_win"
++if "%STATUSDIR:~-1%"=="\" set "STATUSDIR=%STATUSDIR:~0,-1%"
++if not exist "%STATUSDIR%" mkdir "%STATUSDIR%" >nul 2>&1
++
++set "STATUS=%STATUSDIR%\mcp-setup-status.txt"
++set "LOG=%STATUSDIR%\mcp-setup-log.txt"
++set "PAIRFILE=%STATUSDIR%\mcp-pair.txt"
++set "VERTMP=%STATUSDIR%\mcp-nodever.tmp"
++set "HOSTS="
++
++> "%LOG%" echo [%DATE% %TIME%] MCP setup started
++>>"%LOG%" echo script folder: %SCRIPTDIR%
++>>"%LOG%" echo status folder: %STATUSDIR%
++
++rem A stale key from an earlier run must never be adopted.
++if exist "%PAIRFILE%" del "%PAIRFILE%" >nul 2>&1
++
++call :status CHECKING "Checking for Node.js"
++
++if not exist "%BRIDGE%" (
++    call :status BRIDGE_MISSING "bridge.mjs was not found next to setup-mcp.bat"
++    goto :finish
++)
++
++rem --- locate Node.js -------------------------------------------------------
++call :findnode
++if defined NODE goto :checkversion
++goto :installnode
++
++rem --- install Node.js ------------------------------------------------------
++:installnode
++call :status NODE_MISSING "Node.js is not installed"
++where winget >nul 2>&1
++if not errorlevel 1 goto :winget
++
++call :status NO_WINGET "Install Node.js 22 or newer from nodejs.org, then press MCP-CON again"
++start "" "https://nodejs.org/en/download"
++goto :finish
++
++:winget
++call :status NODE_INSTALLING "Installing Node.js - please approve the Windows prompt"
++winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements >>"%LOG%" 2>&1
++>>"%LOG%" echo winget exit code: %errorlevel%
++
++rem This process inherited the old PATH, so look in the install folder directly.
++call :findnode
++if defined NODE goto :checkversion
++call :status NODE_INSTALL_FAIL "Node.js install did not complete. See mcp-setup-log.txt"
++goto :finish
++
++rem --- verify version -------------------------------------------------------
++:checkversion
++>>"%LOG%" echo node: %NODE%
++"%NODE%" --version > "%VERTMP%" 2>>"%LOG%"
++set "NVRAW="
++if exist "%VERTMP%" set /p NVRAW=<"%VERTMP%"
++del "%VERTMP%" >nul 2>&1
++>>"%LOG%" echo node version: !NVRAW!
++
++set "NV="
++for /f "tokens=1 delims=." %%a in ("!NVRAW!") do set "NV=%%a"
++set "NV=!NV:v=!"
++set /a NVNUM=0
++set /a NVNUM=!NV! 2>nul
++if !NVNUM! GEQ 22 goto :maketoken
++
++call :status NODE_TOO_OLD "Found Node.js !NVRAW! - version 22 or newer is required"
++goto :finish
++
++rem --- create the local pairing key -----------------------------------------
++:maketoken
++call :status REGISTERING "Preparing the local pairing key"
++"%NODE%" "%BRIDGE%" --pair > "%PAIRFILE%" 2>>"%LOG%"
++if errorlevel 1 (
++    del "%PAIRFILE%" >nul 2>&1
++    call :status TOKEN_FAILED "Could not create the local pairing key. See mcp-setup-log.txt"
++    goto :finish
++)
++>>"%LOG%" echo pairing key written for the editor to collect
++
++rem --- register with whichever assistant CLIs are installed -----------------
++where codex >nul 2>&1
++if errorlevel 1 goto :trycc
++call :status REGISTERING "Registering with Codex CLI"
++>>"%LOG%" echo --- codex mcp add ---
++codex mcp add c64-dev-machine -- "%NODE%" "%BRIDGE%" >>"%LOG%" 2>&1
++>>"%LOG%" echo codex exit code: %errorlevel%
++set "HOSTS=!HOSTS! Codex"
++
++:trycc
++where claude >nul 2>&1
++if errorlevel 1 goto :hostsdone
++call :status REGISTERING "Registering with Claude Code"
++>>"%LOG%" echo --- claude mcp add ---
++claude mcp add --scope user c64-dev-machine -- "%NODE%" "%BRIDGE%" >>"%LOG%" 2>&1
++>>"%LOG%" echo claude exit code: %errorlevel%
++set "HOSTS=!HOSTS! Claude"
++
++:hostsdone
++if "!HOSTS!"=="" goto :nohost
++call :status DONE "Ready - restart the MCP connection in!HOSTS!"
++goto :finish
++
++:nohost
++call :status NO_HOST "Node.js and the pairing key are ready. No assistant CLI was found"
++goto :finish
++
++rem --- helpers --------------------------------------------------------------
++:findnode
++set "NODE="
++for /f "delims=" %%i in ('where node 2^>nul') do if not defined NODE set "NODE=%%i"
++if defined NODE exit /b 0
++if exist "%ProgramFiles%\nodejs\node.exe" set "NODE=%ProgramFiles%\nodejs\node.exe"
++if defined NODE exit /b 0
++if exist "%ProgramFiles(x86)%\nodejs\node.exe" set "NODE=%ProgramFiles(x86)%\nodejs\node.exe"
++if defined NODE exit /b 0
++if exist "%LOCALAPPDATA%\Programs\nodejs\node.exe" set "NODE=%LOCALAPPDATA%\Programs\nodejs\node.exe"
++exit /b 0
++
++:status
++> "%STATUS%" echo %~1
++>>"%STATUS%" echo %~2
++>>"%LOG%" echo [%TIME%] %~1 - %~2
++exit /b 0
++
++:finish
++>>"%LOG%" echo [%TIME%] MCP setup finished
++endlocal
++exit /b 0
+diff --git a/tools/cdm-mcp/setup-mcp.command b/tools/cdm-mcp/setup-mcp.command
+new file mode 100755
+index 0000000..023afa2
+--- /dev/null
++++ b/tools/cdm-mcp/setup-mcp.command
+@@ -0,0 +1,125 @@
++#!/bin/bash
++# ---------------------------------------------------------------------------
++#  C64 Dev Machine - MCP setup helper (Pro edition, macOS)
++#
++#  Launched by the MCP-CON button. Same status tokens and same files as
++#  setup-mcp.bat, so the editor polls it identically.
++#
++#  Usage:  setup-mcp.command [status_folder]
++#
++#  The pairing key is never written to the log.
++# ---------------------------------------------------------------------------
++set -u
++
++SCRIPTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++BRIDGE="$SCRIPTDIR/bridge.mjs"
++
++STATUSDIR="${1:-$HOME/.c64-dev-machine-mcp}"
++STATUSDIR="${STATUSDIR%/}"
++mkdir -p "$STATUSDIR" 2>/dev/null
++
++STATUS="$STATUSDIR/mcp-setup-status.txt"
++LOG="$STATUSDIR/mcp-setup-log.txt"
++PAIRFILE="$STATUSDIR/mcp-pair.txt"
++HOSTS=""
++
++echo "[$(date)] MCP setup started" > "$LOG"
++echo "script folder: $SCRIPTDIR" >> "$LOG"
++echo "status folder: $STATUSDIR" >> "$LOG"
++
++# A stale key from an earlier run must never be adopted.
++rm -f "$PAIRFILE"
++
++status() {
++    printf '%s\n%s\n' "$1" "$2" > "$STATUS"
++    echo "[$(date +%T)] $1 - $2" >> "$LOG"
++}
++
++finish() {
++    echo "[$(date +%T)] MCP setup finished" >> "$LOG"
++    exit 0
++}
++
++status CHECKING "Checking for Node.js"
++
++if [ ! -f "$BRIDGE" ]; then
++    status BRIDGE_MISSING "bridge.mjs was not found next to setup-mcp.command"
++    finish
++fi
++
++find_node() {
++    NODE=""
++    for candidate in "$(command -v node 2>/dev/null)" \
++                     /opt/homebrew/bin/node \
++                     /usr/local/bin/node \
++                     /usr/bin/node; do
++        if [ -n "$candidate" ] && [ -x "$candidate" ]; then
++            NODE="$candidate"
++            return 0
++        fi
++    done
++    return 0
++}
++
++find_node
++if [ -z "$NODE" ]; then
++    status NODE_MISSING "Node.js is not installed"
++    if command -v brew >/dev/null 2>&1; then
++        status NODE_INSTALLING "Installing Node.js with Homebrew"
++        brew install node >> "$LOG" 2>&1
++        echo "brew exit code: $?" >> "$LOG"
++        find_node
++    fi
++    if [ -z "$NODE" ]; then
++        status NO_WINGET "Install Node.js 22 or newer from nodejs.org, then press MCP-CON again"
++        open "https://nodejs.org/en/download" >/dev/null 2>&1
++        finish
++    fi
++fi
++
++echo "node: $NODE" >> "$LOG"
++NVRAW="$("$NODE" --version 2>>"$LOG")"
++echo "node version: $NVRAW" >> "$LOG"
++NV="${NVRAW#v}"
++NV="${NV%%.*}"
++case "$NV" in
++    ''|*[!0-9]*) NV=0 ;;
++esac
++if [ "$NV" -lt 22 ]; then
++    status NODE_TOO_OLD "Found Node.js $NVRAW - version 22 or newer is required"
++    finish
++fi
++
++status REGISTERING "Preparing the local pairing key"
++if ! "$NODE" "$BRIDGE" --pair > "$PAIRFILE" 2>>"$LOG"; then
++    rm -f "$PAIRFILE"
++    status TOKEN_FAILED "Could not create the local pairing key. See mcp-setup-log.txt"
++    finish
++fi
++chmod 600 "$HOME/.c64-dev-machine-mcp/token" 2>/dev/null
++chmod 600 "$PAIRFILE" 2>/dev/null
++echo "pairing key written for the editor to collect" >> "$LOG"
++
++if command -v codex >/dev/null 2>&1; then
++    status REGISTERING "Registering with Codex CLI"
++    echo "--- codex mcp add ---" >> "$LOG"
++    codex mcp add c64-dev-machine -- "$NODE" "$BRIDGE" >> "$LOG" 2>&1
++    echo "codex exit code: $?" >> "$LOG"
++    HOSTS="$HOSTS Codex"
++fi
++
++if command -v claude >/dev/null 2>&1; then
++    status REGISTERING "Registering with Claude Code"
++    echo "--- claude mcp add ---" >> "$LOG"
++    claude mcp add --scope user c64-dev-machine -- "$NODE" "$BRIDGE" >> "$LOG" 2>&1
++    echo "claude exit code: $?" >> "$LOG"
++    HOSTS="$HOSTS Claude"
++fi
++
++if [ -z "$HOSTS" ]; then
++    status NO_HOST "Node.js and the pairing key are ready. No assistant CLI was found"
++else
++    status DONE "Ready - restart the MCP connection in$HOSTS"
++fi
++
++finish
