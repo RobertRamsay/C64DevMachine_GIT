@@ -1,103 +1,123 @@
 if (global.lite != 0) exit;
 
-// --- MCP-CON one-click setup button ---------------------------------------
+// --- MCP control buttons ---------------------------------------------------
+// The old status line drawn along the bottom edge has been removed: it sat at
+// gui_h-32..gui_h-7 and ran straight over the memory bar and the VIC BANK
+// labels. All state is shown in the MCP-CON button instead.
+//
 // Bottom-right occupancy at this GUI size, measured from the drawing code:
 //   asset panel     y 410 .. gui_h-100   (obj_asset_manager, _panel_bottom)
 //   snapshot button y gui_h-50 .. gui_h-10 (40x40 around 1886,1050)
 //   memory bar      y gui_h-40 .. gui_h-25 (scr_draw_memory_bar)
-//   MCP badge       y gui_h-32 .. gui_h-7  (below)
-// The only clear band is gui_h-100 .. gui_h-50, so the button sits inside it
-// with a 12px gap top and bottom. Right edge stops at gui_w-30, inside the
-// asset panel's own right edge, so nothing is ever covered.
-var _setup_gui_w = display_get_gui_width();
-var _setup_gui_h = display_get_gui_height();
-setup_btn_y1 = _setup_gui_h - 88;
-setup_btn_y2 = _setup_gui_h - 62;
-setup_btn_x2 = _setup_gui_w - 30;
-
-var _setup_label = "";
-var _setup_clickable = false;
-if (probe_state == "off" && setup_state == "idle") {
-    _setup_label = "[ MCP-CON ]";
-    _setup_clickable = true;
-}
-else if (probe_state == "off" && setup_state == "failed") {
-    _setup_label = "[ MCP-CON ] " + setup_detail;
-    _setup_clickable = true;
-}
-else if (setup_state == "running") {
-    _setup_label = "MCP: " + setup_detail;
-}
-else if (setup_state == "done" && probe_state != "ready") {
-    _setup_label = "MCP - awaiting instructions";
-}
+// The only clear band is gui_h-100 .. gui_h-50, so both buttons sit inside it
+// with a 12px gap top and bottom. The right edge lines up with the snapshot
+// button at gui_w-14.
 
 // Never draw over a modal, the asset viewer, or a hidden UI.
-var _setup_blocked = false;
-if (!instance_exists(obj_workspace_manager)) _setup_blocked = true;
-else if (obj_workspace_manager.hideui) _setup_blocked = true;
-if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) _setup_blocked = true;
-if (instance_exists(obj_message_box) || instance_exists(obj_question_box)) _setup_blocked = true;
+var _mcp_blocked = false;
+if (!instance_exists(obj_workspace_manager)) _mcp_blocked = true;
+else if (obj_workspace_manager.hideui) _mcp_blocked = true;
+if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) _mcp_blocked = true;
+if (instance_exists(obj_message_box) || instance_exists(obj_question_box)) _mcp_blocked = true;
 
-if (_setup_label != "" && !_setup_blocked) {
-    var _s_font = draw_get_font();
-    var _s_alpha = draw_get_alpha();
-    var _s_colour = draw_get_colour();
-    var _s_ha = draw_get_halign();
-    var _s_va = draw_get_valign();
-    draw_set_font(-1);
-    draw_set_halign(fa_left);
-    draw_set_valign(fa_top);
-    var _s_w = string_width(_setup_label) + 20;
-    setup_btn_x1 = max(8, setup_btn_x2 - _s_w);
-    draw_set_alpha(0.9);
-    draw_set_colour(c_black);
-    draw_rectangle(setup_btn_x1, setup_btn_y1, setup_btn_x2, setup_btn_y2, false);
-    draw_set_alpha(1);
-    if (_setup_clickable && setup_hover) draw_set_colour(c_yellow);
-    else draw_set_colour(c_silver);
-    draw_rectangle(setup_btn_x1, setup_btn_y1, setup_btn_x2, setup_btn_y2, true);
-    if (setup_state == "failed") draw_set_colour(c_orange);
-    else if (setup_state == "done") draw_set_colour(c_lime);
-    else if (_setup_clickable && setup_hover) draw_set_colour(c_yellow);
-    else draw_set_colour(c_white);
-    draw_text(setup_btn_x1 + 10, setup_btn_y1 + 4, _setup_label);
-    draw_set_font(_s_font);
-    draw_set_alpha(_s_alpha);
-    draw_set_colour(_s_colour);
-    draw_set_halign(_s_ha);
-    draw_set_valign(_s_va);
-}
-else {
-    // Keep the hit rectangle empty whenever the button is not on screen.
+if (_mcp_blocked) {
+    // Keep both hit rectangles empty while the buttons are off screen.
     setup_btn_x1 = 0;
     setup_btn_y1 = 0;
     setup_btn_x2 = 0;
     setup_btn_y2 = 0;
+    reset_btn_x1 = 0;
+    reset_btn_y1 = 0;
+    reset_btn_x2 = 0;
+    reset_btn_y2 = 0;
+    exit;
 }
 
-if (probe_state == "off" && current_time > probe_notice_until) exit;
-// Save/restore draw state so this optional badge cannot affect editor drawing.
-var _font = draw_get_font();
-var _alpha = draw_get_alpha();
-var _colour = draw_get_colour();
-var _ha = draw_get_halign();
-var _va = draw_get_valign();
+var _mcp_gui_w = display_get_gui_width();
+var _mcp_gui_h = display_get_gui_height();
+var _mcp_y1 = _mcp_gui_h - 88;
+var _mcp_y2 = _mcp_gui_h - 62;
+var _mcp_right = _mcp_gui_w - 14;
+
+// --- MCP-CON label reflects the whole connection state ---------------------
+var _con_label = "[ MCP-CON ]";
+if (setup_state == "running") {
+    _con_label = "MCP: " + setup_detail;
+}
+else if (setup_state == "failed") {
+    _con_label = "[ MCP-CON ] " + setup_detail;
+}
+else if (probe_state == "ready") {
+    _con_label = "MCP - awaiting instructions";
+}
+else if (probe_state == "connecting" || probe_state == "handshake") {
+    _con_label = "MCP - connecting";
+}
+else if (setup_state == "done") {
+    _con_label = "MCP - awaiting instructions";
+}
+else if (current_time <= probe_notice_until && probe_status != "") {
+    _con_label = "[ MCP-CON ] " + string_copy(probe_status, 1, 70);
+}
+
+var _con_clickable = false;
+if (probe_state == "off" && (setup_state == "idle" || setup_state == "failed")) _con_clickable = true;
+
+var _reset_label = "[ RESET ]";
+reset_enabled = false;
+if (probe_state != "off" || probe_saved_key != "" || setup_state != "idle") reset_enabled = true;
+
+// --- draw ------------------------------------------------------------------
+var _m_font = draw_get_font();
+var _m_alpha = draw_get_alpha();
+var _m_colour = draw_get_colour();
+var _m_ha = draw_get_halign();
+var _m_va = draw_get_valign();
 draw_set_font(-1);
 draw_set_halign(fa_left);
 draw_set_valign(fa_top);
-var _text = "MCP: " + probe_status;
-var _w = string_width(_text) + 20;
-var _x = max(8, display_get_gui_width() - _w - 12);
-var _y = display_get_gui_height() - 32;
+
+// RESET sits on the right; MCP-CON grows leftwards from it as its label grows.
+reset_btn_y1 = _mcp_y1;
+reset_btn_y2 = _mcp_y2;
+reset_btn_x2 = _mcp_right;
+reset_btn_x1 = reset_btn_x2 - (string_width(_reset_label) + 20);
+
+setup_btn_y1 = _mcp_y1;
+setup_btn_y2 = _mcp_y2;
+setup_btn_x2 = reset_btn_x1 - 8;
+setup_btn_x1 = max(8, setup_btn_x2 - (string_width(_con_label) + 20));
+
+// MCP-CON
 draw_set_alpha(0.9);
 draw_set_colour(c_black);
-draw_rectangle(_x, _y, _x + _w, _y + 25, false);
+draw_rectangle(setup_btn_x1, setup_btn_y1, setup_btn_x2, setup_btn_y2, false);
 draw_set_alpha(1);
-draw_set_colour(probe_state == "ready" ? c_lime : c_white);
-draw_text(_x + 10, _y + 4, _text);
-draw_set_font(_font);
-draw_set_alpha(_alpha);
-draw_set_colour(_colour);
-draw_set_halign(_ha);
-draw_set_valign(_va);
+if (_con_clickable && setup_hover) draw_set_colour(c_yellow);
+else draw_set_colour(c_silver);
+draw_rectangle(setup_btn_x1, setup_btn_y1, setup_btn_x2, setup_btn_y2, true);
+if (setup_state == "failed") draw_set_colour(c_orange);
+else if (probe_state == "ready") draw_set_colour(c_lime);
+else if (setup_state == "done") draw_set_colour(c_lime);
+else if (_con_clickable && setup_hover) draw_set_colour(c_yellow);
+else draw_set_colour(c_white);
+draw_text(setup_btn_x1 + 10, setup_btn_y1 + 4, _con_label);
+
+// RESET
+draw_set_alpha(0.9);
+draw_set_colour(c_black);
+draw_rectangle(reset_btn_x1, reset_btn_y1, reset_btn_x2, reset_btn_y2, false);
+draw_set_alpha(1);
+if (reset_enabled && reset_hover) draw_set_colour(c_yellow);
+else draw_set_colour(c_silver);
+draw_rectangle(reset_btn_x1, reset_btn_y1, reset_btn_x2, reset_btn_y2, true);
+if (!reset_enabled) draw_set_colour(c_gray);
+else if (reset_hover) draw_set_colour(c_yellow);
+else draw_set_colour(c_white);
+draw_text(reset_btn_x1 + 10, reset_btn_y1 + 4, _reset_label);
+
+draw_set_font(_m_font);
+draw_set_alpha(_m_alpha);
+draw_set_colour(_m_colour);
+draw_set_halign(_m_ha);
+draw_set_valign(_m_va);

@@ -14,20 +14,36 @@ if (setup_state == "running") {
         probe_notice_until = current_time + 12000;
     }
 }
-// Draw_64 recalculates the rectangle every frame; hit-test against it here.
+// Draw_64 recalculates both rectangles every frame; hit-test against them here.
 setup_hover = false;
+reset_hover = false;
+var _mcp_mx = device_mouse_x_to_gui(0);
+var _mcp_my = device_mouse_y_to_gui(0);
+var _mcp_can_click = (!global.ui_click_consumed && !global.any_picker_open
+                      && mouse_check_button_pressed(mb_left));
+
 if (setup_btn_x2 > 0
     && probe_state == "off" && (setup_state == "idle" || setup_state == "failed")) {
-    var _setup_mx = device_mouse_x_to_gui(0);
-    var _setup_my = device_mouse_y_to_gui(0);
-    if (point_in_rectangle(_setup_mx, _setup_my,
+    if (point_in_rectangle(_mcp_mx, _mcp_my,
                            setup_btn_x1, setup_btn_y1,
                            setup_btn_x2, setup_btn_y2)) {
         setup_hover = true;
-        if (mouse_check_button_pressed(mb_left)
-            && !global.ui_click_consumed && !global.any_picker_open) {
+        if (_mcp_can_click) {
             global.ui_click_consumed = true;
             setup_run();
+            exit;
+        }
+    }
+}
+
+if (reset_btn_x2 > 0 && reset_enabled) {
+    if (point_in_rectangle(_mcp_mx, _mcp_my,
+                           reset_btn_x1, reset_btn_y1,
+                           reset_btn_x2, reset_btn_y2)) {
+        reset_hover = true;
+        if (_mcp_can_click) {
+            global.ui_click_consumed = true;
+            reset_run();
             exit;
         }
     }

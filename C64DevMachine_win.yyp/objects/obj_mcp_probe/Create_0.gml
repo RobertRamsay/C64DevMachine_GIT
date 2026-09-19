@@ -10,8 +10,9 @@ probe_last_rx = 0;
 probe_last_id = 0;
 probe_last_wire = "";
 probe_last_reply = "";
-probe_status = "OFF - Ctrl+Shift+F12 to pair";
-probe_notice_until = current_time + 6000;
+// Left blank at boot so the MCP-CON button shows its own label, not a notice.
+probe_status = "";
+probe_notice_until = 0;
 probe_max_line = 32768;
 
 // --- MCP-CON one-click setup (Pro only) ------------------------------------
@@ -30,6 +31,12 @@ setup_btn_x1      = 0;
 setup_btn_y1      = 0;
 setup_btn_x2      = 0;
 setup_btn_y2      = 0;
+reset_hover       = false;
+reset_enabled     = false;
+reset_btn_x1      = 0;
+reset_btn_y1      = 0;
+reset_btn_x2      = 0;
+reset_btn_y2      = 0;
 setup_status_path = game_save_id + "mcp-setup-status.txt";
 setup_pair_path   = game_save_id + "mcp-pair.txt";
 // When set, probe_start uses this instead of touching the clipboard.
@@ -708,6 +715,29 @@ setup_adopt_key = function() {
     probe_pair_key  = _key;
     probe_auto_pair = true;
     probe_start(false);
+};
+
+/// RESET button: disconnect, forget the remembered pairing, and put the
+/// MCP-CON button back to its idle state so setup can be run again. The
+/// bridge's own key file is untouched, so pressing MCP-CON afterwards
+/// collects the same key rather than a new one.
+reset_run = function() {
+    probe_auto_pair = false;
+    probe_saved_key = "";
+    probe_pair_key  = "";
+    ini_open("cdm-mcp-pairing.ini");
+    ini_write_string("pairing", "key", "");
+    ini_write_real("pairing", "enabled", 0);
+    ini_close();
+    if (file_exists(setup_pair_path)) file_delete(setup_pair_path);
+    if (file_exists(setup_status_path)) file_delete(setup_status_path);
+    setup_state  = "idle";
+    setup_status = "";
+    setup_detail = "";
+    probe_stop("");
+    probe_status = "";
+    probe_notice_until = 0;
+    probe_retry_at = current_time + 5000;
 };
 
 /// Read the two-line status file the helper rewrites as it progresses.
