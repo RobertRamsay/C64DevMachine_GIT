@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_import_reu_bmp_batch",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_import_reu_bmp_batch",
+  "parent":{
+    "name":"LOADER_SUPPORT",
+    "path":"folders/SCRIPTS/MACROS/LOADER_SUPPORT.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

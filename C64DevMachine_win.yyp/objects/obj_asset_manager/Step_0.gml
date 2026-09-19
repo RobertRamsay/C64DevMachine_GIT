@@ -768,7 +768,9 @@ for (var _di = 0; _di < ds_list_size(asset_list); _di++) {
 // SCROLL
 // -------------------------------------------------------
 if (_mouse_in_panel) {
-    var _count       = ds_list_size(asset_list);
+    // Closed asset groups collapse to one row, so scroll extent follows the
+    // display list rather than the raw asset count.
+    var _count       = array_length(scr_asset_sorted_indices());
     var _content_h   = _count * item_h;
     var _visible_h   = _panel_bottom - 38 - (panel_y + 66);
     var _max_visible = floor(_visible_h / item_h) * item_h;
@@ -785,7 +787,7 @@ hover_idx = -1;
 hover_pos = -1;
 if (_mouse_in_panel && _my >= panel_y + 66 && _my <= _panel_bottom - 38) {
     var _hov_sorted = scr_asset_sorted_indices();
-    for (var _pos = 0; _pos < ds_list_size(asset_list); _pos++) {
+    for (var _pos = 0; _pos < array_length(_hov_sorted); _pos++) {
         var _iy1 = panel_y + 66 + (_pos * item_h) - panel_scroll;
         var _iy2 = _iy1 + item_h;
         if (_iy2 < panel_y + 66 || _iy1 > _panel_bottom - 38) continue;
@@ -2368,6 +2370,27 @@ if (_asset.type == "META_TILESET") {
         var _iy     = _list_y + (hover_pos * item_h) - panel_scroll;
         var _addr_x = _panel_right - 58;
         var _edit_x = _addr_x - 30;
+
+        // Group header row: the name cell is the fold toggle. Only the row
+        // that heads the group takes this, so members behave normally.
+        if (_asset.group != "") {
+            var _is_head  = true;
+            var _clk_disp = scr_asset_sorted_indices();
+            if (hover_pos > 0 && hover_pos < array_length(_clk_disp)) {
+                var _above = ds_list_find_value(asset_list, _clk_disp[hover_pos - 1]);
+                if (_above.group == _asset.group) _is_head = false;
+            }
+            if (_is_head && point_in_rectangle(_mx, _my, panel_x, _iy, _edit_x, _iy + item_h)) {
+                if (ds_map_exists(asset_group_open, _asset.group)) {
+                    ds_map_delete(asset_group_open, _asset.group);
+                }
+                else {
+                    ds_map_add(asset_group_open, _asset.group, true);
+                }
+                panel_scroll = clamp(panel_scroll, 0, panel_max_scroll);
+                exit;
+            }
+        }
 
         if (_asset.type == "SPRITE_SET" && _asset.file != "")
             scr_asset_spr_cache_sprites(_asset);

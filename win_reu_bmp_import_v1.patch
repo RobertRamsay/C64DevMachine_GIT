@@ -1,0 +1,545 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index 8bb452e..ca26a66 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1,4 +1,4 @@
+-{
++﻿{
+   "$GMProject":"v1",
+   "%Name":"C64DevMachine_win",
+   "AudioGroups":[
+@@ -1295,6 +1295,7 @@
+     {"id":{"name":"scr_resolve_screen_ram","path":"scripts/scr_resolve_screen_ram/scr_resolve_screen_ram.yy",},},
+     {"id":{"name":"scr_resolve_var_addr","path":"scripts/scr_resolve_var_addr/scr_resolve_var_addr.yy",},},
+     {"id":{"name":"scr_resolve_vice_path","path":"scripts/scr_resolve_vice_path/scr_resolve_vice_path.yy",},},
++    {"id":{"name":"scr_import_reu_bmp_batch","path":"scripts/scr_import_reu_bmp_batch/scr_import_reu_bmp_batch.yy",},},
+     {"id":{"name":"scr_reu_support","path":"scripts/scr_reu_support/scr_reu_support.yy",},},
+     {"id":{"name":"scr_safe_num","path":"scripts/scr_safe_num/scr_safe_num.yy",},},
+     {"id":{"name":"scr_save_workspace_as_path","path":"scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index 001f9f7..be9838a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -246,6 +246,10 @@ sfx_picker_field = "asset";
+ 	load_reu_picker_open  = false;
+ 	load_reu_picker_asset = -1;
+ 	load_reu_picker_hover = -1;
++	// Asset groups. A group name present in this map is OPEN; absent is
++	// closed, so a newly imported group starts folded with nothing to set.
++	asset_group_open      = ds_map_create();
++
+ 	load_reu_rows_y       = 0;
+ 	load_reu_add_y        = 0;
+ 
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index e69c25e..2793320 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -114,8 +114,28 @@ var _list_y = panel_y + 66;
+ // Shared with Step_0's hit-testing via scr_asset_sorted_indices() so the
+ // two can never disagree about display order.
+ var _sorted_indices = scr_asset_sorted_indices();
++// Closed groups collapse to a single row, so the display count is not the
++// asset count. Everything below walks the display array.
++var _disp_n = array_length(_sorted_indices);
++
++// Mark the row that heads each group, and how many assets it stands for.
++var _grp_head  = array_create(_disp_n, false);
++var _grp_total = array_create(_disp_n, 0);
++var _prev_grp  = "";
++for (var _gp = 0; _gp < _disp_n; _gp++) {
++    var _gname = ds_list_find_value(asset_list, _sorted_indices[_gp]).group;
++    if (_gname != "" && _gname != _prev_grp) {
++        _grp_head[_gp] = true;
++        var _gtot = 0;
++        for (var _gk = 0; _gk < _count; _gk++) {
++            if (ds_list_find_value(asset_list, _gk).group == _gname) _gtot++;
++        }
++        _grp_total[_gp] = _gtot;
++    }
++    _prev_grp = _gname;
++}
+ 
+-for (var _pos = 0; _pos < _count; _pos++) {
++for (var _pos = 0; _pos < _disp_n; _pos++) {
+     var _i     = _sorted_indices[_pos];
+     var _asset = ds_list_find_value(asset_list, _i);
+     var _iy    = _list_y + (_pos * item_h) - panel_scroll;
+@@ -268,6 +288,18 @@ for (var _pos = 0; _pos < _count; _pos++) {
+             draw_set_color(c_white);
+             draw_line(panel_x + 10 + _cw, _iy + 17, panel_x + 10 + _cw, _iy + item_h - 4);
+         }
++    } else if (_grp_head[_pos]) {
++        // Group header row: chevron, group name, member count. The row is
++        // still a real asset row, so everything else about it works.
++        var _gopen = ds_map_exists(asset_group_open, _asset.group);
++        var _gchev = "\u25B8";
++        if (_gopen) _gchev = "\u25BE";
++        draw_set_color(make_color_rgb(100, 200, 180));
++        draw_text_l(panel_x + 8, _iy + 16, _gchev + " " + _asset.group
++                    + " (" + string(_grp_total[_pos]) + ")");
++    } else if (_asset.group != "") {
++        draw_set_color(c_white);
++        draw_text_l(panel_x + 20, _iy + 16, _asset.name);
+     } else {
+         draw_set_color(c_white);
+         draw_text_l(panel_x + 8, _iy + 16, _asset.name);
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index 7cf0fe5..cbe3e4d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -768,7 +768,9 @@ for (var _di = 0; _di < ds_list_size(asset_list); _di++) {
+ // SCROLL
+ // -------------------------------------------------------
+ if (_mouse_in_panel) {
+-    var _count       = ds_list_size(asset_list);
++    // Closed asset groups collapse to one row, so scroll extent follows the
++    // display list rather than the raw asset count.
++    var _count       = array_length(scr_asset_sorted_indices());
+     var _content_h   = _count * item_h;
+     var _visible_h   = _panel_bottom - 38 - (panel_y + 66);
+     var _max_visible = floor(_visible_h / item_h) * item_h;
+@@ -785,7 +787,7 @@ hover_idx = -1;
+ hover_pos = -1;
+ if (_mouse_in_panel && _my >= panel_y + 66 && _my <= _panel_bottom - 38) {
+     var _hov_sorted = scr_asset_sorted_indices();
+-    for (var _pos = 0; _pos < ds_list_size(asset_list); _pos++) {
++    for (var _pos = 0; _pos < array_length(_hov_sorted); _pos++) {
+         var _iy1 = panel_y + 66 + (_pos * item_h) - panel_scroll;
+         var _iy2 = _iy1 + item_h;
+         if (_iy2 < panel_y + 66 || _iy1 > _panel_bottom - 38) continue;
+@@ -2369,6 +2371,27 @@ if (_asset.type == "META_TILESET") {
+         var _addr_x = _panel_right - 58;
+         var _edit_x = _addr_x - 30;
+ 
++        // Group header row: the name cell is the fold toggle. Only the row
++        // that heads the group takes this, so members behave normally.
++        if (_asset.group != "") {
++            var _is_head  = true;
++            var _clk_disp = scr_asset_sorted_indices();
++            if (hover_pos > 0 && hover_pos < array_length(_clk_disp)) {
++                var _above = ds_list_find_value(asset_list, _clk_disp[hover_pos - 1]);
++                if (_above.group == _asset.group) _is_head = false;
++            }
++            if (_is_head && point_in_rectangle(_mx, _my, panel_x, _iy, _edit_x, _iy + item_h)) {
++                if (ds_map_exists(asset_group_open, _asset.group)) {
++                    ds_map_delete(asset_group_open, _asset.group);
++                }
++                else {
++                    ds_map_add(asset_group_open, _asset.group, true);
++                }
++                panel_scroll = clamp(panel_scroll, 0, panel_max_scroll);
++                exit;
++            }
++        }
++
+         if (_asset.type == "SPRITE_SET" && _asset.file != "")
+             scr_asset_spr_cache_sprites(_asset);
+ 
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index bdbf3f7..d6cc865 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -1445,6 +1445,7 @@ if (gui_menu_open == 6) {
+     // on its own.
+     if (global.lite == 0) {
+         array_push(_imp_list, { title: "CODE BLOCK (.ASM)", action: "CODE_ASM" });
++        array_push(_imp_list, { title: "REU BMP IMPORT",    action: "REU_BMP" });
+     }
+ 	
+     var _item_h_i   = 20;
+@@ -1490,6 +1491,9 @@ if (gui_menu_open == 6) {
+             else if (_ip.action == "CODE_ASM") {
+                 scr_import_code_block_menu();
+             }
++            else if (_ip.action == "REU_BMP") {
++                scr_import_reu_bmp_batch();
++            }
+         }
+     }
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml b/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml
+index 517313e..11d1d38 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml
+@@ -3,6 +3,15 @@ function scr_asset_sorted_indices() {
+     var _sorted  = array_create(_count, 0);
+     for (var _i = 0; _i < _count; _i++) _sorted[_i] = _i;
+ 
++    // Normalise the group field once, here, so nothing downstream has to test
++    // for it. Assets from projects saved before grouping existed, and every
++    // creation site that predates it, land as ungrouped.
++    for (var _gi = 0; _gi < _count; _gi++) {
++        var _ga = ds_list_find_value(asset_list, _gi);
++        if (!variable_struct_exists(_ga, "group")) _ga.group = "";
++        if (!is_string(_ga.group)) _ga.group = "";
++    }
++
+     if (asset_sort_mode == "NAME") {
+         array_sort(_sorted, function(_a, _b) {
+             var _an = string_upper(ds_list_find_value(asset_list, _a).name);
+@@ -46,5 +55,37 @@ function scr_asset_sorted_indices() {
+         });
+     }
+ 
+-    return _sorted;
++    // ---- GROUPING --------------------------------------------------------
++    // Members of a group are pulled together behind whichever of them sorts
++    // first, so a group stays contiguous in every sort mode. A closed group
++    // contributes only that first row — Draw_64 renders it as the group
++    // header, and because Step_0 hit-tests against this same array the two can
++    // never disagree about what is on screen.
++    var _display = [];
++    var _seen    = ds_map_create();
++    for (var _p = 0; _p < array_length(_sorted); _p++) {
++        var _idx = _sorted[_p];
++        var _g   = ds_list_find_value(asset_list, _idx).group;
++
++        if (_g == "") {
++            array_push(_display, _idx);
++            continue;
++        }
++        if (ds_map_exists(_seen, _g)) continue;
++        ds_map_add(_seen, _g, true);
++
++        // Absent from asset_group_open means closed, so a freshly imported
++        // group arrives folded without anything having to set a flag.
++        var _open = ds_map_exists(asset_group_open, _g);
++
++        for (var _q = _p; _q < array_length(_sorted); _q++) {
++            var _mi = _sorted[_q];
++            if (ds_list_find_value(asset_list, _mi).group != _g) continue;
++            array_push(_display, _mi);
++            if (!_open) break;
++        }
++    }
++    ds_map_destroy(_seen);
++
++    return _display;
+ }
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+index f77ef50..97ba05d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+@@ -237,6 +237,7 @@ var _base = "unsaved";
+                 reu_size      : variable_struct_exists(_a, "reu_size")      ? _a.reu_size      : 0,
+                 reu_used      : variable_struct_exists(_a, "reu_used")      ? _a.reu_used      : 0,
+                 linked_assets : variable_struct_exists(_a, "linked_assets") ? _a.linked_assets : [],
++                group         : variable_struct_exists(_a, "group")         ? _a.group         : "",
+             });
+         }
+     }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_import_reu_bmp_batch/scr_import_reu_bmp_batch.gml b/C64DevMachine_win.yyp/scripts/scr_import_reu_bmp_batch/scr_import_reu_bmp_batch.gml
+new file mode 100644
+index 0000000..21949e3
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_import_reu_bmp_batch/scr_import_reu_bmp_batch.gml
+@@ -0,0 +1,247 @@
++/// @function scr_import_reu_bmp_batch()
++/// @description Batch-import every Koala bitmap in a folder as BITMAP assets,
++///              file them under one collapsed asset group named after the
++///              folder, then link them in order into a LOAD_REU manifest —
++///              reusing an existing one if the project has it, creating one if
++///              not.
++///
++///              GameMaker has no multi-select file dialog, so the user picks any
++///              one bitmap and the folder around it is what gets imported.
++///              .kla/.koa only: PNG/JPG go through the interactive conversion
++///              editor one image at a time, which cannot be batched without
++///              throwing away per-image review.
++
++function scr_import_reu_bmp_batch() {
++
++    if (!instance_exists(obj_asset_manager)) exit;
++    var _am = obj_asset_manager;
++
++    var _path = get_open_filename(
++        "Koala Bitmaps (*.kla;*.koa)|*.kla;*.koa", "");
++    // A native dialog steals the key-up, leaving GameMaker convinced the key is
++    // still held, which silently kills ESC until the input state is reset.
++    io_clear();
++    if (_path == "") exit;
++
++    var _dir = filename_dir(_path);
++
++    // ---- collect every Koala file in that folder -------------------------
++    var _files = [];
++    var _masks = ["*.kla", "*.koa"];
++    for (var _mi = 0; _mi < array_length(_masks); _mi++) {
++        var _found = file_find_first(_dir + "\\" + _masks[_mi], 0);
++        while (_found != "") {
++            array_push(_files, _found);
++            _found = file_find_next();
++        }
++        file_find_close();
++    }
++
++    if (array_length(_files) == 0) {
++        scr_show_message(L("No .kla or .koa files were found in that folder."));
++        exit;
++    }
++
++    // ---- natural order: frame_2 before frame_10 --------------------------
++    // Digit runs are zero-padded into a sort key, so a plain string compare
++    // orders numerically without a custom comparator.
++    var _keyed = [];
++    for (var _fi = 0; _fi < array_length(_files); _fi++) {
++        var _nm  = string_lower(_files[_fi]);
++        var _key = "";
++        var _run = "";
++        for (var _ci = 1; _ci <= string_length(_nm); _ci++) {
++            var _ch = string_char_at(_nm, _ci);
++            if (string_digits(_ch) == _ch && _ch != "") {
++                _run += _ch;
++            }
++            else {
++                if (_run != "") {
++                    while (string_length(_run) < 8) _run = "0" + _run;
++                    _key += _run;
++                    _run = "";
++                }
++                _key += _ch;
++            }
++        }
++        if (_run != "") {
++            while (string_length(_run) < 8) _run = "0" + _run;
++            _key += _run;
++        }
++        array_push(_keyed, { file: _files[_fi], key: _key });
++    }
++    array_sort(_keyed, function(_a, _b) {
++        if (_a.key == _b.key) return 0;
++        if (_a.key < _b.key) return -1;
++        return 1;
++    });
++
++    // ---- group name comes from the folder --------------------------------
++    var _dir_clean = _dir;
++    while (string_length(_dir_clean) > 0
++        && (string_char_at(_dir_clean, string_length(_dir_clean)) == "\\"
++         || string_char_at(_dir_clean, string_length(_dir_clean)) == "/")) {
++        _dir_clean = string_copy(_dir_clean, 1, string_length(_dir_clean) - 1);
++    }
++    var _group = string_upper(filename_name(_dir_clean));
++    if (_group == "") _group = "REU BITMAPS";
++
++    // ---- import each file as a BITMAP asset ------------------------------
++    var _made       = [];
++    var _skipped    = 0;
++    var _first_addr = scr_asset_default_address("BITMAP");
++
++    for (var _ki = 0; _ki < array_length(_keyed); _ki++) {
++        var _fname = _keyed[_ki].file;
++        var _full  = _dir + "\\" + _fname;
++
++        var _buf = buffer_load(_full);
++        if (!buffer_exists(_buf)) { _skipped++; continue; }
++
++        var _size = buffer_get_size(_buf);
++        // 10003 = multicolour Koala, 9002 = HiRes. Anything else is not a
++        // bitmap this importer can vouch for, so it is left alone rather than
++        // imported as something that will not compile.
++        if (_size != 10003 && _size != 9002) {
++            buffer_delete(_buf);
++            _skipped++;
++            continue;
++        }
++
++        var _base = filename_name(_fname);
++        var _ext  = filename_ext(_fname);
++        _base = string_copy(_base, 1, string_length(_base) - string_length(_ext));
++
++        // Unique within the project — a second import of the same folder must
++        // not collide with the assets already there.
++        var _name  = _base;
++        var _tries = 2;
++        while (!is_undefined(scr_reu_find_asset(_name))) {
++            _name  = _base + "_" + string(_tries);
++            _tries++;
++        }
++
++        var _meta = {
++            format        : "koala",
++            preview_surf  : -1,
++            pixel_backup  : -1,
++            pixels_dirty  : false,
++            bg_col        : 0,
++            bg_mask       : array_create(64000, 0),
++            clash_grid    : array_create(1000, false),
++            coll_types    : array_create(1000, 0),
++            auto_clean    : true,
++            is_editing    : false,
++            needs_mask_init : true,
++            active_color  : 1,
++            active_tool   : "DRAW",
++            dither_mode   : "NONE",
++            dither_invert : false,
++            brush_size    : 0,
++            bmp_pan_x     : 0,
++            bmp_pan_y     : 0,
++            last_px       : undefined,
++            last_py       : undefined,
++            undo_stack    : [],
++            redo_stack    : [],
++            undo_pending  : false,
++            tone_sorted   : false,
++            bmp_mode      : "MC",
++            source_file   : _full
++        };
++        if (_size == 9002) _meta.bmp_mode = "HIRES";
++
++        var _asset = {
++            type          : "BITMAP",
++            name          : _name,
++            file          : _full,
++            address       : _first_addr,
++            buffer        : _buf,
++            meta          : _meta,
++            load_later    : false,
++            d64_filename  : "",
++            reu_filename  : "",
++            reu_size      : 0,
++            reu_used      : 0,
++            linked_assets : [],
++            group         : _group
++        };
++
++        ds_list_add(_am.asset_list, _asset);
++        array_push(_made, _name);
++
++        // Same post-load pipeline the single-file importer runs, so a batched
++        // asset is indistinguishable from a hand-imported one.
++        scr_asset_bmp_build_preview(_asset);
++        scr_asset_kla_heal_palette(_asset);
++        scr_asset_kla_process_surface(_asset, false, -1);
++        if (file_exists(_asset.file)) _asset.meta._mtime = md5_file(_asset.file);
++    }
++
++    if (array_length(_made) == 0) {
++        scr_show_message(L("No usable Koala bitmaps were found.\nExpected 10003-byte multicolour or 9002-byte HiRes files."));
++        exit;
++    }
++
++    // ---- fold the new group away ----------------------------------------
++    // ds_map_exists on asset_group_open is what marks a group expanded, so
++    // simply not adding the key leaves it closed.
++    if (ds_map_exists(_am.asset_group_open, _group)) {
++        ds_map_delete(_am.asset_group_open, _group);
++    }
++
++    // ---- find or create the LOAD_REU manifest ----------------------------
++    var _manifest = undefined;
++    for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
++        var _cand = ds_list_find_value(_am.asset_list, _ai);
++        if (_cand.type == "LOAD_REU") { _manifest = _cand; break; }
++    }
++
++    var _created_manifest = false;
++    if (is_undefined(_manifest)) {
++        var _mname  = "LOAD_REU";
++        var _mtries = 2;
++        while (!is_undefined(scr_reu_find_asset(_mname))) {
++            _mname = "LOAD_REU_" + string(_mtries);
++            _mtries++;
++        }
++        _manifest = {
++            type          : "LOAD_REU",
++            name          : _mname,
++            file          : "",
++            address       : scr_asset_default_address("LOAD_REU"),
++            buffer        : buffer_create(1, buffer_fixed, 1),
++            meta          : {},
++            load_later    : false,
++            d64_filename  : "",
++            reu_filename  : _mname + ".reu",
++            reu_size      : 0x1000000,
++            reu_used      : 0x100,
++            linked_assets : [],
++            group         : ""
++        };
++        ds_list_add(_am.asset_list, _manifest);
++        _created_manifest = true;
++    }
++
++    // ---- link the new bitmaps in order -----------------------------------
++    for (var _li = 0; _li < array_length(_made); _li++) {
++        array_push(_manifest.linked_assets, {
++            asset_name  : _made[_li],
++            reu_address : 0x100,
++            auto_pack   : true
++        });
++    }
++    scr_reu_repack(_manifest);
++
++    global.undo_dirty       = true;
++    global.memory_bar_dirty = true;
++    global.addresses_dirty  = true;
++    global.autosave_dirty   = true;
++
++    var _msg = L("Imported ") + string(array_length(_made)) + L(" bitmaps into group ") + _group
++             + L("\nLinked into ") + _manifest.name;
++    if (_created_manifest) _msg += L(" (created)");
++    if (_skipped > 0) _msg += L("\nSkipped ") + string(_skipped) + L(" file(s) that were not 10003 or 9002 bytes.");
++    scr_show_message(_msg);
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_import_reu_bmp_batch/scr_import_reu_bmp_batch.yy b/C64DevMachine_win.yyp/scripts/scr_import_reu_bmp_batch/scr_import_reu_bmp_batch.yy
+new file mode 100644
+index 0000000..8a000a9
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_import_reu_bmp_batch/scr_import_reu_bmp_batch.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_import_reu_bmp_batch",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_import_reu_bmp_batch",
++  "parent":{
++    "name":"LOADER_SUPPORT",
++    "path":"folders/SCRIPTS/MACROS/LOADER_SUPPORT.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index a9ba719..6191be1 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -457,6 +457,7 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
+                 reu_size      : variable_struct_exists(_ad, "reu_size")      ? _ad.reu_size      : ((_ad.type == "LOAD_REU") ? 0x1000000 : 0),
+                 reu_used      : variable_struct_exists(_ad, "reu_used")      ? _ad.reu_used      : ((_ad.type == "LOAD_REU") ? 0x100 : 0),
+                 linked_assets : variable_struct_exists(_ad, "linked_assets") ? _ad.linked_assets : [],
++                group         : variable_struct_exists(_ad, "group")         ? _ad.group         : "",
+             };
+             if (variable_struct_exists(_ad, "source_file") && _ad.source_file != "")
+                 _new_asset.meta.source_file = _ad.source_file;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+index d903fa0..4fd4c21 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+@@ -128,6 +128,9 @@
+ 		_entry.reu_size      = variable_struct_exists(_a, "reu_size")      ? _a.reu_size      : 0;
+ 		_entry.reu_used      = variable_struct_exists(_a, "reu_used")      ? _a.reu_used      : 0;
+ 	        _entry.linked_assets = variable_struct_exists(_a, "linked_assets") ? _a.linked_assets : [];
++	        // Asset group name. Absent in projects saved before grouping existed;
++	        // scr_asset_sorted_indices normalises those to ungrouped on load.
++	        _entry.group         = variable_struct_exists(_a, "group")         ? _a.group         : "";
+ 			if (variable_struct_exists(_a.meta, "source_file")) _entry.source_file = _a.meta.source_file;
+ 	        // Serialize meta struct
+ 	        var _meta_out = {};
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+index ad87876..b06ac0c 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+@@ -120,6 +120,9 @@ if (instance_exists(obj_asset_manager)) {
+         _entry.reu_size      = variable_struct_exists(_a, "reu_size")      ? _a.reu_size      : 0;
+         _entry.reu_used      = variable_struct_exists(_a, "reu_used")      ? _a.reu_used      : 0;
+         _entry.linked_assets = variable_struct_exists(_a, "linked_assets") ? _a.linked_assets : [];
++        // Asset group name. Absent in projects saved before grouping existed;
++        // scr_asset_sorted_indices normalises those to ungrouped on load.
++        _entry.group         = variable_struct_exists(_a, "group")         ? _a.group         : "";
+ 		if (variable_struct_exists(_a.meta, "source_file")) _entry.source_file = _a.meta.source_file;
+         // Serialize meta struct
+         var _meta_out = {};

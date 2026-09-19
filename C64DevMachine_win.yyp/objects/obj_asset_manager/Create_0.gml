@@ -246,6 +246,10 @@ sfx_picker_field = "asset";
 	load_reu_picker_open  = false;
 	load_reu_picker_asset = -1;
 	load_reu_picker_hover = -1;
+	// Asset groups. A group name present in this map is OPEN; absent is
+	// closed, so a newly imported group starts folded with nothing to set.
+	asset_group_open      = ds_map_create();
+
 	load_reu_rows_y       = 0;
 	load_reu_add_y        = 0;
 

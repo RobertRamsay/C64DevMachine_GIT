@@ -1445,6 +1445,7 @@ if (gui_menu_open == 6) {
     // on its own.
     if (global.lite == 0) {
         array_push(_imp_list, { title: "CODE BLOCK (.ASM)", action: "CODE_ASM" });
+        array_push(_imp_list, { title: "REU BMP IMPORT",    action: "REU_BMP" });
     }
 	
     var _item_h_i   = 20;
@@ -1489,6 +1490,9 @@ if (gui_menu_open == 6) {
             }
             else if (_ip.action == "CODE_ASM") {
                 scr_import_code_block_menu();
+            }
+            else if (_ip.action == "REU_BMP") {
+                scr_import_reu_bmp_batch();
             }
         }
     }

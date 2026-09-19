@@ -114,8 +114,28 @@ var _list_y = panel_y + 66;
 // Shared with Step_0's hit-testing via scr_asset_sorted_indices() so the
 // two can never disagree about display order.
 var _sorted_indices = scr_asset_sorted_indices();
+// Closed groups collapse to a single row, so the display count is not the
+// asset count. Everything below walks the display array.
+var _disp_n = array_length(_sorted_indices);
 
-for (var _pos = 0; _pos < _count; _pos++) {
+// Mark the row that heads each group, and how many assets it stands for.
+var _grp_head  = array_create(_disp_n, false);
+var _grp_total = array_create(_disp_n, 0);
+var _prev_grp  = "";
+for (var _gp = 0; _gp < _disp_n; _gp++) {
+    var _gname = ds_list_find_value(asset_list, _sorted_indices[_gp]).group;
+    if (_gname != "" && _gname != _prev_grp) {
+        _grp_head[_gp] = true;
+        var _gtot = 0;
+        for (var _gk = 0; _gk < _count; _gk++) {
+            if (ds_list_find_value(asset_list, _gk).group == _gname) _gtot++;
+        }
+        _grp_total[_gp] = _gtot;
+    }
+    _prev_grp = _gname;
+}
+
+for (var _pos = 0; _pos < _disp_n; _pos++) {
     var _i     = _sorted_indices[_pos];
     var _asset = ds_list_find_value(asset_list, _i);
     var _iy    = _list_y + (_pos * item_h) - panel_scroll;
@@ -268,6 +288,18 @@ for (var _pos = 0; _pos < _count; _pos++) {
             draw_set_color(c_white);
             draw_line(panel_x + 10 + _cw, _iy + 17, panel_x + 10 + _cw, _iy + item_h - 4);
         }
+    } else if (_grp_head[_pos]) {
+        // Group header row: chevron, group name, member count. The row is
+        // still a real asset row, so everything else about it works.
+        var _gopen = ds_map_exists(asset_group_open, _asset.group);
+        var _gchev = "\u25B8";
+        if (_gopen) _gchev = "\u25BE";
+        draw_set_color(make_color_rgb(100, 200, 180));
+        draw_text_l(panel_x + 8, _iy + 16, _gchev + " " + _asset.group
+                    + " (" + string(_grp_total[_pos]) + ")");
+    } else if (_asset.group != "") {
+        draw_set_color(c_white);
+        draw_text_l(panel_x + 20, _iy + 16, _asset.name);
     } else {
         draw_set_color(c_white);
         draw_text_l(panel_x + 8, _iy + 16, _asset.name);
