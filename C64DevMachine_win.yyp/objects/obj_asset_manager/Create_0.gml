@@ -249,6 +249,18 @@ sfx_picker_field = "asset";
 	load_reu_rows_y       = 0;
 	load_reu_add_y        = 0;
 
+	// LOAD_REU manifest scrolling. A REU image can hold hundreds of frames, so
+	// the row list is windowed and the ADD / AUTO PACK buttons are pinned below
+	// it instead of being pushed off the bottom of the viewer panel.
+	load_reu_scroll       = 0;
+	load_reu_scroll_max   = 0;
+	load_reu_rows_visible = 1;
+	load_reu_list_y1      = 0;
+	load_reu_list_y2      = 0;
+	load_reu_sb_x1        = 0;
+	load_reu_sb_x2        = 0;
+	load_reu_sb_drag      = false;
+
 	// LOAD_REU manifest drag-to-reorder — only allowed between rows whose
 	// asset type matches the row being dragged, since MACRO_REU INDEXED
 	// mode's index numbers are assigned per-type in link order.
