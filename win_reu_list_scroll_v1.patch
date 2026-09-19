@@ -1,0 +1,186 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index 857f5b2..001f9f7 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -249,6 +249,18 @@ sfx_picker_field = "asset";
+ 	load_reu_rows_y       = 0;
+ 	load_reu_add_y        = 0;
+ 
++	// LOAD_REU manifest scrolling. A REU image can hold hundreds of frames, so
++	// the row list is windowed and the ADD / AUTO PACK buttons are pinned below
++	// it instead of being pushed off the bottom of the viewer panel.
++	load_reu_scroll       = 0;
++	load_reu_scroll_max   = 0;
++	load_reu_rows_visible = 1;
++	load_reu_list_y1      = 0;
++	load_reu_list_y2      = 0;
++	load_reu_sb_x1        = 0;
++	load_reu_sb_x2        = 0;
++	load_reu_sb_drag      = false;
++
+ 	// LOAD_REU manifest drag-to-reorder — only allowed between rows whose
+ 	// asset type matches the row being dragged, since MACRO_REU INDEXED
+ 	// mode's index numbers are assigned per-type in link order.
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index a37c109..e69c25e 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -7671,11 +7671,30 @@ case "LOAD_REU": {
+     draw_text_l(_cn,_cy,"ASSET"); draw_text_l(_cc,_cy,"C64"); draw_text_l(_cr,_cy,"REU"); draw_text_l(_cs,_cy,"BYTES"); draw_text_l(_cm,_cy,"PACK"); draw_text_l(_ci,_cy,"IDX");
+     _cy += 14;
+     var _links=variable_struct_exists(_asset,"linked_assets")?_asset.linked_assets:[];
+-    load_reu_rows_y = _cy;
++    // Windowed row list. Rows are a fixed 22px and scrolling moves whole rows,
++    // so a row is either fully drawn or not drawn at all and no clipping is
++    // needed. The footer buttons are pinned under the list further down.
++    var _reu_foot_h       = 34;
++    load_reu_list_y1      = _cy;
++    load_reu_list_y2      = _vy2 - _reu_foot_h;
++    load_reu_rows_visible = max(1, floor((load_reu_list_y2 - load_reu_list_y1) / 22));
++    load_reu_scroll_max   = max(0, array_length(_links) - load_reu_rows_visible);
++    load_reu_scroll       = clamp(load_reu_scroll, 0, load_reu_scroll_max);
++    load_reu_rows_y       = load_reu_list_y1;
+     var _bmp_idx = 0;
+     for(var _li=0;_li<array_length(_links);_li++){
+         var _lk=_links[_li], _la=scr_reu_find_asset(_lk.asset_name), _pl=scr_reu_asset_size(_la);
+         var _la_type    = is_undefined(_la) ? "" : _la.type;
++        // IDX numbers every bitmap in link order to match scr_compile_chain, so
++        // the counter must advance for scrolled-out rows too. Work it out before
++        // the visibility test, never inside the drawing below.
++        var _is_bmp_row = false;
++        if (!is_undefined(_la) && (_la.type == "BITMAP" || _la.type == "BITMAP_KLA")) _is_bmp_row = true;
++        var _row_bmp_idx = _bmp_idx;
++        if (_is_bmp_row) _bmp_idx++;
++        if (_li < load_reu_scroll) continue;
++        if (_li >= load_reu_scroll + load_reu_rows_visible) continue;
++        _cy = load_reu_list_y1 + ((_li - load_reu_scroll) * 22);
+         var _is_dragged = (reu_drag_row == _li);
+         if (_is_dragged) draw_set_alpha(0.4);
+         draw_set_color((_li mod 2==0)?make_color_rgb(22,30,34):make_color_rgb(18,25,29)); draw_rectangle(_vx1+8,_cy,_vx2-8,_cy+20,false);
+@@ -7694,10 +7713,9 @@ case "LOAD_REU": {
+         draw_set_color(c_white); draw_text_l(_cm+53,_cy+4,"-"); draw_text_l(_cm+71,_cy+4,"+");
+         // IDX: position within MACRO_REU INDEXED mode's table — bitmaps only,
+         // in link order, matching scr_compile_chain's filter exactly.
+-        var _is_bmp = !is_undefined(_la) && (_la.type == "BITMAP" || _la.type == "BITMAP_KLA");
++        var _is_bmp = _is_bmp_row;
+         if (_is_bmp) {
+-            draw_set_color(c_white); draw_text_l(_ci,_cy+4,string(_bmp_idx));
+-            _bmp_idx++;
++            draw_set_color(c_white); draw_text_l(_ci,_cy+4,string(_row_bmp_idx));
+         } else {
+             draw_set_color(make_color_rgb(90,90,100)); draw_text_l(_ci,_cy+4,"--");
+         }
+@@ -7712,9 +7730,29 @@ case "LOAD_REU": {
+             draw_set_color(c_yellow);
+             draw_line(_vx1+8,_cy,_vx2-8,_cy);
+         }
+-        _cy+=22;
+     }
++
++    // Scrollbar, drawn clear of the per-row X button which ends at _vx2-8.
++    load_reu_sb_x1 = _vx2 - 6;
++    load_reu_sb_x2 = _vx2 - 1;
++    if (load_reu_scroll_max > 0) {
++        var _reu_sb_h = load_reu_list_y2 - load_reu_list_y1;
++        draw_set_color(make_color_rgb(28,36,42));
++        draw_rectangle(load_reu_sb_x1, load_reu_list_y1, load_reu_sb_x2, load_reu_list_y2, false);
++        var _reu_thumb_h = max(24, _reu_sb_h * (load_reu_rows_visible / array_length(_links)));
++        var _reu_thumb_y = load_reu_list_y1 + ((_reu_sb_h - _reu_thumb_h) * (load_reu_scroll / load_reu_scroll_max));
++        draw_set_color(make_color_rgb(100,200,180));
++        draw_rectangle(load_reu_sb_x1, _reu_thumb_y, load_reu_sb_x2, _reu_thumb_y + _reu_thumb_h, false);
++    }
++
++    _cy = load_reu_list_y2 + 6;
+     load_reu_add_y = _cy;
++    if (load_reu_scroll_max > 0) {
++        var _reu_first = load_reu_scroll + 1;
++        var _reu_last  = min(array_length(_links), load_reu_scroll + load_reu_rows_visible);
++        draw_set_color(make_color_rgb(120,120,140));
++        draw_text_l(_vx1+210,_cy+5,string(_reu_first) + "-" + string(_reu_last) + " / " + string(array_length(_links)));
++    }
+     var _hov=point_in_rectangle(_mx,_my,_vx1+10,_cy,_vx1+90,_cy+20);
+     draw_set_color(_hov?make_color_rgb(45,150,100):make_color_rgb(25,75,55)); draw_rectangle(_vx1+10,_cy+2,_vx1+90,_cy+20,false);
+     draw_set_color(c_white); draw_set_halign(fa_center); draw_text_l(_vx1+50,_cy+5,"[+ ADD]"); draw_set_halign(fa_left);
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index 2b9c82c..7cf0fe5 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -52,6 +52,33 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+ var _vy2 = 972;
+ var _mouse_in_viewer = viewer_open && point_in_rectangle(_mx, _my, _vx1, _vy1, _vx2, _vy2);
+ 
++// -------------------------------------------------------
++// LOAD_REU MANIFEST SCROLL
++// Sits with the viewer bounds so the wheel works whenever the pointer is over
++// the row list, not only while a row is being dragged. Bounds come from
++// Draw_64, which recalculates them every frame.
++// -------------------------------------------------------
++if (_mouse_in_viewer && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
++    var _reu_sc_asset = ds_list_find_value(asset_list, viewer_asset);
++    if (!is_undefined(_reu_sc_asset) && _reu_sc_asset.type == "LOAD_REU") {
++        if (point_in_rectangle(_mx, _my, _vx1, load_reu_list_y1, _vx2, load_reu_list_y2)) {
++            if (mouse_wheel_up())   load_reu_scroll -= 3;
++            if (mouse_wheel_down()) load_reu_scroll += 3;
++        }
++        if (mouse_check_button_pressed(mb_left)
++        &&  point_in_rectangle(_mx, _my, load_reu_sb_x1, load_reu_list_y1, load_reu_sb_x2 + 4, load_reu_list_y2)) {
++            load_reu_sb_drag = true;
++        }
++        if (!mouse_check_button(mb_left)) load_reu_sb_drag = false;
++        if (load_reu_sb_drag && load_reu_scroll_max > 0) {
++            var _reu_sb_span = max(1, load_reu_list_y2 - load_reu_list_y1);
++            var _reu_sb_frac = clamp((_my - load_reu_list_y1) / _reu_sb_span, 0, 1);
++            load_reu_scroll  = round(_reu_sb_frac * load_reu_scroll_max);
++        }
++        load_reu_scroll = clamp(load_reu_scroll, 0, load_reu_scroll_max);
++    }
++}
++
+ // -------------------------------------------------------
+ // WINDOW FOCUS — reload changed asset files + text editor pickup
+ // -------------------------------------------------------
+@@ -1686,8 +1713,11 @@ if (reu_drag_row >= 0) {
+         if (!is_undefined(_rd_asset) && _rd_asset.type == "LOAD_REU") {
+             _rd_valid = true;
+             var _rd_links = variable_struct_exists(_rd_asset,"linked_assets") ? _rd_asset.linked_assets : [];
+-            var _rd_ry = load_reu_rows_y;
+             for (var _rli = 0; _rli < array_length(_rd_links); _rli++) {
++                // Only rows currently on screen can be a drop target.
++                if (_rli < load_reu_scroll) continue;
++                if (_rli >= load_reu_scroll + load_reu_rows_visible) continue;
++                var _rd_ry = load_reu_list_y1 + ((_rli - load_reu_scroll) * 22);
+                 if (point_in_rectangle(_mx, _my, _vx1+8, _rd_ry, _vx2-8, _rd_ry+20)) {
+                     var _rd_hov_asset = scr_reu_find_asset(_rd_links[_rli].asset_name);
+                     var _rd_hov_type  = is_undefined(_rd_hov_asset) ? "" : _rd_hov_asset.type;
+@@ -1696,7 +1726,6 @@ if (reu_drag_row >= 0) {
+                     }
+                     break;
+                 }
+-                _rd_ry += 22;
+             }
+             if (mouse_check_button_released(mb_left)) {
+                 var _rd_from = reu_drag_row;
+@@ -2242,8 +2271,14 @@ if (_asset.type == "META_TILESET") {
+         // LOAD_REU viewer clicks
+         if (_asset.type == "LOAD_REU") {
+             var _links=variable_struct_exists(_asset,"linked_assets")?_asset.linked_assets:[];
+-            var _ry=load_reu_rows_y, _cm=_vx1+465;
++            var _cm=_vx1+465;
++            // A click on the scrollbar is handled by the scroll block above and
++            // must not fall through to a row.
++            if (load_reu_sb_drag) exit;
+             for(var _li=0;_li<array_length(_links);_li++){
++                if(_li < load_reu_scroll) continue;
++                if(_li >= load_reu_scroll + load_reu_rows_visible) continue;
++                var _ry = load_reu_list_y1 + ((_li - load_reu_scroll) * 22);
+                 if(point_in_rectangle(_mx,_my,_vx1+8,_ry+2,_vx1+22,_ry+18)){
+                     reu_drag_row=_li; reu_drag_over=_li;
+                     var _drag_asset=scr_reu_find_asset(_links[_li].asset_name);
+@@ -2254,7 +2289,6 @@ if (_asset.type == "META_TILESET") {
+                 if(point_in_rectangle(_mx,_my,_cm,_ry+2,_cm+45,_ry+18)){_links[_li].auto_pack=!_links[_li].auto_pack;scr_reu_repack(_asset);exit;}
+                 if(point_in_rectangle(_mx,_my,_cm+48,_ry+2,_cm+64,_ry+18)){_links[_li].auto_pack=false;_links[_li].reu_address=max(0x100,real(_links[_li].reu_address)-0x100);scr_reu_repack(_asset);exit;}
+                 if(point_in_rectangle(_mx,_my,_cm+66,_ry+2,_cm+82,_ry+18)){_links[_li].auto_pack=false;_links[_li].reu_address=min(0xFFFFFF,real(_links[_li].reu_address)+0x100);scr_reu_repack(_asset);exit;}
+-                _ry+=22;
+             }
+             if(point_in_rectangle(_mx,_my,_vx1+10,load_reu_add_y,_vx1+90,load_reu_add_y+22)){load_reu_picker_open=true;load_reu_picker_asset=viewer_asset;load_reu_picker_hover=-1;exit;}
+             if(point_in_rectangle(_mx,_my,_vx1+100,load_reu_add_y,_vx1+200,load_reu_add_y+22)){for(var _li=0;_li<array_length(_links);_li++)_links[_li].auto_pack=true;scr_reu_repack(_asset);exit;}

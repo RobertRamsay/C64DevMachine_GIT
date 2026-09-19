@@ -53,6 +53,33 @@ var _vy2 = 972;
 var _mouse_in_viewer = viewer_open && point_in_rectangle(_mx, _my, _vx1, _vy1, _vx2, _vy2);
 
 // -------------------------------------------------------
+// LOAD_REU MANIFEST SCROLL
+// Sits with the viewer bounds so the wheel works whenever the pointer is over
+// the row list, not only while a row is being dragged. Bounds come from
+// Draw_64, which recalculates them every frame.
+// -------------------------------------------------------
+if (_mouse_in_viewer && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
+    var _reu_sc_asset = ds_list_find_value(asset_list, viewer_asset);
+    if (!is_undefined(_reu_sc_asset) && _reu_sc_asset.type == "LOAD_REU") {
+        if (point_in_rectangle(_mx, _my, _vx1, load_reu_list_y1, _vx2, load_reu_list_y2)) {
+            if (mouse_wheel_up())   load_reu_scroll -= 3;
+            if (mouse_wheel_down()) load_reu_scroll += 3;
+        }
+        if (mouse_check_button_pressed(mb_left)
+        &&  point_in_rectangle(_mx, _my, load_reu_sb_x1, load_reu_list_y1, load_reu_sb_x2 + 4, load_reu_list_y2)) {
+            load_reu_sb_drag = true;
+        }
+        if (!mouse_check_button(mb_left)) load_reu_sb_drag = false;
+        if (load_reu_sb_drag && load_reu_scroll_max > 0) {
+            var _reu_sb_span = max(1, load_reu_list_y2 - load_reu_list_y1);
+            var _reu_sb_frac = clamp((_my - load_reu_list_y1) / _reu_sb_span, 0, 1);
+            load_reu_scroll  = round(_reu_sb_frac * load_reu_scroll_max);
+        }
+        load_reu_scroll = clamp(load_reu_scroll, 0, load_reu_scroll_max);
+    }
+}
+
+// -------------------------------------------------------
 // WINDOW FOCUS — reload changed asset files + text editor pickup
 // -------------------------------------------------------
 var _focused = window_has_focus();
@@ -1686,8 +1713,11 @@ if (reu_drag_row >= 0) {
         if (!is_undefined(_rd_asset) && _rd_asset.type == "LOAD_REU") {
             _rd_valid = true;
             var _rd_links = variable_struct_exists(_rd_asset,"linked_assets") ? _rd_asset.linked_assets : [];
-            var _rd_ry = load_reu_rows_y;
             for (var _rli = 0; _rli < array_length(_rd_links); _rli++) {
+                // Only rows currently on screen can be a drop target.
+                if (_rli < load_reu_scroll) continue;
+                if (_rli >= load_reu_scroll + load_reu_rows_visible) continue;
+                var _rd_ry = load_reu_list_y1 + ((_rli - load_reu_scroll) * 22);
                 if (point_in_rectangle(_mx, _my, _vx1+8, _rd_ry, _vx2-8, _rd_ry+20)) {
                     var _rd_hov_asset = scr_reu_find_asset(_rd_links[_rli].asset_name);
                     var _rd_hov_type  = is_undefined(_rd_hov_asset) ? "" : _rd_hov_asset.type;
@@ -1696,7 +1726,6 @@ if (reu_drag_row >= 0) {
                     }
                     break;
                 }
-                _rd_ry += 22;
             }
             if (mouse_check_button_released(mb_left)) {
                 var _rd_from = reu_drag_row;
@@ -2242,8 +2271,14 @@ if (_asset.type == "META_TILESET") {
         // LOAD_REU viewer clicks
         if (_asset.type == "LOAD_REU") {
             var _links=variable_struct_exists(_asset,"linked_assets")?_asset.linked_assets:[];
-            var _ry=load_reu_rows_y, _cm=_vx1+465;
+            var _cm=_vx1+465;
+            // A click on the scrollbar is handled by the scroll block above and
+            // must not fall through to a row.
+            if (load_reu_sb_drag) exit;
             for(var _li=0;_li<array_length(_links);_li++){
+                if(_li < load_reu_scroll) continue;
+                if(_li >= load_reu_scroll + load_reu_rows_visible) continue;
+                var _ry = load_reu_list_y1 + ((_li - load_reu_scroll) * 22);
                 if(point_in_rectangle(_mx,_my,_vx1+8,_ry+2,_vx1+22,_ry+18)){
                     reu_drag_row=_li; reu_drag_over=_li;
                     var _drag_asset=scr_reu_find_asset(_links[_li].asset_name);
@@ -2254,7 +2289,6 @@ if (_asset.type == "META_TILESET") {
                 if(point_in_rectangle(_mx,_my,_cm,_ry+2,_cm+45,_ry+18)){_links[_li].auto_pack=!_links[_li].auto_pack;scr_reu_repack(_asset);exit;}
                 if(point_in_rectangle(_mx,_my,_cm+48,_ry+2,_cm+64,_ry+18)){_links[_li].auto_pack=false;_links[_li].reu_address=max(0x100,real(_links[_li].reu_address)-0x100);scr_reu_repack(_asset);exit;}
                 if(point_in_rectangle(_mx,_my,_cm+66,_ry+2,_cm+82,_ry+18)){_links[_li].auto_pack=false;_links[_li].reu_address=min(0xFFFFFF,real(_links[_li].reu_address)+0x100);scr_reu_repack(_asset);exit;}
-                _ry+=22;
             }
             if(point_in_rectangle(_mx,_my,_vx1+10,load_reu_add_y,_vx1+90,load_reu_add_y+22)){load_reu_picker_open=true;load_reu_picker_asset=viewer_asset;load_reu_picker_hover=-1;exit;}
             if(point_in_rectangle(_mx,_my,_vx1+100,load_reu_add_y,_vx1+200,load_reu_add_y+22)){for(var _li=0;_li<array_length(_links);_li++)_links[_li].auto_pack=true;scr_reu_repack(_asset);exit;}

@@ -7671,11 +7671,30 @@ case "LOAD_REU": {
     draw_text_l(_cn,_cy,"ASSET"); draw_text_l(_cc,_cy,"C64"); draw_text_l(_cr,_cy,"REU"); draw_text_l(_cs,_cy,"BYTES"); draw_text_l(_cm,_cy,"PACK"); draw_text_l(_ci,_cy,"IDX");
     _cy += 14;
     var _links=variable_struct_exists(_asset,"linked_assets")?_asset.linked_assets:[];
-    load_reu_rows_y = _cy;
+    // Windowed row list. Rows are a fixed 22px and scrolling moves whole rows,
+    // so a row is either fully drawn or not drawn at all and no clipping is
+    // needed. The footer buttons are pinned under the list further down.
+    var _reu_foot_h       = 34;
+    load_reu_list_y1      = _cy;
+    load_reu_list_y2      = _vy2 - _reu_foot_h;
+    load_reu_rows_visible = max(1, floor((load_reu_list_y2 - load_reu_list_y1) / 22));
+    load_reu_scroll_max   = max(0, array_length(_links) - load_reu_rows_visible);
+    load_reu_scroll       = clamp(load_reu_scroll, 0, load_reu_scroll_max);
+    load_reu_rows_y       = load_reu_list_y1;
     var _bmp_idx = 0;
     for(var _li=0;_li<array_length(_links);_li++){
         var _lk=_links[_li], _la=scr_reu_find_asset(_lk.asset_name), _pl=scr_reu_asset_size(_la);
         var _la_type    = is_undefined(_la) ? "" : _la.type;
+        // IDX numbers every bitmap in link order to match scr_compile_chain, so
+        // the counter must advance for scrolled-out rows too. Work it out before
+        // the visibility test, never inside the drawing below.
+        var _is_bmp_row = false;
+        if (!is_undefined(_la) && (_la.type == "BITMAP" || _la.type == "BITMAP_KLA")) _is_bmp_row = true;
+        var _row_bmp_idx = _bmp_idx;
+        if (_is_bmp_row) _bmp_idx++;
+        if (_li < load_reu_scroll) continue;
+        if (_li >= load_reu_scroll + load_reu_rows_visible) continue;
+        _cy = load_reu_list_y1 + ((_li - load_reu_scroll) * 22);
         var _is_dragged = (reu_drag_row == _li);
         if (_is_dragged) draw_set_alpha(0.4);
         draw_set_color((_li mod 2==0)?make_color_rgb(22,30,34):make_color_rgb(18,25,29)); draw_rectangle(_vx1+8,_cy,_vx2-8,_cy+20,false);
@@ -7694,10 +7713,9 @@ case "LOAD_REU": {
         draw_set_color(c_white); draw_text_l(_cm+53,_cy+4,"-"); draw_text_l(_cm+71,_cy+4,"+");
         // IDX: position within MACRO_REU INDEXED mode's table — bitmaps only,
         // in link order, matching scr_compile_chain's filter exactly.
-        var _is_bmp = !is_undefined(_la) && (_la.type == "BITMAP" || _la.type == "BITMAP_KLA");
+        var _is_bmp = _is_bmp_row;
         if (_is_bmp) {
-            draw_set_color(c_white); draw_text_l(_ci,_cy+4,string(_bmp_idx));
-            _bmp_idx++;
+            draw_set_color(c_white); draw_text_l(_ci,_cy+4,string(_row_bmp_idx));
         } else {
             draw_set_color(make_color_rgb(90,90,100)); draw_text_l(_ci,_cy+4,"--");
         }
@@ -7712,9 +7730,29 @@ case "LOAD_REU": {
             draw_set_color(c_yellow);
             draw_line(_vx1+8,_cy,_vx2-8,_cy);
         }
-        _cy+=22;
     }
+
+    // Scrollbar, drawn clear of the per-row X button which ends at _vx2-8.
+    load_reu_sb_x1 = _vx2 - 6;
+    load_reu_sb_x2 = _vx2 - 1;
+    if (load_reu_scroll_max > 0) {
+        var _reu_sb_h = load_reu_list_y2 - load_reu_list_y1;
+        draw_set_color(make_color_rgb(28,36,42));
+        draw_rectangle(load_reu_sb_x1, load_reu_list_y1, load_reu_sb_x2, load_reu_list_y2, false);
+        var _reu_thumb_h = max(24, _reu_sb_h * (load_reu_rows_visible / array_length(_links)));
+        var _reu_thumb_y = load_reu_list_y1 + ((_reu_sb_h - _reu_thumb_h) * (load_reu_scroll / load_reu_scroll_max));
+        draw_set_color(make_color_rgb(100,200,180));
+        draw_rectangle(load_reu_sb_x1, _reu_thumb_y, load_reu_sb_x2, _reu_thumb_y + _reu_thumb_h, false);
+    }
+
+    _cy = load_reu_list_y2 + 6;
     load_reu_add_y = _cy;
+    if (load_reu_scroll_max > 0) {
+        var _reu_first = load_reu_scroll + 1;
+        var _reu_last  = min(array_length(_links), load_reu_scroll + load_reu_rows_visible);
+        draw_set_color(make_color_rgb(120,120,140));
+        draw_text_l(_vx1+210,_cy+5,string(_reu_first) + "-" + string(_reu_last) + " / " + string(array_length(_links)));
+    }
     var _hov=point_in_rectangle(_mx,_my,_vx1+10,_cy,_vx1+90,_cy+20);
     draw_set_color(_hov?make_color_rgb(45,150,100):make_color_rgb(25,75,55)); draw_rectangle(_vx1+10,_cy+2,_vx1+90,_cy+20,false);
     draw_set_color(c_white); draw_set_halign(fa_center); draw_text_l(_vx1+50,_cy+5,"[+ ADD]"); draw_set_halign(fa_left);
