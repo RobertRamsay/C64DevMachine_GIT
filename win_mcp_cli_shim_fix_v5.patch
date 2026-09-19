@@ -1,0 +1,72 @@
+diff --git a/C64DevMachine_win.yyp/datafiles/tools/cdm-mcp/setup-mcp.bat b/C64DevMachine_win.yyp/datafiles/tools/cdm-mcp/setup-mcp.bat
+index 82b5a50..85ba56f 100644
+--- a/C64DevMachine_win.yyp/datafiles/tools/cdm-mcp/setup-mcp.bat
++++ b/C64DevMachine_win.yyp/datafiles/tools/cdm-mcp/setup-mcp.bat
+@@ -78,7 +78,7 @@ goto :finish
+ 
+ :winget
+ call :status NODE_INSTALLING "Installing Node.js - please approve the Windows prompt"
+-winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements >>"%LOG%" 2>&1
++winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements <nul >>"%LOG%" 2>&1
+ >>"%LOG%" echo winget exit code: %errorlevel%
+ 
+ rem This process inherited the old PATH, so look in the install folder directly.
+@@ -122,18 +122,20 @@ where codex >nul 2>&1
+ if errorlevel 1 goto :trycc
+ call :status REGISTERING "Registering with Codex CLI"
+ >>"%LOG%" echo --- codex mcp add ---
+-codex mcp add c64-dev-machine -- "%NODE%" "%BRIDGE%" >>"%LOG%" 2>&1
++call codex mcp add c64-dev-machine -- "%NODE%" "%BRIDGE%" <nul >>"%LOG%" 2>&1
+ >>"%LOG%" echo codex exit code: %errorlevel%
+ set "HOSTS=!HOSTS! Codex"
++call :status REGISTERING "Codex registered"
+ 
+ :trycc
+ where claude >nul 2>&1
+ if errorlevel 1 goto :hostsdone
+ call :status REGISTERING "Registering with Claude Code"
+ >>"%LOG%" echo --- claude mcp add ---
+-claude mcp add --scope user c64-dev-machine -- "%NODE%" "%BRIDGE%" >>"%LOG%" 2>&1
++call claude mcp add --scope user c64-dev-machine -- "%NODE%" "%BRIDGE%" <nul >>"%LOG%" 2>&1
+ >>"%LOG%" echo claude exit code: %errorlevel%
+ set "HOSTS=!HOSTS! Claude"
++call :status REGISTERING "Claude registered"
+ 
+ :hostsdone
+ if "!HOSTS!"=="" goto :nohost
+diff --git a/tools/cdm-mcp/setup-mcp.bat b/tools/cdm-mcp/setup-mcp.bat
+index 15fcc41..3873dbe 100644
+--- a/tools/cdm-mcp/setup-mcp.bat
++++ b/tools/cdm-mcp/setup-mcp.bat
+@@ -78,7 +78,7 @@ goto :finish
+ 
+ :winget
+ call :status NODE_INSTALLING "Installing Node.js - please approve the Windows prompt"
+-winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements >>"%LOG%" 2>&1
++winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements <nul >>"%LOG%" 2>&1
+ >>"%LOG%" echo winget exit code: %errorlevel%
+ 
+ rem This process inherited the old PATH, so look in the install folder directly.
+@@ -122,18 +122,20 @@ where codex >nul 2>&1
+ if errorlevel 1 goto :trycc
+ call :status REGISTERING "Registering with Codex CLI"
+ >>"%LOG%" echo --- codex mcp add ---
+-codex mcp add c64-dev-machine -- "%NODE%" "%BRIDGE%" >>"%LOG%" 2>&1
++call codex mcp add c64-dev-machine -- "%NODE%" "%BRIDGE%" <nul >>"%LOG%" 2>&1
+ >>"%LOG%" echo codex exit code: %errorlevel%
+ set "HOSTS=!HOSTS! Codex"
++call :status REGISTERING "Codex registered"
+ 
+ :trycc
+ where claude >nul 2>&1
+ if errorlevel 1 goto :hostsdone
+ call :status REGISTERING "Registering with Claude Code"
+ >>"%LOG%" echo --- claude mcp add ---
+-claude mcp add --scope user c64-dev-machine -- "%NODE%" "%BRIDGE%" >>"%LOG%" 2>&1
++call claude mcp add --scope user c64-dev-machine -- "%NODE%" "%BRIDGE%" <nul >>"%LOG%" 2>&1
+ >>"%LOG%" echo claude exit code: %errorlevel%
+ set "HOSTS=!HOSTS! Claude"
++call :status REGISTERING "Claude registered"
+ 
+ :hostsdone
+ if "!HOSTS!"=="" goto :nohost
