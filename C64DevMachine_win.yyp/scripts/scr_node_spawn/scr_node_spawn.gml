@@ -977,6 +977,19 @@ case "LABEL": {
             _n.pc_address   = global.start_pc;
             with (_n) { event_user(0); }
             break;
+
+        // -------------------------------------------------------
+        // MACRO_UCI_REU
+        // instructions[0]: ["macro_uci_reu", manifest, file_override, status_var]
+        //   Asks the Ultimate's firmware to load a .reu from its own storage.
+        //   The filename follows the LOAD_REU asset unless overridden.
+        // -------------------------------------------------------
+        case "MACRO_UCI_REU":
+            _n.node_title   = "UCI LOAD REU";
+            _n.instructions = [["macro_uci_reu", "", "", ""]];
+            _n.pc_address   = global.start_pc;
+            with (_n) { event_user(0); }
+            break;
 			
 			
 		// MACRO_VECTOR_PAGE

@@ -1,0 +1,577 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index 7aaf19a..e38a8b8 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1402,6 +1402,9 @@
+     {"id":{"name":"scr_voi64_text_to_phonemes","path":"scripts/scr_voi64_text_to_phonemes/scr_voi64_text_to_phonemes.yy",},},
+     {"id":{"name":"scr_welcome_save_pref","path":"scripts/scr_welcome_save_pref/scr_welcome_save_pref.yy",},},
+     {"id":{"name":"scr_write_reu_launcher","path":"scripts/scr_write_reu_launcher/scr_write_reu_launcher.yy",},},
++    {"id":{"name":"scr_node_draw_macro_uci_reu","path":"scripts/scr_node_draw_macro_uci_reu/scr_node_draw_macro_uci_reu.yy",},},
++    {"id":{"name":"scr_node_step_macro_uci_reu","path":"scripts/scr_node_step_macro_uci_reu/scr_node_step_macro_uci_reu.yy",},},
++    {"id":{"name":"scr_compile_macro_uci_reu","path":"scripts/scr_compile_macro_uci_reu/scr_compile_macro_uci_reu.yy",},},
+     {"id":{"name":"spriteData1","path":"scripts/spriteData1/spriteData1.yy",},},
+     {"id":{"name":"shd_png_import","path":"shaders/shd_png_import/shd_png_import.yy",},},
+     {"id":{"name":"spr_9s_tile1","path":"sprites/spr_9s_tile1/spr_9s_tile1.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index d3794ac..e051b46 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -261,6 +261,7 @@ if (height_dirty) {
+ 	case "COND_IF_WORD":     height = _G * 4;  break;
+     case "BANK_SWITCH":      height = _G * 6;  break;
+     case "MACRO_REU":        height = _G * 9; break;
++    case "MACRO_UCI_REU":    height = _G * 5; break;
+     case "MACRO_COLLISION":  height = _G * 10;  break;
+ 	case "MACRO_COLL_ADV":   height = _G * 19;  break;    
+ 	case "MACRO_COLL_LINE":  height = _G * 7;   break;
+@@ -985,6 +986,7 @@ switch (node_type) {
+ 	case "COND_IF_WORD": _head_col = is_connected ? make_color_rgb(180,  90,  40) : make_color_rgb( 90, 45,  20);  break;
+ 	case "BANK_SWITCH": _head_col = is_connected ? make_color_rgb(120, 80, 200) : make_color_rgb( 60, 40, 100);  break;
+ 	case "MACRO_REU":   _head_col = is_connected ? make_color_rgb(120, 80, 200) : make_color_rgb( 60, 40, 100);  break;
++	case "MACRO_UCI_REU": _head_col = is_connected ? make_color_rgb(90, 130, 200) : make_color_rgb( 45, 65, 100);  break;
+ 	case "GET_VAR":     _head_col = is_connected ? make_color_rgb( 40,120,  80) : make_color_rgb( 20, 60,  40); break;
+     case "SET_VAR":     _head_col = is_connected ? make_color_rgb(140, 60,  40) : make_color_rgb( 70, 30,  20); break;
+     case "INC_VAR":     _head_col = is_connected ? make_color_rgb( 30,100,  50) : make_color_rgb( 15, 50,  25); break;
+@@ -1459,6 +1461,7 @@ if (_lod_body) switch (node_type) {
+ 	case "COND_IF_WORD":      scr_node_draw_cond_if_word(draw_x, y); break;
+ 	case "BANK_SWITCH":       scr_node_draw_bank_switch(draw_x, y); break;
+ 	case "MACRO_REU":         scr_node_draw_macro_reu(draw_x, y);   break;
++	case "MACRO_UCI_REU":     scr_node_draw_macro_uci_reu(draw_x, y); break;
+ 	case "MACRO_COLLISION":   scr_node_draw_macro_collision(draw_x); break;
+ 	case "MACRO_COLL_ADV":    scr_node_draw_macro_coll_adv(draw_x);  break;
+ 	case "MACRO_COLL_LINE":   scr_node_draw_macro_coll_line(draw_x, y); break;
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 5cac4c5..dfc4f01 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -1125,6 +1125,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
+ 		case "COND_IF_WORD": scr_node_step_cond_if_word(draw_x); break;
+         case "BANK_SWITCH":  scr_node_step_bank_switch(draw_x); break;
+         case "MACRO_REU":    scr_node_step_macro_reu(draw_x);   break;
++        case "MACRO_UCI_REU": scr_node_step_macro_uci_reu(draw_x); break;
+ 		
+ 		
+ 		
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 66996b2..a46ab0c 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -964,6 +964,7 @@ if (gui_menu_open == 1 && !global.lite) {
+         { title: "MATH",             type: "MACRO_MATH"          },
+         { title: "RANDOM",           type: "MACRO_RANDOM"        },
+         { title: "REU",              type: "MACRO_REU"           },
++        { title: "UCI LOAD REU",     type: "MACRO_UCI_REU"       },
+         { title: "VOI64 MASTER",     type: "MACRO_VOI64_MASTER"  },
+         { title: "VOI64 SAY",        type: "MACRO_VOI64_SAY"     },
+     ];
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 6b8a9b0..1660a80 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -6866,6 +6866,7 @@ case "MACRO_LOADER": {
+ 
+ 
+ case "MACRO_LOAD_GAME": scr_compile_macro_load_game(_list, _curr); break;
++case "MACRO_UCI_REU": scr_compile_macro_uci_reu(_list, _curr); break;
+ case "MACRO_SAVE_GAME": scr_compile_macro_save_game(_list, _curr); break;
+ 
+ // --------------------------------------------------------
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_macro_uci_reu/scr_compile_macro_uci_reu.gml b/C64DevMachine_win.yyp/scripts/scr_compile_macro_uci_reu/scr_compile_macro_uci_reu.gml
+new file mode 100644
+index 0000000..e5695d2
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_macro_uci_reu/scr_compile_macro_uci_reu.gml
+@@ -0,0 +1,178 @@
++/// @function scr_compile_macro_uci_reu(_list, _curr)
++/// @description Emits an Ultimate Command Interface request that makes the
++///              cartridge load a .reu image from its OWN storage into REU
++///              memory, before the program carries on.
++///
++/// This is not the same problem as attaching an image to an emulator. VICE is
++/// told about its image on the command line (scr_launch_vice, and the launcher
++/// written beside a manual export). F6 pushes an image over the network. This
++/// node covers the third case: a PRG sitting on the Ultimate's own SD or USB,
++/// started from its file browser, with no host machine involved at all. The
++/// program asks the firmware to fetch its own data.
++///
++/// Register map, per the Ultimate documentation:
++///   $DF1C  write: control      read: status
++///   $DF1D  write: command data read: identification ($C9, or $49 during IRQ)
++///   $DF1E  read:  response data
++///   $DF1F  read:  status data
++///
++/// STATE lives in bits 1-0 of the status register - 00 idle, 01 command busy,
++/// 10 data last, 11 data more - with DATA_AV in bit 7 and STAT_AV in bit 6.
++/// Masking $30 for those, as circulating example code does, reads two bits
++/// that are always zero: the idle wait then falls straight through and the
++/// data comparisons can never match.
++///
++/// The command is target $04 (control target), command $08 (LOAD REU),
++/// followed by the filename. It answers with a 4-byte little-endian transfer
++/// count and a status string, both of which must be drained before the
++/// interface returns to idle. The first status byte is what distinguishes
++/// "00,OK" from "84,REU NOT ENABLED" and "85,REU FILE CANNOT BE OPENED", so
++/// it is kept rather than thrown away.
++
++function scr_compile_macro_uci_reu(_list, _curr) {
++    var _id   = _curr;
++    var _inst = _id.instructions[0];
++
++    var _manifest_name = (array_length(_inst) > 1) ? string(_inst[1]) : "";
++    var _override      = (array_length(_inst) > 2) ? string(_inst[2]) : "";
++    var _status_var    = (array_length(_inst) > 3) ? string(_inst[3]) : "";
++
++    // The filename follows the LOAD_REU asset unless explicitly overridden,
++    // so renaming the manifest cannot silently leave this node pointing at a
++    // file that is no longer written.
++    var _filename = _override;
++    if (_filename == "") {
++        var _manifest = scr_reu_find_asset(_manifest_name);
++        if (!is_undefined(_manifest) && variable_struct_exists(_manifest, "reu_filename")) {
++            _filename = string(_manifest.reu_filename);
++        }
++    }
++    if (_filename == "") {
++        show_debug_message("MACRO_UCI_REU WARNING: no filename (manifest=[" + _manifest_name + "]) - skipping emit");
++        exit;
++    }
++
++    var _status_addr = 0;
++    if (_status_var != "") {
++        _status_addr = scr_resolve_var_addr(_status_var);
++        if (_status_addr == 0) {
++            show_debug_message("MACRO_UCI_REU WARNING: status var unresolved: " + _status_var);
++        }
++    }
++
++    var _pfx        = "uci" + string(real(_id)) + "_";
++    var _l_absent   = _pfx + "absent";
++    var _l_idle     = _pfx + "idle";
++    var _l_name     = _pfx + "name";
++    var _l_send     = _pfx + "send";
++    var _l_sent     = _pfx + "sent";
++    var _l_wait     = _pfx + "wait";
++    var _l_drain    = _pfx + "drain";
++    var _l_nodata   = _pfx + "nodata";
++    var _l_done     = _pfx + "done";
++    var _l_final    = _pfx + "final";
++    var _l_skipkeep = _pfx + "skipkeep";
++
++    var UCI_CONTROL  = 0xDF1C;
++    var UCI_COMMAND  = 0xDF1D;
++    var UCI_RESPONSE = 0xDF1E;
++    var UCI_STATUS   = 0xDF1F;
++
++    // ---- PRESENCE ----
++    // On hardware without the interface these registers are open bus, and the
++    // idle wait below would spin forever. Identification reads $C9 normally
++    // and $49 while an interrupt is being serviced.
++    array_push(_list, ["lda_abs", UCI_COMMAND, _id]);
++    array_push(_list, ["cmp_imm", 0xC9,        _id]);
++    array_push(_list, ["beq",     _l_idle,     _id]);
++    array_push(_list, ["cmp_imm", 0x49,        _id]);
++    array_push(_list, ["bne",     _l_absent,   _id]);
++
++    // ---- WAIT FOR IDLE ----
++    array_push(_list, ["label",   _l_idle,     _id]);
++    array_push(_list, ["lda_abs", UCI_CONTROL, _id]);
++    array_push(_list, ["and_imm", 0x03,        _id]);
++    array_push(_list, ["bne",     _l_idle,     _id]);
++
++    // ---- COMMAND: target $04, command $08, then the filename ----
++    array_push(_list, ["lda_imm", 0x04,        _id]);
++    array_push(_list, ["sta_abs", UCI_COMMAND, _id]);
++    array_push(_list, ["lda_imm", 0x08,        _id]);
++    array_push(_list, ["sta_abs", UCI_COMMAND, _id]);
++
++    array_push(_list, ["ldx_imm", 0x00,        _id]);
++    array_push(_list, ["label",   _l_send,     _id]);
++    array_push(_list, ["lda_abx", _l_name,     _id]);
++    array_push(_list, ["beq",     _l_sent,     _id]);
++    array_push(_list, ["sta_abs", UCI_COMMAND, _id]);
++    array_push(_list, ["inx",     0,           _id]);
++    array_push(_list, ["bne",     _l_send,     _id]);
++    array_push(_list, ["label",   _l_sent,     _id]);
++
++    array_push(_list, ["lda_imm", 0x01,        _id]);   // PUSH_CMD
++    array_push(_list, ["sta_abs", UCI_CONTROL, _id]);
++
++    // ---- WAIT WHILE BUSY ----
++    array_push(_list, ["label",   _l_wait,     _id]);
++    array_push(_list, ["lda_abs", UCI_CONTROL, _id]);
++    array_push(_list, ["and_imm", 0x03,        _id]);
++    array_push(_list, ["cmp_imm", 0x01,        _id]);
++    array_push(_list, ["beq",     _l_wait,     _id]);
++
++    // ---- DRAIN ----
++    // Response bytes first (bit 7), then status bytes (bit 6), until neither
++    // is offered. The first status byte is the one worth keeping; the rest of
++    // the string is read and discarded so the interface can return to idle.
++    if (_status_addr != 0) {
++        array_push(_list, ["lda_imm", 0xFF,         _id]);
++        array_push(_list, ["sta_abs", _status_addr, _id]);
++    }
++
++    array_push(_list, ["label",   _l_drain,     _id]);
++    array_push(_list, ["lda_abs", UCI_CONTROL,  _id]);
++    array_push(_list, ["bpl",     _l_nodata,    _id]);
++    array_push(_list, ["lda_abs", UCI_RESPONSE, _id]);
++    array_push(_list, ["jmp_abs", _l_drain,     _id]);
++
++    array_push(_list, ["label",   _l_nodata,    _id]);
++    array_push(_list, ["lda_abs", UCI_CONTROL,  _id]);
++    array_push(_list, ["and_imm", 0x40,         _id]);
++    array_push(_list, ["beq",     _l_done,      _id]);
++    array_push(_list, ["lda_abs", UCI_STATUS,   _id]);
++
++    if (_status_addr != 0) {
++        // Keep only the first status byte. $FF was stored above as "nothing
++        // seen yet", so a slot still holding it is the one to write into.
++        // X is used for the test so the status byte stays in A.
++        array_push(_list, ["ldx_abs", _status_addr, _id]);
++        array_push(_list, ["cpx_imm", 0xFF,         _id]);
++        array_push(_list, ["bne",     _l_skipkeep,  _id]);
++        array_push(_list, ["sta_abs", _status_addr, _id]);
++        array_push(_list, ["label",   _l_skipkeep,  _id]);
++    }
++
++    array_push(_list, ["jmp_abs", _l_drain,     _id]);
++
++    // ---- ACCEPT AND WAIT FOR IDLE ----
++    array_push(_list, ["label",   _l_done,      _id]);
++    array_push(_list, ["lda_imm", 0x02,         _id]);   // DATA_ACC
++    array_push(_list, ["sta_abs", UCI_CONTROL,  _id]);
++
++    array_push(_list, ["label",   _l_final,     _id]);
++    array_push(_list, ["lda_abs", UCI_CONTROL,  _id]);
++    array_push(_list, ["and_imm", 0x03,         _id]);
++    array_push(_list, ["bne",     _l_final,     _id]);
++
++    // ---- FILENAME ----
++    // Jumped over, not fallen into. The Ultimate expects plain ASCII, which
++    // is what these bytes are - do not run them through a PETSCII conversion.
++    array_push(_list, ["jmp_abs", _l_absent,    _id]);
++    array_push(_list, ["label",   _l_name,      _id]);
++    for (var _ci = 1; _ci <= string_length(_filename); _ci++) {
++        array_push(_list, ["byte", ord(string_char_at(_filename, _ci)), _id]);
++    }
++    array_push(_list, ["byte", 0x00, _id]);
++
++    // Falls through to whatever node follows, on every path.
++    array_push(_list, ["label", _l_absent, _id]);
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_macro_uci_reu/scr_compile_macro_uci_reu.yy b/C64DevMachine_win.yyp/scripts/scr_compile_macro_uci_reu/scr_compile_macro_uci_reu.yy
+new file mode 100644
+index 0000000..7ea226a
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_macro_uci_reu/scr_compile_macro_uci_reu.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_compile_macro_uci_reu",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_compile_macro_uci_reu",
++  "parent":{
++    "name":"CORE",
++    "path":"folders/SCRIPTS/CORE.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+index 1cdce6a..5fa3101 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+@@ -529,6 +529,28 @@
+ 		    }
+ 		    global.addresses_dirty = true;
+ 
++		// --- MACRO_UCI_REU ---
++		// Only the filename override is typed. Stored verbatim: the Ultimate
++		// matches the name on its own storage, and case or spacing is not
++		// ours to normalise. Clearing it puts the node back to following the
++		// LOAD_REU asset's own reu_filename.
++		} else if (_target.node_type == "MACRO_UCI_REU") {
++		    if (_idx == 2) {
++		        var _uci_name = string_trim(_input);
++		        var _uci_derived = "";
++		        var _uci_manifest = scr_reu_find_asset(string(_target.instructions[0][1]));
++		        if (!is_undefined(_uci_manifest) && variable_struct_exists(_uci_manifest, "reu_filename")) {
++		            _uci_derived = string(_uci_manifest.reu_filename);
++		        }
++		        if (_uci_name == _uci_derived) {
++		            // Typing exactly what it already derives is not an override.
++		            _target.instructions[0][2] = "";
++		        } else {
++		            _target.instructions[0][2] = _uci_name;
++		        }
++		        global.addresses_dirty = true;
++		    }
++
+ 		// --- MACRO_MOVE_MEM ---
+ 		} else if (_target.node_type == "MACRO_MOVE_MEM") {
+ 		    show_debug_message("MOVE_MEM COMMIT: idx=" + string(_idx) + " input=[" + string(_input) + "]");
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_uci_reu/scr_node_draw_macro_uci_reu.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_uci_reu/scr_node_draw_macro_uci_reu.gml
+new file mode 100644
+index 0000000..3428de0
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_uci_reu/scr_node_draw_macro_uci_reu.gml
+@@ -0,0 +1,78 @@
++/// @desc Draw body for MACRO_UCI_REU.
++/// instructions[0]: ["macro_uci_reu", manifest_name, filename_override, status_var]
++///   1 = LOAD_REU asset this node loads. The filename follows it.
++///   2 = filename override. Empty means "use the manifest's reu_filename",
++///       which is what stops the two drifting apart after a rename.
++///   3 = optional BYTE var receiving the first status byte, so the program
++///       can tell "00,OK" from "85,REU FILE CANNOT BE OPENED".
++function scr_node_draw_macro_uci_reu(_draw_x, _y) {
++    var _hh = 24, _lh = 16, _inst = instructions[0];
++    while (array_length(_inst) < 4) {
++        array_push(_inst, "");
++    }
++
++    var _lx = _draw_x + 8, _rx = _draw_x + width - 6, _cy = _y + _hh + 4;
++
++    var _button = function(_label, _x1, _x2, _yy, _col) {
++        var _hov = point_in_rectangle(mouse_x, mouse_y, _x1, _yy + 4, _x2, _yy + 10);
++        if (_hov) {
++            draw_set_color(merge_color(_col, c_white, 0.25));
++        } else {
++            draw_set_color(_col);
++        }
++        draw_rectangle(_x1, _yy + 1, _x2, _yy + 11, false);
++        draw_set_color(c_white);
++        draw_set_halign(fa_center);
++        draw_text_l((_x1 + _x2) * 0.5, _yy, _label);
++        draw_set_halign(fa_left);
++    };
++
++    draw_set_font_l(fnt_C64_Angled_tiny);
++
++    // ---- REU manifest ----
++    draw_set_color(c_gray);
++    draw_text_l(_lx, _cy, "REU:");
++    var _mf = string(_inst[1]);
++    if (_mf == "") {
++        _mf = L("<SELECT LOAD_REU>");
++    }
++    _button(_mf, _lx + 48, _rx, _cy, make_color_rgb(25, 65, 60));
++    _cy += _lh;
++
++    // ---- filename ----
++    // Derived names are drawn dimmer than an override, so it is obvious at a
++    // glance whether this node is following the manifest or has been pinned.
++    draw_set_color(c_gray);
++    draw_text_l(_lx, _cy, "FILE:");
++    var _file      = string(_inst[2]);
++    var _file_col  = make_color_rgb(40, 60, 90);
++    if (_file == "") {
++        _file_col = make_color_rgb(30, 42, 58);
++        var _manifest = scr_reu_find_asset(string(_inst[1]));
++        if (!is_undefined(_manifest) && variable_struct_exists(_manifest, "reu_filename")) {
++            _file = string(_manifest.reu_filename);
++        }
++    }
++    if (_file == "") {
++        _file = L("<NO FILE>");
++        _file_col = make_color_rgb(90, 30, 30);
++    }
++    _button(_file, _lx + 48, _rx, _cy, _file_col);
++    _cy += _lh;
++
++    // ---- status var ----
++    draw_set_color(c_gray);
++    draw_text_l(_lx, _cy, "STAT:");
++    var _sv = string(_inst[3]);
++    if (_sv == "") {
++        _sv = L("<NONE>");
++    }
++    _button(_sv, _lx + 48, _rx, _cy, make_color_rgb(34, 44, 64));
++    _cy += _lh;
++
++    // ---- target note ----
++    // Worth saying on the node itself: this does nothing under emulation, and
++    // someone reading the graph should not expect it to.
++    draw_set_color(make_color_rgb(120, 120, 130));
++    draw_text_l(_lx, _cy, L("ULTIMATE ONLY - IGNORED IN VICE"));
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_uci_reu/scr_node_draw_macro_uci_reu.yy b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_uci_reu/scr_node_draw_macro_uci_reu.yy
+new file mode 100644
+index 0000000..4f50605
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_uci_reu/scr_node_draw_macro_uci_reu.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_node_draw_macro_uci_reu",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_node_draw_macro_uci_reu",
++  "parent":{
++    "name":"CORE",
++    "path":"folders/SCRIPTS/CORE.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index 8b9d427..4930b31 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -977,6 +977,19 @@ case "LABEL": {
+             _n.pc_address   = global.start_pc;
+             with (_n) { event_user(0); }
+             break;
++
++        // -------------------------------------------------------
++        // MACRO_UCI_REU
++        // instructions[0]: ["macro_uci_reu", manifest, file_override, status_var]
++        //   Asks the Ultimate's firmware to load a .reu from its own storage.
++        //   The filename follows the LOAD_REU asset unless overridden.
++        // -------------------------------------------------------
++        case "MACRO_UCI_REU":
++            _n.node_title   = "UCI LOAD REU";
++            _n.instructions = [["macro_uci_reu", "", "", ""]];
++            _n.pc_address   = global.start_pc;
++            with (_n) { event_user(0); }
++            break;
+ 			
+ 			
+ 		// MACRO_VECTOR_PAGE
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_uci_reu/scr_node_step_macro_uci_reu.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_uci_reu/scr_node_step_macro_uci_reu.gml
+new file mode 100644
+index 0000000..0f55357
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_uci_reu/scr_node_step_macro_uci_reu.gml
+@@ -0,0 +1,76 @@
++/// @desc Handle LMB clicks for MACRO_UCI_REU.
++function scr_node_step_macro_uci_reu(_draw_x) {
++    var _hh = 24, _lh = 16, _inst = instructions[0];
++    while (array_length(_inst) < 4) {
++        array_push(_inst, "");
++    }
++
++    var _lx = _draw_x + 8, _rx = _draw_x + width - 6, _cy = y + _hh + 4;
++
++    var _hit = function(_x1, _x2, _yy) {
++        return point_in_rectangle(mouse_x, mouse_y, _x1, _yy + 4, _x2, _yy + 10);
++    };
++
++    // ---- REU manifest: cycle through the LOAD_REU assets ----
++    if (_hit(_lx + 48, _rx, _cy)) {
++        var _matches = [];
++        if (instance_exists(obj_asset_manager)) {
++            var _am = obj_asset_manager;
++            for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
++                var _a = ds_list_find_value(_am.asset_list, _i);
++                if (_a.type == "LOAD_REU") array_push(_matches, _a.name);
++            }
++        }
++        if (array_length(_matches) > 0) {
++            var _at = -1;
++            for (var _i = 0; _i < array_length(_matches); _i++) {
++                if (_matches[_i] == string(_inst[1])) { _at = _i; break; }
++            }
++            _at = (_at + 1) mod array_length(_matches);
++            instructions[0][1] = _matches[_at];
++            // Switching manifest drops a stale override, so the filename goes
++            // back to following whichever asset is now selected.
++            instructions[0][2] = "";
++        }
++        exit;
++    }
++    _cy += _lh;
++
++    // ---- filename override: type one, or clear it to follow the manifest ----
++    if (_hit(_lx + 48, _rx, _cy)) {
++        var _seed = string(_inst[2]);
++        if (_seed == "") {
++            var _manifest = scr_reu_find_asset(string(_inst[1]));
++            if (!is_undefined(_manifest) && variable_struct_exists(_manifest, "reu_filename")) {
++                _seed = string(_manifest.reu_filename);
++            }
++        }
++        with (obj_workspace_manager) {
++            is_entering_text     = true;
++            input_target_node    = other.id;
++            input_target_index   = 2;
++            current_input_string = _seed;
++            keyboard_string      = "";
++            cursor_pos           = string_length(current_input_string);
++        }
++        exit;
++    }
++    _cy += _lh;
++
++    // ---- status var picker ----
++    if (_hit(_lx + 48, _rx, _cy)) {
++        label_picker_open       = true;
++        global.any_picker_open  = true;
++        label_picker_prev_depth = depth;
++        depth                   = -9999;
++        label_picker_mode       = "VAR";
++        label_picker_word_only  = false;
++        label_picker_byte_only  = true;
++        label_picker_tab        = "UV";
++        label_picker_scroll     = 0;
++        label_picker_list       = [];
++        label_picker_target     = id;
++        label_picker_index      = 3;
++        exit;
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_uci_reu/scr_node_step_macro_uci_reu.yy b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_uci_reu/scr_node_step_macro_uci_reu.yy
+new file mode 100644
+index 0000000..0817f43
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_uci_reu/scr_node_step_macro_uci_reu.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_node_step_macro_uci_reu",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_node_step_macro_uci_reu",
++  "parent":{
++    "name":"CORE",
++    "path":"folders/SCRIPTS/CORE.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+index 95e477d..ee14e11 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+@@ -779,6 +779,30 @@ function scr_node_tooltip_text(_node_type) {
+             ]
+         },
+ 
++        "MACRO_UCI_REU": {
++            title: "UCI LOAD REU",
++            lines: [
++                "Asks a 1541 Ultimate / Ultimate 64 to load a .reu",
++                "image from its OWN storage into REU memory.",
++                "",
++                "For a PRG run from the Ultimate's file browser, with",
++                "no PC involved. VICE gets its image on the command",
++                "line instead, and F6 pushes one over the network -",
++                "this node does nothing under emulation.",
++                "",
++                "FILE follows the chosen LOAD_REU asset unless you",
++                "type an override, so a rename cannot leave it",
++                "pointing at a file that is no longer written.",
++                "",
++                "STAT optionally stores the first status byte:",
++                "  $30 '0' = OK",
++                "  $38 '8' = 84 REU NOT ENABLED / 85 FILE NOT OPENED",
++                "  $FF     = no status seen (interface absent)",
++                "",
++                "Falls through to the next node on every path,",
++                "including when no Ultimate is present."
++            ]
++        },
+         "MACRO_MOVE_MEM": {
+             title: "MOVE MEM",
+             lines: [

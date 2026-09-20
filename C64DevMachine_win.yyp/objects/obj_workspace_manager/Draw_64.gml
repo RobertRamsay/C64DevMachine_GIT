@@ -964,6 +964,7 @@ if (gui_menu_open == 1 && !global.lite) {
         { title: "MATH",             type: "MACRO_MATH"          },
         { title: "RANDOM",           type: "MACRO_RANDOM"        },
         { title: "REU",              type: "MACRO_REU"           },
+        { title: "UCI LOAD REU",     type: "MACRO_UCI_REU"       },
         { title: "VOI64 MASTER",     type: "MACRO_VOI64_MASTER"  },
         { title: "VOI64 SAY",        type: "MACRO_VOI64_SAY"     },
     ];

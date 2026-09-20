@@ -6866,6 +6866,7 @@ case "MACRO_LOADER": {
 
 
 case "MACRO_LOAD_GAME": scr_compile_macro_load_game(_list, _curr); break;
+case "MACRO_UCI_REU": scr_compile_macro_uci_reu(_list, _curr); break;
 case "MACRO_SAVE_GAME": scr_compile_macro_save_game(_list, _curr); break;
 
 // --------------------------------------------------------

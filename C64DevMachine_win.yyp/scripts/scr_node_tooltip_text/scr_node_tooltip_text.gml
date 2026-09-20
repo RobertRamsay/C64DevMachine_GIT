@@ -779,6 +779,30 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_UCI_REU": {
+            title: "UCI LOAD REU",
+            lines: [
+                "Asks a 1541 Ultimate / Ultimate 64 to load a .reu",
+                "image from its OWN storage into REU memory.",
+                "",
+                "For a PRG run from the Ultimate's file browser, with",
+                "no PC involved. VICE gets its image on the command",
+                "line instead, and F6 pushes one over the network -",
+                "this node does nothing under emulation.",
+                "",
+                "FILE follows the chosen LOAD_REU asset unless you",
+                "type an override, so a rename cannot leave it",
+                "pointing at a file that is no longer written.",
+                "",
+                "STAT optionally stores the first status byte:",
+                "  $30 '0' = OK",
+                "  $38 '8' = 84 REU NOT ENABLED / 85 FILE NOT OPENED",
+                "  $FF     = no status seen (interface absent)",
+                "",
+                "Falls through to the next node on every path,",
+                "including when no Ultimate is present."
+            ]
+        },
         "MACRO_MOVE_MEM": {
             title: "MOVE MEM",
             lines: [

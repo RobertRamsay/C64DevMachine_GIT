@@ -1125,6 +1125,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
 		case "COND_IF_WORD": scr_node_step_cond_if_word(draw_x); break;
         case "BANK_SWITCH":  scr_node_step_bank_switch(draw_x); break;
         case "MACRO_REU":    scr_node_step_macro_reu(draw_x);   break;
+        case "MACRO_UCI_REU": scr_node_step_macro_uci_reu(draw_x); break;
 		
 		
 		

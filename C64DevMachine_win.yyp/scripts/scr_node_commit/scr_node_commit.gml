@@ -529,6 +529,28 @@
 		    }
 		    global.addresses_dirty = true;
 
+		// --- MACRO_UCI_REU ---
+		// Only the filename override is typed. Stored verbatim: the Ultimate
+		// matches the name on its own storage, and case or spacing is not
+		// ours to normalise. Clearing it puts the node back to following the
+		// LOAD_REU asset's own reu_filename.
+		} else if (_target.node_type == "MACRO_UCI_REU") {
+		    if (_idx == 2) {
+		        var _uci_name = string_trim(_input);
+		        var _uci_derived = "";
+		        var _uci_manifest = scr_reu_find_asset(string(_target.instructions[0][1]));
+		        if (!is_undefined(_uci_manifest) && variable_struct_exists(_uci_manifest, "reu_filename")) {
+		            _uci_derived = string(_uci_manifest.reu_filename);
+		        }
+		        if (_uci_name == _uci_derived) {
+		            // Typing exactly what it already derives is not an override.
+		            _target.instructions[0][2] = "";
+		        } else {
+		            _target.instructions[0][2] = _uci_name;
+		        }
+		        global.addresses_dirty = true;
+		    }
+
 		// --- MACRO_MOVE_MEM ---
 		} else if (_target.node_type == "MACRO_MOVE_MEM") {
 		    show_debug_message("MOVE_MEM COMMIT: idx=" + string(_idx) + " input=[" + string(_input) + "]");
