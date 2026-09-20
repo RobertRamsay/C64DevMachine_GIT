@@ -1,0 +1,176 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/CleanUp_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/CleanUp_0.gml
+index 400ec86..af1509e 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/CleanUp_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/CleanUp_0.gml
+@@ -17,4 +17,5 @@ for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
+     }
+ }
+ ds_map_destroy(tag_member_map);
++ds_map_destroy(asset_name_map);
+ ds_list_destroy(asset_list);
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index 25fdf1d..ab0fbdc 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -55,6 +55,13 @@ asset_sort_mode = "ADDR"; // "NAME", "TYPE", or "ADDR" (insertion order)
+ // a name, type or address changes, an asset is added or removed, or the sort
+ // mode is switched - so that is exactly what the signature records.
+ // Declared here so scr_asset_sorted_indices never has to test for them.
++// asset name -> asset struct, rebuilt at most once a frame. scr_reu_find_asset
++// used to answer every lookup with a linear scan of the whole list, and the
++// MACRO_REU node draw asks it once per linked asset, per node, per frame.
++asset_name_map        = ds_map_create();
++asset_name_map_tick   = -1;
++asset_name_map_size   = -1;
++
+ asset_sort_cache      = [];
+ asset_sort_cache_mode = "";
+ asset_sort_sig_name   = [];
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index a00b89e..a27b929 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -31,6 +31,18 @@ global.lite=0;
+ if (MCP_ENABLED && global.lite == 0 && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
+ global.build_date = "September 19th, 2026"; // edit this string for each release
+ 
++// Frame counter. Incremented once in Begin Step, and used as the validity
++// stamp for per-frame lookup caches (see scr_reu_asset_map). Anything keyed
++// on it can be at most one frame stale, which is invisible for drawing and
++// far cheaper than rebuilding a lookup per call.
++global.frame_tick = 0;
++
++// Per-frame memo of "how many BITMAP assets does this LOAD_REU link?", keyed
++// by manifest name. Every visible MACRO_REU node in INDEXED mode wants that
++// number, and they all want the same one.
++global.reu_slot_map  = ds_map_create();
++global.reu_slot_tick = -1;
++
+ // Deferred bitmap previews. Declared here so every consumer can read them
+ // unconditionally - no struct/variable existence probing at the call sites.
+ global.bmp_preview_queue = [];
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
+index c7e60d2..0af3fe0 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
+@@ -1,5 +1,8 @@
+ // Cache drag state for nodes to read (workspace manager begin step event here)
+ 
++// One tick per frame. Per-frame lookup caches compare against this.
++global.frame_tick = global.frame_tick + 1;
++
+ global.drag_claim_taken = false;
+ 	
+ global.any_node_dragging = false;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml
+index 5933ecc..c71b6fc 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_reu/scr_node_draw_macro_reu.gml
+@@ -60,15 +60,10 @@ function scr_node_draw_macro_reu(_draw_x, _y) {
+             _button(_hex(_inst[14],2), _lx+44,_rx,_cy,make_color_rgb(34,44,64));
+             _cy += _lh;
+         }
+-        var _idx_manifest = scr_reu_find_asset(string(_inst[10]));
+-        var _idx_count = 0;
+-        if (!is_undefined(_idx_manifest) && variable_struct_exists(_idx_manifest, "linked_assets")) {
+-            var _idx_links = _idx_manifest.linked_assets;
+-            for (var _ii = 0; _ii < array_length(_idx_links); _ii++) {
+-                var _idx_asset = scr_reu_find_asset(_idx_links[_ii].asset_name);
+-                if (!is_undefined(_idx_asset) && (_idx_asset.type == "BITMAP" || _idx_asset.type == "BITMAP_KLA")) _idx_count++;
+-            }
+-        }
++        // Counted once per frame per manifest, not once per node. See
++        // scr_reu_bitmap_slot_count - every REU node on screen asks for the
++        // same number, and working it out walks the whole manifest.
++        var _idx_count = scr_reu_bitmap_slot_count(string(_inst[10]));
+         draw_set_color(c_gray); draw_text_l(_lx, _cy, "SLOTS:");
+         draw_set_color((_idx_count > 0 && _idx_count <= _idx_cap) ? c_lime : c_red);
+         draw_text_l(_lx + 60, _cy, string(_idx_count) + "/" + string(_idx_cap) + (_idx_is_word ? L(" (WORD)") : L(" (BYTE)")));
+diff --git a/C64DevMachine_win.yyp/scripts/scr_reu_support/scr_reu_support.gml b/C64DevMachine_win.yyp/scripts/scr_reu_support/scr_reu_support.gml
+index 233ee0a..e899264 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_reu_support/scr_reu_support.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_reu_support/scr_reu_support.gml
+@@ -1,14 +1,77 @@
+ /// REU image/manifest support. LOAD_REU owns the exported placement of assets;
+ /// MACRO_REU uses scr_reu_resolve() when it is in ASSET mode.
+ 
+-function scr_reu_find_asset(_name) {
+-    if (!instance_exists(obj_asset_manager)) return undefined;
++/// Name -> asset lookup, rebuilt at most once a frame.
++///
++/// scr_reu_find_asset used to answer every call with a linear scan of the
++/// whole asset list, with ds_list_size re-evaluated in the loop condition.
++/// The MACRO_REU node draw asks it once per linked asset, per node, per
++/// frame: on a project with a few hundred linked bitmaps and a handful of
++/// REU nodes on screen that measured at over thirteen thousand list probes
++/// a frame, and roughly half the entire editor step, just from panning past
++/// the nodes.
++///
++/// The map is stamped with global.frame_tick and with the list size, so an
++/// add or a delete invalidates it immediately and anything else can be at
++/// most one frame stale. A rename is the one case that can lag by a frame -
++/// a node label reading UNRESOLVED for a single frame after a rename, which
++/// then corrects itself.
++function scr_reu_asset_map() {
++    if (!instance_exists(obj_asset_manager)) return -1;
+     var _am = obj_asset_manager;
+-    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
++    var _n  = ds_list_size(_am.asset_list);
++
++    if (_am.asset_name_map_tick == global.frame_tick && _am.asset_name_map_size == _n) {
++        return _am.asset_name_map;
++    }
++
++    ds_map_clear(_am.asset_name_map);
++    for (var _i = 0; _i < _n; _i++) {
+         var _a = ds_list_find_value(_am.asset_list, _i);
+-        if (_a.name == _name) return _a;
++        // First entry with a given name wins, which is what the old
++        // scan-and-return-first did when two assets shared a name.
++        if (!is_undefined(ds_map_find_value(_am.asset_name_map, _a.name))) continue;
++        ds_map_set(_am.asset_name_map, _a.name, _a);
++    }
++
++    _am.asset_name_map_tick = global.frame_tick;
++    _am.asset_name_map_size = _n;
++    return _am.asset_name_map;
++}
++
++function scr_reu_find_asset(_name) {
++    var _map = scr_reu_asset_map();
++    if (_map < 0) return undefined;
++    var _hit = ds_map_find_value(_map, _name);
++    if (is_undefined(_hit)) return undefined;
++    return _hit;
++}
++
++/// How many BITMAP assets a LOAD_REU manifest links. Memoised per frame,
++/// because every visible MACRO_REU node in INDEXED mode wants this same
++/// number and each of them was recomputing it from scratch.
++function scr_reu_bitmap_slot_count(_manifest_name) {
++    if (global.reu_slot_tick != global.frame_tick) {
++        ds_map_clear(global.reu_slot_map);
++        global.reu_slot_tick = global.frame_tick;
+     }
+-    return undefined;
++
++    var _memo = ds_map_find_value(global.reu_slot_map, _manifest_name);
++    if (!is_undefined(_memo)) return _memo;
++
++    var _count = 0;
++    var _manifest = scr_reu_find_asset(_manifest_name);
++    if (!is_undefined(_manifest) && variable_struct_exists(_manifest, "linked_assets")) {
++        var _links = _manifest.linked_assets;
++        for (var _li = 0; _li < array_length(_links); _li++) {
++            var _la = scr_reu_find_asset(_links[_li].asset_name);
++            if (is_undefined(_la)) continue;
++            if (_la.type == "BITMAP" || _la.type == "BITMAP_KLA") _count++;
++        }
++    }
++
++    ds_map_set(global.reu_slot_map, _manifest_name, _count);
++    return _count;
+ }
+ 
+ function scr_reu_manifest_count() {

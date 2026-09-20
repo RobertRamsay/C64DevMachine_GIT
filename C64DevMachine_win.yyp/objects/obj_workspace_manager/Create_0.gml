@@ -31,6 +31,18 @@ global.lite=0;
 if (MCP_ENABLED && global.lite == 0 && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
 global.build_date = "September 19th, 2026"; // edit this string for each release
 
+// Frame counter. Incremented once in Begin Step, and used as the validity
+// stamp for per-frame lookup caches (see scr_reu_asset_map). Anything keyed
+// on it can be at most one frame stale, which is invisible for drawing and
+// far cheaper than rebuilding a lookup per call.
+global.frame_tick = 0;
+
+// Per-frame memo of "how many BITMAP assets does this LOAD_REU link?", keyed
+// by manifest name. Every visible MACRO_REU node in INDEXED mode wants that
+// number, and they all want the same one.
+global.reu_slot_map  = ds_map_create();
+global.reu_slot_tick = -1;
+
 // Deferred bitmap previews. Declared here so every consumer can read them
 // unconditionally - no struct/variable existence probing at the call sites.
 global.bmp_preview_queue = [];

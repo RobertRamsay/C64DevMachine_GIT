@@ -55,6 +55,13 @@ asset_sort_mode = "ADDR"; // "NAME", "TYPE", or "ADDR" (insertion order)
 // a name, type or address changes, an asset is added or removed, or the sort
 // mode is switched - so that is exactly what the signature records.
 // Declared here so scr_asset_sorted_indices never has to test for them.
+// asset name -> asset struct, rebuilt at most once a frame. scr_reu_find_asset
+// used to answer every lookup with a linear scan of the whole list, and the
+// MACRO_REU node draw asks it once per linked asset, per node, per frame.
+asset_name_map        = ds_map_create();
+asset_name_map_tick   = -1;
+asset_name_map_size   = -1;
+
 asset_sort_cache      = [];
 asset_sort_cache_mode = "";
 asset_sort_sig_name   = [];

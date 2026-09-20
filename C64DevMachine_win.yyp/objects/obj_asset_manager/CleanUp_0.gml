@@ -17,4 +17,5 @@ for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
     }
 }
 ds_map_destroy(tag_member_map);
+ds_map_destroy(asset_name_map);
 ds_list_destroy(asset_list);

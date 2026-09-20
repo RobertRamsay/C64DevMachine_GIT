@@ -1,5 +1,8 @@
 // Cache drag state for nodes to read (workspace manager begin step event here)
 
+// One tick per frame. Per-frame lookup caches compare against this.
+global.frame_tick = global.frame_tick + 1;
+
 global.drag_claim_taken = false;
 	
 global.any_node_dragging = false;

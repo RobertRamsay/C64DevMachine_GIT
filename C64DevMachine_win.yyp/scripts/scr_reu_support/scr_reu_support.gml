@@ -1,14 +1,77 @@
 /// REU image/manifest support. LOAD_REU owns the exported placement of assets;
 /// MACRO_REU uses scr_reu_resolve() when it is in ASSET mode.
 
-function scr_reu_find_asset(_name) {
-    if (!instance_exists(obj_asset_manager)) return undefined;
+/// Name -> asset lookup, rebuilt at most once a frame.
+///
+/// scr_reu_find_asset used to answer every call with a linear scan of the
+/// whole asset list, with ds_list_size re-evaluated in the loop condition.
+/// The MACRO_REU node draw asks it once per linked asset, per node, per
+/// frame: on a project with a few hundred linked bitmaps and a handful of
+/// REU nodes on screen that measured at over thirteen thousand list probes
+/// a frame, and roughly half the entire editor step, just from panning past
+/// the nodes.
+///
+/// The map is stamped with global.frame_tick and with the list size, so an
+/// add or a delete invalidates it immediately and anything else can be at
+/// most one frame stale. A rename is the one case that can lag by a frame -
+/// a node label reading UNRESOLVED for a single frame after a rename, which
+/// then corrects itself.
+function scr_reu_asset_map() {
+    if (!instance_exists(obj_asset_manager)) return -1;
     var _am = obj_asset_manager;
-    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
-        var _a = ds_list_find_value(_am.asset_list, _i);
-        if (_a.name == _name) return _a;
+    var _n  = ds_list_size(_am.asset_list);
+
+    if (_am.asset_name_map_tick == global.frame_tick && _am.asset_name_map_size == _n) {
+        return _am.asset_name_map;
     }
-    return undefined;
+
+    ds_map_clear(_am.asset_name_map);
+    for (var _i = 0; _i < _n; _i++) {
+        var _a = ds_list_find_value(_am.asset_list, _i);
+        // First entry with a given name wins, which is what the old
+        // scan-and-return-first did when two assets shared a name.
+        if (!is_undefined(ds_map_find_value(_am.asset_name_map, _a.name))) continue;
+        ds_map_set(_am.asset_name_map, _a.name, _a);
+    }
+
+    _am.asset_name_map_tick = global.frame_tick;
+    _am.asset_name_map_size = _n;
+    return _am.asset_name_map;
+}
+
+function scr_reu_find_asset(_name) {
+    var _map = scr_reu_asset_map();
+    if (_map < 0) return undefined;
+    var _hit = ds_map_find_value(_map, _name);
+    if (is_undefined(_hit)) return undefined;
+    return _hit;
+}
+
+/// How many BITMAP assets a LOAD_REU manifest links. Memoised per frame,
+/// because every visible MACRO_REU node in INDEXED mode wants this same
+/// number and each of them was recomputing it from scratch.
+function scr_reu_bitmap_slot_count(_manifest_name) {
+    if (global.reu_slot_tick != global.frame_tick) {
+        ds_map_clear(global.reu_slot_map);
+        global.reu_slot_tick = global.frame_tick;
+    }
+
+    var _memo = ds_map_find_value(global.reu_slot_map, _manifest_name);
+    if (!is_undefined(_memo)) return _memo;
+
+    var _count = 0;
+    var _manifest = scr_reu_find_asset(_manifest_name);
+    if (!is_undefined(_manifest) && variable_struct_exists(_manifest, "linked_assets")) {
+        var _links = _manifest.linked_assets;
+        for (var _li = 0; _li < array_length(_links); _li++) {
+            var _la = scr_reu_find_asset(_links[_li].asset_name);
+            if (is_undefined(_la)) continue;
+            if (_la.type == "BITMAP" || _la.type == "BITMAP_KLA") _count++;
+        }
+    }
+
+    ds_map_set(global.reu_slot_map, _manifest_name, _count);
+    return _count;
 }
 
 function scr_reu_manifest_count() {
