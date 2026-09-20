@@ -167,6 +167,21 @@ function scr_reu_repack(_manifest) {
             var _retry = true;
             while (_retry) {
                 _retry = false;
+
+                // Never let a payload straddle a 64K REU bank. A split entry
+                // has its tail in the next bank, and for a BITMAP that tail is
+                // the screen and colour blocks - so the picture arrives with
+                // correct pixels and wrong colours. Pushing to the next bank
+                // costs some space (about 6% for 10192-byte frames, 6 per
+                // bank) and makes the failure impossible rather than rare.
+                var _bank_s = _candidate div 0x10000;
+                var _bank_e = (_candidate + _sizes[_i] - 1) div 0x10000;
+                if (_sizes[_i] > 0 && _sizes[_i] <= 0x10000 && _bank_s != _bank_e) {
+                    _candidate = (_bank_s + 1) * 0x10000;
+                    _retry = true;
+                    continue;
+                }
+
                 for (var _pi = 0; _pi < array_length(_placed); _pi++) {
                     var _r = _placed[_pi];
                     if (_candidate < _r.e && _candidate + _sizes[_i] > _r.s) {
