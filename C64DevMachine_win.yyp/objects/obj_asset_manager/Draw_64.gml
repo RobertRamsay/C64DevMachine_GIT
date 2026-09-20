@@ -143,6 +143,30 @@ var _list_y = panel_y + 66;
 // two can never disagree about display order.
 var _rows   = scr_asset_display_rows();
 var _disp_n = array_length(_rows);
+
+// ---- MEMBERSHIP LOOKUP -------------------------------------------------
+// One pass over every manifest's links, giving asset name -> manifest type
+// and name. The row loop below then answers "is this asset inside a LOAD_ORG
+// or LOAD_REU?" with a single map read. It used to answer that by walking
+// the whole asset list and then the whole linked_assets array, per visible
+// row. On a project with a few hundred linked bitmaps that is tens of
+// thousands of string compares every frame, and it was the single largest
+// cost in this event.
+ds_map_clear(tag_member_map);
+var _tm_n = ds_list_size(asset_list);
+for (var _tmi = 0; _tmi < _tm_n; _tmi++) {
+    var _tm = ds_list_find_value(asset_list, _tmi);
+    if (_tm.type != "LOAD_ORG" && _tm.type != "LOAD_REU") continue;
+    if (!variable_struct_exists(_tm, "linked_assets")) continue;
+    var _tm_links = _tm.linked_assets;
+    for (var _tmli = 0; _tmli < array_length(_tm_links); _tmli++) {
+        // First manifest to claim a name wins, which is what the old
+        // scan-and-break did when an asset appeared in more than one.
+        var _tm_name = _tm_links[_tmli].asset_name;
+        if (!is_undefined(ds_map_find_value(tag_member_map, _tm_name))) continue;
+        ds_map_set(tag_member_map, _tm_name, { type: _tm.type, name: _tm.name });
+    }
+}
 asset_group_rows = [];   // Step_0 hit-tests group headers against this
 
 for (var _pos = 0; _pos < _disp_n; _pos++) {
@@ -382,46 +406,36 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
     }
     draw_set_halign(fa_left);
 
-	// LOAD_ORG membership tag
-	    if (instance_exists(obj_asset_manager)) {
+	// LOAD_ORG / LOAD_REU membership tag. One map read, no rescan.
+	    var _tag_owner = ds_map_find_value(tag_member_map, _asset.name);
+	    if (!is_undefined(_tag_owner)) {
 	        var _tag_x = _edit_x - 4;
-	        for (var _tai = 0; _tai < ds_list_size(asset_list); _tai++) {
-	            var _ta = ds_list_find_value(asset_list, _tai);
-	            if (_ta.type != "LOAD_ORG" && _ta.type != "LOAD_REU") continue;
-	            if (!variable_struct_exists(_ta, "linked_assets")) continue;
-	            for (var _tli = 0; _tli < array_length(_ta.linked_assets); _tli++) {
-	                if (_ta.linked_assets[_tli].asset_name == _asset.name) {
-	                    var _tag_col = (_ta.type == "LOAD_REU")
-			             ? make_color_rgb(45, 105, 120)
-			             : make_color_rgb(200, 160, 40);
-	                    draw_set_color(_tag_col);
-	                    // Keep the badge above the asset name (which starts at y + 16).
-	                    draw_rectangle(_tag_x - 80, _iy + 1, _tag_x - 2, _iy + 15, false);
-	                    draw_set_font_l(fnt_c64_pico);
-	                    draw_set_color(c_white);
-	                    draw_set_halign(fa_center);
-						var _tag_sprite = (_ta.type == "LOAD_REU") ? spr_chipRam : spr_disk;
-
-							draw_sprite_ext(
-							    _tag_sprite,
-							    0,
-							    _tag_x - 73,
-							    _iy + 8,
-							    .1,
-							    .1,
-							    0,
-							    c_white,
-							    1.0
-							);
-	                    var _short = string_copy(_ta.name, 1, 12);
-					
-	                    draw_text_l(_tag_x - 34, _iy + 2, _short);
-						draw_set_halign(fa_left);
-	                   
-	                    break;
-	                }
-	            }
+	        var _tag_col = make_color_rgb(200, 160, 40);
+	        var _tag_sprite = spr_disk;
+	        if (_tag_owner.type == "LOAD_REU") {
+	            _tag_col = make_color_rgb(45, 105, 120);
+	            _tag_sprite = spr_chipRam;
 	        }
+	        draw_set_color(_tag_col);
+	        // Keep the badge above the asset name (which starts at y + 16).
+	        draw_rectangle(_tag_x - 80, _iy + 1, _tag_x - 2, _iy + 15, false);
+	        draw_set_font_l(fnt_c64_pico);
+	        draw_set_color(c_white);
+	        draw_set_halign(fa_center);
+	        draw_sprite_ext(
+	            _tag_sprite,
+	            0,
+	            _tag_x - 73,
+	            _iy + 8,
+	            .1,
+	            .1,
+	            0,
+	            0,
+	            c_white,
+	            1.0
+	        );
+	        draw_text_l(_tag_x - 34, _iy + 2, string_copy(_tag_owner.name, 1, 12));
+	        draw_set_halign(fa_left);
 	    }
 
 	    // Row divider

@@ -252,6 +252,12 @@ sfx_picker_field = "asset";
 	// Registered group names. Groups live here, never in asset_list, so the
 	// compile chain, memory bar and asset pickers never see them.
 	asset_groups          = [];
+	// asset name -> "LOAD_ORG" / "LOAD_REU", rebuilt once per Draw. The
+	// membership badge used to be worked out by rescanning every manifest's
+	// linked_assets for EVERY visible row, which on a project with a few
+	// hundred linked bitmaps is tens of thousands of string compares a frame.
+	// Declared here so the draw event never has to test for its existence.
+	tag_member_map        = ds_map_create();
 	// Drag an asset row by its grip to move it between groups.
 	asset_drag_idx        = -1;
 	asset_drag_armed      = false;
