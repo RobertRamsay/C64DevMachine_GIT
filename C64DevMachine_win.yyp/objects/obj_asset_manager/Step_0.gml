@@ -2667,6 +2667,7 @@ if (mouse_check_button_pressed(mb_right) && _mouse_in_panel && hover_idx >= 0) {
 
     // Check if referenced by any node
     var _is_referenced = false;
+    _delete_block_title = "";
     _delete_check_name = _asset.name;
     with (obj_c64_node) {
         var _ref_name = "";
@@ -2686,11 +2687,19 @@ if (mouse_check_button_pressed(mb_right) && _mouse_in_panel && hover_idx >= 0) {
                 }
                 break;
             case "MACRO_REU":
-                // ASSET mode: slot 10 is the LOAD_REU manifest and slot 11
-                // is the selected linked asset.
+                // Slot 9 picks the mode: 1 = ASSET, 2 = INDEXED. The manifest in
+                // slot 10 is live in both. Slot 11 is only read by ASSET mode -
+                // scr_compile_chain never looks at it under INDEXED - so a stale
+                // name left there by a mode switch must not block a delete.
+                var _reu_node_mode = 0;
+                if (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) {
+                    _reu_node_mode = real(instructions[0][9]);
+                }
                 if (array_length(instructions[0]) > 10 && string(instructions[0][10]) == other._delete_check_name) {
                     _ref_name = string(instructions[0][10]);
-                } else if (array_length(instructions[0]) > 11 && string(instructions[0][11]) == other._delete_check_name) {
+                } else if (_reu_node_mode == 1
+                       &&  array_length(instructions[0]) > 11
+                       &&  string(instructions[0][11]) == other._delete_check_name) {
                     _ref_name = string(instructions[0][11]);
                 }
                 break;
@@ -2720,7 +2729,13 @@ if (mouse_check_button_pressed(mb_right) && _mouse_in_panel && hover_idx >= 0) {
                 }
                 break;
         }
-        if (_ref_name == other._delete_check_name) _is_referenced = true;
+        if (_ref_name == other._delete_check_name) {
+            _is_referenced = true;
+            var _bt = string(node_title);
+            if (_bt == "") _bt = string(node_type);
+            if (custom_title != "") _bt = string(custom_title);
+            other._delete_block_title = _bt + " #" + string(stable_uid);
+        }
     }
 
     // Also block deletion if the asset lives inside any LOAD_ORG's manifest.
@@ -2744,6 +2759,7 @@ if (mouse_check_button_pressed(mb_right) && _mouse_in_panel && hover_idx >= 0) {
     if (_is_referenced) {
         delete_warn_timer  = 180;
         delete_warn_name   = _asset.name;
+        if (_delete_block_title != "") delete_warn_name += "  (used by " + _delete_block_title + ")";
     } else {
         if (buffer_exists(_asset.buffer)) buffer_delete(_asset.buffer);
 

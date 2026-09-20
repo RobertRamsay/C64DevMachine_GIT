@@ -183,7 +183,16 @@ function scr_import_reu_bmp_batch() {
         exit;
     }
 
-    // ---- fold the new group away ----------------------------------------
+    // ---- register and fold the new group ---------------------------------
+    // Without the registry entry the header still draws (display_rows derives
+    // groups from membership too), but it cannot be renamed or deleted, and it
+    // vanishes the moment the last member is dragged out.
+    var _known = false;
+    for (var _gi = 0; _gi < array_length(_am.asset_groups); _gi++) {
+        if (_am.asset_groups[_gi] == _group) { _known = true; break; }
+    }
+    if (!_known) array_push(_am.asset_groups, _group);
+
     // ds_map_exists on asset_group_open is what marks a group expanded, so
     // simply not adding the key leaves it closed.
     if (ds_map_exists(_am.asset_group_open, _group)) {
