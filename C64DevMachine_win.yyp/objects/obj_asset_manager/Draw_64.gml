@@ -430,7 +430,6 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
 	            .1,
 	            .1,
 	            0,
-	            0,
 	            c_white,
 	            1.0
 	        );
