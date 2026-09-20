@@ -48,6 +48,18 @@ item_h          = 36;
 hover_idx       = -1;
 hover_pos       = -1;
 asset_sort_mode = "ADDR"; // "NAME", "TYPE", or "ADDR" (insertion order)
+// Cached display order, plus the signature it was built from. The panel asks
+// for the sorted order every frame, and re-sorting a few hundred assets every
+// frame with a comparator that upper-cases two names per comparison is the
+// most expensive thing the editor does. The order only actually changes when
+// a name, type or address changes, an asset is added or removed, or the sort
+// mode is switched - so that is exactly what the signature records.
+// Declared here so scr_asset_sorted_indices never has to test for them.
+asset_sort_cache      = [];
+asset_sort_cache_mode = "";
+asset_sort_sig_name   = [];
+asset_sort_sig_type   = [];
+asset_sort_sig_addr   = [];
 // -------------------------------------------------------
 // ADD ASSET DROPDOWN
 // -------------------------------------------------------
