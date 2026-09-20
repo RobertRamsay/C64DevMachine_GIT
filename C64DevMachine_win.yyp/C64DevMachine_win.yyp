@@ -1039,6 +1039,7 @@
     {"id":{"name":"scr_blob_decode","path":"scripts/scr_blob_decode/scr_blob_decode.yy",},},
     {"id":{"name":"scr_blob_encode","path":"scripts/scr_blob_encode/scr_blob_encode.yy",},},
     {"id":{"name":"scr_bmp_preview_queue","path":"scripts/scr_bmp_preview_queue/scr_bmp_preview_queue.yy",},},
+    {"id":{"name":"scr_write_reu_launcher","path":"scripts/scr_write_reu_launcher/scr_write_reu_launcher.yy",},},
     {"id":{"name":"scr_bmp_regions","path":"scripts/scr_bmp_regions/scr_bmp_regions.yy",},},
     {"id":{"name":"scr_boot_resident_ranges","path":"scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.yy",},},
     {"id":{"name":"scr_build_d64","path":"scripts/scr_build_d64/scr_build_d64.yy",},},

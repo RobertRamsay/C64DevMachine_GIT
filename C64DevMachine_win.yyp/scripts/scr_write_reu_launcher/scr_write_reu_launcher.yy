@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_write_reu_launcher",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_write_reu_launcher",
+  "parent":{
+    "name":"I_O",
+    "path":"folders/SCRIPTS/CORE/I_O.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

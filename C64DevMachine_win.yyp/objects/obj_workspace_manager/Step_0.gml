@@ -4164,8 +4164,22 @@ for (var i = 0; i < array_length(_exp_code); i++) {
         buffer_save(_exp_buf, _chosen);
         _exp_msg = "PRG exported to:\n" + _chosen;
         for (var _eri = 0; _eri < array_length(_exp_reu_paths); _eri++) {
-            _exp_msg += "\n\nREU image written to:\n" + string(_exp_reu_paths[_eri])
-                      + "\nAttach THIS image when you run the PRG.";
+            _exp_msg += "\n\nREU image written to:\n" + string(_exp_reu_paths[_eri]);
+
+            // Only the first image gets a launcher. A project is limited to
+            // one LOAD_REU manifest anyway (scr_reu_build_images refuses to
+            // build past one), so a second entry would mean an invalid
+            // project rather than a second thing worth launching.
+            if (_eri == 0) {
+                var _exp_launch = scr_write_reu_launcher(_chosen, string(_exp_reu_paths[_eri]));
+                if (_exp_launch != "") {
+                    _exp_msg += "\n\nRun it with:\n" + _exp_launch
+                              + "\nThis attaches the image for you. The whole folder can be"
+                              + "\nzipped and sent on - the paths inside are relative.";
+                } else {
+                    _exp_msg += "\nAttach THIS image when you run the PRG.";
+                }
+            }
         }
     }
 
