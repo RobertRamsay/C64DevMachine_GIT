@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_bmp_preview_queue",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_bmp_preview_queue",
+  "parent":{
+    "name":"BMP_KLA",
+    "path":"folders/SCRIPTS/BMP_KLA.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

@@ -14,6 +14,10 @@ if (idle_snapshot_active && sprite_exists(idle_snapshot_spr)) {
 // scr_show_code_draw() sets it again further down when the panel is live.
 global.showcode_mouse_over = false;
 
+// Load progress sits above every panel and ahead of the hideui bail-out,
+// so a project opening with the UI hidden still shows it is working.
+scr_bmp_preview_queue_draw();
+
 if hideui exit;
 // Block draw + interaction when asset viewer is open
 if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) {

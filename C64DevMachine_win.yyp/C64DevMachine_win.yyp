@@ -974,6 +974,7 @@
     {"id":{"name":"hex_to_decimal","path":"scripts/hex_to_decimal/hex_to_decimal.yy",},},
     {"id":{"name":"ptr_to_hex","path":"scripts/ptr_to_hex/ptr_to_hex.yy",},},
     {"id":{"name":"scr_asset_bmp_build_preview","path":"scripts/scr_asset_bmp_build_preview/scr_asset_bmp_build_preview.yy",},},
+    {"id":{"name":"scr_bmp_preview_queue","path":"scripts/scr_bmp_preview_queue/scr_bmp_preview_queue.yy",},},
     {"id":{"name":"scr_asset_bmp_draw_ellipse","path":"scripts/scr_asset_bmp_draw_ellipse/scr_asset_bmp_draw_ellipse.yy",},},
     {"id":{"name":"scr_asset_bmp_draw_line","path":"scripts/scr_asset_bmp_draw_line/scr_asset_bmp_draw_line.yy",},},
     {"id":{"name":"scr_asset_bmp_draw_rect","path":"scripts/scr_asset_bmp_draw_rect/scr_asset_bmp_draw_rect.yy",},},

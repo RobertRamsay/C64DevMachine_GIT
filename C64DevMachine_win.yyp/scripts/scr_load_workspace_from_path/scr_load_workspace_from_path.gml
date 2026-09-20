@@ -361,6 +361,9 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
         }
         ds_list_clear(_am.asset_list);
 
+        // Any previews still queued belong to the project being replaced.
+        scr_bmp_preview_queue_reset();
+
         for (var _ai = 0; _ai < array_length(_ads); _ai++) {
             var _ad = _ads[_ai];
             var _buf = noone;
@@ -390,8 +393,11 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
                 // bytes were quantised count-sorted, so false is correct.
                 _meta.tone_sorted = variable_struct_exists(_sm, "tone_sorted") ? _sm.tone_sorted : false;
                 // BITMAP collision tags. Absent = untagged / pre-tag project;
-                // scr_asset_bmp_build_preview (called below for every BITMAP)
-                // backfills an all-zero grid, so nothing downstream must guard.
+                // scr_asset_bmp_build_preview backfills an all-zero grid when
+                // it runs. That is now deferred to the preview queue, so for
+                // a few frames after a load an untagged BITMAP may have no
+                // grid at all - every consumer already guards for that, and a
+                // grid restored from the file above is never touched either way.
                 if (variable_struct_exists(_sm, "coll_types") && is_array(_sm.coll_types)) {
                     if (array_length(_sm.coll_types) == 1000) {
                         _meta.coll_types = _sm.coll_types;
@@ -474,7 +480,13 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
             ds_list_add(_am.asset_list, _new_asset);
 
             if (_ad.type == "SPRITE_SET") scr_asset_spr_cache_sprites(_new_asset);
-            if (_ad.type == "BITMAP"     && buffer_exists(_buf))   scr_asset_bmp_build_preview(_new_asset);
+			// NOTE: there used to be an unconditional scr_asset_bmp_build_preview()
+			// call on this line. The block below already builds the preview, after
+			// it has checked the buffer against the size this asset's own bmp_mode
+			// implies and reloaded from source if the buffer was short. So the old
+			// call decoded all 64000 pixels, built the mask, uploaded a surface —
+			// and the block below immediately freed that surface and did it again.
+			// Every bitmap in a project cost exactly twice what it should.
 			if (_ad.type == "BITMAP" && buffer_exists(_buf)) {
 			    // bmp_mode was just restored onto _new_asset.meta above (or defaulted
 			    // to MC), so this is the correct expected size for THIS asset — a
@@ -488,7 +500,10 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
 			        _new_asset.buffer = _buf;
 			    }
 			    if (buffer_exists(_buf) && buffer_get_size(_buf) >= _expected_bmp_size) {
-			        scr_asset_bmp_build_preview(_new_asset);
+			        // Queued, not built. See scr_bmp_preview_queue for why: a
+			        // project with a 60-frame REU animation would otherwise
+			        // decode 60 full-screen bitmaps before the window redraws.
+			        scr_bmp_preview_queue_push(_new_asset);
 			    }
 			}
             if (_ad.type == "CHAR_SET"   && buffer_exists(_buf) && buffer_get_size(_buf) > 8) {

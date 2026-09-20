@@ -30,6 +30,12 @@ global.lite=0;
 // MCP_ENABLED (top of this event) is the single switch for the whole feature.
 if (MCP_ENABLED && global.lite == 0 && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
 global.build_date = "September 19th, 2026"; // edit this string for each release
+
+// Deferred bitmap previews. Declared here so every consumer can read them
+// unconditionally - no struct/variable existence probing at the call sites.
+global.bmp_preview_queue = [];
+global.bmp_preview_done  = 0;
+global.bmp_preview_total = 0;
 // is demo mode?
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {

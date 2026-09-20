@@ -1,4 +1,10 @@
 // All node Step handlers have completed before this event.
+
+// Deferred bitmap previews from the last project load. 10ms a frame keeps
+// the editor responsive and the progress bar moving while the backlog
+// clears; a 60-frame animation finishes in well under a second.
+scr_bmp_preview_queue_drain(10);
+
 var _release_changed = editor_release_pending &&
     (editor_release_dirty || global.undo_dirty || global.addresses_dirty);
 if (_release_changed || showcode_refresh_requested || editor_layout_refresh_requested) {
