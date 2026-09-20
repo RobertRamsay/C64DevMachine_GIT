@@ -4148,13 +4148,25 @@ for (var i = 0; i < array_length(_exp_code); i++) {
     }
 
     scr_node_build_inject(_exp_buf, _base_pc);
-    scr_reu_build_images(filename_path(_chosen));
+
+    // The REU image is written NEXT TO THE EXPORTED FILE, not into
+    // export_dir where F5 puts its copy. A manually exported PRG is run by
+    // hand, so nothing attaches the image for it the way scr_launch_vice
+    // does on F5 — and an emulator still holding the F5 copy from an earlier
+    // build will happily run the new PRG against stale frame data, which
+    // looks exactly like a packing bug and is not one. Name the file in the
+    // confirmation so it is obvious which image this PRG expects.
+    var _exp_reu_paths = scr_reu_build_images(filename_path(_chosen));
 
     var _exp_msg = "";
 
     if (!_exp_build_d64) {
         buffer_save(_exp_buf, _chosen);
         _exp_msg = "PRG exported to:\n" + _chosen;
+        for (var _eri = 0; _eri < array_length(_exp_reu_paths); _eri++) {
+            _exp_msg += "\n\nREU image written to:\n" + string(_exp_reu_paths[_eri])
+                      + "\nAttach THIS image when you run the PRG.";
+        }
     }
 
     // -------------------------------------------------------------

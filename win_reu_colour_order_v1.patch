@@ -1,0 +1,197 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 5010e33..1196a38 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -4148,13 +4148,25 @@ for (var i = 0; i < array_length(_exp_code); i++) {
+     }
+ 
+     scr_node_build_inject(_exp_buf, _base_pc);
+-    scr_reu_build_images(filename_path(_chosen));
++
++    // The REU image is written NEXT TO THE EXPORTED FILE, not into
++    // export_dir where F5 puts its copy. A manually exported PRG is run by
++    // hand, so nothing attaches the image for it the way scr_launch_vice
++    // does on F5 — and an emulator still holding the F5 copy from an earlier
++    // build will happily run the new PRG against stale frame data, which
++    // looks exactly like a packing bug and is not one. Name the file in the
++    // confirmation so it is obvious which image this PRG expects.
++    var _exp_reu_paths = scr_reu_build_images(filename_path(_chosen));
+ 
+     var _exp_msg = "";
+ 
+     if (!_exp_build_d64) {
+         buffer_save(_exp_buf, _chosen);
+         _exp_msg = "PRG exported to:\n" + _chosen;
++        for (var _eri = 0; _eri < array_length(_exp_reu_paths); _eri++) {
++            _exp_msg += "\n\nREU image written to:\n" + string(_exp_reu_paths[_eri])
++                      + "\nAttach THIS image when you run the PRG.";
++        }
+     }
+ 
+     // -------------------------------------------------------------
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index ba20936..6b8a9b0 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -9417,33 +9417,97 @@ case "MACRO_REU": {
+         if (_reu_fixc == 1) { _reu_ctrl2 |= 0x80; }
+         if (_reu_fixr == 1) { _reu_ctrl2 |= 0x40; }
+ 
+-        if (_idx_is_word) {
+-            // 16-bit indirect lookup: for each table, point a ZP pointer at
+-            // the table's compile-time base, add the runtime 16-bit index to
+-            // it, then LDA (ptr),Y with Y=0 to fetch the byte. Needs 2 ZP
+-            // scratch bytes, configurable per node (slot 14) since any macro
+-            // reserving ZP must let the user resolve conflicts — default $03.
+-            var _zp_base = (array_length(_curr.instructions[0]) > 14 && is_real(_curr.instructions[0][14])) ? real(_curr.instructions[0][14]) & 0xFF : 0x03;
+-            var _ptr_lo  = _zp_base;
+-            var _ptr_hi  = _zp_base + 1;
+-
+-            var _emit_word_lookup = function(_lst, _tbl_lbl, _idx_addr, _plo, _phi, _dest_reg, _tid) {
+-                array_push(_lst, ["lda_lab_lo", _tbl_lbl, _tid]);
+-                array_push(_lst, ["sta_zp",     _plo,     _tid]);
+-                array_push(_lst, ["lda_lab_hi", _tbl_lbl, _tid]);
+-                array_push(_lst, ["sta_zp",     _phi,     _tid]);
+-                array_push(_lst, ["clc",        0,        _tid]);
+-                array_push(_lst, ["lda_zp",     _plo,     _tid]);
+-                array_push(_lst, ["adc_abs",    _idx_addr, _tid]);
+-                array_push(_lst, ["sta_zp",     _plo,     _tid]);
+-                array_push(_lst, ["lda_zp",     _phi,     _tid]);
+-                array_push(_lst, ["adc_abs",    _idx_addr + 1, _tid]);
+-                array_push(_lst, ["sta_zp",     _phi,     _tid]);
+-                array_push(_lst, ["ldy_imm",    0,        _tid]);
+-                array_push(_lst, ["lda_izy",    _plo,     _tid]);
+-                array_push(_lst, ["sta_abs",    _dest_reg, _tid]);
+-            };
++        // ZP scratch for the 16-bit indirect path, and the lookup emitter
++        // itself, are hoisted above both transfer blocks so the two can be
++        // emitted in either order. Needs 2 ZP scratch bytes, configurable
++        // per node (slot 14) since any macro reserving ZP must let the user
++        // resolve conflicts — default $03.
++        var _zp_base = (array_length(_curr.instructions[0]) > 14 && is_real(_curr.instructions[0][14])) ? real(_curr.instructions[0][14]) & 0xFF : 0x03;
++        var _ptr_lo  = _zp_base;
++        var _ptr_hi  = _zp_base + 1;
++
++        // 16-bit indirect lookup: for each table, point a ZP pointer at
++        // the table's compile-time base, add the runtime 16-bit index to
++        // it, then LDA (ptr),Y with Y=0 to fetch the byte.
++        var _emit_word_lookup = function(_lst, _tbl_lbl, _idx_addr, _plo, _phi, _dest_reg, _tid) {
++            array_push(_lst, ["lda_lab_lo", _tbl_lbl, _tid]);
++            array_push(_lst, ["sta_zp",     _plo,     _tid]);
++            array_push(_lst, ["lda_lab_hi", _tbl_lbl, _tid]);
++            array_push(_lst, ["sta_zp",     _phi,     _tid]);
++            array_push(_lst, ["clc",        0,        _tid]);
++            array_push(_lst, ["lda_zp",     _plo,     _tid]);
++            array_push(_lst, ["adc_abs",    _idx_addr, _tid]);
++            array_push(_lst, ["sta_zp",     _plo,     _tid]);
++            array_push(_lst, ["lda_zp",     _phi,     _tid]);
++            array_push(_lst, ["adc_abs",    _idx_addr + 1, _tid]);
++            array_push(_lst, ["sta_zp",     _phi,     _tid]);
++            array_push(_lst, ["ldy_imm",    0,        _tid]);
++            array_push(_lst, ["lda_izy",    _plo,     _tid]);
++            array_push(_lst, ["sta_abs",    _dest_reg, _tid]);
++        };
++
++        // ---- TRANSFER ORDER: COLOUR FIRST, THEN BITMAP -----------------
++        // REU DMA halts the CPU for the duration of a transfer, so these two
++        // run back to back from wherever the loop reaches them. On PAL that
++        // is 19656 cycles a frame, 63 per raster line, and the transfers cost
++        // roughly one cycle a byte:
++        //
++        //   colour  1000 bytes ->  ~16 raster lines
++        //   bitmap  9192 bytes -> ~146 raster lines
++        //
++        // A loop that raster-syncs resumes at the bottom border, around line
++        // 250. Emitting the bitmap first spent those 146 lines before the
++        // colour transfer even started, so colour landed around line 90 —
++        // a third of the way down the VISIBLE screen. Every row above the
++        // split still showed the previous frame's colour RAM for that frame,
++        // which is the colour bleed you can see even with the Ultimate on
++        // turbo: it is a raster race, so a faster CPU does not touch it.
++        //
++        // Colour first fits entirely in the border (250 -> 266) and is done
++        // before the display window opens. The bitmap transfer then runs
++        // 266 -> line 100 of the next frame, but it writes 63 bytes a line
++        // while the display consumes 40, so it stays permanently ahead of
++        // the raster and never tears. Both blocks describe the same frame
++        // by the time any of it is on screen.
++        //
++        // $D800 cannot be double-buffered, so this ordering — not a faster
++        // machine — is what makes single-buffered colour clean.
++
++        // ---- COLOUR BLOCK -> $D800 (MCBITMAP only) ---------------------
++        // Destination and length are constant ($D800, 1000 bytes), so only
++        // the REU source needs a per-frame lookup.
++        if (_col_split) {
++            if (_idx_is_word) {
++                _emit_word_lookup(_list, _lbl_cbank, _index_addr, _ptr_lo, _ptr_hi, 0xDF06, _id);
++                _emit_word_lookup(_list, _lbl_clo,   _index_addr, _ptr_lo, _ptr_hi, 0xDF04, _id);
++                _emit_word_lookup(_list, _lbl_chi,   _index_addr, _ptr_lo, _ptr_hi, 0xDF05, _id);
++            } else {
++                array_push(_list, ["ldx_abs", _index_addr, _id]);
++                array_push(_list, ["lda_abx", _lbl_cbank,  _id]);
++                array_push(_list, ["sta_abs", 0xDF06,      _id]);
++                array_push(_list, ["lda_abx", _lbl_clo,    _id]);
++                array_push(_list, ["sta_abs", 0xDF04,      _id]);
++                array_push(_list, ["lda_abx", _lbl_chi,    _id]);
++                array_push(_list, ["sta_abs", 0xDF05,      _id]);
++            }
++            array_push(_list, ["lda_imm", 0x00,   _id]);   // $D800 low
++            array_push(_list, ["sta_abs", 0xDF02, _id]);
++            array_push(_list, ["lda_imm", 0xD8,   _id]);   // $D800 high
++            array_push(_list, ["sta_abs", 0xDF03, _id]);
++            array_push(_list, ["lda_imm", 0xE8,   _id]);   // 1000 = $03E8
++            array_push(_list, ["sta_abs", 0xDF07, _id]);
++            array_push(_list, ["lda_imm", 0x03,   _id]);
++            array_push(_list, ["sta_abs", 0xDF08, _id]);
++            array_push(_list, ["lda_imm", _reu_ctrl2, _id]);
++            array_push(_list, ["sta_abs", 0xDF0A,     _id]);
++            array_push(_list, ["lda_imm", _reu_cmd2,  _id]);
++            array_push(_list, ["sta_abs", 0xDF01,     _id]);
++        }
+ 
++        // ---- MAIN BLOCK -> bitmap base ---------------------------------
++        // CUSTOM and HRBITMAP send the whole declared span here; MCBITMAP
++        // sends bitmap + screen only, its colour having gone out above.
++        if (_idx_is_word) {
+             _emit_word_lookup(_list, _lbl_bank,  _index_addr, _ptr_lo, _ptr_hi, 0xDF06, _id);
+             _emit_word_lookup(_list, _lbl_lo,    _index_addr, _ptr_lo, _ptr_hi, 0xDF04, _id);
+             _emit_word_lookup(_list, _lbl_hi,    _index_addr, _ptr_lo, _ptr_hi, 0xDF05, _id);
+@@ -9473,37 +9537,6 @@ case "MACRO_REU": {
+         array_push(_list, ["sta_abs", 0xDF0A,     _id]);
+         array_push(_list, ["lda_imm", _reu_cmd2,  _id]);
+         array_push(_list, ["sta_abs", 0xDF01,     _id]);
+-
+-        // ---- TRANSFER 2: colour block -> $D800 -------------------------
+-        // Only MCBITMAP splits. Destination and length are constant ($D800,
+-        // 1000 bytes), so only the REU source needs a per-frame lookup.
+-        if (_col_split) {
+-            if (_idx_is_word) {
+-                _emit_word_lookup(_list, _lbl_cbank, _index_addr, _ptr_lo, _ptr_hi, 0xDF06, _id);
+-                _emit_word_lookup(_list, _lbl_clo,   _index_addr, _ptr_lo, _ptr_hi, 0xDF04, _id);
+-                _emit_word_lookup(_list, _lbl_chi,   _index_addr, _ptr_lo, _ptr_hi, 0xDF05, _id);
+-            } else {
+-                array_push(_list, ["ldx_abs", _index_addr, _id]);
+-                array_push(_list, ["lda_abx", _lbl_cbank,  _id]);
+-                array_push(_list, ["sta_abs", 0xDF06,      _id]);
+-                array_push(_list, ["lda_abx", _lbl_clo,    _id]);
+-                array_push(_list, ["sta_abs", 0xDF04,      _id]);
+-                array_push(_list, ["lda_abx", _lbl_chi,    _id]);
+-                array_push(_list, ["sta_abs", 0xDF05,      _id]);
+-            }
+-            array_push(_list, ["lda_imm", 0x00,   _id]);   // $D800 low
+-            array_push(_list, ["sta_abs", 0xDF02, _id]);
+-            array_push(_list, ["lda_imm", 0xD8,   _id]);   // $D800 high
+-            array_push(_list, ["sta_abs", 0xDF03, _id]);
+-            array_push(_list, ["lda_imm", 0xE8,   _id]);   // 1000 = $03E8
+-            array_push(_list, ["sta_abs", 0xDF07, _id]);
+-            array_push(_list, ["lda_imm", 0x03,   _id]);
+-            array_push(_list, ["sta_abs", 0xDF08, _id]);
+-            array_push(_list, ["lda_imm", _reu_ctrl2, _id]);
+-            array_push(_list, ["sta_abs", 0xDF0A,     _id]);
+-            array_push(_list, ["lda_imm", _reu_cmd2,  _id]);
+-            array_push(_list, ["sta_abs", 0xDF01,     _id]);
+-        }
+         break;
+     }
+ 
