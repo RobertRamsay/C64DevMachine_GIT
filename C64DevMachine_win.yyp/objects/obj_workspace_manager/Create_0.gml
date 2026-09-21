@@ -1,3 +1,6 @@
+/// @desc Setup Workspace, Palette & C64 Environment
+global.lite=0;
+
 // ---------------------------------------------------------------------------
 // MCP / external control feature switch.
 //
@@ -24,12 +27,10 @@ editor_release_panning = false;
 showcode_refresh_requested = false;
 editor_layout_refresh_requested = false;
 
-/// @desc Setup Workspace, Palette & C64 Environment
-global.lite=0;
 // MCP is a Pro-only feature; initialize the edition before creating it.
 // MCP_ENABLED (top of this event) is the single switch for the whole feature.
 if (MCP_ENABLED && global.lite == 0 && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
-global.build_date = "September 19th, 2026"; // edit this string for each release
+global.build_date = "September 21st, 2026"; // edit this string for each release
 
 // Frame counter. Incremented once in Begin Step, and used as the validity
 // stamp for per-frame lookup caches (see scr_reu_asset_map). Anything keyed
@@ -129,9 +130,12 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-	"NEW - MCP Intergration [PRO] - Command via CODEX or similar systems",
 	"NEW - CHINESE SIMPLIFIED Launguage added - Toggle via Options",
-	"NEW - HUD Asset editor",
+	"NEW - COMMENT nodes now editable directly and exapandable < and >",
+	"NEW - REU Handling improved overall, auto injects the LOAD_REU for vice",
+	"NEW - REU BMP Import option added to IMPORT menu for batch KLA/KOA import.",
+	"NEW - ASSETS can now be grouped.",
+	"NEW - HUD Asset editor.",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
     "SUPPORT the development by leaving a review on ITCH and buying the PRO version.",
@@ -153,7 +157,7 @@ welcome_credits_lines = [
     "keefnayls",
     "markc.sherman",
     "Sch31Btyp",
-	"SirWizAlot",
+	"SirWizAlot +EXTRA REU Help!",
     "SLAXX",
     "SPEE-DEC",
     "sTERN",
@@ -1067,23 +1071,27 @@ welcome_hide_checked = (_hide_welcome != 0);
 welcome_open          = !welcome_hide_checked;
 
 // ---- SHOW CODE PANEL (floating live listing, left of the shortcuts column) ----
-// -1 on x is the "never positioned" marker; the draw script parks it beside the
-// shortcuts column the first time it runs, then this holds the dragged position.
-showcode_x    = ini_read_real("showcode", "x",    -1);
-showcode_y    = ini_read_real("showcode", "y",    53);
+// First-run position and layout, set by hand. This used to default x to -1,
+// the "never positioned" marker that makes the draw script park the panel
+// beside the shortcuts column; a fresh install now starts from this fixed
+// spot instead. The draw script clamps x to the GUI width and caps the rows
+// drawn to what fits below y, so a smaller display gets a shorter panel
+// rather than one hanging off the screen. Anything saved to the INI wins.
+showcode_x    = ini_read_real("showcode", "x",    273);
+showcode_y    = ini_read_real("showcode", "y",    65);
 // SHOWCODE_W_MIN/MAX rather than the literals this used to carry. The panel's
 // floor moved to 225 when it was allowed to narrow further, but this clamp kept
 // its own 300 — so a saved width below 300 was quietly widened on every load
 // and the narrow panel never survived a restart.
-showcode_w    = clamp(ini_read_real("showcode", "w",   248), SHOWCODE_W_MIN, SHOWCODE_W_MAX);
-showcode_rows = clamp(ini_read_real("showcode", "rows",  22),   5,  SHOWCODE_MAX_ROWS);
+showcode_w    = clamp(ini_read_real("showcode", "w",   244), SHOWCODE_W_MIN, SHOWCODE_W_MAX);
+showcode_rows = clamp(ini_read_real("showcode", "rows",  44),   5,  SHOWCODE_MAX_ROWS);
 showcode_open = (ini_read_real("showcode", "open", 1) == 1);
 // Two separate things, deliberately. showcode_open is the header's minimise
 // chevron: the panel is still there, rolled up to its title bar. This one is
 // the master switch from OPTIONS -> SHOW CODE: off means the panel does not
 // exist on screen at all, header included, and claims no mouse.
 showcode_enabled = (ini_read_real("showcode", "enabled", 1) == 1);
-showcode_mode = clamp(ini_read_real("showcode", "mode", 0), 0, 1);
+showcode_mode = clamp(ini_read_real("showcode", "mode", 1), 0, 1);
 // MISC: byte tables, <LABEL/>LABEL pointer bytes and macro scaffolding labels.
 // Off by default — the lean view is just the code.
 showcode_misc = (ini_read_real("showcode", "misc", 0) == 1);

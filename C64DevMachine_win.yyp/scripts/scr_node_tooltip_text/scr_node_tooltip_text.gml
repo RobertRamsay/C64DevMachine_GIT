@@ -797,7 +797,7 @@ function scr_node_tooltip_text(_node_type) {
                 "STAT optionally stores the first status byte:",
                 "  $30 '0' = OK",
                 "  $38 '8' = 84 REU NOT ENABLED / 85 FILE NOT OPENED",
-                "  $FF     = no status seen (interface absent)",
+                "  $FF     = no status seen (no Ultimate, or no reply)",
                 "",
                 "Falls through to the next node on every path,",
                 "including when no Ultimate is present."
