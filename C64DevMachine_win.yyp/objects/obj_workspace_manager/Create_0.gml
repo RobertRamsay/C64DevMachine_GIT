@@ -1,3 +1,6 @@
+/// @desc Setup Workspace, Palette & C64 Environment
+global.lite=0;
+
 // ---------------------------------------------------------------------------
 // MCP / external control feature switch.
 //
@@ -24,8 +27,6 @@ editor_release_panning = false;
 showcode_refresh_requested = false;
 editor_layout_refresh_requested = false;
 
-/// @desc Setup Workspace, Palette & C64 Environment
-global.lite=0;
 // MCP is a Pro-only feature; initialize the edition before creating it.
 // MCP_ENABLED (top of this event) is the single switch for the whole feature.
 if (MCP_ENABLED && global.lite == 0 && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
