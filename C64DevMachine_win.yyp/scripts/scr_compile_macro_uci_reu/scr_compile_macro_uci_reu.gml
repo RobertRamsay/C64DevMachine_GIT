@@ -10,24 +10,36 @@
 /// started from its file browser, with no host machine involved at all. The
 /// program asks the firmware to fetch its own data.
 ///
-/// Register map, per the Ultimate documentation:
+/// Register map, per the Ultimate Command Interface programming guide:
 ///   $DF1C  write: control      read: status
 ///   $DF1D  write: command data read: identification ($C9, or $49 during IRQ)
 ///   $DF1E  read:  response data
 ///   $DF1F  read:  status data
 ///
-/// STATE lives in bits 1-0 of the status register - 00 idle, 01 command busy,
-/// 10 data last, 11 data more - with DATA_AV in bit 7 and STAT_AV in bit 6.
-/// Masking $30 for those, as circulating example code does, reads two bits
-/// that are always zero: the idle wait then falls straight through and the
-/// data comparisons can never match.
+/// Status register ($DF1C read):
+///   bit 0 CMD_BUSY   bit 1 DATA_ACC   bit 2 ABORT_P   bit 3 ERROR
+///   bits 5-4 STATE   00 idle, 01 busy, 10 data-last, 11 data-more
+///   bit 6 STAT_AV    bit 7 DATA_AV
+/// STATE is masked with $30. (An earlier version of this node masked $03 -
+/// CMD_BUSY and DATA_ACC - which only says the command has been *taken*, not
+/// that it has *finished*, so it carried on while the load was still running.)
 ///
-/// The command is target $04 (control target), command $08 (LOAD REU),
-/// followed by the filename. It answers with a 4-byte little-endian transfer
-/// count and a status string, both of which must be drained before the
-/// interface returns to idle. The first status byte is what distinguishes
-/// "00,OK" from "84,REU NOT ENABLED" and "85,REU FILE CANNOT BE OPENED", so
-/// it is kept rather than thrown away.
+/// Control register ($DF1C write) is written with literal values only, never
+/// read-modify-write: reading it returns the status register.
+///
+/// The exchange (target $04 control, command $08 LOAD REU, then the filename):
+///   1. wait for STATE idle
+///   2. write the command bytes to $DF1D, push with $01
+///   3. poll while STATE is busy
+///   4. STATE idle already -> the command finished with no data phase; done
+///   5. drain $DF1E while DATA_AV, $DF1F while STAT_AV (before the accept -
+///      DATA_ACC resets both queues)
+///   6. write DATA_ACC ($02); data-more means another block follows, so go
+///      back to 3; data-last returns to idle
+/// LOAD REU answers with a 4-byte transfer count and an ASCII status string in
+/// NN,TEXT form - "00,OK", "84,REU NOT ENABLED", "85,REU FILE CANNOT BE
+/// OPENED" - so the first status byte is '0' ($30) on success and '8' ($38)
+/// on the errors that matter here. That byte is kept rather than thrown away.
 
 function scr_compile_macro_uci_reu(_list, _curr) {
     var _id   = _curr;
@@ -69,7 +81,7 @@ function scr_compile_macro_uci_reu(_list, _curr) {
     var _l_wait     = _pfx + "wait";
     var _l_drain    = _pfx + "drain";
     var _l_nodata   = _pfx + "nodata";
-    var _l_done     = _pfx + "done";
+    var _l_accept   = _pfx + "accept";
     var _l_final    = _pfx + "final";
     var _l_skipkeep = _pfx + "skipkeep";
 
@@ -77,6 +89,10 @@ function scr_compile_macro_uci_reu(_list, _curr) {
     var UCI_COMMAND  = 0xDF1D;
     var UCI_RESPONSE = 0xDF1E;
     var UCI_STATUS   = 0xDF1F;
+
+    var ST_MASK  = 0x30;   // STATE, bits 5-4
+    var ST_BUSY  = 0x10;
+    var ST_MORE  = 0x30;
 
     // ---- PRESENCE ----
     // On hardware without the interface these registers are open bus, and the
@@ -88,13 +104,13 @@ function scr_compile_macro_uci_reu(_list, _curr) {
     array_push(_list, ["cmp_imm", 0x49,        _id]);
     array_push(_list, ["bne",     _l_absent,   _id]);
 
-    // ---- WAIT FOR IDLE ----
+    // ---- 1. WAIT FOR STATE IDLE ----
     array_push(_list, ["label",   _l_idle,     _id]);
     array_push(_list, ["lda_abs", UCI_CONTROL, _id]);
-    array_push(_list, ["and_imm", 0x03,        _id]);
+    array_push(_list, ["and_imm", ST_MASK,     _id]);
     array_push(_list, ["bne",     _l_idle,     _id]);
 
-    // ---- COMMAND: target $04, command $08, then the filename ----
+    // ---- 2. COMMAND: target $04, command $08, then the filename, push ----
     array_push(_list, ["lda_imm", 0x04,        _id]);
     array_push(_list, ["sta_abs", UCI_COMMAND, _id]);
     array_push(_list, ["lda_imm", 0x08,        _id]);
@@ -109,25 +125,27 @@ function scr_compile_macro_uci_reu(_list, _curr) {
     array_push(_list, ["bne",     _l_send,     _id]);
     array_push(_list, ["label",   _l_sent,     _id]);
 
-    array_push(_list, ["lda_imm", 0x01,        _id]);   // PUSH_CMD
-    array_push(_list, ["sta_abs", UCI_CONTROL, _id]);
-
-    // ---- WAIT WHILE BUSY ----
-    array_push(_list, ["label",   _l_wait,     _id]);
-    array_push(_list, ["lda_abs", UCI_CONTROL, _id]);
-    array_push(_list, ["and_imm", 0x03,        _id]);
-    array_push(_list, ["cmp_imm", 0x01,        _id]);
-    array_push(_list, ["beq",     _l_wait,     _id]);
-
-    // ---- DRAIN ----
-    // Response bytes first (bit 7), then status bytes (bit 6), until neither
-    // is offered. The first status byte is the one worth keeping; the rest of
-    // the string is read and discarded so the interface can return to idle.
+    // "Nothing seen yet" - only the first status byte of the exchange is kept.
     if (_status_addr != 0) {
         array_push(_list, ["lda_imm", 0xFF,         _id]);
         array_push(_list, ["sta_abs", _status_addr, _id]);
     }
 
+    array_push(_list, ["lda_imm", 0x01,        _id]);   // PUSH_CMD
+    array_push(_list, ["sta_abs", UCI_CONTROL, _id]);
+
+    // ---- 3. POLL WHILE BUSY ----
+    array_push(_list, ["label",   _l_wait,     _id]);
+    array_push(_list, ["lda_abs", UCI_CONTROL, _id]);
+    array_push(_list, ["and_imm", ST_MASK,     _id]);
+    array_push(_list, ["cmp_imm", ST_BUSY,     _id]);
+    array_push(_list, ["beq",     _l_wait,     _id]);
+
+    // ---- 4. BACK TO IDLE WITH NO DATA PHASE: nothing to read or accept ----
+    array_push(_list, ["and_imm", ST_MASK,     _id]);
+    array_push(_list, ["beq",     _l_absent,   _id]);
+
+    // ---- 5. DRAIN: response bytes (bit 7), then status bytes (bit 6) ----
     array_push(_list, ["label",   _l_drain,     _id]);
     array_push(_list, ["lda_abs", UCI_CONTROL,  _id]);
     array_push(_list, ["bpl",     _l_nodata,    _id]);
@@ -135,14 +153,10 @@ function scr_compile_macro_uci_reu(_list, _curr) {
     array_push(_list, ["jmp_abs", _l_drain,     _id]);
 
     array_push(_list, ["label",   _l_nodata,    _id]);
-    array_push(_list, ["lda_abs", UCI_CONTROL,  _id]);
     array_push(_list, ["and_imm", 0x40,         _id]);
-    array_push(_list, ["beq",     _l_done,      _id]);
+    array_push(_list, ["beq",     _l_accept,    _id]);
     array_push(_list, ["lda_abs", UCI_STATUS,   _id]);
-
     if (_status_addr != 0) {
-        // Keep only the first status byte. $FF was stored above as "nothing
-        // seen yet", so a slot still holding it is the one to write into.
         // X is used for the test so the status byte stays in A.
         array_push(_list, ["ldx_abs", _status_addr, _id]);
         array_push(_list, ["cpx_imm", 0xFF,         _id]);
@@ -150,17 +164,21 @@ function scr_compile_macro_uci_reu(_list, _curr) {
         array_push(_list, ["sta_abs", _status_addr, _id]);
         array_push(_list, ["label",   _l_skipkeep,  _id]);
     }
-
     array_push(_list, ["jmp_abs", _l_drain,     _id]);
 
-    // ---- ACCEPT AND WAIT FOR IDLE ----
-    array_push(_list, ["label",   _l_done,      _id]);
+    // ---- 6. ACCEPT; data-more means another block follows ----
+    array_push(_list, ["label",   _l_accept,    _id]);
+    array_push(_list, ["lda_abs", UCI_CONTROL,  _id]);
+    array_push(_list, ["and_imm", ST_MASK,      _id]);
+    array_push(_list, ["tax",     0,            _id]);   // state before the accept
     array_push(_list, ["lda_imm", 0x02,         _id]);   // DATA_ACC
     array_push(_list, ["sta_abs", UCI_CONTROL,  _id]);
+    array_push(_list, ["cpx_imm", ST_MORE,      _id]);
+    array_push(_list, ["beq",     _l_wait,      _id]);
 
     array_push(_list, ["label",   _l_final,     _id]);
     array_push(_list, ["lda_abs", UCI_CONTROL,  _id]);
-    array_push(_list, ["and_imm", 0x03,         _id]);
+    array_push(_list, ["and_imm", ST_MASK,      _id]);
     array_push(_list, ["bne",     _l_final,     _id]);
 
     // ---- FILENAME ----
