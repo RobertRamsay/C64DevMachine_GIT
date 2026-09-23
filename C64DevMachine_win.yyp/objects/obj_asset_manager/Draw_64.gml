@@ -4047,11 +4047,23 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            draw_set_color(_ekla_hov ? c_white : c_ltgray);
 	            draw_text_l(_ex_x3 + 4, _ex_y , "EXPORT KLA");
 	            if (_ekla_hov && mouse_check_button_pressed(mb_left)) {
-	                var _kla_path = get_save_filename("Koala Painter (*.kla)|*.kla", filename_name(_asset.file));
+	                var _kla_def = filename_name(_asset.file);
+	                if (_kla_def == "") {
+	                    _kla_def = _asset.name + ".kla";
+	                }
+	                var _kla_path = get_save_filename("Koala Painter (*.kla)|*.kla", _kla_def);
 	                io_clear();
 	                if (_kla_path != "") {
-	                    scr_asset_kla_save(_asset);
-	                    file_copy(_asset.file, _kla_path);
+	                    // macOS save panels don't always append the extension
+	                    var _kla_ext = string_lower(filename_ext(_kla_path));
+	                    if (_kla_ext != ".kla" && _kla_ext != ".koa") {
+	                        _kla_path = _kla_path + ".kla";
+	                    }
+	                    if (scr_asset_kla_save(_asset, _kla_path)) {
+	                        scr_show_message(L("KLA EXPORTED: ") + filename_name(_kla_path));
+	                    } else {
+	                        scr_show_message(L("KLA EXPORT FAILED - could not write ") + _kla_path);
+	                    }
 	                }
 	            }
 	        }

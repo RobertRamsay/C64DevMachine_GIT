@@ -1,9 +1,14 @@
 /// @function scr_asset_kla_save(_asset)
 /// @desc Encodes the preview surface back into the KLA (MC, 10003-byte) or
 ///       HiRes (9002-byte) format and saves to disk.
+/// @param {struct} _asset        BITMAP asset
+/// @param {string} _export_path  Optional. Also write the encoded bytes
+///                               straight to this path (EXPORT KLA).
+/// @returns {bool} false when nothing could be encoded, or the export
+///                 file did not land on disk.
 
-function scr_asset_kla_save(_asset) {
-    if (!variable_struct_exists(_asset.meta, "preview_surf") || !surface_exists(_asset.meta.preview_surf)) return;
+function scr_asset_kla_save(_asset, _export_path = "") {
+    if (!variable_struct_exists(_asset.meta, "preview_surf") || !surface_exists(_asset.meta.preview_surf)) return false;
 
     var _is_hires = scr_asset_bmp_is_hires(_asset);
 
@@ -310,10 +315,25 @@ function scr_asset_kla_save(_asset) {
 
     buffer_delete(_surf_buf);
 
-    // 6. Ensure directory exists and write to disk
-    var _dir = filename_dir(_asset.file);
-    if (!directory_exists(_dir)) directory_create(_dir);
-    buffer_save(_buf, _asset.file);
+    // 6. Ensure directory exists and write to disk. An asset with no file
+    // path (or one in a folder that can't be written) used to fail here
+    // silently, and EXPORT KLA then copied a file that was never written.
+    if (_asset.file != "") {
+        var _dir = filename_dir(_asset.file);
+        if (_dir != "" && !directory_exists(_dir)) directory_create(_dir);
+        buffer_save(_buf, _asset.file);
+    }
+
+    // EXPORT KLA: write the encoded bytes straight to the chosen path
+    // (no file_copy - it fails when the target already exists, and it
+    // depended on the asset's own file having been written first)
+    var _export_ok = true;
+    if (_export_path != "") {
+        var _edir = filename_dir(_export_path);
+        if (_edir != "" && !directory_exists(_edir)) directory_create(_edir);
+        buffer_save(_buf, _export_path);
+        _export_ok = file_exists(_export_path);
+    }
 
 // Update global memory so the rest of the application recognizes the new data instantly
     if (variable_struct_exists(_asset, "buffer") && buffer_exists(_asset.buffer)) {
@@ -345,7 +365,12 @@ _asset.buffer = _buf;
                     }
                     
                     // Inject file data and FORCE the filename string update
-                    kla_buffer = buffer_load(_asset.file);
+                    if (file_exists(_asset.file)) {
+                        kla_buffer = buffer_load(_asset.file);
+                    } else {
+                        kla_buffer = buffer_create(buffer_get_size(_buf), buffer_fixed, 1);
+                        buffer_copy(_buf, 0, buffer_get_size(_buf), kla_buffer, 0);
+                    }
                     kla_filename = filename_name(_asset.file);
                     
                     // Update the instruction parameter so the workspace knows the file link is real
@@ -368,4 +393,5 @@ _asset.buffer = _buf;
             }
         }
     }
+    return _export_ok;
 }
