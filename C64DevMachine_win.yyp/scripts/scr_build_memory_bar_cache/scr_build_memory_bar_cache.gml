@@ -340,7 +340,7 @@ var _addr_total = 65536;
                         no_conflict: false,
                         conflict:    false
                     });
-                    if (_ms_cm == 2) {
+                    if (_ms_cm == 2 || _ms_cm == 4) {
                         var _ms_cb = _ms_base + ceil(_ms_sz / 256) * 256;
                         var _ms_c_hex = string_upper(decimal_to_hex(_ms_cb));
                         while (string_length(_ms_c_hex) < 4) { _ms_c_hex = "0" + _ms_c_hex; }
@@ -350,6 +350,24 @@ var _addr_total = 65536;
                             col:         make_color_rgb(200, 160, 40),
                             type:        "ASSET",
                             name:        _ms_name + " MAP " + _ms_ts + " #" + string(_ms_map) + " COLOUR AT $" + _ms_c_hex + " (" + string(_ms_sz) + " BYTES)",
+                            lines:       [],
+                            node_id:     id,
+                            no_conflict: false,
+                            conflict:    false
+                        });
+                    }
+                    // SHIFT STOCK: the second screen
+                    if (_ms_cm == 4) {
+                        var _ms_db = 0x3800;
+                        if (array_length(_ms_ins) > 13) { if (is_real(_ms_ins[13])) { _ms_db = real(_ms_ins[13]); } }
+                        var _ms_d_hex = string_upper(decimal_to_hex(_ms_db));
+                        while (string_length(_ms_d_hex) < 4) { _ms_d_hex = "0" + _ms_d_hex; }
+                        array_push(_segments, {
+                            addr:        _ms_db,
+                            size:        0x0400,
+                            col:         make_color_rgb(40, 180, 160),
+                            type:        "MACRO",
+                            name:        _ms_name + " SECOND SCREEN AT $" + _ms_d_hex,
                             lines:       [],
                             node_id:     id,
                             no_conflict: false,

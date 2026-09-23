@@ -8891,6 +8891,10 @@ case "META_TILESET": {
             _md_txt = "SHIFT C64U";
             _md_col = make_color_rgb(255, 90, 90);
         }
+        if (_run_mode == 4) {
+            _md_txt = "SHIFT STOCK";
+            _md_col = c_orange;
+        }
         draw_set_color(make_color_rgb(25, 25, 40));
         if (_md_hov) { draw_set_color(make_color_rgb(50, 50, 80)); }
         draw_rectangle(_md_x1, _rv_y1, _md_x2, _rv_y2, false);
@@ -8902,7 +8906,8 @@ case "META_TILESET": {
         if (_md_hov && mouse_check_button_pressed(mb_left)) {
             while (array_length(_run_node.instructions[0]) < 8) { array_push(_run_node.instructions[0], 0); }
             var _md_next = 3;
-            if (_run_mode == 3) { _md_next = 2; }
+            if (_run_mode == 3) { _md_next = 4; }
+            if (_run_mode == 4) { _md_next = 2; }
             if (_run_mode == 2) { _md_next = 0; }
             _run_node.instructions[0][6] = _md_next;
             global.addresses_dirty = true;

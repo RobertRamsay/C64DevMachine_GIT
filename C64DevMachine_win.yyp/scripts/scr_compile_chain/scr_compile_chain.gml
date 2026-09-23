@@ -4769,6 +4769,14 @@ case "MACRO_METASCROLL": {
     var _clamp     = (array_length(_id.instructions[0]) > 5 && is_real(_id.instructions[0][5])) ? real(_id.instructions[0][5]) : 1;
     // [6] colour mode: 0 = FIXED (stock C64)
     //                  2 = SHIFT C64U, chars and colour in the SAME frame.
+    //                  4 = SHIFT STOCK: per-char colour on a stock C64.
+    //                      Two screens: the next view's chars are built into
+    //                      the hidden one (ahead of time when the camera is
+    //                      one pixel from a coarse step), then on the coarse
+    //                      frame the screens flip in the border and colour
+    //                      RAM is redrawn top-down, faster than the beam
+    //                      draws it (~7 lines per row vs 8). [13] = the
+    //                      second screen ($3800 default, VIC bank 0).
     //                  3 = ROW BANDS: one colour per MAP row. Horizontal
     //                      coarse steps never touch colour RAM; a vertical
     //                      step rewrites only the screen rows whose band
@@ -4786,6 +4794,24 @@ case "MACRO_METASCROLL": {
     {
         _col_mode = 0;
     }
+    // SHIFT STOCK second screen. Must be a whole 1K in VIC bank 0 that the
+    // VIC reads as RAM - not $0400 itself, not $1000-$1FFF (char ROM image).
+    var _dbuf = 0x3800;
+    if (array_length(_id.instructions[0]) > 13 && is_real(_id.instructions[0][13])) { _dbuf = real(_id.instructions[0][13]); }
+    if (_col_mode == 4)
+    {
+        var _dbuf_ok = true;
+        if ((_dbuf & 0x03FF) != 0) { _dbuf_ok = false; }
+        if (_dbuf >= 0x4000 || _dbuf < 0x0800) { _dbuf_ok = false; }
+        if (_dbuf >= 0x1000 && _dbuf < 0x2000) { _dbuf_ok = false; }
+        if (!_dbuf_ok)
+        {
+            show_debug_message("MACRO_METASCROLL: SHIFT STOCK buffer $" + string_upper(decimal_to_hex(_dbuf)) + " is not a usable VIC bank 0 screen - using $3800");
+            _dbuf = 0x3800;
+        }
+    }
+    var _has_co = (_col_mode == 2 || _col_mode == 4);   // a colour plane is baked and read
+
     // [7] the FIXED nibble, or -1 to take the commonest colour in the room
     var _fixed_col = (array_length(_id.instructions[0]) > 7 && is_real(_id.instructions[0][7])) ? real(_id.instructions[0][7]) : -1;
     // [8] the blank character. 38-col / 24-row mode hides only 7 pixels on the
@@ -5052,7 +5078,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["org", -2]);
     array_push(_list, ["org", _base_addr]);
     for (var _bi = 0; _bi < _plane_sz; _bi++) { array_push(_list, ["byte", _ch_plane[_bi]]); }
-    if (_col_mode == 2)
+    if (_has_co)
     {
         array_push(_list, ["org", _co_base]);
         for (var _bj = 0; _bj < _plane_sz; _bj++) { array_push(_list, ["byte", _co_plane[_bj]]); }
@@ -5106,6 +5132,34 @@ case "MACRO_METASCROLL": {
         array_push(_list, ["byte", 0x00, _id]);
     }
 
+    // SHIFT STOCK state: which screen is shown (0 = $0400, 1 = second),
+    // whether the hidden screen holds a built view and for which camera,
+    // and scratch.
+    var _l_dbcur = _p + "dbcur";
+    var _l_dbrdy = _p + "dbrdy";
+    var _l_dbpx  = _p + "dbpx";
+    var _l_dbpy  = _p + "dbpy";
+    var _l_dbsx  = _p + "dbsx";
+    var _l_dbsy  = _p + "dbsy";
+    var _l_dbrow = _p + "dbrow";
+    var _l_dbsnx = _p + "dbsnx";   // pending fine value for X after a coarse step ($FF none)
+    var _l_dbsny = _p + "dbsny";   // same for Y
+    var _l_dblx  = _p + "dblx";    // last X direction moved: 1 right, $FF left, 0 none
+    var _l_dbly  = _p + "dbly";    // last Y direction: 1 down, $FF up
+    var _l_dbdx  = _p + "dbdx";    // predicted coarse step being built
+    var _l_dbdy  = _p + "dbdy";
+    var _l_dbbf  = _p + "dbbf";    // 1 = a view was already built this frame
+    if (_col_mode == 4)
+    {
+        var _db_names = [_l_dbcur, _l_dbrdy, _l_dbpx, _l_dbpy, _l_dbsx, _l_dbsy, _l_dbrow,
+                         _l_dbsnx, _l_dbsny, _l_dblx, _l_dbly, _l_dbdx, _l_dbdy, _l_dbbf];
+        for (var _dbi = 0; _dbi < array_length(_db_names); _dbi++)
+        {
+            array_push(_list, ["label", _db_names[_dbi]]);
+            array_push(_list, ["byte",  0x00, _id]);
+        }
+    }
+
     array_push(_list, ["label", _l_skip]);
 
     // ══════════════════════════════════════════════════════
@@ -5119,6 +5173,36 @@ case "MACRO_METASCROLL": {
     // ══════════════════════════════════════════════════════
     array_push(_list, ["label",   "MSC_Update"]);
     var _l_up_none = _p + "up_none";
+    if (_col_mode == 4)
+    {
+        // SHIFT STOCK needs MSC_Update once a frame, after the MSC_ moves:
+        // mirror sprite pointers while the second screen shows, service a
+        // pending step, prebuild the next view, reset the per-frame state.
+        array_push(_list, ["lda_lab", _l_dbcur,       _id]);
+        array_push(_list, ["beq",     _p + "up_spr",  _id]);
+        array_push(_list, ["jsr",     _p + "sprsync", _id]);
+        array_push(_list, ["label",   _p + "up_spr"]);
+        array_push(_list, ["lda_zp",  _zp_phase,      _id]);
+        array_push(_list, ["beq",     _p + "up_prd",  _id]);
+        array_push(_list, ["jsr",     _l_pend,        _id]);
+        array_push(_list, ["label",   _p + "up_prd"]);
+        // Every axis that moved this frame and now sits one pixel from a
+        // coarse step: build that view into the hidden screen now, so the
+        // coarse frame is only the flip + colour. Diagonals predict both.
+        array_push(_list, ["jsr",     _p + "prx",     _id]);
+        array_push(_list, ["sta_lab", _l_dbdx,        _id]);
+        array_push(_list, ["jsr",     _p + "pry",     _id]);
+        array_push(_list, ["sta_lab", _l_dbdy,        _id]);
+        array_push(_list, ["ora_lab", _l_dbdx,        _id]);
+        array_push(_list, ["beq",     _p + "up_clr",  _id]);
+        array_push(_list, ["jsr",     _p + "pbld",    _id]);
+        array_push(_list, ["label",   _p + "up_clr"]);
+        array_push(_list, ["lda_imm", 0x00,           _id]);
+        array_push(_list, ["sta_lab", _l_dbbf,        _id]);
+        array_push(_list, ["sta_lab", _l_dblx,        _id]);
+        array_push(_list, ["sta_lab", _l_dbly,        _id]);
+        array_push(_list, ["rts",     0,              _id]);
+    }
     array_push(_list, ["lda_zp",  _zp_phase, _id]);
     array_push(_list, ["bne",     _l_up_none, _id]);
     array_push(_list, ["rts",     0,          _id]);
@@ -5134,6 +5218,24 @@ case "MACRO_METASCROLL": {
     // ---- MSC_R : camera right, content moves left ----
     var _l_r_go = _p + "r_go", _l_r_ok = _p + "r_ok", _l_r_cs = _p + "r_cs";
     array_push(_list, ["label",   "MSC_R"]);
+    if (_col_mode == 4)
+    {
+        // SHIFT STOCK: the other axis may step in the same frame (diagonals),
+        // so only a flip still waiting, or a second step on THIS axis, runs
+        // pend first.
+        array_push(_list, ["lda_zp",  _zp_phase, _id]);
+        array_push(_list, ["cmp_imm", 5,         _id]);
+        array_push(_list, ["beq",     _l_r_go + "j",  _id]);
+        array_push(_list, ["lda_lab", _l_dbsnx,        _id]);
+        array_push(_list, ["cmp_imm", 0xFF,      _id]);
+        array_push(_list, ["beq",     _l_r_go + "k",  _id]);
+        array_push(_list, ["label",   _l_r_go + "j"]);
+        array_push(_list, ["jmp_abs", _l_pend,   _id]);
+        array_push(_list, ["label",   _l_r_go + "k"]);
+        array_push(_list, ["lda_imm", 0x01,        _id]);
+        array_push(_list, ["sta_lab", _l_dblx,        _id]);
+        array_push(_list, ["jmp_abs", _l_r_go,        _id]);
+    }
     array_push(_list, ["lda_zp",  _zp_phase, _id]);
     array_push(_list, ["beq",     _l_r_go,   _id]);
     array_push(_list, ["jmp_abs", _l_pend,   _id]);
@@ -5155,6 +5257,11 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["rts",     0,         _id]);
     array_push(_list, ["label",   _l_r_cs]);
     array_push(_list, ["inc_zp",  _zp_camx,  _id]);
+    if (_col_mode == 4)
+    {
+        array_push(_list, ["lda_imm", 0x07,      _id]);
+        array_push(_list, ["sta_lab", _l_dbsnx,      _id]);
+    }
     array_push(_list, ["lda_imm", 2,         _id]);
     array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
     array_push(_list, ["lda_imm", 1,         _id]);
@@ -5164,6 +5271,24 @@ case "MACRO_METASCROLL": {
     // ---- MSC_L : camera left, content moves right ----
     var _l_l_go = _p + "l_go", _l_l_ok = _p + "l_ok", _l_l_cs = _p + "l_cs";
     array_push(_list, ["label",   "MSC_L"]);
+    if (_col_mode == 4)
+    {
+        // SHIFT STOCK: the other axis may step in the same frame (diagonals),
+        // so only a flip still waiting, or a second step on THIS axis, runs
+        // pend first.
+        array_push(_list, ["lda_zp",  _zp_phase, _id]);
+        array_push(_list, ["cmp_imm", 5,         _id]);
+        array_push(_list, ["beq",     _l_l_go + "j",  _id]);
+        array_push(_list, ["lda_lab", _l_dbsnx,        _id]);
+        array_push(_list, ["cmp_imm", 0xFF,      _id]);
+        array_push(_list, ["beq",     _l_l_go + "k",  _id]);
+        array_push(_list, ["label",   _l_l_go + "j"]);
+        array_push(_list, ["jmp_abs", _l_pend,   _id]);
+        array_push(_list, ["label",   _l_l_go + "k"]);
+        array_push(_list, ["lda_imm", 0xFF,        _id]);
+        array_push(_list, ["sta_lab", _l_dblx,        _id]);
+        array_push(_list, ["jmp_abs", _l_l_go,        _id]);
+    }
     array_push(_list, ["lda_zp",  _zp_phase, _id]);
     array_push(_list, ["beq",     _l_l_go,   _id]);
     array_push(_list, ["jmp_abs", _l_pend,   _id]);
@@ -5185,6 +5310,11 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["rts",     0,         _id]);
     array_push(_list, ["label",   _l_l_cs]);
     array_push(_list, ["dec_zp",  _zp_camx,  _id]);
+    if (_col_mode == 4)
+    {
+        array_push(_list, ["lda_imm", 0x00,      _id]);
+        array_push(_list, ["sta_lab", _l_dbsnx,      _id]);
+    }
     array_push(_list, ["lda_imm", 1,         _id]);
     array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
     array_push(_list, ["lda_imm", 1,         _id]);
@@ -5194,6 +5324,24 @@ case "MACRO_METASCROLL": {
     // ---- MSC_D : camera down, content moves up ----
     var _l_d_go = _p + "d_go", _l_d_ok = _p + "d_ok", _l_d_cs = _p + "d_cs";
     array_push(_list, ["label",   "MSC_D"]);
+    if (_col_mode == 4)
+    {
+        // SHIFT STOCK: the other axis may step in the same frame (diagonals),
+        // so only a flip still waiting, or a second step on THIS axis, runs
+        // pend first.
+        array_push(_list, ["lda_zp",  _zp_phase, _id]);
+        array_push(_list, ["cmp_imm", 5,         _id]);
+        array_push(_list, ["beq",     _l_d_go + "j",  _id]);
+        array_push(_list, ["lda_lab", _l_dbsny,        _id]);
+        array_push(_list, ["cmp_imm", 0xFF,      _id]);
+        array_push(_list, ["beq",     _l_d_go + "k",  _id]);
+        array_push(_list, ["label",   _l_d_go + "j"]);
+        array_push(_list, ["jmp_abs", _l_pend,   _id]);
+        array_push(_list, ["label",   _l_d_go + "k"]);
+        array_push(_list, ["lda_imm", 0x01,        _id]);
+        array_push(_list, ["sta_lab", _l_dbly,        _id]);
+        array_push(_list, ["jmp_abs", _l_d_go,        _id]);
+    }
     array_push(_list, ["lda_zp",  _zp_phase, _id]);
     array_push(_list, ["beq",     _l_d_go,   _id]);
     array_push(_list, ["jmp_abs", _l_pend,   _id]);
@@ -5215,6 +5363,11 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["rts",     0,         _id]);
     array_push(_list, ["label",   _l_d_cs]);
     array_push(_list, ["inc_zp",  _zp_camy,  _id]);
+    if (_col_mode == 4)
+    {
+        array_push(_list, ["lda_imm", 0x07,      _id]);
+        array_push(_list, ["sta_lab", _l_dbsny,      _id]);
+    }
     array_push(_list, ["lda_imm", 4,         _id]);
     array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
     array_push(_list, ["lda_imm", 1,         _id]);
@@ -5224,6 +5377,24 @@ case "MACRO_METASCROLL": {
     // ---- MSC_U : camera up, content moves down ----
     var _l_u_go = _p + "u_go", _l_u_ok = _p + "u_ok", _l_u_cs = _p + "u_cs";
     array_push(_list, ["label",   "MSC_U"]);
+    if (_col_mode == 4)
+    {
+        // SHIFT STOCK: the other axis may step in the same frame (diagonals),
+        // so only a flip still waiting, or a second step on THIS axis, runs
+        // pend first.
+        array_push(_list, ["lda_zp",  _zp_phase, _id]);
+        array_push(_list, ["cmp_imm", 5,         _id]);
+        array_push(_list, ["beq",     _l_u_go + "j",  _id]);
+        array_push(_list, ["lda_lab", _l_dbsny,        _id]);
+        array_push(_list, ["cmp_imm", 0xFF,      _id]);
+        array_push(_list, ["beq",     _l_u_go + "k",  _id]);
+        array_push(_list, ["label",   _l_u_go + "j"]);
+        array_push(_list, ["jmp_abs", _l_pend,   _id]);
+        array_push(_list, ["label",   _l_u_go + "k"]);
+        array_push(_list, ["lda_imm", 0xFF,        _id]);
+        array_push(_list, ["sta_lab", _l_dbly,        _id]);
+        array_push(_list, ["jmp_abs", _l_u_go,        _id]);
+    }
     array_push(_list, ["lda_zp",  _zp_phase, _id]);
     array_push(_list, ["beq",     _l_u_go,   _id]);
     array_push(_list, ["jmp_abs", _l_pend,   _id]);
@@ -5245,6 +5416,11 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["rts",     0,         _id]);
     array_push(_list, ["label",   _l_u_cs]);
     array_push(_list, ["dec_zp",  _zp_camy,  _id]);
+    if (_col_mode == 4)
+    {
+        array_push(_list, ["lda_imm", 0x00,      _id]);
+        array_push(_list, ["sta_lab", _l_dbsny,      _id]);
+    }
     array_push(_list, ["lda_imm", 3,         _id]);
     array_push(_list, ["sta_zp",  _zp_pdir,  _id]);
     array_push(_list, ["lda_imm", 1,         _id]);
@@ -5262,6 +5438,277 @@ case "MACRO_METASCROLL": {
     var _l_p2a   = _p + "p2a",  _l_p2b = _p + "p2b", _l_p2c = _p + "p2c";
     var _l_p2end = _p + "p2end";
 
+    if (_col_mode == 4)
+    {
+        // ══════════════════════════════════════════════════
+        // SHIFT STOCK
+        //   pend (phase 1, camera already moved):
+        //     hidden screen already built for this camera -> flip now
+        //     otherwise build it now, flip next call (one frame hold)
+        //   flip: snap the fine register, show the other screen, then redraw
+        //     colour RAM top-down from the colour plane. The caller runs
+        //     right after the VWAIT in the lower border, so every row's
+        //     colour lands before the beam reaches it.
+        // ══════════════════════════════════════════════════
+        var _db_nib_a = ((_scr >> 10) & 0x0F) << 4;
+        var _db_nib_b = ((_dbuf >> 10) & 0x0F) << 4;
+        var _db_a0    = _scr  + _row_start * 40;
+        var _db_b0    = _dbuf + _row_start * 40;
+        var _db_c0    = _cram + _row_start * 40;
+
+        array_push(_list, ["label",   _l_pend]);
+        array_push(_list, ["lda_zp",  _zp_phase,       _id]);
+        array_push(_list, ["cmp_imm", 5,               _id]);
+        array_push(_list, ["beq",     _p + "p4flip",   _id]);
+        array_push(_list, ["lda_lab", _l_dbrdy,        _id]);
+        array_push(_list, ["beq",     _p + "p4bld",    _id]);
+        array_push(_list, ["lda_zp",  _zp_camx,        _id]);
+        array_push(_list, ["cmp_lab", _l_dbpx,         _id]);
+        array_push(_list, ["bne",     _p + "p4bld",    _id]);
+        array_push(_list, ["lda_zp",  _zp_camy,        _id]);
+        array_push(_list, ["cmp_lab", _l_dbpy,         _id]);
+        array_push(_list, ["beq",     _p + "p4flip",   _id]);
+        array_push(_list, ["label",   _p + "p4bld"]);
+        array_push(_list, ["jsr",     _p + "bld",      _id]);
+        array_push(_list, ["lda_imm", 5,               _id]);
+        array_push(_list, ["sta_zp",  _zp_phase,       _id]);
+        array_push(_list, ["rts",     0,               _id]);
+        array_push(_list, ["label",   _p + "p4flip"]);
+        array_push(_list, ["jsr",     _p + "snap",     _id]);
+        array_push(_list, ["jsr",     _p + "flip",     _id]);
+        array_push(_list, ["jsr",     _p + "crace",    _id]);
+        array_push(_list, ["lda_imm", 0x00,            _id]);
+        array_push(_list, ["sta_lab", _l_dbrdy,        _id]);
+        array_push(_list, ["sta_zp",  _zp_phase,       _id]);
+        array_push(_list, ["rts",     0,               _id]);
+
+        // ---- snap: the fine register of every axis that stepped ----
+        array_push(_list, ["label",   _p + "snap"]);
+        array_push(_list, ["lda_lab", _l_dbsnx,        _id]);
+        array_push(_list, ["cmp_imm", 0xFF,            _id]);
+        array_push(_list, ["beq",     _p + "sn_y",     _id]);
+        array_push(_list, ["sta_zp",  _zp_finex,       _id]);
+        if (_ms_d016_or != 0) { array_push(_list, ["ora_imm", _ms_d016_or, _id]); }
+        array_push(_list, ["sta_abs", 0xD016,          _id]);
+        array_push(_list, ["label",   _p + "sn_y"]);
+        array_push(_list, ["lda_lab", _l_dbsny,        _id]);
+        array_push(_list, ["cmp_imm", 0xFF,            _id]);
+        array_push(_list, ["beq",     _p + "sn_end",   _id]);
+        array_push(_list, ["sta_zp",  _zp_finey,       _id]);
+        array_push(_list, ["ora_imm", _ms_d011_or,     _id]);
+        array_push(_list, ["sta_abs", 0xD011,          _id]);
+        array_push(_list, ["label",   _p + "sn_end"]);
+        array_push(_list, ["lda_imm", 0xFF,            _id]);
+        array_push(_list, ["sta_lab", _l_dbsnx,        _id]);
+        array_push(_list, ["sta_lab", _l_dbsny,        _id]);
+        array_push(_list, ["rts",     0,               _id]);
+
+        // ---- prx / pry: A = the step that axis will take on its next move
+        // if it is sitting one pixel from a coarse step in the direction it
+        // last moved, else 0 ----
+        var _pr_ax = [["prx", _l_dblx, _zp_finex], ["pry", _l_dbly, _zp_finey]];
+        for (var _pri = 0; _pri < 2; _pri++)
+        {
+            var _prn = _p + _pr_ax[_pri][0];
+            array_push(_list, ["label",   _prn]);
+            array_push(_list, ["lda_lab", _pr_ax[_pri][1], _id]);
+            array_push(_list, ["cmp_imm", 0x01,            _id]);
+            array_push(_list, ["bne",     _prn + "n",      _id]);
+            array_push(_list, ["lda_zp",  _pr_ax[_pri][2], _id]);    // moving +: edge is fine 0
+            array_push(_list, ["bne",     _prn + "z",      _id]);
+            array_push(_list, ["lda_imm", 0x01,            _id]);
+            array_push(_list, ["rts",     0,               _id]);
+            array_push(_list, ["label",   _prn + "n"]);
+            array_push(_list, ["cmp_imm", 0xFF,            _id]);
+            array_push(_list, ["bne",     _prn + "z",      _id]);
+            array_push(_list, ["lda_zp",  _pr_ax[_pri][2], _id]);    // moving -: edge is fine 7
+            array_push(_list, ["cmp_imm", 0x07,            _id]);
+            array_push(_list, ["bne",     _prn + "z",      _id]);
+            array_push(_list, ["lda_imm", 0xFF,            _id]);
+            array_push(_list, ["rts",     0,               _id]);
+            array_push(_list, ["label",   _prn + "z"]);
+            array_push(_list, ["lda_imm", 0x00,            _id]);
+            array_push(_list, ["rts",     0,               _id]);
+        }
+
+        // ---- flip: show the other screen (char bits of $D018 kept) ----
+        array_push(_list, ["label",   _p + "flip"]);
+        array_push(_list, ["lda_lab", _l_dbcur,        _id]);
+        array_push(_list, ["eor_imm", 0x01,            _id]);
+        array_push(_list, ["sta_lab", _l_dbcur,        _id]);
+        array_push(_list, ["beq",     _p + "fl_a",     _id]);
+        array_push(_list, ["lda_abs", 0xD018,          _id]);
+        array_push(_list, ["and_imm", 0x0F,            _id]);
+        array_push(_list, ["ora_imm", _db_nib_b,       _id]);
+        array_push(_list, ["sta_abs", 0xD018,          _id]);
+        array_push(_list, ["jmp_abs", _p + "sprsync",  _id]);
+        array_push(_list, ["label",   _p + "fl_a"]);
+        array_push(_list, ["lda_abs", 0xD018,          _id]);
+        array_push(_list, ["and_imm", 0x0F,            _id]);
+        array_push(_list, ["ora_imm", _db_nib_a,       _id]);
+        array_push(_list, ["sta_abs", 0xD018,          _id]);
+        array_push(_list, ["rts",     0,               _id]);
+
+        // ---- sprsync: sprite pointers live at screen+$3F8, and game code
+        // writes them at $07F8 - mirror them into the second screen ----
+        array_push(_list, ["label",   _p + "sprsync"]);
+        array_push(_list, ["ldx_imm", 0x07,            _id]);
+        array_push(_list, ["label",   _p + "sps_lp"]);
+        array_push(_list, ["lda_abx", _scr + 0x3F8,    _id]);
+        array_push(_list, ["sta_abx", _dbuf + 0x3F8,   _id]);
+        array_push(_list, ["dex",     0,               _id]);
+        array_push(_list, ["bpl",     _p + "sps_lp",   _id]);
+        array_push(_list, ["rts",     0,               _id]);
+
+        // ---- pbld: build the view one coarse step away (dbdx, dbdy) into
+        // the hidden screen - unless it already holds exactly that view, or
+        // a view was already built this frame (one ~12000-cycle build per
+        // frame at most) ----
+        array_push(_list, ["label",   _p + "pbld"]);
+        array_push(_list, ["lda_lab", _l_dbbf,         _id]);
+        array_push(_list, ["beq",     _p + "pb_1",     _id]);
+        array_push(_list, ["rts",     0,               _id]);
+        array_push(_list, ["label",   _p + "pb_1"]);
+        array_push(_list, ["lda_zp",  _zp_camx,        _id]);
+        array_push(_list, ["sta_lab", _l_dbsx,         _id]);
+        array_push(_list, ["lda_zp",  _zp_camy,        _id]);
+        array_push(_list, ["sta_lab", _l_dbsy,         _id]);
+        array_push(_list, ["lda_lab", _l_dbdx,         _id]);
+        array_push(_list, ["clc",     0,               _id]);
+        array_push(_list, ["adc_zp",  _zp_camx,        _id]);
+        array_push(_list, ["sta_zp",  _zp_camx,        _id]);
+        array_push(_list, ["lda_lab", _l_dbdy,         _id]);
+        array_push(_list, ["clc",     0,               _id]);
+        array_push(_list, ["adc_zp",  _zp_camy,        _id]);
+        array_push(_list, ["sta_zp",  _zp_camy,        _id]);
+        array_push(_list, ["lda_lab", _l_dbrdy,        _id]);
+        array_push(_list, ["beq",     _p + "pb_go",    _id]);
+        array_push(_list, ["lda_zp",  _zp_camx,        _id]);
+        array_push(_list, ["cmp_lab", _l_dbpx,         _id]);
+        array_push(_list, ["bne",     _p + "pb_go",    _id]);
+        array_push(_list, ["lda_zp",  _zp_camy,        _id]);
+        array_push(_list, ["cmp_lab", _l_dbpy,         _id]);
+        array_push(_list, ["beq",     _p + "pb_rs",    _id]);
+        array_push(_list, ["label",   _p + "pb_go"]);
+        array_push(_list, ["jsr",     _p + "bld",      _id]);
+        array_push(_list, ["label",   _p + "pb_rs"]);
+        array_push(_list, ["lda_lab", _l_dbsx,         _id]);
+        array_push(_list, ["sta_zp",  _zp_camx,        _id]);
+        array_push(_list, ["lda_lab", _l_dbsy,         _id]);
+        array_push(_list, ["sta_zp",  _zp_camy,        _id]);
+        array_push(_list, ["rts",     0,               _id]);
+
+        // ---- bld: every window row of the view at camx/camy into the
+        // hidden screen, 40 cells a row (col 39 is never visible) ----
+        array_push(_list, ["label",   _p + "bld"]);
+        array_push(_list, ["lda_lab", _l_dbcur,        _id]);
+        array_push(_list, ["bne",     _p + "bl_a",     _id]);
+        array_push(_list, ["lda_imm", _db_b0 & 0xFF,   _id]);
+        array_push(_list, ["ldx_imm", (_db_b0 >> 8) & 0xFF, _id]);
+        array_push(_list, ["jmp_abs", _p + "bl_go",    _id]);
+        array_push(_list, ["label",   _p + "bl_a"]);
+        array_push(_list, ["lda_imm", _db_a0 & 0xFF,   _id]);
+        array_push(_list, ["ldx_imm", (_db_a0 >> 8) & 0xFF, _id]);
+        array_push(_list, ["label",   _p + "bl_go"]);
+        array_push(_list, ["sta_lab", _p + "bl_s1",    _id]);
+        array_push(_list, ["sta_lab", _p + "bl_s2",    _id]);
+        array_push(_list, ["txa",     0,               _id]);
+        array_push(_list, ["sta_lab", _p + "bl_s1h",   _id]);
+        array_push(_list, ["sta_lab", _p + "bl_s2h",   _id]);
+        array_push(_list, ["lda_imm", 0x00,            _id]);
+        array_push(_list, ["sta_lab", _l_dbrow,        _id]);
+        array_push(_list, ["label",   _p + "bl_row"]);
+        array_push(_list, ["lda_lab", _l_dbrow,        _id]);
+        array_push(_list, ["jsr",     _l_maddr,        _id]);
+        array_push(_list, ["ldy_imm", 39,              _id]);
+        array_push(_list, ["label",   _p + "bl_lp"]);
+        array_push(_list, ["lda_izy", _zp_src,         _id]);
+        array_push(_list, ["byte",    0x99,            _id]);   // STA abs,Y - patched per row
+        array_push(_list, ["label",   _p + "bl_s1"]);
+        array_push(_list, ["byte",    0x00,            _id]);
+        array_push(_list, ["label",   _p + "bl_s1h"]);
+        array_push(_list, ["byte",    0x00,            _id]);
+        array_push(_list, ["dey",     0,               _id]);
+        array_push(_list, ["lda_izy", _zp_src,         _id]);
+        array_push(_list, ["byte",    0x99,            _id]);
+        array_push(_list, ["label",   _p + "bl_s2"]);
+        array_push(_list, ["byte",    0x00,            _id]);
+        array_push(_list, ["label",   _p + "bl_s2h"]);
+        array_push(_list, ["byte",    0x00,            _id]);
+        array_push(_list, ["dey",     0,               _id]);
+        array_push(_list, ["bpl",     _p + "bl_lp",    _id]);
+        array_push(_list, ["lda_lab", _p + "bl_s1",    _id]);
+        array_push(_list, ["clc",     0,               _id]);
+        array_push(_list, ["adc_imm", 40,              _id]);
+        array_push(_list, ["sta_lab", _p + "bl_s1",    _id]);
+        array_push(_list, ["sta_lab", _p + "bl_s2",    _id]);
+        array_push(_list, ["lda_lab", _p + "bl_s1h",   _id]);
+        array_push(_list, ["adc_imm", 0x00,            _id]);
+        array_push(_list, ["sta_lab", _p + "bl_s1h",   _id]);
+        array_push(_list, ["sta_lab", _p + "bl_s2h",   _id]);
+        array_push(_list, ["inc_lab", _l_dbrow,        _id]);
+        array_push(_list, ["lda_lab", _l_dbrow,        _id]);
+        array_push(_list, ["cmp_imm", _num_rows,       _id]);
+        array_push(_list, ["bne",     _p + "bl_row",   _id]);
+        array_push(_list, ["lda_zp",  _zp_camx,        _id]);
+        array_push(_list, ["sta_lab", _l_dbpx,         _id]);
+        array_push(_list, ["lda_zp",  _zp_camy,        _id]);
+        array_push(_list, ["sta_lab", _l_dbpy,         _id]);
+        array_push(_list, ["lda_imm", 0x01,            _id]);
+        array_push(_list, ["sta_lab", _l_dbrdy,        _id]);
+        array_push(_list, ["sta_lab", _l_dbbf,         _id]);
+        array_push(_list, ["rts",     0,               _id]);
+
+        // ---- crace: colour RAM, top row first, from the colour plane.
+        // ~540 cycles a row against the beam's 504 per row, with a head
+        // start of the whole lower border + top border (+8 lines per
+        // omitted top row), so it stays ahead all the way down ----
+        array_push(_list, ["label",   _p + "crace"]);
+        array_push(_list, ["lda_imm", _db_c0 & 0xFF,   _id]);
+        array_push(_list, ["sta_lab", _p + "cr_s1",    _id]);
+        array_push(_list, ["sta_lab", _p + "cr_s2",    _id]);
+        array_push(_list, ["lda_imm", (_db_c0 >> 8) & 0xFF, _id]);
+        array_push(_list, ["sta_lab", _p + "cr_s1h",   _id]);
+        array_push(_list, ["sta_lab", _p + "cr_s2h",   _id]);
+        array_push(_list, ["lda_imm", 0x00,            _id]);
+        array_push(_list, ["sta_lab", _l_dbrow,        _id]);
+        array_push(_list, ["label",   _p + "cr_row"]);
+        array_push(_list, ["lda_lab", _l_dbrow,        _id]);
+        array_push(_list, ["jsr",     _l_maddrc,       _id]);
+        array_push(_list, ["ldy_imm", 39,              _id]);
+        array_push(_list, ["label",   _p + "cr_lp"]);
+        array_push(_list, ["lda_izy", _zp_src,         _id]);
+        array_push(_list, ["byte",    0x99,            _id]);
+        array_push(_list, ["label",   _p + "cr_s1"]);
+        array_push(_list, ["byte",    0x00,            _id]);
+        array_push(_list, ["label",   _p + "cr_s1h"]);
+        array_push(_list, ["byte",    0x00,            _id]);
+        array_push(_list, ["dey",     0,               _id]);
+        array_push(_list, ["lda_izy", _zp_src,         _id]);
+        array_push(_list, ["byte",    0x99,            _id]);
+        array_push(_list, ["label",   _p + "cr_s2"]);
+        array_push(_list, ["byte",    0x00,            _id]);
+        array_push(_list, ["label",   _p + "cr_s2h"]);
+        array_push(_list, ["byte",    0x00,            _id]);
+        array_push(_list, ["dey",     0,               _id]);
+        array_push(_list, ["bpl",     _p + "cr_lp",    _id]);
+        array_push(_list, ["lda_lab", _p + "cr_s1",    _id]);
+        array_push(_list, ["clc",     0,               _id]);
+        array_push(_list, ["adc_imm", 40,              _id]);
+        array_push(_list, ["sta_lab", _p + "cr_s1",    _id]);
+        array_push(_list, ["sta_lab", _p + "cr_s2",    _id]);
+        array_push(_list, ["lda_lab", _p + "cr_s1h",   _id]);
+        array_push(_list, ["adc_imm", 0x00,            _id]);
+        array_push(_list, ["sta_lab", _p + "cr_s1h",   _id]);
+        array_push(_list, ["sta_lab", _p + "cr_s2h",   _id]);
+        array_push(_list, ["inc_lab", _l_dbrow,        _id]);
+        array_push(_list, ["lda_lab", _l_dbrow,        _id]);
+        array_push(_list, ["cmp_imm", _num_rows,       _id]);
+        array_push(_list, ["bne",     _p + "cr_row",   _id]);
+        array_push(_list, ["rts",     0,               _id]);
+    }
+    else
+    {
     array_push(_list, ["label",   _l_pend]);
     if (_col_mode == 1)
     {
@@ -5382,6 +5829,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["sta_zp",  _zp_phase, _id]);
     array_push(_list, ["rts",     0,         _id]);
     }   // end SHIFT-mode phase 2
+    }   // end not SHIFT STOCK
 
     // ══════════════════════════════════════════════════════
     // The eight shifts. X walks the moving axis; the other axis is
@@ -5399,6 +5847,7 @@ case "MACRO_METASCROLL": {
         _sh_left  = [1,             1,             0,             0];
     }
 
+    if (_col_mode == 4) { _sh_names = []; }   // SHIFT STOCK redraws rows from the planes instead
     for (var _si = 0; _si < array_length(_sh_names); _si++)
     {
         var _nm = _sh_names[_si];
@@ -5447,6 +5896,7 @@ case "MACRO_METASCROLL": {
         _sv_up    = [1,             1,             0,             0];
     }
 
+    if (_col_mode == 4) { _sv_names = []; }
     for (var _vi = 0; _vi < array_length(_sv_names); _vi++)
     {
         var _vn = _sv_names[_vi];
@@ -5502,7 +5952,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["sta_zp",  _zp_src + 1,_id]);
     array_push(_list, ["rts",     0,          _id]);
 
-    if (_col_mode == 2)
+    if (_has_co)
     {
         array_push(_list, ["label",   _l_maddrc]);
         array_push(_list, ["jsr",     _l_maddr,   _id]);
@@ -5528,6 +5978,7 @@ case "MACRO_METASCROLL": {
         _fc_edge  = [_col_start + _num_cols - 1, _col_start + _num_cols - 1, _col_start, _col_start];
     }
 
+    if (_col_mode == 4) { _fc_names = []; }
     for (var _fi = 0; _fi < array_length(_fc_names); _fi++)
     {
         var _fn   = _fc_names[_fi];
@@ -5592,6 +6043,7 @@ case "MACRO_METASCROLL": {
         _fr_off   = [_num_rows - 1,   _num_rows - 1,   0,               0];
     }
 
+    if (_col_mode == 4) { _fr_names = []; }
     for (var _gi = 0; _gi < array_length(_fr_names); _gi++)
     {
         var _gn   = _fr_names[_gi];
@@ -5618,7 +6070,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["label",   _l_repnt]);
     array_push(_list, ["lda_imm", 0x00,        _id]);
     array_push(_list, ["jsr",     _l_maddr,    _id]);
-    if (_col_mode == 2)
+    if (_has_co)
     {
         array_push(_list, ["lda_zp",  _zp_src,     _id]);
         array_push(_list, ["sta_zp",  _zp_dst,     _id]);
@@ -5631,7 +6083,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["sta_lab", _p + "rp_s",  _id]);
     array_push(_list, ["lda_imm", (_rp_s0 >> 8) & 0xFF, _id]);
     array_push(_list, ["sta_lab", _p + "rp_s1", _id]);
-    if (_col_mode == 2)
+    if (_has_co)
     {
         array_push(_list, ["lda_imm", _rp_c0 & 0xFF,        _id]);
         array_push(_list, ["sta_lab", _p + "rp_c",  _id]);
@@ -5648,7 +6100,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["byte",    0x00, _id]);
     array_push(_list, ["label",   _p + "rp_s1"]);
     array_push(_list, ["byte",    0x00, _id]);
-    if (_col_mode == 2)
+    if (_has_co)
     {
         array_push(_list, ["lda_izy", _zp_dst, _id]);
         array_push(_list, ["byte",    0x99, _id]);          // STA abs,Y - colour
@@ -5666,7 +6118,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["lda_zp",  _zp_src + 1,  _id]);
     array_push(_list, ["adc_imm", 0x00,         _id]);
     array_push(_list, ["sta_zp",  _zp_src + 1,  _id]);
-    if (_col_mode == 2)
+    if (_has_co)
     {
         array_push(_list, ["lda_zp",  _zp_dst,      _id]);
         array_push(_list, ["clc",     0,            _id]);
@@ -5683,7 +6135,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["lda_lab", _p + "rp_s1", _id]);
     array_push(_list, ["adc_imm", 0x00,         _id]);
     array_push(_list, ["sta_lab", _p + "rp_s1", _id]);
-    if (_col_mode == 2)
+    if (_has_co)
     {
         array_push(_list, ["lda_lab", _p + "rp_c",  _id]);
         array_push(_list, ["clc",     0,            _id]);
@@ -5794,6 +6246,33 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["bne",     _p + "cl2b", _id]);
 
     array_push(_list, ["jsr",     _l_repnt,   _id]);
+    if (_col_mode == 4)
+    {
+        // Second screen = a copy of the first (window, blank edges, omitted
+        // HUD rows, sprite pointers); show the first.
+        array_push(_list, ["ldx_imm", 0x00,              _id]);
+        array_push(_list, ["label",   _p + "dbcp"]);
+        for (var _dbp = 0; _dbp < 4; _dbp++)
+        {
+            array_push(_list, ["lda_abx", _scr  + _dbp * 0x100, _id]);
+            array_push(_list, ["sta_abx", _dbuf + _dbp * 0x100, _id]);
+        }
+        array_push(_list, ["inx",     0,                 _id]);
+        array_push(_list, ["bne",     _p + "dbcp",       _id]);
+        array_push(_list, ["lda_imm", 0x00,              _id]);
+        array_push(_list, ["sta_lab", _l_dbcur,          _id]);
+        array_push(_list, ["sta_lab", _l_dbrdy,          _id]);
+        array_push(_list, ["sta_lab", _l_dblx,           _id]);
+        array_push(_list, ["sta_lab", _l_dbly,           _id]);
+        array_push(_list, ["sta_lab", _l_dbbf,           _id]);
+        array_push(_list, ["lda_imm", 0xFF,              _id]);
+        array_push(_list, ["sta_lab", _l_dbsnx,          _id]);
+        array_push(_list, ["sta_lab", _l_dbsny,          _id]);
+        array_push(_list, ["lda_abs", 0xD018,            _id]);
+        array_push(_list, ["and_imm", 0x0F,              _id]);
+        array_push(_list, ["ora_imm", ((_scr >> 10) & 0x0F) << 4, _id]);
+        array_push(_list, ["sta_abs", 0xD018,            _id]);
+    }
     if (_col_mode == 3)
     {
         // colour RAM was just cleared: mark every row as wearing no band
@@ -5813,7 +6292,13 @@ case "MACRO_METASCROLL": {
     var _cm_txt = "COLOUR FIXED $" + string_upper(decimal_to_hex(_fx_nib))
                 + " (1-frame coarse, char plane only, "
                 + string(_plane_sz) + " bytes)";
-    if (_col_mode == 3)
+    if (_col_mode == 4)
+    {
+        _cm_txt = "COLOUR SHIFT STOCK (two screens $" + string_upper(decimal_to_hex(_scr)) + " / $"
+                + string_upper(decimal_to_hex(_dbuf)) + ", colour plane $" + string_upper(decimal_to_hex(_co_base))
+                + ", " + string(_plane_sz * 2) + " bytes)";
+    }
+    else if (_col_mode == 3)
     {
         _cm_txt = "COLOUR ROW BANDS (" + string(_maph) + " band bytes, "
                 + string(_ms_plan.band_miss) + " of " + string(_ms_plan.total)

@@ -60,7 +60,12 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     var _plane_sz = _mapw * _maph;
     var _pages    = ceil(_plane_sz / 256);
     var _co_base  = _base_addr + _pages * 256;
+    var _dbuf_d   = 0x3800;
+    if (array_length(instructions[0]) > 13 && is_real(instructions[0][13])) { _dbuf_d = real(instructions[0][13]); }
     var _bytes    = _plane_sz;
+    if (_col_mode == 4) {
+        _bytes = _plane_sz * 2;        // + the second screen (1K) at _dbuf_d
+    }
     if (_col_mode == 2) {
         _bytes = _plane_sz * 2;
     }
@@ -112,7 +117,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     draw_text_l(_lx, _ly, "PLANES:");
     draw_set_color(c_yellow);
     var _pl_txt = "$" + string_upper(decimal_to_hex(_base_addr));
-    if (_col_mode == 2) {
+    if (_col_mode == 2 || _col_mode == 4) {
         _pl_txt = _pl_txt + " / $" + string_upper(decimal_to_hex(_co_base));
     }
     draw_text_l(_vx, _ly, _pl_txt);
@@ -121,7 +126,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     // ROW 3 — memory cost
     draw_set_color(make_color_rgb(180, 100, 30));
     var _sz_txt = string(_bytes) + " BYTES, CHAR PLANE";
-    if (_col_mode == 2) {
+    if (_col_mode == 2 || _col_mode == 4) {
         _sz_txt = string(_bytes) + " BYTES, CHAR + COLOUR";
     }
     if (_col_mode == 3) {
@@ -154,6 +159,11 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
         _cm_col  = c_aqua;
         _cm_txt  = "ROW BANDS";
         _cm_note = "PER MAP ROW";
+    }
+    if (_col_mode == 4) {
+        _cm_col  = c_orange;
+        _cm_txt  = "SHIFT STOCK";
+        _cm_note = "BUF $" + string_upper(decimal_to_hex(_dbuf_d));
     }
     draw_set_color(_cm_col);
     draw_text_l(_vx, _ly, _cm_txt);

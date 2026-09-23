@@ -107,7 +107,8 @@ function scr_node_step_macro_metascroll(_draw_x) {
     var _cm_ly = _ly0 + _lh * 5;
     if (point_in_rectangle(mouse_x, mouse_y, _vx, _cm_ly - 2, _vx + 64, _cm_ly + 12)) {
         // Cycles 0 FIXED (stock C64) -> 3 ROW BANDS (stock C64, colour per
-        // map row) -> 2 SHIFT C64U (turbo) -> FIXED.
+        // map row) -> 4 SHIFT STOCK (stock C64, per-char colour, two
+        // screens) -> 2 SHIFT C64U (turbo) -> FIXED.
         // The old mode 1 (2-frame SHIFT) is gone - it always wore one frame
         // in eight of the neighbour's colour, whatever the CPU speed. A
         // project saved with it loads as FIXED and steps on to ROW BANDS.
@@ -116,6 +117,8 @@ function scr_node_step_macro_metascroll(_draw_x) {
         if (_cm_cur == 2) {
             _cm_cur = 0;
         } else if (_cm_cur == 3) {
+            _cm_cur = 4;
+        } else if (_cm_cur == 4) {
             _cm_cur = 2;
         } else {
             _cm_cur = 3;
@@ -138,6 +141,22 @@ function scr_node_step_macro_metascroll(_draw_x) {
             }
             instructions[0][7] = _fc_cur;
             global.undo_dirty  = true;
+        }
+        // SHIFT STOCK: cycles the second screen through the VIC bank 0
+        // slots the VIC reads as RAM (not $0400, not $1000-$1FFF)
+        if (_cm_now == 4) {
+            while (array_length(instructions[0]) < 14) { array_push(instructions[0], 0); }
+            var _db_slots = [0x0800, 0x0C00, 0x2000, 0x2400, 0x2800, 0x2C00, 0x3000, 0x3400, 0x3800, 0x3C00];
+            var _db_cur = 0x3800;
+            if (is_real(instructions[0][13])) { _db_cur = real(instructions[0][13]); }
+            var _db_i = 8;
+            for (var _dsi = 0; _dsi < array_length(_db_slots); _dsi++) {
+                if (_db_slots[_dsi] == _db_cur) { _db_i = _dsi; }
+            }
+            _db_i = (_db_i + 1) mod array_length(_db_slots);
+            instructions[0][13] = _db_slots[_db_i];
+            global.addresses_dirty = true;
+            global.undo_dirty      = true;
         }
         exit;
     }
