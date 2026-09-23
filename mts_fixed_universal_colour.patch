@@ -1,0 +1,118 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 03a1e05..bec731e 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -10508,6 +10508,12 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+         // ---- PER-CHAR HR/MC TOGGLE (writes char_lut bit 4, preserves colour) ----
+         _m.char_lut_len = _ts_chr_ref.meta.char_count;
+         var _clut_mode  = (_m.active_char < array_length(_m.char_lut)) ? ((_m.char_lut[_m.active_char] >> 4) & 0x01) : 0;
++        // FIXED run view: every cell shares the node's nibble, so HR/MC is
++        // universal - bit 3 of that nibble - not per char.
++        if (_run_fx_on) {
++            _clut_mode = 0;
++            if (_run_fx_mc) { _clut_mode = 1; }
++        }
+         var _clbx1      = _ced_x + 138;
+         var _clby1      = _ced_y - 40;
+         var _clbx2      = _clbx1 + 64;
+@@ -10521,7 +10527,15 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+         draw_set_halign(fa_center);
+         draw_text_l(_clbx1 + 30, _clby1 +8, (_clut_mode == 1) ? "CHAR: MC" : "CHAR: HR");
+         draw_set_halign(fa_left);
+-        if (_clbhov && mouse_check_button_pressed(mb_left) && _m.active_char < array_length(_m.char_lut)) {
++        if (_run_fx_on) {
++            if (_clbhov && mouse_check_button_pressed(mb_left) && _run_mixed && !_ecm_mode) {
++                // Flip the shared nibble's MC bit for the whole screen
++                while (array_length(_run_node.instructions[0]) < 8) { array_push(_run_node.instructions[0], 0); }
++                _run_node.instructions[0][7] = _run_nib ^ 0x08;
++                global.undo_dirty = true;
++            }
++        }
++        else if (_clbhov && mouse_check_button_pressed(mb_left) && _m.active_char < array_length(_m.char_lut)) {
+             // Flip bit 4, keep the colour nibble intact
+             var _cur_col = _m.char_lut[_m.active_char] & 0x0F;
+             _m.char_lut[_m.active_char] = ((_clut_mode == 1) ? 0x00 : 0x10) | _cur_col;
+@@ -10547,6 +10561,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+             _ts_chr_ref.meta.mc_col1 = _eff_col1;
+             _ts_chr_ref.meta.mc_col2 = _eff_col2;
+             _ts_chr_ref.meta.mc_fg   = _m.active_colour;
++            if (_run_fx_on) { _ts_chr_ref.meta.mc_fg = _run_fx_fg; }
+ 
+             chr_edit_idx = _m.active_char;
+             scr_chr_editor_draw(_ts_chr_ref, _ced_x, _ced_y, (_ts_global_mixed == 1) ? _clut_mode : 0);
+@@ -10589,11 +10604,26 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+         draw_set_alpha(_locked ? 0.2 : 1.0);
+         draw_rectangle(_ppx1, _pal_y2, _ppx1 + _psw, _pal_y2 + _psh, false);
+         draw_set_alpha(1.0);
+-        if (_m.active_colour == _pi2) {
++        var _pal_cur = _m.active_colour;
++        if (_run_fx_on) { _pal_cur = _run_fx_fg; }
++        if (_pal_cur == _pi2) {
+             draw_set_color(c_white);
+             draw_rectangle(_ppx1, _pal_y2, _ppx1 + _psw, _pal_y2 + _psh, true);
+         }
+-        if (_pphov && !_locked && mouse_check_button_pressed(mb_left)) {
++        if (_run_fx_on) {
++            // FIXED run view: the colour is universal - it sets the METASCROLL
++            // node's nibble (keeping its MC bit in MIXED) for every cell at once.
++            if (_pphov && !_locked && mouse_check_button_pressed(mb_left)) {
++                while (array_length(_run_node.instructions[0]) < 8) { array_push(_run_node.instructions[0], 0); }
++                var _pal_nib = _pi2 & 0x0F;
++                if (_run_mixed && !_ecm_mode) { _pal_nib = (_pi2 & 0x07) | (_run_nib & 0x08); }
++                _run_node.instructions[0][7] = _pal_nib;
++                _m.active_colour     = _pi2;
++                chr_active_mc_colour = 3;
++                global.undo_dirty    = true;
++            }
++        }
++        else if (_pphov && !_locked && mouse_check_button_pressed(mb_left)) {
+             _m.active_colour = _pi2;
+             // The PAINT colour feeds FG into the char editor, so picking it
+             // also selects the FG bit-pair (3) for painting.
+@@ -10608,6 +10638,46 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+         }
+     }
+ 
++    // ---- SET ALL: bake one colour into every char's char_lut ----
++    // Normal view: the PAINT colour, each char keeps its own HR/MC bit.
++    // FIXED run view: the node's nibble - colour AND HR/MC - so the per-char
++    // data matches what runs (OFF-COLOUR drops to 0, SHIFT looks the same).
++    // Sits in the gap under the palette (the map's help text is to its right).
++    var _sa_y1  = _pal_y2 + _psh + 4;
++    var _sa_y2  = _sa_y1 + 13;
++    var _sa_x1  = _strip_x1 + 60;
++    var _sa_x2  = _sa_x1 + 56;
++    var _sa_hov = point_in_rectangle(_mx, _my, _sa_x1, _sa_y1, _sa_x2, _sa_y2);
++    draw_set_font_l(fnt_c64_tiny);
++    draw_set_color(make_color_rgb(30, 45, 70));
++    if (_sa_hov) { draw_set_color(make_color_rgb(60, 90, 140)); }
++    draw_rectangle(_sa_x1, _sa_y1, _sa_x2, _sa_y2, false);
++    draw_set_color(make_color_rgb(120, 180, 255));
++    draw_rectangle(_sa_x1, _sa_y1, _sa_x2, _sa_y2, true);
++    draw_text_l(_sa_x1 + 4, _sa_y1, "SET ALL");
++    // What a colour pick does right now
++    if (_run_fx_on) {
++        draw_set_color(make_color_rgb(255, 170, 60));
++        draw_text_l(_sa_x2 + 8, _sa_y1, "FIXED $" + string_upper(decimal_to_hex(_run_nib)) + ": COLOUR + CHAR HR/MC AFFECT ALL CELLS");
++    } else {
++        draw_set_color(make_color_rgb(110, 130, 150));
++        draw_text_l(_sa_x2 + 8, _sa_y1, "COLOUR SETS THE SELECTED CHAR  -  SET ALL: EVERY CHAR");
++    }
++    if (_sa_hov && mouse_check_button_pressed(mb_left)) {
++        for (var _sai = 0; _sai < array_length(_m.char_lut); _sai++) {
++            if (_run_fx_on) {
++                var _sa_mc = 0x00;
++                if (_run_fx_mc) { _sa_mc = 0x10; }
++                _m.char_lut[_sai] = _sa_mc | (_run_fx_fg & 0x0F);
++            } else {
++                _m.char_lut[_sai] = (_m.char_lut[_sai] & 0x10) | (_m.active_colour & 0x0F);
++            }
++        }
++        _m.is_dirty       = true;
++        global.undo_dirty = true;
++        mts_bytes_next_ms = 0;   // recount OFF-COLOUR now
++    }
++
+     // ---- CHAR STRIP ----
+     var _cp_y2         = _pal_y2 + _psh + 30;
+     var _cp_cnt2       = 32;
