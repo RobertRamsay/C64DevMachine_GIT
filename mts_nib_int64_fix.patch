@@ -1,0 +1,31 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 88411d3..f7758f4 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -8770,7 +8770,7 @@ case "META_TILESET": {
+                     _rv_next = _m.active_colour & 0x0F;
+                     if (_run_mixed && !_ecm_mode) { _rv_next = (_m.active_colour & 0x07) | (_run_nib & 0x08); }
+                 }
+-                _run_node.instructions[0][7] = _rv_next;
++                _run_node.instructions[0][7] = real(_rv_next);
+                 global.undo_dirty = true;
+             }
+         } else if (_run_mode == 3) {
+@@ -10536,7 +10536,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+             if (_clbhov && mouse_check_button_pressed(mb_left) && _run_mixed && !_ecm_mode) {
+                 // Flip the shared nibble's MC bit for the whole screen
+                 while (array_length(_run_node.instructions[0]) < 8) { array_push(_run_node.instructions[0], 0); }
+-                _run_node.instructions[0][7] = _run_nib ^ 0x08;
++                _run_node.instructions[0][7] = real(_run_nib ^ 0x08);
+                 global.undo_dirty = true;
+             }
+         }
+@@ -10622,7 +10622,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+                 while (array_length(_run_node.instructions[0]) < 8) { array_push(_run_node.instructions[0], 0); }
+                 var _pal_nib = _pi2 & 0x0F;
+                 if (_run_mixed && !_ecm_mode) { _pal_nib = (_pi2 & 0x07) | (_run_nib & 0x08); }
+-                _run_node.instructions[0][7] = _pal_nib;
++                _run_node.instructions[0][7] = real(_pal_nib);   // real(): bit ops give int64, and is_real() rejects int64
+                 _m.active_colour     = _pi2;
+                 chr_active_mc_colour = 3;
+                 global.undo_dirty    = true;
