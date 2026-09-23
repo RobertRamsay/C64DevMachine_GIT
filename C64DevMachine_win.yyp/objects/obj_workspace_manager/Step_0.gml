@@ -4286,7 +4286,7 @@ zoom_speed   = 0.1;
 
 
 
-if (!global.showcode_mouse_over &&
+if (!instance_exists(node_tooltip_node) && !global.showcode_mouse_over &&
    (!instance_exists(obj_asset_manager) || 
     !point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y,
      obj_asset_manager.panel_x, obj_asset_manager.panel_y,

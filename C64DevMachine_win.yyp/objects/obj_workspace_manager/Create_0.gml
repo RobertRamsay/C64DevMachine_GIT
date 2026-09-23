@@ -1,5 +1,5 @@
 /// @desc Setup Workspace, Palette & C64 Environment
-global.lite=0;
+global.lite=1;
 
 // ---------------------------------------------------------------------------
 // MCP / external control feature switch.
@@ -30,7 +30,7 @@ editor_layout_refresh_requested = false;
 // MCP is a Pro-only feature; initialize the edition before creating it.
 // MCP_ENABLED (top of this event) is the single switch for the whole feature.
 if (MCP_ENABLED && global.lite == 0 && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
-global.build_date = "September 21st, 2026"; // edit this string for each release
+global.build_date = "September 23rd, 2026"; // edit this string for each release
 
 // Frame counter. Incremented once in Begin Step, and used as the validity
 // stamp for per-frame lookup caches (see scr_reu_asset_map). Anything keyed
@@ -130,12 +130,9 @@ welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
 welcome_whats_new = [
-	"NEW - CHINESE SIMPLIFIED Launguage added - Toggle via Options",
-	"NEW - COMMENT nodes now editable directly and exapandable < and >",
-	"NEW - REU Handling improved overall, auto injects the LOAD_REU for vice",
-	"NEW - REU BMP Import option added to IMPORT menu for batch KLA/KOA import.",
-	"NEW - ASSETS can now be grouped.",
-	"NEW - HUD Asset editor.",
+    "NEW - SID RELOCATOR - Move your SID to another place in memory.",
+    "FIXED - KLA Export",
+    "UPDATED - METATILE Scroller now more robust for various modes and stock C64",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
     "SUPPORT the development by leaving a review on ITCH and buying the PRO version.",
@@ -146,7 +143,7 @@ welcome_credits_lines = [
     "CODE and DESIGN",
     "Robert Ramsay",
     "",
-    "COMMUNITY INPUT",
+    "EARLY COMMUNITY INPUT",
     "51Pegasi",
 	"Alessandro 'funkygallo' Montoli",
     "Analog-X64",

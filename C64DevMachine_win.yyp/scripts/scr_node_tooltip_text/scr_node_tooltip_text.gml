@@ -943,3 +943,120 @@ function scr_node_tooltip_text(_node_type) {
     }
     return undefined;
 }
+
+/// Wrap translated help paragraphs, including long tokens and CJK text.
+function scr_node_info_wrap(_paragraphs, _width) {
+    var _rows = [];
+    for (var _p = 0; _p < array_length(_paragraphs); _p++) {
+        if (_p > 0) array_push(_rows, "");
+        var _line = "";
+        var _text = _paragraphs[_p];
+        for (var _i = 1; _i <= string_length(_text); _i++) {
+            var _ch = string_char_at(_text, _i);
+            if (_line != "" && string_width(_line + _ch) > _width) {
+                var _space = string_last_pos(" ", _line);
+                if (_space > 0 && _ch != " " && ord(_ch) < 128) {
+                    array_push(_rows, string_copy(_line, 1, _space - 1));
+                    _line = string_delete(_line, 1, _space);
+                } else {
+                    array_push(_rows, _line);
+                    _line = "";
+                }
+            }
+            if (_line != "" || _ch != " ") _line += _ch;
+        }
+        if (_line != "") array_push(_rows, _line);
+    }
+    return _rows;
+}
+
+/// Cached, screen-bounded help. Read down each column, then across.
+function scr_node_info_panel_draw(_type, _gw, _gh) {
+    var _info = scr_node_tooltip_text(_type);
+    if (is_undefined(_info)) return;
+    var _old_font = draw_get_font();
+    var _old_ha = draw_get_halign();
+    var _old_va = draw_get_valign();
+    draw_set_font_l(fnt_c64_code);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
+
+    var _preferred_w = (array_length(_info.lines) <= 14) ? 800 : 1440;
+    var _w = max(1, min(_preferred_w, _gw - 48, (_gh - 48) * 16 / 9));
+    var _h = _w * 9 / 16;
+    var _x = (_gw - _w) / 2;
+    var _y = (_gh - _h) / 2;
+    var _pad = min(24, _w * 0.025);
+    var _scale = (_w >= 1000) ? 1.2 : 1.0;
+    var _lh = max(16, string_height("Ag")) * _scale;
+    var _cols = clamp(floor(_w / 500), 1, 3);
+    var _gap = 28;
+    var _cw = (_w - 2 * _pad - (_cols - 1) * _gap) / _cols;
+    var _rows_per_col = max(1, floor((_h - 2 * _pad - _lh * 3) / _lh));
+    var _key = _type + ":" + string(global.lang) + ":" + string(_w) + ":" + string(draw_get_font());
+    if (!variable_instance_exists(id, "node_info_layout_key") || node_info_layout_key != _key) {
+        // The help source uses manual line breaks. Join each paragraph before
+        // wrapping so wide panels use the space instead of retaining narrow lines.
+        var _paragraphs = [];
+        var _paragraph = "";
+        for (var _i = 0; _i < array_length(_info.lines); _i++) {
+            var _parts = string_split(L(_info.lines[_i]), "\n");
+            for (var _j = 0; _j < array_length(_parts); _j++) {
+                var _part = string_trim(_parts[_j]);
+                if (_part == "") {
+                    if (_paragraph != "") array_push(_paragraphs, _paragraph);
+                    _paragraph = "";
+                } else {
+                    if (_paragraph != "") _paragraph += " ";
+                    _paragraph += _part;
+                }
+            }
+        }
+        if (_paragraph != "") array_push(_paragraphs, _paragraph);
+        node_info_rows = scr_node_info_wrap(_paragraphs, _cw / _scale);
+        node_info_layout_key = _key;
+        node_info_page = 0;
+    }
+    if (!variable_instance_exists(id, "node_info_active_type") || node_info_active_type != _type) {
+        node_info_page = 0;
+        node_info_active_type = _type;
+    }
+    var _capacity = _cols * _rows_per_col;
+    var _pages = max(1, ceil(array_length(node_info_rows) / _capacity));
+    node_info_page = clamp(node_info_page + mouse_wheel_down() - mouse_wheel_up(), 0, _pages - 1);
+
+    draw_set_alpha(0.98);
+    draw_set_color(make_color_rgb(12, 12, 22));
+    draw_rectangle(_x, _y, _x + _w, _y + _h, false);
+    draw_set_alpha(1);
+    draw_set_color(make_color_rgb(80, 140, 220));
+    draw_rectangle(_x, _y, _x + _w, _y + _h, true);
+    draw_set_color(c_yellow);
+    var _title = L(_info.title);
+    var _title_scale = min(_scale * 1.15, (_w - 2 * _pad) / max(1, string_width(_title)));
+    draw_text_transformed(_x + _pad, _y + _pad, _title, _title_scale, _title_scale, 0);
+    var _top = _y + _pad + _lh * 2;
+    var _first = node_info_page * _capacity;
+    var _count = min(_capacity, array_length(node_info_rows) - _first);
+    var _balanced_rows = max(1, ceil(_count / _cols));
+    draw_set_color(c_white);
+    for (var _i = 0; _i < _count; _i++) {
+        var _col = _i div _balanced_rows;
+        var _row = _i mod _balanced_rows;
+        draw_text_transformed(_x + _pad + _col * (_cw + _gap),
+            _top + _row * _lh - scr_lang_lift() * _scale,
+            node_info_rows[_first + _i], _scale, _scale, 0);
+    }
+    draw_set_color(make_color_rgb(140, 170, 205));
+    draw_set_halign(fa_right);
+    var _footer = (_pages > 1)
+        ? L("Mouse wheel: pages") + "   " + string(node_info_page + 1) + " / " + string(_pages)
+        : L("Read down each column");
+    var _footer_scale = min(1, (_w - 2 * _pad) / max(1, string_width(_footer)));
+    draw_text_transformed(_x + _w - _pad, _y + _h - _pad - _lh,
+        _footer, _footer_scale, _footer_scale, 0);
+    draw_set_font(_old_font);
+    draw_set_halign(_old_ha);
+    draw_set_valign(_old_va);
+}
+
