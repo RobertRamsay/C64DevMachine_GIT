@@ -1,9 +1,14 @@
-function scr_save_workspace_as_path(_path) {
+/// @param {string} _path       File to write
+/// @param {bool}   _hash_only  true: write nothing, touch no globals - just
+///                             return the md5 of the project JSON a save would
+///                             write. Used by scr_workspace_has_changes.
+function scr_save_workspace_as_path(_path, _hash_only = false) {
 
 var path = _path;
-if (path == "") return;
-
-global.workspace_path = path;
+if (!_hash_only) {
+    if (path == "") return;
+    global.workspace_path = path;
+}
 
     // ================================================================
     // 2. GATHER AND SORT NODES
@@ -361,6 +366,9 @@ if (instance_exists(obj_asset_manager)) {
 	        asset_sort_mode:    obj_asset_manager.asset_sort_mode
 	    };
     var _raw = json_stringify(save_root);
+    if (_hash_only) {
+        return md5_string_utf8(_raw);
+    }
     var f = file_text_open_write(path);
     file_text_write_string(f, _raw);
     file_text_close(f);
@@ -368,5 +376,6 @@ if (instance_exists(obj_asset_manager)) {
 	global.current_filename = path;
     global.autosave_dirty   = false;
     global.manual_saved     = true;
+    global.saved_hash       = md5_string_utf8(_raw);   // what's on disk now
     window_set_caption(game_project_name + " - " + global.current_filename);
 }

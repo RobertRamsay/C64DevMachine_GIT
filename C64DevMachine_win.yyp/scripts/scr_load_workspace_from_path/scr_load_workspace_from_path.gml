@@ -1127,4 +1127,9 @@ global.kernal_unlocked = variable_struct_exists(load_data, "kernal_unlocked") ? 
         obj_workspace_manager.alarm[1] = 6;
     }
 
+    // Unsaved-changes baseline: taken a few frames from now, once the passes
+    // above have settled heights / addresses, so they don't read as edits.
+    global.saved_hash         = "";
+    global.saved_hash_pending = 12;
+
 }

@@ -1004,6 +1004,11 @@ global.isSaving=false
 global.autosave_dirty     = false;
 global.autosave_last_path = "";
 global.manual_saved       = true;   // nothing to lose yet on fresh start
+// md5 of the project JSON as last saved / loaded (scr_workspace_has_changes).
+// "" = no baseline yet. saved_hash_pending counts End Step frames after a
+// load before the baseline is taken.
+global.saved_hash         = "";
+global.saved_hash_pending = 0;
 ini_open("c64devmachine.ini");
 global.autosave_mode = clamp(ini_read_real("autosave", "mode", 1), 0, 3);
 ini_close();

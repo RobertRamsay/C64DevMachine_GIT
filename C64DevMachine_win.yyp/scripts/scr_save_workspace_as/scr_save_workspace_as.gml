@@ -382,5 +382,6 @@
 		global.current_filename = path;
 	    global.autosave_dirty   = false;
 	    global.manual_saved     = true;
+	    global.saved_hash       = scr_save_workspace_as_path("", true);   // what's on disk now
 	    window_set_caption(game_project_name + " - " + global.current_filename);
 	}

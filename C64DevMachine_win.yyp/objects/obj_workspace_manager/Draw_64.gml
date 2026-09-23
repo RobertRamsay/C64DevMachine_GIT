@@ -324,7 +324,12 @@ if point_in_rectangle(gui_mouse_x,gui_mouse_y,12,10,36,32)
 		draw_sprite(spr_exitIcon,badgeStyle,24,22)
 			if mouse_check_button_pressed(mb_left)
 		    {
-			 scr_show_question("You may have unsaved changes.\nSave before closing?", "exit_confirm");
+			 // Only ask when the project really differs from what was saved
+			 if (scr_workspace_has_changes()) {
+			     scr_show_question("You have unsaved changes.\nSave before closing?", "exit_confirm");
+			 } else {
+			     game_end();
+			 }
 		    }	
 	}
 	

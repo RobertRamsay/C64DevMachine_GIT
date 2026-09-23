@@ -30,3 +30,12 @@ if (_release_changed) {
 }
 editor_release_pending = false;
 editor_release_dirty = false;
+
+// Unsaved-changes baseline after a load (see scr_load_workspace_from_path)
+if (global.saved_hash_pending > 0) {
+    global.saved_hash_pending -= 1;
+    if (global.saved_hash_pending == 0) {
+        global.saved_hash   = scr_save_workspace_as_path("", true);
+        global.manual_saved = true;
+    }
+}

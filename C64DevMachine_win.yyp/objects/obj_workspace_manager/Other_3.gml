@@ -19,7 +19,7 @@ ini_close();
 
 scr_lang_dump_missing();
 
-if (!global.manual_saved) {
+if (scr_workspace_has_changes()) {
     if (scr_show_question("You have unsaved changes.\nSave before closing?")) {
         scr_save_workspace_as();
     }

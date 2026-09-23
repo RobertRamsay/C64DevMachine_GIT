@@ -1408,6 +1408,7 @@
     {"id":{"name":"scr_voi64_sid","path":"scripts/scr_voi64_sid/scr_voi64_sid.yy",},},
     {"id":{"name":"scr_voi64_text_to_phonemes","path":"scripts/scr_voi64_text_to_phonemes/scr_voi64_text_to_phonemes.yy",},},
     {"id":{"name":"scr_welcome_save_pref","path":"scripts/scr_welcome_save_pref/scr_welcome_save_pref.yy",},},
+    {"id":{"name":"scr_workspace_has_changes","path":"scripts/scr_workspace_has_changes/scr_workspace_has_changes.yy",},},
     {"id":{"name":"scr_write_reu_launcher","path":"scripts/scr_write_reu_launcher/scr_write_reu_launcher.yy",},},
     {"id":{"name":"spriteData1","path":"scripts/spriteData1/spriteData1.yy",},},
     {"id":{"name":"shd_png_import","path":"shaders/shd_png_import/shd_png_import.yy",},},
