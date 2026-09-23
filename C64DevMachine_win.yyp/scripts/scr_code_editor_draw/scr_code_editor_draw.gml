@@ -25,7 +25,9 @@ function scr_code_editor_draw() {
             for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
                 var _a = _am.asset_list[| _ai];
                 var _asz = 0;
-                if (_a.type == "SPRITE_SET" || _a.type == "SID_MUSIC") {
+                if (_a.type == "SID_MUSIC") {
+                    if (buffer_exists(_a.buffer)) { _asz = max(1, scr_reu_asset_size(_a).size); }   // payload, not the .sid header
+                } else if (_a.type == "SPRITE_SET") {
                     _asz = (_a.file != "" && buffer_exists(_a.buffer)) ? max(1, buffer_get_size(_a.buffer) - 2) : 0;
                 } else if (_a.type == "BITMAP") {
                     _asz = (_a.file != "" && buffer_exists(_a.buffer)) ? 10192 : 0;

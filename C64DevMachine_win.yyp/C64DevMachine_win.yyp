@@ -1320,6 +1320,7 @@
     {"id":{"name":"scr_show_question_bool","path":"scripts/scr_show_question_bool/scr_show_question_bool.yy",},},
     {"id":{"name":"scr_show_question","path":"scripts/scr_show_question/scr_show_question.yy",},},
     {"id":{"name":"scr_sid_notes_parse","path":"scripts/scr_sid_notes_parse/scr_sid_notes_parse.yy",},},
+    {"id":{"name":"scr_sid_relocate","path":"scripts/scr_sid_relocate/scr_sid_relocate.yy",},},
     {"id":{"name":"scr_sid_song_note_index","path":"scripts/scr_sid_song_note_index/scr_sid_song_note_index.yy",},},
     {"id":{"name":"scr_sid64_import","path":"scripts/scr_sid64_import/scr_sid64_import.yy",},},
     {"id":{"name":"scr_sound_editor_commit_cell","path":"scripts/scr_sound_editor_commit_cell/scr_sound_editor_commit_cell.yy",},},

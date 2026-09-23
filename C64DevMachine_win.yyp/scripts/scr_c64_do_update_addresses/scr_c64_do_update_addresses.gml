@@ -1029,7 +1029,7 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
 
 	        var _asz = 0;
 	        if (_a.type == "SPRITE_SET") _asz = buffer_exists(_a.buffer) ? buffer_get_size(_a.buffer)-2 : 0;
-	        if (_a.type == "SID_MUSIC") _asz = buffer_exists(_a.buffer) ? buffer_get_size(_a.buffer)-2 : 0;
+	        if (_a.type == "SID_MUSIC") _asz = buffer_exists(_a.buffer) ? scr_reu_asset_size(_a).size : 0;   // payload, not the .sid header
 	        if (_asz > 0) array_push(_segs, { start: _a.address, finish: _a.address + _asz, owner: noone, name: _a.name });
 	    }
 	}
@@ -1169,8 +1169,10 @@ var _is_danger_p8 = method({am8: _am8}, function(_addr) {
 	        }
 
 	        var _asz = 0;
-	        if (_a.type == "SPRITE_SET" || _a.type == "SID_MUSIC")
+	        if (_a.type == "SPRITE_SET")
 	            _asz = buffer_exists(_a.buffer) ? max(1, buffer_get_size(_a.buffer) - 2) : 0;
+	        else if (_a.type == "SID_MUSIC")
+	            _asz = buffer_exists(_a.buffer) ? max(1, scr_reu_asset_size(_a).size) : 0;   // payload, not the .sid header
 	        else
 	            continue; // only binary assets that physically occupy C64 RAM
 	        if (_asz > 0 && _addr >= _a.address && _addr < _a.address + _asz) return true;
@@ -1348,8 +1350,10 @@ with (obj_c64_node) {
 	                        continue;
 	                    }
 
-	                    if (_a9.type == "SPRITE_SET" || _a9.type == "SID_MUSIC")
+	                    if (_a9.type == "SPRITE_SET")
 	                        _asz9 = buffer_exists(_a9.buffer) ? max(1, buffer_get_size(_a9.buffer) - 2) : 0;
+	                    else if (_a9.type == "SID_MUSIC")
+	                        _asz9 = buffer_exists(_a9.buffer) ? max(1, scr_reu_asset_size(_a9).size) : 0;   // payload, not the .sid header
 	                    else {
 	                        continue;
 	                    }

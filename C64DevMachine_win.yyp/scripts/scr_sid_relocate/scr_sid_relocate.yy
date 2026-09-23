@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_sid_relocate",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_sid_relocate",
+  "parent":{
+    "name":"I_O",
+    "path":"folders/SCRIPTS/CORE/I_O.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

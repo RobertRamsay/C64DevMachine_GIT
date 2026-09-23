@@ -556,7 +556,13 @@ var _addr_total = 65536;
                     // switch must NOT also emit a flat span for this asset.
                 } break;
                 case "SID_MUSIC":
-                    if (_a.file != "" && buffer_exists(_a.buffer)) { _seg_size = buffer_get_size(_a.buffer) - 2; _seg_col = make_color_rgb(230, 60, 170); }
+                    // Real C64 payload: the .sid header is not in RAM. Gate on the
+                    // buffer, not the file - a tune restored from the project
+                    // blob (or relocated) has bytes but may have no source file.
+                    if (buffer_exists(_a.buffer) && buffer_get_size(_a.buffer) >= 10) {
+                        _seg_size = scr_reu_asset_size(_a).size;
+                        _seg_col  = make_color_rgb(230, 60, 170);
+                    }
                     break;
                 case "CHAR_SET":
                     if (buffer_exists(_a.buffer) && buffer_get_size(_a.buffer) >= 8) { _seg_size = buffer_get_size(_a.buffer); _seg_col = make_color_rgb(255, 220, 50); }

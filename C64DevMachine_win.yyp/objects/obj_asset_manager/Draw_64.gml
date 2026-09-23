@@ -7757,6 +7757,148 @@ case "SID_MUSIC": {
             draw_set_color(c_ltgray);  draw_text_l(_vx1 + 140, _cy, "END:");
             draw_set_color(c_aqua);    draw_text_l(_vx1 + 190, _cy, "$" + _end_hex);
             _cy += 20;
+
+            // ── RELOCATE ─────────────────────────────────────────────
+            // Moves the tune to another page: every address byte inside the
+            // player is found by emulating it (scr_sid_relocate), patched, and
+            // the result is verified against the original before the asset is
+            // touched. MACRO_SID / IRQ HANDLER / memory bar all read the asset,
+            // so they follow automatically.
+            if (sid_reloc_asset != _asset.name) {
+                sid_reloc_asset  = _asset.name;
+                sid_reloc_target = _asset.address;
+                sid_reloc_msg    = "";
+                sid_reloc_ok     = false;
+                sid_reloc_job    = noone;
+            }
+            var _rl_busy = false;
+            if (is_struct(sid_reloc_job)) {
+                if (sid_reloc_job.phase < 2) { _rl_busy = true; }
+            }
+            draw_set_color(make_color_rgb(40, 40, 60));
+            draw_line(_vx1 + 10, _cy, _vx2 - 10, _cy);
+            _cy += 8;
+            draw_set_color(c_ltgray);
+            draw_text_l(_vx1 + 10, _cy + 2, "RELOCATE TO:");
+
+            // [-] $XXXX [+]  - whole pages, low byte kept
+            var _rl_x   = _vx1 + 104;
+            var _rl_bw  = 16;
+            var _rl_mh  = point_in_rectangle(_mx, _my, _rl_x, _cy, _rl_x + _rl_bw, _cy + 16);
+            draw_set_color(make_color_rgb(40, 60, 90));
+            if (_rl_mh) { draw_set_color(make_color_rgb(70, 100, 150)); }
+            draw_rectangle(_rl_x, _cy, _rl_x + _rl_bw, _cy + 16, false);
+            draw_set_color(c_white);
+            draw_text_l(_rl_x + 5, _cy + 2, "-");
+            var _rl_tx  = _rl_x + _rl_bw + 6;
+            var _rl_hex = string_upper(decimal_to_hex(sid_reloc_target));
+            while (string_length(_rl_hex) < 4) { _rl_hex = "0" + _rl_hex; }
+            draw_set_color(c_yellow);
+            if (sid_reloc_target == _asset.address) { draw_set_color(make_color_rgb(140, 140, 140)); }
+            draw_text_l(_rl_tx, _cy + 2, "$" + _rl_hex);
+            var _rl_px  = _rl_tx + string_width_l("$0000") + 6;
+            var _rl_ph  = point_in_rectangle(_mx, _my, _rl_px, _cy, _rl_px + _rl_bw, _cy + 16);
+            draw_set_color(make_color_rgb(40, 60, 90));
+            if (_rl_ph) { draw_set_color(make_color_rgb(70, 100, 150)); }
+            draw_rectangle(_rl_px, _cy, _rl_px + _rl_bw, _cy + 16, false);
+            draw_set_color(c_white);
+            draw_text_l(_rl_px + 4, _cy + 2, "+");
+            if (!_rl_busy && mouse_check_button_pressed(mb_left)) {
+                if (_rl_mh) { sid_reloc_target = max(0x0200 | (_asset.address & 0xFF), sid_reloc_target - 0x100); sid_reloc_msg = ""; }
+                if (_rl_ph) { sid_reloc_target = min(0xFF00 | (_asset.address & 0xFF), sid_reloc_target + 0x100); sid_reloc_msg = ""; }
+            }
+
+            // Test length: how long the tune is emulated for (per sub-song)
+            var _rl_fx  = _rl_px + _rl_bw + 12;
+            var _rl_ftxt = "TEST " + string(round(sid_reloc_frames / 3000)) + " MIN";
+            var _rl_fw  = string_width_l("TEST 10 MIN") + 10;
+            var _rl_fh  = point_in_rectangle(_mx, _my, _rl_fx, _cy, _rl_fx + _rl_fw, _cy + 16);
+            draw_set_color(make_color_rgb(30, 30, 45));
+            if (_rl_fh) { draw_set_color(make_color_rgb(55, 55, 80)); }
+            draw_rectangle(_rl_fx, _cy, _rl_fx + _rl_fw, _cy + 16, false);
+            draw_set_color(make_color_rgb(150, 150, 200));
+            draw_set_halign(fa_center);
+            draw_text_l(_rl_fx + _rl_fw * 0.5, _cy + 2, _rl_ftxt);
+            draw_set_halign(fa_left);
+            if (!_rl_busy && _rl_fh && mouse_check_button_pressed(mb_left)) {
+                if (sid_reloc_frames == 3000) {
+                    sid_reloc_frames = 15000;
+                } else if (sid_reloc_frames == 15000) {
+                    sid_reloc_frames = 30000;
+                } else {
+                    sid_reloc_frames = 3000;
+                }
+            }
+
+            // [RELOCATE] / [CANCEL]
+            var _rl_gx  = _rl_fx + _rl_fw + 8;
+            var _rl_gw  = string_width_l("RELOCATE") + 14;
+            var _rl_gh  = point_in_rectangle(_mx, _my, _rl_gx, _cy, _rl_gx + _rl_gw, _cy + 16);
+            var _rl_glb = "RELOCATE";
+            if (_rl_busy) { _rl_glb = "CANCEL"; }
+            draw_set_color(make_color_rgb(90, 35, 70));
+            if (_rl_gh) { draw_set_color(make_color_rgb(160, 60, 120)); }
+            draw_rectangle(_rl_gx, _cy, _rl_gx + _rl_gw, _cy + 16, false);
+            draw_set_color(make_color_rgb(230, 60, 170));
+            draw_rectangle(_rl_gx, _cy, _rl_gx + _rl_gw, _cy + 16, true);
+            draw_set_color(c_white);
+            draw_set_halign(fa_center);
+            draw_text_l(_rl_gx + _rl_gw * 0.5, _cy + 2, _rl_glb);
+            draw_set_halign(fa_left);
+            if (_rl_gh && mouse_check_button_pressed(mb_left)) {
+                if (_rl_busy) {
+                    sid_reloc_job = noone;
+                    sid_reloc_msg = "CANCELLED - NOTHING CHANGED";
+                    sid_reloc_ok  = false;
+                } else {
+                    var _rl_new = scr_srel_job_create(_asset, sid_reloc_target, sid_reloc_frames);
+                    if (is_string(_rl_new)) {
+                        sid_reloc_job = noone;
+                        sid_reloc_msg = _rl_new;
+                        sid_reloc_ok  = false;
+                    } else {
+                        sid_reloc_job = _rl_new;
+                        sid_reloc_msg = "";
+                    }
+                }
+            }
+            _cy += 22;
+
+            // Run the job a slice per frame, apply it when it verifies
+            if (is_struct(sid_reloc_job)) {
+                if (sid_reloc_job.phase < 2) {
+                    var _rl_fin = scr_srel_job_step(sid_reloc_job, 12000);
+                    if (_rl_fin) {
+                        sid_reloc_ok  = sid_reloc_job.ok;
+                        sid_reloc_msg = sid_reloc_job.msg;
+                        if (sid_reloc_job.ok) {
+                            scr_srel_apply(sid_reloc_job);
+                            sid_reloc_msg = sid_reloc_msg + "  ZP: " + scr_srel_zp_text(sid_reloc_job);
+                            sid_reloc_target = _asset.address;
+                        }
+                    }
+                }
+            }
+            if (is_struct(sid_reloc_job)) {
+                if (sid_reloc_job.phase < 2) {
+                    var _rl_bx2 = _vx2 - 10;
+                    draw_set_color(make_color_rgb(25, 25, 35));
+                    draw_rectangle(_vx1 + 10, _cy, _rl_bx2, _cy + 10, false);
+                    draw_set_color(make_color_rgb(230, 60, 170));
+                    draw_rectangle(_vx1 + 10, _cy, _vx1 + 10 + (_rl_bx2 - _vx1 - 10) * sid_reloc_job.progress, _cy + 10, false);
+                    var _rl_ph_txt = "ANALYSING";
+                    if (sid_reloc_job.phase == 1) { _rl_ph_txt = "VERIFYING"; }
+                    draw_set_color(c_white);
+                    draw_text_l(_vx1 + 10, _cy + 12, _rl_ph_txt + "  " + string(floor(sid_reloc_job.progress * 100)) + "%");
+                    _cy += 28;
+                }
+            }
+            if (sid_reloc_msg != "") {
+                draw_set_color(make_color_rgb(255, 110, 90));
+                if (sid_reloc_ok) { draw_set_color(c_lime); }
+                draw_text_ext_l(_vx1 + 10, _cy, sid_reloc_msg, 12, _vx2 - _vx1 - 20);
+                _cy += 30;
+            }
         } break;
 	
 case "LOAD_REU": {

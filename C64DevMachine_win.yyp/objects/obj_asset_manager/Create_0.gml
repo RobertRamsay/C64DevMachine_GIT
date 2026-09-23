@@ -661,3 +661,12 @@ mts_plan_map      = -1;
 // ---- Deferred charset preview rebuild (scr_chr_preview_defer) ----
 chr_preview_pending = noone;
 chr_preview_next_ms = 0;
+
+// ---- SID relocator (scr_sid_relocate) ----
+scr_srel_optable();
+sid_reloc_job    = noone;   // running / finished job struct
+sid_reloc_asset  = "";      // asset the fields below belong to
+sid_reloc_target = 0;       // target load address
+sid_reloc_frames = 15000;   // PLAY calls per sub-song (15000 = 5 min PAL)
+sid_reloc_msg    = "";
+sid_reloc_ok     = false;
