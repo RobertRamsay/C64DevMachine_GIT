@@ -8752,7 +8752,7 @@ case "META_TILESET": {
         // Row 2: FIXED nibble / what the mode does, and ALL > MC
         var _rv_y3 = _cy + 17;
         if (_run_mode == 0) {
-            var _rv_ntxt = "NIB $" + string_upper(decimal_to_hex(_run_nib));
+            var _rv_ntxt = "NIB $" + string_upper(decimal_to_hex(_run_nib)) + " SET";
             if (_run_nib_set < 0) { _rv_ntxt = "NIB AUTO $" + string_upper(decimal_to_hex(_run_nib)); }
             var _rv_nw   = string_width_l(_rv_ntxt);
             var _rv_nhov = point_in_rectangle(_mx, _my, _rv_x1 - 2, _rv_y3, _rv_x1 + 12 + _rv_nw, _rv_y3 + 14);
@@ -8761,10 +8761,15 @@ case "META_TILESET": {
             draw_set_color(c_lime);
             if (_rv_nhov) { draw_set_color(c_white); }
             draw_text_l(_rv_x1 + 10, _rv_y3 + 1, _rv_ntxt);
-            // Click cycles the METASCROLL node's nibble: AUTO, $00..$0F
+            // The colour itself is picked on the COLOUR strip below. Clicking
+            // here only toggles AUTO (commonest colour in the map) <-> the
+            // COLOUR strip's current colour, keeping the MC bit in MIXED.
             if (_rv_nhov && mouse_check_button_pressed(mb_left)) {
-                var _rv_next = _run_nib_set + 1;
-                if (_rv_next > 15) { _rv_next = -1; }
+                var _rv_next = -1;
+                if (_run_nib_set < 0) {
+                    _rv_next = _m.active_colour & 0x0F;
+                    if (_run_mixed && !_ecm_mode) { _rv_next = (_m.active_colour & 0x07) | (_run_nib & 0x08); }
+                }
                 _run_node.instructions[0][7] = _rv_next;
                 global.undo_dirty = true;
             }
@@ -10658,7 +10663,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     // What a colour pick does right now
     if (_run_fx_on) {
         draw_set_color(make_color_rgb(255, 170, 60));
-        draw_text_l(_sa_x2 + 8, _sa_y1, "FIXED $" + string_upper(decimal_to_hex(_run_nib)) + ": COLOUR + CHAR HR/MC AFFECT ALL CELLS");
+        draw_text_l(_sa_x2 + 8, _sa_y1, "FIXED $" + string_upper(decimal_to_hex(_run_nib)) + ": PICK COLOUR HERE - IT + CHAR HR/MC AFFECT ALL CELLS");
     } else {
         draw_set_color(make_color_rgb(110, 130, 150));
         draw_text_l(_sa_x2 + 8, _sa_y1, "COLOUR SETS THE SELECTED CHAR  -  SET ALL: EVERY CHAR");
