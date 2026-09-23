@@ -106,16 +106,19 @@ function scr_node_step_macro_metascroll(_draw_x) {
     // ── ROW 5 - COLOUR MODE toggle, and the fixed nibble ──
     var _cm_ly = _ly0 + _lh * 5;
     if (point_in_rectangle(mouse_x, mouse_y, _vx, _cm_ly - 2, _vx + 64, _cm_ly + 12)) {
-        // Two modes only: 0 FIXED (stock C64) and 2 SHIFT C64U (turbo).
+        // Cycles 0 FIXED (stock C64) -> 3 ROW BANDS (stock C64, colour per
+        // map row) -> 2 SHIFT C64U (turbo) -> FIXED.
         // The old mode 1 (2-frame SHIFT) is gone - it always wore one frame
         // in eight of the neighbour's colour, whatever the CPU speed. A
-        // project saved with it toggles straight to SHIFT C64U from FIXED.
+        // project saved with it loads as FIXED and steps on to ROW BANDS.
         var _cm_cur = 0;
         if (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) _cm_cur = real(instructions[0][6]);
         if (_cm_cur == 2) {
             _cm_cur = 0;
-        } else {
+        } else if (_cm_cur == 3) {
             _cm_cur = 2;
+        } else {
+            _cm_cur = 3;
         }
         instructions[0][6] = _cm_cur;
         global.addresses_dirty = true;

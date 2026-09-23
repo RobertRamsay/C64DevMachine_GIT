@@ -61,8 +61,11 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     var _pages    = ceil(_plane_sz / 256);
     var _co_base  = _base_addr + _pages * 256;
     var _bytes    = _plane_sz;
-    if (_col_mode >= 1) {
+    if (_col_mode == 2) {
         _bytes = _plane_sz * 2;
+    }
+    if (_col_mode == 3) {
+        _bytes = _plane_sz + _maph;   // + one band byte per map row
     }
 
     // ── Layout ───────────────────────────────────────────
@@ -109,7 +112,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     draw_text_l(_lx, _ly, "PLANES:");
     draw_set_color(c_yellow);
     var _pl_txt = "$" + string_upper(decimal_to_hex(_base_addr));
-    if (_col_mode >= 1) {
+    if (_col_mode == 2) {
         _pl_txt = _pl_txt + " / $" + string_upper(decimal_to_hex(_co_base));
     }
     draw_text_l(_vx, _ly, _pl_txt);
@@ -118,8 +121,11 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
     // ROW 3 — memory cost
     draw_set_color(make_color_rgb(180, 100, 30));
     var _sz_txt = string(_bytes) + " BYTES, CHAR PLANE";
-    if (_col_mode >= 1) {
+    if (_col_mode == 2) {
         _sz_txt = string(_bytes) + " BYTES, CHAR + COLOUR";
+    }
+    if (_col_mode == 3) {
+        _sz_txt = string(_bytes) + " BYTES, CHAR + ROW BANDS";
     }
     draw_text_l(_lx, _ly, _sz_txt);
     _ly += _lh;
@@ -143,6 +149,11 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
         _cm_col  = c_red;
         _cm_txt  = "SHIFT C64U";
         _cm_note = "TURBO";
+    }
+    if (_col_mode == 3) {
+        _cm_col  = c_aqua;
+        _cm_txt  = "ROW BANDS";
+        _cm_note = "PER MAP ROW";
     }
     draw_set_color(_cm_col);
     draw_text_l(_vx, _ly, _cm_txt);

@@ -4769,6 +4769,10 @@ case "MACRO_METASCROLL": {
     var _clamp     = (array_length(_id.instructions[0]) > 5 && is_real(_id.instructions[0][5])) ? real(_id.instructions[0][5]) : 1;
     // [6] colour mode: 0 = FIXED (stock C64)
     //                  2 = SHIFT C64U, chars and colour in the SAME frame.
+    //                  3 = ROW BANDS: one colour per MAP row. Horizontal
+    //                      coarse steps never touch colour RAM; a vertical
+    //                      step rewrites only the screen rows whose band
+    //                      changed. Stock-C64 safe for band-structured maps.
     // There is no mode 1 any more. It shifted colour a frame after the chars,
     // so for one frame in eight every cell wore its neighbour's colour - CPU
     // speed could never fix that, it was the sequencing. Mode 2 does both
@@ -5020,6 +5024,10 @@ case "MACRO_METASCROLL": {
     // all - so FIXED writes the nibble once at init and never touches
     // $D800 again. That halves the coarse step (one frame, chars only) and
     // drops the colour plane from memory entirely.
+    // FIXED auto nibble and ROW BANDS both come from scr_mts_colour_plan,
+    // the same tally the tileset editor's RUN view shows - placed cells
+    // only, so empty map space doesn't vote for colour 0.
+    var _ms_plan = scr_mts_colour_plan(_tm, _map_index, (_ms_mode == 1), _ms_is_ecm);
     var _fx_nib = 0;
     if (_col_mode == 0)
     {
@@ -5029,18 +5037,7 @@ case "MACRO_METASCROLL": {
         }
         else
         {
-            // auto: the commonest colour byte across the flattened room
-            var _tally = array_create(16, 0);
-            for (var _ti = 0; _ti < _plane_sz; _ti++)
-            {
-                _tally[_co_plane[_ti] & 0x0F]++;
-            }
-            var _best = 0;
-            for (var _tj = 1; _tj < 16; _tj++)
-            {
-                if (_tally[_tj] > _tally[_best]) { _best = _tj; }
-            }
-            _fx_nib = _best;
+            _fx_nib = scr_mts_plan_auto_nib(_ms_plan);
         }
     }
 
@@ -5055,7 +5052,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["org", -2]);
     array_push(_list, ["org", _base_addr]);
     for (var _bi = 0; _bi < _plane_sz; _bi++) { array_push(_list, ["byte", _ch_plane[_bi]]); }
-    if (_col_mode >= 1)
+    if (_col_mode == 2)
     {
         array_push(_list, ["org", _co_base]);
         for (var _bj = 0; _bj < _plane_sz; _bj++) { array_push(_list, ["byte", _co_plane[_bj]]); }
@@ -5082,6 +5079,32 @@ case "MACRO_METASCROLL": {
     for (var _r = 0; _r < _maph; _r++) { array_push(_list, ["byte", (_base_addr + _r * _mapw) & 0xFF, _id]); }
     array_push(_list, ["label", _l_rowhi]);
     for (var _r2 = 0; _r2 < _maph; _r2++) { array_push(_list, ["byte", ((_base_addr + _r2 * _mapw) >> 8) & 0xFF, _id]); }
+
+    // ROW BANDS: band colour per map row, the colour RAM row addresses of
+    // the window, and the band each screen row currently wears ($FF = none)
+    var _l_rband = _p + "rband";
+    var _l_rbl   = _p + "rbl";
+    var _l_rbh   = _p + "rbh";
+    var _l_rcur  = _p + "rcur";
+    var _l_rbt   = _p + "rbt";
+    if (_col_mode == 3)
+    {
+        array_push(_list, ["label", _l_rband]);
+        for (var _rb = 0; _rb < _maph; _rb++)
+        {
+            var _rb_v = 0;
+            if (_rb < array_length(_ms_plan.bands)) { _rb_v = _ms_plan.bands[_rb] & 0x0F; }
+            array_push(_list, ["byte", _rb_v, _id]);
+        }
+        array_push(_list, ["label", _l_rbl]);
+        for (var _rl = 0; _rl < _num_rows; _rl++) { array_push(_list, ["byte", (_cram + (_row_start + _rl) * 40 + _col_start) & 0xFF, _id]); }
+        array_push(_list, ["label", _l_rbh]);
+        for (var _rh = 0; _rh < _num_rows; _rh++) { array_push(_list, ["byte", ((_cram + (_row_start + _rh) * 40 + _col_start) >> 8) & 0xFF, _id]); }
+        array_push(_list, ["label", _l_rcur]);
+        for (var _rc = 0; _rc < _num_rows; _rc++) { array_push(_list, ["byte", 0xFF, _id]); }
+        array_push(_list, ["label", _l_rbt]);
+        array_push(_list, ["byte", 0x00, _id]);
+    }
 
     array_push(_list, ["label", _l_skip]);
 
@@ -5294,6 +5317,10 @@ case "MACRO_METASCROLL": {
         array_push(_list, ["jsr", _p + "shu_co",   _id]);
         array_push(_list, ["jsr", _p + "fil_d_co", _id]);
     }
+    if (_col_mode == 3)
+    {
+        array_push(_list, ["jsr", _p + "rb_sync",  _id]);
+    }
     array_push(_list, ["jmp_abs", _l_p1end,  _id]);
 
     array_push(_list, ["label",   _l_p1c]);
@@ -5307,6 +5334,10 @@ case "MACRO_METASCROLL": {
     {
         array_push(_list, ["jsr", _p + "shd_co",   _id]);
         array_push(_list, ["jsr", _p + "fil_u_co", _id]);
+    }
+    if (_col_mode == 3)
+    {
+        array_push(_list, ["jsr", _p + "rb_sync",  _id]);
     }
 
     array_push(_list, ["label",   _l_p1end]);
@@ -5361,7 +5392,7 @@ case "MACRO_METASCROLL": {
     var _sh_names  = [_p + "shl_ch", _p + "shr_ch"];
     var _sh_bases  = [_scr,          _scr];
     var _sh_left   = [1,             0];
-    if (_col_mode >= 1)
+    if (_col_mode == 2)
     {
         _sh_names = [_p + "shl_ch", _p + "shl_co", _p + "shr_ch", _p + "shr_co"];
         _sh_bases = [_scr,          _cram,         _scr,          _cram];
@@ -5409,7 +5440,7 @@ case "MACRO_METASCROLL": {
     var _sv_names = [_p + "shu_ch", _p + "shd_ch"];
     var _sv_bases = [_scr,          _scr];
     var _sv_up    = [1,             0];
-    if (_col_mode >= 1)
+    if (_col_mode == 2)
     {
         _sv_names = [_p + "shu_ch", _p + "shu_co", _p + "shd_ch", _p + "shd_co"];
         _sv_bases = [_scr,          _cram,         _scr,          _cram];
@@ -5471,7 +5502,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["sta_zp",  _zp_src + 1,_id]);
     array_push(_list, ["rts",     0,          _id]);
 
-    if (_col_mode >= 1)
+    if (_col_mode == 2)
     {
         array_push(_list, ["label",   _l_maddrc]);
         array_push(_list, ["jsr",     _l_maddr,   _id]);
@@ -5489,7 +5520,7 @@ case "MACRO_METASCROLL": {
     var _fc_col   = [0,               0];
     var _fc_base  = [_scr,            _scr];
     var _fc_edge  = [_col_start + _num_cols - 1, _col_start];
-    if (_col_mode >= 1)
+    if (_col_mode == 2)
     {
         _fc_names = [_p + "fil_r_ch", _p + "fil_r_co", _p + "fil_l_ch", _p + "fil_l_co"];
         _fc_col   = [0,               1,               0,               1];
@@ -5552,7 +5583,7 @@ case "MACRO_METASCROLL": {
     var _fr_base  = [_scr,            _scr];
     var _fr_row   = [_row_start + _num_rows - 1, _row_start];
     var _fr_off   = [_num_rows - 1,   0];
-    if (_col_mode >= 1)
+    if (_col_mode == 2)
     {
         _fr_names = [_p + "fil_d_ch", _p + "fil_d_co", _p + "fil_u_ch", _p + "fil_u_co"];
         _fr_col   = [0,               1,               0,               1];
@@ -5587,7 +5618,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["label",   _l_repnt]);
     array_push(_list, ["lda_imm", 0x00,        _id]);
     array_push(_list, ["jsr",     _l_maddr,    _id]);
-    if (_col_mode >= 1)
+    if (_col_mode == 2)
     {
         array_push(_list, ["lda_zp",  _zp_src,     _id]);
         array_push(_list, ["sta_zp",  _zp_dst,     _id]);
@@ -5600,7 +5631,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["sta_lab", _p + "rp_s",  _id]);
     array_push(_list, ["lda_imm", (_rp_s0 >> 8) & 0xFF, _id]);
     array_push(_list, ["sta_lab", _p + "rp_s1", _id]);
-    if (_col_mode >= 1)
+    if (_col_mode == 2)
     {
         array_push(_list, ["lda_imm", _rp_c0 & 0xFF,        _id]);
         array_push(_list, ["sta_lab", _p + "rp_c",  _id]);
@@ -5617,7 +5648,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["byte",    0x00, _id]);
     array_push(_list, ["label",   _p + "rp_s1"]);
     array_push(_list, ["byte",    0x00, _id]);
-    if (_col_mode >= 1)
+    if (_col_mode == 2)
     {
         array_push(_list, ["lda_izy", _zp_dst, _id]);
         array_push(_list, ["byte",    0x99, _id]);          // STA abs,Y - colour
@@ -5635,7 +5666,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["lda_zp",  _zp_src + 1,  _id]);
     array_push(_list, ["adc_imm", 0x00,         _id]);
     array_push(_list, ["sta_zp",  _zp_src + 1,  _id]);
-    if (_col_mode >= 1)
+    if (_col_mode == 2)
     {
         array_push(_list, ["lda_zp",  _zp_dst,      _id]);
         array_push(_list, ["clc",     0,            _id]);
@@ -5652,7 +5683,7 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["lda_lab", _p + "rp_s1", _id]);
     array_push(_list, ["adc_imm", 0x00,         _id]);
     array_push(_list, ["sta_lab", _p + "rp_s1", _id]);
-    if (_col_mode >= 1)
+    if (_col_mode == 2)
     {
         array_push(_list, ["lda_lab", _p + "rp_c",  _id]);
         array_push(_list, ["clc",     0,            _id]);
@@ -5670,6 +5701,47 @@ case "MACRO_METASCROLL": {
     // init - 38 col / 24 row mode, blank the screen, paint the window.
     // Only col 39 stays blank afterwards; every other cell scrolls.
     // ══════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════
+    // rb_sync (ROW BANDS) - for each window row, look up the band of the
+    // map row it now shows; if that differs from what the row wears, fill
+    // the row's colour RAM with it. Rows whose band didn't change cost
+    // ~20 cycles; a changed row ~430.
+    // ══════════════════════════════════════════════════════
+    if (_col_mode == 3)
+    {
+        array_push(_list, ["label",   _p + "rb_sync"]);
+        array_push(_list, ["ldy_imm", 0x00,            _id]);
+        array_push(_list, ["label",   _p + "rb_lp"]);
+        array_push(_list, ["tya",     0,               _id]);
+        array_push(_list, ["clc",     0,               _id]);
+        array_push(_list, ["adc_zp",  _zp_camy,        _id]);
+        array_push(_list, ["tax",     0,               _id]);
+        array_push(_list, ["lda_abx", _l_rband,        _id]);
+        array_push(_list, ["cmp_aby", _l_rcur,         _id]);
+        array_push(_list, ["beq",     _p + "rb_nx",    _id]);
+        array_push(_list, ["sta_aby", _l_rcur,         _id]);
+        array_push(_list, ["tax",     0,               _id]);   // X = band colour
+        array_push(_list, ["tya",     0,               _id]);
+        array_push(_list, ["sta_lab", _l_rbt,          _id]);   // save row index
+        array_push(_list, ["lda_aby", _l_rbl,          _id]);
+        array_push(_list, ["sta_zp",  _zp_dst,         _id]);
+        array_push(_list, ["lda_aby", _l_rbh,          _id]);
+        array_push(_list, ["sta_zp",  _zp_dst + 1,     _id]);
+        array_push(_list, ["txa",     0,               _id]);
+        array_push(_list, ["ldy_imm", _num_cols - 1,   _id]);
+        array_push(_list, ["label",   _p + "rb_fill"]);
+        array_push(_list, ["sta_izy", _zp_dst,         _id]);
+        array_push(_list, ["dey",     0,               _id]);
+        array_push(_list, ["bpl",     _p + "rb_fill",  _id]);
+        array_push(_list, ["lda_lab", _l_rbt,          _id]);
+        array_push(_list, ["tay",     0,               _id]);
+        array_push(_list, ["label",   _p + "rb_nx"]);
+        array_push(_list, ["iny",     0,               _id]);
+        array_push(_list, ["cpy_imm", _num_rows,       _id]);
+        array_push(_list, ["bne",     _p + "rb_lp",    _id]);
+        array_push(_list, ["rts",     0,               _id]);
+    }
+
     array_push(_list, ["label",   _l_init]);
 
     array_push(_list, ["lda_imm", 0x00,       _id]);
@@ -5722,6 +5794,17 @@ case "MACRO_METASCROLL": {
     array_push(_list, ["bne",     _p + "cl2b", _id]);
 
     array_push(_list, ["jsr",     _l_repnt,   _id]);
+    if (_col_mode == 3)
+    {
+        // colour RAM was just cleared: mark every row as wearing no band
+        array_push(_list, ["lda_imm", 0xFF,             _id]);
+        array_push(_list, ["ldx_imm", _num_rows - 1,    _id]);
+        array_push(_list, ["label",   _p + "rb_i"]);
+        array_push(_list, ["sta_abx", _l_rcur,          _id]);
+        array_push(_list, ["dex",     0,                _id]);
+        array_push(_list, ["bpl",     _p + "rb_i",      _id]);
+        array_push(_list, ["jsr",     _p + "rb_sync",   _id]);
+    }
     array_push(_list, ["rts",     0,          _id]);
 
     // ── Spine resumes ─────────────────────────────────────
@@ -5730,7 +5813,13 @@ case "MACRO_METASCROLL": {
     var _cm_txt = "COLOUR FIXED $" + string_upper(decimal_to_hex(_fx_nib))
                 + " (1-frame coarse, char plane only, "
                 + string(_plane_sz) + " bytes)";
-    if (_col_mode == 2)
+    if (_col_mode == 3)
+    {
+        _cm_txt = "COLOUR ROW BANDS (" + string(_maph) + " band bytes, "
+                + string(_ms_plan.band_miss) + " of " + string(_ms_plan.total)
+                + " placed cells differ from their row)";
+    }
+    else if (_col_mode == 2)
     {
         _cm_txt = "COLOUR SHIFT C64U (1-frame coarse, chars + colour together, "
                 + string(_plane_sz * 2) + " bytes - needs a fast machine)";

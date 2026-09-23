@@ -1,0 +1,813 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index e024848..7152daa 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1152,6 +1152,7 @@
+     {"id":{"name":"scr_mbb_emit_mask_cells","path":"scripts/scr_mbb_emit_mask_cells/scr_mbb_emit_mask_cells.yy",},},
+     {"id":{"name":"scr_mts_atlas","path":"scripts/scr_mts_atlas/scr_mts_atlas.yy",},},
+     {"id":{"name":"scr_mts_resize_map","path":"scripts/scr_mts_resize_map/scr_mts_resize_map.yy",},},
++    {"id":{"name":"scr_mts_run_colour","path":"scripts/scr_mts_run_colour/scr_mts_run_colour.yy",},},
+     {"id":{"name":"scr_mts_slice_active_map","path":"scripts/scr_mts_slice_active_map/scr_mts_slice_active_map.yy",},},
+     {"id":{"name":"scr_nloc_display_name","path":"scripts/scr_nloc_display_name/scr_nloc_display_name.yy",},},
+     {"id":{"name":"scr_nloc_find_meta","path":"scripts/scr_nloc_find_meta/scr_nloc_find_meta.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index 7cc3c8e..0746cdd 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -652,6 +652,12 @@ mts_atlas_tf_prev = false;
+ mts_bytes_owner   = "";
+ mts_bytes_next_ms = 0;
+ 
++// ---- META_TILESET RUN VIEW (scr_mts_run_colour) ----
++mts_run_view      = true;
++mts_plan          = -1;
++mts_plan_owner    = "";
++mts_plan_map      = -1;
++
+ // ---- Deferred charset preview rebuild (scr_chr_preview_defer) ----
+ chr_preview_pending = noone;
+ chr_preview_next_ms = 0;
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 6b2e30a..c97dccb 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -8639,6 +8639,143 @@ case "META_TILESET": {
+     var _ts_global_mixed = obj_workspace_manager.map_global_mixed;
+     if (!variable_struct_exists(_m, "active_mode")) _m.active_mode = 0;
+ 
++    // ---- RUN VIEW: colour cells exactly as the connected METASCROLL will ----
++    // FIXED paints every cell with one colour-RAM nibble; ROW BANDS gives
++    // each map row one nibble. Per-char colours only survive in SHIFT C64U,
++    // so for FIXED / ROW BANDS the editor shows the result instead of the
++    // per-char colours (toggle with RUN VIEW). The tally / bands are
++    // scr_mts_colour_plan, the same numbers the compiler uses, cached in
++    // mts_plan and recounted with the byte count below.
++    var _run_node    = scr_mts_find_scroller(_asset.name);
++    var _run_mode    = -1;
++    var _run_nib_set = -1;
++    var _run_map     = -1;
++    if (_run_node != noone) {
++        var _rn_ins = _run_node.instructions[0];
++        _run_mode = 0;
++        if (array_length(_rn_ins) > 6) {
++            if (is_real(_rn_ins[6])) { _run_mode = real(_rn_ins[6]); }
++        }
++        if (_run_mode == 1) { _run_mode = 0; }
++        if (array_length(_rn_ins) > 7) {
++            if (is_real(_rn_ins[7])) { _run_nib_set = real(_rn_ins[7]); }
++        }
++        _run_map = 0;
++        if (array_length(_rn_ins) > 2) {
++            if (is_real(_rn_ins[2])) { _run_map = real(_rn_ins[2]); }
++        }
++    }
++    var _run_mixed    = (_ts_global_mixed == 1);
++    var _run_has_plan = false;
++    if (is_struct(mts_plan)) {
++        if (mts_plan_owner == _asset.name && mts_plan_map == _run_map) { _run_has_plan = true; }
++    }
++    var _run_nib = 0;
++    if (_run_nib_set >= 0) {
++        _run_nib = _run_nib_set & 0x0F;
++    } else if (_run_has_plan) {
++        _run_nib = scr_mts_plan_auto_nib(mts_plan);
++    }
++    var _run_fx_on   = false;
++    var _run_rows_on = false;
++    if (mts_run_view && _run_mode == 0) { _run_fx_on = true; }
++    if (mts_run_view && _run_mode == 3 && _run_has_plan && _m.active_map == _run_map) { _run_rows_on = true; }
++    var _run_fx_mc = scr_mts_co_is_mc(_run_nib, _run_mixed, _ecm_mode);
++    var _run_fx_fg = scr_mts_co_fg(_run_nib, _run_mixed, _ecm_mode);
++
++    if (_run_mode == 0 || _run_mode == 3) {
++        draw_set_font_l(fnt_c64_tiny);
++        // Row 1: [RUN VIEW ON/OFF]  FIXED $nn (click cycles AUTO, $00-$0F) / ROW BANDS
++        var _rv_x1  = _vx1 + 10;
++        var _rv_x2  = _rv_x1 + 96;
++        var _rv_y1  = _cy;
++        var _rv_y2  = _cy + 14;
++        var _rv_hov = point_in_rectangle(_mx, _my, _rv_x1, _rv_y1, _rv_x2, _rv_y2);
++        if (mts_run_view) {
++            draw_set_color(make_color_rgb(20, 70, 50));
++        } else {
++            draw_set_color(make_color_rgb(35, 35, 45));
++        }
++        if (_rv_hov) { draw_set_color(make_color_rgb(40, 110, 80)); }
++        draw_rectangle(_rv_x1, _rv_y1, _rv_x2, _rv_y2, false);
++        draw_set_color(make_color_rgb(80, 200, 140));
++        draw_rectangle(_rv_x1, _rv_y1, _rv_x2, _rv_y2, true);
++        var _rv_lbl = "RUN VIEW: OFF";
++        if (mts_run_view) { _rv_lbl = "RUN VIEW: ON"; }
++        draw_set_color(c_white);
++        draw_text_l(_rv_x1 + 4, _rv_y1 + 1, _rv_lbl);
++        if (_rv_hov && mouse_check_button_pressed(mb_left)) {
++            mts_run_view = !mts_run_view;
++        }
++
++        var _rv_vx = _rv_x2 + 8;
++        if (_run_mode == 0) {
++            var _rv_ntxt = "FIXED $" + string_upper(decimal_to_hex(_run_nib));
++            if (_run_nib_set < 0) { _rv_ntxt = "FIXED AUTO $" + string_upper(decimal_to_hex(_run_nib)); }
++            var _rv_nw   = string_width_l(_rv_ntxt);
++            var _rv_nhov = point_in_rectangle(_mx, _my, _rv_vx - 2, _rv_y1, _rv_vx + _rv_nw + 2, _rv_y2);
++            draw_set_color(scr_c64_pepto_colour(_run_fx_fg));
++            draw_rectangle(_rv_vx - 2, _rv_y1 + 2, _rv_vx + 4, _rv_y2 - 2, false);
++            draw_set_color(c_lime);
++            if (_rv_nhov) { draw_set_color(c_white); }
++            draw_text_l(_rv_vx + 8, _rv_y1 + 1, _rv_ntxt);
++            // Click cycles the METASCROLL node's nibble: AUTO, $00..$0F
++            if (_rv_nhov && mouse_check_button_pressed(mb_left)) {
++                while (array_length(_run_node.instructions[0]) < 8) { array_push(_run_node.instructions[0], 0); }
++                var _rv_next = _run_nib_set + 1;
++                if (_rv_next > 15) { _rv_next = -1; }
++                _run_node.instructions[0][7] = _rv_next;
++                global.undo_dirty = true;
++            }
++        } else {
++            draw_set_color(c_aqua);
++            var _rv_btxt = "ROW BANDS";
++            if (_m.active_map != _run_map) { _rv_btxt = "ROW BANDS (MAP " + string(_run_map) + ")"; }
++            draw_text_l(_rv_vx, _rv_y1 + 1, _rv_btxt);
++        }
++
++        // Row 2: how many placed cells won't show their per-char colour, and ALL -> MC
++        var _rv_y3   = _cy + 17;
++        var _rv_miss = 0;
++        var _rv_tot  = 0;
++        if (_run_has_plan) {
++            _rv_tot = mts_plan.total;
++            if (_run_mode == 0) {
++                _rv_miss = mts_plan.total - mts_plan.tally[_run_nib];
++            } else {
++                _rv_miss = mts_plan.band_miss;
++            }
++        }
++        if (_rv_miss == 0) {
++            draw_set_color(c_lime);
++        } else {
++            draw_set_color(make_color_rgb(255, 120, 80));
++        }
++        draw_text_l(_rv_x1, _rv_y3 + 1, "OFF-COLOUR: " + string(_rv_miss) + " / " + string(_rv_tot));
++
++        if (_run_mixed && !_ecm_mode) {
++            var _mc_x1  = _vx1 + 146;
++            var _mc_x2  = _mc_x1 + 56;
++            var _mc_hov = point_in_rectangle(_mx, _my, _mc_x1, _rv_y3, _mc_x2, _rv_y3 + 14);
++            draw_set_color(make_color_rgb(70, 35, 5));
++            if (_mc_hov) { draw_set_color(make_color_rgb(140, 70, 10)); }
++            draw_rectangle(_mc_x1, _rv_y3, _mc_x2, _rv_y3 + 14, false);
++            draw_set_color(make_color_rgb(255, 160, 60));
++            draw_rectangle(_mc_x1, _rv_y3, _mc_x2, _rv_y3 + 14, true);
++            draw_text_l(_mc_x1 + 4, _rv_y3 + 1, "ALL > MC");
++            // Every char in the tileset becomes multicolour (char_lut bit 4)
++            if (_mc_hov && mouse_check_button_pressed(mb_left)) {
++                for (var _amc = 0; _amc < array_length(_m.char_lut); _amc++) {
++                    _m.char_lut[_amc] = _m.char_lut[_amc] | 0x10;
++                }
++                _m.is_dirty       = true;
++                global.undo_dirty = true;
++                mts_bytes_next_ms = 0;   // recount the tally now
++            }
++        }
++        _cy += 36;
++    }
++
+     draw_set_font_l(fnt_c64_tiny);
+     draw_set_color(make_color_rgb(80, 80, 100));
+     draw_text_l(_vx1 + 10, _cy + 4, "MODE:");
+@@ -9072,6 +9209,10 @@ case "META_TILESET": {
+                 var _px         = _sx2 + 4 + _col * _slot_tpx;
+                 var _py         = _sy2 + 4 + _row * _slot_tpx;
+                 var _prev_is_mc = (_ts_global_mixed == 1) && (_clut_mc(_m, _char_v) == 1);
++                if (_run_fx_on) {
++                    _prev_is_mc = _run_fx_mc;
++                    _col_v      = _run_fx_fg;
++                }
+                 if (_mts_atlas_ok && _slot_tpx >= 4) {
+                     // Glyph atlas: one tinted blit per colour layer instead of a rect per pixel
+                     if (_prev_is_mc) {
+@@ -9248,6 +9389,9 @@ case "META_TILESET": {
+     // at once on release / asset switch; otherwise reuse the cached counts.
+     var _mts_recount = false;
+     if (mts_bytes_owner != _asset.name) { _mts_recount = true; }
++    if (_run_node != noone) {
++        if (mts_plan_owner != _asset.name || mts_plan_map != _run_map) { _mts_recount = true; }
++    }
+     if (current_time >= mts_bytes_next_ms) { _mts_recount = true; }
+     if (mouse_check_button_released(mb_left) || mouse_check_button_released(mb_right)) { _mts_recount = true; }
+     var _all_map_bytes = 0;
+@@ -9276,6 +9420,12 @@ case "META_TILESET": {
+         _m.cur_map_bytes_disp = 1 + (_cur_placed * 3);
+         mts_bytes_owner   = _asset.name;
+         mts_bytes_next_ms = current_time + 250;
++        // RUN VIEW tally / row bands for the scroller's map
++        if (_run_node != noone) {
++            mts_plan       = scr_mts_colour_plan(_m, _run_map, _run_mixed, _ecm_mode);
++            mts_plan_owner = _asset.name;
++            mts_plan_map   = _run_map;
++        }
+     }
+ 
+     var _has_paint = false;
+@@ -9354,6 +9504,10 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+             }
+ 
+             var _cell_is_mc = (_ts_global_mixed == 1) && (_clut_mc(_m, _char_v) == 1);
++            if (_run_fx_on) {
++                _cell_is_mc = _run_fx_mc;
++                _col_v      = _run_fx_fg;
++            }
+ 
+             if (_mts_atlas_ok) {
+                 if (_cell_is_mc) {
+@@ -9872,6 +10026,17 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+                         var _spx   = _tax + _scc2 * _test_cs;
+                         var _spy   = _tay + _scr2 * _test_cs;
+                         var _ts_mc = (_ts_global_mixed == 1) && (_clut_mc(_m, _tsc) == 1);
++                        if (_run_fx_on) {
++                            _ts_mc = _run_fx_mc;
++                            _tscol = _run_fx_fg;
++                        } else if (_run_rows_on) {
++                            // ROW BANDS: the band of this cell's MAP row
++                            var _rv_row = _trow * _m.stamp_h + _scr2;
++                            var _rv_co  = 0;
++                            if (_rv_row < array_length(mts_plan.bands)) { _rv_co = mts_plan.bands[_rv_row]; }
++                            _ts_mc = scr_mts_co_is_mc(_rv_co, _run_mixed, _ecm_mode);
++                            _tscol = scr_mts_co_fg(_rv_co, _run_mixed, _ecm_mode);
++                        }
+ 
+                         if (!_mts_atlas_ok) {
+                             draw_set_color(_tt_bg);
+@@ -10445,6 +10610,10 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+                     _strip_char_mc  = (((_m.char_lut[_ci2] >> 4) & 0x01) == 1);
+                     _strip_char_col = _m.char_lut[_ci2] & 0x0F;
+                 }
++                if (_run_fx_on) {
++                    _strip_char_mc  = _run_fx_mc;
++                    _strip_char_col = _run_fx_fg;
++                }
+                 var _st_gsz = _cp_sz2 - 3;
+                 if (_ts_global_mixed == 1 && _strip_char_mc) {
+                     scr_mts_draw_glyph(_strip_real_char, _cpx1 + 2, _cp_y2_row + 2, _st_gsz, _st_gsz, true, scr_c64_pepto_colour(_ts_bg), scr_c64_pepto_colour(_strip_char_col & 0x07), _mts_mc1_col, _mts_mc2_col);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 1b10645..0824bb9 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -4769,6 +4769,10 @@ case "MACRO_METASCROLL": {
+     var _clamp     = (array_length(_id.instructions[0]) > 5 && is_real(_id.instructions[0][5])) ? real(_id.instructions[0][5]) : 1;
+     // [6] colour mode: 0 = FIXED (stock C64)
+     //                  2 = SHIFT C64U, chars and colour in the SAME frame.
++    //                  3 = ROW BANDS: one colour per MAP row. Horizontal
++    //                      coarse steps never touch colour RAM; a vertical
++    //                      step rewrites only the screen rows whose band
++    //                      changed. Stock-C64 safe for band-structured maps.
+     // There is no mode 1 any more. It shifted colour a frame after the chars,
+     // so for one frame in eight every cell wore its neighbour's colour - CPU
+     // speed could never fix that, it was the sequencing. Mode 2 does both
+@@ -5020,6 +5024,10 @@ case "MACRO_METASCROLL": {
+     // all - so FIXED writes the nibble once at init and never touches
+     // $D800 again. That halves the coarse step (one frame, chars only) and
+     // drops the colour plane from memory entirely.
++    // FIXED auto nibble and ROW BANDS both come from scr_mts_colour_plan,
++    // the same tally the tileset editor's RUN view shows - placed cells
++    // only, so empty map space doesn't vote for colour 0.
++    var _ms_plan = scr_mts_colour_plan(_tm, _map_index, (_ms_mode == 1), _ms_is_ecm);
+     var _fx_nib = 0;
+     if (_col_mode == 0)
+     {
+@@ -5029,18 +5037,7 @@ case "MACRO_METASCROLL": {
+         }
+         else
+         {
+-            // auto: the commonest colour byte across the flattened room
+-            var _tally = array_create(16, 0);
+-            for (var _ti = 0; _ti < _plane_sz; _ti++)
+-            {
+-                _tally[_co_plane[_ti] & 0x0F]++;
+-            }
+-            var _best = 0;
+-            for (var _tj = 1; _tj < 16; _tj++)
+-            {
+-                if (_tally[_tj] > _tally[_best]) { _best = _tj; }
+-            }
+-            _fx_nib = _best;
++            _fx_nib = scr_mts_plan_auto_nib(_ms_plan);
+         }
+     }
+ 
+@@ -5055,7 +5052,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["org", -2]);
+     array_push(_list, ["org", _base_addr]);
+     for (var _bi = 0; _bi < _plane_sz; _bi++) { array_push(_list, ["byte", _ch_plane[_bi]]); }
+-    if (_col_mode >= 1)
++    if (_col_mode == 2)
+     {
+         array_push(_list, ["org", _co_base]);
+         for (var _bj = 0; _bj < _plane_sz; _bj++) { array_push(_list, ["byte", _co_plane[_bj]]); }
+@@ -5083,6 +5080,32 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["label", _l_rowhi]);
+     for (var _r2 = 0; _r2 < _maph; _r2++) { array_push(_list, ["byte", ((_base_addr + _r2 * _mapw) >> 8) & 0xFF, _id]); }
+ 
++    // ROW BANDS: band colour per map row, the colour RAM row addresses of
++    // the window, and the band each screen row currently wears ($FF = none)
++    var _l_rband = _p + "rband";
++    var _l_rbl   = _p + "rbl";
++    var _l_rbh   = _p + "rbh";
++    var _l_rcur  = _p + "rcur";
++    var _l_rbt   = _p + "rbt";
++    if (_col_mode == 3)
++    {
++        array_push(_list, ["label", _l_rband]);
++        for (var _rb = 0; _rb < _maph; _rb++)
++        {
++            var _rb_v = 0;
++            if (_rb < array_length(_ms_plan.bands)) { _rb_v = _ms_plan.bands[_rb] & 0x0F; }
++            array_push(_list, ["byte", _rb_v, _id]);
++        }
++        array_push(_list, ["label", _l_rbl]);
++        for (var _rl = 0; _rl < _num_rows; _rl++) { array_push(_list, ["byte", (_cram + (_row_start + _rl) * 40 + _col_start) & 0xFF, _id]); }
++        array_push(_list, ["label", _l_rbh]);
++        for (var _rh = 0; _rh < _num_rows; _rh++) { array_push(_list, ["byte", ((_cram + (_row_start + _rh) * 40 + _col_start) >> 8) & 0xFF, _id]); }
++        array_push(_list, ["label", _l_rcur]);
++        for (var _rc = 0; _rc < _num_rows; _rc++) { array_push(_list, ["byte", 0xFF, _id]); }
++        array_push(_list, ["label", _l_rbt]);
++        array_push(_list, ["byte", 0x00, _id]);
++    }
++
+     array_push(_list, ["label", _l_skip]);
+ 
+     // ══════════════════════════════════════════════════════
+@@ -5294,6 +5317,10 @@ case "MACRO_METASCROLL": {
+         array_push(_list, ["jsr", _p + "shu_co",   _id]);
+         array_push(_list, ["jsr", _p + "fil_d_co", _id]);
+     }
++    if (_col_mode == 3)
++    {
++        array_push(_list, ["jsr", _p + "rb_sync",  _id]);
++    }
+     array_push(_list, ["jmp_abs", _l_p1end,  _id]);
+ 
+     array_push(_list, ["label",   _l_p1c]);
+@@ -5308,6 +5335,10 @@ case "MACRO_METASCROLL": {
+         array_push(_list, ["jsr", _p + "shd_co",   _id]);
+         array_push(_list, ["jsr", _p + "fil_u_co", _id]);
+     }
++    if (_col_mode == 3)
++    {
++        array_push(_list, ["jsr", _p + "rb_sync",  _id]);
++    }
+ 
+     array_push(_list, ["label",   _l_p1end]);
+     // FIXED mode is done here - there is no colour pass, so the coarse step
+@@ -5361,7 +5392,7 @@ case "MACRO_METASCROLL": {
+     var _sh_names  = [_p + "shl_ch", _p + "shr_ch"];
+     var _sh_bases  = [_scr,          _scr];
+     var _sh_left   = [1,             0];
+-    if (_col_mode >= 1)
++    if (_col_mode == 2)
+     {
+         _sh_names = [_p + "shl_ch", _p + "shl_co", _p + "shr_ch", _p + "shr_co"];
+         _sh_bases = [_scr,          _cram,         _scr,          _cram];
+@@ -5409,7 +5440,7 @@ case "MACRO_METASCROLL": {
+     var _sv_names = [_p + "shu_ch", _p + "shd_ch"];
+     var _sv_bases = [_scr,          _scr];
+     var _sv_up    = [1,             0];
+-    if (_col_mode >= 1)
++    if (_col_mode == 2)
+     {
+         _sv_names = [_p + "shu_ch", _p + "shu_co", _p + "shd_ch", _p + "shd_co"];
+         _sv_bases = [_scr,          _cram,         _scr,          _cram];
+@@ -5471,7 +5502,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["sta_zp",  _zp_src + 1,_id]);
+     array_push(_list, ["rts",     0,          _id]);
+ 
+-    if (_col_mode >= 1)
++    if (_col_mode == 2)
+     {
+         array_push(_list, ["label",   _l_maddrc]);
+         array_push(_list, ["jsr",     _l_maddr,   _id]);
+@@ -5489,7 +5520,7 @@ case "MACRO_METASCROLL": {
+     var _fc_col   = [0,               0];
+     var _fc_base  = [_scr,            _scr];
+     var _fc_edge  = [_col_start + _num_cols - 1, _col_start];
+-    if (_col_mode >= 1)
++    if (_col_mode == 2)
+     {
+         _fc_names = [_p + "fil_r_ch", _p + "fil_r_co", _p + "fil_l_ch", _p + "fil_l_co"];
+         _fc_col   = [0,               1,               0,               1];
+@@ -5552,7 +5583,7 @@ case "MACRO_METASCROLL": {
+     var _fr_base  = [_scr,            _scr];
+     var _fr_row   = [_row_start + _num_rows - 1, _row_start];
+     var _fr_off   = [_num_rows - 1,   0];
+-    if (_col_mode >= 1)
++    if (_col_mode == 2)
+     {
+         _fr_names = [_p + "fil_d_ch", _p + "fil_d_co", _p + "fil_u_ch", _p + "fil_u_co"];
+         _fr_col   = [0,               1,               0,               1];
+@@ -5587,7 +5618,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["label",   _l_repnt]);
+     array_push(_list, ["lda_imm", 0x00,        _id]);
+     array_push(_list, ["jsr",     _l_maddr,    _id]);
+-    if (_col_mode >= 1)
++    if (_col_mode == 2)
+     {
+         array_push(_list, ["lda_zp",  _zp_src,     _id]);
+         array_push(_list, ["sta_zp",  _zp_dst,     _id]);
+@@ -5600,7 +5631,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["sta_lab", _p + "rp_s",  _id]);
+     array_push(_list, ["lda_imm", (_rp_s0 >> 8) & 0xFF, _id]);
+     array_push(_list, ["sta_lab", _p + "rp_s1", _id]);
+-    if (_col_mode >= 1)
++    if (_col_mode == 2)
+     {
+         array_push(_list, ["lda_imm", _rp_c0 & 0xFF,        _id]);
+         array_push(_list, ["sta_lab", _p + "rp_c",  _id]);
+@@ -5617,7 +5648,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["byte",    0x00, _id]);
+     array_push(_list, ["label",   _p + "rp_s1"]);
+     array_push(_list, ["byte",    0x00, _id]);
+-    if (_col_mode >= 1)
++    if (_col_mode == 2)
+     {
+         array_push(_list, ["lda_izy", _zp_dst, _id]);
+         array_push(_list, ["byte",    0x99, _id]);          // STA abs,Y - colour
+@@ -5635,7 +5666,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["lda_zp",  _zp_src + 1,  _id]);
+     array_push(_list, ["adc_imm", 0x00,         _id]);
+     array_push(_list, ["sta_zp",  _zp_src + 1,  _id]);
+-    if (_col_mode >= 1)
++    if (_col_mode == 2)
+     {
+         array_push(_list, ["lda_zp",  _zp_dst,      _id]);
+         array_push(_list, ["clc",     0,            _id]);
+@@ -5652,7 +5683,7 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["lda_lab", _p + "rp_s1", _id]);
+     array_push(_list, ["adc_imm", 0x00,         _id]);
+     array_push(_list, ["sta_lab", _p + "rp_s1", _id]);
+-    if (_col_mode >= 1)
++    if (_col_mode == 2)
+     {
+         array_push(_list, ["lda_lab", _p + "rp_c",  _id]);
+         array_push(_list, ["clc",     0,            _id]);
+@@ -5670,6 +5701,47 @@ case "MACRO_METASCROLL": {
+     // init - 38 col / 24 row mode, blank the screen, paint the window.
+     // Only col 39 stays blank afterwards; every other cell scrolls.
+     // ══════════════════════════════════════════════════════
++    // ══════════════════════════════════════════════════════
++    // rb_sync (ROW BANDS) - for each window row, look up the band of the
++    // map row it now shows; if that differs from what the row wears, fill
++    // the row's colour RAM with it. Rows whose band didn't change cost
++    // ~20 cycles; a changed row ~430.
++    // ══════════════════════════════════════════════════════
++    if (_col_mode == 3)
++    {
++        array_push(_list, ["label",   _p + "rb_sync"]);
++        array_push(_list, ["ldy_imm", 0x00,            _id]);
++        array_push(_list, ["label",   _p + "rb_lp"]);
++        array_push(_list, ["tya",     0,               _id]);
++        array_push(_list, ["clc",     0,               _id]);
++        array_push(_list, ["adc_zp",  _zp_camy,        _id]);
++        array_push(_list, ["tax",     0,               _id]);
++        array_push(_list, ["lda_abx", _l_rband,        _id]);
++        array_push(_list, ["cmp_aby", _l_rcur,         _id]);
++        array_push(_list, ["beq",     _p + "rb_nx",    _id]);
++        array_push(_list, ["sta_aby", _l_rcur,         _id]);
++        array_push(_list, ["tax",     0,               _id]);   // X = band colour
++        array_push(_list, ["tya",     0,               _id]);
++        array_push(_list, ["sta_lab", _l_rbt,          _id]);   // save row index
++        array_push(_list, ["lda_aby", _l_rbl,          _id]);
++        array_push(_list, ["sta_zp",  _zp_dst,         _id]);
++        array_push(_list, ["lda_aby", _l_rbh,          _id]);
++        array_push(_list, ["sta_zp",  _zp_dst + 1,     _id]);
++        array_push(_list, ["txa",     0,               _id]);
++        array_push(_list, ["ldy_imm", _num_cols - 1,   _id]);
++        array_push(_list, ["label",   _p + "rb_fill"]);
++        array_push(_list, ["sta_izy", _zp_dst,         _id]);
++        array_push(_list, ["dey",     0,               _id]);
++        array_push(_list, ["bpl",     _p + "rb_fill",  _id]);
++        array_push(_list, ["lda_lab", _l_rbt,          _id]);
++        array_push(_list, ["tay",     0,               _id]);
++        array_push(_list, ["label",   _p + "rb_nx"]);
++        array_push(_list, ["iny",     0,               _id]);
++        array_push(_list, ["cpy_imm", _num_rows,       _id]);
++        array_push(_list, ["bne",     _p + "rb_lp",    _id]);
++        array_push(_list, ["rts",     0,               _id]);
++    }
++
+     array_push(_list, ["label",   _l_init]);
+ 
+     array_push(_list, ["lda_imm", 0x00,       _id]);
+@@ -5722,6 +5794,17 @@ case "MACRO_METASCROLL": {
+     array_push(_list, ["bne",     _p + "cl2b", _id]);
+ 
+     array_push(_list, ["jsr",     _l_repnt,   _id]);
++    if (_col_mode == 3)
++    {
++        // colour RAM was just cleared: mark every row as wearing no band
++        array_push(_list, ["lda_imm", 0xFF,             _id]);
++        array_push(_list, ["ldx_imm", _num_rows - 1,    _id]);
++        array_push(_list, ["label",   _p + "rb_i"]);
++        array_push(_list, ["sta_abx", _l_rcur,          _id]);
++        array_push(_list, ["dex",     0,                _id]);
++        array_push(_list, ["bpl",     _p + "rb_i",      _id]);
++        array_push(_list, ["jsr",     _p + "rb_sync",   _id]);
++    }
+     array_push(_list, ["rts",     0,          _id]);
+ 
+     // ── Spine resumes ─────────────────────────────────────
+@@ -5730,7 +5813,13 @@ case "MACRO_METASCROLL": {
+     var _cm_txt = "COLOUR FIXED $" + string_upper(decimal_to_hex(_fx_nib))
+                 + " (1-frame coarse, char plane only, "
+                 + string(_plane_sz) + " bytes)";
+-    if (_col_mode == 2)
++    if (_col_mode == 3)
++    {
++        _cm_txt = "COLOUR ROW BANDS (" + string(_maph) + " band bytes, "
++                + string(_ms_plan.band_miss) + " of " + string(_ms_plan.total)
++                + " placed cells differ from their row)";
++    }
++    else if (_col_mode == 2)
+     {
+         _cm_txt = "COLOUR SHIFT C64U (1-frame coarse, chars + colour together, "
+                 + string(_plane_sz * 2) + " bytes - needs a fast machine)";
+diff --git a/C64DevMachine_win.yyp/scripts/scr_mts_run_colour/scr_mts_run_colour.gml b/C64DevMachine_win.yyp/scripts/scr_mts_run_colour/scr_mts_run_colour.gml
+new file mode 100644
+index 0000000..bd745cc
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_mts_run_colour/scr_mts_run_colour.gml
+@@ -0,0 +1,148 @@
++/// META_TILESET "as it will run" colour model.
++///
++/// MACRO_METASCROLL has three colour modes:
++///   0 FIXED      one colour-RAM nibble for the whole screen, written at init
++///   2 SHIFT C64U colour plane shifted with the chars (per-char colour)
++///   3 ROW BANDS  one nibble per MAP row, written per screen row. Horizontal
++///                coarse steps cost nothing; a vertical step rewrites only
++///                the screen rows whose band colour actually changed.
++///
++/// These helpers give the tileset editor the same numbers the compiler
++/// uses, so the RUN view shows what the C64 will show.
++///
++/// A colour byte ("co") is what lands in colour RAM:
++///   ECM or HR ONLY : the full nibble, hires
++///   MIXED          : bit 3 = multicolour, bits 0-2 = the cell's own colour
++
++/// The per-char colour byte of one cell, exactly as the compiler bakes it.
++/// @param {struct} _tm     META_TILESET meta
++/// @param {real}   _mt     Metatile (stamp) index, for the stamp override
++/// @param {real}   _ch     Char index (virtual index in ECM)
++/// @param {bool}   _mixed  Workspace MIXED mode
++/// @param {bool}   _ecm    Linked charset is ECM
++function scr_mts_char_co(_tm, _mt, _ch, _mixed, _ecm) {
++    var _col = 0;
++    var _mc  = 0;
++    if (_ch < array_length(_tm.char_lut)) {
++        _col = _tm.char_lut[_ch] & 0x0F;
++        _mc  = (_tm.char_lut[_ch] >> 4) & 0x01;
++    }
++    if (_mt >= 0 && _mt < array_length(_tm.stamp_override)) {
++        if (_tm.stamp_override[_mt] != 0x80) { _col = _tm.stamp_override[_mt]; }
++    }
++    if (_ecm)    { return _col & 0x0F; }
++    if (!_mixed) { return _col & 0x0F; }
++    if (_mc == 1) { return (_col & 0x07) | 0x08; }
++    return _col & 0x07;
++}
++
++/// Is a colour byte a multicolour cell?
++function scr_mts_co_is_mc(_co, _mixed, _ecm) {
++    if (_ecm)    { return false; }
++    if (!_mixed) { return false; }
++    return ((_co & 0x08) != 0);
++}
++
++/// The ink colour (HR ink / MC %11) a colour byte shows.
++function scr_mts_co_fg(_co, _mixed, _ecm) {
++    if (_ecm)    { return _co & 0x0F; }
++    if (!_mixed) { return _co & 0x0F; }
++    return _co & 0x07;
++}
++
++/// Tally one map's placed cells.
++/// Returns { total, tally[16], bands[], band_miss, maph }
++///   tally[c]  cells whose colour byte is c        (FIXED auto = argmax)
++///   bands[r]  commonest colour byte of map row r  (ROW BANDS)
++///   band_miss cells that differ from their row's band
++/// @param {struct} _tm
++/// @param {real}   _map_index
++/// @param {bool}   _mixed
++/// @param {bool}   _ecm
++function scr_mts_colour_plan(_tm, _map_index, _mixed, _ecm) {
++    var _plan = {
++        total     : 0,
++        tally     : array_create(16, 0),
++        bands     : [],
++        band_miss : 0,
++        maph      : 0
++    };
++    if (_map_index < 0 || _map_index >= _tm.map_count) { return _plan; }
++    if (_map_index >= array_length(_tm.maps)) { return _plan; }
++
++    var _grid  = _tm.maps[_map_index];
++    var _sw    = _tm.stamp_w;
++    var _sh    = _tm.stamp_h;
++    var _cells = _sw * _sh;
++    var _lit_w = 40;
++    if (_map_index < array_length(_tm.map_w)) { _lit_w = _tm.map_w[_map_index]; }
++    var _cols_g = floor(_lit_w / _sw);
++    if (_cols_g < 1) { _cols_g = 1; }
++    var _rows_g = floor(array_length(_grid) / _cols_g);
++    var _maph   = _rows_g * _sh;
++    _plan.maph  = _maph;
++
++    // Per map row tallies, 16 slots each
++    var _row_tally = array_create(_maph * 16, 0);
++    var _row_total = array_create(_maph, 0);
++
++    for (var _gy = 0; _gy < _rows_g; _gy++) {
++        for (var _gx = 0; _gx < _cols_g; _gx++) {
++            var _mt = _grid[_gy * _cols_g + _gx];
++            if (_mt < 0) { continue; }
++            if (_mt >= _tm.stamp_count) { continue; }
++            for (var _cy = 0; _cy < _sh; _cy++) {
++                var _r = _gy * _sh + _cy;
++                for (var _cx = 0; _cx < _sw; _cx++) {
++                    var _db = _mt * _cells + _cy * _sw + _cx;
++                    if (_db >= array_length(_tm.stamp_data)) { continue; }
++                    var _co = scr_mts_char_co(_tm, _mt, _tm.stamp_data[_db], _mixed, _ecm) & 0x0F;
++                    _plan.tally[_co] += 1;
++                    _plan.total      += 1;
++                    _row_tally[_r * 16 + _co] += 1;
++                    _row_total[_r]            += 1;
++                }
++            }
++        }
++    }
++
++    _plan.bands = array_create(_maph, 0);
++    for (var _br = 0; _br < _maph; _br++) {
++        var _best = 0;
++        for (var _bc = 1; _bc < 16; _bc++) {
++            if (_row_tally[_br * 16 + _bc] > _row_tally[_br * 16 + _best]) { _best = _bc; }
++        }
++        _plan.bands[_br]  = _best;
++        _plan.band_miss  += _row_total[_br] - _row_tally[_br * 16 + _best];
++    }
++    return _plan;
++}
++
++/// FIXED auto nibble: the commonest colour byte in the plan.
++function scr_mts_plan_auto_nib(_plan) {
++    var _best = 0;
++    for (var _i = 1; _i < 16; _i++) {
++        if (_plan.tally[_i] > _plan.tally[_best]) { _best = _i; }
++    }
++    return _best;
++}
++
++/// The live MACRO_METASCROLL (on the spine or inside an ORG) that scrolls
++/// this tileset, or noone.
++/// @param {string} _ts_name
++function scr_mts_find_scroller(_ts_name) {
++    var _found = noone;
++    with (obj_c64_node) {
++        if (node_type != "MACRO_METASCROLL") { continue; }
++        var _live = is_connected;
++        if (org_parent != noone) {
++            if (instance_exists(org_parent)) { _live = true; }
++        }
++        if (!_live) { continue; }
++        if (array_length(instructions[0]) < 2) { continue; }
++        if (string(instructions[0][1]) != _ts_name) { continue; }
++        _found = id;
++        break;
++    }
++    return _found;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_mts_run_colour/scr_mts_run_colour.yy b/C64DevMachine_win.yyp/scripts/scr_mts_run_colour/scr_mts_run_colour.yy
+new file mode 100644
+index 0000000..92a7d68
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_mts_run_colour/scr_mts_run_colour.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_mts_run_colour",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_mts_run_colour",
++  "parent":{
++    "name":"I_O",
++    "path":"folders/SCRIPTS/CORE/I_O.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml
+index 309a2b4..6cf103f 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_metascroll/scr_node_draw_macro_metascroll.gml
+@@ -61,9 +61,12 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+     var _pages    = ceil(_plane_sz / 256);
+     var _co_base  = _base_addr + _pages * 256;
+     var _bytes    = _plane_sz;
+-    if (_col_mode >= 1) {
++    if (_col_mode == 2) {
+         _bytes = _plane_sz * 2;
+     }
++    if (_col_mode == 3) {
++        _bytes = _plane_sz + _maph;   // + one band byte per map row
++    }
+ 
+     // ── Layout ───────────────────────────────────────────
+     // Tiny font throughout, and the value column is measured from the widest
+@@ -109,7 +112,7 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+     draw_text_l(_lx, _ly, "PLANES:");
+     draw_set_color(c_yellow);
+     var _pl_txt = "$" + string_upper(decimal_to_hex(_base_addr));
+-    if (_col_mode >= 1) {
++    if (_col_mode == 2) {
+         _pl_txt = _pl_txt + " / $" + string_upper(decimal_to_hex(_co_base));
+     }
+     draw_text_l(_vx, _ly, _pl_txt);
+@@ -118,9 +121,12 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+     // ROW 3 — memory cost
+     draw_set_color(make_color_rgb(180, 100, 30));
+     var _sz_txt = string(_bytes) + " BYTES, CHAR PLANE";
+-    if (_col_mode >= 1) {
++    if (_col_mode == 2) {
+         _sz_txt = string(_bytes) + " BYTES, CHAR + COLOUR";
+     }
++    if (_col_mode == 3) {
++        _sz_txt = string(_bytes) + " BYTES, CHAR + ROW BANDS";
++    }
+     draw_text_l(_lx, _ly, _sz_txt);
+     _ly += _lh;
+ 
+@@ -144,6 +150,11 @@ function scr_node_draw_macro_metascroll(_draw_x, _draw_y, _cam_x, _cam_y, _cam_z
+         _cm_txt  = "SHIFT C64U";
+         _cm_note = "TURBO";
+     }
++    if (_col_mode == 3) {
++        _cm_col  = c_aqua;
++        _cm_txt  = "ROW BANDS";
++        _cm_note = "PER MAP ROW";
++    }
+     draw_set_color(_cm_col);
+     draw_text_l(_vx, _ly, _cm_txt);
+     if (_col_mode == 0) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml
+index c2d496f..bbc35e0 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_metascroll/scr_node_step_macro_metascroll.gml
+@@ -106,16 +106,19 @@ function scr_node_step_macro_metascroll(_draw_x) {
+     // ── ROW 5 - COLOUR MODE toggle, and the fixed nibble ──
+     var _cm_ly = _ly0 + _lh * 5;
+     if (point_in_rectangle(mouse_x, mouse_y, _vx, _cm_ly - 2, _vx + 64, _cm_ly + 12)) {
+-        // Two modes only: 0 FIXED (stock C64) and 2 SHIFT C64U (turbo).
++        // Cycles 0 FIXED (stock C64) -> 3 ROW BANDS (stock C64, colour per
++        // map row) -> 2 SHIFT C64U (turbo) -> FIXED.
+         // The old mode 1 (2-frame SHIFT) is gone - it always wore one frame
+         // in eight of the neighbour's colour, whatever the CPU speed. A
+-        // project saved with it toggles straight to SHIFT C64U from FIXED.
++        // project saved with it loads as FIXED and steps on to ROW BANDS.
+         var _cm_cur = 0;
+         if (array_length(instructions[0]) > 6 && is_real(instructions[0][6])) _cm_cur = real(instructions[0][6]);
+         if (_cm_cur == 2) {
+             _cm_cur = 0;
+-        } else {
++        } else if (_cm_cur == 3) {
+             _cm_cur = 2;
++        } else {
++            _cm_cur = 3;
+         }
+         instructions[0][6] = _cm_cur;
+         global.addresses_dirty = true;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+index 8e6d4cc..c28e97d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_tooltip_text/scr_node_tooltip_text.gml
+@@ -276,15 +276,19 @@ function scr_node_tooltip_text(_node_type) {
+                 "a char is 8, so that one is hardware. Hide it with",
+                 "a sprite if it shows.",
+                 "",
+-                "COLOUR is a two-way choice, and it is really a",
+-                "choice of machine. FIXED writes one nibble at init",
++                "COLOUR has three modes. FIXED writes one nibble at init",
+                 "and never touches $D800 again - the multicolour set",
+                 "lives in $D021/$D022/$D023, so on a stock C64 you",
+                 "lose nothing and the coarse step is one frame with",
+                 "no colour plane in memory. SHIFT C64U scrolls colour",
+                 "cell by cell in the same frame as the chars: clean",
+                 "on a C64 Ultimate in turbo, runs into the display on",
+-                "a stock 1 MHz machine.",
++                "a stock 1 MHz machine. ROW BANDS gives every MAP row",
++                "one nibble (its commonest colour): horizontal steps",
++                "never touch $D800, vertical steps rewrite only the",
++                "screen rows whose band changed - stock-C64 safe for",
++                "sky / ground style maps. The tileset editor's RUN",
++                "VIEW shows FIXED and ROW BANDS as they will run.",
+                 "",
+                 "The old 2-frame SHIFT is gone. It moved colour a",
+                 "frame behind the chars, so one frame in eight every",

@@ -652,6 +652,12 @@ mts_atlas_tf_prev = false;
 mts_bytes_owner   = "";
 mts_bytes_next_ms = 0;
 
+// ---- META_TILESET RUN VIEW (scr_mts_run_colour) ----
+mts_run_view      = true;
+mts_plan          = -1;
+mts_plan_owner    = "";
+mts_plan_map      = -1;
+
 // ---- Deferred charset preview rebuild (scr_chr_preview_defer) ----
 chr_preview_pending = noone;
 chr_preview_next_ms = 0;
