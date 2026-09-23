@@ -3,15 +3,20 @@
 /// The tileset editor used to draw every char pixel with its own
 /// draw_rectangle, every frame, in four places (stamp list, edit canvas,
 /// map view, char strip). Instead each of the 256 chars is rendered once into
-/// four white mask layers of one 512x128 surface:
+/// four white mask layers of one 520x128 surface:
 ///
 ///   x   0..127  HR  - bit set
 ///   x 128..255  MC  - pair %01  ($D022)
 ///   x 256..383  MC  - pair %10  ($D023)
 ///   x 384..511  MC  - pair %11  (colour RAM)
+///   x 512..519  solid 8x8 block (y 0..7) - the cell background
 ///
 /// Char c sits at ((c mod 16) * 8, (c div 16) * 8) inside each layer. Drawing a
-/// cell is then a background rect plus one tinted blit (HR) or three (MC).
+/// cell is then a tinted background blit plus one tinted blit (HR) or three
+/// (MC). Everything comes from the same texture, so a whole loop of cells
+/// batches instead of breaking on every untextured rectangle; wrap such loops
+/// in scr_mts_glyph_begin / scr_mts_glyph_end so texture filtering is switched
+/// once per loop rather than per cell.
 ///
 /// The masks are built in a CPU-side RGBA buffer and uploaded with
 /// buffer_set_surface, so surface loss is a re-upload, not a re-render.
@@ -39,6 +44,12 @@ function scr_mts_atlas_update(_chr) {
         if (_full) {
             for (var _c = 0; _c < 256; _c++) {
                 scr_mts_atlas_write_glyph(mts_atlas_pix, _src, _src_sz, _c);
+            }
+            // Solid background block
+            for (var _by = 0; _by < 8; _by++) {
+                for (var _bx = 0; _bx < 8; _bx++) {
+                    buffer_poke(mts_atlas_pix, ((_by * 520) + 512 + _bx) * 4, buffer_u32, 0xFFFFFFFF);
+                }
             }
             buffer_fill(mts_atlas_shadow, 0, buffer_u8, 0, 2048);
             buffer_copy(_src, 0, _src_sz, mts_atlas_shadow, 0);
@@ -82,7 +93,7 @@ function scr_mts_atlas_update(_chr) {
         }
 
         if (!surface_exists(mts_atlas_surf)) {
-            mts_atlas_surf   = surface_create(512, 128);
+            mts_atlas_surf   = surface_create(520, 128);
             mts_atlas_upload = true;
         }
         if (mts_atlas_upload) {
@@ -94,7 +105,7 @@ function scr_mts_atlas_update(_chr) {
 }
 
 /// Render one char's four mask layers into the RGBA pixel buffer.
-/// @param {Id.Buffer} _pix     512x128 RGBA atlas buffer
+/// @param {Id.Buffer} _pix     520x128 RGBA atlas buffer
 /// @param {Id.Buffer} _src     Charset buffer
 /// @param {real}      _src_sz  Usable bytes in _src (chars past it render blank)
 /// @param {real}      _c       Char index 0-255
@@ -105,7 +116,7 @@ function scr_mts_atlas_write_glyph(_pix, _src, _src_sz, _c) {
         var _o = (_c * 8) + _r;
         var _b = 0;
         if (_o < _src_sz) { _b = buffer_peek(_src, _o, buffer_u8); }
-        var _row = ((_gy + _r) * 512 + _gx) * 4;
+        var _row = ((_gy + _r) * 520 + _gx) * 4;
         for (var _p = 0; _p < 8; _p++) {
             var _hr = 0;
             if ((_b & (0x80 >> _p)) != 0) { _hr = 0xFFFFFFFF; }
@@ -124,7 +135,23 @@ function scr_mts_atlas_write_glyph(_pix, _src, _src_sz, _c) {
     }
 }
 
+/// Switch texture filtering off for a loop of scr_mts_draw_glyph calls.
+/// The project interpolates pixels; scaled glyphs must stay sharp and must
+/// not bleed in from their atlas neighbours. Pair with scr_mts_glyph_end.
+function scr_mts_glyph_begin() {
+    with (obj_asset_manager) {
+        mts_atlas_tf_prev = gpu_get_texfilter();
+    }
+    gpu_set_texfilter(false);
+}
+
+/// Restore the texture filtering saved by scr_mts_glyph_begin.
+function scr_mts_glyph_end() {
+    gpu_set_texfilter(obj_asset_manager.mts_atlas_tf_prev);
+}
+
 /// Draw one char cell from the atlas: background, then the tinted layer(s).
+/// Call between scr_mts_glyph_begin / scr_mts_glyph_end.
 /// Colours are GameMaker colours (already through scr_c64_pepto_colour).
 /// @param {real} _rc      Real char index 0-255 (ECM: already mod 64)
 /// @param {real} _x
@@ -137,11 +164,12 @@ function scr_mts_atlas_write_glyph(_pix, _src, _src_sz, _c) {
 /// @param {real} _mc1     MC %01 ($D022)
 /// @param {real} _mc2     MC %10 ($D023)
 function scr_mts_draw_glyph(_rc, _x, _y, _w, _h, _is_mc, _bg, _fg, _mc1, _mc2) {
-    draw_set_color(_bg);
-    draw_rectangle(_x, _y, _x + _w - 1, _y + _h - 1, false);
-
     var _surf = obj_asset_manager.mts_atlas_surf;
-    if (!surface_exists(_surf)) { exit; }
+    if (!surface_exists(_surf)) {
+        draw_set_color(_bg);
+        draw_rectangle(_x, _y, _x + _w - 1, _y + _h - 1, false);
+        exit;
+    }
 
     var _c  = clamp(floor(_rc), 0, 255);
     var _gx = (_c mod 16) * 8;
@@ -149,10 +177,7 @@ function scr_mts_draw_glyph(_rc, _x, _y, _w, _h, _is_mc, _bg, _fg, _mc1, _mc2) {
     var _sx = _w / 8;
     var _sy = _h / 8;
 
-    // Project has pixel interpolation on - scaled glyphs must stay sharp
-    // and must not bleed in from their atlas neighbours.
-    var _tf_prev = gpu_get_texfilter();
-    gpu_set_texfilter(false);
+    draw_surface_part_ext(_surf, 512, 0, 8, 8, _x, _y, _sx, _sy, _bg, 1);
     if (_is_mc) {
         draw_surface_part_ext(_surf, 128 + _gx, _gy, 8, 8, _x, _y, _sx, _sy, _mc1, 1);
         draw_surface_part_ext(_surf, 256 + _gx, _gy, 8, 8, _x, _y, _sx, _sy, _mc2, 1);
@@ -160,5 +185,4 @@ function scr_mts_draw_glyph(_rc, _x, _y, _w, _h, _is_mc, _bg, _fg, _mc1, _mc2) {
     } else {
         draw_surface_part_ext(_surf, _gx, _gy, 8, 8, _x, _y, _sx, _sy, _fg, 1);
     }
-    gpu_set_texfilter(_tf_prev);
 }

@@ -8983,6 +8983,7 @@ case "META_TILESET": {
         ceil((_list_x2 - _list_x1) * _lsx), ceil(_list_area_h * _lsy)
     );
 
+    scr_mts_glyph_begin();
     for (var _si = 0; _si <= _m.stamp_count; _si++) {
         var _is_ghost = (_si == _m.stamp_count);
         var _scol3 = _si mod _cols3;
@@ -9134,6 +9135,7 @@ case "META_TILESET": {
             }
         }
     }
+    scr_mts_glyph_end();
 
     gpu_set_scissor(0, 0, window_get_width(), window_get_height());
 
@@ -9318,6 +9320,7 @@ case "META_TILESET": {
     var _grid_ox   = floor(_canvas_x1 + ((_canvas_x2 - _canvas_x1) - _grid_px_w) * 0.5);
     var _grid_oy   = floor(_canvas_y1 + ((_canvas_y2 - _canvas_y1) - _grid_px_h) * 0.5);
 
+    scr_mts_glyph_begin();
 for (var _row = 0; _row < _m.stamp_h; _row++) {
         for (var _col = 0; _col < _m.stamp_w; _col++) {
             var _cidx   = _row * _m.stamp_w + _col;
@@ -9332,8 +9335,10 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             var _cx2    = _grid_ox + _col * _cell_sz;
             var _cy3    = _grid_oy + _row * _cell_sz;
 
-            draw_set_color(_ec_bg);
-            draw_rectangle(_cx2, _cy3, _cx2 + _cell_sz - 1, _cy3 + _cell_sz - 1, false);
+            if (!_mts_atlas_ok) {
+                draw_set_color(_ec_bg);
+                draw_rectangle(_cx2, _cy3, _cx2 + _cell_sz - 1, _cy3 + _cell_sz - 1, false);
+            }
 
             var _cell_is_mc = (_ts_global_mixed == 1) && (_clut_mc(_m, _char_v) == 1);
 
@@ -9355,6 +9360,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             draw_rectangle(_cx2, _cy3, _cx2 + _cell_sz - 1, _cy3 + _cell_sz - 1, true);
         }
     }
+    scr_mts_glyph_end();
 
     // Paint interaction on canvas
     if (point_in_rectangle(_mx, _my, _canvas_x1, _canvas_y1, _canvas_x2, _canvas_y2)) {
@@ -9813,6 +9819,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         );
     }
 
+    scr_mts_glyph_begin();
     for (var _trow = _draw_row0; _trow < _draw_row1; _trow++) {
         for (_tcol = _draw_col0; _tcol < _draw_col1; _tcol++) {
             var _tidx = _trow * _test_cols + _tcol;
@@ -9847,8 +9854,10 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
                         var _spy   = _tay + _scr2 * _test_cs;
                         var _ts_mc = (_ts_global_mixed == 1) && (_clut_mc(_m, _tsc) == 1);
 
-                        draw_set_color(_tt_bg);
-                        draw_rectangle(_spx, _spy, _spx + _test_cs - 1, _spy + _test_cs - 1, false);
+                        if (!_mts_atlas_ok) {
+                            draw_set_color(_tt_bg);
+                            draw_rectangle(_spx, _spy, _spx + _test_cs - 1, _spy + _test_cs - 1, false);
+                        }
 
                         if (_mts_atlas_ok) {
                             if (_ts_mc) {
@@ -9908,6 +9917,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             }
         }
     }
+    scr_mts_glyph_end();
 	gpu_set_scissor(0, 0, window_get_width(), window_get_height());
 
     // ---- MAP MODE SCROLLBARS (shown only when the map doesn't fit the panel) ----
@@ -10386,6 +10396,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _ssx2 = window_get_width()  / global.gui_w;
     var _ssy2 = window_get_height() / display_get_gui_height();
 
+    scr_mts_glyph_begin();
     for (var _crow = 0; _crow < _cp_rows; _crow++) {
         for (var _pi2 = 0; _pi2 < _cp_cnt2; _pi2++) {
             var _ci2       = (_cp_start_row + _crow) * _cp_cnt2 + _pi2;
@@ -10502,6 +10513,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             }
         }
     }
+    scr_mts_glyph_end();
 
     gpu_set_scissor(0, 0, window_get_width(), window_get_height());
 

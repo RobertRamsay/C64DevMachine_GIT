@@ -385,7 +385,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
             }
         }
 
-        scr_chr_preview_request(_asset);   // deferred: rebuilt every 150ms while held, at once on release
+        scr_chr_preview_request(_asset);   // deferred: rebuilt on mouse release
         global.undo_dirty = true;
         _asset.meta.is_dirty = true;
     }
@@ -417,7 +417,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
             var _bit_mask = (1 << (7 - _col));
             buffer_poke(_asset.buffer, _byte_pos, buffer_u8, _cur & ~_bit_mask);
         }
-        scr_chr_preview_request(_asset);   // deferred: rebuilt every 150ms while held, at once on release
+        scr_chr_preview_request(_asset);   // deferred: rebuilt on mouse release
         global.undo_dirty = true;
         _asset.meta.is_dirty = true;
     }

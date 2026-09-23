@@ -638,7 +638,7 @@ if (sprite_exists(spr_dith_interlace)) _bake_mask(spr_dith_interlace, dither_dat
 
 // ---- META_TILESET glyph atlas (scr_mts_atlas) ----
 mts_atlas_surf    = -1;
-mts_atlas_pix     = buffer_create(512 * 128 * 4, buffer_fixed, 1);
+mts_atlas_pix     = buffer_create(520 * 128 * 4, buffer_fixed, 1);
 mts_atlas_shadow  = buffer_create(2048, buffer_fixed, 1);
 mts_atlas_owner   = "";
 mts_atlas_src_sz  = -1;
@@ -646,6 +646,7 @@ mts_atlas_crc     = -1;
 mts_atlas_next_ms = 0;
 mts_atlas_upload  = true;
 mts_atlas_ok      = false;
+mts_atlas_tf_prev = false;
 
 // ---- META_TILESET byte-count throttle ----
 mts_bytes_owner   = "";
