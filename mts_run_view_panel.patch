@@ -1,0 +1,154 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index c97dccb..03a1e05 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -8683,10 +8683,19 @@ case "META_TILESET": {
+     var _run_fx_mc = scr_mts_co_is_mc(_run_nib, _run_mixed, _ecm_mode);
+     var _run_fx_fg = scr_mts_co_fg(_run_nib, _run_mixed, _ecm_mode);
+ 
+-    if (_run_mode == 0 || _run_mode == 3) {
+-        draw_set_font_l(fnt_c64_tiny);
+-        // Row 1: [RUN VIEW ON/OFF]  FIXED $nn (click cycles AUTO, $00-$0F) / ROW BANDS
+-        var _rv_x1  = _vx1 + 10;
++    // RUN VIEW panel. Always present so it's findable:
++    //   no scroller   -> one grey line saying what's needed
++    //   any scroller  -> RUN VIEW toggle + the node's colour mode (click to
++    //                    cycle FIXED -> ROW BANDS -> SHIFT C64U on the node),
++    //                    the FIXED nibble, OFF-COLOUR count and ALL > MC
++    draw_set_font_l(fnt_c64_tiny);
++    var _rv_x1 = _vx1 + 10;
++    if (_run_node == noone) {
++        draw_set_color(make_color_rgb(110, 110, 130));
++        draw_text_l(_rv_x1, _cy + 1, "RUN VIEW: CONNECT A METASCROLL");
++        _cy += 18;
++    } else {
++        // Row 1: [RUN VIEW ON/OFF]  [MODE]
+         var _rv_x2  = _rv_x1 + 96;
+         var _rv_y1  = _cy;
+         var _rv_y2  = _cy + 14;
+@@ -8708,54 +8717,70 @@ case "META_TILESET": {
+             mts_run_view = !mts_run_view;
+         }
+ 
+-        var _rv_vx = _rv_x2 + 8;
++        // Colour mode of the node - click cycles it (same order as the node)
++        var _md_x1  = _rv_x2 + 6;
++        var _md_x2  = _vx1 + 202;
++        var _md_hov = point_in_rectangle(_mx, _my, _md_x1, _rv_y1, _md_x2, _rv_y2);
++        var _md_txt = "FIXED";
++        var _md_col = c_lime;
++        if (_run_mode == 3) {
++            _md_txt = "ROW BANDS";
++            _md_col = c_aqua;
++        }
++        if (_run_mode == 2) {
++            _md_txt = "SHIFT C64U";
++            _md_col = make_color_rgb(255, 90, 90);
++        }
++        draw_set_color(make_color_rgb(25, 25, 40));
++        if (_md_hov) { draw_set_color(make_color_rgb(50, 50, 80)); }
++        draw_rectangle(_md_x1, _rv_y1, _md_x2, _rv_y2, false);
++        draw_set_color(_md_col);
++        draw_rectangle(_md_x1, _rv_y1, _md_x2, _rv_y2, true);
++        draw_set_halign(fa_center);
++        draw_text_l((_md_x1 + _md_x2) * 0.5, _rv_y1 + 1, _md_txt);
++        draw_set_halign(fa_left);
++        if (_md_hov && mouse_check_button_pressed(mb_left)) {
++            while (array_length(_run_node.instructions[0]) < 8) { array_push(_run_node.instructions[0], 0); }
++            var _md_next = 3;
++            if (_run_mode == 3) { _md_next = 2; }
++            if (_run_mode == 2) { _md_next = 0; }
++            _run_node.instructions[0][6] = _md_next;
++            global.addresses_dirty = true;
++            global.undo_dirty      = true;
++        }
++
++        // Row 2: FIXED nibble / what the mode does, and ALL > MC
++        var _rv_y3 = _cy + 17;
+         if (_run_mode == 0) {
+-            var _rv_ntxt = "FIXED $" + string_upper(decimal_to_hex(_run_nib));
+-            if (_run_nib_set < 0) { _rv_ntxt = "FIXED AUTO $" + string_upper(decimal_to_hex(_run_nib)); }
++            var _rv_ntxt = "NIB $" + string_upper(decimal_to_hex(_run_nib));
++            if (_run_nib_set < 0) { _rv_ntxt = "NIB AUTO $" + string_upper(decimal_to_hex(_run_nib)); }
+             var _rv_nw   = string_width_l(_rv_ntxt);
+-            var _rv_nhov = point_in_rectangle(_mx, _my, _rv_vx - 2, _rv_y1, _rv_vx + _rv_nw + 2, _rv_y2);
++            var _rv_nhov = point_in_rectangle(_mx, _my, _rv_x1 - 2, _rv_y3, _rv_x1 + 12 + _rv_nw, _rv_y3 + 14);
+             draw_set_color(scr_c64_pepto_colour(_run_fx_fg));
+-            draw_rectangle(_rv_vx - 2, _rv_y1 + 2, _rv_vx + 4, _rv_y2 - 2, false);
++            draw_rectangle(_rv_x1, _rv_y3 + 2, _rv_x1 + 6, _rv_y3 + 12, false);
+             draw_set_color(c_lime);
+             if (_rv_nhov) { draw_set_color(c_white); }
+-            draw_text_l(_rv_vx + 8, _rv_y1 + 1, _rv_ntxt);
++            draw_text_l(_rv_x1 + 10, _rv_y3 + 1, _rv_ntxt);
+             // Click cycles the METASCROLL node's nibble: AUTO, $00..$0F
+             if (_rv_nhov && mouse_check_button_pressed(mb_left)) {
+-                while (array_length(_run_node.instructions[0]) < 8) { array_push(_run_node.instructions[0], 0); }
+                 var _rv_next = _run_nib_set + 1;
+                 if (_rv_next > 15) { _rv_next = -1; }
+                 _run_node.instructions[0][7] = _rv_next;
+                 global.undo_dirty = true;
+             }
+-        } else {
++        } else if (_run_mode == 3) {
+             draw_set_color(c_aqua);
+-            var _rv_btxt = "ROW BANDS";
+-            if (_m.active_map != _run_map) { _rv_btxt = "ROW BANDS (MAP " + string(_run_map) + ")"; }
+-            draw_text_l(_rv_vx, _rv_y1 + 1, _rv_btxt);
+-        }
+-
+-        // Row 2: how many placed cells won't show their per-char colour, and ALL -> MC
+-        var _rv_y3   = _cy + 17;
+-        var _rv_miss = 0;
+-        var _rv_tot  = 0;
+-        if (_run_has_plan) {
+-            _rv_tot = mts_plan.total;
+-            if (_run_mode == 0) {
+-                _rv_miss = mts_plan.total - mts_plan.tally[_run_nib];
+-            } else {
+-                _rv_miss = mts_plan.band_miss;
+-            }
+-        }
+-        if (_rv_miss == 0) {
+-            draw_set_color(c_lime);
++            var _rv_btxt = "BAND PER MAP ROW";
++            if (_m.active_map != _run_map) { _rv_btxt = "BANDS ON MAP " + string(_run_map); }
++            draw_text_l(_rv_x1, _rv_y3 + 1, _rv_btxt);
+         } else {
+-            draw_set_color(make_color_rgb(255, 120, 80));
++            draw_set_color(make_color_rgb(140, 140, 160));
++            draw_text_l(_rv_x1, _rv_y3 + 1, "PER-CHAR, AS SHOWN");
+         }
+-        draw_text_l(_rv_x1, _rv_y3 + 1, "OFF-COLOUR: " + string(_rv_miss) + " / " + string(_rv_tot));
+ 
+         if (_run_mixed && !_ecm_mode) {
+             var _mc_x1  = _vx1 + 146;
+-            var _mc_x2  = _mc_x1 + 56;
++            var _mc_x2  = _vx1 + 202;
+             var _mc_hov = point_in_rectangle(_mx, _my, _mc_x1, _rv_y3, _mc_x2, _rv_y3 + 14);
+             draw_set_color(make_color_rgb(70, 35, 5));
+             if (_mc_hov) { draw_set_color(make_color_rgb(140, 70, 10)); }
+@@ -8773,7 +8798,23 @@ case "META_TILESET": {
+                 mts_bytes_next_ms = 0;   // recount the tally now
+             }
+         }
+-        _cy += 36;
++
++        // Row 3: placed cells that won't show their per-char colour
++        var _rv_y4   = _cy + 34;
++        var _rv_miss = 0;
++        var _rv_tot  = 0;
++        if (_run_has_plan) {
++            _rv_tot = mts_plan.total;
++            if (_run_mode == 0) { _rv_miss = mts_plan.total - mts_plan.tally[_run_nib]; }
++            if (_run_mode == 3) { _rv_miss = mts_plan.band_miss; }
++        }
++        if (_rv_miss == 0) {
++            draw_set_color(c_lime);
++        } else {
++            draw_set_color(make_color_rgb(255, 120, 80));
++        }
++        draw_text_l(_rv_x1, _rv_y4 + 1, "OFF-COLOUR: " + string(_rv_miss) + " / " + string(_rv_tot));
++        _cy += 52;
+     }
+ 
+     draw_set_font_l(fnt_c64_tiny);
