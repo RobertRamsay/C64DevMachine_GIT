@@ -1,5 +1,8 @@
 /// @desc obj_asset_manager Draw GUI
 
+// Deferred charset preview rebuild (see scr_chr_preview_request)
+scr_chr_preview_service();
+
 
 
 if obj_workspace_manager.code_editor_open or obj_workspace_manager.hideui exit;
@@ -8605,6 +8608,20 @@ case "META_TILESET": {
         (_ts_chr_ref != noone && variable_struct_exists(_ts_chr_ref.meta, "ecm_bg3")) ? _ts_chr_ref.meta.ecm_bg3 : 3
     ];
 
+    // ---- GLYPH ATLAS ----
+    // Every char is pre-rendered once into white mask layers (HR + 3 MC
+    // layers) and blitted tinted, instead of one draw_rectangle per pixel.
+    // Only chars whose bytes changed are re-rendered; while a mouse button is
+    // held that check runs at most every 100ms, then immediately on release.
+    scr_mts_atlas_update(_ts_chr_ref);
+    var _mts_atlas_ok = mts_atlas_ok;
+    var _mts_mc1_idx  = 1;
+    var _mts_mc2_idx  = 2;
+    if (_m.map_mc_col1 >= 0) { _mts_mc1_idx = _m.map_mc_col1; }
+    if (_m.map_mc_col2 >= 0) { _mts_mc2_idx = _m.map_mc_col2; }
+    var _mts_mc1_col  = scr_c64_pepto_colour(_mts_mc1_idx);
+    var _mts_mc2_col  = scr_c64_pepto_colour(_mts_mc2_idx);
+
 // ---- GLOBAL MODE BUTTON ----
     var _ts_global_mixed = obj_workspace_manager.map_global_mixed;
     if (!variable_struct_exists(_m, "active_mode")) _m.active_mode = 0;
@@ -9041,41 +9058,14 @@ case "META_TILESET": {
                 var _px         = _sx2 + 4 + _col * _slot_tpx;
                 var _py         = _sy2 + 4 + _row * _slot_tpx;
                 var _prev_is_mc = (_ts_global_mixed == 1) && (_clut_mc(_m, _char_v) == 1);
-                if (_ts_chr_ref != noone && buffer_exists(_ts_chr_ref.buffer) && _slot_tpx >= 4) {
-                    draw_set_color(_sl_bg);
-                    draw_rectangle(_px, _py, _px + _slot_tpx - 1, _py + _slot_tpx - 1, false);
+                if (_mts_atlas_ok && _slot_tpx >= 4) {
+                    // Glyph atlas: one tinted blit per colour layer instead of a rect per pixel
                     if (_prev_is_mc) {
-                        var _prev_col1 = (_m.map_mc_col1 >= 0) ? _m.map_mc_col1 : 1;
-                        var _prev_col2 = (_m.map_mc_col2 >= 0) ? _m.map_mc_col2 : 2;
-                        var _prev_pal  = [_sl_bg, scr_c64_pepto_colour(_prev_col1), scr_c64_pepto_colour(_prev_col2), scr_c64_pepto_colour(_col_v & 0x07)];
-                        var _ppw       = max(1, _slot_tpx / 4);
-                        var _pph       = max(1, _slot_tpx / 8);
-                        for (var _pr = 0; _pr < 8; _pr++) {
-                            var _pboff = (_sl_rc * 8) + _pr;
-                            if (_pboff >= buffer_get_size(_ts_chr_ref.buffer)) break;
-                            var _pbyte = buffer_peek(_ts_chr_ref.buffer, _pboff, buffer_u8);
-                            for (var _pb = 0; _pb < 4; _pb++) {
-                                var _pbits = (_pbyte >> (6 - _pb * 2)) & 0x03;
-                                if (_pbits == 0) continue;
-                                draw_set_color(_prev_pal[_pbits]);
-                                draw_rectangle(_px + _pb * _ppw, _py + _pr * _pph, _px + _pb * _ppw + _ppw, _py + _pr * _pph + _pph, false);
-                            }
-                        }
+                        scr_mts_draw_glyph(_sl_rc, _px, _py, _slot_tpx, _slot_tpx, true, _sl_bg, scr_c64_pepto_colour(_col_v & 0x07), _mts_mc1_col, _mts_mc2_col);
                     } else {
-                        var _ppw    = max(1, _slot_tpx / 8);
-                        var _pph    = max(1, _slot_tpx / 8);
-                        var _hr_col = (!_eff_mixed) ? (_col_v & 0x0F) : (_col_v & 0x07);
-                        draw_set_color(scr_c64_pepto_colour(_hr_col));
-                        for (var _pr = 0; _pr < 8; _pr++) {
-                            var _pboff = (_sl_rc * 8) + _pr;
-                            if (_pboff >= buffer_get_size(_ts_chr_ref.buffer)) break;
-                            var _pbyte = buffer_peek(_ts_chr_ref.buffer, _pboff, buffer_u8);
-                            for (var _pb = 0; _pb < 8; _pb++) {
-                                if (_pbyte & (0x80 >> _pb)) {
-                                    draw_rectangle(_px + _pb * _ppw, _py + _pr * _pph, _px + _pb * _ppw + _ppw, _py + _pr * _pph + _pph, false);
-                                }
-                            }
-                        }
+                        var _hr_col = _col_v & 0x07;
+                        if (!_eff_mixed) { _hr_col = _col_v & 0x0F; }
+                        scr_mts_draw_glyph(_sl_rc, _px, _py, _slot_tpx, _slot_tpx, false, _sl_bg, scr_c64_pepto_colour(_hr_col), _mts_mc1_col, _mts_mc2_col);
                     }
                 } else {
                     var _fb_col = (!_eff_mixed) ? (_col_v & 0x0F) : (_col_v & 0x07);
@@ -9237,15 +9227,24 @@ case "META_TILESET": {
     var _clut_table_bytes = (_m.char_lut_len > 0) ? _m.char_lut_len : 0;
     if (array_length(_m.map_bytes) != _m.map_count) {
         _m.map_bytes = array_create(_m.map_count, 0);
+        mts_bytes_next_ms = 0;   // map added/removed: recount this frame
     }
+    // Recount placements only every 250ms while a button is held (painting),
+    // at once on release / asset switch; otherwise reuse the cached counts.
+    var _mts_recount = false;
+    if (mts_bytes_owner != _asset.name) { _mts_recount = true; }
+    if (current_time >= mts_bytes_next_ms) { _mts_recount = true; }
+    if (mouse_check_button_released(mb_left) || mouse_check_button_released(mb_right)) { _mts_recount = true; }
     var _all_map_bytes = 0;
     for (var _mci = 0; _mci < _m.map_count; _mci++) {
-        var _mgrid  = _m.maps[_mci];
-        var _placed = 0;
-        for (var _mgi = 0; _mgi < array_length(_mgrid); _mgi++) {
-            if (_mgrid[_mgi] != -1) _placed++;
+        if (_mts_recount) {
+            var _mgrid  = _m.maps[_mci];
+            var _placed = 0;
+            for (var _mgi = 0; _mgi < array_length(_mgrid); _mgi++) {
+                if (_mgrid[_mgi] != -1) _placed++;
+            }
+            _m.map_bytes[_mci] = 1 + (_placed * 3);
         }
-        _m.map_bytes[_mci] = 1 + (_placed * 3);
         _all_map_bytes += _m.map_bytes[_mci];
     }
     var _mt_total_bytes = _mt_size_bytes + _mt_data_bytes + _clut_table_bytes + _all_map_bytes;
@@ -9254,11 +9253,15 @@ case "META_TILESET": {
     _m.clut_bytes_disp    = _clut_table_bytes;                  // char_lut table, paid once
     _m.mt_data_bytes_disp = _mt_size_bytes + _mt_data_bytes;    // stamp-def only (2 header + 1b/cell)
     _m.map_bytes_disp     = _all_map_bytes;
-    var _cur_placed = 0;
-    for (var _cpi = 0; _cpi < array_length(_active_grid); _cpi++) {
-        if (_active_grid[_cpi] != -1) _cur_placed++;
+    if (_mts_recount) {
+        var _cur_placed = 0;
+        for (var _cpi = 0; _cpi < array_length(_active_grid); _cpi++) {
+            if (_active_grid[_cpi] != -1) _cur_placed++;
+        }
+        _m.cur_map_bytes_disp = 1 + (_cur_placed * 3);
+        mts_bytes_owner   = _asset.name;
+        mts_bytes_next_ms = current_time + 250;
     }
-    _m.cur_map_bytes_disp = 1 + (_cur_placed * 3);
 
     var _has_paint = false;
     var _cells2    = _grid_cells;
@@ -9334,43 +9337,13 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 
             var _cell_is_mc = (_ts_global_mixed == 1) && (_clut_mc(_m, _char_v) == 1);
 
-            if (_ts_chr_ref != noone && buffer_exists(_ts_chr_ref.buffer)) {
+            if (_mts_atlas_ok) {
                 if (_cell_is_mc) {
-                    var _mc_col1 = (_m.map_mc_col1 >= 0) ? _m.map_mc_col1 : 1;
-                    var _mc_col2 = (_m.map_mc_col2 >= 0) ? _m.map_mc_col2 : 2;
-                    var _mc_pal  = [_ec_bg, scr_c64_pepto_colour(_mc_col1), scr_c64_pepto_colour(_mc_col2), scr_c64_pepto_colour(_col_v & 0x07)];
-                    var _mc_pxw  = max(1, _cell_sz / 4);
-                    var _mc_pxh  = max(1, _cell_sz / 8);
-                    draw_set_color(_mc_pal[0]);
-                    draw_rectangle(_cx2, _cy3, _cx2 + _cell_sz - 1, _cy3 + _cell_sz - 1, false);
-                    for (var _brow = 0; _brow < 8; _brow++) {
-                        var _boff = (_ec_rc * 8) + _brow;
-                        if (_boff >= buffer_get_size(_ts_chr_ref.buffer)) break;
-                        var _byte = buffer_peek(_ts_chr_ref.buffer, _boff, buffer_u8);
-                        for (var _pair = 0; _pair < 4; _pair++) {
-                            var _bits = (_byte >> (6 - _pair * 2)) & 0x03;
-                            if (_bits == 0) continue;
-                            draw_set_color(_mc_pal[_bits]);
-                            draw_rectangle(_cx2 + _pair * _mc_pxw, _cy3 + _brow * _mc_pxh, _cx2 + _pair * _mc_pxw + _mc_pxw, _cy3 + _brow * _mc_pxh + _mc_pxh, false);
-                        }
-                    }
+                    scr_mts_draw_glyph(_ec_rc, _cx2, _cy3, _cell_sz, _cell_sz, true, _ec_bg, scr_c64_pepto_colour(_col_v & 0x07), _mts_mc1_col, _mts_mc2_col);
                 } else {
-                    var _hr_pxw = max(1, _cell_sz / 8);
-                    var _hr_pxh = max(1, _cell_sz / 8);
-                    var _hr_col = (!_eff_mixed) ? (_col_v & 0x0F) : (_col_v & 0x07);
-                    draw_set_color(_ec_bg);
-                    draw_rectangle(_cx2, _cy3, _cx2 + _cell_sz - 1, _cy3 + _cell_sz - 1, false);
-                    draw_set_color(scr_c64_pepto_colour(_hr_col));
-                    for (var _brow = 0; _brow < 8; _brow++) {
-                        var _boff = (_ec_rc * 8) + _brow;
-                        if (_boff >= buffer_get_size(_ts_chr_ref.buffer)) break;
-                        var _byte = buffer_peek(_ts_chr_ref.buffer, _boff, buffer_u8);
-                        for (var _bit = 0; _bit < 8; _bit++) {
-                            if (_byte & (0x80 >> _bit)) {
-                                draw_rectangle(_cx2 + _bit * _hr_pxw, _cy3 + _brow * _hr_pxh, _cx2 + _bit * _hr_pxw + _hr_pxw, _cy3 + _brow * _hr_pxh + _hr_pxh, false);
-                            }
-                        }
-                    }
+                    var _hr_col = _col_v & 0x07;
+                    if (!_eff_mixed) { _hr_col = _col_v & 0x0F; }
+                    scr_mts_draw_glyph(_ec_rc, _cx2, _cy3, _cell_sz, _cell_sz, false, _ec_bg, scr_c64_pepto_colour(_hr_col), _mts_mc1_col, _mts_mc2_col);
                 }
             } else {
                 var _fb_col2 = (!_eff_mixed) ? (_col_v & 0x0F) : (_col_v & 0x07);
@@ -9877,41 +9850,13 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
                         draw_set_color(_tt_bg);
                         draw_rectangle(_spx, _spy, _spx + _test_cs - 1, _spy + _test_cs - 1, false);
 
-                        if (_ts_chr_ref != noone && buffer_exists(_ts_chr_ref.buffer)) {
+                        if (_mts_atlas_ok) {
                             if (_ts_mc) {
-                                var _tmc1 = (_m.map_mc_col1 >= 0) ? _m.map_mc_col1 : 1;
-                                var _tmc2 = (_m.map_mc_col2 >= 0) ? _m.map_mc_col2 : 2;
-                                var _tpal = [_tt_bg, scr_c64_pepto_colour(_tmc1), scr_c64_pepto_colour(_tmc2), scr_c64_pepto_colour(_tscol & 0x07)];
-                                var _tpxw = max(1, _test_cs / 4);
-                                var _tpxh = max(1, _test_cs / 8);
-                                draw_set_color(_tpal[0]);
-                                draw_rectangle(_spx, _spy, _spx + _test_cs - 1, _spy + _test_cs - 1, false);
-                                for (var _tbr = 0; _tbr < 8; _tbr++) {
-                                    var _tboff = (_tt_rc * 8) + _tbr;
-                                    if (_tboff >= buffer_get_size(_ts_chr_ref.buffer)) break;
-                                    var _tbyte = buffer_peek(_ts_chr_ref.buffer, _tboff, buffer_u8);
-                                    for (var _tpair = 0; _tpair < 4; _tpair++) {
-                                        var _tbits = (_tbyte >> (6 - _tpair * 2)) & 0x03;
-                                        if (_tbits == 0) continue;
-                                        draw_set_color(_tpal[_tbits]);
-                                        draw_rectangle(_spx + _tpair * _tpxw, _spy + _tbr * _tpxh, _spx + _tpair * _tpxw + _tpxw, _spy + _tbr * _tpxh + _tpxh, false);
-                                    }
-                                }
+                                scr_mts_draw_glyph(_tt_rc, _spx, _spy, _test_cs, _test_cs, true, _tt_bg, scr_c64_pepto_colour(_tscol & 0x07), _mts_mc1_col, _mts_mc2_col);
                             } else {
-                                var _thr_col = (!_eff_mixed) ? (_tscol & 0x0F) : (_tscol & 0x07);
-                                var _tpxw2   = max(1, _test_cs / 8);
-                                var _tpxh2   = max(1, _test_cs / 8);
-                                draw_set_color(scr_c64_pepto_colour(_thr_col));
-                                for (var _tbr = 0; _tbr < 8; _tbr++) {
-                                    var _tboff = (_tt_rc * 8) + _tbr;
-                                    if (_tboff >= buffer_get_size(_ts_chr_ref.buffer)) break;
-                                    var _tbyte = buffer_peek(_ts_chr_ref.buffer, _tboff, buffer_u8);
-                                    for (var _tbit = 0; _tbit < 8; _tbit++) {
-                                        if (_tbyte & (0x80 >> _tbit)) {
-                                            draw_rectangle(_spx + _tbit * _tpxw2, _spy + _tbr * _tpxh2, _spx + _tbit * _tpxw2 + _tpxw2, _spy + _tbr * _tpxh2 + _tpxh2, false);
-                                        }
-                                    }
-                                }
+                                var _thr_col = _tscol & 0x07;
+                                if (!_eff_mixed) { _thr_col = _tscol & 0x0F; }
+                                scr_mts_draw_glyph(_tt_rc, _spx, _spy, _test_cs, _test_cs, false, _tt_bg, scr_c64_pepto_colour(_thr_col), _mts_mc1_col, _mts_mc2_col);
                             }
                         } else {
                             var _tfb = (!_eff_mixed) ? (_tscol & 0x0F) : (_tscol & 0x07);
@@ -10457,57 +10402,29 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             draw_set_color(_cpsel ? make_color_rgb(60, 120, 80) : _strip_bg_col);
             draw_rectangle(_cpx1, _cp_y2_row, _cpx1 + _cp_sz2, _cp_y2_row + _cp_sz2, false);
 
-            if (_ts_chr_ref != noone && buffer_exists(_ts_chr_ref.buffer)) {
+            if (_mts_atlas_ok) {
                 // Strip shows each char in its OWN char_lut mode + baked colour.
-                var _strip_char_mc  = (_ci2 < array_length(_m.char_lut)) ? (((_m.char_lut[_ci2] >> 4) & 0x01) == 1) : false;
-                var _strip_char_col = (_ci2 < array_length(_m.char_lut)) ? (_m.char_lut[_ci2] & 0x0F) : (_m.active_colour & 0x0F);
+                var _strip_char_mc  = false;
+                var _strip_char_col = _m.active_colour & 0x0F;
+                if (_ci2 < array_length(_m.char_lut)) {
+                    _strip_char_mc  = (((_m.char_lut[_ci2] >> 4) & 0x01) == 1);
+                    _strip_char_col = _m.char_lut[_ci2] & 0x0F;
+                }
+                var _st_gsz = _cp_sz2 - 3;
                 if (_ts_global_mixed == 1 && _strip_char_mc) {
-                    var _strip_col1 = (_m.map_mc_col1 >= 0) ? _m.map_mc_col1 : 1;
-                    var _strip_col2 = (_m.map_mc_col2 >= 0) ? _m.map_mc_col2 : 2;
-                    var _strip_pal  = [scr_c64_pepto_colour(_ts_bg), scr_c64_pepto_colour(_strip_col1), scr_c64_pepto_colour(_strip_col2), scr_c64_pepto_colour(_strip_char_col & 0x07)];
-                    var _st_pxw2    = max(1, (_cp_sz2 - 4) / 4);
-                    var _st_pxh2    = max(1, (_cp_sz2 - 4) / 8);
-                    draw_set_color(_strip_pal[0]);
-                    draw_rectangle(_cpx1 + 2, _cp_y2_row + 2, _cpx1 + _cp_sz2 - 2, _cp_y2_row + _cp_sz2 - 2, false);
-                    for (var _str2 = 0; _str2 < 8; _str2++) {
-                        var _stboff2 = (_strip_real_char * 8) + _str2;
-                        if (_stboff2 >= buffer_get_size(_ts_chr_ref.buffer)) break;
-                        var _stbyte2 = buffer_peek(_ts_chr_ref.buffer, _stboff2, buffer_u8);
-                        for (var _stbit2 = 0; _stbit2 < 4; _stbit2++) {
-                            var _stbits = (_stbyte2 >> (6 - _stbit2 * 2)) & 0x03;
-                            if (_stbits == 0) continue;
-                            draw_set_color(_strip_pal[_stbits]);
-                            draw_rectangle(
-                                _cpx1 + 2 + _stbit2 * _st_pxw2, _cp_y2_row + 2 + _str2 * _st_pxh2,
-                                _cpx1 + 2 + _stbit2 * _st_pxw2 + _st_pxw2, _cp_y2_row + 2 + _str2 * _st_pxh2 + _st_pxh2,
-                                false);
-                        }
-                    }
+                    scr_mts_draw_glyph(_strip_real_char, _cpx1 + 2, _cp_y2_row + 2, _st_gsz, _st_gsz, true, scr_c64_pepto_colour(_ts_bg), scr_c64_pepto_colour(_strip_char_col & 0x07), _mts_mc1_col, _mts_mc2_col);
                 } else {
-                    var _st_pxw2    = max(1, (_cp_sz2 - 4) / 8);
-                    var _st_pxh2    = max(1, (_cp_sz2 - 4) / 8);
-                    var _strip_hcol = (!_eff_mixed) ? (_strip_char_col & 0x0F) : (_strip_char_col & 0x07);
+                    var _strip_hcol = _strip_char_col & 0x07;
+                    if (!_eff_mixed) { _strip_hcol = _strip_char_col & 0x0F; }
                     // ECM: compare against THIS row's actual background, not
                     // band 0's (_ts_bg) — otherwise a char whose colour matches
                     // a non-zero band's real BG slips through invisible/blended.
-                    var _strip_bg_idx = _ecm_mode ? _ecm_bg_cols[_strip_band] : _ts_bg;
-                    if (_strip_hcol == _strip_bg_idx) _strip_hcol = (_strip_bg_idx == 0) ? 1 : 0;
-                    draw_set_color(_strip_bg_col);
-                    draw_rectangle(_cpx1 + 2, _cp_y2_row + 2, _cpx1 + _cp_sz2 - 2, _cp_y2_row + _cp_sz2 - 2, false);
-                    draw_set_color(scr_c64_pepto_colour(_strip_hcol));
-                    for (var _str2 = 0; _str2 < 8; _str2++) {
-                        var _stboff2 = (_strip_real_char * 8) + _str2;
-                        if (_stboff2 >= buffer_get_size(_ts_chr_ref.buffer)) break;
-                        var _stbyte2 = buffer_peek(_ts_chr_ref.buffer, _stboff2, buffer_u8);
-                        for (var _stbit2 = 0; _stbit2 < 8; _stbit2++) {
-                            if (_stbyte2 & (0x80 >> _stbit2)) {
-                                draw_rectangle(
-                                    _cpx1 + 2 + _stbit2 * _st_pxw2, _cp_y2_row + 2 + _str2 * _st_pxh2,
-                                    _cpx1 + 2 + _stbit2 * _st_pxw2 + _st_pxw2, _cp_y2_row + 2 + _str2 * _st_pxh2 + _st_pxh2,
-                                    false);
-                            }
-                        }
+                    var _strip_bg_idx = _ts_bg;
+                    if (_ecm_mode) { _strip_bg_idx = _ecm_bg_cols[_strip_band]; }
+                    if (_strip_hcol == _strip_bg_idx) {
+                        if (_strip_bg_idx == 0) { _strip_hcol = 1; } else { _strip_hcol = 0; }
                     }
+                    scr_mts_draw_glyph(_strip_real_char, _cpx1 + 2, _cp_y2_row + 2, _st_gsz, _st_gsz, false, _strip_bg_col, scr_c64_pepto_colour(_strip_hcol), _mts_mc1_col, _mts_mc2_col);
                 }
             } else {
                 draw_set_font_l(fnt_c64_tiny);

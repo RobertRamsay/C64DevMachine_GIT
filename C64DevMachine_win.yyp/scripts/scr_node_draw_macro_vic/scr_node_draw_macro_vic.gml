@@ -74,7 +74,8 @@ function scr_node_draw_macro_vic(_draw_x) {
     // Row 5: D018 (computed, read-only)
     draw_set_color(_c_dim); draw_text_l(_lx, _fy, "D018");
     draw_set_color(make_color_rgb(180, 180, 180)); draw_text_l(_vx, _fy, "$" + string_upper(decimal_to_hex(_d018_val)));
-    if (_mode == "MCT") {
+    {
+        // GET MAP COLORS - shown in every mode; pulls mode + colours from a live MAP / METASCROLL
         var _btn_x1 = _vx + 50;
         var _btn_x2 = _draw_x + width - 8;
         var _btn_y1 = _fy - 20;

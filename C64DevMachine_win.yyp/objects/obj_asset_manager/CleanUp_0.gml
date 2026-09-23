@@ -19,3 +19,8 @@ for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
 ds_map_destroy(tag_member_map);
 ds_map_destroy(asset_name_map);
 ds_list_destroy(asset_list);
+
+// META_TILESET glyph atlas
+if (surface_exists(mts_atlas_surf))  { surface_free(mts_atlas_surf); }
+if (buffer_exists(mts_atlas_pix))    { buffer_delete(mts_atlas_pix); }
+if (buffer_exists(mts_atlas_shadow)) { buffer_delete(mts_atlas_shadow); }

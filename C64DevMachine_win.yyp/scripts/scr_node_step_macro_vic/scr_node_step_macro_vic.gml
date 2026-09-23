@@ -48,8 +48,8 @@ function scr_node_step_macro_vic(_draw_x) {
 	_fy += _line_h;
 
     // Row 3: Screen RAM — cycle through valid positions within current VIC bank (text/MCT/ECM only)
-    // In MCT mode the GET MAP COLS button occupies the right side, so cap the hitbox before it
-    var _row_click_x2 = (_mode == "MCT") ? (_draw_x + 90 + 48) : (_draw_x + width - 8);
+    // The GET MAP COLS button occupies the right side, so cap the hitbox before it
+    var _row_click_x2 = _draw_x + 90 + 48;
     if (_mode != "BITMAP" && _mode != "BMP" && _mode != "MCB") {
         if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 90, _fy, _row_click_x2, _fy + _line_h - 1)) {
             var _scr_options = [];
@@ -72,8 +72,8 @@ function scr_node_step_macro_vic(_draw_x) {
 	//_fy += _line_h;
 
     // Row 4: Char/Bitmap address — bitmap modes: 2 positions; text modes: 8 positions
-    // Cap right edge in MCT so the GET MAP COLS button isn't swallowed
-    var _row4_click_x2 = (_mode == "MCT") ? (_draw_x + 90 + 48) : (_draw_x + width - 8);
+    // Cap right edge so the GET MAP COLS button isn't swallowed
+    var _row4_click_x2 = _draw_x + 90 + 48;
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 90, _fy, _row4_click_x2, _fy + _line_h - 1)) {
         if (_mode == "BITMAP" || _mode == "BMP" || _mode == "MCB") {
             var _bmp_options = [_bank_base, _bank_base + 0x2000];
@@ -95,44 +95,16 @@ function scr_node_step_macro_vic(_draw_x) {
     }
     _fy += _line_h;
 
-    // Row 5: D018 — read only, but GET MAP COLS button visible in MCT mode
+    // Row 5: D018 — read only, GET MAP COLS button sits to the right in every mode
     // Hitbox matches the enlarged draw rect (_vx + 50, _fy - 20 .. _fy + _line_h - 1)
-    if (_mode == "MCT") {
-        var _btn_x1 = _draw_x + 90 + 50;
-        var _btn_x2 = _draw_x + width - 8;
-        var _btn_y1 = _fy - 20;
-        var _btn_y2 = _fy + _line_h - 1;
-        if (point_in_rectangle(mouse_x, mouse_y, _btn_x1, _btn_y1, _btn_x2, _btn_y2)) {
-			
-            // Find closest MACRO_MAP node above this VIC node on the spine
-            var _best_map = noone;
-            var _best_y   = -999999;
-            with (obj_c64_node) {
-                if (node_type == "MACRO_MAP" && is_connected  ) {
-					
-                    _best_y   = y;
-                    _best_map = id;
-                }
-            }
-            if (instance_exists(_best_map)) {
-				
-                var _map_asset_name = (array_length(_best_map.instructions[0]) > 1) ? string(_best_map.instructions[0][1]) : "";
-                if (_map_asset_name != "" && instance_exists(obj_asset_manager)) {
-                    var _am = obj_asset_manager;
-                    for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
-                        var _a = ds_list_find_value(_am.asset_list, _ai);
-                        if (_a.type == "MAP_DATA" && _a.name == _map_asset_name) {
-                            if (variable_struct_exists(_a.meta, "map_mc_bg"))   instructions[0][6] = _a.meta.map_mc_bg;
-                            if (variable_struct_exists(_a.meta, "map_mc_col1")) instructions[0][7] = _a.meta.map_mc_col1;
-                            if (variable_struct_exists(_a.meta, "map_mc_col2")) instructions[0][8] = _a.meta.map_mc_col2;
-                            scr_c64_update_addresses();
-                            break;
-                        }
-                    }
-                }
-            }
-            exit;
-        }
+    var _btn_x1 = _draw_x + 90 + 50;
+    var _btn_x2 = _draw_x + width - 8;
+    var _btn_y1 = _fy - 20;
+    var _btn_y2 = _fy + _line_h - 1;
+    if (point_in_rectangle(mouse_x, mouse_y, _btn_x1, _btn_y1, _btn_x2, _btn_y2)) {
+        scr_vic_fetch_map_colours(id);
+        mouse_clear(mb_left);
+        exit;
     }
     _fy += _line_h + 4;
 
