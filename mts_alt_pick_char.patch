@@ -1,0 +1,51 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 106caaf..6b2e30a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -8240,6 +8240,19 @@ case "META_TILESET": {
+         if (_ch < array_length(_mm.char_lut)) return (_mm.char_lut[_ch] >> 4) & 0x01;
+         return 0;
+     };
++    // Helper: make _ch the active char (char editor + strip selection), adopt
++    // its baked colour into the paint swatch, and scroll the strip to it.
++    // Strip is 32 chars per row, 4 rows visible, 8 rows total.
++    var _mts_pick_char = function(_mm, _ch) {
++        _mm.active_char = _ch;
++        if (_ch < array_length(_mm.char_lut)) {
++            _mm.active_colour = _mm.char_lut[_ch] & 0x0F;
++        }
++        var _sel_row = _ch div 32;
++        if (_sel_row < _mm.char_strip_scroll_row || _sel_row >= _mm.char_strip_scroll_row + 4) {
++            _mm.char_strip_scroll_row = clamp(_sel_row, 0, 4);
++        }
++    };
+ 
+     // Write the live edit grid back into the selected stamp's stamp_data slot.
+     // 1 byte/cell: just the char index. Colour/mode live in char_lut.
+@@ -9375,7 +9388,13 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+             draw_set_alpha(1.0);
+             draw_rectangle(_hx2, _hy2, _hx2 + _cell_sz, _hy2 + _cell_sz, true);
+             var _pidx2 = _hrow2 * _m.stamp_w + _hcol2;
+-            if (mouse_check_button(mb_left)) {
++            if (keyboard_check(vk_alt)) {
++                // ALT + left-click: PICK this cell's char for editing (no paint)
++                if (mouse_check_button_pressed(mb_left)) {
++                    _mts_pick_char(_m, _m.active_stamp_grid_char[_pidx2]);
++                }
++            }
++            else if (mouse_check_button(mb_left)) {
+                 // Place char in cell. Colour BAKES into char_lut[active_char]:
+                 // sets that char's inherited colour everywhere, preserving its
+                 // existing MC bit (bit 4). active_colour masked to the nibble.
+@@ -10168,6 +10187,11 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+                             _m.active_stamp_grid_char[_pk] = _m.stamp_data[_pk_idx];
+                         }
+                     }
++                    // ...and the char under the cursor within it, for the char editor
++                    var _pk_sc = clamp(floor((_mx - _thx) / _test_cs), 0, _m.stamp_w - 1);
++                    var _pk_sr = clamp(floor((_my - _thy) / _test_cs), 0, _m.stamp_h - 1);
++                    var _pk_ci = _pk_sr * _m.stamp_w + _pk_sc;
++                    _mts_pick_char(_m, _m.active_stamp_grid_char[_pk_ci]);
+                 }
+             }
+             else if (mouse_check_button(mb_left) && _m.edit_stamp >= 0) {
