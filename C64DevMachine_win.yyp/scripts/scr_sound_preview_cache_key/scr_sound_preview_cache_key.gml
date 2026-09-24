@@ -17,7 +17,7 @@ function scr_sound_preview_cache_key(_instr, _note_name, _max_sec) {
 
     // Compiled bytecode — the actual command stream, not the source text, so
     // a whitespace-only edit doesn't needlessly drop the cache.
-    var _b = _instr.compiled.bytes;
+    var _b = scr_instrument_ensure_compiled(_instr).bytes;
     for (var _i = 0; _i < array_length(_b); _i++) {
         _sig += string(_b[_i]) + ",";
     }

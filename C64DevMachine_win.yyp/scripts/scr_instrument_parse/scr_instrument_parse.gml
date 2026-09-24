@@ -196,3 +196,14 @@ function scr_instrument_parse(_text) {
 
     return _out;
 }
+
+// Imported instruments may contain source only: compiled is a disposable cache.
+// Repair it lazily, leaving valid caches and uncommitted editor text alone.
+function scr_instrument_ensure_compiled(_instr) {
+    var _valid = variable_struct_exists(_instr, "compiled");
+    if (_valid) _valid = is_struct(_instr.compiled);
+    if (_valid) _valid = variable_struct_exists(_instr.compiled, "bytes") && variable_struct_exists(_instr.compiled, "errors");
+    if (_valid) _valid = is_array(_instr.compiled.bytes) && is_array(_instr.compiled.errors);
+    if (!_valid) _instr.compiled = scr_instrument_parse(_instr.text);
+    return _instr.compiled;
+}

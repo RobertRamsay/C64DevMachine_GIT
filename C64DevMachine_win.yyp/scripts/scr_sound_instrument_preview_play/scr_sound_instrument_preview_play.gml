@@ -22,7 +22,7 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
         return;
     }
 
-    var _bytes = _instr.compiled.bytes;
+    var _bytes = scr_instrument_ensure_compiled(_instr).bytes;
     if (array_length(_bytes) == 0) {
         return;
     }

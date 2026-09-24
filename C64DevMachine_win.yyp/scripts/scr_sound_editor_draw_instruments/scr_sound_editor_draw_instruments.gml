@@ -525,6 +525,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     }
 
     // ── COMPILED PREVIEW / ERRORS ──
+    scr_instrument_ensure_compiled(_sel_instr);
     var _pv_y = _tb_y1 + _tb_h + 16;
     draw_set_color(make_color_rgb(120, 120, 160));
     draw_text_l(_ix0, _pv_y, L("COMPILED: ") + string(array_length(_sel_instr.compiled.bytes)) + L(" BYTES"));
