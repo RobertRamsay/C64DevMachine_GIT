@@ -92,7 +92,7 @@ function scr_undo_restore(_path) {
         }
         if (variable_struct_exists(_d, "height")) _n.height = _d.height;
 
-        if (_n.node_type == "INIT") _n.is_draggable = false;
+        if (_n.node_type == "INIT") _n.is_draggable = true;
         if (_n.node_type == "ORG") {
             _n.is_draggable = true;
             _n.is_connected = false;

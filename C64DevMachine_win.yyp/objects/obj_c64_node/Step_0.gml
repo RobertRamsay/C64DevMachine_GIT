@@ -1,5 +1,7 @@
 // Restore cached macro sizes before hit-testing and layout, even off-screen.
 scr_macro_sync_height(id);
+// Finish INIT drags even when released over a toolbar or panel.
+if (node_type == "INIT" && is_dragging) { scr_init_drag_update(id); exit; }
 // Update off-screen PRINT nodes too, so their spines repack after a mode change.
 if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
 /// @desc Node Step Event - Input, Dragging, Wedge Insertion & ORG Child Dragging
@@ -165,7 +167,7 @@ if (!obj_workspace_manager.expert_mode && is_dragging && mouse_check_button_rele
     var _screen_x  = (x - _cam_x) / _cam_zoom;
     var _node_mid_x = _screen_x + (width / _cam_zoom / 2);
   
-    if (_node_mid_x < obj_workspace_manager.shelf_width + (width / _cam_zoom / 2)) {
+    if (node_type != "INIT" && _node_mid_x < obj_workspace_manager.shelf_width + (width / _cam_zoom / 2)) {
         if (node_type == "INIT") {  exit; }
         if (node_type == "ORG" && node_title == "VARIABLES") { exit; }
        
@@ -367,7 +369,8 @@ if (rmb_flash > 0) rmb_flash--;
 
 var _cam_x    = obj_workspace_manager.cam_x;
 var _cam_zoom = obj_workspace_manager.cam_zoom;
-var _spine_x  = floor(((room_width / 2) - (global.node_display_width / 2)) / 20) * 20;
+var _init_anchor = scr_init_anchor();
+var _spine_x = instance_exists(_init_anchor) ? _init_anchor.x : floor(((room_width / 2) - (global.node_display_width / 2)) / 20) * 20;
 var draw_x    = x + x_indent;
 var _latch_h  = 120;
 var _sticky_h = 300;
@@ -1916,10 +1919,35 @@ if (mouse_check_button_released(mb_left) && instance_exists(global.wire_drag_nod
 // D. NODE POSITIONING
 /////////////////////////////////////////////////////////////////
 if (node_type == "INIT") {
-    x            = _spine_x;
-    y            = 60;
     is_connected = true;
-
+    if (mouse_check_button_pressed(mb_left) && !_mouse_in_gui &&
+        !obj_workspace_manager.is_panning && !instance_exists(obj_ui_color_picker) &&
+        _cam_zoom < 3.55 && !label_picker_open && !global.any_picker_open &&
+        !global.drag_claim_taken &&
+        point_in_rectangle(mouse_x, mouse_y, draw_x, y, draw_x + width, y + 24)) {
+        var _init_blocked = false;
+        var _init_self = id;
+        with (obj_c64_node) {
+            if (id == _init_self || scr_node_is_hidden(id)) continue;
+            if (is_dragging || (depth < _init_self.depth &&
+                point_in_rectangle(mouse_x, mouse_y, x + x_indent, y,
+                    x + x_indent + width, y + (node_type == "COMMENT" ? height : 24)))) {
+                _init_blocked = true; break;
+            }
+        }
+        if (!_init_blocked) {
+            scr_undo_snapshot();
+            global.drag_claim_taken = true;
+            global.active_drag_node = id;
+            is_dragging = true;
+            was_dragged = false;
+            pre_click_depth = depth;
+            depth = -2000;
+            drag_offset_x = x - mouse_x;
+            drag_offset_y = y - mouse_y;
+        }
+    }
+    if (is_dragging) scr_init_drag_update(id);
 
 } else if (node_type == "EXECUTE") {
     instance_destroy();

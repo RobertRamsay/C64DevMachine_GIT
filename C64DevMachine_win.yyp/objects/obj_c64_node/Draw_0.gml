@@ -780,7 +780,7 @@ var _is_data = (string_pos("DATA", node_type) > 0 || node_type == "SPR64" || nod
 var _show_gutter = (node_type == "INIT" || node_type == "ORG") ? _lod_addresses : (_lod_full && _near_centre);
 if (_show_gutter && node_type != "EXECUTE" && node_type != "COMMENT" && 
     node_type != "NAMED_LOC" && node_type != "NEW_STR" && node_title != "VARIABLES" && 
-    x > 160 && proxy) {
+    proxy) {
     _is_data = (string_pos("DATA", node_type) > 0 || node_type == "SPR64" || node_type == "BITMAP_KLA");
     
     // --- SYNCED CONFLICT COLOR ---
@@ -1287,7 +1287,7 @@ if (_lod_full && (is_connected || string_pos("DATA", node_type) > 0 || node_type
     var _stats_x = draw_x + width - 60;
 
     if (node_type != "EXECUTE" && node_type != "ORG" && node_type != "COMMENT" &&
-        node_type != "NAMED_LOC" && node_type != "NEW_STR" && node_type != "LABEL" && x > 160) {
+        node_type != "NAMED_LOC" && node_type != "NEW_STR" && node_type != "LABEL") {
 
         // --- rebuild cache on Shift press ---
         if (stats_cache_dirty) {
@@ -2113,7 +2113,8 @@ if (array_length(global.selected_nodes) > 1 && instance_exists(global.group_drag
 // Wedge preview insertion line
 if (global.wedge_preview_y >= 0 && global.any_node_dragging) {
     var _wpy     = global.wedge_preview_y;
-    var _spine_x  = floor(((room_width / 2) - (global.node_display_width / 2)) / 20) * 20;
+    var _init_anchor = scr_init_anchor();
+    var _spine_x = instance_exists(_init_anchor) ? _init_anchor.x : x;
     var _wpx1    = _spine_x - 10;
     var _wpx2    = _spine_x + global.node_display_width + 10;
 

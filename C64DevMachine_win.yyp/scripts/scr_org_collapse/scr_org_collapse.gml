@@ -297,3 +297,64 @@ function scr_org_collapse_hit() {
         // the way they check global.showcode_mouse_over.
     }
 }
+
+// INIT is the movable anchor of the main spine, independent of room centre.
+function scr_init_anchor() {
+    var _anchor = noone;
+    with (obj_c64_node) if (node_type == "INIT") { _anchor = id; break; }
+    return _anchor;
+}
+
+function scr_init_move(_anchor, _x, _y) {
+    var _dx = _x - _anchor.x;
+    var _dy = _y - _anchor.y;
+    if (_dx == 0 && _dy == 0) return;
+    with (obj_c64_node) {
+        var _on_spine = is_connected && org_parent == noone && node_type != "ORG";
+        if (instance_exists(macro_owner)) {
+            _on_spine = macro_owner.is_connected && macro_owner.org_parent == noone;
+        }
+        if (id == _anchor || _on_spine) {
+            x += _dx; y += _dy;
+            if (wedge_y_stored >= 0) wedge_y_stored += _dy;
+            overlap_check_dirty = true;
+            last_overlap_check = false;
+        }
+    }
+    global.addresses_dirty = true;
+    global.undo_dirty = true;
+    global.autosave_dirty = true;
+    with (obj_workspace_manager) { flow_overlay_dirty = true; }
+}
+
+function scr_init_drag_update(_anchor) {
+    with (_anchor) {
+        var _init_x = mouse_x + drag_offset_x;
+        var _init_y = mouse_y + drag_offset_y;
+        if (_init_x != x || _init_y != y) was_dragged = true;
+        scr_init_move(id, _init_x, _init_y);
+        if (mouse_check_button_released(mb_left)) {
+            if (was_dragged) scr_init_move(id, round(x / 20) * 20, round(y / 20) * 20);
+            is_dragging = false;
+            depth = pre_click_depth;
+            global.active_drag_node = noone;
+            if (was_dragged) {
+                scr_c64_update_addresses();
+                with (obj_workspace_manager) { alarm[1] = 1; alarm[3] = 6; }
+            }
+        }
+    }
+}
+
+function scr_focus_init() {
+    var _anchor = scr_init_anchor();
+    if (!instance_exists(_anchor)) return;
+    with (obj_workspace_manager) {
+        cam_zoom_target = 1;
+        cam_zoom = 1;
+        cam_x = _anchor.x + _anchor.width * 0.5 - 960;
+        cam_y = _anchor.y - 160;
+        global.undo_dirty = true;
+        alarm[3] = 6;
+    }
+}

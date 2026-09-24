@@ -1421,10 +1421,7 @@ if (keyboard_check_pressed(ord("B")) && !is_entering_text && !global.is_any_text
 
 
 if (keyboard_check_pressed(vk_home)) {
-    cam_zoom_target = 1.0;
-    cam_zoom        = 1.0;
-    cam_x           = (room_width / 2) - (1920 / 2);
-    cam_y           = 0;
+    scr_focus_init();
     global.undo_dirty = true;
     alarm[3] = 6;
 }
@@ -2168,13 +2165,14 @@ if (global.relayout_frames > 0) {
 if (global.addresses_dirty) {
     global.addresses_dirty = false;
 
-    var _spine_x   = (room_width / 2) - (global.node_display_width / 2);
+    var _init_anchor = scr_init_anchor();
+    var _spine_x = instance_exists(_init_anchor) ? _init_anchor.x : 0;
     var current_nest = 0;
     ds_list_clear(global.node_chain);
 
     var _curr = noone;
     with(obj_c64_node) {
-        if (node_type == "INIT" && x > 160) _curr = id;
+        if (node_type == "INIT") _curr = id;
     }
 
     var loop_guard = 0;

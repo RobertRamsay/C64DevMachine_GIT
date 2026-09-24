@@ -196,7 +196,7 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
         }
 
         if (_n.node_type == "MACRO_PRINT") scr_print_sync_height(_n);
-        if (_n.node_type == "INIT") _n.is_draggable = false;
+        if (_n.node_type == "INIT") _n.is_draggable = true;
         if (_n.node_type == "ORG") {
             _n.is_draggable = true;
             _n.is_connected = false;
@@ -663,6 +663,8 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
             }
 				if (_ad.type == "META_TILESET") {
 	            scr_asset_meta_tileset_create(_new_asset);
+                // Creation defaults must not replace the saved asset address.
+                _new_asset.address = _ad.address;
 	            var _tsm = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
 	            _new_asset.meta.stamp_w               = variable_struct_exists(_tsm, "stamp_w")      ? _tsm.stamp_w      : 2;
 	            _new_asset.meta.stamp_h               = variable_struct_exists(_tsm, "stamp_h")      ? _tsm.stamp_h      : 2;

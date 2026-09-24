@@ -7990,13 +7990,30 @@ case "MACRO_SPR": {
 		}
 	}
 
+// Prefer the last display setup preceding this sprite on its own chain.
+    // A bitmap elsewhere can be a title screen, not the running game display.
+    var _spr_display = noone;
+    var _spr_self = _curr;
+    with (obj_c64_node) {
+        if (!is_connected || org_parent != _spr_self.org_parent || y >= _spr_self.y) continue;
+        if (node_type != "MACRO_VIC" && node_type != "MACRO_BMP") continue;
+        if (!instance_exists(_spr_display) || y > _spr_display.y) _spr_display = id;
+    }
+    var _spr_explicit_vic = instance_exists(_spr_display) && _spr_display.node_type == "MACRO_VIC";
+    if (_spr_explicit_vic) {
+        var _spr_vic = _spr_display.instructions[0];
+        _bank_base = real(_spr_vic[2]) * 0x4000;
+        _cia_val = (3 - real(_spr_vic[2])) & 3;
+        _screen_ram = real(_spr_vic[3]);
+        if (_spr_vic[1] == "BITMAP" || _spr_vic[1] == "BMP" || _spr_vic[1] == "MCB") _screen_ram = real(_spr_vic[4]) + 0x2000;
+    }
 // [FIX-VIC-BANK] When MACRO_BMP is present, VIC bank is controlled by the bitmap.
 	// MACRO_SPR must NOT fight over CIA $DD00. Override to match bitmap bank and screen RAM.
 	// BUT: if a MACRO_VIC or MACRO_MAP is also on the main spine, the bitmap is only
 	// a transient splash — the later mode switch is authoritative, so the bitmap
 	// must NOT force the CIA bank back. Skip the whole override in that case.
 	with (obj_c64_node) {
-    if (node_type == "MACRO_BMP" && is_connected) {
+    if (!_spr_explicit_vic && node_type == "MACRO_BMP" && is_connected) {
 			var _bmp_addr2  = is_real(instructions[0][2]) ? real(instructions[0][2]) : 0x4000;
 			var _bmp_bank2  = floor(_bmp_addr2 / 0x4000);
 			var _bmp_base2  = _bmp_bank2 * 0x4000;
@@ -20317,7 +20334,7 @@ case "MACRO_MOVE_MEM": {
     // ================================================================
     var _init = noone;
     with (obj_c64_node) {
-        if (node_type == "INIT" && x > 160) _init = id;
+        if (node_type == "INIT") _init = id;
     }
     if (instance_exists(_init)) {
         _walk_spine(_init, instruction_list, noone);

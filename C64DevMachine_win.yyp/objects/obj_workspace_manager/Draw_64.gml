@@ -1976,10 +1976,7 @@ for (var j = 0; j < array_length(shortcuts); j++) {
             case "SAVE AS":           scr_save_workspace_as(); break;
             case "LOAD FILE":         scr_load_workspace_dialog(); break;
             case "RESET VIEW":
-                cam_zoom_target = 1.0;
-                cam_zoom        = 1.0;
-                cam_x           = (room_width / 2) - (1920 / 2);
-                cam_y           = -64;
+                scr_focus_init();
                 break;
             case "TOGGLE HEX/DEC":
                 global.use_hex_display = !global.use_hex_display;

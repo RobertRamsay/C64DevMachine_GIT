@@ -401,12 +401,14 @@ with (obj_c64_node) {
 	var _main_spine = [];
 
 	with (obj_c64_node) {
-	    if (is_connected && x > 160 && org_parent == noone && node_type != "ORG") {
+	    if (is_connected && org_parent == noone && node_type != "ORG") {
 	        array_push(_main_spine, id);
 	    }
 	}
 	array_sort(_main_spine, function(_a, _b) { 
-		var _diff = _a.y - _b.y;
+		if (_a.node_type == "INIT") return -1;
+        if (_b.node_type == "INIT") return 1;
+        var _diff = _a.y - _b.y;
 		if (_diff == 0) return (_a.id > _b.id) ? 1 : ((_a.id < _b.id) ? -1 : 0); // Tie-breaker for stability
 		return _diff; 
 	});
@@ -418,6 +420,7 @@ var _G = 20;
 	for (var i = 0; i < array_length(_main_spine); i++) {
 	    var _n    = _main_spine[i];
 	    _n.y      = _pack_y;
+        _n.x = _main_spine[0].x;
 	    _n.height = ceil(_n.height / _G) * _G;
 	    _pack_y  += _n.height;
 /*
