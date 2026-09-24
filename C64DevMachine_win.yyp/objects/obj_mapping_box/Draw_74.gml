@@ -14,16 +14,16 @@ var _cam_y = obj_workspace_manager.cam_y;
 
 // Convert box centre-top to screen space
 var _wx = x + (box_w * 0.5);
-var _wy = y - 9; // vertically centred in the tab
+var _wy = y - 18; // top of the room-space tab
 var _sx = (_wx - _cam_x) / _cam_zoom;
-var _sy = (_wy - _cam_y) / _cam_zoom;
+var _sy = (_wy - _cam_y) / _cam_zoom - 4; // screen-space gap above the tab
 
 // Keep overview labels inside their own box, even at the furthest zoom.
 draw_set_font_l(fnt_c64_tiny);
 var _label_width = max(1, box_w / _cam_zoom - 8);
 var _label_scale = min(1, _label_width / max(1, string_width_l(box_name)));
 draw_set_halign(fa_center);
-draw_set_valign(fa_middle);
+draw_set_valign(fa_bottom);
 
 // Shadow
 draw_set_alpha(_alpha * 0.6);

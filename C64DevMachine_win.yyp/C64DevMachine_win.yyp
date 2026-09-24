@@ -59,6 +59,7 @@
     {"$GMIncludedFile":"","%Name":"pfrmr_scrl_lite.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"pfrmr_scrl_lite.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"pfrmr_scrl_pro.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"pfrmr_scrl_pro.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"SHMUP_V.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"SHMUP_V.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
+    {"$GMIncludedFile":"","%Name":"ZYRONS_ESCAPE.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"ZYRONS_ESCAPE.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"top_down_lite.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"top_down_lite.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"top_down_pro.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"top_down_pro.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"vshmup_pro.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"vshmup_pro.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},

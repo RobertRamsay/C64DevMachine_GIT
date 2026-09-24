@@ -1148,7 +1148,9 @@ if (gui_menu_open == 7) {
     // Re-enable each catalog entry here once its template has been reviewed.
     // All bundled JSONs and catalog IDs remain available for later work.
     var _visible_templates = [
-        0 // V.SHMUP (LITE)
+        0, // SHMUP V
+        -1, // Separator and PORTS heading (not selectable)
+        10 // ZYRONS ESCAPE
         // ,1 // V.SHMUP (PRO)
         // ,2 // H.SHMUP (LITE)
         // ,3 // H.SHMUP (PRO)
@@ -1164,9 +1166,15 @@ if (gui_menu_open == 7) {
     draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_left);
     for (var _ti = 0; _ti < array_length(_visible_templates); _ti++) {
+        var _iy = _ty + 12 + _ti * 24;
+        if (_visible_templates[_ti] == -1) {
+            draw_set_color(c_gray);
+            draw_line(_tx + 10, _iy, _tx + _tw - 10, _iy);
+            draw_text_l(_tx + 10, _iy + 5, "PORTS");
+            continue;
+        }
         var _entry = scr_template_catalog(_visible_templates[_ti]);
         var _disabled = false;
-        var _iy = _ty + 12 + _ti * 24;
         var _hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _tx, _iy, _tx + _tw, _iy + 23);
         draw_set_color(_disabled ? c_gray : (_hov ? c_yellow : c_white));
         draw_text_l(_tx + 10, _iy + 3, _entry.title);
