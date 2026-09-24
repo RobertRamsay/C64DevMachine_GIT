@@ -81,14 +81,14 @@ if (_tab_hov && mouse_check_button_pressed(mb_left) && !is_resizing) {
     } else {
         dbl_click_timer = 20;
         // Begin drag
+        scr_undo_snapshot();
         is_dragging  = true;
         drag_ox      = mouse_x;
         drag_oy      = mouse_y;
         drag_start_x = x;
         drag_start_y = y;
 
-        // Collect ORG parents inside this box and arm their own drag system
-// Collect ORG parents inside this box and arm their own drag system
+        // Collect ORG and INIT anchors; their drag systems carry their children.
         drag_nodes   = [];
         drag_offsets = [];
         // Collect floating nodes (comments, labels, normal nodes etc)
@@ -102,11 +102,13 @@ if (_tab_hov && mouse_check_button_pressed(mb_left) && !is_resizing) {
                            _ny >= other.y && _ny <= other.y + other.box_h);
             if (!_inside) continue;
 
-            if (node_type == "ORG" && org_parent == noone) {
-                // ORG parent — arm its own drag to carry children
+            if ((node_type == "ORG" || node_type == "INIT") && org_parent == noone) {
+                // Arm the anchor's own drag to carry its connected children.
                 array_push(other.drag_nodes,   id);
                 array_push(other.drag_offsets, [x - other.x, y - other.y]);
                 is_dragging   = true;
+                was_dragged   = false;
+                pre_click_depth = depth;
                 depth         = -2000;
                 drag_offset_x = x - mouse_x;
                 drag_offset_y = y - mouse_y;

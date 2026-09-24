@@ -6,6 +6,8 @@
 // runs for every instance before any Draw GUI event, so the manager's GUI
 // (and the asset panel / message boxes) now always paints over this.
 if obj_workspace_manager.code_editor_open exit;
+// Match room-space drawing: folded children have no GUI overlay either.
+if (scr_node_is_hidden(id)) exit;
 // Any asset editor (the viewer hosts them all: bitmap, builder, byte data,
 // sprites...) and SPRED64 take the whole screen - the zoomed-out node
 // overlay must not draw over them. Draw_0 already exits on viewer_open.
