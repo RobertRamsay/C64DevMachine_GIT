@@ -253,6 +253,23 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_HUD": {
+            title: "HUD - QUICK GUIDE",
+            lines: [
+                "SETUP: Create a HUD asset, paint its panel and add fields in the asset editor. Pick that asset here. Its position and size determine where it appears.",
+                "",
+                "SCR / COL: Set the destination screen and colour-memory bases (normally $0400 / $D800). COLOUR enables colour writes; turn it off to preserve existing colours.",
+                "",
+                "DRAW: AUTO DRAW stamps the panel when execution reaches this macro. With it off, call the hud<ID>_draw routine shown on the node after setting up the screen. Redraw if the panel is overwritten.",
+                "",
+                "FIELDS: For DIGITS or BAR fields, load the value into A, then JSR the field routine shown on the node. DIGITS displays a decimal byte value (0-255); BAR uses the field settings.",
+                "",
+                "TEXT: These fields mark screen positions, not callable routines. Use the address shown on the node to write your own text.",
+                "",
+                "SCROLLING: Reserve HUD rows using the scroller's omit controls. Vertical fine scrolling still moves a character HUD; use a raster split or sprites to keep it steady."
+            ]
+        },
+
         "MACRO_METASCROLL": {
             title: "METASCROLL - QUICK GUIDE",
             lines: [
@@ -981,6 +998,13 @@ function scr_node_info_panel_draw(_type, _gw, _gh) {
     draw_set_color(make_color_rgb(80, 140, 220));
     draw_rectangle(_x, _y, _x + _w, _y + _h, true);
     draw_set_color(c_yellow);
+    // Separate columns with a quiet rule, inset 5% from each panel edge.
+    draw_set_color(make_color_rgb(45, 65, 90));
+    for (var _divider = 1; _divider < _cols; _divider++) {
+        var _divider_x = _x + _pad + _divider * (_cw + _gap) - _gap / 2;
+        draw_line(_divider_x, _y + _h * 0.05, _divider_x, _y + _h * 0.95);
+    }
+    draw_set_color(c_yellow);
     var _title = L(_info.title);
     var _title_scale = min(_scale * 1.15, (_w - 2 * _pad) / max(1, string_width(_title)));
     draw_text_transformed(_x + _pad, _y + _pad, _title, _title_scale, _title_scale, 0);
@@ -1000,7 +1024,7 @@ function scr_node_info_panel_draw(_type, _gw, _gh) {
     draw_set_halign(fa_right);
     var _footer = (_pages > 1)
         ? L("Mouse wheel: pages") + "   " + string(node_info_page + 1) + " / " + string(_pages)
-        : L("Read down each column");
+        : "";
     var _footer_scale = min(1, (_w - 2 * _pad) / max(1, string_width(_footer)));
     draw_text_transformed(_x + _w - _pad, _y + _h - _pad - _lh,
         _footer, _footer_scale, _footer_scale, 0);

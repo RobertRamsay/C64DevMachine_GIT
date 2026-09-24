@@ -18,7 +18,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         1920/sprite_get_width(spr_baseGradient), 1.6, 0, c_white, 1);
 
     // Display-only zoom: allocations and conflict detection retain real addresses.
-    scr_memory_bar_bank_controls(_x1 - 44, _y - 18);
+    scr_memory_bar_bank_controls(_x1 - 30, _y - 12);
     var _view = scr_memory_bar_bank_range(global.memory_bar_bank_mode, global.memory_bar_bank_index);
     var _view_start = _view.start;
     var _view_end = _view.finish;
@@ -840,8 +840,8 @@ function scr_memory_bar_bank_controls(_x, _y) {
     }
     var _mx = global.gui_mouse_x;
     var _my = global.gui_mouse_y;
-    var _mode_hover = point_in_rectangle(_mx, _my, _x, _y, _x + 36, _y + 13);
-    var _bank_hover = point_in_rectangle(_mx, _my, _x, _y + 15, _x + 36, _y + 43);
+    var _mode_hover = point_in_rectangle(_mx, _my, _x, _y, _x + 24, _y + 10);
+    var _bank_hover = point_in_rectangle(_mx, _my, _x, _y + 12, _x + 24, _y + 32);
     if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.conflict_popup_open) {
         if (_mode_hover) {
             global.memory_bar_bank_mode = (global.memory_bar_bank_mode + 1) mod 3;
@@ -854,22 +854,22 @@ function scr_memory_bar_bank_controls(_x, _y) {
         }
     }
     var _view = scr_memory_bar_bank_range(global.memory_bar_bank_mode, global.memory_bar_bank_index);
-    draw_set_font_l(fnt_c64_tiny);
+    draw_set_font_l(fnt_c64_pico);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
     draw_set_alpha(1);
     draw_set_color(_mode_hover ? c_white : c_aqua);
     var _modes = ["ALL", "SEG", "ONE"];
-    draw_text_l(_x + 18, _y + 6, _modes[global.memory_bar_bank_mode]);
+    draw_text_transformed_l(_x + 12, _y + 5, _modes[global.memory_bar_bank_mode], 0.8, 0.8, 0);
     draw_set_color(_bank_hover ? make_color_rgb(30, 45, 60) : make_color_rgb(12, 18, 28));
-    draw_rectangle(_x, _y + 15, _x + 36, _y + 43, false);
+    draw_rectangle(_x, _y + 12, _x + 24, _y + 32, false);
     draw_set_color(_bank_hover ? c_aqua : make_color_rgb(60, 90, 110));
-    draw_rectangle(_x, _y + 15, _x + 36, _y + 43, true);
+    draw_rectangle(_x, _y + 12, _x + 24, _y + 32, true);
     for (var _b = 0; _b < 4; _b++) {
         var _lit = _b * 16384 >= _view.start && _b * 16384 < _view.finish;
         draw_set_color(_lit ? c_lime : make_color_rgb(70, 80, 90));
-        draw_text_l(_x + 10 + (_b mod 2) * 16, _y + 22 + (_b div 2) * 13,
-            _lit ? string(_b + 1) : "-");
+        draw_text_transformed_l(_x + 7 + (_b mod 2) * 10, _y + 17 + (_b div 2) * 10,
+            _lit ? string(_b + 1) : "-", 0.8, 0.8, 0);
     }
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
