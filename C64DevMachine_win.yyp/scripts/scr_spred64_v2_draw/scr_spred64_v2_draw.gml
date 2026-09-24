@@ -14,6 +14,9 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         if (spred64_v2.asset_index < 0) exit;
 
         var _v2 = spred64_v2;
+        if (!global.is_any_text_active && (mouse_check_button_pressed(mb_left)
+        || mouse_check_button_pressed(mb_right) || keyboard_check_pressed(vk_anykey)))
+            scr_spred64_v2_history_begin(_v2);
 
         // Decrement paint cooldown. Used to swallow stray clicks that
         // opened V2 from outside (e.g. picker-click in the asset viewer).
@@ -2446,6 +2449,8 @@ if (_layer_dir != 0) {
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
         }
+        if (!mouse_check_button(mb_left) && !mouse_check_button(mb_right))
+            scr_spred64_v2_history_finish(_v2);
     }
 	
 }

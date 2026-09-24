@@ -1338,6 +1338,14 @@ if (keyboard_check(vk_control) && keyboard_check(vk_shift)) {
 }*/
 
 if (keyboard_check(vk_control) || scr_cmd_held()) {
+    if (obj_asset_manager.spred64_v2.active && !global.is_any_text_active) {
+        if (keyboard_check_pressed(ord("Z")) || keyboard_check_pressed(ord("Y"))) {
+            scr_spred64_v2_history_step(keyboard_check_pressed(ord("Y")) || keyboard_check(vk_shift));
+            keyboard_clear(ord("Z")); keyboard_clear(ord("Y"));
+            exit;
+        }
+    }
+
     if (keyboard_check_pressed(ord("S"))) {
         global.isSaving = true;
         save_pending = true;

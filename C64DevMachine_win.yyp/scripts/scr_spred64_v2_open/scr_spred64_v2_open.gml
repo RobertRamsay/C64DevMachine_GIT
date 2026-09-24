@@ -57,6 +57,10 @@ function scr_spred64_v2_open(_asset_index) {
         spred64_v2.mc2_col       = _asset.meta.mc2_col;
         spred64_v2.used_count    = _asset.meta.used_count;
 
+        spred64_v2.undo_stack = [];
+        spred64_v2.redo_stack = [];
+        spred64_v2.undo_pending = undefined;
+
         // Editor entry state
         spred64_v2.selected_slot = 0;
         spred64_v2.active_colour = 3;
@@ -150,4 +154,48 @@ function scr_spred64_v2_open(_asset_index) {
 
         show_debug_message("SPRED64 V2: opened asset '" + _asset.name + "' (idx " + string(_asset_index) + ")");
     }
+}
+// History captures data only: no GPU handles or playback cursors. Comparing
+// happens at the end of an input gesture, never on idle rendering frames.
+function scr_spred64_v2_history_state(_v) {
+    return json_stringify({bits:_v.bits, sprite_modes:_v.sprite_modes,
+        sprite_uc:_v.sprite_uc, used_count:_v.used_count, bg_col:_v.bg_col,
+        mc1_col:_v.mc1_col, mc2_col:_v.mc2_col, frames:_v.compositor.frames,
+        anim_start:_v.anim_start, anim_end:_v.anim_end,
+        anim_direction:_v.anim_direction, anim_speed:_v.anim_speed});
+}
+function scr_spred64_v2_history_begin(_v) {
+    if (is_undefined(_v.undo_pending)) _v.undo_pending = scr_spred64_v2_history_state(_v);
+}
+function scr_spred64_v2_history_finish(_v) {
+    if (is_undefined(_v.undo_pending)) return;
+    if (_v.undo_pending != scr_spred64_v2_history_state(_v)) {
+        array_push(_v.undo_stack, _v.undo_pending);
+        if (array_length(_v.undo_stack) > 50) array_delete(_v.undo_stack,0,1);
+        _v.redo_stack = [];
+    }
+    _v.undo_pending = undefined;
+}
+function scr_spred64_v2_history_step(_redo) {
+    var _v = obj_asset_manager.spred64_v2;
+    if (!_v.active) return;
+    scr_spred64_v2_history_finish(_v);
+    var _src = _redo ? _v.redo_stack : _v.undo_stack;
+    if (array_length(_src)==0) return;
+    var _current = scr_spred64_v2_history_state(_v);
+    var _snap = json_parse(array_pop(_src));
+    if (_redo) { _v.redo_stack=_src; array_push(_v.undo_stack,_current); }
+    else { _v.undo_stack=_src; array_push(_v.redo_stack,_current); }
+    _v.bits=_snap.bits; _v.sprite_modes=_snap.sprite_modes; _v.sprite_uc=_snap.sprite_uc;
+    _v.used_count=_snap.used_count; _v.bg_col=_snap.bg_col;
+    _v.mc1_col=_snap.mc1_col; _v.mc2_col=_snap.mc2_col;
+    _v.compositor.frames=_snap.frames;
+    _v.compositor.active_frame=clamp(_v.compositor.active_frame,0,array_length(_snap.frames)-1);
+    _v.compositor.active_cell=-1;
+    _v.anim_start=_snap.anim_start; _v.anim_end=_snap.anim_end;
+    _v.anim_direction=_snap.anim_direction; _v.anim_speed=_snap.anim_speed;
+    _v.anim_playing=false; _v.selected_slot=clamp(_v.selected_slot,0,_v.used_count-1);
+    _v.dirty=true; _v._edit_dirty=true; _v.paint_cooldown=2;
+    var _asset=obj_asset_manager.asset_list[|_v.asset_index];
+    for(var _i=0;_i<_v.used_count;_i++) scr_spred64_v2_refresh_slot_sprite(_asset,_i);
 }
