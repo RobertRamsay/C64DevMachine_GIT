@@ -15,7 +15,7 @@ probe_status = "";
 probe_notice_until = 0;
 probe_max_line = 32768;
 
-// --- MCP-CON one-click setup (Pro only) ------------------------------------
+// --- MCP-CON one-click setup (all editions) ------------------------------------
 // The button runs tools/cdm-mcp/setup-mcp.bat (setup-mcp.command on macOS),
 // which checks for Node.js, registers the bridge with any installed assistant
 // CLI, and leaves a pairing key for this editor to collect. The helper is
@@ -63,11 +63,6 @@ probe_stop = function(_reason) {
     probe_retry_at = current_time + 5000;
 };
 
-// Defensive guard if this object is ever instantiated outside Pro startup.
-if (!variable_global_exists("lite") || global.lite != 0) {
-    instance_destroy();
-    exit;
-}
 
 probe_send = function(_text) {
     if (probe_socket < 0) return false;
@@ -361,11 +356,6 @@ probe_project_command = function(_method,_args) {
     if (_method == "build") {
         if (!variable_struct_exists(_args,"run") || !is_bool(_args.run)) throw "run must be boolean.";
         if (_wm.trigger_build || _wm.vice_launch_pending || global.asset_reload_in_progress) throw "Another build, launch or asset reload is active.";
-        if(global.lite==1) {
-            var _premium=false;
-            with(obj_c64_node) if(is_connected && (node_type=="MACRO_CODE" || node_type=="MACRO_IRQ" || node_type=="MACRO_MOVE_MEM")) _premium=true;
-            if(_premium) throw "The native LITE edition cannot build premium nodes.";
-        }
         if (_args.run && scr_resolve_vice_path()=="") throw "VICE executable not found. Configure the native VICE path first.";
         probe_build = {id:probe_build.id+1,state:"queued",run:_args.run,output:"",message:"Queued native F5 build. Poll build_status."};
         _wm.silent_build = !_args.run;
@@ -441,6 +431,9 @@ probe_project_command = function(_method,_args) {
     }
     var _node=probe_find(_args.uid);
     if (_method=="update_node") {
+        if (global.lite && _node.node_type=="MACRO_CODE"
+        && (variable_struct_exists(_args,"text") || variable_struct_exists(_args,"instructions")))
+            throw "Code blocks are view-only in LITE.";
         if (_node.macro_owner!=noone) throw "Edit the owning macro, not its internal child.";
         probe_validate_fields(_node,_args);
         probe_before_edit(); probe_set_fields(_node,_args); probe_after_edit();
@@ -500,7 +493,7 @@ probe_node_info = function(_node) {
 };
 
 probe_dispatch = function(_method, _args) {
-    if (global.lite != 0) throw "MCP requires the Pro edition.";
+
     if (_method == "ping") {
         return {pong: true, application: "C64 Dev Machine", prototype: "0.2.0",
                 workspace_key: probe_workspace_key(), busy: probe_busy()};
@@ -602,7 +595,7 @@ probe_dispatch = function(_method, _args) {
 
 /// @param {Bool} _fresh Replace the remembered key from the clipboard.
 probe_start = function(_fresh) {
-    if (global.lite != 0) { probe_stop("OFF - Pro edition required"); return; }
+
     // Explicit shortcut opt-in is the ONLY clipboard access in this object.
     var _key = probe_saved_key;
     if (probe_pair_key != "") {

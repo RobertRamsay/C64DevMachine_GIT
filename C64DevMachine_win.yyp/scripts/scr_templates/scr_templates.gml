@@ -11,7 +11,6 @@ function scr_template_catalog(_index) {
 function scr_template_load(_index) {
     if (_index < 0 || _index >= 10) return;
     var _entry = scr_template_catalog(_index);
-    if (global.lite && _entry.pro) return;
     // Validate before the native loader destroys the current workspace.
     if (!file_exists(_entry.path)) { scr_show_message("Template file is missing: " + _entry.title); return; }
     var _buf = buffer_load(_entry.path);
@@ -81,7 +80,6 @@ function scr_template_step() {
     if (template_pending < 0 || instance_exists(obj_question_box)) return;
     var _choice = template_pending;
     template_pending = -1;
-    if (global.lite && scr_template_catalog(_choice).pro) return;
     if (scr_workspace_has_changes()) {
         template_waiting = _choice;
         scr_show_question("Save changes before loading the template?", "template_save");

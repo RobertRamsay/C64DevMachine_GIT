@@ -1,5 +1,5 @@
 /// ====================================================================
-/// CODE BLOCK IMPORT  (PRO — gated behind !global.lite)
+/// CODE BLOCK IMPORT  (all editions; code text is view-only in LITE)
 ///
 /// The mirror of the EXPORT button in scr_code_editor_draw. Two ways in:
 ///
@@ -133,12 +133,6 @@ function scr_import_code_block_read() {
 /// @desc IMPORT menu entry. Reads a file, spawns a code block holding it, and
 ///       latches that block to the pointer until the next click drops it.
 function scr_import_code_block_menu() {
-    // The menu does not offer this in Lite, but the guard stays: a menu list is
-    // one edit away from being built unconditionally again.
-    if (global.lite) {
-        scr_show_message("CODE BLOCKS ARE A FULL VERSION FEATURE");
-        return;
-    }
     if (global.code_import_node != noone) {
         return;   // one in flight is enough
     }

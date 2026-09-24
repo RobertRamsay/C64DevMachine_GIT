@@ -96,7 +96,7 @@ if (code_editor_find_open && code_editor_find_active_field > 0) {
 // ── F5: Commit and Build ──
     if (keyboard_check_pressed(vk_f5)) {
         // Push current text to the node so the compiler sees it
-        if (instance_exists(code_editor_node)) {
+        if (!global.lite && instance_exists(code_editor_node)) {
             code_editor_node.instructions[0][1] = code_editor_text;
             global.addresses_dirty = true;
         }
@@ -121,7 +121,7 @@ if (code_editor_find_open && code_editor_find_active_field > 0) {
     var _sel_hi  = _has_sel ? max(code_editor_sel_start, code_editor_sel_end) : _cur;
 
     // ── Ctrl+Z  Undo ──────────────────────────────────────────
-    if (keyboard_check_pressed(ord("Z")) && keyboard_check(vk_control)) {
+    if (!global.lite && keyboard_check_pressed(ord("Z")) && keyboard_check(vk_control)) {
         if (array_length(code_editor_undo_stack) > 0) {
             var _tip = array_length(code_editor_undo_stack) - 1;
             array_push(code_editor_redo_stack, { text: code_editor_text, cursor: code_editor_cursor });
@@ -136,7 +136,7 @@ if (code_editor_find_open && code_editor_find_active_field > 0) {
     }
 
     // ── Ctrl+Y  Redo ──────────────────────────────────────────
-    if (keyboard_check_pressed(ord("Y")) && keyboard_check(vk_control)) {
+    if (!global.lite && keyboard_check_pressed(ord("Y")) && keyboard_check(vk_control)) {
         if (array_length(code_editor_redo_stack) > 0) {
             var _tip = array_length(code_editor_redo_stack) - 1;
             array_push(code_editor_undo_stack, { text: code_editor_text, cursor: code_editor_cursor });
@@ -161,7 +161,7 @@ if (code_editor_find_open && code_editor_find_active_field > 0) {
     }
 
     // ─── ENTER: new line ───
-    if (keyboard_check_pressed(vk_enter) && !_ctrl) {
+    if (!global.lite && keyboard_check_pressed(vk_enter) && !_ctrl) {
         scr_code_editor_push_undo();
         if (_has_sel) {
             _txt = string_delete(_txt, _sel_lo + 1, _sel_hi - _sel_lo);
@@ -209,7 +209,7 @@ if (code_editor_find_open && code_editor_find_active_field > 0) {
     }
 
     // ─── Ctrl+X: Cut ───
-    if (_ctrl && keyboard_check_pressed(ord("X"))) {
+    if (!global.lite && _ctrl && keyboard_check_pressed(ord("X"))) {
         scr_code_editor_push_undo();
         if (_has_sel) {
             clipboard_set_text(string_copy(_txt, _sel_lo + 1, _sel_hi - _sel_lo));
@@ -235,7 +235,7 @@ if (code_editor_find_open && code_editor_find_active_field > 0) {
     }
 
     // ─── Ctrl+V: Paste ───
-    if (_ctrl && keyboard_check_pressed(ord("V"))) {
+    if (!global.lite && _ctrl && keyboard_check_pressed(ord("V"))) {
         scr_code_editor_push_undo();
         var _paste = clipboard_get_text();
         if (_paste != "") {
@@ -398,7 +398,7 @@ if (code_editor_find_open && code_editor_find_active_field > 0) {
         }
 
         // ─── BACKSPACE ───
-        if (keyboard_check(vk_backspace)) {
+        if (!global.lite && keyboard_check(vk_backspace)) {
             scr_code_editor_push_undo();
             code_editor_preferred_col = 0;
             if (_has_sel) {
@@ -421,7 +421,7 @@ if (code_editor_find_open && code_editor_find_active_field > 0) {
         }
 
         // ─── DELETE ───
-        if (keyboard_check(vk_delete)) {
+        if (!global.lite && keyboard_check(vk_delete)) {
             scr_code_editor_push_undo();
             code_editor_preferred_col = 0;
             if (_has_sel) {
@@ -542,7 +542,7 @@ if (code_editor_find_open && code_editor_find_active_field > 0) {
     }
 
     // ─── TAB ───
-    if (keyboard_check_pressed(vk_tab)) {
+    if (!global.lite && keyboard_check_pressed(vk_tab)) {
         scr_code_editor_push_undo();
         if (_shift) {
             var _lines = string_split(_txt, "\n");
@@ -598,7 +598,7 @@ if (_ctrl && keyboard_check_pressed(ord("F"))) {
     // AltGr on non-US layouts (e.g. Italian #, @, [, ], {, }) is reported as Ctrl+Alt.
     // Treat Ctrl+Alt as "not a shortcut" so typed glyphs pass through.
     var _alt_gr = (_ctrl && keyboard_check(vk_alt));
-    if (keyboard_string != "" && (!_ctrl || _alt_gr)) {
+    if (!global.lite && keyboard_string != "" && (!_ctrl || _alt_gr)) {
         scr_code_editor_push_undo();
         var _added = keyboard_string;
         if (_has_sel) {

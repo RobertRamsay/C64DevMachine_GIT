@@ -1,4 +1,4 @@
-if (global.lite != 0) exit;
+
 
 // --- MCP control buttons ---------------------------------------------------
 // The old status line drawn along the bottom edge has been removed: it sat at

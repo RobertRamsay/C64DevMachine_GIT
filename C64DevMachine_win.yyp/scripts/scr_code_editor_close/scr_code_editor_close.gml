@@ -2,7 +2,7 @@
 /// @description Closes the code editor. Always commits (no cancel concept).
 function scr_code_editor_close(_commit) {
     with (obj_workspace_manager) {
-        if (_commit && instance_exists(code_editor_node)) {
+        if (_commit && !global.lite && instance_exists(code_editor_node)) {
             code_editor_node.instructions[0][1] = code_editor_text;
             code_editor_node.height_dirty = true;
             global.undo_dirty        = true;

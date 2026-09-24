@@ -22,7 +22,7 @@ function scr_node_draw_macro_code(_draw_x, _y) {
     draw_set_color(c_white);
     draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_center);
-    scr_node_macro_text_l((_btn_x1 + _btn_x2) / 2, _btn_y1 + 1 , "EDIT ASM CODE");
+    scr_node_macro_text_l((_btn_x1 + _btn_x2) / 2, _btn_y1 + 1 , global.lite ? "VIEW ASM CODE" : "EDIT ASM CODE");
     draw_set_halign(fa_left);
     _ly = _btn_y2 + 6;
 

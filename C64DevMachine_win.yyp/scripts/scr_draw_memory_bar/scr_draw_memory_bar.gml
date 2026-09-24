@@ -62,9 +62,6 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     draw_rectangle(_bx1, _y, _bx2, _y + _map_h, false);
     draw_set_color(global.basic_unlocked ? make_color_rgb(80, 200, 220) : make_color_rgb(160, 160, 180));
     var _basic_locked_txt = "MACRO CONTROLLED";
-    if (global.lite) {
-        _basic_locked_txt = "MACRO CONTROLLED (PRO ONLY)";
-    }
     draw_text_l((_bx1 + _bx2) / 2, _y + _map_h / 2, global.basic_unlocked ? L("UNLOCKED") : _basic_locked_txt);
 
     }
@@ -75,9 +72,6 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     draw_rectangle(_kx1, _y, _kx2, _y + _map_h, false);
     draw_set_color(global.kernal_unlocked ? make_color_rgb(80, 200, 220) : make_color_rgb(160, 160, 180));
     var _kernal_locked_txt = "MACRO CONTROLLED";
-    if (global.lite) {
-        _kernal_locked_txt = "MACRO CONTROLLED (PRO ONLY)";
-    }
     draw_text_l((_kx1 + _kx2) / 2, _y + _map_h / 2, global.kernal_unlocked ? L("UNLOCKED") : _kernal_locked_txt);
 
     }

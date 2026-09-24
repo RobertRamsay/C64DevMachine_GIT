@@ -961,7 +961,7 @@ var _mbar_btn_gap = _mbar_btn_w + 3;
 /////////////////////////////////////////////////////////////////
 ///// EXTRA DROPDOWN (button 1) — only available outside LITE mode
 /////////////////////////////////////////////////////////////////
-if (gui_menu_open == 1 && !global.lite) {
+if (gui_menu_open == 1) {
 
     var _extra_list = [
         { title: "IRQ",              type: "MACRO_IRQ"           },
@@ -1107,7 +1107,7 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
     var _bx    = _mbar_start_x + (_bi * _mbar_btn_gap);
     var _by    = _mbar_y;
     var _bopen = (gui_menu_open == _bi);
-    var _bdisabled = (_bi == 1 && global.lite);
+    var _bdisabled = false;
 
     draw_sprite_ext(spr_menu_button, (uiChromeStyle == 0) ? paletteStyle : sprite_get_number(spr_menu_button)-1,
                     _bx, _by, _mbar_btn_w / 179, _mbar_btn_h / 42, 0, c_white, 1);
@@ -1165,7 +1165,7 @@ if (gui_menu_open == 7) {
     draw_set_halign(fa_left);
     for (var _ti = 0; _ti < array_length(_visible_templates); _ti++) {
         var _entry = scr_template_catalog(_visible_templates[_ti]);
-        var _disabled = global.lite && _entry.pro;
+        var _disabled = false;
         var _iy = _ty + 12 + _ti * 24;
         var _hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _tx, _iy, _tx + _tw, _iy + 23);
         draw_set_color(_disabled ? c_gray : (_hov ? c_yellow : c_white));
@@ -1495,14 +1495,9 @@ if (gui_menu_open == 6) {
         { title: "CHARPAD (.CTM)", action: "CHARPAD_CTM" },
     ];
 
-    // Code blocks are a full-version feature, so the entry is not built at all
-    // in Lite rather than drawn greyed out — nothing to click, nothing to
-    // explain. The panel height below is derived from the list, so it closes up
-    // on its own.
-    if (global.lite == 0) {
-        array_push(_imp_list, { title: "CODE BLOCK (.ASM)", action: "CODE_ASM" });
-        array_push(_imp_list, { title: "REU BMP IMPORT",    action: "REU_BMP" });
-    }
+    array_push(_imp_list, { title: "CODE BLOCK (.ASM)", action: "CODE_ASM" });
+    array_push(_imp_list, { title: "REU BMP IMPORT", action: "REU_BMP" });
+
 	
     var _item_h_i   = 20;
     var _panel_w_i  = 220;

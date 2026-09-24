@@ -29,7 +29,7 @@ editor_layout_refresh_requested = false;
 
 // MCP is a Pro-only feature; initialize the edition before creating it.
 // MCP_ENABLED (top of this event) is the single switch for the whole feature.
-if (MCP_ENABLED && global.lite == 0 && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
+if (MCP_ENABLED && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
 global.build_date = "September 23rd, 2026"; // edit this string for each release
 
 // Frame counter. Incremented once in Begin Step, and used as the validity

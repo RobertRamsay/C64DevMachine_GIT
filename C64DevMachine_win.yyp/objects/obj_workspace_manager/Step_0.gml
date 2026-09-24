@@ -222,6 +222,16 @@ if (scr_code_import_step()) {
 // fall through for the one frame the build needs. Any pending edit buffer is
 // committed first, or the compile reads the pre-edit content.
 if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) {
+    if (keyboard_check(vk_control) || scr_cmd_held()) {
+    if (obj_asset_manager.spred64_v2.active && !global.is_any_text_active) {
+        if (keyboard_check_pressed(ord("Z")) || keyboard_check_pressed(ord("Y"))) {
+            scr_spred64_v2_history_step(keyboard_check_pressed(ord("Y")) || keyboard_check(vk_shift));
+            keyboard_clear(ord("Z")); keyboard_clear(ord("Y"));
+            exit;
+        }
+    }
+    }
+
     if (keyboard_check_pressed(vk_f5)) {
         scr_asset_inline_editor_commit_all();
         trigger_build = true;
@@ -1338,13 +1348,6 @@ if (keyboard_check(vk_control) && keyboard_check(vk_shift)) {
 }*/
 
 if (keyboard_check(vk_control) || scr_cmd_held()) {
-    if (obj_asset_manager.spred64_v2.active && !global.is_any_text_active) {
-        if (keyboard_check_pressed(ord("Z")) || keyboard_check_pressed(ord("Y"))) {
-            scr_spred64_v2_history_step(keyboard_check_pressed(ord("Y")) || keyboard_check(vk_shift));
-            keyboard_clear(ord("Z")); keyboard_clear(ord("Y"));
-            exit;
-        }
-    }
 
     if (keyboard_check_pressed(ord("S"))) {
         global.isSaving = true;
@@ -1614,7 +1617,7 @@ if (!is_entering_text && !global.is_any_text_active and !obj_asset_manager.viewe
     // Canvas utility nodes - keyboard shortcuts
 if (keyboard_check_pressed(ord("A")) && !_hover_blocks_spawn) { scr_node_spawn("LABEL",   mouse_x, mouse_y); global.undo_dirty = true; alarm[3] = 6; }
 if (keyboard_check_pressed(ord("C")) && global.comments_visible && !keyboard_check(vk_alt) && !keyboard_check(vk_shift) && !keyboard_check(vk_control) && !_hover_blocks_spawn) { scr_node_spawn("COMMENT", mouse_x, mouse_y); global.undo_dirty = true; alarm[3] = 6; }
-if (keyboard_check_pressed(ord("C")) && keyboard_check(vk_alt) && !keyboard_check(vk_shift) && !keyboard_check(vk_control) && !global.lite && !_hover_blocks_spawn) {
+if (keyboard_check_pressed(ord("C")) && keyboard_check(vk_alt) && !keyboard_check(vk_shift) && !keyboard_check(vk_control) && !_hover_blocks_spawn) {
 	scr_node_spawn("MACRO_CODE", mouse_x, mouse_y); 
     global.undo_dirty = true; 
     alarm[3] = 6;
@@ -2643,30 +2646,7 @@ if (_cmnem == "rts" || _cmnem == "rti") {
     if !silent_build scan_active = true;
     scan_y = cam_y;
 
-    // --- PREMIUM FEATURE CHECK ---
-    if (global.lite == 1) {
-        var _premium_found = false;
-        with (obj_c64_node) {
-            if (variable_instance_exists(id, "egg_temp") && egg_temp) continue;
-            if ( is_connected && (
-				        node_type == "MACRO_CODE"
-				        || node_type == "MACRO_IRQ"
-				        || node_type == "MACRO_MOVE_MEM"
-				    )
-				) {
-                _premium_found = true;
-                break;
-            }
-        }
-        
-        if (_premium_found) {
-            if (show_question("BUILDING PRO FEATURES\n\nYour spine contains premium nodes (Code or IRQ) which cannot be built in the LITE version.\nPLEASE CONSIDER PURCHASING.\nWould you like to open the store page now?")) {
-                url_open("https://polytricity.itch.io/the-c64-dev-machine");
-            }
-            exit; // Abort the build
-        }
-    }
-    // -----------------------------
+    // LITE builds every node type; only code text editing is restricted.
 
 
 // -------------------------------------------------------------
@@ -3970,22 +3950,7 @@ if (export_trigger) {
         exit;
     }
 
-    // --- PREMIUM FEATURE CHECK ---
-    if (global.lite == 1) {
-        var _premium_found = false;
-        with (obj_c64_node) {
-            if (is_connected && (node_type == "MACRO_CODE" || node_type == "MACRO_IRQ")) {
-                _premium_found = true;
-                break;
-            }
-        }
-        if (_premium_found) {
-            show_question(
-                "BUILDING PRO FEATURES\n\nYour spine contains premium nodes (Code or IRQ) which cannot be built in the LITE version.\nPLEASE CONSIDER PURCHASING.\nWould you like to open the store page now?");
-            exit; // Abort the build — answer handled async below
-        }
-    }
-    // -----------------------------
+    // LITE builds every node type; only code text editing is restricted.
 
     if (ds_list_empty(global.node_chain)) {
         scr_show_message("EXPORT FAILED: Spine is empty");

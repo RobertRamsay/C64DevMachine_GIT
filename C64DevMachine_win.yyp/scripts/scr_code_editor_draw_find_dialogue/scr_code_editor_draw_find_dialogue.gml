@@ -95,8 +95,8 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
         var _hi = max(code_editor_sel_start, code_editor_sel_end);
         _sel_matches = (string_copy(code_editor_text, _lo + 1, _hi - _lo) == _search);
     }
-    if (draw_btn(_bx, _bt_y, _bt_w, "REPLACE", _sel_matches, _mx, _my, _bt_h)) {
-        if (_sel_matches) {
+    if (draw_btn(_bx, _bt_y, _bt_w, "REPLACE", _sel_matches && !global.lite, _mx, _my, _bt_h)) {
+        if (_sel_matches && !global.lite) {
             var _lo = min(code_editor_sel_start, code_editor_sel_end);
             var _hi = max(code_editor_sel_start, code_editor_sel_end);
             scr_code_editor_push_undo();
@@ -115,7 +115,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
     _bx += _bt_w + _gap;
 
     // REPLACE ALL
-    if (draw_btn(_bx, _bt_y, _bt_w, "ALL", _search != "", _mx, _my, _bt_h)) {
+    if (draw_btn(_bx, _bt_y, _bt_w, "ALL", _search != "" && !global.lite, _mx, _my, _bt_h)) {
         scr_code_editor_push_undo();
         code_editor_text = string_replace_all(code_editor_text, _search, code_editor_replace_text);
         code_editor_symbol_cache_dirty = true;

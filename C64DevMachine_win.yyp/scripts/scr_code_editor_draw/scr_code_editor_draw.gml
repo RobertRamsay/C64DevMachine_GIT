@@ -67,7 +67,7 @@ function scr_code_editor_draw() {
 	
 draw_set_halign(fa_center);
     var _desc = instance_exists(code_editor_node) ? code_editor_node.code_descriptor : "Code Block";
-    draw_text_l(_px + _pw / 2, _py + 6, L("CODE EDITOR: ") + string_upper(_desc));
+    draw_text_l(_px + _pw / 2, _py + 6, (global.lite ? "VIEW ONLY: " : L("CODE EDITOR: ")) + string_upper(_desc));
     draw_set_halign(fa_left);
 
 // ─── Close button [X] ───
@@ -113,12 +113,12 @@ draw_set_halign(fa_center);
 	draw_set_font_l(fnt_c64_code);
 	draw_set_halign(fa_center);
 	draw_set_valign(fa_middle);
-	draw_text_l(_imp_x + _imp_w / 2, _imp_y + _imp_h / 2, "IMPORT");
+	draw_text_l(_imp_x + _imp_w / 2, _imp_y + _imp_h / 2, global.lite ? "LOCKED" : "IMPORT");
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 
 	// Import Click Logic
-	if (_imp_hover && mouse_check_button_pressed(mb_left)) {
+	if (!global.lite && _imp_hover && mouse_check_button_pressed(mb_left)) {
 		var _imp_txt = scr_import_code_block_read();
 		if (_imp_txt != "") {
 			// Undo is pushed BEFORE the text changes, so one CTRL+Z puts the

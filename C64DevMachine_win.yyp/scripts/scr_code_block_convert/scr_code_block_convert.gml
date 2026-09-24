@@ -1,4 +1,4 @@
-/// @desc CONVERT SELECTION TO CODE BLOCK  (PRO — gated behind !global.lite)
+/// @desc CONVERT SELECTION TO CODE BLOCK  (all editions; code text is view-only in LITE)
 ///
 /// Turns the selected spine nodes into one MACRO_CODE block whose text assembles
 /// to the identical byte stream, then deletes the originals.
@@ -192,10 +192,6 @@ function scr_cbc_unconvertible(_sel) {
 function scr_cbc_validate() {
     var _res = { ok: false, reason: "", nodes: [] };
 
-    if (global.lite) {
-        _res.reason = "CODE BLOCKS ARE A FULL VERSION FEATURE";
-        return _res;
-    }
 
     var _sel = scr_cbc_selection();
     if (array_length(_sel) < 1) {
@@ -1431,7 +1427,6 @@ function scr_cbc_button_rect() {
 function scr_cbc_hit() {
     global.cbc_button_hot = false;
 
-    if (global.lite)                             { exit; }
     if (!instance_exists(obj_workspace_manager)) { exit; }
     // An imported block riding the pointer speaks from this same spot, so the
     // button stands down rather than drawing over it.
@@ -1459,7 +1454,6 @@ function scr_cbc_hit() {
 // Call from obj_workspace_manager's Draw GUI event.
 // =====================================================================
 function scr_cbc_draw_button() {
-    if (global.lite)                             { exit; }
     if (!instance_exists(obj_workspace_manager)) { exit; }
     if (global.code_import_node != noone)        { exit; }
 

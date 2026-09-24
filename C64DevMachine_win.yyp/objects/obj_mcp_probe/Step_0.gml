@@ -1,5 +1,5 @@
 // Stop immediately if the running editor changes edition.
-if (global.lite != 0) { instance_destroy(); exit; }
+
 // --- MCP-CON one-click setup button ---------------------------------------
 // Look for the optional add-on every couple of seconds, so it can be installed
 // without restarting the editor. Draw_64 hides both buttons while it is absent.
