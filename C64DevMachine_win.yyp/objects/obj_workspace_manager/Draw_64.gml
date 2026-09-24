@@ -1140,19 +1140,33 @@ if (gui_menu_open == 7) {
     var _tx = min(_mbar_start_x + 7 * _mbar_btn_gap, global.gui_w - 230);
     var _ty = _mbar_btn_h;
     var _tw = 230;
-    var _th = 10 * 24 + 24;
+    // Re-enable each catalog entry here once its template has been reviewed.
+    // All bundled JSONs and catalog IDs remain available for later work.
+    var _visible_templates = [
+        0 // V.SHMUP (LITE)
+        // ,1 // V.SHMUP (PRO)
+        // ,2 // H.SHMUP (LITE)
+        // ,3 // H.SHMUP (PRO)
+        // ,4 // PFORMER (LITE)
+        // ,5 // PFORMER (PRO)
+        // ,6 // PFRMR.SCRL (LITE)
+        // ,7 // PFRMR.SCRL (PRO)
+        // ,8 // TOP DOWN (LITE)
+        // ,9 // TOP DOWN (PRO)
+    ];
+    var _th = array_length(_visible_templates) * 24 + 24;
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm, _tx, _ty, _tw, _th);
     draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_left);
-    for (var _ti = 0; _ti < 10; _ti++) {
-        var _entry = scr_template_catalog(_ti);
+    for (var _ti = 0; _ti < array_length(_visible_templates); _ti++) {
+        var _entry = scr_template_catalog(_visible_templates[_ti]);
         var _disabled = global.lite && _entry.pro;
         var _iy = _ty + 12 + _ti * 24;
         var _hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _tx, _iy, _tx + _tw, _iy + 23);
         draw_set_color(_disabled ? c_gray : (_hov ? c_yellow : c_white));
         draw_text_l(_tx + 10, _iy + 3, _entry.title);
         if (_hov && !_disabled && mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
-            template_pending = _ti;
+            template_pending = _visible_templates[_ti];
             global.ui_click_consumed = true;
             gui_menu_open = -1;
         }
