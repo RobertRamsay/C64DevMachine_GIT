@@ -578,7 +578,7 @@ if (shelf_page < p_count - 1) {
 var _mbar_y      = (sprite_get_height(spr_menu_bar) - 34) * 0.5;
 var _mbar_btn_w  = 143;
 var _mbar_btn_h  = 34;
-var _mbar_start_x = shelf_width + 40;
+var _mbar_start_x = shelf_width + 64;
 var _menuitems =9;
 var _menu_labels = [
     "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TEMPLATES", "PORTS"
