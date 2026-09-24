@@ -6,7 +6,6 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
 	if obj_asset_manager.viewer_open exit
     var _map_w      = _x2 - _x1;
     var _map_h      = 15;
-    var _addr_total = 65536;
     var _pulse      = abs(sin(current_time * 0.01));
 
     var _labels_visible = false;
@@ -17,6 +16,14 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     draw_sprite_ext(spr_baseGradient, 0,
         0, _y + _map_h + 25,
         1920/sprite_get_width(spr_baseGradient), 1.6, 0, c_white, 1);
+
+    // Display-only zoom: allocations and conflict detection retain real addresses.
+    scr_memory_bar_bank_controls(_x1 - 44, _y - 18);
+    var _view = scr_memory_bar_bank_range(global.memory_bar_bank_mode, global.memory_bar_bank_index);
+    var _view_start = _view.start;
+    var _view_end = _view.finish;
+    var _addr_total = _view_end - _view_start;
+
 
     // --- DANGER ZONES ---
     var _danger_zones = [
@@ -39,15 +46,18 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
 
-    var _fx1 = _x1 + (0x0000 / _addr_total) * _map_w;
-    var _fx2 = _x1 + (0x07FF / _addr_total) * _map_w;
+    if (_view_start < 0x0800) {
+    var _fx1 = scr_memory_bar_address_x(0x0000, _x1, _map_w, _view_start, _addr_total);
+    var _fx2 = scr_memory_bar_address_x(0x0800, _x1, _map_w, _view_start, _addr_total);
     draw_set_color(make_color_rgb(_danger_r, 30, 30));
     draw_rectangle(_fx1, _y, _fx2, _y + _map_h, false);
     draw_set_color(make_color_rgb(60, 0, 0));
     draw_text_l((_fx1 + _fx2) / 2, _y + _map_h / 2, "LOCKED");
 
-    var _bx1 = _x1 + (0xA000 / _addr_total) * _map_w;
-    var _bx2 = _x1 + (0xBFFF / _addr_total) * _map_w;
+    }
+    if (_view_start < 0xC000 && _view_end > 0xA000) {
+    var _bx1 = scr_memory_bar_address_x(0xA000, _x1, _map_w, _view_start, _addr_total);
+    var _bx2 = scr_memory_bar_address_x(0xC000, _x1, _map_w, _view_start, _addr_total);
     draw_set_color(global.basic_unlocked ? make_color_rgb(40, 90, 110) : make_color_rgb(_danger_r, 30, 30));
     draw_rectangle(_bx1, _y, _bx2, _y + _map_h, false);
     draw_set_color(global.basic_unlocked ? make_color_rgb(80, 200, 220) : make_color_rgb(160, 160, 180));
@@ -57,8 +67,10 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     }
     draw_text_l((_bx1 + _bx2) / 2, _y + _map_h / 2, global.basic_unlocked ? L("UNLOCKED") : _basic_locked_txt);
 
-    var _kx1 = _x1 + (0xD000 / _addr_total) * _map_w;
-    var _kx2 = _x1 + (0xFFFF / _addr_total) * _map_w;
+    }
+    if (_view_end > 0xD000) {
+    var _kx1 = scr_memory_bar_address_x(0xD000, _x1, _map_w, _view_start, _addr_total);
+    var _kx2 = scr_memory_bar_address_x(0x10000, _x1, _map_w, _view_start, _addr_total);
     draw_set_color(global.kernal_unlocked ? make_color_rgb(40, 90, 110) : make_color_rgb(_danger_r, 30, 30));
     draw_rectangle(_kx1, _y, _kx2, _y + _map_h, false);
     draw_set_color(global.kernal_unlocked ? make_color_rgb(80, 200, 220) : make_color_rgb(160, 160, 180));
@@ -68,6 +80,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     }
     draw_text_l((_kx1 + _kx2) / 2, _y + _map_h / 2, global.kernal_unlocked ? L("UNLOCKED") : _kernal_locked_txt);
 
+    }
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
 
@@ -77,18 +90,21 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     if (!ds_list_empty(global.node_chain)) {
         var _first = ds_list_find_value(global.node_chain, 0);
         var _last  = ds_list_find_value(global.node_chain, ds_list_size(global.node_chain) - 1);
-        if (instance_exists(_first) && instance_exists(_last)) {
-            var _cbx1 = _x1 + (_first.pc_address / _addr_total) * _map_w;
-            var _cbx2 = _x1 + ((_last.pc_address + _last.total_node_size) / _addr_total) * _map_w;
+        if (instance_exists(_first) && instance_exists(_last)
+        && _first.pc_address < _view_end && _last.pc_address + _last.total_node_size > _view_start) {
+            var _cbx1 = scr_memory_bar_address_x(_first.pc_address, _x1, _map_w, _view_start, _addr_total);
+            var _cbx2 = scr_memory_bar_address_x(_last.pc_address + _last.total_node_size, _x1, _map_w, _view_start, _addr_total);
             draw_set_color(make_color_rgb(30, 200, 40));
             draw_rectangle(_cbx1, _y, _cbx2, _y + _map_h, false);
             draw_set_font_l(fnt_c64_tiny);
             draw_set_color(make_color_rgb(30, 200, 40));
             draw_set_halign(fa_center);
+            if (_first.pc_address >= _view_start) {
             draw_line(_cbx1, _y - 10, _cbx1, _y);
             var _sh = string_upper(decimal_to_hex(_first.pc_address));
             while (string_length(_sh) < 4) _sh = "0" + _sh;
             draw_text_l(_cbx1, _y - 22, "$" + _sh);
+            }
             draw_set_halign(fa_left);
         }
     }
@@ -115,9 +131,10 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
 
     for (var _vb = 0; _vb < 4; _vb++) {
         var _bank_start = _vb * 0x4000;
-        var _bank_end   = _bank_start + 0x3FFF;
-        var _vbx1 = _x1 + (_bank_start / _addr_total) * _map_w;
-        var _vbx2 = _x1 + (_bank_end   / _addr_total) * _map_w;
+        var _bank_end   = _bank_start + 0x4000;
+        if (_bank_start >= _view_end || _bank_end <= _view_start) continue;
+        var _vbx1 = scr_memory_bar_address_x(_bank_start, _x1, _map_w, _view_start, _addr_total);
+        var _vbx2 = scr_memory_bar_address_x(_bank_end, _x1, _map_w, _view_start, _addr_total);
         draw_set_color(_bcol);
         draw_set_alpha(0.8);
         draw_line(_vbx1, _by, _vbx2, _by);
@@ -139,6 +156,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
 
     for (var _ci = 0; _ci < _cfl_total; _ci++) {
         var _cf     = _conflicts[_ci];
+        if (_cf.start >= _view_end || _cf.finish < _view_start) continue;
 
         // Skip rendering if this conflict range is in the user's ignore list.
         // The conflict can still exist internally (flagging children etc.) —
@@ -164,8 +182,8 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         }
         if (_cf_ignored) continue;
 
-        var _cx1    = _x1 + (_cf.start  / _addr_total) * _map_w;
-        var _cx2    = _x1 + (_cf.finish / _addr_total) * _map_w;
+        var _cx1    = scr_memory_bar_address_x(_cf.start, _x1, _map_w, _view_start, _addr_total);
+        var _cx2    = scr_memory_bar_address_x(_cf.finish, _x1, _map_w, _view_start, _addr_total);
         var _cx_mid = (_cx1 + _cx2) / 2;
 
         draw_set_alpha(0.5 + (0.4 * _pulse));
@@ -381,7 +399,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     var _hover_seg    = noone;
 
     if (_bar_hovered) {
-        _hover_addr = clamp(floor(((_bar_mx - _x1) / _map_w) * _addr_total), 0, 65535);
+        _hover_addr = scr_memory_bar_pixel_address(_bar_mx, _x1, _map_w, _view_start, _addr_total);
 
         // Later segments are painted over earlier ones, so search backwards and
         // report exactly the allocation the pointer appears to be resting on.
@@ -406,9 +424,10 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
 
     for (var _si = 0; _si < _seg_total; _si++) {
         var _seg = _segments[_si];
-        var _sx1 = _x1 + (_seg.addr / _addr_total) * _map_w;
-        var _sx2 = _x1 + ((_seg.addr + _seg.size) / _addr_total) * _map_w;
-        if (_sx2 - _sx1 < 2) _sx2 = _sx1 + 2;
+        if (_seg.addr >= _view_end || _seg.addr + _seg.size <= _view_start) continue;
+        var _sx1 = scr_memory_bar_address_x(_seg.addr, _x1, _map_w, _view_start, _addr_total);
+        var _sx2 = scr_memory_bar_address_x(_seg.addr + _seg.size, _x1, _map_w, _view_start, _addr_total);
+        if (_sx2 - _sx1 < 2) _sx2 = min(_x2, _sx1 + 2);
 
         var _seg_is_disk = variable_struct_exists(_seg, "load_later") && _seg.load_later;
 
@@ -437,9 +456,10 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     draw_set_font_l(fnt_c64_tiny);
     for (var _si = 0; _si < _seg_total; _si++) {
         var _seg = _segments[_si];
+        if (_seg.addr >= _view_end || _seg.addr + _seg.size <= _view_start) continue;
         if (!variable_struct_exists(_seg, "load_later") || !_seg.load_later) continue;
-        var _sx1 = _x1 + (_seg.addr / _addr_total) * _map_w;
-        var _sx2 = _x1 + ((_seg.addr + _seg.size) / _addr_total) * _map_w;
+        var _sx1 = scr_memory_bar_address_x(_seg.addr, _x1, _map_w, _view_start, _addr_total);
+        var _sx2 = scr_memory_bar_address_x(_seg.addr + _seg.size, _x1, _map_w, _view_start, _addr_total);
         if (_sx2 - _sx1 < 18) continue;  // Too narrow to label
         var _seg_mid = (_sx1 + _sx2) / 2;
         draw_set_halign(fa_center);
@@ -455,8 +475,8 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
 
     if (!ds_list_empty(global.node_chain)) {
         var _first = ds_list_find_value(global.node_chain, 0);
-        if (instance_exists(_first)) {
-            var _ix = _x1 + (_first.pc_address / _addr_total) * _map_w;
+        if (instance_exists(_first) && _first.pc_address >= _view_start && _first.pc_address < _view_end) {
+            var _ix = scr_memory_bar_address_x(_first.pc_address, _x1, _map_w, _view_start, _addr_total);
             draw_set_color(make_color_rgb(30, 200, 40));
             draw_text_l(_ix + 4, _y + _map_h + 5, "INIT");
         }
@@ -464,13 +484,14 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
 
     with (obj_c64_node) {
         if (!is_connected) continue;
+        if (pc_address < _view_start || pc_address >= _view_end) continue;
         if (node_type == "ORG" && end_address > pc_address) {
             if (node_title == "HW REGISTERS") {
-                var _hx = _x1 + (pc_address / _addr_total) * _map_w;
+                var _hx = scr_memory_bar_address_x(pc_address, _x1, _map_w, _view_start, _addr_total);
                 draw_set_color(make_color_rgb(70, 100, 105));
                 draw_text_l(_hx + 4, _y + _map_h + 5, "HW VARS");
             } else if (node_title == "VARIABLES") {
-                var _vx = _x1 + (pc_address / _addr_total) * _map_w;
+                var _vx = scr_memory_bar_address_x(pc_address, _x1, _map_w, _view_start, _addr_total);
                 draw_set_color(make_color_rgb(60, 140, 200));
                 draw_text_l(_vx + 4, _y + _map_h + 5, "UV VARS");
             }
@@ -491,9 +512,10 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         var _disk_total = array_length(global.memory_bar_disk_assets);
         for (var _dsi = 0; _dsi < _disk_total; _dsi++) {
             var _ds2 = global.memory_bar_disk_assets[_dsi];
-            var _dsx1 = _x1 + (_ds2.addr / _addr_total) * _map_w;
-            var _dsx2 = _x1 + ((_ds2.addr + _ds2.size) / _addr_total) * _map_w;
-            if (_dsx2 - _dsx1 < 2) { _dsx2 = _dsx1 + 2; }
+            if (_ds2.addr >= _view_end || _ds2.addr + _ds2.size <= _view_start) continue;
+            var _dsx1 = scr_memory_bar_address_x(_ds2.addr, _x1, _map_w, _view_start, _addr_total);
+            var _dsx2 = scr_memory_bar_address_x(_ds2.addr + _ds2.size, _x1, _map_w, _view_start, _addr_total);
+            if (_dsx2 - _dsx1 < 2) { _dsx2 = min(_x2, _dsx1 + 2); }
             draw_set_color(make_color_rgb(255, 220, 50));
             draw_set_alpha(0.85);
             draw_rectangle(_dsx1, _stripe_y, _dsx2, _stripe_y + _stripe_h, false);
@@ -545,9 +567,10 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     var _fbl = array_length(_full_bank);
     for (var _i = 0; (_i < _fbl) && _labels_visible; _i++) {
         var _addr  = _full_bank[_i][0];
+        if (_addr < _view_start || _addr >= _view_end) continue;
         var _label = _full_bank[_i][1];
         var _nudge = _full_bank[_i][2];
-        var _px    = _x1 + ((_addr / 65535.0) * _map_w);
+        var _px    = scr_memory_bar_address_x(_addr, _x1, _map_w, _view_start, _addr_total);
         _clash_n   = (_px - _last_px < 160) ? _clash_n + 1 : 0;
         var _off_y = _base_y + (_clash_n * _stagger) + ((_addr == 0xD000) ? 15 : 0) + _nudge;
         var _fy    = _y - _off_y;
@@ -574,9 +597,10 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             // Resolve screen RAM from MACRO_VIC so the marker tracks the real bank.
             var _scr_ram = scr_resolve_screen_ram();
             var _ptr_base = _scr_ram + 0x03F8;
-            var _px1 = _x1 + (_ptr_base       / _addr_total) * _map_w;
-            var _px2 = _x1 + ((_ptr_base + 8) / _addr_total) * _map_w;
-            if (_px2 - _px1 < 2) _px2 = _px1 + 2;
+            if (_ptr_base >= _view_end || _ptr_base + 8 <= _view_start) continue;
+            var _px1 = scr_memory_bar_address_x(_ptr_base, _x1, _map_w, _view_start, _addr_total);
+            var _px2 = scr_memory_bar_address_x(_ptr_base + 8, _x1, _map_w, _view_start, _addr_total);
+            if (_px2 - _px1 < 2) _px2 = min(_x2, _px1 + 2);
             draw_set_color(make_color_rgb(255, 250, 0));
             draw_set_alpha(0.85);
             draw_rectangle(_px1, _y, _px2, _y + _map_h, false);
@@ -600,7 +624,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     var _gui_my = global.gui_mouse_y;
     if (_gui_my >= _y - 15 && _gui_my <= _y + _map_h + 5 &&
         _gui_mx >= _x1 && _gui_mx <= _x2) {
-        var _cursor_addr = floor(((_gui_mx - _x1) / _map_w) * _addr_total);
+        var _cursor_addr = scr_memory_bar_pixel_address(_gui_mx, _x1, _map_w, _view_start, _addr_total);
         var _hover_hex  = string_upper(decimal_to_hex(_cursor_addr));
         while (string_length(_hover_hex) < 4) _hover_hex = "0" + _hover_hex;
         draw_set_color(c_white);
@@ -792,4 +816,61 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             }
         }
     }
+}
+
+/// Mode 0: all four banks; 1: adjacent pairs; 2: one bank.
+function scr_memory_bar_bank_range(_mode, _index) {
+    var _banks = (_mode == 0) ? 4 : ((_mode == 1) ? 2 : 1);
+    var _first = (_mode == 0) ? 0 : clamp(_index, 0, 4 - _banks);
+    return { start: _first * 16384, finish: (_first + _banks) * 16384 };
+}
+
+function scr_memory_bar_address_x(_addr, _x, _width, _start, _span) {
+    return _x + clamp((_addr - _start) / _span, 0, 1) * _width;
+}
+
+function scr_memory_bar_pixel_address(_px, _x, _width, _start, _span) {
+    return clamp(_start + floor((_px - _x) / _width * _span), _start, _start + _span - 1);
+}
+
+function scr_memory_bar_bank_controls(_x, _y) {
+    if (!variable_global_exists("memory_bar_bank_mode")) {
+        global.memory_bar_bank_mode = 0;
+        global.memory_bar_bank_index = 0;
+    }
+    var _mx = global.gui_mouse_x;
+    var _my = global.gui_mouse_y;
+    var _mode_hover = point_in_rectangle(_mx, _my, _x, _y, _x + 36, _y + 13);
+    var _bank_hover = point_in_rectangle(_mx, _my, _x, _y + 15, _x + 36, _y + 43);
+    if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.conflict_popup_open) {
+        if (_mode_hover) {
+            global.memory_bar_bank_mode = (global.memory_bar_bank_mode + 1) mod 3;
+            global.memory_bar_bank_index = 0;
+            global.ui_click_consumed = true;
+        } else if (_bank_hover) {
+            var _choices = (global.memory_bar_bank_mode == 0) ? 1 : ((global.memory_bar_bank_mode == 1) ? 3 : 4);
+            global.memory_bar_bank_index = (global.memory_bar_bank_index + 1) mod _choices;
+            global.ui_click_consumed = true;
+        }
+    }
+    var _view = scr_memory_bar_bank_range(global.memory_bar_bank_mode, global.memory_bar_bank_index);
+    draw_set_font_l(fnt_c64_tiny);
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_middle);
+    draw_set_alpha(1);
+    draw_set_color(_mode_hover ? c_white : c_aqua);
+    var _modes = ["ALL", "SEG", "ONE"];
+    draw_text_l(_x + 18, _y + 6, _modes[global.memory_bar_bank_mode]);
+    draw_set_color(_bank_hover ? make_color_rgb(30, 45, 60) : make_color_rgb(12, 18, 28));
+    draw_rectangle(_x, _y + 15, _x + 36, _y + 43, false);
+    draw_set_color(_bank_hover ? c_aqua : make_color_rgb(60, 90, 110));
+    draw_rectangle(_x, _y + 15, _x + 36, _y + 43, true);
+    for (var _b = 0; _b < 4; _b++) {
+        var _lit = _b * 16384 >= _view.start && _b * 16384 < _view.finish;
+        draw_set_color(_lit ? c_lime : make_color_rgb(70, 80, 90));
+        draw_text_l(_x + 10 + (_b mod 2) * 16, _y + 22 + (_b div 2) * 13,
+            _lit ? string(_b + 1) : "-");
+    }
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
 }
