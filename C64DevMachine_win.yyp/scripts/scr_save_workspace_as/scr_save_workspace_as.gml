@@ -284,7 +284,9 @@
             _meta_out.show_grid     = _a.meta.show_grid;
         }
 
-		 if (_a.type == "MUSIC_MAKER") {
+		 if ((_a.type == "MUSIC_MAKER" || _a.type == "SFX_MAKER")) {
+            _meta_out.voice_mask = variable_struct_exists(_a.meta, "voice_mask") ? _a.meta.voice_mask : 7;
+            _meta_out.sfx_chip = variable_struct_exists(_a.meta, "sfx_chip") ? _a.meta.sfx_chip : 0;
             _meta_out.instruments      = variable_struct_exists(_a.meta, "instruments")      ? _a.meta.instruments      : [];
             _meta_out.sel_instr        = variable_struct_exists(_a.meta, "sel_instr")        ? _a.meta.sel_instr        : -1;
             _meta_out.patterns         = variable_struct_exists(_a.meta, "patterns")         ? _a.meta.patterns         : [];

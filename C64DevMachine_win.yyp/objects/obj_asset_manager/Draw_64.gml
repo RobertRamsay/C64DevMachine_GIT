@@ -393,7 +393,7 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
         draw_set_color(c_lime);
         var _blink = ((current_time mod 600) < 300) ? "_" : " ";
         draw_text_l(_panel_right - 6, _iy + 12, editing_addr_string + _blink);
-    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER" || _asset.type == "HUD") {
+    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD") {
         // LOAD_ORG is a manifest, not physical data — it has no meaningful
         // load address (each linked asset carries its own). BITMAP_BUILDER is
         // an internal editor asset: it emits a derived BYTE_DATA table which
@@ -641,7 +641,7 @@ if (sfx_picker_open && instance_exists(sfx_picker_node)) {
         _header = "SFX DATA ASSETS";
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
             var _a = ds_list_find_value(asset_list, _i);
-            if (_a.type == "SFX_DATA") {
+            if ((_a.type == "SFX_DATA" || _a.type == "SFX_MAKER")) {
                 var _sfx_n = variable_struct_exists(_a.meta, "instruments")
                     ? array_length(_a.meta.instruments) : 0;
                 array_push(_match_labels, _a.name
@@ -653,15 +653,15 @@ if (sfx_picker_open && instance_exists(sfx_picker_node)) {
         var _asset_name = string(_node.instructions[0][1]);
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
             var _a = ds_list_find_value(asset_list, _i);
-            if (_a.type == "SFX_DATA" && _a.name == _asset_name &&
+            if ((_a.type == "SFX_DATA" || _a.type == "SFX_MAKER") && _a.name == _asset_name &&
                 variable_struct_exists(_a.meta, "instruments")) {
                 var _instrs = _a.meta.instruments;
                 for (var _ii = 0; _ii < array_length(_instrs); _ii++) {
                     var _ins = _instrs[_ii];
                     array_push(_match_labels,
                         string(_ii) + ": " + _ins.name
-                        + "  $" + string_upper(decimal_to_hex(_ins.ad))
-                        + "/$"  + string_upper(decimal_to_hex(_ins.sr)));
+                        + "  $" + string_upper(decimal_to_hex(variable_struct_exists(_ins,"ad")?_ins.ad:((_ins.attack<<4)|_ins.decay)))
+                        + "/$"  + string_upper(decimal_to_hex(variable_struct_exists(_ins,"sr")?_ins.sr:((_ins.sustain<<4)|_ins.release))));
                 }
                 break;
             }
@@ -682,7 +682,7 @@ if (sfx_picker_open && instance_exists(sfx_picker_node)) {
     if (array_length(_match_labels) == 0) {
         draw_set_color(make_color_rgb(80, 80, 80));
         draw_text_l(_pdx + 8, _pdy + 24,
-            sfx_picker_field == "asset" ? L("NO SFX_DATA ASSETS") : L("NO INSTRUMENTS"));
+            sfx_picker_field == "asset" ? L("NO SFX ASSETS") : L("NO INSTRUMENTS"));
     } else {
         for (var _i = 0; _i < array_length(_match_labels); _i++) {
             var _iy  = _pdy + 20 + (_i * _ih);
@@ -837,7 +837,7 @@ var _vy1 = 108;
 if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
     var _asset = ds_list_find_value(asset_list, viewer_asset);
 
-	var _wide_editor = (_asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER" || _asset.type == "HUD");
+	var _wide_editor = (_asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD");
 	_vx1 = _wide_editor ? 30 : 288;
 	_vy1 = 108;
 	var _vx2 = _wide_editor ? (panel_x + 20) : (panel_x - 10);
@@ -889,7 +889,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     var _lby2     = _cy + 20;
     if (!_hide_import && _asset.type != "LOAD_ORG" && _asset.type != "LOAD_REU"
 	&& _asset.type != "META_TILESET" && _asset.type != "BITMAP_BUILDER" 
-	&& _asset.type != "MUSIC_MAKER" && _asset.type != "HUD"
+	&& _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD"
 	&& !(_asset.type == "BYTE_DATA" && variable_struct_exists(_asset.meta, "is_save_file") && _asset.meta.is_save_file)) {
         var _lb_hover = point_in_rectangle(_mx, _my, _lbx1, _lby1, _lbx2, _lby2);
         draw_set_color(_lb_hover ? make_color_rgb(80, 200, 80) : make_color_rgb(30, 90, 40));
@@ -975,7 +975,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     // asset with no C64 payload — suppress the label entirely rather than
     // showing an empty field.
     draw_set_font_l(fnt_c64_tiny);
-    if (_asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "HUD") {
+    if (_asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD") {
         draw_set_color(c_ltgray); draw_text_l(_vx1 + 10, _cy, "ADDRESS:");
     }
 
@@ -987,7 +987,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         draw_text_l(_vx1 + 78, _cy, editing_addr_string + _blink);
         draw_set_color(c_gray);
         draw_text_l(_vx1 + 170, _cy, "ENTER TO CONFIRM");
-    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || _asset.type == "MUSIC_MAKER" || _asset.type == "HUD") {
+    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD") {
         // LOAD_ORG is a manifest — no meaningful load address. BITMAP_BUILDER
         // and SOUND_EDITOR are internal-only; their emitted BYTE_DATA/TEXT_DATA
         // assets hold the real addresses. Show a dash, no hover/edit affordance.
@@ -1045,6 +1045,9 @@ case "BITMAP_BUILDER": {
     scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my);
 } break;
 
+case "SFX_MAKER": {
+    scr_sfx_maker_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my);
+} break;
 case "MUSIC_MAKER": {
     // Same wide-panel treatment as BITMAP_BUILDER — _vx1 is already 30 here.
     scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my);
@@ -3274,8 +3277,8 @@ case "SFX_DATA": {
         draw_set_color(make_color_rgb(210, 170, 255));
         draw_text_l(_cx_name, _cy + 2, _ins.name);
         draw_set_color(c_aqua);
-        draw_text_l(_cx_ad,   _cy + 2, "$" + string_upper(decimal_to_hex(_ins.ad)));
-        draw_text_l(_cx_sr,   _cy + 2, "$" + string_upper(decimal_to_hex(_ins.sr)));
+        draw_text_l(_cx_ad,   _cy + 2, "$" + string_upper(decimal_to_hex(variable_struct_exists(_ins,"ad")?_ins.ad:((_ins.attack<<4)|_ins.decay))));
+        draw_text_l(_cx_sr,   _cy + 2, "$" + string_upper(decimal_to_hex(variable_struct_exists(_ins,"sr")?_ins.sr:((_ins.sustain<<4)|_ins.release))));
         draw_text_l(_cx_wpos, _cy + 2, "$" + string_upper(decimal_to_hex(_ins.wave_pos)));
         var _nr = array_length(_ins.wavetable_rows);
         draw_set_color(_nr > 0 ? c_lime : make_color_rgb(80, 80, 80));
@@ -11127,7 +11130,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 // REFERENCED BY (for BITMAP, default cases — SPRITE_SET and MAP_DATA handle their own above)
     if (_asset.type == "SFX_DATA") _cy = _vy2 - 100;
 	 if (_asset.type == "BYTE_DATA" || _asset.type == "TEXT_DATA" || _asset.type == "LINE_COLL") _cy = _vy2 - 100;
-   if (_asset.type != "SPRITE_SET" && _asset.type != "MAP_DATA" && _asset.type != "BITMAP" && _asset.type != "META_TILESET" && _asset.type != "META_MAP" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "HUD") {
+   if (_asset.type != "SPRITE_SET" && _asset.type != "MAP_DATA" && _asset.type != "BITMAP" && _asset.type != "META_TILESET" && _asset.type != "META_MAP" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD") {
         draw_set_font_l(fnt_c64_code);
         draw_set_color(make_color_rgb(60,60,80));
         draw_line(_vx1 + 10, _cy, _vx2 - 10, _cy);

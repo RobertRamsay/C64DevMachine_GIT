@@ -13,6 +13,8 @@ function scr_node_draw_macro_sfx(_draw_x) {
     if (!is_real(instructions[0][3]) || instructions[0][3] == "") instructions[0][3] = 3;
 
     var _asset_name = string(instructions[0][1]);
+    var _native_sfx=scr_sfx_data_find_asset(_asset_name);
+    if (is_struct(_native_sfx) && _native_sfx.type=="SFX_MAKER") {scr_sfx_maker_node_draw(_draw_x,_native_sfx);return;}
     var _sfx_index  = real(instructions[0][2]);
     var _voice      = real(instructions[0][3]);
     var _asset_set  = (_asset_name != "" && _asset_name != "0");

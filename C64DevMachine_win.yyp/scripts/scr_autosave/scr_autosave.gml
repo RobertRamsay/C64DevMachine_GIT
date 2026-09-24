@@ -161,8 +161,10 @@ var _base = "unsaved";
                 _mo.cur_y         = _me.cur_y;
                 _mo.show_grid     = _me.show_grid;
             }
-            if (_a.type == "MUSIC_MAKER") {
-                _mo.instruments      = variable_struct_exists(_me, "instruments")      ? _me.instruments      : [];
+            if ((_a.type == "MUSIC_MAKER" || _a.type == "SFX_MAKER")) {
+                _mo.voice_mask = variable_struct_exists(_me, "voice_mask") ? _me.voice_mask : 7;
+            _mo.sfx_chip = variable_struct_exists(_me, "sfx_chip") ? _me.sfx_chip : 0;
+            _mo.instruments      = variable_struct_exists(_me, "instruments")      ? _me.instruments      : [];
                 _mo.sel_instr        = variable_struct_exists(_me, "sel_instr")        ? _me.sel_instr        : -1;
                 _mo.patterns         = variable_struct_exists(_me, "patterns")         ? _me.patterns         : [];
                 _mo.bank_sel_pattern = variable_struct_exists(_me, "bank_sel_pattern") ? _me.bank_sel_pattern : 0;

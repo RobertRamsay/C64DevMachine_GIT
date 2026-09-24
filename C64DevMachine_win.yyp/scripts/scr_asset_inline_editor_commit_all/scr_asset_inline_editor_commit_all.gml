@@ -37,7 +37,7 @@ function scr_asset_inline_editor_commit_all() {
                 if (variable_struct_exists(_a.meta, "inline_edit_open") && _a.meta.inline_edit_open) {
                     scr_asset_text_data_save(_a);
                 }
-            } else if (_a.type == "MUSIC_MAKER") {
+            } else if ((_a.type == "MUSIC_MAKER" || _a.type == "SFX_MAKER")) {
                 // The sound editor has no inline_edit_open flag — it tracks
                 // three independent text states of its own. Only the
                 // instrument source affects what gets emitted; the song and

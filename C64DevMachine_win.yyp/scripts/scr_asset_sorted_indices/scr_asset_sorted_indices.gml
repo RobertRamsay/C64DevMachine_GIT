@@ -77,7 +77,7 @@ function scr_asset_sorted_indices() {
         _upper[_ki] = string_upper(_names[_ki]);
 
         var _kt = _types[_ki];
-        if (_kt == "LOAD_ORG" || _kt == "MUSIC_MAKER" || _kt == "BITMAP_BUILDER") {
+        if (_kt == "LOAD_ORG" || (_kt == "MUSIC_MAKER" || _kt == "SFX_MAKER") || _kt == "BITMAP_BUILDER") {
             _noaddr[_ki] = true;
         } else {
             _noaddr[_ki] = false;

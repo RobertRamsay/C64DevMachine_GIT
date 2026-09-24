@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_sfx_maker",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_sfx_maker",
+  "parent":{
+    "name":"SOUND_EDITOR",
+    "path":"folders/SCRIPTS/SOUND_EDITOR.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

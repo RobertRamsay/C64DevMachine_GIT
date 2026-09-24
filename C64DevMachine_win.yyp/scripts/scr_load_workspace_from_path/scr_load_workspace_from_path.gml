@@ -894,9 +894,11 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
 	            }
 	            scr_hud_flush(_new_asset);
 	        }
-	        if (_ad.type == "MUSIC_MAKER") {
+	        if ((_ad.type == "MUSIC_MAKER" || _ad.type == "SFX_MAKER")) {
 	            scr_sound_editor_create(_new_asset);
 	            var _sem = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
+                _new_asset.meta.voice_mask = variable_struct_exists(_sem,"voice_mask") ? _sem.voice_mask : 7;
+                _new_asset.meta.sfx_chip = variable_struct_exists(_sem,"sfx_chip") ? _sem.sfx_chip : 0;
 	            if (variable_struct_exists(_sem, "instruments"))      _new_asset.meta.instruments      = _sem.instruments;
 	            _new_asset.meta.sel_instr        = variable_struct_exists(_sem, "sel_instr")        ? _sem.sel_instr        : -1;
 	            if (variable_struct_exists(_sem, "patterns"))         _new_asset.meta.patterns         = _sem.patterns;
@@ -921,6 +923,7 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
 	            _new_asset.meta.view_mode        = variable_struct_exists(_sem, "view_mode")        ? _sem.view_mode        : "VERTICAL";
 	            _new_asset.meta.step_zoom        = variable_struct_exists(_sem, "step_zoom")        ? _sem.step_zoom        : 1;
 	            _new_asset.meta.list_scroll      = variable_struct_exists(_sem, "list_scroll")      ? _sem.list_scroll      : 0;
+                if (_ad.type=="SFX_MAKER") scr_sfx_maker_defaults(_new_asset);
 	        }
         }
     }

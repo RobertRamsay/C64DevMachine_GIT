@@ -991,7 +991,7 @@ if (sfx_picker_open) {
         if (sfx_picker_field == "asset") {
             for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
                 var _a = ds_list_find_value(asset_list, _i);
-                if (_a.type == "SFX_DATA") {
+                if ((_a.type == "SFX_DATA" || _a.type == "SFX_MAKER")) {
                     var _sfx_n = variable_struct_exists(_a.meta, "instruments")
                         ? array_length(_a.meta.instruments) : 0;
                     array_push(_match_labels, _a.name
@@ -1004,7 +1004,7 @@ if (sfx_picker_open) {
             var _asset_name = string(_node.instructions[0][1]);
             for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
                 var _a = ds_list_find_value(asset_list, _i);
-                if (_a.type == "SFX_DATA" && _a.name == _asset_name &&
+                if ((_a.type == "SFX_DATA" || _a.type == "SFX_MAKER") && _a.name == _asset_name &&
                     variable_struct_exists(_a.meta, "instruments")) {
                     var _instrs = _a.meta.instruments;
                     for (var _ii = 0; _ii < array_length(_instrs); _ii++) {
@@ -1012,8 +1012,8 @@ if (sfx_picker_open) {
                         // "N: NAME  AD=$xx SR=$xx"
                         array_push(_match_labels,
                             string(_ii) + ": " + _ins.name
-                            + "  $" + string_upper(decimal_to_hex(_ins.ad))
-                            + "/$"  + string_upper(decimal_to_hex(_ins.sr)));
+                            + "  $" + string_upper(decimal_to_hex(variable_struct_exists(_ins,"ad")?_ins.ad:((_ins.attack<<4)|_ins.decay)))
+                            + "/$"  + string_upper(decimal_to_hex(variable_struct_exists(_ins,"sr")?_ins.sr:((_ins.sustain<<4)|_ins.release))));
                         array_push(_match_values, _ii); // store index
                     }
                     break;
@@ -1892,8 +1892,8 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open) {
             if (_type == "BITMAP_BUILDER") {
                 _base_name = "BMPBDR";
             }
-            if (_type == "MUSIC_MAKER") {
-                _base_name = "MUSIC_";
+            if ((_type == "MUSIC_MAKER" || _type == "SFX_MAKER")) {
+                _base_name = (_type == "SFX_MAKER") ? "SFX_" : "MUSIC_";
             }
             var _proposed  = _base_name;
             var _suffix    = 2;
@@ -2098,14 +2098,14 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open) {
             _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
             scr_hud_create(_new_asset);
         }
-        if (_type == "MUSIC_MAKER") {
+        if ((_type == "MUSIC_MAKER" || _type == "SFX_MAKER")) {
             // Authoring asset — no C64 payload of its own, same family as
             // BITMAP_BUILDER. GENERATE emits the real BYTE_DATA/TEXT_DATA
             // assets (instruments + per-voice patterns) that SEQ VOICE nodes
             // consume.
             if (buffer_exists(_new_asset.buffer)) buffer_delete(_new_asset.buffer);
             _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
-            scr_sound_editor_create(_new_asset);
+            if (_type == "SFX_MAKER") scr_sfx_maker_create(_new_asset); else scr_sound_editor_create(_new_asset);
         }
         if (_type == "META_MAP") {
             scr_asset_meta_map_create(_new_asset);
@@ -2306,7 +2306,7 @@ if (_asset.type == "BITMAP_BUILDER") {
 
 // SOUND_EDITOR — same reasoning: all interaction lives in
 // scr_sound_editor_editor (Draw GUI). No file, nothing to import.
-if (_asset.type == "MUSIC_MAKER") {
+if ((_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER")) {
     exit;
 }
 
@@ -2460,7 +2460,7 @@ if (_asset.type == "META_TILESET") {
         if (_asset.type != "LOAD_ORG" &&
     _asset.type != "LOAD_REU" &&
     _asset.type != "BITMAP_BUILDER" &&
-    _asset.type != "MUSIC_MAKER" &&
+    _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" &&
             point_in_rectangle(_mx, _my, _vx1 + 74, _vy1 + 65, _vx1 + 162, _vy1 + 79)) {
             editing_address     = true;
             editing_address_idx = viewer_asset;
@@ -2493,7 +2493,7 @@ if (_asset.type == "META_TILESET") {
         if (_asset.type != "LOAD_ORG" &&
     _asset.type != "LOAD_REU" &&
     _asset.type != "BITMAP_BUILDER" &&
-    _asset.type != "MUSIC_MAKER" &&
+    _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" &&
             point_in_rectangle(_mx, _my, _addr_x, _iy, _panel_right, _iy + item_h)) {
             editing_address     = true;
             editing_address_idx = hover_idx;
@@ -2797,7 +2797,7 @@ if (mouse_check_button_pressed(mb_right) && _mouse_in_panel && hover_idx >= 0) {
                 surface_free(_asset.meta.preview_surf_mc);
         }
 
-        if (_asset.type == "MUSIC_MAKER") {
+        if ((_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER")) {
             // Rendered auditions are keyed on instrument bytecode, so a deleted
             // asset's entries can never be looked up again — they would just sit
             // allocated for the rest of the session. Flushing the whole cache is

@@ -9,7 +9,7 @@ function scr_asset_inline_editor_close_all() {
             if (!variable_struct_exists(_a, "meta")) {
                 continue;
             }
-            if (_a.type == "MUSIC_MAKER") {
+            if ((_a.type == "MUSIC_MAKER" || _a.type == "SFX_MAKER")) {
                 _a.meta.playing = false;
                 _a.meta.song_playing = false;
                 _a.meta.preview_jobs = [];

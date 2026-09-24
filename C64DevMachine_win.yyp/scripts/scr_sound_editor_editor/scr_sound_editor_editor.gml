@@ -260,6 +260,18 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _transport_action = "";
     var _transport_x = _vx1 + 20;
     var _transport_y = _cy + 18;
+    if(!variable_struct_exists(_m,"voice_mask")) _m.voice_mask=7;
+    draw_set_font_l(fnt_c64_tiny);draw_set_color(c_white);
+    draw_text_l(_vx1+540,_transport_y+5,"VOICES:");
+    for(var _mv=0;_mv<3;_mv++) {
+        var _bit=1<<_mv;
+        if(scr_sfx_maker_button(_vx1+620+_mv*100,_transport_y,90,string(_mv+1)+((_m.voice_mask&_bit)?" ON":" OFF"),_mx,_my)) {
+            _m.voice_mask=_m.voice_mask^_bit;
+            if(!(_m.voice_mask&_bit)) scr_sound_preview_free_channel(_mv);
+            global.addresses_dirty=true;global.undo_dirty=true;
+        }
+    }
+
     var _transport_labels = ["PLAY PAT", "PLAY SONG", "PLAY HERE", "STOP"];
     var _transport_actions = ["PAT", "SONG", "HERE", "STOP"];
     draw_set_font_l(fnt_c64_tiny);

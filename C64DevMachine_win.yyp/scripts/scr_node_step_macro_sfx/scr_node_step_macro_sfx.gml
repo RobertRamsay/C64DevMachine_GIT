@@ -6,6 +6,12 @@ function scr_node_step_macro_sfx(_draw_x) {
     if (!is_real(instructions[0][2]) || instructions[0][2] == "") instructions[0][2] = 0;
     if (!is_real(instructions[0][3]) || instructions[0][3] == "") instructions[0][3] = 3;
 
+    var _native_sfx=scr_sfx_data_find_asset(string(instructions[0][1]));
+    if (is_struct(_native_sfx) && _native_sfx.type=="SFX_MAKER" && point_in_rectangle(mouse_x,mouse_y,_draw_x+72,y+96,_draw_x+width-8,y+114)) {
+        while(array_length(instructions[0])<5) array_push(instructions[0],0);
+        instructions[0][4]=(real(instructions[0][4])+1) mod 4;
+        global.addresses_dirty=true;global.undo_dirty=true;exit;
+    }
     var _val_x1 = _draw_x + 72;
     var _val_x2 = _draw_x + width - 8;
     var _fld_h  = 16;
@@ -38,7 +44,7 @@ function scr_node_step_macro_sfx(_draw_x) {
 
     // ── Voice field — left click cycles 1→2→3→1 ──────────────────────────
     var _vbx1 = _draw_x + 50;
-    var _vbx2 = _vbx1 + 28;
+    var _vbx2 = _draw_x + width - 8;
     var _vy2_ = y + 74;
     if (point_in_rectangle(mouse_x, mouse_y, _vbx1, _vy2_, _vbx2, _vy2_ + _fld_h)) {
         var _v = real(instructions[0][3]);

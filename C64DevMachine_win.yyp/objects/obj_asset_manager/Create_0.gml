@@ -84,6 +84,7 @@ asset_types = [
 	"VECTOR_BITMAP",
 	"BITMAP_BUILDER",
 	"MUSIC_MAKER",
+    "SFX_MAKER",
     "LOAD_ORG",
 	"LOAD_REU",
 	"META_TILESET",
@@ -103,6 +104,7 @@ asset_list = ds_list_create();
 // TYPE COLOURS
 // -------------------------------------------------------
 type_colours = {
+    SFX_MAKER : make_color_rgb(100, 200, 220),
     SPRITE_SET : make_color_rgb(200, 120,  40),
     BITMAP     : make_color_rgb( 80, 180, 220),
     SID_MUSIC  : make_color_rgb(180,  60, 180),

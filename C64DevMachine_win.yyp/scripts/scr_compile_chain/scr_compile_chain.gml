@@ -7761,6 +7761,11 @@ case "MACRO_SFX": {
     var _voice      = (array_length(_curr.instructions[0]) > 3 && is_real(_curr.instructions[0][3]))
                     ? clamp(real(_curr.instructions[0][3]), 1, 3) : 3;
 
+    var _native_sfx=scr_sfx_data_find_asset(_asset_name);
+    if (is_struct(_native_sfx) && _native_sfx.type=="SFX_MAKER") {
+        _list=scr_sfx_maker_compile(_list,_curr,_native_sfx,_voice);
+        break;
+    }
     var _gt_channel = (_voice - 1) * 7;
 
     var _sfx_entry = 0x1006;
@@ -17066,6 +17071,7 @@ case "MACRO_SID_SONG": {
     }
 
     var _sm = _se.meta;
+    var _voice_mask=variable_struct_exists(_sm,"voice_mask") ? (real(_sm.voice_mask)&7) : 7;
 
     var _instruments = (variable_struct_exists(_sm, "instruments") && is_array(_sm.instruments)) ? _sm.instruments : [];
     var _patterns    = (variable_struct_exists(_sm, "patterns")    && is_array(_sm.patterns))    ? _sm.patterns    : [];
@@ -17486,6 +17492,7 @@ case "MACRO_SID_SONG": {
 
         var _o_target = 0;
         for (var _vi = 0; _vi < 3; _vi++) {
+        if ((_voice_mask & (1 << _vi)) == 0) continue;
             var _pv = _ovals[_vi];
             if (_pv >= 0 && _pv < _n_pat) {
                 array_push(_ord_v[_vi], _pv & 0xFF);
@@ -17524,6 +17531,7 @@ case "MACRO_SID_SONG": {
 
     var _ord_lbls = [_key + "ordv1", _key + "ordv2", _key + "ordv3"];
     for (var _vi = 0; _vi < 3; _vi++) {
+        if ((_voice_mask & (1 << _vi)) == 0) continue;
         array_push(_list, ["label", _ord_lbls[_vi]]);
         for (var _oi = 0; _oi < _n_ord; _oi++) {
             array_push(_list, ["byte", _ord_v[_vi][_oi], _id]);
@@ -17634,6 +17642,7 @@ case "MACRO_SID_SONG": {
     array_push(_list, ["lda_imm", 0x01,    _id]);
     array_push(_list, ["sta_zp",  _S_TICK, _id]);   // 1 = the next play call lands on the row
     for (var _vi = 0; _vi < 3; _vi++) {
+        if ((_voice_mask & (1 << _vi)) == 0) continue;
         var _vb = _v_base[_vi];
         array_push(_list, ["lda_imm", 0x00,    _id]);
         array_push(_list, ["sta_zp",  _vb + 4, _id]);   // hold = 0
@@ -17659,6 +17668,7 @@ case "MACRO_SID_SONG": {
     // Trigger each voice's row. Unrolled per voice — three copies beats the
     // ZP juggling a shared subroutine would need to index a voice's block.
     for (var _vi = 0; _vi < 3; _vi++) {
+        if ((_voice_mask & (1 << _vi)) == 0) continue;
         var _vb      = _v_base[_vi];
         var _hb      = _h_base[_vi];
         var _cb      = _c_base[_vi];
@@ -17909,6 +17919,7 @@ case "MACRO_SID_SONG": {
     array_push(_list, ["sta_zp",  _S_ORD,  _id]);
     array_push(_list, ["lda_imm", 0x00,    _id]);
     for (var _vi = 0; _vi < 3; _vi++) {
+        if ((_voice_mask & (1 << _vi)) == 0) continue;
         array_push(_list, ["sta_zp", _v_base[_vi] + 4, _id]);   // hold = 0
         array_push(_list, ["sta_zp", _v_base[_vi] + 6, _id]);   // inactive
         array_push(_list, ["sta_zp", _h_base[_vi] + 2, _id]);   // no pending note
@@ -17924,6 +17935,7 @@ case "MACRO_SID_SONG": {
     array_push(_list, ["sta_zp",  _S_ORD, _id]);
     array_push(_list, ["lda_imm", 0x00,   _id]);
     for (var _vi = 0; _vi < 3; _vi++) {
+        if ((_voice_mask & (1 << _vi)) == 0) continue;
         array_push(_list, ["sta_abs", _chip_base + 0x04 + (_vi * 7), _id]);
         array_push(_list, ["sta_zp",  _v_base[_vi] + 6,   _id]);
         array_push(_list, ["sta_zp",  _h_base[_vi] + 2,   _id]);
@@ -17936,6 +17948,7 @@ case "MACRO_SID_SONG": {
     array_push(_list, ["label", _L_instrs]);
 
     for (var _vi = 0; _vi < 3; _vi++) {
+        if ((_voice_mask & (1 << _vi)) == 0) continue;
         var _vb      = _v_base[_vi];
         var _hb      = _h_base[_vi];
         var _cb      = _c_base[_vi];

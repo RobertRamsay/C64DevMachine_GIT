@@ -81,6 +81,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
         var _locked = (_btns[_bi] == "- REMOVE" && _m.sel_instr < 0)
                    || (_btns[_bi] == "COPY"     && _m.sel_instr < 0)
                    || (_btns[_bi] == "PASTE"    && !variable_global_exists("se_instr_clipboard"));
+        if (variable_struct_exists(_m,"sfx_asset_name") && array_length(_m.instruments)>=64 && (_btns[_bi]=="+ ADD" || _btns[_bi]=="PASTE")) _locked=true;
         var _hov = !_locked && point_in_rectangle(_mx, _my, _bx, _iby, _bx + _this_w, _iby + _btn_h);
         var _base_col = make_color_rgb(30, 70, 100);
         if (_btns[_bi] == "+ ADD") {
@@ -119,6 +120,15 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
             } else if (_btns[_bi] == "- REMOVE") {
                 var _rm_idx = _m.sel_instr;
                 array_delete(_m.instruments, _rm_idx, 1);
+                if(variable_struct_exists(_m,"sfx_asset_name")) {
+                    var _sfx_asset_name=_m.sfx_asset_name;
+                    with(obj_c64_node) if(node_type=="MACRO_SFX" && string(instructions[0][1])==_sfx_asset_name) {
+                        var _old_index=real(instructions[0][2]);
+                        if(_old_index==_rm_idx) instructions[0][2]=-1;
+                        else if(_old_index>_rm_idx) instructions[0][2]=_old_index-1;
+                    }
+                }
+
                 for (var _pri = 0; _pri < array_length(_m.patterns); _pri++) {
                     var _rm_pat = _m.patterns[_pri];
                     for (var _rsi = 0; _rsi < array_length(_rm_pat.steps); _rsi++) {
@@ -142,7 +152,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
                     name: _cp_src.name, text: _cp_src.text,
                     attack: _cp_src.attack, decay: _cp_src.decay,
                     sustain: _cp_src.sustain, release: _cp_src.release,
-                    pulse_width: _cp_src.pulse_width
+                    pulse_width: _cp_src.pulse_width,
+                    sfx_note: variable_struct_exists(_cp_src,"sfx_note")?_cp_src.sfx_note:"C-5",
+                    sfx_priority: variable_struct_exists(_cp_src,"sfx_priority")?_cp_src.sfx_priority:1
                 };
                 _m.warn_msg   = "COPIED INSTRUMENT";
                 _m.warn_timer = game_get_speed(gamespeed_fps) * 2;
@@ -159,7 +171,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
                     decay    : _pc.decay,
                     sustain  : _pc.sustain,
                     release  : _pc.release,
-                    pulse_width : _pc.pulse_width
+                    pulse_width : _pc.pulse_width,
+                    sfx_note: variable_struct_exists(_pc,"sfx_note")?_pc.sfx_note:"C-5",
+                    sfx_priority: variable_struct_exists(_pc,"sfx_priority")?_pc.sfx_priority:1
                 });
                 _m.sel_instr = array_length(_m.instruments) - 1;
                 global.undo_dirty      = true;

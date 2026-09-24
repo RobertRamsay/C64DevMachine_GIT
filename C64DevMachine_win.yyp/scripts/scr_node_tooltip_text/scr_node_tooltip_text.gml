@@ -625,9 +625,22 @@ function scr_node_tooltip_text(_node_type) {
         "MACRO_SFX": {
             title: "SFX",
             lines: [
-                "Plays a compiled INS2SND2 sound-effect binary blob",
-                "asset - a pre-authored SFX rather than a single",
-                "note built from raw ADSR/waveform fields."
+                "Choose SFX MAKER for native effects, or SFX DATA",
+                "for the existing GoatTracker/Zed import workflow.",
+                "",
+                "SFX MAKER: pick an effect and SID voice, then click",
+                "ACTION to choose PLAY, UPDATE, STOP or INIT.",
+                "INIT once before music starts sets volume and clears",
+                "this effect voice. UPDATE runs once per video frame.",
+                "PLAY triggers once on your game event; STOP cancels.",
+                "Use the same asset and voice on all those nodes.",
+                "",
+                "In Music Maker, turn OFF that voice with VOICES.",
+                "Example: music on 1+2, effects on 3. Song position",
+                "and memory banking are untouched by SFX calls.",
+                "Higher priority interrupts; equal priority restarts.",
+                "Lower priority waits for your next trigger.",
+                "Imported SFX DATA keeps its existing SID player path."
             ]
         },
 
