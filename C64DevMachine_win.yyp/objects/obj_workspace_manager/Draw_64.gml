@@ -575,13 +575,13 @@ if (shelf_page < p_count - 1) {
 ///// MENU BAR
 /////////////////////////////////////////////////////////////////
 
-var _mbar_y      = 2;
+var _mbar_y      = (sprite_get_height(spr_menu_bar) - 34) * 0.5;
 var _mbar_btn_w  = 143;
 var _mbar_btn_h  = 34;
-var _mbar_start_x = shelf_width + 60;
-var _menuitems =8;
+var _mbar_start_x = shelf_width + 40;
+var _menuitems =9;
 var _menu_labels = [
-    "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TEMPLATES"
+    "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TEMPLATES", "PORTS"
 ];
 
 // Panel Style owns menu-bar chrome.
@@ -617,7 +617,7 @@ if (gui_menu_open == 4) {
     var _panel_w_o  = 220;
     var _mbar_btn_gap_o = _mbar_btn_w + 3;
     var _panel_x_o  = _mbar_start_x + (4 * _mbar_btn_gap_o);
-    var _panel_y_o  = _mbar_btn_h;
+    var _panel_y_o  = _mbar_y + _mbar_btn_h;
     var _panel_h_o  = array_length(_opt_list) * _item_h_o + 28;
 
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
@@ -985,7 +985,7 @@ if (gui_menu_open == 1) {
     var _slice_bot_e  = 20;
     var _mbar_btn_gap_e = _mbar_btn_w + 3;
     var _panel_x_e    = _mbar_start_x + (1 * _mbar_btn_gap_e);
-    var _panel_y_e    = _mbar_btn_h;
+    var _panel_y_e    = _mbar_y + _mbar_btn_h;
     var _panel_h_e    = array_length(_extra_list) * _item_h_e + _slice_top_e + _slice_bot_e;
 
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
@@ -1057,7 +1057,7 @@ if (gui_menu_open == 2) {
     var _slice_bot_v = 20;
     var _mbar_btn_gap_v = _mbar_btn_w + 3;
     var _panel_x_v  = _mbar_start_x + (2 * _mbar_btn_gap_v);
-    var _panel_y_v  = _mbar_btn_h;
+    var _panel_y_v  = _mbar_y + _mbar_btn_h;
     var _panel_h_v  = array_length(_vars_list) * _item_h_v + _slice_top_v + _slice_bot_v;
 
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
@@ -1140,17 +1140,15 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
 }
 
 /////////////////////////////////////////////////////////////////
-///// TEMPLATES — bundled native projects; loading is deferred to Step.
-if (gui_menu_open == 7) {
-    var _tx = min(_mbar_start_x + 7 * _mbar_btn_gap, global.gui_w - 230);
-    var _ty = _mbar_btn_h;
+///// TEMPLATES / PORTS — separate lists; loading is deferred to Step.
+if (gui_menu_open == 7 || gui_menu_open == 8) {
+    var _tx = min(_mbar_start_x + gui_menu_open * _mbar_btn_gap, global.gui_w - 230);
+    var _ty = _mbar_y + _mbar_btn_h;
     var _tw = 230;
     // Re-enable each catalog entry here once its template has been reviewed.
     // All bundled JSONs and catalog IDs remain available for later work.
     var _visible_templates = [
-        0, // SHMUP V
-        -1, // Separator and PORTS heading (not selectable)
-        10 // ZYRONS ESCAPE
+        0 // SHMUP V
         // ,1 // V.SHMUP (PRO)
         // ,2 // H.SHMUP (LITE)
         // ,3 // H.SHMUP (PRO)
@@ -1161,18 +1159,13 @@ if (gui_menu_open == 7) {
         // ,8 // TOP DOWN (LITE)
         // ,9 // TOP DOWN (PRO)
     ];
+    if (gui_menu_open == 8) _visible_templates = [10]; // ZYRONS ESCAPE
     var _th = array_length(_visible_templates) * 24 + 24;
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm, _tx, _ty, _tw, _th);
     draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_left);
     for (var _ti = 0; _ti < array_length(_visible_templates); _ti++) {
         var _iy = _ty + 12 + _ti * 24;
-        if (_visible_templates[_ti] == -1) {
-            draw_set_color(c_gray);
-            draw_line(_tx + 10, _iy, _tx + _tw - 10, _iy);
-            draw_text_l(_tx + 10, _iy + 5, "PORTS");
-            continue;
-        }
         var _entry = scr_template_catalog(_visible_templates[_ti]);
         var _disabled = false;
         var _hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _tx, _iy, _tx + _tw, _iy + 23);
@@ -1214,7 +1207,7 @@ if (gui_menu_open == 3) {
     var _panel_w_p  = 220;
     _mbar_btn_gap = _mbar_btn_w + 3;
     var _panel_x_p  = _mbar_start_x + (3 * _mbar_btn_gap);
-    var _panel_y_p  = _mbar_btn_h;
+    var _panel_y_p  = _mbar_y + _mbar_btn_h;
     var _panel_h_p  = array_length(_proj_list) * _item_h_p + 28;
 
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
@@ -1444,7 +1437,7 @@ if (gui_menu_open == 5) {
     var _panel_w_d  = 220;
     var _mbar_btn_gap_d = _mbar_btn_w + 3;
     var _panel_x_d  = _mbar_start_x + (5 * _mbar_btn_gap_d);
-    var _panel_y_d  = _mbar_btn_h;
+    var _panel_y_d  = _mbar_y + _mbar_btn_h;
     var _panel_h_d  = array_length(_docs_list) * _item_h_d + 28;
 
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
@@ -1511,7 +1504,7 @@ if (gui_menu_open == 6) {
     var _panel_w_i  = 220;
     var _mbar_btn_gap_i = _mbar_btn_w + 3;
     var _panel_x_i  = _mbar_start_x + (6 * _mbar_btn_gap_i);
-    var _panel_y_i  = _mbar_btn_h;
+    var _panel_y_i  = _mbar_y + _mbar_btn_h;
     var _panel_h_i  = array_length(_imp_list) * _item_h_i + 28;
 
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
@@ -1631,7 +1624,7 @@ if (gui_menu_open == 0) {
     var _slice_bot  = 20;
     _mbar_btn_gap = _mbar_btn_w + 3;
     var _panel_x    = _mbar_start_x;           // aligns with MACROS button
-    var _panel_y    = _mbar_btn_h;             // sits just below the menu bar
+    var _panel_y    = _mbar_y + _mbar_btn_h;             // sits just below the menu bar
     var _panel_h    = array_length(_mac_list) * _item_h + _slice_top + _slice_bot;
 
     // Draw spr_glassSlice using nine-slice stretching
