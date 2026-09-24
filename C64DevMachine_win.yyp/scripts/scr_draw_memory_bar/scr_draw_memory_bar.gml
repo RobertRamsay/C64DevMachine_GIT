@@ -645,21 +645,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     if (_bar_hovered && is_struct(_hover_seg) &&
         mouse_check_button_pressed(mb_left) &&
         !global.ui_click_consumed && !global.conflict_popup_open) {
-        if (variable_struct_exists(_hover_seg, "node_id") &&
-            instance_exists(_hover_seg.node_id)) {
-            scr_focus_camera_on_node(_hover_seg.node_id);
-            global.ui_click_consumed = true;
-        } else if (variable_struct_exists(_hover_seg, "asset_index") &&
-                   instance_exists(obj_asset_manager)) {
-            var _open_ai = _hover_seg.asset_index;
-            if (_open_ai >= 0 && _open_ai < ds_list_size(obj_asset_manager.asset_list)) {
-                obj_asset_manager.viewer_asset  = _open_ai;
-                obj_asset_manager.viewer_open   = true;
-                obj_asset_manager.bb_return_asset = -1;
-                keyboard_string = "";
-                global.ui_click_consumed = true;
-            }
-        }
+        if (scr_memory_bar_open_segment(_hover_seg)) global.ui_click_consumed = true;
     }
 
     // -------------------------------------------------------
@@ -867,4 +853,33 @@ function scr_memory_bar_bank_controls(_x, _y) {
     }
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
+}
+
+
+// Generated map planes retain their macro owner for conflicts, but navigate
+// to the source asset. Other allocations still focus their owning node.
+function scr_memory_bar_open_segment(_segment) {
+    if (!is_struct(_segment)) return false;
+    if (variable_struct_exists(_segment, "asset_index") && instance_exists(obj_asset_manager)) {
+        var _am = obj_asset_manager;
+        var _ai = _segment.asset_index;
+        if (_ai >= 0 && _ai < ds_list_size(_am.asset_list)) {
+            scr_asset_inline_editor_close_all();
+            var _asset = ds_list_find_value(_am.asset_list, _ai);
+            if (_asset.type == "META_TILESET" && variable_struct_exists(_segment, "map_index")) {
+                var _map = _segment.map_index;
+                if (_map >= 0 && _map < _asset.meta.map_count) _asset.meta.active_map = _map;
+            }
+            _am.viewer_asset = _ai;
+            _am.viewer_open = true;
+            _am.bb_return_asset = -1;
+            keyboard_string = "";
+            return true;
+        }
+    }
+    if (variable_struct_exists(_segment, "node_id") && instance_exists(_segment.node_id)) {
+        scr_focus_camera_on_node(_segment.node_id);
+        return true;
+    }
+    return false;
 }

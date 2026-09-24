@@ -218,12 +218,14 @@ var _addr_total = 65536;
                     if (_flat_base < 0x0400) _flat_base = 0x4000;
 
                     var _flat_ts = noone;
+                    var _flat_asset_index = -1;
                     if (_flat_ts_name != "" && instance_exists(obj_asset_manager)) {
                         var _flat_am = obj_asset_manager;
                         for (var _flat_ai = 0; _flat_ai < ds_list_size(_flat_am.asset_list); _flat_ai++) {
                             var _flat_a = ds_list_find_value(_flat_am.asset_list, _flat_ai);
                             if (_flat_a.type == "META_TILESET" && _flat_a.name == _flat_ts_name) {
                                 _flat_ts = _flat_a;
+                                _flat_asset_index = _flat_ai;
                                 break;
                             }
                         }
@@ -271,6 +273,8 @@ var _addr_total = 65536;
                                            + " (" + string(_flat_size) + " BYTES)",
                                 lines:       [],
                                 node_id:     id,
+                                asset_index: _flat_asset_index,
+                                map_index:   (_flat_varmode == 1) ? -1 : _flat_map_idx,
                                 no_conflict: false,
                                 conflict:    false
                             });
@@ -304,6 +308,7 @@ var _addr_total = 65536;
                 if (array_length(_ms_ins) > 2) { if (is_real(_ms_ins[2])) { _ms_map  = real(_ms_ins[2]); } }
                 if (array_length(_ms_ins) > 3) { if (is_real(_ms_ins[3])) { _ms_base = real(_ms_ins[3]); } }
                 if (array_length(_ms_ins) > 6) { if (is_real(_ms_ins[6])) { _ms_cm   = real(_ms_ins[6]); } }
+                var _ms_asset_index = -1;
                 var _ms_w = 0;
                 var _ms_h = 0;
                 if (_ms_ts != "" && instance_exists(obj_asset_manager)) {
@@ -311,6 +316,7 @@ var _addr_total = 65536;
                     for (var _ms_ai = 0; _ms_ai < ds_list_size(_ms_am.asset_list); _ms_ai++) {
                         var _ms_a = ds_list_find_value(_ms_am.asset_list, _ms_ai);
                         if (_ms_a.type != "META_TILESET" || _ms_a.name != _ms_ts) { continue; }
+                        _ms_asset_index = _ms_ai;
                         var _ms_tm = _ms_a.meta;
                         if (_ms_map >= 0 && _ms_map < _ms_tm.map_count && _ms_map < array_length(_ms_tm.maps)) {
                             var _ms_lw = 40;
@@ -337,6 +343,8 @@ var _addr_total = 65536;
                         name:        _ms_name + " MAP " + _ms_ts + " #" + string(_ms_map) + " CHARS $" + _ms_b_hex + "-$" + _ms_e_hex + " (" + string(_ms_sz) + " BYTES)",
                         lines:       [],
                         node_id:     id,
+                        asset_index: _ms_asset_index,
+                        map_index:   _ms_map,
                         no_conflict: false,
                         conflict:    false
                     });
@@ -352,7 +360,9 @@ var _addr_total = 65536;
                             name:        _ms_name + " MAP " + _ms_ts + " #" + string(_ms_map) + " COLOUR AT $" + _ms_c_hex + " (" + string(_ms_sz) + " BYTES)",
                             lines:       [],
                             node_id:     id,
-                            no_conflict: false,
+                            asset_index: _ms_asset_index,
+                        map_index:   _ms_map,
+                        no_conflict: false,
                             conflict:    false
                         });
                     }
