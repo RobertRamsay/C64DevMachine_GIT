@@ -23,13 +23,13 @@ function scr_node_draw_macro_clr_screen(_draw_x, _y) {
     while (string_length(_sb_hex) < 4) _sb_hex = "0" + _sb_hex;
 
     draw_set_color(_c_lbl);
-    draw_text_l(_draw_x + 10, _ly, "BASE:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "BASE:");
     if (_base_edit) {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 52, _ly, "$" + obj_workspace_manager.current_input_string);
+        scr_node_macro_text_l(_draw_x + 52, _ly, "$" + obj_workspace_manager.current_input_string);
     } else {
         draw_set_color(c_aqua);
-        draw_text_l(_draw_x + 52, _ly, "$" + string_upper(_sb_hex));
+        scr_node_macro_text_l(_draw_x + 52, _ly, "$" + string_upper(_sb_hex));
     }
     _ly += _lh;
 
@@ -42,13 +42,13 @@ function scr_node_draw_macro_clr_screen(_draw_x, _y) {
     while (string_length(_f_hex) < 2) _f_hex = "0" + _f_hex;
 
     draw_set_color(_c_lbl);
-    draw_text_l(_draw_x + 10, _ly, "FILL:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "FILL:");
     if (_fill_edit) {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 52, _ly, obj_workspace_manager.current_input_string);
+        scr_node_macro_text_l(_draw_x + 52, _ly, obj_workspace_manager.current_input_string);
     } else {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 52, _ly, "$" + string_upper(_f_hex) + "  (" + string(_fill) + ")");
+        scr_node_macro_text_l(_draw_x + 52, _ly, "$" + string_upper(_f_hex) + "  (" + string(_fill) + ")");
     }
     _ly += _lh;
 
@@ -58,5 +58,5 @@ function scr_node_draw_macro_clr_screen(_draw_x, _y) {
     while (string_length(_eh) < 4) _eh = "0" + _eh;
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(80, 120, 180));
-    draw_text_l(_draw_x + 8, _ly, L("WIPES $") + string_upper(_sb_hex) + "-$" + string_upper(_eh));
+    scr_node_macro_text_l(_draw_x + 8, _ly, L("WIPES $") + string_upper(_sb_hex) + "-$" + string_upper(_eh));
 }

@@ -43,37 +43,37 @@ function scr_node_draw_macro_loader(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     // Row 1: LOAD_ORG picker
     var _org_hov = point_in_rectangle(mouse_x, mouse_y, _draw_x + 68, _ly, _draw_x + width - 8, _ly + 16);
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 10, _ly, "DISK:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "DISK:");
     draw_set_color((_org_asset != undefined) ? make_color_rgb(20, 40, 60) : make_color_rgb(60, 20, 60));
-    draw_rectangle(_draw_x + 68, _ly + 2, _draw_x + width - 8, _ly + 15, false);
+    scr_macro_body_rectangle(_draw_x + 68, _ly + 2, _draw_x + width - 8, _ly + 15, false);
     draw_set_color((_org_asset != undefined) ? c_aqua : (_org_hov ? c_white : make_color_rgb(180, 80, 180)));
-    draw_text_l(_draw_x + 72, _ly, (_org_name == "") ? L("CLICK TO SET") : _org_name);
+    scr_node_macro_text_l(_draw_x + 72, _ly, (_org_name == "") ? L("CLICK TO SET") : _org_name);
     _ly += _line_h;
 
     // Row 2: File picker
     var _file_hov = point_in_rectangle(mouse_x, mouse_y, _draw_x + 68, _ly, _draw_x + width - 8, _ly + 16);
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 10, _ly, "FILE:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "FILE:");
     draw_set_color((_file_name != "") ? make_color_rgb(20, 40, 60) : make_color_rgb(40, 40, 40));
-    draw_rectangle(_draw_x + 68, _ly + 2, _draw_x + width - 8, _ly + 15, false);
+    scr_macro_body_rectangle(_draw_x + 68, _ly + 2, _draw_x + width - 8, _ly + 15, false);
     draw_set_color((_file_name != "") ? c_yellow : (_file_hov ? c_white : make_color_rgb(100, 100, 100)));
-    draw_text_l(_draw_x + 72, _ly, (_file_name == "") ? L("-- NONE --") : _file_name);
+    scr_node_macro_text_l(_draw_x + 72, _ly, (_file_name == "") ? L("-- NONE --") : _file_name);
     _ly += _line_h;
 
     // Row 3: Target address (read-only, from file's PRG header)
     var _ah = string_upper(decimal_to_hex(_file_addr));
     while (string_length(_ah) < 4) _ah = "0" + _ah;
-    draw_set_color(_c_dim);   draw_text_l(_draw_x + 10, _ly, "ADDR:");
-    draw_set_color(c_aqua);   draw_text_l(_draw_x + 70, _ly, "$" + _ah);
+    draw_set_color(_c_dim);   scr_node_macro_text_l(_draw_x + 10, _ly, "ADDR:");
+    draw_set_color(c_aqua);   scr_node_macro_text_l(_draw_x + 70, _ly, "$" + _ah);
     _ly += _line_h;
 
     // Row 4: Size
-    draw_set_color(_c_dim);   draw_text_l(_draw_x + 10, _ly, "SIZE:");
+    draw_set_color(_c_dim);   scr_node_macro_text_l(_draw_x + 10, _ly, "SIZE:");
     draw_set_color(c_aqua);
     if (_file_size > 0) {
-        draw_text_l(_draw_x + 70, _ly, string(_file_size) + L(" BYTES"));  // bytes or blocks??
+        scr_node_macro_text_l(_draw_x + 70, _ly, string(_file_size) + L(" BYTES"));  // bytes or blocks??
     } else {
-        draw_text_l(_draw_x + 70, _ly, "--");
+        scr_node_macro_text_l(_draw_x + 70, _ly, "--");
     }
     _ly += _line_h + 4;
 
@@ -96,12 +96,12 @@ function scr_node_draw_macro_loader(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
             draw_set_halign(fa_center);
             var _flash = (current_time mod 600 < 300) ? c_white : c_red;
             draw_set_color(_flash);
-            draw_text_l(_draw_x + (width / 2), _ly, "FILE NOT IN DISK!");
+            scr_node_macro_text_l(_draw_x + (width / 2), _ly, "FILE NOT IN DISK!");
             draw_set_halign(fa_left);
         } else {
             draw_set_halign(fa_center);
             draw_set_color(make_color_rgb(80, 200, 80));
-            draw_text_l(_draw_x + (width / 2), _ly, "LOADS FROM DISK");
+            scr_node_macro_text_l(_draw_x + (width / 2), _ly, "LOADS FROM DISK");
             draw_set_halign(fa_left);
         }
     }

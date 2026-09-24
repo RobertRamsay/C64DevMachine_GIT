@@ -47,15 +47,15 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     } else {
         draw_set_color(make_color_rgb(60, 60, 60));
     }
-    draw_rectangle(_cbx, _ly + 1, _cbx + 12, _ly + 13, false);
+    scr_macro_body_rectangle(_cbx, _ly + 1, _cbx + 12, _ly + 13, false);
     draw_set_color(c_gray);
-    draw_rectangle(_cbx, _ly + 1, _cbx + 12, _ly + 13, true);
+    scr_macro_body_rectangle(_cbx, _ly + 1, _cbx + 12, _ly + 13, true);
     if (_init_osc == 1) {
         draw_set_color(c_lime);
     } else {
         draw_set_color(c_gray);
     }
-    draw_text_l(_cbx + 18, _ly, "SETUP NOISE OSC");
+    scr_node_macro_text_l(_cbx + 18, _ly, "SETUP NOISE OSC");
     _ly += _lh;
 
     // ── Row 1: FREQ hex ──
@@ -67,10 +67,10 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text_l(_draw_x + 10, _ly, "FREQ:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "FREQ:");
     if (_freq_edit) {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 58, _ly, obj_workspace_manager.current_input_string);
+        scr_node_macro_text_l(_draw_x + 58, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _fq_hex = decimal_to_hex(_freq);
         while (string_length(_fq_hex) < 4) _fq_hex = "0" + _fq_hex;
@@ -79,7 +79,7 @@ function scr_node_draw_macro_random(_draw_x, _y) {
         } else {
             draw_set_color(_c_dim);
         }
-        draw_text_l(_draw_x + 58, _ly, "$" + string_upper(_fq_hex));
+        scr_node_macro_text_l(_draw_x + 58, _ly, "$" + string_upper(_fq_hex));
     }
     _ly += _lh;
 
@@ -90,15 +90,15 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     } else {
         draw_set_color(make_color_rgb(60, 60, 60));
     }
-    draw_rectangle(_cbx2, _ly + 1, _cbx2 + 12, _ly + 13, false);
+    scr_macro_body_rectangle(_cbx2, _ly + 1, _cbx2 + 12, _ly + 13, false);
     draw_set_color(c_gray);
-    draw_rectangle(_cbx2, _ly + 1, _cbx2 + 12, _ly + 13, true);
+    scr_macro_body_rectangle(_cbx2, _ly + 1, _cbx2 + 12, _ly + 13, true);
     if (_clamp_on == 1) {
         draw_set_color(c_lime);
     } else {
         draw_set_color(c_gray);
     }
-    draw_text_l(_cbx2 + 18, _ly, "CLAMP RANGE");
+    scr_node_macro_text_l(_cbx2 + 18, _ly, "CLAMP RANGE");
     _ly += _lh;
 
     // ── Row 3: MIN / MAX ──
@@ -113,84 +113,84 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text_l(_draw_x + 10, _ly, "MIN:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "MIN:");
     if (_min_edit) {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 52, _ly, obj_workspace_manager.current_input_string);
+        scr_node_macro_text_l(_draw_x + 52, _ly, obj_workspace_manager.current_input_string);
     } else {
         if (_clamp_on == 1) {
             draw_set_color(c_aqua);
         } else {
             draw_set_color(_c_dim);
         }
-        draw_text_l(_draw_x + 52, _ly, string(_clamp_min));
+        scr_node_macro_text_l(_draw_x + 52, _ly, string(_clamp_min));
     }
     if (_clamp_on == 1) {
         draw_set_color(_c_lbl);
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text_l(_draw_x + 118, _ly, "MAX:");
+    scr_node_macro_text_l(_draw_x + 118, _ly, "MAX:");
     if (_max_edit) {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 160, _ly, obj_workspace_manager.current_input_string);
+        scr_node_macro_text_l(_draw_x + 160, _ly, obj_workspace_manager.current_input_string);
     } else {
         if (_clamp_on == 1) {
             draw_set_color(c_aqua);
         } else {
             draw_set_color(_c_dim);
         }
-        draw_text_l(_draw_x + 160, _ly, string(_clamp_max));
+        scr_node_macro_text_l(_draw_x + 160, _ly, string(_clamp_max));
     }
     _ly += _lh;
 
     // ── Row 4: DEST toggle A / VAR ──
     draw_set_color(_c_lbl);
-    draw_text_l(_draw_x + 10, _ly, "DEST:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "DEST:");
     var _ax0 = _draw_x + 58;
     if (_dst_mode == 0) {
         draw_set_color(make_color_rgb(30, 120, 60));
     } else {
         draw_set_color(make_color_rgb(45, 45, 55));
     }
-    draw_rectangle(_ax0, _ly + 4, _ax0 + 28, _ly + 15, false);
+    scr_macro_body_rectangle(_ax0, _ly + 4, _ax0 + 28, _ly + 15, false);
     if (_dst_mode == 0) {
         draw_set_color(c_lime);
     } else {
         draw_set_color(make_color_rgb(130, 130, 150));
     }
     draw_set_halign(fa_center);
-    draw_text_l(_ax0 + 14, _ly, "A");
+    scr_node_macro_text_l(_ax0 + 14, _ly, "A");
     var _vx0 = _draw_x + 92;
     if (_dst_mode == 1) {
         draw_set_color(make_color_rgb(30, 120, 60));
     } else {
         draw_set_color(make_color_rgb(45, 45, 55));
     }
-    draw_rectangle(_vx0, _ly + 4, _vx0 + 48, _ly + 15, false);
+    scr_macro_body_rectangle(_vx0, _ly + 4, _vx0 + 48, _ly + 15, false);
     if (_dst_mode == 1) {
         draw_set_color(c_lime);
     } else {
         draw_set_color(make_color_rgb(130, 130, 150));
     }
-    draw_text_l(_vx0 + 24, _ly, "VAR");
+    scr_node_macro_text_l(_vx0 + 24, _ly, "VAR");
     draw_set_halign(fa_left);
     _ly += _lh;
 
     // ── Row 5: DEST VAR picker ──
     if (_dst_mode == 1) {
         draw_set_color(_c_lbl);
-        draw_text_l(_draw_x + 10, _ly, "-> VAR:");
+        scr_node_macro_text_l(_draw_x + 10, _ly, "-> VAR:");
         if (_dst_var != "") {
             draw_set_color(c_lime);
-            draw_text_l(_draw_x + 66, _ly, _dst_var);
+            scr_node_macro_text_l(_draw_x + 66, _ly, _dst_var);
         } else {
             draw_set_color(c_orange);
-            draw_text_l(_draw_x + 66, _ly, "-pick var-");
+            scr_node_macro_text_l(_draw_x + 66, _ly, "-pick var-");
         }
     } else {
         draw_set_color(_c_dim);
-        draw_text_l(_draw_x + 10, _ly, "-> A (accumulator)");
+        scr_node_macro_text_l(_draw_x + 10, _ly, "-> A (accumulator)");
     }
     _ly += _lh;
 
@@ -203,10 +203,10 @@ function scr_node_draw_macro_random(_draw_x, _y) {
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text_l(_draw_x + 10, _ly, "ZP:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "ZP:");
     if (_zp_edit) {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 46, _ly, obj_workspace_manager.current_input_string);
+        scr_node_macro_text_l(_draw_x + 46, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _zp_hex = decimal_to_hex(_zp);
         while (string_length(_zp_hex) < 2) _zp_hex = "0" + _zp_hex;
@@ -215,7 +215,7 @@ function scr_node_draw_macro_random(_draw_x, _y) {
         } else {
             draw_set_color(_c_dim);
         }
-        draw_text_l(_draw_x + 46, _ly, "$" + string_upper(_zp_hex));
+        scr_node_macro_text_l(_draw_x + 46, _ly, "$" + string_upper(_zp_hex));
     }
     _ly += _lh;
 
@@ -231,8 +231,8 @@ function scr_node_draw_macro_random(_draw_x, _y) {
         }
     }
     if (_clamp_on == 1) {
-        draw_text_l(_draw_x + 8, _ly, "RND $D41B  [" + string(_clamp_min) + ".." + string(_clamp_max) + "]  " + _dst_txt);
+        scr_node_macro_text_l(_draw_x + 8, _ly, "RND $D41B  [" + string(_clamp_min) + ".." + string(_clamp_max) + "]  " + _dst_txt);
     } else {
-        draw_text_l(_draw_x + 8, _ly, "RND $D41B  0..255  " + _dst_txt);
+        scr_node_macro_text_l(_draw_x + 8, _ly, "RND $D41B  0..255  " + _dst_txt);
     }
 }

@@ -12,18 +12,18 @@ var _c_edit = make_color_rgb(120, 220, 120); // Light Green (Interactive)
 
     // Header UI: Port and ZP
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _jly, "PORT:                           (JSR CALLS)");
+    scr_node_macro_text_l(_draw_x + 8, _jly, "PORT:");
     draw_set_color(_port == 1 ? c_yellow : c_gray);
-    draw_text_l(_draw_x + 60, _jly, "1");
+    scr_node_macro_text_l(_draw_x + 60, _jly, "1");
     draw_set_color(_port == 2 ? c_yellow : c_gray);
-    draw_text_l(_draw_x + 80, _jly, "2");
+    scr_node_macro_text_l(_draw_x + 80, _jly, "2");
 
 
     _jly += _line_h+2;
 
-    draw_text_l(_draw_x + 8,  _jly, "ZP:");
+    scr_node_macro_text_l(_draw_x + 8,  _jly, "ZP:");
     draw_set_color(c_aqua);
-    draw_text_l(_draw_x + 60, _jly, "$" + _zp_hex);
+    scr_node_macro_text_l(_draw_x + 60, _jly, "$" + _zp_hex);
     _jly += _line_h+8;
 
     // Grid Layout Definition
@@ -55,7 +55,7 @@ var _c_edit = make_color_rgb(120, 220, 120); // Light Green (Interactive)
 
 
             draw_set_color(_enabled ? c_yellow : make_color_rgb(110, 90, 90));
-            draw_text_l(_draw_x + 6 + (_c * _col_w), _jly, _label);
+            scr_node_macro_text_l(_draw_x + 6 + (_c * _col_w), _jly, _label);
         }
         _jly += _line_h+2;
     }

@@ -35,7 +35,7 @@ function scr_node_draw_macro_spr_expand(_draw_x) {
     draw_set_font_l(fnt_c64_tiny);
     // ---- X EXPAND label ----
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text_l(_draw_x + 6, y + 27, "X EXPAND:        (ONE SHOT CALL)");
+    scr_node_macro_text_l(_draw_x + 6, y + 27, "X EXPAND:        (ONE SHOT CALL)");
     // ---- X EXPAND 8 toggle buttons ----
     for (var _si = 0; _si < 8; _si++) {
         var _bx  = _btn_sx + _si * (_btn_w + _btn_gap);
@@ -43,28 +43,28 @@ function scr_node_draw_macro_spr_expand(_draw_x) {
         var _hov = point_in_rectangle(mouse_x, mouse_y, _bx, _row1, _bx + _btn_w, _row1 + _btn_h);
         if (_on) {
             draw_set_color(make_color_rgb(40, 120, 200));
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
             draw_set_color(c_yellow);
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
         } else if (_hov) {
             draw_set_color(make_color_rgb(40, 50, 70));
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
             draw_set_color(make_color_rgb(70, 80, 110));
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
         } else {
             draw_set_color(make_color_rgb(25, 30, 40));
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
             draw_set_color(make_color_rgb(55, 65, 85));
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
         }
         draw_set_halign(fa_center);
         draw_set_color(_on ? c_white : c_gray);
-        draw_text_l(_bx + _btn_w * 0.5, _row1 + 1, string(_si));
+        scr_node_macro_text_l(_bx + _btn_w * 0.5, _row1 + 1, string(_si));
         draw_set_halign(fa_left);
     }
     // ---- Y EXPAND label ----
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text_l(_draw_x + 6, y + 59, "Y EXPAND:");
+    scr_node_macro_text_l(_draw_x + 6, y + 59, "Y EXPAND:");
     // ---- Y EXPAND 8 toggle buttons ----
     for (var _si = 0; _si < 8; _si++) {
         var _bx  = _btn_sx + _si * (_btn_w + _btn_gap);
@@ -72,23 +72,23 @@ function scr_node_draw_macro_spr_expand(_draw_x) {
         var _hov = point_in_rectangle(mouse_x, mouse_y, _bx, _row2, _bx + _btn_w, _row2 + _btn_h);
         if (_on) {
             draw_set_color(make_color_rgb(180, 80, 200));
-            draw_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, false);
+            scr_macro_body_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, false);
             draw_set_color(c_yellow);
-            draw_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, true);
+            scr_macro_body_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, true);
         } else if (_hov) {
             draw_set_color(make_color_rgb(60, 40, 70));
-            draw_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, false);
+            scr_macro_body_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, false);
             draw_set_color(make_color_rgb(100, 70, 110));
-            draw_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, true);
+            scr_macro_body_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, true);
         } else {
             draw_set_color(make_color_rgb(35, 25, 40));
-            draw_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, false);
+            scr_macro_body_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, false);
             draw_set_color(make_color_rgb(75, 55, 85));
-            draw_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, true);
+            scr_macro_body_rectangle(_bx, _row2, _bx + _btn_w, _row2 + _btn_h, true);
         }
         draw_set_halign(fa_center);
         draw_set_color(_on ? c_white : c_gray);
-        draw_text_l(_bx + _btn_w * 0.5, _row2 + 1, string(_si));
+        scr_node_macro_text_l(_bx + _btn_w * 0.5, _row2 + 1, string(_si));
         draw_set_halign(fa_left);
     }
     // ---- CLEAR button ----
@@ -99,17 +99,17 @@ function scr_node_draw_macro_spr_expand(_draw_x) {
     var _clr_hov = point_in_rectangle(mouse_x, mouse_y, _clr_x, _clr_y, _clr_x + _clr_w, _clr_y + _clr_h);
     if (_clr_hov) {
         draw_set_color(make_color_rgb(80, 60, 20));
-        draw_rectangle(_clr_x, _clr_y, _clr_x + _clr_w, _clr_y + _clr_h, false);
+        scr_macro_body_rectangle(_clr_x, _clr_y, _clr_x + _clr_w, _clr_y + _clr_h, false);
         draw_set_color(make_color_rgb(180, 140, 40));
-        draw_rectangle(_clr_x, _clr_y, _clr_x + _clr_w, _clr_y + _clr_h, true);
+        scr_macro_body_rectangle(_clr_x, _clr_y, _clr_x + _clr_w, _clr_y + _clr_h, true);
     } else {
         draw_set_color(make_color_rgb(50, 40, 15));
-        draw_rectangle(_clr_x, _clr_y, _clr_x + _clr_w, _clr_y + _clr_h, false);
+        scr_macro_body_rectangle(_clr_x, _clr_y, _clr_x + _clr_w, _clr_y + _clr_h, false);
         draw_set_color(make_color_rgb(120, 90, 30));
-        draw_rectangle(_clr_x, _clr_y, _clr_x + _clr_w, _clr_y + _clr_h, true);
+        scr_macro_body_rectangle(_clr_x, _clr_y, _clr_x + _clr_w, _clr_y + _clr_h, true);
     }
     draw_set_halign(fa_center);
     draw_set_color(_clr_hov ? c_yellow : c_gray);
-    draw_text_l(_clr_x + _clr_w * 0.5, _clr_y - 2, "CLEAR");
+    scr_node_macro_text_l(_clr_x + _clr_w * 0.5, _clr_y - 2, "CLEAR");
     draw_set_halign(fa_left);
 }

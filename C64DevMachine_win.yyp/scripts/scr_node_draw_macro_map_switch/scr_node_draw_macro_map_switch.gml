@@ -17,17 +17,17 @@ function scr_node_draw_macro_map_switch(draw_x, draw_y, cam_x, cam_y, cam_zoom) 
     // MAP PICKER BUTTON
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_ltgray);
-    draw_text_l(draw_x + 8, _ly, "MAP:");
+    scr_node_macro_text_l(draw_x + 8, _ly, "MAP:");
     var _pb_x1    = draw_x + 44;
     var _pb_x2    = draw_x + width - 8;
     var _pb_y1    = _ly - 2;
     var _pb_y2    = _ly + 14;
     var _pb_hover = point_in_rectangle(mouse_x, mouse_y, _pb_x1, _pb_y1, _pb_x2, _pb_y2);
     draw_set_color(_pb_hover ? make_color_rgb(80, 200, 120) : make_color_rgb(30, 60, 40));
-    draw_rectangle(_pb_x1, _pb_y1, _pb_x2, _pb_y2, false);
+    scr_macro_body_rectangle(_pb_x1, _pb_y1, _pb_x2, _pb_y2, false);
     draw_set_color(_has_asset ? c_lime : make_color_rgb(150, 150, 150));
     draw_set_halign(fa_center);
-    draw_text_l(_pb_x1 + (_pb_x2 - _pb_x1) * 0.5, _ly,
+    scr_node_macro_text_l(_pb_x1 + (_pb_x2 - _pb_x1) * 0.5, _ly,
               _has_asset ? _asset_name : L("[ PICK MAP ]"));
     draw_set_halign(fa_left);
     _ly += _line_h + 2;
@@ -52,19 +52,19 @@ function scr_node_draw_macro_map_switch(draw_x, draw_y, cam_x, cam_y, cam_zoom) 
             }
         }
         draw_set_color(c_ltgray);
-        draw_text_l(draw_x + 8, _ly, L("SIZE: ") + string(_map_w) + " x " + string(_map_h));
+        scr_node_macro_text_l(draw_x + 8, _ly, L("SIZE: ") + string(_map_w) + " x " + string(_map_h));
         _ly += _line_h;
 		draw_set_color(c_ltgray);
         var _addr_hex = decimal_to_hex(_map_addr);
         if (string_length(_addr_hex) < 4) { _addr_hex = string_repeat("0", 4 - string_length(_addr_hex)) + _addr_hex; }
-        draw_text_l(draw_x + 8, _ly, L("ADDR: $") + string_upper(_addr_hex)); 
+        scr_node_macro_text_l(draw_x + 8, _ly, L("ADDR: $") + string_upper(_addr_hex)); 
         _ly += _line_h;
 
     } else {
         draw_set_color(make_color_rgb(150, 80, 80));
-        draw_text_l(draw_x + 8, _ly, "NO MAP SELECTED");
+        scr_node_macro_text_l(draw_x + 8, _ly, "NO MAP SELECTED");
         _ly += _line_h;
         draw_set_color(make_color_rgb(100, 100, 100));
-        draw_text_l(draw_x + 8, _ly, "PICK A MAP ASSET");
+        scr_node_macro_text_l(draw_x + 8, _ly, "PICK A MAP ASSET");
     }
 }

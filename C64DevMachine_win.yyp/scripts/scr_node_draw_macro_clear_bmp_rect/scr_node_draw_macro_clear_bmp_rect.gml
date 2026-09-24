@@ -37,48 +37,48 @@ function scr_node_draw_macro_clear_bmp_rect(_draw_x, _y) {
 
     // Row 1: target bitmap
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "BMP:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "BMP:");
     draw_set_color(c_yellow);
-    draw_text_l(_draw_x + 70, _ply, "$" + _bh);
+    scr_node_macro_text_l(_draw_x + 70, _ply, "$" + _bh);
     _ply += _line_h;
 
     // Row 2: COL / ROW — top-left cell of the rect. A literal whose slot has a
     // VAR assigned is dimmed: the runtime reads the var instead.
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8,  _ply, "COL:");
+    scr_node_macro_text_l(_draw_x + 8,  _ply, "COL:");
     if (_col_v == "") {
         draw_set_color(c_aqua);
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text_l(_draw_x + 40, _ply, string(_col));
+    scr_node_macro_text_l(_draw_x + 40, _ply, string(_col));
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 70, _ply, "ROW:");
+    scr_node_macro_text_l(_draw_x + 70, _ply, "ROW:");
     if (_row_v == "") {
         draw_set_color(c_aqua);
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text_l(_draw_x + 102, _ply, string(_row));
+    scr_node_macro_text_l(_draw_x + 102, _ply, string(_row));
     _ply += _line_h;
 
     // Row 3: W / H — size in cells
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8,  _ply, "W:");
+    scr_node_macro_text_l(_draw_x + 8,  _ply, "W:");
     if (_w_v == "") {
         draw_set_color(c_lime);
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text_l(_draw_x + 40, _ply, string(_w));
+    scr_node_macro_text_l(_draw_x + 40, _ply, string(_w));
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 70, _ply, "H:");
+    scr_node_macro_text_l(_draw_x + 70, _ply, "H:");
     if (_h_v == "") {
         draw_set_color(c_lime);
     } else {
         draw_set_color(_c_dim);
     }
-    draw_text_l(_draw_x + 102, _ply, string(_h));
+    scr_node_macro_text_l(_draw_x + 102, _ply, string(_h));
     _ply += _line_h;
 
     // Rows 4-7: VAR pickers. <LIT> means the literal above is used.
@@ -86,13 +86,13 @@ function scr_node_draw_macro_clear_bmp_rect(_draw_x, _y) {
     var _var_names  = [_col_v, _row_v, _w_v, _h_v];
     for (var _vi = 0; _vi < 4; _vi++) {
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8, _ply, _var_labels[_vi]);
+        scr_node_macro_text_l(_draw_x + 8, _ply, _var_labels[_vi]);
         if (_var_names[_vi] == "") {
             draw_set_color(_c_dim);
-            draw_text_l(_draw_x + 70, _ply, "<LIT>");
+            scr_node_macro_text_l(_draw_x + 70, _ply, "<LIT>");
         } else {
             draw_set_color(_c_var);
-            draw_text_l(_draw_x + 70, _ply, _var_names[_vi]);
+            scr_node_macro_text_l(_draw_x + 70, _ply, _var_names[_vi]);
         }
         _ply += _line_h;
     }
@@ -105,7 +105,7 @@ function scr_node_draw_macro_clear_bmp_rect(_draw_x, _y) {
         if (_col + _w > 40 || _row + _h > 25) {
             draw_set_font_l(fnt_c64_pico);
             draw_set_color(make_color_rgb(230, 170, 60));
-            draw_text_l(_draw_x + 8, _ply, "! RECT OFF GRID - WILL BE TRIMMED");
+            scr_node_macro_text_l(_draw_x + 8, _ply, "! RECT OFF GRID - WILL BE TRIMMED");
             draw_set_font_l(fnt_c64_tiny);
             _ply += _line_h;
         }
@@ -115,7 +115,7 @@ function scr_node_draw_macro_clear_bmp_rect(_draw_x, _y) {
         draw_set_color(make_color_rgb(80, 120, 180));
         var _cw = min(_w, max(0, 40 - _col));
         var _ch = min(_h, max(0, 25 - _row));
-        draw_text_l(_draw_x + 8, _ply,
+        scr_node_macro_text_l(_draw_x + 8, _ply,
             string(_cw * _ch * 8) + "B ZEROED  ->  BG ($D021)");
     }
 }

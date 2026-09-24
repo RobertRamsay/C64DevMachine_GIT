@@ -2,6 +2,7 @@
 if obj_workspace_manager.code_editor_open or obj_asset_manager.viewer_open exit;
 if (node_type == "COMMENT") scr_comment_sync_layout(id);
 if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
+scr_macro_sync_height(id);
 
 global.ui_click_consumed = (global.ui_click_block_timer > 0);
 // =============================================================
@@ -288,6 +289,8 @@ var _raw_h = header_h + (array_length(instructions) * _line_gap) + _bottom_pad +
         height = (ceil(_raw_h / _G)+obj_workspace_manager.opcode_extra_height) * _G;
         break;
     } // end switch
+    if (variable_instance_exists(id, "macro_layout_height") && macro_layout_type == node_type)
+        height = macro_layout_height;
     cached_height = height;
 } else {
     height = cached_height;
@@ -1396,6 +1399,12 @@ if (_lod_full && (is_connected || string_pos("DATA", node_type) > 0 || node_type
 // =============================================================
 // J. BODY CONTENT — dispatched to per-type scripts
 // =============================================================
+// Measure body content only when it is actually rendered. Hidden/zoomed-out
+// nodes retain their last complete measurement; PRINT owns its own layout,
+// PRINT EXT has a bottom-anchored control block, and HUD is state-derived.
+macro_measure_active = _lod_body && string_pos("MACRO_", node_type) == 1
+    && node_type != "MACRO_PRINT" && node_type != "MACRO_PRINT_EXT" && node_type != "MACRO_HUD";
+macro_content_bottom = 24;
 if (_lod_body) switch (node_type) {
    // case "BITMAP_KLA":  scr_node_draw_bitmap_kla(draw_x, y);                            break;
     case "DATA_SID":    scr_node_draw_data_sid(draw_x, y);                              break;
@@ -1900,6 +1909,20 @@ if (node_type == "LABEL") {
         }
     } break;
 }
+
+// Schedule the newly measured height for the next layout pass. Updating only
+// after this draw avoids changing the geometry underneath already drawn controls.
+if (macro_measure_active && macro_content_bottom > 24) {
+    var _body_h = max(40, ceil((macro_content_bottom + 8) / 20) * 20);
+    if (!variable_instance_exists(id, "macro_layout_height") || macro_layout_type != node_type
+    || macro_layout_height != _body_h) {
+        macro_layout_type = node_type;
+        macro_layout_height = _body_h;
+        height_dirty = true;
+        global.addresses_dirty = true;
+    }
+}
+macro_measure_active = false;
 
 // =============================================================
 // K. BOTTOM-LEFT ADDRESS BADGE

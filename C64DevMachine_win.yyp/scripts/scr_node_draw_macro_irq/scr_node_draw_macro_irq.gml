@@ -40,9 +40,9 @@ function scr_node_draw_macro_irq(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
 
     // ROW 0 — RASTER LINE
     draw_set_color(c_gray);
-    draw_text_l(_px, _ly, "RASTER:");
+    scr_node_macro_text_l(_px, _ly, "RASTER:");
     draw_set_color(c_aqua);
-    draw_text_l(_px + 80, _ly, "$" + string_upper(decimal_to_hex(_raster)) + "  (" + string(_raster) + ")");
+    scr_node_macro_text_l(_px + 80, _ly, "$" + string_upper(decimal_to_hex(_raster)) + "  (" + string(_raster) + ")");
     _ly += _lh;
 
     // ROW 1 — requirement note
@@ -55,24 +55,24 @@ function scr_node_draw_macro_irq(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
         }
     }
     if (_handler_mode == 1) {
-        if (!global.kernal_unlocked) { var _kfl2 = (current_time mod 600 < 300) ? make_color_rgb(255, 80, 80) : make_color_rgb(223, 180, 40); draw_set_color(_kfl2); draw_text_l(_px, _ly, "!REQ: UNLOCK KERNAL"); }
-        if (global.kernal_unlocked)  { draw_set_color(make_color_rgb(100, 240, 150)); draw_text_l(_px, _ly, "KERNAL IS UNLOCKED."); }
+        if (!global.kernal_unlocked) { var _kfl2 = (current_time mod 600 < 300) ? make_color_rgb(255, 80, 80) : make_color_rgb(223, 180, 40); draw_set_color(_kfl2); scr_node_macro_text_l(_px, _ly, "!REQ: UNLOCK KERNAL"); }
+        if (global.kernal_unlocked)  { draw_set_color(make_color_rgb(100, 240, 150)); scr_node_macro_text_l(_px, _ly, "KERNAL IS UNLOCKED."); }
     } else {
         draw_set_color(make_color_rgb(100, 240, 150));
-        draw_text_l(_px, _ly, "KERNAL MODE - OK.");
+        scr_node_macro_text_l(_px, _ly, "KERNAL MODE - OK.");
     }
     _ly += _lh+_lh;
 
     // ROW 2 — CALL LABEL (user subroutine to JSR into handler)
     var _call_label = (array_length(instructions[0]) > 5 && string(instructions[0][5]) != "") ? string(instructions[0][5]) : "";
     draw_set_color(c_gray);
-    draw_text_l(_px, _ly, "JSR:");
+    scr_node_macro_text_l(_px, _ly, "JSR:");
     if (_call_label != "") {
         draw_set_color(c_white);
-        draw_text_l(_px + 52, _ly, _call_label);
+        scr_node_macro_text_l(_px + 52, _ly, _call_label);
     } else {
         draw_set_color(c_yellow);
-        draw_text_l(_px + 52, _ly, "(none)");
+        scr_node_macro_text_l(_px + 52, _ly, "(none)");
     }
     _ly += _lh;
 
@@ -105,11 +105,11 @@ function scr_node_draw_macro_irq(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
             var _flash_col = (current_time mod 600 < 300) ? c_white : c_black;
             draw_set_color(_flash_col);
 			_ly+=6
-            draw_text_l(_draw_x + (width / 2), _ly, "REQUIRES SID OR IRQ HANDLER NODE");
+            scr_node_macro_text_l(_draw_x + (width / 2), _ly, "REQUIRES SID OR IRQ HANDLER NODE");
             _ly += _lh;
         } else {
             draw_set_color(make_color_rgb(80, 200, 80));
-            draw_text_l(_draw_x + (width / 2), _ly+8, "NODE IN PLACE");
+            scr_node_macro_text_l(_draw_x + (width / 2), _ly+8, "NODE IN PLACE");
             _ly += _lh;
         }
         draw_set_halign(fa_left);

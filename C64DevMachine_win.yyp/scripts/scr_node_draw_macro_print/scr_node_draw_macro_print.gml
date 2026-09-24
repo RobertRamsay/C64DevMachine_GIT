@@ -62,35 +62,35 @@ function scr_node_draw_macro_print(_draw_x, _y) {
 
     // Row 1: X / Y / LOC
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "X:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "X:");
     draw_set_color(_col_x_determined ? make_color_rgb(220, 40, 220) : c_aqua);
-    draw_text_l(_draw_x + 28, _ply, ((array_length(instructions[0]) > 18 && instructions[0][18] == 1) ? L("VAR") : string(_sx)));
+    scr_node_macro_text_l(_draw_x + 28, _ply, ((array_length(instructions[0]) > 18 && instructions[0][18] == 1) ? L("VAR") : string(_sx)));
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 65, _ply, "Y:");
+    scr_node_macro_text_l(_draw_x + 65, _ply, "Y:");
     draw_set_color(_col_y_determined ? make_color_rgb(220, 40, 220) : c_aqua);
-    draw_text_l(_draw_x + 85, _ply, ((array_length(instructions[0]) > 20 && instructions[0][20] == 1) ? L("VAR") : string(_sy)));
+    scr_node_macro_text_l(_draw_x + 85, _ply, ((array_length(instructions[0]) > 20 && instructions[0][20] == 1) ? L("VAR") : string(_sy)));
 
     // LOC field is dim in asset mode (driven by asset addr + start offset)
     if (_src_mode == 1) {
         draw_set_color(_c_dim);
-        draw_text_l(_draw_x + 115, _ply, "LOC:");
+        scr_node_macro_text_l(_draw_x + 115, _ply, "LOC:");
         draw_set_color(make_color_rgb(100, 120, 100));
-        draw_text_l(_draw_x + 148, _ply, "$" + _loch);
+        scr_node_macro_text_l(_draw_x + 148, _ply, "$" + _loch);
     } else {
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 115, _ply, "LOC:");
+        scr_node_macro_text_l(_draw_x + 115, _ply, "LOC:");
         draw_set_color(c_aqua);
-        draw_text_l(_draw_x + 148, _ply, "$" + _loch);
+        scr_node_macro_text_l(_draw_x + 148, _ply, "$" + _loch);
     }
     _ply += _line_h;
 
     // Row 2: COL + resolved screen address
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "COL:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "COL:");
     draw_set_color(scr_c64_pepto_colour(_col));
-    draw_rectangle(_draw_x + 50, _ply + 5, _draw_x + 70, _ply + _line_h, false);
+    scr_macro_body_rectangle(_draw_x + 50, _ply + 5, _draw_x + 70, _ply + _line_h, false);
     draw_set_color(c_yellow);
-    draw_text_l(_draw_x + 76, _ply, ((array_length(instructions[0]) > 22 && instructions[0][22] == 1) ? L("VAR") : string(_col)));
+    scr_node_macro_text_l(_draw_x + 76, _ply, ((array_length(instructions[0]) > 22 && instructions[0][22] == 1) ? L("VAR") : string(_col)));
 
     var _cell_off = (_sy * 40) + _sx;
     var _scr_addr = _scr_base + _cell_off;
@@ -102,9 +102,9 @@ function scr_node_draw_macro_print(_draw_x, _y) {
 
     draw_set_font_l(fnt_c64_nano);
     draw_set_color(_c_dim);
-    draw_text_l(_draw_x + 100, _ply + 3, "ADDR:");
+    scr_node_macro_text_l(_draw_x + 100, _ply + 3, "ADDR:");
     draw_set_color(c_orange);
-    draw_text_l(_draw_x + 130, _ply + 3, ((array_length(instructions[0]) > 20 && (instructions[0][18] == 1 || instructions[0][20] == 1)) ? L("RUNTIME") : "$" + _scr_hex + " $" + _col_hex));
+    scr_node_macro_text_l(_draw_x + 130, _ply + 3, ((array_length(instructions[0]) > 20 && (instructions[0][18] == 1 || instructions[0][20] == 1)) ? L("RUNTIME") : "$" + _scr_hex + " $" + _col_hex));
     _ply += _line_h;
 
     // Row 2b: SCR BASE (VIC screen-matrix base for the copy loop)
@@ -115,52 +115,52 @@ function scr_node_draw_macro_print(_draw_x, _y) {
                          obj_workspace_manager.input_target_index == 13);
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "SCR BASE:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "SCR BASE:");
     if (_base_editing) {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 80, _ply, "$" + obj_workspace_manager.current_input_string);
+        scr_node_macro_text_l(_draw_x + 80, _ply, "$" + obj_workspace_manager.current_input_string);
     } else {
         draw_set_color(c_aqua);
-        draw_text_l(_draw_x + 80, _ply, "$" + _base_hex);
+        scr_node_macro_text_l(_draw_x + 80, _ply, "$" + _base_hex);
     }
     _ply += _line_h;
 
     draw_set_font_l(fnt_c64_tiny);
     // Row 3: CLR toggle
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "PRE-CLEAR?: ");
-    draw_text_l(_draw_x + 8 + string_width_l("PRE-CLEAR?: "), _ply, _clr ? L("YES") : L("NO"));
+    scr_node_macro_text_l(_draw_x + 8, _ply, "PRE-CLEAR?: ");
+    scr_node_macro_text_l(_draw_x + 8 + string_width_l("PRE-CLEAR?: "), _ply, _clr ? L("YES") : L("NO"));
     _ply += _line_h;
 
     // Row 4: H-ALIGN buttons
     draw_set_color(c_ltgray);
-    draw_text_l(_draw_x + 8, _ply, "H:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "H:");
     var _btn_w = 34;
     for (var _i = 0; _i < 4; _i++) {
         var _bx  = _draw_x + 28 + (_i * (_btn_w + 2));
         var _sel = (_align_h == _i);
         var _hov = point_in_rectangle(mouse_x, mouse_y, _bx, _ply, _bx + _btn_w, _ply + 14);
         draw_set_color(_sel ? make_color_rgb(220, 40, 220) : (_hov ? make_color_rgb(80, 60, 80) : make_color_rgb(40, 30, 40)));
-        draw_rectangle(_bx, _ply + 3, _bx + _btn_w, _ply + 14, false);
+        scr_macro_body_rectangle(_bx, _ply + 3, _bx + _btn_w, _ply + 14, false);
         draw_set_color(_sel ? c_white : c_gray);
         draw_set_halign(fa_center);
-        draw_text_l(_bx + _btn_w * 0.5, _ply, _align_h_labels[_i]);
+        scr_node_macro_text_l(_bx + _btn_w * 0.5, _ply, _align_h_labels[_i]);
         draw_set_halign(fa_left);
     }
     _ply += _line_h;
 
     // Row 5: V-ALIGN buttons
     draw_set_color(c_ltgray);
-    draw_text_l(_draw_x + 8, _ply, "V:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "V:");
     for (var _i = 0; _i < 4; _i++) {
         var _bx  = _draw_x + 28 + (_i * (_btn_w + 2));
         var _sel = (_align_v == _i);
         var _hov = point_in_rectangle(mouse_x, mouse_y, _bx, _ply, _bx + _btn_w, _ply + 14);
         draw_set_color(_sel ? make_color_rgb(220, 40, 220) : (_hov ? make_color_rgb(80, 60, 80) : make_color_rgb(40, 30, 40)));
-        draw_rectangle(_bx, _ply + 3, _bx + _btn_w, _ply + 14, false);
+        scr_macro_body_rectangle(_bx, _ply + 3, _bx + _btn_w, _ply + 14, false);
         draw_set_color(_sel ? c_white : c_gray);
         draw_set_halign(fa_center);
-        draw_text_l(_bx + _btn_w * 0.5, _ply, _align_v_labels[_i]);
+        scr_node_macro_text_l(_bx + _btn_w * 0.5, _ply, _align_v_labels[_i]);
         draw_set_halign(fa_left);
     }
     _ply += _line_h;
@@ -168,9 +168,9 @@ function scr_node_draw_macro_print(_draw_x, _y) {
 
     // Row 6: SOURCE toggle
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "SOURCE:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "SOURCE:");
     draw_set_color(_src_mode == 0 ? c_aqua : c_lime);
-    draw_text_l(_draw_x + 60, _ply, _src_mode == 0 ? L("INLINE") : L("ASSET"));
+    scr_node_macro_text_l(_draw_x + 60, _ply, _src_mode == 0 ? L("INLINE") : L("ASSET"));
     _ply += _line_h;
 
     // Row 7: content row — inline text field OR asset picker
@@ -182,17 +182,17 @@ function scr_node_draw_macro_print(_draw_x, _y) {
         var _txt_hover = point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _ply+3, _draw_x + width - 8, _ply + 17);
         draw_set_color(_editing   ? make_color_rgb(40, 80, 70)  :
                       (_txt_hover ? make_color_rgb(33, 70, 60)  : make_color_rgb(15, 25, 15)));
-        draw_rectangle(_draw_x + 4, _ply+3, _draw_x + width - 8, _ply + 17, false);
+        scr_macro_body_rectangle(_draw_x + 4, _ply+3, _draw_x + width - 8, _ply + 17, false);
         if (_editing) {
             var _live    = obj_workspace_manager.current_input_string;
             var _cur_pos = obj_workspace_manager.cursor_pos;
             var _before  = string_copy(_live, 1, _cur_pos);
             var _cur_x   = _draw_x + 8 + string_width_l(_before);
             draw_set_color(c_lime);
-            draw_text_l(_draw_x + 8, _ply, _live);
+            scr_node_macro_text_l(_draw_x + 8, _ply, _live);
             if ((current_time mod 600) < 300) {
                 draw_set_color(c_white);
-                draw_line(_cur_x, _ply, _cur_x, _ply + 14);
+                scr_macro_body_line(_cur_x, _ply, _cur_x, _ply + 14);
             }
         } else {
             var _max_w   = width - 24;
@@ -201,15 +201,15 @@ function scr_node_draw_macro_print(_draw_x, _y) {
                 _display = string_copy(_display, 1, string_length(_display) - 1);
             }
             draw_set_color(_txt == "" ? _c_edit : c_lime);
-            draw_text_l(_draw_x + 8, _ply+2, _txt == "" ? L("CLICK TO ENTER TEXT") : _display);
+            scr_node_macro_text_l(_draw_x + 8, _ply+2, _txt == "" ? L("CLICK TO ENTER TEXT") : _display);
         }
         _ply += _line_h + 8;
     } else {
         // ASSET — name display + start/end rows
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8, _ply, "ASSET:");
+        scr_node_macro_text_l(_draw_x + 8, _ply, "ASSET:");
         draw_set_color(_asset_nm == "" ? c_orange : c_lime);
-        draw_text_l(_draw_x + 60, _ply, _asset_nm == "" ? L("< NONE >") : _asset_nm);
+        scr_node_macro_text_l(_draw_x + 60, _ply, _asset_nm == "" ? L("< NONE >") : _asset_nm);
         _ply += _line_h;
 
         var _s_vmode = (array_length(instructions[0]) > 14 && is_real(instructions[0][14])) ? real(instructions[0][14]) : 0;
@@ -219,39 +219,39 @@ function scr_node_draw_macro_print(_draw_x, _y) {
 
         // START
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8, _ply, "START:");
+        scr_node_macro_text_l(_draw_x + 8, _ply, "START:");
         if (_s_vmode == 1) {
             draw_set_color(c_yellow);
-            draw_text_l(_draw_x + 60, _ply, (_s_vname != "") ? scr_nloc_display_name(_s_vname) : L("<PICK>"));
+            scr_node_macro_text_l(_draw_x + 60, _ply, (_s_vname != "") ? scr_nloc_display_name(_s_vname) : L("<PICK>"));
         } else {
             draw_set_color(c_aqua);
-            draw_text_l(_draw_x + 60, _ply, string(_start_off));
+            scr_node_macro_text_l(_draw_x + 60, _ply, string(_start_off));
         }
         var _svb_x = _draw_x + width - 40;
         draw_set_color((_s_vmode == 1) ? make_color_rgb(180, 140, 30) : make_color_rgb(50, 50, 60));
-        draw_rectangle(_svb_x, _ply + 1, _svb_x + 28, _ply + 12, false);
+        scr_macro_body_rectangle(_svb_x, _ply + 1, _svb_x + 28, _ply + 12, false);
         draw_set_color((_s_vmode == 1) ? c_yellow : make_color_rgb(140, 140, 160));
         draw_set_halign(fa_center);
-        draw_text_l(_svb_x + 14, _ply, "VAR");
+        scr_node_macro_text_l(_svb_x + 14, _ply, "VAR");
         draw_set_halign(fa_left);
         _ply += _line_h;
 
         // END (0 = auto / to end)
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8, _ply, "END:");
+        scr_node_macro_text_l(_draw_x + 8, _ply, "END:");
         if (_e_vmode == 1) {
             draw_set_color(c_yellow);
-            draw_text_l(_draw_x + 60, _ply, (_e_vname != "") ? scr_nloc_display_name(_e_vname) : L("<PICK>"));
+            scr_node_macro_text_l(_draw_x + 60, _ply, (_e_vname != "") ? scr_nloc_display_name(_e_vname) : L("<PICK>"));
         } else {
             draw_set_color(_end_off == 0 ? _c_dim : c_aqua);
-            draw_text_l(_draw_x + 60, _ply, _end_off == 0 ? L("AUTO") : string(_end_off));
+            scr_node_macro_text_l(_draw_x + 60, _ply, _end_off == 0 ? L("AUTO") : string(_end_off));
         }
         var _evb_x = _draw_x + width - 40;
         draw_set_color((_e_vmode == 1) ? make_color_rgb(180, 140, 30) : make_color_rgb(50, 50, 60));
-        draw_rectangle(_evb_x, _ply + 1, _evb_x + 28, _ply + 12, false);
+        scr_macro_body_rectangle(_evb_x, _ply + 1, _evb_x + 28, _ply + 12, false);
         draw_set_color((_e_vmode == 1) ? c_yellow : make_color_rgb(140, 140, 160));
         draw_set_halign(fa_center);
-        draw_text_l(_evb_x + 14, _ply, "VAR");
+        scr_node_macro_text_l(_evb_x + 14, _ply, "VAR");
         draw_set_halign(fa_left);
         _ply += _line_h;
         _ply += 8;
@@ -269,14 +269,14 @@ function scr_print_dynamic_draw(_dx, _dy, _slot) {
         var _value = _var ? ((array_length(instructions[0]) > _m + 1 && string(instructions[0][_m + 1]) != "") ? string(instructions[0][_m + 1]) : L("<PICK>")) : string(instructions[0][_d + 1]);
         while (string_width_l(_value) > width - 100 && string_length(_value) > 1) _value = string_delete(_value, string_length(_value), 1);
         draw_set_color(c_ltgray);
-        draw_text_l(_dx + 10, _dy, _names[_d] + ":");
+        scr_node_macro_text_l(_dx + 10, _dy, _names[_d] + ":");
         draw_set_color(_var ? c_yellow : c_aqua);
-        draw_text_l(_dx + 44, _dy, _value);
+        scr_node_macro_text_l(_dx + 44, _dy, _value);
         draw_set_color(_var ? make_color_rgb(180, 140, 30) : make_color_rgb(50, 50, 60));
-        draw_rectangle(_dx + width - 38, _dy + 1, _dx + width - 10, _dy + 13, false);
+        scr_macro_body_rectangle(_dx + width - 38, _dy + 1, _dx + width - 10, _dy + 13, false);
         draw_set_color(c_yellow);
         draw_set_halign(fa_center);
-        draw_text_l(_dx + width - 24, _dy, _var ? L("VAR") : "LIT");
+        scr_node_macro_text_l(_dx + width - 24, _dy, _var ? L("VAR") : "LIT");
         draw_set_halign(fa_left);
         _dy += 18;
     }

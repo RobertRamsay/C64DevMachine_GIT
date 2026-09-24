@@ -59,27 +59,27 @@ function scr_node_draw_macro_move_bmp_block(_draw_x, _y) {
 
     // Row 1: SRC bitmap address
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "SRC BMP:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "SRC BMP:");
     draw_set_color(c_aqua);
-    draw_text_l(_draw_x + 70, _ply, "$" + _src_h);
+    scr_node_macro_text_l(_draw_x + 70, _ply, "$" + _src_h);
     _ply += _line_h;
 
     // Row 2: DST bitmap address
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "DST BMP:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "DST BMP:");
     draw_set_color(c_yellow);
-    draw_text_l(_draw_x + 70, _ply, "$" + _dst_h);
+    scr_node_macro_text_l(_draw_x + 70, _ply, "$" + _dst_h);
     _ply += _line_h;
 
     // Row 3: SRC MODE toggle — LIT (one block) vs ASSET (BYTE_DATA record list)
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "MODE:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "MODE:");
     if (_src_mode == 1) {
         draw_set_color(_c_ast);
-        draw_text_l(_draw_x + 60, _ply, "ASSET LIST");
+        scr_node_macro_text_l(_draw_x + 60, _ply, "ASSET LIST");
     } else {
         draw_set_color(make_color_rgb(120, 220, 255));
-        draw_text_l(_draw_x + 60, _ply, "LIT BLOCK");
+        scr_node_macro_text_l(_draw_x + 60, _ply, "LIT BLOCK");
     }
     _ply += _line_h;
 
@@ -87,13 +87,13 @@ function scr_node_draw_macro_move_bmp_block(_draw_x, _y) {
         // ── ASSET MODE ROWS ──
         // Row 4: BYTE_DATA asset
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8, _ply, "LIST:");
+        scr_node_macro_text_l(_draw_x + 8, _ply, "LIST:");
         if (_rec_ast == "") {
             draw_set_color(_c_dim);
-            draw_text_l(_draw_x + 50, _ply, "<NONE>");
+            scr_node_macro_text_l(_draw_x + 50, _ply, "<NONE>");
         } else {
             draw_set_color(_c_ast);
-            draw_text_l(_draw_x + 50, _ply, _rec_ast);
+            scr_node_macro_text_l(_draw_x + 50, _ply, _rec_ast);
         }
         _ply += _line_h;
 
@@ -103,13 +103,13 @@ function scr_node_draw_macro_move_bmp_block(_draw_x, _y) {
         // sentinels forward from the table base until it has skipped VAR of
         // them, so one byte addresses up to 255 groups.
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8, _ply, "GROUP:");
+        scr_node_macro_text_l(_draw_x + 8, _ply, "GROUP:");
         if (_entry_v == "") {
             draw_set_color(_c_dim);
-            draw_text_l(_draw_x + 58, _ply, "<NONE>");
+            scr_node_macro_text_l(_draw_x + 58, _ply, "<NONE>");
         } else {
             draw_set_color(_c_var);
-            draw_text_l(_draw_x + 58, _ply, _entry_v);
+            scr_node_macro_text_l(_draw_x + 58, _ply, _entry_v);
         }
         _ply += _line_h;
 
@@ -117,7 +117,7 @@ function scr_node_draw_macro_move_bmp_block(_draw_x, _y) {
         // so spell out what the six bytes mean.
         draw_set_font_l(fnt_c64_pico);
         draw_set_color(make_color_rgb(90, 110, 150));
-        draw_text_l(_draw_x + 8, _ply +1, "USE: SX, SY, DX, DY, W, H, END: $FF");
+        scr_node_macro_text_l(_draw_x + 8, _ply +1, "USE: SX, SY, DX, DY, W, H, END: $FF");
         draw_set_font_l(fnt_c64_tiny);
         _ply += _line_h;
 
@@ -139,12 +139,12 @@ function scr_node_draw_macro_move_bmp_block(_draw_x, _y) {
             draw_set_font_l(fnt_c64_pico);
             if (_bd_sz < 0) {
                 draw_set_color(make_color_rgb(230, 90, 90));
-                draw_text_l(_draw_x + 8, _ply, "! LIST NOT FOUND");
+                scr_node_macro_text_l(_draw_x + 8, _ply, "! LIST NOT FOUND");
             } else {
                 var _bd_h = string_upper(decimal_to_hex(_bd_adr));
                 while (string_length(_bd_h) < 4) _bd_h = "0" + _bd_h;
                 draw_set_color(make_color_rgb(80, 120, 180));
-                draw_text_l(_draw_x + 8, _ply,
+                scr_node_macro_text_l(_draw_x + 8, _ply,
                     "$" + _bd_h + "  " + string(_bd_sz) + "B  ~"
                     + string(floor(_bd_sz / 6)) + " RECS");
             }
@@ -155,79 +155,79 @@ function scr_node_draw_macro_move_bmp_block(_draw_x, _y) {
         // ── LIT MODE ROWS ──
         // Row 4: SRC X/Y (cell coords)
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8,  _ply, "SX:");
+        scr_node_macro_text_l(_draw_x + 8,  _ply, "SX:");
         draw_set_color(c_aqua);
-        draw_text_l(_draw_x + 28, _ply, string(_src_x));
+        scr_node_macro_text_l(_draw_x + 28, _ply, string(_src_x));
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 60, _ply, "SY:");
+        scr_node_macro_text_l(_draw_x + 60, _ply, "SY:");
         draw_set_color(c_aqua);
-        draw_text_l(_draw_x + 80, _ply, string(_src_y));
+        scr_node_macro_text_l(_draw_x + 80, _ply, string(_src_y));
         _ply += _line_h;
 
         // Row 5: DST X/Y (cell coords)
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8,  _ply, "DX:");
+        scr_node_macro_text_l(_draw_x + 8,  _ply, "DX:");
         draw_set_color(c_yellow);
-        draw_text_l(_draw_x + 28, _ply, string(_dst_x));
+        scr_node_macro_text_l(_draw_x + 28, _ply, string(_dst_x));
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 60, _ply, "DY:");
+        scr_node_macro_text_l(_draw_x + 60, _ply, "DY:");
         draw_set_color(c_yellow);
-        draw_text_l(_draw_x + 80, _ply, string(_dst_y));
+        scr_node_macro_text_l(_draw_x + 80, _ply, string(_dst_y));
         _ply += _line_h;
 
         // Row 6: W / H
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8,  _ply, "W:");
+        scr_node_macro_text_l(_draw_x + 8,  _ply, "W:");
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 28, _ply, string(_bw));
+        scr_node_macro_text_l(_draw_x + 28, _ply, string(_bw));
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 60, _ply, "H:");
+        scr_node_macro_text_l(_draw_x + 60, _ply, "H:");
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 80, _ply, string(_bh));
+        scr_node_macro_text_l(_draw_x + 80, _ply, string(_bh));
         _ply += _line_h;
 
         // Rows 7-10: VAR pickers
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8, _ply, "+SXV:");
+        scr_node_macro_text_l(_draw_x + 8, _ply, "+SXV:");
         if (_sxv == "") {
             draw_set_color(_c_dim);
-            draw_text_l(_draw_x + 44, _ply, "<NONE>");
+            scr_node_macro_text_l(_draw_x + 44, _ply, "<NONE>");
         } else {
             draw_set_color(_c_var);
-            draw_text_l(_draw_x + 44, _ply, _sxv);
+            scr_node_macro_text_l(_draw_x + 44, _ply, _sxv);
         }
         _ply += _line_h;
 
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8, _ply, "+SYV:");
+        scr_node_macro_text_l(_draw_x + 8, _ply, "+SYV:");
         if (_syv == "") {
             draw_set_color(_c_dim);
-            draw_text_l(_draw_x + 44, _ply, "<NONE>");
+            scr_node_macro_text_l(_draw_x + 44, _ply, "<NONE>");
         } else {
             draw_set_color(_c_var);
-            draw_text_l(_draw_x + 44, _ply, _syv);
+            scr_node_macro_text_l(_draw_x + 44, _ply, _syv);
         }
         _ply += _line_h;
 
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8, _ply, "+DXV:");
+        scr_node_macro_text_l(_draw_x + 8, _ply, "+DXV:");
         if (_dxv == "") {
             draw_set_color(_c_dim);
-            draw_text_l(_draw_x + 44, _ply, "<NONE>");
+            scr_node_macro_text_l(_draw_x + 44, _ply, "<NONE>");
         } else {
             draw_set_color(_c_var);
-            draw_text_l(_draw_x + 44, _ply, _dxv);
+            scr_node_macro_text_l(_draw_x + 44, _ply, _dxv);
         }
         _ply += _line_h;
 
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8, _ply, "+DYV:");
+        scr_node_macro_text_l(_draw_x + 8, _ply, "+DYV:");
         if (_dyv == "") {
             draw_set_color(_c_dim);
-            draw_text_l(_draw_x + 44, _ply, "<NONE>");
+            scr_node_macro_text_l(_draw_x + 44, _ply, "<NONE>");
         } else {
             draw_set_color(_c_var);
-            draw_text_l(_draw_x + 44, _ply, _dyv);
+            scr_node_macro_text_l(_draw_x + 44, _ply, _dyv);
         }
         _ply += _line_h;
     }
@@ -237,37 +237,37 @@ function scr_node_draw_macro_move_bmp_block(_draw_x, _y) {
     // MASK00 — source %00 pairs are holes; the destination shows through.
     // OPAQUE — straight clobber.
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "BLEND:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "BLEND:");
     if (_blend == 0) {
         draw_set_color(make_color_rgb(120, 220, 255));
-        draw_text_l(_draw_x + 60, _ply, "MASK 00");
+        scr_node_macro_text_l(_draw_x + 60, _ply, "MASK 00");
     } else {
         draw_set_color(make_color_rgb(255, 160, 60));
-        draw_text_l(_draw_x + 60, _ply, "OPAQUE");
+        scr_node_macro_text_l(_draw_x + 60, _ply, "OPAQUE");
     }
     _ply += _line_h;
 
     // SCREEN RAM toggle (source cell's col1/col2)
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "COPY SCR:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "COPY SCR:");
     if (_scr_on == 1) {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 70, _ply, "YES");
+        scr_node_macro_text_l(_draw_x + 70, _ply, "YES");
     } else {
         draw_set_color(c_red);
-        draw_text_l(_draw_x + 70, _ply, "NO");
+        scr_node_macro_text_l(_draw_x + 70, _ply, "NO");
     }
     _ply += _line_h;
 
     // COLOUR RAM toggle (source cell's col3)
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "COPY COL:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "COPY COL:");
     if (_col_on == 1) {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 70, _ply, "YES");
+        scr_node_macro_text_l(_draw_x + 70, _ply, "YES");
     } else {
         draw_set_color(c_red);
-        draw_text_l(_draw_x + 70, _ply, "NO");
+        scr_node_macro_text_l(_draw_x + 70, _ply, "NO");
     }
     _ply += _line_h;
 
@@ -275,25 +275,25 @@ function scr_node_draw_macro_move_bmp_block(_draw_x, _y) {
     // the block blits. ASSET-mode only (the map is rebuilt by walking records);
     // greyed with a note in LIT mode so the mismatch is visible.
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _ply, "WRITE COLL:");
+    scr_node_macro_text_l(_draw_x + 8, _ply, "WRITE COLL:");
     if (_src_mode == 1) {
         if (_write_coll == 1) {
             draw_set_color(c_lime);
-            draw_text_l(_draw_x + 82, _ply, "YES");
+            scr_node_macro_text_l(_draw_x + 82, _ply, "YES");
         } else {
             draw_set_color(c_red);
-            draw_text_l(_draw_x + 82, _ply, "NO");
+            scr_node_macro_text_l(_draw_x + 82, _ply, "NO");
         }
     } else {
         draw_set_color(make_color_rgb(120, 90, 50));
-        draw_text_l(_draw_x + 82, _ply, "(ASSET ONLY)");
+        scr_node_macro_text_l(_draw_x + 82, _ply, "(ASSET ONLY)");
     }
     _ply += _line_h;
 
     // BBT picker — only when WRITE COLL is on in ASSET mode. Red when empty.
     if (_src_mode == 1 && _write_coll == 1) {
         draw_set_color(_c_edit);
-        draw_text_l(_draw_x + 8, _ply, "TAGS:");
+        scr_node_macro_text_l(_draw_x + 8, _ply, "TAGS:");
         var _bbt_set = (_bbt_asset != "" && _bbt_asset != "[clear]");
         if (_bbt_set) {
             draw_set_color(make_color_rgb(255, 140, 140));
@@ -301,10 +301,10 @@ function scr_node_draw_macro_move_bmp_block(_draw_x, _y) {
             if (string_length(_bbt_disp) > 16) {
                 _bbt_disp = string_copy(_bbt_disp, 1, 16) + "...";
             }
-            draw_text_l(_draw_x + 50, _ply, _bbt_disp);
+            scr_node_macro_text_l(_draw_x + 50, _ply, _bbt_disp);
         } else {
             draw_set_color(make_color_rgb(230, 90, 90));
-            draw_text_l(_draw_x + 50, _ply, "< PICK BBT >");
+            scr_node_macro_text_l(_draw_x + 50, _ply, "< PICK BBT >");
         }
         _ply += _line_h;
     }
@@ -315,7 +315,7 @@ function scr_node_draw_macro_move_bmp_block(_draw_x, _y) {
     if (_blend == 0 && _scr_on == 0 && _col_on == 0) {
         draw_set_font_l(fnt_c64_pico);
         draw_set_color(make_color_rgb(230, 170, 60));
-        draw_text_l(_draw_x + 8, _ply, "! DEST PALETTE - SRC PIXELS RECOLOURED");
+        scr_node_macro_text_l(_draw_x + 8, _ply, "! DEST PALETTE - SRC PIXELS RECOLOURED");
         _ply += _line_h;
         draw_set_font_l(fnt_c64_tiny);
     }
@@ -340,6 +340,6 @@ function scr_node_draw_macro_move_bmp_block(_draw_x, _y) {
         if (_col_on == 1) {
             _cost += " + " + string(_col_bytes) + "B COL";
         }
-        draw_text_l(_draw_x + 8, _ply, _cost);
+        scr_node_macro_text_l(_draw_x + 8, _ply, _cost);
     }
 }

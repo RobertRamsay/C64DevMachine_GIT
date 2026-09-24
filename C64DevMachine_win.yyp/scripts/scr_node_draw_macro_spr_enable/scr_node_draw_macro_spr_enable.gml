@@ -22,7 +22,7 @@ function scr_node_draw_macro_spr_enable(_draw_x) {
     // ---- SPRITES label ----
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text_l(_draw_x + 6, y + 27, "SPRITES:          (ONE SHOT CALL)");
+    scr_node_macro_text_l(_draw_x + 6, y + 27, "SPRITES:          (ONE SHOT CALL)");
     // ---- 8 toggle buttons ----
     var _btn_w   = 22;
     var _btn_h   = 18;
@@ -35,24 +35,24 @@ function scr_node_draw_macro_spr_enable(_draw_x) {
         var _hov = point_in_rectangle(mouse_x, mouse_y, _bx, _row1, _bx + _btn_w, _row1 + _btn_h);
         if (_on) {
             draw_set_color((_mode == 0) ? make_color_rgb(20, 180, 80) : make_color_rgb(180, 40, 40));
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
             draw_set_color(c_yellow);
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
         } else if (_hov) {
             draw_set_color(make_color_rgb(50, 60, 50));
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
             draw_set_color(make_color_rgb(80, 80, 60));
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
         } else {
             draw_set_color(make_color_rgb(30, 30, 25));
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, false);
             draw_set_color(make_color_rgb(60, 60, 50));
-            draw_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
+            scr_macro_body_rectangle(_bx, _row1, _bx + _btn_w, _row1 + _btn_h, true);
         }
         draw_set_halign(fa_center);
 
         draw_set_color(_on ? c_white : c_gray);
-        draw_text_l(_bx + _btn_w * 0.5, _row1 + 1, string(_si));
+        scr_node_macro_text_l(_bx + _btn_w * 0.5, _row1 + 1, string(_si));
         draw_set_halign(fa_left);
     }
     // ---- ENABLE/DISABLE toggle (y+70) ----
@@ -61,11 +61,11 @@ function scr_node_draw_macro_spr_enable(_draw_x) {
     var _tog_h = 14;
     var _tog_x = _draw_x + 6;
     draw_set_color((_mode == 0) ? make_color_rgb(20, 160, 60) : make_color_rgb(180, 40, 40));
-    draw_rectangle(_tog_x, _row2, _tog_x + _tog_w, _row2 + _tog_h, false);
+    scr_macro_body_rectangle(_tog_x, _row2, _tog_x + _tog_w, _row2 + _tog_h, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
 
-    draw_text_l(_tog_x + _tog_w * 0.5, _row2 -2, (_mode == 0) ? L("ENABLE") : L("DISABLE"));
+    scr_node_macro_text_l(_tog_x + _tog_w * 0.5, _row2 -2, (_mode == 0) ? L("ENABLE") : L("DISABLE"));
     draw_set_halign(fa_left);
     // ---- CLEAR button (to the right of ENABLE/DISABLE toggle) ----
     var _clr_w   = 44;
@@ -74,18 +74,18 @@ function scr_node_draw_macro_spr_enable(_draw_x) {
     var _clr_hov = point_in_rectangle(mouse_x, mouse_y, _clr_x, _row2, _clr_x + _clr_w, _row2 + _clr_h);
     if (_clr_hov) {
         draw_set_color(make_color_rgb(80, 60, 20));
-        draw_rectangle(_clr_x, _row2, _clr_x + _clr_w, _row2 + _clr_h, false);
+        scr_macro_body_rectangle(_clr_x, _row2, _clr_x + _clr_w, _row2 + _clr_h, false);
         draw_set_color(make_color_rgb(180, 140, 40));
-        draw_rectangle(_clr_x, _row2, _clr_x + _clr_w, _row2 + _clr_h, true);
+        scr_macro_body_rectangle(_clr_x, _row2, _clr_x + _clr_w, _row2 + _clr_h, true);
     } else {
         draw_set_color(make_color_rgb(50, 40, 15));
-        draw_rectangle(_clr_x, _row2, _clr_x + _clr_w, _row2 + _clr_h, false);
+        scr_macro_body_rectangle(_clr_x, _row2, _clr_x + _clr_w, _row2 + _clr_h, false);
         draw_set_color(make_color_rgb(120, 90, 30));
-        draw_rectangle(_clr_x, _row2, _clr_x + _clr_w, _row2 + _clr_h, true);
+        scr_macro_body_rectangle(_clr_x, _row2, _clr_x + _clr_w, _row2 + _clr_h, true);
     }
     draw_set_halign(fa_center);
 
     draw_set_color(_clr_hov ? c_yellow : c_gray);
-    draw_text_l(_clr_x + _clr_w * 0.5, _row2 -2, "CLEAR");
+    scr_node_macro_text_l(_clr_x + _clr_w * 0.5, _row2 -2, "CLEAR");
     draw_set_halign(fa_left);
 }

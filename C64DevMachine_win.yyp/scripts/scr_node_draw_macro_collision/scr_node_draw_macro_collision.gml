@@ -16,7 +16,7 @@ function scr_node_draw_macro_collision(_draw_x) {
 
     // ---- TYPE ----
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 6, y + 25, "TYPE:                           (JSR CALLS)");
+    scr_node_macro_text_l(_draw_x + 6, y + 25, "TYPE:                           (JSR CALLS)");
     var _type_labels = ["SPR-SPR", "SPR-BG", "BOTH"];
     var _tbtn_w = 56;
     for (var _ti = 0; _ti < 3; _ti++) {
@@ -30,7 +30,7 @@ function scr_node_draw_macro_collision(_draw_x) {
         } else {
             draw_set_color(make_color_rgb(35, 25, 40));
         }
-        draw_rectangle(_bx, y + 42, _bx + _tbtn_w, y + 42 + _btn_h, false);
+        scr_macro_body_rectangle(_bx, y + 42, _bx + _tbtn_w, y + 42 + _btn_h, false);
         if (_on) {
             draw_set_color(c_white);
         } else if (_hov) {
@@ -38,20 +38,20 @@ function scr_node_draw_macro_collision(_draw_x) {
         } else {
             draw_set_color(make_color_rgb(80, 60, 90));
         }
-        draw_rectangle(_bx, y + 42, _bx + _tbtn_w, y + 42 + _btn_h, true);
+        scr_macro_body_rectangle(_bx, y + 42, _bx + _tbtn_w, y + 42 + _btn_h, true);
         draw_set_halign(fa_center);
         if (_on) {
             draw_set_color(c_white);
         } else {
             draw_set_color(c_gray);
         }
-        draw_text_l(_bx + _tbtn_w * 0.5, y + 44, _type_labels[_ti]);
+        scr_node_macro_text_l(_bx + _tbtn_w * 0.5, y + 44, _type_labels[_ti]);
         draw_set_halign(fa_left);
     }
 
     // ---- GROUP A (single sprite select) — orange ----
     draw_set_color(make_color_rgb(220, 140, 40));
-    draw_text_l(_draw_x + 6, y + 70, "SPRITE A: (pick one)");
+    scr_node_macro_text_l(_draw_x + 6, y + 70, "SPRITE A: (pick one)");
     for (var _si = 0; _si < 8; _si++) {
         var _bx = _btn_sx + _si * (_btn_w + _btn_gap);
         var _on  = (_group_a == _bit_values[_si]); // single-select: exact match
@@ -63,26 +63,26 @@ function scr_node_draw_macro_collision(_draw_x) {
         } else {
             draw_set_color(make_color_rgb(35, 25, 10));
         }
-        draw_rectangle(_bx, y + 84, _bx + _btn_w, y + 84 + _btn_h, false);
+        scr_macro_body_rectangle(_bx, y + 84, _bx + _btn_w, y + 84 + _btn_h, false);
         if (_on) {
             draw_set_color(make_color_rgb(255, 160, 60));
         } else {
             draw_set_color(make_color_rgb(80, 60, 30));
         }
-        draw_rectangle(_bx, y + 84, _bx + _btn_w, y + 84 + _btn_h, true);
+        scr_macro_body_rectangle(_bx, y + 84, _bx + _btn_w, y + 84 + _btn_h, true);
         draw_set_halign(fa_center);
         if (_on) {
             draw_set_color(c_white);
         } else {
             draw_set_color(c_gray);
         }
-        draw_text_l(_bx + _btn_w * 0.5, y + 86, string(_si));
+        scr_node_macro_text_l(_bx + _btn_w * 0.5, y + 86, string(_si));
         draw_set_halign(fa_left);
     }
 
     // ---- GROUP B (single sprite select, 1-7) — yellow ----
     draw_set_color(make_color_rgb(220, 220, 40));
-    draw_text_l(_draw_x + 6, y + 112, "SPRITE B: (pick one)");
+    scr_node_macro_text_l(_draw_x + 6, y + 112, "SPRITE B: (pick one)");
     for (var _si = 0; _si < 8; _si++) {
         var _bx = _btn_sx + _si * (_btn_w + _btn_gap);
         var _on  = (_group_b == _bit_values[_si]); // single-select: exact match
@@ -94,26 +94,26 @@ function scr_node_draw_macro_collision(_draw_x) {
         } else {
             draw_set_color(make_color_rgb(30, 30, 10));
         }
-        draw_rectangle(_bx, y + 126, _bx + _btn_w, y + 126 + _btn_h, false);
+        scr_macro_body_rectangle(_bx, y + 126, _bx + _btn_w, y + 126 + _btn_h, false);
         if (_on) {
             draw_set_color(c_yellow);
         } else {
             draw_set_color(make_color_rgb(80, 80, 30));
         }
-        draw_rectangle(_bx, y + 126, _bx + _btn_w, y + 126 + _btn_h, true);
+        scr_macro_body_rectangle(_bx, y + 126, _bx + _btn_w, y + 126 + _btn_h, true);
         draw_set_halign(fa_center);
         if (_on) {
             draw_set_color(c_white);
         } else {
             draw_set_color(c_gray);
         }
-        draw_text_l(_bx + _btn_w * 0.5, y + 128, string(_si));
+        scr_node_macro_text_l(_bx + _btn_w * 0.5, y + 128, string(_si));
         draw_set_halign(fa_left);
     }
 
     // ---- MODE toggle (y+152) ----
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text_l(_draw_x + 6, y + 152, "JSR IF:");
+    scr_node_macro_text_l(_draw_x + 6, y + 152, "JSR IF:");
     var _mode_labels = ["HIT", "MISS"];
     var _mbtn_w = 40;
     for (var _mi = 0; _mi < 2; _mi++) {
@@ -127,26 +127,26 @@ function scr_node_draw_macro_collision(_draw_x) {
         } else {
             draw_set_color(make_color_rgb(35, 25, 40));
         }
-        draw_rectangle(_bx, y + 152, _bx + _mbtn_w, y + 152 + _btn_h, false);
+        scr_macro_body_rectangle(_bx, y + 152, _bx + _mbtn_w, y + 152 + _btn_h, false);
         if (_on) {
             draw_set_color(c_white);
         } else {
             draw_set_color(make_color_rgb(80, 60, 90));
         }
-        draw_rectangle(_bx, y + 152, _bx + _mbtn_w, y + 152 + _btn_h, true);
+        scr_macro_body_rectangle(_bx, y + 152, _bx + _mbtn_w, y + 152 + _btn_h, true);
         draw_set_halign(fa_center);
         if (_on) {
             draw_set_color(c_white);
         } else {
             draw_set_color(c_gray);
         }
-        draw_text_l(_bx + _mbtn_w * 0.5, y + 154, _mode_labels[_mi]);
+        scr_node_macro_text_l(_bx + _mbtn_w * 0.5, y + 154, _mode_labels[_mi]);
         draw_set_halign(fa_left);
     }
 
     // ---- JSR LABEL (y+174) ----
     draw_set_color(make_color_rgb(160, 160, 160));
-    draw_text_l(_draw_x + 6, y + 174, "CALL:");
+    scr_node_macro_text_l(_draw_x + 6, y + 174, "CALL:");
     var _zx1  = _draw_x + 60;
     var _zx2  = _draw_x + width - 28;
     var _zhov = point_in_rectangle(mouse_x, mouse_y, _zx1, y + 174, _zx2, y + 190);
@@ -155,9 +155,9 @@ function scr_node_draw_macro_collision(_draw_x) {
     } else {
         draw_set_color(make_color_rgb(25, 25, 45));
     }
-    draw_rectangle(_zx1, y + 174, _zx2, y + 190, false);
+    scr_macro_body_rectangle(_zx1, y + 174, _zx2, y + 190, false);
     draw_set_color(make_color_rgb(80, 60, 120));
-    draw_rectangle(_zx1, y + 174, _zx2, y + 190, true);
+    scr_macro_body_rectangle(_zx1, y + 174, _zx2, y + 190, true);
     if (_jsr_label != "") {
         draw_set_color(c_yellow);
     } else {
@@ -165,9 +165,9 @@ function scr_node_draw_macro_collision(_draw_x) {
     }
     draw_set_halign(fa_center);
     if (_jsr_label != "") {
-        draw_text_l(_zx1 + (_zx2 - _zx1) * 0.5, y + 176, _jsr_label);
+        scr_node_macro_text_l(_zx1 + (_zx2 - _zx1) * 0.5, y + 176, _jsr_label);
     } else {
-        draw_text_l(_zx1 + (_zx2 - _zx1) * 0.5, y + 176, "pick label");
+        scr_node_macro_text_l(_zx1 + (_zx2 - _zx1) * 0.5, y + 176, "pick label");
     }
     draw_set_halign(fa_left);
 
@@ -179,7 +179,7 @@ function scr_node_draw_macro_collision(_draw_x) {
     } else {
         draw_set_color(make_color_rgb(20, 40, 60));
     }
-    draw_rectangle(_pbx1, y + 174, _pbx2, y + 190, false);
+    scr_macro_body_rectangle(_pbx1, y + 174, _pbx2, y + 190, false);
     draw_set_color(c_aqua);
-    draw_text_l(_pbx1 + 2, y + 176, "...");
+    scr_node_macro_text_l(_pbx1 + 2, y + 176, "...");
 }

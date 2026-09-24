@@ -27,35 +27,35 @@ function scr_node_draw_macro_mouse(_draw_x, _y) {
 
     // ---- PORT ----
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _my, "PORT:                           (JSR CALLS)");
+    scr_node_macro_text_l(_draw_x + 8, _my, "PORT:");
     draw_set_color(_port == 1 ? c_yellow : c_gray);
-    draw_text_l(_draw_x + 60, _my, "1");
+    scr_node_macro_text_l(_draw_x + 60, _my, "1");
     draw_set_color(_port == 2 ? c_yellow : c_gray);
-    draw_text_l(_draw_x + 80, _my, "2");
+    scr_node_macro_text_l(_draw_x + 80, _my, "2");
     _my += _line_h + 2;
 
     // ---- ZP BASE ----
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _my, "ZP:");
+    scr_node_macro_text_l(_draw_x + 8, _my, "ZP:");
     draw_set_color(c_aqua);
-    draw_text_l(_draw_x + 60, _my, "$" + scr_mouse_hex2(_zp) + L(" (7 BYTES)"));
+    scr_node_macro_text_l(_draw_x + 60, _my, "$" + scr_mouse_hex2(_zp) + L(" (7 BYTES)"));
     _my += _line_h + 2;
 
     // ---- Y AXIS SENSE ----
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 8, _my, "Y AXIS:");
+    scr_node_macro_text_l(_draw_x + 8, _my, "Y AXIS:");
     draw_set_color(c_yellow);
     if (_yinv == 1) {
-        draw_text_l(_draw_x + 60, _my, "SCREEN (DOWN +)");
+        scr_node_macro_text_l(_draw_x + 60, _my, "SCREEN (DOWN +)");
     } else {
-        draw_text_l(_draw_x + 60, _my, "RAW (UP +)");
+        scr_node_macro_text_l(_draw_x + 60, _my, "RAW (UP +)");
     }
     _my += _line_h + 2;
 
     // ---- WHERE THE RESULT LANDS ----
     // The whole point of the node: these are the addresses your own code reads.
     draw_set_color(make_color_rgb(150, 170, 200));
-    draw_text_l(_draw_x + 8, _my,
+    scr_node_macro_text_l(_draw_x + 8, _my,
               "X $" + scr_mouse_hex2(_zp + 2) + "/$" + scr_mouse_hex2(_zp + 3)
             + "  Y $" + scr_mouse_hex2(_zp + 4) + "/$" + scr_mouse_hex2(_zp + 5));
     _my += _line_h + 6;
@@ -91,7 +91,7 @@ function scr_node_draw_macro_mouse(_draw_x, _y) {
             }
 
             draw_set_color(_enabled ? c_yellow : make_color_rgb(110, 90, 90));
-            draw_text_l(_draw_x + 6 + (_c * _col_w), _my, _grid_labels[_r][_c]);
+            scr_node_macro_text_l(_draw_x + 6 + (_c * _col_w), _my, _grid_labels[_r][_c]);
         }
         _my += _line_h + 2;
     }

@@ -1,3 +1,5 @@
+// Restore cached macro sizes before hit-testing and layout, even off-screen.
+scr_macro_sync_height(id);
 // Update off-screen PRINT nodes too, so their spines repack after a mode change.
 if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
 /// @desc Node Step Event - Input, Dragging, Wedge Insertion & ORG Child Dragging

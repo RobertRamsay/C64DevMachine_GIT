@@ -29,14 +29,14 @@ function scr_node_draw_macro_sfx(_draw_x) {
     var _ahov = point_in_rectangle(mouse_x, mouse_y, _val_x1, _ay, _val_x2, _ay + _fld_h);
 
     draw_set_color(make_color_rgb(120, 80, 200));
-    draw_text_l(_lbl_x, _ay, "SFX DATA:");
+    scr_node_macro_text_l(_lbl_x, _ay, "SFX DATA:");
     draw_set_color(_ahov ? make_color_rgb(100, 60, 180) : make_color_rgb(50, 30, 90));
-    draw_rectangle(_val_x1, _ay, _val_x2, _ay + _fld_h, false);
+    scr_macro_body_rectangle(_val_x1, _ay, _val_x2, _ay + _fld_h, false);
     draw_set_color(_asset_set ? make_color_rgb(160, 100, 255) : make_color_rgb(80, 50, 120));
-    draw_rectangle(_val_x1, _ay, _val_x2, _ay + _fld_h, true);
+    scr_macro_body_rectangle(_val_x1, _ay, _val_x2, _ay + _fld_h, true);
     draw_set_halign(fa_center);
     draw_set_color(_asset_set ? c_white : c_gray);
-    draw_text_l(_val_x1 + (_val_x2 - _val_x1) * 0.5, _ay ,
+    scr_node_macro_text_l(_val_x1 + (_val_x2 - _val_x1) * 0.5, _ay ,
               _asset_set ? _asset_name : L("PICK SFX"));
     draw_set_halign(fa_left);
 
@@ -59,14 +59,14 @@ function scr_node_draw_macro_sfx(_draw_x) {
     }
 
     draw_set_color(make_color_rgb(180, 140, 110));
-    draw_text_l(_lbl_x, _iy, "INSTR:");
+    scr_node_macro_text_l(_lbl_x, _iy, "INSTR:");
     draw_set_color(_ihov ? make_color_rgb(80, 60, 20) : make_color_rgb(50, 38, 12));
-    draw_rectangle(_val_x1, _iy, _val_x2, _iy + _fld_h, false);
+    scr_macro_body_rectangle(_val_x1, _iy, _val_x2, _iy + _fld_h, false);
     draw_set_color(make_color_rgb(255, 180, 60));
-    draw_rectangle(_val_x1, _iy, _val_x2, _iy + _fld_h, true);
+    scr_macro_body_rectangle(_val_x1, _iy, _val_x2, _iy + _fld_h, true);
     draw_set_halign(fa_center);
     draw_set_color(_sfx_count > 0 ? c_white : c_gray);
-    draw_text_l(_val_x1 + (_val_x2 - _val_x1) * 0.5, _iy , _instr_label);
+    scr_node_macro_text_l(_val_x1 + (_val_x2 - _val_x1) * 0.5, _iy , _instr_label);
     draw_set_halign(fa_left);
 
     // ── Voice field ───────────────────────────────────────────────────────
@@ -78,16 +78,16 @@ function scr_node_draw_macro_sfx(_draw_x) {
     var _vhov   = point_in_rectangle(mouse_x, mouse_y, _vbx1, _vy2_, _vbx2, _vy2_ + _fld_h);
 
     draw_set_color(make_color_rgb(100, 180, 100));
-    draw_text_l(_vlbl_x, _vy2_, "VOICE:");
+    scr_node_macro_text_l(_vlbl_x, _vy2_, "VOICE:");
     draw_set_color(_vhov ? make_color_rgb(40, 100, 40) : make_color_rgb(20, 55, 20));
-    draw_rectangle(_vbx1, _vy2_, _vbx2, _vy2_ + _fld_h, false);
+    scr_macro_body_rectangle(_vbx1, _vy2_, _vbx2, _vy2_ + _fld_h, false);
     draw_set_color(make_color_rgb(80, 220, 80));
-    draw_rectangle(_vbx1, _vy2_, _vbx2, _vy2_ + _fld_h, true);
+    scr_macro_body_rectangle(_vbx1, _vy2_, _vbx2, _vy2_ + _fld_h, true);
     draw_set_halign(fa_center);
     draw_set_color(c_white);
-    draw_text_l(_vbx1 + 14, _vy2_ , string(_voice));
+    scr_node_macro_text_l(_vbx1 + 14, _vy2_ , string(_voice));
 	draw_set_halign(fa_left);
-	draw_text_l(_vlbl_x, _vy2_ + 24, "USE THIS TO TRIGGER SFX");
+	scr_node_macro_text_l(_vlbl_x, _vy2_ + 24, "USE THIS TO TRIGGER SFX");
     
 
 // Info: AD/SR of selected instrument
@@ -97,7 +97,7 @@ function scr_node_draw_macro_sfx(_draw_x) {
             var _ins2 = scr_sfx_data_get_instrument(_a2, _sfx_index);
             if (_ins2 != noone) {
                 draw_set_color(make_color_rgb(80, 60, 120));
-                draw_text_l(_vbx2 + 8, _vy2_ + 2,
+                scr_node_macro_text_l(_vbx2 + 8, _vy2_ + 2,
                     "AD=$" + string_upper(decimal_to_hex(_ins2.ad))
                     + " SR=$" + string_upper(decimal_to_hex(_ins2.sr))
                     + "  " + string(array_length(_ins2.wavetable_rows)) + L(" rows"));
@@ -121,7 +121,7 @@ function scr_node_draw_macro_sfx(_draw_x) {
         draw_set_halign(fa_center);      
 		var _col = merge_colour(c_black,c_white,_pulse)
 		draw_set_colour(_col);
-        draw_text_l((x + width * 0.5)+38, (y + height * 0.5)+15, "ADD SID MACRO");
+        scr_node_macro_text_l((x + width * 0.5)+38, (y + height * 0.5)+15, "ADD SID MACRO");
 		draw_set_color(c_white);
         draw_set_halign(fa_left);
     }

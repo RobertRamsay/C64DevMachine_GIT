@@ -29,17 +29,17 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
 
     // ===== SONG (SOUND_EDITOR asset picker) =====
     draw_set_color(_c_lbl);
-    draw_text_l(_draw_x + 10, _ly, "SONG:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "SONG:");
     if (_asset_name == "" || _asset_name == "[clear]") {
         draw_set_color(_c_bad);
-        draw_text_l(_draw_x + 62, _ly, "< PICK SONG >");
+        scr_node_macro_text_l(_draw_x + 62, _ly, "< PICK SONG >");
     } else {
         draw_set_color(_c_ast);
         var _disp = _asset_name;
         if (string_length(_disp) > 14) {
             _disp = string_copy(_disp, 1, 14) + "...";
         }
-        draw_text_l(_draw_x + 62, _ly, _disp);
+        scr_node_macro_text_l(_draw_x + 62, _ly, _disp);
     }
     _ly += _lh;
 
@@ -53,15 +53,15 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
     } else {
         draw_set_color(make_color_rgb(60, 60, 60));
     }
-    draw_rectangle(_cbx, _ly + 1, _cbx + 12, _ly + 13, false);
+    scr_macro_body_rectangle(_cbx, _ly + 1, _cbx + 12, _ly + 13, false);
     draw_set_color(c_gray);
-    draw_rectangle(_cbx, _ly + 1, _cbx + 12, _ly + 13, true);
+    scr_macro_body_rectangle(_cbx, _ly + 1, _cbx + 12, _ly + 13, true);
     if (_auto_init == 1) {
         draw_set_color(c_lime);
     } else {
         draw_set_color(c_gray);
     }
-    draw_text_l(_cbx + 18, _ly, "AUTO INIT");
+    scr_node_macro_text_l(_cbx + 18, _ly, "AUTO INIT");
     _ly += _lh;
 
     // ===== ZP base =====
@@ -69,29 +69,29 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
                     obj_workspace_manager.input_target_node  == id &&
                     obj_workspace_manager.input_target_index == 3);
     draw_set_color(_c_lbl);
-    draw_text_l(_draw_x + 10, _ly, "ZP:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "ZP:");
     if (_zp_edit) {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 46, _ly, obj_workspace_manager.current_input_string);
+        scr_node_macro_text_l(_draw_x + 46, _ly, obj_workspace_manager.current_input_string);
     } else {
         var _zh = decimal_to_hex(_zp);
         while (string_length(_zh) < 2) _zh = "0" + _zh;
         draw_set_color(c_aqua);
-        draw_text_l(_draw_x + 46, _ly, "$" + string_upper(_zh));
+        scr_node_macro_text_l(_draw_x + 46, _ly, "$" + string_upper(_zh));
     }
     draw_set_color(_c_dim);
-    draw_text_l(_draw_x + 76, _ly, "44 BYTES");
+    scr_node_macro_text_l(_draw_x + 76, _ly, "44 BYTES");
 
     // ── HARD RESTART ── click cycles 0-8. 0 = off.
     var _hr_val = (array_length(_ins) > 4 && is_real(_ins[4])) ? clamp(real(_ins[4]), 0, 8) : 2;
     draw_set_color(_c_lbl);
-    draw_text_l(_draw_x + 132, _ly, "HR:");
+    scr_node_macro_text_l(_draw_x + 132, _ly, "HR:");
     if (_hr_val == 0) {
         draw_set_color(_c_dim);
-        draw_text_l(_draw_x + 178, _ly, "OFF");
+        scr_node_macro_text_l(_draw_x + 178, _ly, "OFF");
     } else {
         draw_set_color(c_lime);
-        draw_text_l(_draw_x + 154, _ly, string(_hr_val) + " Frms");
+        scr_node_macro_text_l(_draw_x + 154, _ly, string(_hr_val) + " Frms");
     }
     _ly += _lh;
 
@@ -99,13 +99,13 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
     var _chip_val = (array_length(_ins) > 5 && is_real(_ins[5])) ? clamp(real(_ins[5]), 0, 3) : 0;
     var _chip_addr = 0xD400 + (_chip_val * 0x20);
     draw_set_color(_c_lbl);
-    draw_text_l(_draw_x + 10, _ly, "CHIP:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "CHIP:");
     draw_set_color(c_lime);
-    draw_text_l(_draw_x + 46, _ly, string(_chip_val));
+    scr_node_macro_text_l(_draw_x + 46, _ly, string(_chip_val));
     draw_set_color(_c_dim);
     var _cah = decimal_to_hex(_chip_addr);
     while (string_length(_cah) < 4) _cah = "0" + _cah;
-    draw_text_l(_draw_x + 66, _ly, "($" + string_upper(_cah) + ")");
+    scr_node_macro_text_l(_draw_x + 66, _ly, "($" + string_upper(_cah) + ")");
     _ly += _lh;
 
     // ===== Resolve the asset and report what will be emitted =====
@@ -197,21 +197,21 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
     draw_set_font_l(fnt_c64_pico);
     if (_asset_name == "" || _asset_name == "[clear]") {
         draw_set_color(_c_dim);
-        draw_text_l(_draw_x + 8, _ly, "NO SONG SELECTED");
+        scr_node_macro_text_l(_draw_x + 8, _ly, "NO SONG SELECTED");
     } else if (!_found) {
         draw_set_color(_c_bad);
-        draw_text_l(_draw_x + 8, _ly, "! SONG NOT FOUND");
+        scr_node_macro_text_l(_draw_x + 8, _ly, "! SONG NOT FOUND");
     } else if (_n_pat == 0 || _n_ord == 0 || _n_songs == 0) {
         draw_set_color(_c_bad);
-        draw_text_l(_draw_x + 8, _ly, "! EMPTY SONG - NOTHING EMITTED");
+        scr_node_macro_text_l(_draw_x + 8, _ly, "! EMPTY SONG - NOTHING EMITTED");
     } else {
         draw_set_color(_c_info);
-        draw_text_l(_draw_x + 8, _ly,
+        scr_node_macro_text_l(_draw_x + 8, _ly,
             string(_n_songs) + " SNG  " + string(_n_pat) + " PAT  "
             + string(_n_instr) + " INS  " + string(_n_ord) + " ORD");
         _ly += 10;
         draw_set_color(_c_info);
-        draw_text_l(_draw_x + 8, _ly,
+        scr_node_macro_text_l(_draw_x + 8, _ly,
             string(_bytes) + "B DATA   SPD " + string(_speed) + (_loops ? L("   LOOP") : L("   ONCE")));
     }
     _ly += 10;
@@ -220,14 +220,14 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
     // floating-point scratch. Worth saying on the node — it's the one thing
     // here with consequences outside this node.
     draw_set_color(make_color_rgb(200, 140, 60));
-    draw_text_l(_draw_x + 8, _ly, "INIT BANKS OUT BASIC ($01=$36)");
+    scr_node_macro_text_l(_draw_x + 8, _ly, "INIT BANKS OUT BASIC ($01=$36)");
     _ly += 10;
 
     draw_set_color(make_color_rgb(90, 110, 150));
-    draw_text_l(_draw_x + 8, _ly, "JSR " + "sng" + string(stable_uid) + L("_play  EACH FRAME"));
+    scr_node_macro_text_l(_draw_x + 8, _ly, "JSR " + "sng" + string(stable_uid) + L("_play  EACH FRAME"));
     _ly += 10;
     draw_set_color(make_color_rgb(90, 110, 150));
-    draw_text_l(_draw_x + 8, _ly, "A=SONG X=ROW  JSR " + "sng" + string(stable_uid) + "_seek");
+    scr_node_macro_text_l(_draw_x + 8, _ly, "A=SONG X=ROW  JSR " + "sng" + string(stable_uid) + "_seek");
 
     draw_set_font_l(fnt_c64_tiny);
 }

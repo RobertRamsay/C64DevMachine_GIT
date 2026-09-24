@@ -25,11 +25,11 @@ function scr_node_draw_macro_chr(_x, _y, _cam_x, _cam_y, _cam_zoom) {
     var _btn_hov = point_in_rectangle(mouse_x, mouse_y, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
 
     draw_set_color(_btn_hov ? make_color_rgb(30, 100, 160) : make_color_rgb(15, 50, 80));
-    draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
+    scr_macro_body_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
     draw_set_color(_asset_name != "" ? make_color_rgb(100, 200, 255) : make_color_rgb(80, 80, 100));
     draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_center);
-    draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3,
+    scr_node_macro_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3,
               _asset_name != "" ? _asset_name : L("-- SELECT CHARSET --"));
     draw_set_halign(fa_left);
 
@@ -50,19 +50,19 @@ function scr_node_draw_macro_chr(_x, _y, _cam_x, _cam_y, _cam_zoom) {
     if (_map_connected) {
         // greyed out — map is master
         draw_set_color(make_color_rgb(25, 25, 35));
-        draw_rectangle(_mc_x, _mc_y, _mc_x + _mc_w, _mc_y + _mc_h, false);
+        scr_macro_body_rectangle(_mc_x, _mc_y, _mc_x + _mc_w, _mc_y + _mc_h, false);
         draw_set_color(make_color_rgb(55, 55, 65));
         draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
-        draw_text_l(_mc_x + _mc_w * 0.5, _mc_y + 3, "MAP IS MASTER");
+        scr_node_macro_text_l(_mc_x + _mc_w * 0.5, _mc_y + 3, "MAP IS MASTER");
         draw_set_halign(fa_left);
     } else {
         draw_set_color(_mc_flag ? make_color_rgb(160, 80, 20) : make_color_rgb(30, 30, 45));
-        draw_rectangle(_mc_x, _mc_y, _mc_x + _mc_w, _mc_y + _mc_h, false);
+        scr_macro_body_rectangle(_mc_x, _mc_y, _mc_x + _mc_w, _mc_y + _mc_h, false);
         draw_set_color(_mc_flag ? make_color_rgb(255, 160, 60) : make_color_rgb(80, 80, 100));
         draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
-        draw_text_l(_mc_x + _mc_w * 0.5, _mc_y + 3, _mc_flag ? L("MULTICOLOUR  ON") : L("MULTICOLOUR OFF"));
+        scr_node_macro_text_l(_mc_x + _mc_w * 0.5, _mc_y + 3, _mc_flag ? L("MULTICOLOUR  ON") : L("MULTICOLOUR OFF"));
         draw_set_halign(fa_left);
     }
 
@@ -77,13 +77,13 @@ function scr_node_draw_macro_chr(_x, _y, _cam_x, _cam_y, _cam_zoom) {
         var _d023_val = instructions[11][1];
 
         draw_set_color(make_color_rgb(60, 160, 180));
-        draw_text_l(_x + 8, _d018_y, "$D018:");
+        scr_node_macro_text_l(_x + 8, _d018_y, "$D018:");
         draw_set_color(make_color_rgb(100, 200, 255));
-        draw_text_l(_x + 52, _d018_y, "$" + string_upper(decimal_to_hex(_d018_val)));
+        scr_node_macro_text_l(_x + 52, _d018_y, "$" + string_upper(decimal_to_hex(_d018_val)));
         draw_set_color(make_color_rgb(60, 160, 180));
-        draw_text_l(_x + 90, _d018_y, "$D016:");
+        scr_node_macro_text_l(_x + 90, _d018_y, "$D016:");
         draw_set_color(_mc_flag ? make_color_rgb(255, 160, 60) : make_color_rgb(100, 200, 255));
-        draw_text_l(_x + 134, _d018_y, "$" + string_upper(decimal_to_hex(_d016_val)));
+        scr_node_macro_text_l(_x + 134, _d018_y, "$" + string_upper(decimal_to_hex(_d016_val)));
 
 
 // Colour swatches only shown if no map connected
@@ -104,31 +104,31 @@ function scr_node_draw_macro_chr(_x, _y, _cam_x, _cam_y, _cam_zoom) {
 
             // BG Column
             draw_set_color(make_color_rgb(180, 180, 200));
-            draw_text_l(_x0, _d021_y, "BG:");
+            scr_node_macro_text_l(_x0, _d021_y, "BG:");
             draw_set_color(scr_c64_pepto_colour(_d021_val));
-            draw_rectangle(_x0 + _swatch_offset, _swatch_y, _x0 + _swatch_offset + _swatch_w, _swatch_y + _swatch_h, false);
+            scr_macro_body_rectangle(_x0 + _swatch_offset, _swatch_y, _x0 + _swatch_offset + _swatch_w, _swatch_y + _swatch_h, false);
 
             // C1 Column
             draw_set_color(make_color_rgb(180, 180, 200));
-            draw_text_l(_x1, _d021_y, "C1:");
+            scr_node_macro_text_l(_x1, _d021_y, "C1:");
             draw_set_color(scr_c64_pepto_colour(_d022_val));
-            draw_rectangle(_x1 + _swatch_offset, _swatch_y, _x1 + _swatch_offset + _swatch_w, _swatch_y + _swatch_h, false);
+            scr_macro_body_rectangle(_x1 + _swatch_offset, _swatch_y, _x1 + _swatch_offset + _swatch_w, _swatch_y + _swatch_h, false);
 
             // C2 Column
             draw_set_color(make_color_rgb(180, 180, 200));
-            draw_text_l(_x2, _d021_y, "C2:");
+            scr_node_macro_text_l(_x2, _d021_y, "C2:");
             draw_set_color(scr_c64_pepto_colour(_d023_val));
-            draw_rectangle(_x2 + _swatch_offset, _swatch_y, _x2 + _swatch_offset + _swatch_w, _swatch_y + _swatch_h, false);
+            scr_macro_body_rectangle(_x2 + _swatch_offset, _swatch_y, _x2 + _swatch_offset + _swatch_w, _swatch_y + _swatch_h, false);
 
             // CH Column (Char Colour)
             draw_set_color(make_color_rgb(180, 180, 200));
-            draw_text_l(_x3, _d021_y, "CH:");
+            scr_node_macro_text_l(_x3, _d021_y, "CH:");
             draw_set_color(scr_c64_pepto_colour(_char_col));
-            draw_rectangle(_x3 + _swatch_offset, _swatch_y, _x3 + _swatch_offset + _swatch_w, _swatch_y + _swatch_h, false);
+            scr_macro_body_rectangle(_x3 + _swatch_offset, _swatch_y, _x3 + _swatch_offset + _swatch_w, _swatch_y + _swatch_h, false);
         }
 		
     } else {
         draw_set_color(make_color_rgb(60, 60, 80));
-        draw_text_l(_x + 8, _d018_y, "SELECT ASSET TO CALCULATE");
+        scr_node_macro_text_l(_x + 8, _d018_y, "SELECT AN ASSET");
     }
 }

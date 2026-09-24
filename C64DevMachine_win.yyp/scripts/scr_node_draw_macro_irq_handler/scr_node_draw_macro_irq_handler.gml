@@ -30,10 +30,10 @@ function scr_node_draw_macro_irq_handler(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
 
     // ROW 0 — VECTOR MODE
     draw_set_color(c_gray);
-    draw_text_l(_px, _ly, "VECTOR:");
+    scr_node_macro_text_l(_px, _ly, "VECTOR:");
     var _mode_col = (_mode == 0) ? c_aqua : c_yellow;
     draw_set_color(_mode_col);
-    draw_text_l(_px + 80, _ly, (_mode == 0) ? "$0314 KERNAL" : "$FFFE DIRECT");
+    scr_node_macro_text_l(_px + 80, _ly, (_mode == 0) ? "$0314 KERNAL" : "$FFFE DIRECT");
     _ly += _lh;
     // ROW 0b — kernal unlock status
 
@@ -41,33 +41,33 @@ function scr_node_draw_macro_irq_handler(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
         if (!global.kernal_unlocked) {
             var _kfl = (current_time mod 600 < 300) ? make_color_rgb(255, 80, 80) : make_color_rgb(223, 180, 40);
             draw_set_color(_kfl);
-            draw_text_l(_px, _ly, "!REQ: UNLOCK KERNAL");
+            scr_node_macro_text_l(_px, _ly, "!REQ: UNLOCK KERNAL");
         } else {
             draw_set_color(make_color_rgb(100, 240, 150));
-            draw_text_l(_px, _ly, "KERNAL IS UNLOCKED.");
+            scr_node_macro_text_l(_px, _ly, "KERNAL IS UNLOCKED.");
         }
     } else {
         draw_set_color(make_color_rgb(100, 240, 150));
 		draw_set_font_l(fnt_c64_nano);
-        draw_text_l(_px+10, _ly+2, "KERNAL MODE - NO UNLOCK NEEDED");
+        scr_node_macro_text_l(_px+10, _ly+2, "KERNAL MODE - NO UNLOCK NEEDED");
     }
     draw_set_font_l(fnt_c64_tiny);
     _ly += _lh;
     // ROW 1 — IRQ slot count
     var _pulse_slots = abs(sin(current_time / 200));
     draw_set_color(c_gray);
-    draw_text_l(_px, _ly, "SLOTS:");
+    scr_node_macro_text_l(_px, _ly, "SLOTS:");
     var _slot_col = (_irq_count > 16) ? merge_color(c_red, c_white, _pulse_slots) : (_irq_count > 0 ? c_lime : make_color_rgb(120, 80, 80));
     draw_set_color(_slot_col);
-    draw_text_l(_px + 60, _ly, string(_irq_count) + " / 16" + (_irq_count > 16 ? " !" : ""));
+    scr_node_macro_text_l(_px + 60, _ly, string(_irq_count) + " / 16" + (_irq_count > 16 ? " !" : ""));
     _ly += _lh;
 
     // ROW 2 — SID status
     draw_set_color(c_gray);
-    draw_text_l(_px, _ly, "SID:");
+    scr_node_macro_text_l(_px, _ly, "SID:");
     draw_set_color(_has_sid ? c_lime : make_color_rgb(120, 60, 60));
     // Aligned to 60 to match SLOTS row
-    draw_text_l(_px + 36, _ly, _has_sid ? L("PLAY ON LAST SLOT") : L("NOT PRESENT"));
+    scr_node_macro_text_l(_px + 36, _ly, _has_sid ? L("PLAY ON LAST SLOT") : L("NOT PRESENT"));
     _ly += _lh;
 
     // Row 3 spacing adjustment
@@ -80,10 +80,10 @@ function scr_node_draw_macro_irq_handler(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
         if (_irq_count == 0) {
             var _pulse_status = abs(sin(current_time / 250));
             draw_set_color(merge_color(c_black, c_white, _pulse_status));
-            draw_text_l(_draw_x + (width / 2), _ly, "ADD MACRO_IRQ NODES");
+            scr_node_macro_text_l(_draw_x + (width / 2), _ly, "ADD MACRO_IRQ NODES");
         } else {
             draw_set_color(make_color_rgb(80, 200, 80));
-            draw_text_l(_draw_x + (width / 2), _ly, "NODE IN PLACE");
+            scr_node_macro_text_l(_draw_x + (width / 2), _ly, "NODE IN PLACE");
         }
         draw_set_halign(fa_left);
     }
@@ -96,11 +96,11 @@ draw_set_font_l(fnt_c64_tiny);
 
     if (_handler_count > 1) {
         draw_set_color(_warn_col);
-        draw_text_l(_px, _ly, "! ONLY 1 HANDLER ALLOWED !");
+        scr_node_macro_text_l(_px, _ly, "! ONLY 1 HANDLER ALLOWED !");
         _ly += _lh;
     }
     if (_irq_count > 16) {
         draw_set_color(_warn_col);
-        draw_text_l(_px, _ly, L("! MAX 16 IRQs REMOVE ") + string(_irq_count - 16) + " !");
+        scr_node_macro_text_l(_px, _ly, L("! MAX 16 IRQs REMOVE ") + string(_irq_count - 16) + " !");
     }
 }

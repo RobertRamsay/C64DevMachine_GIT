@@ -22,9 +22,9 @@ function scr_node_draw_macro_flip_x(_draw_x) {
 
     // FROM label
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 6, y + 28, "FROM:                    ");
+    scr_node_macro_text_l(_draw_x + 6, y + 28, "FROM:                    ");
 	draw_set_color(_c_dim);
-	draw_text_l(_draw_x + 110, y + 28,L("TO:  ")+_end_str);
+	scr_node_macro_text_l(_draw_x + 110, y + 28,L("TO:  ")+_end_str);
 	
     var _hov_from = point_in_rectangle(mouse_x, mouse_y, _draw_x + 54, y + 26, _draw_x + 90, y + 44);
     draw_set_color(_hov_from ? make_color_rgb(255, 255, 255) : make_color_rgb(150, 150, 215));
@@ -33,18 +33,18 @@ function scr_node_draw_macro_flip_x(_draw_x) {
     while (string_length(_sh) < 5) _sh = string_insert("0", _sh, 2);
 
     draw_set_halign(fa_center);
-    draw_text_l(_draw_x + 70, y + 28, _sh  );
+    scr_node_macro_text_l(_draw_x + 70, y + 28, _sh  );
     draw_set_halign(fa_left);
 
     // COUNT label
     draw_set_color(_c_edit);
-    draw_text_l(_draw_x + 6, y + 42, "COUNT:");
+    scr_node_macro_text_l(_draw_x + 6, y + 42, "COUNT:");
     var _hov_count = point_in_rectangle(mouse_x, mouse_y, _draw_x + 58, y + 43, _draw_x + 70, y + 64);
     draw_set_color(_hov_count ? make_color_rgb(255, 255, 255) : make_color_rgb(150, 150, 215));
     draw_set_halign(fa_left);
-    draw_text_l(_draw_x + 60, y + 42, string(_count));
+    scr_node_macro_text_l(_draw_x + 60, y + 42, string(_count));
 	draw_set_color(_c_dim);
-	draw_text_l(_draw_x + 74, y + 42, "  SPRITE(S) FLIPPED");
+	scr_node_macro_text_l(_draw_x + 74, y + 42, "  SPRITE(S) FLIPPED");
 	
     draw_set_halign(fa_left);
 

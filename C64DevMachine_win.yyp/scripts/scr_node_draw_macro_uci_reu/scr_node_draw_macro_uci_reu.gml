@@ -20,10 +20,10 @@ function scr_node_draw_macro_uci_reu(_draw_x, _y) {
         } else {
             draw_set_color(_col);
         }
-        draw_rectangle(_x1, _yy + 1, _x2, _yy + 11, false);
+        scr_macro_body_rectangle(_x1, _yy + 1, _x2, _yy + 11, false);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
-        draw_text_l((_x1 + _x2) * 0.5, _yy, _label);
+        scr_node_macro_text_l((_x1 + _x2) * 0.5, _yy, _label);
         draw_set_halign(fa_left);
     };
 
@@ -31,7 +31,7 @@ function scr_node_draw_macro_uci_reu(_draw_x, _y) {
 
     // ---- REU manifest ----
     draw_set_color(c_gray);
-    draw_text_l(_lx, _cy, "REU:");
+    scr_node_macro_text_l(_lx, _cy, "REU:");
     var _mf = string(_inst[1]);
     if (_mf == "") {
         _mf = L("<SELECT LOAD_REU>");
@@ -43,7 +43,7 @@ function scr_node_draw_macro_uci_reu(_draw_x, _y) {
     // Derived names are drawn dimmer than an override, so it is obvious at a
     // glance whether this node is following the manifest or has been pinned.
     draw_set_color(c_gray);
-    draw_text_l(_lx, _cy, "FILE:");
+    scr_node_macro_text_l(_lx, _cy, "FILE:");
     var _file      = string(_inst[2]);
     var _file_col  = make_color_rgb(40, 60, 90);
     if (_file == "") {
@@ -62,7 +62,7 @@ function scr_node_draw_macro_uci_reu(_draw_x, _y) {
 
     // ---- status var ----
     draw_set_color(c_gray);
-    draw_text_l(_lx, _cy, "STAT:");
+    scr_node_macro_text_l(_lx, _cy, "STAT:");
     var _sv = string(_inst[3]);
     if (_sv == "") {
         _sv = L("<NONE>");
@@ -74,5 +74,5 @@ function scr_node_draw_macro_uci_reu(_draw_x, _y) {
     // Worth saying on the node itself: this does nothing under emulation, and
     // someone reading the graph should not expect it to.
     draw_set_color(make_color_rgb(120, 120, 130));
-    draw_text_l(_lx, _cy, L("ULTIMATE ONLY - IGNORED IN VICE"));
+    scr_node_macro_text_l(_lx, _cy, L("ULTIMATE ONLY - IGNORED IN VICE"));
 }

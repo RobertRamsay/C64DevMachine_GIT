@@ -49,9 +49,9 @@ function scr_node_draw_macro_vector_page(_draw_x, _y) {
     // Row 1: Asset name (click to pick)
     var _name_hover = point_in_rectangle(mouse_x, mouse_y, _draw_x + 68, _ly, _draw_x + width - 8, _ly + 16);
     draw_set_color(make_color_rgb(120, 220, 120));
-    draw_text_l(_draw_x + 10, _ly, "ASSET:");
+    scr_node_macro_text_l(_draw_x + 10, _ly, "ASSET:");
     draw_set_color(_has_asset ? c_lime : (_name_hover ? c_white : make_color_rgb(200, 80, 80)));
-    draw_text_l(_draw_x + 72, _ly, _asset_name == "" ? L("CLICK TO SET") : _asset_name);
+    scr_node_macro_text_l(_draw_x + 72, _ly, _asset_name == "" ? L("CLICK TO SET") : _asset_name);
     _ly += _line_h;
 
     // Row 2: Page selector (literal) OR var name (var-driven) + VAR toggle button
@@ -60,60 +60,60 @@ function scr_node_draw_macro_vector_page(_draw_x, _y) {
     var _pg_hover = point_in_rectangle(mouse_x, mouse_y, _draw_x + 60, _ly, _tog_x - 4, _ly + 12);
     var _tog_hover = point_in_rectangle(mouse_x, mouse_y, _tog_x, _ly, _tog_x + _tog_w, _ly + 12);
     if (_use_var == 1) {
-        draw_set_color(make_color_rgb(120, 220, 120)); draw_text_l(_draw_x + 10, _ly, "VAR:");
+        draw_set_color(make_color_rgb(120, 220, 120)); scr_node_macro_text_l(_draw_x + 10, _ly, "VAR:");
         var _has_var = (_var_name != "");
         draw_set_color(_has_var ? c_aqua : (_pg_hover ? c_white : make_color_rgb(200, 60, 60)));
-        draw_text_l(_draw_x + 60, _ly, _has_var ? _var_name : L("CLICK TO SET"));
+        scr_node_macro_text_l(_draw_x + 60, _ly, _has_var ? _var_name : L("CLICK TO SET"));
     } else {
-        draw_set_color(c_gray); draw_text_l(_draw_x + 10, _ly, "PAGE:");
+        draw_set_color(c_gray); scr_node_macro_text_l(_draw_x + 10, _ly, "PAGE:");
         draw_set_color(_page_valid ? (_pg_hover ? c_white : c_yellow) : make_color_rgb(200, 60, 60));
         var _pg_txt = string(_page_idx) + (_has_asset ? ("/" + string(max(0, _page_count - 1))) : "");
-        draw_text_l(_draw_x + 60, _ly, _pg_txt);
+        scr_node_macro_text_l(_draw_x + 60, _ly, _pg_txt);
     }
     // VAR toggle button (lit when active)
     draw_set_color(_use_var == 1 ? make_color_rgb(0, 150, 180) : make_color_rgb(50, 50, 60));
-    draw_rectangle(_tog_x, _ly+4, _tog_x + _tog_w, _ly + 16, false);
+    scr_macro_body_rectangle(_tog_x, _ly+4, _tog_x + _tog_w, _ly + 16, false);
     draw_set_color(_tog_hover ? c_white : make_color_rgb(120, 120, 140));
-    draw_rectangle(_tog_x, _ly+4, _tog_x + _tog_w, _ly + 16, true);
+    scr_macro_body_rectangle(_tog_x, _ly+4, _tog_x + _tog_w, _ly + 16, true);
     draw_set_color(_use_var == 1 ? c_white : make_color_rgb(140, 140, 150));
-    draw_text_l(_tog_x + 3, _ly + 1, "VAR");
+    scr_node_macro_text_l(_tog_x + 3, _ly + 1, "VAR");
     _ly += _line_h;
     if (_use_var == 1) {
         // Var-driven: page resolved at runtime, editor owns the page data
-        draw_set_color(c_gray); draw_text_l(_draw_x + 10, _ly, "MODE:");
+        draw_set_color(c_gray); scr_node_macro_text_l(_draw_x + 10, _ly, "MODE:");
         draw_set_color(c_aqua);
-        draw_text_l(_draw_x + 60, _ly, "VAR DRIVEN");
+        scr_node_macro_text_l(_draw_x + 60, _ly, "VAR DRIVEN");
         _ly += _line_h;
         draw_set_color(make_color_rgb(180, 130, 120));
-        draw_text_l(_draw_x + 10, _ly, "CHECK EDITOR");
+        scr_node_macro_text_l(_draw_x + 10, _ly, "CHECK EDITOR");
         _ly += _line_h;
     } else {
         // Row 3: this page's 4 colours as swatches
-        draw_set_color(c_gray); draw_text_l(_draw_x + 10, _ly, "COLS:");
+        draw_set_color(c_gray); scr_node_macro_text_l(_draw_x + 10, _ly, "COLS:");
         if (_page_valid) {
             var _sw = 12;
             var _cx = _draw_x + 60;
             var _cols = [_pg_bg, _pg_c1, _pg_c2, _pg_c3];
             for (var _c = 0; _c < 4; _c++) {
                 draw_set_color(scr_c64_pepto_colour(_cols[_c]));
-                draw_rectangle(_cx, _ly+5, _cx + _sw, _ly + 13, false);
+                scr_macro_body_rectangle(_cx, _ly+5, _cx + _sw, _ly + 13, false);
                 draw_set_color(make_color_rgb(90, 90, 110));
-                draw_rectangle(_cx, _ly+5, _cx + _sw, _ly + 13, true);
+                scr_macro_body_rectangle(_cx, _ly+5, _cx + _sw, _ly + 13, true);
                 _cx += _sw + 4;
             }
         } else {
             draw_set_color(make_color_rgb(200, 60, 60));
-            draw_text_l(_draw_x + 60, _ly, _has_asset ? L("BAD PAGE") : L("NO ASSET"));
+            scr_node_macro_text_l(_draw_x + 60, _ly, _has_asset ? L("BAD PAGE") : L("NO ASSET"));
         }
         _ly += _line_h;
         // Row 4: command count for this page
-        draw_set_color(c_gray); draw_text_l(_draw_x + 10, _ly, "CMDS:");
+        draw_set_color(c_gray); scr_node_macro_text_l(_draw_x + 10, _ly, "CMDS:");
         if (_page_valid) {
             draw_set_color(_cmd_count > 0 ? make_color_rgb(80, 200, 80) : c_orange);
-            draw_text_l(_draw_x + 52, _ly, string(_cmd_count) + (_cmd_count > 0 ? L(" primitives") : L(" (EMPTY)")));
+            scr_node_macro_text_l(_draw_x + 52, _ly, string(_cmd_count) + (_cmd_count > 0 ? L(" primitives") : L(" (EMPTY)")));
         } else {
             draw_set_color(make_color_rgb(120, 120, 120));
-            draw_text_l(_draw_x + 52, _ly, "-");
+            scr_node_macro_text_l(_draw_x + 52, _ly, "-");
         }
         _ly += _line_h;
     }
