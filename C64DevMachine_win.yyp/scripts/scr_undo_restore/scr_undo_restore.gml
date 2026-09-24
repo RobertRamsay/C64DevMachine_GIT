@@ -78,6 +78,7 @@ function scr_undo_restore(_path) {
         }
 
         if (_n.node_type == "COMMENT") {
+            _n.collapsed = variable_struct_exists(_d, "collapsed") ? _d.collapsed : false;
             draw_set_font_l(fnt_c64_code);
             var _comment_raw = (array_length(_n.instructions) > 0) ? string(_n.instructions[0][1]) : "";
             var _text_w      = global.node_display_width - 20;
@@ -91,6 +92,7 @@ function scr_undo_restore(_path) {
             _n.height = _header_h + (array_length(_n.instructions) * _line_h) + _pad;
         }
         if (variable_struct_exists(_d, "height")) _n.height = _d.height;
+        if (_n.node_type == "COMMENT") scr_comment_sync_layout(_n);
 
         if (_n.node_type == "INIT") _n.is_draggable = true;
         if (_n.node_type == "ORG") {

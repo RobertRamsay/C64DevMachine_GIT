@@ -1159,6 +1159,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
 	            }
 	        }
 	        if (_cm_covered) break;
+            if (collapsed) { scr_comment_toggle(id); exit; }
 	        // Clicked, so it comes to the front: one below the frontmost
 	        // comment (dragged nodes park at -500, so never above that).
 	        var _cm_rz = -500;
@@ -2218,7 +2219,7 @@ if (is_dragging && !_is_group_follower) {
                 if (is_connected && org_parent == noone && x_indent > _max_ind_prev)
                     _max_ind_prev = x_indent;
             }
-            if (abs(_this_cx - _spine_cx) <= global.node_display_width * 0.5 + 10 + _max_ind_prev) {
+            if (!global.init_collapsed && abs(_this_cx - _spine_cx) <= global.node_display_width * 0.5 + 10 + _max_ind_prev) {
                 // Main spine preview
                 var _pa = noone; var _pb = noone;
                 var _bay = -999999; var _bby = 999999;
@@ -2328,7 +2329,10 @@ if (global.wedge_preview_y >= 0) {
                 // Pure click (no movement) — restore the stashed indent so the node
                 // stays exactly where it was. A real drag leaves indent at 0 here and
                 // re-inherits it from neighbours in the D2/D3 wedge logic.
-                if (!was_dragged) { x_indent = drag_indent_stash; }
+                if (!was_dragged) {
+                    x_indent = drag_indent_stash;
+                    if (node_type == "COMMENT") scr_comment_toggle(id);
+                }
 
 				is_dragging            = false;
 				depth                  = (was_dragged && node_type != "COMMENT") ? -500 : pre_click_depth;
@@ -2431,7 +2435,7 @@ if (global.wedge_preview_y >= 0) {
                     }
                 }
 
-                if (was_dragged && !is_free_node && org_parent == noone && node_type != "NAMED_LOC" && node_type != "ORG") {
+                if (was_dragged && !global.init_collapsed && !is_free_node && org_parent == noone && node_type != "NAMED_LOC" && node_type != "ORG") {
                     var _node_cx      = x + width * 0.5;
                     var _spine_cx     = _spine_x + global.node_display_width * 0.5;
 					var _spine_bottom = -1;
@@ -2485,7 +2489,7 @@ if (global.wedge_preview_y >= 0) {
     /////////////////////////////////////////////////////////////////
 
 if (!_is_group_follower && mouse_check_button_released(mb_left) && was_dragged &&
-        !_is_macro_child && org_parent == noone && !global.box_drag_active &&
+        !_is_macro_child && org_parent == noone && !global.box_drag_active && !global.init_collapsed &&
         node_type != "ORG" && node_type != "INIT" && !is_free_node) {
 
         if (id != global.active_drag_node) exit;

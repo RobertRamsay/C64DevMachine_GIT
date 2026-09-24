@@ -1168,7 +1168,8 @@ function scr_comment_sync_layout(_node) {
     var _node_w = global.node_display_width * _mult;
     var _text_w = max(1, _node_w - 20);
     var _max_ch = 25 * _mult;
-    if (_node.comment_source_cache != _raw || _node.comment_text_width != _text_w) {
+    if (_node.comment_source_cache != _raw || _node.comment_text_width != _text_w
+    || _node.comment_layout_collapsed != _node.collapsed || _node.comment_layout_lang != global.lang) {
         var _lines = string_split(string_replace_all(string_replace_all(_raw, "\r\n", "\n"), "\r", "\n"), "\n");
         var _wrapped = [];
         // Where each DISPLAY line starts in the RAW text, 0-based. The wrap is
@@ -1177,10 +1178,10 @@ function scr_comment_sync_layout(_node) {
         // in-place editing needs exactly that, in both directions.
         var _starts  = [];
         var _raw_pos = 0;
-        for (var _i = 0; _i < array_length(_lines); _i++) {
+        for (var _i = 0; _i < array_length(_lines) && (!_node.collapsed || array_length(_wrapped) < 2); _i++) {
             var _rest     = _lines[_i];
             var _line_raw = _raw_pos;
-            while (string_length(_rest) > _max_ch || string_width_l(_rest) > _text_w) {
+            while ((!_node.collapsed || array_length(_wrapped) < 2) && (string_length(_rest) > _max_ch || string_width_l(_rest) > _text_w)) {
                 // Limit by both character count and actual glyph width.
                 var _fit = min(_max_ch, string_length(_rest));
                 while (_fit > 1 && string_width_l(string_copy(_rest, 1, _fit)) > _text_w) _fit--;
@@ -1192,9 +1193,15 @@ function scr_comment_sync_layout(_node) {
                 _rest      = string_delete(_rest, 1, _eaten);
                 _line_raw += _eaten;
             }
-            array_push(_wrapped, _rest);
-            array_push(_starts, _line_raw);
+            if (!_node.collapsed || array_length(_wrapped) < 2) {
+                array_push(_wrapped, _rest);
+                array_push(_starts, _line_raw);
+            }
             _raw_pos += string_length(_lines[_i]) + 1;   // +1 for the newline
+        }
+        if (_node.collapsed) {
+            while (array_length(_wrapped) < 2) array_push(_wrapped, "");
+            array_push(_wrapped, "[CLICK TO OPEN]");
         }
         var _display = "";
         for (var _i = 0; _i < array_length(_wrapped); _i++) {
@@ -1205,17 +1212,32 @@ function scr_comment_sync_layout(_node) {
         _node.comment_display_text = _display;
         _node.comment_line_start   = _starts;
         _node.comment_text_width = _text_w;
+        _node.comment_layout_height = ceil((28 + max(18, string_height_ext_l(_display, 18, -1)) + 10) / 20) * 20;
+        _node.comment_layout_collapsed = _node.collapsed;
+        _node.comment_layout_lang = global.lang;
         _node.height_dirty = true;
     }
-    var _height = ceil((28 + max(18, string_height_ext_l(_node.comment_display_text, 18, -1)) + 10) / 20) * 20;
+    var _height = _node.comment_layout_height;
     if (_node.height != _height) {
         _node.height_dirty = true;
         // Use the normal spine repack, not a second delta push on the next Step.
-        if (_node.is_connected) global.addresses_dirty = true;
+        if (_node.is_connected || instance_exists(_node.org_parent)) global.addresses_dirty = true;
         _node.prev_height = _height;
     }
     _node.width = _node_w;
     _node.height = _height;
     _node.cached_height = _height;
     draw_set_font_l(_font);
+}
+
+/// A click toggles the view; dragging the header keeps moving the comment.
+function scr_comment_toggle(_node) {
+    scr_undo_snapshot();
+    _node.collapsed = !_node.collapsed;
+    if (obj_workspace_manager.input_target_node == _node)
+        obj_workspace_manager.is_entering_text = false;
+    scr_comment_sync_layout(_node);
+    _node.draw_cache_dirty = true;
+    global.undo_dirty = true;
+    global.ui_click_consumed = true;
 }

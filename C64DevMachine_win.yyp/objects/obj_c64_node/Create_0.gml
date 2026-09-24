@@ -320,3 +320,7 @@ is_conflicted = false;
 macro_layout_type = "";
 macro_layout_height = 0;
 macro_measure_active = false;
+
+comment_layout_collapsed = -1;
+comment_layout_lang = -1;
+comment_layout_height = 0;

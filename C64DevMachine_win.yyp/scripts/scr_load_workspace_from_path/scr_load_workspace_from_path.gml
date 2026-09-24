@@ -175,6 +175,7 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
         }
 
         if (_n.node_type == "COMMENT") {
+            _n.collapsed = variable_struct_exists(d, "collapsed") ? d.collapsed : false;
             draw_set_font_l(fnt_c64_code);
             var _comment_raw = (array_length(_n.instructions) > 0) ? string(_n.instructions[0][1]) : "";
             var _text_w      = global.node_display_width - 20;

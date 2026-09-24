@@ -33,6 +33,9 @@
 function scr_node_is_hidden(_n) {
     if (!instance_exists(_n))       { return false; }
 
+    // Never swallow the active drag before its mouse release can be handled.
+    if (_n.is_dragging && global.active_drag_node == _n) return false;
+
     // Headers never hide themselves.
     if (_n.node_type == "INIT")     { return false; }
     if (_n.node_type == "ORG")      { return false; }
@@ -68,17 +71,9 @@ function scr_node_is_hidden(_n) {
     // scr_org_collapse_hit refreshes it once each Begin Step.
     if (!global.init_collapsed) { return false; }
 
-    // A COMMENT is the one node the detached test above cannot judge. It is
-    // is_connected == false BY DESIGN — there is no such thing as a connected
-    // comment — so the flag says nothing about whether it belongs to the spine.
-    // Position is all there is, and it is what the eye uses too: a comment
-    // sitting in the spine column is annotating the block and folds with it,
-    // one dragged off to the side is parked and stays put. The band is the
-    // column's own node width, so it tracks the node display width setting.
-    if (_n.node_type == "COMMENT") {
-        if (global.init_spine_x <= -999999) { return false; }
-        return (abs(_n.x - global.init_spine_x) <= global.init_spine_w);
-    }
+    // Proximity is not attachment. A parked comment must remain visible
+    // even when it occupies the same column as a folded INIT.
+    if (_n.node_type == "COMMENT") return _n.is_connected;
 
     return true;
 }

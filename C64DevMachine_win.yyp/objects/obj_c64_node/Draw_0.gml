@@ -1193,15 +1193,17 @@ if (_lod_header) {
     }
 
     if (_show_title) {
+        var _comment_fold_hover = node_type == "COMMENT" && !collapsed && !is_dragging
+            && point_in_rectangle(mouse_x, mouse_y, draw_x, y, draw_x + width - 40, y + 20);
         var _hdr_first = (array_length(instructions) > 0) ? string(instructions[0][0]) : "";
         var _hdr_sig   = string(custom_title) + "|" + string(node_title) + "|" + _hdr_first +
                          "|" + string(_is_opcode_node) + "|" + string(obj_workspace_manager.opcode_headers_on) +
-                         "|" + string(width);
+                         "|" + string(width) + "|" + string(_comment_fold_hover);
 
         if (draw_cache_dirty || hdr_cache_sig != _hdr_sig) {
             hdr_cache_sig = _hdr_sig;
 
-            var _disp_title = (custom_title != "") ? custom_title : string(node_title);
+            var _disp_title = _comment_fold_hover ? "[COLLAPSE]" : ((custom_title != "") ? custom_title : string(node_title));
             hdr_cache_opcode = false;
 
             if (_is_opcode_node && array_length(instructions) > 0 && obj_workspace_manager.opcode_headers_on) {
@@ -2197,7 +2199,7 @@ with (obj_c64_node) {
 
 if (_any_dragging) {
 // Main spine drop zone
-    if (is_connected && org_parent == noone && !is_dragging &&
+    if (!global.init_collapsed && is_connected && org_parent == noone && !is_dragging &&
         node_type != "ORG" && node_type != "EXECUTE" && node_type != "COMMENT") {
         var _is_bottom = true;
         var _my_id = id;
