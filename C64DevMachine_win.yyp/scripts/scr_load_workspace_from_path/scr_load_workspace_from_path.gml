@@ -197,7 +197,10 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
         }
 
         if (_n.node_type == "MACRO_PRINT") scr_print_sync_height(_n);
-        if (_n.node_type == "INIT") _n.is_draggable = true;
+        if (_n.node_type == "INIT") {
+            _n.is_draggable = true;
+            _n.collapsed = variable_struct_exists(d, "collapsed") ? d.collapsed : false;
+        }
         if (_n.node_type == "ORG") {
             _n.is_draggable = true;
             _n.is_connected = false;
@@ -750,11 +753,10 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
 	            } else {
 	                _new_asset.meta.map_h = [];
 	            }
-	            if (variable_struct_exists(_tsm, "map_size_key")) {
-	                _new_asset.meta.map_size_key = _tsm.map_size_key;
-	            } else {
-	                _new_asset.meta.map_size_key = string(_new_asset.meta.stamp_w) + "x" + string(_new_asset.meta.stamp_h);
-	            }
+                // This is a runtime resize guard, not map data. Seed it from
+                // the dimensions just loaded; a stale saved key must never
+                // masquerade as a user resize and erase the restored maps.
+                _new_asset.meta.map_size_key = string(_new_asset.meta.stamp_w) + "x" + string(_new_asset.meta.stamp_h);
 
 	            // Backfill per-map dim arrays to map_count so the viewer never
 	            // indexes past a short or empty array (old saves store no map_w/map_h).
