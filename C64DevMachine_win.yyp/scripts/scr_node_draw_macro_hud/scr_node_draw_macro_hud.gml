@@ -262,6 +262,14 @@ function scr_macro_apply_height(_n, _wanted) {
 
 /// Run before culling/input: HUD asset edits also resize off-screen nodes.
 function scr_macro_sync_height(_n) {
+    if (_n.node_type == "MACRO_SFX" && array_length(_n.instructions)>0 && array_length(_n.instructions[0])>1) {
+        var _sfx_asset = scr_sfx_data_find_asset(string(_n.instructions[0][1]));
+        if (is_struct(_sfx_asset) && _sfx_asset.type == "SFX_MAKER") {
+            // Four fields plus the action hint; resolve before layout, not after drawing.
+            scr_macro_apply_height(_n, 140);
+            return;
+        }
+    }
     if (_n.node_type == "MACRO_HUD") {
         var _name = "";
         if (array_length(_n.instructions) > 0 && array_length(_n.instructions[0]) > 1)

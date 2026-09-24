@@ -60,7 +60,7 @@
     {"$GMIncludedFile":"","%Name":"pfrmr_scrl_pro.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"pfrmr_scrl_pro.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"top_down_lite.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"top_down_lite.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"top_down_pro.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"top_down_pro.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
-    {"$GMIncludedFile":"","%Name":"vshmup_lite.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"vshmup_lite.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
+    {"$GMIncludedFile":"","%Name":"SHMUP_V.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"SHMUP_V.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"vshmup_pro.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"vshmup_pro.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"execute_shell_simple_ext.html","CopyToMask":-1,"filePath":"datafiles","name":"execute_shell_simple_ext.html","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"bridge.mjs","CopyToMask":-1,"filePath":"datafiles/tools/cdm-mcp","name":"bridge.mjs","resourceType":"GMIncludedFile","resourceVersion":"2.0",},

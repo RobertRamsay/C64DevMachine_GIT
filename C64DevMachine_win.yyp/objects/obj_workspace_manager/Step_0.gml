@@ -2397,7 +2397,7 @@ if (_cmnem == "rts" || _cmnem == "rti") {
                 } else if ((_cmnem == "jmp" || _cmnem == "jmp_abs" || _cmnem == "jmp_ind")
                         && array_length(instructions[0]) > 1) {
                     array_push(_loop_jmps, { target: string(instructions[0][1]), node: id, y: y, org_parent: org_parent, sub: 0 });
-                } else if (_cmnem == "code_block" && array_length(instructions[0]) > 1) {
+                } else if ((node_type == "MACRO_CODE" || _cmnem == "code_block") && array_length(instructions[0]) > 1) {
                     var _cc_text = string(instructions[0][1]);
                     if (_cc_text != "") {
                         var _cc_parsed = scr_parse_asm_text(_cc_text);
@@ -2443,7 +2443,7 @@ if (_cmnem == "rts" || _cmnem == "rti") {
             // If the tail node is a MACRO_CODE block, its own last real
             // instruction decides this instead — walking back past any
             // trailing labels/comments/directives to find it.
-            if (_tail_mnem == "code_block" && array_length(_tail_node.instructions[0]) > 1) {
+            if ((_tail_node.node_type == "MACRO_CODE" || _tail_mnem == "code_block") && array_length(_tail_node.instructions[0]) > 1) {
                 var _tail_code_text = string(_tail_node.instructions[0][1]);
                 if (_tail_code_text != "") {
                     var _tail_parsed = scr_parse_asm_text(_tail_code_text);

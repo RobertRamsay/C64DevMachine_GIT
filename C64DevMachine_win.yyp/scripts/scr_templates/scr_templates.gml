@@ -1,5 +1,6 @@
 /// Bundled projects use the normal JSON loader and existing C64 features.
 function scr_template_catalog(_index) {
+    if (_index == 0) return {title:"SHMUP V", pro:false, path:working_directory + "C64DMResources/TEMPLATES/SHMUP_V.json"};
     var _titles = ["V.SHMUP", "H.SHMUP", "PFORMER", "PFRMR.SCRL", "TOP DOWN"];
     var _files = ["vshmup", "hshmup", "pformer", "pfrmr_scrl", "top_down"];
     var _genre = clamp(_index div 2, 0, 4);

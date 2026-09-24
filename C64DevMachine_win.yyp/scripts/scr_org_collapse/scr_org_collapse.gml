@@ -271,7 +271,7 @@ function scr_org_collapse_hit() {
     if (_hot == noone) { exit; }
 
     if (scr_org_collapse_primary_pressed()) {
-        _hot.collapsed = !_hot.collapsed;
+        scr_org_set_collapsed(_hot, !_hot.collapsed);
 
         // Positions are owned by the layout pass, so ask for one rather than
         // shuffling y here — that is also what keeps a fold from ever touching
@@ -352,4 +352,33 @@ function scr_focus_init() {
         global.undo_dirty = true;
         alarm[3] = 6;
     }
+}
+
+/// Folding changes which cached bodies participate in the visible layout.
+function scr_org_set_collapsed(_anchor, _collapsed) {
+    _anchor.collapsed = _collapsed;
+    if (_anchor.node_type == "INIT") global.init_collapsed = _collapsed;
+    with (obj_c64_node) {
+        var _belongs = id == _anchor || org_parent == _anchor;
+        if (_anchor.node_type == "INIT" && is_connected && org_parent == noone && node_type != "ORG") _belongs = true;
+        if (instance_exists(macro_owner)) {
+            if (macro_owner.org_parent == _anchor) _belongs = true;
+            if (_anchor.node_type == "INIT" && macro_owner.is_connected && macro_owner.org_parent == noone) _belongs = true;
+        }
+        if (!_belongs) continue;
+        height_dirty = true;
+        draw_cache_dirty = true;
+        overlap_check_dirty = true;
+        last_overlap_check = false;
+        if (!_collapsed) {
+            // Re-measure bodies on their next draw, including mode-dependent rows.
+            macro_layout_type = "";
+            scr_macro_sync_height(id);
+            if (node_type == "COMMENT") scr_comment_sync_layout(id);
+            if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
+        }
+    }
+    global.addresses_dirty = true;
+    global.autosave_dirty = true;
+    obj_workspace_manager.flow_overlay_dirty = true;
 }

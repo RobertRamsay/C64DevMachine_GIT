@@ -1,5 +1,5 @@
 // Restore cached macro sizes before hit-testing and layout, even off-screen.
-if (node_type == "MACRO_HUD" || (macro_layout_type == node_type
+if (node_type == "MACRO_HUD" || (node_type == "MACRO_SFX" && height_dirty) || (macro_layout_type == node_type
 && (height != macro_layout_height || cached_height != macro_layout_height)))
     scr_macro_sync_height(id);
 // Finish INIT drags even when released over a toolbar or panel.
@@ -2601,7 +2601,7 @@ var _init_top = 0;
 				if (_spine_folded) {
 					with (obj_c64_node) {
 						if (node_type == "INIT") {
-							collapsed = false;
+							scr_org_set_collapsed(id, false);
 							break;
 						}
 					}
@@ -2736,7 +2736,7 @@ var _is_var_node = (node_type == "NAMED_LOC" || node_type == "NEW_STR");
             // below, so the y computed above while the block was shut corrects
             // itself on the same frame.
             if (_org_anchor.collapsed) {
-                _org_anchor.collapsed = false;
+                scr_org_set_collapsed(_org_anchor, false);
             }
 
             last_overlap_check = false;
