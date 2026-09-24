@@ -419,10 +419,12 @@ var _G = 20;
 	_pack_y = ceil(_pack_y / _G) * _G;
 	for (var i = 0; i < array_length(_main_spine); i++) {
 	    var _n    = _main_spine[i];
+        scr_macro_sync_height(_n);
 	    _n.y      = _pack_y;
         _n.x = _main_spine[0].x;
 	    _n.height = ceil(_n.height / _G) * _G;
 	    _pack_y  += _n.height;
+        _n.prev_height = _n.height; // This resize is already included in packing.
 /*
 	    if (_n.node_type == "ORG") {
 	        if (!variable_instance_exists(_n, "proxy")) _n.proxy = true;
@@ -518,8 +520,10 @@ if (_n.node_type == "ORG") {
 	            var _child = _org_list[k];
 
 	            _child.x  = _org_anchor.x;
-	            _child.y  = _child_y;
+	            scr_macro_sync_height(_child);
+                _child.y  = _child_y;
 	            _child_y += _child.height;
+                _child.prev_height = _child.height;
 
 	            if (_child.node_type == "NAMED_LOC" || _child.node_type == "NEW_STR") continue;
 

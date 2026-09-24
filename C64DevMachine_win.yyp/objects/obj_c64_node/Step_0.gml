@@ -1,5 +1,5 @@
 // Restore cached macro sizes before hit-testing and layout, even off-screen.
-if (node_type == "MACRO_HUD" || (node_type == "MACRO_SFX" && height_dirty) || (macro_layout_type == node_type
+if (node_type == "MACRO_VWAIT" || node_type == "MACRO_JOY" || node_type == "MACRO_HUD" || (node_type == "MACRO_SFX" && height_dirty) || (macro_layout_type == node_type
 && (height != macro_layout_height || cached_height != macro_layout_height)))
     scr_macro_sync_height(id);
 // Finish INIT drags even when released over a toolbar or panel.

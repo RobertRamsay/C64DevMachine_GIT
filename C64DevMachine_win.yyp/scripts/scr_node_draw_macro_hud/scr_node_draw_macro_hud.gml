@@ -262,6 +262,9 @@ function scr_macro_apply_height(_n, _wanted) {
 
 /// Run before culling/input: HUD asset edits also resize off-screen nodes.
 function scr_macro_sync_height(_n) {
+    // Resolve fixed bodies before packing; saved heights can be from older layouts.
+    if (_n.node_type == "MACRO_VWAIT") { scr_macro_apply_height(_n,60); return; }
+    if (_n.node_type == "MACRO_JOY") { scr_macro_apply_height(_n,120); return; }
     if (_n.node_type == "MACRO_SFX" && array_length(_n.instructions)>0 && array_length(_n.instructions[0])>1) {
         var _sfx_asset = scr_sfx_data_find_asset(string(_n.instructions[0][1]));
         if (is_struct(_sfx_asset) && _sfx_asset.type == "SFX_MAKER") {
