@@ -1,5 +1,5 @@
 /// @desc Setup Workspace, Palette & C64 Environment
-global.lite=0;
+global.lite=1;
 
 // ---------------------------------------------------------------------------
 // MCP / external control feature switch.

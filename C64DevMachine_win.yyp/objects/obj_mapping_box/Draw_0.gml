@@ -19,12 +19,15 @@ draw_set_alpha(1.0);
 // Tab label (top left, above box)
 var _tab_pad = 8;
 draw_set_font_l(fnt_c64_code);
-var _tw = string_width_l(box_name) + (_tab_pad * 2);
+// Reserve the delete button and keep the room-space title inside the box too.
+var _title_width = max(1, box_w - 18 - (_tab_pad * 2));
+var _title_scale = min(1, _title_width / max(1, string_width_l(box_name)));
+var _tw = string_width_l(box_name) * _title_scale + (_tab_pad * 2);
 var _th = 18;
 draw_set_color(_col);
 draw_rectangle(x, y - _th, x + _tw, y, false);
 draw_set_color(c_black);
-draw_text_l(x + _tab_pad, y - _th + 2, box_name);
+draw_text_transformed_l(x + _tab_pad, y - _th + 2, box_name, _title_scale, _title_scale, 0);
 
 // Resize handle triangle (bottom right)
 draw_set_color(_col);
