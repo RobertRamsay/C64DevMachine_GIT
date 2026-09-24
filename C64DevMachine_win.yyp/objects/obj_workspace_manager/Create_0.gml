@@ -1193,3 +1193,6 @@ if (_saved_w > 0 && _saved_h > 0)
 // Bundled project selection is handled outside Draw.
 template_pending = -1;
 template_waiting = -1;
+
+// Opcode palette definitions are static after Create. Search only on edits.
+opcode_finder_cached_text = undefined;

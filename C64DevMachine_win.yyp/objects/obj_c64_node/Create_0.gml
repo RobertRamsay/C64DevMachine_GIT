@@ -316,3 +316,7 @@ init_rts_marker = false;
 
 prev_height = height; // must be last
 is_conflicted = false;
+// Layout cache exists on every node; hot paths need no reflective lookup.
+macro_layout_type = "";
+macro_layout_height = 0;
+macro_measure_active = false;

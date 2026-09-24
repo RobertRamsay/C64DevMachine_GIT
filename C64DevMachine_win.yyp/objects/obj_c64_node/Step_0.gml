@@ -1,5 +1,7 @@
 // Restore cached macro sizes before hit-testing and layout, even off-screen.
-scr_macro_sync_height(id);
+if (node_type == "MACRO_HUD" || (macro_layout_type == node_type
+&& (height != macro_layout_height || cached_height != macro_layout_height)))
+    scr_macro_sync_height(id);
 // Finish INIT drags even when released over a toolbar or panel.
 if (node_type == "INIT" && is_dragging) { scr_init_drag_update(id); exit; }
 // Update off-screen PRINT nodes too, so their spines repack after a mode change.

@@ -235,8 +235,10 @@ var _finder_y2 = _finder_y1 + 32;
 var _finder_w  = _finder_x2 - _finder_x1;
 var _finder_h  = _finder_y2 - _finder_y1;
 
-// Build match list from all pages every frame when active
-if (opcode_finder_active || opcode_finder_text != "") {
+// Rebuild the static palette search only when its query changes.
+if ((opcode_finder_active || opcode_finder_text != "")
+&& opcode_finder_cached_text != opcode_finder_text) {
+    opcode_finder_cached_text = opcode_finder_text;
     opcode_finder_matches = [];
     var _ft = string_upper(opcode_finder_text);
     if (_ft != "") {
@@ -266,6 +268,8 @@ if (opcode_finder_active || opcode_finder_text != "") {
     }
 }
 
+if (!opcode_finder_active && opcode_finder_text == "") opcode_finder_cached_text = undefined;
+
 // Click to activate
 var _finder_hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _finder_x1, _finder_y1, _finder_x2, _finder_y2);
 if (_finder_hov && mouse_check_button_pressed(mb_left)) {
@@ -279,6 +283,7 @@ if (!_finder_hov && mouse_check_button_pressed(mb_left) && opcode_finder_active)
     opcode_finder_active = false;
     opcode_finder_text   = "";
     opcode_finder_matches = [];
+    opcode_finder_cached_text = undefined;
 }
 
 // Background

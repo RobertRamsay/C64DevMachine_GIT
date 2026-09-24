@@ -1,8 +1,10 @@
 /// @desc Render Node (Unified Gutter, Stats, Out-dent, ORG & Comment Nodes)
 if obj_workspace_manager.code_editor_open or obj_asset_manager.viewer_open exit;
+if (scr_node_is_hidden(id)) exit;
 if (node_type == "COMMENT") scr_comment_sync_layout(id);
 if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
-scr_macro_sync_height(id);
+// Step restores macro heights, including hidden/off-screen nodes.
+// Draw must not repeat the HUD asset scan or cached-height writes.
 
 global.ui_click_consumed = (global.ui_click_block_timer > 0);
 // =============================================================
@@ -25,7 +27,7 @@ if (node_type == "COMMENT" && !global.comments_visible) exit;
 
 // Inside a folded ORG block — draw nothing. The fold is visual only, so this
 // node still compiles and still owns its address; it just is not on screen.
-if (scr_node_is_hidden(id)) exit;
+
 
 // Skip drawing if node is too small on screen to be useful
 var _screen_h = height / _cam_zoom;
@@ -289,7 +291,7 @@ var _raw_h = header_h + (array_length(instructions) * _line_gap) + _bottom_pad +
         height = (ceil(_raw_h / _G)+obj_workspace_manager.opcode_extra_height) * _G;
         break;
     } // end switch
-    if (variable_instance_exists(id, "macro_layout_height") && macro_layout_type == node_type)
+    if (macro_layout_type == node_type)
         height = macro_layout_height;
     cached_height = height;
 } else {
@@ -1915,7 +1917,7 @@ if (node_type == "LABEL") {
 if (macro_measure_active && macro_content_bottom > 24) {
     // Grid rounding supplies the remaining space; a large fixed pad adds a whole row.
     var _body_h = max(40, ceil((macro_content_bottom + 2) / 20) * 20);
-    if (!variable_instance_exists(id, "macro_layout_height") || macro_layout_type != node_type
+    if (macro_layout_type != node_type
     || macro_layout_height != _body_h) {
         macro_layout_type = node_type;
         macro_layout_height = _body_h;

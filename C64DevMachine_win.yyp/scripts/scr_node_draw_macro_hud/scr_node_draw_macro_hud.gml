@@ -209,7 +209,8 @@ function scr_node_draw_macro_hud(_draw_x, _y) {
 /// Keep macro body labels within the node, with optional space for a neighbour.
 /// Called in the node's draw context (x already includes the drawing indent).
 function scr_node_macro_text_l(_tx, _ty, _text, _limit = -1) {
-    var _row_h = string_height(L(_text));
+    var _label = L(_text);
+    var _row_h = string_height(_label);
     var _va = draw_get_valign();
     scr_macro_measure_bottom(_ty + ((_va == fa_top) ? _row_h : ((_va == fa_middle) ? _row_h / 2 : 0)));
     var _align = draw_get_halign();
@@ -220,7 +221,6 @@ function scr_node_macro_text_l(_tx, _ty, _text, _limit = -1) {
     if (_align == fa_center) _room = 2 * min(_tx - _left, _right - _tx);
     if (_limit >= 0) _room = min(_room, _limit);
     if (_room <= 0) return;
-    var _label = L(_text);
     var _scale = 1;
     var _text_width = string_width(_label);
     if (_text_width > _room) {
@@ -228,10 +228,17 @@ function scr_node_macro_text_l(_tx, _ty, _text, _limit = -1) {
         // squeezing them into unreadably narrow lettering. Source stays intact.
         _scale = max(0.85, _room / max(1, _text_width));
         if (_text_width * _scale > _room) {
-            while (string_length(_label) > 0 && string_width(_label + "...") * _scale > _room) {
-                _label = string_delete(_label, string_length(_label), 1);
+            // Find the fitting prefix without remeasuring every suffix of a
+            // long imported asset name on every frame.
+            var _lo = 0;
+            var _hi = string_length(_label);
+            while (_lo < _hi) {
+                var _mid = ceil((_lo + _hi) / 2);
+                if (string_width(string_copy(_label, 1, _mid) + "...") * _scale <= _room)
+                    _lo = _mid;
+                else _hi = _mid - 1;
             }
-            _label += "...";
+            _label = string_copy(_label, 1, _lo) + "...";
             if (string_width(_label) * _scale > _room) return;
         }
     }
@@ -275,15 +282,15 @@ function scr_macro_sync_height(_n) {
             }
         }
         scr_macro_apply_height(_n, 28 + _rows * 14 + 6);
-    } else if (variable_instance_exists(_n, "macro_layout_height")
-    && _n.macro_layout_type == _n.node_type) {
+    } else if (_n.macro_layout_type == _n.node_type
+    && (_n.height != _n.macro_layout_height || _n.cached_height != _n.macro_layout_height)) {
         scr_macro_apply_height(_n, _n.macro_layout_height);
     }
 }
 
 /// Observe content only, never node backgrounds or height-anchored footers.
 function scr_macro_measure_bottom(_bottom) {
-    if (variable_instance_exists(id, "macro_measure_active") && macro_measure_active)
+    if (macro_measure_active)
         macro_content_bottom = max(macro_content_bottom, _bottom - y);
 }
 
