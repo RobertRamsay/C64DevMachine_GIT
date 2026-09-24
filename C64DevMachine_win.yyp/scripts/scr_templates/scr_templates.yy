@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_templates",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_templates",
+  "parent":{
+    "name":"LOAD_SAVE",
+    "path":"folders/SCRIPTS/CORE/I_O/LOAD_SAVE.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

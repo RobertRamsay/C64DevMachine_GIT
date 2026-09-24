@@ -1189,3 +1189,7 @@ if (_saved_w > 0 && _saved_h > 0)
     window_set_size(_saved_w, _saved_h);
     window_set_position(_saved_x, _saved_y);
 }
+
+// Bundled project selection is handled outside Draw.
+template_pending = -1;
+template_waiting = -1;

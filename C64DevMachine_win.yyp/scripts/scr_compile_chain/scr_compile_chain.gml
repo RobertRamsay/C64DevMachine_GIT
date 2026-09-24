@@ -20256,7 +20256,7 @@ case "MACRO_MOVE_MEM": {
                                 continue;
                             }
                         }
-                        array_push(_list, _row);
+                        array_push(_list, [_row[0], array_length(_row) > 1 ? _row[1] : 0, _curr]);
                     }
                 } break;
 

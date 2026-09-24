@@ -571,12 +571,12 @@ if (shelf_page < p_count - 1) {
 /////////////////////////////////////////////////////////////////
 
 var _mbar_y      = 2;
-var _mbar_btn_w  = 179;
-var _mbar_btn_h  = 42;
+var _mbar_btn_w  = 143;
+var _mbar_btn_h  = 34;
 var _mbar_start_x = shelf_width + 60;
-var _menuitems =7;
+var _menuitems =8;
 var _menu_labels = [
-    "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TBA"
+    "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TEMPLATES"
 ];
 
 // Panel Style owns menu-bar chrome.
@@ -610,7 +610,7 @@ if (gui_menu_open == 4) {
     ];
     var _item_h_o   = 20;
     var _panel_w_o  = 220;
-    var _mbar_btn_gap_o = _mbar_btn_w + 4;
+    var _mbar_btn_gap_o = _mbar_btn_w + 3;
     var _panel_x_o  = _mbar_start_x + (4 * _mbar_btn_gap_o);
     var _panel_y_o  = _mbar_btn_h;
     var _panel_h_o  = array_length(_opt_list) * _item_h_o + 28;
@@ -951,7 +951,7 @@ if (gui_menu_open == 4) {
     }
 }
 
-var _mbar_btn_gap = _mbar_btn_w + 4;
+var _mbar_btn_gap = _mbar_btn_w + 3;
 
 /////////////////////////////////////////////////////////////////
 ///// EXTRA DROPDOWN (button 1) — only available outside LITE mode
@@ -978,7 +978,7 @@ if (gui_menu_open == 1 && !global.lite) {
     var _panel_w_e    = 200;
     var _slice_top_e  = 20;
     var _slice_bot_e  = 20;
-    var _mbar_btn_gap_e = _mbar_btn_w + 4;
+    var _mbar_btn_gap_e = _mbar_btn_w + 3;
     var _panel_x_e    = _mbar_start_x + (1 * _mbar_btn_gap_e);
     var _panel_y_e    = _mbar_btn_h;
     var _panel_h_e    = array_length(_extra_list) * _item_h_e + _slice_top_e + _slice_bot_e;
@@ -1050,7 +1050,7 @@ if (gui_menu_open == 2) {
     var _panel_w_v  = 200;
     var _slice_top_v = 20;
     var _slice_bot_v = 20;
-    var _mbar_btn_gap_v = _mbar_btn_w + 4;
+    var _mbar_btn_gap_v = _mbar_btn_w + 3;
     var _panel_x_v  = _mbar_start_x + (2 * _mbar_btn_gap_v);
     var _panel_y_v  = _mbar_btn_h;
     var _panel_h_v  = array_length(_vars_list) * _item_h_v + _slice_top_v + _slice_bot_v;
@@ -1105,7 +1105,7 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
     var _bdisabled = (_bi == 1 && global.lite);
 
     draw_sprite_ext(spr_menu_button, (uiChromeStyle == 0) ? paletteStyle : sprite_get_number(spr_menu_button)-1,
-                    _bx, _by, 1, 1, 0, c_white, 1);
+                    _bx, _by, _mbar_btn_w / 179, _mbar_btn_h / 42, 0, c_white, 1);
 
     var _bhover = (!_bdisabled &&
                    gui_mouse_x >= _bx && gui_mouse_x < _bx + _mbar_btn_w &&
@@ -1114,14 +1114,14 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
         var _menu_overlay_additive = (uiChromeStyle == 0);
         if (_menu_overlay_additive) gpu_set_blendmode(bm_add);
         draw_sprite_ext(spr_menu_button, (uiChromeStyle == 0) ? paletteStyle : sprite_get_number(spr_menu_button)-1,
-                        _bx, _by, 1, 1, 0, c_white, 0.2);
+                        _bx, _by, _mbar_btn_w / 179, _mbar_btn_h / 42, 0, c_white, 0.2);
         if (_menu_overlay_additive) gpu_set_blendmode(bm_normal);
     }
 
     draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_center);
     draw_set_color(_bdisabled ? make_color_rgb(90, 90, 90) : (_bopen ? c_yellow : c_white));
-    draw_text_l(_bx + _mbar_btn_w * 0.5, _by + _mbar_btn_h * 0.5 - 6, _menu_labels[_bi]);
+    draw_text_transformed_l(_bx + _mbar_btn_w * 0.5, _by + _mbar_btn_h * 0.5 - 5, _menu_labels[_bi], 0.8, 0.8, 0);
     draw_set_halign(fa_left);
 
     // Click to toggle
@@ -1132,6 +1132,33 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
             gui_menu_open = _bi;
         }
     }
+}
+
+/////////////////////////////////////////////////////////////////
+///// TEMPLATES — bundled native projects; loading is deferred to Step.
+if (gui_menu_open == 7) {
+    var _tx = min(_mbar_start_x + 7 * _mbar_btn_gap, global.gui_w - 230);
+    var _ty = _mbar_btn_h;
+    var _tw = 230;
+    var _th = 10 * 24 + 24;
+    draw_sprite_stretched(spr_glassSlice, niceSliceFrm, _tx, _ty, _tw, _th);
+    draw_set_font_l(fnt_C64_Angled);
+    draw_set_halign(fa_left);
+    for (var _ti = 0; _ti < 10; _ti++) {
+        var _entry = scr_template_catalog(_ti);
+        var _disabled = global.lite && _entry.pro;
+        var _iy = _ty + 12 + _ti * 24;
+        var _hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _tx, _iy, _tx + _tw, _iy + 23);
+        draw_set_color(_disabled ? c_gray : (_hov ? c_yellow : c_white));
+        draw_text_l(_tx + 10, _iy + 3, _entry.title);
+        if (_hov && !_disabled && mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
+            template_pending = _ti;
+            global.ui_click_consumed = true;
+            gui_menu_open = -1;
+        }
+    }
+    var _inside = point_in_rectangle(gui_mouse_x, gui_mouse_y, _tx, _ty, _tx + _tw, _ty + _th);
+    if (mouse_check_button_pressed(mb_left) && !_inside && gui_mouse_y >= _mbar_y + _mbar_btn_h) gui_menu_open = -1;
 }
 
 /////////////////////////////////////////////////////////////////
@@ -1158,7 +1185,7 @@ if (gui_menu_open == 3) {
 
     var _item_h_p   = 20;
     var _panel_w_p  = 220;
-    _mbar_btn_gap = _mbar_btn_w + 4;
+    _mbar_btn_gap = _mbar_btn_w + 3;
     var _panel_x_p  = _mbar_start_x + (3 * _mbar_btn_gap);
     var _panel_y_p  = _mbar_btn_h;
     var _panel_h_p  = array_length(_proj_list) * _item_h_p + 28;
@@ -1388,7 +1415,7 @@ if (gui_menu_open == 5) {
 
     var _item_h_d   = 20;
     var _panel_w_d  = 220;
-    var _mbar_btn_gap_d = _mbar_btn_w + 4;
+    var _mbar_btn_gap_d = _mbar_btn_w + 3;
     var _panel_x_d  = _mbar_start_x + (5 * _mbar_btn_gap_d);
     var _panel_y_d  = _mbar_btn_h;
     var _panel_h_d  = array_length(_docs_list) * _item_h_d + 28;
@@ -1460,7 +1487,7 @@ if (gui_menu_open == 6) {
 	
     var _item_h_i   = 20;
     var _panel_w_i  = 220;
-    var _mbar_btn_gap_i = _mbar_btn_w + 4;
+    var _mbar_btn_gap_i = _mbar_btn_w + 3;
     var _panel_x_i  = _mbar_start_x + (6 * _mbar_btn_gap_i);
     var _panel_y_i  = _mbar_btn_h;
     var _panel_h_i  = array_length(_imp_list) * _item_h_i + 28;
@@ -1580,7 +1607,7 @@ if (gui_menu_open == 0) {
     var _panel_w    = 200;
     var _slice_top  = 20;
     var _slice_bot  = 20;
-    _mbar_btn_gap = _mbar_btn_w + 4;
+    _mbar_btn_gap = _mbar_btn_w + 3;
     var _panel_x    = _mbar_start_x;           // aligns with MACROS button
     var _panel_y    = _mbar_btn_h;             // sits just below the menu bar
     var _panel_h    = array_length(_mac_list) * _item_h + _slice_top + _slice_bot;

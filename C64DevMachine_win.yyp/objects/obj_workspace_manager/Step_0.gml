@@ -1,3 +1,4 @@
+scr_template_step();
 // First frame only: offer back an emergency save if the last run crashed.
 // In Step rather than Create so everything the loader touches already exists.
 // First run only: ask for a language. The crash-recovery offer waits until
