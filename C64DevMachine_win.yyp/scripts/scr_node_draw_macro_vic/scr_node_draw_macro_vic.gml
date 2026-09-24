@@ -128,6 +128,8 @@ function scr_node_draw_macro_vic(_draw_x) {
         // BG3 is tight, might need a second color row or wider node
     }
     
+    // Swatches are drawn by a shared helper, so include their bottom explicitly.
+    scr_macro_measure_bottom(_swy + _sw);
     _fy += _line_h + 10;
     node_height = _fy - y + 10;
 }

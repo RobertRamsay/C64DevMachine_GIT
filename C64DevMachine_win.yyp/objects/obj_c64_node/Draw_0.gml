@@ -1913,7 +1913,8 @@ if (node_type == "LABEL") {
 // Schedule the newly measured height for the next layout pass. Updating only
 // after this draw avoids changing the geometry underneath already drawn controls.
 if (macro_measure_active && macro_content_bottom > 24) {
-    var _body_h = max(40, ceil((macro_content_bottom + 8) / 20) * 20);
+    // Grid rounding supplies the remaining space; a large fixed pad adds a whole row.
+    var _body_h = max(40, ceil((macro_content_bottom + 2) / 20) * 20);
     if (!variable_instance_exists(id, "macro_layout_height") || macro_layout_type != node_type
     || macro_layout_height != _body_h) {
         macro_layout_type = node_type;
