@@ -56,6 +56,7 @@ function scr_boot_resident_ranges() {
         // image through MACRO_HUD, already counted as that node's size.
         if (_a.type == "HUD") continue;
         if (_a.type == "ROOM_MAP") continue;
+        if (_a.type == "SPRITE_MASK") continue;
         if (ds_map_exists(_deferred, _a.name)) continue;
         if (!buffer_exists(_a.buffer)) continue;
 

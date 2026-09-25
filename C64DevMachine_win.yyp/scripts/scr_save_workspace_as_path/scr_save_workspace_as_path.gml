@@ -252,6 +252,9 @@ if (instance_exists(obj_asset_manager)) {
         }
 		
 		
+		 if (_a.type == "SPRITE_MASK") {
+		     _meta_out = scr_sprmask_save_meta(_a);
+		 }
 		 if (_a.type == "ROOM_MAP") {
 		     // Rooms, exits and arrival points ARE the asset; the rest is editor state.
 		     _meta_out.rooms    = _a.meta.rooms;

@@ -1605,6 +1605,7 @@ if (gui_menu_open == 0) {
         { title: "ANIMATE",      type: "MACRO_ANIM"          },
         { title: "ANIM SET",     type: "MACRO_ANIM_SET"      },
         { title: "ROOMS",        type: "MACRO_ROOMS"         },
+        { title: "SPRITE MASK",  type: "MACRO_SPR_MASK"      },
         { title: "FLIP X",       type: "MACRO_FLIP_X"        },
         { title: "--- SOUND ---", type: "HEADER"              },
         { title: "SID",          type: "MACRO_SID"           },

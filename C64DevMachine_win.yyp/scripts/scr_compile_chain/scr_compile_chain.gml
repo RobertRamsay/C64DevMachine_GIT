@@ -14112,6 +14112,11 @@ case "MACRO_COLL_LINE": {
     array_push(_list, ["label", _skip]);
 } break;
 
+// MACRO_SPR_MASK — foreground masking of sprites (scr_sprite_mask)
+case "MACRO_SPR_MASK": {
+    scr_sprmask_emit(_curr, _list);
+} break;
+
 // MACRO_ROOMS — room tables + start/door/enter (scr_room_map)
 case "MACRO_ROOMS": {
     scr_rooms_emit(_curr, _list);

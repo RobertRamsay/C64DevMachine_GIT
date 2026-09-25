@@ -471,6 +471,24 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_SPR_MASK": {
+            title: "SPRITE MASK",
+            lines: [
+                "Hides sprites behind foreground parts of the scene.",
+                "SOURCE = a ROOM_MAP (the current room's MASK, fetched",
+                "by ROOMS into MASK RAM) or one SPRITE_MASK asset.",
+                "",
+                "JSR <alias>_sub once per frame, after animating.",
+                "It ANDs each listed slot's frame with the mask under",
+                "the sprite into a double-buffered WORK block (2 x 64",
+                "bytes per slot, in the sprites' VIC bank) and points",
+                "the slot at it; unmasked, the real frames come back.",
+                "",
+                "HOT Y = the feet row in the sprite: a masked cell only",
+                "hides the sprite while the feet are above its DEPTH."
+            ]
+        },
+
         "MACRO_ROOMS": {
             title: "ROOMS",
             lines: [

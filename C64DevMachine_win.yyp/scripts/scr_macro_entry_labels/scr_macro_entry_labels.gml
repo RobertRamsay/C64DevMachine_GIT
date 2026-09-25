@@ -101,6 +101,11 @@ function scr_macro_entry_labels() {
                 _out[$ _an_alias + "_reset"] = true;
             break;
 
+            case "MACRO_SPR_MASK":
+                scr_sprmask_node_defaults(id);
+                _out[$ anim_alias + "_sub"] = true;
+            break;
+
             case "MACRO_ROOMS":
                 if (string(instructions[0][1]) != "") {
                     var _rm_px = scr_room_map_prefix(string(instructions[0][1]));

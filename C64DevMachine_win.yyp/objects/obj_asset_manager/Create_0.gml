@@ -91,6 +91,7 @@ asset_types = [
 	"LINE_COLL",
 	"HUD",
 	"ROOM_MAP",
+	"SPRITE_MASK",
 ];
 // -------------------------------------------------------
 // ASSET VIEWER
@@ -122,7 +123,8 @@ type_colours = {
     META_MAP      : make_color_rgb( 80, 140, 255),
     LINE_COLL     : make_color_rgb(255, 100, 100),
     HUD           : make_color_rgb( 90, 220, 190),
-    ROOM_MAP      : make_color_rgb(250, 200,  60)
+    ROOM_MAP      : make_color_rgb(250, 200,  60),
+    SPRITE_MASK   : make_color_rgb(230, 100, 230)
 };
 // -------------------------------------------------------
 // NAME EDITING

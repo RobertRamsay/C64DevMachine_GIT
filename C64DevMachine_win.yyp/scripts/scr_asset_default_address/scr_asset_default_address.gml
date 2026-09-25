@@ -40,6 +40,7 @@ function scr_asset_default_address(_type) {
         // colours inline on the spine, so it owns no address of its own.
         case "HUD":         return 0x0000;
         case "ROOM_MAP":    return 0x0000;
+        case "SPRITE_MASK": return 0x0000;
         case "BITMAP_BUILDER": return 0x0000;
         case "LOAD_ORG":   return 0x0000;
         default:           return 0x2400;

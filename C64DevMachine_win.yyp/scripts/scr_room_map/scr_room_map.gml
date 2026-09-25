@@ -28,7 +28,7 @@ function scr_room_map_new_room(_name, _mx, _my) {
     for (var _e = 0; _e < ROOMMAP_EXITS; _e++) {
         array_push(_ex, { to: -1, ax: 160, ay: 120 });
     }
-    return { name: _name, bmp: "", coll: "", mx: _mx, my: _my, sx: 160, sy: 120, exits: _ex };
+    return { name: _name, bmp: "", coll: "", mask: "", mx: _mx, my: _my, sx: 160, sy: 120, exits: _ex };
 }
 
 /// Seed a complete meta (also used under a loaded file's saved keys).
@@ -472,6 +472,15 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         _m.pick_mode = "COLL";
         _m.pick_scroll = 0;
     }
+    _qy += 20;
+    draw_set_color(_c_lbl);
+    draw_text_l(_qx, _qy + 3, "MASK");
+    var _mkl = _ro.mask;
+    if (_mkl == "") { _mkl = "(none)"; }
+    if (_button(_qx + 70, _qy, _qw - 70, 16, string_copy(_mkl, 1, 52), make_color_rgb(70, 30, 70), _mx, _my)) {
+        _m.pick_mode = "MASK";
+        _m.pick_scroll = 0;
+    }
     _qy += 24;
 
     // ── Picker list (replaces the rest of the panel while open) ──
@@ -487,9 +496,11 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
                 }
             }
         } else {
+            var _want = "LINE_COLL";
+            if (_m.pick_mode == "MASK") { _want = "SPRITE_MASK"; }
             for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
                 var _a = ds_list_find_value(_am.asset_list, _i);
-                if (_a.type == "LINE_COLL") { array_push(_items, _a.name); }
+                if (_a.type == _want) { array_push(_items, _a.name); }
             }
         }
         var _rows = floor((_cvy2 - _qy - 250) / 16);
@@ -514,6 +525,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             if (_lbl2 == "") { _lbl2 = "(none)"; }
             var _cur = _ro.bmp;
             if (_m.pick_mode == "COLL") { _cur = _ro.coll; }
+            if (_m.pick_mode == "MASK") { _cur = _ro.mask; }
             if (_items[_ii] == _cur) {
                 draw_set_color(c_lime);
             } else {
@@ -523,6 +535,8 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             if (_rh && _press) {
                 if (_m.pick_mode == "BMP") {
                     _ro.bmp = _items[_ii];
+                } else if (_m.pick_mode == "MASK") {
+                    _ro.mask = _items[_ii];
                 } else {
                     _ro.coll = _items[_ii];
                 }
@@ -632,6 +646,12 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_surface_stretched(_ps, _qx, _qy, _pw, _ph);
         gpu_set_tex_filter(_fl3);
     }
+    // Mask layer of the shown room
+    var _mka = scr_sprmask_find_asset(_rooms[_show_room].mask);
+    if (!is_undefined(_mka)) {
+        scr_sprmask_overlay(_mka.meta);
+        draw_surface_stretched(_mka.meta.ov_surf, _qx, _qy, _pw, _ph);
+    }
     // Collider lines of the shown room, labelled by type
     var _lc = scr_line_coll_find_asset(_rooms[_show_room].coll);
     if (!is_undefined(_lc) && variable_struct_exists(_lc.meta, "lines")) {
@@ -680,7 +700,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 // --------------------------------------------------------------------
 function scr_rooms_node_defaults(_n) {
     var _inst = _n.instructions[0];
-    var _def  = ["macro_rooms", "", "", "0", 12, 20, "", 1];
+    var _def  = ["macro_rooms", "", "", "0", 12, 20, "", 1, 0xC000];
     while (array_length(_inst) < array_length(_def)) {
         array_push(_inst, _def[array_length(_inst)]);
     }
@@ -715,6 +735,7 @@ function scr_node_draw_macro_rooms(_draw_x) {
     var _as = "OFF";
     if (real(_i[7]) == 1) { _as = "ON - RUNS _start HERE"; }
     _row(y + 128, "AUTO:", _as, _vx, _x2, c_white);
+    _row(y + 148, "MASK RAM:", scr_sprmask_hex(_i[8]), _vx, _x2, make_color_rgb(220, 120, 240));
 
     var _p = "RM_?_";
     if (string(_i[1]) != "") { _p = scr_room_map_prefix(string(_i[1])); }
@@ -723,11 +744,11 @@ function scr_node_draw_macro_rooms(_draw_x) {
     if (!is_undefined(_rm)) { _cnt = array_length(_rm.meta.rooms); }
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(140, 140, 140));
-    scr_node_macro_text_l(_lx, y + 150, string(_cnt) + " ROOMS");
+    scr_node_macro_text_l(_lx, y + 170, string(_cnt) + " ROOMS");
     draw_set_color(c_yellow);
-    scr_node_macro_text_l(_lx, y + 164, _p + "start");
-    scr_node_macro_text_l(_lx, y + 178, _p + "door  (A=TYPE)");
-    scr_node_macro_text_l(_lx, y + 192, _p + "enter");
+    scr_node_macro_text_l(_lx, y + 184, _p + "start");
+    scr_node_macro_text_l(_lx, y + 198, _p + "door  (A=TYPE)");
+    scr_node_macro_text_l(_lx, y + 212, _p + "enter");
 }
 
 function scr_node_step_macro_rooms(_draw_x) {
@@ -766,6 +787,7 @@ function scr_node_step_macro_rooms(_draw_x) {
     if (_in(y + 88, _vx, _vx + 40)) { scr_anim_set_open_field(id, 4, string(instructions[0][4])); exit; }
     if (_in(y + 88, _vx + 66, _x2)) { scr_anim_set_open_field(id, 5, string(instructions[0][5])); exit; }
     if (_in(y + 108, _vx, _x2))     { scr_anim_set_open_field(id, 6, string(instructions[0][6])); exit; }
+    if (_in(y + 148, _vx, _x2)) { scr_anim_set_open_field(id, 8, scr_sprmask_hex(instructions[0][8])); exit; }
     if (_in(y + 128, _vx, _x2)) {
         if (real(instructions[0][7]) == 1) {
             instructions[0][7] = 0;
@@ -801,6 +823,9 @@ function scr_rooms_commit(_t, _idx, _input) {
             if ((_o >= 48 && _o <= 57) || (_o >= 65 && _o <= 90) || (_o >= 97 && _o <= 122) || _ch == "_") { _h += _ch; }
         }
         _t.instructions[0][6] = _h;
+    } else if (_idx == 8) {
+        var _mr = scr_sprmask_parse_num(_input);
+        if (_mr >= 0) { _t.instructions[0][8] = _mr & 0xFFFF; }
     }
     _t.height_dirty = true;
     global.addresses_dirty = true;
@@ -843,8 +868,10 @@ function scr_rooms_emit(_id, _list) {
     // ── Per-room columns ──
     var _t = {
         dma: [], col: [], cb: [], cl: [], ch: [], mb: [], ml: [], mh: [], dl: [], dh: [],
-        ll: [], lh: [], dd: [], d18: [], d16: [], bg: [], sxl: [], sxh: [], sy: [], m6: []
+        ll: [], lh: [], dd: [], d18: [], d16: [], bg: [], sxl: [], sxh: [], sy: [], m6: [],
+        kh: [], kb: [], kl: [], kx: [], kll: [], klh: []
     };
+    var _mask_ram = real(_inst[8]) & 0xFFFF;
     var _coll_lbl = [];
     var _dto = [];
     var _dxl = [];
@@ -906,6 +933,30 @@ function scr_rooms_emit(_id, _list) {
         array_push(_t.sxh, (_spx >> 8) & 0x01);
         array_push(_t.sy, _spy & 0xFF);
         array_push(_t.m6, _r * ROOMMAP_EXITS);
+        // Sprite mask blob (SPRITE_MASK asset linked in the same REU)
+        var _mk = scr_sprmask_find_asset(_ro.mask);
+        var _mlink = undefined;
+        if (!is_undefined(_mk) && !is_undefined(_man) && variable_struct_exists(_man, "linked_assets")) {
+            for (var _li = 0; _li < array_length(_man.linked_assets); _li++) {
+                if (_man.linked_assets[_li].asset_name == _ro.mask) { _mlink = _man.linked_assets[_li]; break; }
+            }
+            if (is_undefined(_mlink)) {
+                show_debug_message("MACRO_ROOMS: room " + string(_r) + " mask [" + _ro.mask + "] is not in REU [" + _rm.meta.reu + "] - no mask");
+            }
+        }
+        var _mat = 0;
+        var _mln = 0;
+        if (!is_undefined(_mlink)) {
+            scr_sprmask_flush(_mk);
+            _mat = real(_mlink.reu_address);
+            _mln = buffer_get_size(_mk.buffer);
+        }
+        array_push(_t.kh, !is_undefined(_mlink));
+        array_push(_t.kb, (_mat >> 16) & 0xFF);
+        array_push(_t.kl, _mat & 0xFF);
+        array_push(_t.kx, (_mat >> 8) & 0xFF);
+        array_push(_t.kll, _mln & 0xFF);
+        array_push(_t.klh, (_mln >> 8) & 0xFF);
         var _lc = scr_line_coll_find_asset(_ro.coll);
         if (is_undefined(_lc)) {
             array_push(_coll_lbl, _p + "nocoll");
@@ -1026,6 +1077,29 @@ function scr_rooms_emit(_id, _list) {
     array_push(_list, ["lda_imm", 0x91,        _id]);
     array_push(_list, ["sta_abs", 0xDF01,      _id]);
     array_push(_list, ["label",   _p + "nodma"]);
+    // Sprite mask for this room -> MASK RAM (mask_on tells MACRO_SPR_MASK)
+    array_push(_list, ["lda_abx", _p + "kh",   _id]);
+    array_push(_list, ["sta_lab", _p + "mask_on", _id]);
+    array_push(_list, ["beq",     _p + "nomask", _id]);
+    array_push(_list, ["lda_abx", _p + "kb",   _id]);
+    array_push(_list, ["sta_abs", 0xDF06,      _id]);
+    array_push(_list, ["lda_abx", _p + "kl",   _id]);
+    array_push(_list, ["sta_abs", 0xDF04,      _id]);
+    array_push(_list, ["lda_abx", _p + "kx",   _id]);
+    array_push(_list, ["sta_abs", 0xDF05,      _id]);
+    array_push(_list, ["lda_imm", _mask_ram & 0xFF, _id]);
+    array_push(_list, ["sta_abs", 0xDF02,      _id]);
+    array_push(_list, ["lda_imm", (_mask_ram >> 8) & 0xFF, _id]);
+    array_push(_list, ["sta_abs", 0xDF03,      _id]);
+    array_push(_list, ["lda_abx", _p + "kll",  _id]);
+    array_push(_list, ["sta_abs", 0xDF07,      _id]);
+    array_push(_list, ["lda_abx", _p + "klh",  _id]);
+    array_push(_list, ["sta_abs", 0xDF08,      _id]);
+    array_push(_list, ["lda_imm", 0x00,        _id]);
+    array_push(_list, ["sta_abs", 0xDF0A,      _id]);
+    array_push(_list, ["lda_imm", 0x91,        _id]);
+    array_push(_list, ["sta_abs", 0xDF01,      _id]);
+    array_push(_list, ["label",   _p + "nomask"]);
     // VIC bank, memory pointers, mode, background
     array_push(_list, ["lda_abx", _p + "dd",   _id]);
     array_push(_list, ["sta_lab", _p + "tmp",  _id]);
@@ -1069,7 +1143,7 @@ function scr_rooms_emit(_id, _list) {
     array_push(_list, ["rts",     0,      _id]);
 
     // ── State ──
-    var _state = ["ax", "axh", "ay", "tmp", "coll_lo", "coll_hi"];
+    var _state = ["ax", "axh", "ay", "tmp", "coll_lo", "coll_hi", "mask_on"];
     for (var _k = 0; _k < array_length(_state); _k++) {
         array_push(_list, ["label", _p + _state[_k]]);
         array_push(_list, ["byte",  0, _id]);

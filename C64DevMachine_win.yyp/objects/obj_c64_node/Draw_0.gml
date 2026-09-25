@@ -270,7 +270,8 @@ if (height_dirty) {
 	case "MACRO_COLL_LINE":  height = _G * 7;   break;
     case "MACRO_ANIM":       height = _G * 18;  break;
     case "MACRO_ANIM_SET":   height = scr_anim_set_height(id); break;
-    case "MACRO_ROOMS":      height = _G * 11;  break;
+    case "MACRO_ROOMS":      height = _G * 12;  break;
+    case "MACRO_SPR_MASK":   height = _G * 9;   break;
     case "MACRO_SFX":        height = _G * 6;   break;
 	case "MACRO_CODE":       height = _G * 5;   break;
     case "GET_VAR":     height = _G * 5;  break;         
@@ -329,7 +330,8 @@ if (label_picker_open) {
 
     if (label_picker_mode == "BYTE_ASSET" || label_picker_mode == "TEXT_ASSET"
      || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET"
-     || label_picker_mode == "HUD_ASSET" || label_picker_mode == "ROOM_ASSET") {
+     || label_picker_mode == "HUD_ASSET" || label_picker_mode == "ROOM_ASSET"
+     || label_picker_mode == "MASK_SRC") {
         // One picker, four asset types. TEXT_ASSET lists TEXT_DATA (SID SOUND
         // note lists, MACRO_PRINT text); BYTE_ASSET lists BYTE_DATA;
         // SOUND_ASSET lists SOUND_EDITOR songs (MACRO_SID_SONG);
@@ -351,6 +353,9 @@ if (label_picker_open) {
         } else if (label_picker_mode == "ROOM_ASSET") {
             _want_type = "ROOM_MAP";
             _pick_hdr  = "ROOM_MAP ASSETS";
+        } else if (label_picker_mode == "MASK_SRC") {
+            _want_type = "SPRITE_MASK";
+            _pick_hdr  = "ROOM MAPS / MASKS";
         }
         var _px      = draw_x + width + 8;
         var _py      = y + 36;
@@ -366,7 +371,7 @@ if (label_picker_open) {
             var _am = obj_asset_manager;
             for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
                 var _a = _am.asset_list[| _ai];
-                if (_a.type == _want_type || (_want_type == "LINE_COLL" && _a.type == "ROOM_MAP")) array_push(_alist, _a.name);
+                if (_a.type == _want_type || ((_want_type == "LINE_COLL" || _want_type == "SPRITE_MASK") && _a.type == "ROOM_MAP")) array_push(_alist, _a.name);
             }
         }
         var _count = array_length(_alist);
@@ -651,6 +656,10 @@ var _active_list = [];
                 if (node_type == "MACRO_ANIM_SET") {
                     array_push(other.label_picker_list, scr_anim_set_alias(id) + "_sub");
                     array_push(other.label_picker_list, scr_anim_set_alias(id) + "_reset");
+                }
+                if (node_type == "MACRO_SPR_MASK") {
+                    scr_sprmask_node_defaults(id);
+                    array_push(other.label_picker_list, anim_alias + "_sub");
                 }
                 if (node_type == "MACRO_ROOMS" && string(instructions[0][1]) != "") {
                     var _rmpx = scr_room_map_prefix(string(instructions[0][1]));
@@ -1001,6 +1010,7 @@ switch (node_type) {
 	case "MACRO_COLL_ADV":    _head_col = is_connected ? make_color_rgb(220, 100, 40) : make_color_rgb(110, 50, 20); break;
     case "MACRO_ANIM":        _head_col = is_connected ? make_color_rgb( 60,180,  60) : make_color_rgb( 30, 90,  30); break;
     case "MACRO_ANIM_SET":    _head_col = is_connected ? make_color_rgb( 40,160, 110) : make_color_rgb( 20, 80,  55); break;
+    case "MACRO_SPR_MASK":    _head_col = is_connected ? make_color_rgb(190, 70, 190) : make_color_rgb( 95, 35,  95); break;
     case "MACRO_ROOMS":       _head_col = is_connected ? make_color_rgb(200,150,  40) : make_color_rgb(100, 75,  20); break;
     case "MACRO_SFX":         _head_col = is_connected ? make_color_rgb(255,160,  40) : make_color_rgb(120, 70,  10); break;
 	case "MACRO_CODE":        _head_col = is_connected ? make_color_rgb( 50,140, 100) : make_color_rgb( 25, 70,  50); break;
@@ -1577,6 +1587,7 @@ if (_lod_body) switch (node_type) {
 	case "MACRO_ANIM":        scr_node_draw_macro_anim(draw_x);      break;
 	case "MACRO_ANIM_SET":    scr_node_draw_macro_anim_set(draw_x);  break;
 	case "MACRO_ROOMS":       scr_node_draw_macro_rooms(draw_x);     break;
+	case "MACRO_SPR_MASK":    scr_node_draw_macro_spr_mask(draw_x);  break;
 	case "MACRO_SFX":         scr_node_draw_macro_sfx(draw_x);       break;
 	case "MACRO_CODE":        scr_node_draw_macro_code(draw_x, y);   break;   
     case "ORG": {

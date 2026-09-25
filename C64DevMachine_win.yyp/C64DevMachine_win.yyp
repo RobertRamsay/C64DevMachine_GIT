@@ -1318,6 +1318,7 @@
     {"id":{"name":"scr_resolve_vice_path","path":"scripts/scr_resolve_vice_path/scr_resolve_vice_path.yy",},},
     {"id":{"name":"scr_reu_support","path":"scripts/scr_reu_support/scr_reu_support.yy",},},
     {"id":{"name":"scr_room_map","path":"scripts/scr_room_map/scr_room_map.yy",},},
+    {"id":{"name":"scr_sprite_mask","path":"scripts/scr_sprite_mask/scr_sprite_mask.yy",},},
     {"id":{"name":"scr_safe_num","path":"scripts/scr_safe_num/scr_safe_num.yy",},},
     {"id":{"name":"scr_save_workspace_as_path","path":"scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.yy",},},
     {"id":{"name":"scr_save_workspace_as","path":"scripts/scr_save_workspace_as/scr_save_workspace_as.yy",},},

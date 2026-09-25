@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_sprite_mask",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_sprite_mask",
+  "parent":{
+    "name":"MACROS",
+    "path":"folders/SCRIPTS/MACROS.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

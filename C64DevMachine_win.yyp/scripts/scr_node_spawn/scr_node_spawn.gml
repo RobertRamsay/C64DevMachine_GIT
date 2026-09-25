@@ -972,6 +972,13 @@ case "LABEL": {
         // -------------------------------------------------------
         // MACRO_ROOMS — room loader / door router for a ROOM_MAP asset
         // -------------------------------------------------------
+        case "MACRO_SPR_MASK":
+            _n.node_title   = "SPRITE MASK";
+            _n.instructions = [["macro_spr_mask", "", "0", 20, 0x7F00, 0xF3]];
+            _n.pc_address   = global.start_pc;
+            with (_n) { event_user(0); }
+            break;
+
         case "MACRO_ROOMS":
             _n.node_title   = "ROOMS";
             _n.instructions = [["macro_rooms", "", "", "0", 12, 20, "", 1]];
