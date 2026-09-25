@@ -281,6 +281,13 @@ org_uid          = -1;
 wire_out_target  = -1;
 wire_in_source   = -1;
 org_prev_ambiguous = false;  // proxy ORG sensed 2+ tied preceding ORGs
+org_sensed_daddy   = noone;  // chain root this proxy ORG sensed as its predecessor
+org_amb_partner    = noone;  // another unwired proxy ORG sensing the same predecessor
+amb_btn_live       = false;  // [WIRE THEM] button drawn last frame
+amb_btn_x1         = 0;
+amb_btn_y1         = 0;
+amb_btn_x2         = 0;
+amb_btn_y2         = 0;
 wire_dragging_out = false;
 wire_dragging_in  = false;
 

@@ -26,6 +26,45 @@ if (global.showcode_mouse_over && !is_dragging) exit;
 // a hidden node being interfered with in the empty space its parent leaves.
 if (scr_node_is_hidden(id)) exit;
 
+// [WIRE THEM] — resolve a shared-predecessor pair by wiring left → right
+// (top → bottom breaks a tie). Falls back to the reverse direction when the
+// first ORG's output is already wired elsewhere.
+if (node_type == "ORG" && amb_btn_live && instance_exists(org_amb_partner) &&
+    mouse_check_button_pressed(mb_left) &&
+    point_in_rectangle(mouse_x, mouse_y, amb_btn_x1, amb_btn_y1, amb_btn_x2, amb_btn_y2)) {
+    var _wa = id;
+    var _wb = org_amb_partner;
+    var _w_first  = _wa;
+    var _w_second = _wb;
+    if (_wb.x < _wa.x) {
+        _w_first  = _wb;
+        _w_second = _wa;
+    } else if (_wb.x == _wa.x && _wb.y < _wa.y) {
+        _w_first  = _wb;
+        _w_second = _wa;
+    }
+    var _w_src = noone;
+    var _w_dst = noone;
+    if (_w_first.wire_out_target == -1) {
+        _w_src = _w_first;
+        _w_dst = _w_second;
+    } else if (_w_second.wire_out_target == -1) {
+        _w_src = _w_second;
+        _w_dst = _w_first;
+    }
+    if (_w_src != noone) {
+        _w_src.wire_out_target = _w_dst.org_uid;
+        _w_dst.wire_in_source  = _w_src.org_uid;
+        _wa.org_amb_partner    = noone;
+        _wb.org_amb_partner    = noone;
+        amb_btn_live           = false;
+        global.addresses_dirty = true;
+        global.undo_dirty      = true;
+        scr_c64_update_addresses();
+    }
+    exit;
+}
+
 // The pointer is on an ORG fold tab — the click belongs to the tab, not to the
 // ORG node underneath it, which would otherwise start a drag on the same press.
 if (global.org_collapse_hot != noone && !is_dragging) exit;

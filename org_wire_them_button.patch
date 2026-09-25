@@ -1,0 +1,199 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+index 963b9cf..96c9a9c 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+@@ -281,6 +281,13 @@ org_uid          = -1;
+ wire_out_target  = -1;
+ wire_in_source   = -1;
+ org_prev_ambiguous = false;  // proxy ORG sensed 2+ tied preceding ORGs
++org_sensed_daddy   = noone;  // chain root this proxy ORG sensed as its predecessor
++org_amb_partner    = noone;  // another unwired proxy ORG sensing the same predecessor
++amb_btn_live       = false;  // [WIRE THEM] button drawn last frame
++amb_btn_x1         = 0;
++amb_btn_y1         = 0;
++amb_btn_x2         = 0;
++amb_btn_y2         = 0;
+ wire_dragging_out = false;
+ wire_dragging_in  = false;
+ 
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 7e8c9b5..103dc17 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -1084,6 +1084,71 @@ if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTE
+         draw_set_valign(fa_top);
+     }
+ 
++    // Shared predecessor warning — line to partner + [WIRE THEM] button.
++    // Drawn once per pair, by the partner with the lower instance id.
++    amb_btn_live = false;
++    if (proxy && !_in_wired && instance_exists(org_amb_partner) && real(id) < real(org_amb_partner)) {
++        var _pa      = org_amb_partner;
++        var _pa_x    = _pa.x + _pa.x_indent + (width * 0.5);
++        var _pa_y    = _pa.y + (header_h * 0.5);
++        var _me_x    = draw_x + (width * 0.5);
++        var _me_y    = _dot_y;
++        var _sp_puls = abs(sin(current_time * 0.006));
++        var _sp_col  = merge_colour(c_red, c_yellow, _sp_puls);
++
++        // Dashed connector
++        draw_set_color(_sp_col);
++        var _sp_len  = point_distance(_me_x, _me_y, _pa_x, _pa_y);
++        var _sp_dir  = point_direction(_me_x, _me_y, _pa_x, _pa_y);
++        var _sp_step = 10;
++        for (var _sd = 0; _sd < _sp_len; _sd += _sp_step * 2) {
++            var _sd2 = min(_sd + _sp_step, _sp_len);
++            draw_line_width(_me_x + lengthdir_x(_sd, _sp_dir),  _me_y + lengthdir_y(_sd, _sp_dir),
++                            _me_x + lengthdir_x(_sd2, _sp_dir), _me_y + lengthdir_y(_sd2, _sp_dir), 2);
++        }
++
++        // Warning box at the midpoint
++        var _mx = (_me_x + _pa_x) * 0.5;
++        var _my = (_me_y + _pa_y) * 0.5;
++        draw_set_font_l(fnt_c64_code);
++        var _msg   = "SAME PREV ORG";
++        var _btn   = "[WIRE THEM]";
++        var _bw    = max(string_width_l(_msg), string_width_l(_btn)) + 16;
++        var _lh    = 18;
++        var _bx1   = _mx - (_bw * 0.5);
++        var _by1   = _my - _lh - 4;
++        var _bx2   = _mx + (_bw * 0.5);
++        var _by2   = _my + _lh + 4;
++
++        draw_set_alpha(0.9);
++        draw_set_color(make_color_rgb(20, 10, 30));
++        draw_rectangle(_bx1, _by1, _bx2, _by2, false);
++        draw_set_alpha(1.0);
++        draw_set_color(_sp_col);
++        draw_rectangle(_bx1, _by1, _bx2, _by2, true);
++
++        draw_set_halign(fa_center);
++        draw_set_valign(fa_middle);
++        draw_text_l(_mx, _my - (_lh * 0.5), _msg);
++
++        amb_btn_x1   = _bx1 + 4;
++        amb_btn_y1   = _my + 1;
++        amb_btn_x2   = _bx2 - 4;
++        amb_btn_y2   = _by2 - 3;
++        amb_btn_live = true;
++        var _btn_hov = point_in_rectangle(mouse_x, mouse_y, amb_btn_x1, amb_btn_y1, amb_btn_x2, amb_btn_y2);
++        if (_btn_hov) {
++            draw_set_color(make_color_rgb(255, 140, 0));
++            draw_rectangle(amb_btn_x1, amb_btn_y1, amb_btn_x2, amb_btn_y2, false);
++            draw_set_color(c_black);
++        } else {
++            draw_set_color(c_white);
++        }
++        draw_text_l(_mx, (amb_btn_y1 + amb_btn_y2) * 0.5, _btn);
++        draw_set_halign(fa_left);
++        draw_set_valign(fa_top);
++    }
++
+     // Output dot (right side) — sends wire_out_target
+     var _out_wired = (wire_out_target != -1);
+     var _out_hov   = point_in_circle(mouse_x, mouse_y, _dot_out_x, _dot_y, _dot_r + 4);
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 881f75c..5af3029 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -26,6 +26,45 @@ if (global.showcode_mouse_over && !is_dragging) exit;
+ // a hidden node being interfered with in the empty space its parent leaves.
+ if (scr_node_is_hidden(id)) exit;
+ 
++// [WIRE THEM] — resolve a shared-predecessor pair by wiring left → right
++// (top → bottom breaks a tie). Falls back to the reverse direction when the
++// first ORG's output is already wired elsewhere.
++if (node_type == "ORG" && amb_btn_live && instance_exists(org_amb_partner) &&
++    mouse_check_button_pressed(mb_left) &&
++    point_in_rectangle(mouse_x, mouse_y, amb_btn_x1, amb_btn_y1, amb_btn_x2, amb_btn_y2)) {
++    var _wa = id;
++    var _wb = org_amb_partner;
++    var _w_first  = _wa;
++    var _w_second = _wb;
++    if (_wb.x < _wa.x) {
++        _w_first  = _wb;
++        _w_second = _wa;
++    } else if (_wb.x == _wa.x && _wb.y < _wa.y) {
++        _w_first  = _wb;
++        _w_second = _wa;
++    }
++    var _w_src = noone;
++    var _w_dst = noone;
++    if (_w_first.wire_out_target == -1) {
++        _w_src = _w_first;
++        _w_dst = _w_second;
++    } else if (_w_second.wire_out_target == -1) {
++        _w_src = _w_second;
++        _w_dst = _w_first;
++    }
++    if (_w_src != noone) {
++        _w_src.wire_out_target = _w_dst.org_uid;
++        _w_dst.wire_in_source  = _w_src.org_uid;
++        _wa.org_amb_partner    = noone;
++        _wb.org_amb_partner    = noone;
++        amb_btn_live           = false;
++        global.addresses_dirty = true;
++        global.undo_dirty      = true;
++        scr_c64_update_addresses();
++    }
++    exit;
++}
++
+ // The pointer is on an ORG fold tab — the click belongs to the tab, not to the
+ // ORG node underneath it, which would otherwise start a drag on the same press.
+ if (global.org_collapse_hot != noone && !is_dragging) exit;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml b/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
+index ba7d909..348ab7b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
+@@ -668,6 +668,7 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
+     var _best_tie      = false;
+     var _pc_before     = _org.pc_address;
+     _org.org_prev_ambiguous = false;
++    _org.org_sensed_daddy   = noone;
+ 		
+ 	    // ================================================================
+ 	    // WIRE OVERRIDE: if this ORG has a direct wire input, use that
+@@ -842,7 +843,8 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
+ 	            _org.pc_address      = -1;
+ 	            _org.display_address = "$----";
+ 	        } else {
+-	            _org.pc_address = _best_end;
++	            _org.pc_address       = _best_end;
++	            _org.org_sensed_daddy = _best_daddy;
+ 	            // Two different chains share the winning column — the pick is a
+ 	            // guess by end address. Flag so the user wires it or lays out in a row.
+ 	            if (_best_tie) {
+@@ -908,6 +910,32 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
+ 
+ 	} // end multi-pass stabilisation loop
+ 
++	// ================================================================
++	// SHARED PREDECESSOR: two unwired proxy ORGs sensing the same chain
++	// both land on the same address. Pair them so the draw event can
++	// show a warning line and a [WIRE THEM] button.
++	// ================================================================
++	for (var _ai = 0; _ai < array_length(_org_proxy_list); _ai++) {
++	    _org_proxy_list[_ai].org_amb_partner = noone;
++	}
++	for (var _ai = 0; _ai < array_length(_org_proxy_list); _ai++) {
++	    var _amb_a = _org_proxy_list[_ai];
++	    if (!_amb_a.proxy) continue;
++	    if (_amb_a.wire_in_source != -1) continue;
++	    if (_amb_a.org_sensed_daddy == noone) continue;
++	    if (_amb_a.org_amb_partner != noone) continue;
++	    for (var _bi = _ai + 1; _bi < array_length(_org_proxy_list); _bi++) {
++	        var _amb_b = _org_proxy_list[_bi];
++	        if (!_amb_b.proxy) continue;
++	        if (_amb_b.wire_in_source != -1) continue;
++	        if (_amb_b.org_amb_partner != noone) continue;
++	        if (_amb_b.org_sensed_daddy != _amb_a.org_sensed_daddy) continue;
++	        _amb_a.org_amb_partner = _amb_b;
++	        _amb_b.org_amb_partner = _amb_a;
++	        break;
++	    }
++	}
++
+ 	// ================================================================
+ 	// PASS 5: LABEL RESOLUTION
+ 	// ================================================================

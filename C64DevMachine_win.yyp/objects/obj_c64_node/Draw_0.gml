@@ -1084,6 +1084,71 @@ if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTE
         draw_set_valign(fa_top);
     }
 
+    // Shared predecessor warning — line to partner + [WIRE THEM] button.
+    // Drawn once per pair, by the partner with the lower instance id.
+    amb_btn_live = false;
+    if (proxy && !_in_wired && instance_exists(org_amb_partner) && real(id) < real(org_amb_partner)) {
+        var _pa      = org_amb_partner;
+        var _pa_x    = _pa.x + _pa.x_indent + (width * 0.5);
+        var _pa_y    = _pa.y + (header_h * 0.5);
+        var _me_x    = draw_x + (width * 0.5);
+        var _me_y    = _dot_y;
+        var _sp_puls = abs(sin(current_time * 0.006));
+        var _sp_col  = merge_colour(c_red, c_yellow, _sp_puls);
+
+        // Dashed connector
+        draw_set_color(_sp_col);
+        var _sp_len  = point_distance(_me_x, _me_y, _pa_x, _pa_y);
+        var _sp_dir  = point_direction(_me_x, _me_y, _pa_x, _pa_y);
+        var _sp_step = 10;
+        for (var _sd = 0; _sd < _sp_len; _sd += _sp_step * 2) {
+            var _sd2 = min(_sd + _sp_step, _sp_len);
+            draw_line_width(_me_x + lengthdir_x(_sd, _sp_dir),  _me_y + lengthdir_y(_sd, _sp_dir),
+                            _me_x + lengthdir_x(_sd2, _sp_dir), _me_y + lengthdir_y(_sd2, _sp_dir), 2);
+        }
+
+        // Warning box at the midpoint
+        var _mx = (_me_x + _pa_x) * 0.5;
+        var _my = (_me_y + _pa_y) * 0.5;
+        draw_set_font_l(fnt_c64_code);
+        var _msg   = "SAME PREV ORG";
+        var _btn   = "[WIRE THEM]";
+        var _bw    = max(string_width_l(_msg), string_width_l(_btn)) + 16;
+        var _lh    = 18;
+        var _bx1   = _mx - (_bw * 0.5);
+        var _by1   = _my - _lh - 4;
+        var _bx2   = _mx + (_bw * 0.5);
+        var _by2   = _my + _lh + 4;
+
+        draw_set_alpha(0.9);
+        draw_set_color(make_color_rgb(20, 10, 30));
+        draw_rectangle(_bx1, _by1, _bx2, _by2, false);
+        draw_set_alpha(1.0);
+        draw_set_color(_sp_col);
+        draw_rectangle(_bx1, _by1, _bx2, _by2, true);
+
+        draw_set_halign(fa_center);
+        draw_set_valign(fa_middle);
+        draw_text_l(_mx, _my - (_lh * 0.5), _msg);
+
+        amb_btn_x1   = _bx1 + 4;
+        amb_btn_y1   = _my + 1;
+        amb_btn_x2   = _bx2 - 4;
+        amb_btn_y2   = _by2 - 3;
+        amb_btn_live = true;
+        var _btn_hov = point_in_rectangle(mouse_x, mouse_y, amb_btn_x1, amb_btn_y1, amb_btn_x2, amb_btn_y2);
+        if (_btn_hov) {
+            draw_set_color(make_color_rgb(255, 140, 0));
+            draw_rectangle(amb_btn_x1, amb_btn_y1, amb_btn_x2, amb_btn_y2, false);
+            draw_set_color(c_black);
+        } else {
+            draw_set_color(c_white);
+        }
+        draw_text_l(_mx, (amb_btn_y1 + amb_btn_y2) * 0.5, _btn);
+        draw_set_halign(fa_left);
+        draw_set_valign(fa_top);
+    }
+
     // Output dot (right side) — sends wire_out_target
     var _out_wired = (wire_out_target != -1);
     var _out_hov   = point_in_circle(mouse_x, mouse_y, _dot_out_x, _dot_y, _dot_r + 4);

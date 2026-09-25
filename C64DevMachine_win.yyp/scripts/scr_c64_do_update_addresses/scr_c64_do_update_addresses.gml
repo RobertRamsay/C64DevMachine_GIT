@@ -668,6 +668,7 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
     var _best_tie      = false;
     var _pc_before     = _org.pc_address;
     _org.org_prev_ambiguous = false;
+    _org.org_sensed_daddy   = noone;
 		
 	    // ================================================================
 	    // WIRE OVERRIDE: if this ORG has a direct wire input, use that
@@ -842,7 +843,8 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
 	            _org.pc_address      = -1;
 	            _org.display_address = "$----";
 	        } else {
-	            _org.pc_address = _best_end;
+	            _org.pc_address       = _best_end;
+	            _org.org_sensed_daddy = _best_daddy;
 	            // Two different chains share the winning column — the pick is a
 	            // guess by end address. Flag so the user wires it or lays out in a row.
 	            if (_best_tie) {
@@ -907,6 +909,32 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
 	}
 
 	} // end multi-pass stabilisation loop
+
+	// ================================================================
+	// SHARED PREDECESSOR: two unwired proxy ORGs sensing the same chain
+	// both land on the same address. Pair them so the draw event can
+	// show a warning line and a [WIRE THEM] button.
+	// ================================================================
+	for (var _ai = 0; _ai < array_length(_org_proxy_list); _ai++) {
+	    _org_proxy_list[_ai].org_amb_partner = noone;
+	}
+	for (var _ai = 0; _ai < array_length(_org_proxy_list); _ai++) {
+	    var _amb_a = _org_proxy_list[_ai];
+	    if (!_amb_a.proxy) continue;
+	    if (_amb_a.wire_in_source != -1) continue;
+	    if (_amb_a.org_sensed_daddy == noone) continue;
+	    if (_amb_a.org_amb_partner != noone) continue;
+	    for (var _bi = _ai + 1; _bi < array_length(_org_proxy_list); _bi++) {
+	        var _amb_b = _org_proxy_list[_bi];
+	        if (!_amb_b.proxy) continue;
+	        if (_amb_b.wire_in_source != -1) continue;
+	        if (_amb_b.org_amb_partner != noone) continue;
+	        if (_amb_b.org_sensed_daddy != _amb_a.org_sensed_daddy) continue;
+	        _amb_a.org_amb_partner = _amb_b;
+	        _amb_b.org_amb_partner = _amb_a;
+	        break;
+	    }
+	}
 
 	// ================================================================
 	// PASS 5: LABEL RESOLUTION
