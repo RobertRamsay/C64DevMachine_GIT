@@ -400,19 +400,11 @@ for (var i = 0; i < array_length(active_palette); i++) {
         }
     }
 
-    // Button background sprite. Cyber keeps its base and layers the highlight frame over it.
-    var _cyber_btn_style = max(0, sprite_get_number(spr_opcode_button) - 2);
+    // Button background sprite.
+    // One frame per theme; hover is spr_hover_glow alone, the frame never changes.
+    var _cyber_btn_style = min(sprite_get_number(spr_opcode_button), max(1, sprite_get_number(spr_palette_page))) - 1;
     var _is_cyber_button = (buttonStyle == _cyber_btn_style);
-    if (_is_cyber_button) {
-        draw_sprite_ext(spr_opcode_button, buttonStyle, btn_x, btn_y, 1, 1, 0, c_white, 1);
-        if (is_hover || _is_finder_match) {
-            draw_sprite_ext(spr_opcode_button, buttonStyle+1, btn_x, btn_y, 1, 1, 0, c_white, 0.55);
-        }
-    } else if (is_hover) {
-        draw_sprite_ext(spr_opcode_button, buttonStyle+1, btn_x, btn_y, 1, 1, 0, c_white, 1);
-    } else {
-        draw_sprite_ext(spr_opcode_button, buttonStyle, btn_x, btn_y, 1, 1, 0, c_white, 1);
-    }
+    draw_sprite_ext(spr_opcode_button, buttonStyle, btn_x, btn_y, 1, 1, 0, c_white, 1);
 
     // Draw mnemonic label
     draw_set_font_l(fnt_c64_opCode);
@@ -725,7 +717,7 @@ if (gui_menu_open == 4) {
             _state_col = make_color_rgb(160, 160, 220);
         }
         if (_op.action == "OPCODE_STYLE") {
-            var _cy_btn_label = max(1, sprite_get_number(spr_opcode_button) - 1);
+            var _cy_btn_label = min(sprite_get_number(spr_opcode_button), max(1, sprite_get_number(spr_palette_page)));
             _state_str = string(buttonStyle + 1) + "/" + string(_cy_btn_label);
             _state_col = make_color_rgb(160, 160, 220);
             if (buttonStyle == _cy_btn_label - 1) { _state_col = c_yellow; }
@@ -852,16 +844,14 @@ if (gui_menu_open == 4) {
                 paletteStyle = _preset;
                 bkgImg = min(_preset, max(0, sprite_get_number(spr_bkg) - 1));
                 nodeStyle = min(_preset, sprite_get_number(spr_9s_tile1));
+                // Theme N uses opcode button N (the last theme is cyber)
+                buttonStyle = min(_preset, min(sprite_get_number(spr_opcode_button), max(1, sprite_get_number(spr_palette_page))) - 1);
                 if (_is_cyber_preset) {
                     badgeStyle = max(0, sprite_get_number(spr_logobadge) - 1);
-                    buttonStyle = max(0, sprite_get_number(spr_opcode_button) - 2);
                     niceSliceFrm = max(0, sprite_get_number(spr_glassSlice) - 1);
                 } else {
                     var _legacy_badge_max = max(0, sprite_get_number(spr_logobadge) - 2);
                     badgeStyle = min(_preset, _legacy_badge_max);
-                    // Presets walk the non-cyber button styles in order (one per
-                    // frame, the cyber pair excluded), capped at the last of them.
-                    buttonStyle = min(_preset, max(0, sprite_get_number(spr_opcode_button) - 3));
                     niceSliceFrm = 0;
                 }
                 uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
@@ -870,10 +860,8 @@ if (gui_menu_open == 4) {
                 paletteStyle = (paletteStyle + 1) mod max(1, sprite_get_number(spr_palette_page));
             }
             else if (_op.action == "OPCODE_STYLE") {
-                // Every button frame is a style; its hover is the next frame, so
-                // the last frame is only ever a hover (the cyber highlight).
-                // Adding frames to spr_opcode_button adds styles to this cycle.
-                var _btn_styles = max(1, sprite_get_number(spr_opcode_button) - 1);
+                // One opcode button per theme (6): frame N is style N, no hover frame.
+                var _btn_styles = min(sprite_get_number(spr_opcode_button), max(1, sprite_get_number(spr_palette_page)));
                 buttonStyle = (buttonStyle + 1) mod _btn_styles;
             }
             else if (_op.action == "BADGE_STYLE") {
