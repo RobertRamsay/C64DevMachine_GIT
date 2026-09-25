@@ -471,6 +471,24 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_ANIM_SET": {
+            title: "ANIM SET",
+            lines: [
+                "Several animation sequences sharing ONE player.",
+                "Each row is a sequence: frame lists per sprite",
+                "slot, its own DELAY and LOOP.",
+                "",
+                "SELECT names the byte that picks the row ($02C8,",
+                "or a variable). Changing it restarts the new row",
+                "from its first frame - no reset calls needed.",
+                "Out-of-range SELECT = idle.",
+                "",
+                "JSR <alias>_sub once per frame. <alias>_reset",
+                "restarts the current row. <alias>_done = 1 once a",
+                "one-shot row holds its last frame."
+            ]
+        },
+
         "MACRO_ANIM": {
             title: "ANIMATE",
             lines: [

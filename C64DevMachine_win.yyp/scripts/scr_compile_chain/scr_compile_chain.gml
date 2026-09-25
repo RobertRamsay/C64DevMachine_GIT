@@ -14098,6 +14098,11 @@ case "MACRO_COLL_LINE": {
     array_push(_list, ["label", _skip]);
 } break;
 
+// MACRO_ANIM_SET — one shared player + flat tables (scr_macro_anim_set)
+case "MACRO_ANIM_SET": {
+    scr_anim_set_emit(_curr, _list);
+} break;
+
 // NEW
 case "MACRO_ANIM": {
     var _id    = _curr;

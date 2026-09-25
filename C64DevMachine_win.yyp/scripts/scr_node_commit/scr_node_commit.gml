@@ -6,6 +6,11 @@
 
 	function scr_node_commit(_target, _idx, _input) {
 
+	if (instance_exists(_target) && _target.node_type == "MACRO_ANIM_SET") {
+	    scr_anim_set_commit(_target, _idx, _input);
+	    return;
+	}
+
 	if (_idx == -99) {
 		    var _raw = string_replace_all(string_trim(_input), " ", "_");
 		    if (_raw != "") {

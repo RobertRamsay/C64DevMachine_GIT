@@ -84,6 +84,10 @@ function scr_node_step_macro_collision(_draw_x) {
                 array_push(other.label_picker_list, anim_alias + "_sub");
                 array_push(other.label_picker_list, anim_alias + "_reset");
             }
+            if (node_type == "MACRO_ANIM_SET") {
+                array_push(other.label_picker_list, scr_anim_set_alias(id) + "_sub");
+                array_push(other.label_picker_list, scr_anim_set_alias(id) + "_reset");
+            }
             if (node_type == "MACRO_SCROLL") {
                     array_push(other.label_picker_list, "Scroller_L");
                     array_push(other.label_picker_list, "Scroller_R");

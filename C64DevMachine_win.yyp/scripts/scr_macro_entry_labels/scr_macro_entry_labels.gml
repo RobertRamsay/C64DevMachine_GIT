@@ -101,6 +101,13 @@ function scr_macro_entry_labels() {
                 _out[$ _an_alias + "_reset"] = true;
             break;
 
+            case "MACRO_ANIM_SET":
+                var _as_alias = scr_anim_set_alias(id);
+                _out[$ _as_alias + "_sub"]   = true;
+                _out[$ _as_alias + "_reset"] = true;
+                _out[$ _as_alias + "_done"]  = true;
+            break;
+
             case "MACRO_TEXT_SCROLL":
                 var _jsr_m = (array_length(instructions[0]) > 11 && is_real(instructions[0][11])) ? real(instructions[0][11]) : 0;
                 if (_jsr_m == 1)

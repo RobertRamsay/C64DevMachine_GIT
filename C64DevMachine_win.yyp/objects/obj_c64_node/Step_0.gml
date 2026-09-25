@@ -1162,6 +1162,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
 		case "MACRO_COLL_ADV":    scr_node_step_macro_coll_adv(draw_x);    break;
 		case "MACRO_COLL_LINE":   scr_node_step_macro_coll_line(draw_x);   break;
         case "MACRO_ANIM":        scr_node_step_macro_anim(draw_x);        break;
+        case "MACRO_ANIM_SET":    scr_node_step_macro_anim_set(draw_x);    break;
         case "MACRO_SFX":         scr_node_step_macro_sfx(draw_x);         break;
         case "MACRO_CODE":        scr_node_step_macro_code(draw_x);        break;
 		case "MACRO_V_SCROLL":    scr_node_step_macro_vscroll();        break;
@@ -1805,6 +1806,10 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
                                     if (anim_alias == "") anim_alias = "anim" + string(real(id));
                                     array_push(other.label_picker_list, anim_alias + "_sub");
                                     array_push(other.label_picker_list, anim_alias + "_reset");
+                                }
+                                if (node_type == "MACRO_ANIM_SET") {
+                                    array_push(other.label_picker_list, scr_anim_set_alias(id) + "_sub");
+                                    array_push(other.label_picker_list, scr_anim_set_alias(id) + "_reset");
                                 }
                                 if (node_type == "MACRO_SCROLL") {
 				                    array_push(other.label_picker_list, "Scroller_L");

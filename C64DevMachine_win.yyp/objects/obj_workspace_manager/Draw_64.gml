@@ -1603,6 +1603,7 @@ if (gui_menu_open == 0) {
         { title: "ENABLER",      type: "MACRO_SPR_ENABLE"    },
         { title: "EXPANDER",     type: "MACRO_SPR_EXPAND"    },
         { title: "ANIMATE",      type: "MACRO_ANIM"          },
+        { title: "ANIM SET",     type: "MACRO_ANIM_SET"      },
         { title: "FLIP X",       type: "MACRO_FLIP_X"        },
         { title: "--- SOUND ---", type: "HEADER"              },
         { title: "SID",          type: "MACRO_SID"           },

@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_macro_anim_set",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_macro_anim_set",
+  "parent":{
+    "name":"MACROS",
+    "path":"folders/SCRIPTS/MACROS.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

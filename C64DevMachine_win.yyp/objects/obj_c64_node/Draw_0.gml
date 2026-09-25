@@ -269,6 +269,7 @@ if (height_dirty) {
 	case "MACRO_COLL_ADV":   height = _G * 19;  break;    
 	case "MACRO_COLL_LINE":  height = _G * 7;   break;
     case "MACRO_ANIM":       height = _G * 18;  break;
+    case "MACRO_ANIM_SET":   height = scr_anim_set_height(id); break;
     case "MACRO_SFX":        height = _G * 6;   break;
 	case "MACRO_CODE":       height = _G * 5;   break;
     case "GET_VAR":     height = _G * 5;  break;         
@@ -643,6 +644,10 @@ var _active_list = [];
 					array_push(other.label_picker_list, anim_alias + "_sub");
 					array_push(other.label_picker_list, anim_alias + "_reset");
                 }
+                if (node_type == "MACRO_ANIM_SET") {
+                    array_push(other.label_picker_list, scr_anim_set_alias(id) + "_sub");
+                    array_push(other.label_picker_list, scr_anim_set_alias(id) + "_reset");
+                }
                 if (node_type == "MACRO_SCROLL") {
                     array_push(other.label_picker_list, "Scroller_L");
                     array_push(other.label_picker_list, "Scroller_R");
@@ -985,6 +990,7 @@ switch (node_type) {
     case "MACRO_COLLISION":   _head_col = is_connected ? make_color_rgb(180, 60,  60) : make_color_rgb( 90, 30,  30); break;
 	case "MACRO_COLL_ADV":    _head_col = is_connected ? make_color_rgb(220, 100, 40) : make_color_rgb(110, 50, 20); break;
     case "MACRO_ANIM":        _head_col = is_connected ? make_color_rgb( 60,180,  60) : make_color_rgb( 30, 90,  30); break;
+    case "MACRO_ANIM_SET":    _head_col = is_connected ? make_color_rgb( 40,160, 110) : make_color_rgb( 20, 80,  55); break;
     case "MACRO_SFX":         _head_col = is_connected ? make_color_rgb(255,160,  40) : make_color_rgb(120, 70,  10); break;
 	case "MACRO_CODE":        _head_col = is_connected ? make_color_rgb( 50,140, 100) : make_color_rgb( 25, 70,  50); break;
 	case "COND_IF":     _head_col = is_connected ? make_color_rgb(180, 120,  40) : make_color_rgb( 90, 60,  20);  break;
@@ -1558,6 +1564,7 @@ if (_lod_body) switch (node_type) {
 	case "MACRO_COLL_ADV":    scr_node_draw_macro_coll_adv(draw_x);  break;
 	case "MACRO_COLL_LINE":   scr_node_draw_macro_coll_line(draw_x, y); break;
 	case "MACRO_ANIM":        scr_node_draw_macro_anim(draw_x);      break;
+	case "MACRO_ANIM_SET":    scr_node_draw_macro_anim_set(draw_x);  break;
 	case "MACRO_SFX":         scr_node_draw_macro_sfx(draw_x);       break;
 	case "MACRO_CODE":        scr_node_draw_macro_code(draw_x, y);   break;   
     case "ORG": {
