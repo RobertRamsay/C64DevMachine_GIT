@@ -98,7 +98,24 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _rsv_x1 = _right_x1;
         var _rsv_y1 = _split_y + 4 + _anim_band_h;
         var _rsv_x2 = _right_x2;
-        var _rsv_y2 = _vy2 - 10;
+        var _rsv_y2 = _vy2 - 42;
+        // Dedicated footer keeps conversion clear of the frame/layer controls.
+        var _convert_y = _rsv_y2 + 8;
+        var _convert_hover = point_in_rectangle(_mx, _my, _right_x1, _convert_y, _right_x2, _convert_y + 24);
+        draw_set_color(_convert_hover ? make_color_rgb(45,110,80) : make_color_rgb(25,65,50));
+        draw_rectangle(_right_x1, _convert_y, _right_x2, _convert_y + 24, false);
+        draw_set_font_l(fnt_c64_tiny);
+        draw_set_color(c_white);
+        draw_set_halign(fa_center);
+        draw_set_valign(fa_middle);
+        draw_text_l((_right_x1 + _right_x2) * 0.5, _convert_y + 12, "CONVERT COMPOSITION INTO NODES");
+        draw_set_halign(fa_left);
+        draw_set_valign(fa_top);
+        if (_convert_hover && mouse_check_button_pressed(mb_left)
+        && !global.ui_click_consumed && !global.any_picker_open) {
+            global.ui_click_consumed = true;
+            if (scr_spred64_v2_composition_nodes(_asset)) exit;
+        }
         // -------------------------------------------------------
         // BACKDROP PANELS
         // -------------------------------------------------------
@@ -799,9 +816,38 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         // it doesn't compete with the compositor-grid marker. Resolved once
         // at the end of the canvas section so every other case restores it.
         var _hide_os_cursor = false;
-        if (_canvas_hover && !_v2.pan_active) {
-            var _hx = floor((_mx - _canvas_x) / _cell_size);
-            var _hy = floor((_my - _canvas_y) / _cell_size);
+        // COMP input is in composite coordinates. Resolve the selected slot's
+        // visible placement, preferring the active layer, then invert exactly
+        // the offset/expand transform used to draw it above.
+        var _hover_comp_cell = -1;
+        var _hover_origin_x = _canvas_x, _hover_origin_y = _canvas_y;
+        var _hover_step_x = _cell_size, _hover_step_y = _cell_size;
+        if (_comp_view_active) {
+            for (var _hit_i = 0; _hit_i < array_length(_cu_frame.cells); _hit_i++) {
+                var _hit = _cu_frame.cells[_hit_i];
+                if (_hit.slot != _slot) continue;
+                var _hit_dr = _cu_row - _hit.row, _hit_dc = _cu_col - _hit.col;
+                var _hit_ex = (_hit.expand == "x" || _hit.expand == "both") ? 2 : 1;
+                var _hit_ey = (_hit.expand == "y" || _hit.expand == "both") ? 2 : 1;
+                // Same neighbour eligibility as the composite renderer.
+                if (_hit_dr < 0 || _hit_dr >= _hit_ey || _hit_dc < 0 || _hit_dc >= _hit_ex) continue;
+                var _hit_x = _canvas_x + (_hit.xo - _hit_dc * 24) * _cell_size;
+                var _hit_y = _canvas_y + (_hit.yo - _hit_dr * 21) * _cell_size;
+                if (_mx < _hit_x || _mx >= _hit_x + 24 * _cell_size * _hit_ex
+                || _my < _hit_y || _my >= _hit_y + 21 * _cell_size * _hit_ey) continue;
+                if (_hover_comp_cell < 0 || _hit.layer == _cu_comp.active_layer) {
+                    _hover_comp_cell = _hit_i;
+                    _hover_origin_x = _hit_x;
+                    _hover_origin_y = _hit_y;
+                    _hover_step_x = _cell_size * _hit_ex;
+                    _hover_step_y = _cell_size * _hit_ey;
+                }
+                if (_hit.layer == _cu_comp.active_layer) break;
+            }
+        }
+        if (_canvas_hover && !_v2.pan_active && (!_comp_view_active || _hover_comp_cell >= 0)) {
+            var _hx = floor((_mx - _hover_origin_x) / _hover_step_x);
+            var _hy = floor((_my - _hover_origin_y) / _hover_step_y);
 
             // In MC mode, snap hover X to the MC pair (even index)
             var _snap_x = _is_mc ? (_hx - (_hx mod 2)) : _hx;
@@ -818,57 +864,17 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             }
 
             if (_hx >= 0 && _hx < 24 && _hy >= 0 && _hy < 21) {
-                // Is the sprite we're editing placed expanded anywhere in
-                // this frame? Only relevant in COMP mode — outside COMP the
-                // canvas is the direct 1:1 view, so the hover rect is correct
-                // and the hint would be misleading. In COMP mode a stretched
-                // placement means the on-canvas rect would misalign (the true
-                // position is shown by the floating marker in the compositor
-                // grid instead), so we suppress the rect and show a hint.
-                var _hov_expanded = false;
-                if (_v2.comp_preview) {
-                    var _hov_cf = _v2.compositor.frames[_v2.compositor.active_frame];
-                    for (var _he_i = 0; _he_i < array_length(_hov_cf.cells); _he_i++) {
-                        var _he_c = _hov_cf.cells[_he_i];
-                        if (_he_c.slot == _v2.selected_slot
-                        && (_he_c.expand == "x" || _he_c.expand == "y" || _he_c.expand == "both")) {
-                            _hov_expanded = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (_hov_expanded) {
-                    // Hint instead of the misaligned rect — placed just below
-                    // the canvas top, centred, so it doesn't fight the sprite.
-                    // Also hide the OS pointer so it doesn't compete with the
-                    // compositor-grid marker that's doing the real work.
-                    _hide_os_cursor = true;
-                    draw_set_font_l(fnt_c64_tiny);
-                    draw_set_color(make_color_rgb(120, 255, 120));
-                    draw_set_halign(fa_center);
-                    draw_set_valign(fa_top);
-                    draw_text_l(_canvas_x + _canvas_w * 0.5, _canvas_y + 4,
-                        "USE CURSOR IN COMPOSITOR VIEW");
-                    draw_set_halign(fa_left);
-                    draw_set_valign(fa_top);
-                } else {
-                    // Outline cell (or MC pair). Green when a tool is armed
-                    // (FILL or LINE) so the user has clear feedback that the
-                    // next click will trigger the tool action.
-                    if (_v2.fill_armed || _v2.line_armed) {
-                        draw_set_color(make_color_rgb(120, 255, 120));
-                    } else {
-                        draw_set_color(c_white);
-                    }
-                    draw_set_alpha(0.5);
-                    var _cell_w_h = _is_mc ? (2 * _cell_size) : _cell_size;
-                    draw_rectangle(_canvas_x + _snap_x * _cell_size,
-                                   _canvas_y + _hy * _cell_size,
-                                   _canvas_x + _snap_x * _cell_size + _cell_w_h,
-                                   _canvas_y + (_hy + 1) * _cell_size, true);
-                    draw_set_alpha(1.0);
-                }
+                // Map the sprite-local pixel back into the displayed composite.
+                // Clip the marker so offset/expanded edge pixels stay in the canvas.
+                draw_set_color((_v2.fill_armed || _v2.line_armed) ? make_color_rgb(120,255,120) : c_white);
+                draw_set_alpha(0.5);
+                var _hover_x1 = max(_canvas_x, _hover_origin_x + _snap_x * _hover_step_x);
+                var _hover_y1 = max(_canvas_y, _hover_origin_y + _hy * _hover_step_y);
+                var _hover_x2 = min(_canvas_x + _canvas_w, _hover_origin_x + (_snap_x + (_is_mc ? 2 : 1)) * _hover_step_x);
+                var _hover_y2 = min(_canvas_y + _canvas_h, _hover_origin_y + (_hy + 1) * _hover_step_y);
+                if (_hover_x2 > _hover_x1 && _hover_y2 > _hover_y1)
+                    draw_rectangle(_hover_x1, _hover_y1, _hover_x2, _hover_y2, true);
+                draw_set_alpha(1.0);
 
                 // ----- LINE TOOL : pixel-accurate preview overlay -----
                 // When armed AND anchor set, walk the same Bresenham path
@@ -934,12 +940,17 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                         // the underlying pixel grid.
                         if (_lp_cx >= 0 && _lp_cx < 24
                         &&  _lp_cy >= 0 && _lp_cy < 21) {
-                            var _lp_w = _is_mc ? (2 * _cell_size) : _cell_size;
-                            var _lp_px1 = _canvas_x + _lp_cx * _cell_size;
-                            var _lp_py1 = _canvas_y + _lp_cy * _cell_size;
+                            var _lp_w = _is_mc ? (2 * _hover_step_x) : _hover_step_x;
+                            var _lp_px1 = _hover_origin_x + _lp_cx * _hover_step_x;
+                            var _lp_py1 = _hover_origin_y + _lp_cy * _hover_step_y;
                             var _lp_px2 = _lp_px1 + _lp_w - 1;
-                            var _lp_py2 = _lp_py1 + _cell_size - 1;
-                            draw_rectangle(_lp_px1, _lp_py1, _lp_px2, _lp_py2, false);
+                            var _lp_py2 = _lp_py1 + _hover_step_y - 1;
+                            _lp_px1 = max(_lp_px1, _canvas_x);
+                            _lp_py1 = max(_lp_py1, _canvas_y);
+                            _lp_px2 = min(_lp_px2, _canvas_x + _canvas_w);
+                            _lp_py2 = min(_lp_py2, _canvas_y + _canvas_h);
+                            if (_lp_px2 > _lp_px1 && _lp_py2 > _lp_py1)
+                                draw_rectangle(_lp_px1, _lp_py1, _lp_px2, _lp_py2, false);
                         }
 
                         // End condition — reached the hover endpoint
@@ -964,14 +975,21 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                     // anchor cell so the user can always see where the
                     // line will originate, even if it's been overdrawn
                     // by the preview pixels at the start of the run.
-                    var _lp_anchor_w = _is_mc ? (2 * _cell_size) : _cell_size;
-                    var _lp_ax1 = _canvas_x + _lp_x0 * _cell_size;
-                    var _lp_ay1 = _canvas_y + _lp_y0 * _cell_size;
+                    var _lp_anchor_w = _is_mc ? (2 * _hover_step_x) : _hover_step_x;
+                    var _lp_ax1 = _hover_origin_x + _lp_x0 * _hover_step_x;
+                    var _lp_ay1 = _hover_origin_y + _lp_y0 * _hover_step_y;
                     var _lp_ax2 = _lp_ax1 + _lp_anchor_w;
-                    var _lp_ay2 = _lp_ay1 + _cell_size;
+                    var _lp_ay2 = _lp_ay1 + _hover_step_y;
                     draw_set_color(make_color_rgb(120, 255, 120));
-                    draw_rectangle(_lp_ax1, _lp_ay1, _lp_ax2, _lp_ay2, true);
-                    draw_rectangle(_lp_ax1 + 1, _lp_ay1 + 1, _lp_ax2 - 1, _lp_ay2 - 1, true);
+                    _lp_ax1 = max(_lp_ax1, _canvas_x);
+                    _lp_ay1 = max(_lp_ay1, _canvas_y);
+                    _lp_ax2 = min(_lp_ax2, _canvas_x + _canvas_w);
+                    _lp_ay2 = min(_lp_ay2, _canvas_y + _canvas_h);
+                    if (_lp_ax2 > _lp_ax1 && _lp_ay2 > _lp_ay1) {
+                        draw_rectangle(_lp_ax1, _lp_ay1, _lp_ax2, _lp_ay2, true);
+                        if (_lp_ax2 - _lp_ax1 > 2 && _lp_ay2 - _lp_ay1 > 2)
+                            draw_rectangle(_lp_ax1 + 1, _lp_ay1 + 1, _lp_ax2 - 1, _lp_ay2 - 1, true);
+                    }
                 }
 
                 // If flood-fill is armed, intercept LEFT click to run the
@@ -2124,6 +2142,8 @@ if (_layer_dir != 0) {
             var _mk_row    = _v2.comp_anchor_row;
             var _mk_col    = _v2.comp_anchor_col;
             var _mk_expand = "none";
+            var _mk_xo = 0, _mk_yo = 0;
+            var _mk_placement = -1;
 
             // Fall back to the active cell's position if no anchor has been
             // set yet (user opened V2 and hovered the canvas before ever
@@ -2140,17 +2160,32 @@ if (_layer_dir != 0) {
             // shape. Layer-independent — what matters is that the sprite
             // under the pixel canvas has an expanded placement at this cell,
             // so the cursor reflects the fat-pixel footprint it'll paint
-            // into. First matching placement wins.
+            // into. Prefer the active layer when the same slot is repeated.
+            // Position and expansion must come from the same placement.
             if (_mk_row >= 0 && _mk_col >= 0) {
                 for (var _mk_ei = 0; _mk_ei < array_length(_cur_frame.cells); _mk_ei++) {
                     var _mk_ec = _cur_frame.cells[_mk_ei];
                     if (_mk_ec.row  == _mk_row
                     &&  _mk_ec.col  == _mk_col
                     &&  _mk_ec.slot == _v2.selected_slot) {
-                        _mk_expand = _mk_ec.expand;
-                        break;
+                        if (_mk_placement < 0 || _mk_ec.layer == _comp.active_layer) {
+                            _mk_placement = _mk_ei;
+                            _mk_expand = _mk_ec.expand;
+                            _mk_xo = _mk_ec.xo;
+                            _mk_yo = _mk_ec.yo;
+                        }
+                        if (_mk_ec.layer == _comp.active_layer) break;
                     }
                 }
+            }
+
+            if (_comp_view_active && _hover_comp_cell >= 0) {
+                var _mk_hit = _cur_frame.cells[_hover_comp_cell];
+                _mk_row = _mk_hit.row;
+                _mk_col = _mk_hit.col;
+                _mk_expand = _mk_hit.expand;
+                _mk_xo = _mk_hit.xo;
+                _mk_yo = _mk_hit.yo;
             }
 
             if (_mk_row >= 0 && _mk_col >= 0 && _mk_row < 4 && _mk_col < 4) {
@@ -2181,8 +2216,11 @@ if (_layer_dir != 0) {
                 if (_mk_expand == "x" || _mk_expand == "both") { _mk_px_step_x = _mk_step * 2; }
                 if (_mk_expand == "y" || _mk_expand == "both") { _mk_px_step_y = _mk_step * 2; }
 
-                var _mk_x1 = _mk_gx1 + _v2.canvas_pix_x * _mk_px_step_x;
-                var _mk_y1 = _mk_gy1 + _v2.canvas_pix_y * _mk_px_step_y;
+                // Placement offsets are native pixels, not expanded pixels.
+                // Match the sprite origin and Y-expand nudge in pass 2 exactly.
+                var _mk_x1 = _mk_gx1 + _mk_xo * _mk_step + _v2.canvas_pix_x * _mk_px_step_x;
+                var _mk_y1 = _mk_gy1 + _mk_yo * _mk_step + _v2.canvas_pix_y * _mk_px_step_y;
+                if (_mk_expand == "y" || _mk_expand == "both") _mk_y1 += 1;
                 var _mk_x2 = _mk_x1 + _mk_w;
                 var _mk_y2 = _mk_y1 + _mk_h;
 
@@ -2453,4 +2491,103 @@ if (_layer_dir != 0) {
             scr_spred64_v2_history_finish(_v2);
     }
 	
+}
+
+/// Build a complete plan before creating any nodes. Positions are native C64
+/// coordinates; expansion changes the footprint, never the placement offset.
+function scr_spred64_v2_composition_plan(_cells, _used) {
+    var _count = array_length(_cells);
+    if (_count == 0) return { error: "The current frame has no sprite placements." };
+    if (_count > 8) return { error: "This frame has " + string(_count) + " placements. Sprite macros can display up to 8 hardware sprites. Reduce the frame to 8 placements before converting." };
+    var _ordered = [];
+    for (var _i = 0; _i < _count; _i++) {
+        var _c = _cells[_i];
+        if (_c.slot < 0 || _c.slot >= _used) return { error: "The frame refers to a sprite slot that is no longer in this bank." };
+        array_push(_ordered, _c);
+    }
+    array_sort(_ordered, function(_a, _b) {
+        if (_a.layer != _b.layer) return _a.layer - _b.layer;
+        if (_a.row != _b.row) return _a.row - _b.row;
+        return _a.col - _b.col;
+    });
+    var _first = _ordered[0];
+    var _origin_x = _first.col * 24 + _first.xo;
+    var _origin_y = _first.row * 21 + _first.yo;
+    var _sprites = [], _expand_x = 0, _expand_y = 0;
+    for (var _i = 0; _i < _count; _i++) {
+        var _c = _ordered[_i];
+        var _x = 175 + _c.col * 24 + _c.xo - _origin_x;
+        var _y = 128 + _c.row * 21 + _c.yo - _origin_y;
+        if (_x < 0 || _x > 511 || _y < 0 || _y > 255)
+            return { error: "This composition extends beyond the sprite position range from the default position (175, 128). Reduce its offsets before converting." };
+        // Lower VIC sprite numbers are in front. Assign the last/topmost
+        // compositor layer to sprite 0; keep node order back-to-front.
+        var _hw = _count - 1 - _i;
+        if (_c.expand == "x" || _c.expand == "both") _expand_x |= (1 << _hw);
+        if (_c.expand == "y" || _c.expand == "both") _expand_y |= (1 << _hw);
+        array_push(_sprites, { slot: _c.slot, hardware: _hw, x: _x, y: _y });
+    }
+    return { error: "", sprites: _sprites, expand_x: _expand_x, expand_y: _expand_y };
+}
+
+function scr_spred64_v2_composition_nodes(_asset) {
+    var _am = obj_asset_manager;
+    var _v2 = _am.spred64_v2;
+    var _frame_index = _v2.compositor.active_frame;
+    var _plan = scr_spred64_v2_composition_plan(_v2.compositor.frames[_frame_index].cells, _v2.used_count);
+    if (_plan.error != "") { scr_show_message(_plan.error); return false; }
+
+    // Place beyond every existing node, aligned with the rightmost ORG/INIT.
+    var _right = 0, _top = 100, _anchor_x = -1000000000;
+    with (obj_c64_node) {
+        _right = max(_right, x + width);
+        if ((node_type == "ORG" || node_type == "INIT") && x > _anchor_x) {
+            _anchor_x = x;
+            _top = y;
+        }
+    }
+    var _x = _right + 120;
+    _v2.anim_playing = false;
+    // Commit the current pixels/colours as well as the composition, so the
+    // generated asset references compile exactly what the editor displays.
+    _v2.dirty = true;
+    scr_spred64_v2_close(true);
+    scr_undo_snapshot();
+
+    var _org = scr_node_spawn("ORG", _x, _top);
+    _org.node_title = _asset.name + " - FRAME " + string(_frame_index + 1);
+    _org.proxy = true;
+    var _y = _top + _org.height;
+    // Clear previous sprite enables before setting up this complete frame.
+    var _disable = scr_node_spawn("MACRO_SPR_ENABLE", _x, _y);
+    _disable.instructions = [["macro_spr_enable", 255, 1]];
+    _disable.org_parent = _org;
+    _disable.is_connected = true;
+    scr_macro_sync_height(_disable);
+    _y += _disable.height;
+    var _expand = scr_node_spawn("MACRO_SPR_EXPAND", _x, _y);
+    _expand.instructions = [["macro_spr_expand", _plan.expand_x, _plan.expand_y]];
+    _expand.org_parent = _org;
+    _expand.is_connected = true;
+    scr_macro_sync_height(_expand);
+    _y += _expand.height;
+    for (var _i = 0; _i < array_length(_plan.sprites); _i++) {
+        var _p = _plan.sprites[_i];
+        var _node = scr_node_spawn("MACRO_SPR", _x, _y);
+        _node.instructions = [["macro_spr", _asset.name, _p.hardware, _p.x, _p.y, _p.slot, _i == 0 ? 1 : 0]];
+        _node.org_parent = _org;
+        _node.is_connected = true;
+        scr_macro_sync_height(_node);
+        _y += _node.height;
+    }
+    global.addresses_dirty = true;
+    global.memory_bar_dirty = true;
+    global.node_change_dirty = true;
+    global.undo_dirty = true;
+    scr_c64_do_update_addresses();
+    _am.viewer_open = false;
+    scr_focus_camera_on_node(_org);
+    scr_undo_snapshot();
+    global.undo_dirty = false;
+    return true;
 }
