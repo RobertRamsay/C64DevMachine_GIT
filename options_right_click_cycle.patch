@@ -1,0 +1,111 @@
+diff --git a/C64DevMachine_win.yyp/datafiles/C64DMResources/LANG/lang_zh_CN.json b/C64DevMachine_win.yyp/datafiles/C64DMResources/LANG/lang_zh_CN.json
+index c2a2296..97eb94d 100644
+--- a/C64DevMachine_win.yyp/datafiles/C64DMResources/LANG/lang_zh_CN.json
++++ b/C64DevMachine_win.yyp/datafiles/C64DMResources/LANG/lang_zh_CN.json
+@@ -60,6 +60,7 @@
+  "OPCODE BUTTONS": "操作码按钮",
+  "LOGO STYLE": "徽标样式",
+  "BACKGROUND STYLE": "背景样式",
++ "BKG STYLE": "背景样式",
+  "PANEL STYLE": "窗格样式",
+  "NODE STYLE": "节点样式",
+  "RESET CUSTOM UI": "重置自定义界面",
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 0b7668c..d91e9da 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -596,7 +596,7 @@ if (gui_menu_open == 4) {
+         { title: "PALETTE STYLE",      action: "PALETTE_STYLE"    },
+         { title: "OPCODE BUTTONS",     action: "OPCODE_STYLE"     },
+         { title: "LOGO STYLE",         action: "BADGE_STYLE"      },
+-        { title: "BACKGROUND STYLE",   action: "BACKGROUND_STYLE" },
++        { title: "BKG STYLE",          action: "BACKGROUND_STYLE" },
+         { title: "PANEL STYLE",        action: "PANEL_STYLE"      },
+         { title: "NODE STYLE",         action: "NODE_STYLE"       },
+         { title: "RESET CUSTOM UI",    action: "RESET_UI"         },
+@@ -758,7 +758,20 @@ if (gui_menu_open == 4) {
+ 
+         
+ 
+-        if (_ihov && mouse_check_button_pressed(mb_left)) {
++        // Left click steps a cycling option forward, right click steps it
++        // back; both wrap round. Right click does nothing on other options.
++        var _opt_cycles = ["FLOW_OVERLAY", "FLOW_LINE_STYLE", "CYBER_PRESET", "PALETTE_STYLE",
++                           "OPCODE_STYLE", "BADGE_STYLE", "BACKGROUND_STYLE", "PANEL_STYLE",
++                           "NODE_STYLE", "LANGUAGE"];
++        var _opt_is_cycle = array_contains(_opt_cycles, _op.action);
++        var _opt_l = _ihov && mouse_check_button_pressed(mb_left);
++        var _opt_r = _ihov && mouse_check_button_pressed(mb_right) && _opt_is_cycle;
++        var _dir   = 1;
++        if (_opt_r) {
++            _dir = -1;
++            global.ui_click_block_timer = 6;
++        }
++        if (_opt_l || _opt_r) {
+             if (_op.action == "EXPERT_MODE") {
+                 expert_mode = !expert_mode;
+                 opcode_finder_active     = false;
+@@ -794,7 +807,7 @@ if (gui_menu_open == 4) {
+             else if (_op.action == "FLOW_OVERLAY") {
+                 // Mirrors the F-key handler in obj_workspace_manager Step so
+                 // both entry points stay in sync.
+-                flow_overlay_mode = (flow_overlay_mode + 1) mod 3; // Cycles 0 -> 1 -> 2 -> 0
++                flow_overlay_mode = (flow_overlay_mode + _dir + 3) mod 3; // 0 -> 1 -> 2 -> 0 (right click reverses)
+ 
+                 if (flow_overlay_mode == 1) {
+                     global.qmenu_toast_text = "FLOW LINES in LOCAL MODE\nHOVER over NODES to VIEW";
+@@ -820,7 +833,7 @@ if (gui_menu_open == 4) {
+                 }
+             }
+             else if (_op.action == "FLOW_LINE_STYLE") {
+-                flow_line_style = (flow_line_style + 1) mod 2; // 0 -> 1 -> 0
++                flow_line_style = (flow_line_style + _dir + 2) mod 2; // 0 -> 1 -> 0
+ 
+                 if (flow_line_style == 0) {
+                     global.qmenu_toast_text = "FLOW LINES: DIRECT";
+@@ -839,7 +852,7 @@ if (gui_menu_open == 4) {
+             }
+             else if (_op.action == "CYBER_PRESET") {
+                 var _preset_count = max(1, sprite_get_number(spr_palette_page));
+-                var _preset = (clamp(paletteStyle, 0, _preset_count - 1) + 1) mod _preset_count;
++                var _preset = (clamp(paletteStyle, 0, _preset_count - 1) + _dir + _preset_count) mod _preset_count;
+                 var _is_cyber_preset = (_preset == _preset_count - 1);
+                 paletteStyle = _preset;
+                 bkgImg = min(_preset, max(0, sprite_get_number(spr_bkg) - 1));
+@@ -857,25 +870,30 @@ if (gui_menu_open == 4) {
+                 uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
+             }
+             else if (_op.action == "PALETTE_STYLE") {
+-                paletteStyle = (paletteStyle + 1) mod max(1, sprite_get_number(spr_palette_page));
++                var _pal_n = max(1, sprite_get_number(spr_palette_page));
++                paletteStyle = (paletteStyle + _dir + _pal_n) mod _pal_n;
+             }
+             else if (_op.action == "OPCODE_STYLE") {
+                 // One opcode button per theme (6): frame N is style N, no hover frame.
+                 var _btn_styles = min(sprite_get_number(spr_opcode_button), max(1, sprite_get_number(spr_palette_page)));
+-                buttonStyle = (buttonStyle + 1) mod _btn_styles;
++                buttonStyle = (buttonStyle + _dir + _btn_styles) mod _btn_styles;
+             }
+             else if (_op.action == "BADGE_STYLE") {
+-                badgeStyle = (badgeStyle + 1) mod max(1, sprite_get_number(spr_logobadge));
++                var _bdg_n = max(1, sprite_get_number(spr_logobadge));
++                badgeStyle = (badgeStyle + _dir + _bdg_n) mod _bdg_n;
+             }
+             else if (_op.action == "BACKGROUND_STYLE") {
+-                bkgImg = (bkgImg + 1) mod max(1, sprite_get_number(spr_bkg));
++                var _bkg_n = max(1, sprite_get_number(spr_bkg));
++                bkgImg = (bkgImg + _dir + _bkg_n) mod _bkg_n;
+             }
+             else if (_op.action == "PANEL_STYLE") {
+-                niceSliceFrm = (niceSliceFrm + 1) mod max(1, sprite_get_number(spr_glassSlice));
++                var _pnl_n = max(1, sprite_get_number(spr_glassSlice));
++                niceSliceFrm = (niceSliceFrm + _dir + _pnl_n) mod _pnl_n;
+                 uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
+             }
+             else if (_op.action == "NODE_STYLE") {
+-                nodeStyle = (nodeStyle + 1) mod (sprite_get_number(spr_9s_tile1) + 1);
++                var _nod_n = sprite_get_number(spr_9s_tile1) + 1;
++                nodeStyle = (nodeStyle + _dir + _nod_n) mod _nod_n;
+             }
+             else if (_op.action == "OPCODE_HEADERS") {
+                 opcode_headers_on = !opcode_headers_on;
