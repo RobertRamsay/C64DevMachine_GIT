@@ -1,0 +1,77 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+index 085fa04..963b9cf 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+@@ -280,6 +280,7 @@ hdr_cache_opcode  = false;  // true when title font is fnt_C64_Angled_tiny
+ org_uid          = -1;
+ wire_out_target  = -1;
+ wire_in_source   = -1;
++org_prev_ambiguous = false;  // proxy ORG sensed 2+ tied preceding ORGs
+ wire_dragging_out = false;
+ wire_dragging_in  = false;
+ 
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 36ab255..7e8c9b5 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -1070,6 +1070,20 @@ if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTE
+     draw_set_color(c_black);
+     draw_circle(_dot_in_x, _dot_y, _dot_r, true);
+ 
++    // Ambiguous sensing warning — two preceding ORG chains tie for this slot
++    if (proxy && !_in_wired && org_prev_ambiguous) {
++        var _amb_pulse = abs(sin(current_time * 0.006));
++        var _amb_col   = merge_colour(c_red, c_yellow, _amb_pulse);
++        draw_set_color(_amb_col);
++        draw_circle(_dot_in_x, _dot_y, _dot_r + 3, true);
++        draw_circle(_dot_in_x, _dot_y, _dot_r + 4, true);
++        draw_set_font_l(fnt_c64_code);
++        draw_set_halign(fa_left);
++        draw_set_valign(fa_bottom);
++        draw_text_l(draw_x, y - 2, "SENSING 2 PREV ORGS - WIRE OR PLACE SIDE BY SIDE");
++        draw_set_valign(fa_top);
++    }
++
+     // Output dot (right side) — sends wire_out_target
+     var _out_wired = (wire_out_target != -1);
+     var _out_hov   = point_in_circle(mouse_x, mouse_y, _dot_out_x, _dot_y, _dot_r + 4);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml b/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
+index 890b9b5..ba7d909 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
+@@ -664,7 +664,10 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
+     var _best_x        = -999999;
+     var _best_found    = false;
+     var _best_cycles_in = 0;
++    var _best_daddy    = noone;
++    var _best_tie      = false;
+     var _pc_before     = _org.pc_address;
++    _org.org_prev_ambiguous = false;
+ 		
+ 	    // ================================================================
+ 	    // WIRE OVERRIDE: if this ORG has a direct wire input, use that
+@@ -817,7 +820,12 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
+             _best_end       = _spine_end;
+             _best_cycles_in = _spine_cyc;
+             _best_found     = true;
++            _best_daddy     = _daddy;
++            _best_tie       = false;
+         } else if (_candidate_x == _best_x) {
++            if (_daddy != _best_daddy) {
++                _best_tie = true;
++            }
+             if (_spine_end > _best_end) {
+                 _best_end       = _spine_end;
+                 _best_cycles_in = _spine_cyc;
+@@ -835,6 +843,11 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
+ 	            _org.display_address = "$----";
+ 	        } else {
+ 	            _org.pc_address = _best_end;
++	            // Two different chains share the winning column — the pick is a
++	            // guess by end address. Flag so the user wires it or lays out in a row.
++	            if (_best_tie) {
++	                _org.org_prev_ambiguous = true;
++	            }
+ 	        }
+ 	    } else {
+ 	        _org.pc_address = _org.proxy_address;

@@ -1070,6 +1070,20 @@ if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTE
     draw_set_color(c_black);
     draw_circle(_dot_in_x, _dot_y, _dot_r, true);
 
+    // Ambiguous sensing warning — two preceding ORG chains tie for this slot
+    if (proxy && !_in_wired && org_prev_ambiguous) {
+        var _amb_pulse = abs(sin(current_time * 0.006));
+        var _amb_col   = merge_colour(c_red, c_yellow, _amb_pulse);
+        draw_set_color(_amb_col);
+        draw_circle(_dot_in_x, _dot_y, _dot_r + 3, true);
+        draw_circle(_dot_in_x, _dot_y, _dot_r + 4, true);
+        draw_set_font_l(fnt_c64_code);
+        draw_set_halign(fa_left);
+        draw_set_valign(fa_bottom);
+        draw_text_l(draw_x, y - 2, "SENSING 2 PREV ORGS - WIRE OR PLACE SIDE BY SIDE");
+        draw_set_valign(fa_top);
+    }
+
     // Output dot (right side) — sends wire_out_target
     var _out_wired = (wire_out_target != -1);
     var _out_hov   = point_in_circle(mouse_x, mouse_y, _dot_out_x, _dot_y, _dot_r + 4);

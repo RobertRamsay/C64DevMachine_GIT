@@ -280,6 +280,7 @@ hdr_cache_opcode  = false;  // true when title font is fnt_C64_Angled_tiny
 org_uid          = -1;
 wire_out_target  = -1;
 wire_in_source   = -1;
+org_prev_ambiguous = false;  // proxy ORG sensed 2+ tied preceding ORGs
 wire_dragging_out = false;
 wire_dragging_in  = false;
 

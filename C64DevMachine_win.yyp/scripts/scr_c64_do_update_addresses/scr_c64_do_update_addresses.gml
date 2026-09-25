@@ -664,7 +664,10 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
     var _best_x        = -999999;
     var _best_found    = false;
     var _best_cycles_in = 0;
+    var _best_daddy    = noone;
+    var _best_tie      = false;
     var _pc_before     = _org.pc_address;
+    _org.org_prev_ambiguous = false;
 		
 	    // ================================================================
 	    // WIRE OVERRIDE: if this ORG has a direct wire input, use that
@@ -817,7 +820,12 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
             _best_end       = _spine_end;
             _best_cycles_in = _spine_cyc;
             _best_found     = true;
+            _best_daddy     = _daddy;
+            _best_tie       = false;
         } else if (_candidate_x == _best_x) {
+            if (_daddy != _best_daddy) {
+                _best_tie = true;
+            }
             if (_spine_end > _best_end) {
                 _best_end       = _spine_end;
                 _best_cycles_in = _spine_cyc;
@@ -835,6 +843,11 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
 	            _org.display_address = "$----";
 	        } else {
 	            _org.pc_address = _best_end;
+	            // Two different chains share the winning column — the pick is a
+	            // guess by end address. Flag so the user wires it or lays out in a row.
+	            if (_best_tie) {
+	                _org.org_prev_ambiguous = true;
+	            }
 	        }
 	    } else {
 	        _org.pc_address = _org.proxy_address;
