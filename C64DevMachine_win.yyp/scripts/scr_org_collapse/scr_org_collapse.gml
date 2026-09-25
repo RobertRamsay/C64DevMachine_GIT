@@ -341,7 +341,7 @@ function scr_init_drag_update(_anchor) {
     }
 }
 
-function scr_focus_init() {
+function scr_focus_init(_record_undo = true) {
     var _anchor = scr_init_anchor();
     if (!instance_exists(_anchor)) return;
     with (obj_workspace_manager) {
@@ -349,8 +349,12 @@ function scr_focus_init() {
         cam_zoom = 1;
         cam_x = _anchor.x + _anchor.width * 0.5 - 960;
         cam_y = _anchor.y - 160;
-        global.undo_dirty = true;
-        alarm[3] = 6;
+        cam_target_x = cam_x;
+        cam_target_y = cam_y;
+        if (_record_undo) {
+            global.undo_dirty = true;
+            alarm[3] = 6;
+        }
     }
 }
 

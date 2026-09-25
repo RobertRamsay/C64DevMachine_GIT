@@ -884,7 +884,25 @@ var _addr_total = 65536;
 
 
 
+    // Publish asset-row warnings from the final, freshly computed overlap set.
+    var _asset_count = instance_exists(obj_asset_manager) ? ds_list_size(obj_asset_manager.asset_list) : 0;
+    global.memory_bar_asset_conflicts = array_create(_asset_count, false);
+    for (var _aci = 0; _aci < array_length(_segments); _aci++) {
+        var _acs = _segments[_aci];
+        if (!_acs.conflict || !variable_struct_exists(_acs, "asset_index")) continue;
+        if (_acs.asset_index >= 0 && _acs.asset_index < _asset_count)
+            global.memory_bar_asset_conflicts[_acs.asset_index] = true;
+    }
+
     global.memory_bar_segments  = _segments;
     global.memory_bar_conflicts = _conflicts;
     global.memory_bar_dirty     = false;
+}
+
+// Refresh even if the asset panel draws before the memory bar (or the bar is hidden).
+function scr_memory_bar_asset_conflicted(_asset_index) {
+    if (global.memory_bar_dirty || !variable_global_exists("memory_bar_asset_conflicts"))
+        scr_build_memory_bar_cache();
+    return _asset_index >= 0 && _asset_index < array_length(global.memory_bar_asset_conflicts)
+        && global.memory_bar_asset_conflicts[_asset_index];
 }

@@ -251,68 +251,9 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
         }
     }
     
-    // Conflict Flashing
-    var _has_conflict = false;
-    var _my_size = buffer_exists(_asset.buffer) ? buffer_get_size(_asset.buffer) : 0;
-    // RAW CHARS exports only the character plane. The editor buffer also holds
-    // colour and override planes, which must not trigger memory conflicts.
-    if (_asset.type == "MAP_DATA" && variable_struct_exists(_asset, "meta")
-    && variable_struct_exists(_asset.meta, "raw_chars") && is_real(_asset.meta.raw_chars)
-    && real(_asset.meta.raw_chars) == 1
-    && variable_struct_exists(_asset.meta, "map_w") && variable_struct_exists(_asset.meta, "map_h")) {
-        _my_size = min(_my_size, max(0, _asset.meta.map_w * _asset.meta.map_h));
-    }
-    var _my_end = _asset.address + _my_size;
-
-// Check against nodes — only flag if the node physically overlaps
-    with (obj_c64_node) {
-        if (!is_connected) continue;
-        if (node_type == "MACRO_CODE") continue;
-        if (total_node_size == 0) continue;
-        if (pc_address == 0) continue;
-        if (pc_address < _my_end && (pc_address + total_node_size) > _asset.address) {
-            _has_conflict = true;
-        }
-    }
-
-// Also check global conflict ranges
-    if (!_has_conflict && _my_size > 0) {
-        var _my_end2 = _asset.address + _my_size;
-        var _cr_len = array_length(global.conflict_ranges);
-        for (var _cri = 0; _cri < _cr_len; _cri++) {
-            var _cr = global.conflict_ranges[_cri];
-            if (_asset.address < _cr.addr_end && _my_end2 > _cr.addr_start) {
-                _has_conflict = true;
-                break;
-            }
-        }
-    }
-// Direct check: does any conflicted node overlap this asset?
-    if (!_has_conflict && _my_size > 0) {
-        var _my_end2 = _asset.address + _my_size;
-        with (obj_c64_node) {
-            if (!is_conflicted) continue;
-            // Check node body range
-            if (pc_address < _my_end2 && (pc_address + total_node_size) > _asset.address) {
-                _has_conflict = true;
-                break;
-            }
-            // Check MACRO_CODE proxy segments
-            if (node_type == "MACRO_CODE" && variable_instance_exists(id, "code_seg_cache")) {
-                var _seg_len = array_length(code_seg_cache);
-                            for (var _sci = 0; _sci < _seg_len; _sci++) {
-                    var _cs = code_seg_cache[_sci];
-                    if (_cs.addr < _my_end2 && (_cs.addr + _cs.size) > _asset.address) {
-                        _has_conflict = true;
-                        break;
-                    }
-                }
-            }
-            if (_has_conflict) break;
-        }
-    }
-
-    if (_has_conflict && _my_size > 0) {
+    // Use the same current allocations/conflict rules as the memory bar.
+    // Deleted assets and stale node flags must not keep surviving rows red.
+    if (scr_memory_bar_asset_conflicted(_i)) {
         var _p = abs(sin(current_time * 0.01));
         _row_col = merge_color(_row_col, make_color_rgb(150, 0, 0), 0.4 * _p);
     }
