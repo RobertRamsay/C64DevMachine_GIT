@@ -717,32 +717,33 @@ if (gui_menu_open == 4) {
 		
         if (_op.action == "CYBER_PRESET") {
             var _preset_count = max(1, sprite_get_number(spr_palette_page));
-            _state_str = string(clamp(paletteStyle, 0, _preset_count - 1) + 1);
+            _state_str = string(clamp(paletteStyle, 0, _preset_count - 1) + 1) + "/" + string(_preset_count);
             _state_col = (paletteStyle == _preset_count - 1) ? c_yellow : make_color_rgb(160, 160, 220);
         }
         if (_op.action == "PALETTE_STYLE") {
-            _state_str = string(paletteStyle + 1);
+            _state_str = string(paletteStyle + 1) + "/" + string(max(1, sprite_get_number(spr_palette_page)));
             _state_col = make_color_rgb(160, 160, 220);
         }
         if (_op.action == "OPCODE_STYLE") {
-            var _cy_btn_label = max(0, sprite_get_number(spr_opcode_button) - 2);
-            _state_str = string(buttonStyle + 1);
+            var _cy_btn_label = max(1, sprite_get_number(spr_opcode_button) - 1);
+            _state_str = string(buttonStyle + 1) + "/" + string(_cy_btn_label);
             _state_col = make_color_rgb(160, 160, 220);
+            if (buttonStyle == _cy_btn_label - 1) { _state_col = c_yellow; }
         }
         if (_op.action == "BADGE_STYLE") {
-            _state_str = string(badgeStyle + 1);
+            _state_str = string(badgeStyle + 1) + "/" + string(max(1, sprite_get_number(spr_logobadge)));
             _state_col = make_color_rgb(160, 160, 220);
         }
         if (_op.action == "BACKGROUND_STYLE") {
-            _state_str = string(bkgImg + 1);
+            _state_str = string(bkgImg + 1) + "/" + string(max(1, sprite_get_number(spr_bkg)));
             _state_col = make_color_rgb(160, 160, 220);
         }
         if (_op.action == "PANEL_STYLE") {
-            _state_str = string(niceSliceFrm + 1);
+            _state_str = string(niceSliceFrm + 1) + "/" + string(max(1, sprite_get_number(spr_glassSlice)));
             _state_col = (niceSliceFrm > 0) ? c_yellow : c_gray;
         }
         if (_op.action == "NODE_STYLE") {
-            _state_str = string(nodeStyle + 1);
+            _state_str = string(nodeStyle + 1) + "/" + string(sprite_get_number(spr_9s_tile1) + 1);
             _state_col = (nodeStyle >= sprite_get_number(spr_9s_tile1)) ? c_yellow : make_color_rgb(160, 160, 220);
         }
         // Shortcut hint sits flush against the right edge; the state (if any)
@@ -858,9 +859,9 @@ if (gui_menu_open == 4) {
                 } else {
                     var _legacy_badge_max = max(0, sprite_get_number(spr_logobadge) - 2);
                     badgeStyle = min(_preset, _legacy_badge_max);
-                    var _legacy_opcode_pairs = max(1, floor((sprite_get_number(spr_opcode_button) - 2) / 2));
-                    var _legacy_opcode_style = min(_preset, _legacy_opcode_pairs - 1);
-                    buttonStyle = _legacy_opcode_style * 2;
+                    // Presets walk the non-cyber button styles in order (one per
+                    // frame, the cyber pair excluded), capped at the last of them.
+                    buttonStyle = min(_preset, max(0, sprite_get_number(spr_opcode_button) - 3));
                     niceSliceFrm = 0;
                 }
                 uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
@@ -869,11 +870,11 @@ if (gui_menu_open == 4) {
                 paletteStyle = (paletteStyle + 1) mod max(1, sprite_get_number(spr_palette_page));
             }
             else if (_op.action == "OPCODE_STYLE") {
-                var _cy_btn_cycle = max(0, sprite_get_number(spr_opcode_button) - 2);
-                if (buttonStyle == 0) buttonStyle = min(1, _cy_btn_cycle);
-                else if (buttonStyle == 1) buttonStyle = min(2, _cy_btn_cycle);
-                else if (buttonStyle == 2 && _cy_btn_cycle > 2) buttonStyle = _cy_btn_cycle;
-                else buttonStyle = 0;
+                // Every button frame is a style; its hover is the next frame, so
+                // the last frame is only ever a hover (the cyber highlight).
+                // Adding frames to spr_opcode_button adds styles to this cycle.
+                var _btn_styles = max(1, sprite_get_number(spr_opcode_button) - 1);
+                buttonStyle = (buttonStyle + 1) mod _btn_styles;
             }
             else if (_op.action == "BADGE_STYLE") {
                 badgeStyle = (badgeStyle + 1) mod max(1, sprite_get_number(spr_logobadge));
