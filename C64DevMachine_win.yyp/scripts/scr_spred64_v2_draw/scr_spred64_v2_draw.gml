@@ -98,24 +98,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _rsv_x1 = _right_x1;
         var _rsv_y1 = _split_y + 4 + _anim_band_h;
         var _rsv_x2 = _right_x2;
-        var _rsv_y2 = _vy2 - 42;
-        // Dedicated footer keeps conversion clear of the frame/layer controls.
-        var _convert_y = _rsv_y2 + 8;
-        var _convert_hover = point_in_rectangle(_mx, _my, _right_x1, _convert_y, _right_x2, _convert_y + 24);
-        draw_set_color(_convert_hover ? make_color_rgb(45,110,80) : make_color_rgb(25,65,50));
-        draw_rectangle(_right_x1, _convert_y, _right_x2, _convert_y + 24, false);
-        draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(c_white);
-        draw_set_halign(fa_center);
-        draw_set_valign(fa_middle);
-        draw_text_l((_right_x1 + _right_x2) * 0.5, _convert_y + 12, "CONVERT COMPOSITION INTO NODES");
-        draw_set_halign(fa_left);
-        draw_set_valign(fa_top);
-        if (_convert_hover && mouse_check_button_pressed(mb_left)
-        && !global.ui_click_consumed && !global.any_picker_open) {
-            global.ui_click_consumed = true;
-            if (scr_spred64_v2_composition_nodes(_asset)) exit;
-        }
+        var _rsv_y2 = _vy2 - 10;
         // -------------------------------------------------------
         // BACKDROP PANELS
         // -------------------------------------------------------
@@ -2486,6 +2469,30 @@ if (_layer_dir != 0) {
 			draw_text_l(_ph_cx, _ph_cy + 32, L(" ON LAYER ") + string(_comp.active_layer));
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
+        }
+        // Conversion belongs in the control-column gap, above CLEAR.
+        // Keep it available even when no placement is currently selected.
+        var _convert_x1 = _ctrl_x1 + 6, _convert_x2 = _ctrl_x2 - 6;
+        var _convert_y = _ctrl_y2 - 94;
+        var _convert_hover = point_in_rectangle(_mx, _my, _convert_x1, _convert_y, _convert_x2, _convert_y + 44);
+        draw_set_color(_convert_hover ? make_color_rgb(45,110,80) : make_color_rgb(25,65,50));
+        draw_rectangle(_convert_x1, _convert_y, _convert_x2, _convert_y + 44, false);
+        draw_set_color(make_color_rgb(100,200,150));
+        draw_rectangle(_convert_x1, _convert_y, _convert_x2, _convert_y + 44, true);
+        draw_set_font_l(fnt_c64_tiny);
+        draw_set_color(c_white);
+        draw_set_halign(fa_center);
+        draw_set_valign(fa_middle);
+        var _convert_cx = (_convert_x1 + _convert_x2) * 0.5;
+        draw_text_l(_convert_cx, _convert_y + 10, "CONVERT");
+        draw_text_l(_convert_cx, _convert_y + 22, "TO");
+        draw_text_l(_convert_cx, _convert_y + 34, "NODES");
+        draw_set_halign(fa_left);
+        draw_set_valign(fa_top);
+        if (_convert_hover && mouse_check_button_pressed(mb_left)
+        && !global.ui_click_consumed && !global.any_picker_open) {
+            global.ui_click_consumed = true;
+            if (scr_spred64_v2_composition_nodes(_asset)) exit;
         }
         if (!mouse_check_button(mb_left) && !mouse_check_button(mb_right))
             scr_spred64_v2_history_finish(_v2);
