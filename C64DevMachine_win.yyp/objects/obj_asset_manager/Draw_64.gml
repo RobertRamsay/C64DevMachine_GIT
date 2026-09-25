@@ -807,7 +807,11 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     draw_rectangle(_vx1, _vy1, _vx2, _vy1 + 28, false);
     draw_set_font_l(fnt_c64_code);
     draw_set_color(c_white);
-    draw_text_l(_vx1 + 10, _vy1 + 6, _asset.type + " : " + _asset.name);
+    var _viewer_title = _asset.type + " : " + _asset.name;
+    if (_asset.type == "LOAD_REU" || _asset.type == "LOAD_ORG") {
+        _viewer_title = manifest_fit_name(_viewer_title, min(1070, _vx2 - _vx1 - 130));
+    }
+    draw_text_l(_vx1 + 10, _vy1 + 6, _viewer_title);
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(40, 30, 0));
     draw_set_halign(fa_right);
@@ -7858,17 +7862,20 @@ case "SID_MUSIC": {
         } break;
 	
 case "LOAD_REU": {
+    var _hover_preview = undefined, _hover_y = 0;
     scr_reu_repack(_asset);
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_ltgray); draw_text_l(_vx1 + 10, _cy, "REU IMAGE:");
-    draw_set_color(make_color_rgb(100,200,180)); draw_text_l(_vx1 + 90, _cy, variable_struct_exists(_asset,"reu_filename") ? _asset.reu_filename : _asset.name + ".reu");
+    draw_set_color(make_color_rgb(100,200,180)); draw_text_l(_vx1 + 90, _cy, manifest_fit_name(variable_struct_exists(_asset,"reu_filename") ? _asset.reu_filename : _asset.name + ".reu", _vx2 - _vx1 - 100));
     _cy += 20;
     var _used = variable_struct_exists(_asset,"reu_used") ? _asset.reu_used : 0x100;
     draw_set_color(c_ltgray); draw_text_l(_vx1 + 10, _cy, L("TARGET: 16 MB     USED: ") + string(_used) + L(" BYTES"));
     _cy += 22;
     scr_draw_reu_memory_bar(_vx1 + 10, _vx2 - 10, _cy, _asset);
     _cy += 40;
-    var _cn=_vx1+30, _cc=_vx1+190, _cr=_vx1+280, _cs=_vx1+380, _cm=_vx1+465, _ci=_cm+95;
+    var _split_x = _vx1 + clamp(manifest_reu_split,100,max(100,_vx2-_vx1-430));
+    var _split_top = _cy;
+    var _cn=_vx1+30, _cc=_split_x+8, _cr=_cc+90, _cs=_cc+190, _cm=_cc+275, _ci=_cm+95;
     draw_set_color(make_color_rgb(120,120,140));
     draw_text_l(_cn,_cy,"ASSET"); draw_text_l(_cc,_cy,"C64"); draw_text_l(_cr,_cy,"REU"); draw_text_l(_cs,_cy,"BYTES"); draw_text_l(_cm,_cy,"PACK"); draw_text_l(_ci,_cy,"IDX");
     _cy += 14;
@@ -7897,11 +7904,15 @@ case "LOAD_REU": {
         if (_li < load_reu_scroll) continue;
         if (_li >= load_reu_scroll + load_reu_rows_visible) continue;
         _cy = load_reu_list_y1 + ((_li - load_reu_scroll) * 22);
+        if (point_in_rectangle(_mx, _my, _cn, _cy, _split_x - 6, _cy + 20)) {
+            _hover_preview = _la;
+            _hover_y = _cy;
+        }
         var _is_dragged = (reu_drag_row == _li);
         if (_is_dragged) draw_set_alpha(0.4);
         draw_set_color((_li mod 2==0)?make_color_rgb(22,30,34):make_color_rgb(18,25,29)); draw_rectangle(_vx1+8,_cy,_vx2-8,_cy+20,false);
         draw_set_color(make_color_rgb(130,150,200)); draw_text_l(_vx1+9,_cy+4,":::");
-        draw_set_color(c_white); draw_text_l(_cn,_cy+4,_lk.asset_name);
+        draw_set_color(c_white); draw_text_l(_cn,_cy+4,manifest_fit_name(_lk.asset_name,_split_x-_cn-8));
         var _ch=is_undefined(_la)?"----":string_upper(decimal_to_hex(_la.address)); while(string_length(_ch)<4)_ch="0"+_ch;
         var _rh=string_upper(decimal_to_hex(real(_lk.reu_address))); while(string_length(_rh)<6)_rh="0"+_rh;
         draw_set_color(c_yellow); draw_text_l(_cc,_cy+4,"$"+_ch);
@@ -7934,6 +7945,9 @@ case "LOAD_REU": {
         }
     }
 
+    manifest_draw_divider(_split_x, _split_top, load_reu_list_y2, "LOAD_REU");
+    manifest_draw_preview(_hover_preview, _vx1, _hover_y);
+
     // Scrollbar, drawn clear of the per-row X button which ends at _vx2-8.
     load_reu_sb_x1 = _vx2 - 6;
     load_reu_sb_x2 = _vx2 - 1;
@@ -7963,13 +7977,14 @@ case "LOAD_REU": {
 } break;
 
 case "LOAD_ORG": {
+    var _hover_preview = undefined, _hover_y = 0;
     // D64 filename row
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_ltgray);
     draw_text_l(_vx1 + 10, _cy, "D64 NAME:");
     var _dname = variable_struct_exists(_asset, "d64_filename") ? _asset.d64_filename : "";
     draw_set_color(make_color_rgb(200, 160, 40));
-    draw_text_l(_vx1 + 80, _cy, _dname != "" ? _dname : L("-- NOT SET --"));
+    draw_text_l(_vx1 + 80, _cy, manifest_fit_name(_dname != "" ? _dname : L("-- NOT SET --"), _vx2 - _vx1 - 90));
     _cy += 20;
 
     // Linked assets list
@@ -7980,11 +7995,13 @@ case "LOAD_ORG": {
 
     // Column header strip
     var _col_name   = _vx1 + 16;
-    var _col_d64    = _vx1 + 160;
-    var _col_bytes  = _vx1 + 320;
-    var _col_blocks = _vx1 + 400;
-    var _col_start  = _vx1 + 470;
-    var _col_end    = _vx1 + 550;
+    var _split_x = _vx1 + clamp(manifest_disk_split,100,max(100,_vx2-_vx1-510));
+    var _split_top = _cy;
+    var _col_d64    = _split_x + 8;
+    var _col_bytes  = _col_d64 + 160;
+    var _col_blocks = _col_d64 + 240;
+    var _col_start  = _col_d64 + 310;
+    var _col_end    = _col_d64 + 390;
     var _col_badge  = _vx2 - 60;
     var _col_x      = _vx2 - 26;
 
@@ -8022,6 +8039,11 @@ case "LOAD_ORG": {
         for (var _lti = 0; _lti < ds_list_size(asset_list); _lti++) {
             var _lta = ds_list_find_value(asset_list, _lti);
             if (_lta.name != _lname) continue;
+            if (_cy + 20 <= _vy2 && point_in_rectangle(_mx, _my, _col_name, _cy, _col_bytes - 8, _cy + 20)
+            && abs(_mx - _split_x) > 6) {
+                _hover_preview = _lta;
+                _hover_y = _cy;
+            }
             _link_type = _lta.type;
             _la_tcol = variable_struct_exists(type_colours, _lta.type)
                      ? variable_struct_get(type_colours, _lta.type) : c_gray;
@@ -8068,11 +8090,11 @@ case "LOAD_ORG": {
         // Asset name
         draw_set_font_l(fnt_c64_code);
         draw_set_color(c_white);
-        draw_text_l(_col_name, _cy + 3, _lname);
+        draw_text_l(_col_name, _cy + 3, manifest_fit_name(_lname, _split_x - _col_name - 8));
 
         // D64 filename
         draw_set_color(make_color_rgb(200, 160, 40));
-        draw_text_l(_col_d64, _cy + 3, "→ " + _ld64);
+        draw_text_l(_col_d64, _cy + 3, manifest_fit_name("→ " + _ld64, _col_bytes - _col_d64 - 8));
 
         // Size info — only show if we actually found the asset
         draw_set_font_l(fnt_c64_tiny);
@@ -8125,6 +8147,9 @@ case "LOAD_ORG": {
 
         _cy += 22;
     }
+
+    manifest_draw_divider(_split_x, _split_top, min(_cy, _vy2 - 34), "LOAD_ORG");
+    manifest_draw_preview(_hover_preview, _vx1, _hover_y);
 
     // ADD button
     var _abx1   = _vx1 + 10;

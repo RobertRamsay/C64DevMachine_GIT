@@ -672,3 +672,129 @@ sid_reloc_target = 0;       // target load address
 sid_reloc_frames = 15000;   // PLAY calls per sub-song (15000 = 5 min PAL)
 sid_reloc_msg    = "";
 sid_reloc_ok     = false;
+
+// Manifest column widths are viewer preferences, never asset data.
+manifest_reu_split = 182;
+manifest_disk_split = 152;
+manifest_split_drag = false;
+manifest_split_owner = -1;
+manifest_split_type = "";
+manifest_split_x = 0;
+manifest_split_y1 = 0;
+manifest_split_y2 = 0;
+manifest_split_grab = 0;
+
+// Measure with the active localized font, including the ellipsis itself.
+manifest_fit_name = function(_text, _width) {
+    if (string_width_l(_text) <= _width) return _text;
+    if (string_width_l("...") > _width) return "";
+    var _low = 0, _high = string_length(_text);
+    while (_low < _high) {
+        var _mid = ceil((_low + _high) / 2);
+        if (string_width_l(string_copy(_text, 1, _mid) + "...") <= _width) _low = _mid;
+        else _high = _mid - 1;
+    }
+    return string_copy(_text, 1, _low) + "...";
+};
+
+manifest_draw_divider = function(_x, _y1, _y2, _type) {
+    manifest_split_owner = viewer_asset;
+    manifest_split_type = _type;
+    manifest_split_x = _x;
+    manifest_split_y1 = _y1;
+    manifest_split_y2 = _y2;
+    var _hover = point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y, _x-5, _y1, _x+5, _y2);
+    draw_set_color((_hover || manifest_split_drag) ? make_color_rgb(100,200,180) : make_color_rgb(70,85,95));
+    draw_line(_x, _y1, _x, _y2);
+    draw_line(_x-2, _y1+3, _x-2, _y1+10);
+    draw_line(_x+2, _y1+3, _x+2, _y1+10);
+};
+
+// Read-only hover card: use existing GPU caches, never import or rebuild assets.
+manifest_draw_preview = function(_asset, _viewer_x, _row_y) {
+    if (is_undefined(_asset) || !is_struct(_asset.meta)) return;
+    if (manifest_split_drag || reu_drag_row >= 0 || load_reu_sb_drag
+    || load_reu_picker_open || load_org_picker_open || global.any_picker_open) return;
+    var _meta = _asset.meta;
+    var _surface = -1;
+    var _keys = ["preview_surf", "preview_surf_clean", "preview_surf_mc"];
+    for (var _k = 0; _k < array_length(_keys); _k++) {
+        if (variable_struct_exists(_meta, _keys[_k])) {
+            var _candidate = variable_struct_get(_meta, _keys[_k]);
+            if (surface_exists(_candidate)) { _surface = _candidate; break; }
+        }
+    }
+    var _sprites = variable_struct_exists(_meta, "spr_sprites") ? _meta.spr_sprites : [];
+    var _count = is_array(_sprites) ? array_length(_sprites) : 0;
+    if (variable_struct_exists(_meta, "used_count")) _count = min(_count, max(0, _meta.used_count));
+    var _has_sprite = false;
+    for (var _s = 0; _s < _count; _s++) {
+        if (sprite_exists(_sprites[_s])) { _has_sprite = true; break; }
+    }
+    if (_surface == -1 && !_has_sprite) return;
+
+    var _old_font = draw_get_font();
+    var _old_color = draw_get_color();
+    var _old_alpha = draw_get_alpha();
+    var _old_halign = draw_get_halign();
+    var _old_valign = draw_get_valign();
+    var _old_filter = gpu_get_tex_filter();
+    draw_set_font_l(fnt_c64_tiny);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
+    draw_set_alpha(1);
+    gpu_set_tex_filter(false);
+
+    var _x = 16;
+    var _w = min(320, _viewer_x - _x - 12);
+    var _inner = max(1, _w - 16);
+    var _name_h = min(64, max(14, string_height_ext_l(_asset.name, 14, _inner)));
+    var _cols = max(1, ceil(sqrt(_count)));
+    var _rows = max(1, ceil(_count / _cols));
+    var _source_w = _has_sprite ? _cols * 52 : surface_get_width(_surface);
+    var _source_h = _has_sprite ? _rows * 46 : surface_get_height(_surface);
+    var _scale = min(_inner / _source_w, 300 / _source_h);
+    var _image_w = _source_w * _scale;
+    var _image_h = _source_h * _scale;
+    var _h = _name_h + _image_h + 46;
+    var _y = clamp(_row_y - _h * 0.5, 140, max(140, display_get_gui_height() - _h - 20));
+    draw_set_color(make_color_rgb(16,19,29));
+    draw_rectangle(_x, _y, _x + _w, _y + _h, false);
+    draw_set_color(make_color_rgb(100,200,180));
+    draw_rectangle(_x, _y, _x + _w, _y + _h, true);
+    draw_set_color(c_white);
+    // Bound unusually long names to four lines without painting into the image.
+    var _name = _asset.name;
+    if (string_height_ext_l(_name, 14, _inner) > 64) {
+        while (string_length(_name) > 0 && string_height_ext_l(_name + "...", 14, _inner) > 64)
+            _name = string_delete(_name, string_length(_name), 1);
+        _name += "...";
+    }
+    draw_text_ext_l(_x + 8, _y + 8, _name, 14, _inner);
+    draw_set_color(make_color_rgb(150,170,185));
+    draw_text_l(_x + 8, _y + 10 + _name_h, manifest_fit_name(_asset.type, _inner));
+    var _ix = _x + (_w - _image_w) * 0.5;
+    var _iy = _y + _name_h + 30;
+    draw_set_color(variable_struct_exists(_meta, "bg_col") ? scr_c64_pepto_colour(_meta.bg_col) : c_black);
+    draw_rectangle(_ix, _iy, _ix + _image_w, _iy + _image_h, false);
+    if (_has_sprite) {
+        for (var _s = 0; _s < _count; _s++) {
+            var _sprite = _sprites[_s];
+            if (!sprite_exists(_sprite)) continue;
+            var _sx = _ix + ((_s mod _cols) * 52 + 2) * _scale;
+            var _sy = _iy + (floor(_s / _cols) * 46 + 2) * _scale;
+            var _ss = min(48 / sprite_get_width(_sprite), 42 / sprite_get_height(_sprite)) * _scale;
+            draw_sprite_ext(_sprite, 0, _sx + sprite_get_xoffset(_sprite) * _ss,
+                _sy + sprite_get_yoffset(_sprite) * _ss, _ss, _ss, 0, c_white, 1);
+        }
+    } else {
+        draw_set_color(c_white);
+        draw_surface_stretched(_surface, _ix, _iy, _image_w, _image_h);
+    }
+    gpu_set_tex_filter(_old_filter);
+    draw_set_font(_old_font);
+    draw_set_color(_old_color);
+    draw_set_alpha(_old_alpha);
+    draw_set_halign(_old_halign);
+    draw_set_valign(_old_valign);
+};
