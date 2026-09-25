@@ -581,6 +581,9 @@ if (label_search_open) {
         // Deferred jump: a result inside a folded ORG was unfolded, wait for reflow
         if (label_search_reflow > 0) {
             label_search_reflow -= 1;
+            // The relayout pass lives below the modal's exit, so run it here
+            global.addresses_dirty = true;
+            scr_c64_do_update_addresses();
             if (label_search_reflow == 0 && instance_exists(label_search_pending)) {
                 scr_focus_camera_on_node_offset(label_search_pending, label_search_pending_frac);
                 camera_set_view_pos(cam_view, cam_x, cam_y);

@@ -1,0 +1,27 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 15e5587..d8e1836 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -581,6 +581,9 @@ if (label_search_open) {
+         // Deferred jump: a result inside a folded ORG was unfolded, wait for reflow
+         if (label_search_reflow > 0) {
+             label_search_reflow -= 1;
++            // The relayout pass lives below the modal's exit, so run it here
++            global.addresses_dirty = true;
++            scr_c64_do_update_addresses();
+             if (label_search_reflow == 0 && instance_exists(label_search_pending)) {
+                 scr_focus_camera_on_node_offset(label_search_pending, label_search_pending_frac);
+                 camera_set_view_pos(cam_view, cam_x, cam_y);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml b/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml
+index 06df956..e38e0ae 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml
+@@ -385,4 +385,8 @@ function scr_org_set_collapsed(_anchor, _collapsed) {
+     global.addresses_dirty = true;
+     global.autosave_dirty = true;
+     obj_workspace_manager.flow_overlay_dirty = true;
++    // Heights are re-derived in Draw (macro bodies a frame later still), but
++    // the pack that sets y only runs from scr_c64_do_update_addresses. Owe a
++    // few passes so the unfolded chain closes up without waiting for a click.
++    global.relayout_frames = max(global.relayout_frames, 3);
+ }

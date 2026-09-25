@@ -385,4 +385,8 @@ function scr_org_set_collapsed(_anchor, _collapsed) {
     global.addresses_dirty = true;
     global.autosave_dirty = true;
     obj_workspace_manager.flow_overlay_dirty = true;
+    // Heights are re-derived in Draw (macro bodies a frame later still), but
+    // the pack that sets y only runs from scr_c64_do_update_addresses. Owe a
+    // few passes so the unfolded chain closes up without waiting for a click.
+    global.relayout_frames = max(global.relayout_frames, 3);
 }
