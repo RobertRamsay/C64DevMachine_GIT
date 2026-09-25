@@ -299,12 +299,27 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
             draw_set_color(c_white);
             draw_line(panel_x + 10 + _cw, _iy + 17, panel_x + 10 + _cw, _iy + item_h - 4);
         }
-    } else if (_asset.group != "") {
-        draw_set_color(c_white);
-        draw_text_l(panel_x + 20, _iy + 16, _asset.name);
     } else {
+        // Fit the name to its slot: shrink up to 25%, then trim with "..."
+        var _nm_x = panel_x + 8;
+        if (_asset.group != "") {
+            _nm_x = panel_x + 20;
+        }
+        var _nm_room  = (_edit_x - 4) - _nm_x;
+        var _nm_txt   = _asset.name;
+        var _nm_w     = string_width_l(_nm_txt);
+        var _nm_scale = 1;
+        if (_nm_w > _nm_room) {
+            _nm_scale = max(0.75, _nm_room / _nm_w);
+            if (_nm_w * _nm_scale > _nm_room) {
+                while (string_length(_nm_txt) > 1 && string_width_l(_nm_txt + "...") * _nm_scale > _nm_room) {
+                    _nm_txt = string_copy(_nm_txt, 1, string_length(_nm_txt) - 1);
+                }
+                _nm_txt += "...";
+            }
+        }
         draw_set_color(c_white);
-        draw_text_l(panel_x + 8, _iy + 16, _asset.name);
+        draw_text_transformed_l(_nm_x, _iy + 16 + (1 - _nm_scale) * 8, _nm_txt, _nm_scale, _nm_scale, 0);
     }
 
     // Divider before EDIT zone

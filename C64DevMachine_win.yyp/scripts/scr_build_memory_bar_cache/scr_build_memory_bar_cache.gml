@@ -577,6 +577,37 @@ var _addr_total = 65536;
                 }
             }
         }
+        // Bitmaps the build will actually emit. scr_compile_chain only packs a
+        // resident BITMAP when a connected node uses it (MACRO_BMP, a
+        // MACRO_LOADER file, or an "@asset NAME" line in a code block), so an
+        // unused bitmap left at $4000 never reaches the PRG. It still shows on
+        // the bar, but it must not flag — or flash its asset row — as a clash.
+        var _membar_used_bmp = ds_map_create();
+        with (obj_c64_node) {
+            if (!is_connected) continue;
+            if (node_type == "MACRO_BMP") {
+                ds_map_replace(_membar_used_bmp, string(instructions[0][1]), true);
+            } else if (node_type == "MACRO_LOADER") {
+                if (array_length(instructions[0]) > 2) {
+                    ds_map_replace(_membar_used_bmp, string(instructions[0][2]), true);
+                }
+            } else if (node_type == "MACRO_CODE") {
+                var _mb_txt = string(instructions[0][1]);
+                var _mb_pos = string_pos("@asset ", _mb_txt);
+                while (_mb_pos > 0) {
+                    var _mb_rest = string_delete(_mb_txt, 1, _mb_pos + 6);
+                    var _mb_nl   = string_pos("\n", _mb_rest);
+                    var _mb_nm   = _mb_rest;
+                    if (_mb_nl > 0) {
+                        _mb_nm = string_copy(_mb_rest, 1, _mb_nl - 1);
+                    }
+                    ds_map_replace(_membar_used_bmp, string_trim(_mb_nm), true);
+                    _mb_txt = _mb_rest;
+                    _mb_pos = string_pos("@asset ", _mb_txt);
+                }
+            }
+        }
+
         for (var _ai = 0; _ai < _am_len; _ai++) {
             // Remember which segments this asset creates. Once its switch has
             // finished, stamp those segments with the stable asset-list index so
@@ -616,6 +647,7 @@ var _addr_total = 65536;
                     //   colour — darker still
                     if (_a.file != "" && buffer_exists(_a.buffer) && !_a_is_load_later) {
                         var _mb_br = scr_bmp_regions(_a.address);
+                        var _mb_unused = !ds_map_exists(_membar_used_bmp, _a.name);
                         array_push(_segments, {
                             addr:        _mb_br.bmp_addr,
                             size:        _mb_br.bmp_size,
@@ -624,7 +656,7 @@ var _addr_total = 65536;
                             name:        _a.name,
                             lines:       [],
                             node_id:     noone,
-                            no_conflict: false,
+                            no_conflict: _mb_unused,
                             conflict:    false,
                             load_later:  false
                         });
@@ -636,7 +668,7 @@ var _addr_total = 65536;
                             name:        _a.name,
                             lines:       [],
                             node_id:     noone,
-                            no_conflict: false,
+                            no_conflict: _mb_unused,
                             conflict:    false,
                             load_later:  false
                         });
@@ -648,7 +680,7 @@ var _addr_total = 65536;
                             name:        _a.name,
                             lines:       [],
                             node_id:     noone,
-                            no_conflict: false,
+                            no_conflict: _mb_unused,
                             conflict:    false,
                             load_later:  false
                         });
@@ -797,6 +829,7 @@ var _addr_total = 65536;
             }
         }
         ds_map_destroy(_membar_load_later);
+        ds_map_destroy(_membar_used_bmp);
     }
     if (!variable_global_exists("memory_bar_disk_assets")) {
         global.memory_bar_disk_assets = [];
