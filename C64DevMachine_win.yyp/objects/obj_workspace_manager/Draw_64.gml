@@ -3961,3 +3961,178 @@ if (welcome_open) {
     draw_set_valign(fa_top);
 }
 
+
+// =============================================================
+// MACRO_REU ASSET DROP-DOWN — list of the manifest's linked assets.
+// Hovering a row shows the asset's thumbnail beside the list.
+// =============================================================
+if (reu_pick_open) {
+    if (!global.any_picker_open || !instance_exists(reu_pick_node)) {
+        reu_pick_open = false;
+    }
+}
+if (reu_pick_open) {
+    var _rp_n    = array_length(reu_pick_items);
+    var _rp_rh   = 18;
+    var _rp_vis  = min(reu_pick_rows, _rp_n);
+    var _rp_gh   = display_get_gui_height();
+    draw_set_font_l(fnt_c64_code);
+    var _rp_w = 160;
+    for (var _rpi = 0; _rpi < _rp_n; _rpi++) {
+        _rp_w = max(_rp_w, string_width_l(reu_pick_items[_rpi]) + 24);
+    }
+    _rp_w = min(_rp_w, 520);
+    var _rp_x1 = clamp(reu_pick_gx - 20, 8, global.gui_w - _rp_w - 8);
+    var _rp_h  = _rp_vis * _rp_rh + 8;
+    var _rp_y1 = reu_pick_gy;
+    if (_rp_y1 + _rp_h > _rp_gh - 8) {
+        _rp_y1 = max(8, _rp_gh - 8 - _rp_h);
+    }
+    var _rp_x2 = _rp_x1 + _rp_w;
+    var _rp_y2 = _rp_y1 + _rp_h;
+    reu_pick_scroll = clamp(reu_pick_scroll, 0, max(0, _rp_n - _rp_vis));
+
+    draw_set_color(make_color_rgb(16, 19, 29));
+    draw_rectangle(_rp_x1, _rp_y1, _rp_x2, _rp_y2, false);
+    draw_set_color(make_color_rgb(100, 200, 180));
+    draw_rectangle(_rp_x1, _rp_y1, _rp_x2, _rp_y2, true);
+
+    var _rp_cur = "";
+    if (instance_exists(reu_pick_node)) {
+        _rp_cur = string(reu_pick_node.instructions[0][11]);
+    }
+    var _rp_hover = -1;
+    var _rp_hover_y = 0;
+    for (var _rpv = 0; _rpv < _rp_vis; _rpv++) {
+        var _rpk = reu_pick_scroll + _rpv;
+        if (_rpk >= _rp_n) break;
+        var _rpy = _rp_y1 + 4 + _rpv * _rp_rh;
+        var _rp_hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _rp_x1 + 2, _rpy, _rp_x2 - 10, _rpy + _rp_rh - 1);
+        if (_rp_hov) {
+            _rp_hover   = _rpk;
+            _rp_hover_y = _rpy;
+            draw_set_color(make_color_rgb(45, 105, 120));
+            draw_rectangle(_rp_x1 + 2, _rpy, _rp_x2 - 10, _rpy + _rp_rh - 1, false);
+        }
+        var _rp_name = reu_pick_items[_rpk];
+        if (_rp_name == _rp_cur) {
+            draw_set_color(c_lime);
+        } else {
+            draw_set_color(c_white);
+        }
+        var _rp_txt = _rp_name;
+        var _rp_room = _rp_w - 24;
+        if (string_width_l(_rp_txt) > _rp_room) {
+            while (string_length(_rp_txt) > 1 && string_width_l(_rp_txt + "...") > _rp_room) {
+                _rp_txt = string_copy(_rp_txt, 1, string_length(_rp_txt) - 1);
+            }
+            _rp_txt += "...";
+        }
+        draw_text_l(_rp_x1 + 8, _rpy + 1, _rp_txt);
+    }
+
+    // Scrollbar
+    if (_rp_n > _rp_vis) {
+        var _rp_sbh = max(16, (_rp_h - 8) * (_rp_vis / _rp_n));
+        var _rp_sby = _rp_y1 + 4 + ((_rp_h - 8 - _rp_sbh) * (reu_pick_scroll / max(1, _rp_n - _rp_vis)));
+        draw_set_color(make_color_rgb(70, 85, 95));
+        draw_rectangle(_rp_x2 - 7, _rp_sby, _rp_x2 - 3, _rp_sby + _rp_sbh, false);
+    }
+
+    // Thumbnail of the hovered asset
+    if (_rp_hover >= 0 && instance_exists(obj_asset_manager)) {
+        var _rp_asset = scr_reu_find_asset(reu_pick_items[_rp_hover]);
+        if (!is_undefined(_rp_asset) && is_struct(_rp_asset.meta)) {
+            var _rp_meta = _rp_asset.meta;
+            var _rp_surf = -1;
+            var _rp_keys = ["preview_surf", "preview_surf_clean", "preview_surf_mc"];
+            for (var _rpq = 0; _rpq < array_length(_rp_keys); _rpq++) {
+                if (variable_struct_exists(_rp_meta, _rp_keys[_rpq])) {
+                    var _rp_c = variable_struct_get(_rp_meta, _rp_keys[_rpq]);
+                    if (surface_exists(_rp_c)) { _rp_surf = _rp_c; break; }
+                }
+            }
+            // A bitmap that has never been opened has no cached surface yet
+            if (_rp_surf == -1 && (_rp_asset.type == "BITMAP")) {
+                scr_asset_bmp_build_preview(_rp_asset);
+                if (variable_struct_exists(_rp_meta, "preview_surf") && surface_exists(_rp_meta.preview_surf)) {
+                    _rp_surf = _rp_meta.preview_surf;
+                }
+            }
+            var _rp_sprs = [];
+            if (variable_struct_exists(_rp_meta, "spr_sprites") && is_array(_rp_meta.spr_sprites)) {
+                _rp_sprs = _rp_meta.spr_sprites;
+            }
+            var _rp_scount = array_length(_rp_sprs);
+            if (variable_struct_exists(_rp_meta, "used_count")) {
+                _rp_scount = min(_rp_scount, max(0, _rp_meta.used_count));
+            }
+            var _rp_tw = 320;
+            var _rp_th = 200;
+            var _rp_tx = _rp_x2 + 10;
+            if (_rp_tx + _rp_tw + 12 > global.gui_w) {
+                _rp_tx = _rp_x1 - _rp_tw - 22;
+            }
+            var _rp_ty = clamp(_rp_hover_y - 110, 8, _rp_gh - _rp_th - 40);
+            if (_rp_surf != -1 || _rp_scount > 0) {
+                draw_set_color(make_color_rgb(16, 19, 29));
+                draw_rectangle(_rp_tx, _rp_ty, _rp_tx + _rp_tw + 12, _rp_ty + _rp_th + 30, false);
+                draw_set_color(make_color_rgb(100, 200, 180));
+                draw_rectangle(_rp_tx, _rp_ty, _rp_tx + _rp_tw + 12, _rp_ty + _rp_th + 30, true);
+                draw_set_font_l(fnt_c64_tiny);
+                draw_set_color(make_color_rgb(150, 170, 185));
+                draw_text_l(_rp_tx + 6, _rp_ty + 5, _rp_asset.type);
+                var _rp_ix = _rp_tx + 6;
+                var _rp_iy = _rp_ty + 24;
+                if (variable_struct_exists(_rp_meta, "bg_col")) {
+                    draw_set_color(scr_c64_pepto_colour(_rp_meta.bg_col));
+                } else {
+                    draw_set_color(c_black);
+                }
+                draw_rectangle(_rp_ix, _rp_iy, _rp_ix + _rp_tw, _rp_iy + _rp_th, false);
+                var _rp_filter = gpu_get_tex_filter();
+                gpu_set_tex_filter(false);
+                if (_rp_surf != -1) {
+                    var _rp_sw = surface_get_width(_rp_surf);
+                    var _rp_sh = surface_get_height(_rp_surf);
+                    var _rp_sc = min(_rp_tw / _rp_sw, _rp_th / _rp_sh);
+                    draw_surface_ext(_rp_surf, _rp_ix + (_rp_tw - _rp_sw * _rp_sc) * 0.5, _rp_iy + (_rp_th - _rp_sh * _rp_sc) * 0.5, _rp_sc, _rp_sc, 0, c_white, 1);
+                } else {
+                    var _rp_cols = max(1, ceil(sqrt(_rp_scount)));
+                    var _rp_rows = max(1, ceil(_rp_scount / _rp_cols));
+                    var _rp_cs   = min(_rp_tw / (_rp_cols * 52), _rp_th / (_rp_rows * 46));
+                    for (var _rps = 0; _rps < _rp_scount; _rps++) {
+                        var _rp_spr = _rp_sprs[_rps];
+                        if (!sprite_exists(_rp_spr)) continue;
+                        var _rp_sx = _rp_ix + ((_rps mod _rp_cols) * 52 + 2) * _rp_cs;
+                        var _rp_sy = _rp_iy + (floor(_rps / _rp_cols) * 46 + 2) * _rp_cs;
+                        var _rp_ss = min(48 / sprite_get_width(_rp_spr), 42 / sprite_get_height(_rp_spr)) * _rp_cs;
+                        draw_sprite_ext(_rp_spr, 0, _rp_sx + sprite_get_xoffset(_rp_spr) * _rp_ss, _rp_sy + sprite_get_yoffset(_rp_spr) * _rp_ss, _rp_ss, _rp_ss, 0, c_white, 1);
+                    }
+                }
+                gpu_set_tex_filter(_rp_filter);
+            }
+        }
+    }
+
+    // Input: pick, or click away / Esc to close
+    if (reu_pick_skip > 0) {
+        reu_pick_skip -= 1;
+    } else if (mouse_check_button_pressed(mb_left)) {
+        if (_rp_hover >= 0 && instance_exists(reu_pick_node)) {
+            scr_undo_snapshot();
+            reu_pick_node.instructions[0][11] = reu_pick_items[_rp_hover];
+            global.addresses_dirty = true;
+            global.undo_dirty = true;
+        }
+        reu_pick_open = false;
+        global.any_picker_open = false;
+        global.was_editor_open = true;
+        obj_asset_manager.alarm[2] = 60;
+    }
+    if (keyboard_check_pressed(vk_escape)) {
+        reu_pick_open = false;
+        global.any_picker_open = false;
+    }
+    draw_set_color(c_white);
+}

@@ -4315,7 +4315,15 @@ if (!instance_exists(node_tooltip_node) && !global.showcode_mouse_over &&
 		    }
 		}
 
-		if (_any_picker) {
+		if (reu_pick_open) {
+		    // Route mousewheel to the MACRO_REU asset drop-down
+		    if (mouse_wheel_up()) {
+		        reu_pick_scroll = max(0, reu_pick_scroll - 2);
+		    }
+		    if (mouse_wheel_down()) {
+		        reu_pick_scroll = min(max(0, array_length(reu_pick_items) - reu_pick_rows), reu_pick_scroll + 2);
+		    }
+		} else if (_any_picker) {
 		    // Route mousewheel to picker scroll
 		    if (mouse_wheel_up()) {
 		        _picker_node.label_picker_scroll = max(0, _picker_node.label_picker_scroll - 1);

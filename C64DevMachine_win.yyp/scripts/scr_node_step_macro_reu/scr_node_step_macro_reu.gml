@@ -62,8 +62,31 @@ function scr_node_step_macro_reu(_draw_x) {
             if(array_length(_matches)>0){var _at=-1;for(var _i=0;_i<array_length(_matches);_i++)if(_matches[_i]==string(_inst[10])){_at=_i;break;}_at=(_at+1) mod array_length(_matches);instructions[0][10]=_matches[_at];instructions[0][11]="";} exit;
         } _cy += _lh;
         if (_hit(_lx+44,_rx,_cy)) {
-            var _matches=[];var _m=scr_reu_find_asset(string(_inst[10]));if(!is_undefined(_m)&&variable_struct_exists(_m,"linked_assets")){for(var _i=0;_i<array_length(_m.linked_assets);_i++)array_push(_matches,_m.linked_assets[_i].asset_name);}
-            if(array_length(_matches)>0){var _at=-1;for(var _i=0;_i<array_length(_matches);_i++)if(_matches[_i]==string(_inst[11])){_at=_i;break;}_at=(_at+1) mod array_length(_matches);instructions[0][11]=_matches[_at];} exit;
+            // Drop-down of the manifest's linked assets (hover shows a thumbnail)
+            var _matches = [];
+            var _m = scr_reu_find_asset(string(_inst[10]));
+            if (!is_undefined(_m) && variable_struct_exists(_m, "linked_assets")) {
+                for (var _i = 0; _i < array_length(_m.linked_assets); _i++) {
+                    array_push(_matches, _m.linked_assets[_i].asset_name);
+                }
+            }
+            if (array_length(_matches) > 0) {
+                var _cur = -1;
+                for (var _i = 0; _i < array_length(_matches); _i++) {
+                    if (_matches[_i] == string(_inst[11])) { _cur = _i; break; }
+                }
+                with (obj_workspace_manager) {
+                    reu_pick_open   = true;
+                    reu_pick_node   = other.id;
+                    reu_pick_items  = _matches;
+                    reu_pick_gx     = global.gui_mouse_x;
+                    reu_pick_gy     = global.gui_mouse_y + 10;
+                    reu_pick_skip   = 1;
+                    reu_pick_scroll = max(0, _cur - 4);
+                }
+                global.any_picker_open = true;
+            }
+            exit;
         } _cy += _lh*4;
     } else {
         if(_hit(_lx+30,_rx,_cy)){instructions[0][1]=(real(_inst[1])+1) mod 4;exit;} _cy+=_lh;
