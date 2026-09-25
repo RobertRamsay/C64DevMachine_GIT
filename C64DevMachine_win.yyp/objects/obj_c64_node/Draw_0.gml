@@ -2589,6 +2589,24 @@ if (node_type == "INIT") {
 }
 
 // =============================================================
+// LABEL SEARCH (CTRL+SHIFT+F) — current result ring
+// =============================================================
+with (obj_workspace_manager) {
+    if (label_search_open && label_search_index >= 0 && label_search_index < array_length(label_search_results)) {
+        if (label_search_results[label_search_index] == other.id) {
+            var _lsh_x   = other.x + other.x_indent;
+            var _lsh_pul = abs(sin(current_time * 0.006));
+            draw_set_color(merge_colour(c_lime, c_white, _lsh_pul));
+            draw_set_alpha(0.95);
+            draw_rectangle(_lsh_x - 4, other.y - 4, _lsh_x + other.width + 4, other.y + other.height + 4, true);
+            draw_rectangle(_lsh_x - 5, other.y - 5, _lsh_x + other.width + 5, other.y + other.height + 5, true);
+            draw_rectangle(_lsh_x - 6, other.y - 6, _lsh_x + other.width + 6, other.y + other.height + 6, true);
+            draw_set_alpha(1.0);
+        }
+    }
+}
+
+// =============================================================
 // LABEL-REFERENCE HIGHLIGHT OVERLAY
 // =============================================================
 if (global.ref_highlight_source != noone && instance_exists(global.ref_highlight_source)

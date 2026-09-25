@@ -3229,8 +3229,8 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    draw_rectangle(0, 0, gui_w, gui_h, false);
 	    draw_set_alpha(1.0);
 
-	    var _lsw = 420;
-	    var _lsh = 150;
+	    var _lsw = 460;
+	    var _lsh = 170;
 	    var _lsx = (gui_w - _lsw) / 2;
 	    var _lsy = (gui_h - _lsh) / 2;
 
@@ -3256,13 +3256,16 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    if (_lsclose_hov && mouse_check_button_pressed(mb_left)) {
 	        label_search_open    = false;
 	        label_search_results = [];
+	        label_search_info    = [];
 	        label_search_index   = -1;
+	        label_search_pending = noone;
+	        label_search_reflow  = 0;
 	    }
 
 	    // Hint
 	    draw_set_font_l(fnt_c64_tiny);
 	    draw_set_color(c_gray);
-	    draw_text_l(_lsx + 14, _lsy + 32, "NAME / NAME* / *NAME / *NAME*");
+	    draw_text_l(_lsx + 14, _lsy + 32, "NAME / NAME* / *NAME / *NAME*   LABELS + CODE   CTRL+V PASTES");
 
 	    // Input field
 	    var _lfx1 = _lsx + 14;
@@ -3294,10 +3297,12 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    draw_set_halign(fa_left);
 	    if (_lsb_hov && mouse_check_button_pressed(mb_left)) {
 	        label_search_results = scr_label_search_run(label_search_query);
-	        label_search_index   = (array_length(label_search_results) > 0) ? 0 : -1;
+	        label_search_index   = -1;
+	        if (array_length(label_search_results) > 0) {
+	            label_search_index = 0;
+	        }
 	        if (label_search_index >= 0 && instance_exists(label_search_results[label_search_index])) {
-	            scr_focus_camera_on_node_offset(label_search_results[label_search_index], 0.55);
-	            camera_set_view_pos(cam_view, cam_x, cam_y);
+	            scr_label_search_goto(label_search_results[label_search_index], 0.55);
 	        }
 	    }
 
@@ -3320,8 +3325,7 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	        if (_lsp_hov && mouse_check_button_pressed(mb_left)) {
 	            label_search_index = (label_search_index - 1 + _lsr_count) mod _lsr_count;
 	            if (instance_exists(label_search_results[label_search_index])) {
-	                scr_focus_camera_on_node_offset(label_search_results[label_search_index], 0.2);
-	                camera_set_view_pos(cam_view, cam_x, cam_y);
+	                scr_label_search_goto(label_search_results[label_search_index], 0.2);
 	            }
 	        }
 
@@ -3334,19 +3338,40 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	        if (_lsn_hov && mouse_check_button_pressed(mb_left)) {
 	            label_search_index = (label_search_index + 1) mod _lsr_count;
 	            if (instance_exists(label_search_results[label_search_index])) {
-	                scr_focus_camera_on_node_offset(label_search_results[label_search_index], 0.2);
-	                camera_set_view_pos(cam_view, cam_x, cam_y);
+	                scr_label_search_goto(label_search_results[label_search_index], 0.2);
 	            }
 	        }
 
-	        // Current label name
-	        if (instance_exists(label_search_results[label_search_index])) {
-	            var _lscur      = label_search_results[label_search_index];
-	            var _lscur_name = (array_length(_lscur.instructions) > 0 && array_length(_lscur.instructions[0]) > 1)
-	                             ? string(_lscur.instructions[0][1]) : "";
+	        // Current result: DEF/REF + node title, then the matching line
+	        if (instance_exists(label_search_results[label_search_index]) && label_search_index < array_length(label_search_info)) {
+	            var _lscur  = label_search_results[label_search_index];
+	            var _lsinf  = label_search_info[label_search_index];
+	            var _lskind = "REF";
+	            var _lskcol = make_color_rgb(255, 160, 30);
+	            if (_lsinf.def) {
+	                _lskind = "DEF";
+	                _lskcol = c_lime;
+	            }
 	            draw_set_font_l(fnt_c64_tiny);
+	            draw_set_color(_lskcol);
+	            draw_text_l(_lsr_x + 150, _lsr_y, _lskind);
 	            draw_set_color(c_white);
-	            draw_text_l(_lsr_x, _lsr_y + 20, _lscur_name);
+	            draw_text_l(_lsr_x + 185, _lsr_y, string_copy(string_upper(_lscur.node_title), 1, 18));
+
+	            var _lsline = _lsinf.text;
+	            if (_lsinf.line > 0) {
+	                _lsline = "L" + string(_lsinf.line) + ": " + _lsline;
+	            }
+	            draw_set_font_l(fnt_c64_code);
+	            var _lsmaxw = _lsw - 28;
+	            if (string_width_l(_lsline) > _lsmaxw) {
+	                while (string_length(_lsline) > 4 && string_width_l(_lsline + "...") > _lsmaxw) {
+	                    _lsline = string_copy(_lsline, 1, string_length(_lsline) - 1);
+	                }
+	                _lsline += "...";
+	            }
+	            draw_set_color(c_yellow);
+	            draw_text_l(_lsx + 14, _lsby2 + 12, _lsline);
 	        }
 	    } else if (label_search_query != "") {
 	        draw_set_color(c_red);

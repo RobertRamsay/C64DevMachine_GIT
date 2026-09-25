@@ -781,6 +781,10 @@ label_search_cursor  = 0;
 label_search_ready   = false;
 label_search_results = [];
 label_search_index   = -1;
+label_search_info    = [];     // parallel to label_search_results: {node, def, line, text, ny}
+label_search_pending = noone;  // result waiting for its folded ORG to reflow
+label_search_pending_frac = 0.2;
+label_search_reflow  = 0;      // frames left while node layout runs under the modal
 
 /// =============================================================
 /// ADDITIONS TO Create_0.gml of obj_workspace_manager

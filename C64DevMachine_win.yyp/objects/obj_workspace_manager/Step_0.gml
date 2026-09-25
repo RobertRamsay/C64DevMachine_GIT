@@ -578,9 +578,43 @@ if (label_search_open) {
         keyboard_string     = "";
         label_search_ready  = true;
     } else {
+        // Deferred jump: a result inside a folded ORG was unfolded, wait for reflow
+        if (label_search_reflow > 0) {
+            label_search_reflow -= 1;
+            if (label_search_reflow == 0 && instance_exists(label_search_pending)) {
+                scr_focus_camera_on_node_offset(label_search_pending, label_search_pending_frac);
+                camera_set_view_pos(cam_view, cam_x, cam_y);
+                label_search_pending = noone;
+            }
+        }
+
+        // Paste (first line only, trailing ':' dropped so "name:" pastes as "name")
+        if ((keyboard_check(vk_control) || scr_cmd_held()) && keyboard_check_pressed(ord("V"))) {
+            var _lsp = string_replace_all(clipboard_get_text(), "\r", "");
+            var _lsnl = string_pos("\n", _lsp);
+            if (_lsnl > 0) {
+                _lsp = string_copy(_lsp, 1, _lsnl - 1);
+            }
+            _lsp = string_trim(_lsp);
+            if (string_length(_lsp) > 0 && string_char_at(_lsp, string_length(_lsp)) == ":") {
+                _lsp = string_copy(_lsp, 1, string_length(_lsp) - 1);
+            }
+            var _lsroom = 40 - string_length(label_search_query);
+            if (_lsroom > 0 && _lsp != "") {
+                _lsp = string_copy(_lsp, 1, _lsroom);
+                label_search_query  = string_insert(_lsp, label_search_query, label_search_cursor + 1);
+                label_search_cursor += string_length(_lsp);
+            }
+            keyboard_string = "";
+        }
+
+        // Chords (Ctrl/Cmd + key) must not leave their letter behind in the query
+        if ((keyboard_check(vk_control) || scr_cmd_held()) && keyboard_string != "") {
+            keyboard_string = "";
+        }
         if (keyboard_string != "") {
             var _lsadd = scr_strip_key_ghosts(keyboard_string);
-            if (_lsadd != "" && string_length(label_search_query) + string_length(_lsadd) <= 30) {
+            if (_lsadd != "" && string_length(label_search_query) + string_length(_lsadd) <= 40) {
                 label_search_query  = string_insert(_lsadd, label_search_query, label_search_cursor + 1);
                 label_search_cursor += string_length(_lsadd);
             }
@@ -596,10 +630,12 @@ if (label_search_open) {
 
         if (keyboard_check_pressed(vk_enter)) {
             label_search_results = scr_label_search_run(label_search_query);
-            label_search_index   = (array_length(label_search_results) > 0) ? 0 : -1;
+            label_search_index   = -1;
+            if (array_length(label_search_results) > 0) {
+                label_search_index = 0;
+            }
             if (label_search_index >= 0 && instance_exists(label_search_results[label_search_index])) {
-	            scr_focus_camera_on_node_offset(label_search_results[label_search_index], 0.2);
-	            camera_set_view_pos(cam_view, cam_x, cam_y);
+	            scr_label_search_goto(label_search_results[label_search_index], 0.2);
 	        }
 	    }
 
@@ -609,15 +645,13 @@ if (label_search_open) {
             if (keyboard_check_pressed(vk_down)) {
                 label_search_index = (label_search_index + 1) mod _lscount;
                 if (instance_exists(label_search_results[label_search_index])) {
-                    scr_focus_camera_on_node_offset(label_search_results[label_search_index], 0.2);
-                    camera_set_view_pos(cam_view, cam_x, cam_y);
+                    scr_label_search_goto(label_search_results[label_search_index], 0.2);
                 }
             }
             if (keyboard_check_pressed(vk_up)) {
                 label_search_index = (label_search_index - 1 + _lscount) mod _lscount;
                 if (instance_exists(label_search_results[label_search_index])) {
-                    scr_focus_camera_on_node_offset(label_search_results[label_search_index], 0.2);
-                    camera_set_view_pos(cam_view, cam_x, cam_y);
+                    scr_label_search_goto(label_search_results[label_search_index], 0.2);
                 }
             }
         }
@@ -626,7 +660,10 @@ if (label_search_open) {
     if (keyboard_check_pressed(vk_escape)) {
         label_search_open    = false;
         label_search_results = [];
+        label_search_info    = [];
         label_search_index   = -1;
+        label_search_pending = noone;
+        label_search_reflow  = 0;
     }
     exit; // block all other step logic while search modal is open
 }

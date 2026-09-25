@@ -102,7 +102,9 @@ if obj_workspace_manager.code_editor_open exit;
 if obj_workspace_manager.code_editor_open exit;
 if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) exit;
 if (global.show_info_window) exit;
-if (obj_workspace_manager.label_search_open) exit;
+// Label search owns input — except for the few frames after it unfolds an ORG,
+// when node layout must run so the result reaches its real position.
+if (obj_workspace_manager.label_search_open && obj_workspace_manager.label_search_reflow <= 0) exit;
 
 /////////////////////////////////////////////////////////////////
 // LABEL-REFERENCE HOVER HIGHLIGHT (LABEL nodes only)
