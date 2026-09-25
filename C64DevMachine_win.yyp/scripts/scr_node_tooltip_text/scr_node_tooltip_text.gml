@@ -471,6 +471,27 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_ROOMS": {
+            title: "ROOMS",
+            lines: [
+                "Loads the rooms of a ROOM_MAP asset (made in the",
+                "asset panel's map view) and routes doors between them.",
+                "",
+                "ROOM = the byte holding the current room number.",
+                "SPRITES = player sprite slots moved to arrival points",
+                "(e.g. 0,1). HOT X/Y = the player's hotspot inside the",
+                "sprite - the map's points are that pixel.",
+                "HOOK = optional label called after each room loads.",
+                "",
+                "RM_<MAP>_start  enter ROOM at its spawn point",
+                "RM_<MAP>_door   A = collider line type (2-7)",
+                "RM_<MAP>_enter  reload ROOM at the last arrival point",
+                "",
+                "Point a COLL_LINE at the ROOM_MAP to probe whichever",
+                "room is current."
+            ]
+        },
+
         "MACRO_ANIM_SET": {
             title: "ANIM SET",
             lines: [

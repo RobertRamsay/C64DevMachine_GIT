@@ -13868,6 +13868,12 @@ case "MACRO_COLL_LINE": {
     var _skip     = "L_LEXIT_" + _uid;
     var _sub_lbl  = "L_LSUB_"  + _uid;
     var _lc_asset = scr_line_coll_find_asset(_lc_name);
+    // A ROOM_MAP in the asset slot means "whichever room is current": the
+    // table pointer comes from MACRO_ROOMS' coll_lo/coll_hi at runtime.
+    var _lc_rooms = scr_room_map_find_asset(_lc_name);
+    if (is_undefined(_lc_asset) && !is_undefined(_lc_rooms)) {
+        _lc_asset = _lc_rooms;
+    }
 
     var _px_addr = (_px_var != "") ? scr_resolve_var_addr(_px_var) : 0;
     var _py_addr = (_py_var != "") ? scr_resolve_var_addr(_py_var) : 0;
@@ -13923,10 +13929,18 @@ case "MACRO_COLL_LINE": {
     array_push(_list, ["sta_zp",  0xFA, _id]);
     array_push(_list, ["lda_imm", 0, _id]);
     array_push(_list, ["sta_zp",  0xFB, _id]);
-    array_push(_list, ["lda_lab_lo", _lut_label, _id]);
-    array_push(_list, ["sta_zp",     0xFA,       _id]);
-    array_push(_list, ["lda_lab_hi", _lut_label, _id]);
-    array_push(_list, ["sta_zp",     0xFB,       _id]);
+    if (!is_undefined(_lc_rooms) && _lc_asset == _lc_rooms) {
+        var _rmp = scr_room_map_prefix(_lc_name);
+        array_push(_list, ["lda_lab", _rmp + "coll_lo", _id]);
+        array_push(_list, ["sta_zp",  0xFA,             _id]);
+        array_push(_list, ["lda_lab", _rmp + "coll_hi", _id]);
+        array_push(_list, ["sta_zp",  0xFB,             _id]);
+    } else {
+        array_push(_list, ["lda_lab_lo", _lut_label, _id]);
+        array_push(_list, ["sta_zp",     0xFA,       _id]);
+        array_push(_list, ["lda_lab_hi", _lut_label, _id]);
+        array_push(_list, ["sta_zp",     0xFB,       _id]);
+    }
 
     var _loop_lbl   = "L_LLOOP_" + _uid;
     var _next_lbl   = "L_LNEXT_" + _uid;
@@ -14096,6 +14110,11 @@ case "MACRO_COLL_LINE": {
     array_push(_list, ["rts",     0,        _id]);
 
     array_push(_list, ["label", _skip]);
+} break;
+
+// MACRO_ROOMS — room tables + start/door/enter (scr_room_map)
+case "MACRO_ROOMS": {
+    scr_rooms_emit(_curr, _list);
 } break;
 
 // MACRO_ANIM_SET — one shared player + flat tables (scr_macro_anim_set)

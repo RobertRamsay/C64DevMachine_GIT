@@ -867,6 +867,13 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
 	            _new_asset.meta.dither_invert = false;
 	            _new_asset.meta.brush_size    = 0;
 	        }
+	        if (_ad.type == "ROOM_MAP") {
+	            var _rmm = {};
+	            if (variable_struct_exists(_ad, "meta")) {
+	                _rmm = _ad.meta;
+	            }
+	            scr_room_map_restore(_new_asset, _rmm);
+	        }
 	        if (_ad.type == "HUD") {
 	            // Seed a complete meta first, then lay the saved fields over it —
 	            // an asset written by an older build simply keeps the defaults for

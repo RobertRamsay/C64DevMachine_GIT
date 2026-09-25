@@ -1153,6 +1153,7 @@
     {"id":{"name":"scr_load_workspace_dialogue","path":"scripts/scr_load_workspace_dialogue/scr_load_workspace_dialogue.yy",},},
     {"id":{"name":"scr_load_workspace_from_path","path":"scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.yy",},},
     {"id":{"name":"scr_macro_anim_set","path":"scripts/scr_macro_anim_set/scr_macro_anim_set.yy",},},
+    {"id":{"name":"scr_room_map","path":"scripts/scr_room_map/scr_room_map.yy",},},
     {"id":{"name":"scr_macro_chr_step","path":"scripts/scr_macro_chr_step/scr_macro_chr_step.yy",},},
     {"id":{"name":"scr_macro_chr_sync","path":"scripts/scr_macro_chr_sync/scr_macro_chr_sync.yy",},},
     {"id":{"name":"scr_macro_entry_labels","path":"scripts/scr_macro_entry_labels/scr_macro_entry_labels.yy",},},

@@ -138,6 +138,12 @@ var _base = "unsaved";
                 _mo.map_w        = variable_struct_exists(_me, "map_w")        ? _me.map_w        : [];
                 _mo.map_h        = variable_struct_exists(_me, "map_h")        ? _me.map_h        : [];
             }
+            if (_a.type == "ROOM_MAP") {
+                _mo.rooms    = _me.rooms;
+                _mo.reu      = _me.reu;
+                _mo.zoom     = _me.zoom;
+                _mo.sel_room = _me.sel_room;
+            }
             if (_a.type == "HUD") {
                 // Same field set as scr_save_workspace_as — surfaces excluded.
                 _mo.hud_x         = _me.hud_x;

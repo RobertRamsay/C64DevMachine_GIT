@@ -55,6 +55,7 @@ function scr_boot_resident_ranges() {
         // Authoring asset with no address of its own — its bytes reach the
         // image through MACRO_HUD, already counted as that node's size.
         if (_a.type == "HUD") continue;
+        if (_a.type == "ROOM_MAP") continue;
         if (ds_map_exists(_deferred, _a.name)) continue;
         if (!buffer_exists(_a.buffer)) continue;
 

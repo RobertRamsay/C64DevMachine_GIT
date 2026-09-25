@@ -2124,6 +2124,13 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open) {
             _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
             scr_hud_create(_new_asset);
         }
+        if (_type == "ROOM_MAP") {
+            // Authoring asset: rooms, exits and arrival points. MACRO_ROOMS
+            // turns it into tables; it owns no C64 memory of its own.
+            if (buffer_exists(_new_asset.buffer)) buffer_delete(_new_asset.buffer);
+            _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
+            scr_room_map_create(_new_asset);
+        }
         if ((_type == "MUSIC_MAKER" || _type == "SFX_MAKER")) {
             // Authoring asset — no C64 payload of its own, same family as
             // BITMAP_BUILDER. GENERATE emits the real BYTE_DATA/TEXT_DATA

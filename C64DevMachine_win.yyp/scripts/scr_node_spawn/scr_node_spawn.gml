@@ -970,6 +970,16 @@ case "LABEL": {
             break;
 
         // -------------------------------------------------------
+        // MACRO_ROOMS — room loader / door router for a ROOM_MAP asset
+        // -------------------------------------------------------
+        case "MACRO_ROOMS":
+            _n.node_title   = "ROOMS";
+            _n.instructions = [["macro_rooms", "", "", "0", 12, 20, "", 1]];
+            _n.pc_address   = global.start_pc;
+            with (_n) { event_user(0); }
+            break;
+
+        // -------------------------------------------------------
         // MACRO_SFX
         // -------------------------------------------------------
         case "MACRO_SFX":

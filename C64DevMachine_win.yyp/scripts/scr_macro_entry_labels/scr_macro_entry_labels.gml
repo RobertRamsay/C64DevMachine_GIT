@@ -101,6 +101,15 @@ function scr_macro_entry_labels() {
                 _out[$ _an_alias + "_reset"] = true;
             break;
 
+            case "MACRO_ROOMS":
+                if (string(instructions[0][1]) != "") {
+                    var _rm_px = scr_room_map_prefix(string(instructions[0][1]));
+                    _out[$ _rm_px + "start"] = true;
+                    _out[$ _rm_px + "door"]  = true;
+                    _out[$ _rm_px + "enter"] = true;
+                }
+            break;
+
             case "MACRO_ANIM_SET":
                 var _as_alias = scr_anim_set_alias(id);
                 _out[$ _as_alias + "_sub"]   = true;

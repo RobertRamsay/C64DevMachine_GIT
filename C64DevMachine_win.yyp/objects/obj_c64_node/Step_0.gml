@@ -481,7 +481,7 @@ if (label_picker_open && mouse_check_button_pressed(mb_left)) {
    // ---- ASSET PICKER (BYTE_DATA / TEXT_DATA / LINE_COLL) ----
     if (label_picker_mode == "BYTE_ASSET" || label_picker_mode == "TEXT_ASSET"
 	 || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET"
-	 || label_picker_mode == "HUD_ASSET") {
+	 || label_picker_mode == "HUD_ASSET" || label_picker_mode == "ROOM_ASSET") {
         var _want_type = "BYTE_DATA";
         if (label_picker_mode == "TEXT_ASSET") {
             _want_type = "TEXT_DATA";
@@ -491,6 +491,8 @@ if (label_picker_open && mouse_check_button_pressed(mb_left)) {
             _want_type = "LINE_COLL";
         } else if (label_picker_mode == "HUD_ASSET") {
             _want_type = "HUD";
+        } else if (label_picker_mode == "ROOM_ASSET") {
+            _want_type = "ROOM_MAP";
         }
         var _px      = draw_x + width + 8;
         var _py      = y + 36;
@@ -507,7 +509,7 @@ if (label_picker_open && mouse_check_button_pressed(mb_left)) {
             var _am = obj_asset_manager;
             for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
                 var _a = _am.asset_list[| _ai];
-                if (_a.type == _want_type) array_push(_alist, _a.name);
+                if (_a.type == _want_type || (_want_type == "LINE_COLL" && _a.type == "ROOM_MAP")) array_push(_alist, _a.name);
             }
         }
         var _count = array_length(_alist);
@@ -1163,6 +1165,7 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
 		case "MACRO_COLL_LINE":   scr_node_step_macro_coll_line(draw_x);   break;
         case "MACRO_ANIM":        scr_node_step_macro_anim(draw_x);        break;
         case "MACRO_ANIM_SET":    scr_node_step_macro_anim_set(draw_x);    break;
+        case "MACRO_ROOMS":       scr_node_step_macro_rooms(draw_x);       break;
         case "MACRO_SFX":         scr_node_step_macro_sfx(draw_x);         break;
         case "MACRO_CODE":        scr_node_step_macro_code(draw_x);        break;
 		case "MACRO_V_SCROLL":    scr_node_step_macro_vscroll();        break;
@@ -1810,6 +1813,12 @@ if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !gl
                                 if (node_type == "MACRO_ANIM_SET") {
                                     array_push(other.label_picker_list, scr_anim_set_alias(id) + "_sub");
                                     array_push(other.label_picker_list, scr_anim_set_alias(id) + "_reset");
+                                }
+                                if (node_type == "MACRO_ROOMS" && string(instructions[0][1]) != "") {
+                                    var _rmpx = scr_room_map_prefix(string(instructions[0][1]));
+                                    array_push(other.label_picker_list, _rmpx + "start");
+                                    array_push(other.label_picker_list, _rmpx + "door");
+                                    array_push(other.label_picker_list, _rmpx + "enter");
                                 }
                                 if (node_type == "MACRO_SCROLL") {
 				                    array_push(other.label_picker_list, "Scroller_L");

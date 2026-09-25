@@ -252,6 +252,13 @@ if (instance_exists(obj_asset_manager)) {
         }
 		
 		
+		 if (_a.type == "ROOM_MAP") {
+		     // Rooms, exits and arrival points ARE the asset; the rest is editor state.
+		     _meta_out.rooms    = _a.meta.rooms;
+		     _meta_out.reu      = _a.meta.reu;
+		     _meta_out.zoom     = _a.meta.zoom;
+		     _meta_out.sel_room = _a.meta.sel_room;
+		 }
 		 if (_a.type == "HUD") {
             // The rectangle, the two grids and the fields ARE the asset. The
             // glyph atlases in meta are surfaces — never serialised, rebuilt

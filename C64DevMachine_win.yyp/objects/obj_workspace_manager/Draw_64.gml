@@ -1604,6 +1604,7 @@ if (gui_menu_open == 0) {
         { title: "EXPANDER",     type: "MACRO_SPR_EXPAND"    },
         { title: "ANIMATE",      type: "MACRO_ANIM"          },
         { title: "ANIM SET",     type: "MACRO_ANIM_SET"      },
+        { title: "ROOMS",        type: "MACRO_ROOMS"         },
         { title: "FLIP X",       type: "MACRO_FLIP_X"        },
         { title: "--- SOUND ---", type: "HEADER"              },
         { title: "SID",          type: "MACRO_SID"           },

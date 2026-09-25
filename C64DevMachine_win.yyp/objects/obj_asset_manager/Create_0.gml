@@ -90,6 +90,7 @@ asset_types = [
 	"META_TILESET",
 	"LINE_COLL",
 	"HUD",
+	"ROOM_MAP",
 ];
 // -------------------------------------------------------
 // ASSET VIEWER
@@ -120,7 +121,8 @@ type_colours = {
     META_TILESET  : make_color_rgb(120, 200, 255),
     META_MAP      : make_color_rgb( 80, 140, 255),
     LINE_COLL     : make_color_rgb(255, 100, 100),
-    HUD           : make_color_rgb( 90, 220, 190)
+    HUD           : make_color_rgb( 90, 220, 190),
+    ROOM_MAP      : make_color_rgb(250, 200,  60)
 };
 // -------------------------------------------------------
 // NAME EDITING
