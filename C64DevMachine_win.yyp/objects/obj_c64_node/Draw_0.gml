@@ -915,7 +915,7 @@ if (_box_alpha < 0.1) { x -= x_indent; draw_set_alpha(1.0); exit; }
 
 var _node_style = obj_workspace_manager.nodeStyle;
 // Node styles (6): 0 flat gradient, 1..n-2 tinted 9-slices, n-1 the handcrafted
-// cyberpunk renderer, n the last 9-slice (Starlight) drawn in its own colours.
+// cyberpunk renderer, n the last 9-slice (Starlight), tinted like the others.
 var _n9         = sprite_get_number(spr_9s_tile1);
 var _node_cyber = (_node_style == _n9 - 1);
 var _node_star  = (_node_style >= _n9);
@@ -937,10 +937,8 @@ if (_node_cyber) {
     draw_set_alpha(1.0);
 }
 else if (_node_star) {
-    // Starlight: the slice carries its own colours, so no body tint; unwired nodes dim.
-    var _star_col = make_color_rgb(150, 150, 150);
-    if (is_connected) { _star_col = c_white; }
-    draw_sprite_stretched_ext(spr_9s_tile1, _n9 - 1, draw_x, y, width, height, _star_col, _box_alpha);
+    // Starlight: the last slice, darkened with the body colour like the others
+    draw_sprite_stretched_ext(spr_9s_tile1, _n9 - 1, draw_x, y, width, height, _body_col, _box_alpha);
 }
 else if (_node_style == 0) {
     draw_set_alpha(_box_alpha);
