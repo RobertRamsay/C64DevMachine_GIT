@@ -142,6 +142,8 @@ function scr_bitmap_builder_generate(_asset) {
             linked_assets : []
         };
         scr_asset_byte_data_flush(_new_asset);
+        // Next free page from the default, clear of the other generated table
+        _new_asset.address = scr_asset_free_address(_new_asset.address, buffer_get_size(_new_asset.buffer), _new_asset);
         ds_list_add(_am.asset_list, _new_asset);
         _m.bbd_name = _name;
     }

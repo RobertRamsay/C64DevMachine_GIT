@@ -46,3 +46,32 @@ function scr_asset_default_address(_type) {
         default:           return 0x2400;
     }
 }
+
+/// First page-aligned address at or above _start where _size bytes fit without
+/// overlapping another BYTE_DATA asset. Used when a tool creates BYTE_DATA
+/// assets for you (Bitmap Builder table + tag grid), so two made back to back
+/// don't both land on the $C100 default: the second goes to $C200 (or the next
+/// free page if the first is longer than 256 bytes).
+function scr_asset_free_address(_start, _size, _self) {
+    if (!instance_exists(obj_asset_manager)) return _start;
+    var _am   = obj_asset_manager;
+    var _cand = _start;
+    var _moved = true;
+    var _guard = 0;
+    while (_moved && _guard < 256) {
+        _moved = false;
+        _guard += 1;
+        for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
+            var _a = ds_list_find_value(_am.asset_list, _i);
+            if (_a == _self || _a.type != "BYTE_DATA") continue;
+            if (!buffer_exists(_a.buffer)) continue;
+            var _a0 = real(_a.address);
+            var _a1 = _a0 + buffer_get_size(_a.buffer);
+            if (_cand < _a1 && _a0 < _cand + _size) {
+                _cand = ceil(_a1 / 256) * 256;
+                _moved = true;
+            }
+        }
+    }
+    return _cand;
+}
