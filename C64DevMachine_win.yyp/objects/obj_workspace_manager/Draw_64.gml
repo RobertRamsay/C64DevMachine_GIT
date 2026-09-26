@@ -389,6 +389,10 @@ for (var i = 0; i < array_length(active_palette); i++) {
     var is_hover = (gui_mouse_x > btn_x && gui_mouse_x < btn_x + btn_w &&
                     gui_mouse_y > btn_y && gui_mouse_y < btn_y + btn_h);
 
+    if (global.tour_active) {
+        scr_tour_capture("PAL:" + item.title, btn_x, btn_y, btn_x + btn_w, btn_y + btn_h);
+    }
+
     // Check if this button is a finder match
     var _is_finder_match = false;
     if (opcode_finder_text != "") {
@@ -522,6 +526,9 @@ if (shelf_page > 0) {
     // Hover check needs to look at the full box around the center
     var l_hover = (gui_mouse_x >= lx - hw && gui_mouse_x < lx + hw &&
                    gui_mouse_y >= ly - hh && gui_mouse_y < ly + hh);
+    if (global.tour_active) {
+        scr_tour_capture("ARROW:L", lx - hw, ly - hh, lx + hw, ly + hh);
+    }
     
     var l_frame = 0;
 	if paletteStyle>1 l_frame=2
@@ -545,6 +552,9 @@ if (shelf_page < p_count - 1) {
     
     var r_hover = (gui_mouse_x >= rx - hw && gui_mouse_x < rx + hw &&
                    gui_mouse_y >= ry - hh && gui_mouse_y < ry + hh);
+    if (global.tour_active) {
+        scr_tour_capture("ARROW:R", rx - hw, ry - hh, rx + hw, ry + hh);
+    }
     
     var r_frame = 0;
 	if paletteStyle>1 r_frame=2
@@ -1120,6 +1130,9 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
     var _bhover = (!_bdisabled &&
                    gui_mouse_x >= _bx && gui_mouse_x < _bx + _mbar_btn_w &&
                    gui_mouse_y >= _by && gui_mouse_y < _by + _mbar_btn_h);
+    if (global.tour_active) {
+        scr_tour_capture("MENU:" + string(_bi), _bx, _by, _bx + _mbar_btn_w, _by + _mbar_btn_h);
+    }
     if (_bhover || _bopen) {
         var _menu_overlay_additive = (uiChromeStyle == 0);
         if (_menu_overlay_additive) gpu_set_blendmode(bm_add);
@@ -1435,7 +1448,10 @@ if (gui_menu_open == 5) {
         { title: "GLOSS DARK",      url: "https://drive.google.com/file/d/1k_OaDIK1II1-M7eJ2JJrWMJOVPGEmE_z/view?usp=drive_link" }, // link under here
 		{ title: "HELPER PAGE",			url: "https://robram78.github.io/C64_HELPER/" }, // link under here
 		{ title: "HELPER V2+C64U",			url: "https://robram78.github.io/C64_HELPER/u64_registers.html" }, // link under here		
-		
+        { title: "--- GUIDED TOURS ---", url: "HEADER" },
+        { title: "BORDER & BACKGROUND",  url: "TOUR:0" },
+        { title: "YOUR FIRST MACRO",     url: "TOUR:1" },
+        { title: "BITMAP BASICS",        url: "TOUR:2" },
     ];
 
     var _item_h_d   = 20;
@@ -1477,7 +1493,9 @@ if (gui_menu_open == 5) {
 
         if (_ihov && mouse_check_button_pressed(mb_left)) {
             gui_menu_open = -1;
-            if (_dp.url != "") {
+            if (string_copy(_dp.url, 1, 5) == "TOUR:") {
+                scr_tour_start(real(string_delete(_dp.url, 1, 5)));
+            } else if (_dp.url != "") {
                 url_open(_dp.url);
             }
         }
@@ -1657,6 +1675,9 @@ if (gui_menu_open == 0) {
         if (_ihov) {
             hover_macro_type  = _mp.type;
             hover_macro_title = _mp.title;
+        }
+        if (global.tour_active) {
+            scr_tour_capture("MAC:" + _mp.type, _ix1, _iy, _ix2, _iy + _item_h);
         }
 
         // Keep macro menu rows clean: no button sprite behind menu entries.

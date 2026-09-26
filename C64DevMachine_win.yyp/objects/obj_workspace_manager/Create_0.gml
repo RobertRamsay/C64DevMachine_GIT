@@ -411,6 +411,15 @@ silent_build = false;
 pending_dump = false;
 global.last_built = false;
 global.last_bytes = [];
+
+// Guided tours (scr_tour_guide / obj_tour_guide). The draw loops report the
+// rects of whatever the current tour step points at via scr_tour_capture.
+global.tour_active      = false;
+global.tour_keys        = [];
+global.tour_rects       = [];
+global.tour_stamps      = [];
+global.tour_frame       = 0;
+global.tour_build_count = 0;
 global.sid_active = false;
 global.node_link_max_dist = 500;
 

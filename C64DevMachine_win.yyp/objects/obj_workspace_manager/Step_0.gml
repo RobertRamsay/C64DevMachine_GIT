@@ -2867,6 +2867,7 @@ var _dbg_keys = ds_map_keys_to_array(p.labels);
 
     global.last_base_pc = global.start_pc;
     global.last_built   = true;
+    global.tour_build_count++;
 
 
 // Patch IRQ vector ($AA/$BB placeholders → sid_irq or ts_irq address)

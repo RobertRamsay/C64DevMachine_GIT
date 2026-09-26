@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_tour_guide",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_tour_guide",
+  "parent":{
+    "name":"UI",
+    "path":"folders/SCRIPTS/UI.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}
