@@ -129,6 +129,8 @@ version_banner_dismissed = false;
 welcome_open           = false;
 welcome_hide_checked   = false;
 welcome_credits_y      = 0;
+welcome_mode           = 0;      // 0 = welcome / what's new, 1 = guided tour list
+welcome_tour_scroll    = 0;      // first visible row in the tour list
 welcome_whats_new = [
 	"NEW - STARLIGHT UI theme, tidied up other themes added bkg for cyberpunk theme.",
 	"NEW - ROOMS node - for optimised room switching.",

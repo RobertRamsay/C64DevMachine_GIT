@@ -1449,9 +1449,7 @@ if (gui_menu_open == 5) {
 		{ title: "HELPER PAGE",			url: "https://robram78.github.io/C64_HELPER/" }, // link under here
 		{ title: "HELPER V2+C64U",			url: "https://robram78.github.io/C64_HELPER/u64_registers.html" }, // link under here		
         { title: "-- GUIDED TOURS --", url: "HEADER" },
-        { title: "BORDER & BACKGROUND",  url: "TOUR:0" },
-        { title: "YOUR FIRST MACRO",     url: "TOUR:1" },
-        { title: "BITMAP BASICS",        url: "TOUR:2" },
+        { title: "TAKE THE TOUR...",     url: "TOURS" },
     ];
 
     var _item_h_d   = 20;
@@ -1493,7 +1491,12 @@ if (gui_menu_open == 5) {
 
         if (_ihov && mouse_check_button_pressed(mb_left)) {
             gui_menu_open = -1;
-            if (string_copy(_dp.url, 1, 5) == "TOUR:") {
+            if (_dp.url == "TOURS") {
+                // Open the welcome panel straight on its tour list.
+                welcome_open        = true;
+                welcome_mode        = 1;
+                welcome_tour_scroll = 0;
+            } else if (string_copy(_dp.url, 1, 5) == "TOUR:") {
                 scr_tour_start(real(string_delete(_dp.url, 1, 5)));
             } else if (_dp.url != "") {
                 url_open(_dp.url);
@@ -3902,83 +3905,163 @@ if (welcome_open) {
     draw_text_l(_px + _pw / 2, _py + 40, L("VERSION: ") + string(GM_version) + L("   DATE: ") + global.build_date);
     draw_set_halign(fa_left);
 
-    // What's New
-    var _wy = _py + 70;
-    draw_set_font_l(fnt_C64_Angled);
-    draw_set_color(make_color_rgb(220, 140, 40));
-    draw_text_l(_px + 20, _wy, "WHAT'S NEW?");
-    _wy += 22;
-    draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(c_aqua);
-    for (var _wi = 0; _wi < array_length(welcome_whats_new); _wi++) {
-        // An empty entry is a spacer, not a bullet. Without this it drew a
-        // lone "- " on its own line above the SHARE note.
-        if (welcome_whats_new[_wi] == "") {
+    var _tg = scr_tour_welcome_geom(_px, _py, _pw, _ph);
+
+    if (welcome_mode == 1) {
+        // ---- GUIDED TOUR LIST ----
+        var _tours = scr_tour_list();
+        draw_set_font_l(fnt_C64_Angled);
+        draw_set_color(make_color_rgb(220, 140, 40));
+        draw_text_l(_px + 20, _py + 66, "GUIDED TOURS");
+        draw_set_font_l(fnt_c64_tiny);
+        draw_set_color(make_color_rgb(160, 160, 160));
+        draw_text_l(_px + 180, _py + 72, "Pick one. Each step waits for you to do it.");
+
+        for (var _tr = 0; _tr < _tg.rows; _tr++) {
+            var _ti = welcome_tour_scroll + _tr;
+            if (_ti >= array_length(_tours)) {
+                break;
+            }
+            var _ry  = _tg.list[1] + (_tr * _tg.row_h);
+            var _rx1 = _tg.list[0];
+            var _rx2 = _tg.list[2] - 12;
+            var _rhv = point_in_rectangle(_wmx, _wmy, _rx1, _ry, _rx2, _ry + _tg.row_h - 4);
+            var _rbg = make_color_rgb(40, 40, 52);
+            if (_rhv) {
+                _rbg = make_color_rgb(60, 60, 90);
+            }
+            draw_set_color(_rbg);
+            draw_rectangle(_rx1, _ry, _rx2, _ry + _tg.row_h - 4, false);
+            draw_set_color(make_color_rgb(90, 90, 120));
+            draw_rectangle(_rx1, _ry, _rx2, _ry + _tg.row_h - 4, true);
+
+            draw_set_font_l(fnt_c64_tiny);
+            draw_set_color(make_color_rgb(200, 160, 40));
+            draw_text(_rx1 + 10, _ry + 5, string(_ti + 1) + ".");
+            var _tc = c_white;
+            if (_rhv) {
+                _tc = c_yellow;
+            }
+            draw_set_color(_tc);
+            draw_text_l(_rx1 + 36, _ry + 4, _tours[_ti].title);
+            draw_set_color(make_color_rgb(140, 200, 200));
+            draw_text_l(_rx1 + 36, _ry + 19, _tours[_ti].blurb);
+        }
+
+        // Scrollbar, only when the list is longer than the panel
+        if (array_length(_tours) > _tg.rows) {
+            var _sb_x1 = _tg.list[2] - 6;
+            var _sb_y1 = _tg.list[1];
+            var _sb_h  = _tg.rows * _tg.row_h - 4;
+            var _th_h  = max(20, _sb_h * (_tg.rows / array_length(_tours)));
+            var _th_y  = _sb_y1 + (_sb_h - _th_h) * (welcome_tour_scroll / max(1, array_length(_tours) - _tg.rows));
+            draw_set_color(make_color_rgb(40, 40, 52));
+            draw_rectangle(_sb_x1, _sb_y1, _sb_x1 + 6, _sb_y1 + _sb_h, false);
+            draw_set_color(make_color_rgb(200, 160, 40));
+            draw_rectangle(_sb_x1, _th_y, _sb_x1 + 6, _th_y + _th_h, false);
+        }
+    } else {
+        // What's New
+        var _wy = _py + 70;
+        draw_set_font_l(fnt_C64_Angled);
+        draw_set_color(make_color_rgb(220, 140, 40));
+        draw_text_l(_px + 20, _wy, "WHAT'S NEW?");
+        _wy += 22;
+        draw_set_font_l(fnt_c64_tiny);
+        draw_set_color(c_aqua);
+        for (var _wi = 0; _wi < array_length(welcome_whats_new); _wi++) {
+            // An empty entry is a spacer, not a bullet. Without this it drew a
+            // lone "- " on its own line above the SHARE note.
+            if (welcome_whats_new[_wi] == "") {
+                _wy += 16;
+                continue;
+            }
+            draw_text_l(_px + 30, _wy, "- " + welcome_whats_new[_wi]);
             _wy += 16;
-            continue;
         }
-        draw_text_l(_px + 30, _wy, "- " + welcome_whats_new[_wi]);
-        _wy += 16;
+
+        // Credits header
+        _wy += 14;
+        draw_set_font_l(fnt_C64_Angled);
+        draw_set_color(make_color_rgb(220, 140, 40));
+        draw_set_halign(fa_center);
+        draw_text_l(_px + _pw / 2, _wy, "CREDITS");
+        draw_set_halign(fa_left);
+        _wy += 22;
+
+        // Scissored, auto-scrolling credits crawl
+        var _cr_x1 = _px + 20;
+        var _cr_y1 = _wy;
+        var _cr_x2 = _px + _pw - 20;
+        var _cr_y2 = _cr_y1 + 180;
+        var _cr_line_h = 16;
+
+        var _sx_sc = window_get_width()  / global.gui_w;
+        var _sy_sc = window_get_height() / display_get_gui_height();
+        gpu_set_scissor(
+            floor(_cr_x1 * _sx_sc),
+            floor(_cr_y1 * _sy_sc),
+            ceil((_cr_x2 - _cr_x1) * _sx_sc),
+            ceil((_cr_y2 - _cr_y1) * _sy_sc)
+        );
+
+        draw_set_font_l(fnt_c64_tiny);
+        var _cr_start_y = _cr_y2 - welcome_credits_y;
+        for (var _ci = 0; _ci < array_length(welcome_credits_lines); _ci++) {
+            var _cly = _cr_start_y + (_ci * _cr_line_h);
+            if (_cly > _cr_y1 - _cr_line_h && _cly < _cr_y2 + _cr_line_h) {
+                var _ctxt      = welcome_credits_lines[_ci];
+                var _is_header = (_ctxt == "CODE and DESIGN" || _ctxt == "COMMUNITY INPUT" || _ctxt == "And...");
+                draw_set_color(_is_header ? make_color_rgb(220, 140, 40) : c_white);
+                draw_set_halign(fa_center);
+                draw_text_l(_px + _pw / 2, _cly, _ctxt);
+                draw_set_halign(fa_left);
+            }
+        }
+
+        gpu_set_scissor(0, 0, window_get_width(), window_get_height());
+
+        // Checkbox
+        var _chkx1   = _px + 20;
+        var _chky1   = _py + _ph - 40;
+        var _chkx2   = _chkx1 + 18;
+        var _chky2   = _chky1 + 18;
+        var _chk_hov = point_in_rectangle(_wmx, _wmy, _chkx1, _chky1, _chkx2, _chky2);
+        draw_set_color(_chk_hov ? make_color_rgb(200, 160, 40) : make_color_rgb(90, 90, 90));
+        draw_rectangle(_chkx1, _chky1, _chkx2, _chky2, true);
+        if (welcome_hide_checked) {
+            draw_set_color(make_color_rgb(200, 160, 40));
+            draw_text_l(_chkx1 + 3, _chky1 - 2, "X");
+        }
+        draw_set_font_l(fnt_c64_tiny);
+        draw_set_color(c_white);
+        draw_text_l(_chkx2 + 8, _chky1, "DON'T SHOW ON STARTUP");
+        draw_set_color(make_color_rgb(140, 140, 140));
+        draw_text_l(_chkx2 + 8, _chky1 + 14, welcome_hide_checked ? L("(currently: hidden on startup)") : L("(currently: shows on startup)"));
+
     }
 
-    // Credits header
-    _wy += 14;
+    // TAKE THE TOUR / BACK button
+    var _tb_hov = point_in_rectangle(_wmx, _wmy, _tg.btn[0], _tg.btn[1], _tg.btn[2], _tg.btn[3]);
+    var _tb_bg  = make_color_rgb(40, 110, 60);
+    if (_tb_hov) {
+        _tb_bg = make_color_rgb(60, 160, 90);
+    }
+    draw_set_color(_tb_bg);
+    draw_rectangle(_tg.btn[0], _tg.btn[1], _tg.btn[2], _tg.btn[3], false);
+    draw_set_color(make_color_rgb(120, 200, 140));
+    draw_rectangle(_tg.btn[0], _tg.btn[1], _tg.btn[2], _tg.btn[3], true);
+    var _tb_label = "TAKE THE TOUR";
+    if (welcome_mode == 1) {
+        _tb_label = "BACK";
+    }
     draw_set_font_l(fnt_C64_Angled);
-    draw_set_color(make_color_rgb(220, 140, 40));
-    draw_set_halign(fa_center);
-    draw_text_l(_px + _pw / 2, _wy, "CREDITS");
-    draw_set_halign(fa_left);
-    _wy += 22;
-
-    // Scissored, auto-scrolling credits crawl
-    var _cr_x1 = _px + 20;
-    var _cr_y1 = _wy;
-    var _cr_x2 = _px + _pw - 20;
-    var _cr_y2 = _cr_y1 + 180;
-    var _cr_line_h = 16;
-
-    var _sx_sc = window_get_width()  / global.gui_w;
-    var _sy_sc = window_get_height() / display_get_gui_height();
-    gpu_set_scissor(
-        floor(_cr_x1 * _sx_sc),
-        floor(_cr_y1 * _sy_sc),
-        ceil((_cr_x2 - _cr_x1) * _sx_sc),
-        ceil((_cr_y2 - _cr_y1) * _sy_sc)
-    );
-
-    draw_set_font_l(fnt_c64_tiny);
-    var _cr_start_y = _cr_y2 - welcome_credits_y;
-    for (var _ci = 0; _ci < array_length(welcome_credits_lines); _ci++) {
-        var _cly = _cr_start_y + (_ci * _cr_line_h);
-        if (_cly > _cr_y1 - _cr_line_h && _cly < _cr_y2 + _cr_line_h) {
-            var _ctxt      = welcome_credits_lines[_ci];
-            var _is_header = (_ctxt == "CODE and DESIGN" || _ctxt == "COMMUNITY INPUT" || _ctxt == "And...");
-            draw_set_color(_is_header ? make_color_rgb(220, 140, 40) : c_white);
-            draw_set_halign(fa_center);
-            draw_text_l(_px + _pw / 2, _cly, _ctxt);
-            draw_set_halign(fa_left);
-        }
-    }
-
-    gpu_set_scissor(0, 0, window_get_width(), window_get_height());
-
-    // Checkbox
-    var _chkx1   = _px + 20;
-    var _chky1   = _py + _ph - 40;
-    var _chkx2   = _chkx1 + 18;
-    var _chky2   = _chky1 + 18;
-    var _chk_hov = point_in_rectangle(_wmx, _wmy, _chkx1, _chky1, _chkx2, _chky2);
-    draw_set_color(_chk_hov ? make_color_rgb(200, 160, 40) : make_color_rgb(90, 90, 90));
-    draw_rectangle(_chkx1, _chky1, _chkx2, _chky2, true);
-    if (welcome_hide_checked) {
-        draw_set_color(make_color_rgb(200, 160, 40));
-        draw_text_l(_chkx1 + 3, _chky1 - 2, "X");
-    }
-    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_white);
-    draw_text_l(_chkx2 + 8, _chky1, "DON'T SHOW ON STARTUP");
-    draw_set_color(make_color_rgb(140, 140, 140));
-    draw_text_l(_chkx2 + 8, _chky1 + 14, welcome_hide_checked ? L("(currently: hidden on startup)") : L("(currently: shows on startup)"));
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_middle);
+    draw_text_l((_tg.btn[0] + _tg.btn[2]) * 0.5, (_tg.btn[1] + _tg.btn[3]) * 0.5, _tb_label);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
 
     // Close button
     var _cbx1   = _px + _pw - 36;

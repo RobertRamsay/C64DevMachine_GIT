@@ -99,17 +99,62 @@ if (welcome_open) {
             part_emitter_burst(global.fx_sys, 0, global.pt_node_vapor, 640);
         }
         welcome_open = false;
+        welcome_mode = 0;
     }
 
-    // Checkbox (bottom-left)
-    var _chkx1 = _px + 20;
-    var _chky1 = _py + _ph - 40;
-    var _chkx2 = _chkx1 + 18;
-    var _chky2 = _chky1 + 18;
-    if (point_in_rectangle(_wmx, _wmy, _chkx1, _chky1, _chkx2, _chky2)
-        && mouse_check_button_pressed(mb_left)) {
-        welcome_hide_checked = !welcome_hide_checked;
-        scr_welcome_save_pref(welcome_hide_checked);
+    // TAKE THE TOUR / BACK button (bottom-right) and the tour list
+    var _tg = scr_tour_welcome_geom(_px, _py, _pw, _ph);
+    var _tour_pick = -1;
+    if (welcome_open && mouse_check_button_pressed(mb_left)
+        && point_in_rectangle(_wmx, _wmy, _tg.btn[0], _tg.btn[1], _tg.btn[2], _tg.btn[3])) {
+        if (welcome_mode == 0) {
+            welcome_mode        = 1;
+            welcome_tour_scroll = 0;
+        } else {
+            welcome_mode = 0;
+        }
+    } else if (welcome_open && welcome_mode == 1) {
+        var _tours     = scr_tour_list();
+        var _max_scrl  = max(0, array_length(_tours) - _tg.rows);
+        if (point_in_rectangle(_wmx, _wmy, _tg.list[0], _tg.list[1], _tg.list[2], _tg.list[3])) {
+            if (mouse_wheel_up()) {
+                welcome_tour_scroll--;
+            }
+            if (mouse_wheel_down()) {
+                welcome_tour_scroll++;
+            }
+        }
+        welcome_tour_scroll = clamp(welcome_tour_scroll, 0, _max_scrl);
+        if (mouse_check_button_pressed(mb_left)) {
+            for (var _tr = 0; _tr < _tg.rows; _tr++) {
+                var _ti = welcome_tour_scroll + _tr;
+                if (_ti >= array_length(_tours)) {
+                    break;
+                }
+                var _ry = _tg.list[1] + (_tr * _tg.row_h);
+                if (point_in_rectangle(_wmx, _wmy, _tg.list[0], _ry, _tg.list[2], _ry + _tg.row_h - 4)) {
+                    _tour_pick = _ti;
+                }
+            }
+        }
+    } else if (welcome_open) {
+        // Checkbox (bottom-left) - welcome page only
+        var _chkx1 = _px + 20;
+        var _chky1 = _py + _ph - 40;
+        var _chkx2 = _chkx1 + 18;
+        var _chky2 = _chky1 + 18;
+        if (point_in_rectangle(_wmx, _wmy, _chkx1, _chky1, _chkx2, _chky2)
+            && mouse_check_button_pressed(mb_left)) {
+            welcome_hide_checked = !welcome_hide_checked;
+            scr_welcome_save_pref(welcome_hide_checked);
+        }
+    }
+
+    if (_tour_pick >= 0) {
+        welcome_open = false;
+        welcome_mode = 0;
+        io_clear();
+        scr_tour_start(_tour_pick);
     }
 
     // Keep the actual camera view in sync even though everything else is
@@ -125,6 +170,7 @@ if (welcome_open) {
 // F1 reopens the welcome screen at any time
 if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(vk_f1)) {
     welcome_open = true;
+    welcome_mode = 0;
 }
 
 // F toggles the flow overlay — rebuilds only if a node was added/removed

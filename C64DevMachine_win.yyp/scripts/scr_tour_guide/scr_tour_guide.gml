@@ -48,16 +48,39 @@ function scr_tour_start(_id) {
 
 /// @desc Tour names, shown in the caption header.
 function scr_tour_title(_id) {
-    if (_id == 0) {
-        return "BORDER & BACKGROUND";
-    }
-    if (_id == 1) {
-        return "YOUR FIRST MACRO";
-    }
-    if (_id == 2) {
-        return "BITMAP BASICS";
+    var _list = scr_tour_list();
+    if (_id >= 0 && _id < array_length(_list)) {
+        return _list[_id].title;
     }
     return "TOUR";
+}
+
+/// @desc Every tour, in menu order. Index = tour id used by scr_tour_define.
+///       Add new tours here and give them a matching block in scr_tour_define.
+function scr_tour_list() {
+    return [
+        { title: "BORDER & BACKGROUND", blurb: "Drag in opcodes and set the border and background colours." },
+        { title: "YOUR FIRST MACRO",    blurb: "Drag in the PRINT macro and put a message on screen." },
+        { title: "BITMAP BASICS",       blurb: "Paint a bitmap asset and show it with the BITMAP macro." },
+    ];
+}
+
+/// @desc Welcome panel tour list geometry. Shared by Step (clicks) and
+///       Draw GUI (drawing) so the two can never disagree.
+function scr_tour_welcome_geom(_px, _py, _pw, _ph) {
+    var _btn_w  = 190;
+    var _btn_h  = 30;
+    var _btn_x2 = _px + _pw - 20;
+    var _btn_y1 = _py + _ph - 46;
+    var _row_h  = 40;
+    var _list_y1 = _py + 96;
+    var _list_y2 = _py + _ph - 60;
+    return {
+        btn   : [_btn_x2 - _btn_w, _btn_y1, _btn_x2, _btn_y1 + _btn_h],
+        list  : [_px + 20, _list_y1, _px + _pw - 20, _list_y2],
+        row_h : _row_h,
+        rows  : floor((_list_y2 - _list_y1) / _row_h)
+    };
 }
 
 /// @desc Step builder.
