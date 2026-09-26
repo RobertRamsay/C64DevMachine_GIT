@@ -83,14 +83,23 @@ function scr_tour_define(_id) {
         array_push(_s, scr_tour_step("POINT IT AT THE BORDER",
             "Click the STA value and type $D020, then press ENTER.\n\n$D020 is the VIC-II border colour register.",
             ["NODEOP:sta_abs"], "STA_D020"));
-        array_push(_s, scr_tour_step("YOUR TURN: BACKGROUND",
-            "Add another LDA_IMM (try 6, blue) followed by an STA_ABS set to $D021.\n\n$D021 is the background colour register.",
-            ["PAL:LDA_IMM", "ARROW:L"], "STA_D021"));
+        array_push(_s, scr_tour_step("NOW THE BACKGROUND",
+            "Same again for the background.\n\nDrag another LDA_IMM onto the spine, under your STA node.",
+            ["PAL:LDA_IMM", "ARROW:L"], "OP_LDA_IMM_2"));
+        array_push(_s, scr_tour_step("CHOOSE A COLOUR",
+            "Click the value on the new LDA node, type 7 (yellow) and press ENTER.",
+            ["NODEOP:lda_imm"], "LDA_NONZERO_2"));
+        array_push(_s, scr_tour_step("DRAG IN STA_ABS",
+            "Drag another STA_ABS onto the spine, under the new LDA node.",
+            ["PAL:STA_ABS", "ARROW:L"], "OP_STA_ABS_2"));
+        array_push(_s, scr_tour_step("POINT IT AT THE BACKGROUND",
+            "Click the new STA value, type $D021 and press ENTER.\n\n$D021 is the VIC-II background colour register.",
+            ["NODEOP:sta_abs"], "STA_D021"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5 to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
             [], "BUILT"));
         array_push(_s, scr_tour_step("DONE!",
-            "Your border and background should now be red and blue.\n\nTry changing the numbers and pressing F5 again. More tours are in DOCUMENTS > GUIDED TOURS.",
+            "Your border should now be red and your background yellow.\n\nTry changing the numbers and pressing F5 again. More tours are in DOCUMENTS > GUIDED TOURS.",
             [], "NONE"));
     }
 
@@ -277,6 +286,24 @@ function scr_tour_has_op_value(_op, _val) {
     return _found;
 }
 
+/// @desc How many connected NORMAL nodes use opcode _op.
+///       _nonzero: only count ones whose operand has been set.
+function scr_tour_count_op(_op, _nonzero) {
+    var _c = 0;
+    with (obj_c64_node) {
+        if (is_connected && node_type == "NORMAL") {
+            for (var _i = 0; _i < array_length(instructions); _i++) {
+                if (string_lower(string(instructions[_i][0])) == _op) {
+                    if (!_nonzero || scr_tour_num(instructions[_i][1]) != 0) {
+                        _c++;
+                    }
+                }
+            }
+        }
+    }
+    return _c;
+}
+
 /// @desc First connected node of _type, or noone.
 function scr_tour_node_by_type(_type) {
     var _hit = noone;
@@ -372,6 +399,12 @@ function scr_tour_check(_code) {
             return scr_tour_has_op_value("sta_abs", 0xD020);
         case "STA_D021":
             return scr_tour_has_op_value("sta_abs", 0xD021);
+        case "OP_LDA_IMM_2":
+            return (scr_tour_count_op("lda_imm", false) >= 2);
+        case "LDA_NONZERO_2":
+            return (scr_tour_count_op("lda_imm", true) >= 2);
+        case "OP_STA_ABS_2":
+            return (scr_tour_count_op("sta_abs", false) >= 2);
         case "BUILT":
             return (global.tour_build_count > base_build);
         case "MENU_MACROS":
