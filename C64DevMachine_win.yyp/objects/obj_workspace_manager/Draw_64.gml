@@ -2343,10 +2343,17 @@ scr_draw_memory_bar(_bar_x1, _bar_x2, gui_h - 40);
 /////////////////////////////////////////////////////////////////
 // A COMMENT is typed on the node itself now, so the centre-screen modal is
 // skipped entirely for one - obj_c64_node draws the live text and the caret.
+// PRINT's inline text row (index 5) does the same: the node already draws
+// the live string with its caret, so the modal only duplicated it.
 // Everything else still gets the modal.
 var _modal_is_comment = (is_entering_text && instance_exists(input_target_node)
                       && (input_target_node.node_type == "COMMENT"
                        || input_target_node.node_title == "COMMENT"));
+if (is_entering_text && instance_exists(input_target_node)
+    && input_target_node.node_type == "MACRO_PRINT" && input_target_index == 5) {
+    _modal_is_comment = true;
+}
+text_modal_visible = (is_entering_text && !_modal_is_comment);
 if (is_entering_text && !_modal_is_comment) {
     if (global.show_info_window) is_entering_text = false;
 

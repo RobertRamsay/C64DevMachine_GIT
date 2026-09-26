@@ -420,6 +420,9 @@ global.tour_rects       = [];
 global.tour_stamps      = [];
 global.tour_frame       = 0;
 global.tour_build_count = 0;
+// True while the centre-screen text entry modal is on screen (set in Draw GUI).
+// The tour hides its spotlight then so it does not cut across the modal.
+text_modal_visible      = false;
 global.sid_active = false;
 global.node_link_max_dist = 500;
 

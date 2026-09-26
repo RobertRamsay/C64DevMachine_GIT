@@ -32,6 +32,11 @@ var _pulse = 0.5 + 0.5 * sin(current_time * 0.006);
 // HIGHLIGHT
 // ---------------------------------------------------------------
 var _r = scr_tour_resolve_rect();
+// The text entry modal has its own dim; a spotlight and connector on top of
+// it just cut across the typing box.
+if (obj_workspace_manager.text_modal_visible) {
+    _r = undefined;
+}
 if (is_undefined(_r)) {
     hl_have = false;
 } else {
