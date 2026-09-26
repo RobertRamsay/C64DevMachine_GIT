@@ -9,8 +9,8 @@ function scr_update_spr_ptr_hw_locs() {
 
     // MACRO_BMP takes highest priority
     var _bmp_found = false;
-    with (obj_c64_node) {
-        if (node_type == "MACRO_BMP" && is_connected) {
+    with (scr_display_bmp_node(-1)) {
+        if (true) {
             var _bmp_addr = is_real(instructions[0][2]) ? real(instructions[0][2]) : 0x4000;
             var _bmp_bank = floor(_bmp_addr / 0x4000);
             var _bmp_base = _bmp_bank * 0x4000;

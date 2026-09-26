@@ -431,8 +431,8 @@ function scr_anim_set_resolve_ptrs(_id) {
             _screen_ram = 0x0400;
         }
         if (_screen_ram == -1) {
-            with (obj_c64_node) {
-                if (node_type == "MACRO_BMP" && is_connected) {
+            with (scr_display_bmp_node(_bank_addr >> 14)) {
+                if (true) {
                     var _ba = 0x4000;
                     if (is_real(instructions[0][2])) {
                         _ba = real(instructions[0][2]);

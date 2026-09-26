@@ -8017,8 +8017,10 @@ case "MACRO_SPR": {
 	// BUT: if a MACRO_VIC or MACRO_MAP is also on the main spine, the bitmap is only
 	// a transient splash — the later mode switch is authoritative, so the bitmap
 	// must NOT force the CIA bank back. Skip the whole override in that case.
-	with (obj_c64_node) {
-    if (!_spr_explicit_vic && node_type == "MACRO_BMP" && is_connected) {
+	var _spr_bmp_pick = noone;
+	if (!_spr_explicit_vic) { _spr_bmp_pick = scr_display_bmp_node(_vic_bank); }
+	with (_spr_bmp_pick) {
+    if (true) {
 			var _bmp_addr2  = is_real(instructions[0][2]) ? real(instructions[0][2]) : 0x4000;
 			var _bmp_bank2  = floor(_bmp_addr2 / 0x4000);
 			var _bmp_base2  = _bmp_bank2 * 0x4000;
@@ -14271,8 +14273,8 @@ if (_screen_ram == -1 && _anim_map_wins) {
     _screen_ram = 0x0400;
 }
                 if (_screen_ram == -1) {
-                    with (obj_c64_node) {
-                        if (node_type == "MACRO_BMP" && is_connected) {
+                    with (scr_display_bmp_node(_bank_addr >> 14)) {
+                        if (true) {
                             var _ba   = is_real(instructions[0][2]) ? real(instructions[0][2]) : 0x4000;
                             var _bbk  = floor(_ba / 0x4000);
                             var _bscr = _ba + 0x2000;

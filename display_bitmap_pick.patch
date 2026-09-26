@@ -1,0 +1,90 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_bmp_regions/scr_bmp_regions.gml b/C64DevMachine_win.yyp/scripts/scr_bmp_regions/scr_bmp_regions.gml
+index 5f5259e..08f1fb3 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_bmp_regions/scr_bmp_regions.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_bmp_regions/scr_bmp_regions.gml
+@@ -81,3 +81,27 @@ function scr_move_bmp_block_mark_sources(_node, _map) {
+         }
+     }
+ }
++
++/// The BITMAP node that is actually on screen, for code that needs the display
++/// bank / screen RAM (sprite pointers). A project can hold extra BITMAP nodes
++/// that never run — e.g. one parked after an RTS only to pull a Bitmap Builder
++/// source sheet into the PRG — so "first connected BITMAP node" is not enough.
++/// Preference: same VIC bank as _prefer_bank (pass -1 for none), then on the
++/// INIT spine, then any connected BITMAP node. Returns noone if there is none.
++function scr_display_bmp_node(_prefer_bank) {
++    var _best = noone;
++    var _best_score = -1;
++    with (obj_c64_node) {
++        if (node_type != "MACRO_BMP" || !is_connected) continue;
++        var _a = 0x4000;
++        if (array_length(instructions[0]) > 2 && is_real(instructions[0][2])) { _a = real(instructions[0][2]); }
++        var _sc = 0;
++        if (_prefer_bank >= 0 && floor(_a / 0x4000) == _prefer_bank) { _sc += 2; }
++        if (!instance_exists(org_parent)) { _sc += 1; }
++        if (_sc > _best_score) {
++            _best_score = _sc;
++            _best = id;
++        }
++    }
++    return _best;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index d9d5fd8..2a8e4ef 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -8017,8 +8017,10 @@ case "MACRO_SPR": {
+ 	// BUT: if a MACRO_VIC or MACRO_MAP is also on the main spine, the bitmap is only
+ 	// a transient splash — the later mode switch is authoritative, so the bitmap
+ 	// must NOT force the CIA bank back. Skip the whole override in that case.
+-	with (obj_c64_node) {
+-    if (!_spr_explicit_vic && node_type == "MACRO_BMP" && is_connected) {
++	var _spr_bmp_pick = noone;
++	if (!_spr_explicit_vic) { _spr_bmp_pick = scr_display_bmp_node(_vic_bank); }
++	with (_spr_bmp_pick) {
++    if (true) {
+ 			var _bmp_addr2  = is_real(instructions[0][2]) ? real(instructions[0][2]) : 0x4000;
+ 			var _bmp_bank2  = floor(_bmp_addr2 / 0x4000);
+ 			var _bmp_base2  = _bmp_bank2 * 0x4000;
+@@ -14271,8 +14273,8 @@ if (_screen_ram == -1 && _anim_map_wins) {
+     _screen_ram = 0x0400;
+ }
+                 if (_screen_ram == -1) {
+-                    with (obj_c64_node) {
+-                        if (node_type == "MACRO_BMP" && is_connected) {
++                    with (scr_display_bmp_node(_bank_addr >> 14)) {
++                        if (true) {
+                             var _ba   = is_real(instructions[0][2]) ? real(instructions[0][2]) : 0x4000;
+                             var _bbk  = floor(_ba / 0x4000);
+                             var _bscr = _ba + 0x2000;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_macro_anim_set/scr_macro_anim_set.gml b/C64DevMachine_win.yyp/scripts/scr_macro_anim_set/scr_macro_anim_set.gml
+index 0510805..405bc5e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_macro_anim_set/scr_macro_anim_set.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_macro_anim_set/scr_macro_anim_set.gml
+@@ -431,8 +431,8 @@ function scr_anim_set_resolve_ptrs(_id) {
+             _screen_ram = 0x0400;
+         }
+         if (_screen_ram == -1) {
+-            with (obj_c64_node) {
+-                if (node_type == "MACRO_BMP" && is_connected) {
++            with (scr_display_bmp_node(_bank_addr >> 14)) {
++                if (true) {
+                     var _ba = 0x4000;
+                     if (is_real(instructions[0][2])) {
+                         _ba = real(instructions[0][2]);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_update_spr_ptr_hw_locs/scr_update_spr_ptr_hw_locs.gml b/C64DevMachine_win.yyp/scripts/scr_update_spr_ptr_hw_locs/scr_update_spr_ptr_hw_locs.gml
+index 37e7651..f95b1f3 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_update_spr_ptr_hw_locs/scr_update_spr_ptr_hw_locs.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_update_spr_ptr_hw_locs/scr_update_spr_ptr_hw_locs.gml
+@@ -9,8 +9,8 @@ function scr_update_spr_ptr_hw_locs() {
+ 
+     // MACRO_BMP takes highest priority
+     var _bmp_found = false;
+-    with (obj_c64_node) {
+-        if (node_type == "MACRO_BMP" && is_connected) {
++    with (scr_display_bmp_node(-1)) {
++        if (true) {
+             var _bmp_addr = is_real(instructions[0][2]) ? real(instructions[0][2]) : 0x4000;
+             var _bmp_bank = floor(_bmp_addr / 0x4000);
+             var _bmp_base = _bmp_bank * 0x4000;
