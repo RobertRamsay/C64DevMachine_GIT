@@ -1497,7 +1497,7 @@ if (gui_menu_open == 5) {
                 welcome_mode        = 1;
                 welcome_tour_scroll = 0;
             } else if (string_copy(_dp.url, 1, 5) == "TOUR:") {
-                scr_tour_start(real(string_delete(_dp.url, 1, 5)));
+                scr_tour_request(real(string_delete(_dp.url, 1, 5)));
             } else if (_dp.url != "") {
                 url_open(_dp.url);
             }

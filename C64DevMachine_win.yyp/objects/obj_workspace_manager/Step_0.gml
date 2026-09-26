@@ -1,4 +1,19 @@
 scr_template_step();
+scr_tour_question_step();
+
+// Record what a clean workspace looks like, then start any tour that asked
+// for the restart that produced it.
+if (tour_baseline_timer > 0) {
+    tour_baseline_timer--;
+    if (tour_baseline_timer == 0) {
+        global.tour_default_hash = scr_save_workspace_as_path("", true);
+        if (tour_start_pending >= 0) {
+            var _tsp = tour_start_pending;
+            tour_start_pending = -1;
+            scr_tour_start(_tsp);
+        }
+    }
+}
 // First frame only: offer back an emergency save if the last run crashed.
 // In Step rather than Create so everything the loader touches already exists.
 // First run only: ask for a language. The crash-recovery offer waits until
@@ -154,7 +169,7 @@ if (welcome_open) {
         welcome_open = false;
         welcome_mode = 0;
         io_clear();
-        scr_tour_start(_tour_pick);
+        scr_tour_request(_tour_pick);
     }
 
     // Keep the actual camera view in sync even though everything else is

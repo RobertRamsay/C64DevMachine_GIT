@@ -20,7 +20,90 @@
 /// Captured targets are written by scr_tour_capture() from the existing draw
 /// loops, so the highlight always sits exactly on what was drawn this frame.
 
-/// @desc Start (or restart) tour _id.
+/// @desc Ask to start tour _id. A tour needs a clean workspace, so if the
+///       workspace differs from the one the app started with, the user is
+///       asked (and offered a save) before it is cleared with a restart.
+function scr_tour_request(_id) {
+    if (scr_tour_is_default()) {
+        scr_tour_start(_id);
+        return;
+    }
+    global.tour_waiting = _id;
+    if (scr_workspace_has_changes()) {
+        scr_show_question("Starting a tour clears the workspace.\n\nSave your changes first?", "tour_save");
+    } else {
+        scr_show_question("Starting a tour clears the workspace.\nYour saved project is not changed.\n\nClear it and start the tour?", "tour_clear");
+    }
+}
+
+/// @desc True when the workspace still matches the startup default.
+function scr_tour_is_default() {
+    if (global.tour_default_hash == "") {
+        return false;
+    }
+    return (scr_save_workspace_as_path("", true) == global.tour_default_hash);
+}
+
+/// @desc Clear the workspace the same way PROJECT > RESET/CLEAR does, and
+///       have the fresh session start tour _id once it has settled.
+function scr_tour_restart_into(_id) {
+    ini_open("c64devmachine.ini");
+    ini_write_real("Tour", "pending", _id);
+    ini_close();
+    game_restart();
+}
+
+/// @desc Answers to the tour clear / save questions. Called every Step.
+function scr_tour_question_step() {
+    var _r = global.question_result;
+    if (_r == "tour_save_yes") {
+        global.question_result = "";
+        var _default = "my_project.json";
+        if (global.workspace_path != "") {
+            _default = filename_name(global.workspace_path);
+        }
+        var _path = get_save_filename("C64 Node Project|*.json", _default);
+        io_clear();
+        if (_path == "") {
+            global.tour_waiting = -1;
+            return;
+        }
+        scr_save_workspace_as_path(_path);
+        // Only clear once the save is confirmed on disk.
+        var _verified = false;
+        if (file_exists(_path)) {
+            var _saved = buffer_load(_path);
+            if (_saved != -1) {
+                _verified = (md5_string_utf8(buffer_read(_saved, buffer_text)) == global.saved_hash);
+                buffer_delete(_saved);
+            }
+        }
+        if (_verified) {
+            scr_tour_restart_into(global.tour_waiting);
+        } else {
+            global.tour_waiting = -1;
+            scr_show_message("The save could not be verified. Your current project has been kept.");
+        }
+        return;
+    }
+    if (_r == "tour_save_no") {
+        global.question_result = "";
+        scr_show_question("Discard your changes and start the tour?\nNO keeps your current project.", "tour_discard");
+        return;
+    }
+    if (_r == "tour_discard_yes" || _r == "tour_clear_yes") {
+        global.question_result = "";
+        scr_tour_restart_into(global.tour_waiting);
+        return;
+    }
+    if (_r == "tour_discard_no" || _r == "tour_clear_no") {
+        global.question_result = "";
+        global.tour_waiting = -1;
+        return;
+    }
+}
+
+/// @desc Start (or restart) tour _id on the current workspace.
 function scr_tour_start(_id) {
     if (instance_exists(obj_tour_guide)) {
         instance_destroy(obj_tour_guide);

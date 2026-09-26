@@ -1,0 +1,187 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Alarm_5.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Alarm_5.gml
+index 9bf6729..8289e05 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Alarm_5.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Alarm_5.gml
+@@ -1,3 +1,7 @@
++// Coming back from a tour's clear-restart: don't offer the old autosave.
++if (tour_start_pending >= 0 || global.tour_active) {
++    exit;
++}
+ if (welcome_open) {
+     alarm[5] = 40; // wait for the welcome screen to close first
+     exit;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 05f1d9b..5d73945 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -422,6 +422,10 @@ global.tour_rects       = [];
+ global.tour_stamps      = [];
+ global.tour_frame       = 0;
+ global.tour_build_count = 0;
++global.tour_waiting     = -1;   // tour id waiting on the clear/save question
++global.tour_default_hash = "";  // workspace hash of the fresh startup state
++tour_baseline_timer     = 30;   // frames before the startup hash is taken
++tour_start_pending      = -1;   // tour to start after a clear-restart
+ // True while the centre-screen text entry modal is on screen (set in Draw GUI).
+ // The tour hides its spotlight then so it does not cut across the modal.
+ text_modal_visible      = false;
+@@ -1106,6 +1110,17 @@ var _hide_welcome = ini_read_real("Settings", "hide_welcome", 0);
+ welcome_hide_checked = (_hide_welcome != 0);
+ welcome_open          = !welcome_hide_checked;
+ 
++// A tour asked for a clean workspace and restarted the app: skip the welcome
++// panel and start that tour once the fresh workspace has settled.
++ini_open("c64devmachine.ini");
++var _tour_after_restart = ini_read_real("Tour", "pending", -1);
++if (_tour_after_restart >= 0) {
++    ini_write_real("Tour", "pending", -1);
++    tour_start_pending = _tour_after_restart;
++    welcome_open       = false;
++}
++ini_close();
++
+ // ---- SHOW CODE PANEL (floating live listing, left of the shortcuts column) ----
+ // First-run position and layout, set by hand. This used to default x to -1,
+ // the "never positioned" marker that makes the draw script park the panel
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 8a385c5..306ef96 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -1497,7 +1497,7 @@ if (gui_menu_open == 5) {
+                 welcome_mode        = 1;
+                 welcome_tour_scroll = 0;
+             } else if (string_copy(_dp.url, 1, 5) == "TOUR:") {
+-                scr_tour_start(real(string_delete(_dp.url, 1, 5)));
++                scr_tour_request(real(string_delete(_dp.url, 1, 5)));
+             } else if (_dp.url != "") {
+                 url_open(_dp.url);
+             }
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index e0412a1..9686df3 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -1,4 +1,19 @@
+ scr_template_step();
++scr_tour_question_step();
++
++// Record what a clean workspace looks like, then start any tour that asked
++// for the restart that produced it.
++if (tour_baseline_timer > 0) {
++    tour_baseline_timer--;
++    if (tour_baseline_timer == 0) {
++        global.tour_default_hash = scr_save_workspace_as_path("", true);
++        if (tour_start_pending >= 0) {
++            var _tsp = tour_start_pending;
++            tour_start_pending = -1;
++            scr_tour_start(_tsp);
++        }
++    }
++}
+ // First frame only: offer back an emergency save if the last run crashed.
+ // In Step rather than Create so everything the loader touches already exists.
+ // First run only: ask for a language. The crash-recovery offer waits until
+@@ -154,7 +169,7 @@ if (welcome_open) {
+         welcome_open = false;
+         welcome_mode = 0;
+         io_clear();
+-        scr_tour_start(_tour_pick);
++        scr_tour_request(_tour_pick);
+     }
+ 
+     // Keep the actual camera view in sync even though everything else is
+diff --git a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+index 72cb1e3..35ed113 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+@@ -20,7 +20,90 @@
+ /// Captured targets are written by scr_tour_capture() from the existing draw
+ /// loops, so the highlight always sits exactly on what was drawn this frame.
+ 
+-/// @desc Start (or restart) tour _id.
++/// @desc Ask to start tour _id. A tour needs a clean workspace, so if the
++///       workspace differs from the one the app started with, the user is
++///       asked (and offered a save) before it is cleared with a restart.
++function scr_tour_request(_id) {
++    if (scr_tour_is_default()) {
++        scr_tour_start(_id);
++        return;
++    }
++    global.tour_waiting = _id;
++    if (scr_workspace_has_changes()) {
++        scr_show_question("Starting a tour clears the workspace.\n\nSave your changes first?", "tour_save");
++    } else {
++        scr_show_question("Starting a tour clears the workspace.\nYour saved project is not changed.\n\nClear it and start the tour?", "tour_clear");
++    }
++}
++
++/// @desc True when the workspace still matches the startup default.
++function scr_tour_is_default() {
++    if (global.tour_default_hash == "") {
++        return false;
++    }
++    return (scr_save_workspace_as_path("", true) == global.tour_default_hash);
++}
++
++/// @desc Clear the workspace the same way PROJECT > RESET/CLEAR does, and
++///       have the fresh session start tour _id once it has settled.
++function scr_tour_restart_into(_id) {
++    ini_open("c64devmachine.ini");
++    ini_write_real("Tour", "pending", _id);
++    ini_close();
++    game_restart();
++}
++
++/// @desc Answers to the tour clear / save questions. Called every Step.
++function scr_tour_question_step() {
++    var _r = global.question_result;
++    if (_r == "tour_save_yes") {
++        global.question_result = "";
++        var _default = "my_project.json";
++        if (global.workspace_path != "") {
++            _default = filename_name(global.workspace_path);
++        }
++        var _path = get_save_filename("C64 Node Project|*.json", _default);
++        io_clear();
++        if (_path == "") {
++            global.tour_waiting = -1;
++            return;
++        }
++        scr_save_workspace_as_path(_path);
++        // Only clear once the save is confirmed on disk.
++        var _verified = false;
++        if (file_exists(_path)) {
++            var _saved = buffer_load(_path);
++            if (_saved != -1) {
++                _verified = (md5_string_utf8(buffer_read(_saved, buffer_text)) == global.saved_hash);
++                buffer_delete(_saved);
++            }
++        }
++        if (_verified) {
++            scr_tour_restart_into(global.tour_waiting);
++        } else {
++            global.tour_waiting = -1;
++            scr_show_message("The save could not be verified. Your current project has been kept.");
++        }
++        return;
++    }
++    if (_r == "tour_save_no") {
++        global.question_result = "";
++        scr_show_question("Discard your changes and start the tour?\nNO keeps your current project.", "tour_discard");
++        return;
++    }
++    if (_r == "tour_discard_yes" || _r == "tour_clear_yes") {
++        global.question_result = "";
++        scr_tour_restart_into(global.tour_waiting);
++        return;
++    }
++    if (_r == "tour_discard_no" || _r == "tour_clear_no") {
++        global.question_result = "";
++        global.tour_waiting = -1;
++        return;
++    }
++}
++
++/// @desc Start (or restart) tour _id on the current workspace.
+ function scr_tour_start(_id) {
+     if (instance_exists(obj_tour_guide)) {
+         instance_destroy(obj_tour_guide);

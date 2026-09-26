@@ -422,6 +422,10 @@ global.tour_rects       = [];
 global.tour_stamps      = [];
 global.tour_frame       = 0;
 global.tour_build_count = 0;
+global.tour_waiting     = -1;   // tour id waiting on the clear/save question
+global.tour_default_hash = "";  // workspace hash of the fresh startup state
+tour_baseline_timer     = 30;   // frames before the startup hash is taken
+tour_start_pending      = -1;   // tour to start after a clear-restart
 // True while the centre-screen text entry modal is on screen (set in Draw GUI).
 // The tour hides its spotlight then so it does not cut across the modal.
 text_modal_visible      = false;
@@ -1105,6 +1109,17 @@ flow_line_style        = ini_read_real("Settings", "flow_line_style",     1);
 var _hide_welcome = ini_read_real("Settings", "hide_welcome", 0);
 welcome_hide_checked = (_hide_welcome != 0);
 welcome_open          = !welcome_hide_checked;
+
+// A tour asked for a clean workspace and restarted the app: skip the welcome
+// panel and start that tour once the fresh workspace has settled.
+ini_open("c64devmachine.ini");
+var _tour_after_restart = ini_read_real("Tour", "pending", -1);
+if (_tour_after_restart >= 0) {
+    ini_write_real("Tour", "pending", -1);
+    tour_start_pending = _tour_after_restart;
+    welcome_open       = false;
+}
+ini_close();
 
 // ---- SHOW CODE PANEL (floating live listing, left of the shortcuts column) ----
 // First-run position and layout, set by hand. This used to default x to -1,
