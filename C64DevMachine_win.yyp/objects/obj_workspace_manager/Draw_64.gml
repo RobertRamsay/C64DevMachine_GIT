@@ -3948,6 +3948,13 @@ if (welcome_open) {
             draw_text_l(_rx1 + 36, _ry + 19, _tours[_ti].blurb);
         }
 
+        // Where to find this list again, bottom-left beside the BACK button
+        draw_set_font_l(fnt_c64_tiny);
+        draw_set_color(make_color_rgb(160, 160, 160));
+        draw_text_l(_px + 20, _py + _ph - 44, "You can also find the guided tours in");
+        draw_set_color(make_color_rgb(200, 160, 40));
+        draw_text_l(_px + 20, _py + _ph - 30, "DOCUMENTS > TAKE THE TOUR...");
+
         // Scrollbar, only when the list is longer than the panel
         if (array_length(_tours) > _tg.rows) {
             var _sb_x1 = _tg.list[2] - 6;
