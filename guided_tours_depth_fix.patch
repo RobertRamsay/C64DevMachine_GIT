@@ -1,0 +1,100 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_tour_guide/CleanUp_0.gml b/C64DevMachine_win.yyp/objects/obj_tour_guide/CleanUp_0.gml
+index 7d4573f..8b8b2b8 100644
+--- a/C64DevMachine_win.yyp/objects/obj_tour_guide/CleanUp_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_tour_guide/CleanUp_0.gml
+@@ -1,7 +1,5 @@
+ /// @desc Put back anything the tour changed.
+ 
+-show_debug_message("TOUR: cleanup (instance destroyed)");
+-
+ global.tour_active = false;
+ global.tour_keys   = [];
+ global.tour_rects  = [];
+diff --git a/C64DevMachine_win.yyp/objects/obj_tour_guide/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_tour_guide/Create_0.gml
+index 76786e0..9935452 100644
+--- a/C64DevMachine_win.yyp/objects/obj_tour_guide/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_tour_guide/Create_0.gml
+@@ -31,5 +31,3 @@ btn_back  = [0, 0, 0, 0];
+ btn_next  = [0, 0, 0, 0];
+ btn_exit  = [0, 0, 0, 0];
+ panel_vis = false;
+-
+-debug_drawn = false;
+diff --git a/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_75.gml b/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_75.gml
+index b0df671..45b53e2 100644
+--- a/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_75.gml
++++ b/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_75.gml
+@@ -15,20 +15,11 @@ draw_set_color(c_white);
+ draw_set_halign(fa_left);
+ draw_set_valign(fa_top);
+ 
+-if (!debug_drawn) {
+-    debug_drawn = true;
+-    show_debug_message("TOUR: first draw, step " + string(step_idx) + " of " + string(array_length(steps)));
+-}
+-
+ if (step_idx < 0 || step_idx >= array_length(steps)) {
+     exit;
+ }
+ // Stay out of the way of modal dialogs.
+ if (instance_exists(obj_message_box) || instance_exists(obj_question_box) || instance_exists(obj_integer_box)) {
+-    if ((global.tour_frame mod 120) == 1) {
+-        show_debug_message("TOUR: hidden by dialog  msg=" + string(instance_number(obj_message_box))
+-            + " q=" + string(instance_number(obj_question_box)) + " int=" + string(instance_number(obj_integer_box)));
+-    }
+     exit;
+ }
+ 
+@@ -111,15 +102,6 @@ if (hl_have) {
+     }
+ }
+ 
+-// TEMP diagnostics: heartbeat every 2 seconds with where the panel is going.
+-if ((global.tour_frame mod 120) == 1) {
+-    show_debug_message("TOUR: alive step " + string(step_idx)
+-        + " panel " + string(_px) + "," + string(_py) + " size " + string(_pw) + "x" + string(_ph)
+-        + " gui " + string(_gw) + "x" + string(_gh)
+-        + " win " + string(window_get_width()) + "x" + string(window_get_height())
+-        + " surf " + string(surface_get_target()));
+-}
+-
+ panel_x1  = _px;
+ panel_y1  = _py;
+ panel_x2  = _px + _pw;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 0181d52..146759b 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -1494,7 +1494,6 @@ if (gui_menu_open == 5) {
+         if (_ihov && mouse_check_button_pressed(mb_left)) {
+             gui_menu_open = -1;
+             if (string_copy(_dp.url, 1, 5) == "TOUR:") {
+-                show_debug_message("TOUR: menu click " + _dp.url);
+                 scr_tour_start(real(string_delete(_dp.url, 1, 5)));
+             } else if (_dp.url != "") {
+                 url_open(_dp.url);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+index 1491063..a8560af 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+@@ -23,8 +23,10 @@ function scr_tour_start(_id) {
+     if (instance_exists(obj_tour_guide)) {
+         instance_destroy(obj_tour_guide);
+     }
+-    var _t = instance_create_depth(0, 0, -16000, obj_tour_guide);
+-    show_debug_message("TOUR: start " + string(_id));
++    // Depth doubles as the draw z. GameMaker clips anything at or beyond
++    // +/-16000, so -16000 drew nothing at all. -14000 keeps it above the
++    // colour pickers (-9999) and inside the visible range.
++    var _t = instance_create_depth(0, 0, -14000, obj_tour_guide);
+     with (_t) {
+         tour_id    = _id;
+         tour_title = scr_tour_title(_id);
+@@ -40,7 +42,6 @@ function scr_tour_start(_id) {
+         scr_tour_enter_step();
+     }
+     global.tour_active = true;
+-    show_debug_message("TOUR: " + string(array_length(_t.steps)) + " steps, depth " + string(_t.depth));
+ }
+ 
+ /// @desc Tour names, shown in the caption header.

@@ -1494,7 +1494,6 @@ if (gui_menu_open == 5) {
         if (_ihov && mouse_check_button_pressed(mb_left)) {
             gui_menu_open = -1;
             if (string_copy(_dp.url, 1, 5) == "TOUR:") {
-                show_debug_message("TOUR: menu click " + _dp.url);
                 scr_tour_start(real(string_delete(_dp.url, 1, 5)));
             } else if (_dp.url != "") {
                 url_open(_dp.url);

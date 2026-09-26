@@ -23,8 +23,10 @@ function scr_tour_start(_id) {
     if (instance_exists(obj_tour_guide)) {
         instance_destroy(obj_tour_guide);
     }
-    var _t = instance_create_depth(0, 0, -16000, obj_tour_guide);
-    show_debug_message("TOUR: start " + string(_id));
+    // Depth doubles as the draw z. GameMaker clips anything at or beyond
+    // +/-16000, so -16000 drew nothing at all. -14000 keeps it above the
+    // colour pickers (-9999) and inside the visible range.
+    var _t = instance_create_depth(0, 0, -14000, obj_tour_guide);
     with (_t) {
         tour_id    = _id;
         tour_title = scr_tour_title(_id);
@@ -40,7 +42,6 @@ function scr_tour_start(_id) {
         scr_tour_enter_step();
     }
     global.tour_active = true;
-    show_debug_message("TOUR: " + string(array_length(_t.steps)) + " steps, depth " + string(_t.depth));
 }
 
 /// @desc Tour names, shown in the caption header.

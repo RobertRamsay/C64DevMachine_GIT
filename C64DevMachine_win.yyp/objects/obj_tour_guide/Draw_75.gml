@@ -15,20 +15,11 @@ draw_set_color(c_white);
 draw_set_halign(fa_left);
 draw_set_valign(fa_top);
 
-if (!debug_drawn) {
-    debug_drawn = true;
-    show_debug_message("TOUR: first draw, step " + string(step_idx) + " of " + string(array_length(steps)));
-}
-
 if (step_idx < 0 || step_idx >= array_length(steps)) {
     exit;
 }
 // Stay out of the way of modal dialogs.
 if (instance_exists(obj_message_box) || instance_exists(obj_question_box) || instance_exists(obj_integer_box)) {
-    if ((global.tour_frame mod 120) == 1) {
-        show_debug_message("TOUR: hidden by dialog  msg=" + string(instance_number(obj_message_box))
-            + " q=" + string(instance_number(obj_question_box)) + " int=" + string(instance_number(obj_integer_box)));
-    }
     exit;
 }
 
@@ -109,15 +100,6 @@ if (hl_have) {
     if (hl_x2 > _px && hl_x1 < _px + _pw && hl_y2 > _py && hl_y1 < _py + _ph) {
         _py = 90;
     }
-}
-
-// TEMP diagnostics: heartbeat every 2 seconds with where the panel is going.
-if ((global.tour_frame mod 120) == 1) {
-    show_debug_message("TOUR: alive step " + string(step_idx)
-        + " panel " + string(_px) + "," + string(_py) + " size " + string(_pw) + "x" + string(_ph)
-        + " gui " + string(_gw) + "x" + string(_gh)
-        + " win " + string(window_get_width()) + "x" + string(window_get_height())
-        + " surf " + string(surface_get_target()));
 }
 
 panel_x1  = _px;
