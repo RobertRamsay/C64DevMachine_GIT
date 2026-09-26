@@ -2190,7 +2190,7 @@ if (version_banner_visible && !version_banner_dismissed)
     // Position
     var _banner_x2 = room_width / 1.37;            // right edge
     var _banner_x1 = _banner_x2 - _w_total;       // left edge
-    var _banner_y1 = 4 + (string_height("X") * 2) + 2;
+    var _banner_y1 = 50 + (string_height("X") * 2) + 2;
     var _banner_y2 = _banner_y1 + _h_total;
     
     // Hit zones (computed against banner font)
