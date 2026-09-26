@@ -1,0 +1,19 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index d91e9da..59bdc0a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -859,12 +859,11 @@ if (gui_menu_open == 4) {
+                 nodeStyle = min(_preset, sprite_get_number(spr_9s_tile1));
+                 // Theme N uses opcode button N (the last theme is cyber)
+                 buttonStyle = min(_preset, min(sprite_get_number(spr_opcode_button), max(1, sprite_get_number(spr_palette_page))) - 1);
++                // Theme N uses logo N as well (one logo frame per theme)
++                badgeStyle = min(_preset, max(0, sprite_get_number(spr_logobadge) - 1));
+                 if (_is_cyber_preset) {
+-                    badgeStyle = max(0, sprite_get_number(spr_logobadge) - 1);
+                     niceSliceFrm = max(0, sprite_get_number(spr_glassSlice) - 1);
+                 } else {
+-                    var _legacy_badge_max = max(0, sprite_get_number(spr_logobadge) - 2);
+-                    badgeStyle = min(_preset, _legacy_badge_max);
+                     niceSliceFrm = 0;
+                 }
+                 uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
