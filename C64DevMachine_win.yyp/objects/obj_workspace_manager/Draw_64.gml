@@ -576,8 +576,9 @@ var _menu_labels = [
     "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TEMPLATES", "PORTS"
 ];
 
-// Panel Style owns menu-bar chrome.
-uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
+// Panel Style owns menu-bar chrome: the last (cyber) slice uses cyber chrome.
+uiChromeStyle = 0;
+if (niceSliceFrm == max(0, sprite_get_number(spr_glassSlice) - 1)) { uiChromeStyle = 1; }
 
 // OPTIONS DROPDOWN (button 2)
 if (gui_menu_open == 4) {
@@ -853,7 +854,6 @@ if (gui_menu_open == 4) {
             else if (_op.action == "CYBER_PRESET") {
                 var _preset_count = max(1, sprite_get_number(spr_palette_page));
                 var _preset = (clamp(paletteStyle, 0, _preset_count - 1) + _dir + _preset_count) mod _preset_count;
-                var _is_cyber_preset = (_preset == _preset_count - 1);
                 paletteStyle = _preset;
                 bkgImg = min(_preset, max(0, sprite_get_number(spr_bkg) - 1));
                 nodeStyle = min(_preset, sprite_get_number(spr_9s_tile1));
@@ -861,12 +861,10 @@ if (gui_menu_open == 4) {
                 buttonStyle = min(_preset, min(sprite_get_number(spr_opcode_button), max(1, sprite_get_number(spr_palette_page))) - 1);
                 // Theme N uses logo N as well (one logo frame per theme)
                 badgeStyle = min(_preset, max(0, sprite_get_number(spr_logobadge) - 1));
-                if (_is_cyber_preset) {
-                    niceSliceFrm = max(0, sprite_get_number(spr_glassSlice) - 1);
-                } else {
-                    niceSliceFrm = 0;
-                }
-                uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
+                // ...and glass slice N; only the last (cyber) slice brings cyber chrome
+                niceSliceFrm = min(_preset, max(0, sprite_get_number(spr_glassSlice) - 1));
+                uiChromeStyle = 0;
+                if (niceSliceFrm == max(0, sprite_get_number(spr_glassSlice) - 1)) { uiChromeStyle = 1; }
             }
             else if (_op.action == "PALETTE_STYLE") {
                 var _pal_n = max(1, sprite_get_number(spr_palette_page));
@@ -888,7 +886,8 @@ if (gui_menu_open == 4) {
             else if (_op.action == "PANEL_STYLE") {
                 var _pnl_n = max(1, sprite_get_number(spr_glassSlice));
                 niceSliceFrm = (niceSliceFrm + _dir + _pnl_n) mod _pnl_n;
-                uiChromeStyle = (niceSliceFrm > 0) ? 1 : 0;
+                uiChromeStyle = 0;
+                if (niceSliceFrm == _pnl_n - 1) { uiChromeStyle = 1; }
             }
             else if (_op.action == "NODE_STYLE") {
                 var _nod_n = sprite_get_number(spr_9s_tile1) + 1;
