@@ -2,6 +2,22 @@
 
 panel_vis = false;
 
+// Earlier GUI drawers (asset editors especially) can leave a scissor rect,
+// alpha, blend mode or shader behind. Start from a clean state so the
+// overlay is never clipped away or drawn invisible.
+shader_reset();
+gpu_set_blendmode(bm_normal);
+gpu_set_scissor(0, 0, window_get_width(), window_get_height());
+draw_set_alpha(1);
+draw_set_color(c_white);
+draw_set_halign(fa_left);
+draw_set_valign(fa_top);
+
+if (!debug_drawn) {
+    debug_drawn = true;
+    show_debug_message("TOUR: first draw, step " + string(step_idx) + " of " + string(array_length(steps)));
+}
+
 if (step_idx < 0 || step_idx >= array_length(steps)) {
     exit;
 }

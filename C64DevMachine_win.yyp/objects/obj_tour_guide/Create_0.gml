@@ -31,3 +31,5 @@ btn_back  = [0, 0, 0, 0];
 btn_next  = [0, 0, 0, 0];
 btn_exit  = [0, 0, 0, 0];
 panel_vis = false;
+
+debug_drawn = false;

@@ -24,6 +24,7 @@ function scr_tour_start(_id) {
         instance_destroy(obj_tour_guide);
     }
     var _t = instance_create_depth(0, 0, -16000, obj_tour_guide);
+    show_debug_message("TOUR: start " + string(_id));
     with (_t) {
         tour_id    = _id;
         tour_title = scr_tour_title(_id);
@@ -39,6 +40,7 @@ function scr_tour_start(_id) {
         scr_tour_enter_step();
     }
     global.tour_active = true;
+    show_debug_message("TOUR: " + string(array_length(_t.steps)) + " steps, depth " + string(_t.depth));
 }
 
 /// @desc Tour names, shown in the caption header.

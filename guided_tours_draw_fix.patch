@@ -1,0 +1,57 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_tour_guide/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_tour_guide/Create_0.gml
+index 9935452..76786e0 100644
+--- a/C64DevMachine_win.yyp/objects/obj_tour_guide/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_tour_guide/Create_0.gml
+@@ -31,3 +31,5 @@ btn_back  = [0, 0, 0, 0];
+ btn_next  = [0, 0, 0, 0];
+ btn_exit  = [0, 0, 0, 0];
+ panel_vis = false;
++
++debug_drawn = false;
+diff --git a/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_64.gml
+index a825a0a..2de0588 100644
+--- a/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_64.gml
+@@ -2,6 +2,22 @@
+ 
+ panel_vis = false;
+ 
++// Earlier GUI drawers (asset editors especially) can leave a scissor rect,
++// alpha, blend mode or shader behind. Start from a clean state so the
++// overlay is never clipped away or drawn invisible.
++shader_reset();
++gpu_set_blendmode(bm_normal);
++gpu_set_scissor(0, 0, window_get_width(), window_get_height());
++draw_set_alpha(1);
++draw_set_color(c_white);
++draw_set_halign(fa_left);
++draw_set_valign(fa_top);
++
++if (!debug_drawn) {
++    debug_drawn = true;
++    show_debug_message("TOUR: first draw, step " + string(step_idx) + " of " + string(array_length(steps)));
++}
++
+ if (step_idx < 0 || step_idx >= array_length(steps)) {
+     exit;
+ }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+index b799529..1491063 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+@@ -24,6 +24,7 @@ function scr_tour_start(_id) {
+         instance_destroy(obj_tour_guide);
+     }
+     var _t = instance_create_depth(0, 0, -16000, obj_tour_guide);
++    show_debug_message("TOUR: start " + string(_id));
+     with (_t) {
+         tour_id    = _id;
+         tour_title = scr_tour_title(_id);
+@@ -39,6 +40,7 @@ function scr_tour_start(_id) {
+         scr_tour_enter_step();
+     }
+     global.tour_active = true;
++    show_debug_message("TOUR: " + string(array_length(_t.steps)) + " steps, depth " + string(_t.depth));
+ }
+ 
+ /// @desc Tour names, shown in the caption header.
