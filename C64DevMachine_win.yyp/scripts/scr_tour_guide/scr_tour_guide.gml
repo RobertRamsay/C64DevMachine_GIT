@@ -16,6 +16,8 @@
 ///   ASSET:ADD           [ADD ASSET +] button
 ///   ASSET:TYPE:<type>   row in the add-asset dropdown (only while open)
 ///   ASSET:PANEL         the asset list
+///   ASSET:CLOSE         CLOSE button on any asset viewer            (captured)
+///   UI:<label>          right-hand shortcut button, e.g. UI:BUILD & RUN (captured)
 ///
 /// Captured targets are written by scr_tour_capture() from the existing draw
 /// loops, so the highlight always sits exactly on what was drawn this frame.
@@ -204,8 +206,8 @@ function scr_tour_define(_id) {
             "Click the new STA value, type $D021 and press ENTER.\n\n$D021 is the VIC-II background colour register.",
             ["OPERAND0:sta_abs", "NODEOP:sta_abs"], "STA_D021"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
-            "Press F5 to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
-            [], "BUILT"));
+            "Press F5, or click BUILD & RUN on the right, to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
+            ["UI:BUILD & RUN"], "BUILT"));
         array_push(_s, scr_tour_step("DONE!",
             "Your border should now be red and your background yellow.\n\nTry changing the numbers and pressing F5 again. More tours are in DOCUMENTS > GUIDED TOURS.",
             [], "NONE"));
@@ -231,8 +233,8 @@ function scr_tour_define(_id) {
             "Click the colour swatch on the PRINT node and choose any colour except white.",
             ["FIELD:MACRO_PRINT:col", "NODETYPE:MACRO_PRINT"], "PRINT_COL"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
-            "Press F5 to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
-            [], "BUILT"));
+            "Press F5, or click BUILD & RUN on the right, to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
+            ["UI:BUILD & RUN"], "BUILT"));
         array_push(_s, scr_tour_step("DONE!",
             "Your message should be on screen in your colour.\n\nEvery macro works the same way: drag it in, fill in its fields, build.",
             [], "NONE"));
@@ -261,8 +263,8 @@ function scr_tour_define(_id) {
             "Choose the FILL tool, pick another colour and click inside a shape to fill it.",
             [], "BMP_FILLED"));
         array_push(_s, scr_tour_step("CLOSE THE EDITOR",
-            "Close the bitmap editor with its close button, top right of the viewer.",
-            [], "BMP_CLOSED"));
+            "Click CLOSE at the top right of the viewer, or press ESC.",
+            ["ASSET:CLOSE"], "BMP_CLOSED"));
         array_push(_s, scr_tour_step("DRAG IN BITMAP",
             "Open MACROS and drag BITMAP onto the spine under SYSTEM INIT.",
             ["MAC:MACRO_BMP", "MENU:0"], "HAS_BMP_NODE"));
@@ -270,8 +272,8 @@ function scr_tour_define(_id) {
             "Click the asset field on the BITMAP node and choose the bitmap you painted.",
             ["FIELD:MACRO_BMP:asset", "NODETYPE:MACRO_BMP"], "BMP_LINKED"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
-            "Press F5 to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
-            [], "BUILT"));
+            "Press F5, or click BUILD & RUN on the right, to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
+            ["UI:BUILD & RUN"], "BUILT"));
         array_push(_s, scr_tour_step("DONE!",
             "Your picture should be on the C64 screen.\n\nThe bitmap editor also has lines, shapes, gradients and dithering to explore.",
             [], "NONE"));

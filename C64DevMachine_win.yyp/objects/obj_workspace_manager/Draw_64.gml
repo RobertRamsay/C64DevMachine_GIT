@@ -1906,6 +1906,9 @@ for (var j = 0; j < array_length(shortcuts); j++) {
     var btn_hover = (gui_mouse_x > box_x1 && gui_mouse_x < box_x2 &&
                      gui_mouse_y > box_y1 && gui_mouse_y < box_y2);
     var btn_click = btn_hover && mouse_check_button(mb_left);
+    if (global.tour_active) {
+        scr_tour_capture("UI:" + shortcuts[j][1], box_x1, box_y1, box_x2, box_y2);
+    }
     var is_toggle = (shortcuts[j][1] == "TOGGLE HEX/DEC" || shortcuts[j][1] == "TOGGLE AUTOSAVE MODE");
 
     var body_col = is_toggle

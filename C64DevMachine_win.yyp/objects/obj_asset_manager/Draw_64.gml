@@ -830,11 +830,33 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _viewer_title = manifest_fit_name(_viewer_title, min(1070, _vx2 - _vx1 - 130));
     }
     draw_text_l(_vx1 + 10, _vy1 + 6, _viewer_title);
+    // CLOSE button, top right of every asset viewer. Same rect as the click
+    // handler in Step (VIEWER BUTTONS > Close button). ESC still works too.
+    var _cl_x1  = _vx2 - 80;
+    var _cl_y1  = _vy1 + 4;
+    var _cl_x2  = _vx2 - 4;
+    var _cl_y2  = _vy1 + 24;
+    var _cl_hov = point_in_rectangle(_mx, _my, _cl_x1, _cl_y1, _cl_x2, _cl_y2);
+    var _cl_bg  = make_color_rgb(30, 30, 42);
+    if (_cl_hov) {
+        _cl_bg = make_color_rgb(190, 60, 60);
+    }
+    draw_set_color(_cl_bg);
+    draw_rectangle(_cl_x1, _cl_y1, _cl_x2, _cl_y2, false);
+    var _cl_edge = make_color_rgb(110, 110, 140);
+    if (_cl_hov) {
+        _cl_edge = c_white;
+    }
+    draw_set_color(_cl_edge);
+    draw_rectangle(_cl_x1, _cl_y1, _cl_x2, _cl_y2, true);
     draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(make_color_rgb(40, 30, 0));
-    draw_set_halign(fa_right);
-    draw_text_l(_vx2 - 8, _vy1 + 8, "ESC TO CLOSE");
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_text_l((_cl_x1 + _cl_x2) * 0.5, _cl_y1 + 4, "CLOSE (ESC)");
     draw_set_halign(fa_left);
+    if (global.tour_active) {
+        scr_tour_capture("ASSET:CLOSE", _cl_x1, _cl_y1, _cl_x2, _cl_y2);
+    }
 
     var _cy = _vy1 + 38;
 
