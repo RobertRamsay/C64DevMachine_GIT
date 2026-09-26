@@ -11,6 +11,8 @@
 ///   MAC:<type>          MACROS dropdown row     (captured)
 ///   NODEOP:<op>         first connected NORMAL node using that opcode
 ///   NODETYPE:<type>     first connected node of that type
+///   OPERAND0:<op>       operand of a connected NORMAL node still at 0 (captured)
+///   FIELD:<type>:<name> one editable field on a macro node        (captured)
 ///   ASSET:ADD           [ADD ASSET +] button
 ///   ASSET:TYPE:<type>   row in the add-asset dropdown (only while open)
 ///   ASSET:PANEL         the asset list
@@ -76,25 +78,25 @@ function scr_tour_define(_id) {
             ["PAL:LDA_IMM", "ARROW:L"], "OP_LDA_IMM"));
         array_push(_s, scr_tour_step("CHOOSE A COLOUR",
             "Click the value on your LDA node, type 2 (red) and press ENTER.\n\nC64 colours run from 0 to 15.",
-            ["NODEOP:lda_imm"], "LDA_NONZERO"));
+            ["OPERAND0:lda_imm", "NODEOP:lda_imm"], "LDA_NONZERO"));
         array_push(_s, scr_tour_step("DRAG IN STA_ABS",
             "STA stores the A register into memory.\n\nDrag STA_ABS onto the spine, under your LDA node.",
             ["PAL:STA_ABS", "ARROW:L"], "OP_STA_ABS"));
         array_push(_s, scr_tour_step("POINT IT AT THE BORDER",
             "Click the STA value and type $D020, then press ENTER.\n\n$D020 is the VIC-II border colour register.",
-            ["NODEOP:sta_abs"], "STA_D020"));
+            ["OPERAND0:sta_abs", "NODEOP:sta_abs"], "STA_D020"));
         array_push(_s, scr_tour_step("NOW THE BACKGROUND",
             "Same again for the background.\n\nDrag another LDA_IMM onto the spine, under your STA node.",
             ["PAL:LDA_IMM", "ARROW:L"], "OP_LDA_IMM_2"));
         array_push(_s, scr_tour_step("CHOOSE A COLOUR",
             "Click the value on the new LDA node, type 7 (yellow) and press ENTER.",
-            ["NODEOP:lda_imm"], "LDA_NONZERO_2"));
+            ["OPERAND0:lda_imm", "NODEOP:lda_imm"], "LDA_NONZERO_2"));
         array_push(_s, scr_tour_step("DRAG IN STA_ABS",
             "Drag another STA_ABS onto the spine, under the new LDA node.",
             ["PAL:STA_ABS", "ARROW:L"], "OP_STA_ABS_2"));
         array_push(_s, scr_tour_step("POINT IT AT THE BACKGROUND",
             "Click the new STA value, type $D021 and press ENTER.\n\n$D021 is the VIC-II background colour register.",
-            ["NODEOP:sta_abs"], "STA_D021"));
+            ["OPERAND0:sta_abs", "NODEOP:sta_abs"], "STA_D021"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5 to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
             [], "BUILT"));
@@ -115,13 +117,13 @@ function scr_tour_define(_id) {
             ["MAC:MACRO_PRINT", "MENU:0"], "HAS_PRINT"));
         array_push(_s, scr_tour_step("TYPE A MESSAGE",
             "Click the text field on the PRINT node, type HELLO C64 and press ENTER.",
-            ["NODETYPE:MACRO_PRINT"], "PRINT_TEXT"));
+            ["FIELD:MACRO_PRINT:text", "NODETYPE:MACRO_PRINT"], "PRINT_TEXT"));
         array_push(_s, scr_tour_step("MOVE IT DOWN",
             "Set the Y value on the PRINT node to 10 so the message sits mid screen.",
-            ["NODETYPE:MACRO_PRINT"], "PRINT_Y"));
+            ["FIELD:MACRO_PRINT:y", "NODETYPE:MACRO_PRINT"], "PRINT_Y"));
         array_push(_s, scr_tour_step("PICK A COLOUR",
             "Click the colour swatch on the PRINT node and choose any colour except white.",
-            ["NODETYPE:MACRO_PRINT"], "PRINT_COL"));
+            ["FIELD:MACRO_PRINT:col", "NODETYPE:MACRO_PRINT"], "PRINT_COL"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5 to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
             [], "BUILT"));
@@ -157,7 +159,7 @@ function scr_tour_define(_id) {
             ["MAC:MACRO_BMP", "MENU:0"], "HAS_BMP_NODE"));
         array_push(_s, scr_tour_step("LINK YOUR PICTURE",
             "Click the asset field on the BITMAP node and choose the bitmap you painted.",
-            ["NODETYPE:MACRO_BMP"], "BMP_LINKED"));
+            ["FIELD:MACRO_BMP:asset", "NODETYPE:MACRO_BMP"], "BMP_LINKED"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5 to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
             [], "BUILT"));
@@ -204,6 +206,18 @@ function scr_tour_capture(_key, _x1, _y1, _x2, _y2) {
             return;
         }
     }
+}
+
+/// @desc Same as scr_tour_capture, but for rects drawn in world space (node
+///       Draw events). Converted to GUI with the workspace camera.
+function scr_tour_capture_world(_key, _x1, _y1, _x2, _y2) {
+    if (!global.tour_active) {
+        return;
+    }
+    var _wm = obj_workspace_manager;
+    scr_tour_capture(_key,
+        (_x1 - _wm.cam_x) / _wm.cam_zoom, (_y1 - _wm.cam_y) / _wm.cam_zoom,
+        (_x2 - _wm.cam_x) / _wm.cam_zoom, (_y2 - _wm.cam_y) / _wm.cam_zoom);
 }
 
 /// @desc Operand as a number: reals pass through, "$D020" and "53280" parse.
@@ -462,9 +476,10 @@ function scr_tour_check(_code) {
 /// @desc GUI rect of a node (world -> GUI via the workspace camera).
 function scr_tour_node_rect(_n) {
     var _wm = obj_workspace_manager;
-    var _x1 = (_n.x - _wm.cam_x) / _wm.cam_zoom;
+    var _nx = _n.x + _n.x_indent;
+    var _x1 = (_nx - _wm.cam_x) / _wm.cam_zoom;
     var _y1 = (_n.y - _wm.cam_y) / _wm.cam_zoom;
-    var _x2 = (_n.x + _n.width - _wm.cam_x) / _wm.cam_zoom;
+    var _x2 = (_nx + _n.width - _wm.cam_x) / _wm.cam_zoom;
     var _y2 = (_n.y + _n.height - _wm.cam_y) / _wm.cam_zoom;
     return [_x1, _y1, _x2, _y2];
 }

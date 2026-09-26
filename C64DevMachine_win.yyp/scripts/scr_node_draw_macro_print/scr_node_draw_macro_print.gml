@@ -60,6 +60,12 @@ function scr_node_draw_macro_print(_draw_x, _y) {
     draw_set_font_l(fnt_c64_tiny);
     var _ply = _y + _header_h + 4;
 
+    // Guided tour: Y value and COL swatch hit areas (match scr_node_step_macro_print).
+    if (global.tour_active && is_connected) {
+        scr_tour_capture_world("FIELD:MACRO_PRINT:y",   _draw_x + 82, _ply - 1, _draw_x + 112, _ply + 14);
+        scr_tour_capture_world("FIELD:MACRO_PRINT:col", _draw_x + 48, _ply + _line_h - 1, _draw_x + 112, _ply + _line_h + 14);
+    }
+
     // Row 1: X / Y / LOC
     draw_set_color(_c_edit);
     scr_node_macro_text_l(_draw_x + 8, _ply, "X:");
@@ -183,6 +189,9 @@ function scr_node_draw_macro_print(_draw_x, _y) {
         draw_set_color(_editing   ? make_color_rgb(40, 80, 70)  :
                       (_txt_hover ? make_color_rgb(33, 70, 60)  : make_color_rgb(15, 25, 15)));
         scr_macro_body_rectangle(_draw_x + 4, _ply+3, _draw_x + width - 8, _ply + 17, false);
+        if (global.tour_active && is_connected) {
+            scr_tour_capture_world("FIELD:MACRO_PRINT:text", _draw_x + 4, _ply + 3, _draw_x + width - 8, _ply + 17);
+        }
         if (_editing) {
             var _live    = obj_workspace_manager.current_input_string;
             var _cur_pos = obj_workspace_manager.cursor_pos;

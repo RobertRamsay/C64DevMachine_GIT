@@ -1,0 +1,174 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 0bcd7c7..6b1695a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -2017,6 +2017,13 @@ if (node_type == "LABEL") {
+         // 2. Draw Editable Value immediately after prefix (Yellow)
+         draw_set_color(c_yellow);
+         draw_text_l(_cursor_x, _yy, _display_val);
++
++        // Guided tour: report an operand that is still 0 so the tour can
++        // box exactly the value to click.
++        if (global.tour_active && is_connected && node_type == "NORMAL" && scr_tour_num(_raw_val) == 0) {
++            scr_tour_capture_world("OPERAND0:" + _inst_lower,
++                _cursor_x - 2, _yy - 1, _cursor_x + string_width_l(_display_val) + 2, _yy + 13);
++        }
+         
+         // 3. Draw Suffix immediately after value (e.g., ",X")
+         if (_suffix != "") {
+diff --git a/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_75.gml b/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_75.gml
+index 67dfe28..44b9022 100644
+--- a/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_75.gml
++++ b/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_75.gml
+@@ -41,6 +41,9 @@ if (is_undefined(_r)) {
+     hl_have = false;
+ } else {
+     var _pad = 6;
++    if ((_r[3] - _r[1]) < 24) {
++        _pad = 3;
++    }
+     var _tx1 = _r[0] - _pad;
+     var _ty1 = _r[1] - _pad;
+     var _tx2 = _r[2] + _pad;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_bmp/scr_node_draw_macro_bmp.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_bmp/scr_node_draw_macro_bmp.gml
+index e5cb2dc..f0bc3ec 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_bmp/scr_node_draw_macro_bmp.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_bmp/scr_node_draw_macro_bmp.gml
+@@ -41,6 +41,9 @@ function scr_node_draw_macro_bmp(_draw_x, _y) {
+     var _ly = _y + _header_h + 4;
+ 
+     // Row 1: Asset name
++    if (global.tour_active && is_connected) {
++        scr_tour_capture_world("FIELD:MACRO_BMP:asset", _draw_x + 68, _ly - 1, _draw_x + width - 8, _ly + 14);
++    }
+     var _name_hover = point_in_rectangle(mouse_x, mouse_y, _draw_x + 68, _ly, _draw_x + width - 8, _ly + 16);
+     draw_set_color(_c_edit);
+     scr_node_macro_text_l(_draw_x + 10, _ly, "ASSET:");
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml
+index 19cdd2c..edf49e3 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_print/scr_node_draw_macro_print.gml
+@@ -60,6 +60,12 @@ function scr_node_draw_macro_print(_draw_x, _y) {
+     draw_set_font_l(fnt_c64_tiny);
+     var _ply = _y + _header_h + 4;
+ 
++    // Guided tour: Y value and COL swatch hit areas (match scr_node_step_macro_print).
++    if (global.tour_active && is_connected) {
++        scr_tour_capture_world("FIELD:MACRO_PRINT:y",   _draw_x + 82, _ply - 1, _draw_x + 112, _ply + 14);
++        scr_tour_capture_world("FIELD:MACRO_PRINT:col", _draw_x + 48, _ply + _line_h - 1, _draw_x + 112, _ply + _line_h + 14);
++    }
++
+     // Row 1: X / Y / LOC
+     draw_set_color(_c_edit);
+     scr_node_macro_text_l(_draw_x + 8, _ply, "X:");
+@@ -183,6 +189,9 @@ function scr_node_draw_macro_print(_draw_x, _y) {
+         draw_set_color(_editing   ? make_color_rgb(40, 80, 70)  :
+                       (_txt_hover ? make_color_rgb(33, 70, 60)  : make_color_rgb(15, 25, 15)));
+         scr_macro_body_rectangle(_draw_x + 4, _ply+3, _draw_x + width - 8, _ply + 17, false);
++        if (global.tour_active && is_connected) {
++            scr_tour_capture_world("FIELD:MACRO_PRINT:text", _draw_x + 4, _ply + 3, _draw_x + width - 8, _ply + 17);
++        }
+         if (_editing) {
+             var _live    = obj_workspace_manager.current_input_string;
+             var _cur_pos = obj_workspace_manager.cursor_pos;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+index cc5bd0b..401c56c 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+@@ -11,6 +11,8 @@
+ ///   MAC:<type>          MACROS dropdown row     (captured)
+ ///   NODEOP:<op>         first connected NORMAL node using that opcode
+ ///   NODETYPE:<type>     first connected node of that type
++///   OPERAND0:<op>       operand of a connected NORMAL node still at 0 (captured)
++///   FIELD:<type>:<name> one editable field on a macro node        (captured)
+ ///   ASSET:ADD           [ADD ASSET +] button
+ ///   ASSET:TYPE:<type>   row in the add-asset dropdown (only while open)
+ ///   ASSET:PANEL         the asset list
+@@ -76,25 +78,25 @@ function scr_tour_define(_id) {
+             ["PAL:LDA_IMM", "ARROW:L"], "OP_LDA_IMM"));
+         array_push(_s, scr_tour_step("CHOOSE A COLOUR",
+             "Click the value on your LDA node, type 2 (red) and press ENTER.\n\nC64 colours run from 0 to 15.",
+-            ["NODEOP:lda_imm"], "LDA_NONZERO"));
++            ["OPERAND0:lda_imm", "NODEOP:lda_imm"], "LDA_NONZERO"));
+         array_push(_s, scr_tour_step("DRAG IN STA_ABS",
+             "STA stores the A register into memory.\n\nDrag STA_ABS onto the spine, under your LDA node.",
+             ["PAL:STA_ABS", "ARROW:L"], "OP_STA_ABS"));
+         array_push(_s, scr_tour_step("POINT IT AT THE BORDER",
+             "Click the STA value and type $D020, then press ENTER.\n\n$D020 is the VIC-II border colour register.",
+-            ["NODEOP:sta_abs"], "STA_D020"));
++            ["OPERAND0:sta_abs", "NODEOP:sta_abs"], "STA_D020"));
+         array_push(_s, scr_tour_step("NOW THE BACKGROUND",
+             "Same again for the background.\n\nDrag another LDA_IMM onto the spine, under your STA node.",
+             ["PAL:LDA_IMM", "ARROW:L"], "OP_LDA_IMM_2"));
+         array_push(_s, scr_tour_step("CHOOSE A COLOUR",
+             "Click the value on the new LDA node, type 7 (yellow) and press ENTER.",
+-            ["NODEOP:lda_imm"], "LDA_NONZERO_2"));
++            ["OPERAND0:lda_imm", "NODEOP:lda_imm"], "LDA_NONZERO_2"));
+         array_push(_s, scr_tour_step("DRAG IN STA_ABS",
+             "Drag another STA_ABS onto the spine, under the new LDA node.",
+             ["PAL:STA_ABS", "ARROW:L"], "OP_STA_ABS_2"));
+         array_push(_s, scr_tour_step("POINT IT AT THE BACKGROUND",
+             "Click the new STA value, type $D021 and press ENTER.\n\n$D021 is the VIC-II background colour register.",
+-            ["NODEOP:sta_abs"], "STA_D021"));
++            ["OPERAND0:sta_abs", "NODEOP:sta_abs"], "STA_D021"));
+         array_push(_s, scr_tour_step("BUILD AND RUN",
+             "Press F5 to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
+             [], "BUILT"));
+@@ -115,13 +117,13 @@ function scr_tour_define(_id) {
+             ["MAC:MACRO_PRINT", "MENU:0"], "HAS_PRINT"));
+         array_push(_s, scr_tour_step("TYPE A MESSAGE",
+             "Click the text field on the PRINT node, type HELLO C64 and press ENTER.",
+-            ["NODETYPE:MACRO_PRINT"], "PRINT_TEXT"));
++            ["FIELD:MACRO_PRINT:text", "NODETYPE:MACRO_PRINT"], "PRINT_TEXT"));
+         array_push(_s, scr_tour_step("MOVE IT DOWN",
+             "Set the Y value on the PRINT node to 10 so the message sits mid screen.",
+-            ["NODETYPE:MACRO_PRINT"], "PRINT_Y"));
++            ["FIELD:MACRO_PRINT:y", "NODETYPE:MACRO_PRINT"], "PRINT_Y"));
+         array_push(_s, scr_tour_step("PICK A COLOUR",
+             "Click the colour swatch on the PRINT node and choose any colour except white.",
+-            ["NODETYPE:MACRO_PRINT"], "PRINT_COL"));
++            ["FIELD:MACRO_PRINT:col", "NODETYPE:MACRO_PRINT"], "PRINT_COL"));
+         array_push(_s, scr_tour_step("BUILD AND RUN",
+             "Press F5 to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
+             [], "BUILT"));
+@@ -157,7 +159,7 @@ function scr_tour_define(_id) {
+             ["MAC:MACRO_BMP", "MENU:0"], "HAS_BMP_NODE"));
+         array_push(_s, scr_tour_step("LINK YOUR PICTURE",
+             "Click the asset field on the BITMAP node and choose the bitmap you painted.",
+-            ["NODETYPE:MACRO_BMP"], "BMP_LINKED"));
++            ["FIELD:MACRO_BMP:asset", "NODETYPE:MACRO_BMP"], "BMP_LINKED"));
+         array_push(_s, scr_tour_step("BUILD AND RUN",
+             "Press F5 to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
+             [], "BUILT"));
+@@ -206,6 +208,18 @@ function scr_tour_capture(_key, _x1, _y1, _x2, _y2) {
+     }
+ }
+ 
++/// @desc Same as scr_tour_capture, but for rects drawn in world space (node
++///       Draw events). Converted to GUI with the workspace camera.
++function scr_tour_capture_world(_key, _x1, _y1, _x2, _y2) {
++    if (!global.tour_active) {
++        return;
++    }
++    var _wm = obj_workspace_manager;
++    scr_tour_capture(_key,
++        (_x1 - _wm.cam_x) / _wm.cam_zoom, (_y1 - _wm.cam_y) / _wm.cam_zoom,
++        (_x2 - _wm.cam_x) / _wm.cam_zoom, (_y2 - _wm.cam_y) / _wm.cam_zoom);
++}
++
+ /// @desc Operand as a number: reals pass through, "$D020" and "53280" parse.
+ function scr_tour_num(_v) {
+     if (is_real(_v) || is_int64(_v)) {
+@@ -462,9 +476,10 @@ function scr_tour_check(_code) {
+ /// @desc GUI rect of a node (world -> GUI via the workspace camera).
+ function scr_tour_node_rect(_n) {
+     var _wm = obj_workspace_manager;
+-    var _x1 = (_n.x - _wm.cam_x) / _wm.cam_zoom;
++    var _nx = _n.x + _n.x_indent;
++    var _x1 = (_nx - _wm.cam_x) / _wm.cam_zoom;
+     var _y1 = (_n.y - _wm.cam_y) / _wm.cam_zoom;
+-    var _x2 = (_n.x + _n.width - _wm.cam_x) / _wm.cam_zoom;
++    var _x2 = (_nx + _n.width - _wm.cam_x) / _wm.cam_zoom;
+     var _y2 = (_n.y + _n.height - _wm.cam_y) / _wm.cam_zoom;
+     return [_x1, _y1, _x2, _y2];
+ }

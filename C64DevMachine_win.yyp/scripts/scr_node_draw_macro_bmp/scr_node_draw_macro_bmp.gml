@@ -41,6 +41,9 @@ function scr_node_draw_macro_bmp(_draw_x, _y) {
     var _ly = _y + _header_h + 4;
 
     // Row 1: Asset name
+    if (global.tour_active && is_connected) {
+        scr_tour_capture_world("FIELD:MACRO_BMP:asset", _draw_x + 68, _ly - 1, _draw_x + width - 8, _ly + 14);
+    }
     var _name_hover = point_in_rectangle(mouse_x, mouse_y, _draw_x + 68, _ly, _draw_x + width - 8, _ly + 16);
     draw_set_color(_c_edit);
     scr_node_macro_text_l(_draw_x + 10, _ly, "ASSET:");

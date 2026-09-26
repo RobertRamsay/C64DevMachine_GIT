@@ -2017,6 +2017,13 @@ if (node_type == "LABEL") {
         // 2. Draw Editable Value immediately after prefix (Yellow)
         draw_set_color(c_yellow);
         draw_text_l(_cursor_x, _yy, _display_val);
+
+        // Guided tour: report an operand that is still 0 so the tour can
+        // box exactly the value to click.
+        if (global.tour_active && is_connected && node_type == "NORMAL" && scr_tour_num(_raw_val) == 0) {
+            scr_tour_capture_world("OPERAND0:" + _inst_lower,
+                _cursor_x - 2, _yy - 1, _cursor_x + string_width_l(_display_val) + 2, _yy + 13);
+        }
         
         // 3. Draw Suffix immediately after value (e.g., ",X")
         if (_suffix != "") {

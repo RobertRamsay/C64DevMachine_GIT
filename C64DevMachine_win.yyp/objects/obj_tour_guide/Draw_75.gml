@@ -41,6 +41,9 @@ if (is_undefined(_r)) {
     hl_have = false;
 } else {
     var _pad = 6;
+    if ((_r[3] - _r[1]) < 24) {
+        _pad = 3;
+    }
     var _tx1 = _r[0] - _pad;
     var _ty1 = _r[1] - _pad;
     var _tx2 = _r[2] + _pad;
