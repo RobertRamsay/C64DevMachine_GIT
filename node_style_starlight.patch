@@ -1,0 +1,77 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index d0f3ddc..627b5aa 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -914,7 +914,11 @@ _box_alpha *= global.idle_fade;
+ if (_box_alpha < 0.1) { x -= x_indent; draw_set_alpha(1.0); exit; }
+ 
+ var _node_style = obj_workspace_manager.nodeStyle;
+-var _node_cyber = (_node_style >= sprite_get_number(spr_9s_tile1));
++// Node styles (6): 0 flat gradient, 1..n-2 tinted 9-slices, n-1 the handcrafted
++// cyberpunk renderer, n the last 9-slice (Starlight) drawn in its own colours.
++var _n9         = sprite_get_number(spr_9s_tile1);
++var _node_cyber = (_node_style == _n9 - 1);
++var _node_star  = (_node_style >= _n9);
+ 
+ if (_node_cyber) {
+     var _cy_body_top = is_connected ? make_color_rgb(22, 24, 26) : make_color_rgb(13, 14, 16);
+@@ -932,6 +936,12 @@ if (_node_cyber) {
+     draw_triangle(draw_x + width - 12, y + height, draw_x + width, y + height - 12, draw_x + width, y + height, false);
+     draw_set_alpha(1.0);
+ }
++else if (_node_star) {
++    // Starlight: the slice carries its own colours, so no body tint; unwired nodes dim.
++    var _star_col = make_color_rgb(150, 150, 150);
++    if (is_connected) { _star_col = c_white; }
++    draw_sprite_stretched_ext(spr_9s_tile1, _n9 - 1, draw_x, y, width, height, _star_col, _box_alpha);
++}
+ else if (_node_style == 0) {
+     draw_set_alpha(_box_alpha);
+     if node_type!="LABEL" {draw_rectangle_color(draw_x, y, draw_x + width, y + height,
+@@ -941,7 +951,7 @@ else if (_node_style == 0) {
+         _body_col, _label_edge_col, _label_edge_col, _dark_col, false);}
+ }
+ else {
+-    draw_sprite_stretched_ext(spr_9s_tile1, clamp(_node_style, 1, sprite_get_number(spr_9s_tile1) - 1),
++    draw_sprite_stretched_ext(spr_9s_tile1, clamp(_node_style, 1, max(1, _n9 - 2)),
+                               draw_x, y, width, height, _body_col, _box_alpha);
+ }
+ 
+@@ -1075,7 +1085,10 @@ else if (_node_style == 0) {
+     draw_set_alpha(1.0);
+ }
+ else {
+-    draw_sprite_stretched_ext(spr_9s_tile1, clamp(_node_style, 1, sprite_get_number(spr_9s_tile1) - 1),
++    // Starlight headers keep the node's own colour over the Starlight slice
++    var _hdr_frame = clamp(_node_style, 1, max(1, _n9 - 2));
++    if (_node_star) { _hdr_frame = _n9 - 1; }
++    draw_sprite_stretched_ext(spr_9s_tile1, _hdr_frame,
+                               draw_x, y, width, header_h, _head_col, _box_alpha);
+ }
+ 
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index c92a7b3..8d20c8d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -176,7 +176,7 @@ paletteStyle=1
+ showGrid=1;
+ badgeStyle=1
+ buttonStyle=1
+-nodeStyle=0;  // 0..spr_9s_tile1 frames, final virtual index = Cyber renderer
++nodeStyle=0;  // 0 flat, 1..n-2 slices, n-1 Cyber renderer, n Starlight (last slice)
+ macroStyle=0; // 0 classic menu rows, 1 appended Cyber macro-button pair
+ niceSliceFrm = 0;
+ uiChromeStyle = 0; // 0 existing chrome, 1 appended Cyber chrome
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index ea3e454..2ed36b2 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -737,7 +737,7 @@ if (gui_menu_open == 4) {
+         }
+         if (_op.action == "NODE_STYLE") {
+             _state_str = string(nodeStyle + 1) + "/" + string(sprite_get_number(spr_9s_tile1) + 1);
+-            _state_col = (nodeStyle >= sprite_get_number(spr_9s_tile1)) ? c_yellow : make_color_rgb(160, 160, 220);
++            _state_col = (nodeStyle >= sprite_get_number(spr_9s_tile1) - 1) ? c_yellow : make_color_rgb(160, 160, 220);
+         }
+         // Shortcut hint sits flush against the right edge; the state (if any)
+         // is drawn just to its left so both can show at once (e.g. FLOW

@@ -737,7 +737,7 @@ if (gui_menu_open == 4) {
         }
         if (_op.action == "NODE_STYLE") {
             _state_str = string(nodeStyle + 1) + "/" + string(sprite_get_number(spr_9s_tile1) + 1);
-            _state_col = (nodeStyle >= sprite_get_number(spr_9s_tile1)) ? c_yellow : make_color_rgb(160, 160, 220);
+            _state_col = (nodeStyle >= sprite_get_number(spr_9s_tile1) - 1) ? c_yellow : make_color_rgb(160, 160, 220);
         }
         // Shortcut hint sits flush against the right edge; the state (if any)
         // is drawn just to its left so both can show at once (e.g. FLOW

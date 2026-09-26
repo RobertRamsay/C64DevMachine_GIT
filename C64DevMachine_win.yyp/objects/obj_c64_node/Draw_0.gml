@@ -914,7 +914,11 @@ _box_alpha *= global.idle_fade;
 if (_box_alpha < 0.1) { x -= x_indent; draw_set_alpha(1.0); exit; }
 
 var _node_style = obj_workspace_manager.nodeStyle;
-var _node_cyber = (_node_style >= sprite_get_number(spr_9s_tile1));
+// Node styles (6): 0 flat gradient, 1..n-2 tinted 9-slices, n-1 the handcrafted
+// cyberpunk renderer, n the last 9-slice (Starlight) drawn in its own colours.
+var _n9         = sprite_get_number(spr_9s_tile1);
+var _node_cyber = (_node_style == _n9 - 1);
+var _node_star  = (_node_style >= _n9);
 
 if (_node_cyber) {
     var _cy_body_top = is_connected ? make_color_rgb(22, 24, 26) : make_color_rgb(13, 14, 16);
@@ -932,6 +936,12 @@ if (_node_cyber) {
     draw_triangle(draw_x + width - 12, y + height, draw_x + width, y + height - 12, draw_x + width, y + height, false);
     draw_set_alpha(1.0);
 }
+else if (_node_star) {
+    // Starlight: the slice carries its own colours, so no body tint; unwired nodes dim.
+    var _star_col = make_color_rgb(150, 150, 150);
+    if (is_connected) { _star_col = c_white; }
+    draw_sprite_stretched_ext(spr_9s_tile1, _n9 - 1, draw_x, y, width, height, _star_col, _box_alpha);
+}
 else if (_node_style == 0) {
     draw_set_alpha(_box_alpha);
     if node_type!="LABEL" {draw_rectangle_color(draw_x, y, draw_x + width, y + height,
@@ -941,7 +951,7 @@ else if (_node_style == 0) {
         _body_col, _label_edge_col, _label_edge_col, _dark_col, false);}
 }
 else {
-    draw_sprite_stretched_ext(spr_9s_tile1, clamp(_node_style, 1, sprite_get_number(spr_9s_tile1) - 1),
+    draw_sprite_stretched_ext(spr_9s_tile1, clamp(_node_style, 1, max(1, _n9 - 2)),
                               draw_x, y, width, height, _body_col, _box_alpha);
 }
 
@@ -1075,7 +1085,10 @@ else if (_node_style == 0) {
     draw_set_alpha(1.0);
 }
 else {
-    draw_sprite_stretched_ext(spr_9s_tile1, clamp(_node_style, 1, sprite_get_number(spr_9s_tile1) - 1),
+    // Starlight headers keep the node's own colour over the Starlight slice
+    var _hdr_frame = clamp(_node_style, 1, max(1, _n9 - 2));
+    if (_node_star) { _hdr_frame = _n9 - 1; }
+    draw_sprite_stretched_ext(spr_9s_tile1, _hdr_frame,
                               draw_x, y, width, header_h, _head_col, _box_alpha);
 }
 

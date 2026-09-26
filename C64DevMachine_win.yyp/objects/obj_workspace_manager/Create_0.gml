@@ -176,7 +176,7 @@ paletteStyle=1
 showGrid=1;
 badgeStyle=1
 buttonStyle=1
-nodeStyle=0;  // 0..spr_9s_tile1 frames, final virtual index = Cyber renderer
+nodeStyle=0;  // 0 flat, 1..n-2 slices, n-1 Cyber renderer, n Starlight (last slice)
 macroStyle=0; // 0 classic menu rows, 1 appended Cyber macro-button pair
 niceSliceFrm = 0;
 uiChromeStyle = 0; // 0 existing chrome, 1 appended Cyber chrome
