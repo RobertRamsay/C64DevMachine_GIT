@@ -587,6 +587,8 @@ var _addr_total = 65536;
             if (!is_connected) continue;
             if (node_type == "MACRO_BMP") {
                 ds_map_replace(_membar_used_bmp, string(instructions[0][1]), true);
+            } else if (node_type == "MACRO_MOVE_BMP_BLOCK") {
+                scr_move_bmp_block_mark_sources(id, _membar_used_bmp);
             } else if (node_type == "MACRO_LOADER") {
                 if (array_length(instructions[0]) > 2) {
                     ds_map_replace(_membar_used_bmp, string(instructions[0][2]), true);

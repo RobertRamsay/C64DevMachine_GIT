@@ -57,3 +57,27 @@ function scr_bmp_regions(_bmp_base) {
         col_size  : 1000
     };
 }
+
+/// Mark the bitmaps a MOVE BMP BLOCK node reads from as used (ds_map name -> true):
+/// any BITMAP at its SOURCE address, and the source sheet of the Bitmap
+/// Builder whose record table the node uses in ASSET mode.
+function scr_move_bmp_block_mark_sources(_node, _map) {
+    if (!instance_exists(obj_asset_manager)) return;
+    var _inst = _node.instructions[0];
+    var _src  = -1;
+    if (array_length(_inst) > 1 && is_real(_inst[1])) { _src = real(_inst[1]); }
+    var _rec  = "";
+    if (array_length(_inst) > 17) { _rec = string(_inst[17]); }
+    var _am = obj_asset_manager;
+    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
+        var _a = ds_list_find_value(_am.asset_list, _i);
+        if ((_a.type == "BITMAP" || _a.type == "BITMAP_KLA") && real(_a.address) == _src) {
+            ds_map_replace(_map, _a.name, true);
+        }
+        if (_a.type == "BITMAP_BUILDER" && _rec != "" && is_struct(_a.meta)
+            && variable_struct_exists(_a.meta, "bbd_name") && _a.meta.bbd_name == _rec
+            && variable_struct_exists(_a.meta, "src_asset") && _a.meta.src_asset != "") {
+            ds_map_replace(_map, _a.meta.src_asset, true);
+        }
+    }
+}

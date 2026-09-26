@@ -1,0 +1,67 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_bmp_regions/scr_bmp_regions.gml b/C64DevMachine_win.yyp/scripts/scr_bmp_regions/scr_bmp_regions.gml
+index 5d264cd..5f5259e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_bmp_regions/scr_bmp_regions.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_bmp_regions/scr_bmp_regions.gml
+@@ -56,4 +56,28 @@ function scr_bmp_regions(_bmp_base) {
+         col_addr  : _col,
+         col_size  : 1000
+     };
+-}
+\ No newline at end of file
++}
++
++/// Mark the bitmaps a MOVE BMP BLOCK node reads from as used (ds_map name -> true):
++/// any BITMAP at its SOURCE address, and the source sheet of the Bitmap
++/// Builder whose record table the node uses in ASSET mode.
++function scr_move_bmp_block_mark_sources(_node, _map) {
++    if (!instance_exists(obj_asset_manager)) return;
++    var _inst = _node.instructions[0];
++    var _src  = -1;
++    if (array_length(_inst) > 1 && is_real(_inst[1])) { _src = real(_inst[1]); }
++    var _rec  = "";
++    if (array_length(_inst) > 17) { _rec = string(_inst[17]); }
++    var _am = obj_asset_manager;
++    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
++        var _a = ds_list_find_value(_am.asset_list, _i);
++        if ((_a.type == "BITMAP" || _a.type == "BITMAP_KLA") && real(_a.address) == _src) {
++            ds_map_replace(_map, _a.name, true);
++        }
++        if (_a.type == "BITMAP_BUILDER" && _rec != "" && is_struct(_a.meta)
++            && variable_struct_exists(_a.meta, "bbd_name") && _a.meta.bbd_name == _rec
++            && variable_struct_exists(_a.meta, "src_asset") && _a.meta.src_asset != "") {
++            ds_map_replace(_map, _a.meta.src_asset, true);
++        }
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml b/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml
+index 4576142..9bc92dc 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml
+@@ -587,6 +587,8 @@ var _addr_total = 65536;
+             if (!is_connected) continue;
+             if (node_type == "MACRO_BMP") {
+                 ds_map_replace(_membar_used_bmp, string(instructions[0][1]), true);
++            } else if (node_type == "MACRO_MOVE_BMP_BLOCK") {
++                scr_move_bmp_block_mark_sources(id, _membar_used_bmp);
+             } else if (node_type == "MACRO_LOADER") {
+                 if (array_length(instructions[0]) > 2) {
+                     ds_map_replace(_membar_used_bmp, string(instructions[0][2]), true);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 3e8808a..d9d5fd8 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -20524,6 +20524,14 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
+ 	            var _n = string(instructions[0][1]);
+ 	            if (_n != "") _used_bmp[? _n] = true;
+ 	        }
++	        // MOVE BMP BLOCK copies FROM a bitmap that nothing else displays (a
++	        // Bitmap Builder's source sheet, typically $8000). It names that
++	        // bitmap by address, and in ASSET mode by the builder's record table,
++	        // so mark both — otherwise the sheet never reaches the PRG and the
++	        // copy reads empty RAM.
++	        if (node_type == "MACRO_MOVE_BMP_BLOCK") {
++	            scr_move_bmp_block_mark_sources(id, _used_bmp);
++	        }
+ 	        if (node_type == "MACRO_MAP") {
+ 	            var _map_node_name = string(instructions[0][1]);
+ 	            if (_map_node_name != "" && instance_exists(obj_asset_manager)) {

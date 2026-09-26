@@ -20524,6 +20524,14 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 	            var _n = string(instructions[0][1]);
 	            if (_n != "") _used_bmp[? _n] = true;
 	        }
+	        // MOVE BMP BLOCK copies FROM a bitmap that nothing else displays (a
+	        // Bitmap Builder's source sheet, typically $8000). It names that
+	        // bitmap by address, and in ASSET mode by the builder's record table,
+	        // so mark both — otherwise the sheet never reaches the PRG and the
+	        // copy reads empty RAM.
+	        if (node_type == "MACRO_MOVE_BMP_BLOCK") {
+	            scr_move_bmp_block_mark_sources(id, _used_bmp);
+	        }
 	        if (node_type == "MACRO_MAP") {
 	            var _map_node_name = string(instructions[0][1]);
 	            if (_map_node_name != "" && instance_exists(obj_asset_manager)) {
