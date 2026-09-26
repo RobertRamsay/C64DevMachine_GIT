@@ -1,0 +1,155 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 76c33e1..d73655a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -1,4 +1,139 @@
++/// Load a project file without ever taking the IDE down.
++/// The file is read and checked BEFORE the current workspace is touched; a
++/// file that isn't JSON, or doesn't have the shape of a project, is refused
++/// with a message and nothing changes. If a file passes the checks but still
++/// fails part-way through loading (a very old or hand-edited project), the
++/// workspace that was open before is put back from a snapshot.
+ function scr_load_workspace_from_path(_path, _mcp = false) {
++    if (_path == "" || !file_exists(_path)) return;
++    var _fname = filename_name(_path);
++
++    // ── 1. Read + parse ──
++    var _data = undefined;
++    try {
++        var _jb = buffer_load(_path);
++        var _js = "";
++        if (_jb != -1) {
++            _js = buffer_read(_jb, buffer_text);
++            buffer_delete(_jb);
++        }
++        _data = json_parse(_js);
++    } catch (_e) {
++        show_debug_message("LOAD REFUSED (parse): " + _path + " : " + string(_e.message));
++        scr_show_message("Can't open " + _fname + "\n\nThis isn't a C64 Dev Machine project file (it couldn't be read as JSON).");
++        return;
++    }
++
++    // ── 2. Shape check ──
++    var _why = scr_load_workspace_check(_data);
++    if (_why != "") {
++        show_debug_message("LOAD REFUSED (shape): " + _path + " : " + _why);
++        scr_show_message("Can't open " + _fname + "\n\nThis file is from an older version or isn't a compatible project file.\n(" + _why + ")");
++        return;
++    }
++
++    // ── 3. Snapshot the current workspace so a failed load can be undone ──
++    var _snap = working_directory + "temp/load_rollback.json";
++    var _had_work = (instance_number(obj_c64_node) > 0);
++    var _prev = {
++        workspace_path   : global.workspace_path,
++        current_filename : global.current_filename,
++        autosave_dirty   : global.autosave_dirty,
++        manual_saved     : global.manual_saved,
++        saved_hash       : global.saved_hash
++    };
++    if (_had_work) {
++        try {
++            scr_save_workspace_as_path(_snap);
++        } catch (_e2) {
++            _had_work = false;
++        }
++        // The snapshot is not a real save: put the save state back
++        global.workspace_path   = _prev.workspace_path;
++        global.current_filename = _prev.current_filename;
++        global.autosave_dirty   = _prev.autosave_dirty;
++        global.manual_saved     = _prev.manual_saved;
++        global.saved_hash       = _prev.saved_hash;
++        window_set_caption(game_project_name + " - " + string(global.current_filename));
++    }
++
++    // ── 4. Load; on any failure, roll back ──
++    try {
++        scr_load_workspace_from_path_core(_path, _mcp);
++    } catch (_e3) {
++        show_debug_message("LOAD FAILED: " + _path + " : " + string(_e3.message));
++        show_debug_message(string(_e3.stacktrace));
++        var _restored = false;
++        if (_had_work && file_exists(_snap)) {
++            try {
++                scr_load_workspace_from_path_core(_snap, _mcp);
++                _restored = true;
++            } catch (_e4) {
++                show_debug_message("LOAD ROLLBACK FAILED: " + string(_e4.message));
++            }
++        }
++        if (!_restored) {
++            // Leave a clean, empty workspace rather than a half-built one
++            global.node_destroy_fx = false;
++            instance_destroy(obj_c64_node);
++            instance_destroy(obj_mapping_box);
++            global.node_destroy_fx = true;
++        }
++        global.workspace_path   = _prev.workspace_path;
++        global.current_filename = _prev.current_filename;
++        window_set_caption(game_project_name + " - " + string(global.current_filename));
++        var _tail = "Your previous workspace has been kept.";
++        if (!_restored) { _tail = "The workspace has been cleared."; }
++        scr_show_message("Can't open " + _fname + "\n\nThis file is from an older version or isn't a compatible project file.\n" + _tail);
++    }
++}
++
++/// "" when _data looks like a project, otherwise a short reason.
++function scr_load_workspace_check(_data) {
++    var _nodes = [];
++    if (is_array(_data)) {
++        _nodes = _data;
++    } else if (is_struct(_data)) {
++        if (!variable_struct_exists(_data, "nodes")) return "no node list";
++        _nodes = _data.nodes;
++        if (!is_array(_nodes)) return "node list is not a list";
++        if (variable_struct_exists(_data, "boxes") && !is_array(_data.boxes)) return "box list is not a list";
++        if (variable_struct_exists(_data, "assets")) {
++            if (!is_array(_data.assets)) return "asset list is not a list";
++            for (var _a = 0; _a < array_length(_data.assets); _a++) {
++                var _ad = _data.assets[_a];
++                if (!is_struct(_ad)) return "asset " + string(_a) + " is not an object";
++                if (!variable_struct_exists(_ad, "type") || !variable_struct_exists(_ad, "name")) {
++                    return "asset " + string(_a) + " has no type/name";
++                }
++            }
++        }
++        if (variable_struct_exists(_data, "boxes")) {
++            for (var _b = 0; _b < array_length(_data.boxes); _b++) {
++                var _bd = _data.boxes[_b];
++                if (!is_struct(_bd)) return "box " + string(_b) + " is not an object";
++                var _bk = ["x", "y", "box_w", "box_h", "box_name", "box_col_idx"];
++                for (var _k = 0; _k < array_length(_bk); _k++) {
++                    if (!variable_struct_exists(_bd, _bk[_k])) return "box " + string(_b) + " has no " + _bk[_k];
++                }
++            }
++        }
++    } else {
++        return "not a project";
++    }
++    var _need = ["type", "x", "y", "title", "code", "connected"];
++    for (var _i = 0; _i < array_length(_nodes); _i++) {
++        var _d = _nodes[_i];
++        if (!is_struct(_d)) return "node " + string(_i) + " is not an object";
++        for (var _k = 0; _k < array_length(_need); _k++) {
++            if (!variable_struct_exists(_d, _need[_k])) return "node " + string(_i) + " has no " + _need[_k];
++        }
++        if (!is_array(_d.code)) return "node " + string(_i) + " has no code rows";
++    }
++    return "";
++}
++
++function scr_load_workspace_from_path_core(_path, _mcp = false) {
+     var path = _path;
+     if (path == "" || !file_exists(path)) return;
+     io_clear();
+@@ -34,6 +169,10 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
+         buffer_delete(_jbuf);
+     }
+     var load_data = json_parse(json);
++    // Very old saves are a bare array of nodes: give them the modern shape
++    if (is_array(load_data)) {
++        load_data = { nodes: load_data };
++    }
+ 
+     var _nodes, _boxes;
+     if (is_array(load_data)) {
