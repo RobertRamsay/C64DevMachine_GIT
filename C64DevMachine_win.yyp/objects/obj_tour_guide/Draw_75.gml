@@ -1,4 +1,6 @@
 /// @desc Spotlight + caption panel.
+/// Draw GUI End: runs after every object's Draw GUI, so the overlay sits on
+/// top of the workspace, the asset panel and the editors whatever their depth.
 
 panel_vis = false;
 

@@ -1,0 +1,39 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_75.gml
+similarity index 97%
+rename from C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_64.gml
+rename to C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_75.gml
+index 2de0588..8a18e14 100644
+--- a/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_tour_guide/Draw_75.gml
+@@ -1,4 +1,6 @@
+ /// @desc Spotlight + caption panel.
++/// Draw GUI End: runs after every object's Draw GUI, so the overlay sits on
++/// top of the workspace, the asset panel and the editors whatever their depth.
+ 
+ panel_vis = false;
+ 
+diff --git a/C64DevMachine_win.yyp/objects/obj_tour_guide/obj_tour_guide.yy b/C64DevMachine_win.yyp/objects/obj_tour_guide/obj_tour_guide.yy
+index aaaa550..bc355ea 100644
+--- a/C64DevMachine_win.yyp/objects/obj_tour_guide/obj_tour_guide.yy
++++ b/C64DevMachine_win.yyp/objects/obj_tour_guide/obj_tour_guide.yy
+@@ -5,7 +5,7 @@
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":0,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":1,"eventType":3,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":3,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+-    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":64,"eventType":8,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
++    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":75,"eventType":8,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":12,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+   ],
+   "managed":true,
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 146759b..0181d52 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -1494,6 +1494,7 @@ if (gui_menu_open == 5) {
+         if (_ihov && mouse_check_button_pressed(mb_left)) {
+             gui_menu_open = -1;
+             if (string_copy(_dp.url, 1, 5) == "TOUR:") {
++                show_debug_message("TOUR: menu click " + _dp.url);
+                 scr_tour_start(real(string_delete(_dp.url, 1, 5)));
+             } else if (_dp.url != "") {
+                 url_open(_dp.url);
