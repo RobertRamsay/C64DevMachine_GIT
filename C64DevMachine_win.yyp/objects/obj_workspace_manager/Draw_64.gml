@@ -1448,7 +1448,7 @@ if (gui_menu_open == 5) {
         { title: "GLOSS DARK",      url: "https://drive.google.com/file/d/1k_OaDIK1II1-M7eJ2JJrWMJOVPGEmE_z/view?usp=drive_link" }, // link under here
 		{ title: "HELPER PAGE",			url: "https://robram78.github.io/C64_HELPER/" }, // link under here
 		{ title: "HELPER V2+C64U",			url: "https://robram78.github.io/C64_HELPER/u64_registers.html" }, // link under here		
-        { title: "--- GUIDED TOURS ---", url: "HEADER" },
+        { title: "-- GUIDED TOURS --", url: "HEADER" },
         { title: "BORDER & BACKGROUND",  url: "TOUR:0" },
         { title: "YOUR FIRST MACRO",     url: "TOUR:1" },
         { title: "BITMAP BASICS",        url: "TOUR:2" },
