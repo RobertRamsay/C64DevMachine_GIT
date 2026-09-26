@@ -1,0 +1,21 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 5d73945..dcc7e46 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -1112,14 +1112,14 @@ welcome_open          = !welcome_hide_checked;
+ 
+ // A tour asked for a clean workspace and restarted the app: skip the welcome
+ // panel and start that tour once the fresh workspace has settled.
+-ini_open("c64devmachine.ini");
++// The settings ini is already open here (closed further down), so no
++// ini_open/ini_close of our own - closing it early broke the reads below.
+ var _tour_after_restart = ini_read_real("Tour", "pending", -1);
+ if (_tour_after_restart >= 0) {
+     ini_write_real("Tour", "pending", -1);
+     tour_start_pending = _tour_after_restart;
+     welcome_open       = false;
+ }
+-ini_close();
+ 
+ // ---- SHOW CODE PANEL (floating live listing, left of the shortcuts column) ----
+ // First-run position and layout, set by hand. This used to default x to -1,
