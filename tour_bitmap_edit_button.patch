@@ -1,0 +1,55 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 7fca9a6..c25ef75 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -328,6 +328,9 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
+ 
+     // EDIT zone
+     var _edit_hover = point_in_rectangle(_mx-3, _my, _edit_x, _iy, _addr_x, _iy + item_h);
++    if (global.tour_active) {
++        scr_tour_capture("ASSET:EDIT:" + _asset.type, _edit_x, _iy, _addr_x, _iy + item_h);
++    }
+     draw_set_color(_edit_hover ? make_color_rgb(50, 80, 60) : make_color_rgb(28, 28, 40));
+     draw_rectangle(_edit_x + 1, _iy + 1, _addr_x - 1, _iy + item_h - 1, false);
+     draw_set_font_l(fnt_c64_tiny);
+@@ -4161,6 +4164,9 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
+ 	        var _ebx1 = _vx1 + 120;
+ 	        var _ebx2 = _ebx1 + 80;
+ 	        var _eb_hov = point_in_rectangle(_mx, _my, _ebx1, _btn_y, _ebx2, _btn_y + 20);
++	        if (global.tour_active) {
++	            scr_tour_capture("ASSET:BMP_EDIT", _ebx1, _btn_y, _ebx2, _btn_y + 20);
++	        }
+ 	        draw_set_color(_eb_hov ? make_color_rgb(60, 180, 200) : (_is_ed ? make_color_rgb(20, 70, 90) : make_color_rgb(20, 70, 90)));
+ 	        draw_rectangle(_ebx1, _btn_y, _ebx2, _btn_y + 20, false);
+ 	        draw_set_font_l(fnt_c64_tiny);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+index 35ed113..f4ead5a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+@@ -249,8 +249,11 @@ function scr_tour_define(_id) {
+             "Pick BITMAP from the list. A new bitmap asset appears in the panel.",
+             ["ASSET:TYPE:BITMAP", "ASSET:ADD"], "BMP_ADDED"));
+         array_push(_s, scr_tour_step("OPEN THE EDITOR",
+-            "Click the lower half of your new BITMAP row to open the bitmap editor.",
+-            ["ASSET:PANEL"], "BMP_OPEN"));
++            "Click EDIT on your new BITMAP row to open the bitmap editor.",
++            ["ASSET:EDIT:BITMAP", "ASSET:PANEL"], "BMP_OPEN"));
++        array_push(_s, scr_tour_step("START PAINTING",
++            "Click the EDIT (or CREATE) button at the top of the bitmap viewer to switch painting on.",
++            ["ASSET:BMP_EDIT"], "BMP_EDITING"));
+         array_push(_s, scr_tour_step("DRAW SOMETHING",
+             "Pick a colour and draw on the canvas with the left mouse button.",
+             [], "BMP_PAINTED"));
+@@ -561,6 +564,12 @@ function scr_tour_check(_code) {
+             return (scr_tour_bitmap_count() > base_bmp_count);
+         case "BMP_OPEN":
+             return !is_undefined(scr_tour_viewer_bitmap());
++        case "BMP_EDITING":
++            var _eb = scr_tour_viewer_bitmap();
++            if (is_undefined(_eb)) {
++                return false;
++            }
++            return (_eb.meta[$ "is_editing"] == true);
+         case "BMP_PAINTED":
+             return scr_tour_bitmap_changed(false);
+         case "BMP_FILLED":

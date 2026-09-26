@@ -249,8 +249,11 @@ function scr_tour_define(_id) {
             "Pick BITMAP from the list. A new bitmap asset appears in the panel.",
             ["ASSET:TYPE:BITMAP", "ASSET:ADD"], "BMP_ADDED"));
         array_push(_s, scr_tour_step("OPEN THE EDITOR",
-            "Click the lower half of your new BITMAP row to open the bitmap editor.",
-            ["ASSET:PANEL"], "BMP_OPEN"));
+            "Click EDIT on your new BITMAP row to open the bitmap editor.",
+            ["ASSET:EDIT:BITMAP", "ASSET:PANEL"], "BMP_OPEN"));
+        array_push(_s, scr_tour_step("CREATE THE CANVAS",
+            "A new bitmap starts empty, so there is nothing to draw on yet.\n\nClick CREATE at the top of the viewer to make a blank canvas and switch painting on.",
+            ["ASSET:BMP_EDIT"], "BMP_EDITING"));
         array_push(_s, scr_tour_step("DRAW SOMETHING",
             "Pick a colour and draw on the canvas with the left mouse button.",
             [], "BMP_PAINTED"));
@@ -561,6 +564,12 @@ function scr_tour_check(_code) {
             return (scr_tour_bitmap_count() > base_bmp_count);
         case "BMP_OPEN":
             return !is_undefined(scr_tour_viewer_bitmap());
+        case "BMP_EDITING":
+            var _eb = scr_tour_viewer_bitmap();
+            if (is_undefined(_eb)) {
+                return false;
+            }
+            return (_eb.meta[$ "is_editing"] == true);
         case "BMP_PAINTED":
             return scr_tour_bitmap_changed(false);
         case "BMP_FILLED":

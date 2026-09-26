@@ -1,0 +1,15 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+index f4ead5a..df187e5 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+@@ -251,8 +251,8 @@ function scr_tour_define(_id) {
+         array_push(_s, scr_tour_step("OPEN THE EDITOR",
+             "Click EDIT on your new BITMAP row to open the bitmap editor.",
+             ["ASSET:EDIT:BITMAP", "ASSET:PANEL"], "BMP_OPEN"));
+-        array_push(_s, scr_tour_step("START PAINTING",
+-            "Click the EDIT (or CREATE) button at the top of the bitmap viewer to switch painting on.",
++        array_push(_s, scr_tour_step("CREATE THE CANVAS",
++            "A new bitmap starts empty, so there is nothing to draw on yet.\n\nClick CREATE at the top of the viewer to make a blank canvas and switch painting on.",
+             ["ASSET:BMP_EDIT"], "BMP_EDITING"));
+         array_push(_s, scr_tour_step("DRAW SOMETHING",
+             "Pick a colour and draw on the canvas with the left mouse button.",

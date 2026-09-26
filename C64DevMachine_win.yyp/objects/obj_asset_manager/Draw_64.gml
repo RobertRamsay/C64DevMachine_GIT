@@ -328,6 +328,9 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
 
     // EDIT zone
     var _edit_hover = point_in_rectangle(_mx-3, _my, _edit_x, _iy, _addr_x, _iy + item_h);
+    if (global.tour_active) {
+        scr_tour_capture("ASSET:EDIT:" + _asset.type, _edit_x, _iy, _addr_x, _iy + item_h);
+    }
     draw_set_color(_edit_hover ? make_color_rgb(50, 80, 60) : make_color_rgb(28, 28, 40));
     draw_rectangle(_edit_x + 1, _iy + 1, _addr_x - 1, _iy + item_h - 1, false);
     draw_set_font_l(fnt_c64_tiny);
@@ -4161,6 +4164,9 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        var _ebx1 = _vx1 + 120;
 	        var _ebx2 = _ebx1 + 80;
 	        var _eb_hov = point_in_rectangle(_mx, _my, _ebx1, _btn_y, _ebx2, _btn_y + 20);
+	        if (global.tour_active) {
+	            scr_tour_capture("ASSET:BMP_EDIT", _ebx1, _btn_y, _ebx2, _btn_y + 20);
+	        }
 	        draw_set_color(_eb_hov ? make_color_rgb(60, 180, 200) : (_is_ed ? make_color_rgb(20, 70, 90) : make_color_rgb(20, 70, 90)));
 	        draw_rectangle(_ebx1, _btn_y, _ebx2, _btn_y + 20, false);
 	        draw_set_font_l(fnt_c64_tiny);
