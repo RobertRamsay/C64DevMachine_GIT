@@ -1,4 +1,6 @@
 function scr_asset_inline_editor_close_all() {
+    // Streamed reSID song playback belongs to whichever editor was open.
+    scr_sid64_stream_stop();
     with (obj_asset_manager) {
         var _count = ds_list_size(asset_list);
         for (var _i = 0; _i < _count; _i++) {

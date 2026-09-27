@@ -27,6 +27,9 @@ function scr_sound_preview_cache_key(_instr, _note_name, _max_sec) {
     _sig += "," + string(variable_struct_exists(_instr, "sustain")     ? _instr.sustain     : 8);
     _sig += "," + string(variable_struct_exists(_instr, "release")     ? _instr.release     : 0);
     _sig += "," + string(variable_struct_exists(_instr, "pulse_width") ? _instr.pulse_width : 2048);
+    _sig += "," + string(scr_sid64_instr_field(_instr, "vib_delay", 0));
+    _sig += "," + string(scr_sid64_instr_field(_instr, "vib_speed", 0));
+    _sig += "," + string(scr_sid64_instr_field(_instr, "vib_depth", 0));
 
     // Round _max_sec so float noise in a row duration can't produce a fresh
     // key every single row.

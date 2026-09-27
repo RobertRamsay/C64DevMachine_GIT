@@ -28,6 +28,7 @@
         {"$GMExtensionFunction":"","%Name":"sid64_set_gain","argCount":1,"args":[2,],"documentation":"","externalName":"sid64_set_gain","help":"","hidden":false,"kind":11,"name":"sid64_set_gain","resourceType":"GMExtensionFunction","resourceVersion":"2.0","returnType":2,},
         {"$GMExtensionFunction":"","%Name":"sid64_set_cycles_per_frame","argCount":1,"args":[2,],"documentation":"","externalName":"sid64_set_cycles_per_frame","help":"","hidden":false,"kind":11,"name":"sid64_set_cycles_per_frame","resourceType":"GMExtensionFunction","resourceVersion":"2.0","returnType":2,},
         {"$GMExtensionFunction":"","%Name":"sid64_version","argCount":0,"args":[],"documentation":"","externalName":"sid64_version","help":"","hidden":false,"kind":11,"name":"sid64_version","resourceType":"GMExtensionFunction","resourceVersion":"2.0","returnType":2,},
+        {"$GMExtensionFunction":"","%Name":"sid64_select","argCount":1,"args":[2,],"documentation":"","externalName":"sid64_select","help":"","hidden":false,"kind":11,"name":"sid64_select","resourceType":"GMExtensionFunction","resourceVersion":"2.0","returnType":2,},
       ],"init":"","kind":1,"name":"","origname":"extensions\\sid64.dll","ProxyFiles":[],"resourceType":"GMExtensionFile","resourceVersion":"2.0","uncompress":false,"usesRunnerInterface":false,},
   ],
   "gradleinject":"",

@@ -11,18 +11,30 @@
 #define EXPORT extern "C" __attribute__((visibility("default")))
 #endif
 
-static SID   *g_sid = 0;
-static SIDFP *g_sidfp = 0;
+// Two independent chips ("slots"): 0 renders note auditions, 1 streams song
+// playback, so pressing a key mid-song never resets the song's chip.
+// sid64_select picks the slot every other call works on.
+#define SID64_SLOTS 2
+static SID   *g_sid_s[SID64_SLOTS];
+static SIDFP *g_sidfp_s[SID64_SLOTS];
+static unsigned char g_regs_s[SID64_SLOTS][32];
+static int g_slot = 0;
+#define g_sid   g_sid_s[g_slot]
+#define g_sidfp g_sidfp_s[g_slot]
+#define g_regs  g_regs_s[g_slot]
 static int g_clock = 985248;
 static int g_rate = 44100;
-static unsigned char g_regs[32];
 static double g_gain = 1.0;
 static int g_cycles_per_frame = 19656;
 
-// GoatTracker order: voice 3 -> 1, AD/SR before CTRL so gate sees new envelope
+// Write order within a frame. Per voice: CTRL first, then AD, SR, then pitch
+// and pulse width — the same order MACRO_SID_SONG's trigger uses (gate before
+// AD/SR avoids the ADSR delay bug), so the preview hears what the C64 plays.
 static const unsigned char k_order[25] = {
-  0x18,0x17,0x16,0x15,0x14,0x13,0x12,0x11,0x10,0x0f,0x0e,
-  0x0d,0x0c,0x0b,0x0a,0x09,0x08,0x07,0x06,0x05,0x04,0x03,0x02,0x01,0x00 };
+  0x18,0x17,0x16,0x15,
+  0x12,0x13,0x14,0x0e,0x0f,0x10,0x11,
+  0x0b,0x0c,0x0d,0x07,0x08,0x09,0x0a,
+  0x04,0x05,0x06,0x00,0x01,0x02,0x03 };
 #define WRITE_DELAY 9
 
 static void chip_write(int r, int v) {
@@ -168,4 +180,12 @@ EXPORT double sid64_read(double reg) {
 // Output gain applied to every rendered sample (1.0 = reSID's native level).
 EXPORT double sid64_set_gain(double gain) { g_gain = gain; return 1; }
 
-EXPORT double sid64_version() { return 1.0; }
+// Select the chip slot (0 or 1) that every following call works on.
+EXPORT double sid64_select(double slot) {
+  int s = (int)slot;
+  if (s < 0 || s >= SID64_SLOTS) return 0;
+  g_slot = s;
+  return 1;
+}
+
+EXPORT double sid64_version() { return 2.0; }

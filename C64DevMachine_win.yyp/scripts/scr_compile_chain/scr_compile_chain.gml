@@ -17355,10 +17355,18 @@ case "MACRO_SID_SONG": {
     // jumped over, tagged _id so Pass 1.5 sizes them onto this node.
     // ════════════════════════════════════════════════════════════════
     var _lbl_dskip = _key + "dskip";
+    // Per-voice effect state tables (see section 7).
+    var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
+                             "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval"];
     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
 
+    // True once any instrument has vibrato or any pattern has a command
+    // column; when neither, the effect routines shrink to a bare pitch write.
+    var _sng_any_vib = false;
+
     // ── 1. INSTRUMENT BLOBS ──
-    // 4 header bytes (AD, SR, PW lo, PW hi) then the compiled command stream.
+    // 7 header bytes (AD, SR, PW lo, PW hi, VIB delay, VIB speed, VIB depth*4)
+    // then the compiled command stream.
     // Re-parsed here rather than trusting instr.compiled, which is an
     // editor-side cache that may predate the last text edit.
     for (var _ii = 0; _ii < _n_instr; _ii++) {
@@ -17401,6 +17409,20 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["byte", ((_sus << 4) | _rel) & 0xFF, _id]);   // SR
         array_push(_list, ["byte", _ins_pw & 0xFF,              _id]);
         array_push(_list, ["byte", (_ins_pw >> 8) & 0x0F,       _id]);
+        // Vibrato (phase 1): delay frames, speed (frames per half-cycle),
+        // depth pre-multiplied by 4 so the player adds it straight on.
+        var _ins_vdl = 0;
+        var _ins_vsp = 0;
+        var _ins_vdp = 0;
+        if (variable_struct_exists(_ins, "vib_delay")) _ins_vdl = clamp(real(_ins.vib_delay), 0, 255);
+        if (variable_struct_exists(_ins, "vib_speed")) _ins_vsp = clamp(real(_ins.vib_speed), 0, 15);
+        if (variable_struct_exists(_ins, "vib_depth")) _ins_vdp = clamp(real(_ins.vib_depth), 0, 15);
+        if (_ins_vsp > 0 && _ins_vdp > 0) {
+            _sng_any_vib = true;
+        }
+        array_push(_list, ["byte", _ins_vdl & 0xFF,             _id]);
+        array_push(_list, ["byte", _ins_vsp & 0x0F,             _id]);
+        array_push(_list, ["byte", (_ins_vdp * 4) & 0xFF,       _id]);
         for (var _bi = 0; _bi < array_length(_ins_comp.bytes); _bi++) {
             array_push(_list, ["byte", _ins_comp.bytes[_bi] & 0xFF, _id]);
         }
@@ -17424,7 +17446,9 @@ case "MACRO_SID_SONG": {
             array_push(_list, ["byte_lab_hi", _key + "ins" + string(_ii), _id]);
         }
 
-    // ── 3. PATTERN BLOBS ── 2 bytes per row: note index, instrument index.
+    // ── 3. PATTERN BLOBS ── 2 bytes per row: note index, instrument index
+    // (4 bytes — plus command, value — for patterns that use the command column).
+    var _pat_fx_flags = [];
     for (var _pi = 0; _pi < _n_pat; _pi++) {
         var _pat     = _patterns[_pi];
         var _pat_len = 64;
@@ -17435,6 +17459,19 @@ case "MACRO_SID_SONG": {
         if (variable_struct_exists(_pat, "steps") && is_array(_pat.steps)) {
             _pat_steps = _pat.steps;
         }
+
+        // A pattern with any command cell is emitted with 4-byte rows (note,
+        // instrument, command, value); every other pattern keeps 2-byte rows,
+        // so songs without commands compile to exactly the old size.
+        var _pat_has_fx = false;
+        for (var _fxi = 0; _fxi < array_length(_pat_steps); _fxi++) {
+            var _fx_st = _pat_steps[_fxi];
+            if (variable_struct_exists(_fx_st, "cmd") && real(_fx_st.cmd) >= 0) {
+                _pat_has_fx = true;
+                break;
+            }
+        }
+        array_push(_pat_fx_flags, _pat_has_fx);
 
         array_push(_list, ["label", _key + "pat" + string(_pi)]);
 
@@ -17484,6 +17521,21 @@ case "MACRO_SID_SONG": {
 
             array_push(_list, ["byte", _note_byte  & 0xFF, _id]);
             array_push(_list, ["byte", _instr_byte & 0xFF, _id]);
+            if (_pat_has_fx) {
+                var _cmd_byte = 0xFF;   // $FF = no command on this row
+                var _val_byte = 0x00;
+                if (_ri < array_length(_pat_steps)) {
+                    var _fx_row = _pat_steps[_ri];
+                    if (variable_struct_exists(_fx_row, "cmd") && real(_fx_row.cmd) >= 0) {
+                        _cmd_byte = real(_fx_row.cmd) & 0x0F;
+                        if (variable_struct_exists(_fx_row, "cmd_val")) {
+                            _val_byte = real(_fx_row.cmd_val) & 0xFF;
+                        }
+                    }
+                }
+                array_push(_list, ["byte", _cmd_byte, _id]);
+                array_push(_list, ["byte", _val_byte, _id]);
+            }
         }
     }
 
@@ -17503,6 +17555,14 @@ case "MACRO_SID_SONG": {
             _pl = clamp(real(_patterns[_pi].pattern_len), 1, 255);
         }
         array_push(_list, ["byte", _pl & 0xFF, _id]);
+    }
+    array_push(_list, ["label", _key + "patfx"]);
+    for (var _pi = 0; _pi < _n_pat; _pi++) {
+        var _pfx = 0;
+        if (_pat_fx_flags[_pi]) {
+            _pfx = 1;
+        }
+        array_push(_list, ["byte", _pfx, _id]);
     }
 
     // ── 5. ORDER TABLES ──
@@ -17597,6 +17657,27 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["byte", _song_start[_sgi2], _id]);
     }
 
+    // ── 7. EFFECT STATE (RAM, not ZP) ── 3 bytes per table, one per voice.
+    // Every table is also labelled per voice (<table>_0/_1/_2) so the unrolled
+    // per-voice code can address its own byte directly, while the shared
+    // command/effect routines index the same table with X = voice.
+    // The whole block is cleared by init/seek.
+    array_push(_list, ["label", _key + "st"]);
+    for (var _sti = 0; _sti < array_length(_sng_state_tables); _sti++) {
+        array_push(_list, ["label", _key + _sng_state_tables[_sti]]);
+        for (var _stv = 0; _stv < 3; _stv++) {
+            array_push(_list, ["label", _key + _sng_state_tables[_sti] + "_" + string(_stv)]);
+            array_push(_list, ["byte", 0, _id]);
+        }
+    }
+    // Shared scratch: the row's command/value, vibrato speed/depth in use,
+    // the HR-waiting flag handed to the effect routine, and the live tempo.
+    var _sng_scratch = ["rcmd", "rval", "vts", "vtd", "hrw", "spd"];
+    for (var _sci = 0; _sci < array_length(_sng_scratch); _sci++) {
+        array_push(_list, ["label", _key + _sng_scratch[_sci]]);
+        array_push(_list, ["byte", 0, _id]);
+    }
+
     array_push(_list, ["label", _lbl_dskip]);
 
     // ════════════════════════════════════════════════════════════════
@@ -17684,6 +17765,16 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["sta_zp",  _h_base[_vi] + 2, _id]);   // countdown = idle
         array_push(_list, ["sta_zp",  _c_base[_vi],     _id]);   // shadow matches the register
     }
+    // Clear every voice's effect state and restore the asset's tempo (an FXX
+    // command changes it at runtime).
+    array_push(_list, ["ldx_imm", (array_length(_sng_state_tables) * 3) - 1, _id]);
+    array_push(_list, ["lda_imm", 0x00, _id]);
+    array_push(_list, ["label",   _key + "stclr"]);
+    array_push(_list, ["sta_abx", _key + "st", _id]);
+    array_push(_list, ["dex",     0, _id]);
+    array_push(_list, ["bpl",     _key + "stclr", _id]);
+    array_push(_list, ["lda_imm", _play_speed & 0xFF, _id]);
+    array_push(_list, ["sta_abs", _key + "spd", _id]);
     array_push(_list, ["rts",     0,      _id]);
 
     // ── PLAY ──
@@ -17693,7 +17784,7 @@ case "MACRO_SID_SONG": {
     array_push(_list, ["jmp_abs", _L_instrs, _id]);
 
     array_push(_list, ["label",   _L_rowadv]);
-    array_push(_list, ["lda_imm", _play_speed & 0xFF, _id]);
+    array_push(_list, ["lda_abs", _key + "spd", _id]);   // live tempo (FXX)
     array_push(_list, ["sta_zp",  _S_TICK, _id]);
 
     // Trigger each voice's row. Unrolled per voice — three copies beats the
@@ -17706,6 +17797,10 @@ case "MACRO_SID_SONG": {
         var _vp      = _key + "v" + string(_vi) + "_";
         var _L_vskip = _vp + "skip";
         var _D400    = _chip_base + (_vi * 7);
+
+        // No command unless this row's pattern carries one.
+        array_push(_list, ["lda_imm", 0xFF,           _id]);
+        array_push(_list, ["sta_abs", _key + "rcmd",  _id]);
 
         // X = this voice's pattern index for the current order row.
         array_push(_list, ["ldx_zp",  _S_ORD,         _id]);
@@ -17750,14 +17845,45 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["sta_zp",  _S_PTR,         _id]);
         array_push(_list, ["lda_abx", _key + "pathi", _id]);
         array_push(_list, ["sta_zp",  _S_PTR + 1,     _id]);
+        // Row stride: 2 bytes, or 4 for a pattern with a command column.
+        // row*4 can pass 255, so its top two bits go into the pointer's high byte.
+        array_push(_list, ["lda_abx", _key + "patfx", _id]);
+        array_push(_list, ["beq",     _vp + "str2",   _id]);
+        array_push(_list, ["lda_zp",  _S_TMP,         _id]);
+        array_push(_list, ["lsr_a",   0,              _id]);
+        array_push(_list, ["lsr_a",   0,              _id]);
+        array_push(_list, ["lsr_a",   0,              _id]);
+        array_push(_list, ["lsr_a",   0,              _id]);
+        array_push(_list, ["lsr_a",   0,              _id]);
+        array_push(_list, ["lsr_a",   0,              _id]);
+        array_push(_list, ["clc",     0,              _id]);
+        array_push(_list, ["adc_zp",  _S_PTR + 1,     _id]);
+        array_push(_list, ["sta_zp",  _S_PTR + 1,     _id]);
         array_push(_list, ["lda_zp",  _S_TMP,         _id]);
         array_push(_list, ["asl_a",   0,              _id]);
+        array_push(_list, ["asl_a",   0,              _id]);
+        array_push(_list, ["jmp_abs", _vp + "stradd", _id]);
+        array_push(_list, ["label",   _vp + "str2"]);
+        array_push(_list, ["lda_zp",  _S_TMP,         _id]);
+        array_push(_list, ["asl_a",   0,              _id]);
+        array_push(_list, ["label",   _vp + "stradd"]);
         array_push(_list, ["clc",     0,              _id]);
         array_push(_list, ["adc_zp",  _S_PTR,         _id]);
         array_push(_list, ["sta_zp",  _S_PTR,         _id]);
         array_push(_list, ["lda_zp",  _S_PTR + 1,     _id]);
         array_push(_list, ["adc_imm", 0x00,           _id]);
         array_push(_list, ["sta_zp",  _S_PTR + 1,     _id]);
+
+        // Command column (4-byte rows only). X still holds the pattern index.
+        array_push(_list, ["lda_abx", _key + "patfx", _id]);
+        array_push(_list, ["beq",     _vp + "nocmd",  _id]);
+        array_push(_list, ["ldy_imm", 0x02,   _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["sta_abs", _key + "rcmd", _id]);
+        array_push(_list, ["iny",     0,      _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["sta_abs", _key + "rval", _id]);
+        array_push(_list, ["label",   _vp + "nocmd"]);
 
         // Note byte.
         array_push(_list, ["ldy_imm", 0x00,   _id]);
@@ -17766,7 +17892,7 @@ case "MACRO_SID_SONG": {
         // $FE = hold — leave the voice entirely alone.
         array_push(_list, ["cmp_imm", 0xFE,            _id]);
         array_push(_list, ["bne",     _vp + "nothold", _id]);
-        array_push(_list, ["jmp_abs", _L_vskip,        _id]);
+        array_push(_list, ["jmp_abs", _vp + "docmd",   _id]);   // held note: the command still applies
         array_push(_list, ["label",   _vp + "nothold"]);
 
         // $FF = rest — gate off AND stop the instrument.
@@ -17790,8 +17916,23 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["lda_imm", 0x00,            _id]);
         array_push(_list, ["sta_zp",  _vb + 6,         _id]);   // instrument off
         array_push(_list, ["sta_zp",  _hb + 2,         _id]);   // cancel any pending note
-        array_push(_list, ["jmp_abs", _L_vskip,        _id]);
+        array_push(_list, ["jmp_abs", _vp + "docmd",   _id]);
         array_push(_list, ["label",   _vp + "isnote"]);
+
+        // 3XX on a note row = slide to it: set the target, no trigger.
+        array_push(_list, ["ldy_abs", _key + "rcmd",   _id]);
+        array_push(_list, ["cpy_imm", 0x03,            _id]);
+        array_push(_list, ["bne",     _vp + "notp",    _id]);
+        array_push(_list, ["tax",     0,               _id]);
+        array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
+        array_push(_list, ["sta_abs", _key + "tgl_" + string(_vi), _id]);
+        array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
+        array_push(_list, ["sta_abs", _key + "tgh_" + string(_vi), _id]);
+        array_push(_list, ["jmp_abs", _vp + "docmd",   _id]);
+        array_push(_list, ["label",   _vp + "notp"]);
+        // Any other new note ends the voice's continuous effect (1-4).
+        array_push(_list, ["ldy_imm", 0x00,            _id]);
+        array_push(_list, ["sty_abs", _key + "fx_" + string(_vi), _id]);
 
         // Real note: stash the base index, then read the instrument byte.
         array_push(_list, ["sta_zp",  _vb + 5, _id]);
@@ -17825,7 +17966,7 @@ case "MACRO_SID_SONG": {
             array_push(_list, ["sta_abs", _D400 + 5, _id]);   // dummy AD
             array_push(_list, ["lda_imm", 0x00,      _id]);
             array_push(_list, ["sta_abs", _D400 + 6, _id]);   // dummy SR
-            array_push(_list, ["jmp_abs", _L_vskip,  _id]);
+            array_push(_list, ["jmp_abs", _vp + "docmd", _id]);
         }
 
         if (_hr == 0) {
@@ -17837,15 +17978,19 @@ case "MACRO_SID_SONG": {
         // leaving AD/SR as whatever the voice last had.
         array_push(_list, ["ldx_zp",  _vb + 5,          _id]);
         array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
-        array_push(_list, ["sta_abs", _D400 + 0,        _id]);
+        array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
         array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
-        array_push(_list, ["sta_abs", _D400 + 1,        _id]);
+        array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
         array_push(_list, ["lda_imm", 0x41,             _id]);   // pulse + gate
         array_push(_list, ["sta_abs", _D400 + 4,        _id]);
         array_push(_list, ["sta_zp",  _cb,              _id]);
         array_push(_list, ["lda_imm", 0x00,             _id]);
         array_push(_list, ["sta_zp",  _vb + 6,          _id]);   // no instrument to step
-        array_push(_list, ["jmp_abs", _L_vskip,         _id]);
+        array_push(_list, ["sta_abs", _key + "ivs_" + string(_vi),  _id]);   // no instrument vibrato
+        array_push(_list, ["sta_abs", _key + "ivp_" + string(_vi),  _id]);
+        array_push(_list, ["sta_abs", _key + "vol_" + string(_vi),  _id]);
+        array_push(_list, ["sta_abs", _key + "voh_" + string(_vi),  _id]);
+        array_push(_list, ["jmp_abs", _vp + "docmd",    _id]);
         array_push(_list, ["label",   _vp + "hasins"]);
 
         // Instrument: point the voice at its blob, write AD/SR/PW, gate on.
@@ -17858,6 +18003,12 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["sta_zp",  _vb + 3,        _id]);
 
         // Header: +0 AD, +1 SR, +2 PW lo, +3 PW hi
+        // Gate on BEFORE AD/SR. Writing SR first while the envelope is in
+        // release lets its rate counter run past the new attack period, and the
+        // SID then waits for the 15-bit counter to wrap (~33 ms) — the ADSR bug.
+        array_push(_list, ["lda_imm", 0x41,      _id]);
+        array_push(_list, ["sta_abs", _D400 + 4, _id]);
+        array_push(_list, ["sta_zp",  _cb,       _id]);
         array_push(_list, ["ldy_imm", 0x00,      _id]);
         array_push(_list, ["lda_izy", _vb + 0,   _id]);
         array_push(_list, ["sta_abs", _D400 + 5, _id]);
@@ -17870,38 +18021,51 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["iny",     0,         _id]);
         array_push(_list, ["lda_izy", _vb + 0,   _id]);
         array_push(_list, ["sta_abs", _D400 + 3, _id]);
+        // Instrument vibrato: delay, speed, depth*4; restart the vibrato cycle.
+        array_push(_list, ["iny",     0,         _id]);
+        array_push(_list, ["lda_izy", _vb + 0,   _id]);
+        array_push(_list, ["sta_abs", _key + "ivdl_" + string(_vi), _id]);
+        array_push(_list, ["iny",     0,         _id]);
+        array_push(_list, ["lda_izy", _vb + 0,   _id]);
+        array_push(_list, ["sta_abs", _key + "ivs_" + string(_vi), _id]);
+        array_push(_list, ["iny",     0,         _id]);
+        array_push(_list, ["lda_izy", _vb + 0,   _id]);
+        array_push(_list, ["sta_abs", _key + "ivp_" + string(_vi), _id]);
+        array_push(_list, ["lda_imm", 0xFF,      _id]);
+        array_push(_list, ["sta_abs", _key + "vbc_" + string(_vi), _id]);
+        array_push(_list, ["lda_imm", 0x00,      _id]);
+        array_push(_list, ["sta_abs", _key + "vol_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "voh_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "vdir_" + string(_vi), _id]);
 
         // Frequency from the base note.
         array_push(_list, ["ldx_zp",  _vb + 5,          _id]);
         array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
-        array_push(_list, ["sta_abs", _D400 + 0,        _id]);
+        array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
         array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
-        array_push(_list, ["sta_abs", _D400 + 1,        _id]);
+        array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
 
-        // Walking pointer moves past the 4 header bytes; the BASE stays put,
+        // Walking pointer moves past the 7 header bytes; the BASE stays put,
         // because $03 LOOP targets are offsets from the start of the command
         // stream, not from the blob.
         array_push(_list, ["clc",     0,       _id]);
         array_push(_list, ["lda_zp",  _vb + 0, _id]);
-        array_push(_list, ["adc_imm", 0x04,    _id]);
+        array_push(_list, ["adc_imm", 0x07,    _id]);
         array_push(_list, ["sta_zp",  _vb + 0, _id]);
         array_push(_list, ["lda_zp",  _vb + 1, _id]);
         array_push(_list, ["adc_imm", 0x00,    _id]);
         array_push(_list, ["sta_zp",  _vb + 1, _id]);
-        // Base points at the stream start too (blob + 4).
+        // Base points at the stream start too (blob + 7).
         array_push(_list, ["clc",     0,       _id]);
         array_push(_list, ["lda_zp",  _vb + 2, _id]);
-        array_push(_list, ["adc_imm", 0x04,    _id]);
+        array_push(_list, ["adc_imm", 0x07,    _id]);
         array_push(_list, ["sta_zp",  _vb + 2, _id]);
         array_push(_list, ["lda_zp",  _vb + 3, _id]);
         array_push(_list, ["adc_imm", 0x00,    _id]);
         array_push(_list, ["sta_zp",  _vb + 3, _id]);
 
-        // Gate on with a default pulse; the instrument's first $00 overrides
-        // the waveform on this same frame.
-        array_push(_list, ["lda_imm", 0x41,      _id]);
-        array_push(_list, ["sta_abs", _D400 + 4, _id]);
-        array_push(_list, ["sta_zp",  _cb,       _id]);
+        // (Gate went on above, before AD/SR.) The instrument's first $00
+        // overrides the default pulse waveform on this same frame.
         array_push(_list, ["lda_imm", 0x00,      _id]);
         array_push(_list, ["sta_zp",  _vb + 4,   _id]);   // hold = 0, step immediately
         array_push(_list, ["lda_imm", 0x01,      _id]);
@@ -17911,6 +18075,10 @@ case "MACRO_SID_SONG": {
             // and the whole immediate-trigger body is unreachable, so it isn't
             // emitted at all. Phase 2 in the stepper does the equivalent work.
 
+        // ── Row command (shared routine, X = voice) ──
+        array_push(_list, ["label",   _vp + "docmd"]);
+        array_push(_list, ["ldx_imm", _vi,              _id]);
+        array_push(_list, ["jsr",     _key + "cmdr",    _id]);
         array_push(_list, ["label",   _L_vskip]);
     }
     // Advance the master row; roll into the next order row at the target.
@@ -18020,14 +18188,18 @@ case "MACRO_SID_SONG": {
             // last had".
             array_push(_list, ["ldx_zp",  _vb + 5,          _id]);
             array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
-            array_push(_list, ["sta_abs", _D400 + 0,        _id]);
+            array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
             array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
-            array_push(_list, ["sta_abs", _D400 + 1,        _id]);
+            array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
             array_push(_list, ["lda_imm", 0x41,             _id]);
             array_push(_list, ["sta_abs", _D400 + 4,        _id]);
             array_push(_list, ["sta_zp",  _cb,              _id]);
             array_push(_list, ["lda_imm", 0x00,             _id]);
             array_push(_list, ["sta_zp",  _vb + 6,          _id]);
+            array_push(_list, ["sta_abs", _key + "ivs_" + string(_vi),  _id]);   // no instrument vibrato
+            array_push(_list, ["sta_abs", _key + "ivp_" + string(_vi),  _id]);
+            array_push(_list, ["sta_abs", _key + "vol_" + string(_vi),  _id]);
+            array_push(_list, ["sta_abs", _key + "voh_" + string(_vi),  _id]);
             array_push(_list, ["jmp_abs", _L_idone,         _id]);
             array_push(_list, ["label",   _ip + "hrins"]);
 
@@ -18040,6 +18212,12 @@ case "MACRO_SID_SONG": {
             array_push(_list, ["sta_zp",  _vb + 1,        _id]);
             array_push(_list, ["sta_zp",  _vb + 3,        _id]);
 
+            // Gate on BEFORE AD/SR. Writing SR first while the envelope is in
+            // release lets its rate counter run past the new attack period, and the
+            // SID then waits for the 15-bit counter to wrap (~33 ms) — the ADSR bug.
+            array_push(_list, ["lda_imm", 0x41,      _id]);
+            array_push(_list, ["sta_abs", _D400 + 4, _id]);
+            array_push(_list, ["sta_zp",  _cb,       _id]);
             array_push(_list, ["ldy_imm", 0x00,      _id]);
             array_push(_list, ["lda_izy", _vb + 0,   _id]);
             array_push(_list, ["sta_abs", _D400 + 5, _id]);   // real AD
@@ -18052,31 +18230,44 @@ case "MACRO_SID_SONG": {
             array_push(_list, ["iny",     0,         _id]);
             array_push(_list, ["lda_izy", _vb + 0,   _id]);
             array_push(_list, ["sta_abs", _D400 + 3, _id]);
+            // Instrument vibrato: delay, speed, depth*4; restart the vibrato cycle.
+            array_push(_list, ["iny",     0,         _id]);
+            array_push(_list, ["lda_izy", _vb + 0,   _id]);
+            array_push(_list, ["sta_abs", _key + "ivdl_" + string(_vi), _id]);
+            array_push(_list, ["iny",     0,         _id]);
+            array_push(_list, ["lda_izy", _vb + 0,   _id]);
+            array_push(_list, ["sta_abs", _key + "ivs_" + string(_vi), _id]);
+            array_push(_list, ["iny",     0,         _id]);
+            array_push(_list, ["lda_izy", _vb + 0,   _id]);
+            array_push(_list, ["sta_abs", _key + "ivp_" + string(_vi), _id]);
+            array_push(_list, ["lda_imm", 0xFF,      _id]);
+            array_push(_list, ["sta_abs", _key + "vbc_" + string(_vi), _id]);
+            array_push(_list, ["lda_imm", 0x00,      _id]);
+            array_push(_list, ["sta_abs", _key + "vol_" + string(_vi), _id]);
+            array_push(_list, ["sta_abs", _key + "voh_" + string(_vi), _id]);
+            array_push(_list, ["sta_abs", _key + "vdir_" + string(_vi), _id]);
 
             array_push(_list, ["ldx_zp",  _vb + 5,          _id]);
             array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
-            array_push(_list, ["sta_abs", _D400 + 0,        _id]);
+            array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
             array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
-            array_push(_list, ["sta_abs", _D400 + 1,        _id]);
+            array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
 
             array_push(_list, ["clc",     0,       _id]);
             array_push(_list, ["lda_zp",  _vb + 0, _id]);
-            array_push(_list, ["adc_imm", 0x04,    _id]);
+            array_push(_list, ["adc_imm", 0x07,    _id]);
             array_push(_list, ["sta_zp",  _vb + 0, _id]);
             array_push(_list, ["lda_zp",  _vb + 1, _id]);
             array_push(_list, ["adc_imm", 0x00,    _id]);
             array_push(_list, ["sta_zp",  _vb + 1, _id]);
             array_push(_list, ["clc",     0,       _id]);
             array_push(_list, ["lda_zp",  _vb + 2, _id]);
-            array_push(_list, ["adc_imm", 0x04,    _id]);
+            array_push(_list, ["adc_imm", 0x07,    _id]);
             array_push(_list, ["sta_zp",  _vb + 2, _id]);
             array_push(_list, ["lda_zp",  _vb + 3, _id]);
             array_push(_list, ["adc_imm", 0x00,    _id]);
             array_push(_list, ["sta_zp",  _vb + 3, _id]);
 
-            array_push(_list, ["lda_imm", 0x41,      _id]);
-            array_push(_list, ["sta_abs", _D400 + 4, _id]);   // gate on
-            array_push(_list, ["sta_zp",  _cb,       _id]);
             array_push(_list, ["lda_imm", 0x00,      _id]);
             array_push(_list, ["sta_zp",  _vb + 4,   _id]);   // hold = 0
             array_push(_list, ["lda_imm", 0x01,      _id]);
@@ -18154,9 +18345,9 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["label",   _ip + "nok"]);
         array_push(_list, ["tax",     0,                _id]);
         array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
-        array_push(_list, ["sta_abs", _D400 + 0,        _id]);
+        array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
         array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
-        array_push(_list, ["sta_abs", _D400 + 1,        _id]);
+        array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
         array_push(_list, ["clc",     0,        _id]);
         array_push(_list, ["lda_zp",  _vb + 0,  _id]);
         array_push(_list, ["adc_imm", 0x02,     _id]);
@@ -18214,9 +18405,30 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["sta_zp",  _vb + 6,   _id]);
 
         array_push(_list, ["label",   _L_idone]);
+        // ── Per-frame effects + frequency output (shared routine) ──
+        // hrw tells the routine a hard restart is still counting down, so a
+        // pending 5XX/6XX/7XX waits for the note's own AD/SR/wave first.
+        if (_hr > 0) {
+            array_push(_list, ["lda_zp",  _hb + 2, _id]);
+        } else {
+            array_push(_list, ["lda_imm", 0x00, _id]);
+        }
+        array_push(_list, ["sta_abs", _key + "hrw", _id]);
+        array_push(_list, ["ldx_imm", _vi,       _id]);
+        array_push(_list, ["ldy_imm", _vi * 7,   _id]);
+        array_push(_list, ["jsr",     _key + "fxr", _id]);
     }
 
     array_push(_list, ["rts", 0, _id]);
+
+    var _sng_use_fx = _sng_any_vib;
+    for (var _ufi = 0; _ufi < array_length(_pat_fx_flags); _ufi++) {
+        if (_pat_fx_flags[_ufi]) {
+            _sng_use_fx = true;
+        }
+    }
+    scr_sid_song_emit_fx_routines(_list, _id, _key, _chip_base, _c_base[0], _sng_use_fx);
+
     array_push(_list, ["label", _L_skip]);
 
     // Auto-init on the spine so the node is drop-and-go. The user then JSRs

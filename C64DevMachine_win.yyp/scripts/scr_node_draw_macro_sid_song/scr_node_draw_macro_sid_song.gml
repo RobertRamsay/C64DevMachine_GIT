@@ -167,8 +167,10 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
 
             // Footprint estimate — mirrors what the compile case emits so the
             // number on the node matches the memory bar.
-            //   instruments: 4 header + compiled stream, + 2 pointer tables
-            //   patterns:    2 bytes/row, + 2 pointer tables + 1 length table
+            //   instruments: 7 header + compiled stream, + 2 pointer tables
+            //   patterns:    2 bytes/row (4 with a command column), + 2 pointer
+            //                tables + length table + command-column flag table
+            //   effect state: 17 tables x 3 voices + 6 scratch bytes
             //   order:       5 bytes/row (v1,v2,v3,len,wrap)
             for (var _bi = 0; _bi < _n_instr; _bi++) {
                 var _b_ins = _sm.instruments[_bi];
@@ -176,7 +178,7 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
                 if (variable_struct_exists(_b_ins, "text")) {
                     _b_txt = string(_b_ins.text);
                 }
-                _bytes += 4 + array_length(scr_instrument_parse(_b_txt).bytes);
+                _bytes += 7 + array_length(scr_instrument_parse(_b_txt).bytes);
             }
             _bytes += _n_instr * 2;
             for (var _bp = 0; _bp < _n_pat; _bp++) {
@@ -184,9 +186,21 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
                 if (variable_struct_exists(_sm.patterns[_bp], "pattern_len")) {
                     _bp_len = real(_sm.patterns[_bp].pattern_len);
                 }
-                _bytes += _bp_len * 2;
+                var _bp_stride = 2;
+                var _bp_steps = [];
+                if (variable_struct_exists(_sm.patterns[_bp], "steps") && is_array(_sm.patterns[_bp].steps)) {
+                    _bp_steps = _sm.patterns[_bp].steps;
+                }
+                for (var _bps = 0; _bps < array_length(_bp_steps); _bps++) {
+                    if (variable_struct_exists(_bp_steps[_bps], "cmd") && real(_bp_steps[_bps].cmd) >= 0) {
+                        _bp_stride = 4;
+                        break;
+                    }
+                }
+                _bytes += _bp_len * _bp_stride;
             }
-            _bytes += _n_pat * 3;
+            _bytes += _n_pat * 4;
+            _bytes += (17 * 3) + 6;
             _bytes += _n_ord * 5;
             _bytes += _n_songs * 4;   // songstart/songend/songloop/songflag
             break;

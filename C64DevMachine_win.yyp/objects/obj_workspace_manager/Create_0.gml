@@ -40,6 +40,26 @@ global.sid64_engine = 0;             // 0 = reSID, 1 = reSID-fp
 global.sid64_hard_restart = 2;       // frames, MACRO_SID_SONG's default
 global.sid64_note_freq = array_create(96, 0);
 global.sid64_frame_buf = buffer_create(SID64_MAX_FRAMES * 32, buffer_fixed, 1);
+// Streamed song playback (scr_sid64_stream_*): a ring of audio buffers the
+// play queue reads from, and the song position of each rendered frame.
+var _sid64_ring_samples = ceil(SID64_CHUNK_FRAMES * SID64_CYCLES_PER_FRAME * SID64_RATE / SID64_PAL_CLOCK) + 64;
+global.sid64_stream = {
+    active          : false,
+    sim             : undefined,
+    queue           : -1,
+    inst            : -1,
+    start_us        : 0,
+    frames_rendered : 0,
+    finished_at     : -1,
+    ring            : array_create(SID64_RING, -1),
+    ring_i          : 0,
+    ring_samples    : _sid64_ring_samples,
+    pos_ord         : array_create(SID64_POS_RING, 0),
+    pos_row         : array_create(SID64_POS_RING, 0)
+};
+for (var _sri = 0; _sri < SID64_RING; _sri++) {
+    global.sid64_stream.ring[_sri] = buffer_create(_sid64_ring_samples * 2, buffer_fixed, 2);
+}
 scr_sid64_start();
 
 // Frame counter. Incremented once in Begin Step, and used as the validity

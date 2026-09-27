@@ -97,6 +97,7 @@ function scr_sound_editor_preview_due(_m, _now) {
 /// normal song progression (including the song's existing end/loop setting).
 function scr_sound_editor_transport(_m, _song, _action) {
     scr_sound_preview_stop_all();
+    scr_sid64_stream_stop();
     _m.playing = false;
     _m.song_playing = false;
     _m.preview_jobs = [];
@@ -136,6 +137,11 @@ function scr_sound_editor_transport(_m, _song, _action) {
         _m.song_playing = true;
         _m.song_order_row = _order_index;
         _m.song_master_row = _step_index;
+    }
+    if (global.sid64_ok) {
+        // reSID: the player simulation streams the audio, nothing to pre-render.
+        scr_sid64_stream_start(_m, _song, _m.playing, _order_index, _step_index);
+        return;
     }
     scr_sound_editor_preview_prepare(_m, _song, _m.playing);
 }

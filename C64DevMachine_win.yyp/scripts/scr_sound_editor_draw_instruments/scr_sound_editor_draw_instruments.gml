@@ -18,9 +18,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     var _list_w     = 260;
     if (_two_col) {
         // Everything under the list in the left column (buttons, name, two
-        // ADSR rows, pulse) takes 134px; the list gets the rest.
+        // ADSR rows, pulse, vibrato) takes 158px; the list gets the rest.
         _list_w   = 290;
-        _list_vis = clamp(floor((_iy1 - _iy0 - 134) / _list_row_h), 6, 20);
+        _list_vis = clamp(floor((_iy1 - _iy0 - 158) / _list_row_h), 6, 20);
     }
 
     draw_set_font_l(fnt_c64_tiny);
@@ -123,7 +123,10 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
                     decay    : 8,
                     sustain  : 8,
                     release  : 0,
-                    pulse_width : 2048
+                    pulse_width : 2048,
+                    vib_delay : 0,
+                    vib_speed : 0,
+                    vib_depth : 0
                 });
                 _m.sel_instr = array_length(_m.instruments) - 1;
                 global.undo_dirty      = true;
@@ -165,6 +168,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
                     attack: _cp_src.attack, decay: _cp_src.decay,
                     sustain: _cp_src.sustain, release: _cp_src.release,
                     pulse_width: _cp_src.pulse_width,
+                    vib_delay: scr_sid64_instr_field(_cp_src, "vib_delay", 0),
+                    vib_speed: scr_sid64_instr_field(_cp_src, "vib_speed", 0),
+                    vib_depth: scr_sid64_instr_field(_cp_src, "vib_depth", 0),
                     sfx_note: variable_struct_exists(_cp_src,"sfx_note")?_cp_src.sfx_note:"C-5",
                     sfx_priority: variable_struct_exists(_cp_src,"sfx_priority")?_cp_src.sfx_priority:1
                 };
@@ -184,6 +190,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
                     sustain  : _pc.sustain,
                     release  : _pc.release,
                     pulse_width : _pc.pulse_width,
+                    vib_delay : scr_sid64_instr_field(_pc, "vib_delay", 0),
+                    vib_speed : scr_sid64_instr_field(_pc, "vib_speed", 0),
+                    vib_depth : scr_sid64_instr_field(_pc, "vib_depth", 0),
                     sfx_note: variable_struct_exists(_pc,"sfx_note")?_pc.sfx_note:"C-5",
                     sfx_priority: variable_struct_exists(_pc,"sfx_priority")?_pc.sfx_priority:1
                 });
@@ -351,6 +360,66 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     draw_set_font_l(fnt_c64_pico);
     draw_text_l(_pw_upx2 + 8, _pw_y + 2, "(SHIFT: FINE)");
     draw_set_font_l(fnt_c64_tiny);
+
+    // ── VIBRATO (Music Maker only — the SFX player has no vibrato) ──
+    // DL = frames before it starts, SP = frames per half-cycle, DP = depth.
+    // A 4XY command in the pattern overrides it while active.
+    if (_two_col) {
+        var _vb_y = _pw_y + 24;
+        draw_set_color(make_color_rgb(120, 120, 160));
+        draw_text_l(_ix0, _vb_y, "VIB:");
+        var _vb_lbl = ["DL", "SP", "DP"];
+        var _vb_key = ["vib_delay", "vib_speed", "vib_depth"];
+        var _vb_max = [255, 15, 15];
+        var _vb_x   = _ix0 + 50;
+        for (var _vbi = 0; _vbi < 3; _vbi++) {
+            var _vb_val = scr_sid64_instr_field(_sel_instr, _vb_key[_vbi], 0);
+            draw_set_color(make_color_rgb(180, 180, 200));
+            draw_text_l(_vb_x, _vb_y, _vb_lbl[_vbi]);
+
+            var _vb_dnx1 = _vb_x + 20;
+            var _vb_dnx2 = _vb_dnx1 + 14;
+            var _vb_hov_dn = point_in_rectangle(_mx, _my, _vb_dnx1, _vb_y - 2, _vb_dnx2, _vb_y + 14);
+            draw_set_color(make_color_rgb(100, 100, 100));
+            if (_vb_hov_dn) {
+                draw_set_color(c_aqua);
+            }
+            draw_text_l(_vb_dnx1 + 2, _vb_y, "-");
+            if (_vb_hov_dn && mouse_check_button_pressed(mb_left)) {
+                var _vb_step_dn = 1;
+                if (_vbi == 0 && keyboard_check(vk_shift)) {
+                    _vb_step_dn = 10;
+                }
+                _sel_instr[$ _vb_key[_vbi]] = max(0, _vb_val - _vb_step_dn);
+                global.undo_dirty      = true;
+                global.addresses_dirty = true;
+            }
+
+            draw_set_color(c_white);
+            var _vb_str = string(_vb_val);
+            while (string_length(_vb_str) < 2) { _vb_str = "0" + _vb_str; }
+            draw_text_l(_vb_dnx2 + 3, _vb_y, _vb_str);
+
+            var _vb_upx1 = _vb_dnx2 + 26;
+            var _vb_upx2 = _vb_upx1 + 14;
+            var _vb_hov_up = point_in_rectangle(_mx, _my, _vb_upx1, _vb_y - 2, _vb_upx2, _vb_y + 14);
+            draw_set_color(make_color_rgb(100, 100, 100));
+            if (_vb_hov_up) {
+                draw_set_color(c_aqua);
+            }
+            draw_text_l(_vb_upx1 + 2, _vb_y, "+");
+            if (_vb_hov_up && mouse_check_button_pressed(mb_left)) {
+                var _vb_step_up = 1;
+                if (_vbi == 0 && keyboard_check(vk_shift)) {
+                    _vb_step_up = 10;
+                }
+                _sel_instr[$ _vb_key[_vbi]] = min(_vb_max[_vbi], _vb_val + _vb_step_up);
+                global.undo_dirty      = true;
+                global.addresses_dirty = true;
+            }
+            _vb_x = _vb_upx2 + 8;
+        }
+    }
 
     // ── SOURCE TEXT BOX ──
     var _tb_x0 = _ix0;
