@@ -20,13 +20,13 @@ function scr_workspace_input_blocked() {
     if (!variable_global_exists("workspace_editor_seen")) {
         global.workspace_editor_seen = false;
         global.workspace_input_until = 0;
-        global.workspace_close_mouse = false;
+        global.workspace_wait_release = false;
         global.workspace_release_frame = -1;
     }
     var _active = false;
     if (instance_exists(obj_asset_manager)) {
         var _am = obj_asset_manager;
-        _active = _am.viewer_open; // Hidden sprite-editor state must not lock the workspace.
+        _active = _am.viewer_open || _am.spred64_v2.active;
     }
     if (instance_exists(obj_workspace_manager))
         _active = _active || obj_workspace_manager.code_editor_open || obj_workspace_manager.box_popup_open;
@@ -60,14 +60,11 @@ function scr_workspace_input_blocked() {
     if (global.workspace_editor_seen) {
         global.workspace_editor_seen = false;
         global.workspace_input_until = current_time + 500;
-        global.workspace_close_mouse = mouse_check_button(mb_any);
-        global.workspace_release_frame = global.frame_tick;
+        global.workspace_wait_release = true;
     }
-    // Waiting for vk_anykey to clear can deadlock after a native dialog or
-    // modifier gesture. New key/button presses are already edge-triggered.
-    // Swallow the closing mouse gesture for the bounded cooldown only.
-    if (global.workspace_close_mouse && !mouse_check_button(mb_any)) {
-        global.workspace_close_mouse = false;
+    if (global.workspace_wait_release) {
+        if (mouse_check_button(mb_any) || keyboard_check(vk_anykey)) return true;
+        global.workspace_wait_release = false;
         global.workspace_release_frame = global.frame_tick;
     }
     return current_time < global.workspace_input_until
