@@ -8,6 +8,7 @@ step_timer     = 0;
 done_timer     = 0;      // counts down after a step's check passes
 hold_auto      = false;  // true after BACK so the step does not re-skip itself
 restore_expert = false;
+restore_showcode = false; // SHOW CODE panel hidden for the tour, put back after
 
 // Check baselines (set by scr_tour_enter_step)
 base_bmp_count = 0;

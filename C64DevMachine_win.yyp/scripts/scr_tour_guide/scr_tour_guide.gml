@@ -126,6 +126,12 @@ function scr_tour_start(_id) {
             obj_workspace_manager.expert_mode = false;
             restore_expert = true;
         }
+        // The floating SHOW CODE panel can sit over the opcode palette the
+        // tour points at. Hide it for the tour and restore it afterwards.
+        if (obj_workspace_manager.showcode_enabled) {
+            obj_workspace_manager.showcode_enabled = false;
+            restore_showcode = true;
+        }
         scr_tour_enter_step();
     }
     global.tour_active = true;
