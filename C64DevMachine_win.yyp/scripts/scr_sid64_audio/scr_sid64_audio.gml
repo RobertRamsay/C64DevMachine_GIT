@@ -286,6 +286,9 @@ function scr_sid64_render_note(_instr, _note_name, _max_sec, _plain_pw = 0x0800)
         buffer_delete(_buf);
         return undefined;
     }
+    // The DLL wrote through the raw address, so GameMaker still thinks the
+    // buffer is empty — audio_create_buffer_sound refuses an "empty" buffer.
+    buffer_set_used_size(_buf, _got * 2);
     var _snd = audio_create_buffer_sound(_buf, buffer_s16, SID64_RATE, 0, _got * 2, audio_mono);
     return { snd: _snd, buf: _buf };
 }
