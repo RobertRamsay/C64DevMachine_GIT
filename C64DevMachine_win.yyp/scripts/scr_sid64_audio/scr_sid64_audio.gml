@@ -39,6 +39,7 @@ function scr_sid64_start() {
         if (sid64_version() >= 1) {
             sid64_init(SID64_PAL_CLOCK, SID64_RATE, global.sid64_model, global.sid64_engine);
             sid64_set_gain(0.6);
+            sid64_set_cycles_per_frame(SID64_CYCLES_PER_FRAME);
             global.sid64_ok = true;
         }
     } catch (_e) {
@@ -56,6 +57,7 @@ function scr_sid64_reconfigure() {
     scr_sound_preview_cache_clear();
     sid64_init(SID64_PAL_CLOCK, SID64_RATE, global.sid64_model, global.sid64_engine);
     sid64_set_gain(0.6);
+    sid64_set_cycles_per_frame(SID64_CYCLES_PER_FRAME);
 }
 
 /// Cache-key prefix: anything that changes the rendered audio but isn't in the
@@ -279,7 +281,7 @@ function scr_sid64_render_note(_instr, _note_name, _max_sec, _plain_pw = 0x0800)
 
     var _cap_samples = ceil(_nf * SID64_CYCLES_PER_FRAME * SID64_RATE / SID64_PAL_CLOCK) + 64;
     var _buf = buffer_create(_cap_samples * 2, buffer_fixed, 2);
-    var _got = sid64_render_log(buffer_get_address(_fb), _nf, buffer_get_address(_buf), _cap_samples, SID64_CYCLES_PER_FRAME);
+    var _got = sid64_render_log(buffer_get_address(_fb), _nf, buffer_get_address(_buf), _cap_samples);
     if (_got <= 0) {
         buffer_delete(_buf);
         return undefined;

@@ -17,6 +17,7 @@ static int g_clock = 985248;
 static int g_rate = 44100;
 static unsigned char g_regs[32];
 static double g_gain = 1.0;
+static int g_cycles_per_frame = 19656;
 
 // GoatTracker order: voice 3 -> 1, AD/SR before CTRL so gate sees new envelope
 static const unsigned char k_order[25] = {
@@ -106,14 +107,21 @@ EXPORT double sid64_clock(const char *buf_ptr, double cycles, double max_samples
 // frames_ptr: 'frames' records of 32 bytes: [0..24] register values, [25..28] u32 write mask
 //   (bit r = write reg r this frame; 0 = write all 25), [29..31] unused.
 // out_ptr: s16 mono buffer with room for out_max samples.
-// cycles_per_frame: 19656 PAL / 17045 NTSC (x speed multiplier handled by caller).
+// Frame length comes from sid64_set_cycles_per_frame (19656 PAL / 17095 NTSC).
 // Returns samples written.
+// GameMaker allows mixed argument types only up to 4 arguments, so the frame
+// length is set separately (sid64_set_cycles_per_frame, default 19656 PAL).
+EXPORT double sid64_set_cycles_per_frame(double cycles) {
+  if (cycles >= 1) g_cycles_per_frame = (int)cycles;
+  return 1;
+}
+
 EXPORT double sid64_render_log(const char *frames_ptr, double frames, const char *out_ptr,
-                               double out_max, double cycles_per_frame) {
+                               double out_max) {
   if (!g_sid && !g_sidfp) return 0;
   const unsigned char *f = (const unsigned char*)frames_ptr;
   short *out = (short*)out_ptr;
-  int nf = (int)frames, left = (int)out_max, total = 0, cpf = (int)cycles_per_frame;
+  int nf = (int)frames, left = (int)out_max, total = 0, cpf = g_cycles_per_frame;
   for (int i = 0; i < nf && left > 0; i++) {
     const unsigned char *rec = f + i * 32;
     unsigned mask = rec[25] | (rec[26] << 8) | (rec[27] << 16) | ((unsigned)rec[28] << 24);
