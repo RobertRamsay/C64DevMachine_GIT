@@ -285,7 +285,6 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         scr_sprmask_create(_asset);
     }
     var _m     = _asset.meta;
-    _m.pick_open = false; // Reference browser is now always visible.
     var _press = mouse_check_button_pressed(mb_left);
     var _bmp   = scr_reu_find_asset(_m.ref_bmp);
     if (!is_undefined(_bmp) && _bmp.type != "BITMAP") { _bmp = undefined; }
@@ -307,9 +306,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _side_x = _vx1 + 18;
     var _side_w = 284;
     var _area_x = _side_x + _side_w + 22;
-    var _ref_w = clamp((_vx2 - _area_x) * 0.26, 280, 400);
-    var _ref_x = _vx2 - 18 - _ref_w;
-    var _area_w = max(320, _ref_x - 18 - _area_x);
+    var _area_w = _vx2 - 18 - _area_x;
     var _top = _cy + 8;
     var _bottom = _vy2 - 18;
     draw_set_color(make_color_rgb(23, 29, 42));
@@ -386,9 +383,13 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         scr_sprmask_flush(_asset); global.addresses_dirty = true;
     }
 
-    // Reserve the right-hand column for the reference browser.
-    draw_set_color(make_color_rgb(154,175,198));
-    draw_text_l(_area_x, _top + 8, "MASK CANVAS");
+    // Centre the image inside its own stage; preserve integer pixel scaling.
+    var _picker_w = min(680, _area_w);
+    var _picker_x = _area_x + (_area_w - _picker_w) * 0.5;
+    var _bl = (_m.ref_bmp == "") ? "CHOOSE A REFERENCE BITMAP" : "BITMAP: " + _m.ref_bmp;
+    if (_button(_picker_x, _top, _picker_w, string_copy(_bl, 1, floor((_picker_w - 20) / 7)), _m.pick_open, _mx, _my)) {
+        _m.pick_open = !_m.pick_open; _m.pick_scroll = 0;
+    }
     var _rule = (_m.depth == 255) ? "ALWAYS HIDE THE CAT (MAGENTA)" : "HIDE WHEN FEET ARE ABOVE Y " + string(_m.depth) + " (CYAN)";
     var _action = "PAINT MASK";
     if (_m.tool == "FILL") _action = "FILL AREA";
@@ -493,61 +494,43 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_area_x + _area_w * 0.5, _bottom - 12, _capacity);
     draw_set_halign(fa_left);
 
-    // Persistent reference browser. It cannot dismiss on the opening click,
-    // and list presses never become brush strokes on the canvas.
-    var _items = [];
-    var _am = obj_asset_manager;
-    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
-        var _a = ds_list_find_value(_am.asset_list, _i);
-        if (_a.type == "BITMAP") array_push(_items, _a.name);
-    }
-    var _lx = _ref_x, _lw = _ref_w;
-    var _ly = _top + 34;
-    var _rows = max(1, floor((_bottom - _ly - 88) / 24));
-    var _list_bottom = _ly + _rows * 24;
-    var _over_list = point_in_rectangle(_mx,_my,_lx,_ly,_lx+_lw,_list_bottom);
-    _m.pick_scroll = clamp(_m.pick_scroll,0,max(0,array_length(_items)-_rows));
-    if (_over_list && mouse_wheel_up()) _m.pick_scroll = max(0,_m.pick_scroll-3);
-    if (_over_list && mouse_wheel_down()) _m.pick_scroll = min(max(0,array_length(_items)-_rows),_m.pick_scroll+3);
-    draw_set_color(make_color_rgb(23,29,42));
-    draw_rectangle(_lx-8,_top-8,_lx+_lw+8,_bottom,false);
-    draw_set_color(c_white); draw_text_l(_lx,_top+8,"REFERENCE BITMAP");
-    var _detail = _m.ref_bmp;
-    for(var _li=0; _li<_rows; _li++) {
-        var _ii=_li+_m.pick_scroll;
-        if(_ii>=array_length(_items)) break;
-        var _ry=_ly+_li*24;
-        var _hover=point_in_rectangle(_mx,_my,_lx,_ry,_lx+_lw-10,_ry+23);
-        var _selected=_items[_ii]==_m.ref_bmp;
-        draw_set_color(_selected ? make_color_rgb(35,83,77) : (_hover ? make_color_rgb(45,70,90) : make_color_rgb(16,19,29)));
-        draw_rectangle(_lx,_ry,_lx+_lw-10,_ry+22,false);
-        draw_set_color(_selected ? c_lime : c_white);
-        draw_text_l(_lx+6,_ry+6,_am.manifest_fit_name(_items[_ii],_lw-24));
-        if (_hover) _detail=_items[_ii];
-        if (_hover && _press) {
-            _m.ref_bmp=_items[_ii]; _m.stroke=false;
-            _press=false; mouse_clear(mb_left);
+    // ── Picker list over the canvas ──
+    if (_m.pick_open) {
+        var _items = [];
+        var _am = obj_asset_manager;
+        for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
+            var _a = ds_list_find_value(_am.asset_list, _i);
+            if (_a.type == "BITMAP") { array_push(_items, _a.name); }
         }
-    }
-    if (array_length(_items)>_rows) {
-        var _track_h=_rows*24;
-        var _thumb_h=max(20,_track_h*_rows/array_length(_items));
-        var _thumb_y=_ly+(_track_h-_thumb_h)*_m.pick_scroll/(array_length(_items)-_rows);
-        draw_set_color(make_color_rgb(45,55,70)); draw_rectangle(_lx+_lw-6,_ly,_lx+_lw,_list_bottom,false);
-        draw_set_color(c_aqua); draw_rectangle(_lx+_lw-6,_thumb_y,_lx+_lw,_thumb_y+_thumb_h,false);
-    }
-    draw_set_color(c_ltgray);
-    draw_text_l(_lx,_list_bottom+8,array_length(_items)==0 ? "No bitmap assets available" : "CLICK TO SELECT / WHEEL TO SCROLL");
-    // Split long asset identifiers by measured width, including unbroken names.
-    draw_set_color(c_white);
-    var _remaining=_detail;
-    for(var _line=0; _line<3 && _remaining!=""; _line++) {
-        var _length=string_length(_remaining);
-        while(_length>1 && string_width_l(string_copy(_remaining,1,_length))>_lw-8) _length--;
-        var _part=string_copy(_remaining,1,_length);
-        _remaining=string_delete(_remaining,1,_length);
-        if (_line==2 && _remaining!="") _part=_am.manifest_fit_name(_part+"...",_lw-8);
-        draw_text_l(_lx,_list_bottom+28+_line*16,_part);
+        var _ly = _top + 30;
+        var _rows = max(1, min(30, floor((_bottom - _ly - 4) / 16)));
+        var _lw = _picker_w;
+        var _lx = _picker_x;
+        draw_set_color(make_color_rgb(16, 19, 29));
+        draw_rectangle(_lx, _ly, _lx + _lw, _ly + _rows * 16 + 4, false);
+        if (mouse_wheel_up())   { _m.pick_scroll = max(0, _m.pick_scroll - 2); }
+        if (mouse_wheel_down()) { _m.pick_scroll = min(max(0, array_length(_items) - _rows), _m.pick_scroll + 2); }
+        for (var _li = 0; _li < _rows; _li++) {
+            var _ii = _li + _m.pick_scroll;
+            if (_ii >= array_length(_items)) break;
+            var _ry = _ly + 2 + _li * 16;
+            var _rh = point_in_rectangle(_mx, _my, _lx, _ry, _lx + _lw, _ry + 15);
+            if (_rh) {
+                draw_set_color(make_color_rgb(45, 105, 120));
+                draw_rectangle(_lx, _ry, _lx + _lw, _ry + 15, false);
+            }
+            if (_items[_ii] == _m.ref_bmp) { draw_set_color(c_lime); } else { draw_set_color(c_white); }
+            draw_text_l(_lx + 4, _ry + 2, string_copy(_items[_ii], 1, floor((_lw - 8) / 7)));
+            if (_rh && _press) {
+                _m.ref_bmp   = _items[_ii];
+                _m.pick_open = false;
+                _press = false;
+            }
+        }
+        if (_press && !point_in_rectangle(_mx, _my, _lx, _ly, _lx + _lw, _ly + _rows * 16 + 4)) {
+            _m.pick_open = false;
+        }
+        return;
     }
 
     // ── Canvas input ──

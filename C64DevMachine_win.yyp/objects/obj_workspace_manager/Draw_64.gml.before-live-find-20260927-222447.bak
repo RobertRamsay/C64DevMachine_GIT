@@ -3289,8 +3289,8 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    draw_rectangle(0, 0, gui_w, gui_h, false);
 	    draw_set_alpha(1.0);
 
-	    var _lsw = 600;
-	    var _lsh = 232;
+	    var _lsw = 460;
+	    var _lsh = 170;
 	    var _lsx = (gui_w - _lsw) / 2;
 	    var _lsy = (gui_h - _lsh) / 2;
 
@@ -3353,10 +3353,14 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    draw_set_color(_lsb_hov ? c_black : c_white);
 	    draw_set_font_l(fnt_C64_Angled);
 	    draw_set_halign(fa_center);
-	    draw_text_l(_lsbx1 + (_lsbx2 - _lsbx1) * 0.5, _lsby1 + 5, "OPEN");
+	    draw_text_l(_lsbx1 + (_lsbx2 - _lsbx1) * 0.5, _lsby1 + 5, "SEARCH");
 	    draw_set_halign(fa_left);
 	    if (_lsb_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
-	        scr_label_search_refresh();
+	        label_search_results = scr_label_search_run(label_search_query);
+	        label_search_index   = -1;
+	        if (array_length(label_search_results) > 0) {
+	            label_search_index = 0;
+	        }
 	        if (label_search_index >= 0 && instance_exists(label_search_results[label_search_index])) {
 	            scr_label_search_goto(label_search_results[label_search_index], 0.55);
 	        }
@@ -3380,7 +3384,9 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	        draw_text_l(_lsp_x1 + 6, _lsr_y, "<");
 	        if (_lsp_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
 	            label_search_index = (label_search_index - 1 + _lsr_count) mod _lsr_count;
-
+	            if (instance_exists(label_search_results[label_search_index])) {
+	                scr_label_search_goto(label_search_results[label_search_index], 0.2);
+	            }
 	        }
 
 	        // > next
@@ -3391,7 +3397,9 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	        draw_text_l(_lsn_x1 + 6, _lsr_y, ">");
 	        if (_lsn_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
 	            label_search_index = (label_search_index + 1) mod _lsr_count;
-
+	            if (instance_exists(label_search_results[label_search_index])) {
+	                scr_label_search_goto(label_search_results[label_search_index], 0.2);
+	            }
 	        }
 
 	        // Current result: DEF/REF + node title, then the matching line
@@ -3406,13 +3414,9 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	            }
 	            draw_set_font_l(fnt_c64_tiny);
 	            draw_set_color(_lskcol);
-	            draw_text_l(_lsx + 14, _lsby2 + 10, scr_label_search_source(_lscur,_lsinf));
+	            draw_text_l(_lsr_x + 150, _lsr_y, _lskind);
 	            draw_set_color(c_white);
-	            var _lstitle = _lscur.node_title;
-	            while (string_length(_lstitle) > 0 && string_width_l(_lstitle + "...") > _lsw - 28)
-	                _lstitle = string_delete(_lstitle,string_length(_lstitle),1);
-	            if (_lstitle != _lscur.node_title) _lstitle += "...";
-	            draw_text_l(_lsx + 14, _lsby2 + 30, _lstitle);
+	            draw_text_l(_lsr_x + 185, _lsr_y, string_copy(string_upper(_lscur.node_title), 1, 18));
 
 	            var _lsline = _lsinf.text;
 	            if (_lsinf.line > 0) {
@@ -3427,15 +3431,12 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	                _lsline += "...";
 	            }
 	            draw_set_color(c_yellow);
-	            draw_text_l(_lsx + 14, _lsby2 + 52, _lsline);
+	            draw_text_l(_lsx + 14, _lsby2 + 12, _lsline);
 	        }
 	    } else if (label_search_query != "") {
 	        draw_set_color(c_red);
 	        draw_text_l(_lsr_x, _lsr_y, "NO MATCHES");
 	    }
-	    draw_set_font_l(fnt_c64_tiny);
-	    draw_set_color(c_ltgray);
-	    draw_text_l(_lsx+14, _lsy+_lsh-24, "LIVE RESULTS   UP/DOWN: SELECT   ENTER / OPEN: GO TO MATCH");
 	}
 
 	// FINDER

@@ -678,11 +678,7 @@ sid_reloc_msg    = "";
 sid_reloc_ok     = false;
 
 // Manifest column widths are viewer preferences, never asset data.
-manifest_reu_split = -1; // Automatic halfway position until dragged.
-manifest_reu_offset = function(_width) {
-    var _wanted = manifest_reu_split < 0 ? _width * 0.5 : manifest_reu_split;
-    return clamp(_wanted,100,max(100,_width-480));
-};
+manifest_reu_split = 182;
 manifest_disk_split = 152;
 manifest_split_drag = false;
 manifest_split_owner = -1;

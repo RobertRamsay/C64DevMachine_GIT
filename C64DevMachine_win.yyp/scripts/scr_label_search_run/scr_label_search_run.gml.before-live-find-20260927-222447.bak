@@ -219,22 +219,3 @@ function scr_label_search_open_code_line(_node, _line) {
     scr_workspace_input_blocked();
     return true;
 }
-
-/// Refresh live results only after the query changes. Never navigates.
-function scr_label_search_refresh(_force = false) {
-    var _wm = obj_workspace_manager;
-    if (!_force && variable_instance_exists(_wm,"label_search_scanned_query")
-    && _wm.label_search_scanned_query == _wm.label_search_query) return;
-    _wm.label_search_scanned_query = _wm.label_search_query;
-    _wm.label_search_results = scr_label_search_run(_wm.label_search_query);
-    _wm.label_search_index = array_length(_wm.label_search_results) > 0 ? 0 : -1;
-    _wm.label_search_pending = noone;
-    _wm.label_search_reflow = 0;
-}
-
-function scr_label_search_source(_node, _hit) {
-    var _kind = _node.node_type == "MACRO_CODE" ? "CODE BLOCK" : string_replace_all(_node.node_type,"_"," ");
-    var _text = _kind + " / " + (_hit.def ? "DEFINITION" : "REFERENCE");
-    if (_hit.line > 0) _text += " / LINE " + string(_hit.line);
-    return _text;
-}

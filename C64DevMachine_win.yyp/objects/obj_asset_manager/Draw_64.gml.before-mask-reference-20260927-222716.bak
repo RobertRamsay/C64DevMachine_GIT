@@ -7933,7 +7933,7 @@ case "LOAD_REU": {
     _cy += 22;
     scr_draw_reu_memory_bar(_vx1 + 10, _vx2 - 10, _cy, _asset);
     _cy += 40;
-    var _split_x = _vx1 + manifest_reu_offset(_vx2-_vx1);
+    var _split_x = _vx1 + clamp(manifest_reu_split,100,max(100,_vx2-_vx1-480));
     var _split_top = _cy;
     var _cn=_vx1+30, _cc=_split_x+8, _cr=_cc+90, _cs=_cc+190, _cm=_cc+275, _ci=_cm+95;
     draw_set_color(make_color_rgb(120,120,140));

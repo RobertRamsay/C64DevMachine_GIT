@@ -639,7 +639,6 @@ if (label_search_open) {
         // Absorb the F keypress that opened the modal
         keyboard_string     = "";
         label_search_ready  = true;
-        scr_label_search_refresh(true);
     } else {
         // Deferred jump: a result inside a folded ORG was unfolded, wait for reflow
         if (label_search_reflow > 0) {
@@ -694,9 +693,12 @@ if (label_search_open) {
         if (scr_workspace_keyboard_check_pressed(vk_left))  label_search_cursor = max(0, label_search_cursor - 1);
         if (scr_workspace_keyboard_check_pressed(vk_right)) label_search_cursor = min(string_length(label_search_query), label_search_cursor + 1);
 
-        scr_label_search_refresh();
-
         if (scr_workspace_keyboard_check_pressed(vk_enter)) {
+            label_search_results = scr_label_search_run(label_search_query);
+            label_search_index   = -1;
+            if (array_length(label_search_results) > 0) {
+                label_search_index = 0;
+            }
             if (label_search_index >= 0 && instance_exists(label_search_results[label_search_index])) {
 	            scr_label_search_goto(label_search_results[label_search_index], 0.2);
 	        }
@@ -707,11 +709,15 @@ if (label_search_open) {
         if (_lscount > 0) {
             if (scr_workspace_keyboard_check_pressed(vk_down)) {
                 label_search_index = (label_search_index + 1) mod _lscount;
-
+                if (instance_exists(label_search_results[label_search_index])) {
+                    scr_label_search_goto(label_search_results[label_search_index], 0.2);
+                }
             }
             if (scr_workspace_keyboard_check_pressed(vk_up)) {
                 label_search_index = (label_search_index - 1 + _lscount) mod _lscount;
-
+                if (instance_exists(label_search_results[label_search_index])) {
+                    scr_label_search_goto(label_search_results[label_search_index], 0.2);
+                }
             }
         }
     }
