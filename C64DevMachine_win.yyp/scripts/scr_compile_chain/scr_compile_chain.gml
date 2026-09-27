@@ -17498,6 +17498,8 @@ case "MACRO_SID_SONG": {
 
                 if (_st_empty == true) {
                     _note_byte = 0xFE;
+                } else if (_st_note == "+++") {
+                    _note_byte = 0xFD;   // key on: gate back on, same note
                 } else if (_st_note == "" || _st_note == "---") {
                     _note_byte = 0xFF;
                 } else {
@@ -17905,6 +17907,16 @@ case "MACRO_SID_SONG": {
         // forever, cycling its stream silently and never releasing. A rest
         // that can't stop a voice isn't a rest, so this now clears the
         // active flag too — matching what a tracker's --- is expected to do.
+        // $FD = +++ key on: gate back on from the shadow — same note, same
+        // instrument position, the envelope simply re-attacks.
+        array_push(_list, ["cmp_imm", 0xFD,            _id]);
+        array_push(_list, ["bne",     _vp + "notkon",  _id]);
+        array_push(_list, ["lda_zp",  _cb,             _id]);
+        array_push(_list, ["ora_imm", 0x01,            _id]);
+        array_push(_list, ["sta_zp",  _cb,             _id]);
+        array_push(_list, ["sta_abs", _D400 + 4,       _id]);
+        array_push(_list, ["jmp_abs", _vp + "docmd",   _id]);
+        array_push(_list, ["label",   _vp + "notkon"]);
         array_push(_list, ["cmp_imm", 0xFF,            _id]);
         array_push(_list, ["bne",     _vp + "isnote",  _id]);
         // Gate off from the SHADOW, not a read of $D404 — the register is

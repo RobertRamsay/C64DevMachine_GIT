@@ -7,8 +7,8 @@
 /// before. Keep this in step with scr_compile_chain's MACRO_SID_SONG case and
 /// scr_sid_song_emit_fx_routines — the two are one design.
 ///
-/// Row sentinels match the compiled pattern bytes: note 254 = hold (empty
-/// cell), 255 = rest; command 255 = none.
+/// Row sentinels match the compiled pattern bytes: note 253 = +++ key on,
+/// 254 = hold (empty cell), 255 = --- rest; command 255 = none.
 
 /// A voice's full state: the 6502 player's ZP bytes plus its RAM effect tables.
 function scr_sid64_sim_voice_new() {
@@ -176,6 +176,10 @@ function scr_sid64_sim_row(_sim, _v, _note, _instr, _cmd, _val) {
     var _r0 = _v * 7;
     if (_note == 254) {
         // hold — the command still applies
+    } else if (_note == 253) {
+        // +++ key on: gate back on from the shadow
+        _vc.cb = _vc.cb | 0x01;
+        scr_sid64_sim_write(_sim, _r0 + 4, _vc.cb);
     } else if (_note == 255) {
         // rest: gate off, instrument stops, pending note cancelled
         _vc.cb = _vc.cb & 0xFE;
@@ -465,6 +469,8 @@ function scr_sid64_sim_fetch(_sim, _v, _orow) {
         }
         if (!is_undefined(_empty) && _empty == true) {
             _note = 254;
+        } else if (_nn == "+++") {
+            _note = 253;
         } else if (_nn == "" || _nn == "---") {
             _note = 255;
         } else {

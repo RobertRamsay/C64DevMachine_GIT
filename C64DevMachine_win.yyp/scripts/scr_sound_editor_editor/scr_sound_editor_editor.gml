@@ -100,6 +100,8 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (!variable_struct_exists(_m, "sel_voice"))   _m.sel_voice   = 0;
     // 0 = the note column, 1 = the command column of the selected voice.
     if (!variable_struct_exists(_m, "sel_sub"))     _m.sel_sub     = 0;
+    // Instrument panel's [WAVE] dropdown.
+    if (!variable_struct_exists(_m, "wave_menu_open")) _m.wave_menu_open = false;
     // Command being typed: digits so far, and the cell they belong to.
     if (!variable_struct_exists(_m, "cmd_entry_str"))   _m.cmd_entry_str   = "";
     if (!variable_struct_exists(_m, "cmd_entry_voice")) _m.cmd_entry_voice = -1;
@@ -343,7 +345,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                          || _m.instr_name_edit_active || _m.song_name_edit_active;
     // GoatTracker function keys: F1 song from the start, F2 this pattern from
     // the cursor row (looping), F3 this pattern from the top (looping), F4 stop.
-    if (!_transport_typing) {
+    // They type nothing, so they also work while an instrument's text is open.
+    var _fkeys_ok = !_m.edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active;
+    if (_fkeys_ok) {
         if (keyboard_check_pressed(vk_f1)) {
             _transport_action = "SONG";
         } else if (keyboard_check_pressed(vk_f2)) {
@@ -415,7 +419,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                     continue;   // NRs: this voice finished early, stays silent
                 }
                 var _p_step = _col_pat[_pv].steps[_pv_local];
-                if (_p_step.empty) {
+                if (_p_step.empty || _p_step.note == "+++") {
                     // Empty row — hold, same as the runtime's $FE.
                 } else if (_p_step.note == "" || _p_step.note == "---") {
                     scr_sound_preview_free_channel(_pv);
@@ -464,7 +468,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                     _sv_local_row = _m.song_master_row;
                 }
                 var _sv_step = _sv_pat.steps[_sv_local_row];
-                if (_sv_step.empty) {
+                if (_sv_step.empty || _sv_step.note == "+++") {
                     // Empty row — leave whatever is ringing alone, matching
                     // the runtime's $FE hold.
                 } else if (_sv_step.note == "" || _sv_step.note == "---") {
@@ -508,7 +512,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(120, 140, 190));
     draw_text_l(_vx1 + 20, _cy,
-        "CLICK A CELL, TYPE A NOTE (C-4, C#3, ---)   |   ENTER COMMITS + DROPS A ROW   |   DEL CLEARS   |   BKSP PULLS UP   |   INS PUSHES DOWN   |   UP/DOWN MOVES   |   TAB NOTE/CMD   |   F1 SONG   F2 PAT FROM ROW   F3 PAT   F4 STOP");
+        "CLICK A CELL, TYPE A NOTE (C-4, C#3, ---)   |   ENTER COMMITS + DROPS A ROW   |   DEL CLEARS   |   BKSP PULLS UP   |   INS PUSHES DOWN   |   UP/DOWN MOVES   |   TAB NOTE/CMD   |   - STOP  + KEY ON   |   F1 SONG   F2 PAT FROM ROW   F3 PAT   F4 STOP");
    
     draw_set_font_l(fnt_c64_tiny);
     var _status_y = _cy + 50;
@@ -878,6 +882,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             } else if (_step.note == "---" || _step.note == "") {
                 draw_set_color(make_color_rgb(140, 90, 90));
                 draw_text_transformed_l(_cx1 + 8, _ry + 8, "---", _txt_scale, _txt_scale, 0);
+            } else if (_step.note == "+++") {
+                draw_set_color(make_color_rgb(90, 150, 90));
+                draw_text_transformed_l(_cx1 + 8, _ry + 8, "+++", _txt_scale, _txt_scale, 0);
             } else {
                 var _missing   = (_step.instr_idx >= 0 && _step.instr_idx >= array_length(_m.instruments));
                 var _has_instr = (_step.instr_idx >= 0 && !_missing);
@@ -1186,15 +1193,24 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                     _ps_max = max(_ps_max, _pr);
                 }
             }
+            // Cursor stays in its voice and drops to the row after the pasted
+            // block (ready for the next paste), scrolling to keep it in view.
+            _m.sel_step         = min(_grid_len - 1, _m.sel_step + _ps_max + 1);
             _m.sel_anchor_voice = _m.sel_voice;
             _m.sel_anchor_step  = _m.sel_step;
-            _m.sel_voice        = min(2, _m.sel_voice + _pv_max);
-            _m.sel_step         = min(_grid_len - 1, _m.sel_step + _ps_max);
-            global.undo_dirty   = true;
+            if (_m.sel_step >= _m.list_scroll + _vis) {
+                _m.list_scroll = _m.sel_step - _vis + 1;
+            }
+            global.undo_dirty      = true;
+            global.addresses_dirty = true;
         }
 
         for (var _pki = 0; _pki < array_length(_pk_map) && !_kb_ctrl && _cur_step != noone && _m.sel_sub == 0; _pki++) {
             var _pk = _pk_map[_pki];
+            // Shift+'=' is '+' (key on), not the piano's F#.
+            if (_pk[0] == _vk_equals && keyboard_check(vk_shift)) {
+                continue;
+            }
             if (keyboard_check_pressed(_pk[0])) {
                 var _pk_oct  = clamp(_m.cur_octave + _pk[2], 0, 7);
                 var _pk_name = _pk_names[_pk[1]];
@@ -1222,7 +1238,28 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             }
         }
 
-        if (_cur_step != noone && _m.sel_sub == 0 && keyboard_check_pressed(ord("1"))) {
+        // "-" (or "1") = --- note stop (gate off); "+" (Shift+= or keypad +) =
+        // +++ key on (gate back on, same note). Plain "=" stays the piano's F#.
+        // Both drop a row, like a typed note.
+        var _key_rest = keyboard_check_pressed(ord("1")) || keyboard_check_pressed(189) || keyboard_check_pressed(vk_subtract);
+        var _key_kon  = (keyboard_check_pressed(_vk_equals) && keyboard_check(vk_shift)) || keyboard_check_pressed(vk_add);
+        if (_cur_step != noone && _m.sel_sub == 0 && !_kb_ctrl && _key_kon) {
+            _se_push_undo(_m, _se_snap);
+            _cur_step.note      = "+++";
+            _cur_step.instr_idx = -1;
+            _cur_step.empty     = false;
+            global.undo_dirty      = true;
+            global.addresses_dirty = true;
+            if (_m.sel_step + 1 < _cur_pat.pattern_len) {
+                _m.sel_step += 1;
+            }
+            if (_m.sel_step >= _m.list_scroll + _vis) {
+                _m.list_scroll = _m.sel_step - _vis + 1;
+            }
+            _m.sel_anchor_voice = _m.sel_voice;
+            _m.sel_anchor_step  = _m.sel_step;
+        }
+        if (_cur_step != noone && _m.sel_sub == 0 && !_kb_ctrl && _key_rest) {
             _se_push_undo(_m, _se_snap);
             _cur_step.note      = "---";
             _cur_step.instr_idx = -1;

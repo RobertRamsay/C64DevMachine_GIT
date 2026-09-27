@@ -422,6 +422,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     }
 
     // ── SOURCE TEXT BOX ──
+    var _wave_click = false;   // the [WAVE] dropdown used this frame's click
     var _tb_x0 = _ix0;
     var _tb_w  = _list_w;
     var _tb_y1 = _pw_y + 24;
@@ -434,6 +435,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         _tb_h  = _iy1 - _iy0 - 160;   // room for compiled size, 3 error lines, legend
         draw_set_color(make_color_rgb(255, 200, 100));
         draw_text_l(_tb_x0, _iy0 - 20, "COMMANDS");
+        _wave_click = scr_sound_editor_wave_menu(_m, _sel_instr, _tb_x0 + _tb_w - 60, _iy0 - 22, _mx, _my, false);
     }
     draw_set_color(make_color_rgb(14, 14, 22));
     draw_rectangle(_tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, false);
@@ -441,10 +443,10 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     draw_rectangle(_tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, true);
 
     var _tb_hov = point_in_rectangle(_mx, _my, _tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2);
-    if (!_tb_hov && mouse_check_button_pressed(mb_left) && _m.instr_edit_active) {
+    if (!_tb_hov && mouse_check_button_pressed(mb_left) && _m.instr_edit_active && !_wave_click) {
         scr_sound_editor_commit_instrument(_m, _sel_instr);
     }
-    if (_tb_hov && mouse_check_button_pressed(mb_left)) {
+    if (_tb_hov && mouse_check_button_pressed(mb_left) && !_wave_click) {
         if (!_m.instr_edit_active) {
             _m.instr_edit_active      = true;
             _m.instr_edit_buf         = _sel_instr.text;
@@ -602,6 +604,29 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         }
     }
 
+    // Space while editing an instrument previews it: C in the current
+    // octave, played from the text as typed (not yet committed).
+    if (_m.instr_edit_active && keyboard_check_pressed(vk_space)) {
+        keyboard_string = string_replace_all(keyboard_string, " ", "");
+        var _sp_oct = 4;
+        var _sp_o = _m[$ "cur_octave"];
+        if (!is_undefined(_sp_o)) {
+            _sp_oct = real(_sp_o);
+        }
+        var _sp_ins = {
+            text        : _m.instr_edit_buf,
+            attack      : _sel_instr.attack,
+            decay       : _sel_instr.decay,
+            sustain     : _sel_instr.sustain,
+            release     : _sel_instr.release,
+            pulse_width : _sel_instr.pulse_width,
+            vib_delay   : scr_sid64_instr_field(_sel_instr, "vib_delay", 0),
+            vib_speed   : scr_sid64_instr_field(_sel_instr, "vib_speed", 0),
+            vib_depth   : scr_sid64_instr_field(_sel_instr, "vib_depth", 0)
+        };
+        scr_sound_instrument_preview_play(_sp_ins, "C-" + string(_sp_oct), 0);
+    }
+
     if (_m.instr_edit_active) {
         if (keyboard_check_pressed(vk_escape)) {
             _m.instr_edit_active = false;
@@ -671,6 +696,11 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     draw_text_l(_tb_x0, _lg_y + 36, "Ln   LOOP BACK TO STEP n");
     draw_text_l(_tb_x0, _lg_y + 48, "---   END (GATE OFF + STOP)");
     draw_set_font_l(fnt_c64_tiny);
+
+    // [WAVE] list last, so it sits over the command box.
+    if (_two_col) {
+        scr_sound_editor_wave_menu(_m, _sel_instr, _tb_x0 + _tb_w - 60, _iy0 - 22, _mx, _my, true);
+    }
 
     draw_set_color(c_white);
 }

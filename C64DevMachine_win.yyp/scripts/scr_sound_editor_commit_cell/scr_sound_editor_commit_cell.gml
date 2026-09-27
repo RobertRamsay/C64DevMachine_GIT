@@ -29,6 +29,10 @@ function scr_sound_editor_commit_cell(_m, _push_undo_fn, _snap_fn, _col_pat) {
         _step.note      = "";
         _step.instr_idx = -1;
         _step.empty     = true;
+    } else if (_up == "+" || _up == "++" || _up == "+++") {
+        _step.note      = "+++";    // key on: gate back on, same note
+        _step.instr_idx = -1;
+        _step.empty     = false;
     } else if (_all_dash) {
         _step.note      = "---";
         _step.instr_idx = -1;
