@@ -1349,7 +1349,7 @@
     {"id":{"name":"scr_sound_editor_draw_instruments","path":"scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.yy",},},
     {"id":{"name":"scr_sound_editor_editor","path":"scripts/scr_sound_editor_editor/scr_sound_editor_editor.yy",},},
     {"id":{"name":"scr_sound_editor_play_step","path":"scripts/scr_sound_editor_play_step/scr_sound_editor_play_step.yy",},},
-    {"id":{"name":"scr_sound_editor_wave_menu","path":"scripts/scr_sound_editor_wave_menu/scr_sound_editor_wave_menu.yy",},},
+    {"id":{"name":"scr_sound_editor_cmd_menu","path":"scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.yy",},},
     {"id":{"name":"scr_sound_instrument_preview_play","path":"scripts/scr_sound_instrument_preview_play/scr_sound_instrument_preview_play.yy",},},
     {"id":{"name":"scr_sound_preview_cache_clear","path":"scripts/scr_sound_preview_cache_clear/scr_sound_preview_cache_clear.yy",},},
     {"id":{"name":"scr_sound_preview_cache_key","path":"scripts/scr_sound_preview_cache_key/scr_sound_preview_cache_key.yy",},},

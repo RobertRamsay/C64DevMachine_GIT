@@ -1,9 +1,9 @@
 {
   "$GMScript":"v1",
-  "%Name":"scr_sound_editor_wave_menu",
+  "%Name":"scr_sound_editor_cmd_menu",
   "isCompatibility":false,
   "isDnD":false,
-  "name":"scr_sound_editor_wave_menu",
+  "name":"scr_sound_editor_cmd_menu",
   "parent":{
     "name":"SOUND_EDITOR",
     "path":"folders/SCRIPTS/SOUND_EDITOR.yy",

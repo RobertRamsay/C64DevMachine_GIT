@@ -100,8 +100,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (!variable_struct_exists(_m, "sel_voice"))   _m.sel_voice   = 0;
     // 0 = the note column, 1 = the command column of the selected voice.
     if (!variable_struct_exists(_m, "sel_sub"))     _m.sel_sub     = 0;
-    // Instrument panel's [WAVE] dropdown.
-    if (!variable_struct_exists(_m, "wave_menu_open")) _m.wave_menu_open = false;
+    // Instrument panel's command dropdowns ("" = none open) and ? help table.
+    if (!variable_struct_exists(_m, "cmd_menu_open")) _m.cmd_menu_open = "";
+    if (!variable_struct_exists(_m, "cmd_help_open")) _m.cmd_help_open = false;
     // Command being typed: digits so far, and the cell they belong to.
     if (!variable_struct_exists(_m, "cmd_entry_str"))   _m.cmd_entry_str   = "";
     if (!variable_struct_exists(_m, "cmd_entry_voice")) _m.cmd_entry_voice = -1;

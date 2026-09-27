@@ -422,7 +422,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     }
 
     // ── SOURCE TEXT BOX ──
-    var _wave_click = false;   // the [WAVE] dropdown used this frame's click
+    var _wave_click = false;   // the command dropdowns / help used this frame's click
     var _tb_x0 = _ix0;
     var _tb_w  = _list_w;
     var _tb_y1 = _pw_y + 24;
@@ -433,9 +433,10 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         _tb_w  = _ix1 - _tb_x0 - 4;
         _tb_y1 = _iy0;
         _tb_h  = _iy1 - _iy0 - 160;   // room for compiled size, 3 error lines, legend
-        draw_set_color(make_color_rgb(255, 200, 100));
-        draw_text_l(_tb_x0, _iy0 - 20, "COMMANDS");
-        _wave_click = scr_sound_editor_wave_menu(_m, _sel_instr, _tb_x0 + _tb_w - 60, _iy0 - 22, _mx, _my, false);
+        // WAVE / NOTE / HOLD / LOOP / END dropdowns + ? help, on the header row
+        // (the COMMANDS title makes way for them).
+        _wave_click = scr_sound_editor_cmd_bar(_m, _sel_instr, _tb_x0, _tb_x0 + _tb_w + 4, _iy0 - 22,
+                                               _tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, _mx, _my, false);
     }
     draw_set_color(make_color_rgb(14, 14, 22));
     draw_rectangle(_tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, false);
@@ -697,9 +698,10 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     draw_text_l(_tb_x0, _lg_y + 48, "---   END (GATE OFF + STOP)");
     draw_set_font_l(fnt_c64_tiny);
 
-    // [WAVE] list last, so it sits over the command box.
+    // Dropdown list / help table last, so they sit over the command box.
     if (_two_col) {
-        scr_sound_editor_wave_menu(_m, _sel_instr, _tb_x0 + _tb_w - 60, _iy0 - 22, _mx, _my, true);
+        scr_sound_editor_cmd_bar(_m, _sel_instr, _tb_x0, _tb_x0 + _tb_w + 4, _iy0 - 22,
+                                 _tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, _mx, _my, true);
     }
 
     draw_set_color(c_white);
