@@ -1,0 +1,100 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index ac704ed..8c811a6 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -797,6 +797,54 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _sel_s_hi = max(_m.sel_anchor_step,  _m.sel_step);
+     var _sel_multi = (_sel_v_lo != _sel_v_hi) || (_sel_s_lo != _sel_s_hi);
+ 
++    // ── 9XX RANGE CHECK ── walks the three patterns the way the player does
++    // (instrument PW on a note, 8XX sets, 9XX adds XX per frame for one row's
++    // worth of frames at the current tempo, FXX changes the tempo) and marks
++    // any 9XX that drives the pulse width into $000 / $FFF, where the pulse
++    // wave is silent. -1 = fine; otherwise the width it hit. Rows before the
++    // first note in a pattern have an unknown width and aren't judged.
++    var _pw_warn = [array_create(_grid_len, -1), array_create(_grid_len, -1), array_create(_grid_len, -1)];
++    var _pw_now  = [-1, -1, -1];
++    var _pw_spd  = clamp(real(_m.play_speed), 1, 255);
++    for (var _pwr = 0; _pwr < _grid_len; _pwr++) {
++        var _pw_next_spd = _pw_spd;
++        for (var _pwv = 0; _pwv < 3; _pwv++) {
++            var _pw_pat = _col_pat[_pwv];
++            if (_pw_pat == noone || _pwr >= _pw_pat.pattern_len || _pwr >= array_length(_pw_pat.steps)) {
++                continue;
++            }
++            var _pw_st = _pw_pat.steps[_pwr];
++            var _pw_is_note = (!_pw_st.empty && _pw_st.note != "" && _pw_st.note != "---" && _pw_st.note != "+++");
++            if (_pw_is_note && _pw_st.cmd != 3
++            && _pw_st.instr_idx >= 0 && _pw_st.instr_idx < array_length(_m.instruments)) {
++                _pw_now[_pwv] = floor(scr_sid64_instr_field(_m.instruments[_pw_st.instr_idx], "pulse_width", 0x800)) & 0xFFF;
++            }
++            if (_pw_st.cmd == 8) {
++                _pw_now[_pwv] = (_pw_st.cmd_val << 4) & 0xFFF;
++            }
++            if (_pw_st.cmd == 0x0F && _pw_st.cmd_val > 0) {
++                _pw_next_spd = _pw_st.cmd_val;   // takes effect from the next row
++            }
++            if (_pw_st.cmd == 9 && _pw_now[_pwv] >= 0) {
++                var _pw_d = _pw_st.cmd_val;
++                if (_pw_d >= 0x80) {
++                    _pw_d -= 256;
++                }
++                var _pw_new = _pw_now[_pwv] + _pw_d * _pw_spd;
++                if (_pw_new <= 0) {
++                    _pw_warn[_pwv][_pwr] = 0x000;
++                    _pw_new = 0;
++                } else if (_pw_new >= 0xFFF) {
++                    _pw_warn[_pwv][_pwr] = 0xFFF;
++                    _pw_new = 0xFFF;
++                }
++                _pw_now[_pwv] = _pw_new;
++            }
++        }
++        _pw_spd = _pw_next_spd;
++    }
++    var _pw_tip = "";   // hover text for a flagged 9XX, drawn last
++
+     for (var _r = 0; _r < _vis; _r++) {
+         var _row = _r + _m.list_scroll;
+         if (_row >= _grid_len) {
+@@ -920,6 +968,17 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+                 var _cv_hex = string_upper(decimal_to_hex(_step.cmd_val));
+                 while (string_length(_cv_hex) < 2) { _cv_hex = "0" + _cv_hex; }
+                 draw_set_color(make_color_rgb(255, 170, 90));
++                if (_row < _grid_len && _pw_warn[_cv][_row] >= 0) {
++                    draw_set_color(c_red);
++                    if (point_in_rectangle(_mx, _my, _cmd_x - 6, _ry, _cx2, _ry + _row_h)) {
++                        var _pw_end = "$000";
++                        if (_pw_warn[_cv][_row] > 0) {
++                            _pw_end = "$FFF";
++                        }
++                        _pw_tip = "SILENT: THIS SWEEP PUSHES THE PULSE WIDTH PAST ITS RANGE (HITS " + _pw_end
++                                + ").\nUSE A SMALLER VALUE OR FEWER ROWS, OR RESET IT WITH 8XX.";
++                    }
++                }
+                 draw_text_transformed_l(_cmd_x, _ry + 8, string_upper(decimal_to_hex(_st_cmd)) + _cv_hex, _txt_scale, _txt_scale, 0);
+             } else {
+                 draw_set_color(make_color_rgb(60, 60, 70));
+@@ -2002,6 +2061,22 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _ix0 = _ox0 + _ord_full_w + 50;
+     scr_sound_editor_draw_instruments(_m, _ix0, _oy0, _mx, _my, _vx2 - 16, _vy2 - 12);
+ 
++    // ── 9XX warning tooltip (last, so it sits over everything) ──
++    if (_pw_tip != "") {
++        draw_set_font_l(fnt_c64_pico);
++        var _tt_w = string_width_l(_pw_tip) + 16;
++        var _tt_h = string_height(_pw_tip) + 12;
++        var _tt_x = min(_mx + 14, _vx2 - _tt_w - 4);
++        var _tt_y = _my + 18;
++        draw_set_color(make_color_rgb(40, 10, 10));
++        draw_rectangle(_tt_x, _tt_y, _tt_x + _tt_w, _tt_y + _tt_h, false);
++        draw_set_color(c_red);
++        draw_rectangle(_tt_x, _tt_y, _tt_x + _tt_w, _tt_y + _tt_h, true);
++        draw_set_color(c_white);
++        draw_text_l(_tt_x + 8, _tt_y + 6, _pw_tip);
++        draw_set_font_l(fnt_c64_tiny);
++    }
++
+     draw_set_alpha(1.0);
+     draw_set_color(c_white);
+     draw_set_halign(fa_left);
