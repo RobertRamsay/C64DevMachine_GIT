@@ -195,7 +195,7 @@ function scr_sprmask_push_undo(_m) {
     if (array_length(_m.undo) > 20) { array_delete(_m.undo, 0, 1); }
 }
 
-/// Overlay: magenta = always foreground, cyan = conditional on feet Y.
+/// Overlay surface (320x200, magenta where masked) rebuilt from the layer.
 function scr_sprmask_overlay(_m) {
     if (!surface_exists(_m.ov_surf)) {
         _m.ov_surf  = surface_create(320, 200);
@@ -204,10 +204,8 @@ function scr_sprmask_overlay(_m) {
     if (!_m.ov_dirty) return;
     var _buf = buffer_create(320 * 200 * 4, buffer_fixed, 1);
     buffer_fill(_buf, 0, buffer_u32, 0, 320 * 200 * 4);
+    var _px = (170 << 24) | (255 << 16) | (0 << 8) | 255;   // ABGR: magenta, alpha 170
     for (var _c = 0; _c < 1000; _c++) {
-        var _px = (_m.cell_base[_c] == 255)
-            ? ((170 << 24) | (255 << 16) | 255)
-            : ((170 << 24) | (255 << 16) | (220 << 8)); // ABGR: cyan
         var _cx = (_c mod 40) * 8;
         var _cy = (_c div 40) * 8;
         for (var _r = 0; _r < 8; _r++) {
@@ -243,9 +241,20 @@ function scr_sprmask_brush(_m, _x, _y, _on, _hires, _depth_only) {
             }
         }
     }
-    // A depth change recolours every existing mask pixel in the touched
-    // cells, even pixels outside the brush. Rebuild once on the next draw.
-    _m.ov_dirty = true;
+    if (_depth_only || !surface_exists(_m.ov_surf)) return;
+    surface_set_target(_m.ov_surf);
+    gpu_set_blendmode_ext(bm_one, bm_zero);
+    if (_on) {
+        draw_set_colour(c_fuchsia);
+        draw_set_alpha(170 / 255);
+    } else {
+        draw_set_colour(c_black);
+        draw_set_alpha(0);
+    }
+    draw_rectangle(max(0, _x0), max(0, _y0), min(319, _x0 + _w - 1), min(199, _y0 + _s - 1), false);
+    draw_set_alpha(1);
+    gpu_set_blendmode(bm_normal);
+    surface_reset_target();
 }
 
 /// Flood fill the same-colour region under x,y (fat pixels on MC bitmaps).
@@ -385,25 +394,6 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             draw_line_width(_cvx, _cvy + _gy * _sc, _cvx + _cw, _cvy + _gy * _sc, 2);
             draw_text_l(_cvx + 4, _cvy + _gy * _sc - 14, "DEPTH Y " + string(_gy));
         }
-        if (_m.tool == "DEPTH" && !_m.pick_y) {
-            var _dx = _px;
-            var _dw = _m.brush;
-            if (!_hires) { _dx = _dx & ~1; _dw *= 2; }
-            var _dx0 = _dx - (_dw div 2);
-            if (!_hires) _dx0 = _dx0 & ~1;
-            var _dy0 = _py - (_m.brush div 2);
-            var _cx0 = clamp(_dx0, 0, 319) >> 3;
-            var _cx1 = clamp(_dx0 + _dw - 1, 0, 319) >> 3;
-            var _cy0 = clamp(_dy0, 0, 199) >> 3;
-            var _cy1 = clamp(_dy0 + _m.brush - 1, 0, 199) >> 3;
-            draw_set_color(c_yellow);
-            for (var _yy = _cy0; _yy <= _cy1; _yy++) {
-                for (var _xx = _cx0; _xx <= _cx1; _xx++) {
-                    draw_rectangle(_cvx + _xx * 8 * _sc, _cvy + _yy * 8 * _sc,
-                        _cvx + (_xx + 1) * 8 * _sc - 1, _cvy + (_yy + 1) * 8 * _sc - 1, true);
-                }
-            }
-        }
         // Brush outline
         draw_set_color(c_white);
         var _bw = _m.brush;
@@ -414,28 +404,9 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
                        _cvx + (_ox + _bw) * _sc, _cvy + (_py - (_m.brush div 2) + _m.brush) * _sc, true);
     }
 
-    draw_set_color(c_fuchsia);
-    draw_text_l(_cvx, _cvy + _ch + 6, "MAGENTA = ALWAYS IN FRONT");
-    draw_set_color(c_aqua);
-    draw_text_l(_cvx + 220, _cvy + _ch + 6, "CYAN = IN FRONT ONLY WHEN CAT FEET ARE ABOVE ITS Y");
-    var _cell_info = "";
-    if (_on_cv && !_m.pick_open) {
-        var _cell = (_py >> 3) * 40 + (_px >> 3);
-        var _masked = false;
-        for (var _i = 0; _i < 8; _i++) {
-            if (_m.mask[_cell * 8 + _i] != 0) _masked = true;
-        }
-        _cell_info = "CELL " + string(_px >> 3) + "," + string(_py >> 3) + ": ";
-        if (!_masked) _cell_info += "NO MASK";
-        else if (_m.cell_base[_cell] == 255) _cell_info += "ALWAYS";
-        else _cell_info += "Y " + string(_m.cell_base[_cell]);
-        _cell_info += "  |  ";
-    }
-    draw_set_color(c_white);
-    var _help = "LEFT = TOOL, RIGHT = ERASE, CTRL+Z = UNDO";
-    if (_m.tool == "DEPTH") _help = "BRUSH CHANGES EACH OUTLINED 8x8 CELL; MASK SHAPE STAYS THE SAME";
-    if (_m.pick_y) _help = "CLICK THE OBJECT'S FRONT EDGE TO CHOOSE Y; THEN BRUSH WITH DEPTH TO APPLY";
-    draw_text_l(_cvx, _cvy + _ch + 22, _cell_info + _help);
+    draw_set_color(make_color_rgb(95, 95, 115));
+    draw_text_l(_cvx, _cvy + _ch + 6,
+        "LEFT = TOOL, RIGHT = ERASE, CTRL+Z UNDO.  DEPTH = FRONT EDGE Y OF THE OBJECT: THE SPRITE HIDES ONLY WHILE ITS FEET ARE ABOVE IT.");
 
     // ── Picker list over the canvas ──
     if (_m.pick_open) {
