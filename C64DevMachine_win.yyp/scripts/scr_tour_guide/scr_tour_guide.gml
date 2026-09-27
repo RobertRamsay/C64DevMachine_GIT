@@ -223,8 +223,8 @@ function scr_tour_define(_id) {
         array_push(_s, scr_tour_step("WELCOME",
             "Macros are ready made nodes that write lots of 6502 for you.\n\nIn this tour you will print a message on the screen.",
             [], "NONE"));
-        array_push(_s, scr_tour_step("OPEN THE MACROS MENU",
-            "Click MACROS in the menu bar.",
+        array_push(_s, scr_tour_step("OPEN THE MACROS 1 MENU",
+            "Click MACROS 1 in the menu bar.",
             ["MENU:0"], "MENU_MACROS"));
         array_push(_s, scr_tour_step("DRAG IN PRINT",
             "Drag PRINT out of the list and drop it on the spine under SYSTEM INIT.",
@@ -272,7 +272,7 @@ function scr_tour_define(_id) {
             "Click CLOSE at the top right of the viewer, or press ESC.",
             ["ASSET:CLOSE"], "BMP_CLOSED"));
         array_push(_s, scr_tour_step("DRAG IN BITMAP",
-            "Open MACROS and drag BITMAP onto the spine under SYSTEM INIT.",
+            "Open MACROS 1 and drag BITMAP onto the spine under SYSTEM INIT.",
             ["MAC:MACRO_BMP", "MENU:0"], "HAS_BMP_NODE"));
         array_push(_s, scr_tour_step("LINK YOUR PICTURE",
             "Click the asset field on the BITMAP node and choose the bitmap you painted.",

@@ -583,7 +583,7 @@ var _mbar_btn_h  = 34;
 var _mbar_start_x = shelf_width + 64;
 var _menuitems =9;
 var _menu_labels = [
-    "MACROS", "EXTRA", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TEMPLATES", "PORTS"
+    "MACROS 1", "MACROS 2", "VARS", "PROJECT", "OPTIONS", "DOCUMENTS", "IMPORT", "TEMPLATES", "PORTS"
 ];
 
 // Panel Style owns menu-bar chrome: the last (cyber) slice uses cyber chrome.
@@ -992,6 +992,17 @@ if (gui_menu_open == 1) {
         { title: "UCI LOAD REU",     type: "MACRO_UCI_REU"       },
         { title: "VOI64 MASTER",     type: "MACRO_VOI64_MASTER"  },
         { title: "VOI64 SAY",        type: "MACRO_VOI64_SAY"     },
+        { title: "--- SOUND ---",    type: "HEADER"              },
+        { title: "SID",              type: "MACRO_SID"           },
+        { title: "TRACK",            type: "MACRO_TRACK"         },
+        { title: "SFX",              type: "MACRO_SFX"           },
+        { title: "SID SOUND",        type: "MACRO_SID_SOUND"     },
+        { title: "SID SONG",         type: "MACRO_SID_SONG"      },
+        { title: "SID PAUSE",        type: "MACRO_SID_PAUSE"     },
+        { title: "--- DISK ---",     type: "HEADER"              },
+        { title: "LOADER",           type: "MACRO_LOADER"        },
+        { title: "SAVE GAME",        type: "MACRO_SAVE_GAME"     },
+        { title: "LOAD GAME",        type: "MACRO_LOAD_GAME"     },
     ];
 
     var _item_h_e     = 19;
@@ -1008,14 +1019,26 @@ if (gui_menu_open == 1) {
                           _panel_w_e, _panel_h_e);
 
     draw_set_font_l(fnt_C64_Angled);
+    // Same hover capture as MACROS 1, so SHIFT+Q adds these to the quick menu too.
+    hover_macro_type  = "";
+    hover_macro_title = "";
 
     for (var _ei = 0; _ei < array_length(_extra_list); _ei++) {
         var _ep   = _extra_list[_ei];
         var _iy   = _panel_y_e + _slice_top_e + (_ei * _item_h_e);
         var _ix1  = _panel_x_e;
         var _ix2  = _panel_x_e + _panel_w_e;
-        var _ihov = (gui_mouse_x >= _ix1 && gui_mouse_x < _ix2 &&
+        var _is_hdr_e = (_ep.type == "HEADER");
+        var _ihov = (!_is_hdr_e &&
+                     gui_mouse_x >= _ix1 && gui_mouse_x < _ix2 &&
                      gui_mouse_y >= _iy   && gui_mouse_y < _iy + _item_h_e);
+        if (_ihov) {
+            hover_macro_type  = _ep.type;
+            hover_macro_title = _ep.title;
+        }
+        if (global.tour_active && !_is_hdr_e) {
+            scr_tour_capture("MAC:" + _ep.type, _ix1, _iy, _ix2, _iy + _item_h_e);
+        }
 
         if (_ihov) {
             draw_set_alpha(0.35);
@@ -1024,7 +1047,13 @@ if (gui_menu_open == 1) {
             draw_set_alpha(1.0);
         }
 
-        draw_set_color(_ihov ? c_yellow : c_white);
+        if (_is_hdr_e) {
+            draw_set_color(make_color_rgb(220, 140, 40));
+        } else if (_ihov) {
+            draw_set_color(c_yellow);
+        } else {
+            draw_set_color(c_white);
+        }
         draw_set_halign(fa_left);
         draw_text_l(_ix1 + 10, _iy + 3, _ep.title);
 
@@ -1633,17 +1662,6 @@ if (gui_menu_open == 0) {
         { title: "ROOMS",        type: "MACRO_ROOMS"         },
         { title: "SPRITE MASK",  type: "MACRO_SPR_MASK"      },
         { title: "FLIP X",       type: "MACRO_FLIP_X"        },
-        { title: "--- SOUND ---", type: "HEADER"              },
-        { title: "SID",          type: "MACRO_SID"           },
-        { title: "TRACK",        type: "MACRO_TRACK"         },
-        { title: "SFX",          type: "MACRO_SFX"           },
-		{ title: "SID SOUND",    type: "MACRO_SID_SOUND"     },
-        { title: "SID SONG",     type: "MACRO_SID_SONG"      },
-        { title: "SID PAUSE",    type: "MACRO_SID_PAUSE"     },
-        { title: "--- DISK ---",  type: "HEADER"              },
-        { title: "LOADER",       type: "MACRO_LOADER"        },
-        { title: "SAVE GAME",    type: "MACRO_SAVE_GAME"     },
-        { title: "LOAD GAME",    type: "MACRO_LOAD_GAME"     },
     ];
 
 // ---- 9-slice panel geometry ----

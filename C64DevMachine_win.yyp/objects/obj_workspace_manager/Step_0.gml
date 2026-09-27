@@ -1614,11 +1614,11 @@ if (qmenu_active) {
     }
 }
 
-// --- SHIFT+Q: add the hovered MACROS menu item to the custom quick menu ---
-// gui_menu_open == 0 (MACROS dropdown open) and == -1 (nothing open) are
+// --- SHIFT+Q: add the hovered MACROS 1 / MACROS 2 item to the custom quick menu ---
+// gui_menu_open == 0 / 1 (a macros dropdown open) and == -1 (nothing open) are
 // mutually exclusive, so this can never collide with the Q-hold-to-open
 // logic below — no extra guarding needed between the two.
-if (gui_menu_open == 0 && hover_macro_type != ""
+if ((gui_menu_open == 0 || gui_menu_open == 1) && hover_macro_type != ""
     && keyboard_check(vk_shift) && keyboard_check_pressed(ord("Q"))) {
     if (scr_uqmenu_add_item(hover_macro_type, hover_macro_title)) {
         global.qmenu_toast_text = "ADDED \"" + hover_macro_title + "\" to Quick menu (Q)";
