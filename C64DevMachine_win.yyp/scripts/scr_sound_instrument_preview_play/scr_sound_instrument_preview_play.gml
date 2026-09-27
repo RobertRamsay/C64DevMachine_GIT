@@ -47,6 +47,23 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
         return;
     }
 
+    // ── reSID RENDER ──
+    // The note is walked exactly as the compiled player walks it and the
+    // resulting SID register writes are rendered by the sid64 extension.
+    // Falls through to the GML synth below only when the extension is absent.
+    if (global.sid64_ok) {
+        var _sid_out = scr_sid64_render_note(_instr, _note_name, _max_sec);
+        if (is_struct(_sid_out)) {
+            if (!_prepare_only) scr_sound_preview_free_channel(_channel);
+            scr_sound_preview_cache_store(_ck, _sid_out.snd, _sid_out.buf);
+            if (_prepare_only) return;
+            global.snd_preview_asset[_channel]    = _sid_out.snd;
+            global.snd_preview_buffer[_channel]   = _sid_out.buf;
+            global.snd_preview_instance[_channel] = audio_play_sound(_sid_out.snd, 1, false);
+            return;
+        }
+    }
+
     // ── WALK THE BYTECODE, BUILDING A LIST OF {wave, hz, n} SEGMENTS ──
     // PAL. The C64 player is driven from a raster IRQ at 50Hz, so an
     // instrument's D-tick is 20ms, not the 16.7ms a 60Hz assumption gives.

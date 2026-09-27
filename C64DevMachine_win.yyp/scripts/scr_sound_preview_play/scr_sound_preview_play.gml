@@ -46,7 +46,7 @@ function scr_sound_preview_play(_note_name, _waveform = "SQUARE", _channel = 0, 
     if (!variable_global_exists("snd_preview_cache")) {
         global.snd_preview_cache = ds_map_create();
     }
-    var _ck = "P|" + string(_note_name) + "|" + string(_waveform) + "|" + string(round(_pulse_width));
+    var _ck = scr_sid64_key_prefix() + "P|" + string(_note_name) + "|" + string(_waveform) + "|" + string(round(_pulse_width));
     if (ds_map_exists(global.snd_preview_cache, _ck)) {
         var _hit = global.snd_preview_cache[? _ck];
         _hit.last_used = get_timer();
@@ -55,6 +55,19 @@ function scr_sound_preview_play(_note_name, _waveform = "SQUARE", _channel = 0, 
         global.snd_preview_buffer[_channel]   = _hit.buf;
         global.snd_preview_instance[_channel] = audio_play_sound(_hit.snd, 1, false);
         return;
+    }
+
+    // ── reSID RENDER ── the player's no-instrument path: frequency + $41 gate.
+    if (global.sid64_ok) {
+        var _sid_out = scr_sid64_render_note(undefined, _note_name, -1, _pulse_width);
+        if (is_struct(_sid_out)) {
+            scr_sound_preview_cache_store(_ck, _sid_out.snd, _sid_out.buf);
+            if (_prepare_only) return;
+            global.snd_preview_asset[_channel]    = _sid_out.snd;
+            global.snd_preview_buffer[_channel]   = _sid_out.buf;
+            global.snd_preview_instance[_channel] = audio_play_sound(_sid_out.snd, 1, false);
+            return;
+        }
     }
 
     var _rate = 22050;

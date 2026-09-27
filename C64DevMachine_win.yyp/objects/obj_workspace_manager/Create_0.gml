@@ -32,6 +32,16 @@ editor_layout_refresh_requested = false;
 if (MCP_ENABLED && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
 global.build_date = "September 26th, 2026"; // edit this string for each release
 
+// sid64 (reSID) preview audio — see scr_sid64_audio. Model/engine changes go
+// through scr_sid64_reconfigure so the preview cache is rebuilt.
+global.sid64_ok = false;
+global.sid64_model = 0;              // 0 = 6581, 1 = 8580
+global.sid64_engine = 0;             // 0 = reSID, 1 = reSID-fp
+global.sid64_hard_restart = 2;       // frames, MACRO_SID_SONG's default
+global.sid64_note_freq = array_create(96, 0);
+global.sid64_frame_buf = buffer_create(SID64_MAX_FRAMES * 32, buffer_fixed, 1);
+scr_sid64_start();
+
 // Frame counter. Incremented once in Begin Step, and used as the validity
 // stamp for per-frame lookup caches (see scr_reu_asset_map). Anything keyed
 // on it can be at most one frame stale, which is invisible for drawing and

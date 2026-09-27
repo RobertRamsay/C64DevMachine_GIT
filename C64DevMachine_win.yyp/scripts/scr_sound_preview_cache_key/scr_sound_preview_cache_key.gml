@@ -13,7 +13,7 @@
 /// different buffers.
 function scr_sound_preview_cache_key(_instr, _note_name, _max_sec) {
 
-    var _sig = "";
+    var _sig = scr_sid64_key_prefix();
 
     // Compiled bytecode — the actual command stream, not the source text, so
     // a whitespace-only edit doesn't needlessly drop the cache.

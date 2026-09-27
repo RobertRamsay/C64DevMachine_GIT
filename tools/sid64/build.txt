@@ -1,0 +1,10 @@
+sid64 - reSID wrapper for C64 Dev Machine
+
+Windows (already built: sid64.dll, x64, static runtime, no extra DLLs needed):
+  x86_64-w64-mingw32-g++ -O3 -fpermissive -w -shared -static -static-libgcc -static-libstdc++ -o sid64.dll sid64.cpp resid/*.cpp resid-fp/*.cpp
+
+macOS (run on the Mac, universal):
+  clang++ -O3 -fpermissive -w -dynamiclib -arch x86_64 -arch arm64 -o libsid64.dylib sid64.cpp resid/[!v]*.cpp resid/voice.cpp resid-fp/[!v]*.cpp resid-fp/voicefp.cpp
+
+Exclude resid/version.cpp and resid-fp/versionfp.cpp if the linker reports duplicates.
+reSID / reSID-fp are GPL v2 (see COPYING).

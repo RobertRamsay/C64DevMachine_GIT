@@ -36,7 +36,7 @@ function scr_sound_editor_preview_prepare(_m, _song, _row_only) {
             for (var _si = 0; _si < min(_pat.pattern_len, array_length(_pat.steps)); _si++) {
                 var _step = _pat.steps[_si];
                 if (_step.empty || _step.note == "" || _step.note == "---") continue;
-                var _key = "P|" + string(_step.note) + "|SQUARE|2048";
+                var _key = scr_sid64_key_prefix() + "P|" + string(_step.note) + "|SQUARE|2048";
                 if (_step.instr_idx >= 0 && _step.instr_idx < array_length(_m.instruments)) {
                     _key = scr_sound_preview_cache_key(_m.instruments[_step.instr_idx], _step.note, -1);
                 }
@@ -57,7 +57,7 @@ function scr_sound_editor_preview_warm(_m) {
     var _start = get_timer();
     while (_m.preview_job_index < array_length(_m.preview_jobs)) {
         var _job = _m.preview_jobs[_m.preview_job_index];
-        var _key = "P|" + string(_job.note) + "|SQUARE|2048";
+        var _key = scr_sid64_key_prefix() + "P|" + string(_job.note) + "|SQUARE|2048";
         if (_job.instr_idx >= 0 && _job.instr_idx < array_length(_m.instruments)) {
             _key = scr_sound_preview_cache_key(_m.instruments[_job.instr_idx], _job.note, -1);
         }
