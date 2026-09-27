@@ -835,7 +835,7 @@ function scr_sprmask_emit(_id, _list) {
     array_push(_list, ["sta_lab", _p + "cb",       _id]);   // cell row * 4
     array_push(_list, ["lda_lab", _p + "rowin",    _id]);
     array_push(_list, ["and_imm", 7,               _id]);
-    array_push(_list, ["sta_lab", _p + "sub",      _id]);
+    array_push(_list, ["sta_lab", _p + "subrow",      _id]);
     for (var _c = 0; _c < 4; _c++) {
         array_push(_list, ["lda_lab", _p + "cb",   _id]);
         if (_c > 0) {
@@ -847,19 +847,37 @@ function scr_sprmask_emit(_id, _list) {
         array_push(_list, ["sta_zp",  _zchr,       _id]);
         array_push(_list, ["lda_abx", _p + "ph",   _id]);
         array_push(_list, ["sta_zp",  _zchr + 1,   _id]);
-        array_push(_list, ["ldy_lab", _p + "sub",  _id]);
+        array_push(_list, ["ldy_lab", _p + "subrow",  _id]);
         array_push(_list, ["lda_izy", _zchr,       _id]);
         array_push(_list, ["sta_zp",  _zm + _c,    _id]);
     }
-    array_push(_list, ["ldx_lab", _p + "sh",       _id]);
-    array_push(_list, ["beq",     _p + "ns",       _id]);
-    array_push(_list, ["label",   _p + "sl"]);
-    array_push(_list, ["asl_zp",  _zm + 3,         _id]);
-    array_push(_list, ["rol_zp",  _zm + 2,         _id]);
-    array_push(_list, ["rol_zp",  _zm + 1,         _id]);
-    array_push(_list, ["rol_zp",  _zm + 0,         _id]);
-    array_push(_list, ["dex",     0,               _id]);
-    array_push(_list, ["bne",     _p + "sl",       _id]);
+    array_push(_list, ["ldx_lab", _p + "sh", _id]);
+    array_push(_list, ["beq", _p + "ns", _id]);
+    array_push(_list, ["cpx_imm", 5, _id]);
+    array_push(_list, ["bcc", _p + "sl", _id]);
+    array_push(_list, ["lda_imm", 8, _id]);
+    array_push(_list, ["sec", 0, _id]);
+    array_push(_list, ["sbc_abs", _p + "sh", _id]);
+    array_push(_list, ["tax", 0, _id]);
+    array_push(_list, ["label", _p + "sr"]);
+    array_push(_list, ["lsr_zp", _zm, _id]);
+    array_push(_list, ["ror_zp", _zm + 1, _id]);
+    array_push(_list, ["ror_zp", _zm + 2, _id]);
+    array_push(_list, ["ror_zp", _zm + 3, _id]);
+    array_push(_list, ["dex", 0, _id]);
+    array_push(_list, ["bne", _p + "sr", _id]);
+    for (var _c = 0; _c < 3; _c++) {
+        array_push(_list, ["lda_zp", _zm + _c + 1, _id]);
+        array_push(_list, ["sta_zp", _zm + _c, _id]);
+    }
+    array_push(_list, ["jmp_abs", _p + "ns", _id]);
+    array_push(_list, ["label", _p + "sl"]);
+    array_push(_list, ["asl_zp", _zm + 3, _id]);
+    array_push(_list, ["rol_zp", _zm + 2, _id]);
+    array_push(_list, ["rol_zp", _zm + 1, _id]);
+    array_push(_list, ["rol_zp", _zm, _id]);
+    array_push(_list, ["dex", 0, _id]);
+    array_push(_list, ["bne", _p + "sl", _id]);
     array_push(_list, ["label",   _p + "ns"]);
     array_push(_list, ["ldx_lab", _p + "mx",       _id]);
     for (var _c = 0; _c < 3; _c++) {
@@ -923,15 +941,35 @@ function scr_sprmask_emit(_id, _list) {
         array_push(_list, ["lda_imm", _pb,           _id]);
         array_push(_list, ["sta_lab", _q + "np",     _id]);
         array_push(_list, ["label",   _q + "go"]);
-        array_push(_list, ["ldy_imm", 62,            _id]);
-        array_push(_list, ["label",   _q + "cp"]);
-        array_push(_list, ["lda_aby", _p + "mask",   _id]);
-        array_push(_list, ["sta_lab", _p + "t",      _id]);
-        array_push(_list, ["lda_izy", _zsrc,         _id]);
-        array_push(_list, ["and_abs", _p + "t",      _id]);
-        array_push(_list, ["sta_izy", _zdst,         _id]);
-        array_push(_list, ["dey",     0,             _id]);
-        array_push(_list, ["bpl",     _q + "cp",     _id]);
+        // Select the pixel mode once per sprite, not once per byte.
+        array_push(_list, ["lda_abs", 0xD01C, _id]);
+        array_push(_list, ["and_imm", 1 << _slot, _id]);
+        array_push(_list, ["bne", _q + "mc", _id]);
+        array_push(_list, ["ldy_imm", 62, _id]);
+        array_push(_list, ["label", _q + "cp"]);
+        array_push(_list, ["lda_aby", _p + "mask", _id]);
+        array_push(_list, ["and_izy", _zsrc, _id]);
+        array_push(_list, ["sta_izy", _zdst, _id]);
+        array_push(_list, ["dey", 0, _id]);
+        array_push(_list, ["bpl", _q + "cp", _id]);
+        array_push(_list, ["jmp_abs", _q + "copied", _id]);
+        array_push(_list, ["label", _q + "mc"]);
+        array_push(_list, ["ldy_imm", 62, _id]);
+        array_push(_list, ["label", _q + "mcp"]);
+        // Both bits must survive or the entire multicolour pixel is hidden.
+        array_push(_list, ["lda_aby", _p + "mask", _id]);
+        array_push(_list, ["sta_zp", _zm, _id]);
+        array_push(_list, ["lsr_a", 0, _id]);
+        array_push(_list, ["and_zp", _zm, _id]);
+        array_push(_list, ["and_imm", 0x55, _id]);
+        array_push(_list, ["sta_zp", _zm, _id]);
+        array_push(_list, ["asl_a", 0, _id]);
+        array_push(_list, ["ora_zp", _zm, _id]);
+        array_push(_list, ["and_izy", _zsrc, _id]);
+        array_push(_list, ["sta_izy", _zdst, _id]);
+        array_push(_list, ["dey", 0, _id]);
+        array_push(_list, ["bpl", _q + "mcp", _id]);
+        array_push(_list, ["label", _q + "copied"]);
         array_push(_list, ["lda_lab", _q + "np",     _id]);
         array_push(_list, ["sta_abs", _ptrs + _slot, _id]);
     }
@@ -966,7 +1004,7 @@ function scr_sprmask_emit(_id, _list) {
 
     // ── State ──
     var _vars = ["cbl", "cbh", "xh", "fxl", "cx", "sh", "fy", "cy", "rowin", "foot", "any", "i", "r",
-                 "rbad", "c", "idx", "th", "line", "mx", "cb", "sub", "t", "tog"];
+                 "rbad", "c", "idx", "th", "line", "mx", "cb", "subrow", "t", "tog"];
     for (var _k = 0; _k < array_length(_vars); _k++) {
         array_push(_list, ["label", _p + _vars[_k]]);
         array_push(_list, ["byte",  0, _id]);

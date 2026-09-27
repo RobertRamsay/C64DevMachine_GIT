@@ -637,6 +637,16 @@ if (_n.node_type == "ORG") {
 	    }
 	}
 
+// Clear transient diagnostics even when a block stops being a proxy.
+with (obj_c64_node) {
+    if (node_type == "ORG") {
+        org_prev_ambiguous = false;
+        org_sense_ambiguous_count = 0;
+        org_sensed_daddy = noone;
+        org_amb_partner = noone;
+        amb_btn_live = false;
+    }
+}
 var _org_proxy_list = [];
 	with (obj_c64_node) {
 	    if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTERS") {
@@ -666,8 +676,10 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
     var _best_cycles_in = 0;
     var _best_daddy    = noone;
     var _best_tie      = false;
+    var _best_roots    = [];
     var _pc_before     = _org.pc_address;
     _org.org_prev_ambiguous = false;
+    _org.org_sense_ambiguous_count = 0;
     _org.org_sensed_daddy   = noone;
 		
 	    // ================================================================
@@ -822,11 +834,15 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
             _best_cycles_in = _spine_cyc;
             _best_found     = true;
             _best_daddy     = _daddy;
+            _best_roots     = [_daddy];
             _best_tie       = false;
         } else if (_candidate_x == _best_x) {
-            if (_daddy != _best_daddy) {
-                _best_tie = true;
+            var _root_seen = false;
+            for (var _ri = 0; _ri < array_length(_best_roots); _ri++) {
+                if (_best_roots[_ri] == _daddy) { _root_seen = true; break; }
             }
+            if (!_root_seen) array_push(_best_roots, _daddy);
+            _best_tie = array_length(_best_roots) > 1;
             if (_spine_end > _best_end) {
                 _best_end       = _spine_end;
                 _best_cycles_in = _spine_cyc;
@@ -849,6 +865,7 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
 	            // guess by end address. Flag so the user wires it or lays out in a row.
 	            if (_best_tie) {
 	                _org.org_prev_ambiguous = true;
+                _org.org_sense_ambiguous_count = array_length(_best_roots);
 	            }
 	        }
 	    } else {

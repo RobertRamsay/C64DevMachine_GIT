@@ -1118,7 +1118,8 @@ if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTE
         draw_set_font_l(fnt_c64_code);
         draw_set_halign(fa_left);
         draw_set_valign(fa_bottom);
-        draw_text_l(draw_x, y - 2, "SENSING 2 PREV ORGS - WIRE OR PLACE SIDE BY SIDE");
+        var _amb_count = variable_instance_exists(id, "org_sense_ambiguous_count") ? max(2, org_sense_ambiguous_count) : 2;
+        draw_text_l(draw_x, y - 2, "SENSING " + string(_amb_count) + " PREV ORGS - PLEASE WIRE OR PLACE SIDE BY SIDE");
         draw_set_valign(fa_top);
     }
 
