@@ -210,7 +210,7 @@ function scr_org_collapse_rect(_org) {
 /// @desc Windows uses the raw button; the macOS port swaps the body of this one
 ///       function for `return scr_primary_pressed();` and nothing else changes.
 function scr_org_collapse_primary_pressed() {
-    return mouse_check_button_pressed(mb_left);
+    return scr_workspace_mouse_check_button_pressed(mb_left);
 }
 
 /// @function scr_org_collapse_hit()
@@ -328,7 +328,7 @@ function scr_init_drag_update(_anchor) {
         var _init_y = mouse_y + drag_offset_y;
         if (_init_x != x || _init_y != y) was_dragged = true;
         scr_init_move(id, _init_x, _init_y);
-        if (mouse_check_button_released(mb_left)) {
+        if (scr_workspace_mouse_check_button_released(mb_left)) {
             if (was_dragged) scr_init_move(id, round(x / 20) * 20, round(y / 20) * 20);
             is_dragging = false;
             depth = pre_click_depth;

@@ -272,14 +272,14 @@ if (!opcode_finder_active && opcode_finder_text == "") opcode_finder_cached_text
 
 // Click to activate
 var _finder_hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _finder_x1, _finder_y1, _finder_x2, _finder_y2);
-if (_finder_hov && mouse_check_button_pressed(mb_left)) {
+if (_finder_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
     if (!opcode_finder_active) {
         opcode_finder_was_active = false;
     }
     opcode_finder_active = true;
 }
 // Click outside to deactivate
-if (!_finder_hov && mouse_check_button_pressed(mb_left) && opcode_finder_active) {
+if (!_finder_hov && scr_workspace_mouse_check_button_pressed(mb_left) && opcode_finder_active) {
     opcode_finder_active = false;
     opcode_finder_text   = "";
     opcode_finder_matches = [];
@@ -327,7 +327,7 @@ if (opcode_finder_active && opcode_finder_text != "") {
 if point_in_rectangle(gui_mouse_x,gui_mouse_y,12,10,36,32)
 	{
 		draw_sprite(spr_exitIcon,badgeStyle,24,22)
-			if mouse_check_button_pressed(mb_left)
+			if scr_workspace_mouse_check_button_pressed(mb_left)
 		    {
 			 // Only ask when the project really differs from what was saved
 			 if (scr_workspace_has_changes()) {
@@ -448,7 +448,7 @@ for (var i = 0; i < array_length(active_palette); i++) {
     }
 
     // Spawn on click
-    if (is_hover && mouse_check_button_pressed(mb_left)  && !obj_workspace_manager.code_editor_open ) {
+    if (is_hover && scr_workspace_mouse_check_button_pressed(mb_left)  && !obj_workspace_manager.code_editor_open ) {
         var _n          = instance_create_layer(mouse_x, mouse_y, "Layer_Nodes", obj_c64_node);
         _n.node_title   = item.title;
         _n.node_type    = item.type;
@@ -534,7 +534,7 @@ if (shelf_page > 0) {
 	if paletteStyle>1 l_frame=2
     if (l_hover) {
  
-        if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
+        if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
             shelf_page--;
             global.addresses_dirty = true;
         }
@@ -560,7 +560,7 @@ if (shelf_page < p_count - 1) {
 	if paletteStyle>1 r_frame=2
     if (r_hover) {
 
-        if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
+        if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
             shelf_page++;
             global.addresses_dirty = true;
         }
@@ -775,8 +775,8 @@ if (gui_menu_open == 4) {
                            "OPCODE_STYLE", "BADGE_STYLE", "BACKGROUND_STYLE", "PANEL_STYLE",
                            "NODE_STYLE", "LANGUAGE"];
         var _opt_is_cycle = array_contains(_opt_cycles, _op.action);
-        var _opt_l = _ihov && mouse_check_button_pressed(mb_left);
-        var _opt_r = _ihov && mouse_check_button_pressed(mb_right) && _opt_is_cycle;
+        var _opt_l = _ihov && scr_workspace_mouse_check_button_pressed(mb_left);
+        var _opt_r = _ihov && scr_workspace_mouse_check_button_pressed(mb_right) && _opt_is_cycle;
         var _dir   = 1;
         if (_opt_r) {
             _dir = -1;
@@ -966,7 +966,7 @@ if (gui_menu_open == 4) {
     var _in_panel_o = (gui_mouse_x >= _panel_x_o && gui_mouse_x < _panel_x_o + _panel_w_o &&
                        gui_mouse_y >= _panel_y_o  && gui_mouse_y < _panel_y_o + _panel_h_o);
     var _in_bar_o   = (gui_mouse_y >= _mbar_y && gui_mouse_y < _mbar_y + _mbar_btn_h);
-    if (mouse_check_button_pressed(mb_left) && !_in_panel_o && !_in_bar_o) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !_in_panel_o && !_in_bar_o) {
         gui_menu_open = -1;
     }
 }
@@ -1057,7 +1057,7 @@ if (gui_menu_open == 1) {
         draw_set_halign(fa_left);
         draw_text_l(_ix1 + 10, _iy + 3, _ep.title);
 
-        if (_ihov && mouse_check_button_pressed(mb_left)) {
+        if (_ihov && scr_workspace_mouse_check_button_pressed(mb_left)) {
             gui_menu_open         = -1;
             gui_menu_drag_active  = true;
             gui_menu_node_spawned = false;
@@ -1069,7 +1069,7 @@ if (gui_menu_open == 1) {
     var _in_panel_e = (gui_mouse_x >= _panel_x_e && gui_mouse_x < _panel_x_e + _panel_w_e &&
                        gui_mouse_y >= _panel_y_e  && gui_mouse_y < _panel_y_e + _panel_h_e);
     var _in_bar_e   = (gui_mouse_y >= _mbar_y && gui_mouse_y < _mbar_y + _mbar_btn_h);
-    if (mouse_check_button_pressed(mb_left) && !_in_panel_e && !_in_bar_e) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !_in_panel_e && !_in_bar_e) {
         gui_menu_open = -1;
     }
 }
@@ -1129,7 +1129,7 @@ if (gui_menu_open == 2) {
         draw_set_halign(fa_left);
         draw_text_l(_ix1 + 10, _iy + 3, _vp.title);
 
-        if (_ihov && mouse_check_button_pressed(mb_left)) {
+        if (_ihov && scr_workspace_mouse_check_button_pressed(mb_left)) {
             gui_menu_open         = -1;
             gui_menu_drag_active  = true;
             gui_menu_node_spawned = false;
@@ -1141,7 +1141,7 @@ if (gui_menu_open == 2) {
     var _in_panel_v = (gui_mouse_x >= _panel_x_v && gui_mouse_x < _panel_x_v + _panel_w_v &&
                        gui_mouse_y >= _panel_y_v  && gui_mouse_y < _panel_y_v + _panel_h_v);
     var _in_bar_v   = (gui_mouse_y >= _mbar_y && gui_mouse_y < _mbar_y + _mbar_btn_h);
-    if (mouse_check_button_pressed(mb_left) && !_in_panel_v && !_in_bar_v) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !_in_panel_v && !_in_bar_v) {
         gui_menu_open = -1;
     }
 }
@@ -1177,7 +1177,7 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
     draw_set_halign(fa_left);
 
     // Click to toggle
-    if (_bhover && mouse_check_button_pressed(mb_left)) {
+    if (_bhover && scr_workspace_mouse_check_button_pressed(mb_left)) {
         if (gui_menu_open == _bi) {
             gui_menu_open = -1;
         } else {
@@ -1218,14 +1218,14 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
         var _hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _tx, _iy, _tx + _tw, _iy + 23);
         draw_set_color(_disabled ? c_gray : (_hov ? c_yellow : c_white));
         draw_text_l(_tx + 10, _iy + 3, _entry.title);
-        if (_hov && !_disabled && mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
+        if (_hov && !_disabled && scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
             template_pending = _visible_templates[_ti];
             global.ui_click_consumed = true;
             gui_menu_open = -1;
         }
     }
     var _inside = point_in_rectangle(gui_mouse_x, gui_mouse_y, _tx, _ty, _tx + _tw, _ty + _th);
-    if (mouse_check_button_pressed(mb_left) && !_inside && gui_mouse_y >= _mbar_y + _mbar_btn_h) gui_menu_open = -1;
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !_inside && gui_mouse_y >= _mbar_y + _mbar_btn_h) gui_menu_open = -1;
 }
 
 /////////////////////////////////////////////////////////////////
@@ -1331,7 +1331,7 @@ if (gui_menu_open == 3) {
             }
         }
 
-        if (_ihov && mouse_check_button_pressed(mb_left)) {
+        if (_ihov && scr_workspace_mouse_check_button_pressed(mb_left)) {
             gui_menu_open = -1;
             switch (_pp.action) {
                 case "SAVE":
@@ -1367,7 +1367,7 @@ if (gui_menu_open == 3) {
                         var _d64_path_menu = get_save_filename("C64 Disk Image|*.d64", "program");
                         // A native file dialog takes focus, so the key-up that ends the keypress is
                         // delivered to the dialog and not to the game. GameMaker is left thinking the
-                        // key is still held, and keyboard_check_pressed() needs an up->down edge — so
+                        // key is still held, and scr_workspace_keyboard_check_pressed() needs an up->down edge — so
                         // ESC silently stops working until the input state is reset. This is why ESC
                         // only failed after SOME asset operations: scr_asset_sid_import already did
                         // this, every other importer did not.
@@ -1447,7 +1447,7 @@ if (gui_menu_open == 3) {
     var _in_panel_p = (gui_mouse_x >= _panel_x_p && gui_mouse_x < _panel_x_p + _panel_w_p &&
                        gui_mouse_y >= _panel_y_p  && gui_mouse_y < _panel_y_p + _panel_h_p);
     var _in_bar_p   = (gui_mouse_y >= _mbar_y && gui_mouse_y < _mbar_y + _mbar_btn_h);
-    if (mouse_check_button_pressed(mb_left) && !_in_panel_p && !_in_bar_p) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !_in_panel_p && !_in_bar_p) {
         gui_menu_open = -1;
     }
 }
@@ -1518,7 +1518,7 @@ if (gui_menu_open == 5) {
         draw_set_halign(fa_left);
         draw_text_l(_ix1 + 10, _iy + 3, _dp.title);
 
-        if (_ihov && mouse_check_button_pressed(mb_left)) {
+        if (_ihov && scr_workspace_mouse_check_button_pressed(mb_left)) {
             gui_menu_open = -1;
             if (_dp.url == "TOURS") {
                 // Open the welcome panel straight on its tour list.
@@ -1536,7 +1536,7 @@ if (gui_menu_open == 5) {
     var _in_panel_d = (gui_mouse_x >= _panel_x_d && gui_mouse_x < _panel_x_d + _panel_w_d &&
                        gui_mouse_y >= _panel_y_d  && gui_mouse_y < _panel_y_d + _panel_h_d);
     var _in_bar_d   = (gui_mouse_y >= _mbar_y && gui_mouse_y < _mbar_y + _mbar_btn_h);
-    if (mouse_check_button_pressed(mb_left) && !_in_panel_d && !_in_bar_d) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !_in_panel_d && !_in_bar_d) {
         gui_menu_open = -1;
     }
 }
@@ -1587,7 +1587,7 @@ if (gui_menu_open == 6) {
         draw_set_halign(fa_left);
         draw_text_l(_ix1 + 10, _iy + 3, _ip.title);
 
-        if (_ihov && mouse_check_button_pressed(mb_left)) {
+        if (_ihov && scr_workspace_mouse_check_button_pressed(mb_left)) {
             gui_menu_open = -1;
             if (_ip.action == "CHARPAD_RAW") {
                 scr_import_charpad_raw();
@@ -1607,7 +1607,7 @@ if (gui_menu_open == 6) {
     var _in_panel_i = (gui_mouse_x >= _panel_x_i && gui_mouse_x < _panel_x_i + _panel_w_i &&
                        gui_mouse_y >= _panel_y_i  && gui_mouse_y < _panel_y_i + _panel_h_i);
     var _in_bar_i   = (gui_mouse_y >= _mbar_y && gui_mouse_y < _mbar_y + _mbar_btn_h);
-    if (mouse_check_button_pressed(mb_left) && !_in_panel_i && !_in_bar_i) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !_in_panel_i && !_in_bar_i) {
         gui_menu_open = -1;
     }
 }
@@ -1719,7 +1719,7 @@ if (gui_menu_open == 0) {
         draw_text_l(_ix1 + 10, _iy + 3, _mp.title);
 
         // Begin drag on mouse-down (no release needed — matches existing macro drag behaviour)
-        if (_ihov && mouse_check_button_pressed(mb_left)) {
+        if (_ihov && scr_workspace_mouse_check_button_pressed(mb_left)) {
             gui_menu_open         = -1;
             gui_menu_drag_active  = true;
             gui_menu_node_spawned = false;
@@ -1732,7 +1732,7 @@ if (gui_menu_open == 0) {
     var _in_panel = (gui_mouse_x >= _panel_x && gui_mouse_x < _panel_x + _panel_w &&
                      gui_mouse_y >= _panel_y  && gui_mouse_y < _panel_y + _panel_h);
     var _in_bar   = (gui_mouse_y >= _mbar_y   && gui_mouse_y < _mbar_y + _mbar_btn_h);
-    if (mouse_check_button_pressed(mb_left) && !_in_panel && !_in_bar) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !_in_panel && !_in_bar) {
         gui_menu_open = -1;
     }
 }
@@ -1805,7 +1805,7 @@ if (gui_menu_drag_active && !gui_menu_node_spawned) {
     }
 
     // Drag ends when mouse is released
-    if (mouse_check_button_released(mb_left)) {
+    if (scr_workspace_mouse_check_button_released(mb_left)) {
         gui_menu_drag_active  = false;
         gui_menu_node_spawned = false;
         gui_menu_drag_type    = "";
@@ -1827,7 +1827,7 @@ draw_set_font_l(fnt_C64_Angled);
 /////////////////////////////////////////////////////////////////
 ///// OPCODE HELPER TOOLTIP
 /////////////////////////////////////////////////////////////////
-if (opcode_helper_on && opcode_hover_key != "" && opcode_hover_timer >= opcode_hover_delay && !mouse_check_button(mb_left) && !mouse_check_button(mb_right) && !mouse_check_button(mb_middle)) {
+if (opcode_helper_on && opcode_hover_key != "" && opcode_hover_timer >= opcode_hover_delay && !scr_workspace_mouse_check_button(mb_left) && !scr_workspace_mouse_check_button(mb_right) && !scr_workspace_mouse_check_button(mb_middle)) {
     var _info = scr_opcode_helper(opcode_hover_key);
     if (_info != undefined) {
         var _tip_x = shelf_width + 80;
@@ -1923,7 +1923,7 @@ for (var j = 0; j < array_length(shortcuts); j++) {
 
     var btn_hover = (gui_mouse_x > box_x1 && gui_mouse_x < box_x2 &&
                      gui_mouse_y > box_y1 && gui_mouse_y < box_y2);
-    var btn_click = btn_hover && mouse_check_button(mb_left);
+    var btn_click = btn_hover && scr_workspace_mouse_check_button(mb_left);
     if (global.tour_active) {
         scr_tour_capture("UI:" + shortcuts[j][1], box_x1, box_y1, box_x2, box_y2);
     }
@@ -1987,7 +1987,7 @@ for (var j = 0; j < array_length(shortcuts); j++) {
 	
 	
 
-    if (btn_hover && mouse_check_button_released(mb_left)) {
+    if (btn_hover && scr_workspace_mouse_check_button_released(mb_left)) {
         switch (shortcuts[j][1]) {
             case "CLEANUP":
                 scr_cleanup_nodes();
@@ -2282,7 +2282,7 @@ if (version_banner_visible && !version_banner_dismissed)
     draw_text_l(_close_x1, _banner_y1, _txt_close);
     
     // Click handling — only the link and close are clickable, not the dead text in between
-    if (mouse_check_button_pressed(mb_left))
+    if (scr_workspace_mouse_check_button_pressed(mb_left))
     {
         if (_over_close)
         {
@@ -2500,7 +2500,7 @@ if (readyToQuit == 1) {
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
     draw_set_font_l(fnt_c64);
-    if (mouse_check_button(mb_left)) readyToQuit = 0;
+    if (scr_workspace_mouse_check_button(mb_left)) readyToQuit = 0;
 }
 
 /////////////////////////////////////////////////////////////////
@@ -2526,7 +2526,7 @@ draw_set_halign(fa_left);
 if (instance_exists(global.breakdown_node)) {
     var _node = global.breakdown_node;
     
-    if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
         global.breakdown_node = noone;
     } else {
         // Dark backdrop
@@ -2896,11 +2896,11 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 
     if (gui_mouse_x >= win_x && gui_mouse_x <= win_x + win_w &&
         gui_mouse_y >= win_y && gui_mouse_y <= win_y + win_h) {
-        if (mouse_wheel_up())   info_scroll_offset = max(0,           info_scroll_offset - _row_h);
-        if (mouse_wheel_down()) info_scroll_offset = min(_max_scroll, info_scroll_offset + _row_h);
+        if (scr_workspace_mouse_wheel_up())   info_scroll_offset = max(0,           info_scroll_offset - _row_h);
+        if (scr_workspace_mouse_wheel_down()) info_scroll_offset = min(_max_scroll, info_scroll_offset + _row_h);
     }
-    if (keyboard_check_pressed(vk_up))   info_scroll_offset = max(0,           info_scroll_offset - _row_h);
-    if (keyboard_check_pressed(vk_down)) info_scroll_offset = min(_max_scroll, info_scroll_offset + _row_h);
+    if (scr_workspace_keyboard_check_pressed(vk_up))   info_scroll_offset = max(0,           info_scroll_offset - _row_h);
+    if (scr_workspace_keyboard_check_pressed(vk_down)) info_scroll_offset = min(_max_scroll, info_scroll_offset + _row_h);
 
     // =========================================================
     // HEADER: TITLE + DESCRIPTION
@@ -3016,7 +3016,7 @@ if (global.show_info_window && instance_exists(global.info_node)) {
         draw_set_halign(fa_center);
         draw_text_l(win_x + (win_w / 2), win_y + win_h - 30, "CLICK ANYWHERE TO DISMISS");
         draw_set_halign(fa_left);
-        if (mouse_check_button_pressed(mb_any) || keyboard_check_pressed(vk_escape)) {
+        if (scr_workspace_mouse_check_button_pressed(mb_any) || scr_workspace_keyboard_check_pressed(vk_escape)) {
             global.show_info_window = false;
             info_scroll_offset      = 0;
             info_timer              = 0;
@@ -3313,7 +3313,7 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    var _lsclose_hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _lsclose_x1, _lsclose_y1, _lsclose_x1 + 18, _lsclose_y1 + 18);
 	    draw_set_color(_lsclose_hov ? c_red : c_white);
 	    draw_text_l(_lsclose_x1 + 3, _lsclose_y1, "X");
-	    if (_lsclose_hov && mouse_check_button_pressed(mb_left)) {
+	    if (_lsclose_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
 	        label_search_open    = false;
 	        label_search_results = [];
 	        label_search_info    = [];
@@ -3355,7 +3355,7 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	    draw_set_halign(fa_center);
 	    draw_text_l(_lsbx1 + (_lsbx2 - _lsbx1) * 0.5, _lsby1 + 5, "SEARCH");
 	    draw_set_halign(fa_left);
-	    if (_lsb_hov && mouse_check_button_pressed(mb_left)) {
+	    if (_lsb_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
 	        label_search_results = scr_label_search_run(label_search_query);
 	        label_search_index   = -1;
 	        if (array_length(label_search_results) > 0) {
@@ -3382,7 +3382,7 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	        var _lsp_hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _lsp_x1, _lsby1, _lsp_x2, _lsby2);
 	        draw_set_color(_lsp_hov ? c_white : c_aqua);
 	        draw_text_l(_lsp_x1 + 6, _lsr_y, "<");
-	        if (_lsp_hov && mouse_check_button_pressed(mb_left)) {
+	        if (_lsp_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
 	            label_search_index = (label_search_index - 1 + _lsr_count) mod _lsr_count;
 	            if (instance_exists(label_search_results[label_search_index])) {
 	                scr_label_search_goto(label_search_results[label_search_index], 0.2);
@@ -3395,7 +3395,7 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	        var _lsn_hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _lsn_x1, _lsby1, _lsn_x2, _lsby2);
 	        draw_set_color(_lsn_hov ? c_white : c_aqua);
 	        draw_text_l(_lsn_x1 + 6, _lsr_y, ">");
-	        if (_lsn_hov && mouse_check_button_pressed(mb_left)) {
+	        if (_lsn_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
 	            label_search_index = (label_search_index + 1) mod _lsr_count;
 	            if (instance_exists(label_search_results[label_search_index])) {
 	                scr_label_search_goto(label_search_results[label_search_index], 0.2);
@@ -3548,7 +3548,7 @@ if (global.show_helper_window && instance_exists(global.helper_node)) {
         draw_text_l(gui_w / 2, _hy2 - 18, "CLICK ANYWHERE TO CLOSE");
         draw_set_halign(fa_left);
 
-        if (mouse_check_button_pressed(mb_any) || keyboard_check_pressed(vk_escape)) {
+        if (scr_workspace_mouse_check_button_pressed(mb_any) || scr_workspace_keyboard_check_pressed(vk_escape)) {
             global.show_helper_window = false;
             helper_timer = 0;
         }
@@ -3556,7 +3556,7 @@ if (global.show_helper_window && instance_exists(global.helper_node)) {
 }
 
 // DEBUG: undo state at mouse
-if (keyboard_check(vk_control)) {
+if (scr_workspace_keyboard_check(vk_control)) {
     var _undo_dir      = working_directory + "temp/undo/";
     var _manifest_path = _undo_dir + "manifest.json";
     var _state_str = "NO MANIFEST";
@@ -3737,11 +3737,11 @@ if (global.var_del_warn_active) {
             var _vw_in = (gui_mouse_x >= _vw_x1 && gui_mouse_x <= _vw_x2 &&
                           gui_mouse_y >= _vw_y1 && gui_mouse_y <= _vw_y1 + _vw_h);
             if (_vw_in) {
-                if (mouse_wheel_up())   global.var_del_warn_scroll = max(0, global.var_del_warn_scroll - _vw_row_h);
-                if (mouse_wheel_down()) global.var_del_warn_scroll = min(_vw_max_scroll, global.var_del_warn_scroll + _vw_row_h);
+                if (scr_workspace_mouse_wheel_up())   global.var_del_warn_scroll = max(0, global.var_del_warn_scroll - _vw_row_h);
+                if (scr_workspace_mouse_wheel_down()) global.var_del_warn_scroll = min(_vw_max_scroll, global.var_del_warn_scroll + _vw_row_h);
             }
-            if (keyboard_check_pressed(vk_up))   global.var_del_warn_scroll = max(0, global.var_del_warn_scroll - _vw_row_h);
-            if (keyboard_check_pressed(vk_down)) global.var_del_warn_scroll = min(_vw_max_scroll, global.var_del_warn_scroll + _vw_row_h);
+            if (scr_workspace_keyboard_check_pressed(vk_up))   global.var_del_warn_scroll = max(0, global.var_del_warn_scroll - _vw_row_h);
+            if (scr_workspace_keyboard_check_pressed(vk_down)) global.var_del_warn_scroll = min(_vw_max_scroll, global.var_del_warn_scroll + _vw_row_h);
         }
 
         // Panel
@@ -3805,7 +3805,7 @@ if (global.var_del_warn_active) {
             }
             draw_text_l(_vw_x1 + 12, _vw_ry + 3, string(_vwi + 1) + ". " + string(_vw_ref.label));
 
-            if (_vw_hov && mouse_check_button_pressed(mb_left) && instance_exists(_vw_ref.node)) {
+            if (_vw_hov && scr_workspace_mouse_check_button_pressed(mb_left) && instance_exists(_vw_ref.node)) {
                 scr_focus_camera_on_node(_vw_ref.node);
                 global.var_del_warn_clicked = true; // begin fade
             }
@@ -3829,7 +3829,7 @@ if (global.var_del_warn_active) {
         draw_set_alpha(1.0);
 
         // First click anywhere begins the fade (row clicks handled above also set this)
-        if (!global.var_del_warn_clicked && mouse_check_button_pressed(mb_left)) {
+        if (!global.var_del_warn_clicked && scr_workspace_mouse_check_button_pressed(mb_left)) {
             global.var_del_warn_clicked = true;
         }
 
@@ -4264,7 +4264,7 @@ if (reu_pick_open) {
     // Input: pick, or click away / Esc to close
     if (reu_pick_skip > 0) {
         reu_pick_skip -= 1;
-    } else if (mouse_check_button_pressed(mb_left)) {
+    } else if (scr_workspace_mouse_check_button_pressed(mb_left)) {
         if (_rp_hover >= 0 && instance_exists(reu_pick_node)) {
             scr_undo_snapshot();
             reu_pick_node.instructions[0][11] = reu_pick_items[_rp_hover];
@@ -4276,7 +4276,7 @@ if (reu_pick_open) {
         global.was_editor_open = true;
         obj_asset_manager.alarm[2] = 60;
     }
-    if (keyboard_check_pressed(vk_escape)) {
+    if (scr_workspace_keyboard_check_pressed(vk_escape)) {
         reu_pick_open = false;
         global.any_picker_open = false;
     }

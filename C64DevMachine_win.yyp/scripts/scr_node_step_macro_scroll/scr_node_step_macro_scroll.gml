@@ -11,7 +11,7 @@ if (!_sid_check && array_length(instructions[0]) > 4 && instructions[0][4] == 1)
     // Row count is no longer capped by SID presence — with the IRQ split,
     // SID enables a steady HUD rather than limiting scroll rows. Only the
     // physical screen height (25) bounds it; clamping happens on entry below.
-    if (!mouse_check_button_pressed(mb_left)) return;
+    if (!scr_workspace_mouse_check_button_pressed(mb_left)) return;
     var _cam_x    = obj_workspace_manager.cam_x;
     var _cam_y    = obj_workspace_manager.cam_y;
     var _cam_zoom = obj_workspace_manager.cam_zoom;

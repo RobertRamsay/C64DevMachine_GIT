@@ -1,7 +1,7 @@
 /// @desc Step MACRO_VSCROLL node
 function scr_node_step_macro_vscroll() {
 
-    if (!mouse_check_button_pressed(mb_left)) return;
+    if (!scr_workspace_mouse_check_button_pressed(mb_left)) return;
 
     var _cam_x    = obj_workspace_manager.cam_x;
     var _cam_y    = obj_workspace_manager.cam_y;

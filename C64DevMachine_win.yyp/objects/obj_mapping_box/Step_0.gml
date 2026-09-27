@@ -1,3 +1,4 @@
+if (scr_workspace_input_blocked()) exit;
 /// @desc Mapping Box - Resize, Drag, Delete, Double-click Edit
 var _cam_x    = obj_workspace_manager.cam_x;
 var _cam_y    = obj_workspace_manager.cam_y;
@@ -19,7 +20,7 @@ var _rh_y1  = _sy2 - 16;
 var _rh_hov = (_gmx >= _rh_x1 && _gmx <= _sx2 &&
                _gmy >= _rh_y1 && _gmy <= _sy2);
 
-if (_rh_hov && mouse_check_button_pressed(mb_left) && !is_resizing && !is_dragging) {
+if (_rh_hov && scr_workspace_mouse_check_button_pressed(mb_left) && !is_resizing && !is_dragging) {
     is_resizing = true;
     resize_ox   = mouse_x;
     resize_oy   = mouse_y;
@@ -29,7 +30,7 @@ if (_rh_hov && mouse_check_button_pressed(mb_left) && !is_resizing && !is_draggi
 if (is_resizing) {
     box_w = max(80, resize_ow + (mouse_x - resize_ox));
     box_h = max(40, resize_oh + (mouse_y - resize_oy));
-    if (mouse_check_button_released(mb_left)) {
+    if (scr_workspace_mouse_check_button_released(mb_left)) {
         box_w       = round(box_w / 20) * 20;
         box_h       = round(box_h / 20) * 20;
         is_resizing = false;
@@ -47,7 +48,7 @@ var _del_y2  = _sy1;
 var _del_hov = (_gmx >= _del_x1 && _gmx <= _del_x2 &&
                 _gmy >= _del_y1 && _gmy <= _del_y2);
 
-if (_del_hov && mouse_check_button_pressed(mb_left) && !is_resizing && !is_dragging) {
+if (_del_hov && scr_workspace_mouse_check_button_pressed(mb_left) && !is_resizing && !is_dragging) {
 	global.undo_dirty = true;
     instance_destroy();
     exit;
@@ -64,7 +65,7 @@ var _tab_y2  = _sy1;
 var _tab_hov = (_gmx >= _tab_x1 && _gmx <= _tab_x2 &&
                 _gmy >= _tab_y1 && _gmy <= _tab_y2);
 
-if (_tab_hov && mouse_check_button_pressed(mb_left) && !is_resizing) {
+if (_tab_hov && scr_workspace_mouse_check_button_pressed(mb_left) && !is_resizing) {
     if (dbl_click_timer > 0) {
         // Double-click → open edit popup
         with (obj_workspace_manager) {
@@ -143,7 +144,7 @@ if (is_dragging) {
         _n.y = y + drag_float_oy[_i];
     }
 
-if (mouse_check_button_released(mb_left)) {
+if (scr_workspace_mouse_check_button_released(mb_left)) {
         is_dragging  = false;
         // Snap box position to 20px grid
         x = round(x / 20) * 20;

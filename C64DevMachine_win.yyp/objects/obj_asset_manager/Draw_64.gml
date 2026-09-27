@@ -100,7 +100,7 @@ for (var _soi = 0; _soi < array_length(_sort_opts); _soi++) {
     draw_set_halign(fa_center);
     draw_text_l((_so_x1 + _so_x2) / 2, _sort_row_y + 2, _sort_opts[_soi]);
     draw_set_halign(fa_left);
-    if (_so_hov && mouse_check_button_pressed(mb_left)) {
+    if (_so_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
         asset_sort_mode = _sort_opts[_soi];
     }
 }
@@ -117,7 +117,7 @@ draw_set_halign(fa_center);
 draw_set_color(_grp_hov ? c_black : c_white);
 draw_text_l((_grp_x1 + _grp_x2) / 2, _sort_row_y + 2, "+GRP");
 draw_set_halign(fa_left);
-if (_grp_hov && mouse_check_button_pressed(mb_left)) {
+if (_grp_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
     scr_prompt_text("Group name", "", function(_text, _ctx) {
         var _name = string_upper(string_trim(_text));
         if (_name == "") return;
@@ -802,7 +802,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
 	var _vx2 = _wide_editor ? (panel_x + 20) : (panel_x - 10);
 	// The Music Maker is modal and uses the full width, centred: 30px margins
 	// both sides (matching its 108px top/bottom), over the asset panel.
-	if (_asset.type == "MUSIC_MAKER") {
+	if (_asset.type == "MUSIC_MAKER" || _asset.type == "SPRITE_MASK") {
 		_vx2 = _gui_w - _vx1;
 	}
 	var _vy2 = 972;
@@ -7747,6 +7747,8 @@ case "LINE_COLL": {
 } break;
 
 case "SID_MUSIC": {
+            scr_sid_asset_controls(_asset, _vx1 + 10, _cy, _vx2 - _vx1 - 20);
+            _cy += 112;
             if (!buffer_exists(_asset.buffer)) {
                 draw_set_font_l(fnt_c64_tiny);
                 draw_set_color(make_color_rgb(80, 80, 80));
@@ -7931,7 +7933,7 @@ case "LOAD_REU": {
     _cy += 22;
     scr_draw_reu_memory_bar(_vx1 + 10, _vx2 - 10, _cy, _asset);
     _cy += 40;
-    var _split_x = _vx1 + clamp(manifest_reu_split,100,max(100,_vx2-_vx1-430));
+    var _split_x = _vx1 + clamp(manifest_reu_split,100,max(100,_vx2-_vx1-480));
     var _split_top = _cy;
     var _cn=_vx1+30, _cc=_split_x+8, _cr=_cc+90, _cs=_cc+190, _cm=_cc+275, _ci=_cm+95;
     draw_set_color(make_color_rgb(120,120,140));
@@ -7990,6 +7992,9 @@ case "LOAD_REU": {
         } else {
             draw_set_color(make_color_rgb(90,90,100)); draw_text_l(_ci,_cy+4,"--");
         }
+        draw_set_color(make_color_rgb(115,35,25));
+        draw_rectangle(_vx2-70,_cy+2,_vx2-30,_cy+18,false);
+        draw_set_color(c_white); draw_text_l(_vx2-64,_cy+4,"DEL");
         draw_set_color(make_color_rgb(100,30,30)); draw_rectangle(_vx2-26,_cy+2,_vx2-8,_cy+18,false); draw_set_color(c_white); draw_text_l(_vx2-21,_cy+4,"X");
         draw_set_alpha(1.0);
         if (reu_drag_row >= 0 && !_is_dragged && _la_type != reu_drag_type) {

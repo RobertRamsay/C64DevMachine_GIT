@@ -325,7 +325,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
 
         // CLICK DETECTION: open conflict-options popup on label click
         if (!global.conflict_popup_open &&
-            mouse_check_button_pressed(mb_left) &&
+            scr_workspace_mouse_check_button_pressed(mb_left) &&
             point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y, _lbx1, _lby1, _lbx2, _lby2)) {
 
             // Find the two distinct *container* owners (INIT BLOCK / ORG aggregate)
@@ -643,7 +643,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     // an asset opens in the normal asset viewer. The click is consumed so it
     // cannot also trigger controls behind the Draw-GUI memory bar.
     if (_bar_hovered && is_struct(_hover_seg) &&
-        mouse_check_button_pressed(mb_left) &&
+        scr_workspace_mouse_check_button_pressed(mb_left) &&
         !global.ui_click_consumed && !global.conflict_popup_open) {
         if (scr_memory_bar_open_segment(_hover_seg)) global.ui_click_consumed = true;
     }
@@ -758,7 +758,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         draw_set_valign(fa_top);
 
         // Click handling
-        if (mouse_check_button_pressed(mb_left)) {
+        if (scr_workspace_mouse_check_button_pressed(mb_left)) {
             if (_hov_ig) {
                 // Resolve each side to its family root before storing — if the
                 // popup's owner is an ORG child, we store the ORG's UID instead,
@@ -822,7 +822,7 @@ function scr_memory_bar_bank_controls(_x, _y) {
     var _my = global.gui_mouse_y;
     var _mode_hover = point_in_rectangle(_mx, _my, _x, _y, _x + 24, _y + 10);
     var _bank_hover = point_in_rectangle(_mx, _my, _x, _y + 12, _x + 24, _y + 32);
-    if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.conflict_popup_open) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.conflict_popup_open) {
         if (_mode_hover) {
             global.memory_bar_bank_mode = (global.memory_bar_bank_mode + 1) mod 3;
             global.memory_bar_bank_index = 0;

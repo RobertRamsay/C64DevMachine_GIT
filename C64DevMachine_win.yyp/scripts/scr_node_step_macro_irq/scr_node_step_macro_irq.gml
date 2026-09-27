@@ -1,5 +1,5 @@
 function scr_node_step_macro_irq() {
-    if (!mouse_check_button_pressed(mb_left)) return;
+    if (!scr_workspace_mouse_check_button_pressed(mb_left)) return;
     if (label_picker_open) return;
 
     var _cam_x    = obj_workspace_manager.cam_x;

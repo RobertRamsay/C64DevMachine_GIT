@@ -1,7 +1,7 @@
 /// @desc Step MACRO_METASCROLL node - pickers, toggles, and the JSR drops
 function scr_node_step_macro_metascroll(_draw_x) {
 
-    if (!mouse_check_button_pressed(mb_left)) return;
+    if (!scr_workspace_mouse_check_button_pressed(mb_left)) return;
     if (global.ui_click_consumed) return;
     if (global.any_picker_open) return;
 

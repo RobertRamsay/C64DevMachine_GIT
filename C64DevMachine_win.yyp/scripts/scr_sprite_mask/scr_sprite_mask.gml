@@ -292,71 +292,127 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     if (!is_undefined(_bmp)) { _hires = scr_asset_bmp_is_hires(_bmp); }
 
     var _button = function(_x1, _y1, _w, _label, _on, _mx2, _my2) {
-        var _hov = point_in_rectangle(_mx2, _my2, _x1, _y1, _x1 + _w, _y1 + 18);
-        var _bg  = make_color_rgb(38, 38, 58);
-        if (_on) { _bg = make_color_rgb(160, 80, 20); }
-        if (_hov && !_on) { _bg = make_color_rgb(66, 66, 98); }
-        draw_set_color(_bg);
-        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + 18, false);
+        var _hov = point_in_rectangle(_mx2, _my2, _x1, _y1, _x1 + _w, _y1 + 26);
+        draw_set_color(_on ? make_color_rgb(38, 94, 111) : (_hov ? make_color_rgb(53, 61, 82) : make_color_rgb(31, 38, 54)));
+        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + 26, false);
+        draw_set_color(_on ? c_aqua : make_color_rgb(72, 83, 103));
+        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + 26, true);
         draw_set_color(c_white);
-        draw_set_halign(fa_center);
-        draw_text_l(_x1 + _w * 0.5, _y1 + 4, _label);
-        draw_set_halign(fa_left);
+        draw_text_l(_x1 + 10, _y1 + 8, _label);
         return (_hov && mouse_check_button_pressed(mb_left));
     };
     draw_set_font_l(fnt_c64_tiny);
+    draw_set_halign(fa_left);
+    var _side_x = _vx1 + 18;
+    var _side_w = 284;
+    var _area_x = _side_x + _side_w + 22;
+    var _area_w = _vx2 - 18 - _area_x;
+    var _top = _cy + 8;
+    var _bottom = _vy2 - 18;
+    draw_set_color(make_color_rgb(23, 29, 42));
+    draw_rectangle(_side_x - 8, _top - 8, _side_x + _side_w + 8, _bottom, false);
 
-    // ── Toolbar ──
-    var _tx = _vx1 + 10;
-    var _bl = "BITMAP: (choose)";
-    if (_m.ref_bmp != "") { _bl = "BITMAP: " + _m.ref_bmp; }
-    if (_button(_tx, _cy, 300, string_copy(_bl, 1, 44), _m.pick_open, _mx, _my)) {
-        _m.pick_open   = !_m.pick_open;
-        _m.pick_scroll = 0;
+    // Behaviour and tool are separate: either rule can paint a new mask
+    // or be brushed over an existing one without changing its shape.
+    var _conditional = (_m.depth != 255 || _m.pick_y);
+    var _ui_mx = _m.pick_open ? -10000 : _mx;
+    var _sy = _top;
+    draw_set_color(make_color_rgb(154, 175, 198));
+    draw_text_l(_side_x, _sy, "1  CHOOSE WHEN THE CAT IS HIDDEN"); _sy += 24;
+    if (_button(_side_x, _sy, _side_w, "ALWAYS HIDE THE CAT", !_conditional, _ui_mx, _my)) {
+        _m.depth = 255; _m.pick_y = false;
     }
-    _tx += 310;
+    _sy += 34;
+    draw_set_color(c_fuchsia);
+    draw_text_l(_side_x + 8, _sy, "MAGENTA: object stays in front."); _sy += 16;
+    draw_set_color(c_ltgray);
+    draw_text_l(_side_x + 8, _sy, "Use for foreground walls."); _sy += 26;
+    if (_button(_side_x, _sy, _side_w, "HIDE ABOVE A Y LINE", _conditional, _ui_mx, _my)) {
+        _m.pick_y = true; _m.stroke = false;
+    }
+    _sy += 34;
+    draw_set_color(c_aqua);
+    draw_text_l(_side_x + 8, _sy, "CYAN: cat feet above = behind."); _sy += 16;
+    draw_set_color(c_ltgray);
+    draw_text_l(_side_x + 8, _sy, "At / below the line = in front."); _sy += 22;
+    var _line_label = "CLICK HERE, THEN PICK LINE";
+    if (_m.pick_y) _line_label = "NOW CLICK THE BITMAP'S Y LINE";
+    else if (_m.depth != 255) _line_label = "Y = " + string(_m.depth) + "   |   CHOOSE ANOTHER LINE";
+    if (_button(_side_x, _sy, _side_w, _line_label, _m.pick_y, _ui_mx, _my)) {
+        _m.pick_y = !_m.pick_y; _m.stroke = false;
+    }
+    _sy += 44;
+    draw_set_color(make_color_rgb(154, 175, 198));
+    draw_text_l(_side_x, _sy, "2  CHOOSE WHAT YOUR BRUSH DOES"); _sy += 24;
     var _tools = ["PAINT", "FILL", "ERASE", "DEPTH"];
+    var _names = ["PAINT MASK", "FILL AREA", "ERASE MASK", "CHANGE EXISTING MASK"];
     for (var _t = 0; _t < 4; _t++) {
-        if (_button(_tx, _cy, 54, _tools[_t], _m.tool == _tools[_t], _mx, _my)) { _m.tool = _tools[_t]; }
-        _tx += 58;
+        if (_button(_side_x, _sy, _side_w, _names[_t], _m.tool == _tools[_t], _ui_mx, _my)) _m.tool = _tools[_t];
+        _sy += 32;
     }
-    _tx += 8;
-    if (_button(_tx, _cy, 64, "BRUSH " + string(_m.brush), false, _mx, _my)) {
-        if (_m.brush == 1) { _m.brush = 2; } else if (_m.brush == 2) { _m.brush = 4; } else if (_m.brush == 4) { _m.brush = 8; } else { _m.brush = 1; }
+    _sy += 8;
+    if (_button(_side_x, _sy, _side_w, "BRUSH SIZE: " + string(_m.brush), false, _ui_mx, _my)) {
+        _m.brush = (_m.brush == 8) ? 1 : _m.brush * 2;
     }
-    _tx += 72;
-    var _dl = "DEPTH: ALWAYS";
-    if (_m.depth != 255) { _dl = "DEPTH: Y " + string(_m.depth); }
-    draw_set_color(make_color_rgb(120, 220, 255));
-    draw_text_l(_tx, _cy + 4, _dl);
-    _tx += 100;
-    if (_button(_tx, _cy, 56, "PICK Y", _m.pick_y, _mx, _my)) { _m.pick_y = !_m.pick_y; }
-    _tx += 60;
-    if (_button(_tx, _cy, 60, "ALWAYS", false, _mx, _my)) { _m.depth = 255; }
-    _tx += 68;
-    if (_button(_tx, _cy, 50, "CLEAR", false, _mx, _my)) {
-        scr_sprmask_push_undo(_m);
-        _m.mask = array_create(8000, 0);
-        _m.cell_base = array_create(1000, 255);
-        _m.ov_dirty = true;
-        scr_sprmask_flush(_asset);
-        global.addresses_dirty = true;
+    _sy += 40;
+    draw_set_color(c_white);
+    if (_m.tool == "DEPTH") {
+        draw_text_l(_side_x, _sy, "Brush over an existing mask.");
+        draw_text_l(_side_x, _sy + 16, "Applies the rule from step 1.");
+        draw_text_l(_side_x, _sy + 32, "Keeps the painted shape.");
+    } else if (_m.tool == "ERASE") {
+        draw_text_l(_side_x, _sy, "Brush to remove mask pixels.");
+        draw_text_l(_side_x, _sy + 16, "The cat becomes visible there.");
+    } else {
+        draw_text_l(_side_x, _sy, "Adds mask using the rule above.");
+        draw_text_l(_side_x, _sy + 16, "Choosing a rule alone changes");
+        draw_text_l(_side_x, _sy + 32, "nothing in the picture.");
     }
-    _tx += 58;
-    var _stat = string(_m.stat_unique) + "/255 CELLS  " + string(buffer_get_size(_asset.buffer)) + " BYTES";
-    if (_m.stat_over > 0) { _stat += "  " + string(_m.stat_over) + " CELLS DROPPED!"; }
-    draw_set_color(c_yellow);
-    draw_text_l(_tx, _cy + 4, _stat);
+    _sy += 58;
+    draw_set_color(make_color_rgb(154, 175, 198));
+    draw_text_l(_side_x, _sy, "One rule per 8x8 cell.");
+    draw_text_l(_side_x, _sy + 16, "Outlined cells share your rule.");
+    _sy += 38;
+    if (_button(_side_x, _sy, 134, "UNDO", false, _ui_mx, _my) && array_length(_m.undo) > 0) {
+        var _u = array_pop(_m.undo); _m.mask = _u.mask; _m.cell_base = _u.base;
+        _m.ov_dirty = true; scr_sprmask_flush(_asset); global.addresses_dirty = true;
+    }
+    if (_button(_side_x + 146, _sy, 138, "CLEAR MASK", false, _ui_mx, _my)) {
+        scr_sprmask_push_undo(_m); _m.mask = array_create(8000, 0);
+        _m.cell_base = array_create(1000, 255); _m.ov_dirty = true;
+        scr_sprmask_flush(_asset); global.addresses_dirty = true;
+    }
 
-    // ── Canvas ──
-    var _cvx = _vx1 + 10;
-    var _cvy = _cy + 28;
-    var _sc  = floor(min((_vx2 - _vx1 - 20) / 320, (_vy2 - _cvy - 40) / 200));
-    _sc = max(1, _sc);
+    // Centre the image inside its own stage; preserve integer pixel scaling.
+    var _picker_w = min(680, _area_w);
+    var _picker_x = _area_x + (_area_w - _picker_w) * 0.5;
+    var _bl = (_m.ref_bmp == "") ? "CHOOSE A REFERENCE BITMAP" : "BITMAP: " + _m.ref_bmp;
+    if (_button(_picker_x, _top, _picker_w, string_copy(_bl, 1, floor((_picker_w - 20) / 7)), _m.pick_open, _mx, _my)) {
+        _m.pick_open = !_m.pick_open; _m.pick_scroll = 0;
+    }
+    var _rule = (_m.depth == 255) ? "ALWAYS HIDE THE CAT (MAGENTA)" : "HIDE WHEN FEET ARE ABOVE Y " + string(_m.depth) + " (CYAN)";
+    var _action = "PAINT MASK";
+    if (_m.tool == "FILL") _action = "FILL AREA";
+    if (_m.tool == "ERASE") _action = "ERASE MASK";
+    if (_m.tool == "DEPTH") _action = "CHANGE EXISTING MASK";
+    var _status = _action + "  /  " + _rule;
+    if (_m.tool == "ERASE") _status = "ERASE MASK  /  REMOVE PIXELS TO SHOW THE CAT";
+    if (_m.pick_y) _status = "PICK LINE: CLICK WHERE THE OBJECT MEETS THE GROUND. THEN BRUSH TO APPLY.";
+    draw_set_color(_m.pick_y ? c_yellow : c_white);
+    draw_set_halign(fa_center);
+    draw_text_l(_area_x + _area_w * 0.5, _top + 42, _status);
+    draw_set_halign(fa_left);
+    var _stage_y = _top + 70;
+    var _stage_h = _bottom - _stage_y - 44;
+    var _sc = max(1, floor(min(_area_w / 320, _stage_h / 200)));
     var _cw = 320 * _sc;
     var _ch = 200 * _sc;
+    var _cvx = floor(_area_x + (_area_w - _cw) * 0.5);
+    var _cvy = floor(_stage_y + (_stage_h - _ch) * 0.5);
+    draw_set_color(make_color_rgb(8, 12, 20));
+    draw_rectangle(_area_x, _stage_y, _area_x + _area_w, _stage_y + _stage_h, false);
     draw_set_color(c_black);
-    draw_rectangle(_cvx, _cvy, _cvx + _cw, _cvy + _ch, false);
+    draw_rectangle(_cvx - 2, _cvy - 2, _cvx + _cw + 2, _cvy + _ch + 2, false);
     var _bs = scr_room_map_bmp_surf(_m.ref_bmp);
     var _fl = gpu_get_tex_filter();
     gpu_set_tex_filter(false);
@@ -369,23 +425,25 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _px = clamp(floor((_mx - _cvx) / _sc), 0, 319);
     var _py = clamp(floor((_my - _cvy) / _sc), 0, 199);
 
-    // Depth guide: the hovered cell's depth, or the pick line
-    if (_on_cv && !_m.pick_open) {
+    // Keep the chosen line visible while using the sidebar too.
+    var _gy = (_m.depth != 255) ? _m.depth : -1;
+    if (_m.pick_y && _on_cv) _gy = _py;
+    if (_gy < 0 && _on_cv && !_m.pick_open) {
         var _hc = (_py >> 3) * 40 + (_px >> 3);
-        var _gy = -1;
-        if (_m.pick_y) {
-            _gy = _py;
-        } else if (_m.cell_base[_hc] != 255) {
-            var _hm = false;
-            for (var _r = 0; _r < 8; _r++) { if (_m.mask[_hc * 8 + _r] != 0) { _hm = true; } }
-            if (_hm) { _gy = _m.cell_base[_hc]; }
+        if (_m.cell_base[_hc] != 255) {
+            for (var _r = 0; _r < 8; _r++) {
+                if (_m.mask[_hc * 8 + _r] != 0) _gy = _m.cell_base[_hc];
+            }
         }
-        if (_gy >= 0) {
-            draw_set_color(c_aqua);
-            draw_line_width(_cvx, _cvy + _gy * _sc, _cvx + _cw, _cvy + _gy * _sc, 2);
-            draw_text_l(_cvx + 4, _cvy + _gy * _sc - 14, "DEPTH Y " + string(_gy));
-        }
-        if (_m.tool == "DEPTH" && !_m.pick_y) {
+    }
+    if (_gy >= 0 && !_m.pick_open) {
+        draw_set_color(c_aqua);
+        draw_line_width(_cvx, _cvy + _gy * _sc, _cvx + _cw, _cvy + _gy * _sc, 2);
+        draw_text_l(_cvx + 4, max(_cvy + 2, _cvy + _gy * _sc - 18),
+            "ABOVE = BEHIND   |   AT / BELOW = IN FRONT   |   Y " + string(_gy));
+    }
+    if (_on_cv && !_m.pick_open) {
+        if ((_m.tool == "DEPTH" || _m.tool == "PAINT") && !_m.pick_y) {
             var _dx = _px;
             var _dw = _m.brush;
             if (!_hires) { _dx = _dx & ~1; _dw *= 2; }
@@ -414,10 +472,6 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
                        _cvx + (_ox + _bw) * _sc, _cvy + (_py - (_m.brush div 2) + _m.brush) * _sc, true);
     }
 
-    draw_set_color(c_fuchsia);
-    draw_text_l(_cvx, _cvy + _ch + 6, "MAGENTA = ALWAYS IN FRONT");
-    draw_set_color(c_aqua);
-    draw_text_l(_cvx + 220, _cvy + _ch + 6, "CYAN = IN FRONT ONLY WHEN CAT FEET ARE ABOVE ITS Y");
     var _cell_info = "";
     if (_on_cv && !_m.pick_open) {
         var _cell = (_py >> 3) * 40 + (_px >> 3);
@@ -431,11 +485,14 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         else _cell_info += "Y " + string(_m.cell_base[_cell]);
         _cell_info += "  |  ";
     }
-    draw_set_color(c_white);
-    var _help = "LEFT = TOOL, RIGHT = ERASE, CTRL+Z = UNDO";
-    if (_m.tool == "DEPTH") _help = "BRUSH CHANGES EACH OUTLINED 8x8 CELL; MASK SHAPE STAYS THE SAME";
-    if (_m.pick_y) _help = "CLICK THE OBJECT'S FRONT EDGE TO CHOOSE Y; THEN BRUSH WITH DEPTH TO APPLY";
-    draw_text_l(_cvx, _cvy + _ch + 22, _cell_info + _help);
+    draw_set_color(c_ltgray);
+    draw_set_halign(fa_center);
+    draw_text_l(_area_x + _area_w * 0.5, _bottom - 28, _cell_info + "RIGHT CLICK: ERASE   |   CTRL+Z: UNDO");
+    draw_set_color(_m.stat_over > 0 ? c_red : make_color_rgb(125, 146, 163));
+    var _capacity = "Mask shapes: " + string(_m.stat_unique) + "/255";
+    if (_m.stat_over > 0) _capacity += "  -  TOO MANY SHAPES: " + string(_m.stat_over) + " CELLS DROPPED";
+    draw_text_l(_area_x + _area_w * 0.5, _bottom - 12, _capacity);
+    draw_set_halign(fa_left);
 
     // ── Picker list over the canvas ──
     if (_m.pick_open) {
@@ -445,10 +502,10 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             var _a = ds_list_find_value(_am.asset_list, _i);
             if (_a.type == "BITMAP") { array_push(_items, _a.name); }
         }
-        var _rows = 30;
-        var _lx = _cvx + 10;
-        var _ly = _cvy + 10;
-        var _lw = 460;
+        var _ly = _top + 30;
+        var _rows = max(1, min(30, floor((_bottom - _ly - 4) / 16)));
+        var _lw = _picker_w;
+        var _lx = _picker_x;
         draw_set_color(make_color_rgb(16, 19, 29));
         draw_rectangle(_lx, _ly, _lx + _lw, _ly + _rows * 16 + 4, false);
         if (mouse_wheel_up())   { _m.pick_scroll = max(0, _m.pick_scroll - 2); }
@@ -463,7 +520,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
                 draw_rectangle(_lx, _ry, _lx + _lw, _ry + 15, false);
             }
             if (_items[_ii] == _m.ref_bmp) { draw_set_color(c_lime); } else { draw_set_color(c_white); }
-            draw_text_l(_lx + 4, _ry + 2, _items[_ii]);
+            draw_text_l(_lx + 4, _ry + 2, string_copy(_items[_ii], 1, floor((_lw - 8) / 7)));
             if (_rh && _press) {
                 _m.ref_bmp   = _items[_ii];
                 _m.pick_open = false;
@@ -482,6 +539,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         _m.pick_y = false;
         return;
     }
+    if (_m.pick_y) return; // Picking a rule is not a paint stroke.
     var _lh = mouse_check_button(mb_left);
     var _rh2 = mouse_check_button(mb_right);
     if (_on_cv && (mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right))) {

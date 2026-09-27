@@ -2,6 +2,7 @@
 
 // One tick per frame. Per-frame lookup caches compare against this.
 global.frame_tick = global.frame_tick + 1;
+scr_workspace_input_blocked();
 
 global.drag_claim_taken = false;
 	
@@ -33,8 +34,8 @@ scr_org_collapse_hit();
 var _mx = global.gui_mouse_x;
 var _my = global.gui_mouse_y;
 var _moved   = (_mx != idle_last_mx || _my != idle_last_my);
-var _clicked = mouse_check_button(mb_any) || mouse_wheel_up() || mouse_wheel_down();
-var _keyed   = keyboard_check(vk_anykey);
+var _clicked = scr_workspace_mouse_check_button(mb_any) || scr_workspace_mouse_wheel_up() || scr_workspace_mouse_wheel_down();
+var _keyed   = scr_workspace_keyboard_check(vk_anykey);
 idle_last_mx = _mx;
 idle_last_my = _my;
 

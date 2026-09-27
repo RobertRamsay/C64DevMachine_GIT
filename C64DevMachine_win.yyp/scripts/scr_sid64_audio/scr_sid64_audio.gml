@@ -184,6 +184,7 @@ function scr_sid64_render_note(_instr, _note_name, _max_sec, _plain_pw = 0x0800)
 /// Starts streamed playback on slot 1.
 /// _loop_row true = loop order row _ord (PLAY PAT / Space), false = play the song.
 function scr_sid64_stream_start(_m, _song, _loop_row, _ord, _row) {
+    with (obj_asset_manager) scr_sid_asset_stop();
     scr_sid64_stream_stop();
     var _st = global.sid64_stream;
     _st.sim = scr_sid64_sim_create(_m, _song, _loop_row, _ord, _row);
@@ -276,4 +277,170 @@ function scr_sid64_stream_update(_m) {
         return false;
     }
     return true;
+}
+
+// Imported SID audition. Reuses the relocator's bounded 6502 interpreter and
+// the installed reSID DLL; all state is transient and separate from asset data.
+function scr_sid_asset_stop() {
+    if (!variable_instance_exists(id, "sid_asset_preview")) return;
+    var _p = sid_asset_preview;
+    if (!is_struct(_p)) return;
+    if (_p.inst != -1) audio_stop_sound(_p.inst);
+    if (_p.queue != -1) audio_free_play_queue(_p.queue);
+    for (var _i = 0; _i < array_length(_p.ring); _i++) {
+        if (buffer_exists(_p.ring[_i])) buffer_delete(_p.ring[_i]);
+    }
+    if (buffer_exists(_p.fb)) buffer_delete(_p.fb);
+    sid_asset_preview = undefined;
+    // Slot 1 is shared with Music Maker. Restore its usual configuration.
+    if (global.sid64_ok) {
+        sid64_select(1);
+        sid64_init(SID64_PAL_CLOCK, SID64_RATE, global.sid64_model, global.sid64_engine);
+        sid64_set_gain(0.6);
+        sid64_set_cycles_per_frame(SID64_CYCLES_PER_FRAME);
+        sid64_select(0);
+    }
+}
+
+function scr_sid_asset_start(_asset, _song) {
+    scr_sid_asset_stop();
+    sid_asset_message = "";
+    sid_asset_name = _asset.name;
+    sid_asset_song = _song;
+    if (!global.sid64_ok) { sid_asset_message = "SID playback DLL unavailable."; return false; }
+    var _b = _asset.buffer;
+    if (!buffer_exists(_b) || buffer_get_size(_b) < 124) {
+        sid_asset_message = "No complete SID file loaded."; return false;
+    }
+    // IRQ/ROM-dependent RSID and multi-SID tunes need a full C64 emulator.
+    if (buffer_peek(_b, 0, buffer_u8) != 80 || buffer_peek(_b, 1, buffer_u8) != 83
+    || buffer_peek(_b, 2, buffer_u8) != 73 || buffer_peek(_b, 3, buffer_u8) != 68) {
+        sid_asset_message = "Preview supports PSID tunes with a PLAY routine."; return false;
+    }
+    var _version = buffer_peek(_b, 5, buffer_u8);
+    var _hdr = (buffer_peek(_b, 6, buffer_u8) << 8) | buffer_peek(_b, 7, buffer_u8);
+    if ((_hdr != 118 && _hdr != 124) || buffer_get_size(_b) < _hdr + 2
+    || (_version >= 3 && (buffer_peek(_b, 122, buffer_u8) != 0 || buffer_peek(_b, 123, buffer_u8) != 0))) {
+        sid_asset_message = "Unsupported SID header or multiple SID chips."; return false;
+    }
+    var _inf = scr_srel_sid_info(_asset);
+    if (is_string(_inf)) { sid_asset_message = _inf; return false; }
+    if (_inf.load + _inf.len > 65520 || _inf.load < 512) {
+        sid_asset_message = "SID load range cannot be previewed."; return false;
+    }
+    var _flags = _version >= 2 ? (buffer_peek(_b, 118, buffer_u8) << 8) | buffer_peek(_b, 119, buffer_u8) : 0;
+    if ((_flags & 3) != 0) { sid_asset_message = "MUS / PlaySID-specific tunes need an external player."; return false; }
+    var _ntsc = ((_flags >> 2) & 3) == 2;
+    var _clock = _ntsc ? 1022727 : SID64_PAL_CLOCK;
+    var _model = ((_flags >> 4) & 3);
+    _model = _model == 1 ? 0 : (_model == 2 ? 1 : global.sid64_model);
+    var _emu = scr_srel_emu_new(_inf.img, _inf.load, false, -1, -1);
+    _emu.x = _ntsc ? 1 : 0;
+    _emu.m[1] = 0x37;
+    if (scr_srel_call(_emu, _inf.init, _song, 100000) < 0) {
+        sid_asset_message = "Cannot preview: " + _emu.err; return false;
+    }
+    var _speed = 0;
+    for (var _i = 18; _i < 22; _i++) _speed = (_speed << 8) | buffer_peek(_b, _i, buffer_u8);
+    var _cycles = _ntsc ? 17095 : SID64_CYCLES_PER_FRAME;
+    if (((_speed >> min(_song, 31)) & 1) != 0) {
+        _cycles = _emu.m[0xDC04] | (_emu.m[0xDC05] << 8);
+        if (_cycles == 0) _cycles = round(_clock / 60);
+    }
+    if (_cycles < 1000) { sid_asset_message = "High-rate / sample tunes need an external player."; return false; }
+    scr_sid64_stream_stop();
+    var _cap = ceil(4 * _cycles * SID64_RATE / _clock) + 128;
+    var _p = {asset:_asset, owner:ds_list_find_value(asset_list, viewer_asset), song:_song,
+        emu:_emu, play:_inf.play, cycles:_cycles, clock:_clock, rendered:0, start:0,
+        ring:[], ring_i:0, cap:_cap, fb:buffer_create(128, buffer_fixed, 1), queue:-1, inst:-1};
+    buffer_fill(_p.fb, 0, buffer_u8, 0, 128);
+    for (var _i = 0; _i < 32; _i++) array_push(_p.ring, buffer_create(_cap * 2, buffer_fixed, 2));
+    sid_asset_preview = _p;
+    sid64_select(1);
+    sid64_init(_clock, SID64_RATE, _model, global.sid64_engine);
+    sid64_set_gain(0.6);
+    sid64_set_cycles_per_frame(_cycles);
+    sid64_settle(_emu.m[0xD418], 100);
+    sid64_select(0);
+    _p.queue = audio_create_play_queue(buffer_s16, SID64_RATE, audio_mono);
+    for (var _i = 0; _i < 3; _i++) if (!scr_sid_asset_chunk()) return false;
+    _p.inst = audio_play_sound(_p.queue, 1, false);
+    _p.start = get_timer();
+    return true;
+}
+
+function scr_sid_asset_chunk() {
+    var _p = sid_asset_preview;
+    for (var _f = 0; _f < 4; _f++) {
+        if (scr_srel_call(_p.emu, _p.play, 0, 30000) < 0) {
+            sid_asset_message = "Playback stopped: " + _p.emu.err;
+            scr_sid_asset_stop(); return false;
+        }
+        for (var _r = 0; _r < 25; _r++) buffer_poke(_p.fb, _f * 32 + _r, buffer_u8, _p.emu.m[0xD400 + _r]);
+    }
+    var _buf = _p.ring[_p.ring_i];
+    _p.ring_i = (_p.ring_i + 1) mod 32;
+    sid64_select(1);
+    var _got = sid64_render_log(buffer_get_address(_p.fb), 4, buffer_get_address(_buf), _p.cap);
+    sid64_select(0);
+    if (_got <= 0) { sid_asset_message = "SID DLL produced no audio."; scr_sid_asset_stop(); return false; }
+    buffer_set_used_size(_buf, _got * 2);
+    audio_queue_sound(_p.queue, _buf, 0, _got * 2);
+    _p.rendered += 4;
+    return true;
+}
+
+function scr_sid_asset_update() {
+    var _p = sid_asset_preview;
+    if (!is_struct(_p)) return;
+    if (!viewer_open || viewer_asset < 0 || viewer_asset >= ds_list_size(asset_list)
+    || ds_list_find_value(asset_list, viewer_asset) != _p.owner
+    || scr_reu_find_asset(_p.asset.name) != _p.asset) { scr_sid_asset_stop(); return; }
+    var _period = _p.cycles * 1000000 / _p.clock;
+    var _played = floor((get_timer() - _p.start) / _period);
+    var _deadline = get_timer() + 6000;
+    while (_p.rendered < _played + 12) {
+        if (!scr_sid_asset_chunk()) return;
+        if (get_timer() > _deadline) break;
+    }
+    if (_p.rendered < _played) _p.start = get_timer() - max(0, _p.rendered - 12) * _period;
+}
+
+function scr_sid_asset_controls(_asset, _x, _y, _w) {
+    if (sid_asset_name != _asset.name) {
+        scr_sid_asset_stop();
+        sid_asset_name = _asset.name; sid_asset_song = 0; sid_asset_message = "";
+        if (buffer_exists(_asset.buffer) && buffer_get_size(_asset.buffer) >= 18)
+            sid_asset_song = max(0, ((buffer_peek(_asset.buffer, 16, buffer_u8) << 8) | buffer_peek(_asset.buffer, 17, buffer_u8)) - 1);
+    }
+    var _songs = 1;
+    if (buffer_exists(_asset.buffer) && buffer_get_size(_asset.buffer) >= 18)
+        _songs = max(1, (buffer_peek(_asset.buffer, 14, buffer_u8) << 8) | buffer_peek(_asset.buffer, 15, buffer_u8));
+    sid_asset_song = clamp(sid_asset_song, 0, min(256, _songs) - 1);
+    draw_set_color(c_white);
+    draw_text_l(_x, _y, "SUBTUNE " + string(sid_asset_song + 1) + " / " + string(_songs));
+    var _labels = ["<", ">", is_struct(sid_asset_preview) ? "RESTART" : "PLAY", "STOP"];
+    var _widths = [28, 28, 76, 54];
+    var _bx = _x;
+    for (var _i = 0; _i < 4; _i++) {
+        var _hover = point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y, _bx, _y+20, _bx+_widths[_i]-3, _y+44);
+        draw_set_color(_hover ? make_color_rgb(65,110,125) : make_color_rgb(35,65,78));
+        draw_rectangle(_bx, _y+20, _bx+_widths[_i]-3, _y+44, false);
+        draw_set_color(c_white); draw_text_l(_bx+5, _y+26, _labels[_i]);
+        if (_hover && mouse_check_button_pressed(mb_left) && !global.any_picker_open) {
+            if (_i < 2) {
+                var _was = is_struct(sid_asset_preview);
+                scr_sid_asset_stop(); sid_asset_message = "";
+                sid_asset_song = (sid_asset_song + (_i == 0 ? -1 : 1) + min(256,_songs)) mod min(256,_songs);
+                if (_was) scr_sid_asset_start(_asset, sid_asset_song);
+            } else if (_i == 2) scr_sid_asset_start(_asset, sid_asset_song);
+            else scr_sid_asset_stop();
+            mouse_clear(mb_left);
+        }
+        _bx += _widths[_i];
+    }
+    draw_set_color(c_ltgray);
+    var _status = is_struct(sid_asset_preview) ? "PLAYING  " + string(floor((get_timer()-sid_asset_preview.start)/1000000)) + " s" : "Press PLAY to listen";
+    if (sid_asset_message != "") _status = sid_asset_message;
+    draw_text_ext_l(_x, _y+54, _status, 14, _w);
 }

@@ -1059,7 +1059,7 @@ function scr_node_info_panel_draw(_type, _gw, _gh) {
     }
     var _capacity = _cols * _rows_per_col;
     var _pages = max(1, ceil(array_length(node_info_rows) / _capacity));
-    node_info_page = clamp(node_info_page + mouse_wheel_down() - mouse_wheel_up(), 0, _pages - 1);
+    node_info_page = clamp(node_info_page + scr_workspace_mouse_wheel_down() - scr_workspace_mouse_wheel_up(), 0, _pages - 1);
 
     draw_set_alpha(0.98);
     draw_set_color(make_color_rgb(12, 12, 22));

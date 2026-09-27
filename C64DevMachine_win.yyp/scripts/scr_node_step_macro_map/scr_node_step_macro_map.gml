@@ -13,7 +13,7 @@ function scr_node_step_macro_map(_node) {
     var _pb_y1 = draw_y + 28 + 8 - 2;
     var _pb_y2 = _pb_y1 + 14;
 
-if (mouse_check_button_pressed(mb_left) &&
+if (scr_workspace_mouse_check_button_pressed(mb_left) &&
 	    point_in_rectangle(
 	        mouse_x, mouse_y,
 	        _node.x + 44, _node.y + 28 + 8 - 2,
@@ -27,7 +27,7 @@ if (mouse_check_button_pressed(mb_left) &&
 // HR / MIXED mode is read-only on the node — change it via the map editor
 
 // ZP SOURCE POINTER FIELD — click to open hex input
-if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
+if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
     var _zp_ly = _node.y + 28 + 8 + 20 + 18 + 18 + 18 + 22;
     var _zp_x1 = _node.x + _node.width - 52;
     var _zp_x2 = _node.x + _node.width - 8;
@@ -46,7 +46,7 @@ if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.
 }
 
    // Colour row start spinner
-    if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
         var _col_row_st = (array_length(_node.instructions[0]) > 5) ? real(_node.instructions[0][5]) : 0;
         
         // Calculate Y offset based on the drawing logic (110 pixels down)

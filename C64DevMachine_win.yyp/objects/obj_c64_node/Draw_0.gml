@@ -512,7 +512,7 @@ var _active_list = [];
         draw_set_halign(fa_center);
         draw_text_l(_px + (_pw * 0.5), _py - 17, "CLOSE LIST");
         draw_set_halign(fa_left);
-        if (_xhov && mouse_check_button_pressed(mb_left)) {
+        if (_xhov && scr_workspace_mouse_check_button_pressed(mb_left)) {
             label_picker_open = false;
             global.any_picker_open = false;
             depth = label_picker_prev_depth;
@@ -597,13 +597,13 @@ var _active_list = [];
         draw_set_halign(fa_center);
         draw_text_l(_px + (_pw * 0.5), _py - 17, "CLOSE LIST");
         draw_set_halign(fa_left);
-        if (_xhov && mouse_check_button_pressed(mb_left)) {
+        if (_xhov && scr_workspace_mouse_check_button_pressed(mb_left)) {
             label_picker_open = false;
             global.any_picker_open = false;
             depth = label_picker_prev_depth;
             
         }
-       if (_xhov && mouse_check_button_pressed(mb_left)) {label_picker_open = false;global.any_picker_open = false;depth = label_picker_prev_depth;}
+       if (_xhov && scr_workspace_mouse_check_button_pressed(mb_left)) {label_picker_open = false;global.any_picker_open = false;depth = label_picker_prev_depth;}
 
         // Row 1: group tabs — LABELS always, KERNAL only for jsr operands
         var _grp_labels_hov = point_in_rectangle(mouse_x, mouse_y, _px, _py + 2, _px + 68, _py + 19);
@@ -612,7 +612,7 @@ var _active_list = [];
         draw_set_color(label_picker_group == "LABELS" ? c_white : c_gray);
         draw_set_font_l(fnt_c64_tiny);
         draw_text_l(_px + 6, _py + 3, "LABELS");
-        if (_grp_labels_hov && mouse_check_button_pressed(mb_left)) {
+        if (_grp_labels_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
             label_picker_group  = "LABELS";
             label_picker_scroll = 0;
         }
@@ -622,7 +622,7 @@ var _active_list = [];
             draw_rectangle(_px + 74, _py + 2, _px + 141, _py + 19, false);
             draw_set_color(label_picker_group == "KERNAL" ? c_white : c_gray);
             draw_text_l(_px + 78, _py + 3, "KERNAL");
-            if (_grp_krn_hov && mouse_check_button_pressed(mb_left)) {
+            if (_grp_krn_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
                 label_picker_group  = "KERNAL";
                 label_picker_scroll = 0;
             }
@@ -641,7 +641,7 @@ var _active_list = [];
             draw_set_font_l(fnt_c64_tiny);
             draw_text_l(_tbx1 + 12, _tby1 + 1, "INC CODE");
         }
-        if (_tbhov && mouse_check_button_pressed(mb_left)) {
+        if (_tbhov && scr_workspace_mouse_check_button_pressed(mb_left)) {
             label_picker_inc_code = !label_picker_inc_code;
             label_picker_list = ["[clear]"];
             with (obj_c64_node) {
@@ -2166,7 +2166,7 @@ if (node_type == "COMMENT" || node_type == "LABEL" || node_type == "EXECUTE") {
 
 // Only show the red pulse if we aren't actively clicking/dragging it
 // (this prevents the "State Transition Flash")
-if (_overlaps && !is_dragging && !mouse_check_button(mb_left)) {
+if (_overlaps && !is_dragging && !scr_workspace_mouse_check_button(mb_left)) {
     var _pulse = abs(sin(current_time * 0.004));
     draw_set_alpha( (_pulse * 0.5));
     draw_set_color(c_red); // flash pulse red
@@ -2200,7 +2200,7 @@ if (variable_global_exists("memory_bar_hover_node") &&
 }
 
 if (array_length(global.selected_nodes) > 1 && instance_exists(global.group_drag_handle)) {
-    var _ctrl_held = keyboard_check(vk_control) || scr_cmd_held();
+    var _ctrl_held = scr_workspace_keyboard_check(vk_control) || scr_cmd_held();
     var _is_clone  = _ctrl_held || global.group_drag_is_clone;
     var _ring_col  = _is_clone ? c_lime : c_yellow;
 
@@ -2506,7 +2506,7 @@ if (!variable_global_exists("debug_hud_active")) global.debug_hud_active = false
 
 // 2. Only let the FIRST node in the room handle the toggle math (prevents 50x flipping)
 if (id == instance_find(obj_c64_node, 0)) {
-    if (keyboard_check_pressed(vk_anykey) && keyboard_lastchar == "@") {
+    if (scr_workspace_keyboard_check_pressed(vk_anykey) && keyboard_lastchar == "@") {
         global.debug_hud_active = !global.debug_hud_active;
         keyboard_lastchar = ""; // Clear it so we don't accidentally double-trigger
     }

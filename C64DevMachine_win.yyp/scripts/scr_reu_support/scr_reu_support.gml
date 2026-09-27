@@ -366,3 +366,175 @@ function scr_reu_build_images(_out_dir) {
     }
     return _paths;
 }
+
+/// Count or clear typed references. Text/code and source filenames are not rewritten.
+function scr_reu_delete_meta_refs(_v, _name, _apply, _level) {
+    if (_level > 16) return 0;
+    var _count = 0;
+    if (is_array(_v)) {
+        for (var _i = 0; _i < array_length(_v); _i++) {
+            if (is_struct(_v[_i]) || is_array(_v[_i]))
+                _count += scr_reu_delete_meta_refs(_v[_i], _name, _apply, _level + 1);
+        }
+    } else if (is_struct(_v)) {
+        var _keys = variable_struct_get_names(_v);
+        for (var _i = 0; _i < array_length(_keys); _i++) {
+            var _k = _keys[_i];
+            var _value = variable_struct_get(_v, _k);
+            var _ref = string_copy(_k, max(1, string_length(_k) - 5), 6) == "_asset" || _k == "asset_name"
+                || _k == "ref_bmp" || _k == "tileset_name" || _k == "bmp"
+                || _k == "coll" || _k == "mask" || _k == "reu";
+            if (_ref && is_string(_value) && _value == _name) {
+                _count++;
+                if (_apply) variable_struct_set(_v, _k, "");
+            } else if (is_struct(_value) || is_array(_value)) {
+                _count += scr_reu_delete_meta_refs(_value, _name, _apply, _level + 1);
+            }
+        }
+    }
+    return _count;
+}
+
+function scr_reu_delete_references(_name, _apply) {
+    var _count = 0;
+    with (obj_c64_node) {
+        var _slots = [];
+        switch (node_type) {
+            case "MACRO_BMP": case "MACRO_SPR": case "MACRO_SID": case "MACRO_SFX":
+            case "MACRO_MAP": case "MACRO_CHR": case "MACRO_SID_SONG":
+            case "MACRO_COLL_LINE": case "MACRO_METAMAP": case "MACRO_ROOMS":
+            case "MACRO_SPR_MASK": _slots = [1]; break;
+            case "MACRO_LOADER": _slots = [1,2]; break;
+            case "MACRO_REU": _slots = [10,11]; break;
+            case "MACRO_TEXT_SCROLL": _slots = [10,13]; break;
+            case "MACRO_ANIM": _slots = [2,3,4,5,6,7,8,9]; break;
+            case "MACRO_COLL_ADV": _slots = [4]; break;
+            case "GET_VAR": _slots = [3]; break;
+            case "MACRO_SID_SOUND": _slots = [21,25]; break;
+            case "MACRO_MOVE_BMP_BLOCK": _slots = [17,20]; break;
+            case "NEW_STR":
+                if (array_length(instructions[0]) > 5 && instructions[0][4] == 1) _slots = [5];
+                break;
+        }
+        for (var _i = 0; _i < array_length(_slots); _i++) {
+            var _slot = _slots[_i];
+            if (array_length(instructions[0]) > _slot && instructions[0][_slot] == _name) {
+                _count++;
+                if (_apply) instructions[0][_slot] = "";
+            }
+        }
+    }
+    for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
+        var _a = ds_list_find_value(asset_list, _i);
+        if (_a.name == _name) continue;
+        if (variable_struct_exists(_a, "linked_assets")) {
+            for (var _j = array_length(_a.linked_assets) - 1; _j >= 0; _j--) {
+                if (_a.linked_assets[_j].asset_name == _name) {
+                    _count++;
+                    if (_apply) array_delete(_a.linked_assets, _j, 1);
+                }
+            }
+        }
+        if (variable_struct_exists(_a, "meta"))
+            _count += scr_reu_delete_meta_refs(_a.meta, _name, _apply, 0);
+    }
+    return _count;
+}
+
+/// DEL in a manifest: remove the project asset and its structured links.
+function scr_reu_delete_project_asset(_name) {
+    var _index = -1;
+    for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
+        if (ds_list_find_value(asset_list, _i).name == _name) { _index = _i; break; }
+    }
+    if (_index < 0) return false;
+    var _asset = ds_list_find_value(asset_list, _index);
+    var _owner = ds_list_find_value(asset_list, viewer_asset);
+    var _refs = scr_reu_delete_references(_name, false);
+    var _message = "Delete asset \"" + _name + "\" from the project?\n\n"
+        + "Remove " + string(_refs) + " asset links, including REU entries. Linked rooms and nodes will need replacement assets."
+        + "\n\nThis cannot be undone. Original files on disk are kept."
+        + "\nCustom code and numeric asset indices are not rewritten.";
+    if (!scr_show_question_bool(_message)) { mouse_clear(mb_left); return false; }
+    return scr_reu_commit_project_asset_delete(_index, _owner);
+}
+
+/// Internal commit, called only after the confirmation above.
+function scr_reu_commit_project_asset_delete(_index, _owner) {
+    if (_index < 0 || _index >= ds_list_size(asset_list)) return false;
+    var _asset = ds_list_find_value(asset_list, _index);
+    var _name = _asset.name;
+    scr_asset_inline_editor_close_all();
+    if (spred64_v2.active) scr_spred64_v2_close(true);
+    scr_reu_delete_references(_name, true);
+        if (buffer_exists(_asset.buffer)) buffer_delete(_asset.buffer);
+
+       if (_asset.type == "SPRITE_SET") {
+            var _sprites_dir = working_directory + "temp/sprites";
+            for (var _si = 0; _si < 64; _si++) {
+                var _png = _sprites_dir + "/" + _asset.name + "_" + string(_si) + ".png";
+                if (file_exists(_png)) file_delete(_png);
+            }
+            if (variable_struct_exists(_asset.meta, "spr_sprites")) {
+                var _del_len = array_length(_asset.meta.spr_sprites);
+                for (var _si = 0; _si < _del_len; _si++) {
+                    if (_asset.meta.spr_sprites[_si] != -1 &&
+                        sprite_exists(_asset.meta.spr_sprites[_si]))
+                        sprite_delete(_asset.meta.spr_sprites[_si]);
+                }
+            }
+            if (variable_struct_exists(_asset.meta, "preview_surf") &&
+                surface_exists(_asset.meta.preview_surf))
+                surface_free(_asset.meta.preview_surf);
+        }
+
+        if (_asset.type == "BITMAP") {
+            if (variable_struct_exists(_asset.meta, "preview_surf") &&
+                surface_exists(_asset.meta.preview_surf))
+                surface_free(_asset.meta.preview_surf);
+        }
+            
+        if (_asset.type == "CHAR_SET") {
+            if (variable_struct_exists(_asset.meta, "preview_surf") &&
+                surface_exists(_asset.meta.preview_surf))
+                surface_free(_asset.meta.preview_surf);
+            if (variable_struct_exists(_asset.meta, "preview_surf_mc") &&
+                surface_exists(_asset.meta.preview_surf_mc))
+                surface_free(_asset.meta.preview_surf_mc);
+        }
+
+        if ((_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER")) {
+            // Rendered auditions are keyed on instrument bytecode, so a deleted
+            // asset's entries can never be looked up again — they would just sit
+            // allocated for the rest of the session. Flushing the whole cache is
+            // heavy-handed (other assets' entries rebuild on next use) but it is
+            // the only teardown path, and deletion is rare.
+            scr_sound_preview_cache_clear();
+        }
+
+
+    ds_list_delete(asset_list, _index);
+    viewer_asset = -1;
+    for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
+        var _a = ds_list_find_value(asset_list, _i);
+        if (_a == _owner) viewer_asset = _i;
+        if (_a.type == "LOAD_REU") scr_reu_repack(_a);
+    }
+    viewer_open = (viewer_asset >= 0);
+    bb_return_asset = -1;
+    hover_idx = -1;
+    reu_drag_row = -1;
+    reu_drag_over = -1;
+    reu_name_click = undefined;
+    load_reu_scroll = max(0, load_reu_scroll - 1);
+    asset_name_map_tick = -1;
+    asset_name_map_size = -1;
+    global.addresses_dirty = true;
+    global.memory_bar_dirty = true;
+    global.memory_bar_hover_asset = -1;
+    global.autosave_dirty = true;
+    if (global.conflict_popup_asset_a == _name || global.conflict_popup_asset_b == _name)
+        global.conflict_popup_open = false;
+    mouse_clear(mb_left);
+    return true;
+}

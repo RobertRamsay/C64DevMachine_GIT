@@ -1,3 +1,4 @@
+if (scr_workspace_input_blocked()) exit;
 // Restore cached macro sizes before hit-testing and layout, even off-screen.
 if (node_type == "MACRO_VWAIT" || node_type == "MACRO_JOY" || node_type == "MACRO_HUD" || (node_type == "MACRO_SFX" && height_dirty) || (macro_layout_type == node_type
 && (height != macro_layout_height || cached_height != macro_layout_height)))
@@ -30,7 +31,7 @@ if (scr_node_is_hidden(id)) exit;
 // (top → bottom breaks a tie). Falls back to the reverse direction when the
 // first ORG's output is already wired elsewhere.
 if (node_type == "ORG" && amb_btn_live && instance_exists(org_amb_partner) &&
-    mouse_check_button_pressed(mb_left) &&
+    scr_workspace_mouse_check_button_pressed(mb_left) &&
     point_in_rectangle(mouse_x, mouse_y, amb_btn_x1, amb_btn_y1, amb_btn_x2, amb_btn_y2)) {
     var _wa = id;
     var _wb = org_amb_partner;
@@ -81,7 +82,7 @@ if (node_type == "INIT" && array_length(instructions) > 0) {
     var _btn_x2 = _btn_x1 + _btn_w;
     var _btn_y2 = _btn_y1 + _btn_h;
 
-    if (mouse_check_button_pressed(mb_left)
+    if (scr_workspace_mouse_check_button_pressed(mb_left)
     && point_in_rectangle(mouse_x, mouse_y, _btn_x1, _btn_y1, _btn_x2, _btn_y2)) {
         instructions          = [];
         total_node_size       = 0;
@@ -126,7 +127,7 @@ if (node_type == "LABEL" && !is_dragging && !global.any_picker_open) {
     }
 
     // Press Enter while this LABEL is broadcasting -> cycle camera through referencing nodes
-    if (global.ref_highlight_source == id && keyboard_check_pressed(vk_enter)
+    if (global.ref_highlight_source == id && scr_workspace_keyboard_check_pressed(vk_enter)
         && !obj_workspace_manager.is_entering_text
 		&& !global.mouse_in_asset_panel)
 		{
@@ -178,7 +179,7 @@ if (!is_dragging && !global.any_picker_open) {
     var _tt_hdr_x1 = x + x_indent + (width * 0.8);
     var _tt_hdr_x2 = x + x_indent + width;
     var _tt_hov = point_in_rectangle(mouse_x, mouse_y, _tt_hdr_x1, y, _tt_hdr_x2, y + 24)
-               && !mouse_check_button(mb_left) && !mouse_check_button(mb_right) && !mouse_check_button(mb_middle);
+               && !scr_workspace_mouse_check_button(mb_left) && !scr_workspace_mouse_check_button(mb_right) && !scr_workspace_mouse_check_button(mb_middle);
 
     if (_tt_hov) {
         tooltip_hover_timer += 1;
@@ -204,7 +205,7 @@ if (global.group_drag_active && id != global.group_drag_handle) {
 /////////////////////////////////////////////////////////////////
 // DRAG-OVER-SHELF DESTROY
 /////////////////////////////////////////////////////////////////
-if (!obj_workspace_manager.expert_mode && is_dragging && mouse_check_button_released(mb_left)) {
+if (!obj_workspace_manager.expert_mode && is_dragging && scr_workspace_mouse_check_button_released(mb_left)) {
     var _cam_x     = obj_workspace_manager.cam_x;
     var _cam_zoom  = obj_workspace_manager.cam_zoom;
     var _screen_x  = (x - _cam_x) / _cam_zoom;
@@ -223,7 +224,7 @@ if (!obj_workspace_manager.expert_mode && is_dragging && mouse_check_button_rele
 /////////////////////////////////////////////////////////////////
 // RMB DESTROY right click delete right mouse button
 /////////////////////////////////////////////////////////////////
-if (mouse_check_button_pressed(mb_right)) {
+if (scr_workspace_mouse_check_button_pressed(mb_right)) {
 
     // Wire dot right-click — check BEFORE the rectangle guard since dots sit on edges
     if (node_type == "ORG" ) {
@@ -461,7 +462,7 @@ if (label_picker_open) {
         label_picker_filter_char = "";
         keyboard_string          = "";
         label_picker_was_open    = true;
-    } else if (keyboard_check_pressed(vk_space) || keyboard_check_pressed(vk_backspace) || keyboard_check_pressed(vk_delete)) {
+    } else if (scr_workspace_keyboard_check_pressed(vk_space) || scr_workspace_keyboard_check_pressed(vk_backspace) || scr_workspace_keyboard_check_pressed(vk_delete)) {
         label_picker_filter_char = "";
         label_picker_scroll      = 0;
         keyboard_string          = "";
@@ -477,7 +478,7 @@ if (label_picker_open) {
     label_picker_was_open = false;
 }
 
-if (label_picker_open && mouse_check_button_pressed(mb_left)) {
+if (label_picker_open && scr_workspace_mouse_check_button_pressed(mb_left)) {
    // ---- ASSET PICKER (BYTE_DATA / TEXT_DATA / LINE_COLL) ----
     if (label_picker_mode == "BYTE_ASSET" || label_picker_mode == "TEXT_ASSET"
 	 || label_picker_mode == "SOUND_ASSET" || label_picker_mode == "LINE_ASSET"
@@ -878,10 +879,10 @@ if (label_picker_open && mouse_check_button_pressed(mb_left)) {
 /////////////////////////////////////////////////////////////////
 // B0. ALT+CLICK — rename header (custom_title override)
 /////////////////////////////////////////////////////////////////
-var _alt_click = (mouse_check_button_pressed(mb_left) && keyboard_check(vk_alt));
+var _alt_click = (scr_workspace_mouse_check_button_pressed(mb_left) && scr_workspace_keyboard_check(vk_alt));
 
 var _dbl_click = false;
-if (mouse_check_button_pressed(mb_left)) {
+if (scr_workspace_mouse_check_button_pressed(mb_left)) {
     if (dbl_click_timer > 0) {
         _dbl_click = true;
         dbl_click_timer = 0;
@@ -957,7 +958,7 @@ if ((_alt_click || _dbl_click) && !is_dragging && !_mouse_in_gui) {
 /////////////////////////////////////////////////////////////////
 // B. CTRL+CLICK — copy node and drag
 /////////////////////////////////////////////////////////////////
-if (mouse_check_button_pressed(mb_left) && (keyboard_check(vk_control) || scr_cmd_held()) && !is_dragging && !_mouse_in_gui && node_type != "NAMED_LOC") {
+if (scr_workspace_mouse_check_button_pressed(mb_left) && (scr_workspace_keyboard_check(vk_control) || scr_cmd_held()) && !is_dragging && !_mouse_in_gui && node_type != "NAMED_LOC") {
     if (point_in_rectangle(mouse_x, mouse_y, draw_x, y, draw_x + width, y + height)) {
 
         // ---- GROUP CLONE DRAG ----
@@ -1111,7 +1112,7 @@ if (mouse_check_button_pressed(mb_left) && (keyboard_check(vk_control) || scr_cm
 /////////////////////////////////////////////////////////////////
 // C. LMB CLICK — dispatched to per-type scripts
 /////////////////////////////////////////////////////////////////
-if (mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !global.any_picker_open && !label_picker_open && !instance_exists(obj_ui_color_picker) && _cam_zoom < 3.55 && !global.was_editor_open) {
+if (scr_workspace_mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse_in_gui && !global.any_picker_open && !label_picker_open && !instance_exists(obj_ui_color_picker) && _cam_zoom < 3.55 && !global.was_editor_open) {
    
 
     switch (node_type) {
@@ -1941,7 +1942,7 @@ if (node_type == "LABEL" && is_connected && org_parent == noone &&
 /////////////////////////////////////////////////////////////////
 // C2. WIRE DOT DRAG & RELEASE
 /////////////////////////////////////////////////////////////////
-if (mouse_check_button_released(mb_left) && instance_exists(global.wire_drag_node)) {
+if (scr_workspace_mouse_check_button_released(mb_left) && instance_exists(global.wire_drag_node)) {
     var _drag_src     = global.wire_drag_node;
     var _drag_is_out  = global.wire_drag_is_out;
     var _dot_r        = 5;
@@ -1986,7 +1987,7 @@ if (mouse_check_button_released(mb_left) && instance_exists(global.wire_drag_nod
 /////////////////////////////////////////////////////////////////
 if (node_type == "INIT") {
     is_connected = true;
-    if (mouse_check_button_pressed(mb_left) && !_mouse_in_gui &&
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !_mouse_in_gui &&
         !obj_workspace_manager.is_panning && !instance_exists(obj_ui_color_picker) &&
         _cam_zoom < 3.55 && !label_picker_open && !global.any_picker_open &&
         !global.drag_claim_taken &&
@@ -2023,7 +2024,7 @@ if (node_type == "INIT") {
     var _is_macro_child = (macro_owner != noone);
 
 // Drag start — header bar only
-if (mouse_check_button_pressed(mb_left) && !_mouse_in_gui && !obj_workspace_manager.is_panning && !instance_exists(obj_ui_color_picker) && _cam_zoom < 3.55 && !label_picker_open && !global.any_picker_open) {
+if (scr_workspace_mouse_check_button_pressed(mb_left) && !_mouse_in_gui && !obj_workspace_manager.is_panning && !instance_exists(obj_ui_color_picker) && _cam_zoom < 3.55 && !label_picker_open && !global.any_picker_open) {
          if (point_in_rectangle(mouse_x, mouse_y, draw_x, y, draw_x + width, y + 24) &&
             !(node_type == "LABEL" && array_length(instructions) > 0 && array_length(instructions[0]) > 1 && string(instructions[0][1]) == "sid_exit")) {
 
@@ -2069,7 +2070,7 @@ if (mouse_check_button_pressed(mb_left) && !_mouse_in_gui && !obj_workspace_mana
 
             // ---- GROUP MOVE DRAG ----
             if (id == global.group_drag_handle && array_length(global.selected_nodes) > 1
-                && !(keyboard_check(vk_control) || scr_cmd_held())) {
+                && !(scr_workspace_keyboard_check(vk_control) || scr_cmd_held())) {
 
                 var _handle_spine = org_parent;
                 var _filtered = [];
@@ -2200,7 +2201,7 @@ if (is_dragging && !_is_group_follower) {
 		
 		if (x != _prev_x || y != _prev_y) {
 		    was_dragged = true;
-		    if (!is_free_node && !_is_macro_child && !mouse_check_button_released(mb_left)) {
+		    if (!is_free_node && !_is_macro_child && !scr_workspace_mouse_check_button_released(mb_left)) {
 		        if (is_connected) {
 		            if (instance_exists(obj_workspace_manager)) obj_workspace_manager.flow_overlay_dirty = true;
 		        }
@@ -2382,7 +2383,7 @@ if (global.wedge_preview_y >= 0) {
 
  
  // Drag release
-            if (mouse_check_button_released(mb_left)) {
+            if (scr_workspace_mouse_check_button_released(mb_left)) {
                 // Restore wedge-shifted nodes BEFORE D2/D3 compute insert position
                 with (obj_c64_node) {
                     if (wedge_y_stored >= 0) { y = wedge_y_stored; wedge_y_stored = -1; }
@@ -2551,7 +2552,7 @@ if (global.wedge_preview_y >= 0) {
     // D2. MAIN SPINE WEDGE INSERTION
     /////////////////////////////////////////////////////////////////
 
-if (!_is_group_follower && mouse_check_button_released(mb_left) && was_dragged &&
+if (!_is_group_follower && scr_workspace_mouse_check_button_released(mb_left) && was_dragged &&
         !_is_macro_child && org_parent == noone && !global.box_drag_active && !global.init_collapsed &&
         node_type != "ORG" && node_type != "INIT" && !is_free_node) {
 
@@ -2701,7 +2702,7 @@ var _init_top = 0;
     /////////////////////////////////////////////////////////////////
     // D3. ORG CHAIN WEDGE INSERTION
     /////////////////////////////////////////////////////////////////
-if (!_is_group_follower && mouse_check_button_released(mb_left) && was_dragged &&
+if (!_is_group_follower && scr_workspace_mouse_check_button_released(mb_left) && was_dragged &&
         !_is_macro_child && org_parent == noone && !global.box_drag_active &&
         node_type != "ORG" && node_type != "INIT" && !is_free_node) {
 
@@ -2839,7 +2840,7 @@ var _is_var_node = (node_type == "NAMED_LOC" || node_type == "NEW_STR");
         }
     }
 
-if (mouse_check_button_released(mb_left)) {
+if (scr_workspace_mouse_check_button_released(mb_left)) {
         if (was_dragged) {
             global.undo_dirty = true;
             
@@ -3007,11 +3008,11 @@ if (is_connected && prev_height != height && !global.drop_occurred_this_frame) {
 /////////////////////////////////////////////////////////////////
 // E2. TAB INDENT
 /////////////////////////////////////////////////////////////////
-if (keyboard_check_pressed(vk_tab) && !obj_workspace_manager.is_entering_text
+if (scr_workspace_keyboard_check_pressed(vk_tab) && !obj_workspace_manager.is_entering_text
     && !obj_workspace_manager.code_editor_open
     && array_length(global.selected_nodes) == 0) {
     if (point_in_rectangle(mouse_x, mouse_y, x + x_indent, y, x + x_indent + width, y + height)) {
-        if (keyboard_check(vk_shift)) {
+        if (scr_workspace_keyboard_check(vk_shift)) {
           
             x_indent = clamp(x_indent - 40, -120, 120);
         } else {
@@ -3028,7 +3029,7 @@ if (keyboard_check_pressed(vk_tab) && !obj_workspace_manager.is_entering_text
 // to user clicks, or to nodes that already have exit-label bookkeeping.
 // Idle frames skip the entire section.
 /////////////////////////////////////////////////////////////////
-var _f_click_frame = (mouse_check_button_pressed(mb_left) || mouse_check_button_released(mb_left));
+var _f_click_frame = (scr_workspace_mouse_check_button_pressed(mb_left) || scr_workspace_mouse_check_button_released(mb_left));
 var _f_needs_run   = _f_click_frame
                   || (node_type == "MACRO_SID")
                   || (node_type == "LABEL" && array_length(instructions) > 0

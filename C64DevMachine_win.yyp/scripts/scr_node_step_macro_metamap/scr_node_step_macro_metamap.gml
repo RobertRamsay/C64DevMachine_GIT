@@ -6,7 +6,7 @@ function scr_node_step_macro_metamap(_draw_x) {
 
     // TILESET PICKER click (row 0)
     var _pb_y = y + header_h + pad;
-    if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open &&
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open &&
         point_in_rectangle(mouse_x, mouse_y,
             _draw_x + 64, _pb_y - 2,
             _draw_x + width - 8, _pb_y + 14)) {
@@ -21,7 +21,7 @@ function scr_node_step_macro_metamap(_draw_x) {
     }
 
     // MAP row (row 1) — LIT/VAR toggle, var-name picker, or LIT spinner
-    if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
         var _mi_ly = y + header_h + pad + line_h + 2;
         if (array_length(instructions[0]) > 6 && is_string(instructions[0][6])) {
             var _stray_s = instructions[0][6];
@@ -93,7 +93,7 @@ function scr_node_step_macro_metamap(_draw_x) {
     }
 
     // ZP SOURCE POINTER click — open hex input
-    if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
         var _zp_ly = y + header_h + pad + (line_h + 2) * 2 + line_h * 2 + (line_h + 4);
         var _zp_x1 = _draw_x + 140;
         var _zp_x2 = _zp_x1 + 52;

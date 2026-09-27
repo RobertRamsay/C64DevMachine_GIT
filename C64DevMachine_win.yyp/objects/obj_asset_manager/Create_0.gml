@@ -714,12 +714,37 @@ manifest_draw_divider = function(_x, _y1, _y2, _type) {
     draw_line(_x+2, _y1+3, _x+2, _y1+10);
 };
 
-// Read-only hover card: use existing GPU caches, never import or rebuild assets.
+// Persistent media card: hovering selects an asset; controls audition without editing it.
+manifest_preview_name = "";
+manifest_preview_owner = undefined;
+manifest_preview_y = 300;
+manifest_preview_rect = [0,0,0,0];
+sid_asset_preview = undefined;
+sid_asset_name = "";
+sid_asset_song = 0;
+sid_asset_message = "";
 manifest_draw_preview = function(_asset, _viewer_x, _row_y) {
+    var _owner = ds_list_find_value(asset_list, viewer_asset);
+    if (manifest_preview_owner != _owner) {
+        manifest_preview_owner = _owner;
+        manifest_preview_name = "";
+    }
+    if (!is_undefined(_asset)) {
+        if (manifest_preview_name != _asset.name) scr_sid_asset_stop();
+        manifest_preview_name = _asset.name;
+        manifest_preview_y = _row_y;
+    } else {
+        _asset = scr_reu_find_asset(manifest_preview_name);
+        _row_y = manifest_preview_y;
+    }
     if (is_undefined(_asset) || !is_struct(_asset.meta)) return;
     if (manifest_split_drag || reu_drag_row >= 0 || load_reu_sb_drag
     || load_reu_picker_open || load_org_picker_open || global.any_picker_open) return;
     var _meta = _asset.meta;
+    var _is_sid = _asset.type == "SID_MUSIC";
+    var _is_mask = _asset.type == "SPRITE_MASK";
+    var _is_line = _asset.type == "LINE_COLL";
+    if (_asset.type == "BITMAP") scr_room_map_bmp_surf(_asset.name);
     var _surface = -1;
     var _keys = ["preview_surf", "preview_surf_clean", "preview_surf_mc"];
     for (var _k = 0; _k < array_length(_keys); _k++) {
@@ -735,7 +760,7 @@ manifest_draw_preview = function(_asset, _viewer_x, _row_y) {
     for (var _s = 0; _s < _count; _s++) {
         if (sprite_exists(_sprites[_s])) { _has_sprite = true; break; }
     }
-    if (_surface == -1 && !_has_sprite) return;
+    if (_surface == -1 && !_has_sprite && !_is_sid && !_is_mask && !_is_line) return;
 
     var _old_font = draw_get_font();
     var _old_color = draw_get_color();
@@ -755,13 +780,14 @@ manifest_draw_preview = function(_asset, _viewer_x, _row_y) {
     var _name_h = min(64, max(14, string_height_ext_l(_asset.name, 14, _inner)));
     var _cols = max(1, ceil(sqrt(_count)));
     var _rows = max(1, ceil(_count / _cols));
-    var _source_w = _has_sprite ? _cols * 52 : surface_get_width(_surface);
-    var _source_h = _has_sprite ? _rows * 46 : surface_get_height(_surface);
+    var _source_w = _is_sid ? 240 : ((_is_mask || _is_line) ? 320 : (_has_sprite ? _cols * 52 : surface_get_width(_surface)));
+    var _source_h = _is_sid ? 130 : (_is_mask ? 200 : (_is_line ? 256 : (_has_sprite ? _rows * 46 : surface_get_height(_surface))));
     var _scale = min(_inner / _source_w, 300 / _source_h);
     var _image_w = _source_w * _scale;
     var _image_h = _source_h * _scale;
-    var _h = _name_h + _image_h + 46;
+    var _h = _name_h + _image_h + ((_is_mask || _is_line) ? 78 : 46);
     var _y = clamp(_row_y - _h * 0.5, 140, max(140, display_get_gui_height() - _h - 20));
+    manifest_preview_rect = [_x,_y,_x+_w,_y+_h];
     draw_set_color(make_color_rgb(16,19,29));
     draw_rectangle(_x, _y, _x + _w, _y + _h, false);
     draw_set_color(make_color_rgb(100,200,180));
@@ -781,7 +807,35 @@ manifest_draw_preview = function(_asset, _viewer_x, _row_y) {
     var _iy = _y + _name_h + 30;
     draw_set_color(variable_struct_exists(_meta, "bg_col") ? scr_c64_pepto_colour(_meta.bg_col) : c_black);
     draw_rectangle(_ix, _iy, _ix + _image_w, _iy + _image_h, false);
-    if (_has_sprite) {
+    if (_is_sid) {
+        scr_sid_asset_controls(_asset, _x+8, _iy, _inner);
+    } else if (_is_mask) {
+        var _ref = scr_room_map_bmp_surf(_meta.ref_bmp);
+        if (surface_exists(_ref)) draw_surface_stretched(_ref, _ix, _iy, _image_w, _image_h);
+        scr_sprmask_overlay(_meta);
+        draw_surface_stretched(_meta.ov_surf, _ix, _iy, _image_w, _image_h);
+        draw_set_color(c_fuchsia); draw_text_l(_x+8, _iy+_image_h+6, "MAGENTA: always behind");
+        draw_set_color(c_aqua); draw_text_l(_x+8, _iy+_image_h+20, "CYAN: behind above Y line");
+    } else if (_is_line) {
+        var _ref = variable_struct_exists(_meta,"ref_asset_name") ? scr_room_map_bmp_surf(_meta.ref_asset_name) : -1;
+        if (surface_exists(_ref)) {
+            var _ox = variable_struct_exists(_meta,"ref_offset_x") ? _meta.ref_offset_x : 0;
+            var _oy = variable_struct_exists(_meta,"ref_offset_y") ? _meta.ref_offset_y : 0;
+            // Clip shifted reference bitmap to the preview canvas.
+            var _sx = max(0,-_ox), _sy = max(0,-_oy);
+            var _sw = min(surface_get_width(_ref)-_sx,320-max(0,_ox));
+            var _sh = min(surface_get_height(_ref)-_sy,256-max(0,_oy));
+            if (_sw > 0 && _sh > 0) draw_surface_part_ext(_ref,_sx,_sy,_sw,_sh,_ix+max(0,_ox)*_scale,_iy+max(0,_oy)*_scale,_scale,_scale,c_white,1);
+        }
+        var _lines = variable_struct_exists(_meta,"lines") ? _meta.lines : [];
+        var _colors = []; for(var _t=0; _t<8; _t++) array_push(_colors,scr_c64_pepto_colour(_t));
+        for (var _l=0; _l<array_length(_lines); _l++) {
+            var _ln=_lines[_l]; draw_set_color(_colors[clamp(_ln.type,0,7)]);
+            draw_line_width(_ix+_ln.x1*_scale,_iy+_ln.y1*_scale,_ix+_ln.x2*_scale,_iy+_ln.y2*_scale,2);
+        }
+        draw_set_color(c_white); draw_text_l(_x+8,_iy+_image_h+6,string(array_length(_lines))+" collision lines");
+        draw_set_color(c_ltgray); draw_text_l(_x+8,_iy+_image_h+20,"Colour indicates line type");
+    } else if (_has_sprite) {
         for (var _s = 0; _s < _count; _s++) {
             var _sprite = _sprites[_s];
             if (!sprite_exists(_sprite)) continue;

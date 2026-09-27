@@ -1,3 +1,4 @@
+scr_sid_asset_stop();
 // Stop preview instances before releasing their cached sound assets/buffers.
 scr_sound_preview_cache_clear();
 

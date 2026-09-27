@@ -2,7 +2,7 @@
 /// @param {Id.Instance} _node
 function scr_node_step_macro_map_switch(_node) {
 
-    if (!mouse_check_button_pressed(mb_left)) { exit; }
+    if (!scr_workspace_mouse_check_button_pressed(mb_left)) { exit; }
     if (global.ui_click_consumed) { exit; }
     if (global.any_picker_open) { exit; }
 

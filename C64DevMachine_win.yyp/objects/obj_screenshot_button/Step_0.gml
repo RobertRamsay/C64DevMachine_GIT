@@ -1,3 +1,4 @@
+if (scr_workspace_input_blocked()) exit;
 
    var _gui_x = device_mouse_x_to_gui(0);
     var _gui_y = device_mouse_y_to_gui(0);
@@ -7,7 +8,7 @@ if (point_in_rectangle(_gui_x, _gui_y, x - 20, y - 20, x + 20, y + 20)) {
 }
 
 
-if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
+if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
     // Get the mouse position relative to the GUI layer
  
 
@@ -17,7 +18,7 @@ if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.
         var _filepath = get_save_filename("PNG Image (*.png)|*.png", "C64DM_screenshot_");
         // A native file dialog takes focus, so the key-up that ends the keypress is
         // delivered to the dialog and not to the game. GameMaker is left thinking the
-        // key is still held, and keyboard_check_pressed() needs an up->down edge — so
+        // key is still held, and scr_workspace_keyboard_check_pressed() needs an up->down edge — so
         // ESC silently stops working until the input state is reset. This is why ESC
         // only failed after SOME asset operations: scr_asset_sid_import already did
         // this, every other importer did not.

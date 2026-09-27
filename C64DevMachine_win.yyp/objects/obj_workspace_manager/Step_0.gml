@@ -92,7 +92,7 @@ if (welcome_open) {
     var _cbx2 = _cbx1 + 28;
     var _cby2 = _cby1 + 28;
     if (point_in_rectangle(_wmx, _wmy, _cbx1, _cby1, _cbx2, _cby2)
-        && mouse_check_button_pressed(mb_left)) {
+        && scr_workspace_mouse_check_button_pressed(mb_left)) {
         // The particle system works in room space (it tracks node positions
         // on the canvas), but this panel is drawn in GUI space — convert the
         // panel's screen rectangle into the equivalent room rectangle so the
@@ -120,7 +120,7 @@ if (welcome_open) {
     // TAKE THE TOUR / BACK button (bottom-right) and the tour list
     var _tg = scr_tour_welcome_geom(_px, _py, _pw, _ph);
     var _tour_pick = -1;
-    if (welcome_open && mouse_check_button_pressed(mb_left)
+    if (welcome_open && scr_workspace_mouse_check_button_pressed(mb_left)
         && point_in_rectangle(_wmx, _wmy, _tg.btn[0], _tg.btn[1], _tg.btn[2], _tg.btn[3])) {
         if (welcome_mode == 0) {
             welcome_mode        = 1;
@@ -132,15 +132,15 @@ if (welcome_open) {
         var _tours     = scr_tour_list();
         var _max_scrl  = max(0, array_length(_tours) - _tg.rows);
         if (point_in_rectangle(_wmx, _wmy, _tg.list[0], _tg.list[1], _tg.list[2], _tg.list[3])) {
-            if (mouse_wheel_up()) {
+            if (scr_workspace_mouse_wheel_up()) {
                 welcome_tour_scroll--;
             }
-            if (mouse_wheel_down()) {
+            if (scr_workspace_mouse_wheel_down()) {
                 welcome_tour_scroll++;
             }
         }
         welcome_tour_scroll = clamp(welcome_tour_scroll, 0, _max_scrl);
-        if (mouse_check_button_pressed(mb_left)) {
+        if (scr_workspace_mouse_check_button_pressed(mb_left)) {
             for (var _tr = 0; _tr < _tg.rows; _tr++) {
                 var _ti = welcome_tour_scroll + _tr;
                 if (_ti >= array_length(_tours)) {
@@ -159,7 +159,7 @@ if (welcome_open) {
         var _chkx2 = _chkx1 + 18;
         var _chky2 = _chky1 + 18;
         if (point_in_rectangle(_wmx, _wmy, _chkx1, _chky1, _chkx2, _chky2)
-            && mouse_check_button_pressed(mb_left)) {
+            && scr_workspace_mouse_check_button_pressed(mb_left)) {
             welcome_hide_checked = !welcome_hide_checked;
             scr_welcome_save_pref(welcome_hide_checked);
         }
@@ -184,7 +184,7 @@ if (welcome_open) {
 
 // F1 reopens the welcome screen at any time (except in the Music Maker,
 // where F1-F4 are its transport keys)
-if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(vk_f1) && !scr_music_maker_is_open()) {
+if (!is_entering_text && !global.is_any_text_active && scr_workspace_keyboard_check_pressed(vk_f1) && !scr_music_maker_is_open()) {
     welcome_open = true;
     welcome_mode = 0;
 }
@@ -194,8 +194,8 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(vk
 // changes is instant instead of re-running a full compile+assemble pass.
 // Deliberately excludes any modifier so it doesn't clash with existing
 // Ctrl/Shift/Cmd+F bindings.
-if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(ord("F")) && !box_popup_open && !code_editor_open
-&& !keyboard_check(vk_control) && !keyboard_check(vk_shift) && !keyboard_check(vk_alt) && !scr_cmd_held()) {
+if (!is_entering_text && !global.is_any_text_active && scr_workspace_keyboard_check_pressed(ord("F")) && !box_popup_open && !code_editor_open
+&& !scr_workspace_keyboard_check(vk_control) && !scr_workspace_keyboard_check(vk_shift) && !scr_workspace_keyboard_check(vk_alt) && !scr_cmd_held()) {
     flow_overlay_mode = (flow_overlay_mode + 1) mod 3; // Cycles 0 -> 1 -> 2 -> 0
 	
 
@@ -230,7 +230,7 @@ if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(or
 // no F-key press needed while the overlay is actively showing. The dirty
 // flag is only ever set for a genuine connected move/add/delete (see
 // obj_c64_node), so this fires once per real change, not every release.
-if (mouse_check_button_released(mb_left) && flow_overlay_mode > 0 && flow_overlay_dirty) {
+if (scr_workspace_mouse_check_button_released(mb_left) && flow_overlay_mode > 0 && flow_overlay_dirty) {
     flow_overlay_pending_toast_text = "FLOW LINES updated";
     flow_overlay_pending_toast_col  = c_yellow;
     global.qmenu_toast_text = "CONSTRUCTING FLOW DATA";
@@ -261,7 +261,7 @@ if (scr_code_import_step()) {
 
 	if (save_pending) {
     save_pending = false;
-    if (keyboard_check(vk_shift)) {
+    if (scr_workspace_keyboard_check(vk_shift)) {
         scr_save_workspace_as();
     } else {
         if (global.workspace_path != "") {
@@ -294,11 +294,11 @@ if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) {
     }
     }
 
-    if (keyboard_check_pressed(vk_f5)) {
+    if (scr_workspace_keyboard_check_pressed(vk_f5)) {
         scr_asset_inline_editor_commit_all();
         trigger_build = true;
     }
-    if (keyboard_check_pressed(vk_f4) && !scr_music_maker_is_open()) {   // F4 = STOP in the Music Maker
+    if (scr_workspace_keyboard_check_pressed(vk_f4) && !scr_music_maker_is_open()) {   // F4 = STOP in the Music Maker
         scr_asset_inline_editor_commit_all();
         trigger_export = true;
     }
@@ -307,7 +307,7 @@ if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) {
     // without a saved address the overlay opens instead of building, or the
     // compile would run with nowhere to send the PRG. With an IP, commit the
     // pending edit and set both flags so the build routes to the Ultimate.
-    if (keyboard_check_pressed(vk_f6) && !global.asset_reload_in_progress) {
+    if (scr_workspace_keyboard_check_pressed(vk_f6) && !global.asset_reload_in_progress) {
         if (global.c64u_ip == "") {
             global.c64u_overlay_active = true;
             global.c64u_overlay_text   = "";
@@ -490,13 +490,13 @@ if (global.question_result == "kernal_unlock_no") {
     global.pending_unlock_type = "";
 }
 
-if ( (keyboard_check_pressed(223)) or (keyboard_check_pressed(ord("I")))) and !opcode_finder_active and !is_entering_text and !box_popup_open and !keyboard_check(vk_shift) and !global.any_picker_open {
+if ( (scr_workspace_keyboard_check_pressed(223)) or (scr_workspace_keyboard_check_pressed(ord("I")))) and !opcode_finder_active and !is_entering_text and !box_popup_open and !scr_workspace_keyboard_check(vk_shift) and !global.any_picker_open {
 	
     global.show_stats = !global.show_stats;
     with (obj_c64_node) { stats_cache_dirty = true; }
 }
 
-if (keyboard_check_pressed(vk_delete) && array_length(global.selected_nodes) > 0 && !global.any_picker_open) {
+if (scr_workspace_keyboard_check_pressed(vk_delete) && array_length(global.selected_nodes) > 0 && !global.any_picker_open) {
 
     // ------------------------------------------------------------
     // BATCH VARIABLE DELETE REFERENCE GUARD
@@ -654,7 +654,7 @@ if (label_search_open) {
         }
 
         // Paste (first line only, trailing ':' dropped so "name:" pastes as "name")
-        if ((keyboard_check(vk_control) || scr_cmd_held()) && keyboard_check_pressed(ord("V"))) {
+        if ((scr_workspace_keyboard_check(vk_control) || scr_cmd_held()) && scr_workspace_keyboard_check_pressed(ord("V"))) {
             var _lsp = string_replace_all(clipboard_get_text(), "\r", "");
             var _lsnl = string_pos("\n", _lsp);
             if (_lsnl > 0) {
@@ -674,7 +674,7 @@ if (label_search_open) {
         }
 
         // Chords (Ctrl/Cmd + key) must not leave their letter behind in the query
-        if ((keyboard_check(vk_control) || scr_cmd_held()) && keyboard_string != "") {
+        if ((scr_workspace_keyboard_check(vk_control) || scr_cmd_held()) && keyboard_string != "") {
             keyboard_string = "";
         }
         if (keyboard_string != "") {
@@ -685,15 +685,15 @@ if (label_search_open) {
             }
             keyboard_string = "";
         }
-        if (keyboard_check_pressed(vk_backspace) && label_search_cursor > 0) {
+        if (scr_workspace_keyboard_check_pressed(vk_backspace) && label_search_cursor > 0) {
             label_search_query = string_delete(label_search_query, label_search_cursor, 1);
             label_search_cursor--;
             keyboard_string = "";
         }
-        if (keyboard_check_pressed(vk_left))  label_search_cursor = max(0, label_search_cursor - 1);
-        if (keyboard_check_pressed(vk_right)) label_search_cursor = min(string_length(label_search_query), label_search_cursor + 1);
+        if (scr_workspace_keyboard_check_pressed(vk_left))  label_search_cursor = max(0, label_search_cursor - 1);
+        if (scr_workspace_keyboard_check_pressed(vk_right)) label_search_cursor = min(string_length(label_search_query), label_search_cursor + 1);
 
-        if (keyboard_check_pressed(vk_enter)) {
+        if (scr_workspace_keyboard_check_pressed(vk_enter)) {
             label_search_results = scr_label_search_run(label_search_query);
             label_search_index   = -1;
             if (array_length(label_search_results) > 0) {
@@ -707,13 +707,13 @@ if (label_search_open) {
         // Up/Down cycle through results as a keyboard alternative to < >
         var _lscount = array_length(label_search_results);
         if (_lscount > 0) {
-            if (keyboard_check_pressed(vk_down)) {
+            if (scr_workspace_keyboard_check_pressed(vk_down)) {
                 label_search_index = (label_search_index + 1) mod _lscount;
                 if (instance_exists(label_search_results[label_search_index])) {
                     scr_label_search_goto(label_search_results[label_search_index], 0.2);
                 }
             }
-            if (keyboard_check_pressed(vk_up)) {
+            if (scr_workspace_keyboard_check_pressed(vk_up)) {
                 label_search_index = (label_search_index - 1 + _lscount) mod _lscount;
                 if (instance_exists(label_search_results[label_search_index])) {
                     scr_label_search_goto(label_search_results[label_search_index], 0.2);
@@ -722,7 +722,7 @@ if (label_search_open) {
         }
     }
 
-    if (keyboard_check_pressed(vk_escape)) {
+    if (scr_workspace_keyboard_check_pressed(vk_escape)) {
         label_search_open    = false;
         label_search_results = [];
         label_search_info    = [];
@@ -748,12 +748,12 @@ if (obj_asset_manager.editorClosed != -1) {
 // =============================================
 // MACRO_JOY LABEL VALIDATION
 // =============================================
-if (mouse_check_button_pressed(mb_left)    || 
-    mouse_check_button_released(mb_left)   || 
-    mouse_check_button_pressed(mb_right)   || 
-    mouse_check_button_released(mb_right)  || 
-    keyboard_check_pressed(vk_anykey)      || 
-    keyboard_check_released(vk_anykey)) 
+if (scr_workspace_mouse_check_button_pressed(mb_left)    || 
+    scr_workspace_mouse_check_button_released(mb_left)   || 
+    scr_workspace_mouse_check_button_pressed(mb_right)   || 
+    scr_workspace_mouse_check_button_released(mb_right)  || 
+    scr_workspace_keyboard_check_pressed(vk_anykey)      || 
+    scr_workspace_keyboard_check_released(vk_anykey)) 
 	{
 		
 
@@ -807,7 +807,7 @@ if (mouse_check_button_pressed(mb_left)    ||
 
 //  GLOBAL INPUT BLOCK 
 if (global.show_info_window) {
-    if (keyboard_check_pressed(vk_escape)) {
+    if (scr_workspace_keyboard_check_pressed(vk_escape)) {
         global.show_info_window  = false;
         info_scroll_offset       = 0;
         info_timer               = 0;
@@ -816,7 +816,7 @@ if (global.show_info_window) {
 }
 
 if (global.show_helper_window) {
-    if (keyboard_check_pressed(vk_escape)) {
+    if (scr_workspace_keyboard_check_pressed(vk_escape)) {
         global.show_helper_window = false;
         helper_timer              = 0;
     }
@@ -850,7 +850,7 @@ _was_entering_text = is_entering_text;
 // OPCODE FINDER KEYBOARD INPUT
 // =============================================================
 // Expert Mode: Ctrl/Cmd+E. The opcode shelf becomes live canvas below Y=47.
-if (scr_ctrl_held() && keyboard_check_pressed(ord("E"))
+if (scr_ctrl_held() && scr_workspace_keyboard_check_pressed(ord("E"))
     && !is_entering_text && !global.is_any_text_active
     && !global.any_picker_open && !box_popup_open && !code_editor_open) {
     expert_mode = !expert_mode;
@@ -881,11 +881,11 @@ if (opcode_finder_active) {
         }
         keyboard_string = "";
     }
-    if (keyboard_check_pressed(vk_backspace) && string_length(opcode_finder_text) > 0) {
+    if (scr_workspace_keyboard_check_pressed(vk_backspace) && string_length(opcode_finder_text) > 0) {
         opcode_finder_text = string_copy(opcode_finder_text, 1, string_length(opcode_finder_text) - 1);
         keyboard_string    = "";
     }
-    if (keyboard_check_pressed(vk_escape) || keyboard_check_pressed(vk_enter)) {
+    if (scr_workspace_keyboard_check_pressed(vk_escape) || scr_workspace_keyboard_check_pressed(vk_enter)) {
         opcode_finder_active     = false;
         opcode_finder_was_active = false;
         opcode_finder_text       = "";
@@ -938,8 +938,8 @@ if (is_entering_text) {
     // the node grows to fit it.
     var char_limit = is_comment ? 4096 : (_is_long_text ? 512 : (_is_address_field ? 5 : 40));
 
-    var _shift = keyboard_check(vk_shift);
-    var _ctrl  = keyboard_check(vk_control);
+    var _shift = scr_workspace_keyboard_check(vk_shift);
+    var _ctrl  = scr_workspace_keyboard_check(vk_control);
     var _len   = string_length(current_input_string);
 
     var _has_sel = (input_sel_start != -1 && input_sel_start != input_sel_end);
@@ -947,7 +947,7 @@ if (is_entering_text) {
     var _sel_hi  = _has_sel ? max(input_sel_start, input_sel_end) : cursor_pos;
 
     // ── Ctrl+A: select all ──
-    if (_ctrl && keyboard_check_pressed(ord("A"))) {
+    if (_ctrl && scr_workspace_keyboard_check_pressed(ord("A"))) {
         input_sel_start = 0;
         input_sel_end   = string_length(current_input_string);
         cursor_pos      = input_sel_end;
@@ -955,7 +955,7 @@ if (is_entering_text) {
     }
 
     // ── Ctrl+C: copy ──
-    if (_ctrl && keyboard_check_pressed(ord("C"))) {
+    if (_ctrl && scr_workspace_keyboard_check_pressed(ord("C"))) {
         if (_has_sel) {
             clipboard_set_text(string_copy(current_input_string, _sel_lo + 1, _sel_hi - _sel_lo));
         }
@@ -963,7 +963,7 @@ if (is_entering_text) {
     }
 
     // ── Ctrl+X: cut ──
-    if (_ctrl && keyboard_check_pressed(ord("X"))) {
+    if (_ctrl && scr_workspace_keyboard_check_pressed(ord("X"))) {
         if (_has_sel) {
             clipboard_set_text(string_copy(current_input_string, _sel_lo + 1, _sel_hi - _sel_lo));
             current_input_string = string_delete(current_input_string, _sel_lo + 1, _sel_hi - _sel_lo);
@@ -975,7 +975,7 @@ if (is_entering_text) {
     }
 
 // ── Ctrl+V: paste ──
-    if (_ctrl && keyboard_check_pressed(ord("V"))) {
+    if (_ctrl && scr_workspace_keyboard_check_pressed(ord("V"))) {
         var _clip = clipboard_get_text();
         if (_clip != "") {
             _clip = string_replace_all(_clip, "\r\n", "\n");
@@ -1056,11 +1056,11 @@ if (is_entering_text) {
 
     // ── Key repeat system (mirrors scr_code_editor_step) ──
     var _do_action = false;
-    var _any_nav   = keyboard_check(vk_left) || keyboard_check(vk_right) ||
-                     keyboard_check(vk_backspace) || keyboard_check(vk_delete);
+    var _any_nav   = scr_workspace_keyboard_check(vk_left) || scr_workspace_keyboard_check(vk_right) ||
+                     scr_workspace_keyboard_check(vk_backspace) || scr_workspace_keyboard_check(vk_delete);
     if (_any_nav) {
-        if (keyboard_check_pressed(vk_left)      || keyboard_check_pressed(vk_right) ||
-            keyboard_check_pressed(vk_backspace)  || keyboard_check_pressed(vk_delete)) {
+        if (scr_workspace_keyboard_check_pressed(vk_left)      || scr_workspace_keyboard_check_pressed(vk_right) ||
+            scr_workspace_keyboard_check_pressed(vk_backspace)  || scr_workspace_keyboard_check_pressed(vk_delete)) {
             _do_action      = true;
             input_key_timer = 20;
         } else {
@@ -1077,7 +1077,7 @@ if (is_entering_text) {
     if (_do_action) {
 
         // ── LEFT ──
-        if (keyboard_check(vk_left)) {
+        if (scr_workspace_keyboard_check(vk_left)) {
             if (_shift) {
                 if (input_sel_start == -1) input_sel_start = cursor_pos;
                 cursor_pos    = max(0, cursor_pos - 1);
@@ -1094,7 +1094,7 @@ if (is_entering_text) {
         }
 
         // ── RIGHT ──
-        if (keyboard_check(vk_right)) {
+        if (scr_workspace_keyboard_check(vk_right)) {
             if (_shift) {
                 if (input_sel_start == -1) input_sel_start = cursor_pos;
                 cursor_pos    = min(string_length(current_input_string), cursor_pos + 1);
@@ -1111,7 +1111,7 @@ if (is_entering_text) {
         }
 
         // ── BACKSPACE ──
-        if (keyboard_check(vk_backspace)) {
+        if (scr_workspace_keyboard_check(vk_backspace)) {
             if (_has_sel) {
                 current_input_string = string_delete(current_input_string, _sel_lo + 1, _sel_hi - _sel_lo);
                 cursor_pos      = _sel_lo;
@@ -1136,7 +1136,7 @@ if (is_entering_text) {
         }
 
         // ── DELETE ──
-        if (keyboard_check(vk_delete)) {
+        if (scr_workspace_keyboard_check(vk_delete)) {
             if (_has_sel) {
                 current_input_string = string_delete(current_input_string, _sel_lo + 1, _sel_hi - _sel_lo);
                 cursor_pos      = _sel_lo;
@@ -1150,7 +1150,7 @@ if (is_entering_text) {
     }
 
     // ── Home ──
-    if (keyboard_check_pressed(vk_home)) {
+    if (scr_workspace_keyboard_check_pressed(vk_home)) {
         if (_shift) {
             if (input_sel_start == -1) input_sel_start = cursor_pos;
             cursor_pos    = 0;
@@ -1163,7 +1163,7 @@ if (is_entering_text) {
     }
 
     // ── End ──
-    if (keyboard_check_pressed(vk_end)) {
+    if (scr_workspace_keyboard_check_pressed(vk_end)) {
         if (_shift) {
             if (input_sel_start == -1) input_sel_start = cursor_pos;
             cursor_pos    = string_length(current_input_string);
@@ -1181,7 +1181,7 @@ if (is_entering_text) {
                            input_target_index == 0);
 
     if (_is_code_editor) {
-        if (keyboard_check_pressed(vk_enter) && !_ctrl) {
+        if (scr_workspace_keyboard_check_pressed(vk_enter) && !_ctrl) {
             if (string_count("\n", current_input_string) < 200) {
                 current_input_string = string_insert("\n", current_input_string, cursor_pos + 1);
                 cursor_pos++;
@@ -1192,13 +1192,13 @@ if (is_entering_text) {
         // In place on the node there is no OK button to reach for, so ENTER is
         // just a new line - plain or shifted. Clicking off the node is what
         // ends the edit. The old 5-line cap went with the modal box.
-        if (keyboard_check_pressed(vk_enter)) {
+        if (scr_workspace_keyboard_check_pressed(vk_enter)) {
             current_input_string = string_insert("\n", current_input_string, cursor_pos + 1);
             cursor_pos++;
             keyboard_clear(vk_enter);
         }
     } else {
-        if (keyboard_check_pressed(vk_enter) && _shift) {
+        if (scr_workspace_keyboard_check_pressed(vk_enter) && _shift) {
             if (_is_long_text) {
                 if (string_count("\n", current_input_string) < 5) {
                     current_input_string = string_insert("\n", current_input_string, cursor_pos + 1);
@@ -1216,7 +1216,7 @@ if (is_entering_text) {
     // DISPLAY only and never touches the stored string, so the same text
     // reflows when the node is widened to 2x or 3x. Running both meant a
     // comment came back from an edit chopped to 6 lines of 25.
-    if (_is_long_text && !keyboard_check(vk_backspace)) {
+    if (_is_long_text && !scr_workspace_keyboard_check(vk_backspace)) {
         var _lines         = string_split(current_input_string, "\n");
         var _temp_len      = 0;
         var _curr_line_idx = 0;
@@ -1254,7 +1254,7 @@ if (is_entering_text) {
     // Skipped on the frame the modal opens: the click that opened the field
     // is still "pressed" this step and would drag the caret to wherever the
     // node's value happened to sit on screen.
-    if (mouse_check_button_pressed(mb_left) && _was_entering_text && !is_comment) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && _was_entering_text && !is_comment) {
         var _gmx    = global.gui_mouse_x;
         var _gmy    = global.gui_mouse_y;
         var _is_ml  = (_is_long_text || _is_code_editor);
@@ -1362,7 +1362,7 @@ if (is_entering_text) {
 
         // _was_entering_text keeps the click that OPENED the editor from
         // closing it again on the same frame.
-        if (mouse_check_button_pressed(mb_left) && _was_entering_text) {
+        if (scr_workspace_mouse_check_button_pressed(mb_left) && _was_entering_text) {
             var _cm_dx = input_target_node.x + input_target_node.x_indent;
             // Body only: the header is the drag handle, so a click there
             // closes the editor (committing the text) and lets the node move.
@@ -1391,9 +1391,9 @@ if (is_entering_text) {
     // ── Commit ──
     var _do_commit = false;
     if (_is_code_editor) {
-        _do_commit = (keyboard_check_pressed(vk_enter) && _ctrl);
+        _do_commit = (scr_workspace_keyboard_check_pressed(vk_enter) && _ctrl);
     } else {
-        _do_commit = (keyboard_check_pressed(vk_enter) && !_shift);
+        _do_commit = (scr_workspace_keyboard_check_pressed(vk_enter) && !_shift);
     }
     if (_do_commit) {
         scr_node_commit(input_target_node, input_target_index, current_input_string);
@@ -1412,7 +1412,7 @@ if (is_entering_text) {
     }
 
     // ── Escape ──
-    if (keyboard_check_pressed(vk_escape)) {
+    if (scr_workspace_keyboard_check_pressed(vk_escape)) {
         if (is_comment && instance_exists(input_target_node)) {
             // Same ending as clicking away - there is no "cancel" for a
             // comment, the text on the node is already the text.
@@ -1441,31 +1441,31 @@ if (is_entering_text) {
 // =============================================================
 // --- QUICK DEMO TOGGLE (CTRL+SHIFT+D) ---
 /*
-if (keyboard_check(vk_control) && keyboard_check(vk_shift)) {
-    if (keyboard_check_pressed(ord("D"))) {
+if (scr_workspace_keyboard_check(vk_control) && scr_workspace_keyboard_check(vk_shift)) {
+    if (scr_workspace_keyboard_check_pressed(ord("D"))) {
         global.lite = !global.lite;
         // Visual feedback in debug console
         show_debug_message("DEMO MODE: " + (global.lite ? "ON" : "OFF"));
     }
 }*/
 
-if (keyboard_check(vk_control) || scr_cmd_held()) {
+if (scr_workspace_keyboard_check(vk_control) || scr_cmd_held()) {
 
-    if (keyboard_check_pressed(ord("S"))) {
+    if (scr_workspace_keyboard_check_pressed(ord("S"))) {
         global.isSaving = true;
         save_pending = true;
         exit;
     }
 	
-    if (keyboard_check_pressed(ord("L"))) { scr_load_workspace_dialog();  exit; }
-    if (keyboard_check_pressed(ord("Z")) && !global.is_any_text_active) { scr_undo_step(-1); exit; }
-    if (keyboard_check_pressed(ord("Y")) && !global.is_any_text_active) { scr_undo_step(1);  exit; }
+    if (scr_workspace_keyboard_check_pressed(ord("L"))) { scr_load_workspace_dialog();  exit; }
+    if (scr_workspace_keyboard_check_pressed(ord("Z")) && !global.is_any_text_active) { scr_undo_step(-1); exit; }
+    if (scr_workspace_keyboard_check_pressed(ord("Y")) && !global.is_any_text_active) { scr_undo_step(1);  exit; }
 }
 
-if (keyboard_check_pressed(vk_f1))  { scr_cleanup_nodes(); scr_c64_update_addresses(); }
-if (keyboard_check_pressed(vk_f4))  { trigger_export = true; }
-if (keyboard_check_pressed(vk_f5))  { trigger_build = true; }
-	if (keyboard_check_pressed(vk_f7)) {
+if (scr_workspace_keyboard_check_pressed(vk_f1))  { scr_cleanup_nodes(); scr_c64_update_addresses(); }
+if (scr_workspace_keyboard_check_pressed(vk_f4))  { trigger_export = true; }
+if (scr_workspace_keyboard_check_pressed(vk_f5))  { trigger_build = true; }
+	if (scr_workspace_keyboard_check_pressed(vk_f7)) {
 	    global.autosave_mode = (global.autosave_mode + 1) mod 4;
 	    var _ivs = [120, 300, 600, -1];
 	    global.autosave_interval = _ivs[global.autosave_mode];
@@ -1481,7 +1481,7 @@ if (keyboard_check_pressed(vk_f5))  { trigger_build = true; }
 
 
 
-//if (keyboard_check_pressed(vk_f9)) {
+//if (scr_workspace_keyboard_check_pressed(vk_f9)) {
 //    var _undo_dir      = working_directory + "temp/undo/";
 //    var _manifest_path = _undo_dir + "manifest.json";
 //    if (file_exists(_manifest_path)) file_delete(_manifest_path);
@@ -1490,36 +1490,36 @@ if (keyboard_check_pressed(vk_f5))  { trigger_build = true; }
 
 var zoom_speed = 0.01
 if (!global.c64u_overlay_active and !opcode_finder_active and !global.any_picker_open) {
-	if (keyboard_check_pressed(ord("X"))) { global.use_hex_display = !global.use_hex_display; }
+	if (scr_workspace_keyboard_check_pressed(ord("X"))) { global.use_hex_display = !global.use_hex_display; }
 }
-var _pgzoom_mul = (keyboard_check(vk_control) || scr_cmd_held()) ? 5.0 : 3.0;
+var _pgzoom_mul = (scr_workspace_keyboard_check(vk_control) || scr_cmd_held()) ? 5.0 : 3.0;
 if (!global.c64u_overlay_active && !global.any_picker_open) {
-	if (keyboard_check(vk_pageup))   cam_zoom_target -= zoom_speed * _pgzoom_mul;
-	if (keyboard_check(vk_pagedown)) cam_zoom_target += zoom_speed * _pgzoom_mul;
+	if (scr_workspace_keyboard_check(vk_pageup))   cam_zoom_target -= zoom_speed * _pgzoom_mul;
+	if (scr_workspace_keyboard_check(vk_pagedown)) cam_zoom_target += zoom_speed * _pgzoom_mul;
 }
 if (!is_entering_text && !global.is_any_text_active && !global.c64u_overlay_active && !global.any_picker_open && !obj_asset_manager.viewer_open) {
     var _pan_mul = 1.0;
-    if (keyboard_check(vk_shift)) {
+    if (scr_workspace_keyboard_check(vk_shift)) {
         _pan_mul = 3.0;
     }
     var _pan_spd = 5 * cam_zoom * _pan_mul;
     var _cam_moved = false;
-    if (keyboard_check(vk_up))    { cam_y -= _pan_spd; _cam_moved = true; }
-    if (keyboard_check(vk_down))  { cam_y += _pan_spd; _cam_moved = true; }
-    if (keyboard_check(vk_left))  { cam_x -= _pan_spd; _cam_moved = true; }
-    if (keyboard_check(vk_right)) { cam_x += _pan_spd; _cam_moved = true; }
+    if (scr_workspace_keyboard_check(vk_up))    { cam_y -= _pan_spd; _cam_moved = true; }
+    if (scr_workspace_keyboard_check(vk_down))  { cam_y += _pan_spd; _cam_moved = true; }
+    if (scr_workspace_keyboard_check(vk_left))  { cam_x -= _pan_spd; _cam_moved = true; }
+    if (scr_workspace_keyboard_check(vk_right)) { cam_x += _pan_spd; _cam_moved = true; }
     if (_cam_moved) { global.undo_dirty = true; alarm[3] = 30; } // note: intentionally does not set autosave_dirty
 	// quick zooms
 	
 	
-	if keyboard_check_pressed(ord("1")) cam_zoom_target=1.0;
-	if keyboard_check_pressed(ord("2")) cam_zoom_target=2.0;
-	if keyboard_check_pressed(ord("3")) cam_zoom_target=3.5;
-	if keyboard_check_pressed(ord("4")) cam_zoom_target=4.3;
-	if keyboard_check_pressed(ord("5")) cam_zoom_target=6.0;		
-	if keyboard_check_pressed(ord("6"))  showGrid =!showGrid
+	if scr_workspace_keyboard_check_pressed(ord("1")) cam_zoom_target=1.0;
+	if scr_workspace_keyboard_check_pressed(ord("2")) cam_zoom_target=2.0;
+	if scr_workspace_keyboard_check_pressed(ord("3")) cam_zoom_target=3.5;
+	if scr_workspace_keyboard_check_pressed(ord("4")) cam_zoom_target=4.3;
+	if scr_workspace_keyboard_check_pressed(ord("5")) cam_zoom_target=6.0;		
+	if scr_workspace_keyboard_check_pressed(ord("6"))  showGrid =!showGrid
 	// UI appearance is selected from OPTIONS; 7/8/9 are intentionally free.
-	if keyboard_check_pressed(ord("0")) {uiChromeStyle=0;niceSliceFrm=0;bkgImg=0;paletteStyle=0;badgeStyle=0;buttonStyle=0;nodeStyle=0;macroStyle=0}
+	if scr_workspace_keyboard_check_pressed(ord("0")) {uiChromeStyle=0;niceSliceFrm=0;bkgImg=0;paletteStyle=0;badgeStyle=0;buttonStyle=0;nodeStyle=0;macroStyle=0}
 	
 }
 
@@ -1527,20 +1527,20 @@ if (!is_entering_text && !global.is_any_text_active && !global.c64u_overlay_acti
 
 
 
-if (keyboard_check_pressed(ord("B")) && !is_entering_text && !global.is_any_text_active && !global.any_picker_open) {
+if (scr_workspace_keyboard_check_pressed(ord("B")) && !is_entering_text && !global.is_any_text_active && !global.any_picker_open) {
     global.box_drag_active = true;
     box_drag_live          = false;
 }
 
 
-if (keyboard_check_pressed(vk_home)) {
+if (scr_workspace_keyboard_check_pressed(vk_home)) {
     scr_focus_init();
     global.undo_dirty = true;
     alarm[3] = 6;
 }
 
 
-if (keyboard_check_pressed(vk_escape)) {
+if (scr_workspace_keyboard_check_pressed(vk_escape)) {
     if (readyToQuit == 0 and obj_asset_manager.editorClosed==1 && !obj_c64_node.label_picker_open && !global.any_picker_open && !global.c64u_overlay_active) { readyToQuit = 1; keyboard_clear(vk_escape); }
 	if global.any_picker_open {
 		obj_c64_node.label_picker_open = false;
@@ -1550,11 +1550,11 @@ if (keyboard_check_pressed(vk_escape)) {
 
 
 
-if (keyboard_check_pressed(ord("Y")) && readyToQuit == 1) {
+if (scr_workspace_keyboard_check_pressed(ord("Y")) && readyToQuit == 1) {
     game_end();
 }
 
-if (keyboard_check_pressed(ord("N")) && readyToQuit == 1) {
+if (scr_workspace_keyboard_check_pressed(ord("N")) && readyToQuit == 1) {
     readyToQuit = 0;
 	keyboard_clear(ord("N"));
 }
@@ -1568,7 +1568,7 @@ if (keyboard_check_pressed(ord("N")) && readyToQuit == 1) {
 // opens while Q is still held) — it just cancels without spawning.
 var _qmenu_can_start = !is_entering_text && !global.is_any_text_active && !global.any_picker_open && (gui_menu_open == -1);
 
-if (_qmenu_can_start && keyboard_check_pressed(ord("W")) && !qmenu_active) {
+if (_qmenu_can_start && scr_workspace_keyboard_check_pressed(ord("W")) && !qmenu_active) {
     qmenu_active   = true;
     qmenu_open     = false;
     qmenu_timer    = 0;
@@ -1580,7 +1580,7 @@ if (_qmenu_can_start && keyboard_check_pressed(ord("W")) && !qmenu_active) {
 }
 
 if (qmenu_active) {
-    if (keyboard_check(ord("W"))) {
+    if (scr_workspace_keyboard_check(ord("W"))) {
         if (!qmenu_open) {
             qmenu_timer++;
             if (qmenu_timer >= 4) { // ~0.07s at 60fps
@@ -1620,7 +1620,7 @@ if (qmenu_active) {
 // mutually exclusive, so this can never collide with the Q-hold-to-open
 // logic below — no extra guarding needed between the two.
 if ((gui_menu_open == 0 || gui_menu_open == 1) && hover_macro_type != ""
-    && keyboard_check(vk_shift) && keyboard_check_pressed(ord("Q"))) {
+    && scr_workspace_keyboard_check(vk_shift) && scr_workspace_keyboard_check_pressed(ord("Q"))) {
     if (scr_uqmenu_add_item(hover_macro_type, hover_macro_title)) {
         global.qmenu_toast_text = "ADDED \"" + hover_macro_title + "\" to Quick menu (Q)";
         global.qmenu_toast_col  = c_lime;
@@ -1631,7 +1631,7 @@ if ((gui_menu_open == 0 || gui_menu_open == 1) && hover_macro_type != ""
 // --- Q CUSTOM QUICK-SPAWN MENU (user-built, circular) ---
 var _uqmenu_can_start = !is_entering_text && !global.is_any_text_active && !global.any_picker_open && (gui_menu_open == -1);
 
-if (_uqmenu_can_start && keyboard_check_pressed(ord("Q")) && !uqmenu_active) {
+if (_uqmenu_can_start && scr_workspace_keyboard_check_pressed(ord("Q")) && !uqmenu_active) {
     uqmenu_active   = true;
     uqmenu_open     = false;
     uqmenu_timer    = 0;
@@ -1643,7 +1643,7 @@ if (_uqmenu_can_start && keyboard_check_pressed(ord("Q")) && !uqmenu_active) {
 }
 
 if (uqmenu_active) {
-    if (keyboard_check(ord("Q"))) {
+    if (scr_workspace_keyboard_check(ord("Q"))) {
         if (!uqmenu_open) {
             uqmenu_timer++;
             if (uqmenu_timer >= 4) { // ~0.07s at 60fps, matches the W-menu speed
@@ -1669,7 +1669,7 @@ if (uqmenu_active) {
             // remaining items' indices shift and holding Q for a second
             // right-click on "the same spot" would silently hit whatever
             // slid into that position instead.
-            if (uqmenu_hover > -1 && mouse_check_button_pressed(mb_right)) {
+            if (uqmenu_hover > -1 && scr_workspace_mouse_check_button_pressed(mb_right)) {
                 var _uqmenu_removed_label = global.user_quick_menu[uqmenu_hover].label;
                 scr_uqmenu_remove_item(uqmenu_hover);
                 global.qmenu_toast_text = "REMOVED \"" + _uqmenu_removed_label + "\" from Quick menu";
@@ -1717,16 +1717,16 @@ if (!is_entering_text && !global.is_any_text_active and !obj_asset_manager.viewe
     var _hover_blocks_spawn = (_hover_node != noone) || _picker_is_open;
 
     // Canvas utility nodes - keyboard shortcuts
-if (keyboard_check_pressed(ord("A")) && !_hover_blocks_spawn) { scr_node_spawn("LABEL",   mouse_x, mouse_y); global.undo_dirty = true; alarm[3] = 6; }
-if (keyboard_check_pressed(ord("C")) && global.comments_visible && !keyboard_check(vk_alt) && !keyboard_check(vk_shift) && !keyboard_check(vk_control) && !_hover_blocks_spawn) { scr_node_spawn("COMMENT", mouse_x, mouse_y); global.undo_dirty = true; alarm[3] = 6; }
-if (keyboard_check_pressed(ord("C")) && keyboard_check(vk_alt) && !keyboard_check(vk_shift) && !keyboard_check(vk_control) && !_hover_blocks_spawn) {
+if (scr_workspace_keyboard_check_pressed(ord("A")) && !_hover_blocks_spawn) { scr_node_spawn("LABEL",   mouse_x, mouse_y); global.undo_dirty = true; alarm[3] = 6; }
+if (scr_workspace_keyboard_check_pressed(ord("C")) && global.comments_visible && !scr_workspace_keyboard_check(vk_alt) && !scr_workspace_keyboard_check(vk_shift) && !scr_workspace_keyboard_check(vk_control) && !_hover_blocks_spawn) { scr_node_spawn("COMMENT", mouse_x, mouse_y); global.undo_dirty = true; alarm[3] = 6; }
+if (scr_workspace_keyboard_check_pressed(ord("C")) && scr_workspace_keyboard_check(vk_alt) && !scr_workspace_keyboard_check(vk_shift) && !scr_workspace_keyboard_check(vk_control) && !_hover_blocks_spawn) {
 	scr_node_spawn("MACRO_CODE", mouse_x, mouse_y); 
     global.undo_dirty = true; 
     alarm[3] = 6;
 }
-if (keyboard_check_pressed(ord("O")) && !_hover_blocks_spawn) { scr_node_spawn("ORG",     mouse_x, mouse_y); global.undo_dirty = true; alarm[3] = 6; }
+if (scr_workspace_keyboard_check_pressed(ord("O")) && !_hover_blocks_spawn) { scr_node_spawn("ORG",     mouse_x, mouse_y); global.undo_dirty = true; alarm[3] = 6; }
 	
-	if (keyboard_check_pressed(ord("R"))) {
+	if (scr_workspace_keyboard_check_pressed(ord("R"))) {
         var _toggled = false;
         with (obj_c64_node) {
             if (!_toggled && node_type == "NORMAL" &&
@@ -1757,7 +1757,7 @@ if (keyboard_check_pressed(ord("O")) && !_hover_blocks_spawn) { scr_node_spawn("
         alarm[3] = 6;
     }
 	
-	if (keyboard_check_pressed(ord("N")) && !_hover_blocks_spawn) {
+	if (scr_workspace_keyboard_check_pressed(ord("N")) && !_hover_blocks_spawn) {
             var _n          = instance_create_layer(mouse_x, mouse_y, "Layer_Nodes", obj_c64_node);
             _n.node_title   = "NOP";
             _n.node_type    = "NORMAL";
@@ -1768,7 +1768,7 @@ if (keyboard_check_pressed(ord("O")) && !_hover_blocks_spawn) { scr_node_spawn("
             alarm[3] = 6;
 		 }
 
-if (keyboard_check_pressed(ord("J"))  && !keyboard_check(vk_alt) )   {
+if (scr_workspace_keyboard_check_pressed(ord("J"))  && !scr_workspace_keyboard_check(vk_alt) )   {
         // If hovering a NORMAL node with jmp/jsr as first instruction, toggle between them
         var _toggled = false;
         with (obj_c64_node) {
@@ -1802,7 +1802,7 @@ if (keyboard_check_pressed(ord("J"))  && !keyboard_check(vk_alt) )   {
         alarm[3] = 6;
     }
 
-if (keyboard_check_pressed(ord("S")) && !keyboard_check(vk_control) && !keyboard_check(vk_shift) && !keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
+if (scr_workspace_keyboard_check_pressed(ord("S")) && !scr_workspace_keyboard_check(vk_control) && !scr_workspace_keyboard_check(vk_shift) && !scr_workspace_keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
     // STA addressing-mode cycle order (matches palette grid left-to-right, top-to-bottom)
     // No IMM - you can't store an immediate
     var _sta_cycle    = ["sta_zp", "sta_zpx", "sta_abs", "sta_abx", "sta_aby", "sta_izx", "sta_izy"];
@@ -1842,7 +1842,7 @@ if (keyboard_check_pressed(ord("S")) && !keyboard_check(vk_control) && !keyboard
     alarm[3] = 6;
 }
 
-if (keyboard_check_pressed(ord("S")) && keyboard_check(vk_shift) && !keyboard_check(vk_control) && !obj_workspace_manager.is_entering_text) {
+if (scr_workspace_keyboard_check_pressed(ord("S")) && scr_workspace_keyboard_check(vk_shift) && !scr_workspace_keyboard_check(vk_control) && !obj_workspace_manager.is_entering_text) {
     // STX addressing-mode cycle order (no IMM - can't store immediate; X can't index itself)
     var _stx_cycle    = ["stx_zp", "stx_zpy", "stx_abs"];
     var _stx_titles   = ["STX_ZP", "STX_ZPY", "STX_ABS"];
@@ -1881,7 +1881,7 @@ if (keyboard_check_pressed(ord("S")) && keyboard_check(vk_shift) && !keyboard_ch
     alarm[3] = 6;
 }
 
-if (keyboard_check_pressed(ord("S")) && keyboard_check(vk_lalt) && !keyboard_check(vk_control) && !obj_workspace_manager.is_entering_text) {
+if (scr_workspace_keyboard_check_pressed(ord("S")) && scr_workspace_keyboard_check(vk_lalt) && !scr_workspace_keyboard_check(vk_control) && !obj_workspace_manager.is_entering_text) {
     // STY addressing-mode cycle order (no IMM - can't store immediate; Y can't index itself)
     var _sty_cycle    = ["sty_zp", "sty_zpx", "sty_abs"];
     var _sty_titles   = ["STY_ZP", "STY_ZPX", "STY_ABS"];
@@ -1920,7 +1920,7 @@ if (keyboard_check_pressed(ord("S")) && keyboard_check(vk_lalt) && !keyboard_che
     alarm[3] = 6;
 }
 
-if (keyboard_check_pressed(ord("C")) && keyboard_check(vk_shift) && !keyboard_check(vk_control) && !keyboard_check(vk_alt) && !obj_workspace_manager.is_entering_text) {
+if (scr_workspace_keyboard_check_pressed(ord("C")) && scr_workspace_keyboard_check(vk_shift) && !scr_workspace_keyboard_check(vk_control) && !scr_workspace_keyboard_check(vk_alt) && !obj_workspace_manager.is_entering_text) {
     // Compare family cycle: CMP (all 8 modes) -> CPX (3 modes) -> CPY (3 modes)
     // Matches palette grid left-to-right, top-to-bottom
     var _cmp_cycle    = ["cmp_imm", "cmp_zp", "cmp_zpx", "cmp_abs", "cmp_abx", "cmp_aby", "cmp_izx", "cmp_izy",
@@ -1966,7 +1966,7 @@ if (keyboard_check_pressed(ord("C")) && keyboard_check(vk_shift) && !keyboard_ch
     alarm[3] = 6;
 }
 
-if (keyboard_check_pressed(ord("D")) && keyboard_check(vk_shift) && !keyboard_check(vk_control) && !keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
+if (scr_workspace_keyboard_check_pressed(ord("D")) && scr_workspace_keyboard_check(vk_shift) && !scr_workspace_keyboard_check(vk_control) && !scr_workspace_keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
     // DEC family cycle (matches palette grid)
     // Mix of implied (DEX/DEY, no operand) and addressed (DEC_xxx, with operand)
     var _dec_cycle    = ["dex", "dey", "dec_zp", "dec_zpx", "dec_abs", "dec_abx"];
@@ -2010,7 +2010,7 @@ if (keyboard_check_pressed(ord("D")) && keyboard_check(vk_shift) && !keyboard_ch
     alarm[3] = 6;
 }
 
-if (keyboard_check_pressed(ord("I")) && keyboard_check(vk_shift) && !keyboard_check(vk_control) && !keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
+if (scr_workspace_keyboard_check_pressed(ord("I")) && scr_workspace_keyboard_check(vk_shift) && !scr_workspace_keyboard_check(vk_control) && !scr_workspace_keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
     // INC family cycle (matches palette grid)
     // Mix of implied (INX/INY, no operand) and addressed (INC_xxx, with operand)
     var _inc_cycle    = ["inx", "iny", "inc_zp", "inc_zpx", "inc_abs", "inc_abx"];
@@ -2054,7 +2054,7 @@ if (keyboard_check_pressed(ord("I")) && keyboard_check(vk_shift) && !keyboard_ch
     alarm[3] = 6;
 }
 
-if (keyboard_check_pressed(ord("T")) && !keyboard_check(vk_control) && !keyboard_check(vk_shift) && !keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
+if (scr_workspace_keyboard_check_pressed(ord("T")) && !scr_workspace_keyboard_check(vk_control) && !scr_workspace_keyboard_check(vk_shift) && !scr_workspace_keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
     // Transfer instruction cycle (matches palette grid left-to-right, top-to-bottom)
     // No operands - these are 1-byte implied-addressing opcodes
     var _t_cycle  = ["tax", "tay", "tsx", "txa", "tya", "txs"];
@@ -2092,7 +2092,7 @@ if (keyboard_check_pressed(ord("T")) && !keyboard_check(vk_control) && !keyboard
     alarm[3] = 6;
 }
 
-if (keyboard_check_pressed(ord("L")) && !keyboard_check(vk_shift) && !keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
+if (scr_workspace_keyboard_check_pressed(ord("L")) && !scr_workspace_keyboard_check(vk_shift) && !scr_workspace_keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
     // LDA addressing-mode cycle order (matches palette grid left-to-right, top-to-bottom)
     var _lda_cycle    = ["lda_imm", "lda_zp", "lda_zpx", "lda_abs", "lda_abx", "lda_aby", "lda_izx", "lda_izy"];
     var _lda_titles   = ["LDA_IMM", "LDA_ZP", "LDA_ZPX", "LDA_ABS", "LDA_ABX", "LDA_ABY", "LDA_IZX", "LDA_IZY"];
@@ -2131,7 +2131,7 @@ if (keyboard_check_pressed(ord("L")) && !keyboard_check(vk_shift) && !keyboard_c
     alarm[3] = 6;
 }
 
-if (keyboard_check_pressed(ord("L")) && keyboard_check(vk_shift) && !obj_workspace_manager.is_entering_text) {
+if (scr_workspace_keyboard_check_pressed(ord("L")) && scr_workspace_keyboard_check(vk_shift) && !obj_workspace_manager.is_entering_text) {
     // LDX addressing-mode cycle order (no ZPX, no ABX, no IZX/IZY - X can't index itself)
     var _ldx_cycle    = ["ldx_imm", "ldx_zp", "ldx_zpy", "ldx_abs", "ldx_aby"];
     var _ldx_titles   = ["LDX_IMM", "LDX_ZP", "LDX_ZPY", "LDX_ABS", "LDX_ABY"];
@@ -2170,7 +2170,7 @@ if (keyboard_check_pressed(ord("L")) && keyboard_check(vk_shift) && !obj_workspa
     alarm[3] = 6;
 }
 
-if (keyboard_check_pressed(ord("L")) && keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
+if (scr_workspace_keyboard_check_pressed(ord("L")) && scr_workspace_keyboard_check(vk_lalt) && !obj_workspace_manager.is_entering_text) {
     // LDY addressing-mode cycle order (no ZPY, no ABY, no IZX/IZY - Y can't index itself)
     var _ldy_cycle    = ["ldy_imm", "ldy_zp", "ldy_zpx", "ldy_abs", "ldy_abx"];
     var _ldy_titles   = ["LDY_IMM", "LDY_ZP", "LDY_ZPX", "LDY_ABS", "LDY_ABX"];
@@ -2209,8 +2209,8 @@ if (keyboard_check_pressed(ord("L")) && keyboard_check(vk_lalt) && !obj_workspac
     alarm[3] = 6;
 }
 	
-if keyboard_check_pressed(ord("J"))  {
-    if (keyboard_check(vk_alt) && !_hover_blocks_spawn) {
+if scr_workspace_keyboard_check_pressed(ord("J"))  {
+    if (scr_workspace_keyboard_check(vk_alt) && !_hover_blocks_spawn) {
         var _n        = scr_node_spawn("MACRO_JOY", mouse_x, mouse_y);
         _n.node_title = "JOYSTICK";
         global.undo_dirty = true;
@@ -2218,8 +2218,8 @@ if keyboard_check_pressed(ord("J"))  {
 	}
 }
 
-if keyboard_check_pressed(ord("M"))  {
-    if (keyboard_check(vk_alt) && !_hover_blocks_spawn) {
+if scr_workspace_keyboard_check_pressed(ord("M"))  {
+    if (scr_workspace_keyboard_check(vk_alt) && !_hover_blocks_spawn) {
         var _n        = scr_node_spawn("MACRO_MOVE", mouse_x, mouse_y);
         _n.node_title = "MACRO_MOVE";
         global.undo_dirty = true;
@@ -2227,8 +2227,8 @@ if keyboard_check_pressed(ord("M"))  {
 	}
 }
 
-if (keyboard_check_pressed(ord("V"))) {
-    if (keyboard_check(vk_alt) && !_hover_blocks_spawn) {
+if (scr_workspace_keyboard_check_pressed(ord("V"))) {
+    if (scr_workspace_keyboard_check(vk_alt) && !_hover_blocks_spawn) {
         var _n        = scr_node_spawn("MACRO_VWAIT", mouse_x, mouse_y);
         _n.node_title = "VWAIT";
         global.undo_dirty = true;
@@ -2250,7 +2250,7 @@ if (keyboard_check_pressed(ord("V"))) {
 
     // Macro nodes are drag-only from the shelf - no shortcuts
 
-	if (keyboard_check_pressed(vk_f3)) global.comments_visible = !global.comments_visible;
+	if (scr_workspace_keyboard_check_pressed(vk_f3)) global.comments_visible = !global.comments_visible;
 }
 
 
@@ -2351,14 +2351,14 @@ abs(x - _spine_x) < global.node_display_width &&
 // =============================================================
 
 // F2: Silent build + VICE dump
-if (keyboard_check_pressed(vk_f2)) {
+if (scr_workspace_keyboard_check_pressed(vk_f2)) {
     silent_build  = true;
     pending_dump  = true;
     trigger_build = true;
 }
 
 // --- F6: build & send to C64 Ultimate ---
-if (keyboard_check_pressed(vk_f6) && !global.asset_reload_in_progress) {
+if (scr_workspace_keyboard_check_pressed(vk_f6) && !global.asset_reload_in_progress) {
     if (global.c64u_ip == "") {
         // No IP saved — open overlay; it ping-tests, saves on success, then kicks off build
         global.c64u_overlay_active = true;
@@ -2374,9 +2374,9 @@ if (keyboard_check_pressed(vk_f6) && !global.asset_reload_in_progress) {
     }
 }
 
-if (keyboard_check_pressed(vk_f8)) { scr_c64u_reset_ip(); }
+if (scr_workspace_keyboard_check_pressed(vk_f8)) { scr_c64u_reset_ip(); }
 
-if ( (scr_cmd_held()||keyboard_check(vk_control)) && keyboard_check(vk_shift) && keyboard_check_pressed(ord("F"))
+if ( (scr_cmd_held()||scr_workspace_keyboard_check(vk_control)) && scr_workspace_keyboard_check(vk_shift) && scr_workspace_keyboard_check_pressed(ord("F"))
     && !is_entering_text && !global.any_picker_open && !box_popup_open && !code_editor_open
     && !(instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open)) {
     label_search_open    = true;
@@ -2391,19 +2391,19 @@ if ( (scr_cmd_held()||keyboard_check(vk_control)) && keyboard_check(vk_shift) &&
 // --- C64U overlay input handling ---
 scr_c64u_overlay_step();
 
-var build_trigger = keyboard_check_pressed(vk_f5) || trigger_build;
+var build_trigger = scr_workspace_keyboard_check_pressed(vk_f5) || trigger_build;
 
 // If F5 arrives while an asynchronous asset/MetaMap reload is still active,
 // latch the request instead of losing the one-frame keypress. trigger_build
 // remains set until the reload completes, then the normal build path runs.
-if (keyboard_check_pressed(vk_f5) && global.asset_reload_in_progress) {
+if (scr_workspace_keyboard_check_pressed(vk_f5) && global.asset_reload_in_progress) {
     trigger_build = true;
 }
 
 // Finish the drop before an F-key build inspects addresses or compiles.
 // Latch a simultaneous keypress for the next Step, after End Step settles it.
-if (build_trigger && mouse_check_button_released(mb_any)) trigger_build = true;
-if (build_trigger && !global.asset_reload_in_progress && !mouse_check_button_released(mb_any)) {
+if (build_trigger && scr_workspace_mouse_check_button_released(mb_any)) trigger_build = true;
+if (build_trigger && !global.asset_reload_in_progress && !scr_workspace_mouse_check_button_released(mb_any)) {
         trigger_build = false;
         if (instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "queued") obj_mcp_probe.probe_build.state = "building";
         global.egg_temp_node_ids = [];
@@ -4021,7 +4021,7 @@ if (instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "buildi
 // =============================================================
 // EXPORT .PRG (F4)
 // =============================================================
-var export_trigger = keyboard_check_pressed(vk_f4) || trigger_export;
+var export_trigger = scr_workspace_keyboard_check_pressed(vk_f4) || trigger_export;
 if (export_trigger) {
     trigger_export = false;
 
@@ -4090,7 +4090,7 @@ if (export_trigger) {
             _chosen = get_save_filename("C64 Disk Image|*.d64", "program");
             // A native file dialog takes focus, so the key-up that ends the keypress is
             // delivered to the dialog and not to the game. GameMaker is left thinking the
-            // key is still held, and keyboard_check_pressed() needs an up->down edge — so
+            // key is still held, and scr_workspace_keyboard_check_pressed() needs an up->down edge — so
             // ESC silently stops working until the input state is reset. This is why ESC
             // only failed after SOME asset operations: scr_asset_sid_import already did
             // this, every other importer did not.
@@ -4380,18 +4380,18 @@ if (!instance_exists(node_tooltip_node) && !global.showcode_mouse_over &&
 
 		if (reu_pick_open) {
 		    // Route mousewheel to the MACRO_REU asset drop-down
-		    if (mouse_wheel_up()) {
+		    if (scr_workspace_mouse_wheel_up()) {
 		        reu_pick_scroll = max(0, reu_pick_scroll - 2);
 		    }
-		    if (mouse_wheel_down()) {
+		    if (scr_workspace_mouse_wheel_down()) {
 		        reu_pick_scroll = min(max(0, array_length(reu_pick_items) - reu_pick_rows), reu_pick_scroll + 2);
 		    }
 		} else if (_any_picker) {
 		    // Route mousewheel to picker scroll
-		    if (mouse_wheel_up()) {
+		    if (scr_workspace_mouse_wheel_up()) {
 		        _picker_node.label_picker_scroll = max(0, _picker_node.label_picker_scroll - 1);
 		    }
-		    if (mouse_wheel_down()) {
+		    if (scr_workspace_mouse_wheel_down()) {
 		        // Count for clamp
 		        var _count = 0;
 		        if (_picker_node.label_picker_mode == "VAR") {
@@ -4423,9 +4423,9 @@ if (!instance_exists(node_tooltip_node) && !global.showcode_mouse_over &&
 		    }
 		} else {
 		// Normal camera zoom
-var _zoom_mul = keyboard_check(vk_control) ? 5.0 : 3.0;
-if (mouse_wheel_up())   { cam_zoom_target -= zoom_speed * _zoom_mul; global.undo_dirty = true; alarm[3] = 30; } // no autosave_dirty
-if (mouse_wheel_down()) { cam_zoom_target += zoom_speed * _zoom_mul; global.undo_dirty = true; alarm[3] = 30; } // no autosave_dirty
+var _zoom_mul = scr_workspace_keyboard_check(vk_control) ? 5.0 : 3.0;
+if (scr_workspace_mouse_wheel_up())   { cam_zoom_target -= zoom_speed * _zoom_mul; global.undo_dirty = true; alarm[3] = 30; } // no autosave_dirty
+if (scr_workspace_mouse_wheel_down()) { cam_zoom_target += zoom_speed * _zoom_mul; global.undo_dirty = true; alarm[3] = 30; } // no autosave_dirty
 	}
 	cam_zoom_target = clamp(cam_zoom_target, 0.3, 6.0);
 	cam_zoom        = lerp(cam_zoom, cam_zoom_target, 0.4);
@@ -4448,7 +4448,7 @@ with (obj_c64_node) {
 // the same input also starts a workspace pan underneath it, so both the
 // editor content and the node graph behind it move at once.
 var _viewer_capturing_pan = instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open;
-if ((mouse_check_button_pressed(mb_middle) || mouse_check_button_pressed(mb_right) || keyboard_check_pressed(vk_space)) && !_any_node_dragging && !_viewer_capturing_pan) {
+if ((scr_workspace_mouse_check_button_pressed(mb_middle) || scr_workspace_mouse_check_button_pressed(mb_right) || scr_workspace_keyboard_check_pressed(vk_space)) && !_any_node_dragging && !_viewer_capturing_pan) {
     is_panning  = true;
     pan_x_start = device_mouse_raw_x(0);
     pan_y_start = device_mouse_raw_y(0);
@@ -4462,7 +4462,7 @@ if (is_panning) {
     cam_y      -= (device_mouse_raw_y(0) - pan_y_start) * cam_zoom;
     pan_x_start = device_mouse_raw_x(0);
     pan_y_start = device_mouse_raw_y(0);
-	if (mouse_check_button_released(mb_middle) || mouse_check_button_released(mb_right) || keyboard_check_released(vk_space) || !window_has_focus()) {
+	if (scr_workspace_mouse_check_button_released(mb_middle) || scr_workspace_mouse_check_button_released(mb_right) || scr_workspace_keyboard_check_released(vk_space) || !window_has_focus()) {
         is_panning    = false;
         _was_panning  = true;
         //global.undo_dirty = true;
@@ -4483,14 +4483,14 @@ if (global.box_drag_active) {
 	 show_debug_message("active=" + string(global.box_drag_active) + " live=" + string(box_drag_live));
 	 
     // LMB down - record start in room space
-    if (mouse_check_button_pressed(mb_left) && !box_drag_live) {
+    if (scr_workspace_mouse_check_button_pressed(mb_left) && !box_drag_live) {
         box_drag_start_x = mouse_x;
         box_drag_start_y = mouse_y;
         box_drag_live    = true;
     }
 
     // LMB release - spawn box
-    if (box_drag_live && mouse_check_button_released(mb_left)) {
+    if (box_drag_live && scr_workspace_mouse_check_button_released(mb_left)) {
         var _x1 = min(box_drag_start_x, mouse_x);
         var _y1 = min(box_drag_start_y, mouse_y);
         var _x2 = max(box_drag_start_x, mouse_x);
@@ -4526,7 +4526,7 @@ if (global.box_drag_active) {
     }
 
     // Cancel with RMB or Escape
-    if (mouse_check_button_pressed(mb_right) || keyboard_check_pressed(vk_escape)) {
+    if (scr_workspace_mouse_check_button_pressed(mb_right) || scr_workspace_keyboard_check_pressed(vk_escape)) {
         global.box_drag_active = false;
         box_drag_live          = false;
     }
@@ -4575,7 +4575,7 @@ if (box_popup_open && instance_exists(box_popup_target)) {
 // =============================================================
 // 5. QUIT & ESCAPE
 // =============================================================
-if (keyboard_check_pressed(vk_escape) && !global.c64u_overlay_active) {
+if (scr_workspace_keyboard_check_pressed(vk_escape) && !global.c64u_overlay_active) {
     if (is_entering_text) {
         is_entering_text = false;
         keyboard_string  = "";
@@ -4586,14 +4586,14 @@ if (keyboard_check_pressed(vk_escape) && !global.c64u_overlay_active) {
 }
 
 // MAPPING BOX QUICK NAV
-if (!keyboard_check(vk_alt) && keyboard_check_pressed(ord("M")) && !is_entering_text && !global.any_picker_open) {
+if (!scr_workspace_keyboard_check(vk_alt) && scr_workspace_keyboard_check_pressed(ord("M")) && !is_entering_text && !global.any_picker_open) {
 
     global.show_map_nav = true;
 	global.map_nav_x = global.gui_mouse_x;
     global.map_nav_y = global.gui_mouse_y;
 }
 
-if (!keyboard_check(vk_alt) && keyboard_check_released(ord("M")) && global.show_map_nav) {
+if (!scr_workspace_keyboard_check(vk_alt) && scr_workspace_keyboard_check_released(ord("M")) && global.show_map_nav) {
     global.show_map_nav = false;
 
     var _nav_x = global.map_nav_x;
@@ -4674,7 +4674,7 @@ var _in_gui = ((global.gui_mouse_x <= shelf_width) && (!expert_mode || global.gu
            || global.show_helper_window;
 		   
 // Start drag
-if (mouse_check_button_pressed(mb_left) && keyboard_check(vk_control) && !_in_gui && !box_select_active) {
+if (scr_workspace_mouse_check_button_pressed(mb_left) && scr_workspace_keyboard_check(vk_control) && !_in_gui && !box_select_active) {
     var _hit = false;
 with (obj_c64_node) {
         if (node_type == "INIT") continue;
@@ -4696,7 +4696,7 @@ if (box_select_active) {
     box_select_y2 = mouse_y;
 
     // Release — commit selection
-    if (mouse_check_button_released(mb_left)) {
+    if (scr_workspace_mouse_check_button_released(mb_left)) {
         var _rx1 = min(box_select_x1, box_select_x2);
         var _ry1 = min(box_select_y1, box_select_y2);
         var _rx2 = max(box_select_x1, box_select_x2);
@@ -4739,14 +4739,14 @@ box_select_active = false;
 
 // Deselect on any click in scene (no ctrl) — but not if clicking the group drag handle
 var _clicking_handle = false;
-if (instance_exists(global.group_drag_handle) && mouse_check_button_pressed(mb_left)) {
+if (instance_exists(global.group_drag_handle) && scr_workspace_mouse_check_button_pressed(mb_left)) {
     var _hn = global.group_drag_handle;
     if (scr_node_mouse_over(_hn)) {
         _clicking_handle = true;
     }
 }
-if ((mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right))
-    && !keyboard_check(vk_control) && !_in_gui && !_clicking_handle) {
+if ((scr_workspace_mouse_check_button_pressed(mb_left) || scr_workspace_mouse_check_button_pressed(mb_right))
+    && !scr_workspace_keyboard_check(vk_control) && !_in_gui && !_clicking_handle) {
     global.selected_nodes    = [];
     global.group_drag_handle = noone;
     global.group_drag_active = false;
@@ -4754,7 +4754,7 @@ if ((mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right)
 }
 
 // Clear label-reference highlight on any left click
-if (mouse_check_button_pressed(mb_left)) {
+if (scr_workspace_mouse_check_button_pressed(mb_left)) {
     global.ref_highlight_source = noone;
     global.ref_highlight_name   = "";
 }
@@ -4764,7 +4764,7 @@ if (mouse_check_button_pressed(mb_left)) {
 /////////////////////////////////////////////////////////////////
 if (box_body_dbl_timer > 0) box_body_dbl_timer--;
 
-if (mouse_check_button_pressed(mb_left)  && !box_popup_open) {
+if (scr_workspace_mouse_check_button_pressed(mb_left)  && !box_popup_open) {
     var _hit_box = noone;
     with (obj_mapping_box) {
         var _z  = obj_workspace_manager.cam_zoom;
@@ -4782,7 +4782,7 @@ if (mouse_check_button_pressed(mb_left)  && !box_popup_open) {
     }
 
 	
-    if (instance_exists(_hit_box) && keyboard_check(vk_alt)) {
+    if (instance_exists(_hit_box) && scr_workspace_keyboard_check(vk_alt)) {
         if (box_body_dbl_timer > 0 && box_body_dbl_target == _hit_box) {
             // Double-click confirmed — zoom to box
             var _shelf_w  = expert_mode ? 0 : shelf_width;
@@ -4813,8 +4813,8 @@ if (mouse_check_button_pressed(mb_left)  && !box_popup_open) {
 }
 
 // Tab indent on selected nodes
-if (keyboard_check_pressed(vk_tab) && array_length(global.selected_nodes) > 0 && !is_entering_text && !code_editor_open) {
-    var _dir = keyboard_check(vk_shift) ? -40 : 40;
+if (scr_workspace_keyboard_check_pressed(vk_tab) && array_length(global.selected_nodes) > 0 && !is_entering_text && !code_editor_open) {
+    var _dir = scr_workspace_keyboard_check(vk_shift) ? -40 : 40;
     for (var _si = 0; _si < array_length(global.selected_nodes); _si++) {
         var _sn = global.selected_nodes[_si];
         if (instance_exists(_sn)) {
@@ -4831,7 +4831,7 @@ if (keyboard_check_pressed(vk_tab) && array_length(global.selected_nodes) > 0 &&
 
 // Capture the request here; End Step sees changes from node Steps that run
 // after the manager too. Alarm 1 remains reserved for startup/load refreshes.
-if (mouse_check_button_released(mb_any)) {
+if (scr_workspace_mouse_check_button_released(mb_any)) {
     editor_release_pending = true;
     editor_release_dirty = global.undo_dirty || global.addresses_dirty;
     editor_release_panning = _was_panning || is_panning;
@@ -4839,9 +4839,9 @@ if (mouse_check_button_released(mb_any)) {
 }
 
 // Keep keyboard refreshes immediate. A release is finalized in End Step.
-if (!mouse_check_button_released(mb_any) &&
-    (keyboard_check_pressed(vk_enter) ||
-     keyboard_check_pressed(vk_escape) || global.addresses_dirty)) {
+if (!scr_workspace_mouse_check_button_released(mb_any) &&
+    (scr_workspace_keyboard_check_pressed(vk_enter) ||
+     scr_workspace_keyboard_check_pressed(vk_escape) || global.addresses_dirty)) {
     scr_c64_do_update_addresses();
     global.addresses_dirty = false;
 }

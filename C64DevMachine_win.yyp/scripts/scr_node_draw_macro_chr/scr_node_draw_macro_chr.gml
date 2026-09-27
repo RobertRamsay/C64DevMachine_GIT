@@ -33,7 +33,7 @@ function scr_node_draw_macro_chr(_x, _y, _cam_x, _cam_y, _cam_zoom) {
               _asset_name != "" ? _asset_name : L("-- SELECT CHARSET --"));
     draw_set_halign(fa_left);
 
-    if (_btn_hov && mouse_check_button_pressed(mb_left)) {
+    if (_btn_hov && scr_workspace_mouse_check_button_pressed(mb_left)) {
         if (instance_exists(obj_asset_manager)) {
             obj_asset_manager.chr_picker_open = true;
             obj_asset_manager.chr_picker_node = id;

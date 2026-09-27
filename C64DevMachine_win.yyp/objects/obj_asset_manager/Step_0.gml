@@ -1,3 +1,6 @@
+scr_sid_asset_update();
+if (!viewer_open) { manifest_preview_name = ""; manifest_preview_owner = undefined; }
+if (!viewer_open && scr_workspace_input_blocked()) exit;
 /// @desc obj_asset_manager Step
 // Find the max whole-number scale that fits inside the current window size
 
@@ -47,17 +50,25 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _wide_modal = true;
         _vx1 = 30;
         _vx2 = panel_x + 20;
-        if (_vb_type == "MUSIC_MAKER") {
+        if (_vb_type == "MUSIC_MAKER" || _vb_type == "SPRITE_MASK") {
             _vx2 = _gui_w - _vx1;   // full width, centred — must match Draw
         }
     }
 }
 var _mouse_in_viewer = viewer_open && point_in_rectangle(_mx, _my, _vx1, _vy1, _vx2, _vy2);
 
+// The manifest's media panel is part of its editor, not an outside click.
+if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
+    var _pv_owner = ds_list_find_value(asset_list, viewer_asset);
+    if ((_pv_owner.type == "LOAD_REU" || _pv_owner.type == "LOAD_ORG")
+    && manifest_preview_owner == _pv_owner && manifest_preview_name != ""
+    && point_in_rectangle(_mx,_my,manifest_preview_rect[0],manifest_preview_rect[1],manifest_preview_rect[2],manifest_preview_rect[3])) _mouse_in_viewer = true;
+}
+
 // A wide editor is modal: while it is open the asset panel takes no hover,
 // scroll, drag, right-click or left-click, and a click outside the editor is
 // swallowed rather than closing it. CLOSE / ESC are the only ways out.
-if (_wide_modal) {
+if (viewer_open) {
     global.mouse_in_asset_panel = false;
     _mouse_in_panel = false;
 }
@@ -79,7 +90,7 @@ if (viewer_open && viewer_asset == manifest_split_owner && viewer_asset >= 0 && 
         }
         if (manifest_split_drag) {
             var _split_reu = (_split_asset.type == "LOAD_REU");
-            var _split_max = max(100, _vx2 - _vx1 - (_split_reu ? 430 : 510));
+            var _split_max = max(100, _vx2 - _vx1 - (_split_reu ? 480 : 510));
             var _split_offset = clamp(_mx - _vx1 - manifest_split_grab, 100, _split_max);
             if (_split_reu) manifest_reu_split = _split_offset;
             else manifest_disk_split = _split_offset;
@@ -2437,7 +2448,7 @@ if (_asset.type == "META_TILESET") {
             var _previous_name_click = reu_name_click;
             reu_name_click = undefined;
             var _links=variable_struct_exists(_asset,"linked_assets")?_asset.linked_assets:[];
-            var _cm=_vx1+clamp(manifest_reu_split,100,max(100,_vx2-_vx1-430))+283;
+            var _cm=_vx1+clamp(manifest_reu_split,100,max(100,_vx2-_vx1-480))+283;
             // A click on the scrollbar is handled by the scroll block above and
             // must not fall through to a row.
             if (load_reu_sb_drag) exit;
@@ -2445,7 +2456,7 @@ if (_asset.type == "META_TILESET") {
                 if(_li < load_reu_scroll) continue;
                 if(_li >= load_reu_scroll + load_reu_rows_visible) continue;
                 var _ry = load_reu_list_y1 + ((_li - load_reu_scroll) * 22);
-                var _name_right = _vx1 + clamp(manifest_reu_split,100,max(100,_vx2-_vx1-430)) - 6;
+                var _name_right = _vx1 + clamp(manifest_reu_split,100,max(100,_vx2-_vx1-480)) - 6;
                 if (point_in_rectangle(_mx, _my, _vx1 + 30, _ry, _name_right, _ry + 20)) {
                     var _linked_name = _links[_li].asset_name;
                     var _double_name = is_struct(_previous_name_click)
@@ -2534,6 +2545,9 @@ if (_asset.type == "META_TILESET") {
                     var _drag_asset=scr_reu_find_asset(_links[_li].asset_name);
                     reu_drag_type=is_undefined(_drag_asset)?"":_drag_asset.type;
                     exit;
+                }
+                if(point_in_rectangle(_mx,_my,_vx2-70,_ry+2,_vx2-30,_ry+18)){
+                    scr_reu_delete_project_asset(_links[_li].asset_name); exit;
                 }
                 if(point_in_rectangle(_mx,_my,_vx2-26,_ry+2,_vx2-8,_ry+18)){array_delete(_links,_li,1);scr_reu_repack(_asset);exit;}
                 if(point_in_rectangle(_mx,_my,_cm,_ry+2,_cm+45,_ry+18)){_links[_li].auto_pack=!_links[_li].auto_pack;scr_reu_repack(_asset);exit;}

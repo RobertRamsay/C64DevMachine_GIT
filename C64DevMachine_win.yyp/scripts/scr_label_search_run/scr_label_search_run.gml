@@ -9,6 +9,9 @@ function scr_label_search_run(_query) {
     obj_workspace_manager.label_search_info = [];
 
     var _q = string_upper(string_trim(_query));
+    // A pasted assembler definition normally includes its trailing colon.
+    if (string_length(_q) > 0 && string_char_at(_q, string_length(_q)) == ":")
+        _q = string_trim(string_delete(_q, string_length(_q), 1));
     if (_q == "") return [];
 
     var _mode = 0; // 0 exact, 1 startswith, 2 endswith, 3 contains
@@ -53,10 +56,10 @@ function scr_label_search_run(_query) {
                     var _res = scr_label_search_scan_line(_lines[_li], _q, _mode);
                     if (_res < 0) continue;
                     var _ln = 0;
-                    if (_multi) {
+                    if (_multi || (node_type == "MACRO_CODE" && _ri == 0 && _rj == 1)) {
                         _ln = _li + 1;
                     }
-                    array_push(_hits, { node: id, def: (_res == 1), line: _ln, text: string_trim(_lines[_li]), ny: y });
+                    array_push(_hits, { node: id, def: (_res == 1), line: _ln, row: _ri, slot: _rj, text: string_trim(_lines[_li]), ny: y });
                 }
             }
         }
@@ -146,6 +149,18 @@ function scr_label_search_goto(_node, _frac) {
     if (!instance_exists(_node)) return;
     var _wm = obj_workspace_manager;
 
+    // Code results open the actual source, including inside collapsed ORGs.
+    // Use the selected result, not the first match in the node: references
+    // and repeated labels can have different source lines in the same block.
+    var _index = _wm.label_search_index;
+    if (_node.node_type == "MACRO_CODE" && _index >= 0 && _index < array_length(_wm.label_search_info)) {
+        var _hit = _wm.label_search_info[_index];
+        if (_hit.node == _node && _hit.line > 0 && _hit.row == 0 && _hit.slot == 1) {
+            scr_label_search_open_code_line(_node, _hit.line);
+            return;
+        }
+    }
+
     if (scr_node_is_hidden(_node)) {
         var _owner = _node;
         if (instance_exists(_node.macro_owner)) {
@@ -169,4 +184,38 @@ function scr_label_search_goto(_node, _frac) {
 
     scr_focus_camera_on_node_offset(_node, _frac);
     camera_set_view_pos(_wm.cam_view, _wm.cam_x, _wm.cam_y);
+}
+
+/// Open and select the matching source line. Line numbers are one-based;
+/// editor cursor/selection positions are zero-based character offsets.
+function scr_label_search_open_code_line(_node, _line) {
+    if (!instance_exists(_node) || _node.node_type != "MACRO_CODE") return false;
+    var _wm = obj_workspace_manager;
+    _wm.label_search_open = false;
+    _wm.label_search_pending = noone;
+    _wm.label_search_reflow = 0;
+    scr_code_editor_open(_node);
+    var _lines = string_split(_wm.code_editor_text, "\n");
+    var _target = clamp(_line - 1, 0, array_length(_lines) - 1);
+    _wm.code_editor_line_starts = array_create(array_length(_lines), 0);
+    var _offset = 0;
+    for (var _i = 0; _i < array_length(_lines); _i++) {
+        _wm.code_editor_line_starts[_i] = _offset;
+        _offset += string_length(_lines[_i]) + 1;
+    }
+    var _start = _wm.code_editor_line_starts[_target];
+    var _length = string_length(string_replace_all(_lines[_target], "\r", ""));
+    _wm.code_editor_cursor = _start;
+    _wm.code_editor_sel_start = _start;
+    _wm.code_editor_sel_end = _start + _length;
+    _wm.code_editor_scroll_x = 0;
+    _wm.code_editor_scroll_y = max(0, _target - 8);
+    _wm.code_editor_center_line = _target;
+    _wm.code_editor_last_cursor = -1;
+    _wm.code_editor_cache_dirty = true;
+    _wm.code_editor_symbol_cache_dirty = true;
+    _wm.code_editor_blink = 0;
+    mouse_clear(mb_left);
+    scr_workspace_input_blocked();
+    return true;
 }

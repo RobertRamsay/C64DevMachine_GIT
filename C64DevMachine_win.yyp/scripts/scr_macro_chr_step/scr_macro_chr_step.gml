@@ -19,7 +19,7 @@ function scr_macro_chr_step(_node) {
         var _btn_y = y + _header_h + 4;
         var _btn_w = width - 16;
         var _btn_h = _line_h;
-        if (mouse_check_button_pressed(mb_left) &&
+        if (scr_workspace_mouse_check_button_pressed(mb_left) &&
             point_in_rectangle(mouse_x, mouse_y, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h)) {
             if (instance_exists(obj_asset_manager)) {
                 obj_asset_manager.chr_picker_open = true;
@@ -33,7 +33,7 @@ function scr_macro_chr_step(_node) {
             var _mc_y = _btn_y + _line_h + 10;
             var _mc_w = width - 16;
             var _mc_h = _line_h + 12;
-            if (mouse_check_button_pressed(mb_left) &&
+            if (scr_workspace_mouse_check_button_pressed(mb_left) &&
                 point_in_rectangle(mouse_x, mouse_y, _mc_x, _mc_y, _mc_x + _mc_w, _mc_y + _mc_h)) {
                 var _mc_flag = (array_length(instructions) > 0 && array_length(instructions[0]) > 2)
                              ? real(instructions[0][2]) : 0;
@@ -77,7 +77,7 @@ function scr_macro_chr_step(_node) {
             var _x2 = x + 8 + (_col_w * 2);
             var _x3 = x + 8 + (_col_w * 3);
 
-if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
+if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
                 var _spawn_picker = false;
                 var _px = 0, _t_row = 0, _t_col = 0;
 

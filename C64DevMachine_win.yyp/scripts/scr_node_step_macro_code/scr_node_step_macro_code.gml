@@ -1,6 +1,6 @@
 /// @function scr_node_step_macro_code(_draw_x)
 function scr_node_step_macro_code(_draw_x) {
-    if (!mouse_check_button_pressed(mb_left)) return;
+    if (!scr_workspace_mouse_check_button_pressed(mb_left)) return;
 
     var _ly = y + 24 + 4;
 

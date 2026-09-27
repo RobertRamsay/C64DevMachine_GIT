@@ -147,7 +147,7 @@ function scr_node_step_macro_spr(_draw_x) {
     }
 
     if (point_in_rectangle(mouse_x, mouse_y, _prev_x, _prev_y, _prev_x + _prev_w, _prev_y + _prev_h)
-    && mouse_check_button_pressed(mb_left)) {
+    && scr_workspace_mouse_check_button_pressed(mb_left)) {
         if (spr_preview_dbl_click_timer > 0) {
             spr_preview_dbl_click_timer = 0;
 

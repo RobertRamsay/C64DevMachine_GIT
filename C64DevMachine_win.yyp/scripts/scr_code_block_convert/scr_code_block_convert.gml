@@ -1517,5 +1517,5 @@ function scr_cbc_draw_button() {
 // Windows uses the raw button; the macOS port swaps the body of this one
 // function for `return scr_primary_pressed();` and nothing else changes.
 function scr_cbc_primary_pressed() {
-    return mouse_check_button_pressed(mb_left);
+    return scr_workspace_mouse_check_button_pressed(mb_left);
 }

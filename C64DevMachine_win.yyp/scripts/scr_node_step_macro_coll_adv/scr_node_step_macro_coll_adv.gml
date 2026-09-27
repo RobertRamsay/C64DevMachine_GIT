@@ -12,7 +12,7 @@ function scr_node_step_macro_coll_adv(_draw_x) {
 
     var _h        = 16;
     var _step_amt = 1;
-    if (keyboard_check(vk_shift)) { _step_amt = 8; }
+    if (scr_workspace_keyboard_check(vk_shift)) { _step_amt = 8; }
 
     var _dx_vnm     = is_string(instructions[0][16]) ? string(instructions[0][16]) : "";
     var _dy_vnm     = is_string(instructions[0][17]) ? string(instructions[0][17]) : "";
@@ -131,7 +131,7 @@ function scr_node_step_macro_coll_adv(_draw_x) {
             _vis_x - _vis_pad,          _vis_y - _vis_pad,
             _vis_x + _vis_w + _vis_pad, _vis_y + _vis_h + _vis_pad
         );
-        if (_vis_in_padded && mouse_check_button(mb_left)) {
+        if (_vis_in_padded && scr_workspace_mouse_check_button(mb_left)) {
             var _cx     = _vis_x + _vis_w * 0.5;
             var _cy     = _vis_y + _vis_h * 0.5;
             var _new_dx = round((mouse_x - _cx) / 2);
