@@ -8,19 +8,6 @@ var _addr_total = 65536;
     ];
 
     var _segments = [];
-    global.memory_code_conflicts = [];
-    var _runtime_assets = ds_map_create();
-    // A streamed asset may share RAM with other streamed data, but loading it
-    // over executable code is still a real collision.
-    with(obj_c64_node) {
-        if (!is_connected) continue;
-        for(var _ri=0;_ri<array_length(instructions);_ri++) {
-            for(var _si=1;_si<array_length(instructions[_ri]);_si++) {
-                var _v=instructions[_ri][_si];
-                if(is_string(_v)) ds_map_replace(_runtime_assets,_v,true);
-            }
-        }
-    }
 
     // ORG aggregates — emitted independently of is_connected, since ORG nodes
     // are scaffolding (is_connected = false) but their address spans must
@@ -202,7 +189,7 @@ var _addr_total = 65536;
                         array_push(_segments, { addr: _csc.addr, size: _csc.size, lines: _csc.lines, col: make_color_rgb(180, 120, 255), type: "CODE", name: _mc_name, node_id: id, no_conflict: _csc.no_conflict, conflict: false });
                     }
                     if (total_node_size > 0) {
-                        array_push(_segments, { addr: pc_address, size: total_node_size, col: make_color_rgb(180, 120, 255), type: "CODE", name: _mc_name, lines: [], node_id: id, no_conflict: false, conflict: false });
+                        array_push(_segments, { addr: pc_address, size: total_node_size, col: make_color_rgb(180, 120, 255), type: "CODE", name: _mc_name, lines: [], node_id: id, no_conflict: true, conflict: false });
                     }
                 }
             } break;
@@ -891,17 +878,10 @@ var _addr_total = 65536;
                 var _s2_logical = (_s2.type == "CODE" || _s2.type == "MACRO");
                 var _s1_asset   = (_s1.type == "ASSET");
                 var _s2_asset   = (_s2.type == "ASSET");
-
-
+                if ((_s1_logical && _s2_asset) || (_s2_logical && _s1_asset)) _is_shared = true;
+                if (_s1_logical && _s2_logical) _is_shared = true;
             }
-            var _code_asset_pair = (_s1.type == "CODE" && _s2.type == "ASSET") || (_s2.type == "CODE" && _s1.type == "ASSET");
-            var _runtime_code_clash = false;
-            if (_code_asset_pair) {
-                var _code_seg = _s1.type == "CODE" ? _s1 : _s2;
-                var _asset_seg = _s1.type == "ASSET" ? _s1 : _s2;
-                _runtime_code_clash = !_code_seg.no_conflict && ds_map_exists(_runtime_assets,_asset_seg.name);
-            }
-            if (!_is_shared && (_s1.no_conflict || _s2.no_conflict) && !_runtime_code_clash) _is_shared = true;
+            if (!_is_shared && (_s1.no_conflict || _s2.no_conflict)) _is_shared = true;
             if (!_is_shared) {
                 var _screen_block_offset = _cstart & 0x03FF;
                 if (_screen_block_offset >= 0x03F8 && _screen_block_offset <= 0x03FF) _is_shared = true;
@@ -928,10 +908,6 @@ var _addr_total = 65536;
                     _target_cf = { start: _cstart, finish: _cfinish, is_var_clash: false };
                     array_push(_conflicts, _target_cf);
                 }
-                if (_s1.type == "CODE" && !_s1.no_conflict)
-                    array_push(global.memory_code_conflicts,{node:_s1.node_id,first:_cstart,last:_cfinish,name:_s2.name});
-                if (_s2.type == "CODE" && !_s2.no_conflict)
-                    array_push(global.memory_code_conflicts,{node:_s2.node_id,first:_cstart,last:_cfinish,name:_s1.name});
                 _s1.conflict = true;
                 _s2.conflict = true;
                 if (_s1.name == "VARIABLES" || _s2.name == "VARIABLES") {
@@ -956,7 +932,6 @@ var _addr_total = 65536;
     global.memory_bar_segments  = _segments;
     global.memory_bar_conflicts = _conflicts;
     global.memory_bar_dirty     = false;
-    ds_map_destroy(_runtime_assets);
 }
 
 // Refresh even if the asset panel draws before the memory bar (or the bar is hidden).
@@ -965,15 +940,4 @@ function scr_memory_bar_asset_conflicted(_asset_index) {
         scr_build_memory_bar_cache();
     return _asset_index >= 0 && _asset_index < array_length(global.memory_bar_asset_conflicts)
         && global.memory_bar_asset_conflicts[_asset_index];
-}
-
-// Same physical allocation warnings used by the memory bar and code gutter.
-function scr_memory_code_conflict(_node,_addr) {
-    if (global.memory_bar_dirty || !variable_global_exists("memory_code_conflicts")) scr_build_memory_bar_cache();
-    for(var _i=0;_i<array_length(global.memory_code_conflicts);_i++) {
-        var _c=global.memory_code_conflicts[_i];
-        if(_c.node==_node && (_addr<0 || (_addr>=_c.first && _addr<_c.last)))
-            return _c.name+" ($"+string_upper(decimal_to_hex(_c.first))+"-$"+string_upper(decimal_to_hex(_c.last-1))+")";
-    }
-    return "";
 }

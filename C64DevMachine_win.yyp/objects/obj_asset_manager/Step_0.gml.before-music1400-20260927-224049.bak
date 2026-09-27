@@ -31,7 +31,7 @@ panel_w = 244;
 panel_x = _gui_w - panel_w - 30;
 panel_y = 410;
 global.mouse_in_asset_panel = false;
-global.mouse_in_asset_panel = point_in_rectangle(_mx, _my, panel_x, panel_y, _panel_right, _panel_bottom);
+global.mouse_in_asset_panel = point_in_rectangle(_mx, _my, panel_x, panel_y, panel_x + panel_w, panel_y + panel_h);
 
 var _mouse_in_panel = global.mouse_in_asset_panel
 
@@ -838,7 +838,7 @@ if (_mouse_in_panel && _my >= panel_y + 66 && _my <= _panel_bottom - 38) {
         var _iy1 = panel_y + 66 + (_pos * item_h) - panel_scroll;
         var _iy2 = _iy1 + item_h;
         if (_iy2 < panel_y + 66 || _iy1 > _panel_bottom - 38) continue;
-        if (point_in_rectangle(_mx, _my, panel_x, _iy1, _panel_right, _iy2)) {
+        if (point_in_rectangle(_mx, _my, panel_x, _iy1, panel_x + panel_w, _iy2)) {
             hover_pos = _pos;
             // Group headers are not assets; they are hit-tested from
             // asset_group_rows, which Draw_64 rebuilds each frame.

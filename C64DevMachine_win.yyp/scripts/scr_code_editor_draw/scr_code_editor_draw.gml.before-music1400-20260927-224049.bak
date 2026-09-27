@@ -15,7 +15,29 @@ function scr_code_editor_draw() {
 	
 // --- HELPER: Checks if an address hits a conflict OR a loaded Asset ---
     var _is_danger_addr = function(_addr) {
-        return scr_memory_code_conflict(code_editor_node,_addr) != "";
+        // 1. EXEMPT COMMON AREAS (Matches Memory Bar Filter)
+        if (_addr <= 0x07FF) return false;      // ZP, Stack, OS, Screen
+        if (_addr >= 0xD000 && _addr <= 0xDFFF) return false; // Hardware I/O
+
+        // 2. CHECK ASSETS (Music, Sprites, Bitmaps)
+        if (instance_exists(obj_asset_manager)) {
+            var _am = obj_asset_manager;
+            for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
+                var _a = _am.asset_list[| _ai];
+                var _asz = 0;
+                if (_a.type == "SID_MUSIC") {
+                    if (buffer_exists(_a.buffer)) { _asz = max(1, scr_reu_asset_size(_a).size); }   // payload, not the .sid header
+                } else if (_a.type == "SPRITE_SET") {
+                    _asz = (_a.file != "" && buffer_exists(_a.buffer)) ? max(1, buffer_get_size(_a.buffer) - 2) : 0;
+                } else if (_a.type == "BITMAP") {
+                    _asz = (_a.file != "" && buffer_exists(_a.buffer)) ? 10192 : 0;
+                } else continue;
+                
+                if (_asz == 0) continue;
+                if (_addr >= _a.address && _addr < _a.address + _asz) return true;
+            }
+        }
+        return false;
     };
 
     // ═════════════════════════════════════════════════════════
@@ -217,7 +239,7 @@ if (_close_hover && mouse_check_button_pressed(mb_left)) {
     var _code_w    = _pw - _gutter_w - 12;
     // Code area stops 6px above the footer divider (drawn at _ph - 56), which
     // sits 6px above the type legend (at _ph - 49).
-    var _code_h    = _ph - 120;
+    var _code_h    = _ph - 96;
     var _max_lines = floor(_code_h / _line_h);
 
     // Split text into lines
@@ -1202,18 +1224,6 @@ var _g_is_valid = false;
             code_editor_hscrollbar_dragging ? 130 : 100
         ));
         draw_rectangle(_hthumb_x, _hsb_y, _hthumb_x + _hthumb_w, _hsb_y + 6, false);
-    }
-
-    var _memory_warning = scr_memory_code_conflict(code_editor_node,-1);
-    if (_memory_warning != "") {
-        draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(100,25,30));
-        draw_rectangle(_px+8,_py+_ph-82,_px+_pw-8,_py+_ph-60,false);
-        draw_set_color(c_yellow);
-        var _warning_text="MEMORY CLASH: code overlaps "+_memory_warning+" - see memory bar";
-        while(string_length(_warning_text)>0 && string_width_l(_warning_text)>_pw-28)
-            _warning_text=string_delete(_warning_text,string_length(_warning_text),1);
-        draw_text_l(_px+14,_py+_ph-77,_warning_text);
     }
 
 // ─── Footer divider: 6px clear of the code above and the legend below ───
