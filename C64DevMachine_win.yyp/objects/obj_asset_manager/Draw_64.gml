@@ -800,6 +800,11 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
 	_vx1 = _wide_editor ? 30 : 288;
 	_vy1 = 108;
 	var _vx2 = _wide_editor ? (panel_x + 20) : (panel_x - 10);
+	// The Music Maker is modal and uses the full width, centred: 30px margins
+	// both sides (matching its 108px top/bottom), over the asset panel.
+	if (_asset.type == "MUSIC_MAKER") {
+		_vx2 = _gui_w - _vx1;
+	}
 	var _vy2 = 972;
 	
     var _vw    = _vx2 - _vx1;
@@ -11101,13 +11106,25 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 	
     var _as_x = 0;
     var _as_y = 0;
+    var _sv_w = 60;
+    var _sv_x = 0;
+    var _sv_y1 = 0;
+    var _sv_y2 = 0;
 	
     if (_asset.type == "META_TILESET") {
         _as_x = _vx1 + 20;
         _as_y = _vy2 - 305;
+        _sv_x  = _as_x + 100;
+        _sv_y1 = _as_y;
+        _sv_y2 = _as_y + 14;
     } else {
-        _as_x = _vx1 + 1090;
-		_as_y = _vy1 +8;
+        // Header: SAVE sits just left of CLOSE and is drawn like it;
+        // AUTOSAVE: ON/OFF sits just left of SAVE.
+        _sv_x  = _vx2 - 80 - 8 - _sv_w;
+        _sv_y1 = _vy1 + 4;
+        _sv_y2 = _vy1 + 24;
+        _as_x  = _sv_x - 110;
+        _as_y  = _vy1 + 8;
     }
     var _ashov = point_in_rectangle(_mx, _my, _as_x, _as_y, _as_x + 100, _as_y + 16);
     draw_set_font_l(fnt_c64_tiny);
@@ -11116,21 +11133,34 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     if (_ashov && mouse_check_button_pressed(mb_left)) {
         _asset.meta.autosave = !_asset.meta.autosave;
     }
-    var _sv_x  = _as_x + 100;
-    var _sv_w  = 60;
-    var _svhov = point_in_rectangle(_mx, _my, _sv_x, _as_y, _sv_x + _sv_w, _as_y + 16);
+    var _svhov = point_in_rectangle(_mx, _my, _sv_x, _sv_y1, _sv_x + _sv_w, _sv_y2);
+    // Unsaved changes: the button pulses amber; otherwise it matches CLOSE
+    // (dark, lighter edge), turning green on hover.
     if (_asset.meta.is_dirty) {
         _asset.meta.flash_timer = (_asset.meta.flash_timer + 1) mod 40;
-        var _alpha = (_asset.meta.flash_timer < 20) ? 1.0 : 0.3;
+        var _alpha = 0.3;
+        if (_asset.meta.flash_timer < 20) {
+            _alpha = 1.0;
+        }
         draw_set_color(make_color_rgb(200, 150, 50));
         draw_set_alpha(_alpha);
+    } else if (_svhov) {
+        draw_set_color(make_color_rgb(50, 140, 70));
     } else {
-        draw_set_color(make_color_rgb(40, 40, 40));
+        draw_set_color(make_color_rgb(30, 30, 42));
     }
-    draw_rectangle(_sv_x, _as_y, _sv_x + _sv_w, _as_y + 14, false);
+    draw_rectangle(_sv_x, _sv_y1, _sv_x + _sv_w, _sv_y2, false);
     draw_set_alpha(1.0);
+    if (_svhov) {
+        draw_set_color(c_white);
+    } else {
+        draw_set_color(make_color_rgb(110, 110, 140));
+    }
+    draw_rectangle(_sv_x, _sv_y1, _sv_x + _sv_w, _sv_y2, true);
     draw_set_color(c_white);
-    draw_text_l(_sv_x + 10, _as_y, "SAVE");
+    draw_set_halign(fa_center);
+    draw_text_l(_sv_x + _sv_w * 0.5, _sv_y1 + 4, "SAVE");
+    draw_set_halign(fa_left);
 	    if ((_svhov && mouse_check_button_pressed(mb_left)) || (_asset.meta.is_dirty && _asset.meta.autosave)) {
 	        // SPRITE_SET is never written back to its source file. The
 	        // workspace JSON already preserves the buffer + meta (including

@@ -262,7 +262,7 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
     draw_set_color(make_color_rgb(120, 120, 170));
     draw_rectangle(_x0, _y0, _x1, _y1, true);
     var _rows = [
-        ["INSTRUMENT PROGRAM", "runs from step 00 when a note plays"],
+        ["INSTRUMENT PROGRAM: RUNS FROM STEP 00 WHEN A NOTE PLAYS", ""],
         ["", ""],
         ["$xx", "set the waveform (see WAVE)"],
         ["", "$41 pulse  $21 saw  $11 tri  $81 noise"],
@@ -290,10 +290,11 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
         if (_ry + 12 > _y1) {
             break;
         }
+        // Rows with no second column are headings and may run across it.
         draw_set_color(make_color_rgb(255, 200, 100));
         draw_text_l(_x0 + 6, _ry, _rows[_i][0]);
         draw_set_color(make_color_rgb(200, 200, 220));
-        draw_text_l(_x0 + 70, _ry, _rows[_i][1]);
+        draw_text_l(_x0 + 84, _ry, _rows[_i][1]);
     }
     draw_set_font_l(fnt_c64_tiny);
 }

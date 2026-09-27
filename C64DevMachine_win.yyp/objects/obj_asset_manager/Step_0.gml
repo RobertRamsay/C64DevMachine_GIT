@@ -47,6 +47,9 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _wide_modal = true;
         _vx1 = 30;
         _vx2 = panel_x + 20;
+        if (_vb_type == "MUSIC_MAKER") {
+            _vx2 = _gui_w - _vx1;   // full width, centred — must match Draw
+        }
     }
 }
 var _mouse_in_viewer = viewer_open && point_in_rectangle(_mx, _my, _vx1, _vy1, _vx2, _vy2);
