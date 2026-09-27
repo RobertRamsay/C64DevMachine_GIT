@@ -14,6 +14,9 @@
 ///     5XX / 6XX / 7XX  set AD / SR / waveform — one-shot, applied by fxr once
 ///                      any hard restart has finished so the note's own values
 ///                      don't overwrite it
+///     8XX  set pulse width to XX * 16 ($000-$FF0) — one-shot, like 5-7
+///     9XX  pulse sweep for the row: 01-7F adds XX per frame, 80-FF subtracts
+///          (256 - XX); clamped to $000-$FFF
 ///     DXX  write $D418 directly (volume, filter mode)
 ///     FXX  tempo in frames per row (00 ignored)
 ///
@@ -59,6 +62,14 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
     array_push(_list, ["sta_abx", _k + "fx", _id]);
     array_push(_list, ["rts",     0, _id]);
     array_push(_list, ["label",   _k + "c_n0"]);
+    // 9: pulse sweep, an effect like 1-4.
+    array_push(_list, ["cmp_imm", 0x09, _id]);
+    array_push(_list, ["bne",     _k + "c_n9", _id]);
+    array_push(_list, ["sta_abx", _k + "fx", _id]);
+    array_push(_list, ["lda_abs", _k + "rval", _id]);
+    array_push(_list, ["sta_abx", _k + "fxv", _id]);
+    array_push(_list, ["rts",     0, _id]);
+    array_push(_list, ["label",   _k + "c_n9"]);
     array_push(_list, ["cmp_imm", 0x05, _id]);
     array_push(_list, ["bcs",     _k + "c_ge5", _id]);
     // 1-4: continuous. Y keeps the command.
@@ -99,8 +110,8 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
     array_push(_list, ["lda_imm", 0x00, _id]);
     array_push(_list, ["sta_abx", _k + "fx", _id]);
     array_push(_list, ["tya",     0, _id]);
-    // 5-7: one-shot, applied by fxr.
-    array_push(_list, ["cmp_imm", 0x08, _id]);
+    // 5-8: one-shot, applied by fxr.
+    array_push(_list, ["cmp_imm", 0x09, _id]);
     array_push(_list, ["bcs",     _k + "c_ge8", _id]);
     array_push(_list, ["sta_abx", _k + "pcmd", _id]);
     array_push(_list, ["lda_abs", _k + "rval", _id]);
@@ -143,9 +154,28 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
     array_push(_list, ["sta_aby", _chip + 6, _id]);
     array_push(_list, ["jmp_abs", _k + "f_oclr", _id]);
     array_push(_list, ["label",   _k + "f_o7"]);
+    array_push(_list, ["cmp_imm", 0x07, _id]);
+    array_push(_list, ["bne",     _k + "f_o8", _id]);
     array_push(_list, ["lda_abx", _k + "pval", _id]);
     array_push(_list, ["sta_zpx", _c0, _id]);           // keep the ctrl shadow in step
     array_push(_list, ["sta_aby", _chip + 4, _id]);
+    array_push(_list, ["jmp_abs", _k + "f_oclr", _id]);
+    // 8XX: pulse width = XX * 16.
+    array_push(_list, ["label",   _k + "f_o8"]);
+    array_push(_list, ["lda_abx", _k + "pval", _id]);
+    array_push(_list, ["asl_a",   0, _id]);
+    array_push(_list, ["asl_a",   0, _id]);
+    array_push(_list, ["asl_a",   0, _id]);
+    array_push(_list, ["asl_a",   0, _id]);
+    array_push(_list, ["sta_abx", _k + "pwl", _id]);
+    array_push(_list, ["sta_aby", _chip + 2, _id]);
+    array_push(_list, ["lda_abx", _k + "pval", _id]);
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["sta_abx", _k + "pwh", _id]);
+    array_push(_list, ["sta_aby", _chip + 3, _id]);
     array_push(_list, ["label",   _k + "f_oclr"]);
     array_push(_list, ["lda_imm", 0x00, _id]);
     array_push(_list, ["sta_abx", _k + "pcmd", _id]);
@@ -187,6 +217,43 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
     array_push(_list, ["label",   _k + "f_p3"]);
     array_push(_list, ["cmp_imm", 0x03, _id]);
     array_push(_list, ["beq",     _k + "f_tp", _id]);
+    array_push(_list, ["cmp_imm", 0x09, _id]);
+    array_push(_list, ["beq",     _k + "f_pw", _id]);
+    array_push(_list, ["jmp_abs", _k + "f_vib", _id]);
+    // 9XX pulse sweep: add XX sign-extended, clamp to $000-$FFF, write.
+    array_push(_list, ["label",   _k + "f_pw"]);
+    array_push(_list, ["lda_abx", _k + "fxv", _id]);
+    array_push(_list, ["bmi",     _k + "f_pwdn", _id]);
+    array_push(_list, ["clc",     0, _id]);
+    array_push(_list, ["adc_abx", _k + "pwl", _id]);
+    array_push(_list, ["sta_abx", _k + "pwl", _id]);
+    array_push(_list, ["lda_abx", _k + "pwh", _id]);
+    array_push(_list, ["adc_imm", 0x00, _id]);
+    array_push(_list, ["sta_abx", _k + "pwh", _id]);
+    array_push(_list, ["cmp_imm", 0x10, _id]);
+    array_push(_list, ["bcc",     _k + "f_pwout", _id]);
+    array_push(_list, ["lda_imm", 0xFF, _id]);          // past the top: $FFF
+    array_push(_list, ["sta_abx", _k + "pwl", _id]);
+    array_push(_list, ["lda_imm", 0x0F, _id]);
+    array_push(_list, ["sta_abx", _k + "pwh", _id]);
+    array_push(_list, ["jmp_abs", _k + "f_pwout", _id]);
+    array_push(_list, ["label",   _k + "f_pwdn"]);
+    array_push(_list, ["clc",     0, _id]);
+    array_push(_list, ["adc_abx", _k + "pwl", _id]);
+    array_push(_list, ["sta_abx", _k + "pwl", _id]);
+    array_push(_list, ["lda_abx", _k + "pwh", _id]);
+    array_push(_list, ["adc_imm", 0xFF, _id]);
+    array_push(_list, ["sta_abx", _k + "pwh", _id]);
+    array_push(_list, ["cmp_imm", 0x10, _id]);
+    array_push(_list, ["bcc",     _k + "f_pwout", _id]);
+    array_push(_list, ["lda_imm", 0x00, _id]);          // below zero: $000
+    array_push(_list, ["sta_abx", _k + "pwl", _id]);
+    array_push(_list, ["sta_abx", _k + "pwh", _id]);
+    array_push(_list, ["label",   _k + "f_pwout"]);
+    array_push(_list, ["lda_abx", _k + "pwl", _id]);
+    array_push(_list, ["sta_aby", _chip + 2, _id]);
+    array_push(_list, ["lda_abx", _k + "pwh", _id]);
+    array_push(_list, ["sta_aby", _chip + 3, _id]);
     array_push(_list, ["jmp_abs", _k + "f_vib", _id]);
     // Slide to the target, snapping onto it rather than overshooting.
     array_push(_list, ["label",   _k + "f_tp"]);

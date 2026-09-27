@@ -1561,7 +1561,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(150, 120, 90));
     draw_text_l(_col_gutter_x, _clr_y + 28,
-        "CMD (1-4 LAST ONE ROW)  1XX PORTA UP  2XX DOWN  3XX SLIDE TO NOTE  4XY VIBRATO  5XX AD  6XX SR  7XX WAVE  DXX $D418  FXX TEMPO");
+        "CMD 1XX UP 2XX DN 3XX SLIDE 4XY VIB 5XX AD 6XX SR 7XX WAVE 8XX PW 9XX PW SWEEP DXX $D418 FXX TEMPO | 1-4,9 ONE ROW");
     draw_set_font_l(fnt_c64_tiny);
 
     // ═════════════════════════════════════════════════════════════════════

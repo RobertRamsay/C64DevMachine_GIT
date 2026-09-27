@@ -17357,7 +17357,8 @@ case "MACRO_SID_SONG": {
     var _lbl_dskip = _key + "dskip";
     // Per-voice effect state tables (see section 7).
     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
-                             "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval"];
+                             "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval",
+                             "pwl", "pwh"];
     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
 
     // True once any instrument has vibrato or any pattern has a command
@@ -18018,9 +18019,11 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["iny",     0,         _id]);
         array_push(_list, ["lda_izy", _vb + 0,   _id]);
         array_push(_list, ["sta_abs", _D400 + 2, _id]);
+        array_push(_list, ["sta_abs", _key + "pwl_" + string(_vi), _id]);   // pulse-width shadow (8XX / 9XX)
         array_push(_list, ["iny",     0,         _id]);
         array_push(_list, ["lda_izy", _vb + 0,   _id]);
         array_push(_list, ["sta_abs", _D400 + 3, _id]);
+        array_push(_list, ["sta_abs", _key + "pwh_" + string(_vi), _id]);
         // Instrument vibrato: delay, speed, depth*4; restart the vibrato cycle.
         array_push(_list, ["iny",     0,         _id]);
         array_push(_list, ["lda_izy", _vb + 0,   _id]);
@@ -18227,9 +18230,11 @@ case "MACRO_SID_SONG": {
             array_push(_list, ["iny",     0,         _id]);
             array_push(_list, ["lda_izy", _vb + 0,   _id]);
             array_push(_list, ["sta_abs", _D400 + 2, _id]);
+            array_push(_list, ["sta_abs", _key + "pwl_" + string(_vi), _id]);   // pulse-width shadow (8XX / 9XX)
             array_push(_list, ["iny",     0,         _id]);
             array_push(_list, ["lda_izy", _vb + 0,   _id]);
             array_push(_list, ["sta_abs", _D400 + 3, _id]);
+            array_push(_list, ["sta_abs", _key + "pwh_" + string(_vi), _id]);
             // Instrument vibrato: delay, speed, depth*4; restart the vibrato cycle.
             array_push(_list, ["iny",     0,         _id]);
             array_push(_list, ["lda_izy", _vb + 0,   _id]);

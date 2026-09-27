@@ -40,6 +40,7 @@ function scr_sid64_sim_voice_new() {
         voff     : 0,           // vibrato offset, kept as a 16-bit two's-complement value
         pcmd     : 0,
         pval     : 0,
+        pw       : 0,           // pulse-width shadow, 12-bit (8XX / 9XX)
         was_on   : false        // voice was enabled last frame (mute handling)
     };
 }
@@ -153,6 +154,7 @@ function scr_sid64_sim_trigger(_sim, _v, _instr) {
     scr_sid64_sim_write(_sim, _r0 + 6, (_sus << 4) | _rel);
     scr_sid64_sim_write(_sim, _r0 + 2, _pw & 0xFF);
     scr_sid64_sim_write(_sim, _r0 + 3, (_pw >> 8) & 0x0F);
+    _vc.pw = _pw;
     _vc.ivdl = clamp(floor(scr_sid64_instr_field(_instr, "vib_delay", 0)), 0, 255);
     _vc.ivs  = clamp(floor(scr_sid64_instr_field(_instr, "vib_speed", 0)), 0, 15);
     _vc.ivp  = (clamp(floor(scr_sid64_instr_field(_instr, "vib_depth", 0)), 0, 15) * 4) & 0xFF;
@@ -211,6 +213,11 @@ function scr_sid64_sim_cmd(_sim, _v, _cmd, _val) {
         _vc.fx = 0;
         return;
     }
+    if (_cmd == 9) {
+        _vc.fx  = 9;            // pulse sweep, an effect like 1-4
+        _vc.fxv = _val;
+        return;
+    }
     if (_cmd >= 5) {
         _vc.fx = 0;
     }
@@ -232,7 +239,7 @@ function scr_sid64_sim_cmd(_sim, _v, _cmd, _val) {
         }
         return;
     }
-    if (_cmd < 8) {
+    if (_cmd < 9) {
         _vc.pcmd = _cmd;
         _vc.pval = _val;
         return;
@@ -312,9 +319,13 @@ function scr_sid64_sim_fx(_sim, _v, _hrw) {
             scr_sid64_sim_write(_sim, _r0 + 5, _vc.pval);
         } else if (_vc.pcmd == 6) {
             scr_sid64_sim_write(_sim, _r0 + 6, _vc.pval);
-        } else {
+        } else if (_vc.pcmd == 7) {
             _vc.cb = _vc.pval;
             scr_sid64_sim_write(_sim, _r0 + 4, _vc.pval);
+        } else {
+            _vc.pw = (_vc.pval << 4) & 0xFFF;
+            scr_sid64_sim_write(_sim, _r0 + 2, _vc.pw & 0xFF);
+            scr_sid64_sim_write(_sim, _r0 + 3, (_vc.pw >> 8) & 0x0F);
         }
         _vc.pcmd = 0;
     }
@@ -330,6 +341,15 @@ function scr_sid64_sim_fx(_sim, _v, _hrw) {
         if (_vc.freq < 0) {
             _vc.freq = 0;
         }
+    } else if (_vc.fx == 9) {
+        // pulse sweep: XX sign-extended, clamped to $000-$FFF
+        var _dpw = _vc.fxv;
+        if (_dpw >= 0x80) {
+            _dpw -= 256;
+        }
+        _vc.pw = clamp(_vc.pw + _dpw, 0, 0xFFF);
+        scr_sid64_sim_write(_sim, _r0 + 2, _vc.pw & 0xFF);
+        scr_sid64_sim_write(_sim, _r0 + 3, (_vc.pw >> 8) & 0x0F);
     } else if (_vc.fx == 3) {
         if (_vc.freq < _vc.tgt) {
             _vc.freq += _vc.fxv;
