@@ -1,0 +1,237 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
+index f8f22dd..4226345 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
+@@ -33,8 +33,7 @@ function scr_sound_editor_cmd_menus(_lines) {
+             { ins: "$43", label: "PULSE + SYNC" },
+             { ins: "$61", label: "SAW + PULSE" },
+             { ins: "$51", label: "TRI + PULSE" },
+-            { ins: "$31", label: "TRI + SAW" },
+-            { ins: "$40", label: "PULSE, GATE OFF (RELEASE)" }
++            { ins: "$31", label: "TRI + SAW" }
+         ] },
+         { id: "NOTE", items: [
+             { ins: "N",    label: "THE PLAYED NOTE" },
+@@ -298,3 +297,125 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
+     }
+     draw_set_font_l(fnt_c64_tiny);
+ }
++
++/// Readable explanation of one instrument program line, for the command box's
++/// side column. _lines is the whole program (so a loop can say where it goes).
++/// Returns { text, bad } — bad marks something that won't do what it looks like.
++function scr_sound_editor_instr_comment(_line, _lines) {
++    var _raw = string_trim(_line);
++    var _up  = string_upper(_raw);
++    if (_raw == "") {
++        return { text: "", bad: false };
++    }
++
++    // --- : end
++    var _all_dash = true;
++    for (var _di = 1; _di <= string_length(_up); _di++) {
++        if (string_char_at(_up, _di) != "-") {
++            _all_dash = false;
++            break;
++        }
++    }
++    if (_all_dash) {
++        return { text: "gate off, program stops - the note releases", bad: false };
++    }
++
++    var _c0 = string_char_at(_up, 1);
++    var _rest = string_delete(_up, 1, 1);
++
++    // N / N+n / N-n : note
++    if (_c0 == "N") {
++        if (_rest == "" || _rest == "+0" || _rest == "-0") {
++            return { text: "play the pattern's note", bad: false };
++        }
++        var _sgn = string_char_at(_rest, 1);
++        var _num = string_digits(string_delete(_rest, 1, 1));
++        if ((_sgn != "+" && _sgn != "-") || _num == "" || string_length(_num) != string_length(_rest) - 1) {
++            return { text: "? write N, N+n or N-n", bad: true };
++        }
++        var _n = real(_num);
++        var _names = ["unison", "semitone", "tone", "minor 3rd", "major 3rd", "4th", "tritone",
++                      "5th", "minor 6th", "major 6th", "minor 7th", "major 7th"];
++        var _desc = _names[_n mod 12];
++        var _oct = _n div 12;
++        if (_n mod 12 == 0) {
++            _desc = string(_oct) + " octave";
++            if (_oct > 1) {
++                _desc += "s";
++            }
++        } else if (_oct > 0) {
++            _desc += " + " + string(_oct) + " oct";
++        }
++        var _dir = "up";
++        if (_sgn == "-") {
++            _dir = "down";
++        }
++        return { text: "note " + _dir + " " + string(_n) + " (" + _desc + ")", bad: false };
++    }
++
++    // Dn : hold
++    if (_c0 == "D") {
++        var _dn = string_digits(_rest);
++        if (_dn == "" || string_length(_dn) != string_length(_rest)) {
++            return { text: "? write Dn, n = 1-255 frames", bad: true };
++        }
++        var _d = real(_dn);
++        if (_d < 1 || _d > 255) {
++            return { text: "? hold must be 1-255 frames", bad: true };
++        }
++        var _secs = string_format(_d / 50, 1, 2);
++        var _fr = " frames";
++        if (_d == 1) {
++            _fr = " frame";
++        }
++        return { text: "hold " + string(_d) + _fr + " (" + string_trim(_secs) + " s)", bad: false };
++    }
++
++    // Ln : loop
++    if (_c0 == "L") {
++        var _ln = string_digits(_rest);
++        if (_ln == "" || string_length(_ln) != string_length(_rest)) {
++            return { text: "? write Ln, n = a step number", bad: true };
++        }
++        var _l = real(_ln);
++        if (_l >= array_length(_lines)) {
++            return { text: "! step " + string(_l) + " doesn't exist", bad: true };
++        }
++        var _to = string_trim(_lines[_l]);
++        return { text: "loop back to step " + string(_l) + " (" + _to + ")", bad: false };
++    }
++
++    // $xx / xx : waveform + control bits
++    var _hex = _up;
++    if (string_char_at(_hex, 1) == "$") {
++        _hex = string_delete(_hex, 1, 1);
++    }
++    var _is_hex = (string_length(_hex) > 0 && string_length(_hex) <= 2);
++    for (var _hi = 1; _hi <= string_length(_hex); _hi++) {
++        if (string_pos(string_char_at(_hex, _hi), "0123456789ABCDEF") == 0) {
++            _is_hex = false;
++            break;
++        }
++    }
++    if (!_is_hex) {
++        return { text: "? not a command - see WAVE/NOTE/HOLD/LOOP/END", bad: true };
++    }
++    var _v = real(hex_to_decimal(_hex));
++    var _w = [];
++    if (_v & 0x10) array_push(_w, "triangle");
++    if (_v & 0x20) array_push(_w, "saw");
++    if (_v & 0x40) array_push(_w, "pulse");
++    if (_v & 0x80) array_push(_w, "noise");
++    var _txt = "silent (no waveform)";
++    if (array_length(_w) > 0) {
++        _txt = string_join_ext(" + ", _w);
++    }
++    if (_v & 0x04) _txt += ", ring mod";
++    if (_v & 0x02) _txt += ", sync";
++    if (_v & 0x08) _txt += ", TEST (oscillator held)";
++    // The player always turns the gate bit on for a program waveform line.
++    if ((_v & 0x01) == 0) {
++        _txt += " (gate forced on)";
++    }
++    return { text: _txt, bad: false };
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
+index 29c9c63..11196cc 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
+@@ -529,79 +529,21 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+         draw_set_color(_m.instr_edit_active ? c_lime : make_color_rgb(160, 160, 180));
+         draw_text_l(_tb_x0 + 4 + _tb_prefix_w, _tb_y1 + 4 + _tli * 16, _tb_line_txt);
+ 
+-        // Generate automated side-notes with detailed SID register decoding when not editing
+-        if (!_m.instr_edit_active) {
+-            var _raw_tok = string_trim(_tb_lines[_tli]);
+-            var _up_tok  = string_upper(_raw_tok);
+-            var _comment = "";
+-
+-            if (_raw_tok != "") {
+-                var _c0 = string_char_at(_up_tok, 1);
+-                
+-                // Check for End / Dashes
+-                var _all_dash = true;
+-                for (var _di = 1; _di <= string_length(_up_tok); _di++) {
+-                    if (string_char_at(_up_tok, _di) != "-") { _all_dash = false; break; }
+-                }
+-
+-                if (_all_dash) {
+-                    _comment = "; gate off + stop";
+-                } else if (_c0 == "N") {
+-                    var _rest = string_delete(_up_tok, 1, 1);
+-                    if (_rest == "" || _rest == "+0") {
+-                        _comment = "; note reset";
+-                    } else {
+-                        _comment = "; note offset " + _rest;
+-                    }
+-                } else if (_c0 == "D") {
+-                    _comment = "; hold " + string_delete(_up_tok, 1, 1) + " ticks";
+-                } else if (_c0 == "L") {
+-                    _comment = "; loop to step " + string_delete(_up_tok, 1, 1);
+-                } else {
+-                    // Waveform / Control byte hex decoding
+-                    var _hexstr = _up_tok;
+-                    if (string_char_at(_hexstr, 1) == "$") { _hexstr = string_delete(_hexstr, 1, 1); }
+-                    var _is_hex = (string_length(_hexstr) > 0);
+-                    for (var _hi = 1; _hi <= string_length(_hexstr); _hi++) {
+-                        if (string_pos(string_char_at(_hexstr, _hi), "0123456789ABCDEF") == 0) { _is_hex = false; break; }
+-                    }
+-                    
+-                    if (_is_hex) {
+-                        var _val = real(hex_to_decimal(_hexstr));
+-                        var _wf_parts = [];
+-                        
+-                        // Extract waveforms (bits 4-7)
+-                        if (_val & 0x80) array_push(_wf_parts, "Noise");
+-                        if (_val & 0x40) array_push(_wf_parts, "Pulse");
+-                        if (_val & 0x20) array_push(_wf_parts, "Saw");
+-                        if (_val & 0x10) array_push(_wf_parts, "Triangle");
+-                        
+-                        var _wf_str = (array_length(_wf_parts) > 0) ? string_join_ext("+", _wf_parts) : "No Wave";
+-                        
+-                        // Extract control bits (bits 0-3)
+-                        var _ctrl_parts = [];
+-                        if (_val & 0x01) array_push(_ctrl_parts, "Gate on");
+-                        if (_val & 0x02) array_push(_ctrl_parts, "Sync");
+-                        if (_val & 0x04) array_push(_ctrl_parts, "Ring mod");
+-                        if (_val & 0x08) array_push(_ctrl_parts, "Test");
+-						
+-						                        
+-                        _comment = "; " + _wf_str;
+-                        if (array_length(_ctrl_parts) > 0) {
+-                            _comment += ", " + string_join_ext(", ", _ctrl_parts);
+-                        }
+-                  }
+-                }
++        // Plain-English side note for every line, live while typing too
++        // (see scr_sound_editor_instr_comment). Mid-blue; problems in red.
++        var _cm = scr_sound_editor_instr_comment(_tb_lines[_tli], _tb_lines);
++        if (_cm.text != "") {
++            var _comment = _cm.text;
++            // Trim a long side-note to the box instead of running past it.
++            while (string_length(_comment) > 1 && string_width_l(_comment) > _tb_w - 86) {
++                _comment = string_copy(_comment, 1, string_length(_comment) - 1);
+             }
+-
+-            if (_comment != "") {
+-                // Trim a long side-note to the box instead of running past it.
+-                while (string_length(_comment) > 1 && string_width_l(_comment) > _tb_w - 86) {
+-                    _comment = string_copy(_comment, 1, string_length(_comment) - 1);
+-                }
+-                draw_set_color(make_color_rgb(90, 110, 90));
+-                draw_text_l(_tb_x0 + 80, _tb_y1 + 4 + _tli * 16, _comment);
++            if (_cm.bad) {
++                draw_set_color(make_color_rgb(230, 90, 90));
++            } else {
++                draw_set_color(make_color_rgb(90, 150, 230));
+             }
++            draw_text_l(_tb_x0 + 80, _tb_y1 + 4 + _tli * 16, _comment);
+         }
+     }
+ 

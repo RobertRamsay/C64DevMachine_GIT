@@ -529,79 +529,21 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         draw_set_color(_m.instr_edit_active ? c_lime : make_color_rgb(160, 160, 180));
         draw_text_l(_tb_x0 + 4 + _tb_prefix_w, _tb_y1 + 4 + _tli * 16, _tb_line_txt);
 
-        // Generate automated side-notes with detailed SID register decoding when not editing
-        if (!_m.instr_edit_active) {
-            var _raw_tok = string_trim(_tb_lines[_tli]);
-            var _up_tok  = string_upper(_raw_tok);
-            var _comment = "";
-
-            if (_raw_tok != "") {
-                var _c0 = string_char_at(_up_tok, 1);
-                
-                // Check for End / Dashes
-                var _all_dash = true;
-                for (var _di = 1; _di <= string_length(_up_tok); _di++) {
-                    if (string_char_at(_up_tok, _di) != "-") { _all_dash = false; break; }
-                }
-
-                if (_all_dash) {
-                    _comment = "; gate off + stop";
-                } else if (_c0 == "N") {
-                    var _rest = string_delete(_up_tok, 1, 1);
-                    if (_rest == "" || _rest == "+0") {
-                        _comment = "; note reset";
-                    } else {
-                        _comment = "; note offset " + _rest;
-                    }
-                } else if (_c0 == "D") {
-                    _comment = "; hold " + string_delete(_up_tok, 1, 1) + " ticks";
-                } else if (_c0 == "L") {
-                    _comment = "; loop to step " + string_delete(_up_tok, 1, 1);
-                } else {
-                    // Waveform / Control byte hex decoding
-                    var _hexstr = _up_tok;
-                    if (string_char_at(_hexstr, 1) == "$") { _hexstr = string_delete(_hexstr, 1, 1); }
-                    var _is_hex = (string_length(_hexstr) > 0);
-                    for (var _hi = 1; _hi <= string_length(_hexstr); _hi++) {
-                        if (string_pos(string_char_at(_hexstr, _hi), "0123456789ABCDEF") == 0) { _is_hex = false; break; }
-                    }
-                    
-                    if (_is_hex) {
-                        var _val = real(hex_to_decimal(_hexstr));
-                        var _wf_parts = [];
-                        
-                        // Extract waveforms (bits 4-7)
-                        if (_val & 0x80) array_push(_wf_parts, "Noise");
-                        if (_val & 0x40) array_push(_wf_parts, "Pulse");
-                        if (_val & 0x20) array_push(_wf_parts, "Saw");
-                        if (_val & 0x10) array_push(_wf_parts, "Triangle");
-                        
-                        var _wf_str = (array_length(_wf_parts) > 0) ? string_join_ext("+", _wf_parts) : "No Wave";
-                        
-                        // Extract control bits (bits 0-3)
-                        var _ctrl_parts = [];
-                        if (_val & 0x01) array_push(_ctrl_parts, "Gate on");
-                        if (_val & 0x02) array_push(_ctrl_parts, "Sync");
-                        if (_val & 0x04) array_push(_ctrl_parts, "Ring mod");
-                        if (_val & 0x08) array_push(_ctrl_parts, "Test");
-						
-						                        
-                        _comment = "; " + _wf_str;
-                        if (array_length(_ctrl_parts) > 0) {
-                            _comment += ", " + string_join_ext(", ", _ctrl_parts);
-                        }
-                  }
-                }
+        // Plain-English side note for every line, live while typing too
+        // (see scr_sound_editor_instr_comment). Mid-blue; problems in red.
+        var _cm = scr_sound_editor_instr_comment(_tb_lines[_tli], _tb_lines);
+        if (_cm.text != "") {
+            var _comment = _cm.text;
+            // Trim a long side-note to the box instead of running past it.
+            while (string_length(_comment) > 1 && string_width_l(_comment) > _tb_w - 86) {
+                _comment = string_copy(_comment, 1, string_length(_comment) - 1);
             }
-
-            if (_comment != "") {
-                // Trim a long side-note to the box instead of running past it.
-                while (string_length(_comment) > 1 && string_width_l(_comment) > _tb_w - 86) {
-                    _comment = string_copy(_comment, 1, string_length(_comment) - 1);
-                }
-                draw_set_color(make_color_rgb(90, 110, 90));
-                draw_text_l(_tb_x0 + 80, _tb_y1 + 4 + _tli * 16, _comment);
+            if (_cm.bad) {
+                draw_set_color(make_color_rgb(230, 90, 90));
+            } else {
+                draw_set_color(make_color_rgb(90, 150, 230));
             }
+            draw_text_l(_tb_x0 + 80, _tb_y1 + 4 + _tli * 16, _comment);
         }
     }
 

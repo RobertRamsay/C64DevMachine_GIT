@@ -33,8 +33,7 @@ function scr_sound_editor_cmd_menus(_lines) {
             { ins: "$43", label: "PULSE + SYNC" },
             { ins: "$61", label: "SAW + PULSE" },
             { ins: "$51", label: "TRI + PULSE" },
-            { ins: "$31", label: "TRI + SAW" },
-            { ins: "$40", label: "PULSE, GATE OFF (RELEASE)" }
+            { ins: "$31", label: "TRI + SAW" }
         ] },
         { id: "NOTE", items: [
             { ins: "N",    label: "THE PLAYED NOTE" },
@@ -297,4 +296,126 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
         draw_text_l(_x0 + 84, _ry, _rows[_i][1]);
     }
     draw_set_font_l(fnt_c64_tiny);
+}
+
+/// Readable explanation of one instrument program line, for the command box's
+/// side column. _lines is the whole program (so a loop can say where it goes).
+/// Returns { text, bad } — bad marks something that won't do what it looks like.
+function scr_sound_editor_instr_comment(_line, _lines) {
+    var _raw = string_trim(_line);
+    var _up  = string_upper(_raw);
+    if (_raw == "") {
+        return { text: "", bad: false };
+    }
+
+    // --- : end
+    var _all_dash = true;
+    for (var _di = 1; _di <= string_length(_up); _di++) {
+        if (string_char_at(_up, _di) != "-") {
+            _all_dash = false;
+            break;
+        }
+    }
+    if (_all_dash) {
+        return { text: "gate off, program stops - the note releases", bad: false };
+    }
+
+    var _c0 = string_char_at(_up, 1);
+    var _rest = string_delete(_up, 1, 1);
+
+    // N / N+n / N-n : note
+    if (_c0 == "N") {
+        if (_rest == "" || _rest == "+0" || _rest == "-0") {
+            return { text: "play the pattern's note", bad: false };
+        }
+        var _sgn = string_char_at(_rest, 1);
+        var _num = string_digits(string_delete(_rest, 1, 1));
+        if ((_sgn != "+" && _sgn != "-") || _num == "" || string_length(_num) != string_length(_rest) - 1) {
+            return { text: "? write N, N+n or N-n", bad: true };
+        }
+        var _n = real(_num);
+        var _names = ["unison", "semitone", "tone", "minor 3rd", "major 3rd", "4th", "tritone",
+                      "5th", "minor 6th", "major 6th", "minor 7th", "major 7th"];
+        var _desc = _names[_n mod 12];
+        var _oct = _n div 12;
+        if (_n mod 12 == 0) {
+            _desc = string(_oct) + " octave";
+            if (_oct > 1) {
+                _desc += "s";
+            }
+        } else if (_oct > 0) {
+            _desc += " + " + string(_oct) + " oct";
+        }
+        var _dir = "up";
+        if (_sgn == "-") {
+            _dir = "down";
+        }
+        return { text: "note " + _dir + " " + string(_n) + " (" + _desc + ")", bad: false };
+    }
+
+    // Dn : hold
+    if (_c0 == "D") {
+        var _dn = string_digits(_rest);
+        if (_dn == "" || string_length(_dn) != string_length(_rest)) {
+            return { text: "? write Dn, n = 1-255 frames", bad: true };
+        }
+        var _d = real(_dn);
+        if (_d < 1 || _d > 255) {
+            return { text: "? hold must be 1-255 frames", bad: true };
+        }
+        var _secs = string_format(_d / 50, 1, 2);
+        var _fr = " frames";
+        if (_d == 1) {
+            _fr = " frame";
+        }
+        return { text: "hold " + string(_d) + _fr + " (" + string_trim(_secs) + " s)", bad: false };
+    }
+
+    // Ln : loop
+    if (_c0 == "L") {
+        var _ln = string_digits(_rest);
+        if (_ln == "" || string_length(_ln) != string_length(_rest)) {
+            return { text: "? write Ln, n = a step number", bad: true };
+        }
+        var _l = real(_ln);
+        if (_l >= array_length(_lines)) {
+            return { text: "! step " + string(_l) + " doesn't exist", bad: true };
+        }
+        var _to = string_trim(_lines[_l]);
+        return { text: "loop back to step " + string(_l) + " (" + _to + ")", bad: false };
+    }
+
+    // $xx / xx : waveform + control bits
+    var _hex = _up;
+    if (string_char_at(_hex, 1) == "$") {
+        _hex = string_delete(_hex, 1, 1);
+    }
+    var _is_hex = (string_length(_hex) > 0 && string_length(_hex) <= 2);
+    for (var _hi = 1; _hi <= string_length(_hex); _hi++) {
+        if (string_pos(string_char_at(_hex, _hi), "0123456789ABCDEF") == 0) {
+            _is_hex = false;
+            break;
+        }
+    }
+    if (!_is_hex) {
+        return { text: "? not a command - see WAVE/NOTE/HOLD/LOOP/END", bad: true };
+    }
+    var _v = real(hex_to_decimal(_hex));
+    var _w = [];
+    if (_v & 0x10) array_push(_w, "triangle");
+    if (_v & 0x20) array_push(_w, "saw");
+    if (_v & 0x40) array_push(_w, "pulse");
+    if (_v & 0x80) array_push(_w, "noise");
+    var _txt = "silent (no waveform)";
+    if (array_length(_w) > 0) {
+        _txt = string_join_ext(" + ", _w);
+    }
+    if (_v & 0x04) _txt += ", ring mod";
+    if (_v & 0x02) _txt += ", sync";
+    if (_v & 0x08) _txt += ", TEST (oscillator held)";
+    // The player always turns the gate bit on for a program waveform line.
+    if ((_v & 0x01) == 0) {
+        _txt += " (gate forced on)";
+    }
+    return { text: _txt, bad: false };
 }
