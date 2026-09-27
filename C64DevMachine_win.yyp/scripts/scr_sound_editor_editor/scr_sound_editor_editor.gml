@@ -1480,6 +1480,12 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_color(make_color_rgb(100, 100, 140));
     draw_rectangle(_ox0 - 4, _oy0 - 2, _ox0 + _ord_full_w + 4, _oy0 + _ord_vis * _ord_row_h + 2, true);
 
+    // Song playback follows the playing order row: it sits in the middle of the
+    // table, and only near the start or end (where the clamp below stops the
+    // scroll) does the marker move off-centre towards the top or bottom.
+    if (_m.song_playing) {
+        _m.order_scroll = _m.preview_display_order - floor(_ord_vis / 2);
+    }
     _m.order_scroll = clamp(_m.order_scroll, 0, max(0, array_length(_cur_song.order) - _ord_vis));
 
     for (var _orv = 0; _orv < _ord_vis; _orv++) {
