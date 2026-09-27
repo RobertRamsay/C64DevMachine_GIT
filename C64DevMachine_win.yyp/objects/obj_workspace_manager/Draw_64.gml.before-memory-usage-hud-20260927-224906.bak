@@ -2509,27 +2509,14 @@ if (readyToQuit == 1) {
 draw_set_font_l(fnt_c64_tiny);
 draw_set_halign(fa_left);
 draw_set_valign(fa_bottom);
-if (global.memory_bar_dirty || !variable_global_exists("workspace_ram_used")) scr_build_memory_bar_cache();
-// Keep diagnostics in their own column; allocations sit directly above NODES.
-var _stats_x=10;
-draw_set_colour(c_yellow);
-draw_text_l(10, gui_h - 55, "Mx: " + string(gui_mouse_x) + " : My: " + string(gui_mouse_y));
-draw_text_l(10, gui_h - 40, "CAMx: " + string(cam_x) + " : CAMy: " + string(cam_y));
+draw_set_colour(c_yellow)
+draw_text_l(10, gui_h - 55, "Mx: " + string(gui_mouse_x) + " : My:  " + string(gui_mouse_y))
+draw_text_l(10, gui_h - 40, "CAMx: " + string(cam_x) + " : CAMy:  " + string(cam_y))
 var fps_col = (fps >= 55) ? c_lime : ((fps >= 30) ? c_yellow : c_red);
 draw_set_color(fps_col);
 draw_text_l(10, gui_h - 10, "FPS: " + string(fps) + " (REAL: " + string(fps_real) + ")");
 draw_set_color(c_white);
-draw_text_l(180,gui_h-10,L("NODES: ")+string(instance_number(obj_c64_node)));
-var _usage_y=gui_h-85;
-if(global.workspace_disk_mode) {
-    draw_set_color(global.workspace_disk_blocks>664?c_red:make_color_rgb(240,200,100));
-    draw_text_l(_stats_x,_usage_y,"DISK: "+(global.workspace_disk_exact?"":"~")+string(global.workspace_disk_blocks)+" / 664 blocks");
-    _usage_y-=15;
-}
-draw_set_color(global.workspace_reu_used>global.workspace_reu_capacity?c_red:c_aqua);
-draw_text_l(_stats_x,_usage_y,"REU: "+scr_workspace_usage_text(global.workspace_reu_used)+" / "+scr_workspace_usage_text(global.workspace_reu_capacity));
-draw_set_color(c_white);
-draw_text_l(_stats_x,_usage_y-15,"RAM: "+scr_workspace_usage_text(global.workspace_ram_used)+" / 64 KB");
+draw_text_l(180, gui_h - 10, L("NODES: ") + string(instance_number(obj_c64_node)));
 draw_set_valign(fa_top);
 draw_set_halign(fa_left);
 

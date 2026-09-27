@@ -200,10 +200,6 @@ function scr_build_d64(_prg_buf, _base_pc, _boot_actual_size, _out_path = "") {
     // ================================================================
     // WRITE FILES INTO SECTORS
     // ================================================================
-    // Replace the live estimate with the exact packed file allocation.
-    global.workspace_disk_blocks=0;
-    for(var _ui=0;_ui<array_length(_files);_ui++) global.workspace_disk_blocks+=ceil(_files[_ui].size/254);
-    global.workspace_disk_exact=true;
     var _dir_entries = [];
 
     for (var _fi = 0; _fi < array_length(_files); _fi++) {

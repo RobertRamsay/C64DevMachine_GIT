@@ -954,7 +954,6 @@ var _addr_total = 65536;
     }
 
     global.memory_bar_segments  = _segments;
-    scr_workspace_usage_refresh(_segments);
     global.memory_bar_conflicts = _conflicts;
     global.memory_bar_dirty     = false;
     ds_map_destroy(_runtime_assets);
@@ -977,70 +976,4 @@ function scr_memory_code_conflict(_node,_addr) {
             return _c.name+" ($"+string_upper(decimal_to_hex(_c.first))+"-$"+string_upper(decimal_to_hex(_c.last-1))+")";
     }
     return "";
-}
-
-// Allocation totals refresh with the memory map, not once per drawn frame.
-function scr_workspace_usage_refresh(_segments) {
-    var _ram=0, _end=0, _boot_end=global.start_pc;
-    for(var _i=0;_i<array_length(_segments);_i++) {
-        var _s=_segments[_i];
-        if (_s.type=="CODE" && _s.no_conflict) continue; // operand references
-        if(instance_exists(_s.node_id) && _s.node_id.node_type=="ORG") continue;
-        var _a=clamp(_s.addr,0,65536), _b=clamp(_s.addr+_s.size,0,65536);
-        _ram+=max(0,_b-max(_end,_a)); _end=max(_end,_b);
-        if(!(variable_struct_exists(_s,"load_later") && _s.load_later)) _boot_end=max(_boot_end,_b);
-    }
-    global.workspace_ram_used=_ram;
-    global.workspace_reu_used=0;
-    global.workspace_reu_capacity=0x1000000;
-    global.workspace_disk_mode=false;
-    global.workspace_disk_exact=false;
-    var _blocks=ceil(max(15,15+_boot_end-global.start_pc)/254);
-    var _has_manifest=false, _has_loader=false;
-    with(obj_c64_node) {
-        if(is_connected && (node_type=="MACRO_LOADER" || node_type=="MACRO_SAVE_GAME" || node_type=="MACRO_LOAD_GAME")) _has_loader=true;
-    }
-    if(instance_exists(obj_asset_manager)) {
-        var _am=obj_asset_manager;
-        for(var _i=0;_i<ds_list_size(_am.asset_list);_i++) {
-            var _m=ds_list_find_value(_am.asset_list,_i);
-            if(_m.type=="LOAD_REU") {
-                // Match the manifest's allocated extent, including alignment gaps.
-                scr_reu_repack(_m);
-                global.workspace_reu_used=max(global.workspace_reu_used,_m.reu_used);
-                global.workspace_reu_capacity=variable_struct_exists(_m,"reu_size")?real(_m.reu_size):0x1000000;
-            }
-            if(_m.type!="LOAD_ORG") continue;
-            _has_manifest=true;
-            if(!variable_struct_exists(_m,"linked_assets")) continue;
-            for(var _j=0;_j<array_length(_m.linked_assets);_j++) {
-                var _link=_m.linked_assets[_j];
-                if(variable_struct_exists(_link,"load_later") && _link.load_later) continue;
-                var _a=scr_reu_find_asset(_link.asset_name);
-                if(is_undefined(_a)) continue;
-                var _size=0;
-                if(_a.type=="SFX_DATA" && variable_struct_exists(_a.meta,"instruments")) {
-                    for(var _k=0;_k<array_length(_a.meta.instruments);_k++) _size+=array_length(scr_sfx_data_instrument_blob(_a.meta.instruments[_k]));
-                    _size=max(1,_size)+2;
-                } else if(buffer_exists(_a.buffer) && buffer_get_size(_a.buffer)>=2) {
-                    _size=buffer_get_size(_a.buffer)+2;
-                    if(_a.type=="BITMAP") {
-                        var _bank=floor(_a.address/0x4000), _base=_bank*0x4000;
-                        var _screen=(_bank==2)?_base+0x3c00:((_bank==3)?_base+0x400:_a.address+0x2000);
-                        _size=_screen-_a.address+2002;
-                    } else if(_a.type=="MAP_DATA" && variable_struct_exists(_a.meta,"raw_chars") && is_real(_a.meta.raw_chars) && real(_a.meta.raw_chars)==1) {
-                        _size=min(buffer_get_size(_a.buffer),_a.meta.map_w*_a.meta.map_h)+2;
-                    }
-                }
-                _blocks+=ceil(_size/254);
-            }
-        }
-    }
-    global.workspace_disk_mode=_has_manifest && _has_loader;
-    global.workspace_disk_blocks=_blocks;
-}
-
-function scr_workspace_usage_text(_bytes) {
-    if(_bytes>=1048576) return string_format(_bytes/1048576,0,2)+" MB";
-    return string_format(_bytes/1024,0,1)+" KB";
 }
