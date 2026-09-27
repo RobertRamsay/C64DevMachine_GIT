@@ -206,8 +206,13 @@ function scr_sid64_sim_row(_sim, _v, _note, _instr, _cmd, _val) {
 /// The player's cmdr routine.
 function scr_sid64_sim_cmd(_sim, _v, _cmd, _val) {
     var _vc = _sim.voices[_v];
+    // Effects 1-4 last for their own row only.
     if (_cmd == 255) {
+        _vc.fx = 0;
         return;
+    }
+    if (_cmd >= 5) {
+        _vc.fx = 0;
     }
     if (_cmd == 0) {
         _vc.fx = 0;

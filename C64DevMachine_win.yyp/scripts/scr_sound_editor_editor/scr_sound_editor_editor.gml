@@ -100,6 +100,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (!variable_struct_exists(_m, "sel_voice"))   _m.sel_voice   = 0;
     // 0 = the note column, 1 = the command column of the selected voice.
     if (!variable_struct_exists(_m, "sel_sub"))     _m.sel_sub     = 0;
+    // Command being typed: digits so far, and the cell they belong to.
+    if (!variable_struct_exists(_m, "cmd_entry_str"))   _m.cmd_entry_str   = "";
+    if (!variable_struct_exists(_m, "cmd_entry_voice")) _m.cmd_entry_voice = -1;
+    if (!variable_struct_exists(_m, "cmd_entry_step"))  _m.cmd_entry_step  = -1;
     if (!variable_struct_exists(_m, "sel_step"))    _m.sel_step    = 0;
     if (!variable_struct_exists(_m, "list_scroll")) _m.list_scroll = 0;
     if (!variable_struct_exists(_m, "undo_stack"))  _m.undo_stack  = [];
@@ -860,7 +864,16 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             // ── Command column (right of the note): "4 38", dim "..." when empty ──
             var _cmd_x = _cx1 + _cmd_off;
             var _st_cmd = _step.cmd;
-            if (_st_cmd >= 0) {
+            var _typing_here = (_m.cmd_entry_str != "" && _m.cmd_entry_voice == _cv && _m.cmd_entry_step == _row);
+            if (_typing_here) {
+                // Being typed: only the new digits, the rest blank.
+                var _ty_str = _m.cmd_entry_str;
+                while (string_length(_ty_str) < 3) {
+                    _ty_str += "_";
+                }
+                draw_set_color(c_yellow);
+                draw_text_transformed_l(_cmd_x, _ry + 8, _ty_str, _txt_scale, _txt_scale, 0);
+            } else if (_st_cmd >= 0) {
                 var _cv_hex = string_upper(decimal_to_hex(_step.cmd_val));
                 while (string_length(_cv_hex) < 2) { _cv_hex = "0" + _cv_hex; }
                 draw_set_color(make_color_rgb(255, 170, 90));
@@ -1197,26 +1210,55 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             global.addresses_dirty = true;
         }
 
-        // ── COMMAND COLUMN ENTRY ── hex digits shift in from the right, like
-        // GoatTracker: typing 4, 3, 8 gives 438. Enter moves down a row.
+        // ── COMMAND COLUMN ENTRY ── the first digit blanks the cell and the
+        // command is typed fresh, left to right: 4, 3, 8 = 438. The third
+        // digit stores it and drops a row; Enter stores what's typed so far
+        // (missing digits are 0) and drops a row. Moving away discards it.
+        if (_m.cmd_entry_str != "") {
+            if (_m.sel_sub != 1 || _m.cmd_entry_voice != _m.sel_voice || _m.cmd_entry_step != _m.sel_step) {
+                _m.cmd_entry_str = "";
+            }
+        }
         if (_cur_step != noone && _m.sel_sub == 1 && !_kb_ctrl) {
+            var _cmd_commit = false;
             var _hex_keys = "0123456789ABCDEF";
             for (var _hk = 1; _hk <= 16; _hk++) {
                 if (keyboard_check_pressed(ord(string_char_at(_hex_keys, _hk)))) {
-                    _se_push_undo(_m, _se_snap);
-                    var _hv = 0;
-                    if (_cur_step.cmd >= 0) {
-                        _hv = (_cur_step.cmd << 8) | _cur_step.cmd_val;
+                    if (_m.cmd_entry_str == "") {
+                        _m.cmd_entry_voice = _m.sel_voice;
+                        _m.cmd_entry_step  = _m.sel_step;
                     }
-                    _hv = ((_hv << 4) | (_hk - 1)) & 0xFFF;
-                    _cur_step.cmd     = _hv >> 8;
-                    _cur_step.cmd_val = _hv & 0xFF;
-                    global.undo_dirty      = true;
-                    global.addresses_dirty = true;
+                    _m.cmd_entry_str += string_char_at(_hex_keys, _hk);
+                    if (string_length(_m.cmd_entry_str) >= 3) {
+                        _cmd_commit = true;
+                    }
                     break;
                 }
             }
+            var _cmd_down = false;
             if (keyboard_check_pressed(vk_enter)) {
+                _cmd_down = true;
+                if (_m.cmd_entry_str != "") {
+                    _cmd_commit = true;
+                }
+            }
+            if (_cmd_commit) {
+                while (string_length(_m.cmd_entry_str) < 3) {
+                    _m.cmd_entry_str += "0";
+                }
+                var _hv = 0;
+                for (var _hci = 1; _hci <= 3; _hci++) {
+                    _hv = (_hv << 4) | (string_pos(string_char_at(_m.cmd_entry_str, _hci), _hex_keys) - 1);
+                }
+                _se_push_undo(_m, _se_snap);
+                _cur_step.cmd     = (_hv >> 8) & 0x0F;
+                _cur_step.cmd_val = _hv & 0xFF;
+                _m.cmd_entry_str  = "";
+                global.undo_dirty      = true;
+                global.addresses_dirty = true;
+                _cmd_down = true;
+            }
+            if (_cmd_down) {
                 if (_m.sel_step + 1 < _cur_pat.pattern_len) {
                     _m.sel_step += 1;
                 }
@@ -1477,7 +1519,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(150, 120, 90));
     draw_text_l(_col_gutter_x, _clr_y + 28,
-        "CMD  1XX PORTA UP  2XX DOWN  3XX SLIDE TO NOTE  4XY VIBRATO  5XX AD  6XX SR  7XX WAVE  DXX $D418  FXX TEMPO  000 STOP");
+        "CMD (1-4 LAST ONE ROW)  1XX PORTA UP  2XX DOWN  3XX SLIDE TO NOTE  4XY VIBRATO  5XX AD  6XX SR  7XX WAVE  DXX $D418  FXX TEMPO");
     draw_set_font_l(fnt_c64_tiny);
 
     // ═════════════════════════════════════════════════════════════════════

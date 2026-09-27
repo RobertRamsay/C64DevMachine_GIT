@@ -4,10 +4,12 @@
 ///       the per-voice RAM tables declared in the song's data block.
 ///
 ///   <key>cmdr — applies the row's command (<key>rcmd / <key>rval, $FF = none).
-///     0XX  clear the continuous effect
-///     1XX  portamento up    (continuous, XX added to the pitch every frame)
-///     2XX  portamento down  (continuous)
-///     3XX  slide to note    (continuous; the row trigger stored the target)
+///     Effects 1-4 last for their own row only: a row without one (or with any
+///     other command) stops the effect; the pitch stays where it got to.
+///     0XX  no effect
+///     1XX  portamento up    (XX added to the pitch every frame of the row)
+///     2XX  portamento down
+///     3XX  slide to note    (the row trigger stored the target)
 ///     4XY  vibrato, X = frames per half-cycle, Y = depth (Y*4 per frame); 400 = off
 ///     5XX / 6XX / 7XX  set AD / SR / waveform — one-shot, applied by fxr once
 ///                      any hard restart has finished so the note's own values
@@ -46,6 +48,9 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
     array_push(_list, ["lda_abs", _k + "rcmd", _id]);
     array_push(_list, ["cmp_imm", 0xFF, _id]);
     array_push(_list, ["bne",     _k + "c_has", _id]);
+    // No command on this row: the effect ends here.
+    array_push(_list, ["lda_imm", 0x00, _id]);
+    array_push(_list, ["sta_abx", _k + "fx", _id]);
     array_push(_list, ["rts",     0, _id]);
     array_push(_list, ["label",   _k + "c_has"]);
     // 000 — stop the continuous effect (A = 0 here).
@@ -88,8 +93,13 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
     array_push(_list, ["sta_abx", _k + "cvs", _id]);
     array_push(_list, ["label",   _k + "c_ret"]);
     array_push(_list, ["rts",     0, _id]);
-    // 5-7: one-shot, applied by fxr.
+    // 5-F: not an effect, so any running effect ends on this row too.
     array_push(_list, ["label",   _k + "c_ge5"]);
+    array_push(_list, ["tay",     0, _id]);
+    array_push(_list, ["lda_imm", 0x00, _id]);
+    array_push(_list, ["sta_abx", _k + "fx", _id]);
+    array_push(_list, ["tya",     0, _id]);
+    // 5-7: one-shot, applied by fxr.
     array_push(_list, ["cmp_imm", 0x08, _id]);
     array_push(_list, ["bcs",     _k + "c_ge8", _id]);
     array_push(_list, ["sta_abx", _k + "pcmd", _id]);

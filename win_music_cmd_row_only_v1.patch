@@ -1,0 +1,174 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+index 249bd98..e0e50c9 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+@@ -206,9 +206,14 @@ function scr_sid64_sim_row(_sim, _v, _note, _instr, _cmd, _val) {
+ /// The player's cmdr routine.
+ function scr_sid64_sim_cmd(_sim, _v, _cmd, _val) {
+     var _vc = _sim.voices[_v];
++    // Effects 1-4 last for their own row only.
+     if (_cmd == 255) {
++        _vc.fx = 0;
+         return;
+     }
++    if (_cmd >= 5) {
++        _vc.fx = 0;
++    }
+     if (_cmd == 0) {
+         _vc.fx = 0;
+         return;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_fx_routines/scr_sid_song_emit_fx_routines.gml b/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_fx_routines/scr_sid_song_emit_fx_routines.gml
+index 72ad602..b8117f3 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_fx_routines/scr_sid_song_emit_fx_routines.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_fx_routines/scr_sid_song_emit_fx_routines.gml
+@@ -4,10 +4,12 @@
+ ///       the per-voice RAM tables declared in the song's data block.
+ ///
+ ///   <key>cmdr — applies the row's command (<key>rcmd / <key>rval, $FF = none).
+-///     0XX  clear the continuous effect
+-///     1XX  portamento up    (continuous, XX added to the pitch every frame)
+-///     2XX  portamento down  (continuous)
+-///     3XX  slide to note    (continuous; the row trigger stored the target)
++///     Effects 1-4 last for their own row only: a row without one (or with any
++///     other command) stops the effect; the pitch stays where it got to.
++///     0XX  no effect
++///     1XX  portamento up    (XX added to the pitch every frame of the row)
++///     2XX  portamento down
++///     3XX  slide to note    (the row trigger stored the target)
+ ///     4XY  vibrato, X = frames per half-cycle, Y = depth (Y*4 per frame); 400 = off
+ ///     5XX / 6XX / 7XX  set AD / SR / waveform — one-shot, applied by fxr once
+ ///                      any hard restart has finished so the note's own values
+@@ -46,6 +48,9 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
+     array_push(_list, ["lda_abs", _k + "rcmd", _id]);
+     array_push(_list, ["cmp_imm", 0xFF, _id]);
+     array_push(_list, ["bne",     _k + "c_has", _id]);
++    // No command on this row: the effect ends here.
++    array_push(_list, ["lda_imm", 0x00, _id]);
++    array_push(_list, ["sta_abx", _k + "fx", _id]);
+     array_push(_list, ["rts",     0, _id]);
+     array_push(_list, ["label",   _k + "c_has"]);
+     // 000 — stop the continuous effect (A = 0 here).
+@@ -88,8 +93,13 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
+     array_push(_list, ["sta_abx", _k + "cvs", _id]);
+     array_push(_list, ["label",   _k + "c_ret"]);
+     array_push(_list, ["rts",     0, _id]);
+-    // 5-7: one-shot, applied by fxr.
++    // 5-F: not an effect, so any running effect ends on this row too.
+     array_push(_list, ["label",   _k + "c_ge5"]);
++    array_push(_list, ["tay",     0, _id]);
++    array_push(_list, ["lda_imm", 0x00, _id]);
++    array_push(_list, ["sta_abx", _k + "fx", _id]);
++    array_push(_list, ["tya",     0, _id]);
++    // 5-7: one-shot, applied by fxr.
+     array_push(_list, ["cmp_imm", 0x08, _id]);
+     array_push(_list, ["bcs",     _k + "c_ge8", _id]);
+     array_push(_list, ["sta_abx", _k + "pcmd", _id]);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index 2eb1f9c..00681c8 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -100,6 +100,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     if (!variable_struct_exists(_m, "sel_voice"))   _m.sel_voice   = 0;
+     // 0 = the note column, 1 = the command column of the selected voice.
+     if (!variable_struct_exists(_m, "sel_sub"))     _m.sel_sub     = 0;
++    // Command being typed: digits so far, and the cell they belong to.
++    if (!variable_struct_exists(_m, "cmd_entry_str"))   _m.cmd_entry_str   = "";
++    if (!variable_struct_exists(_m, "cmd_entry_voice")) _m.cmd_entry_voice = -1;
++    if (!variable_struct_exists(_m, "cmd_entry_step"))  _m.cmd_entry_step  = -1;
+     if (!variable_struct_exists(_m, "sel_step"))    _m.sel_step    = 0;
+     if (!variable_struct_exists(_m, "list_scroll")) _m.list_scroll = 0;
+     if (!variable_struct_exists(_m, "undo_stack"))  _m.undo_stack  = [];
+@@ -860,7 +864,16 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+             // ── Command column (right of the note): "4 38", dim "..." when empty ──
+             var _cmd_x = _cx1 + _cmd_off;
+             var _st_cmd = _step.cmd;
+-            if (_st_cmd >= 0) {
++            var _typing_here = (_m.cmd_entry_str != "" && _m.cmd_entry_voice == _cv && _m.cmd_entry_step == _row);
++            if (_typing_here) {
++                // Being typed: only the new digits, the rest blank.
++                var _ty_str = _m.cmd_entry_str;
++                while (string_length(_ty_str) < 3) {
++                    _ty_str += "_";
++                }
++                draw_set_color(c_yellow);
++                draw_text_transformed_l(_cmd_x, _ry + 8, _ty_str, _txt_scale, _txt_scale, 0);
++            } else if (_st_cmd >= 0) {
+                 var _cv_hex = string_upper(decimal_to_hex(_step.cmd_val));
+                 while (string_length(_cv_hex) < 2) { _cv_hex = "0" + _cv_hex; }
+                 draw_set_color(make_color_rgb(255, 170, 90));
+@@ -1197,26 +1210,55 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+             global.addresses_dirty = true;
+         }
+ 
+-        // ── COMMAND COLUMN ENTRY ── hex digits shift in from the right, like
+-        // GoatTracker: typing 4, 3, 8 gives 438. Enter moves down a row.
++        // ── COMMAND COLUMN ENTRY ── the first digit blanks the cell and the
++        // command is typed fresh, left to right: 4, 3, 8 = 438. The third
++        // digit stores it and drops a row; Enter stores what's typed so far
++        // (missing digits are 0) and drops a row. Moving away discards it.
++        if (_m.cmd_entry_str != "") {
++            if (_m.sel_sub != 1 || _m.cmd_entry_voice != _m.sel_voice || _m.cmd_entry_step != _m.sel_step) {
++                _m.cmd_entry_str = "";
++            }
++        }
+         if (_cur_step != noone && _m.sel_sub == 1 && !_kb_ctrl) {
++            var _cmd_commit = false;
+             var _hex_keys = "0123456789ABCDEF";
+             for (var _hk = 1; _hk <= 16; _hk++) {
+                 if (keyboard_check_pressed(ord(string_char_at(_hex_keys, _hk)))) {
+-                    _se_push_undo(_m, _se_snap);
+-                    var _hv = 0;
+-                    if (_cur_step.cmd >= 0) {
+-                        _hv = (_cur_step.cmd << 8) | _cur_step.cmd_val;
++                    if (_m.cmd_entry_str == "") {
++                        _m.cmd_entry_voice = _m.sel_voice;
++                        _m.cmd_entry_step  = _m.sel_step;
++                    }
++                    _m.cmd_entry_str += string_char_at(_hex_keys, _hk);
++                    if (string_length(_m.cmd_entry_str) >= 3) {
++                        _cmd_commit = true;
+                     }
+-                    _hv = ((_hv << 4) | (_hk - 1)) & 0xFFF;
+-                    _cur_step.cmd     = _hv >> 8;
+-                    _cur_step.cmd_val = _hv & 0xFF;
+-                    global.undo_dirty      = true;
+-                    global.addresses_dirty = true;
+                     break;
+                 }
+             }
++            var _cmd_down = false;
+             if (keyboard_check_pressed(vk_enter)) {
++                _cmd_down = true;
++                if (_m.cmd_entry_str != "") {
++                    _cmd_commit = true;
++                }
++            }
++            if (_cmd_commit) {
++                while (string_length(_m.cmd_entry_str) < 3) {
++                    _m.cmd_entry_str += "0";
++                }
++                var _hv = 0;
++                for (var _hci = 1; _hci <= 3; _hci++) {
++                    _hv = (_hv << 4) | (string_pos(string_char_at(_m.cmd_entry_str, _hci), _hex_keys) - 1);
++                }
++                _se_push_undo(_m, _se_snap);
++                _cur_step.cmd     = (_hv >> 8) & 0x0F;
++                _cur_step.cmd_val = _hv & 0xFF;
++                _m.cmd_entry_str  = "";
++                global.undo_dirty      = true;
++                global.addresses_dirty = true;
++                _cmd_down = true;
++            }
++            if (_cmd_down) {
+                 if (_m.sel_step + 1 < _cur_pat.pattern_len) {
+                     _m.sel_step += 1;
+                 }
+@@ -1477,7 +1519,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     draw_set_font_l(fnt_c64_pico);
+     draw_set_color(make_color_rgb(150, 120, 90));
+     draw_text_l(_col_gutter_x, _clr_y + 28,
+-        "CMD  1XX PORTA UP  2XX DOWN  3XX SLIDE TO NOTE  4XY VIBRATO  5XX AD  6XX SR  7XX WAVE  DXX $D418  FXX TEMPO  000 STOP");
++        "CMD (1-4 LAST ONE ROW)  1XX PORTA UP  2XX DOWN  3XX SLIDE TO NOTE  4XY VIBRATO  5XX AD  6XX SR  7XX WAVE  DXX $D418  FXX TEMPO");
+     draw_set_font_l(fnt_c64_tiny);
+ 
+     // ═════════════════════════════════════════════════════════════════════
