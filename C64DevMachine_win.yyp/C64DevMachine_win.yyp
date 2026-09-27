@@ -1168,6 +1168,7 @@
     {"id":{"name":"scr_mts_resize_map","path":"scripts/scr_mts_resize_map/scr_mts_resize_map.yy",},},
     {"id":{"name":"scr_mts_run_colour","path":"scripts/scr_mts_run_colour/scr_mts_run_colour.yy",},},
     {"id":{"name":"scr_mts_slice_active_map","path":"scripts/scr_mts_slice_active_map/scr_mts_slice_active_map.yy",},},
+    {"id":{"name":"scr_music_maker_is_open","path":"scripts/scr_music_maker_is_open/scr_music_maker_is_open.yy",},},
     {"id":{"name":"scr_nloc_display_name","path":"scripts/scr_nloc_display_name/scr_nloc_display_name.yy",},},
     {"id":{"name":"scr_nloc_find_meta","path":"scripts/scr_nloc_find_meta/scr_nloc_find_meta.yy",},},
     {"id":{"name":"scr_nloc_hw","path":"scripts/scr_nloc_hw/scr_nloc_hw.yy",},},

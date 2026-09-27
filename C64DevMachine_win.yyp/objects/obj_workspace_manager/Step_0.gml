@@ -182,8 +182,9 @@ if (welcome_open) {
     exit;
 }
 
-// F1 reopens the welcome screen at any time
-if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(vk_f1)) {
+// F1 reopens the welcome screen at any time (except in the Music Maker,
+// where F1-F4 are its transport keys)
+if (!is_entering_text && !global.is_any_text_active && keyboard_check_pressed(vk_f1) && !scr_music_maker_is_open()) {
     welcome_open = true;
     welcome_mode = 0;
 }
@@ -297,7 +298,7 @@ if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) {
         scr_asset_inline_editor_commit_all();
         trigger_build = true;
     }
-    if (keyboard_check_pressed(vk_f4)) {
+    if (keyboard_check_pressed(vk_f4) && !scr_music_maker_is_open()) {   // F4 = STOP in the Music Maker
         scr_asset_inline_editor_commit_all();
         trigger_export = true;
     }

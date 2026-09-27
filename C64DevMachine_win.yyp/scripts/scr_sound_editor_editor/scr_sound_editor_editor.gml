@@ -301,7 +301,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         }
     }
 
-    var _transport_labels = ["PLAY PAT", "PLAY SONG", "PLAY HERE", "STOP"];
+    var _transport_labels = ["PLAY PAT (F3)", "PLAY SONG (F1)", "PLAY HERE", "STOP (F4)"];
     var _transport_actions = ["PAT", "SONG", "HERE", "STOP"];
     draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_left);
@@ -318,6 +318,19 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     // Space in a text field belongs to that field, never to the transport.
     var _transport_typing = _m.edit_active || _m.instr_edit_active
                          || _m.instr_name_edit_active || _m.song_name_edit_active;
+    // GoatTracker function keys: F1 song from the start, F2 this pattern from
+    // the cursor row (looping), F3 this pattern from the top (looping), F4 stop.
+    if (!_transport_typing) {
+        if (keyboard_check_pressed(vk_f1)) {
+            _transport_action = "SONG";
+        } else if (keyboard_check_pressed(vk_f2)) {
+            _transport_action = "ROW_HERE";
+        } else if (keyboard_check_pressed(vk_f3)) {
+            _transport_action = "PAT";
+        } else if (keyboard_check_pressed(vk_f4)) {
+            _transport_action = "STOP";
+        }
+    }
     if (!_transport_typing && keyboard_check_pressed(vk_space)) {
         if (keyboard_check(vk_control) || scr_cmd_held()) {
             _transport_action = _m.song_playing ? "STOP" : "SONG";
@@ -472,7 +485,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(120, 140, 190));
     draw_text_l(_vx1 + 20, _cy,
-        "CLICK A CELL, TYPE A NOTE (C-4, C#3, ---)   |   ENTER COMMITS + DROPS A ROW   |   DEL CLEARS   |   BKSP PULLS UP   |   INS PUSHES DOWN   |   UP/DOWN MOVES   |   TAB NOTE/CMD   |   SPACE LOOP ROW   |   SHIFT+SPACE FROM START   |   CTRL+SPACE PLAY SONG");
+        "CLICK A CELL, TYPE A NOTE (C-4, C#3, ---)   |   ENTER COMMITS + DROPS A ROW   |   DEL CLEARS   |   BKSP PULLS UP   |   INS PUSHES DOWN   |   UP/DOWN MOVES   |   TAB NOTE/CMD   |   F1 SONG   F2 PAT FROM ROW   F3 PAT   F4 STOP");
    
     draw_set_font_l(fnt_c64_tiny);
     var _status_y = _cy + 50;
