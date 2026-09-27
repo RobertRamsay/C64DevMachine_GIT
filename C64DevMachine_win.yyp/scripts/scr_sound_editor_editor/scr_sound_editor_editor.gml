@@ -972,12 +972,16 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 if (_row < _grid_len && _pw_warn[_cv][_row] >= 0) {
                     draw_set_color(c_red);
                     if (point_in_rectangle(_mx, _my, _cmd_x - 6, _ry, _cx2, _ry + _row_h)) {
-                        var _pw_end = "$000";
+                        // 901-97F sweep up, 980-9FF sweep down (9FF = -1, 980 = -128 per frame).
                         if (_pw_warn[_cv][_row] > 0) {
-                            _pw_end = "$FFF";
+                            _pw_tip = "SILENT: THIS SWEEP PUSHES THE PULSE WIDTH PAST ITS TOP ($FFF)."
+                                    + "\nUSE A SMALLER VALUE OR FEWER ROWS, RESET IT WITH 8XX,"
+                                    + "\nOR SWEEP BACK DOWN WITH 980-9FF (9FF = -1, 9F0 = -16 PER FRAME).";
+                        } else {
+                            _pw_tip = "SILENT: THIS SWEEP PUSHES THE PULSE WIDTH PAST ITS BOTTOM ($000)."
+                                    + "\nUSE A SMALLER DROP OR FEWER ROWS, RESET IT WITH 8XX,"
+                                    + "\nOR SWEEP BACK UP WITH 901-97F (901 = +1, 910 = +16 PER FRAME).";
                         }
-                        _pw_tip = "SILENT: THIS SWEEP PUSHES THE PULSE WIDTH PAST ITS RANGE (HITS " + _pw_end
-                                + ").\nUSE A SMALLER VALUE OR FEWER ROWS, OR RESET IT WITH 8XX.";
                     }
                 }
                 draw_text_transformed_l(_cmd_x, _ry + 8, string_upper(decimal_to_hex(_st_cmd)) + _cv_hex, _txt_scale, _txt_scale, 0);
