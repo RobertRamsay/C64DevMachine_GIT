@@ -67,11 +67,37 @@ function scr_sid64_sim_create(_m, _song, _loop_row, _ord, _row) {
         finished  : false,
         shown_ord : _ord,        // the row that sounded on the last row frame
         shown_row : _row,
+        fcut      : 0x400,       // filter cutoff, 11-bit
+        f17       : 0,           // $D417 copy (resonance + routing)
+        f18       : 0x0F,        // $D418 copy (mode + volume)
         voices    : [scr_sid64_sim_voice_new(), scr_sid64_sim_voice_new(), scr_sid64_sim_voice_new()]
     };
-    // init: full volume, filter off
-    scr_sid64_sim_write(_sim, 0x18, 0x0F);
+    // init: the song's filter settings (mode + full volume, resonance, cutoff;
+    // no voice routed yet), or plain full volume for an audition.
+    if (is_struct(_m)) {
+        var _fm = _m[$ "filt_mode"];
+        var _fr = _m[$ "filt_res"];
+        var _fc = _m[$ "filt_cut"];
+        if (!is_undefined(_fm)) {
+            _sim.f18 = ((real(_fm) & 0x0F) << 4) | 0x0F;
+        }
+        if (!is_undefined(_fr)) {
+            _sim.f17 = (real(_fr) & 0x0F) << 4;
+        }
+        if (!is_undefined(_fc)) {
+            _sim.fcut = clamp(real(_fc), 0, 2047);
+        }
+        scr_sid64_sim_write(_sim, 0x17, _sim.f17);
+        scr_sid64_sim_cut(_sim);
+    }
+    scr_sid64_sim_write(_sim, 0x18, _sim.f18);
     return _sim;
+}
+
+/// The player's fcut: 11-bit cutoff to $D415 (bits 0-2) / $D416 (bits 3-10).
+function scr_sid64_sim_cut(_sim) {
+    scr_sid64_sim_write(_sim, 0x15, _sim.fcut & 0x07);
+    scr_sid64_sim_write(_sim, 0x16, (_sim.fcut >> 3) & 0xFF);
 }
 
 function scr_sid64_sim_write(_sim, _reg, _val) {
@@ -157,7 +183,18 @@ function scr_sid64_sim_trigger(_sim, _v, _instr) {
     _vc.pw = _pw;
     _vc.ivdl = clamp(floor(scr_sid64_instr_field(_instr, "vib_delay", 0)), 0, 255);
     _vc.ivs  = clamp(floor(scr_sid64_instr_field(_instr, "vib_speed", 0)), 0, 15);
-    _vc.ivp  = (clamp(floor(scr_sid64_instr_field(_instr, "vib_depth", 0)), 0, 15) * 4) & 0xFF;
+    _vc.ivp  = (clamp(floor(scr_sid64_instr_field(_instr, "vib_depth", 0)), 0, 15) * 4) & 0x7F;
+    // FILTER ON routes this voice through the filter; OFF takes it out.
+    // Song playback only: a bare audition has no song filter set up, and a
+    // routed voice with no filter mode is silent on the SID.
+    if (is_struct(_sim.m)) {
+        if (scr_sid64_instr_field(_instr, "filt", 0) != 0) {
+            _sim.f17 = _sim.f17 | (1 << _v);
+        } else {
+            _sim.f17 = _sim.f17 & ~(1 << _v);
+        }
+        scr_sid64_sim_write(_sim, 0x17, _sim.f17);
+    }
     _vc.vbc  = 0xFF;
     _vc.voff = 0;
     _vc.vdir = 0;
@@ -248,8 +285,29 @@ function scr_sid64_sim_cmd(_sim, _v, _cmd, _val) {
         _vc.pval = _val;
         return;
     }
+    if (_cmd == 0x0A) {
+        _sim.fcut = (_val << 3) & 0x7FF;
+        scr_sid64_sim_cut(_sim);
+        return;
+    }
+    if (_cmd == 0x0B) {
+        _sim.f17 = (_sim.f17 & 0x0F) | (_val & 0xF0);
+        scr_sid64_sim_write(_sim, 0x17, _sim.f17);
+        return;
+    }
+    if (_cmd == 0x0C) {
+        _vc.fx  = 0x0C;         // cutoff sweep, an effect for this row
+        _vc.fxv = _val;
+        return;
+    }
     if (_cmd == 0x0D) {
+        _sim.f18 = _val;
         scr_sid64_sim_write(_sim, 0x18, _val);
+        return;
+    }
+    if (_cmd == 0x0E) {
+        _sim.f18 = (_sim.f18 & 0x0F) | ((_val & 0x0F) << 4);
+        scr_sid64_sim_write(_sim, 0x18, _sim.f18);
         return;
     }
     if (_cmd == 0x0F && _val != 0) {
@@ -345,6 +403,14 @@ function scr_sid64_sim_fx(_sim, _v, _hrw) {
         if (_vc.freq < 0) {
             _vc.freq = 0;
         }
+    } else if (_vc.fx == 0x0C) {
+        // cutoff sweep: XX sign-extended, clamped to 0-2047
+        var _dct = _vc.fxv;
+        if (_dct >= 0x80) {
+            _dct -= 256;
+        }
+        _sim.fcut = clamp(_sim.fcut + _dct, 0, 2047);
+        scr_sid64_sim_cut(_sim);
     } else if (_vc.fx == 9) {
         // pulse sweep: XX sign-extended, clamped to $000-$FFF
         var _dpw = _vc.fxv;

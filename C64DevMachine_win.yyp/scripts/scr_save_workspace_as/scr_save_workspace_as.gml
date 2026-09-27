@@ -302,6 +302,9 @@
             _meta_out.patterns         = variable_struct_exists(_a.meta, "patterns")         ? _a.meta.patterns         : [];
             _meta_out.bank_sel_pattern = variable_struct_exists(_a.meta, "bank_sel_pattern") ? _a.meta.bank_sel_pattern : 0;
             _meta_out.play_speed       = variable_struct_exists(_a.meta, "play_speed")       ? _a.meta.play_speed       : 6;
+            _meta_out.filt_mode        = variable_struct_exists(_a.meta, "filt_mode")        ? _a.meta.filt_mode        : 0;
+            _meta_out.filt_res         = variable_struct_exists(_a.meta, "filt_res")         ? _a.meta.filt_res         : 0;
+            _meta_out.filt_cut         = variable_struct_exists(_a.meta, "filt_cut")         ? _a.meta.filt_cut         : 1024;
             // songs[] is the source of truth. song_order/song_loop/song_loop_row
             // are legacy and written only so an older build can still open the
             // file; nothing in the current editor or emitter reads them.

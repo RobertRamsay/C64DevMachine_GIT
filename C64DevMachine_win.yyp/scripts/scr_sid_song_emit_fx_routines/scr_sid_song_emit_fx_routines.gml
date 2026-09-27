@@ -17,8 +17,15 @@
 ///     8XX  set pulse width to XX * 16 ($000-$FF0) — one-shot, like 5-7
 ///     9XX  pulse sweep for the row: 01-7F adds XX per frame, 80-FF subtracts
 ///          (256 - XX); clamped to $000-$FFF
+///     AXX  filter cutoff = XX * 8 (the top 8 of its 11 bits)
+///     BX0  filter resonance X (voice routing is untouched)
+///     CXX  cutoff sweep for the row: 01-7F up XX per frame, 80-FF down
+///          (256 - XX); clamped to 0-2047
 ///     DXX  write $D418 directly (volume, filter mode)
+///     EXX  filter mode, keeping the volume: 1 low-pass, 2 band-pass,
+///          4 high-pass, 8 voice 3 off — add them to combine
 ///     FXX  tempo in frames per row (00 ignored)
+///     (A/B/C/E only exist when the song uses the filter, _use_filter.)
 ///
 ///   <key>fxr — per-frame, Y = voice * 7 as well: pending one-shot, portamento,
 ///     vibrato (the 4XY command's, else the instrument's after its delay), then
@@ -31,8 +38,31 @@
 /// _use_fx false (no command column anywhere, no instrument vibrato): cmdr is a
 /// bare RTS and fxr only writes the pitch, so a song that uses none of this
 /// pays ~20 bytes here instead of ~550.
-function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
+function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _use_filter) {
     var _k = _key;
+
+    if (_use_filter) {
+        // <key>fcut — writes the 11-bit cutoff (fch:fcl) to $D415/$D416.
+        // $D415 = bits 0-2, $D416 = bits 3-10. A and ftmp only; X/Y kept.
+        array_push(_list, ["label",   _k + "fcut"]);
+        array_push(_list, ["lda_abs", _k + "fcl", _id]);
+        array_push(_list, ["and_imm", 0x07, _id]);
+        array_push(_list, ["sta_abs", _chip + 0x15, _id]);
+        array_push(_list, ["lda_abs", _k + "fch", _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["sta_abs", _k + "ftmp", _id]);
+        array_push(_list, ["lda_abs", _k + "fcl", _id]);
+        array_push(_list, ["lsr_a",   0, _id]);
+        array_push(_list, ["lsr_a",   0, _id]);
+        array_push(_list, ["lsr_a",   0, _id]);
+        array_push(_list, ["ora_abs", _k + "ftmp", _id]);
+        array_push(_list, ["sta_abs", _chip + 0x16, _id]);
+        array_push(_list, ["rts",     0, _id]);
+    }
 
     if (!_use_fx) {
         array_push(_list, ["label",   _k + "cmdr"]);
@@ -118,11 +148,68 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
     array_push(_list, ["sta_abx", _k + "pval", _id]);
     array_push(_list, ["rts",     0, _id]);
     array_push(_list, ["label",   _k + "c_ge8"]);
-    // D: $D418.
+    if (_use_filter) {
+        // A: cutoff = XX * 8.
+        array_push(_list, ["cmp_imm", 0x0A, _id]);
+        array_push(_list, ["bne",     _k + "c_na", _id]);
+        array_push(_list, ["lda_abs", _k + "rval", _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["sta_abs", _k + "fcl", _id]);
+        array_push(_list, ["lda_abs", _k + "rval", _id]);
+        array_push(_list, ["lsr_a",   0, _id]);
+        array_push(_list, ["lsr_a",   0, _id]);
+        array_push(_list, ["lsr_a",   0, _id]);
+        array_push(_list, ["lsr_a",   0, _id]);
+        array_push(_list, ["lsr_a",   0, _id]);
+        array_push(_list, ["sta_abs", _k + "fch", _id]);
+        array_push(_list, ["jmp_abs", _k + "fcut", _id]);   // its rts returns
+        array_push(_list, ["label",   _k + "c_na"]);
+        // B: resonance = high nibble of XX, routing bits kept.
+        array_push(_list, ["cmp_imm", 0x0B, _id]);
+        array_push(_list, ["bne",     _k + "c_nb", _id]);
+        array_push(_list, ["lda_abs", _k + "f17", _id]);
+        array_push(_list, ["and_imm", 0x0F, _id]);
+        array_push(_list, ["sta_abs", _k + "ftmp", _id]);
+        array_push(_list, ["lda_abs", _k + "rval", _id]);
+        array_push(_list, ["and_imm", 0xF0, _id]);
+        array_push(_list, ["ora_abs", _k + "ftmp", _id]);
+        array_push(_list, ["sta_abs", _k + "f17", _id]);
+        array_push(_list, ["sta_abs", _chip + 0x17, _id]);
+        array_push(_list, ["rts",     0, _id]);
+        array_push(_list, ["label",   _k + "c_nb"]);
+        // C: cutoff sweep — an effect for this row, run by fxr.
+        array_push(_list, ["cmp_imm", 0x0C, _id]);
+        array_push(_list, ["bne",     _k + "c_nc", _id]);
+        array_push(_list, ["sta_abx", _k + "fx", _id]);
+        array_push(_list, ["lda_abs", _k + "rval", _id]);
+        array_push(_list, ["sta_abx", _k + "fxv", _id]);
+        array_push(_list, ["rts",     0, _id]);
+        array_push(_list, ["label",   _k + "c_nc"]);
+        // E: mode (high nibble of $D418), volume kept.
+        array_push(_list, ["cmp_imm", 0x0E, _id]);
+        array_push(_list, ["bne",     _k + "c_ne", _id]);
+        array_push(_list, ["lda_abs", _k + "f18", _id]);
+        array_push(_list, ["and_imm", 0x0F, _id]);
+        array_push(_list, ["sta_abs", _k + "ftmp", _id]);
+        array_push(_list, ["lda_abs", _k + "rval", _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["asl_a",   0, _id]);
+        array_push(_list, ["ora_abs", _k + "ftmp", _id]);
+        array_push(_list, ["sta_abs", _k + "f18", _id]);
+        array_push(_list, ["sta_abs", _chip + 0x18, _id]);
+        array_push(_list, ["rts",     0, _id]);
+        array_push(_list, ["label",   _k + "c_ne"]);
+    }
+    // D: $D418 (and its copy, so a later EXX keeps this volume).
     array_push(_list, ["cmp_imm", 0x0D, _id]);
     array_push(_list, ["bne",     _k + "c_nd", _id]);
     array_push(_list, ["lda_abs", _k + "rval", _id]);
     array_push(_list, ["sta_abs", _chip + 0x18, _id]);
+    array_push(_list, ["sta_abs", _k + "f18", _id]);
     array_push(_list, ["rts",     0, _id]);
     array_push(_list, ["label",   _k + "c_nd"]);
     // F: tempo.
@@ -216,9 +303,17 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
     array_push(_list, ["jmp_abs", _k + "f_vib", _id]);
     array_push(_list, ["label",   _k + "f_p3"]);
     array_push(_list, ["cmp_imm", 0x03, _id]);
-    array_push(_list, ["beq",     _k + "f_tp", _id]);
+    array_push(_list, ["bne",     _k + "f_n3", _id]);
+    array_push(_list, ["jmp_abs", _k + "f_tp", _id]);   // too far for a branch
+    array_push(_list, ["label",   _k + "f_n3"]);
     array_push(_list, ["cmp_imm", 0x09, _id]);
     array_push(_list, ["beq",     _k + "f_pw", _id]);
+    if (_use_filter) {
+        array_push(_list, ["cmp_imm", 0x0C, _id]);
+        array_push(_list, ["bne",     _k + "f_ncs", _id]);
+        array_push(_list, ["jmp_abs", _k + "f_cs", _id]);
+        array_push(_list, ["label",   _k + "f_ncs"]);
+    }
     array_push(_list, ["jmp_abs", _k + "f_vib", _id]);
     // 9XX pulse sweep: add XX sign-extended, clamp to $000-$FFF, write.
     array_push(_list, ["label",   _k + "f_pw"]);
@@ -255,6 +350,40 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx) {
     array_push(_list, ["lda_abx", _k + "pwh", _id]);
     array_push(_list, ["sta_aby", _chip + 3, _id]);
     array_push(_list, ["jmp_abs", _k + "f_vib", _id]);
+    if (_use_filter) {
+        // CXX cutoff sweep: XX sign-extended onto the 11-bit cutoff, clamped.
+        array_push(_list, ["label",   _k + "f_cs"]);
+        array_push(_list, ["lda_abx", _k + "fxv", _id]);
+        array_push(_list, ["bmi",     _k + "f_csdn", _id]);
+        array_push(_list, ["clc",     0, _id]);
+        array_push(_list, ["adc_abs", _k + "fcl", _id]);
+        array_push(_list, ["sta_abs", _k + "fcl", _id]);
+        array_push(_list, ["lda_abs", _k + "fch", _id]);
+        array_push(_list, ["adc_imm", 0x00, _id]);
+        array_push(_list, ["sta_abs", _k + "fch", _id]);
+        array_push(_list, ["cmp_imm", 0x08, _id]);
+        array_push(_list, ["bcc",     _k + "f_csw", _id]);
+        array_push(_list, ["lda_imm", 0xFF, _id]);          // past the top: 2047
+        array_push(_list, ["sta_abs", _k + "fcl", _id]);
+        array_push(_list, ["lda_imm", 0x07, _id]);
+        array_push(_list, ["sta_abs", _k + "fch", _id]);
+        array_push(_list, ["jmp_abs", _k + "f_csw", _id]);
+        array_push(_list, ["label",   _k + "f_csdn"]);
+        array_push(_list, ["clc",     0, _id]);
+        array_push(_list, ["adc_abs", _k + "fcl", _id]);
+        array_push(_list, ["sta_abs", _k + "fcl", _id]);
+        array_push(_list, ["lda_abs", _k + "fch", _id]);
+        array_push(_list, ["adc_imm", 0xFF, _id]);
+        array_push(_list, ["sta_abs", _k + "fch", _id]);
+        array_push(_list, ["cmp_imm", 0x08, _id]);
+        array_push(_list, ["bcc",     _k + "f_csw", _id]);
+        array_push(_list, ["lda_imm", 0x00, _id]);          // below zero: 0
+        array_push(_list, ["sta_abs", _k + "fcl", _id]);
+        array_push(_list, ["sta_abs", _k + "fch", _id]);
+        array_push(_list, ["label",   _k + "f_csw"]);
+        array_push(_list, ["jsr",     _k + "fcut", _id]);
+        array_push(_list, ["jmp_abs", _k + "f_vib", _id]);
+    }
     // Slide to the target, snapping onto it rather than overshooting.
     array_push(_list, ["label",   _k + "f_tp"]);
     array_push(_list, ["lda_abx", _k + "fqh", _id]);

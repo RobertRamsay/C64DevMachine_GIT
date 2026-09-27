@@ -178,6 +178,9 @@ var _base = "unsaved";
                 _mo.patterns         = variable_struct_exists(_me, "patterns")         ? _me.patterns         : [];
                 _mo.bank_sel_pattern = variable_struct_exists(_me, "bank_sel_pattern") ? _me.bank_sel_pattern : 0;
                 _mo.play_speed       = variable_struct_exists(_me, "play_speed")       ? _me.play_speed       : 6;
+                _mo.filt_mode        = variable_struct_exists(_me, "filt_mode")        ? _me.filt_mode        : 0;
+                _mo.filt_res         = variable_struct_exists(_me, "filt_res")         ? _me.filt_res         : 0;
+                _mo.filt_cut         = variable_struct_exists(_me, "filt_cut")         ? _me.filt_cut         : 1024;
                 // songs[] is the source of truth. song_order/song_loop/song_loop_row
                 // are legacy and written only so an older build can still open the
                 // file; nothing in the current editor or emitter reads them.

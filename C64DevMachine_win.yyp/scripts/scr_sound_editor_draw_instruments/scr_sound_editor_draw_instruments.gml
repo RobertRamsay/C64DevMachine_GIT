@@ -18,9 +18,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     var _list_w     = 260;
     if (_two_col) {
         // Everything under the list in the left column (buttons, name, two
-        // ADSR rows, pulse, vibrato) takes 158px; the list gets the rest.
+        // ADSR rows, pulse, vibrato, filter) takes 182px; the list gets the rest.
         _list_w   = 290;
-        _list_vis = clamp(floor((_iy1 - _iy0 - 158) / _list_row_h), 6, 20);
+        _list_vis = clamp(floor((_iy1 - _iy0 - 182) / _list_row_h), 6, 20);
     }
 
     draw_set_font_l(fnt_c64_tiny);
@@ -126,7 +126,8 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
                     pulse_width : 2048,
                     vib_delay : 0,
                     vib_speed : 0,
-                    vib_depth : 0
+                    vib_depth : 0,
+                    filt : 0
                 });
                 _m.sel_instr = array_length(_m.instruments) - 1;
                 global.undo_dirty      = true;
@@ -171,6 +172,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
                     vib_delay: scr_sid64_instr_field(_cp_src, "vib_delay", 0),
                     vib_speed: scr_sid64_instr_field(_cp_src, "vib_speed", 0),
                     vib_depth: scr_sid64_instr_field(_cp_src, "vib_depth", 0),
+                    filt: scr_sid64_instr_field(_cp_src, "filt", 0),
                     sfx_note: variable_struct_exists(_cp_src,"sfx_note")?_cp_src.sfx_note:"C-5",
                     sfx_priority: variable_struct_exists(_cp_src,"sfx_priority")?_cp_src.sfx_priority:1
                 };
@@ -193,6 +195,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
                     vib_delay : scr_sid64_instr_field(_pc, "vib_delay", 0),
                     vib_speed : scr_sid64_instr_field(_pc, "vib_speed", 0),
                     vib_depth : scr_sid64_instr_field(_pc, "vib_depth", 0),
+                    filt : scr_sid64_instr_field(_pc, "filt", 0),
                     sfx_note: variable_struct_exists(_pc,"sfx_note")?_pc.sfx_note:"C-5",
                     sfx_priority: variable_struct_exists(_pc,"sfx_priority")?_pc.sfx_priority:1
                 });
@@ -418,6 +421,42 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
                 global.addresses_dirty = true;
             }
             _vb_x = _vb_upx2 + 8;
+        }
+
+        // ── FILTER ON/OFF: route this instrument's voice through the song filter ──
+        var _fi_y = _vb_y + 24;
+        var _fi_on = (scr_sid64_instr_field(_sel_instr, "filt", 0) != 0);
+        draw_set_color(make_color_rgb(120, 120, 160));
+        draw_text_l(_ix0, _fi_y, "FILTER:");
+        var _fi_bx = _ix0 + 64;
+        var _fi_hov = point_in_rectangle(_mx, _my, _fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14);
+        if (_fi_on) {
+            draw_set_color(make_color_rgb(40, 110, 170));
+        } else if (_fi_hov) {
+            draw_set_color(make_color_rgb(65, 80, 100));
+        } else {
+            draw_set_color(make_color_rgb(30, 38, 52));
+        }
+        draw_rectangle(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14, false);
+        draw_set_color(c_white);
+        if (_fi_on) {
+            draw_text_l(_fi_bx + 8, _fi_y, "ON");
+        } else {
+            draw_text_l(_fi_bx + 6, _fi_y, "OFF");
+        }
+        if (_fi_hov && mouse_check_button_pressed(mb_left)) {
+            if (_fi_on) {
+                _sel_instr.filt = 0;
+            } else {
+                _sel_instr.filt = 1;
+            }
+            global.undo_dirty      = true;
+            global.addresses_dirty = true;
+        }
+        // Routed through a filter with no mode set = silence on the SID.
+        if (_fi_on && (_m.filt_mode & 0x07) == 0) {
+            draw_set_color(make_color_rgb(230, 90, 90));
+            draw_text_l(_fi_bx + 50, _fi_y, "SET A FILTER MODE - SILENT");
         }
     }
 

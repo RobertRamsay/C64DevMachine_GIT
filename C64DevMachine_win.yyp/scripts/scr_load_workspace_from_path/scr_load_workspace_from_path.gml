@@ -1062,6 +1062,9 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
 	            // JSON round-trips numerics as strings on some paths, so real()
 	            // before it reaches the clamp in the editor.
 	            _new_asset.meta.play_speed       = variable_struct_exists(_sem, "play_speed")       ? real(_sem.play_speed) : 6;
+	            _new_asset.meta.filt_mode        = variable_struct_exists(_sem, "filt_mode")        ? real(_sem.filt_mode)  : 0;
+	            _new_asset.meta.filt_res         = variable_struct_exists(_sem, "filt_res")         ? real(_sem.filt_res)   : 0;
+	            _new_asset.meta.filt_cut         = variable_struct_exists(_sem, "filt_cut")         ? real(_sem.filt_cut)   : 1024;
 	            // songs[] restores first; the editor's migration guard only fires
 	            // when it's absent, so a pre-songs[] file still folds its bare
 	            // song_order into songs[0] on first open.

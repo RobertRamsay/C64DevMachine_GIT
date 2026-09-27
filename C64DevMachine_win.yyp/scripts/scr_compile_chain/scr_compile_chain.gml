@@ -17364,6 +17364,19 @@ case "MACRO_SID_SONG": {
     // True once any instrument has vibrato or any pattern has a command
     // column; when neither, the effect routines shrink to a bare pitch write.
     var _sng_any_vib = false;
+    // True once anything touches the filter: an instrument with FILTER ON, a
+    // pattern A/B/C/E command, or a song filter mode. Only then does the
+    // player carry filter code (init write, routing, commands).
+    var _sng_filt_used = false;
+    var _sng_filt_mode = 0;
+    var _sng_filt_res  = 0;
+    var _sng_filt_cut  = 0x400;
+    if (variable_struct_exists(_sm, "filt_mode")) _sng_filt_mode = clamp(real(_sm.filt_mode), 0, 15);
+    if (variable_struct_exists(_sm, "filt_res"))  _sng_filt_res  = clamp(real(_sm.filt_res), 0, 15);
+    if (variable_struct_exists(_sm, "filt_cut"))  _sng_filt_cut  = clamp(real(_sm.filt_cut), 0, 2047);
+    if ((_sng_filt_mode & 0x07) != 0) {
+        _sng_filt_used = true;
+    }
 
     // ── 1. INSTRUMENT BLOBS ──
     // 7 header bytes (AD, SR, PW lo, PW hi, VIB delay, VIB speed, VIB depth*4)
@@ -17421,9 +17434,17 @@ case "MACRO_SID_SONG": {
         if (_ins_vsp > 0 && _ins_vdp > 0) {
             _sng_any_vib = true;
         }
+        // FILTER ON: the voice is routed through the SID filter when this
+        // instrument's note triggers. Carried in bit 7 of the depth byte
+        // (depth * 4 never exceeds $3C).
+        var _ins_filt = 0;
+        if (variable_struct_exists(_ins, "filt") && real(_ins.filt) != 0) {
+            _ins_filt = 1;
+            _sng_filt_used = true;
+        }
         array_push(_list, ["byte", _ins_vdl & 0xFF,             _id]);
         array_push(_list, ["byte", _ins_vsp & 0x0F,             _id]);
-        array_push(_list, ["byte", (_ins_vdp * 4) & 0xFF,       _id]);
+        array_push(_list, ["byte", ((_ins_vdp * 4) & 0x7F) | (_ins_filt << 7), _id]);
         for (var _bi = 0; _bi < array_length(_ins_comp.bytes); _bi++) {
             array_push(_list, ["byte", _ins_comp.bytes[_bi] & 0xFF, _id]);
         }
@@ -17469,7 +17490,10 @@ case "MACRO_SID_SONG": {
             var _fx_st = _pat_steps[_fxi];
             if (variable_struct_exists(_fx_st, "cmd") && real(_fx_st.cmd) >= 0) {
                 _pat_has_fx = true;
-                break;
+                var _fx_c = real(_fx_st.cmd);
+                if (_fx_c == 0x0A || _fx_c == 0x0B || _fx_c == 0x0C || _fx_c == 0x0E) {
+                    _sng_filt_used = true;
+                }
             }
         }
         array_push(_pat_fx_flags, _pat_has_fx);
@@ -17675,7 +17699,9 @@ case "MACRO_SID_SONG": {
     }
     // Shared scratch: the row's command/value, vibrato speed/depth in use,
     // the HR-waiting flag handed to the effect routine, and the live tempo.
-    var _sng_scratch = ["rcmd", "rval", "vts", "vtd", "hrw", "spd"];
+    // ... plus the filter shadows ($D415-$D418 can't be read back): cutoff as an
+    // 11-bit value (fcl/fch), $D417 and $D418 copies, and a work byte.
+    var _sng_scratch = ["rcmd", "rval", "vts", "vtd", "hrw", "spd", "fcl", "fch", "f17", "f18", "ftmp"];
     for (var _sci = 0; _sci < array_length(_sng_scratch); _sci++) {
         array_push(_list, ["label", _key + _sng_scratch[_sci]]);
         array_push(_list, ["byte", 0, _id]);
@@ -17705,8 +17731,25 @@ case "MACRO_SID_SONG": {
     array_push(_list, ["pha",     0,      _id]);
     array_push(_list, ["lda_imm", 0x36,   _id]);
     array_push(_list, ["sta_zp",  0x01,   _id]);
-    array_push(_list, ["lda_imm", 0x0F,   _id]);
-    array_push(_list, ["sta_abs", _chip_base + 0x18, _id]);   // full volume, filter off
+    if (_sng_filt_used) {
+        // Song filter settings: mode + full volume, resonance (no voice routed
+        // until an instrument with FILTER ON plays), cutoff.
+        array_push(_list, ["lda_imm", ((_sng_filt_mode << 4) | 0x0F) & 0xFF, _id]);
+        array_push(_list, ["sta_abs", _chip_base + 0x18, _id]);
+        array_push(_list, ["sta_abs", _key + "f18", _id]);
+        array_push(_list, ["lda_imm", (_sng_filt_res << 4) & 0xF0, _id]);
+        array_push(_list, ["sta_abs", _chip_base + 0x17, _id]);
+        array_push(_list, ["sta_abs", _key + "f17", _id]);
+        array_push(_list, ["lda_imm", _sng_filt_cut & 0xFF, _id]);
+        array_push(_list, ["sta_abs", _key + "fcl", _id]);
+        array_push(_list, ["lda_imm", (_sng_filt_cut >> 8) & 0x07, _id]);
+        array_push(_list, ["sta_abs", _key + "fch", _id]);
+        array_push(_list, ["jsr",     _key + "fcut", _id]);
+    } else {
+        array_push(_list, ["lda_imm", 0x0F,   _id]);
+        array_push(_list, ["sta_abs", _chip_base + 0x18, _id]);   // full volume, filter off
+        array_push(_list, ["sta_abs", _key + "f18", _id]);        // DXX keeps this copy
+    }
     array_push(_list, ["pla",     0,      _id]);
     array_push(_list, ["ldx_imm", 0x00,   _id]);   // start at the song's first row
     array_push(_list, ["jmp_abs", _L_seek, _id]);
@@ -18045,7 +18088,23 @@ case "MACRO_SID_SONG": {
         array_push(_list, ["sta_abs", _key + "ivs_" + string(_vi), _id]);
         array_push(_list, ["iny",     0,         _id]);
         array_push(_list, ["lda_izy", _vb + 0,   _id]);
+        array_push(_list, ["and_imm", 0x7F,      _id]);   // bit 7 is the filter flag
         array_push(_list, ["sta_abs", _key + "ivp_" + string(_vi), _id]);
+        if (_sng_filt_used) {
+            // Route this voice through the filter (FILTER ON) or around it.
+            var _frl = _key + "fr" + string(array_length(_list));
+            array_push(_list, ["lda_izy", _vb + 0,   _id]);
+            array_push(_list, ["bmi",     _frl + "on", _id]);
+            array_push(_list, ["lda_abs", _key + "f17", _id]);
+            array_push(_list, ["and_imm", (~(1 << _vi)) & 0xFF, _id]);
+            array_push(_list, ["jmp_abs", _frl + "st", _id]);
+            array_push(_list, ["label",   _frl + "on"]);
+            array_push(_list, ["lda_abs", _key + "f17", _id]);
+            array_push(_list, ["ora_imm", (1 << _vi) & 0xFF, _id]);
+            array_push(_list, ["label",   _frl + "st"]);
+            array_push(_list, ["sta_abs", _key + "f17", _id]);
+            array_push(_list, ["sta_abs", _chip_base + 0x17, _id]);
+        }
         array_push(_list, ["lda_imm", 0xFF,      _id]);
         array_push(_list, ["sta_abs", _key + "vbc_" + string(_vi), _id]);
         array_push(_list, ["lda_imm", 0x00,      _id]);
@@ -18256,7 +18315,23 @@ case "MACRO_SID_SONG": {
             array_push(_list, ["sta_abs", _key + "ivs_" + string(_vi), _id]);
             array_push(_list, ["iny",     0,         _id]);
             array_push(_list, ["lda_izy", _vb + 0,   _id]);
+            array_push(_list, ["and_imm", 0x7F,      _id]);   // bit 7 is the filter flag
             array_push(_list, ["sta_abs", _key + "ivp_" + string(_vi), _id]);
+            if (_sng_filt_used) {
+                // Route this voice through the filter (FILTER ON) or around it.
+                var _frl = _key + "fr" + string(array_length(_list));
+                array_push(_list, ["lda_izy", _vb + 0,   _id]);
+                array_push(_list, ["bmi",     _frl + "on", _id]);
+                array_push(_list, ["lda_abs", _key + "f17", _id]);
+                array_push(_list, ["and_imm", (~(1 << _vi)) & 0xFF, _id]);
+                array_push(_list, ["jmp_abs", _frl + "st", _id]);
+                array_push(_list, ["label",   _frl + "on"]);
+                array_push(_list, ["lda_abs", _key + "f17", _id]);
+                array_push(_list, ["ora_imm", (1 << _vi) & 0xFF, _id]);
+                array_push(_list, ["label",   _frl + "st"]);
+                array_push(_list, ["sta_abs", _key + "f17", _id]);
+                array_push(_list, ["sta_abs", _chip_base + 0x17, _id]);
+            }
             array_push(_list, ["lda_imm", 0xFF,      _id]);
             array_push(_list, ["sta_abs", _key + "vbc_" + string(_vi), _id]);
             array_push(_list, ["lda_imm", 0x00,      _id]);
@@ -18444,7 +18519,7 @@ case "MACRO_SID_SONG": {
             _sng_use_fx = true;
         }
     }
-    scr_sid_song_emit_fx_routines(_list, _id, _key, _chip_base, _c_base[0], _sng_use_fx);
+    scr_sid_song_emit_fx_routines(_list, _id, _key, _chip_base, _c_base[0], _sng_use_fx, _sng_filt_used);
 
     array_push(_list, ["label", _L_skip]);
 

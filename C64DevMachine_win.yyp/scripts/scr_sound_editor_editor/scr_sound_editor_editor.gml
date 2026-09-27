@@ -140,6 +140,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         if (!variable_struct_exists(_adb_instr, "vib_delay"))   _adb_instr.vib_delay   = 0;
         if (!variable_struct_exists(_adb_instr, "vib_speed"))   _adb_instr.vib_speed   = 0;
         if (!variable_struct_exists(_adb_instr, "vib_depth"))   _adb_instr.vib_depth   = 0;
+        if (!variable_struct_exists(_adb_instr, "filt"))        _adb_instr.filt        = 0;
     }
 
     // Row-audition playback (Space / Shift+Space) — loops the current order row
@@ -147,6 +148,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (!variable_struct_exists(_m, "play_row"))    _m.play_row    = 0;
     if (!variable_struct_exists(_m, "play_tick"))   _m.play_tick   = 0;
     if (!variable_struct_exists(_m, "play_speed"))  _m.play_speed  = 6;
+    if (!variable_struct_exists(_m, "filt_mode"))   _m.filt_mode   = 0;
+    if (!variable_struct_exists(_m, "filt_res"))    _m.filt_res    = 0;
+    if (!variable_struct_exists(_m, "filt_cut"))    _m.filt_cut    = 1024;
     // 1 is frantic, 24 is a dirge; the emitter clamps to 1-255 anyway, but
     // there's no musical reason to go past this from the UI.
     _m.play_speed = clamp(real(_m.play_speed), 1, 24);
@@ -324,6 +328,95 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             _m.voice_mask=_m.voice_mask^_bit;
             if(!(_m.voice_mask&_bit)) scr_sound_preview_free_channel(_mv);
             global.addresses_dirty=true;global.undo_dirty=true;
+        }
+    }
+
+    // ── SONG FILTER ── what the player writes when the song starts: mode
+    // (LP/BP/HP, combinable), resonance, cutoff. Instruments with FILTER ON are
+    // routed through it. CHIP picks the preview's SID model only — the real
+    // machine decides what the compiled song sounds like.
+    var _fl_x = _vx1 + 950;
+    var _fl_y = _transport_y;
+    draw_set_color(c_white);
+    draw_text_l(_fl_x, _fl_y + 5, "FILTER:");
+    var _fl_modes = ["LP", "BP", "HP"];
+    for (var _fmi = 0; _fmi < 3; _fmi++) {
+        var _fbit = 1 << _fmi;
+        var _fbx = _fl_x + 62 + _fmi * 38;
+        var _fon = ((_m.filt_mode & _fbit) != 0);
+        var _fhov = point_in_rectangle(_mx, _my, _fbx, _fl_y, _fbx + 34, _fl_y + 24);
+        if (_fon) {
+            draw_set_color(make_color_rgb(40, 110, 170));
+        } else if (_fhov) {
+            draw_set_color(make_color_rgb(65, 80, 100));
+        } else {
+            draw_set_color(make_color_rgb(30, 38, 52));
+        }
+        draw_rectangle(_fbx, _fl_y, _fbx + 34, _fl_y + 24, false);
+        draw_set_color(c_white);
+        draw_text_l(_fbx + 8, _fl_y + 5, _fl_modes[_fmi]);
+        if (_fhov && mouse_check_button_pressed(mb_left)) {
+            _m.filt_mode = _m.filt_mode ^ _fbit;
+            global.undo_dirty = true;
+            global.addresses_dirty = true;
+        }
+    }
+    // RES - n +   and   CUT - $xxx +  (Shift = fine / coarse)
+    var _fl_steps = [
+        { lbl: "RES", key: "filt_res", mx: 15,   fine: 1, coarse: 1,   hex: false, w: 20 },
+        { lbl: "CUT", key: "filt_cut", mx: 2047, fine: 1, coarse: 32,  hex: true,  w: 36 }
+    ];
+    var _fsx = _fl_x + 184;
+    for (var _fsi = 0; _fsi < 2; _fsi++) {
+        var _fs = _fl_steps[_fsi];
+        var _fval = _m[$ _fs.key];
+        draw_set_color(make_color_rgb(150, 150, 180));
+        draw_text_l(_fsx, _fl_y + 5, _fs.lbl);
+        var _fdn = _fsx + 32;
+        var _fup = _fdn + 18 + _fs.w + 6;
+        var _fdn_h = point_in_rectangle(_mx, _my, _fdn, _fl_y + 2, _fdn + 14, _fl_y + 22);
+        var _fup_h = point_in_rectangle(_mx, _my, _fup, _fl_y + 2, _fup + 14, _fl_y + 22);
+        draw_set_color(make_color_rgb(100, 100, 100));
+        if (_fdn_h) { draw_set_color(c_aqua); }
+        draw_text_l(_fdn + 2, _fl_y + 5, "-");
+        draw_set_color(make_color_rgb(100, 100, 100));
+        if (_fup_h) { draw_set_color(c_aqua); }
+        draw_text_l(_fup + 2, _fl_y + 5, "+");
+        var _fstr = string(_fval);
+        if (_fs.hex) {
+            _fstr = string_upper(decimal_to_hex(_fval));
+            while (string_length(_fstr) < 3) { _fstr = "0" + _fstr; }
+            _fstr = "$" + _fstr;
+        }
+        draw_set_color(c_white);
+        draw_text_l(_fdn + 18, _fl_y + 5, _fstr);
+        var _fstep = _fs.coarse;
+        if (keyboard_check(vk_shift)) {
+            _fstep = _fs.fine;
+        }
+        if (_fdn_h && mouse_check_button_pressed(mb_left)) {
+            _m[$ _fs.key] = max(0, _fval - _fstep);
+            global.undo_dirty = true;
+            global.addresses_dirty = true;
+        }
+        if (_fup_h && mouse_check_button_pressed(mb_left)) {
+            _m[$ _fs.key] = min(_fs.mx, _fval + _fstep);
+            global.undo_dirty = true;
+            global.addresses_dirty = true;
+        }
+        _fsx = _fup + 26;
+    }
+    // Preview chip (session setting, not saved with the song).
+    if (global.sid64_ok) {
+        var _chip_lbl = "CHIP: 6581";
+        if (global.sid64_model == 1) {
+            _chip_lbl = "CHIP: 8580";
+        }
+        if (scr_sfx_maker_button(_fsx + 10, _fl_y - 1, 96, _chip_lbl, _mx, _my)) {
+            global.sid64_model = 1 - global.sid64_model;
+            scr_sid64_reconfigure();
+            _m.playing = false;
+            _m.song_playing = false;
         }
     }
 
@@ -807,6 +900,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _pw_warn = [array_create(_grid_len, -1), array_create(_grid_len, -1), array_create(_grid_len, -1)];
     var _pw_now  = [-1, -1, -1];
     var _pw_spd  = clamp(real(_m.play_speed), 1, 255);
+    // CXX: the one shared cutoff, from the song's FILTER setting.
+    var _ct_warn = [array_create(_grid_len, -1), array_create(_grid_len, -1), array_create(_grid_len, -1)];
+    var _ct_now  = clamp(real(_m.filt_cut), 0, 2047);
     for (var _pwr = 0; _pwr < _grid_len; _pwr++) {
         var _pw_next_spd = _pw_spd;
         for (var _pwv = 0; _pwv < 3; _pwv++) {
@@ -822,6 +918,24 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             }
             if (_pw_st.cmd == 8) {
                 _pw_now[_pwv] = (_pw_st.cmd_val << 4) & 0xFFF;
+            }
+            if (_pw_st.cmd == 0x0A) {
+                _ct_now = (_pw_st.cmd_val << 3) & 0x7FF;
+            }
+            if (_pw_st.cmd == 0x0C) {
+                var _ct_d = _pw_st.cmd_val;
+                if (_ct_d >= 0x80) {
+                    _ct_d -= 256;
+                }
+                var _ct_new = _ct_now + _ct_d * _pw_spd;
+                if (_ct_new <= 0) {
+                    _ct_warn[_pwv][_pwr] = 0;
+                    _ct_new = 0;
+                } else if (_ct_new >= 2047) {
+                    _ct_warn[_pwv][_pwr] = 2047;
+                    _ct_new = 2047;
+                }
+                _ct_now = _ct_new;
             }
             if (_pw_st.cmd == 0x0F && _pw_st.cmd_val > 0) {
                 _pw_next_spd = _pw_st.cmd_val;   // takes effect from the next row
@@ -969,6 +1083,20 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 var _cv_hex = string_upper(decimal_to_hex(_step.cmd_val));
                 while (string_length(_cv_hex) < 2) { _cv_hex = "0" + _cv_hex; }
                 draw_set_color(make_color_rgb(255, 170, 90));
+                if (_row < _grid_len && _ct_warn[_cv][_row] >= 0) {
+                    draw_set_color(c_red);
+                    if (point_in_rectangle(_mx, _my, _cmd_x - 6, _ry, _cx2, _ry + _row_h)) {
+                        if (_ct_warn[_cv][_row] > 0) {
+                            _pw_tip = "THIS SWEEP RUNS THE FILTER CUTOFF TO ITS TOP (2047) AND STOPS THERE."
+                                    + "\nUSE A SMALLER VALUE OR FEWER ROWS, SET IT WITH AXX,"
+                                    + "\nOR SWEEP BACK DOWN WITH C80-CFF (CFF = -1, CF0 = -16 PER FRAME).";
+                        } else {
+                            _pw_tip = "THIS SWEEP RUNS THE FILTER CUTOFF TO ZERO AND STOPS THERE (LOW-PASS GOES QUIET)."
+                                    + "\nUSE A SMALLER DROP OR FEWER ROWS, SET IT WITH AXX,"
+                                    + "\nOR SWEEP BACK UP WITH C01-C7F (C01 = +1, C10 = +16 PER FRAME).";
+                        }
+                    }
+                }
                 if (_row < _grid_len && _pw_warn[_cv][_row] >= 0) {
                     draw_set_color(c_red);
                     if (point_in_rectangle(_mx, _my, _cmd_x - 6, _ry, _cx2, _ry + _row_h)) {
@@ -1662,7 +1790,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(150, 120, 90));
     draw_text_l(_col_gutter_x, _clr_y + 28,
-        "CMD 1XX UP 2XX DN 3XX SLIDE 4XY VIB 5XX AD 6XX SR 7XX WAVE 8XX PW 9XX PW SWEEP DXX $D418 FXX TEMPO | 1-4,9 ONE ROW");
+        "CMD 1XX UP 2XX DN 3XX SLIDE 4XY VIB 5XX AD 6XX SR 7XX WAVE 8XX PW 9XX PW SWEEP DXX $D418 FXX TEMPO | 1-4,9,C ONE ROW");
+    draw_text_l(_col_gutter_x, _clr_y + 40,
+        "FILTER  AXX CUTOFF (XX*8)  BX0 RESONANCE X  CXX CUTOFF SWEEP (01-7F UP, 80-FF DOWN)  EXX MODE (1 LP 2 BP 4 HP 8 V3 OFF)");
     draw_set_font_l(fnt_c64_tiny);
 
     // ═════════════════════════════════════════════════════════════════════

@@ -104,6 +104,10 @@ function scr_sound_editor_create(_asset) {
         // advance, so it's the whole of the tempo. 6 at 50Hz PAL is roughly
         // 125bpm at 4 rows/beat. Editable via the TEMPO stepper in the header.
         play_speed    : 6,
+        // Song filter: mode bits (1 LP, 2 BP, 4 HP), resonance 0-15, cutoff 0-2047.
+        filt_mode     : 0,
+        filt_res      : 0,
+        filt_cut      : 1024,
 
         // ── VIEW ──
         view_mode     : "VERTICAL",   // vertical first; horizontal is a later
