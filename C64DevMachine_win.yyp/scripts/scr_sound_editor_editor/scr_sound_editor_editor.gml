@@ -1307,13 +1307,14 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     // ═════════════════════════════════════════════════════════════════════
     // RIGHT PANEL — SONG ORDER TABLE
     // ═════════════════════════════════════════════════════════════════════
-    var _ox0 = _col_gutter_x + _grid_full_w + 60;
+    var _ox0 = _col_gutter_x + _grid_full_w + 30;
     // Right panel sits lower than the grid so the SONG selector strip has a
     // clear row of its own — at _gy0 it lands in the header band and collides
     // with the octave stepper.
     var _oy0 = _gy0 + 26;
     var _ord_row_h = 28;
-    var _ord_vis   = 21;
+    // As many rows as fit above the buttons + help line, inside the window.
+    var _ord_vis   = clamp(floor((_vy2 - 52 - _oy0) / _ord_row_h), 8, 30);
     var _ord_col_w = [44, 70, 70, 70, 60, 70];
     var _ord_x = [_ox0];
     for (var _oc = 0; _oc < array_length(_ord_col_w); _oc++) {
@@ -1684,17 +1685,19 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         if (mouse_wheel_down()) { _m.order_scroll = min(max(0, array_length(_cur_song.order) - _ord_vis), _m.order_scroll + 1); }
     }
 
+    // Transient messages sit on the status line, clear of every panel.
     if (_m.warn_timer > 0) {
         draw_set_color(make_color_rgb(255, 200, 90));
-        draw_text_l(_ox0, _oby + 44, _m.warn_msg);
+        draw_text_l(_vx1 + 540, _status_y, _m.warn_msg);
         _m.warn_timer -= 1;
     }
 
     // ═════════════════════════════════════════════════════════════════════
     // FAR RIGHT PANEL — INSTRUMENTS
     // ═════════════════════════════════════════════════════════════════════
-    var _ix0 = _ox0 + _ord_full_w + 80;
-    scr_sound_editor_draw_instruments(_m, _ix0, _oy0, _mx, _my);
+    // 50px clear of the order table: its button row runs ~30px past the table.
+    var _ix0 = _ox0 + _ord_full_w + 50;
+    scr_sound_editor_draw_instruments(_m, _ix0, _oy0, _mx, _my, _vx2 - 16, _vy2 - 12);
 
     draw_set_alpha(1.0);
     draw_set_color(c_white);

@@ -5,11 +5,23 @@
 ///       scr_instrument_parse). Recompiles on commit only (click-away or
 ///       Ctrl+Enter), never on every keystroke, so a mid-typo string never
 ///       corrupts instr.compiled.
-function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
+/// _ix1 / _iy1 (optional): the panel's right and bottom edges. When given, the
+/// panel lays out in two columns — list, buttons, name, ADSR and pulse on the
+/// left, the command box, compiled size and legend on the right — and sizes
+/// itself to stay inside that rectangle. Omitted (SFX Maker) keeps the
+/// original single-column layout.
+function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, _iy1 = -1) {
 
+    var _two_col    = (_ix1 > 0 && _iy1 > 0);
     var _list_row_h = 22;
     var _list_vis   = 6;
     var _list_w     = 260;
+    if (_two_col) {
+        // Everything under the list in the left column (buttons, name, two
+        // ADSR rows, pulse) takes 134px; the list gets the rest.
+        _list_w   = 290;
+        _list_vis = clamp(floor((_iy1 - _iy0 - 134) / _list_row_h), 6, 20);
+    }
 
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(255, 200, 100));
@@ -291,6 +303,12 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
         }
 
         _adsr_x = _ad_upx2 + 16;
+        // Two-column layout: S and R wrap onto a second row so the left
+        // column stays inside its own width.
+        if (_two_col && _adi == 1) {
+            _adsr_x = _ix0 + 50;
+            _adsr_y += 22;
+        }
     }
 
     // ── PULSE WIDTH ──
@@ -335,14 +353,25 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     draw_set_font_l(fnt_c64_tiny);
 
     // ── SOURCE TEXT BOX ──
+    var _tb_x0 = _ix0;
+    var _tb_w  = _list_w;
     var _tb_y1 = _pw_y + 24;
     var _tb_h  = 340;
+    if (_two_col) {
+        // Right column: header, box down to the compiled/legend block.
+        _tb_x0 = _ix0 + _list_w + 20;
+        _tb_w  = _ix1 - _tb_x0 - 4;
+        _tb_y1 = _iy0;
+        _tb_h  = _iy1 - _iy0 - 160;   // room for compiled size, 3 error lines, legend
+        draw_set_color(make_color_rgb(255, 200, 100));
+        draw_text_l(_tb_x0, _iy0 - 20, "COMMANDS");
+    }
     draw_set_color(make_color_rgb(14, 14, 22));
-    draw_rectangle(_ix0 - 4, _tb_y1 - 2, _ix0 + _list_w + 4, _tb_y1 + _tb_h + 2, false);
+    draw_rectangle(_tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, false);
     draw_set_color(make_color_rgb(100, 100, 140));
-    draw_rectangle(_ix0 - 4, _tb_y1 - 2, _ix0 + _list_w + 4, _tb_y1 + _tb_h + 2, true);
+    draw_rectangle(_tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, true);
 
-    var _tb_hov = point_in_rectangle(_mx, _my, _ix0 - 4, _tb_y1 - 2, _ix0 + _list_w + 4, _tb_y1 + _tb_h + 2);
+    var _tb_hov = point_in_rectangle(_mx, _my, _tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2);
     if (!_tb_hov && mouse_check_button_pressed(mb_left) && _m.instr_edit_active) {
         scr_sound_editor_commit_instrument(_m, _sel_instr);
     }
@@ -367,7 +396,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
             var _cl_best_col  = string_length(_cl_line_txt);
             for (var _cci = 0; _cci <= string_length(_cl_line_txt); _cci++) {
                 var _cl_sub_w = string_width_l(string_copy(_cl_line_txt, 1, _cci));
-                if (_ix0 + 4 + _cl_prefix_w + _cl_sub_w >= _mx) {
+                if (_tb_x0 + 4 + _cl_prefix_w + _cl_sub_w >= _mx) {
                     _cl_best_col = _cci;
                     break;
                 }
@@ -406,23 +435,27 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     
     // Draw a clean vertical divider line inside the box (moved slightly left)
     draw_set_color(make_color_rgb(45, 45, 65));
-    draw_line(_ix0 + 72, _tb_y1 + 2, _ix0 + 72, _tb_y1 + _tb_h - 2);
+    draw_line(_tb_x0 + 72, _tb_y1 + 2, _tb_x0 + 72, _tb_y1 + _tb_h - 2);
 
     for (var _tli = 0; _tli < array_length(_tb_lines); _tli++) {
+        // Lines past the bottom of the box aren't drawn — the box never spills.
+        if (4 + (_tli * 16) + 14 > _tb_h) {
+            break;
+        }
         var _tb_prefix = string(_tli);
         while (string_length(_tb_prefix) < 2) { _tb_prefix = "0" + _tb_prefix; }
         _tb_prefix += ": ";
         var _tb_prefix_w = string_width_l(_tb_prefix);
 
         draw_set_color(make_color_rgb(90, 90, 120));
-        draw_text_l(_ix0 + 4, _tb_y1 + 4 + _tli * 16, _tb_prefix);
+        draw_text_l(_tb_x0 + 4, _tb_y1 + 4 + _tli * 16, _tb_prefix);
 
         var _tb_line_txt = _tb_lines[_tli];
         if (_m.instr_edit_active && _tb_blink && _tli == _tb_cursor_line) {
             _tb_line_txt = string_insert("|", _tb_line_txt, _tb_cursor_col + 1);
         }
         draw_set_color(_m.instr_edit_active ? c_lime : make_color_rgb(160, 160, 180));
-        draw_text_l(_ix0 + 4 + _tb_prefix_w, _tb_y1 + 4 + _tli * 16, _tb_line_txt);
+        draw_text_l(_tb_x0 + 4 + _tb_prefix_w, _tb_y1 + 4 + _tli * 16, _tb_line_txt);
 
         // Generate automated side-notes with detailed SID register decoding when not editing
         if (!_m.instr_edit_active) {
@@ -490,8 +523,12 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
             }
 
             if (_comment != "") {
+                // Trim a long side-note to the box instead of running past it.
+                while (string_length(_comment) > 1 && string_width_l(_comment) > _tb_w - 86) {
+                    _comment = string_copy(_comment, 1, string_length(_comment) - 1);
+                }
                 draw_set_color(make_color_rgb(90, 110, 90));
-                draw_text_l(_ix0 + 80, _tb_y1 + 4 + _tli * 16, _comment);
+                draw_text_l(_tb_x0 + 80, _tb_y1 + 4 + _tli * 16, _comment);
             }
         }
     }
@@ -542,13 +579,15 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     scr_instrument_ensure_compiled(_sel_instr);
     var _pv_y = _tb_y1 + _tb_h + 16;
     draw_set_color(make_color_rgb(120, 120, 160));
-    draw_text_l(_ix0, _pv_y, L("COMPILED: ") + string(array_length(_sel_instr.compiled.bytes)) + L(" BYTES"));
+    draw_text_l(_tb_x0, _pv_y, L("COMPILED: ") + string(array_length(_sel_instr.compiled.bytes)) + L(" BYTES"));
     var _err_n = array_length(_sel_instr.compiled.errors);
     if (_err_n > 0) {
         draw_set_font_l(fnt_c64_pico);
         draw_set_color(c_red);
+        // At most three error lines are shown so the legend keeps its place.
+        _err_n = min(_err_n, 3);
         for (var _eri = 0; _eri < _err_n; _eri++) {
-            draw_text_l(_ix0, _pv_y + 18 + _eri * 12, _sel_instr.compiled.errors[_eri]);
+            draw_text_l(_tb_x0, _pv_y + 18 + _eri * 12, _sel_instr.compiled.errors[_eri]);
         }
         draw_set_font_l(fnt_c64_tiny);
     }
@@ -557,11 +596,11 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my) {
     var _lg_y = _pv_y + 32 + (_err_n * 12) + 10;
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(110, 110, 130));
-    draw_text_l(_ix0, _lg_y,      "$xx / xx   WAVEFORM / CONTROL BYTE (HEX)");
-    draw_text_l(_ix0, _lg_y + 12, "N, N+n, N-n   NOTE, OPTIONAL SEMITONE OFFSET");
-    draw_text_l(_ix0, _lg_y + 24, "Dn   HOLD FOR n TICKS (1-255)");
-    draw_text_l(_ix0, _lg_y + 36, "Ln   LOOP BACK TO STEP n");
-    draw_text_l(_ix0, _lg_y + 48, "---   END (GATE OFF + STOP)");
+    draw_text_l(_tb_x0, _lg_y,      "$xx   WAVE / CONTROL BYTE (HEX)");
+    draw_text_l(_tb_x0, _lg_y + 12, "N  N+n  N-n   NOTE + SEMITONES");
+    draw_text_l(_tb_x0, _lg_y + 24, "Dn   HOLD n TICKS (1-255)");
+    draw_text_l(_tb_x0, _lg_y + 36, "Ln   LOOP BACK TO STEP n");
+    draw_text_l(_tb_x0, _lg_y + 48, "---   END (GATE OFF + STOP)");
     draw_set_font_l(fnt_c64_tiny);
 
     draw_set_color(c_white);
