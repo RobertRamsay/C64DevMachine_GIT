@@ -237,7 +237,9 @@ if (_close_hover && mouse_check_button_pressed(mb_left)) {
     var _code_x    = _px + _gutter_w + 30;
     var _code_y    = _py + 34;
     var _code_w    = _pw - _gutter_w - 12;
-    var _code_h    = _ph - 70;
+    // Code area stops 6px above the footer divider (drawn at _ph - 56), which
+    // sits 6px above the type legend (at _ph - 49).
+    var _code_h    = _ph - 96;
     var _max_lines = floor(_code_h / _line_h);
 
     // Split text into lines
@@ -1223,6 +1225,10 @@ var _g_is_valid = false;
         ));
         draw_rectangle(_hthumb_x, _hsb_y, _hthumb_x + _hthumb_w, _hsb_y + 6, false);
     }
+
+// ─── Footer divider: 6px clear of the code above and the legend below ───
+    draw_set_color(make_color_rgb(60, 90, 80));
+    draw_line(_px + 8, _py + _ph - 56, _px + _pw - 8, _py + _ph - 56);
 
 // ─── Type suffix legend ───
     draw_set_font_l(fnt_c64_code);
