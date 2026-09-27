@@ -43,10 +43,6 @@ function scr_room_map_create(_asset) {
         drag_room   : -1,
         drag_dx     : 0,
         drag_dy     : 0,
-        bmp_click_room : -1,
-        bmp_click_time : -10000,
-        bmp_click_x : 0,
-        bmp_click_y : 0,
         pick_mode   : "",
         pick_scroll : 0,
         name_edit_active : false,
@@ -157,13 +153,6 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         scr_room_map_create(_asset);
     }
     var _m     = _asset.meta;
-    // Transient double-click state is intentionally not saved in the asset.
-    if (!variable_struct_exists(_m, "bmp_click_room")) {
-        _m.bmp_click_room = -1;
-        _m.bmp_click_time = -10000;
-        _m.bmp_click_x = 0;
-        _m.bmp_click_y = 0;
-    }
     var _rooms = _m.rooms;
     var _n     = array_length(_rooms);
     if (_m.sel_room >= _n) { _m.sel_room = _n - 1; }
@@ -262,7 +251,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         _m.zoom = (_m.zoom mod 3) + 1;
     }
     draw_set_color(_c_dim);
-    var _hint = "DOUBLE-CLICK BITMAP TO EDIT  -  DRAG TO ARRANGE  -  EXIT [LINK], THEN CLICK TARGET ROOM";
+    var _hint = "DRAG ROOMS TO ARRANGE  -  SELECT AN EXIT, [LINK], THEN CLICK THE ROOM IT LEADS TO";
     if (_m.link_exit >= 0) {
         _hint = "CLICK THE ROOM EXIT D" + string(_m.link_exit + 2) + " LEADS TO  -  EMPTY SPACE / ESC CANCELS";
     }
@@ -324,7 +313,6 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
     // Room boxes
     var _hover_room = -1;
-    var _hover_bitmap = -1;
     for (var _r = 0; _r < _n; _r++) {
         var _ro = _rooms[_r];
         var _x1 = _cvx1 + clamp(_ro.mx, 0, _maxmx) * _z;
@@ -334,12 +322,6 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_set_color(make_color_rgb(14, 14, 22));
         draw_rectangle(_x1, _y1, _x1 + _bw, _y1 + _bh, false);
         var _th = _bh - 16 * _z;
-        if (_hov) {
-            _hover_bitmap = -1;
-            if (_ro.bmp != "" && point_in_rectangle(_mx, _my, _x1 + 2, _y1 + 2, _x1 + _bw - 2, _y1 + _th)) {
-                _hover_bitmap = _r;
-            }
-        }
         var _surf = scr_room_map_bmp_surf(_ro.bmp);
         if (_surf != -1) {
             var _fl = gpu_get_tex_filter();
@@ -367,9 +349,6 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
     // Canvas input
     var _on_canvas = point_in_rectangle(_mx, _my, _cvx1, _cvy1, _cvx2, _cvy2);
-    if (_press && (!_on_canvas || _hover_bitmap < 0 || _m.link_exit >= 0)) {
-        _m.bmp_click_room = -1;
-    }
     if (_press && _on_canvas) {
         if (_m.link_exit >= 0 && _m.sel_room >= 0) {
             if (_hover_room >= 0) {
@@ -379,23 +358,6 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             }
             _m.link_exit = -1;
         } else if (_hover_room >= 0) {
-            if (_hover_bitmap == _hover_room) {
-                var _double = (_m.bmp_click_room == _hover_room
-                    && current_time - _m.bmp_click_time < 350
-                    && point_distance(_mx, _my, _m.bmp_click_x, _m.bmp_click_y) <= 6);
-                _m.bmp_click_room = _hover_room;
-                _m.bmp_click_time = current_time;
-                _m.bmp_click_x = _mx;
-                _m.bmp_click_y = _my;
-                if (_double) {
-                    _m.bmp_click_room = -1;
-                    _m.drag_room = -1;
-                    _m.sel_room = _hover_room;
-                    _m.name_edit_active = false;
-                    _m.pick_mode = "";
-                    if (scr_room_map_open_bitmap(_rooms[_hover_room].bmp)) return;
-                }
-            }
             if (_m.sel_room != _hover_room) {
                 _m.sel_exit = -1;
                 _m.name_edit_active = false;
@@ -409,10 +371,6 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     if (_m.drag_room >= 0) {
         if (mouse_check_button(mb_left) && _m.drag_room < _n) {
-            // A drag must never count as the first click of an edit gesture.
-            if (point_distance(_mx, _my, _m.bmp_click_x, _m.bmp_click_y) > 6) {
-                _m.bmp_click_room = -1;
-            }
             var _dr = _rooms[_m.drag_room];
             _dr.mx = clamp(round(((_mx - _cvx1) / _z - _m.drag_dx) / 8) * 8, 0, _maxmx);
             _dr.my = clamp(round(((_my - _cvy1) / _z - _m.drag_dy) / 8) * 8, 0, _maxmy);
@@ -1222,24 +1180,4 @@ function scr_rooms_emit(_id, _list) {
     _emit(_list, _p + "dy",  _dy,  _n * ROOMMAP_EXITS, _id);
 
     array_push(_list, ["label", _skip]);
-}
-
-/// Open the actual linked asset using the normal bitmap viewer/editor path.
-function scr_room_map_open_bitmap(_name) {
-    if (_name == "" || !instance_exists(obj_asset_manager)) return false;
-    var _am = obj_asset_manager;
-    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
-        var _a = ds_list_find_value(_am.asset_list, _i);
-        if (_a.type == "BITMAP" && _a.name == _name) {
-            scr_asset_inline_editor_close_all();
-            _am.viewer_asset = _i;
-            _am.viewer_open = true;
-            _am.bb_return_asset = -1;
-            keyboard_string = "";
-            // Do not carry the held second click into the bitmap paint tool.
-            mouse_clear(mb_left);
-            return true;
-        }
-    }
-    return false;
 }

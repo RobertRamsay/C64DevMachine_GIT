@@ -2433,9 +2433,6 @@ if (_asset.type == "META_TILESET") {
 
         // LOAD_REU viewer clicks
         if (_asset.type == "LOAD_REU") {
-            if (!variable_instance_exists(id, "reu_name_click")) reu_name_click = undefined;
-            var _previous_name_click = reu_name_click;
-            reu_name_click = undefined;
             var _links=variable_struct_exists(_asset,"linked_assets")?_asset.linked_assets:[];
             var _cm=_vx1+clamp(manifest_reu_split,100,max(100,_vx2-_vx1-430))+283;
             // A click on the scrollbar is handled by the scroll block above and
@@ -2445,90 +2442,6 @@ if (_asset.type == "META_TILESET") {
                 if(_li < load_reu_scroll) continue;
                 if(_li >= load_reu_scroll + load_reu_rows_visible) continue;
                 var _ry = load_reu_list_y1 + ((_li - load_reu_scroll) * 22);
-                var _name_right = _vx1 + clamp(manifest_reu_split,100,max(100,_vx2-_vx1-430)) - 6;
-                if (point_in_rectangle(_mx, _my, _vx1 + 30, _ry, _name_right, _ry + 20)) {
-                    var _linked_name = _links[_li].asset_name;
-                    var _double_name = is_struct(_previous_name_click)
-                        && _previous_name_click.owner == viewer_asset
-                        && _previous_name_click.name == _linked_name
-                        && _previous_name_click.row == _li
-                        && _previous_name_click.scroll == load_reu_scroll
-                        && current_time - _previous_name_click.time < 350
-                        && point_distance(_mx, _my, _previous_name_click.x, _previous_name_click.y) <= 6;
-                    reu_name_click = { owner: viewer_asset, name: _linked_name, row: _li,
-                        scroll: load_reu_scroll, time: current_time, x: _mx, y: _my };
-                    if (_double_name) {
-                        reu_name_click = undefined;
-                        for (var _open_i = 0; _open_i < ds_list_size(asset_list); _open_i++) {
-                            var _opened = ds_list_find_value(asset_list, _open_i);
-                            if (_opened.name != _linked_name) continue;
-                            scr_asset_inline_editor_close_all();
-                            viewer_asset = _open_i;
-                            viewer_open = true;
-                            bb_return_asset = -1;
-                            reu_drag_row = -1;
-                            reu_drag_over = -1;
-                            load_reu_picker_open = false;
-                            keyboard_string = "";
-                            // META_TILESET: default-select first stamp if one exists and nothing is selected
-                            if (_opened.type == "META_TILESET" &&
-                                variable_struct_exists(_opened.meta, "stamp_count") &&
-                                _opened.meta.stamp_count > 0 &&
-                                (!variable_struct_exists(_opened.meta, "edit_stamp") || _opened.meta.edit_stamp < 0)) {
-                                var _om = _opened.meta;
-                                _om.edit_stamp = 0;
-                                var _def_cells = _om.stamp_w * _om.stamp_h;
-                                _om.active_stamp_grid_char = array_create(_def_cells, 0);
-                                _om.active_stamp_grid_col  = array_create(_def_cells, 1);
-                                _om.active_stamp_grid_ov   = array_create(_def_cells, 0);
-                                for (var _dci = 0; _dci < _def_cells; _dci++) {
-                                    var _ddidx = _dci * 3;
-                                    if (_ddidx + 2 < array_length(_om.stamp_data)) {
-                                        _om.active_stamp_grid_char[_dci] = _om.stamp_data[_ddidx];
-                                        _om.active_stamp_grid_col[_dci]  = _om.stamp_data[_ddidx + 1];
-                                        _om.active_stamp_grid_ov[_dci]   = _om.stamp_data[_ddidx + 2];
-                                    }
-                                }
-                            }
-                            if (_opened.type == "MAP_DATA" &&
-                                variable_struct_exists(_opened, "meta") &&
-                                variable_struct_exists(_opened.meta, "char_grid")) {
-                                var _chr_name = variable_struct_exists(_opened.meta, "chr_asset") ? _opened.meta.chr_asset : "";
-                                if (_chr_name == "" && ds_list_size(asset_list) == 1) {
-                	                for (var _ci = 0; _ci < ds_list_size(asset_list); _ci++) {
-                	                    var _ca = ds_list_find_value(asset_list, _ci);
-                	                    if (_ca.type == "CHAR_SET") { _opened.meta.chr_asset = _ca.name; break; }
-                	                }
-                	            }
-                            }
-                            // SPRITE_SET viewer-open: ensure thumbnails are built from the
-                            // buffer even if no source file is present on disk. Standard
-                            // scr_asset_spr_cache_sprites bails when file == "" — but the
-                            // buffer itself is the source of truth, so rebuild from there
-                            // if any thumbnails are missing.
-                            if (_opened.type == "SPRITE_SET"
-                            && buffer_exists(_opened.buffer)
-                            && variable_struct_exists(_opened.meta, "spr_sprites")) {
-                                var _needs_rebuild = false;
-                                var _used = variable_struct_exists(_opened.meta, "used_count")
-                                    ? _opened.meta.used_count : 1;
-                                for (var _ti = 0; _ti < _used; _ti++) {
-                                    if (_opened.meta.spr_sprites[_ti] == -1
-                                    || !sprite_exists(_opened.meta.spr_sprites[_ti])) {
-                                        _needs_rebuild = true;
-                                        break;
-                                    }
-                                }
-                                if (_needs_rebuild) {
-                                    scr_spred64_v2_rebuild_thumbs_from_buffer(_opened);
-                                }
-                            }
-                            mouse_clear(mb_left);
-                            break;
-                        }
-                    }
-                    exit;
-                }
                 if(point_in_rectangle(_mx,_my,_vx1+8,_ry+2,_vx1+22,_ry+18)){
                     reu_drag_row=_li; reu_drag_over=_li;
                     var _drag_asset=scr_reu_find_asset(_links[_li].asset_name);
