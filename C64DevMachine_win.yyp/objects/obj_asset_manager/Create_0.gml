@@ -72,27 +72,35 @@ asset_sort_sig_addr   = [];
 // -------------------------------------------------------
 add_dropdown_open   = false;
 add_dropdown_hover  = -1;
+// Grouped by category. Entries starting with "---" are section headings:
+// drawn in orange, never hovered or picked (see Draw / Step ADD DROPDOWN).
 asset_types = [
+    "--- SPRITES ---",
     "SPRITE_SET",
+    "SPRITE_MASK",
+    "ANIMATION",
+    "--- BITMAPS ---",
     "BITMAP",
-    "SID_MUSIC",
-	"SFX_DATA",   
+    "BITMAP_BUILDER",
+    "VECTOR_BITMAP",
+    "--- CHARS & MAPS ---",
     "CHAR_SET",
+    "META_TILESET",
     "MAP_DATA",
-	"TEXT_DATA",
-	"BYTE_DATA",
-	"VECTOR_BITMAP",
-	"BITMAP_BUILDER",
-	"MUSIC_MAKER",
+    "ROOM_MAP",
+    "LINE_COLL",
+    "--- SOUND ---",
+    "MUSIC_MAKER",
     "SFX_MAKER",
+    "SID_MUSIC",
+    "SFX_DATA",
+    "--- SCREEN & DATA ---",
+    "HUD",
+    "TEXT_DATA",
+    "BYTE_DATA",
+    "--- LOADING ---",
     "LOAD_ORG",
-	"LOAD_REU",
-	"META_TILESET",
-	"LINE_COLL",
-	"HUD",
-	"ANIMATION",
-	"ROOM_MAP",
-	"SPRITE_MASK",
+    "LOAD_REU",
 ];
 // -------------------------------------------------------
 // ASSET VIEWER

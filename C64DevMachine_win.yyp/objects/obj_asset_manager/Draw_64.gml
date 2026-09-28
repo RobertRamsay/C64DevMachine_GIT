@@ -445,11 +445,19 @@ if (add_dropdown_open) {
     for (var _i = 0; _i < array_length(asset_types); _i++) {
         var _dy  = panel_y + 28 + (_i * 20);
         var _hov = (add_dropdown_hover == _i);
+        draw_set_font_l(fnt_c64_tiny);
+        if (string_char_at(asset_types[_i], 1) == "-") {
+            // category heading
+            draw_set_color(make_color_rgb(18, 24, 22));
+            draw_rectangle(panel_x, _dy, _panel_right, _dy + 20, false);
+            draw_set_color(make_color_rgb(220, 140, 40));
+            draw_text_l(panel_x + 6, _dy + 4, asset_types[_i]);
+            continue;
+        }
         draw_set_color(_hov ? make_color_rgb(50, 80, 60) : make_color_rgb(25, 35, 30));
         draw_rectangle(panel_x, _dy, _panel_right, _dy + 20, false);
-        draw_set_font_l(fnt_c64_tiny);
         draw_set_color(_hov ? c_white : c_ltgray);
-        draw_text_l(panel_x + 10, _dy + 4, asset_types[_i]);
+        draw_text_l(panel_x + 16, _dy + 4, asset_types[_i]);
     }
     draw_set_color(make_color_rgb(50, 50, 70));
     draw_rectangle(panel_x, panel_y + 28, _panel_right,

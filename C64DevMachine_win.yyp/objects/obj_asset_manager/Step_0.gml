@@ -981,7 +981,10 @@ if (add_dropdown_open) {
         var _dy1 = panel_y + 28 + (_i * 20);
         var _dy2 = _dy1 + 20;
         if (point_in_rectangle(_mx, _my, panel_x, _dy1, panel_x + panel_w, _dy2)) {
-            add_dropdown_hover = _i;
+            // Category headings can't be picked.
+            if (string_char_at(asset_types[_i], 1) != "-") {
+                add_dropdown_hover = _i;
+            }
             break;
         }
     }
