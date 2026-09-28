@@ -11,11 +11,6 @@
 /// Ctrl+Space plays the whole song, walking every order row once, honouring
 /// each row's Rs/NRs + Force Length settings.
 function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
-    // The piano takes the bottom _pno_h pixels; everything else lays out above
-    // it, so from here on _vy2 is the bottom of that upper area.
-    var _pno_h    = 112;
-    var _vy2_full = _vy2;
-    _vy2 = _vy2 - _pno_h;
     var _m = _asset.meta;
 
     // ── BACKFILL ──
@@ -119,11 +114,6 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (!variable_struct_exists(_m, "warn_msg"))    _m.warn_msg    = "";
     if (!variable_struct_exists(_m, "warn_timer"))  _m.warn_timer  = 0;
     if (!variable_struct_exists(_m, "cur_octave"))  _m.cur_octave  = 4;
-    // Piano: SPLIT (2 octaves per voice) or FULL (6 octaves); the key last
-    // hovered (and its voice) so a key only plays once per visit.
-    if (!variable_struct_exists(_m, "pno_mode"))    _m.pno_mode    = "SPLIT";
-    if (!variable_struct_exists(_m, "pno_hover"))   _m.pno_hover   = -1;
-    if (!variable_struct_exists(_m, "pno_hover_v")) _m.pno_hover_v = 0;
     if (!variable_struct_exists(_m, "instr_list_scroll"))      _m.instr_list_scroll      = 0;
     if (!variable_struct_exists(_m, "instr_edit_active")) {
         _m.instr_edit_active      = false;
@@ -2205,12 +2195,6 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     // 50px clear of the order table: its button row runs ~30px past the table.
     var _ix0 = _ox0 + _ord_full_w + 50;
     scr_sound_editor_draw_instruments(_m, _ix0, _oy0, _mx, _my, _vx2 - 16, _vy2 - 12);
-
-    // ── PIANO ── along the bottom, under a divider.
-    draw_set_color(make_color_rgb(60, 70, 90));
-    draw_line(_vx1 + 20, _vy2 + 4, _vx2 - 20, _vy2 + 4);
-    scr_sound_editor_piano(_m, _vx1 + 20, _vy2 + 14, _vx2 - 20, _vy2_full - 12, _mx, _my,
-                           _col_pat, _vis, _se_push_undo, _se_snap);
 
     // ── 9XX warning tooltip (last, so it sits over everything) ──
     if (_pw_tip != "") {

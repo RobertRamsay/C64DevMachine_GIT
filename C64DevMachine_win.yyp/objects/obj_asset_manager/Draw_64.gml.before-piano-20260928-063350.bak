@@ -806,7 +806,6 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
 		_vx2 = _gui_w - _vx1;
 	}
 	var _vy2 = 972;
-    if (_asset.type == "MUSIC_MAKER") { _vy1=40; _vy2=_gui_h-40; }
 	
     var _vw    = _vx2 - _vx1;
     var _vh    = _vy2 - _vy1;
