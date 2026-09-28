@@ -258,12 +258,7 @@
         }
 		
 		
-		 if (_a.type == "ANIMATION") {
-            scr_anim_asset_ensure(_a);
-            _meta_out.anim_data = _a.meta.anim_data;
-            _meta_out.anim_sprite = _a.meta.anim_sprite;
-        }
-        if (_a.type == "SPRITE_MASK") {
+		 if (_a.type == "SPRITE_MASK") {
 		     _meta_out = scr_sprmask_save_meta(_a);
 		 }
 		 if (_a.type == "ROOM_MAP") {

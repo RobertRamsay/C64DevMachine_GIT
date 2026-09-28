@@ -1006,14 +1006,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
 	            _new_asset.meta.dither_invert = false;
 	            _new_asset.meta.brush_size    = 0;
 	        }
-	        if (_ad.type == "ANIMATION") {
-                scr_anim_asset_ensure(_new_asset);
-                if (variable_struct_exists(_ad,"meta")) {
-                    if(variable_struct_exists(_ad.meta,"anim_data")) _new_asset.meta.anim_data=_ad.meta.anim_data;
-                    if(variable_struct_exists(_ad.meta,"anim_sprite")) _new_asset.meta.anim_sprite=_ad.meta.anim_sprite;
-                }
-            }
-            if (_ad.type == "SPRITE_MASK") {
+	        if (_ad.type == "SPRITE_MASK") {
 	            var _smm = {};
 	            if (variable_struct_exists(_ad, "meta")) {
 	                _smm = _ad.meta;

@@ -511,29 +511,20 @@ function scr_node_tooltip_text(_node_type) {
         },
 
         "MACRO_ANIM_SET": {
-            title: "ANIM SET - SEQUENCES AND SPRITE LAYERS",
+            title: "ANIM SET",
             lines: [
-                "[EDIT] opens the linked reusable ANIMATION asset. On a local node, it creates an asset from the existing sequences. Click ASSET beneath the rows to cycle through available animation assets or return to local data. Linked rows are edited in the asset editor; SELECT and ALIAS remain local to each node.",
+                "Several animation sequences sharing ONE player.",
+                "Each row is a sequence: frame lists per sprite",
+                "slot, its own DELAY and LOOP.",
                 "",
-                "One player controls several named animation sequences. Each numbered row is a sequence, such as DOWN, RIGHT or LEAP. The frame lists beneath it describe the sprites to show at each animation step.",
+                "SELECT names the byte that picks the row ($02C8,",
+                "or a variable). Changing it restarts the new row",
+                "from its first frame - no reset calls needed.",
+                "Out-of-range SELECT = idle.",
                 "",
-                "SLOTS = how many hardware sprite slots have frame lists shown, from slot 0 upwards (1-8). It is NOT the number of frames or directions. For the layered CityCat, use 2: slot 0 is the outline and slot 1 is the colour layer. Four slots would give four sprite layers if you position them together. Slots can also animate separate sprites.",
-                "",
-                "FRAME LISTS: the left box is slot 0, the next is slot 1, and so on. Enter sprite indices from the loaded sprite bank, separated by commas. The lists advance together: first entry with first entry, second with second, etc. These are sprite indices, not screen positions or memory addresses.",
-                "",
-                "CITYCAT DOWN example: outline (left) = 0,12,24,36. Colour (right) = 6,18,30,42. The four displayed pairs are (0 + 6), (12 + 18), (24 + 30), then (36 + 42). This matches the packed 48-sprite runtime bank in your example; use the indices of the bank actually loaded, not a differently arranged source sheet.",
-                "",
-                "DELAY = player calls per animation step (1-255). Call the player once per game frame: lower delay is faster. DELAY 8 holds each step for 8 game frames, about 0.16 seconds at 50 Hz PAL. It is shared by all layers in that row.",
-                "",
-                "LOOP on (green) repeats the row. LOOP off plays once, holds the final frame, then sets <alias>_done to 1. Keep layer lists the same length for paired artwork. A shorter list repeats within a looping row, or holds its last entry in a one-shot row.",
-                "",
-                "SELECT is the address or variable containing the row number: 0 selects DOWN in this example, 1 selects DOWN_RIGHT, etc. Blank SELECT always chooses row 0. Changing the value restarts the newly selected row. An out-of-range value pauses updates; it does not hide the sprites.",
-                "",
-                "ALIAS names the callable player, for example cc_anim. Call JSR cc_anim_sub once per game frame. JSR cc_anim_reset restarts the selected row on the next player call. Read cc_anim_done for one-shot completion. Row names are descriptions; SELECT uses their numbered positions.",
-                "",
-                "SETUP: use connected SPRITE nodes in the same ORG to configure the hardware slots, position, colours and hires/multicolour mode. Put the two CityCat slots at the same X/Y to align the layers. ANIM SET changes sprite pointers only; it does not position, mirror or move the cat. Its shared bank base comes from the connected slot-0 SPRITE asset.",
-                "",
-                "LIMITS: up to 32 rows and 255 animation steps across the set (count each row by its longest layer list, not the sum of its layers). SLOTS controls the visible boxes; reducing it does not clear hidden frame lists. Clear an unwanted list before hiding its slot. X deletes a sequence and renumbers the rows below it, so check SELECT values afterwards."
+                "JSR <alias>_sub once per frame. <alias>_reset",
+                "restarts the current row. <alias>_done = 1 once a",
+                "one-shot row holds its last frame."
             ]
         },
 

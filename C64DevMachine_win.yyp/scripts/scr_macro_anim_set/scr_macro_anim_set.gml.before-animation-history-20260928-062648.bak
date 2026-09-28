@@ -733,8 +733,6 @@ function scr_anim_asset_ensure(_a) {
         for(var _i=0;_i<12;_i++) array_push(_a.meta.anim_data,_row[_i]);
     }
     if(!variable_struct_exists(_a.meta,"anim_sprite")) _a.meta.anim_sprite="";
-    if(!variable_struct_exists(_a.meta,"anim_undo")) _a.meta.anim_undo=[];
-    if(!variable_struct_exists(_a.meta,"anim_redo")) _a.meta.anim_redo=[];
     if(!variable_struct_exists(_a.meta,"anim_ui")) _a.meta.anim_ui={row:0,slot:0,frame:0,scroll:0,playing:false,tick:current_time,edit:-1,text:"",message:""};
 }
 function scr_anim_asset_sync(_n) {
@@ -799,13 +797,6 @@ function scr_anim_asset_thumbnail(_a,_frame,_x,_y,_w,_h) {
 }
 function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     scr_anim_asset_ensure(_a);var _m=_a.meta,_u=_m.anim_ui,_d=_m.anim_data;
-    // Editor history owns its shortcuts while the viewer is open. Never
-    // invoke workspace undo here: that rebuilds the workspace and closes us.
-    var _mod=scr_ctrl_held() || scr_cmd_held();
-    if(_mod && (keyboard_check_pressed(ord("Z")) || keyboard_check_pressed(ord("Y")))) {
-        scr_anim_asset_history(_a,keyboard_check_pressed(ord("Y")) || keyboard_check(vk_shift));
-        keyboard_string="";keyboard_clear(ord("Z"));keyboard_clear(ord("Y"));return;
-    }
     var _rows=(array_length(_d)-4) div 12;_u.row=clamp(_u.row,0,_rows-1);
     var _slots=clamp(real(_d[2]),1,8);_u.slot=clamp(_u.slot,0,_slots-1);
     var _b=4+_u.row*12,_x=_x1+18,_y=_cy+10,_right=_x2-18;
@@ -814,26 +805,22 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     if(scr_anim_asset_button(_x,_y,40,"<")) {_u.row=max(0,_u.row-1);_u.frame=0;_u.edit=-1;return;}
     if(scr_anim_asset_button(_x+46,_y,40,">")) {_u.row=min(_rows-1,_u.row+1);_u.frame=0;_u.edit=-1;return;}
     if(scr_anim_asset_button(_x+94,_y,230,string(_u.row)+": "+string(_d[_b]),_u.edit==_b)) {_u.edit=_b;_u.text=string(_d[_b]);keyboard_string="";}
-    if(scr_anim_asset_button(_x+332,_y,90,"+ ROW") && _rows<32) {scr_anim_asset_checkpoint(_a);var _r=scr_anim_set_new_row("SEQ"+string(_rows));for(var _i=0;_i<12;_i++) array_push(_m.anim_data,_r[_i]);_u.row=_rows;_u.frame=0;scr_anim_asset_changed(_a);return;}
-    if(scr_anim_asset_button(_x+430,_y,90,"- ROW") && _rows>1) {scr_anim_asset_checkpoint(_a);array_delete(_m.anim_data,_b,12);_u.frame=0;scr_anim_asset_changed(_a);return;}
-    if(scr_anim_asset_button(_x+530,_y,32,"-")) {scr_anim_asset_delay(_a,_u.row,-1);return;}
-    if(scr_anim_asset_button(_x+568,_y,100,"DELAY "+string(_d[_b+1]),_u.edit==_b+1)) {_u.edit=_b+1;_u.text=string(_d[_b+1]);keyboard_string="";}
-    if(scr_anim_asset_button(_x+674,_y,32,"+")) {scr_anim_asset_delay(_a,_u.row,1);return;}
-    if(scr_anim_asset_button(_x+716,_y,85,"LOOP",string(_d[_b+2])=="1")) {scr_anim_asset_checkpoint(_a);_d[_b+2]=string(_d[_b+2])=="1"?"0":"1";_m.anim_data=_d;scr_anim_asset_changed(_a);}
-    if(scr_anim_asset_button(_x+815,_y,90,"UNDO "+string(array_length(_m.anim_undo)),array_length(_m.anim_undo)>0)) {scr_anim_asset_history(_a,false);return;}
-    if(scr_anim_asset_button(_x+913,_y,90,"REDO "+string(array_length(_m.anim_redo)),array_length(_m.anim_redo)>0)) {scr_anim_asset_history(_a,true);return;}
+    if(scr_anim_asset_button(_x+332,_y,90,"+ ROW") && _rows<32) {scr_undo_snapshot();var _r=scr_anim_set_new_row("SEQ"+string(_rows));for(var _i=0;_i<12;_i++) array_push(_m.anim_data,_r[_i]);_u.row=_rows;_u.frame=0;scr_anim_asset_changed(_a);return;}
+    if(scr_anim_asset_button(_x+430,_y,90,"- ROW") && _rows>1) {scr_undo_snapshot();array_delete(_m.anim_data,_b,12);_u.frame=0;scr_anim_asset_changed(_a);return;}
+    if(scr_anim_asset_button(_x+530,_y,100,"DELAY "+string(_d[_b+1]),_u.edit==_b+1)) {_u.edit=_b+1;_u.text=string(_d[_b+1]);keyboard_string="";}
+    if(scr_anim_asset_button(_x+638,_y,85,"LOOP",string(_d[_b+2])=="1")) {scr_undo_snapshot();_d[_b+2]=string(_d[_b+2])=="1"?"0":"1";_m.anim_data=_d;scr_anim_asset_changed(_a);}
     _y+=34;
     // Sprite bank buttons cycle existing project banks; names remain visible.
     var _banks=[],_bank_at=-1;
     with(obj_asset_manager) {for(var _i=0;_i<ds_list_size(asset_list);_i++) {var _bank=asset_list[|_i];if(_bank.type=="SPRITE_SET") array_push(_banks,_bank);}}
     for(var _i=0;_i<array_length(_banks);_i++) if(_banks[_i].name==_m.anim_sprite) _bank_at=_i;
     var _delta=0;if(scr_anim_asset_button(_x,_y,40,"<")) _delta=-1;if(scr_anim_asset_button(_x+46,_y,40,">")) _delta=1;
-    if(_delta!=0 && array_length(_banks)>0) {scr_anim_asset_checkpoint(_a);_bank_at=(_bank_at+_delta+array_length(_banks)) mod array_length(_banks);_m.anim_sprite=_banks[_bank_at].name;_u.scroll=0;scr_anim_asset_changed(_a);}
+    if(_delta!=0 && array_length(_banks)>0) {scr_undo_snapshot();_bank_at=(_bank_at+_delta+array_length(_banks)) mod array_length(_banks);_m.anim_sprite=_banks[_bank_at].name;_u.scroll=0;scr_anim_asset_changed(_a);}
     draw_set_color(c_white);draw_text_l(_x+96,_y+5,"SPRITE BANK: "+(_m.anim_sprite==""?"choose with < >":_m.anim_sprite));
     _y+=34;draw_text_l(_x,_y+5,"LAYERS:");
     for(var _s=0;_s<_slots;_s++) if(scr_anim_asset_button(_x+76+_s*46,_y,40,string(_s),_u.slot==_s)) {_u.slot=_s;_u.edit=-1;}
-    if(scr_anim_asset_button(_x+455,_y,38,"-" ) && _slots>1) {scr_anim_asset_checkpoint(_a);_d[2]=_slots-1;_m.anim_data=_d;_u.slot=min(_u.slot,_slots-2);scr_anim_asset_changed(_a);return;}
-    if(scr_anim_asset_button(_x+500,_y,38,"+" ) && _slots<8) {scr_anim_asset_checkpoint(_a);_d[2]=_slots+1;_m.anim_data=_d;scr_anim_asset_changed(_a);return;}
+    if(scr_anim_asset_button(_x+455,_y,38,"-" ) && _slots>1) {scr_undo_snapshot();_d[2]=_slots-1;_m.anim_data=_d;_u.slot=min(_u.slot,_slots-2);scr_anim_asset_changed(_a);return;}
+    if(scr_anim_asset_button(_x+500,_y,38,"+" ) && _slots<8) {scr_undo_snapshot();_d[2]=_slots+1;_m.anim_data=_d;scr_anim_asset_changed(_a);return;}
     _y+=34;
     var _field=_b+3+_u.slot;
     if(scr_anim_asset_button(_x,_y,_right-_x,"Layer "+string(_u.slot)+" frames: "+string(_d[_field]),_u.edit==_field)) {_u.edit=_field;_u.text=string(_d[_field]);keyboard_string="";}
@@ -843,7 +830,7 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
         if(keyboard_check_pressed(vk_backspace)) _u.text=string_delete(_u.text,string_length(_u.text),1);
         draw_set_color(c_yellow);draw_text_l(_x,_y,"EDIT: "+_u.text+"_   (Enter to apply)");
         if(keyboard_check_pressed(vk_enter)) {
-            scr_anim_asset_checkpoint(_a);
+            scr_undo_snapshot();
             if((_u.edit-4) mod 12==1) _m.anim_data[_u.edit]=clamp(scr_safe_num(_u.text),1,255);
             else if((_u.edit-4) mod 12>=3) {var _v=scr_anim_set_parse_list(_u.text);scr_anim_asset_list_set(_a,_u.row,_u.slot,_v);}
             else _m.anim_data[_u.edit]=string_copy(_u.text,1,32);
@@ -859,10 +846,10 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     if(scr_anim_asset_button(_x+160,_y,42,"<")) {_u.frame=max(0,_u.frame-1);_u.playing=false;}
     if(scr_anim_asset_button(_x+210,_y,42,">")) {_u.frame=min(_len-1,_u.frame+1);_u.playing=false;}
     if(scr_anim_asset_button(_x+260,_y,100,"+ STEP") && _len<255) {
-        scr_anim_asset_checkpoint(_a);for(var _s=0;_s<_slots;_s++) {var _v=_lists[_s];var _last=array_length(_v)>0?_v[array_length(_v)-1]:0;while(array_length(_v)<=_len) array_push(_v,_last);scr_anim_asset_list_set(_a,_u.row,_s,_v);}
+        scr_undo_snapshot();for(var _s=0;_s<_slots;_s++) {var _v=_lists[_s];var _last=array_length(_v)>0?_v[array_length(_v)-1]:0;while(array_length(_v)<=_len) array_push(_v,_last);scr_anim_asset_list_set(_a,_u.row,_s,_v);}
         _u.frame=_len;scr_anim_asset_changed(_a);return;
     }
-    if(scr_anim_asset_button(_x+368,_y,100,"- STEP") && _len>1) {scr_anim_asset_checkpoint(_a);for(var _s=0;_s<_slots;_s++) {var _v=_lists[_s];if(_u.frame<array_length(_v)) array_delete(_v,_u.frame,1);scr_anim_asset_list_set(_a,_u.row,_s,_v);}scr_anim_asset_changed(_a);return;}
+    if(scr_anim_asset_button(_x+368,_y,100,"- STEP") && _len>1) {scr_undo_snapshot();for(var _s=0;_s<_slots;_s++) {var _v=_lists[_s];if(_u.frame<array_length(_v)) array_delete(_v,_u.frame,1);scr_anim_asset_list_set(_a,_u.row,_s,_v);}scr_anim_asset_changed(_a);return;}
     if(_u.playing && current_time-_u.tick>=max(1,real(_d[_b+1]))*20) {_u.tick=current_time;_u.frame++;if(_u.frame>=_len) {if(string(_d[_b+2])=="1") _u.frame=0;else {_u.frame=_len-1;_u.playing=false;}}}
     draw_set_color(c_white);draw_text_l(_x+480,_y+6,"STEP "+string(_u.frame+1)+" / "+string(_len)+"   Preview: PAL 50 Hz");_y+=35;
     var _bank=(_bank_at>=0)?_banks[_bank_at]:undefined;
@@ -894,48 +881,10 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
         draw_set_color(_idx==_current?make_color_rgb(40,130,95):make_color_rgb(65,75,85));draw_rectangle(_gx,_gy,_gx+72,_gy+72,false);
         scr_anim_asset_thumbnail(_bank,_idx,_gx+12,_gy+4,48,42);draw_set_color(c_white);draw_text_l(_gx+6,_gy+51,string(_idx));
         if(_u.edit<0 && mouse_check_button_pressed(mb_left) && point_in_rectangle(_mx,_my,_gx,_gy,_gx+72,_gy+72)) {
-            scr_anim_asset_checkpoint(_a);while(array_length(_values)<=_u.frame) array_push(_values,0);_values[_u.frame]=_idx;scr_anim_asset_list_set(_a,_u.row,_u.slot,_values);_u.playing=false;scr_anim_asset_changed(_a);return;
+            scr_undo_snapshot();while(array_length(_values)<=_u.frame) array_push(_values,0);_values[_u.frame]=_idx;scr_anim_asset_list_set(_a,_u.row,_u.slot,_values);_u.playing=false;scr_anim_asset_changed(_a);return;
         }
     }
-    draw_set_color(c_gray);draw_text_l(_x,_y2-44,"Undo: Ctrl/Cmd+Z   Redo: Ctrl/Cmd+Y or Shift+Z. DELAY -/+ changes frames per step; lower = faster.");
+    draw_set_color(c_gray);draw_text_l(_x,_y2-44,"Edits update every linked ANIM SET. Sprite positions/colours come from your SPRITE nodes.");
     var _total=0;for(var _r=0;_r<_rows;_r++) {var _n=1;for(var _s=0;_s<8;_s++) _n=max(_n,array_length(scr_anim_set_parse_list(_d[4+_r*12+3+_s])));_total+=_n;}
     draw_set_color(_total>255?c_red:c_aqua);draw_text_l(_x,_y2-24,"Animation steps: "+string(_total)+" / 255"+(_total>255?" - TOO MANY: later rows will not compile":""));
-}
-
-
-// Per-animation edit history: only source data and selection, never cached
-// sprites, buffers or other assets. JSON freezes arrays independently of GML
-// copy-on-write / nested reference semantics. History stays in this session.
-function scr_anim_asset_snapshot(_a) {
-    var _m=_a.meta,_u=_m.anim_ui;
-    return json_stringify({data:_m.anim_data,sprite:_m.anim_sprite,row:_u.row,slot:_u.slot,frame:_u.frame});
-}
-function scr_anim_asset_checkpoint(_a) {
-    scr_anim_asset_ensure(_a);
-    scr_undo_snapshot();
-    array_push(_a.meta.anim_undo,scr_anim_asset_snapshot(_a));
-    if(array_length(_a.meta.anim_undo)>100) array_delete(_a.meta.anim_undo,0,1);
-    _a.meta.anim_redo=[];
-}
-function scr_anim_asset_history(_a,_redo) {
-    scr_anim_asset_ensure(_a);var _m=_a.meta;
-    var _source=_redo?_m.anim_redo:_m.anim_undo;
-    if(array_length(_source)==0) return false;
-    var _now=scr_anim_asset_snapshot(_a),_state=json_parse(array_pop(_source));
-    if(_redo) {_m.anim_redo=_source;array_push(_m.anim_undo,_now);}
-    else {_m.anim_undo=_source;array_push(_m.anim_redo,_now);}
-    _m.anim_data=_state.data;_m.anim_sprite=_state.sprite;
-    _m.anim_ui.row=_state.row;_m.anim_ui.slot=_state.slot;_m.anim_ui.frame=_state.frame;
-    _m.anim_ui.edit=-1;_m.anim_ui.text="";_m.anim_ui.playing=false;
-    _m.anim_ui.tick=current_time;_m.anim_ui.scroll=0;_m.anim_ui.message="";
-    keyboard_string="";
-    scr_anim_asset_changed(_a);return true;
-}
-function scr_anim_asset_delay(_a,_row,_delta) {
-    var _index=4+_row*12+1;
-    var _old=real(_a.meta.anim_data[_index]),_next=clamp(_old+_delta,1,255);
-    if(_old==_next) return;
-    scr_anim_asset_checkpoint(_a);_a.meta.anim_data[_index]=_next;
-    _a.meta.anim_ui.edit=-1;_a.meta.anim_ui.playing=false;keyboard_string="";
-    scr_anim_asset_changed(_a);
 }

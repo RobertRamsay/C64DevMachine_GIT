@@ -513,8 +513,6 @@ function scr_node_tooltip_text(_node_type) {
         "MACRO_ANIM_SET": {
             title: "ANIM SET - SEQUENCES AND SPRITE LAYERS",
             lines: [
-                "[EDIT] opens the linked reusable ANIMATION asset. On a local node, it creates an asset from the existing sequences. Click ASSET beneath the rows to cycle through available animation assets or return to local data. Linked rows are edited in the asset editor; SELECT and ALIAS remain local to each node.",
-                "",
                 "One player controls several named animation sequences. Each numbered row is a sequence, such as DOWN, RIGHT or LEAP. The frame lists beneath it describe the sprites to show at each animation step.",
                 "",
                 "SLOTS = how many hardware sprite slots have frame lists shown, from slot 0 upwards (1-8). It is NOT the number of frames or directions. For the layered CityCat, use 2: slot 0 is the outline and slot 1 is the colour layer. Four slots would give four sprite layers if you position them together. Slots can also animate separate sprites.",
