@@ -486,6 +486,30 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     if (!_tb_hov && mouse_check_button_pressed(mb_left) && _m.instr_edit_active && !_wave_click) {
         scr_sound_editor_commit_instrument(_m, _sel_instr);
     }
+    // Right-click a line to delete it from the instrument program. If the text
+    // wasn't open it's committed straight away; if it was, the edit continues.
+    if (_tb_hov && mouse_check_button_pressed(mb_right) && !_wave_click) {
+        var _rc_src = _sel_instr.text;
+        if (_m.instr_edit_active) {
+            _rc_src = _m.instr_edit_buf;
+        }
+        var _rc_lines = string_split(_rc_src, "\n");
+        var _rc_line  = floor((_my - _tb_y1 - 4) / 16);
+        if (_rc_line >= 0 && _rc_line < array_length(_rc_lines)) {
+            array_delete(_rc_lines, _rc_line, 1);
+            var _rc_new = string_join_ext("\n", _rc_lines);
+            if (_m.instr_edit_active) {
+                _m.instr_edit_buf    = _rc_new;
+                _m.instr_edit_cursor = min(_m.instr_edit_cursor, string_length(_rc_new));
+            } else {
+                _m.instr_edit_active      = true;
+                _m.instr_edit_buf         = _rc_new;
+                _m.instr_edit_cursor      = 0;
+                _m.instr_name_edit_active = false;
+                scr_sound_editor_commit_instrument(_m, _sel_instr);
+            }
+        }
+    }
     if (_tb_hov && mouse_check_button_pressed(mb_left) && !_wave_click) {
         if (!_m.instr_edit_active) {
             _m.instr_edit_active      = true;

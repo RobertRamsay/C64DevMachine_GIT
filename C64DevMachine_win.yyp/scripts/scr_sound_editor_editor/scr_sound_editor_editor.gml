@@ -1640,7 +1640,46 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         var _nav_delay = round(game_get_speed(gamespeed_fps) * 0.33);
         var _kb_shift_col = keyboard_check(vk_shift);
 
-        if (keyboard_check(vk_up)) {
+        // Shift+Up: top of the pattern. Shift+Down: on to the next 16-row
+        // boundary (16, 32, 48 ...; held, it keeps stepping by 16).
+        if (_kb_shift_col) {
+            var _jump = false;
+            if (keyboard_check_pressed(vk_up)) {
+                _m.sel_step = 0;
+                _jump = true;
+            }
+            if (keyboard_check(vk_down)) {
+                var _dn_go = false;
+                if (keyboard_check_pressed(vk_down)) {
+                    _dn_go = true;
+                    _m.nav_down_timer = _nav_delay;
+                } else {
+                    _m.nav_down_timer -= 1;
+                    if (_m.nav_down_timer <= 0) {
+                        _dn_go = true;
+                        _m.nav_down_timer = 6;
+                    }
+                }
+                if (_dn_go) {
+                    _m.sel_step = min(_grid_len - 1, ((_m.sel_step div 16) + 1) * 16);
+                    _jump = true;
+                }
+            } else {
+                _m.nav_down_timer = 0;
+            }
+            if (_jump) {
+                if (_m.sel_step < _m.list_scroll) {
+                    _m.list_scroll = _m.sel_step;
+                }
+                if (_m.sel_step >= _m.list_scroll + _vis) {
+                    _m.list_scroll = _m.sel_step - _vis + 1;
+                }
+                _m.sel_anchor_voice = _m.sel_voice;
+                _m.sel_anchor_step  = _m.sel_step;
+            }
+        }
+
+        if (keyboard_check(vk_up) && !_kb_shift_col) {
             if (keyboard_check_pressed(vk_up)) {
                 _m.sel_step = max(0, _m.sel_step - 1);
                 if (_m.sel_step < _m.list_scroll) { _m.list_scroll = _m.sel_step; }
@@ -1659,7 +1698,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             _m.nav_up_timer = 0;
         }
 
-        if (keyboard_check(vk_down)) {
+        if (keyboard_check(vk_down) && !_kb_shift_col) {
             if (keyboard_check_pressed(vk_down)) {
                 _m.sel_step = min(_grid_len - 1, _m.sel_step + 1);
                 if (_m.sel_step >= _m.list_scroll + _vis) { _m.list_scroll = _m.sel_step - _vis + 1; }
@@ -1674,8 +1713,8 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                     if (!_kb_shift_col) { _m.sel_anchor_voice = _m.sel_voice; _m.sel_anchor_step = _m.sel_step; }
                 }
             }
-        } else {
-            _m.nav_down_timer = 0;
+        } else if (!keyboard_check(vk_down)) {
+            _m.nav_down_timer = 0;   // (Shift+Down's own repeat keeps it while held)
         }
 
         if (keyboard_check_pressed(vk_home)) {
