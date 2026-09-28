@@ -429,6 +429,11 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             _m.song_playing = false;
         }
     }
+    // Standalone .sid of this asset (the MACRO_SID_SONG player, assembled at a
+    // chosen address, optional GoatTracker-style SFX entry at +6).
+    if (scr_sfx_maker_button(_fsx + 122, _fl_y - 1, 110, "EXPORT SID", _mx, _my)) {
+        scr_sound_editor_export_sid(_asset);
+    }
 
     var _transport_labels = ["PLAY PAT (F3)", "PLAY SONG (F1)", "PLAY HERE", "STOP (F4)"];
     var _transport_actions = ["PAT", "SONG", "HERE", "STOP"];

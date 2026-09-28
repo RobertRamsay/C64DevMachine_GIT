@@ -521,3 +521,119 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["sta_aby", _chip + 1, _id]);
     array_push(_list, ["rts",     0, _id]);
 }
+
+/// @function scr_sid_song_emit_sfx(_list, _id, _key, _chip, _ptr)
+/// @desc GoatTracker-compatible sound effects for an exported SID (EXPORT SID
+///       with SFX support). Same calling convention and data format as a
+///       GoatTracker player packed with sound support, so the existing SFX
+///       macro (which calls load address + 6) and GoatTracker .snd / .ins
+///       effects work unchanged.
+///
+///   <key>sfxt  trigger: A = effect data lo, Y = hi, X = channel offset
+///              (0 = voice 1, 7 = voice 2, 14 = voice 3). An effect at a lower
+///              address than the one already playing on that voice is ignored
+///              (GoatTracker's priority rule).
+///   <key>sfxx  per frame, X = channel offset; called at the end of PLAY for
+///              each voice. While an effect runs, the music skips that voice.
+///
+///   Effect data: AD, SR, pulse (one byte, written to both $D402/$D403), then
+///   per frame a note ($82-$DF, $80 + note number) optionally followed by a
+///   waveform byte (< $82); $00 ends the effect. Frame 1 hard-restarts the
+///   voice, frame 2 loads ADSR/pulse with the test bit, notes start at frame 3.
+///   _ptr = a zero-page pointer pair that is free once the music has run.
+function scr_sid_song_emit_sfx(_list, _id, _key, _chip, _ptr) {
+    var _k = _key;
+
+    // ── trigger ──
+    array_push(_list, ["label",   _k + "sfxt"]);
+    array_push(_list, ["pha",     0, _id]);
+    array_push(_list, ["lda_abx", _k + "sfxc", _id]);
+    array_push(_list, ["beq",     _k + "sfxt_ok", _id]);
+    array_push(_list, ["tya",     0, _id]);
+    array_push(_list, ["cmp_abx", _k + "sfxh", _id]);
+    array_push(_list, ["bcc",     _k + "sfxt_no", _id]);   // lower priority: skip
+    array_push(_list, ["bne",     _k + "sfxt_ok", _id]);
+    array_push(_list, ["pla",     0, _id]);
+    array_push(_list, ["pha",     0, _id]);
+    array_push(_list, ["cmp_abx", _k + "sfxl", _id]);
+    array_push(_list, ["bcc",     _k + "sfxt_no", _id]);
+    array_push(_list, ["label",   _k + "sfxt_ok"]);
+    array_push(_list, ["pla",     0, _id]);
+    array_push(_list, ["sta_abx", _k + "sfxl", _id]);
+    array_push(_list, ["tya",     0, _id]);
+    array_push(_list, ["sta_abx", _k + "sfxh", _id]);
+    array_push(_list, ["lda_imm", 0x01, _id]);
+    array_push(_list, ["sta_abx", _k + "sfxc", _id]);
+    array_push(_list, ["rts",     0, _id]);
+    array_push(_list, ["label",   _k + "sfxt_no"]);
+    array_push(_list, ["pla",     0, _id]);
+    array_push(_list, ["rts",     0, _id]);
+
+    // ── per frame ──
+    array_push(_list, ["label",   _k + "sfxx"]);
+    array_push(_list, ["ldy_abx", _k + "sfxc", _id]);
+    array_push(_list, ["bne",     _k + "sfxx_on", _id]);
+    array_push(_list, ["rts",     0, _id]);
+    array_push(_list, ["label",   _k + "sfxx_on"]);
+    array_push(_list, ["lda_abx", _k + "sfxl", _id]);
+    array_push(_list, ["sta_zp",  _ptr, _id]);
+    array_push(_list, ["lda_abx", _k + "sfxh", _id]);
+    array_push(_list, ["sta_zp",  _ptr + 1, _id]);
+    array_push(_list, ["lda_abx", _k + "sfxc", _id]);   // counter + 1 (Y keeps the old value)
+    array_push(_list, ["clc",     0, _id]);
+    array_push(_list, ["adc_imm", 0x01, _id]);
+    array_push(_list, ["sta_abx", _k + "sfxc", _id]);
+    array_push(_list, ["cpy_imm", 0x02, _id]);
+    array_push(_list, ["beq",     _k + "sfxx_f0", _id]);
+    array_push(_list, ["bcs",     _k + "sfxx_fn", _id]);
+    // frame 1: hard restart — zero ADSR, gate off
+    array_push(_list, ["lda_imm", 0x00, _id]);
+    array_push(_list, ["sta_abx", _chip + 6, _id]);
+    array_push(_list, ["sta_abx", _chip + 5, _id]);
+    array_push(_list, ["sta_abx", _chip + 4, _id]);
+    array_push(_list, ["rts",     0, _id]);
+    // frame 2: ADSR, pulse, test bit
+    array_push(_list, ["label",   _k + "sfxx_f0"]);
+    array_push(_list, ["ldy_imm", 0x00, _id]);
+    array_push(_list, ["lda_izy", _ptr, _id]);
+    array_push(_list, ["sta_abx", _chip + 5, _id]);
+    array_push(_list, ["iny",     0, _id]);
+    array_push(_list, ["lda_izy", _ptr, _id]);
+    array_push(_list, ["sta_abx", _chip + 6, _id]);
+    array_push(_list, ["iny",     0, _id]);
+    array_push(_list, ["lda_izy", _ptr, _id]);
+    array_push(_list, ["sta_abx", _chip + 2, _id]);
+    array_push(_list, ["sta_abx", _chip + 3, _id]);
+    array_push(_list, ["lda_imm", 0x09, _id]);
+    array_push(_list, ["sta_abx", _chip + 4, _id]);
+    array_push(_list, ["rts",     0, _id]);
+    // frame 3+: note (+ optional waveform), or $00 = end
+    array_push(_list, ["label",   _k + "sfxx_fn"]);
+    array_push(_list, ["lda_izy", _ptr, _id]);
+    array_push(_list, ["bne",     _k + "sfxx_nt", _id]);
+    array_push(_list, ["sta_abx", _k + "sfxc", _id]);     // end: effect off,
+    array_push(_list, ["sta_abx", _chip + 4, _id]);       // gate off
+    array_push(_list, ["rts",     0, _id]);
+    array_push(_list, ["label",   _k + "sfxx_nt"]);
+    array_push(_list, ["sec",     0, _id]);
+    array_push(_list, ["sbc_imm", 0x80, _id]);
+    array_push(_list, ["tay",     0, _id]);
+    array_push(_list, ["lda_aby", "SIDSONG_NOTELO", _id]);
+    array_push(_list, ["sta_abx", _chip + 0, _id]);
+    array_push(_list, ["lda_aby", "SIDSONG_NOTEHI", _id]);
+    array_push(_list, ["sta_abx", _chip + 1, _id]);
+    array_push(_list, ["ldy_abx", _k + "sfxc", _id]);     // peek the next byte
+    array_push(_list, ["lda_izy", _ptr, _id]);
+    array_push(_list, ["beq",     _k + "sfxx_dn", _id]);
+    array_push(_list, ["cmp_imm", 0x82, _id]);
+    array_push(_list, ["bcs",     _k + "sfxx_dn", _id]);  // a note: next frame's
+    array_push(_list, ["pha",     0, _id]);               // a waveform: take it now
+    array_push(_list, ["lda_abx", _k + "sfxc", _id]);
+    array_push(_list, ["clc",     0, _id]);
+    array_push(_list, ["adc_imm", 0x01, _id]);
+    array_push(_list, ["sta_abx", _k + "sfxc", _id]);
+    array_push(_list, ["pla",     0, _id]);
+    array_push(_list, ["sta_abx", _chip + 4, _id]);
+    array_push(_list, ["label",   _k + "sfxx_dn"]);
+    array_push(_list, ["rts",     0, _id]);
+}

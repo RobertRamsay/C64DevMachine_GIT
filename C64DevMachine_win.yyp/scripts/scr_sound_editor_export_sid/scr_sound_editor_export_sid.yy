@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_sound_editor_export_sid",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_sound_editor_export_sid",
+  "parent":{
+    "name":"SOUND_EDITOR",
+    "path":"folders/SCRIPTS/SOUND_EDITOR.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}
