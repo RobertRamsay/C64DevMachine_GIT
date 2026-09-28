@@ -7,9 +7,9 @@
 ///     Effects 1-4 last for their own row only: a row without one (or with any
 ///     other command) stops the effect; the pitch stays where it got to.
 ///     0XX  no effect
-///     1XX  portamento up    (XX added to the pitch every frame of the row)
+///     1XX  portamento up    (XX * 4 added to the pitch every frame of the row)
 ///     2XX  portamento down
-///     3XX  slide to note    (the row trigger stored the target)
+///     3XX  slide to note, XX * 4 per frame (the row trigger stored the target)
 ///     4XY  vibrato, X = frames per half-cycle, Y = depth (Y*4 per frame); 400 = off
 ///     5XX / 6XX / 7XX  set AD / SR / waveform — one-shot, applied by fxr once
 ///                      any hard restart has finished so the note's own values
@@ -121,7 +121,23 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["lda_abs", _k + "rval", _id]);
     array_push(_list, ["sta_abx", _k + "fxv", _id]);
     array_push(_list, ["cpy_imm", 0x04, _id]);
-    array_push(_list, ["bne",     _k + "c_ret", _id]);
+    array_push(_list, ["beq",     _k + "c_vib", _id]);
+    // 1-3: pitch speed = XX * 4 per frame, 16-bit (fvh:fxv) — up to about four
+    // semitones a frame in the middle octaves.
+    array_push(_list, ["asl_a",   0, _id]);
+    array_push(_list, ["asl_a",   0, _id]);
+    array_push(_list, ["sta_abx", _k + "fxv", _id]);
+    array_push(_list, ["lda_abs", _k + "rval", _id]);
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["sta_abx", _k + "fvh", _id]);
+    array_push(_list, ["rts",     0, _id]);
+    array_push(_list, ["label",   _k + "c_vib"]);
+    array_push(_list, ["lda_abs", _k + "rval", _id]);
     array_push(_list, ["and_imm", 0x0F, _id]);          // depth = Y * 4
     array_push(_list, ["asl_a",   0, _id]);
     array_push(_list, ["asl_a",   0, _id]);
@@ -277,7 +293,7 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["adc_abx", _k + "fxv", _id]);
     array_push(_list, ["sta_abx", _k + "fql", _id]);
     array_push(_list, ["lda_abx", _k + "fqh", _id]);
-    array_push(_list, ["adc_imm", 0x00, _id]);
+    array_push(_list, ["adc_abx", _k + "fvh", _id]);
     array_push(_list, ["sta_abx", _k + "fqh", _id]);
     array_push(_list, ["bcc",     _k + "f_pj", _id]);
     array_push(_list, ["lda_imm", 0xFF, _id]);          // clamp at the top
@@ -293,7 +309,7 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["sbc_abx", _k + "fxv", _id]);
     array_push(_list, ["sta_abx", _k + "fql", _id]);
     array_push(_list, ["lda_abx", _k + "fqh", _id]);
-    array_push(_list, ["sbc_imm", 0x00, _id]);
+    array_push(_list, ["sbc_abx", _k + "fvh", _id]);
     array_push(_list, ["sta_abx", _k + "fqh", _id]);
     array_push(_list, ["bcs",     _k + "f_pj2", _id]);
     array_push(_list, ["lda_imm", 0x00, _id]);          // clamp at the bottom
@@ -401,7 +417,7 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["adc_abx", _k + "fxv", _id]);
     array_push(_list, ["sta_abx", _k + "fql", _id]);
     array_push(_list, ["lda_abx", _k + "fqh", _id]);
-    array_push(_list, ["adc_imm", 0x00, _id]);
+    array_push(_list, ["adc_abx", _k + "fvh", _id]);
     array_push(_list, ["sta_abx", _k + "fqh", _id]);
     array_push(_list, ["bcs",     _k + "f_snap", _id]);
     array_push(_list, ["lda_abx", _k + "fqh", _id]);
@@ -418,7 +434,7 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["sbc_abx", _k + "fxv", _id]);
     array_push(_list, ["sta_abx", _k + "fql", _id]);
     array_push(_list, ["lda_abx", _k + "fqh", _id]);
-    array_push(_list, ["sbc_imm", 0x00, _id]);
+    array_push(_list, ["sbc_abx", _k + "fvh", _id]);
     array_push(_list, ["sta_abx", _k + "fqh", _id]);
     array_push(_list, ["bcc",     _k + "f_snap", _id]);
     array_push(_list, ["lda_abx", _k + "fqh", _id]);

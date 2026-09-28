@@ -274,6 +274,9 @@ function scr_sid64_sim_cmd(_sim, _v, _cmd, _val) {
         }
         _vc.fx  = _cmd;
         _vc.fxv = _val;
+        if (_cmd <= 3) {
+            _vc.fxv = _val * 4;     // pitch speed: XX * 4 per frame
+        }
         if (_cmd == 4) {
             _vc.cvd = ((_val & 0x0F) * 4) & 0xFF;
             _vc.cvs = (_val >> 4) & 0x0F;

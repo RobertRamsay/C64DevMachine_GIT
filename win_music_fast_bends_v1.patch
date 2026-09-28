@@ -1,0 +1,126 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_sid_song/scr_node_draw_macro_sid_song.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_sid_song/scr_node_draw_macro_sid_song.gml
+index 7e981f2..7440603 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_sid_song/scr_node_draw_macro_sid_song.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_sid_song/scr_node_draw_macro_sid_song.gml
+@@ -170,7 +170,7 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
+             //   instruments: 7 header + compiled stream, + 2 pointer tables
+             //   patterns:    2 bytes/row (4 with a command column), + 2 pointer
+             //                tables + length table + command-column flag table
+-            //   effect state: 19 tables x 3 voices + 11 scratch bytes
++            //   effect state: 20 tables x 3 voices + 11 scratch bytes
+             //   order:       5 bytes/row (v1,v2,v3,len,wrap)
+             for (var _bi = 0; _bi < _n_instr; _bi++) {
+                 var _b_ins = _sm.instruments[_bi];
+@@ -200,7 +200,7 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
+                 _bytes += _bp_len * _bp_stride;
+             }
+             _bytes += _n_pat * 4;
+-            _bytes += (19 * 3) + 11;
++            _bytes += (20 * 3) + 11;
+             _bytes += _n_ord * 5;
+             _bytes += _n_songs * 4;   // songstart/songend/songloop/songflag
+             break;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+index aecc11c..4274168 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+@@ -274,6 +274,9 @@ function scr_sid64_sim_cmd(_sim, _v, _cmd, _val) {
+         }
+         _vc.fx  = _cmd;
+         _vc.fxv = _val;
++        if (_cmd <= 3) {
++            _vc.fxv = _val * 4;     // pitch speed: XX * 4 per frame
++        }
+         if (_cmd == 4) {
+             _vc.cvd = ((_val & 0x0F) * 4) & 0xFF;
+             _vc.cvs = (_val >> 4) & 0x0F;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+index b1f7b08..dae3641 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+@@ -264,7 +264,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+     // Per-voice effect state tables (see section 7).
+     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
+                              "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval",
+-                             "pwl", "pwh"];
++                             "pwl", "pwh", "fvh"];
+     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
+ 
+     // True once any instrument has vibrato or any pattern has a command
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_fx_routines/scr_sid_song_emit_fx_routines.gml b/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_fx_routines/scr_sid_song_emit_fx_routines.gml
+index 3d4f5aa..761db7f 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_fx_routines/scr_sid_song_emit_fx_routines.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_fx_routines/scr_sid_song_emit_fx_routines.gml
+@@ -7,9 +7,9 @@
+ ///     Effects 1-4 last for their own row only: a row without one (or with any
+ ///     other command) stops the effect; the pitch stays where it got to.
+ ///     0XX  no effect
+-///     1XX  portamento up    (XX added to the pitch every frame of the row)
++///     1XX  portamento up    (XX * 4 added to the pitch every frame of the row)
+ ///     2XX  portamento down
+-///     3XX  slide to note    (the row trigger stored the target)
++///     3XX  slide to note, XX * 4 per frame (the row trigger stored the target)
+ ///     4XY  vibrato, X = frames per half-cycle, Y = depth (Y*4 per frame); 400 = off
+ ///     5XX / 6XX / 7XX  set AD / SR / waveform — one-shot, applied by fxr once
+ ///                      any hard restart has finished so the note's own values
+@@ -121,7 +121,23 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
+     array_push(_list, ["lda_abs", _k + "rval", _id]);
+     array_push(_list, ["sta_abx", _k + "fxv", _id]);
+     array_push(_list, ["cpy_imm", 0x04, _id]);
+-    array_push(_list, ["bne",     _k + "c_ret", _id]);
++    array_push(_list, ["beq",     _k + "c_vib", _id]);
++    // 1-3: pitch speed = XX * 4 per frame, 16-bit (fvh:fxv) — up to about four
++    // semitones a frame in the middle octaves.
++    array_push(_list, ["asl_a",   0, _id]);
++    array_push(_list, ["asl_a",   0, _id]);
++    array_push(_list, ["sta_abx", _k + "fxv", _id]);
++    array_push(_list, ["lda_abs", _k + "rval", _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["sta_abx", _k + "fvh", _id]);
++    array_push(_list, ["rts",     0, _id]);
++    array_push(_list, ["label",   _k + "c_vib"]);
++    array_push(_list, ["lda_abs", _k + "rval", _id]);
+     array_push(_list, ["and_imm", 0x0F, _id]);          // depth = Y * 4
+     array_push(_list, ["asl_a",   0, _id]);
+     array_push(_list, ["asl_a",   0, _id]);
+@@ -277,7 +293,7 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
+     array_push(_list, ["adc_abx", _k + "fxv", _id]);
+     array_push(_list, ["sta_abx", _k + "fql", _id]);
+     array_push(_list, ["lda_abx", _k + "fqh", _id]);
+-    array_push(_list, ["adc_imm", 0x00, _id]);
++    array_push(_list, ["adc_abx", _k + "fvh", _id]);
+     array_push(_list, ["sta_abx", _k + "fqh", _id]);
+     array_push(_list, ["bcc",     _k + "f_pj", _id]);
+     array_push(_list, ["lda_imm", 0xFF, _id]);          // clamp at the top
+@@ -293,7 +309,7 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
+     array_push(_list, ["sbc_abx", _k + "fxv", _id]);
+     array_push(_list, ["sta_abx", _k + "fql", _id]);
+     array_push(_list, ["lda_abx", _k + "fqh", _id]);
+-    array_push(_list, ["sbc_imm", 0x00, _id]);
++    array_push(_list, ["sbc_abx", _k + "fvh", _id]);
+     array_push(_list, ["sta_abx", _k + "fqh", _id]);
+     array_push(_list, ["bcs",     _k + "f_pj2", _id]);
+     array_push(_list, ["lda_imm", 0x00, _id]);          // clamp at the bottom
+@@ -401,7 +417,7 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
+     array_push(_list, ["adc_abx", _k + "fxv", _id]);
+     array_push(_list, ["sta_abx", _k + "fql", _id]);
+     array_push(_list, ["lda_abx", _k + "fqh", _id]);
+-    array_push(_list, ["adc_imm", 0x00, _id]);
++    array_push(_list, ["adc_abx", _k + "fvh", _id]);
+     array_push(_list, ["sta_abx", _k + "fqh", _id]);
+     array_push(_list, ["bcs",     _k + "f_snap", _id]);
+     array_push(_list, ["lda_abx", _k + "fqh", _id]);
+@@ -418,7 +434,7 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
+     array_push(_list, ["sbc_abx", _k + "fxv", _id]);
+     array_push(_list, ["sta_abx", _k + "fql", _id]);
+     array_push(_list, ["lda_abx", _k + "fqh", _id]);
+-    array_push(_list, ["sbc_imm", 0x00, _id]);
++    array_push(_list, ["sbc_abx", _k + "fvh", _id]);
+     array_push(_list, ["sta_abx", _k + "fqh", _id]);
+     array_push(_list, ["bcc",     _k + "f_snap", _id]);
+     array_push(_list, ["lda_abx", _k + "fqh", _id]);

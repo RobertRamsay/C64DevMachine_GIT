@@ -264,7 +264,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // Per-voice effect state tables (see section 7).
     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
                              "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval",
-                             "pwl", "pwh"];
+                             "pwl", "pwh", "fvh"];
     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
 
     // True once any instrument has vibrato or any pattern has a command

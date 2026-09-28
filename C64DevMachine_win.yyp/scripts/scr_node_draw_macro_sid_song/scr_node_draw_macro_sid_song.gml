@@ -170,7 +170,7 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
             //   instruments: 7 header + compiled stream, + 2 pointer tables
             //   patterns:    2 bytes/row (4 with a command column), + 2 pointer
             //                tables + length table + command-column flag table
-            //   effect state: 19 tables x 3 voices + 11 scratch bytes
+            //   effect state: 20 tables x 3 voices + 11 scratch bytes
             //   order:       5 bytes/row (v1,v2,v3,len,wrap)
             for (var _bi = 0; _bi < _n_instr; _bi++) {
                 var _b_ins = _sm.instruments[_bi];
@@ -200,7 +200,7 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
                 _bytes += _bp_len * _bp_stride;
             }
             _bytes += _n_pat * 4;
-            _bytes += (19 * 3) + 11;
+            _bytes += (20 * 3) + 11;
             _bytes += _n_ord * 5;
             _bytes += _n_songs * 4;   // songstart/songend/songloop/songflag
             break;
