@@ -126,7 +126,7 @@ function scr_node_draw_macro_anim_set(_draw_x) {
     // ---- Column header ----
     draw_set_font_l(fnt_c64_nano);
     draw_set_color(make_color_rgb(140, 140, 140));
-    scr_node_macro_text_l(_lbl_x, y + 70, "#  NAME               DLY  LOOP");
+    scr_node_macro_text_l(_lbl_x, y + 70, "#  NAME                                     DELAY | LOOP");
 
     // ---- Rows ----
     var _box_gap = 2;
