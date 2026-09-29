@@ -1327,6 +1327,25 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
 
         var _kb_ctrl = keyboard_check(vk_control) || scr_cmd_held();
 
+        // GoatTracker transpose keys, scoped to selected notes (never text fields).
+        if (_kb_ctrl && _m.sel_sub == 0) {
+            var _transpose = 0;
+            if (keyboard_check_pressed(ord("Q"))) _transpose = 1;
+            else if (keyboard_check_pressed(ord("A"))) _transpose = -1;
+            else if (keyboard_check_pressed(ord("W"))) _transpose = 12;
+            else if (keyboard_check_pressed(ord("S"))) _transpose = -12;
+            else if (keyboard_check_pressed(_vk_equals) || keyboard_check_pressed(vk_add)) {
+                _transpose = keyboard_check(vk_shift) ? 12 : 1;
+            } else if (keyboard_check_pressed(189) || keyboard_check_pressed(vk_subtract)) {
+                _transpose = keyboard_check(vk_shift) ? -12 : -1;
+            }
+            if (_transpose != 0) {
+                scr_sound_editor_transpose(_m, _col_pat, _col_pat_idx,
+                    _sel_v_lo, _sel_v_hi, _sel_s_lo, _sel_s_hi,
+                    _transpose, _se_push_undo, _se_snap);
+            }
+        }
+
         if (_kb_ctrl && keyboard_check_pressed(ord("C"))) {
             var _cp_w = (_sel_v_hi - _sel_v_lo) + 1;
             var _cp_h = (_sel_s_hi - _sel_s_lo) + 1;
@@ -2318,4 +2337,45 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_alpha(1.0);
     draw_set_color(c_white);
     draw_set_halign(fa_left);
+}
+/// Transpose each selected stored note once, even when lanes share a pattern.
+/// Validate the whole operation first so boundary notes never squash intervals.
+function scr_sound_editor_transpose(_m, _patterns, _indices, _v0, _v1, _s0, _s1, _delta, _push_undo, _snapshot) {
+    var _seen = [];
+    var _changes = [];
+    var _names = ["C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-"];
+    for (var _v = _v0; _v <= _v1; _v++) {
+        var _pat = _patterns[_v];
+        if (_pat == noone) continue;
+        var _duplicate = false;
+        for (var _i = 0; _i < array_length(_seen); _i++) {
+            if (_seen[_i] == _indices[_v]) _duplicate = true;
+        }
+        if (_duplicate) continue;
+        array_push(_seen, _indices[_v]);
+        for (var _r = _s0; _r <= _s1 && _r < _pat.pattern_len; _r++) {
+            var _step = _pat.steps[_r];
+            if (_step.empty) continue;
+            var _note = scr_sid_song_note_index(_step.note);
+            if (_note < 0) continue; // Holds, key-off/on and invalid notes stay intact.
+            var _next = _note + _delta;
+            if (_next < 0 || _next > 95) {
+                _m.warn_msg = "TRANSPOSE CANCELLED: NOTES MUST STAY BETWEEN C-0 AND B-7";
+                _m.warn_timer = game_get_speed(gamespeed_fps) * 3;
+                return 0;
+            }
+            array_push(_changes, { step: _step, note: _names[_next mod 12] + string(floor(_next / 12)) });
+        }
+    }
+    if (array_length(_changes) == 0) return 0;
+    _push_undo(_m, _snapshot);
+    for (var _c = 0; _c < array_length(_changes); _c++) {
+        _changes[_c].step.note = _changes[_c].note;
+    }
+    global.undo_dirty = true;
+    global.addresses_dirty = true;
+    _m.warn_msg = "TRANSPOSED " + string(array_length(_changes)) + " NOTES: "
+        + ((_delta > 0) ? "+" : "") + string(_delta) + " SEMITONES";
+    _m.warn_timer = game_get_speed(gamespeed_fps) * 2;
+    return array_length(_changes);
 }

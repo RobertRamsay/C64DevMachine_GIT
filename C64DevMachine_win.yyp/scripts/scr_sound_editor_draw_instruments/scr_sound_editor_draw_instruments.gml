@@ -27,6 +27,24 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     draw_set_color(make_color_rgb(255, 200, 100));
     draw_text_l(_ix0, _iy0 - 20, "INSTRUMENTS");
 
+    // Presets append independent instruments and never replace existing slots.
+    if (_two_col) {
+        if (!variable_struct_exists(_m, "preset_picker_open")) _m.preset_picker_open = false;
+        if (scr_sfx_maker_button(_ix0 + 150, _iy0 - 24, 130,
+                                _m.preset_picker_open ? "CLOSE PRESETS" : "+ PRESETS", _mx, _my)) {
+            if (_m.instr_edit_active && _m.sel_instr >= 0) {
+                scr_sound_editor_commit_instrument(_m, _m.instruments[_m.sel_instr]);
+            }
+            _m.instr_name_edit_active = false;
+            _m.preset_picker_open = !_m.preset_picker_open;
+            keyboard_string = "";
+        }
+        if (_m.preset_picker_open) {
+            scr_sound_editor_preset_picker(_m, _ix0, _iy0, _list_w, _list_vis, _mx, _my);
+            return;
+        }
+    }
+
     // ── LIST BOX ──
     draw_set_color(make_color_rgb(14, 14, 22));
     draw_rectangle(_ix0 - 4, _iy0 - 2, _ix0 + _list_w + 4, _iy0 + _list_vis * _list_row_h + 2, false);
@@ -713,5 +731,99 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
                                  _tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, _mx, _my, true);
     }
 
+    draw_set_color(c_white);
+}
+/// Factory definitions use the existing instrument language and runtime fields.
+/// Filter routing is per instrument; mode/cutoff/resonance remain song-wide.
+function scr_sound_editor_presets() {
+    return [
+        { name: "LEAD PULSE", text: "$41\nD255\nL1", attack: 0, decay: 7, sustain: 12, release: 5,
+          pulse_width: 1536, vib_delay: 10, vib_speed: 5, vib_depth: 2, filt: 0,
+          hint: "BRIGHT PULSE + DELAYED VIBRATO. TRY C-4." },
+        { name: "BASS FILTERED", text: "$41\nD255\nL1", attack: 0, decay: 9, sustain: 7, release: 3,
+          pulse_width: 1024, vib_delay: 0, vib_speed: 0, vib_depth: 0, filt: 1,
+          hint: "SHORT ATTACK, NARROW PULSE, FILTER ON. TRY C-2." },
+        { name: "ARP MAJOR", text: "$21\nN\nD2\nN+4\nD2\nN+7\nD2\nL1", attack: 0, decay: 6, sustain: 10, release: 4,
+          pulse_width: 2048, vib_delay: 0, vib_speed: 0, vib_depth: 0, filt: 0,
+          hint: "ROOT / MAJOR THIRD / FIFTH. TRY C-3." },
+        { name: "ARP MINOR", text: "$21\nN\nD2\nN+3\nD2\nN+7\nD2\nL1", attack: 0, decay: 6, sustain: 10, release: 4,
+          pulse_width: 2048, vib_delay: 0, vib_speed: 0, vib_depth: 0, filt: 0,
+          hint: "ROOT / MINOR THIRD / FIFTH. TRY C-3." },
+        { name: "KICK", text: "$81\nD1\n$11\nN+24\nD1\nN+12\nD1\nN+5\nD1\nN\nD8\n---", attack: 0, decay: 6, sustain: 0, release: 2,
+          pulse_width: 2048, vib_delay: 0, vib_speed: 0, vib_depth: 0, filt: 0,
+          hint: "NOISE CLICK + FALLING TRIANGLE THUMP. TRY C-2." },
+        { name: "SNARE", text: "$81\nD2\n$11\nN+12\nD2\n$81\nD10\n---", attack: 0, decay: 8, sustain: 0, release: 2,
+          pulse_width: 2048, vib_delay: 0, vib_speed: 0, vib_depth: 0, filt: 0,
+          hint: "NOISE SNAP + TONAL BODY. TRY C-3." },
+        { name: "TING", text: "$11\nN+12\nD2\nN\nD18\n---", attack: 0, decay: 10, sustain: 0, release: 6,
+          pulse_width: 2048, vib_delay: 2, vib_speed: 3, vib_depth: 1, filt: 0,
+          hint: "HIGH TRIANGLE CHIME + LIGHT VIBRATO. TRY C-5." },
+        { name: "FLUTE", text: "$11\nD255\nL1", attack: 3, decay: 5, sustain: 11, release: 7,
+          pulse_width: 2048, vib_delay: 14, vib_speed: 6, vib_depth: 1, filt: 1,
+          hint: "SOFT TRIANGLE + DELAYED VIBRATO, FILTER ON. TRY C-4." }
+    ];
+}
+
+function scr_sound_editor_add_preset(_m, _preset) {
+    if (array_length(_m.instruments) >= 255) return false;
+    var _compiled = scr_instrument_parse(_preset.text);
+    if (array_length(_compiled.errors) > 0) return false;
+    array_push(_m.instruments, {
+        name: _preset.name, text: _preset.text, compiled: _compiled, ins_name: "", dirty: false,
+        attack: _preset.attack, decay: _preset.decay, sustain: _preset.sustain, release: _preset.release,
+        pulse_width: _preset.pulse_width, vib_delay: _preset.vib_delay,
+        vib_speed: _preset.vib_speed, vib_depth: _preset.vib_depth, filt: _preset.filt
+    });
+    // A routed voice with no filter mode is silent. Initialise only an off filter.
+    if (_preset.filt != 0 && _m.filt_mode == 0) {
+        _m.filt_mode = 1;
+        _m.filt_res = 4;
+        _m.filt_cut = 900;
+    }
+    _m.sel_instr = array_length(_m.instruments) - 1;
+    _m.instr_edit_active = false;
+    _m.instr_name_edit_active = false;
+    global.undo_dirty = true;
+    global.addresses_dirty = true;
+    return true;
+}
+
+function scr_sound_editor_preset_picker(_m, _x, _y, _w, _visible, _mx, _my) {
+    var _presets = scr_sound_editor_presets();
+    var _count = array_length(_presets);
+    var _added = 0;
+    draw_set_color(make_color_rgb(14, 14, 22));
+    draw_rectangle(_x - 4, _y - 2, _x + _w + 4, _y + (_count + 1) * 26 + 76, false);
+    for (var _p = 0; _p < _count; _p++) {
+        var _py = _y + _p * 26;
+        var _room = array_length(_m.instruments) < 255;
+        if (scr_sfx_maker_button(_x, _py, _w, "+ " + _presets[_p].name, _mx, _my) && _room) {
+            if (scr_sound_editor_add_preset(_m, _presets[_p])) _added = 1;
+        }
+        if (point_in_rectangle(_mx, _my, _x, _py, _x + _w, _py + 24)) {
+            _m.pattern_hover_tip = _presets[_p].hint
+                + "\nCLICK TO ADD AN EDITABLE COPY. EXISTING INSTRUMENTS STAY IN PLACE.";
+        }
+    }
+    var _all_room = array_length(_m.instruments) + _count <= 255;
+    if (scr_sfx_maker_button(_x, _y + _count * 26, _w,
+            _all_room ? "+ ADD ALL 8 PRESETS" : "NEED 8 FREE INSTRUMENT SLOTS", _mx, _my) && _all_room) {
+        for (var _a = 0; _a < _count; _a++) {
+            if (scr_sound_editor_add_preset(_m, _presets[_a])) _added += 1;
+        }
+    }
+    draw_set_font_l(fnt_c64_pico);
+    draw_set_color(make_color_rgb(180, 190, 210));
+    draw_text_ext_l(_x, _y + (_count + 1) * 26 + 4,
+        "HOVER FOR SOUND / NOTE TIPS.\nFILTERED PRESETS ENABLE LOW-PASS IF OFF.\nTHE SONG FILTER IS SHARED; ACTIVE SETTINGS ARE KEPT.\nESC OR CLOSE PRESETS TO RETURN.", -1, _w);
+    draw_set_font_l(fnt_c64_tiny);
+    if (_added > 0) {
+        _m.instr_list_scroll = max(0, _m.sel_instr - _visible + 1);
+        _m.preset_picker_open = false;
+        _m.warn_msg = "ADDED " + string(_added) + " PRESET INSTRUMENT(S)";
+        _m.warn_timer = game_get_speed(gamespeed_fps) * 3;
+    }
+    if (keyboard_check_pressed(vk_escape)) _m.preset_picker_open = false;
+    keyboard_string = "";
     draw_set_color(c_white);
 }
