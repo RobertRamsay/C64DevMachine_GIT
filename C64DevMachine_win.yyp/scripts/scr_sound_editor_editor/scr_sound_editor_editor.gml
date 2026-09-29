@@ -1640,9 +1640,11 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         var _nav_delay = round(game_get_speed(gamespeed_fps) * 0.33);
         var _kb_shift_col = keyboard_check(vk_shift);
 
-        // Shift+Up: top of the pattern. Shift+Down: on to the next 16-row
-        // boundary (16, 32, 48 ...; held, it keeps stepping by 16).
-        if (_kb_shift_col) {
+        // Ctrl+Up (Cmd on Mac): top of the pattern. Ctrl+Down: on to the next
+        // 16-row boundary (16, 32, 48 ...; held, it keeps stepping by 16).
+        // Shift+Up/Down still extend the selection.
+        var _kb_ctrl_nav = keyboard_check(vk_control) || scr_cmd_held();
+        if (_kb_ctrl_nav) {
             var _jump = false;
             if (keyboard_check_pressed(vk_up)) {
                 _m.sel_step = 0;
@@ -1679,7 +1681,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             }
         }
 
-        if (keyboard_check(vk_up) && !_kb_shift_col) {
+        if (keyboard_check(vk_up) && !_kb_ctrl_nav) {
             if (keyboard_check_pressed(vk_up)) {
                 _m.sel_step = max(0, _m.sel_step - 1);
                 if (_m.sel_step < _m.list_scroll) { _m.list_scroll = _m.sel_step; }
@@ -1698,7 +1700,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             _m.nav_up_timer = 0;
         }
 
-        if (keyboard_check(vk_down) && !_kb_shift_col) {
+        if (keyboard_check(vk_down) && !_kb_ctrl_nav) {
             if (keyboard_check_pressed(vk_down)) {
                 _m.sel_step = min(_grid_len - 1, _m.sel_step + 1);
                 if (_m.sel_step >= _m.list_scroll + _vis) { _m.list_scroll = _m.sel_step - _vis + 1; }
@@ -1714,7 +1716,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 }
             }
         } else if (!keyboard_check(vk_down)) {
-            _m.nav_down_timer = 0;   // (Shift+Down's own repeat keeps it while held)
+            _m.nav_down_timer = 0;   // (Ctrl+Down's own repeat keeps it while held)
         }
 
         if (keyboard_check_pressed(vk_home)) {
