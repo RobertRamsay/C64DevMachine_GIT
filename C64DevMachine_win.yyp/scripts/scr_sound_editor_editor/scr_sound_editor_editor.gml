@@ -17,6 +17,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _vy2_full = _vy2;
     _vy2 = _vy2 - _pno_h;
     var _m = _asset.meta;
+    _m.pattern_hover_tip = "";
 
     // ── BACKFILL ──
     if (!variable_struct_exists(_m, "instruments"))  _m.instruments = [];
@@ -976,7 +977,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         }
         _pw_spd = _pw_next_spd;
     }
-    var _pw_tip = "";   // hover text for a flagged 9XX, drawn last
+    var _pw_tip = "";   // sweep warning takes priority over command help
 
     for (var _r = 0; _r < _vis; _r++) {
         var _row = _r + _m.list_scroll;
@@ -1089,6 +1090,16 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             var _cmd_x = _cx1 + _cmd_off;
             var _st_cmd = _step.cmd;
             var _typing_here = (_m.cmd_entry_str != "" && _m.cmd_entry_voice == _cv && _m.cmd_entry_step == _row);
+            if (point_in_rectangle(_mx, _my, _cmd_x - 6, _ry, _cx2, _ry + _row_h)) {
+                var _tip_cmd = _typing_here
+                    ? string_pos(string_char_at(_m.cmd_entry_str, 1), "0123456789ABCDEF") - 1
+                    : _st_cmd;
+                _m.pattern_hover_tip = scr_sound_editor_pattern_help(_tip_cmd);
+                if (!_typing_here && _st_cmd == 4) {
+                    _m.pattern_hover_tip += "\nTHIS CELL: SPEED " + string((_step.cmd_val >> 4) & 15)
+                        + ", DEPTH " + string(_step.cmd_val & 15) + ".";
+                }
+            }
             if (_typing_here) {
                 // Being typed: only the new digits, the rest blank.
                 var _ty_str = _m.cmd_entry_str;
@@ -1167,6 +1178,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                     _m.sel_anchor_step  = _row;
                     _m.sel_sub          = 0;
                     if (_mx >= _cx1 + _cmd_off - 6) {
+                        // Clicking the command also leaves a same-row note text edit.
+                        if (_m.edit_active) {
+                            scr_sound_editor_commit_cell(_m, _se_push_undo, _se_snap, _col_pat);
+                        }
                         _m.sel_sub = 1;
                         _dbl = false;
                     }
@@ -1490,6 +1505,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             if (_m.sel_sub == 1) {
                 _cur_step.cmd     = -1;
                 _cur_step.cmd_val = 0;
+                _m.cmd_entry_str = "";
             } else {
                 _cur_step.note      = "";
                 _cur_step.instr_idx = -1;
@@ -1509,6 +1525,20 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             }
         }
         if (_cur_step != noone && _m.sel_sub == 1 && !_kb_ctrl) {
+            // Command editing owns Backspace, even when the buffer is empty.
+            // Never let a held key fall through to pattern-row deletion.
+            if (keyboard_check_pressed(vk_backspace)) {
+                if (_m.cmd_entry_str != "") {
+                    _m.cmd_entry_str = string_delete(_m.cmd_entry_str, string_length(_m.cmd_entry_str), 1);
+                } else if (_cur_step.cmd >= 0) {
+                    _se_push_undo(_m, _se_snap);
+                    _cur_step.cmd = -1;
+                    _cur_step.cmd_val = 0;
+                    global.undo_dirty = true;
+                    global.addresses_dirty = true;
+                }
+            }
+            if (keyboard_check_pressed(vk_escape)) _m.cmd_entry_str = "";
             var _cmd_commit = false;
             var _hex_keys = "0123456789ABCDEF";
             for (var _hk = 1; _hk <= 16; _hk++) {
@@ -1559,7 +1589,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             }
         }
 
-        if (_cur_step != noone && keyboard_check(vk_backspace)) {
+        if (_cur_step != noone && _m.sel_sub == 0 && keyboard_check(vk_backspace)) {
             var _do_bksp = false;
             if (keyboard_check_pressed(vk_backspace)) {
                 _do_bksp      = true;
@@ -1849,7 +1879,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(150, 120, 90));
     draw_text_l(_col_gutter_x, _clr_y + 28,
-        "CMD 1XX UP 2XX DN 3XX SLIDE 4XY VIB 5XX AD 6XX SR 7XX WAVE 8XX PW 9XX PW SWEEP DXX $D418 FXX TEMPO | 1-4,9,C ONE ROW");
+        "CMD HELP: HOVER | 1XX UP 2XX DN 3XX SLIDE 4XY VIB 5XX AD 6XX SR 7XX WAVE 8XX PW 9XX PW SWEEP DXX $D418 FXX TEMPO | 1-4,9,C ONE ROW");
     draw_text_l(_col_gutter_x, _clr_y + 40,
         "FILTER  AXX CUTOFF (XX*8)  BX0 RESONANCE X  CXX CUTOFF SWEEP (01-7F UP, 80-FF DOWN)  EXX MODE (1 LP 2 BP 4 HP 8 V3 OFF)");
     draw_set_font_l(fnt_c64_tiny);
@@ -2261,19 +2291,27 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     scr_sound_editor_piano(_m, _vx1 + 20, _vy2 + 14, _vx2 - 20, _vy2_full - 12, _mx, _my,
                            _col_pat, _vis, _se_push_undo, _se_snap);
 
-    // ── 9XX warning tooltip (last, so it sits over everything) ──
-    if (_pw_tip != "") {
+    // Hover the legend for a built-in reference, or any cell for its command.
+    if (point_in_rectangle(_mx, _my, _col_gutter_x, _clr_y + 26,
+                           _col_gutter_x + _grid_full_w, _clr_y + 52)) {
+        _m.pattern_hover_tip = scr_sound_editor_pattern_help(-1)
+            + "\n\n" + scr_sound_editor_pattern_help(4)
+            + "\n\n" + scr_sound_editor_vibrato_help();
+    }
+    // Draw help last, retaining the existing sweep warnings and their red border.
+    var _tip_text = (_pw_tip != "") ? _pw_tip : _m.pattern_hover_tip;
+    if (_tip_text != "") {
         draw_set_font_l(fnt_c64_pico);
-        var _tt_w = string_width_l(_pw_tip) + 16;
-        var _tt_h = string_height(_pw_tip) + 12;
-        var _tt_x = min(_mx + 14, _vx2 - _tt_w - 4);
-        var _tt_y = _my + 18;
-        draw_set_color(make_color_rgb(40, 10, 10));
+        var _tt_w = min(string_width_l(_tip_text) + 16, max(32, _vx2 - _vx1 - 16));
+        var _tt_h = string_height_ext_l(_tip_text, -1, _tt_w - 16) + 12;
+        var _tt_x = max(_vx1 + 4, min(_mx + 14, _vx2 - _tt_w - 4));
+        var _tt_y = max(_cy, min(_my + 18, _vy2_full - _tt_h - 4));
+        draw_set_color((_pw_tip != "") ? make_color_rgb(40, 10, 10) : make_color_rgb(18, 26, 40));
         draw_rectangle(_tt_x, _tt_y, _tt_x + _tt_w, _tt_y + _tt_h, false);
-        draw_set_color(c_red);
+        draw_set_color((_pw_tip != "") ? c_red : c_aqua);
         draw_rectangle(_tt_x, _tt_y, _tt_x + _tt_w, _tt_y + _tt_h, true);
         draw_set_color(c_white);
-        draw_text_l(_tt_x + 8, _tt_y + 6, _pw_tip);
+        draw_text_ext_l(_tt_x + 8, _tt_y + 6, _tip_text, -1, _tt_w - 16);
         draw_set_font_l(fnt_c64_tiny);
     }
 

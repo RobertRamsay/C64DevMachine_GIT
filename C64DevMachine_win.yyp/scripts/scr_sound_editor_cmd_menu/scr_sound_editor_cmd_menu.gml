@@ -419,3 +419,48 @@ function scr_sound_editor_instr_comment(_line, _lines) {
     }
     return { text: _txt, bad: false };
 }
+
+/// Pattern commands use hexadecimal digits; instrument VIB fields are decimal.
+function scr_sound_editor_vibrato_help() {
+    return "INSTRUMENT VIB (DECIMAL VALUES)"
+        + "\nDL = DELAY IN FRAMES BEFORE VIBRATO STARTS."
+        + "\nSP = SPEED: FRAMES PER HALF-SWING. HIGHER = SLOWER."
+        + "\nDP = DEPTH: PITCH CHANGE OF DP * 4 PER FRAME."
+        + "\nSP OR DP = 0 DISABLES INSTRUMENT VIBRATO."
+        + "\n4XY OVERRIDES IT FOR THAT ROW; IT CAN RESUME AFTERWARD.";
+}
+
+/// Shared by command-cell hover and the command legend's reference tooltip.
+function scr_sound_editor_pattern_help(_cmd) {
+    switch (_cmd) {
+        case 0: return "0XX: NO PATTERN EFFECT THIS ROW (XX IS IGNORED).\nINSTRUMENT VIBRATO CAN STILL RUN.";
+        case 1: return "1XX: SLIDE PITCH UP BY XX * 4 PER FRAME, THIS ROW ONLY.";
+        case 2: return "2XX: SLIDE PITCH DOWN BY XX * 4 PER FRAME, THIS ROW ONLY.";
+        case 3: return "3XX: SLIDE TOWARD THE NOTE AT XX * 4 PER FRAME.\nTHIS ROW ONLY; STOPS AT THE TARGET PITCH.";
+        case 4: return "4XY: VIBRATO (HEX DIGITS 0-F)"
+            + "\nX = SPEED: FRAMES PER HALF-SWING. HIGHER = SLOWER."
+            + "\nY = DEPTH: PITCH CHANGE OF Y * 4 PER FRAME. HIGHER = WIDER."
+            + "\nBOTH X AND Y AFFECT THE TOTAL SWING; LOW NOTES SOUND WIDER."
+            + "\n448: 4 FRAMES PER HALF-SWING, DEPTH 8 (32 UNITS PER FRAME)."
+            + "\nFIRST SWING STARTS PARTWAY THROUGH THE CYCLE."
+            + "\n400 (OR X/Y = 0): NO VIBRATO THIS ROW."
+            + "\n4XY LASTS ONE ROW; REPEAT IT ON FOLLOWING ROWS TO CONTINUE.";
+        case 5: return "5AD: SET ATTACK (A) AND DECAY (D), HEX 0-F EACH.";
+        case 6: return "6SR: SET SUSTAIN (S) AND RELEASE (R), HEX 0-F EACH.";
+        case 7: return "7XX: SET SID WAVEFORM / CONTROL BYTE.\n711 TRIANGLE, 721 SAW, 741 PULSE, 781 NOISE (GATE ON).";
+        case 8: return "8XX: SET PULSE WIDTH TO HEX XX * 16.\n800 = ZERO, 880 = HALF, 8FF = NEAR MAXIMUM.";
+        case 9: return "9XX: PULSE-WIDTH SWEEP, THIS ROW ONLY.\n01-7F UP; 80-FF DOWN (FF = -1, F0 = -16 PER FRAME).";
+        case 10: return "AXX: SET FILTER CUTOFF TO HEX XX * 8.\nA00 = ZERO, AFF = 2040. FILTER IS SHARED BY ALL VOICES.";
+        case 11: return "BX0: SET FILTER RESONANCE X (HEX 0-F).\nLAST DIGIT IS IGNORED; VOICE ROUTING IS PRESERVED.";
+        case 12: return "CXX: FILTER CUTOFF SWEEP, THIS ROW ONLY.\n01-7F UP; 80-FF DOWN (FF = -1 PER FRAME).\nSTOPS AT 0 OR 2047; FILTER IS SHARED BY ALL VOICES.";
+        case 13: return "DXX: SET THE FULL SID $D418 BYTE.\nHIGH DIGIT: FILTER MODE; LOW DIGIT: VOLUME (0-F).";
+        case 14: return "EXX: SET FILTER MODE, KEEP VOLUME.\nLOW DIGIT BITS: 1 LOW-PASS, 2 BAND-PASS, 4 HIGH-PASS, 8 VOICE 3 OFF.";
+        case 15: return "FXX: SET FRAMES PER ROW (HEX). HIGHER = SLOWER.\nF00 IS IGNORED. AFFECTS THE WHOLE SONG.";
+    }
+    return "PATTERN COMMAND GUIDE"
+        + "\nCLICK A COMMAND CELL, THEN TYPE THREE HEX DIGITS (0-F)."
+        + "\nTHIRD DIGIT STORES IT; ENTER PADS WITH ZEROS AND MOVES DOWN."
+        + "\nBACKSPACE ERASES A TYPED DIGIT; WITH NO PENDING DIGITS IT CLEARS THE COMMAND."
+        + "\nDELETE CLEARS THE COMMAND; ESC CANCELS PENDING TYPING. NOTES STAY IN PLACE."
+        + "\nHOVER A COMMAND FOR ITS MEANING. 1-4, 9 AND C LAST ONE ROW.";
+}

@@ -423,6 +423,10 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             _vb_x = _vb_upx2 + 8;
         }
 
+        if (point_in_rectangle(_mx, _my, _ix0, _vb_y - 2, _vb_x, _vb_y + 16)) {
+            _m.pattern_hover_tip = scr_sound_editor_vibrato_help();
+        }
+
         // ── FILTER ON/OFF: route this instrument's voice through the song filter ──
         var _fi_y = _vb_y + 24;
         var _fi_on = (scr_sid64_instr_field(_sel_instr, "filt", 0) != 0);
