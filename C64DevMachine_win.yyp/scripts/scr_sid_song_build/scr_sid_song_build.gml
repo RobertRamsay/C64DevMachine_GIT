@@ -6,8 +6,11 @@
 ///       _sfx adds GoatTracker-compatible sound-effect support (export only):
 ///       <key>sfxt is the trigger routine, see scr_sid_song_emit_sfx.
 ///       Returns false when the asset has nothing to play (nothing pushed).
-function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, _chip_base, _sfx) {
+function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, _chip_base, _sfx, _prefix = "") {
     var _sm = _se.meta;
+    if (_prefix == "" && scr_music_sid_count(_sm) > 1) {
+        return scr_music_sid_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, _chip_base);
+    }
     var _voice_mask=variable_struct_exists(_sm,"voice_mask") ? (real(_sm.voice_mask)&7) : 7;
 
     var _instruments = (variable_struct_exists(_sm, "instruments") && is_array(_sm.instruments)) ? _sm.instruments : [];
@@ -138,7 +141,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // reallocated on every load, so a JSR stored in another node would point at
     // a label that no longer exists after a save/reload cycle. stable_uid is
     // allocated once in Create and persisted by the workspace serialiser.
-    var _key = "sng" + string(_id.stable_uid) + "_";
+    var _key = (_prefix != "") ? _prefix : "sng" + string(_id.stable_uid) + "_";
 
     // ── ZP MAP — 7 bytes per voice, then 11 shared, then 3 HR bytes per
     //    voice, then 1 control-shadow byte per voice. 44 total. ──
@@ -1489,6 +1492,84 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         // always starts the first song.
         array_push(_list, ["lda_imm", 0x00, _id]);
         array_push(_list, ["jsr", _L_init, _id]);
+    }
+    return true;
+}
+
+/// Build independent chip players behind the existing init/seek/play API.
+/// All players share 44 scratch ZP bytes; persistent state is saved in RAM.
+function scr_music_sid_build(_list, _id, _se, _name, _auto, _zp, _hr, _base) {
+    var _count = scr_music_sid_count(_se.meta);
+    var _key = "sng" + string(_id.stable_uid) + "_";
+    _zp = clamp(_zp, 0x03, 0x8F - 43);
+    array_push(_list, ["jmp_abs", _key + "multi_end", _id]);
+    for (var _c = 0; _c < _count; _c++) {
+        var _ck = _key + "chip" + string(_c) + "_";
+        var _start = array_length(_list);
+        var _view = { meta: scr_music_sid_project(_se.meta, _c) };
+        scr_sid_song_build(_list, _id, _view, _name, 0, _zp, _hr, _base + _c * 0x20, false, _ck);
+        // FXX is global. Latch the old tempo once per frame so a command on
+        // an earlier chip cannot make later chips reload a different tick.
+        for (var _i = _start; _i < array_length(_list); _i++) {
+            var _op = _list[_i];
+            if (array_length(_op) > 1 && _op[1] == _ck + "spd") {
+                if (_op[0] == "lda_abs") _list[_i][1] = _key + "tempo_now";
+                if (_op[0] == "sta_abs") _list[_i][1] = _key + "tempo_next";
+            }
+        }
+        array_push(_list, ["label", _ck + "saved"]);
+        for (var _b = 0; _b < 44; _b++) array_push(_list, ["byte", 0, _id]);
+        array_push(_list, ["label", _ck + "load"]);
+        array_push(_list, ["ldx_imm", 43, _id]);
+        array_push(_list, ["label", _ck + "load_loop"]);
+        array_push(_list, ["lda_abx", _ck + "saved", _id]);
+        array_push(_list, ["sta_abx", _zp, _id]);
+        array_push(_list, ["dex", 0, _id]);
+        array_push(_list, ["bpl", _ck + "load_loop", _id]);
+        array_push(_list, ["rts", 0, _id]);
+        array_push(_list, ["label", _ck + "save"]);
+        array_push(_list, ["ldx_imm", 43, _id]);
+        array_push(_list, ["label", _ck + "save_loop"]);
+        array_push(_list, ["lda_abx", _zp, _id]);
+        array_push(_list, ["sta_abx", _ck + "saved", _id]);
+        array_push(_list, ["dex", 0, _id]);
+        array_push(_list, ["bpl", _ck + "save_loop", _id]);
+        array_push(_list, ["rts", 0, _id]);
+    }
+    array_push(_list, ["label", _key + "tempo_now"]);
+    array_push(_list, ["byte", _se.meta.play_speed, _id]);
+    array_push(_list, ["label", _key + "tempo_next"]);
+    array_push(_list, ["byte", _se.meta.play_speed, _id]);
+    array_push(_list, ["label", _key + "song_arg"]);
+    array_push(_list, ["byte", 0, _id]);
+    array_push(_list, ["label", _key + "row_arg"]);
+    array_push(_list, ["byte", 0, _id]);
+    var _entries = ["init", "seek", "play"];
+    for (var _e = 0; _e < 3; _e++) {
+        array_push(_list, ["label", _key + _entries[_e]]);
+        if (_e < 2) {
+            array_push(_list, ["sta_abs", _key + "song_arg", _id]);
+            array_push(_list, ["stx_abs", _key + "row_arg", _id]);
+        } else {
+            array_push(_list, ["lda_abs", _key + "tempo_next", _id]);
+            array_push(_list, ["sta_abs", _key + "tempo_now", _id]);
+        }
+        for (var _c = 0; _c < _count; _c++) {
+            var _ck = _key + "chip" + string(_c) + "_";
+            if (_e > 0) array_push(_list, ["jsr", _ck + "load", _id]);
+            if (_e < 2) {
+                array_push(_list, ["lda_abs", _key + "song_arg", _id]);
+                array_push(_list, ["ldx_abs", _key + "row_arg", _id]);
+            }
+            array_push(_list, ["jsr", _ck + _entries[_e], _id]);
+            array_push(_list, ["jsr", _ck + "save", _id]);
+        }
+        array_push(_list, ["rts", 0, _id]);
+    }
+    array_push(_list, ["label", _key + "multi_end"]);
+    if (_auto == 1) {
+        array_push(_list, ["lda_imm", 0, _id]);
+        array_push(_list, ["jsr", _key + "init", _id]);
     }
     return true;
 }

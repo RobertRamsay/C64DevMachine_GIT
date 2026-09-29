@@ -171,6 +171,7 @@ var _base = "unsaved";
                 _mo.show_grid     = _me.show_grid;
             }
             if ((_a.type == "MUSIC_MAKER" || _a.type == "SFX_MAKER")) {
+                scr_music_sid_copy_meta(_me, _mo);
                 _mo.voice_mask = variable_struct_exists(_me, "voice_mask") ? _me.voice_mask : 7;
             _mo.sfx_chip = variable_struct_exists(_me, "sfx_chip") ? _me.sfx_chip : 0;
             _mo.instruments      = variable_struct_exists(_me, "instruments")      ? _me.instruments      : [];

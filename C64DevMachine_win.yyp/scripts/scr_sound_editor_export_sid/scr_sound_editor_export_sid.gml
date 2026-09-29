@@ -13,6 +13,10 @@
 
 /// Start the export: ask for address, zero page and SFX support.
 function scr_sound_editor_export_sid(_asset) {
+    if (scr_music_sid_count(_asset.meta) > 1) {
+        scr_show_message("MULTI-SID: USE GENERATE NODES AND EXPORT THE PROGRAM.\nTHE STANDALONE SID EXPORT CURRENTLY SUPPORTS ONE CHIP.");
+        return;
+    }
     // Defaults: a MACRO_SID_SONG node playing this asset lends its ZP and hard
     // restart, so the exported SID behaves like the in-project one.
     var _zp = 0x03;

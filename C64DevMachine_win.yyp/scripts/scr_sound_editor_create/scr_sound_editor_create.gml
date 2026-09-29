@@ -133,3 +133,287 @@ function scr_sound_editor_create(_asset) {
         warn_timer    : 0
     };
 }
+/// Additive multi-SID format: v1-v3 stay compatible; extra order lanes are v4-v24.
+function scr_music_sid_count(_m) {
+    return variable_struct_exists(_m, "sid_count") ? clamp(floor(real(_m.sid_count)), 1, 8) : 1;
+}
+/// Shared by manual save, Save As, autosave and load. Keep hidden lanes' masks.
+function scr_music_sid_copy_meta(_source, _target) {
+    _target.sid_count = scr_music_sid_count(_source);
+    _target.sid_page = variable_struct_exists(_source, "sid_page") ? clamp(real(_source.sid_page), 0, _target.sid_count - 1) : 0;
+    for (var _c = 1; _c < 8; _c++) _target[$ "sid_mask_" + string(_c)] = scr_music_sid_mask(_source, _c);
+    if (variable_struct_exists(_source, "music_nodes")) _target.music_nodes = _source.music_nodes;
+}
+function scr_music_sid_mask(_m, _chip) {
+    if (_chip == 0) return variable_struct_exists(_m, "voice_mask") ? (_m.voice_mask & 7) : 7;
+    var _key = "sid_mask_" + string(_chip);
+    return variable_struct_exists(_m, _key) ? (_m[$ _key] & 7) : 7;
+}
+function scr_music_sid_pattern(_row, _voice) {
+    var _key = "v" + string(_voice + 1);
+    return variable_struct_exists(_row, _key) ? _row[$ _key] : -1;
+}
+function scr_music_sid_length(_m, _row) {
+    if (variable_struct_exists(_row, "force_len") && _row.force_len > 0) return clamp(_row.force_len, 1, 255);
+    var _len = 0;
+    for (var _v = 0; _v < scr_music_sid_count(_m) * 3; _v++) {
+        if ((scr_music_sid_mask(_m, _v div 3) & (1 << (_v mod 3))) == 0) continue;
+        var _p = scr_music_sid_pattern(_row, _v);
+        if (_p >= 0 && _p < array_length(_m.patterns)) _len = max(_len, _m.patterns[_p].pattern_len);
+    }
+    return (_len > 0) ? clamp(_len, 1, 255) : 64;
+}
+/// Compiler view: shared instruments/patterns, projected lanes, common row lengths.
+function scr_music_sid_project(_m, _chip) {
+    var _out = { instruments: _m.instruments, patterns: _m.patterns, songs: [],
+        play_speed: _m.play_speed, voice_mask: scr_music_sid_mask(_m, _chip),
+        filt_mode: _m.filt_mode, filt_res: _m.filt_res, filt_cut: _m.filt_cut };
+    for (var _s = 0; _s < array_length(_m.songs); _s++) {
+        var _source = _m.songs[_s];
+        var _song = { name: _source.name, loop: _source.loop, loop_row: _source.loop_row, order: [] };
+        for (var _r = 0; _r < array_length(_source.order); _r++) {
+            var _row = _source.order[_r];
+            array_push(_song.order, { v1: scr_music_sid_pattern(_row, _chip * 3),
+                v2: scr_music_sid_pattern(_row, _chip * 3 + 1), v3: scr_music_sid_pattern(_row, _chip * 3 + 2),
+                repeat_short: _row.repeat_short, force_len: scr_music_sid_length(_m, _row) });
+        }
+        array_push(_out.songs, _song);
+    }
+    return _out;
+}
+
+/// Explicit paging never discards a partly edited note or changes the saved lanes.
+function scr_music_sid_page(_m, _page, _col_pat, _undo, _snap) {
+    scr_sound_editor_commit_cell(_m, _undo, _snap, _col_pat);
+    _m.sid_page = clamp(_page, 0, scr_music_sid_count(_m) - 1);
+    _m.cmd_entry_str = "";
+    _m.sel_anchor_voice = _m.sel_voice;
+    _m.sel_anchor_step = _m.sel_step;
+}
+
+function scr_music_sid_find_uid(_uid) {
+    var _found = noone;
+    with (obj_c64_node) if (stable_uid == _uid) { _found = id; break; }
+    return _found;
+}
+function scr_music_sid_code(_text, _x, _y, _parent) {
+    var _n = scr_node_spawn("MACRO_CODE", _x, _y);
+    _n.instructions = [["code_block", _text]];
+    _n.is_connected = true;
+    _n.org_parent = _parent;
+    _n.height_dirty = true;
+    with (_n) event_user(0);
+    return _n;
+}
+function scr_music_sid_label(_name, _x, _y, _parent) {
+    var _n = scr_node_spawn("LABEL", _x, _y);
+    _n.instructions = [["label", _name]];
+    _n.is_connected = true;
+    _n.org_parent = _parent;
+    return _n;
+}
+/// Reserve free RAM for the generated player rather than choosing a fixed ORG.
+function scr_music_sid_free_ram(_size, _ignore_org) {
+    scr_build_memory_bar_cache();
+    for (var _addr = 0x1000; _addr + _size <= 0xD000; _addr += 0x100) {
+        var _free = true;
+        for (var _i = 0; _i < array_length(global.memory_bar_segments); _i++) {
+            var _seg = global.memory_bar_segments[_i];
+            if (instance_exists(_ignore_org) && instance_exists(_seg.node_id)
+                && (_seg.node_id == _ignore_org || _seg.node_id.org_parent == _ignore_org)) continue;
+            if (_seg.type == "CODE" && _seg.no_conflict) continue;
+            // Leave room for inserted calls on existing code chains.
+            if (_addr < _seg.addr + _seg.size + 32 && _addr + _size > _seg.addr) { _free = false; break; }
+        }
+        if (_free) return _addr;
+    }
+    return -1;
+}
+/// Generate concrete, editable nodes. Stable IDs survive workspace save/load.
+function scr_music_sid_generate(_asset) {
+    var _m = _asset.meta;
+    var _existing = variable_struct_exists(_m, "music_nodes") ? _m.music_nodes : undefined;
+    var _org = noone;
+    var _macro = noone;
+    if (is_struct(_existing)) {
+        _org = scr_music_sid_find_uid(_existing.org);
+        _macro = scr_music_sid_find_uid(_existing.macro);
+        for (var _u = 0; _u < array_length(_existing.nodes); _u++) {
+            if (!instance_exists(scr_music_sid_find_uid(_existing.nodes[_u]))) {
+                scr_show_message("MUSIC MAKER: A GENERATED NODE WAS DELETED.\nUNDO THAT DELETION BEFORE GENERATING AGAIN; EXISTING CALLS WERE LEFT IN PLACE.");
+                return false;
+            }
+        }
+    }
+    // Size the complete player with its note table, conservatively even if
+    // another macro already emits that table. Restore the compiler's flag.
+    var _was_nt = variable_global_exists("sidsong_notetab_emitted") ? global.sidsong_notetab_emitted : false;
+    global.sidsong_notetab_emitted = false;
+    var _dry = [];
+    var _ok = scr_sid_song_build(_dry, { stable_uid: "sizecheck" }, _asset, _asset.name, 1, 3, 2, 0xD400, false);
+    global.sidsong_notetab_emitted = _was_nt;
+    if (!_ok) return false;
+    var _bytes = 64;
+    for (var _d = 0; _d < array_length(_dry); _d++) {
+        var _mn = _dry[_d][0];
+        if (_mn == "byte" || _mn == "byte_lab_lo" || _mn == "byte_lab_hi") _bytes += 1;
+        else if (_mn != "label") _bytes += obj_opCodeManager.get_size(_mn);
+    }
+    var _addr = scr_music_sid_free_ram(_bytes, _org);
+    if (_addr < 0) {
+        scr_show_message("MUSIC MAKER: NO FREE CONTIGUOUS RAM FOR " + string(_bytes) + " BYTES.\nFREE SOME SPACE OR REDUCE THE CHIP COUNT. NO NODES WERE ADDED.");
+        return false;
+    }
+    if (instance_exists(_org) && instance_exists(_macro)) {
+        _org.proxy_address = _addr;
+        _org.pc_address = _addr;
+        _macro.instructions[0][1] = _asset.name;
+        global.addresses_dirty = true;
+        global.undo_dirty = true;
+        _m.warn_msg = "UPDATED MUSIC NODES (EXISTING CALLS REUSED)";
+        _m.warn_timer = game_get_speed(gamespeed_fps) * 4;
+        return true;
+    }
+    var _init = noone;
+    var _main = [];
+    var _chains = [];
+    var _all_labels = [];
+    with (obj_c64_node) {
+        if (node_type == "INIT") _init = id;
+        if (is_connected && org_parent == noone && node_type != "ORG") array_push(_main, id);
+        if (is_connected && node_type != "ORG") array_push(_chains, id);
+        if (node_type == "LABEL") array_push(_all_labels, string(instructions[0][1]));
+    }
+    if (!instance_exists(_init)) return false;
+    array_sort(_main, function(_a, _b) { return _a.y - _b.y; });
+    array_sort(_chains, function(_a, _b) { return _a.y - _b.y; });
+    // A reusable loop must have a visible backward JMP and a VWAIT inside it.
+    var _loop_label = noone;
+    var _wait = noone;
+    for (var _i = 0; _i < array_length(_chains); _i++) {
+        var _node = _chains[_i];
+        var _target = "";
+        for (var _j = 0; _j < array_length(_node.instructions); _j++) {
+            var _ins = _node.instructions[_j];
+            if (_ins[0] == "jmp_abs") _target = string(_ins[1]);
+        }
+        // Also recognise a code block whose last source line is JMP label.
+        if (_node.node_type == "MACRO_CODE") {
+            var _lines = string_split(string_replace_all(_node.instructions[0][1], "\r", ""), "\n");
+            for (var _l = array_length(_lines) - 1; _l >= 0; _l--) {
+                var _line = string_trim(_lines[_l]);
+                if (_line == "") continue;
+                if (string_upper(string_copy(_line, 1, 4)) == "JMP ") _target = string_trim(string_delete(_line, 1, 4));
+                break;
+            }
+        }
+        if (_target == "") continue;
+        for (var _l = 0; _l < _i; _l++) {
+            if (_chains[_l].org_parent != _node.org_parent || _chains[_l].node_type != "LABEL" || string(_chains[_l].instructions[0][1]) != _target) continue;
+            for (var _w = _l + 1; _w < _i; _w++) {
+                if (_chains[_w].org_parent == _node.org_parent && _chains[_w].node_type == "MACRO_VWAIT") { _loop_label = _chains[_l]; _wait = _chains[_w]; break; }
+            }
+        }
+        if (instance_exists(_wait)) break;
+    }
+    // Without a recognised loop, do not hide existing terminal jumps inside
+    // another loop or silently bypass an existing program.
+    if (!instance_exists(_wait)) {
+        for (var _i = 0; _i < array_length(_main); _i++) {
+            var _node = _main[_i];
+            for (var _j = 0; _j < array_length(_node.instructions); _j++) {
+                var _terminal = (_node.instructions[_j][0] == "jmp_abs" || _node.instructions[_j][0] == "rts" || _node.instructions[_j][0] == "rti");
+                if (_node.node_type == "MACRO_CODE") {
+                    var _code_lines = string_split(string_upper(_node.instructions[0][1]), "\n");
+                    for (var _ci = 0; _ci < array_length(_code_lines); _ci++) {
+                        var _cl = string_trim(_code_lines[_ci]);
+                        if (string_copy(_cl, 1, 4) == "JMP " || _cl == "RTS" || _cl == "RTI") _terminal = true;
+                    }
+                }
+                if (_terminal) {
+                    scr_show_message("MUSIC MAKER: EXISTING MAIN FLOW NEEDS A VISIBLE LABEL / VWAIT / JMP LOOP.\nNO NODES ADDED: THIS AVOIDS BYPASSING YOUR EXISTING CODE.");
+                    return false;
+                }
+            }
+        }
+    }
+    var _suffix = "";
+    var _number = 1;
+    var _clash = true;
+    while (_clash) {
+        _clash = false;
+        for (var _l = 0; _l < array_length(_all_labels); _l++) {
+            var _label = string_upper(_all_labels[_l]);
+            if (_label == "MUSICMAKER_SETUP" + _suffix || _label == "MUSICMAKER_PLAY" + _suffix || _label == "CORE_LOOP" + _suffix) _clash = true;
+        }
+        if (_clash) { _number += 1; _suffix = "_" + string(_number); }
+    }
+    if (global.undo_dirty) { scr_c64_do_update_addresses(); scr_undo_snapshot(); global.undo_dirty = false; }
+    var _made = [];
+    var _x = _init.x + global.node_display_width + 120;
+    with (obj_c64_node) if (node_type == "ORG") _x = max(_x, x + global.node_display_width + 120);
+    _org = scr_spawn_org_node(_x, _init.y);
+    _org.proxy = false;
+    _org.proxy_address = _addr;
+    _org.pc_address = _addr;
+    _org.node_title = "MUSIC MAKER";
+    array_push(_made, _org.stable_uid);
+    var _setup_name = "MUSICMAKER_SETUP" + _suffix;
+    var _play_name = "MUSICMAKER_PLAY" + _suffix;
+    var _n = scr_music_sid_label(_setup_name, _x, _init.y + 100, _org);
+    array_push(_made, _n.stable_uid);
+    _macro = scr_node_spawn("MACRO_SID_SONG", _x, _init.y + 180);
+    _macro.instructions = [["macro_sid_song", _asset.name, 1, 3, 2, 0]];
+    with (_macro) event_user(0);
+    _macro.org_parent = _org;
+    _macro.is_connected = true;
+    array_push(_made, _macro.stable_uid);
+    _n = scr_music_sid_code("RTS", _x, _init.y + 400, _org);
+    array_push(_made, _n.stable_uid);
+    _n = scr_music_sid_label(_play_name, _x, _init.y + 500, _org);
+    array_push(_made, _n.stable_uid);
+    _n = scr_music_sid_code("JSR sng" + string(_macro.stable_uid) + "_play\nRTS", _x, _init.y + 580, _org);
+    array_push(_made, _n.stable_uid);
+    if (instance_exists(_wait)) {
+        // Insert setup above the backward-jump target; it runs once only.
+        // ORG loops are entered via a jump from the main spine. Setup belongs
+        // on that spine, not inside the repeatedly entered ORG.
+        var _setup_y = (_wait.org_parent == noone) ? _loop_label.y : _init.y + _init.height + 1;
+        with (obj_c64_node) if (is_connected && org_parent == noone && node_type != "ORG" && y >= _setup_y) y += 120;
+        _n = scr_music_sid_code("JSR " + _setup_name, _init.x, _setup_y, noone);
+        array_push(_made, _n.stable_uid);
+        var _play_y = _wait.y;
+        var _loop_parent = _wait.org_parent;
+        with (obj_c64_node) if (is_connected && org_parent == _loop_parent && node_type != "ORG" && y >= _play_y) y += 120;
+        _n = scr_music_sid_code("JSR " + _play_name, _wait.x, _play_y, _loop_parent);
+        array_push(_made, _n.stable_uid);
+    } else {
+        var _core = scr_spawn_org_node(_x + global.node_display_width + 120, _init.y);
+        _core.proxy = false;
+        _core.proxy_address = _addr + _bytes - 32;
+        _core.pc_address = _core.proxy_address;
+        _core.node_title = "CORE LOOP";
+        array_push(_made, _core.stable_uid);
+        _n = scr_music_sid_label("CORE_LOOP" + _suffix, _core.x, _core.y + 100, _core);
+        array_push(_made, _n.stable_uid);
+        _n = scr_music_sid_code("JSR " + _play_name, _core.x, _core.y + 180, _core);
+        array_push(_made, _n.stable_uid);
+        _n = scr_node_spawn("MACRO_VWAIT", _core.x, _core.y + 280);
+        _n.org_parent = _core; _n.is_connected = true;
+        array_push(_made, _n.stable_uid);
+        _n = scr_music_sid_code("JMP CORE_LOOP" + _suffix, _core.x, _core.y + 400, _core);
+        array_push(_made, _n.stable_uid);
+        var _bottom = _init.y + _init.height;
+        for (var _i = 0; _i < array_length(_main); _i++) _bottom = max(_bottom, _main[_i].y + _main[_i].height);
+        _n = scr_music_sid_code("JSR " + _setup_name + "\nJMP CORE_LOOP" + _suffix, _init.x, _bottom + 20, noone);
+        array_push(_made, _n.stable_uid);
+    }
+    _m.music_nodes = { org: _org.stable_uid, macro: _macro.stable_uid, nodes: _made };
+    global.addresses_dirty = true;
+    global.undo_dirty = true;
+    global.autosave_dirty = true;
+    obj_workspace_manager.flow_overlay_dirty = true;
+    _m.warn_msg = instance_exists(_wait) ? "MUSIC NODES ADDED TO EXISTING VWAIT LOOP" : "MUSIC NODES AND CORE LOOP CREATED";
+    _m.warn_timer = game_get_speed(gamespeed_fps) * 5;
+    return true;
+}

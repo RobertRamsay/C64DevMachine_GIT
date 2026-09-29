@@ -8,3 +8,8 @@ macOS (run on the Mac, universal):
 
 Exclude resid/version.cpp and resid-fp/versionfp.cpp if the linker reports duplicates.
 reSID / reSID-fp are GPL v2 (see COPYING).
+
+Version 3 provides nine independent slots: slot 0 for auditions and slots 1-8 for song playback.
+Windows DLL can also be built with Zig 0.13.0 c++ using:
+  zig c++ -target x86_64-windows-gnu -O2 -w -shared -static -std=c++11 -D_USE_MATH_DEFINES -o sid64.dll sid64.cpp <resid and resid-fp .cpp files, excluding version.cpp and versionfp.cpp>
+Rebuild the GameMaker game after replacing the extension DLL.

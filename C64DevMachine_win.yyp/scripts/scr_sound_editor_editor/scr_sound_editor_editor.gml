@@ -98,6 +98,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     // THE selected song. Everything below reads _cur_song.order directly —
     // there is no _m.song_order, deliberately (see scr_sound_editor_create).
     var _cur_song = _m.songs[_m.sel_song];
+    if (!variable_struct_exists(_m, "sid_page")) _m.sid_page = 0;
+    _m.sid_page = clamp(_m.sid_page, 0, scr_music_sid_count(_m) - 1);
+    var _voice_offset = _m.sid_page * 3;
+    var _page_keys = ["v" + string(_voice_offset + 1), "v" + string(_voice_offset + 2), "v" + string(_voice_offset + 3)];
 
     if (!variable_struct_exists(_m, "sel_order_row")) _m.sel_order_row = 0;
     _m.sel_order_row = clamp(_m.sel_order_row, 0, array_length(_cur_song.order) - 1);
@@ -243,6 +247,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     // Moves the cursor (and the order row / scroll it needs) to an undo entry's
     // location, dropping any selection or half-typed command.
     var _se_undo_goto = function(_mm, _ent, _visrows) {
+        if (variable_struct_exists(_ent, "chip")) _mm.sid_page = clamp(_ent.chip, 0, scr_music_sid_count(_mm) - 1);
         _mm.sel_order_row = _ent.ord;
         _mm.sel_voice     = _ent.voice;
         _mm.sel_step      = _ent.step;
@@ -261,6 +266,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             voice : _mm.sel_voice,
             step  : _mm.sel_step,
             sub   : _mm.sel_sub,
+            chip  : _mm.sid_page,
             ord   : _mm.sel_order_row
         });
         if (array_length(_mm.undo_stack) > 50) {
@@ -276,7 +282,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
 
     // ── RESOLVE THE 3 ACTIVE PATTERNS FOR THE CURRENT ORDER ROW ──
     var _order_row = _cur_song.order[_m.sel_order_row];
-    var _col_pat_idx = [_order_row.v1, _order_row.v2, _order_row.v3];
+    var _col_pat_idx = [scr_music_sid_pattern(_order_row, _voice_offset), scr_music_sid_pattern(_order_row, _voice_offset + 1), scr_music_sid_pattern(_order_row, _voice_offset + 2)];
     var _col_pat = [noone, noone, noone];
     for (var _cpi = 0; _cpi < 3; _cpi++) {
         if (_col_pat_idx[_cpi] >= 0 && _col_pat_idx[_cpi] < array_length(_m.patterns)) {
@@ -295,24 +301,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         }
     }
 
-    var _se_row_target_len = function(_mm, _row) {
-        // FORCE overrides outright when set — it's a hard row length, not a
-        // minimum. Without it, the target is the longest pattern present.
-        if (_row.force_len > 0) {
-            return _row.force_len;
-        }
-        var _r_len = 0;
-        var _voices = [_row.v1, _row.v2, _row.v3];
-        for (var _vi = 0; _vi < 3; _vi++) {
-            if (_voices[_vi] >= 0 && _voices[_vi] < array_length(_mm.patterns)) {
-                _r_len = max(_r_len, _mm.patterns[_voices[_vi]].pattern_len);
-            }
-        }
-        if (_r_len <= 0) {
-            _r_len = 64;
-        }
-        return _r_len;
-    };
+    var _se_row_target_len = function(_mm, _row) { return scr_music_sid_length(_mm, _row); };
 
     // ── LAYOUT ──
     var _txt_scale = 2;
@@ -335,9 +324,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_text_l(_vx1+540,_transport_y+5,"VOICES:");
     for(var _mv=0;_mv<3;_mv++) {
         var _bit=1<<_mv;
-        if(scr_sfx_maker_button(_vx1+620+_mv*100,_transport_y,90,string(_mv+1)+((_m.voice_mask&_bit)?" ON":" OFF"),_mx,_my)) {
-            _m.voice_mask=_m.voice_mask^_bit;
-            if(!(_m.voice_mask&_bit)) scr_sound_preview_free_channel(_mv);
+        if(scr_sfx_maker_button(_vx1+620+_mv*100,_transport_y,90,string(_voice_offset+_mv+1)+((scr_music_sid_mask(_m, _m.sid_page)&_bit)?" ON":" OFF"),_mx,_my)) {
+            var _mask_key = (_m.sid_page == 0) ? "voice_mask" : "sid_mask_" + string(_m.sid_page);
+            _m[$ _mask_key] = scr_music_sid_mask(_m, _m.sid_page) ^ _bit;
+            if (!(_m[$ _mask_key] & _bit)) scr_sound_preview_free_channel(_mv);
             global.addresses_dirty=true;global.undo_dirty=true;
         }
     }
@@ -713,11 +703,12 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _bdx1 = _bax2 + 8;
     var _bdx2 = _bdx1 + 90;
     var _bd_referenced = false;
-    for (var _bri = 0; _bri < array_length(_cur_song.order); _bri++) {
-        var _br = _cur_song.order[_bri];
-        if (_br.v1 == _m.bank_sel_pattern || _br.v2 == _m.bank_sel_pattern || _br.v3 == _m.bank_sel_pattern) {
-            _bd_referenced = true;
-            break;
+    for (var _song_i = 0; _song_i < array_length(_m.songs); _song_i++) {
+        for (var _bri = 0; _bri < array_length(_m.songs[_song_i].order); _bri++) {
+            var _br = _m.songs[_song_i].order[_bri];
+            for (var _vref = 0; _vref < 24; _vref++) {
+                if (scr_music_sid_pattern(_br, _vref) == _m.bank_sel_pattern) _bd_referenced = true;
+            }
         }
     }
     var _bd_lock = (array_length(_m.patterns) <= 1) || _bd_referenced;
@@ -729,6 +720,15 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_text_l((_bdx1 + _bdx2) * 0.5, _rowy + 4, "DEL");
     draw_set_halign(fa_left);
     if (_bd_hov && mouse_check_button_pressed(mb_left)) {
+        for (var _ds = 0; _ds < array_length(_m.songs); _ds++) {
+            for (var _dr = 0; _dr < array_length(_m.songs[_ds].order); _dr++) {
+                var _drow = _m.songs[_ds].order[_dr];
+                for (var _dv = 0; _dv < 24; _dv++) {
+                    var _dpi = scr_music_sid_pattern(_drow, _dv);
+                    if (_dpi > _m.bank_sel_pattern) _drow[$ "v" + string(_dv + 1)] = _dpi - 1;
+                }
+            }
+        }
         array_delete(_m.patterns, _m.bank_sel_pattern, 1);
         _m.bank_sel_pattern = clamp(_m.bank_sel_pattern, 0, array_length(_m.patterns) - 1);
         global.undo_dirty      = true;
@@ -832,13 +832,41 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_text_l(_tp_ux2 + 12, _rowy + 6, L("FRAMES/ROW  (~") + string(_tp_bpm) + " BPM @ 4 ROWS/BEAT)");
     draw_set_font_l(fnt_c64_tiny);
 
-    _rowy += 24;
+    _rowy += 26;
+    var _sid_count = scr_music_sid_count(_m);
+    if (scr_sfx_maker_button(_vx1 + 20, _rowy, 32, "-", _mx, _my) && _sid_count > 1) {
+        scr_sound_editor_transport(_m, _cur_song, "STOP");
+        scr_music_sid_page(_m, min(_m.sid_page, _sid_count - 2), _col_pat, _se_push_undo, _se_snap);
+        _m.sid_count = _sid_count - 1;
+        global.undo_dirty = true; global.addresses_dirty = true;
+    }
+    draw_text_l(_vx1 + 62, _rowy + 6, string(_sid_count) + " SIDS / " + string(_sid_count * 3) + " VOICES");
+    if (scr_sfx_maker_button(_vx1 + 260, _rowy, 32, "+", _mx, _my) && _sid_count < 8) {
+        scr_sound_editor_transport(_m, _cur_song, "STOP");
+        _m.sid_count = _sid_count + 1;
+        global.undo_dirty = true; global.addresses_dirty = true;
+    }
+    if (scr_sfx_maker_button(_vx1 + 310, _rowy, 38, "<<", _mx, _my))
+        scr_music_sid_page(_m, _m.sid_page - 1, _col_pat, _se_push_undo, _se_snap);
+    draw_text_l(_vx1 + 360, _rowy + 6, "SID " + string(_voice_offset div 3 + 1) + "  $" + string_upper(decimal_to_hex(0xD400 + (_voice_offset div 3) * 0x20)));
+    if (scr_sfx_maker_button(_vx1 + 525, _rowy, 38, ">>", _mx, _my))
+        scr_music_sid_page(_m, _m.sid_page + 1, _col_pat, _se_push_undo, _se_snap);
+    if (scr_sfx_maker_button(_vx1 + 590, _rowy, 150, "GENERATE NODES", _mx, _my)) {
+        scr_sound_editor_commit_cell(_m, _se_push_undo, _se_snap, _col_pat);
+        if (_m.instr_edit_active && _m.sel_instr >= 0) scr_sound_editor_commit_instrument(_m, _m.instruments[_m.sel_instr]);
+        scr_music_sid_generate(_asset);
+    }
+    draw_set_font_l(fnt_c64_pico);
+    draw_text_l(_vx1 + 755, _rowy + 7, "ULTIMATE: MAP SIDS AT $D400 + $20 EACH. REDUCING COUNT KEEPS HIDDEN LANES.");
+    draw_set_font_l(fnt_c64_tiny);
+    _rowy += 28;
 
     // ═════════════════════════════════════════════════════════════════════
     // LEFT PANEL — PATTERN GRID (3 columns = whatever the selected order
     // row's v1/v2/v3 currently point at)
     // ═════════════════════════════════════════════════════════════════════
     var _gy0 = _rowy + 44;
+    _vis = max(1, min(16, floor((_vy2 - _gy0 - 68) / _row_h)));
     var _gx0 = _vx1 + 20;
 
     var _col_gutter_x = _gx0;
@@ -854,7 +882,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     for (var _lh = 0; _lh < 3; _lh++) {
         draw_set_color(_lane_colours[_lh]);
         draw_set_halign(fa_center);
-		        var _lh_label = "V O I C E  " + string(_lh + 1);
+		        var _lh_label = "V O I C E  " + string(_voice_offset + _lh + 1);
 				
         draw_text_transformed_l(_col_x[_lh] + (_lane_w * 0.5), _gy0 - 20, _lh_label, _txt_scale, _txt_scale, 0);
         draw_set_halign(fa_left);
@@ -1380,7 +1408,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 var _un_top = array_length(_m.undo_stack) - 1;
                 var _un = _m.undo_stack[_un_top];
                 array_delete(_m.undo_stack, _un_top, 1);
-                array_push(_m.redo_stack, { pats: _se_snap(_m), voice: _un.voice, step: _un.step, sub: _un.sub, ord: _un.ord });
+                array_push(_m.redo_stack, { pats: _se_snap(_m), voice: _un.voice, step: _un.step, sub: _un.sub, ord: _un.ord, chip: variable_struct_exists(_un, "chip") ? _un.chip : 0 });
                 _m.patterns = _un.pats;
                 _se_undo_goto(_m, _un, _vis);
                 _m.bank_sel_pattern = clamp(_m.bank_sel_pattern, 0, array_length(_m.patterns) - 1);
@@ -1399,7 +1427,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 var _re_top = array_length(_m.redo_stack) - 1;
                 var _re = _m.redo_stack[_re_top];
                 array_delete(_m.redo_stack, _re_top, 1);
-                array_push(_m.undo_stack, { pats: _se_snap(_m), voice: _re.voice, step: _re.step, sub: _re.sub, ord: _re.ord });
+                array_push(_m.undo_stack, { pats: _se_snap(_m), voice: _re.voice, step: _re.step, sub: _re.sub, ord: _re.ord, chip: variable_struct_exists(_re, "chip") ? _re.chip : 0 });
                 _m.patterns = _re.pats;
                 _se_undo_goto(_m, _re, _vis);
                 _m.bank_sel_pattern = clamp(_m.bank_sel_pattern, 0, array_length(_m.patterns) - 1);
@@ -1867,9 +1895,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 var _cr_song = _m.songs[_crs];
                 for (var _cro = 0; _cro < array_length(_cr_song.order); _cro++) {
                     var _cr_row = _cr_song.order[_cro];
-                    if (_cr_row.v1 == _col_pat_idx[_cli]) { _cl_refs += 1; }
-                    if (_cr_row.v2 == _col_pat_idx[_cli]) { _cl_refs += 1; }
-                    if (_cr_row.v3 == _col_pat_idx[_cli]) { _cl_refs += 1; }
+                    for (var _refv = 0; _refv < 24; _refv++) {
+                        if (scr_music_sid_pattern(_cr_row, _refv) == _col_pat_idx[_cli]) _cl_refs += 1;
+                    }
                 }
             }
 
@@ -2066,7 +2094,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_color(make_color_rgb(255, 200, 100));
     draw_text_l(_ox0, _oy0 - 34, "SONG ORDER");
 
-    var _ord_hdr = ["#", "V1", "V2", "V3", " REPEAT", " SIZE"];
+    var _ord_hdr = ["#", "V" + string(_voice_offset + 1), "V" + string(_voice_offset + 2), "V" + string(_voice_offset + 3), " REPEAT", " SIZE"];
     for (var _ohi = 0; _ohi < array_length(_ord_hdr); _ohi++) {
         draw_set_color(make_color_rgb(120, 120, 160));
         draw_set_halign(fa_center);
@@ -2117,13 +2145,13 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         draw_text_l(_ord_x[0] + (_ord_col_w[0] * 0.5), _ory + 6, string(_ord_i));
         draw_set_halign(fa_left);
 
-        var _voice_keys = ["v1", "v2", "v3"];
+        var _voice_keys = _page_keys;
         var _voice_colours = [make_color_rgb(120, 220, 255), make_color_rgb(255, 200, 120), make_color_rgb(180, 255, 150)];
         for (var _ovi = 0; _ovi < 3; _ovi++) {
             var _ocx = _ord_x[1 + _ovi];
             var _ocw = _ord_col_w[1 + _ovi];
             var _oc_hov = point_in_rectangle(_mx, _my, _ocx, _ory, _ocx + _ocw, _ory + _ord_row_h);
-            var _oc_val = _orow[$ _voice_keys[_ovi]];
+            var _oc_val = scr_music_sid_pattern(_orow, _voice_offset + _ovi);
 
             draw_set_halign(fa_center);
             if (_oc_val < 0) {

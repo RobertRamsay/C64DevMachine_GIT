@@ -11,10 +11,10 @@
 #define EXPORT extern "C" __attribute__((visibility("default")))
 #endif
 
-// Two independent chips ("slots"): 0 renders note auditions, 1 streams song
+// Nine independent chips ("slots"): 0 renders note auditions, 1-8 stream song
 // playback, so pressing a key mid-song never resets the song's chip.
 // sid64_select picks the slot every other call works on.
-#define SID64_SLOTS 2
+#define SID64_SLOTS 9
 static SID   *g_sid_s[SID64_SLOTS];
 static SIDFP *g_sidfp_s[SID64_SLOTS];
 static unsigned char g_regs_s[SID64_SLOTS][32];
@@ -180,7 +180,7 @@ EXPORT double sid64_read(double reg) {
 // Output gain applied to every rendered sample (1.0 = reSID's native level).
 EXPORT double sid64_set_gain(double gain) { g_gain = gain; return 1; }
 
-// Select the chip slot (0 or 1) that every following call works on.
+// Select the chip slot (0 for auditions, 1-8 for song chips).
 EXPORT double sid64_select(double slot) {
   int s = (int)slot;
   if (s < 0 || s >= SID64_SLOTS) return 0;
@@ -188,4 +188,4 @@ EXPORT double sid64_select(double slot) {
   return 1;
 }
 
-EXPORT double sid64_version() { return 2.0; }
+EXPORT double sid64_version() { return 3.0; }

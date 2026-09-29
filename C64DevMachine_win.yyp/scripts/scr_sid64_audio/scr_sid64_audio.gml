@@ -51,7 +51,7 @@ function scr_sid64_start() {
 }
 
 function scr_sid64_init_slots() {
-    for (var _s = 1; _s >= 0; _s--) {
+    for (var _s = ((sid64_version() >= 3) ? 8 : 1); _s >= 0; _s--) {
         sid64_select(_s);
         sid64_init(SID64_PAL_CLOCK, SID64_RATE, global.sid64_model, global.sid64_engine);
         sid64_set_gain(0.6);
@@ -187,7 +187,27 @@ function scr_sid64_stream_start(_m, _song, _loop_row, _ord, _row) {
     with (obj_asset_manager) scr_sid_asset_stop();
     scr_sid64_stream_stop();
     var _st = global.sid64_stream;
-    _st.sim = scr_sid64_sim_create(_m, _song, _loop_row, _ord, _row);
+    var _count = scr_music_sid_count(_m);
+    if (_count > 1 && sid64_version() < 3) {
+        _m.playing = false;
+        _m.song_playing = false;
+        _m.warn_msg = "MULTI-SID PREVIEW NEEDS THE UPDATED SID64 EXTENSION";
+        _m.warn_timer = game_get_speed(gamespeed_fps) * 5;
+        return;
+    }
+    _st.sims = [];
+    _st.shared_clock = { next: _m.play_speed };
+    for (var _c = 0; _c < _count; _c++) {
+        var _sim = scr_sid64_sim_create(_m, _song, _loop_row, _ord, _row);
+        _sim.chip = _c;
+        _sim.shared_clock = _st.shared_clock;
+        array_push(_st.sims, _sim);
+        sid64_select(_c + 1);
+        sid64_reset();
+        sid64_settle(0x0F, 100);
+    }
+    _st.sim = _st.sims[0];
+    _st.mix_buf = buffer_create(_st.ring_samples * 2, buffer_fixed, 1);
     _st.frames_rendered = 0;
     _st.finished_at = -1;
     _st.ring_i = 0;
@@ -219,26 +239,48 @@ function scr_sid64_stream_stop() {
     }
     _st.active = false;
     _st.sim = undefined;
+    if (variable_struct_exists(_st, "mix_buf") && buffer_exists(_st.mix_buf)) buffer_delete(_st.mix_buf);
+    _st.mix_buf = -1;
+    _st.sims = [];
 }
 
 /// Runs SID64_CHUNK_FRAMES frames of the sim, renders them and queues the audio.
 function scr_sid64_stream_chunk() {
     var _st = global.sid64_stream;
     var _fb = global.sid64_frame_buf;
+    var _buf = _st.ring[_st.ring_i];
+    _st.ring_i = (_st.ring_i + 1) mod SID64_RING;
+    buffer_fill(_buf, 0, buffer_s16, 0, _st.ring_samples * 2);
+    var _count = array_length(_st.sims);
+    // Advance ALL chips before rendering the next frame: FXX shares one clock.
+    var _logs = [];
+    for (var _c = 0; _c < _count; _c++) array_push(_logs, buffer_create(SID64_CHUNK_FRAMES * 32, buffer_fixed, 1));
     for (var _i = 0; _i < SID64_CHUNK_FRAMES; _i++) {
-        scr_sid64_sim_frame(_st.sim);
-        scr_sid64_sim_put(_st.sim, _fb, _i);
+        var _tempo = _st.shared_clock.next;
+        for (var _c = 0; _c < _count; _c++) {
+            _st.sims[_c].spd = _tempo;
+            scr_sid64_sim_frame(_st.sims[_c]);
+            scr_sid64_sim_put(_st.sims[_c], _logs[_c], _i);
+        }
         var _pi = (_st.frames_rendered + _i) mod SID64_POS_RING;
         _st.pos_ord[_pi] = _st.sim.shown_ord;
         _st.pos_row[_pi] = _st.sim.shown_row;
-        if (_st.sim.finished && _st.finished_at < 0) {
-            _st.finished_at = _st.frames_rendered + _i;
-        }
+        if (_st.sim.finished && _st.finished_at < 0) _st.finished_at = _st.frames_rendered + _i;
     }
-    var _buf = _st.ring[_st.ring_i];
-    _st.ring_i = (_st.ring_i + 1) mod SID64_RING;
-    sid64_select(1);
-    var _got = sid64_render_log(buffer_get_address(_fb), SID64_CHUNK_FRAMES, buffer_get_address(_buf), _st.ring_samples);
+    var _got = 0;
+    for (var _c = 0; _c < _count; _c++) {
+        sid64_select(_c + 1);
+        var _samples = sid64_render_log(buffer_get_address(_logs[_c]), SID64_CHUNK_FRAMES,
+                                       buffer_get_address(_st.mix_buf), _st.ring_samples);
+        if (_c == 0) _got = _samples;
+        else _got = min(_got, _samples);
+        for (var _p = 0; _p < _samples; _p++) {
+            var _sum = buffer_peek(_buf, _p * 2, buffer_s16)
+                + round(buffer_peek(_st.mix_buf, _p * 2, buffer_s16) / _count);
+            buffer_poke(_buf, _p * 2, buffer_s16, clamp(_sum, -32768, 32767));
+        }
+        buffer_delete(_logs[_c]);
+    }
     sid64_select(0);
     _st.frames_rendered += SID64_CHUNK_FRAMES;
     if (_got > 0) {

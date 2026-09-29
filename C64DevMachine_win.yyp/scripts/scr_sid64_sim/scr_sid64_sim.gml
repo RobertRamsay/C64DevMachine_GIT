@@ -54,6 +54,7 @@ function scr_sid64_sim_create(_m, _song, _loop_row, _ord, _row) {
         _speed = clamp(real(_m.play_speed), 1, 255);
     }
     var _sim = {
+        chip      : 0,
         m         : _m,
         song      : _song,
         loop_row  : _loop_row,
@@ -110,35 +111,13 @@ function scr_sid64_sim_voice_on(_sim, _v) {
     if (!is_struct(_sim.m)) {
         return true;
     }
-    var _vm = _sim.m[$ "voice_mask"];
-    if (is_undefined(_vm)) {
-        return true;
-    }
-    return ((real(_vm) & (1 << _v)) != 0);
+    return ((scr_music_sid_mask(_sim.m, _sim.chip) & (1 << _v)) != 0);
 }
 
 /// The compiled player's per-order-row length: longest enabled voice's
 /// pattern, or the row's forced length; 64 when nothing is assigned.
 function scr_sid64_sim_row_len(_sim, _orow) {
-    var _target = 0;
-    var _pv = [_orow.v1, _orow.v2, _orow.v3];
-    for (var _v = 0; _v < 3; _v++) {
-        if (!scr_sid64_sim_voice_on(_sim, _v)) {
-            continue;
-        }
-        var _pi = real(_pv[_v]);
-        if (_pi >= 0 && _pi < array_length(_sim.m.patterns)) {
-            _target = max(_target, clamp(real(_sim.m.patterns[_pi].pattern_len), 1, 255));
-        }
-    }
-    var _force = _orow[$ "force_len"];
-    if (!is_undefined(_force) && real(_force) > 0) {
-        _target = real(_force);
-    }
-    if (_target <= 0) {
-        _target = 64;
-    }
-    return clamp(_target, 1, 255);
+    return scr_music_sid_length(_sim.m, _orow);
 }
 
 /// Instrument byte → struct, or undefined for "no instrument".
@@ -315,6 +294,7 @@ function scr_sid64_sim_cmd(_sim, _v, _cmd, _val) {
     }
     if (_cmd == 0x0F && _val != 0) {
         _sim.spd = _val;
+        if (variable_struct_exists(_sim, "shared_clock")) _sim.shared_clock.next = _val;
     }
 }
 
@@ -510,8 +490,7 @@ function scr_sid64_sim_voice_frame(_sim, _v) {
 /// undefined when the voice has nothing this row (no pattern, or a shorter
 /// non-repeating pattern that has ended).
 function scr_sid64_sim_fetch(_sim, _v, _orow) {
-    var _pv = [_orow.v1, _orow.v2, _orow.v3];
-    var _pi = real(_pv[_v]);
+    var _pi = scr_music_sid_pattern(_orow, _sim.chip * 3 + _v);
     if (_pi < 0 || _pi >= array_length(_sim.m.patterns)) {
         return undefined;
     }

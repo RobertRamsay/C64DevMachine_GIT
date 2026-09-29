@@ -116,17 +116,7 @@ function scr_sound_editor_transport(_m, _song, _action) {
         _step_index = 0;
     }
     var _row = _song.order[_order_index];
-    var _length = _row.force_len;
-    if (_length <= 0) {
-        var _voices = [_row.v1, _row.v2, _row.v3];
-        for (var _v = 0; _v < 3; _v++) {
-            var _p = _voices[_v];
-            if (_p >= 0 && _p < array_length(_m.patterns)) {
-                _length = max(_length, _m.patterns[_p].pattern_len);
-            }
-        }
-    }
-    if (_length <= 0) _length = 64;
+    var _length = scr_music_sid_length(_m, _row);
     _step_index = clamp(_step_index, 0, _length - 1);
     _m.preview_display_order = _order_index;
     _m.preview_display_step = _step_index;
@@ -141,6 +131,13 @@ function scr_sound_editor_transport(_m, _song, _action) {
     if (global.sid64_ok) {
         // reSID: the player simulation streams the audio, nothing to pre-render.
         scr_sid64_stream_start(_m, _song, _m.playing, _order_index, _step_index);
+        return;
+    }
+    if (scr_music_sid_count(_m) > 1) {
+        _m.playing = false;
+        _m.song_playing = false;
+        _m.warn_msg = "MULTI-SID PLAYBACK REQUIRES THE SID64 AUDIO EXTENSION";
+        _m.warn_timer = game_get_speed(gamespeed_fps) * 5;
         return;
     }
     scr_sound_editor_preview_prepare(_m, _song, _m.playing);
