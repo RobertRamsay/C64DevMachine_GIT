@@ -30,7 +30,7 @@ editor_layout_refresh_requested = false;
 // MCP is a Pro-only feature; initialize the edition before creating it.
 // MCP_ENABLED (top of this event) is the single switch for the whole feature.
 if (MCP_ENABLED && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
-global.build_date = "September 26th, 2026"; // edit this string for each release
+global.build_date = "September 30th, 2026"; // edit this string for each release
 
 // sid64 (reSID) preview audio — see scr_sid64_audio. Model/engine changes go
 // through scr_sid64_reconfigure so the preview cache is rebuilt.
@@ -162,13 +162,13 @@ welcome_credits_y      = 0;
 welcome_mode           = 0;      // 0 = welcome / what's new, 1 = guided tour list
 welcome_tour_scroll    = 0;      // first visible row in the tour list
 welcome_whats_new = [
-	"NEW - STARLIGHT UI theme, tidied up other themes added bkg for cyberpunk theme.",
-	"NEW - ROOMS node - for optimised room switching.",
-	"NEW - ANIM SET node - for optimised sprite animtion setting.",
-    "NEW - Templates and Ports with 1 project in each: SHMUP.V and ZYRONS ESCAPE.",
-    "REFINED - REU ORG asset layout improved and preview of the asset when you hover.",
-    "REFINED - MEMORY Bar now can ZOOM into sections via the ALL / SEG / ONE button.",
-	"LITE ACCESS EXPANDED - LITE users can now build with PRO Features present.",
+	"NEW - MUSIC MAKER now using ReSID for more accurate SID Emulation.",
+	"NEW - MUSIC MAKER commands for portaments, vibrato, filter and more.",
+	"NEW - MUSIC MAKER piano roll added per voice or full.",
+    "NEW - MUSIC MAKER filtering added, some other U.I QOL features.",
+    "NEW - SPRITE ANIM SET EDITOR",
+    "REFINED - Assets Panel list more organised",
+	"REFINED - Extras menu is now Macros 2, Macros now Macros 1",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
     "SUPPORT the development by leaving a review on ITCH and buying the PRO version.",
