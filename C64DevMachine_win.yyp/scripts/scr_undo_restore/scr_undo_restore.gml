@@ -439,6 +439,8 @@ with (obj_c64_node) {
     }
 }
 	
+    // Match generated Music Maker ownership to the graph just restored.
+    scr_music_sid_restore_links(_data);
     scr_c64_do_update_addresses();
 
     show_debug_message("UNDO RESTORE: " + _path);
