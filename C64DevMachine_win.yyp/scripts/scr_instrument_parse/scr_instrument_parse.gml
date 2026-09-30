@@ -14,11 +14,17 @@
 ///   ~PITCH      start of a pitch table: S / D / L lines that run alongside
 ///               the program on their own counter (each S is a slide speed)
 ///   ~PULSE      start of a pulse table: Q / D / L lines, the same way
+///   ~PITCH+     / ~PULSE+ : the table KEEPS RUNNING across new notes — a note
+///               (or tie) using the same table carries on from where it was
+///               instead of restarting it. Identical tables are stored once
+///               per song and shared, so instruments can share one vibrato.
 ///
 /// Tables follow the program's implicit END as records of
 /// [frames, speed lo, speed hi]; frames 0 is control: [0, back] jumps back
 /// that many bytes (Ln), [0, 0] stops the table. The program opens with
-/// [$0E, offset] / [$0F, offset] so the player starts each table on trigger.
+/// [$0E, offset] / [$0F, offset] so the player starts each table on trigger
+/// ($10 / $11 for the keep-running forms). The song build turns the offset
+/// into the table's address.
 ///
 /// Steps are variable length, so Ln can't point at a byte directly. The
 /// parser records each step's byte offset in a first pass, then patches the
@@ -57,6 +63,11 @@ function scr_instrument_parse(_text) {
             if (_main_count == array_length(_tokens)) _main_count = _hi;
             var _head = string_upper(_tokens[_hi]);
             var _kind = -1;
+            var _keep = false;
+            if (string_char_at(_head, string_length(_head)) == "+") {
+                _keep = true;
+                _head = string_copy(_head, 1, string_length(_head) - 1);
+            }
             if (_head == "~PITCH") _kind = 0;
             if (_head == "~PULSE") _kind = 1;
             for (var _hk = 0; _hk < array_length(_lane_heads); _hk++) {
@@ -64,13 +75,15 @@ function scr_instrument_parse(_text) {
             }
             if (_kind == -1) array_push(_out.errors, "step " + string(_hi) + ": tables are ~PITCH or ~PULSE");
             if (_kind == -2) array_push(_out.errors, "step " + string(_hi) + ": only one " + _head + " table per instrument");
-            array_push(_lane_heads, { kind: _kind, ti: _hi, arg_pos: -1 });
+            array_push(_lane_heads, { kind: _kind, ti: _hi, arg_pos: -1, keep: _keep });
         }
     }
     // Each table is started once, before step 00, so Ln in the program never restarts it.
     for (var _hk = 0; _hk < array_length(_lane_heads); _hk++) {
         if (_lane_heads[_hk].kind >= 0) {
-            array_push(_out.bytes, 14 + _lane_heads[_hk].kind, 0, 0);
+            var _lane_op = 14 + _lane_heads[_hk].kind;
+            if (_lane_heads[_hk].keep) _lane_op += 2;
+            array_push(_out.bytes, _lane_op, 0, 0);
             _lane_heads[_hk].arg_pos = array_length(_out.bytes) - 2;
             var _hl = _token_lines[_lane_heads[_hk].ti];
             array_push(_out.byte_lines, _hl, _hl, _hl);
@@ -454,7 +467,7 @@ function scr_music_table_pack(_instruments) {
         for (var _p = 0; _p < _main_len;) {
             var _op = _b[_p];
             var _len = scr_music_op_len(_op);
-            if (_op == 3 || _op == 5 || _op == 13 || _op == 14 || _op == 15) {
+            if (_op == 3 || _op == 5 || (_op >= 13 && _op <= 17)) {
                 var _dest = _b[_p + 1];
                 if (_op != 3) _dest += _b[_p + 2] * 256;
                 variable_struct_set(_targets, string(_dest), true);
@@ -491,7 +504,7 @@ function scr_music_table_pack(_instruments) {
                 var _key = "", _size = 0, _ok = true;
                 for (var _j = 0; _j < _n; _j++) {
                     var _o = _ops[_p + _j], _op = _o.bytes[0];
-                    if (_o.raw || _o.call >= 0 || _op == 3 || _op == 4 || _op == 5 || _op == 13 || _op == 14 || _op == 15 || (_j > 0 && _o.target)) { _ok = false; break; }
+                    if (_o.raw || _o.call >= 0 || _op == 3 || _op == 4 || _op == 5 || (_op >= 13 && _op <= 17) || (_j > 0 && _o.target)) { _ok = false; break; }
                     _key += _o.key + ";"; _size += _o.size;
                 }
                 if (!_ok) continue;
@@ -569,19 +582,47 @@ function scr_music_table_pack(_instruments) {
     return _result;
 }
 
-function scr_music_table_emit(_list, _id, _key, _ops) {
+/// _lanes is the song's table registry { count, labels:{content -> label} }:
+/// each distinct ~PITCH / ~PULSE table is emitted once and every start command
+/// points at it by address, so identical tables are shared (and a keep-running
+/// table carries on across instruments that use it).
+function scr_music_table_emit(_list, _id, _key, _ops, _lanes) {
     var _offsets = {}, _offset = 0;
+    var _lane_at = {};
     for (var _i = 0; _i < array_length(_ops); _i++) {
         variable_struct_set(_offsets, string(_ops[_i].pos), _offset);
         _offset += _ops[_i].size;
+        if (_ops[_i].raw) {
+            var _content = "";
+            for (var _j = 0; _j < array_length(_ops[_i].bytes); _j++) _content += string(_ops[_i].bytes[_j]) + ",";
+            var _label = "";
+            var _fresh = false;
+            if (variable_struct_exists(_lanes.labels, _content)) {
+                _label = variable_struct_get(_lanes.labels, _content);
+            } else {
+                _label = _key + "lane" + string(_lanes.count);
+                _lanes.count += 1;
+                variable_struct_set(_lanes.labels, _content, _label);
+                _fresh = true;
+            }
+            variable_struct_set(_lane_at, string(_ops[_i].pos), { label: _label, fresh: _fresh });
+        }
     }
     for (var _i = 0; _i < array_length(_ops); _i++) {
         var _o = _ops[_i], _bytes = _o.bytes;
         if (_o.raw) {
-            for (var _j = 0; _j < array_length(_bytes); _j++) array_push(_list,["byte",_bytes[_j],_id]);
+            var _la = variable_struct_get(_lane_at, string(_o.pos));
+            if (_la.fresh) {
+                array_push(_list, ["label", _la.label]);
+                for (var _j = 0; _j < array_length(_bytes); _j++) array_push(_list,["byte",_bytes[_j],_id]);
+            }
+        } else if (_bytes[0] >= 14 && _bytes[0] <= 17) {
+            // Table start: the operand is the (possibly shared) table's address.
+            var _la = variable_struct_get(_lane_at, string(_bytes[1] + _bytes[2] * 256));
+            array_push(_list, ["byte", _bytes[0], _id], ["byte_lab_lo", _la.label, _id], ["byte_lab_hi", _la.label, _id]);
         } else if (_o.call >= 0) {
             array_push(_list, ["byte",11,_id], ["byte_lab_lo",_key+"table"+string(_o.call),_id], ["byte_lab_hi",_key+"table"+string(_o.call),_id]);
-        } else if (_bytes[0] == 5 || _bytes[0] == 3 || _bytes[0] == 13 || _bytes[0] == 14 || _bytes[0] == 15) {
+        } else if (_bytes[0] == 5 || _bytes[0] == 3 || _bytes[0] == 13) {
             var _dest = _bytes[1];
             if (_bytes[0] != 3) _dest += _bytes[2] * 256;
             var _new = variable_struct_get(_offsets,string(_dest));
@@ -597,6 +638,6 @@ function scr_music_op_len(_op) {
     if (_op == 13) return 4;
     if (_op == 4) return 1;
     if (_op >= 5 && _op <= 9) return 3;
-    if (_op == 14 || _op == 15) return 3;
+    if (_op >= 14 && _op <= 17) return 3;
     return 2;
 }

@@ -25,6 +25,10 @@ function scr_sid64_sim_voice_new() {
         pulse_slide : 0,
         lane_pos : [0, 0],       // ~PITCH / ~PULSE record index into bytes
         lane_count : [0, 0],     // frames left on the record; 0 = table idle
+        lane_off   : [0, 0],     // table start offset in bytes
+        lane_key   : ["", ""],   // table contents (shared tables match by content)
+        lane_keep  : [0, 0],     // frames left saved by the last new note
+        lane_speed : [0, 0],     // speed saved by the last new note
         hold     : 0,
         base     : 0,           // base note index (0-95)
         active   : false,
@@ -154,6 +158,11 @@ function scr_sid64_sim_trigger(_sim, _v, _instr) {
     _vc.display_pcs = [];
     _vc.display_hold = -1;
     _vc.repeat_left = 0;
+    // Save each table's position for a keep-running table, then stop it.
+    _vc.lane_keep[0] = _vc.lane_count[0];
+    _vc.lane_keep[1] = _vc.lane_count[1];
+    _vc.lane_speed[0] = _vc.slide;
+    _vc.lane_speed[1] = _vc.pulse_slide;
     _vc.slide = 0;
     _vc.pulse_slide = 0;
     _vc.lane_count[0] = 0;
@@ -229,6 +238,8 @@ function scr_sid64_sim_row(_sim, _v, _note, _instr, _cmd, _val) {
     } else if (_cmd == 3) {
         // slide to this note: set the target, no trigger
         _vc.tgt = _sim.note_freq[_note];
+    } else if (_cmd == 19) {
+        scr_sid64_sim_tie(_sim, _v, _note, _instr);
     } else {
         _vc.fx = 0;              // a new note ends the continuous effect
         _vc.base = _note;
@@ -402,10 +413,9 @@ function scr_sid64_sim_step(_sim, _v) {
             _vc.pc += 2;
         } else if (_op == 0x03) {
             _vc.pc = _arg;
-        } else if (_op == 14 || _op == 15) {
+        } else if (_op >= 14 && _op <= 17) {
             // start the pitch / pulse table; its first record loads this frame
-            _vc.lane_pos[_op - 14] = _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8);
-            _vc.lane_count[_op - 14] = 1;
+            scr_sid64_sim_lane_start(_vc, (_op - 14) & 1, _op >= 16, _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8));
             _vc.pc += 3;
         } else {
             // END — gate off, instrument idle
@@ -417,6 +427,59 @@ function scr_sid64_sim_step(_sim, _v) {
     }
     // A loop with no hold would spin forever on the C64 too; stop it here.
     _vc.active = false;
+}
+
+/// The player's table start ($0E-$11). Tables are identified by their contents,
+/// as the song build stores each distinct table once and starts it by address.
+function scr_sid64_sim_lane_start(_vc, _k, _keep, _off) {
+    var _key = "";
+    var _lanes = _vc.display_compiled.lanes;
+    for (var _l = 0; _l < array_length(_lanes); _l++) {
+        if (_lanes[_l][0] == _off) {
+            for (var _j = 0; _j < _lanes[_l][1]; _j++) _key += string(_vc.bytes[_off + _j]) + ",";
+        }
+    }
+    if (_keep && _key == _vc.lane_key[_k]) {
+        if (_vc.lane_count[_k] != 0) {
+            // still running (a tie): carry on, now read from this program's copy
+            _vc.lane_pos[_k] = _off + (_vc.lane_pos[_k] - _vc.lane_off[_k]);
+            _vc.lane_off[_k] = _off;
+            return;
+        }
+        if (_vc.lane_keep[_k] != 0) {
+            // saved by the new note: resume where it was
+            _vc.lane_count[_k] = _vc.lane_keep[_k];
+            if (_k == 0) {
+                _vc.slide = _vc.lane_speed[0];
+            } else {
+                _vc.pulse_slide = _vc.lane_speed[1];
+            }
+            _vc.lane_pos[_k] = _off + (_vc.lane_pos[_k] - _vc.lane_off[_k]);
+            _vc.lane_off[_k] = _off;
+            return;
+        }
+    }
+    _vc.lane_pos[_k] = _off;
+    _vc.lane_off[_k] = _off;
+    _vc.lane_key[_k] = _key;
+    _vc.lane_count[_k] = 1;
+}
+
+/// JXX tie: new pitch, and the named instrument's program if any, with no
+/// re-trigger — envelope, gate, pulse width, sweeps and tables carry on.
+function scr_sid64_sim_tie(_sim, _v, _note, _instr) {
+    var _vc = _sim.voices[_v];
+    _vc.base = _note;
+    _vc.freq = _sim.note_freq[_note];
+    if (is_struct(_instr)) {
+        _vc.instr = _instr;
+        _vc.display_compiled = scr_instrument_ensure_compiled(_instr);
+        _vc.bytes = _vc.display_compiled.bytes;
+        _vc.display_pcs = [];
+        _vc.pc = 0;
+        _vc.hold = 0;
+        _vc.repeat_left = 0;
+    }
 }
 
 /// The player's table step: _k 0 = ~PITCH (sets slide), 1 = ~PULSE (sets pulse_slide).

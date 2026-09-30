@@ -296,6 +296,7 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
         ["R3:8", "repeat from step 8 three MORE times, then continue"],
         ["~PITCH", "table of S/D/L lines, runs beside the program"],
         ["~PULSE", "table of Q/D/L lines, runs beside the program"],
+        ["~PITCH+", "same, but carries on across new notes / ties"],
         ["", "the program must keep running (Dn / Ln) to hear them"],
         ["---", "gate off + stop: the note releases"],
         ["", ""],
@@ -337,6 +338,8 @@ function scr_sound_editor_instr_comment(_line, _lines) {
     if (string_char_at(_up, 1) == "~") {
         if (_up == "~PITCH") return { text: "pitch table: S/D/L lines on their own counter", bad: false };
         if (_up == "~PULSE") return { text: "pulse table: Q/D/L lines on their own counter", bad: false };
+        if (_up == "~PITCH+") return { text: "pitch table that keeps running across notes", bad: false };
+        if (_up == "~PULSE+") return { text: "pulse table that keeps running across notes", bad: false };
         return { text: "? tables are ~PITCH or ~PULSE", bad: true };
     }
 
@@ -512,11 +515,15 @@ function scr_sound_editor_pattern_help(_cmd) {
         case 17: return "HXX: CONTINUOUS PITCH SWEEP IN SINGLE SID UNITS PER FRAME.\n01-7F UP, 80-FF DOWN. H00 STOPS.\nPERSISTS ACROSS ROWS; A NEW NOTE OR INSTRUMENT S COMMAND REPLACES IT.";
         case 18: return "IXX: CONTINUOUS PULSE SWEEP, WITH 12-BIT WRAP.\n01-7F UP, 80-FF DOWN. I00 STOPS.\nPERSISTS ACROSS ROWS; A NEW NOTE OR INSTRUMENT Q COMMAND REPLACES IT.";
         case 15: return "FXX: SET FRAMES PER ROW (HEX). HIGHER = SLOWER.\nF00 IS IGNORED. AFFECTS THE WHOLE SONG.";
+        case 19: return "J00 ON A NOTE: TIE. CHANGE PITCH WITHOUT RESTARTING THE NOTE."
+            + "\nENVELOPE, GATE, PULSE WIDTH, SWEEPS AND RUNNING TABLES CARRY ON."
+            + "\nWITH AN INSTRUMENT IN THE ROW, ITS PROGRAM TAKES OVER (E.G. A NEW ARP)"
+            + "\nAND ITS ~PITCH+/~PULSE+ TABLES CONTINUE IF THEY MATCH THE RUNNING ONES.";
     }
     return "PATTERN COMMAND GUIDE"
         + "\nSELECT NOTES: CTRL+Q/A = SEMITONE UP/DOWN; CTRL+W/S = OCTAVE UP/DOWN."
         + "\nALSO CTRL+=/- OR NUMPAD +/-: SEMITONE. ADD SHIFT FOR AN OCTAVE."
-        + "\nCLICK A COMMAND CELL, THEN TYPE A COMMAND (0-I), THEN TWO HEX DIGITS (0-F)."
+        + "\nCLICK A COMMAND CELL, THEN TYPE A COMMAND (0-J), THEN TWO HEX DIGITS (0-F)."
         + "\nTHIRD DIGIT STORES IT; ENTER PADS WITH ZEROS AND MOVES DOWN."
         + "\nBACKSPACE ERASES A TYPED DIGIT; WITH NO PENDING DIGITS IT CLEARS THE COMMAND."
         + "\nDELETE CLEARS THE COMMAND; ESC CANCELS PENDING TYPING. NOTES STAY IN PLACE."
