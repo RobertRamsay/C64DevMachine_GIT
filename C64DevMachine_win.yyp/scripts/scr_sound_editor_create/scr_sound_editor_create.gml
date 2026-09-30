@@ -707,3 +707,119 @@ function scr_music_sid_generate(_asset) {
     _m.warn_timer = game_get_speed(gamespeed_fps) * 5;
     return true;
 }
+
+/// ── BYTE SUMMARY ── what the song compiles to, by section, for the Music
+/// Maker header. A dry build (as GENERATE NODES sizes it), with every byte
+/// counted under the last label before it. Player code is every instruction.
+function scr_music_size_summary(_asset) {
+    var _out = { ok: false, instr: 0, tables: 0, shared: 0, patterns: 0, order: 0, notes: 0, player: 0, vars: 0, total: 0 };
+    var _was_nt = false;
+    if (variable_global_exists("sidsong_notetab_emitted")) _was_nt = global.sidsong_notetab_emitted;
+    global.sidsong_notetab_emitted = false;
+    var _dry = [];
+    var _ok = true;
+    if (scr_music_sid_count(_asset.meta) > 1) {
+        scr_music_sid_build(_dry, { stable_uid: "szchk" }, _asset, _asset.name, 1, 3, 2, 0xD400);
+    } else {
+        _ok = scr_sid_song_build(_dry, { stable_uid: "szchk" }, _asset, _asset.name, 1, 3, 2, 0xD400, false);
+    }
+    global.sidsong_notetab_emitted = _was_nt;
+    if (!_ok) return _out;
+    var _cat = "player";
+    for (var _d = 0; _d < array_length(_dry); _d++) {
+        var _mn = _dry[_d][0];
+        if (_mn == "label") {
+            var _name = string(_dry[_d][1]);
+            var _cut = string_last_pos("_", _name);
+            var _part = string_lower(string_delete(_name, 1, _cut));
+            // "fql_0" style per-voice labels keep their table's section.
+            if (_part != "" && string_digits(_part) != _part) _cat = scr_music_size_category(_part);
+        } else if (_mn == "byte" || _mn == "byte_lab_lo" || _mn == "byte_lab_hi") {
+            _out[$ _cat] = _out[$ _cat] + 1;
+        } else {
+            _out.player += obj_opCodeManager.get_size(_mn);
+        }
+    }
+    _out.total = _out.instr + _out.tables + _out.shared + _out.patterns + _out.order + _out.notes + _out.player + _out.vars;
+    _out.ok = true;
+    return _out;
+}
+
+/// Section of a data label's last part (after the key prefix).
+function scr_music_size_category(_part) {
+    if (string_pos("lane", _part) == 1) return "tables";
+    if (string_pos("table", _part) == 1) return "shared";
+    if (string_pos("ins", _part) == 1) return "instr";
+    if (string_pos("pat", _part) == 1 || string_pos("row", _part) == 1 || _part == "rins") return "patterns";
+    if (string_pos("ord", _part) == 1 || string_pos("song", _part) == 1) return "order";
+    if (_part == "ntlo" || _part == "nthi" || _part == "notelo" || _part == "notehi") return "notes";
+    return "vars";
+}
+
+/// Cheap fingerprint of everything that changes the compiled size.
+function scr_music_size_signature(_m) {
+    var _h = scr_music_sid_count(_m);
+    for (var _i = 0; _i < array_length(_m.instruments); _i++) {
+        var _txt = string(scr_music_size_field(_m.instruments[_i], "text", ""));
+        _h = (_h * 31 + string_length(_txt)) mod 1000000007;
+        for (var _c = 1; _c <= string_length(_txt); _c += 7) _h = (_h * 31 + string_byte_at(_txt, _c)) mod 1000000007;
+    }
+    for (var _p = 0; _p < array_length(_m.patterns); _p++) {
+        var _pat = _m.patterns[_p];
+        _h = (_h * 31 + real(scr_music_size_field(_pat, "pattern_len", 64))) mod 1000000007;
+        var _steps = scr_music_size_field(_pat, "steps", []);
+        for (var _s = 0; _s < array_length(_steps); _s++) {
+            var _st = _steps[_s];
+            var _cell = real(scr_music_size_field(_st, "cmd", -1)) * 257 + real(scr_music_size_field(_st, "cmd_val", 0))
+                + real(scr_music_size_field(_st, "instr_idx", -1)) * 13;
+            var _note = string(scr_music_size_field(_st, "note", ""));
+            for (var _c2 = 1; _c2 <= string_length(_note); _c2++) _cell = _cell * 7 + string_byte_at(_note, _c2);
+            if (scr_music_size_field(_st, "empty", true)) _cell += 3;
+            _h = (_h * 31 + _cell + 1000) mod 1000000007;
+        }
+    }
+    for (var _s2 = 0; _s2 < array_length(_m.songs); _s2++) {
+        var _order = _m.songs[_s2].order;
+        _h = (_h * 31 + array_length(_order)) mod 1000000007;
+        for (var _r = 0; _r < array_length(_order); _r++) {
+            for (var _v = 0; _v < scr_music_sid_count(_m) * 3; _v++) {
+                _h = (_h * 31 + real(scr_music_sid_pattern(_order[_r], _v)) + 2) mod 1000000007;
+            }
+            _h = (_h * 31 + real(scr_music_size_field(_order[_r], "force_len", 0))) mod 1000000007;
+        }
+    }
+    var _nt = _m[$ "note_table"];
+    if (is_array(_nt)) _h = (_h * 31 + array_length(_nt)) mod 1000000007;
+    return _h;
+}
+
+/// A struct field, or _default when the struct doesn't have it.
+function scr_music_size_field(_s, _name, _default) {
+    var _v = _s[$ _name];
+    if (is_undefined(_v)) return _default;
+    return _v;
+}
+
+/// The summary, rebuilt once the song has been unchanged for a second (and
+/// never while it plays, so a rebuild can't stall the audio).
+function scr_music_size_cached(_asset) {
+    var _c = global.music_size_cache[$ _asset.name];
+    if (is_undefined(_c)) {
+        _c = { sig: -1, pending: -1, stable_at: 0, next_check: 0, info: undefined };
+        global.music_size_cache[$ _asset.name] = _c;
+    }
+    if (current_time < _c.next_check || global.sid64_stream.active) return _c.info;
+    _c.next_check = current_time + 250;
+    var _sig = scr_music_size_signature(_asset.meta);
+    if (_sig == _c.sig) return _c.info;
+    if (_sig != _c.pending) {
+        _c.pending = _sig;
+        _c.stable_at = current_time + 1000;
+        if (is_undefined(_c.info)) _c.stable_at = current_time;
+    }
+    if (current_time >= _c.stable_at) {
+        _c.sig = _sig;
+        _c.info = scr_music_size_summary(_asset);
+    }
+    return _c.info;
+}

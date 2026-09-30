@@ -811,6 +811,24 @@ function scr_sid64_sim_put(_sim, _fb, _i) {
     _sim.mask = 0;
 }
 
+/// Nearest note to what a voice is sounding (-1 when its gate is off), for the
+/// piano's playing-key lights. Uses the pitch, so arps and bends show too.
+function scr_sid64_voice_note(_sim, _vc) {
+    if (!_vc.active || (_vc.cb & 1) == 0) return -1;
+    var _f = (_vc.freq + _vc.voff) & 0xFFFF;
+    var _nt = _sim.note_freq;
+    var _best = -1;
+    var _best_d = 0;
+    for (var _i = 0; _i < array_length(_nt); _i++) {
+        var _d = abs(_nt[_i] - _f);
+        if (_best < 0 || _d < _best_d) {
+            _best = _i;
+            _best_d = _d;
+        }
+    }
+    return _best;
+}
+
 /// Immutable display snapshot; never expose a voice that is being rendered ahead.
 function scr_sid64_voice_display(_vc) {
     if (!is_struct(_vc.instr) || (!_vc.active && (_vc.cb & 1) == 0)) return undefined;

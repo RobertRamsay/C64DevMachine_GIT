@@ -3,9 +3,11 @@
 ///                     current OCTAVE. A click writes into that voice.
 ///   FULL            — one 6-octave keyboard (C-1 to B-6). A click writes into
 ///                     the voice the marker is in.
-/// Hovering plays the selected instrument; moving to another key plays that
-/// one. A click writes the note at the marker row (with the selected
-/// instrument) and drops a row, like typing it.
+/// Holding the right mouse button plays the selected instrument; sliding to
+/// another key while held plays that one, and letting go stops it. A left
+/// click writes the note at the marker row (with the selected instrument) and
+/// drops a row, like typing it. While a song or pattern plays, the keys each
+/// voice is sounding light up in that voice's colour (the SID chip on show).
 
 /// Note index (0 = C-0 ... 95 = B-7) → the pattern's note text ("C-4", "C#4").
 function scr_sound_editor_piano_name(_idx) {
@@ -20,8 +22,9 @@ function scr_sound_editor_piano_name(_idx) {
 
 /// Draws one keyboard of _n_oct octaves from octave _oct0 inside the box, and
 /// returns the note index under the mouse (-1 for none). _mark = a note index
-/// to show as the marker cell's note (-1 for none).
-function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my, _mark) {
+/// to show as the marker cell's note (-1 for none). _lit = playing notes as
+/// [note, colour] pairs.
+function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my, _mark, _lit) {
     var _n_white = _n_oct * 7;
     var _ww = (_x1 - _x0) / _n_white;
     var _bw = _ww * 0.62;
@@ -50,8 +53,11 @@ function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my
     for (var _w = 0; _w < _n_white; _w++) {
         var _wx = _x0 + _w * _ww;
         var _wn = (_oct0 + (_w div 7)) * 12 + _white_semi[_w mod 7];
+        var _wlit = scr_sound_editor_piano_lit(_lit, _wn);
         if (_wn == _hover) {
             draw_set_color(make_color_rgb(255, 230, 120));
+        } else if (_wlit != -1) {
+            draw_set_color(_wlit);
         } else if (_wn == _mark) {
             draw_set_color(make_color_rgb(150, 200, 255));
         } else {
@@ -70,8 +76,11 @@ function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my
         for (var _b2 = 0; _b2 < 5; _b2++) {
             var _bx2 = _x0 + (_o2 * 7 + _black_after[_b2] + 1) * _ww - _bw * 0.5;
             var _bn = (_oct0 + _o2) * 12 + _black_semi[_b2];
+            var _blit = scr_sound_editor_piano_lit(_lit, _bn);
             if (_bn == _hover) {
                 draw_set_color(make_color_rgb(230, 180, 60));
+            } else if (_blit != -1) {
+                draw_set_color(merge_color(_blit, c_black, 0.25));
             } else if (_bn == _mark) {
                 draw_set_color(make_color_rgb(70, 120, 200));
             } else {
@@ -81,6 +90,31 @@ function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my
         }
     }
     return _hover;
+}
+
+/// Colour of a playing note on the keyboard, or -1.
+function scr_sound_editor_piano_lit(_lit, _note) {
+    for (var _i = 0; _i < array_length(_lit); _i++) {
+        if (_lit[_i][0] == _note) return _lit[_i][1];
+    }
+    return -1;
+}
+
+/// Notes the three shown voices are sounding right now (-1 = silent), read
+/// from the same frame the pattern highlight shows. Muted voices stay dark.
+function scr_sound_editor_piano_playing(_m) {
+    var _out = [-1, -1, -1];
+    var _st = global.sid64_stream;
+    if (!_st.active || _st.sim.m != _m || _st.frames_rendered <= 0) return _out;
+    var _frame = clamp(floor((get_timer() - _st.start_us) / SID64_FRAME_US), 0, _st.frames_rendered - 1);
+    var _snap = _st.pos_notes[_frame mod SID64_POS_RING];
+    if (!is_array(_snap)) return _out;
+    var _mask = scr_music_sid_mask(_m, _m.sid_page);
+    for (var _v = 0; _v < 3; _v++) {
+        var _i = _m.sid_page * 3 + _v;
+        if (_i < array_length(_snap) && (_mask & (1 << _v)) != 0) _out[_v] = _snap[_i];
+    }
+    return _out;
 }
 
 /// The whole piano panel. _col_pat = the three voices' patterns (noone when a
@@ -118,7 +152,15 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
         }
     }
     draw_set_color(make_color_rgb(120, 120, 150));
-    draw_text_l(_mb_x + 116, _y0, "HOVER TO HEAR THE SELECTED INSTRUMENT, CLICK TO WRITE THE NOTE AT THE MARKER");
+    draw_text_l(_mb_x + 116, _y0, "HOLD RIGHT MOUSE ON THE KEYS TO HEAR THE SELECTED INSTRUMENT, LEFT CLICK TO WRITE THE NOTE AT THE MARKER");
+
+    // Keys each shown voice is sounding, in the voice colours.
+    var _voice_cols = [make_color_rgb(90, 190, 255), make_color_rgb(255, 150, 70), make_color_rgb(120, 225, 120)];
+    var _playing = scr_sound_editor_piano_playing(_m);
+    var _lit_all = [];
+    for (var _lv = 0; _lv < 3; _lv++) {
+        if (_playing[_lv] >= 0) array_push(_lit_all, [_playing[_lv], _voice_cols[_lv]]);
+    }
 
     var _ky0 = _y0 + 16;
     var _hover = -1;
@@ -140,25 +182,37 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
         var _sw = ((_x1 - _x0) - _gap * 2) / 3;
         for (var _v = 0; _v < 3; _v++) {
             var _sx0 = _x0 + _v * (_sw + _gap);
-            draw_set_color(make_color_rgb(90, 200, 160));
+            draw_set_color(_voice_cols[_v]);
             draw_text_l(_sx0, _ky0 - 1, "VOICE " + string(_v + 1));
             var _vmark = -1;
             if (_v == _m.sel_voice) {
                 _vmark = _mark;
             }
-            var _h = scr_sound_editor_piano_keys(_sx0, _ky0 + 12, _sx0 + _sw, _y1, _oct0, 2, _mx, _my, _vmark);
+            var _vlit = [];
+            if (_playing[_v] >= 0) array_push(_vlit, [_playing[_v], _voice_cols[_v]]);
+            var _h = scr_sound_editor_piano_keys(_sx0, _ky0 + 12, _sx0 + _sw, _y1, _oct0, 2, _mx, _my, _vmark, _vlit);
             if (_h >= 0) {
                 _hover = _h;
                 _hover_v = _v;
             }
         }
     } else {
-        _hover = scr_sound_editor_piano_keys(_x0, _ky0 + 12, _x1, _y1, 1, 6, _mx, _my, _mark);
+        _hover = scr_sound_editor_piano_keys(_x0, _ky0 + 12, _x1, _y1, 1, 6, _mx, _my, _mark, _lit_all);
     }
     draw_set_font_l(fnt_c64_tiny);
 
-    // ── hover: play the key once each time the mouse moves onto a new one ──
-    if (_hover >= 0 && (_hover != _m.pno_hover || _hover_v != _m.pno_hover_v)) {
+    // ── right mouse held: play the key when pressed, and each new key slid onto ──
+    var _rmb_play = false;
+    if (_hover >= 0 && mouse_check_button(mb_right)) {
+        if (mouse_check_button_pressed(mb_right) || _hover != _m.pno_hover || _hover_v != _m.pno_hover_v) {
+            _rmb_play = true;
+        }
+    }
+    if (mouse_check_button_released(mb_right)) {
+        scr_sound_preview_free_channel(_m.pno_hover_v);
+    }
+    if (_rmb_play) {
+        if (_hover_v != _m.pno_hover_v) scr_sound_preview_free_channel(_m.pno_hover_v);
         var _nm = scr_sound_editor_piano_name(_hover);
         if (_m.sel_instr >= 0 && _m.sel_instr < array_length(_m.instruments)) {
             scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _nm, _hover_v);

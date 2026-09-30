@@ -1,0 +1,364 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 7ea8499..1d7ec1c 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -55,8 +55,12 @@ global.sid64_stream = {
+     ring_i          : 0,
+     ring_samples    : _sid64_ring_samples,
+     pos_ord         : array_create(SID64_POS_RING, 0),
+-    pos_row         : array_create(SID64_POS_RING, 0)
++    pos_row         : array_create(SID64_POS_RING, 0),
++    // Sounding note per voice (all chips) for each rendered frame; -1 = none.
++    pos_notes       : array_create(SID64_POS_RING, undefined)
+ };
++// Music Maker byte summary per asset name: { sig, pending, stable_at, next_check, info }.
++global.music_size_cache = {};
+ for (var _sri = 0; _sri < SID64_RING; _sri++) {
+     global.sid64_stream.ring[_sri] = buffer_create(_sid64_ring_samples * 2, buffer_fixed, 2);
+ }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid64_audio/scr_sid64_audio.gml b/C64DevMachine_win.yyp/scripts/scr_sid64_audio/scr_sid64_audio.gml
+index a38edc9..b9327aa 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid64_audio/scr_sid64_audio.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid64_audio/scr_sid64_audio.gml
+@@ -287,6 +287,11 @@ function scr_sid64_stream_chunk() {
+             array_push(_voices, scr_sid64_voice_display(_st.sims[_dc].voices[_dv]));
+         }
+         _st.pos_instruments[_pi] = _voices;
++        var _notes = [];
++        for (var _nc = 0; _nc < _count; _nc++) for (var _nv = 0; _nv < 3; _nv++) {
++            array_push(_notes, scr_sid64_voice_note(_st.sims[_nc], _st.sims[_nc].voices[_nv]));
++        }
++        _st.pos_notes[_pi] = _notes;
+         if (_st.sim.finished && _st.finished_at < 0) _st.finished_at = _st.frames_rendered + _i;
+     }
+     var _got = 0;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+index 3d2b013..404dfb3 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+@@ -811,6 +811,24 @@ function scr_sid64_sim_put(_sim, _fb, _i) {
+     _sim.mask = 0;
+ }
+ 
++/// Nearest note to what a voice is sounding (-1 when its gate is off), for the
++/// piano's playing-key lights. Uses the pitch, so arps and bends show too.
++function scr_sid64_voice_note(_sim, _vc) {
++    if (!_vc.active || (_vc.cb & 1) == 0) return -1;
++    var _f = (_vc.freq + _vc.voff) & 0xFFFF;
++    var _nt = _sim.note_freq;
++    var _best = -1;
++    var _best_d = 0;
++    for (var _i = 0; _i < array_length(_nt); _i++) {
++        var _d = abs(_nt[_i] - _f);
++        if (_best < 0 || _d < _best_d) {
++            _best = _i;
++            _best_d = _d;
++        }
++    }
++    return _best;
++}
++
+ /// Immutable display snapshot; never expose a voice that is being rendered ahead.
+ function scr_sid64_voice_display(_vc) {
+     if (!is_struct(_vc.instr) || (!_vc.active && (_vc.cb & 1) == 0)) return undefined;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+index b25b911..bc20d35 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+@@ -707,3 +707,119 @@ function scr_music_sid_generate(_asset) {
+     _m.warn_timer = game_get_speed(gamespeed_fps) * 5;
+     return true;
+ }
++
++/// ── BYTE SUMMARY ── what the song compiles to, by section, for the Music
++/// Maker header. A dry build (as GENERATE NODES sizes it), with every byte
++/// counted under the last label before it. Player code is every instruction.
++function scr_music_size_summary(_asset) {
++    var _out = { ok: false, instr: 0, tables: 0, shared: 0, patterns: 0, order: 0, notes: 0, player: 0, vars: 0, total: 0 };
++    var _was_nt = false;
++    if (variable_global_exists("sidsong_notetab_emitted")) _was_nt = global.sidsong_notetab_emitted;
++    global.sidsong_notetab_emitted = false;
++    var _dry = [];
++    var _ok = true;
++    if (scr_music_sid_count(_asset.meta) > 1) {
++        scr_music_sid_build(_dry, { stable_uid: "szchk" }, _asset, _asset.name, 1, 3, 2, 0xD400);
++    } else {
++        _ok = scr_sid_song_build(_dry, { stable_uid: "szchk" }, _asset, _asset.name, 1, 3, 2, 0xD400, false);
++    }
++    global.sidsong_notetab_emitted = _was_nt;
++    if (!_ok) return _out;
++    var _cat = "player";
++    for (var _d = 0; _d < array_length(_dry); _d++) {
++        var _mn = _dry[_d][0];
++        if (_mn == "label") {
++            var _name = string(_dry[_d][1]);
++            var _cut = string_last_pos("_", _name);
++            var _part = string_lower(string_delete(_name, 1, _cut));
++            // "fql_0" style per-voice labels keep their table's section.
++            if (_part != "" && string_digits(_part) != _part) _cat = scr_music_size_category(_part);
++        } else if (_mn == "byte" || _mn == "byte_lab_lo" || _mn == "byte_lab_hi") {
++            _out[$ _cat] = _out[$ _cat] + 1;
++        } else {
++            _out.player += obj_opCodeManager.get_size(_mn);
++        }
++    }
++    _out.total = _out.instr + _out.tables + _out.shared + _out.patterns + _out.order + _out.notes + _out.player + _out.vars;
++    _out.ok = true;
++    return _out;
++}
++
++/// Section of a data label's last part (after the key prefix).
++function scr_music_size_category(_part) {
++    if (string_pos("lane", _part) == 1) return "tables";
++    if (string_pos("table", _part) == 1) return "shared";
++    if (string_pos("ins", _part) == 1) return "instr";
++    if (string_pos("pat", _part) == 1 || string_pos("row", _part) == 1 || _part == "rins") return "patterns";
++    if (string_pos("ord", _part) == 1 || string_pos("song", _part) == 1) return "order";
++    if (_part == "ntlo" || _part == "nthi" || _part == "notelo" || _part == "notehi") return "notes";
++    return "vars";
++}
++
++/// Cheap fingerprint of everything that changes the compiled size.
++function scr_music_size_signature(_m) {
++    var _h = scr_music_sid_count(_m);
++    for (var _i = 0; _i < array_length(_m.instruments); _i++) {
++        var _txt = string(scr_music_size_field(_m.instruments[_i], "text", ""));
++        _h = (_h * 31 + string_length(_txt)) mod 1000000007;
++        for (var _c = 1; _c <= string_length(_txt); _c += 7) _h = (_h * 31 + string_byte_at(_txt, _c)) mod 1000000007;
++    }
++    for (var _p = 0; _p < array_length(_m.patterns); _p++) {
++        var _pat = _m.patterns[_p];
++        _h = (_h * 31 + real(scr_music_size_field(_pat, "pattern_len", 64))) mod 1000000007;
++        var _steps = scr_music_size_field(_pat, "steps", []);
++        for (var _s = 0; _s < array_length(_steps); _s++) {
++            var _st = _steps[_s];
++            var _cell = real(scr_music_size_field(_st, "cmd", -1)) * 257 + real(scr_music_size_field(_st, "cmd_val", 0))
++                + real(scr_music_size_field(_st, "instr_idx", -1)) * 13;
++            var _note = string(scr_music_size_field(_st, "note", ""));
++            for (var _c2 = 1; _c2 <= string_length(_note); _c2++) _cell = _cell * 7 + string_byte_at(_note, _c2);
++            if (scr_music_size_field(_st, "empty", true)) _cell += 3;
++            _h = (_h * 31 + _cell + 1000) mod 1000000007;
++        }
++    }
++    for (var _s2 = 0; _s2 < array_length(_m.songs); _s2++) {
++        var _order = _m.songs[_s2].order;
++        _h = (_h * 31 + array_length(_order)) mod 1000000007;
++        for (var _r = 0; _r < array_length(_order); _r++) {
++            for (var _v = 0; _v < scr_music_sid_count(_m) * 3; _v++) {
++                _h = (_h * 31 + real(scr_music_sid_pattern(_order[_r], _v)) + 2) mod 1000000007;
++            }
++            _h = (_h * 31 + real(scr_music_size_field(_order[_r], "force_len", 0))) mod 1000000007;
++        }
++    }
++    var _nt = _m[$ "note_table"];
++    if (is_array(_nt)) _h = (_h * 31 + array_length(_nt)) mod 1000000007;
++    return _h;
++}
++
++/// A struct field, or _default when the struct doesn't have it.
++function scr_music_size_field(_s, _name, _default) {
++    var _v = _s[$ _name];
++    if (is_undefined(_v)) return _default;
++    return _v;
++}
++
++/// The summary, rebuilt once the song has been unchanged for a second (and
++/// never while it plays, so a rebuild can't stall the audio).
++function scr_music_size_cached(_asset) {
++    var _c = global.music_size_cache[$ _asset.name];
++    if (is_undefined(_c)) {
++        _c = { sig: -1, pending: -1, stable_at: 0, next_check: 0, info: undefined };
++        global.music_size_cache[$ _asset.name] = _c;
++    }
++    if (current_time < _c.next_check || global.sid64_stream.active) return _c.info;
++    _c.next_check = current_time + 250;
++    var _sig = scr_music_size_signature(_asset.meta);
++    if (_sig == _c.sig) return _c.info;
++    if (_sig != _c.pending) {
++        _c.pending = _sig;
++        _c.stable_at = current_time + 1000;
++        if (is_undefined(_c.info)) _c.stable_at = current_time;
++    }
++    if (current_time >= _c.stable_at) {
++        _c.sig = _sig;
++        _c.info = scr_music_size_summary(_asset);
++    }
++    return _c.info;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index 28b11ea..f3ca3d4 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -710,6 +710,25 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         draw_set_color(make_color_rgb(130, 155, 180));
+         draw_text_l(_vx1 + 20, _status_y, "HERE: ORDER " + string(_m.sel_order_row) + L("   STEP ") + string(_m.sel_step));
+     }
++    // ── Compiled size by section (all SID chips), refreshed after edits settle ──
++    var _size = scr_music_size_cached(_asset);
++    if (is_struct(_size) && _size.ok) {
++        var _sz_parts = [["INSTR", _size.instr], ["TABLES", _size.tables], ["SHARED", _size.shared],
++            ["PATTERNS", _size.patterns], ["ORDER", _size.order], ["NOTES", _size.notes],
++            ["PLAYER", _size.player], ["VARS", _size.vars]];
++        var _sz_x = _vx1 + 460;
++        draw_set_color(make_color_rgb(150, 170, 200));
++        draw_text_l(_sz_x, _status_y, "BYTES:");
++        _sz_x += string_width_l("BYTES: ") + 6;
++        for (var _szi = 0; _szi < array_length(_sz_parts); _szi++) {
++            var _sz_txt = _sz_parts[_szi][0] + " " + string(_sz_parts[_szi][1]);
++            draw_set_color(make_color_rgb(120, 140, 170));
++            draw_text_l(_sz_x, _status_y, _sz_txt);
++            _sz_x += string_width_l(_sz_txt) + 14;
++        }
++        draw_set_color(c_yellow);
++        draw_text_l(_sz_x, _status_y, "TOTAL " + string(_size.total));
++    }
+     draw_set_font_l(fnt_c64_tiny);
+ 
+     // ── PATTERN BANK — create/delete patterns, independent of any voice ──
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml
+index 652257e..526cf0d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml
+@@ -3,9 +3,11 @@
+ ///                     current OCTAVE. A click writes into that voice.
+ ///   FULL            — one 6-octave keyboard (C-1 to B-6). A click writes into
+ ///                     the voice the marker is in.
+-/// Hovering plays the selected instrument; moving to another key plays that
+-/// one. A click writes the note at the marker row (with the selected
+-/// instrument) and drops a row, like typing it.
++/// Holding the right mouse button plays the selected instrument; sliding to
++/// another key while held plays that one, and letting go stops it. A left
++/// click writes the note at the marker row (with the selected instrument) and
++/// drops a row, like typing it. While a song or pattern plays, the keys each
++/// voice is sounding light up in that voice's colour (the SID chip on show).
+ 
+ /// Note index (0 = C-0 ... 95 = B-7) → the pattern's note text ("C-4", "C#4").
+ function scr_sound_editor_piano_name(_idx) {
+@@ -20,8 +22,9 @@ function scr_sound_editor_piano_name(_idx) {
+ 
+ /// Draws one keyboard of _n_oct octaves from octave _oct0 inside the box, and
+ /// returns the note index under the mouse (-1 for none). _mark = a note index
+-/// to show as the marker cell's note (-1 for none).
+-function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my, _mark) {
++/// to show as the marker cell's note (-1 for none). _lit = playing notes as
++/// [note, colour] pairs.
++function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my, _mark, _lit) {
+     var _n_white = _n_oct * 7;
+     var _ww = (_x1 - _x0) / _n_white;
+     var _bw = _ww * 0.62;
+@@ -50,8 +53,11 @@ function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my
+     for (var _w = 0; _w < _n_white; _w++) {
+         var _wx = _x0 + _w * _ww;
+         var _wn = (_oct0 + (_w div 7)) * 12 + _white_semi[_w mod 7];
++        var _wlit = scr_sound_editor_piano_lit(_lit, _wn);
+         if (_wn == _hover) {
+             draw_set_color(make_color_rgb(255, 230, 120));
++        } else if (_wlit != -1) {
++            draw_set_color(_wlit);
+         } else if (_wn == _mark) {
+             draw_set_color(make_color_rgb(150, 200, 255));
+         } else {
+@@ -70,8 +76,11 @@ function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my
+         for (var _b2 = 0; _b2 < 5; _b2++) {
+             var _bx2 = _x0 + (_o2 * 7 + _black_after[_b2] + 1) * _ww - _bw * 0.5;
+             var _bn = (_oct0 + _o2) * 12 + _black_semi[_b2];
++            var _blit = scr_sound_editor_piano_lit(_lit, _bn);
+             if (_bn == _hover) {
+                 draw_set_color(make_color_rgb(230, 180, 60));
++            } else if (_blit != -1) {
++                draw_set_color(merge_color(_blit, c_black, 0.25));
+             } else if (_bn == _mark) {
+                 draw_set_color(make_color_rgb(70, 120, 200));
+             } else {
+@@ -83,6 +92,31 @@ function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my
+     return _hover;
+ }
+ 
++/// Colour of a playing note on the keyboard, or -1.
++function scr_sound_editor_piano_lit(_lit, _note) {
++    for (var _i = 0; _i < array_length(_lit); _i++) {
++        if (_lit[_i][0] == _note) return _lit[_i][1];
++    }
++    return -1;
++}
++
++/// Notes the three shown voices are sounding right now (-1 = silent), read
++/// from the same frame the pattern highlight shows. Muted voices stay dark.
++function scr_sound_editor_piano_playing(_m) {
++    var _out = [-1, -1, -1];
++    var _st = global.sid64_stream;
++    if (!_st.active || _st.sim.m != _m || _st.frames_rendered <= 0) return _out;
++    var _frame = clamp(floor((get_timer() - _st.start_us) / SID64_FRAME_US), 0, _st.frames_rendered - 1);
++    var _snap = _st.pos_notes[_frame mod SID64_POS_RING];
++    if (!is_array(_snap)) return _out;
++    var _mask = scr_music_sid_mask(_m, _m.sid_page);
++    for (var _v = 0; _v < 3; _v++) {
++        var _i = _m.sid_page * 3 + _v;
++        if (_i < array_length(_snap) && (_mask & (1 << _v)) != 0) _out[_v] = _snap[_i];
++    }
++    return _out;
++}
++
+ /// The whole piano panel. _col_pat = the three voices' patterns (noone when a
+ /// voice has none), _vis = visible grid rows (for scrolling after a click).
+ /// _undo_push / _snap are the editor's undo helpers.
+@@ -118,7 +152,15 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
+         }
+     }
+     draw_set_color(make_color_rgb(120, 120, 150));
+-    draw_text_l(_mb_x + 116, _y0, "HOVER TO HEAR THE SELECTED INSTRUMENT, CLICK TO WRITE THE NOTE AT THE MARKER");
++    draw_text_l(_mb_x + 116, _y0, "HOLD RIGHT MOUSE ON THE KEYS TO HEAR THE SELECTED INSTRUMENT, LEFT CLICK TO WRITE THE NOTE AT THE MARKER");
++
++    // Keys each shown voice is sounding, in the voice colours.
++    var _voice_cols = [make_color_rgb(90, 190, 255), make_color_rgb(255, 150, 70), make_color_rgb(120, 225, 120)];
++    var _playing = scr_sound_editor_piano_playing(_m);
++    var _lit_all = [];
++    for (var _lv = 0; _lv < 3; _lv++) {
++        if (_playing[_lv] >= 0) array_push(_lit_all, [_playing[_lv], _voice_cols[_lv]]);
++    }
+ 
+     var _ky0 = _y0 + 16;
+     var _hover = -1;
+@@ -140,25 +182,37 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
+         var _sw = ((_x1 - _x0) - _gap * 2) / 3;
+         for (var _v = 0; _v < 3; _v++) {
+             var _sx0 = _x0 + _v * (_sw + _gap);
+-            draw_set_color(make_color_rgb(90, 200, 160));
++            draw_set_color(_voice_cols[_v]);
+             draw_text_l(_sx0, _ky0 - 1, "VOICE " + string(_v + 1));
+             var _vmark = -1;
+             if (_v == _m.sel_voice) {
+                 _vmark = _mark;
+             }
+-            var _h = scr_sound_editor_piano_keys(_sx0, _ky0 + 12, _sx0 + _sw, _y1, _oct0, 2, _mx, _my, _vmark);
++            var _vlit = [];
++            if (_playing[_v] >= 0) array_push(_vlit, [_playing[_v], _voice_cols[_v]]);
++            var _h = scr_sound_editor_piano_keys(_sx0, _ky0 + 12, _sx0 + _sw, _y1, _oct0, 2, _mx, _my, _vmark, _vlit);
+             if (_h >= 0) {
+                 _hover = _h;
+                 _hover_v = _v;
+             }
+         }
+     } else {
+-        _hover = scr_sound_editor_piano_keys(_x0, _ky0 + 12, _x1, _y1, 1, 6, _mx, _my, _mark);
++        _hover = scr_sound_editor_piano_keys(_x0, _ky0 + 12, _x1, _y1, 1, 6, _mx, _my, _mark, _lit_all);
+     }
+     draw_set_font_l(fnt_c64_tiny);
+ 
+-    // ── hover: play the key once each time the mouse moves onto a new one ──
+-    if (_hover >= 0 && (_hover != _m.pno_hover || _hover_v != _m.pno_hover_v)) {
++    // ── right mouse held: play the key when pressed, and each new key slid onto ──
++    var _rmb_play = false;
++    if (_hover >= 0 && mouse_check_button(mb_right)) {
++        if (mouse_check_button_pressed(mb_right) || _hover != _m.pno_hover || _hover_v != _m.pno_hover_v) {
++            _rmb_play = true;
++        }
++    }
++    if (mouse_check_button_released(mb_right)) {
++        scr_sound_preview_free_channel(_m.pno_hover_v);
++    }
++    if (_rmb_play) {
++        if (_hover_v != _m.pno_hover_v) scr_sound_preview_free_channel(_m.pno_hover_v);
+         var _nm = scr_sound_editor_piano_name(_hover);
+         if (_m.sel_instr >= 0 && _m.sel_instr < array_length(_m.instruments)) {
+             scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _nm, _hover_v);

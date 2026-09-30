@@ -55,8 +55,12 @@ global.sid64_stream = {
     ring_i          : 0,
     ring_samples    : _sid64_ring_samples,
     pos_ord         : array_create(SID64_POS_RING, 0),
-    pos_row         : array_create(SID64_POS_RING, 0)
+    pos_row         : array_create(SID64_POS_RING, 0),
+    // Sounding note per voice (all chips) for each rendered frame; -1 = none.
+    pos_notes       : array_create(SID64_POS_RING, undefined)
 };
+// Music Maker byte summary per asset name: { sig, pending, stable_at, next_check, info }.
+global.music_size_cache = {};
 for (var _sri = 0; _sri < SID64_RING; _sri++) {
     global.sid64_stream.ring[_sri] = buffer_create(_sid64_ring_samples * 2, buffer_fixed, 2);
 }

@@ -710,6 +710,25 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         draw_set_color(make_color_rgb(130, 155, 180));
         draw_text_l(_vx1 + 20, _status_y, "HERE: ORDER " + string(_m.sel_order_row) + L("   STEP ") + string(_m.sel_step));
     }
+    // ── Compiled size by section (all SID chips), refreshed after edits settle ──
+    var _size = scr_music_size_cached(_asset);
+    if (is_struct(_size) && _size.ok) {
+        var _sz_parts = [["INSTR", _size.instr], ["TABLES", _size.tables], ["SHARED", _size.shared],
+            ["PATTERNS", _size.patterns], ["ORDER", _size.order], ["NOTES", _size.notes],
+            ["PLAYER", _size.player], ["VARS", _size.vars]];
+        var _sz_x = _vx1 + 460;
+        draw_set_color(make_color_rgb(150, 170, 200));
+        draw_text_l(_sz_x, _status_y, "BYTES:");
+        _sz_x += string_width_l("BYTES: ") + 6;
+        for (var _szi = 0; _szi < array_length(_sz_parts); _szi++) {
+            var _sz_txt = _sz_parts[_szi][0] + " " + string(_sz_parts[_szi][1]);
+            draw_set_color(make_color_rgb(120, 140, 170));
+            draw_text_l(_sz_x, _status_y, _sz_txt);
+            _sz_x += string_width_l(_sz_txt) + 14;
+        }
+        draw_set_color(c_yellow);
+        draw_text_l(_sz_x, _status_y, "TOTAL " + string(_size.total));
+    }
     draw_set_font_l(fnt_c64_tiny);
 
     // ── PATTERN BANK — create/delete patterns, independent of any voice ──
