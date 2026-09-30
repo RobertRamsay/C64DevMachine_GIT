@@ -18,6 +18,7 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
             buffer_delete(_jb);
         }
         _data = json_parse(_js);
+        if (is_struct(_data) && variable_struct_exists(_data, "format") && _data.format == "wizball-galway-source-tables-v1") _data = scr_native_tables_import(_data);
     } catch (_e) {
         show_debug_message("LOAD REFUSED (parse): " + _path + " : " + string(_e.message));
         scr_show_message("Can't open " + _fname + "\n\nThis isn't a C64 Dev Machine project file (it couldn't be read as JSON).");
@@ -59,7 +60,7 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
 
     // ── 4. Load; on any failure, roll back ──
     try {
-        scr_load_workspace_from_path_core(_path, _mcp);
+        scr_load_workspace_from_path_core(_path, _mcp, _data);
     } catch (_e3) {
         show_debug_message("LOAD FAILED: " + _path + " : " + string(_e3.message));
         show_debug_message(string(_e3.stacktrace));
@@ -133,7 +134,7 @@ function scr_load_workspace_check(_data) {
     return "";
 }
 
-function scr_load_workspace_from_path_core(_path, _mcp = false) {
+function scr_load_workspace_from_path_core(_path, _mcp = false, _prepared = undefined) {
     var path = _path;
     if (path == "" || !file_exists(path)) return;
     io_clear();
@@ -168,7 +169,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
         json = buffer_read(_jbuf, buffer_text); // reads entire buffer as one string
         buffer_delete(_jbuf);
     }
-    var load_data = json_parse(json);
+    var load_data = is_undefined(_prepared) ? json_parse(json) : _prepared;
     // Very old saves are a bare array of nodes: give them the modern shape
     if (is_array(load_data)) {
         load_data = { nodes: load_data };
@@ -520,6 +521,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
             var _meta = {};
             if (variable_struct_exists(_ad, "meta")) {
                 var _sm = _ad.meta;
+                if (variable_struct_exists(_sm, "native_tables")) _meta.native_tables = _sm.native_tables;
                 if (variable_struct_exists(_sm, "sprite_mcs"))     _meta.sprite_mcs     = _sm.sprite_mcs;
                 if (variable_struct_exists(_sm, "sprite_ucs"))     _meta.sprite_ucs     = _sm.sprite_ucs;
                 if (variable_struct_exists(_sm, "mc1_col"))        _meta.mc1_col        = _sm.mc1_col;

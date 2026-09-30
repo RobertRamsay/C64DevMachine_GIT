@@ -170,15 +170,14 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
             //   instruments: 7 header + compiled stream, + 2 pointer tables
             //   patterns:    2 bytes/row (4 with a command column), + 2 pointer
             //                tables + length table + command-column flag table
-            //   effect state: 20 tables x 3 voices + 11 scratch bytes
+            //   effect state: 24 tables x 3 voices + 11 scratch bytes
             //   order:       5 bytes/row (v1,v2,v3,len,wrap)
             for (var _bi = 0; _bi < _n_instr; _bi++) {
                 var _b_ins = _sm.instruments[_bi];
-                var _b_txt = "";
-                if (variable_struct_exists(_b_ins, "text")) {
-                    _b_txt = string(_b_ins.text);
-                }
-                _bytes += 7 + array_length(scr_instrument_parse(_b_txt).bytes);
+                // Reuse parsed bytecode until its source changes.
+                var _b_compiled = variable_struct_exists(_b_ins, "text")
+                    ? scr_instrument_ensure_compiled(_b_ins) : scr_instrument_parse("");
+                _bytes += 7 + array_length(_b_compiled.bytes);
             }
             _bytes += _n_instr * 2;
             for (var _bp = 0; _bp < _n_pat; _bp++) {
@@ -200,7 +199,7 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
                 _bytes += _bp_len * _bp_stride;
             }
             _bytes += _n_pat * 4;
-            _bytes += (20 * 3) + 11;
+            _bytes += (24 * 3) + 11;
             _bytes += _n_ord * 5;
             _bytes += _n_songs * 4;   // songstart/songend/songloop/songflag
             break;

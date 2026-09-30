@@ -18,6 +18,13 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     _vy2 = _vy2 - _pno_h;
     var _m = _asset.meta;
     _m.pattern_hover_tip = "";
+    if (!variable_struct_exists(_m, "order_pattern_edit_active")) _m.order_pattern_edit_active = false;
+    // A click elsewhere cancels the pending entry before another control receives focus.
+    if (_m.order_pattern_edit_active && mouse_check_button_pressed(mb_left)) {
+        _m.order_pattern_edit_active = false;
+        keyboard_string = "";
+    }
+    var _order_typing = _m.order_pattern_edit_active;
 
     // ── BACKFILL ──
     if (!variable_struct_exists(_m, "instruments"))  _m.instruments = [];
@@ -38,15 +45,18 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             { name: "PATTERN 02", steps: [], pattern_len: 64 }
         ];
     }
-    // Steps saved before the command column existed get cmd -1 (no command).
-    for (var _cbp = 0; _cbp < array_length(_m.patterns); _cbp++) {
-        var _cb_steps = _m.patterns[_cbp].steps;
-        for (var _cbs = 0; _cbs < array_length(_cb_steps); _cbs++) {
-            if (is_undefined(_cb_steps[_cbs][$ "cmd"])) {
-                _cb_steps[_cbs].cmd     = -1;
-                _cb_steps[_cbs].cmd_val = 0;
+    // Migrate old assets once; active patterns are also checked by _se_ensure_steps.
+    if (_pat_needs_reset || !variable_struct_exists(_m, "cmd_fields_migrated")) {
+        for (var _cbp = 0; _cbp < array_length(_m.patterns); _cbp++) {
+            var _cb_steps = _m.patterns[_cbp].steps;
+            for (var _cbs = 0; _cbs < array_length(_cb_steps); _cbs++) {
+                if (is_undefined(_cb_steps[_cbs][$ "cmd"])) {
+                    _cb_steps[_cbs].cmd     = -1;
+                    _cb_steps[_cbs].cmd_val = 0;
+                }
             }
         }
+        _m.cmd_fields_migrated = true;
     }
     if (!variable_struct_exists(_m, "bank_sel_pattern")) _m.bank_sel_pattern = 0;
     _m.bank_sel_pattern = clamp(_m.bank_sel_pattern, 0, array_length(_m.patterns) - 1);
@@ -280,6 +290,46 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         global.addresses_dirty = true;
     };
 
+    if (_order_typing) {
+        if (_m.order_pattern_edit_song != _cur_song || _m.order_pattern_edit_page != _m.sid_page) {
+            _m.order_pattern_edit_active = false;
+        } else {
+            var _typed = scr_strip_key_ghosts(keyboard_string);
+            for (var _ti = 1; _ti <= string_length(_typed); _ti++) {
+                var _tc = string_char_at(_typed, _ti);
+                if ((_tc >= "0" && _tc <= "9") || _tc == "-") {
+                    if (_m.order_pattern_edit_replace) { _m.order_pattern_edit_buf = ""; _m.order_pattern_edit_replace = false; }
+                    if (string_length(_m.order_pattern_edit_buf) < 5) _m.order_pattern_edit_buf += _tc;
+                }
+            }
+            if (keyboard_check_pressed(vk_backspace) || keyboard_check_pressed(vk_delete)) {
+                if (_m.order_pattern_edit_replace || keyboard_check_pressed(vk_delete)) _m.order_pattern_edit_buf = "";
+                else _m.order_pattern_edit_buf = string_delete(_m.order_pattern_edit_buf, string_length(_m.order_pattern_edit_buf), 1);
+                _m.order_pattern_edit_replace = false;
+            }
+            if (keyboard_check_pressed(vk_escape)) _m.order_pattern_edit_active = false;
+            if (keyboard_check_pressed(vk_enter)) {
+                var _entry = _m.order_pattern_edit_buf;
+                var _valid = true;
+                var _number = -1;
+                if (_entry != "" && _entry != "-" && _entry != "--") {
+                    for (var _ei = 1; _ei <= string_length(_entry); _ei++) {
+                        var _ec = string_char_at(_entry, _ei);
+                        if (_ec < "0" || _ec > "9") _valid = false;
+                    }
+                    if (_valid) _number = real(_entry);
+                }
+                if (_valid && _number < array_length(_m.patterns)) {
+                    _m.order_pattern_edit_row[$ _m.order_pattern_edit_key] = _number;
+                    global.undo_dirty = true;
+                    global.addresses_dirty = true;
+                    _m.order_pattern_edit_active = false;
+                }
+            }
+        }
+        keyboard_string = "";
+    }
+
     // ── RESOLVE THE 3 ACTIVE PATTERNS FOR THE CURRENT ORDER ROW ──
     var _order_row = _cur_song.order[_m.sel_order_row];
     var _col_pat_idx = [scr_music_sid_pattern(_order_row, _voice_offset), scr_music_sid_pattern(_order_row, _voice_offset + 1), scr_music_sid_pattern(_order_row, _voice_offset + 2)];
@@ -442,11 +492,11 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     }
     // Space in a text field belongs to that field, never to the transport.
     var _transport_typing = _m.edit_active || _m.instr_edit_active
-                         || _m.instr_name_edit_active || _m.song_name_edit_active;
+                         || _m.instr_name_edit_active || _m.song_name_edit_active || _order_typing;
     // GoatTracker function keys: F1 song from the start, F2 this pattern from
     // the cursor row (looping), F3 this pattern from the top (looping), F4 stop.
     // They type nothing, so they also work while an instrument's text is open.
-    var _fkeys_ok = !_m.edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active;
+    var _fkeys_ok = !_m.edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing;
     if (_fkeys_ok) {
         if (keyboard_check_pressed(vk_f1)) {
             _transport_action = "SONG";
@@ -603,6 +653,21 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     }
 
     } // elapsed-time full-song row loop
+
+    // Playback may have changed the selected order after the initial layout.
+    // Refresh before drawing: never highlight a new row over the old patterns.
+    _order_row = _cur_song.order[_m.sel_order_row];
+    _grid_len = 16;
+    for (var _refresh_v = 0; _refresh_v < 3; _refresh_v++) {
+        var _refresh_p = scr_music_sid_pattern(_order_row, _voice_offset + _refresh_v);
+        _col_pat_idx[_refresh_v] = _refresh_p;
+        _col_pat[_refresh_v] = noone;
+        if (_refresh_p >= 0 && _refresh_p < array_length(_m.patterns)) {
+            _col_pat[_refresh_v] = _m.patterns[_refresh_p];
+            _se_ensure_steps(_col_pat[_refresh_v]);
+            _grid_len = max(_grid_len, _col_pat[_refresh_v].pattern_len);
+        }
+    }
 
     // ═════════════════════════════════════════════════════════════════════
     // HEADER ROWS
@@ -1311,7 +1376,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             }
             keyboard_string = "";
         }
-    } else if (!_m.instr_edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active) {
+    } else if (!_m.instr_edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing) {
         // ── CURSOR MODE: PIANO-STYLE NOTE ENTRY ──
         // Stands down entirely while the INSTRUMENTS panel's text or name
         // box has focus — otherwise keyboard_string feeds both handlers at
@@ -2094,7 +2159,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     }
 
     draw_set_color(make_color_rgb(255, 200, 100));
-    draw_text_l(_ox0, _oy0 - 34, "SONG ORDER");
+    draw_text_l(_ox0, _oy0 - 34, _m.order_pattern_edit_active ? "ENTER: SET / ESC: CANCEL" : "SONG ORDER");
 
     var _ord_hdr = ["#", "V" + string(_voice_offset + 1), "V" + string(_voice_offset + 2), "V" + string(_voice_offset + 3), " REPEAT", " SIZE"];
     for (var _ohi = 0; _ohi < array_length(_ord_hdr); _ohi++) {
@@ -2152,40 +2217,51 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         for (var _ovi = 0; _ovi < 3; _ovi++) {
             var _ocx = _ord_x[1 + _ovi];
             var _ocw = _ord_col_w[1 + _ovi];
-            var _oc_hov = point_in_rectangle(_mx, _my, _ocx, _ory, _ocx + _ocw, _ory + _ord_row_h);
             var _oc_val = scr_music_sid_pattern(_orow, _voice_offset + _ovi);
-
+            var _minus = _mx >= _ocx && _mx < _ocx + 15 && _my >= _ory && _my < _ory + _ord_row_h;
+            var _plus = _mx >= _ocx + _ocw - 15 && _mx < _ocx + _ocw && _my >= _ory && _my < _ory + _ord_row_h;
+            var _number_hov = _mx >= _ocx + 15 && _mx < _ocx + _ocw - 15 && _my >= _ory && _my < _ory + _ord_row_h;
+            var _editing = _m.order_pattern_edit_active && _m.order_pattern_edit_row == _orow && _m.order_pattern_edit_key == _voice_keys[_ovi];
+            draw_set_color(make_color_rgb(65, 85, 120));
+            if (_minus) draw_rectangle(_ocx + 1, _ory + 2, _ocx + 14, _ory + _ord_row_h - 2, false);
+            if (_plus) draw_rectangle(_ocx + _ocw - 14, _ory + 2, _ocx + _ocw - 1, _ory + _ord_row_h - 2, false);
             draw_set_halign(fa_center);
-            if (_oc_val < 0) {
-                draw_set_color(make_color_rgb(80, 80, 90));
-                draw_text_l(_ocx + (_ocw * 0.5), _ory + 6, "--");
-            } else {
-                draw_set_color(_voice_colours[_ovi]);
-                var _oc_str = string(_oc_val);
-                while (string_length(_oc_str) < 2) { _oc_str = "0" + _oc_str; }
-                draw_text_l(_ocx + (_ocw * 0.5), _ory + 6, _oc_str);
+            draw_set_color(_minus ? c_white : make_color_rgb(125, 135, 155));
+            draw_text_l(_ocx + 7, _ory + 6, "-");
+            draw_set_color(_plus ? c_white : make_color_rgb(125, 135, 155));
+            draw_text_l(_ocx + _ocw - 7, _ory + 6, "+");
+            var _oc_str = _oc_val < 0 ? "--" : string(_oc_val);
+            while (string_length(_oc_str) < 2) _oc_str = "0" + _oc_str;
+            if (_editing) {
+                draw_set_color(make_color_rgb(255, 210, 90));
+                draw_rectangle(_ocx + 15, _ory + 1, _ocx + _ocw - 15, _ory + _ord_row_h - 1, true);
+                _oc_str = _m.order_pattern_edit_buf;
             }
+            draw_set_color(_editing ? c_yellow : _voice_colours[_ovi]);
+            draw_text_l(_ocx + _ocw * 0.5, _ory + 6, _oc_str);
             draw_set_halign(fa_left);
-
-            if (_oc_hov && mouse_check_button_pressed(mb_left)) {
-                _se_push_undo(_m, _se_snap);
-                if (keyboard_check(vk_control) || scr_cmd_held()) {
-                    _orow[$ _voice_keys[_ovi]] = -1;
-                } else {
-                    _orow[$ _voice_keys[_ovi]] = (_oc_val + 1) mod array_length(_m.patterns);
-                }
-                _m.sel_order_row  = _ord_i;
+            if ((_minus || _plus) && mouse_check_button_pressed(mb_left)) {
+                var _next = _oc_val + (_plus ? 1 : -1);
+                if (_next >= array_length(_m.patterns)) _next = -1;
+                if (_next < -1) _next = array_length(_m.patterns) - 1;
+                _orow[$ _voice_keys[_ovi]] = _next;
                 global.undo_dirty = true;
+                global.addresses_dirty = true;
             }
-            if (_oc_hov && mouse_check_button_pressed(mb_right)) {
-                _se_push_undo(_m, _se_snap);
-                var _oc_next = _oc_val - 1;
-                if (_oc_next < -1) {
-                    _oc_next = array_length(_m.patterns) - 1;
-                }
-                _orow[$ _voice_keys[_ovi]] = _oc_next;
-                _m.sel_order_row  = _ord_i;
-                global.undo_dirty = true;
+            if (_number_hov && mouse_check_button_pressed(mb_left)) {
+                if (_m.instr_edit_active && _m.sel_instr >= 0) scr_sound_editor_commit_instrument(_m, _m.instruments[_m.sel_instr]);
+                _m.edit_active = false;
+                _m.instr_edit_active = false;
+                _m.instr_name_edit_active = false;
+                _m.song_name_edit_active = false;
+                _m.order_pattern_edit_active = true;
+                _m.order_pattern_edit_song = _cur_song;
+                _m.order_pattern_edit_page = _m.sid_page;
+                _m.order_pattern_edit_row = _orow;
+                _m.order_pattern_edit_key = _voice_keys[_ovi];
+                _m.order_pattern_edit_buf = _oc_val < 0 ? "--" : string(_oc_val);
+                _m.order_pattern_edit_replace = true;
+                keyboard_string = "";
             }
         }
 

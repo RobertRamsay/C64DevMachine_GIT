@@ -17,6 +17,11 @@ function scr_sid64_sim_voice_new() {
         instr    : undefined,   // instrument struct being stepped
         bytes    : [],          // its compiled command stream
         pc       : 0,
+        display_pcs: [],
+        display_hold: -1,
+        display_compiled: undefined,
+        slide : 0,
+        pulse_slide : 0,
         hold     : 0,
         base     : 0,           // base note index (0-95)
         active   : false,
@@ -136,6 +141,11 @@ function scr_sid64_sim_trigger(_sim, _v, _instr) {
     var _vc = _sim.voices[_v];
     var _r0 = _v * 7;
     var _f  = global.sid64_note_freq[_vc.base];
+    _vc.instr = _instr;
+    _vc.display_pcs = [];
+    _vc.display_hold = -1;
+    _vc.slide = 0;
+    _vc.pulse_slide = 0;
     if (!is_struct(_instr)) {
         // No instrument: pitch, plain pulse gate; AD/SR/PW left as they are.
         _vc.freq = _f;
@@ -179,7 +189,8 @@ function scr_sid64_sim_trigger(_sim, _v, _instr) {
     _vc.vdir = 0;
     _vc.freq = _f;
     _vc.instr  = _instr;
-    _vc.bytes  = scr_instrument_ensure_compiled(_instr).bytes;
+    _vc.display_compiled = scr_instrument_ensure_compiled(_instr);
+    _vc.bytes = _vc.display_compiled.bytes;
     _vc.pc     = 0;
     _vc.hold   = 0;
     _vc.active = true;
@@ -208,7 +219,7 @@ function scr_sid64_sim_row(_sim, _v, _note, _instr, _cmd, _val) {
     } else {
         _vc.fx = 0;              // a new note ends the continuous effect
         _vc.base = _note;
-        if (_sim.hr > 0) {
+        if (_sim.hr > 0 && !(is_struct(_instr) && scr_instrument_ensure_compiled(_instr).no_hr)) {
             // hard restart phase 1: park the envelope, trigger _hr frames later
             _vc.hr_instr = _instr;
             _vc.hr_note  = _note;
@@ -219,6 +230,7 @@ function scr_sid64_sim_row(_sim, _v, _note, _instr, _cmd, _val) {
             scr_sid64_sim_write(_sim, _r0 + 5, 0x0F);
             scr_sid64_sim_write(_sim, _r0 + 6, 0x00);
         } else {
+            _vc.hr_cd = 0;
             scr_sid64_sim_trigger(_sim, _v, _instr);
         }
     }
@@ -303,16 +315,20 @@ function scr_sid64_sim_step(_sim, _v) {
     var _vc = _sim.voices[_v];
     var _r0 = _v * 7;
     if (!_vc.active) {
+        _vc.display_pcs = [];
         return;
     }
     if (_vc.hold > 0) {
         _vc.hold -= 1;
+        _vc.display_pcs = [_vc.display_hold];
         return;
     }
+    _vc.display_pcs = [];
     var _nb = array_length(_vc.bytes);
     var _guard = 0;
     while (_guard < 64) {
         _guard += 1;
+        array_push(_vc.display_pcs, _vc.pc);
         var _op = 0x04;
         var _arg = 0;
         if (_vc.pc < _nb) {
@@ -335,10 +351,30 @@ function scr_sid64_sim_step(_sim, _v) {
             _vc.freq = global.sid64_note_freq[_ni];
             _vc.pc += 2;
         } else if (_op == 0x02) {
+            _vc.display_hold = _vc.pc;
             // HOLD n — this frame plus n-1
             _vc.hold = (_arg - 1) & 0xFF;
             _vc.pc += 2;
             return;
+        } else if (_op == 0x05) {
+            _vc.pc = _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8);
+        } else if (_op == 0x06) {
+            var _delta = _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8);
+            _vc.freq = (_vc.freq + _delta) & 65535;
+            _vc.pc += 3;
+        } else if (_op == 0x07) {
+            _vc.pw = (_arg | ((_vc.bytes[_vc.pc + 2] & 15) << 8));
+            scr_sid64_sim_write(_sim, _r0 + 2, _vc.pw & 255);
+            scr_sid64_sim_write(_sim, _r0 + 3, _vc.pw >> 8);
+            _vc.pc += 3;
+        } else if (_op == 0x08 || _op == 0x09) {
+            var _d = _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8);
+            if (_op == 0x08) _vc.slide = _d; else _vc.pulse_slide = _d;
+            _vc.pc += 3;
+        } else if (_op == 10) {
+            _vc.cb = _arg;
+            scr_sid64_sim_write(_sim, _r0 + 4, _arg);
+            _vc.pc += 2;
         } else if (_op == 0x03) {
             _vc.pc = _arg;
         } else {
@@ -358,6 +394,14 @@ function scr_sid64_sim_fx(_sim, _v, _hrw) {
     var _vc = _sim.voices[_v];
     var _r0 = _v * 7;
 
+    if (_vc.active && _hrw == 0) {
+        _vc.freq = (_vc.freq + _vc.slide) & 65535;
+        if (_vc.pulse_slide != 0) {
+            _vc.pw = (_vc.pw + _vc.pulse_slide) & 4095;
+            scr_sid64_sim_write(_sim, _r0 + 2, _vc.pw & 255);
+            scr_sid64_sim_write(_sim, _r0 + 3, _vc.pw >> 8);
+        }
+    }
     // pending one-shot 5/6/7, once any hard restart has fired
     if (_vc.pcmd != 0 && _hrw == 0) {
         if (_vc.pcmd == 5) {
@@ -636,4 +680,10 @@ function scr_sid64_sim_put(_sim, _fb, _i) {
     }
     buffer_poke(_fb, _o + 25, buffer_u32, _mask);
     _sim.mask = 0;
+}
+
+/// Immutable display snapshot; never expose a voice that is being rendered ahead.
+function scr_sid64_voice_display(_vc) {
+    if (!is_struct(_vc.instr) || (!_vc.active && (_vc.cb & 1) == 0)) return undefined;
+    return { instr: _vc.instr, compiled: _vc.display_compiled, pcs: _vc.display_pcs };
 }

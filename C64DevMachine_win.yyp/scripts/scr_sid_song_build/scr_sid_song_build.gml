@@ -267,7 +267,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // Per-voice effect state tables (see section 7).
     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
                              "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval",
-                             "pwl", "pwh", "fvh"];
+                             "pwl", "pwh", "fvh", "isl", "ish", "ipl", "iph"];
     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
 
     // True once any instrument has vibrato or any pattern has a command
@@ -319,13 +319,15 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             show_debug_message("MACRO_SID_SONG: instrument " + string(_ii) + " — " + string(_ins_comp.errors[_ei]));
         }
 
-        var _dbg_b = "";
-        for (var _dbi = 0; _dbi < array_length(_ins_comp.bytes); _dbi++) {
-            _dbg_b += string_upper(decimal_to_hex(_ins_comp.bytes[_dbi])) + " ";
+        if (variable_global_exists("sid_song_debug") && global.sid_song_debug) {
+            var _dbg_b = "";
+            for (var _dbi = 0; _dbi < array_length(_ins_comp.bytes); _dbi++) {
+                _dbg_b += string_upper(decimal_to_hex(_ins_comp.bytes[_dbi])) + " ";
+            }
+            show_debug_message("INSTR " + string(_ii) + " TEXT=[" + _ins_txt + "]");
+            show_debug_message("INSTR " + string(_ii) + " BYTES=" + _dbg_b
+                + " (count=" + string(array_length(_ins_comp.bytes)) + ")");
         }
-        show_debug_message("INSTR " + string(_ii) + " TEXT=[" + _ins_txt + "]");
-        show_debug_message("INSTR " + string(_ii) + " BYTES=" + _dbg_b
-            + " (count=" + string(array_length(_ins_comp.bytes)) + ")");
 
         array_push(_list, ["label", _key + "ins" + string(_ii)]);
         array_push(_list, ["byte", ((_atk << 4) | _dec) & 0xFF, _id]);   // AD
@@ -353,7 +355,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         }
         array_push(_list, ["byte", _ins_vdl & 0xFF,             _id]);
         array_push(_list, ["byte", _ins_vsp & 0x0F,             _id]);
-        array_push(_list, ["byte", ((_ins_vdp * 4) & 0x7F) | (_ins_filt << 7), _id]);
+        array_push(_list, ["byte", ((_ins_vdp * 4) & 0x3F) | (_ins_comp.no_hr ? 0x40 : 0) | (_ins_filt << 7), _id]);
         for (var _bi = 0; _bi < array_length(_ins_comp.bytes); _bi++) {
             array_push(_list, ["byte", _ins_comp.bytes[_bi] & 0xFF, _id]);
         }
@@ -935,6 +937,26 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["lda_izy", _S_PTR,  _id]);
 
         if (_hr > 0) {
+            // H0 is stored in the unused bit 6 of the vibrato-depth header.
+            // It preserves the live envelope and fires this instrument immediately.
+            array_push(_list, ["sta_zp", _hb + 1, _id]);
+            array_push(_list, ["cmp_imm", 255, _id]);
+            array_push(_list, ["beq", _vp + "usehr", _id]);
+            array_push(_list, ["tax", 0, _id]);
+            array_push(_list, ["lda_abx", _key + "inslo", _id]);
+            array_push(_list, ["sta_zp", _vb, _id]);
+            array_push(_list, ["lda_abx", _key + "inshi", _id]);
+            array_push(_list, ["sta_zp", _vb + 1, _id]);
+            array_push(_list, ["ldy_imm", 6, _id]);
+            array_push(_list, ["lda_izy", _vb, _id]);
+            array_push(_list, ["and_imm", 64, _id]);
+            array_push(_list, ["beq", _vp + "usehr", _id]);
+            array_push(_list, ["lda_imm", 0, _id]);
+            array_push(_list, ["sta_zp", _hb + 2, _id]);
+            array_push(_list, ["lda_zp", _hb + 1, _id]);
+            array_push(_list, ["jmp_abs", _vp + "immediate", _id]);
+            array_push(_list, ["label", _vp + "usehr"]);
+            array_push(_list, ["lda_zp", _hb + 1, _id]);
             // ── HARD RESTART, PHASE 1 ──
             // Don't sound the note now. Stash it, gate the voice off, and load
             // the dummy ADSR so the envelope counter is driven to a known
@@ -964,7 +986,8 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["jmp_abs", _vp + "docmd", _id]);
         }
 
-        if (_hr == 0) {
+        {
+        array_push(_list, ["label", _vp + "immediate"]);
 
         array_push(_list, ["cmp_imm", 0xFF,           _id]);
         array_push(_list, ["bne",     _vp + "hasins", _id]);
@@ -976,6 +999,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
         array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
         array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
+        array_push(_list, ["lda_imm", 0, _id]);
+        array_push(_list, ["sta_abs", _key + "isl_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "ish_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
+
         array_push(_list, ["lda_imm", 0x41,             _id]);   // pulse + gate
         array_push(_list, ["sta_abs", _D400 + 4,        _id]);
         array_push(_list, ["sta_zp",  _cb,              _id]);
@@ -1027,7 +1056,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _key + "ivs_" + string(_vi), _id]);
         array_push(_list, ["iny",     0,         _id]);
         array_push(_list, ["lda_izy", _vb + 0,   _id]);
-        array_push(_list, ["and_imm", 0x7F,      _id]);   // bit 7 is the filter flag
+        array_push(_list, ["and_imm", 0x3F,      _id]);   // bit 7 is the filter flag
         array_push(_list, ["sta_abs", _key + "ivp_" + string(_vi), _id]);
         if (_sng_filt_used) {
             // Route this voice through the filter (FILTER ON) or around it.
@@ -1057,6 +1086,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
         array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
         array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
+        array_push(_list, ["lda_imm", 0, _id]);
+        array_push(_list, ["sta_abs", _key + "isl_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "ish_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
+
 
         // Walking pointer moves past the 7 header bytes; the BASE stays put,
         // because $03 LOOP targets are offsets from the start of the command
@@ -1213,6 +1248,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
             array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
             array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
+        array_push(_list, ["lda_imm", 0, _id]);
+        array_push(_list, ["sta_abs", _key + "isl_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "ish_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
+
             array_push(_list, ["lda_imm", 0x41,             _id]);
             array_push(_list, ["sta_abs", _D400 + 4,        _id]);
             array_push(_list, ["sta_zp",  _cb,              _id]);
@@ -1263,7 +1304,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["sta_abs", _key + "ivs_" + string(_vi), _id]);
             array_push(_list, ["iny",     0,         _id]);
             array_push(_list, ["lda_izy", _vb + 0,   _id]);
-            array_push(_list, ["and_imm", 0x7F,      _id]);   // bit 7 is the filter flag
+            array_push(_list, ["and_imm", 0x3F,      _id]);   // bit 7 is the filter flag
             array_push(_list, ["sta_abs", _key + "ivp_" + string(_vi), _id]);
             if (_sng_filt_used) {
                 // Route this voice through the filter (FILTER ON) or around it.
@@ -1292,6 +1333,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
             array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
             array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
+        array_push(_list, ["lda_imm", 0, _id]);
+        array_push(_list, ["sta_abs", _key + "isl_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "ish_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
+
 
             array_push(_list, ["clc",     0,       _id]);
             array_push(_list, ["lda_zp",  _vb + 0, _id]);
@@ -1432,6 +1479,113 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["jmp_abs", _L_iloop,   _id]);
         array_push(_list, ["label",   _ip + "n3"]);
 
+        array_push(_list, ["cmp_imm", 5, _id]);
+        array_push(_list, ["bne", _ip + "n5", _id]);
+        array_push(_list, ["ldy_imm", 2, _id]);
+        array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["sta_zp", _S_TMP, _id]);
+        array_push(_list, ["dey", 0, _id]);
+        array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["adc_zp", _vb + 2, _id]);
+        array_push(_list, ["pha", 0, _id]);
+        array_push(_list, ["lda_zp", _vb + 3, _id]);
+        array_push(_list, ["adc_zp", _S_TMP, _id]);
+        array_push(_list, ["sta_zp", _vb + 1, _id]);
+        array_push(_list, ["pla", 0, _id]);
+        array_push(_list, ["sta_zp", _vb, _id]);
+        array_push(_list, ["jmp_abs", _L_iloop, _id]);
+        array_push(_list, ["label", _ip + "n5", _id]);
+        array_push(_list, ["cmp_imm", 6, _id]);
+        array_push(_list, ["bne", _ip + "n6", _id]);
+        array_push(_list, ["ldy_imm", 1, _id]);
+        array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["adc_abs", _key + "fql_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "fql_" + string(_vi), _id]);
+        array_push(_list, ["iny", 0, _id]);
+        array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["adc_abs", _key + "fqh_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi), _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["lda_zp", _vb, _id]);
+        array_push(_list, ["adc_imm", 3, _id]);
+        array_push(_list, ["sta_zp", _vb, _id]);
+        array_push(_list, ["lda_zp", _vb + 1, _id]);
+        array_push(_list, ["adc_imm", 0, _id]);
+        array_push(_list, ["sta_zp", _vb + 1, _id]);
+        array_push(_list, ["jmp_abs", _L_iloop, _id]);
+        array_push(_list, ["label", _ip + "n6", _id]);
+        array_push(_list, ["cmp_imm", 7, _id]);
+        array_push(_list, ["bne", _ip + "n7", _id]);
+        array_push(_list, ["ldy_imm", 1, _id]);
+        array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["sta_abs", _D400 + 2, _id]);
+        array_push(_list, ["sta_abs", _key + "pwl_" + string(_vi), _id]);
+        array_push(_list, ["iny", 0, _id]);
+        array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["and_imm", 15, _id]);
+        array_push(_list, ["sta_abs", _D400 + 3, _id]);
+        array_push(_list, ["sta_abs", _key + "pwh_" + string(_vi), _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["lda_zp", _vb, _id]);
+        array_push(_list, ["adc_imm", 3, _id]);
+        array_push(_list, ["sta_zp", _vb, _id]);
+        array_push(_list, ["lda_zp", _vb + 1, _id]);
+        array_push(_list, ["adc_imm", 0, _id]);
+        array_push(_list, ["sta_zp", _vb + 1, _id]);
+        array_push(_list, ["jmp_abs", _L_iloop, _id]);
+        array_push(_list, ["label", _ip + "n7", _id]);
+        array_push(_list, ["cmp_imm", 8, _id]);
+        array_push(_list, ["bne", _ip + "n8", _id]);
+        array_push(_list, ["ldy_imm", 1, _id]);
+        array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["sta_abs", _key + "isl_" + string(_vi), _id]);
+        array_push(_list, ["iny", 0, _id]);
+        array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["sta_abs", _key + "ish_" + string(_vi), _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["lda_zp", _vb, _id]);
+        array_push(_list, ["adc_imm", 3, _id]);
+        array_push(_list, ["sta_zp", _vb, _id]);
+        array_push(_list, ["lda_zp", _vb + 1, _id]);
+        array_push(_list, ["adc_imm", 0, _id]);
+        array_push(_list, ["sta_zp", _vb + 1, _id]);
+        array_push(_list, ["jmp_abs", _L_iloop, _id]);
+        array_push(_list, ["label", _ip + "n8", _id]);
+        array_push(_list, ["cmp_imm", 9, _id]);
+        array_push(_list, ["bne", _ip + "n9", _id]);
+        array_push(_list, ["ldy_imm", 1, _id]);
+        array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
+        array_push(_list, ["iny", 0, _id]);
+        array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["lda_zp", _vb, _id]);
+        array_push(_list, ["adc_imm", 3, _id]);
+        array_push(_list, ["sta_zp", _vb, _id]);
+        array_push(_list, ["lda_zp", _vb + 1, _id]);
+        array_push(_list, ["adc_imm", 0, _id]);
+        array_push(_list, ["sta_zp", _vb + 1, _id]);
+        array_push(_list, ["jmp_abs", _L_iloop, _id]);
+        array_push(_list, ["label", _ip + "n9", _id]);
+        array_push(_list, ["cmp_imm", 10, _id]);
+        array_push(_list, ["bne", _ip + "n10", _id]);
+        array_push(_list, ["ldy_imm", 1, _id]);
+        array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["sta_zp", _cb, _id]);
+        array_push(_list, ["sta_abs", _D400 + 4, _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["lda_zp", _vb, _id]);
+        array_push(_list, ["adc_imm", 2, _id]);
+        array_push(_list, ["sta_zp", _vb, _id]);
+        array_push(_list, ["lda_zp", _vb + 1, _id]);
+        array_push(_list, ["adc_imm", 0, _id]);
+        array_push(_list, ["sta_zp", _vb + 1, _id]);
+        array_push(_list, ["jmp_abs", _L_iloop, _id]);
+        array_push(_list, ["label", _ip + "n10", _id]);
+
         // $04, or anything unrecognised = END — gate off, mark inactive.
         //
         // Waveform bits are PRESERVED so the release phase still has an
@@ -1445,6 +1599,29 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_zp",  _vb + 6,   _id]);
 
         array_push(_list, ["label",   _L_idone]);
+        array_push(_list, ["lda_zp", _vb + 6, _id]);
+        array_push(_list, ["beq", _ip + "sweepdone", _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["lda_abs", _key + "fql_" + string(_vi), _id]);
+        array_push(_list, ["adc_abs", _key + "isl_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "fql_" + string(_vi), _id]);
+        array_push(_list, ["lda_abs", _key + "fqh_" + string(_vi), _id]);
+        array_push(_list, ["adc_abs", _key + "ish_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi), _id]);
+        array_push(_list, ["lda_abs", _key + "ipl_" + string(_vi), _id]);
+        array_push(_list, ["ora_abs", _key + "iph_" + string(_vi), _id]);
+        array_push(_list, ["beq", _ip + "sweepdone", _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["lda_abs", _key + "pwl_" + string(_vi), _id]);
+        array_push(_list, ["adc_abs", _key + "ipl_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "pwl_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _D400 + 2, _id]);
+        array_push(_list, ["lda_abs", _key + "pwh_" + string(_vi), _id]);
+        array_push(_list, ["adc_abs", _key + "iph_" + string(_vi), _id]);
+        array_push(_list, ["and_imm", 15, _id]);
+        array_push(_list, ["sta_abs", _key + "pwh_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _D400 + 3, _id]);
+        array_push(_list, ["label", _ip + "sweepdone", _id]);
         // ── Per-frame effects + frequency output (shared routine) ──
         // hrw tells the routine a hard restart is still counting down, so a
         // pending 5XX/6XX/7XX waits for the note's own AD/SR/wave first.

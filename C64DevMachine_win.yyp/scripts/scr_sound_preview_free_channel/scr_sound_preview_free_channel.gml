@@ -6,6 +6,7 @@
 /// Safe to call on a channel that has never been used — the arrays are grown
 /// and seeded with -1 here rather than at each call site.
 function scr_sound_preview_free_channel(_channel) {
+    if (variable_global_exists("instrument_follow") && _channel < array_length(global.instrument_follow)) global.instrument_follow[_channel] = undefined;
     if (!variable_global_exists("snd_preview_instance")) {
         global.snd_preview_instance = array_create(3, -1);
     }

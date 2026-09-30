@@ -91,6 +91,7 @@ function scr_sfx_maker_frames(_e) {
     var _base=variable_struct_exists(_e,"sfx_note")?_e.sfx_note:"C-5";
     var _hz=scr_note_name_to_hz(_base), _wave=0x21, _freq=round(_hz*16777216/985248);
     var _pc=0, _frames=[], _steps=0;
+    var _slide=0, _pulse_slide=0, _pw=scr_sid64_instr_field(_e,"pulse_width",2048)&4095;
     while(_pc<array_length(_b) && array_length(_frames)<240 && _steps++<4096) {
         var _op=_b[_pc++];
         if(_op==4) break;
@@ -98,15 +99,28 @@ function scr_sfx_maker_frames(_e) {
         var _v=_b[_pc++];
         if(_op==0) _wave=_v;
         else if(_op==1) {_v=(_v>127)?_v-256:_v;_freq=clamp(round(_hz*power(2,_v/12)*16777216/985248),0,65535);}
-        else if(_op==2) for(var _t=0;_t<_v && array_length(_frames)<240;_t++) array_push(_frames,[_freq&255,(_freq>>8)&255,_wave]);
+        else if(_op==2) for(var _t=0;_t<_v && array_length(_frames)<240;_t++) {
+            _freq=(_freq+_slide)&65535; _pw=(_pw+_pulse_slide)&4095;
+            array_push(_frames,[_freq&255,(_freq>>8)&255,_wave,_pw&255,(_pw>>8)&15]);
+        }
         else if(_op==3) _pc=_v;
+        else if(_op>=5 && _op<=9) {
+            if(_pc>=array_length(_b)) break;
+            _v|=_b[_pc++]<<8;
+            if(_op==5) _pc=_v;
+            else if(_op==6) _freq=(_freq+_v)&65535;
+            else if(_op==7) _pw=_v&4095;
+            else if(_op==8) _slide=_v;
+            else _pulse_slide=_v;
+        }
+        else if(_op==10) _wave=_v;
         else break;
     }
     // Release with the last waveform before explicitly silencing the voice.
     var _release=variable_struct_exists(_e,"release")?clamp(_e.release,0,15):1;
     var _release_ms=[6,24,48,72,114,168,204,240,300,750,1500,2400,3000,9000,15000,24000];
     var _tail=min(255-array_length(_frames),max(1,ceil(_release_ms[_release]/20)));
-    for(var _t=0;_t<_tail;_t++) array_push(_frames,[_freq&255,(_freq>>8)&255,_wave&254]);
+    for(var _t=0;_t<_tail;_t++) array_push(_frames,[_freq&255,(_freq>>8)&255,_wave&254,_pw&255,(_pw>>8)&15]);
     return _frames;
 }
 
@@ -142,9 +156,9 @@ function scr_sfx_maker_compile(_list,_node,_asset,_voice) {
             var _regs=[[_sid+2,_pw&255],[_sid+3,(_pw>>8)&15],[_sid+5,_ad],[_sid+6,_sr]];
             for(var _j=0;_j<4;_j++) array_push(_list,["lda_imm",_regs[_j][1],_node],["sta_abs",_regs[_j][0],_node]);
             array_push(_list,["rts",0,_node],["label",_key+"frame"+_tag],["ldx_lab",_key+"cursor",_node],["cpx_imm",array_length(_frames),_node],["bcc",_key+"write"+_tag,_node],["jmp_abs",_key+"stop",_node],["label",_key+"write"+_tag]);
-            for(var _j=0;_j<3;_j++) array_push(_list,["lda_abx",_key+"table"+_tag+"_"+string(_j),_node],["sta_abs",_sid+(_j==2?4:_j),_node]);
+            for(var _j=0;_j<5;_j++) array_push(_list,["lda_abx",_key+"table"+_tag+"_"+string(_j),_node],["sta_abs",_sid+(_j==2?4:(_j>=3?_j-1:_j)),_node]);
             array_push(_list,["inc_lab",_key+"cursor",_node],["rts",0,_node]);
-            for(var _j=0;_j<3;_j++) {
+            for(var _j=0;_j<5;_j++) {
                 array_push(_list,["label",_key+"table"+_tag+"_"+string(_j)]);
                 for(var _f=0;_f<array_length(_frames);_f++) array_push(_list,["byte",_frames[_f][_j],_node]);
             }

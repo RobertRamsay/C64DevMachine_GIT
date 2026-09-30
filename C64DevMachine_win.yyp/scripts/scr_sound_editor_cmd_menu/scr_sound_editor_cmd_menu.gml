@@ -61,6 +61,20 @@ function scr_sound_editor_cmd_menus(_lines) {
             { ins: "D255", label: "~5 SECONDS (SUSTAIN)" }
         ] },
         { id: "LOOP", items: _loop },
+        { id: "FINE", items: [
+            { ins: "F+1", label: "ADD 1 SID PITCH UNIT" },
+            { ins: "F-1", label: "SUBTRACT 1 SID PITCH UNIT" },
+            { ins: "F+40", label: "FINE RISE (FOLLOW WITH D1 / LOOP)" },
+            { ins: "P$800", label: "PULSE WIDTH $800 (0-$FFF)" },
+            { ins: "S+40", label: "SLIDE PITCH +40 EACH FRAME" },
+            { ins: "S0", label: "STOP INSTRUMENT PITCH SLIDE" },
+            { ins: "Q+32", label: "SWEEP PULSE +32 EACH FRAME" },
+            { ins: "Q0", label: "STOP INSTRUMENT PULSE SWEEP" },
+            { ins: "G$40", label: "GATE OFF, CONTINUE THE PROGRAM" },
+            { ins: "G$41", label: "PULSE GATE ON, CONTINUE" },
+            { ins: "H0", label: "KEEP ENVELOPE: BYPASS HARD RESTART" },
+            { ins: "H1", label: "USE THE PLAYER HARD RESTART SETTING" }
+        ] },
         { id: "END", items: [
             { ins: "---", label: "GATE OFF + STOP (NOTE RELEASES)" }
         ] }
@@ -269,6 +283,12 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
         ["N", "play the pattern's note"],
         ["N+n / N-n", "the note shifted n semitones"],
         ["", "N+12 octave up, N+7 fifth, N+4 3rd"],
+        ["F+n / F-n", "add/subtract SID pitch units once"],
+        ["S+n / S-n", "pitch slide each frame; S0 stops"],
+        ["P$xxx", "exact pulse width $000-$FFF"],
+        ["Q+n / Q-n", "pulse sweep each frame; Q0 stops"],
+        ["G$xx", "raw waveform + gate; keeps stepping"],
+        ["H0 / H1", "bypass / inherit player hard restart"],
         ["Dn", "wait n frames before the next step"],
         ["", "50 frames = 1 second (PAL)"],
         ["Ln", "jump back to step n (loops forever)"],
@@ -323,6 +343,22 @@ function scr_sound_editor_instr_comment(_line, _lines) {
     var _c0 = string_char_at(_up, 1);
     var _rest = string_delete(_up, 1, 1);
 
+    if (_up == "H0" || _up == "H1") {
+        return { text: _up == "H0" ? "instrument setting: bypass hard restart (keep envelope)" : "instrument setting: use player hard restart", bad: false };
+    }
+    if (_c0 == "G") {
+        var _gp = scr_instrument_parse(_raw);
+        return { text: array_length(_gp.errors) > 0 ? "? use G$00..G$FF" : "raw gate/wave byte; program continues", bad: array_length(_gp.errors) > 0 };
+    }
+    if ((_c0 == "F" && (string_char_at(_up, 2) == "+" || string_char_at(_up, 2) == "-")) || _c0 == "P" || _c0 == "S" || _c0 == "Q") {
+        var _parsed = scr_instrument_parse(_raw);
+        if (array_length(_parsed.errors) > 0) return { text: _parsed.errors[0], bad: true };
+        var _desc = "fine pitch change (SID units)";
+        if (_c0 == "P") _desc = "set exact pulse width (0-$FFF)";
+        if (_c0 == "S") _desc = "pitch slide per frame; S0 stops";
+        if (_c0 == "Q") _desc = "pulse sweep per frame; Q0 stops (wraps 12-bit)";
+        return { text: _desc + "; Dn sets duration", bad: false };
+    }
     // N / N+n / N-n : note
     if (_c0 == "N") {
         if (_rest == "" || _rest == "+0" || _rest == "-0") {

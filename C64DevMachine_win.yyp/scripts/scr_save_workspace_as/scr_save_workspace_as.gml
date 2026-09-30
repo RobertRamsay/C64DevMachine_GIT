@@ -134,6 +134,7 @@
 			if (variable_struct_exists(_a.meta, "source_file")) _entry.source_file = _a.meta.source_file;
 	        // Serialize meta struct
 	        var _meta_out = {};
+        if (variable_struct_exists(_a.meta, "native_tables")) _meta_out.native_tables = _a.meta.native_tables;
 	        if (variable_struct_exists(_a.meta, "sprite_mcs"))   _meta_out.sprite_mcs   = _a.meta.sprite_mcs;
 	        if (variable_struct_exists(_a.meta, "sprite_ucs"))   _meta_out.sprite_ucs   = _a.meta.sprite_ucs;
 	        if (variable_struct_exists(_a.meta, "mc1_col"))      _meta_out.mc1_col      = _a.meta.mc1_col;

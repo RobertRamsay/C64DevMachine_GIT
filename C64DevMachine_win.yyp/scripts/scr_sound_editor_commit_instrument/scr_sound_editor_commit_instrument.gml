@@ -7,7 +7,7 @@ function scr_sound_editor_commit_instrument(_m, _instr) {
     if (!_m.instr_edit_active) {
         return;
     }
-    _instr.text     = _m.instr_edit_buf;
+    _instr.text     = scr_instrument_format(_m.instr_edit_buf);
     _instr.compiled = scr_instrument_parse(_instr.text);
     _instr.dirty    = true;
     _m.instr_edit_active = false;

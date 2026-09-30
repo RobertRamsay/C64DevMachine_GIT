@@ -23,27 +23,33 @@
 /// errors       — human-readable strings for malformed tokens (never throws)
 function scr_instrument_parse(_text) {
 
-    var _out    = { bytes: [], step_offsets: [], errors: [] };
+    var _out    = { bytes: [], step_offsets: [], errors: [], version: 3, byte_lines: [], source: string(_text), no_hr: false };
     var _tokens = [];
 
     // ── Tokenise: newlines act as commas, then split, trim, drop empties ──
     var _s = string_replace_all(string(_text), "\r\n", "\n");
     _s     = string_replace_all(_s, "\r", "\n");
-    _s     = string_replace_all(_s, "\n", ",");
-    var _raw = string_split(_s, ",");
-    for (var _i = 0; _i < array_length(_raw); _i++) {
-        var _t = string_trim(_raw[_i]);
-        if (_t != "") {
-            array_push(_tokens, _t);
+    var _token_lines = [];
+    var _source_lines = string_split(_s, "\n");
+    for (var _ln = 0; _ln < array_length(_source_lines); _ln++) {
+        var _raw = string_split(_source_lines[_ln], ",");
+        for (var _i = 0; _i < array_length(_raw); _i++) {
+            var _t = string_trim(_raw[_i]);
+            if (_t != "") { array_push(_tokens, _t); array_push(_token_lines, _ln); }
         }
     }
+    var _previous_line = -1;
 
     // ── Pass 1: emit bytes, recording where each step begins. Loop targets
     //    are noted as (byte-position-of-arg, step-index) for pass-2 patching. ──
+    var _wide = true; // version 2 uses 16-bit loop targets
     var _loop_fixups = [];   // { arg_pos, step_idx }
 
     for (var _ti = 0; _ti < array_length(_tokens); _ti++) {
 
+        // Map all emitted bytes, including implicit holds, to their source line.
+        while (array_length(_out.byte_lines) < array_length(_out.bytes)) array_push(_out.byte_lines, _previous_line);
+        _previous_line = _token_lines[_ti];
         var _tok = _tokens[_ti];
         var _up  = string_upper(_tok);
 
@@ -80,6 +86,48 @@ function scr_instrument_parse(_text) {
             if (string_char_at(_nxt, 1) == "D") {
                 _next_is_hold = true;
             }
+        }
+
+        // Fine pitch delta in SID frequency units, or an exact 12-bit pulse width.
+        // These setup commands take no time; Dn controls when they are heard.
+        if (_up == "H0" || _up == "H1") {
+            _out.no_hr = (_up == "H0");
+            continue;
+        }
+        if (_c0 == "G") {
+            var _ghex = string_delete(_up, 1, 2);
+            var _gok = string_char_at(_up, 2) == "$" && string_length(_ghex) == 2;
+            for (var _gi = 1; _gi <= string_length(_ghex); _gi++) {
+                if (string_pos(string_char_at(_ghex, _gi), "0123456789ABCDEF") == 0) _gok = false;
+            }
+            if (!_gok) array_push(_out.errors, "step " + string(_ti) + ": use G$00..G$FF for raw gate/wave control");
+            array_push(_out.bytes, 10, _gok ? real(hex_to_decimal(_ghex)) : 0);
+            continue;
+        }
+        if ((_c0 == "F" && (string_char_at(_up, 2) == "+" || string_char_at(_up, 2) == "-")) || _c0 == "P" || _c0 == "S" || _c0 == "Q") {
+            var _arg = string_delete(_up, 1, 1);
+            var _num = _arg;
+            var _neg = false;
+            var _hex = (_c0 == "P" && string_char_at(_num, 1) == "$");
+            if (_hex) _num = string_delete(_num, 1, 1);
+            if (_c0 != "P" && (string_char_at(_num, 1) == "+" || string_char_at(_num, 1) == "-")) {
+                _neg = string_char_at(_num, 1) == "-";
+                _num = string_delete(_num, 1, 1);
+            }
+            var _ok = string_length(_num) > 0;
+            for (var _j = 1; _j <= string_length(_num); _j++) {
+                if (string_pos(string_char_at(_num, _j), _hex ? "0123456789ABCDEF" : "0123456789") == 0) _ok = false;
+            }
+            var _val = 0;
+            if (_ok) _val = _hex ? real(hex_to_decimal(_num)) : real(_num);
+            if (_neg) _val = -_val;
+            if (!_ok || (_c0 != "P" && (_val < -32768 || _val > 32767)) || (_c0 == "P" && (_val < 0 || _val > 4095))) {
+                array_push(_out.errors, "step " + string(_ti) + ": F/S/Q use -32768..32767; P uses $000..$FFF");
+                _val = 0;
+            }
+            var _opcode = _c0 == "F" ? 6 : (_c0 == "P" ? 7 : (_c0 == "S" ? 8 : 9));
+            array_push(_out.bytes, _opcode, _val & 255, (_val >> 8) & 255);
+            continue;
         }
 
         // ── NOTE ── N, N+n, N-n, Nn
@@ -128,9 +176,10 @@ function scr_instrument_parse(_text) {
             var _rest = string_delete(_up, 1, 1);
             var _digits = string_digits(_rest);
             var _step   = (_digits != "") ? real(_digits) : 0;
-            array_push(_out.bytes, 0x03);
+            array_push(_out.bytes, _wide ? 0x05 : 0x03);
             array_push(_loop_fixups, { arg_pos: array_length(_out.bytes), step_idx: _step });
             array_push(_out.bytes, 0x00);   // placeholder, patched below
+            if (_wide) array_push(_out.bytes, 0x00);
             continue;
         }
 
@@ -165,16 +214,15 @@ function scr_instrument_parse(_text) {
         array_pop(_out.step_offsets);
     }
 
+    while (array_length(_out.byte_lines) < array_length(_out.bytes)) array_push(_out.byte_lines, _previous_line);
+    array_push(_out.byte_lines, -1); // implicit END has no visible source line
     // ── Always append an end terminator ──
     array_push(_out.bytes, 0x04);
 
-    // ── Soft warning if the compiled instrument overruns a one-byte offset.
-    //    Loop targets are stored as a single byte, so anything past 255 can't
-    //    be reached. Instruments are virtually never this long, but flag it
-    //    rather than emit a silently-truncated loop. ──
-    if (array_length(_out.bytes) > 255) {
-        array_push(_out.errors, "instrument is " + string(array_length(_out.bytes))
-            + " bytes; loop targets past 255 can't be addressed by a one-byte offset");
+    if (array_length(_out.bytes) > 65535) {
+        array_push(_out.errors, "instrument exceeds the 65535-byte address space");
+        _out.bytes = [0x04];
+        return _out;
     }
 
     // ── Pass 2: patch loop targets to the recorded byte offset. If the target
@@ -192,6 +240,7 @@ function scr_instrument_parse(_text) {
                 + " doesn't exist; loop points at end (halts)");
         }
         _out.bytes[_fx.arg_pos] = _tgt & 0xFF;
+        if (_wide) _out.bytes[_fx.arg_pos + 1] = (_tgt >> 8) & 255;
     }
 
     return _out;
@@ -204,6 +253,21 @@ function scr_instrument_ensure_compiled(_instr) {
     if (_valid) _valid = is_struct(_instr.compiled);
     if (_valid) _valid = variable_struct_exists(_instr.compiled, "bytes") && variable_struct_exists(_instr.compiled, "errors");
     if (_valid) _valid = is_array(_instr.compiled.bytes) && is_array(_instr.compiled.errors);
+    if (_valid) _valid = variable_struct_exists(_instr.compiled, "version") && variable_struct_exists(_instr.compiled, "source");
+    if (_valid) _valid = _instr.compiled.version == 3 && _instr.compiled.source == _instr.text;
     if (!_valid) _instr.compiled = scr_instrument_parse(_instr.text);
     return _instr.compiled;
+}
+
+// One command per editor entry; token order (and therefore loop numbering) stays fixed.
+function scr_instrument_format(_text) {
+    var _s = string_replace_all(string(_text), "\r", "\n");
+    _s = string_replace_all(_s, ",", "\n");
+    var _raw = string_split(_s, "\n");
+    var _lines = [];
+    for (var _i = 0; _i < array_length(_raw); _i++) {
+        var _t = string_trim(_raw[_i]);
+        if (_t != "") array_push(_lines, _t);
+    }
+    return string_join_ext("\n", _lines);
 }

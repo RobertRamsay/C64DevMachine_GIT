@@ -12,6 +12,7 @@
 /// original single-column layout.
 function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, _iy1 = -1) {
 
+    var _follow = scr_sound_instrument_follow_read(_m);
     var _two_col    = (_ix1 > 0 && _iy1 > 0);
     var _list_row_h = 22;
     var _list_vis   = 6;
@@ -53,6 +54,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
 
     _m.instr_list_scroll = clamp(_m.instr_list_scroll, 0, max(0, array_length(_m.instruments) - _list_vis));
 
+    _m.instr_list_scroll = scr_sound_editor_scrollbar(_m, "instr_list_drag", _m.instr_list_scroll,
+        array_length(_m.instruments), _list_vis, _ix0 + _list_w - 12, _iy0, 12, _list_vis * _list_row_h, _mx, _my);
+
     for (var _ilv = 0; _ilv < _list_vis; _ilv++) {
         var _ii = _ilv + _m.instr_list_scroll;
         if (_ii >= array_length(_m.instruments)) {
@@ -61,19 +65,30 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         var _instr = _m.instruments[_ii];
         var _iry   = _iy0 + _ilv * _list_row_h;
         var _sel   = (_ii == _m.sel_instr);
+        var _sounding = false;
+        for (var _fv = 0; _fv < array_length(_follow); _fv++) {
+            if (is_struct(_follow[_fv]) && _follow[_fv].instr == _instr) { _sounding = true; break; }
+        }
 
         draw_set_color(_sel ? make_color_rgb(50, 70, 110) : ((_ii mod 2 == 0) ? make_color_rgb(20, 20, 32) : make_color_rgb(16, 16, 26)));
-        draw_rectangle(_ix0, _iry, _ix0 + _list_w, _iry + _list_row_h, false);
+        draw_rectangle(_ix0, _iry, _ix0 + _list_w - 14, _iry + _list_row_h, false);
 
         draw_set_color(make_color_rgb(120, 120, 160));
         var _id_str = string(_ii);
         while (string_length(_id_str) < 2) { _id_str = "0" + _id_str; }
         draw_text_l(_ix0 + 6, _iry + 4, _id_str);
 
-        draw_set_color(_sel ? c_white : make_color_rgb(180, 180, 200));
-        draw_text_l(_ix0 + 36, _iry + 4, _instr.name);
+        if (_sounding) {
+            draw_set_color(c_lime);
+            draw_rectangle(_ix0 + 1, _iry + 2, _ix0 + 3, _iry + _list_row_h - 2, false);
+        }
+        draw_set_color(_sounding ? c_lime : (_sel ? c_white : make_color_rgb(180, 180, 200)));
+        var _list_name = _instr.name;
+        while (string_length(_list_name) > 0 && string_width_l(_list_name) > _list_w - 54)
+            _list_name = string_delete(_list_name, string_length(_list_name), 1);
+        draw_text_l(_ix0 + 36, _iry + 4, _list_name);
 
-        var _row_hov = point_in_rectangle(_mx, _my, _ix0, _iry, _ix0 + _list_w, _iry + _list_row_h);
+        var _row_hov = point_in_rectangle(_mx, _my, _ix0, _iry, _ix0 + _list_w - 14, _iry + _list_row_h);
         if (_row_hov && mouse_check_button_pressed(mb_left)) {
             var _instr_dbl = (_m.instr_last_click_idx == _ii
                            && (current_time - _m.instr_last_click_time) < 350);
@@ -81,6 +96,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             _m.instr_last_click_idx  = _ii;
 
             if (_m.sel_instr != _ii) {
+                if (_m.instr_edit_active && _m.sel_instr >= 0) scr_sound_editor_commit_instrument(_m, _m.instruments[_m.sel_instr]);
                 _m.instr_edit_active      = false;
                 _m.instr_name_edit_active = false;
             }
@@ -231,6 +247,19 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         return;
     }
     var _sel_instr = _m.instruments[_m.sel_instr];
+    if (!_m.instr_edit_active && (!variable_struct_exists(_m, "instr_format_source") || _m.instr_format_source != _sel_instr.text)) {
+        var _formatted = scr_instrument_format(_sel_instr.text);
+        _m.instr_format_source = _formatted;
+        if (_formatted != _sel_instr.text) {
+            _sel_instr.text = _formatted;
+            _sel_instr.compiled = scr_instrument_parse(_formatted);
+            global.addresses_dirty = true;
+        }
+    }
+    if (!variable_struct_exists(_m, "instr_text_scroll") || !variable_struct_exists(_m, "instr_scroll_sel") || _m.instr_scroll_sel != _m.sel_instr) {
+        _m.instr_text_scroll = 0;
+        _m.instr_scroll_sel = _m.sel_instr;
+    }
     var _dy        = _iby + _btn_h + 20;
 
     draw_set_color(make_color_rgb(120, 120, 160));
@@ -508,15 +537,25 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     if (!_tb_hov && mouse_check_button_pressed(mb_left) && _m.instr_edit_active && !_wave_click) {
         scr_sound_editor_commit_instrument(_m, _sel_instr);
     }
+    var _visible_lines = max(1, floor((_tb_h - 18) / 16));
+    var _source_lines = string_split(_m.instr_edit_active ? _m.instr_edit_buf : _sel_instr.text, "\n");
+    if (_tb_hov) {
+        if (mouse_wheel_up()) _m.instr_text_scroll -= 3;
+        if (mouse_wheel_down()) _m.instr_text_scroll += 3;
+    }
+    _m.instr_text_scroll = clamp(_m.instr_text_scroll, 0, max(0, array_length(_source_lines) - _visible_lines));
+    _m.instr_text_scroll = scr_sound_editor_scrollbar(_m, "instr_text_drag", _m.instr_text_scroll,
+        array_length(_source_lines), _visible_lines, _tb_x0 + _tb_w - 12, _tb_y1, 12, _tb_h, _mx, _my);
+    var _tb_content_hov = _tb_hov && _mx < _tb_x0 + _tb_w - 14;
     // Right-click a line to delete it from the instrument program. If the text
     // wasn't open it's committed straight away; if it was, the edit continues.
-    if (_tb_hov && mouse_check_button_pressed(mb_right) && !_wave_click) {
+    if (_tb_content_hov && mouse_check_button_pressed(mb_right) && !_wave_click) {
         var _rc_src = _sel_instr.text;
         if (_m.instr_edit_active) {
             _rc_src = _m.instr_edit_buf;
         }
         var _rc_lines = string_split(_rc_src, "\n");
-        var _rc_line  = floor((_my - _tb_y1 - 4) / 16);
+        var _rc_line  = (floor((_my - _tb_y1 - 4) / 16) + _m.instr_text_scroll);
         if (_rc_line >= 0 && _rc_line < array_length(_rc_lines)) {
             array_delete(_rc_lines, _rc_line, 1);
             var _rc_new = string_join_ext("\n", _rc_lines);
@@ -532,7 +571,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             }
         }
     }
-    if (_tb_hov && mouse_check_button_pressed(mb_left) && !_wave_click) {
+    if (_tb_content_hov && mouse_check_button_pressed(mb_left) && !_wave_click) {
         if (!_m.instr_edit_active) {
             _m.instr_edit_active      = true;
             _m.instr_edit_buf         = _sel_instr.text;
@@ -544,7 +583,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             // The step-number gutter's width is subtracted out first, since
             // it's drawn but isn't part of the actual buffer content. ──
             var _cl_lines = string_split(_m.instr_edit_buf, "\n");
-            var _click_line = clamp(floor((_my - _tb_y1 - 4) / 16), 0, array_length(_cl_lines) - 1);
+            var _click_line = clamp((floor((_my - _tb_y1 - 4) / 16) + _m.instr_text_scroll), 0, array_length(_cl_lines) - 1);
             var _cl_prefix = string(_click_line);
             while (string_length(_cl_prefix) < 2) { _cl_prefix = "0" + _cl_prefix; }
             _cl_prefix += ": ";
@@ -567,7 +606,12 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     }
 
     var _tb_disp  = _m.instr_edit_active ? _m.instr_edit_buf : _sel_instr.text;
-    var _tb_lines = string_split(_tb_disp, "\n");
+    if (!variable_struct_exists(_m, "instr_lines_source") || _m.instr_lines_source != _tb_disp) {
+        _m.instr_lines_source = _tb_disp;
+        _m.instr_lines_cache = string_split(_tb_disp, "\n");
+        _m.instr_comments_cache = array_create(array_length(_m.instr_lines_cache), undefined);
+    }
+    var _tb_lines = _m.instr_lines_cache;
 
     // ── CURSOR POSITION — convert the flat cursor offset into a line/column
     // so the blinking "|" lands where you're actually typing, not just at
@@ -587,17 +631,50 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         }
     }
 
+    if (_m.instr_edit_active) {
+        if (!variable_struct_exists(_m, "instr_last_cursor") || _m.instr_last_cursor != _m.instr_edit_cursor) {
+            if (_tb_cursor_line < _m.instr_text_scroll) _m.instr_text_scroll = _tb_cursor_line;
+            if (_tb_cursor_line >= _m.instr_text_scroll + _visible_lines) _m.instr_text_scroll = _tb_cursor_line - _visible_lines + 1;
+            _m.instr_last_cursor = _m.instr_edit_cursor;
+        }
+    }
+    var _live_lines = [];
+    var _follow_line = -1;
+    for (var _fv = 0; _fv < array_length(_follow); _fv++) {
+        var _live = _follow[_fv];
+        if (!is_struct(_live) || _live.instr != _sel_instr || !is_struct(_live.compiled)) continue;
+        // Suppress stale positions while the source is being changed.
+        if (_live.compiled.source != _tb_disp) continue;
+        for (var _fp = 0; _fp < array_length(_live.pcs); _fp++) {
+            var _pc = _live.pcs[_fp];
+            if (_pc < 0 || _pc >= array_length(_live.compiled.byte_lines)) continue;
+            var _line = _live.compiled.byte_lines[_pc];
+            if (_line >= 0) { array_push(_live_lines, _line); if (_follow_line < 0) _follow_line = _line; }
+        }
+    }
+    if (_follow_line >= 0 && _m.instr_text_drag < 0 && !_m.instr_edit_active && !point_in_rectangle(_mx, _my, _tb_x0, _tb_y1, _tb_x0 + _tb_w, _tb_y1 + _tb_h)) {
+        if (_follow_line < _m.instr_text_scroll || _follow_line >= _m.instr_text_scroll + _visible_lines) {
+            _m.instr_text_scroll = clamp(_follow_line - 2, 0, max(0, array_length(_tb_lines) - _visible_lines));
+        }
+    }
     // ── STEP-NUMBER GUTTER, DIVIDER LINE, & AUTOMATED SIDE COMMENTS ──
     var _tb_blink = (current_time mod 600) < 300;
     
     // Draw a clean vertical divider line inside the box (moved slightly left)
     draw_set_color(make_color_rgb(45, 45, 65));
-    draw_line(_tb_x0 + 72, _tb_y1 + 2, _tb_x0 + 72, _tb_y1 + _tb_h - 2);
+    draw_line(_tb_x0 + 124, _tb_y1 + 2, _tb_x0 + 124, _tb_y1 + _tb_h - 2);
 
-    for (var _tli = 0; _tli < array_length(_tb_lines); _tli++) {
+    for (var _tli = _m.instr_text_scroll; _tli < min(array_length(_tb_lines), _m.instr_text_scroll + _visible_lines); _tli++) {
         // Lines past the bottom of the box aren't drawn — the box never spills.
-        if (4 + (_tli * 16) + 14 > _tb_h) {
+        if (4 + ((_tli - _m.instr_text_scroll) * 16) + 14 > _tb_h) {
             break;
+        }
+        var _line_live = false;
+        for (var _fl = 0; _fl < array_length(_live_lines); _fl++) if (_live_lines[_fl] == _tli) _line_live = true;
+        if (_line_live) {
+            draw_set_color(make_color_rgb(25, 80, 48));
+            var _live_y = _tb_y1 + 3 + (_tli - _m.instr_text_scroll) * 16;
+            draw_rectangle(_tb_x0 + 2, _live_y, _tb_x0 + _tb_w - 14, _live_y + 16, false);
         }
         var _tb_prefix = string(_tli);
         while (string_length(_tb_prefix) < 2) { _tb_prefix = "0" + _tb_prefix; }
@@ -605,22 +682,27 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         var _tb_prefix_w = string_width_l(_tb_prefix);
 
         draw_set_color(make_color_rgb(90, 90, 120));
-        draw_text_l(_tb_x0 + 4, _tb_y1 + 4 + _tli * 16, _tb_prefix);
+        draw_text_l(_tb_x0 + 4, _tb_y1 + 4 + (_tli - _m.instr_text_scroll) * 16, _tb_prefix);
 
         var _tb_line_txt = _tb_lines[_tli];
         if (_m.instr_edit_active && _tb_blink && _tli == _tb_cursor_line) {
             _tb_line_txt = string_insert("|", _tb_line_txt, _tb_cursor_col + 1);
         }
-        draw_set_color(_m.instr_edit_active ? c_lime : make_color_rgb(160, 160, 180));
-        draw_text_l(_tb_x0 + 4 + _tb_prefix_w, _tb_y1 + 4 + _tli * 16, _tb_line_txt);
+        draw_set_color(_line_live ? c_white : (_m.instr_edit_active ? c_lime : make_color_rgb(160, 160, 180)));
+        while (string_length(_tb_line_txt) > 0 && string_width_l(_tb_line_txt) > 112 - _tb_prefix_w) _tb_line_txt = string_delete(_tb_line_txt, string_length(_tb_line_txt), 1);
+        draw_text_l(_tb_x0 + 4 + _tb_prefix_w, _tb_y1 + 4 + (_tli - _m.instr_text_scroll) * 16, _tb_line_txt);
 
         // Plain-English side note for every line, live while typing too
         // (see scr_sound_editor_instr_comment). Mid-blue; problems in red.
-        var _cm = scr_sound_editor_instr_comment(_tb_lines[_tli], _tb_lines);
+        // Resolve visible help once per source edit, not once per redraw.
+        if (is_undefined(_m.instr_comments_cache[_tli])) {
+            _m.instr_comments_cache[_tli] = scr_sound_editor_instr_comment(_tb_lines[_tli], _tb_lines);
+        }
+        var _cm = _m.instr_comments_cache[_tli];
         if (_cm.text != "") {
             var _comment = _cm.text;
             // Trim a long side-note to the box instead of running past it.
-            while (string_length(_comment) > 1 && string_width_l(_comment) > _tb_w - 86) {
+            while (string_length(_comment) > 1 && string_width_l(_comment) > _tb_w - 152) {
                 _comment = string_copy(_comment, 1, string_length(_comment) - 1);
             }
             if (_cm.bad) {
@@ -628,7 +710,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             } else {
                 draw_set_color(make_color_rgb(90, 150, 230));
             }
-            draw_text_l(_tb_x0 + 80, _tb_y1 + 4 + _tli * 16, _comment);
+            draw_text_l(_tb_x0 + 132, _tb_y1 + 4 + (_tli - _m.instr_text_scroll) * 16, _comment);
         }
     }
 
@@ -642,6 +724,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             _sp_oct = real(_sp_o);
         }
         var _sp_ins = {
+            follow_owner: _sel_instr,
             text        : _m.instr_edit_buf,
             attack      : _sel_instr.attack,
             decay       : _sel_instr.decay,
@@ -689,7 +772,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             _m.instr_edit_cursor += (string_length(_tb_lines[_tb_cursor_line]) - _tb_cursor_col);
         } else if (keyboard_string != "") {
             var _tb_added = scr_strip_key_ghosts(keyboard_string);
-            if (_tb_added != "" && string_length(_m.instr_edit_buf) < 2000) {
+            if (_tb_added != "" && string_length(_m.instr_edit_buf) < 200000) {
                 _m.instr_edit_buf    = string_insert(_tb_added, _m.instr_edit_buf, _m.instr_edit_cursor + 1);
                 _m.instr_edit_cursor += string_length(_tb_added);
             }
@@ -709,7 +792,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         // At most three error lines are shown so the legend keeps its place.
         _err_n = min(_err_n, 3);
         for (var _eri = 0; _eri < _err_n; _eri++) {
-            draw_text_l(_tb_x0, _pv_y + 18 + _eri * 12, _sel_instr.compiled.errors[_eri]);
+            var _err_text = _sel_instr.compiled.errors[_eri];
+            while (string_length(_err_text) > 0 && string_width_l(_err_text) > _tb_w) _err_text = string_delete(_err_text, string_length(_err_text), 1);
+            draw_text_l(_tb_x0, _pv_y + 18 + _eri * 12, _err_text);
         }
         draw_set_font_l(fnt_c64_tiny);
     }
@@ -721,8 +806,8 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     draw_text_l(_tb_x0, _lg_y,      "$xx   WAVE / CONTROL BYTE (HEX)");
     draw_text_l(_tb_x0, _lg_y + 12, "N  N+n  N-n   NOTE + SEMITONES");
     draw_text_l(_tb_x0, _lg_y + 24, "Dn   HOLD n TICKS (1-255)");
-    draw_text_l(_tb_x0, _lg_y + 36, "Ln   LOOP BACK TO STEP n");
-    draw_text_l(_tb_x0, _lg_y + 48, "---   END (GATE OFF + STOP)");
+    draw_text_l(_tb_x0, _lg_y + 36, "Ln   LOOP TO STEP n (16-BIT OFFSET)");
+    draw_text_l(_tb_x0, _lg_y + 48, "F FINE / S SLIDE / P PULSE / Q SWEEP / G GATE / --- END");
     draw_set_font_l(fnt_c64_tiny);
 
     // Dropdown list / help table last, so they sit over the command box.
@@ -826,4 +911,29 @@ function scr_sound_editor_preset_picker(_m, _x, _y, _w, _visible, _mx, _my) {
     if (keyboard_check_pressed(vk_escape)) _m.preset_picker_open = false;
     keyboard_string = "";
     draw_set_color(c_white);
+}
+
+/// Shared vertical scrollbar. Dragging never changes the editor's text cursor.
+function scr_sound_editor_scrollbar(_m, _key, _value, _total, _visible, _sx, _sy, _sw, _sh, _mx, _my) {
+    if (!variable_struct_exists(_m, _key)) _m[$ _key] = -1;
+    var _limit = max(0, _total - _visible);
+    _value = clamp(_value, 0, _limit);
+    var _thumb = min(_sh, max(22, _sh * _visible / max(1, _total)));
+    var _travel = max(0, _sh - _thumb);
+    var _top = _sy + (_limit > 0 ? _travel * _value / _limit : 0);
+    var _hover = point_in_rectangle(_mx, _my, _sx, _sy, _sx + _sw, _sy + _sh);
+    if (!mouse_check_button(mb_left)) _m[$ _key] = -1;
+    if (_limit > 0 && _hover && mouse_check_button_pressed(mb_left)) {
+        _m[$ _key] = (_my >= _top && _my <= _top + _thumb) ? _my - _top : _thumb * 0.5;
+    }
+    if (_m[$ _key] >= 0 && _travel > 0) {
+        _value = round(clamp((_my - _sy - _m[$ _key]) / _travel, 0, 1) * _limit);
+        _top = _sy + _travel * _value / _limit;
+    }
+    draw_set_color(make_color_rgb(24, 26, 40));
+    draw_rectangle(_sx, _sy, _sx + _sw, _sy + _sh, false);
+    draw_set_color(_limit == 0 ? make_color_rgb(48, 50, 64) :
+        ((_hover || _m[$ _key] >= 0) ? make_color_rgb(150, 190, 240) : make_color_rgb(85, 105, 145)));
+    draw_rectangle(_sx + 2, _top + 1, _sx + _sw - 2, _top + _thumb - 1, false);
+    return _value;
 }

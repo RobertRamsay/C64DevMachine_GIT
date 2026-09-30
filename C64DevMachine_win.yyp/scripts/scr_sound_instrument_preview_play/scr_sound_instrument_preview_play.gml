@@ -44,6 +44,7 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
         global.snd_preview_asset[_channel]    = _hit.snd;
         global.snd_preview_buffer[_channel]   = _hit.buf;
         global.snd_preview_instance[_channel] = audio_play_sound(_hit.snd, 1, false);
+        if (variable_struct_exists(_hit, "follow")) scr_sound_instrument_follow_start(_instr, _channel, _hit.follow, _hit.follow_period);
         return;
     }
 
@@ -56,10 +57,14 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
         if (is_struct(_sid_out)) {
             if (!_prepare_only) scr_sound_preview_free_channel(_channel);
             scr_sound_preview_cache_store(_ck, _sid_out.snd, _sid_out.buf);
+            var _entry = global.snd_preview_cache[? _ck];
+            _entry.follow = _sid_out.follow;
+            _entry.follow_period = SID64_FRAME_US;
             if (_prepare_only) return;
             global.snd_preview_asset[_channel]    = _sid_out.snd;
             global.snd_preview_buffer[_channel]   = _sid_out.buf;
             global.snd_preview_instance[_channel] = audio_play_sound(_sid_out.snd, 1, false);
+            scr_sound_instrument_follow_start(_instr, _channel, _sid_out.follow, SID64_FRAME_US);
             return;
         }
     }
@@ -77,71 +82,53 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
     var _total_n     = 0;
     var _total_sec   = 0;
 
-    var _cur_wave      = 0x40;
-    var _cur_offset    = 0;
-    var _pc            = 0;
-    var _visits        = 0;
-    var _pending_dirty = false;   // true when a WAVE/NOTE changed since the last flushed (D) segment
-
-    while (_pc < array_length(_bytes) && _visits < _max_segs && _total_sec < _max_seconds) {
-        _visits += 1;
-        var _op = _bytes[_pc];
-
-        if (_op == 0x00) {
-            // A WAVE change with no D since the last one still needs to be
-            // heard — flush the state it's about to replace as a 1-tick
-            // blip first, so a run of $xx commands with no holds between
-            // them plays each one in sequence instead of only the last.
-            if (_pending_dirty) {
-                var _fw_hz = _base_hz * power(2, _cur_offset / 12);
-                var _fw_n  = max(1, round(_tick_sec * _rate));
-                array_push(_segs, { wave: _cur_wave, hz: _fw_hz, n: _fw_n });
-                _total_n   += _fw_n;
-                _total_sec += _tick_sec;
+    var _cur_wave = 0x41;
+    var _freq = round(_base_hz * 16777216 / 985248);
+    var _pw = scr_sid64_instr_field(_instr, "pulse_width", 2048) & 4095;
+    var _slide = 0;
+    var _pulse_slide = 0;
+    var _pc = 0;
+    var _hold = 0;
+    var _active = true;
+    var _raw_gate = false;
+    var _follow = [];
+    var _follow_hold = -1;
+    for (var _frame = 0; _frame < 150 && _active; _frame++) {
+        var _follow_pcs = [];
+        if (_hold > 0) { _hold -= 1; _follow_pcs = [_follow_hold]; }
+        else {
+            var _guard = 0;
+            while (_active && _guard < 64) {
+                _guard += 1;
+                if (_pc >= array_length(_bytes)) { _active = false; break; }
+                array_push(_follow_pcs, _pc);
+                var _op = _bytes[_pc];
+                var _arg = (_pc + 1 < array_length(_bytes)) ? _bytes[_pc + 1] : 0;
+                var _word = _arg;
+                if (_op >= 5 && _pc + 2 < array_length(_bytes)) _word |= _bytes[_pc + 2] << 8;
+                if (_op == 0) { _cur_wave = _arg | 1; _pc += 2; }
+                else if (_op == 1) {
+                    var _off = _arg > 127 ? _arg - 256 : _arg;
+                    _freq = round(_base_hz * power(2, _off / 12) * 16777216 / 985248);
+                    _pc += 2;
+                } else if (_op == 2) { _follow_hold = _pc; _hold = max(0, _arg - 1); _pc += 2; break; }
+                else if (_op == 3 || _op == 5) _pc = _word;
+                else if (_op == 6) { _freq = (_freq + _word) & 65535; _pc += 3; }
+                else if (_op == 7) { _pw = _word & 4095; _pc += 3; }
+                else if (_op == 8) { _slide = _word; _pc += 3; }
+                else if (_op == 9) { _pulse_slide = _word; _pc += 3; }
+                else if (_op == 10) { _cur_wave = _arg; _raw_gate = true; _pc += 2; }
+                else _active = false;
             }
-            _cur_wave      = _bytes[_pc + 1];
-            _pending_dirty = true;
-            _pc += 2;
-
-        } else if (_op == 0x01) {
-            if (_pending_dirty) {
-                var _fn_hz = _base_hz * power(2, _cur_offset / 12);
-                var _fn_n  = max(1, round(_tick_sec * _rate));
-                array_push(_segs, { wave: _cur_wave, hz: _fn_hz, n: _fn_n });
-                _total_n   += _fn_n;
-                _total_sec += _tick_sec;
-            }
-            var _raw_off = _bytes[_pc + 1];
-            _cur_offset    = (_raw_off > 127) ? (_raw_off - 256) : _raw_off;
-            _pending_dirty = true;
-            _pc += 2;
-
-        } else if (_op == 0x02) {
-            var _hold_ticks = _bytes[_pc + 1];
-            var _seg_hz     = _base_hz * power(2, _cur_offset / 12);
-            var _seg_sec    = _hold_ticks * _tick_sec;
-            var _seg_n      = max(1, round(_seg_sec * _rate));
-            array_push(_segs, { wave: _cur_wave, hz: _seg_hz, n: _seg_n });
-            _total_n       += _seg_n;
-            _total_sec     += _seg_sec;
-            _pending_dirty  = false;
-            _pc += 2;
-
-        } else if (_op == 0x03) {
-            _pc = _bytes[_pc + 1];
-
-        } else {
-            break;
+            if (_guard >= 64) _active = false;
         }
-    }
-
-    if (_pending_dirty) {
-        // Whatever WAVE/NOTE state was current when the instrument ended
-        // (hit --- or ran out of commands) still needs its 1-tick blip.
-        var _fe_hz = _base_hz * power(2, _cur_offset / 12);
-        var _fe_n  = max(1, round(_tick_sec * _rate));
-        array_push(_segs, { wave: _cur_wave, hz: _fe_hz, n: _fe_n });
-        _total_n   += _fe_n;
+        if (!_active) break;
+        array_push(_follow, { pcs: _follow_pcs });
+        _freq = (_freq + _slide) & 65535;
+        _pw = (_pw + _pulse_slide) & 4095;
+        var _n = round((_frame + 1) * _rate / 50) - round(_frame * _rate / 50);
+        array_push(_segs, { wave: _cur_wave, hz: _freq * 985248 / 16777216, n: _n, pw: _pw });
+        _total_n += _n;
         _total_sec += _tick_sec;
     }
 
@@ -213,9 +200,13 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
     var _seg_remain  = _segs[0].n;
     var _seg_wave    = _seg_wave_name(_segs[0].wave);
     var _phase       = 0;
+    var _duty = _segs[0].pw / 4096;
     var _phase_step  = _segs[0].hz / _rate;
 
     var _seg_count = array_length(_segs);
+    var _raw_env = 0;
+    var _raw_stage = 0;
+    var _raw_was_gate = false;
     var _rel_n_eff = max(1, _release_n * _lvl_gate_off);
     for (var _i = 0; _i < _buf_n; _i++) {
         if (_i < _gate_on_n && _seg_remain <= 0 && _seg_idx < _seg_count - 1) {
@@ -223,6 +214,7 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
             _seg_remain  = _segs[_seg_idx].n;
             _seg_wave    = _seg_wave_name(_segs[_seg_idx].wave);
             _phase_step  = _segs[_seg_idx].hz / _rate;
+            _duty = _segs[_seg_idx].pw / 4096;
         }
 
         var _t = _phase - floor(_phase);
@@ -231,7 +223,7 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
             case "SAW":      _s = (_t * 2) - 1; break;
             case "TRIANGLE": _s = (_t < 0.5) ? (_t * 4 - 1) : (3 - _t * 4); break;
             case "NOISE":    _s = random_range(-1, 1); break;
-            default:         _s = (_t < 0.5) ? 1 : -1; break;
+            default:         _s = (_t < _duty) ? 1 : -1; break;
         }
 
         // ── ADSR ENVELOPE ──
@@ -259,6 +251,23 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
             _env           = _lvl_gate_off * _rcurve * _rcurve * _rcurve;
         }
 
+        // The fallback has a simplified envelope, but raw gate transitions
+        // must still release/retrigger it while the program continues.
+        if (_raw_gate) {
+            var _gate = (_i < _gate_on_n) && ((_segs[_seg_idx].wave & 1) != 0);
+            if (_gate != _raw_was_gate) _raw_stage = _gate ? 0 : 3;
+            _raw_was_gate = _gate;
+            if (!_gate) _raw_stage = 3;
+            if (_raw_stage == 0) {
+                _raw_env = min(1, _raw_env + 1 / _attack_n);
+                if (_raw_env >= 1) _raw_stage = 1;
+            } else if (_raw_stage == 1) {
+                _raw_env = max(_sus_level, _raw_env - (1 - _sus_level) / _decay_n);
+                if (_raw_env <= _sus_level) _raw_stage = 2;
+            } else if (_raw_stage == 2) _raw_env = _sus_level;
+            else _raw_env = max(0, _raw_env - 1 / _release_n);
+            _env = _raw_env;
+        }
         var _amp = 0.30;
         var _val = clamp(round(_s * _env * _amp * 32767), -32768, 32767);
         buffer_write(_buf, buffer_s16, _val);
@@ -272,9 +281,13 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
     var _snd = audio_create_buffer_sound(_buf, buffer_s16, _rate, 0, buffer_get_size(_buf), audio_mono);
 
     scr_sound_preview_cache_store(_ck, _snd, _buf);
+    var _entry = global.snd_preview_cache[? _ck];
+    _entry.follow = _follow;
+    _entry.follow_period = 20000;
     if (_prepare_only) return;
 
     global.snd_preview_asset[_channel]    = _snd;
     global.snd_preview_buffer[_channel]   = _buf;
     global.snd_preview_instance[_channel] = audio_play_sound(_snd, 1, false);
+    scr_sound_instrument_follow_start(_instr, _channel, _follow, 20000);
 }
