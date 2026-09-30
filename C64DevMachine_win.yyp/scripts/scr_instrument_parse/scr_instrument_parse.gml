@@ -11,6 +11,14 @@
 ///   Rc:n        repeat from step n c MORE times (1-254), then continue
 ///   Ln          loop to step n          -> [$03, byte-offset of step n]
 ///   ---         end (gate off + stop)   -> [$04]
+///   ~PITCH      start of a pitch table: S / D / L lines that run alongside
+///               the program on their own counter (each S is a slide speed)
+///   ~PULSE      start of a pulse table: Q / D / L lines, the same way
+///
+/// Tables follow the program's implicit END as records of
+/// [frames, speed lo, speed hi]; frames 0 is control: [0, back] jumps back
+/// that many bytes (Ln), [0, 0] stops the table. The program opens with
+/// [$0E, offset] / [$0F, offset] so the player starts each table on trigger.
 ///
 /// Steps are variable length, so Ln can't point at a byte directly. The
 /// parser records each step's byte offset in a first pass, then patches the
@@ -24,7 +32,7 @@
 /// errors       — human-readable strings for malformed tokens (never throws)
 function scr_instrument_parse(_text) {
 
-    var _out    = { bytes: [], step_offsets: [], errors: [], version: 4, byte_lines: [], source: string(_text), no_hr: false };
+    var _out    = { bytes: [], step_offsets: [], errors: [], version: 5, byte_lines: [], source: string(_text), no_hr: false, main_len: 0, lanes: [] };
     var _tokens = [];
 
     // ── Tokenise: newlines act as commas, then split, trim, drop empties ──
@@ -41,13 +49,41 @@ function scr_instrument_parse(_text) {
     }
     var _previous_line = -1;
 
+    // ── Table sections: everything from the first ~ line on is table data. ──
+    var _main_count = array_length(_tokens);
+    var _lane_heads = [];
+    for (var _hi = 0; _hi < array_length(_tokens); _hi++) {
+        if (string_char_at(_tokens[_hi], 1) == "~") {
+            if (_main_count == array_length(_tokens)) _main_count = _hi;
+            var _head = string_upper(_tokens[_hi]);
+            var _kind = -1;
+            if (_head == "~PITCH") _kind = 0;
+            if (_head == "~PULSE") _kind = 1;
+            for (var _hk = 0; _hk < array_length(_lane_heads); _hk++) {
+                if (_lane_heads[_hk].kind == _kind) _kind = -2;
+            }
+            if (_kind == -1) array_push(_out.errors, "step " + string(_hi) + ": tables are ~PITCH or ~PULSE");
+            if (_kind == -2) array_push(_out.errors, "step " + string(_hi) + ": only one " + _head + " table per instrument");
+            array_push(_lane_heads, { kind: _kind, ti: _hi, arg_pos: -1 });
+        }
+    }
+    // Each table is started once, before step 00, so Ln in the program never restarts it.
+    for (var _hk = 0; _hk < array_length(_lane_heads); _hk++) {
+        if (_lane_heads[_hk].kind >= 0) {
+            array_push(_out.bytes, 14 + _lane_heads[_hk].kind, 0, 0);
+            _lane_heads[_hk].arg_pos = array_length(_out.bytes) - 2;
+            var _hl = _token_lines[_lane_heads[_hk].ti];
+            array_push(_out.byte_lines, _hl, _hl, _hl);
+        }
+    }
+
     // ── Pass 1: emit bytes, recording where each step begins. Loop targets
     //    are noted as (byte-position-of-arg, step-index) for pass-2 patching. ──
     var _wide = true; // version 2 uses 16-bit loop targets
     var _repeat_end = -1;
     var _loop_fixups = [];   // { arg_pos, step_idx }
 
-    for (var _ti = 0; _ti < array_length(_tokens); _ti++) {
+    for (var _ti = 0; _ti < _main_count; _ti++) {
 
         // Map all emitted bytes, including implicit holds, to their source line.
         while (array_length(_out.byte_lines) < array_length(_out.bytes)) array_push(_out.byte_lines, _previous_line);
@@ -274,6 +310,101 @@ function scr_instrument_parse(_text) {
         _out.bytes[_fx.arg_pos] = _tgt & 0xFF;
         if (_wide) _out.bytes[_fx.arg_pos + 1] = (_tgt >> 8) & 255;
     }
+    _out.main_len = array_length(_out.bytes);
+
+    // ── Pass 3: tables, appended after the program's END. ──
+    for (var _hk = 0; _hk < array_length(_lane_heads); _hk++) {
+        var _lh = _lane_heads[_hk];
+        var _stop = array_length(_tokens);
+        if (_hk + 1 < array_length(_lane_heads)) _stop = _lane_heads[_hk + 1].ti;
+        while (array_length(_out.step_offsets) <= _lh.ti) array_push(_out.step_offsets, array_length(_out.bytes));
+        if (_lh.kind < 0) continue;
+        var _start = array_length(_out.bytes);
+        _out.bytes[_lh.arg_pos] = _start & 255;
+        _out.bytes[_lh.arg_pos + 1] = (_start >> 8) & 255;
+        var _letter = "S";
+        if (_lh.kind == 1) _letter = "Q";
+        var _val = 0;
+        var _pending = false;
+        var _pending_step = -1;
+        var _closed = false;
+        var _records = {};
+        for (var _lt = _lh.ti + 1; _lt < _stop; _lt++) {
+            var _lup = string_upper(_tokens[_lt]);
+            var _lc = string_char_at(_lup, 1);
+            var _line = _token_lines[_lt];
+            array_push(_out.step_offsets, array_length(_out.bytes));
+            if (_closed) {
+                array_push(_out.errors, "step " + string(_lt) + ": nothing runs after a table's Ln");
+                continue;
+            }
+            var _num = string_delete(_lup, 1, 1);
+            var _neg = false;
+            if (string_char_at(_num, 1) == "+" || string_char_at(_num, 1) == "-") {
+                _neg = string_char_at(_num, 1) == "-";
+                _num = string_delete(_num, 1, 1);
+            }
+            var _ok = string_length(_num) > 0 && string_digits(_num) == _num;
+            var _n = 0;
+            if (_ok) _n = real(_num);
+            if (_neg) _n = -_n;
+            if (_lc == _letter) {
+                if (!_ok || _n < -32768 || _n > 32767) {
+                    array_push(_out.errors, "step " + string(_lt) + ": " + _letter + " uses -32768..32767");
+                    continue;
+                }
+                if (_pending) {
+                    // A speed with no Dn lasts one frame, as in the program.
+                    variable_struct_set(_records, string(_pending_step), array_length(_out.bytes));
+                    array_push(_out.bytes, 1, _val & 255, (_val >> 8) & 255);
+                    array_push(_out.byte_lines, _line, _line, _line);
+                }
+                _val = _n;
+                _pending = true;
+                _pending_step = _lt;
+            } else if (_lc == "D") {
+                if (!_ok || _n < 1 || _n > 255) {
+                    array_push(_out.errors, "step " + string(_lt) + ": hold must be 1-255 frames");
+                    continue;
+                }
+                var _rec = array_length(_out.bytes);
+                if (_pending) variable_struct_set(_records, string(_pending_step), _rec);
+                variable_struct_set(_records, string(_lt), _rec);
+                array_push(_out.bytes, _n, _val & 255, (_val >> 8) & 255);
+                array_push(_out.byte_lines, _line, _line, _line);
+                _pending = false;
+            } else if (_lc == "L") {
+                if (_pending) {
+                    variable_struct_set(_records, string(_pending_step), array_length(_out.bytes));
+                    array_push(_out.bytes, 1, _val & 255, (_val >> 8) & 255);
+                    array_push(_out.byte_lines, _line, _line, _line);
+                    _pending = false;
+                }
+                var _back = -1;
+                if (_ok && variable_struct_exists(_records, string(_n))) {
+                    _back = array_length(_out.bytes) - variable_struct_get(_records, string(_n));
+                }
+                if (_back < 1 || _back > 255) {
+                    array_push(_out.errors, "step " + string(_lt) + ": a table's Ln must go back to an earlier " + _letter + " or D in the same table, within 85 lines");
+                    _back = 0;
+                }
+                array_push(_out.bytes, 0, _back);
+                array_push(_out.byte_lines, _line, _line);
+                _closed = true;
+            } else {
+                array_push(_out.errors, "step " + string(_lt) + ": a " + _letter + " table holds " + _letter + ", D and L lines only");
+            }
+        }
+        if (_pending) {
+            array_push(_out.bytes, 1, _val & 255, (_val >> 8) & 255);
+            array_push(_out.byte_lines, -1, -1, -1);
+        }
+        if (!_closed) {
+            array_push(_out.bytes, 0, 0);
+            array_push(_out.byte_lines, -1, -1);
+        }
+        array_push(_out.lanes, [_start, array_length(_out.bytes) - _start]);
+    }
 
     return _out;
 }
@@ -286,7 +417,7 @@ function scr_instrument_ensure_compiled(_instr) {
     if (_valid) _valid = variable_struct_exists(_instr.compiled, "bytes") && variable_struct_exists(_instr.compiled, "errors");
     if (_valid) _valid = is_array(_instr.compiled.bytes) && is_array(_instr.compiled.errors);
     if (_valid) _valid = variable_struct_exists(_instr.compiled, "version") && variable_struct_exists(_instr.compiled, "source");
-    if (_valid) _valid = _instr.compiled.version == 4 && _instr.compiled.source == _instr.text;
+    if (_valid) _valid = _instr.compiled.version == 5 && _instr.compiled.source == _instr.text;
     if (!_valid) _instr.compiled = scr_instrument_parse(_instr.text);
     return _instr.compiled;
 }
@@ -318,23 +449,31 @@ function scr_music_table_pack(_instruments) {
     for (var _i = 0; _i < array_length(_instruments); _i++) {
         var _c = scr_instrument_ensure_compiled(_instruments[_i]);
         var _b = _c.bytes, _ops = [], _targets = {};
-        for (var _p = 0; _p < array_length(_b);) {
+        // Only the program is made of commands; table data after it is copied as-is.
+        var _main_len = _c.main_len;
+        for (var _p = 0; _p < _main_len;) {
             var _op = _b[_p];
-            var _len = (_op == 13) ? 4 : ((_op == 4) ? 1 : ((_op >= 5 && _op <= 9) ? 3 : 2));
-            if (_op == 3 || _op == 5 || _op == 13) {
-                var _dest = _b[_p + 1] + ((_op == 5 || _op == 13) ? _b[_p + 2] * 256 : 0);
+            var _len = scr_music_op_len(_op);
+            if (_op == 3 || _op == 5 || _op == 13 || _op == 14 || _op == 15) {
+                var _dest = _b[_p + 1];
+                if (_op != 3) _dest += _b[_p + 2] * 256;
                 variable_struct_set(_targets, string(_dest), true);
             }
             _p += _len;
         }
-        for (var _p = 0; _p < array_length(_b);) {
+        for (var _p = 0; _p < _main_len;) {
             var _op = _b[_p];
-            var _len = (_op == 13) ? 4 : ((_op == 4) ? 1 : ((_op >= 5 && _op <= 9) ? 3 : 2));
+            var _len = scr_music_op_len(_op);
             var _bytes = [], _key = "";
             for (var _j = 0; _j < _len; _j++) { array_push(_bytes, _b[_p + _j]); _key += string(_b[_p + _j]) + ","; }
             array_push(_ops, {bytes:_bytes, key:_key, pos:_p, size:_len,
-                target:variable_struct_exists(_targets,string(_p)), call:-1});
+                target:variable_struct_exists(_targets,string(_p)), call:-1, raw:false});
             _p += _len;
+        }
+        for (var _l = 0; _l < array_length(_c.lanes); _l++) {
+            var _lane = _c.lanes[_l], _bytes = [];
+            for (var _j = 0; _j < _lane[1]; _j++) array_push(_bytes, _b[_lane[0] + _j]);
+            array_push(_ops, {bytes:_bytes, key:"", pos:_lane[0], size:_lane[1], target:true, call:-1, raw:true});
         }
         array_push(_streams, _ops);
         array_push(_original, _ops);
@@ -352,7 +491,7 @@ function scr_music_table_pack(_instruments) {
                 var _key = "", _size = 0, _ok = true;
                 for (var _j = 0; _j < _n; _j++) {
                     var _o = _ops[_p + _j], _op = _o.bytes[0];
-                    if (_o.call >= 0 || _op == 3 || _op == 4 || _op == 5 || _op == 13 || (_j > 0 && _o.target)) { _ok = false; break; }
+                    if (_o.raw || _o.call >= 0 || _op == 3 || _op == 4 || _op == 5 || _op == 13 || _op == 14 || _op == 15 || (_j > 0 && _o.target)) { _ok = false; break; }
                     _key += _o.key + ";"; _size += _o.size;
                 }
                 if (!_ok) continue;
@@ -392,7 +531,7 @@ function scr_music_table_pack(_instruments) {
                 var _key = "";
                 for (var _j = 0; _j < _n; _j++) {
                     var _o = _ops[_p + _j];
-                    if (_o.call >= 0 || (_j > 0 && _o.target)) break;
+                    if (_o.raw || _o.call >= 0 || (_j > 0 && _o.target)) break;
                     _key += _o.key + ";";
                 }
                 if (_key == _cand.key) { array_push(_uses,[_i,_p]); _last_i = _i; _last_p = _p; }
@@ -406,7 +545,7 @@ function scr_music_table_pack(_instruments) {
                 var _use = _uses[_u], _ops = _streams[_use[0]], _at = _use[1], _new = [];
                 for (var _j = 0; _j < array_length(_ops); _j++) {
                     if (_j == _at) {
-                        array_push(_new, {bytes:[11,0,0], key:"", pos:_ops[_j].pos, size:3, target:_ops[_j].target, call:_tid});
+                        array_push(_new, {bytes:[11,0,0], key:"", pos:_ops[_j].pos, size:3, target:_ops[_j].target, call:_tid, raw:false});
                         _j += _n - 1;
                     } else array_push(_new, _ops[_j]);
                 }
@@ -438,14 +577,26 @@ function scr_music_table_emit(_list, _id, _key, _ops) {
     }
     for (var _i = 0; _i < array_length(_ops); _i++) {
         var _o = _ops[_i], _bytes = _o.bytes;
-        if (_o.call >= 0) {
+        if (_o.raw) {
+            for (var _j = 0; _j < array_length(_bytes); _j++) array_push(_list,["byte",_bytes[_j],_id]);
+        } else if (_o.call >= 0) {
             array_push(_list, ["byte",11,_id], ["byte_lab_lo",_key+"table"+string(_o.call),_id], ["byte_lab_hi",_key+"table"+string(_o.call),_id]);
-        } else if (_bytes[0] == 5 || _bytes[0] == 3 || _bytes[0] == 13) {
-            var _dest = _bytes[1] + ((_bytes[0] == 5 || _bytes[0] == 13) ? _bytes[2]*256 : 0);
+        } else if (_bytes[0] == 5 || _bytes[0] == 3 || _bytes[0] == 13 || _bytes[0] == 14 || _bytes[0] == 15) {
+            var _dest = _bytes[1];
+            if (_bytes[0] != 3) _dest += _bytes[2] * 256;
             var _new = variable_struct_get(_offsets,string(_dest));
             array_push(_list,["byte",_bytes[0],_id],["byte",_new & 255,_id]);
-            if (_bytes[0] == 5 || _bytes[0] == 13) array_push(_list,["byte",(_new >> 8) & 255,_id]);
+            if (_bytes[0] != 3) array_push(_list,["byte",(_new >> 8) & 255,_id]);
             if (_bytes[0] == 13) array_push(_list,["byte",_bytes[3],_id]);
         } else for (var _j = 0; _j < array_length(_bytes); _j++) array_push(_list,["byte",_bytes[_j],_id]);
     }
+}
+
+/// Byte length of one program command (tables after the program excluded).
+function scr_music_op_len(_op) {
+    if (_op == 13) return 4;
+    if (_op == 4) return 1;
+    if (_op >= 5 && _op <= 9) return 3;
+    if (_op == 14 || _op == 15) return 3;
+    return 2;
 }

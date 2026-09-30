@@ -23,6 +23,8 @@ function scr_sid64_sim_voice_new() {
         display_compiled: undefined,
         slide : 0,
         pulse_slide : 0,
+        lane_pos : [0, 0],       // ~PITCH / ~PULSE record index into bytes
+        lane_count : [0, 0],     // frames left on the record; 0 = table idle
         hold     : 0,
         base     : 0,           // base note index (0-95)
         active   : false,
@@ -77,8 +79,14 @@ function scr_sid64_sim_create(_m, _song, _loop_row, _ord, _row) {
         fcut      : 0x400,       // filter cutoff, 11-bit
         f17       : 0,           // $D417 copy (resonance + routing)
         f18       : 0x0F,        // $D418 copy (mode + volume)
-        voices    : [scr_sid64_sim_voice_new(), scr_sid64_sim_voice_new(), scr_sid64_sim_voice_new()]
+        voices    : [scr_sid64_sim_voice_new(), scr_sid64_sim_voice_new(), scr_sid64_sim_voice_new()],
+        note_freq : global.sid64_note_freq
     };
+    // An asset's own note table (imported tuning) replaces the shared one.
+    if (is_struct(_m)) {
+        var _nt = _m[$ "note_table"];
+        if (is_array(_nt) && array_length(_nt) == 96) _sim.note_freq = _nt;
+    }
     // init: the song's filter settings (mode + full volume, resonance, cutoff;
     // no voice routed yet), or plain full volume for an audition.
     if (is_struct(_m)) {
@@ -141,13 +149,15 @@ function scr_sid64_sim_instr(_sim, _idx) {
 function scr_sid64_sim_trigger(_sim, _v, _instr) {
     var _vc = _sim.voices[_v];
     var _r0 = _v * 7;
-    var _f  = global.sid64_note_freq[_vc.base];
+    var _f  = _sim.note_freq[_vc.base];
     _vc.instr = _instr;
     _vc.display_pcs = [];
     _vc.display_hold = -1;
     _vc.repeat_left = 0;
     _vc.slide = 0;
     _vc.pulse_slide = 0;
+    _vc.lane_count[0] = 0;
+    _vc.lane_count[1] = 0;
     if (!is_struct(_instr)) {
         // No instrument: pitch, plain pulse gate; AD/SR/PW left as they are.
         _vc.freq = _f;
@@ -218,7 +228,7 @@ function scr_sid64_sim_row(_sim, _v, _note, _instr, _cmd, _val) {
         _vc.hr_cd = 0;
     } else if (_cmd == 3) {
         // slide to this note: set the target, no trigger
-        _vc.tgt = global.sid64_note_freq[_note];
+        _vc.tgt = _sim.note_freq[_note];
     } else {
         _vc.fx = 0;              // a new note ends the continuous effect
         _vc.base = _note;
@@ -358,7 +368,7 @@ function scr_sid64_sim_step(_sim, _v) {
             if (_ni >= 96) {
                 _ni = 95;
             }
-            _vc.freq = global.sid64_note_freq[_ni];
+            _vc.freq = _sim.note_freq[_ni];
             _vc.pc += 2;
         } else if (_op == 0x02) {
             _vc.display_hold = _vc.pc;
@@ -392,6 +402,11 @@ function scr_sid64_sim_step(_sim, _v) {
             _vc.pc += 2;
         } else if (_op == 0x03) {
             _vc.pc = _arg;
+        } else if (_op == 14 || _op == 15) {
+            // start the pitch / pulse table; its first record loads this frame
+            _vc.lane_pos[_op - 14] = _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8);
+            _vc.lane_count[_op - 14] = 1;
+            _vc.pc += 3;
         } else {
             // END — gate off, instrument idle
             _vc.cb = _vc.cb & 0xFE;
@@ -404,12 +419,40 @@ function scr_sid64_sim_step(_sim, _v) {
     _vc.active = false;
 }
 
+/// The player's table step: _k 0 = ~PITCH (sets slide), 1 = ~PULSE (sets pulse_slide).
+function scr_sid64_sim_lane(_vc, _k) {
+    if (_vc.lane_count[_k] == 0) return;
+    _vc.lane_count[_k] -= 1;
+    if (_vc.lane_count[_k] != 0) return;
+    var _b = _vc.bytes;
+    for (var _guard = 0; _guard < 2; _guard++) {
+        var _p = _vc.lane_pos[_k];
+        if (_p < 0 || _p + 1 >= array_length(_b)) return;
+        if (_b[_p] != 0) {
+            if (_p + 2 >= array_length(_b)) return;
+            _vc.lane_count[_k] = _b[_p];
+            var _speed = (_b[_p + 1] & 255) | ((_b[_p + 2] & 255) << 8);
+            if (_k == 0) {
+                _vc.slide = _speed;
+            } else {
+                _vc.pulse_slide = _speed;
+            }
+            _vc.lane_pos[_k] = _p + 3;
+            return;
+        }
+        if (_b[_p + 1] == 0) return;     // [0, 0]: table stops, speed stays
+        _vc.lane_pos[_k] = _p - _b[_p + 1];
+    }
+}
+
 /// The player's fxr routine: one-shot, portamento, vibrato, pitch output.
 function scr_sid64_sim_fx(_sim, _v, _hrw) {
     var _vc = _sim.voices[_v];
     var _r0 = _v * 7;
 
     if (_vc.active && _hrw == 0) {
+        scr_sid64_sim_lane(_vc, 0);
+        scr_sid64_sim_lane(_vc, 1);
         _vc.freq = (_vc.freq + _vc.slide) & 65535;
         if (_vc.pulse_slide != 0) {
             _vc.pw = (_vc.pw + _vc.pulse_slide) & 4095;

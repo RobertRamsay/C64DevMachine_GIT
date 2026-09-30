@@ -294,6 +294,9 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
         ["", "50 frames = 1 second (PAL)"],
         ["Ln", "jump back to step n (loops forever)"],
         ["R3:8", "repeat from step 8 three MORE times, then continue"],
+        ["~PITCH", "table of S/D/L lines, runs beside the program"],
+        ["~PULSE", "table of Q/D/L lines, runs beside the program"],
+        ["", "the program must keep running (Dn / Ln) to hear them"],
         ["---", "gate off + stop: the note releases"],
         ["", ""],
         ["EXAMPLES", ""],
@@ -328,6 +331,13 @@ function scr_sound_editor_instr_comment(_line, _lines) {
     var _up  = string_upper(_raw);
     if (_raw == "") {
         return { text: "", bad: false };
+    }
+
+    // ~PITCH / ~PULSE : table sections that run alongside the program
+    if (string_char_at(_up, 1) == "~") {
+        if (_up == "~PITCH") return { text: "pitch table: S/D/L lines on their own counter", bad: false };
+        if (_up == "~PULSE") return { text: "pulse table: Q/D/L lines on their own counter", bad: false };
+        return { text: "? tables are ~PITCH or ~PULSE", bad: true };
     }
 
     // --- : end

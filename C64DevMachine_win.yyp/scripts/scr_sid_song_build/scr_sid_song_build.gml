@@ -143,6 +143,17 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // allocated once in Create and persisted by the workspace serialiser.
     var _key = (_prefix != "") ? _prefix : "sng" + string(_id.stable_uid) + "_";
 
+    // ── NOTE TABLE ── an asset may carry its own 96-entry table (e.g. a
+    // composer's tuning, imported with the tune). Empty = the shared table.
+    var _nt_custom = _sm[$ "note_table"];
+    if (!is_array(_nt_custom) || array_length(_nt_custom) != 96) _nt_custom = [];
+    var _nt_lo = "SIDSONG_NOTELO";
+    var _nt_hi = "SIDSONG_NOTEHI";
+    if (array_length(_nt_custom) == 96) {
+        _nt_lo = _key + "ntlo";
+        _nt_hi = _key + "nthi";
+    }
+
     // ── ZP MAP — 7 bytes per voice, then 11 shared, then 3 HR bytes per
     //    voice, then 1 control-shadow byte per voice. 44 total. ──
     //   +0/+1  instrument stream pointer (walks the command stream)
@@ -232,7 +243,10 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // Built via scr_note_name_to_freq so this and MACRO_SID_SOUND resolve
     // the same note name to the same 16-bit register value.
     // ════════════════════════════════════════════════════════════════
-    if (!variable_global_exists("sidsong_notetab_emitted") || global.sidsong_notetab_emitted == false) {
+    // The shared table is skipped when this asset brings its own, unless the
+    // SFX routine (which always uses the shared table) is being built too.
+    var _nt_shared_needed = (array_length(_nt_custom) == 0) || _sfx;
+    if (_nt_shared_needed && (!variable_global_exists("sidsong_notetab_emitted") || global.sidsong_notetab_emitted == false)) {
         global.sidsong_notetab_emitted = true;
 
         var _nt_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -268,15 +282,29 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     var _repeats_used = false;
     for (var _ri=0;_ri<array_length(_table_pack.streams);_ri++)
         for (var _rj=0;_rj<array_length(_table_pack.streams[_ri]);_rj++)
-            if (_table_pack.streams[_ri][_rj].bytes[0] == 13) _repeats_used = true;
+            if (!_table_pack.streams[_ri][_rj].raw && _table_pack.streams[_ri][_rj].bytes[0] == 13) _repeats_used = true;
+    // Pitch / pulse tables (~PITCH / ~PULSE): started by program ops 14 / 15.
+    var _lanes_used = false;
+    for (var _ri=0;_ri<array_length(_table_pack.streams);_ri++)
+        for (var _rj=0;_rj<array_length(_table_pack.streams[_ri]);_rj++)
+            if (!_table_pack.streams[_ri][_rj].raw && (_table_pack.streams[_ri][_rj].bytes[0] == 14 || _table_pack.streams[_ri][_rj].bytes[0] == 15)) _lanes_used = true;
     var _lbl_dskip = _key + "dskip";
     // Per-voice effect state tables (see section 7).
     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
                              "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval",
-                             "pwl", "pwh", "fvh", "isl", "ish", "ipl", "iph"];
+                             "pwl", "pwh", "fvh", "isl", "ipl", "ish", "iph"];
+    // isl,ipl / ish,iph are adjacent so X = voice (pitch) or voice+3 (pulse)
+    // addresses the right speed from one table routine; lnl..lncq likewise.
     if (_repeats_used) array_push(_sng_state_tables,"reps");
+    if (_lanes_used) array_push(_sng_state_tables, "lnl", "lnlq", "lnh", "lnhq", "lnc", "lncq");
     if (_tables_used) array_push(_sng_state_tables, "trl", "trh");
     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
+    if (array_length(_nt_custom) == 96) {
+        array_push(_list, ["label", _nt_lo]);
+        for (var _nti = 0; _nti < 96; _nti++) array_push(_list, ["byte", real(_nt_custom[_nti]) & 0xFF, _id]);
+        array_push(_list, ["label", _nt_hi]);
+        for (var _nti = 0; _nti < 96; _nti++) array_push(_list, ["byte", (real(_nt_custom[_nti]) >> 8) & 0xFF, _id]);
+    }
 
     // True once any instrument has vibrato or any pattern has a command
     // column; when neither, the effect routines shrink to a bare pitch write.
@@ -990,9 +1018,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["cpy_imm", 0x03,            _id]);
         array_push(_list, ["bne",     _vp + "notp",    _id]);
         array_push(_list, ["tax",     0,               _id]);
-        array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
+        array_push(_list, ["lda_abx", _nt_lo, _id]);
         array_push(_list, ["sta_abs", _key + "tgl_" + string(_vi), _id]);
-        array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
+        array_push(_list, ["lda_abx", _nt_hi, _id]);
         array_push(_list, ["sta_abs", _key + "tgh_" + string(_vi), _id]);
         array_push(_list, ["jmp_abs", _vp + "docmd",   _id]);
         array_push(_list, ["label",   _vp + "notp"]);
@@ -1067,9 +1095,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         // No instrument: write the frequency and gate on with a plain pulse,
         // leaving AD/SR as whatever the voice last had.
         array_push(_list, ["ldx_zp",  _vb + 5,          _id]);
-        array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
+        array_push(_list, ["lda_abx", _nt_lo, _id]);
         array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
-        array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
+        array_push(_list, ["lda_abx", _nt_hi, _id]);
         array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
         array_push(_list, ["lda_imm", 0, _id]);
         array_push(_list, ["sta_abs", _key + "isl_" + string(_vi), _id]);
@@ -1077,6 +1105,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
         if (_repeats_used) array_push(_list,["sta_abs",_key+"reps_"+string(_vi),_id]);
+        if (_lanes_used) array_push(_list,["sta_abs",_key+"lnc_"+string(_vi),_id],["sta_abs",_key+"lncq_"+string(_vi),_id]);
 
         array_push(_list, ["lda_imm", 0x41,             _id]);   // pulse + gate
         array_push(_list, ["sta_abs", _D400 + 4,        _id]);
@@ -1155,9 +1184,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
 
         // Frequency from the base note.
         array_push(_list, ["ldx_zp",  _vb + 5,          _id]);
-        array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
+        array_push(_list, ["lda_abx", _nt_lo, _id]);
         array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
-        array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
+        array_push(_list, ["lda_abx", _nt_hi, _id]);
         array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
         array_push(_list, ["lda_imm", 0, _id]);
         array_push(_list, ["sta_abs", _key + "isl_" + string(_vi), _id]);
@@ -1165,6 +1194,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
         if (_repeats_used) array_push(_list,["sta_abs",_key+"reps_"+string(_vi),_id]);
+        if (_lanes_used) array_push(_list,["sta_abs",_key+"lnc_"+string(_vi),_id],["sta_abs",_key+"lncq_"+string(_vi),_id]);
 
 
         // Walking pointer moves past the 7 header bytes; the BASE stays put,
@@ -1329,9 +1359,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             // dummy values — matching the non-HR path's "whatever the voice
             // last had".
             array_push(_list, ["ldx_zp",  _vb + 5,          _id]);
-            array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
+            array_push(_list, ["lda_abx", _nt_lo, _id]);
             array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
-            array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
+            array_push(_list, ["lda_abx", _nt_hi, _id]);
             array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
         array_push(_list, ["lda_imm", 0, _id]);
         array_push(_list, ["sta_abs", _key + "isl_" + string(_vi), _id]);
@@ -1339,6 +1369,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
         if (_repeats_used) array_push(_list,["sta_abs",_key+"reps_"+string(_vi),_id]);
+        if (_lanes_used) array_push(_list,["sta_abs",_key+"lnc_"+string(_vi),_id],["sta_abs",_key+"lncq_"+string(_vi),_id]);
 
             array_push(_list, ["lda_imm", 0x41,             _id]);
             array_push(_list, ["sta_abs", _D400 + 4,        _id]);
@@ -1415,9 +1446,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["sta_abs", _key + "vdir_" + string(_vi), _id]);
 
             array_push(_list, ["ldx_zp",  _vb + 5,          _id]);
-            array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
+            array_push(_list, ["lda_abx", _nt_lo, _id]);
             array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
-            array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
+            array_push(_list, ["lda_abx", _nt_hi, _id]);
             array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
         array_push(_list, ["lda_imm", 0, _id]);
         array_push(_list, ["sta_abs", _key + "isl_" + string(_vi), _id]);
@@ -1425,6 +1456,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
         if (_repeats_used) array_push(_list,["sta_abs",_key+"reps_"+string(_vi),_id]);
+        if (_lanes_used) array_push(_list,["sta_abs",_key+"lnc_"+string(_vi),_id],["sta_abs",_key+"lncq_"+string(_vi),_id]);
 
 
             array_push(_list, ["clc",     0,       _id]);
@@ -1548,9 +1580,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["lda_imm", 95,          _id]);   // clamp rather than read past the table
         array_push(_list, ["label",   _ip + "nok"]);
         array_push(_list, ["tax",     0,                _id]);
-        array_push(_list, ["lda_abx", "SIDSONG_NOTELO", _id]);
+        array_push(_list, ["lda_abx", _nt_lo, _id]);
         array_push(_list, ["sta_abs", _key + "fql_" + string(_vi),        _id]);
-        array_push(_list, ["lda_abx", "SIDSONG_NOTEHI", _id]);
+        array_push(_list, ["lda_abx", _nt_hi, _id]);
         array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi),        _id]);
         array_push(_list, ["clc",     0,        _id]);
         array_push(_list, ["lda_zp",  _vb + 0,  _id]);
@@ -1754,6 +1786,40 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["label", _ip + "notreturn", _id]);
         }
 
+        if (_lanes_used) {
+            // $0E / $0F = start the pitch / pulse table at base + offset. Its
+            // first record loads in this frame's table pass, before the sweep.
+            array_push(_list, ["cmp_imm", 14, _id]);
+            array_push(_list, ["bne", _ip + "notlanep", _id]);
+            array_push(_list, ["ldx_imm", _vi, _id]);
+            array_push(_list, ["jmp_abs", _ip + "lanestart", _id]);
+            array_push(_list, ["label", _ip + "notlanep"]);
+            array_push(_list, ["cmp_imm", 15, _id]);
+            array_push(_list, ["bne", _ip + "notlane", _id]);
+            array_push(_list, ["ldx_imm", _vi + 3, _id]);
+            array_push(_list, ["label", _ip + "lanestart"]);
+            array_push(_list, ["ldy_imm", 1, _id]);
+            array_push(_list, ["lda_izy", _vb, _id]);
+            array_push(_list, ["clc", 0, _id]);
+            array_push(_list, ["adc_zp", _vb + 2, _id]);
+            array_push(_list, ["sta_abx", _key + "lnl", _id]);
+            array_push(_list, ["iny", 0, _id]);
+            array_push(_list, ["lda_izy", _vb, _id]);
+            array_push(_list, ["adc_zp", _vb + 3, _id]);
+            array_push(_list, ["sta_abx", _key + "lnh", _id]);
+            array_push(_list, ["lda_imm", 1, _id]);
+            array_push(_list, ["sta_abx", _key + "lnc", _id]);
+            array_push(_list, ["clc", 0, _id]);
+            array_push(_list, ["lda_zp", _vb, _id]);
+            array_push(_list, ["adc_imm", 3, _id]);
+            array_push(_list, ["sta_zp", _vb, _id]);
+            array_push(_list, ["lda_zp", _vb + 1, _id]);
+            array_push(_list, ["adc_imm", 0, _id]);
+            array_push(_list, ["sta_zp", _vb + 1, _id]);
+            array_push(_list, ["jmp_abs", _L_iloop, _id]);
+            array_push(_list, ["label", _ip + "notlane"]);
+        }
+
         // $04, or anything unrecognised = END — gate off, mark inactive.
         //
         // Waveform bits are PRESERVED so the release phase still has an
@@ -1769,6 +1835,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["label",   _L_idone]);
         array_push(_list, ["lda_zp", _vb + 6, _id]);
         array_push(_list, ["beq", _ip + "sweepdone", _id]);
+        if (_lanes_used) {
+            array_push(_list, ["ldx_imm", _vi, _id]);
+            array_push(_list, ["jsr", _key + "lanes", _id]);
+            array_push(_list, ["ldx_imm", _vi + 3, _id]);
+            array_push(_list, ["jsr", _key + "lanes", _id]);
+        }
         array_push(_list, ["clc", 0, _id]);
         array_push(_list, ["lda_abs", _key + "fql_" + string(_vi), _id]);
         array_push(_list, ["adc_abs", _key + "isl_" + string(_vi), _id]);
@@ -1815,6 +1887,54 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         }
     }
     array_push(_list, ["rts", 0, _id]);
+
+    if (_lanes_used) {
+        // ── TABLE STEP ── X = voice (pitch) or voice + 3 (pulse). Records are
+        // [frames, speed lo, speed hi]; frames 0 = [0, back]: back 0 stops the
+        // table, otherwise the pointer moves back that many bytes. _S_PTR is
+        // free here: rows are read before any voice steps.
+        var _ln = _key + "lanes";
+        array_push(_list, ["label", _ln]);
+        array_push(_list, ["lda_abx", _key + "lnc", _id]);
+        array_push(_list, ["beq", _ln + "ret", _id]);
+        array_push(_list, ["dec_abx", _key + "lnc", _id]);
+        array_push(_list, ["bne", _ln + "ret", _id]);
+        array_push(_list, ["label", _ln + "fetch"]);
+        array_push(_list, ["lda_abx", _key + "lnl", _id]);
+        array_push(_list, ["sta_zp", _S_PTR, _id]);
+        array_push(_list, ["lda_abx", _key + "lnh", _id]);
+        array_push(_list, ["sta_zp", _S_PTR + 1, _id]);
+        array_push(_list, ["ldy_imm", 0, _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["beq", _ln + "ctl", _id]);
+        array_push(_list, ["sta_abx", _key + "lnc", _id]);
+        array_push(_list, ["iny", 0, _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["sta_abx", _key + "isl", _id]);
+        array_push(_list, ["iny", 0, _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["sta_abx", _key + "ish", _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["lda_abx", _key + "lnl", _id]);
+        array_push(_list, ["adc_imm", 3, _id]);
+        array_push(_list, ["sta_abx", _key + "lnl", _id]);
+        array_push(_list, ["bcc", _ln + "ret", _id]);
+        array_push(_list, ["inc_abx", _key + "lnh", _id]);
+        array_push(_list, ["label", _ln + "ret"]);
+        array_push(_list, ["rts", 0, _id]);
+        array_push(_list, ["label", _ln + "ctl"]);
+        array_push(_list, ["iny", 0, _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["beq", _ln + "ret", _id]);
+        array_push(_list, ["sta_zp", _S_TMP, _id]);
+        array_push(_list, ["sec", 0, _id]);
+        array_push(_list, ["lda_abx", _key + "lnl", _id]);
+        array_push(_list, ["sbc_zp", _S_TMP, _id]);
+        array_push(_list, ["sta_abx", _key + "lnl", _id]);
+        array_push(_list, ["bcs", _ln + "fetch", _id]);
+        array_push(_list, ["dec_abx", _key + "lnh", _id]);
+        array_push(_list, ["jmp_abs", _ln + "fetch", _id]);
+    }
 
     var _sng_use_fx = _sng_any_vib;
     for (var _ufi = 0; _ufi < array_length(_pat_fx_flags); _ufi++) {

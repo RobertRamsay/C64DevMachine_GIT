@@ -108,6 +108,9 @@ function scr_sound_editor_create(_asset) {
         filt_mode     : 0,
         filt_res      : 0,
         filt_cut      : 1024,
+        // Optional 96-entry SID frequency table (e.g. a composer's tuning,
+        // imported with a tune); [] = the shared equal-tempered table.
+        note_table    : [],
 
         // ── VIEW ──
         view_mode     : "VERTICAL",   // vertical first; horizontal is a later
@@ -167,7 +170,7 @@ function scr_music_sid_length(_m, _row) {
 function scr_music_sid_project(_m, _chip) {
     var _out = { instruments: _m.instruments, patterns: _m.patterns, songs: [],
         play_speed: _m.play_speed, voice_mask: scr_music_sid_mask(_m, _chip),
-        filt_mode: _m.filt_mode, filt_res: _m.filt_res, filt_cut: _m.filt_cut };
+        filt_mode: _m.filt_mode, filt_res: _m.filt_res, filt_cut: _m.filt_cut, note_table: _m[$ "note_table"] };
     for (var _s = 0; _s < array_length(_m.songs); _s++) {
         var _source = _m.songs[_s];
         var _song = { name: _source.name, loop: _source.loop, loop_row: _source.loop_row, order: [] };

@@ -176,6 +176,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (!variable_struct_exists(_m, "filt_mode"))   _m.filt_mode   = 0;
     if (!variable_struct_exists(_m, "filt_res"))    _m.filt_res    = 0;
     if (!variable_struct_exists(_m, "filt_cut"))    _m.filt_cut    = 1024;
+    if (!variable_struct_exists(_m, "note_table"))  _m.note_table  = [];
     // 1 is frantic, 24 is a dirge; the emitter clamps to 1-255 anyway, but
     // there's no musical reason to go past this from the UI.
     _m.play_speed = clamp(real(_m.play_speed), 1, 24);

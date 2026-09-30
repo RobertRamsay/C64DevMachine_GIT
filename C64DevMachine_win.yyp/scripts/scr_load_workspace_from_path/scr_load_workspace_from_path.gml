@@ -1073,6 +1073,11 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
 	            _new_asset.meta.filt_mode        = variable_struct_exists(_sem, "filt_mode")        ? real(_sem.filt_mode)  : 0;
 	            _new_asset.meta.filt_res         = variable_struct_exists(_sem, "filt_res")         ? real(_sem.filt_res)   : 0;
 	            _new_asset.meta.filt_cut         = variable_struct_exists(_sem, "filt_cut")         ? real(_sem.filt_cut)   : 1024;
+	            // Imported tuning: 96 SID frequency values, or [] for the shared table.
+	            _new_asset.meta.note_table       = [];
+	            if (variable_struct_exists(_sem, "note_table") && is_array(_sem.note_table) && array_length(_sem.note_table) == 96) {
+	                for (var _nti = 0; _nti < 96; _nti++) array_push(_new_asset.meta.note_table, real(_sem.note_table[_nti]));
+	            }
 	            // songs[] restores first; the editor's migration guard only fires
 	            // when it's absent, so a pre-songs[] file still folds its bare
 	            // song_order into songs[0] on first open.

@@ -95,6 +95,7 @@ function scr_sfx_maker_frames(_e) {
     while(_pc<array_length(_b) && array_length(_frames)<240 && _steps++<4096) {
         var _op=_b[_pc++];
         if(_op==4) break;
+        if(_op==14 || _op==15) { _pc+=2; continue; } // ~PITCH/~PULSE tables are not used by effects
         if(_pc>=array_length(_b)) break;
         var _v=_b[_pc++];
         if(_op==0) _wave=_v;
