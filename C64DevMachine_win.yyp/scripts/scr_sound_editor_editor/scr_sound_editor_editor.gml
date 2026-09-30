@@ -1185,7 +1185,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             var _typing_here = (_m.cmd_entry_str != "" && _m.cmd_entry_voice == _cv && _m.cmd_entry_step == _row);
             if (point_in_rectangle(_mx, _my, _cmd_x - 6, _ry, _cx2, _ry + _row_h)) {
                 var _tip_cmd = _typing_here
-                    ? string_pos(string_char_at(_m.cmd_entry_str, 1), "0123456789ABCDEF") - 1
+                    ? string_pos(string_char_at(_m.cmd_entry_str, 1), "0123456789ABCDEFGHI") - 1
                     : _st_cmd;
                 _m.pattern_hover_tip = scr_sound_editor_pattern_help(_tip_cmd);
                 if (!_typing_here && _st_cmd == 4) {
@@ -1234,7 +1234,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                         }
                     }
                 }
-                draw_text_transformed_l(_cmd_x, _ry + 8, string_upper(decimal_to_hex(_st_cmd)) + _cv_hex, _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_cmd_x, _ry + 8, string_char_at("0123456789ABCDEFGHI", _st_cmd + 1) + _cv_hex, _txt_scale, _txt_scale, 0);
             } else {
                 draw_set_color(make_color_rgb(60, 60, 70));
                 draw_text_transformed_l(_cmd_x, _ry + 8, "...", _txt_scale, _txt_scale, 0);
@@ -1652,8 +1652,8 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             }
             if (keyboard_check_pressed(vk_escape)) _m.cmd_entry_str = "";
             var _cmd_commit = false;
-            var _hex_keys = "0123456789ABCDEF";
-            for (var _hk = 1; _hk <= 16; _hk++) {
+            var _hex_keys = "0123456789ABCDEFGHI";
+            for (var _hk = 1; _hk <= ((_m.cmd_entry_str == "") ? 19 : 16); _hk++) {
                 if (keyboard_check_pressed(ord(string_char_at(_hex_keys, _hk)))) {
                     if (_m.cmd_entry_str == "") {
                         _m.cmd_entry_voice = _m.sel_voice;
@@ -1682,7 +1682,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                     _hv = (_hv << 4) | (string_pos(string_char_at(_m.cmd_entry_str, _hci), _hex_keys) - 1);
                 }
                 _se_push_undo(_m, _se_snap);
-                _cur_step.cmd     = (_hv >> 8) & 0x0F;
+                _cur_step.cmd     = (_hv >> 8) & 0xFF;
                 _cur_step.cmd_val = _hv & 0xFF;
                 _m.cmd_entry_str  = "";
                 global.undo_dirty      = true;
@@ -1995,7 +1995,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_text_l(_col_gutter_x, _clr_y + 40,
         "7XX WAVE 8XX PULSE WIDTH 9XX PULSE SWEEP | AXX CUTOFF (XX*8) BX0 RESONANCE CXX CUTOFF SWEEP");
     draw_text_l(_col_gutter_x, _clr_y + 52,
-        "EXX FILTER MODE (1 LP 2 BP 4 HP 8 V3 OFF) DXX $D418 FXX TEMPO | 1-4,9,C LAST ONE ROW");
+        "EXX FILTER MODE (1 LP 2 BP 4 HP 8 V3 OFF) DXX $D418 FXX TEMPO | GXX FINE HXX PITCH IXX PULSE | 1-4,9,C ONE ROW");
     draw_set_font_l(fnt_c64_tiny);
 
     // ═════════════════════════════════════════════════════════════════════

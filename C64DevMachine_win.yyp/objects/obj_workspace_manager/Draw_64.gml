@@ -2529,7 +2529,8 @@ if(global.workspace_disk_mode) {
 draw_set_color(global.workspace_reu_used>global.workspace_reu_capacity?c_red:c_aqua);
 draw_text_l(_stats_x,_usage_y,"REU: "+scr_workspace_usage_text(global.workspace_reu_used)+" / "+scr_workspace_usage_text(global.workspace_reu_capacity));
 draw_set_color(c_white);
-draw_text_l(_stats_x,_usage_y-15,"RAM: "+scr_workspace_usage_text(global.workspace_ram_used)+" / 64 KB");
+draw_text_l(_stats_x,_usage_y-15,"RAM: "+string_format(global.workspace_ram_used/1024,0,2)+" KB / 64 KB");
+draw_text_l(_stats_x,_usage_y-30,string(global.workspace_ram_used)+" bytes allocated");
 draw_set_valign(fa_top);
 draw_set_halign(fa_left);
 

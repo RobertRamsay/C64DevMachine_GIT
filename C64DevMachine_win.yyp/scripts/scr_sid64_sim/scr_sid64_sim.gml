@@ -205,13 +205,14 @@ function scr_sid64_sim_row(_sim, _v, _note, _instr, _cmd, _val) {
         // hold — the command still applies
     } else if (_note == 253) {
         // +++ key on: gate back on from the shadow
+        if (_vc.active == 2) _vc.active = true;
         _vc.cb = _vc.cb | 0x01;
         scr_sid64_sim_write(_sim, _r0 + 4, _vc.cb);
     } else if (_note == 255) {
-        // rest: gate off, instrument stops, pending note cancelled
+        // Release: keep the instrument running; state 2 latches the gate off.
         _vc.cb = _vc.cb & 0xFE;
         scr_sid64_sim_write(_sim, _r0 + 4, _vc.cb);
-        _vc.active = false;
+        if (_vc.active) _vc.active = 2;
         _vc.hr_cd = 0;
     } else if (_cmd == 3) {
         // slide to this note: set the target, no trigger
@@ -234,12 +235,19 @@ function scr_sid64_sim_row(_sim, _v, _note, _instr, _cmd, _val) {
             scr_sid64_sim_trigger(_sim, _v, _instr);
         }
     }
-    scr_sid64_sim_cmd(_sim, _v, _cmd, _val);
+    // An empty release row must not cancel an already running vibrato.
+    if (!(_vc.active == 2 && _cmd == 255 && _vc.fx == 4)) scr_sid64_sim_cmd(_sim, _v, _cmd, _val);
 }
 
 /// The player's cmdr routine.
 function scr_sid64_sim_cmd(_sim, _v, _cmd, _val) {
     var _vc = _sim.voices[_v];
+    if (_cmd >= 16 && _cmd <= 18) {
+        _vc.fx = 0;
+        _vc.pcmd = _cmd;
+        _vc.pval = _val;
+        return;
+    }
     // Effects 1-4 last for their own row only.
     if (_cmd == 255) {
         _vc.fx = 0;
@@ -338,8 +346,8 @@ function scr_sid64_sim_step(_sim, _v) {
             _arg = _vc.bytes[_vc.pc + 1] & 0xFF;
         }
         if (_op == 0x00) {
-            // WAVE — gate bit always forced on
-            _vc.cb = _arg | 0x01;
+            // WAVE: normal trigger gates on; released voices stay released.
+            _vc.cb = (_vc.active == 2) ? (_arg & 0xFE) : (_arg | 0x01);
             scr_sid64_sim_write(_sim, _r0 + 4, _vc.cb);
             _vc.pc += 2;
         } else if (_op == 0x01) {
@@ -372,8 +380,8 @@ function scr_sid64_sim_step(_sim, _v) {
             if (_op == 0x08) _vc.slide = _d; else _vc.pulse_slide = _d;
             _vc.pc += 3;
         } else if (_op == 10) {
-            _vc.cb = _arg;
-            scr_sid64_sim_write(_sim, _r0 + 4, _arg);
+            _vc.cb = (_vc.active == 2) ? (_arg & 0xFE) : _arg;
+            scr_sid64_sim_write(_sim, _r0 + 4, _vc.cb);
             _vc.pc += 2;
         } else if (_op == 0x03) {
             _vc.pc = _arg;
@@ -520,6 +528,14 @@ function scr_sid64_sim_voice_frame(_sim, _v) {
             }
         }
     }
+    if (!_skip_step && _vc.pcmd >= 16 && _vc.pcmd <= 18) {
+        var _delta = _vc.pval;
+        if (_delta >= 128) _delta -= 256;
+        if (_vc.pcmd == 16) _vc.freq = (_vc.freq + _delta) & 65535;
+        if (_vc.pcmd == 17) _vc.slide = _delta & 65535;
+        if (_vc.pcmd == 18) _vc.pulse_slide = _delta & 65535;
+        _vc.pcmd = 0;
+    }
     if (!_skip_step) {
         scr_sid64_sim_step(_sim, _v);
     }
@@ -579,7 +595,7 @@ function scr_sid64_sim_fetch(_sim, _v, _orow) {
         }
         var _cc = _st[$ "cmd"];
         if (!is_undefined(_cc) && real(_cc) >= 0) {
-            _cmd = real(_cc) & 0x0F;
+            _cmd = real(_cc) & 0xFF;
             var _cv = _st[$ "cmd_val"];
             if (!is_undefined(_cv)) {
                 _val = real(_cv) & 0xFF;

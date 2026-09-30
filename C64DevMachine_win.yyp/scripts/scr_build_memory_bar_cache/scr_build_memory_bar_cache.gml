@@ -985,7 +985,11 @@ function scr_workspace_usage_refresh(_segments) {
     for(var _i=0;_i<array_length(_segments);_i++) {
         var _s=_segments[_i];
         if (_s.type=="CODE" && _s.no_conflict) continue; // operand references
-        if(instance_exists(_s.node_id) && _s.node_id.node_type=="ORG") continue;
+        // ORG spans include emitted code/data (notably the music player).
+        // Merge them with child allocations below, so shared bytes count once.
+        // Hardware register declarations are I/O addresses, not allocated RAM.
+        if(instance_exists(_s.node_id) && _s.node_id.node_type=="ORG"
+            && _s.node_id.node_title=="HW REGISTERS") continue;
         var _a=clamp(_s.addr,0,65536), _b=clamp(_s.addr+_s.size,0,65536);
         _ram+=max(0,_b-max(_end,_a)); _end=max(_end,_b);
         if(!(variable_struct_exists(_s,"load_later") && _s.load_later)) _boot_end=max(_boot_end,_b);

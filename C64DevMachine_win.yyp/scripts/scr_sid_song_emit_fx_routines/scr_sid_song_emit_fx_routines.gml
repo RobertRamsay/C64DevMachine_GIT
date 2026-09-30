@@ -38,7 +38,7 @@
 /// _use_fx false (no command column anywhere, no instrument vibrato): cmdr is a
 /// bare RTS and fxr only writes the pitch, so a song that uses none of this
 /// pays ~20 bytes here instead of ~550.
-function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _use_filter) {
+function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _use_filter, _use_extended = false) {
     var _k = _key;
 
     if (_use_filter) {
@@ -86,6 +86,20 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["sta_abx", _k + "fx", _id]);
     array_push(_list, ["rts",     0, _id]);
     array_push(_list, ["label",   _k + "c_has"]);
+    if (_use_extended) {
+    // G/H/I: signed fine tuning / persistent pitch / persistent pulse.
+    array_push(_list, ["cmp_imm", 16, _id]);
+    array_push(_list, ["bcc", _k + "c_standard", _id]);
+    array_push(_list, ["cmp_imm", 19, _id]);
+    array_push(_list, ["bcs", _k + "c_standard", _id]);
+    array_push(_list, ["sta_abx", _k + "pcmd", _id]);
+    array_push(_list, ["lda_abs", _k + "rval", _id]);
+    array_push(_list, ["sta_abx", _k + "pval", _id]);
+    array_push(_list, ["lda_imm", 0, _id]);
+    array_push(_list, ["sta_abx", _k + "fx", _id]);
+    array_push(_list, ["rts", 0, _id]);
+    array_push(_list, ["label", _k + "c_standard", _id]);
+    }
     // 000 — stop the continuous effect (A = 0 here).
     array_push(_list, ["cmp_imm", 0x00, _id]);
     array_push(_list, ["bne",     _k + "c_n0", _id]);

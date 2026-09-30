@@ -7760,10 +7760,6 @@ case "LINE_COLL": {
 } break;
 
 case "SID_MUSIC": {
-            if (variable_struct_exists(_asset.meta, "native_tables")) {
-                scr_native_tables_editor(_asset, _vx1+10, _cy, _vx2-10, _vy2-40);
-                break;
-            }
             scr_sid_asset_controls(_asset, _vx1 + 10, _cy, _vx2 - _vx1 - 20);
             _cy += 112;
             if (!buffer_exists(_asset.buffer)) {

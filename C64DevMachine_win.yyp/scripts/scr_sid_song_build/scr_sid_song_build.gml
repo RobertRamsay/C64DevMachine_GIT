@@ -263,16 +263,20 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // DATA BLOCK — instruments, patterns, order tables. On the spine,
     // jumped over, tagged _id so Pass 1.5 sizes them onto this node.
     // ════════════════════════════════════════════════════════════════
+    var _table_pack = scr_music_table_pack(_instruments);
+    var _tables_used = array_length(_table_pack.tables) > 0;
     var _lbl_dskip = _key + "dskip";
     // Per-voice effect state tables (see section 7).
     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
                              "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval",
                              "pwl", "pwh", "fvh", "isl", "ish", "ipl", "iph"];
+    if (_tables_used) array_push(_sng_state_tables, "trl", "trh");
     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
 
     // True once any instrument has vibrato or any pattern has a command
     // column; when neither, the effect routines shrink to a bare pitch write.
     var _sng_any_vib = false;
+    var _sng_extended_fx = false;
     // True once anything touches the filter: an instrument with FILTER ON, a
     // pattern A/B/C/E command, or a song filter mode. Only then does the
     // player carry filter code (init write, routing, commands).
@@ -356,9 +360,13 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["byte", _ins_vdl & 0xFF,             _id]);
         array_push(_list, ["byte", _ins_vsp & 0x0F,             _id]);
         array_push(_list, ["byte", ((_ins_vdp * 4) & 0x3F) | (_ins_comp.no_hr ? 0x40 : 0) | (_ins_filt << 7), _id]);
-        for (var _bi = 0; _bi < array_length(_ins_comp.bytes); _bi++) {
-            array_push(_list, ["byte", _ins_comp.bytes[_bi] & 0xFF, _id]);
-        }
+        scr_music_table_emit(_list, _id, _key, _table_pack.streams[_ii]);
+    }
+
+    for (var _ti = 0; _ti < array_length(_table_pack.tables); _ti++) {
+        array_push(_list, ["label", _key + "table" + string(_ti)]);
+        scr_music_table_emit(_list, _id, _key, _table_pack.tables[_ti]);
+        array_push(_list, ["byte", 12, _id]); // Return; tables never call other tables.
     }
 
     // ── 2. INSTRUMENT POINTER TABLE ──
@@ -402,6 +410,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             if (variable_struct_exists(_fx_st, "cmd") && real(_fx_st.cmd) >= 0) {
                 _pat_has_fx = true;
                 var _fx_c = real(_fx_st.cmd);
+                if (_fx_c >= 16 && _fx_c <= 18) _sng_extended_fx = true;
                 if (_fx_c == 0x0A || _fx_c == 0x0B || _fx_c == 0x0C || _fx_c == 0x0E) {
                     _sng_filt_used = true;
                 }
@@ -465,7 +474,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
                 if (_ri < array_length(_pat_steps)) {
                     var _fx_row = _pat_steps[_ri];
                     if (variable_struct_exists(_fx_row, "cmd") && real(_fx_row.cmd) >= 0) {
-                        _cmd_byte = real(_fx_row.cmd) & 0x0F;
+                        _cmd_byte = real(_fx_row.cmd) & 0xFF;
                         if (variable_struct_exists(_fx_row, "cmd_val")) {
                             _val_byte = real(_fx_row.cmd_val) & 0xFF;
                         }
@@ -882,19 +891,17 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["jmp_abs", _vp + "docmd",   _id]);   // held note: the command still applies
         array_push(_list, ["label",   _vp + "nothold"]);
 
-        // $FF = rest — gate off AND stop the instrument.
-        //
-        // An earlier version left the instrument stepping so its tail could
-        // carry on modulating. That reads well for a one-shot whose stream
-        // runs to $04 END on its own, but it does nothing for a LOOPING
-        // instrument: the loop never reaches END, so the voice stays active
-        // forever, cycling its stream silently and never releasing. A rest
-        // that can't stop a voice isn't a rest, so this now clears the
-        // active flag too — matching what a tracker's --- is expected to do.
+        // $FF releases the envelope while instrument modulation continues.
+        // Active state 2 prevents later instrument commands reopening the gate.
         // $FD = +++ key on: gate back on from the shadow — same note, same
         // instrument position, the envelope simply re-attacks.
         array_push(_list, ["cmp_imm", 0xFD,            _id]);
         array_push(_list, ["bne",     _vp + "notkon",  _id]);
+        array_push(_list, ["lda_zp", _vb + 6, _id]);
+        array_push(_list, ["beq", _vp + "konidle", _id]);
+        array_push(_list, ["lda_imm", 1, _id]);
+        array_push(_list, ["sta_zp", _vb + 6, _id]);
+        array_push(_list, ["label", _vp + "konidle"]);
         array_push(_list, ["lda_zp",  _cb,             _id]);
         array_push(_list, ["ora_imm", 0x01,            _id]);
         array_push(_list, ["sta_zp",  _cb,             _id]);
@@ -911,7 +918,11 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_zp",  _cb,             _id]);
         array_push(_list, ["sta_abs", _D400 + 4,       _id]);
         array_push(_list, ["lda_imm", 0x00,            _id]);
-        array_push(_list, ["sta_zp",  _vb + 6,         _id]);   // instrument off
+        array_push(_list, ["ldy_zp", _vb + 6, _id]);
+        array_push(_list, ["beq", _vp + "releaseidle", _id]);
+        array_push(_list, ["ldy_imm", 2, _id]);
+        array_push(_list, ["sty_zp", _vb + 6, _id]);
+        array_push(_list, ["label", _vp + "releaseidle"]);
         array_push(_list, ["sta_zp",  _hb + 2,         _id]);   // cancel any pending note
         array_push(_list, ["jmp_abs", _vp + "docmd",   _id]);
         array_push(_list, ["label",   _vp + "isnote"]);
@@ -1125,6 +1136,17 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
 
         // ── Row command (shared routine, X = voice) ──
         array_push(_list, ["label",   _vp + "docmd"]);
+        // Preserve existing pattern vibrato across blank release rows.
+        array_push(_list, ["lda_zp", _vb + 6, _id]);
+        array_push(_list, ["cmp_imm", 2, _id]);
+        array_push(_list, ["bne", _vp + "releasecmd", _id]);
+        array_push(_list, ["lda_abs", _key + "rcmd", _id]);
+        array_push(_list, ["cmp_imm", 255, _id]);
+        array_push(_list, ["bne", _vp + "releasecmd", _id]);
+        array_push(_list, ["lda_abs", _key + "fx_" + string(_vi), _id]);
+        array_push(_list, ["cmp_imm", 4, _id]);
+        array_push(_list, ["beq", _L_vskip, _id]);
+        array_push(_list, ["label", _vp + "releasecmd"]);
         array_push(_list, ["ldx_imm", _vi,              _id]);
         array_push(_list, ["jsr",     _key + "cmdr",    _id]);
         array_push(_list, ["label",   _L_vskip]);
@@ -1363,6 +1385,49 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["label",   _ip + "hrno"]);
         }
 
+        if (_sng_extended_fx) {
+        array_push(_list, ["lda_abs", _key + "pcmd_" + string(_vi), _id]);
+        array_push(_list, ["cmp_imm", 16, _id]);
+        array_push(_list, ["bcc", _ip + "extdone", _id]);
+        array_push(_list, ["cmp_imm", 19, _id]);
+        array_push(_list, ["bcs", _ip + "extdone", _id]);
+        array_push(_list, ["lda_abs", _key + "pval_" + string(_vi), _id]);
+        array_push(_list, ["cmp_imm", 128, _id]);
+        array_push(_list, ["lda_imm", 0, _id]);
+        array_push(_list, ["bcc", _ip + "extsign", _id]);
+        array_push(_list, ["lda_imm", 255, _id]);
+        array_push(_list, ["label", _ip + "extsign", _id]);
+        array_push(_list, ["sta_zp", _S_TMP, _id]);
+        array_push(_list, ["lda_abs", _key + "pcmd_" + string(_vi), _id]);
+        array_push(_list, ["cmp_imm", 16, _id]);
+        array_push(_list, ["bne", _ip + "extsweep", _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["lda_abs", _key + "fql_" + string(_vi), _id]);
+        array_push(_list, ["adc_abs", _key + "pval_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "fql_" + string(_vi), _id]);
+        array_push(_list, ["lda_abs", _key + "fqh_" + string(_vi), _id]);
+        array_push(_list, ["adc_zp", _S_TMP, _id]);
+        array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi), _id]);
+        array_push(_list, ["jmp_abs", _ip + "extclear", _id]);
+        array_push(_list, ["label", _ip + "extsweep", _id]);
+        array_push(_list, ["cmp_imm", 17, _id]);
+        array_push(_list, ["bne", _ip + "extpulse", _id]);
+        array_push(_list, ["lda_abs", _key + "pval_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "isl_" + string(_vi), _id]);
+        array_push(_list, ["lda_zp", _S_TMP, _id]);
+        array_push(_list, ["sta_abs", _key + "ish_" + string(_vi), _id]);
+        array_push(_list, ["jmp_abs", _ip + "extclear", _id]);
+        array_push(_list, ["label", _ip + "extpulse", _id]);
+        array_push(_list, ["lda_abs", _key + "pval_" + string(_vi), _id]);
+        array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
+        array_push(_list, ["lda_zp", _S_TMP, _id]);
+        array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
+        array_push(_list, ["label", _ip + "extclear", _id]);
+        array_push(_list, ["lda_imm", 0, _id]);
+        array_push(_list, ["sta_abs", _key + "pcmd_" + string(_vi), _id]);
+        array_push(_list, ["label", _ip + "extdone", _id]);
+        }
+
         // Skip if this voice has no live instrument.
         array_push(_list, ["lda_zp",  _vb + 6,      _id]);
         array_push(_list, ["bne",     _ip + "live", _id]);
@@ -1381,30 +1446,17 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["ldy_imm", 0x00,    _id]);
         array_push(_list, ["lda_izy", _vb + 0, _id]);
 
-        // $00 = WAVE — set the control register with the gate forced ON.
-        //
-        // This used to read $D404 and OR in the live gate bit. That is wrong on
-        // real hardware: SID registers are WRITE-ONLY, and a read returns
-        // whatever was last on the data bus — commonly another voice's control
-        // byte written moments earlier. So voice 3's "preserve my gate" would
-        // pick up voice 2's waveform bits, and since the SID ANDs combined
-        // waveforms together rather than mixing them, the voice went thin and
-        // quiet for no reason visible in its own instrument. Confirmed on
-        // x64sc and on real hardware; x64 hides it because it doesn't model
-        // the bus.
-        //
-        // The gate bit is forced ON rather than preserved: this handler only
-        // runs while the voice is actively stepping an instrument ($vb+6 == 1),
-        // and that is exactly when the gate is on. $04 END gates off and clears
-        // the flag, so the stepper can't reach here with the gate down. The
-        // resulting byte is written to the SHADOW as well as the register, so
-        // END and the $FF rest can later clear bit 0 while keeping the
-        // waveform — giving a release tail with the right timbre.
+        // WAVE writes use the control shadow; a released voice stays gated off.
         array_push(_list, ["cmp_imm", 0x00,       _id]);
         array_push(_list, ["bne",     _ip + "n0", _id]);
         array_push(_list, ["ldy_imm", 0x01,       _id]);
         array_push(_list, ["lda_izy", _vb + 0,    _id]);
         array_push(_list, ["ora_imm", 0x01,       _id]);
+        array_push(_list, ["ldy_zp", _vb + 6, _id]);
+        array_push(_list, ["cpy_imm", 2, _id]);
+        array_push(_list, ["bne", _ip + "wavegate", _id]);
+        array_push(_list, ["and_imm", 254, _id]);
+        array_push(_list, ["label", _ip + "wavegate"]);
         array_push(_list, ["sta_zp",  _cb,        _id]);
         array_push(_list, ["sta_abs", _D400 + 4,  _id]);
         array_push(_list, ["clc",     0,          _id]);
@@ -1574,6 +1626,11 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["bne", _ip + "n10", _id]);
         array_push(_list, ["ldy_imm", 1, _id]);
         array_push(_list, ["lda_izy", _vb, _id]);
+        array_push(_list, ["ldy_zp", _vb + 6, _id]);
+        array_push(_list, ["cpy_imm", 2, _id]);
+        array_push(_list, ["bne", _ip + "rawgate", _id]);
+        array_push(_list, ["and_imm", 254, _id]);
+        array_push(_list, ["label", _ip + "rawgate"]);
         array_push(_list, ["sta_zp", _cb, _id]);
         array_push(_list, ["sta_abs", _D400 + 4, _id]);
         array_push(_list, ["clc", 0, _id]);
@@ -1585,6 +1642,38 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_zp", _vb + 1, _id]);
         array_push(_list, ["jmp_abs", _L_iloop, _id]);
         array_push(_list, ["label", _ip + "n10", _id]);
+
+        if (_tables_used) {
+            // Shared command tables: a single return address per voice. These
+            // fragments contain no branches/calls and may hold across frames.
+            array_push(_list, ["cmp_imm", 11, _id]);
+            array_push(_list, ["bne", _ip + "notcall", _id]);
+            array_push(_list, ["clc", 0, _id]);
+            array_push(_list, ["lda_zp", _vb, _id]);
+            array_push(_list, ["adc_imm", 3, _id]);
+            array_push(_list, ["sta_abs", _key + "trl_" + string(_vi), _id]);
+            array_push(_list, ["lda_zp", _vb + 1, _id]);
+            array_push(_list, ["adc_imm", 0, _id]);
+            array_push(_list, ["sta_abs", _key + "trh_" + string(_vi), _id]);
+            array_push(_list, ["ldy_imm", 1, _id]);
+            array_push(_list, ["lda_izy", _vb, _id]);
+            array_push(_list, ["sta_zp", _S_TMP, _id]);
+            array_push(_list, ["iny", 0, _id]);
+            array_push(_list, ["lda_izy", _vb, _id]);
+            array_push(_list, ["sta_zp", _vb + 1, _id]);
+            array_push(_list, ["lda_zp", _S_TMP, _id]);
+            array_push(_list, ["sta_zp", _vb, _id]);
+            array_push(_list, ["jmp_abs", _L_iloop, _id]);
+            array_push(_list, ["label", _ip + "notcall", _id]);
+            array_push(_list, ["cmp_imm", 12, _id]);
+            array_push(_list, ["bne", _ip + "notreturn", _id]);
+            array_push(_list, ["lda_abs", _key + "trl_" + string(_vi), _id]);
+            array_push(_list, ["sta_zp", _vb, _id]);
+            array_push(_list, ["lda_abs", _key + "trh_" + string(_vi), _id]);
+            array_push(_list, ["sta_zp", _vb + 1, _id]);
+            array_push(_list, ["jmp_abs", _L_iloop, _id]);
+            array_push(_list, ["label", _ip + "notreturn", _id]);
+        }
 
         // $04, or anything unrecognised = END — gate off, mark inactive.
         //
@@ -1654,7 +1743,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             _sng_use_fx = true;
         }
     }
-    scr_sid_song_emit_fx_routines(_list, _id, _key, _chip_base, _c_base[0], _sng_use_fx, _sng_filt_used);
+    scr_sid_song_emit_fx_routines(_list, _id, _key, _chip_base, _c_base[0], _sng_use_fx, _sng_filt_used, _sng_extended_fx);
     if (_sfx) {
         scr_sid_song_emit_sfx(_list, _id, _key, _chip_base, _S_PTR);
     }

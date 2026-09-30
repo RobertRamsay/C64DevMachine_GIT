@@ -271,3 +271,144 @@ function scr_instrument_format(_text) {
     }
     return string_join_ext("\n", _lines);
 }
+
+/// Compile editable Music Maker commands into shared, non-nested C64 tables.
+/// Branch destinations remain in the instrument stream. No playback timing,
+/// parameter values or source-line highlighting are changed by storage sharing.
+function scr_music_table_pack(_instruments) {
+    var _cache_key = "";
+    for (var _i = 0; _i < array_length(_instruments); _i++) {
+        var _source = string(_instruments[_i].text);
+        _cache_key += string(string_length(_source)) + ":" + _source;
+    }
+    if (variable_global_exists("music_table_cache_key") && global.music_table_cache_key == _cache_key) return global.music_table_cache;
+    var _streams = [], _original = [], _raw = 0;
+    for (var _i = 0; _i < array_length(_instruments); _i++) {
+        var _c = scr_instrument_ensure_compiled(_instruments[_i]);
+        var _b = _c.bytes, _ops = [], _targets = {};
+        for (var _p = 0; _p < array_length(_b);) {
+            var _op = _b[_p];
+            var _len = (_op == 4) ? 1 : ((_op >= 5 && _op <= 9) ? 3 : 2);
+            if (_op == 3 || _op == 5) {
+                var _dest = _b[_p + 1] + ((_op == 5) ? _b[_p + 2] * 256 : 0);
+                variable_struct_set(_targets, string(_dest), true);
+            }
+            _p += _len;
+        }
+        for (var _p = 0; _p < array_length(_b);) {
+            var _op = _b[_p];
+            var _len = (_op == 4) ? 1 : ((_op >= 5 && _op <= 9) ? 3 : 2);
+            var _bytes = [], _key = "";
+            for (var _j = 0; _j < _len; _j++) { array_push(_bytes, _b[_p + _j]); _key += string(_b[_p + _j]) + ","; }
+            array_push(_ops, {bytes:_bytes, key:_key, pos:_p, size:_len,
+                target:variable_struct_exists(_targets,string(_p)), call:-1});
+            _p += _len;
+        }
+        array_push(_streams, _ops);
+        array_push(_original, _ops);
+        _raw += array_length(_b);
+    }
+    var _tables = [];
+    // Longer phrases first. Later passes share shorter material left between
+    // calls; existing calls can never enter a new table (no runtime stack).
+    var _lengths = [32, 16, 8, 4];
+    for (var _pass = 0; _pass < array_length(_lengths); _pass++) {
+        var _n = _lengths[_pass], _lookup = {}, _candidates = [];
+        for (var _i = 0; _i < array_length(_streams); _i++) {
+            var _ops = _streams[_i];
+            for (var _p = 0; _p + _n <= array_length(_ops); _p++) {
+                var _key = "", _size = 0, _ok = true;
+                for (var _j = 0; _j < _n; _j++) {
+                    var _o = _ops[_p + _j], _op = _o.bytes[0];
+                    if (_o.call >= 0 || _op == 3 || _op == 4 || _op == 5 || (_j > 0 && _o.target)) { _ok = false; break; }
+                    _key += _o.key + ";"; _size += _o.size;
+                }
+                if (!_ok) continue;
+                var _ci;
+                if (!variable_struct_exists(_lookup, _key)) {
+                    _ci = array_length(_candidates); variable_struct_set(_lookup, _key, _ci);
+                    array_push(_candidates, {key:_key, size:_size, count:0, last_i:-1, last_p:-1000, table:-1, positions:[]});
+                } else _ci = variable_struct_get(_lookup, _key);
+                var _cand = _candidates[_ci];
+                array_push(_cand.positions, [_i, _ops[_p].pos]);
+                if (_cand.last_i != _i || _p >= _cand.last_p + _n) {
+                    _cand.count++; _cand.last_i = _i; _cand.last_p = _p;
+                }
+            }
+        }
+        // Use only candidates with a net data saving, accounting for calls
+        // and the one-byte return. Count actual uses before accepting a table.
+        for (var _ci = 0; _ci < array_length(_candidates); _ci++) {
+            var _cand = _candidates[_ci];
+            if (_cand.count * (_cand.size - 3) <= _cand.size + 1) continue;
+            var _uses = [], _maps = [];
+            for (var _i = 0; _i < array_length(_streams); _i++) {
+                var _map = {}, _ops = _streams[_i];
+                for (var _p = 0; _p < array_length(_ops); _p++) variable_struct_set(_map,string(_ops[_p].pos),_p);
+                array_push(_maps,_map);
+            }
+            var _last_i = -1, _last_p = -1000;
+            for (var _u = 0; _u < array_length(_cand.positions); _u++) {
+                var _loc = _cand.positions[_u], _i = _loc[0], _map = _maps[_i];
+                if (!variable_struct_exists(_map,string(_loc[1]))) continue;
+                var _p = variable_struct_get(_map,string(_loc[1])), _ops = _streams[_i];
+                if ((_last_i == _i && _p < _last_p + _n) || _p + _n > array_length(_ops)) continue;
+                var _key = "";
+                for (var _j = 0; _j < _n; _j++) {
+                    var _o = _ops[_p + _j];
+                    if (_o.call >= 0 || (_j > 0 && _o.target)) break;
+                    _key += _o.key + ";";
+                }
+                if (_key == _cand.key) { array_push(_uses,[_i,_p]); _last_i = _i; _last_p = _p; }
+            }
+            if (array_length(_uses) * (_cand.size - 3) <= _cand.size + 1) continue;
+            var _tab = [], _first = _uses[0];
+            for (var _j = 0; _j < _n; _j++) array_push(_tab, _streams[_first[0]][_first[1] + _j]);
+            var _tid = array_length(_tables); array_push(_tables, _tab);
+            // Reverse replacement retains the positions of preceding uses.
+            for (var _u = array_length(_uses) - 1; _u >= 0; _u--) {
+                var _use = _uses[_u], _ops = _streams[_use[0]], _at = _use[1], _new = [];
+                for (var _j = 0; _j < array_length(_ops); _j++) {
+                    if (_j == _at) {
+                        array_push(_new, {bytes:[11,0,0], key:"", pos:_ops[_j].pos, size:3, target:_ops[_j].target, call:_tid});
+                        _j += _n - 1;
+                    } else array_push(_new, _ops[_j]);
+                }
+                _streams[_use[0]] = _new;
+            }
+        }
+    }
+    var _stored = 0;
+    for (var _i = 0; _i < array_length(_streams); _i++) for (var _j = 0; _j < array_length(_streams[_i]); _j++) _stored += _streams[_i][_j].size;
+    for (var _i = 0; _i < array_length(_tables); _i++) {
+        _stored++;
+        for (var _j = 0; _j < array_length(_tables[_i]); _j++) _stored += _tables[_i][_j].size;
+    }
+    // The three interpreters and six bytes of return-address RAM cost less
+    // than 256 bytes. Small songs retain their original player/data layout.
+    var _result;
+    if (_raw - _stored <= 256) _result = {streams:_original,tables:[],raw_bytes:_raw,stored_bytes:_raw};
+    else _result = {streams:_streams,tables:_tables,raw_bytes:_raw,stored_bytes:_stored};
+    global.music_table_cache_key = _cache_key;
+    global.music_table_cache = _result;
+    return _result;
+}
+
+function scr_music_table_emit(_list, _id, _key, _ops) {
+    var _offsets = {}, _offset = 0;
+    for (var _i = 0; _i < array_length(_ops); _i++) {
+        variable_struct_set(_offsets, string(_ops[_i].pos), _offset);
+        _offset += _ops[_i].size;
+    }
+    for (var _i = 0; _i < array_length(_ops); _i++) {
+        var _o = _ops[_i], _bytes = _o.bytes;
+        if (_o.call >= 0) {
+            array_push(_list, ["byte",11,_id], ["byte_lab_lo",_key+"table"+string(_o.call),_id], ["byte_lab_hi",_key+"table"+string(_o.call),_id]);
+        } else if (_bytes[0] == 5 || _bytes[0] == 3) {
+            var _dest = _bytes[1] + ((_bytes[0] == 5) ? _bytes[2]*256 : 0);
+            var _new = variable_struct_get(_offsets,string(_dest));
+            array_push(_list,["byte",_bytes[0],_id],["byte",_new & 255,_id]);
+            if (_bytes[0] == 5) array_push(_list,["byte",(_new >> 8) & 255,_id]);
+        } else for (var _j = 0; _j < array_length(_bytes); _j++) array_push(_list,["byte",_bytes[_j],_id]);
+    }
+}

@@ -784,7 +784,22 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     scr_instrument_ensure_compiled(_sel_instr);
     var _pv_y = _tb_y1 + _tb_h + 16;
     draw_set_color(make_color_rgb(120, 120, 160));
-    draw_text_l(_tb_x0, _pv_y, L("COMPILED: ") + string(array_length(_sel_instr.compiled.bytes)) + L(" BYTES"));
+    draw_text_l(_tb_x0, _pv_y, L("COMMANDS: ") + string(array_length(_sel_instr.compiled.bytes)) + L(" BYTES"));
+    if (_two_col && _tb_w >= 360) {
+        if (scr_sfx_maker_button(_tb_x0 + _tb_w - 124, _pv_y - 4, 124, "TABLE SIZE", _mx, _my)) {
+            if (_m.instr_edit_active) scr_sound_editor_commit_instrument(_m, _sel_instr);
+            var _pack = scr_music_table_pack(_m.instruments);
+            show_message("MUSIC MAKER SHARED TABLES\n\n"
+                + "Instrument commands: " + string(_pack.raw_bytes) + " bytes\n"
+                + "Stored commands + tables: " + string(_pack.stored_bytes) + " bytes\n"
+                + "Shared tables: " + string(array_length(_pack.tables)) + "\n"
+                + "Command data saved: " + string(_pack.raw_bytes - _pack.stored_bytes) + " bytes\n\n"
+                + "Export automatically shares repeated command sequences.\n"
+                + "Edit the instrument commands normally; tables rebuild on export.\n"
+                + "These figures exclude instrument headers, patterns and player code.\n"
+                + "Pattern GXX: fine tune; HXX: pitch sweep; IXX: pulse sweep.");
+        }
+    }
     var _err_n = array_length(_sel_instr.compiled.errors);
     if (_err_n > 0) {
         draw_set_font_l(fnt_c64_pico);

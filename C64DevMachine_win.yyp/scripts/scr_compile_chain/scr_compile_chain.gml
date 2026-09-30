@@ -7496,12 +7496,6 @@ case "MACRO_TRACK": {
 // Full SID music setup with raster IRQ.
 // --------------------------------------------------------
 case "MACRO_SID": {
-    var _native_asset = scr_reu_find_asset(string(_curr.instructions[0][1]));
-    if (is_struct(_native_asset) && variable_struct_exists(_native_asset.meta, "native_tables")) {
-        var _native_code = scr_native_tables_player(_native_asset);
-        for (var _ni=0; _ni<array_length(_native_code); _ni++) array_push(_list, [_native_code[_ni][0], _native_code[_ni][1], _curr]);
-        break;
-    }
 	// Temporarily add at the top of the MACRO_SID case in scr_compile_chain:
 
 	    var _id      = _curr;
