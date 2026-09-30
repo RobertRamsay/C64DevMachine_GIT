@@ -20,6 +20,7 @@ function scr_sound_editor_cmd_menus(_lines) {
     if (array_length(_loop) == 0) {
         array_push(_loop, { ins: "L0", label: "BACK TO THE FIRST STEP" });
     }
+    array_push(_loop,{ins:"R3:0",label:"REPEAT FROM STEP 0 THREE MORE TIMES"});
     return [
         { id: "WAVE", items: [
             { ins: "$11", label: "TRIANGLE" },
@@ -292,6 +293,7 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
         ["Dn", "wait n frames before the next step"],
         ["", "50 frames = 1 second (PAL)"],
         ["Ln", "jump back to step n (loops forever)"],
+        ["R3:8", "repeat from step 8 three MORE times, then continue"],
         ["---", "gate off + stop: the note releases"],
         ["", ""],
         ["EXAMPLES", ""],
@@ -407,6 +409,11 @@ function scr_sound_editor_instr_comment(_line, _lines) {
         return { text: "hold " + string(_d) + _fr + " (" + string_trim(_secs) + " s)", bad: false };
     }
 
+    if (_c0 == "R") {
+        var _rp = string_split(_rest,":");
+        if (array_length(_rp) != 2) return {text:"? write Rcount:step, e.g. R3:8",bad:true};
+        return {text:"repeat from step " + _rp[1] + " another " + _rp[0] + " times, then continue",bad:false};
+    }
     // Ln : loop
     if (_c0 == "L") {
         var _ln = string_digits(_rest);

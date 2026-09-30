@@ -8,6 +8,7 @@
 ///   N-n         note, -n semitones      -> [$01, n signed]
 ///   N / N+0     note as-is              -> [$01, $00]
 ///   Dn          hold n ticks (1-255)    -> [$02, n]
+///   Rc:n        repeat from step n c MORE times (1-254), then continue
 ///   Ln          loop to step n          -> [$03, byte-offset of step n]
 ///   ---         end (gate off + stop)   -> [$04]
 ///
@@ -23,7 +24,7 @@
 /// errors       — human-readable strings for malformed tokens (never throws)
 function scr_instrument_parse(_text) {
 
-    var _out    = { bytes: [], step_offsets: [], errors: [], version: 3, byte_lines: [], source: string(_text), no_hr: false };
+    var _out    = { bytes: [], step_offsets: [], errors: [], version: 4, byte_lines: [], source: string(_text), no_hr: false };
     var _tokens = [];
 
     // ── Tokenise: newlines act as commas, then split, trim, drop empties ──
@@ -43,6 +44,7 @@ function scr_instrument_parse(_text) {
     // ── Pass 1: emit bytes, recording where each step begins. Loop targets
     //    are noted as (byte-position-of-arg, step-index) for pass-2 patching. ──
     var _wide = true; // version 2 uses 16-bit loop targets
+    var _repeat_end = -1;
     var _loop_fixups = [];   // { arg_pos, step_idx }
 
     for (var _ti = 0; _ti < array_length(_tokens); _ti++) {
@@ -86,6 +88,36 @@ function scr_instrument_parse(_text) {
             if (string_char_at(_nxt, 1) == "D") {
                 _next_is_hold = true;
             }
+        }
+
+        // Rcount:step repeats a preceding, non-nested section count MORE times.
+        // A timed section is required, so this cannot form a zero-time loop.
+        if (_c0 == "R") {
+            var _parts = string_split(string_delete(_up,1,1), ":");
+            var _ok = array_length(_parts) == 2;
+            var _count = 0, _step = -1;
+            if (_ok) {
+                _ok = _parts[0] != "" && _parts[1] != "";
+                for (var _rp=0;_rp<2;_rp++) for (var _rc=1;_rc<=string_length(_parts[_rp]);_rc++)
+                    if (string_pos(string_char_at(_parts[_rp],_rc),"0123456789") == 0) _ok = false;
+                if (_ok) { _count = real(_parts[0]); _step = real(_parts[1]); }
+            }
+            _ok = _ok && _count >= 1 && _count <= 254 && _step > _repeat_end && _step < _ti;
+            var _timed = false;
+            if (_ok) for (var _rs=_step;_rs<_ti;_rs++) {
+                var _rt = string_upper(_tokens[_rs]), _first = string_char_at(_rt,1);
+                if (_first == "D") _timed = true;
+                if (_first == "L" || _first == "R" || _first == "-") _ok = false;
+            }
+            if (!_ok || !_timed) {
+                array_push(_out.errors,"step " + string(_ti) + ": Rcount:step needs 1-254 repeats of a preceding timed section, without nested loops");
+                array_push(_out.bytes,4);
+            } else {
+                array_push(_out.bytes,13,0,0,_count);
+                array_push(_loop_fixups,{arg_pos:array_length(_out.bytes)-3,step_idx:_step});
+                _repeat_end = _ti;
+            }
+            continue;
         }
 
         // Fine pitch delta in SID frequency units, or an exact 12-bit pulse width.
@@ -254,7 +286,7 @@ function scr_instrument_ensure_compiled(_instr) {
     if (_valid) _valid = variable_struct_exists(_instr.compiled, "bytes") && variable_struct_exists(_instr.compiled, "errors");
     if (_valid) _valid = is_array(_instr.compiled.bytes) && is_array(_instr.compiled.errors);
     if (_valid) _valid = variable_struct_exists(_instr.compiled, "version") && variable_struct_exists(_instr.compiled, "source");
-    if (_valid) _valid = _instr.compiled.version == 3 && _instr.compiled.source == _instr.text;
+    if (_valid) _valid = _instr.compiled.version == 4 && _instr.compiled.source == _instr.text;
     if (!_valid) _instr.compiled = scr_instrument_parse(_instr.text);
     return _instr.compiled;
 }
@@ -288,16 +320,16 @@ function scr_music_table_pack(_instruments) {
         var _b = _c.bytes, _ops = [], _targets = {};
         for (var _p = 0; _p < array_length(_b);) {
             var _op = _b[_p];
-            var _len = (_op == 4) ? 1 : ((_op >= 5 && _op <= 9) ? 3 : 2);
-            if (_op == 3 || _op == 5) {
-                var _dest = _b[_p + 1] + ((_op == 5) ? _b[_p + 2] * 256 : 0);
+            var _len = (_op == 13) ? 4 : ((_op == 4) ? 1 : ((_op >= 5 && _op <= 9) ? 3 : 2));
+            if (_op == 3 || _op == 5 || _op == 13) {
+                var _dest = _b[_p + 1] + ((_op == 5 || _op == 13) ? _b[_p + 2] * 256 : 0);
                 variable_struct_set(_targets, string(_dest), true);
             }
             _p += _len;
         }
         for (var _p = 0; _p < array_length(_b);) {
             var _op = _b[_p];
-            var _len = (_op == 4) ? 1 : ((_op >= 5 && _op <= 9) ? 3 : 2);
+            var _len = (_op == 13) ? 4 : ((_op == 4) ? 1 : ((_op >= 5 && _op <= 9) ? 3 : 2));
             var _bytes = [], _key = "";
             for (var _j = 0; _j < _len; _j++) { array_push(_bytes, _b[_p + _j]); _key += string(_b[_p + _j]) + ","; }
             array_push(_ops, {bytes:_bytes, key:_key, pos:_p, size:_len,
@@ -320,14 +352,14 @@ function scr_music_table_pack(_instruments) {
                 var _key = "", _size = 0, _ok = true;
                 for (var _j = 0; _j < _n; _j++) {
                     var _o = _ops[_p + _j], _op = _o.bytes[0];
-                    if (_o.call >= 0 || _op == 3 || _op == 4 || _op == 5 || (_j > 0 && _o.target)) { _ok = false; break; }
+                    if (_o.call >= 0 || _op == 3 || _op == 4 || _op == 5 || _op == 13 || (_j > 0 && _o.target)) { _ok = false; break; }
                     _key += _o.key + ";"; _size += _o.size;
                 }
                 if (!_ok) continue;
                 var _ci;
                 if (!variable_struct_exists(_lookup, _key)) {
                     _ci = array_length(_candidates); variable_struct_set(_lookup, _key, _ci);
-                    array_push(_candidates, {key:_key, size:_size, count:0, last_i:-1, last_p:-1000, table:-1, positions:[]});
+                    array_push(_candidates, {rank:_ci, key:_key, size:_size, count:0, last_i:-1, last_p:-1000, table:-1, positions:[]});
                 } else _ci = variable_struct_get(_lookup, _key);
                 var _cand = _candidates[_ci];
                 array_push(_cand.positions, [_i, _ops[_p].pos]);
@@ -338,6 +370,10 @@ function scr_music_table_pack(_instruments) {
         }
         // Use only candidates with a net data saving, accounting for calls
         // and the one-byte return. Count actual uses before accepting a table.
+        // Prefer phrases with the largest estimated saving; actual uses are checked below.
+        array_sort(_candidates, function(_a, _b) {
+            var _saving = (_b.count * (_b.size - 3) - _b.size) - (_a.count * (_a.size - 3) - _a.size); return (_saving == 0) ? _a.rank - _b.rank : _saving;
+        });
         for (var _ci = 0; _ci < array_length(_candidates); _ci++) {
             var _cand = _candidates[_ci];
             if (_cand.count * (_cand.size - 3) <= _cand.size + 1) continue;
@@ -404,11 +440,12 @@ function scr_music_table_emit(_list, _id, _key, _ops) {
         var _o = _ops[_i], _bytes = _o.bytes;
         if (_o.call >= 0) {
             array_push(_list, ["byte",11,_id], ["byte_lab_lo",_key+"table"+string(_o.call),_id], ["byte_lab_hi",_key+"table"+string(_o.call),_id]);
-        } else if (_bytes[0] == 5 || _bytes[0] == 3) {
-            var _dest = _bytes[1] + ((_bytes[0] == 5) ? _bytes[2]*256 : 0);
+        } else if (_bytes[0] == 5 || _bytes[0] == 3 || _bytes[0] == 13) {
+            var _dest = _bytes[1] + ((_bytes[0] == 5 || _bytes[0] == 13) ? _bytes[2]*256 : 0);
             var _new = variable_struct_get(_offsets,string(_dest));
             array_push(_list,["byte",_bytes[0],_id],["byte",_new & 255,_id]);
-            if (_bytes[0] == 5) array_push(_list,["byte",(_new >> 8) & 255,_id]);
+            if (_bytes[0] == 5 || _bytes[0] == 13) array_push(_list,["byte",(_new >> 8) & 255,_id]);
+            if (_bytes[0] == 13) array_push(_list,["byte",_bytes[3],_id]);
         } else for (var _j = 0; _j < array_length(_bytes); _j++) array_push(_list,["byte",_bytes[_j],_id]);
     }
 }

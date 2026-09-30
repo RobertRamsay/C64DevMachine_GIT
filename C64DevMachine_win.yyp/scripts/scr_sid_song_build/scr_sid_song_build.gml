@@ -265,11 +265,16 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // ════════════════════════════════════════════════════════════════
     var _table_pack = scr_music_table_pack(_instruments);
     var _tables_used = array_length(_table_pack.tables) > 0;
+    var _repeats_used = false;
+    for (var _ri=0;_ri<array_length(_table_pack.streams);_ri++)
+        for (var _rj=0;_rj<array_length(_table_pack.streams[_ri]);_rj++)
+            if (_table_pack.streams[_ri][_rj].bytes[0] == 13) _repeats_used = true;
     var _lbl_dskip = _key + "dskip";
     // Per-voice effect state tables (see section 7).
     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
                              "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval",
                              "pwl", "pwh", "fvh", "isl", "ish", "ipl", "iph"];
+    if (_repeats_used) array_push(_sng_state_tables,"reps");
     if (_tables_used) array_push(_sng_state_tables, "trl", "trh");
     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
 
@@ -389,6 +394,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
 
     // ── 3. PATTERN BLOBS ── 2 bytes per row: note index, instrument index
     // (4 bytes — plus command, value — for patterns that use the command column).
+    var _pattern_start = array_length(_list);
     var _pat_fx_flags = [];
     for (var _pi = 0; _pi < _n_pat; _pi++) {
         var _pat     = _patterns[_pi];
@@ -484,6 +490,43 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
                 array_push(_list, ["byte", _val_byte, _id]);
             }
         }
+    }
+
+    // Export-only row dictionary. Editor patterns and their row numbers remain
+    // intact; four parallel byte tables allow constant-time 6502 lookup.
+    // Keep the legacy layout when the complete dictionary exceeds 256 entries
+    // or when its data plus decoder would not save space.
+    var _row_lookup = {}, _row_dict = [], _row_refs = [], _pr = -1;
+    for (var _li = _pattern_start; _li < array_length(_list);) {
+        if (_list[_li][0] == "label") {
+            _pr++; array_push(_row_refs, []); _li++; continue;
+        }
+        var _stride = _pat_fx_flags[_pr] ? 4 : 2;
+        var _row = [_list[_li][1], _list[_li+1][1], 255, 0];
+        if (_stride == 4) { _row[2] = _list[_li+2][1]; _row[3] = _list[_li+3][1]; }
+        var _rk = string(_row[0])+","+string(_row[1])+","+string(_row[2])+","+string(_row[3]);
+        var _rid;
+        if (variable_struct_exists(_row_lookup, _rk)) _rid = variable_struct_get(_row_lookup, _rk);
+        else { _rid = array_length(_row_dict); variable_struct_set(_row_lookup, _rk, _rid); array_push(_row_dict, _row); }
+        array_push(_row_refs[_pr], _rid);
+        _li += _stride;
+    }
+    var _plain_pattern_bytes = array_length(_list) - _pattern_start - _n_pat;
+    var _packed_pattern_bytes = array_length(_row_dict) * 4;
+    for (var _pi=0;_pi<_n_pat;_pi++) _packed_pattern_bytes += array_length(_row_refs[_pi]);
+    var _compact_patterns = array_length(_row_dict) <= 256 && _plain_pattern_bytes - _packed_pattern_bytes > 128;
+    if (_compact_patterns) {
+        array_resize(_list, _pattern_start);
+        for (var _pi=0;_pi<_n_pat;_pi++) {
+            array_push(_list, ["label", _key+"pat"+string(_pi)]);
+            for (var _ri=0;_ri<array_length(_row_refs[_pi]);_ri++) array_push(_list,["byte",_row_refs[_pi][_ri],_id]);
+        }
+        var _cols = ["rownote","rowins","rowcmd","rowval"];
+        for (var _col=0;_col<4;_col++) {
+            array_push(_list,["label",_key+_cols[_col]]);
+            for (var _ri=0;_ri<array_length(_row_dict);_ri++) array_push(_list,["byte",_row_dict[_ri][_col],_id]);
+        }
+        array_push(_list,["label",_key+"rins"],["byte",255,_id]);
     }
 
     // ── 4. PATTERN POINTER + LENGTH TABLES ──
@@ -836,6 +879,15 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["label",   _vp + "rowok"]);
         array_push(_list, ["sta_zp",  _S_TMP,          _id]);   // $S_TMP = local row
 
+        if (_compact_patterns) {
+            array_push(_list,["lda_abx",_key+"patlo",_id],["sta_zp",_S_PTR,_id]);
+            array_push(_list,["lda_abx",_key+"pathi",_id],["sta_zp",_S_PTR+1,_id]);
+            array_push(_list,["ldy_zp",_S_TMP,_id],["lda_izy",_S_PTR,_id],["tax",0,_id]);
+            array_push(_list,["lda_abx",_key+"rowins",_id],["sta_abs",_key+"rins",_id]);
+            array_push(_list,["lda_abx",_key+"rowcmd",_id],["sta_abs",_key+"rcmd",_id]);
+            array_push(_list,["lda_abx",_key+"rowval",_id],["sta_abs",_key+"rval",_id]);
+            array_push(_list,["lda_abx",_key+"rownote",_id]);
+        } else {
         // Row pointer = pattern base + local_row * 2.
         array_push(_list, ["lda_abx", _key + "patlo", _id]);
         array_push(_list, ["sta_zp",  _S_PTR,         _id]);
@@ -860,6 +912,10 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["asl_a",   0,              _id]);
         array_push(_list, ["jmp_abs", _vp + "stradd", _id]);
         array_push(_list, ["label",   _vp + "str2"]);
+        array_push(_list, ["lda_zp", _S_TMP, _id]);
+        array_push(_list, ["bpl", _vp + "str2low", _id]);
+        array_push(_list, ["inc_zp", _S_PTR+1, _id]);
+        array_push(_list, ["label", _vp + "str2low"]);
         array_push(_list, ["lda_zp",  _S_TMP,         _id]);
         array_push(_list, ["asl_a",   0,              _id]);
         array_push(_list, ["label",   _vp + "stradd"]);
@@ -884,6 +940,8 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         // Note byte.
         array_push(_list, ["ldy_imm", 0x00,   _id]);
         array_push(_list, ["lda_izy", _S_PTR, _id]);
+
+        }
 
         // $FE = hold — leave the voice entirely alone.
         array_push(_list, ["cmp_imm", 0xFE,            _id]);
@@ -944,8 +1002,11 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
 
         // Real note: stash the base index, then read the instrument byte.
         array_push(_list, ["sta_zp",  _vb + 5, _id]);
+        if (_compact_patterns) array_push(_list,["lda_abs",_key+"rins",_id]);
+        else {
         array_push(_list, ["ldy_imm", 0x01,    _id]);
         array_push(_list, ["lda_izy", _S_PTR,  _id]);
+        }
 
         if (_hr > 0) {
             // H0 is stored in the unused bit 6 of the vibrato-depth header.
@@ -1015,6 +1076,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _key + "ish_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
+        if (_repeats_used) array_push(_list,["sta_abs",_key+"reps_"+string(_vi),_id]);
 
         array_push(_list, ["lda_imm", 0x41,             _id]);   // pulse + gate
         array_push(_list, ["sta_abs", _D400 + 4,        _id]);
@@ -1102,6 +1164,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _key + "ish_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
+        if (_repeats_used) array_push(_list,["sta_abs",_key+"reps_"+string(_vi),_id]);
 
 
         // Walking pointer moves past the 7 header bytes; the BASE stays put,
@@ -1275,6 +1338,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _key + "ish_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
+        if (_repeats_used) array_push(_list,["sta_abs",_key+"reps_"+string(_vi),_id]);
 
             array_push(_list, ["lda_imm", 0x41,             _id]);
             array_push(_list, ["sta_abs", _D400 + 4,        _id]);
@@ -1360,6 +1424,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _key + "ish_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "ipl_" + string(_vi), _id]);
         array_push(_list, ["sta_abs", _key + "iph_" + string(_vi), _id]);
+        if (_repeats_used) array_push(_list,["sta_abs",_key+"reps_"+string(_vi),_id]);
 
 
             array_push(_list, ["clc",     0,       _id]);
@@ -1533,6 +1598,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
 
         array_push(_list, ["cmp_imm", 5, _id]);
         array_push(_list, ["bne", _ip + "n5", _id]);
+        array_push(_list,["label",_ip+"widejump"]);
         array_push(_list, ["ldy_imm", 2, _id]);
         array_push(_list, ["lda_izy", _vb, _id]);
         array_push(_list, ["sta_zp", _S_TMP, _id]);
@@ -1642,6 +1708,19 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_zp", _vb + 1, _id]);
         array_push(_list, ["jmp_abs", _L_iloop, _id]);
         array_push(_list, ["label", _ip + "n10", _id]);
+
+        if (_repeats_used) {
+            array_push(_list,["cmp_imm",13,_id],["bne",_ip+"notrepeat",_id]);
+            array_push(_list,["lda_abs",_key+"reps_"+string(_vi),_id],["bne",_ip+"repeatdec",_id]);
+            array_push(_list,["ldy_imm",3,_id],["lda_izy",_vb,_id],["clc",0,_id],["adc_imm",1,_id]);
+            array_push(_list,["sta_abs",_key+"reps_"+string(_vi),_id]);
+            array_push(_list,["label",_ip+"repeatdec"],["dec_abs",_key+"reps_"+string(_vi),_id]);
+            array_push(_list,["beq",_ip+"repeatdone",_id],["jmp_abs",_ip+"widejump",_id]);
+            array_push(_list,["label",_ip+"repeatdone"],["clc",0,_id]);
+            array_push(_list,["lda_zp",_vb,_id],["adc_imm",4,_id],["sta_zp",_vb,_id]);
+            array_push(_list,["lda_zp",_vb+1,_id],["adc_imm",0,_id],["sta_zp",_vb+1,_id]);
+            array_push(_list,["jmp_abs",_L_iloop,_id],["label",_ip+"notrepeat"]);
+        }
 
         if (_tables_used) {
             // Shared command tables: a single return address per voice. These

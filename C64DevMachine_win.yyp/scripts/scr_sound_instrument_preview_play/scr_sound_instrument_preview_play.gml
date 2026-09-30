@@ -87,7 +87,7 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
     var _pw = scr_sid64_instr_field(_instr, "pulse_width", 2048) & 4095;
     var _slide = 0;
     var _pulse_slide = 0;
-    var _pc = 0;
+    var _pc = 0, _repeat_left = 0;
     var _hold = 0;
     var _active = true;
     var _raw_gate = false;
@@ -112,6 +112,11 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
                     _freq = round(_base_hz * power(2, _off / 12) * 16777216 / 985248);
                     _pc += 2;
                 } else if (_op == 2) { _follow_hold = _pc; _hold = max(0, _arg - 1); _pc += 2; break; }
+                else if (_op == 13) {
+                    if (_repeat_left == 0) _repeat_left = _bytes[_pc+3]+1;
+                    _repeat_left--;
+                    if (_repeat_left > 0) _pc = _word; else _pc += 4;
+                }
                 else if (_op == 3 || _op == 5) _pc = _word;
                 else if (_op == 6) { _freq = (_freq + _word) & 65535; _pc += 3; }
                 else if (_op == 7) { _pw = _word & 4095; _pc += 3; }

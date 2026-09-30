@@ -16,6 +16,7 @@ function scr_sid64_sim_voice_new() {
         // instrument stepper (ZP V block)
         instr    : undefined,   // instrument struct being stepped
         bytes    : [],          // its compiled command stream
+        repeat_left: 0,
         pc       : 0,
         display_pcs: [],
         display_hold: -1,
@@ -144,6 +145,7 @@ function scr_sid64_sim_trigger(_sim, _v, _instr) {
     _vc.instr = _instr;
     _vc.display_pcs = [];
     _vc.display_hold = -1;
+    _vc.repeat_left = 0;
     _vc.slide = 0;
     _vc.pulse_slide = 0;
     if (!is_struct(_instr)) {
@@ -364,6 +366,11 @@ function scr_sid64_sim_step(_sim, _v) {
             _vc.hold = (_arg - 1) & 0xFF;
             _vc.pc += 2;
             return;
+        } else if (_op == 13) {
+            if (_vc.repeat_left == 0) _vc.repeat_left = _vc.bytes[_vc.pc + 3] + 1;
+            _vc.repeat_left--;
+            if (_vc.repeat_left > 0) _vc.pc = _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8);
+            else _vc.pc += 4;
         } else if (_op == 0x05) {
             _vc.pc = _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8);
         } else if (_op == 0x06) {

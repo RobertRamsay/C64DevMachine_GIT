@@ -90,7 +90,7 @@ function scr_sfx_maker_frames(_e) {
     var _b=scr_instrument_parse(_e.text).bytes;
     var _base=variable_struct_exists(_e,"sfx_note")?_e.sfx_note:"C-5";
     var _hz=scr_note_name_to_hz(_base), _wave=0x21, _freq=round(_hz*16777216/985248);
-    var _pc=0, _frames=[], _steps=0;
+    var _pc=0, _frames=[], _steps=0, _repeat_left=0;
     var _slide=0, _pulse_slide=0, _pw=scr_sid64_instr_field(_e,"pulse_width",2048)&4095;
     while(_pc<array_length(_b) && array_length(_frames)<240 && _steps++<4096) {
         var _op=_b[_pc++];
@@ -102,6 +102,14 @@ function scr_sfx_maker_frames(_e) {
         else if(_op==2) for(var _t=0;_t<_v && array_length(_frames)<240;_t++) {
             _freq=(_freq+_slide)&65535; _pw=(_pw+_pulse_slide)&4095;
             array_push(_frames,[_freq&255,(_freq>>8)&255,_wave,_pw&255,(_pw>>8)&15]);
+        }
+        else if(_op==13) {
+            if (_pc+1>=array_length(_b)) break;
+            _v |= _b[_pc++]<<8;
+            var _count = _b[_pc++];
+            if (_repeat_left==0) _repeat_left=_count+1;
+            _repeat_left--;
+            if (_repeat_left>0) _pc=_v;
         }
         else if(_op==3) _pc=_v;
         else if(_op>=5 && _op<=9) {
