@@ -866,7 +866,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     // row's v1/v2/v3 currently point at)
     // ═════════════════════════════════════════════════════════════════════
     var _gy0 = _rowy + 44;
-    _vis = max(1, min(16, floor((_vy2 - _gy0 - 68) / _row_h)));
+    _vis = max(1, min(16, floor((_vy2 - _gy0 - 80) / _row_h)));
     var _gx0 = _vx1 + 20;
 
     var _col_gutter_x = _gx0;
@@ -1926,9 +1926,11 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(150, 120, 90));
     draw_text_l(_col_gutter_x, _clr_y + 28,
-        "CMD HELP: HOVER | 1XX UP 2XX DN 3XX SLIDE 4XY VIB 5XX AD 6XX SR 7XX WAVE 8XX PW 9XX PW SWEEP DXX $D418 FXX TEMPO | 1-4,9,C ONE ROW");
+        "CMD HELP: HOVER | 1XX UP 2XX DOWN 3XX SLIDE 4XY VIBRATO | 5AD ATTACK/DECAY 6SR SUSTAIN/RELEASE");
     draw_text_l(_col_gutter_x, _clr_y + 40,
-        "FILTER  AXX CUTOFF (XX*8)  BX0 RESONANCE X  CXX CUTOFF SWEEP (01-7F UP, 80-FF DOWN)  EXX MODE (1 LP 2 BP 4 HP 8 V3 OFF)");
+        "7XX WAVE 8XX PULSE WIDTH 9XX PULSE SWEEP | AXX CUTOFF (XX*8) BX0 RESONANCE CXX CUTOFF SWEEP");
+    draw_text_l(_col_gutter_x, _clr_y + 52,
+        "EXX FILTER MODE (1 LP 2 BP 4 HP 8 V3 OFF) DXX $D418 FXX TEMPO | 1-4,9,C LAST ONE ROW");
     draw_set_font_l(fnt_c64_tiny);
 
     // ═════════════════════════════════════════════════════════════════════
@@ -2340,7 +2342,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
 
     // Hover the legend for a built-in reference, or any cell for its command.
     if (point_in_rectangle(_mx, _my, _col_gutter_x, _clr_y + 26,
-                           _col_gutter_x + _grid_full_w, _clr_y + 52)) {
+                           _col_gutter_x + _grid_full_w, _clr_y + 64)) {
         _m.pattern_hover_tip = scr_sound_editor_pattern_help(-1)
             + "\n\n" + scr_sound_editor_pattern_help(4)
             + "\n\n" + scr_sound_editor_vibrato_help();
