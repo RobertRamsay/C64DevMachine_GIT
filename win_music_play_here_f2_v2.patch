@@ -1,0 +1,42 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index c985fa1..be78317 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -477,7 +477,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         scr_sound_editor_export_sid(_asset);
+     }
+ 
+-    var _transport_labels = ["PLAY PAT (F3)", "PLAY SONG (F1)", "PLAY HERE", "STOP (F4)"];
++    var _transport_labels = ["PLAY PAT (F3)", "PLAY SONG (F1)", "PLAY HERE (F2)", "STOP (F4)"];
+     var _transport_actions = ["PAT", "SONG", "HERE", "STOP"];
+     draw_set_font_l(fnt_c64_tiny);
+     draw_set_halign(fa_left);
+@@ -494,15 +494,16 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     // Space in a text field belongs to that field, never to the transport.
+     var _transport_typing = _m.edit_active || _m.instr_edit_active
+                          || _m.instr_name_edit_active || _m.song_name_edit_active || _order_typing;
+-    // GoatTracker function keys: F1 song from the start, F2 this pattern from
+-    // the cursor row (looping), F3 this pattern from the top (looping), F4 stop.
++    // Function keys: F1 song from the start, F2 song from the cursor row (same
++    // as PLAY HERE — carries on through the order list), F3 this pattern from
++    // the top (looping), F4 stop.
+     // They type nothing, so they also work while an instrument's text is open.
+     var _fkeys_ok = !_m.edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing;
+     if (_fkeys_ok) {
+         if (keyboard_check_pressed(vk_f1)) {
+             _transport_action = "SONG";
+         } else if (keyboard_check_pressed(vk_f2)) {
+-            _transport_action = "ROW_HERE";
++            _transport_action = "HERE";
+         } else if (keyboard_check_pressed(vk_f3)) {
+             _transport_action = "PAT";
+         } else if (keyboard_check_pressed(vk_f4)) {
+@@ -681,7 +682,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     draw_set_font_l(fnt_c64_tiny);
+     draw_set_color(make_color_rgb(120, 140, 190));
+     draw_text_l(_vx1 + 20, _cy,
+-        "CLICK A CELL, TYPE A NOTE (C-4, C#3, ---)   |   ENTER COMMITS + DROPS A ROW   |   BKSP CLEARS   |   DEL PULLS UP   |   INS PUSHES DOWN   |   UP/DOWN MOVES   |   TAB NOTE/CMD   |   - STOP  + KEY ON   |   F1 SONG   F2 PAT FROM ROW   F3 PAT   F4 STOP   |   SPACE HEAR INSTRUMENT");
++        "CLICK A CELL, TYPE A NOTE (C-4, C#3, ---)   |   ENTER COMMITS + DROPS A ROW   |   BKSP CLEARS   |   DEL PULLS UP   |   INS PUSHES DOWN   |   UP/DOWN MOVES   |   TAB NOTE/CMD   |   - STOP  + KEY ON   |   F1 SONG   F2 SONG FROM HERE   F3 PAT   F4 STOP   |   SPACE HEAR INSTRUMENT");
+    
+     draw_set_font_l(fnt_c64_tiny);
+     var _status_y = _cy + 50;
