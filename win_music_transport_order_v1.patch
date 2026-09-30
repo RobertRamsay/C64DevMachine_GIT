@@ -1,0 +1,32 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index be78317..5ec536e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -477,8 +477,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         scr_sound_editor_export_sid(_asset);
+     }
+ 
+-    var _transport_labels = ["PLAY PAT (F3)", "PLAY SONG (F1)", "PLAY HERE (F2)", "STOP (F4)"];
+-    var _transport_actions = ["PAT", "SONG", "HERE", "STOP"];
++    // In function-key order: F1 SONG, F2 HERE, F3 PAT, F4 STOP.
++    var _transport_labels = ["PLAY SONG (F1)", "PLAY HERE (F2)", "PLAY PAT (F3)", "STOP (F4)"];
++    var _transport_actions = ["SONG", "HERE", "PAT", "STOP"];
+     draw_set_font_l(fnt_c64_tiny);
+     draw_set_halign(fa_left);
+     for (var _tb = 0; _tb < 4; _tb++) {
+@@ -487,7 +488,14 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         var _thover = point_in_rectangle(_mx, _my, _tx, _transport_y, _tx + _tw, _transport_y + 24);
+         draw_set_color(_thover ? make_color_rgb(65, 130, 155) : make_color_rgb(28, 60, 80));
+         draw_rectangle(_tx, _transport_y, _tx + _tw, _transport_y + 24, false);
+-        draw_set_color((_tb == 0 && _m.playing) || ((_tb == 1 || _tb == 2) && _m.song_playing) ? c_lime : c_white);
++        var _t_lit = false;
++        if (_transport_actions[_tb] == "PAT" && _m.playing) _t_lit = true;
++        if ((_transport_actions[_tb] == "SONG" || _transport_actions[_tb] == "HERE") && _m.song_playing) _t_lit = true;
++        if (_t_lit) {
++            draw_set_color(c_lime);
++        } else {
++            draw_set_color(c_white);
++        }
+         draw_text_l(_tx + 10, _transport_y + 7, _transport_labels[_tb]);
+         if (_thover && mouse_check_button_pressed(mb_left)) _transport_action = _transport_actions[_tb];
+     }
