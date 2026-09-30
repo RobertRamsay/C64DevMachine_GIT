@@ -173,6 +173,7 @@ var _cam = {
         nodes:           _node_data,
         boxes:           _box_data,
         assets:          _asset_data,
+        music_node_links: scr_music_sid_snapshot_links(),
         camera:          _cam,
         basic_unlocked:  global.basic_unlocked,
         kernal_unlocked: global.kernal_unlocked

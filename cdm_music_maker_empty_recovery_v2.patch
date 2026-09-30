@@ -1,0 +1,331 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+index 1a8dd25c7794d0f0297d1e7cd4732947f43e6c0c..c76b31e5822d1da3466ee8b776a3a6f744776559 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+@@ -198,6 +198,141 @@ function scr_music_sid_find_uid(_uid) {
+     // Never edit an arbitrary first match in a legacy workspace with duplicate IDs.
+     return (_matches == 1) ? _found : noone;
+ }
++/// Validate the whole owned set before touching a live or customised setup.
++function scr_music_sid_refs_ok(_links) {
++    if (!is_struct(_links) || !variable_struct_exists(_links, "org")
++        || !variable_struct_exists(_links, "macro")
++        || !variable_struct_exists(_links, "nodes") || !is_array(_links.nodes)) return false;
++    if (!is_real(_links.org) || _links.org < 0 || _links.org != floor(_links.org)
++        || !is_real(_links.macro) || _links.macro < 0 || _links.macro != floor(_links.macro)) return false;
++    var _org = scr_music_sid_find_uid(_links.org);
++    var _macro = scr_music_sid_find_uid(_links.macro);
++    if (!instance_exists(_org) || _org.node_type != "ORG"
++        || !instance_exists(_macro) || _macro.node_type != "MACRO_SID_SONG") return false;
++    var _has_org = false;
++    var _has_macro = false;
++    for (var _i = 0; _i < array_length(_links.nodes); _i++) {
++        var _uid = _links.nodes[_i];
++        if (!is_real(_uid) || _uid < 0 || _uid != floor(_uid)) return false;
++        for (var _j = 0; _j < _i; _j++) if (_links.nodes[_j] == _uid) return false;
++        if (!instance_exists(scr_music_sid_find_uid(_uid))) return false;
++        if (_uid == _links.org) _has_org = true;
++        if (_uid == _links.macro) _has_macro = true;
++    }
++    return _has_org && _has_macro;
++}
++
++/// Recovery is allowed only for an empty executable workspace. Hidden and
++/// disconnected instruction/code/label nodes count too. Never infer safety
++/// from a screenshot, a missing macro alone, or a group's collapsed state.
++/// This is a read-only plan: stale metadata is replaced only AFTER generation.
++function scr_music_sid_empty_plan(_asset) {
++    var _out = { ok: false, music_org: noone, core_org: noone };
++    var _inits = 0;
++    var _music = 0;
++    var _core = 0;
++    var _has_code = false;
++    with (obj_c64_node) {
++        if (node_type == "INIT") { _inits++; continue; }
++        if (node_type == "ORG") {
++            if (string_upper(node_title) == "MUSIC MAKER") { _out.music_org = id; _music++; }
++            if (string_upper(node_title) == "CORE LOOP") { _out.core_org = id; _core++; }
++            continue;
++        }
++        // Data and variables may remain after clearing the executable chains.
++        if (node_type == "COMMENT" || node_type == "NAMED_LOC" || node_type == "NEW_STR"
++            || node_type == "DATA_TEXT" || node_type == "RAW_DATA" || node_type == "DATA_SID"
++            || node_type == "SPR64" || node_type == "BITMAP_KLA") continue;
++        _has_code = true;
++    }
++    if (_inits != 1 || _music > 1 || _core > 1 || _has_code) return _out;
++    var _roots = [_out.music_org, _out.core_org];
++    for (var _r = 0; _r < array_length(_roots); _r++) {
++        var _root = _roots[_r];
++        if (!instance_exists(_root)) continue;
++        if (scr_music_sid_find_uid(_root.stable_uid) != _root) return _out;
++        if (_root.wire_in_source != -1 || _root.wire_out_target != -1) return _out;
++        var _occupied = false;
++        with (obj_c64_node) if (org_parent == _root) { _occupied = true; break; }
++        if (_occupied) return _out;
++        // A copied asset must not take over another asset's empty groups.
++        if (instance_exists(obj_asset_manager)) {
++            var _am = obj_asset_manager;
++            for (var _a = 0; _a < ds_list_size(_am.asset_list); _a++) {
++                var _other_asset = ds_list_find_value(_am.asset_list, _a);
++                if (_other_asset == _asset || _other_asset.type != "MUSIC_MAKER") continue;
++                if (!variable_struct_exists(_other_asset.meta, "music_nodes")) continue;
++                var _links = _other_asset.meta.music_nodes;
++                if (!is_struct(_links)) continue;
++                if (variable_struct_exists(_links, "org") && _links.org == _root.stable_uid) return _out;
++                if (variable_struct_exists(_links, "nodes") && is_array(_links.nodes)) {
++                    for (var _u = 0; _u < array_length(_links.nodes); _u++)
++                        if (_links.nodes[_u] == _root.stable_uid) return _out;
++                }
++            }
++        }
++    }
++    _out.ok = true;
++    return _out;
++}
++
++/// Legacy load/undo can leave the allocator behind existing IDs. Only advance
++/// it; never renumber live nodes or invalidate existing song entry-point labels.
++function scr_music_sid_reserve_uids() {
++    var _next = variable_global_exists("next_stable_uid") ? global.next_stable_uid : 100000;
++    with (obj_c64_node) _next = max(_next, stable_uid + 1);
++    global.next_stable_uid = _next;
++}
++
++/// Workspace undo keeps music assets in memory. Snapshot their generated-node
++/// ownership separately so undo/redo restores the SAME references as the graph,
++/// without rolling back song edits, instruments, preview state or audio buffers.
++function scr_music_sid_snapshot_links() {
++    var _out = [];
++    if (!instance_exists(obj_asset_manager)) return _out;
++    var _am = obj_asset_manager;
++    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
++        var _asset = ds_list_find_value(_am.asset_list, _i);
++        if (_asset.type != "MUSIC_MAKER") continue;
++        var _has = variable_struct_exists(_asset.meta, "music_nodes") && is_struct(_asset.meta.music_nodes);
++        array_push(_out, { name: _asset.name, has_links: _has,
++            links: _has ? variable_clone(_asset.meta.music_nodes) : {} });
++    }
++    return _out;
++}
++function scr_music_sid_restore_links(_data) {
++    // Old snapshots have no ownership record. Leave them untouched; the empty
++    // workspace recovery above handles their stale references when safe.
++    if (!variable_struct_exists(_data, "music_node_links") || !is_array(_data.music_node_links)
++        || !instance_exists(obj_asset_manager)) return;
++    var _am = obj_asset_manager;
++    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
++        var _asset = ds_list_find_value(_am.asset_list, _i);
++        if (_asset.type != "MUSIC_MAKER") continue;
++        var _matches = 0;
++        var _record = undefined;
++        for (var _r = 0; _r < array_length(_data.music_node_links); _r++) {
++            var _entry = _data.music_node_links[_r];
++            if (is_struct(_entry) && variable_struct_exists(_entry, "name") && _entry.name == _asset.name) {
++                _record = _entry; _matches++;
++            }
++        }
++        // Do not choose between duplicate asset names in a damaged workspace.
++        var _names = 0;
++        for (var _a = 0; _a < ds_list_size(_am.asset_list); _a++) {
++            var _other_asset = ds_list_find_value(_am.asset_list, _a);
++            if (_other_asset.type == "MUSIC_MAKER" && _other_asset.name == _asset.name) _names++;
++        }
++        if (_matches != 1 || _names != 1 || !variable_struct_exists(_record, "has_links")) continue;
++        if (_record.has_links) {
++            if (variable_struct_exists(_record, "links") && is_struct(_record.links))
++                _asset.meta.music_nodes = variable_clone(_record.links);
++        } else if (variable_struct_exists(_asset.meta, "music_nodes")) {
++            variable_struct_remove(_asset.meta, "music_nodes");
++        }
++    }
++}
++
+ /// A real instruction node, not source text hidden in a MACRO_CODE node.
+ function scr_music_sid_op(_op, _operand, _x, _y, _parent) {
+     var _n = scr_node_spawn("NORMAL", _x, _y);
+@@ -324,31 +459,27 @@ function scr_music_sid_generate(_asset) {
+     var _existing = variable_struct_exists(_m, "music_nodes") ? _m.music_nodes : undefined;
+     var _org = noone;
+     var _macro = noone;
+-    if (is_struct(_existing)) {
+-        if (!variable_struct_exists(_existing, "org") || !variable_struct_exists(_existing, "macro")) {
+-            scr_show_message("MUSIC MAKER: INCOMPLETE GENERATED NODE REFERENCES.\nNO NODES WERE CHANGED.");
++    var _recovery = { ok: false, music_org: noone, core_org: noone };
++    var _recovering = false;
++    if (is_struct(_existing) && !scr_music_sid_refs_ok(_existing)) {
++        _recovery = scr_music_sid_empty_plan(_asset);
++        if (!_recovery.ok) {
++            scr_show_message("MUSIC MAKER: ONLY PART OF A GENERATED SETUP REMAINS, OR ITS IDS ARE AMBIGUOUS.\nNO NODES WERE CHANGED. UNDO THE DELETION TO RESTORE THAT SETUP, OR USE A NEW SCRATCH WORKSPACE.\nAUTOMATIC RECOVERY REQUIRES AN EMPTY EXECUTABLE WORKSPACE; EMPTY CORE LOOP / MUSIC MAKER GROUPS CAN REMAIN.");
+             return false;
+         }
++        // Do not erase the saved record here. Preflight can still fail (e.g.
++        // no free RAM). Replace it only after the new nodes have been created.
++        _existing = undefined;
++        _recovering = true;
++    } else if (!is_struct(_existing)) {
++        // Also recognise a hand-created empty scaffold with no old metadata.
++        _recovery = scr_music_sid_empty_plan(_asset);
++    }
++    if (!_recovery.ok) _recovery = { ok: false, music_org: noone, core_org: noone };
++    if (_recovery.ok) _org = _recovery.music_org;
++    else if (is_struct(_existing)) {
+         _org = scr_music_sid_find_uid(_existing.org);
+         _macro = scr_music_sid_find_uid(_existing.macro);
+-        if (!instance_exists(_org) || !instance_exists(_macro)
+-            || _org.node_type != "ORG" || _macro.node_type != "MACRO_SID_SONG"
+-            || !variable_struct_exists(_existing, "nodes") || !is_array(_existing.nodes)) {
+-            scr_show_message("MUSIC MAKER: GENERATED NODE REFERENCES ARE MISSING OR AMBIGUOUS.\nRESTORE THE ORIGINAL GENERATED NODES BEFORE UPDATING. NO NODES WERE CHANGED.");
+-            return false;
+-        }
+-        for (var _u = 0; _u < array_length(_existing.nodes); _u++) {
+-            for (var _seen = 0; _seen < _u; _seen++) {
+-                if (_existing.nodes[_seen] == _existing.nodes[_u]) {
+-                    scr_show_message("MUSIC MAKER: DUPLICATE GENERATED NODE REFERENCE.\nNO NODES WERE CHANGED.");
+-                    return false;
+-                }
+-            }
+-            if (!instance_exists(scr_music_sid_find_uid(_existing.nodes[_u]))) {
+-                scr_show_message("MUSIC MAKER: A GENERATED NODE IS MISSING OR HAS A DUPLICATE ID.\nRESTORE IT BEFORE GENERATING AGAIN; EXISTING CALLS WERE LEFT IN PLACE.");
+-                return false;
+-            }
+-        }
+     }
+     // Size the complete player with its note table, conservatively even if
+     // another macro already emits that table. Restore the compiler's flag.
+@@ -375,8 +506,9 @@ function scr_music_sid_generate(_asset) {
+             scr_show_message("MUSIC MAKER: A GENERATED CODE BLOCK HAS BEEN CUSTOMISED.\nNO NODES WERE CHANGED. KEEP YOUR EDITS, OR RESTORE THE ORIGINAL WRAPPER BEFORE GENERATING AGAIN.");
+             return false;
+         }
++        scr_undo_snapshot();
++        scr_music_sid_reserve_uids();
+         if (array_length(_plan.edits) > 0) {
+-            scr_undo_snapshot();
+             scr_music_sid_apply_native(_existing, _plan);
+         }
+         _org.proxy_address = _addr;
+@@ -385,6 +517,7 @@ function scr_music_sid_generate(_asset) {
+         global.addresses_dirty = true;
+         global.undo_dirty = true;
+         global.autosave_dirty = true;
++        global.manual_saved = false;
+         obj_workspace_manager.flow_overlay_dirty = true;
+         _m.warn_msg = (array_length(_plan.edits) > 0)
+             ? "MUSIC WRAPPERS UPDATED TO NATIVE NODES"
+@@ -466,15 +599,35 @@ function scr_music_sid_generate(_asset) {
+         }
+         if (_clash) { _number += 1; _suffix = "_" + string(_number); }
+     }
+-    if (global.undo_dirty) { scr_c64_do_update_addresses(); scr_undo_snapshot(); global.undo_dirty = false; }
++    if (global.undo_dirty) scr_c64_do_update_addresses();
++    // Always capture the pre-generation graph AND ownership, even when the
++    // user cleared the previous setup and the release already reset undo_dirty.
++    scr_undo_snapshot();
++    global.undo_dirty = false;
++    scr_music_sid_reserve_uids();
+     var _made = [];
+     var _x = _init.x + global.node_display_width + 120;
+-    with (obj_c64_node) if (node_type == "ORG") _x = max(_x, x + global.node_display_width + 120);
++    with (obj_c64_node) {
++        if (node_type == "ORG" && id != _recovery.music_org && id != _recovery.core_org)
++            _x = max(_x, x + global.node_display_width + 120);
++    }
+     var _core_x = _x;
+     if (!instance_exists(_wait)) _x += global.node_display_width + 120;
+-    _org = scr_spawn_org_node(_x, _init.y);
+-    // Keep the existing free-RAM allocator; column order is visual, not a
+-    // reason to move the player onto occupied RAM via an automatic proxy.
++    // Reuse the two empty columns instead of leaving them behind and creating
++    // duplicates further to the right. Preserve positions when both survive.
++    if (_recovery.ok && instance_exists(_recovery.core_org)) {
++        _core_x = _recovery.core_org.x;
++        _x = max(_x, _core_x + global.node_display_width + 120);
++    }
++    if (_recovery.ok && instance_exists(_recovery.music_org)) {
++        _org = _recovery.music_org;
++        if (instance_exists(_recovery.core_org)) _x = _org.x;
++        else _org.x = _x; // make room for a missing CORE LOOP on its left
++    } else {
++        _org = scr_spawn_org_node(_x, _init.y);
++    }
++    _org.collapsed = false;
++    _org.height_dirty = true;
+     _org.proxy = false;
+     _org.proxy_address = _addr;
+     _org.pc_address = _addr;
+@@ -484,22 +637,22 @@ function scr_music_sid_generate(_asset) {
+     var _play_name = "MUSICMAKER_PLAY" + _suffix;
+     // Allocate the song first to obtain its stable entry-point name. Its
+     // visual position follows the PLAY wrapper, exactly like hand-built nodes.
+-    _macro = scr_node_spawn("MACRO_SID_SONG", _x, _init.y + 420);
++    _macro = scr_node_spawn("MACRO_SID_SONG", _x, _org.y + 420);
+     _macro.instructions = [["macro_sid_song", _asset.name, 1, 3, 2, 0]];
+     with (_macro) event_user(0);
+     _macro.org_parent = _org;
+     _macro.is_connected = true;
+     _macro.x_indent = 40;
+     array_push(_made, _macro.stable_uid);
+-    var _n = scr_music_sid_label(_play_name, _x, _init.y + 100, _org);
++    var _n = scr_music_sid_label(_play_name, _x, _org.y + 100, _org);
+     array_push(_made, _n.stable_uid);
+-    _n = scr_music_sid_op("jsr", "sng" + string(_macro.stable_uid) + "_play", _x, _init.y + 180, _org);
++    _n = scr_music_sid_op("jsr", "sng" + string(_macro.stable_uid) + "_play", _x, _org.y + 180, _org);
+     array_push(_made, _n.stable_uid);
+-    _n = scr_music_sid_op("rts", 0, _x, _init.y + 260, _org);
++    _n = scr_music_sid_op("rts", 0, _x, _org.y + 260, _org);
+     array_push(_made, _n.stable_uid);
+-    _n = scr_music_sid_label(_setup_name, _x, _init.y + 340, _org);
++    _n = scr_music_sid_label(_setup_name, _x, _org.y + 340, _org);
+     array_push(_made, _n.stable_uid);
+-    _n = scr_music_sid_op("rts", 0, _x, _init.y + 680, _org);
++    _n = scr_music_sid_op("rts", 0, _x, _org.y + 680, _org);
+     array_push(_made, _n.stable_uid);
+     if (instance_exists(_wait)) {
+         // Insert setup above the backward-jump target; it runs once only.
+@@ -515,7 +668,10 @@ function scr_music_sid_generate(_asset) {
+         _n = scr_music_sid_op("jsr", _play_name, _wait.x, _play_y, _loop_parent);
+         array_push(_made, _n.stable_uid);
+     } else {
+-        var _core = scr_spawn_org_node(_core_x, _init.y);
++        var _core = (_recovery.ok && instance_exists(_recovery.core_org))
++            ? _recovery.core_org : scr_spawn_org_node(_core_x, _init.y);
++        _core.collapsed = false;
++        _core.height_dirty = true;
+         _core.proxy = false;
+         _core.proxy_address = _addr + _bytes - 32;
+         _core.pc_address = _core.proxy_address;
+@@ -541,8 +697,10 @@ function scr_music_sid_generate(_asset) {
+     global.addresses_dirty = true;
+     global.undo_dirty = true;
+     global.autosave_dirty = true;
++    global.manual_saved = false;
+     obj_workspace_manager.flow_overlay_dirty = true;
+-    _m.warn_msg = instance_exists(_wait) ? "MUSIC NODES ADDED TO EXISTING VWAIT LOOP" : "MUSIC NODES AND CORE LOOP CREATED";
++    _m.warn_msg = _recovering ? "MUSIC NODES RECREATED (EMPTY GROUPS REUSED)"
++        : (instance_exists(_wait) ? "MUSIC NODES ADDED TO EXISTING VWAIT LOOP" : "MUSIC NODES AND CORE LOOP CREATED");
+     _m.warn_timer = game_get_speed(gamespeed_fps) * 5;
+     return true;
+ }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml b/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
+--- a/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
+@@ -439,6 +439,8 @@
+     }
+ }
+ 	
++    // Match generated Music Maker ownership to the graph just restored.
++    scr_music_sid_restore_links(_data);
+     scr_c64_do_update_addresses();
+ 
+     show_debug_message("UNDO RESTORE: " + _path);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml b/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
+--- a/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
+@@ -173,6 +173,7 @@ var _cam = {
+         nodes:           _node_data,
+         boxes:           _box_data,
+         assets:          _asset_data,
++        music_node_links: scr_music_sid_snapshot_links(),
+         camera:          _cam,
+         basic_unlocked:  global.basic_unlocked,
+         kernal_unlocked: global.kernal_unlocked
