@@ -299,6 +299,8 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
         ["~PITCH+", "same, but carries on across new notes / ties"],
         ["~FILTER", "table of C/D/L lines: cutoff speed per frame"],
         ["C$400", "set the filter cutoff ($000-$7FF)"],
+        ["~PITCH4", "table stepping 4x a frame: Dn counts quarter frames"],
+        [">nn", "end a table by carrying on in instrument nn's table"],
         ["", "the program must keep running (Dn / Ln) to hear them"],
         ["---", "gate off + stop: the note releases"],
         ["", ""],
@@ -344,6 +346,9 @@ function scr_sound_editor_instr_comment(_line, _lines) {
         if (_up == "~PULSE+") return { text: "pulse table that keeps running across notes", bad: false };
         if (_up == "~FILTER") return { text: "filter table: C/D/L lines move the cutoff", bad: false };
         if (_up == "~FILTER+") return { text: "filter table that keeps running across notes", bad: false };
+        if (string_char_at(_up, string_length(_up)) == "4" || string_copy(_up, string_length(_up) - 1, 2) == "4+") {
+            return { text: "table stepping 4x a frame (Dn = quarter frames)", bad: false };
+        }
         return { text: "? tables are ~PITCH, ~PULSE or ~FILTER", bad: true };
     }
     if (string_copy(_up, 1, 2) == "C$") {
@@ -380,6 +385,10 @@ function scr_sound_editor_instr_comment(_line, _lines) {
         if (_c0 == "S") _desc = "pitch slide per frame; S0 stops";
         if (_c0 == "Q") _desc = "pulse sweep per frame; Q0 stops (wraps 12-bit)";
         return { text: _desc + "; Dn sets duration", bad: false };
+    }
+    // >nn : carry on in another instrument's table
+    if (_c0 == ">") {
+        return { text: "continue in instrument " + string_delete(_up, 1, 1) + "'s table of this kind", bad: false };
     }
     // C+n / C-n : a ~FILTER table's cutoff speed
     if (_c0 == "C" && (string_char_at(_up, 2) == "+" || string_char_at(_up, 2) == "-")) {

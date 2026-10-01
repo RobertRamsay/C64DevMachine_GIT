@@ -292,14 +292,16 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     var _lanes_used = false;
     for (var _ri=0;_ri<array_length(_table_pack.streams);_ri++)
         for (var _rj=0;_rj<array_length(_table_pack.streams[_ri]);_rj++)
-            if (!_table_pack.streams[_ri][_rj].raw && _table_pack.streams[_ri][_rj].bytes[0] >= 14 && _table_pack.streams[_ri][_rj].bytes[0] <= 19) _lanes_used = true;
+            if (!_table_pack.streams[_ri][_rj].raw && _table_pack.streams[_ri][_rj].bytes[0] >= 14 && _table_pack.streams[_ri][_rj].bytes[0] <= 26 && _table_pack.streams[_ri][_rj].bytes[0] != 20) _lanes_used = true;
     // ~FILTER tables ($10 / $13) and C$ cutoff sets ($14) drive the chip's cutoff.
     var _filter_lanes_used = false;
+    var _rate4_used = false;   // ~PITCH4 style tables: four steps a frame
     var _cut_set_used = false;
     for (var _ri=0;_ri<array_length(_table_pack.streams);_ri++) {
         for (var _rj=0;_rj<array_length(_table_pack.streams[_ri]);_rj++) {
             var _fo = _table_pack.streams[_ri][_rj];
-            if (!_fo.raw && (_fo.bytes[0] == 16 || _fo.bytes[0] == 19)) _filter_lanes_used = true;
+            if (!_fo.raw && (_fo.bytes[0] == 16 || _fo.bytes[0] == 19 || _fo.bytes[0] == 23 || _fo.bytes[0] == 26)) _filter_lanes_used = true;
+            if (!_fo.raw && _fo.bytes[0] >= 21 && _fo.bytes[0] <= 26) _rate4_used = true;
             if (!_fo.raw && _fo.bytes[0] == 20) _cut_set_used = true;
         }
     }
@@ -309,7 +311,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         }
     }
     // Distinct ~PITCH / ~PULSE tables, emitted once each and shared by address.
-    var _lane_registry = { count: 0, labels: {} };
+    var _lane_sources = [];
+    for (var _lsi = 0; _lsi < array_length(_instruments); _lsi++) array_push(_lane_sources, scr_instrument_ensure_compiled(_instruments[_lsi]));
+    var _lane_registry = { count: 0, labels: {}, emitted: {}, sources: _lane_sources };
     var _lbl_dskip = _key + "dskip";
     // Per-voice effect state tables (see section 7).
     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
@@ -325,6 +329,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     if (_lanes_used) array_push(_sng_state_tables, "lnl", "lnlq", "lnlf", "lnh", "lnhq", "lnhf",
         "lnc", "lncq", "lncf", "lnk", "lnkq", "lnkf", "lsl", "lslq", "lslf", "lsh", "lshq", "lshf",
         "lnbl", "lnblq", "lnblf", "lnbh", "lnbhq", "lnbhf");
+    // Four-step tables: step rate flag and the table's own current speed (the
+    // applied speed is then the sum of four steps each frame).
+    if (_rate4_used) array_push(_sng_state_tables, "lnr", "lnrq", "lnrf", "lvl", "lvlq", "lvlf", "lvh", "lvhq", "lvhf");
     if (_tables_used) array_push(_sng_state_tables, "trl", "trh");
     // Free timing: per-voice order row, row, ticks left, speed, stopped flag.
     if (_free) array_push(_sng_state_tables, "vor", "vrw", "vtk", "vsp", "vst");
@@ -732,6 +739,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     var _sng_scratch = ["rcmd", "rval", "vts", "vtd", "hrw", "spd", "fcl", "fch", "f17", "f18", "ftmp"];
     // Free timing: F80-FFF zero-length-row flag, and its per-call guard.
     if (_free) array_push(_sng_scratch, "rzero", "rzc");
+    if (_rate4_used) array_push(_sng_scratch, "lacl", "lach", "lsub");
     for (var _sci = 0; _sci < array_length(_sng_scratch); _sci++) {
         array_push(_list, ["label", _key + _sng_scratch[_sci]]);
         array_push(_list, ["byte", 0, _id]);
@@ -1975,13 +1983,21 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         if (_lanes_used) {
             // $0E/$0F/$10 start the pitch / pulse / filter table; $11/$12/$13
             // are the keep-running forms. The operand is the table's address.
+            // $15-$1A are the four-steps-a-frame forms of $0E-$13.
             array_push(_list, ["cmp_imm", 14, _id]);
             array_push(_list, ["bcc", _ip + "notlane", _id]);
-            array_push(_list, ["cmp_imm", 20, _id]);
+            array_push(_list, ["cmp_imm", 27, _id]);
             array_push(_list, ["bcs", _ip + "notlane", _id]);
+            array_push(_list, ["cmp_imm", 20, _id]);
+            array_push(_list, ["beq", _ip + "notlane", _id]);
+            array_push(_list, ["ldy_imm", 0, _id]);
+            array_push(_list, ["cmp_imm", 21, _id]);
+            array_push(_list, ["bcc", _ip + "lane1x", _id]);
+            array_push(_list, ["sbc_imm", 7, _id]);         // C is set
+            array_push(_list, ["ldy_imm", 2, _id]);         // bit 1 = four steps a frame
+            array_push(_list, ["label", _ip + "lane1x"]);
             array_push(_list, ["sec", 0, _id]);
             array_push(_list, ["sbc_imm", 14, _id]);       // 0-5
-            array_push(_list, ["ldy_imm", 0, _id]);
             array_push(_list, ["cmp_imm", 3, _id]);
             array_push(_list, ["bcc", _ip + "lanekeep", _id]);
             array_push(_list, ["sbc_imm", 3, _id]);        // C is set: kind 0-2
@@ -2117,6 +2133,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         // free here: rows are read before any voice steps.
         var _ln = _key + "lanes";
         array_push(_list, ["label", _ln]);
+        if (_rate4_used) {
+            array_push(_list, ["lda_abx", _key + "lnr", _id]);
+            array_push(_list, ["beq", _ln + "one", _id]);
+            array_push(_list, ["jmp_abs", _ln + "four", _id]);
+            array_push(_list, ["label", _ln + "one"]);
+        }
         array_push(_list, ["lda_abx", _key + "lnc", _id]);
         array_push(_list, ["beq", _ln + "ret", _id]);
         array_push(_list, ["dec_abx", _key + "lnc", _id]);
@@ -2133,9 +2155,11 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["iny", 0, _id]);
         array_push(_list, ["lda_izy", _S_PTR, _id]);
         array_push(_list, ["sta_abx", _key + "isl", _id]);
+        if (_rate4_used) array_push(_list, ["sta_abx", _key + "lvl", _id]);
         array_push(_list, ["iny", 0, _id]);
         array_push(_list, ["lda_izy", _S_PTR, _id]);
         array_push(_list, ["sta_abx", _key + "ish", _id]);
+        if (_rate4_used) array_push(_list, ["sta_abx", _key + "lvh", _id]);
         array_push(_list, ["clc", 0, _id]);
         array_push(_list, ["lda_abx", _key + "lnl", _id]);
         array_push(_list, ["adc_imm", 3, _id]);
@@ -2148,6 +2172,19 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["iny", 0, _id]);
         array_push(_list, ["lda_izy", _S_PTR, _id]);
         array_push(_list, ["beq", _ln + "ret", _id]);
+        // [0, $FF, lo, hi]: carry on in another (shared) table
+        array_push(_list, ["cmp_imm", 0xFF, _id]);
+        array_push(_list, ["bne", _ln + "back", _id]);
+        array_push(_list, ["iny", 0, _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["pha", 0, _id]);
+        array_push(_list, ["iny", 0, _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["sta_abx", _key + "lnh", _id]);
+        array_push(_list, ["pla", 0, _id]);
+        array_push(_list, ["sta_abx", _key + "lnl", _id]);
+        array_push(_list, ["jmp_abs", _ln + "fetch", _id]);
+        array_push(_list, ["label", _ln + "back"]);
         array_push(_list, ["sta_zp", _S_TMP, _id]);
         array_push(_list, ["sec", 0, _id]);
         array_push(_list, ["lda_abx", _key + "lnl", _id]);
@@ -2187,6 +2224,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         var _lg = _key + "lngo";
         array_push(_list, ["label", _lg]);
         array_push(_list, ["lda_zp", _S_TMP, _id]);
+        array_push(_list, ["and_imm", 0x01, _id]);           // bit 0: keep running
         array_push(_list, ["beq", _lg + "new", _id]);
         array_push(_list, ["lda_zp", _S_PTR, _id]);
         array_push(_list, ["cmp_abx", _key + "lnbl", _id]);
@@ -2206,6 +2244,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["label", _lg + "ret"]);
         array_push(_list, ["rts", 0, _id]);
         array_push(_list, ["label", _lg + "new"]);
+        if (_rate4_used) {
+            array_push(_list, ["lda_zp", _S_TMP, _id]);
+            array_push(_list, ["lsr_a", 0, _id]);            // bit 1: four steps a frame
+            array_push(_list, ["and_imm", 0x01, _id]);
+            array_push(_list, ["sta_abx", _key + "lnr", _id]);
+        }
         array_push(_list, ["lda_zp", _S_PTR, _id]);
         array_push(_list, ["sta_abx", _key + "lnl", _id]);
         array_push(_list, ["sta_abx", _key + "lnbl", _id]);
@@ -2215,6 +2259,43 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["lda_imm", 1, _id]);
         array_push(_list, ["sta_abx", _key + "lnc", _id]);
         array_push(_list, ["rts", 0, _id]);
+
+        if (_rate4_used) {
+            // ── FOUR-STEP TABLE ── X = slot: run four steps, the frame's speed
+            // being the sum of the table's speed over them (Galway-rate stages).
+            var _l4 = _ln + "four";
+            array_push(_list, ["label", _l4]);
+            array_push(_list, ["lda_abx", _key + "lnc", _id]);
+            array_push(_list, ["bne", _l4 + "go", _id]);
+            array_push(_list, ["rts", 0, _id]);                  // idle: speed stays
+            array_push(_list, ["label", _l4 + "go"]);
+            array_push(_list, ["lda_imm", 0, _id]);
+            array_push(_list, ["sta_abs", _key + "lacl", _id]);
+            array_push(_list, ["sta_abs", _key + "lach", _id]);
+            array_push(_list, ["lda_imm", 4, _id]);
+            array_push(_list, ["sta_abs", _key + "lsub", _id]);
+            array_push(_list, ["label", _l4 + "lp"]);
+            array_push(_list, ["lda_abx", _key + "lnc", _id]);
+            array_push(_list, ["beq", _l4 + "add", _id]);        // stopped: speed holds
+            array_push(_list, ["dec_abx", _key + "lnc", _id]);
+            array_push(_list, ["bne", _l4 + "add", _id]);
+            array_push(_list, ["jsr", _ln + "fetch", _id]);
+            array_push(_list, ["label", _l4 + "add"]);
+            array_push(_list, ["clc", 0, _id]);
+            array_push(_list, ["lda_abs", _key + "lacl", _id]);
+            array_push(_list, ["adc_abx", _key + "lvl", _id]);
+            array_push(_list, ["sta_abs", _key + "lacl", _id]);
+            array_push(_list, ["lda_abs", _key + "lach", _id]);
+            array_push(_list, ["adc_abx", _key + "lvh", _id]);
+            array_push(_list, ["sta_abs", _key + "lach", _id]);
+            array_push(_list, ["dec_abs", _key + "lsub", _id]);
+            array_push(_list, ["bne", _l4 + "lp", _id]);
+            array_push(_list, ["lda_abs", _key + "lacl", _id]);
+            array_push(_list, ["sta_abx", _key + "isl", _id]);
+            array_push(_list, ["lda_abs", _key + "lach", _id]);
+            array_push(_list, ["sta_abx", _key + "ish", _id]);
+            array_push(_list, ["rts", 0, _id]);
+        }
 
         if (_filter_lanes_used) {
             // ── FILTER STEP ── X = voice: add its ~FILTER speed to the chip's

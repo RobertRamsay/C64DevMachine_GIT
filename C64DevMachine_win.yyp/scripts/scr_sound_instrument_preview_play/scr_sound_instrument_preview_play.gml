@@ -123,7 +123,7 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
                 else if (_op == 8) { _slide = _word; _pc += 3; }
                 else if (_op == 9) { _pulse_slide = _word; _pc += 3; }
                 else if (_op == 10) { _cur_wave = _arg; _raw_gate = true; _pc += 2; }
-                else if (_op >= 14 && _op <= 20) { _pc += 3; } // tables: reSID preview only
+                else if (_op >= 14 && _op <= 26) { _pc += 3; } // tables: reSID preview only
                 else _active = false;
             }
             if (_guard >= 64) _active = false;

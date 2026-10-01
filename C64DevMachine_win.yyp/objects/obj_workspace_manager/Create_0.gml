@@ -30,7 +30,7 @@ editor_layout_refresh_requested = false;
 // MCP is a Pro-only feature; initialize the edition before creating it.
 // MCP_ENABLED (top of this event) is the single switch for the whole feature.
 if (MCP_ENABLED && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
-global.build_date = "September 1st, 2026"; // edit this string for each release
+global.build_date = "October 1st, 2026"; // edit this string for each release
 
 // sid64 (reSID) preview audio — see scr_sid64_audio. Model/engine changes go
 // through scr_sid64_reconfigure so the preview cache is rebuilt.
@@ -171,6 +171,8 @@ welcome_tour_scroll    = 0;      // first visible row in the tour list
 welcome_whats_new = [
 	"NEW - MUSIC MAKER now using ReSID for more accurate SID Emulation.",
 	"NEW - MUSIC MAKER commands for portaments, vibrato, filter and more.",
+	"NEW - MUSIC MAKER advanced timing and control tables added.",
+	"NEW - MUSIC MAKER multi SID support tested on VICE and C64Ultimate.",
 	"NEW - MUSIC MAKER piano roll added per voice or full.",
     "NEW - MUSIC MAKER filtering added, some other U.I QOL features.",
     "NEW - SPRITE ANIM SET EDITOR",
@@ -206,8 +208,7 @@ welcome_credits_lines = [
     "VxV",
     "",
     "And...",
-    "All those who are part of the Discord and those",
-    "who are users and have supported the software!",
+    "all those who are active on the Discord! Keep making!",
 ];
 
 // Fire the check on startup, but only once per session.
