@@ -64,6 +64,8 @@ global.sid64_stream = {
 };
 // Music Maker byte summary per asset name: { sig, pending, stable_at, next_check, info }.
 global.music_size_cache = {};
+// Music Maker grid: per-column extra scroll while TIMING: PER VOICE plays.
+global.music_col_scroll = [0, 0, 0];
 for (var _sri = 0; _sri < SID64_RING; _sri++) {
     global.sid64_stream.ring[_sri] = buffer_create(_sid64_ring_samples * 2, buffer_fixed, 2);
 }

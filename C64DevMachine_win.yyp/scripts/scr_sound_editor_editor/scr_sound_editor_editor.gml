@@ -1143,15 +1143,21 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     }
     var _pw_tip = "";   // sweep warning takes priority over command help
 
-    // TIMING: PER VOICE playback: each column scrolls on its own so every
-    // voice's playing row sits on the same line as the followed voice's —
-    // nobody's position drifts out of view.
-    var _col_off = [0, 0, 0];
-    if (is_array(_voice_pos)) {
-        var _anchor = _voice_hl[clamp(_m.sel_voice, 0, 2)];
-        if (_anchor < 0) _anchor = _m.list_scroll + floor(_vis / 2);
-        for (var _cov = 0; _cov < 3; _cov++) {
-            if (_voice_hl[_cov] >= 0) _col_off[_cov] = _voice_hl[_cov] - _anchor;
+    // TIMING: PER VOICE playback: rows stay lined up with the row numbers,
+    // but a column whose playing row would leave the view (a longer pattern,
+    // or a voice ahead of the one being followed) scrolls just enough to keep
+    // it in sight, like the grid itself does. Back to 0 when playback stops.
+    var _col_off = global.music_col_scroll;
+    for (var _cov = 0; _cov < 3; _cov++) {
+        if (!is_array(_voice_pos) || _voice_hl[_cov] < 0) {
+            _col_off[_cov] = 0;
+            continue;
+        }
+        var _cfirst = _m.list_scroll + _col_off[_cov];
+        if (_voice_hl[_cov] < _cfirst) {
+            _col_off[_cov] = _voice_hl[_cov] - _m.list_scroll;
+        } else if (_voice_hl[_cov] >= _cfirst + _vis) {
+            _col_off[_cov] = _voice_hl[_cov] - _vis + 1 - _m.list_scroll;
         }
     }
 
@@ -1236,6 +1242,15 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 draw_set_alpha(0.5);
                 draw_rectangle(_cx1, _ry, _cx2, _ry + _row_h, false);
                 draw_set_alpha(1.0);
+            }
+            if (_col_off[_cv] != 0) {
+                // this column has scrolled on its own: show its own row number
+                draw_set_font_l(fnt_c64_pico);
+                draw_set_color(make_color_rgb(110, 110, 140));
+                draw_set_halign(fa_right);
+                draw_text_l(_cx2 - 4, _ry + 2, string(_row));
+                draw_set_halign(fa_left);
+                draw_set_font_l(fnt_c64_tiny);
             }
 
             var _step = _col_pat[_cv].steps[_row];
