@@ -12,7 +12,7 @@
 ///
 /// Users can switch it off in c64devmachine.ini:  [report] enabled=0
 
-#macro REPORT_WEBHOOK_URL  "https://discord.com/api/webhooks/1555264800861331476/prZvrVsdCA5U622SVyYh4CyJU453QLv0vTHUo84-jU_3IZxVsNnGqHUUQyGuGFjUzoSx"
+// REPORT_WEBHOOK_URL lives in scr_report_secret (kept out of git).
 #macro REPORT_CRASH_FILE   "c64dm_crash_report.txt"
 #macro REPORT_TAG_FILE     "install_tag.txt"
 #macro REPORT_DISCORD_MAX  1800
