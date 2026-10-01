@@ -1,0 +1,501 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_instrument_parse/scr_instrument_parse.gml b/C64DevMachine_win.yyp/scripts/scr_instrument_parse/scr_instrument_parse.gml
+index 5927b07..bea768b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_instrument_parse/scr_instrument_parse.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_instrument_parse/scr_instrument_parse.gml
+@@ -14,7 +14,11 @@
+ ///   ~PITCH      start of a pitch table: S / D / L lines that run alongside
+ ///               the program on their own counter (each S is a slide speed)
+ ///   ~PULSE      start of a pulse table: Q / D / L lines, the same way
+-///   ~PITCH+     / ~PULSE+ : the table KEEPS RUNNING across new notes — a note
++///   ~FILTER     start of a filter table: C / D / L lines, each C a cutoff
++///               speed per frame (signed). The cutoff is shared by the whole
++///               chip, so give the table to the instruments of one voice.
++///   C$nnn       set the filter cutoff ($000-$7FF) -> [$14, lo, hi]
++///   ~PITCH+     / ~PULSE+ / ~FILTER+ : the table KEEPS RUNNING across new notes — a note
+ ///               (or tie) using the same table carries on from where it was
+ ///               instead of restarting it. Identical tables are stored once
+ ///               per song and shared, so instruments can share one vibrato.
+@@ -22,9 +26,9 @@
+ /// Tables follow the program's implicit END as records of
+ /// [frames, speed lo, speed hi]; frames 0 is control: [0, back] jumps back
+ /// that many bytes (Ln), [0, 0] stops the table. The program opens with
+-/// [$0E, offset] / [$0F, offset] so the player starts each table on trigger
+-/// ($10 / $11 for the keep-running forms). The song build turns the offset
+-/// into the table's address.
++/// [$0E/$0F/$10, offset] (pitch / pulse / filter) so the player starts each
++/// table on trigger ($11/$12/$13 for the keep-running forms). The song build
++/// turns the offset into the table's address.
+ ///
+ /// Steps are variable length, so Ln can't point at a byte directly. The
+ /// parser records each step's byte offset in a first pass, then patches the
+@@ -38,7 +42,7 @@
+ /// errors       — human-readable strings for malformed tokens (never throws)
+ function scr_instrument_parse(_text) {
+ 
+-    var _out    = { bytes: [], step_offsets: [], errors: [], version: 5, byte_lines: [], source: string(_text), no_hr: false, main_len: 0, lanes: [] };
++    var _out    = { bytes: [], step_offsets: [], errors: [], version: 6, byte_lines: [], source: string(_text), no_hr: false, main_len: 0, lanes: [] };
+     var _tokens = [];
+ 
+     // ── Tokenise: newlines act as commas, then split, trim, drop empties ──
+@@ -70,10 +74,11 @@ function scr_instrument_parse(_text) {
+             }
+             if (_head == "~PITCH") _kind = 0;
+             if (_head == "~PULSE") _kind = 1;
++            if (_head == "~FILTER") _kind = 2;
+             for (var _hk = 0; _hk < array_length(_lane_heads); _hk++) {
+                 if (_lane_heads[_hk].kind == _kind) _kind = -2;
+             }
+-            if (_kind == -1) array_push(_out.errors, "step " + string(_hi) + ": tables are ~PITCH or ~PULSE");
++            if (_kind == -1) array_push(_out.errors, "step " + string(_hi) + ": tables are ~PITCH, ~PULSE or ~FILTER");
+             if (_kind == -2) array_push(_out.errors, "step " + string(_hi) + ": only one " + _head + " table per instrument");
+             array_push(_lane_heads, { kind: _kind, ti: _hi, arg_pos: -1, keep: _keep });
+         }
+@@ -82,7 +87,7 @@ function scr_instrument_parse(_text) {
+     for (var _hk = 0; _hk < array_length(_lane_heads); _hk++) {
+         if (_lane_heads[_hk].kind >= 0) {
+             var _lane_op = 14 + _lane_heads[_hk].kind;
+-            if (_lane_heads[_hk].keep) _lane_op += 2;
++            if (_lane_heads[_hk].keep) _lane_op += 3;
+             array_push(_out.bytes, _lane_op, 0, 0);
+             _lane_heads[_hk].arg_pos = array_length(_out.bytes) - 2;
+             var _hl = _token_lines[_lane_heads[_hk].ti];
+@@ -185,6 +190,22 @@ function scr_instrument_parse(_text) {
+             array_push(_out.bytes, 10, _gok ? real(hex_to_decimal(_ghex)) : 0);
+             continue;
+         }
++        // ── C$nnn ── set the filter cutoff (11 bits)
++        if (_c0 == "C" && string_char_at(_up, 2) == "$") {
++            var _chex = string_delete(_up, 1, 2);
++            var _cok = string_length(_chex) > 0 && string_length(_chex) <= 3;
++            for (var _j = 1; _j <= string_length(_chex); _j++) {
++                if (string_pos(string_char_at(_chex, _j), "0123456789ABCDEF") == 0) _cok = false;
++            }
++            var _cval = 0;
++            if (_cok) _cval = real(hex_to_decimal(_chex));
++            if (!_cok || _cval > 2047) {
++                array_push(_out.errors, "step " + string(_ti) + ": C$ sets the cutoff, $000..$7FF");
++                _cval = 0;
++            }
++            array_push(_out.bytes, 20, _cval & 255, (_cval >> 8) & 255);
++            continue;
++        }
+         if ((_c0 == "F" && (string_char_at(_up, 2) == "+" || string_char_at(_up, 2) == "-")) || _c0 == "P" || _c0 == "S" || _c0 == "Q") {
+             var _arg = string_delete(_up, 1, 1);
+             var _num = _arg;
+@@ -337,6 +358,7 @@ function scr_instrument_parse(_text) {
+         _out.bytes[_lh.arg_pos + 1] = (_start >> 8) & 255;
+         var _letter = "S";
+         if (_lh.kind == 1) _letter = "Q";
++        if (_lh.kind == 2) _letter = "C";
+         var _val = 0;
+         var _pending = false;
+         var _pending_step = -1;
+@@ -430,7 +452,7 @@ function scr_instrument_ensure_compiled(_instr) {
+     if (_valid) _valid = variable_struct_exists(_instr.compiled, "bytes") && variable_struct_exists(_instr.compiled, "errors");
+     if (_valid) _valid = is_array(_instr.compiled.bytes) && is_array(_instr.compiled.errors);
+     if (_valid) _valid = variable_struct_exists(_instr.compiled, "version") && variable_struct_exists(_instr.compiled, "source");
+-    if (_valid) _valid = _instr.compiled.version == 5 && _instr.compiled.source == _instr.text;
++    if (_valid) _valid = _instr.compiled.version == 6 && _instr.compiled.source == _instr.text;
+     if (!_valid) _instr.compiled = scr_instrument_parse(_instr.text);
+     return _instr.compiled;
+ }
+@@ -467,7 +489,7 @@ function scr_music_table_pack(_instruments) {
+         for (var _p = 0; _p < _main_len;) {
+             var _op = _b[_p];
+             var _len = scr_music_op_len(_op);
+-            if (_op == 3 || _op == 5 || (_op >= 13 && _op <= 17)) {
++            if (_op == 3 || _op == 5 || (_op >= 13 && _op <= 19)) {
+                 var _dest = _b[_p + 1];
+                 if (_op != 3) _dest += _b[_p + 2] * 256;
+                 variable_struct_set(_targets, string(_dest), true);
+@@ -504,7 +526,7 @@ function scr_music_table_pack(_instruments) {
+                 var _key = "", _size = 0, _ok = true;
+                 for (var _j = 0; _j < _n; _j++) {
+                     var _o = _ops[_p + _j], _op = _o.bytes[0];
+-                    if (_o.raw || _o.call >= 0 || _op == 3 || _op == 4 || _op == 5 || (_op >= 13 && _op <= 17) || (_j > 0 && _o.target)) { _ok = false; break; }
++                    if (_o.raw || _o.call >= 0 || _op == 3 || _op == 4 || _op == 5 || (_op >= 13 && _op <= 19) || (_j > 0 && _o.target)) { _ok = false; break; }
+                     _key += _o.key + ";"; _size += _o.size;
+                 }
+                 if (!_ok) continue;
+@@ -616,7 +638,7 @@ function scr_music_table_emit(_list, _id, _key, _ops, _lanes) {
+                 array_push(_list, ["label", _la.label]);
+                 for (var _j = 0; _j < array_length(_bytes); _j++) array_push(_list,["byte",_bytes[_j],_id]);
+             }
+-        } else if (_bytes[0] >= 14 && _bytes[0] <= 17) {
++        } else if (_bytes[0] >= 14 && _bytes[0] <= 19) {
+             // Table start: the operand is the (possibly shared) table's address.
+             var _la = variable_struct_get(_lane_at, string(_bytes[1] + _bytes[2] * 256));
+             array_push(_list, ["byte", _bytes[0], _id], ["byte_lab_lo", _la.label, _id], ["byte_lab_hi", _la.label, _id]);
+@@ -638,6 +660,6 @@ function scr_music_op_len(_op) {
+     if (_op == 13) return 4;
+     if (_op == 4) return 1;
+     if (_op >= 5 && _op <= 9) return 3;
+-    if (_op >= 14 && _op <= 17) return 3;
++    if (_op >= 14 && _op <= 20) return 3;
+     return 2;
+ }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sfx_maker/scr_sfx_maker.gml b/C64DevMachine_win.yyp/scripts/scr_sfx_maker/scr_sfx_maker.gml
+index 0bf1b7a..02cbfcc 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sfx_maker/scr_sfx_maker.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sfx_maker/scr_sfx_maker.gml
+@@ -95,7 +95,7 @@ function scr_sfx_maker_frames(_e) {
+     while(_pc<array_length(_b) && array_length(_frames)<240 && _steps++<4096) {
+         var _op=_b[_pc++];
+         if(_op==4) break;
+-        if(_op>=14 && _op<=17) { _pc+=2; continue; } // ~PITCH/~PULSE tables are not used by effects
++        if(_op>=14 && _op<=20) { _pc+=2; continue; } // ~PITCH/~PULSE tables are not used by effects
+         if(_pc>=array_length(_b)) break;
+         var _v=_b[_pc++];
+         if(_op==0) _wave=_v;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+index 404dfb3..83299e5 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+@@ -23,12 +23,14 @@ function scr_sid64_sim_voice_new() {
+         display_compiled: undefined,
+         slide : 0,
+         pulse_slide : 0,
+-        lane_pos : [0, 0],       // ~PITCH / ~PULSE record index into bytes
+-        lane_count : [0, 0],     // frames left on the record; 0 = table idle
+-        lane_off   : [0, 0],     // table start offset in bytes
+-        lane_key   : ["", ""],   // table contents (shared tables match by content)
+-        lane_keep  : [0, 0],     // frames left saved by the last new note
+-        lane_speed : [0, 0],     // speed saved by the last new note
++        // Tables, [pitch, pulse, filter]:
++        lane_pos : [0, 0, 0],    // record index into bytes
++        lane_count : [0, 0, 0],  // frames left on the record; 0 = table idle
++        lane_off   : [0, 0, 0],  // table start offset in bytes
++        lane_key   : ["", "", ""], // table contents (shared tables match by content)
++        lane_keep  : [0, 0, 0],  // frames left saved by the last new note
++        lane_speed : [0, 0, 0],  // speed saved by the last new note
++        filt_slide : 0,          // ~FILTER cutoff speed per frame (16-bit)
+         hold     : 0,
+         base     : 0,           // base note index (0-95)
+         active   : false,
+@@ -161,12 +163,16 @@ function scr_sid64_sim_trigger(_sim, _v, _instr) {
+     // Save each table's position for a keep-running table, then stop it.
+     _vc.lane_keep[0] = _vc.lane_count[0];
+     _vc.lane_keep[1] = _vc.lane_count[1];
++    _vc.lane_keep[2] = _vc.lane_count[2];
+     _vc.lane_speed[0] = _vc.slide;
+     _vc.lane_speed[1] = _vc.pulse_slide;
++    _vc.lane_speed[2] = _vc.filt_slide;
+     _vc.slide = 0;
+     _vc.pulse_slide = 0;
++    _vc.filt_slide = 0;
+     _vc.lane_count[0] = 0;
+     _vc.lane_count[1] = 0;
++    _vc.lane_count[2] = 0;
+     if (!is_struct(_instr)) {
+         // No instrument: pitch, plain pulse gate; AD/SR/PW left as they are.
+         _vc.freq = _f;
+@@ -413,9 +419,14 @@ function scr_sid64_sim_step(_sim, _v) {
+             _vc.pc += 2;
+         } else if (_op == 0x03) {
+             _vc.pc = _arg;
+-        } else if (_op >= 14 && _op <= 17) {
+-            // start the pitch / pulse table; its first record loads this frame
+-            scr_sid64_sim_lane_start(_vc, (_op - 14) & 1, _op >= 16, _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8));
++        } else if (_op >= 14 && _op <= 19) {
++            // start the pitch / pulse / filter table; its first record loads this frame
++            scr_sid64_sim_lane_start(_vc, (_op - 14) mod 3, _op >= 17, _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8));
++            _vc.pc += 3;
++        } else if (_op == 20) {
++            // C$nnn: set the filter cutoff
++            _sim.fcut = (_arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8)) & 0x7FF;
++            scr_sid64_sim_cut(_sim);
+             _vc.pc += 3;
+         } else {
+             // END — gate off, instrument idle
+@@ -451,8 +462,10 @@ function scr_sid64_sim_lane_start(_vc, _k, _keep, _off) {
+             _vc.lane_count[_k] = _vc.lane_keep[_k];
+             if (_k == 0) {
+                 _vc.slide = _vc.lane_speed[0];
+-            } else {
++            } else if (_k == 1) {
+                 _vc.pulse_slide = _vc.lane_speed[1];
++            } else {
++                _vc.filt_slide = _vc.lane_speed[2];
+             }
+             _vc.lane_pos[_k] = _off + (_vc.lane_pos[_k] - _vc.lane_off[_k]);
+             _vc.lane_off[_k] = _off;
+@@ -482,7 +495,8 @@ function scr_sid64_sim_tie(_sim, _v, _note, _instr) {
+     }
+ }
+ 
+-/// The player's table step: _k 0 = ~PITCH (sets slide), 1 = ~PULSE (sets pulse_slide).
++/// The player's table step: _k 0 = ~PITCH (sets slide), 1 = ~PULSE (sets
++/// pulse_slide), 2 = ~FILTER (sets filt_slide).
+ function scr_sid64_sim_lane(_vc, _k) {
+     if (_vc.lane_count[_k] == 0) return;
+     _vc.lane_count[_k] -= 1;
+@@ -497,8 +511,10 @@ function scr_sid64_sim_lane(_vc, _k) {
+             var _speed = (_b[_p + 1] & 255) | ((_b[_p + 2] & 255) << 8);
+             if (_k == 0) {
+                 _vc.slide = _speed;
+-            } else {
++            } else if (_k == 1) {
+                 _vc.pulse_slide = _speed;
++            } else {
++                _vc.filt_slide = _speed;
+             }
+             _vc.lane_pos[_k] = _p + 3;
+             return;
+@@ -516,6 +532,14 @@ function scr_sid64_sim_fx(_sim, _v, _hrw) {
+     if (_vc.active && _hrw == 0) {
+         scr_sid64_sim_lane(_vc, 0);
+         scr_sid64_sim_lane(_vc, 1);
++        scr_sid64_sim_lane(_vc, 2);
++        if (_vc.filt_slide != 0) {
++            // ~FILTER: the voice's cutoff speed moves the chip's cutoff, clamped
++            var _fs = _vc.filt_slide;
++            if (_fs >= 32768) _fs -= 65536;
++            _sim.fcut = clamp(_sim.fcut + _fs, 0, 2047);
++            scr_sid64_sim_cut(_sim);
++        }
+         _vc.freq = (_vc.freq + _vc.slide) & 65535;
+         if (_vc.pulse_slide != 0) {
+             _vc.pw = (_vc.pw + _vc.pulse_slide) & 4095;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+index 32c0557..8f3f583 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+@@ -287,22 +287,39 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+     var _lanes_used = false;
+     for (var _ri=0;_ri<array_length(_table_pack.streams);_ri++)
+         for (var _rj=0;_rj<array_length(_table_pack.streams[_ri]);_rj++)
+-            if (!_table_pack.streams[_ri][_rj].raw && _table_pack.streams[_ri][_rj].bytes[0] >= 14 && _table_pack.streams[_ri][_rj].bytes[0] <= 17) _lanes_used = true;
++            if (!_table_pack.streams[_ri][_rj].raw && _table_pack.streams[_ri][_rj].bytes[0] >= 14 && _table_pack.streams[_ri][_rj].bytes[0] <= 19) _lanes_used = true;
++    // ~FILTER tables ($10 / $13) and C$ cutoff sets ($14) drive the chip's cutoff.
++    var _filter_lanes_used = false;
++    var _cut_set_used = false;
++    for (var _ri=0;_ri<array_length(_table_pack.streams);_ri++) {
++        for (var _rj=0;_rj<array_length(_table_pack.streams[_ri]);_rj++) {
++            var _fo = _table_pack.streams[_ri][_rj];
++            if (!_fo.raw && (_fo.bytes[0] == 16 || _fo.bytes[0] == 19)) _filter_lanes_used = true;
++            if (!_fo.raw && _fo.bytes[0] == 20) _cut_set_used = true;
++        }
++    }
++    for (var _ri=0;_ri<array_length(_table_pack.tables);_ri++) {
++        for (var _rj=0;_rj<array_length(_table_pack.tables[_ri]);_rj++) {
++            if (_table_pack.tables[_ri][_rj].bytes[0] == 20) _cut_set_used = true;
++        }
++    }
+     // Distinct ~PITCH / ~PULSE tables, emitted once each and shared by address.
+     var _lane_registry = { count: 0, labels: {} };
+     var _lbl_dskip = _key + "dskip";
+     // Per-voice effect state tables (see section 7).
+     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
+                              "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval",
+-                             "pwl", "pwh", "fvh", "isl", "ipl", "ish", "iph"];
+-    // isl,ipl / ish,iph are adjacent so X = voice (pitch) or voice+3 (pulse)
+-    // addresses the right speed from one table routine; lnl..lncq likewise.
++                             "pwl", "pwh", "fvh", "isl", "ipl", "ifl", "ish", "iph", "ifh"];
++    // isl,ipl,ifl / ish,iph,ifh are adjacent so X = voice (pitch), voice+3
++    // (pulse) or voice+6 (filter) addresses the right speed from one table
++    // routine; the table state below is laid out the same way.
+     if (_repeats_used) array_push(_sng_state_tables,"reps");
+     // Table state, X = voice (pitch) / voice + 3 (pulse): pointer, frames
+     // left, and for keep-running tables the table's address plus what a new
+     // note saved (frames left, speed) so the table can carry on.
+-    if (_lanes_used) array_push(_sng_state_tables, "lnl", "lnlq", "lnh", "lnhq", "lnc", "lncq",
+-        "lnk", "lnkq", "lsl", "lslq", "lsh", "lshq", "lnbl", "lnblq", "lnbh", "lnbhq");
++    if (_lanes_used) array_push(_sng_state_tables, "lnl", "lnlq", "lnlf", "lnh", "lnhq", "lnhf",
++        "lnc", "lncq", "lncf", "lnk", "lnkq", "lnkf", "lsl", "lslq", "lslf", "lsh", "lshq", "lshf",
++        "lnbl", "lnblq", "lnblf", "lnbh", "lnbhq", "lnbhf");
+     if (_tables_used) array_push(_sng_state_tables, "trl", "trh");
+     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
+     if (array_length(_nt_custom) == 96) {
+@@ -330,6 +347,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+     if ((_sng_filt_mode & 0x07) != 0) {
+         _sng_filt_used = true;
+     }
++    if (_filter_lanes_used || _cut_set_used) _sng_filt_used = true;   // needs fcl/fch + fcut
+ 
+     // ── 1. INSTRUMENT BLOBS ──
+     // 7 header bytes (AD, SR, PW lo, PW hi, VIB delay, VIB speed, VIB depth*4)
+@@ -1833,19 +1851,28 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+         }
+ 
+         if (_lanes_used) {
+-            // $0E / $0F start the pitch / pulse table; $10 / $11 are the
+-            // keep-running forms. The operand is the table's address.
++            // $0E/$0F/$10 start the pitch / pulse / filter table; $11/$12/$13
++            // are the keep-running forms. The operand is the table's address.
+             array_push(_list, ["cmp_imm", 14, _id]);
+             array_push(_list, ["bcc", _ip + "notlane", _id]);
+-            array_push(_list, ["cmp_imm", 18, _id]);
++            array_push(_list, ["cmp_imm", 20, _id]);
+             array_push(_list, ["bcs", _ip + "notlane", _id]);
+             array_push(_list, ["sec", 0, _id]);
+-            array_push(_list, ["sbc_imm", 14, _id]);
+-            array_push(_list, ["lsr_a", 0, _id]);          // C = pulse table, A = keep-running
+-            array_push(_list, ["sta_zp", _S_TMP, _id]);
+-            array_push(_list, ["ldx_imm", _vi, _id]);
++            array_push(_list, ["sbc_imm", 14, _id]);       // 0-5
++            array_push(_list, ["ldy_imm", 0, _id]);
++            array_push(_list, ["cmp_imm", 3, _id]);
++            array_push(_list, ["bcc", _ip + "lanekeep", _id]);
++            array_push(_list, ["sbc_imm", 3, _id]);        // C is set: kind 0-2
++            array_push(_list, ["iny", 0, _id]);            // keep-running
++            array_push(_list, ["label", _ip + "lanekeep"]);
++            array_push(_list, ["sty_zp", _S_TMP, _id]);
++            array_push(_list, ["ldx_imm", _vi, _id]);       // X = voice + kind * 3
++            array_push(_list, ["cmp_imm", 1, _id]);
+             array_push(_list, ["bcc", _ip + "lanesel", _id]);
+             array_push(_list, ["ldx_imm", _vi + 3, _id]);
++            array_push(_list, ["cmp_imm", 2, _id]);
++            array_push(_list, ["bcc", _ip + "lanesel", _id]);
++            array_push(_list, ["ldx_imm", _vi + 6, _id]);
+             array_push(_list, ["label", _ip + "lanesel"]);
+             array_push(_list, ["ldy_imm", 1, _id]);
+             array_push(_list, ["lda_izy", _vb, _id]);
+@@ -1864,6 +1891,28 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+             array_push(_list, ["jmp_abs", _L_iloop, _id]);
+             array_push(_list, ["label", _ip + "notlane"]);
+         }
++        if (_cut_set_used) {
++            // $14 lo hi = set the filter cutoff now.
++            array_push(_list, ["cmp_imm", 20, _id]);
++            array_push(_list, ["bne", _ip + "notcut", _id]);
++            array_push(_list, ["ldy_imm", 1, _id]);
++            array_push(_list, ["lda_izy", _vb, _id]);
++            array_push(_list, ["sta_abs", _key + "fcl", _id]);
++            array_push(_list, ["iny", 0, _id]);
++            array_push(_list, ["lda_izy", _vb, _id]);
++            array_push(_list, ["and_imm", 0x07, _id]);
++            array_push(_list, ["sta_abs", _key + "fch", _id]);
++            array_push(_list, ["jsr", _key + "fcut", _id]);
++            array_push(_list, ["clc", 0, _id]);
++            array_push(_list, ["lda_zp", _vb, _id]);
++            array_push(_list, ["adc_imm", 3, _id]);
++            array_push(_list, ["sta_zp", _vb, _id]);
++            array_push(_list, ["lda_zp", _vb + 1, _id]);
++            array_push(_list, ["adc_imm", 0, _id]);
++            array_push(_list, ["sta_zp", _vb + 1, _id]);
++            array_push(_list, ["jmp_abs", _L_iloop, _id]);
++            array_push(_list, ["label", _ip + "notcut"]);
++        }
+ 
+         // $04, or anything unrecognised = END — gate off, mark inactive.
+         //
+@@ -1886,6 +1935,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+             array_push(_list, ["ldx_imm", _vi + 3, _id]);
+             array_push(_list, ["jsr", _key + "lanes", _id]);
+         }
++        if (_filter_lanes_used) {
++            array_push(_list, ["ldx_imm", _vi + 6, _id]);
++            array_push(_list, ["jsr", _key + "lanes", _id]);
++            array_push(_list, ["ldx_imm", _vi, _id]);
++            array_push(_list, ["jsr", _key + "lnfilt", _id]);
++        }
+         array_push(_list, ["clc", 0, _id]);
+         array_push(_list, ["lda_abs", _key + "fql_" + string(_vi), _id]);
+         array_push(_list, ["adc_abs", _key + "isl_" + string(_vi), _id]);
+@@ -1985,7 +2040,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+         // these up again if the new instrument starts the same table.
+         var _ls = _key + "lnsave";
+         array_push(_list, ["label", _ls]);
+-        array_push(_list, ["ldy_imm", 2, _id]);
++        array_push(_list, ["ldy_imm", 3, _id]);
+         array_push(_list, ["label", _ls + "lp"]);
+         array_push(_list, ["lda_abx", _key + "lnc", _id]);
+         array_push(_list, ["sta_abx", _key + "lnk", _id]);
+@@ -1995,6 +2050,8 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+         array_push(_list, ["sta_abx", _key + "lsh", _id]);
+         array_push(_list, ["lda_imm", 0, _id]);
+         array_push(_list, ["sta_abx", _key + "lnc", _id]);
++        array_push(_list, ["sta_abx", _key + "isl", _id]);   // speed stops with the table
++        array_push(_list, ["sta_abx", _key + "ish", _id]);
+         array_push(_list, ["inx", 0, _id]);
+         array_push(_list, ["inx", 0, _id]);
+         array_push(_list, ["inx", 0, _id]);
+@@ -2036,6 +2093,37 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+         array_push(_list, ["lda_imm", 1, _id]);
+         array_push(_list, ["sta_abx", _key + "lnc", _id]);
+         array_push(_list, ["rts", 0, _id]);
++
++        if (_filter_lanes_used) {
++            // ── FILTER STEP ── X = voice: add its ~FILTER speed to the chip's
++            // 11-bit cutoff, clamped to 0..2047, and write it out.
++            var _lf = _key + "lnfilt";
++            array_push(_list, ["label", _lf]);
++            array_push(_list, ["lda_abx", _key + "ifl", _id]);
++            array_push(_list, ["ora_abx", _key + "ifh", _id]);
++            array_push(_list, ["beq", _lf + "ret", _id]);
++            array_push(_list, ["clc", 0, _id]);
++            array_push(_list, ["lda_abs", _key + "fcl", _id]);
++            array_push(_list, ["adc_abx", _key + "ifl", _id]);
++            array_push(_list, ["sta_abs", _key + "fcl", _id]);
++            array_push(_list, ["lda_abs", _key + "fch", _id]);
++            array_push(_list, ["adc_abx", _key + "ifh", _id]);
++            array_push(_list, ["bmi", _lf + "low", _id]);
++            array_push(_list, ["cmp_imm", 0x08, _id]);
++            array_push(_list, ["bcc", _lf + "out", _id]);
++            array_push(_list, ["lda_imm", 0xFF, _id]);          // past the top: 2047
++            array_push(_list, ["sta_abs", _key + "fcl", _id]);
++            array_push(_list, ["lda_imm", 0x07, _id]);
++            array_push(_list, ["bne", _lf + "out", _id]);
++            array_push(_list, ["label", _lf + "low"]);
++            array_push(_list, ["lda_imm", 0x00, _id]);          // below zero: 0
++            array_push(_list, ["sta_abs", _key + "fcl", _id]);
++            array_push(_list, ["label", _lf + "out"]);
++            array_push(_list, ["sta_abs", _key + "fch", _id]);
++            array_push(_list, ["jmp_abs", _key + "fcut", _id]);   // its rts returns
++            array_push(_list, ["label", _lf + "ret"]);
++            array_push(_list, ["rts", 0, _id]);
++        }
+     }
+ 
+     var _sng_use_fx = _sng_any_vib;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
+index 65efc9a..3b571a8 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
+@@ -297,6 +297,8 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
+         ["~PITCH", "table of S/D/L lines, runs beside the program"],
+         ["~PULSE", "table of Q/D/L lines, runs beside the program"],
+         ["~PITCH+", "same, but carries on across new notes / ties"],
++        ["~FILTER", "table of C/D/L lines: cutoff speed per frame"],
++        ["C$400", "set the filter cutoff ($000-$7FF)"],
+         ["", "the program must keep running (Dn / Ln) to hear them"],
+         ["---", "gate off + stop: the note releases"],
+         ["", ""],
+@@ -340,7 +342,12 @@ function scr_sound_editor_instr_comment(_line, _lines) {
+         if (_up == "~PULSE") return { text: "pulse table: Q/D/L lines on their own counter", bad: false };
+         if (_up == "~PITCH+") return { text: "pitch table that keeps running across notes", bad: false };
+         if (_up == "~PULSE+") return { text: "pulse table that keeps running across notes", bad: false };
+-        return { text: "? tables are ~PITCH or ~PULSE", bad: true };
++        if (_up == "~FILTER") return { text: "filter table: C/D/L lines move the cutoff", bad: false };
++        if (_up == "~FILTER+") return { text: "filter table that keeps running across notes", bad: false };
++        return { text: "? tables are ~PITCH, ~PULSE or ~FILTER", bad: true };
++    }
++    if (string_copy(_up, 1, 2) == "C$") {
++        return { text: "set filter cutoff to " + string_delete(_up, 1, 1), bad: false };
+     }
+ 
+     // --- : end
+@@ -374,6 +381,10 @@ function scr_sound_editor_instr_comment(_line, _lines) {
+         if (_c0 == "Q") _desc = "pulse sweep per frame; Q0 stops (wraps 12-bit)";
+         return { text: _desc + "; Dn sets duration", bad: false };
+     }
++    // C+n / C-n : a ~FILTER table's cutoff speed
++    if (_c0 == "C" && (string_char_at(_up, 2) == "+" || string_char_at(_up, 2) == "-")) {
++        return { text: "cutoff speed per frame (in a ~FILTER table); Dn sets duration", bad: false };
++    }
+     // N / N+n / N-n : note
+     if (_c0 == "N") {
+         if (_rest == "" || _rest == "+0" || _rest == "-0") {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_instrument_preview_play/scr_sound_instrument_preview_play.gml b/C64DevMachine_win.yyp/scripts/scr_sound_instrument_preview_play/scr_sound_instrument_preview_play.gml
+index e8bdb2a..53dacbc 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_instrument_preview_play/scr_sound_instrument_preview_play.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_instrument_preview_play/scr_sound_instrument_preview_play.gml
+@@ -123,7 +123,7 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
+                 else if (_op == 8) { _slide = _word; _pc += 3; }
+                 else if (_op == 9) { _pulse_slide = _word; _pc += 3; }
+                 else if (_op == 10) { _cur_wave = _arg; _raw_gate = true; _pc += 2; }
+-                else if (_op >= 14 && _op <= 17) { _pc += 3; } // tables: reSID preview only
++                else if (_op >= 14 && _op <= 20) { _pc += 3; } // tables: reSID preview only
+                 else _active = false;
+             }
+             if (_guard >= 64) _active = false;

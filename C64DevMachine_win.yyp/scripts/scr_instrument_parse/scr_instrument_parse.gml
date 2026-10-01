@@ -14,7 +14,11 @@
 ///   ~PITCH      start of a pitch table: S / D / L lines that run alongside
 ///               the program on their own counter (each S is a slide speed)
 ///   ~PULSE      start of a pulse table: Q / D / L lines, the same way
-///   ~PITCH+     / ~PULSE+ : the table KEEPS RUNNING across new notes — a note
+///   ~FILTER     start of a filter table: C / D / L lines, each C a cutoff
+///               speed per frame (signed). The cutoff is shared by the whole
+///               chip, so give the table to the instruments of one voice.
+///   C$nnn       set the filter cutoff ($000-$7FF) -> [$14, lo, hi]
+///   ~PITCH+     / ~PULSE+ / ~FILTER+ : the table KEEPS RUNNING across new notes — a note
 ///               (or tie) using the same table carries on from where it was
 ///               instead of restarting it. Identical tables are stored once
 ///               per song and shared, so instruments can share one vibrato.
@@ -22,9 +26,9 @@
 /// Tables follow the program's implicit END as records of
 /// [frames, speed lo, speed hi]; frames 0 is control: [0, back] jumps back
 /// that many bytes (Ln), [0, 0] stops the table. The program opens with
-/// [$0E, offset] / [$0F, offset] so the player starts each table on trigger
-/// ($10 / $11 for the keep-running forms). The song build turns the offset
-/// into the table's address.
+/// [$0E/$0F/$10, offset] (pitch / pulse / filter) so the player starts each
+/// table on trigger ($11/$12/$13 for the keep-running forms). The song build
+/// turns the offset into the table's address.
 ///
 /// Steps are variable length, so Ln can't point at a byte directly. The
 /// parser records each step's byte offset in a first pass, then patches the
@@ -38,7 +42,7 @@
 /// errors       — human-readable strings for malformed tokens (never throws)
 function scr_instrument_parse(_text) {
 
-    var _out    = { bytes: [], step_offsets: [], errors: [], version: 5, byte_lines: [], source: string(_text), no_hr: false, main_len: 0, lanes: [] };
+    var _out    = { bytes: [], step_offsets: [], errors: [], version: 6, byte_lines: [], source: string(_text), no_hr: false, main_len: 0, lanes: [] };
     var _tokens = [];
 
     // ── Tokenise: newlines act as commas, then split, trim, drop empties ──
@@ -70,10 +74,11 @@ function scr_instrument_parse(_text) {
             }
             if (_head == "~PITCH") _kind = 0;
             if (_head == "~PULSE") _kind = 1;
+            if (_head == "~FILTER") _kind = 2;
             for (var _hk = 0; _hk < array_length(_lane_heads); _hk++) {
                 if (_lane_heads[_hk].kind == _kind) _kind = -2;
             }
-            if (_kind == -1) array_push(_out.errors, "step " + string(_hi) + ": tables are ~PITCH or ~PULSE");
+            if (_kind == -1) array_push(_out.errors, "step " + string(_hi) + ": tables are ~PITCH, ~PULSE or ~FILTER");
             if (_kind == -2) array_push(_out.errors, "step " + string(_hi) + ": only one " + _head + " table per instrument");
             array_push(_lane_heads, { kind: _kind, ti: _hi, arg_pos: -1, keep: _keep });
         }
@@ -82,7 +87,7 @@ function scr_instrument_parse(_text) {
     for (var _hk = 0; _hk < array_length(_lane_heads); _hk++) {
         if (_lane_heads[_hk].kind >= 0) {
             var _lane_op = 14 + _lane_heads[_hk].kind;
-            if (_lane_heads[_hk].keep) _lane_op += 2;
+            if (_lane_heads[_hk].keep) _lane_op += 3;
             array_push(_out.bytes, _lane_op, 0, 0);
             _lane_heads[_hk].arg_pos = array_length(_out.bytes) - 2;
             var _hl = _token_lines[_lane_heads[_hk].ti];
@@ -183,6 +188,22 @@ function scr_instrument_parse(_text) {
             }
             if (!_gok) array_push(_out.errors, "step " + string(_ti) + ": use G$00..G$FF for raw gate/wave control");
             array_push(_out.bytes, 10, _gok ? real(hex_to_decimal(_ghex)) : 0);
+            continue;
+        }
+        // ── C$nnn ── set the filter cutoff (11 bits)
+        if (_c0 == "C" && string_char_at(_up, 2) == "$") {
+            var _chex = string_delete(_up, 1, 2);
+            var _cok = string_length(_chex) > 0 && string_length(_chex) <= 3;
+            for (var _j = 1; _j <= string_length(_chex); _j++) {
+                if (string_pos(string_char_at(_chex, _j), "0123456789ABCDEF") == 0) _cok = false;
+            }
+            var _cval = 0;
+            if (_cok) _cval = real(hex_to_decimal(_chex));
+            if (!_cok || _cval > 2047) {
+                array_push(_out.errors, "step " + string(_ti) + ": C$ sets the cutoff, $000..$7FF");
+                _cval = 0;
+            }
+            array_push(_out.bytes, 20, _cval & 255, (_cval >> 8) & 255);
             continue;
         }
         if ((_c0 == "F" && (string_char_at(_up, 2) == "+" || string_char_at(_up, 2) == "-")) || _c0 == "P" || _c0 == "S" || _c0 == "Q") {
@@ -337,6 +358,7 @@ function scr_instrument_parse(_text) {
         _out.bytes[_lh.arg_pos + 1] = (_start >> 8) & 255;
         var _letter = "S";
         if (_lh.kind == 1) _letter = "Q";
+        if (_lh.kind == 2) _letter = "C";
         var _val = 0;
         var _pending = false;
         var _pending_step = -1;
@@ -430,7 +452,7 @@ function scr_instrument_ensure_compiled(_instr) {
     if (_valid) _valid = variable_struct_exists(_instr.compiled, "bytes") && variable_struct_exists(_instr.compiled, "errors");
     if (_valid) _valid = is_array(_instr.compiled.bytes) && is_array(_instr.compiled.errors);
     if (_valid) _valid = variable_struct_exists(_instr.compiled, "version") && variable_struct_exists(_instr.compiled, "source");
-    if (_valid) _valid = _instr.compiled.version == 5 && _instr.compiled.source == _instr.text;
+    if (_valid) _valid = _instr.compiled.version == 6 && _instr.compiled.source == _instr.text;
     if (!_valid) _instr.compiled = scr_instrument_parse(_instr.text);
     return _instr.compiled;
 }
@@ -467,7 +489,7 @@ function scr_music_table_pack(_instruments) {
         for (var _p = 0; _p < _main_len;) {
             var _op = _b[_p];
             var _len = scr_music_op_len(_op);
-            if (_op == 3 || _op == 5 || (_op >= 13 && _op <= 17)) {
+            if (_op == 3 || _op == 5 || (_op >= 13 && _op <= 19)) {
                 var _dest = _b[_p + 1];
                 if (_op != 3) _dest += _b[_p + 2] * 256;
                 variable_struct_set(_targets, string(_dest), true);
@@ -504,7 +526,7 @@ function scr_music_table_pack(_instruments) {
                 var _key = "", _size = 0, _ok = true;
                 for (var _j = 0; _j < _n; _j++) {
                     var _o = _ops[_p + _j], _op = _o.bytes[0];
-                    if (_o.raw || _o.call >= 0 || _op == 3 || _op == 4 || _op == 5 || (_op >= 13 && _op <= 17) || (_j > 0 && _o.target)) { _ok = false; break; }
+                    if (_o.raw || _o.call >= 0 || _op == 3 || _op == 4 || _op == 5 || (_op >= 13 && _op <= 19) || (_j > 0 && _o.target)) { _ok = false; break; }
                     _key += _o.key + ";"; _size += _o.size;
                 }
                 if (!_ok) continue;
@@ -616,7 +638,7 @@ function scr_music_table_emit(_list, _id, _key, _ops, _lanes) {
                 array_push(_list, ["label", _la.label]);
                 for (var _j = 0; _j < array_length(_bytes); _j++) array_push(_list,["byte",_bytes[_j],_id]);
             }
-        } else if (_bytes[0] >= 14 && _bytes[0] <= 17) {
+        } else if (_bytes[0] >= 14 && _bytes[0] <= 19) {
             // Table start: the operand is the (possibly shared) table's address.
             var _la = variable_struct_get(_lane_at, string(_bytes[1] + _bytes[2] * 256));
             array_push(_list, ["byte", _bytes[0], _id], ["byte_lab_lo", _la.label, _id], ["byte_lab_hi", _la.label, _id]);
@@ -638,6 +660,6 @@ function scr_music_op_len(_op) {
     if (_op == 13) return 4;
     if (_op == 4) return 1;
     if (_op >= 5 && _op <= 9) return 3;
-    if (_op >= 14 && _op <= 17) return 3;
+    if (_op >= 14 && _op <= 20) return 3;
     return 2;
 }

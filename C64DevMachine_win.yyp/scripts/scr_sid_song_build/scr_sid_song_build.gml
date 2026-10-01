@@ -287,22 +287,39 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     var _lanes_used = false;
     for (var _ri=0;_ri<array_length(_table_pack.streams);_ri++)
         for (var _rj=0;_rj<array_length(_table_pack.streams[_ri]);_rj++)
-            if (!_table_pack.streams[_ri][_rj].raw && _table_pack.streams[_ri][_rj].bytes[0] >= 14 && _table_pack.streams[_ri][_rj].bytes[0] <= 17) _lanes_used = true;
+            if (!_table_pack.streams[_ri][_rj].raw && _table_pack.streams[_ri][_rj].bytes[0] >= 14 && _table_pack.streams[_ri][_rj].bytes[0] <= 19) _lanes_used = true;
+    // ~FILTER tables ($10 / $13) and C$ cutoff sets ($14) drive the chip's cutoff.
+    var _filter_lanes_used = false;
+    var _cut_set_used = false;
+    for (var _ri=0;_ri<array_length(_table_pack.streams);_ri++) {
+        for (var _rj=0;_rj<array_length(_table_pack.streams[_ri]);_rj++) {
+            var _fo = _table_pack.streams[_ri][_rj];
+            if (!_fo.raw && (_fo.bytes[0] == 16 || _fo.bytes[0] == 19)) _filter_lanes_used = true;
+            if (!_fo.raw && _fo.bytes[0] == 20) _cut_set_used = true;
+        }
+    }
+    for (var _ri=0;_ri<array_length(_table_pack.tables);_ri++) {
+        for (var _rj=0;_rj<array_length(_table_pack.tables[_ri]);_rj++) {
+            if (_table_pack.tables[_ri][_rj].bytes[0] == 20) _cut_set_used = true;
+        }
+    }
     // Distinct ~PITCH / ~PULSE tables, emitted once each and shared by address.
     var _lane_registry = { count: 0, labels: {} };
     var _lbl_dskip = _key + "dskip";
     // Per-voice effect state tables (see section 7).
     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
                              "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval",
-                             "pwl", "pwh", "fvh", "isl", "ipl", "ish", "iph"];
-    // isl,ipl / ish,iph are adjacent so X = voice (pitch) or voice+3 (pulse)
-    // addresses the right speed from one table routine; lnl..lncq likewise.
+                             "pwl", "pwh", "fvh", "isl", "ipl", "ifl", "ish", "iph", "ifh"];
+    // isl,ipl,ifl / ish,iph,ifh are adjacent so X = voice (pitch), voice+3
+    // (pulse) or voice+6 (filter) addresses the right speed from one table
+    // routine; the table state below is laid out the same way.
     if (_repeats_used) array_push(_sng_state_tables,"reps");
     // Table state, X = voice (pitch) / voice + 3 (pulse): pointer, frames
     // left, and for keep-running tables the table's address plus what a new
     // note saved (frames left, speed) so the table can carry on.
-    if (_lanes_used) array_push(_sng_state_tables, "lnl", "lnlq", "lnh", "lnhq", "lnc", "lncq",
-        "lnk", "lnkq", "lsl", "lslq", "lsh", "lshq", "lnbl", "lnblq", "lnbh", "lnbhq");
+    if (_lanes_used) array_push(_sng_state_tables, "lnl", "lnlq", "lnlf", "lnh", "lnhq", "lnhf",
+        "lnc", "lncq", "lncf", "lnk", "lnkq", "lnkf", "lsl", "lslq", "lslf", "lsh", "lshq", "lshf",
+        "lnbl", "lnblq", "lnblf", "lnbh", "lnbhq", "lnbhf");
     if (_tables_used) array_push(_sng_state_tables, "trl", "trh");
     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
     if (array_length(_nt_custom) == 96) {
@@ -330,6 +347,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     if ((_sng_filt_mode & 0x07) != 0) {
         _sng_filt_used = true;
     }
+    if (_filter_lanes_used || _cut_set_used) _sng_filt_used = true;   // needs fcl/fch + fcut
 
     // ── 1. INSTRUMENT BLOBS ──
     // 7 header bytes (AD, SR, PW lo, PW hi, VIB delay, VIB speed, VIB depth*4)
@@ -1833,19 +1851,28 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         }
 
         if (_lanes_used) {
-            // $0E / $0F start the pitch / pulse table; $10 / $11 are the
-            // keep-running forms. The operand is the table's address.
+            // $0E/$0F/$10 start the pitch / pulse / filter table; $11/$12/$13
+            // are the keep-running forms. The operand is the table's address.
             array_push(_list, ["cmp_imm", 14, _id]);
             array_push(_list, ["bcc", _ip + "notlane", _id]);
-            array_push(_list, ["cmp_imm", 18, _id]);
+            array_push(_list, ["cmp_imm", 20, _id]);
             array_push(_list, ["bcs", _ip + "notlane", _id]);
             array_push(_list, ["sec", 0, _id]);
-            array_push(_list, ["sbc_imm", 14, _id]);
-            array_push(_list, ["lsr_a", 0, _id]);          // C = pulse table, A = keep-running
-            array_push(_list, ["sta_zp", _S_TMP, _id]);
-            array_push(_list, ["ldx_imm", _vi, _id]);
+            array_push(_list, ["sbc_imm", 14, _id]);       // 0-5
+            array_push(_list, ["ldy_imm", 0, _id]);
+            array_push(_list, ["cmp_imm", 3, _id]);
+            array_push(_list, ["bcc", _ip + "lanekeep", _id]);
+            array_push(_list, ["sbc_imm", 3, _id]);        // C is set: kind 0-2
+            array_push(_list, ["iny", 0, _id]);            // keep-running
+            array_push(_list, ["label", _ip + "lanekeep"]);
+            array_push(_list, ["sty_zp", _S_TMP, _id]);
+            array_push(_list, ["ldx_imm", _vi, _id]);       // X = voice + kind * 3
+            array_push(_list, ["cmp_imm", 1, _id]);
             array_push(_list, ["bcc", _ip + "lanesel", _id]);
             array_push(_list, ["ldx_imm", _vi + 3, _id]);
+            array_push(_list, ["cmp_imm", 2, _id]);
+            array_push(_list, ["bcc", _ip + "lanesel", _id]);
+            array_push(_list, ["ldx_imm", _vi + 6, _id]);
             array_push(_list, ["label", _ip + "lanesel"]);
             array_push(_list, ["ldy_imm", 1, _id]);
             array_push(_list, ["lda_izy", _vb, _id]);
@@ -1863,6 +1890,28 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["sta_zp", _vb + 1, _id]);
             array_push(_list, ["jmp_abs", _L_iloop, _id]);
             array_push(_list, ["label", _ip + "notlane"]);
+        }
+        if (_cut_set_used) {
+            // $14 lo hi = set the filter cutoff now.
+            array_push(_list, ["cmp_imm", 20, _id]);
+            array_push(_list, ["bne", _ip + "notcut", _id]);
+            array_push(_list, ["ldy_imm", 1, _id]);
+            array_push(_list, ["lda_izy", _vb, _id]);
+            array_push(_list, ["sta_abs", _key + "fcl", _id]);
+            array_push(_list, ["iny", 0, _id]);
+            array_push(_list, ["lda_izy", _vb, _id]);
+            array_push(_list, ["and_imm", 0x07, _id]);
+            array_push(_list, ["sta_abs", _key + "fch", _id]);
+            array_push(_list, ["jsr", _key + "fcut", _id]);
+            array_push(_list, ["clc", 0, _id]);
+            array_push(_list, ["lda_zp", _vb, _id]);
+            array_push(_list, ["adc_imm", 3, _id]);
+            array_push(_list, ["sta_zp", _vb, _id]);
+            array_push(_list, ["lda_zp", _vb + 1, _id]);
+            array_push(_list, ["adc_imm", 0, _id]);
+            array_push(_list, ["sta_zp", _vb + 1, _id]);
+            array_push(_list, ["jmp_abs", _L_iloop, _id]);
+            array_push(_list, ["label", _ip + "notcut"]);
         }
 
         // $04, or anything unrecognised = END — gate off, mark inactive.
@@ -1885,6 +1934,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["jsr", _key + "lanes", _id]);
             array_push(_list, ["ldx_imm", _vi + 3, _id]);
             array_push(_list, ["jsr", _key + "lanes", _id]);
+        }
+        if (_filter_lanes_used) {
+            array_push(_list, ["ldx_imm", _vi + 6, _id]);
+            array_push(_list, ["jsr", _key + "lanes", _id]);
+            array_push(_list, ["ldx_imm", _vi, _id]);
+            array_push(_list, ["jsr", _key + "lnfilt", _id]);
         }
         array_push(_list, ["clc", 0, _id]);
         array_push(_list, ["lda_abs", _key + "fql_" + string(_vi), _id]);
@@ -1985,7 +2040,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         // these up again if the new instrument starts the same table.
         var _ls = _key + "lnsave";
         array_push(_list, ["label", _ls]);
-        array_push(_list, ["ldy_imm", 2, _id]);
+        array_push(_list, ["ldy_imm", 3, _id]);
         array_push(_list, ["label", _ls + "lp"]);
         array_push(_list, ["lda_abx", _key + "lnc", _id]);
         array_push(_list, ["sta_abx", _key + "lnk", _id]);
@@ -1995,6 +2050,8 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abx", _key + "lsh", _id]);
         array_push(_list, ["lda_imm", 0, _id]);
         array_push(_list, ["sta_abx", _key + "lnc", _id]);
+        array_push(_list, ["sta_abx", _key + "isl", _id]);   // speed stops with the table
+        array_push(_list, ["sta_abx", _key + "ish", _id]);
         array_push(_list, ["inx", 0, _id]);
         array_push(_list, ["inx", 0, _id]);
         array_push(_list, ["inx", 0, _id]);
@@ -2036,6 +2093,37 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["lda_imm", 1, _id]);
         array_push(_list, ["sta_abx", _key + "lnc", _id]);
         array_push(_list, ["rts", 0, _id]);
+
+        if (_filter_lanes_used) {
+            // ── FILTER STEP ── X = voice: add its ~FILTER speed to the chip's
+            // 11-bit cutoff, clamped to 0..2047, and write it out.
+            var _lf = _key + "lnfilt";
+            array_push(_list, ["label", _lf]);
+            array_push(_list, ["lda_abx", _key + "ifl", _id]);
+            array_push(_list, ["ora_abx", _key + "ifh", _id]);
+            array_push(_list, ["beq", _lf + "ret", _id]);
+            array_push(_list, ["clc", 0, _id]);
+            array_push(_list, ["lda_abs", _key + "fcl", _id]);
+            array_push(_list, ["adc_abx", _key + "ifl", _id]);
+            array_push(_list, ["sta_abs", _key + "fcl", _id]);
+            array_push(_list, ["lda_abs", _key + "fch", _id]);
+            array_push(_list, ["adc_abx", _key + "ifh", _id]);
+            array_push(_list, ["bmi", _lf + "low", _id]);
+            array_push(_list, ["cmp_imm", 0x08, _id]);
+            array_push(_list, ["bcc", _lf + "out", _id]);
+            array_push(_list, ["lda_imm", 0xFF, _id]);          // past the top: 2047
+            array_push(_list, ["sta_abs", _key + "fcl", _id]);
+            array_push(_list, ["lda_imm", 0x07, _id]);
+            array_push(_list, ["bne", _lf + "out", _id]);
+            array_push(_list, ["label", _lf + "low"]);
+            array_push(_list, ["lda_imm", 0x00, _id]);          // below zero: 0
+            array_push(_list, ["sta_abs", _key + "fcl", _id]);
+            array_push(_list, ["label", _lf + "out"]);
+            array_push(_list, ["sta_abs", _key + "fch", _id]);
+            array_push(_list, ["jmp_abs", _key + "fcut", _id]);   // its rts returns
+            array_push(_list, ["label", _lf + "ret"]);
+            array_push(_list, ["rts", 0, _id]);
+        }
     }
 
     var _sng_use_fx = _sng_any_vib;

@@ -23,12 +23,14 @@ function scr_sid64_sim_voice_new() {
         display_compiled: undefined,
         slide : 0,
         pulse_slide : 0,
-        lane_pos : [0, 0],       // ~PITCH / ~PULSE record index into bytes
-        lane_count : [0, 0],     // frames left on the record; 0 = table idle
-        lane_off   : [0, 0],     // table start offset in bytes
-        lane_key   : ["", ""],   // table contents (shared tables match by content)
-        lane_keep  : [0, 0],     // frames left saved by the last new note
-        lane_speed : [0, 0],     // speed saved by the last new note
+        // Tables, [pitch, pulse, filter]:
+        lane_pos : [0, 0, 0],    // record index into bytes
+        lane_count : [0, 0, 0],  // frames left on the record; 0 = table idle
+        lane_off   : [0, 0, 0],  // table start offset in bytes
+        lane_key   : ["", "", ""], // table contents (shared tables match by content)
+        lane_keep  : [0, 0, 0],  // frames left saved by the last new note
+        lane_speed : [0, 0, 0],  // speed saved by the last new note
+        filt_slide : 0,          // ~FILTER cutoff speed per frame (16-bit)
         hold     : 0,
         base     : 0,           // base note index (0-95)
         active   : false,
@@ -161,12 +163,16 @@ function scr_sid64_sim_trigger(_sim, _v, _instr) {
     // Save each table's position for a keep-running table, then stop it.
     _vc.lane_keep[0] = _vc.lane_count[0];
     _vc.lane_keep[1] = _vc.lane_count[1];
+    _vc.lane_keep[2] = _vc.lane_count[2];
     _vc.lane_speed[0] = _vc.slide;
     _vc.lane_speed[1] = _vc.pulse_slide;
+    _vc.lane_speed[2] = _vc.filt_slide;
     _vc.slide = 0;
     _vc.pulse_slide = 0;
+    _vc.filt_slide = 0;
     _vc.lane_count[0] = 0;
     _vc.lane_count[1] = 0;
+    _vc.lane_count[2] = 0;
     if (!is_struct(_instr)) {
         // No instrument: pitch, plain pulse gate; AD/SR/PW left as they are.
         _vc.freq = _f;
@@ -413,9 +419,14 @@ function scr_sid64_sim_step(_sim, _v) {
             _vc.pc += 2;
         } else if (_op == 0x03) {
             _vc.pc = _arg;
-        } else if (_op >= 14 && _op <= 17) {
-            // start the pitch / pulse table; its first record loads this frame
-            scr_sid64_sim_lane_start(_vc, (_op - 14) & 1, _op >= 16, _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8));
+        } else if (_op >= 14 && _op <= 19) {
+            // start the pitch / pulse / filter table; its first record loads this frame
+            scr_sid64_sim_lane_start(_vc, (_op - 14) mod 3, _op >= 17, _arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8));
+            _vc.pc += 3;
+        } else if (_op == 20) {
+            // C$nnn: set the filter cutoff
+            _sim.fcut = (_arg | ((_vc.bytes[_vc.pc + 2] & 255) << 8)) & 0x7FF;
+            scr_sid64_sim_cut(_sim);
             _vc.pc += 3;
         } else {
             // END — gate off, instrument idle
@@ -451,8 +462,10 @@ function scr_sid64_sim_lane_start(_vc, _k, _keep, _off) {
             _vc.lane_count[_k] = _vc.lane_keep[_k];
             if (_k == 0) {
                 _vc.slide = _vc.lane_speed[0];
-            } else {
+            } else if (_k == 1) {
                 _vc.pulse_slide = _vc.lane_speed[1];
+            } else {
+                _vc.filt_slide = _vc.lane_speed[2];
             }
             _vc.lane_pos[_k] = _off + (_vc.lane_pos[_k] - _vc.lane_off[_k]);
             _vc.lane_off[_k] = _off;
@@ -482,7 +495,8 @@ function scr_sid64_sim_tie(_sim, _v, _note, _instr) {
     }
 }
 
-/// The player's table step: _k 0 = ~PITCH (sets slide), 1 = ~PULSE (sets pulse_slide).
+/// The player's table step: _k 0 = ~PITCH (sets slide), 1 = ~PULSE (sets
+/// pulse_slide), 2 = ~FILTER (sets filt_slide).
 function scr_sid64_sim_lane(_vc, _k) {
     if (_vc.lane_count[_k] == 0) return;
     _vc.lane_count[_k] -= 1;
@@ -497,8 +511,10 @@ function scr_sid64_sim_lane(_vc, _k) {
             var _speed = (_b[_p + 1] & 255) | ((_b[_p + 2] & 255) << 8);
             if (_k == 0) {
                 _vc.slide = _speed;
-            } else {
+            } else if (_k == 1) {
                 _vc.pulse_slide = _speed;
+            } else {
+                _vc.filt_slide = _speed;
             }
             _vc.lane_pos[_k] = _p + 3;
             return;
@@ -516,6 +532,14 @@ function scr_sid64_sim_fx(_sim, _v, _hrw) {
     if (_vc.active && _hrw == 0) {
         scr_sid64_sim_lane(_vc, 0);
         scr_sid64_sim_lane(_vc, 1);
+        scr_sid64_sim_lane(_vc, 2);
+        if (_vc.filt_slide != 0) {
+            // ~FILTER: the voice's cutoff speed moves the chip's cutoff, clamped
+            var _fs = _vc.filt_slide;
+            if (_fs >= 32768) _fs -= 65536;
+            _sim.fcut = clamp(_sim.fcut + _fs, 0, 2047);
+            scr_sid64_sim_cut(_sim);
+        }
         _vc.freq = (_vc.freq + _vc.slide) & 65535;
         if (_vc.pulse_slide != 0) {
             _vc.pw = (_vc.pw + _vc.pulse_slide) & 4095;

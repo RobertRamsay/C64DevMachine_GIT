@@ -297,6 +297,8 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
         ["~PITCH", "table of S/D/L lines, runs beside the program"],
         ["~PULSE", "table of Q/D/L lines, runs beside the program"],
         ["~PITCH+", "same, but carries on across new notes / ties"],
+        ["~FILTER", "table of C/D/L lines: cutoff speed per frame"],
+        ["C$400", "set the filter cutoff ($000-$7FF)"],
         ["", "the program must keep running (Dn / Ln) to hear them"],
         ["---", "gate off + stop: the note releases"],
         ["", ""],
@@ -340,7 +342,12 @@ function scr_sound_editor_instr_comment(_line, _lines) {
         if (_up == "~PULSE") return { text: "pulse table: Q/D/L lines on their own counter", bad: false };
         if (_up == "~PITCH+") return { text: "pitch table that keeps running across notes", bad: false };
         if (_up == "~PULSE+") return { text: "pulse table that keeps running across notes", bad: false };
-        return { text: "? tables are ~PITCH or ~PULSE", bad: true };
+        if (_up == "~FILTER") return { text: "filter table: C/D/L lines move the cutoff", bad: false };
+        if (_up == "~FILTER+") return { text: "filter table that keeps running across notes", bad: false };
+        return { text: "? tables are ~PITCH, ~PULSE or ~FILTER", bad: true };
+    }
+    if (string_copy(_up, 1, 2) == "C$") {
+        return { text: "set filter cutoff to " + string_delete(_up, 1, 1), bad: false };
     }
 
     // --- : end
@@ -373,6 +380,10 @@ function scr_sound_editor_instr_comment(_line, _lines) {
         if (_c0 == "S") _desc = "pitch slide per frame; S0 stops";
         if (_c0 == "Q") _desc = "pulse sweep per frame; Q0 stops (wraps 12-bit)";
         return { text: _desc + "; Dn sets duration", bad: false };
+    }
+    // C+n / C-n : a ~FILTER table's cutoff speed
+    if (_c0 == "C" && (string_char_at(_up, 2) == "+" || string_char_at(_up, 2) == "-")) {
+        return { text: "cutoff speed per frame (in a ~FILTER table); Dn sets duration", bad: false };
     }
     // N / N+n / N-n : note
     if (_c0 == "N") {
