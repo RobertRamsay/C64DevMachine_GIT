@@ -509,9 +509,13 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         // surface rebuild (below) actually renders the selected slot, or
         // skips it in favour of the composite render done here.
         var _comp_view_active = false;
+        var _cu_comp  = undefined;
+        var _cu_frame = undefined;
+        var _cu_row   = -1;
+        var _cu_col   = -1;
         if (_v2.comp_preview) {
-            var _cu_comp  = _v2.compositor;
-            var _cu_frame = _cu_comp.frames[_cu_comp.active_frame];
+            _cu_comp  = _v2.compositor;
+            _cu_frame = _cu_comp.frames[_cu_comp.active_frame];
             // COMP view anchors off the (row, col) the user last selected
             // in the grid (comp_anchor_*), NOT off active_cell. This way
             // switching to an empty layer keeps the composite view live —
@@ -519,8 +523,8 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             // when the layer they're editing doesn't have a cell yet.
             // Fall back to active_cell's position if no anchor was ever
             // set (e.g. user opened V2 and immediately enabled COMP).
-            var _cu_row = _v2.comp_anchor_row;
-            var _cu_col = _v2.comp_anchor_col;
+            _cu_row = _v2.comp_anchor_row;
+            _cu_col = _v2.comp_anchor_col;
             if (_cu_row < 0 || _cu_col < 0) {
                 if (_cu_comp.active_cell >= 0
                 &&  _cu_comp.active_cell < array_length(_cu_frame.cells)) {

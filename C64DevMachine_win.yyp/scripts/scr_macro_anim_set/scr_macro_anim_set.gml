@@ -317,7 +317,7 @@ function scr_node_step_macro_anim_set(_draw_x) {
         }
     }
 
-    var _by = y + 82 + _rows * 36 + 2;
+    _by = y + 82 + _rows * 36 + 2;
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _by, _draw_x + 70, _by + 14)) {
         scr_undo_snapshot();
         scr_anim_set_add_row(id);

@@ -4406,19 +4406,19 @@ if (_eb_hov && mouse_check_button_pressed(mb_left)) {
 
 	            var _clx1 = _clrx2 + 10;
 	            var _clx2 = _clx1 + 90;
-	            var _cl_hov = point_in_rectangle(_mx, _my, _clx1, _btn_y, _clx2, _btn_y + 20);
+	            var _clash_hov = point_in_rectangle(_mx, _my, _clx1, _btn_y, _clx2, _btn_y + 20);
 	            var _has_clashes = false;
 	            for (var _cci = 0; _cci < 1000; _cci++) {
 	                if (_asset.meta.clash_grid[_cci]) { _has_clashes = true; break; }
 	            }
 	            var _cl_flash = _has_clashes && ((current_time mod 600) < 300);
-	            draw_set_color(_cl_hov ? make_color_rgb(200, 150, 60) : (_cl_flash ? make_color_rgb(220, 60, 40) : make_color_rgb(140, 100, 30)));
+	            draw_set_color(_clash_hov ? make_color_rgb(200, 150, 60) : (_cl_flash ? make_color_rgb(220, 60, 40) : make_color_rgb(140, 100, 30)));
 	            draw_rectangle(_clx1, _btn_y, _clx2, _btn_y + 20, false);
 	            draw_set_color(c_white);
 	            draw_text_l(_clx1 + 45, _btn_y + 5, "CLEANUP");
                 
 				// Trigger Cleanup Logic
-	            if ((_cl_hov && mouse_check_button_pressed(mb_left)) || keyboard_check_pressed(vk_backspace)) {
+	            if ((_clash_hov && mouse_check_button_pressed(mb_left)) || keyboard_check_pressed(vk_backspace)) {
 	                scr_asset_kla_process_surface(_asset, true, -1); 
 	            }
 				// AUTO-CLEAN TOGGLE

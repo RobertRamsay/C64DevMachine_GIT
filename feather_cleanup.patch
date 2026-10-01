@@ -1,0 +1,224 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 92e9901..0127d5e 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -4406,19 +4406,19 @@ if (_eb_hov && mouse_check_button_pressed(mb_left)) {
+ 
+ 	            var _clx1 = _clrx2 + 10;
+ 	            var _clx2 = _clx1 + 90;
+-	            var _cl_hov = point_in_rectangle(_mx, _my, _clx1, _btn_y, _clx2, _btn_y + 20);
++	            var _clash_hov = point_in_rectangle(_mx, _my, _clx1, _btn_y, _clx2, _btn_y + 20);
+ 	            var _has_clashes = false;
+ 	            for (var _cci = 0; _cci < 1000; _cci++) {
+ 	                if (_asset.meta.clash_grid[_cci]) { _has_clashes = true; break; }
+ 	            }
+ 	            var _cl_flash = _has_clashes && ((current_time mod 600) < 300);
+-	            draw_set_color(_cl_hov ? make_color_rgb(200, 150, 60) : (_cl_flash ? make_color_rgb(220, 60, 40) : make_color_rgb(140, 100, 30)));
++	            draw_set_color(_clash_hov ? make_color_rgb(200, 150, 60) : (_cl_flash ? make_color_rgb(220, 60, 40) : make_color_rgb(140, 100, 30)));
+ 	            draw_rectangle(_clx1, _btn_y, _clx2, _btn_y + 20, false);
+ 	            draw_set_color(c_white);
+ 	            draw_text_l(_clx1 + 45, _btn_y + 5, "CLEANUP");
+                 
+ 				// Trigger Cleanup Logic
+-	            if ((_cl_hov && mouse_check_button_pressed(mb_left)) || keyboard_check_pressed(vk_backspace)) {
++	            if ((_clash_hov && mouse_check_button_pressed(mb_left)) || keyboard_check_pressed(vk_backspace)) {
+ 	                scr_asset_kla_process_surface(_asset, true, -1); 
+ 	            }
+ 				// AUTO-CLEAN TOGGLE
+diff --git a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml
+index bc9d130..91e5070 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mcp_probe/Create_0.gml
+@@ -373,10 +373,11 @@ probe_project_command = function(_method,_args) {
+     }
+     if (_method == "load_project" || _method == "new_project") {
+         if (!global.manual_saved && (!variable_struct_exists(_args,"discard_unsaved") || _args.discard_unsaved!=true)) throw "Current project has unsaved changes; save first or explicitly set discard_unsaved=true.";
++        var _load_path = "";
+         if (_method == "load_project") {
+-            var _path = probe_project_path(_args.path);
+-            if (!file_exists(_path)) throw "Project file does not exist.";
+-            var _buf = buffer_load(_path);
++            _load_path = probe_project_path(_args.path);
++            if (!file_exists(_load_path)) throw "Project file does not exist.";
++            var _buf = buffer_load(_load_path);
+             if (_buf<0) throw "Cannot read project.";
+             var _json = buffer_read(_buf,buffer_text); buffer_delete(_buf);
+             var _root = json_parse(_json);
+@@ -397,13 +398,13 @@ probe_project_command = function(_method,_args) {
+             probe_restart_pending=true;
+             return {state:"restart_queued",recovery_path:_backup,note:"Editor restarts next frame and reconnects using saved pairing. Inspect before editing."};
+         }
+-        try { with (_wm) scr_load_workspace_from_path(_path, true); }
++        try { with (_wm) scr_load_workspace_from_path(_load_path, true); }
+         catch (_error) {
+             // Preserve the on-disk recovery file even if a malformed asset defeats native loading.
+             throw "Native load failed. Recovery copy: " + _backup + ". Inspect before continuing.";
+         }
+         probe_repair_uids();
+-        return {loaded:true,path:_path,recovery_path:_backup,workspace_key:probe_workspace_key()};
++        return {loaded:true,path:_load_path,recovery_path:_backup,workspace_key:probe_workspace_key()};
+     }
+     if (_method == "history") {
+         if (_args.direction!="undo" && _args.direction!="redo") throw "Invalid history direction.";
+diff --git a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+index 3c1bded..619a22a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+@@ -85,8 +85,9 @@ var _base = "unsaved";
+     with (obj_mapping_box) array_push(box_data, { x:x, y:y, box_w:box_w, box_h:box_h, box_name:box_name, box_col_idx:box_col_idx });
+ 
+     var asset_data = [];
++    var _am = noone;
+     if (instance_exists(obj_asset_manager)) {
+-        var _am = obj_asset_manager;
++        _am = obj_asset_manager;
+         for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
+             var _a     = ds_list_find_value(_am.asset_list, _ai);
+             var _hex   = "";
+@@ -263,10 +264,16 @@ var _base = "unsaved";
+         }
+     }
+ 
++var _save_groups = [];
++if (_am != noone) {
++    if (variable_instance_exists(_am, "asset_groups")) {
++        _save_groups = _am.asset_groups;
++    }
++}
+ var _root = { nodes:node_data, boxes:box_data, assets:asset_data,
+  // Group registry. Project-level, not per-asset, so an empty group
+  // survives a save with nothing in it.
+- asset_groups:       variable_instance_exists(_am, "asset_groups") ? _am.asset_groups : [],
++ asset_groups:       _save_groups,
+                   basic_unlocked:global.basic_unlocked, kernal_unlocked:global.kernal_unlocked,
+                   code_editor_font_index: code_editor_font_index,
+                   map_global_mixed: obj_workspace_manager.map_global_mixed,
+diff --git a/C64DevMachine_win.yyp/scripts/scr_macro_anim_set/scr_macro_anim_set.gml b/C64DevMachine_win.yyp/scripts/scr_macro_anim_set/scr_macro_anim_set.gml
+index a407174..fa8ba5b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_macro_anim_set/scr_macro_anim_set.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_macro_anim_set/scr_macro_anim_set.gml
+@@ -317,7 +317,7 @@ function scr_node_step_macro_anim_set(_draw_x) {
+         }
+     }
+ 
+-    var _by = y + 82 + _rows * 36 + 2;
++    _by = y + 82 + _rows * 36 + 2;
+     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _by, _draw_x + 70, _by + 14)) {
+         scr_undo_snapshot();
+         scr_anim_set_add_row(id);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+index 09e9a36..498746a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+@@ -106,8 +106,9 @@
+ 	// 3B. GATHER ASSET MANAGER DATA
+ 	// ================================================================
+ 	var asset_data = [];
++	var _am = noone;
+ 	if (instance_exists(obj_asset_manager)) {
+-	    var _am = obj_asset_manager;
++	    _am = obj_asset_manager;
+ 	    for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
+ 	        var _a = ds_list_find_value(_am.asset_list, _ai);
+ 	        var _entry = {
+@@ -384,13 +385,19 @@
+ 	    // ================================================================
+ 	    // 4. COMBINE AND PRETTY-PRINT
+ 	    // ================================================================
++		var _save_groups = [];
++		if (_am != noone) {
++		    if (variable_instance_exists(_am, "asset_groups")) {
++		        _save_groups = _am.asset_groups;
++		    }
++		}
+ 		var save_root = {
+ 		        nodes:              node_data,
+ 		        boxes:              box_data,
+ 		        assets:             asset_data,
+ 		        // Group registry. Project-level, not per-asset, so an empty group
+ 		        // survives a save with nothing in it.
+-		        asset_groups:       variable_instance_exists(_am, "asset_groups") ? _am.asset_groups : [],
++		        asset_groups:       _save_groups,
+ 		        basic_unlocked:     global.basic_unlocked,
+ 		        kernal_unlocked:    global.kernal_unlocked,
+ 		        code_editor_font_index: code_editor_font_index,
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+index 96e8a27..df1069c 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+@@ -103,8 +103,9 @@ if (!_hash_only) {
+ // 3B. GATHER ASSET MANAGER DATA
+ // ================================================================
+ var asset_data = [];
++var _am = noone;
+ if (instance_exists(obj_asset_manager)) {
+-    var _am = obj_asset_manager;
++    _am = obj_asset_manager;
+     for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
+         var _a = ds_list_find_value(_am.asset_list, _ai);
+         var _entry = {
+@@ -375,13 +376,19 @@ if (instance_exists(obj_asset_manager)) {
+     // ================================================================
+     // 4. COMBINE AND PRETTY-PRINT
+     // ================================================================
++	var _save_groups = [];
++	if (_am != noone) {
++	    if (variable_instance_exists(_am, "asset_groups")) {
++	        _save_groups = _am.asset_groups;
++	    }
++	}
+ 	var save_root = {
+ 	        nodes:              node_data,
+ 	        boxes:              box_data,
+ 	        assets:             asset_data,
+ 	        // Group registry. Project-level, not per-asset, so an empty group
+ 	        // survives a save with nothing in it.
+-	        asset_groups:       variable_instance_exists(_am, "asset_groups") ? _am.asset_groups : [],
++	        asset_groups:       _save_groups,
+ 	        basic_unlocked:     global.basic_unlocked,
+ 	        kernal_unlocked:    global.kernal_unlocked,
+ 	        code_editor_font_index: code_editor_font_index,
+diff --git a/C64DevMachine_win.yyp/scripts/scr_spred64_v2_draw/scr_spred64_v2_draw.gml b/C64DevMachine_win.yyp/scripts/scr_spred64_v2_draw/scr_spred64_v2_draw.gml
+index f5af0b8..558dd56 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_spred64_v2_draw/scr_spred64_v2_draw.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_spred64_v2_draw/scr_spred64_v2_draw.gml
+@@ -509,9 +509,13 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
+         // surface rebuild (below) actually renders the selected slot, or
+         // skips it in favour of the composite render done here.
+         var _comp_view_active = false;
++        var _cu_comp  = undefined;
++        var _cu_frame = undefined;
++        var _cu_row   = -1;
++        var _cu_col   = -1;
+         if (_v2.comp_preview) {
+-            var _cu_comp  = _v2.compositor;
+-            var _cu_frame = _cu_comp.frames[_cu_comp.active_frame];
++            _cu_comp  = _v2.compositor;
++            _cu_frame = _cu_comp.frames[_cu_comp.active_frame];
+             // COMP view anchors off the (row, col) the user last selected
+             // in the grid (comp_anchor_*), NOT off active_cell. This way
+             // switching to an empty layer keeps the composite view live —
+@@ -519,8 +523,8 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
+             // when the layer they're editing doesn't have a cell yet.
+             // Fall back to active_cell's position if no anchor was ever
+             // set (e.g. user opened V2 and immediately enabled COMP).
+-            var _cu_row = _v2.comp_anchor_row;
+-            var _cu_col = _v2.comp_anchor_col;
++            _cu_row = _v2.comp_anchor_row;
++            _cu_col = _v2.comp_anchor_col;
+             if (_cu_row < 0 || _cu_col < 0) {
+                 if (_cu_comp.active_cell >= 0
+                 &&  _cu_comp.active_cell < array_length(_cu_frame.cells)) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+index 3e00a8c..74fa049 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+@@ -575,7 +575,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         var _depth_only = (_m.tool == "DEPTH") && _lh && !_rh2;
+         // Interpolate from the last point so fast strokes stay continuous
+         var _sx = _px;
+-        var _sy = _py;
++        _sy = _py;
+         if (_m.last_x >= 0) { _sx = _m.last_x; _sy = _m.last_y; }
+         var _steps = max(1, max(abs(_px - _sx), abs(_py - _sy)));
+         for (var _k = 0; _k <= _steps; _k++) {

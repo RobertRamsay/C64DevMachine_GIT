@@ -85,8 +85,9 @@ var _base = "unsaved";
     with (obj_mapping_box) array_push(box_data, { x:x, y:y, box_w:box_w, box_h:box_h, box_name:box_name, box_col_idx:box_col_idx });
 
     var asset_data = [];
+    var _am = noone;
     if (instance_exists(obj_asset_manager)) {
-        var _am = obj_asset_manager;
+        _am = obj_asset_manager;
         for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
             var _a     = ds_list_find_value(_am.asset_list, _ai);
             var _hex   = "";
@@ -263,10 +264,16 @@ var _base = "unsaved";
         }
     }
 
+var _save_groups = [];
+if (_am != noone) {
+    if (variable_instance_exists(_am, "asset_groups")) {
+        _save_groups = _am.asset_groups;
+    }
+}
 var _root = { nodes:node_data, boxes:box_data, assets:asset_data,
  // Group registry. Project-level, not per-asset, so an empty group
  // survives a save with nothing in it.
- asset_groups:       variable_instance_exists(_am, "asset_groups") ? _am.asset_groups : [],
+ asset_groups:       _save_groups,
                   basic_unlocked:global.basic_unlocked, kernal_unlocked:global.kernal_unlocked,
                   code_editor_font_index: code_editor_font_index,
                   map_global_mixed: obj_workspace_manager.map_global_mixed,

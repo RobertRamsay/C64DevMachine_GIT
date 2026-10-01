@@ -373,10 +373,11 @@ probe_project_command = function(_method,_args) {
     }
     if (_method == "load_project" || _method == "new_project") {
         if (!global.manual_saved && (!variable_struct_exists(_args,"discard_unsaved") || _args.discard_unsaved!=true)) throw "Current project has unsaved changes; save first or explicitly set discard_unsaved=true.";
+        var _load_path = "";
         if (_method == "load_project") {
-            var _path = probe_project_path(_args.path);
-            if (!file_exists(_path)) throw "Project file does not exist.";
-            var _buf = buffer_load(_path);
+            _load_path = probe_project_path(_args.path);
+            if (!file_exists(_load_path)) throw "Project file does not exist.";
+            var _buf = buffer_load(_load_path);
             if (_buf<0) throw "Cannot read project.";
             var _json = buffer_read(_buf,buffer_text); buffer_delete(_buf);
             var _root = json_parse(_json);
@@ -397,13 +398,13 @@ probe_project_command = function(_method,_args) {
             probe_restart_pending=true;
             return {state:"restart_queued",recovery_path:_backup,note:"Editor restarts next frame and reconnects using saved pairing. Inspect before editing."};
         }
-        try { with (_wm) scr_load_workspace_from_path(_path, true); }
+        try { with (_wm) scr_load_workspace_from_path(_load_path, true); }
         catch (_error) {
             // Preserve the on-disk recovery file even if a malformed asset defeats native loading.
             throw "Native load failed. Recovery copy: " + _backup + ". Inspect before continuing.";
         }
         probe_repair_uids();
-        return {loaded:true,path:_path,recovery_path:_backup,workspace_key:probe_workspace_key()};
+        return {loaded:true,path:_load_path,recovery_path:_backup,workspace_key:probe_workspace_key()};
     }
     if (_method == "history") {
         if (_args.direction!="undo" && _args.direction!="redo") throw "Invalid history direction.";

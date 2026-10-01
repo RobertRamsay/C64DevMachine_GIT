@@ -103,8 +103,9 @@ if (!_hash_only) {
 // 3B. GATHER ASSET MANAGER DATA
 // ================================================================
 var asset_data = [];
+var _am = noone;
 if (instance_exists(obj_asset_manager)) {
-    var _am = obj_asset_manager;
+    _am = obj_asset_manager;
     for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
         var _a = ds_list_find_value(_am.asset_list, _ai);
         var _entry = {
@@ -375,13 +376,19 @@ if (instance_exists(obj_asset_manager)) {
     // ================================================================
     // 4. COMBINE AND PRETTY-PRINT
     // ================================================================
+	var _save_groups = [];
+	if (_am != noone) {
+	    if (variable_instance_exists(_am, "asset_groups")) {
+	        _save_groups = _am.asset_groups;
+	    }
+	}
 	var save_root = {
 	        nodes:              node_data,
 	        boxes:              box_data,
 	        assets:             asset_data,
 	        // Group registry. Project-level, not per-asset, so an empty group
 	        // survives a save with nothing in it.
-	        asset_groups:       variable_instance_exists(_am, "asset_groups") ? _am.asset_groups : [],
+	        asset_groups:       _save_groups,
 	        basic_unlocked:     global.basic_unlocked,
 	        kernal_unlocked:    global.kernal_unlocked,
 	        code_editor_font_index: code_editor_font_index,

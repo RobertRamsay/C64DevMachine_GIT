@@ -575,7 +575,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _depth_only = (_m.tool == "DEPTH") && _lh && !_rh2;
         // Interpolate from the last point so fast strokes stay continuous
         var _sx = _px;
-        var _sy = _py;
+        _sy = _py;
         if (_m.last_x >= 0) { _sx = _m.last_x; _sy = _m.last_y; }
         var _steps = max(1, max(abs(_px - _sx), abs(_py - _sy)));
         for (var _k = 0; _k <= _steps; _k++) {
