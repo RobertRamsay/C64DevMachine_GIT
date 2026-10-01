@@ -1,0 +1,55 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index b0219d0..a399f9f 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -1143,6 +1143,18 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     }
+     var _pw_tip = "";   // sweep warning takes priority over command help
+ 
++    // TIMING: PER VOICE playback: each column scrolls on its own so every
++    // voice's playing row sits on the same line as the followed voice's —
++    // nobody's position drifts out of view.
++    var _col_off = [0, 0, 0];
++    if (is_array(_voice_pos)) {
++        var _anchor = _voice_hl[clamp(_m.sel_voice, 0, 2)];
++        if (_anchor < 0) _anchor = _m.list_scroll + floor(_vis / 2);
++        for (var _cov = 0; _cov < 3; _cov++) {
++            if (_voice_hl[_cov] >= 0) _col_off[_cov] = _voice_hl[_cov] - _anchor;
++        }
++    }
++
+     for (var _r = 0; _r < _vis; _r++) {
+         var _row = _r + _m.list_scroll;
+         if (_row >= _grid_len) {
+@@ -1177,11 +1189,13 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         draw_set_color((_row mod 16 == 0) ? make_color_rgb(220, 200, 120) : make_color_rgb(90, 90, 120));
+         draw_text_transformed_l(_col_gutter_x + 8, _ry + 6, string(_row), _txt_scale, _txt_scale, 0);
+ 
++        var _row_base = _row;
+         for (var _cv = 0; _cv < 3; _cv++) {
++            _row = _row_base + _col_off[_cv];
+             var _cx1 = _col_x[_cv];
+             var _cx2 = _cx1 + _lane_w;
+             var _has_pat = (_col_pat[_cv] != noone);
+-            var _in_range = _has_pat && (_row < _col_pat[_cv].pattern_len);
++            var _in_range = _has_pat && (_row >= 0) && (_row < _col_pat[_cv].pattern_len);
+ 
+             var _is_editing = (_m.edit_active && _m.edit_voice == _cv && _m.edit_step == _row);
+             var _hov = _in_range && point_in_rectangle(_mx, _my, _cx1, _ry, _cx2, _ry + _row_h);
+@@ -1199,7 +1213,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+                 draw_set_color(make_color_rgb(26, 26, 38));
+                 draw_rectangle(_cx1, _ry, _cx2, _ry + _row_h, false);
+                 draw_set_color(make_color_rgb(110, 110, 130));
+-                draw_text_transformed_l(_cx1 + 8, _ry + 8, "END", _txt_scale, _txt_scale, 0);
++                if (_row >= 0) draw_text_transformed_l(_cx1 + 8, _ry + 8, "END", _txt_scale, _txt_scale, 0);
+                 continue;
+             }
+ 
+@@ -1383,6 +1397,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+                 global.undo_dirty = true;
+             }
+         }
++        _row = _row_base;   // per-voice column offsets (PER VOICE playback) end here
+     }
+ 
+     // ── TEXT INPUT WHILE EDITING A CELL ──
