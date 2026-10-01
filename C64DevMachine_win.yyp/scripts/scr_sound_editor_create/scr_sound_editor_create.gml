@@ -74,7 +74,7 @@ function scr_sound_editor_create(_asset) {
         songs         : [
             {
                 name     : "SONG 00",
-                order    : [ { v1: 0, v2: 1, v3: 2, repeat_short: false, force_len: 0 } ],
+                order    : [ { v1: 0, v2: 1, v3: 2, dg: -1, repeat_short: false, force_len: 0 } ],
                 loop     : true,
                 loop_row : 0
             }
@@ -86,6 +86,20 @@ function scr_sound_editor_create(_asset) {
 
         sel_order_row : 0,
         order_scroll  : 0,
+
+        // ── DIGI TRACK ── $D418 samples as a 4th voice. See scr_music_digi.
+        digi_rate     : 8000,
+        digi_samples  : array_create(16, ""),
+        digi_patterns : [],
+        // editor / preview state (never saved)
+        dg_focus      : false,
+        dg_sel_step   : 0,
+        dg_slots_open : false,
+        dg_type_step  : -1,
+        dg_type_time  : 0,
+        dg_last_key   : -1,
+        dg_inst       : -1,
+        dg_panel_rect : [0, 0, 0, 0],
 
         // ── EDITOR CURSOR ──
         sel_voice     : 0,

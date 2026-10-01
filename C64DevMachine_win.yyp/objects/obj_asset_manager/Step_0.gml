@@ -2993,6 +2993,7 @@ if (mouse_check_button_pressed(mb_right) && _mouse_in_panel && hover_idx >= 0) {
         if (_asset.type == "SAMPLE") {
             // A preview of the asset being deleted would otherwise play on.
             scr_sample_preview_stop();
+            scr_digi_free_sample_sound(_asset);
         }
 
         // Remove stale LOAD_ORG linked_asset references to this asset

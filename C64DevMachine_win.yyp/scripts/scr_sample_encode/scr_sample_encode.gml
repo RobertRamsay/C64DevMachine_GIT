@@ -17,35 +17,46 @@ function scr_sample_src_at(_buf, _len, _pos) {
 }
 
 /// @function scr_sample_encode(_asset)
-/// @desc Rebuilds meta.enc (the 4-bit levels the C64 will output, after packing
-///       round-trips) and meta.packed (the bytes the player reads).
+/// @desc Rebuilds meta.enc / meta.packed at the asset's own rate (the editor view).
+function scr_sample_encode(_asset) {
+    var _m = _asset.meta;
+    var _r = scr_sample_encode_at(_asset, _m.rate, _m.pack);
+    _m.enc        = _r.enc;
+    _m.packed     = _r.packed;
+    _m.out_count  = array_length(_r.enc);
+    _m.out_bytes  = array_length(_r.packed);
+    _m.clip_count = _r.clip;
+    _m.enc_dirty  = false;
+    _m.enc_ver   += 1;
+}
+
+/// @function scr_sample_encode_at(_asset, _rate, _pack)
+/// @desc Encodes the asset's trimmed source at any playback rate, leaving the
+///       asset untouched. Returns { enc, packed, clip }:
+///         enc     the 4-bit levels the C64 outputs, after packing round-trips
+///         packed  the bytes a player reads
+///         clip    how many samples the gain pushed past full scale
+///       The Music Maker digi track calls this at the song's digi rate.
 ///
 ///   pack 0  4-bit nibbles, two samples per byte, FIRST sample in the LOW nibble.
 ///   pack 1  2-bit delta, four samples per byte, first in bits 0-1. Each code
 ///           adds DELTA[code] = -3,-1,+1,+3 to a level that starts at 8. The
 ///           encoder only picks codes that keep the level inside 0-15, so the
 ///           decoder never needs to clamp.
-function scr_sample_encode(_asset) {
+function scr_sample_encode_at(_asset, _rate, _pack) {
     var _m = _asset.meta;
-    _m.enc        = [];
-    _m.packed     = [];
-    _m.out_count  = 0;
-    _m.out_bytes  = 0;
-    _m.clip_count = 0;
-    _m.enc_dirty  = false;
-    _m.enc_ver   += 1;
-
+    var _res = { enc: [], packed: [], clip: 0 };
     if (_m.src_len <= 1 || _m.src_rate <= 0 || !buffer_exists(_asset.buffer)) {
-        return;
+        return _res;
     }
     var _buf  = _asset.buffer;
     var _len  = _m.src_len;
     var _ts   = clamp(_m.trim_start, 0, _len);
     var _te   = clamp(_m.trim_end, _ts, _len);
-    var _step = _m.src_rate / max(1, _m.rate);
+    var _step = _m.src_rate / max(1, _rate);
     var _n    = floor((_te - _ts) / _step);
     if (_n <= 0) {
-        return;
+        return _res;
     }
     var _gain = _m.gain / 100;
 
@@ -92,7 +103,7 @@ function scr_sample_encode(_asset) {
 
     var _enc    = array_create(_n, 0);
     var _packed = [];
-    if (_m.pack == 1) {
+    if (_pack == 1) {
         // ── 2-BIT DELTA ──
         var _delta = [-3, -1, 1, 3];
         var _level = 8;
@@ -137,11 +148,10 @@ function scr_sample_encode(_asset) {
         }
     }
 
-    _m.enc        = _enc;
-    _m.packed     = _packed;
-    _m.out_count  = _n;
-    _m.out_bytes  = array_length(_packed);
-    _m.clip_count = _clip;
+    _res.enc    = _enc;
+    _res.packed = _packed;
+    _res.clip   = _clip;
+    return _res;
 }
 
 // ═══════════════════════════ PREVIEW ═══════════════════════════

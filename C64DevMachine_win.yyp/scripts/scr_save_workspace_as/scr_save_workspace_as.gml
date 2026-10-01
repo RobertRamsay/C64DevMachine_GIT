@@ -306,6 +306,13 @@
 
 		 if ((_a.type == "MUSIC_MAKER" || _a.type == "SFX_MAKER")) {
             scr_music_sid_copy_meta(_a.meta, _meta_out);
+            if (_a.type == "MUSIC_MAKER") {
+                // Digi track: rate, sample slots, digi pattern pool. Order rows
+                // carry their dg index inside songs[].
+                _meta_out.digi_rate     = _a.meta.digi_rate;
+                _meta_out.digi_samples  = _a.meta.digi_samples;
+                _meta_out.digi_patterns = _a.meta.digi_patterns;
+            }
             _meta_out.voice_mask = variable_struct_exists(_a.meta, "voice_mask") ? _a.meta.voice_mask : 7;
             _meta_out.sfx_chip = variable_struct_exists(_a.meta, "sfx_chip") ? _a.meta.sfx_chip : 0;
             _meta_out.instruments      = variable_struct_exists(_a.meta, "instruments")      ? _a.meta.instruments      : [];

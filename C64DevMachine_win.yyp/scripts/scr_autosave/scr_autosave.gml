@@ -176,6 +176,11 @@ var _base = "unsaved";
             }
             if ((_a.type == "MUSIC_MAKER" || _a.type == "SFX_MAKER")) {
                 scr_music_sid_copy_meta(_me, _mo);
+                if (_a.type == "MUSIC_MAKER") {
+                    _mo.digi_rate     = _me.digi_rate;
+                    _mo.digi_samples  = _me.digi_samples;
+                    _mo.digi_patterns = _me.digi_patterns;
+                }
                 _mo.voice_mask = variable_struct_exists(_me, "voice_mask") ? _me.voice_mask : 7;
             _mo.sfx_chip = variable_struct_exists(_me, "sfx_chip") ? _me.sfx_chip : 0;
             _mo.instruments      = variable_struct_exists(_me, "instruments")      ? _me.instruments      : [];

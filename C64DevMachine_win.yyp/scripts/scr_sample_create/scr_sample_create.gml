@@ -64,7 +64,12 @@ function scr_sample_create(_asset) {
         wf_enc_key : "",
         drag       : -1,       // -1 none, 0 dragging trim start, 1 trim end
         warn_msg   : "",
-        warn_timer : 0
+        warn_timer : 0,
+
+        // ── MUSIC MAKER DIGI PREVIEW (never saved) ── see scr_digi_sample_sound
+        pv_dg_snd  : -1,
+        pv_dg_buf  : -1,
+        pv_dg_key  : ""
     };
 }
 

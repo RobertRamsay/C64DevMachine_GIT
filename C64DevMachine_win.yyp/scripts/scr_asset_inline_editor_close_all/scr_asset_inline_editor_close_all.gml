@@ -19,6 +19,12 @@ function scr_asset_inline_editor_close_all() {
                 _a.meta.preview_job_index = 0;
                 _a.meta.preview_next_us = 0;
             }
+            if (_a.type == "MUSIC_MAKER") {
+                // The digi track's sound would otherwise ring on after closing.
+                scr_digi_stop(_a.meta);
+                _a.meta.dg_last_key = -1;
+                _a.meta.dg_focus = false;
+            }
             if (!variable_struct_exists(_a.meta, "inline_edit_open")) {
                 continue;
             }

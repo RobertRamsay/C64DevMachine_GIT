@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_music_digi",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_music_digi",
+  "parent":{
+    "name":"SOUND_EDITOR",
+    "path":"folders/SCRIPTS/SOUND_EDITOR.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

@@ -1070,6 +1070,20 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
 	            scr_sound_editor_create(_new_asset);
 	            var _sem = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
                 scr_music_sid_copy_meta(_sem, _new_asset.meta);
+                // Digi track (absent in files saved before it existed — the
+                // defaults from scr_sound_editor_create stand).
+                var _dg_rate = _sem[$ "digi_rate"];
+                if (!is_undefined(_dg_rate)) {
+                    _new_asset.meta.digi_rate = real(_dg_rate);
+                }
+                var _dg_smp = _sem[$ "digi_samples"];
+                if (is_array(_dg_smp)) {
+                    _new_asset.meta.digi_samples = _dg_smp;
+                }
+                var _dg_pats = _sem[$ "digi_patterns"];
+                if (is_array(_dg_pats)) {
+                    _new_asset.meta.digi_patterns = _dg_pats;
+                }
                 _new_asset.meta.voice_mask = variable_struct_exists(_sem,"voice_mask") ? _sem.voice_mask : 7;
                 _new_asset.meta.sfx_chip = variable_struct_exists(_sem,"sfx_chip") ? _sem.sfx_chip : 0;
 	            if (variable_struct_exists(_sem, "instruments"))      _new_asset.meta.instruments      = _sem.instruments;
