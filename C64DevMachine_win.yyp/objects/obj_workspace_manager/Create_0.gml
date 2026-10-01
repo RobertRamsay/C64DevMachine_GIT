@@ -70,6 +70,9 @@ global.music_col_scroll = [0, 0, 0];
 global.music_cmd_guide_open = false;
 // Music Maker JAM mode: note keys and piano clicks only play, nothing is written.
 global.music_jam = false;
+// JAM polyphony: each new note on the next voice (all chips) instead of cutting itself.
+global.music_poly = false;
+global.music_poly_next = 0;
 for (var _sri = 0; _sri < SID64_RING; _sri++) {
     global.sid64_stream.ring[_sri] = buffer_create(_sid64_ring_samples * 2, buffer_fixed, 2);
 }
