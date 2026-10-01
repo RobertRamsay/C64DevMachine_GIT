@@ -18,6 +18,8 @@
 ///               speed per frame (signed). The cutoff is shared by the whole
 ///               chip, so give the table to the instruments of one voice.
 ///   C$nnn       set the filter cutoff ($000-$7FF) -> [$14, lo, hi]
+///   V$xy        start / change the instrument vibrato from here: x speed,
+///               y depth, as pattern 4XY. V0 stops it -> [$1B, xy]
 ///   ~PITCH4 / ~PULSE4 / ~FILTER4 (+ allowed: ~PITCH4+): the table steps four
 ///               times a frame, as Galway's player does — each Dn counts
 ///               quarter-frames, and the frame's speed is the sum of the four.
@@ -200,6 +202,23 @@ function scr_instrument_parse(_text) {
             }
             if (!_gok) array_push(_out.errors, "step " + string(_ti) + ": use G$00..G$FF for raw gate/wave control");
             array_push(_out.bytes, 10, _gok ? real(hex_to_decimal(_ghex)) : 0);
+            continue;
+        }
+        // ── V$xy / V0 ── vibrato from this point (speed x, depth y)
+        if (_c0 == "V") {
+            var _vhex = string_delete(_up, 1, 1);
+            if (string_char_at(_vhex, 1) == "$") _vhex = string_delete(_vhex, 1, 1);
+            var _vok = string_length(_vhex) > 0 && string_length(_vhex) <= 2;
+            for (var _j = 1; _j <= string_length(_vhex); _j++) {
+                if (string_pos(string_char_at(_vhex, _j), "0123456789ABCDEF") == 0) _vok = false;
+            }
+            var _vval = 0;
+            if (_vok) {
+                _vval = real(hex_to_decimal(_vhex));
+            } else {
+                array_push(_out.errors, "step " + string(_ti) + ": V$xy sets vibrato speed x, depth y (V0 stops it)");
+            }
+            array_push(_out.bytes, 27, _vval & 255);
             continue;
         }
         // ── C$nnn ── set the filter cutoff (11 bits)

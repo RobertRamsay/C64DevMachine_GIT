@@ -299,6 +299,7 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
         ["~PITCH+", "same, but carries on across new notes / ties"],
         ["~FILTER", "table of C/D/L lines: cutoff speed per frame"],
         ["C$400", "set the filter cutoff ($000-$7FF)"],
+        ["V$44", "vibrato from here: speed 4, depth 4 (V0 stops)"],
         ["~PITCH4", "table stepping 4x a frame: Dn counts quarter frames"],
         [">nn", "end a table by carrying on in instrument nn's table"],
         ["", "the program must keep running (Dn / Ln) to hear them"],
@@ -385,6 +386,11 @@ function scr_sound_editor_instr_comment(_line, _lines) {
         if (_c0 == "S") _desc = "pitch slide per frame; S0 stops";
         if (_c0 == "Q") _desc = "pulse sweep per frame; Q0 stops (wraps 12-bit)";
         return { text: _desc + "; Dn sets duration", bad: false };
+    }
+    // V$xy : vibrato from here
+    if (_c0 == "V") {
+        if (_up == "V0" || _up == "V$00") return { text: "vibrato off", bad: false };
+        return { text: "vibrato from here: speed x, depth y (as pattern 4XY)", bad: false };
     }
     // >nn : carry on in another instrument's table
     if (_c0 == ">") {

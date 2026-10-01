@@ -453,6 +453,12 @@ function scr_sid64_sim_step(_sim, _v) {
             _vc.cb = (_vc.active == 2) ? (_arg & 0xFE) : _arg;
             scr_sid64_sim_write(_sim, _r0 + 4, _vc.cb);
             _vc.pc += 2;
+        } else if (_op == 27) {
+            // V$xy: instrument vibrato from here (speed x, depth y), no delay
+            _vc.ivs = (_arg >> 4) & 15;
+            _vc.ivp = ((_arg & 15) * 4) & 0x7F;
+            _vc.ivdl = 0;
+            _vc.pc += 2;
         } else if (_op == 0x03) {
             _vc.pc = _arg;
         } else if (_op >= 14 && _op <= 19) {

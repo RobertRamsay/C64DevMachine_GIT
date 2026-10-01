@@ -823,7 +823,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         "$xx WAVE   N  N+n  N-n NOTE   Dn HOLD n FRAMES   --- END",
         "Ln LOOP TO STEP n   Rc:n REPEAT FROM STEP n, c MORE TIMES",
         "F+n FINE   S+n SLIDE   P$xxx PULSE   Q+n PULSE SWEEP",
-        "G$xx RAW GATE/WAVE   H0 NO HARD RESTART   C$xxx CUTOFF",
+        "G$xx RAW GATE/WAVE   H0 NO HARD RESTART   C$xxx CUTOFF   V$xy VIBRATO",
         "~PITCH  ~PULSE  ~FILTER: TABLES OF S / Q / C + D + L LINES",
         "  + KEEPS RUNNING   4 STEPS 4X A FRAME   >nn USES INSTR nn'S TABLE",
         "FULL GUIDE: ? BUTTON"

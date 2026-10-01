@@ -340,6 +340,19 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     var _lane_sources = [];
     for (var _lsi = 0; _lsi < array_length(_instruments); _lsi++) array_push(_lane_sources, scr_instrument_ensure_compiled(_instruments[_lsi]));
     var _lane_registry = { count: 0, labels: {}, emitted: {}, sources: _lane_sources };
+    var _vib_op_used = false;   // V$xy in an instrument program
+    // V$xy in a program starts the instrument vibrato part-way through a note.
+    for (var _vri = 0; _vri < array_length(_table_pack.streams); _vri++) {
+        for (var _vrj = 0; _vrj < array_length(_table_pack.streams[_vri]); _vrj++) {
+            if (!_table_pack.streams[_vri][_vrj].raw && _table_pack.streams[_vri][_vrj].bytes[0] == 27) _vib_op_used = true;
+        }
+    }
+    for (var _vri = 0; _vri < array_length(_table_pack.tables); _vri++) {
+        for (var _vrj = 0; _vrj < array_length(_table_pack.tables[_vri]); _vrj++) {
+            if (_table_pack.tables[_vri][_vrj].bytes[0] == 27) _vib_op_used = true;
+        }
+    }
+
     var _lbl_dskip = _key + "dskip";
     // Per-voice effect state tables (see section 7).
     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
@@ -2088,6 +2101,32 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["label", _ip + "notcut"]);
         }
 
+        if (_vib_op_used) {
+            // $1B xy = vibrato from here: speed x, depth y * 4, no delay.
+            array_push(_list, ["cmp_imm", 27, _id]);
+            array_push(_list, ["bne", _ip + "notvib", _id]);
+            array_push(_list, ["ldy_imm", 1, _id]);
+            array_push(_list, ["lda_izy", _S_PTR, _id]);
+            array_push(_list, ["pha", 0, _id]);
+            array_push(_list, ["lsr_a", 0, _id], ["lsr_a", 0, _id], ["lsr_a", 0, _id], ["lsr_a", 0, _id]);
+            array_push(_list, ["sta_abx", _key + "ivs", _id]);
+            array_push(_list, ["pla", 0, _id]);
+            array_push(_list, ["and_imm", 0x0F, _id]);
+            array_push(_list, ["asl_a", 0, _id], ["asl_a", 0, _id]);
+            array_push(_list, ["sta_abx", _key + "ivp", _id]);
+            array_push(_list, ["lda_imm", 0, _id]);
+            array_push(_list, ["sta_abx", _key + "ivdl", _id]);
+            array_push(_list, ["clc", 0, _id]);
+            array_push(_list, ["lda_zp", _S_PTR, _id]);
+            array_push(_list, ["adc_imm", 2, _id]);
+            array_push(_list, ["sta_zp", _S_PTR, _id]);
+            array_push(_list, ["lda_zp", _S_PTR + 1, _id]);
+            array_push(_list, ["adc_imm", 0, _id]);
+            array_push(_list, ["sta_zp", _S_PTR + 1, _id]);
+            array_push(_list, ["jmp_abs", _L_iloop, _id]);
+            array_push(_list, ["label", _ip + "notvib"]);
+        }
+
         // $04, or anything unrecognised = END — gate off, mark inactive.
         //
         // Waveform bits are PRESERVED so the release phase still has an
@@ -2376,6 +2415,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         }
     }
 
+    if (_vib_op_used) _sng_any_vib = true;
     var _sng_use_fx = _sng_any_vib;
     for (var _ufi = 0; _ufi < array_length(_pat_fx_flags); _ufi++) {
         if (_pat_fx_flags[_ufi]) {
