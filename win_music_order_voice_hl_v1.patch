@@ -1,0 +1,25 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index 6a3bf41..b0219d0 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -2272,6 +2272,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         var _ory  = _oy0 + _orv * _ord_row_h;
+ 
+         var _ord_active = (_m.song_playing && _ord_i == _m.preview_display_order);
++        // TIMING: PER VOICE: voices sit on different order rows, so each
++        // voice's own cell is lit below instead of the whole row.
++        if (is_array(_voice_pos)) _ord_active = false;
+         var _ord_selected = (_ord_i == _m.sel_order_row);
+ 
+         if (_ord_active) {
+@@ -2298,6 +2301,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         for (var _ovi = 0; _ovi < 3; _ovi++) {
+             var _ocx = _ord_x[1 + _ovi];
+             var _ocw = _ord_col_w[1 + _ovi];
++            if (is_array(_voice_pos) && _voice_pos[_ovi][0] == _ord_i) {
++                draw_set_color(make_color_rgb(30, 90, 55));
++                draw_rectangle(_ocx, _ory, _ocx + _ocw, _ory + _ord_row_h, false);
++            }
+             var _oc_val = scr_music_sid_pattern(_orow, _voice_offset + _ovi);
+             var _minus = _mx >= _ocx && _mx < _ocx + 15 && _my >= _ory && _my < _ory + _ord_row_h;
+             var _plus = _mx >= _ocx + _ocw - 15 && _mx < _ocx + _ocw && _my >= _ory && _my < _ory + _ord_row_h;
