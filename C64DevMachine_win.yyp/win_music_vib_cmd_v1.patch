@@ -1,0 +1,168 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_instrument_parse/scr_instrument_parse.gml b/C64DevMachine_win.yyp/scripts/scr_instrument_parse/scr_instrument_parse.gml
+index 2425b63..b42c4f7 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_instrument_parse/scr_instrument_parse.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_instrument_parse/scr_instrument_parse.gml
+@@ -18,6 +18,8 @@
+ ///               speed per frame (signed). The cutoff is shared by the whole
+ ///               chip, so give the table to the instruments of one voice.
+ ///   C$nnn       set the filter cutoff ($000-$7FF) -> [$14, lo, hi]
++///   V$xy        start / change the instrument vibrato from here: x speed,
++///               y depth, as pattern 4XY. V0 stops it -> [$1B, xy]
+ ///   ~PITCH4 / ~PULSE4 / ~FILTER4 (+ allowed: ~PITCH4+): the table steps four
+ ///               times a frame, as Galway's player does — each Dn counts
+ ///               quarter-frames, and the frame's speed is the sum of the four.
+@@ -202,6 +204,23 @@ function scr_instrument_parse(_text) {
+             array_push(_out.bytes, 10, _gok ? real(hex_to_decimal(_ghex)) : 0);
+             continue;
+         }
++        // ── V$xy / V0 ── vibrato from this point (speed x, depth y)
++        if (_c0 == "V") {
++            var _vhex = string_delete(_up, 1, 1);
++            if (string_char_at(_vhex, 1) == "$") _vhex = string_delete(_vhex, 1, 1);
++            var _vok = string_length(_vhex) > 0 && string_length(_vhex) <= 2;
++            for (var _j = 1; _j <= string_length(_vhex); _j++) {
++                if (string_pos(string_char_at(_vhex, _j), "0123456789ABCDEF") == 0) _vok = false;
++            }
++            var _vval = 0;
++            if (_vok) {
++                _vval = real(hex_to_decimal(_vhex));
++            } else {
++                array_push(_out.errors, "step " + string(_ti) + ": V$xy sets vibrato speed x, depth y (V0 stops it)");
++            }
++            array_push(_out.bytes, 27, _vval & 255);
++            continue;
++        }
+         // ── C$nnn ── set the filter cutoff (11 bits)
+         if (_c0 == "C" && string_char_at(_up, 2) == "$") {
+             var _chex = string_delete(_up, 1, 2);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+index 57f6394..f8b5767 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+@@ -453,6 +453,12 @@ function scr_sid64_sim_step(_sim, _v) {
+             _vc.cb = (_vc.active == 2) ? (_arg & 0xFE) : _arg;
+             scr_sid64_sim_write(_sim, _r0 + 4, _vc.cb);
+             _vc.pc += 2;
++        } else if (_op == 27) {
++            // V$xy: instrument vibrato from here (speed x, depth y), no delay
++            _vc.ivs = (_arg >> 4) & 15;
++            _vc.ivp = ((_arg & 15) * 4) & 0x7F;
++            _vc.ivdl = 0;
++            _vc.pc += 2;
+         } else if (_op == 0x03) {
+             _vc.pc = _arg;
+         } else if (_op >= 14 && _op <= 19) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+index 1832fd8..eb0861b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+@@ -340,6 +340,19 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+     var _lane_sources = [];
+     for (var _lsi = 0; _lsi < array_length(_instruments); _lsi++) array_push(_lane_sources, scr_instrument_ensure_compiled(_instruments[_lsi]));
+     var _lane_registry = { count: 0, labels: {}, emitted: {}, sources: _lane_sources };
++    var _vib_op_used = false;   // V$xy in an instrument program
++    // V$xy in a program starts the instrument vibrato part-way through a note.
++    for (var _vri = 0; _vri < array_length(_table_pack.streams); _vri++) {
++        for (var _vrj = 0; _vrj < array_length(_table_pack.streams[_vri]); _vrj++) {
++            if (!_table_pack.streams[_vri][_vrj].raw && _table_pack.streams[_vri][_vrj].bytes[0] == 27) _vib_op_used = true;
++        }
++    }
++    for (var _vri = 0; _vri < array_length(_table_pack.tables); _vri++) {
++        for (var _vrj = 0; _vrj < array_length(_table_pack.tables[_vri]); _vrj++) {
++            if (_table_pack.tables[_vri][_vrj].bytes[0] == 27) _vib_op_used = true;
++        }
++    }
++
+     var _lbl_dskip = _key + "dskip";
+     // Per-voice effect state tables (see section 7).
+     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
+@@ -2088,6 +2101,32 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+             array_push(_list, ["label", _ip + "notcut"]);
+         }
+ 
++        if (_vib_op_used) {
++            // $1B xy = vibrato from here: speed x, depth y * 4, no delay.
++            array_push(_list, ["cmp_imm", 27, _id]);
++            array_push(_list, ["bne", _ip + "notvib", _id]);
++            array_push(_list, ["ldy_imm", 1, _id]);
++            array_push(_list, ["lda_izy", _S_PTR, _id]);
++            array_push(_list, ["pha", 0, _id]);
++            array_push(_list, ["lsr_a", 0, _id], ["lsr_a", 0, _id], ["lsr_a", 0, _id], ["lsr_a", 0, _id]);
++            array_push(_list, ["sta_abx", _key + "ivs", _id]);
++            array_push(_list, ["pla", 0, _id]);
++            array_push(_list, ["and_imm", 0x0F, _id]);
++            array_push(_list, ["asl_a", 0, _id], ["asl_a", 0, _id]);
++            array_push(_list, ["sta_abx", _key + "ivp", _id]);
++            array_push(_list, ["lda_imm", 0, _id]);
++            array_push(_list, ["sta_abx", _key + "ivdl", _id]);
++            array_push(_list, ["clc", 0, _id]);
++            array_push(_list, ["lda_zp", _S_PTR, _id]);
++            array_push(_list, ["adc_imm", 2, _id]);
++            array_push(_list, ["sta_zp", _S_PTR, _id]);
++            array_push(_list, ["lda_zp", _S_PTR + 1, _id]);
++            array_push(_list, ["adc_imm", 0, _id]);
++            array_push(_list, ["sta_zp", _S_PTR + 1, _id]);
++            array_push(_list, ["jmp_abs", _L_iloop, _id]);
++            array_push(_list, ["label", _ip + "notvib"]);
++        }
++
+         // $04, or anything unrecognised = END — gate off, mark inactive.
+         //
+         // Waveform bits are PRESERVED so the release phase still has an
+@@ -2376,6 +2415,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+         }
+     }
+ 
++    if (_vib_op_used) _sng_any_vib = true;
+     var _sng_use_fx = _sng_any_vib;
+     for (var _ufi = 0; _ufi < array_length(_pat_fx_flags); _ufi++) {
+         if (_pat_fx_flags[_ufi]) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
+index 107d28c..a7da7b5 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
+@@ -299,6 +299,7 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
+         ["~PITCH+", "same, but carries on across new notes / ties"],
+         ["~FILTER", "table of C/D/L lines: cutoff speed per frame"],
+         ["C$400", "set the filter cutoff ($000-$7FF)"],
++        ["V$44", "vibrato from here: speed 4, depth 4 (V0 stops)"],
+         ["~PITCH4", "table stepping 4x a frame: Dn counts quarter frames"],
+         [">nn", "end a table by carrying on in instrument nn's table"],
+         ["", "the program must keep running (Dn / Ln) to hear them"],
+@@ -386,6 +387,11 @@ function scr_sound_editor_instr_comment(_line, _lines) {
+         if (_c0 == "Q") _desc = "pulse sweep per frame; Q0 stops (wraps 12-bit)";
+         return { text: _desc + "; Dn sets duration", bad: false };
+     }
++    // V$xy : vibrato from here
++    if (_c0 == "V") {
++        if (_up == "V0" || _up == "V$00") return { text: "vibrato off", bad: false };
++        return { text: "vibrato from here: speed x, depth y (as pattern 4XY)", bad: false };
++    }
+     // >nn : carry on in another instrument's table
+     if (_c0 == ">") {
+         return { text: "continue in instrument " + string_delete(_up, 1, 1) + "'s table of this kind", bad: false };
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
+index 06af2b0..98e5dfe 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
+@@ -823,7 +823,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+         "$xx WAVE   N  N+n  N-n NOTE   Dn HOLD n FRAMES   --- END",
+         "Ln LOOP TO STEP n   Rc:n REPEAT FROM STEP n, c MORE TIMES",
+         "F+n FINE   S+n SLIDE   P$xxx PULSE   Q+n PULSE SWEEP",
+-        "G$xx RAW GATE/WAVE   H0 NO HARD RESTART   C$xxx CUTOFF",
++        "G$xx RAW GATE/WAVE   H0 NO HARD RESTART   C$xxx CUTOFF   V$xy VIBRATO",
+         "~PITCH  ~PULSE  ~FILTER: TABLES OF S / Q / C + D + L LINES",
+         "  + KEEPS RUNNING   4 STEPS 4X A FRAME   >nn USES INSTR nn'S TABLE",
+         "FULL GUIDE: ? BUTTON"
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_instrument_preview_play/scr_sound_instrument_preview_play.gml b/C64DevMachine_win.yyp/scripts/scr_sound_instrument_preview_play/scr_sound_instrument_preview_play.gml
+index 2c52f9b..0b0cc0b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_instrument_preview_play/scr_sound_instrument_preview_play.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_instrument_preview_play/scr_sound_instrument_preview_play.gml
+@@ -124,6 +124,7 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
+                 else if (_op == 9) { _pulse_slide = _word; _pc += 3; }
+                 else if (_op == 10) { _cur_wave = _arg; _raw_gate = true; _pc += 2; }
+                 else if (_op >= 14 && _op <= 26) { _pc += 3; } // tables: reSID preview only
++                else if (_op == 27) { _pc += 2; }              // V$xy vibrato: reSID preview only
+                 else _active = false;
+             }
+             if (_guard >= 64) _active = false;
