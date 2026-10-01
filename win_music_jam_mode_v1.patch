@@ -1,0 +1,126 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 77aaec6..d6e4afb 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -68,6 +68,8 @@ global.music_size_cache = {};
+ global.music_col_scroll = [0, 0, 0];
+ // Music Maker pattern-command guide panel (modal while open).
+ global.music_cmd_guide_open = false;
++// Music Maker JAM mode: note keys and piano clicks only play, nothing is written.
++global.music_jam = false;
+ for (var _sri = 0; _sri < SID64_RING; _sri++) {
+     global.sid64_stream.ring[_sri] = buffer_create(_sid64_ring_samples * 2, buffer_fixed, 2);
+ }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index a525387..b18b0e6 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -916,7 +916,27 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+ 
+     draw_set_font_l(fnt_c64_pico);
+     draw_set_color(make_color_rgb(90, 90, 120));
+-    draw_text_l(_onx2 + 16, _rowy + 6, "Z-ROW=OCT-1  Q-ROW=OCT  I/O/P=OCT+1");
++    var _oct_hint = "Z-ROW=OCT-1  Q-ROW=OCT  I/O/P=OCT+1";
++    draw_text_l(_onx2 + 16, _rowy + 6, _oct_hint);
++
++    // ── EDIT / JAM ── EDIT (default) writes notes from the note keys and
++    // piano clicks; JAM only plays them, so you can try ideas over the song.
++    var _jm_lbl = "EDIT";
++    if (global.music_jam) _jm_lbl = "JAM";
++    var _jm_w = string_width_l("EDIT") + 16;
++    var _jm_x = _onx2 + 16 + string_width_l(_oct_hint) + 12;
++    var _jm_hov = point_in_rectangle(_mx, _my, _jm_x, _rowy, _jm_x + _jm_w, _rowy + 18);
++    if (global.music_jam) {
++        draw_set_color(_jm_hov ? make_color_rgb(200, 120, 60) : make_color_rgb(150, 80, 30));
++    } else {
++        draw_set_color(_jm_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
++    }
++    draw_rectangle(_jm_x, _rowy, _jm_x + _jm_w, _rowy + 18, false);
++    draw_set_color(c_white);
++    draw_set_halign(fa_center);
++    draw_text_l(_jm_x + _jm_w * 0.5, _rowy + 5, _jm_lbl);
++    draw_set_halign(fa_left);
++    if (_jm_hov && mouse_check_button_pressed(mb_left)) global.music_jam = !global.music_jam;
+     draw_set_font_l(fnt_c64_tiny);
+ 
+     // ── TEMPO ── frames per row, shared by every song in this asset. The
+@@ -1674,7 +1694,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+             global.addresses_dirty = true;
+         }
+ 
+-        for (var _pki = 0; _pki < array_length(_pk_map) && !_kb_ctrl && _cur_step != noone && _m.sel_sub == 0; _pki++) {
++        for (var _pki = 0; _pki < array_length(_pk_map) && !_kb_ctrl && (_cur_step != noone || global.music_jam) && _m.sel_sub == 0; _pki++) {
+             var _pk = _pk_map[_pki];
+             // Shift+'=' is '+' (key on), not the piano's F#.
+             if (_pk[0] == _vk_equals && keyboard_check(vk_shift)) {
+@@ -1687,6 +1707,16 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+                              ? (_pk_name + string(_pk_oct))
+                              : (string_char_at(_pk_name, 1) + "-" + string(_pk_oct));
+ 
++                if (global.music_jam) {
++                    // JAM: play the selected instrument on this voice, write nothing.
++                    if (_m.sel_instr >= 0 && _m.sel_instr < array_length(_m.instruments)) {
++                        scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _pk_note, _m.sel_voice);
++                    } else {
++                        scr_sound_preview_play(_pk_note, "SQUARE", _m.sel_voice);
++                    }
++                    break;
++                }
++
+                 _se_push_undo(_m, _se_snap);
+                 _cur_step.note      = _pk_note;
+                 _cur_step.instr_idx = _m.sel_instr;
+@@ -1712,7 +1742,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         // Both drop a row, like a typed note.
+         var _key_rest = keyboard_check_pressed(ord("1")) || keyboard_check_pressed(189) || keyboard_check_pressed(vk_subtract);
+         var _key_kon  = (keyboard_check_pressed(_vk_equals) && keyboard_check(vk_shift)) || keyboard_check_pressed(vk_add);
+-        if (_cur_step != noone && _m.sel_sub == 0 && !_kb_ctrl && _key_kon) {
++        if (_cur_step != noone && _m.sel_sub == 0 && !_kb_ctrl && _key_kon && !global.music_jam) {
+             _se_push_undo(_m, _se_snap);
+             _cur_step.note      = "+++";
+             _cur_step.instr_idx = -1;
+@@ -1728,7 +1758,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+             _m.sel_anchor_voice = _m.sel_voice;
+             _m.sel_anchor_step  = _m.sel_step;
+         }
+-        if (_cur_step != noone && _m.sel_sub == 0 && !_kb_ctrl && _key_rest) {
++        if (_cur_step != noone && _m.sel_sub == 0 && !_kb_ctrl && _key_rest && !global.music_jam) {
+             _se_push_undo(_m, _se_snap);
+             _cur_step.note      = "---";
+             _cur_step.instr_idx = -1;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml
+index a8e98a7..4bc5007 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml
+@@ -172,7 +172,11 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
+         }
+     }
+     draw_set_color(make_color_rgb(120, 120, 150));
+-    draw_text_l(_mb_x + 116, _y0, "HOLD RIGHT MOUSE ON THE KEYS TO HEAR THE SELECTED INSTRUMENT, LEFT CLICK TO WRITE THE NOTE AT THE MARKER");
++    if (global.music_jam) {
++        draw_text_l(_mb_x + 116, _y0, "JAM: LEFT CLICK OR HOLD RIGHT MOUSE ON THE KEYS TO PLAY - NOTHING IS WRITTEN");
++    } else {
++        draw_text_l(_mb_x + 116, _y0, "HOLD RIGHT MOUSE ON THE KEYS TO HEAR THE SELECTED INSTRUMENT, LEFT CLICK TO WRITE THE NOTE AT THE MARKER");
++    }
+ 
+     // Keys each shown voice is sounding, in the voice colours.
+     var _voice_cols = [make_color_rgb(90, 190, 255), make_color_rgb(255, 150, 70), make_color_rgb(120, 225, 120)];
+@@ -243,8 +247,16 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
+     _m.pno_hover   = _hover;
+     _m.pno_hover_v = _hover_v;
+ 
+-    // ── click: write the note at the marker row ──
+-    if (_hover >= 0 && mouse_check_button_pressed(mb_left)) {
++    // ── click: JAM plays the key; EDIT writes the note at the marker row ──
++    if (_hover >= 0 && mouse_check_button_pressed(mb_left) && global.music_jam) {
++        var _jnm = scr_sound_editor_piano_name(_hover);
++        if (_m.sel_instr >= 0 && _m.sel_instr < array_length(_m.instruments)) {
++            scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _jnm, _hover_v);
++        } else {
++            scr_sound_preview_play(_jnm, "SQUARE", _hover_v);
++        }
++    }
++    if (_hover >= 0 && mouse_check_button_pressed(mb_left) && !global.music_jam) {
+         var _pat = _col_pat[_hover_v];
+         if (_pat != noone && _m.sel_step < array_length(_pat.steps)) {
+             _undo_push(_m, _snap);

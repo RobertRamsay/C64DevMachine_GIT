@@ -916,7 +916,27 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
 
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(90, 90, 120));
-    draw_text_l(_onx2 + 16, _rowy + 6, "Z-ROW=OCT-1  Q-ROW=OCT  I/O/P=OCT+1");
+    var _oct_hint = "Z-ROW=OCT-1  Q-ROW=OCT  I/O/P=OCT+1";
+    draw_text_l(_onx2 + 16, _rowy + 6, _oct_hint);
+
+    // ── EDIT / JAM ── EDIT (default) writes notes from the note keys and
+    // piano clicks; JAM only plays them, so you can try ideas over the song.
+    var _jm_lbl = "EDIT";
+    if (global.music_jam) _jm_lbl = "JAM";
+    var _jm_w = string_width_l("EDIT") + 16;
+    var _jm_x = _onx2 + 16 + string_width_l(_oct_hint) + 12;
+    var _jm_hov = point_in_rectangle(_mx, _my, _jm_x, _rowy, _jm_x + _jm_w, _rowy + 18);
+    if (global.music_jam) {
+        draw_set_color(_jm_hov ? make_color_rgb(200, 120, 60) : make_color_rgb(150, 80, 30));
+    } else {
+        draw_set_color(_jm_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
+    }
+    draw_rectangle(_jm_x, _rowy, _jm_x + _jm_w, _rowy + 18, false);
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_text_l(_jm_x + _jm_w * 0.5, _rowy + 5, _jm_lbl);
+    draw_set_halign(fa_left);
+    if (_jm_hov && mouse_check_button_pressed(mb_left)) global.music_jam = !global.music_jam;
     draw_set_font_l(fnt_c64_tiny);
 
     // ── TEMPO ── frames per row, shared by every song in this asset. The
@@ -1674,7 +1694,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             global.addresses_dirty = true;
         }
 
-        for (var _pki = 0; _pki < array_length(_pk_map) && !_kb_ctrl && _cur_step != noone && _m.sel_sub == 0; _pki++) {
+        for (var _pki = 0; _pki < array_length(_pk_map) && !_kb_ctrl && (_cur_step != noone || global.music_jam) && _m.sel_sub == 0; _pki++) {
             var _pk = _pk_map[_pki];
             // Shift+'=' is '+' (key on), not the piano's F#.
             if (_pk[0] == _vk_equals && keyboard_check(vk_shift)) {
@@ -1686,6 +1706,16 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 var _pk_note = (string_char_at(_pk_name, 2) == "#")
                              ? (_pk_name + string(_pk_oct))
                              : (string_char_at(_pk_name, 1) + "-" + string(_pk_oct));
+
+                if (global.music_jam) {
+                    // JAM: play the selected instrument on this voice, write nothing.
+                    if (_m.sel_instr >= 0 && _m.sel_instr < array_length(_m.instruments)) {
+                        scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _pk_note, _m.sel_voice);
+                    } else {
+                        scr_sound_preview_play(_pk_note, "SQUARE", _m.sel_voice);
+                    }
+                    break;
+                }
 
                 _se_push_undo(_m, _se_snap);
                 _cur_step.note      = _pk_note;
@@ -1712,7 +1742,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         // Both drop a row, like a typed note.
         var _key_rest = keyboard_check_pressed(ord("1")) || keyboard_check_pressed(189) || keyboard_check_pressed(vk_subtract);
         var _key_kon  = (keyboard_check_pressed(_vk_equals) && keyboard_check(vk_shift)) || keyboard_check_pressed(vk_add);
-        if (_cur_step != noone && _m.sel_sub == 0 && !_kb_ctrl && _key_kon) {
+        if (_cur_step != noone && _m.sel_sub == 0 && !_kb_ctrl && _key_kon && !global.music_jam) {
             _se_push_undo(_m, _se_snap);
             _cur_step.note      = "+++";
             _cur_step.instr_idx = -1;
@@ -1728,7 +1758,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             _m.sel_anchor_voice = _m.sel_voice;
             _m.sel_anchor_step  = _m.sel_step;
         }
-        if (_cur_step != noone && _m.sel_sub == 0 && !_kb_ctrl && _key_rest) {
+        if (_cur_step != noone && _m.sel_sub == 0 && !_kb_ctrl && _key_rest && !global.music_jam) {
             _se_push_undo(_m, _se_snap);
             _cur_step.note      = "---";
             _cur_step.instr_idx = -1;

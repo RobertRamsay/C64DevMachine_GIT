@@ -172,7 +172,11 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
         }
     }
     draw_set_color(make_color_rgb(120, 120, 150));
-    draw_text_l(_mb_x + 116, _y0, "HOLD RIGHT MOUSE ON THE KEYS TO HEAR THE SELECTED INSTRUMENT, LEFT CLICK TO WRITE THE NOTE AT THE MARKER");
+    if (global.music_jam) {
+        draw_text_l(_mb_x + 116, _y0, "JAM: LEFT CLICK OR HOLD RIGHT MOUSE ON THE KEYS TO PLAY - NOTHING IS WRITTEN");
+    } else {
+        draw_text_l(_mb_x + 116, _y0, "HOLD RIGHT MOUSE ON THE KEYS TO HEAR THE SELECTED INSTRUMENT, LEFT CLICK TO WRITE THE NOTE AT THE MARKER");
+    }
 
     // Keys each shown voice is sounding, in the voice colours.
     var _voice_cols = [make_color_rgb(90, 190, 255), make_color_rgb(255, 150, 70), make_color_rgb(120, 225, 120)];
@@ -243,8 +247,16 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
     _m.pno_hover   = _hover;
     _m.pno_hover_v = _hover_v;
 
-    // ── click: write the note at the marker row ──
-    if (_hover >= 0 && mouse_check_button_pressed(mb_left)) {
+    // ── click: JAM plays the key; EDIT writes the note at the marker row ──
+    if (_hover >= 0 && mouse_check_button_pressed(mb_left) && global.music_jam) {
+        var _jnm = scr_sound_editor_piano_name(_hover);
+        if (_m.sel_instr >= 0 && _m.sel_instr < array_length(_m.instruments)) {
+            scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _jnm, _hover_v);
+        } else {
+            scr_sound_preview_play(_jnm, "SQUARE", _hover_v);
+        }
+    }
+    if (_hover >= 0 && mouse_check_button_pressed(mb_left) && !global.music_jam) {
         var _pat = _col_pat[_hover_v];
         if (_pat != noone && _m.sel_step < array_length(_pat.steps)) {
             _undo_push(_m, _snap);

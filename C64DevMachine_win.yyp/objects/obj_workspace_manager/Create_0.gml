@@ -68,6 +68,8 @@ global.music_size_cache = {};
 global.music_col_scroll = [0, 0, 0];
 // Music Maker pattern-command guide panel (modal while open).
 global.music_cmd_guide_open = false;
+// Music Maker JAM mode: note keys and piano clicks only play, nothing is written.
+global.music_jam = false;
 for (var _sri = 0; _sri < SID64_RING; _sri++) {
     global.sid64_stream.ring[_sri] = buffer_create(_sid64_ring_samples * 2, buffer_fixed, 2);
 }
