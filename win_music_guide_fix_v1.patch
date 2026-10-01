@@ -1,0 +1,83 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index 6b6aa18..e43bd86 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -3264,8 +3264,15 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+ // ESCAPE - close viewer
+ // -------------------------------------------------------
+ 
++// The Music Maker's command guide takes Escape for itself: close only the panel.
++if (keyboard_check_pressed(vk_escape) && global.music_cmd_guide_open) {
++    global.music_cmd_guide_open = false;
++    keyboard_clear(vk_escape);
++}
++
+ if (keyboard_check_pressed(vk_escape) && !global.integer_box_open) {
+     if (viewer_open) {
++        global.music_cmd_guide_open = false;
+         // If stamp mode active, cancel it first rather than closing viewer
+         if (viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
+             var _esc_asset = ds_list_find_value(asset_list, viewer_asset);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index 2644000..a525387 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -2124,13 +2124,24 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     draw_set_font_l(fnt_c64_pico);
+     draw_set_color(make_color_rgb(150, 120, 90));
+     draw_text_l(_col_gutter_x, _clr_y + 28,
+-        "CMD HELP: HOVER | 1XX UP 2XX DOWN 3XX SLIDE 4XY VIBRATO | 5AD ATTACK/DECAY 6SR SUSTAIN/RELEASE");
++        "CMD HELP: 1XX UP 2XX DOWN 3XX SLIDE 4XY VIBRATO | 5AD ATTACK/DECAY 6SR SUSTAIN/RELEASE");
+     draw_text_l(_col_gutter_x, _clr_y + 40,
+         "7XX WAVE 8XX PULSE WIDTH 9XX PULSE SWEEP | AXX CUTOFF (XX*8) BX0 RESONANCE CXX CUTOFF SWEEP");
+     draw_text_l(_col_gutter_x, _clr_y + 52,
+         "EXX FILTER MODE (1 LP 2 BP 4 HP 8 V3 OFF) DXX $D418 FXX TEMPO | GXX FINE HXX PITCH IXX PULSE J00 TIE | 1-4,9,C ONE ROW");
+     draw_set_font_l(fnt_c64_tiny);
+-    if (scr_sfx_maker_button(_col_gutter_x + _grid_full_w - 150, _clr_y + 28, 150, "COMMAND GUIDE", _mx, _my)) {
++    // Small GUIDE button at the legend's right edge: opens the full command guide.
++    draw_set_font_l(fnt_c64_pico);
++    var _gb_w = string_width_l("GUIDE") + 14;
++    var _gb_x = _col_gutter_x + _grid_full_w - _gb_w;
++    var _gb_y = _clr_y + 27;
++    var _gb_hot = point_in_rectangle(_mx, _my, _gb_x, _gb_y, _gb_x + _gb_w, _gb_y + 15);
++    draw_set_color(_gb_hot ? make_color_rgb(65, 80, 100) : make_color_rgb(30, 38, 52));
++    draw_rectangle(_gb_x, _gb_y, _gb_x + _gb_w, _gb_y + 15, false);
++    draw_set_color(c_white);
++    draw_text_l(_gb_x + 7, _gb_y + 2, "GUIDE");
++    draw_set_font_l(fnt_c64_tiny);
++    if (_gb_hot && mouse_check_button_pressed(mb_left)) {
+         global.music_cmd_guide_open = true;
+     }
+ 
+@@ -2576,13 +2587,6 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     scr_sound_editor_piano(_m, _vx1 + 20, _vy2 + 14, _vx2 - 20, _vy2_full - 12, _mx, _my,
+                            _col_pat, _vis, _se_push_undo, _se_snap);
+ 
+-    // Hover the legend for a built-in reference, or any cell for its command.
+-    if (point_in_rectangle(_mx, _my, _col_gutter_x, _clr_y + 26,
+-                           _col_gutter_x + _grid_full_w, _clr_y + 64)) {
+-        _m.pattern_hover_tip = scr_sound_editor_pattern_help(-1)
+-            + "\n\n" + scr_sound_editor_pattern_help(4)
+-            + "\n\n" + scr_sound_editor_vibrato_help();
+-    }
+     // Draw help last, retaining the existing sweep warnings and their red border.
+     var _tip_text = (_pw_tip != "") ? _pw_tip : _m.pattern_hover_tip;
+     if (_tip_text != "") {
+@@ -2651,7 +2655,16 @@ function scr_sound_editor_cmd_guide(_x1, _y1, _x2, _y2, _mx, _my, _click, _esc)
+     draw_set_color(make_color_rgb(150, 150, 180));
+     draw_text_l(_px + 16, _py + _ph - 30, "1-4, 9 AND C LAST ONE ROW. G-J AND THE SETTINGS (5-8, A, B, D, E) STAY UNTIL CHANGED. ESC OR CLOSE TO RETURN.");
+     draw_set_font_l(fnt_c64_tiny);
+-    if (scr_sfx_maker_button(_px + _pw - 110, _py + _ph - 34, 96, "CLOSE", _mx, _my) || _esc) {
++    // Own button: the editor's input was cleared for this frame, so the click
++    // captured before that is what counts here.
++    var _cbx = _px + _pw - 110;
++    var _cby = _py + _ph - 34;
++    var _cb_hot = point_in_rectangle(_mx, _my, _cbx, _cby, _cbx + 96, _cby + 26);
++    draw_set_color(_cb_hot ? make_color_rgb(65, 80, 100) : make_color_rgb(30, 38, 52));
++    draw_rectangle(_cbx, _cby, _cbx + 96, _cby + 26, false);
++    draw_set_color(c_white);
++    draw_text_l(_cbx + 8, _cby + 5, "CLOSE");
++    if ((_cb_hot && _click) || _esc) {
+         global.music_cmd_guide_open = false;
+         keyboard_clear(vk_escape);
+     }

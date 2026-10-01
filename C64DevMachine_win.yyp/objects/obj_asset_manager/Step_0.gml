@@ -3264,8 +3264,15 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
 // ESCAPE - close viewer
 // -------------------------------------------------------
 
+// The Music Maker's command guide takes Escape for itself: close only the panel.
+if (keyboard_check_pressed(vk_escape) && global.music_cmd_guide_open) {
+    global.music_cmd_guide_open = false;
+    keyboard_clear(vk_escape);
+}
+
 if (keyboard_check_pressed(vk_escape) && !global.integer_box_open) {
     if (viewer_open) {
+        global.music_cmd_guide_open = false;
         // If stamp mode active, cancel it first rather than closing viewer
         if (viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
             var _esc_asset = ds_list_find_value(asset_list, viewer_asset);
