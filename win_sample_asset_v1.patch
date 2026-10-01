@@ -1,0 +1,1419 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index 0fa8b55..7cc406b 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1324,6 +1324,10 @@
+     {"id":{"name":"scr_reu_support","path":"scripts/scr_reu_support/scr_reu_support.yy",},},
+     {"id":{"name":"scr_room_map","path":"scripts/scr_room_map/scr_room_map.yy",},},
+     {"id":{"name":"scr_safe_num","path":"scripts/scr_safe_num/scr_safe_num.yy",},},
++    {"id":{"name":"scr_sample_create","path":"scripts/scr_sample_create/scr_sample_create.yy",},},
++    {"id":{"name":"scr_sample_editor","path":"scripts/scr_sample_editor/scr_sample_editor.yy",},},
++    {"id":{"name":"scr_sample_encode","path":"scripts/scr_sample_encode/scr_sample_encode.yy",},},
++    {"id":{"name":"scr_sample_wav","path":"scripts/scr_sample_wav/scr_sample_wav.yy",},},
+     {"id":{"name":"scr_save_workspace_as_path","path":"scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.yy",},},
+     {"id":{"name":"scr_save_workspace_as","path":"scripts/scr_save_workspace_as/scr_save_workspace_as.yy",},},
+     {"id":{"name":"scr_scope_apply_prefix","path":"scripts/scr_scope_apply_prefix/scr_scope_apply_prefix.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index b1e1ee2..4c812a4 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -94,6 +94,7 @@ asset_types = [
+     "SFX_MAKER",
+     "SID_MUSIC",
+     "SFX_DATA",
++    "SAMPLE",
+     "--- SCREEN & DATA ---",
+     "HUD",
+     "TEXT_DATA",
+@@ -134,8 +135,12 @@ type_colours = {
+     HUD           : make_color_rgb( 90, 220, 190),
+     ANIMATION     : make_color_rgb(100, 210, 190),
+     ROOM_MAP      : make_color_rgb(250, 200,  60),
+-    SPRITE_MASK   : make_color_rgb(230, 100, 230)
++    SPRITE_MASK   : make_color_rgb(230, 100, 230),
++    SAMPLE        : make_color_rgb(240, 120, 160)
+ };
++// SAMPLE preview audio — one at a time across all SAMPLE assets.
++// See scr_sample_preview_play / scr_sample_preview_stop.
++sample_pv = { active: false, snd: -1, buf: -1, inst: -1, asset: undefined, mode: 0 };
+ // -------------------------------------------------------
+ // NAME EDITING
+ // -------------------------------------------------------
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 0127d5e..1c54281 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -352,7 +352,7 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
+         draw_set_color(c_lime);
+         var _blink = ((current_time mod 600) < 300) ? "_" : " ";
+         draw_text_l(_panel_right - 6, _iy + 12, editing_addr_string + _blink);
+-    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK") {
++    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK" || _asset.type == "SAMPLE") {
+         // LOAD_ORG is a manifest, not physical data — it has no meaningful
+         // load address (each linked asset carries its own). BITMAP_BUILDER is
+         // an internal editor asset: it emits a derived BYTE_DATA table which
+@@ -804,7 +804,7 @@ var _vy1 = 108;
+ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
+     var _asset = ds_list_find_value(asset_list, viewer_asset);
+ 
+-	var _wide_editor = (_asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK");
++	var _wide_editor = (_asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK" || _asset.type == "SAMPLE");
+ 	_vx1 = _wide_editor ? 30 : 288;
+ 	_vy1 = 108;
+ 	var _vx2 = _wide_editor ? (panel_x + 20) : (panel_x - 10);
+@@ -888,7 +888,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+     var _lby2     = _cy + 20;
+     if (!_hide_import && _asset.type != "LOAD_ORG" && _asset.type != "LOAD_REU"
+ 	&& _asset.type != "META_TILESET" && _asset.type != "BITMAP_BUILDER" 
+-	&& _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK"
++	&& _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "SAMPLE"
+ 	&& !(_asset.type == "BYTE_DATA" && variable_struct_exists(_asset.meta, "is_save_file") && _asset.meta.is_save_file)) {
+         var _lb_hover = point_in_rectangle(_mx, _my, _lbx1, _lby1, _lbx2, _lby2);
+         draw_set_color(_lb_hover ? make_color_rgb(80, 200, 80) : make_color_rgb(30, 90, 40));
+@@ -974,7 +974,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+     // asset with no C64 payload — suppress the label entirely rather than
+     // showing an empty field.
+     draw_set_font_l(fnt_c64_tiny);
+-    if (_asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK") {
++    if (_asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "SAMPLE") {
+         draw_set_color(c_ltgray); draw_text_l(_vx1 + 10, _cy, "ADDRESS:");
+     }
+ 
+@@ -986,7 +986,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+         draw_text_l(_vx1 + 78, _cy, editing_addr_string + _blink);
+         draw_set_color(c_gray);
+         draw_text_l(_vx1 + 170, _cy, "ENTER TO CONFIRM");
+-    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK") {
++    } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK" || _asset.type == "SAMPLE") {
+         // LOAD_ORG is a manifest — no meaningful load address. BITMAP_BUILDER
+         // and SOUND_EDITOR are internal-only; their emitted BYTE_DATA/TEXT_DATA
+         // assets hold the real addresses. Show a dash, no hover/edit affordance.
+@@ -1066,6 +1066,11 @@ case "ROOM_MAP": {
+     scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my);
+ } break;
+ 
++case "SAMPLE": {
++    // Wide panel: the waveforms want the width.
++    scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my);
++} break;
++
+ case "HUD": {
+     // Wide panel as well: the editor draws the whole 40x25 screen so a panel
+     // can be judged against the space the game actually leaves for it.
+@@ -11197,7 +11202,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+ // REFERENCED BY (for BITMAP, default cases — SPRITE_SET and MAP_DATA handle their own above)
+     if (_asset.type == "SFX_DATA") _cy = _vy2 - 100;
+ 	 if (_asset.type == "BYTE_DATA" || _asset.type == "TEXT_DATA" || _asset.type == "LINE_COLL") _cy = _vy2 - 100;
+-   if (_asset.type != "SPRITE_SET" && _asset.type != "MAP_DATA" && _asset.type != "BITMAP" && _asset.type != "META_TILESET" && _asset.type != "META_MAP" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK") {
++   if (_asset.type != "SPRITE_SET" && _asset.type != "MAP_DATA" && _asset.type != "BITMAP" && _asset.type != "META_TILESET" && _asset.type != "META_MAP" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "SAMPLE") {
+         draw_set_font_l(fnt_c64_code);
+         draw_set_color(make_color_rgb(60,60,80));
+         draw_line(_vx1 + 10, _cy, _vx2 - 10, _cy);
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index e43bd86..3a554d5 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -46,7 +46,7 @@ var _wide_modal = false;
+ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
+     var _vb_type = ds_list_find_value(asset_list, viewer_asset).type;
+     if (_vb_type == "BITMAP_BUILDER" || _vb_type == "MUSIC_MAKER" || _vb_type == "SFX_MAKER"
+-    ||  _vb_type == "HUD" || (_vb_type == "ROOM_MAP" || _vb_type == "ANIMATION") || _vb_type == "SPRITE_MASK") {
++    ||  _vb_type == "HUD" || (_vb_type == "ROOM_MAP" || _vb_type == "ANIMATION") || _vb_type == "SPRITE_MASK" || _vb_type == "SAMPLE") {
+         _wide_modal = true;
+         _vx1 = 30;
+         _vx2 = panel_x + 20;
+@@ -2162,6 +2162,13 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open && !(_wide_mo
+             _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
+             scr_hud_create(_new_asset);
+         }
++        if (_type == "SAMPLE") {
++            // The buffer becomes the imported source PCM; until then it is
++            // the 1-byte placeholder every authoring asset carries.
++            if (buffer_exists(_new_asset.buffer)) buffer_delete(_new_asset.buffer);
++            _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
++            scr_sample_create(_new_asset);
++        }
+         if (_type == "ROOM_MAP") {
+             // Authoring asset: rooms, exits and arrival points. MACRO_ROOMS
+             // turns it into tables; it owns no C64 memory of its own.
+@@ -2389,6 +2396,12 @@ if ((_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER")) {
+     exit;
+ }
+ 
++// SAMPLE — all interaction (IMPORT WAV included) lives in scr_sample_editor.
++// It has no address, so the generic ADDRESS click must not open an edit.
++if (_asset.type == "SAMPLE") {
++    exit;
++}
++
+ if (_asset.type == "META_TILESET") {
+             var _tscpx1 = _vx1 + 74;
+             var _tscpx2 = _tscpx1 + 130;
+@@ -2662,7 +2675,7 @@ if (_asset.type == "META_TILESET") {
+         if (_asset.type != "ANIMATION" && _asset.type != "LOAD_ORG" &&
+     _asset.type != "LOAD_REU" &&
+     _asset.type != "BITMAP_BUILDER" &&
+-    _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" &&
++    _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "SAMPLE" &&
+             point_in_rectangle(_mx, _my, _addr_x, _iy, _panel_right, _iy + item_h)) {
+             editing_address     = true;
+             editing_address_idx = hover_idx;
+@@ -2977,6 +2990,11 @@ if (mouse_check_button_pressed(mb_right) && _mouse_in_panel && hover_idx >= 0) {
+             scr_sound_preview_cache_clear();
+         }
+ 
++        if (_asset.type == "SAMPLE") {
++            // A preview of the asset being deleted would otherwise play on.
++            scr_sample_preview_stop();
++        }
++
+         // Remove stale LOAD_ORG linked_asset references to this asset
+         for (var _loi = 0; _loi < ds_list_size(asset_list); _loi++) {
+             var _loa = ds_list_find_value(asset_list, _loi);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_default_address/scr_asset_default_address.gml b/C64DevMachine_win.yyp/scripts/scr_asset_default_address/scr_asset_default_address.gml
+index 4a5bae0..0f33fc3 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_default_address/scr_asset_default_address.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_default_address/scr_asset_default_address.gml
+@@ -39,6 +39,8 @@ function scr_asset_default_address(_type) {
+         // HUD is an AUTHORING asset too — MACRO_HUD emits its chars and
+         // colours inline on the spine, so it owns no address of its own.
+         case "HUD":         return 0x0000;
++        // SAMPLE is emitted by whatever plays it — no address of its own.
++        case "SAMPLE":      return 0x0000;
+         case "ROOM_MAP":    return 0x0000;
+         case "SPRITE_MASK": return 0x0000;
+         case "BITMAP_BUILDER": return 0x0000;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_close_all/scr_asset_inline_editor_close_all.gml b/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_close_all/scr_asset_inline_editor_close_all.gml
+index 1a31fd4..df25652 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_close_all/scr_asset_inline_editor_close_all.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_inline_editor_close_all/scr_asset_inline_editor_close_all.gml
+@@ -1,6 +1,7 @@
+ function scr_asset_inline_editor_close_all() {
+     // Streamed reSID song playback belongs to whichever editor was open.
+     scr_sid64_stream_stop();
++    scr_sample_preview_stop();
+     with (obj_asset_manager) {
+         var _count = ds_list_size(asset_list);
+         for (var _i = 0; _i < _count; _i++) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml b/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml
+index 9489391..0c82675 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_sorted_indices/scr_asset_sorted_indices.gml
+@@ -77,7 +77,7 @@ function scr_asset_sorted_indices() {
+         _upper[_ki] = string_upper(_names[_ki]);
+ 
+         var _kt = _types[_ki];
+-        if (_kt == "LOAD_ORG" || (_kt == "MUSIC_MAKER" || _kt == "SFX_MAKER") || _kt == "BITMAP_BUILDER") {
++        if (_kt == "LOAD_ORG" || (_kt == "MUSIC_MAKER" || _kt == "SFX_MAKER") || _kt == "BITMAP_BUILDER" || _kt == "SAMPLE") {
+             _noaddr[_ki] = true;
+         } else {
+             _noaddr[_ki] = false;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+index 619a22a..7d064e4 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+@@ -142,6 +142,9 @@ var _base = "unsaved";
+             if (_a.type == "SPRITE_MASK") {
+                 _mo = scr_sprmask_save_meta(_a);
+             }
++            if (_a.type == "SAMPLE") {
++                _mo = scr_sample_save_meta(_a);
++            }
+             if (_a.type == "ROOM_MAP") {
+                 _mo.rooms    = _me.rooms;
+                 _mo.reu      = _me.reu;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml b/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml
+index 1233aa6..34d5322 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml
+@@ -57,6 +57,8 @@ function scr_boot_resident_ranges() {
+         if (_a.type == "HUD") continue;
+         if (_a.type == "ROOM_MAP") continue;
+         if (_a.type == "SPRITE_MASK") continue;
++        // SAMPLE's buffer is source PCM, not C64 bytes.
++        if (_a.type == "SAMPLE") continue;
+         if (ds_map_exists(_deferred, _a.name)) continue;
+         if (!buffer_exists(_a.buffer)) continue;
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index b9ca00e..8ac5113 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -1028,6 +1028,14 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
+ 	            }
+ 	            scr_room_map_restore(_new_asset, _rmm);
+ 	        }
++	        if (_ad.type == "SAMPLE") {
++	            // The blob above already decoded the source PCM into the buffer.
++	            var _sam = _ad[$ "meta"];
++	            if (is_undefined(_sam)) {
++	                _sam = {};
++	            }
++	            scr_sample_restore(_new_asset, _sam);
++	        }
+ 	        if (_ad.type == "HUD") {
+ 	            // Seed a complete meta first, then lay the saved fields over it —
+ 	            // an asset written by an older build simply keeps the defaults for
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sample_create/scr_sample_create.gml b/C64DevMachine_win.yyp/scripts/scr_sample_create/scr_sample_create.gml
+new file mode 100644
+index 0000000..4336dd3
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_sample_create/scr_sample_create.gml
+@@ -0,0 +1,118 @@
++/// SAMPLE asset — a digitised sound for $D418 playback (the "4th voice" trick).
++///
++/// The asset's BUFFER holds the SOURCE: 8-bit unsigned mono PCM (128 = centre),
++/// peak-normalised on import, at src_rate (never above SAMPLE_SRC_MAX_RATE).
++/// The workspace saver blobs it out like any other asset buffer.
++///
++/// The C64 data is DERIVED from the source by scr_sample_encode every time a
++/// setting changes: trim -> resample to `rate` -> gain -> (dither) -> 4-bit,
++/// then packed. Keeping the source means a later consumer (the Music Maker
++/// digi track) can re-encode at its own playback rate with no quality loss.
++///
++/// The asset owns no C64 address: whatever plays it emits the packed bytes.
++
++#macro SAMPLE_SRC_MAX_RATE 22050
++#macro SAMPLE_MAX_SECONDS  10
++#macro SAMPLE_PAL_CLOCK    985248
++#macro SAMPLE_PV_RATE      22050
++
++/// Playback-rate presets offered by the editor (Hz).
++function scr_sample_rate_presets() {
++    static _rates = [4000, 5000, 6000, 7000, 8000, 10000, 11025];
++    return _rates;
++}
++
++/// Fields written to / read from the workspace file.
++function scr_sample_saved_keys() {
++    static _keys = ["src_rate", "src_len", "src_name", "rate", "gain", "dither",
++                    "pack", "sid_model", "trim_start", "trim_end"];
++    return _keys;
++}
++
++/// @function scr_sample_create(_asset)
++/// @desc Seeds every meta field the editor, encoder and savers touch.
++function scr_sample_create(_asset) {
++    _asset.meta = {
++        // ── SOURCE ── describes the PCM in asset.buffer
++        src_rate   : 0,        // Hz; 0 = nothing imported yet
++        src_len    : 0,        // samples in the buffer that are real audio
++        src_name   : "",       // WAV file name, display only
++
++        // ── ENCODE SETTINGS ──
++        rate       : 8000,     // C64 playback rate, Hz
++        gain       : 100,      // percent, applied before quantising
++        dither     : 0,        // 1 = TPDF dither before the 4-bit quantise
++        pack       : 0,        // 0 = 4-bit nibbles (2/byte), 1 = 2-bit delta (4/byte)
++        sid_model  : 0,        // 0 = 6581, 1 = 8580 (the player adds the 8580 DC boost)
++        trim_start : 0,        // source samples, inclusive
++        trim_end   : 0,        // source samples, exclusive
++
++        // ── DERIVED (never saved) ── rebuilt by scr_sample_encode
++        enc        : [],       // decoded 4-bit levels exactly as the C64 will play them
++        packed     : [],       // bytes the player reads
++        out_count  : 0,
++        out_bytes  : 0,
++        clip_count : 0,
++        enc_dirty  : true,
++        enc_ver    : 0,
++        data_ver   : 0,
++
++        // ── EDITOR (never saved) ──
++        wf_src     : [],
++        wf_src_key : "",
++        wf_enc     : [],
++        wf_enc_key : "",
++        drag       : -1,       // -1 none, 0 dragging trim start, 1 trim end
++        warn_msg   : "",
++        warn_timer : 0
++    };
++}
++
++/// @function scr_sample_restore(_asset, _saved)
++/// @desc Loader path: seed defaults, lay the saved fields over them, then make
++///       the numbers agree with the buffer the blob actually decoded to.
++function scr_sample_restore(_asset, _saved) {
++    scr_sample_create(_asset);
++    var _m = _asset.meta;
++    var _keys = scr_sample_saved_keys();
++    for (var _i = 0; _i < array_length(_keys); _i++) {
++        var _k = _keys[_i];
++        var _v = _saved[$ _k];
++        if (!is_undefined(_v)) {
++            _m[$ _k] = _v;
++        }
++    }
++    _m.src_rate   = real(_m.src_rate);
++    _m.src_len    = real(_m.src_len);
++    _m.rate       = real(_m.rate);
++    _m.gain       = real(_m.gain);
++    _m.dither     = real(_m.dither);
++    _m.pack       = real(_m.pack);
++    _m.sid_model  = real(_m.sid_model);
++    _m.trim_start = real(_m.trim_start);
++    _m.trim_end   = real(_m.trim_end);
++
++    var _have = 0;
++    if (buffer_exists(_asset.buffer)) {
++        _have = buffer_get_size(_asset.buffer);
++    }
++    if (_m.src_rate <= 0) {
++        _m.src_len = 0;
++    }
++    _m.src_len    = clamp(_m.src_len, 0, _have);
++    _m.trim_start = clamp(_m.trim_start, 0, _m.src_len);
++    _m.trim_end   = clamp(_m.trim_end, _m.trim_start, _m.src_len);
++    _m.enc_dirty  = true;
++}
++
++/// @function scr_sample_save_meta(_asset)
++/// @desc The saved field set — shared by save, save-as and autosave.
++function scr_sample_save_meta(_asset) {
++    var _out  = {};
++    var _keys = scr_sample_saved_keys();
++    for (var _i = 0; _i < array_length(_keys); _i++) {
++        var _k = _keys[_i];
++        _out[$ _k] = _asset.meta[$ _k];
++    }
++    return _out;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sample_create/scr_sample_create.yy b/C64DevMachine_win.yyp/scripts/scr_sample_create/scr_sample_create.yy
+new file mode 100644
+index 0000000..18511d2
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_sample_create/scr_sample_create.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_sample_create",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_sample_create",
++  "parent":{
++    "name":"SOUND_EDITOR",
++    "path":"folders/SCRIPTS/SOUND_EDITOR.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sample_editor/scr_sample_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sample_editor/scr_sample_editor.gml
+new file mode 100644
+index 0000000..378c0eb
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_sample_editor/scr_sample_editor.gml
+@@ -0,0 +1,435 @@
++/// Small push button for the sample editor. Returns true on click.
++function scr_sample_button(_x1, _y1, _w, _h, _label, _on, _enabled, _mx, _my) {
++    var _hov = point_in_rectangle(_mx, _my, _x1, _y1, _x1 + _w, _y1 + _h);
++    var _bg = make_color_rgb(38, 38, 58);
++    var _tx = c_white;
++    if (!_enabled) {
++        _bg = make_color_rgb(28, 28, 38);
++        _tx = make_color_rgb(90, 90, 110);
++    } else if (_on) {
++        _bg = make_color_rgb(160, 80, 20);
++        _tx = make_color_rgb(255, 160, 60);
++    } else if (_hov) {
++        _bg = make_color_rgb(66, 66, 98);
++    }
++    draw_set_color(_bg);
++    draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _h, false);
++    draw_set_color(_tx);
++    draw_set_halign(fa_center);
++    draw_text_l(_x1 + _w * 0.5, _y1 + 4, _label);
++    draw_set_halign(fa_left);
++    if (!_enabled) {
++        return false;
++    }
++    return (_hov && mouse_check_button_pressed(mb_left));
++}
++
++/// Per-column [min, max] of the source PCM (0..255) across _w columns.
++function scr_sample_wf_source(_asset, _w) {
++    var _m = _asset.meta;
++    var _key = string(_w) + ":" + string(_m.data_ver) + ":" + string(_m.src_len);
++    if (_m.wf_src_key == _key) {
++        return _m.wf_src;
++    }
++    var _cols = array_create(_w * 2, 128);
++    var _len = _m.src_len;
++    if (_len > 1 && buffer_exists(_asset.buffer)) {
++        for (var _c = 0; _c < _w; _c++) {
++            var _a = floor(_c * _len / _w);
++            var _b = max(_a + 1, floor((_c + 1) * _len / _w));
++            var _lo = 255;
++            var _hi = 0;
++            for (var _i = _a; _i < _b && _i < _len; _i++) {
++                var _v = buffer_peek(_asset.buffer, _i, buffer_u8);
++                _lo = min(_lo, _v);
++                _hi = max(_hi, _v);
++            }
++            _cols[_c * 2]     = _lo;
++            _cols[_c * 2 + 1] = _hi;
++        }
++    }
++    _m.wf_src = _cols;
++    _m.wf_src_key = _key;
++    return _cols;
++}
++
++/// Per-column [min, max] of the encoded 4-bit levels across _w columns.
++function scr_sample_wf_enc(_asset, _w) {
++    var _m = _asset.meta;
++    var _key = string(_w) + ":" + string(_m.enc_ver);
++    if (_m.wf_enc_key == _key) {
++        return _m.wf_enc;
++    }
++    var _cols = array_create(_w * 2, 8);
++    var _n = _m.out_count;
++    if (_n > 0) {
++        for (var _c = 0; _c < _w; _c++) {
++            var _a = floor(_c * _n / _w);
++            var _b = max(_a + 1, floor((_c + 1) * _n / _w));
++            var _lo = 15;
++            var _hi = 0;
++            for (var _i = _a; _i < _b && _i < _n; _i++) {
++                var _v = _m.enc[_i];
++                _lo = min(_lo, _v);
++                _hi = max(_hi, _v);
++            }
++            _cols[_c * 2]     = _lo;
++            _cols[_c * 2 + 1] = _hi;
++        }
++    }
++    _m.wf_enc = _cols;
++    _m.wf_enc_key = _key;
++    return _cols;
++}
++
++/// "1.234 S"
++function scr_sample_secs(_samples, _rate) {
++    if (_rate <= 0) {
++        return "0.000 S";
++    }
++    return string_format(_samples / _rate, 1, 3) + " S";
++}
++
++/// @function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
++/// @desc Inline editor for SAMPLE assets (wide panel).
++///
++///   toolbar   IMPORT WAV · PLAY SOURCE · PLAY C64 · STOP · source name
++///   SOURCE    full waveform; the trimmed span is lit, outside it dimmed.
++///             Left-drag moves the nearer trim handle, right-click resets.
++///   C64       the 4-bit levels exactly as the player will output them
++///   controls  RATE · GAIN · DITHER · PACK · SID
++///   stats     samples, seconds, bytes, CIA latch, clipping
++function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
++    var _m = _asset.meta;
++    if (_m.enc_dirty && _m.drag < 0) {
++        scr_sample_encode(_asset);
++    }
++    scr_sample_preview_tick();
++
++    var _c_lbl  = make_color_rgb(140, 150, 180);
++    var _c_dim  = make_color_rgb(95, 95, 115);
++    var _c_head = make_color_rgb(90, 220, 190);
++    var _c_box  = make_color_rgb(14, 14, 22);
++    var _c_edge = make_color_rgb(56, 56, 78);
++    var _c_wave = make_color_rgb(90, 200, 240);
++    var _c_c64  = make_color_rgb(200, 160, 255);
++    var _c_warn = make_color_rgb(255, 160, 60);
++
++    draw_set_font_l(fnt_c64_tiny);
++    draw_set_halign(fa_left);
++
++    var _x0 = _vx1 + 14;
++    var _x1 = _vx2 - 14;
++    var _w  = floor(_x1 - _x0);
++    var _have_src = (_m.src_len > 1);
++    var _pv_pos   = scr_sample_preview_pos(_asset);
++    var _pv_mode  = -1;
++    if (_pv_pos >= 0) {
++        _pv_mode = obj_asset_manager.sample_pv.mode;
++    }
++
++    // ===============================================================
++    // TOOLBAR
++    // ===============================================================
++    var _ty = _cy;
++    if (scr_sample_button(_x0, _ty, 100, 18, "IMPORT WAV", false, true, _mx, _my)) {
++        scr_sample_wav_import(_asset);
++        _have_src = (_m.src_len > 1);
++    }
++    if (scr_sample_button(_x0 + 110, _ty, 110, 18, "PLAY SOURCE", (_pv_mode == 0), _have_src, _mx, _my)) {
++        scr_sample_preview_play(_asset, 0);
++    }
++    if (scr_sample_button(_x0 + 230, _ty, 110, 18, "PLAY C64", (_pv_mode == 1), _have_src, _mx, _my)) {
++        scr_sample_preview_play(_asset, 1);
++    }
++    if (scr_sample_button(_x0 + 350, _ty, 60, 18, "STOP", false, (_pv_pos >= 0), _mx, _my)) {
++        scr_sample_preview_stop();
++    }
++    if (_have_src) {
++        draw_set_color(_c_lbl);
++        draw_text_l(_x0 + 430, _ty + 4, "SOURCE: ");
++        draw_set_color(c_white);
++        draw_text_l(_x0 + 500, _ty + 4, _m.src_name + "   " + string(_m.src_rate) + " HZ   "
++            + scr_sample_secs(_m.src_len, _m.src_rate) + "   " + string(_m.src_len) + " SAMPLES");
++    } else {
++        draw_set_color(_c_dim);
++        draw_text_l(_x0 + 430, _ty + 4, "NO SOURCE - IMPORT A WAV FILE (PCM OR FLOAT, ANY RATE, MONO OR STEREO)");
++    }
++
++    // ===============================================================
++    // SOURCE WAVEFORM + TRIM
++    // ===============================================================
++    var _sy1 = _ty + 40;
++    var _sh  = 170;
++    var _sy2 = _sy1 + _sh;
++    draw_set_color(_c_head);
++    draw_text_l(_x0, _sy1 - 13, "SOURCE");
++    draw_set_color(_c_box);
++    draw_rectangle(_x0, _sy1, _x1, _sy2, false);
++    draw_set_color(_c_edge);
++    draw_rectangle(_x0, _sy1, _x1, _sy2, true);
++    draw_line(_x0, (_sy1 + _sy2) * 0.5, _x1, (_sy1 + _sy2) * 0.5);
++
++    var _len = max(1, _m.src_len);
++    var _tsx = _x0 + _m.trim_start / _len * _w;
++    var _tex = _x0 + _m.trim_end / _len * _w;
++
++    if (_have_src) {
++        var _cols = scr_sample_wf_source(_asset, _w);
++        for (var _c = 0; _c < _w; _c++) {
++            var _px = _x0 + _c;
++            var _yl = _sy2 - 2 - (_cols[_c * 2] / 255) * (_sh - 4);
++            var _yh = _sy2 - 2 - (_cols[_c * 2 + 1] / 255) * (_sh - 4);
++            if (_px < _tsx || _px > _tex) {
++                draw_set_color(_c_dim);
++            } else {
++                draw_set_color(_c_wave);
++            }
++            draw_line(_px, _yl, _px, _yh - 1);
++        }
++        // Dim outside the trim
++        draw_set_alpha(0.45);
++        draw_set_color(c_black);
++        if (_tsx > _x0) {
++            draw_rectangle(_x0 + 1, _sy1 + 1, _tsx, _sy2 - 1, false);
++        }
++        if (_tex < _x1) {
++            draw_rectangle(_tex, _sy1 + 1, _x1 - 1, _sy2 - 1, false);
++        }
++        draw_set_alpha(1);
++        // Handles
++        draw_set_color(c_yellow);
++        draw_line_width(_tsx, _sy1, _tsx, _sy2, 2);
++        draw_line_width(_tex, _sy1, _tex, _sy2, 2);
++        draw_rectangle(_tsx, _sy1, _tsx + 6, _sy1 + 10, false);
++        draw_rectangle(_tex - 6, _sy1, _tex, _sy1 + 10, false);
++
++        // Playhead
++        if (_pv_pos >= 0) {
++            var _ph = _m.trim_start + _pv_pos * _m.src_rate;
++            var _phx = _x0 + _ph / _len * _w;
++            draw_set_color(c_white);
++            draw_line(_phx, _sy1, _phx, _sy2);
++        }
++
++        // Trim mouse
++        var _in_src = point_in_rectangle(_mx, _my, _x0, _sy1, _x1, _sy2);
++        if (_in_src && mouse_check_button_pressed(mb_left)) {
++            if (abs(_mx - _tsx) <= abs(_mx - _tex)) {
++                _m.drag = 0;
++            } else {
++                _m.drag = 1;
++            }
++        }
++        if (_in_src && mouse_check_button_pressed(mb_right)) {
++            _m.trim_start = 0;
++            _m.trim_end   = _m.src_len;
++            _m.enc_dirty  = true;
++            global.undo_dirty = true;
++        }
++        if (_m.drag >= 0) {
++            var _at = round(clamp((_mx - _x0) / _w, 0, 1) * _m.src_len);
++            if (_m.drag == 0) {
++                _m.trim_start = clamp(_at, 0, _m.trim_end - 1);
++            } else {
++                _m.trim_end = clamp(_at, _m.trim_start + 1, _m.src_len);
++            }
++            _m.enc_dirty = true;
++            if (!mouse_check_button(mb_left)) {
++                _m.drag = -1;
++                global.undo_dirty = true;
++            }
++        }
++    }
++
++    // ===============================================================
++    // C64 OUTPUT
++    // ===============================================================
++    var _ey1 = _sy2 + 30;
++    var _eh  = 128;
++    var _ey2 = _ey1 + _eh;
++    var _pack_name = "4-BIT NIBBLES";
++    if (_m.pack == 1) {
++        _pack_name = "2-BIT DELTA";
++    }
++    draw_set_color(_c_head);
++    draw_text_l(_x0, _ey1 - 13, "C64 OUTPUT   $D418 4-BIT   " + string(_m.rate) + " HZ   " + _pack_name);
++    draw_set_color(_c_box);
++    draw_rectangle(_x0, _ey1, _x1, _ey2, false);
++    // 16 DAC levels
++    draw_set_color(make_color_rgb(26, 26, 38));
++    for (var _l = 0; _l < 16; _l++) {
++        var _ly = _ey2 - 4 - _l * (_eh - 8) / 15;
++        draw_line(_x0 + 1, _ly, _x1 - 1, _ly);
++    }
++    draw_set_color(_c_edge);
++    draw_rectangle(_x0, _ey1, _x1, _ey2, true);
++    if (_m.out_count > 0) {
++        var _ecols = scr_sample_wf_enc(_asset, _w);
++        draw_set_color(_c_c64);
++        for (var _c = 0; _c < _w; _c++) {
++            var _px = _x0 + _c;
++            var _yl = _ey2 - 4 - _ecols[_c * 2] * (_eh - 8) / 15;
++            var _yh = _ey2 - 4 - _ecols[_c * 2 + 1] * (_eh - 8) / 15;
++            draw_line(_px, _yl + 1, _px, _yh);
++        }
++        if (_pv_pos >= 0) {
++            var _dur = _m.out_count / max(1, _m.rate);
++            var _ephx = _x0 + clamp(_pv_pos / max(0.001, _dur), 0, 1) * _w;
++            draw_set_color(c_white);
++            draw_line(_ephx, _ey1, _ephx, _ey2);
++        }
++    } else if (_m.drag >= 0) {
++        draw_set_color(_c_dim);
++        draw_text_l(_x0 + 10, _ey1 + 10, "RELEASE TO RE-ENCODE");
++    }
++
++    // ===============================================================
++    // CONTROLS
++    // ===============================================================
++    var _ky = _ey2 + 16;
++    var _kx = _x0;
++
++    // RATE
++    draw_set_color(_c_lbl);
++    draw_text_l(_kx, _ky + 4, "RATE");
++    var _rates = scr_sample_rate_presets();
++    var _ri = 0;
++    var _best = 1000000;
++    for (var _i = 0; _i < array_length(_rates); _i++) {
++        if (abs(_rates[_i] - _m.rate) < _best) {
++            _best = abs(_rates[_i] - _m.rate);
++            _ri = _i;
++        }
++    }
++    if (scr_sample_button(_kx + 40, _ky, 18, 18, "<", false, (_ri > 0), _mx, _my)) {
++        _m.rate = _rates[_ri - 1];
++        _m.enc_dirty = true;
++        global.undo_dirty = true;
++    }
++    draw_set_color(c_white);
++    draw_set_halign(fa_center);
++    draw_text_l(_kx + 100, _ky + 4, string(_m.rate) + " HZ");
++    draw_set_halign(fa_left);
++    if (scr_sample_button(_kx + 142, _ky, 18, 18, ">", false, (_ri < array_length(_rates) - 1), _mx, _my)) {
++        _m.rate = _rates[_ri + 1];
++        _m.enc_dirty = true;
++        global.undo_dirty = true;
++    }
++
++    // GAIN
++    _kx += 190;
++    draw_set_color(_c_lbl);
++    draw_text_l(_kx, _ky + 4, "GAIN");
++    if (scr_sample_button(_kx + 40, _ky, 18, 18, "<", false, (_m.gain > 10), _mx, _my)) {
++        _m.gain = max(10, _m.gain - 10);
++        _m.enc_dirty = true;
++        global.undo_dirty = true;
++    }
++    draw_set_color(c_white);
++    draw_set_halign(fa_center);
++    draw_text_l(_kx + 90, _ky + 4, string(_m.gain) + "%");
++    draw_set_halign(fa_left);
++    if (scr_sample_button(_kx + 122, _ky, 18, 18, ">", false, (_m.gain < 400), _mx, _my)) {
++        _m.gain = min(400, _m.gain + 10);
++        _m.enc_dirty = true;
++        global.undo_dirty = true;
++    }
++
++    // DITHER
++    _kx += 170;
++    draw_set_color(_c_lbl);
++    draw_text_l(_kx, _ky + 4, "DITHER");
++    var _dl = "OFF";
++    if (_m.dither == 1) {
++        _dl = "ON";
++    }
++    if (scr_sample_button(_kx + 56, _ky, 44, 18, _dl, (_m.dither == 1), true, _mx, _my)) {
++        _m.dither = 1 - _m.dither;
++        _m.enc_dirty = true;
++        global.undo_dirty = true;
++    }
++
++    // PACK
++    _kx += 130;
++    draw_set_color(_c_lbl);
++    draw_text_l(_kx, _ky + 4, "PACK");
++    if (scr_sample_button(_kx + 40, _ky, 70, 18, "4-BIT", (_m.pack == 0), true, _mx, _my)) {
++        _m.pack = 0;
++        _m.enc_dirty = true;
++        global.undo_dirty = true;
++    }
++    if (scr_sample_button(_kx + 116, _ky, 110, 18, "2-BIT DELTA", (_m.pack == 1), true, _mx, _my)) {
++        _m.pack = 1;
++        _m.enc_dirty = true;
++        global.undo_dirty = true;
++    }
++
++    // SID
++    _kx += 260;
++    draw_set_color(_c_lbl);
++    draw_text_l(_kx, _ky + 4, "SID");
++    if (scr_sample_button(_kx + 32, _ky, 54, 18, "6581", (_m.sid_model == 0), true, _mx, _my)) {
++        _m.sid_model = 0;
++        global.undo_dirty = true;
++    }
++    if (scr_sample_button(_kx + 92, _ky, 54, 18, "8580", (_m.sid_model == 1), true, _mx, _my)) {
++        _m.sid_model = 1;
++        global.undo_dirty = true;
++    }
++
++    // ===============================================================
++    // STATS
++    // ===============================================================
++    var _st = _ky + 34;
++    var _latch = scr_sample_cia_latch(_m.rate);
++    var _lhex = string_upper(decimal_to_hex(_latch));
++    while (string_length(_lhex) < 4) {
++        _lhex = "0" + _lhex;
++    }
++    var _actual = SAMPLE_PAL_CLOCK / (_latch + 1);
++
++    draw_set_color(_c_lbl);
++    draw_text_l(_x0, _st, "OUTPUT");
++    draw_set_color(c_white);
++    draw_text_l(_x0 + 80, _st, string(_m.out_count) + " SAMPLES   "
++        + scr_sample_secs(_m.out_count, _m.rate) + "   " + string(_m.out_bytes) + " BYTES");
++    draw_set_color(_c_lbl);
++    draw_text_l(_x0 + 460, _st, "CIA LATCH");
++    draw_set_color(c_white);
++    draw_text_l(_x0 + 550, _st, "$" + _lhex + "   " + string_format(_actual, 1, 1) + " HZ ON PAL");
++
++    _st += 18;
++    draw_set_color(_c_lbl);
++    draw_text_l(_x0, _st, "TRIM");
++    draw_set_color(c_white);
++    var _trim_txt = "--";
++    if (_have_src) {
++        _trim_txt = scr_sample_secs(_m.trim_start, _m.src_rate) + "  TO  " + scr_sample_secs(_m.trim_end, _m.src_rate);
++    }
++    draw_text_l(_x0 + 80, _st, _trim_txt);
++    if (_m.out_count > 0 && _m.clip_count > 0) {
++        var _pct = 100 * _m.clip_count / _m.out_count;
++        draw_set_color(_c_warn);
++        draw_text_l(_x0 + 460, _st, "CLIPPING " + string_format(_pct, 1, 1) + "% OF SAMPLES - LOWER THE GAIN");
++    }
++
++    _st += 18;
++    draw_set_color(_c_dim);
++    var _sid_note = "6581: $D418 DIGIS ARE LOUD AND CLEAN.";
++    if (_m.sid_model == 1) {
++        _sid_note = "8580: $D418 DIGIS ARE NEAR SILENT ALONE - THE PLAYER WILL ADD A DC-OFFSET BOOST.";
++    }
++    draw_text_l(_x0, _st, _sid_note);
++    _st += 14;
++    draw_text_l(_x0, _st, "LEFT-DRAG IN SOURCE MOVES THE NEARER TRIM HANDLE   RIGHT-CLICK RESETS THE TRIM");
++
++    // ===============================================================
++    // WARNING LINE
++    // ===============================================================
++    if (_m.warn_timer > 0) {
++        _m.warn_timer -= 1;
++        draw_set_color(_c_warn);
++        draw_text_l(_x0, _st + 22, _m.warn_msg);
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sample_editor/scr_sample_editor.yy b/C64DevMachine_win.yyp/scripts/scr_sample_editor/scr_sample_editor.yy
+new file mode 100644
+index 0000000..54a8cf4
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_sample_editor/scr_sample_editor.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_sample_editor",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_sample_editor",
++  "parent":{
++    "name":"SOUND_EDITOR",
++    "path":"folders/SCRIPTS/SOUND_EDITOR.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sample_encode/scr_sample_encode.gml b/C64DevMachine_win.yyp/scripts/scr_sample_encode/scr_sample_encode.gml
+new file mode 100644
+index 0000000..689686f
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_sample_encode/scr_sample_encode.gml
+@@ -0,0 +1,253 @@
++/// @function scr_sample_cia_latch(_rate)
++/// @desc CIA timer latch for an NMI every 1/_rate s on PAL (period = latch + 1 cycles).
++function scr_sample_cia_latch(_rate) {
++    return max(1, round(SAMPLE_PAL_CLOCK / max(1, _rate)) - 1);
++}
++
++/// Source sample at fractional position _pos, as -1..1 (linear interpolation).
++function scr_sample_src_at(_buf, _len, _pos) {
++    var _i0 = floor(_pos);
++    if (_i0 >= _len - 1) {
++        return (buffer_peek(_buf, _len - 1, buffer_u8) - 128) / 127;
++    }
++    var _t  = _pos - _i0;
++    var _s0 = buffer_peek(_buf, _i0, buffer_u8);
++    var _s1 = buffer_peek(_buf, _i0 + 1, buffer_u8);
++    return (_s0 + (_s1 - _s0) * _t - 128) / 127;
++}
++
++/// @function scr_sample_encode(_asset)
++/// @desc Rebuilds meta.enc (the 4-bit levels the C64 will output, after packing
++///       round-trips) and meta.packed (the bytes the player reads).
++///
++///   pack 0  4-bit nibbles, two samples per byte, FIRST sample in the LOW nibble.
++///   pack 1  2-bit delta, four samples per byte, first in bits 0-1. Each code
++///           adds DELTA[code] = -3,-1,+1,+3 to a level that starts at 8. The
++///           encoder only picks codes that keep the level inside 0-15, so the
++///           decoder never needs to clamp.
++function scr_sample_encode(_asset) {
++    var _m = _asset.meta;
++    _m.enc        = [];
++    _m.packed     = [];
++    _m.out_count  = 0;
++    _m.out_bytes  = 0;
++    _m.clip_count = 0;
++    _m.enc_dirty  = false;
++    _m.enc_ver   += 1;
++
++    if (_m.src_len <= 1 || _m.src_rate <= 0 || !buffer_exists(_asset.buffer)) {
++        return;
++    }
++    var _buf  = _asset.buffer;
++    var _len  = _m.src_len;
++    var _ts   = clamp(_m.trim_start, 0, _len);
++    var _te   = clamp(_m.trim_end, _ts, _len);
++    var _step = _m.src_rate / max(1, _m.rate);
++    var _n    = floor((_te - _ts) / _step);
++    if (_n <= 0) {
++        return;
++    }
++    var _gain = _m.gain / 100;
++
++    // ── RESAMPLE + GAIN + QUANTISE → target levels (real 0..15) ──
++    var _lev  = array_create(_n, 0);
++    var _clip = 0;
++    var _seed = 12345;
++    for (var _k = 0; _k < _n; _k++) {
++        var _a = _ts + _k * _step;
++        var _v = 0;
++        if (_step > 1) {
++            var _i0 = floor(_a);
++            var _i1 = floor(_a + _step);
++            if (_i1 <= _i0) {
++                _i1 = _i0 + 1;
++            }
++            if (_i1 > _te) {
++                _i1 = _te;
++            }
++            var _sum = 0;
++            for (var _j = _i0; _j < _i1; _j++) {
++                _sum += buffer_peek(_buf, _j, buffer_u8);
++            }
++            _v = (_sum / max(1, _i1 - _i0) - 128) / 127;
++        } else {
++            _v = scr_sample_src_at(_buf, _len, _a);
++        }
++        _v *= _gain;
++        if (_v > 1 || _v < -1) {
++            _clip += 1;
++            _v = clamp(_v, -1, 1);
++        }
++        var _q = (_v + 1) * 7.5;
++        if (_m.dither == 1) {
++            // Deterministic TPDF, so the same settings always give the same bytes.
++            _seed = (_seed * 69069 + 1) & 0xFFFFFFFF;
++            var _r1 = (_seed >> 16) / 65536;
++            _seed = (_seed * 69069 + 1) & 0xFFFFFFFF;
++            var _r2 = (_seed >> 16) / 65536;
++            _q += _r1 - _r2;
++        }
++        _lev[_k] = clamp(_q, 0, 15);
++    }
++
++    var _enc    = array_create(_n, 0);
++    var _packed = [];
++    if (_m.pack == 1) {
++        // ── 2-BIT DELTA ──
++        var _delta = [-3, -1, 1, 3];
++        var _level = 8;
++        var _byte  = 0;
++        for (var _k = 0; _k < _n; _k++) {
++            var _best_c = 0;
++            var _best_e = 1000;
++            for (var _c = 0; _c < 4; _c++) {
++                var _nl = _level + _delta[_c];
++                if (_nl < 0 || _nl > 15) {
++                    continue;
++                }
++                var _e = abs(_nl - _lev[_k]);
++                if (_e < _best_e) {
++                    _best_e = _e;
++                    _best_c = _c;
++                }
++            }
++            _level += _delta[_best_c];
++            _enc[_k] = _level;
++            _byte |= (_best_c << ((_k & 3) * 2));
++            if ((_k & 3) == 3) {
++                array_push(_packed, _byte);
++                _byte = 0;
++            }
++        }
++        if ((_n & 3) != 0) {
++            array_push(_packed, _byte);
++        }
++    } else {
++        // ── 4-BIT NIBBLES ──
++        for (var _k = 0; _k < _n; _k++) {
++            _enc[_k] = clamp(round(_lev[_k]), 0, 15);
++        }
++        for (var _k = 0; _k < _n; _k += 2) {
++            var _lo = _enc[_k];
++            var _hi = _lo;
++            if (_k + 1 < _n) {
++                _hi = _enc[_k + 1];
++            }
++            array_push(_packed, _lo | (_hi << 4));
++        }
++    }
++
++    _m.enc        = _enc;
++    _m.packed     = _packed;
++    _m.out_count  = _n;
++    _m.out_bytes  = array_length(_packed);
++    _m.clip_count = _clip;
++}
++
++// ═══════════════════════════ PREVIEW ═══════════════════════════
++// Monophonic: one preview at a time across all SAMPLE assets. State lives in
++// obj_asset_manager.sample_pv (initialised in its Create event).
++
++/// @function scr_sample_preview_stop()
++function scr_sample_preview_stop() {
++    with (obj_asset_manager) {
++        if (sample_pv.active) {
++            if (audio_is_playing(sample_pv.inst)) {
++                audio_stop_sound(sample_pv.inst);
++            }
++            audio_free_buffer_sound(sample_pv.snd);
++            buffer_delete(sample_pv.buf);
++        }
++        sample_pv.active = false;
++        sample_pv.snd    = -1;
++        sample_pv.buf    = -1;
++        sample_pv.inst   = -1;
++        sample_pv.asset  = undefined;
++        sample_pv.mode   = 0;
++    }
++}
++
++/// @function scr_sample_preview_play(_asset, _mode)
++/// @desc _mode 0 = SOURCE (trimmed, with gain), 1 = C64 (the 4-bit levels, held
++///       for one C64 sample period each — the stepped sound the $D418 DAC makes).
++function scr_sample_preview_play(_asset, _mode) {
++    scr_sample_preview_stop();
++    var _m = _asset.meta;
++    if (_m.src_len <= 1 || !buffer_exists(_asset.buffer)) {
++        return;
++    }
++    if (_m.enc_dirty) {
++        scr_sample_encode(_asset);
++    }
++
++    var _rate = SAMPLE_PV_RATE;
++    var _n = 0;
++    var _buf = -1;
++    if (_mode == 0) {
++        var _ts = clamp(_m.trim_start, 0, _m.src_len);
++        var _te = clamp(_m.trim_end, _ts, _m.src_len);
++        _n = floor((_te - _ts) * _rate / _m.src_rate);
++        if (_n <= 0) {
++            return;
++        }
++        var _gain = _m.gain / 100;
++        _buf = buffer_create(_n * 2, buffer_fixed, 2);
++        for (var _i = 0; _i < _n; _i++) {
++            var _v = scr_sample_src_at(_asset.buffer, _m.src_len, _ts + _i * _m.src_rate / _rate);
++            _v = clamp(_v * _gain, -1, 1);
++            buffer_write(_buf, buffer_s16, round(_v * 24000));
++        }
++    } else {
++        var _cnt = _m.out_count;
++        if (_cnt <= 0) {
++            return;
++        }
++        _n = floor(_cnt * _rate / _m.rate);
++        if (_n <= 0) {
++            return;
++        }
++        _buf = buffer_create(_n * 2, buffer_fixed, 2);
++        for (var _i = 0; _i < _n; _i++) {
++            var _k = min(_cnt - 1, floor(_i * _m.rate / _rate));
++            var _v = (_m.enc[_k] - 7.5) / 7.5;
++            buffer_write(_buf, buffer_s16, round(_v * 24000));
++        }
++    }
++
++    var _snd  = audio_create_buffer_sound(_buf, buffer_s16, _rate, 0, _n * 2, audio_mono);
++    var _inst = audio_play_sound(_snd, 10, false);
++    with (obj_asset_manager) {
++        sample_pv.active = true;
++        sample_pv.snd    = _snd;
++        sample_pv.buf    = _buf;
++        sample_pv.inst   = _inst;
++        sample_pv.asset  = _asset;
++        sample_pv.mode   = _mode;
++    }
++}
++
++/// @function scr_sample_preview_tick()
++/// @desc Frees the preview once it has finished. Called by the editor each frame.
++function scr_sample_preview_tick() {
++    var _done = false;
++    with (obj_asset_manager) {
++        if (sample_pv.active && !audio_is_playing(sample_pv.inst)) {
++            _done = true;
++        }
++    }
++    if (_done) {
++        scr_sample_preview_stop();
++    }
++}
++
++/// @function scr_sample_preview_pos(_asset)
++/// @desc Seconds into the preview of _asset, or -1 if it isn't the one playing.
++function scr_sample_preview_pos(_asset) {
++    var _pos = -1;
++    with (obj_asset_manager) {
++        if (sample_pv.active && sample_pv.asset == _asset) {
++            _pos = audio_sound_get_track_position(sample_pv.inst);
++        }
++    }
++    return _pos;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sample_encode/scr_sample_encode.yy b/C64DevMachine_win.yyp/scripts/scr_sample_encode/scr_sample_encode.yy
+new file mode 100644
+index 0000000..84d6cd8
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_sample_encode/scr_sample_encode.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_sample_encode",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_sample_encode",
++  "parent":{
++    "name":"SOUND_EDITOR",
++    "path":"folders/SCRIPTS/SOUND_EDITOR.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sample_wav/scr_sample_wav.gml b/C64DevMachine_win.yyp/scripts/scr_sample_wav/scr_sample_wav.gml
+new file mode 100644
+index 0000000..9e860cf
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_sample_wav/scr_sample_wav.gml
+@@ -0,0 +1,223 @@
++/// @function scr_sample_wav_import(_asset)
++/// @desc IMPORT WAV button. Replaces the asset's source PCM and resets the trim.
++function scr_sample_wav_import(_asset) {
++    var _path = get_open_filename("WAV Audio|*.wav", "");
++    io_clear();
++    if (_path == "") {
++        return;
++    }
++    var _m = _asset.meta;
++    var _r = scr_sample_wav_decode(_path);
++    if (!_r.ok) {
++        _m.warn_msg   = _r.msg;
++        _m.warn_timer = 300;
++        return;
++    }
++
++    scr_sample_preview_stop();
++    if (buffer_exists(_asset.buffer)) {
++        buffer_delete(_asset.buffer);
++    }
++    _asset.buffer = _r.buf;
++
++    _m.src_rate   = _r.rate;
++    _m.src_len    = _r.len;
++    _m.src_name   = filename_name(_path);
++    _m.trim_start = 0;
++    _m.trim_end   = _r.len;
++    _m.data_ver  += 1;
++    _m.wf_src_key = "";
++    _m.enc_dirty  = true;
++    _m.warn_msg   = _r.msg;
++    _m.warn_timer = 0;
++    if (_r.msg != "") {
++        _m.warn_timer = 300;
++    }
++    global.undo_dirty = true;
++}
++
++/// Four ASCII chars at _off.
++function scr_sample_wav_tag(_b, _off) {
++    var _s = "";
++    for (var _i = 0; _i < 4; _i++) {
++        _s += chr(buffer_peek(_b, _off + _i, buffer_u8));
++    }
++    return _s;
++}
++
++/// @function scr_sample_wav_decode(_path)
++/// @desc Reads a RIFF WAVE file into 8-bit unsigned mono at <= SAMPLE_SRC_MAX_RATE,
++///       peak-normalised. Handles PCM 8/16/24/32, float 32/64, WAVE_FORMAT_EXTENSIBLE,
++///       any channel count (averaged). Returns { ok, msg, buf, rate, len }.
++function scr_sample_wav_decode(_path) {
++    var _res = { ok: false, msg: "", buf: -1, rate: 0, len: 0 };
++
++    var _b = buffer_load(_path);
++    if (_b == -1) {
++        _res.msg = "COULD NOT READ " + filename_name(_path);
++        return _res;
++    }
++    var _size = buffer_get_size(_b);
++    if (_size < 44) {
++        buffer_delete(_b);
++        _res.msg = "NOT A WAV FILE";
++        return _res;
++    }
++    if (scr_sample_wav_tag(_b, 0) != "RIFF" || scr_sample_wav_tag(_b, 8) != "WAVE") {
++        buffer_delete(_b);
++        _res.msg = "NOT A WAV FILE";
++        return _res;
++    }
++
++    // ── CHUNKS ──
++    var _fmt = -1;
++    var _ch = 0;
++    var _rate = 0;
++    var _align = 0;
++    var _bits = 0;
++    var _data_pos = -1;
++    var _data_len = 0;
++    var _pos = 12;
++    while (_pos + 8 <= _size) {
++        var _id   = scr_sample_wav_tag(_b, _pos);
++        var _clen = buffer_peek(_b, _pos + 4, buffer_u32);
++        var _body = _pos + 8;
++        if (_id == "fmt " && _body + 16 <= _size) {
++            _fmt   = buffer_peek(_b, _body,      buffer_u16);
++            _ch    = buffer_peek(_b, _body + 2,  buffer_u16);
++            _rate  = buffer_peek(_b, _body + 4,  buffer_u32);
++            _align = buffer_peek(_b, _body + 12, buffer_u16);
++            _bits  = buffer_peek(_b, _body + 14, buffer_u16);
++            if (_fmt == 0xFFFE && _clen >= 26 && _body + 26 <= _size) {
++                _fmt = buffer_peek(_b, _body + 24, buffer_u16);   // sub-format GUID, first word
++            }
++        } else if (_id == "data") {
++            _data_pos = _body;
++            _data_len = min(_clen, _size - _body);
++        }
++        _pos = _body + _clen + (_clen & 1);
++    }
++
++    var _supported = false;
++    if (_fmt == 1) {
++        if (_bits == 8 || _bits == 16 || _bits == 24 || _bits == 32) {
++            _supported = true;
++        }
++    }
++    if (_fmt == 3) {
++        if (_bits == 32 || _bits == 64) {
++            _supported = true;
++        }
++    }
++    if (!_supported || _ch < 1 || _align < 1 || _data_pos < 0) {
++        buffer_delete(_b);
++        _res.msg = "UNSUPPORTED WAV (NEED PCM 8/16/24/32-BIT OR FLOAT)";
++        return _res;
++    }
++    if (_rate < 2000) {
++        buffer_delete(_b);
++        _res.msg = "WAV RATE TOO LOW (" + string(_rate) + " HZ)";
++        return _res;
++    }
++
++    var _frames = floor(_data_len / _align);
++    var _max_frames = _rate * SAMPLE_MAX_SECONDS;
++    var _truncated = false;
++    if (_frames > _max_frames) {
++        _frames = _max_frames;
++        _truncated = true;
++    }
++    if (_frames < 2) {
++        buffer_delete(_b);
++        _res.msg = "WAV HAS NO AUDIO";
++        return _res;
++    }
++
++    // ── READ + DOWNMIX ──
++    var _bps  = _bits div 8;
++    var _mono = array_create(_frames, 0);
++    for (var _f = 0; _f < _frames; _f++) {
++        var _base = _data_pos + _f * _align;
++        var _acc = 0;
++        for (var _c = 0; _c < _ch; _c++) {
++            var _o = _base + _c * _bps;
++            var _v = 0;
++            if (_fmt == 3) {
++                if (_bits == 32) {
++                    _v = buffer_peek(_b, _o, buffer_f32);
++                } else {
++                    _v = buffer_peek(_b, _o, buffer_f64);
++                }
++            } else if (_bits == 8) {
++                _v = (buffer_peek(_b, _o, buffer_u8) - 128) / 128;
++            } else if (_bits == 16) {
++                _v = buffer_peek(_b, _o, buffer_s16) / 32768;
++            } else if (_bits == 24) {
++                var _i24 = buffer_peek(_b, _o, buffer_u8)
++                         | (buffer_peek(_b, _o + 1, buffer_u8) << 8)
++                         | (buffer_peek(_b, _o + 2, buffer_u8) << 16);
++                if (_i24 >= 0x800000) {
++                    _i24 -= 0x1000000;
++                }
++                _v = _i24 / 8388608;
++            } else {
++                _v = buffer_peek(_b, _o, buffer_s32) / 2147483648;
++            }
++            _acc += _v;
++        }
++        _mono[_f] = _acc / _ch;
++    }
++    buffer_delete(_b);
++
++    // ── RESAMPLE DOWN (box filter doubles as the anti-alias) ──
++    var _out_rate = min(_rate, SAMPLE_SRC_MAX_RATE);
++    var _out = _mono;
++    var _n = _frames;
++    if (_out_rate < _rate) {
++        var _ratio = _rate / _out_rate;
++        _n = floor(_frames / _ratio);
++        _out = array_create(_n, 0);
++        for (var _k = 0; _k < _n; _k++) {
++            var _a0 = floor(_k * _ratio);
++            var _a1 = floor((_k + 1) * _ratio);
++            if (_a1 <= _a0) {
++                _a1 = _a0 + 1;
++            }
++            if (_a1 > _frames) {
++                _a1 = _frames;
++            }
++            var _sum = 0;
++            for (var _j = _a0; _j < _a1; _j++) {
++                _sum += _mono[_j];
++            }
++            _out[_k] = _sum / max(1, _a1 - _a0);
++        }
++    }
++
++    // ── PEAK-NORMALISE + 8-BIT ──
++    var _peak = 0;
++    for (var _p = 0; _p < _n; _p++) {
++        _peak = max(_peak, abs(_out[_p]));
++    }
++    var _scale = 0;
++    if (_peak > 0) {
++        _scale = 1 / _peak;
++    }
++    var _buf = buffer_create(max(1, _n), buffer_fixed, 1);
++    for (var _w = 0; _w < _n; _w++) {
++        var _u = clamp(round(_out[_w] * _scale * 127 + 128), 1, 255);
++        buffer_poke(_buf, _w, buffer_u8, _u);
++    }
++
++    _res.ok   = true;
++    _res.buf  = _buf;
++    _res.rate = _out_rate;
++    _res.len  = _n;
++    if (_truncated) {
++        _res.msg = "TRUNCATED TO " + string(SAMPLE_MAX_SECONDS) + " SECONDS";
++    }
++    if (_peak <= 0) {
++        _res.msg = "WAV IS SILENT";
++    }
++    return _res;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sample_wav/scr_sample_wav.yy b/C64DevMachine_win.yyp/scripts/scr_sample_wav/scr_sample_wav.yy
+new file mode 100644
+index 0000000..2de1c09
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_sample_wav/scr_sample_wav.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_sample_wav",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_sample_wav",
++  "parent":{
++    "name":"SOUND_EDITOR",
++    "path":"folders/SCRIPTS/SOUND_EDITOR.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+index 498746a..6d4184d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+@@ -267,6 +267,10 @@
+         if (_a.type == "SPRITE_MASK") {
+ 		     _meta_out = scr_sprmask_save_meta(_a);
+ 		 }
++        if (_a.type == "SAMPLE") {
++            // The source PCM goes out as the asset blob; meta is the settings.
++            _meta_out = scr_sample_save_meta(_a);
++        }
+ 		 if (_a.type == "ROOM_MAP") {
+ 		     // Rooms, exits and arrival points ARE the asset; the rest is editor state.
+ 		     _meta_out.rooms    = _a.meta.rooms;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+index df1069c..2dbef3b 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+@@ -261,6 +261,10 @@ if (instance_exists(obj_asset_manager)) {
+         if (_a.type == "SPRITE_MASK") {
+ 		     _meta_out = scr_sprmask_save_meta(_a);
+ 		 }
++        if (_a.type == "SAMPLE") {
++            // The source PCM goes out as the asset blob; meta is the settings.
++            _meta_out = scr_sample_save_meta(_a);
++        }
+ 		 if (_a.type == "ROOM_MAP") {
+ 		     // Rooms, exits and arrival points ARE the asset; the rest is editor state.
+ 		     _meta_out.rooms    = _a.meta.rooms;

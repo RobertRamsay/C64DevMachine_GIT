@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_sample_wav",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_sample_wav",
+  "parent":{
+    "name":"SOUND_EDITOR",
+    "path":"folders/SCRIPTS/SOUND_EDITOR.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

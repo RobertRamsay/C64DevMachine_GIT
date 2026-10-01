@@ -267,6 +267,10 @@
         if (_a.type == "SPRITE_MASK") {
 		     _meta_out = scr_sprmask_save_meta(_a);
 		 }
+        if (_a.type == "SAMPLE") {
+            // The source PCM goes out as the asset blob; meta is the settings.
+            _meta_out = scr_sample_save_meta(_a);
+        }
 		 if (_a.type == "ROOM_MAP") {
 		     // Rooms, exits and arrival points ARE the asset; the rest is editor state.
 		     _meta_out.rooms    = _a.meta.rooms;

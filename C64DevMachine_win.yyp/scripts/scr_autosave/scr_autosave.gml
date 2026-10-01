@@ -142,6 +142,9 @@ var _base = "unsaved";
             if (_a.type == "SPRITE_MASK") {
                 _mo = scr_sprmask_save_meta(_a);
             }
+            if (_a.type == "SAMPLE") {
+                _mo = scr_sample_save_meta(_a);
+            }
             if (_a.type == "ROOM_MAP") {
                 _mo.rooms    = _me.rooms;
                 _mo.reu      = _me.reu;

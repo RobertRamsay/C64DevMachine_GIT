@@ -57,6 +57,8 @@ function scr_boot_resident_ranges() {
         if (_a.type == "HUD") continue;
         if (_a.type == "ROOM_MAP") continue;
         if (_a.type == "SPRITE_MASK") continue;
+        // SAMPLE's buffer is source PCM, not C64 bytes.
+        if (_a.type == "SAMPLE") continue;
         if (ds_map_exists(_deferred, _a.name)) continue;
         if (!buffer_exists(_a.buffer)) continue;
 

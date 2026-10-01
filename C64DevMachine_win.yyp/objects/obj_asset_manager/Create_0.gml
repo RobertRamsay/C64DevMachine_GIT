@@ -94,6 +94,7 @@ asset_types = [
     "SFX_MAKER",
     "SID_MUSIC",
     "SFX_DATA",
+    "SAMPLE",
     "--- SCREEN & DATA ---",
     "HUD",
     "TEXT_DATA",
@@ -134,8 +135,12 @@ type_colours = {
     HUD           : make_color_rgb( 90, 220, 190),
     ANIMATION     : make_color_rgb(100, 210, 190),
     ROOM_MAP      : make_color_rgb(250, 200,  60),
-    SPRITE_MASK   : make_color_rgb(230, 100, 230)
+    SPRITE_MASK   : make_color_rgb(230, 100, 230),
+    SAMPLE        : make_color_rgb(240, 120, 160)
 };
+// SAMPLE preview audio — one at a time across all SAMPLE assets.
+// See scr_sample_preview_play / scr_sample_preview_stop.
+sample_pv = { active: false, snd: -1, buf: -1, inst: -1, asset: undefined, mode: 0 };
 // -------------------------------------------------------
 // NAME EDITING
 // -------------------------------------------------------

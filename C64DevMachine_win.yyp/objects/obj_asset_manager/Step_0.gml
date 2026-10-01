@@ -46,7 +46,7 @@ var _wide_modal = false;
 if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
     var _vb_type = ds_list_find_value(asset_list, viewer_asset).type;
     if (_vb_type == "BITMAP_BUILDER" || _vb_type == "MUSIC_MAKER" || _vb_type == "SFX_MAKER"
-    ||  _vb_type == "HUD" || (_vb_type == "ROOM_MAP" || _vb_type == "ANIMATION") || _vb_type == "SPRITE_MASK") {
+    ||  _vb_type == "HUD" || (_vb_type == "ROOM_MAP" || _vb_type == "ANIMATION") || _vb_type == "SPRITE_MASK" || _vb_type == "SAMPLE") {
         _wide_modal = true;
         _vx1 = 30;
         _vx2 = panel_x + 20;
@@ -2162,6 +2162,13 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open && !(_wide_mo
             _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
             scr_hud_create(_new_asset);
         }
+        if (_type == "SAMPLE") {
+            // The buffer becomes the imported source PCM; until then it is
+            // the 1-byte placeholder every authoring asset carries.
+            if (buffer_exists(_new_asset.buffer)) buffer_delete(_new_asset.buffer);
+            _new_asset.buffer = buffer_create(1, buffer_fixed, 1);
+            scr_sample_create(_new_asset);
+        }
         if (_type == "ROOM_MAP") {
             // Authoring asset: rooms, exits and arrival points. MACRO_ROOMS
             // turns it into tables; it owns no C64 memory of its own.
@@ -2386,6 +2393,12 @@ if (_asset.type == "BITMAP_BUILDER") {
 // SOUND_EDITOR — same reasoning: all interaction lives in
 // scr_sound_editor_editor (Draw GUI). No file, nothing to import.
 if ((_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER")) {
+    exit;
+}
+
+// SAMPLE — all interaction (IMPORT WAV included) lives in scr_sample_editor.
+// It has no address, so the generic ADDRESS click must not open an edit.
+if (_asset.type == "SAMPLE") {
     exit;
 }
 
@@ -2662,7 +2675,7 @@ if (_asset.type == "META_TILESET") {
         if (_asset.type != "ANIMATION" && _asset.type != "LOAD_ORG" &&
     _asset.type != "LOAD_REU" &&
     _asset.type != "BITMAP_BUILDER" &&
-    _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" &&
+    _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "SAMPLE" &&
             point_in_rectangle(_mx, _my, _addr_x, _iy, _panel_right, _iy + item_h)) {
             editing_address     = true;
             editing_address_idx = hover_idx;
@@ -2975,6 +2988,11 @@ if (mouse_check_button_pressed(mb_right) && _mouse_in_panel && hover_idx >= 0) {
             // heavy-handed (other assets' entries rebuild on next use) but it is
             // the only teardown path, and deletion is rare.
             scr_sound_preview_cache_clear();
+        }
+
+        if (_asset.type == "SAMPLE") {
+            // A preview of the asset being deleted would otherwise play on.
+            scr_sample_preview_stop();
         }
 
         // Remove stale LOAD_ORG linked_asset references to this asset

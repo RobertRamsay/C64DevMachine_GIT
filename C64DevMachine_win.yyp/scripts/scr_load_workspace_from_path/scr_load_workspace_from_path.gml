@@ -1028,6 +1028,14 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
 	            }
 	            scr_room_map_restore(_new_asset, _rmm);
 	        }
+	        if (_ad.type == "SAMPLE") {
+	            // The blob above already decoded the source PCM into the buffer.
+	            var _sam = _ad[$ "meta"];
+	            if (is_undefined(_sam)) {
+	                _sam = {};
+	            }
+	            scr_sample_restore(_new_asset, _sam);
+	        }
 	        if (_ad.type == "HUD") {
 	            // Seed a complete meta first, then lay the saved fields over it —
 	            // an asset written by an older build simply keeps the defaults for

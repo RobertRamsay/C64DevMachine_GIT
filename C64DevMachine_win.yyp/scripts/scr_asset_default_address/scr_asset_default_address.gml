@@ -39,6 +39,8 @@ function scr_asset_default_address(_type) {
         // HUD is an AUTHORING asset too — MACRO_HUD emits its chars and
         // colours inline on the spine, so it owns no address of its own.
         case "HUD":         return 0x0000;
+        // SAMPLE is emitted by whatever plays it — no address of its own.
+        case "SAMPLE":      return 0x0000;
         case "ROOM_MAP":    return 0x0000;
         case "SPRITE_MASK": return 0x0000;
         case "BITMAP_BUILDER": return 0x0000;
