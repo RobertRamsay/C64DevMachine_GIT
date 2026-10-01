@@ -2351,7 +2351,14 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         var _rs_hov = point_in_rectangle(_mx, _my, _rsx, _ory, _rsx + _rsw, _ory + _ord_row_h);
         draw_set_color(_orow.repeat_short ? c_lime : make_color_rgb(140, 90, 90));
         draw_set_halign(fa_center);
-        draw_text_l(_rsx + (_rsw * 0.5), _ory + 6, _orow.repeat_short ? "RPT" : L("NO"));
+        if (_m.free_voices) {
+            // no shared row count to repeat a short pattern into
+            draw_set_color(make_color_rgb(80, 80, 100));
+            draw_text_l(_rsx + (_rsw * 0.5), _ory + 6, "--");
+            _rs_hov = false;
+        } else {
+            draw_text_l(_rsx + (_rsw * 0.5), _ory + 6, _orow.repeat_short ? "RPT" : L("NO"));
+        }
         draw_set_halign(fa_left);
         if (_rs_hov && mouse_check_button_pressed(mb_left)) {
             _se_push_undo(_m, _se_snap);
@@ -2368,14 +2375,24 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         var _fl_hov_dn = point_in_rectangle(_mx, _my, _fl_dnx1, _ory, _fl_dnx2, _ory + _ord_row_h);
         var _fl_hov_up = point_in_rectangle(_mx, _my, _fl_upx1, _ory, _fl_upx2, _ory + _ord_row_h);
 
-        draw_set_color(_fl_hov_dn ? c_aqua : make_color_rgb(100, 100, 100));
-        draw_text_l(_fl_dnx1 + 4, _ory + 6, "-");
-        draw_set_color(_fl_hov_up ? c_aqua : make_color_rgb(100, 100, 100));
-        draw_text_l(_fl_upx1 + 4, _ory + 6, "+");
+        if (!_m.free_voices) {
+            draw_set_color(_fl_hov_dn ? c_aqua : make_color_rgb(100, 100, 100));
+            draw_text_l(_fl_dnx1 + 4, _ory + 6, "-");
+            draw_set_color(_fl_hov_up ? c_aqua : make_color_rgb(100, 100, 100));
+            draw_text_l(_fl_upx1 + 4, _ory + 6, "+");
+        }
 
         draw_set_color((_orow.force_len > 0) ? c_aqua : make_color_rgb(90, 90, 110));
         draw_set_halign(fa_center);
-        draw_text_l(_flx + (_flw * 0.5), _ory + 6, (_orow.force_len > 0) ? string(_orow.force_len) : L("OFF"));
+        if (_m.free_voices) {
+            // TIMING: PER VOICE ignores SIZE: each pattern plays its own LEN.
+            draw_set_color(make_color_rgb(80, 80, 100));
+            draw_text_l(_flx + (_flw * 0.5), _ory + 6, "AUTO");
+            _fl_hov_dn = false;
+            _fl_hov_up = false;
+        } else {
+            draw_text_l(_flx + (_flw * 0.5), _ory + 6, (_orow.force_len > 0) ? string(_orow.force_len) : L("OFF"));
+        }
         draw_set_halign(fa_left);
 
         if (_fl_hov_dn && mouse_check_button_pressed(mb_left)) {

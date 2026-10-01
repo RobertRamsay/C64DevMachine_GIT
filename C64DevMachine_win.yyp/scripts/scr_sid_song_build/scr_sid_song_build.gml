@@ -679,13 +679,17 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["byte", _ord_v[_vi][_oi], _id]);
         }
     }
-    array_push(_list, ["label", _key + "ordlen"]);
-    for (var _oi = 0; _oi < _n_ord; _oi++) {
-        array_push(_list, ["byte", _ord_ln[_oi], _id]);
-    }
-    array_push(_list, ["label", _key + "ordwrap"]);
-    for (var _oi = 0; _oi < _n_ord; _oi++) {
-        array_push(_list, ["byte", _ord_wr[_oi], _id]);
+    // Row counts / short-pattern wrap flags drive the shared row clock only;
+    // in free timing each pattern plays its own length, so they're left out.
+    if (!_free) {
+        array_push(_list, ["label", _key + "ordlen"]);
+        for (var _oi = 0; _oi < _n_ord; _oi++) {
+            array_push(_list, ["byte", _ord_ln[_oi], _id]);
+        }
+        array_push(_list, ["label", _key + "ordwrap"]);
+        for (var _oi = 0; _oi < _n_ord; _oi++) {
+            array_push(_list, ["byte", _ord_wr[_oi], _id]);
+        }
     }
 
     // ── 6. PER-SONG HEADER TABLES ──
@@ -960,6 +964,11 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_zp",  _S_LEN,          _id]);   // $S_LEN = this pattern's length
 
         array_push(_list, ["lda_zp",  _S_ROW,          _id]);
+        if (_free) {
+            // Free timing: a voice's row never passes its own pattern's end
+            // (it moves on to its next order row there), so no wrap code.
+            array_push(_list, ["label",   _vp + "rowok"]);
+        } else {
         array_push(_list, ["cmp_zp",  _S_LEN,          _id]);
         array_push(_list, ["bcc",     _vp + "rowok",   _id]);   // row < len, use as-is
         array_push(_list, ["ldy_zp",  _S_ORD,          _id]);
@@ -975,6 +984,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["cmp_zp",  _S_LEN,          _id]);
         array_push(_list, ["bcs",     _vp + "wraplp",  _id]);
         array_push(_list, ["label",   _vp + "rowok"]);
+        }
         array_push(_list, ["sta_zp",  _S_TMP,          _id]);   // $S_TMP = local row
 
         if (_compact_patterns) {
