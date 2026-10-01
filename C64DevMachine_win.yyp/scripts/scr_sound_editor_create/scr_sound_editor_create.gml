@@ -111,6 +111,8 @@ function scr_sound_editor_create(_asset) {
         // Optional 96-entry SID frequency table (e.g. a composer's tuning,
         // imported with a tune); [] = the shared equal-tempered table.
         note_table    : [],
+        // Per-voice row clocks (TIMING: PER VOICE) instead of one shared clock.
+        free_voices   : false,
 
         // ── VIEW ──
         view_mode     : "VERTICAL",   // vertical first; horizontal is a later
@@ -170,7 +172,7 @@ function scr_music_sid_length(_m, _row) {
 function scr_music_sid_project(_m, _chip) {
     var _out = { instruments: _m.instruments, patterns: _m.patterns, songs: [],
         play_speed: _m.play_speed, voice_mask: scr_music_sid_mask(_m, _chip),
-        filt_mode: _m.filt_mode, filt_res: _m.filt_res, filt_cut: _m.filt_cut, note_table: _m[$ "note_table"] };
+        filt_mode: _m.filt_mode, filt_res: _m.filt_res, filt_cut: _m.filt_cut, note_table: _m[$ "note_table"], free_voices: _m[$ "free_voices"] };
     for (var _s = 0; _s < array_length(_m.songs); _s++) {
         var _source = _m.songs[_s];
         var _song = { name: _source.name, loop: _source.loop, loop_row: _source.loop_row, order: [] };
@@ -790,6 +792,7 @@ function scr_music_size_signature(_m) {
     }
     var _nt = _m[$ "note_table"];
     if (is_array(_nt)) _h = (_h * 31 + array_length(_nt)) mod 1000000007;
+    if (_m[$ "free_voices"] == true) _h = (_h * 31 + 17) mod 1000000007;
     return _h;
 }
 

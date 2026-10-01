@@ -16,6 +16,11 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     var _instruments = (variable_struct_exists(_sm, "instruments") && is_array(_sm.instruments)) ? _sm.instruments : [];
     var _patterns    = (variable_struct_exists(_sm, "patterns")    && is_array(_sm.patterns))    ? _sm.patterns    : [];
     var _play_speed  = (variable_struct_exists(_sm, "play_speed")  && is_real(_sm.play_speed))   ? real(_sm.play_speed) : 6;
+    // FREE TIMING: each voice walks its own column of the order list with its
+    // own row speed (FXX sets that voice's speed, from the row it is on), the
+    // way GoatTracker / Galway sequences time each channel. Off = one shared
+    // row clock for all three voices.
+    var _free = (_sm[$ "free_voices"] == true);
 
     // ── SONGS ── every song's order rows are CONCATENATED into one set of
     // order tables. _S_ORD stays a single absolute index into them, so the
@@ -321,6 +326,8 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         "lnc", "lncq", "lncf", "lnk", "lnkq", "lnkf", "lsl", "lslq", "lslf", "lsh", "lshq", "lshf",
         "lnbl", "lnblq", "lnblf", "lnbh", "lnbhq", "lnbhf");
     if (_tables_used) array_push(_sng_state_tables, "trl", "trh");
+    // Free timing: per-voice order row, row, ticks left, speed, stopped flag.
+    if (_free) array_push(_sng_state_tables, "vor", "vrw", "vtk", "vsp", "vst");
     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
     if (array_length(_nt_custom) == 96) {
         array_push(_list, ["label", _nt_lo]);
@@ -719,6 +726,8 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // ... plus the filter shadows ($D415-$D418 can't be read back): cutoff as an
     // 11-bit value (fcl/fch), $D417 and $D418 copies, and a work byte.
     var _sng_scratch = ["rcmd", "rval", "vts", "vtd", "hrw", "spd", "fcl", "fch", "f17", "f18", "ftmp"];
+    // Free timing: F80-FFF zero-length-row flag, and its per-call guard.
+    if (_free) array_push(_sng_scratch, "rzero", "rzc");
     for (var _sci = 0; _sci < array_length(_sng_scratch); _sci++) {
         array_push(_list, ["label", _key + _sng_scratch[_sci]]);
         array_push(_list, ["byte", 0, _id]);
@@ -853,6 +862,18 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     array_push(_list, ["bne",     _key + "stclr", _id]);
     array_push(_list, ["lda_imm", _play_speed & 0xFF, _id]);
     array_push(_list, ["sta_abs", _key + "spd", _id]);
+    if (_free) {
+        // every voice starts on the seek row, first row next call, song tempo
+        for (var _fvi = 0; _fvi < 3; _fvi++) {
+            if ((_voice_mask & (1 << _fvi)) == 0) continue;
+            array_push(_list, ["lda_imm", _play_speed & 0xFF, _id]);
+            array_push(_list, ["sta_abs", _key + "vsp_" + string(_fvi), _id]);
+            array_push(_list, ["lda_zp", _S_ORD, _id]);
+            array_push(_list, ["sta_abs", _key + "vor_" + string(_fvi), _id]);
+            array_push(_list, ["lda_imm", 1, _id]);
+            array_push(_list, ["sta_abs", _key + "vtk_" + string(_fvi), _id]);
+        }
+    }
     if (_sfx) {
         array_push(_list, ["lda_imm", 0x00, _id]);
         for (var _sfv = 0; _sfv < 3; _sfv++) {
@@ -864,13 +885,15 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
 
     // ── PLAY ──
     array_push(_list, ["label",   _L_play]);
-    array_push(_list, ["dec_zp",  _S_TICK,   _id]);
-    array_push(_list, ["beq",     _L_rowadv, _id]);
-    array_push(_list, ["jmp_abs", _L_instrs, _id]);
+    if (!_free) {
+        array_push(_list, ["dec_zp",  _S_TICK,   _id]);
+        array_push(_list, ["beq",     _L_rowadv, _id]);
+        array_push(_list, ["jmp_abs", _L_instrs, _id]);
 
-    array_push(_list, ["label",   _L_rowadv]);
-    array_push(_list, ["lda_abs", _key + "spd", _id]);   // live tempo (FXX)
-    array_push(_list, ["sta_zp",  _S_TICK, _id]);
+        array_push(_list, ["label",   _L_rowadv]);
+        array_push(_list, ["lda_abs", _key + "spd", _id]);   // live tempo (FXX)
+        array_push(_list, ["sta_zp",  _S_TICK, _id]);
+    }
 
     // Trigger each voice's row. Unrolled per voice — three copies beats the
     // ZP juggling a shared subroutine would need to index a voice's block.
@@ -882,6 +905,26 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         var _vp      = _key + "v" + string(_vi) + "_";
         var _L_vskip = _vp + "skip";
         var _D400    = _chip_base + (_vi * 7);
+
+        if (_free) {
+            // This voice's own clock: a row only when its ticks run out. Its
+            // order row and row go through the shared ZP the row code reads.
+            var _vn = string(_vi);
+            array_push(_list, ["lda_abs", _key + "vst_" + _vn, _id]);
+            array_push(_list, ["bne", _vp + "fwait", _id]);
+            array_push(_list, ["dec_abs", _key + "vtk_" + _vn, _id]);
+            array_push(_list, ["beq", _vp + "fgo", _id]);
+            array_push(_list, ["label", _vp + "fwait"]);
+            array_push(_list, ["jmp_abs", _vp + "fdone2", _id]);
+            array_push(_list, ["label", _vp + "fgo"]);
+            array_push(_list, ["lda_imm", 16, _id]);             // at most 16 zero-length rows a call
+            array_push(_list, ["sta_abs", _key + "rzc", _id]);
+            array_push(_list, ["label", _vp + "frow"]);
+            array_push(_list, ["lda_abs", _key + "vor_" + _vn, _id]);
+            array_push(_list, ["sta_zp", _S_ORD, _id]);
+            array_push(_list, ["lda_abs", _key + "vrw_" + _vn, _id]);
+            array_push(_list, ["sta_zp", _S_ROW, _id]);
+        }
 
         if (_sfx) {
             // An effect owns this voice: the music's row is dropped.
@@ -1307,7 +1350,75 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["ldx_imm", _vi,              _id]);
         array_push(_list, ["jsr",     _key + "cmdr",    _id]);
         array_push(_list, ["label",   _L_vskip]);
+        if (_free) {
+            var _vn2 = string(_vi);
+            // This row lasts the voice's speed (an FXX on it already applied).
+            array_push(_list, ["lda_abs", _key + "vsp_" + _vn2, _id]);
+            array_push(_list, ["sta_abs", _key + "vtk_" + _vn2, _id]);
+            // Next row; at the end of this voice's pattern, its next order row.
+            // An empty slot ($FF) ends the voice's column like the song's end.
+            array_push(_list, ["inc_abs", _key + "vrw_" + _vn2, _id]);
+            array_push(_list, ["ldx_abs", _key + "vor_" + _vn2, _id]);
+            array_push(_list, ["lda_abx", _ord_lbls[_vi], _id]);
+            array_push(_list, ["cmp_imm", 0xFF, _id]);
+            array_push(_list, ["beq", _vp + "fend", _id]);
+            array_push(_list, ["tax", 0, _id]);
+            array_push(_list, ["lda_abx", _key + "patlen", _id]);
+            array_push(_list, ["sta_zp", _S_LEN, _id]);
+            array_push(_list, ["lda_abs", _key + "vrw_" + _vn2, _id]);
+            array_push(_list, ["cmp_zp", _S_LEN, _id]);
+            array_push(_list, ["bcc", _vp + "fdone", _id]);
+            array_push(_list, ["lda_imm", 0, _id]);
+            array_push(_list, ["sta_abs", _key + "vrw_" + _vn2, _id]);
+            array_push(_list, ["inc_abs", _key + "vor_" + _vn2, _id]);
+            array_push(_list, ["lda_abs", _key + "vor_" + _vn2, _id]);
+            array_push(_list, ["cmp_zp", _S_END, _id]);
+            array_push(_list, ["bcs", _vp + "fend", _id]);
+            // the next slot empty = this voice's column ends here, on time
+            array_push(_list, ["tax", 0, _id]);
+            array_push(_list, ["lda_abx", _ord_lbls[_vi], _id]);
+            array_push(_list, ["cmp_imm", 0xFF, _id]);
+            array_push(_list, ["bne", _vp + "fdone", _id]);
+            array_push(_list, ["label", _vp + "fend"]);
+            array_push(_list, ["lda_imm", 0, _id]);
+            array_push(_list, ["sta_abs", _key + "vrw_" + _vn2, _id]);
+            array_push(_list, ["lda_zp", _S_FLAG, _id]);
+            array_push(_list, ["and_imm", 0x01, _id]);
+            array_push(_list, ["beq", _vp + "fstop", _id]);
+            // loop: this voice back to the song's loop row, instrument cleared
+            array_push(_list, ["lda_zp", _S_LOOP, _id]);
+            array_push(_list, ["sta_abs", _key + "vor_" + _vn2, _id]);
+            array_push(_list, ["lda_imm", 0, _id]);
+            array_push(_list, ["sta_zp", _vb + 4, _id]);
+            array_push(_list, ["sta_zp", _vb + 6, _id]);
+            array_push(_list, ["sta_zp", _hb + 2, _id]);
+            array_push(_list, ["sta_zp", _cb, _id]);
+            array_push(_list, ["jmp_abs", _vp + "fdone", _id]);
+            // stop: silence this voice and park it
+            array_push(_list, ["label", _vp + "fstop"]);
+            array_push(_list, ["lda_imm", 0, _id]);
+            array_push(_list, ["sta_abs", _D400 + 4, _id]);
+            array_push(_list, ["sta_zp", _vb + 6, _id]);
+            array_push(_list, ["sta_zp", _hb + 2, _id]);
+            array_push(_list, ["sta_zp", _cb, _id]);
+            array_push(_list, ["lda_imm", 1, _id]);
+            array_push(_list, ["sta_abs", _key + "vst_" + _vn2, _id]);
+            array_push(_list, ["label", _vp + "fdone"]);
+            // A zero-length row (F80-FFF) plays the next row in this same frame.
+            array_push(_list, ["lda_abs", _key + "rzero", _id]);
+            array_push(_list, ["beq", _vp + "fdone2", _id]);
+            array_push(_list, ["lda_imm", 0, _id]);
+            array_push(_list, ["sta_abs", _key + "rzero", _id]);
+            array_push(_list, ["lda_abs", _key + "vst_" + _vn2, _id]);
+            array_push(_list, ["bne", _vp + "fdone2", _id]);
+            array_push(_list, ["dec_abs", _key + "rzc", _id]);
+            array_push(_list, ["beq", _vp + "fdone2", _id]);
+            array_push(_list, ["jmp_abs", _vp + "frow", _id]);
+            array_push(_list, ["label", _vp + "fdone2"]);
+        }
     }
+    if (_free) array_push(_list, ["jmp_abs", _L_instrs, _id]);
+    if (!_free) {
     // Advance the master row; roll into the next order row at the target.
     // Same label-operand restriction as the pattern length above — fetch via
     // lda_abx into scratch, then compare ZP-to-ZP.
@@ -1367,6 +1478,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_zp",  _h_base[_vi] + 2,   _id]);
         array_push(_list, ["sta_zp",  _c_base[_vi],       _id]);
     }
+    }   // end !_free shared row clock
 
     // ── PER-FRAME INSTRUMENT STEPPING ──
     // Runs every call regardless of whether a row advanced, so D-holds are
@@ -2132,7 +2244,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             _sng_use_fx = true;
         }
     }
-    scr_sid_song_emit_fx_routines(_list, _id, _key, _chip_base, _c_base[0], _sng_use_fx, _sng_filt_used, _sng_extended_fx);
+    scr_sid_song_emit_fx_routines(_list, _id, _key, _chip_base, _c_base[0], _sng_use_fx, _sng_filt_used, _sng_extended_fx, _free);
     if (_sfx) {
         scr_sid_song_emit_sfx(_list, _id, _key, _chip_base, _S_PTR);
     }

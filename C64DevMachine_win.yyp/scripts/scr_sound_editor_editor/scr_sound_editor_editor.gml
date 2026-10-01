@@ -177,6 +177,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (!variable_struct_exists(_m, "filt_res"))    _m.filt_res    = 0;
     if (!variable_struct_exists(_m, "filt_cut"))    _m.filt_cut    = 1024;
     if (!variable_struct_exists(_m, "note_table"))  _m.note_table  = [];
+    if (!variable_struct_exists(_m, "free_voices")) _m.free_voices = false;
     // 1 is frantic, 24 is a dirge; the emitter clamps to 1-255 anyway, but
     // there's no musical reason to go past this from the UI.
     _m.play_speed = clamp(real(_m.play_speed), 1, 24);
@@ -923,8 +924,29 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(90, 90, 120));
     var _tp_bpm = round((50 * 60) / (real(_m.play_speed) * 4));
-    draw_text_l(_tp_ux2 + 12, _rowy + 6, L("FRAMES/ROW  (~") + string(_tp_bpm) + " BPM @ 4 ROWS/BEAT)");
+    var _tp_txt = L("FRAMES/ROW  (~") + string(_tp_bpm) + " BPM @ 4 ROWS/BEAT)";
+    draw_text_l(_tp_ux2 + 12, _rowy + 6, _tp_txt);
+    var _tm_x = _tp_ux2 + 12 + string_width_l(_tp_txt) + 18;
     draw_set_font_l(fnt_c64_tiny);
+
+    // ── TIMING ── SHARED: one row clock for all voices (FXX sets it). PER
+    // VOICE: each voice walks its own column of the order list at its own
+    // speed (FXX sets that voice's speed from its row on), so voices can
+    // change notes at different times — the GoatTracker / sequence model.
+    var _tm_label = "TIMING: SHARED";
+    if (_m.free_voices) _tm_label = "TIMING: PER VOICE";
+    if (scr_sfx_maker_button(_tm_x, _rowy, 170, _tm_label, _mx, _my)) {
+        scr_sound_editor_transport(_m, _cur_song, "STOP");
+        _m.free_voices = !_m.free_voices;
+        global.addresses_dirty = true;
+        global.undo_dirty      = true;
+    }
+    if (_m.free_voices) {
+        draw_set_font_l(fnt_c64_pico);
+        draw_set_color(make_color_rgb(90, 90, 120));
+        draw_text_l(_tm_x + 180, _rowy + 6, "EACH VOICE: OWN ORDER COLUMN, OWN FXX SPEED, OWN PATTERN LENGTH");
+        draw_set_font_l(fnt_c64_tiny);
+    }
 
     _rowy += 26;
     var _sid_count = scr_music_sid_count(_m);
