@@ -1,3 +1,8 @@
+// Discord report replies
+if (scr_report_async(async_load)) {
+    exit;
+}
+
 // =============================================================
 // Version check response
 // =============================================================

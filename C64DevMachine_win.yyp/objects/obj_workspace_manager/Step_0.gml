@@ -38,6 +38,9 @@ if (!recovery_checked && !global.lang_unset) {
     scr_crash_recovery_check();
 }
 
+// Discord reports: one queued message at a time.
+scr_report_step();
+
 // Advance the asynchronous C64U REU upload.
 scr_c64u_reu_step();
 

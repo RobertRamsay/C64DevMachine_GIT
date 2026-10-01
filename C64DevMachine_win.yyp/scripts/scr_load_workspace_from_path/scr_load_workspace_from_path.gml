@@ -60,6 +60,7 @@ function scr_load_workspace_from_path(_path, _mcp = false) {
     // ── 4. Load; on any failure, roll back ──
     try {
         scr_load_workspace_from_path_core(_path, _mcp);
+        scr_report_file_opened(_fname, _mcp);
     } catch (_e3) {
         show_debug_message("LOAD FAILED: " + _path + " : " + string(_e3.message));
         show_debug_message(string(_e3.stacktrace));

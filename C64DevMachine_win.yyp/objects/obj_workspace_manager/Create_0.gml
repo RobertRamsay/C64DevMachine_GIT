@@ -91,11 +91,23 @@ global.bmp_preview_queue = [];
 global.bmp_preview_done  = 0;
 global.bmp_preview_total = 0;
 // is demo mode?
+// --- DISCORD REPORTS (scr_discord_report) ---
+scr_report_init();
+scr_report_check_previous_crash();
+scr_report_app_opened();
+
 // --- GLOBAL CRASH HANDLER ---
 exception_unhandled_handler(function(_ex) {
     // Log the error to the console
     show_debug_message("FATAL CRASH INTERCEPTED: " + string(_ex.message));
     show_debug_message("STACK TRACE: " + string(_ex.stacktrace));
+
+    // Crash report for Discord, sent on the next launch.
+    try {
+        scr_report_write_crash(_ex);
+    } catch (_e_rep) {
+        show_debug_message("Crash report FAILED: " + string(_e_rep.message));
+    }
     
     // Rescue the workspace UNCONDITIONALLY. This used to require
     // autosave_dirty and an autosave mode other than 3, which meant a crash
