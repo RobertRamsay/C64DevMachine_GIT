@@ -113,6 +113,8 @@ function scr_sound_editor_create(_asset) {
         note_table    : [],
         // Per-voice row clocks (TIMING: PER VOICE) instead of one shared clock.
         free_voices   : false,
+        // Preview / export chip: 0 = 6581, 1 = 8580.
+        chip_model    : 1,
 
         // ── VIEW ──
         view_mode     : "VERTICAL",   // vertical first; horizontal is a later

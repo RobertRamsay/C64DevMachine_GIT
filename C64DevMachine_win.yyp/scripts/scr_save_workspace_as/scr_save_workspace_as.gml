@@ -311,6 +311,8 @@
             _meta_out.filt_mode        = variable_struct_exists(_a.meta, "filt_mode")        ? _a.meta.filt_mode        : 0;
             _meta_out.filt_res         = variable_struct_exists(_a.meta, "filt_res")         ? _a.meta.filt_res         : 0;
             _meta_out.filt_cut         = variable_struct_exists(_a.meta, "filt_cut")         ? _a.meta.filt_cut         : 1024;
+            _meta_out.chip_model       = 1;
+            if (variable_struct_exists(_a.meta, "chip_model")) _meta_out.chip_model = _a.meta.chip_model;
             _meta_out.free_voices      = false;
             if (variable_struct_exists(_a.meta, "free_voices")) _meta_out.free_voices = _a.meta.free_voices;
             _meta_out.note_table       = [];

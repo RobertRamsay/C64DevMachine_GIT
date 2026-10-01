@@ -211,9 +211,11 @@ function scr_sound_editor_export_sid_go(_input, _ctx) {
             buffer_poke(_b, 0x16 + _si2 * 32 + _ci - 1, buffer_u8, ord(string_char_at(_t, _ci)) & 0x7F);
         }
     }
-    // flags: PAL, and the chip model picked for the preview (6581 / 8580)
+    // flags: PAL, and the song's chip (6581 / 8580)
     var _flags = 0x0004 | 0x0010;
-    if (global.sid64_model == 1) {
+    var _exp_chip = _asset.meta[$ "chip_model"];
+    if (is_undefined(_exp_chip)) _exp_chip = global.sid64_model;
+    if (_exp_chip == 1) {
         _flags = 0x0004 | 0x0020;
     }
     _be(_b, 0x76, _flags);

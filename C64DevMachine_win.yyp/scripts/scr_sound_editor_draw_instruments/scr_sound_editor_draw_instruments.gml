@@ -818,11 +818,19 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     var _lg_y = _pv_y + 32 + (_err_n * 12) + 10;
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(110, 110, 130));
-    draw_text_l(_tb_x0, _lg_y,      "$xx   WAVE / CONTROL BYTE (HEX)");
-    draw_text_l(_tb_x0, _lg_y + 12, "N  N+n  N-n   NOTE + SEMITONES");
-    draw_text_l(_tb_x0, _lg_y + 24, "Dn   HOLD n TICKS (1-255)");
-    draw_text_l(_tb_x0, _lg_y + 36, "Ln   LOOP TO STEP n (16-BIT OFFSET)");
-    draw_text_l(_tb_x0, _lg_y + 48, "F FINE / S SLIDE / P PULSE / Q SWEEP / G GATE / --- END");
+    // Quick guide; the ? button above has the full version with examples.
+    var _qg = [
+        "$xx WAVE   N  N+n  N-n NOTE   Dn HOLD n FRAMES   --- END",
+        "Ln LOOP TO STEP n   Rc:n REPEAT FROM STEP n, c MORE TIMES",
+        "F+n FINE   S+n SLIDE   P$xxx PULSE   Q+n PULSE SWEEP",
+        "G$xx RAW GATE/WAVE   H0 NO HARD RESTART   C$xxx CUTOFF",
+        "~PITCH  ~PULSE  ~FILTER: TABLES OF S / Q / C + D + L LINES",
+        "  + KEEPS RUNNING   4 STEPS 4X A FRAME   >nn USES INSTR nn'S TABLE",
+        "FULL GUIDE: ? BUTTON"
+    ];
+    for (var _qgi = 0; _qgi < array_length(_qg); _qgi++) {
+        draw_text_l(_tb_x0, _lg_y + _qgi * 12, _qg[_qgi]);
+    }
     draw_set_font_l(fnt_c64_tiny);
 
     // Dropdown list / help table last, so they sit over the command box.

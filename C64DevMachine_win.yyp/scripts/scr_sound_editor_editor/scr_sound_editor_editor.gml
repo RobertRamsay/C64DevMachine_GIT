@@ -18,6 +18,18 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     _vy2 = _vy2 - _pno_h;
     var _m = _asset.meta;
     _m.pattern_hover_tip = "";
+    // Pattern-command guide: while it's open nothing behind it reacts to the
+    // mouse or keys; only its CLOSE button or Escape closes it.
+    var _cg_mx = _mx;
+    var _cg_my = _my;
+    var _cg_click = mouse_check_button_pressed(mb_left);
+    var _cg_esc = keyboard_check_pressed(vk_escape);
+    var _cg_open = global.music_cmd_guide_open;
+    if (_cg_open) {
+        _mx = -100000;
+        _my = -100000;
+        io_clear();
+    }
     if (!variable_struct_exists(_m, "order_pattern_edit_active")) _m.order_pattern_edit_active = false;
     // A click elsewhere cancels the pending entry before another control receives focus.
     if (_m.order_pattern_edit_active && mouse_check_button_pressed(mb_left)) {
@@ -178,6 +190,14 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (!variable_struct_exists(_m, "filt_cut"))    _m.filt_cut    = 1024;
     if (!variable_struct_exists(_m, "note_table"))  _m.note_table  = [];
     if (!variable_struct_exists(_m, "free_voices")) _m.free_voices = false;
+    if (!variable_struct_exists(_m, "chip_model"))  _m.chip_model  = 1;
+    // The preview chip follows the song's saved choice.
+    if (global.sid64_ok && global.sid64_model != _m.chip_model) {
+        global.sid64_model = _m.chip_model;
+        scr_sid64_reconfigure();
+        _m.playing = false;
+        _m.song_playing = false;
+    }
     // 1 is frantic, 24 is a dirge; the emitter clamps to 1-255 anyway, but
     // there's no musical reason to go past this from the UI.
     _m.play_speed = clamp(real(_m.play_speed), 1, 24);
@@ -459,17 +479,19 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         }
         _fsx = _fup + 26;
     }
-    // Preview chip (session setting, not saved with the song).
+    // Preview / export chip, saved with the song.
     if (global.sid64_ok) {
         var _chip_lbl = "CHIP: 6581";
-        if (global.sid64_model == 1) {
+        if (_m.chip_model == 1) {
             _chip_lbl = "CHIP: 8580";
         }
         if (scr_sfx_maker_button(_fsx + 10, _fl_y - 1, 96, _chip_lbl, _mx, _my)) {
-            global.sid64_model = 1 - global.sid64_model;
+            _m.chip_model = 1 - _m.chip_model;
+            global.sid64_model = _m.chip_model;
             scr_sid64_reconfigure();
             _m.playing = false;
             _m.song_playing = false;
+            global.undo_dirty = true;
         }
     }
     // Standalone .sid of this asset (the MACRO_SID_SONG player, assembled at a
@@ -2108,6 +2130,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_text_l(_col_gutter_x, _clr_y + 52,
         "EXX FILTER MODE (1 LP 2 BP 4 HP 8 V3 OFF) DXX $D418 FXX TEMPO | GXX FINE HXX PITCH IXX PULSE J00 TIE | 1-4,9,C ONE ROW");
     draw_set_font_l(fnt_c64_tiny);
+    if (scr_sfx_maker_button(_col_gutter_x + _grid_full_w - 150, _clr_y + 28, 150, "COMMAND GUIDE", _mx, _my)) {
+        global.music_cmd_guide_open = true;
+    }
 
     // ═════════════════════════════════════════════════════════════════════
     // RIGHT PANEL — SONG ORDER TABLE
@@ -2575,9 +2600,61 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         draw_set_font_l(fnt_c64_tiny);
     }
 
+    if (_cg_open) {
+        scr_sound_editor_cmd_guide(_vx1, _vy1, _vx2, _vy2_full, _cg_mx, _cg_my, _cg_click, _cg_esc);
+    }
+
     draw_set_alpha(1.0);
     draw_set_color(c_white);
     draw_set_halign(fa_left);
+}
+
+/// The pattern-command guide panel: every command in full, over the editor.
+/// Closes with its CLOSE button or Escape (the editor gets no input meanwhile).
+function scr_sound_editor_cmd_guide(_x1, _y1, _x2, _y2, _mx, _my, _click, _esc) {
+    draw_set_alpha(0.75);
+    draw_set_color(c_black);
+    draw_rectangle(_x1, _y1, _x2, _y2, false);
+    draw_set_alpha(1.0);
+    var _pw = min(_x2 - _x1 - 40, 1500);
+    var _ph = min(_y2 - _y1 - 40, 900);
+    var _px = _x1 + floor((_x2 - _x1 - _pw) / 2);
+    var _py = _y1 + floor((_y2 - _y1 - _ph) / 2);
+    draw_set_color(make_color_rgb(14, 14, 24));
+    draw_rectangle(_px, _py, _px + _pw, _py + _ph, false);
+    draw_set_color(make_color_rgb(120, 120, 170));
+    draw_rectangle(_px, _py, _px + _pw, _py + _ph, true);
+    draw_set_font_l(fnt_c64_tiny);
+    draw_set_halign(fa_left);
+    draw_set_color(make_color_rgb(255, 200, 100));
+    draw_text_l(_px + 16, _py + 12, "PATTERN COMMANDS  -  TYPE THE LETTER, THEN TWO HEX DIGITS (00-FF)");
+    // Two columns of commands, each entry the full hover help text.
+    var _order = [0, 1, 2, 3, 4, 9, 12, 16, 17, 18, 5, 6, 7, 8, 10, 11, 13, 14, 15, 19];
+    var _letters = "0123456789ABCDEFGHIJ";
+    var _colw = floor((_pw - 48) / 2);
+    var _cx = [_px + 16, _px + 32 + _colw];
+    var _cy = [_py + 40, _py + 40];
+    draw_set_font_l(fnt_c64_pico);
+    for (var _i = 0; _i < array_length(_order); _i++) {
+        var _c = _order[_i];
+        var _col = 0;
+        if (_i >= 10) _col = 1;
+        var _txt = scr_sound_editor_pattern_help(_c);
+        var _h = string_height_ext_l(_txt, -1, _colw - 40) + 10;
+        if (_cy[_col] + _h > _py + _ph - 44) continue;
+        draw_set_color(make_color_rgb(255, 170, 90));
+        draw_text_l(_cx[_col], _cy[_col], string_char_at(_letters, _c + 1) + "XX");
+        draw_set_color(make_color_rgb(205, 205, 225));
+        draw_text_ext_l(_cx[_col] + 40, _cy[_col], _txt, -1, _colw - 40);
+        _cy[_col] += _h;
+    }
+    draw_set_color(make_color_rgb(150, 150, 180));
+    draw_text_l(_px + 16, _py + _ph - 30, "1-4, 9 AND C LAST ONE ROW. G-J AND THE SETTINGS (5-8, A, B, D, E) STAY UNTIL CHANGED. ESC OR CLOSE TO RETURN.");
+    draw_set_font_l(fnt_c64_tiny);
+    if (scr_sfx_maker_button(_px + _pw - 110, _py + _ph - 34, 96, "CLOSE", _mx, _my) || _esc) {
+        global.music_cmd_guide_open = false;
+        keyboard_clear(vk_escape);
+    }
 }
 /// Transpose each selected stored note once, even when lanes share a pattern.
 /// Validate the whole operation first so boundary notes never squash intervals.

@@ -35,7 +35,7 @@ global.build_date = "October 1st, 2026"; // edit this string for each release
 // sid64 (reSID) preview audio — see scr_sid64_audio. Model/engine changes go
 // through scr_sid64_reconfigure so the preview cache is rebuilt.
 global.sid64_ok = false;
-global.sid64_model = 0;              // 0 = 6581, 1 = 8580
+global.sid64_model = 1;              // 0 = 6581, 1 = 8580 (each song keeps its own)
 global.sid64_engine = 0;             // 0 = reSID, 1 = reSID-fp
 global.sid64_hard_restart = 2;       // frames, MACRO_SID_SONG's default
 global.sid64_note_freq = array_create(96, 0);
@@ -66,6 +66,8 @@ global.sid64_stream = {
 global.music_size_cache = {};
 // Music Maker grid: per-column extra scroll while TIMING: PER VOICE plays.
 global.music_col_scroll = [0, 0, 0];
+// Music Maker pattern-command guide panel (modal while open).
+global.music_cmd_guide_open = false;
 for (var _sri = 0; _sri < SID64_RING; _sri++) {
     global.sid64_stream.ring[_sri] = buffer_create(_sid64_ring_samples * 2, buffer_fixed, 2);
 }

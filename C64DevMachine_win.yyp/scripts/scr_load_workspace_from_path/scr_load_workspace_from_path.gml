@@ -1074,6 +1074,9 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
 	            _new_asset.meta.filt_res         = variable_struct_exists(_sem, "filt_res")         ? real(_sem.filt_res)   : 0;
 	            _new_asset.meta.filt_cut         = variable_struct_exists(_sem, "filt_cut")         ? real(_sem.filt_cut)   : 1024;
 	            // Imported tuning: 96 SID frequency values, or [] for the shared table.
+	            // Preview chip saved with the song (0 = 6581, 1 = 8580; 8580 when absent).
+	            _new_asset.meta.chip_model       = 1;
+	            if (variable_struct_exists(_sem, "chip_model")) _new_asset.meta.chip_model = (real(_sem.chip_model) == 0) ? 0 : 1;
 	            _new_asset.meta.free_voices      = false;
 	            if (variable_struct_exists(_sem, "free_voices")) _new_asset.meta.free_voices = (_sem.free_voices == true);
 	            _new_asset.meta.note_table       = [];
