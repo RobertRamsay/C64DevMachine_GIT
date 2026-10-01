@@ -1,0 +1,24 @@
+diff --git a/C64DevMachine_win.yyp/scripts/c64_new_program/c64_new_program.gml b/C64DevMachine_win.yyp/scripts/c64_new_program/c64_new_program.gml
+index 15d1a9b..7e27764 100644
+--- a/C64DevMachine_win.yyp/scripts/c64_new_program/c64_new_program.gml
++++ b/C64DevMachine_win.yyp/scripts/c64_new_program/c64_new_program.gml
+@@ -87,7 +87,8 @@ assemble_instruction: function(_mnem, _val) {
+                                + "lda_abs_x,lda_abs_y,sta_abs_x,sta_abs_y,"
+                                + "adc_abs,sbc_abs,and_abs,ora_abs,eor_abs,cmp_abs,"
+                                + "adc_abx,adc_aby,sbc_abx,sbc_aby,inc_abs,dec_abs,"
+-                               + "cmp_abx,cmp_aby,cmp_abs_x,cmp_abs_y,";
++                               + "cmp_abx,cmp_aby,cmp_abs_x,cmp_abs_y,"
++                               + "inc_abx,dec_abx,ora_abx,and_abx,eor_abx,ora_aby,and_aby,eor_aby,";
+                 if (string_pos("," + _mnem + ",", _abs_mnems) > 0) {
+                     var _fp = (self.pc_override >= 0)
+                         ? (self.pc_override + 1) - self.base_address - self.header_size
+@@ -107,6 +108,9 @@ assemble_instruction: function(_mnem, _val) {
+                         sbc_abx: 0xFD, sbc_aby: 0xF9,
+                         inc_abs: 0xEE, dec_abs: 0xCE,
+                         cmp_abx: 0xDD, cmp_abs_x: 0xDD, cmp_aby: 0xD9, cmp_abs_y: 0xD9,
++                        inc_abx: 0xFE, dec_abx: 0xDE,
++                        ora_abx: 0x1D, and_abx: 0x3D, eor_abx: 0x5D,
++                        ora_aby: 0x19, and_aby: 0x39, eor_aby: 0x59,
+                     };
+                     var _op = variable_struct_exists(_op_map, _mnem) ? _op_map[$ _mnem] : 0xAD;
+                     self.add([_op, 0x00, 0x00]);
