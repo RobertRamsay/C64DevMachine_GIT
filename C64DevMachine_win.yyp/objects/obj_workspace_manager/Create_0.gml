@@ -57,7 +57,10 @@ global.sid64_stream = {
     pos_ord         : array_create(SID64_POS_RING, 0),
     pos_row         : array_create(SID64_POS_RING, 0),
     // Sounding note per voice (all chips) for each rendered frame; -1 = none.
-    pos_notes       : array_create(SID64_POS_RING, undefined)
+    pos_notes       : array_create(SID64_POS_RING, undefined),
+    // Per-voice [order row, row] (all chips) for each rendered frame — the
+    // grid's per-voice highlight in TIMING: PER VOICE.
+    pos_vpos        : array_create(SID64_POS_RING, undefined)
 };
 // Music Maker byte summary per asset name: { sig, pending, stable_at, next_check, info }.
 global.music_size_cache = {};

@@ -292,6 +292,12 @@ function scr_sid64_stream_chunk() {
             array_push(_notes, scr_sid64_voice_note(_st.sims[_nc], _st.sims[_nc].voices[_nv]));
         }
         _st.pos_notes[_pi] = _notes;
+        var _vpos = [];
+        for (var _pc = 0; _pc < _count; _pc++) for (var _pv = 0; _pv < 3; _pv++) {
+            var _pvc = _st.sims[_pc].voices[_pv];
+            array_push(_vpos, [_pvc.shown_ord, _pvc.shown_row]);
+        }
+        _st.pos_vpos[_pi] = _vpos;
         if (_st.sim.finished && _st.finished_at < 0) _st.finished_at = _st.frames_rendered + _i;
     }
     var _got = 0;

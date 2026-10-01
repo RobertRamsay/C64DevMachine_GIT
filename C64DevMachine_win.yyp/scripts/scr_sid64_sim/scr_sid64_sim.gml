@@ -40,6 +40,8 @@ function scr_sid64_sim_voice_new() {
         vspd : 6,
         vstop : false,
         vzero : false,           // F80-FFF: this row takes no time
+        shown_ord : 0,           // the order row / row this voice last played
+        shown_row : 0,
         hold     : 0,
         base     : 0,           // base note index (0-95)
         active   : false,
@@ -102,6 +104,8 @@ function scr_sid64_sim_create(_m, _song, _loop_row, _ord, _row) {
         _sim.free = (_m[$ "free_voices"] == true);
     }
     for (var _iv = 0; _iv < 3; _iv++) {
+        _sim.voices[_iv].shown_ord = _ord;
+        _sim.voices[_iv].shown_row = _row;
         _sim.voices[_iv].vord = _ord;
         _sim.voices[_iv].vrow = _row;
         _sim.voices[_iv].vtick = 1;
@@ -875,6 +879,8 @@ function scr_sid64_sim_free_rows(_sim) {
                 _sim.shown_ord = _vc.vord;
                 _sim.shown_row = _vc.vrow;
             }
+            _vc.shown_ord = _vc.vord;
+            _vc.shown_row = _vc.vrow;
             _sim.row = _vc.vrow;
             var _rd = scr_sid64_sim_fetch(_sim, _v, _orow);
             if (is_struct(_rd)) {

@@ -117,6 +117,26 @@ function scr_sound_editor_piano_playing(_m) {
     return _out;
 }
 
+/// TIMING: PER VOICE playback: where each shown voice is, as [order row, row],
+/// read from the frame being heard. undefined when not playing that way.
+function scr_sound_editor_voice_positions(_m) {
+    var _st = global.sid64_stream;
+    if (!_m.free_voices || !_st.active || _st.sim.m != _m || _st.frames_rendered <= 0) return undefined;
+    var _frame = clamp(floor((get_timer() - _st.start_us) / SID64_FRAME_US), 0, _st.frames_rendered - 1);
+    var _snap = _st.pos_vpos[_frame mod SID64_POS_RING];
+    if (!is_array(_snap)) return undefined;
+    var _out = [];
+    for (var _v = 0; _v < 3; _v++) {
+        var _i = _m.sid_page * 3 + _v;
+        if (_i < array_length(_snap)) {
+            array_push(_out, _snap[_i]);
+        } else {
+            array_push(_out, [0, 0]);
+        }
+    }
+    return _out;
+}
+
 /// The whole piano panel. _col_pat = the three voices' patterns (noone when a
 /// voice has none), _vis = visible grid rows (for scrolling after a click).
 /// _undo_push / _snap are the editor's undo helpers.

@@ -679,6 +679,26 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             _grid_len = max(_grid_len, _col_pat[_refresh_v].pattern_len);
         }
     }
+    // TIMING: PER VOICE playback: each column shows the pattern its own voice
+    // is on, with that voice's own row lit (they no longer move together).
+    var _voice_hl = [-1, -1, -1];
+    var _voice_pos = undefined;
+    if (_m.playing || _m.song_playing) _voice_pos = scr_sound_editor_voice_positions(_m);
+    if (is_array(_voice_pos)) {
+        _grid_len = 16;
+        for (var _fv = 0; _fv < 3; _fv++) {
+            var _f_ord = clamp(_voice_pos[_fv][0], 0, array_length(_cur_song.order) - 1);
+            var _f_p = scr_music_sid_pattern(_cur_song.order[_f_ord], _voice_offset + _fv);
+            _col_pat_idx[_fv] = _f_p;
+            _col_pat[_fv] = noone;
+            if (_f_p >= 0 && _f_p < array_length(_m.patterns)) {
+                _col_pat[_fv] = _m.patterns[_f_p];
+                _se_ensure_steps(_col_pat[_fv]);
+                _grid_len = max(_grid_len, _col_pat[_fv].pattern_len);
+                _voice_hl[_fv] = _voice_pos[_fv][1];
+            }
+        }
+    }
 
     // ═════════════════════════════════════════════════════════════════════
     // HEADER ROWS
@@ -1140,7 +1160,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         draw_rectangle(_col_gutter_x, _ry, _col_gutter_x + _grid_full_w, _ry + _row_h, false);
 
         var _highlight_row = -1;
-        if (_m.playing) {
+        if (is_array(_voice_pos)) {
+            // per-voice highlight is drawn in each cell below
+        } else if (_m.playing) {
             _highlight_row = _m.preview_display_step;
         } else if (_m.song_playing && _m.preview_display_order == _m.sel_order_row) {
             _highlight_row = _order_row.repeat_short ? (_m.preview_display_step mod max(1, _grid_len)) : _m.preview_display_step;
@@ -1193,6 +1215,13 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             } else if (_hov) {
                 draw_set_color(make_color_rgb(30, 30, 46));
                 draw_rectangle(_cx1, _ry, _cx2, _ry + _row_h, false);
+            }
+
+            if (_voice_hl[_cv] == _row) {
+                draw_set_color(make_color_rgb(40, 100, 60));
+                draw_set_alpha(0.5);
+                draw_rectangle(_cx1, _ry, _cx2, _ry + _row_h, false);
+                draw_set_alpha(1.0);
             }
 
             var _step = _col_pat[_cv].steps[_row];
