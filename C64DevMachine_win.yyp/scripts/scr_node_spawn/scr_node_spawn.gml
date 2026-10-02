@@ -760,7 +760,7 @@ case "LABEL": {
         case "MACRO_SID_SONG":
             _n.node_title   = "SID SONG";
             //                                              [4] = hard restart frames
-            _n.instructions = [["macro_sid_song", "", 1, 0x03, 2, ""]];
+            _n.instructions = [["macro_sid_song", "", 1, 0x03, 2, 0, 0]];
             _n.pc_address   = global.start_pc;
             with (_n) { event_user(0); }
             break;

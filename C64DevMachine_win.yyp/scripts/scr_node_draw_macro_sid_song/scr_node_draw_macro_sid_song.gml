@@ -106,6 +106,24 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
     var _cah = decimal_to_hex(_chip_addr);
     while (string_length(_cah) < 4) _cah = "0" + _cah;
     scr_node_macro_text_l(_draw_x + 66, _ly, "($" + string_upper(_cah) + ")");
+    // ===== VOICE LOCK (slot 6) — checkbox on the CHIP row =====
+    var _lock_on = false;
+    if (array_length(_ins) > 6 && is_real(_ins[6])) {
+        if (real(_ins[6]) != 0) {
+            _lock_on = true;
+        }
+    }
+    var _lkx = _draw_x + 132;
+    draw_set_color(make_color_rgb(30, 30, 40));
+    scr_macro_body_rectangle(_lkx, _ly + 1, _lkx + 12, _ly + 13, false);
+    draw_set_color(_c_lbl);
+    scr_macro_body_rectangle(_lkx, _ly + 1, _lkx + 12, _ly + 13, true);
+    if (_lock_on) {
+        draw_set_color(c_lime);
+        scr_macro_body_rectangle(_lkx + 3, _ly + 4, _lkx + 9, _ly + 10, false);
+    }
+    draw_set_color(_c_lbl);
+    scr_node_macro_text_l(_lkx + 18, _ly, "VOICE LOCK");
     _ly += _lh;
 
     // ===== Resolve the asset and report what will be emitted =====
@@ -233,7 +251,11 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
     // floating-point scratch. Worth saying on the node — it's the one thing
     // here with consequences outside this node.
     draw_set_color(make_color_rgb(200, 140, 60));
-    scr_node_macro_text_l(_draw_x + 8, _ly, "INIT BANKS OUT BASIC ($01=$36)");
+    if (_lock_on) {
+        scr_node_macro_text_l(_draw_x + 8, _ly, "LOCK: sng" + string(stable_uid) + "_vlock +0/+7/+14 <> 0");
+    } else {
+        scr_node_macro_text_l(_draw_x + 8, _ly, "INIT BANKS OUT BASIC ($01=$36)");
+    }
     _ly += 10;
 
     draw_set_color(make_color_rgb(90, 110, 150));

@@ -17126,7 +17126,14 @@ case "MACRO_SID_SONG": {
         break;
     }
 
-    scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, _chip_base, false);
+    // [6] VOICE LOCK: emit <key>vlock so the game can take voices from the song.
+    var _lock = false;
+    if (array_length(_i0) > 6 && is_real(_i0[6])) {
+        if (real(_i0[6]) != 0) {
+            _lock = true;
+        }
+    }
+    scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, _chip_base, false, "", _lock);
 } break;	
 	
 	

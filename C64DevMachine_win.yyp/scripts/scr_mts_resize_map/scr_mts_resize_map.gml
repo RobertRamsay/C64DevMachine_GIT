@@ -16,7 +16,15 @@ function scr_mts_resize_map(_m, _map_idx, _new_w_ch, _new_h_ch) {
     var _new_w    = _new_cols * _m.stamp_w;
     var _new_h    = _new_rows * _m.stamp_h;
 
-    for (var _mi = 0; _mi < array_length(_m.maps); _mi++) {
+    // RAW ROWS maps are separate pieces of memory for an engine that reads them
+    // itself (segments of different heights), so only the active map changes.
+    var _mi_from = 0;
+    var _mi_to   = array_length(_m.maps);
+    if (_m.raw_rows == 1 && _map_idx >= 0 && _map_idx < array_length(_m.maps)) {
+        _mi_from = _map_idx;
+        _mi_to   = _map_idx + 1;
+    }
+    for (var _mi = _mi_from; _mi < _mi_to; _mi++) {
         // Old grid dims in metatiles (per map, but they should all match).
         var _old_cols = floor(_m.map_w[_mi] / _m.stamp_w);
         var _old_rows = floor(_m.map_h[_mi] / _m.stamp_h);

@@ -5,7 +5,7 @@ function scr_node_step_macro_sid_song(_draw_x) {
 
     // Backfill old saves to full slot count (0..5). Slots 4 and 5 are
     // reserved for the byte/text table export work and are unused today.
-    while (array_length(instructions[0]) <= 5) {
+    while (array_length(instructions[0]) <= 6) {
         var _n = array_length(instructions[0]);
         if (_n == 1 || _n == 5) {
             array_push(instructions[0], "");
@@ -81,9 +81,20 @@ function scr_node_step_macro_sid_song(_draw_x) {
         exit;
     }
 
-    // ===== SID CHIP (slot 6) — click to cycle 0..3 =====
+    // ===== SID CHIP (slot 5) — click to cycle 0..3 =====
     _ly += _lh;
-    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 10, _ly, _draw_x + width - 6, _ly + 13)) {
+    // ===== VOICE LOCK (slot 6) — same row as CHIP, right-hand side =====
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 128, _ly, _draw_x + width - 6, _ly + 13)) {
+        if (real(instructions[0][6]) == 0) {
+            instructions[0][6] = 1;
+        } else {
+            instructions[0][6] = 0;
+        }
+        global.addresses_dirty = true;
+        global.undo_dirty      = true;
+        exit;
+    }
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 10, _ly, _draw_x + 124, _ly + 13)) {
         var _chip_cur = (array_length(instructions[0]) > 5 && is_real(instructions[0][5])) ? real(instructions[0][5]) : 0;
         _chip_cur += 1;
         if (_chip_cur > 3) {

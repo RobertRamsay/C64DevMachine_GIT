@@ -6,7 +6,11 @@
 ///       _sfx adds GoatTracker-compatible sound-effect support (export only):
 ///       <key>sfxt is the trigger routine, see scr_sid_song_emit_sfx.
 ///       Returns false when the asset has nothing to play (nothing pushed).
-function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, _chip_base, _sfx, _prefix = "") {
+///       _lock (VOICE LOCK, node slot 6) emits <key>vlock: one byte per voice at
+///       +0 / +7 / +14. Non-zero = the game owns that voice - its rows are
+///       dropped and nothing is written to its registers, while the song clock
+///       carries on, so clearing the byte brings the voice back in time.
+function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, _chip_base, _sfx, _prefix = "", _lock = false) {
     var _sm = _se.meta;
     if (_prefix == "" && scr_music_sid_count(_sm) > 1) {
         return scr_music_sid_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, _chip_base);
@@ -799,6 +803,14 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["byte", 0, _id]);
     }
 
+    if (_lock) {
+        // VOICE LOCK flags, stride 7 so Y/X = voice * 7 indexes them.
+        array_push(_list, ["label", _key + "vlock"]);
+        for (var _vlb = 0; _vlb < 15; _vlb++) {
+            array_push(_list, ["byte", 0, _id]);
+        }
+    }
+
     if (_sfx) {
         // Sound-effect state, GoatTracker-style: per voice a frame counter
         // (0 = no effect), and the effect data pointer. Laid out at a stride of
@@ -1015,6 +1027,15 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["beq",     _vp + "nosfx",    _id]);
             array_push(_list, ["jmp_abs", _L_vskip,         _id]);
             array_push(_list, ["label",   _vp + "nosfx"]);
+        }
+
+        if (_lock) {
+            // VOICE LOCK: the game owns this voice - drop the row.
+            array_push(_list, ["ldx_imm", _vi * 7,          _id]);
+            array_push(_list, ["lda_abx", _key + "vlock",   _id]);
+            array_push(_list, ["beq",     _vp + "nolock",   _id]);
+            array_push(_list, ["jmp_abs", _L_vskip,         _id]);
+            array_push(_list, ["label",   _vp + "nolock"]);
         }
 
         // No command unless this row's pattern carries one.
@@ -1604,6 +1625,14 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["beq",     _ip + "nosfx",    _id]);
             array_push(_list, ["jmp_abs", _ip + "sfxskip",  _id]);
             array_push(_list, ["label",   _ip + "nosfx"]);
+        }
+        if (_lock) {
+            // VOICE LOCK: no music writes to a locked voice this frame.
+            array_push(_list, ["ldy_abs", _key + "cv7",   _id]);
+            array_push(_list, ["lda_aby", _key + "vlock", _id]);
+            array_push(_list, ["beq",     _ip + "nolock", _id]);
+            array_push(_list, ["jmp_abs", _ip + "sfxskip", _id]);
+            array_push(_list, ["label",   _ip + "nolock"]);
         }
 
         if (_hr > 0) {
@@ -2226,7 +2255,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["ldx_abs", _key + "cv", _id]);
         array_push(_list, ["ldy_abs", _key + "cv7", _id]);
         array_push(_list, ["jsr",     _key + "fxr", _id]);
-        if (_sfx) {
+        if (_sfx || _lock) {
             array_push(_list, ["label",   _ip + "sfxskip"]);
         }
         array_push(_list, ["rts", 0, _id]);
