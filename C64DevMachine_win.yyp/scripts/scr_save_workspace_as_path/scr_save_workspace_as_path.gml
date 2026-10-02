@@ -307,6 +307,7 @@ if (instance_exists(obj_asset_manager)) {
                 _meta_out.digi_samples  = _a.meta.digi_samples;
                 _meta_out.digi_patterns = _a.meta.digi_patterns;
                 _meta_out.digi_boost    = _a.meta.digi_boost;
+                _meta_out.digi_on       = _a.meta.digi_on;
             }
             _meta_out.voice_mask = variable_struct_exists(_a.meta, "voice_mask") ? _a.meta.voice_mask : 7;
             _meta_out.sfx_chip = variable_struct_exists(_a.meta, "sfx_chip") ? _a.meta.sfx_chip : 0;

@@ -38,6 +38,11 @@ function scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name) {
     if (!is_array(_dpats) || !is_array(_dslots) || array_length(_dpats) == 0) {
         return _plan;
     }
+    // VOICES row SMP OFF: leave the digi track out, like a voice switched off.
+    var _don = _sm[$ "digi_on"];
+    if (!is_undefined(_don) && real(_don) == 0) {
+        return _plan;
+    }
     var _rate = _sm[$ "digi_rate"];
     if (is_undefined(_rate)) {
         _rate = 8000;

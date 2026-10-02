@@ -125,22 +125,31 @@ function scr_sound_editor_cmd_bar(_m, _instr, _x0, _x1, _y, _bx0, _by0, _bx1, _b
     var _lw = 230;
     var _gap = 3;
 
-    // Button layout, right-aligned: WAVE NOTE HOLD LOOP END ?
-    var _bw = [];
-    var _total = 0;
-    for (var _i = 0; _i < array_length(_menus); _i++) {
-        array_push(_bw, string_width_l(_menus[_i].id) + 10);
-        _total += _bw[_i] + _gap;
+    // Button layout, right-aligned: WAVE NOTE HOLD LOOP FINE END ?
+    // Laid out from the right; when a row would run past the column's left
+    // edge the rest stack on the row ABOVE, so the bar never spills into the
+    // instrument list's header (+ PRESETS).
+    var _n_menu = array_length(_menus);
+    var _bw = array_create(_n_menu, 0);
+    var _bx = array_create(_n_menu, 0);
+    var _by = array_create(_n_menu, _y);
+    for (var _i = 0; _i < _n_menu; _i++) {
+        _bw[_i] = string_width_l(_menus[_i].id) + 10;
     }
     var _qw = string_width_l("?") + 10;
-    _total += _qw;
-    var _bx = [];
-    var _cx = _x1 - _total;
-    for (var _i = 0; _i < array_length(_menus); _i++) {
-        array_push(_bx, _cx);
-        _cx += _bw[_i] + _gap;
+    var _qx = _x1 - _qw;
+    var _qy = _y;
+    var _cx = _qx - _gap;
+    var _cy = _y;
+    for (var _i = _n_menu - 1; _i >= 0; _i--) {
+        if (_cx - _bw[_i] < _x0 && _cx < _x1 - _qw - _gap) {
+            _cx = _x1;
+            _cy -= _bh + _gap;
+        }
+        _bx[_i] = _cx - _bw[_i];
+        _by[_i] = _cy;
+        _cx = _bx[_i] - _gap;
     }
-    var _qx = _cx;
 
     // The open list (if any).
     var _open = -1;
@@ -198,27 +207,29 @@ function scr_sound_editor_cmd_bar(_m, _instr, _x0, _x1, _y, _bx0, _by0, _bx1, _b
         var _is_q = (_i == array_length(_menus));
         var _x = _qx;
         var _w = _qw;
+        var _yy = _qy;
         var _lab = "?";
         var _on = _m.cmd_help_open;
         if (!_is_q) {
             _x = _bx[_i];
             _w = _bw[_i];
+            _yy = _by[_i];
             _lab = _menus[_i].id;
             _on = (_open == _i);
         }
-        var _hv = point_in_rectangle(_mx, _my, _x, _y, _x + _w, _y + _bh);
+        var _hv = point_in_rectangle(_mx, _my, _x, _yy, _x + _w, _yy + _bh);
         if (_hv || _on) {
             draw_set_color(make_color_rgb(60, 60, 110));
         } else {
             draw_set_color(make_color_rgb(40, 40, 70));
         }
-        draw_rectangle(_x, _y, _x + _w, _y + _bh, false);
+        draw_rectangle(_x, _yy, _x + _w, _yy + _bh, false);
         if (_hv) {
             draw_set_color(c_yellow);
         } else {
             draw_set_color(c_white);
         }
-        draw_text_l(_x + 5, _y + 3, _lab);
+        draw_text_l(_x + 5, _yy + 3, _lab);
     }
     draw_set_font_l(fnt_c64_tiny);
 
@@ -230,11 +241,13 @@ function scr_sound_editor_cmd_bar(_m, _instr, _x0, _x1, _y, _bx0, _by0, _bx1, _b
         var _is_q = (_i == array_length(_menus));
         var _x = _qx;
         var _w = _qw;
+        var _yy = _qy;
         if (!_is_q) {
             _x = _bx[_i];
             _w = _bw[_i];
+            _yy = _by[_i];
         }
-        if (point_in_rectangle(_mx, _my, _x, _y, _x + _w, _y + _bh)) {
+        if (point_in_rectangle(_mx, _my, _x, _yy, _x + _w, _yy + _bh)) {
             if (_is_q) {
                 _m.cmd_help_open = !_m.cmd_help_open;
                 _m.cmd_menu_open = "";

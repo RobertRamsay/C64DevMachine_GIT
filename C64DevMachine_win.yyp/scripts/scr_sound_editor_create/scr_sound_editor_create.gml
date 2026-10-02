@@ -95,6 +95,7 @@ function scr_sound_editor_create(_asset) {
         // digis are audible on the 8580 (and louder on the 6581). That voice
         // plays no music notes in the compiled tune.
         digi_boost    : 0,
+        digi_on       : 1,       // VOICES row "SMP": 0 = digi track muted (preview and build)
         // editor / preview state (never saved)
         dg_focus      : false,
         dg_sel_step   : 0,
@@ -195,13 +196,14 @@ function scr_music_sid_project(_m, _chip) {
     var _out = { instruments: _m.instruments, patterns: _m.patterns, songs: [],
         play_speed: _m.play_speed, voice_mask: scr_music_sid_mask(_m, _chip),
         filt_mode: _m.filt_mode, filt_res: _m.filt_res, filt_cut: _m.filt_cut, note_table: _m[$ "note_table"], free_voices: _m[$ "free_voices"],
-        digi_rate: 8000, digi_samples: [], digi_patterns: [], digi_boost: 0 };
+        digi_rate: 8000, digi_samples: [], digi_patterns: [], digi_boost: 0, digi_on: 0 };
     // The digi track plays through chip 0's $D418 only.
     if (_chip == 0) {
         _out.digi_rate     = _m[$ "digi_rate"];
         _out.digi_samples  = _m[$ "digi_samples"];
         _out.digi_patterns = _m[$ "digi_patterns"];
         _out.digi_boost    = _m[$ "digi_boost"];
+        _out.digi_on       = _m[$ "digi_on"];
     }
     for (var _s = 0; _s < array_length(_m.songs); _s++) {
         var _source = _m.songs[_s];
@@ -871,6 +873,10 @@ function scr_music_size_digi_sig(_m) {
     var _boost = _m[$ "digi_boost"];
     if (!is_undefined(_boost)) {
         _h = (_h * 31 + real(_boost) + 5) mod 1000000007;
+    }
+    var _don = _m[$ "digi_on"];
+    if (!is_undefined(_don)) {
+        _h = (_h * 31 + real(_don) + 11) mod 1000000007;
     }
     for (var _s = 0; _s < array_length(_m.songs); _s++) {
         var _order = _m.songs[_s].order;

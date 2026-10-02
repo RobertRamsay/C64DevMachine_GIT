@@ -181,6 +181,7 @@ var _base = "unsaved";
                     _mo.digi_samples  = _me.digi_samples;
                     _mo.digi_patterns = _me.digi_patterns;
                     _mo.digi_boost    = _me.digi_boost;
+                    _mo.digi_on       = _me.digi_on;
                 }
                 _mo.voice_mask = variable_struct_exists(_me, "voice_mask") ? _me.voice_mask : 7;
             _mo.sfx_chip = variable_struct_exists(_me, "sfx_chip") ? _me.sfx_chip : 0;

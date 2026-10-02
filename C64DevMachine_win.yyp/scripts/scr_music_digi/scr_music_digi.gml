@@ -314,7 +314,7 @@ function scr_digi_play_step(_m, _st) {
 /// Follows playback and fires digi steps as their rows come up. Called once a
 /// frame after the editor's playback block has settled the position.
 function scr_digi_preview_tick(_m, _cur_song, _voice_pos) {
-    var _active = (_m.playing || _m.song_playing);
+    var _active = (_m.playing || _m.song_playing) && (_m.digi_on == 1);
     if (!_active) {
         if (_m.dg_last_key != -1) {
             scr_digi_stop(_m);

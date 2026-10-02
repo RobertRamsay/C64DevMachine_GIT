@@ -414,12 +414,25 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_text_l(_vx1+540,_transport_y+5,"VOICES:");
     for(var _mv=0;_mv<3;_mv++) {
         var _bit=1<<_mv;
-        if(scr_sfx_maker_button(_vx1+620+_mv*100,_transport_y,90,string(_voice_offset+_mv+1)+((scr_music_sid_mask(_m, _m.sid_page)&_bit)?" ON":" OFF"),_mx,_my)) {
+        if(scr_sfx_maker_button(_vx1+620+_mv*76,_transport_y,70,string(_voice_offset+_mv+1)+((scr_music_sid_mask(_m, _m.sid_page)&_bit)?" ON":" OFF"),_mx,_my)) {
             var _mask_key = (_m.sid_page == 0) ? "voice_mask" : "sid_mask_" + string(_m.sid_page);
             _m[$ _mask_key] = scr_music_sid_mask(_m, _m.sid_page) ^ _bit;
             if (!(_m[$ _mask_key] & _bit)) scr_sound_preview_free_channel(_mv);
             global.addresses_dirty=true;global.undo_dirty=true;
         }
+    }
+    // SMP: the digi track on/off — preview and compiled tune, like a voice.
+    var _smp_lab = "SMP OFF";
+    if (_m.digi_on == 1) {
+        _smp_lab = "SMP ON";
+    }
+    if (scr_sfx_maker_button(_vx1 + 620 + 3 * 76, _transport_y, 90, _smp_lab, _mx, _my)) {
+        _m.digi_on = 1 - _m.digi_on;
+        if (_m.digi_on == 0) {
+            scr_digi_stop(_m);
+        }
+        global.addresses_dirty = true;
+        global.undo_dirty = true;
     }
 
     // ── SONG FILTER ── what the player writes when the song starts: mode
