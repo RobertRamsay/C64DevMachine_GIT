@@ -88,7 +88,7 @@ function scr_sound_editor_create(_asset) {
         order_scroll  : 0,
 
         // ── DIGI TRACK ── $D418 samples as a 4th voice. See scr_music_digi.
-        digi_rate     : 8000,
+        digi_rate     : 5000,
         digi_samples  : array_create(16, ""),
         digi_patterns : [],
         // editor / preview state (never saved)
@@ -188,7 +188,14 @@ function scr_music_sid_length(_m, _row) {
 function scr_music_sid_project(_m, _chip) {
     var _out = { instruments: _m.instruments, patterns: _m.patterns, songs: [],
         play_speed: _m.play_speed, voice_mask: scr_music_sid_mask(_m, _chip),
-        filt_mode: _m.filt_mode, filt_res: _m.filt_res, filt_cut: _m.filt_cut, note_table: _m[$ "note_table"], free_voices: _m[$ "free_voices"] };
+        filt_mode: _m.filt_mode, filt_res: _m.filt_res, filt_cut: _m.filt_cut, note_table: _m[$ "note_table"], free_voices: _m[$ "free_voices"],
+        digi_rate: 8000, digi_samples: [], digi_patterns: [] };
+    // The digi track plays through chip 0's $D418 only.
+    if (_chip == 0) {
+        _out.digi_rate     = _m[$ "digi_rate"];
+        _out.digi_samples  = _m[$ "digi_samples"];
+        _out.digi_patterns = _m[$ "digi_patterns"];
+    }
     for (var _s = 0; _s < array_length(_m.songs); _s++) {
         var _source = _m.songs[_s];
         var _song = { name: _source.name, loop: _source.loop, loop_row: _source.loop_row, order: [] };
@@ -196,7 +203,8 @@ function scr_music_sid_project(_m, _chip) {
             var _row = _source.order[_r];
             array_push(_song.order, { v1: scr_music_sid_pattern(_row, _chip * 3),
                 v2: scr_music_sid_pattern(_row, _chip * 3 + 1), v3: scr_music_sid_pattern(_row, _chip * 3 + 2),
-                repeat_short: _row.repeat_short, force_len: scr_music_sid_length(_m, _row) });
+                repeat_short: _row.repeat_short, force_len: scr_music_sid_length(_m, _row),
+                dg: _row[$ "dg"] });
         }
         array_push(_out.songs, _song);
     }
@@ -730,7 +738,7 @@ function scr_music_sid_generate(_asset) {
 /// Maker header. A dry build (as GENERATE NODES sizes it), with every byte
 /// counted under the last label before it. Player code is every instruction.
 function scr_music_size_summary(_asset) {
-    var _out = { ok: false, instr: 0, tables: 0, shared: 0, patterns: 0, order: 0, notes: 0, player: 0, vars: 0, total: 0 };
+    var _out = { ok: false, instr: 0, tables: 0, shared: 0, patterns: 0, order: 0, notes: 0, player: 0, vars: 0, digi: 0, total: 0 };
     var _was_nt = false;
     if (variable_global_exists("sidsong_notetab_emitted")) _was_nt = global.sidsong_notetab_emitted;
     global.sidsong_notetab_emitted = false;
@@ -758,13 +766,14 @@ function scr_music_size_summary(_asset) {
             _out.player += obj_opCodeManager.get_size(_mn);
         }
     }
-    _out.total = _out.instr + _out.tables + _out.shared + _out.patterns + _out.order + _out.notes + _out.player + _out.vars;
+    _out.total = _out.instr + _out.tables + _out.shared + _out.patterns + _out.order + _out.notes + _out.player + _out.vars + _out.digi;
     _out.ok = true;
     return _out;
 }
 
 /// Section of a data label's last part (after the key prefix).
 function scr_music_size_category(_part) {
+    if (string_pos("dg", _part) == 1) return "digi";   // digi track: samples, tables, NMI
     if (string_pos("lane", _part) == 1) return "tables";
     if (string_pos("table", _part) == 1) return "shared";
     if (string_pos("ins", _part) == 1) return "instr";
@@ -806,6 +815,7 @@ function scr_music_size_signature(_m) {
             _h = (_h * 31 + real(scr_music_size_field(_order[_r], "force_len", 0))) mod 1000000007;
         }
     }
+    _h = (_h * 31 + scr_music_size_digi_sig(_m)) mod 1000000007;
     var _nt = _m[$ "note_table"];
     if (is_array(_nt)) _h = (_h * 31 + array_length(_nt)) mod 1000000007;
     if (_m[$ "free_voices"] == true) _h = (_h * 31 + 17) mod 1000000007;
@@ -841,4 +851,43 @@ function scr_music_size_cached(_asset) {
         _c.info = scr_music_size_summary(_asset);
     }
     return _c.info;
+}
+
+/// Digi track part of the size fingerprint: rate, rows' dg, digi steps, and
+/// every slotted sample's encode settings (so re-trimming a sample updates).
+function scr_music_size_digi_sig(_m) {
+    var _h = 7;
+    var _rate = _m[$ "digi_rate"];
+    if (!is_undefined(_rate)) {
+        _h = (_h * 31 + real(_rate)) mod 1000000007;
+    }
+    for (var _s = 0; _s < array_length(_m.songs); _s++) {
+        var _order = _m.songs[_s].order;
+        for (var _r = 0; _r < array_length(_order); _r++) {
+            _h = (_h * 31 + real(scr_music_size_field(_order[_r], "dg", -1)) + 2) mod 1000000007;
+        }
+    }
+    var _pats = _m[$ "digi_patterns"];
+    if (is_array(_pats)) {
+        for (var _p = 0; _p < array_length(_pats); _p++) {
+            var _steps = _pats[_p].steps;
+            _h = (_h * 31 + array_length(_steps)) mod 1000000007;
+            for (var _i = 0; _i < array_length(_steps); _i++) {
+                _h = (_h * 31 + (real(_steps[_i].smp) + 3) * 5 + real(_steps[_i].vol)) mod 1000000007;
+            }
+        }
+    }
+    var _slots = _m[$ "digi_samples"];
+    if (is_array(_slots)) {
+        for (var _k = 0; _k < array_length(_slots); _k++) {
+            var _a = scr_digi_find_sample(_slots[_k]);
+            if (is_undefined(_a)) {
+                continue;
+            }
+            var _am = _a.meta;
+            _h = (_h * 31 + _k + _am.data_ver * 7 + _am.src_len + _am.trim_start * 3 + _am.trim_end * 5
+                + _am.gain * 11 + _am.pack * 13 + _am.dither * 17) mod 1000000007;
+        }
+    }
+    return _h;
 }

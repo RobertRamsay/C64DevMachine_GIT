@@ -1,0 +1,840 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index 798fa98..45011f9 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1346,6 +1346,7 @@
+     {"id":{"name":"scr_sid_notes_parse","path":"scripts/scr_sid_notes_parse/scr_sid_notes_parse.yy",},},
+     {"id":{"name":"scr_sid_relocate","path":"scripts/scr_sid_relocate/scr_sid_relocate.yy",},},
+     {"id":{"name":"scr_sid_song_build","path":"scripts/scr_sid_song_build/scr_sid_song_build.yy",},},
++    {"id":{"name":"scr_sid_song_emit_digi","path":"scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.yy",},},
+     {"id":{"name":"scr_sid_song_emit_fx_routines","path":"scripts/scr_sid_song_emit_fx_routines/scr_sid_song_emit_fx_routines.yy",},},
+     {"id":{"name":"scr_sid_song_note_index","path":"scripts/scr_sid_song_note_index/scr_sid_song_note_index.yy",},},
+     {"id":{"name":"scr_sid64_audio","path":"scripts/scr_sid64_audio/scr_sid64_audio.yy",},},
+diff --git a/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml b/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
+index 432686f..57596a0 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
+@@ -13,10 +13,11 @@
+ ///                    vol  0-3, 3 = full (0 = 1/4, 1 = 1/2, 2 = 3/4 amplitude)
+ ///   order rows     dg = digi pattern index, -1 = none.
+ ///
+-/// TIMING: the digi track follows the shared row clock, or voice 1's clock
+-/// with TIMING: PER VOICE. It does not count towards an order row's length:
+-/// a shorter digi pattern simply ends (or repeats with REPEAT), a longer one
+-/// is cut at the row's length.
++/// TIMING: the digi track follows the shared row clock (the compiled player
++/// supports nothing else; the editor preview follows voice 1 under TIMING: PER
++/// VOICE). It does not count towards an order row's length: a shorter digi
++/// pattern simply ends (REPEAT does not wrap it), a longer one is cut at the
++/// row's length.
+ 
+ #macro DIGI_SLOTS     16
+ #macro DIGI_SMP_EMPTY -1
+@@ -220,14 +221,12 @@ function scr_digi_preview_tick(_m, _cur_song, _voice_pos) {
+         return;
+     }
+     var _pat = _m.digi_patterns[_row.dg];
+-    var _local = _step;
+-    if (_row.repeat_short) {
+-        _local = _step mod _pat.pattern_len;
+-    }
+-    if (_local >= _pat.pattern_len) {
++    // Like the C64 player: past the digi pattern's own length there is nothing
++    // (REPEAT does not wrap the digi track).
++    if (_step >= _pat.pattern_len) {
+         return;
+     }
+-    scr_digi_play_step(_m, _pat.steps[_local]);
++    scr_digi_play_step(_m, _pat.steps[_step]);
+ }
+ 
+ // ═══════════════════════════ GRID LANE ═══════════════════════════
+@@ -245,12 +244,26 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
+     var _c_lane = make_color_rgb(255, 130, 170);
+     var _c_btn  = make_color_rgb(60, 130, 150);
+ 
+-    // ── HEADER ──
++    // ── HEADER ── row 1: length stepper (or NEW) + "DIGI"; row 2: SAMPLES button.
+     draw_set_font_l(fnt_c64_tiny);
++    var _by1 = _gy0 - 22;
++    var _by2 = _gy0 - 5;
++    var _bhov = point_in_rectangle(_mx, _my, _x, _by1, _x + _w, _by2);
++    var _bcol = make_color_rgb(120, 40, 80);
++    if (_bhov || _m.dg_slots_open) {
++        _bcol = make_color_rgb(190, 70, 120);
++    }
++    draw_set_color(_bcol);
++    draw_rectangle(_x, _by1, _x + _w, _by2, false);
+     draw_set_color(_c_lane);
++    draw_rectangle(_x, _by1, _x + _w, _by2, true);
++    draw_set_color(c_white);
+     draw_set_halign(fa_center);
+-    draw_text_transformed_l(_x + _w * 0.5, _gy0 - 20, "D I G I", 1, 1, 0);
++    draw_text_l(_x + _w * 0.5, _by1 + 4, "SAMPLES");
+     draw_set_halign(fa_left);
++    if (_bhov && mouse_check_button_pressed(mb_left)) {
++        _m.dg_slots_open = !_m.dg_slots_open;
++    }
+ 
+     draw_set_font_l(fnt_c64_pico);
+     var _hy = _gy0 - 34;
+@@ -298,16 +311,10 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
+             }
+         }
+     }
+-    var _sx = _x + _w - 34;
+-    var _shov = point_in_rectangle(_mx, _my, _sx, _hy - 4, _sx + 34, _hy + 10);
+-    draw_set_color(_c_btn);
+-    if (_shov || _m.dg_slots_open) {
+-        draw_set_color(c_aqua);
+-    }
+-    draw_text_l(_sx, _hy, "SMP");
+-    if (_shov && mouse_check_button_pressed(mb_left)) {
+-        _m.dg_slots_open = !_m.dg_slots_open;
+-    }
++    draw_set_color(_c_lane);
++    draw_set_halign(fa_right);
++    draw_text_l(_x + _w, _hy, "DIGI");
++    draw_set_halign(fa_left);
+     draw_set_font_l(fnt_c64_tiny);
+ 
+     // ── CELLS ──
+@@ -483,9 +490,9 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis) {
+ /// uses last frame's rect to hide the mouse from controls under the panel.
+ function scr_digi_slots_rect(_lane_x, _lane_w, _gy0) {
+     var _w = 330;
+-    var _h = 48 + DIGI_SLOTS * 20 + 26;
++    var _h = 48 + DIGI_SLOTS * 20 + 58;
+     var _x1 = _lane_x + _lane_w - _w;
+-    var _y1 = _gy0 - 18;
++    var _y1 = _gy0 - 2;    // just under the SAMPLES button
+     return [_x1, _y1, _x1 + _w, _y1 + _h];
+ }
+ 
+@@ -605,7 +612,18 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+         }
+     }
+     draw_set_color(make_color_rgb(95, 95, 115));
+-    draw_text_l(_x1 + 10, _y2 - 18, "CLICK: NEXT SAMPLE   RIGHT-CLICK: EMPTY");
++    draw_text_l(_x1 + 10, _y2 - 50, "CLICK: NEXT SAMPLE   RIGHT-CLICK: EMPTY");
++    // Each sample costs one NMI; the estimate is for while a digi plays.
++    var _cpu = round(_m.digi_rate * DIGI_NMI_CYCLES / SAMPLE_PAL_CLOCK * 100);
++    draw_set_color(make_color_rgb(140, 150, 180));
++    if (_cpu > 45) {
++        draw_set_color(make_color_rgb(255, 160, 60));
++    }
++    draw_text_l(_x1 + 10, _y2 - 34, "CPU WHILE A DIGI PLAYS: ~" + string(_cpu) + "%  (NMI, CIA2 TIMER A)");
++    if (_m.free_voices) {
++        draw_set_color(make_color_rgb(255, 120, 90));
++        draw_text_l(_x1 + 10, _y2 - 18, "TIMING: PER VOICE - DIGI TRACK NOT COMPILED");
++    }
+ }
+ 
+ /// How many C64 samples _asset becomes at _rate (no encode needed).
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+index eb0861b..442fa10 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+@@ -738,6 +738,13 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+         }
+     }
+ 
++    // ── 5b. DIGI TRACK ── $D418 samples on a CIA2 NMI (scr_sid_song_emit_digi).
++    // Nothing at all is emitted unless some order row triggers a sample.
++    var _dg_plan = scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name);
++    if (_dg_plan.used) {
++        scr_sid_song_digi_emit_data(_list, _id, _key, _dg_plan);
++    }
++
+     // ── 6. PER-SONG HEADER TABLES ──
+     // Indexed by song number. init/seek copy the three relevant bytes into ZP
+     // once, so the row-advance path costs the same as it did single-song.
+@@ -842,6 +849,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+         array_push(_list, ["sta_abs", _chip_base + 0x18, _id]);   // full volume, filter off
+         array_push(_list, ["sta_abs", _key + "f18", _id]);        // DXX keeps this copy
+     }
++    if (_dg_plan.used) {
++        array_push(_list, ["jsr",     _key + "dginit", _id]);   // NMI vectors + timer rate
++    }
+     array_push(_list, ["pla",     0,      _id]);
+     array_push(_list, ["ldx_imm", 0x00,   _id]);   // start at the song's first row
+     array_push(_list, ["jmp_abs", _L_seek, _id]);
+@@ -855,6 +865,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+     // still ringing and each voice part-way through its old instrument —
+     // the same class of stale-state bug as the loop-wrap fix.
+     array_push(_list, ["label",   _L_seek]);
++    if (_dg_plan.used) {
++        // Cut any sample still playing from the old position (A preserved).
++        array_push(_list, ["pha",     0, _id]);
++        array_push(_list, ["jsr",     _key + "dgstop", _id]);
++        array_push(_list, ["pla",     0, _id]);
++    }
+ 
+     // Clamp the song index. An out-of-range song would index past the header
+     // tables into whatever data follows and set _S_END to garbage.
+@@ -937,6 +953,13 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+ 
+     // ── PLAY ──
+     array_push(_list, ["label",   _L_play]);
++    if (_dg_plan.used) {
++        // The digi NMI keeps the music's filter-mode bits (DXX / EXX may
++        // change them) under the sample's volume nibble.
++        array_push(_list, ["lda_abs", _key + "f18", _id]);
++        array_push(_list, ["and_imm", 0xF0, _id]);
++        array_push(_list, ["sta_abs", _key + "dghi", _id]);
++    }
+     if (!_free) {
+         array_push(_list, ["dec_zp",  _S_TICK,   _id]);
+         array_push(_list, ["beq",     _L_rowadv, _id]);
+@@ -1477,6 +1500,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+     }
+     if (_free) array_push(_list, ["jmp_abs", _L_instrs, _id]);
+     if (!_free) {
++    if (_dg_plan.used) {
++        array_push(_list, ["jsr", _key + "dgrow", _id]);   // this row's digi step
++    }
+     // Advance the master row; roll into the next order row at the target.
+     // Same label-operand restriction as the pattern length above — fetch via
+     // lda_abx into scratch, then compare ZP-to-ZP.
+@@ -1524,6 +1550,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+ 
+     // STOP — park on this song's last row, silence everything, go inactive.
+     array_push(_list, ["label",   _key + "songstop"]);
++    if (_dg_plan.used) {
++        array_push(_list, ["jsr",     _key + "dgstop", _id]);
++    }
+     array_push(_list, ["lda_zp",  _S_END, _id]);
+     array_push(_list, ["sec",     0,      _id]);
+     array_push(_list, ["sbc_imm", 0x01,   _id]);
+@@ -2427,6 +2456,10 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+         scr_sid_song_emit_sfx(_list, _id, _key, _chip_base, _S_PTR);
+     }
+ 
++    if (_dg_plan.used) {
++        scr_sid_song_digi_emit_runtime(_list, _id, _key, _dg_plan, _chip_base, _S_ORD, _S_ROW, _S_PTR);
++    }
++
+     array_push(_list, ["label", _L_skip]);
+ 
+     // Auto-init on the spine so the node is drop-and-go. The user then JSRs
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.gml b/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.gml
+new file mode 100644
+index 0000000..7ced9c5
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.gml
+@@ -0,0 +1,467 @@
++/// MACRO_SID_SONG DIGI TRACK — $D418 sample playback driven by a CIA2 timer NMI.
++///
++/// The IRQ side (the song's <key>_play) reads one digi byte per row:
++///   $FF  nothing (a playing sample carries on)
++///   $FE  OFF — cut the sample
++///   else bits 0-3 sample slot, bits 4-5 volume (0 = 1/4 ... 3 = full)
++/// and starts or stops the NMI player. The NMI runs once per sample at the
++/// tune's digi rate (CIA2 timer A, continuous) and writes
++///     volume_table[level] | (music's $D418 filter-mode bits)
++/// to $D418, so the music's filter settings survive under the digi.
++///
++/// Packing (per SAMPLE asset, see scr_sample_encode_at):
++///   4-bit  two samples per byte, first in the low nibble
++///   2-bit  delta, four per byte from bit 0 up, level += -3/-1/+1/+3 from 8
++///
++/// The NMI vector is set at $0318 (KERNAL in) AND $FFFA (KERNAL out — a write
++/// there lands in the RAM under the ROM), so it works in either banking. While
++/// no sample is playing the handler ignores NMIs, so RESTORE does nothing.
++///
++/// Only the shared row clock is supported; with TIMING: PER VOICE the digi
++/// track is left out of the build (a debug message says so).
++
++/// Average NMI cost in cycles, for the CPU estimate in the editor.
++#macro DIGI_NMI_CYCLES 70
++
++/// Collects everything the digi track needs. Returns { used, ... }; used is
++/// false when the song has no digi steps (or can't have them), and then nothing
++/// at all is emitted.
++function scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name) {
++    var _plan = { used: false, ord: [], pats: [], slots: [], rate: 8000, latch: 0 };
++    var _dpats = _sm[$ "digi_patterns"];
++    var _dslots = _sm[$ "digi_samples"];
++    if (!is_array(_dpats) || !is_array(_dslots) || array_length(_dpats) == 0) {
++        return _plan;
++    }
++    var _rate = _sm[$ "digi_rate"];
++    if (is_undefined(_rate)) {
++        _rate = 8000;
++    }
++    _plan.rate  = clamp(real(_rate), 1000, 16000);
++    _plan.latch = scr_sample_cia_latch(_plan.rate);
++
++    // Which digi patterns the order rows use, renumbered densely.
++    var _remap = array_create(array_length(_dpats), -1);
++    var _ord = [];
++    var _any_row = false;
++    for (var _oi = 0; _oi < _n_ord; _oi++) {
++        var _dg = _song_order[_oi][$ "dg"];
++        if (is_undefined(_dg)) {
++            _dg = -1;
++        }
++        _dg = real(_dg);
++        if (_dg >= 0 && _dg < array_length(_dpats)) {
++            if (_remap[_dg] < 0) {
++                _remap[_dg] = array_length(_plan.pats);
++                array_push(_plan.pats, _dpats[_dg]);
++            }
++            array_push(_ord, _remap[_dg]);
++            _any_row = true;
++        } else {
++            array_push(_ord, 0xFF);
++        }
++    }
++    if (!_any_row) {
++        return _plan;
++    }
++    if (_free) {
++        show_debug_message("MACRO_SID_SONG: '" + _asset_name + "' has a digi track but uses TIMING: PER VOICE;"
++            + " the digi track needs the shared row clock and is left out of this build.");
++        return _plan;
++    }
++
++    // Sample slots the used patterns trigger, encoded at the tune's rate.
++    var _slot_map = array_create(DIGI_SLOTS, -1);
++    var _pat_bytes = [];
++    var _any_step = false;
++    for (var _pi = 0; _pi < array_length(_plan.pats); _pi++) {
++        var _pat = _plan.pats[_pi];
++        var _len = clamp(real(_pat.pattern_len), 1, 255);
++        var _bytes = [];
++        for (var _si = 0; _si < _len; _si++) {
++            var _b = 0xFF;
++            if (_si < array_length(_pat.steps)) {
++                var _st = _pat.steps[_si];
++                var _smp = real(_st.smp);
++                if (_smp == DIGI_SMP_OFF) {
++                    _b = 0xFE;
++                    _any_step = true;
++                } else if (_smp >= 0 && _smp < DIGI_SLOTS) {
++                    if (_slot_map[_smp] == -1) {
++                        _slot_map[_smp] = -2;   // looked up below
++                        var _name = "";
++                        if (_smp < array_length(_dslots)) {
++                            _name = _dslots[_smp];
++                        }
++                        var _a = scr_digi_find_sample(_name);
++                        if (!is_undefined(_a)) {
++                            var _enc = scr_sample_encode_at(_a, _plan.rate, _a.meta.pack);
++                            if (array_length(_enc.packed) > 0) {
++                                _slot_map[_smp] = array_length(_plan.slots);
++                                array_push(_plan.slots, { name: _name, packed: _enc.packed, pack: _a.meta.pack });
++                            }
++                        }
++                        if (_slot_map[_smp] == -2) {
++                            show_debug_message("MACRO_SID_SONG: '" + _asset_name + "' digi slot " + string(_smp)
++                                + " has no sample with audio ('" + _name + "'); its steps are skipped.");
++                        }
++                    }
++                    if (_slot_map[_smp] >= 0) {
++                        _b = (_slot_map[_smp] & 0x0F) | ((clamp(real(_st.vol), 0, 3) & 3) << 4);
++                        _any_step = true;
++                    }
++                }
++            }
++            array_push(_bytes, _b);
++        }
++        array_push(_pat_bytes, _bytes);
++    }
++    if (!_any_step) {
++        return _plan;
++    }
++    _plan.ord = _ord;
++    _plan.pat_bytes = _pat_bytes;
++    _plan.used = true;
++    return _plan;
++}
++
++/// Data: per-order-row digi pattern, digi patterns, sample slot tables, the
++/// samples themselves, volume tables and the NMI's variables. Goes in the
++/// song's (jumped-over) data block.
++function scr_sid_song_digi_emit_data(_list, _id, _key, _plan) {
++    var _k = _key;
++    array_push(_list, ["label", _k + "dgord"]);
++    for (var _oi = 0; _oi < array_length(_plan.ord); _oi++) {
++        array_push(_list, ["byte", _plan.ord[_oi] & 0xFF, _id]);
++    }
++    var _np = array_length(_plan.pat_bytes);
++    for (var _pi = 0; _pi < _np; _pi++) {
++        array_push(_list, ["label", _k + "dgpat" + string(_pi)]);
++        var _pb = _plan.pat_bytes[_pi];
++        for (var _bi = 0; _bi < array_length(_pb); _bi++) {
++            array_push(_list, ["byte", _pb[_bi], _id]);
++        }
++    }
++    array_push(_list, ["label", _k + "dgppl"]);
++    for (var _pi = 0; _pi < _np; _pi++) {
++        array_push(_list, ["byte_lab_lo", _k + "dgpat" + string(_pi), _id]);
++    }
++    array_push(_list, ["label", _k + "dgpph"]);
++    for (var _pi = 0; _pi < _np; _pi++) {
++        array_push(_list, ["byte_lab_hi", _k + "dgpat" + string(_pi), _id]);
++    }
++    array_push(_list, ["label", _k + "dglen"]);
++    for (var _pi = 0; _pi < _np; _pi++) {
++        array_push(_list, ["byte", array_length(_plan.pat_bytes[_pi]) & 0xFF, _id]);
++    }
++
++    // Sample slots: start, byte count, decoder.
++    var _ns = array_length(_plan.slots);
++    for (var _si = 0; _si < _ns; _si++) {
++        array_push(_list, ["label", _k + "dgsmp" + string(_si)]);
++        var _pk = _plan.slots[_si].packed;
++        for (var _bi = 0; _bi < array_length(_pk); _bi++) {
++            array_push(_list, ["byte", _pk[_bi] & 0xFF, _id]);
++        }
++    }
++    array_push(_list, ["label", _k + "dgsl"]);
++    for (var _si = 0; _si < _ns; _si++) {
++        array_push(_list, ["byte_lab_lo", _k + "dgsmp" + string(_si), _id]);
++    }
++    array_push(_list, ["label", _k + "dgsh"]);
++    for (var _si = 0; _si < _ns; _si++) {
++        array_push(_list, ["byte_lab_hi", _k + "dgsmp" + string(_si), _id]);
++    }
++    array_push(_list, ["label", _k + "dgcl"]);
++    for (var _si = 0; _si < _ns; _si++) {
++        array_push(_list, ["byte", array_length(_plan.slots[_si].packed) & 0xFF, _id]);
++    }
++    array_push(_list, ["label", _k + "dgch"]);
++    for (var _si = 0; _si < _ns; _si++) {
++        array_push(_list, ["byte", (array_length(_plan.slots[_si].packed) >> 8) & 0xFF, _id]);
++    }
++    array_push(_list, ["label", _k + "dgml"]);
++    for (var _si = 0; _si < _ns; _si++) {
++        var _h = _k + "dgn4";
++        if (_plan.slots[_si].pack == 1) {
++            _h = _k + "dgd2";
++        }
++        array_push(_list, ["byte_lab_lo", _h, _id]);
++    }
++    array_push(_list, ["label", _k + "dgmh"]);
++    for (var _si = 0; _si < _ns; _si++) {
++        var _h2 = _k + "dgn4";
++        if (_plan.slots[_si].pack == 1) {
++            _h2 = _k + "dgd2";
++        }
++        array_push(_list, ["byte_lab_hi", _h2, _id]);
++    }
++
++    // Volume tables: 4 x 16, level scaled about the 7.5 centre.
++    var _scale = [0.25, 0.5, 0.75, 1.0];
++    for (var _v = 0; _v < 4; _v++) {
++        array_push(_list, ["label", _k + "dgvt" + string(_v)]);
++        for (var _l = 0; _l < 16; _l++) {
++            var _out = clamp(round((_l - 7.5) * _scale[_v] + 7.5), 0, 15);
++            array_push(_list, ["byte", _out, _id]);
++        }
++    }
++    array_push(_list, ["label", _k + "dgvtl"]);
++    for (var _v = 0; _v < 4; _v++) {
++        array_push(_list, ["byte_lab_lo", _k + "dgvt" + string(_v), _id]);
++    }
++    array_push(_list, ["label", _k + "dgvth"]);
++    for (var _v = 0; _v < 4; _v++) {
++        array_push(_list, ["byte_lab_hi", _k + "dgvt" + string(_v), _id]);
++    }
++    // 2-bit delta steps: -3, -1, +1, +3.
++    array_push(_list, ["label", _k + "dgdt"]);
++    array_push(_list, ["byte", 0xFD, _id]);
++    array_push(_list, ["byte", 0xFF, _id]);
++    array_push(_list, ["byte", 0x01, _id]);
++    array_push(_list, ["byte", 0x03, _id]);
++
++    // NMI state.
++    var _vars = ["dgact", "dgph", "dgby", "dglv", "dghi", "dgcnl", "dgcnh"];
++    for (var _vi = 0; _vi < array_length(_vars); _vi++) {
++        array_push(_list, ["label", _k + _vars[_vi]]);
++        array_push(_list, ["byte", 0, _id]);
++    }
++}
++
++/// Runtime: <key>dgnmi (the NMI handler), <key>dgrow (the row trigger the
++/// IRQ player calls), <key>dgstart, <key>dgstop and <key>dginit.
++/// Self-modified operands are written as raw bytes with a label on each
++/// operand byte, because the assembler can't take label+offset operands.
++function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_ORD, _S_ROW, _S_PTR) {
++    var _k = _key;
++    var _D418 = _chip_base + 0x18;
++
++    // ── NMI ──
++    array_push(_list, ["label",   _k + "dgnmi"]);
++    array_push(_list, ["pha",     0, _id]);
++    array_push(_list, ["txa",     0, _id]);
++    array_push(_list, ["pha",     0, _id]);
++    array_push(_list, ["lda_abs", 0xDD0D, _id]);            // acknowledge CIA2
++    array_push(_list, ["lda_abs", _k + "dgact", _id]);
++    array_push(_list, ["bne",     _k + "dgon", _id]);
++    array_push(_list, ["jmp_abs", _k + "dgquit", _id]);     // idle: RESTORE etc.
++    array_push(_list, ["label",   _k + "dgon"]);
++    array_push(_list, ["cmp_imm", 0x02, _id]);             // 2 = last sample went out
++    array_push(_list, ["bne",     _k + "dgplay", _id]);
++    array_push(_list, ["jmp_abs", _k + "dgend", _id]);
++    array_push(_list, ["label",   _k + "dgplay"]);
++    // Fetch a new byte when the decoder starts one.
++    array_push(_list, ["lda_abs", _k + "dgph", _id]);
++    array_push(_list, ["bne",     _k + "dgnof", _id]);
++    array_push(_list, ["byte",    0xAD, _id]);              // LDA abs (self-modified)
++    array_push(_list, ["label",   _k + "dgfl"]);
++    array_push(_list, ["byte",    0x00, _id]);
++    array_push(_list, ["label",   _k + "dgfh"]);
++    array_push(_list, ["byte",    0x00, _id]);
++    array_push(_list, ["sta_abs", _k + "dgby", _id]);
++    array_push(_list, ["label",   _k + "dgnof"]);
++    array_push(_list, ["byte",    0x4C, _id]);              // JMP abs (self-modified): decoder
++    array_push(_list, ["label",   _k + "dgjl"]);
++    array_push(_list, ["byte_lab_lo", _k + "dgn4", _id]);
++    array_push(_list, ["label",   _k + "dgjh"]);
++    array_push(_list, ["byte_lab_hi", _k + "dgn4", _id]);
++
++    // 4-bit: low nibble, then high nibble and next byte.
++    array_push(_list, ["label",   _k + "dgn4"]);
++    array_push(_list, ["lda_abs", _k + "dgph", _id]);
++    array_push(_list, ["bne",     _k + "dgn4h", _id]);
++    array_push(_list, ["inc_abs", _k + "dgph", _id]);
++    array_push(_list, ["lda_abs", _k + "dgby", _id]);
++    array_push(_list, ["and_imm", 0x0F, _id]);
++    array_push(_list, ["sta_abs", _k + "dglv", _id]);
++    array_push(_list, ["jmp_abs", _k + "dgout", _id]);
++    array_push(_list, ["label",   _k + "dgn4h"]);
++    array_push(_list, ["lda_imm", 0x00, _id]);
++    array_push(_list, ["sta_abs", _k + "dgph", _id]);
++    array_push(_list, ["lda_abs", _k + "dgby", _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["sta_abs", _k + "dglv", _id]);
++    array_push(_list, ["jmp_abs", _k + "dgadv", _id]);
++
++    // 2-bit delta: four codes per byte.
++    array_push(_list, ["label",   _k + "dgd2"]);
++    array_push(_list, ["lda_abs", _k + "dgby", _id]);
++    array_push(_list, ["and_imm", 0x03, _id]);
++    array_push(_list, ["tax",     0, _id]);
++    array_push(_list, ["lda_abs", _k + "dglv", _id]);
++    array_push(_list, ["clc",     0, _id]);
++    array_push(_list, ["adc_abx", _k + "dgdt", _id]);
++    array_push(_list, ["and_imm", 0x0F, _id]);
++    array_push(_list, ["sta_abs", _k + "dglv", _id]);
++    array_push(_list, ["lda_abs", _k + "dgby", _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["sta_abs", _k + "dgby", _id]);
++    array_push(_list, ["inc_abs", _k + "dgph", _id]);
++    array_push(_list, ["lda_abs", _k + "dgph", _id]);
++    array_push(_list, ["cmp_imm", 0x04, _id]);
++    array_push(_list, ["bne",     _k + "dgout", _id]);
++    array_push(_list, ["lda_imm", 0x00, _id]);
++    array_push(_list, ["sta_abs", _k + "dgph", _id]);
++    // falls into dgadv
++
++    // Next byte; stop at the end.
++    array_push(_list, ["label",   _k + "dgadv"]);
++    array_push(_list, ["inc_abs", _k + "dgfl", _id]);
++    array_push(_list, ["bne",     _k + "dgadv1", _id]);
++    array_push(_list, ["inc_abs", _k + "dgfh", _id]);
++    array_push(_list, ["label",   _k + "dgadv1"]);
++    array_push(_list, ["lda_abs", _k + "dgcnl", _id]);
++    array_push(_list, ["bne",     _k + "dgadv2", _id]);
++    array_push(_list, ["dec_abs", _k + "dgcnh", _id]);
++    array_push(_list, ["label",   _k + "dgadv2"]);
++    array_push(_list, ["dec_abs", _k + "dgcnl", _id]);
++    array_push(_list, ["lda_abs", _k + "dgcnl", _id]);
++    array_push(_list, ["ora_abs", _k + "dgcnh", _id]);
++    array_push(_list, ["bne",     _k + "dgout", _id]);
++    // Last byte: output this sample, end on the next NMI.
++    array_push(_list, ["lda_imm", 0x02, _id]);
++    array_push(_list, ["sta_abs", _k + "dgact", _id]);
++    array_push(_list, ["jmp_abs", _k + "dgout", _id]);
++    // End of sample (one NMI after the last one): timer off, music volume back.
++    array_push(_list, ["label",   _k + "dgend"]);
++    array_push(_list, ["lda_imm", 0x00, _id]);
++    array_push(_list, ["sta_abs", _k + "dgact", _id]);
++    array_push(_list, ["lda_imm", 0x01, _id]);
++    array_push(_list, ["sta_abs", 0xDD0D, _id]);
++    array_push(_list, ["lda_abs", 0xDD0E, _id]);
++    array_push(_list, ["and_imm", 0xFE, _id]);
++    array_push(_list, ["sta_abs", 0xDD0E, _id]);
++    array_push(_list, ["lda_abs", _k + "f18", _id]);
++    array_push(_list, ["sta_abs", _D418, _id]);
++    array_push(_list, ["jmp_abs", _k + "dgquit", _id]);
++
++    // Output: volume table (self-modified base) | music filter-mode bits.
++    array_push(_list, ["label",   _k + "dgout"]);
++    array_push(_list, ["ldx_abs", _k + "dglv", _id]);
++    array_push(_list, ["byte",    0xBD, _id]);              // LDA abs,X (self-modified)
++    array_push(_list, ["label",   _k + "dgvl"]);
++    array_push(_list, ["byte_lab_lo", _k + "dgvt3", _id]);
++    array_push(_list, ["label",   _k + "dgvh"]);
++    array_push(_list, ["byte_lab_hi", _k + "dgvt3", _id]);
++    array_push(_list, ["ora_abs", _k + "dghi", _id]);
++    array_push(_list, ["sta_abs", _D418, _id]);
++    array_push(_list, ["label",   _k + "dgquit"]);
++    array_push(_list, ["pla",     0, _id]);
++    array_push(_list, ["tax",     0, _id]);
++    array_push(_list, ["pla",     0, _id]);
++    array_push(_list, ["rti",     0, _id]);
++
++    // ── STOP ── safe to call any time.
++    array_push(_list, ["label",   _k + "dgstop"]);
++    array_push(_list, ["lda_imm", 0x01, _id]);
++    array_push(_list, ["sta_abs", 0xDD0D, _id]);            // timer A interrupt off
++    array_push(_list, ["lda_abs", 0xDD0E, _id]);
++    array_push(_list, ["and_imm", 0xFE, _id]);              // timer A stopped (TOD bit kept)
++    array_push(_list, ["sta_abs", 0xDD0E, _id]);
++    array_push(_list, ["lda_abs", 0xDD0D, _id]);            // clear anything pending
++    array_push(_list, ["lda_abs", _k + "dgact", _id]);
++    array_push(_list, ["beq",     _k + "dgst1", _id]);
++    array_push(_list, ["lda_abs", _k + "f18", _id]);        // music volume back
++    array_push(_list, ["sta_abs", _D418, _id]);
++    array_push(_list, ["label",   _k + "dgst1"]);
++    array_push(_list, ["lda_imm", 0x00, _id]);
++    array_push(_list, ["sta_abs", _k + "dgact", _id]);
++    array_push(_list, ["rts",     0, _id]);
++
++    // ── START ── A = digi step byte (slot | volume << 4).
++    array_push(_list, ["label",   _k + "dgstart"]);
++    array_push(_list, ["pha",     0, _id]);
++    array_push(_list, ["lda_imm", 0x00, _id]);
++    array_push(_list, ["sta_abs", _k + "dgact", _id]);      // NMI stands down while we rewire it
++    array_push(_list, ["lda_imm", 0x01, _id]);
++    array_push(_list, ["sta_abs", 0xDD0D, _id]);
++    array_push(_list, ["pla",     0, _id]);
++    array_push(_list, ["pha",     0, _id]);
++    array_push(_list, ["and_imm", 0x0F, _id]);
++    array_push(_list, ["tax",     0, _id]);
++    array_push(_list, ["lda_abx", _k + "dgsl", _id]);
++    array_push(_list, ["sta_abs", _k + "dgfl", _id]);
++    array_push(_list, ["lda_abx", _k + "dgsh", _id]);
++    array_push(_list, ["sta_abs", _k + "dgfh", _id]);
++    array_push(_list, ["lda_abx", _k + "dgcl", _id]);
++    array_push(_list, ["sta_abs", _k + "dgcnl", _id]);
++    array_push(_list, ["lda_abx", _k + "dgch", _id]);
++    array_push(_list, ["sta_abs", _k + "dgcnh", _id]);
++    array_push(_list, ["lda_abx", _k + "dgml", _id]);
++    array_push(_list, ["sta_abs", _k + "dgjl", _id]);
++    array_push(_list, ["lda_abx", _k + "dgmh", _id]);
++    array_push(_list, ["sta_abs", _k + "dgjh", _id]);
++    array_push(_list, ["lda_imm", 0x00, _id]);
++    array_push(_list, ["sta_abs", _k + "dgph", _id]);
++    array_push(_list, ["lda_imm", 0x08, _id]);
++    array_push(_list, ["sta_abs", _k + "dglv", _id]);        // delta start level
++    array_push(_list, ["pla",     0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["and_imm", 0x03, _id]);
++    array_push(_list, ["tax",     0, _id]);
++    array_push(_list, ["lda_abx", _k + "dgvtl", _id]);
++    array_push(_list, ["sta_abs", _k + "dgvl", _id]);
++    array_push(_list, ["lda_abx", _k + "dgvth", _id]);
++    array_push(_list, ["sta_abs", _k + "dgvh", _id]);
++    array_push(_list, ["lda_imm", 0x01, _id]);
++    array_push(_list, ["sta_abs", _k + "dgact", _id]);
++    array_push(_list, ["lda_abs", 0xDD0D, _id]);            // drop a stale flag
++    array_push(_list, ["lda_imm", 0x81, _id]);
++    array_push(_list, ["sta_abs", 0xDD0D, _id]);            // timer A interrupt on
++    array_push(_list, ["lda_abs", 0xDD0E, _id]);
++    array_push(_list, ["and_imm", 0x80, _id]);              // keep TOD 50/60 Hz bit
++    array_push(_list, ["ora_imm", 0x11, _id]);              // start, continuous, force load
++    array_push(_list, ["sta_abs", 0xDD0E, _id]);
++    array_push(_list, ["rts",     0, _id]);
++
++    // ── ROW TRIGGER ── called by the shared row clock before it advances.
++    // Uses the song's _S_PTR as scratch, like the voices before it.
++    array_push(_list, ["label",   _k + "dgrow"]);
++    array_push(_list, ["ldx_zp",  _S_ORD, _id]);
++    array_push(_list, ["lda_abx", _k + "dgord", _id]);
++    array_push(_list, ["cmp_imm", 0xFF, _id]);
++    array_push(_list, ["beq",     _k + "dgrx", _id]);
++    array_push(_list, ["tax",     0, _id]);
++    array_push(_list, ["lda_zp",  _S_ROW, _id]);
++    array_push(_list, ["cmp_abx", _k + "dglen", _id]);
++    array_push(_list, ["bcs",     _k + "dgrx", _id]);      // past this digi pattern's end
++    array_push(_list, ["lda_abx", _k + "dgppl", _id]);
++    array_push(_list, ["sta_zp",  _S_PTR, _id]);
++    array_push(_list, ["lda_abx", _k + "dgpph", _id]);
++    array_push(_list, ["sta_zp",  _S_PTR + 1, _id]);
++    array_push(_list, ["ldy_zp",  _S_ROW, _id]);
++    array_push(_list, ["lda_izy", _S_PTR, _id]);
++    array_push(_list, ["cmp_imm", 0xFF, _id]);
++    array_push(_list, ["beq",     _k + "dgrx", _id]);
++    array_push(_list, ["cmp_imm", 0xFE, _id]);
++    array_push(_list, ["bne",     _k + "dgrt", _id]);
++    array_push(_list, ["jmp_abs", _k + "dgstop", _id]);
++    array_push(_list, ["label",   _k + "dgrt"]);
++    array_push(_list, ["jmp_abs", _k + "dgstart", _id]);
++    array_push(_list, ["label",   _k + "dgrx"]);
++    array_push(_list, ["rts",     0, _id]);
++
++    // ── INIT ── vectors and timer rate. Called from <key>_init.
++    array_push(_list, ["label",   _k + "dginit"]);
++    array_push(_list, ["lda_imm", 0x00, _id]);
++    array_push(_list, ["sta_abs", _k + "dgact", _id]);
++    array_push(_list, ["lda_lab_lo", _k + "dgnmi", _id]);
++    array_push(_list, ["sta_abs", 0x0318, _id]);
++    array_push(_list, ["sta_abs", 0xFFFA, _id]);
++    array_push(_list, ["lda_lab_hi", _k + "dgnmi", _id]);
++    array_push(_list, ["sta_abs", 0x0319, _id]);
++    array_push(_list, ["sta_abs", 0xFFFB, _id]);
++    array_push(_list, ["lda_imm", _plan.latch & 0xFF, _id]);
++    array_push(_list, ["sta_abs", 0xDD04, _id]);
++    array_push(_list, ["lda_imm", (_plan.latch >> 8) & 0xFF, _id]);
++    array_push(_list, ["sta_abs", 0xDD05, _id]);
++    array_push(_list, ["jmp_abs", _k + "dgstop", _id]);
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.yy b/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.yy
+new file mode 100644
+index 0000000..6731cd3
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_sid_song_emit_digi",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_sid_song_emit_digi",
++  "parent":{
++    "name":"SOUND_EDITOR",
++    "path":"folders/SCRIPTS/SOUND_EDITOR.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+index 192f10e..c20a78d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+@@ -88,7 +88,7 @@ function scr_sound_editor_create(_asset) {
+         order_scroll  : 0,
+ 
+         // ── DIGI TRACK ── $D418 samples as a 4th voice. See scr_music_digi.
+-        digi_rate     : 8000,
++        digi_rate     : 5000,
+         digi_samples  : array_create(16, ""),
+         digi_patterns : [],
+         // editor / preview state (never saved)
+@@ -188,7 +188,14 @@ function scr_music_sid_length(_m, _row) {
+ function scr_music_sid_project(_m, _chip) {
+     var _out = { instruments: _m.instruments, patterns: _m.patterns, songs: [],
+         play_speed: _m.play_speed, voice_mask: scr_music_sid_mask(_m, _chip),
+-        filt_mode: _m.filt_mode, filt_res: _m.filt_res, filt_cut: _m.filt_cut, note_table: _m[$ "note_table"], free_voices: _m[$ "free_voices"] };
++        filt_mode: _m.filt_mode, filt_res: _m.filt_res, filt_cut: _m.filt_cut, note_table: _m[$ "note_table"], free_voices: _m[$ "free_voices"],
++        digi_rate: 8000, digi_samples: [], digi_patterns: [] };
++    // The digi track plays through chip 0's $D418 only.
++    if (_chip == 0) {
++        _out.digi_rate     = _m[$ "digi_rate"];
++        _out.digi_samples  = _m[$ "digi_samples"];
++        _out.digi_patterns = _m[$ "digi_patterns"];
++    }
+     for (var _s = 0; _s < array_length(_m.songs); _s++) {
+         var _source = _m.songs[_s];
+         var _song = { name: _source.name, loop: _source.loop, loop_row: _source.loop_row, order: [] };
+@@ -196,7 +203,8 @@ function scr_music_sid_project(_m, _chip) {
+             var _row = _source.order[_r];
+             array_push(_song.order, { v1: scr_music_sid_pattern(_row, _chip * 3),
+                 v2: scr_music_sid_pattern(_row, _chip * 3 + 1), v3: scr_music_sid_pattern(_row, _chip * 3 + 2),
+-                repeat_short: _row.repeat_short, force_len: scr_music_sid_length(_m, _row) });
++                repeat_short: _row.repeat_short, force_len: scr_music_sid_length(_m, _row),
++                dg: _row[$ "dg"] });
+         }
+         array_push(_out.songs, _song);
+     }
+@@ -730,7 +738,7 @@ function scr_music_sid_generate(_asset) {
+ /// Maker header. A dry build (as GENERATE NODES sizes it), with every byte
+ /// counted under the last label before it. Player code is every instruction.
+ function scr_music_size_summary(_asset) {
+-    var _out = { ok: false, instr: 0, tables: 0, shared: 0, patterns: 0, order: 0, notes: 0, player: 0, vars: 0, total: 0 };
++    var _out = { ok: false, instr: 0, tables: 0, shared: 0, patterns: 0, order: 0, notes: 0, player: 0, vars: 0, digi: 0, total: 0 };
+     var _was_nt = false;
+     if (variable_global_exists("sidsong_notetab_emitted")) _was_nt = global.sidsong_notetab_emitted;
+     global.sidsong_notetab_emitted = false;
+@@ -758,13 +766,14 @@ function scr_music_size_summary(_asset) {
+             _out.player += obj_opCodeManager.get_size(_mn);
+         }
+     }
+-    _out.total = _out.instr + _out.tables + _out.shared + _out.patterns + _out.order + _out.notes + _out.player + _out.vars;
++    _out.total = _out.instr + _out.tables + _out.shared + _out.patterns + _out.order + _out.notes + _out.player + _out.vars + _out.digi;
+     _out.ok = true;
+     return _out;
+ }
+ 
+ /// Section of a data label's last part (after the key prefix).
+ function scr_music_size_category(_part) {
++    if (string_pos("dg", _part) == 1) return "digi";   // digi track: samples, tables, NMI
+     if (string_pos("lane", _part) == 1) return "tables";
+     if (string_pos("table", _part) == 1) return "shared";
+     if (string_pos("ins", _part) == 1) return "instr";
+@@ -806,6 +815,7 @@ function scr_music_size_signature(_m) {
+             _h = (_h * 31 + real(scr_music_size_field(_order[_r], "force_len", 0))) mod 1000000007;
+         }
+     }
++    _h = (_h * 31 + scr_music_size_digi_sig(_m)) mod 1000000007;
+     var _nt = _m[$ "note_table"];
+     if (is_array(_nt)) _h = (_h * 31 + array_length(_nt)) mod 1000000007;
+     if (_m[$ "free_voices"] == true) _h = (_h * 31 + 17) mod 1000000007;
+@@ -842,3 +852,42 @@ function scr_music_size_cached(_asset) {
+     }
+     return _c.info;
+ }
++
++/// Digi track part of the size fingerprint: rate, rows' dg, digi steps, and
++/// every slotted sample's encode settings (so re-trimming a sample updates).
++function scr_music_size_digi_sig(_m) {
++    var _h = 7;
++    var _rate = _m[$ "digi_rate"];
++    if (!is_undefined(_rate)) {
++        _h = (_h * 31 + real(_rate)) mod 1000000007;
++    }
++    for (var _s = 0; _s < array_length(_m.songs); _s++) {
++        var _order = _m.songs[_s].order;
++        for (var _r = 0; _r < array_length(_order); _r++) {
++            _h = (_h * 31 + real(scr_music_size_field(_order[_r], "dg", -1)) + 2) mod 1000000007;
++        }
++    }
++    var _pats = _m[$ "digi_patterns"];
++    if (is_array(_pats)) {
++        for (var _p = 0; _p < array_length(_pats); _p++) {
++            var _steps = _pats[_p].steps;
++            _h = (_h * 31 + array_length(_steps)) mod 1000000007;
++            for (var _i = 0; _i < array_length(_steps); _i++) {
++                _h = (_h * 31 + (real(_steps[_i].smp) + 3) * 5 + real(_steps[_i].vol)) mod 1000000007;
++            }
++        }
++    }
++    var _slots = _m[$ "digi_samples"];
++    if (is_array(_slots)) {
++        for (var _k = 0; _k < array_length(_slots); _k++) {
++            var _a = scr_digi_find_sample(_slots[_k]);
++            if (is_undefined(_a)) {
++                continue;
++            }
++            var _am = _a.meta;
++            _h = (_h * 31 + _k + _am.data_ver * 7 + _am.src_len + _am.trim_start * 3 + _am.trim_end * 5
++                + _am.gain * 11 + _am.pack * 13 + _am.dither * 17) mod 1000000007;
++        }
++    }
++    return _h;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index eff05ca..c293627 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -783,7 +783,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     if (is_struct(_size) && _size.ok) {
+         var _sz_parts = [["INSTR", _size.instr], ["TABLES", _size.tables], ["SHARED", _size.shared],
+             ["PATTERNS", _size.patterns], ["ORDER", _size.order], ["NOTES", _size.notes],
+-            ["PLAYER", _size.player], ["VARS", _size.vars]];
++            ["PLAYER", _size.player], ["VARS", _size.vars], ["DIGI", _size.digi]];
+         var _sz_x = _vx1 + 460;
+         draw_set_color(make_color_rgb(150, 170, 200));
+         draw_text_l(_sz_x, _status_y, "BYTES:");

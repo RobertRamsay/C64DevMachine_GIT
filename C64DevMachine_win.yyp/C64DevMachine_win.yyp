@@ -1346,6 +1346,7 @@
     {"id":{"name":"scr_sid_notes_parse","path":"scripts/scr_sid_notes_parse/scr_sid_notes_parse.yy",},},
     {"id":{"name":"scr_sid_relocate","path":"scripts/scr_sid_relocate/scr_sid_relocate.yy",},},
     {"id":{"name":"scr_sid_song_build","path":"scripts/scr_sid_song_build/scr_sid_song_build.yy",},},
+    {"id":{"name":"scr_sid_song_emit_digi","path":"scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.yy",},},
     {"id":{"name":"scr_sid_song_emit_fx_routines","path":"scripts/scr_sid_song_emit_fx_routines/scr_sid_song_emit_fx_routines.yy",},},
     {"id":{"name":"scr_sid_song_note_index","path":"scripts/scr_sid_song_note_index/scr_sid_song_note_index.yy",},},
     {"id":{"name":"scr_sid64_audio","path":"scripts/scr_sid64_audio/scr_sid64_audio.yy",},},

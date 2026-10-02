@@ -13,10 +13,11 @@
 ///                    vol  0-3, 3 = full (0 = 1/4, 1 = 1/2, 2 = 3/4 amplitude)
 ///   order rows     dg = digi pattern index, -1 = none.
 ///
-/// TIMING: the digi track follows the shared row clock, or voice 1's clock
-/// with TIMING: PER VOICE. It does not count towards an order row's length:
-/// a shorter digi pattern simply ends (or repeats with REPEAT), a longer one
-/// is cut at the row's length.
+/// TIMING: the digi track follows the shared row clock (the compiled player
+/// supports nothing else; the editor preview follows voice 1 under TIMING: PER
+/// VOICE). It does not count towards an order row's length: a shorter digi
+/// pattern simply ends (REPEAT does not wrap it), a longer one is cut at the
+/// row's length.
 
 #macro DIGI_SLOTS     16
 #macro DIGI_SMP_EMPTY -1
@@ -220,14 +221,12 @@ function scr_digi_preview_tick(_m, _cur_song, _voice_pos) {
         return;
     }
     var _pat = _m.digi_patterns[_row.dg];
-    var _local = _step;
-    if (_row.repeat_short) {
-        _local = _step mod _pat.pattern_len;
-    }
-    if (_local >= _pat.pattern_len) {
+    // Like the C64 player: past the digi pattern's own length there is nothing
+    // (REPEAT does not wrap the digi track).
+    if (_step >= _pat.pattern_len) {
         return;
     }
-    scr_digi_play_step(_m, _pat.steps[_local]);
+    scr_digi_play_step(_m, _pat.steps[_step]);
 }
 
 // ═══════════════════════════ GRID LANE ═══════════════════════════
@@ -245,12 +244,26 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
     var _c_lane = make_color_rgb(255, 130, 170);
     var _c_btn  = make_color_rgb(60, 130, 150);
 
-    // ── HEADER ──
+    // ── HEADER ── row 1: length stepper (or NEW) + "DIGI"; row 2: SAMPLES button.
     draw_set_font_l(fnt_c64_tiny);
+    var _by1 = _gy0 - 22;
+    var _by2 = _gy0 - 5;
+    var _bhov = point_in_rectangle(_mx, _my, _x, _by1, _x + _w, _by2);
+    var _bcol = make_color_rgb(120, 40, 80);
+    if (_bhov || _m.dg_slots_open) {
+        _bcol = make_color_rgb(190, 70, 120);
+    }
+    draw_set_color(_bcol);
+    draw_rectangle(_x, _by1, _x + _w, _by2, false);
     draw_set_color(_c_lane);
+    draw_rectangle(_x, _by1, _x + _w, _by2, true);
+    draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text_transformed_l(_x + _w * 0.5, _gy0 - 20, "D I G I", 1, 1, 0);
+    draw_text_l(_x + _w * 0.5, _by1 + 4, "SAMPLES");
     draw_set_halign(fa_left);
+    if (_bhov && mouse_check_button_pressed(mb_left)) {
+        _m.dg_slots_open = !_m.dg_slots_open;
+    }
 
     draw_set_font_l(fnt_c64_pico);
     var _hy = _gy0 - 34;
@@ -298,16 +311,10 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
             }
         }
     }
-    var _sx = _x + _w - 34;
-    var _shov = point_in_rectangle(_mx, _my, _sx, _hy - 4, _sx + 34, _hy + 10);
-    draw_set_color(_c_btn);
-    if (_shov || _m.dg_slots_open) {
-        draw_set_color(c_aqua);
-    }
-    draw_text_l(_sx, _hy, "SMP");
-    if (_shov && mouse_check_button_pressed(mb_left)) {
-        _m.dg_slots_open = !_m.dg_slots_open;
-    }
+    draw_set_color(_c_lane);
+    draw_set_halign(fa_right);
+    draw_text_l(_x + _w, _hy, "DIGI");
+    draw_set_halign(fa_left);
     draw_set_font_l(fnt_c64_tiny);
 
     // ── CELLS ──
@@ -483,9 +490,9 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis) {
 /// uses last frame's rect to hide the mouse from controls under the panel.
 function scr_digi_slots_rect(_lane_x, _lane_w, _gy0) {
     var _w = 330;
-    var _h = 48 + DIGI_SLOTS * 20 + 26;
+    var _h = 48 + DIGI_SLOTS * 20 + 58;
     var _x1 = _lane_x + _lane_w - _w;
-    var _y1 = _gy0 - 18;
+    var _y1 = _gy0 - 2;    // just under the SAMPLES button
     return [_x1, _y1, _x1 + _w, _y1 + _h];
 }
 
@@ -605,7 +612,18 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
         }
     }
     draw_set_color(make_color_rgb(95, 95, 115));
-    draw_text_l(_x1 + 10, _y2 - 18, "CLICK: NEXT SAMPLE   RIGHT-CLICK: EMPTY");
+    draw_text_l(_x1 + 10, _y2 - 50, "CLICK: NEXT SAMPLE   RIGHT-CLICK: EMPTY");
+    // Each sample costs one NMI; the estimate is for while a digi plays.
+    var _cpu = round(_m.digi_rate * DIGI_NMI_CYCLES / SAMPLE_PAL_CLOCK * 100);
+    draw_set_color(make_color_rgb(140, 150, 180));
+    if (_cpu > 45) {
+        draw_set_color(make_color_rgb(255, 160, 60));
+    }
+    draw_text_l(_x1 + 10, _y2 - 34, "CPU WHILE A DIGI PLAYS: ~" + string(_cpu) + "%  (NMI, CIA2 TIMER A)");
+    if (_m.free_voices) {
+        draw_set_color(make_color_rgb(255, 120, 90));
+        draw_text_l(_x1 + 10, _y2 - 18, "TIMING: PER VOICE - DIGI TRACK NOT COMPILED");
+    }
 }
 
 /// How many C64 samples _asset becomes at _rate (no encode needed).

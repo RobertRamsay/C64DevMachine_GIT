@@ -783,7 +783,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (is_struct(_size) && _size.ok) {
         var _sz_parts = [["INSTR", _size.instr], ["TABLES", _size.tables], ["SHARED", _size.shared],
             ["PATTERNS", _size.patterns], ["ORDER", _size.order], ["NOTES", _size.notes],
-            ["PLAYER", _size.player], ["VARS", _size.vars]];
+            ["PLAYER", _size.player], ["VARS", _size.vars], ["DIGI", _size.digi]];
         var _sz_x = _vx1 + 460;
         draw_set_color(make_color_rgb(150, 170, 200));
         draw_text_l(_sz_x, _status_y, "BYTES:");

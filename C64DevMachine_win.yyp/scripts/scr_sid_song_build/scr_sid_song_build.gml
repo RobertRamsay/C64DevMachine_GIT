@@ -738,6 +738,13 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         }
     }
 
+    // ── 5b. DIGI TRACK ── $D418 samples on a CIA2 NMI (scr_sid_song_emit_digi).
+    // Nothing at all is emitted unless some order row triggers a sample.
+    var _dg_plan = scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name);
+    if (_dg_plan.used) {
+        scr_sid_song_digi_emit_data(_list, _id, _key, _dg_plan);
+    }
+
     // ── 6. PER-SONG HEADER TABLES ──
     // Indexed by song number. init/seek copy the three relevant bytes into ZP
     // once, so the row-advance path costs the same as it did single-song.
@@ -842,6 +849,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_abs", _chip_base + 0x18, _id]);   // full volume, filter off
         array_push(_list, ["sta_abs", _key + "f18", _id]);        // DXX keeps this copy
     }
+    if (_dg_plan.used) {
+        array_push(_list, ["jsr",     _key + "dginit", _id]);   // NMI vectors + timer rate
+    }
     array_push(_list, ["pla",     0,      _id]);
     array_push(_list, ["ldx_imm", 0x00,   _id]);   // start at the song's first row
     array_push(_list, ["jmp_abs", _L_seek, _id]);
@@ -855,6 +865,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // still ringing and each voice part-way through its old instrument —
     // the same class of stale-state bug as the loop-wrap fix.
     array_push(_list, ["label",   _L_seek]);
+    if (_dg_plan.used) {
+        // Cut any sample still playing from the old position (A preserved).
+        array_push(_list, ["pha",     0, _id]);
+        array_push(_list, ["jsr",     _key + "dgstop", _id]);
+        array_push(_list, ["pla",     0, _id]);
+    }
 
     // Clamp the song index. An out-of-range song would index past the header
     // tables into whatever data follows and set _S_END to garbage.
@@ -937,6 +953,13 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
 
     // ── PLAY ──
     array_push(_list, ["label",   _L_play]);
+    if (_dg_plan.used) {
+        // The digi NMI keeps the music's filter-mode bits (DXX / EXX may
+        // change them) under the sample's volume nibble.
+        array_push(_list, ["lda_abs", _key + "f18", _id]);
+        array_push(_list, ["and_imm", 0xF0, _id]);
+        array_push(_list, ["sta_abs", _key + "dghi", _id]);
+    }
     if (!_free) {
         array_push(_list, ["dec_zp",  _S_TICK,   _id]);
         array_push(_list, ["beq",     _L_rowadv, _id]);
@@ -1477,6 +1500,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     }
     if (_free) array_push(_list, ["jmp_abs", _L_instrs, _id]);
     if (!_free) {
+    if (_dg_plan.used) {
+        array_push(_list, ["jsr", _key + "dgrow", _id]);   // this row's digi step
+    }
     // Advance the master row; roll into the next order row at the target.
     // Same label-operand restriction as the pattern length above — fetch via
     // lda_abx into scratch, then compare ZP-to-ZP.
@@ -1524,6 +1550,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
 
     // STOP — park on this song's last row, silence everything, go inactive.
     array_push(_list, ["label",   _key + "songstop"]);
+    if (_dg_plan.used) {
+        array_push(_list, ["jsr",     _key + "dgstop", _id]);
+    }
     array_push(_list, ["lda_zp",  _S_END, _id]);
     array_push(_list, ["sec",     0,      _id]);
     array_push(_list, ["sbc_imm", 0x01,   _id]);
@@ -2425,6 +2454,10 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     scr_sid_song_emit_fx_routines(_list, _id, _key, _chip_base, _c_base[0], _sng_use_fx, _sng_filt_used, _sng_extended_fx, _free);
     if (_sfx) {
         scr_sid_song_emit_sfx(_list, _id, _key, _chip_base, _S_PTR);
+    }
+
+    if (_dg_plan.used) {
+        scr_sid_song_digi_emit_runtime(_list, _id, _key, _dg_plan, _chip_base, _S_ORD, _S_ROW, _S_PTR);
     }
 
     array_push(_list, ["label", _L_skip]);
