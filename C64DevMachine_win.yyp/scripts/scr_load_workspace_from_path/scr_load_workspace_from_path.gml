@@ -897,6 +897,12 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 // the dimensions just loaded; a stale saved key must never
                 // masquerade as a user resize and erase the restored maps.
                 _new_asset.meta.map_size_key = string(_new_asset.meta.stamp_w) + "x" + string(_new_asset.meta.stamp_h);
+                // RAW ROWS export flag (scr_mts_raw_rows_emit). Older saves don't have it.
+                if (variable_struct_exists(_tsm, "raw_rows")) {
+                    _new_asset.meta.raw_rows = real(_tsm.raw_rows);
+                } else {
+                    _new_asset.meta.raw_rows = 0;
+                }
 
 	            // Backfill per-map dim arrays to map_count so the viewer never
 	            // indexes past a short or empty array (old saves store no map_w/map_h).

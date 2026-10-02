@@ -19619,6 +19619,7 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 		    if (_a.type == "MAP_DATA"   && (ds_map_exists(_used_map, _a.name) || ds_map_exists(_load_org_linked, _a.name))) array_push(_all_assets, _a);
 			if (_a.type == "TEXT_DATA"  && (ds_map_exists(_used_str,  _a.name) || ds_map_exists(_load_org_linked, _a.name))) array_push(_all_assets, _a);
 			if (_a.type == "BYTE_DATA"  ) array_push(_all_assets, _a);
+			if (_a.type == "META_TILESET" && _a.meta.raw_rows == 1) array_push(_all_assets, _a);
 			if (_a.type == "LINE_COLL"  ) array_push(_all_assets, _a);
 			if (_a.type == "SFX_DATA" && ds_map_exists(_used_sfx, _a.name) && !ds_map_exists(_load_org_linked, _a.name)) array_push(_all_assets, _a);
 			if (_a.type == "SFX_DATA" && ds_map_exists(_load_org_linked, _a.name)) array_push(_all_assets, _a);
@@ -19637,6 +19638,13 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 
 	    for (var _ai = 0; _ai < array_length(_all_assets); _ai++) {
 			var _a   = _all_assets[_ai];
+			// META_TILESET in RAW ROWS mode: no buffer payload, the maps are
+			// flattened to plain char rows straight from the editor data.
+			if (_a.type == "META_TILESET") {
+			    array_push(instruction_list, ["org", _a.address]);
+			    scr_mts_raw_rows_emit(instruction_list, _a);
+			    continue;
+			}
 	        var _buf = _a.buffer;
 	        if (!buffer_exists(_buf)) continue;
 	        var _sz  = buffer_get_size(_buf);

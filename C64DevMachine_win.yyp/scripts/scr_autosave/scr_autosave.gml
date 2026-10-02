@@ -138,6 +138,7 @@ var _base = "unsaved";
                 _mo.map_size_key = variable_struct_exists(_me, "map_size_key") ? _me.map_size_key : "";
                 _mo.map_w        = variable_struct_exists(_me, "map_w")        ? _me.map_w        : [];
                 _mo.map_h        = variable_struct_exists(_me, "map_h")        ? _me.map_h        : [];
+                _mo.raw_rows     = _me.raw_rows;
             }
             if (_a.type == "SPRITE_MASK") {
                 _mo = scr_sprmask_save_meta(_a);

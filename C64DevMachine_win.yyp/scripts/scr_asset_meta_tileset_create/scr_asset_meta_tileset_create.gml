@@ -58,5 +58,8 @@ function scr_asset_meta_tileset_create(_asset) {
     _asset.meta.vsb_drag_active        = false;// MAP-mode vertical scrollbar thumb currently being dragged
     _asset.meta.stamp_clip             = [];   // copied metatile cells (char indices) for Ctrl+C / Ctrl+V
     _asset.meta.stamp_clip_valid       = false;// true once a stamp has been copied
+    _asset.meta.raw_rows               = 0;    // 1 = RAW ROWS: every map is emitted at the asset address as plain
+                                               //     char rows (map_w bytes a row), maps one after another, for
+                                               //     engines that read the map themselves. 0 = editor data only.
     _asset.address                     = 0x8000;
 }

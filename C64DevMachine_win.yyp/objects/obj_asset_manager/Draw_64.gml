@@ -8902,6 +8902,50 @@ case "META_TILESET": {
     var _rv_x2r = _rv_bx2 - 4;              // right edge for right-aligned items
     var _rv_rh  = 16;                       // row height
     var _rv_th  = string_height("X");     // text height, for vertical centring
+
+    // ---- RAW ROWS: emit the maps at the asset address as plain char rows ----
+    // For engines that read the map themselves (no METASCROLL / METAMAP):
+    // every map, map_w bytes a row, one map after another, label <NAME>_MAP<n>.
+    var _rr_on  = (_m.raw_rows == 1);
+    var _rr_lbl = "RAW ROWS: OFF";
+    if (_rr_on) {
+        _rr_lbl = "RAW ROWS: ON";
+    }
+    var _rr_x2  = _rv_x1 + string_width_l("RAW ROWS: OFF") + 10;
+    var _rr_y2  = _cy + 14;
+    var _rr_hov = point_in_rectangle(_mx, _my, _rv_x1, _cy, _rr_x2, _rr_y2);
+    if (_rr_on) {
+        draw_set_color(make_color_rgb(20, 70, 50));
+    } else {
+        draw_set_color(make_color_rgb(35, 35, 45));
+    }
+    if (_rr_hov) {
+        draw_set_color(make_color_rgb(40, 110, 80));
+    }
+    draw_rectangle(_rv_x1, _cy, _rr_x2, _rr_y2, false);
+    draw_set_color(make_color_rgb(80, 200, 140));
+    draw_rectangle(_rv_x1, _cy, _rr_x2, _rr_y2, true);
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_text_l((_rv_x1 + _rr_x2) * 0.5, _cy + 1, _rr_lbl);
+    draw_set_halign(fa_left);
+    if (_rr_on) {
+        var _rr_sz = scr_mts_raw_rows_size(_m);
+        draw_set_color(make_color_rgb(140, 200, 180));
+        draw_text_l(_rr_x2 + 6, _cy + 1, "$" + string_upper(decimal_to_hex(_asset.address)) + " " + string(_rr_sz) + "B");
+    }
+    if (_rr_hov && mouse_check_button_pressed(mb_left)) {
+        if (_rr_on) {
+            _m.raw_rows = 0;
+        } else {
+            _m.raw_rows = 1;
+        }
+        _m.is_dirty             = true;
+        global.undo_dirty       = true;
+        global.addresses_dirty  = true;
+    }
+    _cy += 18;
+
     if (_run_node == noone) {
         draw_set_color(make_color_rgb(110, 110, 130));
         draw_text_l(_rv_x1, _cy + 1, "RUN VIEW: CONNECT A METASCROLL");

@@ -256,6 +256,7 @@
             _meta_out.map_size_key = variable_struct_exists(_a.meta, "map_size_key") ? _a.meta.map_size_key : "";
             _meta_out.map_w        = variable_struct_exists(_a.meta, "map_w") ? _a.meta.map_w : [];
             _meta_out.map_h        = variable_struct_exists(_a.meta, "map_h") ? _a.meta.map_h : [];
+            _meta_out.raw_rows     = _a.meta.raw_rows;
         }
 		
 		
