@@ -562,6 +562,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             _div_x = _tb_x0 + _div;
         } else {
             _m.instr_div_drag = false;
+            global.undo_dirty = true;   // saved with the song (instr_div)
         }
     }
     // Notes column: x range, and the horizontal scrollbar under it.
@@ -996,7 +997,14 @@ function scr_sound_editor_presets() {
           hint: "HIGH TRIANGLE CHIME + LIGHT VIBRATO. TRY C-5." },
         { name: "FLUTE", text: "$11\nD255\nL1", attack: 3, decay: 5, sustain: 11, release: 7,
           pulse_width: 2048, vib_delay: 14, vib_speed: 6, vib_depth: 1, filt: 1,
-          hint: "SOFT TRIANGLE + DELAYED VIBRATO, FILTER ON. TRY C-4." }
+          hint: "SOFT TRIANGLE + DELAYED VIBRATO, FILTER ON. TRY C-4." },
+        // A long pulse-width sweep: the ~PULSE table runs beside the held note,
+        // +12 a frame for 150 frames (3 s, $100 -> $808), then back down.
+        // The program holds (D255 / L1) so the table keeps running.
+        { name: "BASS PWM SWEEP", text: "$41\nD255\nL1\n~PULSE\nQ+12\nD150\nQ-12\nD150\nL4",
+          attack: 0, decay: 9, sustain: 10, release: 4,
+          pulse_width: 256, vib_delay: 0, vib_speed: 0, vib_depth: 0, filt: 0,
+          hint: "HELD PULSE BASS, WIDTH SWEEPS UP AND DOWN EVERY 6 SECONDS. TRY C-2, LONG NOTES." }
     ];
 }
 
@@ -1042,8 +1050,11 @@ function scr_sound_editor_preset_picker(_m, _x, _y, _w, _visible, _mx, _my) {
         }
     }
     var _all_room = array_length(_m.instruments) + _count <= 255;
-    if (scr_sfx_maker_button(_x, _y + _count * 26, _w,
-            _all_room ? "+ ADD ALL 8 PRESETS" : "NEED 8 FREE INSTRUMENT SLOTS", _mx, _my) && _all_room) {
+    var _all_lab = "NEED " + string(_count) + " FREE INSTRUMENT SLOTS";
+    if (_all_room) {
+        _all_lab = "+ ADD ALL " + string(_count) + " PRESETS";
+    }
+    if (scr_sfx_maker_button(_x, _y + _count * 26, _w, _all_lab, _mx, _my) && _all_room) {
         for (var _a = 0; _a < _count; _a++) {
             if (scr_sound_editor_add_preset(_m, _presets[_a])) _added += 1;
         }
