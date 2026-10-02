@@ -10236,8 +10236,41 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
                     }
                 }
             }
+            var _mtab_edit = false;
+            if (editing_map_dim && editing_map_field == "NAME") {
+                if (editing_map_asset_idx == viewer_asset && editing_map_name_idx == _mbi) {
+                    _mtab_edit = true;
+                }
+            }
+            if (_mtab_edit) {
+                // Being renamed: show what's typed, end of the text if it's long
+                _mtab = editing_map_string + "_";
+                while (string_length(_mtab) > 1 && string_width_l(_mtab) > _msel_bw - 4) {
+                    _mtab = string_delete(_mtab, 1, 1);
+                }
+                draw_set_color(make_color_rgb(255, 220, 80));
+                draw_rectangle(_scx, _scy, _scx + _msel_bw, _scy + _msel_bh, true);
+            }
             draw_text_l(_scx + _msel_bw * 0.5, _scy , _mtab);
             draw_set_halign(fa_left);
+            if (_shov && mouse_check_button_pressed(mb_left)) {
+                // Double-click a map tab to name it
+                if (mts_tab_click_map == _mbi && current_time - mts_tab_click_time < 400) {
+                    while (array_length(_m.map_names) < array_length(_m.maps)) {
+                        array_push(_m.map_names, "");
+                    }
+                    editing_map_dim       = true;
+                    editing_map_field     = "NAME";
+                    editing_map_string    = _m.map_names[_mbi];
+                    editing_map_asset_idx = viewer_asset;
+                    editing_map_name_idx  = _mbi;
+                    keyboard_string       = "";
+                    mts_tab_click_map     = -1;
+                } else {
+                    mts_tab_click_map  = _mbi;
+                    mts_tab_click_time = current_time;
+                }
+            }
             if (_shov && mouse_check_button_pressed(mb_left)) _m.active_map = _mbi;
             if (_shov && mouse_check_button_pressed(mb_right) && _m.map_count > 0) {
                 array_delete(_m.maps, _mbi, 1);

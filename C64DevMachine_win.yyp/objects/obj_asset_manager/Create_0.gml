@@ -235,6 +235,9 @@ editing_map_dim       = false;  // true while editing W or H
 editing_map_field     = "";     // "W" or "H"
 editing_map_string    = "";
 editing_map_asset_idx = -1;
+editing_map_name_idx  = -1;     // META_TILESET map being renamed (editing_map_field == "NAME")
+mts_tab_click_map     = -1;     // last map tab clicked, for double-click rename
+mts_tab_click_time    = 0;      // current_time of that click (ms)
 
 // -------------------------------------------------------
 // SFX_DATA ASSET

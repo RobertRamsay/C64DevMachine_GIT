@@ -428,6 +428,70 @@ if (keyboard_check_pressed(vk_enter)) {
 // -------------------------------------------------------
 if (editing_map_dim) {
     global.is_any_text_active = true;
+
+    // ---- META_TILESET map name (double-click a map tab) ----
+    // Letters, digits, space and a few marks, upper case, 12 max. Enter keeps
+    // it, Esc cancels, an empty name puts the tab back to MAP n.
+    if (editing_map_field == "NAME") {
+        if (keyboard_string != "") {
+            var _nk = string_upper(keyboard_string);
+            keyboard_string = "";
+            for (var _nki = 1; _nki <= string_length(_nk); _nki++) {
+                var _nch = string_char_at(_nk, _nki);
+                var _nok = false;
+                if (_nch >= "A" && _nch <= "Z") {
+                    _nok = true;
+                }
+                if (_nch >= "0" && _nch <= "9") {
+                    _nok = true;
+                }
+                if (_nch == " " || _nch == "-" || _nch == "_" || _nch == "." || _nch == "#") {
+                    _nok = true;
+                }
+                if (_nok && string_length(editing_map_string) < 12) {
+                    editing_map_string += _nch;
+                }
+            }
+        }
+        if (keyboard_check_pressed(vk_backspace)) {
+            if (string_length(editing_map_string) > 0) {
+                editing_map_string = string_delete(editing_map_string, string_length(editing_map_string), 1);
+            }
+            keyboard_string = "";
+        }
+        var _name_done = false;
+        if (keyboard_check_pressed(vk_enter)) {
+            if (editing_map_asset_idx >= 0 && editing_map_asset_idx < ds_list_size(asset_list)) {
+                var _na = ds_list_find_value(asset_list, editing_map_asset_idx);
+                if (_na.type == "META_TILESET") {
+                    var _nm = _na.meta;
+                    if (editing_map_name_idx >= 0 && editing_map_name_idx < array_length(_nm.maps)) {
+                        while (array_length(_nm.map_names) < array_length(_nm.maps)) {
+                            array_push(_nm.map_names, "");
+                        }
+                        _nm.map_names[editing_map_name_idx] = string_trim(editing_map_string);
+                        _nm.is_dirty      = true;
+                        global.undo_dirty = true;
+                    }
+                }
+            }
+            _name_done = true;
+        }
+        if (keyboard_check_pressed(vk_escape)) {
+            keyboard_clear(vk_escape);
+            _name_done = true;
+        }
+        if (_name_done) {
+            editing_map_dim           = false;
+            editing_map_field         = "";
+            editing_map_string        = "";
+            editing_map_asset_idx     = -1;
+            editing_map_name_idx      = -1;
+            global.is_any_text_active = false;
+            keyboard_string           = "";
+        }
+        exit;
+    }
     if (keyboard_string != "") {
         var _k = keyboard_string;
         keyboard_string = "";
