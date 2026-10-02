@@ -120,24 +120,33 @@ function scr_sid64_sim_create(_m, _song, _loop_row, _ord, _row) {
     }
     // init: the song's filter settings (mode + full volume, resonance, cutoff;
     // no voice routed yet), or plain full volume for an audition.
-    if (is_struct(_m)) {
-        var _fm = _m[$ "filt_mode"];
-        var _fr = _m[$ "filt_res"];
-        var _fc = _m[$ "filt_cut"];
-        if (!is_undefined(_fm)) {
-            _sim.f18 = ((real(_fm) & 0x0F) << 4) | 0x0F;
-        }
-        if (!is_undefined(_fr)) {
-            _sim.f17 = (real(_fr) & 0x0F) << 4;
-        }
-        if (!is_undefined(_fc)) {
-            _sim.fcut = clamp(real(_fc), 0, 2047);
-        }
-        scr_sid64_sim_write(_sim, 0x17, _sim.f17);
-        scr_sid64_sim_cut(_sim);
-    }
+    scr_sid64_sim_song_filter(_sim, _m);
     scr_sid64_sim_write(_sim, 0x18, _sim.f18);
     return _sim;
+}
+
+/// Applies a Music Maker asset's song filter (filt_mode / filt_res /
+/// filt_cut) to a sim, as the compiled player's init does. Nothing happens
+/// for undefined (an audition with no song): plain full volume.
+function scr_sid64_sim_song_filter(_sim, _m) {
+    if (!is_struct(_m)) {
+        return;
+    }
+    var _fm = _m[$ "filt_mode"];
+    var _fr = _m[$ "filt_res"];
+    var _fc = _m[$ "filt_cut"];
+    if (!is_undefined(_fm)) {
+        _sim.f18 = ((real(_fm) & 0x0F) << 4) | 0x0F;
+    }
+    if (!is_undefined(_fr)) {
+        _sim.f17 = (real(_fr) & 0x0F) << 4;
+    }
+    if (!is_undefined(_fc)) {
+        _sim.fcut = clamp(real(_fc), 0, 2047);
+    }
+    scr_sid64_sim_write(_sim, 0x17, _sim.f17);
+    scr_sid64_sim_cut(_sim);
+    scr_sid64_sim_write(_sim, 0x18, _sim.f18);
 }
 
 /// The player's fcut: 11-bit cutoff to $D415 (bits 0-2) / $D416 (bits 3-10).

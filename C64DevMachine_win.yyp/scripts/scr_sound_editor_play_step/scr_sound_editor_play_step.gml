@@ -9,7 +9,7 @@
 function scr_sound_editor_play_step(_m, _step, _channel, _max_sec = -1, _prepare_only = false) {
     if(variable_struct_exists(_m,"voice_mask") && !(_m.voice_mask & (1<<_channel))) return;
     if (_step.instr_idx >= 0 && _step.instr_idx < array_length(_m.instruments)) {
-        scr_sound_instrument_preview_play(_m.instruments[_step.instr_idx], _step.note, _channel, _max_sec, _prepare_only);
+        scr_sound_instrument_preview_play(_m.instruments[_step.instr_idx], _step.note, _channel, _max_sec, _prepare_only, _m);
     } else {
         scr_sound_preview_play(_step.note, "SQUARE", _channel, 2048, _prepare_only);
     }

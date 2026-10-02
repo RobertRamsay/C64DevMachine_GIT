@@ -148,7 +148,7 @@ function scr_sound_editor_jam_play(_m, _note_name, _voice, _poly) {
         global.music_poly_next = (_ch + 1) mod _n;
     }
     if (_m.sel_instr >= 0 && _m.sel_instr < array_length(_m.instruments)) {
-        scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _note_name, _ch);
+        scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _note_name, _ch, -1, false, _m);
     } else {
         scr_sound_preview_play(_note_name, "SQUARE", _ch);
     }
@@ -295,7 +295,7 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
         if (_hover_v != _m.pno_hover_v) scr_sound_preview_free_channel(_m.pno_hover_v);
         var _nm = scr_sound_editor_piano_name(_hover);
         if (_m.sel_instr >= 0 && _m.sel_instr < array_length(_m.instruments)) {
-            scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _nm, _hover_v);
+            scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _nm, _hover_v, -1, false, _m);
         } else {
             scr_sound_preview_play(_nm, "SQUARE", _hover_v);
         }

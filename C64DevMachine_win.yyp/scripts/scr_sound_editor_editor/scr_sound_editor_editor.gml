@@ -583,7 +583,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (!_transport_typing && keyboard_check_pressed(vk_space)) {
         var _sp_note = "C-" + string(_m.cur_octave);
         if (_m.sel_instr >= 0 && _m.sel_instr < array_length(_m.instruments)) {
-            scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _sp_note, _m.sel_voice);
+            scr_sound_instrument_preview_play(_m.instruments[_m.sel_instr], _sp_note, _m.sel_voice, -1, false, _m);
         } else {
             scr_sound_preview_play(_sp_note, "SQUARE", _m.sel_voice);
         }

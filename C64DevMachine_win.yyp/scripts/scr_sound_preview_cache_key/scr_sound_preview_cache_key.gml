@@ -30,6 +30,7 @@ function scr_sound_preview_cache_key(_instr, _note_name, _max_sec) {
     _sig += "," + string(scr_sid64_instr_field(_instr, "vib_delay", 0));
     _sig += "," + string(scr_sid64_instr_field(_instr, "vib_speed", 0));
     _sig += "," + string(scr_sid64_instr_field(_instr, "vib_depth", 0));
+    _sig += ",F" + string(scr_sid64_instr_field(_instr, "filt", 0));   // FILTER ON routes the voice
 
     // Round _max_sec so float noise in a row duration can't produce a fresh
     // key every single row.

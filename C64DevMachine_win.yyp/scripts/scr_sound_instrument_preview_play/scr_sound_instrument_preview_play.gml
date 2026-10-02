@@ -13,7 +13,9 @@
 /// cost lands on the single frame the row advances. Callers that know the
 /// row duration pass it; a bare audition (clicking a key) passes nothing and
 /// gets the full tail as before.
-function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _max_sec = -1, _prepare_only = false) {
+/// _filt_m: the Music Maker asset meta whose song filter the audition plays
+/// through (undefined = no filter, e.g. the SFX Maker).
+function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _max_sec = -1, _prepare_only = false, _filt_m = undefined) {
     if (_note_name == "" || _note_name == "---") {
         return;
     }
@@ -36,6 +38,10 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
         global.snd_preview_cache = ds_map_create();
     }
     var _ck = scr_sound_preview_cache_key(_instr, _note_name, _max_sec);
+    if (is_struct(_filt_m)) {
+        // Same note through a different song filter is a different sound.
+        _ck += "|F" + string(_filt_m[$ "filt_mode"]) + "," + string(_filt_m[$ "filt_res"]) + "," + string(_filt_m[$ "filt_cut"]);
+    }
     if (ds_map_exists(global.snd_preview_cache, _ck)) {
         if (!_prepare_only) scr_sound_preview_free_channel(_channel);
         var _hit = global.snd_preview_cache[? _ck];
@@ -53,7 +59,7 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
     // resulting SID register writes are rendered by the sid64 extension.
     // Falls through to the GML synth below only when the extension is absent.
     if (global.sid64_ok) {
-        var _sid_out = scr_sid64_render_note(_instr, _note_name, _max_sec);
+        var _sid_out = scr_sid64_render_note(_instr, _note_name, _max_sec, 0x0800, _filt_m);
         if (is_struct(_sid_out)) {
             if (!_prepare_only) scr_sound_preview_free_channel(_channel);
             scr_sound_preview_cache_store(_ck, _sid_out.snd, _sid_out.buf);

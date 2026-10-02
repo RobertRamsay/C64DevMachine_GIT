@@ -869,9 +869,15 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             pulse_width : _sel_instr.pulse_width,
             vib_delay   : scr_sid64_instr_field(_sel_instr, "vib_delay", 0),
             vib_speed   : scr_sid64_instr_field(_sel_instr, "vib_speed", 0),
-            vib_depth   : scr_sid64_instr_field(_sel_instr, "vib_depth", 0)
+            vib_depth   : scr_sid64_instr_field(_sel_instr, "vib_depth", 0),
+            filt        : scr_sid64_instr_field(_sel_instr, "filt", 0)
         };
-        scr_sound_instrument_preview_play(_sp_ins, "C-" + string(_sp_oct), 0);
+        // The SFX Maker has no song filter; the Music Maker plays through its own.
+        var _sp_filt = undefined;
+        if (!is_undefined(_m[$ "filt_mode"])) {
+            _sp_filt = _m;
+        }
+        scr_sound_instrument_preview_play(_sp_ins, "C-" + string(_sp_oct), 0, -1, false, _sp_filt);
     }
 
     if (_m.instr_edit_active) {
