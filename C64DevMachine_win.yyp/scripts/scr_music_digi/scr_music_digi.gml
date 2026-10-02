@@ -539,6 +539,17 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
     return _clicked;
 }
 
+/// Scrolls the grid just enough to show the digi cursor. Only called when the
+/// cursor has moved, so the mouse wheel can still scroll it off-screen.
+function scr_digi_scroll_to_cursor(_m, _vis) {
+    if (_m.dg_sel_step < _m.list_scroll) {
+        _m.list_scroll = _m.dg_sel_step;
+    }
+    if (_m.dg_sel_step >= _m.list_scroll + _vis) {
+        _m.list_scroll = _m.dg_sel_step - _vis + 1;
+    }
+}
+
 /// Keyboard for the digi lane, tracker-style:
 ///   piano keys    note with the current sample slot (Z-M octave below the
 ///                 OCTAVE setting, Q-U at it, I 9 O 0 P above)
@@ -579,11 +590,8 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
     if (_moved && !_shift) {
         _m.dg_anchor = _m.dg_sel_step;
     }
-    if (_m.dg_sel_step < _m.list_scroll) {
-        _m.list_scroll = _m.dg_sel_step;
-    }
-    if (_m.dg_sel_step >= _m.list_scroll + _vis) {
-        _m.list_scroll = _m.dg_sel_step - _vis + 1;
+    if (_moved) {
+        scr_digi_scroll_to_cursor(_m, _vis);
     }
 
     var _has_pat = (_order_row.dg >= 0 && _order_row.dg < array_length(_m.digi_patterns));
@@ -738,6 +746,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
         scr_digi_play_step(_m, _st);
         _m.dg_sel_step = min(_grid_len - 1, _m.dg_sel_step + 1);
         _m.dg_anchor   = _m.dg_sel_step;
+        scr_digi_scroll_to_cursor(_m, _vis);
     }
     global.undo_dirty = true;
 }
