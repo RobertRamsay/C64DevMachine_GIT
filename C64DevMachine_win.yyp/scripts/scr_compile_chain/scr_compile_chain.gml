@@ -1596,9 +1596,34 @@ case "MACRO_VWAIT": {
         array_push(_list, ["label",   _hi,       _id]);
         array_push(_list, ["cmp_abs", 0xD012,    _id]);
         array_push(_list, ["beq",     _hi,       _id]);
+    } else if (_line >= 0 && _line < 0xFF) {
+        // LITERAL MODE — wait for the raster to REACH line + 1, not to EQUAL
+        // the line. An exact compare misses the frame whenever an interrupt
+        // (a digi NMI is ~100 cycles; a line is 63) covers the whole line, so
+        // anything paced by VWAIT ran slow while samples played. Exits on the
+        // same line the old "match, then wait for the next line" did.
+        //   stage 1: wait while in this frame's zone (line+1 .. bottom), so a
+        //            second call in the same frame waits for the next one
+        //   stage 2: wait until the zone starts (any line >= line+1)
+        var _zone = (_line + 1) & 0xFF;
+        var _dn = "vwait_dn_" + string(real(_id));
+        array_push(_list, ["label",   _lo,    _id]);
+        array_push(_list, ["lda_abs", 0xD011, _id]);
+        array_push(_list, ["bmi",     _lo,    _id]);
+        array_push(_list, ["lda_abs", 0xD012, _id]);
+        array_push(_list, ["cmp_imm", _zone,  _id]);
+        array_push(_list, ["bcs",     _lo,    _id]);
+        array_push(_list, ["label",   _hi,    _id]);
+        array_push(_list, ["lda_abs", 0xD011, _id]);
+        array_push(_list, ["bmi",     _dn,    _id]);
+        array_push(_list, ["lda_abs", 0xD012, _id]);
+        array_push(_list, ["cmp_imm", _zone,  _id]);
+        array_push(_list, ["bcc",     _hi,    _id]);
+        array_push(_list, ["label",   _dn,    _id]);
     } else {
-        // LITERAL MODE — gate on D011 bit 8 (must be clear) so the line
-        // only matches in the top portion of the frame, then settle.
+        // LITERAL MODE, line 255 (its next line is past 255) — gate on D011
+        // bit 8 (must be clear) so the line only matches in the top portion
+        // of the frame, then settle.
         array_push(_list, ["label",   _lo,    _id]);
         array_push(_list, ["lda_abs", 0xD011, _id]);
         array_push(_list, ["bmi",     _lo,    _id]);
