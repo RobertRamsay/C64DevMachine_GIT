@@ -2075,9 +2075,12 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 _m.sel_voice = min(2, _m.sel_voice + 1);
             } else if (_m.sel_sub == 0) {
                 _m.sel_sub = 1;
+            } else if (_m.sel_voice == 2) {
+                // Past voice 3's command column: into the DIGI lane.
+                scr_digi_focus_from_grid(_m);
             } else {
                 _m.sel_sub = 0;
-                _m.sel_voice = (_m.sel_voice + 1) mod 3;
+                _m.sel_voice = _m.sel_voice + 1;
             }
             if (!_kb_shift_col) { _m.sel_anchor_voice = _m.sel_voice; _m.sel_anchor_step = _m.sel_step; }
         }
@@ -2086,9 +2089,12 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 _m.sel_voice = max(0, _m.sel_voice - 1);
             } else if (_m.sel_sub == 1) {
                 _m.sel_sub = 0;
+            } else if (_m.sel_voice == 0) {
+                // Left of voice 1's note wraps round to the DIGI lane.
+                scr_digi_focus_from_grid(_m);
             } else {
                 _m.sel_sub = 1;
-                _m.sel_voice = (_m.sel_voice + 2) mod 3;
+                _m.sel_voice = _m.sel_voice - 1;
             }
             if (!_kb_shift_col) { _m.sel_anchor_voice = _m.sel_voice; _m.sel_anchor_step = _m.sel_step; }
         }

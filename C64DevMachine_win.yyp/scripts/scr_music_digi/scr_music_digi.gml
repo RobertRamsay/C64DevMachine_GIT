@@ -542,6 +542,14 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
     return _clicked;
 }
 
+/// Moves the cursor from the voice grid into the DIGI lane on the same row.
+function scr_digi_focus_from_grid(_m) {
+    _m.dg_focus    = true;
+    _m.dg_sel_step = _m.sel_step;
+    _m.dg_anchor   = _m.sel_step;
+    _m.edit_active = false;
+}
+
 /// Scrolls the grid just enough to show the digi cursor. Only called when the
 /// cursor has moved, so the mouse wheel can still scroll it off-screen.
 function scr_digi_scroll_to_cursor(_m, _vis) {
@@ -580,14 +588,73 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
         return;
     }
 
-    // ── MOVE ──
-    var _moved = false;
-    if (keyboard_check_pressed(vk_up)) {
-        _m.dg_sel_step = max(0, _m.dg_sel_step - 1);
-        _moved = true;
+    // ── LEFT / RIGHT / TAB ── back into the voice grid, like moving between
+    // voices: Right (Tab) wraps to voice 1's note, Left (Shift+Tab) goes to
+    // voice 3's command column. The keys are cleared so the voice grid's own
+    // handler, which runs later this frame, doesn't move a second time.
+    var _go_right = keyboard_check_pressed(vk_right) || (keyboard_check_pressed(vk_tab) && !_shift);
+    var _go_left  = keyboard_check_pressed(vk_left)  || (keyboard_check_pressed(vk_tab) && _shift);
+    if (_go_right || _go_left) {
+        _m.dg_focus  = false;
+        _m.sel_step  = _m.dg_sel_step;
+        _m.sel_sub   = 0;
+        _m.sel_voice = 0;
+        if (_go_left) {
+            _m.sel_sub   = 1;
+            _m.sel_voice = 2;
+        }
+        _m.sel_anchor_voice = _m.sel_voice;
+        _m.sel_anchor_step  = _m.sel_step;
+        keyboard_clear(vk_right);
+        keyboard_clear(vk_left);
+        keyboard_clear(vk_tab);
+        return;
     }
-    if (keyboard_check_pressed(vk_down)) {
-        _m.dg_sel_step = min(_grid_len - 1, _m.dg_sel_step + 1);
+
+    // ── MOVE ── held Up / Down repeat after the same delay as the voice grid
+    // (a third of a second, then every 2 frames).
+    var _moved = false;
+    var _nav_delay = round(game_get_speed(gamespeed_fps) * 0.33);
+    if (keyboard_check(vk_up)) {
+        var _up_go = false;
+        if (keyboard_check_pressed(vk_up)) {
+            _up_go = true;
+            _m.nav_up_timer = _nav_delay;
+        } else {
+            _m.nav_up_timer -= 1;
+            if (_m.nav_up_timer <= 0) {
+                _up_go = true;
+                _m.nav_up_timer = 2;
+            }
+        }
+        if (_up_go) {
+            _m.dg_sel_step = max(0, _m.dg_sel_step - 1);
+            _moved = true;
+        }
+    } else {
+        _m.nav_up_timer = 0;
+    }
+    if (keyboard_check(vk_down)) {
+        var _dn_go = false;
+        if (keyboard_check_pressed(vk_down)) {
+            _dn_go = true;
+            _m.nav_down_timer = _nav_delay;
+        } else {
+            _m.nav_down_timer -= 1;
+            if (_m.nav_down_timer <= 0) {
+                _dn_go = true;
+                _m.nav_down_timer = 2;
+            }
+        }
+        if (_dn_go) {
+            _m.dg_sel_step = min(_grid_len - 1, _m.dg_sel_step + 1);
+            _moved = true;
+        }
+    } else {
+        _m.nav_down_timer = 0;
+    }
+    if (keyboard_check_pressed(vk_home)) {
+        _m.dg_sel_step = 0;
         _moved = true;
     }
     if (_moved && !_shift) {
