@@ -1360,16 +1360,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             var _cmd_x = _cx1 + _cmd_off;
             var _st_cmd = _step.cmd;
             var _typing_here = (_m.cmd_entry_str != "" && _m.cmd_entry_voice == _cv && _m.cmd_entry_step == _row);
-            if (point_in_rectangle(_mx, _my, _cmd_x - 6, _ry, _cx2, _ry + _row_h)) {
-                var _tip_cmd = _typing_here
-                    ? string_pos(string_char_at(_m.cmd_entry_str, 1), "0123456789ABCDEFGHIJ") - 1
-                    : _st_cmd;
-                _m.pattern_hover_tip = scr_sound_editor_pattern_help(_tip_cmd);
-                if (!_typing_here && _st_cmd == 4) {
-                    _m.pattern_hover_tip += "\nTHIS CELL: SPEED " + string((_step.cmd_val >> 4) & 15)
-                        + ", DEPTH " + string(_step.cmd_val & 15) + ".";
-                }
-            }
+            // (No hover help on command cells: the GUIDE button lists them all.)
             if (_typing_here) {
                 // Being typed: only the new digits, the rest blank.
                 var _ty_str = _m.cmd_entry_str;
@@ -2775,17 +2766,26 @@ function scr_sound_editor_cmd_guide(_x1, _y1, _x2, _y2, _mx, _my, _click, _esc) 
     draw_set_halign(fa_left);
     draw_set_color(make_color_rgb(255, 200, 100));
     draw_text_l(_px + 16, _py + 12, "PATTERN COMMANDS  -  TYPE THE LETTER, THEN TWO HEX DIGITS (00-FF)");
-    // Two columns of commands, each entry the full hover help text.
-    var _order = [0, 1, 2, 3, 4, 9, 12, 16, 17, 18, 5, 6, 7, 8, 10, 11, 13, 14, 15, 19];
-    var _letters = "0123456789ABCDEFGHIJ";
-    var _colw = floor((_pw - 48) / 2);
-    var _cx = [_px + 16, _px + 32 + _colw];
-    var _cy = [_py + 40, _py + 40];
+    // How entry works (pattern cells and the digi lane), full width.
     draw_set_font_l(fnt_c64_pico);
+    var _intro = scr_sound_editor_guide_intro();
+    var _intro_w = _pw - 32;
+    draw_set_color(make_color_rgb(170, 200, 230));
+    draw_text_ext_l(_px + 16, _py + 36, _intro, -1, _intro_w);
+    var _top = _py + 36 + string_height_ext_l(_intro, -1, _intro_w) + 14;
+    draw_set_color(make_color_rgb(70, 70, 100));
+    draw_line(_px + 16, _top - 7, _px + _pw - 16, _top - 7);
+    // Every command in full, in three columns: one-row effects, settings,
+    // then the persistent / special ones.
+    var _order = [0, 1, 2, 3, 4, 9, 12, 5, 6, 7, 8, 10, 11, 13, 14, 15, 16, 17, 18, 19];
+    var _col_of = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2];
+    var _letters = "0123456789ABCDEFGHIJ";
+    var _colw = floor((_pw - 64) / 3);
+    var _cx = [_px + 16, _px + 32 + _colw, _px + 48 + _colw * 2];
+    var _cy = [_top, _top, _top];
     for (var _i = 0; _i < array_length(_order); _i++) {
         var _c = _order[_i];
-        var _col = 0;
-        if (_i >= 10) _col = 1;
+        var _col = _col_of[_i];
         var _txt = scr_sound_editor_pattern_help(_c);
         var _h = string_height_ext_l(_txt, -1, _colw - 40) + 10;
         if (_cy[_col] + _h > _py + _ph - 44) continue;

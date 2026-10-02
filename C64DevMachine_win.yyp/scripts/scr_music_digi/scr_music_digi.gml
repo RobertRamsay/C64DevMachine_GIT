@@ -385,7 +385,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
     if (_m.dg_cur_slot < 10) {
         _cs = "0" + _cs;
     }
-    draw_text_l(_x + _w * 0.5, _by1 + 4, "SAMPLES  [" + _cs + "]");
+    draw_text_l(_x + _w * 0.5, _by1 + 1, "SAMPLES  [" + _cs + "]");   // in line with the VOICE n labels
     draw_set_halign(fa_left);
     if (_bhov && mouse_check_button_pressed(mb_left)) {
         _m.dg_slots_open = !_m.dg_slots_open;
