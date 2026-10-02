@@ -662,6 +662,15 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["byte", _pfx, _id]);
     }
 
+    // ── DIGI PLAN ── $D418 samples on a CIA2 NMI (scr_sid_song_emit_digi).
+    // Nothing at all is emitted unless some order row triggers a sample. Made
+    // here because a BOOST voice is taken out of the music's voice mask, which
+    // every table and routine below follows.
+    var _dg_plan = scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name);
+    if (_dg_plan.used && _dg_plan.boost > 0) {
+        _voice_mask = _voice_mask & ~(1 << (_dg_plan.boost - 1));
+    }
+
     // ── 5. ORDER TABLES ──
     // repeat_short / force_len are flattened here: the runtime reads a plain
     // per-row target length and a per-row wrap flag. force_len is a HARD
@@ -738,9 +747,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         }
     }
 
-    // ── 5b. DIGI TRACK ── $D418 samples on a CIA2 NMI (scr_sid_song_emit_digi).
-    // Nothing at all is emitted unless some order row triggers a sample.
-    var _dg_plan = scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name);
+    // ── 5b. DIGI TRACK ── data (the plan was made before the order tables).
     if (_dg_plan.used) {
         scr_sid_song_digi_emit_data(_list, _id, _key, _dg_plan);
     }

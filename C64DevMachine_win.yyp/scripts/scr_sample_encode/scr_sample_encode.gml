@@ -60,10 +60,8 @@ function scr_sample_encode_at(_asset, _rate, _pack) {
     }
     var _gain = _m.gain / 100;
 
-    // ── RESAMPLE + GAIN + QUANTISE → target levels (real 0..15) ──
-    var _lev  = array_create(_n, 0);
-    var _clip = 0;
-    var _seed = 12345;
+    // ── RESAMPLE → _raw (-1..1) ──
+    var _raw = array_create(_n, 0);
     for (var _k = 0; _k < _n; _k++) {
         var _a = _ts + _k * _step;
         var _v = 0;
@@ -84,7 +82,57 @@ function scr_sample_encode_at(_asset, _rate, _pack) {
         } else {
             _v = scr_sample_src_at(_buf, _len, _a);
         }
-        _v *= _gain;
+        _raw[_k] = _v;
+    }
+
+    // ── LOUDNESS ── a 4-bit $D418 digi has 16 levels and no headroom to spare,
+    // so every level should be in use.
+    //   compress  0-100: an envelope follower (instant attack, ~60 ms release)
+    //             pulls quiet passages up towards the loud ones
+    //   normalise peak of the TRIMMED region to full scale (the import only
+    //             normalised the whole file, which may peak somewhere else)
+    var _dc = 0;
+    for (var _k = 0; _k < _n; _k++) {
+        _dc += _raw[_k];
+    }
+    _dc /= _n;
+    for (var _k = 0; _k < _n; _k++) {
+        _raw[_k] -= _dc;
+    }
+    var _comp = clamp(_m.compress, 0, 100) / 100;
+    if (_comp > 0) {
+        var _env = 0;
+        var _rel = exp(-1 / max(1, _rate * 0.06));
+        // Peak over the region sets the reference the envelope is compared with.
+        var _pk0 = 0.0001;
+        for (var _k = 0; _k < _n; _k++) {
+            _pk0 = max(_pk0, abs(_raw[_k]));
+        }
+        for (var _k = 0; _k < _n; _k++) {
+            var _ax = abs(_raw[_k]);
+            _env = max(_ax, _env * _rel);
+            var _e = max(_env / _pk0, 0.03);
+            _raw[_k] *= power(1 / _e, _comp * 0.85);
+        }
+    }
+    if (_m.normalise == 1) {
+        var _pk = 0;
+        for (var _k = 0; _k < _n; _k++) {
+            _pk = max(_pk, abs(_raw[_k]));
+        }
+        if (_pk > 0) {
+            for (var _k = 0; _k < _n; _k++) {
+                _raw[_k] /= _pk;
+            }
+        }
+    }
+
+    // ── GAIN + QUANTISE → target levels (real 0..15) ──
+    var _lev  = array_create(_n, 0);
+    var _clip = 0;
+    var _seed = 12345;
+    for (var _k = 0; _k < _n; _k++) {
+        var _v = _raw[_k] * _gain;
         if (_v > 1 || _v < -1) {
             _clip += 1;
             _v = clamp(_v, -1, 1);

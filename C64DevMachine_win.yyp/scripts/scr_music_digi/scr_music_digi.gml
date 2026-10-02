@@ -230,7 +230,7 @@ function scr_digi_sample_names() {
 function scr_digi_sample_sound(_asset, _rate) {
     var _sm = _asset.meta;
     var _key = string(_rate) + ":" + string(_sm.data_ver) + ":" + string(_sm.gain) + ":"
-             + string(_sm.dither) + ":" + string(_sm.pack) + ":"
+             + string(_sm.dither) + ":" + string(_sm.pack) + ":" + string(_sm.normalise) + ":" + string(_sm.compress) + ":"
              + string(_sm.trim_start) + ":" + string(_sm.trim_end);
     if (_sm.pv_dg_key == _key) {
         return _sm.pv_dg_snd;
@@ -748,7 +748,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
 /// uses last frame's rect to hide the mouse from controls under the panel.
 function scr_digi_slots_rect(_lane_x, _lane_w, _gy0) {
     var _w = 330;
-    var _h = 48 + DIGI_SLOTS * 20 + 58;
+    var _h = 70 + DIGI_SLOTS * 20 + 58;
     var _x1 = _lane_x + _lane_w - _w;
     var _y1 = _gy0 - 2;    // just under the SAMPLES button
     return [_x1, _y1, _x1 + _w, _y1 + _h];
@@ -805,10 +805,32 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     draw_set_color(make_color_rgb(95, 95, 115));
     draw_text_l(_x1 + 190, _ry, "= NOTE C-4");
 
+    // BOOST: a voice held at full DC so the volume register has something to
+    // scale — needed on the 8580, louder on the 6581. That voice stops
+    // playing the music's notes in the compiled tune.
+    var _by = _ry + 22;
+    draw_set_color(make_color_rgb(140, 150, 180));
+    draw_text_l(_x1 + 10, _by, "BOOST");
+    var _bnames = ["OFF", "V1", "V2", "V3"];
+    for (var _bi = 0; _bi < 4; _bi++) {
+        if (scr_sample_button(_x1 + 60 + _bi * 40, _by - 4, 36, 16, _bnames[_bi], (_m.digi_boost == _bi), true, _mx, _my)) {
+            _m.digi_boost = _bi;
+            global.undo_dirty = true;
+            global.addresses_dirty = true;
+        }
+    }
+    draw_set_color(make_color_rgb(95, 95, 115));
+    if (_m.digi_boost > 0) {
+        draw_set_color(make_color_rgb(255, 160, 60));
+        draw_text_l(_x1 + 224, _by, "V" + string(_m.digi_boost) + " MUTED ON C64");
+    } else {
+        draw_text_l(_x1 + 224, _by, "8580 NEEDS ONE");
+    }
+
     // SLOTS
     var _names = scr_digi_sample_names();
     for (var _s = 0; _s < DIGI_SLOTS; _s++) {
-        var _sy = _y1 + 48 + _s * 20;
+        var _sy = _y1 + 70 + _s * 20;
         var _num = string(_s);
         if (_s < 10) {
             _num = "0" + _num;

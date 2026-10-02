@@ -378,10 +378,44 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         global.undo_dirty = true;
     }
 
+    // ── ROW 2: LOUDNESS ──
+    var _ky2 = _ky + 26;
+    _kx = _x0;
+    draw_set_color(_c_lbl);
+    draw_text_l(_kx, _ky2 + 4, "NORMALISE");
+    var _nl = "OFF";
+    if (_m.normalise == 1) {
+        _nl = "ON";
+    }
+    if (scr_sample_button(_kx + 84, _ky2, 44, 18, _nl, (_m.normalise == 1), true, _mx, _my)) {
+        _m.normalise = 1 - _m.normalise;
+        _m.enc_dirty = true;
+        global.undo_dirty = true;
+    }
+    _kx += 150;
+    draw_set_color(_c_lbl);
+    draw_text_l(_kx, _ky2 + 4, "COMPRESS");
+    if (scr_sample_button(_kx + 76, _ky2, 18, 18, "<", false, (_m.compress > 0), _mx, _my)) {
+        _m.compress = max(0, _m.compress - 10);
+        _m.enc_dirty = true;
+        global.undo_dirty = true;
+    }
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_text_l(_kx + 122, _ky2 + 4, string(_m.compress) + "%");
+    draw_set_halign(fa_left);
+    if (scr_sample_button(_kx + 150, _ky2, 18, 18, ">", false, (_m.compress < 100), _mx, _my)) {
+        _m.compress = min(100, _m.compress + 10);
+        _m.enc_dirty = true;
+        global.undo_dirty = true;
+    }
+    draw_set_color(_c_dim);
+    draw_text_l(_kx + 190, _ky2 + 4, "NORMALISE FILLS ALL 16 LEVELS FROM THE TRIM.  COMPRESS LIFTS THE QUIET PARTS.  GAIN > 100% DRIVES IT HARDER (CLIPS).");
+
     // ===============================================================
     // STATS
     // ===============================================================
-    var _st = _ky + 34;
+    var _st = _ky2 + 34;
     var _latch = scr_sample_cia_latch(_m.rate);
     var _lhex = string_upper(decimal_to_hex(_latch));
     while (string_length(_lhex) < 4) {
@@ -416,9 +450,9 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
     _st += 18;
     draw_set_color(_c_dim);
-    var _sid_note = "6581: $D418 DIGIS ARE LOUD AND CLEAN.";
+    var _sid_note = "6581: $D418 DIGIS ARE AUDIBLE ON THEIR OWN; THE TUNE'S DIGI BOOST MAKES THEM LOUDER.";
     if (_m.sid_model == 1) {
-        _sid_note = "8580: $D418 DIGIS ARE NEAR SILENT ALONE - THE PLAYER WILL ADD A DC-OFFSET BOOST.";
+        _sid_note = "8580: $D418 DIGIS NEED THE TUNE'S DIGI BOOST (MUSIC MAKER > SAMPLES PANEL > BOOST).";
     }
     draw_text_l(_x0, _st, _sid_note);
     _st += 14;

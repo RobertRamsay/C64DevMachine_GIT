@@ -91,6 +91,10 @@ function scr_sound_editor_create(_asset) {
         digi_rate     : 5000,
         digi_samples  : array_create(16, ""),
         digi_patterns : [],
+        // 0 = off, 1-3 = the voice the C64 player holds at full DC so $D418
+        // digis are audible on the 8580 (and louder on the 6581). That voice
+        // plays no music notes in the compiled tune.
+        digi_boost    : 0,
         // editor / preview state (never saved)
         dg_focus      : false,
         dg_sel_step   : 0,
@@ -191,12 +195,13 @@ function scr_music_sid_project(_m, _chip) {
     var _out = { instruments: _m.instruments, patterns: _m.patterns, songs: [],
         play_speed: _m.play_speed, voice_mask: scr_music_sid_mask(_m, _chip),
         filt_mode: _m.filt_mode, filt_res: _m.filt_res, filt_cut: _m.filt_cut, note_table: _m[$ "note_table"], free_voices: _m[$ "free_voices"],
-        digi_rate: 8000, digi_samples: [], digi_patterns: [] };
+        digi_rate: 8000, digi_samples: [], digi_patterns: [], digi_boost: 0 };
     // The digi track plays through chip 0's $D418 only.
     if (_chip == 0) {
         _out.digi_rate     = _m[$ "digi_rate"];
         _out.digi_samples  = _m[$ "digi_samples"];
         _out.digi_patterns = _m[$ "digi_patterns"];
+        _out.digi_boost    = _m[$ "digi_boost"];
     }
     for (var _s = 0; _s < array_length(_m.songs); _s++) {
         var _source = _m.songs[_s];
@@ -863,6 +868,10 @@ function scr_music_size_digi_sig(_m) {
     if (!is_undefined(_rate)) {
         _h = (_h * 31 + real(_rate)) mod 1000000007;
     }
+    var _boost = _m[$ "digi_boost"];
+    if (!is_undefined(_boost)) {
+        _h = (_h * 31 + real(_boost) + 5) mod 1000000007;
+    }
     for (var _s = 0; _s < array_length(_m.songs); _s++) {
         var _order = _m.songs[_s].order;
         for (var _r = 0; _r < array_length(_order); _r++) {
@@ -888,7 +897,7 @@ function scr_music_size_digi_sig(_m) {
             }
             var _am = _a.meta;
             _h = (_h * 31 + _k + _am.data_ver * 7 + _am.src_len + _am.trim_start * 3 + _am.trim_end * 5
-                + _am.gain * 11 + _am.pack * 13 + _am.dither * 17) mod 1000000007;
+                + _am.gain * 11 + _am.pack * 13 + _am.dither * 17 + _am.normalise * 19 + _am.compress * 23) mod 1000000007;
         }
     }
     return _h;

@@ -25,7 +25,7 @@ function scr_sample_rate_presets() {
 /// Fields written to / read from the workspace file.
 function scr_sample_saved_keys() {
     static _keys = ["src_rate", "src_len", "src_name", "rate", "gain", "dither",
-                    "pack", "sid_model", "trim_start", "trim_end"];
+                    "pack", "sid_model", "trim_start", "trim_end", "normalise", "compress"];
     return _keys;
 }
 
@@ -40,7 +40,9 @@ function scr_sample_create(_asset) {
 
         // ── ENCODE SETTINGS ──
         rate       : 8000,     // C64 playback rate, Hz
-        gain       : 100,      // percent, applied before quantising
+        gain       : 100,      // percent, applied after normalise / compress
+        normalise  : 1,        // 1 = the trimmed region's peak becomes full scale
+        compress   : 0,        // 0-100 %: lifts quiet passages towards the loud ones
         dither     : 0,        // 1 = TPDF dither before the 4-bit quantise
         pack       : 0,        // 0 = 4-bit nibbles (2/byte), 1 = 2-bit delta (4/byte)
         sid_model  : 0,        // 0 = 6581, 1 = 8580 (the player adds the 8580 DC boost)
@@ -91,6 +93,8 @@ function scr_sample_restore(_asset, _saved) {
     _m.src_len    = real(_m.src_len);
     _m.rate       = real(_m.rate);
     _m.gain       = real(_m.gain);
+    _m.normalise  = real(_m.normalise);
+    _m.compress   = real(_m.compress);
     _m.dither     = real(_m.dither);
     _m.pack       = real(_m.pack);
     _m.sid_model  = real(_m.sid_model);

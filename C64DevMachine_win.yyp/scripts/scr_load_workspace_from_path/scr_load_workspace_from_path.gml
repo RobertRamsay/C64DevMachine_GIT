@@ -1084,6 +1084,10 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 if (is_array(_dg_pats)) {
                     _new_asset.meta.digi_patterns = _dg_pats;
                 }
+                var _dg_boost = _sem[$ "digi_boost"];
+                if (!is_undefined(_dg_boost)) {
+                    _new_asset.meta.digi_boost = clamp(real(_dg_boost), 0, 3);
+                }
                 _new_asset.meta.voice_mask = variable_struct_exists(_sem,"voice_mask") ? _sem.voice_mask : 7;
                 _new_asset.meta.sfx_chip = variable_struct_exists(_sem,"sfx_chip") ? _sem.sfx_chip : 0;
 	            if (variable_struct_exists(_sem, "instruments"))      _new_asset.meta.instruments      = _sem.instruments;

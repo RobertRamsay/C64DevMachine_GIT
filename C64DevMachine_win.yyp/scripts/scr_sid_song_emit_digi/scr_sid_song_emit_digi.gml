@@ -32,7 +32,7 @@
 /// false when the song has no digi steps (or can't have them), and then nothing
 /// at all is emitted.
 function scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name) {
-    var _plan = { used: false, ord: [], pats: [], slots: [], rate: 8000, latch: 0, notes: [], latches: [] };
+    var _plan = { used: false, ord: [], pats: [], slots: [], rate: 8000, latch: 0, notes: [], latches: [], boost: 0 };
     var _dpats = _sm[$ "digi_patterns"];
     var _dslots = _sm[$ "digi_samples"];
     if (!is_array(_dpats) || !is_array(_dslots) || array_length(_dpats) == 0) {
@@ -43,6 +43,10 @@ function scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name) {
         _rate = 8000;
     }
     _plan.rate  = clamp(real(_rate), 1000, 16000);
+    var _boost = _sm[$ "digi_boost"];
+    if (!is_undefined(_boost)) {
+        _plan.boost = clamp(real(_boost), 0, 3);
+    }
     _plan.latch = scr_sample_cia_latch(_plan.rate);
 
     // Which digi patterns the order rows use, renumbered densely.
@@ -497,8 +501,26 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
     array_push(_list, ["label",   _k + "dgrx"]);
     array_push(_list, ["rts",     0, _id]);
 
-    // ── INIT ── vectors and timer rate. Called from <key>_init.
+    // ── INIT ── vectors (and the boost voice). Called from <key>_init.
     array_push(_list, ["label",   _k + "dginit"]);
+    if (_plan.boost > 0) {
+        // BOOST: the voice's pulse output is forced high by the TEST bit and
+        // the envelope sits at sustain 15, so the voice puts a constant full
+        // DC level into the mixer. $D418's volume nibble scales the whole
+        // mix, so the digi now has a big DC level to modulate — the 8580's own
+        // offset is too small to hear. The music doesn't drive this voice.
+        var _bv = _chip_base + (_plan.boost - 1) * 7;
+        array_push(_list, ["lda_imm", 0x00, _id]);
+        array_push(_list, ["sta_abs", _bv + 0, _id]);       // frequency 0
+        array_push(_list, ["sta_abs", _bv + 1, _id]);
+        array_push(_list, ["sta_abs", _bv + 2, _id]);       // pulse width 0
+        array_push(_list, ["sta_abs", _bv + 3, _id]);
+        array_push(_list, ["sta_abs", _bv + 5, _id]);       // attack 0, decay 0
+        array_push(_list, ["lda_imm", 0xF0, _id]);
+        array_push(_list, ["sta_abs", _bv + 6, _id]);       // sustain 15, release 0
+        array_push(_list, ["lda_imm", 0x49, _id]);
+        array_push(_list, ["sta_abs", _bv + 4, _id]);       // pulse + TEST + gate
+    }
     array_push(_list, ["lda_imm", 0x00, _id]);
     array_push(_list, ["sta_abs", _k + "dgact", _id]);
     array_push(_list, ["lda_lab_lo", _k + "dgnmi", _id]);
