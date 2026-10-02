@@ -10193,7 +10193,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             draw_set_color(make_color_rgb(255, 220, 120));
             draw_set_halign(fa_right);
             // Sits on its own line above the panel's top edge, clear of the tabs.
-            draw_text_l(_test_x2 - 6, _map_top - string_height("X") - 6, L("MAP ") + string(_m.active_map) + ": " + _amn);
+            draw_text_l(_test_x2 - 6, _map_top - string_height("X") - 2, L("MAP ") + string(_m.active_map) + ": " + _amn);
             draw_set_halign(fa_left);
         }
     }
