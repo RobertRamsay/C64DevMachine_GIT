@@ -752,7 +752,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         "CLICK A CELL, TYPE A NOTE (C-4, C#3, ---)   |   ENTER COMMITS + DROPS A ROW   |   BKSP CLEARS   |   DEL PULLS UP   |   INS PUSHES DOWN   |   UP/DOWN MOVES   |   TAB NOTE/CMD   |   - STOP  + KEY ON   |   F1 SONG   F2 SONG FROM HERE   F3 PAT   F4 STOP   |   SPACE HEAR INSTRUMENT");
    
     draw_set_font_l(fnt_c64_tiny);
-    var _status_y = _cy + 50;
+    var _status_y = _cy + 750;
     if (!_preview_ready) {
         var _prep_total = array_length(_m.preview_jobs);
         var _prep_fraction = clamp(_m.preview_job_index / max(1, _prep_total), 0, 1);
