@@ -1,0 +1,62 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 70a00fc..dbc8e32 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -10182,15 +10182,30 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+     draw_set_font_l(fnt_c64_tiny);
+     draw_set_color(make_color_rgb(80, 200, 255));
+     draw_text_l(_test_x1 - 64, _map_top - 3, (_m.active_map < 0) ? L("TEST MAP") : L("MAP ") + string(_m.active_map));
++    // Full name of the selected map, right-aligned above the tabs (the tabs
++    // only have room for the start of it).
++    if (_m.active_map >= 0 && _m.active_map < array_length(_m.map_names)) {
++        var _amn = _m.map_names[_m.active_map];
++        if (editing_map_dim && editing_map_field == "NAME" && editing_map_asset_idx == viewer_asset && editing_map_name_idx == _m.active_map) {
++            _amn = editing_map_string + "_";
++        }
++        if (_amn != "") {
++            draw_set_color(make_color_rgb(255, 220, 120));
++            draw_set_halign(fa_right);
++            draw_text_l(_test_x2 - 6, _map_top - 3, L("MAP ") + string(_m.active_map) + ": " + _amn);
++            draw_set_halign(fa_left);
++        }
++    }
+ 
+ // ---- MAP SELECTOR ROW (wraps + scrolls; 4 visible rows) ----
+     var _msel_x0      = _test_x1 + 20;
+     var _msel_y0      = _map_top;
+-    var _msel_bw      = 44;
++    var _msel_bw      = 72;     // wide enough for a short map name
+     var _msel_bh      = 15;
+     var _msel_gap     = 4;
+     var _msel_lh      = _msel_bh + 7;
+-    var _msel_per_row = 15;
++    // As many tabs a row as fit the panel (wider tabs, so fewer than before).
++    var _msel_per_row = max(4, floor((_test_x2 - _msel_x0) / (_msel_bw + _msel_gap)));
+     var _msel_vis_rows = 3;
+     if (!variable_struct_exists(_m, "map_tab_scroll")) _m.map_tab_scroll = 0;
+     var _msel_total   = _m.map_count + 2;
+@@ -10228,6 +10243,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+             draw_set_color(_sel ? c_white : make_color_rgb(120, 180, 140));
+             draw_set_halign(fa_center);
+             var _mtab = L("MAP ") + string(_mbi);
++            draw_set_font_l(fnt_c64_nano);   // names are measured (and drawn) in the small font
+             if (_mbi < array_length(_m.map_names)) {
+                 if (_m.map_names[_mbi] != "") {
+                     _mtab = _m.map_names[_mbi];
+@@ -10251,7 +10267,15 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+                 draw_set_color(make_color_rgb(255, 220, 80));
+                 draw_rectangle(_scx, _scy, _scx + _msel_bw, _scy + _msel_bh, true);
+             }
+-            draw_text_l(_scx + _msel_bw * 0.5, _scy , _mtab);
++            draw_set_font_l(fnt_c64_tiny);
++            var _mtab_small = (_mtab != L("MAP ") + string(_mbi));
++            if (_mtab_small) {
++                draw_set_font_l(fnt_c64_nano);
++                draw_text_l(_scx + _msel_bw * 0.5, _scy + 3, _mtab);
++                draw_set_font_l(fnt_c64_tiny);
++            } else {
++                draw_text_l(_scx + _msel_bw * 0.5, _scy , _mtab);
++            }
+             draw_set_halign(fa_left);
+             if (_shov && mouse_check_button_pressed(mb_left)) {
+                 // Double-click a map tab to name it
