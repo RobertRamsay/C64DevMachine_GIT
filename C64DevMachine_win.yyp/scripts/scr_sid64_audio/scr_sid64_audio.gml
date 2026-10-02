@@ -557,7 +557,15 @@ function scr_sound_instrument_follow_read(_m) {
             var _fi = floor((get_timer() - _f.start_us) / _f.period);
             if (_fi >= 0 && _fi < array_length(_f.trace)) {
                 var _v = _f.trace[_fi];
-                if (is_struct(_v)) array_push(_out, { instr: _f.instr, compiled: _f.compiled, pcs: _v.pcs, tpcs: [] });
+                if (is_struct(_v)) {
+                    // reSID auditions record the running tables' positions too
+                    // (scr_sid64_voice_display); the GML fallback has none.
+                    var _vt = _v[$ "tpcs"];
+                    if (!is_array(_vt)) {
+                        _vt = [];
+                    }
+                    array_push(_out, { instr: _f.instr, compiled: _f.compiled, pcs: _v.pcs, tpcs: _vt });
+                }
             }
         }
     }

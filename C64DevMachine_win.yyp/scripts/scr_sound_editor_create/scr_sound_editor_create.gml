@@ -52,6 +52,13 @@ function scr_sound_editor_create(_asset) {
         instr_note_edit_active    : false,
         instr_note_edit_key       : "",
         instr_note_edit_buf       : "",
+        // Commands box table pane: selected tab (PITCH / PULSE / FILTER),
+        // its scroll and sideways scroll.
+        instr_tab                 : "",
+        instr_tab_scroll          : 0,
+        instr_tab_drag            : -1,
+        instr_tab_hscroll         : 0,
+        instr_tab_hdrag           : -1,
         instr_edit_active         : false,
         instr_edit_buf            : "",
         instr_edit_cursor         : 0,

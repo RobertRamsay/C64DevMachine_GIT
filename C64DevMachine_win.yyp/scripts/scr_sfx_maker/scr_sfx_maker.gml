@@ -8,7 +8,12 @@ function scr_sfx_maker_defaults(_a) {
     var _defaults = {instr_list_scroll:0, instr_edit_active:false, instr_edit_buf:"", instr_edit_cursor:0,
         instr_name_edit_active:false, instr_name_edit_buf:"", instr_name_edit_cursor:0,
         instr_last_click_time:-10000, instr_last_click_idx:-1, instr_name_edit_opened_time:-10000,
-        instr_edit_opened_time:-10000, instr_text_scroll:0, sfx_chip:0};
+        instr_edit_opened_time:-10000, instr_text_scroll:0, sfx_chip:0,
+        // shared commands box (scr_sound_editor_draw_instruments): divider,
+        // note overrides, table pane
+        instr_div:124, instr_div_drag:false, instr_note_hscroll:0, instr_note_hdrag:-1,
+        instr_note_edit_active:false, instr_note_edit_key:"", instr_note_edit_buf:"",
+        instr_tab:"", instr_tab_scroll:0, instr_tab_drag:-1, instr_tab_hscroll:0, instr_tab_hdrag:-1};
     var _keys = variable_struct_get_names(_defaults);
     for (var _i=0; _i<array_length(_keys); _i++) if (!variable_struct_exists(_m,_keys[_i]))
         variable_struct_set(_m,_keys[_i],variable_struct_get(_defaults,_keys[_i]));

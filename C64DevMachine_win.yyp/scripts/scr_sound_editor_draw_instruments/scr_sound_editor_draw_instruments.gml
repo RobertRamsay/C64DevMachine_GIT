@@ -512,6 +512,11 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     }
 
     // ── SOURCE TEXT BOX ──
+    // Split in two: the PROGRAM on top, and below it one tab per table
+    // (~PITCH / ~PULSE / ~FILTER). Both are views of the same instrument text
+    // (step numbers stay global, so Ln still means what it says); each pane
+    // has its own scroll and its own playback highlight. Panes are drawn by
+    // scr_sound_editor_cmd_pane.
     var _wave_click = false;   // the command dropdowns / help used this frame's click
     var _tb_x0 = _ix0;
     var _tb_w  = _list_w;
@@ -537,43 +542,162 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     if (!_tb_hov && mouse_check_button_pressed(mb_left) && _m.instr_edit_active && !_wave_click) {
         scr_sound_editor_commit_instrument(_m, _sel_instr);
     }
-    var _visible_lines = max(1, floor((_tb_h - 18) / 16));
-    var _source_lines = string_split(_m.instr_edit_active ? _m.instr_edit_buf : _sel_instr.text, "\n");
-    if (_tb_hov) {
-        if (mouse_wheel_up()) _m.instr_text_scroll -= 3;
-        if (mouse_wheel_down()) _m.instr_text_scroll += 3;
-    }
-    _m.instr_text_scroll = clamp(_m.instr_text_scroll, 0, max(0, array_length(_source_lines) - _visible_lines));
-    _m.instr_text_scroll = scr_sound_editor_scrollbar(_m, "instr_text_drag", _m.instr_text_scroll,
-        array_length(_source_lines), _visible_lines, _tb_x0 + _tb_w - 12, _tb_y1, 12, _tb_h, _mx, _my);
-    var _tb_content_hov = _tb_hov && _mx < _tb_x0 + _tb_w - 14;
 
-    // ── DIVIDER ── between the code column and the notes column; drag it.
-    var _div = clamp(_m.instr_div, 80, max(80, _tb_w - 100));
-    var _div_x = _tb_x0 + _div;
-    var _div_hov = point_in_rectangle(_mx, _my, _div_x - 4, _tb_y1, _div_x + 4, _tb_y1 + _tb_h);
-    if (_div_hov && mouse_check_button_pressed(mb_left) && !_wave_click) {
-        _m.instr_div_drag = true;
+    // ── LINES (cached per source) ──
+    var _tb_disp = _sel_instr.text;
+    if (_m.instr_edit_active) {
+        _tb_disp = _m.instr_edit_buf;
     }
+    if (!variable_struct_exists(_m, "instr_lines_source") || _m.instr_lines_source != _tb_disp) {
+        _m.instr_lines_source = _tb_disp;
+        _m.instr_lines_cache = string_split(_tb_disp, "\n");
+        _m.instr_comments_cache = array_create(array_length(_m.instr_lines_cache), undefined);
+    }
+    var _tb_lines = _m.instr_lines_cache;
+    var _n_lines = array_length(_tb_lines);
+
+    // ── CURSOR POSITION — flat offset to line / column ──
+    var _tb_cursor_line = 0;
+    var _tb_cursor_col  = 0;
+    if (_m.instr_edit_active) {
+        var _tb_running = 0;
+        for (var _tci = 0; _tci < _n_lines; _tci++) {
+            var _tb_line_len = string_length(_tb_lines[_tci]);
+            if (_m.instr_edit_cursor <= _tb_running + _tb_line_len) {
+                _tb_cursor_line = _tci;
+                _tb_cursor_col  = _m.instr_edit_cursor - _tb_running;
+                break;
+            }
+            _tb_running += _tb_line_len + 1;
+        }
+    }
+
+    // ── SECTIONS ── the program is every line before the first "~" header;
+    // each header starts a table that runs to the next header (the parser's
+    // rule — one table of each kind per instrument).
+    var _tb_tab = array_create(_n_lines, 0);   // 0 program, 1 table line, 2 table header
+    var _prog_end = _n_lines;
+    var _secs = [];
+    for (var _si = 0; _si < _n_lines; _si++) {
+        var _st_line = string_upper(string_trim(_tb_lines[_si]));
+        if (string_char_at(_st_line, 1) == "~") {
+            if (_prog_end == _n_lines) {
+                _prog_end = _si;
+            }
+            if (array_length(_secs) > 0) {
+                _secs[array_length(_secs) - 1].l1 = _si;
+            }
+            var _kind = "TABLE";
+            if (string_pos("~PITCH", _st_line) == 1) {
+                _kind = "PITCH";
+            } else if (string_pos("~PULSE", _st_line) == 1) {
+                _kind = "PULSE";
+            } else if (string_pos("~FILTER", _st_line) == 1) {
+                _kind = "FILTER";
+            }
+            array_push(_secs, { kind: _kind, head: string_trim(_tb_lines[_si]), l0: _si, l1: _n_lines });
+            _tb_tab[_si] = 2;
+        } else if (_prog_end < _n_lines) {
+            _tb_tab[_si] = 1;
+        }
+    }
+
+    // The cursor moved: show it — in the program pane, or switch to the tab of
+    // the table it's in.
+    var _ensure_prog = -1;
+    var _ensure_tab  = -1;
+    if (_m.instr_edit_active) {
+        if (!variable_struct_exists(_m, "instr_last_cursor") || _m.instr_last_cursor != _m.instr_edit_cursor) {
+            _m.instr_last_cursor = _m.instr_edit_cursor;
+            if (_tb_cursor_line < _prog_end) {
+                _ensure_prog = _tb_cursor_line;
+            } else {
+                for (var _cs = 0; _cs < array_length(_secs); _cs++) {
+                    if (_tb_cursor_line >= _secs[_cs].l0 && _tb_cursor_line < _secs[_cs].l1) {
+                        _m.instr_tab = _secs[_cs].kind;
+                        _ensure_tab = _tb_cursor_line;
+                    }
+                }
+            }
+        }
+    }
+    var _sel_sec = undefined;
+    for (var _ss = 0; _ss < array_length(_secs); _ss++) {
+        if (_secs[_ss].kind == _m.instr_tab) {
+            _sel_sec = _secs[_ss];
+        }
+    }
+    if (is_undefined(_sel_sec) && array_length(_secs) > 0) {
+        _sel_sec = _secs[0];
+        _m.instr_tab = _sel_sec.kind;
+    }
+
+    // ── PLAYBACK POSITIONS ── program steps (green) and table records (purple).
+    var _live_lines = [];
+    var _table_lines = [];
+    var _follow_line = -1;
+    var _follow_tline = -1;
+    for (var _fv = 0; _fv < array_length(_follow); _fv++) {
+        var _live = _follow[_fv];
+        if (!is_struct(_live) || _live.instr != _sel_instr || !is_struct(_live.compiled)) continue;
+        // Suppress stale positions while the source is being changed.
+        if (_live.compiled.source != _tb_disp) continue;
+        for (var _fp = 0; _fp < array_length(_live.pcs); _fp++) {
+            var _pc = _live.pcs[_fp];
+            if (_pc < 0 || _pc >= array_length(_live.compiled.byte_lines)) continue;
+            var _line = _live.compiled.byte_lines[_pc];
+            if (_line >= 0) {
+                array_push(_live_lines, _line);
+                if (_follow_line < 0) {
+                    _follow_line = _line;
+                }
+            }
+        }
+        var _tpcs = _live[$ "tpcs"];
+        if (is_array(_tpcs)) {
+            for (var _tp = 0; _tp < array_length(_tpcs); _tp++) {
+                var _tpc = _tpcs[_tp];
+                if (_tpc < 0 || _tpc >= array_length(_live.compiled.byte_lines)) {
+                    continue;
+                }
+                var _tline = _live.compiled.byte_lines[_tpc];
+                if (_tline >= 0) {
+                    array_push(_table_lines, _tline);
+                    if (_follow_tline < 0 && !is_undefined(_sel_sec) && _tline >= _sel_sec.l0 && _tline < _sel_sec.l1) {
+                        _follow_tline = _tline;
+                    }
+                }
+            }
+        }
+    }
+
+    // ── LAYOUT ── program pane, tab bar, table pane (when there are tables).
+    var _tabbar_h = 18;
+    var _prog_h = _tb_h - _tabbar_h - 2;
+    if (array_length(_secs) > 0) {
+        _prog_h = floor((_tb_h - _tabbar_h - 4) * 0.5);
+    }
+    var _tabbar_y = _tb_y1 + _prog_h + 2;
+    var _tabp_y1 = _tabbar_y + _tabbar_h + 2;
+    var _tabp_h = _tb_y1 + _tb_h - _tabp_y1;
+
+    // ── DIVIDER ── shared by both panes; dragging is handled here, started by
+    // whichever pane the mouse is over.
+    var _div = clamp(_m.instr_div, 80, max(80, _tb_w - 100));
     if (_m.instr_div_drag) {
         if (mouse_check_button(mb_left)) {
             _m.instr_div = clamp(_mx - _tb_x0, 80, max(80, _tb_w - 100));
             _div = _m.instr_div;
-            _div_x = _tb_x0 + _div;
         } else {
             _m.instr_div_drag = false;
             global.undo_dirty = true;   // saved with the song (instr_div)
         }
     }
-    // Notes column: x range, and the horizontal scrollbar under it.
-    var _nt_x0 = _div_x + 8;
-    var _nt_x1 = _tb_x0 + _tb_w - 16;
-    var _nt_w  = max(20, _nt_x1 - _nt_x0);
-    var _hs_y  = _tb_y1 + _tb_h - 11;
-    var _in_notes = _tb_content_hov && _mx > _div_x + 4 && _my < _hs_y - 2;
-    var _in_code  = _tb_content_hov && _mx < _div_x - 4;
-    var _in_hbar  = point_in_rectangle(_mx, _my, _div_x + 4, _hs_y, _nt_x1, _tb_y1 + _tb_h);
-    var _box_busy = _div_hov || _m.instr_div_drag || _in_hbar || _m.instr_note_hdrag >= 0;
+    var _div_x = _tb_x0 + _div;
+    // Notes-column hover in either pane (a click anywhere else ends a note edit).
+    var _in_notes_any = _tb_hov && _mx > _div_x + 4 && _mx < _tb_x0 + _tb_w - 14
+        && ((_my >= _tb_y1 && _my < _tb_y1 + _prog_h - 13)
+        || (array_length(_secs) > 0 && _my >= _tabp_y1 && _my < _tabp_y1 + _tabp_h - 13));
 
     // ── NOTE EDITING ── a line's note is generated from its command; typing
     // over it stores an override for that command text (instr.note_overrides,
@@ -588,7 +712,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         } else if (keyboard_check_pressed(vk_escape)) {
             _ne_done = true;
             keyboard_clear(vk_escape);
-        } else if (mouse_check_button_pressed(mb_left) && !_in_notes) {
+        } else if (mouse_check_button_pressed(mb_left) && !_in_notes_any) {
             _ne_done = true;
             _ne_keep = true;
         } else {
@@ -620,284 +744,111 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             _m.instr_note_edit_active = false;
         }
     }
-    // Right-click a line to delete it from the instrument program. If the text
-    // wasn't open it's committed straight away; if it was, the edit continues.
-    if (_tb_content_hov && mouse_check_button_pressed(mb_right) && !_wave_click && !_box_busy && !_m.instr_note_edit_active) {
-        var _rc_src = _sel_instr.text;
-        if (_m.instr_edit_active) {
-            _rc_src = _m.instr_edit_buf;
+
+    // ── PROGRAM PANE ──
+    var _pane = {
+        x0: _tb_x0, y1: _tb_y1, w: _tb_w, h: _prog_h,
+        l0: 0, l1: _prog_end,
+        scroll_key: "instr_text_scroll", vdrag_key: "instr_text_drag",
+        hscroll_key: "instr_note_hscroll", hdrag_key: "instr_note_hdrag",
+        lines: _tb_lines, marks: _tb_tab, live: _live_lines, tlive: _table_lines,
+        cursor_line: _tb_cursor_line, cursor_col: _tb_cursor_col,
+        ensure: _ensure_prog, follow: _follow_line, div_w: _div, wave_click: _wave_click
+    };
+    scr_sound_editor_cmd_pane(_m, _sel_instr, _pane, _mx, _my);
+
+    // ── TAB BAR ── one tab per table, then + buttons for the missing kinds.
+    draw_set_color(make_color_rgb(24, 22, 36));
+    draw_rectangle(_tb_x0 - 2, _tabbar_y, _tb_x0 + _tb_w + 2, _tabbar_y + _tabbar_h, false);
+    draw_set_font_l(fnt_c64_pico);
+    var _tx = _tb_x0;
+    for (var _ti = 0; _ti < array_length(_secs); _ti++) {
+        var _tlab = _secs[_ti].head;
+        var _tw = string_width_l(_tlab) + 16;
+        var _thov = point_in_rectangle(_mx, _my, _tx, _tabbar_y + 1, _tx + _tw, _tabbar_y + _tabbar_h);
+        var _tsel = (!is_undefined(_sel_sec) && _secs[_ti].kind == _sel_sec.kind);
+        draw_set_color(make_color_rgb(40, 34, 64));
+        if (_tsel) {
+            draw_set_color(make_color_rgb(95, 55, 150));
+        } else if (_thov) {
+            draw_set_color(make_color_rgb(64, 50, 100));
         }
-        var _rc_lines = string_split(_rc_src, "\n");
-        var _rc_line  = (floor((_my - _tb_y1 - 4) / 16) + _m.instr_text_scroll);
-        if (_rc_line >= 0 && _rc_line < array_length(_rc_lines)) {
-            array_delete(_rc_lines, _rc_line, 1);
-            var _rc_new = string_join_ext("\n", _rc_lines);
-            if (_m.instr_edit_active) {
-                _m.instr_edit_buf    = _rc_new;
-                _m.instr_edit_cursor = min(_m.instr_edit_cursor, string_length(_rc_new));
-            } else {
-                _m.instr_edit_active      = true;
-                _m.instr_edit_buf         = _rc_new;
-                _m.instr_edit_cursor      = 0;
+        draw_rectangle(_tx, _tabbar_y + 1, _tx + _tw, _tabbar_y + _tabbar_h, false);
+        // A tab whose table is running right now gets a lit dot.
+        for (var _tl = 0; _tl < array_length(_table_lines); _tl++) {
+            if (_table_lines[_tl] >= _secs[_ti].l0 && _table_lines[_tl] < _secs[_ti].l1) {
+                draw_set_color(make_color_rgb(200, 160, 255));
+                draw_circle(_tx + _tw - 5, _tabbar_y + 5, 2, false);
+            }
+        }
+        draw_set_color(make_color_rgb(220, 200, 255));
+        draw_text_l(_tx + 6, _tabbar_y + 4, _tlab);
+        if (_thov && mouse_check_button_pressed(mb_left) && !_wave_click) {
+            _m.instr_tab = _secs[_ti].kind;
+            _m.instr_tab_scroll = 0;
+        }
+        _tx += _tw + 4;
+    }
+    // + PITCH / + PULSE / + FILTER: append that table's header and edit it.
+    var _kinds = ["PITCH", "PULSE", "FILTER"];
+    var _ax = _tb_x0 + _tb_w;
+    for (var _ki = 2; _ki >= 0; _ki--) {
+        var _have = false;
+        for (var _hs = 0; _hs < array_length(_secs); _hs++) {
+            if (_secs[_hs].kind == _kinds[_ki]) {
+                _have = true;
+            }
+        }
+        if (_have) {
+            continue;
+        }
+        var _alab = "+ " + _kinds[_ki];
+        var _aw = string_width_l(_alab) + 12;
+        _ax -= _aw;
+        var _ahov = point_in_rectangle(_mx, _my, _ax, _tabbar_y + 1, _ax + _aw, _tabbar_y + _tabbar_h);
+        draw_set_color(make_color_rgb(30, 38, 52));
+        if (_ahov) {
+            draw_set_color(make_color_rgb(65, 80, 100));
+        }
+        draw_rectangle(_ax, _tabbar_y + 1, _ax + _aw, _tabbar_y + _tabbar_h, false);
+        draw_set_color(make_color_rgb(170, 190, 220));
+        draw_text_l(_ax + 6, _tabbar_y + 4, _alab);
+        if (_ahov && mouse_check_button_pressed(mb_left) && !_wave_click) {
+            if (!_m.instr_edit_active) {
+                _m.instr_edit_active = true;
+                _m.instr_edit_buf = _sel_instr.text;
                 _m.instr_name_edit_active = false;
-                scr_sound_editor_commit_instrument(_m, _sel_instr);
             }
+            var _sep = "\n";
+            if (_m.instr_edit_buf == "" || string_char_at(_m.instr_edit_buf, string_length(_m.instr_edit_buf)) == "\n") {
+                _sep = "";
+            }
+            _m.instr_edit_buf += _sep + "~" + _kinds[_ki] + "\n";
+            _m.instr_edit_cursor = string_length(_m.instr_edit_buf);
+            _m.instr_tab = _kinds[_ki];
+            _m.instr_tab_scroll = 0;
         }
+        _ax -= 4;
     }
-    if (_in_notes && mouse_check_button_pressed(mb_left) && !_wave_click && !_box_busy) {
-        // Click a line's note to edit it.
-        var _nl_src = _sel_instr.text;
-        if (_m.instr_edit_active) {
-            _nl_src = _m.instr_edit_buf;
-            scr_sound_editor_commit_instrument(_m, _sel_instr);
-        }
-        var _nl_lines = string_split(_nl_src, "\n");
-        var _nl_line = floor((_my - _tb_y1 - 4) / 16) + _m.instr_text_scroll;
-        if (_nl_line >= 0 && _nl_line < array_length(_nl_lines) && string_trim(_nl_lines[_nl_line]) != "") {
-            var _nl_key = string_trim(_nl_lines[_nl_line]);
-            var _nl_ovr = _sel_instr[$ "note_overrides"];
-            var _nl_txt = scr_sound_editor_instr_comment(_nl_lines[_nl_line], _nl_lines).text;
-            if (!is_undefined(_nl_ovr) && !is_undefined(_nl_ovr[$ _nl_key])) {
-                _nl_txt = _nl_ovr[$ _nl_key];
-            }
-            _m.instr_note_edit_active = true;
-            _m.instr_note_edit_key    = _nl_key;
-            _m.instr_note_edit_buf    = _nl_txt;
-            _m.instr_name_edit_active = false;
-            keyboard_string = "";
-        }
+    if (array_length(_secs) == 0) {
+        draw_set_color(make_color_rgb(95, 95, 120));
+        draw_text_l(_tb_x0 + 4, _tabbar_y + 4, "NO TABLES");
     }
-    if (_in_code && mouse_check_button_pressed(mb_left) && !_wave_click && !_box_busy) {
-        if (!_m.instr_edit_active) {
-            _m.instr_edit_active      = true;
-            _m.instr_edit_buf         = _sel_instr.text;
-            _m.instr_edit_cursor      = string_length(_m.instr_edit_buf);
-            _m.instr_name_edit_active = false;
-        } else {
-            // ── CLICK-TO-POSITION — clicking an already-open box moves the
-            // cursor to the clicked line/column instead of doing nothing.
-            // The step-number gutter's width is subtracted out first, since
-            // it's drawn but isn't part of the actual buffer content. ──
-            var _cl_lines = string_split(_m.instr_edit_buf, "\n");
-            var _click_line = clamp((floor((_my - _tb_y1 - 4) / 16) + _m.instr_text_scroll), 0, array_length(_cl_lines) - 1);
-            var _cl_prefix = string(_click_line);
-            while (string_length(_cl_prefix) < 2) { _cl_prefix = "0" + _cl_prefix; }
-            _cl_prefix += ": ";
-            var _cl_prefix_w  = string_width_l(_cl_prefix);
-            var _cl_line_txt  = _cl_lines[_click_line];
-            var _cl_best_col  = string_length(_cl_line_txt);
-            for (var _cci = 0; _cci <= string_length(_cl_line_txt); _cci++) {
-                var _cl_sub_w = string_width_l(string_copy(_cl_line_txt, 1, _cci));
-                if (_tb_x0 + 4 + _cl_prefix_w + _cl_sub_w >= _mx) {
-                    _cl_best_col = _cci;
-                    break;
-                }
-            }
-            var _cl_flat = 0;
-            for (var _fli = 0; _fli < _click_line; _fli++) {
-                _cl_flat += string_length(_cl_lines[_fli]) + 1;
-            }
-            _m.instr_edit_cursor = _cl_flat + _cl_best_col;
-        }
-    }
+    draw_set_font_l(fnt_c64_tiny);
 
-    var _tb_disp  = _m.instr_edit_active ? _m.instr_edit_buf : _sel_instr.text;
-    if (!variable_struct_exists(_m, "instr_lines_source") || _m.instr_lines_source != _tb_disp) {
-        _m.instr_lines_source = _tb_disp;
-        _m.instr_lines_cache = string_split(_tb_disp, "\n");
-        _m.instr_comments_cache = array_create(array_length(_m.instr_lines_cache), undefined);
+    // ── TABLE PANE ── the selected tab's table.
+    if (!is_undefined(_sel_sec)) {
+        var _tpane = {
+            x0: _tb_x0, y1: _tabp_y1, w: _tb_w, h: _tabp_h,
+            l0: _sel_sec.l0, l1: _sel_sec.l1,
+            scroll_key: "instr_tab_scroll", vdrag_key: "instr_tab_drag",
+            hscroll_key: "instr_tab_hscroll", hdrag_key: "instr_tab_hdrag",
+            lines: _tb_lines, marks: _tb_tab, live: _live_lines, tlive: _table_lines,
+            cursor_line: _tb_cursor_line, cursor_col: _tb_cursor_col,
+            ensure: _ensure_tab, follow: _follow_tline, div_w: _div, wave_click: _wave_click
+        };
+        scr_sound_editor_cmd_pane(_m, _sel_instr, _tpane, _mx, _my);
     }
-    var _tb_lines = _m.instr_lines_cache;
-
-    // ── CURSOR POSITION — convert the flat cursor offset into a line/column
-    // so the blinking "|" lands where you're actually typing, not just at
-    // the end of the buffer. ──
-    var _tb_cursor_line = 0;
-    var _tb_cursor_col  = 0;
-    if (_m.instr_edit_active) {
-        var _tb_running = 0;
-        for (var _tci = 0; _tci < array_length(_tb_lines); _tci++) {
-            var _tb_line_len = string_length(_tb_lines[_tci]);
-            if (_m.instr_edit_cursor <= _tb_running + _tb_line_len) {
-                _tb_cursor_line = _tci;
-                _tb_cursor_col  = _m.instr_edit_cursor - _tb_running;
-                break;
-            }
-            _tb_running += _tb_line_len + 1;
-        }
-    }
-
-    if (_m.instr_edit_active) {
-        if (!variable_struct_exists(_m, "instr_last_cursor") || _m.instr_last_cursor != _m.instr_edit_cursor) {
-            if (_tb_cursor_line < _m.instr_text_scroll) _m.instr_text_scroll = _tb_cursor_line;
-            if (_tb_cursor_line >= _m.instr_text_scroll + _visible_lines) _m.instr_text_scroll = _tb_cursor_line - _visible_lines + 1;
-            _m.instr_last_cursor = _m.instr_edit_cursor;
-        }
-    }
-    var _live_lines = [];
-    var _table_lines = [];   // table records being run right now (~PULSE etc.)
-    var _follow_line = -1;
-    for (var _fv = 0; _fv < array_length(_follow); _fv++) {
-        var _live = _follow[_fv];
-        if (!is_struct(_live) || _live.instr != _sel_instr || !is_struct(_live.compiled)) continue;
-        // Suppress stale positions while the source is being changed.
-        if (_live.compiled.source != _tb_disp) continue;
-        for (var _fp = 0; _fp < array_length(_live.pcs); _fp++) {
-            var _pc = _live.pcs[_fp];
-            if (_pc < 0 || _pc >= array_length(_live.compiled.byte_lines)) continue;
-            var _line = _live.compiled.byte_lines[_pc];
-            if (_line >= 0) { array_push(_live_lines, _line); if (_follow_line < 0) _follow_line = _line; }
-        }
-        var _tpcs = _live[$ "tpcs"];
-        if (is_array(_tpcs)) {
-            for (var _tp = 0; _tp < array_length(_tpcs); _tp++) {
-                var _tpc = _tpcs[_tp];
-                if (_tpc < 0 || _tpc >= array_length(_live.compiled.byte_lines)) {
-                    continue;
-                }
-                var _tline = _live.compiled.byte_lines[_tpc];
-                if (_tline >= 0) {
-                    array_push(_table_lines, _tline);
-                }
-            }
-        }
-    }
-    if (_follow_line >= 0 && _m.instr_text_drag < 0 && !_m.instr_edit_active && !point_in_rectangle(_mx, _my, _tb_x0, _tb_y1, _tb_x0 + _tb_w, _tb_y1 + _tb_h)) {
-        if (_follow_line < _m.instr_text_scroll || _follow_line >= _m.instr_text_scroll + _visible_lines) {
-            _m.instr_text_scroll = clamp(_follow_line - 2, 0, max(0, array_length(_tb_lines) - _visible_lines));
-        }
-    }
-    // ── STEP-NUMBER GUTTER, DIVIDER LINE, & AUTOMATED SIDE COMMENTS ──
-    var _tb_blink = (current_time mod 600) < 300;
-    
-    // The divider: brighter while hovered or dragged.
-    draw_set_color(make_color_rgb(45, 45, 65));
-    if (_div_hov || _m.instr_div_drag) {
-        draw_set_color(make_color_rgb(120, 140, 200));
-    }
-    draw_line(_div_x, _tb_y1 + 2, _div_x, _tb_y1 + _tb_h - 2);
-    var _nt_maxw = 0;   // widest visible note, for the horizontal scrollbar
-    var _sx_sc = window_get_width()  / global.gui_w;
-    var _sy_sc = window_get_height() / display_get_gui_height();
-
-    // ── TABLE SECTIONS ── everything from the first "~" line on is table
-    // data (the parser's rule). Each table gets a tinted band, its "~" header
-    // a rule above it and its own colour, so it reads apart from the program.
-    var _tb_tab = array_create(array_length(_tb_lines), 0);   // 0 program, 1 table line, 2 table header
-    var _tb_in_tab = false;
-    for (var _tti = 0; _tti < array_length(_tb_lines); _tti++) {
-        if (string_char_at(string_trim(_tb_lines[_tti]), 1) == "~") {
-            _tb_in_tab = true;
-            _tb_tab[_tti] = 2;
-        } else if (_tb_in_tab) {
-            _tb_tab[_tti] = 1;
-        }
-    }
-
-    for (var _tli = _m.instr_text_scroll; _tli < min(array_length(_tb_lines), _m.instr_text_scroll + _visible_lines); _tli++) {
-        // Lines past the bottom of the box aren't drawn — the box never spills.
-        if (4 + ((_tli - _m.instr_text_scroll) * 16) + 14 > _tb_h) {
-            break;
-        }
-        if (_tb_tab[_tli] > 0) {
-            var _tab_y = _tb_y1 + 3 + (_tli - _m.instr_text_scroll) * 16;
-            draw_set_color(make_color_rgb(22, 20, 38));
-            draw_rectangle(_tb_x0 + 2, _tab_y, _tb_x0 + _tb_w - 14, _tab_y + 16, false);
-            draw_set_color(make_color_rgb(120, 90, 170));
-            draw_line(_tb_x0 + 2, _tab_y, _tb_x0 + 2, _tab_y + 16);           // left edge bar
-            if (_tb_tab[_tli] == 2) {
-                draw_set_color(make_color_rgb(150, 110, 210));
-                draw_line(_tb_x0 + 2, _tab_y, _tb_x0 + _tb_w - 14, _tab_y);   // rule above the header
-            }
-        }
-        var _line_live = false;
-        for (var _fl = 0; _fl < array_length(_live_lines); _fl++) if (_live_lines[_fl] == _tli) _line_live = true;
-        // A running table's current record: its own (purple) highlight, so the
-        // program's green step and the table's step show at the same time.
-        var _line_tab = false;
-        for (var _ftl = 0; _ftl < array_length(_table_lines); _ftl++) {
-            if (_table_lines[_ftl] == _tli) {
-                _line_tab = true;
-                draw_set_color(make_color_rgb(95, 55, 150));
-                var _tl_y = _tb_y1 + 3 + (_tli - _m.instr_text_scroll) * 16;
-                draw_rectangle(_tb_x0 + 2, _tl_y, _tb_x0 + _tb_w - 14, _tl_y + 16, false);
-            }
-        }
-        if (_line_live) {
-            draw_set_color(make_color_rgb(25, 80, 48));
-            var _live_y = _tb_y1 + 3 + (_tli - _m.instr_text_scroll) * 16;
-            draw_rectangle(_tb_x0 + 2, _live_y, _tb_x0 + _tb_w - 14, _live_y + 16, false);
-        }
-        var _tb_prefix = string(_tli);
-        while (string_length(_tb_prefix) < 2) { _tb_prefix = "0" + _tb_prefix; }
-        _tb_prefix += ": ";
-        var _tb_prefix_w = string_width_l(_tb_prefix);
-
-        draw_set_color(make_color_rgb(90, 90, 120));
-        draw_text_l(_tb_x0 + 4, _tb_y1 + 4 + (_tli - _m.instr_text_scroll) * 16, _tb_prefix);
-
-        var _tb_line_txt = _tb_lines[_tli];
-        if (_m.instr_edit_active && _tb_blink && _tli == _tb_cursor_line) {
-            _tb_line_txt = string_insert("|", _tb_line_txt, _tb_cursor_col + 1);
-        }
-        draw_set_color(_line_live ? c_white : (_m.instr_edit_active ? c_lime : make_color_rgb(160, 160, 180)));
-        if (_line_tab) {
-            draw_set_color(c_white);
-        }
-        if (!_line_live && !_line_tab && _tb_tab[_tli] == 2) {
-            draw_set_color(make_color_rgb(200, 160, 255));   // ~PULSE / ~PITCH / ~FILTER header
-        }
-        while (string_length(_tb_line_txt) > 0 && string_width_l(_tb_line_txt) > _div - 12 - _tb_prefix_w) _tb_line_txt = string_delete(_tb_line_txt, string_length(_tb_line_txt), 1);
-        draw_text_l(_tb_x0 + 4 + _tb_prefix_w, _tb_y1 + 4 + (_tli - _m.instr_text_scroll) * 16, _tb_line_txt);
-
-        // Plain-English side note for every line, live while typing too
-        // (see scr_sound_editor_instr_comment). Mid-blue; problems in red.
-        // Resolve visible help once per source edit, not once per redraw.
-        if (is_undefined(_m.instr_comments_cache[_tli])) {
-            _m.instr_comments_cache[_tli] = scr_sound_editor_instr_comment(_tb_lines[_tli], _tb_lines);
-        }
-        var _cm = _m.instr_comments_cache[_tli];
-        var _comment = _cm.text;
-        var _cm_col = make_color_rgb(90, 150, 230);
-        if (_cm.bad) {
-            _cm_col = make_color_rgb(230, 90, 90);
-        }
-        var _cm_key = string_trim(_tb_lines[_tli]);
-        var _cm_ovr = _sel_instr[$ "note_overrides"];
-        if (!is_undefined(_cm_ovr) && _cm_key != "" && !is_undefined(_cm_ovr[$ _cm_key])) {
-            _comment = _cm_ovr[$ _cm_key];                  // your own note
-            _cm_col = make_color_rgb(230, 200, 120);
-        }
-        var _cm_y = _tb_y1 + 4 + (_tli - _m.instr_text_scroll) * 16;
-        var _cm_editing = _m.instr_note_edit_active && _cm_key == _m.instr_note_edit_key;
-        if (_cm_editing) {
-            _comment = _m.instr_note_edit_buf;
-            if (_tb_blink) {
-                _comment += "|";
-            }
-            _cm_col = c_white;
-            draw_set_color(make_color_rgb(40, 40, 70));
-            draw_rectangle(_nt_x0 - 4, _cm_y - 1, _nt_x1, _cm_y + 14, false);
-        }
-        if (_comment != "") {
-            // The notes column scrolls sideways (scrollbar below) and is
-            // clipped to its own area, so long notes read in full.
-            var _cw = string_width_l(_comment);
-            _nt_maxw = max(_nt_maxw, _cw);
-            var _cx = _nt_x0 - _m.instr_note_hscroll;
-            if (_cm_editing) {
-                _cx = _nt_x0 - max(0, _cw - _nt_w);       // keep the typing end in view
-            }
-            gpu_set_scissor(floor(_nt_x0 * _sx_sc), floor(_tb_y1 * _sy_sc), ceil(_nt_w * _sx_sc), ceil(_tb_h * _sy_sc));
-            draw_set_color(_cm_col);
-            draw_text_l(_cx, _cm_y, _comment);
-            gpu_set_scissor(0, 0, window_get_width(), window_get_height());
-        }
-    }
-
-    // ── NOTES HORIZONTAL SCROLLBAR ──
-    _m.instr_note_hscroll = scr_sound_editor_hscrollbar(_m, "instr_note_hdrag", _m.instr_note_hscroll,
-        _nt_maxw, _nt_w, _div_x + 4, _hs_y, _nt_x1 - _div_x - 4, 9, _mx, _my);
 
     // Space while editing an instrument previews it: C in the current
     // octave, played from the text as typed (not yet committed).
@@ -1194,4 +1145,284 @@ function scr_sound_editor_hscrollbar(_m, _key, _value, _content, _view, _sx, _sy
     draw_set_color(_tc);
     draw_rectangle(_left + 1, _sy + 2, _left + _thumb - 1, _sy + _sh - 2, false);
     return _value;
+}
+
+/// One pane of the instrument commands box: lines _p.l0 .. _p.l1 - 1 of the
+/// instrument text, with step numbers, the code / notes divider, the notes
+/// column (editable overrides, sideways scroll), its own vertical scroll and
+/// the playback highlights (green program step, purple table record).
+/// _p: { x0, y1, w, h, l0, l1, scroll_key, vdrag_key, hscroll_key, hdrag_key,
+///       lines, marks, live, tlive, cursor_line, cursor_col, ensure, follow,
+///       div_w, wave_click }
+function scr_sound_editor_cmd_pane(_m, _sel_instr, _p, _mx, _my) {
+    var _x0 = _p.x0;
+    var _y1 = _p.y1;
+    var _w  = _p.w;
+    var _h  = _p.h;
+    var _count = max(0, _p.l1 - _p.l0);
+    var _vis = max(1, floor((_h - 18) / 16));
+    var _hov = point_in_rectangle(_mx, _my, _x0 - 4, _y1, _x0 + _w + 4, _y1 + _h);
+
+    // ── VERTICAL SCROLL ──
+    var _scroll = _m[$ _p.scroll_key];
+    if (_hov) {
+        if (mouse_wheel_up()) {
+            _scroll -= 3;
+        }
+        if (mouse_wheel_down()) {
+            _scroll += 3;
+        }
+    }
+    var _max_scroll = max(0, _count - _vis);
+    if (_p.ensure >= 0) {
+        var _er = _p.ensure - _p.l0;
+        if (_er < _scroll) {
+            _scroll = _er;
+        }
+        if (_er >= _scroll + _vis) {
+            _scroll = _er - _vis + 1;
+        }
+    }
+    if (_p.follow >= 0 && !_m.instr_edit_active && !_hov) {
+        var _fr = _p.follow - _p.l0;
+        if (_fr < _scroll || _fr >= _scroll + _vis) {
+            _scroll = _fr - 2;
+        }
+    }
+    _scroll = clamp(_scroll, 0, _max_scroll);
+    _scroll = scr_sound_editor_scrollbar(_m, _p.vdrag_key, _scroll, _count, _vis, _x0 + _w - 12, _y1, 12, _h, _mx, _my);
+    _m[$ _p.scroll_key] = _scroll;
+
+    // ── REGIONS ──
+    var _div_x = _x0 + _p.div_w;
+    var _div_hov = point_in_rectangle(_mx, _my, _div_x - 4, _y1, _div_x + 4, _y1 + _h);
+    if (_div_hov && mouse_check_button_pressed(mb_left) && !_p.wave_click) {
+        _m.instr_div_drag = true;
+    }
+    var _nt_x0 = _div_x + 8;
+    var _nt_x1 = _x0 + _w - 16;
+    var _nt_w  = max(20, _nt_x1 - _nt_x0);
+    var _hs_y  = _y1 + _h - 11;
+    var _content_hov = _hov && _mx < _x0 + _w - 14 && _my < _hs_y - 2;
+    var _in_notes = _content_hov && _mx > _div_x + 4;
+    var _in_code  = _content_hov && _mx < _div_x - 4;
+    var _in_hbar  = point_in_rectangle(_mx, _my, _div_x + 4, _hs_y, _nt_x1, _y1 + _h);
+    var _busy = _div_hov || _m.instr_div_drag || _in_hbar || _m[$ _p.hdrag_key] >= 0 || _p.wave_click;
+    // The clicked row, as a line of the whole text (-1 past this pane's end).
+    var _click_line = -1;
+    if (_content_hov) {
+        var _cr = floor((_my - _y1 - 4) / 16);
+        if (_cr >= 0 && _cr + _scroll < _count) {
+            _click_line = _p.l0 + _scroll + _cr;
+        }
+    }
+
+    // ── MOUSE ──
+    // Right-click a line to delete it. If the text wasn't open it's committed
+    // straight away; if it was, the edit continues.
+    if (_content_hov && mouse_check_button_pressed(mb_right) && !_busy && !_m.instr_note_edit_active && _click_line >= 0) {
+        var _rc_src = _sel_instr.text;
+        if (_m.instr_edit_active) {
+            _rc_src = _m.instr_edit_buf;
+        }
+        var _rc_lines = string_split(_rc_src, "\n");
+        if (_click_line < array_length(_rc_lines)) {
+            array_delete(_rc_lines, _click_line, 1);
+            var _rc_new = string_join_ext("\n", _rc_lines);
+            if (_m.instr_edit_active) {
+                _m.instr_edit_buf    = _rc_new;
+                _m.instr_edit_cursor = min(_m.instr_edit_cursor, string_length(_rc_new));
+            } else {
+                _m.instr_edit_active      = true;
+                _m.instr_edit_buf         = _rc_new;
+                _m.instr_edit_cursor      = 0;
+                _m.instr_name_edit_active = false;
+                scr_sound_editor_commit_instrument(_m, _sel_instr);
+            }
+        }
+    }
+    // Click a line's note to edit it.
+    if (_in_notes && mouse_check_button_pressed(mb_left) && !_busy && _click_line >= 0) {
+        var _nl_src = _sel_instr.text;
+        if (_m.instr_edit_active) {
+            _nl_src = _m.instr_edit_buf;
+            scr_sound_editor_commit_instrument(_m, _sel_instr);
+        }
+        var _nl_lines = string_split(_nl_src, "\n");
+        if (_click_line < array_length(_nl_lines) && string_trim(_nl_lines[_click_line]) != "") {
+            var _nl_key = string_trim(_nl_lines[_click_line]);
+            var _nl_ovr = _sel_instr[$ "note_overrides"];
+            var _nl_txt = scr_sound_editor_instr_comment(_nl_lines[_click_line], _nl_lines).text;
+            if (!is_undefined(_nl_ovr) && !is_undefined(_nl_ovr[$ _nl_key])) {
+                _nl_txt = _nl_ovr[$ _nl_key];
+            }
+            _m.instr_note_edit_active = true;
+            _m.instr_note_edit_key    = _nl_key;
+            _m.instr_note_edit_buf    = _nl_txt;
+            _m.instr_name_edit_active = false;
+            keyboard_string = "";
+        }
+    }
+    // Click the code: open the text (if closed) and put the cursor where you
+    // clicked. Below this pane's last line = the end of its last line.
+    if (_in_code && mouse_check_button_pressed(mb_left) && !_busy) {
+        if (!_m.instr_edit_active) {
+            _m.instr_edit_active      = true;
+            _m.instr_edit_buf         = _sel_instr.text;
+            _m.instr_name_edit_active = false;
+        }
+        var _cl_lines = string_split(_m.instr_edit_buf, "\n");
+        var _cl_line = _click_line;
+        var _cl_end = false;
+        if (_cl_line < 0) {
+            _cl_line = _p.l1 - 1;
+            _cl_end = true;
+        }
+        _cl_line = clamp(_cl_line, 0, array_length(_cl_lines) - 1);
+        var _cl_prefix = string(_cl_line);
+        while (string_length(_cl_prefix) < 2) {
+            _cl_prefix = "0" + _cl_prefix;
+        }
+        _cl_prefix += ": ";
+        var _cl_prefix_w = string_width_l(_cl_prefix);
+        var _cl_line_txt = _cl_lines[_cl_line];
+        var _cl_best_col = string_length(_cl_line_txt);
+        if (!_cl_end) {
+            for (var _cci = 0; _cci <= string_length(_cl_line_txt); _cci++) {
+                var _cl_sub_w = string_width_l(string_copy(_cl_line_txt, 1, _cci));
+                if (_x0 + 4 + _cl_prefix_w + _cl_sub_w >= _mx) {
+                    _cl_best_col = _cci;
+                    break;
+                }
+            }
+        }
+        var _cl_flat = 0;
+        for (var _fli = 0; _fli < _cl_line; _fli++) {
+            _cl_flat += string_length(_cl_lines[_fli]) + 1;
+        }
+        _m.instr_edit_cursor = _cl_flat + _cl_best_col;
+        _m.instr_last_cursor = _m.instr_edit_cursor;   // already in view
+    }
+
+    // ── DRAW ──
+    var _blink = (current_time mod 600) < 300;
+    draw_set_color(make_color_rgb(45, 45, 65));
+    if (_div_hov || _m.instr_div_drag) {
+        draw_set_color(make_color_rgb(120, 140, 200));
+    }
+    draw_line(_div_x, _y1 + 2, _div_x, _y1 + _h - 2);
+    var _nt_maxw = 0;   // widest visible note, for the horizontal scrollbar
+    var _sx_sc = window_get_width()  / global.gui_w;
+    var _sy_sc = window_get_height() / display_get_gui_height();
+    var _hscroll = _m[$ _p.hscroll_key];
+    var _lines = _p.lines;
+
+    for (var _r = 0; _r < _vis; _r++) {
+        var _g = _p.l0 + _scroll + _r;   // line of the whole text
+        if (_g >= _p.l1 || _g >= array_length(_lines)) {
+            break;
+        }
+        if (4 + _r * 16 + 14 > _h - 12) {
+            break;   // never under the sideways scrollbar
+        }
+        var _ry = _y1 + 3 + _r * 16;
+        var _ty = _y1 + 4 + _r * 16;
+        var _mark = _p.marks[_g];
+        if (_mark > 0) {
+            draw_set_color(make_color_rgb(22, 20, 38));
+            draw_rectangle(_x0 + 2, _ry, _x0 + _w - 14, _ry + 16, false);
+            draw_set_color(make_color_rgb(120, 90, 170));
+            draw_line(_x0 + 2, _ry, _x0 + 2, _ry + 16);
+        }
+        var _line_live = false;
+        for (var _fl = 0; _fl < array_length(_p.live); _fl++) {
+            if (_p.live[_fl] == _g) {
+                _line_live = true;
+            }
+        }
+        var _line_tab = false;
+        for (var _ftl = 0; _ftl < array_length(_p.tlive); _ftl++) {
+            if (_p.tlive[_ftl] == _g) {
+                _line_tab = true;
+            }
+        }
+        if (_line_tab) {
+            draw_set_color(make_color_rgb(95, 55, 150));
+            draw_rectangle(_x0 + 2, _ry, _x0 + _w - 14, _ry + 16, false);
+        }
+        if (_line_live) {
+            draw_set_color(make_color_rgb(25, 80, 48));
+            draw_rectangle(_x0 + 2, _ry, _x0 + _w - 14, _ry + 16, false);
+        }
+        var _prefix = string(_g);
+        while (string_length(_prefix) < 2) {
+            _prefix = "0" + _prefix;
+        }
+        _prefix += ": ";
+        var _prefix_w = string_width_l(_prefix);
+        draw_set_color(make_color_rgb(90, 90, 120));
+        draw_text_l(_x0 + 4, _ty, _prefix);
+
+        var _txt = _lines[_g];
+        if (_m.instr_edit_active && _blink && _g == _p.cursor_line) {
+            _txt = string_insert("|", _txt, _p.cursor_col + 1);
+        }
+        draw_set_color(make_color_rgb(160, 160, 180));
+        if (_m.instr_edit_active) {
+            draw_set_color(c_lime);
+        }
+        if (_mark == 2) {
+            draw_set_color(make_color_rgb(200, 160, 255));   // ~PULSE / ~PITCH / ~FILTER header
+        }
+        if (_line_live || _line_tab) {
+            draw_set_color(c_white);
+        }
+        while (string_length(_txt) > 0 && string_width_l(_txt) > _p.div_w - 12 - _prefix_w) {
+            _txt = string_delete(_txt, string_length(_txt), 1);
+        }
+        draw_text_l(_x0 + 4 + _prefix_w, _ty, _txt);
+
+        // Plain-English note for every line (generated, or your override).
+        if (is_undefined(_m.instr_comments_cache[_g])) {
+            _m.instr_comments_cache[_g] = scr_sound_editor_instr_comment(_lines[_g], _lines);
+        }
+        var _cm = _m.instr_comments_cache[_g];
+        var _comment = _cm.text;
+        var _cm_col = make_color_rgb(90, 150, 230);
+        if (_cm.bad) {
+            _cm_col = make_color_rgb(230, 90, 90);
+        }
+        var _cm_key = string_trim(_lines[_g]);
+        var _cm_ovr = _sel_instr[$ "note_overrides"];
+        if (!is_undefined(_cm_ovr) && _cm_key != "" && !is_undefined(_cm_ovr[$ _cm_key])) {
+            _comment = _cm_ovr[$ _cm_key];
+            _cm_col = make_color_rgb(230, 200, 120);
+        }
+        var _cm_editing = _m.instr_note_edit_active && _cm_key == _m.instr_note_edit_key;
+        if (_cm_editing) {
+            _comment = _m.instr_note_edit_buf;
+            if (_blink) {
+                _comment += "|";
+            }
+            _cm_col = c_white;
+            draw_set_color(make_color_rgb(40, 40, 70));
+            draw_rectangle(_nt_x0 - 4, _ty - 1, _nt_x1, _ty + 14, false);
+        }
+        if (_comment != "") {
+            var _cw = string_width_l(_comment);
+            _nt_maxw = max(_nt_maxw, _cw);
+            var _cx = _nt_x0 - _hscroll;
+            if (_cm_editing) {
+                _cx = _nt_x0 - max(0, _cw - _nt_w);   // keep the typing end in view
+            }
+            gpu_set_scissor(floor(_nt_x0 * _sx_sc), floor(_y1 * _sy_sc), ceil(_nt_w * _sx_sc), ceil(_h * _sy_sc));
+            draw_set_color(_cm_col);
+            draw_text_l(_cx, _ty, _comment);
+            gpu_set_scissor(0, 0, window_get_width(), window_get_height());
+        }
+    }
+
+    // ── NOTES SIDEWAYS SCROLLBAR ──
+    _m[$ _p.hscroll_key] = scr_sound_editor_hscrollbar(_m, _p.hdrag_key, _hscroll,
+        _nt_maxw, _nt_w, _div_x + 4, _hs_y, _nt_x1 - _div_x - 4, 9, _mx, _my);
 }
