@@ -557,12 +557,14 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     }
     // Space in a text field belongs to that field, never to the transport.
     var _transport_typing = _m.edit_active || _m.instr_edit_active
-                         || _m.instr_name_edit_active || _m.song_name_edit_active || _order_typing;
+                         || _m.instr_name_edit_active || _m.song_name_edit_active || _order_typing
+                         || _m.instr_note_edit_active;
     // Function keys: F1 song from the start, F2 song from the cursor row (same
     // as PLAY HERE — carries on through the order list), F3 this pattern from
     // the top (looping), F4 stop.
     // They type nothing, so they also work while an instrument's text is open.
-    var _fkeys_ok = !_m.edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing;
+    var _fkeys_ok = !_m.edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing
+                 && !_m.instr_note_edit_active;
     if (_fkeys_ok) {
         if (keyboard_check_pressed(vk_f1)) {
             _transport_action = "SONG";
@@ -1490,7 +1492,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         _m.edit_active = false;
     }
     if (_m.dg_focus && !_m.edit_active && !_m.instr_edit_active && !_m.instr_name_edit_active
-    && !_m.song_name_edit_active && !_order_typing) {
+    && !_m.song_name_edit_active && !_order_typing && !_m.instr_note_edit_active) {
         scr_digi_keys(_m, _order_row, _grid_len, _vis, _se_push_undo, _se_snap, _se_undo_goto);
     }
 
@@ -1565,7 +1567,8 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             }
             keyboard_string = "";
         }
-    } else if (!_m.instr_edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing && !_m.dg_focus) {
+    } else if (!_m.instr_edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing && !_m.dg_focus
+            && !_m.instr_note_edit_active) {
         // ── CURSOR MODE: PIANO-STYLE NOTE ENTRY ──
         // Stands down entirely while the INSTRUMENTS panel's text or name
         // box has focus — otherwise keyboard_string feeds both handlers at

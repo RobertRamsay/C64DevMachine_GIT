@@ -1,0 +1,309 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+index 3775e90..b1ad862 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+@@ -43,6 +43,15 @@ function scr_sound_editor_create(_asset) {
+         instruments   : [],
+         sel_instr     : -1,
+         instr_list_scroll         : 0,
++        // Commands box: the code / notes divider (px from the box's left),
++        // the notes column's horizontal scroll, and editing a line's note.
++        instr_div                 : 124,
++        instr_div_drag            : false,
++        instr_note_hscroll        : 0,
++        instr_note_hdrag          : -1,
++        instr_note_edit_active    : false,
++        instr_note_edit_key       : "",
++        instr_note_edit_buf       : "",
+         instr_edit_active         : false,
+         instr_edit_buf            : "",
+         instr_edit_cursor         : 0,
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
+index 98e5dfe..7b60e97 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
+@@ -547,9 +547,81 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+     _m.instr_text_scroll = scr_sound_editor_scrollbar(_m, "instr_text_drag", _m.instr_text_scroll,
+         array_length(_source_lines), _visible_lines, _tb_x0 + _tb_w - 12, _tb_y1, 12, _tb_h, _mx, _my);
+     var _tb_content_hov = _tb_hov && _mx < _tb_x0 + _tb_w - 14;
++
++    // ── DIVIDER ── between the code column and the notes column; drag it.
++    var _div = clamp(_m.instr_div, 80, max(80, _tb_w - 100));
++    var _div_x = _tb_x0 + _div;
++    var _div_hov = point_in_rectangle(_mx, _my, _div_x - 4, _tb_y1, _div_x + 4, _tb_y1 + _tb_h);
++    if (_div_hov && mouse_check_button_pressed(mb_left) && !_wave_click) {
++        _m.instr_div_drag = true;
++    }
++    if (_m.instr_div_drag) {
++        if (mouse_check_button(mb_left)) {
++            _m.instr_div = clamp(_mx - _tb_x0, 80, max(80, _tb_w - 100));
++            _div = _m.instr_div;
++            _div_x = _tb_x0 + _div;
++        } else {
++            _m.instr_div_drag = false;
++        }
++    }
++    // Notes column: x range, and the horizontal scrollbar under it.
++    var _nt_x0 = _div_x + 8;
++    var _nt_x1 = _tb_x0 + _tb_w - 16;
++    var _nt_w  = max(20, _nt_x1 - _nt_x0);
++    var _hs_y  = _tb_y1 + _tb_h - 11;
++    var _in_notes = _tb_content_hov && _mx > _div_x + 4 && _my < _hs_y - 2;
++    var _in_code  = _tb_content_hov && _mx < _div_x - 4;
++    var _in_hbar  = point_in_rectangle(_mx, _my, _div_x + 4, _hs_y, _nt_x1, _tb_y1 + _tb_h);
++    var _box_busy = _div_hov || _m.instr_div_drag || _in_hbar || _m.instr_note_hdrag >= 0;
++
++    // ── NOTE EDITING ── a line's note is generated from its command; typing
++    // over it stores an override for that command text (instr.note_overrides,
++    // saved with the instrument). Enter keeps it, an empty note goes back to
++    // the generated one, Esc cancels.
++    if (_m.instr_note_edit_active) {
++        var _ne_done = false;
++        var _ne_keep = false;
++        if (keyboard_check_pressed(vk_enter)) {
++            _ne_done = true;
++            _ne_keep = true;
++        } else if (keyboard_check_pressed(vk_escape)) {
++            _ne_done = true;
++            keyboard_clear(vk_escape);
++        } else if (mouse_check_button_pressed(mb_left) && !_in_notes) {
++            _ne_done = true;
++            _ne_keep = true;
++        } else {
++            if (keyboard_check_pressed(vk_backspace) && string_length(_m.instr_note_edit_buf) > 0) {
++                _m.instr_note_edit_buf = string_delete(_m.instr_note_edit_buf, string_length(_m.instr_note_edit_buf), 1);
++            }
++            if (keyboard_string != "") {
++                var _ne_add = scr_strip_key_ghosts(keyboard_string);
++                if (string_length(_m.instr_note_edit_buf) + string_length(_ne_add) <= 120) {
++                    _m.instr_note_edit_buf += _ne_add;
++                }
++            }
++        }
++        keyboard_string = "";
++        if (_ne_done) {
++            if (_ne_keep) {
++                var _ovr = _sel_instr[$ "note_overrides"];
++                if (is_undefined(_ovr)) {
++                    _ovr = {};
++                    _sel_instr.note_overrides = _ovr;
++                }
++                if (string_trim(_m.instr_note_edit_buf) == "") {
++                    variable_struct_remove(_ovr, _m.instr_note_edit_key);   // back to the generated note
++                } else {
++                    _ovr[$ _m.instr_note_edit_key] = _m.instr_note_edit_buf;
++                }
++                global.undo_dirty = true;
++            }
++            _m.instr_note_edit_active = false;
++        }
++    }
+     // Right-click a line to delete it from the instrument program. If the text
+     // wasn't open it's committed straight away; if it was, the edit continues.
+-    if (_tb_content_hov && mouse_check_button_pressed(mb_right) && !_wave_click) {
++    if (_tb_content_hov && mouse_check_button_pressed(mb_right) && !_wave_click && !_box_busy && !_m.instr_note_edit_active) {
+         var _rc_src = _sel_instr.text;
+         if (_m.instr_edit_active) {
+             _rc_src = _m.instr_edit_buf;
+@@ -571,7 +643,30 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+             }
+         }
+     }
+-    if (_tb_content_hov && mouse_check_button_pressed(mb_left) && !_wave_click) {
++    if (_in_notes && mouse_check_button_pressed(mb_left) && !_wave_click && !_box_busy) {
++        // Click a line's note to edit it.
++        var _nl_src = _sel_instr.text;
++        if (_m.instr_edit_active) {
++            _nl_src = _m.instr_edit_buf;
++            scr_sound_editor_commit_instrument(_m, _sel_instr);
++        }
++        var _nl_lines = string_split(_nl_src, "\n");
++        var _nl_line = floor((_my - _tb_y1 - 4) / 16) + _m.instr_text_scroll;
++        if (_nl_line >= 0 && _nl_line < array_length(_nl_lines) && string_trim(_nl_lines[_nl_line]) != "") {
++            var _nl_key = string_trim(_nl_lines[_nl_line]);
++            var _nl_ovr = _sel_instr[$ "note_overrides"];
++            var _nl_txt = scr_sound_editor_instr_comment(_nl_lines[_nl_line], _nl_lines).text;
++            if (!is_undefined(_nl_ovr) && !is_undefined(_nl_ovr[$ _nl_key])) {
++                _nl_txt = _nl_ovr[$ _nl_key];
++            }
++            _m.instr_note_edit_active = true;
++            _m.instr_note_edit_key    = _nl_key;
++            _m.instr_note_edit_buf    = _nl_txt;
++            _m.instr_name_edit_active = false;
++            keyboard_string = "";
++        }
++    }
++    if (_in_code && mouse_check_button_pressed(mb_left) && !_wave_click && !_box_busy) {
+         if (!_m.instr_edit_active) {
+             _m.instr_edit_active      = true;
+             _m.instr_edit_buf         = _sel_instr.text;
+@@ -660,9 +755,15 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+     // ── STEP-NUMBER GUTTER, DIVIDER LINE, & AUTOMATED SIDE COMMENTS ──
+     var _tb_blink = (current_time mod 600) < 300;
+     
+-    // Draw a clean vertical divider line inside the box (moved slightly left)
++    // The divider: brighter while hovered or dragged.
+     draw_set_color(make_color_rgb(45, 45, 65));
+-    draw_line(_tb_x0 + 124, _tb_y1 + 2, _tb_x0 + 124, _tb_y1 + _tb_h - 2);
++    if (_div_hov || _m.instr_div_drag) {
++        draw_set_color(make_color_rgb(120, 140, 200));
++    }
++    draw_line(_div_x, _tb_y1 + 2, _div_x, _tb_y1 + _tb_h - 2);
++    var _nt_maxw = 0;   // widest visible note, for the horizontal scrollbar
++    var _sx_sc = window_get_width()  / global.gui_w;
++    var _sy_sc = window_get_height() / display_get_gui_height();
+ 
+     for (var _tli = _m.instr_text_scroll; _tli < min(array_length(_tb_lines), _m.instr_text_scroll + _visible_lines); _tli++) {
+         // Lines past the bottom of the box aren't drawn — the box never spills.
+@@ -689,7 +790,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+             _tb_line_txt = string_insert("|", _tb_line_txt, _tb_cursor_col + 1);
+         }
+         draw_set_color(_line_live ? c_white : (_m.instr_edit_active ? c_lime : make_color_rgb(160, 160, 180)));
+-        while (string_length(_tb_line_txt) > 0 && string_width_l(_tb_line_txt) > 112 - _tb_prefix_w) _tb_line_txt = string_delete(_tb_line_txt, string_length(_tb_line_txt), 1);
++        while (string_length(_tb_line_txt) > 0 && string_width_l(_tb_line_txt) > _div - 12 - _tb_prefix_w) _tb_line_txt = string_delete(_tb_line_txt, string_length(_tb_line_txt), 1);
+         draw_text_l(_tb_x0 + 4 + _tb_prefix_w, _tb_y1 + 4 + (_tli - _m.instr_text_scroll) * 16, _tb_line_txt);
+ 
+         // Plain-English side note for every line, live while typing too
+@@ -699,21 +800,48 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+             _m.instr_comments_cache[_tli] = scr_sound_editor_instr_comment(_tb_lines[_tli], _tb_lines);
+         }
+         var _cm = _m.instr_comments_cache[_tli];
+-        if (_cm.text != "") {
+-            var _comment = _cm.text;
+-            // Trim a long side-note to the box instead of running past it.
+-            while (string_length(_comment) > 1 && string_width_l(_comment) > _tb_w - 152) {
+-                _comment = string_copy(_comment, 1, string_length(_comment) - 1);
++        var _comment = _cm.text;
++        var _cm_col = make_color_rgb(90, 150, 230);
++        if (_cm.bad) {
++            _cm_col = make_color_rgb(230, 90, 90);
++        }
++        var _cm_key = string_trim(_tb_lines[_tli]);
++        var _cm_ovr = _sel_instr[$ "note_overrides"];
++        if (!is_undefined(_cm_ovr) && _cm_key != "" && !is_undefined(_cm_ovr[$ _cm_key])) {
++            _comment = _cm_ovr[$ _cm_key];                  // your own note
++            _cm_col = make_color_rgb(230, 200, 120);
++        }
++        var _cm_y = _tb_y1 + 4 + (_tli - _m.instr_text_scroll) * 16;
++        var _cm_editing = _m.instr_note_edit_active && _cm_key == _m.instr_note_edit_key;
++        if (_cm_editing) {
++            _comment = _m.instr_note_edit_buf;
++            if (_tb_blink) {
++                _comment += "|";
+             }
+-            if (_cm.bad) {
+-                draw_set_color(make_color_rgb(230, 90, 90));
+-            } else {
+-                draw_set_color(make_color_rgb(90, 150, 230));
++            _cm_col = c_white;
++            draw_set_color(make_color_rgb(40, 40, 70));
++            draw_rectangle(_nt_x0 - 4, _cm_y - 1, _nt_x1, _cm_y + 14, false);
++        }
++        if (_comment != "") {
++            // The notes column scrolls sideways (scrollbar below) and is
++            // clipped to its own area, so long notes read in full.
++            var _cw = string_width_l(_comment);
++            _nt_maxw = max(_nt_maxw, _cw);
++            var _cx = _nt_x0 - _m.instr_note_hscroll;
++            if (_cm_editing) {
++                _cx = _nt_x0 - max(0, _cw - _nt_w);       // keep the typing end in view
+             }
+-            draw_text_l(_tb_x0 + 132, _tb_y1 + 4 + (_tli - _m.instr_text_scroll) * 16, _comment);
++            gpu_set_scissor(floor(_nt_x0 * _sx_sc), floor(_tb_y1 * _sy_sc), ceil(_nt_w * _sx_sc), ceil(_tb_h * _sy_sc));
++            draw_set_color(_cm_col);
++            draw_text_l(_cx, _cm_y, _comment);
++            gpu_set_scissor(0, 0, window_get_width(), window_get_height());
+         }
+     }
+ 
++    // ── NOTES HORIZONTAL SCROLLBAR ──
++    _m.instr_note_hscroll = scr_sound_editor_hscrollbar(_m, "instr_note_hdrag", _m.instr_note_hscroll,
++        _nt_maxw, _nt_w, _div_x + 4, _hs_y, _nt_x1 - _div_x - 4, 9, _mx, _my);
++
+     // Space while editing an instrument previews it: C in the current
+     // octave, played from the text as typed (not yet committed).
+     if (_m.instr_edit_active && keyboard_check_pressed(vk_space)) {
+@@ -960,3 +1088,43 @@ function scr_sound_editor_scrollbar(_m, _key, _value, _total, _visible, _sx, _sy
+     draw_rectangle(_sx + 2, _top + 1, _sx + _sw - 2, _top + _thumb - 1, false);
+     return _value;
+ }
++
++/// Horizontal twin of scr_sound_editor_scrollbar, in pixels: _content is the
++/// widest thing, _view the visible width. Returns the new scroll offset.
++function scr_sound_editor_hscrollbar(_m, _key, _value, _content, _view, _sx, _sy, _sw, _sh, _mx, _my) {
++    var _limit = max(0, _content - _view);
++    _value = clamp(_value, 0, _limit);
++    var _thumb = min(_sw, max(22, _sw * _view / max(1, _content)));
++    var _travel = max(0, _sw - _thumb);
++    var _left = _sx;
++    if (_limit > 0) {
++        _left = _sx + _travel * _value / _limit;
++    }
++    var _hover = point_in_rectangle(_mx, _my, _sx, _sy, _sx + _sw, _sy + _sh);
++    if (!mouse_check_button(mb_left)) {
++        _m[$ _key] = -1;
++    }
++    if (_limit > 0 && _hover && mouse_check_button_pressed(mb_left)) {
++        if (_mx >= _left && _mx <= _left + _thumb) {
++            _m[$ _key] = _mx - _left;
++        } else {
++            _m[$ _key] = _thumb * 0.5;
++        }
++    }
++    if (_m[$ _key] >= 0 && _travel > 0) {
++        _value = round(clamp((_mx - _sx - _m[$ _key]) / _travel, 0, 1) * _limit);
++        _left = _sx + _travel * _value / _limit;
++    }
++    draw_set_color(make_color_rgb(24, 26, 40));
++    draw_rectangle(_sx, _sy, _sx + _sw, _sy + _sh, false);
++    var _tc = make_color_rgb(48, 50, 64);
++    if (_limit > 0) {
++        _tc = make_color_rgb(85, 105, 145);
++        if (_hover || _m[$ _key] >= 0) {
++            _tc = make_color_rgb(150, 190, 240);
++        }
++    }
++    draw_set_color(_tc);
++    draw_rectangle(_left + 1, _sy + 2, _left + _thumb - 1, _sy + _sh - 2, false);
++    return _value;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index 561e718..c585655 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -557,12 +557,14 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     }
+     // Space in a text field belongs to that field, never to the transport.
+     var _transport_typing = _m.edit_active || _m.instr_edit_active
+-                         || _m.instr_name_edit_active || _m.song_name_edit_active || _order_typing;
++                         || _m.instr_name_edit_active || _m.song_name_edit_active || _order_typing
++                         || _m.instr_note_edit_active;
+     // Function keys: F1 song from the start, F2 song from the cursor row (same
+     // as PLAY HERE — carries on through the order list), F3 this pattern from
+     // the top (looping), F4 stop.
+     // They type nothing, so they also work while an instrument's text is open.
+-    var _fkeys_ok = !_m.edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing;
++    var _fkeys_ok = !_m.edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing
++                 && !_m.instr_note_edit_active;
+     if (_fkeys_ok) {
+         if (keyboard_check_pressed(vk_f1)) {
+             _transport_action = "SONG";
+@@ -1490,7 +1492,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         _m.edit_active = false;
+     }
+     if (_m.dg_focus && !_m.edit_active && !_m.instr_edit_active && !_m.instr_name_edit_active
+-    && !_m.song_name_edit_active && !_order_typing) {
++    && !_m.song_name_edit_active && !_order_typing && !_m.instr_note_edit_active) {
+         scr_digi_keys(_m, _order_row, _grid_len, _vis, _se_push_undo, _se_snap, _se_undo_goto);
+     }
+ 
+@@ -1565,7 +1567,8 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+             }
+             keyboard_string = "";
+         }
+-    } else if (!_m.instr_edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing && !_m.dg_focus) {
++    } else if (!_m.instr_edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing && !_m.dg_focus
++            && !_m.instr_note_edit_active) {
+         // ── CURSOR MODE: PIANO-STYLE NOTE ENTRY ──
+         // Stands down entirely while the INSTRUMENTS panel's text or name
+         // box has focus — otherwise keyboard_string feeds both handlers at
