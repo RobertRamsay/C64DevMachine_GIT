@@ -735,6 +735,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         }
     }
     var _live_lines = [];
+    var _table_lines = [];   // table records being run right now (~PULSE etc.)
     var _follow_line = -1;
     for (var _fv = 0; _fv < array_length(_follow); _fv++) {
         var _live = _follow[_fv];
@@ -746,6 +747,19 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             if (_pc < 0 || _pc >= array_length(_live.compiled.byte_lines)) continue;
             var _line = _live.compiled.byte_lines[_pc];
             if (_line >= 0) { array_push(_live_lines, _line); if (_follow_line < 0) _follow_line = _line; }
+        }
+        var _tpcs = _live[$ "tpcs"];
+        if (is_array(_tpcs)) {
+            for (var _tp = 0; _tp < array_length(_tpcs); _tp++) {
+                var _tpc = _tpcs[_tp];
+                if (_tpc < 0 || _tpc >= array_length(_live.compiled.byte_lines)) {
+                    continue;
+                }
+                var _tline = _live.compiled.byte_lines[_tpc];
+                if (_tline >= 0) {
+                    array_push(_table_lines, _tline);
+                }
+            }
         }
     }
     if (_follow_line >= 0 && _m.instr_text_drag < 0 && !_m.instr_edit_active && !point_in_rectangle(_mx, _my, _tb_x0, _tb_y1, _tb_x0 + _tb_w, _tb_y1 + _tb_h)) {
@@ -798,6 +812,17 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         }
         var _line_live = false;
         for (var _fl = 0; _fl < array_length(_live_lines); _fl++) if (_live_lines[_fl] == _tli) _line_live = true;
+        // A running table's current record: its own (purple) highlight, so the
+        // program's green step and the table's step show at the same time.
+        var _line_tab = false;
+        for (var _ftl = 0; _ftl < array_length(_table_lines); _ftl++) {
+            if (_table_lines[_ftl] == _tli) {
+                _line_tab = true;
+                draw_set_color(make_color_rgb(95, 55, 150));
+                var _tl_y = _tb_y1 + 3 + (_tli - _m.instr_text_scroll) * 16;
+                draw_rectangle(_tb_x0 + 2, _tl_y, _tb_x0 + _tb_w - 14, _tl_y + 16, false);
+            }
+        }
         if (_line_live) {
             draw_set_color(make_color_rgb(25, 80, 48));
             var _live_y = _tb_y1 + 3 + (_tli - _m.instr_text_scroll) * 16;
@@ -816,7 +841,10 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             _tb_line_txt = string_insert("|", _tb_line_txt, _tb_cursor_col + 1);
         }
         draw_set_color(_line_live ? c_white : (_m.instr_edit_active ? c_lime : make_color_rgb(160, 160, 180)));
-        if (!_line_live && _tb_tab[_tli] == 2) {
+        if (_line_tab) {
+            draw_set_color(c_white);
+        }
+        if (!_line_live && !_line_tab && _tb_tab[_tli] == 2) {
             draw_set_color(make_color_rgb(200, 160, 255));   // ~PULSE / ~PITCH / ~FILTER header
         }
         while (string_length(_tb_line_txt) > 0 && string_width_l(_tb_line_txt) > _div - 12 - _tb_prefix_w) _tb_line_txt = string_delete(_tb_line_txt, string_length(_tb_line_txt), 1);

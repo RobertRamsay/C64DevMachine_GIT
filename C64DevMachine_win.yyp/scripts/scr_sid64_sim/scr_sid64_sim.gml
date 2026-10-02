@@ -1026,5 +1026,15 @@ function scr_sid64_voice_note(_sim, _vc) {
 /// Immutable display snapshot; never expose a voice that is being rendered ahead.
 function scr_sid64_voice_display(_vc) {
     if (!is_struct(_vc.instr) || (!_vc.active && (_vc.cb & 1) == 0)) return undefined;
-    return { instr: _vc.instr, compiled: _vc.display_compiled, pcs: _vc.display_pcs };
+    // tpcs: the record each running table (pitch / pulse / filter) is on, as a
+    // byte offset into this instrument's bytes — lane_pos has already moved
+    // past it, hence - 3. A table carried on in another instrument (>nn) isn't
+    // in these bytes, so it isn't shown.
+    var _tpcs = [];
+    for (var _k = 0; _k < 3; _k++) {
+        if (_vc.lane_count[_k] != 0 && _vc.lane_bytes[_k] == _vc.bytes && _vc.lane_pos[_k] >= 3) {
+            array_push(_tpcs, _vc.lane_pos[_k] - 3);
+        }
+    }
+    return { instr: _vc.instr, compiled: _vc.display_compiled, pcs: _vc.display_pcs, tpcs: _tpcs };
 }
