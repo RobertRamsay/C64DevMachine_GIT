@@ -61,5 +61,9 @@ function scr_asset_meta_tileset_create(_asset) {
     _asset.meta.raw_rows               = 0;    // 1 = RAW ROWS: every map is emitted at the asset address as plain
                                                //     char rows (map_w bytes a row), maps one after another, for
                                                //     engines that read the map themselves. 0 = editor data only.
+                                               // 2 = RAW ROWS BOTTOM UP: the same, each map's rows emitted last
+                                               //     row first - for vertical scrollers that feed new rows in at
+                                               //     the top, so the map is drawn the way it looks on screen.
+    _asset.meta.map_names              = [];   // optional name per real map, shown on its tab ("" = MAP n)
     _asset.address                     = 0x8000;
 }

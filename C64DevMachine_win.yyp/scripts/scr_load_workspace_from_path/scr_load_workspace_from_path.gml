@@ -903,6 +903,15 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 } else {
                     _new_asset.meta.raw_rows = 0;
                 }
+                // Per-map names (tabs). Padded to the map count.
+                if (variable_struct_exists(_tsm, "map_names")) {
+                    _new_asset.meta.map_names = _tsm.map_names;
+                } else {
+                    _new_asset.meta.map_names = [];
+                }
+                while (array_length(_new_asset.meta.map_names) < array_length(_new_asset.meta.maps)) {
+                    array_push(_new_asset.meta.map_names, "");
+                }
 
 	            // Backfill per-map dim arrays to map_count so the viewer never
 	            // indexes past a short or empty array (old saves store no map_w/map_h).

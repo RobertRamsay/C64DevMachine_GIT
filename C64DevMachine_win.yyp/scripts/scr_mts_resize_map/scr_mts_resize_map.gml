@@ -20,7 +20,7 @@ function scr_mts_resize_map(_m, _map_idx, _new_w_ch, _new_h_ch) {
     // itself (segments of different heights), so only the active map changes.
     var _mi_from = 0;
     var _mi_to   = array_length(_m.maps);
-    if (_m.raw_rows == 1 && _map_idx >= 0 && _map_idx < array_length(_m.maps)) {
+    if (_m.raw_rows >= 1 && _map_idx >= 0 && _map_idx < array_length(_m.maps)) {
         _mi_from = _map_idx;
         _mi_to   = _map_idx + 1;
     }
@@ -70,7 +70,8 @@ function scr_mts_raw_rows_size(_m) {
 }
 
 /// @desc RAW ROWS export (PASS 3). Emits every real map of the tileset as plain
-///       char rows: map_w bytes a row, top row first, maps one after another
+///       char rows: map_w bytes a row, top row first (raw_rows 2: bottom row
+///       first), maps one after another
 ///       from wherever the caller's org left the PC. Each map gets a label,
 ///       <NAME>_MAP<n>. An empty cell (-1) or a stamp past stamp_count is char 0.
 ///       Same flattening as MACRO_METASCROLL, chars only - colour comes from the
@@ -90,8 +91,17 @@ function scr_mts_raw_rows_emit(_list, _a) {
             _cols = max(1, floor(_m.map_w[_mi] / _sw));
         }
         var _rows = floor(array_length(_grid) / _cols);
-        for (var _gy = 0; _gy < _rows; _gy++) {
-            for (var _cy = 0; _cy < _sh; _cy++) {
+        // Char rows of the map, top to bottom = 0 .. _rows * _sh - 1.
+        // BOTTOM UP (raw_rows 2) walks them last row first.
+        var _crows = _rows * _sh;
+        for (var _ri = 0; _ri < _crows; _ri++) {
+            var _crow = _ri;
+            if (_m.raw_rows == 2) {
+                _crow = _crows - 1 - _ri;
+            }
+            var _gy = floor(_crow / _sh);
+            var _cy = _crow - _gy * _sh;
+            {
                 for (var _gx = 0; _gx < _cols; _gx++) {
                     var _mt = _grid[_gy * _cols + _gx];
                     for (var _cx = 0; _cx < _sw; _cx++) {

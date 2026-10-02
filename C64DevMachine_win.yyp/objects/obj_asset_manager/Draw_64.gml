@@ -8906,10 +8906,13 @@ case "META_TILESET": {
     // ---- RAW ROWS: emit the maps at the asset address as plain char rows ----
     // For engines that read the map themselves (no METASCROLL / METAMAP):
     // every map, map_w bytes a row, one map after another, label <NAME>_MAP<n>.
-    var _rr_on  = (_m.raw_rows == 1);
+    var _rr_on  = (_m.raw_rows >= 1);
     var _rr_lbl = "RAW ROWS: OFF";
-    if (_rr_on) {
+    if (_m.raw_rows == 1) {
         _rr_lbl = "RAW ROWS: ON";
+    }
+    if (_m.raw_rows == 2) {
+        _rr_lbl = "RAW ROWS: UP";
     }
     var _rr_x2  = _rv_x1 + string_width_l("RAW ROWS: OFF") + 10;
     var _rr_y2  = _cy + 14;
@@ -8935,10 +8938,13 @@ case "META_TILESET": {
         draw_text_l(_rr_x2 + 6, _cy + 1, "$" + string_upper(decimal_to_hex(_asset.address)) + " " + string(_rr_sz) + "B");
     }
     if (_rr_hov && mouse_check_button_pressed(mb_left)) {
-        if (_rr_on) {
-            _m.raw_rows = 0;
-        } else {
+        // OFF -> ON (top row first) -> UP (bottom row first) -> OFF
+        if (_m.raw_rows == 0) {
             _m.raw_rows = 1;
+        } else if (_m.raw_rows == 1) {
+            _m.raw_rows = 2;
+        } else {
+            _m.raw_rows = 0;
         }
         _m.is_dirty             = true;
         global.undo_dirty       = true;
@@ -10221,12 +10227,32 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             draw_rectangle(_scx, _scy, _scx + _msel_bw, _scy + _msel_bh, false);
             draw_set_color(_sel ? c_white : make_color_rgb(120, 180, 140));
             draw_set_halign(fa_center);
-            draw_text_l(_scx + _msel_bw * 0.5, _scy , L("MAP ") + string(_mbi));
+            var _mtab = L("MAP ") + string(_mbi);
+            if (_mbi < array_length(_m.map_names)) {
+                if (_m.map_names[_mbi] != "") {
+                    _mtab = _m.map_names[_mbi];
+                    while (string_length(_mtab) > 1 && string_width_l(_mtab) > _msel_bw - 4) {
+                        _mtab = string_copy(_mtab, 1, string_length(_mtab) - 1);
+                    }
+                }
+            }
+            draw_text_l(_scx + _msel_bw * 0.5, _scy , _mtab);
             draw_set_halign(fa_left);
             if (_shov && mouse_check_button_pressed(mb_left)) _m.active_map = _mbi;
             if (_shov && mouse_check_button_pressed(mb_right) && _m.map_count > 0) {
                 array_delete(_m.maps, _mbi, 1);
                 if (array_length(_m.map_bytes) > _mbi) array_delete(_m.map_bytes, _mbi, 1);
+                // Per-map dims and names travel with the map (maps can differ in
+                // size in RAW ROWS tilesets, so a stale entry would mis-size the rest).
+                if (array_length(_m.map_w) > _mbi) {
+                    array_delete(_m.map_w, _mbi, 1);
+                }
+                if (array_length(_m.map_h) > _mbi) {
+                    array_delete(_m.map_h, _mbi, 1);
+                }
+                if (array_length(_m.map_names) > _mbi) {
+                    array_delete(_m.map_names, _mbi, 1);
+                }
                 _m.map_count = max(0, _m.map_count - 1);
                 if (_m.active_map >= _m.map_count) _m.active_map = _m.map_count - 1;
                 _m.is_dirty = true;
@@ -10253,6 +10279,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
                 array_push(_m.map_bytes, 0);
                 array_push(_m.map_w, _add_w);
                 array_push(_m.map_h, _add_h);
+                array_push(_m.map_names, "");
                 _m.map_count++;
                 _m.active_map = _m.map_count - 1;
                 _m.is_dirty = true;

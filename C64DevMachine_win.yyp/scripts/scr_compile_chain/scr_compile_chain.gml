@@ -19626,7 +19626,7 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 		    if (_a.type == "MAP_DATA"   && (ds_map_exists(_used_map, _a.name) || ds_map_exists(_load_org_linked, _a.name))) array_push(_all_assets, _a);
 			if (_a.type == "TEXT_DATA"  && (ds_map_exists(_used_str,  _a.name) || ds_map_exists(_load_org_linked, _a.name))) array_push(_all_assets, _a);
 			if (_a.type == "BYTE_DATA"  ) array_push(_all_assets, _a);
-			if (_a.type == "META_TILESET" && _a.meta.raw_rows == 1) array_push(_all_assets, _a);
+			if (_a.type == "META_TILESET" && _a.meta.raw_rows >= 1) array_push(_all_assets, _a);
 			if (_a.type == "LINE_COLL"  ) array_push(_all_assets, _a);
 			if (_a.type == "SFX_DATA" && ds_map_exists(_used_sfx, _a.name) && !ds_map_exists(_load_org_linked, _a.name)) array_push(_all_assets, _a);
 			if (_a.type == "SFX_DATA" && ds_map_exists(_load_org_linked, _a.name)) array_push(_all_assets, _a);
