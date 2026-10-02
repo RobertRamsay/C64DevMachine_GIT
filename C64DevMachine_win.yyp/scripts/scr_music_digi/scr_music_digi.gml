@@ -990,7 +990,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     if (_cpu > 45) {
         draw_set_color(make_color_rgb(255, 160, 60));
     }
-    draw_text_l(_x1 + 10, _y2 - 34, "C-4 CPU WHILE A DIGI PLAYS: ~" + string(_cpu) + "%  (DOUBLES PER OCTAVE UP)");
+    draw_text_l(_x1 + 10, _y2 - 34, "CPU WHILE A DIGI PLAYS: ~" + string(_cpu) + "%  (EACH NOTE USED = OWN COPY)");
     if (_m.free_voices) {
         draw_set_color(make_color_rgb(255, 120, 90));
         draw_text_l(_x1 + 10, _y2 - 18, "TIMING: PER VOICE - DIGI TRACK NOT COMPILED");
