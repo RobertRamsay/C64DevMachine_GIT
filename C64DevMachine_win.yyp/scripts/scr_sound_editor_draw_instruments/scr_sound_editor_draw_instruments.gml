@@ -766,10 +766,35 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     var _sx_sc = window_get_width()  / global.gui_w;
     var _sy_sc = window_get_height() / display_get_gui_height();
 
+    // ── TABLE SECTIONS ── everything from the first "~" line on is table
+    // data (the parser's rule). Each table gets a tinted band, its "~" header
+    // a rule above it and its own colour, so it reads apart from the program.
+    var _tb_tab = array_create(array_length(_tb_lines), 0);   // 0 program, 1 table line, 2 table header
+    var _tb_in_tab = false;
+    for (var _tti = 0; _tti < array_length(_tb_lines); _tti++) {
+        if (string_char_at(string_trim(_tb_lines[_tti]), 1) == "~") {
+            _tb_in_tab = true;
+            _tb_tab[_tti] = 2;
+        } else if (_tb_in_tab) {
+            _tb_tab[_tti] = 1;
+        }
+    }
+
     for (var _tli = _m.instr_text_scroll; _tli < min(array_length(_tb_lines), _m.instr_text_scroll + _visible_lines); _tli++) {
         // Lines past the bottom of the box aren't drawn — the box never spills.
         if (4 + ((_tli - _m.instr_text_scroll) * 16) + 14 > _tb_h) {
             break;
+        }
+        if (_tb_tab[_tli] > 0) {
+            var _tab_y = _tb_y1 + 3 + (_tli - _m.instr_text_scroll) * 16;
+            draw_set_color(make_color_rgb(22, 20, 38));
+            draw_rectangle(_tb_x0 + 2, _tab_y, _tb_x0 + _tb_w - 14, _tab_y + 16, false);
+            draw_set_color(make_color_rgb(120, 90, 170));
+            draw_line(_tb_x0 + 2, _tab_y, _tb_x0 + 2, _tab_y + 16);           // left edge bar
+            if (_tb_tab[_tli] == 2) {
+                draw_set_color(make_color_rgb(150, 110, 210));
+                draw_line(_tb_x0 + 2, _tab_y, _tb_x0 + _tb_w - 14, _tab_y);   // rule above the header
+            }
         }
         var _line_live = false;
         for (var _fl = 0; _fl < array_length(_live_lines); _fl++) if (_live_lines[_fl] == _tli) _line_live = true;
@@ -791,6 +816,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             _tb_line_txt = string_insert("|", _tb_line_txt, _tb_cursor_col + 1);
         }
         draw_set_color(_line_live ? c_white : (_m.instr_edit_active ? c_lime : make_color_rgb(160, 160, 180)));
+        if (!_line_live && _tb_tab[_tli] == 2) {
+            draw_set_color(make_color_rgb(200, 160, 255));   // ~PULSE / ~PITCH / ~FILTER header
+        }
         while (string_length(_tb_line_txt) > 0 && string_width_l(_tb_line_txt) > _div - 12 - _tb_prefix_w) _tb_line_txt = string_delete(_tb_line_txt, string_length(_tb_line_txt), 1);
         draw_text_l(_tb_x0 + 4 + _tb_prefix_w, _tb_y1 + 4 + (_tli - _m.instr_text_scroll) * 16, _tb_line_txt);
 
