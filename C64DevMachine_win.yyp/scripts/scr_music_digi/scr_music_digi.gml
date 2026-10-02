@@ -448,7 +448,10 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
     draw_set_halign(fa_left);
     draw_set_font_l(fnt_c64_tiny);
 
-    // ── CELLS ──
+    // ── CELLS ── same metrics as the voice grid's cells
+    var _ty = max(2, floor((_row_h - 10 * _txt_scale) / 2));
+    var _x_slot = 8 + round(38 * _txt_scale);
+    var _x_vol  = 8 + round(66 * _txt_scale);
     var _press = mouse_check_button_pressed(mb_left);
     var _in_lane = false;
     var _sel_lo = min(_m.dg_anchor, _m.dg_sel_step);
@@ -469,7 +472,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
             draw_set_color(make_color_rgb(26, 22, 26));
             draw_rectangle(_x, _ry, _x2, _ry + _row_h, false);
             draw_set_color(make_color_rgb(110, 90, 100));
-            draw_text_transformed_l(_x + 8, _ry + 8, "----", _txt_scale, _txt_scale, 0);
+            draw_text_transformed_l(_x + 8, _ry + _ty, "----", _txt_scale, _txt_scale, 0);
         } else if (_row >= _pat.pattern_len) {
             draw_set_color(make_color_rgb(18, 18, 24));
             draw_rectangle(_x, _ry, _x2, _ry + _row_h, false);
@@ -491,20 +494,20 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
                     _s_str = "0" + _s_str;
                 }
                 draw_set_color(_c_lane);
-                draw_text_transformed_l(_x + 8, _ry + 6, scr_digi_note_name(_st.note), _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_x + 8, _ry + _ty, scr_digi_note_name(_st.note), _txt_scale, _txt_scale, 0);
                 draw_set_color(make_color_rgb(255, 190, 210));
                 if (is_undefined(scr_digi_find_sample(_m.digi_samples[_st.smp]))) {
                     draw_set_color(make_color_rgb(200, 90, 70));   // empty / missing slot
                 }
-                draw_text_transformed_l(_x + 84, _ry + 6, _s_str, _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_x + _x_slot, _ry + _ty, _s_str, _txt_scale, _txt_scale, 0);
                 draw_set_color(make_color_rgb(150, 120, 150));
-                draw_text_transformed_l(_x + 140, _ry + 6, string(_st.vol), _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_x + _x_vol, _ry + _ty, string(_st.vol), _txt_scale, _txt_scale, 0);
             } else if (_st.smp == DIGI_SMP_OFF) {
                 draw_set_color(make_color_rgb(230, 120, 90));
-                draw_text_transformed_l(_x + 8, _ry + 6, "OFF", _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_x + 8, _ry + _ty, "OFF", _txt_scale, _txt_scale, 0);
             } else {
                 draw_set_color(make_color_rgb(70, 60, 80));
-                draw_text_transformed_l(_x + 8, _ry + 6, "...", _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_x + 8, _ry + _ty, "...", _txt_scale, _txt_scale, 0);
             }
             if (_hov && mouse_check_button_pressed(mb_right)) {
                 scr_digi_push_undo(_m, _pushf, _snapf);

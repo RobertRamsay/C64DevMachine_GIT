@@ -394,12 +394,14 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _se_row_target_len = function(_mm, _row) { return scr_music_sid_length(_mm, _row); };
 
     // ── LAYOUT ──
-    var _txt_scale = 2;
-    var _row_h    = 36;
+    // Grid metrics. Cells use fnt_c64_tiny at _txt_scale; the row height is
+    // set below so 16 rows always fit (see _vis).
+    var _txt_scale = 1.5;
+    var _row_h    = 30;
     var _vis      = 16;
-    var _lane_w   = 180;
-    var _cmd_off  = 116;    // command column's x offset inside a voice lane
-    var _gutter_w = 60;
+    var _lane_w   = 140;
+    var _cmd_off  = 90;     // command column's x offset inside a voice lane
+    var _gutter_w = 48;
     var _lane_gap = 12;
 
     // ═════════════════════════════════════════════════════════════════════
@@ -1057,7 +1059,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     // row's v1/v2/v3 currently point at)
     // ═════════════════════════════════════════════════════════════════════
     var _gy0 = _rowy + 44;
-    _vis = max(1, min(16, floor((_vy2 - _gy0 - 80) / _row_h)));
+    // Always 16 rows: the row height gives way (down to 22px) instead.
+    _vis = 16;
+    _row_h = clamp(floor((_vy2 - _gy0 - 80) / _vis), 22, 36);
+    var _ty = max(2, floor((_row_h - 10 * _txt_scale) / 2));   // text y inside a row
     var _gx0 = _vx1 + 20;
 
     var _col_gutter_x = _gx0;
@@ -1068,7 +1073,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     ];
     var _grid_full_w = _gutter_w + (_lane_w * 3) + (_lane_gap * 2);
     // DIGI lane: a narrow 4th column right of voice 3.
-    var _dg_w = 180;   // note, slot, volume — same width as a voice lane
+    var _dg_w = _lane_w;   // note, slot, volume — same width as a voice lane
     var _dg_x = _gx0 + _gutter_w + (_lane_w + _lane_gap) * 3;
     _grid_full_w += _lane_gap + _dg_w;
 
@@ -1090,9 +1095,13 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             draw_text_l(_col_x[_lh], _gy0 - 34, "[ NO PATTERN ]");
         } else {
             draw_set_color(make_color_rgb(90, 90, 120));
-            draw_text_l(_col_x[_lh], _gy0 - 34, "PAT " + _col_pat[_lh].name + L("   LEN:"));
+            var _ph_idx = string(_col_pat_idx[_lh]);
+            if (_col_pat_idx[_lh] < 10) {
+                _ph_idx = "0" + _ph_idx;
+            }
+            draw_text_l(_col_x[_lh], _gy0 - 34, "PAT " + _ph_idx + L(" LEN:"));
 
-            var _clx1 = _col_x[_lh] + 130;
+            var _clx1 = _col_x[_lh] + 74;
             var _clx2 = _clx1 + 14;
             var _cl_hov = point_in_rectangle(_mx, _my, _clx1, _gy0 - 38, _clx2, _gy0 - 24);
             draw_set_color(_cl_hov ? c_aqua : make_color_rgb(60, 130, 150));
@@ -1106,7 +1115,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             draw_set_color(c_white);
             draw_text_l(_clx2 + 4, _gy0 - 34, string(_col_pat[_lh].pattern_len));
 
-            var _cnx1 = _clx2 + 30;
+            var _cnx1 = _clx2 + 26;
             var _cnx2 = _cnx1 + 14;
             var _cn_hov = point_in_rectangle(_mx, _my, _cnx1, _gy0 - 38, _cnx2, _gy0 - 24);
             draw_set_color(_cn_hov ? c_aqua : make_color_rgb(60, 130, 150));
@@ -1119,7 +1128,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         }
         draw_set_font_l(fnt_c64_tiny);
     }
-	_txt_scale =2;
+	_txt_scale = 1.5;
     draw_set_color(make_color_rgb(14, 14, 22));
     draw_rectangle(_col_gutter_x - 4, _gy0 - 2, _col_gutter_x + _grid_full_w + 4, _gy0 + _vis * _row_h + 2, false);
     draw_set_color(make_color_rgb(50, 50, 70));
@@ -1252,7 +1261,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         }
 
         draw_set_color((_row mod 16 == 0) ? make_color_rgb(220, 200, 120) : make_color_rgb(90, 90, 120));
-        draw_text_transformed_l(_col_gutter_x + 8, _ry + 6, string(_row), _txt_scale, _txt_scale, 0);
+        draw_text_transformed_l(_col_gutter_x + 8, _ry + _ty, string(_row), _txt_scale, _txt_scale, 0);
 
         var _row_base = _row;
         for (var _cv = 0; _cv < 3; _cv++) {
@@ -1271,14 +1280,14 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 draw_set_color(make_color_rgb(26, 22, 22));
                 draw_rectangle(_cx1, _ry, _cx2, _ry + _row_h, false);
                 draw_set_color(make_color_rgb(130, 100, 100));
-                draw_text_transformed_l(_cx1 + 8, _ry + 8, "----", _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_cx1 + 8, _ry + _ty, "----", _txt_scale, _txt_scale, 0);
                 continue;
             }
             if (!_in_range) {
                 draw_set_color(make_color_rgb(26, 26, 38));
                 draw_rectangle(_cx1, _ry, _cx2, _ry + _row_h, false);
                 draw_set_color(make_color_rgb(110, 110, 130));
-                if (_row >= 0) draw_text_transformed_l(_cx1 + 8, _ry + 8, "END", _txt_scale, _txt_scale, 0);
+                if (_row >= 0) draw_text_transformed_l(_cx1 + 8, _ry + _ty, "END", _txt_scale, _txt_scale, 0);
                 continue;
             }
 
@@ -1318,16 +1327,16 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 var _blink = (current_time mod 600) < 300;
                 var _disp  = _blink ? string_insert("|", _m.edit_buf, _m.edit_cursor + 1) : _m.edit_buf;
                 draw_set_color(c_lime);
-                draw_text_transformed_l(_cx1 + 8, _ry + 8, _disp, _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_cx1 + 8, _ry + _ty, _disp, _txt_scale, _txt_scale, 0);
             } else if (_step.empty) {
                 draw_set_color(make_color_rgb(60, 60, 70));
-                draw_text_transformed_l(_cx1 + 8, _ry + 8, "...", _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_cx1 + 8, _ry + _ty, "...", _txt_scale, _txt_scale, 0);
             } else if (_step.note == "---" || _step.note == "") {
                 draw_set_color(make_color_rgb(140, 90, 90));
-                draw_text_transformed_l(_cx1 + 8, _ry + 8, "---", _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_cx1 + 8, _ry + _ty, "---", _txt_scale, _txt_scale, 0);
             } else if (_step.note == "+++") {
                 draw_set_color(make_color_rgb(90, 150, 90));
-                draw_text_transformed_l(_cx1 + 8, _ry + 8, "+++", _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_cx1 + 8, _ry + _ty, "+++", _txt_scale, _txt_scale, 0);
             } else {
                 var _missing   = (_step.instr_idx >= 0 && _step.instr_idx >= array_length(_m.instruments));
                 var _has_instr = (_step.instr_idx >= 0 && !_missing);
@@ -1338,11 +1347,11 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                     _cell_txt += " " + _instr_str;
                 }
                 draw_set_color(_missing ? c_red : c_white);
-                draw_text_transformed_l(_cx1 + 8, _ry + 8, _cell_txt, _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_cx1 + 8, _ry + _ty, _cell_txt, _txt_scale, _txt_scale, 0);
                 if (_missing) {
                     draw_set_font_l(fnt_c64_pico);
                     draw_set_color(c_red);
-                    draw_text_l(_cx1 + 8, _ry + 26, "INSTRUMENT MISSING OR UNDEFINED");
+                    draw_text_l(_cx1 + 8, _ry + _row_h - 9, "INSTRUMENT MISSING");
                     draw_set_font_l(fnt_c64_tiny);
                 }
             }
@@ -1368,7 +1377,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                     _ty_str += "_";
                 }
                 draw_set_color(c_yellow);
-                draw_text_transformed_l(_cmd_x, _ry + 8, _ty_str, _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_cmd_x, _ry + _ty, _ty_str, _txt_scale, _txt_scale, 0);
             } else if (_st_cmd >= 0) {
                 var _cv_hex = string_upper(decimal_to_hex(_step.cmd_val));
                 while (string_length(_cv_hex) < 2) { _cv_hex = "0" + _cv_hex; }
@@ -1402,10 +1411,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                         }
                     }
                 }
-                draw_text_transformed_l(_cmd_x, _ry + 8, string_char_at("0123456789ABCDEFGHIJ", _st_cmd + 1) + _cv_hex, _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_cmd_x, _ry + _ty, string_char_at("0123456789ABCDEFGHIJ", _st_cmd + 1) + _cv_hex, _txt_scale, _txt_scale, 0);
             } else {
                 draw_set_color(make_color_rgb(60, 60, 70));
-                draw_text_transformed_l(_cmd_x, _ry + 8, "...", _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_cmd_x, _ry + _ty, "...", _txt_scale, _txt_scale, 0);
             }
 
             if (_is_cursor) {
@@ -2145,7 +2154,11 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         if (_cl_lock) {
             draw_text_l((_cl_x1 + _cl_x2) * 0.5, _clr_y + 5, "CLEAR");
         } else {
-            draw_text_l((_cl_x1 + _cl_x2) * 0.5, _clr_y + 5, L("CLEAR ") + _cl_pat.name);
+            var _cl_idx = string(_col_pat_idx[_cli]);
+            if (_col_pat_idx[_cli] < 10) {
+                _cl_idx = "0" + _cl_idx;
+            }
+            draw_text_l((_cl_x1 + _cl_x2) * 0.5, _clr_y + 5, L("CLEAR PAT ") + _cl_idx);
         }
         draw_set_halign(fa_left);
 
@@ -2215,7 +2228,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     // ═════════════════════════════════════════════════════════════════════
     // RIGHT PANEL — SONG ORDER TABLE
     // ═════════════════════════════════════════════════════════════════════
-    var _ox0 = _col_gutter_x + _grid_full_w + 30;
+    var _ox0 = _col_gutter_x + _grid_full_w + 24;
     // Right panel sits lower than the grid so the SONG selector strip has a
     // clear row of its own — at _gy0 it lands in the header band and collides
     // with the octave stepper.
@@ -2223,7 +2236,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _ord_row_h = 28;
     // As many rows as fit above the buttons + help line, inside the window.
     var _ord_vis   = clamp(floor((_vy2 - 52 - _oy0) / _ord_row_h), 8, 30);
-    var _ord_col_w = [44, 70, 70, 70, 60, 60, 70];
+    var _ord_col_w = [34, 62, 62, 62, 62, 52, 62];
     var _ord_x = [_ox0];
     for (var _oc = 0; _oc < array_length(_ord_col_w); _oc++) {
         array_push(_ord_x, _ord_x[_oc] + _ord_col_w[_oc]);
@@ -2375,7 +2388,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_set_color(make_color_rgb(255, 200, 100));
     draw_text_l(_ox0, _oy0 - 34, _m.order_pattern_edit_active ? "ENTER: SET / ESC: CANCEL" : "SONG ORDER");
 
-    var _ord_hdr = ["#", "V" + string(_voice_offset + 1), "V" + string(_voice_offset + 2), "V" + string(_voice_offset + 3), "DG", " REPEAT", " SIZE"];
+    var _ord_hdr = ["#", "V" + string(_voice_offset + 1), "V" + string(_voice_offset + 2), "V" + string(_voice_offset + 3), "DG", "RPT", "SIZE"];
     for (var _ohi = 0; _ohi < array_length(_ord_hdr); _ohi++) {
         draw_set_color(make_color_rgb(120, 120, 160));
         draw_set_halign(fa_center);
