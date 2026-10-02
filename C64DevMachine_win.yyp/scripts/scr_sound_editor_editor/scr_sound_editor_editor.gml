@@ -313,7 +313,11 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             step  : _mm.sel_step,
             sub   : _mm.sel_sub,
             chip  : _mm.sid_page,
-            ord   : _mm.sel_order_row
+            ord   : _mm.sel_order_row,
+            // digi track: its data and whether the edit was made in its lane
+            dgs    : scr_digi_snapshot(_mm),
+            dgf    : _mm.dg_focus,
+            dgstep : _mm.dg_sel_step
         });
         if (array_length(_mm.undo_stack) > 50) {
             array_delete(_mm.undo_stack, 0, 1);
@@ -1051,7 +1055,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     ];
     var _grid_full_w = _gutter_w + (_lane_w * 3) + (_lane_gap * 2);
     // DIGI lane: a narrow 4th column right of voice 3.
-    var _dg_w = 110;
+    var _dg_w = 180;   // note, slot, volume — same width as a voice lane
     var _dg_x = _gx0 + _gutter_w + (_lane_w + _lane_gap) * 3;
     _grid_full_w += _lane_gap + _dg_w;
 
@@ -1466,7 +1470,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     } else if (_m.song_playing && _m.preview_display_order == _m.sel_order_row) {
         _dg_hl = _m.preview_display_step;
     }
-    if (scr_digi_lane(_m, _order_row, _dg_x, _gy0, _dg_w, _row_h, _vis, _grid_len, _txt_scale, _dg_hl, _mx, _my)) {
+    if (scr_digi_lane(_m, _order_row, _dg_x, _gy0, _dg_w, _row_h, _vis, _grid_len, _txt_scale, _dg_hl, _mx, _my, _se_push_undo, _se_snap)) {
         if (_m.edit_active) {
             scr_sound_editor_commit_cell(_m, _se_push_undo, _se_snap, _col_pat);
         }
@@ -1474,7 +1478,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     }
     if (_m.dg_focus && !_m.edit_active && !_m.instr_edit_active && !_m.instr_name_edit_active
     && !_m.song_name_edit_active && !_order_typing) {
-        scr_digi_keys(_m, _order_row, _grid_len, _vis);
+        scr_digi_keys(_m, _order_row, _grid_len, _vis, _se_push_undo, _se_snap, _se_undo_goto);
     }
 
     // ── TEXT INPUT WHILE EDITING A CELL ──
@@ -1645,9 +1649,11 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 var _un_top = array_length(_m.undo_stack) - 1;
                 var _un = _m.undo_stack[_un_top];
                 array_delete(_m.undo_stack, _un_top, 1);
-                array_push(_m.redo_stack, { pats: _se_snap(_m), voice: _un.voice, step: _un.step, sub: _un.sub, ord: _un.ord, chip: variable_struct_exists(_un, "chip") ? _un.chip : 0 });
+                array_push(_m.redo_stack, { pats: _se_snap(_m), voice: _un.voice, step: _un.step, sub: _un.sub, ord: _un.ord, chip: variable_struct_exists(_un, "chip") ? _un.chip : 0,
+                                            dgs: scr_digi_snapshot(_m), dgf: _un[$ "dgf"] == true, dgstep: _m.dg_sel_step });
                 _m.patterns = _un.pats;
                 _se_undo_goto(_m, _un, _vis);
+                scr_digi_undo_apply(_m, _un);
                 _m.bank_sel_pattern = clamp(_m.bank_sel_pattern, 0, array_length(_m.patterns) - 1);
                 _m.warn_msg   = "UNDO";
                 _m.warn_timer = game_get_speed(gamespeed_fps);
@@ -1664,9 +1670,11 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 var _re_top = array_length(_m.redo_stack) - 1;
                 var _re = _m.redo_stack[_re_top];
                 array_delete(_m.redo_stack, _re_top, 1);
-                array_push(_m.undo_stack, { pats: _se_snap(_m), voice: _re.voice, step: _re.step, sub: _re.sub, ord: _re.ord, chip: variable_struct_exists(_re, "chip") ? _re.chip : 0 });
+                array_push(_m.undo_stack, { pats: _se_snap(_m), voice: _re.voice, step: _re.step, sub: _re.sub, ord: _re.ord, chip: variable_struct_exists(_re, "chip") ? _re.chip : 0,
+                                            dgs: scr_digi_snapshot(_m), dgf: _re[$ "dgf"] == true, dgstep: _m.dg_sel_step });
                 _m.patterns = _re.pats;
                 _se_undo_goto(_m, _re, _vis);
+                scr_digi_undo_apply(_m, _re);
                 _m.bank_sel_pattern = clamp(_m.bank_sel_pattern, 0, array_length(_m.patterns) - 1);
                 _m.warn_msg   = "REDO";
                 _m.warn_timer = game_get_speed(gamespeed_fps);
@@ -2493,6 +2501,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         draw_text_l(_dgx + _dgw * 0.5, _ory + 6, _dg_str);
         draw_set_halign(fa_left);
         if ((_dg_minus || _dg_plus) && mouse_check_button_pressed(mb_left)) {
+            scr_digi_push_undo(_m, _se_push_undo, _se_snap);
             var _dg_next = _orow.dg + 1;
             if (_dg_minus) {
                 _dg_next = _orow.dg - 1;
@@ -2655,12 +2664,6 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         if (mouse_wheel_down()) { _m.order_scroll = min(max(0, array_length(_cur_song.order) - _ord_vis), _m.order_scroll + 1); }
     }
 
-    // Transient messages sit on the status line, clear of every panel.
-    if (_m.warn_timer > 0) {
-        draw_set_color(make_color_rgb(255, 200, 90));
-        draw_text_l(_vx1 + 540, _status_y, _m.warn_msg);
-        _m.warn_timer -= 1;
-    }
 
     // ═════════════════════════════════════════════════════════════════════
     // FAR RIGHT PANEL — INSTRUMENTS
@@ -2674,6 +2677,24 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_line(_vx1 + 20, _vy2 + 4, _vx2 - 20, _vy2 + 4);
     scr_sound_editor_piano(_m, _vx1 + 20, _vy2 + 14, _vx2 - 20, _vy2_full - 12, _mx, _my,
                            _col_pat, _vis, _se_push_undo, _se_snap);
+
+    // Transient messages: centred just above the piano, on a backing plate so
+    // they never collide with the status line's BYTES readout.
+    if (_m.warn_timer > 0) {
+        draw_set_font_l(fnt_c64_tiny);
+        var _wm_w = string_width_l(_m.warn_msg) + 24;
+        var _wm_cx = (_vx1 + _vx2) * 0.5;
+        var _wm_y = _vy2 - 20;
+        draw_set_color(make_color_rgb(30, 26, 12));
+        draw_rectangle(_wm_cx - _wm_w * 0.5, _wm_y - 3, _wm_cx + _wm_w * 0.5, _wm_y + 15, false);
+        draw_set_color(make_color_rgb(150, 120, 50));
+        draw_rectangle(_wm_cx - _wm_w * 0.5, _wm_y - 3, _wm_cx + _wm_w * 0.5, _wm_y + 15, true);
+        draw_set_color(make_color_rgb(255, 200, 90));
+        draw_set_halign(fa_center);
+        draw_text_l(_wm_cx, _wm_y, _m.warn_msg);
+        draw_set_halign(fa_left);
+        _m.warn_timer -= 1;
+    }
 
     // ── DIGI SAMPLES PANEL ── over everything except the tooltip; uses the
     // real mouse (the editor's copy is hidden while over the panel).

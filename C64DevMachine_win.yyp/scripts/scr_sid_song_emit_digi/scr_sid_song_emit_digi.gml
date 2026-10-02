@@ -1,9 +1,11 @@
 /// MACRO_SID_SONG DIGI TRACK — $D418 sample playback driven by a CIA2 timer NMI.
 ///
-/// The IRQ side (the song's <key>_play) reads one digi byte per row:
-///   $FF  nothing (a playing sample carries on)
-///   $FE  OFF — cut the sample
-///   else bits 0-3 sample slot, bits 4-5 volume (0 = 1/4 ... 3 = full)
+/// The IRQ side (the song's <key>_play) reads two digi bytes per row:
+///   byte 0  $FF nothing (a playing sample carries on), $FE OFF (cut),
+///           else bits 0-3 sample slot, bits 4-5 volume (0 = 1/4 ... 3 = full)
+///   byte 1  index into the note tables (dgnl / dgnh): the CIA timer latch for
+///           that note's rate. C-4 plays at the tune's digi rate; each octave
+///           up doubles the rate (and the NMI's CPU cost).
 /// and starts or stops the NMI player. The NMI runs once per sample at the
 /// tune's digi rate (CIA2 timer A, continuous) and writes
 ///     volume_table[level] | (music's $D418 filter-mode bits)
@@ -22,12 +24,15 @@
 
 /// Average NMI cost in cycles, for the CPU estimate in the editor.
 #macro DIGI_NMI_CYCLES 70
+/// Shortest timer period allowed for a high note, in cycles (~10 kHz). Below
+/// this the NMI would leave too little CPU for anything else.
+#macro DIGI_MIN_LATCH  98
 
 /// Collects everything the digi track needs. Returns { used, ... }; used is
 /// false when the song has no digi steps (or can't have them), and then nothing
 /// at all is emitted.
 function scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name) {
-    var _plan = { used: false, ord: [], pats: [], slots: [], rate: 8000, latch: 0 };
+    var _plan = { used: false, ord: [], pats: [], slots: [], rate: 8000, latch: 0, notes: [], latches: [] };
     var _dpats = _sm[$ "digi_patterns"];
     var _dslots = _sm[$ "digi_samples"];
     if (!is_array(_dpats) || !is_array(_dslots) || array_length(_dpats) == 0) {
@@ -72,6 +77,7 @@ function scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name) {
 
     // Sample slots the used patterns trigger, encoded at the tune's rate.
     var _slot_map = array_create(DIGI_SLOTS, -1);
+    var _note_map = array_create(96, -1);
     var _pat_bytes = [];
     var _any_step = false;
     for (var _pi = 0; _pi < array_length(_plan.pats); _pi++) {
@@ -80,6 +86,7 @@ function scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name) {
         var _bytes = [];
         for (var _si = 0; _si < _len; _si++) {
             var _b = 0xFF;
+            var _nidx = 0;
             if (_si < array_length(_pat.steps)) {
                 var _st = _pat.steps[_si];
                 var _smp = real(_st.smp);
@@ -109,10 +116,28 @@ function scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name) {
                     if (_slot_map[_smp] >= 0) {
                         _b = (_slot_map[_smp] & 0x0F) | ((clamp(real(_st.vol), 0, 3) & 3) << 4);
                         _any_step = true;
+                        var _nt = DIGI_NOTE_BASE;
+                        if (!is_undefined(_st[$ "note"])) {
+                            _nt = clamp(round(real(_st.note)), 0, 95);
+                        }
+                        if (_note_map[_nt] < 0) {
+                            _note_map[_nt] = array_length(_plan.notes);
+                            array_push(_plan.notes, _nt);
+                            var _nrate = _plan.rate * power(2, (_nt - DIGI_NOTE_BASE) / 12);
+                            var _nl = scr_sample_cia_latch(_nrate);
+                            if (_nl < DIGI_MIN_LATCH) {
+                                show_debug_message("MACRO_SID_SONG: '" + _asset_name + "' digi note "
+                                    + scr_digi_note_name(_nt) + " is above ~10 kHz; capped.");
+                                _nl = DIGI_MIN_LATCH;
+                            }
+                            array_push(_plan.latches, min(_nl, 0xFFFF));
+                        }
+                        _nidx = _note_map[_nt];
                     }
                 }
             }
             array_push(_bytes, _b);
+            array_push(_bytes, _nidx);
         }
         array_push(_pat_bytes, _bytes);
     }
@@ -152,7 +177,16 @@ function scr_sid_song_digi_emit_data(_list, _id, _key, _plan) {
     }
     array_push(_list, ["label", _k + "dglen"]);
     for (var _pi = 0; _pi < _np; _pi++) {
-        array_push(_list, ["byte", array_length(_plan.pat_bytes[_pi]) & 0xFF, _id]);
+        array_push(_list, ["byte", (array_length(_plan.pat_bytes[_pi]) div 2) & 0xFF, _id]);   // rows
+    }
+    // Per-note timer latches.
+    array_push(_list, ["label", _k + "dgnl"]);
+    for (var _ni = 0; _ni < array_length(_plan.latches); _ni++) {
+        array_push(_list, ["byte", _plan.latches[_ni] & 0xFF, _id]);
+    }
+    array_push(_list, ["label", _k + "dgnh"]);
+    for (var _ni = 0; _ni < array_length(_plan.latches); _ni++) {
+        array_push(_list, ["byte", (_plan.latches[_ni] >> 8) & 0xFF, _id]);
     }
 
     // Sample slots: start, byte count, decoder.
@@ -222,7 +256,7 @@ function scr_sid_song_digi_emit_data(_list, _id, _key, _plan) {
     array_push(_list, ["byte", 0x03, _id]);
 
     // NMI state.
-    var _vars = ["dgact", "dgph", "dgby", "dglv", "dghi", "dgcnl", "dgcnh"];
+    var _vars = ["dgact", "dgph", "dgby", "dglv", "dghi", "dgcnl", "dgcnh", "dgnt"];
     for (var _vi = 0; _vi < array_length(_vars); _vi++) {
         array_push(_list, ["label", _k + _vars[_vi]]);
         array_push(_list, ["byte", 0, _id]);
@@ -242,7 +276,6 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
     array_push(_list, ["pha",     0, _id]);
     array_push(_list, ["txa",     0, _id]);
     array_push(_list, ["pha",     0, _id]);
-    array_push(_list, ["lda_abs", 0xDD0D, _id]);            // acknowledge CIA2
     array_push(_list, ["lda_abs", _k + "dgact", _id]);
     array_push(_list, ["bne",     _k + "dgon", _id]);
     array_push(_list, ["jmp_abs", _k + "dgquit", _id]);     // idle: RESTORE etc.
@@ -351,6 +384,10 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
     array_push(_list, ["ora_abs", _k + "dghi", _id]);
     array_push(_list, ["sta_abs", _D418, _id]);
     array_push(_list, ["label",   _k + "dgquit"]);
+    // Acknowledge CIA2 LAST: the NMI line stays low until now, so a timer
+    // underflow during the handler can't start a second NMI inside this one
+    // (it is dropped instead, which just costs one sample on a busy frame).
+    array_push(_list, ["lda_abs", 0xDD0D, _id]);
     array_push(_list, ["pla",     0, _id]);
     array_push(_list, ["tax",     0, _id]);
     array_push(_list, ["pla",     0, _id]);
@@ -411,6 +448,11 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
     array_push(_list, ["sta_abs", _k + "dgvl", _id]);
     array_push(_list, ["lda_abx", _k + "dgvth", _id]);
     array_push(_list, ["sta_abs", _k + "dgvh", _id]);
+    array_push(_list, ["ldx_abs", _k + "dgnt", _id]);       // this note's rate
+    array_push(_list, ["lda_abx", _k + "dgnl", _id]);
+    array_push(_list, ["sta_abs", 0xDD04, _id]);
+    array_push(_list, ["lda_abx", _k + "dgnh", _id]);
+    array_push(_list, ["sta_abs", 0xDD05, _id]);
     array_push(_list, ["lda_imm", 0x01, _id]);
     array_push(_list, ["sta_abs", _k + "dgact", _id]);
     array_push(_list, ["lda_abs", 0xDD0D, _id]);            // drop a stale flag
@@ -437,7 +479,13 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
     array_push(_list, ["sta_zp",  _S_PTR, _id]);
     array_push(_list, ["lda_abx", _k + "dgpph", _id]);
     array_push(_list, ["sta_zp",  _S_PTR + 1, _id]);
-    array_push(_list, ["ldy_zp",  _S_ROW, _id]);
+    array_push(_list, ["lda_zp",  _S_ROW, _id]);
+    array_push(_list, ["asl_a",   0, _id]);                 // 2 bytes a row (rows <= 128)
+    array_push(_list, ["tay",     0, _id]);
+    array_push(_list, ["iny",     0, _id]);
+    array_push(_list, ["lda_izy", _S_PTR, _id]);
+    array_push(_list, ["sta_abs", _k + "dgnt", _id]);       // note index
+    array_push(_list, ["dey",     0, _id]);
     array_push(_list, ["lda_izy", _S_PTR, _id]);
     array_push(_list, ["cmp_imm", 0xFF, _id]);
     array_push(_list, ["beq",     _k + "dgrx", _id]);
@@ -459,9 +507,5 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
     array_push(_list, ["lda_lab_hi", _k + "dgnmi", _id]);
     array_push(_list, ["sta_abs", 0x0319, _id]);
     array_push(_list, ["sta_abs", 0xFFFB, _id]);
-    array_push(_list, ["lda_imm", _plan.latch & 0xFF, _id]);
-    array_push(_list, ["sta_abs", 0xDD04, _id]);
-    array_push(_list, ["lda_imm", (_plan.latch >> 8) & 0xFF, _id]);
-    array_push(_list, ["sta_abs", 0xDD05, _id]);
     array_push(_list, ["jmp_abs", _k + "dgstop", _id]);
 }

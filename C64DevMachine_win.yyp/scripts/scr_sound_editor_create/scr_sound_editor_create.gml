@@ -94,6 +94,8 @@ function scr_sound_editor_create(_asset) {
         // editor / preview state (never saved)
         dg_focus      : false,
         dg_sel_step   : 0,
+        dg_anchor     : 0,       // other end of a shift-selection
+        dg_cur_slot   : 0,       // slot that note entry places
         dg_slots_open : false,
         dg_type_step  : -1,
         dg_type_time  : 0,
@@ -873,7 +875,7 @@ function scr_music_size_digi_sig(_m) {
             var _steps = _pats[_p].steps;
             _h = (_h * 31 + array_length(_steps)) mod 1000000007;
             for (var _i = 0; _i < array_length(_steps); _i++) {
-                _h = (_h * 31 + (real(_steps[_i].smp) + 3) * 5 + real(_steps[_i].vol)) mod 1000000007;
+                _h = (_h * 31 + (real(_steps[_i].smp) + 3) * 5 + real(_steps[_i].vol) + real(scr_music_size_field(_steps[_i], "note", 48)) * 97) mod 1000000007;
             }
         }
     }

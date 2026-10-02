@@ -68,6 +68,7 @@ global.music_size_cache = {};
 global.music_col_scroll = [0, 0, 0];
 // Music Maker pattern-command guide panel (modal while open).
 global.music_cmd_guide_open = false;
+global.se_dg_clipboard = [];   // Music Maker digi lane copy/paste rows
 // Music Maker JAM mode: note keys and piano clicks only play, nothing is written.
 global.music_jam = false;
 // JAM polyphony: each new note on the next voice (all chips) instead of cutting itself.
