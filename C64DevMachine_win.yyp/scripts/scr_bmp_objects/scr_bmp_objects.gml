@@ -38,6 +38,7 @@ function scr_bmpobj_create(_asset) {
         // Display only - the game's pose table lives in its own code.
         poses     : [],
         sheet_mode : 1,     // 0 = PARTS sheet, 1 = POSES sheet
+        sheet_scroll : 0,   // editor only: sheet scroll in pixels
         layer     : 2,      // 0 = GFX, 1 = MASK, 2 = COMPOSITE
         zoom      : 12,
         list_scroll : 0,
@@ -282,122 +283,190 @@ function scr_bmpobj_auto_mask(_asset, _o) {
     }
 }
 
+/// Small UI helpers for the editor (immediate mode, return true on click).
+function scr_bmpobj_ui_button(_x1, _y1, _w, _h, _label, _on, _mx, _my) {
+    var _hov = point_in_rectangle(_mx, _my, _x1, _y1, _x1 + _w, _y1 + _h);
+    var _bg = make_color_rgb(31, 38, 54);
+    if (_hov) { _bg = make_color_rgb(53, 61, 82); }
+    if (_on)  { _bg = make_color_rgb(38, 94, 111); }
+    draw_set_color(_bg);
+    draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _h, false);
+    draw_set_color(make_color_rgb(72, 83, 103));
+    if (_on) { draw_set_color(c_aqua); }
+    draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _h, true);
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_text_l(_x1 + _w / 2, _y1 + (_h div 2) - 4, _label);
+    draw_set_halign(fa_left);
+    return (_hov && mouse_check_button_pressed(mb_left));
+}
+
+function scr_bmpobj_ui_panel(_x1, _y1, _x2, _y2, _title) {
+    draw_set_color(make_color_rgb(20, 25, 37));
+    draw_rectangle(_x1, _y1, _x2, _y2, false);
+    draw_set_color(make_color_rgb(52, 62, 84));
+    draw_rectangle(_x1, _y1, _x2, _y2, true);
+    draw_set_color(make_color_rgb(30, 37, 53));
+    draw_rectangle(_x1 + 1, _y1 + 1, _x2 - 1, _y1 + 20, false);
+    draw_set_color(make_color_rgb(154, 175, 198));
+    draw_text_l(_x1 + 8, _y1 + 6, _title);
+}
+
+/// Colour picker row: label, < swatch >. Returns the new colour index.
+function scr_bmpobj_ui_colour(_x, _y, _label, _col, _mx, _my) {
+    draw_set_color(make_color_rgb(154, 175, 198));
+    draw_text_l(_x, _y + 8, _label);
+    var _bx = _x + 50;
+    if (scr_bmpobj_ui_button(_bx, _y, 22, 24, "<", false, _mx, _my)) { _col = (_col + 15) mod 16; }
+    draw_set_color(scr_c64_pepto_colour(_col));
+    draw_rectangle(_bx + 28, _y, _bx + 64, _y + 24, false);
+    draw_set_color(c_white);
+    draw_rectangle(_bx + 28, _y, _bx + 64, _y + 24, true);
+    if (scr_bmpobj_ui_button(_bx + 70, _y, 22, 24, ">", false, _mx, _my)) { _col = (_col + 1) mod 16; }
+    return _col;
+}
+
+/// Editor entry point. Pixel art must stay crisp: texture filtering is
+/// switched off for the whole editor and restored afterwards.
 function scr_bmpobj_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+    var _old_filter = gpu_get_texfilter();
+    gpu_set_texfilter(false);
+    scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my);
+    gpu_set_texfilter(_old_filter);
+}
+
+/// Layout
+///   ┌ toolbar: LAYER [GFX][MASK][COMPOSITE]  [AUTO MASK]  ZOOM [-] n [+]  INK < >  PAPER < > ┐
+///   ├ PARTS list ┬ EDIT canvas + info ───────┬ SHEET [PARTS][POSES]  (wheel scrolls) ──┤
+///   └────────────┴───────────────────────────┴─────────────────────────────────────────┘
+function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _m = _asset.meta;
     var _n = array_length(_m.objects);
-    var _button = function(_x1, _y1, _w, _label, _on, _mx2, _my2) {
-        var _hov = point_in_rectangle(_mx2, _my2, _x1, _y1, _x1 + _w, _y1 + 24);
-        var _bg = make_color_rgb(31, 38, 54);
-        if (_hov) { _bg = make_color_rgb(53, 61, 82); }
-        if (_on)  { _bg = make_color_rgb(38, 94, 111); }
-        draw_set_color(_bg);
-        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + 24, false);
-        draw_set_color(make_color_rgb(72, 83, 103));
-        if (_on) { draw_set_color(c_aqua); }
-        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + 24, true);
-        draw_set_color(c_white);
-        draw_text_l(_x1 + 8, _y1 + 7, _label);
-        return (_hov && mouse_check_button_pressed(mb_left));
-    };
     draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_left);
+    var _pad = 12;
     var _top = _cy + 8;
-    var _bottom = _vy2 - 16;
+    var _bottom = _vy2 - 12;
+    var _left = _vx1 + _pad;
+    var _right = _vx2 - _pad;
 
     if (_n == 0) {
         draw_set_color(c_ltgray);
-        draw_text_l(_vx1 + 20, _top, "NO OBJECTS. Objects are listed in the asset file (meta.objects: w, h, gfx_ptr, mask_ptr).");
+        draw_text_l(_left, _top, "NO OBJECTS. The asset lists them in meta.objects (w, h, gfx_ptr, mask_ptr).");
         return;
     }
     _m.sel = clamp(_m.sel, 0, _n - 1);
     var _o = _m.objects[_m.sel];
 
-    // ── LEFT: object list ──
-    var _lx = _vx1 + 16;
-    var _lw = 220;
-    var _row_h = 18;
-    var _rows = floor((_bottom - _top - 40) / _row_h);
-    draw_set_color(make_color_rgb(23, 29, 42));
-    draw_rectangle(_lx - 6, _top - 6, _lx + _lw + 6, _bottom, false);
+    // ── TOOLBAR ──
+    var _tb_h = 26;
+    var _x = _left;
     draw_set_color(make_color_rgb(154, 175, 198));
-    draw_text_l(_lx, _top, "OBJECTS (" + string(_n) + ")   wheel = scroll");
-    var _ly = _top + 20;
-    if (point_in_rectangle(_mx, _my, _lx, _ly, _lx + _lw, _bottom)) {
-        if (mouse_wheel_down()) { _m.list_scroll = min(_m.list_scroll + 3, max(0, _n - _rows)); }
-        if (mouse_wheel_up())   { _m.list_scroll = max(_m.list_scroll - 3, 0); }
-    }
-    for (var _i = _m.list_scroll; _i < min(_n, _m.list_scroll + _rows); _i++) {
-        var _oi = _m.objects[_i];
-        var _y = _ly + (_i - _m.list_scroll) * _row_h;
-        var _hov = point_in_rectangle(_mx, _my, _lx, _y, _lx + _lw, _y + _row_h - 2);
-        if (_i == _m.sel) {
-            draw_set_color(make_color_rgb(38, 94, 111));
-            draw_rectangle(_lx, _y, _lx + _lw, _y + _row_h - 2, false);
-        } else if (_hov) {
-            draw_set_color(make_color_rgb(53, 61, 82));
-            draw_rectangle(_lx, _y, _lx + _lw, _y + _row_h - 2, false);
-        }
-        draw_set_color(c_white);
-        draw_text_l(_lx + 4, _y + 3, string(_i) + "  " + string(_oi.name) + "  " + string(_oi.w) + "x" + string(_oi.h));
-        if (_hov && mouse_check_button_pressed(mb_left)) { _m.sel = _i; }
-    }
-
-    // ── RIGHT: layer buttons, zoomed object, sheet ──
-    var _ex = _lx + _lw + 30;
-    var _bx = _ex;
-    var _names = ["GFX", "MASK", "COMPOSITE"];
+    draw_text_l(_x, _top + 9, "LAYER");
+    _x += 52;
+    var _lnames = ["GFX", "MASK", "COMPOSITE"];
+    var _lw = [56, 62, 100];
     for (var _l = 0; _l < 3; _l++) {
-        if (_button(_bx, _top, 110, _names[_l], _m.layer == _l, _mx, _my)) { _m.layer = _l; }
-        _bx += 118;
+        if (scr_bmpobj_ui_button(_x, _top, _lw[_l], _tb_h, _lnames[_l], _m.layer == _l, _mx, _my)) { _m.layer = _l; }
+        _x += _lw[_l] + 4;
     }
-    if (_button(_bx, _top, 130, "AUTO MASK", false, _mx, _my)) {
+    _x += 16;
+    if (scr_bmpobj_ui_button(_x, _top, 100, _tb_h, "AUTO MASK", false, _mx, _my)) {
         scr_bmpobj_auto_mask(_asset, _o);
         scr_bmpobj_cache_dirty(_asset, _m.sel);
         global.addresses_dirty = true;
     }
-    _bx += 138;
-    if (_button(_bx, _top, 80, "ZOOM " + string(_m.zoom), false, _mx, _my)) {
-        _m.zoom = _m.zoom + 4;
-        if (_m.zoom > 20) { _m.zoom = 4; }
-    }
-    _bx += 88;
-    if (_button(_bx, _top, 90, "INK " + string(_m.ink), false, _mx, _my)) { _m.ink = (_m.ink + 1) mod 16; }
-    _bx += 98;
-    if (_button(_bx, _top, 100, "PAPER " + string(_m.paper), false, _mx, _my)) { _m.paper = (_m.paper + 1) mod 16; }
+    _x += 120;
+    draw_set_color(make_color_rgb(154, 175, 198));
+    draw_text_l(_x, _top + 9, "ZOOM");
+    _x += 44;
+    if (scr_bmpobj_ui_button(_x, _top, 24, _tb_h, "-", false, _mx, _my)) { _m.zoom = max(2, _m.zoom - 2); }
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_text_l(_x + 44, _top + 9, string(_m.zoom) + "x");
+    draw_set_halign(fa_left);
+    if (scr_bmpobj_ui_button(_x + 64, _top, 24, _tb_h, "+", false, _mx, _my)) { _m.zoom = min(24, _m.zoom + 2); }
+    _x += 108;
+    var _ink = scr_bmpobj_ui_colour(_x, _top, "INK", _m.ink, _mx, _my);
+    _x += 160;
+    var _paper = scr_bmpobj_ui_colour(_x, _top, "PAPER", _m.paper, _mx, _my);
+    _m.ink = _ink;
+    _m.paper = _paper;
 
-    var _gx = _ex;
-    var _gy = _top + 40;
-    var _s = _m.zoom;
+    // ── COLUMNS ──
+    var _ptop = _top + _tb_h + 12;
+    var _list_w = 210;
+    var _lx1 = _left;
+    var _lx2 = _left + _list_w;
+    var _edit_w = clamp((_right - _lx2) * 0.45, 360, 620);
+    var _ex1 = _lx2 + _pad;
+    var _ex2 = _ex1 + _edit_w;
+    var _sx1 = _ex2 + _pad;
+    var _sx2 = _right;
+
+    // ── PARTS LIST ──
+    scr_bmpobj_ui_panel(_lx1, _ptop, _lx2, _bottom, "PARTS (" + string(_n) + ")");
+    var _row_h = 18;
+    var _ly = _ptop + 26;
+    var _rows = max(1, floor((_bottom - _ly - 4) / _row_h));
+    if (point_in_rectangle(_mx, _my, _lx1, _ly, _lx2, _bottom)) {
+        if (mouse_wheel_down()) { _m.list_scroll = min(_m.list_scroll + 3, max(0, _n - _rows)); }
+        if (mouse_wheel_up())   { _m.list_scroll = max(_m.list_scroll - 3, 0); }
+    }
+    _m.list_scroll = clamp(_m.list_scroll, 0, max(0, _n - _rows));
+    for (var _i = _m.list_scroll; _i < min(_n, _m.list_scroll + _rows); _i++) {
+        var _oi = _m.objects[_i];
+        var _y = _ly + (_i - _m.list_scroll) * _row_h;
+        var _hov = point_in_rectangle(_mx, _my, _lx1 + 2, _y, _lx2 - 2, _y + _row_h - 2);
+        if (_i == _m.sel) {
+            draw_set_color(make_color_rgb(38, 94, 111));
+            draw_rectangle(_lx1 + 2, _y, _lx2 - 2, _y + _row_h - 2, false);
+        } else if (_hov) {
+            draw_set_color(make_color_rgb(42, 50, 70));
+            draw_rectangle(_lx1 + 2, _y, _lx2 - 2, _y + _row_h - 2, false);
+        }
+        draw_set_color(c_white);
+        draw_text_l(_lx1 + 8, _y + 4, string(_oi.name));
+        draw_set_color(make_color_rgb(140, 150, 170));
+        draw_set_halign(fa_right);
+        draw_text_l(_lx2 - 8, _y + 4, string(_oi.w) + "x" + string(_oi.h));
+        draw_set_halign(fa_left);
+        if (_hov && mouse_check_button_pressed(mb_left)) { _m.sel = _i; }
+    }
+
+    // ── EDIT PANEL ──
+    scr_bmpobj_ui_panel(_ex1, _ptop, _ex2, _bottom, "EDIT  " + string(_o.name) + "   " + string(_o.w) + "x" + string(_o.h) + " cells");
     var _pw = _o.w * 8;
     var _ph = _o.h * 8;
+    var _info_h = 96;
+    var _avail_w = _edit_w - 24;
+    var _avail_h = (_bottom - _ptop) - 26 - _info_h - 16;
+    var _s = _m.zoom;
+    // shrink to fit, never past 2x
+    while (_s > 2 && (_pw * _s > _avail_w || _ph * _s > _avail_h)) { _s -= 1; }
+    var _gx = _ex1 + floor((_edit_w - _pw * _s) / 2);
+    var _gy = _ptop + 30 + max(0, floor((_avail_h - _ph * _s) / 2));
+    draw_set_color(make_color_rgb(10, 12, 18));
+    draw_rectangle(_gx - 4, _gy - 4, _gx + _pw * _s + 3, _gy + _ph * _s + 3, false);
     scr_bmpobj_draw_object(_asset, _m.sel, _gx, _gy, _s, _m.layer);
-    // cell grid
-    draw_set_color(make_color_rgb(90, 90, 120));
+    // pixel grid (only when it is readable) and cell grid
+    if (_s >= 8) {
+        draw_set_color(make_color_rgb(40, 40, 55));
+        draw_set_alpha(0.5);
+        for (var _c = 1; _c < _pw; _c++) { draw_line(_gx + _c * _s, _gy, _gx + _c * _s, _gy + _ph * _s); }
+        for (var _r = 1; _r < _ph; _r++) { draw_line(_gx, _gy + _r * _s, _gx + _pw * _s, _gy + _r * _s); }
+        draw_set_alpha(1);
+    }
+    draw_set_color(make_color_rgb(110, 110, 150));
     for (var _c = 0; _c <= _o.w; _c++) { draw_line(_gx + _c * 8 * _s, _gy, _gx + _c * 8 * _s, _gy + _ph * _s); }
     for (var _r = 0; _r <= _o.h; _r++) { draw_line(_gx, _gy + _r * 8 * _s, _gx + _pw * _s, _gy + _r * 8 * _s); }
-
-    var _info = "GFX $" + string_upper(decimal_to_hex(_o.gfx_ptr));
-    if (_o.mask_ptr >= 0) { _info += "   MASK $" + string_upper(decimal_to_hex(_o.mask_ptr)); }
-    if (scr_bmpobj_byte_off(_asset, _o, _o.gfx_ptr, 0, 0) < 0) { _info += "   (GFX OUTSIDE THIS ASSET - READ ONLY)"; }
-    var _used_in = "";
-    for (var _pi = 0; _pi < array_length(_m.poses); _pi++) {
-        var _pp = _m.poses[_pi];
-        for (var _pk = 0; _pk < array_length(_pp); _pk++) {
-            if (_pp[_pk] == _m.sel) { _used_in += " " + string(_pi); break; }
-        }
-    }
-    if (_used_in != "") {
-        draw_set_color(c_orange);
-        draw_text_l(_gx, _gy + _ph * _s + 24, "PART OF POSES:" + _used_in + "   (editing it changes all of them)");
-    }
-    draw_set_color(c_ltgray);
-    draw_text_l(_gx, _gy + _ph * _s + 8, _info + "   EDIT: L = ink/solid   R = clear/transparent   SHIFT+R (COMPOSITE) = black");
 
     // paint - every layer is editable:
     //   GFX        L = ink pixel        R = clear pixel
     //   MASK       L = solid            R = transparent (background shows)
     //   COMPOSITE  L = ink (solid)      R = transparent    SHIFT+R = black (solid)
-    if (point_in_rectangle(_mx, _my, _gx, _gy, _gx + _pw * _s - 1, _gy + _ph * _s - 1)) {
+    var _read_only = (scr_bmpobj_byte_off(_asset, _o, _o.gfx_ptr, 0, 0) < 0);
+    if (!_read_only && point_in_rectangle(_mx, _my, _gx, _gy, _gx + _pw * _s - 1, _gy + _ph * _s - 1)) {
         var _px = floor((_mx - _gx) / _s);
         var _py = floor((_my - _gy) / _s);
         var _lb = mouse_check_button(mb_left);
@@ -430,67 +499,112 @@ function scr_bmpobj_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             scr_bmpobj_cache_dirty(_asset, _m.sel);
             global.addresses_dirty = true;
         }
-        // cursor cell outline
         draw_set_color(c_yellow);
         draw_rectangle(_gx + _px * _s, _gy + _py * _s, _gx + (_px + 1) * _s - 1, _gy + (_py + 1) * _s - 1, true);
     }
 
-    // sheet: every PART, or every POSE (parts stacked as the game draws them)
-    var _sx = _gx + max(_pw * _s, 320) + 30;
-    var _sy0 = _top + 40;
-    if (_button(_sx, _top, 90, "PARTS", _m.sheet_mode == 0, _mx, _my)) { _m.sheet_mode = 0; }
-    if (array_length(_m.poses) > 0) {
-        if (_button(_sx + 98, _top, 90, "POSES", _m.sheet_mode == 1, _mx, _my)) { _m.sheet_mode = 1; }
+    // info box
+    var _iy = _bottom - _info_h;
+    draw_set_color(make_color_rgb(30, 37, 53));
+    draw_rectangle(_ex1 + 8, _iy, _ex2 - 8, _bottom - 8, false);
+    var _info = "GFX $" + string_upper(decimal_to_hex(_o.gfx_ptr));
+    if (_o.mask_ptr >= 0) { _info += "    MASK $" + string_upper(decimal_to_hex(_o.mask_ptr)); }
+    draw_set_color(c_white);
+    draw_text_l(_ex1 + 16, _iy + 8, _info);
+    if (_read_only) {
+        draw_set_color(c_orange);
+        draw_text_l(_ex1 + 16, _iy + 24, "GRAPHICS ARE OUTSIDE THIS ASSET - READ ONLY");
+    } else {
+        var _help = "L = ink   R = clear";
+        if (_m.layer == 1) { _help = "L = solid   R = transparent"; }
+        if (_m.layer == 2) { _help = "L = ink   R = transparent   SHIFT+R = black"; }
+        draw_set_color(make_color_rgb(154, 175, 198));
+        draw_text_l(_ex1 + 16, _iy + 24, _lnames[_m.layer] + ":  " + _help);
     }
-    var _cx2 = _sx;
-    var _cy2 = _sy0;
+    var _used_in = "";
+    for (var _pi = 0; _pi < array_length(_m.poses); _pi++) {
+        var _pp = _m.poses[_pi];
+        for (var _pk = 0; _pk < array_length(_pp); _pk++) {
+            if (_pp[_pk] == _m.sel) { _used_in += " " + string(_pi); break; }
+        }
+    }
+    if (_used_in != "") {
+        draw_set_color(c_orange);
+        draw_text_l(_ex1 + 16, _iy + 44, "USED IN POSES:" + _used_in);
+        draw_set_color(make_color_rgb(140, 150, 170));
+        draw_text_l(_ex1 + 16, _iy + 60, "editing this part changes every pose listed");
+    }
+
+    // ── SHEET PANEL ──
+    scr_bmpobj_ui_panel(_sx1, _ptop, _sx2, _bottom, "SHEET  - click a part to edit it, wheel scrolls");
+    var _have_poses = (array_length(_m.poses) > 0);
+    if (scr_bmpobj_ui_button(_sx2 - 190, _ptop + 2, 88, 17, "PARTS", _m.sheet_mode == 0, _mx, _my)) { _m.sheet_mode = 0; _m.sheet_scroll = 0; }
+    if (_have_poses) {
+        if (scr_bmpobj_ui_button(_sx2 - 96, _ptop + 2, 88, 17, "POSES", _m.sheet_mode == 1, _mx, _my)) { _m.sheet_mode = 1; _m.sheet_scroll = 0; }
+    } else {
+        _m.sheet_mode = 0;
+    }
+    var _st = _ptop + 28;
+    var _sb = _bottom - 6;
+    if (point_in_rectangle(_mx, _my, _sx1, _st, _sx2, _sb)) {
+        if (mouse_wheel_down()) { _m.sheet_scroll += 48; }
+        if (mouse_wheel_up())   { _m.sheet_scroll = max(0, _m.sheet_scroll - 48); }
+    }
+    var _ss = 2;
+    var _gap = 10;
+    var _cx2 = _sx1 + 10;
+    var _cy2 = _st - _m.sheet_scroll;
     var _line_h = 0;
-    draw_set_color(make_color_rgb(154, 175, 198));
-    draw_text_l(_sx + 200, _top + 7, "click a part to edit it");
-    if (_m.sheet_mode == 1 && array_length(_m.poses) > 0) {
-        for (var _pi = 0; _pi < array_length(_m.poses); _pi++) {
-            var _pp = _m.poses[_pi];
-            var _pw2 = 0;
-            var _ph2 = 0;
-            for (var _pk = 0; _pk < array_length(_pp); _pk++) {
-                var _part = _pp[_pk];
-                if (_part < 0 || _part >= _n) continue;
-                _pw2 = max(_pw2, _m.objects[_part].w * 16);
-                _ph2 += _m.objects[_part].h * 16;
-            }
-            if (_cx2 + _pw2 > _vx2 - 16) { _cx2 = _sx; _cy2 += _line_h + 8; _line_h = 0; }
-            if (_cy2 + _ph2 > _bottom) { break; }
-            var _yy = _cy2;
-            for (var _pk = 0; _pk < array_length(_pp); _pk++) {
-                var _part = _pp[_pk];
-                if (_part < 0 || _part >= _n) continue;
-                var _po = _m.objects[_part];
-                scr_bmpobj_draw_object(_asset, _part, _cx2, _yy, 2, 2);
+    var _content_bottom = _cy2;
+    // a scissor keeps scrolled items inside the panel
+    // GUI -> window pixels, same scaling the inline editors use
+    var _sx_sc = window_get_width()  / global.gui_w;
+    var _sy_sc = window_get_height() / display_get_gui_height();
+    gpu_set_scissor(floor((_sx1 + 1) * _sx_sc), floor(_st * _sy_sc), ceil((_sx2 - _sx1 - 2) * _sx_sc), ceil((_sb - _st) * _sy_sc));
+    var _count = _n;
+    if (_m.sheet_mode == 1) { _count = array_length(_m.poses); }
+    for (var _k = 0; _k < _count; _k++) {
+        // the parts making up this item, top to bottom
+        var _parts = [_k];
+        if (_m.sheet_mode == 1) { _parts = _m.poses[_k]; }
+        var _iw = 0;
+        var _ih = 0;
+        for (var _pk = 0; _pk < array_length(_parts); _pk++) {
+            var _part = _parts[_pk];
+            if (_part < 0 || _part >= _n) continue;
+            _iw = max(_iw, _m.objects[_part].w * 8 * _ss);
+            _ih += _m.objects[_part].h * 8 * _ss;
+        }
+        if (_cx2 + _iw > _sx2 - 10) { _cx2 = _sx1 + 10; _cy2 += _line_h + _gap + 12; _line_h = 0; }
+        // label above each item
+        draw_set_color(make_color_rgb(110, 120, 140));
+        draw_text_l(_cx2, _cy2, string(_k));
+        var _yy = _cy2 + 12;
+        for (var _pk = 0; _pk < array_length(_parts); _pk++) {
+            var _part = _parts[_pk];
+            if (_part < 0 || _part >= _n) continue;
+            var _po = _m.objects[_part];
+            var _w2 = _po.w * 8 * _ss;
+            var _h2 = _po.h * 8 * _ss;
+            if (_yy + _h2 >= _st && _yy <= _sb) {
+                scr_bmpobj_draw_object(_asset, _part, _cx2, _yy, _ss, 2);
                 if (_part == _m.sel) {
                     draw_set_color(c_aqua);
-                    draw_rectangle(_cx2 - 1, _yy - 1, _cx2 + _po.w * 16, _yy + _po.h * 16, true);
+                    draw_rectangle(_cx2 - 1, _yy - 1, _cx2 + _w2, _yy + _h2, true);
                 }
-                if (point_in_rectangle(_mx, _my, _cx2, _yy, _cx2 + _po.w * 16, _yy + _po.h * 16 - 1) && mouse_check_button_pressed(mb_left)) { _m.sel = _part; }
-                _yy += _po.h * 16;
+                if (point_in_rectangle(_mx, _my, _cx2, max(_yy, _st), _cx2 + _w2, min(_yy + _h2 - 1, _sb))
+                &&  mouse_check_button_pressed(mb_left)) {
+                    _m.sel = _part;
+                }
             }
-            _cx2 += _pw2 + 8;
-            _line_h = max(_line_h, _ph2);
+            _yy += _h2;
         }
-    } else {
-        for (var _i = 0; _i < _n; _i++) {
-            var _oi = _m.objects[_i];
-            var _w2 = _oi.w * 16;
-            var _h2 = _oi.h * 16;
-            if (_cx2 + _w2 > _vx2 - 16) { _cx2 = _sx; _cy2 += _line_h + 6; _line_h = 0; }
-            if (_cy2 + _h2 > _bottom) { break; }
-            scr_bmpobj_draw_object(_asset, _i, _cx2, _cy2, 2, 2);
-            if (_i == _m.sel) {
-                draw_set_color(c_aqua);
-                draw_rectangle(_cx2 - 1, _cy2 - 1, _cx2 + _w2, _cy2 + _h2, true);
-            }
-            if (point_in_rectangle(_mx, _my, _cx2, _cy2, _cx2 + _w2, _cy2 + _h2) && mouse_check_button_pressed(mb_left)) { _m.sel = _i; }
-            _cx2 += _w2 + 6;
-            _line_h = max(_line_h, _h2);
-        }
+        _cx2 += _iw + _gap;
+        _line_h = max(_line_h, _ih);
+        _content_bottom = _cy2 + 12 + _line_h;
     }
+    gpu_set_scissor(0, 0, window_get_width(), window_get_height());
+    // clamp scroll to the content
+    var _overflow = (_content_bottom + _m.sheet_scroll) - _sb;
+    _m.sheet_scroll = clamp(_m.sheet_scroll, 0, max(0, _overflow));
 }
