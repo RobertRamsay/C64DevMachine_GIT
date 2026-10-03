@@ -34,6 +34,18 @@ function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my
     var _black_semi  = [1, 3, 6, 8, 10];
     var _hover = -1;
 
+    // A playing note in an octave this keyboard doesn't show still lights its
+    // note letter, in the nearest shown octave, with its real octave written
+    // on the key - so every voice's note is always visible during playback.
+    var _lit_in = [];
+    for (var _li = 0; _li < array_length(_lit); _li++) {
+        var _ln = _lit[_li][0];
+        var _lo = _ln div 12;
+        var _fo = clamp(_lo, _oct0, _oct0 + _n_oct - 1);
+        array_push(_lit_in, [_fo * 12 + (_ln mod 12), _lit[_li][1], _lo]);
+    }
+    _lit = _lit_in;
+
     // Black keys win the hover where they overlap the whites.
     for (var _o = 0; _o < _n_oct && _hover < 0; _o++) {
         for (var _b = 0; _b < 5; _b++) {
@@ -66,6 +78,14 @@ function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my
         draw_rectangle(_wx, _y0, _wx + _ww - 1, _y1, false);
         draw_set_color(make_color_rgb(40, 40, 50));
         draw_rectangle(_wx, _y0, _wx + _ww - 1, _y1, true);
+        var _wro = scr_sound_editor_piano_lit_oct(_lit, _wn);
+        if (_wro != -1 && _wro != (_wn div 12)) {
+            // folded in from another octave: show where it really is
+            draw_set_color(c_black);
+            draw_set_halign(fa_center);
+            draw_text_l(_wx + _ww * 0.5, _y0 + _bh + 2, string(_wro));
+            draw_set_halign(fa_left);
+        }
         if ((_w mod 7) == 0) {
             draw_set_color(make_color_rgb(90, 90, 110));
             draw_text_l(_wx + 3, _y1 - 13, "C" + string(_oct0 + (_w div 7)));
@@ -87,9 +107,26 @@ function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my
                 draw_set_color(make_color_rgb(25, 25, 32));
             }
             draw_rectangle(_bx2, _y0, _bx2 + _bw, _y0 + _bh, false);
+            var _bro = scr_sound_editor_piano_lit_oct(_lit, _bn);
+            if (_bro != -1 && _bro != (_bn div 12)) {
+                draw_set_color(c_white);
+                draw_set_halign(fa_center);
+                draw_text_l(_bx2 + _bw * 0.5, _y0 + _bh - 14, string(_bro));
+                draw_set_halign(fa_left);
+            }
         }
     }
     return _hover;
+}
+
+/// Real octave of the playing note lit on key _note (after folding), or -1.
+function scr_sound_editor_piano_lit_oct(_lit, _note) {
+    for (var _i = 0; _i < array_length(_lit); _i++) {
+        if (_lit[_i][0] == _note && array_length(_lit[_i]) > 2) {
+            return _lit[_i][2];
+        }
+    }
+    return -1;
 }
 
 /// Colour of a playing note on the keyboard, or -1.
