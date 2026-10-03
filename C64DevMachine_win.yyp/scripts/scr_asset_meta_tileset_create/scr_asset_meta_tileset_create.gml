@@ -65,5 +65,15 @@ function scr_asset_meta_tileset_create(_asset) {
                                                //     row first - for vertical scrollers that feed new rows in at
                                                //     the top, so the map is drawn the way it looks on screen.
     _asset.meta.map_names              = [];   // optional name per real map, shown on its tab ("" = MAP n)
+    // MAP CHAINS (scr_mts_chain): per-map repeat + fixed address, the chains
+    // themselves, their extra byte columns, and the table export settings.
+    _asset.meta.map_reps               = [];   // per map: times it is drawn in a row (1+)
+    _asset.meta.map_addr               = [];   // per map: RAW ROWS address, -1 = after the previous map
+    _asset.meta.chains                 = [];   // { name, maps[], cols[] }
+    _asset.meta.chain_cols             = [];   // extra byte column names, one byte per chain each
+    _asset.meta.chain_dir              = 0;    // preview / feed direction: 0 UP 1 DOWN 2 LEFT 3 RIGHT
+    _asset.meta.chain_emit             = 0;    // 1 = emit the map + chain tables (RAW ROWS only)
+    _asset.meta.chain_tab_addr         = -1;   // table address, -1 = straight after the last map
+    _asset.meta.active_chain           = 0;
     _asset.address                     = 0x8000;
 }

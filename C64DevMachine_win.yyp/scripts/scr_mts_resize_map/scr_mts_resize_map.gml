@@ -57,6 +57,7 @@ function scr_mts_resize_map(_m, _map_idx, _new_w_ch, _new_h_ch) {
 /// @desc RAW ROWS size: every real map flattened to chars, maps back to back.
 /// @param {struct} _m  the META_TILESET meta
 function scr_mts_raw_rows_size(_m) {
+    // Maps only (tables and fixed addresses: scr_mts_raw_rows_ranges).
     var _total = 0;
     for (var _mi = 0; _mi < array_length(_m.maps); _mi++) {
         var _cols = 1;
@@ -84,6 +85,12 @@ function scr_mts_raw_rows_emit(_list, _a) {
     var _sh    = _m.stamp_h;
     var _cells = _sw * _sh;
     for (var _mi = 0; _mi < array_length(_m.maps); _mi++) {
+        // MAP CHAINS: a map with its own address starts a new run there.
+        if (_mi < array_length(_m.map_addr)) {
+            if (_m.map_addr[_mi] >= 0) {
+                array_push(_list, ["org", _m.map_addr[_mi]]);
+            }
+        }
         array_push(_list, ["label", _a.name + "_MAP" + string(_mi)]);
         var _grid = _m.maps[_mi];
         var _cols = 1;
@@ -117,5 +124,9 @@ function scr_mts_raw_rows_emit(_list, _a) {
                 }
             }
         }
+    }
+    // MAP CHAINS: the map / chain tables after the maps (or at chain_tab_addr).
+    if (_m.chain_emit == 1) {
+        scr_mts_chain_emit(_list, _a);
     }
 }

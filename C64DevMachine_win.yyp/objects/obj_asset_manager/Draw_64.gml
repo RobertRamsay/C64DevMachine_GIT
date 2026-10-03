@@ -8933,7 +8933,11 @@ case "META_TILESET": {
     draw_text_l((_rv_x1 + _rr_x2) * 0.5, _cy + 1, _rr_lbl);
     draw_set_halign(fa_left);
     if (_rr_on) {
-        var _rr_sz = scr_mts_raw_rows_size(_m);
+        var _rr_sz  = 0;
+        var _rr_rng = scr_mts_raw_rows_ranges(_asset);
+        for (var _rri = 0; _rri < array_length(_rr_rng); _rri++) {
+            _rr_sz += _rr_rng[_rri][1];
+        }
         draw_set_color(make_color_rgb(140, 200, 180));
         draw_text_l(_rr_x2 + 6, _cy + 1, "$" + string_upper(decimal_to_hex(_asset.address)) + " " + string(_rr_sz) + "B");
     }
@@ -10129,12 +10133,32 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         }
     }
 
+    // ===== CHAINS toggle: the map area becomes the MAP CHAINS panel =====
+    var _chn_x1  = _mvt_x2 + 8;
+    var _chn_x2  = _chn_x1 + 70;
+    var _chn_hov = point_in_rectangle(_mx, _my, _chn_x1, _vo_y, _chn_x2, _vo_y + 18);
+    if (mts_chain_mode) {
+        draw_set_color(make_color_rgb(70, 50, 10));
+    } else {
+        draw_set_color(make_color_rgb(30, 30, 20));
+    }
+    draw_rectangle(_chn_x1, _vo_y, _chn_x2, _vo_y + 18, false);
+    draw_set_color(make_color_rgb(220, 170, 60));
+    draw_rectangle(_chn_x1, _vo_y, _chn_x2, _vo_y + 18, true);
+    draw_set_color(make_color_rgb(255, 220, 120));
+    draw_set_halign(fa_center);
+    draw_text_l((_chn_x1 + _chn_x2) * 0.5, _vo_y + 2, L("CHAINS"));
+    draw_set_halign(fa_left);
+    if (_chn_hov && mouse_check_button_pressed(mb_left)) {
+        mts_chain_mode = !mts_chain_mode;
+    }
+
     // Mouse wheel over the map area zooms continuously: MAP mode zooms up to
     // (and hands off into VIEW mode at) VIEW's own fit zoom, and zooming out
     // from VIEW mode drops back into MAP mode at that same zoom level before
     // continuing to zoom out from there (8px floor). VIEW's W/H spinners
     // still resize the window itself.
-    var _wheel_over_map = point_in_rectangle(_mx, _my, _test_x1, _canvas_y1, _test_x2, _canvas_y2);
+    var _wheel_over_map = point_in_rectangle(_mx, _my, _test_x1, _canvas_y1, _test_x2, _canvas_y2) && !mts_chain_mode;   // the CHAINS panel uses the wheel itself
     if (_wheel_over_map)
     {
         if (_m.edit_view_mode == 0)
@@ -10300,17 +10324,9 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             if (_shov && mouse_check_button_pressed(mb_right) && _m.map_count > 0) {
                 array_delete(_m.maps, _mbi, 1);
                 if (array_length(_m.map_bytes) > _mbi) array_delete(_m.map_bytes, _mbi, 1);
-                // Per-map dims and names travel with the map (maps can differ in
-                // size in RAW ROWS tilesets, so a stale entry would mis-size the rest).
-                if (array_length(_m.map_w) > _mbi) {
-                    array_delete(_m.map_w, _mbi, 1);
-                }
-                if (array_length(_m.map_h) > _mbi) {
-                    array_delete(_m.map_h, _mbi, 1);
-                }
-                if (array_length(_m.map_names) > _mbi) {
-                    array_delete(_m.map_names, _mbi, 1);
-                }
+                // Per-map dims / names / repeats / addresses travel with the map,
+                // and chains drop it (later maps are renumbered).
+                scr_mts_map_removed(_m, _mbi);
                 _m.map_count = max(0, _m.map_count - 1);
                 if (_m.active_map >= _m.map_count) _m.active_map = _m.map_count - 1;
                 _m.is_dirty = true;
@@ -10338,6 +10354,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
                 array_push(_m.map_w, _add_w);
                 array_push(_m.map_h, _add_h);
                 array_push(_m.map_names, "");
+                scr_mts_maps_sync(_m);
                 _m.map_count++;
                 _m.active_map = _m.map_count - 1;
                 _m.is_dirty = true;
@@ -10531,7 +10548,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             var _hthumb_hov = point_in_rectangle(_mx, _my, _hthumb_x, _hsb_y1, _hthumb_x + _hthumb_w, _hsb_y2);
             draw_set_color(_hthumb_hov ? _sb_thumb_hov : _sb_thumb_col);
             draw_rectangle(_hthumb_x, _hsb_y1, _hthumb_x + _hthumb_w, _hsb_y2, false);
-            if (_hthumb_hov && mouse_check_button_pressed(mb_left)) {
+            if (_hthumb_hov && !mts_chain_mode && mouse_check_button_pressed(mb_left)) {
                 _m.hsb_drag_active    = true;
                 _m.hsb_drag_start_mx  = _mx;
                 _m.hsb_drag_start_col = _m.map_pan_col;
@@ -10559,7 +10576,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             var _vthumb_hov = point_in_rectangle(_mx, _my, _vsb_x1, _vthumb_y, _vsb_x2, _vthumb_y + _vthumb_h);
             draw_set_color(_vthumb_hov ? _sb_thumb_hov : _sb_thumb_col);
             draw_rectangle(_vsb_x1, _vthumb_y, _vsb_x2, _vthumb_y + _vthumb_h, false);
-            if (_vthumb_hov && mouse_check_button_pressed(mb_left)) {
+            if (_vthumb_hov && !mts_chain_mode && mouse_check_button_pressed(mb_left)) {
                 _m.vsb_drag_active    = true;
                 _m.vsb_drag_start_my  = _my;
                 _m.vsb_drag_start_row = _m.map_pan_row;
@@ -10629,7 +10646,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     }
 
   // Test area interaction (suppressed while the SLICE modal is open)
-    if (!global.integer_box_open && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2)) {
+    if (!global.integer_box_open && !mts_chain_mode && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2)) {
         // Screen cell -> grid cell. VIEW mode draws from _draw_col0/_draw_row0
         // with a sub-metatile pixel shift, so add that shift back into the mouse
         // pixel before dividing, then add the draw-range start.
@@ -10858,6 +10875,21 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             _m.maps[_m.active_map] = array_create(_test_cols * _test_rows, -1);
         }
         _m.is_dirty  = true;
+    }
+
+    // ---- MAP CHAINS panel (CHAINS toggle) - over the map area, below the tabs ----
+    if (mts_chain_mode) {
+        var _chn_gx = {
+            bg:        _ts_bg,
+            mixed:     (_ts_global_mixed == 1),
+            eff_mixed: _eff_mixed,
+            ecm:       _ecm_mode,
+            ecm_cols:  _ecm_bg_cols,
+            atlas_ok:  _mts_atlas_ok,
+            mc1:       _mts_mc1_col,
+            mc2:       _mts_mc2_col
+        };
+        scr_mts_chain_panel(_m, _asset, _test_x1, _msel_y0 + _msel_area_h + 4, _test_x2, _canvas_y2, _mx, _my, _chn_gx);
     }
 
     // ---- A: CHAR EDITOR (bottom left, below stamp list) ----

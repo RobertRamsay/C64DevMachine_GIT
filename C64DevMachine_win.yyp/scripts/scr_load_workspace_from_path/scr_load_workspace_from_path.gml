@@ -912,6 +912,32 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 while (array_length(_new_asset.meta.map_names) < array_length(_new_asset.meta.maps)) {
                     array_push(_new_asset.meta.map_names, "");
                 }
+                // MAP CHAINS (scr_mts_chain). Older saves have none of these.
+                if (variable_struct_exists(_tsm, "map_reps")) {
+                    _new_asset.meta.map_reps = _tsm.map_reps;
+                }
+                if (variable_struct_exists(_tsm, "map_addr")) {
+                    _new_asset.meta.map_addr = _tsm.map_addr;
+                }
+                if (variable_struct_exists(_tsm, "chains")) {
+                    _new_asset.meta.chains = _tsm.chains;
+                }
+                if (variable_struct_exists(_tsm, "chain_cols")) {
+                    _new_asset.meta.chain_cols = _tsm.chain_cols;
+                }
+                if (variable_struct_exists(_tsm, "chain_dir")) {
+                    _new_asset.meta.chain_dir = real(_tsm.chain_dir);
+                }
+                if (variable_struct_exists(_tsm, "chain_emit")) {
+                    _new_asset.meta.chain_emit = real(_tsm.chain_emit);
+                }
+                if (variable_struct_exists(_tsm, "chain_tab_addr")) {
+                    _new_asset.meta.chain_tab_addr = real(_tsm.chain_tab_addr);
+                }
+                if (variable_struct_exists(_tsm, "active_chain")) {
+                    _new_asset.meta.active_chain = real(_tsm.active_chain);
+                }
+                scr_mts_maps_sync(_new_asset.meta);
 
 	            // Backfill per-map dim arrays to map_count so the viewer never
 	            // indexes past a short or empty array (old saves store no map_w/map_h).

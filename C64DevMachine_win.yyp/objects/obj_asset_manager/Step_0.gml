@@ -432,7 +432,9 @@ if (editing_map_dim) {
     // ---- META_TILESET map name (double-click a map tab) ----
     // Letters, digits, space and a few marks, upper case, 12 max. Enter keeps
     // it, Esc cancels, an empty name puts the tab back to MAP n.
-    if (editing_map_field == "NAME") {
+    if (editing_map_field == "NAME" || editing_map_field == "CHAIN" || editing_map_field == "COLNAME"
+     || editing_map_field == "COLVAL" || editing_map_field == "REPS" || editing_map_field == "ADDR"
+     || editing_map_field == "TABADDR") {
         if (keyboard_string != "") {
             var _nk = string_upper(keyboard_string);
             keyboard_string = "";
@@ -445,7 +447,7 @@ if (editing_map_dim) {
                 if (_nch >= "0" && _nch <= "9") {
                     _nok = true;
                 }
-                if (_nch == " " || _nch == "-" || _nch == "_" || _nch == "." || _nch == "#") {
+                if (_nch == " " || _nch == "-" || _nch == "_" || _nch == "." || _nch == "#" || _nch == "$") {
                     _nok = true;
                 }
                 if (_nok && string_length(editing_map_string) < 12) {
@@ -465,14 +467,56 @@ if (editing_map_dim) {
                 var _na = ds_list_find_value(asset_list, editing_map_asset_idx);
                 if (_na.type == "META_TILESET") {
                     var _nm = _na.meta;
-                    if (editing_map_name_idx >= 0 && editing_map_name_idx < array_length(_nm.maps)) {
-                        while (array_length(_nm.map_names) < array_length(_nm.maps)) {
-                            array_push(_nm.map_names, "");
-                        }
-                        _nm.map_names[editing_map_name_idx] = string_trim(editing_map_string);
-                        _nm.is_dirty      = true;
-                        global.undo_dirty = true;
+                    scr_mts_maps_sync(_nm);
+                    var _ni = editing_map_name_idx;
+                    var _nv = scr_mts_parse_num(editing_map_string);
+                    switch (editing_map_field) {
+                        case "NAME":
+                            if (_ni >= 0 && _ni < array_length(_nm.maps)) {
+                                _nm.map_names[_ni] = string_trim(editing_map_string);
+                            }
+                            break;
+                        case "CHAIN":
+                            if (_ni >= 0 && _ni < array_length(_nm.chains)) {
+                                _nm.chains[_ni].name = string_trim(editing_map_string);
+                            }
+                            break;
+                        case "COLNAME":
+                            if (string_trim(editing_map_string) != "") {
+                                if (_ni < 0) {
+                                    array_push(_nm.chain_cols, string_trim(editing_map_string));
+                                    scr_mts_maps_sync(_nm);
+                                } else if (_ni < array_length(_nm.chain_cols)) {
+                                    _nm.chain_cols[_ni] = string_trim(editing_map_string);
+                                }
+                            }
+                            break;
+                        case "COLVAL":
+                            if (_nv >= 0 && _ni >= 0 && _ni < array_length(_nm.chains)) {
+                                if (editing_map_col_idx >= 0 && editing_map_col_idx < array_length(_nm.chains[_ni].cols)) {
+                                    _nm.chains[_ni].cols[editing_map_col_idx] = _nv & 0xFF;
+                                }
+                            }
+                            break;
+                        case "REPS":
+                            if (_nv >= 1 && _ni >= 0 && _ni < array_length(_nm.maps)) {
+                                _nm.map_reps[_ni] = min(255, _nv);
+                            }
+                            break;
+                        case "ADDR":
+                            // empty / AUTO = straight after the previous map
+                            if (_ni >= 0 && _ni < array_length(_nm.maps)) {
+                                _nm.map_addr[_ni] = min(0xFFFF, _nv);
+                            }
+                            break;
+                        case "TABADDR":
+                            _nm.chain_tab_addr = min(0xFFFF, _nv);
+                            break;
                     }
+                    _nm.is_dirty            = true;
+                    global.undo_dirty       = true;
+                    global.memory_bar_dirty = true;
+                    global.addresses_dirty  = true;
                 }
             }
             _name_done = true;
@@ -487,6 +531,7 @@ if (editing_map_dim) {
             editing_map_string        = "";
             editing_map_asset_idx     = -1;
             editing_map_name_idx      = -1;
+            editing_map_col_idx       = -1;
             global.is_any_text_active = false;
             keyboard_string           = "";
         }

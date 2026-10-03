@@ -140,6 +140,14 @@ var _base = "unsaved";
                 _mo.map_h        = variable_struct_exists(_me, "map_h")        ? _me.map_h        : [];
                 _mo.raw_rows     = _me.raw_rows;
                 _mo.map_names    = _me.map_names;
+                _mo.map_reps       = _me.map_reps;
+                _mo.map_addr       = _me.map_addr;
+                _mo.chains         = _me.chains;
+                _mo.chain_cols     = _me.chain_cols;
+                _mo.chain_dir      = _me.chain_dir;
+                _mo.chain_emit     = _me.chain_emit;
+                _mo.chain_tab_addr = _me.chain_tab_addr;
+                _mo.active_chain   = _me.active_chain;
             }
             if (_a.type == "SPRITE_MASK") {
                 _mo = scr_sprmask_save_meta(_a);

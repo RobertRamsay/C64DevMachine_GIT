@@ -252,6 +252,14 @@ if (instance_exists(obj_asset_manager)) {
             _meta_out.map_h        = variable_struct_exists(_a.meta, "map_h") ? _a.meta.map_h : [];
             _meta_out.raw_rows     = _a.meta.raw_rows;
             _meta_out.map_names    = _a.meta.map_names;
+            _meta_out.map_reps       = _a.meta.map_reps;
+            _meta_out.map_addr       = _a.meta.map_addr;
+            _meta_out.chains         = _a.meta.chains;
+            _meta_out.chain_cols     = _a.meta.chain_cols;
+            _meta_out.chain_dir      = _a.meta.chain_dir;
+            _meta_out.chain_emit     = _a.meta.chain_emit;
+            _meta_out.chain_tab_addr = _a.meta.chain_tab_addr;
+            _meta_out.active_chain   = _a.meta.active_chain;
         }
 		
 		

@@ -766,9 +766,11 @@ var _addr_total = 65536;
 				    // address here creates a false memory-bar allocation.
 				    // RAW ROWS is the exception: the maps really are emitted at the address.
 				    if (_a.meta.raw_rows >= 1) {
-				        var _rr_sz = scr_mts_raw_rows_size(_a.meta);
-				        if (_rr_sz > 0) {
-				            array_push(_segments, { addr: _a.address, size: _rr_sz, col: make_color_rgb(40, 200, 180), type: "ASSET", name: _a.name + " (RAW ROWS)", lines: [], node_id: noone, no_conflict: _a_is_load_later, conflict: false, load_later: _a_is_load_later });
+				        // One segment per run of maps (fixed map addresses split the
+				        // output), plus the MAP CHAINS tables when they are emitted.
+				        var _rr_rng = scr_mts_raw_rows_ranges(_a);
+				        for (var _rri = 0; _rri < array_length(_rr_rng); _rri++) {
+				            array_push(_segments, { addr: _rr_rng[_rri][0], size: _rr_rng[_rri][1], col: make_color_rgb(40, 200, 180), type: "ASSET", name: _a.name + " (RAW ROWS)", lines: [], node_id: noone, no_conflict: _a_is_load_later, conflict: false, load_later: _a_is_load_later });
 				        }
 				    }
 				    break;

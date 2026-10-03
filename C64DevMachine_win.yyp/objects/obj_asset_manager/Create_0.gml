@@ -238,6 +238,13 @@ editing_map_asset_idx = -1;
 editing_map_name_idx  = -1;     // META_TILESET map being renamed (editing_map_field == "NAME")
 mts_tab_click_map     = -1;     // last map tab clicked, for double-click rename
 mts_tab_click_time    = 0;      // current_time of that click (ms)
+editing_map_col_idx   = -1;     // MAP CHAINS column being typed into (COLVAL)
+// MAP CHAINS panel (scr_mts_chain_panel) - editor state, not saved
+mts_chain_mode         = false; // true = the map area shows the CHAINS panel
+mts_chain_scroll       = 0;     // preview position, in lines from the chain start
+mts_chain_sel_entry    = -1;    // selected entry of the active chain
+mts_chain_list_scroll  = 0;
+mts_chain_entry_scroll = 0;
 
 // -------------------------------------------------------
 // SFX_DATA ASSET
