@@ -343,7 +343,54 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // Distinct ~PITCH / ~PULSE tables, emitted once each and shared by address.
     var _lane_sources = [];
     for (var _lsi = 0; _lsi < array_length(_instruments); _lsi++) array_push(_lane_sources, scr_instrument_ensure_compiled(_instruments[_lsi]));
-    var _lane_registry = { count: 0, labels: {}, emitted: {}, sources: _lane_sources };
+    var _lane_registry = { count: 0, labels: {}, emitted: {}, sources: _lane_sources, reps: false, keep: {} };
+    // ── TABLE REPEATS ── runs of identical table records are stored once plus a
+    // repeat record [0, $FE, back, n] (scr_music_lane_compress). Keep-running
+    // tables are left alone, and so is a song with a table whose Ln goes back
+    // exactly 254 bytes ($FE is the repeat marker).
+    var _lane_reps_used = false;
+    var _lane_back254 = false;
+    for (var _kri = 0; _kri < array_length(_table_pack.streams); _kri++) {
+        var _kops = _table_pack.streams[_kri];
+        for (var _krj = 0; _krj < array_length(_kops); _krj++) {
+            var _kop = _kops[_krj];
+            if (!_kop.raw && ((_kop.bytes[0] >= 17 && _kop.bytes[0] <= 19) || (_kop.bytes[0] >= 24 && _kop.bytes[0] <= 26))) {
+                var _kpos = _kop.bytes[1] + _kop.bytes[2] * 256;
+                for (var _krk = 0; _krk < array_length(_kops); _krk++) {
+                    if (_kops[_krk].raw && _kops[_krk].pos == _kpos) {
+                        variable_struct_set(_lane_registry.keep, scr_music_lane_content(_kops[_krk].bytes, 0, array_length(_kops[_krk].bytes)), true);
+                    }
+                }
+            }
+        }
+    }
+    for (var _kri = 0; _kri < array_length(_table_pack.streams); _kri++) {
+        var _kops = _table_pack.streams[_kri];
+        for (var _krj = 0; _krj < array_length(_kops); _krj++) {
+            if (!_kops[_krj].raw) {
+                continue;
+            }
+            var _kb = _kops[_krj].bytes;
+            var _kc = scr_music_lane_content(_kb, 0, array_length(_kb));
+            if (variable_struct_exists(_lane_registry.keep, _kc)) {
+                if (scr_music_lane_back254(_kb)) {
+                    _lane_back254 = true;
+                }
+                continue;
+            }
+            var _kz = scr_music_lane_compress(_kb);
+            if (_kz.reps) {
+                _lane_reps_used = true;
+            }
+            if (scr_music_lane_back254(_kz.bytes)) {
+                _lane_back254 = true;
+            }
+        }
+    }
+    if (_lane_back254) {
+        _lane_reps_used = false;
+    }
+    _lane_registry.reps = _lane_reps_used;
     var _vib_op_used = false;   // V$xy in an instrument program
     // V$xy in a program starts the instrument vibrato part-way through a note.
     for (var _vri = 0; _vri < array_length(_table_pack.streams); _vri++) {
@@ -358,6 +405,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     }
 
     var _lbl_dskip = _key + "dskip";
+    // Bytes seek clears from <key>st: the state tables and the scratch bytes
+    // before the filter shadows (set at the end, where they are emitted).
+    var _sng_clear_n = 0;
     // Per-voice effect state tables (see section 7).
     var _sng_state_tables = ["fql", "fqh", "fx", "fxv", "tgl", "tgh", "cvs", "cvd",
                              "ivdl", "ivs", "ivp", "vbc", "vdir", "vol", "voh", "pcmd", "pval",
@@ -375,9 +425,16 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // Four-step tables: step rate flag and the table's own current speed (the
     // applied speed is then the sum of four steps each frame).
     if (_rate4_used) array_push(_sng_state_tables, "lnr", "lnrq", "lnrf", "lvl", "lvlq", "lvlf", "lvh", "lvhq", "lvhf");
+    if (_lane_reps_used) array_push(_sng_state_tables, "lnp", "lnpq", "lnpf");   // table repeat counters
     if (_tables_used) array_push(_sng_state_tables, "trl", "trh");
     // Free timing: per-voice order row, row, ticks left, speed, stopped flag.
     if (_free) array_push(_sng_state_tables, "vor", "vrw", "vtk", "vsp", "vst");
+    // Scratch bytes before the filter shadows (see section 7): seek clears
+    // these with the state tables.
+    _sng_clear_n = array_length(_sng_state_tables) * 3 + 7;
+    if (_free) _sng_clear_n += 2;
+    if (_rate4_used) _sng_clear_n += 3;
+    if (_lanes_used) _sng_clear_n += 2;
     array_push(_list, ["jmp_abs", _lbl_dskip, _id]);
     if (array_length(_nt_custom) == 96) {
         array_push(_list, ["label", _nt_lo]);
@@ -778,55 +835,9 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["byte", _song_start[_sgi2], _id]);
     }
 
-    // ── 7. EFFECT STATE (RAM, not ZP) ── 3 bytes per table, one per voice.
-    // Every table is also labelled per voice (<table>_0/_1/_2) so the unrolled
-    // per-voice code can address its own byte directly, while the shared
-    // command/effect routines index the same table with X = voice.
-    // The whole block is cleared by init/seek.
-    array_push(_list, ["label", _key + "st"]);
-    for (var _sti = 0; _sti < array_length(_sng_state_tables); _sti++) {
-        array_push(_list, ["label", _key + _sng_state_tables[_sti]]);
-        for (var _stv = 0; _stv < 3; _stv++) {
-            array_push(_list, ["label", _key + _sng_state_tables[_sti] + "_" + string(_stv)]);
-            array_push(_list, ["byte", 0, _id]);
-        }
-    }
-    // Shared scratch: the row's command/value, vibrato speed/depth in use,
-    // the HR-waiting flag handed to the effect routine, and the live tempo.
-    // ... plus the filter shadows ($D415-$D418 can't be read back): cutoff as an
-    // 11-bit value (fcl/fch), $D417 and $D418 copies, and a work byte.
-    var _sng_scratch = ["rcmd", "rval", "vts", "vtd", "hrw", "spd", "fcl", "fch", "f17", "f18", "ftmp"];
-    // Free timing: F80-FFF zero-length-row flag, and its per-call guard.
-    if (_free) array_push(_sng_scratch, "rzero", "rzc");
-    if (_rate4_used) array_push(_sng_scratch, "lacl", "lach", "lsub");
-    if (_lanes_used) array_push(_sng_scratch, "lnal", "lnah");   // table address handed to lngo
-    for (var _sci = 0; _sci < array_length(_sng_scratch); _sci++) {
-        array_push(_list, ["label", _key + _sng_scratch[_sci]]);
-        array_push(_list, ["byte", 0, _id]);
-    }
-
-    if (_lock) {
-        // VOICE LOCK flags, stride 7 so Y/X = voice * 7 indexes them.
-        array_push(_list, ["label", _key + "vlock"]);
-        for (var _vlb = 0; _vlb < 15; _vlb++) {
-            array_push(_list, ["byte", 0, _id]);
-        }
-    }
-
-    if (_sfx) {
-        // Sound-effect state, GoatTracker-style: per voice a frame counter
-        // (0 = no effect), and the effect data pointer. Laid out at a stride of
-        // 7 so X = voice * 7 (the caller's channel offset) indexes it.
-        array_push(_list, ["label", _key + "sfxc"]);
-        array_push(_list, ["byte", 0, _id]);
-        array_push(_list, ["label", _key + "sfxl"]);
-        array_push(_list, ["byte", 0, _id]);
-        array_push(_list, ["label", _key + "sfxh"]);
-        for (var _sfb = 0; _sfb < 15; _sfb++) {
-            array_push(_list, ["byte", 0, _id]);
-        }
-    }
-
+    // ── 7. EFFECT STATE ── emitted at the END of the block (just before
+    // rtskip), so a standalone SID can leave it out of the file: init/seek
+    // clear it. See the end of this function.
     array_push(_list, ["label", _lbl_dskip]);
 
     // ════════════════════════════════════════════════════════════════
@@ -942,7 +953,13 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     }
     // Clear every voice's effect state and restore the asset's tempo (an FXX
     // command changes it at runtime).
-    array_push(_list, ["ldx_imm", (array_length(_sng_state_tables) * 3) - 1, _id]);
+    // State tables and scratch (all of it 0 at the start; the end of the block
+    // need not be in a standalone SID's file). Over 256 bytes: state only.
+    var _clr_n = _sng_clear_n;
+    if (_clr_n <= 0 || _clr_n > 256) {
+        _clr_n = array_length(_sng_state_tables) * 3;
+    }
+    array_push(_list, ["ldx_imm", (_clr_n - 1) & 0xFF, _id]);
     array_push(_list, ["lda_imm", 0x00, _id]);
     array_push(_list, ["label",   _key + "stclr"]);
     array_push(_list, ["sta_abx", _key + "st", _id]);
@@ -2326,6 +2343,32 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["iny", 0, _id]);
         array_push(_list, ["lda_izy", _S_PTR, _id]);
         array_push(_list, ["beq", _ln + "ret", _id]);
+        if (_lane_reps_used) {
+            // [0, $FE, back, n]: go back over the block n more times, then on.
+            array_push(_list, ["cmp_imm", 0xFE, _id]);
+            array_push(_list, ["bne", _ln + "nrp", _id]);
+            array_push(_list, ["iny", 0, _id]);
+            array_push(_list, ["lda_izy", _S_PTR, _id]);
+            array_push(_list, ["sta_zp", _S_TMP, _id]);           // back
+            array_push(_list, ["iny", 0, _id]);
+            array_push(_list, ["lda_abx", _key + "lnp", _id]);
+            array_push(_list, ["bne", _ln + "rpd", _id]);
+            array_push(_list, ["lda_izy", _S_PTR, _id]);         // first time here: n
+            array_push(_list, ["sta_abx", _key + "lnp", _id]);
+            array_push(_list, ["jmp_abs", _ln + "bk2", _id]);
+            array_push(_list, ["label", _ln + "rpd"]);
+            array_push(_list, ["dec_abx", _key + "lnp", _id]);
+            array_push(_list, ["bne", _ln + "bk2", _id]);
+            array_push(_list, ["clc", 0, _id]);                    // done: past the record
+            array_push(_list, ["lda_abx", _key + "lnl", _id]);
+            array_push(_list, ["adc_imm", 4, _id]);
+            array_push(_list, ["sta_abx", _key + "lnl", _id]);
+            array_push(_list, ["bcc", _ln + "rpf", _id]);
+            array_push(_list, ["inc_abx", _key + "lnh", _id]);
+            array_push(_list, ["label", _ln + "rpf"]);
+            array_push(_list, ["jmp_abs", _ln + "fetch", _id]);
+            array_push(_list, ["label", _ln + "nrp"]);
+        }
         if (_lane_jumps_used) {
             // [0, $FF, lo, hi]: carry on in another (shared) table
             array_push(_list, ["cmp_imm", 0xFF, _id]);
@@ -2342,6 +2385,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["label", _ln + "back"]);
         }
         array_push(_list, ["sta_zp", _S_TMP, _id]);
+        array_push(_list, ["label", _ln + "bk2"]);
         array_push(_list, ["sec", 0, _id]);
         array_push(_list, ["lda_abx", _key + "lnl", _id]);
         array_push(_list, ["sbc_zp", _S_TMP, _id]);
@@ -2405,6 +2449,10 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["lsr_a", 0, _id]);            // bit 1: four steps a frame
             array_push(_list, ["and_imm", 0x01, _id]);
             array_push(_list, ["sta_abx", _key + "lnr", _id]);
+        }
+        if (_lane_reps_used) {
+            array_push(_list, ["lda_imm", 0, _id]);
+            array_push(_list, ["sta_abx", _key + "lnp", _id]);   // a fresh table: no repeat running
         }
         array_push(_list, ["lda_abs", _key + "lnal", _id]);
         array_push(_list, ["sta_abx", _key + "lnl", _id]);
@@ -2499,6 +2547,58 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
 
     if (_dg_plan.used) {
         scr_sid_song_digi_emit_runtime(_list, _id, _key, _dg_plan, _chip_base, _S_ORD, _S_ROW, _S_PTR);
+    }
+
+    // ── 7. EFFECT STATE (RAM, not ZP) ── 3 bytes per table, one per voice.
+    // Every table is also labelled per voice (<table>_0/_1/_2) so the unrolled
+    // per-voice code can address its own byte directly, while the shared
+    // command/effect routines index the same table with X = voice.
+    // The whole block is cleared by init/seek.
+    array_push(_list, ["label", _key + "st"]);
+    for (var _sti = 0; _sti < array_length(_sng_state_tables); _sti++) {
+        array_push(_list, ["label", _key + _sng_state_tables[_sti]]);
+        for (var _stv = 0; _stv < 3; _stv++) {
+            array_push(_list, ["label", _key + _sng_state_tables[_sti] + "_" + string(_stv)]);
+            array_push(_list, ["byte", 0, _id]);
+        }
+    }
+    // Shared scratch: the row's command/value, vibrato speed/depth in use,
+    // the HR-waiting flag handed to the effect routine, and the live tempo.
+    // ... plus the filter shadows ($D415-$D418 can't be read back): cutoff as an
+    // 11-bit value (fcl/fch), $D417 and $D418 copies, and a work byte.
+    var _sng_scratch = ["rcmd", "rval", "vts", "vtd", "hrw", "spd", "ftmp"];
+    // Free timing: F80-FFF zero-length-row flag, and its per-call guard.
+    if (_free) array_push(_sng_scratch, "rzero", "rzc");
+    if (_rate4_used) array_push(_sng_scratch, "lacl", "lach", "lsub");
+    if (_lanes_used) array_push(_sng_scratch, "lnal", "lnah");   // table address handed to lngo
+    // The filter shadows go last: init sets them BEFORE seek clears the rest
+    // (_sng_clear_n, worked out up front, stops just before them).
+    array_push(_sng_scratch, "fcl", "fch", "f17", "f18");
+    for (var _sci = 0; _sci < array_length(_sng_scratch); _sci++) {
+        array_push(_list, ["label", _key + _sng_scratch[_sci]]);
+        array_push(_list, ["byte", 0, _id]);
+    }
+
+    if (_lock) {
+        // VOICE LOCK flags, stride 7 so Y/X = voice * 7 indexes them.
+        array_push(_list, ["label", _key + "vlock"]);
+        for (var _vlb = 0; _vlb < 15; _vlb++) {
+            array_push(_list, ["byte", 0, _id]);
+        }
+    }
+
+    if (_sfx) {
+        // Sound-effect state, GoatTracker-style: per voice a frame counter
+        // (0 = no effect), and the effect data pointer. Laid out at a stride of
+        // 7 so X = voice * 7 (the caller's channel offset) indexes it.
+        array_push(_list, ["label", _key + "sfxc"]);
+        array_push(_list, ["byte", 0, _id]);
+        array_push(_list, ["label", _key + "sfxl"]);
+        array_push(_list, ["byte", 0, _id]);
+        array_push(_list, ["label", _key + "sfxh"]);
+        for (var _sfb = 0; _sfb < 15; _sfb++) {
+            array_push(_list, ["byte", 0, _id]);
+        }
     }
 
     array_push(_list, ["label", _L_skip]);
