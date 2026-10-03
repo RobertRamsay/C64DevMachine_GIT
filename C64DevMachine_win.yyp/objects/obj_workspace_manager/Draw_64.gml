@@ -1206,18 +1206,30 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
         // ,8 // TOP DOWN (LITE)
         // ,9 // TOP DOWN (PRO)
     ];
-    if (gui_menu_open == 8) _visible_templates = [10]; // ZYRONS ESCAPE
+    // PORTS: negative entries are sub-headers (-1 GAMES, -2 MUSIC+GFX), not clickable
+    var _port_headers = ["GAMES", "MUSIC+GFX"];
+    if (gui_menu_open == 8) _visible_templates = [-1, 10, 11, -2, 12]; // ZYRONS ESCAPE, SPY HUNTER | WIZBALL
     var _th = array_length(_visible_templates) * 24 + 24;
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm, _tx, _ty, _tw, _th);
     draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_left);
     for (var _ti = 0; _ti < array_length(_visible_templates); _ti++) {
         var _iy = _ty + 12 + _ti * 24;
+        if (_visible_templates[_ti] < 0) {
+            // sub-header
+            draw_set_color(make_color_rgb(80, 200, 255));
+            draw_text_l(_tx + 6, _iy + 3, _port_headers[-_visible_templates[_ti] - 1]);
+            continue;
+        }
         var _entry = scr_template_catalog(_visible_templates[_ti]);
         var _disabled = false;
         var _hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _tx, _iy, _tx + _tw, _iy + 23);
         draw_set_color(_disabled ? c_gray : (_hov ? c_yellow : c_white));
-        draw_text_l(_tx + 10, _iy + 3, _entry.title);
+        var _tind = 10;
+        if (gui_menu_open == 8) {
+            _tind = 22;    // PORTS entries sit under their sub-header
+        }
+        draw_text_l(_tx + _tind, _iy + 3, _entry.title);
         if (_hov && !_disabled && scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
             template_pending = _visible_templates[_ti];
             global.ui_click_consumed = true;
