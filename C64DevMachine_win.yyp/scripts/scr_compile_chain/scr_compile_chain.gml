@@ -19785,6 +19785,15 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
 		        }
 		        continue;
 		    }
+		    // RLE ROOMS map: room pointer table + band/run streams (see
+		    // scr_map_rle_rooms_encode). Nothing else is emitted.
+		    if (_map_raw == 2) {
+		        var _rle = scr_map_rle_rooms_encode(_a);
+		        for (var _bb = 0; _bb < array_length(_rle); _bb++) {
+		            array_push(instruction_list, ["byte", _rle[_bb]]);
+		        }
+		        continue;
+		    }
 
 		    // Original raw inject — untouched, MACRO_MAP uses this
 		    for (var _bb = 0; _bb < _sz; _bb++) {

@@ -1243,3 +1243,110 @@ function scr_room_map_open_bitmap(_name) {
     }
     return false;
 }
+
+
+/// ====================================================================
+/// MAP_DATA "RLE ROOMS" export (raw_chars == 2)
+///
+/// The map is a grid of equal rooms, room_w x room_h chars each, read
+/// left to right, top to bottom. Each room is emitted as:
+///     band          rows that repeat the run list below (1..255)
+///     count, char   horizontal runs, summing to exactly room_w
+///   ...bands until room_h rows are covered.
+/// The asset starts with a word table (lo, hi) - one absolute pointer per
+/// room - followed by the room streams. Identical rooms share one stream.
+/// This is the room format Saboteur (Durell) uses; any flip-screen engine
+/// with a band/run decoder can read it.
+/// ====================================================================
+function scr_map_rle_rooms_encode(_a) {
+    var _out = [];
+    var _m   = _a.meta;
+    var _mw  = real(_m.map_w);
+    var _mh  = real(_m.map_h);
+    var _rw  = real(_m.room_w);
+    var _rh  = real(_m.room_h);
+    if (_rw < 1 || _rh < 1 || !buffer_exists(_a.buffer)) return _out;
+    var _rx_n = _mw div _rw;
+    var _ry_n = _mh div _rh;
+    var _n    = _rx_n * _ry_n;
+    var _cnt  = real(_m.room_count);
+    if (_cnt > 0 && _cnt < _n) _n = _cnt;
+    if (_n < 1) return _out;
+
+    var _bsz     = buffer_get_size(_a.buffer);
+    var _streams = [];   // encoded bytes per unique room
+    var _keys    = [];   // string key per unique room, for sharing
+    var _room_of = [];   // room index -> unique stream index
+    for (var _r = 0; _r < _n; _r++) {
+        var _ox = (_r mod _rx_n) * _rw;
+        var _oy = (_r div _rx_n) * _rh;
+        var _st = [];
+        var _y  = 0;
+        while (_y < _rh) {
+            // band: how many following rows are identical to row _y
+            var _band = 1;
+            while (_y + _band < _rh && _band < 255) {
+                var _same = true;
+                for (var _x = 0; _x < _rw; _x++) {
+                    var _o1 = (_oy + _y) * _mw + _ox + _x;
+                    var _o2 = (_oy + _y + _band) * _mw + _ox + _x;
+                    var _c1 = 0;
+                    var _c2 = 0;
+                    if (_o1 < _bsz) _c1 = buffer_peek(_a.buffer, _o1, buffer_u8);
+                    if (_o2 < _bsz) _c2 = buffer_peek(_a.buffer, _o2, buffer_u8);
+                    if (_c1 != _c2) { _same = false; break; }
+                }
+                if (!_same) break;
+                _band++;
+            }
+            array_push(_st, _band);
+            var _x = 0;
+            while (_x < _rw) {
+                var _o  = (_oy + _y) * _mw + _ox + _x;
+                var _ch = 0;
+                if (_o < _bsz) _ch = buffer_peek(_a.buffer, _o, buffer_u8);
+                var _run = 1;
+                while (_x + _run < _rw && _run < 255) {
+                    var _on = _o + _run;
+                    var _cn = 0;
+                    if (_on < _bsz) _cn = buffer_peek(_a.buffer, _on, buffer_u8);
+                    if (_cn != _ch) break;
+                    _run++;
+                }
+                array_push(_st, _run);
+                array_push(_st, _ch);
+                _x += _run;
+            }
+            _y += _band;
+        }
+        var _key = json_stringify(_st);
+        var _found = -1;
+        for (var _k = 0; _k < array_length(_keys); _k++) {
+            if (_keys[_k] == _key) { _found = _k; break; }
+        }
+        if (_found == -1) {
+            array_push(_keys, _key);
+            array_push(_streams, _st);
+            _found = array_length(_streams) - 1;
+        }
+        array_push(_room_of, _found);
+    }
+
+    // stream start offsets, after the pointer table
+    var _offs = [];
+    var _pos  = _n * 2;
+    for (var _s = 0; _s < array_length(_streams); _s++) {
+        array_push(_offs, _pos);
+        _pos += array_length(_streams[_s]);
+    }
+    for (var _r = 0; _r < _n; _r++) {
+        var _abs = real(_a.address) + _offs[_room_of[_r]];
+        array_push(_out, _abs & 0xFF);
+        array_push(_out, (_abs >> 8) & 0xFF);
+    }
+    for (var _s = 0; _s < array_length(_streams); _s++) {
+        var _st2 = _streams[_s];
+        for (var _b = 0; _b < array_length(_st2); _b++) array_push(_out, _st2[_b]);
+    }
+    return _out;
+}
