@@ -1470,6 +1470,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 }
                 if (_pick_ins >= 0 && _pick_ins < array_length(_m.instruments)) {
                     _m.sel_instr = _pick_ins;
+                    global.mm_instr_center = _pick_ins;
                 }
             } else if (_hov && mouse_check_button_pressed(mb_left)) {
                 if (_m.edit_active && (_m.edit_voice != _cv || _m.edit_step != _row)) {

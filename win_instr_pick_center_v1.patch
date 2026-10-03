@@ -1,0 +1,43 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index f43a284..eae3132 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -1,6 +1,7 @@
+ /// @desc obj_asset_manager Create
+ global.is_any_text_active = false;
+ global.mouse_in_asset_panel = false;
++global.mm_instr_center = -1;   // Music Maker: instrument to bring into view after an ALT pick (-1 = none)
+ // Multi-select state for CHAR_SET grid
+ chr_multi_select    = []; // array of char indices currently selected
+ chr_clipboard       = []; // array of structs: { bytes: [8 bytes] } per copied char
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
+index 8c1859f..3c24ffc 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
+@@ -52,6 +52,14 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+     draw_set_color(make_color_rgb(100, 100, 140));
+     draw_rectangle(_ix0 - 4, _iy0 - 2, _ix0 + _list_w + 4, _iy0 + _list_vis * _list_row_h + 2, true);
+ 
++    if (global.mm_instr_center >= 0) {
++        // ALT-picked from the pattern grid: centre it when it is out of view
++        var _ctr_ins = global.mm_instr_center;
++        global.mm_instr_center = -1;
++        if (_ctr_ins < _m.instr_list_scroll || _ctr_ins >= _m.instr_list_scroll + _list_vis) {
++            _m.instr_list_scroll = _ctr_ins - floor(_list_vis / 2);
++        }
++    }
+     _m.instr_list_scroll = clamp(_m.instr_list_scroll, 0, max(0, array_length(_m.instruments) - _list_vis));
+ 
+     _m.instr_list_scroll = scr_sound_editor_scrollbar(_m, "instr_list_drag", _m.instr_list_scroll,
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index fecf84c..a59c53c 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -1470,6 +1470,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+                 }
+                 if (_pick_ins >= 0 && _pick_ins < array_length(_m.instruments)) {
+                     _m.sel_instr = _pick_ins;
++                    global.mm_instr_center = _pick_ins;
+                 }
+             } else if (_hov && mouse_check_button_pressed(mb_left)) {
+                 if (_m.edit_active && (_m.edit_voice != _cv || _m.edit_step != _row)) {

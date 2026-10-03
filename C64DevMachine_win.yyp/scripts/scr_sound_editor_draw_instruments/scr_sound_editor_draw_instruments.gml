@@ -52,6 +52,14 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     draw_set_color(make_color_rgb(100, 100, 140));
     draw_rectangle(_ix0 - 4, _iy0 - 2, _ix0 + _list_w + 4, _iy0 + _list_vis * _list_row_h + 2, true);
 
+    if (global.mm_instr_center >= 0) {
+        // ALT-picked from the pattern grid: centre it when it is out of view
+        var _ctr_ins = global.mm_instr_center;
+        global.mm_instr_center = -1;
+        if (_ctr_ins < _m.instr_list_scroll || _ctr_ins >= _m.instr_list_scroll + _list_vis) {
+            _m.instr_list_scroll = _ctr_ins - floor(_list_vis / 2);
+        }
+    }
     _m.instr_list_scroll = clamp(_m.instr_list_scroll, 0, max(0, array_length(_m.instruments) - _list_vis));
 
     _m.instr_list_scroll = scr_sound_editor_scrollbar(_m, "instr_list_drag", _m.instr_list_scroll,
