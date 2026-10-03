@@ -1033,6 +1033,7 @@
     {"id":{"name":"scr_asset_spr_add_blank_slot","path":"scripts/scr_asset_spr_add_blank_slot/scr_asset_spr_add_blank_slot.yy",},},
     {"id":{"name":"scr_asset_spr_cache_sprites","path":"scripts/scr_asset_spr_cache_sprites/scr_asset_spr_cache_sprites.yy",},},
     {"id":{"name":"scr_asset_spr_export_binary","path":"scripts/scr_asset_spr_export_binary/scr_asset_spr_export_binary.yy",},},
+    {"id":{"name":"scr_asset_gfx_export","path":"scripts/scr_asset_gfx_export/scr_asset_gfx_export.yy",},},
     {"id":{"name":"scr_asset_spr_export_spred64","path":"scripts/scr_asset_spr_export_spred64/scr_asset_spr_export_spred64.yy",},},
     {"id":{"name":"scr_asset_spr_import_from_path","path":"scripts/scr_asset_spr_import_from_path/scr_asset_spr_import_from_path.yy",},},
     {"id":{"name":"scr_asset_spr_import_png_strip","path":"scripts/scr_asset_spr_import_png_strip/scr_asset_spr_import_png_strip.yy",},},

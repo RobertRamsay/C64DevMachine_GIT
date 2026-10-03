@@ -1217,6 +1217,42 @@ case "CHAR_SET": {
     var _mode_bg_cols  = [make_color_rgb(30, 30, 45), make_color_rgb(160, 80, 20), make_color_rgb(20, 80, 90)];
     var _mode_txt_cols = [make_color_rgb(80, 80, 100), make_color_rgb(255, 160, 60), make_color_rgb(80, 220, 240)];
     var _mode_labels   = ["HR MODE", "MC MODE", "ECM MODE"];
+
+    // ── EXPORT BIN / EXPORT CTM — raw charset and a CharPad project ──────────
+    var _ch_ex_labels = ["EXPORT BIN", "EXPORT CTM"];
+    for (var _che = 0; _che < 2; _che++) {
+        var _chx1 = _mcbx2 + 10 + _che * 110;
+        var _chx2 = _chx1 + 100;
+        var _ch_hov = point_in_rectangle(_mx, _my, _chx1, _mcby1, _chx2, _mcby2);
+        draw_set_color(_ch_hov ? make_color_rgb(40, 140, 80) : make_color_rgb(20, 80, 40));
+        draw_rectangle(_chx1, _mcby1, _chx2, _mcby2, false);
+        draw_set_color(_ch_hov ? c_white : c_ltgray);
+        draw_rectangle(_chx1, _mcby1, _chx2, _mcby2, true);
+        draw_set_font_l(fnt_c64_tiny);
+        draw_set_halign(fa_center);
+        draw_text_l(_chx1 + 50, _mcby1 + 4, _ch_ex_labels[_che]);
+        draw_set_halign(fa_left);
+        if (_ch_hov && mouse_check_button_pressed(mb_left)
+        && !global.ui_click_consumed && !global.any_picker_open) {
+            var _ch_out = "";
+            if (_che == 0) {
+                _ch_out = get_save_filename("Raw charset (*.bin)|*.bin", _asset.name + ".bin");
+            } else {
+                _ch_out = get_save_filename("CharPad project (*.ctm)|*.ctm", _asset.name + ".ctm");
+            }
+            io_clear();   // the native dialog swallows key-ups (see EXPORT SPRED64)
+            if (_ch_out != "") {
+                if (_che == 0) {
+                    scr_asset_chr_export_binary(_asset, _ch_out);
+                } else {
+                    scr_asset_chr_export_ctm(_asset, _ch_out);
+                }
+            }
+            global.ui_click_consumed = true;
+        }
+    }
+    // ── END EXPORT BIN / CTM ──────────────────────────────────────────────────
+
     draw_set_color(_mode_bg_cols[_chr_mc]);
     draw_rectangle(_mcbx1, _mcby1, _mcbx2, _mcby2, false);
     draw_set_font_l(fnt_c64_tiny);
@@ -3519,6 +3555,40 @@ case "SPRITE_SET": {
             global.ui_click_consumed = true;
         }
         // ── END EXPORT SPRED64 ────────────────────────────────────────────────
+
+        // ── EXPORT BIN / EXPORT SPD — raw sprites and a SpritePad project ──────
+        var _sp_ex_labels = ["EXPORT BIN", "EXPORT SPD"];
+        for (var _spe = 0; _spe < 2; _spe++) {
+            var _spx1 = _esx2 + 8 + _spe * 118;
+            var _spx2 = _spx1 + 110;
+            var _sp_hov = point_in_rectangle(_mx, _my, _spx1, _v2by1, _spx2, _v2by2);
+            draw_set_color(_sp_hov ? make_color_rgb(40, 140, 80) : make_color_rgb(20, 80, 40));
+            draw_rectangle(_spx1, _v2by1, _spx2, _v2by2, false);
+            draw_set_color(_sp_hov ? c_white : c_ltgray);
+            draw_rectangle(_spx1, _v2by1, _spx2, _v2by2, true);
+            draw_set_halign(fa_center);
+            draw_text_l(_spx1 + 55, _v2by1 + 2, _sp_ex_labels[_spe]);
+            draw_set_halign(fa_left);
+            if (_sp_hov && mouse_check_button_pressed(mb_left)
+            && !global.ui_click_consumed && !global.any_picker_open) {
+                var _sp_out = "";
+                if (_spe == 0) {
+                    _sp_out = get_save_filename("Raw sprite binary (*.bin)|*.bin", _asset.name + ".bin");
+                } else {
+                    _sp_out = get_save_filename("SpritePad project (*.spd)|*.spd", _asset.name + ".spd");
+                }
+                io_clear();   // the native dialog swallows key-ups (see EXPORT SPRED64)
+                if (_sp_out != "") {
+                    if (_spe == 0) {
+                        scr_asset_spr_export_binary(_asset, _sp_out);
+                    } else {
+                        scr_asset_spr_export_spd(_asset, _sp_out);
+                    }
+                }
+                global.ui_click_consumed = true;
+            }
+        }
+        // ── END EXPORT BIN / SPD ──────────────────────────────────────────────
 
         _cy += 30;
 

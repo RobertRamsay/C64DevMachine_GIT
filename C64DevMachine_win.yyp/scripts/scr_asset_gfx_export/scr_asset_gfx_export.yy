@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_asset_gfx_export",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_asset_gfx_export",
+  "parent":{
+    "name":"I_O",
+    "path":"folders/SCRIPTS/CORE/I_O.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}
