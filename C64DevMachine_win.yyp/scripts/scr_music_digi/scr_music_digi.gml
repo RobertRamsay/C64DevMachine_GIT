@@ -534,20 +534,29 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
                 draw_rectangle(_x, _ry, _x2, _ry + _row_h, false);
                 draw_set_alpha(1.0);
             }
+            // Laid out like a voice lane: note and sample slot (like a note and its
+            // instrument), then the command column at the voice grid's offset,
+            // volume small at the right edge.
+            var _cmd_x = _x + 90;     // = _cmd_off in scr_sound_editor_editor
             if (_st.smp >= 0) {
                 var _s_str = string(_st.smp);
                 if (_st.smp < 10) {
                     _s_str = "0" + _s_str;
                 }
+                var _n_str = scr_digi_note_name(_st.note) + " ";
                 draw_set_color(_c_lane);
-                draw_text_transformed_l(_x + 8, _ry + _ty, scr_digi_note_name(_st.note), _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_x + 8, _ry + _ty, _n_str, _txt_scale, _txt_scale, 0);
                 draw_set_color(make_color_rgb(255, 190, 210));
                 if (is_undefined(scr_digi_find_sample(_m.digi_samples[_st.smp]))) {
                     draw_set_color(make_color_rgb(200, 90, 70));   // empty / missing slot
                 }
-                draw_text_transformed_l(_x + _x_slot, _ry + _ty, _s_str, _txt_scale, _txt_scale, 0);
+                draw_text_transformed_l(_x + 8 + string_width_l(_n_str) * _txt_scale, _ry + _ty, _s_str, _txt_scale, _txt_scale, 0);
+                draw_set_font_l(fnt_c64_pico);
+                draw_set_halign(fa_right);
                 draw_set_color(make_color_rgb(150, 120, 150));
-                draw_text_transformed_l(_x + _x_vol, _ry + _ty, string(_st.vol), _txt_scale, _txt_scale, 0);
+                draw_text_l(_x2 - 4, _ry + floor(_row_h / 2) - 4, "V" + string(_st.vol));
+                draw_set_halign(fa_left);
+                draw_set_font_l(fnt_c64_tiny);
             } else if (_st.smp == DIGI_SMP_OFF) {
                 draw_set_color(make_color_rgb(230, 120, 90));
                 draw_text_transformed_l(_x + 8, _ry + _ty, "OFF", _txt_scale, _txt_scale, 0);
@@ -555,30 +564,28 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
                 draw_set_color(make_color_rgb(70, 60, 80));
                 draw_text_transformed_l(_x + 8, _ry + _ty, "...", _txt_scale, _txt_scale, 0);
             }
-            // Speed command, right edge: F01-F1F own tempo, F00 back to SONG rows.
-            var _cmd_txt = "";
-            draw_set_color(make_color_rgb(255, 170, 90));
+            // Command column: F01-F1F own tempo, F00 back to the song's rows.
             if (_m.dg_cmd_on && _m.dg_focus && _m.dg_sel_step == _row) {
-                _cmd_txt = "F" + _m.dg_cmd_buf;
-                while (string_length(_cmd_txt) < 3) {
-                    _cmd_txt += "_";
+                var _ty_str = "F" + _m.dg_cmd_buf;
+                while (string_length(_ty_str) < 3) {
+                    _ty_str += "_";
                 }
                 draw_set_color(c_yellow);
-            } else if (_st.spd == DIGI_SPD_SONG) {
-                _cmd_txt = "F00";
+                draw_text_transformed_l(_cmd_x, _ry + _ty, _ty_str, _txt_scale, _txt_scale, 0);
             } else if (_st.spd > 0) {
-                _cmd_txt = string_upper(decimal_to_hex(_st.spd));
-                while (string_length(_cmd_txt) < 2) {
-                    _cmd_txt = "0" + _cmd_txt;
+                var _cmd_txt = "F00";
+                if (_st.spd != DIGI_SPD_SONG) {
+                    _cmd_txt = string_upper(decimal_to_hex(_st.spd));
+                    while (string_length(_cmd_txt) < 2) {
+                        _cmd_txt = "0" + _cmd_txt;
+                    }
+                    _cmd_txt = "F" + _cmd_txt;
                 }
-                _cmd_txt = "F" + _cmd_txt;
-            }
-            if (_cmd_txt != "") {
-                draw_set_font_l(fnt_c64_pico);
-                draw_set_halign(fa_right);
-                draw_text_l(_x2 - 4, _ry + floor(_row_h / 2) - 4, _cmd_txt);
-                draw_set_halign(fa_left);
-                draw_set_font_l(fnt_c64_tiny);
+                draw_set_color(make_color_rgb(255, 170, 90));
+                draw_text_transformed_l(_cmd_x, _ry + _ty, _cmd_txt, _txt_scale, _txt_scale, 0);
+            } else {
+                draw_set_color(make_color_rgb(60, 60, 70));
+                draw_text_transformed_l(_cmd_x, _ry + _ty, "...", _txt_scale, _txt_scale, 0);
             }
             if (_hov && mouse_check_button_pressed(mb_right)) {
                 scr_digi_push_undo(_m, _pushf, _snapf);
@@ -591,8 +598,14 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
             }
         }
         if (_m.dg_focus && _m.dg_sel_step == _row) {
-            draw_set_color(c_white);
-            draw_rectangle(_x, _ry, _x2, _ry + _row_h, true);
+            // Cursor like the voice grid's: the note part, or the command
+            // column while an Fxx is being typed.
+            draw_set_color(c_yellow);
+            if (_m.dg_cmd_on) {
+                draw_rectangle(_x + 84, _ry, _x2, _ry + _row_h, true);
+            } else {
+                draw_rectangle(_x, _ry, _x + 82, _ry + _row_h, true);
+            }
         }
         if (_hov && _press) {
             _m.dg_focus    = true;

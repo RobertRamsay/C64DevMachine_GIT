@@ -287,7 +287,7 @@ function scr_sid_song_digi_emit_data(_list, _id, _key, _plan) {
     }
 }
 
-/// Runtime: <key>dgnmi (the NMI handler), <key>dgsync / <key>dgtick / <key>dgplay
+/// Runtime: <key>dgnmi (the NMI handler), <key>dgsync / <key>dgtick / <key>dgrowp
 /// (the digi lane's rows, called by the IRQ player), <key>dgstart, <key>dgstop
 /// and <key>dginit.
 /// Self-modified operands are written as raw bytes with a label on each
@@ -487,7 +487,7 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
     // first row restarts the lane at row 0.
     //   <key>dgsync  every song row (from the row clock)
     //   <key>dgtick  every frame, after the song's rows
-    //   <key>dgplay  plays row dgrc: volume, speed command, sample
+    //   <key>dgrowp plays row dgrc: volume, speed command, sample
     array_push(_list, ["label",   _k + "dgsync"]);
     array_push(_list, ["lda_zp",  _S_ROW, _id]);
     array_push(_list, ["bne",     _k + "dgsn", _id]);
@@ -510,7 +510,7 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
     array_push(_list, ["label",   _k + "dgsf"]);
     array_push(_list, ["lda_zp",  _S_ROW, _id]);
     array_push(_list, ["sta_abs", _k + "dgrc", _id]);
-    array_push(_list, ["jsr",     _k + "dgplay", _id]);
+    array_push(_list, ["jsr",     _k + "dgrowp", _id]);
     // An Fxx here just started the own clock; dgtick also runs this frame,
     // so one extra count keeps the row xx frames long.
     array_push(_list, ["lda_abs", _k + "dgsp", _id]);
@@ -528,7 +528,7 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
     array_push(_list, ["sta_abs", _k + "dgcn", _id]);
     array_push(_list, ["inc_abs", _k + "dgrc", _id]);
 
-    array_push(_list, ["label",   _k + "dgplay"]);
+    array_push(_list, ["label",   _k + "dgrowp"]);
     array_push(_list, ["lda_abs", _k + "dgpi", _id]);
     array_push(_list, ["cmp_imm", 0xFF, _id]);
     array_push(_list, ["beq",     _k + "dgrx", _id]);
