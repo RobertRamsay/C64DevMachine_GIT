@@ -9324,7 +9324,12 @@ case "META_TILESET": {
         var _blank_len = _test_cols * _test_rows;
         _m.test_grid = array_create(_blank_len, -1);
         for (var _clr = 0; _clr < _m.map_count; _clr++) {
-            _m.maps[_clr] = array_create(_blank_len, -1);
+            // each map keeps its own char size (maps can differ - RAW ROWS segments)
+            var _clr_len = _blank_len;
+            if (_clr < array_length(_m.map_w) && _clr < array_length(_m.map_h)) {
+                _clr_len = floor(_m.map_w[_clr] / _m.stamp_w) * floor(_m.map_h[_clr] / _m.stamp_h);
+            }
+            _m.maps[_clr] = array_create(_clr_len, -1);
         }
         _m.map_size_key = _map_size_key;
     }
@@ -9686,10 +9691,19 @@ case "META_TILESET": {
     //   → GROW it, padding the new cells with -1 (empty) so existing tiles are
     //   preserved and bottom-row clicks land in-bounds (no out-of-range wipe).
     // - Too LONG → trim the surplus.
-    var _want_len = _test_cols * _test_rows;
+    // Every map is checked against ITS OWN map_w / map_h, not the active map's:
+    // maps in one tileset can differ in size (RAW ROWS segments), and sizing
+    // them all to the active map trimmed or padded every other map each frame.
     for (var _mmi = 0; _mmi < _m.map_count; _mmi++) {
+        var _mm_cols = _test_cols;
+        var _mm_rows = _test_rows;
+        if (_mmi < array_length(_m.map_w) && _mmi < array_length(_m.map_h)) {
+            _mm_cols = floor(_m.map_w[_mmi] / _m.stamp_w);
+            _mm_rows = floor(_m.map_h[_mmi] / _m.stamp_h);
+        }
+        var _want_len = _mm_cols * _mm_rows;
         var _mmi_len = array_length(_m.maps[_mmi]);
-        if (_test_cols <= 0 || _mmi_len == 0 || (_mmi_len mod _test_cols) != 0) {
+        if (_mm_cols <= 0 || _mmi_len == 0 || (_mmi_len mod _mm_cols) != 0) {
             // Malformed width or empty → blank grid at the expected size.
             _m.maps[_mmi] = array_create(_want_len, -1);
         } else if (_mmi_len < _want_len) {
