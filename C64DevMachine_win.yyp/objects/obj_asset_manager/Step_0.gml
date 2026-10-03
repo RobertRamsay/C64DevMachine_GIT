@@ -58,6 +58,14 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
 // Music Maker's piano extends its viewer vertically; other editors keep their bounds.
 if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
     if (asset_list[|viewer_asset].type == "MUSIC_MAKER") { _vy1=40; _vy2=_gui_h-40; }
+    // META_TILESET: full screen, same bounds as Draw GUI
+    if (asset_list[|viewer_asset].type == "META_TILESET") {
+        _wide_modal = true;
+        _vx1 = 30;
+        _vx2 = _gui_w - 30;
+        _vy1 = 40;
+        _vy2 = _gui_h - 40;
+    }
 }
 var _mouse_in_viewer = viewer_open && point_in_rectangle(_mx, _my, _vx1, _vy1, _vx2, _vy2);
 

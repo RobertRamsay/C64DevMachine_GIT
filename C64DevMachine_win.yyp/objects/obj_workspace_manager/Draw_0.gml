@@ -1,3 +1,5 @@
+/// An open asset editor covers the screen - skip the workspace grid under it.
+if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) exit;
 /// @desc Draw world-space 20px grid
 var _cam_x    = cam_x;
 var _cam_y    = cam_y;

@@ -815,15 +815,24 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
 	}
 	var _vy2 = 972;
     if (_asset.type == "MUSIC_MAKER") { _vy1=40; _vy2=_gui_h-40; }
+    // The meta tile map editor takes the whole screen too (same margins as the
+    // Music Maker) - its layout is relative, so the map area and the edit
+    // canvas grow with it. Must match obj_asset_manager Step.
+    if (_asset.type == "META_TILESET") {
+        _vx1 = 30;
+        _vx2 = _gui_w - 30;
+        _vy1 = 40;
+        _vy2 = _gui_h - 40;
+    }
 	
     var _vw    = _vx2 - _vx1;
     var _vh    = _vy2 - _vy1;
 
-     //Backdrop
-    draw_set_color(make_color_rgb(0, 0, 0));
-    draw_set_alpha(0.6);
-    draw_rectangle(0, 0, _gui_w, _gui_h, false);
+     //Backdrop - solid: nothing of the workspace (nodes, boxes, asset panel)
+     //shows behind an open editor
+    draw_set_color(make_color_rgb(8, 8, 12));
     draw_set_alpha(1.0);
+    draw_rectangle(0, 0, _gui_w, _gui_h, false);
 
     // Panel
     draw_set_color(make_color_rgb(18, 18, 28));

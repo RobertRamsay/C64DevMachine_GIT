@@ -1,0 +1,75 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 05ec62d..d560d96 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -815,15 +815,24 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+ 	}
+ 	var _vy2 = 972;
+     if (_asset.type == "MUSIC_MAKER") { _vy1=40; _vy2=_gui_h-40; }
++    // The meta tile map editor takes the whole screen too (same margins as the
++    // Music Maker) - its layout is relative, so the map area and the edit
++    // canvas grow with it. Must match obj_asset_manager Step.
++    if (_asset.type == "META_TILESET") {
++        _vx1 = 30;
++        _vx2 = _gui_w - 30;
++        _vy1 = 40;
++        _vy2 = _gui_h - 40;
++    }
+ 	
+     var _vw    = _vx2 - _vx1;
+     var _vh    = _vy2 - _vy1;
+ 
+-     //Backdrop
+-    draw_set_color(make_color_rgb(0, 0, 0));
+-    draw_set_alpha(0.6);
+-    draw_rectangle(0, 0, _gui_w, _gui_h, false);
++     //Backdrop - solid: nothing of the workspace (nodes, boxes, asset panel)
++     //shows behind an open editor
++    draw_set_color(make_color_rgb(8, 8, 12));
+     draw_set_alpha(1.0);
++    draw_rectangle(0, 0, _gui_w, _gui_h, false);
+ 
+     // Panel
+     draw_set_color(make_color_rgb(18, 18, 28));
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index fe5698d..a365d1d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -58,6 +58,14 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+ // Music Maker's piano extends its viewer vertically; other editors keep their bounds.
+ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
+     if (asset_list[|viewer_asset].type == "MUSIC_MAKER") { _vy1=40; _vy2=_gui_h-40; }
++    // META_TILESET: full screen, same bounds as Draw GUI
++    if (asset_list[|viewer_asset].type == "META_TILESET") {
++        _wide_modal = true;
++        _vx1 = 30;
++        _vx2 = _gui_w - 30;
++        _vy1 = 40;
++        _vy2 = _gui_h - 40;
++    }
+ }
+ var _mouse_in_viewer = viewer_open && point_in_rectangle(_mx, _my, _vx1, _vy1, _vx2, _vy2);
+ 
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_0.gml
+index 43ed868..b9c05bf 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_0.gml
+@@ -1,3 +1,5 @@
++/// An open asset editor covers the screen - skip the workspace grid under it.
++if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) exit;
+ /// @desc Draw world-space 20px grid
+ var _cam_x    = cam_x;
+ var _cam_y    = cam_y;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index c7da766..fa37c37 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -21,7 +21,7 @@ scr_bmp_preview_queue_draw();
+ if hideui exit;
+ // Block draw + interaction when asset viewer is open
+ if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) {
+-    scr_draw_memory_bar(shelf_width + 60, global.gui_w - 60, display_get_gui_height() - 40);
++    // An open editor has the screen to itself - no memory bar under it.
+     exit;
+ }
+ 

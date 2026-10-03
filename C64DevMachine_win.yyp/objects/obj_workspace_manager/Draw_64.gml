@@ -21,7 +21,7 @@ scr_bmp_preview_queue_draw();
 if hideui exit;
 // Block draw + interaction when asset viewer is open
 if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) {
-    scr_draw_memory_bar(shelf_width + 60, global.gui_w - 60, display_get_gui_height() - 40);
+    // An open editor has the screen to itself - no memory bar under it.
     exit;
 }
 
