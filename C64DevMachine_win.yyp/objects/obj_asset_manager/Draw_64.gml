@@ -10431,6 +10431,10 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         );
     }
 
+    // The CHAINS panel covers the map area - don't spend the frame drawing it.
+    if (mts_chain_mode) {
+        _draw_row1 = _draw_row0;
+    }
     scr_mts_glyph_begin();
     for (var _trow = _draw_row0; _trow < _draw_row1; _trow++) {
         for (_tcol = _draw_col0; _tcol < _draw_col1; _tcol++) {

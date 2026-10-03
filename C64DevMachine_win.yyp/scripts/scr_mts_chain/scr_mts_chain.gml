@@ -272,7 +272,14 @@ function scr_mts_chain_slices(_m, _ci) {
         return _out;
     }
     var _cm = _m.chains[_ci].maps;
-    for (var _e = 0; _e < array_length(_cm); _e++) {
+    var _ne = array_length(_cm);
+    for (var _ei = 0; _ei < _ne; _ei++) {
+        // chain_rev: the engine reads the list from its end (e.g. a counter
+        // that counts down), so the LAST entry is the first one fed in
+        var _e = _ei;
+        if (_m.chain_rev == 1) {
+            _e = _ne - 1 - _ei;
+        }
         var _mi = _cm[_e];
         if (_mi < 0 || _mi >= array_length(_m.maps)) {
             continue;
@@ -629,9 +636,22 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     if (_m.active_map >= 0 && _m.active_map < array_length(_m.maps)) {
         var _am = _m.active_map;
         draw_text_l(_lx1, _y + 1, L("MAP ") + string(_am));
-        var _rp_txt = scr_mts_chain_field_text("REPS", _am, -1, string(_m.map_reps[_am]));
-        if (scr_mts_ui_button(_lx1 + 50, _y, _lx1 + 130, _y + _rh - 3, L("REPS ") + _rp_txt, false, _mx, _my)) {
-            scr_mts_chain_edit_start("REPS", string(_m.map_reps[_am]), _am, -1);
+        // REPS: - [xN] +   (shift = steps of 10)
+        var _rp_step = 1;
+        if (keyboard_check(vk_shift)) {
+            _rp_step = 10;
+        }
+        if (scr_mts_ui_button(_lx1 + 50, _y, _lx1 + 66, _y + _rh - 3, "-", false, _mx, _my)) {
+            _m.map_reps[_am] = max(1, _m.map_reps[_am] - _rp_step);
+            _m.is_dirty = true; global.undo_dirty = true; global.addresses_dirty = true;
+        }
+        draw_set_color(c_white);
+        draw_set_halign(fa_center);
+        draw_text_l(_lx1 + 90, _y + 1, "x" + string(_m.map_reps[_am]));
+        draw_set_halign(fa_left);
+        if (scr_mts_ui_button(_lx1 + 114, _y, _lx1 + 130, _y + _rh - 3, "+", false, _mx, _my)) {
+            _m.map_reps[_am] = min(255, _m.map_reps[_am] + _rp_step);
+            _m.is_dirty = true; global.undo_dirty = true; global.addresses_dirty = true;
         }
         var _ad_txt = scr_mts_chain_field_text("ADDR", _am, -1, scr_mts_addr_text(_m.map_addr[_am]));
         if (scr_mts_ui_button(_lx1 + 136, _y, _lx2, _y + _rh - 3, L("AT ") + _ad_txt, (_m.map_addr[_am] >= 0), _mx, _my)) {
@@ -666,6 +686,22 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         scr_mts_chain_edit_start("TABADDR", "", 0, -1);
     }
     _y += _rh;
+    // Which end of a chain's list the engine reads first (preview only - the
+    // list is stored as it is shown either way).
+    var _fd = L("FEED FIRST > LAST");
+    if (_m.chain_rev == 1) {
+        _fd = L("FEED LAST > FIRST");
+    }
+    if (scr_mts_ui_button(_lx1, _y, _lx2, _y + _rh - 3, _fd, (_m.chain_rev == 1), _mx, _my)) {
+        if (_m.chain_rev == 1) {
+            _m.chain_rev = 0;
+        } else {
+            _m.chain_rev = 1;
+        }
+        mts_chain_scroll = 0;
+        _m.is_dirty = true;
+    }
+    _y += _rh;
     if (_m.chain_emit == 1 && _m.raw_rows == 0) {
         draw_set_color(make_color_rgb(255, 140, 80));
         draw_text_l(_lx1, _y, L("TABLES NEED RAW ROWS ON"));
@@ -690,6 +726,17 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     if (scr_mts_ui_button(_px1 + 68, _py1, _px1 + 132, _py1 + 14, L("SECTION"), (mts_chain_view == 1), _mx, _my)) {
         mts_chain_view   = 1;
         mts_chain_scroll = 0;
+    }
+    // ZOOM OUT: - [Nx] +  (1 = fit the widest map, 4 = a quarter of that)
+    if (scr_mts_ui_button(_px1 + 144, _py1, _px1 + 160, _py1 + 14, "-", false, _mx, _my)) {
+        mts_chain_zoom = min(4, mts_chain_zoom + 1);
+    }
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    draw_text_l(_px1 + 182, _py1, L("ZOOM ") + string(mts_chain_zoom) + "x");
+    draw_set_halign(fa_left);
+    if (scr_mts_ui_button(_px1 + 206, _py1, _px1 + 222, _py1 + 14, "+", false, _mx, _my)) {
+        mts_chain_zoom = max(1, mts_chain_zoom - 1);
     }
     _py1 += 18;
     var _vert = (_m.chain_dir < 2);
@@ -733,7 +780,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         _span = _px2 - _px1;
         _side = _py2 - _py1;
     }
-    var _cs  = clamp(floor(_side / _cross), 2, 16);
+    var _cs  = clamp(floor(floor(_side / _cross) / mts_chain_zoom), 1, 16);
     var _vis = max(1, floor(_span / _cs));
     var _maxs = max(0, _ns - _vis);
     if (point_in_rectangle(_mx, _my, _px1, _py1, _px2, _py2)) {

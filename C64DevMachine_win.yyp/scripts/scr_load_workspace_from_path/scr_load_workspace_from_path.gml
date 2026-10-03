@@ -934,6 +934,9 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 if (variable_struct_exists(_tsm, "chain_tab_addr")) {
                     _new_asset.meta.chain_tab_addr = real(_tsm.chain_tab_addr);
                 }
+                if (variable_struct_exists(_tsm, "chain_rev")) {
+                    _new_asset.meta.chain_rev = real(_tsm.chain_rev);
+                }
                 if (variable_struct_exists(_tsm, "active_chain")) {
                     _new_asset.meta.active_chain = real(_tsm.active_chain);
                 }

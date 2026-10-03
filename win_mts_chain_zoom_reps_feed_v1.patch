@@ -1,0 +1,186 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index 84b6ccb..891b6ab 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -247,6 +247,7 @@ mts_chain_list_scroll  = 0;
+ mts_chain_entry_scroll = 0;
+ mts_chain_view         = 0;     // 0 = COURSE (every chain joined up), 1 = SECTION (the active chain)
+ mts_chain_drag         = false; // dragging the preview slider
++mts_chain_zoom         = 1;     // preview zoom-out: 1 = fit the widest map, up to 4 = a quarter of that
+ 
+ // -------------------------------------------------------
+ // SFX_DATA ASSET
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index b3fb527..05ec62d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -10431,6 +10431,10 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
+         );
+     }
+ 
++    // The CHAINS panel covers the map area - don't spend the frame drawing it.
++    if (mts_chain_mode) {
++        _draw_row1 = _draw_row0;
++    }
+     scr_mts_glyph_begin();
+     for (var _trow = _draw_row0; _trow < _draw_row1; _trow++) {
+         for (_tcol = _draw_col0; _tcol < _draw_col1; _tcol++) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_meta_tileset_create/scr_asset_meta_tileset_create.gml b/C64DevMachine_win.yyp/scripts/scr_asset_meta_tileset_create/scr_asset_meta_tileset_create.gml
+index a746a38..be176f7 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_meta_tileset_create/scr_asset_meta_tileset_create.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_meta_tileset_create/scr_asset_meta_tileset_create.gml
+@@ -74,6 +74,7 @@ function scr_asset_meta_tileset_create(_asset) {
+     _asset.meta.chain_dir              = 0;    // preview / feed direction: 0 UP 1 DOWN 2 LEFT 3 RIGHT
+     _asset.meta.chain_emit             = 0;    // 1 = emit the map + chain tables (RAW ROWS only)
+     _asset.meta.chain_tab_addr         = -1;   // table address, -1 = straight after the last map
++    _asset.meta.chain_rev              = 0;    // 1 = the engine feeds a chain's list LAST entry first
+     _asset.meta.active_chain           = 0;
+     _asset.address                     = 0x8000;
+ }
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+index 8f6a36c..2bb4c06 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+@@ -147,6 +147,7 @@ var _base = "unsaved";
+                 _mo.chain_dir      = _me.chain_dir;
+                 _mo.chain_emit     = _me.chain_emit;
+                 _mo.chain_tab_addr = _me.chain_tab_addr;
++                _mo.chain_rev      = _me.chain_rev;
+                 _mo.active_chain   = _me.active_chain;
+             }
+             if (_a.type == "SPRITE_MASK") {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 1849eb5..3663efa 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -934,6 +934,9 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
+                 if (variable_struct_exists(_tsm, "chain_tab_addr")) {
+                     _new_asset.meta.chain_tab_addr = real(_tsm.chain_tab_addr);
+                 }
++                if (variable_struct_exists(_tsm, "chain_rev")) {
++                    _new_asset.meta.chain_rev = real(_tsm.chain_rev);
++                }
+                 if (variable_struct_exists(_tsm, "active_chain")) {
+                     _new_asset.meta.active_chain = real(_tsm.active_chain);
+                 }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml b/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml
+index a613ff3..3fea34e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml
+@@ -272,7 +272,14 @@ function scr_mts_chain_slices(_m, _ci) {
+         return _out;
+     }
+     var _cm = _m.chains[_ci].maps;
+-    for (var _e = 0; _e < array_length(_cm); _e++) {
++    var _ne = array_length(_cm);
++    for (var _ei = 0; _ei < _ne; _ei++) {
++        // chain_rev: the engine reads the list from its end (e.g. a counter
++        // that counts down), so the LAST entry is the first one fed in
++        var _e = _ei;
++        if (_m.chain_rev == 1) {
++            _e = _ne - 1 - _ei;
++        }
+         var _mi = _cm[_e];
+         if (_mi < 0 || _mi >= array_length(_m.maps)) {
+             continue;
+@@ -629,9 +636,22 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
+     if (_m.active_map >= 0 && _m.active_map < array_length(_m.maps)) {
+         var _am = _m.active_map;
+         draw_text_l(_lx1, _y + 1, L("MAP ") + string(_am));
+-        var _rp_txt = scr_mts_chain_field_text("REPS", _am, -1, string(_m.map_reps[_am]));
+-        if (scr_mts_ui_button(_lx1 + 50, _y, _lx1 + 130, _y + _rh - 3, L("REPS ") + _rp_txt, false, _mx, _my)) {
+-            scr_mts_chain_edit_start("REPS", string(_m.map_reps[_am]), _am, -1);
++        // REPS: - [xN] +   (shift = steps of 10)
++        var _rp_step = 1;
++        if (keyboard_check(vk_shift)) {
++            _rp_step = 10;
++        }
++        if (scr_mts_ui_button(_lx1 + 50, _y, _lx1 + 66, _y + _rh - 3, "-", false, _mx, _my)) {
++            _m.map_reps[_am] = max(1, _m.map_reps[_am] - _rp_step);
++            _m.is_dirty = true; global.undo_dirty = true; global.addresses_dirty = true;
++        }
++        draw_set_color(c_white);
++        draw_set_halign(fa_center);
++        draw_text_l(_lx1 + 90, _y + 1, "x" + string(_m.map_reps[_am]));
++        draw_set_halign(fa_left);
++        if (scr_mts_ui_button(_lx1 + 114, _y, _lx1 + 130, _y + _rh - 3, "+", false, _mx, _my)) {
++            _m.map_reps[_am] = min(255, _m.map_reps[_am] + _rp_step);
++            _m.is_dirty = true; global.undo_dirty = true; global.addresses_dirty = true;
+         }
+         var _ad_txt = scr_mts_chain_field_text("ADDR", _am, -1, scr_mts_addr_text(_m.map_addr[_am]));
+         if (scr_mts_ui_button(_lx1 + 136, _y, _lx2, _y + _rh - 3, L("AT ") + _ad_txt, (_m.map_addr[_am] >= 0), _mx, _my)) {
+@@ -666,6 +686,22 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
+         scr_mts_chain_edit_start("TABADDR", "", 0, -1);
+     }
+     _y += _rh;
++    // Which end of a chain's list the engine reads first (preview only - the
++    // list is stored as it is shown either way).
++    var _fd = L("FEED FIRST > LAST");
++    if (_m.chain_rev == 1) {
++        _fd = L("FEED LAST > FIRST");
++    }
++    if (scr_mts_ui_button(_lx1, _y, _lx2, _y + _rh - 3, _fd, (_m.chain_rev == 1), _mx, _my)) {
++        if (_m.chain_rev == 1) {
++            _m.chain_rev = 0;
++        } else {
++            _m.chain_rev = 1;
++        }
++        mts_chain_scroll = 0;
++        _m.is_dirty = true;
++    }
++    _y += _rh;
+     if (_m.chain_emit == 1 && _m.raw_rows == 0) {
+         draw_set_color(make_color_rgb(255, 140, 80));
+         draw_text_l(_lx1, _y, L("TABLES NEED RAW ROWS ON"));
+@@ -691,6 +727,17 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
+         mts_chain_view   = 1;
+         mts_chain_scroll = 0;
+     }
++    // ZOOM OUT: - [Nx] +  (1 = fit the widest map, 4 = a quarter of that)
++    if (scr_mts_ui_button(_px1 + 144, _py1, _px1 + 160, _py1 + 14, "-", false, _mx, _my)) {
++        mts_chain_zoom = min(4, mts_chain_zoom + 1);
++    }
++    draw_set_color(c_white);
++    draw_set_halign(fa_center);
++    draw_text_l(_px1 + 182, _py1, L("ZOOM ") + string(mts_chain_zoom) + "x");
++    draw_set_halign(fa_left);
++    if (scr_mts_ui_button(_px1 + 206, _py1, _px1 + 222, _py1 + 14, "+", false, _mx, _my)) {
++        mts_chain_zoom = max(1, mts_chain_zoom - 1);
++    }
+     _py1 += 18;
+     var _vert = (_m.chain_dir < 2);
+     // slider track: right edge (UP / DOWN) or bottom edge (LEFT / RIGHT)
+@@ -733,7 +780,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
+         _span = _px2 - _px1;
+         _side = _py2 - _py1;
+     }
+-    var _cs  = clamp(floor(_side / _cross), 2, 16);
++    var _cs  = clamp(floor(floor(_side / _cross) / mts_chain_zoom), 1, 16);
+     var _vis = max(1, floor(_span / _cs));
+     var _maxs = max(0, _ns - _vis);
+     if (point_in_rectangle(_mx, _my, _px1, _py1, _px2, _py2)) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+index d27d713..47f4aee 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+@@ -265,6 +265,7 @@
+             _meta_out.chain_dir      = _a.meta.chain_dir;
+             _meta_out.chain_emit     = _a.meta.chain_emit;
+             _meta_out.chain_tab_addr = _a.meta.chain_tab_addr;
++            _meta_out.chain_rev      = _a.meta.chain_rev;
+             _meta_out.active_chain   = _a.meta.active_chain;
+         }
+ 		
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+index 298f22d..5b30ccd 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+@@ -259,6 +259,7 @@ if (instance_exists(obj_asset_manager)) {
+             _meta_out.chain_dir      = _a.meta.chain_dir;
+             _meta_out.chain_emit     = _a.meta.chain_emit;
+             _meta_out.chain_tab_addr = _a.meta.chain_tab_addr;
++            _meta_out.chain_rev      = _a.meta.chain_rev;
+             _meta_out.active_chain   = _a.meta.active_chain;
+         }
+ 		

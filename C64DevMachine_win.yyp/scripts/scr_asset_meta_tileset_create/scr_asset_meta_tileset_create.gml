@@ -74,6 +74,7 @@ function scr_asset_meta_tileset_create(_asset) {
     _asset.meta.chain_dir              = 0;    // preview / feed direction: 0 UP 1 DOWN 2 LEFT 3 RIGHT
     _asset.meta.chain_emit             = 0;    // 1 = emit the map + chain tables (RAW ROWS only)
     _asset.meta.chain_tab_addr         = -1;   // table address, -1 = straight after the last map
+    _asset.meta.chain_rev              = 0;    // 1 = the engine feeds a chain's list LAST entry first
     _asset.meta.active_chain           = 0;
     _asset.address                     = 0x8000;
 }

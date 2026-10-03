@@ -147,6 +147,7 @@ var _base = "unsaved";
                 _mo.chain_dir      = _me.chain_dir;
                 _mo.chain_emit     = _me.chain_emit;
                 _mo.chain_tab_addr = _me.chain_tab_addr;
+                _mo.chain_rev      = _me.chain_rev;
                 _mo.active_chain   = _me.active_chain;
             }
             if (_a.type == "SPRITE_MASK") {
