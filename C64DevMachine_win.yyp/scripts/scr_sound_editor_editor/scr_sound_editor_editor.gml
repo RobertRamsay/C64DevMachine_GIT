@@ -1538,8 +1538,8 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     } else if (_m.song_playing && _m.preview_display_order == _m.sel_order_row) {
         _dg_hl = _m.preview_display_step;
     }
-    if (_m.digi_speed > 0 && _dg_hl >= 0) {
-        _dg_hl = _m.dg_own_row;    // own digi tempo: light the digi lane's own row
+    if (_dg_hl >= 0 && _m.dg_own_ord >= 0) {
+        _dg_hl = _m.dg_own_row;    // the digi lane keeps its own row (DIGI SPEED / Fxx)
     }
     if (scr_digi_lane(_m, _order_row, _dg_x, _gy0, _dg_w, _row_h, _vis, _grid_len, _txt_scale, _dg_hl, _mx, _my, _se_push_undo, _se_snap)) {
         if (_m.edit_active) {

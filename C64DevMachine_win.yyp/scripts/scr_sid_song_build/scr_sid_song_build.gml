@@ -1529,11 +1529,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     if (_free) array_push(_list, ["jmp_abs", _L_instrs, _id]);
     if (!_free) {
     if (_dg_plan.used) {
-        if (_dg_plan.speed > 0) {
-            array_push(_list, ["jsr", _key + "dgsync", _id]);   // own digi tempo: restart on a new order row
-        } else {
-            array_push(_list, ["jsr", _key + "dgrow", _id]);    // this row's digi step
-        }
+        array_push(_list, ["jsr", _key + "dgsync", _id]);   // the digi lane's row (see scr_sid_song_emit_digi)
     }
     // Advance the master row; roll into the next order row at the target.
     // Same label-operand restriction as the pattern length above — fetch via
@@ -1603,8 +1599,8 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // Runs every call regardless of whether a row advanced, so D-holds are
     // measured in frames and fast arps work between rows.
     array_push(_list, ["label", _L_instrs]);
-    if (_dg_plan.used && _dg_plan.speed > 0) {
-        array_push(_list, ["jsr", _key + "dgtick", _id]);   // own digi tempo: every frame
+    if (_dg_plan.used) {
+        array_push(_list, ["jsr", _key + "dgtick", _id]);   // digi lane's own clock, every frame
     }
 
     // One stepper for all three voices (X = voice): every per-voice field is

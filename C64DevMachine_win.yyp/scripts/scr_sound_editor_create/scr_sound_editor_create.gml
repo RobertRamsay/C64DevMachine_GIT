@@ -126,7 +126,10 @@ function scr_sound_editor_create(_asset) {
         dg_last_key   : -1,
         dg_own_ord    : -1,      // DIGI SPEED preview: order row the digi lane last synced to
         dg_own_row    : -1,      // DIGI SPEED preview: digi row playing now
-        dg_sync_time  : 0,       // DIGI SPEED preview: current_time at the last sync
+        dg_sync_time  : 0,       // DIGI SPEED preview: current_time of the digi row's start
+        dg_run_sp     : 0,       // preview: digi speed now (0 = song rows), set by DIGI SPEED / Fxx
+        dg_cmd_on     : false,   // typing an Fxx speed command in the digi lane
+        dg_cmd_buf    : "",      // its hex digits so far
         dg_inst       : -1,
         dg_panel_rect : [0, 0, 0, 0],
 

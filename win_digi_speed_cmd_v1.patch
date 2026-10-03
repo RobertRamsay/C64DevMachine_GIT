@@ -1,0 +1,597 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml b/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
+index 5f89af9..d61ab57 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
+@@ -62,11 +62,14 @@ function scr_digi_ensure_steps(_pat) {
+         if (is_undefined(_pat.steps[_i][$ "note"])) {
+             _pat.steps[_i].note = DIGI_NOTE_BASE;
+         }
++        if (is_undefined(_pat.steps[_i][$ "spd"])) {
++            _pat.steps[_i].spd = 0;     // saved before the speed command existed
++        }
+     }
+ }
+ 
+ function scr_digi_step_blank() {
+-    return { smp: DIGI_SMP_EMPTY, vol: 3, note: DIGI_NOTE_BASE };
++    return { smp: DIGI_SMP_EMPTY, vol: 3, note: DIGI_NOTE_BASE, spd: 0 };
+ }
+ 
+ /// "C-4", "C#4" ...
+@@ -105,7 +108,7 @@ function scr_digi_snapshot(_m) {
+         var _steps = [];
+         for (var _s = 0; _s < array_length(_src.steps); _s++) {
+             var _st = _src.steps[_s];
+-            array_push(_steps, { smp: _st.smp, vol: _st.vol, note: _st.note });
++            array_push(_steps, { smp: _st.smp, vol: _st.vol, note: _st.note, spd: _st.spd });
+         }
+         array_push(_pats, { name: _src.name, pattern_len: _src.pattern_len, steps: _steps });
+     }
+@@ -320,6 +323,9 @@ function scr_digi_preview_tick(_m, _cur_song, _voice_pos) {
+             scr_digi_stop(_m);
+             _m.dg_last_key = -1;
+         }
++        _m.dg_run_sp  = _m.digi_speed;
++        _m.dg_own_ord = -1;
++        _m.dg_own_row = -1;
+         return;
+     }
+     var _ord  = _m.preview_display_order;
+@@ -331,58 +337,63 @@ function scr_digi_preview_tick(_m, _cur_song, _voice_pos) {
+     if (_ord < 0 || _ord >= array_length(_cur_song.order) || _step < 0) {
+         return;
+     }
+-    if (_m.digi_speed > 0) {
+-        scr_digi_preview_own_speed(_m, _cur_song, _ord, _step);
+-        return;
+-    }
+-    var _key = _ord * 1000 + _step;
+-    if (_key == _m.dg_last_key) {
+-        return;
+-    }
+-    _m.dg_last_key = _key;
+-
+-    var _row = _cur_song.order[_ord];
+-    if (_row.dg < 0 || _row.dg >= array_length(_m.digi_patterns)) {
+-        return;
+-    }
+-    var _pat = _m.digi_patterns[_row.dg];
+-    // Like the C64 player: past the digi pattern's own length there is nothing
+-    // (REPEAT does not wrap the digi track).
+-    if (_step >= _pat.pattern_len) {
+-        return;
+-    }
+-    scr_digi_play_step(_m, _pat.steps[_step]);
+-}
+-
+-/// DIGI SPEED preview: the digi lane runs its own row clock (digi_speed PAL
+-/// frames a row) and restarts at row 0 whenever the song enters an order row,
+-/// like the C64 player.
+-function scr_digi_preview_own_speed(_m, _cur_song, _ord, _step) {
++    // The digi lane keeps its own row: it follows the song's rows while its
++    // speed is 0 (SONG), or runs its own clock at dg_run_sp frames a row
++    // (set by DIGI SPEED, or by an Fxx step). Every order row restarts it at
++    // row 0, like the C64 player.
+     var _key = _ord * 1000 + _step;
+     if (_key != _m.dg_last_key) {
+-        var _new_ord = (_ord != _m.dg_own_ord);
+         _m.dg_last_key = _key;
+-        if (_new_ord || _step == 0) {
++        if (_step == 0 || _ord != _m.dg_own_ord) {
+             _m.dg_own_ord   = _ord;
+-            _m.dg_own_row   = -1;
++            _m.dg_own_row   = _step;
+             _m.dg_sync_time = current_time;
++            if (_m.dg_run_sp > 0) {
++                _m.dg_own_row = 0;
++            }
++            scr_digi_preview_row(_m, _cur_song);
++            return;
++        }
++        if (_m.dg_run_sp == 0) {
++            _m.dg_own_row = _step;
++            scr_digi_preview_row(_m, _cur_song);
++            return;
++        }
++    }
++    if (_m.dg_run_sp > 0 && _m.dg_own_ord >= 0) {
++        var _row_ms = _m.dg_run_sp * 20;    // PAL: 20 ms a frame
++        if (current_time - _m.dg_sync_time >= _row_ms) {
++            _m.dg_sync_time += _row_ms;
++            _m.dg_own_row   += 1;
++            scr_digi_preview_row(_m, _cur_song);
+         }
+     }
+-    var _frames = floor((current_time - _m.dg_sync_time) * 50 / 1000);
+-    var _target = _frames div _m.digi_speed;
+-    if (_target == _m.dg_own_row) {
++}
++
++/// Plays the digi lane's current row (dg_own_row of the synced order row's
++/// digi pattern) and applies its speed command.
++function scr_digi_preview_row(_m, _cur_song) {
++    if (_m.dg_own_ord < 0 || _m.dg_own_ord >= array_length(_cur_song.order)) {
+         return;
+     }
+-    _m.dg_own_row = _target;
+     var _row = _cur_song.order[_m.dg_own_ord];
+     if (_row.dg < 0 || _row.dg >= array_length(_m.digi_patterns)) {
+         return;
+     }
+     var _pat = _m.digi_patterns[_row.dg];
+-    if (_target >= _pat.pattern_len) {
++    // Like the C64 player: past the digi pattern's own length there is nothing
++    // (REPEAT does not wrap the digi track).
++    if (_m.dg_own_row < 0 || _m.dg_own_row >= _pat.pattern_len) {
+         return;
+     }
+-    scr_digi_play_step(_m, _pat.steps[_target]);
++    var _st = _pat.steps[_m.dg_own_row];
++    if (_st.spd == DIGI_SPD_SONG) {
++        _m.dg_run_sp = 0;
++    } else if (_st.spd > 0) {
++        _m.dg_run_sp    = _st.spd;
++        _m.dg_sync_time = current_time;
++    }
++    scr_digi_play_step(_m, _st);
+ }
+ 
+ // ═══════════════════════════ GRID LANE ═══════════════════════════
+@@ -544,12 +555,38 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
+                 draw_set_color(make_color_rgb(70, 60, 80));
+                 draw_text_transformed_l(_x + 8, _ry + _ty, "...", _txt_scale, _txt_scale, 0);
+             }
++            // Speed command, right edge: F01-F1F own tempo, F00 back to SONG rows.
++            var _cmd_txt = "";
++            draw_set_color(make_color_rgb(255, 170, 90));
++            if (_m.dg_cmd_on && _m.dg_focus && _m.dg_sel_step == _row) {
++                _cmd_txt = "F" + _m.dg_cmd_buf;
++                while (string_length(_cmd_txt) < 3) {
++                    _cmd_txt += "_";
++                }
++                draw_set_color(c_yellow);
++            } else if (_st.spd == DIGI_SPD_SONG) {
++                _cmd_txt = "F00";
++            } else if (_st.spd > 0) {
++                _cmd_txt = string_upper(decimal_to_hex(_st.spd));
++                while (string_length(_cmd_txt) < 2) {
++                    _cmd_txt = "0" + _cmd_txt;
++                }
++                _cmd_txt = "F" + _cmd_txt;
++            }
++            if (_cmd_txt != "") {
++                draw_set_font_l(fnt_c64_pico);
++                draw_set_halign(fa_right);
++                draw_text_l(_x2 - 4, _ry + floor(_row_h / 2) - 4, _cmd_txt);
++                draw_set_halign(fa_left);
++                draw_set_font_l(fnt_c64_tiny);
++            }
+             if (_hov && mouse_check_button_pressed(mb_right)) {
+                 scr_digi_push_undo(_m, _pushf, _snapf);
+                 var _blank = scr_digi_step_blank();
+                 _st.smp  = _blank.smp;
+                 _st.vol  = _blank.vol;
+                 _st.note = _blank.note;
++                _st.spd  = _blank.spd;
+                 global.undo_dirty = true;
+             }
+         }
+@@ -570,7 +607,8 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
+     // panel never reach here (the editor hides the mouse from everything
+     // under it).
+     if (_press && !_in_lane) {
+-        _m.dg_focus = false;
++        _m.dg_focus  = false;
++        _m.dg_cmd_on = false;
+     }
+     _m.dg_sel_step = clamp(_m.dg_sel_step, 0, max(0, _grid_len - 1));
+     _m.dg_anchor   = clamp(_m.dg_anchor, 0, max(0, _grid_len - 1));
+@@ -601,6 +639,8 @@ function scr_digi_scroll_to_cursor(_m, _vis) {
+ ///                 OCTAVE setting, Q-U at it, I 9 O 0 P above)
+ ///   , .           previous / next sample slot (also changes the selected cell)
+ ///   [ ]           volume -/+        -  OFF        Del / Backspace  clear
++///   F + 2 hex     speed command: F01-F1F frames a digi row from here on,
++///                 F00 back to the song's rows (Esc cancels)
+ ///   Up / Down     move (Shift extends the selection)        Esc  leave
+ ///   Ctrl+C / X / V  copy / cut / paste rows   Ctrl+Z / Y  undo / redo
+ /// Typing into an order row with no digi pattern makes one first.
+@@ -609,6 +649,11 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof)
+     var _ctrl  = keyboard_check(vk_control) || scr_cmd_held();
+     var _shift = keyboard_check(vk_shift);
+     if (keyboard_check_pressed(vk_escape)) {
++        if (_m.dg_cmd_on) {
++            _m.dg_cmd_on  = false;
++            _m.dg_cmd_buf = "";
++            return;
++        }
+         _m.dg_focus = false;
+         return;
+     }
+@@ -713,7 +758,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof)
+         for (var _r = _lo; _r <= _hi; _r++) {
+             if (_r < _pat_c.pattern_len) {
+                 var _s = _pat_c.steps[_r];
+-                array_push(_rows, { smp: _s.smp, vol: _s.vol, note: _s.note });
++                array_push(_rows, { smp: _s.smp, vol: _s.vol, note: _s.note, spd: _s.spd });
+             }
+         }
+         global.se_dg_clipboard = _rows;
+@@ -724,6 +769,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof)
+                 _pat_c.steps[_r].smp  = _b.smp;
+                 _pat_c.steps[_r].vol  = _b.vol;
+                 _pat_c.steps[_r].note = _b.note;
++                _pat_c.steps[_r].spd  = _b.spd;
+             }
+             global.undo_dirty = true;
+             _m.warn_msg = "CUT " + string(array_length(_rows)) + " DIGI ROWS";
+@@ -755,6 +801,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof)
+             _pat_v.steps[_dst].smp  = _cb[_i].smp;
+             _pat_v.steps[_dst].vol  = _cb[_i].vol;
+             _pat_v.steps[_dst].note = _cb[_i].note;
++            _pat_v.steps[_dst].spd  = _cb[_i].spd;
+         }
+         global.undo_dirty = true;
+         _m.warn_msg   = "PASTED " + string(array_length(_cb)) + " DIGI ROWS";
+@@ -765,6 +812,50 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof)
+         return;   // no Ctrl chords below
+     }
+ 
++    // ── SPEED COMMAND ── F, then two hex digits. Piano keys are off while
++    // it is being typed (A-E and the digits are both).
++    if (_m.dg_cmd_on) {
++        var _hex = "0123456789ABCDEF";
++        for (var _hk = 1; _hk <= 16; _hk++) {
++            if (keyboard_check_pressed(ord(string_char_at(_hex, _hk)))) {
++                _m.dg_cmd_buf += string_char_at(_hex, _hk);
++                break;
++            }
++        }
++        if (string_length(_m.dg_cmd_buf) >= 2) {
++            var _cval = (string_pos(string_char_at(_m.dg_cmd_buf, 1), _hex) - 1) * 16
++                      + (string_pos(string_char_at(_m.dg_cmd_buf, 2), _hex) - 1);
++            _m.dg_cmd_on  = false;
++            _m.dg_cmd_buf = "";
++            scr_digi_push_undo(_m, _pushf, _snapf);
++            if (_order_row.dg < 0 || _order_row.dg >= array_length(_m.digi_patterns)) {
++                var _npc = scr_digi_pattern_new(_m, max(4, min(128, _grid_len)));
++                if (_npc < 0) {
++                    return;
++                }
++                _order_row.dg = _npc;
++            }
++            var _pat_f = _m.digi_patterns[_order_row.dg];
++            if (_m.dg_sel_step < _pat_f.pattern_len) {
++                var _code = min(_cval, DIGI_SPD_MAX);
++                if (_cval == 0) {
++                    _code = DIGI_SPD_SONG;
++                }
++                _pat_f.steps[_m.dg_sel_step].spd = _code;
++                _m.dg_sel_step = min(_grid_len - 1, _m.dg_sel_step + 1);
++                _m.dg_anchor   = _m.dg_sel_step;
++                scr_digi_scroll_to_cursor(_m, _vis);
++            }
++            global.undo_dirty = true;
++        }
++        return;
++    }
++    if (keyboard_check_pressed(ord("F"))) {
++        _m.dg_cmd_on  = true;
++        _m.dg_cmd_buf = "";
++        return;
++    }
++
+     // ── ENTRY ──
+     var _pk_map = [
+         [ord("Z"),  0, -1], [ord("S"),  1, -1], [ord("X"),  2, -1],
+@@ -825,6 +916,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof)
+                 _cs.smp  = _bl.smp;
+                 _cs.vol  = _bl.vol;
+                 _cs.note = _bl.note;
++                _cs.spd  = _bl.spd;
+             }
+             if (_cs.smp >= 0) {
+                 if (_vol_dn) {
+@@ -862,7 +954,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof)
+ /// uses last frame's rect to hide the mouse from controls under the panel.
+ function scr_digi_slots_rect(_lane_x, _lane_w, _gy0) {
+     var _w = 330;
+-    var _h = 92 + DIGI_SLOTS * 20 + 58;
++    var _h = 106 + DIGI_SLOTS * 20 + 58;
+     var _x1 = _lane_x + _lane_w - _w;
+     var _y1 = _gy0 - 2;    // just under the SAMPLES button
+     return [_x1, _y1, _x1 + _w, _y1 + _h];
+@@ -964,15 +1056,16 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+     }
+     draw_set_color(make_color_rgb(95, 95, 115));
+     if (_m.digi_speed > 0) {
+-        draw_text_l(_x1 + 190, _spy, "SYNCS EACH ORDER ROW");
++        draw_text_l(_x1 + 190, _spy, "START SPEED");
+     } else {
+         draw_text_l(_x1 + 190, _spy, "= SONG ROWS");
+     }
++    draw_text_l(_x1 + 10, _spy + 14, "IN THE LANE: F01-F1F SPEED, F00 SONG ROWS");
+ 
+     // SLOTS
+     var _names = scr_digi_sample_names();
+     for (var _s = 0; _s < DIGI_SLOTS; _s++) {
+-        var _sy = _y1 + 92 + _s * 20;
++        var _sy = _y1 + 106 + _s * 20;
+         var _num = string(_s);
+         if (_s < 10) {
+             _num = "0" + _num;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+index 4e48116..1c5327d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+@@ -1529,11 +1529,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+     if (_free) array_push(_list, ["jmp_abs", _L_instrs, _id]);
+     if (!_free) {
+     if (_dg_plan.used) {
+-        if (_dg_plan.speed > 0) {
+-            array_push(_list, ["jsr", _key + "dgsync", _id]);   // own digi tempo: restart on a new order row
+-        } else {
+-            array_push(_list, ["jsr", _key + "dgrow", _id]);    // this row's digi step
+-        }
++        array_push(_list, ["jsr", _key + "dgsync", _id]);   // the digi lane's row (see scr_sid_song_emit_digi)
+     }
+     // Advance the master row; roll into the next order row at the target.
+     // Same label-operand restriction as the pattern length above — fetch via
+@@ -1603,8 +1599,8 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+     // Runs every call regardless of whether a row advanced, so D-holds are
+     // measured in frames and fast arps work between rows.
+     array_push(_list, ["label", _L_instrs]);
+-    if (_dg_plan.used && _dg_plan.speed > 0) {
+-        array_push(_list, ["jsr", _key + "dgtick", _id]);   // own digi tempo: every frame
++    if (_dg_plan.used) {
++        array_push(_list, ["jsr", _key + "dgtick", _id]);   // digi lane's own clock, every frame
+     }
+ 
+     // One stepper for all three voices (X = voice): every per-voice field is
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.gml b/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.gml
+index 13f86e3..e76477c 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid_song_emit_digi/scr_sid_song_emit_digi.gml
+@@ -32,6 +32,10 @@
+ /// (98 / 128 on alternate samples) plus the 6502's interrupt entry and the
+ /// KERNAL's NMI stub.
+ #macro DIGI_NMI_CYCLES 127
++/// Digi step speed command (step.spd): 0 none, 1-31 frames a digi row from
++/// this row on, DIGI_SPD_SONG (F00) back to the song's rows.
++#macro DIGI_SPD_MAX 31
++#macro DIGI_SPD_SONG 32
+ /// Most sample+note variants one tune can use (byte 0 values $FE/$FF are taken).
+ #macro DIGI_MAX_VARIANTS 200
+ 
+@@ -154,8 +158,19 @@ function scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name) {
+                     }
+                 }
+             }
++            // Byte 1: volume in bits 0-1, speed command in bits 2-7.
++            var _code = 0;
++            if (_si < array_length(_pat.steps)) {
++                var _sp_v = _pat.steps[_si][$ "spd"];
++                if (!is_undefined(_sp_v)) {
++                    _code = clamp(round(real(_sp_v)), 0, DIGI_SPD_SONG);
++                }
++            }
++            if (_code > 0) {
++                _any_step = true;
++            }
+             array_push(_bytes, _b);
+-            array_push(_bytes, _vol);
++            array_push(_bytes, _vol | (_code << 2));
+         }
+         array_push(_pat_bytes, _bytes);
+     }
+@@ -265,15 +280,16 @@ function scr_sid_song_digi_emit_data(_list, _id, _key, _plan) {
+     array_push(_list, ["byte", 0x03, _id]);
+ 
+     // NMI state.
+-    var _vars = ["dgact", "dgph", "dgby", "dglv", "dghi", "dgcnl", "dgcnh", "dgvol", "dgpi", "dgrc", "dgcn"];
++    var _vars = ["dgact", "dgph", "dgby", "dglv", "dghi", "dgcnl", "dgcnh", "dgvol", "dgpi", "dgrc", "dgcn", "dgsp"];
+     for (var _vi = 0; _vi < array_length(_vars); _vi++) {
+         array_push(_list, ["label", _k + _vars[_vi]]);
+         array_push(_list, ["byte", 0, _id]);
+     }
+ }
+ 
+-/// Runtime: <key>dgnmi (the NMI handler), <key>dgrow (the row trigger the
+-/// IRQ player calls), <key>dgstart, <key>dgstop and <key>dginit.
++/// Runtime: <key>dgnmi (the NMI handler), <key>dgsync / <key>dgtick / <key>dgplay
++/// (the digi lane's rows, called by the IRQ player), <key>dgstart, <key>dgstop
++/// and <key>dginit.
+ /// Self-modified operands are written as raw bytes with a label on each
+ /// operand byte, because the assembler can't take label+offset operands.
+ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_ORD, _S_ROW, _S_PTR) {
+@@ -464,25 +480,82 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
+ 
+     // ── ROW TRIGGER ── called by the shared row clock before it advances.
+     // Uses the song's _S_PTR as scratch, like the voices before it.
+-    array_push(_list, ["label",   _k + "dgrow"]);
++    // ── DIGI ROWS ──
++    // The digi lane has its own row (dgrc) in its own pattern (dgpi). Speed
++    // dgsp: 0 = follow the song's rows, 1-31 = own clock, frames a row. It
++    // starts at DIGI SPEED and an Fxx step changes it. Every order row's
++    // first row restarts the lane at row 0.
++    //   <key>dgsync  every song row (from the row clock)
++    //   <key>dgtick  every frame, after the song's rows
++    //   <key>dgplay  plays row dgrc: volume, speed command, sample
++    array_push(_list, ["label",   _k + "dgsync"]);
++    array_push(_list, ["lda_zp",  _S_ROW, _id]);
++    array_push(_list, ["bne",     _k + "dgsn", _id]);
++    array_push(_list, ["ldx_zp",  _S_ORD, _id]);
++    array_push(_list, ["lda_abx", _k + "dgord", _id]);
++    array_push(_list, ["sta_abs", _k + "dgpi", _id]);
++    array_push(_list, ["lda_imm", 0xFF, _id]);
++    array_push(_list, ["sta_abs", _k + "dgrc", _id]);
++    array_push(_list, ["lda_abs", _k + "dgsp", _id]);
++    array_push(_list, ["beq",     _k + "dgsf", _id]);
++    array_push(_list, ["lda_imm", 0x01, _id]);
++    array_push(_list, ["sta_abs", _k + "dgcn", _id]);       // own clock: row 0 this frame
++    array_push(_list, ["rts",     0, _id]);
++    array_push(_list, ["label",   _k + "dgsn"]);
++    array_push(_list, ["lda_abs", _k + "dgsp", _id]);
++    array_push(_list, ["bne",     _k + "dgsx", _id]);       // own clock: song rows don't step it
+     array_push(_list, ["ldx_zp",  _S_ORD, _id]);
+     array_push(_list, ["lda_abx", _k + "dgord", _id]);
++    array_push(_list, ["sta_abs", _k + "dgpi", _id]);
++    array_push(_list, ["label",   _k + "dgsf"]);
++    array_push(_list, ["lda_zp",  _S_ROW, _id]);
++    array_push(_list, ["sta_abs", _k + "dgrc", _id]);
++    array_push(_list, ["jsr",     _k + "dgplay", _id]);
++    // An Fxx here just started the own clock; dgtick also runs this frame,
++    // so one extra count keeps the row xx frames long.
++    array_push(_list, ["lda_abs", _k + "dgsp", _id]);
++    array_push(_list, ["beq",     _k + "dgsx", _id]);
++    array_push(_list, ["inc_abs", _k + "dgcn", _id]);
++    array_push(_list, ["label",   _k + "dgsx"]);
++    array_push(_list, ["rts",     0, _id]);
++
++    array_push(_list, ["label",   _k + "dgtick"]);
++    array_push(_list, ["lda_abs", _k + "dgsp", _id]);
++    array_push(_list, ["beq",     _k + "dgrx", _id]);
++    array_push(_list, ["dec_abs", _k + "dgcn", _id]);
++    array_push(_list, ["bne",     _k + "dgrx", _id]);
++    array_push(_list, ["lda_abs", _k + "dgsp", _id]);
++    array_push(_list, ["sta_abs", _k + "dgcn", _id]);
++    array_push(_list, ["inc_abs", _k + "dgrc", _id]);
++
++    array_push(_list, ["label",   _k + "dgplay"]);
++    array_push(_list, ["lda_abs", _k + "dgpi", _id]);
+     array_push(_list, ["cmp_imm", 0xFF, _id]);
+     array_push(_list, ["beq",     _k + "dgrx", _id]);
+     array_push(_list, ["tax",     0, _id]);
+-    array_push(_list, ["lda_zp",  _S_ROW, _id]);
++    array_push(_list, ["lda_abs", _k + "dgrc", _id]);
+     array_push(_list, ["cmp_abx", _k + "dglen", _id]);
+     array_push(_list, ["bcs",     _k + "dgrx", _id]);      // past this digi pattern's end
+     array_push(_list, ["lda_abx", _k + "dgppl", _id]);
+     array_push(_list, ["sta_zp",  _S_PTR, _id]);
+     array_push(_list, ["lda_abx", _k + "dgpph", _id]);
+     array_push(_list, ["sta_zp",  _S_PTR + 1, _id]);
+-    array_push(_list, ["lda_zp",  _S_ROW, _id]);
++    array_push(_list, ["lda_abs", _k + "dgrc", _id]);
+     array_push(_list, ["asl_a",   0, _id]);                 // 2 bytes a row (rows <= 128)
+     array_push(_list, ["tay",     0, _id]);
+     array_push(_list, ["iny",     0, _id]);
+     array_push(_list, ["lda_izy", _S_PTR, _id]);
+-    array_push(_list, ["sta_abs", _k + "dgvol", _id]);      // volume
++    array_push(_list, ["sta_abs", _k + "dgvol", _id]);      // volume (dgstart masks bits 0-1)
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["lsr_a",   0, _id]);
++    array_push(_list, ["beq",     _k + "dgnc", _id]);       // no speed command
++    array_push(_list, ["cmp_imm", DIGI_SPD_SONG, _id]);
++    array_push(_list, ["bne",     _k + "dgss", _id]);
++    array_push(_list, ["lda_imm", 0x00, _id]);              // F00: follow the song's rows
++    array_push(_list, ["label",   _k + "dgss"]);
++    array_push(_list, ["sta_abs", _k + "dgsp", _id]);
++    array_push(_list, ["sta_abs", _k + "dgcn", _id]);
++    array_push(_list, ["label",   _k + "dgnc"]);
+     array_push(_list, ["dey",     0, _id]);
+     array_push(_list, ["lda_izy", _S_PTR, _id]);
+     array_push(_list, ["cmp_imm", 0xFF, _id]);
+@@ -495,62 +568,6 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
+     array_push(_list, ["label",   _k + "dgrx"]);
+     array_push(_list, ["rts",     0, _id]);
+ 
+-    if (_plan.speed > 0) {
+-        // ── OWN DIGI TEMPO ──
+-        // <key>dgsync runs on every song row: on an order row's first row it
+-        // points the digi lane at that row's digi pattern and arms row 0 for
+-        // this frame. <key>dgtick runs every frame after the song's rows and
+-        // steps the digi lane every <speed> frames.
+-        array_push(_list, ["label",   _k + "dgsync"]);
+-        array_push(_list, ["lda_zp",  _S_ROW, _id]);
+-        array_push(_list, ["bne",     _k + "dgsx", _id]);
+-        array_push(_list, ["ldx_zp",  _S_ORD, _id]);
+-        array_push(_list, ["lda_abx", _k + "dgord", _id]);
+-        array_push(_list, ["sta_abs", _k + "dgpi", _id]);
+-        array_push(_list, ["lda_imm", 0xFF, _id]);
+-        array_push(_list, ["sta_abs", _k + "dgrc", _id]);
+-        array_push(_list, ["lda_imm", 0x01, _id]);
+-        array_push(_list, ["sta_abs", _k + "dgcn", _id]);
+-        array_push(_list, ["label",   _k + "dgsx"]);
+-        array_push(_list, ["rts",     0, _id]);
+-
+-        array_push(_list, ["label",   _k + "dgtick"]);
+-        array_push(_list, ["lda_abs", _k + "dgpi", _id]);
+-        array_push(_list, ["cmp_imm", 0xFF, _id]);
+-        array_push(_list, ["beq",     _k + "dgtx", _id]);
+-        array_push(_list, ["dec_abs", _k + "dgcn", _id]);
+-        array_push(_list, ["bne",     _k + "dgtx", _id]);
+-        array_push(_list, ["lda_imm", _plan.speed, _id]);
+-        array_push(_list, ["sta_abs", _k + "dgcn", _id]);
+-        array_push(_list, ["inc_abs", _k + "dgrc", _id]);
+-        array_push(_list, ["lda_abs", _k + "dgpi", _id]);
+-        array_push(_list, ["tax",     0, _id]);
+-        array_push(_list, ["lda_abs", _k + "dgrc", _id]);
+-        array_push(_list, ["cmp_abx", _k + "dglen", _id]);
+-        array_push(_list, ["bcs",     _k + "dgtx", _id]);      // past this digi pattern's end
+-        array_push(_list, ["lda_abx", _k + "dgppl", _id]);
+-        array_push(_list, ["sta_zp",  _S_PTR, _id]);
+-        array_push(_list, ["lda_abx", _k + "dgpph", _id]);
+-        array_push(_list, ["sta_zp",  _S_PTR + 1, _id]);
+-        array_push(_list, ["lda_abs", _k + "dgrc", _id]);
+-        array_push(_list, ["asl_a",   0, _id]);                 // 2 bytes a row
+-        array_push(_list, ["tay",     0, _id]);
+-        array_push(_list, ["iny",     0, _id]);
+-        array_push(_list, ["lda_izy", _S_PTR, _id]);
+-        array_push(_list, ["sta_abs", _k + "dgvol", _id]);
+-        array_push(_list, ["dey",     0, _id]);
+-        array_push(_list, ["lda_izy", _S_PTR, _id]);
+-        array_push(_list, ["cmp_imm", 0xFF, _id]);
+-        array_push(_list, ["beq",     _k + "dgtx", _id]);
+-        array_push(_list, ["cmp_imm", 0xFE, _id]);
+-        array_push(_list, ["bne",     _k + "dgtt", _id]);
+-        array_push(_list, ["jmp_abs", _k + "dgstop", _id]);
+-        array_push(_list, ["label",   _k + "dgtt"]);
+-        array_push(_list, ["jmp_abs", _k + "dgstart", _id]);
+-        array_push(_list, ["label",   _k + "dgtx"]);
+-        array_push(_list, ["rts",     0, _id]);
+-    }
+-
+     // ── INIT ── vectors (and the boost voice). Called from <key>_init.
+     array_push(_list, ["label",   _k + "dginit"]);
+     if (_plan.boost > 0) {
+@@ -572,7 +589,9 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
+         array_push(_list, ["sta_abs", _bv + 4, _id]);       // pulse + TEST + gate
+     }
+     array_push(_list, ["lda_imm", 0xFF, _id]);
+-    array_push(_list, ["sta_abs", _k + "dgpi", _id]);       // own tempo: no digi pattern until a sync
++    array_push(_list, ["sta_abs", _k + "dgpi", _id]);       // no digi pattern until a sync
++    array_push(_list, ["lda_imm", _plan.speed, _id]);
++    array_push(_list, ["sta_abs", _k + "dgsp", _id]);       // DIGI SPEED (0 = song rows)
+     array_push(_list, ["lda_imm", 0x00, _id]);
+     array_push(_list, ["sta_abs", _k + "dgact", _id]);
+     array_push(_list, ["lda_lab_lo", _k + "dgnmi", _id]);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+index bba1b04..a208ec0 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+@@ -126,7 +126,10 @@ function scr_sound_editor_create(_asset) {
+         dg_last_key   : -1,
+         dg_own_ord    : -1,      // DIGI SPEED preview: order row the digi lane last synced to
+         dg_own_row    : -1,      // DIGI SPEED preview: digi row playing now
+-        dg_sync_time  : 0,       // DIGI SPEED preview: current_time at the last sync
++        dg_sync_time  : 0,       // DIGI SPEED preview: current_time of the digi row's start
++        dg_run_sp     : 0,       // preview: digi speed now (0 = song rows), set by DIGI SPEED / Fxx
++        dg_cmd_on     : false,   // typing an Fxx speed command in the digi lane
++        dg_cmd_buf    : "",      // its hex digits so far
+         dg_inst       : -1,
+         dg_panel_rect : [0, 0, 0, 0],
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index 0f9bba5..e703c00 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -1538,8 +1538,8 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     } else if (_m.song_playing && _m.preview_display_order == _m.sel_order_row) {
+         _dg_hl = _m.preview_display_step;
+     }
+-    if (_m.digi_speed > 0 && _dg_hl >= 0) {
+-        _dg_hl = _m.dg_own_row;    // own digi tempo: light the digi lane's own row
++    if (_dg_hl >= 0 && _m.dg_own_ord >= 0) {
++        _dg_hl = _m.dg_own_row;    // the digi lane keeps its own row (DIGI SPEED / Fxx)
+     }
+     if (scr_digi_lane(_m, _order_row, _dg_x, _gy0, _dg_w, _row_h, _vis, _grid_len, _txt_scale, _dg_hl, _mx, _my, _se_push_undo, _se_snap)) {
+         if (_m.edit_active) {

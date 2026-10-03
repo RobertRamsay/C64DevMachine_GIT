@@ -62,11 +62,14 @@ function scr_digi_ensure_steps(_pat) {
         if (is_undefined(_pat.steps[_i][$ "note"])) {
             _pat.steps[_i].note = DIGI_NOTE_BASE;
         }
+        if (is_undefined(_pat.steps[_i][$ "spd"])) {
+            _pat.steps[_i].spd = 0;     // saved before the speed command existed
+        }
     }
 }
 
 function scr_digi_step_blank() {
-    return { smp: DIGI_SMP_EMPTY, vol: 3, note: DIGI_NOTE_BASE };
+    return { smp: DIGI_SMP_EMPTY, vol: 3, note: DIGI_NOTE_BASE, spd: 0 };
 }
 
 /// "C-4", "C#4" ...
@@ -105,7 +108,7 @@ function scr_digi_snapshot(_m) {
         var _steps = [];
         for (var _s = 0; _s < array_length(_src.steps); _s++) {
             var _st = _src.steps[_s];
-            array_push(_steps, { smp: _st.smp, vol: _st.vol, note: _st.note });
+            array_push(_steps, { smp: _st.smp, vol: _st.vol, note: _st.note, spd: _st.spd });
         }
         array_push(_pats, { name: _src.name, pattern_len: _src.pattern_len, steps: _steps });
     }
@@ -320,6 +323,9 @@ function scr_digi_preview_tick(_m, _cur_song, _voice_pos) {
             scr_digi_stop(_m);
             _m.dg_last_key = -1;
         }
+        _m.dg_run_sp  = _m.digi_speed;
+        _m.dg_own_ord = -1;
+        _m.dg_own_row = -1;
         return;
     }
     var _ord  = _m.preview_display_order;
@@ -331,58 +337,63 @@ function scr_digi_preview_tick(_m, _cur_song, _voice_pos) {
     if (_ord < 0 || _ord >= array_length(_cur_song.order) || _step < 0) {
         return;
     }
-    if (_m.digi_speed > 0) {
-        scr_digi_preview_own_speed(_m, _cur_song, _ord, _step);
-        return;
-    }
+    // The digi lane keeps its own row: it follows the song's rows while its
+    // speed is 0 (SONG), or runs its own clock at dg_run_sp frames a row
+    // (set by DIGI SPEED, or by an Fxx step). Every order row restarts it at
+    // row 0, like the C64 player.
     var _key = _ord * 1000 + _step;
-    if (_key == _m.dg_last_key) {
+    if (_key != _m.dg_last_key) {
+        _m.dg_last_key = _key;
+        if (_step == 0 || _ord != _m.dg_own_ord) {
+            _m.dg_own_ord   = _ord;
+            _m.dg_own_row   = _step;
+            _m.dg_sync_time = current_time;
+            if (_m.dg_run_sp > 0) {
+                _m.dg_own_row = 0;
+            }
+            scr_digi_preview_row(_m, _cur_song);
+            return;
+        }
+        if (_m.dg_run_sp == 0) {
+            _m.dg_own_row = _step;
+            scr_digi_preview_row(_m, _cur_song);
+            return;
+        }
+    }
+    if (_m.dg_run_sp > 0 && _m.dg_own_ord >= 0) {
+        var _row_ms = _m.dg_run_sp * 20;    // PAL: 20 ms a frame
+        if (current_time - _m.dg_sync_time >= _row_ms) {
+            _m.dg_sync_time += _row_ms;
+            _m.dg_own_row   += 1;
+            scr_digi_preview_row(_m, _cur_song);
+        }
+    }
+}
+
+/// Plays the digi lane's current row (dg_own_row of the synced order row's
+/// digi pattern) and applies its speed command.
+function scr_digi_preview_row(_m, _cur_song) {
+    if (_m.dg_own_ord < 0 || _m.dg_own_ord >= array_length(_cur_song.order)) {
         return;
     }
-    _m.dg_last_key = _key;
-
-    var _row = _cur_song.order[_ord];
+    var _row = _cur_song.order[_m.dg_own_ord];
     if (_row.dg < 0 || _row.dg >= array_length(_m.digi_patterns)) {
         return;
     }
     var _pat = _m.digi_patterns[_row.dg];
     // Like the C64 player: past the digi pattern's own length there is nothing
     // (REPEAT does not wrap the digi track).
-    if (_step >= _pat.pattern_len) {
+    if (_m.dg_own_row < 0 || _m.dg_own_row >= _pat.pattern_len) {
         return;
     }
-    scr_digi_play_step(_m, _pat.steps[_step]);
-}
-
-/// DIGI SPEED preview: the digi lane runs its own row clock (digi_speed PAL
-/// frames a row) and restarts at row 0 whenever the song enters an order row,
-/// like the C64 player.
-function scr_digi_preview_own_speed(_m, _cur_song, _ord, _step) {
-    var _key = _ord * 1000 + _step;
-    if (_key != _m.dg_last_key) {
-        var _new_ord = (_ord != _m.dg_own_ord);
-        _m.dg_last_key = _key;
-        if (_new_ord || _step == 0) {
-            _m.dg_own_ord   = _ord;
-            _m.dg_own_row   = -1;
-            _m.dg_sync_time = current_time;
-        }
+    var _st = _pat.steps[_m.dg_own_row];
+    if (_st.spd == DIGI_SPD_SONG) {
+        _m.dg_run_sp = 0;
+    } else if (_st.spd > 0) {
+        _m.dg_run_sp    = _st.spd;
+        _m.dg_sync_time = current_time;
     }
-    var _frames = floor((current_time - _m.dg_sync_time) * 50 / 1000);
-    var _target = _frames div _m.digi_speed;
-    if (_target == _m.dg_own_row) {
-        return;
-    }
-    _m.dg_own_row = _target;
-    var _row = _cur_song.order[_m.dg_own_ord];
-    if (_row.dg < 0 || _row.dg >= array_length(_m.digi_patterns)) {
-        return;
-    }
-    var _pat = _m.digi_patterns[_row.dg];
-    if (_target >= _pat.pattern_len) {
-        return;
-    }
-    scr_digi_play_step(_m, _pat.steps[_target]);
+    scr_digi_play_step(_m, _st);
 }
 
 // ═══════════════════════════ GRID LANE ═══════════════════════════
@@ -544,12 +555,38 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
                 draw_set_color(make_color_rgb(70, 60, 80));
                 draw_text_transformed_l(_x + 8, _ry + _ty, "...", _txt_scale, _txt_scale, 0);
             }
+            // Speed command, right edge: F01-F1F own tempo, F00 back to SONG rows.
+            var _cmd_txt = "";
+            draw_set_color(make_color_rgb(255, 170, 90));
+            if (_m.dg_cmd_on && _m.dg_focus && _m.dg_sel_step == _row) {
+                _cmd_txt = "F" + _m.dg_cmd_buf;
+                while (string_length(_cmd_txt) < 3) {
+                    _cmd_txt += "_";
+                }
+                draw_set_color(c_yellow);
+            } else if (_st.spd == DIGI_SPD_SONG) {
+                _cmd_txt = "F00";
+            } else if (_st.spd > 0) {
+                _cmd_txt = string_upper(decimal_to_hex(_st.spd));
+                while (string_length(_cmd_txt) < 2) {
+                    _cmd_txt = "0" + _cmd_txt;
+                }
+                _cmd_txt = "F" + _cmd_txt;
+            }
+            if (_cmd_txt != "") {
+                draw_set_font_l(fnt_c64_pico);
+                draw_set_halign(fa_right);
+                draw_text_l(_x2 - 4, _ry + floor(_row_h / 2) - 4, _cmd_txt);
+                draw_set_halign(fa_left);
+                draw_set_font_l(fnt_c64_tiny);
+            }
             if (_hov && mouse_check_button_pressed(mb_right)) {
                 scr_digi_push_undo(_m, _pushf, _snapf);
                 var _blank = scr_digi_step_blank();
                 _st.smp  = _blank.smp;
                 _st.vol  = _blank.vol;
                 _st.note = _blank.note;
+                _st.spd  = _blank.spd;
                 global.undo_dirty = true;
             }
         }
@@ -570,7 +607,8 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
     // panel never reach here (the editor hides the mouse from everything
     // under it).
     if (_press && !_in_lane) {
-        _m.dg_focus = false;
+        _m.dg_focus  = false;
+        _m.dg_cmd_on = false;
     }
     _m.dg_sel_step = clamp(_m.dg_sel_step, 0, max(0, _grid_len - 1));
     _m.dg_anchor   = clamp(_m.dg_anchor, 0, max(0, _grid_len - 1));
@@ -601,6 +639,8 @@ function scr_digi_scroll_to_cursor(_m, _vis) {
 ///                 OCTAVE setting, Q-U at it, I 9 O 0 P above)
 ///   , .           previous / next sample slot (also changes the selected cell)
 ///   [ ]           volume -/+        -  OFF        Del / Backspace  clear
+///   F + 2 hex     speed command: F01-F1F frames a digi row from here on,
+///                 F00 back to the song's rows (Esc cancels)
 ///   Up / Down     move (Shift extends the selection)        Esc  leave
 ///   Ctrl+C / X / V  copy / cut / paste rows   Ctrl+Z / Y  undo / redo
 /// Typing into an order row with no digi pattern makes one first.
@@ -609,6 +649,11 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
     var _ctrl  = keyboard_check(vk_control) || scr_cmd_held();
     var _shift = keyboard_check(vk_shift);
     if (keyboard_check_pressed(vk_escape)) {
+        if (_m.dg_cmd_on) {
+            _m.dg_cmd_on  = false;
+            _m.dg_cmd_buf = "";
+            return;
+        }
         _m.dg_focus = false;
         return;
     }
@@ -713,7 +758,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
         for (var _r = _lo; _r <= _hi; _r++) {
             if (_r < _pat_c.pattern_len) {
                 var _s = _pat_c.steps[_r];
-                array_push(_rows, { smp: _s.smp, vol: _s.vol, note: _s.note });
+                array_push(_rows, { smp: _s.smp, vol: _s.vol, note: _s.note, spd: _s.spd });
             }
         }
         global.se_dg_clipboard = _rows;
@@ -724,6 +769,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
                 _pat_c.steps[_r].smp  = _b.smp;
                 _pat_c.steps[_r].vol  = _b.vol;
                 _pat_c.steps[_r].note = _b.note;
+                _pat_c.steps[_r].spd  = _b.spd;
             }
             global.undo_dirty = true;
             _m.warn_msg = "CUT " + string(array_length(_rows)) + " DIGI ROWS";
@@ -755,6 +801,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
             _pat_v.steps[_dst].smp  = _cb[_i].smp;
             _pat_v.steps[_dst].vol  = _cb[_i].vol;
             _pat_v.steps[_dst].note = _cb[_i].note;
+            _pat_v.steps[_dst].spd  = _cb[_i].spd;
         }
         global.undo_dirty = true;
         _m.warn_msg   = "PASTED " + string(array_length(_cb)) + " DIGI ROWS";
@@ -763,6 +810,50 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
     }
     if (_ctrl) {
         return;   // no Ctrl chords below
+    }
+
+    // ── SPEED COMMAND ── F, then two hex digits. Piano keys are off while
+    // it is being typed (A-E and the digits are both).
+    if (_m.dg_cmd_on) {
+        var _hex = "0123456789ABCDEF";
+        for (var _hk = 1; _hk <= 16; _hk++) {
+            if (keyboard_check_pressed(ord(string_char_at(_hex, _hk)))) {
+                _m.dg_cmd_buf += string_char_at(_hex, _hk);
+                break;
+            }
+        }
+        if (string_length(_m.dg_cmd_buf) >= 2) {
+            var _cval = (string_pos(string_char_at(_m.dg_cmd_buf, 1), _hex) - 1) * 16
+                      + (string_pos(string_char_at(_m.dg_cmd_buf, 2), _hex) - 1);
+            _m.dg_cmd_on  = false;
+            _m.dg_cmd_buf = "";
+            scr_digi_push_undo(_m, _pushf, _snapf);
+            if (_order_row.dg < 0 || _order_row.dg >= array_length(_m.digi_patterns)) {
+                var _npc = scr_digi_pattern_new(_m, max(4, min(128, _grid_len)));
+                if (_npc < 0) {
+                    return;
+                }
+                _order_row.dg = _npc;
+            }
+            var _pat_f = _m.digi_patterns[_order_row.dg];
+            if (_m.dg_sel_step < _pat_f.pattern_len) {
+                var _code = min(_cval, DIGI_SPD_MAX);
+                if (_cval == 0) {
+                    _code = DIGI_SPD_SONG;
+                }
+                _pat_f.steps[_m.dg_sel_step].spd = _code;
+                _m.dg_sel_step = min(_grid_len - 1, _m.dg_sel_step + 1);
+                _m.dg_anchor   = _m.dg_sel_step;
+                scr_digi_scroll_to_cursor(_m, _vis);
+            }
+            global.undo_dirty = true;
+        }
+        return;
+    }
+    if (keyboard_check_pressed(ord("F"))) {
+        _m.dg_cmd_on  = true;
+        _m.dg_cmd_buf = "";
+        return;
     }
 
     // ── ENTRY ──
@@ -825,6 +916,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
                 _cs.smp  = _bl.smp;
                 _cs.vol  = _bl.vol;
                 _cs.note = _bl.note;
+                _cs.spd  = _bl.spd;
             }
             if (_cs.smp >= 0) {
                 if (_vol_dn) {
@@ -862,7 +954,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
 /// uses last frame's rect to hide the mouse from controls under the panel.
 function scr_digi_slots_rect(_lane_x, _lane_w, _gy0) {
     var _w = 330;
-    var _h = 92 + DIGI_SLOTS * 20 + 58;
+    var _h = 106 + DIGI_SLOTS * 20 + 58;
     var _x1 = _lane_x + _lane_w - _w;
     var _y1 = _gy0 - 2;    // just under the SAMPLES button
     return [_x1, _y1, _x1 + _w, _y1 + _h];
@@ -964,15 +1056,16 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     }
     draw_set_color(make_color_rgb(95, 95, 115));
     if (_m.digi_speed > 0) {
-        draw_text_l(_x1 + 190, _spy, "SYNCS EACH ORDER ROW");
+        draw_text_l(_x1 + 190, _spy, "START SPEED");
     } else {
         draw_text_l(_x1 + 190, _spy, "= SONG ROWS");
     }
+    draw_text_l(_x1 + 10, _spy + 14, "IN THE LANE: F01-F1F SPEED, F00 SONG ROWS");
 
     // SLOTS
     var _names = scr_digi_sample_names();
     for (var _s = 0; _s < DIGI_SLOTS; _s++) {
-        var _sy = _y1 + 92 + _s * 20;
+        var _sy = _y1 + 106 + _s * 20;
         var _num = string(_s);
         if (_s < 10) {
             _num = "0" + _num;

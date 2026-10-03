@@ -32,6 +32,10 @@
 /// (98 / 128 on alternate samples) plus the 6502's interrupt entry and the
 /// KERNAL's NMI stub.
 #macro DIGI_NMI_CYCLES 127
+/// Digi step speed command (step.spd): 0 none, 1-31 frames a digi row from
+/// this row on, DIGI_SPD_SONG (F00) back to the song's rows.
+#macro DIGI_SPD_MAX 31
+#macro DIGI_SPD_SONG 32
 /// Most sample+note variants one tune can use (byte 0 values $FE/$FF are taken).
 #macro DIGI_MAX_VARIANTS 200
 
@@ -154,8 +158,19 @@ function scr_sid_song_digi_plan(_sm, _song_order, _n_ord, _free, _asset_name) {
                     }
                 }
             }
+            // Byte 1: volume in bits 0-1, speed command in bits 2-7.
+            var _code = 0;
+            if (_si < array_length(_pat.steps)) {
+                var _sp_v = _pat.steps[_si][$ "spd"];
+                if (!is_undefined(_sp_v)) {
+                    _code = clamp(round(real(_sp_v)), 0, DIGI_SPD_SONG);
+                }
+            }
+            if (_code > 0) {
+                _any_step = true;
+            }
             array_push(_bytes, _b);
-            array_push(_bytes, _vol);
+            array_push(_bytes, _vol | (_code << 2));
         }
         array_push(_pat_bytes, _bytes);
     }
@@ -265,15 +280,16 @@ function scr_sid_song_digi_emit_data(_list, _id, _key, _plan) {
     array_push(_list, ["byte", 0x03, _id]);
 
     // NMI state.
-    var _vars = ["dgact", "dgph", "dgby", "dglv", "dghi", "dgcnl", "dgcnh", "dgvol", "dgpi", "dgrc", "dgcn"];
+    var _vars = ["dgact", "dgph", "dgby", "dglv", "dghi", "dgcnl", "dgcnh", "dgvol", "dgpi", "dgrc", "dgcn", "dgsp"];
     for (var _vi = 0; _vi < array_length(_vars); _vi++) {
         array_push(_list, ["label", _k + _vars[_vi]]);
         array_push(_list, ["byte", 0, _id]);
     }
 }
 
-/// Runtime: <key>dgnmi (the NMI handler), <key>dgrow (the row trigger the
-/// IRQ player calls), <key>dgstart, <key>dgstop and <key>dginit.
+/// Runtime: <key>dgnmi (the NMI handler), <key>dgsync / <key>dgtick / <key>dgplay
+/// (the digi lane's rows, called by the IRQ player), <key>dgstart, <key>dgstop
+/// and <key>dginit.
 /// Self-modified operands are written as raw bytes with a label on each
 /// operand byte, because the assembler can't take label+offset operands.
 function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_ORD, _S_ROW, _S_PTR) {
@@ -464,25 +480,82 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
 
     // ── ROW TRIGGER ── called by the shared row clock before it advances.
     // Uses the song's _S_PTR as scratch, like the voices before it.
-    array_push(_list, ["label",   _k + "dgrow"]);
+    // ── DIGI ROWS ──
+    // The digi lane has its own row (dgrc) in its own pattern (dgpi). Speed
+    // dgsp: 0 = follow the song's rows, 1-31 = own clock, frames a row. It
+    // starts at DIGI SPEED and an Fxx step changes it. Every order row's
+    // first row restarts the lane at row 0.
+    //   <key>dgsync  every song row (from the row clock)
+    //   <key>dgtick  every frame, after the song's rows
+    //   <key>dgplay  plays row dgrc: volume, speed command, sample
+    array_push(_list, ["label",   _k + "dgsync"]);
+    array_push(_list, ["lda_zp",  _S_ROW, _id]);
+    array_push(_list, ["bne",     _k + "dgsn", _id]);
     array_push(_list, ["ldx_zp",  _S_ORD, _id]);
     array_push(_list, ["lda_abx", _k + "dgord", _id]);
+    array_push(_list, ["sta_abs", _k + "dgpi", _id]);
+    array_push(_list, ["lda_imm", 0xFF, _id]);
+    array_push(_list, ["sta_abs", _k + "dgrc", _id]);
+    array_push(_list, ["lda_abs", _k + "dgsp", _id]);
+    array_push(_list, ["beq",     _k + "dgsf", _id]);
+    array_push(_list, ["lda_imm", 0x01, _id]);
+    array_push(_list, ["sta_abs", _k + "dgcn", _id]);       // own clock: row 0 this frame
+    array_push(_list, ["rts",     0, _id]);
+    array_push(_list, ["label",   _k + "dgsn"]);
+    array_push(_list, ["lda_abs", _k + "dgsp", _id]);
+    array_push(_list, ["bne",     _k + "dgsx", _id]);       // own clock: song rows don't step it
+    array_push(_list, ["ldx_zp",  _S_ORD, _id]);
+    array_push(_list, ["lda_abx", _k + "dgord", _id]);
+    array_push(_list, ["sta_abs", _k + "dgpi", _id]);
+    array_push(_list, ["label",   _k + "dgsf"]);
+    array_push(_list, ["lda_zp",  _S_ROW, _id]);
+    array_push(_list, ["sta_abs", _k + "dgrc", _id]);
+    array_push(_list, ["jsr",     _k + "dgplay", _id]);
+    // An Fxx here just started the own clock; dgtick also runs this frame,
+    // so one extra count keeps the row xx frames long.
+    array_push(_list, ["lda_abs", _k + "dgsp", _id]);
+    array_push(_list, ["beq",     _k + "dgsx", _id]);
+    array_push(_list, ["inc_abs", _k + "dgcn", _id]);
+    array_push(_list, ["label",   _k + "dgsx"]);
+    array_push(_list, ["rts",     0, _id]);
+
+    array_push(_list, ["label",   _k + "dgtick"]);
+    array_push(_list, ["lda_abs", _k + "dgsp", _id]);
+    array_push(_list, ["beq",     _k + "dgrx", _id]);
+    array_push(_list, ["dec_abs", _k + "dgcn", _id]);
+    array_push(_list, ["bne",     _k + "dgrx", _id]);
+    array_push(_list, ["lda_abs", _k + "dgsp", _id]);
+    array_push(_list, ["sta_abs", _k + "dgcn", _id]);
+    array_push(_list, ["inc_abs", _k + "dgrc", _id]);
+
+    array_push(_list, ["label",   _k + "dgplay"]);
+    array_push(_list, ["lda_abs", _k + "dgpi", _id]);
     array_push(_list, ["cmp_imm", 0xFF, _id]);
     array_push(_list, ["beq",     _k + "dgrx", _id]);
     array_push(_list, ["tax",     0, _id]);
-    array_push(_list, ["lda_zp",  _S_ROW, _id]);
+    array_push(_list, ["lda_abs", _k + "dgrc", _id]);
     array_push(_list, ["cmp_abx", _k + "dglen", _id]);
     array_push(_list, ["bcs",     _k + "dgrx", _id]);      // past this digi pattern's end
     array_push(_list, ["lda_abx", _k + "dgppl", _id]);
     array_push(_list, ["sta_zp",  _S_PTR, _id]);
     array_push(_list, ["lda_abx", _k + "dgpph", _id]);
     array_push(_list, ["sta_zp",  _S_PTR + 1, _id]);
-    array_push(_list, ["lda_zp",  _S_ROW, _id]);
+    array_push(_list, ["lda_abs", _k + "dgrc", _id]);
     array_push(_list, ["asl_a",   0, _id]);                 // 2 bytes a row (rows <= 128)
     array_push(_list, ["tay",     0, _id]);
     array_push(_list, ["iny",     0, _id]);
     array_push(_list, ["lda_izy", _S_PTR, _id]);
-    array_push(_list, ["sta_abs", _k + "dgvol", _id]);      // volume
+    array_push(_list, ["sta_abs", _k + "dgvol", _id]);      // volume (dgstart masks bits 0-1)
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["lsr_a",   0, _id]);
+    array_push(_list, ["beq",     _k + "dgnc", _id]);       // no speed command
+    array_push(_list, ["cmp_imm", DIGI_SPD_SONG, _id]);
+    array_push(_list, ["bne",     _k + "dgss", _id]);
+    array_push(_list, ["lda_imm", 0x00, _id]);              // F00: follow the song's rows
+    array_push(_list, ["label",   _k + "dgss"]);
+    array_push(_list, ["sta_abs", _k + "dgsp", _id]);
+    array_push(_list, ["sta_abs", _k + "dgcn", _id]);
+    array_push(_list, ["label",   _k + "dgnc"]);
     array_push(_list, ["dey",     0, _id]);
     array_push(_list, ["lda_izy", _S_PTR, _id]);
     array_push(_list, ["cmp_imm", 0xFF, _id]);
@@ -494,62 +567,6 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
     array_push(_list, ["jmp_abs", _k + "dgstart", _id]);
     array_push(_list, ["label",   _k + "dgrx"]);
     array_push(_list, ["rts",     0, _id]);
-
-    if (_plan.speed > 0) {
-        // ── OWN DIGI TEMPO ──
-        // <key>dgsync runs on every song row: on an order row's first row it
-        // points the digi lane at that row's digi pattern and arms row 0 for
-        // this frame. <key>dgtick runs every frame after the song's rows and
-        // steps the digi lane every <speed> frames.
-        array_push(_list, ["label",   _k + "dgsync"]);
-        array_push(_list, ["lda_zp",  _S_ROW, _id]);
-        array_push(_list, ["bne",     _k + "dgsx", _id]);
-        array_push(_list, ["ldx_zp",  _S_ORD, _id]);
-        array_push(_list, ["lda_abx", _k + "dgord", _id]);
-        array_push(_list, ["sta_abs", _k + "dgpi", _id]);
-        array_push(_list, ["lda_imm", 0xFF, _id]);
-        array_push(_list, ["sta_abs", _k + "dgrc", _id]);
-        array_push(_list, ["lda_imm", 0x01, _id]);
-        array_push(_list, ["sta_abs", _k + "dgcn", _id]);
-        array_push(_list, ["label",   _k + "dgsx"]);
-        array_push(_list, ["rts",     0, _id]);
-
-        array_push(_list, ["label",   _k + "dgtick"]);
-        array_push(_list, ["lda_abs", _k + "dgpi", _id]);
-        array_push(_list, ["cmp_imm", 0xFF, _id]);
-        array_push(_list, ["beq",     _k + "dgtx", _id]);
-        array_push(_list, ["dec_abs", _k + "dgcn", _id]);
-        array_push(_list, ["bne",     _k + "dgtx", _id]);
-        array_push(_list, ["lda_imm", _plan.speed, _id]);
-        array_push(_list, ["sta_abs", _k + "dgcn", _id]);
-        array_push(_list, ["inc_abs", _k + "dgrc", _id]);
-        array_push(_list, ["lda_abs", _k + "dgpi", _id]);
-        array_push(_list, ["tax",     0, _id]);
-        array_push(_list, ["lda_abs", _k + "dgrc", _id]);
-        array_push(_list, ["cmp_abx", _k + "dglen", _id]);
-        array_push(_list, ["bcs",     _k + "dgtx", _id]);      // past this digi pattern's end
-        array_push(_list, ["lda_abx", _k + "dgppl", _id]);
-        array_push(_list, ["sta_zp",  _S_PTR, _id]);
-        array_push(_list, ["lda_abx", _k + "dgpph", _id]);
-        array_push(_list, ["sta_zp",  _S_PTR + 1, _id]);
-        array_push(_list, ["lda_abs", _k + "dgrc", _id]);
-        array_push(_list, ["asl_a",   0, _id]);                 // 2 bytes a row
-        array_push(_list, ["tay",     0, _id]);
-        array_push(_list, ["iny",     0, _id]);
-        array_push(_list, ["lda_izy", _S_PTR, _id]);
-        array_push(_list, ["sta_abs", _k + "dgvol", _id]);
-        array_push(_list, ["dey",     0, _id]);
-        array_push(_list, ["lda_izy", _S_PTR, _id]);
-        array_push(_list, ["cmp_imm", 0xFF, _id]);
-        array_push(_list, ["beq",     _k + "dgtx", _id]);
-        array_push(_list, ["cmp_imm", 0xFE, _id]);
-        array_push(_list, ["bne",     _k + "dgtt", _id]);
-        array_push(_list, ["jmp_abs", _k + "dgstop", _id]);
-        array_push(_list, ["label",   _k + "dgtt"]);
-        array_push(_list, ["jmp_abs", _k + "dgstart", _id]);
-        array_push(_list, ["label",   _k + "dgtx"]);
-        array_push(_list, ["rts",     0, _id]);
-    }
 
     // ── INIT ── vectors (and the boost voice). Called from <key>_init.
     array_push(_list, ["label",   _k + "dginit"]);
@@ -572,7 +589,9 @@ function scr_sid_song_digi_emit_runtime(_list, _id, _key, _plan, _chip_base, _S_
         array_push(_list, ["sta_abs", _bv + 4, _id]);       // pulse + TEST + gate
     }
     array_push(_list, ["lda_imm", 0xFF, _id]);
-    array_push(_list, ["sta_abs", _k + "dgpi", _id]);       // own tempo: no digi pattern until a sync
+    array_push(_list, ["sta_abs", _k + "dgpi", _id]);       // no digi pattern until a sync
+    array_push(_list, ["lda_imm", _plan.speed, _id]);
+    array_push(_list, ["sta_abs", _k + "dgsp", _id]);       // DIGI SPEED (0 = song rows)
     array_push(_list, ["lda_imm", 0x00, _id]);
     array_push(_list, ["sta_abs", _k + "dgact", _id]);
     array_push(_list, ["lda_lab_lo", _k + "dgnmi", _id]);
