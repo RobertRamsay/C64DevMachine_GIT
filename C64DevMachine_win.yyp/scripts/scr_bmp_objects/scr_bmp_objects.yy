@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_bmp_objects",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_bmp_objects",
+  "parent":{
+    "name":"MACROS",
+    "path":"folders/SCRIPTS/MACROS.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

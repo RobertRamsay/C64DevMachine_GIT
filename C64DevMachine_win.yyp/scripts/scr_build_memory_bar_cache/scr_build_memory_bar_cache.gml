@@ -736,6 +736,9 @@ var _addr_total = 65536;
                 case "BYTE_DATA":
                     if (buffer_exists(_a.buffer)) { _seg_size = buffer_get_size(_a.buffer); _seg_col = make_color_rgb(180, 120, 255); }
                     break;
+                case "BMP_OBJECTS":
+                    if (buffer_exists(_a.buffer)) { _seg_size = buffer_get_size(_a.buffer); _seg_col = make_color_rgb(255, 140, 60); }
+                    break;
                 case "SFX_DATA":
                     if (_a.file != "" && array_length(_a.meta.instruments) > 0) {
                         var _sfx_instrs = _a.meta.instruments;

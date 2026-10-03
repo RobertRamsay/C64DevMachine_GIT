@@ -154,6 +154,9 @@ var _base = "unsaved";
             if (_a.type == "SPRITE_MASK") {
                 _mo = scr_sprmask_save_meta(_a);
             }
+            if (_a.type == "BMP_OBJECTS") {
+                _mo = scr_bmpobj_save_meta(_a);
+            }
             if (_a.type == "SAMPLE") {
                 _mo = scr_sample_save_meta(_a);
             }

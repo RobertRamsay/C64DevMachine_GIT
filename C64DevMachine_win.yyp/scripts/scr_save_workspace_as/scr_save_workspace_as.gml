@@ -282,6 +282,9 @@
         if (_a.type == "SPRITE_MASK") {
 		     _meta_out = scr_sprmask_save_meta(_a);
 		 }
+        if (_a.type == "BMP_OBJECTS") {
+            _meta_out = scr_bmpobj_save_meta(_a);
+        }
         if (_a.type == "SAMPLE") {
             // The source PCM goes out as the asset blob; meta is the settings.
             _meta_out = scr_sample_save_meta(_a);

@@ -1074,6 +1074,13 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
 	            }
 	            scr_sprmask_restore(_new_asset, _smm);
 	        }
+	        if (_ad.type == "BMP_OBJECTS") {
+	            var _bom = {};
+	            if (variable_struct_exists(_ad, "meta")) {
+	                _bom = _ad.meta;
+	            }
+	            scr_bmpobj_restore(_new_asset, _bom);
+	        }
 	        if (_ad.type == "ROOM_MAP") {
 	            var _rmm = {};
 	            if (variable_struct_exists(_ad, "meta")) {

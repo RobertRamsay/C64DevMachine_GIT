@@ -46,11 +46,11 @@ var _wide_modal = false;
 if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
     var _vb_type = ds_list_find_value(asset_list, viewer_asset).type;
     if (_vb_type == "BITMAP_BUILDER" || _vb_type == "MUSIC_MAKER" || _vb_type == "SFX_MAKER"
-    ||  _vb_type == "HUD" || (_vb_type == "ROOM_MAP" || _vb_type == "ANIMATION") || _vb_type == "SPRITE_MASK" || _vb_type == "SAMPLE") {
+    ||  _vb_type == "HUD" || (_vb_type == "ROOM_MAP" || _vb_type == "ANIMATION") || _vb_type == "SPRITE_MASK" || _vb_type == "BMP_OBJECTS" || _vb_type == "SAMPLE") {
         _wide_modal = true;
         _vx1 = 30;
         _vx2 = panel_x + 20;
-        if (_vb_type == "MUSIC_MAKER" || _vb_type == "SPRITE_MASK") {
+        if (_vb_type == "MUSIC_MAKER" || _vb_type == "SPRITE_MASK" || _vb_type == "BMP_OBJECTS") {
             _vx2 = _gui_w - _vx1;   // full width, centred — must match Draw
         }
     }
@@ -2297,6 +2297,11 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open && !(_wide_mo
             // Painted foreground layer; its buffer is the compiled mask blob,
             // which is what a LOAD_REU link packs.
             scr_sprmask_create(_new_asset);
+        }
+        if (_type == "BMP_OBJECTS") {
+            // Software sprites: the buffer is the C64 payload as-is, the meta
+            // lists where each object's graphics and mask sit inside it.
+            scr_bmpobj_create(_new_asset);
         }
         if ((_type == "MUSIC_MAKER" || _type == "SFX_MAKER")) {
             // Authoring asset — no C64 payload of its own, same family as

@@ -171,6 +171,22 @@ function scr_build_d64(_prg_buf, _base_pc, _boot_actual_size, _out_path = "") {
                         for (var _bi = 0; _bi < array_length(_blob_all); _bi++) {
                             buffer_poke(_lbuf, 2 + _bi, buffer_u8, _blob_all[_bi]);
                         }
+                    } else if (_b.type == "MAP_DATA"
+                           &&  variable_struct_exists(_b.meta, "raw_chars")
+                           &&  is_real(_b.meta.raw_chars)
+                           &&  real(_b.meta.raw_chars) == 2) {
+                        // RLE ROOMS map: the file is the room pointer table +
+                        // room streams, the same bytes the compile chain bakes.
+                        var _addr = _b.address;
+                        var _rle  = scr_map_rle_rooms_encode(_b);
+                        _lsz  = max(array_length(_rle), 1) + 2;
+                        _lbuf = buffer_create(_lsz, buffer_fixed, 1);
+                        buffer_fill(_lbuf, 0, buffer_u8, 0, _lsz);
+                        buffer_poke(_lbuf, 0, buffer_u8, _addr & 0xFF);
+                        buffer_poke(_lbuf, 1, buffer_u8, (_addr >> 8) & 0xFF);
+                        for (var _ri = 0; _ri < array_length(_rle); _ri++) {
+                            buffer_poke(_lbuf, 2 + _ri, buffer_u8, _rle[_ri]);
+                        }
                     } else {
                         var _addr = _b.address;
                         var _copy_sz = _raw_sz;
