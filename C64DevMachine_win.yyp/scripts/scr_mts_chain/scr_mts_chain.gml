@@ -263,7 +263,7 @@ function scr_mts_chain_emit(_list, _a) {
 }
 
 /// @desc The chain as preview slices along the scroll direction: an array of
-///       [map, line, entry] in the order the engine meets them (repeats
+///       [map, line, entry, chain] in the order the engine meets them (repeats
 ///       expanded). line = char row (UP / DOWN) or char column (LEFT / RIGHT),
 ///       already in the order it is fed in.
 function scr_mts_chain_slices(_m, _ci) {
@@ -293,11 +293,33 @@ function scr_mts_chain_slices(_m, _ci) {
                 if (_m.chain_dir == 0 || _m.chain_dir == 2) {
                     _line = _len - 1 - _l;
                 }
-                array_push(_out, [_mi, _line, _e]);
+                array_push(_out, [_mi, _line, _e, _ci]);
             }
         }
     }
     return _out;
+}
+
+/// @desc Every chain joined up in chain order - the whole course / level set
+///       as one continuous strip. Same slice format: [map, line, entry, chain].
+function scr_mts_course_slices(_m) {
+    var _out = [];
+    for (var _ci = 0; _ci < array_length(_m.chains); _ci++) {
+        var _cs = scr_mts_chain_slices(_m, _ci);
+        for (var _i = 0; _i < array_length(_cs); _i++) {
+            array_push(_out, _cs[_i]);
+        }
+    }
+    return _out;
+}
+
+/// @desc First slice of chain _ci in the course strip.
+function scr_mts_course_start(_m, _ci) {
+    var _n = 0;
+    for (var _c = 0; _c < min(_ci, array_length(_m.chains)); _c++) {
+        _n += array_length(scr_mts_chain_slices(_m, _c));
+    }
+    return _n;
 }
 
 /// @desc Small flat button. Returns true on the click.
@@ -442,6 +464,9 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
                     _m.active_chain     = _ci;
                     mts_chain_sel_entry = -1;
                     mts_chain_scroll    = 0;
+                    if (mts_chain_view == 0) {
+                        mts_chain_scroll = scr_mts_course_start(_m, _ci);
+                    }
                 }
             }
         }
@@ -651,27 +676,54 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         _y += 14;
     }
 
-    // ===== PREVIEW: the active chain, fed in the way the engine does =====
+    // ===== PREVIEW: the course (every chain joined) or one section, fed in the way
+    //       the engine does, with a slider. Click a piece to select its chain / map.
     var _px1 = _lx2 + 12;
     var _px2 = _x2 - 6;
     var _py1 = _y1 + 4;
     var _py2 = _y2 - 6;
+    // header: view toggle + where the active chain sits
+    if (scr_mts_ui_button(_px1, _py1, _px1 + 64, _py1 + 14, L("COURSE"), (mts_chain_view == 0), _mx, _my)) {
+        mts_chain_view   = 0;
+        mts_chain_scroll = scr_mts_course_start(_m, _ac);
+    }
+    if (scr_mts_ui_button(_px1 + 68, _py1, _px1 + 132, _py1 + 14, L("SECTION"), (mts_chain_view == 1), _mx, _my)) {
+        mts_chain_view   = 1;
+        mts_chain_scroll = 0;
+    }
+    _py1 += 18;
+    var _vert = (_m.chain_dir < 2);
+    // slider track: right edge (UP / DOWN) or bottom edge (LEFT / RIGHT)
+    var _sb = 12;
+    var _tx1 = _px2 - _sb;
+    var _ty1 = _py1;
+    var _tx2 = _px2;
+    var _ty2 = _py2;
+    if (_vert) {
+        _px2 -= _sb + 4;
+    } else {
+        _tx1 = _px1;
+        _ty1 = _py2 - _sb;
+        _py2 -= _sb + 4;
+    }
     draw_set_color(c_black);
     draw_rectangle(_px1, _py1, _px2, _py2, false);
-    var _sl   = scr_mts_chain_slices(_m, _ac);
+    var _sl;
+    if (mts_chain_view == 0) {
+        _sl = scr_mts_course_slices(_m);
+    } else {
+        _sl = scr_mts_chain_slices(_m, _ac);
+    }
     var _ns   = array_length(_sl);
-    var _vert = (_m.chain_dir < 2);
     var _cross = 1;
-    if (_ac >= 0) {
-        var _cm2 = _m.chains[_ac].maps;
-        for (var _q = 0; _q < array_length(_cm2); _q++) {
-            if (_cm2[_q] >= 0 && _cm2[_q] < array_length(_m.maps)) {
-                var _qd = scr_mts_map_dims(_m, _cm2[_q]);
-                if (_vert) {
-                    _cross = max(_cross, _qd[0]);
-                } else {
-                    _cross = max(_cross, _qd[1]);
-                }
+    for (var _q = 0; _q < _ns; _q += 1) {
+        // widest map in view decides the zoom (sampled on entry starts only)
+        if (_q == 0 || _sl[_q][2] != _sl[_q - 1][2]) {
+            var _qd = scr_mts_map_dims(_m, _sl[_q][0]);
+            if (_vert) {
+                _cross = max(_cross, _qd[0]);
+            } else {
+                _cross = max(_cross, _qd[1]);
             }
         }
     }
@@ -683,6 +735,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     }
     var _cs  = clamp(floor(_side / _cross), 2, 16);
     var _vis = max(1, floor(_span / _cs));
+    var _maxs = max(0, _ns - _vis);
     if (point_in_rectangle(_mx, _my, _px1, _py1, _px2, _py2)) {
         var _step = 4;
         if (keyboard_check(vk_shift)) {
@@ -696,11 +749,74 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
             if (_fwd_up) { mts_chain_scroll -= _step; } else { mts_chain_scroll += _step; }
         }
     }
-    mts_chain_scroll = clamp(mts_chain_scroll, 0, max(0, _ns - _vis));
+    // ---- slider ----
+    var _trk = _ty2 - _ty1;
+    if (!_vert) {
+        _trk = _tx2 - _tx1;
+    }
+    var _thumb = max(16, floor(_trk * min(1, _vis / max(1, _ns))));
+    if (point_in_rectangle(_mx, _my, _tx1, _ty1, _tx2, _ty2) && mouse_check_button_pressed(mb_left)) {
+        mts_chain_drag = true;
+    }
+    if (!mouse_check_button(mb_left)) {
+        mts_chain_drag = false;
+    }
+    if (mts_chain_drag && _maxs > 0) {
+        // where the mouse is along the track -> 0..1 from the chain's start
+        var _t = 0;
+        if (_vert) {
+            _t = (_my - _ty1 - _thumb * 0.5) / max(1, _trk - _thumb);
+            if (_m.chain_dir == 0) {
+                _t = 1 - _t;          // UP: the start is at the bottom
+            }
+        } else {
+            _t = (_mx - _tx1 - _thumb * 0.5) / max(1, _trk - _thumb);
+            if (_m.chain_dir == 2) {
+                _t = 1 - _t;          // LEFT: the start is at the right
+            }
+        }
+        mts_chain_scroll = round(clamp(_t, 0, 1) * _maxs);
+    }
+    mts_chain_scroll = clamp(mts_chain_scroll, 0, _maxs);
+    var _tp = 0;
+    if (_maxs > 0) {
+        _tp = mts_chain_scroll / _maxs;
+    }
+    if (_m.chain_dir == 0 || _m.chain_dir == 2) {
+        _tp = 1 - _tp;
+    }
+    draw_set_color(make_color_rgb(30, 32, 44));
+    draw_rectangle(_tx1, _ty1, _tx2, _ty2, false);
+    draw_set_color(make_color_rgb(80, 200, 140));
+    if (_vert) {
+        var _thy = _ty1 + floor(_tp * (_trk - _thumb));
+        draw_rectangle(_tx1 + 2, _thy, _tx2 - 2, _thy + _thumb, false);
+    } else {
+        var _thx = _tx1 + floor(_tp * (_trk - _thumb));
+        draw_rectangle(_thx, _ty1 + 2, _thx + _thumb, _ty2 - 2, false);
+    }
+    // the active chain's span, marked on the track
+    if (mts_chain_view == 0 && _ac >= 0 && _ns > 0) {
+        var _as = scr_mts_course_start(_m, _ac);
+        var _al = array_length(scr_mts_chain_slices(_m, _ac));
+        var _f0 = _as / _ns;
+        var _f1 = (_as + _al) / _ns;
+        if (_m.chain_dir == 0 || _m.chain_dir == 2) {
+            var _ft = _f0;
+            _f0 = 1 - _f1;
+            _f1 = 1 - _ft;
+        }
+        draw_set_color(make_color_rgb(255, 220, 80));
+        if (_vert) {
+            draw_rectangle(_tx1, _ty1 + _f0 * _trk, _tx1 + 2, _ty1 + _f1 * _trk, false);
+        } else {
+            draw_rectangle(_tx1 + _f0 * _trk, _ty1, _tx1 + _f1 * _trk, _ty1 + 2, false);
+        }
+    }
 
     if (_ns == 0) {
         draw_set_color(make_color_rgb(110, 110, 130));
-        draw_text_l(_px1 + 8, _py1 + 6, L("EMPTY CHAIN - PICK A MAP TAB, THEN + MAP"));
+        draw_text_l(_px1 + 8, _py1 + 6, L("EMPTY - + NEW MAKES A CHAIN, PICK A MAP TAB, THEN + MAP"));
     } else {
         var _clip_sx = window_get_width()  / global.gui_w;
         var _clip_sy = window_get_height() / display_get_gui_height();
@@ -772,13 +888,14 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
             }
         }
         scr_mts_glyph_end();
-        // Entry boundaries, the selected entry, and click-to-select
+        // Chain / entry boundaries, the selection, and click-to-select
         for (var _k3 = 0; _k3 < _vis; _k3++) {
             var _s3 = mts_chain_scroll + _k3;
             if (_s3 >= _ns) {
                 break;
             }
             var _e3 = _sl[_s3][2];
+            var _c3 = _sl[_s3][3];
             var _bx1 = _px1;
             var _by1 = _py1;
             var _bx2 = _px2;
@@ -787,20 +904,31 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
             if (_m.chain_dir == 1) { _by1 = _py1 + _k3 * _cs;       _by2 = _by1 + _cs - 1; }
             if (_m.chain_dir == 2) { _bx1 = _px2 - (_k3 + 1) * _cs; _bx2 = _bx1 + _cs - 1; }
             if (_m.chain_dir == 3) { _bx1 = _px1 + _k3 * _cs;       _bx2 = _bx1 + _cs - 1; }
-            if (_e3 == mts_chain_sel_entry) {
+            if (_c3 == _ac && mts_chain_view == 0) {
+                // the active chain, lightly marked in the course
+                draw_set_alpha(0.12);
+                draw_set_color(make_color_rgb(80, 200, 255));
+                draw_rectangle(_bx1, _by1, _bx2, _by2, false);
+                draw_set_alpha(1);
+            }
+            if (_c3 == _ac && _e3 == mts_chain_sel_entry) {
                 draw_set_alpha(0.25);
                 draw_set_color(make_color_rgb(255, 220, 80));
                 draw_rectangle(_bx1, _by1, _bx2, _by2, false);
                 draw_set_alpha(1);
             }
-            var _first = (_s3 == 0);
-            if (!_first) {
-                if (_sl[_s3 - 1][2] != _e3) {
+            var _new_chain = (_s3 == 0);
+            var _first     = (_s3 == 0);
+            if (_s3 > 0) {
+                if (_sl[_s3 - 1][3] != _c3) {
+                    _new_chain = true;
+                    _first     = true;
+                } else if (_sl[_s3 - 1][2] != _e3) {
                     _first = true;
                 }
             }
             if (_first) {
-                // the edge where this entry starts, with its name
+                // the edge where this entry starts; a new chain gets its name too
                 var _emi3 = _sl[_s3][0];
                 var _lbl3 = string(_e3) + " " + L("MAP ") + string(_emi3);
                 if (_emi3 < array_length(_m.map_names)) {
@@ -808,7 +936,12 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
                         _lbl3 = string(_e3) + " " + _m.map_names[_emi3];
                     }
                 }
-                draw_set_color(make_color_rgb(255, 220, 80));
+                if (_new_chain) {
+                    _lbl3 = _m.chains[_c3].name + "  /  " + _lbl3;
+                    draw_set_color(make_color_rgb(80, 200, 255));
+                } else {
+                    draw_set_color(make_color_rgb(255, 220, 80));
+                }
                 if (_m.chain_dir == 0) {
                     draw_line(_px1, _by2 + 1, _px2, _by2 + 1);
                     draw_text_l(_px1 + 2, _by2 - 12, _lbl3);
@@ -824,15 +957,20 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
                 }
             }
             if (point_in_rectangle(_mx, _my, _bx1, _by1, _bx2, _by2) && mouse_check_button_pressed(mb_left)) {
+                // select that chain, entry and map
+                if (_c3 != _m.active_chain) {
+                    _m.active_chain        = _c3;
+                    mts_chain_entry_scroll = 0;
+                }
                 mts_chain_sel_entry = _e3;
-                _m.active_map = _sl[_s3][0];
+                _m.active_map       = _sl[_s3][0];
             }
         }
         gpu_set_scissor(0, 0, window_get_width(), window_get_height());
         // position readout
         draw_set_color(make_color_rgb(120, 160, 140));
         draw_set_halign(fa_right);
-        draw_text_l(_px2 - 4, _py1 + 2, string(mts_chain_scroll) + "/" + string(_ns) + L(" LINES"));
+        draw_text_l(_x2 - 6, _y1 + 5, string(mts_chain_scroll) + "/" + string(_ns) + L(" LINES"));
         draw_set_halign(fa_left);
     }
 }

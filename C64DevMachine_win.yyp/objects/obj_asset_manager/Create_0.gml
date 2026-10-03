@@ -245,6 +245,8 @@ mts_chain_scroll       = 0;     // preview position, in lines from the chain sta
 mts_chain_sel_entry    = -1;    // selected entry of the active chain
 mts_chain_list_scroll  = 0;
 mts_chain_entry_scroll = 0;
+mts_chain_view         = 0;     // 0 = COURSE (every chain joined up), 1 = SECTION (the active chain)
+mts_chain_drag         = false; // dragging the preview slider
 
 // -------------------------------------------------------
 // SFX_DATA ASSET
