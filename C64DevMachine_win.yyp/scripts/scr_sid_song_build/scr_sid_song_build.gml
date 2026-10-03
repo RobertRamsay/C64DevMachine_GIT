@@ -391,6 +391,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     var _sng_any_vib = false;
     var _sng_extended_fx = false;
     var _tie_used = false;   // JXX tie rows present
+    var _cmd_used = array_create(20, false);   // pattern commands the song uses (fx routines build only these)
     // True once anything touches the filter: an instrument with FILTER ON, a
     // pattern A/B/C/E command, or a song filter mode. Only then does the
     // player carry filter code (init write, routing, commands).
@@ -526,6 +527,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             if (variable_struct_exists(_fx_st, "cmd") && real(_fx_st.cmd) >= 0) {
                 _pat_has_fx = true;
                 var _fx_c = real(_fx_st.cmd);
+                if (_fx_c >= 0 && _fx_c < 20) _cmd_used[_fx_c] = true;
                 if (_fx_c >= 16 && _fx_c <= 18) _sng_extended_fx = true;
                 if (_fx_c == 19) _tie_used = true;
                 if (_fx_c == 0x0A || _fx_c == 0x0B || _fx_c == 0x0C || _fx_c == 0x0E) {
@@ -2490,7 +2492,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             _sng_use_fx = true;
         }
     }
-    scr_sid_song_emit_fx_routines(_list, _id, _key, _chip_base, _c_base[0], _sng_use_fx, _sng_filt_used, _sng_extended_fx, _free);
+    scr_sid_song_emit_fx_routines(_list, _id, _key, _chip_base, _c_base[0], _sng_use_fx, _sng_filt_used, _sng_extended_fx, _free, _cmd_used, _sng_any_vib);
     if (_sfx) {
         scr_sid_song_emit_sfx(_list, _id, _key, _chip_base, _S_PTR);
     }

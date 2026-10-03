@@ -38,8 +38,24 @@
 /// _use_fx false (no command column anywhere, no instrument vibrato): cmdr is a
 /// bare RTS and fxr only writes the pitch, so a song that uses none of this
 /// pays ~20 bytes here instead of ~550.
-function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _use_filter, _use_extended = false, _free = false) {
+///
+/// Only what the song uses is built (like a shader compiled for its features):
+/// _cmd_used[n] says whether pattern command n appears anywhere in the song,
+/// and _any_vib whether any instrument has vibrato. A command nobody uses gets
+/// no handler in cmdr and no per-frame code in fxr.
+function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _use_filter, _use_extended = false, _free = false, _cmd_used = undefined, _any_vib = true) {
     var _k = _key;
+    // Which commands to build for (all of them when the caller doesn't say).
+    var _u = array_create(20, true);
+    if (is_array(_cmd_used)) {
+        for (var _ui = 0; _ui < 20 && _ui < array_length(_cmd_used); _ui++) {
+            _u[_ui] = _cmd_used[_ui];
+        }
+    }
+    var _u13 = _u[1] || _u[2] || _u[3];          // portamento / slide speed
+    var _u14 = _u13 || _u[4];                     // continuous effects 1-4
+    var _u58 = _u[5] || _u[6] || _u[7] || _u[8];  // one-shots
+    var _vib = _u[4] || _any_vib;                 // any vibrato at all
 
     if (_use_filter) {
         // <key>fcut — writes the 11-bit cutoff (fch:fcl) to $D415/$D416.
@@ -101,23 +117,29 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["label", _k + "c_standard", _id]);
     }
     // 000 — stop the continuous effect (A = 0 here).
-    array_push(_list, ["cmp_imm", 0x00, _id]);
-    array_push(_list, ["bne",     _k + "c_n0", _id]);
-    array_push(_list, ["sta_abx", _k + "fx", _id]);
-    array_push(_list, ["rts",     0, _id]);
-    array_push(_list, ["label",   _k + "c_n0"]);
+    if (_u[0]) {
+        array_push(_list, ["cmp_imm", 0x00, _id]);
+        array_push(_list, ["bne",     _k + "c_n0", _id]);
+        array_push(_list, ["sta_abx", _k + "fx", _id]);
+        array_push(_list, ["rts",     0, _id]);
+        array_push(_list, ["label",   _k + "c_n0"]);
+    }
     // 9: pulse sweep, an effect like 1-4.
-    array_push(_list, ["cmp_imm", 0x09, _id]);
-    array_push(_list, ["bne",     _k + "c_n9", _id]);
-    array_push(_list, ["sta_abx", _k + "fx", _id]);
-    array_push(_list, ["lda_abs", _k + "rval", _id]);
-    array_push(_list, ["sta_abx", _k + "fxv", _id]);
-    array_push(_list, ["rts",     0, _id]);
-    array_push(_list, ["label",   _k + "c_n9"]);
+    if (_u[9]) {
+        array_push(_list, ["cmp_imm", 0x09, _id]);
+        array_push(_list, ["bne",     _k + "c_n9", _id]);
+        array_push(_list, ["sta_abx", _k + "fx", _id]);
+        array_push(_list, ["lda_abs", _k + "rval", _id]);
+        array_push(_list, ["sta_abx", _k + "fxv", _id]);
+        array_push(_list, ["rts",     0, _id]);
+        array_push(_list, ["label",   _k + "c_n9"]);
+    }
+    if (_u14) {
     array_push(_list, ["cmp_imm", 0x05, _id]);
     array_push(_list, ["bcs",     _k + "c_ge5", _id]);
     // 1-4: continuous. Y keeps the command.
     array_push(_list, ["tay",     0, _id]);
+    if (_u[4]) {
     array_push(_list, ["cmp_imm", 0x04, _id]);
     array_push(_list, ["bne",     _k + "c_st", _id]);
     // Starting vibrato (not already running) restarts its cycle centred.
@@ -129,13 +151,17 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["sta_abx", _k + "vol", _id]);
     array_push(_list, ["sta_abx", _k + "voh", _id]);
     array_push(_list, ["sta_abx", _k + "vdir", _id]);
+    }
     array_push(_list, ["label",   _k + "c_st"]);
     array_push(_list, ["tya",     0, _id]);
     array_push(_list, ["sta_abx", _k + "fx", _id]);
     array_push(_list, ["lda_abs", _k + "rval", _id]);
     array_push(_list, ["sta_abx", _k + "fxv", _id]);
+    if (_u[4]) {
     array_push(_list, ["cpy_imm", 0x04, _id]);
     array_push(_list, ["beq",     _k + "c_vib", _id]);
+    }
+    if (_u13) {
     // 1-3: pitch speed = XX * 4 per frame, 16-bit (fvh:fxv) — up to about four
     // semitones a frame in the middle octaves.
     array_push(_list, ["asl_a",   0, _id]);
@@ -150,6 +176,8 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["lsr_a",   0, _id]);
     array_push(_list, ["sta_abx", _k + "fvh", _id]);
     array_push(_list, ["rts",     0, _id]);
+    }
+    if (_u[4]) {
     array_push(_list, ["label",   _k + "c_vib"]);
     array_push(_list, ["lda_abs", _k + "rval", _id]);
     array_push(_list, ["and_imm", 0x0F, _id]);          // depth = Y * 4
@@ -162,8 +190,10 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["lsr_a",   0, _id]);
     array_push(_list, ["lsr_a",   0, _id]);
     array_push(_list, ["sta_abx", _k + "cvs", _id]);
+    }
     array_push(_list, ["label",   _k + "c_ret"]);
     array_push(_list, ["rts",     0, _id]);
+    }
     // 5-F: not an effect, so any running effect ends on this row too.
     array_push(_list, ["label",   _k + "c_ge5"]);
     array_push(_list, ["tay",     0, _id]);
@@ -171,15 +201,18 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["sta_abx", _k + "fx", _id]);
     array_push(_list, ["tya",     0, _id]);
     // 5-8: one-shot, applied by fxr.
-    array_push(_list, ["cmp_imm", 0x09, _id]);
-    array_push(_list, ["bcs",     _k + "c_ge8", _id]);
-    array_push(_list, ["sta_abx", _k + "pcmd", _id]);
-    array_push(_list, ["lda_abs", _k + "rval", _id]);
-    array_push(_list, ["sta_abx", _k + "pval", _id]);
-    array_push(_list, ["rts",     0, _id]);
+    if (_u58) {
+        array_push(_list, ["cmp_imm", 0x09, _id]);
+        array_push(_list, ["bcs",     _k + "c_ge8", _id]);
+        array_push(_list, ["sta_abx", _k + "pcmd", _id]);
+        array_push(_list, ["lda_abs", _k + "rval", _id]);
+        array_push(_list, ["sta_abx", _k + "pval", _id]);
+        array_push(_list, ["rts",     0, _id]);
+    }
     array_push(_list, ["label",   _k + "c_ge8"]);
     if (_use_filter) {
         // A: cutoff = XX * 8.
+        if (_u[10]) {
         array_push(_list, ["cmp_imm", 0x0A, _id]);
         array_push(_list, ["bne",     _k + "c_na", _id]);
         array_push(_list, ["lda_abs", _k + "rval", _id]);
@@ -196,7 +229,9 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
         array_push(_list, ["sta_abs", _k + "fch", _id]);
         array_push(_list, ["jmp_abs", _k + "fcut", _id]);   // its rts returns
         array_push(_list, ["label",   _k + "c_na"]);
+        }
         // B: resonance = high nibble of XX, routing bits kept.
+        if (_u[11]) {
         array_push(_list, ["cmp_imm", 0x0B, _id]);
         array_push(_list, ["bne",     _k + "c_nb", _id]);
         array_push(_list, ["lda_abs", _k + "f17", _id]);
@@ -209,7 +244,9 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
         array_push(_list, ["sta_abs", _chip + 0x17, _id]);
         array_push(_list, ["rts",     0, _id]);
         array_push(_list, ["label",   _k + "c_nb"]);
+        }
         // C: cutoff sweep — an effect for this row, run by fxr.
+        if (_u[12]) {
         array_push(_list, ["cmp_imm", 0x0C, _id]);
         array_push(_list, ["bne",     _k + "c_nc", _id]);
         array_push(_list, ["sta_abx", _k + "fx", _id]);
@@ -217,7 +254,9 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
         array_push(_list, ["sta_abx", _k + "fxv", _id]);
         array_push(_list, ["rts",     0, _id]);
         array_push(_list, ["label",   _k + "c_nc"]);
+        }
         // E: mode (high nibble of $D418), volume kept.
+        if (_u[14]) {
         array_push(_list, ["cmp_imm", 0x0E, _id]);
         array_push(_list, ["bne",     _k + "c_ne", _id]);
         array_push(_list, ["lda_abs", _k + "f18", _id]);
@@ -233,16 +272,20 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
         array_push(_list, ["sta_abs", _chip + 0x18, _id]);
         array_push(_list, ["rts",     0, _id]);
         array_push(_list, ["label",   _k + "c_ne"]);
+        }
     }
     // D: $D418 (and its copy, so a later EXX keeps this volume).
-    array_push(_list, ["cmp_imm", 0x0D, _id]);
-    array_push(_list, ["bne",     _k + "c_nd", _id]);
-    array_push(_list, ["lda_abs", _k + "rval", _id]);
-    array_push(_list, ["sta_abs", _chip + 0x18, _id]);
-    array_push(_list, ["sta_abs", _k + "f18", _id]);
-    array_push(_list, ["rts",     0, _id]);
-    array_push(_list, ["label",   _k + "c_nd"]);
+    if (_u[13]) {
+        array_push(_list, ["cmp_imm", 0x0D, _id]);
+        array_push(_list, ["bne",     _k + "c_nd", _id]);
+        array_push(_list, ["lda_abs", _k + "rval", _id]);
+        array_push(_list, ["sta_abs", _chip + 0x18, _id]);
+        array_push(_list, ["sta_abs", _k + "f18", _id]);
+        array_push(_list, ["rts",     0, _id]);
+        array_push(_list, ["label",   _k + "c_nd"]);
+    }
     // F: tempo.
+    if (_u[15]) {
     array_push(_list, ["cmp_imm", 0x0F, _id]);
     array_push(_list, ["bne",     _k + "c_end", _id]);
     array_push(_list, ["lda_abs", _k + "rval", _id]);
@@ -264,12 +307,14 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     } else {
         array_push(_list, ["sta_abs", _k + "spd", _id]);
     }
+    }
     array_push(_list, ["label",   _k + "c_end"]);
     array_push(_list, ["rts",     0, _id]);
 
     // ═════════════════════════ fxr ═════════════════════════
     array_push(_list, ["label",   _k + "fxr"]);
-    // ── pending one-shot (5/6/7) ──
+    // ── pending one-shot (5/6/7) ── (G/H/I park in pcmd as well)
+    if (_u58 || _use_extended) {
     array_push(_list, ["lda_abx", _k + "pcmd", _id]);
     array_push(_list, ["beq",     _k + "f_porta", _id]);
     array_push(_list, ["lda_abs", _k + "hrw", _id]);
@@ -312,10 +357,15 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["label",   _k + "f_oclr"]);
     array_push(_list, ["lda_imm", 0x00, _id]);
     array_push(_list, ["sta_abx", _k + "pcmd", _id]);
+    }
 
     // ── portamento ──
     array_push(_list, ["label",   _k + "f_porta"]);
+    var _fx_any = _u13 || _u[9] || (_use_filter && _u[12]);
+    if (_fx_any) {
     array_push(_list, ["lda_abx", _k + "fx", _id]);
+    }
+    if (_u[1]) {
     array_push(_list, ["cmp_imm", 0x01, _id]);
     array_push(_list, ["bne",     _k + "f_p2", _id]);
     array_push(_list, ["clc",     0, _id]);
@@ -331,7 +381,9 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["sta_abx", _k + "fqh", _id]);
     array_push(_list, ["label",   _k + "f_pj"]);
     array_push(_list, ["jmp_abs", _k + "f_vib", _id]);
+    }
     array_push(_list, ["label",   _k + "f_p2"]);
+    if (_u[2]) {
     array_push(_list, ["cmp_imm", 0x02, _id]);
     array_push(_list, ["bne",     _k + "f_p3", _id]);
     array_push(_list, ["sec",     0, _id]);
@@ -347,20 +399,26 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["sta_abx", _k + "fqh", _id]);
     array_push(_list, ["label",   _k + "f_pj2"]);
     array_push(_list, ["jmp_abs", _k + "f_vib", _id]);
+    }
     array_push(_list, ["label",   _k + "f_p3"]);
+    if (_u[3]) {
     array_push(_list, ["cmp_imm", 0x03, _id]);
     array_push(_list, ["bne",     _k + "f_n3", _id]);
     array_push(_list, ["jmp_abs", _k + "f_tp", _id]);   // too far for a branch
+    }
     array_push(_list, ["label",   _k + "f_n3"]);
+    if (_u[9]) {
     array_push(_list, ["cmp_imm", 0x09, _id]);
     array_push(_list, ["beq",     _k + "f_pw", _id]);
-    if (_use_filter) {
+    }
+    if (_use_filter && _u[12]) {
         array_push(_list, ["cmp_imm", 0x0C, _id]);
         array_push(_list, ["bne",     _k + "f_ncs", _id]);
         array_push(_list, ["jmp_abs", _k + "f_cs", _id]);
         array_push(_list, ["label",   _k + "f_ncs"]);
     }
     array_push(_list, ["jmp_abs", _k + "f_vib", _id]);
+    if (_u[9]) {
     // 9XX pulse sweep: add XX sign-extended, clamp to $000-$FFF, write.
     array_push(_list, ["label",   _k + "f_pw"]);
     array_push(_list, ["lda_abx", _k + "fxv", _id]);
@@ -396,7 +454,8 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["lda_abx", _k + "pwh", _id]);
     array_push(_list, ["sta_aby", _chip + 3, _id]);
     array_push(_list, ["jmp_abs", _k + "f_vib", _id]);
-    if (_use_filter) {
+    }
+    if (_use_filter && _u[12]) {
         // CXX cutoff sweep: XX sign-extended onto the 11-bit cutoff, clamped.
         array_push(_list, ["label",   _k + "f_cs"]);
         array_push(_list, ["lda_abx", _k + "fxv", _id]);
@@ -431,6 +490,7 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
         array_push(_list, ["jmp_abs", _k + "f_vib", _id]);
     }
     // Slide to the target, snapping onto it rather than overshooting.
+    if (_u[3]) {
     array_push(_list, ["label",   _k + "f_tp"]);
     array_push(_list, ["lda_abx", _k + "fqh", _id]);
     array_push(_list, ["cmp_abx", _k + "tgh", _id]);
@@ -481,9 +541,12 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["sta_abx", _k + "fql", _id]);
     array_push(_list, ["lda_abx", _k + "tgh", _id]);
     array_push(_list, ["sta_abx", _k + "fqh", _id]);
+    }
 
-    // ── vibrato ──
+    // ── vibrato ── (none at all: f_vib goes straight to the output)
     array_push(_list, ["label",   _k + "f_vib"]);
+    if (_vib) {
+    if (_u[4]) {
     array_push(_list, ["lda_abx", _k + "fx", _id]);
     array_push(_list, ["cmp_imm", 0x04, _id]);
     array_push(_list, ["bne",     _k + "f_ivib", _id]);
@@ -492,6 +555,7 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["lda_abx", _k + "cvd", _id]);
     array_push(_list, ["sta_abs", _k + "vtd", _id]);
     array_push(_list, ["jmp_abs", _k + "f_vrun", _id]);
+    }
     array_push(_list, ["label",   _k + "f_ivib"]);
     array_push(_list, ["lda_abx", _k + "ivdl", _id]);   // instrument vibrato delay
     array_push(_list, ["beq",     _k + "f_ivgo", _id]);
@@ -555,6 +619,7 @@ function scr_sid_song_emit_fx_routines(_list, _id, _key, _chip, _c0, _use_fx, _u
     array_push(_list, ["sta_abx", _k + "vdir", _id]);
     array_push(_list, ["lda_imm", 0xFF, _id]);
     array_push(_list, ["sta_abx", _k + "vbc", _id]);
+    }
 
     // ── output: base pitch + vibrato offset ──
     array_push(_list, ["label",   _k + "f_out"]);

@@ -1036,7 +1036,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     draw_rectangle(_x1, _y1, _x2, _y2, true);
     draw_set_font_l(fnt_c64_tiny);
 
-    draw_text_l(_x1 + 10, _y1 + 8, "DIGI SAMPLES");
+    scr_digi_text_fit(_x1 + 10, _y1 + 8, "DIGI SAMPLES", _x2 - (_x1 + 10) - 8);
     var _cx = _x2 - 22;
     var _chov = point_in_rectangle(_mx, _my, _cx, _y1 + 4, _cx + 16, _y1 + 20);
     draw_set_color(c_ltgray);
@@ -1051,7 +1051,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     // RATE
     var _ry = _y1 + 26;
     draw_set_color(make_color_rgb(140, 150, 180));
-    draw_text_l(_x1 + 10, _ry, "RATE");
+    scr_digi_text_fit(_x1 + 10, _ry, "RATE", _x2 - (_x1 + 10) - 8);
     var _rates = scr_sample_rate_presets();
     var _ri = 0;
     var _best = 1000000;
@@ -1066,20 +1066,20 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
         global.undo_dirty = true;
     }
     draw_set_color(c_white);
-    draw_text_l(_x1 + 86, _ry, string(_m.digi_rate) + " HZ");
+    scr_digi_text_fit(_x1 + 86, _ry, string(_m.digi_rate) + " HZ", _x2 - (_x1 + 86) - 8);
     if (scr_sample_button(_x1 + 160, _ry - 4, 18, 16, ">", false, (_ri < array_length(_rates) - 1), _mx, _my)) {
         _m.digi_rate = _rates[_ri + 1];
         global.undo_dirty = true;
     }
     draw_set_color(make_color_rgb(95, 95, 115));
-    draw_text_l(_x1 + 190, _ry, "= NOTE C-4");
+    scr_digi_text_fit(_x1 + 190, _ry, "= NOTE C-4", _x2 - (_x1 + 190) - 8);
 
     // BOOST: a voice held at full DC so the volume register has something to
     // scale — needed on the 8580, louder on the 6581. That voice stops
     // playing the music's notes in the compiled tune.
     var _by = _ry + 22;
     draw_set_color(make_color_rgb(140, 150, 180));
-    draw_text_l(_x1 + 10, _by, "BOOST");
+    scr_digi_text_fit(_x1 + 10, _by, "BOOST", _x2 - (_x1 + 10) - 8);
     var _bnames = ["OFF", "V1", "V2", "V3"];
     for (var _bi = 0; _bi < 4; _bi++) {
         if (scr_sample_button(_x1 + 60 + _bi * 40, _by - 4, 36, 16, _bnames[_bi], (_m.digi_boost == _bi), true, _mx, _my)) {
@@ -1091,16 +1091,16 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     draw_set_color(make_color_rgb(95, 95, 115));
     if (_m.digi_boost > 0) {
         draw_set_color(make_color_rgb(255, 160, 60));
-        draw_text_l(_x1 + 224, _by, "V" + string(_m.digi_boost) + " MUTED ON C64");
+        scr_digi_text_fit(_x1 + 224, _by, "V" + string(_m.digi_boost) + " MUTED ON C64", _x2 - (_x1 + 224) - 8);
     } else {
-        draw_text_l(_x1 + 224, _by, "8580 NEEDS ONE");
+        scr_digi_text_fit(_x1 + 224, _by, "8580 NEEDS ONE", _x2 - (_x1 + 224) - 8);
     }
 
     // SPEED: frames per digi row. SONG = the digi rows go with the song's rows;
     // a number gives the digi lane its own tempo, restarted on every order row.
     var _spy = _by + 22;
     draw_set_color(make_color_rgb(140, 150, 180));
-    draw_text_l(_x1 + 10, _spy, "SPEED");
+    scr_digi_text_fit(_x1 + 10, _spy, "SPEED", _x2 - (_x1 + 10) - 8);
     if (scr_sample_button(_x1 + 60, _spy - 4, 18, 16, "<", false, (_m.digi_speed > 0), _mx, _my)) {
         _m.digi_speed -= 1;
         global.undo_dirty = true;
@@ -1108,9 +1108,9 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     }
     draw_set_color(c_white);
     if (_m.digi_speed == 0) {
-        draw_text_l(_x1 + 86, _spy, "SONG");
+        scr_digi_text_fit(_x1 + 86, _spy, "SONG", _x2 - (_x1 + 86) - 8);
     } else {
-        draw_text_l(_x1 + 86, _spy, string(_m.digi_speed) + " FR");
+        scr_digi_text_fit(_x1 + 86, _spy, string(_m.digi_speed) + " FR", _x2 - (_x1 + 86) - 8);
     }
     if (scr_sample_button(_x1 + 160, _spy - 4, 18, 16, ">", false, (_m.digi_speed < 31), _mx, _my)) {
         _m.digi_speed += 1;
@@ -1119,11 +1119,11 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     }
     draw_set_color(make_color_rgb(95, 95, 115));
     if (_m.digi_speed > 0) {
-        draw_text_l(_x1 + 190, _spy, "START SPEED");
+        scr_digi_text_fit(_x1 + 190, _spy, "START SPEED", _x2 - (_x1 + 190) - 8);
     } else {
-        draw_text_l(_x1 + 190, _spy, "= SONG ROWS");
+        scr_digi_text_fit(_x1 + 190, _spy, "= SONG ROWS", _x2 - (_x1 + 190) - 8);
     }
-    draw_text_l(_x1 + 10, _spy + 14, "IN THE LANE: F01-F1F SPEED, F00 SONG ROWS");
+    scr_digi_text_fit(_x1 + 10, _spy + 14, "IN THE LANE: F01-F1F SPEED, F00 SONG ROWS", _x2 - (_x1 + 10) - 8);
 
     // SLOTS
     var _names = scr_digi_sample_names();
@@ -1143,7 +1143,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
         if (_s == _m.dg_cur_slot || _nhov) {
             draw_set_color(c_white);
         }
-        draw_text_l(_x1 + 10, _sy + 3, _num);
+        scr_digi_text_fit(_x1 + 10, _sy + 3, _num, _x2 - (_x1 + 10) - 8);
         if (_nhov && mouse_check_button_pressed(mb_left)) {
             _m.dg_cur_slot = _s;
         }
@@ -1206,14 +1206,14 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
         }
     }
     draw_set_color(make_color_rgb(95, 95, 115));
-    draw_text_l(_x1 + 10, _y2 - 50, "NUMBER: CURRENT SLOT   BAR: NEXT SAMPLE   RMB: EMPTY");
+    scr_digi_text_fit(_x1 + 10, _y2 - 50, "NUMBER: CURRENT SLOT   BAR: NEXT SAMPLE   RMB: EMPTY", _x2 - (_x1 + 10) - 8);
     // Each sample costs one NMI; the estimate is for while a digi plays.
     var _cpu = round(_m.digi_rate * DIGI_NMI_CYCLES / SAMPLE_PAL_CLOCK * 100);
     draw_set_color(make_color_rgb(140, 150, 180));
     if (_cpu > 45) {
         draw_set_color(make_color_rgb(255, 160, 60));
     }
-    draw_text_l(_x1 + 10, _y2 - 34, "CPU WHILE A DIGI PLAYS: ~" + string(_cpu) + "%  (EACH NOTE USED = OWN COPY)");
+    scr_digi_text_fit(_x1 + 10, _y2 - 34, "CPU WHILE A DIGI PLAYS: ~" + string(_cpu) + "%  (EACH NOTE USED = OWN COPY)", _x2 - (_x1 + 10) - 8);
     // PROJECT CHECK: does this project leave room for samples? Hover for advice.
     var _chk = scr_digi_project_check(_m);
     var _worst = 0;
@@ -1223,17 +1223,28 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     var _chk_hov = point_in_rectangle(_mx, _my, _x1 + 4, _y2 - 20, _x2 - 4, _y2 - 4);
     if (_worst == 0) {
         draw_set_color(make_color_rgb(120, 200, 120));
-        draw_text_l(_x1 + 10, _y2 - 18, "PROJECT CHECK: OK FOR SAMPLES");
+        scr_digi_text_fit(_x1 + 10, _y2 - 18, "PROJECT CHECK: OK FOR SAMPLES", _x2 - (_x1 + 10) - 8);
     } else {
         draw_set_color(make_color_rgb(255, 170, 70));
         if (_worst == 2) {
             draw_set_color(make_color_rgb(255, 100, 80));
         }
-        draw_text_l(_x1 + 10, _y2 - 18, "PROJECT CHECK: " + string(array_length(_chk)) + " ISSUE(S) - HOVER FOR ADVICE");
+        scr_digi_text_fit(_x1 + 10, _y2 - 18, "PROJECT CHECK: " + string(array_length(_chk)) + " ISSUE(S) - HOVER FOR ADVICE", _x2 - (_x1 + 10) - 8);
         if (_chk_hov) {
             scr_digi_check_draw_advice(_chk, _x1, _y2 - 22);
         }
     }
+}
+
+/// Draws _s at _x,_y, scaled down (never up) so it fits in _maxw pixels. The
+/// panel's texts use it so a long line can't run past the panel's edge.
+function scr_digi_text_fit(_x, _y, _s, _maxw) {
+    var _w = string_width_l(_s);
+    var _sc = 1;
+    if (_w > _maxw && _w > 0) {
+        _sc = _maxw / _w;
+    }
+    draw_text_transformed_l(_x, _y, _s, _sc, _sc, 0);
 }
 
 /// Things in this project that make samples a bad fit, each with plain advice.
