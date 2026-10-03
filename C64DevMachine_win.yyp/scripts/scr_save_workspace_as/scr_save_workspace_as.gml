@@ -266,6 +266,7 @@
             _meta_out.chain_emit     = _a.meta.chain_emit;
             _meta_out.chain_tab_addr = _a.meta.chain_tab_addr;
             _meta_out.chain_rev      = _a.meta.chain_rev;
+            _meta_out.chain_col_link = _a.meta.chain_col_link;
             _meta_out.active_chain   = _a.meta.active_chain;
         }
 		

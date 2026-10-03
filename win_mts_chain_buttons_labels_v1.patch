@@ -1,0 +1,56 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml b/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml
+index fe11bcf..598e19d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml
+@@ -346,10 +346,15 @@ function scr_mts_ui_button(_x1, _y1, _x2, _y2, _label, _on, _mx, _my) {
+     draw_rectangle(_x1, _y1, _x2, _y2, false);
+     draw_set_color(make_color_rgb(80, 200, 140));
+     draw_rectangle(_x1, _y1, _x2, _y2, true);
++    // Small font, centred both ways in the button
++    draw_set_font_l(fnt_c64_nano);
+     draw_set_color(c_white);
+     draw_set_halign(fa_center);
+-    draw_text_l((_x1 + _x2) * 0.5, _y1 + 1, _label);
++    draw_set_valign(fa_middle);
++    draw_text_l(round((_x1 + _x2) * 0.5), round((_y1 + _y2) * 0.5) + 1, _label);
++    draw_set_valign(fa_top);
+     draw_set_halign(fa_left);
++    draw_set_font_l(fnt_c64_tiny);
+     return (_hov && mouse_check_button_pressed(mb_left));
+ }
+ 
+@@ -1096,19 +1101,30 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
+                 } else {
+                     draw_set_color(make_color_rgb(255, 220, 80));
+                 }
++                var _lcol = draw_get_colour();
++                var _ltx  = _px1 + 2;
++                var _lty  = _by1 + 1;
+                 if (_m.chain_dir == 0) {
+                     draw_line(_px1, _by2 + 1, _px2, _by2 + 1);
+-                    draw_text_l(_px1 + 2, _by2 - 12, _lbl3);
++                    _lty = _by2 - 12;
+                 } else if (_m.chain_dir == 1) {
+                     draw_line(_px1, _by1, _px2, _by1);
+-                    draw_text_l(_px1 + 2, _by1 + 1, _lbl3);
+                 } else if (_m.chain_dir == 2) {
+                     draw_line(_bx2 + 1, _py1, _bx2 + 1, _py2);
+-                    draw_text_l(_bx2 - 60, _py1 + 2, _lbl3);
++                    _ltx = _bx2 - 60;
++                    _lty = _py1 + 2;
+                 } else {
+                     draw_line(_bx1, _py1, _bx1, _py2);
+-                    draw_text_l(_bx1 + 2, _py1 + 2, _lbl3);
++                    _ltx = _bx1 + 2;
++                    _lty = _py1 + 2;
+                 }
++                // 50% black backing so the name reads over the map
++                draw_set_alpha(0.5);
++                draw_set_colour(c_black);
++                draw_rectangle(_ltx - 3, _lty - 1, _ltx + string_width_l(_lbl3) + 3, _lty + string_height("X") + 1, false);
++                draw_set_alpha(1);
++                draw_set_colour(_lcol);
++                draw_text_l(_ltx, _lty, _lbl3);
+             }
+             if (point_in_rectangle(_mx, _my, _bx1, _by1, _bx2, _by2) && mouse_check_button_pressed(mb_left)) {
+                 // select that chain, entry and map

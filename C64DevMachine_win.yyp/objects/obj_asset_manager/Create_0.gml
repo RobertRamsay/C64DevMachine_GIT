@@ -247,6 +247,7 @@ mts_chain_list_scroll  = 0;
 mts_chain_entry_scroll = 0;
 mts_chain_view         = 0;     // 0 = COURSE (every chain joined up), 1 = SECTION (the active chain)
 mts_chain_drag         = false; // dragging the preview slider
+mts_chain_col_scroll   = 0;     // first visible row of the COLUMNS list
 mts_chain_zoom         = 1;     // preview zoom-out: 1 = fit the widest map, up to 4 = a quarter of that
 
 // -------------------------------------------------------

@@ -71,6 +71,7 @@ function scr_asset_meta_tileset_create(_asset) {
     _asset.meta.map_addr               = [];   // per map: RAW ROWS address, -1 = after the previous map
     _asset.meta.chains                 = [];   // { name, maps[], cols[] }
     _asset.meta.chain_cols             = [];   // extra byte column names, one byte per chain each
+    _asset.meta.chain_col_link         = [];   // per column: 1 = holds chain numbers (renumbered on move / delete)
     _asset.meta.chain_dir              = 0;    // preview / feed direction: 0 UP 1 DOWN 2 LEFT 3 RIGHT
     _asset.meta.chain_emit             = 0;    // 1 = emit the map + chain tables (RAW ROWS only)
     _asset.meta.chain_tab_addr         = -1;   // table address, -1 = straight after the last map

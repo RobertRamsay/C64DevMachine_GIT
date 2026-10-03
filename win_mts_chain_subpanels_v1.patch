@@ -1,0 +1,126 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index 891b6ab..f43a284 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -247,6 +247,7 @@ mts_chain_list_scroll  = 0;
+ mts_chain_entry_scroll = 0;
+ mts_chain_view         = 0;     // 0 = COURSE (every chain joined up), 1 = SECTION (the active chain)
+ mts_chain_drag         = false; // dragging the preview slider
++mts_chain_col_scroll   = 0;     // first visible row of the COLUMNS list
+ mts_chain_zoom         = 1;     // preview zoom-out: 1 = fit the widest map, up to 4 = a quarter of that
+ 
+ // -------------------------------------------------------
+diff --git a/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml b/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml
+index f961998..fe11bcf 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_mts_chain/scr_mts_chain.gml
+@@ -416,7 +416,8 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
+     var _y   = _y1 + 4;
+     var _bw  = 46;
+ 
+-    // ===== CHAINS: [+ NEW] [DELETE] [UP] [DN] =====
++    // ===== CHAINS: [+ NEW] [DELETE] [UP] [DN] =====  (own sub-panel)
++    scr_mts_subpanel(_lx1 - 4, _y - 3, _lx2 + 3, _y + _rh + 8 * 14 + 3);
+     // The list is drawn in the order the course is drawn: with DIR UP the
+     // first chain sits at the bottom and later ones stack on top of it.
+     draw_set_color(make_color_rgb(80, 200, 255));
+@@ -519,10 +520,11 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
+             }
+         }
+     }
+-    _y = _cl_y0 + _vis_c * 14 + 6;
++    _y = _cl_y0 + _vis_c * 14 + 12;
+     _ac = _m.active_chain;
+ 
+-    // ===== MAPS IN THE CHAIN: [+ MAP] [DEL] [UP] [DN] =====
++    // ===== MAPS IN THE CHAIN: [+ MAP] [DEL] [UP] [DN] =====  (own sub-panel)
++    scr_mts_subpanel(_lx1 - 4, _y - 3, _lx2 + 3, _y + _rh + 8 * 14 + 3);
+     // Drawn in the order the preview draws them (feed order, DIR UP = the
+     // first map fed at the bottom), so UP / DN move a map up / down on screen.
+     draw_set_color(make_color_rgb(80, 200, 255));
+@@ -639,28 +641,38 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
+                 }
+             }
+         }
+-        _y = _el_y0 + _vis_e * 14 + 6;
++        _y = _el_y0 + _vis_e * 14 + 12;
+     } else {
+         _y += _rh;
+         draw_set_color(make_color_rgb(110, 110, 130));
+         draw_text_l(_lx1, _y, L("+ NEW MAKES A CHAIN"));
+-        _y += 8 * 14 + 6 - _rh;
++        _y += 8 * 14 + 12 - _rh;
+     }
+ 
+     // ===== COLUMNS: a byte per chain each (right-click a column to remove it) =====
++    var _vis_k = 4;
++    scr_mts_subpanel(_lx1 - 4, _y - 3, _lx2 + 3, _y + _rh + _vis_k * 14 + 3);
+     draw_set_color(make_color_rgb(80, 200, 255));
+     draw_text_l(_lx1, _y + 1, L("COLUMNS"));
+     if (scr_mts_ui_button(_lx2 - 50, _y, _lx2, _y + _rh - 3, L("+ COL"), false, _mx, _my)) {
+         scr_mts_chain_edit_start("COLNAME", "", -1, -1);
+     }
+-    _y += _rh;
+     if (editing_map_dim && editing_map_field == "COLNAME" && editing_map_name_idx == -1) {
++        // the name being typed for a new column, in the header
+         draw_set_color(make_color_rgb(255, 220, 80));
+-        draw_text_l(_lx1 + 4, _y, L("NEW: ") + editing_map_string + "_");
+-        _y += 14;
++        draw_text_l(_lx1 + 74, _y + 1, editing_map_string + "_");
+     }
+-    for (var _k = 0; _k < array_length(_m.chain_cols); _k++) {
+-        var _ky   = _y;
++    _y += _rh;
++    var _kl_y0 = _y;
++    var _nk    = array_length(_m.chain_cols);
++    if (point_in_rectangle(_mx, _my, _lx1, _kl_y0, _lx2, _kl_y0 + _vis_k * 14)) {
++        if (mouse_wheel_up())   { mts_chain_col_scroll -= 1; }
++        if (mouse_wheel_down()) { mts_chain_col_scroll += 1; }
++    }
++    mts_chain_col_scroll = scr_mts_list_scrollbar(_lx2 - 7, _kl_y0, _lx2, _kl_y0 + _vis_k * 14 - 1, _nk, _vis_k, mts_chain_col_scroll, _mx, _my);
++    _lx2 -= 10;   // rows stop short of the scroll bar
++    for (var _k = mts_chain_col_scroll; _k < min(_nk, mts_chain_col_scroll + _vis_k); _k++) {
++        var _ky   = _kl_y0 + (_k - mts_chain_col_scroll) * 14;
+         var _khov = point_in_rectangle(_mx, _my, _lx1, _ky, _lx2, _ky + 13);
+         if (_khov) {
+             draw_set_color(make_color_rgb(30, 45, 40));
+@@ -714,9 +726,16 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
+             _m.is_dirty = true; global.undo_dirty = true; global.memory_bar_dirty = true; global.addresses_dirty = true;
+             return;
+         }
+-        _y += 14;
+     }
+-    _y += 6;
++    _lx2 += 10;
++    _y = _kl_y0 + _vis_k * 14 + 12;
++
++    // ===== SETTINGS: selected map + export  (own sub-panel) =====
++    var _set_h = (_rh + 4) + _rh + _rh;
++    if (_m.chain_emit == 1) {
++        _set_h += 14;
++    }
++    scr_mts_subpanel(_lx1 - 4, _y - 3, _lx2 + 3, _y + _set_h + 3);
+ 
+     // ===== SELECTED MAP: repeat count + address =====
+     draw_set_color(make_color_rgb(80, 200, 255));
+@@ -840,6 +859,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
+         _ty1 = _py2 - _sb;
+         _py2 -= _sb + 4;
+     }
++    scr_mts_subpanel(_px1 - 3, _py1 - 3, _x2 - 3, _y2 - 3);
+     draw_set_color(c_black);
+     draw_rectangle(_px1, _py1, _px2, _py2, false);
+     var _sl;
+@@ -1214,3 +1234,12 @@ function scr_mts_list_scrollbar(_x1, _y1, _x2, _y2, _total, _vis, _scroll, _mx,
+     draw_rectangle(_x1 + 1, _ty, _x2 - 1, _ty + _th, false);
+     return _s;
+ }
++
++
++/// @desc A framed sub-panel background for the CHAINS panel sections.
++function scr_mts_subpanel(_x1, _y1, _x2, _y2) {
++    draw_set_color(make_color_rgb(16, 19, 28));
++    draw_rectangle(_x1, _y1, _x2, _y2, false);
++    draw_set_color(make_color_rgb(45, 70, 80));
++    draw_rectangle(_x1, _y1, _x2, _y2, true);
++}

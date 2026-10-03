@@ -33,6 +33,9 @@ function scr_mts_maps_sync(_m) {
     while (array_length(_m.map_addr) < _n) {
         array_push(_m.map_addr, -1);
     }
+    while (array_length(_m.chain_col_link) < array_length(_m.chain_cols)) {
+        array_push(_m.chain_col_link, 0);
+    }
     for (var _ci = 0; _ci < array_length(_m.chains); _ci++) {
         while (array_length(_m.chains[_ci].cols) < array_length(_m.chain_cols)) {
             array_push(_m.chains[_ci].cols, 0);
@@ -343,10 +346,15 @@ function scr_mts_ui_button(_x1, _y1, _x2, _y2, _label, _on, _mx, _my) {
     draw_rectangle(_x1, _y1, _x2, _y2, false);
     draw_set_color(make_color_rgb(80, 200, 140));
     draw_rectangle(_x1, _y1, _x2, _y2, true);
+    // Small font, centred both ways in the button
+    draw_set_font_l(fnt_c64_nano);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text_l((_x1 + _x2) * 0.5, _y1 + 1, _label);
+    draw_set_valign(fa_middle);
+    draw_text_l(round((_x1 + _x2) * 0.5), round((_y1 + _y2) * 0.5) + 1, _label);
+    draw_set_valign(fa_top);
     draw_set_halign(fa_left);
+    draw_set_font_l(fnt_c64_tiny);
     return (_hov && mouse_check_button_pressed(mb_left));
 }
 
@@ -413,10 +421,14 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     var _y   = _y1 + 4;
     var _bw  = 46;
 
-    // ===== CHAINS: [+ NEW] [DELETE] =====
+    // ===== CHAINS: [+ NEW] [DELETE] [UP] [DN] =====  (own sub-panel)
+    scr_mts_subpanel(_lx1 - 4, _y - 3, _lx2 + 3, _y + _rh + 8 * 14 + 3);
+    // The list is drawn in the order the course is drawn: with DIR UP the
+    // first chain sits at the bottom and later ones stack on top of it.
     draw_set_color(make_color_rgb(80, 200, 255));
     draw_text_l(_lx1, _y + 1, L("CHAINS"));
-    if (scr_mts_ui_button(_lx2 - _bw * 2 - 4, _y, _lx2 - _bw - 4, _y + _rh - 3, L("+ NEW"), false, _mx, _my)) {
+    var _cbx = _lx1 + 56;
+    if (scr_mts_ui_button(_cbx, _y, _cbx + 46, _y + _rh - 3, L("+ NEW"), false, _mx, _my)) {
         var _cols0 = array_create(array_length(_m.chain_cols), 0);
         array_push(_m.chains, { name: L("CHAIN ") + string(_nc), maps: [], cols: _cols0 });
         _m.active_chain     = _nc;
@@ -424,41 +436,75 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         mts_chain_scroll    = 0;
         _m.is_dirty = true; global.undo_dirty = true; global.memory_bar_dirty = true; global.addresses_dirty = true;
     }
+    _cbx += 50;
     if (_ac >= 0) {
-        if (scr_mts_ui_button(_lx2 - _bw, _y, _lx2, _y + _rh - 3, L("DELETE"), false, _mx, _my)) {
-            array_delete(_m.chains, _ac, 1);
+        if (scr_mts_ui_button(_cbx, _y, _cbx + 50, _y + _rh - 3, L("DELETE"), false, _mx, _my)) {
+            scr_mts_chain_delete(_m, _ac);
             _m.active_chain     = min(_ac, array_length(_m.chains) - 1);
             mts_chain_sel_entry = -1;
             _m.is_dirty = true; global.undo_dirty = true; global.memory_bar_dirty = true; global.addresses_dirty = true;
             return;
         }
+        _cbx += 54;
+        // UP / DN move the chain one row up / down in the list as drawn
+        var _cdisp = scr_mts_chain_display(_m);
+        var _cpos  = -1;
+        for (var _cp = 0; _cp < array_length(_cdisp); _cp++) {
+            if (_cdisp[_cp] == _ac) {
+                _cpos = _cp;
+            }
+        }
+        if (scr_mts_ui_button(_cbx, _y, _cbx + 28, _y + _rh - 3, L("UP"), false, _mx, _my)) {
+            if (_cpos > 0) {
+                scr_mts_chain_swap(_m, _ac, _cdisp[_cpos - 1]);
+                _m.active_chain = _cdisp[_cpos - 1];
+                _m.is_dirty = true; global.undo_dirty = true; global.addresses_dirty = true;
+            }
+        }
+        _cbx += 32;
+        if (scr_mts_ui_button(_cbx, _y, _cbx + 28, _y + _rh - 3, L("DN"), false, _mx, _my)) {
+            if (_cpos >= 0 && _cpos < array_length(_cdisp) - 1) {
+                scr_mts_chain_swap(_m, _ac, _cdisp[_cpos + 1]);
+                _m.active_chain = _cdisp[_cpos + 1];
+                _m.is_dirty = true; global.undo_dirty = true; global.addresses_dirty = true;
+            }
+        }
     }
     _y += _rh;
+    _nc = array_length(_m.chains);
+    _ac = _m.active_chain;
 
-    // Chain list (double-click a name to rename it)
-    var _vis_c = 6;
+    // Chain list (double-click a name to rename it), with a scroll bar
+    var _vis_c = 8;
     var _cl_y0 = _y;
+    var _cl_x2 = _lx2 - 10;
+    var _cdl   = scr_mts_chain_display(_m);
     if (point_in_rectangle(_mx, _my, _lx1, _cl_y0, _lx2, _cl_y0 + _vis_c * 14)) {
-        if (mouse_wheel_up())   { mts_chain_list_scroll = max(0, mts_chain_list_scroll - 1); }
-        if (mouse_wheel_down()) { mts_chain_list_scroll = min(max(0, _nc - _vis_c), mts_chain_list_scroll + 1); }
+        if (mouse_wheel_up())   { mts_chain_list_scroll -= 1; }
+        if (mouse_wheel_down()) { mts_chain_list_scroll += 1; }
     }
-    mts_chain_list_scroll = clamp(mts_chain_list_scroll, 0, max(0, _nc - _vis_c));
-    for (var _ci = mts_chain_list_scroll; _ci < min(_nc, mts_chain_list_scroll + _vis_c); _ci++) {
-        var _cy  = _cl_y0 + (_ci - mts_chain_list_scroll) * 14;
-        var _hov = point_in_rectangle(_mx, _my, _lx1, _cy, _lx2, _cy + 13);
+    mts_chain_list_scroll = scr_mts_list_scrollbar(_cl_x2 + 3, _cl_y0, _lx2, _cl_y0 + _vis_c * 14 - 1, _nc, _vis_c, mts_chain_list_scroll, _mx, _my);
+    for (var _r = 0; _r < _vis_c; _r++) {
+        var _di = mts_chain_list_scroll + _r;
+        if (_di >= _nc) {
+            break;
+        }
+        var _ci  = _cdl[_di];
+        var _cy  = _cl_y0 + _r * 14;
+        var _hov = point_in_rectangle(_mx, _my, _lx1, _cy, _cl_x2, _cy + 13);
         if (_ci == _ac) {
             draw_set_color(make_color_rgb(30, 90, 50));
-            draw_rectangle(_lx1, _cy, _lx2, _cy + 13, false);
+            draw_rectangle(_lx1, _cy, _cl_x2, _cy + 13, false);
         } else if (_hov) {
             draw_set_color(make_color_rgb(30, 45, 40));
-            draw_rectangle(_lx1, _cy, _lx2, _cy + 13, false);
+            draw_rectangle(_lx1, _cy, _cl_x2, _cy + 13, false);
         }
         draw_set_color(c_white);
         var _ctxt = scr_mts_chain_field_text("CHAIN", _ci, -1, _m.chains[_ci].name);
         draw_text_l(_lx1 + 4, _cy, string(_ci) + "  " + _ctxt);
         draw_set_color(make_color_rgb(120, 160, 140));
         draw_set_halign(fa_right);
-        draw_text_l(_lx2 - 4, _cy, string(array_length(_m.chains[_ci].maps)) + L(" MAPS"));
+        draw_text_l(_cl_x2 - 4, _cy, string(array_length(_m.chains[_ci].maps)) + L(" MAPS"));
         draw_set_halign(fa_left);
         if (_hov && mouse_check_button_pressed(mb_left)) {
             if (mts_tab_click_map == 100000 + _ci && current_time - mts_tab_click_time < 400) {
@@ -468,9 +514,10 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
                 mts_tab_click_map  = 100000 + _ci;
                 mts_tab_click_time = current_time;
                 if (_ci != _ac) {
-                    _m.active_chain     = _ci;
-                    mts_chain_sel_entry = -1;
-                    mts_chain_scroll    = 0;
+                    _m.active_chain        = _ci;
+                    mts_chain_sel_entry    = -1;
+                    mts_chain_entry_scroll = 0;
+                    mts_chain_scroll       = 0;
                     if (mts_chain_view == 0) {
                         mts_chain_scroll = scr_mts_course_start(_m, _ci);
                     }
@@ -478,21 +525,39 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
             }
         }
     }
-    _y = _cl_y0 + _vis_c * 14 + 6;
+    _y = _cl_y0 + _vis_c * 14 + 12;
     _ac = _m.active_chain;
 
-    // ===== MAPS IN THE CHAIN: [+ MAP] [DEL] [UP] [DN] =====
+    // ===== MAPS IN THE CHAIN: [+ MAP] [DEL] [UP] [DN] =====  (own sub-panel)
+    scr_mts_subpanel(_lx1 - 4, _y - 3, _lx2 + 3, _y + _rh + 8 * 14 + 3);
+    // Drawn in the order the preview draws them (feed order, DIR UP = the
+    // first map fed at the bottom), so UP / DN move a map up / down on screen.
     draw_set_color(make_color_rgb(80, 200, 255));
     draw_text_l(_lx1, _y + 1, L("MAPS"));
     if (_ac >= 0) {
-        var _cm  = _m.chains[_ac].maps;
+        var _cm   = _m.chains[_ac].maps;
+        var _edl  = scr_mts_entry_display(_m, _ac);
+        var _epos = -1;
+        for (var _ep = 0; _ep < array_length(_edl); _ep++) {
+            if (_edl[_ep] == mts_chain_sel_entry) {
+                _epos = _ep;
+            }
+        }
         var _bx  = _lx1 + 46;
         var _sbw = 46;
         if (scr_mts_ui_button(_bx, _y, _bx + _sbw, _y + _rh - 3, L("+ MAP"), false, _mx, _my)) {
             if (_m.active_map >= 0 && _m.active_map < array_length(_m.maps)) {
+                // the new map goes straight after the selected one in feed order
+                // (on screen: next to it, on the side the chain grows towards)
                 var _at = array_length(_cm);
+                if (_m.chain_rev == 1) {
+                    _at = 0;
+                }
                 if (mts_chain_sel_entry >= 0 && mts_chain_sel_entry < array_length(_cm)) {
                     _at = mts_chain_sel_entry + 1;
+                    if (_m.chain_rev == 1) {
+                        _at = mts_chain_sel_entry;
+                    }
                 }
                 array_insert(_cm, _at, _m.active_map);
                 mts_chain_sel_entry = _at;
@@ -509,43 +574,53 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         }
         _bx += 40;
         if (scr_mts_ui_button(_bx, _y, _bx + 28, _y + _rh - 3, L("UP"), false, _mx, _my)) {
-            if (mts_chain_sel_entry > 0 && mts_chain_sel_entry < array_length(_cm)) {
-                var _t = _cm[mts_chain_sel_entry - 1];
-                _cm[mts_chain_sel_entry - 1] = _cm[mts_chain_sel_entry];
-                _cm[mts_chain_sel_entry] = _t;
-                mts_chain_sel_entry -= 1;
+            if (_epos > 0) {
+                var _ea = _edl[_epos];
+                var _eb = _edl[_epos - 1];
+                var _t  = _cm[_ea];
+                _cm[_ea] = _cm[_eb];
+                _cm[_eb] = _t;
+                mts_chain_sel_entry = _eb;
                 _m.is_dirty = true; global.undo_dirty = true;
             }
         }
         _bx += 32;
         if (scr_mts_ui_button(_bx, _y, _bx + 28, _y + _rh - 3, L("DN"), false, _mx, _my)) {
-            if (mts_chain_sel_entry >= 0 && mts_chain_sel_entry < array_length(_cm) - 1) {
-                var _t2 = _cm[mts_chain_sel_entry + 1];
-                _cm[mts_chain_sel_entry + 1] = _cm[mts_chain_sel_entry];
-                _cm[mts_chain_sel_entry] = _t2;
-                mts_chain_sel_entry += 1;
+            if (_epos >= 0 && _epos < array_length(_edl) - 1) {
+                var _ea2 = _edl[_epos];
+                var _eb2 = _edl[_epos + 1];
+                var _t2  = _cm[_ea2];
+                _cm[_ea2] = _cm[_eb2];
+                _cm[_eb2] = _t2;
+                mts_chain_sel_entry = _eb2;
                 _m.is_dirty = true; global.undo_dirty = true;
             }
         }
         _y += _rh;
-        // Entry list
+        // Entry list, with a scroll bar
         var _vis_e = 8;
         var _el_y0 = _y;
-        var _ne    = array_length(_cm);
+        var _el_x2 = _lx2 - 10;
+        var _ne    = array_length(_edl);
         if (point_in_rectangle(_mx, _my, _lx1, _el_y0, _lx2, _el_y0 + _vis_e * 14)) {
-            if (mouse_wheel_up())   { mts_chain_entry_scroll = max(0, mts_chain_entry_scroll - 1); }
-            if (mouse_wheel_down()) { mts_chain_entry_scroll = min(max(0, _ne - _vis_e), mts_chain_entry_scroll + 1); }
+            if (mouse_wheel_up())   { mts_chain_entry_scroll -= 1; }
+            if (mouse_wheel_down()) { mts_chain_entry_scroll += 1; }
         }
-        mts_chain_entry_scroll = clamp(mts_chain_entry_scroll, 0, max(0, _ne - _vis_e));
-        for (var _ei = mts_chain_entry_scroll; _ei < min(_ne, mts_chain_entry_scroll + _vis_e); _ei++) {
-            var _ey   = _el_y0 + (_ei - mts_chain_entry_scroll) * 14;
-            var _ehov = point_in_rectangle(_mx, _my, _lx1, _ey, _lx2, _ey + 13);
+        mts_chain_entry_scroll = scr_mts_list_scrollbar(_el_x2 + 3, _el_y0, _lx2, _el_y0 + _vis_e * 14 - 1, _ne, _vis_e, mts_chain_entry_scroll, _mx, _my);
+        for (var _r2 = 0; _r2 < _vis_e; _r2++) {
+            var _dj = mts_chain_entry_scroll + _r2;
+            if (_dj >= _ne) {
+                break;
+            }
+            var _ei   = _edl[_dj];
+            var _ey   = _el_y0 + _r2 * 14;
+            var _ehov = point_in_rectangle(_mx, _my, _lx1, _ey, _el_x2, _ey + 13);
             if (_ei == mts_chain_sel_entry) {
                 draw_set_color(make_color_rgb(70, 60, 20));
-                draw_rectangle(_lx1, _ey, _lx2, _ey + 13, false);
+                draw_rectangle(_lx1, _ey, _el_x2, _ey + 13, false);
             } else if (_ehov) {
                 draw_set_color(make_color_rgb(30, 45, 40));
-                draw_rectangle(_lx1, _ey, _lx2, _ey + 13, false);
+                draw_rectangle(_lx1, _ey, _el_x2, _ey + 13, false);
             }
             var _emi = _cm[_ei];
             var _enm = L("MAP ") + string(_emi);
@@ -562,7 +637,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
             draw_text_l(_lx1 + 4, _ey, string(_ei) + "  " + _enm);
             draw_set_color(make_color_rgb(120, 160, 140));
             draw_set_halign(fa_right);
-            draw_text_l(_lx2 - 4, _ey, "x" + string(_erp));
+            draw_text_l(_el_x2 - 4, _ey, "x" + string(_erp));
             draw_set_halign(fa_left);
             if (_ehov && mouse_check_button_pressed(mb_left)) {
                 mts_chain_sel_entry = _ei;
@@ -571,28 +646,38 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
                 }
             }
         }
-        _y = _el_y0 + _vis_e * 14 + 6;
+        _y = _el_y0 + _vis_e * 14 + 12;
     } else {
         _y += _rh;
         draw_set_color(make_color_rgb(110, 110, 130));
         draw_text_l(_lx1, _y, L("+ NEW MAKES A CHAIN"));
-        _y += 8 * 14 + 6 - _rh;
+        _y += 8 * 14 + 12 - _rh;
     }
 
     // ===== COLUMNS: a byte per chain each (right-click a column to remove it) =====
+    var _vis_k = 4;
+    scr_mts_subpanel(_lx1 - 4, _y - 3, _lx2 + 3, _y + _rh + _vis_k * 14 + 3);
     draw_set_color(make_color_rgb(80, 200, 255));
     draw_text_l(_lx1, _y + 1, L("COLUMNS"));
     if (scr_mts_ui_button(_lx2 - 50, _y, _lx2, _y + _rh - 3, L("+ COL"), false, _mx, _my)) {
         scr_mts_chain_edit_start("COLNAME", "", -1, -1);
     }
-    _y += _rh;
     if (editing_map_dim && editing_map_field == "COLNAME" && editing_map_name_idx == -1) {
+        // the name being typed for a new column, in the header
         draw_set_color(make_color_rgb(255, 220, 80));
-        draw_text_l(_lx1 + 4, _y, L("NEW: ") + editing_map_string + "_");
-        _y += 14;
+        draw_text_l(_lx1 + 74, _y + 1, editing_map_string + "_");
     }
-    for (var _k = 0; _k < array_length(_m.chain_cols); _k++) {
-        var _ky   = _y;
+    _y += _rh;
+    var _kl_y0 = _y;
+    var _nk    = array_length(_m.chain_cols);
+    if (point_in_rectangle(_mx, _my, _lx1, _kl_y0, _lx2, _kl_y0 + _vis_k * 14)) {
+        if (mouse_wheel_up())   { mts_chain_col_scroll -= 1; }
+        if (mouse_wheel_down()) { mts_chain_col_scroll += 1; }
+    }
+    mts_chain_col_scroll = scr_mts_list_scrollbar(_lx2 - 7, _kl_y0, _lx2, _kl_y0 + _vis_k * 14 - 1, _nk, _vis_k, mts_chain_col_scroll, _mx, _my);
+    _lx2 -= 10;   // rows stop short of the scroll bar
+    for (var _k = mts_chain_col_scroll; _k < min(_nk, mts_chain_col_scroll + _vis_k); _k++) {
+        var _ky   = _kl_y0 + (_k - mts_chain_col_scroll) * 14;
         var _khov = point_in_rectangle(_mx, _my, _lx1, _ky, _lx2, _ky + 13);
         if (_khov) {
             draw_set_color(make_color_rgb(30, 45, 40));
@@ -600,6 +685,22 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         }
         draw_set_color(make_color_rgb(200, 200, 220));
         draw_text_l(_lx1 + 4, _ky, scr_mts_chain_field_text("COLNAME", _k, -1, _m.chain_cols[_k]));
+        // LINK: this column holds chain numbers (next section ...) - they are
+        // renumbered when chains are moved or deleted
+        var _lk_on = false;
+        if (_k < array_length(_m.chain_col_link)) {
+            if (_m.chain_col_link[_k] == 1) {
+                _lk_on = true;
+            }
+        }
+        if (scr_mts_ui_button(_lx2 - 110, _ky, _lx2 - 72, _ky + 12, L("LINK"), _lk_on, _mx, _my)) {
+            if (_lk_on) {
+                _m.chain_col_link[_k] = 0;
+            } else {
+                _m.chain_col_link[_k] = 1;
+            }
+            _m.is_dirty = true;
+        }
         var _kv = L("-");
         if (_ac >= 0) {
             _kv = string(_m.chains[_ac].cols[_k]);
@@ -608,7 +709,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         draw_set_halign(fa_right);
         draw_text_l(_lx2 - 4, _ky, scr_mts_chain_field_text("COLVAL", _ac, _k, _kv));
         draw_set_halign(fa_left);
-        if (_khov && mouse_check_button_pressed(mb_left)) {
+        if (_khov && mouse_check_button_pressed(mb_left) && !point_in_rectangle(_mx, _my, _lx2 - 110, _ky, _lx2 - 72, _ky + 12)) {
             if (_mx > _lx2 - 70) {
                 if (_ac >= 0) {
                     scr_mts_chain_edit_start("COLVAL", string(_m.chains[_ac].cols[_k]), _ac, _k);
@@ -619,6 +720,9 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         }
         if (_khov && mouse_check_button_pressed(mb_right)) {
             array_delete(_m.chain_cols, _k, 1);
+            if (_k < array_length(_m.chain_col_link)) {
+                array_delete(_m.chain_col_link, _k, 1);
+            }
             for (var _kc = 0; _kc < array_length(_m.chains); _kc++) {
                 if (_k < array_length(_m.chains[_kc].cols)) {
                     array_delete(_m.chains[_kc].cols, _k, 1);
@@ -627,9 +731,16 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
             _m.is_dirty = true; global.undo_dirty = true; global.memory_bar_dirty = true; global.addresses_dirty = true;
             return;
         }
-        _y += 14;
     }
-    _y += 6;
+    _lx2 += 10;
+    _y = _kl_y0 + _vis_k * 14 + 12;
+
+    // ===== SETTINGS: selected map + export  (own sub-panel) =====
+    var _set_h = (_rh + 4) + _rh + _rh;
+    if (_m.chain_emit == 1) {
+        _set_h += 14;
+    }
+    scr_mts_subpanel(_lx1 - 4, _y - 3, _lx2 + 3, _y + _set_h + 3);
 
     // ===== SELECTED MAP: repeat count + address =====
     draw_set_color(make_color_rgb(80, 200, 255));
@@ -753,6 +864,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         _ty1 = _py2 - _sb;
         _py2 -= _sb + 4;
     }
+    scr_mts_subpanel(_px1 - 3, _py1 - 3, _x2 - 3, _y2 - 3);
     draw_set_color(c_black);
     draw_rectangle(_px1, _py1, _px2, _py2, false);
     var _sl;
@@ -989,19 +1101,30 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
                 } else {
                     draw_set_color(make_color_rgb(255, 220, 80));
                 }
+                var _lcol = draw_get_colour();
+                var _ltx  = _px1 + 2;
+                var _lty  = _by1 + 1;
                 if (_m.chain_dir == 0) {
                     draw_line(_px1, _by2 + 1, _px2, _by2 + 1);
-                    draw_text_l(_px1 + 2, _by2 - 12, _lbl3);
+                    _lty = _by2 - 12;
                 } else if (_m.chain_dir == 1) {
                     draw_line(_px1, _by1, _px2, _by1);
-                    draw_text_l(_px1 + 2, _by1 + 1, _lbl3);
                 } else if (_m.chain_dir == 2) {
                     draw_line(_bx2 + 1, _py1, _bx2 + 1, _py2);
-                    draw_text_l(_bx2 - 60, _py1 + 2, _lbl3);
+                    _ltx = _bx2 - 60;
+                    _lty = _py1 + 2;
                 } else {
                     draw_line(_bx1, _py1, _bx1, _py2);
-                    draw_text_l(_bx1 + 2, _py1 + 2, _lbl3);
+                    _ltx = _bx1 + 2;
+                    _lty = _py1 + 2;
                 }
+                // 50% black backing so the name reads over the map
+                draw_set_alpha(0.5);
+                draw_set_colour(c_black);
+                draw_rectangle(_ltx - 3, _lty - 1, _ltx + string_width_l(_lbl3) + 3, _lty + string_height("X") + 1, false);
+                draw_set_alpha(1);
+                draw_set_colour(_lcol);
+                draw_text_l(_ltx, _lty, _lbl3);
             }
             if (point_in_rectangle(_mx, _my, _bx1, _by1, _bx2, _by2) && mouse_check_button_pressed(mb_left)) {
                 // select that chain, entry and map
@@ -1020,4 +1143,119 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         draw_text_l(_x2 - 6, _y1 + 5, string(mts_chain_scroll) + "/" + string(_ns) + L(" LINES"));
         draw_set_halign(fa_left);
     }
+}
+
+
+/// @desc Chain numbers in the order the list draws them, top row first: the
+///       course order, flipped for DIR UP (first chain at the bottom).
+function scr_mts_chain_display(_m) {
+    var _n   = array_length(_m.chains);
+    var _out = array_create(_n, 0);
+    for (var _i = 0; _i < _n; _i++) {
+        _out[_i] = _i;
+        if (_m.chain_dir == 0) {
+            _out[_i] = _n - 1 - _i;
+        }
+    }
+    return _out;
+}
+
+/// @desc Entry numbers of chain _ci in the order the MAPS list draws them, top
+///       row first: feed order (chain_rev = last entry first), flipped for DIR UP.
+function scr_mts_entry_display(_m, _ci) {
+    var _n   = array_length(_m.chains[_ci].maps);
+    var _out = array_create(_n, 0);
+    for (var _i = 0; _i < _n; _i++) {
+        var _f = _i;                       // _i-th map fed in
+        if (_m.chain_rev == 1) {
+            _f = _n - 1 - _i;
+        }
+        var _row = _i;                     // its row on screen
+        if (_m.chain_dir == 0) {
+            _row = _n - 1 - _i;
+        }
+        _out[_row] = _f;
+    }
+    return _out;
+}
+
+/// @desc Swap chains _a and _b, renumbering every LINK column that points at them.
+function scr_mts_chain_swap(_m, _a, _b) {
+    if (_a == _b || _a < 0 || _b < 0 || _a >= array_length(_m.chains) || _b >= array_length(_m.chains)) {
+        return;
+    }
+    var _t = _m.chains[_a];
+    _m.chains[_a] = _m.chains[_b];
+    _m.chains[_b] = _t;
+    for (var _k = 0; _k < array_length(_m.chain_cols); _k++) {
+        if (_k >= array_length(_m.chain_col_link)) {
+            continue;
+        }
+        if (_m.chain_col_link[_k] != 1) {
+            continue;
+        }
+        for (var _c = 0; _c < array_length(_m.chains); _c++) {
+            if (_k < array_length(_m.chains[_c].cols)) {
+                if (_m.chains[_c].cols[_k] == _a) {
+                    _m.chains[_c].cols[_k] = _b;
+                } else if (_m.chains[_c].cols[_k] == _b) {
+                    _m.chains[_c].cols[_k] = _a;
+                }
+            }
+        }
+    }
+}
+
+/// @desc Delete chain _idx; LINK columns pointing past it move down one.
+function scr_mts_chain_delete(_m, _idx) {
+    if (_idx < 0 || _idx >= array_length(_m.chains)) {
+        return;
+    }
+    array_delete(_m.chains, _idx, 1);
+    for (var _k = 0; _k < array_length(_m.chain_cols); _k++) {
+        if (_k >= array_length(_m.chain_col_link)) {
+            continue;
+        }
+        if (_m.chain_col_link[_k] != 1) {
+            continue;
+        }
+        for (var _c = 0; _c < array_length(_m.chains); _c++) {
+            if (_k < array_length(_m.chains[_c].cols)) {
+                if (_m.chains[_c].cols[_k] > _idx) {
+                    _m.chains[_c].cols[_k] = _m.chains[_c].cols[_k] - 1;
+                }
+            }
+        }
+    }
+}
+
+/// @desc Thin vertical scroll bar for a list. Click or drag on the track to
+///       move. Returns the clamped scroll (first visible row).
+function scr_mts_list_scrollbar(_x1, _y1, _x2, _y2, _total, _vis, _scroll, _mx, _my) {
+    var _max = max(0, _total - _vis);
+    var _s   = clamp(_scroll, 0, _max);
+    draw_set_color(make_color_rgb(30, 32, 44));
+    draw_rectangle(_x1, _y1, _x2, _y2, false);
+    if (_max <= 0) {
+        return _s;
+    }
+    var _h  = _y2 - _y1;
+    var _th = max(10, floor(_h * _vis / _total));
+    if (point_in_rectangle(_mx, _my, _x1, _y1, _x2, _y2) && mouse_check_button(mb_left)) {
+        var _t = (_my - _y1 - _th * 0.5) / max(1, _h - _th);
+        _s = round(clamp(_t, 0, 1) * _max);
+    }
+    var _ty = _y1 + floor((_s / _max) * (_h - _th));
+    draw_set_color(make_color_rgb(80, 200, 140));
+    draw_rectangle(_x1 + 1, _ty, _x2 - 1, _ty + _th, false);
+    return _s;
+}
+
+
+/// @desc A framed sub-panel background for the CHAINS panel sections.
+function scr_mts_subpanel(_x1, _y1, _x2, _y2) {
+    draw_set_color(make_color_rgb(16, 19, 28));
+    draw_rectangle(_x1, _y1, _x2, _y2, false);
+    draw_set_color(make_color_rgb(45, 70, 80));
+    draw_rectangle(_x1, _y1, _x2, _y2, true);
 }
