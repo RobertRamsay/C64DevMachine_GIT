@@ -331,6 +331,10 @@ function scr_digi_preview_tick(_m, _cur_song, _voice_pos) {
     if (_ord < 0 || _ord >= array_length(_cur_song.order) || _step < 0) {
         return;
     }
+    if (_m.digi_speed > 0) {
+        scr_digi_preview_own_speed(_m, _cur_song, _ord, _step);
+        return;
+    }
     var _key = _ord * 1000 + _step;
     if (_key == _m.dg_last_key) {
         return;
@@ -348,6 +352,37 @@ function scr_digi_preview_tick(_m, _cur_song, _voice_pos) {
         return;
     }
     scr_digi_play_step(_m, _pat.steps[_step]);
+}
+
+/// DIGI SPEED preview: the digi lane runs its own row clock (digi_speed PAL
+/// frames a row) and restarts at row 0 whenever the song enters an order row,
+/// like the C64 player.
+function scr_digi_preview_own_speed(_m, _cur_song, _ord, _step) {
+    var _key = _ord * 1000 + _step;
+    if (_key != _m.dg_last_key) {
+        var _new_ord = (_ord != _m.dg_own_ord);
+        _m.dg_last_key = _key;
+        if (_new_ord || _step == 0) {
+            _m.dg_own_ord   = _ord;
+            _m.dg_own_row   = -1;
+            _m.dg_sync_time = current_time;
+        }
+    }
+    var _frames = floor((current_time - _m.dg_sync_time) * 50 / 1000);
+    var _target = _frames div _m.digi_speed;
+    if (_target == _m.dg_own_row) {
+        return;
+    }
+    _m.dg_own_row = _target;
+    var _row = _cur_song.order[_m.dg_own_ord];
+    if (_row.dg < 0 || _row.dg >= array_length(_m.digi_patterns)) {
+        return;
+    }
+    var _pat = _m.digi_patterns[_row.dg];
+    if (_target >= _pat.pattern_len) {
+        return;
+    }
+    scr_digi_play_step(_m, _pat.steps[_target]);
 }
 
 // ═══════════════════════════ GRID LANE ═══════════════════════════
@@ -827,7 +862,7 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
 /// uses last frame's rect to hide the mouse from controls under the panel.
 function scr_digi_slots_rect(_lane_x, _lane_w, _gy0) {
     var _w = 330;
-    var _h = 70 + DIGI_SLOTS * 20 + 58;
+    var _h = 92 + DIGI_SLOTS * 20 + 58;
     var _x1 = _lane_x + _lane_w - _w;
     var _y1 = _gy0 - 2;    // just under the SAMPLES button
     return [_x1, _y1, _x1 + _w, _y1 + _h];
@@ -906,10 +941,38 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
         draw_text_l(_x1 + 224, _by, "8580 NEEDS ONE");
     }
 
+    // SPEED: frames per digi row. SONG = the digi rows go with the song's rows;
+    // a number gives the digi lane its own tempo, restarted on every order row.
+    var _spy = _by + 22;
+    draw_set_color(make_color_rgb(140, 150, 180));
+    draw_text_l(_x1 + 10, _spy, "SPEED");
+    if (scr_sample_button(_x1 + 60, _spy - 4, 18, 16, "<", false, (_m.digi_speed > 0), _mx, _my)) {
+        _m.digi_speed -= 1;
+        global.undo_dirty = true;
+        global.addresses_dirty = true;
+    }
+    draw_set_color(c_white);
+    if (_m.digi_speed == 0) {
+        draw_text_l(_x1 + 86, _spy, "SONG");
+    } else {
+        draw_text_l(_x1 + 86, _spy, string(_m.digi_speed) + " FR");
+    }
+    if (scr_sample_button(_x1 + 160, _spy - 4, 18, 16, ">", false, (_m.digi_speed < 31), _mx, _my)) {
+        _m.digi_speed += 1;
+        global.undo_dirty = true;
+        global.addresses_dirty = true;
+    }
+    draw_set_color(make_color_rgb(95, 95, 115));
+    if (_m.digi_speed > 0) {
+        draw_text_l(_x1 + 190, _spy, "SYNCS EACH ORDER ROW");
+    } else {
+        draw_text_l(_x1 + 190, _spy, "= SONG ROWS");
+    }
+
     // SLOTS
     var _names = scr_digi_sample_names();
     for (var _s = 0; _s < DIGI_SLOTS; _s++) {
-        var _sy = _y1 + 70 + _s * 20;
+        var _sy = _y1 + 92 + _s * 20;
         var _num = string(_s);
         if (_s < 10) {
             _num = "0" + _num;

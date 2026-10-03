@@ -1135,6 +1135,10 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 if (!is_undefined(_dg_boost)) {
                     _new_asset.meta.digi_boost = clamp(real(_dg_boost), 0, 3);
                 }
+                var _dg_speed = _sem[$ "digi_speed"];
+                if (!is_undefined(_dg_speed)) {
+                    _new_asset.meta.digi_speed = clamp(real(_dg_speed), 0, 31);
+                }
                 var _ins_div = _sem[$ "instr_div"];
                 if (!is_undefined(_ins_div)) {
                     _new_asset.meta.instr_div = real(_ins_div);

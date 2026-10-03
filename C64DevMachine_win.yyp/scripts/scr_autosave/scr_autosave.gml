@@ -193,6 +193,7 @@ var _base = "unsaved";
                     _mo.digi_samples  = _me.digi_samples;
                     _mo.digi_patterns = _me.digi_patterns;
                     _mo.digi_boost    = _me.digi_boost;
+                    _mo.digi_speed    = _me.digi_speed;
                     _mo.instr_div     = _me.instr_div;
                     _mo.digi_on       = _me.digi_on;
                 }
