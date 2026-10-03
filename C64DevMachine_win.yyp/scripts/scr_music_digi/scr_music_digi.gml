@@ -978,7 +978,8 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
         }
         if (!is_undefined(_a)) {
             if (scr_sample_button(_x2 - 34, _sy, 24, 17, ">", false, true, _mx, _my)) {
-                scr_digi_play_step(_m, { smp: _s, vol: 3 });
+                // Slot preview: play at the sample's own pitch
+                scr_digi_play_step(_m, { smp: _s, vol: 3, note: DIGI_NOTE_BASE });
             }
         }
     }

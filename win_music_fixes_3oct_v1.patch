@@ -1,0 +1,93 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml b/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
+index 717023e..66cd3bc 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
+@@ -978,7 +978,8 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+         }
+         if (!is_undefined(_a)) {
+             if (scr_sample_button(_x2 - 34, _sy, 24, 17, ">", false, true, _mx, _my)) {
+-                scr_digi_play_step(_m, { smp: _s, vol: 3 });
++                // Slot preview: play at the sample's own pitch
++                scr_digi_play_step(_m, { smp: _s, vol: 3, note: DIGI_NOTE_BASE });
+             }
+         }
+     }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index 1256f2f..fecf84c 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -381,6 +381,39 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         }
+     }
+ 
++    // ── CARRIED INSTRUMENT PER LANE ──
++    // A note row with no instrument (e.g. a JXX tie) keeps the instrument the
++    // voice is already playing. _carry_ins[lane][row] = that instrument
++    // (-1 = none yet), worked out from every earlier order row of this song.
++    var _carry_ins = [[], [], []];
++    for (var _ci = 0; _ci < 3; _ci++) {
++        var _run_ins = -1;
++        for (var _co = 0; _co < _m.sel_order_row; _co++) {
++            var _cp_idx = scr_music_sid_pattern(_cur_song.order[_co], _voice_offset + _ci);
++            if (_cp_idx >= 0 && _cp_idx < array_length(_m.patterns)) {
++                var _cp_pat = _m.patterns[_cp_idx];
++                _se_ensure_steps(_cp_pat);
++                var _cp_n = min(_cp_pat.pattern_len, array_length(_cp_pat.steps));
++                for (var _cs = 0; _cs < _cp_n; _cs++) {
++                    var _cp_st = _cp_pat.steps[_cs];
++                    if (!_cp_st.empty && _cp_st.instr_idx >= 0) {
++                        _run_ins = _cp_st.instr_idx;
++                    }
++                }
++            }
++        }
++        if (_col_pat[_ci] != noone) {
++            var _cl_n = min(_col_pat[_ci].pattern_len, array_length(_col_pat[_ci].steps));
++            for (var _cs2 = 0; _cs2 < _cl_n; _cs2++) {
++                var _cl_st = _col_pat[_ci].steps[_cs2];
++                if (!_cl_st.empty && _cl_st.instr_idx >= 0) {
++                    _run_ins = _cl_st.instr_idx;
++                }
++                _carry_ins[_ci][_cs2] = _run_ins;
++            }
++        }
++    }
++
+     // Grid shows rows up to the LONGEST active pattern; a column whose own
+     // pattern is shorter shows dim "END" cells past its own length, and a
+     // column with no pattern assigned shows "NO PATTERN" throughout.
+@@ -1350,6 +1383,16 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+                 }
+                 draw_set_color(_missing ? c_red : c_white);
+                 draw_text_transformed_l(_cx1 + 8, _ry + _ty, _cell_txt, _txt_scale, _txt_scale, 0);
++                if (!_has_instr && !_missing && _row < array_length(_carry_ins[_cv])) {
++                    // No instrument on this row: show the one still playing, dimmed
++                    var _carried = _carry_ins[_cv][_row];
++                    if (_carried >= 0) {
++                        var _carry_str = string(_carried);
++                        while (string_length(_carry_str) < 2) { _carry_str = "0" + _carry_str; }
++                        draw_set_color(make_color_rgb(100, 100, 125));
++                        draw_text_transformed_l(_cx1 + 8 + string_width_l(_cell_txt + " ") * _txt_scale, _ry + _ty, _carry_str, _txt_scale, _txt_scale, 0);
++                    }
++                }
+                 if (_missing) {
+                     draw_set_font_l(fnt_c64_pico);
+                     draw_set_color(c_red);
+@@ -1419,7 +1462,16 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+                 }
+             }
+ 
+-            if (_hov && mouse_check_button_pressed(mb_left)) {
++            if (_hov && mouse_check_button_pressed(mb_left) && keyboard_check(vk_alt)) {
++                // ALT+click: pick this note's instrument (or the one it carries)
++                var _pick_ins = _step.instr_idx;
++                if (_pick_ins < 0 && _row < array_length(_carry_ins[_cv])) {
++                    _pick_ins = _carry_ins[_cv][_row];
++                }
++                if (_pick_ins >= 0 && _pick_ins < array_length(_m.instruments)) {
++                    _m.sel_instr = _pick_ins;
++                }
++            } else if (_hov && mouse_check_button_pressed(mb_left)) {
+                 if (_m.edit_active && (_m.edit_voice != _cv || _m.edit_step != _row)) {
+                     scr_sound_editor_commit_cell(_m, _se_push_undo, _se_snap, _col_pat);
+                 }
