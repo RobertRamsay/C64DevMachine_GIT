@@ -2149,8 +2149,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             } else if (_m.sel_sub == 1) {
                 _m.sel_sub = 0;
             } else if (_m.sel_voice == 0) {
-                // Left of voice 1's note wraps round to the DIGI lane.
+                // Left of voice 1's note wraps round to the DIGI lane's command column.
                 scr_digi_focus_from_grid(_m);
+                _m.dg_sel_sub = 1;
             } else {
                 _m.sel_sub = 1;
                 _m.sel_voice = _m.sel_voice - 1;

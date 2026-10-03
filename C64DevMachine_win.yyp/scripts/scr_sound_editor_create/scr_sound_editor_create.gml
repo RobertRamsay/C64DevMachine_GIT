@@ -128,6 +128,7 @@ function scr_sound_editor_create(_asset) {
         dg_own_row    : -1,      // DIGI SPEED preview: digi row playing now
         dg_sync_time  : 0,       // DIGI SPEED preview: current_time of the digi row's start
         dg_run_sp     : 0,       // preview: digi speed now (0 = song rows), set by DIGI SPEED / Fxx
+        dg_sel_sub    : 0,       // digi cursor: 0 = note column, 1 = command column
         dg_cmd_on     : false,   // typing an Fxx speed command in the digi lane
         dg_cmd_buf    : "",      // its hex digits so far
         dg_inst       : -1,

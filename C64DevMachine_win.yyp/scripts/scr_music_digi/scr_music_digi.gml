@@ -589,19 +589,22 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
             }
             if (_hov && mouse_check_button_pressed(mb_right)) {
                 scr_digi_push_undo(_m, _pushf, _snapf);
-                var _blank = scr_digi_step_blank();
-                _st.smp  = _blank.smp;
-                _st.vol  = _blank.vol;
-                _st.note = _blank.note;
-                _st.spd  = _blank.spd;
+                if (_mx >= _cmd_x - 6) {
+                    _st.spd = 0;                     // command column: just the command
+                } else {
+                    var _blank = scr_digi_step_blank();
+                    _st.smp  = _blank.smp;
+                    _st.vol  = _blank.vol;
+                    _st.note = _blank.note;
+                    _st.spd  = _blank.spd;
+                }
                 global.undo_dirty = true;
             }
         }
         if (_m.dg_focus && _m.dg_sel_step == _row) {
-            // Cursor like the voice grid's: the note part, or the command
-            // column while an Fxx is being typed.
+            // Cursor like the voice grid's: the note part or the command column.
             draw_set_color(c_yellow);
-            if (_m.dg_cmd_on) {
+            if (_m.dg_sel_sub == 1) {
                 draw_rectangle(_x + 84, _ry, _x2, _ry + _row_h, true);
             } else {
                 draw_rectangle(_x, _ry, _x + 82, _ry + _row_h, true);
@@ -610,6 +613,12 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
         if (_hov && _press) {
             _m.dg_focus    = true;
             _m.dg_sel_step = _row;
+            _m.dg_cmd_on   = false;      // a click drops a half-typed command, like the voice grid
+            _m.dg_cmd_buf  = "";
+            _m.dg_sel_sub  = 0;
+            if (_mx >= _x + 84) {
+                _m.dg_sel_sub = 1;       // command column
+            }
             if (!keyboard_check(vk_shift)) {
                 _m.dg_anchor = _row;
             }
@@ -631,6 +640,9 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
 /// Moves the cursor from the voice grid into the DIGI lane on the same row.
 function scr_digi_focus_from_grid(_m) {
     _m.dg_focus    = true;
+    _m.dg_sel_sub  = 0;
+    _m.dg_cmd_on   = false;
+    _m.dg_cmd_buf  = "";
     _m.dg_sel_step = _m.sel_step;
     _m.dg_anchor   = _m.sel_step;
     _m.edit_active = false;
@@ -652,8 +664,9 @@ function scr_digi_scroll_to_cursor(_m, _vis) {
 ///                 OCTAVE setting, Q-U at it, I 9 O 0 P above)
 ///   , .           previous / next sample slot (also changes the selected cell)
 ///   [ ]           volume -/+        -  OFF        Del / Backspace  clear
-///   F + 2 hex     speed command: F01-F1F frames a digi row from here on,
-///                 F00 back to the song's rows (Esc cancels)
+///   Left / Right  between the note and command columns, then on to the voices
+///   F + 2 hex     (command column) speed: F01-F1F frames a digi row from
+///                 here on, F00 back to the song's rows (Esc cancels)
 ///   Up / Down     move (Shift extends the selection)        Esc  leave
 ///   Ctrl+C / X / V  copy / cut / paste rows   Ctrl+Z / Y  undo / redo
 /// Typing into an order row with no digi pattern makes one first.
@@ -687,7 +700,26 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
     // handler, which runs later this frame, doesn't move a second time.
     var _go_right = keyboard_check_pressed(vk_right) || (keyboard_check_pressed(vk_tab) && !_shift);
     var _go_left  = keyboard_check_pressed(vk_left)  || (keyboard_check_pressed(vk_tab) && _shift);
+    if (_go_right && _m.dg_sel_sub == 0) {
+        // Note -> command column, like a voice.
+        _m.dg_sel_sub = 1;
+        _m.dg_cmd_on  = false;
+        _m.dg_cmd_buf = "";
+        keyboard_clear(vk_right);
+        keyboard_clear(vk_tab);
+        return;
+    }
+    if (_go_left && _m.dg_sel_sub == 1) {
+        _m.dg_sel_sub = 0;
+        _m.dg_cmd_on  = false;
+        _m.dg_cmd_buf = "";
+        keyboard_clear(vk_left);
+        keyboard_clear(vk_tab);
+        return;
+    }
     if (_go_right || _go_left) {
+        _m.dg_cmd_on  = false;
+        _m.dg_cmd_buf = "";
         _m.dg_focus  = false;
         _m.sel_step  = _m.dg_sel_step;
         _m.sel_sub   = 0;
@@ -749,6 +781,10 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
     if (keyboard_check_pressed(vk_home)) {
         _m.dg_sel_step = 0;
         _moved = true;
+    }
+    if (_moved) {
+        _m.dg_cmd_on  = false;
+        _m.dg_cmd_buf = "";
     }
     if (_moved && !_shift) {
         _m.dg_anchor = _m.dg_sel_step;
@@ -863,9 +899,23 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
         }
         return;
     }
-    if (keyboard_check_pressed(ord("F"))) {
-        _m.dg_cmd_on  = true;
-        _m.dg_cmd_buf = "";
+    if (_m.dg_sel_sub == 1) {
+        // Command column: F starts a command, Del / Backspace clears it.
+        // Piano keys don't type here, like a voice's command column.
+        if (keyboard_check_pressed(ord("F"))) {
+            _m.dg_cmd_on  = true;
+            _m.dg_cmd_buf = "";
+        }
+        if (keyboard_check_pressed(vk_delete) || keyboard_check_pressed(vk_backspace)) {
+            if (_order_row.dg >= 0 && _order_row.dg < array_length(_m.digi_patterns)) {
+                scr_digi_push_undo(_m, _pushf, _snapf);
+                var _pat_d = _m.digi_patterns[_order_row.dg];
+                for (var _rd = _lo; _rd <= _hi && _rd < _pat_d.pattern_len; _rd++) {
+                    _pat_d.steps[_rd].spd = 0;
+                }
+                global.undo_dirty = true;
+            }
+        }
         return;
     }
 
