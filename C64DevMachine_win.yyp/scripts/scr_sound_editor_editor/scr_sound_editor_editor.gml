@@ -2783,6 +2783,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     // real mouse (the editor's copy is hidden while over the panel).
     var _dg_rect = scr_digi_slots_rect(_dg_x, _dg_w, _gy0);
     _m.dg_panel_rect = _dg_rect;
+    _m.dg_asset_name = _asset.name;
     if (_m.dg_slots_open && !_cg_open) {
         scr_digi_slots_panel(_m, _dg_rect, _dg_pmx, _dg_pmy);
     }

@@ -133,6 +133,8 @@ function scr_sound_editor_create(_asset) {
         dg_cmd_buf    : "",      // its hex digits so far
         dg_inst       : -1,
         dg_panel_rect : [0, 0, 0, 0],
+        dg_asset_name : "",      // the MUSIC_MAKER asset being edited (project check)
+        dg_check_shown: false,   // project-check warning already shown this session
 
         // ── EDITOR CURSOR ──
         sel_voice     : 0,

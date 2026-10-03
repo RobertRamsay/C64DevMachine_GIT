@@ -1,0 +1,236 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml b/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
+index 46f56fb..d5b874c 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
+@@ -1190,6 +1190,9 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+             }
+             _m.digi_samples[_s] = _next;
+             global.undo_dirty = true;
++            if (_next != "") {
++                scr_digi_check_warn_once(_m);
++            }
+         }
+         if (_hov && mouse_check_button_pressed(mb_right)) {
+             _m.digi_samples[_s] = "";
+@@ -1211,10 +1214,194 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+         draw_set_color(make_color_rgb(255, 160, 60));
+     }
+     draw_text_l(_x1 + 10, _y2 - 34, "CPU WHILE A DIGI PLAYS: ~" + string(_cpu) + "%  (EACH NOTE USED = OWN COPY)");
++    // PROJECT CHECK: does this project leave room for samples? Hover for advice.
++    var _chk = scr_digi_project_check(_m);
++    var _worst = 0;
++    for (var _ci = 0; _ci < array_length(_chk); _ci++) {
++        _worst = max(_worst, _chk[_ci].lvl);
++    }
++    var _chk_hov = point_in_rectangle(_mx, _my, _x1 + 4, _y2 - 20, _x2 - 4, _y2 - 4);
++    if (_worst == 0) {
++        draw_set_color(make_color_rgb(120, 200, 120));
++        draw_text_l(_x1 + 10, _y2 - 18, "PROJECT CHECK: OK FOR SAMPLES");
++    } else {
++        draw_set_color(make_color_rgb(255, 170, 70));
++        if (_worst == 2) {
++            draw_set_color(make_color_rgb(255, 100, 80));
++        }
++        draw_text_l(_x1 + 10, _y2 - 18, "PROJECT CHECK: " + string(array_length(_chk)) + " ISSUE(S) - HOVER FOR ADVICE");
++        if (_chk_hov) {
++            scr_digi_check_draw_advice(_chk, _x1, _y2 - 22);
++        }
++    }
++}
++
++/// Things in this project that make samples a bad fit, each with plain advice.
++/// Returns an array of { lvl, msg, fix }: lvl 1 = not recommended,
++/// lvl 2 = won't work as it is.
++function scr_digi_project_check(_m) {
++    var _out = [];
++    // 1. Timing
+     if (_m.free_voices) {
+-        draw_set_color(make_color_rgb(255, 120, 90));
+-        draw_text_l(_x1 + 10, _y2 - 18, "TIMING: PER VOICE - DIGI TRACK NOT COMPILED");
++        array_push(_out, { lvl: 2,
++            msg: "THIS SONG USES TIMING: PER VOICE. THE DIGI TRACK IS ONLY BUILT WHEN ALL THREE VOICES SHARE ONE ROW CLOCK, SO SAMPLES PLAY IN THE EDITOR BUT ARE SILENT ON THE C64.",
++            fix: "SET TIMING TO SHARED IF THE VOICES CAN RUN AT THE SAME SPEED, OR LEAVE SAMPLES OUT OF THIS SONG." });
++    }
++    // 2. CPU: the player interrupts the program once for every sample
++    var _cpu = round(_m.digi_rate * DIGI_NMI_CYCLES / SAMPLE_PAL_CLOCK * 100);
++    if (_cpu > 60) {
++        var _lvl_cpu = 1;
++        if (_cpu > 90) {
++            _lvl_cpu = 2;
++        }
++        array_push(_out, { lvl: _lvl_cpu,
++            msg: "AT " + string(_m.digi_rate) + " HZ THE SAMPLE PLAYER USES ABOUT " + string(_cpu) + "% OF THE CPU WHILE A SAMPLE PLAYS: IT STOPS THE PROGRAM ONCE FOR EVERY SAMPLE (AN NMI), SO THE GAME AND MUSIC GET WHAT IS LEFT.",
++            fix: "LOWER THE RATE IN THIS PANEL - 4000 TO 5000 HZ USES ABOUT 52-64% AND IS FINE FOR DRUMS AND SPEECH. IF THE GAME STILL SLOWS DOWN, DO LESS WORK PER FRAME WHILE SAMPLES PLAY." });
++    }
++    // 3. Code timed to the screen (raster waits / border tricks)
++    var _raster = false;
++    with (obj_c64_node) {
++        if (!is_connected || array_length(instructions) == 0) {
++            continue;
++        }
++        if (node_type == "MACRO_CODE" && is_string(instructions[0][1])) {
++            if (string_pos("$d012", string_lower(instructions[0][1])) > 0) {
++                _raster = true;
++            }
++        }
++        if (string_pos("IRQ", node_type) > 0) {
++            _raster = true;
++        }
++    }
++    if (_raster) {
++        array_push(_out, { lvl: 1,
++            msg: "THIS PROJECT TIMES CODE TO THE SCREEN (IT WAITS FOR RASTER LINES OR USES RASTER INTERRUPTS). THE SAMPLE NMI CANNOT BE SWITCHED OFF WITH SEI, SO IT CAN DELAY THAT CODE BY UP TO ABOUT 2 RASTER LINES (ONE LINE = 63 CPU CYCLES) - SPLITS AND BORDER TRICKS MAY FLICKER.",
++            fix: "GIVE TIMED CODE SOME SLACK: START WAITING A LINE OR TWO EARLIER (E.G. OPEN THE BORDER AT LINE 248 INSTEAD OF 249), OR ONLY PLAY SAMPLES IN PARTS OF THE GAME WITHOUT RASTER EFFECTS." });
++    }
++    // 4. Memory after the music block
++    var _mem = scr_digi_check_memory(_m);
++    if (!is_undefined(_mem)) {
++        array_push(_out, _mem);
++    }
++    return _out;
++}
++
++/// Room after this song's SID SONG node, up to the next ORG or placed asset.
++/// Samples are stored inside the music block, so that gap is all they get.
++function scr_digi_check_memory(_m) {
++    if (_m.dg_asset_name == "") {
++        return undefined;
++    }
++    var _end = -1;
++    var _nm = _m.dg_asset_name;
++    with (obj_c64_node) {
++        if (node_type == "MACRO_SID_SONG" && array_length(instructions) > 0
++        && instructions[0][1] == _nm && end_address > pc_address) {
++            _end = end_address;
++        }
++    }
++    if (_end < 0) {
++        return undefined;    // not placed / not built yet
++    }
++    var _next = 0x10000;
++    var _next_name = "";
++    with (obj_c64_node) {
++        if (node_type == "ORG" && pc_address >= _end && pc_address < _next) {
++            _next = pc_address;
++            _next_name = code_descriptor;
++        }
++    }
++    var _am = obj_asset_manager;
++    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
++        var _a = ds_list_find_value(_am.asset_list, _i);
++        if (_a.address > 0 && _a.address >= _end && _a.address < _next) {
++            _next = _a.address;
++            _next_name = _a.name;
++        }
++    }
++    if (_next >= 0xA000 && _end < 0xA000) {
++        _next = 0xA000;
++        _next_name = "BASIC ROM AREA";
++    }
++    var _gap = _next - _end;
++    // Bytes the assigned samples need at this rate (one note each).
++    var _need = 0;
++    for (var _s = 0; _s < array_length(_m.digi_samples); _s++) {
++        var _sa = scr_digi_find_sample(_m.digi_samples[_s]);
++        if (!is_undefined(_sa)) {
++            var _cnt = scr_digi_sample_count(_sa, _m.digi_rate);
++            if (_sa.meta.pack == 1) {
++                _need += ceil(_cnt / 4);
++            } else {
++                _need += ceil(_cnt / 2);
++            }
++        }
++    }
++    var _lvl = 0;
++    if (_gap < 2048) {
++        _lvl = 1;
++    }
++    if (_m.free_voices && _need > _gap) {
++        _lvl = 2;            // not built yet, and would not fit
++    }
++    if (_gap < 0) {
++        _lvl = 2;
++    }
++    if (_lvl == 0) {
++        return undefined;
++    }
++    var _hex = string_upper(decimal_to_hex(_next));
++    while (string_length(_hex) < 4) {
++        _hex = "0" + _hex;
++    }
++    return { lvl: _lvl,
++        msg: "ONLY " + string(max(0, _gap)) + " BYTES ARE FREE AFTER THE MUSIC BLOCK (UP TO " + _next_name + " AT $" + _hex + "). SAMPLES ARE STORED INSIDE THE MUSIC BLOCK: ABOUT " + string(_m.digi_rate div 2) + " BYTES A SECOND (4-BIT) OR " + string(_m.digi_rate div 4) + " (2-BIT), AND EVERY OTHER NOTE USED IS ANOTHER COPY. THE SAMPLES IN THE SLOTS NEED ABOUT " + string(_need) + " BYTES.",
++        fix: "USE SHORT SAMPLES, 2-BIT PACKING, ONE NOTE PER SAMPLE AND A LOWER RATE - OR MOVE THE MUSIC'S ORG TO A BIGGER FREE AREA (THE MEMORY BAR SHOWS WHAT IS FREE)." };
++}
++
++/// Advice box for the project check, drawn upward from _y.
++function scr_digi_check_draw_advice(_chk, _x, _y) {
++    var _txt = "";
++    for (var _i = 0; _i < array_length(_chk); _i++) {
++        if (_i > 0) {
++            _txt += "\n\n";
++        }
++        var _tag = "NOT RECOMMENDED: ";
++        if (_chk[_i].lvl == 2) {
++            _tag = "WON'T WORK AS IT IS: ";
++        }
++        _txt += _tag + _chk[_i].msg + "\nWHAT TO DO: " + _chk[_i].fix;
++    }
++    draw_set_font_l(fnt_c64_tiny);
++    var _w = 520;
++    var _h = string_height_ext_l(_txt, 14, _w - 16) + 16;
++    var _x2 = _x + _w;
++    var _y1 = _y - _h;
++    draw_set_color(make_color_rgb(24, 18, 28));
++    draw_rectangle(_x, _y1, _x2, _y, false);
++    draw_set_color(make_color_rgb(255, 170, 70));
++    draw_rectangle(_x, _y1, _x2, _y, true);
++    draw_set_color(c_white);
++    draw_text_ext_l(_x + 8, _y1 + 8, _txt, 14, _w - 16);
++}
++
++/// Shown once per editor session, the first time a sample goes into a slot
++/// while the project check has something to say.
++function scr_digi_check_warn_once(_m) {
++    if (_m.dg_check_shown) {
++        return;
++    }
++    var _chk = scr_digi_project_check(_m);
++    if (array_length(_chk) == 0) {
++        return;
++    }
++    _m.dg_check_shown = true;
++    var _txt = "SAMPLES ARE NOT RECOMMENDED FOR THIS PROJECT AS IT IS:";
++    for (var _i = 0; _i < array_length(_chk); _i++) {
++        _txt += "\n\n- " + _chk[_i].msg + "\n  WHAT TO DO: " + _chk[_i].fix;
+     }
++    _txt += "\n\n(THE DIGI SAMPLES PANEL SHOWS THIS AGAIN: HOVER 'PROJECT CHECK'.)";
++    scr_show_message(_txt);
+ }
+ 
+ /// How many C64 samples _asset becomes at _rate (no encode needed).
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+index 0045060..d7329fe 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+@@ -133,6 +133,8 @@ function scr_sound_editor_create(_asset) {
+         dg_cmd_buf    : "",      // its hex digits so far
+         dg_inst       : -1,
+         dg_panel_rect : [0, 0, 0, 0],
++        dg_asset_name : "",      // the MUSIC_MAKER asset being edited (project check)
++        dg_check_shown: false,   // project-check warning already shown this session
+ 
+         // ── EDITOR CURSOR ──
+         sel_voice     : 0,
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index 8442da8..b938026 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -2783,6 +2783,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     // real mouse (the editor's copy is hidden while over the panel).
+     var _dg_rect = scr_digi_slots_rect(_dg_x, _dg_w, _gy0);
+     _m.dg_panel_rect = _dg_rect;
++    _m.dg_asset_name = _asset.name;
+     if (_m.dg_slots_open && !_cg_open) {
+         scr_digi_slots_panel(_m, _dg_rect, _dg_pmx, _dg_pmy);
+     }
