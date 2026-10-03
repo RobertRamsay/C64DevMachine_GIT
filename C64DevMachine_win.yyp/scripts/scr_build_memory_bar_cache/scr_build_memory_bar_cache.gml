@@ -1062,8 +1062,8 @@ function scr_workspace_usage_refresh(_segments) {
                         var _bank=floor(_a.address/0x4000), _base=_bank*0x4000;
                         var _screen=(_bank==2)?_base+0x3c00:((_bank==3)?_base+0x400:_a.address+0x2000);
                         _size=_screen-_a.address+2002;
-                    } else if(_a.type=="MAP_DATA" && variable_struct_exists(_a.meta,"raw_chars") && is_real(_a.meta.raw_chars) && real(_a.meta.raw_chars)==1) {
-                        _size=min(buffer_get_size(_a.buffer),_a.meta.map_w*_a.meta.map_h)+2;
+                    } else if(_a.type=="MAP_DATA") {
+                        _size=scr_map_emit_size(_a)+2;
                     }
                 }
                 _blocks+=ceil(_size/254);

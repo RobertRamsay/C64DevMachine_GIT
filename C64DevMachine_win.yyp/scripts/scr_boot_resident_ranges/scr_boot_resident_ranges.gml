@@ -73,6 +73,11 @@ function scr_boot_resident_ranges() {
         }
 
         var _sz = buffer_get_size(_a.buffer);
+        // MAP_DATA: only what the compile chain really emits (the buffer is
+        // three planes; RAW CHARS / RLE ROOMS emit far less than that).
+        if (_a.type == "MAP_DATA") {
+            _sz = scr_map_emit_size(_a);
+        }
         if (_sz <= 0) continue;
         array_push(_ranges, { s: _a.address, e: _a.address + _sz });
     }

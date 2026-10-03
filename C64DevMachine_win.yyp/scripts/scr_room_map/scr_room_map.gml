@@ -1350,3 +1350,29 @@ function scr_map_rle_rooms_encode(_a) {
     }
     return _out;
 }
+
+
+/// Bytes a MAP_DATA asset really puts in C64 memory, from its address.
+///   RAW CHARS  : the char plane only (map_w * map_h)
+///   RLE ROOMS  : the pointer table + room streams
+///   FULL MAP   : the whole buffer (char + colour planes)
+/// The buffer itself is always three planes, so its size must never be used
+/// as the asset's memory extent for the first two modes - doing so claimed
+/// up to 3x the map and swallowed everything above it (BOOT trim kept the
+/// LOAD_ORG data that sat inside the claimed range).
+function scr_map_emit_size(_a) {
+    var _mode = 0;
+    if (variable_struct_exists(_a.meta, "raw_chars") && is_real(_a.meta.raw_chars)) {
+        _mode = real(_a.meta.raw_chars);
+    }
+    if (_mode == 1) {
+        return _a.meta.map_w * _a.meta.map_h;
+    }
+    if (_mode == 2) {
+        return array_length(scr_map_rle_rooms_encode(_a));
+    }
+    if (buffer_exists(_a.buffer)) {
+        return buffer_get_size(_a.buffer);
+    }
+    return 0;
+}

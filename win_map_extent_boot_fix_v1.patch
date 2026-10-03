@@ -1,0 +1,85 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index ffce1f9..2c5c183 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -3147,12 +3147,9 @@ show_debug_message(_pbuf_dbg2);
+                         // $4000-$14E00, every code block above the map was
+                         // treated as "loads from disk", and BOOT was cut off
+                         // before the game code. Crash to READY on JMP.
+-                        if (_lb.type == "MAP_DATA"
+-                        &&  variable_struct_exists(_lb, "meta")
+-                        &&  variable_struct_exists(_lb.meta, "raw_chars")
+-                        &&  is_real(_lb.meta.raw_chars)
+-                        &&  real(_lb.meta.raw_chars) == 1) {
+-                            _lend = _lstart + (_lb.meta.map_w * _lb.meta.map_h);
++                        if (_lb.type == "MAP_DATA") {
++                            // what is really emitted / written to disk, not the 3-plane buffer
++                            _lend = _lstart + scr_map_emit_size(_lb);
+                         }
+                         array_push(_load_org_ranges, { s: _lstart, e: _lend });
+                         break;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml b/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml
+index 34d5322..8e10576 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.gml
+@@ -73,6 +73,11 @@ function scr_boot_resident_ranges() {
+         }
+ 
+         var _sz = buffer_get_size(_a.buffer);
++        // MAP_DATA: only what the compile chain really emits (the buffer is
++        // three planes; RAW CHARS / RLE ROOMS emit far less than that).
++        if (_a.type == "MAP_DATA") {
++            _sz = scr_map_emit_size(_a);
++        }
+         if (_sz <= 0) continue;
+         array_push(_ranges, { s: _a.address, e: _a.address + _sz });
+     }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml b/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml
+index 972010c..c985379 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_build_memory_bar_cache/scr_build_memory_bar_cache.gml
+@@ -1062,8 +1062,8 @@ function scr_workspace_usage_refresh(_segments) {
+                         var _bank=floor(_a.address/0x4000), _base=_bank*0x4000;
+                         var _screen=(_bank==2)?_base+0x3c00:((_bank==3)?_base+0x400:_a.address+0x2000);
+                         _size=_screen-_a.address+2002;
+-                    } else if(_a.type=="MAP_DATA" && variable_struct_exists(_a.meta,"raw_chars") && is_real(_a.meta.raw_chars) && real(_a.meta.raw_chars)==1) {
+-                        _size=min(buffer_get_size(_a.buffer),_a.meta.map_w*_a.meta.map_h)+2;
++                    } else if(_a.type=="MAP_DATA") {
++                        _size=scr_map_emit_size(_a)+2;
+                     }
+                 }
+                 _blocks+=ceil(_size/254);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_room_map/scr_room_map.gml b/C64DevMachine_win.yyp/scripts/scr_room_map/scr_room_map.gml
+index f514a94..8c0f8f2 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_room_map/scr_room_map.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_room_map/scr_room_map.gml
+@@ -1350,3 +1350,29 @@ function scr_map_rle_rooms_encode(_a) {
+     }
+     return _out;
+ }
++
++
++/// Bytes a MAP_DATA asset really puts in C64 memory, from its address.
++///   RAW CHARS  : the char plane only (map_w * map_h)
++///   RLE ROOMS  : the pointer table + room streams
++///   FULL MAP   : the whole buffer (char + colour planes)
++/// The buffer itself is always three planes, so its size must never be used
++/// as the asset's memory extent for the first two modes - doing so claimed
++/// up to 3x the map and swallowed everything above it (BOOT trim kept the
++/// LOAD_ORG data that sat inside the claimed range).
++function scr_map_emit_size(_a) {
++    var _mode = 0;
++    if (variable_struct_exists(_a.meta, "raw_chars") && is_real(_a.meta.raw_chars)) {
++        _mode = real(_a.meta.raw_chars);
++    }
++    if (_mode == 1) {
++        return _a.meta.map_w * _a.meta.map_h;
++    }
++    if (_mode == 2) {
++        return array_length(scr_map_rle_rooms_encode(_a));
++    }
++    if (buffer_exists(_a.buffer)) {
++        return buffer_get_size(_a.buffer);
++    }
++    return 0;
++}
