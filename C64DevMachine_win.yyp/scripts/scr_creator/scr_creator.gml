@@ -1476,9 +1476,29 @@ function scr_creator_box_step(_b) {
     return true;
 }
 
+/// Facade buttons stay plain for readability: dark fill, coloured outline,
+/// selected = filled in the colour with black text.
 function scr_creator_draw_room_btn(_it, _on, _col) {
     var _hov = point_in_rectangle(mouse_x, mouse_y, _it.x1, _it.y1, _it.x2, _it.y2);
-    scr_creator_skin_btn(_it.x1, _it.y1, _it.x2, _it.y2, _it.text, _on, _hov);
+    var _bg  = make_colour_rgb(30, 30, 70);
+    if (_on) {
+        _bg = _col;
+    }
+    if (_hov) {
+        _bg = merge_colour(_bg, c_white, 0.2);
+    }
+    draw_set_colour(_bg);
+    draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, false);
+    draw_set_colour(_col);
+    draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, true);
+    draw_set_colour(c_white);
+    if (_on) {
+        draw_set_colour(c_black);
+    }
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_middle);
+    draw_text_l((_it.x1 + _it.x2) * 0.5, (_it.y1 + _it.y2) * 0.5, _it.text);
+    draw_set_halign(fa_left);
 }
 
 /// obj_mapping_box Draw (room space). Buttons above the box always; the
