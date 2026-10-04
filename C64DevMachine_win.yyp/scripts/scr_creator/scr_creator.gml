@@ -40,7 +40,7 @@ function scr_creator_init() {
     global.creator_field_rect   = [0, 0, 0, 0];
     global.creator_commit       = false;
     global.creator_esc_eaten    = false;
-    // Param cards: pinned params drawn on the canvas beside their node, or
+    // Param cards: params drawn on the canvas beside their node, or
     // stacked under a folded ORG. Rebuilt every Begin Step.
     global.creator_cards        = [];
     global.creator_card_hot     = false;
@@ -942,13 +942,6 @@ function scr_creator_draw_editor(_n) {
             draw_set_font_l(fnt_c64_tiny);
             draw_text_l(_px + 16, _ly + 13, "C64 PALETTE 0-15");
             draw_set_font_l(fnt_C64_Angled);
-        }
-
-        // PIN: show this param as a card on the canvas beside the node
-        // (or under its ORG header when the ORG is folded).
-        if (scr_creator_btn(_px + _pw - 86, _ly, _px + _pw - 16, _ly + 26, "PIN", _p.pin)) {
-            _p.pin   = !_p.pin;
-            _changed = true;
         }
 
         var _cur = scr_param_read(_n, _p);
@@ -2009,10 +2002,12 @@ function scr_creator_slot_step(_p, _names, _dir) {
 // ====================================================================
 // PARAM CARDS
 //
-// A pinned param is drawn on the canvas as a card, no mapping box needed:
+// Every param is drawn on the canvas as a card UNLESS its node belongs to a
+// UI panel - it is one or the other. Turn the panel off (EDIT) or delete
+// the box and the node's params come back as cards:
 //   ORG unfolded - the node's cards sit to the right of its P tab, joined
 //                  to it by a bracket.
-//   ORG folded   - every pinned card in the block stacks under the ORG
+//   ORG folded   - every card in the block stacks under the ORG
 //                  header, with a sub-heading per node. An ORG below that
 //                  the stack would land on is pushed down out of the way.
 // Cards are drawn in obj_workspace_manager Draw End, over the nodes, and
@@ -2023,13 +2018,19 @@ function scr_creator_slot_step(_p, _names, _dir) {
 #macro CREATOR_CARD_GAP   22
 #macro CREATOR_CARD_CLEAR 40
 
-function scr_creator_node_has_pins(_n) {
-    for (var _i = 0; _i < array_length(_n.params); _i++) {
-        if (_n.params[_i].pin) {
-            return true;
+/// Every node a raised UI panel drives - those params live in the panel.
+function scr_creator_panelled_nodes() {
+    var _out = [];
+    with (obj_mapping_box) {
+        if (!is_panel) {
+            continue;
+        }
+        var _nodes = scr_creator_panel_nodes(id);
+        for (var _i = 0; _i < array_length(_nodes); _i++) {
+            array_push(_out, _nodes[_i]);
         }
     }
-    return false;
+    return _out;
 }
 
 /// The header a hidden node is folded under, or noone.
@@ -2059,7 +2060,7 @@ function scr_creator_card_new(_x1, _y1, _w) {
     return { x1: _x1, y1: _y1, x2: _x1 + _w, y2: _y1, items: [], anchor: noone, tab: noone, col: make_colour_rgb(80, 200, 255) };
 }
 
-/// Lay one node's pinned params into a card. _sub adds the node's name
+/// Lay one node's params into a card. _sub adds the node's name
 /// as a heading. Returns the y under the last row.
 function scr_creator_card_add_node(_card, _n, _y, _sub) {
     var _x1 = _card.x1 + CREATOR_PANEL_PAD;
@@ -2071,9 +2072,6 @@ function scr_creator_card_add_node(_card, _n, _y, _sub) {
         _y += CREATOR_PANEL_SUB;
     }
     for (var _i = 0; _i < array_length(_n.params); _i++) {
-        if (!_n.params[_i].pin) {
-            continue;
-        }
         scr_creator_param_row(_card.items, _n, _i, _x1, _x2, _y, true, 0);
         _y += CREATOR_PANEL_ROW_STACK;
     }
@@ -2086,11 +2084,12 @@ function scr_creator_cards_build() {
     var _font_b = draw_get_font();
     draw_set_font_l(fnt_c64_code);
 
-    // Nodes with pins: visible ones get a card beside them; folded ones are
-    // grouped under their header. Nodes under a UI panel are left to it.
-    var _beside  = [];
-    var _folded  = [];
-    var _anchors = [];
+    // Nodes with params: visible ones get a card beside them; folded ones are
+    // grouped under their header. Nodes a UI panel drives are left to it.
+    var _panelled = scr_creator_panelled_nodes();
+    var _beside   = [];
+    var _folded   = [];
+    var _anchors  = [];
     with (obj_c64_node) {
         if (array_length(params) == 0) {
             continue;
@@ -2101,7 +2100,14 @@ function scr_creator_cards_build() {
         if (creator_covered) {
             continue;
         }
-        if (!scr_creator_node_has_pins(id)) {
+        var _in_panel = false;
+        for (var _k = 0; _k < array_length(_panelled); _k++) {
+            if (_panelled[_k] == id) {
+                _in_panel = true;
+                break;
+            }
+        }
+        if (_in_panel) {
             continue;
         }
         if (scr_node_is_hidden(id)) {
