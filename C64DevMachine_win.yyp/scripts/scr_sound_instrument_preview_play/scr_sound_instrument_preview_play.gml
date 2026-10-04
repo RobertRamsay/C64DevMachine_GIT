@@ -117,6 +117,10 @@ function scr_sound_instrument_preview_play(_instr, _note_name, _channel = 0, _ma
                     var _off = _arg > 127 ? _arg - 256 : _arg;
                     _freq = round(_base_hz * power(2, _off / 12) * 16777216 / 985248);
                     _pc += 2;
+                } else if (_op == 28) {
+                    // N=n absolute note (equal temperament from C-0)
+                    _freq = round(16.3516 * power(2, min(_arg, 95) / 12) * 16777216 / 985248);
+                    _pc += 2;
                 } else if (_op == 2) { _follow_hold = _pc; _hold = max(0, _arg - 1); _pc += 2; break; }
                 else if (_op == 13) {
                     if (_repeat_left == 0) _repeat_left = _bytes[_pc+3]+1;

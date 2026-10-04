@@ -1931,6 +1931,29 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_zp", _S_PTR + 1, _id]);
         array_push(_list, ["jmp_abs", _L_iloop, _id]);
         array_push(_list, ["label",   _ip + "n1"]);
+        // $1C = ABSOLUTE NOTE (N=n) - table note n, the row's note ignored.
+        array_push(_list, ["cmp_imm", 0x1C,        _id]);
+        array_push(_list, ["bne",     _ip + "n1b", _id]);
+        array_push(_list, ["ldy_imm", 0x01,        _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["cmp_imm", 96,          _id]);
+        array_push(_list, ["bcc",     _ip + "nabok", _id]);
+        array_push(_list, ["lda_imm", 95,          _id]);
+        array_push(_list, ["label",   _ip + "nabok"]);
+        array_push(_list, ["tay", 0, _id]);
+        array_push(_list, ["lda_aby", _nt_lo, _id]);
+        array_push(_list, ["sta_abx", _key + "fql", _id]);
+        array_push(_list, ["lda_aby", _nt_hi, _id]);
+        array_push(_list, ["sta_abx", _key + "fqh", _id]);
+        array_push(_list, ["clc",     0,        _id]);
+        array_push(_list, ["lda_zp", _S_PTR, _id]);
+        array_push(_list, ["adc_imm", 0x02,     _id]);
+        array_push(_list, ["sta_zp", _S_PTR, _id]);
+        array_push(_list, ["lda_zp", _S_PTR + 1, _id]);
+        array_push(_list, ["adc_imm", 0x00,     _id]);
+        array_push(_list, ["sta_zp", _S_PTR + 1, _id]);
+        array_push(_list, ["jmp_abs", _L_iloop, _id]);
+        array_push(_list, ["label",   _ip + "n1b"]);
 
         // $02 = HOLD — park for n frames. n-1, because this frame counts.
         array_push(_list, ["cmp_imm", 0x02,       _id]);

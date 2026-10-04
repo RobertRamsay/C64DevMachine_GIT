@@ -435,6 +435,10 @@ function scr_sid64_sim_step(_sim, _v) {
             }
             _vc.freq = _sim.note_freq[_ni];
             _vc.pc += 2;
+        } else if (_op == 0x1C) {
+            // ABSOLUTE NOTE (N=n) — the table note itself, no row note added
+            _vc.freq = _sim.note_freq[min(_arg, 95)];
+            _vc.pc += 2;
         } else if (_op == 0x02) {
             _vc.display_hold = _vc.pc;
             // HOLD n — this frame plus n-1

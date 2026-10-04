@@ -270,6 +270,29 @@ function scr_instrument_parse(_text) {
             continue;
         }
 
+        // ── ABSOLUTE NOTE ── N=n: a fixed table note (0-95) whatever the row
+        // plays, e.g. the high noise burst at the start of every note.
+        if (_c0 == "N" && string_char_at(_up, 2) == "=") {
+            var _ab_digits = string_digits(string_delete(_up, 1, 2));
+            var _ab = 0;
+            if (_ab_digits != "") {
+                _ab = real(_ab_digits);
+            } else {
+                array_push(_out.errors, "step " + string(_ti) + ": '" + _tok + "' needs a note number 0-95");
+            }
+            if (_ab > 95) {
+                array_push(_out.errors, "step " + string(_ti) + ": '" + _tok + "' above 95, using 95");
+                _ab = 95;
+            }
+            array_push(_out.bytes, 0x1C);
+            array_push(_out.bytes, _ab);
+            if (!_next_is_hold) {
+                array_push(_out.bytes, 0x02);
+                array_push(_out.bytes, 0x01);
+            }
+            continue;
+        }
+
         // ── NOTE ── N, N+n, N-n, Nn
         if (_c0 == "N") {
             var _rest = string_delete(_up, 1, 1);

@@ -47,7 +47,8 @@ function scr_sound_editor_cmd_menus(_lines) {
             { ins: "N+2",  label: "TONE UP" },
             { ins: "N+1",  label: "SEMITONE UP" },
             { ins: "N-1",  label: "SEMITONE DOWN" },
-            { ins: "N+24", label: "TWO OCTAVES UP" }
+            { ins: "N+24", label: "TWO OCTAVES UP" },
+            { ins: "N=81", label: "FIXED NOTE 81 (ANY ROW NOTE) - NOISE CLICKS" }
         ] },
         { id: "HOLD", items: [
             { ins: "D1",   label: "1 FRAME (FASTEST ARP)" },
