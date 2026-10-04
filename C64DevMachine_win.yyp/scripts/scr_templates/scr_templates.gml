@@ -3,6 +3,7 @@ function scr_template_catalog(_index) {
     if (_index == 10) return {title:"ZYRONS ESCAPE", pro:false, path:working_directory + "C64DMResources/TEMPLATES/ZYRONS_ESCAPE.json"};
     if (_index == 11) return {title:"SPY HUNTER", pro:false, path:working_directory + "C64DMResources/TEMPLATES/SPY_HUNTER.json"};
     if (_index == 12) return {title:"WIZBALL", pro:false, path:working_directory + "C64DMResources/TEMPLATES/WIZBALL.json"};
+    if (_index == 13) return {title:"SABOTEUR", pro:false, path:working_directory + "C64DMResources/TEMPLATES/SABOTEUR.json"};
     if (_index == 0) return {title:"SHMUP V", pro:false, path:working_directory + "C64DMResources/TEMPLATES/SHMUP_V.json"};
     var _titles = ["V.SHMUP", "H.SHMUP", "PFORMER", "PFRMR.SCRL", "TOP DOWN"];
     var _files = ["vshmup", "hshmup", "pformer", "pfrmr_scrl", "top_down"];
@@ -13,7 +14,7 @@ function scr_template_catalog(_index) {
 }
 
 function scr_template_load(_index) {
-    if (_index < 0 || _index >= 13) return;
+    if (_index < 0 || _index >= 14) return;
     var _entry = scr_template_catalog(_index);
     // Validate before the native loader destroys the current workspace.
     if (!file_exists(_entry.path)) { scr_show_message("Template file is missing: " + _entry.title); return; }
