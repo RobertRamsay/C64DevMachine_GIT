@@ -2555,6 +2555,54 @@ if(global.workspace_disk_mode) {
     draw_text_l(_stats_x,_usage_y,_disk_txt);
     _usage_y-=15;
 }
+// BUILD TARGET - click to cycle D64 -> PRG INJECT -> PRG EXO.
+{
+    var _bt_txt = "BUILD: ";
+    var _bt_col = make_color_rgb(150, 220, 255);
+    var _bt_warn = "";
+    if (global.build_target == 0) {
+        if (global.workspace_disk_mode) {
+            _bt_txt += "D64";
+        } else {
+            _bt_txt += "PRG";
+        }
+    } else if (global.build_target == 1) {
+        _bt_txt += "PRG INJECT";
+        // a plain PRG over $D000-$DFFF only survives RAM inject / DMA
+        var _segs_bt = global.memory_bar_segments;
+        for (var _si_bt = 0; _si_bt < array_length(_segs_bt); _si_bt++) {
+            var _sg_bt = _segs_bt[_si_bt];
+            if (_sg_bt.addr < 0xE000 && _sg_bt.addr + _sg_bt.size > 0xD000) {
+                _bt_warn = "  INJECT ONLY";
+                break;
+            }
+        }
+    } else {
+        _bt_txt += "PRG EXO";
+        if (global.exo_last_blocks > 0) {
+            _bt_txt += " (" + string(global.exo_last_blocks) + " BLK)";
+        }
+        if (exo_pending) {
+            _bt_txt += "  CRUNCHING...";
+        }
+    }
+    var _bt_w = string_width(_bt_txt + _bt_warn);
+    var _bt_hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _stats_x, _usage_y - 12, _stats_x + _bt_w, _usage_y);
+    if (_bt_hov) {
+        _bt_col = c_white;
+        if (scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed) {
+            global.build_target = (global.build_target + 1) mod 3;
+            global.ui_click_consumed = true;
+        }
+    }
+    draw_set_color(_bt_col);
+    draw_text_l(_stats_x, _usage_y, _bt_txt);
+    if (_bt_warn != "") {
+        draw_set_color(c_orange);
+        draw_text_l(_stats_x + string_width(_bt_txt), _usage_y, _bt_warn);
+    }
+    _usage_y -= 15;
+}
 draw_set_color(global.workspace_reu_used>global.workspace_reu_capacity?c_red:c_aqua);
 draw_text_l(_stats_x,_usage_y,"REU: "+scr_workspace_usage_text(global.workspace_reu_used)+" / "+scr_workspace_usage_text(global.workspace_reu_capacity));
 draw_set_color(c_white);

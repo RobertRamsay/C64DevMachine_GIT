@@ -1,3 +1,10 @@
+// ── EXOMIZER POLL (BUILD TARGET = PRG EXO) ──
+// Exomizer runs as its own process; wait until its output exists and has
+// stopped growing, then run it like any PRG.
+if (exo_pending) {
+    scr_exo_crunch_poll();
+}
+
 scr_template_step();
 scr_tour_question_step();
 
@@ -3112,7 +3119,7 @@ show_debug_message(_pbuf_dbg2);
         }
     }
 
-    if (_has_load_org && _has_loader) {
+    if (_has_load_org && _has_loader && global.build_target == 0) {
         // ---------------------------------------------------------
         // Compute TRUE boot size by trimming trailing bytes that fall
         // inside LOAD_ORG asset address ranges (those load from disk,
@@ -3239,7 +3246,16 @@ show_debug_message(_pbuf_dbg2);
         buffer_save(p_buf, full_save_path);
         buffer_delete(p_buf);
         ds_map_destroy(p.labels);
-        if (!silent_build && !(instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "attention_required")) {
+        // PRG EXO: crunch the image, then run the crunched file once
+        // Exomizer has written it (polled below, outside the build).
+        var _exo_started = false;
+        if (global.build_target == 2 && !silent_build) {
+            _exo_started = scr_exo_crunch_start(full_save_path, trigger_c64u);
+            if (_exo_started) {
+                trigger_c64u = false;
+            }
+        }
+        if (!_exo_started && !silent_build && !(instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "attention_required")) {
             if (trigger_c64u) {
                 trigger_c64u = false;
                 scr_c64u_reu_begin("PRG", full_save_path, "");
@@ -4074,7 +4090,7 @@ if (export_trigger) {
             _exp_has_loader = true;
         }
     }
-    var _exp_build_d64 = (_exp_has_load_org && _exp_has_loader);
+    var _exp_build_d64 = (_exp_has_load_org && _exp_has_loader && global.build_target == 0);
 
     // Resolve the target path via dialog / pending path.
     var _chosen = pending_export_path;

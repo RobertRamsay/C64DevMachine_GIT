@@ -7420,6 +7420,11 @@ case "MACRO_JOY": {
 // ]
 // --------------------------------------------------------
 case "MACRO_LOADER": {
+    // PRG INJECT / PRG EXO: every LOAD_ORG asset is already in the image,
+    // so there is no disk to load from - the loader emits nothing.
+    if (global.build_target != 0) {
+        break;
+    }
     var _id        = _curr;
     var _org_name  = (array_length(_id.instructions[0]) > 1) ? string(_id.instructions[0][1]) : "";
     var _file_name = (array_length(_id.instructions[0]) > 2) ? string(_id.instructions[0][2]) : "";

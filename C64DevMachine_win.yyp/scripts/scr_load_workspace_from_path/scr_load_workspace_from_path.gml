@@ -1273,6 +1273,11 @@ with (obj_c64_node) {
     }
 
 global.kernal_unlocked = variable_struct_exists(load_data, "kernal_unlocked") ? load_data.kernal_unlocked : false;
+    // Older workspaces have no build_target: they build exactly as before (D64 when they have loaders).
+    global.build_target = 0;
+    if (variable_struct_exists(load_data, "build_target")) {
+        global.build_target = clamp(real(load_data.build_target), 0, 2);
+    }
     global.basic_unlocked  = variable_struct_exists(load_data, "basic_unlocked")  ? load_data.basic_unlocked  : false;
 
     // Restore the stable-UID allocator: take the higher of the persisted value

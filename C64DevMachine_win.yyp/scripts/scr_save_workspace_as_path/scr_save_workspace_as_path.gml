@@ -424,6 +424,7 @@ if (instance_exists(obj_asset_manager)) {
 	        asset_groups:       _save_groups,
 	        basic_unlocked:     global.basic_unlocked,
 	        kernal_unlocked:    global.kernal_unlocked,
+	        build_target:       global.build_target,
 	        code_editor_font_index: code_editor_font_index,
 	        map_global_mixed:   obj_workspace_manager.map_global_mixed,
 	        map_tile_bank:      variable_global_exists("map_tile_bank") ? global.map_tile_bank : [],

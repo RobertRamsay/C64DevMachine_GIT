@@ -471,6 +471,20 @@ global.named_loc_repack_gen = 0; // bumped every scr_c64_do_update_addresses() c
                                   // even when the node's own name/value didn't change.
 global.kernal_unlocked = false;
 global.basic_unlocked = false;
+// BUILD TARGET (saved per workspace)
+//   0 = D64          LOAD_ORG files on disk, MACRO LOADER does real loads
+//   1 = PRG INJECT   one PRG with every LOAD_ORG asset baked in, loaders
+//                    compile to nothing - for VICE inject / Ultimate DMA
+//   2 = PRG EXO      the PRG INJECT image crunched by Exomizer into a
+//                    self-extracting PRG that survives a normal KERNAL LOAD
+global.build_target = 0;
+global.exo_last_blocks = 0;   // size of the last PRG EXO build, shown next to the target
+// Exomizer runs as a separate process; Step polls for its output file.
+exo_pending     = false;
+exo_out_path    = "";
+exo_timeout     = 0;
+exo_last_size   = -1;
+exo_to_c64u     = false;
 global.breakdown_node = noone;
 
 // Normally created by obj_c64_node's Create, but the Begin Step label-highlight
