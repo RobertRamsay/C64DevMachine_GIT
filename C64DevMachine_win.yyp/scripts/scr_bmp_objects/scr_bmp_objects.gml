@@ -48,7 +48,7 @@ function scr_bmpobj_create(_asset) {
         // One 1:1 surface per object per layer, built from the buffer with a
         // single buffer_set_surface and drawn scaled. Rebuilt only when an
         // object is edited (cache_dirty[i]) or ink/paper change (cache_key).
-        cache_surf  : [[], [], []],   // [layer][object] surface id, -1 = none
+        cache_surf  : [[], [], [], []],   // [layer][object] surface id, -1 = none
         cache_dirty : [],             // per object: true = rebuild all layers
         cache_key   : ""              // ink/paper/flags the cache was built with
     };
@@ -115,6 +115,14 @@ function scr_bmpobj_get(_asset, _o, _which, _px, _py) {
     if (_which == 1) {
         _ptr = _o.mask_ptr;
     }
+    // -1 = "none": no graphics (all paper) / no mask (fully solid).
+    // Games point these at memory that is always zero at run time.
+    if (_ptr == -1) {
+        if (_which == 1) {
+            return 1 - _asset.meta.mask_and;
+        }
+        return 0;
+    }
     var _off = scr_bmpobj_byte_off(_asset, _o, _ptr, _px, _py);
     if (_off < 0) {
         if (_which == 1) {
@@ -167,6 +175,8 @@ function scr_bmpobj_pixel_colour(_asset, _o, _layer, _px, _py, _ink, _paper) {
     }
     if (_g == 1) return _ink;
     if (_solid) return c_black;
+    // layer 3 = composite with see-through background (map overlays)
+    if (_layer == 3) return -1;
     return _paper;
 }
 
@@ -188,7 +198,7 @@ function scr_bmpobj_cache_dirty(_asset, _i) {
 /// Free every cached surface (asset closed / deleted).
 function scr_bmpobj_cache_free(_asset) {
     var _m = _asset.meta;
-    for (var _l = 0; _l < 3; _l++) {
+    for (var _l = 0; _l < 4; _l++) {
         var _row = _m.cache_surf[_l];
         for (var _k = 0; _k < array_length(_row); _k++) {
             if (_row[_k] != -1 && surface_exists(_row[_k])) { surface_free(_row[_k]); }
@@ -206,12 +216,12 @@ function scr_bmpobj_surface(_asset, _i, _layer) {
         _m.cache_key = _key;
         _m.cache_dirty = array_create(_n, true);
     }
-    for (var _l = 0; _l < 3; _l++) {
+    for (var _l = 0; _l < 4; _l++) {
         while (array_length(_m.cache_surf[_l]) < _n) { array_push(_m.cache_surf[_l], -1); }
     }
     if (_m.cache_dirty[_i]) {
         // edited: drop all three layers of this object
-        for (var _l = 0; _l < 3; _l++) {
+        for (var _l = 0; _l < 4; _l++) {
             var _old = _m.cache_surf[_l][_i];
             if (_old != -1 && surface_exists(_old)) { surface_free(_old); }
             _m.cache_surf[_l][_i] = -1;
@@ -231,10 +241,17 @@ function scr_bmpobj_surface(_asset, _i, _layer) {
         for (var _px = 0; _px < _pw; _px++) {
             var _c = scr_bmpobj_pixel_colour(_asset, _o, _layer, _px, _py, _ink, _paper);
             var _off = (_py * _pw + _px) * 4;
-            buffer_poke(_buf, _off,     buffer_u8, colour_get_red(_c));
-            buffer_poke(_buf, _off + 1, buffer_u8, colour_get_green(_c));
-            buffer_poke(_buf, _off + 2, buffer_u8, colour_get_blue(_c));
-            buffer_poke(_buf, _off + 3, buffer_u8, 255);
+            if (_c == -1) {
+                buffer_poke(_buf, _off,     buffer_u8, 0);
+                buffer_poke(_buf, _off + 1, buffer_u8, 0);
+                buffer_poke(_buf, _off + 2, buffer_u8, 0);
+                buffer_poke(_buf, _off + 3, buffer_u8, 0);
+            } else {
+                buffer_poke(_buf, _off,     buffer_u8, colour_get_red(_c));
+                buffer_poke(_buf, _off + 1, buffer_u8, colour_get_green(_c));
+                buffer_poke(_buf, _off + 2, buffer_u8, colour_get_blue(_c));
+                buffer_poke(_buf, _off + 3, buffer_u8, 255);
+            }
         }
     }
     _surf = surface_create(_pw, _ph);
@@ -366,7 +383,7 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _x += 52;
     var _lnames = ["GFX", "MASK", "COMPOSITE"];
     var _lw = [56, 62, 100];
-    for (var _l = 0; _l < 3; _l++) {
+    for (var _l = 0; _l < 4; _l++) {
         if (scr_bmpobj_ui_button(_x, _top, _lw[_l], _tb_h, _lnames[_l], _m.layer == _l, _mx, _my)) { _m.layer = _l; }
         _x += _lw[_l] + 4;
     }
@@ -465,7 +482,10 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     //   GFX        L = ink pixel        R = clear pixel
     //   MASK       L = solid            R = transparent (background shows)
     //   COMPOSITE  L = ink (solid)      R = transparent    SHIFT+R = black (solid)
-    var _read_only = (scr_bmpobj_byte_off(_asset, _o, _o.gfx_ptr, 0, 0) < 0);
+    // Read-only only when neither plane lives in this asset (a mask-only
+    // prop with gfx = none can still have its mask edited).
+    var _read_only = (scr_bmpobj_byte_off(_asset, _o, _o.gfx_ptr, 0, 0) < 0)
+                  && (scr_bmpobj_byte_off(_asset, _o, _o.mask_ptr, 0, 0) < 0);
     if (!_read_only && point_in_rectangle(_mx, _my, _gx, _gy, _gx + _pw * _s - 1, _gy + _ph * _s - 1)) {
         var _px = floor((_mx - _gx) / _s);
         var _py = floor((_my - _gy) / _s);

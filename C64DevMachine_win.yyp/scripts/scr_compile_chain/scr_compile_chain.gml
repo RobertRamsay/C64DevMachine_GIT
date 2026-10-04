@@ -19807,6 +19807,16 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
 		        for (var _bb = 0; _bb < array_length(_rle); _bb++) {
 		            array_push(instruction_list, ["byte", _rle[_bb]]);
 		        }
+		        // OBJECT LAYER: room pointer table + object lists, each chunk
+		        // at its own address (see scr_map_objects_chunks).
+		        var _objc = scr_map_objects_chunks(_a);
+		        for (var _oc = 0; _oc < array_length(_objc); _oc++) {
+		            array_push(instruction_list, ["org", _objc[_oc].addr]);
+		            var _ocb = _objc[_oc].bytes;
+		            for (var _bb = 0; _bb < array_length(_ocb); _bb++) {
+		                array_push(instruction_list, ["byte", _ocb[_bb]]);
+		            }
+		        }
 		        continue;
 		    }
 

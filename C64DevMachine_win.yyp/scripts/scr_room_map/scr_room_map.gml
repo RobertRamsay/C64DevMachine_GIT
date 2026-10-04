@@ -1376,3 +1376,137 @@ function scr_map_emit_size(_a) {
     }
     return 0;
 }
+
+
+/// ====================================================================
+/// MAP_DATA OBJECT LAYER (RLE ROOMS maps)
+///
+/// Objects placed per room on top of the tiles - crates, doors, the
+/// helicopter cockpit... Each object is an entry of a BMP_OBJECTS asset
+/// (meta.obj_asset). meta.room_objects[room] is an array of
+/// [object, row, col] in ROOM cells; the game wants screen cells, so
+/// obj_row_off / obj_col_off are added when emitting.
+///
+/// Emitted as the format Saboteur reads:
+///     obj_table_addr : word table, one pointer per room (lo, hi)
+///     each list      : count, then count x (object, row, col)
+/// Identical lists are stored once, a list that already appears inside
+/// emitted data is pointed at, and lists may overlap the tail of the
+/// previous one. Lists fill meta.obj_regions in order: [[start, end], ...]
+/// (end exclusive) - the first region normally starts right after the
+/// table, later ones are spare holes elsewhere in memory.
+///
+/// Returns [{ addr, bytes[] }, ...] - one chunk per region used plus the
+/// table - or [] when the layer is off (no obj_table_addr).
+/// ====================================================================
+function scr_map_objects_chunks(_a) {
+    var _out = [];
+    var _m = _a.meta;
+    if (real(_m.obj_table_addr) <= 0) return _out;
+    var _rw = real(_m.room_w);
+    var _rh = real(_m.room_h);
+    if (_rw < 1 || _rh < 1) return _out;
+    var _n = (real(_m.map_w) div _rw) * (real(_m.map_h) div _rh);
+    if (real(_m.room_count) > 0 && real(_m.room_count) < _n) _n = real(_m.room_count);
+
+    // byte string per room
+    var _lists = [];
+    for (var _r = 0; _r < _n; _r++) {
+        var _l = [0];
+        if (_r < array_length(_m.room_objects)) {
+            var _objs = _m.room_objects[_r];
+            _l[0] = array_length(_objs);
+            for (var _k = 0; _k < array_length(_objs); _k++) {
+                array_push(_l, real(_objs[_k][0]) & 0xFF);
+                array_push(_l, (real(_objs[_k][1]) + real(_m.obj_row_off)) & 0xFF);
+                array_push(_l, (real(_objs[_k][2]) + real(_m.obj_col_off)) & 0xFF);
+            }
+        }
+        array_push(_lists, _l);
+    }
+
+    // longest lists first gives shorter lists the best chance to be found
+    var _order = array_create(_n, 0);
+    for (var _r = 0; _r < _n; _r++) _order[_r] = _r;
+    array_sort(_order, method({ L: _lists }, function(_x, _y) {
+        return array_length(L[_y]) - array_length(L[_x]);
+    }));
+
+    var _regions = _m.obj_regions;
+    var _reg_bytes = [];
+    for (var _g = 0; _g < array_length(_regions); _g++) array_push(_reg_bytes, []);
+    var _room_addr = array_create(_n, 0);
+
+    for (var _oi = 0; _oi < _n; _oi++) {
+        var _r = _order[_oi];
+        var _l = _lists[_r];
+        var _ll = array_length(_l);
+        var _placed = false;
+        // 1. already present in any region?
+        for (var _g = 0; _g < array_length(_regions) && !_placed; _g++) {
+            var _rb = _reg_bytes[_g];
+            for (var _p = 0; _p + _ll <= array_length(_rb); _p++) {
+                var _same = true;
+                for (var _q = 0; _q < _ll; _q++) {
+                    if (_rb[_p + _q] != _l[_q]) { _same = false; break; }
+                }
+                if (_same) {
+                    _room_addr[_r] = real(_regions[_g][0]) + _p;
+                    _placed = true;
+                    break;
+                }
+            }
+        }
+        // 2. append (overlapping the region's tail where it matches)
+        for (var _g = 0; _g < array_length(_regions) && !_placed; _g++) {
+            var _rb = _reg_bytes[_g];
+            var _cap = real(_regions[_g][1]) - real(_regions[_g][0]);
+            var _ov = 0;
+            for (var _o = min(_ll - 1, array_length(_rb)); _o > 0; _o--) {
+                var _ok = true;
+                for (var _q = 0; _q < _o; _q++) {
+                    if (_rb[array_length(_rb) - _o + _q] != _l[_q]) { _ok = false; break; }
+                }
+                if (_ok) { _ov = _o; break; }
+            }
+            if (array_length(_rb) - _ov + _ll <= _cap) {
+                _room_addr[_r] = real(_regions[_g][0]) + array_length(_rb) - _ov;
+                for (var _q = _ov; _q < _ll; _q++) array_push(_rb, _l[_q]);
+                _placed = true;
+            }
+        }
+        // 3. no room left: spill past the last region (the memory bar
+        //    shows the overlap as a conflict)
+        if (!_placed) {
+            var _g = array_length(_regions) - 1;
+            var _rb = _reg_bytes[_g];
+            _room_addr[_r] = real(_regions[_g][0]) + array_length(_rb);
+            for (var _q = 0; _q < _ll; _q++) array_push(_rb, _l[_q]);
+        }
+    }
+
+    var _tbl = [];
+    for (var _r = 0; _r < _n; _r++) {
+        array_push(_tbl, _room_addr[_r] & 0xFF);
+        array_push(_tbl, (_room_addr[_r] >> 8) & 0xFF);
+    }
+    array_push(_out, { addr: real(_m.obj_table_addr), bytes: _tbl });
+    for (var _g = 0; _g < array_length(_regions); _g++) {
+        if (array_length(_reg_bytes[_g]) > 0) {
+            array_push(_out, { addr: real(_regions[_g][0]), bytes: _reg_bytes[_g] });
+        }
+    }
+    return _out;
+}
+
+/// The BMP_OBJECTS asset named by meta.obj_asset, or noone.
+function scr_map_objects_asset(_a) {
+    if (string(_a.meta.obj_asset) == "") return noone;
+    if (!instance_exists(obj_asset_manager)) return noone;
+    var _am = obj_asset_manager;
+    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
+        var _b = ds_list_find_value(_am.asset_list, _i);
+        if (_b.type == "BMP_OBJECTS" && _b.name == _a.meta.obj_asset) return _b;
+    }
+    return noone;
+}
