@@ -19603,6 +19603,7 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 	    }
 
 	    var _load_org_linked = ds_map_create();
+	    var _disk_only_linked = ds_map_create();
 	    if (instance_exists(obj_asset_manager)) {
 	        var _am_lo = obj_asset_manager;
 	        for (var _loi = 0; _loi < ds_list_size(_am_lo.asset_list); _loi++) {
@@ -19614,6 +19615,13 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 	                if (variable_struct_exists(_lolink, "asset_name") && _lolink.asset_name != "") {
 	                    ds_map_replace(_load_org_linked, _lolink.asset_name, true);
 	                }
+	                // DISK ONLY: the game's own code loads this file (KERNAL
+	                // LOAD by name). It lives on the D64 and nowhere else - never
+	                // baked into BOOT, so it can share an address with resident
+	                // code it gets loaded over later (R-TYPE level files).
+	                if (_lolink[$ "disk_only"] == true) {
+	                    ds_map_replace(_disk_only_linked, _lolink.asset_name, true);
+	                }
 	            }
 	        }
 	    }
@@ -19623,6 +19631,7 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 	    for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
 	        var _a = ds_list_find_value(_am.asset_list, _ai);
 			if (scr_reu_asset_is_external(_a.name)) continue;
+			if (ds_map_exists(_disk_only_linked, _a.name)) continue;
 
 			if ((_a.type == "BITMAP" || _a.type == "BITMAP_KLA") && (ds_map_exists(_used_bmp, _a.name) && !ds_map_exists(_load_org_linked, _a.name))) array_push(_all_assets, _a);
 			if (_a.type == "SID_MUSIC" || _a.type == "SID_SFX") array_push(_all_assets, _a);
@@ -19889,6 +19898,7 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
 			}
 		}
         ds_map_destroy(_load_org_linked);
+        ds_map_destroy(_disk_only_linked);
 	}
 
 	// ================================================================

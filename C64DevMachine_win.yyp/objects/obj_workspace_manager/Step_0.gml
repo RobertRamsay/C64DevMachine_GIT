@@ -3118,6 +3118,22 @@ show_debug_message(_pbuf_dbg2);
             _has_loader = true;
         }
     }
+    // A DISK ONLY link (game code loads the file itself, e.g. a ported
+    // game's KERNAL loader) needs the D64 just as much as a MACRO_LOADER.
+    if (!_has_loader && instance_exists(obj_asset_manager)) {
+        var _am_do = obj_asset_manager;
+        for (var _doi = 0; _doi < ds_list_size(_am_do.asset_list); _doi++) {
+            var _doa = ds_list_find_value(_am_do.asset_list, _doi);
+            if (_doa.type != "LOAD_ORG") continue;
+            var _dol = _doa[$ "linked_assets"];
+            if (!is_array(_dol)) continue;
+            for (var _dlj = 0; _dlj < array_length(_dol); _dlj++) {
+                if (_dol[_dlj][$ "disk_only"] == true) {
+                    _has_loader = true;
+                }
+            }
+        }
+    }
 
     if (_has_load_org && _has_loader && global.build_target == 0) {
         // ---------------------------------------------------------
@@ -3136,6 +3152,9 @@ show_debug_message(_pbuf_dbg2);
                 for (var _lli = 0; _lli < array_length(_lal); _lli++) {
                     var _lnk = _lal[_lli];
                     if (variable_struct_exists(_lnk, "load_later") && _lnk.load_later) continue;
+                    // DISK ONLY files were never baked into BOOT - the resident
+                    // bytes at that address belong to BOOT and must not be trimmed.
+                    if (_lnk[$ "disk_only"] == true) continue;
                     var _lname = _lnk.asset_name;
                     for (var _lbi = 0; _lbi < ds_list_size(_am_bs.asset_list); _lbi++) {
                         var _lb = ds_list_find_value(_am_bs.asset_list, _lbi);
