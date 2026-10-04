@@ -1450,6 +1450,10 @@ case "MAP_DATA": {
         _asset.meta.scroll_x       = 0;
         _asset.meta.scroll_y       = 0;
         _asset.meta.show_grid      = true;
+        // Per-tile screen colour (hires bitmap games: high nibble = ink,
+        // low nibble = paper), indexed by char. Empty = use the colour
+        // plane + global BG as normal.
+        _asset.meta.tile_colours   = [];
         _asset.meta.paint_mc       = 0;
         _asset.meta.map_mc_bg      = -1;
         _asset.meta.map_mc_col1    = -1;
@@ -2360,6 +2364,10 @@ var _chr_cols = 16;
 		            var _cy2   = _cv_y1 + (_row - _start_row) * _cs;
 		            var _cell_real_char = _map_ecm_mode ? (_char mod 64) : _char;
 		            var _cell_bg_col    = _map_ecm_mode ? scr_c64_pepto_colour(_map_ecm_bg_cols[_char div 64]) : scr_c64_pepto_colour(_global_bg);
+		            // Per-tile paper (low nibble of the tile's screen colour)
+		            if (_char < array_length(_m.tile_colours) && _m.tile_colours[_char] >= 0) {
+		                _cell_bg_col = scr_c64_pepto_colour(_m.tile_colours[_char] & 0x0F);
+		            }
 
 		            var _td = _show_grid ? 1 : 0;
 		            if (_chr_asset_ref != noone &&
@@ -2387,6 +2395,12 @@ var _ov_val = (_ov_grid_len > _idx) ? _ov_grid[_idx] : 0;
 				} else {
 				    // MIXED mode — only lower 3 bits usable regardless of HR or MC cell
 				    _render_col = _col_v & 0x07;
+				}
+				// Per-tile colours (bitmap-built rooms, e.g. Saboteur): the tile
+				// itself fixes ink (high nibble); paper is set with _cell_bg_col above.
+				if (_char < array_length(_m.tile_colours) && _m.tile_colours[_char] >= 0) {
+				    var _tcol = _m.tile_colours[_char];
+				    _render_col   = (_tcol >> 4) & 0x0F;
 				}
 	                if (_cell_is_mc &&
 	                    _chr_asset_ref != noone &&

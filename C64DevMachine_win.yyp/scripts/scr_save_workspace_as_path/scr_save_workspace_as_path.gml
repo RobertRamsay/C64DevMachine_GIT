@@ -218,6 +218,7 @@ if (instance_exists(obj_asset_manager)) {
         if (variable_struct_exists(_a.meta, "paint_mc"))      _meta_out.paint_mc      = _a.meta.paint_mc;
         if (variable_struct_exists(_a.meta, "map_mixed"))     _meta_out.map_mixed     = _a.meta.map_mixed;
         if (variable_struct_exists(_a.meta, "raw_chars"))     _meta_out.raw_chars     = _a.meta.raw_chars;
+        if (variable_struct_exists(_a.meta, "tile_colours"))  _meta_out.tile_colours  = _a.meta.tile_colours;
         if (variable_struct_exists(_a.meta, "room_w"))        _meta_out.room_w        = _a.meta.room_w;
         if (variable_struct_exists(_a.meta, "room_h"))        _meta_out.room_h        = _a.meta.room_h;
         if (variable_struct_exists(_a.meta, "room_count"))    _meta_out.room_count    = _a.meta.room_count;

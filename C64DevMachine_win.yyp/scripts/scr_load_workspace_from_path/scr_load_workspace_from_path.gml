@@ -601,6 +601,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 if (variable_struct_exists(_sm, "erase_char"))     _meta.erase_char     = _sm.erase_char;
                 if (variable_struct_exists(_sm, "override_grid"))  _meta.override_grid  = _sm.override_grid;
                 if (variable_struct_exists(_sm, "map_mc_bg"))      _meta.map_mc_bg      = _sm.map_mc_bg;
+                if (variable_struct_exists(_sm, "tile_colours"))   _meta.tile_colours   = _sm.tile_colours;
                 if (variable_struct_exists(_sm, "map_mc_col1"))    _meta.map_mc_col1    = _sm.map_mc_col1;
                 if (variable_struct_exists(_sm, "map_mc_col2"))    _meta.map_mc_col2    = _sm.map_mc_col2;
             }
@@ -772,6 +773,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 if (!variable_struct_exists(_new_asset.meta, "room_count"))        _new_asset.meta.room_count        = 0;
                 if (!variable_struct_exists(_new_asset.meta, "erase_char"))        _new_asset.meta.erase_char        = 0;
                 if (!variable_struct_exists(_new_asset.meta, "map_mc_bg"))         _new_asset.meta.map_mc_bg         = -1;
+                if (!variable_struct_exists(_new_asset.meta, "tile_colours"))      _new_asset.meta.tile_colours      = [];
                 if (!variable_struct_exists(_new_asset.meta, "map_mc_col1"))       _new_asset.meta.map_mc_col1       = -1;
                 if (!variable_struct_exists(_new_asset.meta, "map_mc_col2"))       _new_asset.meta.map_mc_col2       = -1;
                 // Physical stride is grid_w x grid_h, NOT map_w x map_h. Backfill
