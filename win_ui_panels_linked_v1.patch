@@ -1,0 +1,244 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_mapping_box/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_mapping_box/Create_0.gml
+index c8f9ccd..afcbb7a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mapping_box/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mapping_box/Create_0.gml
+@@ -52,3 +52,6 @@ depth=-50
+ is_panel      = false;
+ panel_editing = false;
+ panel_bar     = { active: false, n: noone, pidx: 0, x1: 0, x2: 0, lo: 0, hi: 0 };
++// stable_uids of the nodes this panel drives. Set when UI is clicked; the
++// panel then shows those nodes wherever it is moved to.
++panel_links   = [];
+diff --git a/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml
+index 711973a..23f44f1 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml
+@@ -99,6 +99,11 @@ if (_tab_hov && scr_workspace_mouse_check_button_pressed(mb_left) && !is_resizin
+         drag_float_ox = [];
+         drag_float_oy = [];
+         with (obj_c64_node) {
++            // A UI panel is linked to its nodes, not sitting on them:
++            // it moves on its own and leaves every node where it is.
++            if (other.is_panel) {
++                break;
++            }
+             var _nx = x + (width  * 0.5);
+             var _ny = y + (height * 0.5);
+             var _inside = (_nx >= other.x && _nx <= other.x + other.box_w &&
+diff --git a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+index b68995a..2ccbbfd 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+@@ -83,7 +83,7 @@ var _base = "unsaved";
+     ds_priority_destroy(p_list);
+ 
+     var box_data = [];
+-    with (obj_mapping_box) array_push(box_data, { x:x, y:y, box_w:box_w, box_h:box_h, box_name:box_name, box_col_idx:box_col_idx, is_panel:is_panel });
++    with (obj_mapping_box) array_push(box_data, { x:x, y:y, box_w:box_w, box_h:box_h, box_name:box_name, box_col_idx:box_col_idx, is_panel:is_panel, panel_links:panel_links });
+ 
+     var asset_data = [];
+     var _am = noone;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+index 9e127bf..e36d809 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+@@ -1248,6 +1248,11 @@ function scr_creator_update_covered() {
+         if (!is_panel || panel_editing) {
+             continue;
+         }
++        // Panels from older workspaces (and templates) carry no links yet:
++        // link them to whatever they cover the first time they are seen.
++        if (array_length(panel_links) == 0) {
++            panel_links = scr_creator_panel_cover_uids(id);
++        }
+         var _bx1 = x;
+         var _by1 = y;
+         var _bx2 = x + box_w;
+@@ -1262,8 +1267,68 @@ function scr_creator_update_covered() {
+     }
+ }
+ 
+-/// Nodes with params whose centre is inside the box, top to bottom.
++/// stable_uids of the nodes with params whose centre is inside the box.
++function scr_creator_panel_cover_uids(_b) {
++    var _uids = [];
++    var _nodes = scr_creator_panel_cover_nodes(_b);
++    for (var _i = 0; _i < array_length(_nodes); _i++) {
++        array_push(_uids, _nodes[_i].stable_uid);
++    }
++    return _uids;
++}
++
++/// The nodes this panel drives: its links when it has them, otherwise the
++/// nodes it covers. Top to bottom, then left to right.
+ function scr_creator_panel_nodes(_b) {
++    if (array_length(_b.panel_links) == 0) {
++        return scr_creator_panel_cover_nodes(_b);
++    }
++    var _out   = [];
++    var _links = _b.panel_links;
++    with (obj_c64_node) {
++        if (array_length(params) == 0) {
++            continue;
++        }
++        for (var _i = 0; _i < array_length(_links); _i++) {
++            if (_links[_i] == stable_uid) {
++                array_push(_out, id);
++                break;
++            }
++        }
++    }
++    array_sort(_out, function(_a, _c) {
++        if (_a.y != _c.y) {
++            return _a.y - _c.y;
++        }
++        return _a.x - _c.x;
++    });
++    return _out;
++}
++
++/// Unfold whatever hides a node, then centre the view on it.
++function scr_creator_reveal_node(_n) {
++    if (!instance_exists(_n)) {
++        return;
++    }
++    if (_n.org_parent != noone) {
++        if (instance_exists(_n.org_parent)) {
++            if (_n.org_parent.collapsed) {
++                scr_org_set_collapsed(_n.org_parent, false);
++            }
++        }
++    } else if (global.init_collapsed) {
++        with (obj_c64_node) {
++            if (node_type == "INIT") {
++                scr_org_set_collapsed(id, false);
++                break;
++            }
++        }
++    }
++    scr_focus_camera_on_node(_n);
++}
++
++/// Nodes with params whose centre is inside the box, top to bottom.
++function scr_creator_panel_cover_nodes(_b) {
+     var _out = [];
+     var _bx1 = _b.x;
+     var _by1 = _b.y;
+@@ -1459,8 +1524,26 @@ function scr_creator_box_step(_b) {
+             continue;
+         }
+         if (_bt.t == "toggle") {
+-            _b.is_panel      = !_b.is_panel;
+-            _b.panel_editing = false;
++            if (_b.is_panel) {
++                // EDIT: back to a plain box, and take the view to the linked
++                // nodes (unfolding their ORG) so they can be worked on.
++                var _linked = scr_creator_panel_nodes(_b);
++                _b.is_panel      = false;
++                _b.panel_editing = false;
++                if (array_length(_linked) > 0) {
++                    scr_creator_reveal_node(_linked[0]);
++                }
++            } else {
++                // UI: link to the param nodes the box covers. Covering none
++                // keeps the previous links, so a panel can go back to being a
++                // panel from anywhere.
++                var _cover = scr_creator_panel_cover_uids(_b);
++                if (array_length(_cover) > 0) {
++                    _b.panel_links = _cover;
++                }
++                _b.is_panel      = true;
++                _b.panel_editing = false;
++            }
+             global.selected_nodes = [];
+         }
+         global.undo_dirty     = true;
+@@ -1479,6 +1562,23 @@ function scr_creator_box_step(_b) {
+         return false;
+     }
+ 
++    // The header bar is a grab handle: start the box's own drag (Step_0
++    // carries it on from the next frame). Panels move alone - no nodes.
++    if (_my < _b.y + CREATOR_PANEL_HEAD) {
++        scr_undo_snapshot();
++        _b.is_dragging   = true;
++        _b.drag_ox       = mouse_x;
++        _b.drag_oy       = mouse_y;
++        _b.drag_start_x  = _b.x;
++        _b.drag_start_y  = _b.y;
++        _b.drag_nodes    = [];
++        _b.drag_offsets  = [];
++        _b.drag_floats   = [];
++        _b.drag_float_ox = [];
++        _b.drag_float_oy = [];
++        return true;
++    }
++
+     draw_set_font_l(fnt_c64_code);
+     var _items = scr_creator_panel_layout(_b);
+     for (var _i = 0; _i < array_length(_items); _i++) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index a207c86..25ca327 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -482,6 +482,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
+         _mb.box_name    = _bd.box_name;
+         _mb.box_col_idx = _bd.box_col_idx;
+         if (variable_struct_exists(_bd, "is_panel")) _mb.is_panel = _bd.is_panel;
++        if (variable_struct_exists(_bd, "panel_links")) _mb.panel_links = _bd.panel_links;
+     }
+ 
+     if (instance_exists(obj_asset_manager) && variable_struct_exists(load_data, "assets")) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+index 50366bd..6815780 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+@@ -101,7 +101,8 @@
+ 	            box_h:       box_h,
+ 	            box_name:    box_name,
+ 	            box_col_idx: box_col_idx,
+-	            is_panel:    is_panel
++	            is_panel:    is_panel,
++	            panel_links: panel_links
+ 	        });
+ 	    }
+ 	
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+index c5c74bb..60ae1d8 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+@@ -98,7 +98,8 @@ if (!_hash_only) {
+             box_h:       box_h,
+             box_name:    box_name,
+             box_col_idx: box_col_idx,
+-            is_panel:    is_panel
++            is_panel:    is_panel,
++            panel_links: panel_links
+         });
+     }
+ 	
+diff --git a/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml b/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
+index 5d13804..78169ad 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
+@@ -191,6 +191,7 @@ function scr_undo_restore(_path) {
+         _mb.box_name    = _bd.box_name;
+         _mb.box_col_idx = _bd.box_col_idx;
+         if (variable_struct_exists(_bd, "is_panel"))      _mb.is_panel      = _bd.is_panel;
++        if (variable_struct_exists(_bd, "panel_links"))   _mb.panel_links   = _bd.panel_links;
+         if (variable_struct_exists(_bd, "panel_editing")) _mb.panel_editing = _bd.panel_editing;
+     }
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml b/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
+index fd2bc7d..9833ee8 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
+@@ -107,7 +107,7 @@ function scr_undo_snapshot() {
+     // --- BUILD BOX DATA ---
+     var _box_data = [];
+     with (obj_mapping_box) {
+-        array_push(_box_data, { x: x, y: y, box_w: box_w, box_h: box_h, box_name: box_name, box_col_idx: box_col_idx, is_panel: is_panel, panel_editing: panel_editing });
++        array_push(_box_data, { x: x, y: y, box_w: box_w, box_h: box_h, box_name: box_name, box_col_idx: box_col_idx, is_panel: is_panel, panel_editing: panel_editing, panel_links: panel_links });
+     }
+ 
+     // --- BUILD ASSET METADATA (no blob, just enough to know what was loaded) ---

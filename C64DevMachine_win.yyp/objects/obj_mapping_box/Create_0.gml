@@ -52,3 +52,6 @@ depth=-50
 is_panel      = false;
 panel_editing = false;
 panel_bar     = { active: false, n: noone, pidx: 0, x1: 0, x2: 0, lo: 0, hi: 0 };
+// stable_uids of the nodes this panel drives. Set when UI is clicked; the
+// panel then shows those nodes wherever it is moved to.
+panel_links   = [];

@@ -101,7 +101,8 @@
 	            box_h:       box_h,
 	            box_name:    box_name,
 	            box_col_idx: box_col_idx,
-	            is_panel:    is_panel
+	            is_panel:    is_panel,
+	            panel_links: panel_links
 	        });
 	    }
 	

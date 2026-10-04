@@ -1248,6 +1248,11 @@ function scr_creator_update_covered() {
         if (!is_panel || panel_editing) {
             continue;
         }
+        // Panels from older workspaces (and templates) carry no links yet:
+        // link them to whatever they cover the first time they are seen.
+        if (array_length(panel_links) == 0) {
+            panel_links = scr_creator_panel_cover_uids(id);
+        }
         var _bx1 = x;
         var _by1 = y;
         var _bx2 = x + box_w;
@@ -1262,8 +1267,68 @@ function scr_creator_update_covered() {
     }
 }
 
-/// Nodes with params whose centre is inside the box, top to bottom.
+/// stable_uids of the nodes with params whose centre is inside the box.
+function scr_creator_panel_cover_uids(_b) {
+    var _uids = [];
+    var _nodes = scr_creator_panel_cover_nodes(_b);
+    for (var _i = 0; _i < array_length(_nodes); _i++) {
+        array_push(_uids, _nodes[_i].stable_uid);
+    }
+    return _uids;
+}
+
+/// The nodes this panel drives: its links when it has them, otherwise the
+/// nodes it covers. Top to bottom, then left to right.
 function scr_creator_panel_nodes(_b) {
+    if (array_length(_b.panel_links) == 0) {
+        return scr_creator_panel_cover_nodes(_b);
+    }
+    var _out   = [];
+    var _links = _b.panel_links;
+    with (obj_c64_node) {
+        if (array_length(params) == 0) {
+            continue;
+        }
+        for (var _i = 0; _i < array_length(_links); _i++) {
+            if (_links[_i] == stable_uid) {
+                array_push(_out, id);
+                break;
+            }
+        }
+    }
+    array_sort(_out, function(_a, _c) {
+        if (_a.y != _c.y) {
+            return _a.y - _c.y;
+        }
+        return _a.x - _c.x;
+    });
+    return _out;
+}
+
+/// Unfold whatever hides a node, then centre the view on it.
+function scr_creator_reveal_node(_n) {
+    if (!instance_exists(_n)) {
+        return;
+    }
+    if (_n.org_parent != noone) {
+        if (instance_exists(_n.org_parent)) {
+            if (_n.org_parent.collapsed) {
+                scr_org_set_collapsed(_n.org_parent, false);
+            }
+        }
+    } else if (global.init_collapsed) {
+        with (obj_c64_node) {
+            if (node_type == "INIT") {
+                scr_org_set_collapsed(id, false);
+                break;
+            }
+        }
+    }
+    scr_focus_camera_on_node(_n);
+}
+
+/// Nodes with params whose centre is inside the box, top to bottom.
+function scr_creator_panel_cover_nodes(_b) {
     var _out = [];
     var _bx1 = _b.x;
     var _by1 = _b.y;
@@ -1459,8 +1524,26 @@ function scr_creator_box_step(_b) {
             continue;
         }
         if (_bt.t == "toggle") {
-            _b.is_panel      = !_b.is_panel;
-            _b.panel_editing = false;
+            if (_b.is_panel) {
+                // EDIT: back to a plain box, and take the view to the linked
+                // nodes (unfolding their ORG) so they can be worked on.
+                var _linked = scr_creator_panel_nodes(_b);
+                _b.is_panel      = false;
+                _b.panel_editing = false;
+                if (array_length(_linked) > 0) {
+                    scr_creator_reveal_node(_linked[0]);
+                }
+            } else {
+                // UI: link to the param nodes the box covers. Covering none
+                // keeps the previous links, so a panel can go back to being a
+                // panel from anywhere.
+                var _cover = scr_creator_panel_cover_uids(_b);
+                if (array_length(_cover) > 0) {
+                    _b.panel_links = _cover;
+                }
+                _b.is_panel      = true;
+                _b.panel_editing = false;
+            }
             global.selected_nodes = [];
         }
         global.undo_dirty     = true;
@@ -1477,6 +1560,23 @@ function scr_creator_box_step(_b) {
     // Leave the resize corner to the box.
     if (_mx >= _b.x + _b.box_w - 16 && _my >= _b.y + _b.box_h - 16) {
         return false;
+    }
+
+    // The header bar is a grab handle: start the box's own drag (Step_0
+    // carries it on from the next frame). Panels move alone - no nodes.
+    if (_my < _b.y + CREATOR_PANEL_HEAD) {
+        scr_undo_snapshot();
+        _b.is_dragging   = true;
+        _b.drag_ox       = mouse_x;
+        _b.drag_oy       = mouse_y;
+        _b.drag_start_x  = _b.x;
+        _b.drag_start_y  = _b.y;
+        _b.drag_nodes    = [];
+        _b.drag_offsets  = [];
+        _b.drag_floats   = [];
+        _b.drag_float_ox = [];
+        _b.drag_float_oy = [];
+        return true;
     }
 
     draw_set_font_l(fnt_c64_code);

@@ -99,6 +99,11 @@ if (_tab_hov && scr_workspace_mouse_check_button_pressed(mb_left) && !is_resizin
         drag_float_ox = [];
         drag_float_oy = [];
         with (obj_c64_node) {
+            // A UI panel is linked to its nodes, not sitting on them:
+            // it moves on its own and leaves every node where it is.
+            if (other.is_panel) {
+                break;
+            }
             var _nx = x + (width  * 0.5);
             var _ny = y + (height * 0.5);
             var _inside = (_nx >= other.x && _nx <= other.x + other.box_w &&

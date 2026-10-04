@@ -482,6 +482,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
         _mb.box_name    = _bd.box_name;
         _mb.box_col_idx = _bd.box_col_idx;
         if (variable_struct_exists(_bd, "is_panel")) _mb.is_panel = _bd.is_panel;
+        if (variable_struct_exists(_bd, "panel_links")) _mb.panel_links = _bd.panel_links;
     }
 
     if (instance_exists(obj_asset_manager) && variable_struct_exists(load_data, "assets")) {
