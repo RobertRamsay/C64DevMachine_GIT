@@ -1524,7 +1524,68 @@ if (!is_entering_text && !global.is_any_text_active && !global.c64u_overlay_acti
 	if scr_workspace_keyboard_check_pressed(ord("4")) cam_zoom_target=4.3;
 	if scr_workspace_keyboard_check_pressed(ord("5")) cam_zoom_target=6.0;		
 	if scr_workspace_keyboard_check_pressed(ord("6"))  showGrid =!showGrid
-	// UI appearance is selected from OPTIONS; 7/8/9 are intentionally free.
+	// 7: advance the whole UI theme (same as OPTIONS > UI THEME): palette,
+	//    background, node look, opcode buttons, logo and panels move together.
+	// 8: advance the node / macro look only.
+	// 9: advance the background only.
+	var _theme_key_changed = false;
+	// Never while anything is taking typed text: node fields, comments, the
+	// code editor, box names, searches, asset names/addresses/byte data,
+	// integer boxes, Creator fields - or with Ctrl/Cmd held.
+	var _theme_keys_ok = true;
+	if (is_entering_text || global.is_any_text_active || code_editor_open) {
+	    _theme_keys_ok = false;
+	}
+	if (box_popup_open || label_search_open || opcode_finder_active) {
+	    _theme_keys_ok = false;
+	}
+	if (obj_asset_manager.editing_name || obj_asset_manager.editing_address
+	 || obj_asset_manager.byte_data_editing || obj_asset_manager.editing_map_dim) {
+	    _theme_keys_ok = false;
+	}
+	if (instance_exists(obj_integer_box) || global.creator_field != "") {
+	    _theme_keys_ok = false;
+	}
+	if (scr_workspace_keyboard_check(vk_control) || scr_cmd_held()) {
+	    _theme_keys_ok = false;
+	}
+	if (_theme_keys_ok && scr_workspace_keyboard_check_pressed(ord("7"))) {
+	    var _preset_count = max(1, sprite_get_number(spr_palette_page));
+	    var _preset = (clamp(paletteStyle, 0, _preset_count - 1) + 1) mod _preset_count;
+	    paletteStyle = _preset;
+	    bkgImg       = min(_preset, max(0, sprite_get_number(spr_bkg) - 1));
+	    nodeStyle    = min(_preset, sprite_get_number(spr_9s_tile1));
+	    buttonStyle  = min(_preset, min(sprite_get_number(spr_opcode_button), _preset_count) - 1);
+	    badgeStyle   = min(_preset, max(0, sprite_get_number(spr_logobadge) - 1));
+	    niceSliceFrm = min(_preset, max(0, sprite_get_number(spr_glassSlice) - 1));
+	    uiChromeStyle = 0;
+	    if (niceSliceFrm == max(0, sprite_get_number(spr_glassSlice) - 1)) {
+	        uiChromeStyle = 1;
+	    }
+	    _theme_key_changed = true;
+	}
+	if (_theme_keys_ok && scr_workspace_keyboard_check_pressed(ord("8"))) {
+	    var _nod_n = sprite_get_number(spr_9s_tile1) + 1;
+	    nodeStyle = (nodeStyle + 1) mod _nod_n;
+	    _theme_key_changed = true;
+	}
+	if (_theme_keys_ok && scr_workspace_keyboard_check_pressed(ord("9"))) {
+	    var _bkg_n = max(1, sprite_get_number(spr_bkg));
+	    bkgImg = (bkgImg + 1) mod _bkg_n;
+	    _theme_key_changed = true;
+	}
+	if (_theme_key_changed) {
+	    // Persist like the OPTIONS menu does.
+	    ini_open("c64devmachine.ini");
+	    ini_write_real("Settings", "bkgImg", bkgImg);
+	    ini_write_real("Settings", "paletteStyle", paletteStyle);
+	    ini_write_real("Settings", "niceSliceFrm", niceSliceFrm);
+	    ini_write_real("Settings", "badgeStyle", badgeStyle);
+	    ini_write_real("Settings", "buttonStyle", buttonStyle);
+	    ini_write_real("Settings", "uiChromeStyle", uiChromeStyle);
+	    ini_write_real("Settings", "nodeStyle", nodeStyle);
+	    ini_close();
+	}
 	if scr_workspace_keyboard_check_pressed(ord("0")) {uiChromeStyle=0;niceSliceFrm=0;bkgImg=0;paletteStyle=0;badgeStyle=0;buttonStyle=0;nodeStyle=0;macroStyle=0}
 	
 }
