@@ -1210,6 +1210,7 @@ function scr_creator_draw_view() {
 
 #macro CREATOR_PANEL_HEAD 30
 #macro CREATOR_PANEL_ROW  34
+#macro CREATOR_PANEL_ROW_STACK 52
 #macro CREATOR_PANEL_SUB  22
 #macro CREATOR_PANEL_PAD  10
 
@@ -1279,7 +1280,15 @@ function scr_creator_panel_layout(_b) {
     var _nodes = scr_creator_panel_nodes(_b);
     var _multi = (array_length(_nodes) > 1);
     var _y     = _by1 + CREATOR_PANEL_HEAD + 6;
+    // Narrow panels stack each param: label on one line, the control on a
+    // full-width line under it. Wide panels keep label and control side by side.
+    var _stack = (_b.box_w < 420);
+    var _row_h = CREATOR_PANEL_ROW;
     var _lw    = floor(_b.box_w * 0.38);
+    if (_stack) {
+        _row_h = CREATOR_PANEL_ROW_STACK;
+        _lw    = 0;
+    }
     var _cx    = _bx1 + _pad + _lw;
     var _cw    = _bx2 - _pad - _cx;
 
@@ -1303,20 +1312,24 @@ function scr_creator_panel_layout(_b) {
             _y += CREATOR_PANEL_SUB;
         }
         for (var _i = 0; _i < array_length(_n.params); _i++) {
-            if (_y + CREATOR_PANEL_ROW > _by2 - 4) {
+            if (_y + _row_h > _by2 - 4) {
                 array_push(_items, scr_creator_item("more", _bx1, _by2 - 14, _bx2, _by2));
                 return _items;
             }
             var _p   = _n.params[_i];
-            var _cy  = _y + CREATOR_PANEL_ROW * 0.5;
+            var _cy  = _y + _row_h * 0.5;
             var _cur = scr_param_read(_n, _p);
 
-            var _lab = scr_creator_item("label", _bx1 + _pad, _y, _cx - 6, _y + CREATOR_PANEL_ROW);
+            var _lab = scr_creator_item("label", _bx1 + _pad, _y, _cx - 6, _y + _row_h);
+            if (_stack) {
+                _lab = scr_creator_item("label", _bx1 + _pad, _y, _bx2 - _pad, _y + 20);
+                _cy  = _y + 20 + 15;
+            }
             _lab.text = _p.label;
             array_push(_items, _lab);
 
             if (!_cur.ok) {
-                var _bad = scr_creator_item("bad", _cx, _y, _bx2 - _pad, _y + CREATOR_PANEL_ROW);
+                var _bad = scr_creator_item("bad", _cx, _cy - 10, _bx2 - _pad, _cy + 10);
                 _bad.text = "NOT LINKED";
                 array_push(_items, _bad);
             } else if (_p.kind == "COLOUR") {
@@ -1368,7 +1381,7 @@ function scr_creator_panel_layout(_b) {
                     _ox += _ow + 6;
                 }
             }
-            _y += CREATOR_PANEL_ROW;
+            _y += _row_h;
         }
     }
     return _items;
