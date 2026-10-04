@@ -1490,9 +1490,17 @@ function scr_creator_box_draw(_b) {
     var _valign_b = draw_get_valign();
     draw_set_font_l(fnt_c64_code);
 
+    // UI / EDIT: plain, like the box's own name tab.
     var _btns = scr_creator_box_buttons(_b);
     for (var _i = 0; _i < array_length(_btns); _i++) {
-        scr_creator_draw_room_btn(_btns[_i], _btns[_i].on, _col);
+        var _bt = _btns[_i];
+        draw_set_colour(_col);
+        draw_rectangle(_bt.x1, _bt.y1, _bt.x2, _bt.y2, false);
+        draw_set_colour(c_black);
+        draw_set_halign(fa_center);
+        draw_set_valign(fa_middle);
+        draw_text_l((_bt.x1 + _bt.x2) * 0.5, (_bt.y1 + _bt.y2) * 0.5, _bt.text);
+        draw_set_halign(fa_left);
     }
 
     if (_b.is_panel && !_b.panel_editing) {
