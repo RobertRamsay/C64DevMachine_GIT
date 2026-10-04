@@ -827,7 +827,8 @@ function scr_sid64_sim_fetch(_sim, _v, _orow) {
             if (_idx < 0) {
                 _note = 255;
             } else {
-                _note = _idx;
+                // The order row's transpose for this voice, as the C64 player adds it.
+                _note = clamp(_idx + scr_music_sid_transpose(_orow, _sim.chip * 3 + _v), 0, 95);
             }
         }
         var _ii = _st[$ "instr_idx"];

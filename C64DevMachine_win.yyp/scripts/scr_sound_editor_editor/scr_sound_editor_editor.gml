@@ -2451,7 +2451,11 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     }
 
     draw_set_color(make_color_rgb(255, 200, 100));
-    draw_text_l(_ox0, _oy0 - 34, _m.order_pattern_edit_active ? "ENTER: SET / ESC: CANCEL" : "SONG ORDER");
+    var _ord_title = "SONG ORDER   SHIFT +/- TRANSPOSE (CTRL: OCTAVE)";
+    if (_m.order_pattern_edit_active) {
+        _ord_title = "ENTER: SET / ESC: CANCEL";
+    }
+    draw_text_l(_ox0, _oy0 - 34, _ord_title);
 
     var _ord_hdr = ["#", "V" + string(_voice_offset + 1), "V" + string(_voice_offset + 2), "V" + string(_voice_offset + 3), "DG", "RPT", "SIZE"];
     for (var _ohi = 0; _ohi < array_length(_ord_hdr); _ohi++) {
@@ -2536,10 +2540,39 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 draw_rectangle(_ocx + 15, _ory + 1, _ocx + _ocw - 15, _ory + _ord_row_h - 1, true);
                 _oc_str = _m.order_pattern_edit_buf;
             }
+            // Transpose for this voice on this order row, shown beside the pattern.
+            var _oc_tr = scr_music_sid_transpose(_orow, _voice_offset + _ovi);
+            var _oc_numx = _ocx + _ocw * 0.5;
+            if (_oc_tr != 0 && !_editing) {
+                _oc_numx -= 8;
+            }
             draw_set_color(_editing ? c_yellow : _voice_colours[_ovi]);
-            draw_text_l(_ocx + _ocw * 0.5, _ory + 6, _oc_str);
+            draw_text_l(_oc_numx, _ory + 6, _oc_str);
+            if (_oc_tr != 0 && !_editing) {
+                var _tr_str = string(_oc_tr);
+                if (_oc_tr > 0) {
+                    _tr_str = "+" + _tr_str;
+                }
+                draw_set_font_l(fnt_c64_pico);
+                draw_set_color(make_color_rgb(255, 150, 80));
+                draw_text_l(_oc_numx + 16, _ory + 8, _tr_str);
+                draw_set_font_l(fnt_c64_tiny);
+            }
             draw_set_halign(fa_left);
-            if ((_minus || _plus) && mouse_check_button_pressed(mb_left)) {
+            // SHIFT + -/+ : transpose this voice on this row (CTRL+SHIFT: an octave).
+            if ((_minus || _plus) && mouse_check_button_pressed(mb_left) && keyboard_check(vk_shift)) {
+                _se_push_undo(_m, _se_snap);
+                var _tr_step = 1;
+                if (keyboard_check(vk_control)) {
+                    _tr_step = 12;
+                }
+                if (_minus) {
+                    _tr_step = -_tr_step;
+                }
+                _orow[$ "t" + string(_voice_offset + _ovi + 1)] = clamp(_oc_tr + _tr_step, -48, 48);
+                global.undo_dirty = true;
+                global.addresses_dirty = true;
+            } else if ((_minus || _plus) && mouse_check_button_pressed(mb_left)) {
                 var _next = _oc_val + (_plus ? 1 : -1);
                 if (_next >= array_length(_m.patterns)) _next = -1;
                 if (_next < -1) _next = array_length(_m.patterns) - 1;

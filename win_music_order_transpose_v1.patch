@@ -1,0 +1,177 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+index a342dd7..df101c3 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid64_sim/scr_sid64_sim.gml
+@@ -827,7 +827,8 @@ function scr_sid64_sim_fetch(_sim, _v, _orow) {
+             if (_idx < 0) {
+                 _note = 255;
+             } else {
+-                _note = _idx;
++                // The order row's transpose for this voice, as the C64 player adds it.
++                _note = clamp(_idx + scr_music_sid_transpose(_orow, _sim.chip * 3 + _v), 0, 95);
+             }
+         }
+         var _ii = _st[$ "instr_idx"];
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+index 5a71c0a..64fd5aa 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid_song_build/scr_sid_song_build.gml
+@@ -830,6 +830,8 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+     // length when set (it overrides, it is not a minimum) — matching
+     // _se_row_target_len in the editor exactly.
+     var _ord_v  = [[], [], []];
++    var _ord_tr = [[], [], []];   // per-voice transpose bytes, one per order row
++    var _tr_used = false;
+     var _ord_ln = [];
+     var _ord_wr = [];
+ 
+@@ -839,6 +841,19 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+         if (variable_struct_exists(_orow, "v1")) _ovals[0] = real(_orow.v1);
+         if (variable_struct_exists(_orow, "v2")) _ovals[1] = real(_orow.v2);
+         if (variable_struct_exists(_orow, "v3")) _ovals[2] = real(_orow.v3);
++        // TRANSPOSE: semitones added to every note this voice plays on this
++        // order row (t1..t3, -48..+48). Absent = 0.
++        for (var _tvi = 0; _tvi < 3; _tvi++) {
++            var _tv = _orow[$ "t" + string(_tvi + 1)];
++            var _tr = 0;
++            if (!is_undefined(_tv)) {
++                _tr = clamp(round(real(_tv)), -48, 48);
++            }
++            if (_tr != 0) {
++                _tr_used = true;
++            }
++            array_push(_ord_tr[_tvi], _tr & 0xFF);
++        }
+ 
+         var _o_target = 0;
+         for (var _vi = 0; _vi < 3; _vi++) {
+@@ -887,6 +902,17 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+             array_push(_list, ["byte", _ord_v[_vi][_oi], _id]);
+         }
+     }
++    // Per-voice transpose per order row; only when some row transposes.
++    if (_tr_used) {
++        for (var _vi = 0; _vi < 3; _vi++) {
++            if ((_voice_mask & (1 << _vi)) == 0) continue;
++            array_push(_list, ["label", _key + "ordtr" + string(_vi + 1)]);
++            for (var _oi = 0; _oi < _n_ord; _oi++) {
++                array_push(_list, ["byte", _ord_tr[_vi][_oi], _id]);
++            }
++        }
++        array_push(_list, ["label", _key + "trn"], ["byte", 0, _id]);
++    }
+     // Row counts / short-pattern wrap flags drive the shared row clock only;
+     // in free timing each pattern plays its own length, so they're left out.
+     if (!_free) {
+@@ -1305,6 +1331,24 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr,
+         array_push(_list, ["sta_zp",  _ha[2],         _id]);   // cancel any pending note
+         array_push(_list, ["jmp_abs", _vp + "docmd",   _id]);
+         array_push(_list, ["label",   _vp + "isnote"]);
++        if (_tr_used) {
++            // Transpose: note + this order row's semitones, clamped to the
++            // table (results run -48..143; >= $C0 means it went below 0).
++            array_push(_list, ["sta_abs", _key + "trn", _id]);
++            array_push(_list, ["ldx_zp", _S_ORD, _id]);
++            array_push(_list, ["lda_abx", _key + "ordtr" + string(_vi + 1), _id]);
++            array_push(_list, ["clc", 0, _id]);
++            array_push(_list, ["adc_abs", _key + "trn", _id]);
++            array_push(_list, ["cmp_imm", 96, _id]);
++            array_push(_list, ["bcc", _vp + "trok", _id]);
++            array_push(_list, ["cmp_imm", 0xC0, _id]);
++            array_push(_list, ["bcs", _vp + "trlo", _id]);
++            array_push(_list, ["lda_imm", 95, _id]);
++            array_push(_list, ["jmp_abs", _vp + "trok", _id]);
++            array_push(_list, ["label", _vp + "trlo"]);
++            array_push(_list, ["lda_imm", 0, _id]);
++            array_push(_list, ["label", _vp + "trok"]);
++        }
+ 
+         // 3XX on a note row = slide to it: set the target, no trigger.
+         array_push(_list, ["ldy_abs", _key + "rcmd",   _id]);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+index d7329fe..d683d42 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_create/scr_sound_editor_create.gml
+@@ -209,6 +209,14 @@ function scr_music_sid_pattern(_row, _voice) {
+     var _key = "v" + string(_voice + 1);
+     return variable_struct_exists(_row, _key) ? _row[$ _key] : -1;
+ }
++/// Semitones this order row transposes voice _voice by (t1..t9, -48..+48, 0 when unset).
++function scr_music_sid_transpose(_row, _voice) {
++    var _tv = _row[$ "t" + string(_voice + 1)];
++    if (is_undefined(_tv)) {
++        return 0;
++    }
++    return clamp(round(real(_tv)), -48, 48);
++}
+ function scr_music_sid_length(_m, _row) {
+     if (variable_struct_exists(_row, "force_len") && _row.force_len > 0) return clamp(_row.force_len, 1, 255);
+     var _len = 0;
+@@ -241,6 +249,8 @@ function scr_music_sid_project(_m, _chip) {
+             var _row = _source.order[_r];
+             array_push(_song.order, { v1: scr_music_sid_pattern(_row, _chip * 3),
+                 v2: scr_music_sid_pattern(_row, _chip * 3 + 1), v3: scr_music_sid_pattern(_row, _chip * 3 + 2),
++                t1: scr_music_sid_transpose(_row, _chip * 3),
++                t2: scr_music_sid_transpose(_row, _chip * 3 + 1), t3: scr_music_sid_transpose(_row, _chip * 3 + 2),
+                 repeat_short: _row.repeat_short, force_len: scr_music_sid_length(_m, _row),
+                 dg: _row[$ "dg"] });
+         }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index 72dc129..0dc2ead 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -2451,7 +2451,11 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     }
+ 
+     draw_set_color(make_color_rgb(255, 200, 100));
+-    draw_text_l(_ox0, _oy0 - 34, _m.order_pattern_edit_active ? "ENTER: SET / ESC: CANCEL" : "SONG ORDER");
++    var _ord_title = "SONG ORDER   SHIFT +/- TRANSPOSE (CTRL: OCTAVE)";
++    if (_m.order_pattern_edit_active) {
++        _ord_title = "ENTER: SET / ESC: CANCEL";
++    }
++    draw_text_l(_ox0, _oy0 - 34, _ord_title);
+ 
+     var _ord_hdr = ["#", "V" + string(_voice_offset + 1), "V" + string(_voice_offset + 2), "V" + string(_voice_offset + 3), "DG", "RPT", "SIZE"];
+     for (var _ohi = 0; _ohi < array_length(_ord_hdr); _ohi++) {
+@@ -2536,10 +2540,39 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+                 draw_rectangle(_ocx + 15, _ory + 1, _ocx + _ocw - 15, _ory + _ord_row_h - 1, true);
+                 _oc_str = _m.order_pattern_edit_buf;
+             }
++            // Transpose for this voice on this order row, shown beside the pattern.
++            var _oc_tr = scr_music_sid_transpose(_orow, _voice_offset + _ovi);
++            var _oc_numx = _ocx + _ocw * 0.5;
++            if (_oc_tr != 0 && !_editing) {
++                _oc_numx -= 8;
++            }
+             draw_set_color(_editing ? c_yellow : _voice_colours[_ovi]);
+-            draw_text_l(_ocx + _ocw * 0.5, _ory + 6, _oc_str);
++            draw_text_l(_oc_numx, _ory + 6, _oc_str);
++            if (_oc_tr != 0 && !_editing) {
++                var _tr_str = string(_oc_tr);
++                if (_oc_tr > 0) {
++                    _tr_str = "+" + _tr_str;
++                }
++                draw_set_font_l(fnt_c64_pico);
++                draw_set_color(make_color_rgb(255, 150, 80));
++                draw_text_l(_oc_numx + 16, _ory + 8, _tr_str);
++                draw_set_font_l(fnt_c64_tiny);
++            }
+             draw_set_halign(fa_left);
+-            if ((_minus || _plus) && mouse_check_button_pressed(mb_left)) {
++            // SHIFT + -/+ : transpose this voice on this row (CTRL+SHIFT: an octave).
++            if ((_minus || _plus) && mouse_check_button_pressed(mb_left) && keyboard_check(vk_shift)) {
++                _se_push_undo(_m, _se_snap);
++                var _tr_step = 1;
++                if (keyboard_check(vk_control)) {
++                    _tr_step = 12;
++                }
++                if (_minus) {
++                    _tr_step = -_tr_step;
++                }
++                _orow[$ "t" + string(_voice_offset + _ovi + 1)] = clamp(_oc_tr + _tr_step, -48, 48);
++                global.undo_dirty = true;
++                global.addresses_dirty = true;
++            } else if ((_minus || _plus) && mouse_check_button_pressed(mb_left)) {
+                 var _next = _oc_val + (_plus ? 1 : -1);
+                 if (_next >= array_length(_m.patterns)) _next = -1;
+                 if (_next < -1) _next = array_length(_m.patterns) - 1;

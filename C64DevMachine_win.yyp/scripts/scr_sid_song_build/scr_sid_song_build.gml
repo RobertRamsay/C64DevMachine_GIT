@@ -686,6 +686,95 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     var _packed_pattern_bytes = array_length(_row_dict) * 4;
     for (var _pi=0;_pi<_n_pat;_pi++) _packed_pattern_bytes += array_length(_row_refs[_pi]);
     var _compact_patterns = array_length(_row_dict) <= 256 && _plain_pattern_bytes - _packed_pattern_bytes > 128;
+
+    // ── STREAM PATTERNS ── each pattern as a variable-length byte stream:
+    //   $00-$5F  note (instrument = the last $E0 in this pattern, $FF at start)
+    //   $60      --- release     $61  +++ key on
+    //   $80-$BF  hold this row and the next (b & $3F) rows
+    //   $E0 ii   set the pattern's instrument (then the row token follows)
+    //   $E1 c v  this row's command (then the row token follows)
+    // A note costs one byte unless its instrument or a command changes, and a
+    // run of empty rows costs one byte, against 2 or 4 bytes for every row in
+    // the fixed layout. Rows are decoded in order by one shared routine that
+    // keeps a pointer per voice; a jump back (row 0, a wrap) restarts it.
+    var _stream_data = [];
+    var _stream_rows = [];
+    var _stream_bytes = 0;
+    var _sp = -1;
+    for (var _li = _pattern_start; _li < array_length(_list);) {
+        if (_list[_li][0] == "label") {
+            _sp++; array_push(_stream_rows, []); _li++; continue;
+        }
+        var _sst = _pat_fx_flags[_sp] ? 4 : 2;
+        var _srow = [_list[_li][1], _list[_li + 1][1], 255, 0];
+        if (_sst == 4) { _srow[2] = _list[_li + 2][1]; _srow[3] = _list[_li + 3][1]; }
+        array_push(_stream_rows[_sp], _srow);
+        _li += _sst;
+    }
+    for (var _spi = 0; _spi < _n_pat; _spi++) {
+        var _srows = _stream_rows[_spi];
+        var _sb = [];
+        var _slast = 255;
+        var _sr = 0;
+        while (_sr < array_length(_srows)) {
+            var _row_s = _srows[_sr];
+            if (_row_s[2] != 255) {
+                array_push(_sb, 0xE1, _row_s[2], _row_s[3]);
+            }
+            if (_row_s[0] == 0xFE) {
+                var _run = 1;
+                while (_sr + _run < array_length(_srows) && _run < 64
+                    && _srows[_sr + _run][0] == 0xFE && _srows[_sr + _run][2] == 255) {
+                    _run++;
+                }
+                array_push(_sb, 0x80 + _run - 1);
+                _sr += _run;
+                continue;
+            }
+            if (_row_s[0] == 0xFF) {
+                array_push(_sb, 0x60);
+            } else if (_row_s[0] == 0xFD) {
+                array_push(_sb, 0x61);
+            } else {
+                if (_row_s[1] != _slast) {
+                    array_push(_sb, 0xE0, _row_s[1]);
+                    _slast = _row_s[1];
+                }
+                array_push(_sb, _row_s[0]);
+            }
+            _sr++;
+        }
+        array_push(_stream_data, _sb);
+        _stream_bytes += array_length(_sb);
+    }
+    // decoder (~150 bytes) + per-voice state
+    var _stream_cost = _stream_bytes + 170;
+    var _best_other = _plain_pattern_bytes;
+    if (_compact_patterns) {
+        _best_other = _packed_pattern_bytes;
+    }
+    var _stream_patterns = _stream_cost < _best_other;
+    if (_stream_patterns) {
+        _compact_patterns = false;
+        array_resize(_list, _pattern_start);
+        for (var _spi = 0; _spi < _n_pat; _spi++) {
+            array_push(_list, ["label", _key + "pat" + string(_spi)]);
+            for (var _sbi = 0; _sbi < array_length(_stream_data[_spi]); _sbi++) {
+                array_push(_list, ["byte", _stream_data[_spi][_sbi], _id]);
+            }
+        }
+        // decoder state: one byte per voice each, plus scratch
+        var _sd_vars = ["sdpl", "sdph", "sdrow", "sdhold", "sdins"];
+        for (var _sdv = 0; _sdv < array_length(_sd_vars); _sdv++) {
+            array_push(_list, ["label", _key + _sd_vars[_sdv]], ["byte", 0, _id], ["byte", 0, _id], ["byte", 0, _id]);
+        }
+        array_push(_list, ["label", _key + "sdpat"], ["byte", 0, _id]);
+        array_push(_list, ["label", _key + "sdres"], ["byte", 0, _id]);
+        array_push(_list, ["label", _key + "rins"], ["byte", 255, _id]);
+        show_debug_message("MACRO_SID_SONG: stream patterns " + string(_stream_bytes)
+            + " bytes (fixed rows " + string(_plain_pattern_bytes) + ")");
+    }
+    var _rows_decoded = _compact_patterns || _stream_patterns;
     if (_compact_patterns) {
         array_resize(_list, _pattern_start);
         for (var _pi=0;_pi<_n_pat;_pi++) {
@@ -741,6 +830,8 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     // length when set (it overrides, it is not a minimum) — matching
     // _se_row_target_len in the editor exactly.
     var _ord_v  = [[], [], []];
+    var _ord_tr = [[], [], []];   // per-voice transpose bytes, one per order row
+    var _tr_used = false;
     var _ord_ln = [];
     var _ord_wr = [];
 
@@ -750,6 +841,19 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         if (variable_struct_exists(_orow, "v1")) _ovals[0] = real(_orow.v1);
         if (variable_struct_exists(_orow, "v2")) _ovals[1] = real(_orow.v2);
         if (variable_struct_exists(_orow, "v3")) _ovals[2] = real(_orow.v3);
+        // TRANSPOSE: semitones added to every note this voice plays on this
+        // order row (t1..t3, -48..+48). Absent = 0.
+        for (var _tvi = 0; _tvi < 3; _tvi++) {
+            var _tv = _orow[$ "t" + string(_tvi + 1)];
+            var _tr = 0;
+            if (!is_undefined(_tv)) {
+                _tr = clamp(round(real(_tv)), -48, 48);
+            }
+            if (_tr != 0) {
+                _tr_used = true;
+            }
+            array_push(_ord_tr[_tvi], _tr & 0xFF);
+        }
 
         var _o_target = 0;
         for (var _vi = 0; _vi < 3; _vi++) {
@@ -797,6 +901,17 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         for (var _oi = 0; _oi < _n_ord; _oi++) {
             array_push(_list, ["byte", _ord_v[_vi][_oi], _id]);
         }
+    }
+    // Per-voice transpose per order row; only when some row transposes.
+    if (_tr_used) {
+        for (var _vi = 0; _vi < 3; _vi++) {
+            if ((_voice_mask & (1 << _vi)) == 0) continue;
+            array_push(_list, ["label", _key + "ordtr" + string(_vi + 1)]);
+            for (var _oi = 0; _oi < _n_ord; _oi++) {
+                array_push(_list, ["byte", _ord_tr[_vi][_oi], _id]);
+            }
+        }
+        array_push(_list, ["label", _key + "trn"], ["byte", 0, _id]);
     }
     // Row counts / short-pattern wrap flags drive the shared row clock only;
     // in free timing each pattern plays its own length, so they're left out.
@@ -1106,7 +1221,12 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         }
         array_push(_list, ["sta_zp",  _S_TMP,          _id]);   // $S_TMP = local row
 
-        if (_compact_patterns) {
+        if (_stream_patterns) {
+            // X = pattern index, S_TMP = local row -> A = note byte, rins/rcmd/rval set
+            array_push(_list, ["stx_abs", _key + "sdpat", _id]);
+            array_push(_list, ["ldx_imm", _vi, _id]);
+            array_push(_list, ["jsr", _key + "sdec", _id]);
+        } else if (_compact_patterns) {
             array_push(_list,["lda_abx",_key+"patlo",_id],["sta_zp",_S_PTR,_id]);
             array_push(_list,["lda_abx",_key+"pathi",_id],["sta_zp",_S_PTR+1,_id]);
             array_push(_list,["ldy_zp",_S_TMP,_id],["lda_izy",_S_PTR,_id],["tax",0,_id]);
@@ -1211,6 +1331,24 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_zp",  _ha[2],         _id]);   // cancel any pending note
         array_push(_list, ["jmp_abs", _vp + "docmd",   _id]);
         array_push(_list, ["label",   _vp + "isnote"]);
+        if (_tr_used) {
+            // Transpose: note + this order row's semitones, clamped to the
+            // table (results run -48..143; >= $C0 means it went below 0).
+            array_push(_list, ["sta_abs", _key + "trn", _id]);
+            array_push(_list, ["ldx_zp", _S_ORD, _id]);
+            array_push(_list, ["lda_abx", _key + "ordtr" + string(_vi + 1), _id]);
+            array_push(_list, ["clc", 0, _id]);
+            array_push(_list, ["adc_abs", _key + "trn", _id]);
+            array_push(_list, ["cmp_imm", 96, _id]);
+            array_push(_list, ["bcc", _vp + "trok", _id]);
+            array_push(_list, ["cmp_imm", 0xC0, _id]);
+            array_push(_list, ["bcs", _vp + "trlo", _id]);
+            array_push(_list, ["lda_imm", 95, _id]);
+            array_push(_list, ["jmp_abs", _vp + "trok", _id]);
+            array_push(_list, ["label", _vp + "trlo"]);
+            array_push(_list, ["lda_imm", 0, _id]);
+            array_push(_list, ["label", _vp + "trok"]);
+        }
 
         // 3XX on a note row = slide to it: set the target, no trigger.
         array_push(_list, ["ldy_abs", _key + "rcmd",   _id]);
@@ -1235,7 +1373,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["sta_abs", _key + "fql_" + string(_vi), _id]);
             array_push(_list, ["lda_abx", _nt_hi, _id]);
             array_push(_list, ["sta_abs", _key + "fqh_" + string(_vi), _id]);
-            if (_compact_patterns) {
+            if (_rows_decoded) {
                 array_push(_list, ["lda_abs", _key + "rins", _id]);
             } else {
                 array_push(_list, ["ldy_imm", 0x01, _id]);
@@ -1266,7 +1404,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
 
         // Real note: stash the base index, then read the instrument byte.
         array_push(_list, ["sta_zp",  _va[5], _id]);
-        if (_compact_patterns) array_push(_list,["lda_abs",_key+"rins",_id]);
+        if (_rows_decoded) array_push(_list,["lda_abs",_key+"rins",_id]);
         else {
         array_push(_list, ["ldy_imm", 0x01,    _id]);
         array_push(_list, ["lda_izy", _S_PTR,  _id]);
@@ -2312,6 +2450,117 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         if (_sfx || _lock) {
             array_push(_list, ["label",   _ip + "sfxskip"]);
         }
+        array_push(_list, ["rts", 0, _id]);
+    }
+    if (_stream_patterns) {
+        // ── STREAM ROW DECODER ── X = voice, sdpat = pattern, S_TMP = row.
+        // Out: A = note byte ($00-$5F note, $FD key on, $FE hold, $FF release),
+        // rins / rcmd / rval for that row. Rows before the target (one the
+        // caller skipped, e.g. a locked voice) are decoded and dropped.
+        var _sd = _key + "sd";
+        array_push(_list, ["label", _key + "sdec"]);
+        array_push(_list, ["lda_zp", _S_TMP, _id]);
+        array_push(_list, ["beq", _sd + "rst", _id]);
+        array_push(_list, ["lda_abx", _key + "sdrow", _id]);
+        array_push(_list, ["sta_zp", _S_LEN, _id]);
+        array_push(_list, ["lda_zp", _S_TMP, _id]);
+        array_push(_list, ["cmp_zp", _S_LEN, _id]);
+        array_push(_list, ["bcs", _sd + "go", _id]);
+        array_push(_list, ["label", _sd + "rst"]);
+        array_push(_list, ["ldy_abs", _key + "sdpat", _id]);
+        array_push(_list, ["lda_aby", _key + "patlo", _id]);
+        array_push(_list, ["sta_abx", _key + "sdpl", _id]);
+        array_push(_list, ["lda_aby", _key + "pathi", _id]);
+        array_push(_list, ["sta_abx", _key + "sdph", _id]);
+        array_push(_list, ["lda_imm", 0, _id]);
+        array_push(_list, ["sta_abx", _key + "sdrow", _id]);
+        array_push(_list, ["sta_abx", _key + "sdhold", _id]);
+        array_push(_list, ["lda_imm", 0xFF, _id]);
+        array_push(_list, ["sta_abx", _key + "sdins", _id]);
+        array_push(_list, ["label", _sd + "go"]);
+        array_push(_list, ["lda_abx", _key + "sdpl", _id]);
+        array_push(_list, ["sta_zp", _S_PTR, _id]);
+        array_push(_list, ["lda_abx", _key + "sdph", _id]);
+        array_push(_list, ["sta_zp", _S_PTR + 1, _id]);
+        // one row
+        array_push(_list, ["label", _sd + "nxrow"]);
+        array_push(_list, ["lda_imm", 0xFF, _id]);
+        array_push(_list, ["sta_abs", _key + "rcmd", _id]);
+        array_push(_list, ["sta_abs", _key + "rins", _id]);
+        array_push(_list, ["lda_abx", _key + "sdhold", _id]);
+        array_push(_list, ["beq", _sd + "tok", _id]);
+        array_push(_list, ["dec_abx", _key + "sdhold", _id]);
+        array_push(_list, ["lda_imm", 0xFE, _id]);
+        array_push(_list, ["jmp_abs", _sd + "end", _id]);
+        array_push(_list, ["label", _sd + "tok"]);
+        array_push(_list, ["ldy_imm", 0, _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["inc_zp", _S_PTR, _id]);
+        array_push(_list, ["bne", _sd + "t1", _id]);
+        array_push(_list, ["inc_zp", _S_PTR + 1, _id]);
+        array_push(_list, ["label", _sd + "t1"]);
+        array_push(_list, ["cmp_imm", 0xE0, _id]);
+        array_push(_list, ["bne", _sd + "t2", _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);       // Y is still 0
+        array_push(_list, ["sta_abx", _key + "sdins", _id]);
+        array_push(_list, ["inc_zp", _S_PTR, _id]);
+        array_push(_list, ["bne", _sd + "tok", _id]);
+        array_push(_list, ["inc_zp", _S_PTR + 1, _id]);
+        array_push(_list, ["jmp_abs", _sd + "tok", _id]);
+        array_push(_list, ["label", _sd + "t2"]);
+        array_push(_list, ["cmp_imm", 0xE1, _id]);
+        array_push(_list, ["bne", _sd + "t3", _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["sta_abs", _key + "rcmd", _id]);
+        array_push(_list, ["iny", 0, _id]);
+        array_push(_list, ["lda_izy", _S_PTR, _id]);
+        array_push(_list, ["sta_abs", _key + "rval", _id]);
+        array_push(_list, ["lda_zp", _S_PTR, _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["adc_imm", 2, _id]);
+        array_push(_list, ["sta_zp", _S_PTR, _id]);
+        array_push(_list, ["bcc", _sd + "tok", _id]);
+        array_push(_list, ["inc_zp", _S_PTR + 1, _id]);
+        array_push(_list, ["jmp_abs", _sd + "tok", _id]);
+        array_push(_list, ["label", _sd + "t3"]);
+        array_push(_list, ["cmp_imm", 0x80, _id]);
+        array_push(_list, ["bcc", _sd + "t4", _id]);
+        array_push(_list, ["and_imm", 0x3F, _id]);
+        array_push(_list, ["sta_abx", _key + "sdhold", _id]);
+        array_push(_list, ["lda_imm", 0xFE, _id]);
+        array_push(_list, ["jmp_abs", _sd + "end", _id]);
+        array_push(_list, ["label", _sd + "t4"]);
+        array_push(_list, ["cmp_imm", 0x60, _id]);
+        array_push(_list, ["bcc", _sd + "note", _id]);
+        array_push(_list, ["bne", _sd + "kon", _id]);
+        array_push(_list, ["lda_imm", 0xFF, _id]);
+        array_push(_list, ["jmp_abs", _sd + "end", _id]);
+        array_push(_list, ["label", _sd + "kon"]);
+        array_push(_list, ["lda_imm", 0xFD, _id]);
+        array_push(_list, ["jmp_abs", _sd + "end", _id]);
+        array_push(_list, ["label", _sd + "note"]);
+        array_push(_list, ["pha", 0, _id]);
+        array_push(_list, ["lda_abx", _key + "sdins", _id]);
+        array_push(_list, ["sta_abs", _key + "rins", _id]);
+        array_push(_list, ["pla", 0, _id]);
+        array_push(_list, ["label", _sd + "end"]);
+        array_push(_list, ["sta_abs", _key + "sdres", _id]);
+        array_push(_list, ["inc_abx", _key + "sdrow", _id]);
+        // more rows to skip? (sdrow == S_TMP + 1 means this was the target)
+        array_push(_list, ["lda_abx", _key + "sdrow", _id]);
+        array_push(_list, ["sta_zp", _S_LEN, _id]);
+        array_push(_list, ["lda_zp", _S_TMP, _id]);
+        array_push(_list, ["clc", 0, _id]);
+        array_push(_list, ["adc_imm", 1, _id]);
+        array_push(_list, ["cmp_zp", _S_LEN, _id]);
+        array_push(_list, ["beq", _sd + "done", _id]);
+        array_push(_list, ["jmp_abs", _sd + "nxrow", _id]);
+        array_push(_list, ["label", _sd + "done"]);
+        array_push(_list, ["lda_zp", _S_PTR, _id]);
+        array_push(_list, ["sta_abx", _key + "sdpl", _id]);
+        array_push(_list, ["lda_zp", _S_PTR + 1, _id]);
+        array_push(_list, ["sta_abx", _key + "sdph", _id]);
+        array_push(_list, ["lda_abs", _key + "sdres", _id]);
         array_push(_list, ["rts", 0, _id]);
     }
     array_push(_list, ["label", _key + "v7tab"], ["byte", 0, _id], ["byte", 7, _id], ["byte", 14, _id]);

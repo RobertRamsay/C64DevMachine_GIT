@@ -209,6 +209,14 @@ function scr_music_sid_pattern(_row, _voice) {
     var _key = "v" + string(_voice + 1);
     return variable_struct_exists(_row, _key) ? _row[$ _key] : -1;
 }
+/// Semitones this order row transposes voice _voice by (t1..t9, -48..+48, 0 when unset).
+function scr_music_sid_transpose(_row, _voice) {
+    var _tv = _row[$ "t" + string(_voice + 1)];
+    if (is_undefined(_tv)) {
+        return 0;
+    }
+    return clamp(round(real(_tv)), -48, 48);
+}
 function scr_music_sid_length(_m, _row) {
     if (variable_struct_exists(_row, "force_len") && _row.force_len > 0) return clamp(_row.force_len, 1, 255);
     var _len = 0;
@@ -241,6 +249,8 @@ function scr_music_sid_project(_m, _chip) {
             var _row = _source.order[_r];
             array_push(_song.order, { v1: scr_music_sid_pattern(_row, _chip * 3),
                 v2: scr_music_sid_pattern(_row, _chip * 3 + 1), v3: scr_music_sid_pattern(_row, _chip * 3 + 2),
+                t1: scr_music_sid_transpose(_row, _chip * 3),
+                t2: scr_music_sid_transpose(_row, _chip * 3 + 1), t3: scr_music_sid_transpose(_row, _chip * 3 + 2),
                 repeat_short: _row.repeat_short, force_len: scr_music_sid_length(_m, _row),
                 dg: _row[$ "dg"] });
         }
