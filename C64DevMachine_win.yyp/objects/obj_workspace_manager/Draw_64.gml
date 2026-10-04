@@ -1208,7 +1208,7 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
     ];
     // PORTS: negative entries are sub-headers (-1 GAMES, -2 MUSIC+GFX), not clickable
     var _port_headers = ["GAMES", "MUSIC+GFX"];
-    if (gui_menu_open == 8) _visible_templates = [-1, 10, 11, 13, 14, -2, 12]; // ZYRONS ESCAPE, SPY HUNTER, SABOTEUR, R-TYPE | WIZBALL
+    if (gui_menu_open == 8) _visible_templates = [-1, 10, 11, 13, 14, 15, -2, 12]; // ZYRONS ESCAPE, SPY HUNTER, SABOTEUR, R-TYPE, BRUCE LEE | WIZBALL
     var _th = array_length(_visible_templates) * 24 + 24;
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm, _tx, _ty, _tw, _th);
     draw_set_font_l(fnt_C64_Angled);
