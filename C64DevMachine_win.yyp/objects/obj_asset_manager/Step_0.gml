@@ -59,7 +59,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
 if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
     if (asset_list[|viewer_asset].type == "MUSIC_MAKER") { _vy1=40; _vy2=_gui_h-40; }
     // META_TILESET: full screen, same bounds as Draw GUI
-    if (asset_list[|viewer_asset].type == "META_TILESET") {
+    if (asset_list[|viewer_asset].type == "META_TILESET" || asset_list[|viewer_asset].type == "MAP_DATA") {
         _wide_modal = true;
         _vx1 = 30;
         _vx2 = _gui_w - 30;

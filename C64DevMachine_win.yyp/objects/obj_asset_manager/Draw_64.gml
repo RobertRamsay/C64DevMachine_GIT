@@ -818,7 +818,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     // The meta tile map editor takes the whole screen too (same margins as the
     // Music Maker) - its layout is relative, so the map area and the edit
     // canvas grow with it. Must match obj_asset_manager Step.
-    if (_asset.type == "META_TILESET") {
+    if (_asset.type == "META_TILESET" || _asset.type == "MAP_DATA") {
         _vx1 = 30;
         _vx2 = _gui_w - 30;
         _vy1 = 40;
@@ -2339,6 +2339,13 @@ var _zmx1  = _vx2 - _btn_bw * 2 - 6;
 		    var _cv_y1 = _cy;
 		    var _cv_x2 = _vx2 - 10;
 		    var _cv_y2 = _vy2 - (_map_ecm_mode ? 195 : 80);
+		    // OBJECT LAYER bar gets its own strip under the canvas (RLE ROOMS
+		    // maps with an object asset); the colour / tile rows move down.
+		    var _obj_bar_h = 0;
+		    if (real(_m.raw_chars) == 2 && string(_m.obj_asset) != "") {
+		        _obj_bar_h = 30;
+		    }
+		    _cv_y2 -= _obj_bar_h;
 		    var _cv_w  = _cv_x2 - _cv_x1;
 		    var _cv_h  = _cv_y2 - _cv_y1;
 
@@ -2687,7 +2694,7 @@ draw_set_color(_cell_bg_col);
 	            draw_text_l(_cv_x2 - string_width(_hint) - 9, _cv_y2 - 13, _hint);
 	        }
 
-	        // ── OBJECT LAYER BAR (bottom-left of the canvas) ──
+	        // ── OBJECT LAYER BAR (own strip under the canvas) ──
 	        //   OBJECTS  show / hide the layer (V)      EDIT  object mode (O)
 	        //   < name > choose the object ([ / ])     COL   AUTO or ink/paper
 	        //   In EDIT: L-click place, R-click delete the object under the pointer.
@@ -2699,15 +2706,52 @@ draw_set_color(_cell_bg_col);
 	            _m.obj_sel = clamp(_m.obj_sel, 0, _ocount - 1);
 	            if (_m.obj_mode) { _m.show_objects = true; }
 
+	            _obj_bar_hover = point_in_rectangle(_mx, _my, _cv_x1, _cv_y2 + 2, _cv_x2, _cv_y2 + _obj_bar_h);
+	            // placing / deleting (EDIT on, pointer in a room, not on the bar)
+	            if (_m.obj_mode && !_obj_bar_hover && _hov_room >= 0 && _hov_room < _r_used) {
+	                var _ohc = _start_col + floor((_mx - _cv_x1) / _cs);
+	                var _ohr = _start_row + floor((_my - _cv_y1) / _cs);
+	                var _orow = _ohr - (_hov_room div _rx_n) * _rh_c;
+	                var _ocol = _ohc - (_hov_room mod _rx_n) * _rw_c;
+	                var _ogx = _cv_x1 + (_ohc - _start_col) * _cs;
+	                var _ogy = _cv_y1 + (_ohr - _start_row) * _cs;
+	                var _old_tf2 = gpu_get_texfilter();
+	                gpu_set_texfilter(false);
+	                draw_set_alpha(0.6);
+	                scr_bmpobj_draw_object(_oasset, _m.obj_sel, _ogx, _ogy, _ops, 3);
+	                draw_set_alpha(1.0);
+	                gpu_set_texfilter(_old_tf2);
+	                while (array_length(_m.room_objects) <= _hov_room) { array_push(_m.room_objects, []); }
+	                var _olst = _m.room_objects[_hov_room];
+	                if (mouse_check_button_pressed(mb_left)) {
+	                    array_push(_olst, [_m.obj_sel, _orow, _ocol]);
+	                    global.addresses_dirty = true;
+	                }
+	                if (mouse_check_button_pressed(mb_right)) {
+	                    for (var _ok = array_length(_olst) - 1; _ok >= 0; _ok--) {
+	                        var _oid2 = real(_olst[_ok][0]);
+	                        if (_oid2 < 0 || _oid2 >= _ocount) continue;
+	                        var _oo2 = _oasset.meta.objects[_oid2];
+	                        var _orr = real(_olst[_ok][1]);
+	                        var _occ2 = real(_olst[_ok][2]);
+	                        if (_orow >= _orr && _orow < _orr + _oo2.h && _ocol >= _occ2 && _ocol < _occ2 + _oo2.w) {
+	                            array_delete(_olst, _ok, 1);
+	                            global.addresses_dirty = true;
+	                            break;
+	                        }
+	                    }
+	                }
+	            }
+	            // the bar sits outside the canvas: lift the canvas clip
+	            gpu_set_scissor(0, 0, window_get_width(), window_get_height());
 	            var _obh  = 18;
-	            var _oby  = _cv_y2 - _obh - 4;
+	            var _oby  = _cv_y2 + 6;
 	            var _obx0  = _cv_x1 + 4;
-	            var _obar_x2 = _obx0 + 560;
+	            var _obar_x2 = _cv_x2;
 	            draw_set_color(make_color_rgb(16, 18, 28));
 	            draw_set_alpha(0.9);
 	            draw_rectangle(_obx0 - 2, _oby - 2, _obar_x2, _oby + _obh + 2, false);
 	            draw_set_alpha(1.0);
-	            _obj_bar_hover = point_in_rectangle(_mx, _my, _obx0 - 2, _oby - 2, _obar_x2, _oby + _obh + 2);
 
 	            var _obx = _obx0;
 	            if (scr_bmpobj_ui_button(_obx, _oby, 78, _obh, "OBJECTS", _m.show_objects, _mx, _my)) { _m.show_objects = !_m.show_objects; }
@@ -2763,42 +2807,6 @@ draw_set_color(_cell_bg_col);
 	            } else {
 	                draw_set_color(make_color_rgb(120, 130, 150));
 	                draw_text_l(_obx, _oby + 5, "takes the cells' colours");
-	            }
-
-	            // placing / deleting (EDIT on, pointer in a room, not on the bar)
-	            if (_m.obj_mode && !_obj_bar_hover && _hov_room >= 0 && _hov_room < _r_used) {
-	                var _ohc = _start_col + floor((_mx - _cv_x1) / _cs);
-	                var _ohr = _start_row + floor((_my - _cv_y1) / _cs);
-	                var _orow = _ohr - (_hov_room div _rx_n) * _rh_c;
-	                var _ocol = _ohc - (_hov_room mod _rx_n) * _rw_c;
-	                var _ogx = _cv_x1 + (_ohc - _start_col) * _cs;
-	                var _ogy = _cv_y1 + (_ohr - _start_row) * _cs;
-	                var _old_tf2 = gpu_get_texfilter();
-	                gpu_set_texfilter(false);
-	                draw_set_alpha(0.6);
-	                scr_bmpobj_draw_object(_oasset, _m.obj_sel, _ogx, _ogy, _ops, 3);
-	                draw_set_alpha(1.0);
-	                gpu_set_texfilter(_old_tf2);
-	                while (array_length(_m.room_objects) <= _hov_room) { array_push(_m.room_objects, []); }
-	                var _olst = _m.room_objects[_hov_room];
-	                if (mouse_check_button_pressed(mb_left)) {
-	                    array_push(_olst, [_m.obj_sel, _orow, _ocol]);
-	                    global.addresses_dirty = true;
-	                }
-	                if (mouse_check_button_pressed(mb_right)) {
-	                    for (var _ok = array_length(_olst) - 1; _ok >= 0; _ok--) {
-	                        var _oid2 = real(_olst[_ok][0]);
-	                        if (_oid2 < 0 || _oid2 >= _ocount) continue;
-	                        var _oo2 = _oasset.meta.objects[_oid2];
-	                        var _orr = real(_olst[_ok][1]);
-	                        var _occ2 = real(_olst[_ok][2]);
-	                        if (_orow >= _orr && _orow < _orr + _oo2.h && _ocol >= _occ2 && _ocol < _occ2 + _oo2.w) {
-	                            array_delete(_olst, _ok, 1);
-	                            global.addresses_dirty = true;
-	                            break;
-	                        }
-	                    }
-	                }
 	            }
 	        }
 	    }
@@ -3400,7 +3408,7 @@ draw_set_color(_cell_bg_col);
     }
 
 // ---- COLOUR PALETTE STRIP (always visible) ----
-	    var _pal_y = _cv_y2 + 6;
+	    var _pal_y = _cv_y2 + 6 + _obj_bar_h;
 	    var _sw    = 22;
 	    var _sh    = 16;
 	    draw_set_font_l(fnt_c64_tiny);
