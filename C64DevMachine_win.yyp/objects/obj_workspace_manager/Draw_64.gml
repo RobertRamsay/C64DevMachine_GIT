@@ -1196,6 +1196,8 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
     // All bundled JSONs and catalog IDs remain available for later work.
     var _visible_templates = [
         0 // SHMUP V
+        ,-3 // --- TEST ---
+        ,16 // PARAMS TEST (Creator params / cards / panels test bed)
         // ,1 // V.SHMUP (PRO)
         // ,2 // H.SHMUP (LITE)
         // ,3 // H.SHMUP (PRO)
@@ -1207,7 +1209,7 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
         // ,9 // TOP DOWN (PRO)
     ];
     // PORTS: negative entries are sub-headers (-1 GAMES, -2 MUSIC+GFX), not clickable
-    var _port_headers = ["GAMES", "MUSIC+GFX"];
+    var _port_headers = ["GAMES", "MUSIC+GFX", "TEST"];
     if (gui_menu_open == 8) _visible_templates = [-1, 10, 11, 13, 14, 15, -2, 12]; // ZYRONS ESCAPE, SPY HUNTER, SABOTEUR, R-TYPE, BRUCE LEE | WIZBALL
     var _th = array_length(_visible_templates) * 24 + 24;
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm, _tx, _ty, _tw, _th);
