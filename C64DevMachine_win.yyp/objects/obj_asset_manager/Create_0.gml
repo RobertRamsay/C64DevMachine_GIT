@@ -918,3 +918,7 @@ manifest_draw_preview = function(_asset, _viewer_x, _row_y) {
     draw_set_halign(_old_halign);
     draw_set_valign(_old_valign);
 };
+
+// MAP editor: zoom request from the Z-/Z+ buttons (-1 / +1), applied where
+// the canvas geometry is known so it can keep the view centred.
+map_zoom_step = 0;
