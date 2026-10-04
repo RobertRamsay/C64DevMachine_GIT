@@ -83,7 +83,7 @@ var _base = "unsaved";
     ds_priority_destroy(p_list);
 
     var box_data = [];
-    with (obj_mapping_box) array_push(box_data, { x:x, y:y, box_w:box_w, box_h:box_h, box_name:box_name, box_col_idx:box_col_idx });
+    with (obj_mapping_box) array_push(box_data, { x:x, y:y, box_w:box_w, box_h:box_h, box_name:box_name, box_col_idx:box_col_idx, is_panel:is_panel });
 
     var asset_data = [];
     var _am = noone;

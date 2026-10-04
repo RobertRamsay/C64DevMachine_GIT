@@ -16,6 +16,9 @@ draw_set_color(_col);
 draw_rectangle(x, y, x + box_w, y + box_h, true);
 draw_set_alpha(1.0);
 
+// CREATOR UI PANEL: facade over covered nodes + panel buttons above the box.
+scr_creator_box_draw(id);
+
 // Tab label (top left, above box)
 var _tab_pad = 8;
 draw_set_font_l(fnt_c64_code);

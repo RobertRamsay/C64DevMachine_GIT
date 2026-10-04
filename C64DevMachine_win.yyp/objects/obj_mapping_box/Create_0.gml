@@ -45,3 +45,10 @@ drag_nodes      = [];
 drag_offsets    = [];
 dbl_click_timer = 0;
 depth=-50
+
+// CREATOR UI PANEL: the box can draw a facade of param widgets over the nodes
+// it covers. panel_editing = facade lifted; always saved as false, so a
+// workspace loads with its panels up.
+is_panel      = false;
+panel_editing = false;
+panel_bar     = { active: false, n: noone, pidx: 0, x1: 0, x2: 0, lo: 0, hi: 0 };

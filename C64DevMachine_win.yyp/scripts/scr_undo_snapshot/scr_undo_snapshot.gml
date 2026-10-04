@@ -107,7 +107,7 @@ function scr_undo_snapshot() {
     // --- BUILD BOX DATA ---
     var _box_data = [];
     with (obj_mapping_box) {
-        array_push(_box_data, { x: x, y: y, box_w: box_w, box_h: box_h, box_name: box_name, box_col_idx: box_col_idx });
+        array_push(_box_data, { x: x, y: y, box_w: box_w, box_h: box_h, box_name: box_name, box_col_idx: box_col_idx, is_panel: is_panel, panel_editing: panel_editing });
     }
 
     // --- BUILD ASSET METADATA (no blob, just enough to know what was loaded) ---

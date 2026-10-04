@@ -1,4 +1,6 @@
 if (scr_workspace_input_blocked()) exit;
+// CREATOR UI PANEL: facade widgets and the UI PANEL / SHOW UI / NO UI buttons.
+if (scr_creator_box_step(id)) exit;
 /// @desc Mapping Box - Resize, Drag, Delete, Double-click Edit
 var _cam_x    = obj_workspace_manager.cam_x;
 var _cam_y    = obj_workspace_manager.cam_y;

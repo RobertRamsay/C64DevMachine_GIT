@@ -190,6 +190,8 @@ function scr_undo_restore(_path) {
         _mb.box_h       = _bd.box_h;
         _mb.box_name    = _bd.box_name;
         _mb.box_col_idx = _bd.box_col_idx;
+        if (variable_struct_exists(_bd, "is_panel"))      _mb.is_panel      = _bd.is_panel;
+        if (variable_struct_exists(_bd, "panel_editing")) _mb.panel_editing = _bd.panel_editing;
     }
 
     //// --- REBUILD ASSETS from disk ---

@@ -97,7 +97,8 @@ if (!_hash_only) {
             box_w:       box_w,
             box_h:       box_h,
             box_name:    box_name,
-            box_col_idx: box_col_idx
+            box_col_idx: box_col_idx,
+            is_panel:    is_panel
         });
     }
 	

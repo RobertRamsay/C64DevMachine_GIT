@@ -279,6 +279,8 @@ hdr_cache_opcode  = false;  // true when title font is fnt_C64_Angled_tiny
 // CREATOR LAYER: values this node exposes to the Creator view. Array of
 // structs from scr_param_new(); edited through the PARAMS tab.
 params           = [];
+// True while a raised UI panel facade covers this node (set each Begin Step).
+creator_covered  = false;
 
 // ORG wire connection system
 org_uid          = -1;

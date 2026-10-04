@@ -36,6 +36,9 @@ function scr_node_is_hidden(_n) {
     // Never swallow the active drag before its mouse release can be handled.
     if (_n.is_dragging && global.active_drag_node == _n) return false;
 
+    // Under a raised CREATOR UI panel facade (a box drag still carries it).
+    if (_n.creator_covered && !_n.is_dragging) return true;
+
     // Headers never hide themselves.
     if (_n.node_type == "INIT")     { return false; }
     if (_n.node_type == "ORG")      { return false; }
