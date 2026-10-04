@@ -1172,6 +1172,7 @@
     {"id":{"name":"scr_macro_sid_sync","path":"scripts/scr_macro_sid_sync/scr_macro_sid_sync.yy",},},
     {"id":{"name":"scr_macro_spr_sync","path":"scripts/scr_macro_spr_sync/scr_macro_spr_sync.yy",},},
     {"id":{"name":"scr_make_unique_node_name","path":"scripts/scr_make_unique_node_name/scr_make_unique_node_name.yy",},},
+    {"id":{"name":"scr_map_view_cache","path":"scripts/scr_map_view_cache/scr_map_view_cache.yy",},},
     {"id":{"name":"scr_mbb_emit_mask_cells","path":"scripts/scr_mbb_emit_mask_cells/scr_mbb_emit_mask_cells.yy",},},
     {"id":{"name":"scr_mts_atlas","path":"scripts/scr_mts_atlas/scr_mts_atlas.yy",},},
     {"id":{"name":"scr_mts_chain","path":"scripts/scr_mts_chain/scr_mts_chain.yy",},},

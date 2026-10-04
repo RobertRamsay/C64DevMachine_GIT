@@ -2346,6 +2346,40 @@ var _chr_cols = 16;
 		        _chr_cols = min(16, _chr_asset_ref.meta.char_count);
 		    // _global_bg already resolved above after _chr_asset_ref lookup
 
+		    // ---- VIEW CACHE: whole map pre-rendered at 1:1, blitted at zoom ----
+		    var _use_map_cache = false;
+		    if (_chr_asset_ref != noone &&
+		        variable_struct_exists(_chr_asset_ref.meta, "preview_surf_clean") &&
+		        surface_exists(_chr_asset_ref.meta.preview_surf_clean) &&
+		        buffer_exists(_chr_asset_ref.buffer)) {
+		        var _mvc_col1 = 1;
+		        if (variable_struct_exists(_m, "map_mc_col1") && _m.map_mc_col1 >= 0) {
+		            _mvc_col1 = _m.map_mc_col1;
+		        } else if (variable_struct_exists(_chr_asset_ref.meta, "mc_col1")) {
+		            _mvc_col1 = _chr_asset_ref.meta.mc_col1;
+		        }
+		        var _mvc_col2 = 2;
+		        if (variable_struct_exists(_m, "map_mc_col2") && _m.map_mc_col2 >= 0) {
+		            _mvc_col2 = _m.map_mc_col2;
+		        } else if (variable_struct_exists(_chr_asset_ref.meta, "mc_col2")) {
+		            _mvc_col2 = _chr_asset_ref.meta.mc_col2;
+		        }
+		        _use_map_cache = scr_map_cache_update(map_view_cache, _asset, _chr_asset_ref, {
+		            gw       : _gw,
+		            gh       : _gh,
+		            bg       : _global_bg,
+		            mixed    : _global_mixed,
+		            ecm      : _map_ecm_mode,
+		            ecm_cols : _map_ecm_bg_cols,
+		            col1     : _mvc_col1,
+		            col2     : _mvc_col2,
+		            vc0      : _start_col,
+		            vr0      : _start_row,
+		            vc1      : _end_col,
+		            vr1      : _end_row
+		        });
+		    }
+
 		    var _sx_scale = window_get_width()  / _gui_w;
 		    var _sy_scale = window_get_height() / display_get_gui_height();
 		    gpu_set_scissor(
@@ -2355,6 +2389,28 @@ var _chr_cols = 16;
 		        ceil((_cv_y2 - _cv_y1) * _sy_scale)
 		    );
 
+		    if (_use_map_cache) {
+		        var _mvc_tf = gpu_get_tex_filter();
+		        gpu_set_tex_filter(false);
+		        draw_surface_part_ext(map_view_cache.surf,
+		            _start_col * 8, _start_row * 8,
+		            (_end_col - _start_col) * 8, (_end_row - _start_row) * 8,
+		            _cv_x1, _cv_y1, _zoom, _zoom, c_white, 1);
+		        gpu_set_tex_filter(_mvc_tf);
+		        // Selection highlight (live, pulsing - not cached)
+		        draw_set_color(c_white);
+		        draw_set_alpha(0.3 + 0.1 * sin(current_time / 150));
+		        for (var _row = _start_row; _row < _end_row; _row++) {
+		            for (var _col = _start_col; _col < _end_col; _col++) {
+		                if (_m.sel_grid[_row * _gw + _col]) {
+		                    var _scx1 = _cv_x1 + (_col - _start_col) * _cs;
+		                    var _scy1 = _cv_y1 + (_row - _start_row) * _cs;
+		                    draw_rectangle(_scx1, _scy1, _scx1 + _cs, _scy1 + _cs, false);
+		                }
+		            }
+		        }
+		        draw_set_alpha(1.0);
+		    } else {
 			for (var _row = _start_row; _row < _end_row; _row++) {
 		        for (var _col = _start_col; _col < _end_col; _col++) {
 		            var _idx   = _row * _gw + _col;
@@ -2480,6 +2536,7 @@ draw_set_color(_cell_bg_col);
 					}
 		        }
 		    }
+		    } // end if (_use_map_cache) else
 
 // Grid lines
 	    if (_show_grid) {

@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_map_view_cache",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_map_view_cache",
+  "parent":{
+    "name":"I_O",
+    "path":"folders/SCRIPTS/CORE/I_O.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

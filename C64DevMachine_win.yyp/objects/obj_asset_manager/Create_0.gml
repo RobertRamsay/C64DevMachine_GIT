@@ -14,6 +14,33 @@ chr_drag_last_idx   = -1;    // last tile toggled this stroke (prevents repeat o
 
 map_chr_btn_y         = 0;
 map_chr_picker_draw_y = 0;
+// MAP_DATA view cache (scr_map_view_cache): whole map pre-rendered at 1:1, blitted at zoom
+map_view_cache = {
+    asset       : noone,
+    chr         : noone,
+    key         : "",
+    last_time   : 0,
+    surf        : -1,
+    atlas       : -1,
+    atlas_buf   : buffer_create(128 * 520 * 4, buffer_fixed, 1),
+    crc         : -1,
+    glyph_bytes : array_create(2048, -2),
+    sh_chr      : [],
+    sh_col      : [],
+    sh_ov       : [],
+    scan_row    : 0,
+    gw          : 0,
+    gh          : 0,
+    mixed       : 0,
+    ecm         : false,
+    ov_len      : 0,
+    bg_c        : c_black,
+    col1_c      : c_black,
+    col2_c      : c_black,
+    ecm_c       : array_create(4, c_black),
+    pal         : array_create(16, c_black),
+    pal_sum     : -1
+};
 // bitmap editor:
 bmp_ref_asset_name = "";
 bmp_ref_vy1        = 0;
