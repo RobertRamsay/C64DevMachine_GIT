@@ -1213,6 +1213,13 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm, _tx, _ty, _tw, _th);
     draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_left);
+    // Indent for the whole list, fixed before the loop: a click closes the
+    // menu (gui_menu_open = -1) part-way through drawing it, and the rows
+    // after the click used to jump left for that frame.
+    var _tind = 10;
+    if (gui_menu_open == 8) {
+        _tind = 22;    // PORTS entries sit under their sub-header
+    }
     for (var _ti = 0; _ti < array_length(_visible_templates); _ti++) {
         var _iy = _ty + 12 + _ti * 24;
         if (_visible_templates[_ti] < 0) {
@@ -1225,10 +1232,6 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
         var _disabled = false;
         var _hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _tx, _iy, _tx + _tw, _iy + 23);
         draw_set_color(_disabled ? c_gray : (_hov ? c_yellow : c_white));
-        var _tind = 10;
-        if (gui_menu_open == 8) {
-            _tind = 22;    // PORTS entries sit under their sub-header
-        }
         draw_text_l(_tx + _tind, _iy + 3, _entry.title);
         if (_hov && !_disabled && scr_workspace_mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
             template_pending = _visible_templates[_ti];
@@ -4389,4 +4392,31 @@ if (reu_pick_open) {
         global.any_picker_open = false;
     }
     draw_set_color(c_white);
+}
+
+
+// ── NOW LOADING banner (templates / ports) ──
+// Shown from the moment the load is confirmed until it finishes; the load
+// itself blocks, so this is what stays on screen while it runs.
+if (template_load_index >= 0) {
+    var _ld_e = scr_template_catalog(template_load_index);
+    var _ld_t = "NOW LOADING " + string_upper(_ld_e.title) + "...";
+    draw_set_alpha(0.7);
+    draw_set_color(c_black);
+    draw_rectangle(0, 0, display_get_gui_width(), display_get_gui_height(), false);
+    draw_set_alpha(1.0);
+    draw_set_font_l(fnt_C64_Angled);
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_middle);
+    var _ld_cx = display_get_gui_width() * 0.5;
+    var _ld_cy = display_get_gui_height() * 0.5;
+    var _ld_w  = string_width_l(_ld_t) + 60;
+    draw_set_color(make_color_rgb(18, 22, 36));
+    draw_rectangle(_ld_cx - _ld_w * 0.5, _ld_cy - 26, _ld_cx + _ld_w * 0.5, _ld_cy + 26, false);
+    draw_set_color(c_aqua);
+    draw_rectangle(_ld_cx - _ld_w * 0.5, _ld_cy - 26, _ld_cx + _ld_w * 0.5, _ld_cy + 26, true);
+    draw_set_color(c_white);
+    draw_text_l(_ld_cx, _ld_cy, _ld_t);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
 }

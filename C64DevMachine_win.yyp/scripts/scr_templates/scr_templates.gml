@@ -40,6 +40,18 @@ function scr_template_load(_index) {
 }
 
 function scr_template_step() {
+    // A chosen template loads two frames after it was confirmed, so the
+    // NOW LOADING banner (obj_workspace_manager Draw GUI) is on screen
+    // while the load blocks.
+    if (template_load_index >= 0) {
+        template_load_frames--;
+        if (template_load_frames <= 0) {
+            var _li = template_load_index;
+            template_load_index = -1;
+            scr_template_load(_li);
+        }
+        return;
+    }
     if (global.question_result == "template_save_yes") {
         global.question_result = "";
         var _choice = template_waiting;
@@ -59,7 +71,7 @@ function scr_template_step() {
                 buffer_delete(_saved);
             }
         }
-        if (_verified) scr_template_load(_choice);
+        if (_verified) scr_template_begin_load(_choice);
         else {
             global.manual_saved = false;
             scr_show_message("The save could not be verified. Your current project has been kept.");
@@ -75,7 +87,7 @@ function scr_template_step() {
         global.question_result = "";
         var _choice = template_waiting;
         template_waiting = -1;
-        scr_template_load(_choice);
+        scr_template_begin_load(_choice);
         return;
     }
     if (global.question_result == "template_discard_no") {
@@ -89,5 +101,12 @@ function scr_template_step() {
     if (scr_workspace_has_changes()) {
         template_waiting = _choice;
         scr_show_question("Save changes before loading the template?", "template_save");
-    } else scr_template_load(_choice);
+    } else scr_template_begin_load(_choice);
+}
+
+
+/// Queue a template / port to load once the NOW LOADING banner is showing.
+function scr_template_begin_load(_index) {
+    template_load_index  = _index;
+    template_load_frames = 2;
 }

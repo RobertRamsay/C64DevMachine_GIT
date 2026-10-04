@@ -1346,6 +1346,9 @@ if (_saved_w > 0 && _saved_h > 0)
 
 // Bundled project selection is handled outside Draw.
 template_pending = -1;
+// NOW LOADING banner: template queued by scr_template_begin_load
+template_load_index  = -1;
+template_load_frames = 0;
 template_waiting = -1;
 
 // Opcode palette definitions are static after Create. Search only on edits.
