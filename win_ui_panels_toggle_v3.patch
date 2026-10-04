@@ -1,0 +1,90 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+index 5a99ca2..be91d45 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+@@ -1215,13 +1215,6 @@ function scr_creator_panel_layout(_b) {
+     var _bx2   = _b.x + _b.box_w;
+     var _by2   = _b.y + _b.box_h;
+ 
+-    if (!global.lite) {
+-        var _ew = string_width_l("EDIT") + 20;
+-        var _edit = scr_creator_item("edit", _bx2 - _pad - _ew, _by1 + 5, _bx2 - _pad, _by1 + CREATOR_PANEL_HEAD - 5);
+-        _edit.text = "EDIT";
+-        array_push(_items, _edit);
+-    }
+-
+     var _nodes = scr_creator_panel_nodes(_b);
+     var _multi = (array_length(_nodes) > 1);
+     var _y     = _by1 + CREATOR_PANEL_HEAD + 6;
+@@ -1320,26 +1313,22 @@ function scr_creator_panel_layout(_b) {
+     return _items;
+ }
+ 
+-/// Buttons above the box, left of its delete X (developer only).
+-///   UI   - on/off toggle: on makes the box a panel (facade up), off makes
+-///          it a plain mapping box again. Lit while the box is a panel.
+-///   DONE - only while the facade is lifted for editing: drops it back.
+-/// (EDIT, on the facade itself, lifts it.)
++/// The one button above the box, left of its delete X (developer only):
++///   UI   - plain box: turn panel mode on (facade drops over the nodes)
++///   EDIT - panel: turn panel mode off (back to the normal node view)
+ function scr_creator_box_buttons(_b) {
+     var _out = [];
+     if (global.lite) {
+         return _out;
+     }
+     var _right = _b.x + _b.box_w - 22;
+-    var _ui = scr_creator_item("ui", _right - 34, _b.y - 18, _right, _b.y);
+-    _ui.text = "UI";
+-    _ui.on   = _b.is_panel;
+-    array_push(_out, _ui);
+-    if (_b.is_panel && _b.panel_editing) {
+-        var _dn = scr_creator_item("done", _right - 34 - 4 - 56, _b.y - 18, _right - 38, _b.y);
+-        _dn.text = "DONE";
+-        array_push(_out, _dn);
++    var _bt = scr_creator_item("toggle", _right - 50, _b.y - 18, _right, _b.y);
++    if (_b.is_panel) {
++        _bt.text = "EDIT";
++    } else {
++        _bt.text = "UI";
+     }
++    array_push(_out, _bt);
+     return _out;
+ }
+ 
+@@ -1373,13 +1362,10 @@ function scr_creator_box_step(_b) {
+         if (!point_in_rectangle(_mx, _my, _bt.x1, _bt.y1, _bt.x2, _bt.y2)) {
+             continue;
+         }
+-        if (_bt.t == "ui") {
++        if (_bt.t == "toggle") {
+             _b.is_panel      = !_b.is_panel;
+             _b.panel_editing = false;
+             global.selected_nodes = [];
+-        } else if (_bt.t == "done") {
+-            _b.panel_editing = false;
+-            global.selected_nodes = [];
+         }
+         global.undo_dirty     = true;
+         global.autosave_dirty = true;
+@@ -1404,10 +1390,6 @@ function scr_creator_box_step(_b) {
+         if (!point_in_rectangle(_mx, _my, _it.x1, _it.y1 - 3, _it.x2, _it.y2 + 3)) {
+             continue;
+         }
+-        if (_it.t == "edit") {
+-            _b.panel_editing = true;
+-            return true;
+-        }
+         if (!instance_exists(_it.n)) {
+             continue;
+         }
+@@ -1499,9 +1481,6 @@ function scr_creator_box_draw(_b) {
+             draw_set_valign(fa_middle);
+             draw_set_halign(fa_left);
+             switch (_it.t) {
+-                case "edit":
+-                    scr_creator_draw_room_btn(_it, false, c_white);
+-                    break;
+                 case "sub":
+                     draw_set_colour(_col);
+                     draw_text_l(_it.x1, _my, _it.text);
