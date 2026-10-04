@@ -71,6 +71,8 @@ if (node_type == "ORG" && amb_btn_live && instance_exists(org_amb_partner) &&
 if (global.org_collapse_hot != noone && !is_dragging) exit;
 // Same for the CREATOR params tab on the node's right side.
 if (global.creator_tab_hot != noone && !is_dragging) exit;
+// And for a pinned param card drawn over the canvas.
+if (global.creator_card_hot && !is_dragging) exit;
 if (global.cbc_button_hot      && !is_dragging) exit;
 
 // =============================================================

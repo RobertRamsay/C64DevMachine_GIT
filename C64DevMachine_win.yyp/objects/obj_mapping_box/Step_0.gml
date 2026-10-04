@@ -1,4 +1,6 @@
 if (scr_workspace_input_blocked()) exit;
+// A pinned param card drawn over this box owns the click.
+if (global.creator_card_hot && !is_dragging && !is_resizing) exit;
 // CREATOR UI PANEL: facade widgets and the UI PANEL / SHOW UI / NO UI buttons.
 if (scr_creator_box_step(id)) exit;
 /// @desc Mapping Box - Resize, Drag, Delete, Double-click Edit

@@ -1,0 +1,774 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 8e8d2c0..5fea8ae 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -71,6 +71,8 @@ if (node_type == "ORG" && amb_btn_live && instance_exists(org_amb_partner) &&
+ if (global.org_collapse_hot != noone && !is_dragging) exit;
+ // Same for the CREATOR params tab on the node's right side.
+ if (global.creator_tab_hot != noone && !is_dragging) exit;
++// And for a pinned param card drawn over the canvas.
++if (global.creator_card_hot && !is_dragging) exit;
+ if (global.cbc_button_hot      && !is_dragging) exit;
+ 
+ // =============================================================
+diff --git a/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml
+index 23f44f1..6a3a5c7 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml
+@@ -1,4 +1,6 @@
+ if (scr_workspace_input_blocked()) exit;
++// A pinned param card drawn over this box owns the click.
++if (global.creator_card_hot && !is_dragging && !is_resizing) exit;
+ // CREATOR UI PANEL: facade widgets and the UI PANEL / SHOW UI / NO UI buttons.
+ if (scr_creator_box_step(id)) exit;
+ /// @desc Mapping Box - Resize, Drag, Delete, Double-click Edit
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_73.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_73.gml
+new file mode 100644
+index 0000000..2a3122f
+--- /dev/null
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_73.gml
+@@ -0,0 +1,3 @@
++/// @desc Draw End - CREATOR param cards, over every node.
++if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) exit;
++scr_creator_draw_cards();
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 124bdc9..a09f630 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -4775,6 +4775,7 @@ var _in_gui = ((global.gui_mouse_x <= shelf_width) && (!expert_mode || global.gu
+            || (global.gui_mouse_x >= (global.gui_w - 20 - 280))
+            || global.showcode_mouse_over
+            || global.cbc_button_hot
++           || global.creator_card_hot
+            || is_entering_text
+            || box_popup_open
+            || global.show_info_window
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/obj_workspace_manager.yy b/C64DevMachine_win.yyp/objects/obj_workspace_manager/obj_workspace_manager.yy
+index fd4eacf..2f20ded 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/obj_workspace_manager.yy
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/obj_workspace_manager.yy
+@@ -16,6 +16,7 @@
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":33,"eventType":9,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":34,"eventType":9,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":8,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
++    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":73,"eventType":8,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":3,"eventType":7,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":2,"eventType":2,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+     {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":3,"eventType":2,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
+diff --git a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+index e36d809..e5c330d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+@@ -40,6 +40,11 @@ function scr_creator_init() {
+     global.creator_field_rect   = [0, 0, 0, 0];
+     global.creator_commit       = false;
+     global.creator_esc_eaten    = false;
++    // Param cards: pinned params drawn on the canvas beside their node, or
++    // stacked under a folded ORG. Rebuilt every Begin Step.
++    global.creator_cards        = [];
++    global.creator_card_hot     = false;
++    global.creator_card_bar     = { active: false, n: noone, pidx: 0, x1: 0, x2: 0, lo: 0, hi: 0 };
+ }
+ 
+ // --------------------------------------------------------------------
+@@ -55,7 +60,8 @@ function scr_param_new() {
+         slot:    1,            // macro target slot
+         vmin:    0,
+         vmax:    255,
+-        options: "Off=0,On=1"  // MODE: Label=value, comma separated
++        options: "Off=0,On=1", // MODE: Label=value, comma separated
++        pin:     false         // shown as a card on the canvas
+     };
+ }
+ 
+@@ -74,6 +80,7 @@ function scr_param_from_data(_d) {
+     if (variable_struct_exists(_d, "vmin"))    _p.vmin    = real(_d.vmin);
+     if (variable_struct_exists(_d, "vmax"))    _p.vmax    = real(_d.vmax);
+     if (variable_struct_exists(_d, "options")) _p.options = string(_d.options);
++    if (variable_struct_exists(_d, "pin"))     _p.pin     = bool(_d.pin);
+     if (_p.kind != "COLOUR" && _p.kind != "RANGE" && _p.kind != "MODE") {
+         _p.kind = "COLOUR";
+     }
+@@ -443,8 +450,11 @@ function scr_creator_draw_node_tab() {
+ // --------------------------------------------------------------------
+ 
+ function scr_creator_begin_step() {
+-    global.creator_tab_hot = noone;
++    global.creator_tab_hot  = noone;
++    global.creator_card_hot = false;
+     scr_creator_update_covered();
++    global.creator_cards = scr_creator_cards_build();
++    scr_creator_cards_make_room();
+ 
+     // Deferred panel actions: run here, never from inside a Draw event.
+     if (global.creator_action != "") {
+@@ -490,6 +500,11 @@ function scr_creator_begin_step() {
+         exit;
+     }
+ 
++    // Param cards on the canvas own the pointer while it is over them.
++    if (scr_creator_cards_step()) {
++        exit;
++    }
++
+     var _mx  = mouse_x;
+     var _my  = mouse_y;
+     var _hot = noone;
+@@ -929,6 +944,13 @@ function scr_creator_draw_editor(_n) {
+             draw_set_font_l(fnt_C64_Angled);
+         }
+ 
++        // PIN: show this param as a card on the canvas beside the node
++        // (or under its ORG header when the ORG is folded).
++        if (scr_creator_btn(_px + _pw - 86, _ly, _px + _pw - 16, _ly + 26, "PIN", _p.pin)) {
++            _p.pin   = !_p.pin;
++            _changed = true;
++        }
++
+         var _cur = scr_param_read(_n, _p);
+         draw_set_valign(fa_middle);
+         if (_cur.ok) {
+@@ -1357,6 +1379,84 @@ function scr_creator_item(_t, _x1, _y1, _x2, _y2) {
+     return { t: _t, x1: _x1, y1: _y1, x2: _x2, y2: _y2, n: noone, pidx: 0, v: 0, text: "", on: false, lo: 0, hi: 0 };
+ }
+ 
++
++/// One param's widgets appended to _items, inside content columns _x1.._x2
++/// starting at _y. _stack puts the label above a full-width control; _lw is
++/// the label column width when not stacked. Shared by panels and cards.
++function scr_creator_param_row(_items, _n, _i, _x1, _x2, _y, _stack, _lw) {
++    var _row_h = CREATOR_PANEL_ROW;
++    if (_stack) {
++        _row_h = CREATOR_PANEL_ROW_STACK;
++    }
++    var _cx = _x1 + _lw;
++    var _cw = _x2 - _cx;
++    var _p   = _n.params[_i];
++    var _cy  = _y + _row_h * 0.5;
++    var _cur = scr_param_read(_n, _p);
++
++    var _lab = scr_creator_item("label", _x1, _y, _cx - 6, _y + _row_h);
++    if (_stack) {
++        _lab = scr_creator_item("label", _x1, _y, _x2, _y + 20);
++        _cy  = _y + 20 + 15;
++    }
++    _lab.text = _p.label;
++    array_push(_items, _lab);
++
++    if (!_cur.ok) {
++        var _bad = scr_creator_item("bad", _cx, _cy - 10, _x2, _cy + 10);
++        _bad.text = "NOT LINKED";
++        array_push(_items, _bad);
++    } else if (_p.kind == "COLOUR") {
++        var _step = max(8, floor(_cw / 16));
++        var _sw   = max(6, _step - 3);
++        for (var _c = 0; _c < 16; _c++) {
++            var _sx = _cx + _c * _step;
++            var _it = scr_creator_item("swatch", _sx, _cy - _sw * 0.5, _sx + _sw, _cy + _sw * 0.5);
++            _it.n  = _n;
++            _it.pidx = _i;
++            _it.v  = _c;
++            _it.on = (round(_cur.val) == _c);
++            array_push(_items, _it);
++        }
++    } else if (_p.kind == "RANGE") {
++        var _mi = scr_creator_item("minus", _cx, _cy - 10, _cx + 20, _cy + 10);
++        _mi.n = _n; _mi.pidx = _i; _mi.v = _cur.val - 1; _mi.text = "-";
++        array_push(_items, _mi);
++        var _vt = scr_creator_item("value", _cx + 22, _cy - 10, _cx + 62, _cy + 10);
++        _vt.text = string(_cur.val);
++        array_push(_items, _vt);
++        var _pl = scr_creator_item("plus", _cx + 64, _cy - 10, _cx + 84, _cy + 10);
++        _pl.n = _n; _pl.pidx = _i; _pl.v = _cur.val + 1; _pl.text = "+";
++        array_push(_items, _pl);
++        if (_cw > 120) {
++            var _bar = scr_creator_item("bar", _cx + 94, _cy - 5, _cx + _cw, _cy + 5);
++            _bar.n  = _n;
++            _bar.pidx = _i;
++            _bar.lo = min(_p.vmin, _p.vmax);
++            _bar.hi = max(_p.vmin, _p.vmax);
++            _bar.v  = _cur.val;
++            array_push(_items, _bar);
++        }
++    } else if (_p.kind == "MODE") {
++        var _opts = scr_param_options(_p.options);
++        var _ox   = _cx;
++        for (var _o = 0; _o < array_length(_opts); _o++) {
++            var _ow = string_width_l(_opts[_o].name) + 16;
++            if (_ox + _ow > _x2) {
++                break;
++            }
++            var _ob = scr_creator_item("opt", _ox, _cy - 11, _ox + _ow, _cy + 11);
++            _ob.n    = _n;
++            _ob.pidx   = _i;
++            _ob.v    = _opts[_o].val;
++            _ob.text = _opts[_o].name;
++            _ob.on   = (round(_cur.val) == round(_opts[_o].val));
++            array_push(_items, _ob);
++            _ox += _ow + 6;
++        }
++    }
++}
++
+ /// Room-space layout shared by the facade's Step (clicks) and Draw.
+ /// Font must be fnt_c64_code when called (string widths).
+ function scr_creator_panel_layout(_b) {
+@@ -1406,71 +1506,7 @@ function scr_creator_panel_layout(_b) {
+                 array_push(_items, scr_creator_item("more", _bx1, _by2 - 14, _bx2, _by2));
+                 return _items;
+             }
+-            var _p   = _n.params[_i];
+-            var _cy  = _y + _row_h * 0.5;
+-            var _cur = scr_param_read(_n, _p);
+-
+-            var _lab = scr_creator_item("label", _bx1 + _pad, _y, _cx - 6, _y + _row_h);
+-            if (_stack) {
+-                _lab = scr_creator_item("label", _bx1 + _pad, _y, _bx2 - _pad, _y + 20);
+-                _cy  = _y + 20 + 15;
+-            }
+-            _lab.text = _p.label;
+-            array_push(_items, _lab);
+-
+-            if (!_cur.ok) {
+-                var _bad = scr_creator_item("bad", _cx, _cy - 10, _bx2 - _pad, _cy + 10);
+-                _bad.text = "NOT LINKED";
+-                array_push(_items, _bad);
+-            } else if (_p.kind == "COLOUR") {
+-                var _step = max(8, floor(_cw / 16));
+-                var _sw   = max(6, _step - 3);
+-                for (var _c = 0; _c < 16; _c++) {
+-                    var _sx = _cx + _c * _step;
+-                    var _it = scr_creator_item("swatch", _sx, _cy - _sw * 0.5, _sx + _sw, _cy + _sw * 0.5);
+-                    _it.n  = _n;
+-                    _it.pidx = _i;
+-                    _it.v  = _c;
+-                    _it.on = (round(_cur.val) == _c);
+-                    array_push(_items, _it);
+-                }
+-            } else if (_p.kind == "RANGE") {
+-                var _mi = scr_creator_item("minus", _cx, _cy - 10, _cx + 20, _cy + 10);
+-                _mi.n = _n; _mi.pidx = _i; _mi.v = _cur.val - 1; _mi.text = "-";
+-                array_push(_items, _mi);
+-                var _vt = scr_creator_item("value", _cx + 22, _cy - 10, _cx + 62, _cy + 10);
+-                _vt.text = string(_cur.val);
+-                array_push(_items, _vt);
+-                var _pl = scr_creator_item("plus", _cx + 64, _cy - 10, _cx + 84, _cy + 10);
+-                _pl.n = _n; _pl.pidx = _i; _pl.v = _cur.val + 1; _pl.text = "+";
+-                array_push(_items, _pl);
+-                if (_cw > 120) {
+-                    var _bar = scr_creator_item("bar", _cx + 94, _cy - 5, _cx + _cw, _cy + 5);
+-                    _bar.n  = _n;
+-                    _bar.pidx = _i;
+-                    _bar.lo = min(_p.vmin, _p.vmax);
+-                    _bar.hi = max(_p.vmin, _p.vmax);
+-                    _bar.v  = _cur.val;
+-                    array_push(_items, _bar);
+-                }
+-            } else if (_p.kind == "MODE") {
+-                var _opts = scr_param_options(_p.options);
+-                var _ox   = _cx;
+-                for (var _o = 0; _o < array_length(_opts); _o++) {
+-                    var _ow = string_width_l(_opts[_o].name) + 16;
+-                    if (_ox + _ow > _bx2 - _pad) {
+-                        break;
+-                    }
+-                    var _ob = scr_creator_item("opt", _ox, _cy - 11, _ox + _ow, _cy + 11);
+-                    _ob.n    = _n;
+-                    _ob.pidx   = _i;
+-                    _ob.v    = _opts[_o].val;
+-                    _ob.text = _opts[_o].name;
+-                    _ob.on   = (round(_cur.val) == round(_opts[_o].val));
+-                    array_push(_items, _ob);
+-                    _ox += _ow + 6;
+-                }
+-            }
++            scr_creator_param_row(_items, _n, _i, _bx1 + _pad, _bx2 - _pad, _y, _stack, _lw);
+             _y += _row_h;
+         }
+     }
+@@ -1581,6 +1617,17 @@ function scr_creator_box_step(_b) {
+ 
+     draw_set_font_l(fnt_c64_code);
+     var _items = scr_creator_panel_layout(_b);
++    if (scr_creator_items_press(_items, _mx, _my, _b.panel_bar)) {
++        return true;
++    }
++    // The facade protects what is under it: a click anywhere on it stops here.
++    return true;
++}
++
++
++/// A press on panel / card widgets. _bar is the slider-drag state to arm.
++/// Returns true when a widget used the click.
++function scr_creator_items_press(_items, _mx, _my, _bar) {
+     for (var _i = 0; _i < array_length(_items); _i++) {
+         var _it = _items[_i];
+         if (!point_in_rectangle(_mx, _my, _it.x1, _it.y1 - 3, _it.x2, _it.y2 + 3)) {
+@@ -1598,20 +1645,19 @@ function scr_creator_box_step(_b) {
+             return true;
+         }
+         if (_it.t == "bar") {
+-            _b.panel_bar.active = true;
+-            _b.panel_bar.n      = _it.n;
+-            _b.panel_bar.pidx     = _it.pidx;
+-            _b.panel_bar.x1     = _it.x1;
+-            _b.panel_bar.x2     = _it.x2;
+-            _b.panel_bar.lo     = _it.lo;
+-            _b.panel_bar.hi     = _it.hi;
++            _bar.active = true;
++            _bar.n      = _it.n;
++            _bar.pidx     = _it.pidx;
++            _bar.x1     = _it.x1;
++            _bar.x2     = _it.x2;
++            _bar.lo     = _it.lo;
++            _bar.hi     = _it.hi;
+             var _f = clamp((_mx - _it.x1) / max(1, _it.x2 - _it.x1), 0, 1);
+             scr_param_write(_it.n, _p, _it.lo + _f * (_it.hi - _it.lo));
+             return true;
+         }
+     }
+-    // The facade protects what is under it: a click anywhere on it stops here.
+-    return true;
++    return false;
+ }
+ 
+ /// Facade buttons stay plain for readability: dark fill, coloured outline,
+@@ -1639,6 +1685,77 @@ function scr_creator_draw_room_btn(_it, _on, _col) {
+     draw_set_halign(fa_left);
+ }
+ 
++
++/// Draw panel / card widgets built by scr_creator_param_row. Font must be
++/// fnt_c64_code. _col tints node sub-headings.
++function scr_creator_draw_items(_items, _col) {
++    for (var _i = 0; _i < array_length(_items); _i++) {
++        var _it = _items[_i];
++        var _my = (_it.y1 + _it.y2) * 0.5;
++        draw_set_valign(fa_middle);
++        draw_set_halign(fa_left);
++        switch (_it.t) {
++            case "sub":
++                draw_set_colour(_col);
++                draw_text_l(_it.x1, _my, _it.text);
++                draw_set_alpha(0.4);
++                draw_line(_it.x1, _it.y2 - 2, _it.x2, _it.y2 - 2);
++                draw_set_alpha(1);
++                break;
++            case "label":
++                draw_set_colour(c_white);
++                draw_text(_it.x1, _my, _it.text);
++                break;
++            case "text":
++                draw_set_colour(make_colour_rgb(190, 190, 230));
++                draw_text_l(_it.x1, _my, _it.text);
++                break;
++            case "bad":
++                draw_set_colour(make_colour_rgb(255, 110, 110));
++                draw_text_l(_it.x1, _my, _it.text);
++                break;
++            case "value":
++                draw_set_colour(c_white);
++                draw_set_halign(fa_center);
++                draw_text((_it.x1 + _it.x2) * 0.5, _my, _it.text);
++                break;
++            case "swatch":
++                draw_set_colour(scr_c64_pepto_colour(_it.v));
++                draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, false);
++                if (_it.on) {
++                    draw_set_colour(c_white);
++                    draw_rectangle(_it.x1 - 2, _it.y1 - 2, _it.x2 + 2, _it.y2 + 2, true);
++                    draw_rectangle(_it.x1 - 3, _it.y1 - 3, _it.x2 + 3, _it.y2 + 3, true);
++                }
++                break;
++            case "minus":
++            case "plus":
++                scr_creator_draw_room_btn(_it, false, make_colour_rgb(180, 180, 255));
++                break;
++            case "opt":
++                scr_creator_draw_room_btn(_it, _it.on, make_colour_rgb(180, 180, 255));
++                break;
++            case "bar":
++                var _t = 0;
++                if (_it.hi > _it.lo) {
++                    _t = clamp((_it.v - _it.lo) / (_it.hi - _it.lo), 0, 1);
++                }
++                draw_set_colour(make_colour_rgb(8, 8, 24));
++                draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, false);
++                draw_set_colour(make_colour_rgb(80, 200, 255));
++                draw_rectangle(_it.x1, _it.y1, _it.x1 + (_it.x2 - _it.x1) * _t, _it.y2, false);
++                draw_set_colour(make_colour_rgb(180, 180, 255));
++                draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, true);
++                break;
++            case "more":
++                draw_set_colour(make_colour_rgb(190, 190, 230));
++                draw_set_halign(fa_center);
++                draw_text_l((_it.x1 + _it.x2) * 0.5, _my, "...");
++                break;
++        }
++    }
++}
++
+ /// obj_mapping_box Draw (room space). Buttons above the box always; the
+ /// facade itself only while the panel is up.
+ function scr_creator_box_draw(_b) {
+@@ -1674,72 +1791,7 @@ function scr_creator_box_draw(_b) {
+         draw_set_valign(fa_middle);
+         draw_text_l(_bx1 + CREATOR_PANEL_PAD, _by1 + CREATOR_PANEL_HEAD * 0.5, string_upper(_b.box_name));
+ 
+-        var _items = scr_creator_panel_layout(_b);
+-        for (var _i = 0; _i < array_length(_items); _i++) {
+-            var _it = _items[_i];
+-            var _my = (_it.y1 + _it.y2) * 0.5;
+-            draw_set_valign(fa_middle);
+-            draw_set_halign(fa_left);
+-            switch (_it.t) {
+-                case "sub":
+-                    draw_set_colour(_col);
+-                    draw_text_l(_it.x1, _my, _it.text);
+-                    draw_set_alpha(0.4);
+-                    draw_line(_it.x1, _it.y2 - 2, _it.x2, _it.y2 - 2);
+-                    draw_set_alpha(1);
+-                    break;
+-                case "label":
+-                    draw_set_colour(c_white);
+-                    draw_text(_it.x1, _my, _it.text);
+-                    break;
+-                case "text":
+-                    draw_set_colour(make_colour_rgb(190, 190, 230));
+-                    draw_text_l(_it.x1, _my, _it.text);
+-                    break;
+-                case "bad":
+-                    draw_set_colour(make_colour_rgb(255, 110, 110));
+-                    draw_text_l(_it.x1, _my, _it.text);
+-                    break;
+-                case "value":
+-                    draw_set_colour(c_white);
+-                    draw_set_halign(fa_center);
+-                    draw_text((_it.x1 + _it.x2) * 0.5, _my, _it.text);
+-                    break;
+-                case "swatch":
+-                    draw_set_colour(scr_c64_pepto_colour(_it.v));
+-                    draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, false);
+-                    if (_it.on) {
+-                        draw_set_colour(c_white);
+-                        draw_rectangle(_it.x1 - 2, _it.y1 - 2, _it.x2 + 2, _it.y2 + 2, true);
+-                        draw_rectangle(_it.x1 - 3, _it.y1 - 3, _it.x2 + 3, _it.y2 + 3, true);
+-                    }
+-                    break;
+-                case "minus":
+-                case "plus":
+-                    scr_creator_draw_room_btn(_it, false, make_colour_rgb(180, 180, 255));
+-                    break;
+-                case "opt":
+-                    scr_creator_draw_room_btn(_it, _it.on, make_colour_rgb(180, 180, 255));
+-                    break;
+-                case "bar":
+-                    var _t = 0;
+-                    if (_it.hi > _it.lo) {
+-                        _t = clamp((_it.v - _it.lo) / (_it.hi - _it.lo), 0, 1);
+-                    }
+-                    draw_set_colour(make_colour_rgb(8, 8, 24));
+-                    draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, false);
+-                    draw_set_colour(make_colour_rgb(80, 200, 255));
+-                    draw_rectangle(_it.x1, _it.y1, _it.x1 + (_it.x2 - _it.x1) * _t, _it.y2, false);
+-                    draw_set_colour(make_colour_rgb(180, 180, 255));
+-                    draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, true);
+-                    break;
+-                case "more":
+-                    draw_set_colour(make_colour_rgb(190, 190, 230));
+-                    draw_set_halign(fa_center);
+-                    draw_text_l((_it.x1 + _it.x2) * 0.5, _my, "...");
+-                    break;
+-            }
+-        }
++        scr_creator_draw_items(scr_creator_panel_layout(_b), _col);
+     }
+ 
+     draw_set_font_l(_font_b);
+@@ -1952,3 +2004,286 @@ function scr_creator_slot_step(_p, _names, _dir) {
+         _p.label = _label_was;
+     }
+ }
++
++
++// ====================================================================
++// PARAM CARDS
++//
++// A pinned param is drawn on the canvas as a card, no mapping box needed:
++//   ORG unfolded - the node's cards sit to the right of its P tab, joined
++//                  to it by a bracket.
++//   ORG folded   - every pinned card in the block stacks under the ORG
++//                  header, with a sub-heading per node. An ORG below that
++//                  the stack would land on is pushed down out of the way.
++// Cards are drawn in obj_workspace_manager Draw End, over the nodes, and
++// own the pointer while it is over them (global.creator_card_hot).
++// ====================================================================
++
++#macro CREATOR_CARD_W     280
++#macro CREATOR_CARD_GAP   22
++#macro CREATOR_CARD_CLEAR 40
++
++function scr_creator_node_has_pins(_n) {
++    for (var _i = 0; _i < array_length(_n.params); _i++) {
++        if (_n.params[_i].pin) {
++            return true;
++        }
++    }
++    return false;
++}
++
++/// The header a hidden node is folded under, or noone.
++function scr_creator_fold_anchor(_n) {
++    if (_n.org_parent != noone) {
++        if (instance_exists(_n.org_parent)) {
++            if (_n.org_parent.collapsed) {
++                return _n.org_parent;
++            }
++        }
++        return noone;
++    }
++    if (!global.init_collapsed) {
++        return noone;
++    }
++    var _init = noone;
++    with (obj_c64_node) {
++        if (node_type == "INIT") {
++            _init = id;
++            break;
++        }
++    }
++    return _init;
++}
++
++function scr_creator_card_new(_x1, _y1, _w) {
++    return { x1: _x1, y1: _y1, x2: _x1 + _w, y2: _y1, items: [], anchor: noone, tab: noone, col: make_colour_rgb(80, 200, 255) };
++}
++
++/// Lay one node's pinned params into a card. _sub adds the node's name
++/// as a heading. Returns the y under the last row.
++function scr_creator_card_add_node(_card, _n, _y, _sub) {
++    var _x1 = _card.x1 + CREATOR_PANEL_PAD;
++    var _x2 = _card.x2 - CREATOR_PANEL_PAD;
++    if (_sub) {
++        var _it = scr_creator_item("sub", _x1, _y, _x2, _y + CREATOR_PANEL_SUB);
++        _it.text = string_upper(scr_creator_node_name(_n));
++        array_push(_card.items, _it);
++        _y += CREATOR_PANEL_SUB;
++    }
++    for (var _i = 0; _i < array_length(_n.params); _i++) {
++        if (!_n.params[_i].pin) {
++            continue;
++        }
++        scr_creator_param_row(_card.items, _n, _i, _x1, _x2, _y, true, 0);
++        _y += CREATOR_PANEL_ROW_STACK;
++    }
++    return _y;
++}
++
++/// Every card on the canvas this frame. Font is set for string widths.
++function scr_creator_cards_build() {
++    var _cards = [];
++    var _font_b = draw_get_font();
++    draw_set_font_l(fnt_c64_code);
++
++    // Nodes with pins: visible ones get a card beside them; folded ones are
++    // grouped under their header. Nodes under a UI panel are left to it.
++    var _beside  = [];
++    var _folded  = [];
++    var _anchors = [];
++    with (obj_c64_node) {
++        if (array_length(params) == 0) {
++            continue;
++        }
++        if (macro_owner != noone) {
++            continue;
++        }
++        if (creator_covered) {
++            continue;
++        }
++        if (!scr_creator_node_has_pins(id)) {
++            continue;
++        }
++        if (scr_node_is_hidden(id)) {
++            var _a = scr_creator_fold_anchor(id);
++            if (_a != noone) {
++                array_push(_folded, id);
++                array_push(_anchors, _a);
++            }
++        } else {
++            array_push(_beside, id);
++        }
++    }
++
++    for (var _i = 0; _i < array_length(_beside); _i++) {
++        var _n  = _beside[_i];
++        var _tr = scr_creator_tab_rect(_n);
++        var _c  = scr_creator_card_new(_tr.x2 + CREATOR_CARD_GAP, _n.y, CREATOR_CARD_W);
++        _c.tab  = _n;
++        var _y  = scr_creator_card_add_node(_c, _n, _c.y1 + 6, false);
++        _c.y2   = _y + 4;
++        array_push(_cards, _c);
++    }
++
++    // One stack per folded header, nodes in spine order.
++    var _done = [];
++    for (var _i = 0; _i < array_length(_anchors); _i++) {
++        var _a = _anchors[_i];
++        var _seen = false;
++        for (var _d = 0; _d < array_length(_done); _d++) {
++            if (_done[_d] == _a) {
++                _seen = true;
++            }
++        }
++        if (_seen) {
++            continue;
++        }
++        array_push(_done, _a);
++        var _group = [];
++        for (var _j = 0; _j < array_length(_folded); _j++) {
++            if (_anchors[_j] == _a) {
++                array_push(_group, _folded[_j]);
++            }
++        }
++        array_sort(_group, function(_p, _q) {
++            return _p.y - _q.y;
++        });
++        var _c = scr_creator_card_new(_a.x + _a.x_indent, _a.y + _a.height + 8, max(CREATOR_CARD_W, _a.width));
++        _c.anchor = _a;
++        var _y = _c.y1 + 4;
++        for (var _g = 0; _g < array_length(_group); _g++) {
++            _y = scr_creator_card_add_node(_c, _group[_g], _y, true);
++        }
++        _c.y2 = _y + 4;
++        array_push(_cards, _c);
++    }
++
++    draw_set_font_l(_font_b);
++    return _cards;
++}
++
++/// Push any ORG a folded stack would land on down below it, snapped to the
++/// 20px grid with some clearance. Never while something is being dragged.
++function scr_creator_cards_make_room() {
++    if (global.any_node_dragging) {
++        exit;
++    }
++    var _box_drag = false;
++    with (obj_mapping_box) {
++        if (is_dragging || is_resizing) {
++            _box_drag = true;
++        }
++    }
++    if (_box_drag) {
++        exit;
++    }
++    var _moved = false;
++    for (var _i = 0; _i < array_length(global.creator_cards); _i++) {
++        var _c = global.creator_cards[_i];
++        if (_c.anchor == noone) {
++            continue;
++        }
++        var _a      = _c.anchor;
++        var _bottom = _c.y2 + CREATOR_CARD_CLEAR;
++        with (obj_c64_node) {
++            if (id == _a) {
++                continue;
++            }
++            if (node_type != "ORG") {
++                continue;
++            }
++            if (org_parent != noone) {
++                continue;
++            }
++            if (y <= _a.y || y >= _bottom) {
++                continue;
++            }
++            var _ox1 = x + x_indent;
++            var _ox2 = _ox1 + width;
++            if (_ox2 <= _c.x1 || _ox1 >= _c.x2) {
++                continue;
++            }
++            y = ceil(_bottom / 20) * 20;
++            _moved = true;
++        }
++    }
++    if (_moved) {
++        global.addresses_dirty  = true;
++        global.autosave_dirty   = true;
++        global.relayout_frames  = max(global.relayout_frames, 3);
++        obj_workspace_manager.flow_overlay_dirty = true;
++    }
++}
++
++/// Begin Step pointer handling. True when a card owns the pointer.
++function scr_creator_cards_step() {
++    var _bar = global.creator_card_bar;
++    var _mx  = mouse_x;
++    var _my  = mouse_y;
++
++    // Slider drag in progress: keeps the pointer until release.
++    if (_bar.active) {
++        global.creator_card_hot = true;
++        if (scr_workspace_mouse_check_button(mb_left) && instance_exists(_bar.n)) {
++            if (_bar.pidx < array_length(_bar.n.params)) {
++                var _f = clamp((_mx - _bar.x1) / max(1, _bar.x2 - _bar.x1), 0, 1);
++                scr_param_write(_bar.n, _bar.n.params[_bar.pidx], _bar.lo + _f * (_bar.hi - _bar.lo));
++            }
++        } else {
++            _bar.active = false;
++        }
++        return true;
++    }
++
++    var _over = noone;
++    for (var _i = 0; _i < array_length(global.creator_cards); _i++) {
++        var _c = global.creator_cards[_i];
++        if (point_in_rectangle(_mx, _my, _c.x1, _c.y1, _c.x2, _c.y2)) {
++            _over = _c;
++        }
++    }
++    if (!is_struct(_over)) {
++        return false;
++    }
++    global.creator_card_hot = true;
++    if (scr_workspace_mouse_check_button_pressed(mb_left)) {
++        scr_creator_items_press(_over.items, _mx, _my, _bar);
++    }
++    return true;
++}
++
++/// obj_workspace_manager Draw End (room space, over the nodes).
++function scr_creator_draw_cards() {
++    if (array_length(global.creator_cards) == 0) {
++        exit;
++    }
++    var _font_b   = draw_get_font();
++    var _halign_b = draw_get_halign();
++    var _valign_b = draw_get_valign();
++    draw_set_font_l(fnt_c64_code);
++    draw_set_alpha(1);
++
++    for (var _i = 0; _i < array_length(global.creator_cards); _i++) {
++        var _c = global.creator_cards[_i];
++        // Bracket from the node's P tab to its card.
++        if (_c.tab != noone) {
++            if (instance_exists(_c.tab)) {
++                var _tr = scr_creator_tab_rect(_c.tab);
++                var _ty = (_tr.y1 + _tr.y2) * 0.5;
++                var _bx = _tr.x2 + floor(CREATOR_CARD_GAP * 0.5);
++                draw_set_colour(_c.col);
++                draw_line_width(_tr.x2, _ty, _bx, _ty, 2);
++                draw_line_width(_bx, _c.y1 + 8, _bx, _c.y2 - 8, 2);
++                draw_line_width(_bx, _c.y1 + 8, _c.x1, _c.y1 + 8, 2);
++                draw_line_width(_bx, _c.y2 - 8, _c.x1, _c.y2 - 8, 2);
++            }
++        }
++        scr_creator_skin_node_frame(_c.x1, _c.y1, _c.x2 - _c.x1, _c.y2 - _c.y1, 3, _c.col);
++        scr_creator_draw_items(_c.items, _c.col);
++    }
++
++    draw_set_font_l(_font_b);
++    draw_set_halign(_halign_b);
++    draw_set_valign(_valign_b);
++    draw_set_alpha(1);
++}
