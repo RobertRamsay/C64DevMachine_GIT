@@ -1591,7 +1591,8 @@ function scr_creator_panel_layout(_b) {
     var _cw    = _bx2 - _pad - _cx;
 
     if (array_length(_nodes) == 0) {
-        var _none = scr_creator_item("text", _bx1 + _pad, _y, _bx2 - _pad, _y + CREATOR_PANEL_ROW);
+        // Runs to the bottom of the box so the text can shrink to fit it.
+        var _none = scr_creator_item("text", _bx1 + _pad, _y, _bx2 - _pad, _by2 - 4);
         _none.text = "No params in this panel. EDIT, then use the P tab on a node.";
         array_push(_items, _none);
         return _items;
@@ -1825,10 +1826,20 @@ function scr_creator_draw_items(_items, _col) {
                 draw_text(_it.x1, _my, _it.text);
                 break;
             case "text":
-                // Word-wrapped to the item width (narrow panels).
+                // Word-wrapped to the item width, and scaled down (in 10%
+                // steps, to 40%) when the wrapped text is taller than the item.
                 draw_set_colour(make_colour_rgb(190, 190, 230));
                 draw_set_valign(fa_top);
-                draw_text_ext_l(_it.x1, _it.y1 + 4, _it.text, 20, max(40, _it.x2 - _it.x1));
+                var _tw  = max(20, _it.x2 - _it.x1);
+                var _tah = max(10, _it.y2 - _it.y1 - 4);
+                var _tsc = 1;
+                while (_tsc > 0.4) {
+                    if (string_height_ext_l(_it.text, 20, _tw / _tsc) * _tsc <= _tah) {
+                        break;
+                    }
+                    _tsc -= 0.1;
+                }
+                draw_text_ext_transformed_l(_it.x1, _it.y1 + 4, _it.text, 20, _tw / _tsc, _tsc, _tsc, 0);
                 draw_set_valign(fa_middle);
                 break;
             case "bad":
@@ -1926,7 +1937,15 @@ function scr_creator_box_draw(_b) {
         draw_set_colour(c_white);
         draw_set_halign(fa_left);
         draw_set_valign(fa_middle);
-        draw_text_l(_bx1 + CREATOR_PANEL_PAD, _by1 + CREATOR_PANEL_HEAD * 0.5, string_upper(_b.box_name));
+        // Title shrinks to fit a narrow panel instead of running past it.
+        var _title  = string_upper(_b.box_name);
+        var _ttw    = string_width_l(_title);
+        var _tfit   = _b.box_w - CREATOR_PANEL_PAD * 2;
+        var _tscale = 1;
+        if (_ttw > _tfit && _ttw > 0) {
+            _tscale = max(0.4, _tfit / _ttw);
+        }
+        draw_text_transformed_l(_bx1 + CREATOR_PANEL_PAD, _by1 + CREATOR_PANEL_HEAD * 0.5, _title, _tscale, _tscale, 0);
 
         scr_creator_draw_items(scr_creator_panel_layout(_b), _col);
     }

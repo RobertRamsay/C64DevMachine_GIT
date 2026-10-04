@@ -57,7 +57,10 @@ map_view_cache = {
     rv_c2       : []       //                         -> MC colour 2
 };
 map_show_tags   = false;   // map editor [T]: char tag (tile type) badges on every cell
-map_game_view   = false;   // map editor [G]: room under the mouse drawn the game's way
+map_top_mode    = 0;       // map editor top panel: 0 = STAMPS, 1 = ROOM PREVIEW (room maps) [G]
+map_hover_room  = -1;      // room under the mouse last frame (RLE room maps)
+map_prev_room   = 0;       // room shown in ROOM PREVIEW
+map_prev_follow = true;    // ROOM PREVIEW follows the room under the mouse
 // bitmap editor:
 bmp_ref_asset_name = "";
 bmp_ref_vy1        = 0;

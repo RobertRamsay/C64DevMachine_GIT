@@ -1589,6 +1589,34 @@ draw_set_color(c_ltgray);
 		    draw_set_color(_chr_name != "" ? c_lime : make_color_rgb(150, 150, 150));
 		    draw_text_l(_cpbx1 + 10, _cy-2, _chr_name != "" ? _chr_name : L("-- PICK --"));
 
+		    // ---- STAMPS / ROOM PREVIEW (room maps share the stamp area) ----
+		    var _tp_rooms = (real(_m.raw_chars) >= 2 && real(_m.room_w) > 0 && real(_m.room_h) > 0);
+		    if (_tp_rooms) {
+		        var _tpx1 = _cpbx2 + 10;
+		        var _tpy1 = _cpby1 - 20;
+		        var _tp_lbl = ["STAMPS", "ROOM PREVIEW"];
+		        for (var _tpi = 0; _tpi < 2; _tpi++) {
+		            var _tbx1 = _tpx1 + _tpi * 104;
+		            var _tbx2 = _tbx1 + 100;
+		            var _tbhov = point_in_rectangle(_mx, _my, _tbx1, _tpy1, _tbx2, _tpy1 + 14);
+		            var _tbcol = make_color_rgb(30, 30, 45);
+		            if (map_top_mode == _tpi) { _tbcol = make_color_rgb(40, 110, 60); }
+		            else if (_tbhov) { _tbcol = make_color_rgb(50, 50, 70); }
+		            draw_set_color(_tbcol);
+		            draw_rectangle(_tbx1, _tpy1, _tbx2, _tpy1 + 14, false);
+		            draw_set_font_l(fnt_c64_tiny);
+		            draw_set_color(c_white);
+		            draw_set_halign(fa_center);
+		            draw_text_l(_tbx1 + 50, _tpy1 + 2, _tp_lbl[_tpi]);
+		            draw_set_halign(fa_left);
+		            if (_tbhov && mouse_check_button_pressed(mb_left)) {
+		                map_top_mode = _tpi;
+		            }
+		        }
+		    }
+		    if (_tp_rooms && map_top_mode == 1) {
+		        scr_map_room_preview_panel(_asset, _cpbx2 + 10, _cpby1, _vx2 - 230, _cpby1 + 196, _mx, _my);
+		    } else {
 		    // ---- TILE STORE BANK ----
 		    var _bank_max   = 128;
 		    var _bank_sh    = 14;
@@ -1854,6 +1882,8 @@ draw_set_color(c_ltgray);
 		        if (_dn_hov && mouse_check_button_pressed(mb_left))
 		            global.map_tile_bank_scroll += 1;
 		    }
+
+		    } // STAMPS
 
 // ---- MC MODE TOGGLE (hidden when linked CHAR_SET is ECM) ----
 	    // Early ECM check — _chr_asset_ref itself isn't resolved until further
@@ -2745,45 +2775,17 @@ draw_set_color(_cell_bg_col);
 	                draw_text_l(_bx1 + 6, _by1 + 5, _tag);
 	            }
 	        }
-	        // ── GAME VIEW [G]: the room under the mouse, the way the game shows
-	        // it - its own charset and colour bands (ROOM VIEW), and every row
-	        // drawn twice as tall when the map's VIEW Y x2 is on (Bruce Lee
-	        // doubles each tile row: an 8x8 tile is an 8x16 cell on screen).
-	        // [H] toggles VIEW Y x2. Display only - nothing is edited here.
+	        // ROOM PREVIEW lives in the top panel (STAMPS / ROOM PREVIEW toggle,
+	        // scr_map_room_preview_panel); it follows the room under the mouse.
 	        if (keyboard_check_pressed(ord("G")) && !scr_ctrl_held()) {
-	            map_game_view = !map_game_view;
+	            if (map_top_mode == 1) { map_top_mode = 0; } else { map_top_mode = 1; }
 	        }
 	        if (keyboard_check_pressed(ord("H")) && !scr_ctrl_held()) {
 	            _m.view_y2 = !_m.view_y2;
 	        }
-	        if (map_game_view && _hov_room >= 0 && _hov_room < _r_used && _use_map_cache) {
-	            var _gv_sy  = 1;
-	            if (_m.view_y2) _gv_sy = 2;
-	            var _gv_w   = _rw_c * 8;
-	            var _gv_h   = _rh_c * 8;
-	            var _gv_s   = max(1, min(3, floor((_cv_x2 - _cv_x1) * 0.5 / _gv_w)));
-	            var _gv_x2  = _cv_x2 - 8;
-	            var _gv_x1  = _gv_x2 - _gv_w * _gv_s;
-	            var _gv_y1  = _cv_y1 + 22;
-	            var _gv_y2  = _gv_y1 + _gv_h * _gv_s * _gv_sy;
-	            draw_set_color(c_black);
-	            draw_rectangle(_gv_x1 - 4, _gv_y1 - 18, _gv_x2 + 4, _gv_y2 + 4, false);
-	            draw_set_color(c_yellow);
-	            draw_rectangle(_gv_x1 - 4, _gv_y1 - 18, _gv_x2 + 4, _gv_y2 + 4, true);
-	            var _gv_tf = gpu_get_tex_filter();
-	            gpu_set_tex_filter(false);
-	            draw_surface_part_ext(map_view_cache.surf,
-	                (_hov_room mod _rx_n) * _gv_w, (_hov_room div _rx_n) * _gv_h, _gv_w, _gv_h,
-	                _gv_x1, _gv_y1, _gv_s, _gv_s * _gv_sy, c_white, 1);
-	            gpu_set_tex_filter(_gv_tf);
-	            draw_set_font_l(fnt_c64_tiny);
-	            draw_set_color(c_yellow);
-	            var _gv_lbl = "GAME VIEW  ROOM " + string(_hov_room) + "   [G] CLOSE   [H] Y x2 ";
-	            if (_m.view_y2) { _gv_lbl += "ON"; } else { _gv_lbl += "OFF"; }
-	            draw_text(_gv_x1, _gv_y1 - 14 - scr_lang_lift(), _gv_lbl);
-	        }
+	        map_hover_room = _hov_room;
 	        if (_hov_room >= 0) {
-	            var _hint = "ROOM " + string(_hov_room) + "  (" + string(_rw_c) + "x" + string(_rh_c) + ")   [G] GAME VIEW  [T] TAGS";
+	            var _hint = "ROOM " + string(_hov_room) + "  (" + string(_rw_c) + "x" + string(_rh_c) + ")   [G] ROOM PREVIEW  [H] Y x2  [T] TAGS";
 	            if (_hov_room >= _r_used) { _hint += "  NOT EMITTED"; }
 	            draw_set_color(make_color_rgb(20, 20, 30));
 	            draw_rectangle(_cv_x2 - string_width(_hint) - 16, _cv_y2 - 18, _cv_x2 - 2, _cv_y2 - 2, false);

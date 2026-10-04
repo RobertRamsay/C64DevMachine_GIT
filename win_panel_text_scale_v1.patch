@@ -1,5 +1,5 @@
 diff --git a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
-index 11b0d93..3a5bd84 100644
+index 33d59f3..3a5bd84 100644
 --- a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
 +++ b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
 @@ -1591,7 +1591,8 @@ function scr_creator_panel_layout(_b) {
@@ -12,15 +12,16 @@ index 11b0d93..3a5bd84 100644
          _none.text = "No params in this panel. EDIT, then use the P tab on a node.";
          array_push(_items, _none);
          return _items;
-@@ -1825,8 +1826,21 @@ function scr_creator_draw_items(_items, _col) {
+@@ -1825,10 +1826,20 @@ function scr_creator_draw_items(_items, _col) {
                  draw_text(_it.x1, _my, _it.text);
                  break;
              case "text":
+-                // Word-wrapped to the item width (narrow panels).
 +                // Word-wrapped to the item width, and scaled down (in 10%
 +                // steps, to 40%) when the wrapped text is taller than the item.
                  draw_set_colour(make_colour_rgb(190, 190, 230));
--                draw_text_l(_it.x1, _my, _it.text);
-+                draw_set_valign(fa_top);
+                 draw_set_valign(fa_top);
+-                draw_text_ext_l(_it.x1, _it.y1 + 4, _it.text, 20, max(40, _it.x2 - _it.x1));
 +                var _tw  = max(20, _it.x2 - _it.x1);
 +                var _tah = max(10, _it.y2 - _it.y1 - 4);
 +                var _tsc = 1;
@@ -31,11 +32,10 @@ index 11b0d93..3a5bd84 100644
 +                    _tsc -= 0.1;
 +                }
 +                draw_text_ext_transformed_l(_it.x1, _it.y1 + 4, _it.text, 20, _tw / _tsc, _tsc, _tsc, 0);
-+                draw_set_valign(fa_middle);
+                 draw_set_valign(fa_middle);
                  break;
              case "bad":
-                 draw_set_colour(make_colour_rgb(255, 110, 110));
-@@ -1923,7 +1937,15 @@ function scr_creator_box_draw(_b) {
+@@ -1926,7 +1937,15 @@ function scr_creator_box_draw(_b) {
          draw_set_colour(c_white);
          draw_set_halign(fa_left);
          draw_set_valign(fa_middle);
