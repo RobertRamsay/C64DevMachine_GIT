@@ -736,11 +736,18 @@ function scr_creator_field(_fid, _x1, _y1, _x2, _y2, _value) {
     var _show = string(_value);
     if (_active) {
         _show = global.creator_field_text;
+    }
+    var _ty = (_y1 + _y2) / 2;
+    draw_text(_x1 + 6, _ty, _show);
+    // Caret: the "_" glyph drawn 2px lower, twice (1px apart) for double
+    // thickness, so it sits clear of the text instead of hugging it.
+    if (_active) {
         if ((current_time div 500) mod 2 == 0) {
-            _show += "_";
+            var _cx = _x1 + 6 + string_width(_show);
+            draw_text(_cx, _ty + 2, "_");
+            draw_text(_cx, _ty + 3, "_");
         }
     }
-    draw_text(_x1 + 6, (_y1 + _y2) / 2, _show);
     return _result;
 }
 
