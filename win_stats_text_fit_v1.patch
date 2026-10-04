@@ -1,0 +1,54 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index f181c0f..17ff531 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -2533,6 +2533,9 @@ draw_text_l(10, gui_h - 10, "FPS: " + string(fps) + " (REAL: " + string(fps_real
+ draw_set_color(c_white);
+ draw_text_l(180,gui_h-10,L("NODES: ")+string(instance_number(obj_c64_node)));
+ var _usage_y=gui_h-85;
++// Widest a stats line may be: up to the right edge of the side panel
++// (the FIND OPCODE box ends at x=213). Longer lines are scaled down.
++var _side_max_w = 221 - _stats_x;
+ if(global.workspace_disk_mode) {
+     // Used / free out of a standard 35-track disk (664 blocks). Until a D64
+     // has been built the figure is an estimate and says so - the old "~"
+@@ -2548,11 +2551,13 @@ if(global.workspace_disk_mode) {
+         draw_set_color(c_red);
+         _disk_txt += "OVER BY " + string(-_disk_free);
+     }
+-    _disk_txt += "  (OF " + string(_disk_cap) + " BLOCKS)";
++    _disk_txt += " /" + string(_disk_cap);
+     if (!global.workspace_disk_exact) {
+-        _disk_txt += "  EST";
++        _disk_txt += " EST";
+     }
+-    draw_text_l(_stats_x,_usage_y,_disk_txt);
++    // Shrink to fit the side panel (never enlarge).
++    var _disk_sc = min(1, _side_max_w / max(1, string_width(_disk_txt)));
++    draw_text_transformed_l(_stats_x, _usage_y, _disk_txt, _disk_sc, _disk_sc, 0);
+     _usage_y-=15;
+ }
+ // BUILD TARGET - click to cycle D64 -> PRG INJECT -> PRG EXO.
+@@ -2586,7 +2591,8 @@ if(global.workspace_disk_mode) {
+             _bt_txt += "  CRUNCHING...";
+         }
+     }
+-    var _bt_w = string_width(_bt_txt + _bt_warn);
++    var _bt_sc = min(1, _side_max_w / max(1, string_width(_bt_txt + _bt_warn)));
++    var _bt_w = string_width(_bt_txt + _bt_warn) * _bt_sc;
+     var _bt_hov = point_in_rectangle(gui_mouse_x, gui_mouse_y, _stats_x, _usage_y - 12, _stats_x + _bt_w, _usage_y);
+     if (_bt_hov) {
+         _bt_col = c_white;
+@@ -2596,10 +2602,10 @@ if(global.workspace_disk_mode) {
+         }
+     }
+     draw_set_color(_bt_col);
+-    draw_text_l(_stats_x, _usage_y, _bt_txt);
++    draw_text_transformed_l(_stats_x, _usage_y, _bt_txt, _bt_sc, _bt_sc, 0);
+     if (_bt_warn != "") {
+         draw_set_color(c_orange);
+-        draw_text_l(_stats_x + string_width(_bt_txt), _usage_y, _bt_warn);
++        draw_text_transformed_l(_stats_x + string_width(_bt_txt) * _bt_sc, _usage_y, _bt_warn, _bt_sc, _bt_sc, 0);
+     }
+     _usage_y -= 15;
+ }
