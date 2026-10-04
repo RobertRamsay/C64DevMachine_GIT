@@ -641,8 +641,33 @@ if (box_popup_open) {
         box_cursor_pos--;
         keyboard_string = "";
     }
-    if (keyboard_check_pressed(vk_left))  box_cursor_pos = max(0, box_cursor_pos - 1);
-    if (keyboard_check_pressed(vk_right)) box_cursor_pos = min(string_length(box_popup_name), box_cursor_pos + 1);
+    // Cursor: LEFT / RIGHT move once on press, then repeat while held
+    // (a short pause first, like a normal text field).
+    var _rep_dir = 0;
+    if (keyboard_check(vk_left))  _rep_dir = -1;
+    if (keyboard_check(vk_right)) _rep_dir = 1;
+    if (_rep_dir == 0) {
+        box_key_rep_dir   = 0;
+        box_key_rep_timer = 0;
+    } else {
+        var _rep_move = false;
+        if (_rep_dir != box_key_rep_dir) {
+            box_key_rep_dir   = _rep_dir;
+            box_key_rep_timer = 24;    // frames before repeating starts
+            _rep_move = true;
+        } else {
+            box_key_rep_timer--;
+            if (box_key_rep_timer <= 0) {
+                box_key_rep_timer = 3; // frames between repeats
+                _rep_move = true;
+            }
+        }
+        if (_rep_move) {
+            box_cursor_pos = clamp(box_cursor_pos + _rep_dir, 0, string_length(box_popup_name));
+        }
+    }
+    if (keyboard_check_pressed(vk_home)) box_cursor_pos = 0;
+    if (keyboard_check_pressed(vk_end))  box_cursor_pos = string_length(box_popup_name);
     exit; // block all other step logic while popup is open
 }
 

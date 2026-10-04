@@ -900,6 +900,8 @@ box_popup_name         = "";
 box_popup_name_dupe    = false;
 box_popup_col_idx      = 0;
 box_cursor_pos         = 0;
+box_key_rep_dir        = 0;    // mapping box name: held arrow direction (-1 / 0 / 1)
+box_key_rep_timer      = 0;    // frames until the held arrow moves the cursor again
 box_dropdown_open      = false;
 
 // ---- LABEL SEARCH MODAL (CTRL/CMD+SHIFT+F) ----
