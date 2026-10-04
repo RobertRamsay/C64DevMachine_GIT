@@ -4420,3 +4420,29 @@ if (template_load_index >= 0) {
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
 }
+
+
+// ── CALCULATING FLOW LINES banner (F key) ──
+// The flow graph is built at the start of the next Step and blocks while it
+// runs, so this frame is what stays on screen during the build.
+if (flow_overlay_banner && flow_overlay_build_pending) {
+    var _fl_t = "CALCULATING FLOW LINES...";
+    draw_set_alpha(0.6);
+    draw_set_color(c_black);
+    draw_rectangle(0, 0, display_get_gui_width(), display_get_gui_height(), false);
+    draw_set_alpha(1.0);
+    draw_set_font_l(fnt_C64_Angled);
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_middle);
+    var _fl_cx = display_get_gui_width() * 0.5;
+    var _fl_cy = display_get_gui_height() * 0.5;
+    var _fl_w  = string_width_l(_fl_t) + 60;
+    draw_set_color(make_color_rgb(18, 22, 36));
+    draw_rectangle(_fl_cx - _fl_w * 0.5, _fl_cy - 26, _fl_cx + _fl_w * 0.5, _fl_cy + 26, false);
+    draw_set_color(c_yellow);
+    draw_rectangle(_fl_cx - _fl_w * 0.5, _fl_cy - 26, _fl_cx + _fl_w * 0.5, _fl_cy + 26, true);
+    draw_set_color(c_white);
+    draw_text_l(_fl_cx, _fl_cy, _fl_t);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
+}

@@ -1333,6 +1333,8 @@ flow_overlay_dirty  = true;
 // show "CONSTRUCTING FLOW DATA" immediately; the actual build runs first
 // thing next Step, once that frame has had a chance to render.
 flow_overlay_build_pending      = false;
+// F-key builds show a CALCULATING FLOW LINES banner (Draw GUI) until done
+flow_overlay_banner             = false;
 flow_overlay_pending_toast_text = "";
 flow_overlay_pending_toast_col  = c_yellow;
 

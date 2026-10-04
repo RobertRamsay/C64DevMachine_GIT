@@ -59,6 +59,7 @@ if (flow_overlay_build_pending) {
     flow_overlay_edges = scr_build_flow_graph();
     flow_overlay_dirty = false;
     flow_overlay_build_pending = false;
+    flow_overlay_banner        = false;
     global.qmenu_toast_text = flow_overlay_pending_toast_text;
     global.qmenu_toast_col  = flow_overlay_pending_toast_col;
     global.qmenu_toast_t    = global.qmenu_toast_dur;
@@ -232,6 +233,7 @@ if (!is_entering_text && !global.is_any_text_active && scr_workspace_keyboard_ch
         global.qmenu_toast_col  = c_yellow;
         global.qmenu_toast_t    = global.qmenu_toast_dur;
         flow_overlay_build_pending = true;
+        flow_overlay_banner        = true;   // drawn this frame, build runs next Step
     }
 }
 
