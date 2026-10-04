@@ -738,6 +738,9 @@ var _addr_total = 65536;
                     break;
                 case "BMP_OBJECTS":
                     if (buffer_exists(_a.buffer)) { _seg_size = buffer_get_size(_a.buffer); _seg_col = make_color_rgb(255, 140, 60); }
+                    if (real(_a.meta.colour_addr) > 0 && array_length(_a.meta.objects) > 0) {
+                        array_push(_segments, { addr: real(_a.meta.colour_addr), size: array_length(_a.meta.objects), col: make_color_rgb(255, 140, 60), type: "ASSET", name: _a.name + " COL", lines: [], node_id: noone, no_conflict: false, conflict: false, load_later: false });
+                    }
                     break;
                 case "SFX_DATA":
                     if (_a.file != "" && array_length(_a.meta.instruments) > 0) {

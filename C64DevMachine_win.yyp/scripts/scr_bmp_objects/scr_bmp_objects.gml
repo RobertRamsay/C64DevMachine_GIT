@@ -39,6 +39,14 @@ function scr_bmpobj_create(_asset) {
         poses     : [],
         sheet_mode : 1,     // 0 = PARTS sheet, 1 = POSES sheet
         sheet_scroll : 0,   // editor only: sheet scroll in pixels
+        // OBJECT COLOURS: each object may carry .colour = screen colour
+        // byte (ink << 4 | paper) or -1 for AUTO (it takes the colour of
+        // the cells it is drawn over, as Saboteur's props do). When
+        // colour_addr > 0 a table of one byte per object is emitted there
+        // for game code to apply; AUTO objects get colour_auto (the value
+        // the game treats as "leave the cells alone" - Saboteur uses $00).
+        colour_addr  : 0,
+        colour_auto  : 255,
         layer     : 2,      // 0 = GFX, 1 = MASK, 2 = COMPOSITE
         zoom      : 12,
         list_scroll : 0,
@@ -48,7 +56,7 @@ function scr_bmpobj_create(_asset) {
         // One 1:1 surface per object per layer, built from the buffer with a
         // single buffer_set_surface and drawn scaled. Rebuilt only when an
         // object is edited (cache_dirty[i]) or ink/paper change (cache_key).
-        cache_surf  : [[], [], [], []],   // [layer][object] surface id, -1 = none
+        cache_surf  : [[], [], [], [], [], []],   // [layer][object] surface id, -1 = none
         cache_dirty : [],             // per object: true = rebuild all layers
         cache_key   : ""              // ink/paper/flags the cache was built with
     };
@@ -65,6 +73,8 @@ function scr_bmpobj_save_meta(_asset) {
         ink       : _m.ink,
         paper     : _m.paper,
         sel       : _m.sel,
+        colour_addr : _m.colour_addr,
+        colour_auto : _m.colour_auto,
         poses     : _m.poses,
         sheet_mode : _m.sheet_mode,
         layer     : _m.layer,
@@ -76,7 +86,7 @@ function scr_bmpobj_restore(_asset, _saved) {
     scr_bmpobj_create(_asset);
     if (!is_struct(_saved)) return;
     var _m = _asset.meta;
-    var _keys = ["objects", "col_major", "bottom_up", "mask_and", "ink", "paper", "sel", "poses", "sheet_mode", "layer", "zoom"];
+    var _keys = ["objects", "col_major", "bottom_up", "mask_and", "ink", "paper", "sel", "colour_addr", "colour_auto", "poses", "sheet_mode", "layer", "zoom"];
     for (var _k = 0; _k < array_length(_keys); _k++) {
         if (variable_struct_exists(_saved, _keys[_k])) {
             variable_struct_set(_m, _keys[_k], variable_struct_get(_saved, _keys[_k]));
@@ -180,6 +190,19 @@ function scr_bmpobj_pixel_colour(_asset, _o, _layer, _px, _py, _ink, _paper) {
     return _paper;
 }
 
+/// Tint layers for the map overlay (drawn white, coloured by blending):
+///   4 = ink pixels only, 5 = solid non-ink pixels only (they show the
+///   cell's paper colour on the C64). Everything else is see-through.
+function scr_bmpobj_tint_colour(_asset, _o, _layer, _px, _py) {
+    var _g = scr_bmpobj_get(_asset, _o, 0, _px, _py);
+    if (_layer == 4) {
+        if (_g == 1) return c_white;
+        return -1;
+    }
+    if (_g == 0 && scr_bmpobj_solid(_asset, _o, _px, _py)) return c_white;
+    return -1;
+}
+
 /// Mark one object (or all, _i = -1) for a cache rebuild.
 function scr_bmpobj_cache_dirty(_asset, _i) {
     var _m = _asset.meta;
@@ -198,7 +221,7 @@ function scr_bmpobj_cache_dirty(_asset, _i) {
 /// Free every cached surface (asset closed / deleted).
 function scr_bmpobj_cache_free(_asset) {
     var _m = _asset.meta;
-    for (var _l = 0; _l < 4; _l++) {
+    for (var _l = 0; _l < 6; _l++) {
         var _row = _m.cache_surf[_l];
         for (var _k = 0; _k < array_length(_row); _k++) {
             if (_row[_k] != -1 && surface_exists(_row[_k])) { surface_free(_row[_k]); }
@@ -216,12 +239,12 @@ function scr_bmpobj_surface(_asset, _i, _layer) {
         _m.cache_key = _key;
         _m.cache_dirty = array_create(_n, true);
     }
-    for (var _l = 0; _l < 4; _l++) {
+    for (var _l = 0; _l < 6; _l++) {
         while (array_length(_m.cache_surf[_l]) < _n) { array_push(_m.cache_surf[_l], -1); }
     }
     if (_m.cache_dirty[_i]) {
         // edited: drop all three layers of this object
-        for (var _l = 0; _l < 4; _l++) {
+        for (var _l = 0; _l < 6; _l++) {
             var _old = _m.cache_surf[_l][_i];
             if (_old != -1 && surface_exists(_old)) { surface_free(_old); }
             _m.cache_surf[_l][_i] = -1;
@@ -239,7 +262,12 @@ function scr_bmpobj_surface(_asset, _i, _layer) {
     var _buf = buffer_create(_pw * _ph * 4, buffer_fixed, 1);
     for (var _py = 0; _py < _ph; _py++) {
         for (var _px = 0; _px < _pw; _px++) {
-            var _c = scr_bmpobj_pixel_colour(_asset, _o, _layer, _px, _py, _ink, _paper);
+            var _c = -1;
+            if (_layer >= 4) {
+                _c = scr_bmpobj_tint_colour(_asset, _o, _layer, _px, _py);
+            } else {
+                _c = scr_bmpobj_pixel_colour(_asset, _o, _layer, _px, _py, _ink, _paper);
+            }
             var _off = (_py * _pw + _px) * 4;
             if (_c == -1) {
                 buffer_poke(_buf, _off,     buffer_u8, 0);
@@ -383,7 +411,7 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _x += 52;
     var _lnames = ["GFX", "MASK", "COMPOSITE"];
     var _lw = [56, 62, 100];
-    for (var _l = 0; _l < 4; _l++) {
+    for (var _l = 0; _l < 6; _l++) {
         if (scr_bmpobj_ui_button(_x, _top, _lw[_l], _tb_h, _lnames[_l], _m.layer == _l, _mx, _my)) { _m.layer = _l; }
         _x += _lw[_l] + 4;
     }
@@ -548,6 +576,26 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             if (_pp[_pk] == _m.sel) { _used_in += " " + string(_pi); break; }
         }
     }
+    // OBJECT COLOUR: AUTO (takes the cells' colours) or a fixed ink/paper.
+    // Emitted as one byte per object at colour_addr when that is set.
+    var _ccol = scr_bmpobj_get_colour(_asset, _m.sel);
+    var _ccx = _ex2 - 190;
+    if (scr_bmpobj_ui_button(_ccx, _iy + 6, 80, 20, "AUTO COL", _ccol < 0, _mx, _my)) {
+        if (_ccol < 0) {
+            scr_bmpobj_set_colour(_asset, _m.sel, (1 << 4) | 0);
+        } else {
+            scr_bmpobj_set_colour(_asset, _m.sel, -1);
+        }
+        scr_bmpobj_cache_dirty(_asset, _m.sel);
+    }
+    if (_ccol >= 0) {
+        var _cink = scr_bmpobj_ui_colour(_ccx, _iy + 32, "INK", (_ccol >> 4) & 0x0F, _mx, _my);
+        var _cpap = scr_bmpobj_ui_colour(_ccx, _iy + 60, "PAPER", _ccol & 0x0F, _mx, _my);
+        var _cnew = (_cink << 4) | _cpap;
+        if (_cnew != _ccol) {
+            scr_bmpobj_set_colour(_asset, _m.sel, _cnew);
+        }
+    }
     if (_used_in != "") {
         draw_set_color(c_orange);
         draw_text_l(_ex1 + 16, _iy + 44, "USED IN POSES:" + _used_in);
@@ -627,4 +675,67 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // clamp scroll to the content
     var _overflow = (_content_bottom + _m.sheet_scroll) - _sb;
     _m.sheet_scroll = clamp(_m.sheet_scroll, 0, max(0, _overflow));
+}
+
+
+/// One byte per object for the game: the object's colour, or colour_auto
+/// for AUTO objects.
+function scr_bmpobj_colour_table(_asset) {
+    var _out = [];
+    var _auto = real(_asset.meta.colour_auto) & 0xFF;
+    var _objs = _asset.meta.objects;
+    for (var _i = 0; _i < array_length(_objs); _i++) {
+        var _c = -1;
+        if (variable_struct_exists(_objs[_i], "colour")) {
+            _c = real(_objs[_i].colour);
+        }
+        if (_c < 0) {
+            array_push(_out, _auto);
+        } else {
+            array_push(_out, _c & 0xFF);
+        }
+    }
+    return _out;
+}
+
+/// Colour byte of object _i (-1 = AUTO). Objects from older files have
+/// no .colour yet; they are given one here (AUTO).
+function scr_bmpobj_get_colour(_asset, _i) {
+    var _o = _asset.meta.objects[_i];
+    if (!variable_struct_exists(_o, "colour")) {
+        _o.colour = -1;
+    }
+    return real(_o.colour);
+}
+
+function scr_bmpobj_set_colour(_asset, _i, _c) {
+    // a colour equal to the game's AUTO value would read back as AUTO
+    if (_c >= 0 && _c == (real(_asset.meta.colour_auto) & 0xFF)) {
+        _c = -1;
+    }
+    _asset.meta.objects[_i].colour = _c;
+    global.addresses_dirty = true;
+}
+
+/// Draw object _i like the C64 would over a coloured map: each 8x8 cell
+/// gets ink and paper from _colour_fn(cell_x, cell_y) -> colour byte, or
+/// from the object's own colour when it has one.
+/// _x/_y = top-left on screen, _s = screen pixels per C64 pixel.
+function scr_bmpobj_draw_tinted(_asset, _i, _x, _y, _s, _cell_colour_fn) {
+    var _o = _asset.meta.objects[_i];
+    var _own = scr_bmpobj_get_colour(_asset, _i);
+    var _sink = scr_bmpobj_surface(_asset, _i, 4);
+    var _spap = scr_bmpobj_surface(_asset, _i, 5);
+    for (var _cy = 0; _cy < _o.h; _cy++) {
+        for (var _cx = 0; _cx < _o.w; _cx++) {
+            var _cb = _own;
+            if (_cb < 0) {
+                _cb = _cell_colour_fn(_cx, _cy);
+            }
+            var _dx = _x + _cx * 8 * _s;
+            var _dy = _y + _cy * 8 * _s;
+            draw_surface_part_ext(_spap, _cx * 8, _cy * 8, 8, 8, _dx, _dy, _s, _s, scr_c64_pepto_colour(_cb & 0x0F), draw_get_alpha());
+            draw_surface_part_ext(_sink, _cx * 8, _cy * 8, 8, 8, _dx, _dy, _s, _s, scr_c64_pepto_colour((_cb >> 4) & 0x0F), draw_get_alpha());
+        }
+    }
 }

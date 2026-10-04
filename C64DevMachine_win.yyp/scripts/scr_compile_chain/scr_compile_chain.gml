@@ -19750,6 +19750,14 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
 			    for (var _bb = 0; _bb < _sz; _bb++) {
 			        array_push(instruction_list, ["byte", buffer_peek(_buf, _bb, buffer_u8)]);
 			    }
+			    // BMP_OBJECTS colour table (one byte per object, colour_auto = AUTO)
+			    if (_a.type == "BMP_OBJECTS" && real(_a.meta.colour_addr) > 0) {
+			        array_push(instruction_list, ["org", real(_a.meta.colour_addr)]);
+			        var _ctab = scr_bmpobj_colour_table(_a);
+			        for (var _bb = 0; _bb < array_length(_ctab); _bb++) {
+			            array_push(instruction_list, ["byte", _ctab[_bb]]);
+			        }
+			    }
 				
 			} else if (_a.type == "TEXT_DATA") {
 			    // Re-flush to guarantee screencode-converted bytes. The buffer

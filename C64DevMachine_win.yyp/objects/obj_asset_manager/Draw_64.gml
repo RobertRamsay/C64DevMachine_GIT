@@ -2295,6 +2295,7 @@ var _zmx1  = _vx2 - _btn_bw * 2 - 6;
 	    if (!variable_struct_exists(_m, "obj_mode"))     _m.obj_mode     = false;
 	    if (!variable_struct_exists(_m, "obj_sel"))      _m.obj_sel      = 0;
 	    if (!variable_struct_exists(_m, "show_objects")) _m.show_objects = true;
+	    var _obj_bar_hover = false;   // set by the object layer bar; blocks tile painting
 
 	    // GRID toggle button
 	    if (!variable_struct_exists(_m, "show_grid")) _m.show_grid = true;
@@ -2616,7 +2617,21 @@ draw_set_color(_cell_bg_col);
 	                        if (_oid < 0 || _oid >= _ocount) continue;
 	                        var _opx = _cv_x1 + (_orx * _rw_c + real(_olist[_ok][2]) - _start_col) * _cs;
 	                        var _opy = _cv_y1 + (_ory * _rh_c + real(_olist[_ok][1]) - _start_row) * _cs;
-	                        scr_bmpobj_draw_object(_oasset, _oid, _opx, _opy, _ops, 3);
+	                        // C64 colours: ink + paper of the cells underneath
+	                        // (AUTO) or the object's own colour byte
+	                        var _ocell = method({ m: _m, gw: _gw, gh: _gh, bg: _global_bg,
+	                                              c0: _orx * _rw_c + real(_olist[_ok][2]),
+	                                              r0: _ory * _rh_c + real(_olist[_ok][1]) },
+	                                            function(_ccx, _ccy) {
+	                            var _mc = c0 + _ccx;
+	                            var _mr = r0 + _ccy;
+	                            if (_mc < 0 || _mr < 0 || _mc >= gw || _mr >= gh) return (1 << 4) | bg;
+	                            var _mi = _mr * gw + _mc;
+	                            var _ch = m.char_grid[_mi];
+	                            if (_ch < array_length(m.tile_colours) && m.tile_colours[_ch] >= 0) return m.tile_colours[_ch];
+	                            return ((m.colour_grid[_mi] & 0x0F) << 4) | bg;
+	                        });
+	                        scr_bmpobj_draw_tinted(_oasset, _oid, _opx, _opy, _ops, _ocell);
 	                        if (_m.obj_mode) {
 	                            var _oo = _oasset.meta.objects[_oid];
 	                            draw_set_color(c_aqua);
@@ -2672,63 +2687,118 @@ draw_set_color(_cell_bg_col);
 	            draw_text_l(_cv_x2 - string_width(_hint) - 9, _cv_y2 - 13, _hint);
 	        }
 
-	        // ── OBJECT MODE (O toggles, V shows/hides the layer) ──
-	        //   [ / ]   choose the object      L-click  place it at the cell
-	        //   R-click delete the object under the pointer (topmost)
+	        // ── OBJECT LAYER BAR (bottom-left of the canvas) ──
+	        //   OBJECTS  show / hide the layer (V)      EDIT  object mode (O)
+	        //   < name > choose the object ([ / ])     COL   AUTO or ink/paper
+	        //   In EDIT: L-click place, R-click delete the object under the pointer.
 	        if (_oasset != noone && _ocount > 0) {
 	            if (keyboard_check_pressed(ord("O"))) { _m.obj_mode = !_m.obj_mode; }
 	            if (keyboard_check_pressed(ord("V"))) { _m.show_objects = !_m.show_objects; }
-	            if (_m.obj_mode) {
-	                _m.show_objects = true;
-	                if (keyboard_check_pressed(221)) { _m.obj_sel = (_m.obj_sel + 1) mod _ocount; }
-	                if (keyboard_check_pressed(219)) { _m.obj_sel = (_m.obj_sel + _ocount - 1) mod _ocount; }
-	                _m.obj_sel = clamp(_m.obj_sel, 0, _ocount - 1);
-	                if (_hov_room >= 0 && _hov_room < _r_used) {
-	                    var _ohc = _start_col + floor((_mx - _cv_x1) / _cs);
-	                    var _ohr = _start_row + floor((_my - _cv_y1) / _cs);
-	                    var _orow = _ohr - (_hov_room div _rx_n) * _rh_c;
-	                    var _ocol = _ohc - (_hov_room mod _rx_n) * _rw_c;
-	                    // ghost of the object about to be placed
-	                    var _gx = _cv_x1 + (_ohc - _start_col) * _cs;
-	                    var _gy = _cv_y1 + (_ohr - _start_row) * _cs;
-	                    var _old_tf2 = gpu_get_texfilter();
-	                    gpu_set_texfilter(false);
-	                    draw_set_alpha(0.6);
-	                    scr_bmpobj_draw_object(_oasset, _m.obj_sel, _gx, _gy, _ops, 3);
-	                    draw_set_alpha(1.0);
-	                    gpu_set_texfilter(_old_tf2);
-	                    while (array_length(_m.room_objects) <= _hov_room) { array_push(_m.room_objects, []); }
-	                    var _olst = _m.room_objects[_hov_room];
-	                    if (mouse_check_button_pressed(mb_left)) {
-	                        array_push(_olst, [_m.obj_sel, _orow, _ocol]);
-	                        global.addresses_dirty = true;
-	                    }
-	                    if (mouse_check_button_pressed(mb_right)) {
-	                        for (var _ok = array_length(_olst) - 1; _ok >= 0; _ok--) {
-	                            var _oid2 = real(_olst[_ok][0]);
-	                            if (_oid2 < 0 || _oid2 >= _ocount) continue;
-	                            var _oo2 = _oasset.meta.objects[_oid2];
-	                            var _orr = real(_olst[_ok][1]);
-	                            var _occ = real(_olst[_ok][2]);
-	                            if (_orow >= _orr && _orow < _orr + _oo2.h && _ocol >= _occ && _ocol < _occ + _oo2.w) {
-	                                array_delete(_olst, _ok, 1);
-	                                global.addresses_dirty = true;
-	                                break;
-	                            }
+	            if (keyboard_check_pressed(221)) { _m.obj_sel = (_m.obj_sel + 1) mod _ocount; }
+	            if (keyboard_check_pressed(219)) { _m.obj_sel = (_m.obj_sel + _ocount - 1) mod _ocount; }
+	            _m.obj_sel = clamp(_m.obj_sel, 0, _ocount - 1);
+	            if (_m.obj_mode) { _m.show_objects = true; }
+
+	            var _obh  = 18;
+	            var _oby  = _cv_y2 - _obh - 4;
+	            var _obx0  = _cv_x1 + 4;
+	            var _obar_x2 = _obx0 + 560;
+	            draw_set_color(make_color_rgb(16, 18, 28));
+	            draw_set_alpha(0.9);
+	            draw_rectangle(_obx0 - 2, _oby - 2, _obar_x2, _oby + _obh + 2, false);
+	            draw_set_alpha(1.0);
+	            _obj_bar_hover = point_in_rectangle(_mx, _my, _obx0 - 2, _oby - 2, _obar_x2, _oby + _obh + 2);
+
+	            var _obx = _obx0;
+	            if (scr_bmpobj_ui_button(_obx, _oby, 78, _obh, "OBJECTS", _m.show_objects, _mx, _my)) { _m.show_objects = !_m.show_objects; }
+	            _obx += 84;
+	            if (scr_bmpobj_ui_button(_obx, _oby, 50, _obh, "EDIT", _m.obj_mode, _mx, _my)) { _m.obj_mode = !_m.obj_mode; }
+	            _obx += 58;
+	            if (scr_bmpobj_ui_button(_obx, _oby, 20, _obh, "<", false, _mx, _my)) { _m.obj_sel = (_m.obj_sel + _ocount - 1) mod _ocount; }
+	            _obx += 24;
+	            var _oname = string(_m.obj_sel) + " " + string(_oasset.meta.objects[_m.obj_sel].name);
+	            draw_set_color(c_white);
+	            draw_set_halign(fa_center);
+	            draw_text_l(_obx + 60, _oby + 5, _oname);
+	            draw_set_halign(fa_left);
+	            _obx += 124;
+	            if (scr_bmpobj_ui_button(_obx, _oby, 20, _obh, ">", false, _mx, _my)) { _m.obj_sel = (_m.obj_sel + 1) mod _ocount; }
+	            _obx += 30;
+	            // colour of the selected object: AUTO, or ink / paper pickers
+	            var _occ = scr_bmpobj_get_colour(_oasset, _m.obj_sel);
+	            if (scr_bmpobj_ui_button(_obx, _oby, 44, _obh, "AUTO", _occ < 0, _mx, _my)) {
+	                if (_occ < 0) {
+	                    scr_bmpobj_set_colour(_oasset, _m.obj_sel, (1 << 4) | 0);
+	                } else {
+	                    scr_bmpobj_set_colour(_oasset, _m.obj_sel, -1);
+	                }
+	            }
+	            _obx += 50;
+	            if (_occ >= 0) {
+	                var _oink = (_occ >> 4) & 0x0F;
+	                var _opap = _occ & 0x0F;
+	                draw_set_color(make_color_rgb(154, 175, 198));
+	                draw_text_l(_obx, _oby + 5, "INK");
+	                draw_set_color(scr_c64_pepto_colour(_oink));
+	                draw_rectangle(_obx + 30, _oby + 2, _obx + 52, _oby + _obh - 2, false);
+	                draw_set_color(c_white);
+	                draw_rectangle(_obx + 30, _oby + 2, _obx + 52, _oby + _obh - 2, true);
+	                if (point_in_rectangle(_mx, _my, _obx + 30, _oby, _obx + 52, _oby + _obh)) {
+	                    if (mouse_check_button_pressed(mb_left))  { _oink = (_oink + 1) mod 16; }
+	                    if (mouse_check_button_pressed(mb_right)) { _oink = (_oink + 15) mod 16; }
+	                }
+	                _obx += 60;
+	                draw_set_color(make_color_rgb(154, 175, 198));
+	                draw_text_l(_obx, _oby + 5, "PAPER");
+	                draw_set_color(scr_c64_pepto_colour(_opap));
+	                draw_rectangle(_obx + 48, _oby + 2, _obx + 70, _oby + _obh - 2, false);
+	                draw_set_color(c_white);
+	                draw_rectangle(_obx + 48, _oby + 2, _obx + 70, _oby + _obh - 2, true);
+	                if (point_in_rectangle(_mx, _my, _obx + 48, _oby, _obx + 70, _oby + _obh)) {
+	                    if (mouse_check_button_pressed(mb_left))  { _opap = (_opap + 1) mod 16; }
+	                    if (mouse_check_button_pressed(mb_right)) { _opap = (_opap + 15) mod 16; }
+	                }
+	                var _onew = (_oink << 4) | _opap;
+	                if (_onew != _occ) { scr_bmpobj_set_colour(_oasset, _m.obj_sel, _onew); }
+	            } else {
+	                draw_set_color(make_color_rgb(120, 130, 150));
+	                draw_text_l(_obx, _oby + 5, "takes the cells' colours");
+	            }
+
+	            // placing / deleting (EDIT on, pointer in a room, not on the bar)
+	            if (_m.obj_mode && !_obj_bar_hover && _hov_room >= 0 && _hov_room < _r_used) {
+	                var _ohc = _start_col + floor((_mx - _cv_x1) / _cs);
+	                var _ohr = _start_row + floor((_my - _cv_y1) / _cs);
+	                var _orow = _ohr - (_hov_room div _rx_n) * _rh_c;
+	                var _ocol = _ohc - (_hov_room mod _rx_n) * _rw_c;
+	                var _ogx = _cv_x1 + (_ohc - _start_col) * _cs;
+	                var _ogy = _cv_y1 + (_ohr - _start_row) * _cs;
+	                var _old_tf2 = gpu_get_texfilter();
+	                gpu_set_texfilter(false);
+	                draw_set_alpha(0.6);
+	                scr_bmpobj_draw_object(_oasset, _m.obj_sel, _ogx, _ogy, _ops, 3);
+	                draw_set_alpha(1.0);
+	                gpu_set_texfilter(_old_tf2);
+	                while (array_length(_m.room_objects) <= _hov_room) { array_push(_m.room_objects, []); }
+	                var _olst = _m.room_objects[_hov_room];
+	                if (mouse_check_button_pressed(mb_left)) {
+	                    array_push(_olst, [_m.obj_sel, _orow, _ocol]);
+	                    global.addresses_dirty = true;
+	                }
+	                if (mouse_check_button_pressed(mb_right)) {
+	                    for (var _ok = array_length(_olst) - 1; _ok >= 0; _ok--) {
+	                        var _oid2 = real(_olst[_ok][0]);
+	                        if (_oid2 < 0 || _oid2 >= _ocount) continue;
+	                        var _oo2 = _oasset.meta.objects[_oid2];
+	                        var _orr = real(_olst[_ok][1]);
+	                        var _occ2 = real(_olst[_ok][2]);
+	                        if (_orow >= _orr && _orow < _orr + _oo2.h && _ocol >= _occ2 && _ocol < _occ2 + _oo2.w) {
+	                            array_delete(_olst, _ok, 1);
+	                            global.addresses_dirty = true;
+	                            break;
 	                        }
 	                    }
 	                }
-	                var _otag = "OBJECT MODE  [ ] OBJ " + string(_m.obj_sel) + " (" + string(_oasset.meta.objects[_m.obj_sel].name) + ")  L PLACE  R DELETE  O EXIT";
-	                draw_set_color(make_color_rgb(20, 20, 30));
-	                draw_rectangle(_cv_x1 + 2, _cv_y2 - 18, _cv_x1 + 10 + string_width(_otag), _cv_y2 - 2, false);
-	                draw_set_color(c_aqua);
-	                draw_text_l(_cv_x1 + 6, _cv_y2 - 13, _otag);
-	            } else {
-	                var _otag2 = "O: OBJECT MODE   V: SHOW/HIDE OBJECTS";
-	                draw_set_color(make_color_rgb(20, 20, 30));
-	                draw_rectangle(_cv_x1 + 2, _cv_y2 - 18, _cv_x1 + 10 + string_width(_otag2), _cv_y2 - 2, false);
-	                draw_set_color(make_color_rgb(150, 180, 200));
-	                draw_text_l(_cv_x1 + 6, _cv_y2 - 13, _otag2);
 	            }
 	        }
 	    }
@@ -2744,7 +2814,7 @@ draw_set_color(_cell_bg_col);
     if (!variable_struct_exists(_m, "map_undo_stack")) _m.map_undo_stack = [];
     if (!variable_struct_exists(_m, "map_redo_stack")) _m.map_redo_stack = [];
 
-    var _mouse_in_canvas = point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && !_m.obj_mode;
+    var _mouse_in_canvas = point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && !_m.obj_mode && !_obj_bar_hover;
 
     if (_mouse_in_canvas) {
         var _mcol = _m.scroll_x + floor((_mx - _cv_x1) / _cs);
@@ -3012,7 +3082,7 @@ draw_set_color(_cell_bg_col);
         map_paint_last_col = -999999;
         map_paint_last_row = -999999;
     }
-    if (point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && !_m.obj_mode) {
+    if (point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && !_m.obj_mode && !_obj_bar_hover) {
         var _hcol = _start_col + (_mx - _cv_x1) div _cs;
         var _hrow = _start_row + (_my - _cv_y1) div _cs;
         
