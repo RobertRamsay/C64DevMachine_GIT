@@ -1,0 +1,139 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+index be91d45..4d27825 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+@@ -7,10 +7,10 @@
+ /// ranges and named modes — plus build / run / save / load. Everything else
+ /// is locked: the panel owns input through scr_workspace_input_blocked().
+ ///
+-/// LIGHT: a workspace saved with creator_locked opens in the Creator view
+-///        and cannot leave it. No PARAMS tabs are shown.
+-/// PRO:   F9 toggles the Creator view, EDIT GRAPH leaves it, and the
+-///        OPENS LOCKED switch decides how the workspace opens next time.
++/// F9 toggles the Creator view, EDIT GRAPH leaves it, and the OPENS LOCKED
++/// switch decides how the workspace opens next time. Light and Pro behave
++/// the same here: Light's only restriction is editing code inside code
++/// blocks, which the code editor enforces on its own.
+ ///
+ /// TARGETS
+ ///   MACRO_CODE: a `NAME = value` line inside the code block (sym).
+@@ -384,9 +384,6 @@ function scr_creator_close_view() {
+ // --------------------------------------------------------------------
+ 
+ function scr_creator_node_tabbable(_n) {
+-    if (global.lite) {
+-        return false;
+-    }
+     if (_n.macro_owner != noone) {
+         return false;
+     }
+@@ -467,13 +464,6 @@ function scr_creator_begin_step() {
+         }
+     }
+ 
+-    // Light: a locked workspace stays locked.
+-    if (global.lite && global.creator_locked && !global.creator_view_open) {
+-        if (scr_creator_param_count() > 0) {
+-            scr_creator_open_view();
+-        }
+-    }
+-
+     if (!instance_exists(global.creator_edit_node)) {
+         global.creator_edit_node = noone;
+     }
+@@ -493,9 +483,7 @@ function scr_creator_begin_step() {
+     if (instance_exists(obj_asset_manager)) {
+         if (obj_asset_manager.viewer_open) { exit; }
+     }
+-    if (global.lite) { exit; }
+-
+-    // F9: Creator view (Pro).
++    // F9: Creator view.
+     if (scr_workspace_keyboard_check_pressed(vk_f9)) {
+         if (scr_creator_param_count() > 0) {
+             scr_creator_open_view();
+@@ -933,9 +921,7 @@ function scr_creator_draw_view() {
+     draw_set_font_l(fnt_C64_Angled);
+     var _foot_w = 16 + scr_creator_btn_w("BUILD & RUN") + 10 + scr_creator_btn_w("RUN ON ULTIMATE") + 10
+                 + scr_creator_btn_w("SAVE") + 10 + scr_creator_btn_w("LOAD") + 16;
+-    if (!global.lite) {
+-        _foot_w += 30 + scr_creator_btn_w("OPENS LOCKED: OFF") + 10 + scr_creator_btn_w("EDIT GRAPH");
+-    }
++    _foot_w += 30 + scr_creator_btn_w("OPENS LOCKED: OFF") + 10 + scr_creator_btn_w("EDIT GRAPH");
+     var _pw     = max(820, _foot_w);
+     var _top_h  = 90;
+     var _foot_h = 70;
+@@ -975,11 +961,9 @@ function scr_creator_draw_view() {
+         _wsname = filename_name(global.workspace_path);
+     }
+     draw_text(_px + 16, _py + 56, string_upper(_wsname));
+-    if (!global.lite) {
+-        draw_set_halign(fa_right);
+-        draw_text_l(_px + _pw - 16, _py + 56, "F9 / EDIT GRAPH returns to the node graph");
+-        draw_set_halign(fa_left);
+-    }
++    draw_set_halign(fa_right);
++    draw_text_l(_px + _pw - 16, _py + 56, "F9 / EDIT GRAPH returns to the node graph");
++    draw_set_halign(fa_left);
+ 
+     // --- rows (clipped to the view) ---
+     var _scale_x = window_get_width() / max(1, _gw);
+@@ -1111,28 +1095,26 @@ function scr_creator_draw_view() {
+         global.creator_action = "load";
+     }
+ 
+-    if (!global.lite) {
+-        // Right-aligned group. The lock button is sized for its longer
+-        // label so it does not jump when toggled.
+-        var _ew = scr_creator_btn_w("EDIT GRAPH");
+-        var _lw = scr_creator_btn_w("OPENS LOCKED: OFF");
+-        var _ex = _px + _pw - 16 - _ew;
+-        var _lx = _ex - 10 - _lw;
+-        var _lk = "OPENS LOCKED: OFF";
+-        if (global.creator_locked) {
+-            _lk = "OPENS LOCKED: ON";
+-        }
+-        if (scr_creator_btn(_lx, _by, _lx + _lw, _by + 34, _lk, global.creator_locked)) {
+-            global.creator_locked = !global.creator_locked;
+-            global.autosave_dirty = true;
+-            global.undo_dirty     = true;
+-        }
+-        if (scr_creator_btn(_ex, _by, _ex + _ew, _by + 34, "EDIT GRAPH", false)) {
+-            scr_creator_close_view();
+-        }
+-        if (keyboard_check_pressed(vk_f9) && global.frame_tick != global.creator_open_frame) {
+-            scr_creator_close_view();
+-        }
++    // Right-aligned group. The lock button is sized for its longer
++    // label so it does not jump when toggled.
++    var _ew = scr_creator_btn_w("EDIT GRAPH");
++    var _lw = scr_creator_btn_w("OPENS LOCKED: OFF");
++    var _ex = _px + _pw - 16 - _ew;
++    var _lx = _ex - 10 - _lw;
++    var _lk = "OPENS LOCKED: OFF";
++    if (global.creator_locked) {
++        _lk = "OPENS LOCKED: ON";
++    }
++    if (scr_creator_btn(_lx, _by, _lx + _lw, _by + 34, _lk, global.creator_locked)) {
++        global.creator_locked = !global.creator_locked;
++        global.autosave_dirty = true;
++        global.undo_dirty     = true;
++    }
++    if (scr_creator_btn(_ex, _by, _ex + _ew, _by + 34, "EDIT GRAPH", false)) {
++        scr_creator_close_view();
++    }
++    if (keyboard_check_pressed(vk_f9) && global.frame_tick != global.creator_open_frame) {
++        scr_creator_close_view();
+     }
+ }
+ 
+@@ -1318,9 +1300,6 @@ function scr_creator_panel_layout(_b) {
+ ///   EDIT - panel: turn panel mode off (back to the normal node view)
+ function scr_creator_box_buttons(_b) {
+     var _out = [];
+-    if (global.lite) {
+-        return _out;
+-    }
+     var _right = _b.x + _b.box_w - 22;
+     var _bt = scr_creator_item("toggle", _right - 50, _b.y - 18, _right, _b.y);
+     if (_b.is_panel) {
