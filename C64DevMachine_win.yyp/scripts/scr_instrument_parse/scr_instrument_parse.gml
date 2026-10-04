@@ -662,6 +662,150 @@ function scr_music_lane_content(_bytes, _start, _len) {
     return _c;
 }
 
+/// ── TABLE REPEATS ── Returns { bytes, reps }: _bytes (one table, as the parser
+/// builds it) with every run of 2+ identical blocks of 1-8 records stored once,
+/// followed by a repeat record [0, $FE, back, extra copies]. A vibrato cycle
+/// written out 30 times becomes one cycle and a repeat. Plays exactly the same:
+/// the table's Ln target is never swallowed by a run (a run can start there).
+/// reps is false (and the bytes unchanged) when nothing repeats.
+function scr_music_lane_compress(_bytes) {
+    var _items = [];
+    var _j = 0;
+    var _len = array_length(_bytes);
+    while (_j < _len) {
+        var _it = { b: [], data: false, pos: _j };
+        if (_bytes[_j] != 0 && _j + 2 < _len) {
+            _it.b = [_bytes[_j], _bytes[_j + 1], _bytes[_j + 2]];
+            _it.data = true;
+            _j += 3;
+        } else if (_j + 3 < _len && _bytes[_j + 1] == 255) {
+            _it.b = [_bytes[_j], _bytes[_j + 1], _bytes[_j + 2], _bytes[_j + 3]];
+            _j += 4;
+        } else if (_j + 1 < _len) {
+            _it.b = [_bytes[_j], _bytes[_j + 1]];
+            _j += 2;
+        } else {
+            return { bytes: _bytes, reps: false };
+        }
+        array_push(_items, _it);
+    }
+    var _n = array_length(_items);
+    if (_n == 0) {
+        return { bytes: _bytes, reps: false };
+    }
+    // The table's loop target (Ln = [0, back] at the end), as an item index.
+    var _t = -1;
+    var _last = _items[_n - 1];
+    if (!_last.data && array_length(_last.b) == 2 && _last.b[1] > 0) {
+        var _tp = _last.pos - _last.b[1];
+        for (var _k = 0; _k < _n; _k++) {
+            if (_items[_k].pos == _tp) {
+                _t = _k;
+            }
+        }
+        if (_t < 0) {
+            return { bytes: _bytes, reps: false };
+        }
+    }
+    var _nd = 0;
+    while (_nd < _n && _items[_nd].data) {
+        _nd++;
+    }
+    var _out = [];
+    var _newpos = array_create(_n, -1);
+    var _reps = false;
+    var _i = 0;
+    while (_i < _nd) {
+        var _best_save = 0;
+        var _best_l = 1;
+        var _best_k = 1;
+        for (var _l = 1; _l <= 8; _l++) {
+            if (_i + 2 * _l > _nd) {
+                break;
+            }
+            var _kc = 1;
+            while (_i + (_kc + 1) * _l <= _nd && scr_music_lane_same(_items, _i, _i + _kc * _l, _l)) {
+                _kc++;
+            }
+            if (_t > _i && _t < _i + _kc * _l) {
+                _kc = min(_kc, (_t - _i) div _l);   // the loop target stays addressable
+            }
+            _kc = min(_kc, 255);
+            if (_kc >= 2) {
+                var _sv = (_kc - 1) * _l * 3 - 4;
+                if (_sv > _best_save) {
+                    _best_save = _sv;
+                    _best_l = _l;
+                    _best_k = _kc;
+                }
+            }
+        }
+        if (_best_save > 0) {
+            for (var _q = 0; _q < _best_l; _q++) {
+                _newpos[_i + _q] = array_length(_out);
+                for (var _qb = 0; _qb < 3; _qb++) {
+                    array_push(_out, _items[_i + _q].b[_qb]);
+                }
+            }
+            array_push(_out, 0, 254, _best_l * 3, _best_k - 1);
+            _i += _best_l * _best_k;
+            _reps = true;
+        } else {
+            _newpos[_i] = array_length(_out);
+            for (var _qb = 0; _qb < 3; _qb++) {
+                array_push(_out, _items[_i].b[_qb]);
+            }
+            _i++;
+        }
+    }
+    if (!_reps) {
+        return { bytes: _bytes, reps: false };
+    }
+    for (var _ci = _nd; _ci < _n; _ci++) {
+        var _cb = _items[_ci].b;
+        if (array_length(_cb) == 2 && _cb[1] > 0) {
+            array_push(_out, 0, array_length(_out) - _newpos[_t]);
+        } else {
+            for (var _cq = 0; _cq < array_length(_cb); _cq++) {
+                array_push(_out, _cb[_cq]);
+            }
+        }
+    }
+    return { bytes: _out, reps: true };
+}
+
+/// True when the _l records at items _a and _b are identical.
+function scr_music_lane_same(_items, _a, _b, _l) {
+    for (var _q = 0; _q < _l; _q++) {
+        var _x = _items[_a + _q].b;
+        var _y = _items[_b + _q].b;
+        if (_x[0] != _y[0] || _x[1] != _y[1] || _x[2] != _y[2]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/// True when a table ends with Ln going back exactly 254 bytes, which would
+/// read as a repeat record ($FE) in a song that uses table repeats.
+function scr_music_lane_back254(_bytes) {
+    var _j = 0;
+    var _len = array_length(_bytes);
+    while (_j + 1 < _len) {
+        if (_bytes[_j] != 0) {
+            _j += 3;
+        } else if (_bytes[_j + 1] == 255) {
+            _j += 4;
+        } else {
+            if (_bytes[_j + 1] == 254) {
+                return true;
+            }
+            _j += 2;
+        }
+    }
+    return false;
+}
+
 /// Label of a table by its contents, created on first sight (emitted later).
 function scr_music_lane_label(_lanes, _key, _content) {
     if (variable_struct_exists(_lanes.labels, _content)) return variable_struct_get(_lanes.labels, _content);
@@ -695,7 +839,7 @@ function scr_music_table_emit(_list, _id, _key, _ops, _lanes) {
             var _label = scr_music_lane_label(_lanes, _key, _content);
             var _fresh = !variable_struct_exists(_lanes.emitted, _content);
             if (_fresh) variable_struct_set(_lanes.emitted, _content, true);
-            variable_struct_set(_lane_at, string(_ops[_i].pos), { label: _label, fresh: _fresh });
+            variable_struct_set(_lane_at, string(_ops[_i].pos), { label: _label, fresh: _fresh, content: _content });
         }
     }
     for (var _i = 0; _i < array_length(_ops); _i++) {
@@ -704,12 +848,21 @@ function scr_music_table_emit(_list, _id, _key, _ops, _lanes) {
             var _la = variable_struct_get(_lane_at, string(_o.pos));
             if (_la.fresh) {
                 array_push(_list, ["label", _la.label]);
-                // records [n, lo, hi]; control [0, back]; jump [0, $FF, inst, kind]
+                // Repeated runs stored once (scr_music_lane_compress), except in
+                // keep-running tables: their repeat count isn't kept across notes.
+                if (_lanes.reps && !variable_struct_exists(_lanes.keep, _la.content)) {
+                    _bytes = scr_music_lane_compress(_bytes).bytes;
+                }
+                // records [n, lo, hi]; control [0, back]; repeat [0, $FE, back, n];
+                // jump [0, $FF, inst, kind]
                 var _j = 0;
                 while (_j < array_length(_bytes)) {
                     if (_bytes[_j] != 0) {
                         array_push(_list, ["byte", _bytes[_j], _id], ["byte", _bytes[_j + 1], _id], ["byte", _bytes[_j + 2], _id]);
                         _j += 3;
+                    } else if (_lanes.reps && _bytes[_j + 1] == 254 && _j + 3 < array_length(_bytes)) {
+                        array_push(_list, ["byte", 0, _id], ["byte", 254, _id], ["byte", _bytes[_j + 2], _id], ["byte", _bytes[_j + 3], _id]);
+                        _j += 4;
                     } else if (_bytes[_j + 1] == 255 && _j + 3 < array_length(_bytes)) {
                         var _tl = scr_music_lane_target(_lanes, _key, _bytes[_j + 2], _bytes[_j + 3]);
                         if (_tl == "") {

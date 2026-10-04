@@ -1056,7 +1056,15 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (_m.free_voices) {
         draw_set_font_l(fnt_c64_pico);
         draw_set_color(make_color_rgb(90, 90, 120));
-        draw_text_l(_tm_x + 180, _rowy + 6, "EACH VOICE: OWN ORDER COLUMN, OWN FXX SPEED, OWN PATTERN LENGTH");
+        // Two lines, scaled down if the editor is too narrow for them.
+        var _tm_hint = "EACH VOICE: OWN ORDER COLUMN,\nOWN FXX SPEED, OWN PATTERN LENGTH";
+        var _tm_avail = _vx2 - (_tm_x + 180) - 10;
+        var _tm_w = string_width_l(_tm_hint);
+        var _tm_sc = 1;
+        if (_tm_w > _tm_avail && _tm_w > 0) {
+            _tm_sc = max(0.5, _tm_avail / _tm_w);
+        }
+        draw_text_transformed_l(_tm_x + 180, _rowy, _tm_hint, _tm_sc, _tm_sc, 0);
         draw_set_font_l(fnt_c64_tiny);
     }
 

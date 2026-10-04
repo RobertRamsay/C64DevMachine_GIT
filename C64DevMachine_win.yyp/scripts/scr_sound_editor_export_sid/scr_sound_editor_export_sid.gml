@@ -156,6 +156,10 @@ function scr_sound_editor_export_sid_go(_input, _ctx) {
             _missing = string(_p.fixups[_fi].label);
         }
     }
+    // The player's state sits at the very end of the block (from <key>st to
+    // <key>rtskip) and init clears it, so the file can stop where it starts.
+    var _vars_at = _p.labels[? _key + "st"];
+    var _skip_at = _p.labels[? _key + "rtskip"];
     ds_map_destroy(_p.labels);
     if (_missing != "" || global.asm_branch_error) {
         scr_show_message("EXPORT SID: the player didn't assemble (" + _missing + "). Nothing was written.");
@@ -166,6 +170,11 @@ function scr_sound_editor_export_sid_go(_input, _ctx) {
         scr_show_message("EXPORT SID: the tune is $" + string_upper(decimal_to_hex(_n))
                        + " bytes and doesn't fit above $" + string_upper(decimal_to_hex(_addr)) + ".");
         return;
+    }
+
+    var _file_n = _n;
+    if (!is_undefined(_vars_at) && !is_undefined(_skip_at) && _skip_at == _addr + _n && _vars_at > _addr && _vars_at < _addr + _n) {
+        _file_n = _vars_at - _addr;
     }
 
     // ── songs, for the header (same rule as the build: empty songs are skipped) ──
@@ -186,7 +195,7 @@ function scr_sound_editor_export_sid_go(_input, _ctx) {
     }
 
     // ── PSID v2 header (big-endian fields), then load address + code ──
-    var _b = buffer_create(0x7C + 2 + _n, buffer_fixed, 1);
+    var _b = buffer_create(0x7C + 2 + _file_n, buffer_fixed, 1);
     buffer_fill(_b, 0, buffer_u8, 0, 0x7C);
     buffer_poke(_b, 0x00, buffer_u8, ord("P"));
     buffer_poke(_b, 0x01, buffer_u8, ord("S"));
@@ -219,9 +228,31 @@ function scr_sound_editor_export_sid_go(_input, _ctx) {
         _flags = 0x0004 | 0x0020;
     }
     _be(_b, 0x76, _flags);
+    // Where a SID player may put its own driver: never over the player's state
+    // (it's in RAM past the end of the file). The bigger free run of whole
+    // pages, after the player up to $9FFF or from $0400 up to the load address.
+    var _ram_end = _addr + _n;
+    var _rel_start = 0;
+    var _rel_pages = 0;
+    var _pg_after = (_ram_end + 255) >> 8;
+    if (_pg_after < 0xA0) {
+        _rel_start = _pg_after;
+        _rel_pages = 0xA0 - _pg_after;
+    }
+    var _pg_below = _addr >> 8;
+    if (_pg_below - 4 > _rel_pages) {
+        _rel_start = 4;
+        _rel_pages = _pg_below - 4;
+    }
+    if (_rel_pages <= 0) {
+        _rel_start = 0xFF;      // no room: the player must not relocate
+        _rel_pages = 0;
+    }
+    buffer_poke(_b, 0x78, buffer_u8, _rel_start);
+    buffer_poke(_b, 0x79, buffer_u8, _rel_pages);
     buffer_poke(_b, 0x7C, buffer_u8, _addr & 0xFF);
     buffer_poke(_b, 0x7D, buffer_u8, (_addr >> 8) & 0xFF);
-    for (var _bi = 0; _bi < _n; _bi++) {
+    for (var _bi = 0; _bi < _file_n; _bi++) {
         buffer_poke(_b, 0x7E + _bi, buffer_u8, _p.bytes[_bi]);
     }
     buffer_save(_b, _path);
@@ -230,7 +261,7 @@ function scr_sound_editor_export_sid_go(_input, _ctx) {
     var _end = _addr + _n - 1;
     var _msg = "EXPORTED " + filename_name(_path)
              + "\n$" + string_upper(decimal_to_hex(_addr)) + "-$" + string_upper(decimal_to_hex(_end))
-             + " (" + string(_n) + " bytes), " + string(_n_songs) + " song(s)"
+             + " (" + string(_n) + " bytes in RAM, " + string(_file_n) + " in the file), " + string(_n_songs) + " song(s)"
              + "\nINIT $" + string_upper(decimal_to_hex(_addr)) + " (A = song)   PLAY $" + string_upper(decimal_to_hex(_addr + 3))
              + "\nZERO PAGE $" + string_upper(decimal_to_hex(_zp)) + "-$" + string_upper(decimal_to_hex(_zp + 43));
     if (_sfx) {

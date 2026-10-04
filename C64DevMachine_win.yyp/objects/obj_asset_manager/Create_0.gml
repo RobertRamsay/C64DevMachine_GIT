@@ -79,6 +79,7 @@ asset_types = [
     "--- SPRITES ---",
     "SPRITE_SET",
     "SPRITE_MASK",
+    "BMP_OBJECTS",
     "ANIMATION",
     "--- BITMAPS ---",
     "BITMAP",

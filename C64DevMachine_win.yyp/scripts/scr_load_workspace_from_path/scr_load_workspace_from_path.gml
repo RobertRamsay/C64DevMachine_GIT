@@ -595,6 +595,9 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 if (variable_struct_exists(_sm, "paint_mc"))       _meta.paint_mc       = _sm.paint_mc;
                 if (variable_struct_exists(_sm, "map_mixed"))      _meta.map_mixed      = _sm.map_mixed;
                 if (variable_struct_exists(_sm, "raw_chars"))      _meta.raw_chars      = _sm.raw_chars;
+                if (variable_struct_exists(_sm, "room_w"))         _meta.room_w         = _sm.room_w;
+                if (variable_struct_exists(_sm, "room_h"))         _meta.room_h         = _sm.room_h;
+                if (variable_struct_exists(_sm, "room_count"))     _meta.room_count     = _sm.room_count;
                 if (variable_struct_exists(_sm, "erase_char"))     _meta.erase_char     = _sm.erase_char;
                 if (variable_struct_exists(_sm, "override_grid"))  _meta.override_grid  = _sm.override_grid;
                 if (variable_struct_exists(_sm, "map_mc_bg"))      _meta.map_mc_bg      = _sm.map_mc_bg;
@@ -764,6 +767,9 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 if (!variable_struct_exists(_new_asset.meta, "paint_mc"))          _new_asset.meta.paint_mc          = 0;
                 if (!variable_struct_exists(_new_asset.meta, "map_mixed"))         _new_asset.meta.map_mixed         = obj_workspace_manager.map_global_mixed;
                 if (!variable_struct_exists(_new_asset.meta, "raw_chars"))         _new_asset.meta.raw_chars         = 0;
+                if (!variable_struct_exists(_new_asset.meta, "room_w"))            _new_asset.meta.room_w            = 40;
+                if (!variable_struct_exists(_new_asset.meta, "room_h"))            _new_asset.meta.room_h            = 25;
+                if (!variable_struct_exists(_new_asset.meta, "room_count"))        _new_asset.meta.room_count        = 0;
                 if (!variable_struct_exists(_new_asset.meta, "erase_char"))        _new_asset.meta.erase_char        = 0;
                 if (!variable_struct_exists(_new_asset.meta, "map_mc_bg"))         _new_asset.meta.map_mc_bg         = -1;
                 if (!variable_struct_exists(_new_asset.meta, "map_mc_col1"))       _new_asset.meta.map_mc_col1       = -1;
@@ -1067,6 +1073,13 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
 	                _smm = _ad.meta;
 	            }
 	            scr_sprmask_restore(_new_asset, _smm);
+	        }
+	        if (_ad.type == "BMP_OBJECTS") {
+	            var _bom = {};
+	            if (variable_struct_exists(_ad, "meta")) {
+	                _bom = _ad.meta;
+	            }
+	            scr_bmpobj_restore(_new_asset, _bom);
 	        }
 	        if (_ad.type == "ROOM_MAP") {
 	            var _rmm = {};

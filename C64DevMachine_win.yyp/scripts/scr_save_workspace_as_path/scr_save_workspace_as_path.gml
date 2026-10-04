@@ -218,6 +218,9 @@ if (instance_exists(obj_asset_manager)) {
         if (variable_struct_exists(_a.meta, "paint_mc"))      _meta_out.paint_mc      = _a.meta.paint_mc;
         if (variable_struct_exists(_a.meta, "map_mixed"))     _meta_out.map_mixed     = _a.meta.map_mixed;
         if (variable_struct_exists(_a.meta, "raw_chars"))     _meta_out.raw_chars     = _a.meta.raw_chars;
+        if (variable_struct_exists(_a.meta, "room_w"))        _meta_out.room_w        = _a.meta.room_w;
+        if (variable_struct_exists(_a.meta, "room_h"))        _meta_out.room_h        = _a.meta.room_h;
+        if (variable_struct_exists(_a.meta, "room_count"))    _meta_out.room_count    = _a.meta.room_count;
         if (variable_struct_exists(_a.meta, "erase_char"))    _meta_out.erase_char    = _a.meta.erase_char;
         if (variable_struct_exists(_a.meta, "override_grid")) _meta_out.override_grid = _a.meta.override_grid;
         if (variable_struct_exists(_a.meta, "map_mc_bg"))     _meta_out.map_mc_bg     = _a.meta.map_mc_bg;
@@ -273,6 +276,9 @@ if (instance_exists(obj_asset_manager)) {
         if (_a.type == "SPRITE_MASK") {
 		     _meta_out = scr_sprmask_save_meta(_a);
 		 }
+        if (_a.type == "BMP_OBJECTS") {
+            _meta_out = scr_bmpobj_save_meta(_a);
+        }
         if (_a.type == "SAMPLE") {
             // The source PCM goes out as the asset blob; meta is the settings.
             _meta_out = scr_sample_save_meta(_a);

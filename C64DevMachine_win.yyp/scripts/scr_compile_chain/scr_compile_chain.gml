@@ -19628,6 +19628,7 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 			if (_a.type == "BYTE_DATA"  ) array_push(_all_assets, _a);
 			if (_a.type == "META_TILESET" && _a.meta.raw_rows >= 1) array_push(_all_assets, _a);
 			if (_a.type == "LINE_COLL"  ) array_push(_all_assets, _a);
+			if (_a.type == "BMP_OBJECTS") array_push(_all_assets, _a);
 			if (_a.type == "SFX_DATA" && ds_map_exists(_used_sfx, _a.name) && !ds_map_exists(_load_org_linked, _a.name)) array_push(_all_assets, _a);
 			if (_a.type == "SFX_DATA" && ds_map_exists(_load_org_linked, _a.name)) array_push(_all_assets, _a);
 	    }
@@ -19731,7 +19732,7 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
 		    for (var _bb = 0; _bb < _chr_inject_sz; _bb++) {
 		        array_push(instruction_list, ["byte", buffer_peek(_buf, _bb, buffer_u8)]);
 		    }
-			} else if (_a.type == "BYTE_DATA" || _a.type == "LINE_COLL") {
+			} else if (_a.type == "BYTE_DATA" || _a.type == "LINE_COLL" || _a.type == "BMP_OBJECTS") {
 			    for (var _bb = 0; _bb < _sz; _bb++) {
 			        array_push(instruction_list, ["byte", buffer_peek(_buf, _bb, buffer_u8)]);
 			    }
@@ -19782,6 +19783,15 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
 		        var _raw_n = min(_msz, _sz);
 		        for (var _bb = 0; _bb < _raw_n; _bb++) {
 		            array_push(instruction_list, ["byte", buffer_peek(_buf, _bb, buffer_u8)]);
+		        }
+		        continue;
+		    }
+		    // RLE ROOMS map: room pointer table + band/run streams (see
+		    // scr_map_rle_rooms_encode). Nothing else is emitted.
+		    if (_map_raw == 2) {
+		        var _rle = scr_map_rle_rooms_encode(_a);
+		        for (var _bb = 0; _bb < array_length(_rle); _bb++) {
+		            array_push(instruction_list, ["byte", _rle[_bb]]);
 		        }
 		        continue;
 		    }

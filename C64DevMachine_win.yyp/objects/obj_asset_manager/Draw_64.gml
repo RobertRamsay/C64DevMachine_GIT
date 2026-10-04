@@ -804,13 +804,13 @@ var _vy1 = 108;
 if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
     var _asset = ds_list_find_value(asset_list, viewer_asset);
 
-	var _wide_editor = (_asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK" || _asset.type == "SAMPLE");
+	var _wide_editor = (_asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK" || _asset.type == "BMP_OBJECTS" || _asset.type == "SAMPLE");
 	_vx1 = _wide_editor ? 30 : 288;
 	_vy1 = 108;
 	var _vx2 = _wide_editor ? (panel_x + 20) : (panel_x - 10);
 	// The Music Maker is modal and uses the full width, centred: 30px margins
 	// both sides (matching its 108px top/bottom), over the asset panel.
-	if (_asset.type == "MUSIC_MAKER" || _asset.type == "SPRITE_MASK") {
+	if (_asset.type == "MUSIC_MAKER" || _asset.type == "SPRITE_MASK" || _asset.type == "BMP_OBJECTS") {
 		_vx2 = _gui_w - _vx1;
 	}
 	var _vy2 = 972;
@@ -897,7 +897,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     var _lby2     = _cy + 20;
     if (!_hide_import && _asset.type != "LOAD_ORG" && _asset.type != "LOAD_REU"
 	&& _asset.type != "META_TILESET" && _asset.type != "BITMAP_BUILDER" 
-	&& _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "SAMPLE"
+	&& _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "BMP_OBJECTS" && _asset.type != "SAMPLE"
 	&& !(_asset.type == "BYTE_DATA" && variable_struct_exists(_asset.meta, "is_save_file") && _asset.meta.is_save_file)) {
         var _lb_hover = point_in_rectangle(_mx, _my, _lbx1, _lby1, _lbx2, _lby2);
         draw_set_color(_lb_hover ? make_color_rgb(80, 200, 80) : make_color_rgb(30, 90, 40));
@@ -983,7 +983,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     // asset with no C64 payload — suppress the label entirely rather than
     // showing an empty field.
     draw_set_font_l(fnt_c64_tiny);
-    if (_asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "SAMPLE") {
+    if (_asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "BMP_OBJECTS" && _asset.type != "SAMPLE") {
         draw_set_color(c_ltgray); draw_text_l(_vx1 + 10, _cy, "ADDRESS:");
     }
 
@@ -1064,6 +1064,11 @@ case "MUSIC_MAKER": {
 case "SPRITE_MASK": {
     // Foreground layer painted over a bitmap, with per-cell depth.
     scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my);
+} break;
+
+case "BMP_OBJECTS": {
+    // Software sprites: object list, zoomed GFX / MASK / COMPOSITE view, sheet.
+    scr_bmpobj_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my);
 } break;
 
 case "ANIMATION": {
@@ -2144,10 +2149,10 @@ _cy += 22;
 	    if (!variable_struct_exists(_m, "raw_chars")) {
 	        _m.raw_chars = 0;
 	    }
-	    var _raw_on     = (real(_m.raw_chars) == 1) ? 1 : 0;
-	    var _rw_labels  = ["FULL MAP", "RAW CHARS"];
-	    var _rw_cols    = [make_color_rgb(30,30,45), make_color_rgb(90,40,20)];
-	    var _rw_tcols   = [make_color_rgb(80,80,100), make_color_rgb(255,170,80)];
+	    var _raw_on     = clamp(real(_m.raw_chars), 0, 2);
+	    var _rw_labels  = ["FULL MAP", "RAW CHARS", "RLE ROOMS"];
+	    var _rw_cols    = [make_color_rgb(30,30,45), make_color_rgb(90,40,20), make_color_rgb(20,70,40)];
+	    var _rw_tcols   = [make_color_rgb(80,80,100), make_color_rgb(255,170,80), make_color_rgb(120,255,160)];
 	    var _rwx1  = _sw_x + _sw_sz + 52;
 	    var _rwx2  = _rwx1 + 90;
 	    var _rwy1  = _cy + 2;
@@ -2161,10 +2166,21 @@ _cy += 22;
 	    draw_text_l(_rwx1 + 45, _rwy1 + 3, _rw_labels[_raw_on]);
 	    draw_set_halign(fa_left);
 	    if (_rwhov && mouse_check_button_pressed(mb_left)) {
-	        if (_raw_on == 1) {
-	            _m.raw_chars = 0;
-	        } else {
+	        // FULL MAP -> RAW CHARS -> RLE ROOMS -> FULL MAP.
+	        // RLE ROOMS needs a room size; a map that never had one gets a
+	        // full screen (40x25) - set room_w/room_h/room_count in the file
+	        // for other sizes (Saboteur: 30x17, 121 rooms).
+	        if (_raw_on == 0) {
 	            _m.raw_chars = 1;
+	        } else if (_raw_on == 1) {
+	            _m.raw_chars = 2;
+	            if (is_undefined(variable_struct_get(_m, "room_w"))) {
+	                _m.room_w     = 40;
+	                _m.room_h     = 25;
+	                _m.room_count = 0;
+	            }
+	        } else {
+	            _m.raw_chars = 0;
 	        }
 	        _m.is_dirty = true;
 	        global.addresses_dirty = true;
@@ -11529,7 +11545,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 // REFERENCED BY (for BITMAP, default cases — SPRITE_SET and MAP_DATA handle their own above)
     if (_asset.type == "SFX_DATA") _cy = _vy2 - 100;
 	 if (_asset.type == "BYTE_DATA" || _asset.type == "TEXT_DATA" || _asset.type == "LINE_COLL") _cy = _vy2 - 100;
-   if (_asset.type != "SPRITE_SET" && _asset.type != "MAP_DATA" && _asset.type != "BITMAP" && _asset.type != "META_TILESET" && _asset.type != "META_MAP" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "SAMPLE") {
+   if (_asset.type != "SPRITE_SET" && _asset.type != "MAP_DATA" && _asset.type != "BITMAP" && _asset.type != "META_TILESET" && _asset.type != "META_MAP" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "BMP_OBJECTS" && _asset.type != "SAMPLE") {
         draw_set_font_l(fnt_c64_code);
         draw_set_color(make_color_rgb(60,60,80));
         draw_line(_vx1 + 10, _cy, _vx2 - 10, _cy);

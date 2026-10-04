@@ -1054,6 +1054,7 @@
     {"id":{"name":"scr_bitmap_builder_replay","path":"scripts/scr_bitmap_builder_replay/scr_bitmap_builder_replay.yy",},},
     {"id":{"name":"scr_blob_decode","path":"scripts/scr_blob_decode/scr_blob_decode.yy",},},
     {"id":{"name":"scr_blob_encode","path":"scripts/scr_blob_encode/scr_blob_encode.yy",},},
+    {"id":{"name":"scr_bmp_objects","path":"scripts/scr_bmp_objects/scr_bmp_objects.yy",},},
     {"id":{"name":"scr_bmp_preview_queue","path":"scripts/scr_bmp_preview_queue/scr_bmp_preview_queue.yy",},},
     {"id":{"name":"scr_bmp_regions","path":"scripts/scr_bmp_regions/scr_bmp_regions.yy",},},
     {"id":{"name":"scr_boot_resident_ranges","path":"scripts/scr_boot_resident_ranges/scr_boot_resident_ranges.yy",},},
