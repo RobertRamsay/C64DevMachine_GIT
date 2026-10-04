@@ -174,7 +174,7 @@ function scr_build_d64(_prg_buf, _base_pc, _boot_actual_size, _out_path = "") {
                     } else if (_b.type == "MAP_DATA"
                            &&  variable_struct_exists(_b.meta, "raw_chars")
                            &&  is_real(_b.meta.raw_chars)
-                           &&  real(_b.meta.raw_chars) == 2) {
+                           &&  (real(_b.meta.raw_chars) == 2 || real(_b.meta.raw_chars) == 3)) {
                         // RLE ROOMS map: the file is the room pointer table +
                         // room streams, the same bytes the compile chain bakes.
                         var _addr = _b.address;

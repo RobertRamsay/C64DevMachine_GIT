@@ -98,14 +98,14 @@ var _base = "unsaved";
             // Full meta mirror — reuse the same field list as scr_save_workspace_as
             _mo = {};
             var _me = _a.meta;
-            var _fields = ["sprite_mcs","sprite_ucs","mc1_col","mc2_col","used_count","bg_col","bmp_mode","tone_sorted",
+            var _fields = ["sprite_mcs","sprite_ucs","mc1_col","mc2_col","used_count","strip_frames","strip_base","bg_col","bmp_mode","tone_sorted",
                            "sprite_json","compositor","anim",
                            "sid_init_addr","sid_play_addr","sid_data_start",
                            "format","char_count","total_size","mc_mode","mc_fg","mc_bg","mc_col1","mc_col2",
                            "ecm_bg1","ecm_bg2","ecm_bg3",
                            "map_w","map_h","grid_w","grid_h","char_grid","colour_grid","chr_asset",
                            "scroll_x","scroll_y","zoom","active_char","active_colour","tool",
-                           "text","byte_string","is_save_file","save_file_size","paint_mc","map_mixed","raw_chars","tile_colours","obj_asset","room_objects","obj_row_off","obj_col_off","obj_table_addr","obj_regions","show_objects","room_w","room_h","room_count","erase_char","override_grid","map_mc_bg","map_mc_col1","map_mc_col2",
+                           "text","byte_string","is_save_file","save_file_size","paint_mc","map_mixed","raw_chars","tile_colours","obj_asset","room_objects","obj_row_off","obj_col_off","obj_table_addr","obj_regions","show_objects","room_w","room_h","room_count","stream_flag_colour","erase_char","override_grid","map_mc_bg","map_mc_col1","map_mc_col2",
                            "song_name","sfx_count","instruments","wavetable","source_file",
                            "tile_types",
                            "line_string","lines","active_type","ref_enabled","ref_asset_name","ref_offset_x","ref_offset_y",

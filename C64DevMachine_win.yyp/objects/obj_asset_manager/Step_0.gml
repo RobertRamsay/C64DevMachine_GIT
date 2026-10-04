@@ -2255,6 +2255,7 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open && !(_wide_mo
                 map_mc_col1       : -1,
                 map_mc_col2       : -1,
                 raw_chars         : 0,
+                stream_flag_colour: -1,
                 erase_char        : 0,
                 stamp_data        : [],
                 stamp_active      : false,

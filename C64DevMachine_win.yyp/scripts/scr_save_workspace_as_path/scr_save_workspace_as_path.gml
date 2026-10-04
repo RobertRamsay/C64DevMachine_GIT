@@ -141,6 +141,8 @@ if (instance_exists(obj_asset_manager)) {
         if (variable_struct_exists(_a.meta, "mc1_col"))      _meta_out.mc1_col      = _a.meta.mc1_col;
         if (variable_struct_exists(_a.meta, "mc2_col"))      _meta_out.mc2_col      = _a.meta.mc2_col;
         if (variable_struct_exists(_a.meta, "used_count"))   _meta_out.used_count   = _a.meta.used_count;
+        if (variable_struct_exists(_a.meta, "strip_frames")) _meta_out.strip_frames = _a.meta.strip_frames;
+        if (variable_struct_exists(_a.meta, "strip_base"))   _meta_out.strip_base   = _a.meta.strip_base;
         if (variable_struct_exists(_a.meta, "bg_col"))       _meta_out.bg_col       = _a.meta.bg_col;
 	        // Persist HiRes/MC mode — without this a HiRes bitmap round-trips
 	        // through save/load as if it were MC, and build_preview's size check
@@ -233,6 +235,7 @@ if (instance_exists(obj_asset_manager)) {
         if (variable_struct_exists(_a.meta, "room_w"))        _meta_out.room_w        = _a.meta.room_w;
         if (variable_struct_exists(_a.meta, "room_h"))        _meta_out.room_h        = _a.meta.room_h;
         if (variable_struct_exists(_a.meta, "room_count"))    _meta_out.room_count    = _a.meta.room_count;
+        if (variable_struct_exists(_a.meta, "stream_flag_colour")) _meta_out.stream_flag_colour = _a.meta.stream_flag_colour;
         if (variable_struct_exists(_a.meta, "erase_char"))    _meta_out.erase_char    = _a.meta.erase_char;
         if (variable_struct_exists(_a.meta, "override_grid")) _meta_out.override_grid = _a.meta.override_grid;
         if (variable_struct_exists(_a.meta, "map_mc_bg"))     _meta_out.map_mc_bg     = _a.meta.map_mc_bg;

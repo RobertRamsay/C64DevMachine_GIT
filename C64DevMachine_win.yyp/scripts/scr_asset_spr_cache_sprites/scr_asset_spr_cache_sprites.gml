@@ -121,3 +121,51 @@ function scr_asset_spr_cache_sprites(_asset, _force_rebuild = false) {
     }
     show_debug_message("CACHE_SPRITES: built " + string(_built) + " of " + string(_slots) + " slots (used_count=" + string(_used) + ")");
 }
+
+
+/// ====================================================================
+/// SPRITE_SET "STRIPS" export (meta.strip_frames not empty)
+///
+/// For games that keep their sprite graphics packed as narrow strips and
+/// build the real sprite blocks at run time (Bruce Lee: 1 or 2 bytes wide,
+/// up to 21 rows, copied into the sprite buffers every frame). The asset is
+/// edited as ordinary 64-byte sprites; the build writes each one back as
+/// the strip the game reads:
+///   strip_frames[i] = [address, width, rows]  for sprite i
+///       rows x width bytes, top row first, taken from the sprite's
+///       top-left corner (width 1-3 bytes, rows 1-21)
+///   strip_base = the original bytes of the whole range the asset covers,
+///       starting at its address - bytes between strips stay as they are
+/// Sprites are written in order, so where two strips overlap the later
+/// sprite wins. The asset's footprint is strip_base, not used_count * 64.
+/// ====================================================================
+function scr_sprite_strip_active(_a) {
+    if (!variable_struct_exists(_a.meta, "strip_frames")) return false;
+    if (!is_array(_a.meta.strip_frames)) return false;
+    return array_length(_a.meta.strip_frames) > 0;
+}
+
+function scr_sprite_strip_bytes(_a) {
+    var _base = _a.meta.strip_base;
+    var _n    = array_length(_base);
+    var _out  = array_create(_n, 0);
+    for (var _i = 0; _i < _n; _i++) _out[_i] = real(_base[_i]) & 0xFF;
+    var _fr  = _a.meta.strip_frames;
+    var _bsz = 0;
+    if (buffer_exists(_a.buffer)) _bsz = buffer_get_size(_a.buffer);
+    for (var _s = 0; _s < array_length(_fr); _s++) {
+        var _off  = real(_fr[_s][0]) - real(_a.address);
+        var _w    = clamp(real(_fr[_s][1]), 1, 3);
+        var _rows = clamp(real(_fr[_s][2]), 1, 21);
+        for (var _r = 0; _r < _rows; _r++) {
+            for (var _c = 0; _c < _w; _c++) {
+                var _src = _s * 64 + _r * 3 + _c;
+                var _dst = _off + _r * _w + _c;
+                if (_dst >= 0 && _dst < _n && _src < _bsz) {
+                    _out[_dst] = buffer_peek(_a.buffer, _src, buffer_u8);
+                }
+            }
+        }
+    }
+    return _out;
+}

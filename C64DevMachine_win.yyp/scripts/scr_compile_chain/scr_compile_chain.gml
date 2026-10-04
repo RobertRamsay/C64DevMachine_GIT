@@ -19758,8 +19758,17 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
             }
 			
 		    } else if (_a.type == "SPRITE_SET") {
+	            if (scr_sprite_strip_active(_a)) {
+	                // STRIPS: sprites written back as the game's packed strips
+	                // (see scr_sprite_strip_bytes), not as 64-byte blocks.
+	                var _strip = scr_sprite_strip_bytes(_a);
+	                for (var _bb = 0; _bb < array_length(_strip); _bb++) {
+	                    array_push(instruction_list, ["byte", _strip[_bb]]);
+	                }
+	            } else {
 	            for (var _bb = 0; _bb < _sz; _bb++) {
 	                array_push(instruction_list, ["byte", buffer_peek(_buf, _bb, buffer_u8)]);
+	            }
 	            }
 			    } else if (_a.type == "CHAR_SET") {
 		    var _chr_inject_sz = min(_sz, 2048);
@@ -19828,9 +19837,9 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
 		        }
 		        continue;
 		    }
-		    // RLE ROOMS map: room pointer table + band/run streams (see
-		    // scr_map_rle_rooms_encode). Nothing else is emitted.
-		    if (_map_raw == 2) {
+		    // RLE ROOMS / RLE STREAM map: room pointer table(s) + streams
+		    // (see scr_map_rle_rooms_encode). Nothing else is emitted.
+		    if (_map_raw == 2 || _map_raw == 3) {
 		        var _rle = scr_map_rle_rooms_encode(_a);
 		        for (var _bb = 0; _bb < array_length(_rle); _bb++) {
 		            array_push(instruction_list, ["byte", _rle[_bb]]);

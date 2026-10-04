@@ -2166,10 +2166,10 @@ _cy += 22;
 	    if (!variable_struct_exists(_m, "raw_chars")) {
 	        _m.raw_chars = 0;
 	    }
-	    var _raw_on     = clamp(real(_m.raw_chars), 0, 2);
-	    var _rw_labels  = ["FULL MAP", "RAW CHARS", "RLE ROOMS"];
-	    var _rw_cols    = [make_color_rgb(30,30,45), make_color_rgb(90,40,20), make_color_rgb(20,70,40)];
-	    var _rw_tcols   = [make_color_rgb(80,80,100), make_color_rgb(255,170,80), make_color_rgb(120,255,160)];
+	    var _raw_on     = clamp(real(_m.raw_chars), 0, 3);
+	    var _rw_labels  = ["FULL MAP", "RAW CHARS", "RLE ROOMS", "RLE STREAM"];
+	    var _rw_cols    = [make_color_rgb(30,30,45), make_color_rgb(90,40,20), make_color_rgb(20,70,40), make_color_rgb(20,50,80)];
+	    var _rw_tcols   = [make_color_rgb(80,80,100), make_color_rgb(255,170,80), make_color_rgb(120,255,160), make_color_rgb(120,200,255)];
 	    var _rwx1  = _sw_x + _sw_sz + 52;
 	    var _rwx2  = _rwx1 + 90;
 	    var _rwy1  = _cy + 2;
@@ -2183,7 +2183,8 @@ _cy += 22;
 	    draw_text_l(_rwx1 + 45, _rwy1 + 3, _rw_labels[_raw_on]);
 	    draw_set_halign(fa_left);
 	    if (_rwhov && mouse_check_button_pressed(mb_left)) {
-	        // FULL MAP -> RAW CHARS -> RLE ROOMS -> FULL MAP.
+	        // FULL MAP -> RAW CHARS -> RLE ROOMS -> RLE STREAM -> FULL MAP.
+	        // RLE STREAM: same rooms, Bruce Lee's run / literal stream format.
 	        // RLE ROOMS needs a room size; a map that never had one gets a
 	        // full screen (40x25) - set room_w/room_h/room_count in the file
 	        // for other sizes (Saboteur: 30x17, 121 rooms).
@@ -2196,6 +2197,8 @@ _cy += 22;
 	                _m.room_h     = 25;
 	                _m.room_count = 0;
 	            }
+	        } else if (_raw_on == 2) {
+	            _m.raw_chars = 3;
 	        } else {
 	            _m.raw_chars = 0;
 	        }
@@ -2584,7 +2587,7 @@ draw_set_color(_cell_bg_col);
 	    // Rooms are room_w x room_h cells, numbered left to right, top to
 	    // bottom - the order the pointer table is emitted in. Cells past
 	    // room_count are not emitted, so they are shaded out.
-	    if (real(_m.raw_chars) == 2 && real(_m.room_w) > 0 && real(_m.room_h) > 0) {
+	    if (real(_m.raw_chars) >= 2 && real(_m.room_w) > 0 && real(_m.room_h) > 0) {
 	        var _rw_c   = real(_m.room_w);
 	        var _rh_c   = real(_m.room_h);
 	        var _rx_n   = _gw div _rw_c;

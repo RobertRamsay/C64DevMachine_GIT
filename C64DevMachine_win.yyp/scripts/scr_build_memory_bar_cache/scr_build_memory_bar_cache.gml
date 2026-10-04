@@ -657,6 +657,9 @@ var _addr_total = 65536;
                         var _spr_used = variable_struct_exists(_a.meta, "used_count")
                             ? clamp(_a.meta.used_count, 1, 64) : 1;
                         _seg_size = _spr_used * 64;
+                        if (scr_sprite_strip_active(_a)) {
+                            _seg_size = max(1, array_length(_a.meta.strip_base));   // STRIPS footprint
+                        }
                         _seg_col  = make_color_rgb(200, 120, 40);
                     }
                     break;
@@ -759,7 +762,7 @@ var _addr_total = 65536;
                         if (variable_struct_exists(_a.meta, "raw_chars") && is_real(_a.meta.raw_chars)) {
                             _map_raw_seg = real(_a.meta.raw_chars);
                         }
-                        if (_map_raw_seg == 2) {
+                        if (_map_raw_seg == 2 || _map_raw_seg == 3) {
                             _msz = max(1, array_length(scr_map_rle_rooms_encode(_a)));
                         }
                         array_push(_segments, { addr: _a.address, size: _msz, col: make_color_rgb(40, 200, 180), type: "ASSET", name: _a.name, lines: [], node_id: noone, no_conflict: _a_is_load_later, conflict: false, load_later: _a_is_load_later });
