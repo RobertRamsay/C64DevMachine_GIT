@@ -415,6 +415,19 @@ function scr_sound_editor_instr_comment(_line, _lines) {
     if (_c0 == "C" && (string_char_at(_up, 2) == "+" || string_char_at(_up, 2) == "-")) {
         return { text: "cutoff speed per frame (in a ~FILTER table); Dn sets duration", bad: false };
     }
+    // N=n : a fixed table note, whatever note the row plays
+    if (_c0 == "N" && string_char_at(_rest, 1) == "=") {
+        var _abs_d = string_digits(string_delete(_rest, 1, 1));
+        if (_abs_d == "" || string_length(_abs_d) != string_length(_rest) - 1 || real(_abs_d) > 95) {
+            return { text: "? write N=0 .. N=95", bad: true };
+        }
+        var _abs_n = real(_abs_d);
+        var _abs_names = ["C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-"];
+        return { text: "fixed note " + _abs_names[_abs_n mod 12] + string(_abs_n div 12) + " (ignores the row note)", bad: false };
+    }
+    if (_up == "PK") {
+        return { text: "instrument setting: keep the pulse width on new notes", bad: false };
+    }
     // N / N+n / N-n : note
     if (_c0 == "N") {
         if (_rest == "" || _rest == "+0" || _rest == "-0") {

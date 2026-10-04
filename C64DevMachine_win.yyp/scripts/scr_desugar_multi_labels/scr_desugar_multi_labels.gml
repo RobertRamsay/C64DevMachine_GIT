@@ -12,6 +12,10 @@ function scr_desugar_multi_labels(_text) {
     var _decls    = ds_map_create();   // channel -> ds_list of declaration line indices
     var _syn_map  = ds_map_create();   // channel -> ds_list of synthetic names
     var _counters = ds_map_create();   // channel -> int
+    // Each code block is desugared on its own but all labels share one
+    // program-wide table: a short hash of the block text keeps the synthetic
+    // names unique per block and identical between sizing and build passes.
+    var _uid      = string_copy(md5_string_utf8(_text), 1, 8);
 
     // ── Pass 1: declarations "!:" or "!name:" ──
     for (var _i = 0; _i < _n; _i++) {
@@ -40,7 +44,7 @@ function scr_desugar_multi_labels(_text) {
                     ds_map_set(_counters, _channel, _cid + 1);
 
                     var _chname = (_channel == "") ? "anon" : _channel;
-                    var _syn    = "__ml_" + _chname + "_" + string(_cid);
+                    var _syn    = "__ml_" + _chname + "_" + _uid + "_" + string(_cid);
 
                     if (!ds_map_exists(_decls, _channel)) {
                         ds_map_set(_decls, _channel, ds_list_create());
