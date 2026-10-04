@@ -12,6 +12,7 @@
 	    if (path == "") return;
 
 	global.workspace_path = path;
+	scr_recent_files_add(path);
 
 	    // ================================================================
 	    // 2. GATHER AND SORT NODES

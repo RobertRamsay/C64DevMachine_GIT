@@ -1261,6 +1261,13 @@ if (gui_menu_open == 3) {
         { title: "RESET/CLEAR",     action: "RESET"           },
 		{ title: "OPEN AUTOSAVES",  action: "OPEN_AUTOSAVES"  },
     ];
+    // RECENTS - up to 10, newest first; names cut to fit the panel
+    if (array_length(global.recent_files) > 0) {
+        array_push(_proj_list, { title: "--- RECENTS ---", action: "HEADER" });
+        for (var _rfi = 0; _rfi < array_length(global.recent_files); _rfi++) {
+            array_push(_proj_list, { title: "", action: "RECENT", path: global.recent_files[_rfi] });
+        }
+    }
 
     var _item_h_p   = 20;
     var _panel_w_p  = 220;
@@ -1308,6 +1315,8 @@ if (gui_menu_open == 3) {
             draw_text_l(_ix1 + 10, _iy + 3, "AUTOSAVE");
             draw_set_color(_as_title_cols[global.autosave_mode]);
             draw_text_l(_ix1 + 10 + string_width_l("AUTOSAVE "), _iy + 3, _as_title_labels[global.autosave_mode]);
+        } else if (_pp.action == "RECENT") {
+            draw_text_l(_ix1 + 10, _iy + 3, scr_recent_files_label(_pp.path, _panel_w_p - 20));
         } else {
             draw_text_l(_ix1 + 10, _iy + 3, _pp.title);
         }
@@ -1440,6 +1449,9 @@ if (gui_menu_open == 3) {
                     break;
                 case "RESET":
                     game_restart();
+                    break;
+                case "RECENT":
+                    scr_recent_files_open(_pp.path);
                     break;
                 case "OPEN_AUTOSAVES":
                     if (os_type == os_macosx) {

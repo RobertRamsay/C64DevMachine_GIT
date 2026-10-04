@@ -478,6 +478,9 @@ global.basic_unlocked = false;
 //   2 = PRG EXO      the PRG INJECT image crunched by Exomizer into a
 //                    self-extracting PRG that survives a normal KERNAL LOAD
 global.build_target = 0;
+// RECENTS (PROJECT menu): last 10 projects, from c64devmachine.ini
+global.recent_files = [];
+scr_recent_files_load();
 global.exo_last_blocks = 0;   // size of the last PRG EXO build, shown next to the target
 // Exomizer runs as a separate process; Step polls for its output file.
 exo_pending     = false;

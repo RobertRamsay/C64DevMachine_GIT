@@ -1,0 +1,214 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index d291b05..300547b 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1423,6 +1423,7 @@
+     {"id":{"name":"scr_spred64_v2_sprite_paste","path":"scripts/scr_spred64_v2_sprite_paste/scr_spred64_v2_sprite_paste.yy",},},
+     {"id":{"name":"scr_spred64_v2_unpack_bits","path":"scripts/scr_spred64_v2_unpack_bits/scr_spred64_v2_unpack_bits.yy",},},
+     {"id":{"name":"scr_sprite_mask","path":"scripts/scr_sprite_mask/scr_sprite_mask.yy",},},
++    {"id":{"name":"scr_recent_files","path":"scripts/scr_recent_files/scr_recent_files.yy",},},
+     {"id":{"name":"scr_str_is_hex","path":"scripts/scr_str_is_hex/scr_str_is_hex.yy",},},
+     {"id":{"name":"scr_strip_key_ghosts","path":"scripts/scr_strip_key_ghosts/scr_strip_key_ghosts.yy",},},
+     {"id":{"name":"scr_templates","path":"scripts/scr_templates/scr_templates.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 397f9d2..e9b1ddc 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -478,6 +478,9 @@ global.basic_unlocked = false;
+ //   2 = PRG EXO      the PRG INJECT image crunched by Exomizer into a
+ //                    self-extracting PRG that survives a normal KERNAL LOAD
+ global.build_target = 0;
++// RECENTS (PROJECT menu): last 10 projects, from c64devmachine.ini
++global.recent_files = [];
++scr_recent_files_load();
+ global.exo_last_blocks = 0;   // size of the last PRG EXO build, shown next to the target
+ // Exomizer runs as a separate process; Step polls for its output file.
+ exo_pending     = false;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index df6e5aa..80c2122 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -1261,6 +1261,13 @@ if (gui_menu_open == 3) {
+         { title: "RESET/CLEAR",     action: "RESET"           },
+ 		{ title: "OPEN AUTOSAVES",  action: "OPEN_AUTOSAVES"  },
+     ];
++    // RECENTS - up to 10, newest first; names cut to fit the panel
++    if (array_length(global.recent_files) > 0) {
++        array_push(_proj_list, { title: "--- RECENTS ---", action: "HEADER" });
++        for (var _rfi = 0; _rfi < array_length(global.recent_files); _rfi++) {
++            array_push(_proj_list, { title: "", action: "RECENT", path: global.recent_files[_rfi] });
++        }
++    }
+ 
+     var _item_h_p   = 20;
+     var _panel_w_p  = 220;
+@@ -1308,6 +1315,8 @@ if (gui_menu_open == 3) {
+             draw_text_l(_ix1 + 10, _iy + 3, "AUTOSAVE");
+             draw_set_color(_as_title_cols[global.autosave_mode]);
+             draw_text_l(_ix1 + 10 + string_width_l("AUTOSAVE "), _iy + 3, _as_title_labels[global.autosave_mode]);
++        } else if (_pp.action == "RECENT") {
++            draw_text_l(_ix1 + 10, _iy + 3, scr_recent_files_label(_pp.path, _panel_w_p - 20));
+         } else {
+             draw_text_l(_ix1 + 10, _iy + 3, _pp.title);
+         }
+@@ -1441,6 +1450,9 @@ if (gui_menu_open == 3) {
+                 case "RESET":
+                     game_restart();
+                     break;
++                case "RECENT":
++                    scr_recent_files_open(_pp.path);
++                    break;
+                 case "OPEN_AUTOSAVES":
+                     if (os_type == os_macosx) {
+                         var _dir = working_directory + "autosave/";
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 15b2eeb..8d3c511 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -140,6 +140,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
+     io_clear();
+ 
+     global.workspace_path = path;
++    scr_recent_files_add(path);
+ 
+     var _temp_sprites = working_directory + "temp/sprites";
+     if (directory_exists(_temp_sprites)) {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_recent_files/scr_recent_files.gml b/C64DevMachine_win.yyp/scripts/scr_recent_files/scr_recent_files.gml
+new file mode 100644
+index 0000000..67afbfd
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_recent_files/scr_recent_files.gml
+@@ -0,0 +1,89 @@
++/// ====================================================================
++/// RECENT FILES - the last 10 projects loaded or saved, newest first.
++/// Kept in c64devmachine.ini, section [recent], keys r0..r9, and listed
++/// under RECENTS in the PROJECT menu. Files inside the program's own
++/// folder (bundled templates/ports, autosaves, the load-rollback snapshot)
++/// are never listed - they are not the user's projects.
++/// ====================================================================
++
++#macro RECENT_FILES_MAX 10
++
++function scr_recent_files_load() {
++    global.recent_files = [];
++    ini_open("c64devmachine.ini");
++    for (var _i = 0; _i < RECENT_FILES_MAX; _i++) {
++        var _p = ini_read_string("recent", "r" + string(_i), "");
++        if (_p != "") {
++            array_push(global.recent_files, _p);
++        }
++    }
++    ini_close();
++}
++
++function scr_recent_files_save() {
++    ini_open("c64devmachine.ini");
++    for (var _i = 0; _i < RECENT_FILES_MAX; _i++) {
++        var _p = "";
++        if (_i < array_length(global.recent_files)) {
++            _p = global.recent_files[_i];
++        }
++        ini_write_string("recent", "r" + string(_i), _p);
++    }
++    ini_close();
++}
++
++/// Same file? Case- and slash-insensitive (Windows paths).
++function scr_recent_files_key(_path) {
++    return string_lower(string_replace_all(_path, "\\", "/"));
++}
++
++/// Move _path to the top of the list (adding it if new).
++function scr_recent_files_add(_path) {
++    if (_path == "") return;
++    var _key = scr_recent_files_key(_path);
++    var _own = scr_recent_files_key(working_directory);
++    if (_own != "" && string_pos(_own, _key) == 1) return;
++    var _out = [_path];
++    for (var _i = 0; _i < array_length(global.recent_files); _i++) {
++        var _p = global.recent_files[_i];
++        if (scr_recent_files_key(_p) != _key && array_length(_out) < RECENT_FILES_MAX) {
++            array_push(_out, _p);
++        }
++    }
++    global.recent_files = _out;
++    scr_recent_files_save();
++}
++
++function scr_recent_files_remove(_path) {
++    var _key = scr_recent_files_key(_path);
++    var _out = [];
++    for (var _i = 0; _i < array_length(global.recent_files); _i++) {
++        if (scr_recent_files_key(global.recent_files[_i]) != _key) {
++            array_push(_out, global.recent_files[_i]);
++        }
++    }
++    global.recent_files = _out;
++    scr_recent_files_save();
++}
++
++/// File name only, cut down with a ".." suffix until it fits _max_w
++/// in the current font.
++function scr_recent_files_label(_path, _max_w) {
++    var _name = filename_name(_path);
++    if (string_width_l(_name) <= _max_w) return _name;
++    var _cut = _name;
++    while (string_length(_cut) > 1 && string_width_l(_cut + "..") > _max_w) {
++        _cut = string_copy(_cut, 1, string_length(_cut) - 1);
++    }
++    return _cut + "..";
++}
++
++/// Open a recent entry; a file that has gone is dropped from the list.
++function scr_recent_files_open(_path) {
++    if (!file_exists(_path)) {
++        scr_recent_files_remove(_path);
++        scr_show_message("Can't find " + filename_name(_path) + "\n\nIt has been moved or deleted, so it was removed from RECENTS.");
++        return;
++    }
++    scr_load_workspace_from_path(_path);
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_recent_files/scr_recent_files.yy b/C64DevMachine_win.yyp/scripts/scr_recent_files/scr_recent_files.yy
+new file mode 100644
+index 0000000..c40c70e
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_recent_files/scr_recent_files.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_recent_files",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_recent_files",
++  "parent":{
++    "name":"MACROS",
++    "path":"folders/SCRIPTS/MACROS.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+index 9e264c8..fb1dc6d 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+@@ -12,6 +12,7 @@
+ 	    if (path == "") return;
+ 
+ 	global.workspace_path = path;
++	scr_recent_files_add(path);
+ 
+ 	    // ================================================================
+ 	    // 2. GATHER AND SORT NODES
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+index 7419fc5..990089e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+@@ -8,6 +8,7 @@ var path = _path;
+ if (!_hash_only) {
+     if (path == "") return;
+     global.workspace_path = path;
++    scr_recent_files_add(path);
+ }
+ 
+     // ================================================================

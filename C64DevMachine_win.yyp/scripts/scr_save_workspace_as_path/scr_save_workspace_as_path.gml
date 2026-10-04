@@ -8,6 +8,7 @@ var path = _path;
 if (!_hash_only) {
     if (path == "") return;
     global.workspace_path = path;
+    scr_recent_files_add(path);
 }
 
     // ================================================================
