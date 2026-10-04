@@ -74,7 +74,8 @@ function scr_sound_editor_cmd_menus(_lines) {
             { ins: "G$40", label: "GATE OFF, CONTINUE THE PROGRAM" },
             { ins: "G$41", label: "PULSE GATE ON, CONTINUE" },
             { ins: "H0", label: "KEEP ENVELOPE: BYPASS HARD RESTART" },
-            { ins: "H1", label: "USE THE PLAYER HARD RESTART SETTING" }
+            { ins: "H1", label: "USE THE PLAYER HARD RESTART SETTING" },
+            { ins: "PK", label: "KEEP PULSE WIDTH ON NEW NOTES (FOR ~PULSE+)" }
         ] },
         { id: "END", items: [
             { ins: "---", label: "GATE OFF + STOP (NOTE RELEASES)" }

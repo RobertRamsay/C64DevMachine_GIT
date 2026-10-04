@@ -510,7 +510,8 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["byte", ((_atk << 4) | _dec) & 0xFF, _id]);   // AD
         array_push(_list, ["byte", ((_sus << 4) | _rel) & 0xFF, _id]);   // SR
         array_push(_list, ["byte", _ins_pw & 0xFF,              _id]);
-        array_push(_list, ["byte", (_ins_pw >> 8) & 0x0F,       _id]);
+        // Bit 7 of PW hi = PK (keep the voice's pulse width on trigger).
+        array_push(_list, ["byte", ((_ins_pw >> 8) & 0x0F) | (_ins_comp.keep_pw ? 0x80 : 0), _id]);
         // Vibrato (phase 1): delay frames, speed (frames per half-cycle),
         // depth pre-multiplied by 4 so the player adds it straight on.
         var _ins_vdl = 0;
@@ -1376,14 +1377,18 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["iny",     0,         _id]);
         array_push(_list, ["lda_izy", _va[0],   _id]);
         array_push(_list, ["sta_abs", _D400 + 6, _id]);
-        array_push(_list, ["iny",     0,         _id]);
+        // PW hi first: bit 7 set (PK) keeps the voice's current pulse width.
+        array_push(_list, ["ldy_imm", 0x03,      _id]);
+        array_push(_list, ["lda_izy", _va[0],   _id]);
+        array_push(_list, ["bmi",     _vp + "pwkeep", _id]);
+        array_push(_list, ["sta_abs", _D400 + 3, _id]);
+        array_push(_list, ["sta_abs", _key + "pwh_" + string(_vi), _id]);
+        array_push(_list, ["dey",     0,         _id]);
         array_push(_list, ["lda_izy", _va[0],   _id]);
         array_push(_list, ["sta_abs", _D400 + 2, _id]);
         array_push(_list, ["sta_abs", _key + "pwl_" + string(_vi), _id]);   // pulse-width shadow (8XX / 9XX)
-        array_push(_list, ["iny",     0,         _id]);
-        array_push(_list, ["lda_izy", _va[0],   _id]);
-        array_push(_list, ["sta_abs", _D400 + 3, _id]);
-        array_push(_list, ["sta_abs", _key + "pwh_" + string(_vi), _id]);
+        array_push(_list, ["label",   _vp + "pwkeep"]);
+        array_push(_list, ["ldy_imm", 0x03,      _id]);
         // Instrument vibrato: delay, speed, depth*4; restart the vibrato cycle.
         array_push(_list, ["iny",     0,         _id]);
         array_push(_list, ["lda_izy", _va[0],   _id]);
@@ -1733,14 +1738,18 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["iny",     0,         _id]);
             array_push(_list, ["lda_izy", _S_PTR, _id]);
             array_push(_list, ["sty_abs", _key + "ysav", _id], ["ldy_abs", _key + "cv7", _id], ["sta_aby", _chip_base + 6, _id], ["ldy_abs", _key + "ysav", _id]);   // real SR
-            array_push(_list, ["iny",     0,         _id]);
+            // PW hi first: bit 7 set (PK) keeps the voice's current pulse width.
+            array_push(_list, ["ldy_imm", 0x03,      _id]);
+            array_push(_list, ["lda_izy", _S_PTR, _id]);
+            array_push(_list, ["bmi",     _ip + "hrpwkeep", _id]);
+            array_push(_list, ["sty_abs", _key + "ysav", _id], ["ldy_abs", _key + "cv7", _id], ["sta_aby", _chip_base + 3, _id], ["ldy_abs", _key + "ysav", _id]);
+            array_push(_list, ["sta_abx", _key + "pwh", _id]);
+            array_push(_list, ["dey",     0,         _id]);
             array_push(_list, ["lda_izy", _S_PTR, _id]);
             array_push(_list, ["sty_abs", _key + "ysav", _id], ["ldy_abs", _key + "cv7", _id], ["sta_aby", _chip_base + 2, _id], ["ldy_abs", _key + "ysav", _id]);
             array_push(_list, ["sta_abx", _key + "pwl", _id]);   // pulse-width shadow (8XX / 9XX)
-            array_push(_list, ["iny",     0,         _id]);
-            array_push(_list, ["lda_izy", _S_PTR, _id]);
-            array_push(_list, ["sty_abs", _key + "ysav", _id], ["ldy_abs", _key + "cv7", _id], ["sta_aby", _chip_base + 3, _id], ["ldy_abs", _key + "ysav", _id]);
-            array_push(_list, ["sta_abx", _key + "pwh", _id]);
+            array_push(_list, ["label",   _ip + "hrpwkeep"]);
+            array_push(_list, ["ldy_imm", 0x03,      _id]);
             // Instrument vibrato: delay, speed, depth*4; restart the vibrato cycle.
             array_push(_list, ["iny",     0,         _id]);
             array_push(_list, ["lda_izy", _S_PTR, _id]);

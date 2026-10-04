@@ -50,7 +50,7 @@
 /// errors       — human-readable strings for malformed tokens (never throws)
 function scr_instrument_parse(_text) {
 
-    var _out    = { bytes: [], step_offsets: [], errors: [], version: 6, byte_lines: [], source: string(_text), no_hr: false, main_len: 0, lanes: [] };
+    var _out    = { bytes: [], step_offsets: [], errors: [], version: 7, byte_lines: [], source: string(_text), no_hr: false, keep_pw: false, main_len: 0, lanes: [] };
     var _tokens = [];
 
     // ── Tokenise: newlines act as commas, then split, trim, drop empties ──
@@ -192,6 +192,13 @@ function scr_instrument_parse(_text) {
         // These setup commands take no time; Dn controls when they are heard.
         if (_up == "H0" || _up == "H1") {
             _out.no_hr = (_up == "H0");
+            continue;
+        }
+        // PK: KEEP PULSE WIDTH. A note on this instrument leaves the voice's
+        // pulse width where it is instead of loading the instrument's PW, so
+        // a ~PULSE+ sweep carries on through note changes. No bytes, no time.
+        if (_up == "PK") {
+            _out.keep_pw = true;
             continue;
         }
         if (_c0 == "G") {
@@ -498,7 +505,7 @@ function scr_instrument_ensure_compiled(_instr) {
     if (_valid) _valid = variable_struct_exists(_instr.compiled, "bytes") && variable_struct_exists(_instr.compiled, "errors");
     if (_valid) _valid = is_array(_instr.compiled.bytes) && is_array(_instr.compiled.errors);
     if (_valid) _valid = variable_struct_exists(_instr.compiled, "version") && variable_struct_exists(_instr.compiled, "source");
-    if (_valid) _valid = _instr.compiled.version == 6 && _instr.compiled.source == _instr.text;
+    if (_valid) _valid = _instr.compiled.version == 7 && _instr.compiled.source == _instr.text;
     if (!_valid) _instr.compiled = scr_instrument_parse(_instr.text);
     return _instr.compiled;
 }
