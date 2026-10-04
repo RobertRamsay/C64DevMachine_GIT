@@ -61,6 +61,10 @@ map_top_mode    = 0;       // map editor top panel: 0 = STAMPS, 1 = ROOM PREVIEW
 map_hover_room  = -1;      // room under the mouse last frame (RLE room maps)
 map_prev_room   = 0;       // room shown in ROOM PREVIEW
 map_prev_follow = true;    // ROOM PREVIEW follows the room under the mouse
+map_prev_on     = false;   // ROOM PREVIEW is showing this frame (top panel)
+map_prev_x1     = 0;       // its area: left, right, top (bottom = canvas top)
+map_prev_x2     = 0;
+map_prev_y1     = 0;
 // bitmap editor:
 bmp_ref_asset_name = "";
 bmp_ref_vy1        = 0;

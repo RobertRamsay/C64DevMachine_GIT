@@ -399,7 +399,7 @@ function scr_map_cache_update(_c, _asset, _chr, _p) {
 }
 
 
-/// Small text button for the ROOM PREVIEW panel.
+/// Small text button for the ROOM PREVIEW panel (text centred in the box).
 /// Returns 1 on a left click, 2 on a right click, 0 otherwise.
 function scr_mrp_button(_x1, _y1, _x2, _y2, _label, _on, _mx, _my) {
     var _hov = point_in_rectangle(_mx, _my, _x1, _y1, _x2, _y2);
@@ -411,7 +411,9 @@ function scr_mrp_button(_x1, _y1, _x2, _y2, _label, _on, _mx, _my) {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text((_x1 + _x2) * 0.5, _y1 + 2 - scr_lang_lift(), _label);
+    draw_set_valign(fa_middle);
+    draw_text((_x1 + _x2) * 0.5, (_y1 + _y2) * 0.5 - scr_lang_lift(), _label);
+    draw_set_valign(fa_top);
     draw_set_halign(fa_left);
     if (_hov && mouse_check_button_pressed(mb_left)) return 1;
     if (_hov && mouse_check_button_pressed(mb_right)) return 2;
@@ -421,8 +423,10 @@ function scr_mrp_button(_x1, _y1, _x2, _y2, _label, _on, _mx, _my) {
 /// ROOM PREVIEW (map editor top panel, room maps): one room the way the
 /// game shows it - its own charset and colour bands (meta.room_view) and,
 /// with Y x2 on, every cell twice as tall (Bruce Lee doubles each tile row).
-/// The room's view is edited here:
-///   < >             previous / next room      FOLLOW  track the mouse room
+/// Scaled to fill the panel height, centred, with its controls in a column
+/// beside it:
+///   < ROOM >        previous / next room      FOLLOW  track the mouse room
+///   Y x2 / TAGS     row doubling / tag badges
 ///   CHR             L-click next charset, R-click back to the map's own
 ///   band ROW        L +1 / R -1                swatches L next / R previous colour
 ///   X               delete the band            + BAND  add one under the last
@@ -434,24 +438,28 @@ function scr_map_room_preview_panel(_asset, _x1, _y1, _x2, _y2, _mx, _my) {
     var _rx  = max(1, _gw div _rw);
     var _rn  = _rx * max(1, real(_m.grid_h) div _rh);
     if (real(_m.room_count) > 0 && real(_m.room_count) < _rn) _rn = real(_m.room_count);
+    if (_y2 - _y1 < 40) return;
     if (map_prev_follow && map_hover_room >= 0 && map_hover_room < _rn) map_prev_room = map_hover_room;
     map_prev_room = clamp(map_prev_room, 0, max(0, _rn - 1));
     var _r = map_prev_room;
 
-    draw_set_color(make_color_rgb(12, 12, 20));
-    draw_rectangle(_x1, _y1, _x2, _y2, false);
-
-    // ---- the room ----
+    // ---- layout: preview scaled to the height, controls beside it ----
     var _ysc  = 1;
     if (_m.view_y2) _ysc = 2;
     var _pw   = _rw * 8;
     var _ph   = _rh * 8 * _ysc;
-    var _side = 230;    // controls column
-    var _sc   = min((_x2 - _x1 - _side - 8) / _pw, (_y2 - _y1 - 4) / _ph);
+    var _colw = 214;
+    var _sc   = min((_y2 - _y1 - 4) / _ph, (_x2 - _x1 - _colw - 16) / _pw);
     _sc = max(0.25, _sc);
-    var _px = _x1 + 2;
+    var _vw = _pw * _sc;
+    var _vh = _ph * _sc;
+    var _gx = _x1 + max(0, ((_x2 - _x1) - (_vw + 12 + _colw)) * 0.5);
+    var _px = _gx + 2;
     var _py = _y1 + 2;
-    var _c  = map_view_cache;
+
+    draw_set_color(make_color_rgb(12, 12, 20));
+    draw_rectangle(_gx - 4, _y1 - 2, _gx + _vw + 12 + _colw + 4, _y2, false);
+    var _c = map_view_cache;
     if (_c.asset == _asset && surface_exists(_c.surf)) {
         var _tf = gpu_get_tex_filter();
         gpu_set_tex_filter(false);
@@ -460,36 +468,40 @@ function scr_map_room_preview_panel(_asset, _x1, _y1, _x2, _y2, _mx, _my) {
         gpu_set_tex_filter(_tf);
     }
     draw_set_color(c_yellow);
-    draw_rectangle(_px - 1, _py - 1, _px + _pw * _sc, _py + _ph * _sc, true);
+    draw_rectangle(_px - 1, _py - 1, _px + _vw, _py + _vh, true);
 
-    // ---- controls ----
-    var _cx = _x2 - _side + 4;
+    // ---- controls column ----
+    var _cx = _px + _vw + 10;
     var _cy = _y1 + 2;
-    if (scr_mrp_button(_cx, _cy, _cx + 18, _cy + 14, "<", false, _mx, _my) == 1) {
+    var _bh = 18;
+    var _st = _bh + 4;
+    if (scr_mrp_button(_cx, _cy, _cx + 24, _cy + _bh, "<", false, _mx, _my) == 1) {
         map_prev_follow = false;
         map_prev_room = (map_prev_room + _rn - 1) mod _rn;
     }
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_yellow);
     draw_set_halign(fa_center);
-    draw_text(_cx + 52, _cy + 2 - scr_lang_lift(), "ROOM " + string(_r));
+    draw_set_valign(fa_middle);
+    draw_text(_cx + 72, _cy + _bh * 0.5 - scr_lang_lift(), "ROOM " + string(_r));
+    draw_set_valign(fa_top);
     draw_set_halign(fa_left);
-    if (scr_mrp_button(_cx + 86, _cy, _cx + 104, _cy + 14, ">", false, _mx, _my) == 1) {
+    if (scr_mrp_button(_cx + 120, _cy, _cx + 144, _cy + _bh, ">", false, _mx, _my) == 1) {
         map_prev_follow = false;
         map_prev_room = (map_prev_room + 1) mod _rn;
     }
-    if (scr_mrp_button(_cx + 110, _cy, _cx + 168, _cy + 14, "FOLLOW", map_prev_follow, _mx, _my) == 1) {
+    if (scr_mrp_button(_cx + 150, _cy, _cx + _colw, _cy + _bh, "FOLLOW", map_prev_follow, _mx, _my) == 1) {
         map_prev_follow = !map_prev_follow;
     }
-    _cy += 18;
-    if (scr_mrp_button(_cx, _cy, _cx + 52, _cy + 14, "Y x2", _m.view_y2, _mx, _my) == 1) {
+    _cy += _st;
+    if (scr_mrp_button(_cx, _cy, _cx + 104, _cy + _bh, "Y x2", _m.view_y2, _mx, _my) == 1) {
         _m.view_y2 = !_m.view_y2;
         _m.is_dirty = true;
     }
-    if (scr_mrp_button(_cx + 56, _cy, _cx + 108, _cy + 14, "TAGS", map_show_tags, _mx, _my) == 1) {
+    if (scr_mrp_button(_cx + 110, _cy, _cx + _colw, _cy + _bh, "TAGS", map_show_tags, _mx, _my) == 1) {
         map_show_tags = !map_show_tags;
     }
-    _cy += 20;
+    _cy += _st;
 
     // the room's view entry (created on the first edit)
     if (!is_array(_m.room_view)) _m.room_view = [];
@@ -500,8 +512,8 @@ function scr_map_room_preview_panel(_asset, _x1, _y1, _x2, _y2, _mx, _my) {
 
     // charset
     var _chr_lbl = "CHR: MAP";
-    if (is_string(_ent[$ "chr"]) && _ent.chr != "") _chr_lbl = "CHR: " + _ent.chr;
-    var _cb = scr_mrp_button(_cx, _cy, _cx + 220, _cy + 14, _chr_lbl, false, _mx, _my);
+    if (_ent.chr != "") _chr_lbl = "CHR: " + _ent.chr;
+    var _cb = scr_mrp_button(_cx, _cy, _cx + _colw, _cy + _bh, _chr_lbl, false, _mx, _my);
     if (_cb != 0) {
         var _names = [];
         for (var _ai = 0; _ai < ds_list_size(asset_list); _ai++) {
@@ -519,41 +531,46 @@ function scr_map_room_preview_panel(_asset, _x1, _y1, _x2, _y2, _mx, _my) {
         }
         _edited = true;
     }
-    _cy += 18;
+    _cy += _st;
 
     // colour bands
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_ltgray);
-    draw_text(_cx, _cy - scr_lang_lift(), "BANDS   ROW   BG  MC1 MC2");
-    _cy += 14;
+    draw_set_valign(fa_middle);
+    draw_text(_cx,       _cy + 7 - scr_lang_lift(), "ROW");
+    draw_text(_cx + 44,  _cy + 7 - scr_lang_lift(), "BG");
+    draw_text(_cx + 82,  _cy + 7 - scr_lang_lift(), "MC1");
+    draw_text(_cx + 120, _cy + 7 - scr_lang_lift(), "MC2");
+    draw_set_valign(fa_top);
+    _cy += 16;
     if (!is_array(_ent[$ "bands"])) _ent.bands = [];
     var _bands = _ent.bands;
     var _del = -1;
     for (var _bi = 0; _bi < array_length(_bands); _bi++) {
         var _bd = _bands[_bi];
-        if (_cy + 14 > _y2) break;
-        var _rb = scr_mrp_button(_cx + 48, _cy, _cx + 76, _cy + 14, string(real(_bd[0])), false, _mx, _my);
+        if (_cy + _bh > _y2 - _st) break;    // keep a row for + BAND
+        var _rb = scr_mrp_button(_cx, _cy, _cx + 32, _cy + _bh, string(real(_bd[0])), false, _mx, _my);
         if (_rb == 1) { _bd[@ 0] = min(_rh - 1, real(_bd[0]) + 1); _edited = true; }
         if (_rb == 2) { _bd[@ 0] = max(0, real(_bd[0]) - 1); _edited = true; }
         for (var _k = 1; _k <= 3; _k++) {
-            var _sx1 = _cx + 84 + (_k - 1) * 28;
-            var _shov = point_in_rectangle(_mx, _my, _sx1, _cy, _sx1 + 22, _cy + 14);
+            var _sx1 = _cx + 44 + (_k - 1) * 38;
+            var _shov = point_in_rectangle(_mx, _my, _sx1, _cy, _sx1 + 30, _cy + _bh);
             draw_set_color(scr_c64_pepto_colour(real(_bd[_k]) & 0x0F));
-            draw_rectangle(_sx1, _cy, _sx1 + 22, _cy + 14, false);
+            draw_rectangle(_sx1, _cy, _sx1 + 30, _cy + _bh, false);
             if (_shov) { draw_set_color(c_white); } else { draw_set_color(c_black); }
-            draw_rectangle(_sx1, _cy, _sx1 + 22, _cy + 14, true);
+            draw_rectangle(_sx1, _cy, _sx1 + 30, _cy + _bh, true);
             if (_shov && mouse_check_button_pressed(mb_left))  { _bd[@ _k] = (real(_bd[_k]) + 1) & 0x0F; _edited = true; }
             if (_shov && mouse_check_button_pressed(mb_right)) { _bd[@ _k] = (real(_bd[_k]) + 15) & 0x0F; _edited = true; }
         }
-        if (scr_mrp_button(_cx + 172, _cy, _cx + 188, _cy + 14, "X", false, _mx, _my) == 1) _del = _bi;
-        _cy += 17;
+        if (scr_mrp_button(_cx + _colw - 24, _cy, _cx + _colw, _cy + _bh, "X", false, _mx, _my) == 1) _del = _bi;
+        _cy += _st;
     }
     if (_del >= 0) {
         array_delete(_bands, _del, 1);
         _edited = true;
     }
-    if (_cy + 14 <= _y2) {
-        if (scr_mrp_button(_cx + 48, _cy, _cx + 120, _cy + 14, "+ BAND", false, _mx, _my) == 1) {
+    if (_cy + _bh <= _y2) {
+        if (scr_mrp_button(_cx, _cy, _cx + 104, _cy + _bh, "+ BAND", false, _mx, _my) == 1) {
             var _nb = [0, 0, 1, 2];
             if (array_length(_bands) > 0) {
                 var _lb = _bands[array_length(_bands) - 1];

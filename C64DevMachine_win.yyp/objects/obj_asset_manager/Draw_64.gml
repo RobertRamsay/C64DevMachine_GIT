@@ -827,6 +827,14 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _vy1 = 40;
         _vy2 = _gui_h - 40;
     }
+    // MAP_DATA: almost the whole screen - the map wants the height.
+    // Must match obj_asset_manager Step.
+    if (_asset.type == "MAP_DATA") {
+        _vx1 = 12;
+        _vx2 = _gui_w - 12;
+        _vy1 = 8;
+        _vy2 = _gui_h - 8;
+    }
 	
     var _vw    = _vx2 - _vx1;
     var _vh    = _vy2 - _vy1;
@@ -1591,31 +1599,24 @@ draw_set_color(c_ltgray);
 
 		    // ---- STAMPS / ROOM PREVIEW (room maps share the stamp area) ----
 		    var _tp_rooms = (real(_m.raw_chars) >= 2 && real(_m.room_w) > 0 && real(_m.room_h) > 0);
+		    map_prev_on = false;
 		    if (_tp_rooms) {
 		        var _tpx1 = _cpbx2 + 10;
-		        var _tpy1 = _cpby1 - 20;
 		        var _tp_lbl = ["STAMPS", "ROOM PREVIEW"];
 		        for (var _tpi = 0; _tpi < 2; _tpi++) {
-		            var _tbx1 = _tpx1 + _tpi * 104;
-		            var _tbx2 = _tbx1 + 100;
-		            var _tbhov = point_in_rectangle(_mx, _my, _tbx1, _tpy1, _tbx2, _tpy1 + 14);
-		            var _tbcol = make_color_rgb(30, 30, 45);
-		            if (map_top_mode == _tpi) { _tbcol = make_color_rgb(40, 110, 60); }
-		            else if (_tbhov) { _tbcol = make_color_rgb(50, 50, 70); }
-		            draw_set_color(_tbcol);
-		            draw_rectangle(_tbx1, _tpy1, _tbx2, _tpy1 + 14, false);
-		            draw_set_font_l(fnt_c64_tiny);
-		            draw_set_color(c_white);
-		            draw_set_halign(fa_center);
-		            draw_text_l(_tbx1 + 50, _tpy1 + 2, _tp_lbl[_tpi]);
-		            draw_set_halign(fa_left);
-		            if (_tbhov && mouse_check_button_pressed(mb_left)) {
+		            var _tbx1 = _tpx1 + _tpi * 106;
+		            var _tby1 = _cpby1 - 24;
+		            if (scr_mrp_button(_tbx1, _tby1, _tbx1 + 100, _tby1 + 18, _tp_lbl[_tpi], map_top_mode == _tpi, _mx, _my) == 1) {
 		                map_top_mode = _tpi;
 		            }
 		        }
 		    }
 		    if (_tp_rooms && map_top_mode == 1) {
-		        scr_map_room_preview_panel(_asset, _cpbx2 + 10, _cpby1, _vx2 - 230, _cpby1 + 196, _mx, _my);
+		        // drawn under ---- CANVAS ---- once the canvas top is known, so it fits
+		        map_prev_on = true;
+		        map_prev_x1 = _cpbx2 + 226;
+		        map_prev_x2 = _vx2 - 236;
+		        map_prev_y1 = _vy1 + 34;
 		    } else {
 		    // ---- TILE STORE BANK ----
 		    var _bank_max   = 128;
@@ -2375,6 +2376,10 @@ var _zmx1  = _vx2 - _btn_bw * 2 - 6;
 		    var _cv_y1 = _cy;
 		    var _cv_x2 = _vx2 - 10;
 		    var _cv_y2 = _vy2 - (_map_ecm_mode ? 195 : 80);
+		    // ROOM PREVIEW (top panel) - fills the space above the canvas
+		    if (map_prev_on) {
+		        scr_map_room_preview_panel(_asset, map_prev_x1, map_prev_y1, map_prev_x2, _cv_y1 - 6, _mx, _my);
+		    }
 		    // OBJECT LAYER bar gets its own strip under the canvas (RLE ROOMS
 		    // maps with an object asset); the colour / tile rows move down.
 		    var _obj_bar_h = 0;
