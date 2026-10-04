@@ -75,6 +75,7 @@ var _base = "unsaved";
             wire_in_source:  variable_instance_exists(inst, "wire_in_source")   ? inst.wire_in_source   : -1,
             stable_uid:      variable_instance_exists(inst, "stable_uid")       ? inst.stable_uid       : -1,
 			custom_title:    variable_instance_exists(inst, "custom_title")     ? inst.custom_title     : "",
+			params:          inst.params,
             code: _save_code, binary_blob: _hex_data
 			
         });
@@ -302,6 +303,7 @@ var _root = { nodes:node_data, boxes:box_data, assets:asset_data,
  // survives a save with nothing in it.
  asset_groups:       _save_groups,
                   basic_unlocked:global.basic_unlocked, kernal_unlocked:global.kernal_unlocked, build_target:global.build_target,
+                  creator_locked:global.creator_locked,
                   code_editor_font_index: code_editor_font_index,
                   map_global_mixed: obj_workspace_manager.map_global_mixed,
                   map_tile_bank:     variable_global_exists("map_tile_bank") ? global.map_tile_bank : [],

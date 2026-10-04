@@ -276,6 +276,10 @@ hdr_cache_sig     = "";
 hdr_cache_title   = "";
 hdr_cache_opcode  = false;  // true when title font is fnt_C64_Angled_tiny
 
+// CREATOR LAYER: values this node exposes to the Creator view. Array of
+// structs from scr_param_new(); edited through the PARAMS tab.
+params           = [];
+
 // ORG wire connection system
 org_uid          = -1;
 wire_out_target  = -1;

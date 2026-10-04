@@ -31,6 +31,8 @@ function scr_workspace_input_blocked() {
     if (instance_exists(obj_workspace_manager))
         _active = _active || obj_workspace_manager.code_editor_open || obj_workspace_manager.box_popup_open;
     _active = _active || instance_exists(obj_integer_box) || instance_exists(obj_ui_color_picker);
+    // CREATOR LAYER: an open Creator view or params editor locks the workspace.
+    _active = _active || scr_creator_panel_active();
     if (_active) {
         if (!global.workspace_editor_seen) {
             // Cancel suspended workspace gestures instead of resuming them

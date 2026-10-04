@@ -2761,3 +2761,9 @@ if ((node_type == "ORG" || node_type == "INIT") && scr_org_has_children(id)) {
     draw_set_halign(_halign_b);
     draw_set_valign(_valign_b);
 }
+
+
+// =============================================================
+// CREATOR PARAMS TAB (right side of macro / code block nodes, Pro only)
+// =============================================================
+scr_creator_draw_node_tab();

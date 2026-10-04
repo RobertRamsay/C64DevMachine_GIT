@@ -45,6 +45,9 @@ function scr_parse_asm_text_uncached(_text) {
     var _result = [];
     if (_text == "" || _text == undefined) return _result;
 
+    // ── Pre-pass 0: .IF / .ELSE / .ENDIF (Creator MODE params) ──
+    _text = scr_asm_preprocess_if(_text);
+
     // ── Pre-pass A: desugar scope { } blocks (BEFORE repeat expansion) ──
     _text = scr_desugar_scopes(_text);
 
@@ -458,4 +461,141 @@ function scr_parse_asm_text_uncached(_text) {
         }
     }
     return _result;
+}
+
+/// @function scr_asm_preprocess_if(_text)
+/// @desc Conditional assembly for code blocks:
+///         .IF NAME == n   (also != <> < > <= >= =, or a bare value: non-zero)
+///         .ELSE
+///         .ENDIF
+///       Nests. NAME is a `NAME = value` line in the same block, else a
+///       global named location, else a literal. Lines that are not assembled
+///       are turned into ; comments rather than removed, so line numbers stay
+///       where the editor expects them.
+function scr_asm_preprocess_if(_text) {
+    if (string_pos(".IF", string_upper(_text)) == 0) {
+        return _text;
+    }
+    var _lines = string_split(_text, "\n");
+    var _n     = array_length(_lines);
+
+    var _consts = {};
+    for (var _i = 0; _i < _n; _i++) {
+        var _ln = scr_asm_pp_strip(_lines[_i]);
+        var _eq = string_pos("=", _ln);
+        if (_eq <= 1) {
+            continue;
+        }
+        if (string_char_at(_ln, 1) == ".") {
+            continue;
+        }
+        var _nm = string_upper(string_trim(string_copy(_ln, 1, _eq - 1)));
+        if (_nm == "") {
+            continue;
+        }
+        if (string_pos(" ", _nm) > 0) {
+            continue;
+        }
+        _consts[$ _nm] = string_trim(string_delete(_ln, 1, _eq));
+    }
+
+    var _stack  = [];
+    var _active = true;
+    for (var _i = 0; _i < _n; _i++) {
+        var _ln = scr_asm_pp_strip(_lines[_i]);
+        var _up = string_upper(_ln);
+
+        if (string_copy(_up, 1, 4) == ".IF " || _up == ".IF") {
+            var _cond = scr_asm_pp_eval(string_delete(_ln, 1, 3), _consts);
+            array_push(_stack, { parent: _active, taken: _cond });
+            if (!_cond) {
+                _active = false;
+            }
+            _lines[_i] = ";" + _lines[_i];
+            continue;
+        }
+        if (_up == ".ELSE") {
+            if (array_length(_stack) > 0) {
+                var _top = _stack[array_length(_stack) - 1];
+                _active = _top.parent && !_top.taken;
+                _top.taken = true;
+            }
+            _lines[_i] = ";" + _lines[_i];
+            continue;
+        }
+        if (_up == ".ENDIF") {
+            if (array_length(_stack) > 0) {
+                var _top = array_pop(_stack);
+                _active = _top.parent;
+            }
+            _lines[_i] = ";" + _lines[_i];
+            continue;
+        }
+        if (!_active) {
+            _lines[_i] = ";" + _lines[_i];
+        }
+    }
+
+    var _out = "";
+    for (var _i = 0; _i < _n; _i++) {
+        if (_i > 0) {
+            _out += "\n";
+        }
+        _out += _lines[_i];
+    }
+    return _out;
+}
+
+function scr_asm_pp_strip(_line) {
+    var _ln   = _line;
+    var _semi = string_pos(";", _ln);
+    if (_semi > 0) {
+        _ln = string_copy(_ln, 1, _semi - 1);
+    }
+    var _ds = string_pos("//", _ln);
+    if (_ds > 0) {
+        _ln = string_copy(_ln, 1, _ds - 1);
+    }
+    return string_trim(_ln);
+}
+
+function scr_asm_pp_value(_tok, _consts) {
+    var _t  = string_trim(_tok);
+    var _up = string_upper(_t);
+    if (variable_struct_exists(_consts, _up)) {
+        return _asm_val(_consts[$ _up]);
+    }
+    if (variable_global_exists("named_loc_map")) {
+        if (ds_exists(global.named_loc_map, ds_type_map)) {
+            if (ds_map_exists(global.named_loc_map, _up)) {
+                return ds_map_find_value(global.named_loc_map, _up);
+            }
+        }
+    }
+    return _asm_val(_t);
+}
+
+function scr_asm_pp_eval(_expr, _consts) {
+    var _e   = string_trim(_expr);
+    var _ops = ["==", "!=", "<>", "<=", ">=", "=", "<", ">"];
+    for (var _o = 0; _o < array_length(_ops); _o++) {
+        var _op  = _ops[_o];
+        var _pos = string_pos(_op, _e);
+        if (_pos <= 1) {
+            continue;
+        }
+        var _a = scr_asm_pp_value(string_copy(_e, 1, _pos - 1), _consts);
+        var _b = scr_asm_pp_value(string_delete(_e, 1, _pos + string_length(_op) - 1), _consts);
+        switch (_op) {
+            case "==": return _a == _b;
+            case "=":  return _a == _b;
+            case "!=": return _a != _b;
+            case "<>": return _a != _b;
+            case "<=": return _a <= _b;
+            case ">=": return _a >= _b;
+            case "<":  return _a < _b;
+            case ">":  return _a > _b;
+        }
+    }
+    return scr_asm_pp_value(_e, _consts) != 0;
 }

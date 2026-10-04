@@ -69,6 +69,8 @@ if (node_type == "ORG" && amb_btn_live && instance_exists(org_amb_partner) &&
 // The pointer is on an ORG fold tab — the click belongs to the tab, not to the
 // ORG node underneath it, which would otherwise start a drag on the same press.
 if (global.org_collapse_hot != noone && !is_dragging) exit;
+// Same for the CREATOR params tab on the node's right side.
+if (global.creator_tab_hot != noone && !is_dragging) exit;
 if (global.cbc_button_hot      && !is_dragging) exit;
 
 // =============================================================

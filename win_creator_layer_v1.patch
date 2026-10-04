@@ -1,0 +1,1529 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index a70c728..36b47ed 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1115,6 +1115,7 @@
+     {"id":{"name":"scr_compile_macro_save_game","path":"scripts/scr_compile_macro_save_game/scr_compile_macro_save_game.yy",},},
+     {"id":{"name":"scr_compile_macro_uci_reu","path":"scripts/scr_compile_macro_uci_reu/scr_compile_macro_uci_reu.yy",},},
+     {"id":{"name":"scr_crash_recovery_check","path":"scripts/scr_crash_recovery_check/scr_crash_recovery_check.yy",},},
++    {"id":{"name":"scr_creator","path":"scripts/scr_creator/scr_creator.yy",},},
+     {"id":{"name":"scr_ctrl_held","path":"scripts/scr_ctrl_held/scr_ctrl_held.yy",},},
+     {"id":{"name":"scr_define_opcodes","path":"scripts/scr_define_opcodes/scr_define_opcodes.yy",},},
+     {"id":{"name":"scr_desugar_multi_labels","path":"scripts/scr_desugar_multi_labels/scr_desugar_multi_labels.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index fe58a16..30a54f7 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -6,6 +6,9 @@ scr_chr_preview_service();
+ 
+ 
+ if obj_workspace_manager.code_editor_open or obj_workspace_manager.hideui exit;
++// CREATOR LAYER: the asset panel reads the mouse directly, so it must not be
++// drawn (or clickable) under a Creator panel.
++if (scr_creator_panel_active()) exit;
+ 
+ 
+ // Invalidate dither cache when mode/invert changes
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+index 96c9a9c..3abe35a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Create_0.gml
+@@ -276,6 +276,10 @@ hdr_cache_sig     = "";
+ hdr_cache_title   = "";
+ hdr_cache_opcode  = false;  // true when title font is fnt_C64_Angled_tiny
+ 
++// CREATOR LAYER: values this node exposes to the Creator view. Array of
++// structs from scr_param_new(); edited through the PARAMS tab.
++params           = [];
++
+ // ORG wire connection system
+ org_uid          = -1;
+ wire_out_target  = -1;
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 6443c30..d810ea0 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -2761,3 +2761,9 @@ if ((node_type == "ORG" || node_type == "INIT") && scr_org_has_children(id)) {
+     draw_set_halign(_halign_b);
+     draw_set_valign(_valign_b);
+ }
++
++
++// =============================================================
++// CREATOR PARAMS TAB (right side of macro / code block nodes, Pro only)
++// =============================================================
++scr_creator_draw_node_tab();
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 12be874..8e8d2c0 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -69,6 +69,8 @@ if (node_type == "ORG" && amb_btn_live && instance_exists(org_amb_partner) &&
+ // The pointer is on an ORG fold tab — the click belongs to the tab, not to the
+ // ORG node underneath it, which would otherwise start a drag on the same press.
+ if (global.org_collapse_hot != noone && !is_dragging) exit;
++// Same for the CREATOR params tab on the node's right side.
++if (global.creator_tab_hot != noone && !is_dragging) exit;
+ if (global.cbc_button_hot      && !is_dragging) exit;
+ 
+ // =============================================================
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 074b2b2..5b6c66e 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -1,5 +1,7 @@
+ /// @desc Setup Workspace, Palette & C64 Environment
+ global.lite=0;
++// CREATOR LAYER globals (lock state, panels). Before anything can step.
++scr_creator_init();
+ 
+ // ---------------------------------------------------------------------------
+ // MCP / external control feature switch.
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_75.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_75.gml
+index c07f51b..298bb5d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_75.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_75.gml
+@@ -1,4 +1,6 @@
+ /// @desc Draw GUI End: help above every object's regular GUI, including assets.
++// CREATOR LAYER panels sit above everything else on screen.
++scr_creator_draw();
+ var _info_visible = !hideui && !welcome_open && instance_exists(node_tooltip_node);
+ if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) _info_visible = false;
+ if (!_info_visible) {
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
+index 30a0814..fd78887 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
+@@ -30,6 +30,10 @@ scr_cbc_hit();
+ // to be settled before any Step event runs.
+ scr_org_collapse_hit();
+ 
++// CREATOR LAYER: params tab clicks, F9, deferred panel actions, and the
++// open-locked rule. Begin Step for the same reason as the fold tab.
++scr_creator_begin_step();
++
+ // ---- IDLE DETECTION ----
+ var _mx = global.gui_mouse_x;
+ var _my = global.gui_mouse_y;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+index 7be4b6a..660dfef 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_autosave/scr_autosave.gml
+@@ -75,6 +75,7 @@ var _base = "unsaved";
+             wire_in_source:  variable_instance_exists(inst, "wire_in_source")   ? inst.wire_in_source   : -1,
+             stable_uid:      variable_instance_exists(inst, "stable_uid")       ? inst.stable_uid       : -1,
+ 			custom_title:    variable_instance_exists(inst, "custom_title")     ? inst.custom_title     : "",
++			params:          inst.params,
+             code: _save_code, binary_blob: _hex_data
+ 			
+         });
+@@ -302,6 +303,7 @@ var _root = { nodes:node_data, boxes:box_data, assets:asset_data,
+  // survives a save with nothing in it.
+  asset_groups:       _save_groups,
+                   basic_unlocked:global.basic_unlocked, kernal_unlocked:global.kernal_unlocked, build_target:global.build_target,
++                  creator_locked:global.creator_locked,
+                   code_editor_font_index: code_editor_font_index,
+                   map_global_mixed: obj_workspace_manager.map_global_mixed,
+                   map_tile_bank:     variable_global_exists("map_tile_bank") ? global.map_tile_bank : [],
+diff --git a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+new file mode 100644
+index 0000000..f03a76e
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+@@ -0,0 +1,1113 @@
++/// ====================================================================
++/// CREATOR LAYER
++///
++/// A safe "skin" over a workspace. The developer (Pro) exposes values on
++/// macro and code block nodes through the PARAMS tab on the node's right
++/// side. The Creator view then lists only those values — colour swatches,
++/// ranges and named modes — plus build / run / save / load. Everything else
++/// is locked: the panel owns input through scr_workspace_input_blocked().
++///
++/// LIGHT: a workspace saved with creator_locked opens in the Creator view
++///        and cannot leave it. No PARAMS tabs are shown.
++/// PRO:   F9 toggles the Creator view, EDIT GRAPH leaves it, and the
++///        OPENS LOCKED switch decides how the workspace opens next time.
++///
++/// TARGETS
++///   MACRO_CODE: a `NAME = value` line inside the code block (sym).
++///   Other macros: instructions[row][slot].
++/// The node itself stays the single source of truth for every value.
++///
++/// MODE params pair with .IF NAME == n / .ELSE / .ENDIF in code blocks
++/// (scr_asm_preprocess_if): only the chosen branch is assembled.
++/// ====================================================================
++
++#macro CREATOR_MAX_PARAMS 8
++
++function scr_creator_init() {
++    global.creator_locked       = false;   // saved per workspace
++    global.creator_view_open    = false;
++    global.creator_edit_node    = noone;
++    global.creator_open_pending = false;
++    global.creator_open_frame   = -1;
++    global.creator_tab_hot      = noone;
++    global.creator_action       = "";      // deferred to Begin Step
++    global.creator_scroll       = 0;
++    global.creator_mx           = 0;
++    global.creator_my           = 0;
++    global.creator_click        = false;
++    global.creator_field        = "";
++    global.creator_field_text   = "";
++    global.creator_field_rect   = [0, 0, 0, 0];
++    global.creator_commit       = false;
++    global.creator_esc_eaten    = false;
++}
++
++// --------------------------------------------------------------------
++// PARAM DATA
++// --------------------------------------------------------------------
++
++function scr_param_new() {
++    return {
++        label:   "PARAM",
++        kind:    "COLOUR",     // COLOUR, RANGE, MODE
++        sym:     "",           // MACRO_CODE target symbol
++        row:     0,            // macro target row
++        slot:    1,            // macro target slot
++        vmin:    0,
++        vmax:    255,
++        options: "Off=0,On=1"  // MODE: Label=value, comma separated
++    };
++}
++
++/// Saved data may come from older or hand-written files, so every field is
++/// copied onto a fully initialised param rather than trusted as-is.
++function scr_param_from_data(_d) {
++    var _p = scr_param_new();
++    if (!is_struct(_d)) {
++        return _p;
++    }
++    if (variable_struct_exists(_d, "label"))   _p.label   = string(_d.label);
++    if (variable_struct_exists(_d, "kind"))    _p.kind    = string_upper(string(_d.kind));
++    if (variable_struct_exists(_d, "sym"))     _p.sym     = string_upper(string(_d.sym));
++    if (variable_struct_exists(_d, "row"))     _p.row     = max(0, round(real(_d.row)));
++    if (variable_struct_exists(_d, "slot"))    _p.slot    = max(1, round(real(_d.slot)));
++    if (variable_struct_exists(_d, "vmin"))    _p.vmin    = real(_d.vmin);
++    if (variable_struct_exists(_d, "vmax"))    _p.vmax    = real(_d.vmax);
++    if (variable_struct_exists(_d, "options")) _p.options = string(_d.options);
++    if (_p.kind != "COLOUR" && _p.kind != "RANGE" && _p.kind != "MODE") {
++        _p.kind = "COLOUR";
++    }
++    return _p;
++}
++
++/// @param _d  one saved node record
++function scr_creator_params_from_data(_d) {
++    var _out = [];
++    if (!variable_struct_exists(_d, "params")) {
++        return _out;
++    }
++    if (!is_array(_d.params)) {
++        return _out;
++    }
++    for (var _i = 0; _i < array_length(_d.params); _i++) {
++        if (_i >= CREATOR_MAX_PARAMS) {
++            break;
++        }
++        array_push(_out, scr_param_from_data(_d.params[_i]));
++    }
++    return _out;
++}
++
++/// MODE options "Off=0,Slow=1,Fast=2" -> [{name, val}]. An option with no
++/// "=value" takes its position as the value.
++function scr_param_options(_str) {
++    var _out   = [];
++    var _parts = string_split(string(_str), ",");
++    for (var _i = 0; _i < array_length(_parts); _i++) {
++        var _part = string_trim(_parts[_i]);
++        if (_part == "") {
++            continue;
++        }
++        var _eq   = string_pos("=", _part);
++        var _name = _part;
++        var _val  = array_length(_out);
++        if (_eq > 0) {
++            _name = string_trim(string_copy(_part, 1, _eq - 1));
++            _val  = _asm_val(string_trim(string_delete(_part, 1, _eq)));
++        }
++        array_push(_out, { name: _name, val: _val });
++    }
++    return _out;
++}
++
++function scr_creator_num(_s) {
++    return _asm_val(string_trim(string(_s)));
++}
++
++function scr_creator_node_name(_n) {
++    if (_n.custom_title != "") {
++        return _n.custom_title;
++    }
++    if (_n.node_type == "MACRO_CODE") {
++        return _n.code_descriptor;
++    }
++    return _n.node_title;
++}
++
++function scr_creator_param_count() {
++    var _c = 0;
++    with (obj_c64_node) {
++        _c += array_length(params);
++    }
++    return _c;
++}
++
++// --------------------------------------------------------------------
++// CODE BLOCK CONSTANTS  (NAME = value lines)
++// --------------------------------------------------------------------
++
++/// @return {struct} { found, line, val_str }
++function scr_code_const_find(_text, _sym) {
++    var _res   = { found: false, line: -1, val_str: "" };
++    var _want  = string_upper(string_trim(_sym));
++    if (_want == "") {
++        return _res;
++    }
++    var _lines = string_split(string(_text), "\n");
++    for (var _i = 0; _i < array_length(_lines); _i++) {
++        var _ln   = _lines[_i];
++        var _semi = string_pos(";", _ln);
++        if (_semi > 0) {
++            _ln = string_copy(_ln, 1, _semi - 1);
++        }
++        _ln = string_trim(_ln);
++        var _eq = string_pos("=", _ln);
++        if (_eq <= 1) {
++            continue;
++        }
++        if (string_char_at(_ln, 1) == ".") {
++            continue;
++        }
++        var _name = string_upper(string_trim(string_copy(_ln, 1, _eq - 1)));
++        if (_name == _want) {
++            _res.found   = true;
++            _res.line    = _i;
++            _res.val_str = string_trim(string_delete(_ln, 1, _eq));
++            return _res;
++        }
++    }
++    return _res;
++}
++
++/// Keep the author's number style: $hex stays hex, decimal stays decimal.
++function scr_creator_format_like(_old, _v) {
++    _old = string_trim(_old);
++    if (string_char_at(_old, 1) == "$") {
++        var _h   = string_upper(decimal_to_hex(_v));
++        var _len = 2;
++        if (_v > 255) {
++            _len = 4;
++        }
++        while (string_length(_h) < _len) {
++            _h = "0" + _h;
++        }
++        return "$" + _h;
++    }
++    if (string_char_at(_old, 1) == "%") {
++        var _b = "";
++        var _w = _v;
++        for (var _bi = 0; _bi < 8; _bi++) {
++            _b = string(_w & 1) + _b;
++            _w = _w >> 1;
++        }
++        return "%" + _b;
++    }
++    return string(_v);
++}
++
++/// Rewrites only the value of the matching line; indentation, name and any
++/// trailing ; comment are kept.
++function scr_code_const_set(_text, _sym, _v) {
++    var _hit = scr_code_const_find(_text, _sym);
++    if (!_hit.found) {
++        return _text;
++    }
++    var _lines   = string_split(string(_text), "\n");
++    var _ln      = _lines[_hit.line];
++    var _eq      = string_pos("=", _ln);
++    var _head    = string_copy(_ln, 1, _eq);
++    var _rest    = string_delete(_ln, 1, _eq);
++    var _comment = "";
++    var _semi    = string_pos(";", _rest);
++    if (_semi > 0) {
++        _comment = " " + string_copy(_rest, _semi, string_length(_rest) - _semi + 1);
++    }
++    _lines[_hit.line] = _head + " " + scr_creator_format_like(_hit.val_str, _v) + _comment;
++
++    var _out = "";
++    for (var _i = 0; _i < array_length(_lines); _i++) {
++        if (_i > 0) {
++            _out += "\n";
++        }
++        _out += _lines[_i];
++    }
++    return _out;
++}
++
++// --------------------------------------------------------------------
++// READ / WRITE A PARAM ON ITS NODE
++// --------------------------------------------------------------------
++
++/// @return {struct} { ok, val }
++function scr_param_read(_n, _p) {
++    var _res = { ok: false, val: 0 };
++    if (!instance_exists(_n)) {
++        return _res;
++    }
++    if (_n.node_type == "MACRO_CODE") {
++        if (array_length(_n.instructions) == 0) {
++            return _res;
++        }
++        var _hit = scr_code_const_find(_n.instructions[0][1], _p.sym);
++        if (_hit.found) {
++            _res.ok  = true;
++            _res.val = _asm_val(_hit.val_str);
++        }
++        return _res;
++    }
++    if (_p.row >= array_length(_n.instructions)) {
++        return _res;
++    }
++    var _row = _n.instructions[_p.row];
++    if (!is_array(_row)) {
++        return _res;
++    }
++    if (_p.slot >= array_length(_row)) {
++        return _res;
++    }
++    if (is_numeric(_row[_p.slot])) {
++        _res.ok  = true;
++        _res.val = _row[_p.slot];
++    }
++    return _res;
++}
++
++function scr_param_write(_n, _p, _v) {
++    if (!instance_exists(_n)) {
++        return;
++    }
++    if (_p.kind == "RANGE") {
++        _v = clamp(round(_v), min(_p.vmin, _p.vmax), max(_p.vmin, _p.vmax));
++    }
++    if (_p.kind == "COLOUR") {
++        _v = clamp(round(_v), 0, 15);
++    }
++    var _cur = scr_param_read(_n, _p);
++    if (!_cur.ok) {
++        return;
++    }
++    if (_cur.val == _v) {
++        return;
++    }
++    if (_n.node_type == "MACRO_CODE") {
++        _n.instructions[0][1] = scr_code_const_set(_n.instructions[0][1], _p.sym, _v);
++    } else {
++        _n.instructions[_p.row][_p.slot] = _v;
++    }
++    scr_creator_node_changed(_n);
++}
++
++function scr_creator_node_changed(_n) {
++    with (_n) {
++        height_dirty      = true;
++        draw_cache_dirty  = true;
++        stats_cache_dirty = true;
++        code_cache_dirty  = true;
++        macro_layout_type = "";
++    }
++    global.undo_dirty        = true;
++    global.node_change_dirty = true;
++    global.addresses_dirty   = true;
++    global.autosave_dirty    = true;
++    scr_c64_do_update_addresses();
++    with (obj_c64_node) {
++        last_overlap_check  = false;
++        overlap_check_dirty = true;
++        stats_cache_dirty   = true;
++        if (node_type == "MACRO_CODE") {
++            code_cache_dirty = true;
++        }
++    }
++    with (obj_workspace_manager) {
++        alarm[3] = 6;
++    }
++}
++
++// --------------------------------------------------------------------
++// PANEL STATE
++// --------------------------------------------------------------------
++
++/// True while a Creator panel is on screen and owns the pointer. Message
++/// boxes, the Ultimate IP overlay, the welcome screen and asset editors
++/// raised from the panel all sit above it, so it steps aside for them.
++function scr_creator_panel_active() {
++    var _open = global.creator_view_open;
++    if (instance_exists(global.creator_edit_node)) {
++        _open = true;
++    }
++    if (!_open) {
++        return false;
++    }
++    if (global.c64u_overlay_active) {
++        return false;
++    }
++    if (instance_exists(obj_message_box)) {
++        return false;
++    }
++    if (instance_exists(obj_question_box)) {
++        return false;
++    }
++    if (instance_exists(obj_workspace_manager)) {
++        if (obj_workspace_manager.welcome_open) {
++            return false;
++        }
++    }
++    if (instance_exists(obj_asset_manager)) {
++        if (obj_asset_manager.viewer_open) {
++            return false;
++        }
++    }
++    return true;
++}
++
++function scr_creator_opened() {
++    global.creator_open_frame = global.frame_tick;
++    global.creator_field      = "";
++    global.creator_commit     = false;
++    global.creator_scroll     = 0;
++    keyboard_string           = "";
++}
++
++function scr_creator_open_view() {
++    global.creator_edit_node = noone;
++    global.creator_view_open = true;
++    scr_creator_opened();
++}
++
++function scr_creator_close_view() {
++    global.creator_view_open = false;
++    global.creator_field     = "";
++}
++
++// --------------------------------------------------------------------
++// PARAMS TAB (world space, right side of the node)
++// --------------------------------------------------------------------
++
++function scr_creator_node_tabbable(_n) {
++    if (global.lite) {
++        return false;
++    }
++    if (_n.macro_owner != noone) {
++        return false;
++    }
++    if (string_copy(_n.node_type, 1, 6) != "MACRO_") {
++        return false;
++    }
++    if (scr_node_is_hidden(_n)) {
++        return false;
++    }
++    return true;
++}
++
++function scr_creator_tab_rect(_n) {
++    var _r = { x1: 0, y1: 0, x2: 0, y2: 0 };
++    _r.x1 = _n.x + _n.x_indent + _n.width + 2;
++    _r.y1 = _n.y + 4;
++    _r.x2 = _r.x1 + 18;
++    _r.y2 = _r.y1 + 44;
++    return _r;
++}
++
++/// Called from obj_c64_node Draw, as the node.
++function scr_creator_draw_node_tab() {
++    if (!scr_creator_node_tabbable(id)) {
++        exit;
++    }
++    var _r   = scr_creator_tab_rect(id);
++    var _np  = array_length(params);
++    var _hot = (global.creator_tab_hot == id);
++
++    draw_set_color(make_color_rgb(20, 14, 26));
++    draw_rectangle(_r.x1, _r.y1, _r.x2, _r.y2, false);
++
++    var _col = make_color_rgb(110, 110, 150);
++    if (_np > 0) {
++        _col = make_color_rgb(80, 200, 255);
++    }
++    if (_hot) {
++        _col = make_color_rgb(255, 210, 80);
++    }
++    draw_set_color(_col);
++    draw_rectangle(_r.x1, _r.y1, _r.x2, _r.y2, true);
++
++    var _font_b   = draw_get_font();
++    var _halign_b = draw_get_halign();
++    var _valign_b = draw_get_valign();
++    draw_set_font_l(fnt_c64_tiny);
++    draw_set_halign(fa_center);
++    draw_set_valign(fa_middle);
++    var _cx = (_r.x1 + _r.x2) / 2;
++    draw_text(_cx, _r.y1 + 12, "P");
++    draw_text(_cx, _r.y1 + 30, string(_np));
++    draw_set_font_l(_font_b);
++    draw_set_halign(_halign_b);
++    draw_set_valign(_valign_b);
++}
++
++// --------------------------------------------------------------------
++// BEGIN STEP
++// --------------------------------------------------------------------
++
++function scr_creator_begin_step() {
++    global.creator_tab_hot = noone;
++
++    // Deferred panel actions: run here, never from inside a Draw event.
++    if (global.creator_action != "") {
++        var _act = global.creator_action;
++        global.creator_action = "";
++        scr_creator_run_action(_act);
++    }
++
++    // A loaded workspace decides whether it opens locked once its nodes exist.
++    if (global.creator_open_pending) {
++        global.creator_open_pending = false;
++        if (global.creator_locked && scr_creator_param_count() > 0) {
++            scr_creator_open_view();
++        }
++    }
++
++    // Light: a locked workspace stays locked.
++    if (global.lite && global.creator_locked && !global.creator_view_open) {
++        if (scr_creator_param_count() > 0) {
++            scr_creator_open_view();
++        }
++    }
++
++    if (!instance_exists(global.creator_edit_node)) {
++        global.creator_edit_node = noone;
++    }
++    if (global.creator_view_open || global.creator_edit_node != noone) {
++        exit;
++    }
++
++    if (!instance_exists(obj_workspace_manager)) { exit; }
++    if (!global.canEditNode)                     { exit; }
++    if (global.idle_active && global.idle_fade < 0.1) { exit; }
++    if (global.showcode_mouse_over)              { exit; }
++    if (global.any_picker_open)                  { exit; }
++    if (global.is_any_text_active)               { exit; }
++    if (obj_workspace_manager.gui_menu_open != -1) { exit; }
++    if (obj_workspace_manager.code_editor_open)  { exit; }
++    if (obj_workspace_manager.is_entering_text)  { exit; }
++    if (instance_exists(obj_asset_manager)) {
++        if (obj_asset_manager.viewer_open) { exit; }
++    }
++    if (global.lite) { exit; }
++
++    // F9: Creator view (Pro).
++    if (scr_workspace_keyboard_check_pressed(vk_f9)) {
++        if (scr_creator_param_count() > 0) {
++            scr_creator_open_view();
++        } else {
++            scr_show_message("CREATOR VIEW\n\nNo params exposed yet.\nUse the P tab on a macro or code block to add some.");
++        }
++        exit;
++    }
++
++    var _mx  = mouse_x;
++    var _my  = mouse_y;
++    var _hot = noone;
++    with (obj_c64_node) {
++        if (!scr_creator_node_tabbable(id)) {
++            continue;
++        }
++        var _r = scr_creator_tab_rect(id);
++        if (point_in_rectangle(_mx, _my, _r.x1, _r.y1, _r.x2, _r.y2)) {
++            _hot = id;
++            break;
++        }
++    }
++    global.creator_tab_hot = _hot;
++    if (_hot == noone) {
++        exit;
++    }
++    if (scr_workspace_mouse_check_button_pressed(mb_left)) {
++        global.creator_edit_node = _hot;
++        global.creator_view_open = false;
++        scr_creator_opened();
++    }
++}
++
++function scr_creator_run_action(_act) {
++    if (!instance_exists(obj_workspace_manager)) {
++        exit;
++    }
++    if (_act == "build") {
++        with (obj_workspace_manager) {
++            if (os_type == os_windows) {
++                execute_shell_simple("taskkill", "/f /im x64sc.exe");
++            }
++            trigger_build = true;
++        }
++        exit;
++    }
++    if (_act == "ultimate") {
++        if (global.c64u_ip == "") {
++            global.c64u_overlay_active = true;
++            global.c64u_overlay_text   = "";
++            global.c64u_overlay_error  = "";
++            global.c64u_overlay_after  = "send_prg";
++            global.canEditNode         = 0;
++            keyboard_string            = "";
++            keyboard_clear(vk_anykey);
++        } else {
++            with (obj_workspace_manager) {
++                trigger_c64u  = true;
++                trigger_build = true;
++            }
++        }
++        exit;
++    }
++    if (_act == "save") {
++        global.isSaving = true;
++        obj_workspace_manager.save_pending = true;
++        exit;
++    }
++    if (_act == "load") {
++        scr_load_workspace_dialog();
++        exit;
++    }
++}
++
++// --------------------------------------------------------------------
++// IMMEDIATE-MODE WIDGETS (GUI space, Draw GUI End)
++// --------------------------------------------------------------------
++
++function scr_creator_btn(_x1, _y1, _x2, _y2, _label, _on) {
++    var _hov = point_in_rectangle(global.creator_mx, global.creator_my, _x1, _y1, _x2, _y2);
++    var _bg  = make_colour_rgb(30, 30, 70);
++    if (_on) {
++        _bg = make_colour_rgb(70, 70, 170);
++    }
++    if (_hov) {
++        _bg = merge_colour(_bg, c_white, 0.18);
++    }
++    draw_set_colour(_bg);
++    draw_rectangle(_x1, _y1, _x2, _y2, false);
++    draw_set_colour(make_colour_rgb(180, 180, 255));
++    draw_rectangle(_x1, _y1, _x2, _y2, true);
++    draw_set_colour(c_white);
++    draw_set_halign(fa_center);
++    draw_set_valign(fa_middle);
++    draw_text_l((_x1 + _x2) / 2, (_y1 + _y2) / 2, _label);
++    draw_set_halign(fa_left);
++    var _clicked = false;
++    if (_hov && global.creator_click) {
++        _clicked = true;
++    }
++    return _clicked;
++}
++
++/// @return committed string, or undefined
++function scr_creator_field(_fid, _x1, _y1, _x2, _y2, _value) {
++    var _result = undefined;
++    var _hov    = point_in_rectangle(global.creator_mx, global.creator_my, _x1, _y1, _x2, _y2);
++    var _active = (global.creator_field == _fid);
++
++    if (_active) {
++        if (string_length(keyboard_string) > 48) {
++            keyboard_string = string_copy(keyboard_string, 1, 48);
++        }
++        global.creator_field_text = keyboard_string;
++        global.creator_field_rect = [_x1, _y1, _x2, _y2];
++        if (keyboard_check_pressed(vk_enter) || global.creator_commit) {
++            _result               = global.creator_field_text;
++            global.creator_field  = "";
++            global.creator_commit = false;
++            _active               = false;
++        } else if (keyboard_check_pressed(vk_escape)) {
++            global.creator_field     = "";
++            global.creator_esc_eaten = true;
++            _active                  = false;
++        }
++    } else if (_hov && global.creator_click && global.creator_field == "") {
++        global.creator_field      = _fid;
++        keyboard_string           = string(_value);
++        global.creator_field_text = keyboard_string;
++        global.creator_field_rect = [_x1, _y1, _x2, _y2];
++        _active                   = true;
++    }
++
++    draw_set_colour(c_black);
++    draw_rectangle(_x1, _y1, _x2, _y2, false);
++    var _edge = make_colour_rgb(120, 120, 200);
++    if (_active) {
++        _edge = make_colour_rgb(255, 210, 80);
++    }
++    draw_set_colour(_edge);
++    draw_rectangle(_x1, _y1, _x2, _y2, true);
++    draw_set_colour(c_white);
++    draw_set_halign(fa_left);
++    draw_set_valign(fa_middle);
++    var _show = string(_value);
++    if (_active) {
++        _show = global.creator_field_text;
++        if ((current_time div 500) mod 2 == 0) {
++            _show += "_";
++        }
++    }
++    draw_text(_x1 + 6, (_y1 + _y2) / 2, _show);
++    return _result;
++}
++
++// --------------------------------------------------------------------
++// DRAW GUI END
++// --------------------------------------------------------------------
++
++function scr_creator_draw() {
++    if (!scr_creator_panel_active()) {
++        exit;
++    }
++
++    global.creator_mx        = device_mouse_x_to_gui(0);
++    global.creator_my        = device_mouse_y_to_gui(0);
++    global.creator_click     = false;
++    global.creator_esc_eaten = false;
++    if (mouse_check_button_pressed(mb_left) && global.frame_tick != global.creator_open_frame) {
++        global.creator_click = true;
++    }
++    // A click outside the field being typed in commits it.
++    if (global.creator_field != "" && global.creator_click) {
++        var _fr = global.creator_field_rect;
++        if (!point_in_rectangle(global.creator_mx, global.creator_my, _fr[0], _fr[1], _fr[2], _fr[3])) {
++            global.creator_commit = true;
++        }
++    }
++
++    var _font_b   = draw_get_font();
++    var _halign_b = draw_get_halign();
++    var _valign_b = draw_get_valign();
++    var _alpha_b  = draw_get_alpha();
++    var _col_b    = draw_get_colour();
++    gpu_set_scissor(0, 0, window_get_width(), window_get_height());
++
++    draw_set_alpha(0.85);
++    draw_set_colour(c_black);
++    draw_rectangle(0, 0, display_get_gui_width(), display_get_gui_height(), false);
++    draw_set_alpha(1.0);
++
++    if (instance_exists(global.creator_edit_node)) {
++        scr_creator_draw_editor(global.creator_edit_node);
++    } else {
++        scr_creator_draw_view();
++    }
++
++    // The field that was being typed in is gone (row deleted, panel closed).
++    if (global.creator_commit) {
++        global.creator_commit = false;
++        global.creator_field  = "";
++    }
++
++    draw_set_font(_font_b);
++    draw_set_halign(_halign_b);
++    draw_set_valign(_valign_b);
++    draw_set_alpha(_alpha_b);
++    draw_set_colour(_col_b);
++}
++
++/// Developer panel: define what a node exposes.
++function scr_creator_draw_editor(_n) {
++    var _gw    = display_get_gui_width();
++    var _gh    = display_get_gui_height();
++    var _np    = array_length(_n.params);
++    var _row_h = 74;
++    var _pw    = 860;
++    var _ph    = 130 + max(1, _np) * _row_h + 64;
++    var _px    = floor((_gw - _pw) / 2);
++    var _py    = floor((_gh - _ph) / 2);
++    var _code  = (_n.node_type == "MACRO_CODE");
++
++    draw_set_colour(make_colour_rgb(40, 40, 90));
++    draw_rectangle(_px, _py, _px + _pw, _py + _ph, false);
++    draw_set_colour(make_colour_rgb(180, 180, 255));
++    draw_rectangle(_px, _py, _px + _pw, _py + _ph, true);
++
++    draw_set_font_l(fnt_C64_Angled_big);
++    draw_set_halign(fa_left);
++    draw_set_valign(fa_top);
++    draw_set_colour(c_white);
++    draw_text(_px + 16, _py + 12, "PARAMS - " + string_upper(scr_creator_node_name(_n)));
++
++    draw_set_font_l(fnt_c64_tiny);
++    draw_set_colour(make_colour_rgb(190, 190, 230));
++    if (_code) {
++        draw_text_l(_px + 16, _py + 52, "TARGET = a NAME = value line in this code block. MODE branches: .IF NAME == n / .ELSE / .ENDIF");
++    } else {
++        draw_text_l(_px + 16, _py + 52, "TARGET = one of this macro's value slots. Pick the slot showing the value you want to expose.");
++    }
++
++    draw_set_font_l(fnt_C64_Angled);
++    var _changed = false;
++    var _del     = -1;
++    var _kinds   = ["COLOUR", "RANGE", "MODE"];
++
++    for (var _i = 0; _i < _np; _i++) {
++        var _p  = _n.params[_i];
++        var _ry = _py + 84 + _i * _row_h;
++        var _si = string(_i);
++
++        draw_set_colour(make_colour_rgb(90, 90, 150));
++        draw_line(_px + 10, _ry - 4, _px + _pw - 10, _ry - 4);
++
++        // --- line 1: label, kind, target, delete ---
++        var _r = scr_creator_field("lbl" + _si, _px + 16, _ry, _px + 286, _ry + 26, _p.label);
++        if (!is_undefined(_r)) {
++            _p.label = string_trim(_r);
++            _changed = true;
++        }
++
++        if (scr_creator_btn(_px + 296, _ry, _px + 406, _ry + 26, _p.kind, true)) {
++            var _k = 0;
++            for (var _ki = 0; _ki < 3; _ki++) {
++                if (_kinds[_ki] == _p.kind) {
++                    _k = _ki;
++                }
++            }
++            _p.kind  = _kinds[(_k + 1) mod 3];
++            _changed = true;
++        }
++
++        if (_code) {
++            draw_set_colour(c_white);
++            draw_set_valign(fa_middle);
++            draw_text_l(_px + 418, _ry + 13, "NAME");
++            var _rs = scr_creator_field("sym" + _si, _px + 476, _ry, _px + 646, _ry + 26, _p.sym);
++            if (!is_undefined(_rs)) {
++                _p.sym   = string_upper(string_trim(_rs));
++                _changed = true;
++            }
++        } else {
++            draw_set_colour(c_white);
++            draw_set_valign(fa_middle);
++            draw_text_l(_px + 418, _ry + 13, "SLOT");
++            if (scr_creator_btn(_px + 476, _ry, _px + 502, _ry + 26, "-", false)) {
++                _p.slot  = max(1, _p.slot - 1);
++                _changed = true;
++            }
++            draw_set_colour(c_white);
++            draw_set_halign(fa_center);
++            draw_text(_px + 527, _ry + 13, string(_p.slot));
++            draw_set_halign(fa_left);
++            var _row_len = 0;
++            if (_p.row < array_length(_n.instructions)) {
++                _row_len = array_length(_n.instructions[_p.row]);
++            }
++            if (scr_creator_btn(_px + 552, _ry, _px + 578, _ry + 26, "+", false)) {
++                _p.slot  = min(max(1, _row_len - 1), _p.slot + 1);
++                _changed = true;
++            }
++        }
++
++        if (scr_creator_btn(_px + _pw - 86, _ry, _px + _pw - 16, _ry + 26, "DEL", false)) {
++            _del = _i;
++        }
++
++        // --- line 2: kind-specific settings + live value ---
++        var _ly = _ry + 34;
++        draw_set_colour(c_white);
++        draw_set_valign(fa_middle);
++        if (_p.kind == "RANGE") {
++            draw_text_l(_px + 16, _ly + 13, "MIN");
++            var _rmin = scr_creator_field("min" + _si, _px + 60, _ly, _px + 140, _ly + 26, _p.vmin);
++            if (!is_undefined(_rmin)) {
++                _p.vmin  = scr_creator_num(_rmin);
++                _changed = true;
++            }
++            draw_set_colour(c_white);
++            draw_text_l(_px + 156, _ly + 13, "MAX");
++            var _rmax = scr_creator_field("max" + _si, _px + 200, _ly, _px + 280, _ly + 26, _p.vmax);
++            if (!is_undefined(_rmax)) {
++                _p.vmax  = scr_creator_num(_rmax);
++                _changed = true;
++            }
++        } else if (_p.kind == "MODE") {
++            draw_text_l(_px + 16, _ly + 13, "OPTIONS");
++            var _ro = scr_creator_field("opt" + _si, _px + 100, _ly, _px + 560, _ly + 26, _p.options);
++            if (!is_undefined(_ro)) {
++                _p.options = string_trim(_ro);
++                _changed   = true;
++            }
++        } else {
++            draw_set_font_l(fnt_c64_tiny);
++            draw_text_l(_px + 16, _ly + 13, "C64 PALETTE 0-15");
++            draw_set_font_l(fnt_C64_Angled);
++        }
++
++        var _cur = scr_param_read(_n, _p);
++        draw_set_valign(fa_middle);
++        if (_cur.ok) {
++            draw_set_colour(make_colour_rgb(120, 255, 140));
++            draw_text(_px + 590, _ly + 13, "VALUE " + string(_cur.val));
++            if (_p.kind == "COLOUR") {
++                draw_set_colour(scr_c64_pepto_colour(clamp(round(_cur.val), 0, 15)));
++                draw_rectangle(_px + 720, _ly + 3, _px + 760, _ly + 23, false);
++            }
++        } else {
++            draw_set_colour(make_colour_rgb(255, 110, 110));
++            if (_code) {
++                draw_text_l(_px + 590, _ly + 13, "NAME NOT FOUND");
++            } else {
++                draw_text_l(_px + 590, _ly + 13, "SLOT NOT NUMERIC");
++            }
++        }
++    }
++
++    if (_np == 0) {
++        draw_set_colour(make_colour_rgb(190, 190, 230));
++        draw_set_valign(fa_middle);
++        draw_text_l(_px + 16, _py + 84 + 30, "No params yet. ADD PARAM exposes a value to the Creator view.");
++    }
++
++    if (_del >= 0) {
++        array_delete(_n.params, _del, 1);
++        global.creator_field = "";
++        _changed = true;
++    }
++
++    var _by = _py + _ph - 46;
++    if (array_length(_n.params) < CREATOR_MAX_PARAMS) {
++        if (scr_creator_btn(_px + 16, _by, _px + 196, _by + 30, "+ ADD PARAM", false)) {
++            var _np_new = scr_param_new();
++            if (_code) {
++                _np_new.sym = "";
++            } else {
++                _np_new.kind = "RANGE";
++            }
++            array_push(_n.params, _np_new);
++            _changed = true;
++        }
++    }
++    if (scr_creator_btn(_px + _pw - 166, _by, _px + _pw - 16, _by + 30, "CLOSE", false)) {
++        if (global.creator_field != "") {
++            global.creator_commit = true;
++        }
++        global.creator_edit_node = noone;
++    }
++    if (keyboard_check_pressed(vk_escape) && !global.creator_esc_eaten && global.creator_field == "") {
++        global.creator_edit_node = noone;
++    }
++
++    if (_changed) {
++        global.undo_dirty     = true;
++        global.autosave_dirty = true;
++        with (_n) {
++            height_dirty     = true;
++            draw_cache_dirty = true;
++        }
++    }
++}
++
++/// End-user panel: the only thing a locked workspace shows.
++function scr_creator_draw_view() {
++    var _gw = display_get_gui_width();
++    var _gh = display_get_gui_height();
++
++    // Nodes carrying params, top to bottom.
++    var _hosts = [];
++    with (obj_c64_node) {
++        if (array_length(params) > 0) {
++            array_push(_hosts, id);
++        }
++    }
++    array_sort(_hosts, function(_a, _b) {
++        if (_a.x != _b.x) {
++            return _a.x - _b.x;
++        }
++        return _a.y - _b.y;
++    });
++
++    var _head_h = 34;
++    var _row_h  = 46;
++    var _content_h = 0;
++    for (var _h = 0; _h < array_length(_hosts); _h++) {
++        _content_h += _head_h + array_length(_hosts[_h].params) * _row_h;
++    }
++
++    var _pw     = 820;
++    var _top_h  = 90;
++    var _foot_h = 70;
++    var _ph     = min(_gh - 60, _top_h + max(60, _content_h) + _foot_h);
++    var _px     = floor((_gw - _pw) / 2);
++    var _py     = floor((_gh - _ph) / 2);
++    var _view_y1 = _py + _top_h;
++    var _view_y2 = _py + _ph - _foot_h;
++    var _view_h  = _view_y2 - _view_y1;
++
++    // Scroll
++    var _max_scroll = max(0, _content_h - _view_h);
++    if (point_in_rectangle(global.creator_mx, global.creator_my, _px, _view_y1, _px + _pw, _view_y2)) {
++        if (mouse_wheel_down()) {
++            global.creator_scroll += 40;
++        }
++        if (mouse_wheel_up()) {
++            global.creator_scroll -= 40;
++        }
++    }
++    global.creator_scroll = clamp(global.creator_scroll, 0, _max_scroll);
++
++    draw_set_colour(make_colour_rgb(24, 24, 60));
++    draw_rectangle(_px, _py, _px + _pw, _py + _ph, false);
++    draw_set_colour(make_colour_rgb(180, 180, 255));
++    draw_rectangle(_px, _py, _px + _pw, _py + _ph, true);
++
++    draw_set_font_l(fnt_C64_Angled_big);
++    draw_set_halign(fa_left);
++    draw_set_valign(fa_top);
++    draw_set_colour(c_white);
++    draw_text_l(_px + 16, _py + 12, "CREATOR");
++    draw_set_font_l(fnt_c64_tiny);
++    draw_set_colour(make_colour_rgb(190, 190, 230));
++    var _wsname = "UNTITLED";
++    if (global.workspace_path != "") {
++        _wsname = filename_name(global.workspace_path);
++    }
++    draw_text(_px + 16, _py + 56, string_upper(_wsname));
++    if (!global.lite) {
++        draw_set_halign(fa_right);
++        draw_text_l(_px + _pw - 16, _py + 56, "F9 / EDIT GRAPH returns to the node graph");
++        draw_set_halign(fa_left);
++    }
++
++    // --- rows (clipped to the view) ---
++    var _scale_x = window_get_width() / max(1, _gw);
++    var _scale_y = window_get_height() / max(1, _gh);
++    gpu_set_scissor(_px * _scale_x, _view_y1 * _scale_y, _pw * _scale_x, _view_h * _scale_y);
++
++    var _click_live = global.creator_click;
++    if (!point_in_rectangle(global.creator_mx, global.creator_my, _px, _view_y1, _px + _pw, _view_y2)) {
++        global.creator_click = false;
++    }
++
++    draw_set_font_l(fnt_C64_Angled);
++    var _y = _view_y1 - global.creator_scroll;
++    for (var _h = 0; _h < array_length(_hosts); _h++) {
++        var _n = _hosts[_h];
++
++        draw_set_colour(make_colour_rgb(50, 50, 110));
++        draw_rectangle(_px + 8, _y + 4, _px + _pw - 8, _y + _head_h - 4, false);
++        draw_set_colour(make_colour_rgb(255, 210, 80));
++        draw_set_valign(fa_middle);
++        draw_text(_px + 18, _y + _head_h / 2, string_upper(scr_creator_node_name(_n)));
++        _y += _head_h;
++
++        for (var _i = 0; _i < array_length(_n.params); _i++) {
++            var _p   = _n.params[_i];
++            var _cy  = _y + _row_h / 2;
++            var _cur = scr_param_read(_n, _p);
++
++            draw_set_colour(c_white);
++            draw_set_valign(fa_middle);
++            draw_text(_px + 24, _cy, _p.label);
++
++            var _cx = _px + 300;
++            if (!_cur.ok) {
++                draw_set_colour(make_colour_rgb(255, 110, 110));
++                draw_text_l(_cx, _cy, "NOT LINKED");
++            } else if (_p.kind == "COLOUR") {
++                for (var _c = 0; _c < 16; _c++) {
++                    var _sx = _cx + _c * 30;
++                    draw_set_colour(scr_c64_pepto_colour(_c));
++                    draw_rectangle(_sx, _cy - 12, _sx + 24, _cy + 12, false);
++                    if (round(_cur.val) == _c) {
++                        draw_set_colour(c_white);
++                        draw_rectangle(_sx - 2, _cy - 14, _sx + 26, _cy + 14, true);
++                        draw_rectangle(_sx - 3, _cy - 15, _sx + 27, _cy + 15, true);
++                    }
++                    if (global.creator_click && point_in_rectangle(global.creator_mx, global.creator_my, _sx, _cy - 12, _sx + 24, _cy + 12)) {
++                        scr_param_write(_n, _p, _c);
++                    }
++                }
++            } else if (_p.kind == "RANGE") {
++                var _lo = min(_p.vmin, _p.vmax);
++                var _hi = max(_p.vmin, _p.vmax);
++                if (scr_creator_btn(_cx, _cy - 13, _cx + 28, _cy + 13, "-", false)) {
++                    scr_param_write(_n, _p, _cur.val - 1);
++                }
++                draw_set_colour(c_white);
++                draw_set_halign(fa_center);
++                draw_text(_cx + 62, _cy, string(_cur.val));
++                draw_set_halign(fa_left);
++                if (scr_creator_btn(_cx + 96, _cy - 13, _cx + 124, _cy + 13, "+", false)) {
++                    scr_param_write(_n, _p, _cur.val + 1);
++                }
++                var _bx1 = _cx + 140;
++                var _bx2 = _cx + 460;
++                draw_set_colour(make_colour_rgb(10, 10, 30));
++                draw_rectangle(_bx1, _cy - 6, _bx2, _cy + 6, false);
++                var _t = 0;
++                if (_hi > _lo) {
++                    _t = clamp((_cur.val - _lo) / (_hi - _lo), 0, 1);
++                }
++                draw_set_colour(make_colour_rgb(80, 200, 255));
++                draw_rectangle(_bx1, _cy - 6, _bx1 + (_bx2 - _bx1) * _t, _cy + 6, false);
++                draw_set_colour(make_colour_rgb(180, 180, 255));
++                draw_rectangle(_bx1, _cy - 6, _bx2, _cy + 6, true);
++                // Click or drag along the bar.
++                if (mouse_check_button(mb_left) && global.frame_tick != global.creator_open_frame
++                && point_in_rectangle(global.creator_mx, global.creator_my, _bx1, _cy - 12, _bx2, _cy + 12)
++                && point_in_rectangle(global.creator_mx, global.creator_my, _px, _view_y1, _px + _pw, _view_y2)) {
++                    var _f = (global.creator_mx - _bx1) / (_bx2 - _bx1);
++                    scr_param_write(_n, _p, _lo + _f * (_hi - _lo));
++                }
++            } else if (_p.kind == "MODE") {
++                var _opts = scr_param_options(_p.options);
++                var _ox   = _cx;
++                for (var _o = 0; _o < array_length(_opts); _o++) {
++                    var _ow = string_width(_opts[_o].name) + 28;
++                    var _on = (round(_cur.val) == round(_opts[_o].val));
++                    if (scr_creator_btn(_ox, _cy - 14, _ox + _ow, _cy + 14, _opts[_o].name, _on)) {
++                        scr_param_write(_n, _p, _opts[_o].val);
++                    }
++                    _ox += _ow + 8;
++                }
++            }
++            _y += _row_h;
++        }
++    }
++
++    gpu_set_scissor(0, 0, window_get_width(), window_get_height());
++    global.creator_click = _click_live;
++
++    if (array_length(_hosts) == 0) {
++        draw_set_colour(make_colour_rgb(190, 190, 230));
++        draw_set_valign(fa_middle);
++        draw_text_l(_px + 24, _view_y1 + 30, "This workspace has no exposed params.");
++    }
++
++    // --- footer ---
++    var _by = _py + _ph - 50;
++    var _bx = _px + 16;
++    if (scr_creator_btn(_bx, _by, _bx + 150, _by + 34, "BUILD & RUN", false)) {
++        global.creator_action = "build";
++    }
++    _bx += 160;
++    if (scr_creator_btn(_bx, _by, _bx + 170, _by + 34, "RUN ON ULTIMATE", false)) {
++        global.creator_action = "ultimate";
++    }
++    _bx += 180;
++    if (scr_creator_btn(_bx, _by, _bx + 80, _by + 34, "SAVE", false)) {
++        global.creator_action = "save";
++    }
++    _bx += 90;
++    if (scr_creator_btn(_bx, _by, _bx + 80, _by + 34, "LOAD", false)) {
++        global.creator_action = "load";
++    }
++
++    if (!global.lite) {
++        var _lk = "OPENS LOCKED: OFF";
++        if (global.creator_locked) {
++            _lk = "OPENS LOCKED: ON";
++        }
++        if (scr_creator_btn(_px + _pw - 316, _by, _px + _pw - 146, _by + 34, _lk, global.creator_locked)) {
++            global.creator_locked = !global.creator_locked;
++            global.autosave_dirty = true;
++            global.undo_dirty     = true;
++        }
++        if (scr_creator_btn(_px + _pw - 136, _by, _px + _pw - 16, _by + 34, "EDIT GRAPH", false)) {
++            scr_creator_close_view();
++        }
++        if (keyboard_check_pressed(vk_f9) && global.frame_tick != global.creator_open_frame) {
++            scr_creator_close_view();
++        }
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.yy b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.yy
+new file mode 100644
+index 0000000..feded46
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_creator",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_creator",
++  "parent":{
++    "name":"CORE",
++    "path":"folders/SCRIPTS/CORE.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
+diff --git a/C64DevMachine_win.yyp/scripts/scr_ctrl_held/scr_ctrl_held.gml b/C64DevMachine_win.yyp/scripts/scr_ctrl_held/scr_ctrl_held.gml
+index 89cb338..36ddd52 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_ctrl_held/scr_ctrl_held.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_ctrl_held/scr_ctrl_held.gml
+@@ -31,6 +31,8 @@ function scr_workspace_input_blocked() {
+     if (instance_exists(obj_workspace_manager))
+         _active = _active || obj_workspace_manager.code_editor_open || obj_workspace_manager.box_popup_open;
+     _active = _active || instance_exists(obj_integer_box) || instance_exists(obj_ui_color_picker);
++    // CREATOR LAYER: an open Creator view or params editor locks the workspace.
++    _active = _active || scr_creator_panel_active();
+     if (_active) {
+         if (!global.workspace_editor_seen) {
+             // Cancel suspended workspace gestures instead of resuming them
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 65d8fe0..9fd25e6 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -211,6 +211,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
+ 		if (variable_struct_exists(d, "code_descriptor")) _n.code_descriptor = d.code_descriptor;
+ 		if (variable_struct_exists(d, "helper_text")) _n.helper_text = d.helper_text;
+ 		if (variable_struct_exists(d, "custom_title")) _n.custom_title = string(d.custom_title);
++		_n.params = scr_creator_params_from_data(d);
+ 		_n.show_only_used = variable_struct_exists(d, "show_only_used") ? d.show_only_used : false;
+ 
+ 		// Restore stable_uid (used by the ignored-conflict suppression list)
+@@ -1298,6 +1299,16 @@ global.kernal_unlocked = variable_struct_exists(load_data, "kernal_unlocked") ?
+     }
+     global.basic_unlocked  = variable_struct_exists(load_data, "basic_unlocked")  ? load_data.basic_unlocked  : false;
+ 
++    // CREATOR LAYER: whether this workspace opens in the Creator view. The
++    // view itself is opened from Begin Step once every node exists.
++    global.creator_locked = false;
++    if (variable_struct_exists(load_data, "creator_locked")) {
++        global.creator_locked = load_data.creator_locked;
++    }
++    global.creator_view_open    = false;
++    global.creator_edit_node    = noone;
++    global.creator_open_pending = true;
++
+     // Restore the stable-UID allocator: take the higher of the persisted value
+     // and one past every restored node's UID, so future allocations never collide.
+     var _restored_next_uid = variable_struct_exists(load_data, "next_stable_uid")
+diff --git a/C64DevMachine_win.yyp/scripts/scr_parse_asm_text/scr_parse_asm_text.gml b/C64DevMachine_win.yyp/scripts/scr_parse_asm_text/scr_parse_asm_text.gml
+index b7ddfe6..eaa982e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_parse_asm_text/scr_parse_asm_text.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_parse_asm_text/scr_parse_asm_text.gml
+@@ -45,6 +45,9 @@ function scr_parse_asm_text_uncached(_text) {
+     var _result = [];
+     if (_text == "" || _text == undefined) return _result;
+ 
++    // ── Pre-pass 0: .IF / .ELSE / .ENDIF (Creator MODE params) ──
++    _text = scr_asm_preprocess_if(_text);
++
+     // ── Pre-pass A: desugar scope { } blocks (BEFORE repeat expansion) ──
+     _text = scr_desugar_scopes(_text);
+ 
+@@ -458,4 +461,141 @@ function scr_parse_asm_text_uncached(_text) {
+         }
+     }
+     return _result;
+-}
+\ No newline at end of file
++}
++
++/// @function scr_asm_preprocess_if(_text)
++/// @desc Conditional assembly for code blocks:
++///         .IF NAME == n   (also != <> < > <= >= =, or a bare value: non-zero)
++///         .ELSE
++///         .ENDIF
++///       Nests. NAME is a `NAME = value` line in the same block, else a
++///       global named location, else a literal. Lines that are not assembled
++///       are turned into ; comments rather than removed, so line numbers stay
++///       where the editor expects them.
++function scr_asm_preprocess_if(_text) {
++    if (string_pos(".IF", string_upper(_text)) == 0) {
++        return _text;
++    }
++    var _lines = string_split(_text, "\n");
++    var _n     = array_length(_lines);
++
++    var _consts = {};
++    for (var _i = 0; _i < _n; _i++) {
++        var _ln = scr_asm_pp_strip(_lines[_i]);
++        var _eq = string_pos("=", _ln);
++        if (_eq <= 1) {
++            continue;
++        }
++        if (string_char_at(_ln, 1) == ".") {
++            continue;
++        }
++        var _nm = string_upper(string_trim(string_copy(_ln, 1, _eq - 1)));
++        if (_nm == "") {
++            continue;
++        }
++        if (string_pos(" ", _nm) > 0) {
++            continue;
++        }
++        _consts[$ _nm] = string_trim(string_delete(_ln, 1, _eq));
++    }
++
++    var _stack  = [];
++    var _active = true;
++    for (var _i = 0; _i < _n; _i++) {
++        var _ln = scr_asm_pp_strip(_lines[_i]);
++        var _up = string_upper(_ln);
++
++        if (string_copy(_up, 1, 4) == ".IF " || _up == ".IF") {
++            var _cond = scr_asm_pp_eval(string_delete(_ln, 1, 3), _consts);
++            array_push(_stack, { parent: _active, taken: _cond });
++            if (!_cond) {
++                _active = false;
++            }
++            _lines[_i] = ";" + _lines[_i];
++            continue;
++        }
++        if (_up == ".ELSE") {
++            if (array_length(_stack) > 0) {
++                var _top = _stack[array_length(_stack) - 1];
++                _active = _top.parent && !_top.taken;
++                _top.taken = true;
++            }
++            _lines[_i] = ";" + _lines[_i];
++            continue;
++        }
++        if (_up == ".ENDIF") {
++            if (array_length(_stack) > 0) {
++                var _top = array_pop(_stack);
++                _active = _top.parent;
++            }
++            _lines[_i] = ";" + _lines[_i];
++            continue;
++        }
++        if (!_active) {
++            _lines[_i] = ";" + _lines[_i];
++        }
++    }
++
++    var _out = "";
++    for (var _i = 0; _i < _n; _i++) {
++        if (_i > 0) {
++            _out += "\n";
++        }
++        _out += _lines[_i];
++    }
++    return _out;
++}
++
++function scr_asm_pp_strip(_line) {
++    var _ln   = _line;
++    var _semi = string_pos(";", _ln);
++    if (_semi > 0) {
++        _ln = string_copy(_ln, 1, _semi - 1);
++    }
++    var _ds = string_pos("//", _ln);
++    if (_ds > 0) {
++        _ln = string_copy(_ln, 1, _ds - 1);
++    }
++    return string_trim(_ln);
++}
++
++function scr_asm_pp_value(_tok, _consts) {
++    var _t  = string_trim(_tok);
++    var _up = string_upper(_t);
++    if (variable_struct_exists(_consts, _up)) {
++        return _asm_val(_consts[$ _up]);
++    }
++    if (variable_global_exists("named_loc_map")) {
++        if (ds_exists(global.named_loc_map, ds_type_map)) {
++            if (ds_map_exists(global.named_loc_map, _up)) {
++                return ds_map_find_value(global.named_loc_map, _up);
++            }
++        }
++    }
++    return _asm_val(_t);
++}
++
++function scr_asm_pp_eval(_expr, _consts) {
++    var _e   = string_trim(_expr);
++    var _ops = ["==", "!=", "<>", "<=", ">=", "=", "<", ">"];
++    for (var _o = 0; _o < array_length(_ops); _o++) {
++        var _op  = _ops[_o];
++        var _pos = string_pos(_op, _e);
++        if (_pos <= 1) {
++            continue;
++        }
++        var _a = scr_asm_pp_value(string_copy(_e, 1, _pos - 1), _consts);
++        var _b = scr_asm_pp_value(string_delete(_e, 1, _pos + string_length(_op) - 1), _consts);
++        switch (_op) {
++            case "==": return _a == _b;
++            case "=":  return _a == _b;
++            case "!=": return _a != _b;
++            case "<>": return _a != _b;
++            case "<=": return _a <= _b;
++            case ">=": return _a >= _b;
++            case "<":  return _a < _b;
++            case ">":  return _a > _b;
++        }
++    }
++    return scr_asm_pp_value(_e, _consts) != 0;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+index 61e958e..59cba73 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as/scr_save_workspace_as.gml
+@@ -82,6 +82,7 @@
+ 	            wire_in_source:  variable_instance_exists(inst, "wire_in_source")  ? inst.wire_in_source  : -1,
+ 	            stable_uid:      variable_instance_exists(inst, "stable_uid")      ? inst.stable_uid      : -1,
+ 				custom_title:    variable_instance_exists(inst, "custom_title")    ? inst.custom_title    : "",
++				params:          inst.params,
+ 				code:           _save_code,
+ 	            binary_blob:    _hex_data
+ 	        });
+@@ -443,6 +444,7 @@
+ 		        basic_unlocked:     global.basic_unlocked,
+ 		        kernal_unlocked:    global.kernal_unlocked,
+ 		        build_target:       global.build_target,
++		        creator_locked:     global.creator_locked,
+ 		        code_editor_font_index: code_editor_font_index,
+ 		        map_global_mixed:   obj_workspace_manager.map_global_mixed,
+ 		        map_tile_bank:      variable_global_exists("map_tile_bank") ? global.map_tile_bank : [],
+diff --git a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+index aeedc7b..42d158a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_save_workspace_as_path/scr_save_workspace_as_path.gml
+@@ -79,6 +79,7 @@ if (!_hash_only) {
+             wire_in_source:  variable_instance_exists(inst, "wire_in_source")  ? inst.wire_in_source  : -1,
+             stable_uid:      variable_instance_exists(inst, "stable_uid")      ? inst.stable_uid      : -1,
+ 			custom_title:    variable_instance_exists(inst, "custom_title")    ? inst.custom_title    : "",
++			params:          inst.params,
+ 			code:           _save_code,
+             binary_blob:    _hex_data
+         });
+@@ -434,6 +435,7 @@ if (instance_exists(obj_asset_manager)) {
+ 	        basic_unlocked:     global.basic_unlocked,
+ 	        kernal_unlocked:    global.kernal_unlocked,
+ 	        build_target:       global.build_target,
++	        creator_locked:     global.creator_locked,
+ 	        code_editor_font_index: code_editor_font_index,
+ 	        map_global_mixed:   obj_workspace_manager.map_global_mixed,
+ 	        map_tile_bank:      variable_global_exists("map_tile_bank") ? global.map_tile_bank : [],
+diff --git a/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml b/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
+index 6a834b3..313367a 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_undo_restore/scr_undo_restore.gml
+@@ -62,6 +62,7 @@ function scr_undo_restore(_path) {
+ 		if (variable_struct_exists(_d, "anim_alias") && _d.anim_alias != "")         _n.anim_alias       = _d.anim_alias;
+         if (variable_struct_exists(_d, "scroll_alias") && _d.scroll_alias != "")     _n.scroll_alias     = _d.scroll_alias;
+         if (variable_struct_exists(_d, "code_descriptor") && _d.code_descriptor != "") _n.code_descriptor = _d.code_descriptor;
++        _n.params = scr_creator_params_from_data(_d);
+ 		_n.show_only_used = variable_struct_exists(_d, "show_only_used") ? _d.show_only_used : false;
+         if (_n.node_type == "MACRO_JOY") _n.height_dirty = true; // Force height update for Joy nodes
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml b/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
+index f070dde..62232d2 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_undo_snapshot/scr_undo_snapshot.gml
+@@ -97,6 +97,7 @@ function scr_undo_snapshot() {
+             wire_out_target: variable_instance_exists(_inst, "wire_out_target")  ? _inst.wire_out_target  : -1,
+             wire_in_source:  variable_instance_exists(_inst, "wire_in_source")   ? _inst.wire_in_source   : -1,
+             stable_uid:      variable_instance_exists(_inst, "stable_uid")       ? _inst.stable_uid       : 0,
++            params:          variable_clone(_inst.params),
+             code:            variable_clone(_inst.instructions),
+             binary_blob:    ""  // intentionally empty — buffers live on disk
+         });

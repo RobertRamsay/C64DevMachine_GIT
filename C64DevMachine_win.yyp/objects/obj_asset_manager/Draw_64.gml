@@ -6,6 +6,9 @@ scr_chr_preview_service();
 
 
 if obj_workspace_manager.code_editor_open or obj_workspace_manager.hideui exit;
+// CREATOR LAYER: the asset panel reads the mouse directly, so it must not be
+// drawn (or clickable) under a Creator panel.
+if (scr_creator_panel_active()) exit;
 
 
 // Invalidate dither cache when mode/invert changes

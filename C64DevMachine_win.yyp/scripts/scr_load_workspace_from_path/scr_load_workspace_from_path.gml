@@ -211,6 +211,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
 		if (variable_struct_exists(d, "code_descriptor")) _n.code_descriptor = d.code_descriptor;
 		if (variable_struct_exists(d, "helper_text")) _n.helper_text = d.helper_text;
 		if (variable_struct_exists(d, "custom_title")) _n.custom_title = string(d.custom_title);
+		_n.params = scr_creator_params_from_data(d);
 		_n.show_only_used = variable_struct_exists(d, "show_only_used") ? d.show_only_used : false;
 
 		// Restore stable_uid (used by the ignored-conflict suppression list)
@@ -1297,6 +1298,16 @@ global.kernal_unlocked = variable_struct_exists(load_data, "kernal_unlocked") ? 
         global.build_target = clamp(real(load_data.build_target), 0, 2);
     }
     global.basic_unlocked  = variable_struct_exists(load_data, "basic_unlocked")  ? load_data.basic_unlocked  : false;
+
+    // CREATOR LAYER: whether this workspace opens in the Creator view. The
+    // view itself is opened from Begin Step once every node exists.
+    global.creator_locked = false;
+    if (variable_struct_exists(load_data, "creator_locked")) {
+        global.creator_locked = load_data.creator_locked;
+    }
+    global.creator_view_open    = false;
+    global.creator_edit_node    = noone;
+    global.creator_open_pending = true;
 
     // Restore the stable-UID allocator: take the higher of the persisted value
     // and one past every restored node's UID, so future allocations never collide.

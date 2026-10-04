@@ -62,6 +62,7 @@ function scr_undo_restore(_path) {
 		if (variable_struct_exists(_d, "anim_alias") && _d.anim_alias != "")         _n.anim_alias       = _d.anim_alias;
         if (variable_struct_exists(_d, "scroll_alias") && _d.scroll_alias != "")     _n.scroll_alias     = _d.scroll_alias;
         if (variable_struct_exists(_d, "code_descriptor") && _d.code_descriptor != "") _n.code_descriptor = _d.code_descriptor;
+        _n.params = scr_creator_params_from_data(_d);
 		_n.show_only_used = variable_struct_exists(_d, "show_only_used") ? _d.show_only_used : false;
         if (_n.node_type == "MACRO_JOY") _n.height_dirty = true; // Force height update for Joy nodes
 

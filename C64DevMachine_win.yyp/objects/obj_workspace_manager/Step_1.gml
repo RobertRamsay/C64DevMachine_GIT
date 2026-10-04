@@ -30,6 +30,10 @@ scr_cbc_hit();
 // to be settled before any Step event runs.
 scr_org_collapse_hit();
 
+// CREATOR LAYER: params tab clicks, F9, deferred panel actions, and the
+// open-locked rule. Begin Step for the same reason as the fold tab.
+scr_creator_begin_step();
+
 // ---- IDLE DETECTION ----
 var _mx = global.gui_mouse_x;
 var _my = global.gui_mouse_y;

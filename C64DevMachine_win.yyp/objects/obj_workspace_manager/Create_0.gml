@@ -1,5 +1,7 @@
 /// @desc Setup Workspace, Palette & C64 Environment
 global.lite=0;
+// CREATOR LAYER globals (lock state, panels). Before anything can step.
+scr_creator_init();
 
 // ---------------------------------------------------------------------------
 // MCP / external control feature switch.

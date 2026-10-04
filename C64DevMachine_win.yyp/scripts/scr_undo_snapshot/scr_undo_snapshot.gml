@@ -97,6 +97,7 @@ function scr_undo_snapshot() {
             wire_out_target: variable_instance_exists(_inst, "wire_out_target")  ? _inst.wire_out_target  : -1,
             wire_in_source:  variable_instance_exists(_inst, "wire_in_source")   ? _inst.wire_in_source   : -1,
             stable_uid:      variable_instance_exists(_inst, "stable_uid")       ? _inst.stable_uid       : 0,
+            params:          variable_clone(_inst.params),
             code:            variable_clone(_inst.instructions),
             binary_blob:    ""  // intentionally empty — buffers live on disk
         });
