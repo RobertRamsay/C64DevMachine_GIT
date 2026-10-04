@@ -1825,8 +1825,11 @@ function scr_creator_draw_items(_items, _col) {
                 draw_text(_it.x1, _my, _it.text);
                 break;
             case "text":
+                // Word-wrapped to the item width (narrow panels).
                 draw_set_colour(make_colour_rgb(190, 190, 230));
-                draw_text_l(_it.x1, _my, _it.text);
+                draw_set_valign(fa_top);
+                draw_text_ext_l(_it.x1, _it.y1 + 4, _it.text, 20, max(40, _it.x2 - _it.x1));
+                draw_set_valign(fa_middle);
                 break;
             case "bad":
                 draw_set_colour(make_colour_rgb(255, 110, 110));
