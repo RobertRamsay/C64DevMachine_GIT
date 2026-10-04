@@ -5185,6 +5185,26 @@ case "MACRO_METASCROLL": {
         }
     }
 
+    // <tileset>_TILE_TYPES: the linked CHAR_SET's tags as sparse [char,tag]
+    // pairs ending in $FF - the same table COLL_ADV and MACRO_METAMAP use.
+    // Always emitted (an untagged set is just the $FF), so game code can read
+    // the tag of the char on screen under any point of the scrolling view.
+    array_push(_list, ["label", string(_ts_name) + "_TILE_TYPES"]);
+    if (_ms_chr_ref != noone) {
+        if (variable_struct_exists(_ms_chr_ref.meta, "tile_types")) {
+            if (is_array(_ms_chr_ref.meta.tile_types)) {
+                var _ms_tt = _ms_chr_ref.meta.tile_types;
+                for (var _ms_tti = 0; _ms_tti < min(255, array_length(_ms_tt)); _ms_tti++) {
+                    if (real(_ms_tt[_ms_tti]) != 0) {
+                        array_push(_list, ["byte", _ms_tti & 0xFF,              _id]);
+                        array_push(_list, ["byte", real(_ms_tt[_ms_tti]) & 0xFF, _id]);
+                    }
+                }
+            }
+        }
+    }
+    array_push(_list, ["byte", 0xFF, _id]);
+
     array_push(_list, ["label", _l_skip]);
 
     // ══════════════════════════════════════════════════════
