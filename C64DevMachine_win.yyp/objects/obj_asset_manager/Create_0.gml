@@ -39,8 +39,25 @@ map_view_cache = {
     col2_c      : c_black,
     ecm_c       : array_create(4, c_black),
     pal         : array_create(16, c_black),
-    pal_sum     : -1
+    pal_sum     : -1,
+    // ROOM VIEW (RLE maps with meta.room_view): each room drawn with its
+    // own charset and colour bands, the way the game shows it
+    rv_on       : false,
+    rv_key      : "",
+    rv_rw       : 1,       // room size in cells
+    rv_rh       : 1,
+    rv_rx       : 1,       // rooms across
+    rv_n        : 0,       // rooms with a view entry
+    rv_slot     : [],      // room -> charset slot (0 = the map's CHR)
+    rv_chr      : [noone], // slot -> charset asset
+    rv_atlas    : [-1],    // slot -> glyph atlas surface (slot 0 uses atlas)
+    rv_crc      : [-1],    // slot -> charset crc the atlas was built from
+    rv_bg       : [],      // (room * room_h + row) -> background colour
+    rv_c1       : [],      //                         -> MC colour 1
+    rv_c2       : []       //                         -> MC colour 2
 };
+map_show_tags   = false;   // map editor [T]: char tag (tile type) badges on every cell
+map_game_view   = false;   // map editor [G]: room under the mouse drawn the game's way
 // bitmap editor:
 bmp_ref_asset_name = "";
 bmp_ref_vy1        = 0;

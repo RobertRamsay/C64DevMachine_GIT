@@ -2583,6 +2583,60 @@ draw_set_color(_cell_bg_col);
 
 	    }
 
+	    // ── TAGS overlay [T]: each cell's char tag (the charset's tile type) ──
+	    // A badge in the cell's corner, coloured per tag; the strip under the
+	    // canvas lists every tag the map uses. Room maps with a ROOM VIEW read
+	    // the tag from the charset that room is drawn with.
+	    if (keyboard_check_pressed(ord("T")) && !scr_ctrl_held()) {
+	        map_show_tags = !map_show_tags;
+	    }
+	    if (map_show_tags) {
+	        var _tg_used = array_create(256, false);
+	        var _tg_any  = false;
+	        for (var _row = _start_row; _row < _end_row; _row++) {
+	            for (var _col = _start_col; _col < _end_col; _col++) {
+	                var _tg_chr = _chr_asset_ref;
+	                if (map_view_cache.rv_on && map_view_cache.asset == _asset) {
+	                    var _tg_rx = _col div map_view_cache.rv_rw;
+	                    var _tg_ri = (_row div map_view_cache.rv_rh) * map_view_cache.rv_rx + _tg_rx;
+	                    if (_tg_rx < map_view_cache.rv_rx && _tg_ri < map_view_cache.rv_n) {
+	                        var _tg_sl = map_view_cache.rv_slot[_tg_ri];
+	                        if (_tg_sl > 0) _tg_chr = map_view_cache.rv_chr[_tg_sl];
+	                    }
+	                }
+	                if (_tg_chr == noone) continue;
+	                var _tg_types = _tg_chr.meta[$ "tile_types"];
+	                if (!is_array(_tg_types)) continue;
+	                var _tg_ch = _m.char_grid[_row * _gw + _col];
+	                if (_tg_ch < 0 || _tg_ch >= array_length(_tg_types)) continue;
+	                var _tg_t = real(_tg_types[_tg_ch]);
+	                if (_tg_t <= 0) continue;
+	                _tg_used[clamp(_tg_t, 0, 255)] = true;
+	                _tg_any = true;
+	                var _tgx = _cv_x1 + (_col - _start_col) * _cs;
+	                var _tgy = _cv_y1 + (_row - _start_row) * _cs;
+	                var _tgs = max(3, _cs div 3);
+	                draw_set_color(scr_room_map_type_col(_tg_t));
+	                draw_rectangle(_tgx, _tgy, _tgx + _tgs, _tgy + _tgs, false);
+	                draw_set_color(c_black);
+	                draw_rectangle(_tgx, _tgy, _tgx + _tgs, _tgy + _tgs, true);
+	            }
+	        }
+	        var _tg_line = "TAGS [T]:";
+	        if (!_tg_any) {
+	            _tg_line += " NONE IN VIEW";
+	        } else {
+	            for (var _tq = 1; _tq < 256; _tq++) {
+	                if (_tg_used[_tq]) _tg_line += " " + string(_tq);
+	            }
+	        }
+	        draw_set_font_l(fnt_c64_tiny);
+	        draw_set_color(make_color_rgb(20, 20, 30));
+	        draw_rectangle(_cv_x1 + 2, _cv_y2 - 18, _cv_x1 + string_width(_tg_line) + 16, _cv_y2 - 2, false);
+	        draw_set_color(c_aqua);
+	        draw_text(_cv_x1 + 9, _cv_y2 - 13 - scr_lang_lift(), _tg_line);
+	    }
+
 	    // ── RLE ROOMS overlay: room borders + room numbers ──
 	    // Rooms are room_w x room_h cells, numbered left to right, top to
 	    // bottom - the order the pointer table is emitted in. Cells past
@@ -2691,8 +2745,45 @@ draw_set_color(_cell_bg_col);
 	                draw_text_l(_bx1 + 6, _by1 + 5, _tag);
 	            }
 	        }
+	        // ── GAME VIEW [G]: the room under the mouse, the way the game shows
+	        // it - its own charset and colour bands (ROOM VIEW), and every row
+	        // drawn twice as tall when the map's VIEW Y x2 is on (Bruce Lee
+	        // doubles each tile row: an 8x8 tile is an 8x16 cell on screen).
+	        // [H] toggles VIEW Y x2. Display only - nothing is edited here.
+	        if (keyboard_check_pressed(ord("G")) && !scr_ctrl_held()) {
+	            map_game_view = !map_game_view;
+	        }
+	        if (keyboard_check_pressed(ord("H")) && !scr_ctrl_held()) {
+	            _m.view_y2 = !_m.view_y2;
+	        }
+	        if (map_game_view && _hov_room >= 0 && _hov_room < _r_used && _use_map_cache) {
+	            var _gv_sy  = 1;
+	            if (_m.view_y2) _gv_sy = 2;
+	            var _gv_w   = _rw_c * 8;
+	            var _gv_h   = _rh_c * 8;
+	            var _gv_s   = max(1, min(3, floor((_cv_x2 - _cv_x1) * 0.5 / _gv_w)));
+	            var _gv_x2  = _cv_x2 - 8;
+	            var _gv_x1  = _gv_x2 - _gv_w * _gv_s;
+	            var _gv_y1  = _cv_y1 + 22;
+	            var _gv_y2  = _gv_y1 + _gv_h * _gv_s * _gv_sy;
+	            draw_set_color(c_black);
+	            draw_rectangle(_gv_x1 - 4, _gv_y1 - 18, _gv_x2 + 4, _gv_y2 + 4, false);
+	            draw_set_color(c_yellow);
+	            draw_rectangle(_gv_x1 - 4, _gv_y1 - 18, _gv_x2 + 4, _gv_y2 + 4, true);
+	            var _gv_tf = gpu_get_tex_filter();
+	            gpu_set_tex_filter(false);
+	            draw_surface_part_ext(map_view_cache.surf,
+	                (_hov_room mod _rx_n) * _gv_w, (_hov_room div _rx_n) * _gv_h, _gv_w, _gv_h,
+	                _gv_x1, _gv_y1, _gv_s, _gv_s * _gv_sy, c_white, 1);
+	            gpu_set_tex_filter(_gv_tf);
+	            draw_set_font_l(fnt_c64_tiny);
+	            draw_set_color(c_yellow);
+	            var _gv_lbl = "GAME VIEW  ROOM " + string(_hov_room) + "   [G] CLOSE   [H] Y x2 ";
+	            if (_m.view_y2) { _gv_lbl += "ON"; } else { _gv_lbl += "OFF"; }
+	            draw_text(_gv_x1, _gv_y1 - 14 - scr_lang_lift(), _gv_lbl);
+	        }
 	        if (_hov_room >= 0) {
-	            var _hint = "ROOM " + string(_hov_room) + "  (" + string(_rw_c) + "x" + string(_rh_c) + ")";
+	            var _hint = "ROOM " + string(_hov_room) + "  (" + string(_rw_c) + "x" + string(_rh_c) + ")   [G] GAME VIEW  [T] TAGS";
 	            if (_hov_room >= _r_used) { _hint += "  NOT EMITTED"; }
 	            draw_set_color(make_color_rgb(20, 20, 30));
 	            draw_rectangle(_cv_x2 - string_width(_hint) - 16, _cv_y2 - 18, _cv_x2 - 2, _cv_y2 - 2, false);
