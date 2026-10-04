@@ -1,0 +1,71 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+index 168d18c..5a99ca2 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+@@ -1321,25 +1321,24 @@ function scr_creator_panel_layout(_b) {
+ }
+ 
+ /// Buttons above the box, left of its delete X (developer only).
++///   UI   - on/off toggle: on makes the box a panel (facade up), off makes
++///          it a plain mapping box again. Lit while the box is a panel.
++///   DONE - only while the facade is lifted for editing: drops it back.
++/// (EDIT, on the facade itself, lifts it.)
+ function scr_creator_box_buttons(_b) {
+     var _out = [];
+     if (global.lite) {
+         return _out;
+     }
+     var _right = _b.x + _b.box_w - 22;
+-    if (!_b.is_panel) {
+-        var _mk = scr_creator_item("make", _right - 76, _b.y - 18, _right, _b.y);
+-        _mk.text = "UI PANEL";
+-        array_push(_out, _mk);
+-        return _out;
+-    }
+-    if (_b.panel_editing) {
+-        var _sh = scr_creator_item("show", _right - 70, _b.y - 18, _right, _b.y);
+-        _sh.text = "SHOW UI";
+-        array_push(_out, _sh);
+-        var _un = scr_creator_item("unmake", _right - 70 - 4 - 56, _b.y - 18, _right - 74, _b.y);
+-        _un.text = "NO UI";
+-        array_push(_out, _un);
++    var _ui = scr_creator_item("ui", _right - 34, _b.y - 18, _right, _b.y);
++    _ui.text = "UI";
++    _ui.on   = _b.is_panel;
++    array_push(_out, _ui);
++    if (_b.is_panel && _b.panel_editing) {
++        var _dn = scr_creator_item("done", _right - 34 - 4 - 56, _b.y - 18, _right - 38, _b.y);
++        _dn.text = "DONE";
++        array_push(_out, _dn);
+     }
+     return _out;
+ }
+@@ -1374,16 +1373,13 @@ function scr_creator_box_step(_b) {
+         if (!point_in_rectangle(_mx, _my, _bt.x1, _bt.y1, _bt.x2, _bt.y2)) {
+             continue;
+         }
+-        if (_bt.t == "make") {
+-            _b.is_panel      = true;
++        if (_bt.t == "ui") {
++            _b.is_panel      = !_b.is_panel;
+             _b.panel_editing = false;
+             global.selected_nodes = [];
+-        } else if (_bt.t == "show") {
++        } else if (_bt.t == "done") {
+             _b.panel_editing = false;
+             global.selected_nodes = [];
+-        } else if (_bt.t == "unmake") {
+-            _b.is_panel      = false;
+-            _b.panel_editing = false;
+         }
+         global.undo_dirty     = true;
+         global.autosave_dirty = true;
+@@ -1474,7 +1470,7 @@ function scr_creator_box_draw(_b) {
+ 
+     var _btns = scr_creator_box_buttons(_b);
+     for (var _i = 0; _i < array_length(_btns); _i++) {
+-        scr_creator_draw_room_btn(_btns[_i], false, _col);
++        scr_creator_draw_room_btn(_btns[_i], _btns[_i].on, _col);
+     }
+ 
+     if (_b.is_panel && !_b.panel_editing) {
