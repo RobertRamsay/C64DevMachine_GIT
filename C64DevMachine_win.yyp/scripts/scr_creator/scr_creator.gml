@@ -414,9 +414,6 @@ function scr_creator_draw_node_tab() {
     var _np  = array_length(params);
     var _hot = (global.creator_tab_hot == id);
 
-    draw_set_color(make_color_rgb(20, 14, 26));
-    draw_rectangle(_r.x1, _r.y1, _r.x2, _r.y2, false);
-
     var _col = make_color_rgb(110, 110, 150);
     if (_np > 0) {
         _col = make_color_rgb(80, 200, 255);
@@ -424,8 +421,8 @@ function scr_creator_draw_node_tab() {
     if (_hot) {
         _col = make_color_rgb(255, 210, 80);
     }
-    draw_set_color(_col);
-    draw_rectangle(_r.x1, _r.y1, _r.x2, _r.y2, true);
+    scr_creator_skin_node_frame(_r.x1, _r.y1, _r.x2 - _r.x1, _r.y2 - _r.y1, 4, _col);
+    draw_set_color(c_white);
 
     var _font_b   = draw_get_font();
     var _halign_b = draw_get_halign();
@@ -562,24 +559,112 @@ function scr_creator_run_action(_act) {
 // IMMEDIATE-MODE WIDGETS (GUI space, Draw GUI End)
 // --------------------------------------------------------------------
 
-function scr_creator_btn(_x1, _y1, _x2, _y2, _label, _on) {
-    var _hov = point_in_rectangle(global.creator_mx, global.creator_my, _x1, _y1, _x2, _y2);
-    var _bg  = make_colour_rgb(30, 30, 70);
-    if (_on) {
-        _bg = make_colour_rgb(70, 70, 170);
+// --------------------------------------------------------------------
+// THEME SKIN — the same sprites and style settings the rest of the UI uses:
+//   panels  : spr_glassSlice, frame niceSliceFrm (Panel Style)
+//   buttons : spr_menu_button, frame paletteStyle, or the cyber frame when
+//             the panel style is cyber (uiChromeStyle), hover = additive glow
+//   facades : spr_9s_tile1 with nodeStyle, like node bodies and headers
+// --------------------------------------------------------------------
+
+function scr_creator_skin_panel(_x1, _y1, _w, _h) {
+    var _frm = 0;
+    if (instance_exists(obj_workspace_manager)) {
+        _frm = obj_workspace_manager.niceSliceFrm;
     }
-    if (_hov) {
-        _bg = merge_colour(_bg, c_white, 0.18);
+    draw_sprite_stretched(spr_glassSlice, _frm, _x1, _y1, _w, _h);
+}
+
+function scr_creator_skin_btn_frame() {
+    var _frm = 0;
+    if (instance_exists(obj_workspace_manager)) {
+        if (obj_workspace_manager.uiChromeStyle == 0) {
+            _frm = obj_workspace_manager.paletteStyle;
+        } else {
+            _frm = sprite_get_number(spr_menu_button) - 1;
+        }
     }
-    draw_set_colour(_bg);
-    draw_rectangle(_x1, _y1, _x2, _y2, false);
-    draw_set_colour(make_colour_rgb(180, 180, 255));
-    draw_rectangle(_x1, _y1, _x2, _y2, true);
+    return _frm;
+}
+
+/// Themed button body. _on = selected/active, _hov = pointer over it.
+function scr_creator_skin_btn(_x1, _y1, _x2, _y2, _label, _on, _hov) {
+    var _frm = scr_creator_skin_btn_frame();
+    var _w   = max(1, _x2 - _x1);
+    var _h   = max(1, _y2 - _y1);
+    var _sx  = _w / sprite_get_width(spr_menu_button);
+    var _sy  = _h / sprite_get_height(spr_menu_button);
+    var _add = true;
+    if (instance_exists(obj_workspace_manager)) {
+        if (obj_workspace_manager.uiChromeStyle != 0) {
+            _add = false;
+        }
+    }
+    draw_sprite_ext(spr_menu_button, _frm, _x1, _y1, _sx, _sy, 0, c_white, 1);
+    if (_hov || _on) {
+        var _glow = 0.2;
+        if (_on) {
+            _glow = 0.35;
+        }
+        if (_add) {
+            gpu_set_blendmode(bm_add);
+        }
+        draw_sprite_ext(spr_menu_button, _frm, _x1, _y1, _sx, _sy, 0, c_white, _glow);
+        if (_add) {
+            gpu_set_blendmode(bm_normal);
+        }
+    }
     draw_set_colour(c_white);
+    if (_on) {
+        draw_set_colour(c_yellow);
+    }
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
     draw_text_l((_x1 + _x2) / 2, (_y1 + _y2) / 2, _label);
     draw_set_halign(fa_left);
+}
+
+/// Node-style body + header, following the Node Style setting.
+function scr_creator_skin_node_frame(_x1, _y1, _w, _h, _head_h, _col) {
+    var _style = 0;
+    if (instance_exists(obj_workspace_manager)) {
+        _style = obj_workspace_manager.nodeStyle;
+    }
+    var _n9    = sprite_get_number(spr_9s_tile1);
+    var _body  = merge_colour(_col, make_colour_rgb(20, 22, 40), 0.7);
+    var _dark  = merge_colour(_body, c_black, 0.5);
+    var _head  = _col;
+
+    if (_style == _n9 - 1) {
+        // Cyber: dark slab, yellow rail, coloured ID strip.
+        draw_rectangle_colour(_x1, _y1, _x1 + _w, _y1 + _h,
+            make_colour_rgb(22, 24, 26), make_colour_rgb(22, 24, 26),
+            make_colour_rgb(10, 12, 14), make_colour_rgb(10, 12, 14), false);
+        draw_set_colour(make_colour_rgb(238, 197, 38));
+        draw_rectangle(_x1, _y1, _x1 + 3, _y1 + _h, false);
+        draw_set_colour(merge_colour(_head, make_colour_rgb(18, 20, 22), 0.72));
+        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _head_h, false);
+        draw_set_colour(_head);
+        draw_rectangle(_x1 + 3, _y1 + _head_h - 3, _x1 + _w - 10, _y1 + _head_h, false);
+        exit;
+    }
+    if (_style == 0) {
+        draw_rectangle_colour(_x1, _y1, _x1 + _w, _y1 + _h, _body, _body, _dark, _dark, false);
+        draw_set_colour(_head);
+        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _head_h, false);
+        exit;
+    }
+    var _frm = clamp(_style, 1, max(1, _n9 - 2));
+    if (_style >= _n9) {
+        _frm = _n9 - 1;
+    }
+    draw_sprite_stretched_ext(spr_9s_tile1, _frm, _x1, _y1, _w, _h, _body, 1);
+    draw_sprite_stretched_ext(spr_9s_tile1, _frm, _x1, _y1, _w, _head_h, _head, 1);
+}
+
+function scr_creator_btn(_x1, _y1, _x2, _y2, _label, _on) {
+    var _hov = point_in_rectangle(global.creator_mx, global.creator_my, _x1, _y1, _x2, _y2);
+    scr_creator_skin_btn(_x1, _y1, _x2, _y2, _label, _on, _hov);
     var _clicked = false;
     if (_hov && global.creator_click) {
         _clicked = true;
@@ -711,10 +796,7 @@ function scr_creator_draw_editor(_n) {
     var _py    = floor((_gh - _ph) / 2);
     var _code  = (_n.node_type == "MACRO_CODE");
 
-    draw_set_colour(make_colour_rgb(40, 40, 90));
-    draw_rectangle(_px, _py, _px + _pw, _py + _ph, false);
-    draw_set_colour(make_colour_rgb(180, 180, 255));
-    draw_rectangle(_px, _py, _px + _pw, _py + _ph, true);
+    scr_creator_skin_panel(_px, _py, _pw, _ph);
 
     draw_set_font_l(fnt_C64_Angled_big);
     draw_set_halign(fa_left);
@@ -944,10 +1026,7 @@ function scr_creator_draw_view() {
     }
     global.creator_scroll = clamp(global.creator_scroll, 0, _max_scroll);
 
-    draw_set_colour(make_colour_rgb(24, 24, 60));
-    draw_rectangle(_px, _py, _px + _pw, _py + _ph, false);
-    draw_set_colour(make_colour_rgb(180, 180, 255));
-    draw_rectangle(_px, _py, _px + _pw, _py + _ph, true);
+    scr_creator_skin_panel(_px, _py, _pw, _ph);
 
     draw_set_font_l(fnt_C64_Angled_big);
     draw_set_halign(fa_left);
@@ -1399,25 +1478,7 @@ function scr_creator_box_step(_b) {
 
 function scr_creator_draw_room_btn(_it, _on, _col) {
     var _hov = point_in_rectangle(mouse_x, mouse_y, _it.x1, _it.y1, _it.x2, _it.y2);
-    var _bg  = make_colour_rgb(30, 30, 70);
-    if (_on) {
-        _bg = _col;
-    }
-    if (_hov) {
-        _bg = merge_colour(_bg, c_white, 0.2);
-    }
-    draw_set_colour(_bg);
-    draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, false);
-    draw_set_colour(_col);
-    draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, true);
-    draw_set_colour(c_white);
-    if (_on) {
-        draw_set_colour(c_black);
-    }
-    draw_set_halign(fa_center);
-    draw_set_valign(fa_middle);
-    draw_text_l((_it.x1 + _it.x2) * 0.5, (_it.y1 + _it.y2) * 0.5, _it.text);
-    draw_set_halign(fa_left);
+    scr_creator_skin_btn(_it.x1, _it.y1, _it.x2, _it.y2, _it.text, _on, _hov);
 }
 
 /// obj_mapping_box Draw (room space). Buttons above the box always; the
@@ -1441,13 +1502,7 @@ function scr_creator_box_draw(_b) {
         var _by2 = _b.y + _b.box_h;
 
         draw_set_alpha(1);
-        draw_set_colour(make_colour_rgb(18, 18, 40));
-        draw_rectangle(_bx1, _by1, _bx2, _by2, false);
-        draw_set_colour(merge_colour(_col, c_black, 0.35));
-        draw_rectangle(_bx1, _by1, _bx2, _by1 + CREATOR_PANEL_HEAD, false);
-        draw_set_colour(_col);
-        draw_rectangle(_bx1, _by1, _bx2, _by2, true);
-        draw_rectangle(_bx1 + 1, _by1 + 1, _bx2 - 1, _by2 - 1, true);
+        scr_creator_skin_node_frame(_bx1, _by1, _b.box_w, _b.box_h, CREATOR_PANEL_HEAD, _col);
         draw_set_colour(c_white);
         draw_set_halign(fa_left);
         draw_set_valign(fa_middle);
