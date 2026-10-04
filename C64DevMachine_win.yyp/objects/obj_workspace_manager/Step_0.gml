@@ -4109,6 +4109,21 @@ if (export_trigger) {
             _exp_has_loader = true;
         }
     }
+    // DISK ONLY links (the game loads its own files) need the D64 too.
+    if (!_exp_has_loader && instance_exists(obj_asset_manager)) {
+        var _exp_am_do = obj_asset_manager;
+        for (var _edi = 0; _edi < ds_list_size(_exp_am_do.asset_list); _edi++) {
+            var _eda = ds_list_find_value(_exp_am_do.asset_list, _edi);
+            if (_eda.type != "LOAD_ORG") continue;
+            var _edl = _eda[$ "linked_assets"];
+            if (!is_array(_edl)) continue;
+            for (var _edj = 0; _edj < array_length(_edl); _edj++) {
+                if (_edl[_edj][$ "disk_only"] == true) {
+                    _exp_has_loader = true;
+                }
+            }
+        }
+    }
     var _exp_build_d64 = (_exp_has_load_org && _exp_has_loader && global.build_target == 0);
 
     // Resolve the target path via dialog / pending path.
