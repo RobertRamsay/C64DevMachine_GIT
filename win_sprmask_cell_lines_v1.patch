@@ -1,0 +1,105 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+index 06731ec..12677df 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+@@ -604,22 +604,38 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     var _px = clamp(floor((_mx - _cvx) / _sc), 0, 319);
+     var _py = clamp(floor((_my - _cvy) / _sc), 0, 199);
+ 
+-    // Keep the chosen line visible while using the sidebar too.
+-    var _gy = (_m.depth != 255) ? _m.depth : -1;
+-    if (_m.pick_y && _on_cv) _gy = _py;
+-    if (_gy < 0 && _on_cv && !_m.pick_open) {
++    // Lines. Each masked cell keeps the line it was painted with - that is
++    // what the C64 uses. The rule picked in step 1 only applies to paint
++    // done from now on, so it is drawn dim and labelled as such; hovering a
++    // masked cell shows that cell's own line in bright cyan.
++    var _cell_gy = -1;
++    if (_on_cv && !_m.pick_open && !_m.pick_y) {
+         var _hc = (_py >> 3) * 40 + (_px >> 3);
+         if (_m.cell_base[_hc] != 255) {
+             for (var _r = 0; _r < 8; _r++) {
+-                if (_m.mask[_hc * 8 + _r] != 0) _gy = _m.cell_base[_hc];
++                if (_m.mask[_hc * 8 + _r] != 0) { _cell_gy = _m.cell_base[_hc]; }
+             }
+         }
+     }
+-    if (_gy >= 0 && !_m.pick_open) {
+-        draw_set_color(c_aqua);
+-        draw_line_width(_cvx, _cvy + _gy * _sc, _cvx + _cw, _cvy + _gy * _sc, 2);
+-        draw_text_l(_cvx + 4, max(_cvy + 2, _cvy + _gy * _sc - 18),
+-            "ABOVE = BEHIND   |   AT / BELOW = IN FRONT   |   Y " + string(_gy));
++    if (!_m.pick_open) {
++        if (_m.pick_y && _on_cv) {
++            draw_set_color(c_aqua);
++            draw_line_width(_cvx, _cvy + _py * _sc, _cvx + _cw, _cvy + _py * _sc, 2);
++            draw_text_l(_cvx + 4, max(_cvy + 2, _cvy + _py * _sc - 18), "PICK LINE   |   Y " + string(_py));
++        } else {
++            if (_m.depth != 255 && _m.depth != _cell_gy) {
++                draw_set_color(make_color_rgb(0, 120, 140));
++                draw_line_width(_cvx, _cvy + _m.depth * _sc, _cvx + _cw, _cvy + _m.depth * _sc, 1);
++                draw_text_l(_cvx + 4, max(_cvy + 2, _cvy + _m.depth * _sc - 18),
++                    "NEW PAINT LINE   |   Y " + string(_m.depth));
++            }
++            if (_cell_gy >= 0) {
++                draw_set_color(c_aqua);
++                draw_line_width(_cvx, _cvy + _cell_gy * _sc, _cvx + _cw, _cvy + _cell_gy * _sc, 2);
++                draw_text_l(_cvx + 4, max(_cvy + 2, _cvy + _cell_gy * _sc - 18),
++                    "THIS CELL: ABOVE = BEHIND   |   AT / BELOW = IN FRONT   |   Y " + string(_cell_gy));
++            }
++        }
+     }
+     if (_on_cv && !_m.pick_open) {
+         if ((_m.tool == "DEPTH" || _m.tool == "PAINT") && !_m.pick_y) {
+@@ -701,6 +717,41 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+                                _cvx + (_px0 + _pw) * _sc - 1, _cvy + (_m.test_y + _tr + 1) * _sc - 1, false);
+             }
+         }
++        // The lines that actually decide it: each masked cell under the
++        // sprite, drawn across that cell at its own Y.
++        var _lines_txt = "";
++        var _seen_lines = [];
++        var _cc0 = max(0, floor(_m.test_x / 8));
++        var _cc1 = min(39, floor((_m.test_x + 23) / 8));
++        var _cr0 = max(0, floor(_m.test_y / 8));
++        var _cr1 = min(24, floor((_m.test_y + 20) / 8));
++        for (var _cr = _cr0; _cr <= _cr1; _cr++) {
++            for (var _cc = _cc0; _cc <= _cc1; _cc++) {
++                var _ucell = _cr * 40 + _cc;
++                var _um = false;
++                for (var _ur = 0; _ur < 8; _ur++) {
++                    if (_m.mask[_ucell * 8 + _ur] != 0) { _um = true; }
++                }
++                if (!_um) continue;
++                var _ub = _m.cell_base[_ucell];
++                if (_ub != 255) {
++                    draw_set_color(c_aqua);
++                    draw_line_width(_cvx + _cc * 8 * _sc, _cvy + _ub * _sc,
++                                    _cvx + (_cc + 1) * 8 * _sc, _cvy + _ub * _sc, 2);
++                }
++                var _known = false;
++                for (var _sl = 0; _sl < array_length(_seen_lines); _sl++) {
++                    if (_seen_lines[_sl] == _ub) { _known = true; }
++                }
++                if (!_known) {
++                    array_push(_seen_lines, _ub);
++                    var _ub_txt = "Y " + string(_ub);
++                    if (_ub == 255) { _ub_txt = "ALWAYS"; }
++                    if (_lines_txt != "") { _lines_txt += ", "; }
++                    _lines_txt += _ub_txt;
++                }
++            }
++        }
+         // Feet row marker
+         draw_set_color(c_yellow);
+         draw_line(_cvx + (_m.test_x - 2) * _sc, _cvy + (_tfoot + 1) * _sc,
+@@ -713,6 +764,9 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         } else {
+             _test_info += "PARTLY BEHIND";
+         }
++        if (_lines_txt != "") {
++            _test_info += "   |   CELL LINES UNDER IT: " + _lines_txt;
++        }
+     }
+ 
+     gpu_set_scissor(0, 0, window_get_width(), window_get_height());
