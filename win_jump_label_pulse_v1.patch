@@ -1,0 +1,81 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 7fb29f8..9acb17b 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -919,6 +919,8 @@ label_search_reflow  = 0;      // frames left while node layout runs under the m
+ // ---- JSR/JMP ENTER -> JUMP TO LABEL ----
+ label_jump_pending = noone;    // LABEL waiting for its folded ORG to reflow
+ label_jump_reflow  = 0;        // frames left before the camera moves to it
++label_jump_fx_node = noone;    // LABEL showing the arrival pulse
++label_jump_fx_t    = 1;        // 0..1 progress of the pulse (1 = finished)
+ 
+ // MACRO_REU asset drop-down (ASSET mode) — drawn in Draw_64 so it sits on top
+ reu_pick_open   = false;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_73.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_73.gml
+index 2a3122f..d17b3fd 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_73.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_73.gml
+@@ -1,3 +1,4 @@
+ /// @desc Draw End - CREATOR param cards, over every node.
+ if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) exit;
++scr_label_jump_fx_draw();
+ scr_creator_draw_cards();
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index afce5e8..eaf0731 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -18,6 +18,8 @@ if (label_jump_reflow > 0) {
+         if (instance_exists(label_jump_pending)) {
+             scr_focus_camera_on_node(label_jump_pending);
+             camera_set_view_pos(cam_view, cam_x, cam_y);
++            label_jump_fx_node = label_jump_pending;
++            label_jump_fx_t    = 0;
+         }
+         label_jump_pending = noone;
+     }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_label_search_run/scr_label_search_run.gml b/C64DevMachine_win.yyp/scripts/scr_label_search_run/scr_label_search_run.gml
+index e32a398..22a9e1c 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_label_search_run/scr_label_search_run.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_label_search_run/scr_label_search_run.gml
+@@ -292,4 +292,41 @@ function scr_label_jump_goto(_name) {
+ 
+     scr_focus_camera_on_node(_target);
+     camera_set_view_pos(_wm.cam_view, _wm.cam_x, _wm.cam_y);
++    _wm.label_jump_fx_node = _target;
++    _wm.label_jump_fx_t    = 0;
++}
++
++/// @desc Arrival pulse for a JSR/JMP jump: three borders expand out from the
++/// LABEL node, fading white to grey over one second. Draw End, world space.
++function scr_label_jump_fx_draw() {
++    var _wm = obj_workspace_manager;
++    if (_wm.label_jump_fx_t >= 1) return;
++    if (!instance_exists(_wm.label_jump_fx_node)) {
++        _wm.label_jump_fx_t = 1;
++        return;
++    }
++
++    _wm.label_jump_fx_t = min(1, _wm.label_jump_fx_t + (delta_time / 1000000));
++
++    var _n   = _wm.label_jump_fx_node;
++    var _x1  = _n.x + _n.x_indent;
++    var _y1  = _n.y;
++    var _x2  = _x1 + _n.width;
++    var _y2  = _y1 + _n.height;
++    var _old_col   = draw_get_colour();
++    var _old_alpha = draw_get_alpha();
++
++    // Each ring starts 0.2s after the last and lives 0.6s
++    for (var _r = 0; _r < 3; _r++) {
++        var _p = (_wm.label_jump_fx_t - (_r * 0.2)) / 0.6;
++        if (_p <= 0 || _p >= 1) continue;
++        var _grow = 4 + (_p * 40);
++        draw_set_colour(merge_colour(c_white, c_gray, _p));
++        draw_set_alpha(1 - _p);
++        draw_rectangle(_x1 - _grow, _y1 - _grow, _x2 + _grow, _y2 + _grow, true);
++        draw_rectangle(_x1 - _grow - 1, _y1 - _grow - 1, _x2 + _grow + 1, _y2 + _grow + 1, true);
++    }
++
++    draw_set_colour(_old_col);
++    draw_set_alpha(_old_alpha);
+ }

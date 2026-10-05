@@ -18,6 +18,8 @@ if (label_jump_reflow > 0) {
         if (instance_exists(label_jump_pending)) {
             scr_focus_camera_on_node(label_jump_pending);
             camera_set_view_pos(cam_view, cam_x, cam_y);
+            label_jump_fx_node = label_jump_pending;
+            label_jump_fx_t    = 0;
         }
         label_jump_pending = noone;
     }

@@ -292,4 +292,41 @@ function scr_label_jump_goto(_name) {
 
     scr_focus_camera_on_node(_target);
     camera_set_view_pos(_wm.cam_view, _wm.cam_x, _wm.cam_y);
+    _wm.label_jump_fx_node = _target;
+    _wm.label_jump_fx_t    = 0;
+}
+
+/// @desc Arrival pulse for a JSR/JMP jump: three borders expand out from the
+/// LABEL node, fading white to grey over one second. Draw End, world space.
+function scr_label_jump_fx_draw() {
+    var _wm = obj_workspace_manager;
+    if (_wm.label_jump_fx_t >= 1) return;
+    if (!instance_exists(_wm.label_jump_fx_node)) {
+        _wm.label_jump_fx_t = 1;
+        return;
+    }
+
+    _wm.label_jump_fx_t = min(1, _wm.label_jump_fx_t + (delta_time / 1000000));
+
+    var _n   = _wm.label_jump_fx_node;
+    var _x1  = _n.x + _n.x_indent;
+    var _y1  = _n.y;
+    var _x2  = _x1 + _n.width;
+    var _y2  = _y1 + _n.height;
+    var _old_col   = draw_get_colour();
+    var _old_alpha = draw_get_alpha();
+
+    // Each ring starts 0.2s after the last and lives 0.6s
+    for (var _r = 0; _r < 3; _r++) {
+        var _p = (_wm.label_jump_fx_t - (_r * 0.2)) / 0.6;
+        if (_p <= 0 || _p >= 1) continue;
+        var _grow = 4 + (_p * 40);
+        draw_set_colour(merge_colour(c_white, c_gray, _p));
+        draw_set_alpha(1 - _p);
+        draw_rectangle(_x1 - _grow, _y1 - _grow, _x2 + _grow, _y2 + _grow, true);
+        draw_rectangle(_x1 - _grow - 1, _y1 - _grow - 1, _x2 + _grow + 1, _y2 + _grow + 1, true);
+    }
+
+    draw_set_colour(_old_col);
+    draw_set_alpha(_old_alpha);
 }
