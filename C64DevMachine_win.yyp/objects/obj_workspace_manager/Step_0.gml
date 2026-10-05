@@ -4868,7 +4868,7 @@ if (!scr_workspace_keyboard_check(vk_alt) && scr_workspace_keyboard_check_releas
             // expert_mode / shelf_width live on obj_workspace_manager, which is
             // the scope this Step event already runs in.
             var _shelf_w = shelf_width;
-            if (expert_mode) {
+            if (scr_shelf_hidden()) {
                 _shelf_w = 0;
             }
 
@@ -4911,7 +4911,7 @@ if (!scr_workspace_keyboard_check(vk_alt) && scr_workspace_keyboard_check_releas
 /////////////////////////////////////////////////////////////////
 // BOX SELECT
 /////////////////////////////////////////////////////////////////
-var _in_gui = ((global.gui_mouse_x <= shelf_width) && (!expert_mode || global.gui_mouse_y < 47))
+var _in_gui = ((global.gui_mouse_x <= shelf_width) && (!scr_shelf_hidden() || global.gui_mouse_y < 47))
            || (global.gui_mouse_x >= (global.gui_w - 20 - 280))
            || global.showcode_mouse_over
            || global.cbc_button_hot
@@ -5033,7 +5033,10 @@ if (scr_workspace_mouse_check_button_pressed(mb_left)  && !box_popup_open) {
     if (instance_exists(_hit_box) && scr_workspace_keyboard_check(vk_alt)) {
         if (box_body_dbl_timer > 0 && box_body_dbl_target == _hit_box) {
             // Double-click confirmed — zoom to box
-            var _shelf_w  = expert_mode ? 0 : shelf_width;
+            var _shelf_w  = shelf_width;
+            if (scr_shelf_hidden()) {
+                _shelf_w = 0;
+            }
             var _view_w   = 1920 - _shelf_w;
             var _view_h   = 1080;
             var _fit_w    = (_hit_box.box_w > 0) ? (_view_w * 0.8) / _hit_box.box_w : 1.0;

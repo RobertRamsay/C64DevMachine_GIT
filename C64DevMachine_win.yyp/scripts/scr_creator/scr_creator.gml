@@ -51,9 +51,10 @@ function scr_creator_init() {
     global.creator_card_mode_ok = false;
     // Dock: content is laid out unscaled in its own space (0,0 = top-left
     // of the content), drawn to a surface, then shown scaled at x1,y1 with
-    // a scroll bar on its left. sx1 = screen left of the scroll bar.
+    // a scroll bar beside it (on the inner side). hx1..hx2 = the screen area
+    // it owns (dock + bar); bx1 = scroll bar left edge (-1 = no bar).
     global.creator_dock         = {
-        on: false, x1: 0, y1: 0, x2: 0, y2: 0, sx1: 0,
+        on: false, x1: 0, y1: 0, x2: 0, y2: 0, hx1: 0, hx2: 0, bx1: -1,
         scale: CREATOR_DOCK_SCALE, scroll: 0, content_h: 0, view_h: 0,
         items: [], surf: -1, bar_drag: false
     };
@@ -2360,7 +2361,7 @@ function scr_creator_cards_build() {
     }
 
     var _mode = global.creator_card_mode;
-    if (_mode == CREATOR_CARDS_DOCK) {
+    if (_mode == CREATOR_CARDS_DOCK || _mode == CREATOR_CARDS_DOCK_L) {
         // Everything goes to the screen-edge dock; nothing on the canvas.
         draw_set_font_l(_font_b);
         return _cards;
@@ -2673,9 +2674,10 @@ function scr_creator_draw_text_edit() {
 #macro CREATOR_CARDS_AUTO  0
 #macro CREATOR_CARDS_RIGHT 1
 #macro CREATOR_CARDS_LEFT  2
-#macro CREATOR_CARDS_DOCK  3
+#macro CREATOR_CARDS_DOCK  3   // DOCK R (value kept so saved settings still match)
 #macro CREATOR_CARDS_OFF   4
-#macro CREATOR_CARDS_COUNT 5
+#macro CREATOR_CARDS_DOCK_L 5  // DOCK L: left side, hides the opcode shelf meanwhile
+#macro CREATOR_CARDS_COUNT 6
 #macro CREATOR_DOCK_W      300   // content width, before scaling
 #macro CREATOR_DOCK_SCALE  0.75
 #macro CREATOR_DOCK_BAR    12    // scroll bar width (screen px)
@@ -2685,7 +2687,8 @@ function scr_creator_card_mode_name(_m) {
         case CREATOR_CARDS_AUTO:  return "AUTO";
         case CREATOR_CARDS_RIGHT: return "RIGHT";
         case CREATOR_CARDS_LEFT:  return "LEFT";
-        case CREATOR_CARDS_DOCK:  return "DOCK";
+        case CREATOR_CARDS_DOCK:  return "DOCK R";
+        case CREATOR_CARDS_DOCK_L: return "DOCK L";
         case CREATOR_CARDS_OFF:   return "OFF";
     }
     return "AUTO";
@@ -2693,7 +2696,17 @@ function scr_creator_card_mode_name(_m) {
 
 /// Step the placement mode (_dir 1 / -1), save it, and say so.
 function scr_creator_card_mode_cycle(_dir) {
-    global.creator_card_mode = (global.creator_card_mode + _dir + CREATOR_CARDS_COUNT) mod CREATOR_CARDS_COUNT;
+    // Menu order, not number order (DOCK L was added after OFF).
+    var _order = [CREATOR_CARDS_AUTO, CREATOR_CARDS_RIGHT, CREATOR_CARDS_LEFT,
+                  CREATOR_CARDS_DOCK, CREATOR_CARDS_DOCK_L, CREATOR_CARDS_OFF];
+    var _at = 0;
+    for (var _i = 0; _i < array_length(_order); _i++) {
+        if (_order[_i] == global.creator_card_mode) {
+            _at = _i;
+        }
+    }
+    _at = (_at + _dir + array_length(_order)) mod array_length(_order);
+    global.creator_card_mode = _order[_at];
     ini_open("c64devmachine.ini");
     ini_write_real("Settings", "param_cards", global.creator_card_mode);
     ini_close();
@@ -2737,7 +2750,7 @@ function scr_creator_dock_build() {
     var _dk = global.creator_dock;
     _dk.on    = false;
     _dk.items = [];
-    if (global.creator_card_mode != CREATOR_CARDS_DOCK) {
+    if (global.creator_card_mode != CREATOR_CARDS_DOCK && global.creator_card_mode != CREATOR_CARDS_DOCK_L) {
         exit;
     }
     if (obj_workspace_manager.hideui) {
@@ -2815,13 +2828,29 @@ function scr_creator_dock_build() {
     var _max_vh = (display_get_gui_height() - 24 - _top) / _sc;
     _dk.view_h  = min(_h, _max_vh);
     _dk.scroll  = clamp(_dk.scroll, 0, max(0, _h - _dk.view_h));
-    _dk.x2      = _right;
-    _dk.x1      = _right - CREATOR_DOCK_W * _sc;
     _dk.y1      = _top;
     _dk.y2      = _top + _dk.view_h * _sc;
-    _dk.sx1     = _dk.x1;
-    if (_h > _dk.view_h) {
-        _dk.sx1 = _dk.x1 - CREATOR_DOCK_BAR - 4;
+    _dk.bx1     = -1;
+    if (global.creator_card_mode == CREATOR_CARDS_DOCK_L) {
+        // Left edge, where the (hidden) opcode shelf sits; bar on its right.
+        _dk.x1  = 12;
+        _dk.x2  = _dk.x1 + CREATOR_DOCK_W * _sc;
+        _dk.hx1 = _dk.x1;
+        _dk.hx2 = _dk.x2;
+        if (_h > _dk.view_h) {
+            _dk.bx1 = _dk.x2 + 4;
+            _dk.hx2 = _dk.bx1 + CREATOR_DOCK_BAR;
+        }
+    } else {
+        // Right, left of the shortcut list; bar on its left.
+        _dk.x2  = _right;
+        _dk.x1  = _right - CREATOR_DOCK_W * _sc;
+        _dk.hx1 = _dk.x1;
+        _dk.hx2 = _dk.x2;
+        if (_h > _dk.view_h) {
+            _dk.bx1 = _dk.x1 - CREATOR_DOCK_BAR - 4;
+            _dk.hx1 = _dk.bx1;
+        }
     }
 
     // Items in content space, shifted up by the scroll. Rows wholly out of
@@ -2876,7 +2905,7 @@ function scr_creator_dock_step(_bar) {
         return true;
     }
 
-    if (!point_in_rectangle(_gmx, _gmy, _dk.sx1, _dk.y1, _dk.x2, _dk.y2)) {
+    if (!point_in_rectangle(_gmx, _gmy, _dk.hx1, _dk.y1, _dk.hx2, _dk.y2)) {
         return false;
     }
     global.creator_card_hot   = true;
@@ -2893,7 +2922,7 @@ function scr_creator_dock_step(_bar) {
     if (!scr_workspace_mouse_check_button_pressed(mb_left)) {
         return true;
     }
-    if (_gmx < _dk.x1) {
+    if (_gmx < _dk.x1 || _gmx > _dk.x2) {
         // Scroll bar column: jump there and start dragging.
         if (_max_scroll > 0) {
             _dk.bar_drag = true;
@@ -2964,8 +2993,8 @@ function scr_creator_draw_dock() {
     // Scroll bar on the left when there is more than fits.
     var _max_scroll = max(0, _dk.content_h - _dk.view_h);
     if (_max_scroll > 0) {
-        var _bx1 = _dk.sx1;
-        var _bx2 = _dk.sx1 + CREATOR_DOCK_BAR;
+        var _bx1 = _dk.bx1;
+        var _bx2 = _dk.bx1 + CREATOR_DOCK_BAR;
         draw_set_colour(make_colour_rgb(8, 8, 24));
         draw_rectangle(_bx1, _dk.y1, _bx2, _dk.y2, false);
         var _track = _dk.y2 - _dk.y1;
@@ -3034,4 +3063,17 @@ function scr_creator_draw_goto_label(_sc, _ox, _oy) {
     draw_set_halign(_halign_b);
     draw_set_valign(_valign_b);
     global.creator_goto_hot = undefined;
+}
+
+
+/// True while the opcode shelf on the left is not shown: expert mode, or
+/// the param dock is in DOCK L (a temporary hide - expert mode is untouched).
+function scr_shelf_hidden() {
+    if (obj_workspace_manager.expert_mode) {
+        return true;
+    }
+    if (global.creator_card_mode == CREATOR_CARDS_DOCK_L) {
+        return true;
+    }
+    return false;
 }

@@ -38,7 +38,7 @@ draw_sprite_ext(spr_baseGradient, 0,
 	
 	
 // on left
-if (!expert_mode) {
+if (!scr_shelf_hidden()) {
     draw_sprite_ext(spr_baseGradient, 0,
         shelf_width, 0 , 2000, 1.5, 270, c_white, 1);
 }
@@ -203,7 +203,7 @@ if (global.box_drag_active) {
 shelf_width = (86 * 3) - 20;
 var _sw_plus = shelf_width+30;
 
-if (expert_mode) {
+if (scr_shelf_hidden()) {
     // Keep palette header pixels Y=0..46, except for palette frame 3.
     if (paletteStyle != 3) {
         var _expert_header_h = 47;
@@ -223,12 +223,12 @@ if (expert_mode) {
 
 }
 
-if (!expert_mode) draw_sprite_ext(spr_baseGradient, 0,
+if (!scr_shelf_hidden()) draw_sprite_ext(spr_baseGradient, 0,
     0, 1080 , _sw_plus, 1, 0, c_white, 0.5);
 	
 draw_sprite(spr_logobadge,badgeStyle,6,5)
 
-if (!expert_mode) {
+if (!scr_shelf_hidden()) {
 
 /////////////////////////////////////////////////////////////////
 ///// OPCODE FINDER BOX
@@ -349,7 +349,7 @@ if point_in_rectangle(gui_mouse_x,gui_mouse_y,12,10,36,32)
 
 draw_sprite(spr_menu_bar, (uiChromeStyle == 0) ? paletteStyle : sprite_get_number(spr_menu_bar)-1, _sw_plus ,0)
 
-if (!expert_mode) {
+if (!scr_shelf_hidden()) {
 
 // Combine the active page with common assets
 var active_palette = array_concat(palette_page[shelf_page], common_assets);
