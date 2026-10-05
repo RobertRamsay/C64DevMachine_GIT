@@ -927,6 +927,18 @@ if (opcode_finder_active) {
 }
 
 if (is_entering_text) {
+    // The node being edited can be destroyed under the open field (undo,
+    // load, delete). Its id is then stale and every read below throws
+    // "Unable to find instance". Close the field instead.
+    if (input_target_node != noone && !instance_exists(input_target_node)) {
+        is_entering_text   = false;
+        input_target_node  = noone;
+        input_target_index = 0;
+        input_sel_start    = -1;
+        input_sel_end      = -1;
+        keyboard_string    = "";
+        exit;
+    }
     if (global.show_info_window) is_entering_text = false;
 
     var target        = input_target_node;
