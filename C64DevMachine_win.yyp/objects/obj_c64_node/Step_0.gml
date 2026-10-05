@@ -67,27 +67,32 @@ if (node_type == "ORG" && amb_btn_live && instance_exists(org_amb_partner) &&
 }
 
 // COMMENT corner handle (bottom right, like a mapping box): drag to set the
-// width and height, snapped to the 20px grid. The text rewraps to the width.
+// width and height. It follows the pointer freely (relative to where the
+// corner was grabbed) and snaps to the 20px grid on release, as boxes do.
+// The text rewraps to the width as it goes.
 if (node_type == "COMMENT") {
     if (comment_resizing) {
-        if (scr_workspace_mouse_check_button(mb_left)) {
-            var _crx = x + x_indent;
-            var _cw_new = clamp(round((mouse_x - _crx) / 20) * 20, 120, 1600);
-            var _ch_new = clamp(round((mouse_y - y) / 20) * 20, 60, 2000);
-            if (_cw_new != comment_w || _ch_new != comment_h) {
-                comment_w          = _cw_new;
-                comment_h          = _ch_new;
-                comment_text_width = 0;      // force the rewrap
-                height_dirty       = true;
-                scr_comment_sync_layout(id);
-                with (obj_c64_node) {
-                    last_overlap_check  = false;
-                    overlap_check_dirty = true;
-                }
+        var _cr_held = scr_workspace_mouse_check_button(mb_left);
+        var _cw_new = clamp(round(comment_rs_w + (mouse_x - comment_rs_mx)), 120, 1600);
+        var _ch_new = clamp(round(comment_rs_h + (mouse_y - comment_rs_my)), 60, 2000);
+        if (!_cr_held) {
+            _cw_new = clamp(round(_cw_new / 20) * 20, 120, 1600);
+            _ch_new = clamp(round(_ch_new / 20) * 20, 60, 2000);
+        }
+        if (_cw_new != comment_w || _ch_new != comment_h) {
+            comment_w          = _cw_new;
+            comment_h          = _ch_new;
+            comment_text_width = 0;      // force the rewrap
+            height_dirty       = true;
+            scr_comment_sync_layout(id);
+            with (obj_c64_node) {
+                last_overlap_check  = false;
+                overlap_check_dirty = true;
             }
-        } else {
-            comment_resizing  = false;
-            global.undo_dirty = true;
+        }
+        if (!_cr_held) {
+            comment_resizing      = false;
+            global.undo_dirty     = true;
             global.autosave_dirty = true;
         }
         exit;
@@ -103,6 +108,10 @@ if (node_type == "COMMENT") {
         if (point_in_rectangle(mouse_x, mouse_y, _crx2 - 16, _cry2 - 16, _crx2, _cry2)) {
             scr_undo_snapshot();
             comment_resizing         = true;
+            comment_rs_mx            = mouse_x;
+            comment_rs_my            = mouse_y;
+            comment_rs_w             = width;
+            comment_rs_h             = height;
             global.ui_click_consumed = true;
             exit;
         }

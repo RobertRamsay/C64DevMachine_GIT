@@ -228,6 +228,10 @@ comment_w_mult       = 1;   // legacy width (old projects); comment_w wins when 
 comment_w            = 0;
 comment_h            = 0;
 comment_resizing     = false;
+comment_rs_mx        = 0;    // pointer and size when the corner was grabbed
+comment_rs_my        = 0;
+comment_rs_w         = 0;
+comment_rs_h         = 0;
 
 // ORG BLOCK COLLAPSE. Meaningful only on ORG nodes, but every node carries it
 // so scr_node_is_hidden() can read a parent's flag without testing for the
