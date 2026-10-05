@@ -2710,7 +2710,7 @@ function scr_creator_card_mode_cycle(_dir) {
     ini_open("c64devmachine.ini");
     ini_write_real("Settings", "param_cards", global.creator_card_mode);
     ini_close();
-    global.qmenu_toast_text = "PARAM CARDS: " + scr_creator_card_mode_name(global.creator_card_mode);
+    global.qmenu_toast_text = "PARAMS: " + scr_creator_card_mode_name(global.creator_card_mode);
     global.qmenu_toast_col  = c_yellow;
     global.qmenu_toast_t    = global.qmenu_toast_dur;
 }

@@ -607,7 +607,7 @@ if (gui_menu_open == 4) {
         { title: "SHOW CODE",       action: "SHOW_CODE"       },
         { title: "FLOW VIEW",    action: "FLOW_OVERLAY"    },
         { title: "FLOW TYPE",    action: "FLOW_LINE_STYLE" },
-        { title: "PARAM CARDS",  action: "PARAM_CARDS"     },
+        { title: "PARAMS",       action: "PARAM_CARDS"     },
         { title: "FULLSCREEN",      action: "FULLSCREEN"      },
         { title: "UI PRESET",         action: "CYBER_PRESET"    },
         { title: "PALETTE STYLE",      action: "PALETTE_STYLE"    },
