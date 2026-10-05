@@ -22,8 +22,9 @@ scr_creator_box_draw(id);
 // Tab label (top left, above box)
 var _tab_pad = 8;
 draw_set_font_l(fnt_c64_code);
-// Reserve the delete button and keep the room-space title inside the box too.
-var _title_width = max(1, box_w - 18 - (_tab_pad * 2));
+// Reserve the delete X (18) and the UI / EDIT button left of it (50, plus
+// the 4px gaps) so a long name shrinks instead of running under them.
+var _title_width = max(1, box_w - 18 - 4 - 50 - 4 - (_tab_pad * 2));
 var _title_scale = min(1, _title_width / max(1, string_width_l(box_name)));
 var _tw = string_width_l(box_name) * _title_scale + (_tab_pad * 2);
 var _th = 18;
