@@ -401,6 +401,7 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         return;
     }
     _m.sel = clamp(_m.sel, 0, _n - 1);
+    _m.layer = clamp(_m.layer, 0, 2);
     var _o = _m.objects[_m.sel];
 
     // ── TOOLBAR ──
@@ -411,7 +412,8 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _x += 52;
     var _lnames = ["GFX", "MASK", "COMPOSITE"];
     var _lw = [56, 62, 100];
-    for (var _l = 0; _l < 6; _l++) {
+    // only the three editor views get buttons (layers 3-5 are map-overlay surfaces)
+    for (var _l = 0; _l < array_length(_lnames); _l++) {
         if (scr_bmpobj_ui_button(_x, _top, _lw[_l], _tb_h, _lnames[_l], _m.layer == _l, _mx, _my)) { _m.layer = _l; }
         _x += _lw[_l] + 4;
     }

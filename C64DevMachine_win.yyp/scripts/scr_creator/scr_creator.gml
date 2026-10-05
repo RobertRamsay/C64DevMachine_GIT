@@ -1636,6 +1636,12 @@ function scr_creator_box_buttons(_b) {
         _bt.text = "UI";
     }
     array_push(_out, _bt);
+    // GO: jump the view to the panel's nodes (each press steps to the next).
+    if (_b.is_panel) {
+        var _go = scr_creator_item("go", _right - 94, _b.y - 18, _right - 54, _b.y);
+        _go.text = "GO";
+        array_push(_out, _go);
+    }
     return _out;
 }
 
@@ -1691,6 +1697,19 @@ function scr_creator_box_step(_b) {
                 _b.panel_editing = false;
             }
             global.selected_nodes = [];
+        }
+        if (_bt.t == "go") {
+            // Asked for, so moving the camera is fine here (EDIT never does).
+            var _gnodes = scr_creator_panel_nodes(_b);
+            if (array_length(_gnodes) > 0) {
+                _b.panel_go_idx = _b.panel_go_idx mod array_length(_gnodes);
+                var _gn = _gnodes[_b.panel_go_idx];
+                scr_creator_reveal_node(_gn);
+                scr_focus_camera_on_node(_gn);
+                global.selected_nodes = [_gn];
+                _b.panel_go_idx += 1;
+            }
+            return true;
         }
         global.undo_dirty     = true;
         global.autosave_dirty = true;
