@@ -57,6 +57,7 @@ map_view_cache = {
     rv_c2       : []       //                         -> MC colour 2
 };
 map_show_tags   = false;   // map editor [T]: char tag (tile type) badges on every cell
+pickup_room     = 0;       // PICKUP_TABLE editor: room shown
 map_top_mode    = 0;       // map editor top panel: 0 = STAMPS, 1 = ROOM PREVIEW (room maps) [G]
 map_hover_room  = -1;      // room under the mouse last frame (RLE room maps)
 map_prev_room   = 0;       // room shown in ROOM PREVIEW
@@ -142,6 +143,7 @@ asset_types = [
     "MAP_DATA",
     "ROOM_MAP",
     "LINE_COLL",
+    "PICKUP_TABLE",
     "--- SOUND ---",
     "MUSIC_MAKER",
     "SFX_MAKER",
@@ -185,6 +187,7 @@ type_colours = {
     META_TILESET  : make_color_rgb(120, 200, 255),
     META_MAP      : make_color_rgb( 80, 140, 255),
     LINE_COLL     : make_color_rgb(255, 100, 100),
+    PICKUP_TABLE  : make_color_rgb(255, 200, 120),
     HUD           : make_color_rgb( 90, 220, 190),
     ANIMATION     : make_color_rgb(100, 210, 190),
     ROOM_MAP      : make_color_rgb(250, 200,  60),

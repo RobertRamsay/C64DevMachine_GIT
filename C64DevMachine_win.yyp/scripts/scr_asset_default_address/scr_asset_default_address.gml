@@ -31,6 +31,7 @@ function scr_asset_default_address(_type) {
 		case "TEXT_DATA":  return 0x2600; 
 		case "BYTE_DATA":  return 0xC100;
 		case "LINE_COLL":  return 0xC300;
+		case "PICKUP_TABLE": return 0xC400;
         case "VECTOR_BITMAP": return 0x4000; // bitmap base — must match MACRO_VIC/MACRO_BMP
         // BITMAP_BUILDER is an AUTHORING asset — it emits a BYTE_DATA table and
         // occupies no C64 memory itself. Address is cosmetic only.

@@ -216,6 +216,7 @@ if (instance_exists(obj_asset_manager)) {
         if (variable_struct_exists(_a.meta, "byte_string"))   _meta_out.byte_string   = _a.meta.byte_string;
         if (variable_struct_exists(_a.meta, "line_string"))   _meta_out.line_string   = _a.meta.line_string;
         if (variable_struct_exists(_a.meta, "lines"))         _meta_out.lines         = _a.meta.lines;
+        if (variable_struct_exists(_a.meta, "pick"))          _meta_out.pick          = _a.meta.pick;
         if (variable_struct_exists(_a.meta, "active_type"))   _meta_out.active_type   = _a.meta.active_type;
         if (variable_struct_exists(_a.meta, "ref_enabled"))   _meta_out.ref_enabled   = _a.meta.ref_enabled;
         if (variable_struct_exists(_a.meta, "ref_asset_name")) _meta_out.ref_asset_name = _a.meta.ref_asset_name;

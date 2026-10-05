@@ -594,6 +594,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 if (variable_struct_exists(_sm, "byte_string"))    _meta.byte_string    = _sm.byte_string;
                 if (variable_struct_exists(_sm, "line_string"))    _meta.line_string    = _sm.line_string;
                 if (variable_struct_exists(_sm, "lines"))          _meta.lines          = _sm.lines;
+                if (variable_struct_exists(_sm, "pick"))           _meta.pick           = _sm.pick;
                 if (variable_struct_exists(_sm, "active_type"))    _meta.active_type    = _sm.active_type;
                 if (variable_struct_exists(_sm, "ref_enabled"))    _meta.ref_enabled    = _sm.ref_enabled;
                 if (variable_struct_exists(_sm, "ref_asset_name")) _meta.ref_asset_name = _sm.ref_asset_name;
@@ -720,6 +721,10 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                     // actual reserved size.
                     scr_asset_byte_data_flush(_new_asset);
                 }
+            }
+            if (_ad.type == "PICKUP_TABLE") {
+                if (!variable_struct_exists(_new_asset.meta, "pick")) _new_asset.meta.pick = scr_pickup_default();
+                _new_asset.meta.pick_undo = [];
             }
             if (_ad.type == "LINE_COLL") {
                 if (!variable_struct_exists(_new_asset.meta, "lines"))          _new_asset.meta.lines = [];

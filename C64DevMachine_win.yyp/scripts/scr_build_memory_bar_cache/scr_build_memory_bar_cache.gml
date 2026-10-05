@@ -739,6 +739,10 @@ var _addr_total = 65536;
                 case "BYTE_DATA":
                     if (buffer_exists(_a.buffer)) { _seg_size = buffer_get_size(_a.buffer); _seg_col = make_color_rgb(180, 120, 255); }
                     break;
+                case "PICKUP_TABLE":
+                    _seg_size = max(1, array_length(scr_pickup_encode(_a)));
+                    _seg_col  = make_color_rgb(255, 200, 120);
+                    break;
                 case "BMP_OBJECTS":
                     if (buffer_exists(_a.buffer)) { _seg_size = buffer_get_size(_a.buffer); _seg_col = make_color_rgb(255, 140, 60); }
                     if (real(_a.meta.colour_addr) > 0 && array_length(_a.meta.objects) > 0) {

@@ -2234,6 +2234,11 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open && !(_wide_mo
 				_new_asset.meta.save_file_size          = 256;
                 scr_asset_byte_data_flush(_new_asset);
             }
+           if (_type == "PICKUP_TABLE") {
+                // Pickup lists built from a room map (scr_pickup_*)
+                _new_asset.meta.pick      = scr_pickup_default();
+                _new_asset.meta.pick_undo = [];
+            }
            if (_type == "LINE_COLL") {
                 _new_asset.meta.line_string           = "";
                 _new_asset.meta.wide_x                = false;

@@ -8383,6 +8383,10 @@ case "TEXT_DATA": {
 
 } break;
 
+case "PICKUP_TABLE": {
+    scr_pickup_editor(_asset, _vx1 + 10, _cy, _vx2 - 10, _vy2 - 110, _mx, _my);
+} break;
+
 case "LINE_COLL": {
     // ── TEXT EDIT TOGGLE (bulk paste path — same data as the visual canvas) ──
     var _ebx1   = _vx1 + 10;

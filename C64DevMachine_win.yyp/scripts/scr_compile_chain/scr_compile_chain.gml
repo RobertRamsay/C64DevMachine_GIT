@@ -19719,6 +19719,7 @@ for (var _oi = 0; _oi < array_length(_org_nodes); _oi++) {
 			if (_a.type == "BYTE_DATA"  ) array_push(_all_assets, _a);
 			if (_a.type == "META_TILESET" && _a.meta.raw_rows >= 1) array_push(_all_assets, _a);
 			if (_a.type == "LINE_COLL"  ) array_push(_all_assets, _a);
+			if (_a.type == "PICKUP_TABLE") array_push(_all_assets, _a);
 			if (_a.type == "BMP_OBJECTS") array_push(_all_assets, _a);
 			if (_a.type == "SFX_DATA" && ds_map_exists(_used_sfx, _a.name) && !ds_map_exists(_load_org_linked, _a.name)) array_push(_all_assets, _a);
 			if (_a.type == "SFX_DATA" && ds_map_exists(_load_org_linked, _a.name)) array_push(_all_assets, _a);
@@ -19832,6 +19833,18 @@ if (_a.type == "BITMAP" || _a.type == "BITMAP_KLA") {
 		    for (var _bb = 0; _bb < _chr_inject_sz; _bb++) {
 		        array_push(instruction_list, ["byte", buffer_peek(_buf, _bb, buffer_u8)]);
 		    }
+			} else if (_a.type == "PICKUP_TABLE") {
+			    // Pickup lists from the linked room map (scr_pickup_encode);
+			    // <NAME>_LO / <NAME>_HI label the room index for the game code.
+			    scr_pickup_sync(_a);
+			    var _pt = scr_pickup_encode(_a);
+			    var _ph = scr_pickup_hi_offset(_a);
+			    array_push(instruction_list, ["label", _a.name + "_LO"]);
+			    if (_ph == 0) array_push(instruction_list, ["label", _a.name + "_HI"]);
+			    for (var _bb = 0; _bb < array_length(_pt); _bb++) {
+			        if (_bb == _ph && _ph > 0) array_push(instruction_list, ["label", _a.name + "_HI"]);
+			        array_push(instruction_list, ["byte", _pt[_bb]]);
+			    }
 			} else if (_a.type == "BYTE_DATA" || _a.type == "LINE_COLL" || _a.type == "BMP_OBJECTS") {
 			    for (var _bb = 0; _bb < _sz; _bb++) {
 			        array_push(instruction_list, ["byte", buffer_peek(_buf, _bb, buffer_u8)]);

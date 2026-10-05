@@ -1640,3 +1640,353 @@ function scr_map_objects_asset(_a) {
     }
     return noone;
 }
+
+
+/// ====================================================================
+/// PICKUP_TABLE asset
+///
+/// A per-room list of pickups (lanterns, coins, keys...) the game walks,
+/// generated from a room map (meta.pick.map, RLE ROOMS / RLE STREAM layout:
+/// room_w x room_h cells, rooms left to right, top to bottom).
+///
+/// meta.pick:
+///   map     name of the MAP_DATA it reads
+///   auto    true = entries follow the map (a cell with a pickup tile is an
+///           entry; existing entries keep their settings, removed cells drop)
+///   tiles   pickup tile numbers (bit 7 ignored)
+///   repl    [[tile, replacement], ...] - default replacement per tile
+///   fields  entry layout, in order: "FLAG" "REPL" "X" "Y" "TILE" "ROOM"
+///   flag    value written for FLAG        x_off / y_off  added to X / Y
+///   index   0 = 2-byte address per room (lo, hi)   1 = all lo, then all hi
+///           2 = none (one list after another)
+///   term    list end byte (-1 = count byte before each list instead)
+///   empty   bytes written for a room with no pickups ([] = none)
+///   rooms   [room][entry] = { x, y, tile, repl, on }  (on = emitted)
+///   orig    the rooms as first set up - RESTORE goes back to them
+///
+/// Emitted at the asset address: the index, then each room's list. Labels
+/// <NAME>_LO / <NAME>_HI mark the index (for lda NAME_LO,x / NAME_HI,x).
+/// ====================================================================
+function scr_pickup_default() {
+    return {
+        map: "", auto: true, tiles: [], repl: [],
+        fields: ["FLAG", "REPL", "X", "Y"], flag: 1, x_off: 0, y_off: 0,
+        index: 0, term: 255, empty: [], rooms: [], orig: []
+    };
+}
+
+function scr_pickup_map(_a) {
+    var _pk = _a.meta.pick;
+    for (var _i = 0; _i < ds_list_size(obj_asset_manager.asset_list); _i++) {
+        var _m = ds_list_find_value(obj_asset_manager.asset_list, _i);
+        if (_m.type == "MAP_DATA" && _m.name == _pk.map) return _m;
+    }
+    return noone;
+}
+
+/// Room count and layout of the linked map: [rooms, rooms across, room_w, room_h, grid_w]
+function scr_pickup_map_shape(_map) {
+    var _m  = _map.meta;
+    var _rw = max(1, real(_m.room_w));
+    var _rh = max(1, real(_m.room_h));
+    var _gw = max(real(_m.map_w), real(_m.grid_w));
+    var _rx = max(1, real(_m.map_w) div _rw);
+    var _n  = _rx * max(1, real(_m.map_h) div _rh);
+    if (real(_m.room_count) > 0 && real(_m.room_count) < _n) _n = real(_m.room_count);
+    return [_n, _rx, _rw, _rh, _gw];
+}
+
+function scr_pickup_default_repl(_pk, _tile) {
+    for (var _i = 0; _i < array_length(_pk.repl); _i++) {
+        if ((real(_pk.repl[_i][0]) & 0x7F) == _tile) return real(_pk.repl[_i][1]) & 0xFF;
+    }
+    return 0;
+}
+
+/// AUTO: rebuild the entries from the map. Returns true when they changed.
+function scr_pickup_sync(_a) {
+    var _pk = _a.meta.pick;
+    if (!_pk.auto) return false;
+    var _map = scr_pickup_map(_a);
+    if (_map == noone) return false;
+    var _sh = scr_pickup_map_shape(_map);
+    var _cg = _map.meta.char_grid;
+    var _old_key = json_stringify(_pk.rooms);
+    var _new = [];
+    for (var _r = 0; _r < _sh[0]; _r++) {
+        var _old = [];
+        if (_r < array_length(_pk.rooms)) _old = _pk.rooms[_r];
+        var _ox  = (_r mod _sh[1]) * _sh[2];
+        var _oy  = (_r div _sh[1]) * _sh[3];
+        var _lst = [];
+        for (var _y = 0; _y < _sh[3]; _y++) {
+            for (var _x = 0; _x < _sh[2]; _x++) {
+                var _gi = (_oy + _y) * _sh[4] + _ox + _x;
+                if (_gi >= array_length(_cg)) continue;
+                var _t = real(_cg[_gi]) & 0x7F;
+                var _is = false;
+                for (var _k = 0; _k < array_length(_pk.tiles); _k++) {
+                    if ((real(_pk.tiles[_k]) & 0x7F) == _t) { _is = true; break; }
+                }
+                if (!_is) continue;
+                var _e = undefined;
+                for (var _k = 0; _k < array_length(_old); _k++) {
+                    if (real(_old[_k].x) == _x && real(_old[_k].y) == _y) { _e = _old[_k]; break; }
+                }
+                if (is_undefined(_e)) {
+                    _e = { x: _x, y: _y, tile: _t, repl: scr_pickup_default_repl(_pk, _t), on: true };
+                } else {
+                    _e.tile = _t;
+                }
+                array_push(_lst, _e);
+            }
+        }
+        array_push(_new, _lst);
+    }
+    _pk.rooms = _new;
+    return json_stringify(_pk.rooms) != _old_key;
+}
+
+/// The bytes this table emits from its address.
+function scr_pickup_encode(_a) {
+    var _pk = _a.meta.pick;
+    var _n  = array_length(_pk.rooms);
+    var _lists = [];
+    for (var _r = 0; _r < _n; _r++) {
+        var _b = [];
+        var _cnt = 0;
+        var _ents = _pk.rooms[_r];
+        for (var _i = 0; _i < array_length(_ents); _i++) {
+            var _e = _ents[_i];
+            if (!_e.on) continue;
+            _cnt++;
+            for (var _f = 0; _f < array_length(_pk.fields); _f++) {
+                switch (_pk.fields[_f]) {
+                    case "FLAG": array_push(_b, real(_pk.flag) & 0xFF); break;
+                    case "REPL": array_push(_b, real(_e.repl) & 0xFF); break;
+                    case "X":    array_push(_b, (real(_e.x) + real(_pk.x_off)) & 0xFF); break;
+                    case "Y":    array_push(_b, (real(_e.y) + real(_pk.y_off)) & 0xFF); break;
+                    case "TILE": array_push(_b, real(_e.tile) & 0xFF); break;
+                    case "ROOM": array_push(_b, _r & 0xFF); break;
+                }
+            }
+        }
+        if (_cnt == 0) {
+            for (var _i = 0; _i < array_length(_pk.empty); _i++) array_push(_b, real(_pk.empty[_i]) & 0xFF);
+        }
+        if (real(_pk.term) >= 0) {
+            array_push(_b, real(_pk.term) & 0xFF);
+        } else {
+            array_insert(_b, 0, _cnt & 0xFF);
+        }
+        array_push(_lists, _b);
+    }
+    var _out = [];
+    var _ix  = real(_pk.index);
+    var _pos = real(_a.address);
+    if (_ix != 2) _pos += _n * 2;
+    var _ptr = [];
+    for (var _r = 0; _r < _n; _r++) {
+        array_push(_ptr, _pos);
+        _pos += array_length(_lists[_r]);
+    }
+    if (_ix == 0) {
+        for (var _r = 0; _r < _n; _r++) array_push(_out, _ptr[_r] & 0xFF, (_ptr[_r] >> 8) & 0xFF);
+    } else if (_ix == 1) {
+        for (var _r = 0; _r < _n; _r++) array_push(_out, _ptr[_r] & 0xFF);
+        for (var _r = 0; _r < _n; _r++) array_push(_out, (_ptr[_r] >> 8) & 0xFF);
+    }
+    for (var _r = 0; _r < _n; _r++) {
+        var _b = _lists[_r];
+        for (var _i = 0; _i < array_length(_b); _i++) array_push(_out, _b[_i]);
+    }
+    return _out;
+}
+
+/// Offset of <NAME>_HI from the asset address.
+function scr_pickup_hi_offset(_a) {
+    var _pk = _a.meta.pick;
+    if (real(_pk.index) == 0) return 1;
+    if (real(_pk.index) == 1) return array_length(_pk.rooms);
+    return 0;
+}
+
+function scr_pickup_undo_push(_a) {
+    array_push(_a.meta.pick_undo, json_stringify(_a.meta.pick.rooms));
+    if (array_length(_a.meta.pick_undo) > 50) array_delete(_a.meta.pick_undo, 0, 1);
+}
+
+function scr_pickup_undo(_a) {
+    var _u = _a.meta.pick_undo;
+    if (array_length(_u) == 0) return;
+    _a.meta.pick.rooms = json_parse(_u[array_length(_u) - 1]);
+    array_delete(_u, array_length(_u) - 1, 1);
+    _a.meta.pick.auto = false;   // keep the undone state - AUTO would re-derive it
+    _a.meta.is_dirty = true;
+    global.addresses_dirty = true;
+}
+
+function scr_pickup_restore(_a) {
+    if (array_length(_a.meta.pick.orig) == 0) return;
+    scr_pickup_undo_push(_a);
+    _a.meta.pick.rooms = json_parse(json_stringify(_a.meta.pick.orig));
+    _a.meta.is_dirty = true;
+    global.addresses_dirty = true;
+}
+
+/// PICKUP_TABLE editor (asset viewer body).
+function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
+    var _pk = _a.meta.pick;
+    if (scr_pickup_sync(_a)) {
+        _a.meta.is_dirty = true;
+        global.addresses_dirty = true;
+    }
+    var _bh = 18;
+    var _cx = _x1;
+    var _cy = _y1;
+    draw_set_font_l(fnt_c64_tiny);
+
+    // ---- link + actions ----
+    var _mlbl = "MAP: " + _pk.map;
+    if (_pk.map == "") _mlbl = "MAP: (NONE)";
+    if (scr_mrp_button(_cx, _cy, _cx + 220, _cy + _bh, _mlbl, false, _mx, _my) == 1) {
+        var _names = [];
+        for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
+            var _m = ds_list_find_value(asset_list, _i);
+            if (_m.type == "MAP_DATA") array_push(_names, _m.name);
+        }
+        if (array_length(_names) > 0) {
+            var _at = -1;
+            for (var _i = 0; _i < array_length(_names); _i++) {
+                if (_names[_i] == _pk.map) { _at = _i; break; }
+            }
+            scr_pickup_undo_push(_a);
+            _pk.map = _names[(_at + 1) mod array_length(_names)];
+            _a.meta.is_dirty = true;
+        }
+    }
+    var _alb = "AUTO: OFF";
+    if (_pk.auto) _alb = "AUTO: ON";
+    if (scr_mrp_button(_cx + 226, _cy, _cx + 316, _cy + _bh, _alb, _pk.auto, _mx, _my) == 1) {
+        scr_pickup_undo_push(_a);
+        _pk.auto = !_pk.auto;
+        _a.meta.is_dirty = true;
+        global.addresses_dirty = true;
+    }
+    if (scr_mrp_button(_cx + 322, _cy, _cx + 402, _cy + _bh, "UNDO", false, _mx, _my) == 1
+        || (keyboard_check(vk_control) && keyboard_check_pressed(ord("Z")))) {
+        scr_pickup_undo(_a);
+    }
+    if (array_length(_pk.orig) > 0) {
+        if (scr_mrp_button(_cx + 408, _cy, _cx + 498, _cy + _bh, "RESTORE", false, _mx, _my) == 1) {
+            scr_pickup_restore(_a);
+            _pk.auto = false;
+        }
+    }
+    _cy += _bh + 8;
+
+    // ---- settings (read-only here) ----
+    var _tl = "TILES:";
+    for (var _i = 0; _i < array_length(_pk.tiles); _i++) _tl += " $" + string_upper(decimal_to_hex(real(_pk.tiles[_i]) & 0xFF));
+    var _fl = "ENTRY:";
+    for (var _i = 0; _i < array_length(_pk.fields); _i++) _fl += " " + _pk.fields[_i];
+    var _ixn = ["2-BYTE ADDRESS PER ROOM", "LO TABLE + HI TABLE", "NONE"];
+    var _bytes = scr_pickup_encode(_a);
+    draw_set_color(c_ltgray);
+    draw_text(_cx, _cy - scr_lang_lift(), _tl + "     " + _fl + "   X+" + string(_pk.x_off) + " Y+" + string(_pk.y_off)
+        + "   INDEX: " + _ixn[clamp(real(_pk.index), 0, 2)] + "   SIZE: " + string(array_length(_bytes)) + " BYTES   LABELS: "
+        + _a.name + "_LO / " + _a.name + "_HI");
+    _cy += 22;
+
+    // ---- room picker ----
+    var _n = array_length(_pk.rooms);
+    if (_n == 0) {
+        draw_set_color(c_yellow);
+        draw_text(_cx, _cy - scr_lang_lift(), "NO ROOMS - LINK A ROOM MAP (RLE ROOMS / RLE STREAM) AND TURN AUTO ON");
+        return;
+    }
+    pickup_room = clamp(pickup_room, 0, _n - 1);
+    if (scr_mrp_button(_cx, _cy, _cx + 24, _cy + _bh, "<", false, _mx, _my) == 1) pickup_room = (pickup_room + _n - 1) mod _n;
+    draw_set_color(c_yellow);
+    draw_set_halign(fa_center);
+    draw_text(_cx + 80, _cy + 3 - scr_lang_lift(), "ROOM " + string(pickup_room) + "  (" + string(array_length(_pk.rooms[pickup_room])) + ")");
+    draw_set_halign(fa_left);
+    if (scr_mrp_button(_cx + 136, _cy, _cx + 160, _cy + _bh, ">", false, _mx, _my) == 1) pickup_room = (pickup_room + 1) mod _n;
+    if (!_pk.auto) {
+        if (scr_mrp_button(_cx + 170, _cy, _cx + 260, _cy + _bh, "+ ENTRY", false, _mx, _my) == 1) {
+            scr_pickup_undo_push(_a);
+            var _t0 = 0;
+            if (array_length(_pk.tiles) > 0) _t0 = real(_pk.tiles[0]) & 0x7F;
+            array_push(_pk.rooms[pickup_room], { x: 0, y: 0, tile: _t0, repl: scr_pickup_default_repl(_pk, _t0), on: true });
+            _a.meta.is_dirty = true;
+            global.addresses_dirty = true;
+        }
+    }
+    _cy += _bh + 6;
+
+    // ---- entries ----
+    draw_set_color(c_ltgray);
+    draw_text(_cx, _cy - scr_lang_lift(), "   X     Y     TILE   REPL    EMIT     (L-CLICK +1 / R-CLICK -1)");
+    _cy += 16;
+    var _ents = _pk.rooms[pickup_room];
+    var _del = -1;
+    var _chg = false;
+    for (var _i = 0; _i < array_length(_ents); _i++) {
+        if (_cy + _bh > _y2 - 60) break;
+        var _e = _ents[_i];
+        var _vals = [real(_e.x), real(_e.y), real(_e.tile), real(_e.repl)];
+        for (var _k = 0; _k < 4; _k++) {
+            var _bx = _cx + _k * 56;
+            var _lbl = string(_vals[_k]);
+            if (_k >= 2) _lbl = "$" + string_upper(decimal_to_hex(_vals[_k] & 0xFF));
+            var _hit = scr_mrp_button(_bx, _cy, _bx + 50, _cy + _bh, _lbl, false, _mx, _my);
+            // X / Y / TILE are the map's in AUTO; REPL is always editable
+            var _ok = (_k == 3) || !_pk.auto;
+            if (_hit != 0 && _ok) {
+                scr_pickup_undo_push(_a);
+                var _d = 1;
+                if (_hit == 2) _d = -1;
+                if (_k == 0) _e.x = clamp(real(_e.x) + _d, 0, 255);
+                if (_k == 1) _e.y = clamp(real(_e.y) + _d, 0, 255);
+                if (_k == 2) _e.tile = (real(_e.tile) + _d + 256) & 0xFF;
+                if (_k == 3) _e.repl = (real(_e.repl) + _d + 256) & 0xFF;
+                _chg = true;
+            }
+        }
+        var _onl = "OFF";
+        if (_e.on) _onl = "ON";
+        if (scr_mrp_button(_cx + 228, _cy, _cx + 284, _cy + _bh, _onl, _e.on, _mx, _my) == 1) {
+            scr_pickup_undo_push(_a);
+            _e.on = !_e.on;
+            _chg = true;
+        }
+        if (!_pk.auto) {
+            if (scr_mrp_button(_cx + 290, _cy, _cx + 314, _cy + _bh, "X", false, _mx, _my) == 1) _del = _i;
+        }
+        _cy += _bh + 3;
+    }
+    if (_del >= 0) {
+        scr_pickup_undo_push(_a);
+        array_delete(_ents, _del, 1);
+        _chg = true;
+    }
+    if (_chg) {
+        _a.meta.is_dirty = true;
+        global.addresses_dirty = true;
+    }
+
+    // ---- emitted bytes ----
+    var _hx = "";
+    var _cols = max(8, floor((_x2 - _x1) / 26));
+    var _ly = _y2 - 54;
+    draw_set_color(c_aqua);
+    for (var _i = 0; _i < array_length(_bytes); _i++) {
+        _hx += string_upper(decimal_to_hex(_bytes[_i])) + " ";
+        if ((_i + 1) mod _cols == 0) {
+            if (_ly < _y2) draw_text(_x1, _ly - scr_lang_lift(), _hx);
+            _hx = "";
+            _ly += 12;
+        }
+    }
+    if (_hx != "" && _ly < _y2) draw_text(_x1, _ly - scr_lang_lift(), _hx);
+}
