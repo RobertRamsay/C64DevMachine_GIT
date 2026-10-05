@@ -13912,6 +13912,10 @@ case "MACRO_COLL_LINE": {
     var _result_var  = (array_length(_id.instructions[0]) > 4) ? string(_id.instructions[0][4]) : "";
     var _off_x_var   = (array_length(_id.instructions[0]) > 5) ? string(_id.instructions[0][5]) : "";
     var _off_y_var   = (array_length(_id.instructions[0]) > 6) ? string(_id.instructions[0][6]) : "";
+    var _thick       = 0;
+    if (array_length(_id.instructions[0]) > 7 && is_real(_id.instructions[0][7])) {
+        _thick = clamp(real(_id.instructions[0][7]), 0, 3);
+    }
 
     var _uid = string(_id.id);
     _uid = string_replace_all(_uid, " ", "_");
@@ -14173,16 +14177,26 @@ case "MACRO_COLL_LINE": {
     array_push(_list, ["lda_zp",  0xF5,     _id]);
     array_push(_list, ["beq",     "L_LXCMP_" + _uid, _id]); // short, stays local — OK direct
     array_push(_list, ["jmp_abs", _cmp_ymaj, _id]);
-    array_push(_list, ["label",   "L_LXCMP_" + _uid]);
-    array_push(_list, ["lda_zp",  0xFD,     _id]);
-    array_push(_list, ["cmp_zp",  0xF4,     _id]);
-    array_push(_list, ["beq",     _hit_lbl, _id]); // short, stays local — OK direct
-    array_push(_list, ["jmp_abs", _next_lbl, _id]);
-    array_push(_list, ["label",   _cmp_ymaj]);
-    array_push(_list, ["lda_zp",  0xFD,     _id]);
-    array_push(_list, ["cmp_zp",  0xF3,     _id]);
-    array_push(_list, ["beq",     _hit_lbl, _id]); // short, stays local — OK direct
-    array_push(_list, ["jmp_abs", _next_lbl, _id]);
+    // THICK > 0: hit when (probe - minor_at) mod 256 is within +/-THICK.
+    var _axis_probe = [0xF4, 0xF3];   // X-major tests probe Y, Y-major probe X
+    var _axis_label = ["L_LXCMP_" + _uid, _cmp_ymaj];
+    for (var _ax = 0; _ax < 2; _ax++) {
+        array_push(_list, ["label", _axis_label[_ax]]);
+        if (_thick == 0) {
+            array_push(_list, ["lda_zp",  0xFD,             _id]);
+            array_push(_list, ["cmp_zp",  _axis_probe[_ax], _id]);
+            array_push(_list, ["beq",     _hit_lbl,         _id]); // short, stays local — OK direct
+        } else {
+            array_push(_list, ["lda_zp",  _axis_probe[_ax], _id]);
+            array_push(_list, ["sec",     0,                _id]);
+            array_push(_list, ["sbc_zp",  0xFD,             _id]);
+            array_push(_list, ["cmp_imm", _thick + 1,       _id]);
+            array_push(_list, ["bcc",     _hit_lbl,         _id]); // 0..THICK above
+            array_push(_list, ["cmp_imm", 256 - _thick,     _id]);
+            array_push(_list, ["bcs",     _hit_lbl,         _id]); // 1..THICK below
+        }
+        array_push(_list, ["jmp_abs", _next_lbl, _id]);
+    }
 
     array_push(_list, ["label", _next_lbl]);
     // Advance table pointer by 6 bytes (record size) and loop.

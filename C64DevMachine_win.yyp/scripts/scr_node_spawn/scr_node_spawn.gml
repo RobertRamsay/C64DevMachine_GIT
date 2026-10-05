@@ -943,7 +943,7 @@ case "LABEL": {
 		// -------------------------------------------------------
 		case "MACRO_COLL_LINE":
 		    _n.node_title   = "COLL-LINE";
-		    _n.instructions = [["macro_coll_line", "", "", "", "", "", ""]];
+		    _n.instructions = [["macro_coll_line", "", "", "", "", "", "", 0]];
 		    _n.pc_address   = global.start_pc;
 		    with (_n) { event_user(0); }
 		    break;

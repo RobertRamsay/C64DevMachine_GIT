@@ -1,0 +1,137 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 1a4c1e8..ca15698 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -267,7 +267,7 @@ if (height_dirty) {
+     case "MACRO_UCI_REU":    height = _G * 5; break;
+     case "MACRO_COLLISION":  height = _G * 10;  break;
+ 	case "MACRO_COLL_ADV":   height = _G * 19;  break;    
+-	case "MACRO_COLL_LINE":  height = _G * 7;   break;
++	case "MACRO_COLL_LINE":  height = _G * 8;   break;
+     case "MACRO_ANIM":       height = _G * 18;  break;
+     case "MACRO_ANIM_SET":   height = scr_anim_set_height(id); break;
+     case "MACRO_ROOMS":      height = _G * 12;  break;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+index 7226ada..35f0ad8 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_compile_chain/scr_compile_chain.gml
+@@ -13912,6 +13912,10 @@ case "MACRO_COLL_LINE": {
+     var _result_var  = (array_length(_id.instructions[0]) > 4) ? string(_id.instructions[0][4]) : "";
+     var _off_x_var   = (array_length(_id.instructions[0]) > 5) ? string(_id.instructions[0][5]) : "";
+     var _off_y_var   = (array_length(_id.instructions[0]) > 6) ? string(_id.instructions[0][6]) : "";
++    var _thick       = 0;
++    if (array_length(_id.instructions[0]) > 7 && is_real(_id.instructions[0][7])) {
++        _thick = clamp(real(_id.instructions[0][7]), 0, 3);
++    }
+ 
+     var _uid = string(_id.id);
+     _uid = string_replace_all(_uid, " ", "_");
+@@ -14173,16 +14177,26 @@ case "MACRO_COLL_LINE": {
+     array_push(_list, ["lda_zp",  0xF5,     _id]);
+     array_push(_list, ["beq",     "L_LXCMP_" + _uid, _id]); // short, stays local — OK direct
+     array_push(_list, ["jmp_abs", _cmp_ymaj, _id]);
+-    array_push(_list, ["label",   "L_LXCMP_" + _uid]);
+-    array_push(_list, ["lda_zp",  0xFD,     _id]);
+-    array_push(_list, ["cmp_zp",  0xF4,     _id]);
+-    array_push(_list, ["beq",     _hit_lbl, _id]); // short, stays local — OK direct
+-    array_push(_list, ["jmp_abs", _next_lbl, _id]);
+-    array_push(_list, ["label",   _cmp_ymaj]);
+-    array_push(_list, ["lda_zp",  0xFD,     _id]);
+-    array_push(_list, ["cmp_zp",  0xF3,     _id]);
+-    array_push(_list, ["beq",     _hit_lbl, _id]); // short, stays local — OK direct
+-    array_push(_list, ["jmp_abs", _next_lbl, _id]);
++    // THICK > 0: hit when (probe - minor_at) mod 256 is within +/-THICK.
++    var _axis_probe = [0xF4, 0xF3];   // X-major tests probe Y, Y-major probe X
++    var _axis_label = ["L_LXCMP_" + _uid, _cmp_ymaj];
++    for (var _ax = 0; _ax < 2; _ax++) {
++        array_push(_list, ["label", _axis_label[_ax]]);
++        if (_thick == 0) {
++            array_push(_list, ["lda_zp",  0xFD,             _id]);
++            array_push(_list, ["cmp_zp",  _axis_probe[_ax], _id]);
++            array_push(_list, ["beq",     _hit_lbl,         _id]); // short, stays local — OK direct
++        } else {
++            array_push(_list, ["lda_zp",  _axis_probe[_ax], _id]);
++            array_push(_list, ["sec",     0,                _id]);
++            array_push(_list, ["sbc_zp",  0xFD,             _id]);
++            array_push(_list, ["cmp_imm", _thick + 1,       _id]);
++            array_push(_list, ["bcc",     _hit_lbl,         _id]); // 0..THICK above
++            array_push(_list, ["cmp_imm", 256 - _thick,     _id]);
++            array_push(_list, ["bcs",     _hit_lbl,         _id]); // 1..THICK below
++        }
++        array_push(_list, ["jmp_abs", _next_lbl, _id]);
++    }
+ 
+     array_push(_list, ["label", _next_lbl]);
+     // Advance table pointer by 6 bytes (record size) and loop.
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_coll_line/scr_node_draw_macro_coll_line.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_coll_line/scr_node_draw_macro_coll_line.gml
+index 275626d..bddfc21 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_coll_line/scr_node_draw_macro_coll_line.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_coll_line/scr_node_draw_macro_coll_line.gml
+@@ -1,10 +1,12 @@
+ /// @desc Draw body content for MACRO_COLL_LINE node.
+ /// instructions[0]: [0]="macro_coll_line", [1]=LINE_COLL asset name,
+ /// [2]=probe X var name, [3]=probe Y var name, [4]=result var name,
+-/// [5]=optional X offset var, [6]=optional Y offset var.
++/// [5]=optional X offset var, [6]=optional Y offset var,
++/// [7]=THICK: extra line units either side that still count as a hit (0-3).
+ function scr_node_draw_macro_coll_line(_draw_x, _y) {
+     var _hh = 24, _lh = 16, _inst = instructions[0];
+     while (array_length(_inst) < 7) array_push(_inst, "");
++    if (array_length(_inst) < 8) array_push(_inst, 0);
+ 
+     var _lx = _draw_x + 8, _rx = _draw_x + width - 6, _cy = _y + _hh + 4;
+     var _button = function(_label, _x1, _x2, _yy, _col) {
+@@ -39,4 +41,12 @@ function scr_node_draw_macro_coll_line(_draw_x, _y) {
+     draw_set_color(c_gray); scr_node_macro_text_l(_lx, _cy, "RES:");
+     _button(string(_inst[4]) != "" ? string(_inst[4]) : "<SELECT VAR>", _lx + 44, _rx, _cy, make_color_rgb(65, 55, 25));
+     _cy += _lh;
++
++    draw_set_color(c_gray); scr_node_macro_text_l(_lx, _cy, "THICK:");
++    var _thick_txt = "EXACT";
++    if (real(_inst[7]) > 0) {
++        _thick_txt = "+/- " + string(real(_inst[7]));
++    }
++    _button(_thick_txt, _lx + 44, _rx, _cy, make_color_rgb(70, 40, 80));
++    _cy += _lh;
+ }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+index 9d13507..528aea4 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_spawn/scr_node_spawn.gml
+@@ -943,7 +943,7 @@ case "LABEL": {
+ 		// -------------------------------------------------------
+ 		case "MACRO_COLL_LINE":
+ 		    _n.node_title   = "COLL-LINE";
+-		    _n.instructions = [["macro_coll_line", "", "", "", "", "", ""]];
++		    _n.instructions = [["macro_coll_line", "", "", "", "", "", "", 0]];
+ 		    _n.pc_address   = global.start_pc;
+ 		    with (_n) { event_user(0); }
+ 		    break;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_coll_line/scr_node_step_macro_coll_line.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_coll_line/scr_node_step_macro_coll_line.gml
+index ae39f54..89b3988 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_coll_line/scr_node_step_macro_coll_line.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_coll_line/scr_node_step_macro_coll_line.gml
+@@ -2,6 +2,7 @@
+ function scr_node_step_macro_coll_line(_draw_x) {
+     var _hh = 24, _lh = 16, _inst = instructions[0], _lx = _draw_x + 8, _rx = _draw_x + width - 6, _cy = y + _hh + 4;
+     while (array_length(_inst) < 7) array_push(_inst, "");
++    if (array_length(_inst) < 8) array_push(_inst, 0);
+     var _hit = function(_x1, _x2, _yy) { return point_in_rectangle(mouse_x, mouse_y, _x1, _yy + 4, _x2, _yy + 10); };
+ 
+     // LUT (LINE_COLL asset picker)
+@@ -108,4 +109,15 @@ function scr_node_step_macro_coll_line(_draw_x) {
+         exit;
+     }
+     _cy += _lh;
++
++    // THICK — click cycles EXACT, +/-1, +/-2, +/-3
++    if (_hit(_lx + 44, _rx, _cy)) {
++        var _t = real(_inst[7]) + 1;
++        if (_t > 3) { _t = 0; }
++        _inst[7] = _t;
++        global.addresses_dirty = true;
++        global.undo_dirty      = true;
++        exit;
++    }
++    _cy += _lh;
+ }

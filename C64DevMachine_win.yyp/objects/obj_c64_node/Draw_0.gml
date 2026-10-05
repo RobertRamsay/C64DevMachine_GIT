@@ -267,7 +267,7 @@ if (height_dirty) {
     case "MACRO_UCI_REU":    height = _G * 5; break;
     case "MACRO_COLLISION":  height = _G * 10;  break;
 	case "MACRO_COLL_ADV":   height = _G * 19;  break;    
-	case "MACRO_COLL_LINE":  height = _G * 7;   break;
+	case "MACRO_COLL_LINE":  height = _G * 8;   break;
     case "MACRO_ANIM":       height = _G * 18;  break;
     case "MACRO_ANIM_SET":   height = scr_anim_set_height(id); break;
     case "MACRO_ROOMS":      height = _G * 12;  break;

@@ -1,10 +1,12 @@
 /// @desc Draw body content for MACRO_COLL_LINE node.
 /// instructions[0]: [0]="macro_coll_line", [1]=LINE_COLL asset name,
 /// [2]=probe X var name, [3]=probe Y var name, [4]=result var name,
-/// [5]=optional X offset var, [6]=optional Y offset var.
+/// [5]=optional X offset var, [6]=optional Y offset var,
+/// [7]=THICK: extra line units either side that still count as a hit (0-3).
 function scr_node_draw_macro_coll_line(_draw_x, _y) {
     var _hh = 24, _lh = 16, _inst = instructions[0];
     while (array_length(_inst) < 7) array_push(_inst, "");
+    if (array_length(_inst) < 8) array_push(_inst, 0);
 
     var _lx = _draw_x + 8, _rx = _draw_x + width - 6, _cy = _y + _hh + 4;
     var _button = function(_label, _x1, _x2, _yy, _col) {
@@ -38,5 +40,13 @@ function scr_node_draw_macro_coll_line(_draw_x, _y) {
 
     draw_set_color(c_gray); scr_node_macro_text_l(_lx, _cy, "RES:");
     _button(string(_inst[4]) != "" ? string(_inst[4]) : "<SELECT VAR>", _lx + 44, _rx, _cy, make_color_rgb(65, 55, 25));
+    _cy += _lh;
+
+    draw_set_color(c_gray); scr_node_macro_text_l(_lx, _cy, "THICK:");
+    var _thick_txt = "EXACT";
+    if (real(_inst[7]) > 0) {
+        _thick_txt = "+/- " + string(real(_inst[7]));
+    }
+    _button(_thick_txt, _lx + 44, _rx, _cy, make_color_rgb(70, 40, 80));
     _cy += _lh;
 }
