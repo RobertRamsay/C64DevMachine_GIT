@@ -1,0 +1,20 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_joy/scr_node_draw_macro_joy.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_joy/scr_node_draw_macro_joy.gml
+index 0b7eaea..db4e511 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_joy/scr_node_draw_macro_joy.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_joy/scr_node_draw_macro_joy.gml
+@@ -18,6 +18,15 @@ var _c_edit = make_color_rgb(120, 220, 120); // Light Green (Interactive)
+     draw_set_color(_port == 2 ? c_yellow : c_gray);
+     scr_node_macro_text_l(_draw_x + 80, _jly, "2");
+ 
++    // Each direction is a JSR to its label, so the code there must end in RTS.
++    var _prev_col = draw_get_colour();
++    draw_set_color(make_color_rgb(255, 150, 60));
++    draw_set_halign(fa_right);
++    scr_node_macro_text_l(_draw_x + width - 8, _jly, "JSR TO LABELS");
++    scr_node_macro_text_l(_draw_x + width - 8, _jly + _line_h + 2, "END EACH WITH RTS");
++    draw_set_halign(fa_left);
++    draw_set_color(_prev_col);
++
+ 
+     _jly += _line_h+2;
+ 
