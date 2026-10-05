@@ -117,6 +117,16 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _box_y = _cy + 40;
     var _box_w = 256 * 2; // 512 on-screen px
     var _box_h = 256 * 2;
+    // WIDE X: one X unit = 2 bitmap pixels, so 0-159 spans the full 320-wide
+    // screen. Drawn 4 px per unit, which keeps the reference bitmap at its
+    // usual 2x and the lines on top of it.
+    var _xs    = 2;
+    var _x_max = 255;
+    if (_m.wide_x) {
+        _xs    = 4;
+        _x_max = 159;
+        _box_w = 160 * 4;
+    }
 
     // ── OPTIONAL BITMAP REFERENCE ──
     var _ref_toggle_x1 = _vx1 + 10;
@@ -133,6 +143,43 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_halign(fa_left);
     if (_ref_toggle_hov && mouse_check_button_pressed(mb_left)) {
         _m.ref_enabled = !_m.ref_enabled;
+    }
+
+    // WIDE X toggle. Existing lines are rescaled so they stay where they are.
+    var _wx_x1  = _ref_toggle_x1 + 340;
+    var _wx_x2  = _wx_x1 + 170;
+    var _wx_hov = point_in_rectangle(_mx, _my, _wx_x1, _ref_toggle_y1, _wx_x2, _ref_toggle_y2);
+    var _wx_col = make_color_rgb(40, 40, 40);
+    if (_wx_hov) {
+        _wx_col = make_color_rgb(80, 80, 80);
+    }
+    if (_m.wide_x) {
+        _wx_col = make_color_rgb(60, 120, 170);
+    }
+    draw_set_color(_wx_col);
+    draw_rectangle(_wx_x1, _ref_toggle_y1, _wx_x2, _ref_toggle_y2, false);
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    var _wx_lbl = "X: 0-255 (1:1)";
+    if (_m.wide_x) {
+        _wx_lbl = "X: 320 WIDE (1 = 2PX)";
+    }
+    draw_text_l(_wx_x1 + 85, _ref_toggle_y1 + 4, _wx_lbl);
+    draw_set_halign(fa_left);
+    if (_wx_hov && mouse_check_button_pressed(mb_left)) {
+        _m.wide_x = !_m.wide_x;
+        for (var _wl = 0; _wl < array_length(_m.lines); _wl++) {
+            var _wln = _m.lines[_wl];
+            if (_m.wide_x) {
+                _wln.x1 = round(_wln.x1 / 2);
+                _wln.x2 = round(_wln.x2 / 2);
+            } else {
+                _wln.x1 = min(255, _wln.x1 * 2);
+                _wln.x2 = min(255, _wln.x2 * 2);
+            }
+        }
+        scr_line_coll_commit(_asset);
+        exit;
     }
 
     var _ref_asset = undefined;
@@ -261,7 +308,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
 
     var _in_canvas = point_in_rectangle(_mx, _my, _box_x, _box_y, _box_x + _box_w, _box_y + _box_h);
-    var _raw_px = clamp(floor((_mx - _box_x) / 2), 0, 255);
+    var _raw_px = clamp(floor((_mx - _box_x) / _xs), 0, _x_max);
     var _raw_py = clamp(floor((_my - _box_y) / 2), 0, 255);
 
     // ── TYPE COLOUR TABLE (type N shown in the actual C64 pen colour N) ──
@@ -283,9 +330,9 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // ── DRAW EXISTING LINES ──
     for (var _li = 0; _li < array_length(_m.lines); _li++) {
         var _ln = _m.lines[_li];
-        var _lx1 = _box_x + (_ln.x1 * 2);
+        var _lx1 = _box_x + (_ln.x1 * _xs);
         var _ly1 = _box_y + (_ln.y1 * 2);
-        var _lx2 = _box_x + (_ln.x2 * 2);
+        var _lx2 = _box_x + (_ln.x2 * _xs);
         var _ly2 = _box_y + (_ln.y2 * 2);
         draw_set_color(_type_colours[clamp(_ln.type, 0, 7)]);
         draw_line_width(_lx1, _ly1, _lx2, _ly2, 2);
@@ -337,7 +384,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         }
     }
     if (_m.draw_x1 >= 0 && mouse_check_button_released(mb_left)) {
-        var _end_px = _in_canvas ? _raw_px : clamp(floor((_mx - _box_x) / 2), 0, 255);
+        var _end_px = _in_canvas ? _raw_px : clamp(floor((_mx - _box_x) / _xs), 0, _x_max);
         var _end_py = _in_canvas ? _raw_py : clamp(floor((_my - _box_y) / 2), 0, 255);
         array_push(_m.lines, { x1: _m.draw_x1, y1: _m.draw_y1, x2: _end_px, y2: _end_py, type: _m.active_type });
         _m.draw_x1 = -1;
@@ -353,7 +400,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             ceil(_box_w * _sx_sc),
             ceil(_box_h * _sy_sc)
         );
-        var _px1 = _box_x + (_m.draw_x1 * 2);
+        var _px1 = _box_x + (_m.draw_x1 * _xs);
         var _py1 = _box_y + (_m.draw_y1 * 2);
         draw_set_color(_type_colours[clamp(_m.active_type, 0, 7)]);
         draw_line_width(_px1, _py1, _mx, _my, 2);
@@ -498,6 +545,10 @@ function scr_line_coll_flush(_asset) {
     _str = string_replace_all(_str, "\r",   "\n");
 
     var _text_lines = string_split(_str, "\n");
+    var _x_max      = 255;
+    if (_asset.meta.wide_x) {
+        _x_max = 159;
+    }
     var _out_lines  = [];
     var _lines      = [];
     var _skipped    = 0;
@@ -526,9 +577,9 @@ function scr_line_coll_flush(_asset) {
             continue;
         }
 
-        var _x1 = clamp(_vals[0], 0, 255);
+        var _x1 = clamp(_vals[0], 0, _x_max);
         var _y1 = clamp(_vals[1], 0, 255);
-        var _x2 = clamp(_vals[2], 0, 255);
+        var _x2 = clamp(_vals[2], 0, _x_max);
         var _y2 = clamp(_vals[3], 0, 255);
         var _tp = clamp(_vals[4], 0, 7);
 

@@ -917,7 +917,9 @@ manifest_draw_preview = function(_asset, _viewer_x, _row_y) {
         var _colors = []; for(var _t=0; _t<8; _t++) array_push(_colors,scr_c64_pepto_colour(_t));
         for (var _l=0; _l<array_length(_lines); _l++) {
             var _ln=_lines[_l]; draw_set_color(_colors[clamp(_ln.type,0,7)]);
-            draw_line_width(_ix+_ln.x1*_scale,_iy+_ln.y1*_scale,_ix+_ln.x2*_scale,_iy+_ln.y2*_scale,2);
+            var _wxs = 1;
+            if (_meta.wide_x) { _wxs = 2; }
+            draw_line_width(_ix+_ln.x1*_wxs*_scale,_iy+_ln.y1*_scale,_ix+_ln.x2*_wxs*_scale,_iy+_ln.y2*_scale,2);
         }
         draw_set_color(c_white); draw_text_l(_x+8,_iy+_image_h+6,string(array_length(_lines))+" collision lines");
         draw_set_color(c_ltgray); draw_text_l(_x+8,_iy+_image_h+20,"Colour indicates line type");

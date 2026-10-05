@@ -13944,6 +13944,14 @@ case "MACRO_COLL_LINE": {
 
     var _lut_label = _lc_name + "_LINE_LUT";
 
+    // WIDE X asset: lines are in 2-pixel X units (0-159 = full screen), so the
+    // probe X is built as 9 bits — the sprite's MSB from $D010 when PX is a
+    // sprite X register — plus the signed offset, then halved.
+    var _wide = false;
+    if (_lc_asset.type == "LINE_COLL") {
+        _wide = _lc_asset.meta.wide_x;
+    }
+
     array_push(_list, ["jsr_abs", _sub_lbl,     _id]);
     array_push(_list, ["sta_abs", _result_addr, _id]);
     array_push(_list, ["jmp_abs", _skip,        _id]);
@@ -13962,12 +13970,47 @@ case "MACRO_COLL_LINE": {
     // byte/signed-byte variables; 6502 ADC naturally provides the desired
     // modulo-256 coordinate behaviour. Caching also prevents gameplay code or
     // an IRQ changing PX/PY halfway through a multi-record table scan.
-    array_push(_list, ["lda_abs", _px_addr, _id]);
-    if (_off_x_addr != 0) {
-        array_push(_list, ["clc",     0,           _id]);
-        array_push(_list, ["adc_abs", _off_x_addr, _id]);
+    if (!_wide) {
+        array_push(_list, ["lda_abs", _px_addr, _id]);
+        if (_off_x_addr != 0) {
+            array_push(_list, ["clc",     0,           _id]);
+            array_push(_list, ["adc_abs", _off_x_addr, _id]);
+        }
+        array_push(_list, ["sta_zp", 0xF3, _id]);
+    } else {
+        // $F3 = X lo, $F4 = X hi (bit 8). $F4 is rewritten with probe Y below.
+        array_push(_list, ["lda_abs", _px_addr, _id]);
+        array_push(_list, ["sta_zp",  0xF3,     _id]);
+        array_push(_list, ["lda_imm", 0,        _id]);
+        array_push(_list, ["sta_zp",  0xF4,     _id]);
+        if (_px_addr >= 0xD000 && _px_addr <= 0xD00E && ((_px_addr - 0xD000) mod 2) == 0) {
+            var _msb_bit = 1 << ((_px_addr - 0xD000) div 2);
+            array_push(_list, ["lda_abs", 0xD010,   _id]);
+            array_push(_list, ["and_imm", _msb_bit, _id]);
+            array_push(_list, ["cmp_imm", 1,        _id]);   // C = MSB set
+            array_push(_list, ["lda_imm", 0,        _id]);
+            array_push(_list, ["rol_a",   0,        _id]);
+            array_push(_list, ["sta_zp",  0xF4,     _id]);
+        }
+        if (_off_x_addr != 0) {
+            // $F5 = offset sign extension ($00 / $FF)
+            array_push(_list, ["lda_abs", _off_x_addr, _id]);
+            array_push(_list, ["asl_a",   0,           _id]);
+            array_push(_list, ["lda_imm", 0,           _id]);
+            array_push(_list, ["adc_imm", 0xFF,        _id]);
+            array_push(_list, ["eor_imm", 0xFF,        _id]);
+            array_push(_list, ["sta_zp",  0xF5,        _id]);
+            array_push(_list, ["lda_zp",  0xF3,        _id]);
+            array_push(_list, ["clc",     0,           _id]);
+            array_push(_list, ["adc_abs", _off_x_addr, _id]);
+            array_push(_list, ["sta_zp",  0xF3,        _id]);
+            array_push(_list, ["lda_zp",  0xF4,        _id]);
+            array_push(_list, ["adc_zp",  0xF5,        _id]);
+            array_push(_list, ["sta_zp",  0xF4,        _id]);
+        }
+        array_push(_list, ["lsr_zp", 0xF4, _id]);
+        array_push(_list, ["ror_zp", 0xF3, _id]);
     }
-    array_push(_list, ["sta_zp", 0xF3, _id]);
 
     array_push(_list, ["lda_abs", _py_addr, _id]);
     if (_off_y_addr != 0) {

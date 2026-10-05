@@ -697,13 +697,15 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // Collider lines of the shown room, labelled by type
     var _lc = scr_line_coll_find_asset(_rooms[_show_room].coll);
     if (!is_undefined(_lc) && variable_struct_exists(_lc.meta, "lines")) {
+        var _lwx = 1;
+        if (_lc.meta.wide_x) { _lwx = 2; }
         for (var _li = 0; _li < array_length(_lc.meta.lines); _li++) {
             var _ln = _lc.meta.lines[_li];
             var _lt = real(_ln.type);
             draw_set_color(scr_room_map_type_col(_lt));
-            draw_line_width(_qx + _ln.x1 * _sc, _qy + _ln.y1 * _sc, _qx + _ln.x2 * _sc, _qy + _ln.y2 * _sc, 2);
+            draw_line_width(_qx + _ln.x1 * _lwx * _sc, _qy + _ln.y1 * _sc, _qx + _ln.x2 * _lwx * _sc, _qy + _ln.y2 * _sc, 2);
             if (_lt >= 2) {
-                var _mxl = _qx + (_ln.x1 + _ln.x2) * 0.5 * _sc;
+                var _mxl = _qx + (_ln.x1 + _ln.x2) * 0.5 * _lwx * _sc;
                 var _myl = _qy + (_ln.y1 + _ln.y2) * 0.5 * _sc;
                 draw_set_color(c_black);
                 draw_rectangle(_mxl - 9, _myl - 14, _mxl + 9, _myl - 3, false);

@@ -225,6 +225,7 @@
 	        if (variable_struct_exists(_a.meta, "ref_asset_name")) _meta_out.ref_asset_name = _a.meta.ref_asset_name;
 	        if (variable_struct_exists(_a.meta, "ref_offset_x"))  _meta_out.ref_offset_x  = _a.meta.ref_offset_x;
 	        if (variable_struct_exists(_a.meta, "ref_offset_y"))  _meta_out.ref_offset_y  = _a.meta.ref_offset_y;
+	        if (variable_struct_exists(_a.meta, "wide_x"))        _meta_out.wide_x        = _a.meta.wide_x;
         if (variable_struct_exists(_a.meta, "is_save_file"))  _meta_out.is_save_file  = _a.meta.is_save_file;
         if (variable_struct_exists(_a.meta, "save_file_size")) _meta_out.save_file_size = _a.meta.save_file_size;
 	        if (variable_struct_exists(_a.meta, "paint_mc"))      _meta_out.paint_mc      = _a.meta.paint_mc;

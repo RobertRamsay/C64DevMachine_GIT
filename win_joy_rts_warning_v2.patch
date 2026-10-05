@@ -1,0 +1,15 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_joy/scr_node_draw_macro_joy.gml b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_joy/scr_node_draw_macro_joy.gml
+index db4e511..1bf2663 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_joy/scr_node_draw_macro_joy.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_draw_macro_joy/scr_node_draw_macro_joy.gml
+@@ -22,8 +22,8 @@ var _c_edit = make_color_rgb(120, 220, 120); // Light Green (Interactive)
+     var _prev_col = draw_get_colour();
+     draw_set_color(make_color_rgb(255, 150, 60));
+     draw_set_halign(fa_right);
+-    scr_node_macro_text_l(_draw_x + width - 8, _jly, "JSR TO LABELS");
+-    scr_node_macro_text_l(_draw_x + width - 8, _jly + _line_h + 2, "END EACH WITH RTS");
++    scr_node_macro_text_l(_draw_x + width - 8, _jly, "JSR BASED");
++    scr_node_macro_text_l(_draw_x + width - 8, _jly + _line_h + 2, "RTS TO RETURN");
+     draw_set_halign(fa_left);
+     draw_set_color(_prev_col);
+ 

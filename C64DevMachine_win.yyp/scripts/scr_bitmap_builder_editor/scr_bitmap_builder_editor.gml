@@ -158,7 +158,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     draw_set_color(_sb_hov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
     draw_rectangle(_sbx1, _rowy, _sbx2, _rowy + 18, false);
     draw_set_color((_m.src_asset != "") ? c_aqua : make_color_rgb(150, 150, 150));
-    draw_text_l(_sbx1 + 6, _rowy + 4, (_m.src_asset != "") ? _m.src_asset : L("-- PICK --"));
+    draw_text_l(_sbx1 + 6, _rowy + 4, (_m.src_asset != "") ? scr_bbuild_fit_name(_m.src_asset, _sbx2 - _sbx1 - 12) : L("-- PICK --"));
     if (_sb_hov && mouse_check_button_pressed(mb_left)) {
         obj_asset_manager.bbuild_picker_open  = true;
         obj_asset_manager.bbuild_picker_field = "SRC";
@@ -176,7 +176,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     draw_set_color(_db_hov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
     draw_rectangle(_dbx1, _rowy, _dbx2, _rowy + 18, false);
     draw_set_color((_m.dst_asset != "") ? c_yellow : make_color_rgb(150, 150, 150));
-    draw_text_l(_dbx1 + 6, _rowy + 4, (_m.dst_asset != "") ? _m.dst_asset : L("-- PICK --"));
+    draw_text_l(_dbx1 + 6, _rowy + 4, (_m.dst_asset != "") ? scr_bbuild_fit_name(_m.dst_asset, _dbx2 - _dbx1 - 12) : L("-- PICK --"));
     if (_db_hov && mouse_check_button_pressed(mb_left)) {
         obj_asset_manager.bbuild_picker_open  = true;
         obj_asset_manager.bbuild_picker_field = "DST";
@@ -1871,4 +1871,16 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     draw_set_color(c_white);
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
+}
+
+/// Cuts an asset name to fit _maxw pixels, ending in "..." when it is cut.
+function scr_bbuild_fit_name(_s, _maxw) {
+    if (string_width_l(_s) <= _maxw) {
+        return _s;
+    }
+    var _n = string_length(_s);
+    while (_n > 0 && string_width_l(string_copy(_s, 1, _n) + "...") > _maxw) {
+        _n -= 1;
+    }
+    return string_copy(_s, 1, _n) + "...";
 }
