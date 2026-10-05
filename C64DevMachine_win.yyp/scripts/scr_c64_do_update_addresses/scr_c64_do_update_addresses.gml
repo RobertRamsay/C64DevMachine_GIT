@@ -761,6 +761,11 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
 	                }
 	            }
 	            _wire_anchor.end_address = _wire_end;
+	            // A wired ORG that moved needs another pass too, or an ORG wired
+	            // to it that was processed earlier in this pass keeps the old end.
+	            if (_org.pc_address != _pc_before) {
+	                _pass_changed = true;
+	            }
 	            continue; // skip zone search for this ORG
 	        }
 	        // Source not found — wire is broken, clear it

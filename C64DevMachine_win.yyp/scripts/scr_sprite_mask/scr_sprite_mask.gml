@@ -809,8 +809,10 @@ function scr_node_step_macro_spr_mask(_draw_x) {
         } else {
             instructions[0][6] = 0xFB;
         }
+        // SYNC changes the macro's size, so re-lay everything after it now.
         global.addresses_dirty = true;
         global.undo_dirty      = true;
+        scr_c64_do_update_addresses();
         exit;
     }
     exit;

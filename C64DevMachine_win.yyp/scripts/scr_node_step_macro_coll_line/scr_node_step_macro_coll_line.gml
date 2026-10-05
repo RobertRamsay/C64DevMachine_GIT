@@ -115,8 +115,10 @@ function scr_node_step_macro_coll_line(_draw_x) {
         var _t = real(_inst[7]) + 1;
         if (_t > 3) { _t = 0; }
         _inst[7] = _t;
+        // THICK changes the macro's size, so re-lay everything after it now.
         global.addresses_dirty = true;
         global.undo_dirty      = true;
+        scr_c64_do_update_addresses();
         exit;
     }
     _cy += _lh;

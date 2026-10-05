@@ -1,0 +1,46 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml b/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
+index ea40d6a..a953e33 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
+@@ -761,6 +761,11 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
+ 	                }
+ 	            }
+ 	            _wire_anchor.end_address = _wire_end;
++	            // A wired ORG that moved needs another pass too, or an ORG wired
++	            // to it that was processed earlier in this pass keeps the old end.
++	            if (_org.pc_address != _pc_before) {
++	                _pass_changed = true;
++	            }
+ 	            continue; // skip zone search for this ORG
+ 	        }
+ 	        // Source not found — wire is broken, clear it
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_coll_line/scr_node_step_macro_coll_line.gml b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_coll_line/scr_node_step_macro_coll_line.gml
+index 89b3988..bcba061 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_step_macro_coll_line/scr_node_step_macro_coll_line.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_step_macro_coll_line/scr_node_step_macro_coll_line.gml
+@@ -115,8 +115,10 @@ function scr_node_step_macro_coll_line(_draw_x) {
+         var _t = real(_inst[7]) + 1;
+         if (_t > 3) { _t = 0; }
+         _inst[7] = _t;
++        // THICK changes the macro's size, so re-lay everything after it now.
+         global.addresses_dirty = true;
+         global.undo_dirty      = true;
++        scr_c64_do_update_addresses();
+         exit;
+     }
+     _cy += _lh;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+index c56bb24..e146eb6 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+@@ -809,8 +809,10 @@ function scr_node_step_macro_spr_mask(_draw_x) {
+         } else {
+             instructions[0][6] = 0xFB;
+         }
++        // SYNC changes the macro's size, so re-lay everything after it now.
+         global.addresses_dirty = true;
+         global.undo_dirty      = true;
++        scr_c64_do_update_addresses();
+         exit;
+     }
+     exit;
