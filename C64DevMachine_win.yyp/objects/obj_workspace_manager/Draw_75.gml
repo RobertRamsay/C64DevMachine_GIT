@@ -1,5 +1,6 @@
 /// @desc Draw GUI End: help above every object's regular GUI, including assets.
 // CREATOR LAYER panels sit above everything else on screen.
+scr_creator_draw_dock();
 scr_creator_draw();
 var _info_visible = !hideui && !welcome_open && instance_exists(node_tooltip_node);
 if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) _info_visible = false;

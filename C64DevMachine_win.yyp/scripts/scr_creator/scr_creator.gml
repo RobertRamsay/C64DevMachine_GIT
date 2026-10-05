@@ -44,7 +44,15 @@ function scr_creator_init() {
     // stacked under a folded ORG. Rebuilt every Begin Step.
     global.creator_cards        = [];
     global.creator_card_hot     = false;
-    global.creator_card_bar     = { active: false, n: noone, pidx: 0, x1: 0, x2: 0, lo: 0, hi: 0 };
+    global.creator_card_bar     = { active: false, n: noone, pidx: 0, x1: 0, x2: 0, lo: 0, hi: 0, gui: false };
+    // Where expanded param cards go: AUTO, RIGHT, LEFT, DOCK, OFF
+    // (CREATOR_CARDS_*). Read from the ini on the first Begin Step.
+    global.creator_card_mode    = CREATOR_CARDS_AUTO;
+    global.creator_card_mode_ok = false;
+    global.creator_dock         = { on: false, x1: 0, y1: 0, x2: 0, y2: 0, items: [] };
+    // Pointer used for widget hover while drawing (room or GUI space).
+    global.creator_hmx          = 0;
+    global.creator_hmy          = 0;
     // TEXT params on a card or panel are typed into a small popup.
     global.creator_text_node    = noone;
     global.creator_text_pidx    = 0;
@@ -503,8 +511,15 @@ function scr_creator_begin_step() {
     global.creator_tab_hot  = noone;
     global.creator_card_hot = false;
     scr_creator_update_covered();
+    if (!global.creator_card_mode_ok) {
+        ini_open("c64devmachine.ini");
+        global.creator_card_mode = clamp(round(ini_read_real("Settings", "param_cards", CREATOR_CARDS_AUTO)), 0, CREATOR_CARDS_COUNT - 1);
+        ini_close();
+        global.creator_card_mode_ok = true;
+    }
     global.creator_cards = scr_creator_cards_build();
     scr_creator_cards_make_room();
+    scr_creator_dock_build();
 
     // Deferred panel actions: run here, never from inside a Draw event.
     if (global.creator_action != "") {
@@ -1801,7 +1816,7 @@ function scr_creator_items_press(_items, _mx, _my, _bar) {
 /// Facade buttons stay plain for readability: dark fill, coloured outline,
 /// selected = filled in the colour with black text.
 function scr_creator_draw_room_btn(_it, _on, _col) {
-    var _hov = point_in_rectangle(mouse_x, mouse_y, _it.x1, _it.y1, _it.x2, _it.y2);
+    var _hov = point_in_rectangle(global.creator_hmx, global.creator_hmy, _it.x1, _it.y1, _it.x2, _it.y2);
     var _bg  = make_colour_rgb(30, 30, 70);
     if (_on) {
         _bg = _col;
@@ -1899,7 +1914,7 @@ function scr_creator_draw_items(_items, _col) {
                 draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, true);
                 break;
             case "textbox":
-                var _thov = point_in_rectangle(mouse_x, mouse_y, _it.x1, _it.y1, _it.x2, _it.y2);
+                var _thov = point_in_rectangle(global.creator_hmx, global.creator_hmy, _it.x1, _it.y1, _it.x2, _it.y2);
                 draw_set_colour(make_colour_rgb(8, 8, 24));
                 draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, false);
                 draw_set_colour(make_colour_rgb(180, 180, 255));
@@ -1926,6 +1941,8 @@ function scr_creator_draw_items(_items, _col) {
 /// obj_mapping_box Draw (room space). Buttons above the box always; the
 /// facade itself only while the panel is up.
 function scr_creator_box_draw(_b) {
+    global.creator_hmx = mouse_x;
+    global.creator_hmy = mouse_y;
     var _col      = _b.box_colours[_b.box_col_idx];
     var _font_b   = draw_get_font();
     var _halign_b = draw_get_halign();
@@ -2249,7 +2266,7 @@ function scr_creator_fold_anchor(_n) {
 }
 
 function scr_creator_card_new(_x1, _y1, _w) {
-    return { x1: _x1, y1: _y1, x2: _x1 + _w, y2: _y1, items: [], anchor: noone, tab: noone, col: make_colour_rgb(80, 200, 255) };
+    return { x1: _x1, y1: _y1, x2: _x1 + _w, y2: _y1, items: [], anchor: noone, tab: noone, side: "R", col: make_colour_rgb(80, 200, 255) };
 }
 
 /// Lay one node's params into a card. _sub adds the node's name
@@ -2313,13 +2330,43 @@ function scr_creator_cards_build() {
         }
     }
 
+    var _mode = global.creator_card_mode;
+    if (_mode == CREATOR_CARDS_DOCK) {
+        // Everything goes to the screen-edge dock; nothing on the canvas.
+        draw_set_font_l(_font_b);
+        return _cards;
+    }
+    if (_mode == CREATOR_CARDS_OFF) {
+        _beside = [];
+    }
     for (var _i = 0; _i < array_length(_beside); _i++) {
         var _n  = _beside[_i];
         var _tr = scr_creator_tab_rect(_n);
-        var _c  = scr_creator_card_new(_tr.x2 + CREATOR_CARD_GAP, _n.y, CREATOR_CARD_W);
-        _c.tab  = _n;
+        // Measure first (height does not depend on x), then pick a side.
+        var _c  = scr_creator_card_new(0, _n.y, CREATOR_CARD_W);
         var _y  = scr_creator_card_add_node(_c, _n, _c.y1 + 6, false);
-        _c.y2   = _y + 4;
+        var _h  = _y + 4 - _c.y1;
+        var _rx = _tr.x2 + CREATOR_CARD_GAP;
+        var _lx = _n.x + _n.x_indent - CREATOR_CARD_GAP - CREATOR_CARD_W;
+        var _side = "R";
+        if (_mode == CREATOR_CARDS_LEFT) {
+            _side = "L";
+        } else if (_mode == CREATOR_CARDS_AUTO) {
+            if (scr_creator_card_blocked(_rx, _n.y, CREATOR_CARD_W, _h, _n)) {
+                if (!scr_creator_card_blocked(_lx, _n.y, CREATOR_CARD_W, _h, _n)) {
+                    _side = "L";
+                }
+            }
+        }
+        var _cx = _rx;
+        if (_side == "L") {
+            _cx = _lx;
+        }
+        _c       = scr_creator_card_new(_cx, _n.y, CREATOR_CARD_W);
+        _c.tab   = _n;
+        _c.side  = _side;
+        _y       = scr_creator_card_add_node(_c, _n, _c.y1 + 6, false);
+        _c.y2    = _y + 4;
         array_push(_cards, _c);
     }
 
@@ -2420,9 +2467,13 @@ function scr_creator_cards_step() {
     var _mx  = mouse_x;
     var _my  = mouse_y;
 
-    // Slider drag in progress: keeps the pointer until release.
+    // Slider drag in progress: keeps the pointer until release. A dock
+    // slider follows the GUI pointer, a canvas one the room pointer.
     if (_bar.active) {
         global.creator_card_hot = true;
+        if (_bar.gui) {
+            _mx = device_mouse_x_to_gui(0);
+        }
         if (scr_workspace_mouse_check_button(mb_left) && instance_exists(_bar.n)) {
             if (_bar.pidx < array_length(_bar.n.params)) {
                 var _f = clamp((_mx - _bar.x1) / max(1, _bar.x2 - _bar.x1), 0, 1);
@@ -2432,6 +2483,22 @@ function scr_creator_cards_step() {
             _bar.active = false;
         }
         return true;
+    }
+
+    // The dock (GUI space) sits over the canvas, so it is checked first.
+    var _dk = global.creator_dock;
+    if (_dk.on) {
+        var _gmx = device_mouse_x_to_gui(0);
+        var _gmy = device_mouse_y_to_gui(0);
+        if (point_in_rectangle(_gmx, _gmy, _dk.x1, _dk.y1, _dk.x2, _dk.y2)) {
+            global.creator_card_hot = true;
+            if (scr_workspace_mouse_check_button_pressed(mb_left)) {
+                if (scr_creator_items_press(_dk.items, _gmx, _gmy, _bar)) {
+                    _bar.gui = true;
+                }
+            }
+            return true;
+        }
     }
 
     var _over = noone;
@@ -2446,7 +2513,9 @@ function scr_creator_cards_step() {
     }
     global.creator_card_hot = true;
     if (scr_workspace_mouse_check_button_pressed(mb_left)) {
-        scr_creator_items_press(_over.items, _mx, _my, _bar);
+        if (scr_creator_items_press(_over.items, _mx, _my, _bar)) {
+            _bar.gui = false;
+        }
     }
     return true;
 }
@@ -2461,11 +2530,28 @@ function scr_creator_draw_cards() {
     var _valign_b = draw_get_valign();
     draw_set_font_l(fnt_c64_code);
     draw_set_alpha(1);
+    global.creator_hmx = mouse_x;
+    global.creator_hmy = mouse_y;
 
     for (var _i = 0; _i < array_length(global.creator_cards); _i++) {
         var _c = global.creator_cards[_i];
+        // Card on the left: bracket from the node's left edge, level with
+        // its P tab, across to the card's right edge.
+        if (_c.tab != noone && _c.side == "L") {
+            if (instance_exists(_c.tab)) {
+                var _ltr = scr_creator_tab_rect(_c.tab);
+                var _lty = (_ltr.y1 + _ltr.y2) * 0.5;
+                var _lnx = _c.tab.x + _c.tab.x_indent;
+                var _lbx = _lnx - floor(CREATOR_CARD_GAP * 0.5);
+                draw_set_colour(_c.col);
+                draw_line_width(_lnx, _lty, _lbx, _lty, 2);
+                draw_line_width(_lbx, _c.y1 + 8, _lbx, _c.y2 - 8, 2);
+                draw_line_width(_lbx, _c.y1 + 8, _c.x2, _c.y1 + 8, 2);
+                draw_line_width(_lbx, _c.y2 - 8, _c.x2, _c.y2 - 8, 2);
+            }
+        }
         // Bracket from the node's P tab to its card.
-        if (_c.tab != noone) {
+        if (_c.tab != noone && _c.side == "R") {
             if (instance_exists(_c.tab)) {
                 var _tr = scr_creator_tab_rect(_c.tab);
                 var _ty = (_tr.y1 + _tr.y2) * 0.5;
@@ -2550,4 +2636,205 @@ function scr_creator_draw_text_edit() {
         global.creator_field     = "";
         global.creator_commit    = false;
     }
+}
+
+
+// ====================================================================
+// CARD PLACEMENT MODES  (OPTIONS > PARAM CARDS, or P)
+//   AUTO  - right of the node; flips left when the right side would cover
+//           another node (stays right if both sides are blocked)
+//   RIGHT - always right       LEFT - always left
+//   DOCK  - no cards on the canvas; a strip at the right of the screen
+//           shows the params of the nodes in view
+//   OFF   - no cards beside unfolded nodes (panels, folded stacks and the
+//           F9 view still show params)
+// ====================================================================
+
+#macro CREATOR_CARDS_AUTO  0
+#macro CREATOR_CARDS_RIGHT 1
+#macro CREATOR_CARDS_LEFT  2
+#macro CREATOR_CARDS_DOCK  3
+#macro CREATOR_CARDS_OFF   4
+#macro CREATOR_CARDS_COUNT 5
+#macro CREATOR_DOCK_W      300
+
+function scr_creator_card_mode_name(_m) {
+    switch (_m) {
+        case CREATOR_CARDS_AUTO:  return "AUTO";
+        case CREATOR_CARDS_RIGHT: return "RIGHT";
+        case CREATOR_CARDS_LEFT:  return "LEFT";
+        case CREATOR_CARDS_DOCK:  return "DOCK";
+        case CREATOR_CARDS_OFF:   return "OFF";
+    }
+    return "AUTO";
+}
+
+/// Step the placement mode (_dir 1 / -1), save it, and say so.
+function scr_creator_card_mode_cycle(_dir) {
+    global.creator_card_mode = (global.creator_card_mode + _dir + CREATOR_CARDS_COUNT) mod CREATOR_CARDS_COUNT;
+    ini_open("c64devmachine.ini");
+    ini_write_real("Settings", "param_cards", global.creator_card_mode);
+    ini_close();
+    global.qmenu_toast_text = "PARAM CARDS: " + scr_creator_card_mode_name(global.creator_card_mode);
+    global.qmenu_toast_col  = c_yellow;
+    global.qmenu_toast_t    = global.qmenu_toast_dur;
+}
+
+/// True when a card rectangle would cover any visible node other than _self.
+function scr_creator_card_blocked(_x1, _y1, _w, _h, _self) {
+    var _hit = false;
+    with (obj_c64_node) {
+        if (id == _self) {
+            continue;
+        }
+        if (macro_owner == _self) {
+            continue;
+        }
+        if (scr_node_is_hidden(id)) {
+            continue;
+        }
+        var _nx1 = x + x_indent;
+        var _nx2 = _nx1 + width;
+        var _ny2 = y + height;
+        if (_nx2 > _x1 && _nx1 < _x1 + _w && _ny2 > _y1 && y < _y1 + _h) {
+            _hit = true;
+            break;
+        }
+    }
+    return _hit;
+}
+
+/// DOCK mode: params of nodes in view (a folded node counts where its
+/// header is), laid out in GUI space down the right of the screen.
+function scr_creator_dock_build() {
+    var _dk = global.creator_dock;
+    _dk.on    = false;
+    _dk.items = [];
+    if (global.creator_card_mode != CREATOR_CARDS_DOCK) {
+        exit;
+    }
+    if (obj_workspace_manager.hideui) {
+        exit;
+    }
+    var _vx1 = camera_get_view_x(view_camera[0]);
+    var _vy1 = camera_get_view_y(view_camera[0]);
+    var _vx2 = _vx1 + camera_get_view_width(view_camera[0]);
+    var _vy2 = _vy1 + camera_get_view_height(view_camera[0]);
+
+    var _panelled = scr_creator_panelled_nodes();
+    var _nodes    = [];
+    with (obj_c64_node) {
+        if (array_length(params) == 0) {
+            continue;
+        }
+        if (macro_owner != noone) {
+            continue;
+        }
+        if (creator_covered) {
+            continue;
+        }
+        var _in_panel = false;
+        for (var _k = 0; _k < array_length(_panelled); _k++) {
+            if (_panelled[_k] == id) {
+                _in_panel = true;
+                break;
+            }
+        }
+        if (_in_panel) {
+            continue;
+        }
+        var _at = id;
+        if (scr_node_is_hidden(id)) {
+            _at = scr_creator_fold_anchor(id);
+            if (_at == noone) {
+                continue;
+            }
+        }
+        if (_at.x + _at.width < _vx1 || _at.x > _vx2 || _at.y + _at.height < _vy1 || _at.y > _vy2) {
+            continue;
+        }
+        array_push(_nodes, id);
+    }
+    if (array_length(_nodes) == 0) {
+        exit;
+    }
+    array_sort(_nodes, function(_a, _b) {
+        if (_a.x != _b.x) {
+            return _a.x - _b.x;
+        }
+        return _a.y - _b.y;
+    });
+
+    var _font_b = draw_get_font();
+    draw_set_font_l(fnt_c64_code);
+    var _gw  = display_get_gui_width();
+    var _gh  = display_get_gui_height();
+    _dk.x1 = _gw - CREATOR_DOCK_W - 12;
+    _dk.x2 = _gw - 12;
+    _dk.y1 = 64;
+    var _x1 = _dk.x1 + CREATOR_PANEL_PAD;
+    var _x2 = _dk.x2 - CREATOR_PANEL_PAD;
+    var _y  = _dk.y1 + 8;
+    var _bottom = _gh - 24;
+    var _full = false;
+    for (var _i = 0; _i < array_length(_nodes); _i++) {
+        var _n = _nodes[_i];
+        if (_y + CREATOR_PANEL_SUB > _bottom) {
+            _full = true;
+            break;
+        }
+        var _sub = scr_creator_item("sub", _x1, _y, _x2, _y + CREATOR_PANEL_SUB);
+        _sub.text = string_upper(scr_creator_node_name(_n));
+        array_push(_dk.items, _sub);
+        _y += CREATOR_PANEL_SUB;
+        for (var _p = 0; _p < array_length(_n.params); _p++) {
+            var _rh = scr_creator_param_row_h(_n.params[_p], true);
+            if (_y + _rh > _bottom) {
+                _full = true;
+                break;
+            }
+            scr_creator_param_row(_dk.items, _n, _p, _x1, _x2, _y, true, 0);
+            _y += _rh;
+        }
+        if (_full) {
+            break;
+        }
+    }
+    if (_full) {
+        array_push(_dk.items, scr_creator_item("more", _x1, _y, _x2, _y + 14));
+        _y += 14;
+    }
+    _dk.y2 = _y + 6;
+    _dk.on = true;
+    draw_set_font_l(_font_b);
+}
+
+/// obj_workspace_manager Draw GUI End, under any Creator popup.
+function scr_creator_draw_dock() {
+    var _dk = global.creator_dock;
+    if (!_dk.on) {
+        exit;
+    }
+    if (scr_creator_panel_active()) {
+        exit;
+    }
+    if (instance_exists(obj_asset_manager)) {
+        if (obj_asset_manager.viewer_open) {
+            exit;
+        }
+    }
+    var _font_b   = draw_get_font();
+    var _halign_b = draw_get_halign();
+    var _valign_b = draw_get_valign();
+    var _col      = make_colour_rgb(80, 200, 255);
+    global.creator_hmx = device_mouse_x_to_gui(0);
+    global.creator_hmy = device_mouse_y_to_gui(0);
+    scr_creator_skin_node_frame(_dk.x1, _dk.y1, _dk.x2 - _dk.x1, _dk.y2 - _dk.y1, 3, _col);
+    draw_set_font_l(fnt_c64_code);
+    draw_set_alpha(1);
+    scr_creator_draw_items(_dk.items, _col);
+    draw_set_font_l(_font_b);
+    draw_set_halign(_halign_b);
+    draw_set_valign(_valign_b);
+    draw_set_alpha(1);
 }

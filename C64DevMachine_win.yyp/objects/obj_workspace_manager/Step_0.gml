@@ -1618,6 +1618,10 @@ if (!is_entering_text && !global.is_any_text_active && !global.c64u_overlay_acti
 	    }
 	    _theme_key_changed = true;
 	}
+	// P: cycle where param cards go (AUTO / RIGHT / LEFT / DOCK / OFF).
+	if (_theme_keys_ok && scr_workspace_keyboard_check_pressed(ord("P"))) {
+	    scr_creator_card_mode_cycle(1);
+	}
 	if (_theme_keys_ok && scr_workspace_keyboard_check_pressed(ord("8"))) {
 	    var _nod_n = sprite_get_number(spr_9s_tile1) + 1;
 	    nodeStyle = (nodeStyle + 1) mod _nod_n;

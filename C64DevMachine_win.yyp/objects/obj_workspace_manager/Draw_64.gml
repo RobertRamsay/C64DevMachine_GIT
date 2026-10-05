@@ -602,6 +602,7 @@ if (gui_menu_open == 4) {
         { title: "SHOW CODE",       action: "SHOW_CODE"       },
         { title: "FLOW VIEW",    action: "FLOW_OVERLAY"    },
         { title: "FLOW TYPE",    action: "FLOW_LINE_STYLE" },
+        { title: "PARAM CARDS",  action: "PARAM_CARDS"     },
         { title: "FULLSCREEN",      action: "FULLSCREEN"      },
         { title: "UI PRESET",         action: "CYBER_PRESET"    },
         { title: "PALETTE STYLE",      action: "PALETTE_STYLE"    },
@@ -688,6 +689,14 @@ if (gui_menu_open == 4) {
         }
         if (_op.action == "FULLSCREEN") {
             _shortcut_str = "F10";
+        }
+        if (_op.action == "PARAM_CARDS") {
+            _state_str = scr_creator_card_mode_name(global.creator_card_mode);
+            _state_col = c_lime;
+            _shortcut_str = "P";
+            if (global.creator_card_mode == CREATOR_CARDS_OFF) {
+                _state_col = c_red;
+            }
         }
         if (_op.action == "OPCODE_HEADERS") {
             _state_str = opcode_headers_on ? "ON" : "OFF";
@@ -803,6 +812,9 @@ if (gui_menu_open == 4) {
             }
             else if (_op.action == "GRID") {
                 showGrid = !showGrid;
+            }
+            else if (_op.action == "PARAM_CARDS") {
+                scr_creator_card_mode_cycle(_dir);
             }
             else if (_op.action == "EFFECTS") {
                 global.visual_fx       = !global.visual_fx;
