@@ -3258,6 +3258,10 @@ show_debug_message(_pbuf_dbg2);
         }
     }
 
+    // DISK ONLY workspaces always build the D64, whatever the switch says.
+    if (scr_workspace_needs_disk()) {
+        global.build_target = 0;
+    }
     if (_has_load_org && _has_loader && global.build_target == 0) {
         // ---------------------------------------------------------
         // Compute TRUE boot size by trimming trailing bytes that fall
@@ -4246,6 +4250,9 @@ if (export_trigger) {
                 }
             }
         }
+    }
+    if (scr_workspace_needs_disk()) {
+        global.build_target = 0;
     }
     var _exp_build_d64 = (_exp_has_load_org && _exp_has_loader && global.build_target == 0);
 

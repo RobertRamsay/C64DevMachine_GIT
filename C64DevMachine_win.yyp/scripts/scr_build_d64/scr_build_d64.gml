@@ -442,3 +442,29 @@ function scr_build_d64(_prg_buf, _base_pc, _boot_actual_size, _out_path = "") {
         + " — " + string(_total_entries) + " file(s)");
     return _d64_path;
 }
+
+/// True when the workspace has a LOAD_ORG link marked DISK ONLY: the program
+/// loads those files itself (e.g. a ported game's KERNAL loader), so it only
+/// works as a D64 - a PRG inject / Exomizer build would have no disk to load from.
+function scr_workspace_needs_disk() {
+    if (!instance_exists(obj_asset_manager)) {
+        return false;
+    }
+    var _am_nd = obj_asset_manager;
+    for (var _ndi = 0; _ndi < ds_list_size(_am_nd.asset_list); _ndi++) {
+        var _nda = ds_list_find_value(_am_nd.asset_list, _ndi);
+        if (_nda.type != "LOAD_ORG") {
+            continue;
+        }
+        var _ndl = _nda[$ "linked_assets"];
+        if (!is_array(_ndl)) {
+            continue;
+        }
+        for (var _ndj = 0; _ndj < array_length(_ndl); _ndj++) {
+            if (_ndl[_ndj][$ "disk_only"] == true) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
