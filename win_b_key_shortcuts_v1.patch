@@ -1,0 +1,97 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index b9d8626..897840d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -1652,9 +1652,17 @@ if (!is_entering_text && !global.is_any_text_active && !global.c64u_overlay_acti
+ 
+ 
+ 
+-if (scr_workspace_keyboard_check_pressed(ord("B")) && !is_entering_text && !global.is_any_text_active && !global.any_picker_open) {
+-    global.box_drag_active = true;
+-    box_drag_live          = false;
++// B: start placing a mapping box; B again cancels it (so does Escape).
++// Shift+B and Alt+B are node shortcuts (branch / bitmap), handled below.
++if (scr_workspace_keyboard_check_pressed(ord("B")) && !is_entering_text && !global.is_any_text_active && !global.any_picker_open
++    && !scr_workspace_keyboard_check(vk_shift) && !scr_workspace_keyboard_check(vk_alt)) {
++    if (global.box_drag_active) {
++        global.box_drag_active = false;
++        box_drag_live          = false;
++    } else {
++        global.box_drag_active = true;
++        box_drag_live          = false;
++    }
+ }
+ 
+ 
+@@ -1665,6 +1673,14 @@ if (scr_workspace_keyboard_check_pressed(vk_home)) {
+ }
+ 
+ 
++// Escape while placing a mapping box only cancels the box - never the
++// "quit?" prompt.
++if (global.box_drag_active && scr_workspace_keyboard_check_pressed(vk_escape)) {
++    global.box_drag_active = false;
++    box_drag_live          = false;
++    keyboard_clear(vk_escape);
++}
++
+ if (scr_workspace_keyboard_check_pressed(vk_escape)) {
+     if (readyToQuit == 0 and obj_asset_manager.editorClosed==1 && !obj_c64_node.label_picker_open && !global.any_picker_open && !global.c64u_overlay_active) { readyToQuit = 1; keyboard_clear(vk_escape); }
+ 	if global.any_picker_open {
+@@ -2334,6 +2350,56 @@ if (scr_workspace_keyboard_check_pressed(ord("L")) && scr_workspace_keyboard_che
+     alarm[3] = 6;
+ }
+ 	
++// Alt+B: drop a BITMAP node.
++if (scr_workspace_keyboard_check_pressed(ord("B")) && scr_workspace_keyboard_check(vk_alt)
++    && !scr_workspace_keyboard_check(vk_shift) && !is_entering_text && !_hover_blocks_spawn) {
++    scr_node_spawn("MACRO_BMP", mouse_x, mouse_y);
++    global.undo_dirty = true;
++    alarm[3] = 6;
++}
++
++// Shift+B: over a branch node, cycle its type (BNE BEQ BCC BCS BPL BMI BVC
++// BVS); otherwise drop a new BNE node.
++if (scr_workspace_keyboard_check_pressed(ord("B")) && scr_workspace_keyboard_check(vk_shift)
++    && !scr_workspace_keyboard_check(vk_alt) && !is_entering_text && !global.any_picker_open) {
++    var _br_ops    = ["bne", "beq", "bcc", "bcs", "bpl", "bmi", "bvc", "bvs"];
++    var _br_cycled = false;
++    with (obj_c64_node) {
++        if (_br_cycled) {
++            break;
++        }
++        if (node_type != "NORMAL" || !scr_node_mouse_over(id)) {
++            continue;
++        }
++        if (array_length(instructions) == 0) {
++            continue;
++        }
++        var _br_mn = string_lower(string(instructions[0][0]));
++        for (var _bi = 0; _bi < 8; _bi++) {
++            if (_br_ops[_bi] == _br_mn) {
++                var _br_next = _br_ops[(_bi + 1) mod 8];
++                instructions[0][0] = _br_next;
++                node_title         = string_upper(_br_next);
++                global.addresses_dirty = true;
++                _br_cycled = true;
++                break;
++            }
++        }
++    }
++    if (!_br_cycled && !_hover_blocks_spawn) {
++        var _bn          = instance_create_depth(mouse_x, mouse_y, -500, obj_c64_node);
++        _bn.node_title   = "BNE";
++        _bn.node_type    = "NORMAL";
++        _bn.instructions = [["bne", "target"]];
++        with (_bn) { event_user(0); }
++        _bn.pc_address         = 0;
++        _bn.last_overlap_check = false;
++        with (obj_c64_node) { last_overlap_check = false; }
++    }
++    global.undo_dirty = true;
++    alarm[3] = 6;
++}
++
+ if scr_workspace_keyboard_check_pressed(ord("J"))  {
+     if (scr_workspace_keyboard_check(vk_alt) && !_hover_blocks_spawn) {
+         var _n        = scr_node_spawn("MACRO_JOY", mouse_x, mouse_y);
