@@ -32,7 +32,7 @@ editor_layout_refresh_requested = false;
 // MCP is a Pro-only feature; initialize the edition before creating it.
 // MCP_ENABLED (top of this event) is the single switch for the whole feature.
 if (MCP_ENABLED && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
-global.build_date = "October 3rd, 2026"; // edit this string for each release
+global.build_date = "October 5th, 2026"; // edit this string for each release
 
 // sid64 (reSID) preview audio — see scr_sid64_audio. Model/engine changes go
 // through scr_sid64_reconfigure so the preview cache is rebuilt.
@@ -193,15 +193,14 @@ welcome_credits_y      = 0;
 welcome_mode           = 0;      // 0 = welcome / what's new, 1 = guided tour list
 welcome_tour_scroll    = 0;      // first visible row in the tour list
 welcome_whats_new = [
-    "NEW PORT - SPY HUNTER added to PORTS (the full 1984 cartridge, editable).",
-    "NEW - MUSIC MAKER samples: WAV import, DIGI track and an NMI-safe player.",
-    "NEW - MUSIC MAKER JAM mode (mono / poly) and vibrato inside instruments.",
-    "NEW - SID SONG VOICE LOCK: a game can borrow a voice for sound effects.",
-    "NEW - META TILESET MAP CHAINS: build levels / courses from maps, with tables.",
-    "NEW - META TILESET RAW ROWS (top-down or bottom-up) for custom scrollers.",
-    "REFINED - Tileset maps can be named (double-click a tab) and sized per map.",
-    "REFINED - Piano shows every playing note, instrument panel tidied up.",
-    "REFINED - Tile map editor is full screen, editors hide the workspace.",
+    "NEW PORT - SABOTEUR added to PORTS (the full game, editable).",
+    "NEW - CREATOR layer: parameter cards and UI panels on mapping boxes.",
+    "NEW - SPRITE MASK asset + macro: sprites walk behind the scenery.",
+    "NEW - LINE COLL asset + COLL-LINE macro: line-based collision.",
+    "NEW - BITMAP OBJECTS (blitters) and ROOM MAPS with RLE rooms.",
+    "NEW - BUILD TARGET PRG EXO: Exomizer-crunched PRG output.",
+    "REFINED - Hover a JSR / JMP and press ENTER to jump to its label.",
+    "REFINED - Node info panels rewritten with clear section headings.",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
     "SUPPORT the development by leaving a review on ITCH and buying the PRO version.",
