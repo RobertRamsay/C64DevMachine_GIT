@@ -1,0 +1,51 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index 9d0142a..c7306bb 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -166,7 +166,7 @@ global.pending_unlock_init_id  = noone;
+ 
+ global.canEditNode=1;
+ opcode_extra_height=1;
+-showPaletteHelper=1;
++showPaletteHelper=0;
+ expert_mode = false;
+ hideui=false;
+ // =============================================================
+@@ -1213,7 +1213,7 @@ nodeStyle     = clamp(ini_read_real("Settings", "nodeStyle", 0), 0, sprite_get_n
+ macroStyle    = clamp(ini_read_real("Settings", "macroStyle", 0), 0, 1);
+ expert_mode  = ini_read_real("Settings", "expert_mode", 0) == 1;
+ opcode_helper_on       = ini_read_real("Settings", "opcode_helper",       1) == 1;
+-showPaletteHelper      = ini_read_real("Settings", "palette_helper",      1) == 1;
++showPaletteHelper      = ini_read_real("Settings", "palette_helper",      0) == 1;
+ global.visual_fx       = ini_read_real("Settings", "visual_fx",           1) == 1;
+ global.node_destroy_fx = global.visual_fx;
+ global.comments_visible = ini_read_real("Settings", "comments_visible",   1) == 1;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index af00a1c..d309061 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -45,9 +45,12 @@ if (!expert_mode) {
+ 
+ //color ref palette:
+ var _psc = 0.8
+-// Colour reference strip no longer drawn: frees the right side of the
+-// screen for the param dock. (OPTIONS > PALETTE HELPER has no effect now.)
+-//if showPaletteHelper draw_sprite_ext(spr_palette,0, 1640,980,_psc,_psc,0,c_white,1)
++// Colour reference strip (OPTIONS > PALETTE HELPER, off by default). Kept
++// on but not drawn while the param dock is showing, so the dock can use
++// the right side of the screen; it comes back when the dock goes.
++if (showPaletteHelper && !global.creator_dock.on) {
++    draw_sprite_ext(spr_palette, 0, 1640, 980, _psc, _psc, 0, c_white, 1);
++}
+ 
+ 
+ /////////////////////////////////////////////////////////////////
+@@ -946,7 +949,7 @@ if (gui_menu_open == 4) {
+                 showGrid               = false;
+                 expert_mode            = false;
+                 opcode_helper_on       = true;
+-                showPaletteHelper      = true;
++                showPaletteHelper      = false;   // off by default
+                 global.visual_fx       = true;
+                 global.node_destroy_fx = true;
+                 global.comments_visible = true;

@@ -166,7 +166,7 @@ global.pending_unlock_init_id  = noone;
 
 global.canEditNode=1;
 opcode_extra_height=1;
-showPaletteHelper=1;
+showPaletteHelper=0;
 expert_mode = false;
 hideui=false;
 // =============================================================
@@ -1213,7 +1213,7 @@ nodeStyle     = clamp(ini_read_real("Settings", "nodeStyle", 0), 0, sprite_get_n
 macroStyle    = clamp(ini_read_real("Settings", "macroStyle", 0), 0, 1);
 expert_mode  = ini_read_real("Settings", "expert_mode", 0) == 1;
 opcode_helper_on       = ini_read_real("Settings", "opcode_helper",       1) == 1;
-showPaletteHelper      = ini_read_real("Settings", "palette_helper",      1) == 1;
+showPaletteHelper      = ini_read_real("Settings", "palette_helper",      0) == 1;
 global.visual_fx       = ini_read_real("Settings", "visual_fx",           1) == 1;
 global.node_destroy_fx = global.visual_fx;
 global.comments_visible = ini_read_real("Settings", "comments_visible",   1) == 1;

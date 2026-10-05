@@ -45,9 +45,12 @@ if (!expert_mode) {
 
 //color ref palette:
 var _psc = 0.8
-// Colour reference strip no longer drawn: frees the right side of the
-// screen for the param dock. (OPTIONS > PALETTE HELPER has no effect now.)
-//if showPaletteHelper draw_sprite_ext(spr_palette,0, 1640,980,_psc,_psc,0,c_white,1)
+// Colour reference strip (OPTIONS > PALETTE HELPER, off by default). Kept
+// on but not drawn while the param dock is showing, so the dock can use
+// the right side of the screen; it comes back when the dock goes.
+if (showPaletteHelper && !global.creator_dock.on) {
+    draw_sprite_ext(spr_palette, 0, 1640, 980, _psc, _psc, 0, c_white, 1);
+}
 
 
 /////////////////////////////////////////////////////////////////
@@ -946,7 +949,7 @@ if (gui_menu_open == 4) {
                 showGrid               = false;
                 expert_mode            = false;
                 opcode_helper_on       = true;
-                showPaletteHelper      = true;
+                showPaletteHelper      = false;   // off by default
                 global.visual_fx       = true;
                 global.node_destroy_fx = true;
                 global.comments_visible = true;
