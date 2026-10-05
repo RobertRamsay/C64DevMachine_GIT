@@ -66,6 +66,49 @@ if (node_type == "ORG" && amb_btn_live && instance_exists(org_amb_partner) &&
     exit;
 }
 
+// COMMENT corner handle (bottom right, like a mapping box): drag to set the
+// width and height, snapped to the 20px grid. The text rewraps to the width.
+if (node_type == "COMMENT") {
+    if (comment_resizing) {
+        if (scr_workspace_mouse_check_button(mb_left)) {
+            var _crx = x + x_indent;
+            var _cw_new = clamp(round((mouse_x - _crx) / 20) * 20, 120, 1600);
+            var _ch_new = clamp(round((mouse_y - y) / 20) * 20, 60, 2000);
+            if (_cw_new != comment_w || _ch_new != comment_h) {
+                comment_w          = _cw_new;
+                comment_h          = _ch_new;
+                comment_text_width = 0;      // force the rewrap
+                height_dirty       = true;
+                scr_comment_sync_layout(id);
+                with (obj_c64_node) {
+                    last_overlap_check  = false;
+                    overlap_check_dirty = true;
+                }
+            }
+        } else {
+            comment_resizing  = false;
+            global.undo_dirty = true;
+            global.autosave_dirty = true;
+        }
+        exit;
+    }
+    var _cr_edit = (instance_exists(obj_workspace_manager)
+                 && obj_workspace_manager.is_entering_text
+                 && obj_workspace_manager.input_target_node == id
+                 && obj_workspace_manager.input_target_index == 0);
+    if (!_cr_edit && !collapsed && global.comments_visible && !scr_node_is_hidden(id)
+        && scr_workspace_mouse_check_button_pressed(mb_left) && !global.any_picker_open) {
+        var _crx2 = x + x_indent + width;
+        var _cry2 = y + height;
+        if (point_in_rectangle(mouse_x, mouse_y, _crx2 - 16, _cry2 - 16, _crx2, _cry2)) {
+            scr_undo_snapshot();
+            comment_resizing         = true;
+            global.ui_click_consumed = true;
+            exit;
+        }
+    }
+}
+
 // The pointer is on an ORG fold tab — the click belongs to the tab, not to the
 // ORG node underneath it, which would otherwise start a drag on the same press.
 if (global.org_collapse_hot != noone && !is_dragging) exit;
@@ -2055,46 +2098,6 @@ if (node_type == "INIT") {
 if (scr_workspace_mouse_check_button_pressed(mb_left) && !_mouse_in_gui && !obj_workspace_manager.is_panning && !instance_exists(obj_ui_color_picker) && _cam_zoom < 3.55 && !label_picker_open && !global.any_picker_open) {
          if (point_in_rectangle(mouse_x, mouse_y, draw_x, y, draw_x + width, y + 24) &&
             !(node_type == "LABEL" && array_length(instructions) > 0 && array_length(instructions[0]) > 1 && string(instructions[0][1]) == "sid_exit")) {
-
-            // ---- COMMENT WIDTH HANDLES ----
-            // First thing inside the header hit-test, so a click on < or >
-            // resizes instead of starting a drag.
-            // Not while this comment is being typed into - Draw_0 hides the
-            // handles then, and an invisible one must not be clickable.
-            var _cwm_edit = (instance_exists(obj_workspace_manager)
-                          && obj_workspace_manager.is_entering_text
-                          && obj_workspace_manager.input_target_node == id
-                          && obj_workspace_manager.input_target_index == 0);
-
-            if (node_type == "COMMENT" && !_cwm_edit
-            &&  point_in_rectangle(mouse_x, mouse_y,
-                                   draw_x + width - 38, y + 4,
-                                   draw_x + width - 4,  y + 20)) {
-                var _cwm_old = 1;
-                if (variable_instance_exists(id, "comment_w_mult")) {
-                    _cwm_old = clamp(round(comment_w_mult), 1, 3);
-                }
-                var _cwm_new = _cwm_old;
-                if (mouse_x < draw_x + width - 20) {
-                    _cwm_new = max(1, _cwm_old - 1);
-                } else {
-                    _cwm_new = min(3, _cwm_old + 1);
-                }
-                if (_cwm_new != _cwm_old) {
-                    scr_undo_snapshot();
-                    comment_w_mult = _cwm_new;
-                    // Force the rewrap: sync_layout only re-measures when the
-                    // source text or the wrap width it last used has changed.
-                    comment_text_width = 0;
-                    height_dirty       = true;
-                    global.undo_dirty  = true;
-                    with (obj_c64_node) {
-                        last_overlap_check  = false;
-                        overlap_check_dirty = true;
-                    }
-                }
-                exit;
-            }
 
             // ---- GROUP MOVE DRAG ----
             if (id == global.group_drag_handle && array_length(global.selected_nodes) > 1

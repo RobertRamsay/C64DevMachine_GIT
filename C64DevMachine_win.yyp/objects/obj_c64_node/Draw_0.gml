@@ -307,8 +307,8 @@ var _raw_h = header_h + (array_length(instructions) * _line_gap) + _bottom_pad +
 switch (node_type) {
     case "COMMENT":
         // scr_comment_sync_layout (top of this event) has already set width
-        // from comment_w_mult. Re-forcing the standard width here would throw
-        // that away every frame.
+        // from comment_w (or legacy comment_w_mult). Re-forcing the standard
+        // width here would throw that away every frame.
         break;
     case "DATA_TEXT":
         draw_set_font_l(fnt_c64_code);
@@ -2118,48 +2118,26 @@ draw_set_font_l(fnt_c64_code);
 // One standard node width per step, 1x to 3x. Drawn last so nothing
 // painted earlier in this event sits on top of them.
 // =============================================================
-// While this comment is being typed into, the handles are hidden - the header
-// is part of the click-away/caret area then, and a stray < or > would resize
-// the node mid-sentence. This block is separate from the body draw above, so
+// While this comment is being typed into, the corner handle is hidden so a
+// click near the corner is a caret click, not a resize. This block is separate from the body draw above, so
 // the test has to be made again here.
 var _cw_editing = (instance_exists(obj_workspace_manager)
                 && obj_workspace_manager.is_entering_text
                 && obj_workspace_manager.input_target_node == id
                 && obj_workspace_manager.input_target_index == 0);
 
-if (node_type == "COMMENT" && global.comments_visible && !_cw_editing) {
-    var _cw_mult = 1;
-    if (variable_instance_exists(id, "comment_w_mult")) {
-        _cw_mult = clamp(round(comment_w_mult), 1, 3);
+// Corner resize handle (bottom right), like a mapping box.
+if (node_type == "COMMENT" && global.comments_visible && !_cw_editing && !collapsed) {
+    var _crx2 = draw_x + width;
+    var _cry2 = y + height;
+    var _crhov = point_in_rectangle(mouse_x, mouse_y, _crx2 - 16, _cry2 - 16, _crx2, _cry2);
+    draw_set_color(make_color_rgb(150, 150, 150));
+    if (_crhov || comment_resizing) {
+        draw_set_color(c_white);
     }
-    var _cw_h  = 16;
-    var _cw_y  = y + 4;
-    var _cw_rx = draw_x + width - 20;
-    var _cw_lx = draw_x + width - 38;
-
-    var _cw_l_on  = (_cw_mult > 1);
-    var _cw_r_on  = (_cw_mult < 3);
-    var _cw_l_hov = _cw_l_on && point_in_rectangle(mouse_x, mouse_y, _cw_lx, _cw_y, _cw_lx + 16, _cw_y + _cw_h);
-    var _cw_r_hov = _cw_r_on && point_in_rectangle(mouse_x, mouse_y, _cw_rx, _cw_y, _cw_rx + 16, _cw_y + _cw_h);
-
-    draw_set_font_l(fnt_c64_tiny);
-    draw_set_halign(fa_center);
-    draw_set_valign(fa_middle);
-
-    draw_set_color(_cw_l_hov ? make_color_rgb(95, 95, 95) : make_color_rgb(48, 48, 48));
-    draw_rectangle(_cw_lx, _cw_y, _cw_lx + 16, _cw_y + _cw_h, false);
-    draw_set_color(_cw_l_on ? (_cw_l_hov ? c_white : make_color_rgb(205, 205, 205))
-                            : make_color_rgb(85, 85, 85));
-    draw_text_l(_cw_lx + 8, _cw_y + _cw_h * 0.5, "<");
-
-    draw_set_color(_cw_r_hov ? make_color_rgb(95, 95, 95) : make_color_rgb(48, 48, 48));
-    draw_rectangle(_cw_rx, _cw_y, _cw_rx + 16, _cw_y + _cw_h, false);
-    draw_set_color(_cw_r_on ? (_cw_r_hov ? c_white : make_color_rgb(205, 205, 205))
-                            : make_color_rgb(85, 85, 85));
-    draw_text_l(_cw_rx + 8, _cw_y + _cw_h * 0.5, ">");
-
-    draw_set_halign(fa_left);
-    draw_set_valign(fa_top);
+    draw_set_alpha(0.8);
+    draw_triangle(_crx2, _cry2, _crx2 - 16, _cry2, _crx2, _cry2 - 16, false);
+    draw_set_alpha(1.0);
 }
 
 // =============================================================

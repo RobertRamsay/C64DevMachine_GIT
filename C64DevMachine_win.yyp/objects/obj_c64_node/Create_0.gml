@@ -221,7 +221,13 @@ comment_line_start   = [];
 // COMMENT width, in whole standard node widths: 1, 2 or 3. The < > handles
 // on the header step it, and scr_comment_sync_layout rewraps the body to
 // match, so a wider comment reflows rather than being clipped.
-comment_w_mult       = 1;
+comment_w_mult       = 1;   // legacy width (old projects); comment_w wins when set
+// COMMENT size from the bottom-right corner handle, snapped to the 20px grid.
+// comment_w 0 = take the width from comment_w_mult; comment_h 0 = fit the text.
+// The body always grows to fit its text, so comment_h is a minimum.
+comment_w            = 0;
+comment_h            = 0;
+comment_resizing     = false;
 
 // ORG BLOCK COLLAPSE. Meaningful only on ORG nodes, but every node carries it
 // so scr_node_is_hidden() can read a parent's flag without testing for the

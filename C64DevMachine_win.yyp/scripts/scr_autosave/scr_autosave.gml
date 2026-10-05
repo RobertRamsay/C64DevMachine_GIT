@@ -65,6 +65,8 @@ var _base = "unsaved";
             proxy:        variable_instance_exists(inst, "proxy")       ? inst.proxy       : false,
             x_indent:     variable_instance_exists(inst, "x_indent")    ? inst.x_indent    : 0,
             comment_w_mult: variable_instance_exists(inst, "comment_w_mult") ? inst.comment_w_mult : 1,
+            comment_w:      inst.comment_w,
+            comment_h:      inst.comment_h,
 			helper_text:  variable_instance_exists(inst, "helper_text") ? inst.helper_text : "",
 			anim_alias:      variable_instance_exists(inst, "anim_alias")       ? inst.anim_alias       : "",
             scroll_alias:    variable_instance_exists(inst, "scroll_alias")     ? inst.scroll_alias     : "",
