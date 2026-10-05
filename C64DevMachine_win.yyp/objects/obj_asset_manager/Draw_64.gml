@@ -827,8 +827,8 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _vy1 = 40;
         _vy2 = _gui_h - 40;
     }
-    // LINE_COLL: full screen. Must match obj_asset_manager Step.
-    if (_asset.type == "LINE_COLL") {
+    // LINE_COLL / PICKUP_TABLE: full screen. Must match obj_asset_manager Step.
+    if (_asset.type == "LINE_COLL" || _asset.type == "PICKUP_TABLE") {
         _vx1 = 30;
         _vx2 = _gui_w - 30;
         _vy1 = 40;
@@ -8384,7 +8384,7 @@ case "TEXT_DATA": {
 } break;
 
 case "PICKUP_TABLE": {
-    scr_pickup_editor(_asset, _vx1 + 10, _cy, _vx2 - 10, _vy2 - 110, _mx, _my);
+    scr_pickup_editor(_asset, _vx1 + 10, _cy, _vx2 - 10, _vy2 - 12, _mx, _my);
 } break;
 
 case "LINE_COLL": {
@@ -12088,7 +12088,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 // REFERENCED BY (for BITMAP, default cases — SPRITE_SET and MAP_DATA handle their own above)
     if (_asset.type == "SFX_DATA") _cy = _vy2 - 100;
 	 if (_asset.type == "BYTE_DATA" || _asset.type == "TEXT_DATA" || _asset.type == "LINE_COLL") _cy = _vy2 - 100;
-   if (_asset.type != "SPRITE_SET" && _asset.type != "MAP_DATA" && _asset.type != "BITMAP" && _asset.type != "META_TILESET" && _asset.type != "META_MAP" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "BMP_OBJECTS" && _asset.type != "SAMPLE") {
+   if (_asset.type != "SPRITE_SET" && _asset.type != "MAP_DATA" && _asset.type != "BITMAP" && _asset.type != "META_TILESET" && _asset.type != "META_MAP" && _asset.type != "BITMAP_BUILDER" && _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "BMP_OBJECTS" && _asset.type != "SAMPLE" && _asset.type != "PICKUP_TABLE") {
         draw_set_font_l(fnt_c64_code);
         draw_set_color(make_color_rgb(60,60,80));
         draw_line(_vx1 + 10, _cy, _vx2 - 10, _cy);

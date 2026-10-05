@@ -58,6 +58,7 @@ map_view_cache = {
 };
 map_show_tags   = false;   // map editor [T]: char tag (tile type) badges on every cell
 pickup_room     = 0;       // PICKUP_TABLE editor: room shown
+pickup_scroll   = 0;       // PICKUP_TABLE editor: first entry row shown
 map_top_mode    = 0;       // map editor top panel: 0 = STAMPS, 1 = ROOM PREVIEW (room maps) [G]
 map_hover_room  = -1;      // room under the mouse last frame (RLE room maps)
 map_prev_room   = 0;       // room shown in ROOM PREVIEW

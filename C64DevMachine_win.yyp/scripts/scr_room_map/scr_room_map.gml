@@ -1834,22 +1834,29 @@ function scr_pickup_restore(_a) {
     global.addresses_dirty = true;
 }
 
-/// PICKUP_TABLE editor (asset viewer body).
+/// PICKUP_TABLE editor (asset viewer body). Laid out in four parts:
+///   toolbar             MAP / AUTO / UNDO / RESTORE
+///   SETTINGS  (left)    tiles, replacement per tile, entry layout, index...
+///   ROOMS     (middle)  one button per room with its entry count
+///   ENTRIES   (right)   the room's entries, scrollable (mouse wheel)
+///   EMITTED BYTES       along the bottom
 function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
     var _pk = _a.meta.pick;
     if (scr_pickup_sync(_a)) {
         _a.meta.is_dirty = true;
         global.addresses_dirty = true;
     }
-    var _bh = 18;
-    var _cx = _x1;
-    var _cy = _y1;
+    var _bh  = 24;      // button height
+    var _gap = 8;
+    var _bytes = scr_pickup_encode(_a);
     draw_set_font_l(fnt_c64_tiny);
 
-    // ---- link + actions ----
+    // ---- toolbar ----
+    var _tx = _x1;
+    var _ty = _y1 + 4;
     var _mlbl = "MAP: " + _pk.map;
     if (_pk.map == "") _mlbl = "MAP: (NONE)";
-    if (scr_mrp_button(_cx, _cy, _cx + 220, _cy + _bh, _mlbl, false, _mx, _my) == 1) {
+    if (scr_mrp_button(_tx, _ty, _tx + 260, _ty + _bh, _mlbl, false, _mx, _my) == 1) {
         var _names = [];
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
             var _m = ds_list_find_value(asset_list, _i);
@@ -1865,82 +1872,133 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
             _a.meta.is_dirty = true;
         }
     }
+    _tx += 260 + _gap;
     var _alb = "AUTO: OFF";
-    if (_pk.auto) _alb = "AUTO: ON";
-    if (scr_mrp_button(_cx + 226, _cy, _cx + 316, _cy + _bh, _alb, _pk.auto, _mx, _my) == 1) {
+    if (_pk.auto) _alb = "AUTO: ON (FOLLOWS MAP)";
+    if (scr_mrp_button(_tx, _ty, _tx + 200, _ty + _bh, _alb, _pk.auto, _mx, _my) == 1) {
         scr_pickup_undo_push(_a);
         _pk.auto = !_pk.auto;
         _a.meta.is_dirty = true;
         global.addresses_dirty = true;
     }
-    if (scr_mrp_button(_cx + 322, _cy, _cx + 402, _cy + _bh, "UNDO", false, _mx, _my) == 1
+    _tx += 200 + _gap;
+    var _ul = "UNDO (" + string(array_length(_a.meta.pick_undo)) + ")";
+    if (scr_mrp_button(_tx, _ty, _tx + 110, _ty + _bh, _ul, false, _mx, _my) == 1
         || (keyboard_check(vk_control) && keyboard_check_pressed(ord("Z")))) {
         scr_pickup_undo(_a);
     }
+    _tx += 110 + _gap;
     if (array_length(_pk.orig) > 0) {
-        if (scr_mrp_button(_cx + 408, _cy, _cx + 498, _cy + _bh, "RESTORE", false, _mx, _my) == 1) {
+        if (scr_mrp_button(_tx, _ty, _tx + 160, _ty + _bh, "RESTORE ORIGINAL", false, _mx, _my) == 1) {
             scr_pickup_restore(_a);
             _pk.auto = false;
         }
     }
-    _cy += _bh + 8;
 
-    // ---- settings (read-only here) ----
-    var _tl = "TILES:";
-    for (var _i = 0; _i < array_length(_pk.tiles); _i++) _tl += " $" + string_upper(decimal_to_hex(real(_pk.tiles[_i]) & 0xFF));
-    var _fl = "ENTRY:";
-    for (var _i = 0; _i < array_length(_pk.fields); _i++) _fl += " " + _pk.fields[_i];
-    var _ixn = ["2-BYTE ADDRESS PER ROOM", "LO TABLE + HI TABLE", "NONE"];
-    var _bytes = scr_pickup_encode(_a);
-    draw_set_color(c_ltgray);
-    draw_text(_cx, _cy - scr_lang_lift(), _tl + "     " + _fl + "   X+" + string(_pk.x_off) + " Y+" + string(_pk.y_off)
-        + "   INDEX: " + _ixn[clamp(real(_pk.index), 0, 2)] + "   SIZE: " + string(array_length(_bytes)) + " BYTES   LABELS: "
-        + _a.name + "_LO / " + _a.name + "_HI");
-    _cy += 22;
+    var _top = _ty + _bh + 18;
+    var _bot = _y2 - 120;            // bytes box below
+    var _lh  = 22;                   // settings line height
 
-    // ---- room picker ----
+    // ---- SETTINGS (left column) ----
+    var _sx = _x1;
+    var _sy = _top;
+    draw_set_color(c_yellow);
+    draw_text(_sx, _sy - scr_lang_lift(), "SETTINGS");
+    _sy += _lh;
+    var _hx = function(_v) { return "$" + string_upper(decimal_to_hex(real(_v) & 0xFF)); };
+    var _rows = [];
+    var _t = "";
+    for (var _i = 0; _i < array_length(_pk.tiles); _i++) _t += _hx(_pk.tiles[_i]) + " ";
+    array_push(_rows, ["PICKUP TILES", _t]);
+    _t = "";
+    for (var _i = 0; _i < array_length(_pk.repl); _i++) _t += _hx(_pk.repl[_i][0]) + ">" + _hx(_pk.repl[_i][1]) + "  ";
+    array_push(_rows, ["TAKEN TILE", _t]);
+    _t = "";
+    for (var _i = 0; _i < array_length(_pk.fields); _i++) _t += _pk.fields[_i] + " ";
+    array_push(_rows, ["ENTRY", _t]);
+    array_push(_rows, ["OFFSETS", "X+" + string(_pk.x_off) + "   Y+" + string(_pk.y_off)]);
+    array_push(_rows, ["FLAG VALUE", _hx(_pk.flag)]);
+    var _ixn = ["ADDRESS PER ROOM", "LO TABLE, HI TABLE", "NONE"];
+    array_push(_rows, ["ROOM INDEX", _ixn[clamp(real(_pk.index), 0, 2)]]);
+    if (real(_pk.term) >= 0) {
+        array_push(_rows, ["LIST END", _hx(_pk.term)]);
+    } else {
+        array_push(_rows, ["LIST END", "COUNT BYTE FIRST"]);
+    }
+    _t = "";
+    for (var _i = 0; _i < array_length(_pk.empty); _i++) _t += _hx(_pk.empty[_i]) + " ";
+    if (_t == "") _t = "NOTHING";
+    array_push(_rows, ["EMPTY ROOM", _t]);
+    array_push(_rows, ["SIZE", string(array_length(_bytes)) + " BYTES"]);
+    array_push(_rows, ["LABELS", _a.name + "_LO"]);
+    array_push(_rows, ["", _a.name + "_HI"]);
+    for (var _i = 0; _i < array_length(_rows); _i++) {
+        draw_set_color(c_gray);
+        draw_text(_sx, _sy - scr_lang_lift(), _rows[_i][0]);
+        draw_set_color(c_white);
+        draw_text(_sx + 110, _sy - scr_lang_lift(), _rows[_i][1]);
+        _sy += _lh;
+    }
+
+    // ---- ROOMS (middle column) ----
     var _n = array_length(_pk.rooms);
+    var _rx = _x1 + 400;
+    var _ry = _top;
+    draw_set_color(c_yellow);
+    draw_text(_rx, _ry - scr_lang_lift(), "ROOMS");
+    _ry += _lh;
     if (_n == 0) {
-        draw_set_color(c_yellow);
-        draw_text(_cx, _cy - scr_lang_lift(), "NO ROOMS - LINK A ROOM MAP (RLE ROOMS / RLE STREAM) AND TURN AUTO ON");
+        draw_set_color(c_orange);
+        draw_text(_rx, _ry - scr_lang_lift(), "LINK A ROOM MAP (RLE ROOMS / RLE STREAM) AND TURN AUTO ON");
         return;
     }
     pickup_room = clamp(pickup_room, 0, _n - 1);
-    if (scr_mrp_button(_cx, _cy, _cx + 24, _cy + _bh, "<", false, _mx, _my) == 1) pickup_room = (pickup_room + _n - 1) mod _n;
-    draw_set_color(c_yellow);
-    draw_set_halign(fa_center);
-    draw_text(_cx + 80, _cy + 3 - scr_lang_lift(), "ROOM " + string(pickup_room) + "  (" + string(array_length(_pk.rooms[pickup_room])) + ")");
-    draw_set_halign(fa_left);
-    if (scr_mrp_button(_cx + 136, _cy, _cx + 160, _cy + _bh, ">", false, _mx, _my) == 1) pickup_room = (pickup_room + 1) mod _n;
-    if (!_pk.auto) {
-        if (scr_mrp_button(_cx + 170, _cy, _cx + 260, _cy + _bh, "+ ENTRY", false, _mx, _my) == 1) {
-            scr_pickup_undo_push(_a);
-            var _t0 = 0;
-            if (array_length(_pk.tiles) > 0) _t0 = real(_pk.tiles[0]) & 0x7F;
-            array_push(_pk.rooms[pickup_room], { x: 0, y: 0, tile: _t0, repl: scr_pickup_default_repl(_pk, _t0), on: true });
-            _a.meta.is_dirty = true;
-            global.addresses_dirty = true;
+    var _rbh  = 20;
+    var _rcols = max(1, ceil(_n / max(1, floor((_bot - _ry) / (_rbh + 4)))));
+    var _rper  = ceil(_n / _rcols);
+    for (var _r = 0; _r < _n; _r++) {
+        var _bx = _rx + (_r div _rper) * 128;
+        var _by = _ry + (_r mod _rper) * (_rbh + 4);
+        var _on = 0;
+        for (var _k = 0; _k < array_length(_pk.rooms[_r]); _k++) if (_pk.rooms[_r][_k].on) _on++;
+        if (scr_mrp_button(_bx, _by, _bx + 120, _by + _rbh, "ROOM " + string(_r) + "   " + string(_on), _r == pickup_room, _mx, _my) == 1) {
+            pickup_room = _r;
+            pickup_scroll = 0;
         }
     }
-    _cy += _bh + 6;
 
-    // ---- entries ----
-    draw_set_color(c_ltgray);
-    draw_text(_cx, _cy - scr_lang_lift(), "   X     Y     TILE   REPL    EMIT     (L-CLICK +1 / R-CLICK -1)");
-    _cy += 16;
+    // ---- ENTRIES (right) ----
+    var _ex = _rx + _rcols * 128 + 30;
+    var _ey = _top;
+    draw_set_color(c_yellow);
+    draw_text(_ex, _ey - scr_lang_lift(), "ROOM " + string(pickup_room) + " ENTRIES    (L-CLICK +1 / R-CLICK -1)");
+    _ey += _lh;
+    var _cw   = 70;                                  // column width
+    var _hdr  = ["X", "Y", "TILE", "TAKEN", "EMIT"];
+    draw_set_color(c_gray);
+    draw_set_halign(fa_center);
+    for (var _k = 0; _k < 5; _k++) draw_text(_ex + _k * (_cw + 6) + _cw * 0.5, _ey - scr_lang_lift(), _hdr[_k]);
+    draw_set_halign(fa_left);
+    _ey += _lh;
     var _ents = _pk.rooms[pickup_room];
+    var _rowh = _bh + 4;
+    var _vis  = max(1, floor((_bot - _ey - _rowh - 8) / _rowh));
+    if (point_in_rectangle(_mx, _my, _ex, _ey, _x2, _bot)) {
+        if (mouse_wheel_up())   pickup_scroll--;
+        if (mouse_wheel_down()) pickup_scroll++;
+    }
+    pickup_scroll = clamp(pickup_scroll, 0, max(0, array_length(_ents) - _vis));
     var _del = -1;
     var _chg = false;
-    for (var _i = 0; _i < array_length(_ents); _i++) {
-        if (_cy + _bh > _y2 - 60) break;
+    for (var _i = pickup_scroll; _i < min(array_length(_ents), pickup_scroll + _vis); _i++) {
         var _e = _ents[_i];
         var _vals = [real(_e.x), real(_e.y), real(_e.tile), real(_e.repl)];
         for (var _k = 0; _k < 4; _k++) {
-            var _bx = _cx + _k * 56;
+            var _bx = _ex + _k * (_cw + 6);
             var _lbl = string(_vals[_k]);
-            if (_k >= 2) _lbl = "$" + string_upper(decimal_to_hex(_vals[_k] & 0xFF));
-            var _hit = scr_mrp_button(_bx, _cy, _bx + 50, _cy + _bh, _lbl, false, _mx, _my);
-            // X / Y / TILE are the map's in AUTO; REPL is always editable
+            if (_k >= 2) _lbl = _hx(_vals[_k]);
+            var _hit = scr_mrp_button(_bx, _ey, _bx + _cw, _ey + _bh, _lbl, false, _mx, _my);
+            // X / Y / TILE come from the map in AUTO; TAKEN is always editable
             var _ok = (_k == 3) || !_pk.auto;
             if (_hit != 0 && _ok) {
                 scr_pickup_undo_push(_a);
@@ -1953,17 +2011,34 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
                 _chg = true;
             }
         }
+        var _bx4 = _ex + 4 * (_cw + 6);
         var _onl = "OFF";
         if (_e.on) _onl = "ON";
-        if (scr_mrp_button(_cx + 228, _cy, _cx + 284, _cy + _bh, _onl, _e.on, _mx, _my) == 1) {
+        if (scr_mrp_button(_bx4, _ey, _bx4 + _cw, _ey + _bh, _onl, _e.on, _mx, _my) == 1) {
             scr_pickup_undo_push(_a);
             _e.on = !_e.on;
             _chg = true;
         }
         if (!_pk.auto) {
-            if (scr_mrp_button(_cx + 290, _cy, _cx + 314, _cy + _bh, "X", false, _mx, _my) == 1) _del = _i;
+            var _bx5 = _bx4 + _cw + 6;
+            if (scr_mrp_button(_bx5, _ey, _bx5 + _bh, _ey + _bh, "X", false, _mx, _my) == 1) _del = _i;
         }
-        _cy += _bh + 3;
+        _ey += _rowh;
+    }
+    if (array_length(_ents) > _vis) {
+        draw_set_color(c_gray);
+        draw_text(_ex, _ey + 2 - scr_lang_lift(), string(pickup_scroll + 1) + "-" + string(min(array_length(_ents), pickup_scroll + _vis))
+            + " OF " + string(array_length(_ents)) + "  (WHEEL TO SCROLL)");
+        _ey += _lh;
+    }
+    if (!_pk.auto) {
+        if (scr_mrp_button(_ex, _ey + 4, _ex + 120, _ey + 4 + _bh, "+ ENTRY", false, _mx, _my) == 1) {
+            scr_pickup_undo_push(_a);
+            var _t0 = 0;
+            if (array_length(_pk.tiles) > 0) _t0 = real(_pk.tiles[0]) & 0x7F;
+            array_push(_ents, { x: 0, y: 0, tile: _t0, repl: scr_pickup_default_repl(_pk, _t0), on: true });
+            _chg = true;
+        }
     }
     if (_del >= 0) {
         scr_pickup_undo_push(_a);
@@ -1975,18 +2050,28 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
         global.addresses_dirty = true;
     }
 
-    // ---- emitted bytes ----
-    var _hx = "";
-    var _cols = max(8, floor((_x2 - _x1) / 26));
-    var _ly = _y2 - 54;
+    // ---- EMITTED BYTES (bottom box) ----
+    var _bx1 = _x1;
+    var _by1 = _bot + 10;
+    draw_set_color(make_color_rgb(12, 12, 20));
+    draw_rectangle(_bx1, _by1, _x2, _y2, false);
+    draw_set_color(make_color_rgb(60, 60, 80));
+    draw_rectangle(_bx1, _by1, _x2, _y2, true);
+    draw_set_color(c_yellow);
+    var _a1 = real(_a.address);
+    draw_text(_bx1 + 8, _by1 + 6 - scr_lang_lift(), "EMITTED BYTES  $" + string_upper(decimal_to_hex(_a1)) + "-$"
+        + string_upper(decimal_to_hex(_a1 + max(0, array_length(_bytes) - 1))));
+    var _cols = max(8, floor((_x2 - _bx1 - 16) / 26));
+    var _ly = _by1 + 24;
+    var _hxs = "";
     draw_set_color(c_aqua);
     for (var _i = 0; _i < array_length(_bytes); _i++) {
-        _hx += string_upper(decimal_to_hex(_bytes[_i])) + " ";
+        _hxs += string_upper(decimal_to_hex(_bytes[_i])) + " ";
         if ((_i + 1) mod _cols == 0) {
-            if (_ly < _y2) draw_text(_x1, _ly - scr_lang_lift(), _hx);
-            _hx = "";
-            _ly += 12;
+            if (_ly + 12 < _y2) draw_text(_bx1 + 8, _ly - scr_lang_lift(), _hxs);
+            _hxs = "";
+            _ly += 14;
         }
     }
-    if (_hx != "" && _ly < _y2) draw_text(_x1, _ly - scr_lang_lift(), _hx);
+    if (_hxs != "" && _ly + 12 < _y2) draw_text(_bx1 + 8, _ly - scr_lang_lift(), _hxs);
 }

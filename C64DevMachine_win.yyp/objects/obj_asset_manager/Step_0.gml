@@ -68,7 +68,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     }
     // LINE_COLL: full screen (left tools / centred canvas / right list) -
     // same bounds as Draw GUI
-    if (asset_list[|viewer_asset].type == "LINE_COLL") {
+    if (asset_list[|viewer_asset].type == "LINE_COLL" || asset_list[|viewer_asset].type == "PICKUP_TABLE") {
         _wide_modal = true;
         _vx1 = 30;
         _vx2 = _gui_w - 30;
