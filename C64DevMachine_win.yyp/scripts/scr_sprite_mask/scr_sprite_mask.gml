@@ -509,6 +509,46 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         _m.test_on   = !_m.test_on;
         _m.test_drag = false;
     }
+    _sy += 34;
+    // USE TEST SPRITE'S FEET AS THE LINE: the line becomes the test sprite's
+    // feet Y and is set on every cell already masked (one undo step).
+    var _uf_h   = 40;
+    var _uf_hov = _m.test_on && point_in_rectangle(_ui_mx, _my, _side_x, _sy, _side_x + _side_w, _sy + _uf_h);
+    var _uf_col = make_color_rgb(24, 26, 34);
+    if (_m.test_on) { _uf_col = make_color_rgb(31, 38, 54); }
+    if (_uf_hov) { _uf_col = make_color_rgb(53, 61, 82); }
+    draw_set_color(_uf_col);
+    draw_rectangle(_side_x, _sy, _side_x + _side_w, _sy + _uf_h, false);
+    draw_set_color(make_color_rgb(72, 83, 103));
+    draw_rectangle(_side_x, _sy, _side_x + _side_w, _sy + _uf_h, true);
+    draw_set_color(c_white);
+    if (!_m.test_on) { draw_set_color(make_color_rgb(90, 90, 90)); }
+    draw_set_halign(fa_center);
+    draw_text_l(_side_x + _side_w * 0.5, _sy + 6,  "USE TEST SPRITE'S");
+    draw_text_l(_side_x + _side_w * 0.5, _sy + 22, "FEET AS THE LINE");
+    draw_set_halign(fa_left);
+    if (_uf_hov && mouse_check_button_pressed(mb_left)) {
+        var _uf_hot = 20;
+        with (obj_c64_node) {
+            if (node_type == "MACRO_SPR_MASK" && string(instructions[0][1]) == _asset.name) {
+                _uf_hot = clamp(real(instructions[0][3]), 0, 20);
+            }
+        }
+        var _uf_y = clamp(_m.test_y + _uf_hot, 0, 199);
+        scr_sprmask_push_undo(_m);
+        _m.depth  = _uf_y;
+        _m.pick_y = false;
+        for (var _uc = 0; _uc < 1000; _uc++) {
+            var _u_any = false;
+            for (var _ur = 0; _ur < 8; _ur++) {
+                if (_m.mask[_uc * 8 + _ur] != 0) { _u_any = true; }
+            }
+            if (_u_any) { _m.cell_base[_uc] = _uf_y; }
+        }
+        _m.ov_dirty = true;
+        scr_sprmask_flush(_asset);
+        global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
+    }
 
     // Reserve the right-hand column for the reference browser.
     draw_set_color(make_color_rgb(154,175,198));
