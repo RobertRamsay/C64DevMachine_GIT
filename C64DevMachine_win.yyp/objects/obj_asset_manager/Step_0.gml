@@ -2228,6 +2228,11 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open && !(_wide_mo
            if (_type == "LINE_COLL") {
                 _new_asset.meta.line_string           = "";
                 _new_asset.meta.wide_x                = false;
+                _new_asset.meta.undo                  = [];
+                _new_asset.meta.redo                  = [];
+                _new_asset.meta.edit_mode             = false;
+                _new_asset.meta.drag_line             = -1;
+                _new_asset.meta.drag_end              = 0;
 				_new_asset.meta.lines                 = [];
 				_new_asset.meta.inline_edit_open      = false;
 				_new_asset.meta.inline_edit_text      = _new_asset.meta.line_string;

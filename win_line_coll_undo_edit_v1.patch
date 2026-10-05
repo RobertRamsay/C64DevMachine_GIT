@@ -1,0 +1,269 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index af7f9c0..b343b4d 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -2228,6 +2228,11 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open && !(_wide_mo
+            if (_type == "LINE_COLL") {
+                 _new_asset.meta.line_string           = "";
+                 _new_asset.meta.wide_x                = false;
++                _new_asset.meta.undo                  = [];
++                _new_asset.meta.redo                  = [];
++                _new_asset.meta.edit_mode             = false;
++                _new_asset.meta.drag_line             = -1;
++                _new_asset.meta.drag_end              = 0;
+ 				_new_asset.meta.lines                 = [];
+ 				_new_asset.meta.inline_edit_open      = false;
+ 				_new_asset.meta.inline_edit_text      = _new_asset.meta.line_string;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml b/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
+index a12579b..5c170ff 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
+@@ -90,6 +90,44 @@ function scr_line_coll_compile(_lines) {
+     return _out;
+ }
+ 
++/// Undo/redo snapshot: a deep copy of the lines plus the WIDE X flag (the
++/// WIDE toggle rescales every line, so it has to come back with them).
++function scr_line_coll_snapshot(_m) {
++    var _copy = [];
++    for (var _i = 0; _i < array_length(_m.lines); _i++) {
++        var _ln = _m.lines[_i];
++        array_push(_copy, { x1: _ln.x1, y1: _ln.y1, x2: _ln.x2, y2: _ln.y2, type: _ln.type });
++    }
++    return { lines: _copy, wide: _m.wide_x };
++}
++
++/// Call BEFORE changing the lines. A new change clears the redo stack.
++function scr_line_coll_push_undo(_m) {
++    array_push(_m.undo, scr_line_coll_snapshot(_m));
++    if (array_length(_m.undo) > 50) { array_delete(_m.undo, 0, 1); }
++    _m.redo = [];
++}
++
++/// _redo false = undo, true = redo.
++function scr_line_coll_history_step(_asset, _redo) {
++    var _m    = _asset.meta;
++    var _from = _m.undo;
++    var _to   = _m.redo;
++    if (_redo) {
++        _from = _m.redo;
++        _to   = _m.undo;
++    }
++    if (array_length(_from) == 0) return;
++    array_push(_to, scr_line_coll_snapshot(_m));
++    var _s = array_pop(_from);
++    _m.lines     = _s.lines;
++    _m.wide_x    = _s.wide;
++    _m.drag_line = -1;
++    _m.draw_x1   = -1;
++    _m.draw_y1   = -1;
++    scr_line_coll_commit(_asset);
++}
++
+ /// @function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+ /// Dedicated visual editor for LINE_COLL assets. Click-drag on the canvas
+ /// places a line (mousedown = start, mouseup = end); the active TYPE
+@@ -167,6 +205,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     draw_text_l(_wx_x1 + 85, _ref_toggle_y1 + 4, _wx_lbl);
+     draw_set_halign(fa_left);
+     if (_wx_hov && mouse_check_button_pressed(mb_left)) {
++        scr_line_coll_push_undo(_m);
+         _m.wide_x = !_m.wide_x;
+         for (var _wl = 0; _wl < array_length(_m.lines); _wl++) {
+             var _wln = _m.lines[_wl];
+@@ -338,6 +377,54 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         draw_line_width(_lx1, _ly1, _lx2, _ly2, 2);
+     }
+ 
++    // ── EDIT: endpoint handles (EDIT toggle on, or ALT held = hot edit) ──
++    var _alt_hot = keyboard_check(vk_alt);
++    var _editing = _m.edit_mode || _alt_hot || _m.drag_line >= 0;
++    var _hit_line = -1;
++    var _hit_end  = 0;
++    var _hit_best = 8 * 8;   // grab radius 8 screen px (squared)
++    if (_editing) {
++        for (var _hi = 0; _hi < array_length(_m.lines); _hi++) {
++            var _hl = _m.lines[_hi];
++            for (var _he = 0; _he < 2; _he++) {
++                var _hx = _box_x + (_hl.x1 * _xs);
++                var _hy = _box_y + (_hl.y1 * 2);
++                if (_he == 1) {
++                    _hx = _box_x + (_hl.x2 * _xs);
++                    _hy = _box_y + (_hl.y2 * 2);
++                }
++                var _hd = sqr(_mx - _hx) + sqr(_my - _hy);
++                if (_hd <= _hit_best) {
++                    _hit_best = _hd;
++                    _hit_line = _hi;
++                    _hit_end  = _he;
++                }
++                draw_set_color(c_black);
++                draw_rectangle(_hx - 4, _hy - 4, _hx + 4, _hy + 4, false);
++                draw_set_color(c_white);
++                draw_rectangle(_hx - 3, _hy - 3, _hx + 3, _hy + 3, true);
++            }
++        }
++        // Highlight the handle under the pointer, or the one being dragged.
++        var _sel_line = _hit_line;
++        var _sel_end  = _hit_end;
++        if (_m.drag_line >= 0) {
++            _sel_line = _m.drag_line;
++            _sel_end  = _m.drag_end;
++        }
++        if (_sel_line >= 0 && _sel_line < array_length(_m.lines)) {
++            var _sl = _m.lines[_sel_line];
++            var _sx = _box_x + (_sl.x1 * _xs);
++            var _sy = _box_y + (_sl.y1 * 2);
++            if (_sel_end == 1) {
++                _sx = _box_x + (_sl.x2 * _xs);
++                _sy = _box_y + (_sl.y2 * 2);
++            }
++            draw_set_color(c_yellow);
++            draw_rectangle(_sx - 5, _sy - 5, _sx + 5, _sy + 5, false);
++        }
++    }
++
+     // Release scissor — everything below (border, type selector, list) sits
+     // outside or spans past the canvas box and must not be clipped.
+     gpu_set_scissor(0, 0, window_get_width(), window_get_height());
+@@ -376,8 +463,90 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         draw_set_halign(fa_left);
+     }
+ 
+-    // ── CLICK-DRAG LINE PLACEMENT ──
+-    if (_in_canvas) {
++    // ── EDIT toggle / UNDO / REDO ──
++    // EDIT is on only by clicking it. Holding ALT lights it (hot edit) without
++    // turning it on.
++    var _eb_x1  = _box_x + 262;
++    var _eb_x2  = _eb_x1 + 110;
++    var _eb_y1  = _type_y - 2;
++    var _eb_y2  = _eb_y1 + 18;
++    var _eb_hov = point_in_rectangle(_mx, _my, _eb_x1, _eb_y1, _eb_x2, _eb_y2);
++    var _eb_col = make_color_rgb(40, 40, 40);
++    if (_eb_hov) { _eb_col = make_color_rgb(70, 70, 70); }
++    if (_alt_hot) { _eb_col = make_color_rgb(120, 100, 30); }
++    if (_m.edit_mode) { _eb_col = make_color_rgb(200, 160, 40); }
++    draw_set_color(_eb_col);
++    draw_rectangle(_eb_x1, _eb_y1, _eb_x2, _eb_y2, false);
++    draw_set_color(c_white);
++    draw_set_halign(fa_center);
++    draw_text_l((_eb_x1 + _eb_x2) / 2, _eb_y1 + 4, "EDIT POINTS");
++    draw_set_halign(fa_left);
++    if (_eb_hov && mouse_check_button_pressed(mb_left)) {
++        _m.edit_mode = !_m.edit_mode;
++        _m.draw_x1   = -1;
++        _m.draw_y1   = -1;
++    }
++    var _hist_lbl = ["UNDO", "REDO"];
++    for (var _hb = 0; _hb < 2; _hb++) {
++        var _hb_x1  = _eb_x2 + 8 + (_hb * 66);
++        var _hb_x2  = _hb_x1 + 60;
++        var _hb_has = array_length(_m.undo) > 0;
++        if (_hb == 1) { _hb_has = array_length(_m.redo) > 0; }
++        var _hb_hov = _hb_has && point_in_rectangle(_mx, _my, _hb_x1, _eb_y1, _hb_x2, _eb_y2);
++        var _hb_col = make_color_rgb(30, 30, 30);
++        if (_hb_has) { _hb_col = make_color_rgb(40, 60, 90); }
++        if (_hb_hov) { _hb_col = make_color_rgb(70, 100, 150); }
++        draw_set_color(_hb_col);
++        draw_rectangle(_hb_x1, _eb_y1, _hb_x2, _eb_y2, false);
++        draw_set_color(c_white);
++        if (!_hb_has) { draw_set_color(make_color_rgb(90, 90, 90)); }
++        draw_set_halign(fa_center);
++        draw_text_l((_hb_x1 + _hb_x2) / 2, _eb_y1 + 4, _hist_lbl[_hb]);
++        draw_set_halign(fa_left);
++        if (_hb_hov && mouse_check_button_pressed(mb_left)) {
++            scr_line_coll_history_step(_asset, _hb == 1);
++            exit;
++        }
++    }
++    // CTRL+Z undo, CTRL+Y / CTRL+SHIFT+Z redo
++    if (!global.is_any_text_active && scr_ctrl_held()) {
++        if (keyboard_check_pressed(ord("Z"))) {
++            scr_line_coll_history_step(_asset, keyboard_check(vk_shift));
++            exit;
++        }
++        if (keyboard_check_pressed(ord("Y"))) {
++            scr_line_coll_history_step(_asset, true);
++            exit;
++        }
++    }
++
++    // ── EDIT: drag an endpoint ──
++    if (_editing && _in_canvas && _hit_line >= 0 && _m.drag_line < 0 && mouse_check_button_pressed(mb_left)) {
++        scr_line_coll_push_undo(_m);
++        _m.drag_line = _hit_line;
++        _m.drag_end  = _hit_end;
++    }
++    if (_m.drag_line >= 0) {
++        if (_m.drag_line < array_length(_m.lines)) {
++            var _dln = _m.lines[_m.drag_line];
++            var _dpx = clamp(floor((_mx - _box_x) / _xs), 0, _x_max);
++            var _dpy = clamp(floor((_my - _box_y) / 2), 0, 255);
++            if (_m.drag_end == 0) {
++                _dln.x1 = _dpx;
++                _dln.y1 = _dpy;
++            } else {
++                _dln.x2 = _dpx;
++                _dln.y2 = _dpy;
++            }
++        }
++        if (!mouse_check_button(mb_left)) {
++            _m.drag_line = -1;
++            scr_line_coll_commit(_asset);
++        }
++    }
++
++    // ── CLICK-DRAG LINE PLACEMENT (not while editing) ──
++    if (_in_canvas && !_editing) {
+         if (mouse_check_button_pressed(mb_left)) {
+             _m.draw_x1 = _raw_px;
+             _m.draw_y1 = _raw_py;
+@@ -386,6 +555,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     if (_m.draw_x1 >= 0 && mouse_check_button_released(mb_left)) {
+         var _end_px = _in_canvas ? _raw_px : clamp(floor((_mx - _box_x) / _xs), 0, _x_max);
+         var _end_py = _in_canvas ? _raw_py : clamp(floor((_my - _box_y) / 2), 0, 255);
++        scr_line_coll_push_undo(_m);
+         array_push(_m.lines, { x1: _m.draw_x1, y1: _m.draw_y1, x2: _end_px, y2: _end_py, type: _m.active_type });
+         _m.draw_x1 = -1;
+         _m.draw_y1 = -1;
+@@ -431,6 +601,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     draw_text_l(_clr_x1 + (_clr_w / 2), _clr_y1 + 3, "CLEAR");
+     draw_set_halign(fa_left);
+     if (_has_lines && _clr_hov && mouse_check_button_pressed(mb_left)) {
++        scr_line_coll_push_undo(_m);
+         _m.lines = [];
+         _m.line_scroll = 0;
+         scr_line_coll_commit(_asset);
+@@ -484,6 +655,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         }
+     }
+     if (_delete_idx >= 0) {
++        scr_line_coll_push_undo(_m);
+         array_delete(_m.lines, _delete_idx, 1);
+         scr_line_coll_commit(_asset);
+     }
+@@ -499,6 +671,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+ /// buffer. Called when the LINE_COLL editor panel is closed/saved — mirrors
+ /// scr_asset_byte_data_save's role for BYTE_DATA.
+ function scr_line_coll_save(_asset) {
++    scr_line_coll_push_undo(_asset.meta);   // a TEXT EDIT save can be undone too
+     _asset.meta.line_string = _asset.meta.inline_edit_text;
+     scr_line_coll_flush(_asset);
+ }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+index 74b7ae2..13333e7 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_load_workspace_from_path/scr_load_workspace_from_path.gml
+@@ -728,6 +728,11 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
+                 if (!variable_struct_exists(_new_asset.meta, "wide_x"))         _new_asset.meta.wide_x = false;
+                 _new_asset.meta.draw_x1            = -1;
+                 _new_asset.meta.draw_y1            = -1;
++                _new_asset.meta.undo               = [];
++                _new_asset.meta.redo               = [];
++                _new_asset.meta.edit_mode          = false;
++                _new_asset.meta.drag_line          = -1;
++                _new_asset.meta.drag_end           = 0;
+                 _new_asset.meta.line_scroll        = 0;
+                 _new_asset.meta.ref_picker_open    = false;
+                 _new_asset.meta.inline_edit_open      = false;

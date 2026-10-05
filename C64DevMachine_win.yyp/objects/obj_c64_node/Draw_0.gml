@@ -271,7 +271,7 @@ if (height_dirty) {
     case "MACRO_ANIM":       height = _G * 18;  break;
     case "MACRO_ANIM_SET":   height = scr_anim_set_height(id); break;
     case "MACRO_ROOMS":      height = _G * 12;  break;
-    case "MACRO_SPR_MASK":   height = _G * 9;   break;
+    case "MACRO_SPR_MASK":   height = _G * 10;   break;
     case "MACRO_SFX":        height = _G * 6;   break;
 	case "MACRO_CODE":       height = _G * 5;   break;
     case "GET_VAR":     height = _G * 5;  break;         

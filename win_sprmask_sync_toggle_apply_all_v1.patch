@@ -1,0 +1,67 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+index 69485cb..c56bb24 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+@@ -361,10 +361,32 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     draw_text_l(_side_x + 8, _sy, "At / below the line = in front."); _sy += 22;
+     var _line_label = "CLICK HERE, THEN PICK LINE";
+     if (_m.pick_y) _line_label = "NOW CLICK THE BITMAP'S Y LINE";
+-    else if (_m.depth != 255) _line_label = "Y = " + string(_m.depth) + "   |   CHOOSE ANOTHER LINE";
+-    if (_button(_side_x, _sy, _side_w, _line_label, _m.pick_y, _ui_mx, _my)) {
++    else if (_m.depth != 255) _line_label = "Y = " + string(_m.depth) + "  |  NEW LINE";
++    // With a line chosen, APPLY TO ALL sets it on every cell already masked,
++    // so a mask painted before the line was picked can use it too.
++    var _line_w = _side_w;
++    var _show_all = (_m.depth != 255 && !_m.pick_y);
++    if (_show_all) {
++        _line_w = _side_w - 110;
++    }
++    if (_button(_side_x, _sy, _line_w, _line_label, _m.pick_y, _ui_mx, _my)) {
+         _m.pick_y = !_m.pick_y; _m.stroke = false;
+     }
++    if (_show_all) {
++        if (_button(_side_x + _side_w - 104, _sy, 104, "APPLY TO ALL", false, _ui_mx, _my)) {
++            scr_sprmask_push_undo(_m);
++            for (var _ac = 0; _ac < 1000; _ac++) {
++                var _am_any = false;
++                for (var _ar = 0; _ar < 8; _ar++) {
++                    if (_m.mask[_ac * 8 + _ar] != 0) { _am_any = true; }
++                }
++                if (_am_any) { _m.cell_base[_ac] = _m.depth; }
++            }
++            _m.ov_dirty = true;
++            scr_sprmask_flush(_asset);
++            global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
++        }
++    }
+     _sy += 44;
+     draw_set_color(make_color_rgb(154, 175, 198));
+     draw_text_l(_side_x, _sy, "2  CHOOSE WHAT YOUR BRUSH DOES"); _sy += 24;
+@@ -750,7 +772,7 @@ function scr_node_draw_macro_spr_mask(_draw_x) {
+     _row(y + 108, "ZP:",     scr_sprmask_hex(_i[5]), _vx, _x2, make_color_rgb(120, 220, 255));
+     var _sync_txt = "OFF";
+     if (real(_i[6]) > 0) {
+-        _sync_txt = "LINE $" + string_copy(scr_sprmask_hex(_i[6]), 4, 2);
++        _sync_txt = "ON (LINE $" + string_copy(scr_sprmask_hex(_i[6]), 4, 2) + ")";
+     }
+     _row(y + 128, "SYNC:",   _sync_txt, _vx, _x2, make_color_rgb(255, 180, 90));
+     draw_set_font_l(fnt_c64_tiny);
+@@ -780,7 +802,17 @@ function scr_node_step_macro_spr_mask(_draw_x) {
+     if (_in(y + 68, _vx, _x2))  { scr_anim_set_open_field(id, 3, string(instructions[0][3])); exit; }
+     if (_in(y + 88, _vx, _x2))  { scr_anim_set_open_field(id, 4, scr_sprmask_hex(instructions[0][4])); exit; }
+     if (_in(y + 108, _vx, _x2)) { scr_anim_set_open_field(id, 5, scr_sprmask_hex(instructions[0][5])); exit; }
+-    if (_in(y + 128, _vx, _x2)) { scr_anim_set_open_field(id, 6, string(instructions[0][6])); exit; }
++    if (_in(y + 128, _vx, _x2)) {
++        // SYNC toggles OFF <-> line $FB (bottom border). No typing needed.
++        if (real(instructions[0][6]) > 0) {
++            instructions[0][6] = 0;
++        } else {
++            instructions[0][6] = 0xFB;
++        }
++        global.addresses_dirty = true;
++        global.undo_dirty      = true;
++        exit;
++    }
+     exit;
+ }
+ 

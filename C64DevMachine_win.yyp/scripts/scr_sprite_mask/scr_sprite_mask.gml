@@ -14,7 +14,10 @@
 /// is 1256 + 8 * (unique + 1) bytes. The asset's buffer IS that blob, so
 /// it can be linked into a LOAD_REU like any other asset.
 ///
-/// MACRO_SPR_MASK node: ["macro_spr_mask", source, slots, hot_y, work, zp]
+/// MACRO_SPR_MASK node: ["macro_spr_mask", source, slots, hot_y, work, zp, sync]
+///   sync = raster line (0 = off). When set, the new sprite position and the
+///   masked frame are committed together on that line, so the mask never
+///   runs a frame behind the sprite (the 1px shimmer when moving).
 ///   source = a ROOM_MAP (mask of whichever room is current, fetched by
 ///   MACRO_ROOMS into its MASK RAM) or a SPRITE_MASK (static, blob inline).
 ///   Each call builds a 21-line mask from the cells under the sprite and
@@ -358,9 +361,31 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_side_x + 8, _sy, "At / below the line = in front."); _sy += 22;
     var _line_label = "CLICK HERE, THEN PICK LINE";
     if (_m.pick_y) _line_label = "NOW CLICK THE BITMAP'S Y LINE";
-    else if (_m.depth != 255) _line_label = "Y = " + string(_m.depth) + "   |   CHOOSE ANOTHER LINE";
-    if (_button(_side_x, _sy, _side_w, _line_label, _m.pick_y, _ui_mx, _my)) {
+    else if (_m.depth != 255) _line_label = "Y = " + string(_m.depth) + "  |  NEW LINE";
+    // With a line chosen, APPLY TO ALL sets it on every cell already masked,
+    // so a mask painted before the line was picked can use it too.
+    var _line_w = _side_w;
+    var _show_all = (_m.depth != 255 && !_m.pick_y);
+    if (_show_all) {
+        _line_w = _side_w - 110;
+    }
+    if (_button(_side_x, _sy, _line_w, _line_label, _m.pick_y, _ui_mx, _my)) {
         _m.pick_y = !_m.pick_y; _m.stroke = false;
+    }
+    if (_show_all) {
+        if (_button(_side_x + _side_w - 104, _sy, 104, "APPLY TO ALL", false, _ui_mx, _my)) {
+            scr_sprmask_push_undo(_m);
+            for (var _ac = 0; _ac < 1000; _ac++) {
+                var _am_any = false;
+                for (var _ar = 0; _ar < 8; _ar++) {
+                    if (_m.mask[_ac * 8 + _ar] != 0) { _am_any = true; }
+                }
+                if (_am_any) { _m.cell_base[_ac] = _m.depth; }
+            }
+            _m.ov_dirty = true;
+            scr_sprmask_flush(_asset);
+            global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
+        }
     }
     _sy += 44;
     draw_set_color(make_color_rgb(154, 175, 198));
@@ -709,7 +734,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 // --------------------------------------------------------------------
 function scr_sprmask_node_defaults(_n) {
     var _inst = _n.instructions[0];
-    var _def  = ["macro_spr_mask", "", "0", 20, 0x7F00, 0xF3];
+    var _def  = ["macro_spr_mask", "", "0", 20, 0x7F00, 0xF3, 0];
     while (array_length(_inst) < array_length(_def)) {
         array_push(_inst, _def[array_length(_inst)]);
     }
@@ -745,11 +770,16 @@ function scr_node_draw_macro_spr_mask(_draw_x) {
     _row(y + 68, "HOT Y:",   string(_i[3]), _vx, _x2, c_lime);
     _row(y + 88, "WORK:",    scr_sprmask_hex(_i[4]), _vx, _x2, make_color_rgb(120, 220, 255));
     _row(y + 108, "ZP:",     scr_sprmask_hex(_i[5]), _vx, _x2, make_color_rgb(120, 220, 255));
+    var _sync_txt = "OFF";
+    if (real(_i[6]) > 0) {
+        _sync_txt = "ON (LINE $" + string_copy(scr_sprmask_hex(_i[6]), 4, 2) + ")";
+    }
+    _row(y + 128, "SYNC:",   _sync_txt, _vx, _x2, make_color_rgb(255, 180, 90));
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(140, 140, 140));
-    scr_node_macro_text_l(_draw_x + 6, y + 130, "12 ZP BYTES, SAVED + RESTORED");
+    scr_node_macro_text_l(_draw_x + 6, y + 150, "12 ZP BYTES, SAVED + RESTORED");
     draw_set_color(c_yellow);
-    scr_node_macro_text_l(_draw_x + 6, y + 146, "JSR " + anim_alias + "_sub");
+    scr_node_macro_text_l(_draw_x + 6, y + 166, "JSR " + anim_alias + "_sub");
 }
 
 function scr_node_step_macro_spr_mask(_draw_x) {
@@ -772,6 +802,17 @@ function scr_node_step_macro_spr_mask(_draw_x) {
     if (_in(y + 68, _vx, _x2))  { scr_anim_set_open_field(id, 3, string(instructions[0][3])); exit; }
     if (_in(y + 88, _vx, _x2))  { scr_anim_set_open_field(id, 4, scr_sprmask_hex(instructions[0][4])); exit; }
     if (_in(y + 108, _vx, _x2)) { scr_anim_set_open_field(id, 5, scr_sprmask_hex(instructions[0][5])); exit; }
+    if (_in(y + 128, _vx, _x2)) {
+        // SYNC toggles OFF <-> line $FB (bottom border). No typing needed.
+        if (real(instructions[0][6]) > 0) {
+            instructions[0][6] = 0;
+        } else {
+            instructions[0][6] = 0xFB;
+        }
+        global.addresses_dirty = true;
+        global.undo_dirty      = true;
+        exit;
+    }
     exit;
 }
 
@@ -801,6 +842,11 @@ function scr_sprmask_commit(_t, _idx, _input) {
     } else if (_idx == 5) {
         var _z = scr_sprmask_parse_num(_input);
         if (_z >= 0) { _t.instructions[0][5] = clamp(_z, 2, 0xF4); }
+    } else if (_idx == 6) {
+        // Raster line to commit on; blank or 0 = off.
+        var _ln = scr_sprmask_parse_num(_input);
+        if (_ln < 0) { _ln = 0; }
+        _t.instructions[0][6] = clamp(_ln, 0, 254);
     }
     global.addresses_dirty = true;
 }
@@ -817,6 +863,7 @@ function scr_sprmask_emit(_id, _list) {
     var _hot_y = real(_inst[3]);
     var _work  = real(_inst[4]) & 0xFFC0;
     var _z     = real(_inst[5]) & 0xFF;
+    var _sync  = clamp(real(_inst[6]), 0, 254);
 
     // Slots
     var _slots = [];
@@ -873,6 +920,42 @@ function scr_sprmask_emit(_id, _list) {
         array_push(_list, ["sta_lab", _p + "zs" + string(_k), _id]);
     }
 
+    if (_sync > 0) {
+        // Latch where the sprite was just moved to, then put it back where it
+        // is drawn now. The commit at the sync line moves it and swaps the
+        // frame in the same instant.
+        for (var _si = 0; _si < array_length(_slots); _si++) {
+            var _slot = _slots[_si];
+            var _sb   = 1 << _slot;
+            var _q    = _p + "s" + string(_si) + "_";
+            array_push(_list, ["lda_abs", 0xD000 + _slot * 2, _id]);
+            array_push(_list, ["sta_lab", _q + "nx",          _id]);
+            array_push(_list, ["lda_abs", 0xD001 + _slot * 2, _id]);
+            array_push(_list, ["sta_lab", _q + "ny",          _id]);
+            array_push(_list, ["lda_abs", 0xD010,             _id]);
+            array_push(_list, ["and_imm", _sb,                _id]);
+            array_push(_list, ["sta_lab", _q + "nh",          _id]);
+            array_push(_list, ["lda_lab", _q + "ci",          _id]);
+            array_push(_list, ["bne",     _q + "hv",          _id]);
+            array_push(_list, ["lda_lab", _q + "nx",          _id]);   // first call: nothing committed yet
+            array_push(_list, ["sta_lab", _q + "cx",          _id]);
+            array_push(_list, ["lda_lab", _q + "ny",          _id]);
+            array_push(_list, ["sta_lab", _q + "cy",          _id]);
+            array_push(_list, ["lda_lab", _q + "nh",          _id]);
+            array_push(_list, ["sta_lab", _q + "ch",          _id]);
+            array_push(_list, ["inc_lab", _q + "ci",          _id]);
+            array_push(_list, ["label",   _q + "hv"]);
+            array_push(_list, ["lda_lab", _q + "cx",          _id]);
+            array_push(_list, ["sta_abs", 0xD000 + _slot * 2, _id]);
+            array_push(_list, ["lda_lab", _q + "cy",          _id]);
+            array_push(_list, ["sta_abs", 0xD001 + _slot * 2, _id]);
+            array_push(_list, ["lda_abs", 0xD010,             _id]);
+            array_push(_list, ["and_imm", (~_sb) & 0xFF,      _id]);
+            array_push(_list, ["ora_lab", _q + "ch",          _id]);
+            array_push(_list, ["sta_abs", 0xD010,             _id]);
+        }
+    }
+
     if (_flag != "") {
         array_push(_list, ["lda_lab", _flag,           _id]);
         array_push(_list, ["bne",     _p + "on",       _id]);
@@ -897,12 +980,20 @@ function scr_sprmask_emit(_id, _list) {
     var _bit = 1 << _pos_slot;
     array_push(_list, ["lda_imm", 0,                        _id]);
     array_push(_list, ["sta_lab", _p + "xh",                _id]);
-    array_push(_list, ["lda_abs", 0xD010,                   _id]);
+    if (_sync > 0) {
+        array_push(_list, ["lda_lab", _p + "s0_nh",         _id]);
+    } else {
+        array_push(_list, ["lda_abs", 0xD010,               _id]);
+    }
     array_push(_list, ["and_imm", _bit,                     _id]);
     array_push(_list, ["beq",     _p + "xlo",               _id]);
     array_push(_list, ["inc_lab", _p + "xh",                _id]);
     array_push(_list, ["label",   _p + "xlo"]);
-    array_push(_list, ["lda_abs", 0xD000 + _pos_slot * 2,   _id]);
+    if (_sync > 0) {
+        array_push(_list, ["lda_lab", _p + "s0_nx",         _id]);
+    } else {
+        array_push(_list, ["lda_abs", 0xD000 + _pos_slot * 2, _id]);
+    }
     array_push(_list, ["sec",     0,                        _id]);
     array_push(_list, ["sbc_imm", 24,                       _id]);
     array_push(_list, ["sta_lab", _p + "fxl",               _id]);
@@ -920,7 +1011,11 @@ function scr_sprmask_emit(_id, _list) {
     array_push(_list, ["lda_lab", _p + "fxl",               _id]);
     array_push(_list, ["and_imm", 7,                        _id]);
     array_push(_list, ["sta_lab", _p + "sh",                _id]);
-    array_push(_list, ["lda_abs", 0xD001 + _pos_slot * 2,   _id]);
+    if (_sync > 0) {
+        array_push(_list, ["lda_lab", _p + "s0_ny",         _id]);
+    } else {
+        array_push(_list, ["lda_abs", 0xD001 + _pos_slot * 2, _id]);
+    }
     array_push(_list, ["sec",     0,                        _id]);
     array_push(_list, ["sbc_imm", 50,                       _id]);
     array_push(_list, ["bcs",     _p + "yok",               _id]);
@@ -1177,8 +1272,10 @@ function scr_sprmask_emit(_id, _list) {
         array_push(_list, ["dey", 0, _id]);
         array_push(_list, ["bpl", _q + "mcp", _id]);
         array_push(_list, ["label", _q + "copied"]);
-        array_push(_list, ["lda_lab", _q + "np",     _id]);
-        array_push(_list, ["sta_abs", _ptrs + _slot, _id]);
+        if (_sync == 0) {
+            array_push(_list, ["lda_lab", _q + "np",     _id]);
+            array_push(_list, ["sta_abs", _ptrs + _slot, _id]);
+        }
     }
     array_push(_list, ["lda_lab", _p + "tog",  _id]);
     array_push(_list, ["eor_imm", 1,           _id]);
@@ -1193,16 +1290,60 @@ function scr_sprmask_emit(_id, _list) {
         var _pa   = ((_wa - _bank_base) >> 6) & 0xFF;
         var _q    = _p + "s" + string(_si) + "_";
         array_push(_list, ["lda_abs", _ptrs + _slot, _id]);
+        if (_sync > 0) {
+            array_push(_list, ["sta_lab", _q + "np", _id]);      // default: keep the current frame
+        }
         array_push(_list, ["cmp_imm", _pa,           _id]);
         array_push(_list, ["beq",     _q + "rs",     _id]);
         array_push(_list, ["cmp_imm", _pa + 1,       _id]);
         array_push(_list, ["bne",     _q + "rn",     _id]);
         array_push(_list, ["label",   _q + "rs"]);
         array_push(_list, ["lda_lab", _q + "sv",     _id]);
-        array_push(_list, ["sta_abs", _ptrs + _slot, _id]);
+        if (_sync > 0) {
+            array_push(_list, ["sta_lab", _q + "np", _id]);
+        } else {
+            array_push(_list, ["sta_abs", _ptrs + _slot, _id]);
+        }
         array_push(_list, ["label",   _q + "rn"]);
     }
     array_push(_list, ["label", _p + "out"]);
+    if (_sync > 0) {
+        // Wait for the sync line (same two-stage wait as VWAIT literal mode),
+        // then move every slot and swap its frame together.
+        var _zone = (_sync + 1) & 0xFF;
+        array_push(_list, ["label",   _p + "wlo"]);
+        array_push(_list, ["lda_abs", 0xD011,     _id]);
+        array_push(_list, ["bmi",     _p + "wlo", _id]);
+        array_push(_list, ["lda_abs", 0xD012,     _id]);
+        array_push(_list, ["cmp_imm", _zone,      _id]);
+        array_push(_list, ["bcs",     _p + "wlo", _id]);
+        array_push(_list, ["label",   _p + "whi"]);
+        array_push(_list, ["lda_abs", 0xD011,     _id]);
+        array_push(_list, ["bmi",     _p + "wdn", _id]);
+        array_push(_list, ["lda_abs", 0xD012,     _id]);
+        array_push(_list, ["cmp_imm", _zone,      _id]);
+        array_push(_list, ["bcc",     _p + "whi", _id]);
+        array_push(_list, ["label",   _p + "wdn"]);
+        for (var _si = 0; _si < array_length(_slots); _si++) {
+            var _slot = _slots[_si];
+            var _sb   = 1 << _slot;
+            var _q    = _p + "s" + string(_si) + "_";
+            array_push(_list, ["lda_lab", _q + "nx",          _id]);
+            array_push(_list, ["sta_abs", 0xD000 + _slot * 2, _id]);
+            array_push(_list, ["sta_lab", _q + "cx",          _id]);
+            array_push(_list, ["lda_lab", _q + "ny",          _id]);
+            array_push(_list, ["sta_abs", 0xD001 + _slot * 2, _id]);
+            array_push(_list, ["sta_lab", _q + "cy",          _id]);
+            array_push(_list, ["lda_abs", 0xD010,             _id]);
+            array_push(_list, ["and_imm", (~_sb) & 0xFF,      _id]);
+            array_push(_list, ["ora_lab", _q + "nh",          _id]);
+            array_push(_list, ["sta_abs", 0xD010,             _id]);
+            array_push(_list, ["lda_lab", _q + "nh",          _id]);
+            array_push(_list, ["sta_lab", _q + "ch",          _id]);
+            array_push(_list, ["lda_lab", _q + "np",          _id]);
+            array_push(_list, ["sta_abs", _ptrs + _slot,      _id]);
+        }
+    }
     for (var _k = 0; _k < 12; _k++) {
         array_push(_list, ["lda_lab", _p + "zs" + string(_k), _id]);
         array_push(_list, ["sta_zp",  _z + _k,               _id]);
@@ -1226,6 +1367,13 @@ function scr_sprmask_emit(_id, _list) {
         array_push(_list, ["byte",  0, _id]);
         array_push(_list, ["label", _q + "np"]);
         array_push(_list, ["byte",  0, _id]);
+        if (_sync > 0) {
+            var _sv_names = ["nx", "ny", "nh", "cx", "cy", "ch", "ci"];
+            for (var _k = 0; _k < array_length(_sv_names); _k++) {
+                array_push(_list, ["label", _q + _sv_names[_k]]);
+                array_push(_list, ["byte",  0, _id]);
+            }
+        }
     }
     array_push(_list, ["label", _p + "pl"]);
     for (var _k = 0; _k < 16; _k++) { array_push(_list, ["byte", 0, _id]); }
