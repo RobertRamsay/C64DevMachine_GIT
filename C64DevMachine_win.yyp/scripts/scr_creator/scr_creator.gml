@@ -56,7 +56,8 @@ function scr_creator_init() {
     global.creator_dock         = {
         on: false, x1: 0, y1: 0, x2: 0, y2: 0, hx1: 0, hx2: 0, bx1: -1,
         scale: CREATOR_DOCK_SCALE, scroll: 0, content_h: 0, view_h: 0,
-        items: [], surf: -1, bar_drag: false
+        items: [], surf: -1, bar_drag: false,
+        has_params: false   // any dockable params in the workspace (not just in view)
     };
     global.creator_dock_hover   = false;
     // Pointer used for widget hover while drawing (room or GUI space).
@@ -2750,8 +2751,30 @@ function scr_creator_dock_build() {
     var _dk = global.creator_dock;
     _dk.on    = false;
     _dk.items = [];
+    _dk.has_params = false;
     if (global.creator_card_mode != CREATOR_CARDS_DOCK && global.creator_card_mode != CREATOR_CARDS_DOCK_L) {
         exit;
+    }
+    // Any params the dock could ever show, wherever they are in the
+    // workspace: DOCK L only takes over the opcode shelf when there are some
+    // (scr_shelf_hidden). Counted over the whole workspace, not the view, so
+    // panning doesn't make the shelf come and go.
+    var _panelled_all = scr_creator_panelled_nodes();
+    with (obj_c64_node) {
+        if (array_length(params) == 0 || macro_owner != noone || creator_covered) {
+            continue;
+        }
+        var _in_panel_all = false;
+        for (var _k = 0; _k < array_length(_panelled_all); _k++) {
+            if (_panelled_all[_k] == id) {
+                _in_panel_all = true;
+                break;
+            }
+        }
+        if (!_in_panel_all) {
+            _dk.has_params = true;
+            break;
+        }
     }
     if (obj_workspace_manager.hideui) {
         exit;
@@ -3067,12 +3090,14 @@ function scr_creator_draw_goto_label(_sc, _ox, _oy) {
 
 
 /// True while the opcode shelf on the left is not shown: expert mode, or
-/// the param dock is in DOCK L (a temporary hide - expert mode is untouched).
+/// the param dock is in DOCK L and has params to show (a temporary hide -
+/// expert mode is untouched). A workspace with no dockable params keeps the
+/// shelf and its opcodes in DOCK L.
 function scr_shelf_hidden() {
     if (obj_workspace_manager.expert_mode) {
         return true;
     }
-    if (global.creator_card_mode == CREATOR_CARDS_DOCK_L) {
+    if (global.creator_card_mode == CREATOR_CARDS_DOCK_L && global.creator_dock.has_params) {
         return true;
     }
     return false;
