@@ -1,0 +1,33 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+index c56bb24..9dc44a7 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+@@ -1000,7 +1000,20 @@ function scr_sprmask_emit(_id, _list) {
+     array_push(_list, ["lda_lab", _p + "xh",                _id]);
+     array_push(_list, ["sbc_imm", 0,                        _id]);
+     array_push(_list, ["bpl",     _p + "xok",               _id]);
++    // Sprite hanging off the left edge (fx -23..-1): still mask the part over
++    // the bitmap. cx goes negative (-3..-1); columns left of the bitmap read
++    // as >= 40 unsigned and fall into the unmasked path. Fully off: restore.
++    array_push(_list, ["lda_lab", _p + "fxl",               _id]);
++    array_push(_list, ["cmp_imm", 233,                      _id]);   // fx >= -23
++    array_push(_list, ["bcs",     _p + "xneg",              _id]);
+     array_push(_list, ["jmp_abs", _p + "restore",           _id]);   // left of the bitmap
++    array_push(_list, ["label",   _p + "xneg"]);
++    array_push(_list, ["lsr_a",   0,                        _id]);
++    array_push(_list, ["lsr_a",   0,                        _id]);
++    array_push(_list, ["lsr_a",   0,                        _id]);
++    array_push(_list, ["ora_imm", 0xE0,                     _id]);   // sign-extend fx >> 3
++    array_push(_list, ["sta_lab", _p + "cx",                _id]);
++    array_push(_list, ["jmp_abs", _p + "xcx",               _id]);
+     array_push(_list, ["label",   _p + "xok"]);
+     array_push(_list, ["lsr_a",   0,                        _id]);   // fx >> 3
+     array_push(_list, ["lda_lab", _p + "fxl",               _id]);
+@@ -1008,6 +1021,7 @@ function scr_sprmask_emit(_id, _list) {
+     array_push(_list, ["lsr_a",   0,                        _id]);
+     array_push(_list, ["lsr_a",   0,                        _id]);
+     array_push(_list, ["sta_lab", _p + "cx",                _id]);
++    array_push(_list, ["label",   _p + "xcx"]);
+     array_push(_list, ["lda_lab", _p + "fxl",               _id]);
+     array_push(_list, ["and_imm", 7,                        _id]);
+     array_push(_list, ["sta_lab", _p + "sh",                _id]);
