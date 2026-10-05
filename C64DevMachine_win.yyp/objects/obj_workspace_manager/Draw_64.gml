@@ -45,7 +45,9 @@ if (!expert_mode) {
 
 //color ref palette:
 var _psc = 0.8
-if showPaletteHelper draw_sprite_ext(spr_palette,0, 1640,980,_psc,_psc,0,c_white,1)
+// Colour reference strip no longer drawn: frees the right side of the
+// screen for the param dock. (OPTIONS > PALETTE HELPER has no effect now.)
+//if showPaletteHelper draw_sprite_ext(spr_palette,0, 1640,980,_psc,_psc,0,c_white,1)
 
 
 /////////////////////////////////////////////////////////////////

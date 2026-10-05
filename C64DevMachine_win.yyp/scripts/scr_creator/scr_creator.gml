@@ -2704,14 +2704,9 @@ function scr_creator_card_blocked(_x1, _y1, _w, _h, _self) {
     return _hit;
 }
 
-/// Right edge the dock must stay left of: the shortcut list at the top
-/// right, and the colour reference strip when it is showing.
+/// Right edge the dock must stay left of: the shortcut list at the top right.
 function scr_creator_dock_right() {
-    var _r = display_get_gui_width() - 2 - 270 - 10;
-    if (obj_workspace_manager.showPaletteHelper) {
-        _r = min(_r, 1640 - 80 - 10);
-    }
-    return _r;
+    return display_get_gui_width() - 2 - 270 - 10;
 }
 
 /// DOCK mode: params of nodes in view (a folded node counts where its
