@@ -66,6 +66,15 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _vy1 = 40;
         _vy2 = _gui_h - 40;
     }
+    // LINE_COLL: full screen (left tools / centred canvas / right list) -
+    // same bounds as Draw GUI
+    if (asset_list[|viewer_asset].type == "LINE_COLL") {
+        _wide_modal = true;
+        _vx1 = 30;
+        _vx2 = _gui_w - 30;
+        _vy1 = 40;
+        _vy2 = _gui_h - 40;
+    }
     // MAP_DATA: almost the whole screen - same bounds as Draw GUI
     if (asset_list[|viewer_asset].type == "MAP_DATA") {
         _vx1 = 12;
@@ -2233,6 +2242,15 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open && !(_wide_mo
                 _new_asset.meta.edit_mode             = false;
                 _new_asset.meta.drag_line             = -1;
                 _new_asset.meta.drag_end              = 0;
+                _new_asset.meta.active_type           = 1;
+                _new_asset.meta.draw_x1               = -1;
+                _new_asset.meta.draw_y1               = -1;
+                _new_asset.meta.ref_enabled           = false;
+                _new_asset.meta.ref_asset_name        = "";
+                _new_asset.meta.ref_offset_x          = 0;
+                _new_asset.meta.ref_offset_y          = 0;
+                _new_asset.meta.line_scroll           = 0;
+                _new_asset.meta.ref_picker_open       = false;
 				_new_asset.meta.lines                 = [];
 				_new_asset.meta.inline_edit_open      = false;
 				_new_asset.meta.inline_edit_text      = _new_asset.meta.line_string;

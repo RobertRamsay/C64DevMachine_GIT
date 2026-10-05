@@ -1,0 +1,960 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 1827295..656d80b 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -827,6 +827,13 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+         _vy1 = 40;
+         _vy2 = _gui_h - 40;
+     }
++    // LINE_COLL: full screen. Must match obj_asset_manager Step.
++    if (_asset.type == "LINE_COLL") {
++        _vx1 = 30;
++        _vx2 = _gui_w - 30;
++        _vy1 = 40;
++        _vy2 = _gui_h - 40;
++    }
+     // MAP_DATA: almost the whole screen - the map wants the height.
+     // Must match obj_asset_manager Step.
+     if (_asset.type == "MAP_DATA") {
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index b343b4d..3df8e41 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -66,6 +66,15 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+         _vy1 = 40;
+         _vy2 = _gui_h - 40;
+     }
++    // LINE_COLL: full screen (left tools / centred canvas / right list) -
++    // same bounds as Draw GUI
++    if (asset_list[|viewer_asset].type == "LINE_COLL") {
++        _wide_modal = true;
++        _vx1 = 30;
++        _vx2 = _gui_w - 30;
++        _vy1 = 40;
++        _vy2 = _gui_h - 40;
++    }
+     // MAP_DATA: almost the whole screen - same bounds as Draw GUI
+     if (asset_list[|viewer_asset].type == "MAP_DATA") {
+         _vx1 = 12;
+@@ -2233,6 +2242,15 @@ if (mouse_check_button_pressed(mb_left) && !global.any_picker_open && !(_wide_mo
+                 _new_asset.meta.edit_mode             = false;
+                 _new_asset.meta.drag_line             = -1;
+                 _new_asset.meta.drag_end              = 0;
++                _new_asset.meta.active_type           = 1;
++                _new_asset.meta.draw_x1               = -1;
++                _new_asset.meta.draw_y1               = -1;
++                _new_asset.meta.ref_enabled           = false;
++                _new_asset.meta.ref_asset_name        = "";
++                _new_asset.meta.ref_offset_x          = 0;
++                _new_asset.meta.ref_offset_y          = 0;
++                _new_asset.meta.line_scroll           = 0;
++                _new_asset.meta.ref_picker_open       = false;
+ 				_new_asset.meta.lines                 = [];
+ 				_new_asset.meta.inline_edit_open      = false;
+ 				_new_asset.meta.inline_edit_text      = _new_asset.meta.line_string;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml b/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
+index 5c170ff..c230772 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_line_coll_support/scr_line_coll_support.gml
+@@ -129,82 +129,140 @@ function scr_line_coll_history_step(_asset, _redo) {
+ }
+ 
+ /// @function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+-/// Dedicated visual editor for LINE_COLL assets. Click-drag on the canvas
+-/// places a line (mousedown = start, mouseup = end); the active TYPE
+-/// selector (0-7) is baked into each new line. An optional BITMAP reference
+-/// can be shown underneath at a configurable X/Y offset to trace over.
+-/// meta.lines[] is the single source of truth — every change re-flushes
+-/// through scr_line_coll_flush so the compiled buffer stays in sync.
++/// Full-width LINE_COLL editor.
++///   LEFT   reference bitmap, coordinate mode, line type, tools
++///   CENTRE the canvas, scaled to fit and centred
++///   RIGHT  the line list
++/// Click-drag on the canvas places a line with the active TYPE. EDIT POINTS
++/// (or ALT held) shows the end points so they can be dragged. meta.lines[] is
++/// the single source of truth; every change goes through scr_line_coll_commit.
+ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     var _m = _asset.meta;
++    draw_set_font_l(fnt_c64_tiny);
++    draw_set_halign(fa_left);
+ 
+-    // ── Ensure editor state exists ──
+-    if (!variable_struct_exists(_m, "lines"))          _m.lines = [];
+-    if (!variable_struct_exists(_m, "active_type"))    _m.active_type = 1;
+-    if (!variable_struct_exists(_m, "draw_x1"))        _m.draw_x1 = -1;
+-    if (!variable_struct_exists(_m, "draw_y1"))        _m.draw_y1 = -1;
+-    if (!variable_struct_exists(_m, "ref_enabled"))    _m.ref_enabled = false;
+-    if (!variable_struct_exists(_m, "ref_asset_name")) _m.ref_asset_name = "";
+-    if (!variable_struct_exists(_m, "ref_offset_x"))   _m.ref_offset_x = 0;
+-    if (!variable_struct_exists(_m, "ref_offset_y"))   _m.ref_offset_y = 0;
+-    if (!variable_struct_exists(_m, "line_scroll"))    _m.line_scroll = 0;
+-    if (!variable_struct_exists(_m, "ref_picker_open")) _m.ref_picker_open = false;
+-
+-    // ── CANVAS BOX — 256x256 byte-limited coordinate space ──
+-    var _box_x = _vx1 + 20;
+-    var _box_y = _cy + 40;
+-    var _box_w = 256 * 2; // 512 on-screen px
+-    var _box_h = 256 * 2;
+-    // WIDE X: one X unit = 2 bitmap pixels, so 0-159 spans the full 320-wide
+-    // screen. Drawn 4 px per unit, which keeps the reference bitmap at its
+-    // usual 2x and the lines on top of it.
+-    var _xs    = 2;
+-    var _x_max = 255;
++    var _press   = mouse_check_button_pressed(mb_left);
++    var _alt_hot = keyboard_check(vk_alt);
++
++    // ── LAYOUT ──
++    var _top    = _cy + 4;
++    var _bottom = _vy2 - 112;            // the INJECTED footer sits below this
++    var _lw     = 260;
++    var _lx     = _vx1 + 20;
++    var _rw     = 280;
++    var _rx     = _vx2 - 20 - _rw;
++    var _ax1    = _lx + _lw + 30;
++    var _ax2    = _rx - 30;
++    var _aw     = _ax2 - _ax1;
++    var _ah     = _bottom - (_top + 26);
++
++    // Canvas: 256 rows of Y. X is 256 units, or 160 two-pixel units (320 px)
++    // in WIDE mode. _ys = screen px per bitmap pixel; the reference bitmap is
++    // always drawn at that scale so lines and picture line up.
++    var _span_px = 256;
++    var _x_max   = 255;
+     if (_m.wide_x) {
+-        _xs    = 4;
+-        _x_max = 159;
+-        _box_w = 160 * 4;
++        _span_px = 320;
++        _x_max   = 159;
+     }
++    var _ys = max(1, floor(min(_aw / _span_px, _ah / 256)));
++    var _xs = _ys;
++    if (_m.wide_x) {
++        _xs = _ys * 2;
++    }
++    var _box_w = _span_px * _ys;
++    var _box_h = 256 * _ys;
++    var _box_x = floor(_ax1 + (_aw - _box_w) * 0.5);
++    var _box_y = _top + 26;
+ 
+-    // ── OPTIONAL BITMAP REFERENCE ──
+-    var _ref_toggle_x1 = _vx1 + 10;
+-    var _ref_toggle_x2 = _ref_toggle_x1 + 140;
+-    var _ref_toggle_y1 = _cy;
+-    var _ref_toggle_y2 = _cy + 20;
+-    var _ref_toggle_hov = point_in_rectangle(_mx, _my, _ref_toggle_x1, _ref_toggle_y1, _ref_toggle_x2, _ref_toggle_y2);
+-    draw_set_color(_m.ref_enabled ? make_color_rgb(60, 160, 90) : (_ref_toggle_hov ? make_color_rgb(80, 80, 80) : make_color_rgb(40, 40, 40)));
+-    draw_rectangle(_ref_toggle_x1, _ref_toggle_y1, _ref_toggle_x2, _ref_toggle_y2, false);
+-    draw_set_font_l(fnt_c64_tiny);
+-    draw_set_color(c_white);
+-    draw_set_halign(fa_center);
+-    draw_text_l(_ref_toggle_x1 + 70, _ref_toggle_y1 + 4, L("REFERENCE: ") + (_m.ref_enabled ? L("ON") : L("OFF")));
+-    draw_set_halign(fa_left);
+-    if (_ref_toggle_hov && mouse_check_button_pressed(mb_left)) {
+-        _m.ref_enabled = !_m.ref_enabled;
++    var _type_colours = [];
++    for (var _tc = 0; _tc < 8; _tc++) {
++        array_push(_type_colours, scr_c64_pepto_colour(_tc));
+     }
+ 
+-    // WIDE X toggle. Existing lines are rescaled so they stay where they are.
+-    var _wx_x1  = _ref_toggle_x1 + 340;
+-    var _wx_x2  = _wx_x1 + 170;
+-    var _wx_hov = point_in_rectangle(_mx, _my, _wx_x1, _ref_toggle_y1, _wx_x2, _ref_toggle_y2);
+-    var _wx_col = make_color_rgb(40, 40, 40);
+-    if (_wx_hov) {
+-        _wx_col = make_color_rgb(80, 80, 80);
++    // While the reference dropdown is open, nothing underneath takes clicks.
++    var _ui_my = _my;
++    if (_m.ref_picker_open) {
++        _ui_my = -10000;
+     }
+-    if (_m.wide_x) {
+-        _wx_col = make_color_rgb(60, 120, 170);
++
++    var _btn = function(_x1, _y1, _w, _h, _label, _fill, _hov_fill, _mx2, _my2) {
++        var _hov = point_in_rectangle(_mx2, _my2, _x1, _y1, _x1 + _w, _y1 + _h);
++        draw_set_color(_fill);
++        if (_hov) { draw_set_color(_hov_fill); }
++        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _h, false);
++        draw_set_color(make_color_rgb(72, 83, 103));
++        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _h, true);
++        draw_set_color(c_white);
++        draw_set_halign(fa_center);
++        draw_text_l(_x1 + _w * 0.5, _y1 + floor(_h * 0.5) - 6, _label);
++        draw_set_halign(fa_left);
++        return (_hov && mouse_check_button_pressed(mb_left));
++    };
++    var _c_off  = make_color_rgb(31, 38, 54);
++    var _c_hov  = make_color_rgb(53, 61, 82);
++    var _c_on   = make_color_rgb(38, 94, 111);
++    var _c_head = make_color_rgb(154, 175, 198);
++
++    // ════════════════════════════════════════════════════════════════
++    // LEFT PANEL
++    // ════════════════════════════════════════════════════════════════
++    draw_set_color(make_color_rgb(23, 29, 42));
++    draw_rectangle(_lx - 10, _top - 6, _lx + _lw + 10, _bottom, false);
++    var _sy = _top + 4;
++
++    // ── 1 REFERENCE ──
++    draw_set_color(_c_head);
++    draw_text_l(_lx, _sy, "REFERENCE BITMAP"); _sy += 20;
++    var _ref_lbl = "SHOW REFERENCE: OFF";
++    var _ref_col = _c_off;
++    if (_m.ref_enabled) {
++        _ref_lbl = "SHOW REFERENCE: ON";
++        _ref_col = _c_on;
++    }
++    if (_btn(_lx, _sy, _lw, 24, _ref_lbl, _ref_col, _c_hov, _mx, _ui_my)) {
++        _m.ref_enabled = !_m.ref_enabled;
++    }
++    _sy += 30;
++    var _pick_y = _sy;
++    var _pick_lbl = "-- PICK BITMAP --";
++    if (_m.ref_asset_name != "") {
++        _pick_lbl = scr_bbuild_fit_name(_m.ref_asset_name, _lw - 20);
++    }
++    if (_btn(_lx, _sy, _lw, 24, _pick_lbl, _c_off, _c_hov, _mx, _my)) {
++        _m.ref_picker_open = !_m.ref_picker_open;
++        _press = false;
++    }
++    _sy += 30;
++    // Offset steppers
++    var _offs = [["REF X", "ref_offset_x"], ["REF Y", "ref_offset_y"]];
++    for (var _oi = 0; _oi < 2; _oi++) {
++        var _fld = _offs[_oi][1];
++        draw_set_color(make_color_rgb(16, 19, 29));
++        draw_rectangle(_lx, _sy, _lx + _lw - 64, _sy + 22, false);
++        draw_set_color(c_white);
++        draw_text_l(_lx + 8, _sy + 5, _offs[_oi][0] + ": " + string(_m[$ _fld]));
++        if (_btn(_lx + _lw - 58, _sy, 26, 22, "-", make_color_rgb(60, 25, 25), make_color_rgb(110, 45, 45), _mx, _ui_my)) {
++            _m[$ _fld] = clamp(_m[$ _fld] - 1, -255, 255);
++        }
++        if (_btn(_lx + _lw - 26, _sy, 26, 22, "+", make_color_rgb(25, 60, 25), make_color_rgb(45, 110, 45), _mx, _ui_my)) {
++            _m[$ _fld] = clamp(_m[$ _fld] + 1, -255, 255);
++        }
++        _sy += 28;
+     }
+-    draw_set_color(_wx_col);
+-    draw_rectangle(_wx_x1, _ref_toggle_y1, _wx_x2, _ref_toggle_y2, false);
+-    draw_set_color(c_white);
+-    draw_set_halign(fa_center);
+-    var _wx_lbl = "X: 0-255 (1:1)";
++    _sy += 10;
++
++    // ── 2 COORDINATES ──
++    draw_set_color(_c_head);
++    draw_text_l(_lx, _sy, "X COORDINATES"); _sy += 20;
++    var _wx_lbl = "X: 0-255 (1 = 1 PIXEL)";
++    var _wx_col = _c_off;
+     if (_m.wide_x) {
+-        _wx_lbl = "X: 320 WIDE (1 = 2PX)";
++        _wx_lbl = "X: 320 WIDE (1 = 2 PIXELS)";
++        _wx_col = _c_on;
+     }
+-    draw_text_l(_wx_x1 + 85, _ref_toggle_y1 + 4, _wx_lbl);
+-    draw_set_halign(fa_left);
+-    if (_wx_hov && mouse_check_button_pressed(mb_left)) {
++    if (_btn(_lx, _sy, _lw, 24, _wx_lbl, _wx_col, _c_hov, _mx, _ui_my)) {
++        // Rescale existing lines so they stay where they are.
+         scr_line_coll_push_undo(_m);
+         _m.wide_x = !_m.wide_x;
+         for (var _wl = 0; _wl < array_length(_m.lines); _wl++) {
+@@ -220,192 +278,178 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         scr_line_coll_commit(_asset);
+         exit;
+     }
++    _sy += 40;
+ 
+-    var _ref_asset = undefined;
+-    var _ref_dropdown_bottom = _cy + 20; // grows if the picker dropdown is open
+-    if (_m.ref_enabled) {
+-        // Reference asset name picker (BITMAP only)
+-        var _rpbx1 = _ref_toggle_x2 + 10;
+-        var _rpbx2 = _rpbx1 + 160;
+-        var _rpby1 = _cy;
+-        var _rpby2 = _cy + 20;
+-        var _rpbhov = point_in_rectangle(_mx, _my, _rpbx1, _rpby1, _rpbx2, _rpby2);
+-        draw_set_color(_rpbhov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
+-        draw_rectangle(_rpbx1, _rpby1, _rpbx2, _rpby2, false);
+-        draw_set_color(_m.ref_asset_name != "" ? c_lime : make_color_rgb(150, 150, 150));
+-        draw_text_l(_rpbx1 + 6, _rpby1 + 4, _m.ref_asset_name != "" ? _m.ref_asset_name : L("-- PICK BITMAP --"));
+-        if (_rpbhov && mouse_check_button_pressed(mb_left)) {
+-            _m.ref_picker_open = !_m.ref_picker_open;
++    // ── 3 LINE TYPE ──
++    draw_set_color(_c_head);
++    draw_text_l(_lx, _sy, "LINE TYPE  (RESULT VALUE)"); _sy += 20;
++    var _sw = floor((_lw - 3 * 8) / 4);
++    for (var _ti = 0; _ti < 8; _ti++) {
++        var _tbx1 = _lx + (_ti mod 4) * (_sw + 8);
++        var _tby1 = _sy + (_ti div 4) * 34;
++        var _tbx2 = _tbx1 + _sw;
++        var _tby2 = _tby1 + 26;
++        var _tb_hov = point_in_rectangle(_mx, _ui_my, _tbx1, _tby1, _tbx2, _tby2);
++        draw_set_color(_type_colours[_ti]);
++        draw_rectangle(_tbx1, _tby1, _tbx2, _tby2, false);
++        draw_set_color(make_color_rgb(60, 60, 60));
++        if (_tb_hov) { draw_set_color(make_color_rgb(200, 200, 200)); }
++        if (_m.active_type == _ti) { draw_set_color(c_white); }
++        draw_rectangle(_tbx1, _tby1, _tbx2, _tby2, true);
++        if (_m.active_type == _ti) {
++            draw_rectangle(_tbx1 + 1, _tby1 + 1, _tbx2 - 1, _tby2 - 1, true);
+         }
+-
+-        if (_m.ref_picker_open) {
+-            var _rp_list = [];
+-            for (var _rpi = 0; _rpi < ds_list_size(asset_list); _rpi++) {
+-                var _rp_a = ds_list_find_value(asset_list, _rpi);
+-                if (_rp_a.type == "BITMAP") array_push(_rp_list, _rp_a.name);
+-            }
+-            var _rp_y = _rpby2 + 2;
+-            var _rp_h = (array_length(_rp_list) * 18) + 4;
+-            draw_set_color(make_color_rgb(15, 15, 15));
+-            draw_rectangle(_rpbx1, _rp_y, _rpbx2, _rp_y + _rp_h, false);
+-            for (var _rpj = 0; _rpj < array_length(_rp_list); _rpj++) {
+-                var _rp_row_y1 = _rp_y + 2 + (_rpj * 18);
+-                var _rp_row_y2 = _rp_row_y1 + 18;
+-                var _rp_row_hov = point_in_rectangle(_mx, _my, _rpbx1, _rp_row_y1, _rpbx2, _rp_row_y2);
+-                draw_set_color(_rp_row_hov ? make_color_rgb(50, 90, 70) : make_color_rgb(15, 15, 15));
+-                draw_rectangle(_rpbx1, _rp_row_y1, _rpbx2, _rp_row_y2, false);
+-                draw_set_color(c_white);
+-                draw_text_l(_rpbx1 + 6, _rp_row_y1 + 3, _rp_list[_rpj]);
+-                if (_rp_row_hov && mouse_check_button_pressed(mb_left)) {
+-                    _m.ref_asset_name  = _rp_list[_rpj];
+-                    _m.ref_picker_open = false;
+-                }
+-            }
+-            // Push the dropdown's bottom edge past everything below it so the
+-            // offset steppers (and canvas) never sit underneath the open list.
+-            _ref_dropdown_bottom = _rp_y + _rp_h;
++        // Number in a contrasting box so it reads on every swatch colour
++        draw_set_color(c_black);
++        draw_rectangle(_tbx1 + 2, _tby1 + 2, _tbx1 + 14, _tby1 + 14, false);
++        draw_set_color(c_white);
++        draw_text_l(_tbx1 + 5, _tby1 + 2, string(_ti));
++        if (_tb_hov && _press) {
++            _m.active_type = _ti;
+         }
+-
+-        // X/Y offset steppers — placed below the toggle/picker row, and below
+-        // the picker dropdown too when it's open, so nothing overlaps.
+-        var _off_y = _ref_dropdown_bottom + 10;
+-        var _off_labels = [
+-            { label: "REF X: " + string(_m.ref_offset_x), field: "ref_offset_x" },
+-            { label: "REF Y: " + string(_m.ref_offset_y), field: "ref_offset_y" }
+-        ];
+-        for (var _oi = 0; _oi < 2; _oi++) {
+-            var _obx1 = _ref_toggle_x1 + (_oi * 160);
+-            var _obx2 = _obx1 + 70;
+-            var _obm1 = _obx2 + 4;
+-            var _obm2 = _obm1 + 20;
+-            var _obp1 = _obm2 + 4;
+-            var _obp2 = _obp1 + 20;
+-            draw_set_color(make_color_rgb(30, 30, 30));
+-            draw_rectangle(_obx1, _off_y, _obx2, _off_y + 18, false);
+-            draw_set_color(c_white);
+-            draw_text_l(_obx1 + 4, _off_y + 3, _off_labels[_oi].label);
+-            var _minus_hov = point_in_rectangle(_mx, _my, _obm1, _off_y, _obm2, _off_y + 18);
+-            draw_set_color(_minus_hov ? make_color_rgb(90, 40, 40) : make_color_rgb(50, 20, 20));
+-            draw_rectangle(_obm1, _off_y, _obm2, _off_y + 18, false);
+-            draw_set_color(c_white);
++    }
++    _sy += 76;
++
++    // ── 4 TOOLS ──
++    draw_set_color(_c_head);
++    draw_text_l(_lx, _sy, "TOOLS"); _sy += 20;
++    // EDIT POINTS: on only by clicking. ALT lights it (hot edit) without
++    // switching it on.
++    var _ed_col = _c_off;
++    if (_alt_hot) { _ed_col = make_color_rgb(120, 100, 30); }
++    if (_m.edit_mode) { _ed_col = make_color_rgb(200, 160, 40); }
++    var _ed_lbl = "EDIT POINTS: OFF  (HOLD ALT)";
++    if (_m.edit_mode) { _ed_lbl = "EDIT POINTS: ON"; }
++    if (_btn(_lx, _sy, _lw, 24, _ed_lbl, _ed_col, _c_hov, _mx, _ui_my)) {
++        _m.edit_mode = !_m.edit_mode;
++        _m.draw_x1   = -1;
++        _m.draw_y1   = -1;
++    }
++    _sy += 30;
++    var _hw = floor((_lw - 8) / 2);
++    var _hist_lbl = ["UNDO", "REDO"];
++    for (var _hb = 0; _hb < 2; _hb++) {
++        var _hb_has = array_length(_m.undo) > 0;
++        if (_hb == 1) { _hb_has = array_length(_m.redo) > 0; }
++        var _hb_x = _lx + _hb * (_hw + 8);
++        if (_hb_has) {
++            if (_btn(_hb_x, _sy, _hw, 24, _hist_lbl[_hb], make_color_rgb(40, 60, 90), make_color_rgb(70, 100, 150), _mx, _ui_my)) {
++                scr_line_coll_history_step(_asset, _hb == 1);
++                exit;
++            }
++        } else {
++            draw_set_color(make_color_rgb(24, 26, 34));
++            draw_rectangle(_hb_x, _sy, _hb_x + _hw, _sy + 24, false);
++            draw_set_color(make_color_rgb(90, 90, 90));
+             draw_set_halign(fa_center);
+-            draw_text_l(_obm1 + 10, _off_y + 3, "-");
+-            var _plus_hov = point_in_rectangle(_mx, _my, _obp1, _off_y, _obp2, _off_y + 18);
+-            draw_set_color(_plus_hov ? make_color_rgb(40, 90, 40) : make_color_rgb(20, 50, 20));
+-            draw_rectangle(_obp1, _off_y, _obp2, _off_y + 18, false);
+-            draw_set_color(c_white);
+-            draw_text_l(_obp1 + 10, _off_y + 3, "+");
++            draw_text_l(_hb_x + _hw * 0.5, _sy + 6, _hist_lbl[_hb]);
+             draw_set_halign(fa_left);
+-            if (_minus_hov && mouse_check_button_pressed(mb_left)) {
+-                _m[$ _off_labels[_oi].field] = clamp(_m[$ _off_labels[_oi].field] - 1, -255, 255);
+-            }
+-            if (_plus_hov && mouse_check_button_pressed(mb_left)) {
+-                _m[$ _off_labels[_oi].field] = clamp(_m[$ _off_labels[_oi].field] + 1, -255, 255);
+-            }
+         }
+-        _box_y = _off_y + 26;
++    }
++    _sy += 40;
+ 
+-        // Resolve the reference asset each frame (names can change elsewhere)
+-        if (_m.ref_asset_name != "") {
+-            for (var _rai = 0; _rai < ds_list_size(asset_list); _rai++) {
+-                var _ra2 = ds_list_find_value(asset_list, _rai);
+-                if (_ra2.type == "BITMAP" && _ra2.name == _m.ref_asset_name) { _ref_asset = _ra2; break; }
+-            }
+-        }
++    // ── HELP ──
++    draw_set_color(make_color_rgb(125, 146, 163));
++    var _help = [
++        "CLICK-DRAG: NEW LINE",
++        "ALT / EDIT POINTS: DRAG ENDS",
++        "CTRL+Z UNDO   CTRL+Y REDO",
++        "TYPE = VALUE IN THE RESULT VAR",
++        "0 = NO HIT, SO USE 1-7"
++    ];
++    for (var _hl = 0; _hl < array_length(_help); _hl++) {
++        draw_text_l(_lx, _sy, _help[_hl]);
++        _sy += 16;
++    }
++
++    // ════════════════════════════════════════════════════════════════
++    // CENTRE — CANVAS
++    // ════════════════════════════════════════════════════════════════
++    var _in_canvas = point_in_rectangle(_mx, _ui_my, _box_x, _box_y, _box_x + _box_w - 1, _box_y + _box_h - 1);
++    var _raw_px = clamp(floor((_mx - _box_x) / _xs), 0, _x_max);
++    var _raw_py = clamp(floor((_my - _box_y) / _ys), 0, 255);
++
++    // Status line above the canvas
++    draw_set_color(c_ltgray);
++    var _status = "MOUSE: OFF CANVAS";
++    if (_in_canvas) {
++        _status = "MOUSE: " + string(_raw_px) + ", " + string(_raw_py);
++    }
++    _status += "     MODE: ";
++    if (_m.edit_mode || _alt_hot) {
++        _status += "EDIT POINTS";
++    } else {
++        _status += "DRAW TYPE " + string(_m.active_type);
++    }
++    if (_m.wide_x) {
++        _status += "     X UNITS ARE 2 PIXELS";
+     }
++    draw_text_l(_box_x, _top + 4, _status);
+ 
+-    // ── DRAW CANVAS BACKGROUND ──
+     draw_set_color(make_color_rgb(20, 20, 30));
+     draw_rectangle(_box_x, _box_y, _box_x + _box_w, _box_y + _box_h, false);
+ 
+-    // Scissor everything drawn inside the canvas box (reference bitmap, lines,
+-    // drag preview) so nothing bleeds into the list column beside it.
+-    // gpu_set_scissor works in window px, not GUI px — scale by the same
+-    // ratio scr_asset_inline_editor_draw uses for its text-area scissor.
++    // Scissor (window px) keeps the reference, lines and drag preview inside.
+     var _sx_sc = window_get_width()  / global.gui_w;
+     var _sy_sc = window_get_height() / display_get_gui_height();
+-    gpu_set_scissor(
+-        floor(_box_x * _sx_sc),
+-        floor(_box_y * _sy_sc),
+-        ceil(_box_w * _sx_sc),
+-        ceil(_box_h * _sy_sc)
+-    );
+-
+-    // ── DRAW REFERENCE BITMAP (if enabled and resolved) ──
+-    if (_m.ref_enabled && _ref_asset != undefined
++    gpu_set_scissor(floor(_box_x * _sx_sc), floor(_box_y * _sy_sc),
++                    ceil(_box_w * _sx_sc), ceil(_box_h * _sy_sc));
++
++    // Reference bitmap
++    var _ref_asset = undefined;
++    if (_m.ref_asset_name != "") {
++        for (var _rai = 0; _rai < ds_list_size(asset_list); _rai++) {
++            var _ra2 = ds_list_find_value(asset_list, _rai);
++            if (_ra2.type == "BITMAP" && _ra2.name == _m.ref_asset_name) { _ref_asset = _ra2; break; }
++        }
++    }
++    if (_m.ref_enabled && !is_undefined(_ref_asset)
+         && variable_struct_exists(_ref_asset.meta, "preview_surf")
+         && surface_exists(_ref_asset.meta.preview_surf)) {
+-        // Reference bitmap is 320x200 C64 space; LINE_COLL canvas is 256x256.
+-        // Drawn at its offset, scaled 1:1 with the canvas's 2x zoom; the
+-        // scissor above (not draw_surface_ext itself) keeps it inside the box.
+-        var _draw_ox = _box_x + (_m.ref_offset_x * 2);
+-        var _draw_oy = _box_y + (_m.ref_offset_y * 2);
+-        var _prev_filter2 = gpu_get_texfilter();
++        var _prev_filter = gpu_get_texfilter();
+         gpu_set_texfilter(false);
+-        draw_surface_ext(_ref_asset.meta.preview_surf, _draw_ox, _draw_oy, 2, 2, 0, c_white, 0.7);
+-        gpu_set_texfilter(_prev_filter2);
++        draw_surface_ext(_ref_asset.meta.preview_surf,
++            _box_x + _m.ref_offset_x * _ys, _box_y + _m.ref_offset_y * _ys,
++            _ys, _ys, 0, c_white, 0.7);
++        gpu_set_texfilter(_prev_filter);
+     }
+ 
+-    var _in_canvas = point_in_rectangle(_mx, _my, _box_x, _box_y, _box_x + _box_w, _box_y + _box_h);
+-    var _raw_px = clamp(floor((_mx - _box_x) / _xs), 0, _x_max);
+-    var _raw_py = clamp(floor((_my - _box_y) / 2), 0, 255);
+-
+-    // ── TYPE COLOUR TABLE (type N shown in the actual C64 pen colour N) ──
+-    // Direct 1:1: type 0 swatch is pepto colour 0 (black), type 1 is pepto
+-    // colour 1 (white), etc. — the swatch itself is the debug readout, since
+-    // this is meant to match colour values the person will see/compare
+-    // elsewhere (e.g. a border colour set to the result byte).
+-    var _type_colours = [
+-        scr_c64_pepto_colour(0), // black
+-        scr_c64_pepto_colour(1), // white
+-        scr_c64_pepto_colour(2), // red
+-        scr_c64_pepto_colour(3), // cyan
+-        scr_c64_pepto_colour(4), // purple
+-        scr_c64_pepto_colour(5), // green
+-        scr_c64_pepto_colour(6), // blue
+-        scr_c64_pepto_colour(7)  // yellow
+-    ];
+-
+-    // ── DRAW EXISTING LINES ──
++    // Lines
++    var _lt = max(2, _ys);
+     for (var _li = 0; _li < array_length(_m.lines); _li++) {
+         var _ln = _m.lines[_li];
+-        var _lx1 = _box_x + (_ln.x1 * _xs);
+-        var _ly1 = _box_y + (_ln.y1 * 2);
+-        var _lx2 = _box_x + (_ln.x2 * _xs);
+-        var _ly2 = _box_y + (_ln.y2 * 2);
+         draw_set_color(_type_colours[clamp(_ln.type, 0, 7)]);
+-        draw_line_width(_lx1, _ly1, _lx2, _ly2, 2);
++        draw_line_width(_box_x + _ln.x1 * _xs + _xs * 0.5, _box_y + _ln.y1 * _ys + _ys * 0.5,
++                        _box_x + _ln.x2 * _xs + _xs * 0.5, _box_y + _ln.y2 * _ys + _ys * 0.5, _lt);
+     }
+ 
+-    // ── EDIT: endpoint handles (EDIT toggle on, or ALT held = hot edit) ──
+-    var _alt_hot = keyboard_check(vk_alt);
+-    var _editing = _m.edit_mode || _alt_hot || _m.drag_line >= 0;
++    // End point handles (EDIT on, ALT held, or a drag in progress)
++    var _editing  = _m.edit_mode || _alt_hot || _m.drag_line >= 0;
+     var _hit_line = -1;
+     var _hit_end  = 0;
+-    var _hit_best = 8 * 8;   // grab radius 8 screen px (squared)
++    var _hit_best = 10 * 10;
+     if (_editing) {
+         for (var _hi = 0; _hi < array_length(_m.lines); _hi++) {
+-            var _hl = _m.lines[_hi];
++            var _hl2 = _m.lines[_hi];
+             for (var _he = 0; _he < 2; _he++) {
+-                var _hx = _box_x + (_hl.x1 * _xs);
+-                var _hy = _box_y + (_hl.y1 * 2);
++                var _hx = _box_x + _hl2.x1 * _xs + _xs * 0.5;
++                var _hy = _box_y + _hl2.y1 * _ys + _ys * 0.5;
+                 if (_he == 1) {
+-                    _hx = _box_x + (_hl.x2 * _xs);
+-                    _hy = _box_y + (_hl.y2 * 2);
++                    _hx = _box_x + _hl2.x2 * _xs + _xs * 0.5;
++                    _hy = _box_y + _hl2.y2 * _ys + _ys * 0.5;
+                 }
+-                var _hd = sqr(_mx - _hx) + sqr(_my - _hy);
++                var _hd = sqr(_mx - _hx) + sqr(_ui_my - _hy);
+                 if (_hd <= _hit_best) {
+                     _hit_best = _hd;
+                     _hit_line = _hi;
+                     _hit_end  = _he;
+                 }
+                 draw_set_color(c_black);
+-                draw_rectangle(_hx - 4, _hy - 4, _hx + 4, _hy + 4, false);
++                draw_rectangle(_hx - 5, _hy - 5, _hx + 5, _hy + 5, false);
+                 draw_set_color(c_white);
+-                draw_rectangle(_hx - 3, _hy - 3, _hx + 3, _hy + 3, true);
++                draw_rectangle(_hx - 4, _hy - 4, _hx + 4, _hy + 4, true);
+             }
+         }
+-        // Highlight the handle under the pointer, or the one being dragged.
+         var _sel_line = _hit_line;
+         var _sel_end  = _hit_end;
+         if (_m.drag_line >= 0) {
+@@ -414,114 +458,29 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         }
+         if (_sel_line >= 0 && _sel_line < array_length(_m.lines)) {
+             var _sl = _m.lines[_sel_line];
+-            var _sx = _box_x + (_sl.x1 * _xs);
+-            var _sy = _box_y + (_sl.y1 * 2);
++            var _shx = _box_x + _sl.x1 * _xs + _xs * 0.5;
++            var _shy = _box_y + _sl.y1 * _ys + _ys * 0.5;
+             if (_sel_end == 1) {
+-                _sx = _box_x + (_sl.x2 * _xs);
+-                _sy = _box_y + (_sl.y2 * 2);
++                _shx = _box_x + _sl.x2 * _xs + _xs * 0.5;
++                _shy = _box_y + _sl.y2 * _ys + _ys * 0.5;
+             }
+             draw_set_color(c_yellow);
+-            draw_rectangle(_sx - 5, _sy - 5, _sx + 5, _sy + 5, false);
++            draw_rectangle(_shx - 6, _shy - 6, _shx + 6, _shy + 6, false);
+         }
+     }
+ 
+-    // Release scissor — everything below (border, type selector, list) sits
+-    // outside or spans past the canvas box and must not be clipped.
++    // Drag preview for a new line
++    if (_m.draw_x1 >= 0 && mouse_check_button(mb_left)) {
++        draw_set_color(_type_colours[clamp(_m.active_type, 0, 7)]);
++        draw_line_width(_box_x + _m.draw_x1 * _xs + _xs * 0.5, _box_y + _m.draw_y1 * _ys + _ys * 0.5,
++                        _box_x + _raw_px * _xs + _xs * 0.5, _box_y + _raw_py * _ys + _ys * 0.5, _lt);
++    }
+     gpu_set_scissor(0, 0, window_get_width(), window_get_height());
+-
+     draw_set_color(make_color_rgb(90, 90, 110));
+     draw_rectangle(_box_x, _box_y, _box_x + _box_w, _box_y + _box_h, true);
+ 
+-    // ── TYPE SELECTOR (0-7) ──
+-    var _type_y = _box_y + _box_h + 10;
+-    draw_set_font_l(fnt_c64_tiny);
+-    draw_set_color(c_ltgray);
+-    draw_text_l(_box_x, _type_y, "TYPE:");
+-    for (var _ti = 0; _ti < 8; _ti++) {
+-        var _tbx1 = _box_x + 40 + (_ti * 26);
+-        var _tbx2 = _tbx1 + 22;
+-        var _tby1 = _type_y - 2;
+-        var _tby2 = _tby1 + 18;
+-        var _tb_hov = point_in_rectangle(_mx, _my, _tbx1, _tby1, _tbx2, _tby2);
+-        var _tb_sel = (_m.active_type == _ti);
+-        // Filled swatch is the colour readout itself (type N = pepto colour N).
+-        // Always draw a filled swatch, with a brighter outline when selected/
+-        // hovered — outline-only (as before) would make the black (type 0)
+-        // and near-black swatches invisible against the dark panel.
+-        draw_set_color(_type_colours[_ti]);
+-        draw_rectangle(_tbx1, _tby1, _tbx2, _tby2, false);
+-        draw_set_color(_tb_sel ? c_white : (_tb_hov ? make_color_rgb(200, 200, 200) : make_color_rgb(60, 60, 60)));
+-        draw_rectangle(_tbx1, _tby1, _tbx2, _tby2, true);
+-        if (_tb_hov && mouse_check_button_pressed(mb_left)) {
+-            _m.active_type = _ti;
+-        }
+-        // Small index number under the swatch — position alone (1st, 2nd...)
+-        // should be enough once memorised, but this avoids any ambiguity.
+-        draw_set_halign(fa_center);
+-        draw_set_color(make_color_rgb(140, 140, 140));
+-        draw_text_l(_tbx1 + 11, _tby2 + 2, string(_ti));
+-        draw_set_halign(fa_left);
+-    }
+-
+-    // ── EDIT toggle / UNDO / REDO ──
+-    // EDIT is on only by clicking it. Holding ALT lights it (hot edit) without
+-    // turning it on.
+-    var _eb_x1  = _box_x + 262;
+-    var _eb_x2  = _eb_x1 + 110;
+-    var _eb_y1  = _type_y - 2;
+-    var _eb_y2  = _eb_y1 + 18;
+-    var _eb_hov = point_in_rectangle(_mx, _my, _eb_x1, _eb_y1, _eb_x2, _eb_y2);
+-    var _eb_col = make_color_rgb(40, 40, 40);
+-    if (_eb_hov) { _eb_col = make_color_rgb(70, 70, 70); }
+-    if (_alt_hot) { _eb_col = make_color_rgb(120, 100, 30); }
+-    if (_m.edit_mode) { _eb_col = make_color_rgb(200, 160, 40); }
+-    draw_set_color(_eb_col);
+-    draw_rectangle(_eb_x1, _eb_y1, _eb_x2, _eb_y2, false);
+-    draw_set_color(c_white);
+-    draw_set_halign(fa_center);
+-    draw_text_l((_eb_x1 + _eb_x2) / 2, _eb_y1 + 4, "EDIT POINTS");
+-    draw_set_halign(fa_left);
+-    if (_eb_hov && mouse_check_button_pressed(mb_left)) {
+-        _m.edit_mode = !_m.edit_mode;
+-        _m.draw_x1   = -1;
+-        _m.draw_y1   = -1;
+-    }
+-    var _hist_lbl = ["UNDO", "REDO"];
+-    for (var _hb = 0; _hb < 2; _hb++) {
+-        var _hb_x1  = _eb_x2 + 8 + (_hb * 66);
+-        var _hb_x2  = _hb_x1 + 60;
+-        var _hb_has = array_length(_m.undo) > 0;
+-        if (_hb == 1) { _hb_has = array_length(_m.redo) > 0; }
+-        var _hb_hov = _hb_has && point_in_rectangle(_mx, _my, _hb_x1, _eb_y1, _hb_x2, _eb_y2);
+-        var _hb_col = make_color_rgb(30, 30, 30);
+-        if (_hb_has) { _hb_col = make_color_rgb(40, 60, 90); }
+-        if (_hb_hov) { _hb_col = make_color_rgb(70, 100, 150); }
+-        draw_set_color(_hb_col);
+-        draw_rectangle(_hb_x1, _eb_y1, _hb_x2, _eb_y2, false);
+-        draw_set_color(c_white);
+-        if (!_hb_has) { draw_set_color(make_color_rgb(90, 90, 90)); }
+-        draw_set_halign(fa_center);
+-        draw_text_l((_hb_x1 + _hb_x2) / 2, _eb_y1 + 4, _hist_lbl[_hb]);
+-        draw_set_halign(fa_left);
+-        if (_hb_hov && mouse_check_button_pressed(mb_left)) {
+-            scr_line_coll_history_step(_asset, _hb == 1);
+-            exit;
+-        }
+-    }
+-    // CTRL+Z undo, CTRL+Y / CTRL+SHIFT+Z redo
+-    if (!global.is_any_text_active && scr_ctrl_held()) {
+-        if (keyboard_check_pressed(ord("Z"))) {
+-            scr_line_coll_history_step(_asset, keyboard_check(vk_shift));
+-            exit;
+-        }
+-        if (keyboard_check_pressed(ord("Y"))) {
+-            scr_line_coll_history_step(_asset, true);
+-            exit;
+-        }
+-    }
+-
+-    // ── EDIT: drag an endpoint ──
+-    if (_editing && _in_canvas && _hit_line >= 0 && _m.drag_line < 0 && mouse_check_button_pressed(mb_left)) {
++    // ── Canvas input ──
++    if (_editing && _in_canvas && _hit_line >= 0 && _m.drag_line < 0 && _press) {
+         scr_line_coll_push_undo(_m);
+         _m.drag_line = _hit_line;
+         _m.drag_end  = _hit_end;
+@@ -529,14 +488,12 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     if (_m.drag_line >= 0) {
+         if (_m.drag_line < array_length(_m.lines)) {
+             var _dln = _m.lines[_m.drag_line];
+-            var _dpx = clamp(floor((_mx - _box_x) / _xs), 0, _x_max);
+-            var _dpy = clamp(floor((_my - _box_y) / 2), 0, 255);
+             if (_m.drag_end == 0) {
+-                _dln.x1 = _dpx;
+-                _dln.y1 = _dpy;
++                _dln.x1 = _raw_px;
++                _dln.y1 = _raw_py;
+             } else {
+-                _dln.x2 = _dpx;
+-                _dln.y2 = _dpy;
++                _dln.x2 = _raw_px;
++                _dln.y2 = _raw_py;
+             }
+         }
+         if (!mouse_check_button(mb_left)) {
+@@ -544,124 +501,130 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+             scr_line_coll_commit(_asset);
+         }
+     }
+-
+-    // ── CLICK-DRAG LINE PLACEMENT (not while editing) ──
+-    if (_in_canvas && !_editing) {
+-        if (mouse_check_button_pressed(mb_left)) {
+-            _m.draw_x1 = _raw_px;
+-            _m.draw_y1 = _raw_py;
+-        }
++    if (_in_canvas && !_editing && _press) {
++        _m.draw_x1 = _raw_px;
++        _m.draw_y1 = _raw_py;
+     }
+     if (_m.draw_x1 >= 0 && mouse_check_button_released(mb_left)) {
+-        var _end_px = _in_canvas ? _raw_px : clamp(floor((_mx - _box_x) / _xs), 0, _x_max);
+-        var _end_py = _in_canvas ? _raw_py : clamp(floor((_my - _box_y) / 2), 0, 255);
+         scr_line_coll_push_undo(_m);
+-        array_push(_m.lines, { x1: _m.draw_x1, y1: _m.draw_y1, x2: _end_px, y2: _end_py, type: _m.active_type });
++        array_push(_m.lines, { x1: _m.draw_x1, y1: _m.draw_y1, x2: _raw_px, y2: _raw_py, type: _m.active_type });
+         _m.draw_x1 = -1;
+         _m.draw_y1 = -1;
+         scr_line_coll_commit(_asset);
+     }
+-    // In-progress drag preview — re-apply the canvas scissor just for this,
+-    // so a drag toward the list column doesn't paint over the list text.
+-    if (_m.draw_x1 >= 0 && mouse_check_button(mb_left)) {
+-        gpu_set_scissor(
+-            floor(_box_x * _sx_sc),
+-            floor(_box_y * _sy_sc),
+-            ceil(_box_w * _sx_sc),
+-            ceil(_box_h * _sy_sc)
+-        );
+-        var _px1 = _box_x + (_m.draw_x1 * _xs);
+-        var _py1 = _box_y + (_m.draw_y1 * 2);
+-        draw_set_color(_type_colours[clamp(_m.active_type, 0, 7)]);
+-        draw_line_width(_px1, _py1, _mx, _my, 2);
+-        gpu_set_scissor(0, 0, window_get_width(), window_get_height());
+-    }
+ 
+-    // ── LINE LIST (with delete) ──
+-    var _list_x1 = _box_x + _box_w + 20;
+-    var _list_x2 = min(_vx2 - 10, _list_x1 + 220);
+-    var _list_y1 = _box_y;
+-    var _row_h   = 20;
+-    var _rows_vis = max(1, floor((_box_h - 20) / _row_h));
+-    draw_set_color(c_ltgray);
+-    draw_text_l(_list_x1, _list_y1 - 20, L("LINES (") + string(array_length(_m.lines)) + "):");
+-
+-    // CLEAR button — wipes every line in this LINE_COLL asset.
+-    var _clr_w = 50;
+-    var _clr_x2 = _list_x2;
+-    var _clr_x1 = _clr_x2 - _clr_w;
+-    var _clr_y1 = _list_y1 - 21;
+-    var _clr_y2 = _clr_y1 + 16;
++    // ════════════════════════════════════════════════════════════════
++    // RIGHT PANEL — LINE LIST
++    // ════════════════════════════════════════════════════════════════
++    draw_set_color(make_color_rgb(23, 29, 42));
++    draw_rectangle(_rx - 10, _top - 6, _rx + _rw + 10, _bottom, false);
++    draw_set_color(_c_head);
++    draw_text_l(_rx, _top + 4, "LINES (" + string(array_length(_m.lines)) + ")");
+     var _has_lines = array_length(_m.lines) > 0;
+-    var _clr_hov = _has_lines && point_in_rectangle(_mx, _my, _clr_x1, _clr_y1, _clr_x2, _clr_y2);
+-    draw_set_color(_has_lines ? (_clr_hov ? make_color_rgb(200, 60, 60) : make_color_rgb(110, 30, 30)) : make_color_rgb(40, 40, 40));
+-    draw_rectangle(_clr_x1, _clr_y1, _clr_x2, _clr_y2, false);
+-    draw_set_color(_has_lines ? c_white : make_color_rgb(90, 90, 90));
+-    draw_set_halign(fa_center);
+-    draw_text_l(_clr_x1 + (_clr_w / 2), _clr_y1 + 3, "CLEAR");
+-    draw_set_halign(fa_left);
+-    if (_has_lines && _clr_hov && mouse_check_button_pressed(mb_left)) {
+-        scr_line_coll_push_undo(_m);
+-        _m.lines = [];
+-        _m.line_scroll = 0;
+-        scr_line_coll_commit(_asset);
++    if (_has_lines) {
++        if (_btn(_rx + _rw - 60, _top, 60, 20, "CLEAR", make_color_rgb(110, 30, 30), make_color_rgb(200, 60, 60), _mx, _ui_my)) {
++            scr_line_coll_push_undo(_m);
++            _m.lines = [];
++            _m.line_scroll = 0;
++            scr_line_coll_commit(_asset);
++        }
+     }
+-
+-    var _total_lines = array_length(_m.lines);
+-    _m.line_scroll = clamp(_m.line_scroll, 0, max(0, _total_lines - _rows_vis));
+-
+-    // "N more above" indicator — replaces the top row slot when scrolled down.
+-    var _more_above = _m.line_scroll;
+-    var _row_start  = 0;
+-    if (_more_above > 0) {
+-        draw_set_font_l(fnt_c64_tiny);
+-        draw_set_color(make_color_rgb(140, 140, 140));
+-        draw_text_l(_list_x1 + 10, _list_y1 + 3, "^ " + string(_more_above) + L(" more above"));
+-        _row_start = 1;
++    var _list_y1  = _top + 30;
++    var _row_h    = 22;
++    var _rows_vis = max(1, floor((_bottom - 10 - _list_y1) / _row_h));
++    var _total    = array_length(_m.lines);
++    _m.line_scroll = clamp(_m.line_scroll, 0, max(0, _total - _rows_vis));
++    if (point_in_rectangle(_mx, _ui_my, _rx, _list_y1, _rx + _rw, _list_y1 + _rows_vis * _row_h)) {
++        if (mouse_wheel_up())   { _m.line_scroll = max(0, _m.line_scroll - 1); }
++        if (mouse_wheel_down()) { _m.line_scroll = min(max(0, _total - _rows_vis), _m.line_scroll + 1); }
+     }
+-
+     var _delete_idx = -1;
+-    for (var _vi = _row_start; _vi < _rows_vis; _vi++) {
++    for (var _vi = 0; _vi < _rows_vis; _vi++) {
+         var _idx = _vi + _m.line_scroll;
+-        if (_idx >= _total_lines) break;
+-        // Reserve the last visible slot for a "more below" indicator if there
+-        // are additional rows past what fits — unless this is the final one.
+-        var _remaining_after = _total_lines - _idx - 1;
+-        var _is_last_slot     = (_vi == _rows_vis - 1);
+-        if (_is_last_slot && _remaining_after > 0) {
+-            var _fy1 = _list_y1 + (_vi * _row_h);
+-            draw_set_font_l(fnt_c64_tiny);
+-            draw_set_color(make_color_rgb(140, 140, 140));
+-            draw_text_l(_list_x1 + 10, _fy1 + 3, "v " + string(_remaining_after + 1) + L(" more below"));
+-            break;
+-        }
++        if (_idx >= _total) break;
+         var _row_ln = _m.lines[_idx];
+-        var _ry1 = _list_y1 + (_vi * _row_h);
+-        var _ry2 = _ry1 + _row_h - 2;
+-        draw_set_color(make_color_rgb(25, 25, 25));
+-        draw_rectangle(_list_x1, _ry1, _list_x2, _ry2, false);
++        var _ry1 = _list_y1 + _vi * _row_h;
++        var _ry2 = _ry1 + _row_h - 3;
++        var _row_hov = point_in_rectangle(_mx, _ui_my, _rx, _ry1, _rx + _rw, _ry2);
++        draw_set_color(make_color_rgb(16, 19, 29));
++        if (_row_hov) { draw_set_color(make_color_rgb(35, 42, 58)); }
++        if (_m.drag_line == _idx) { draw_set_color(make_color_rgb(70, 60, 20)); }
++        draw_rectangle(_rx, _ry1, _rx + _rw, _ry2, false);
+         draw_set_color(_type_colours[clamp(_row_ln.type, 0, 7)]);
+-        draw_rectangle(_list_x1, _ry1, _list_x1 + 6, _ry2, false);
++        draw_rectangle(_rx, _ry1, _rx + 6, _ry2, false);
+         draw_set_color(c_white);
+-        draw_set_font_l(fnt_c64_tiny);
+-        draw_text_l(_list_x1 + 10, _ry1 + 3,
+-            string(_row_ln.x1) + "," + string(_row_ln.y1) + " -> " + string(_row_ln.x2) + "," + string(_row_ln.y2) + " T" + string(_row_ln.type));
+-        var _delx1 = _list_x2 - 20;
+-        var _del_hov = point_in_rectangle(_mx, _my, _delx1, _ry1, _list_x2, _ry2);
+-        draw_set_color(_del_hov ? c_red : make_color_rgb(120, 60, 60));
+-        draw_text_l(_delx1 + 2, _ry1 + 3, "X");
+-        if (_del_hov && mouse_check_button_pressed(mb_left)) {
++        draw_text_l(_rx + 12, _ry1 + 4, string(_idx + 1) + ":  " + string(_row_ln.x1) + "," + string(_row_ln.y1)
++            + " -> " + string(_row_ln.x2) + "," + string(_row_ln.y2) + "   T" + string(_row_ln.type));
++        var _dx1 = _rx + _rw - 22;
++        var _del_hov = point_in_rectangle(_mx, _ui_my, _dx1, _ry1, _rx + _rw, _ry2);
++        draw_set_color(make_color_rgb(120, 60, 60));
++        if (_del_hov) { draw_set_color(c_red); }
++        draw_text_l(_dx1 + 6, _ry1 + 4, "X");
++        if (_del_hov && _press) {
+             _delete_idx = _idx;
+         }
+     }
++    if (_total > _rows_vis) {
++        draw_set_color(make_color_rgb(125, 146, 163));
++        draw_text_l(_rx, _list_y1 + _rows_vis * _row_h + 2,
++            "SHOWING " + string(_m.line_scroll + 1) + "-" + string(min(_total, _m.line_scroll + _rows_vis))
++            + " OF " + string(_total) + "  (WHEEL)");
++    }
+     if (_delete_idx >= 0) {
+         scr_line_coll_push_undo(_m);
+         array_delete(_m.lines, _delete_idx, 1);
+         scr_line_coll_commit(_asset);
+     }
+-    if (point_in_rectangle(_mx, _my, _list_x1, _list_y1, _list_x2, _list_y1 + (_rows_vis * _row_h))) {
+-        if (mouse_wheel_up())   _m.line_scroll = max(0, _m.line_scroll - 1);
+-        if (mouse_wheel_down()) _m.line_scroll = min(max(0, _total_lines - _rows_vis), _m.line_scroll + 1);
++
++    // ── Keys ──
++    if (!global.is_any_text_active && scr_ctrl_held()) {
++        if (keyboard_check_pressed(ord("Z"))) {
++            scr_line_coll_history_step(_asset, keyboard_check(vk_shift));
++            exit;
++        }
++        if (keyboard_check_pressed(ord("Y"))) {
++            scr_line_coll_history_step(_asset, true);
++            exit;
++        }
++    }
++
++    // ── Reference dropdown (drawn last so it sits on top) ──
++    if (_m.ref_picker_open) {
++        var _rp_list = [];
++        for (var _rpi = 0; _rpi < ds_list_size(asset_list); _rpi++) {
++            var _rp_a = ds_list_find_value(asset_list, _rpi);
++            if (_rp_a.type == "BITMAP") { array_push(_rp_list, _rp_a.name); }
++        }
++        var _rp_y = _pick_y + 26;
++        draw_set_color(make_color_rgb(12, 14, 20));
++        draw_rectangle(_lx, _rp_y, _lx + _lw, _rp_y + max(1, array_length(_rp_list)) * 22 + 4, false);
++        draw_set_color(make_color_rgb(72, 83, 103));
++        draw_rectangle(_lx, _rp_y, _lx + _lw, _rp_y + max(1, array_length(_rp_list)) * 22 + 4, true);
++        if (array_length(_rp_list) == 0) {
++            draw_set_color(c_gray);
++            draw_text_l(_lx + 8, _rp_y + 6, "NO BITMAP ASSETS");
++        }
++        for (var _rpj = 0; _rpj < array_length(_rp_list); _rpj++) {
++            var _r1 = _rp_y + 2 + _rpj * 22;
++            var _rh = point_in_rectangle(_mx, _my, _lx, _r1, _lx + _lw, _r1 + 20);
++            if (_rh) {
++                draw_set_color(make_color_rgb(45, 70, 90));
++                draw_rectangle(_lx + 2, _r1, _lx + _lw - 2, _r1 + 20, false);
++            }
++            draw_set_color(c_white);
++            if (_rp_list[_rpj] == _m.ref_asset_name) { draw_set_color(c_lime); }
++            draw_text_l(_lx + 8, _r1 + 4, scr_bbuild_fit_name(_rp_list[_rpj], _lw - 16));
++            if (_rh && _press) {
++                _m.ref_asset_name  = _rp_list[_rpj];
++                _m.ref_enabled     = true;
++                _m.ref_picker_open = false;
++            }
++        }
++        // A click anywhere else closes it.
++        var _rp_h2 = max(1, array_length(_rp_list)) * 22 + 4;
++        if (_press && !point_in_rectangle(_mx, _my, _lx, _rp_y, _lx + _lw, _rp_y + _rp_h2)) {
++            _m.ref_picker_open = false;
++        }
+     }
+ }
+ 

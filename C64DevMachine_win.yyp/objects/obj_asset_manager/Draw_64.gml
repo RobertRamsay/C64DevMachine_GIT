@@ -827,6 +827,13 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _vy1 = 40;
         _vy2 = _gui_h - 40;
     }
+    // LINE_COLL: full screen. Must match obj_asset_manager Step.
+    if (_asset.type == "LINE_COLL") {
+        _vx1 = 30;
+        _vx2 = _gui_w - 30;
+        _vy1 = 40;
+        _vy2 = _gui_h - 40;
+    }
     // MAP_DATA: almost the whole screen - the map wants the height.
     // Must match obj_asset_manager Step.
     if (_asset.type == "MAP_DATA") {
