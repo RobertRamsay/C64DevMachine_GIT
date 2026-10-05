@@ -2509,6 +2509,12 @@ if (scr_workspace_keyboard_check_pressed(vk_f5) && global.asset_reload_in_progre
 if (build_trigger && scr_workspace_mouse_check_button_released(mb_any)) trigger_build = true;
 if (build_trigger && !global.asset_reload_in_progress && !scr_workspace_mouse_check_button_released(mb_any)) {
         trigger_build = false;
+        // Re-lay the program before building. Asset-driven macro sizes (a
+        // painted SPRITE_MASK, a re-tagged map...) change without a workspace
+        // mouse release, so the proxies can still hold the old layout and the
+        // next ORG would be built on top of the grown macro.
+        global.addresses_dirty = true;
+        scr_c64_do_update_addresses();
         if (instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "queued") obj_mcp_probe.probe_build.state = "building";
         global.egg_temp_node_ids = [];
 

@@ -1,0 +1,63 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 64b50fa..fe1e3fb 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -2509,6 +2509,12 @@ if (scr_workspace_keyboard_check_pressed(vk_f5) && global.asset_reload_in_progre
+ if (build_trigger && scr_workspace_mouse_check_button_released(mb_any)) trigger_build = true;
+ if (build_trigger && !global.asset_reload_in_progress && !scr_workspace_mouse_check_button_released(mb_any)) {
+         trigger_build = false;
++        // Re-lay the program before building. Asset-driven macro sizes (a
++        // painted SPRITE_MASK, a re-tagged map...) change without a workspace
++        // mouse release, so the proxies can still hold the old layout and the
++        // next ORG would be built on top of the grown macro.
++        global.addresses_dirty = true;
++        scr_c64_do_update_addresses();
+         if (instance_exists(obj_mcp_probe) && obj_mcp_probe.probe_build.state == "queued") obj_mcp_probe.probe_build.state = "building";
+         global.egg_temp_node_ids = [];
+ 
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+index 67ae71e..64bf542 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+@@ -384,12 +384,12 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     _sy += 38;
+     if (_button(_side_x, _sy, 134, "UNDO", false, _ui_mx, _my) && array_length(_m.undo) > 0) {
+         var _u = array_pop(_m.undo); _m.mask = _u.mask; _m.cell_base = _u.base;
+-        _m.ov_dirty = true; scr_sprmask_flush(_asset); global.addresses_dirty = true;
++        _m.ov_dirty = true; scr_sprmask_flush(_asset); global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
+     }
+     if (_button(_side_x + 146, _sy, 138, "CLEAR MASK", false, _ui_mx, _my)) {
+         scr_sprmask_push_undo(_m); _m.mask = array_create(8000, 0);
+         _m.cell_base = array_create(1000, 255); _m.ov_dirty = true;
+-        scr_sprmask_flush(_asset); global.addresses_dirty = true;
++        scr_sprmask_flush(_asset); global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
+     }
+ 
+     // Reserve the right-hand column for the reference browser.
+@@ -631,7 +631,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+             scr_sprmask_fill(_m, _bmp, _px, _py, true, _hires);
+             _m.stroke = false;
+             scr_sprmask_flush(_asset);
+-            global.addresses_dirty = true;
++            global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
+         }
+     }
+     if (_m.stroke && (_lh || _rh2) && _on_cv && _m.tool != "FILL") {
+@@ -653,7 +653,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     if (_m.stroke && !_lh && !_rh2) {
+         _m.stroke = false;
+         scr_sprmask_flush(_asset);
+-        global.addresses_dirty = true;
++        global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
+     }
+     if (scr_ctrl_held() && keyboard_check_pressed(ord("Z")) && array_length(_m.undo) > 0) {
+         var _u = array_pop(_m.undo);
+@@ -661,7 +661,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+         _m.cell_base = _u.base;
+         _m.ov_dirty = true;
+         scr_sprmask_flush(_asset);
+-        global.addresses_dirty = true;
++        global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
+     }
+ }
+ 

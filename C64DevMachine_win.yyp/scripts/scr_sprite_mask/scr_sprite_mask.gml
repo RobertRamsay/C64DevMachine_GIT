@@ -49,7 +49,11 @@ function scr_sprmask_create(_asset) {
         pan_y       : 0,
         panning     : false,
         pan_mx      : 0,
-        pan_my      : 0
+        pan_my      : 0,
+        click_x     : -1,
+        click_y     : -1,
+        stroke_x0   : 0,
+        stroke_y0   : 0
     };
     scr_sprmask_flush(_asset);
 }
@@ -231,14 +235,22 @@ function scr_sprmask_overlay(_m) {
     _m.ov_dirty = false;
 }
 
+/// Left edge (hires px) of a brush of _s pixels centred on x. On MC bitmaps
+/// the brush is _s fat pixels and always includes the fat pixel under x.
+function scr_sprmask_brush_x0(_x, _s, _hires) {
+    if (_hires) {
+        return _x - (_s div 2);
+    }
+    return ((_x >> 1) - (_s div 2)) * 2;
+}
+
 /// Brush stamp at hires x,y. MC bitmaps paint whole fat pixels.
 function scr_sprmask_brush(_m, _x, _y, _on, _hires, _depth_only) {
     var _s  = _m.brush;
     var _w  = _s;
-    if (!_hires) { _w = _s * 2; _x = _x & ~1; }
-    var _x0 = _x - (_w div 2);
+    if (!_hires) { _w = _s * 2; }
+    var _x0 = scr_sprmask_brush_x0(_x, _s, _hires);
     var _y0 = _y - (_s div 2);
-    if (!_hires) { _x0 = _x0 & ~1; }
     for (var _yy = _y0; _yy < _y0 + _s; _yy++) {
         for (var _xx = _x0; _xx < _x0 + _w; _xx++) {
             if (_xx < 0 || _xx > 319 || _yy < 0 || _yy > 199) continue;
@@ -363,6 +375,14 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     if (_button(_side_x, _sy, _side_w, "BRUSH SIZE: " + string(_m.brush), false, _ui_mx, _my)) {
         _m.brush = (_m.brush == 8) ? 1 : _m.brush * 2;
     }
+    // Right click steps the brush down.
+    if (point_in_rectangle(_ui_mx, _my, _side_x, _sy, _side_x + _side_w, _sy + 26) && mouse_check_button_pressed(mb_right)) {
+        if (_m.brush == 1) {
+            _m.brush = 8;
+        } else {
+            _m.brush = _m.brush div 2;
+        }
+    }
     _sy += 40;
     draw_set_color(c_white);
     if (_m.tool == "DEPTH") {
@@ -384,12 +404,12 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _sy += 38;
     if (_button(_side_x, _sy, 134, "UNDO", false, _ui_mx, _my) && array_length(_m.undo) > 0) {
         var _u = array_pop(_m.undo); _m.mask = _u.mask; _m.cell_base = _u.base;
-        _m.ov_dirty = true; scr_sprmask_flush(_asset); global.addresses_dirty = true;
+        _m.ov_dirty = true; scr_sprmask_flush(_asset); global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
     }
     if (_button(_side_x + 146, _sy, 138, "CLEAR MASK", false, _ui_mx, _my)) {
         scr_sprmask_push_undo(_m); _m.mask = array_create(8000, 0);
         _m.cell_base = array_create(1000, 255); _m.ov_dirty = true;
-        scr_sprmask_flush(_asset); global.addresses_dirty = true;
+        scr_sprmask_flush(_asset); global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
     }
 
     // Reserve the right-hand column for the reference browser.
@@ -505,11 +525,9 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     if (_on_cv && !_m.pick_open) {
         if ((_m.tool == "DEPTH" || _m.tool == "PAINT") && !_m.pick_y) {
-            var _dx = _px;
             var _dw = _m.brush;
-            if (!_hires) { _dx = _dx & ~1; _dw *= 2; }
-            var _dx0 = _dx - (_dw div 2);
-            if (!_hires) _dx0 = _dx0 & ~1;
+            if (!_hires) { _dw *= 2; }
+            var _dx0 = scr_sprmask_brush_x0(_px, _m.brush, _hires);
             var _dy0 = _py - (_m.brush div 2);
             var _cx0 = clamp(_dx0, 0, 319) >> 3;
             var _cx1 = clamp(_dx0 + _dw - 1, 0, 319) >> 3;
@@ -527,8 +545,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_set_color(c_white);
         var _bw = _m.brush;
         if (!_hires) { _bw = _m.brush * 2; }
-        var _ox = _px - (_bw div 2);
-        if (!_hires) { _ox = _ox & ~1; }
+        var _ox = scr_sprmask_brush_x0(_px, _m.brush, _hires);
         draw_rectangle(_cvx + _ox * _sc, _cvy + (_py - (_m.brush div 2)) * _sc,
                        _cvx + (_ox + _bw) * _sc, _cvy + (_py - (_m.brush div 2) + _m.brush) * _sc, true);
     }
@@ -550,7 +567,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     draw_set_color(c_ltgray);
     draw_set_halign(fa_center);
-    draw_text_l(_area_x + _area_w * 0.5, _bottom - 28, _cell_info + "RMB: ERASE  |  WHEEL: ZOOM " + string(_m.zoom) + "X  |  [ ]: BRUSH  |  MMB: PAN  |  CTRL+Z: UNDO");
+    draw_text_l(_area_x + _area_w * 0.5, _bottom - 28, _cell_info + "RMB: ERASE  |  WHEEL: ZOOM " + string(_m.zoom) + "X  |  [ ]: BRUSH  |  SHIFT: LINE  |  MMB: PAN  |  CTRL+Z: UNDO");
     draw_set_color(_m.stat_over > 0 ? c_red : make_color_rgb(125, 146, 163));
     var _capacity = "Mask shapes: " + string(_m.stat_unique) + "/255";
     if (_m.stat_over > 0) _capacity += "  -  TOO MANY SHAPES: " + string(_m.stat_over) + " CELLS DROPPED";
@@ -623,6 +640,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     if (_m.pick_y) return; // Picking a rule is not a paint stroke.
     var _lh = mouse_check_button(mb_left);
     var _rh2 = mouse_check_button(mb_right);
+    var _shift = keyboard_check(vk_shift);
     if (_on_cv && (mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right))) {
         scr_sprmask_push_undo(_m);
         _m.stroke = true;
@@ -631,29 +649,50 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             scr_sprmask_fill(_m, _bmp, _px, _py, true, _hires);
             _m.stroke = false;
             scr_sprmask_flush(_asset);
-            global.addresses_dirty = true;
+            global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
+        } else if (_shift && _m.click_x >= 0) {
+            // SHIFT+CLICK: a brush line from the previous click to this one.
+            // The stroke then carries on from here.
+            _m.last_x = _m.click_x;
+            _m.last_y = _m.click_y;
         }
+        _m.click_x   = _px;
+        _m.click_y   = _py;
+        _m.stroke_x0 = _px;
+        _m.stroke_y0 = _py;
     }
     if (_m.stroke && (_lh || _rh2) && _on_cv && _m.tool != "FILL") {
         var _on = (_m.tool == "PAINT") && _lh && !_rh2;
         var _depth_only = (_m.tool == "DEPTH") && _lh && !_rh2;
+        // SHIFT held while dragging: lock to the stroke's main axis.
+        var _tx = _px;
+        var _ty = _py;
+        if (_shift) {
+            if (abs(_px - _m.stroke_x0) >= abs(_py - _m.stroke_y0)) {
+                _ty = _m.stroke_y0;
+            } else {
+                _tx = _m.stroke_x0;
+            }
+        }
         // Interpolate from the last point so fast strokes stay continuous
-        var _sx = _px;
-        _sy = _py;
+        var _sx = _tx;
+        _sy = _ty;
         if (_m.last_x >= 0) { _sx = _m.last_x; _sy = _m.last_y; }
-        var _steps = max(1, max(abs(_px - _sx), abs(_py - _sy)));
+        var _steps = max(1, max(abs(_tx - _sx), abs(_ty - _sy)));
         for (var _k = 0; _k <= _steps; _k++) {
-            var _ix = round(lerp(_sx, _px, _k / _steps));
-            var _iy = round(lerp(_sy, _py, _k / _steps));
+            var _ix = round(lerp(_sx, _tx, _k / _steps));
+            var _iy = round(lerp(_sy, _ty, _k / _steps));
             scr_sprmask_brush(_m, _ix, _iy, _on, _hires, _depth_only);
         }
-        _m.last_x = _px;
-        _m.last_y = _py;
+        _m.last_x = _tx;
+        _m.last_y = _ty;
+        _m.click_x = _tx;
+        _m.click_y = _ty;
     }
     if (_m.stroke && !_lh && !_rh2) {
         _m.stroke = false;
         scr_sprmask_flush(_asset);
-        global.addresses_dirty = true;
+        global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
     }
     if (scr_ctrl_held() && keyboard_check_pressed(ord("Z")) && array_length(_m.undo) > 0) {
         var _u = array_pop(_m.undo);
@@ -661,7 +700,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         _m.cell_base = _u.base;
         _m.ov_dirty = true;
         scr_sprmask_flush(_asset);
-        global.addresses_dirty = true;
+        global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
     }
 }
 
