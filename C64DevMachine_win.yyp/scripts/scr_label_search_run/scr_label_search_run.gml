@@ -238,3 +238,58 @@ function scr_label_search_source(_node, _hit) {
     if (_hit.line > 0) _text += " / LINE " + string(_hit.line);
     return _text;
 }
+
+/// @desc Enter on a JSR/JMP node: centre the camera on the LABEL (or
+/// NAMED_LOC) node it names. A label in a folded ORG unfolds it first and the
+/// camera move waits for the layout. A label defined only inside a code block
+/// opens that block at the definition line instead.
+function scr_label_jump_goto(_name) {
+    var _wm = obj_workspace_manager;
+    var _target = noone;
+    var _target_y = 0;
+    with (obj_c64_node) {
+        if (node_type != "LABEL" && node_type != "NAMED_LOC") continue;
+        if (array_length(instructions) == 0) continue;
+        if (array_length(instructions[0]) < 2) continue;
+        if (string(instructions[0][1]) != _name) continue;
+        // Topmost first if a name is somehow defined twice
+        if (_target == noone || y < _target_y) {
+            _target = id;
+            _target_y = y;
+        }
+    }
+
+    if (_target == noone) {
+        var _hits = scr_label_search_run(_name);
+        if (array_length(_hits) > 0) {
+            var _hit = _wm.label_search_info[0];
+            if (_hit.def && _hit.node.node_type == "MACRO_CODE" && _hit.line > 0 && _hit.row == 0 && _hit.slot == 1) {
+                scr_label_search_open_code_line(_hit.node, _hit.line);
+            }
+        }
+        return;
+    }
+
+    if (scr_node_is_hidden(_target)) {
+        var _owner = _target;
+        if (instance_exists(_target.macro_owner)) {
+            _owner = _target.macro_owner;
+        }
+        if (instance_exists(_owner.org_parent)) {
+            if (_owner.org_parent.collapsed) {
+                scr_org_set_collapsed(_owner.org_parent, false);
+            }
+        } else if (global.init_collapsed) {
+            var _init = scr_init_anchor();
+            if (instance_exists(_init)) {
+                scr_org_set_collapsed(_init, false);
+            }
+        }
+        _wm.label_jump_pending = _target;
+        _wm.label_jump_reflow  = 4;
+        return;
+    }
+
+    scr_focus_camera_on_node(_target);
+    camera_set_view_pos(_wm.cam_view, _wm.cam_x, _wm.cam_y);
+}

@@ -173,6 +173,26 @@ if (node_type == "LABEL" && !is_dragging && !global.any_picker_open) {
 }
 
 /////////////////////////////////////////////////////////////////
+// JSR / JMP -> LABEL
+// Hover a JSR or JMP node that names a label and press Enter to
+// centre the camera on that label.
+/////////////////////////////////////////////////////////////////
+if (!is_dragging && !global.any_picker_open && array_length(instructions) > 0
+    && array_length(instructions[0]) > 1 && is_string(instructions[0][1])) {
+    var _lj_op = string_lower(instructions[0][0]);
+    var _lj_is_jump = (_lj_op == "jsr" || _lj_op == "jmp" || _lj_op == "jmp_abs" || _lj_op == "jmp_ind");
+    if (_lj_is_jump && instructions[0][1] != ""
+        && scr_workspace_keyboard_check_pressed(vk_enter)
+        && !obj_workspace_manager.is_entering_text
+        && !global.mouse_in_asset_panel) {
+        var _lj_x = x + x_indent;
+        if (point_in_rectangle(mouse_x, mouse_y, _lj_x, y, _lj_x + width, y + height)) {
+            scr_label_jump_goto(instructions[0][1]);
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////
 // HEADER TOOLTIP HOVER
 // Hovering the right 20% of a node's header bar, with no mouse button
 // held, for node_tooltip_delay frames surfaces a floating description

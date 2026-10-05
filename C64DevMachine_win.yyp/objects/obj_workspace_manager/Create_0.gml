@@ -916,6 +916,10 @@ label_search_pending = noone;  // result waiting for its folded ORG to reflow
 label_search_pending_frac = 0.2;
 label_search_reflow  = 0;      // frames left while node layout runs under the modal
 
+// ---- JSR/JMP ENTER -> JUMP TO LABEL ----
+label_jump_pending = noone;    // LABEL waiting for its folded ORG to reflow
+label_jump_reflow  = 0;        // frames left before the camera moves to it
+
 // MACRO_REU asset drop-down (ASSET mode) — drawn in Draw_64 so it sits on top
 reu_pick_open   = false;
 reu_pick_node   = noone;

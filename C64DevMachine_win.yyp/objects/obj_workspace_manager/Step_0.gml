@@ -8,6 +8,21 @@ if (exo_pending) {
 scr_template_step();
 scr_tour_question_step();
 
+// Enter on a JSR/JMP node unfolded the ORG holding its label: let the layout
+// settle for a few frames, then centre the camera on the label.
+if (label_jump_reflow > 0) {
+    label_jump_reflow -= 1;
+    global.addresses_dirty = true;
+    scr_c64_do_update_addresses();
+    if (label_jump_reflow == 0) {
+        if (instance_exists(label_jump_pending)) {
+            scr_focus_camera_on_node(label_jump_pending);
+            camera_set_view_pos(cam_view, cam_x, cam_y);
+        }
+        label_jump_pending = noone;
+    }
+}
+
 // Record what a clean workspace looks like, then start any tour that asked
 // for the restart that produced it.
 if (tour_baseline_timer > 0) {
