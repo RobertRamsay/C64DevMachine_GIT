@@ -4602,8 +4602,11 @@ if (!instance_exists(node_tooltip_node) && !global.showcode_mouse_over &&
 		} else {
 		// Normal camera zoom
 var _zoom_mul = scr_workspace_keyboard_check(vk_control) ? 5.0 : 3.0;
+// The param dock scrolls with the wheel instead while the pointer is on it.
+if (!global.creator_dock_hover) {
 if (scr_workspace_mouse_wheel_up())   { cam_zoom_target -= zoom_speed * _zoom_mul; global.undo_dirty = true; alarm[3] = 30; } // no autosave_dirty
 if (scr_workspace_mouse_wheel_down()) { cam_zoom_target += zoom_speed * _zoom_mul; global.undo_dirty = true; alarm[3] = 30; } // no autosave_dirty
+}
 	}
 	cam_zoom_target = clamp(cam_zoom_target, 0.3, 6.0);
 	cam_zoom        = lerp(cam_zoom, cam_zoom_target, 0.4);

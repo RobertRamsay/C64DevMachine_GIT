@@ -49,7 +49,15 @@ function scr_creator_init() {
     // (CREATOR_CARDS_*). Read from the ini on the first Begin Step.
     global.creator_card_mode    = CREATOR_CARDS_AUTO;
     global.creator_card_mode_ok = false;
-    global.creator_dock         = { on: false, x1: 0, y1: 0, x2: 0, y2: 0, items: [] };
+    // Dock: content is laid out unscaled in its own space (0,0 = top-left
+    // of the content), drawn to a surface, then shown scaled at x1,y1 with
+    // a scroll bar on its left. sx1 = screen left of the scroll bar.
+    global.creator_dock         = {
+        on: false, x1: 0, y1: 0, x2: 0, y2: 0, sx1: 0,
+        scale: CREATOR_DOCK_SCALE, scroll: 0, content_h: 0, view_h: 0,
+        items: [], surf: -1, bar_drag: false
+    };
+    global.creator_dock_hover   = false;
     // Pointer used for widget hover while drawing (room or GUI space).
     global.creator_hmx          = 0;
     global.creator_hmy          = 0;
@@ -510,6 +518,7 @@ function scr_creator_draw_node_tab() {
 function scr_creator_begin_step() {
     global.creator_tab_hot  = noone;
     global.creator_card_hot = false;
+    global.creator_dock_hover = false;
     scr_creator_update_covered();
     if (!global.creator_card_mode_ok) {
         ini_open("c64devmachine.ini");
@@ -2472,7 +2481,7 @@ function scr_creator_cards_step() {
     if (_bar.active) {
         global.creator_card_hot = true;
         if (_bar.gui) {
-            _mx = device_mouse_x_to_gui(0);
+            _mx = (device_mouse_x_to_gui(0) - global.creator_dock.x1) / global.creator_dock.scale;
         }
         if (scr_workspace_mouse_check_button(mb_left) && instance_exists(_bar.n)) {
             if (_bar.pidx < array_length(_bar.n.params)) {
@@ -2486,19 +2495,8 @@ function scr_creator_cards_step() {
     }
 
     // The dock (GUI space) sits over the canvas, so it is checked first.
-    var _dk = global.creator_dock;
-    if (_dk.on) {
-        var _gmx = device_mouse_x_to_gui(0);
-        var _gmy = device_mouse_y_to_gui(0);
-        if (point_in_rectangle(_gmx, _gmy, _dk.x1, _dk.y1, _dk.x2, _dk.y2)) {
-            global.creator_card_hot = true;
-            if (scr_workspace_mouse_check_button_pressed(mb_left)) {
-                if (scr_creator_items_press(_dk.items, _gmx, _gmy, _bar)) {
-                    _bar.gui = true;
-                }
-            }
-            return true;
-        }
+    if (scr_creator_dock_step(_bar)) {
+        return true;
     }
 
     var _over = noone;
@@ -2656,7 +2654,9 @@ function scr_creator_draw_text_edit() {
 #macro CREATOR_CARDS_DOCK  3
 #macro CREATOR_CARDS_OFF   4
 #macro CREATOR_CARDS_COUNT 5
-#macro CREATOR_DOCK_W      300
+#macro CREATOR_DOCK_W      300   // content width, before scaling
+#macro CREATOR_DOCK_SCALE  0.75
+#macro CREATOR_DOCK_BAR    12    // scroll bar width (screen px)
 
 function scr_creator_card_mode_name(_m) {
     switch (_m) {
@@ -2704,8 +2704,18 @@ function scr_creator_card_blocked(_x1, _y1, _w, _h, _self) {
     return _hit;
 }
 
+/// Right edge the dock must stay left of: the shortcut list at the top
+/// right, and the colour reference strip when it is showing.
+function scr_creator_dock_right() {
+    var _r = display_get_gui_width() - 2 - 270 - 10;
+    if (obj_workspace_manager.showPaletteHelper) {
+        _r = min(_r, 1640 - 80 - 10);
+    }
+    return _r;
+}
+
 /// DOCK mode: params of nodes in view (a folded node counts where its
-/// header is), laid out in GUI space down the right of the screen.
+/// header is). Laid out unscaled in content space, scrolled by _dk.scroll.
 function scr_creator_dock_build() {
     var _dk = global.creator_dock;
     _dk.on    = false;
@@ -2767,55 +2777,126 @@ function scr_creator_dock_build() {
 
     var _font_b = draw_get_font();
     draw_set_font_l(fnt_c64_code);
-    var _gw  = display_get_gui_width();
-    var _gh  = display_get_gui_height();
-    _dk.x1 = _gw - CREATOR_DOCK_W - 12;
-    _dk.x2 = _gw - 12;
-    _dk.y1 = 64;
-    var _x1 = _dk.x1 + CREATOR_PANEL_PAD;
-    var _x2 = _dk.x2 - CREATOR_PANEL_PAD;
-    var _y  = _dk.y1 + 8;
-    var _bottom = _gh - 24;
-    var _full = false;
+
+    // Content height first (unscrolled), then the screen box from it.
+    var _x1 = CREATOR_PANEL_PAD;
+    var _x2 = CREATOR_DOCK_W - CREATOR_PANEL_PAD;
+    var _h  = 8;
+    for (var _i = 0; _i < array_length(_nodes); _i++) {
+        _h += CREATOR_PANEL_SUB;
+        for (var _p = 0; _p < array_length(_nodes[_i].params); _p++) {
+            _h += scr_creator_param_row_h(_nodes[_i].params[_p], true);
+        }
+    }
+    _h += 8;
+    _dk.content_h = _h;
+
+    var _sc     = _dk.scale;
+    var _right  = scr_creator_dock_right();
+    var _top    = 64;
+    var _max_vh = (display_get_gui_height() - 24 - _top) / _sc;
+    _dk.view_h  = min(_h, _max_vh);
+    _dk.scroll  = clamp(_dk.scroll, 0, max(0, _h - _dk.view_h));
+    _dk.x2      = _right;
+    _dk.x1      = _right - CREATOR_DOCK_W * _sc;
+    _dk.y1      = _top;
+    _dk.y2      = _top + _dk.view_h * _sc;
+    _dk.sx1     = _dk.x1;
+    if (_h > _dk.view_h) {
+        _dk.sx1 = _dk.x1 - CREATOR_DOCK_BAR - 4;
+    }
+
+    // Items in content space, shifted up by the scroll. Rows wholly out of
+    // view are skipped; part-visible ones are clipped by the surface.
+    var _y = 8 - _dk.scroll;
     for (var _i = 0; _i < array_length(_nodes); _i++) {
         var _n = _nodes[_i];
-        if (_y + CREATOR_PANEL_SUB > _bottom) {
-            _full = true;
-            break;
+        if (_y + CREATOR_PANEL_SUB > 0 && _y < _dk.view_h) {
+            var _sub = scr_creator_item("sub", _x1, _y, _x2, _y + CREATOR_PANEL_SUB);
+            _sub.text = string_upper(scr_creator_node_name(_n));
+            array_push(_dk.items, _sub);
         }
-        var _sub = scr_creator_item("sub", _x1, _y, _x2, _y + CREATOR_PANEL_SUB);
-        _sub.text = string_upper(scr_creator_node_name(_n));
-        array_push(_dk.items, _sub);
         _y += CREATOR_PANEL_SUB;
         for (var _p = 0; _p < array_length(_n.params); _p++) {
             var _rh = scr_creator_param_row_h(_n.params[_p], true);
-            if (_y + _rh > _bottom) {
-                _full = true;
-                break;
+            if (_y + _rh > 0 && _y < _dk.view_h) {
+                scr_creator_param_row(_dk.items, _n, _p, _x1, _x2, _y, true, 0);
             }
-            scr_creator_param_row(_dk.items, _n, _p, _x1, _x2, _y, true, 0);
             _y += _rh;
         }
-        if (_full) {
-            break;
-        }
     }
-    if (_full) {
-        array_push(_dk.items, scr_creator_item("more", _x1, _y, _x2, _y + 14));
-        _y += 14;
-    }
-    _dk.y2 = _y + 6;
     _dk.on = true;
     draw_set_font_l(_font_b);
 }
 
-/// obj_workspace_manager Draw GUI End, under any Creator popup.
+/// Begin Step pointer handling for the dock. True when it owns the pointer.
+function scr_creator_dock_step(_bar) {
+    var _dk = global.creator_dock;
+    global.creator_dock_hover = false;
+    if (!_dk.on) {
+        _dk.bar_drag = false;
+        return false;
+    }
+    var _gmx = device_mouse_x_to_gui(0);
+    var _gmy = device_mouse_y_to_gui(0);
+    var _max_scroll = max(0, _dk.content_h - _dk.view_h);
+
+    // Scroll bar drag keeps the pointer until release.
+    if (_dk.bar_drag) {
+        global.creator_card_hot   = true;
+        global.creator_dock_hover = true;
+        if (scr_workspace_mouse_check_button(mb_left)) {
+            var _f = clamp((_gmy - _dk.y1) / max(1, _dk.y2 - _dk.y1), 0, 1);
+            _dk.scroll = round(_f * _max_scroll);
+        } else {
+            _dk.bar_drag = false;
+        }
+        return true;
+    }
+
+    if (!point_in_rectangle(_gmx, _gmy, _dk.sx1, _dk.y1, _dk.x2, _dk.y2)) {
+        return false;
+    }
+    global.creator_card_hot   = true;
+    global.creator_dock_hover = true;
+
+    // Wheel scrolls the dock (the canvas zoom is held off while over it).
+    if (mouse_wheel_up()) {
+        _dk.scroll = max(0, _dk.scroll - 60);
+    }
+    if (mouse_wheel_down()) {
+        _dk.scroll = min(_max_scroll, _dk.scroll + 60);
+    }
+
+    if (!scr_workspace_mouse_check_button_pressed(mb_left)) {
+        return true;
+    }
+    if (_gmx < _dk.x1) {
+        // Scroll bar column: jump there and start dragging.
+        if (_max_scroll > 0) {
+            _dk.bar_drag = true;
+            var _f2 = clamp((_gmy - _dk.y1) / max(1, _dk.y2 - _dk.y1), 0, 1);
+            _dk.scroll = round(_f2 * _max_scroll);
+        }
+        return true;
+    }
+    var _cmx = (_gmx - _dk.x1) / _dk.scale;
+    var _cmy = (_gmy - _dk.y1) / _dk.scale;
+    if (scr_creator_items_press(_dk.items, _cmx, _cmy, _bar)) {
+        _bar.gui = true;
+    }
+    return true;
+}
+
+/// obj_workspace_manager Draw GUI End, under any Creator popup. Content is
+/// drawn to a surface (that is the scissor) and shown scaled.
 function scr_creator_draw_dock() {
     var _dk = global.creator_dock;
-    if (!_dk.on) {
-        exit;
-    }
-    if (scr_creator_panel_active()) {
+    if (!_dk.on || scr_creator_panel_active()) {
+        if (surface_exists(_dk.surf)) {
+            surface_free(_dk.surf);
+            _dk.surf = -1;
+        }
         exit;
     }
     if (instance_exists(obj_asset_manager)) {
@@ -2823,16 +2904,55 @@ function scr_creator_draw_dock() {
             exit;
         }
     }
+    var _sw = CREATOR_DOCK_W;
+    var _sh = max(1, ceil(_dk.view_h));
+    if (surface_exists(_dk.surf)) {
+        if (surface_get_width(_dk.surf) != _sw || surface_get_height(_dk.surf) != _sh) {
+            surface_free(_dk.surf);
+            _dk.surf = -1;
+        }
+    }
+    if (!surface_exists(_dk.surf)) {
+        _dk.surf = surface_create(_sw, _sh);
+    }
+
     var _font_b   = draw_get_font();
     var _halign_b = draw_get_halign();
     var _valign_b = draw_get_valign();
     var _col      = make_colour_rgb(80, 200, 255);
-    global.creator_hmx = device_mouse_x_to_gui(0);
-    global.creator_hmy = device_mouse_y_to_gui(0);
+    var _sc       = _dk.scale;
+
+    // Frame on screen, behind the content.
     scr_creator_skin_node_frame(_dk.x1, _dk.y1, _dk.x2 - _dk.x1, _dk.y2 - _dk.y1, 3, _col);
+
+    // Content, in content space, hover from the pointer mapped into it.
+    global.creator_hmx = (device_mouse_x_to_gui(0) - _dk.x1) / _sc;
+    global.creator_hmy = (device_mouse_y_to_gui(0) - _dk.y1) / _sc;
+    surface_set_target(_dk.surf);
+    draw_clear_alpha(c_black, 0);
     draw_set_font_l(fnt_c64_code);
     draw_set_alpha(1);
     scr_creator_draw_items(_dk.items, _col);
+    surface_reset_target();
+    draw_surface_ext(_dk.surf, _dk.x1, _dk.y1, _sc, _sc, 0, c_white, 1);
+
+    // Scroll bar on the left when there is more than fits.
+    var _max_scroll = max(0, _dk.content_h - _dk.view_h);
+    if (_max_scroll > 0) {
+        var _bx1 = _dk.sx1;
+        var _bx2 = _dk.sx1 + CREATOR_DOCK_BAR;
+        draw_set_colour(make_colour_rgb(8, 8, 24));
+        draw_rectangle(_bx1, _dk.y1, _bx2, _dk.y2, false);
+        var _track = _dk.y2 - _dk.y1;
+        var _th    = max(24, _track * (_dk.view_h / _dk.content_h));
+        var _ty    = _dk.y1 + (_track - _th) * (_dk.scroll / _max_scroll);
+        draw_set_colour(_col);
+        if (_dk.bar_drag) {
+            draw_set_colour(make_colour_rgb(255, 210, 80));
+        }
+        draw_rectangle(_bx1 + 2, _ty, _bx2 - 2, _ty + _th, false);
+    }
+
     draw_set_font_l(_font_b);
     draw_set_halign(_halign_b);
     draw_set_valign(_valign_b);
