@@ -1,0 +1,121 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+index 74fa049..67ae71e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sprite_mask/scr_sprite_mask.gml
+@@ -43,7 +43,13 @@ function scr_sprmask_create(_asset) {
+         stat_unique : 0,
+         stat_over   : 0,
+         tone_sorted : false,
+-        mc_mode     : 0
++        mc_mode     : 0,
++        zoom        : 1,
++        pan_x       : 0,
++        pan_y       : 0,
++        panning     : false,
++        pan_mx      : 0,
++        pan_my      : 0
+     };
+     scr_sprmask_flush(_asset);
+ }
+@@ -403,13 +409,69 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     draw_set_halign(fa_left);
+     var _stage_y = _top + 70;
+     var _stage_h = _bottom - _stage_y - 44;
+-    var _sc = max(1, floor(min(_area_w / 320, _stage_h / 200)));
+-    var _cw = 320 * _sc;
+-    var _ch = 200 * _sc;
+-    var _cvx = floor(_area_x + (_area_w - _cw) * 0.5);
+-    var _cvy = floor(_stage_y + (_stage_h - _ch) * 0.5);
++    var _sc0 = max(1, floor(min(_area_w / 320, _stage_h / 200)));
++    var _sc  = _sc0 * _m.zoom;
++    var _cw  = 320 * _sc;
++    var _ch  = 200 * _sc;
++    var _on_stage = point_in_rectangle(_mx, _my, _area_x, _stage_y, _area_x + _area_w, _stage_y + _stage_h);
++    var _cx_mid = floor(_area_x + (_area_w - _cw) * 0.5);
++    var _cy_mid = floor(_stage_y + (_stage_h - _ch) * 0.5);
++
++    // Wheel zoom 1x-3x. The bitmap pixel under the pointer stays under it.
++    var _zoom_new = _m.zoom;
++    if (_on_stage && !global.is_any_text_active) {
++        if (mouse_wheel_up())   { _zoom_new = min(3, _m.zoom + 1); }
++        if (mouse_wheel_down()) { _zoom_new = max(1, _m.zoom - 1); }
++    }
++    if (_zoom_new != _m.zoom) {
++        var _zbx = (_mx - (_cx_mid + _m.pan_x)) / _sc;
++        var _zby = (_my - (_cy_mid + _m.pan_y)) / _sc;
++        _m.zoom = _zoom_new;
++        _sc     = _sc0 * _m.zoom;
++        _cw     = 320 * _sc;
++        _ch     = 200 * _sc;
++        _cx_mid = floor(_area_x + (_area_w - _cw) * 0.5);
++        _cy_mid = floor(_stage_y + (_stage_h - _ch) * 0.5);
++        _m.pan_x = round(_mx - _zbx * _sc) - _cx_mid;
++        _m.pan_y = round(_my - _zby * _sc) - _cy_mid;
++    }
++    // Middle-drag pans a zoomed canvas.
++    if (_on_stage && mouse_check_button_pressed(mb_middle)) {
++        _m.panning = true;
++        _m.pan_mx  = _mx;
++        _m.pan_my  = _my;
++    }
++    if (_m.panning) {
++        if (mouse_check_button(mb_middle)) {
++            _m.pan_x += _mx - _m.pan_mx;
++            _m.pan_y += _my - _m.pan_my;
++            _m.pan_mx = _mx;
++            _m.pan_my = _my;
++        } else {
++            _m.panning = false;
++        }
++    }
++    // A canvas bigger than the stage always covers it; a smaller one stays centred.
++    var _pan_lim_x = max(0, (_cw - _area_w) * 0.5);
++    var _pan_lim_y = max(0, (_ch - _stage_h) * 0.5);
++    _m.pan_x = clamp(_m.pan_x, -_pan_lim_x, _pan_lim_x);
++    _m.pan_y = clamp(_m.pan_y, -_pan_lim_y, _pan_lim_y);
++    var _cvx = _cx_mid + _m.pan_x;
++    var _cvy = _cy_mid + _m.pan_y;
++
++    // [ and ] step the brush through 1 / 2 / 4 / 8.
++    if (!global.is_any_text_active) {
++        if (keyboard_check_pressed(221)) { _m.brush = min(8, _m.brush * 2); }
++        if (keyboard_check_pressed(219)) { _m.brush = max(1, _m.brush div 2); }
++    }
++
+     draw_set_color(make_color_rgb(8, 12, 20));
+     draw_rectangle(_area_x, _stage_y, _area_x + _area_w, _stage_y + _stage_h, false);
++    // Clip the (possibly zoomed) canvas to the stage. Scissor is in window px.
++    var _scis_xs = window_get_width()  / global.gui_w;
++    var _scis_ys = window_get_height() / display_get_gui_height();
++    gpu_set_scissor(floor(_area_x * _scis_xs), floor(_stage_y * _scis_ys),
++                    ceil(_area_w * _scis_xs), ceil(_stage_h * _scis_ys));
+     draw_set_color(c_black);
+     draw_rectangle(_cvx - 2, _cvy - 2, _cvx + _cw + 2, _cvy + _ch + 2, false);
+     var _bs = scr_room_map_bmp_surf(_m.ref_bmp);
+@@ -420,7 +482,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     draw_surface_stretched(_m.ov_surf, _cvx, _cvy, _cw, _ch);
+     gpu_set_tex_filter(_fl);
+ 
+-    var _on_cv = point_in_rectangle(_mx, _my, _cvx, _cvy, _cvx + _cw - 1, _cvy + _ch - 1);
++    var _on_cv = _on_stage && point_in_rectangle(_mx, _my, _cvx, _cvy, _cvx + _cw - 1, _cvy + _ch - 1);
+     var _px = clamp(floor((_mx - _cvx) / _sc), 0, 319);
+     var _py = clamp(floor((_my - _cvy) / _sc), 0, 199);
+ 
+@@ -471,6 +533,8 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+                        _cvx + (_ox + _bw) * _sc, _cvy + (_py - (_m.brush div 2) + _m.brush) * _sc, true);
+     }
+ 
++    gpu_set_scissor(0, 0, window_get_width(), window_get_height());
++
+     var _cell_info = "";
+     if (_on_cv && !_m.pick_open) {
+         var _cell = (_py >> 3) * 40 + (_px >> 3);
+@@ -486,7 +550,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     }
+     draw_set_color(c_ltgray);
+     draw_set_halign(fa_center);
+-    draw_text_l(_area_x + _area_w * 0.5, _bottom - 28, _cell_info + "RIGHT CLICK: ERASE   |   CTRL+Z: UNDO");
++    draw_text_l(_area_x + _area_w * 0.5, _bottom - 28, _cell_info + "RMB: ERASE  |  WHEEL: ZOOM " + string(_m.zoom) + "X  |  [ ]: BRUSH  |  MMB: PAN  |  CTRL+Z: UNDO");
+     draw_set_color(_m.stat_over > 0 ? c_red : make_color_rgb(125, 146, 163));
+     var _capacity = "Mask shapes: " + string(_m.stat_unique) + "/255";
+     if (_m.stat_over > 0) _capacity += "  -  TOO MANY SHAPES: " + string(_m.stat_over) + " CELLS DROPPED";
