@@ -1466,6 +1466,7 @@
     {"id":{"name":"spr_9s_tile1","path":"sprites/spr_9s_tile1/spr_9s_tile1.yy",},},
     {"id":{"name":"spr_active","path":"sprites/spr_active/spr_active.yy",},},
     {"id":{"name":"spr_arrow","path":"sprites/spr_arrow/spr_arrow.yy",},},
+    {"id":{"name":"spr_creator_goto","path":"sprites/spr_creator_goto/spr_creator_goto.yy",},},
     {"id":{"name":"spr_baseGradient","path":"sprites/spr_baseGradient/spr_baseGradient.yy",},},
     {"id":{"name":"spr_bkg","path":"sprites/spr_bkg/spr_bkg.yy",},},
     {"id":{"name":"spr_c64","path":"sprites/spr_c64/spr_c64.yy",},},

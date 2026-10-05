@@ -270,6 +270,18 @@ function scr_label_jump_goto(_name) {
         return;
     }
 
+    scr_node_jump_goto(_target);
+}
+
+/// @desc Centre the camera on a node at default zoom and play the arrival
+/// pulse. A node in a folded ORG (or folded INIT spine) unfolds it first and
+/// the camera move waits for the layout. Used by Enter on JSR/JMP/branches
+/// and by the Creator GO TO arrows.
+function scr_node_jump_goto(_target) {
+    if (!instance_exists(_target)) {
+        return;
+    }
+    var _wm = obj_workspace_manager;
     if (scr_node_is_hidden(_target)) {
         var _owner = _target;
         if (instance_exists(_target.macro_owner)) {

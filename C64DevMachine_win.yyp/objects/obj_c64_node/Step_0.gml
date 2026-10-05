@@ -173,14 +173,18 @@ if (node_type == "LABEL" && !is_dragging && !global.any_picker_open) {
 }
 
 /////////////////////////////////////////////////////////////////
-// JSR / JMP -> LABEL
-// Hover a JSR or JMP node that names a label and press Enter to
-// centre the camera on that label.
+// JSR / JMP / BRANCH -> LABEL
+// Hover a JSR, JMP or branch (BNE, BEQ, BCC, BCS, BPL, BMI, BVC, BVS) node
+// that names a label and press Enter to centre the camera on that label.
 /////////////////////////////////////////////////////////////////
 if (!is_dragging && !global.any_picker_open && array_length(instructions) > 0
     && array_length(instructions[0]) > 1 && is_string(instructions[0][1])) {
     var _lj_op = string_lower(instructions[0][0]);
     var _lj_is_jump = (_lj_op == "jsr" || _lj_op == "jmp" || _lj_op == "jmp_abs" || _lj_op == "jmp_ind");
+    if (_lj_op == "bne" || _lj_op == "beq" || _lj_op == "bcc" || _lj_op == "bcs"
+     || _lj_op == "bpl" || _lj_op == "bmi" || _lj_op == "bvc" || _lj_op == "bvs") {
+        _lj_is_jump = true;
+    }
     if (_lj_is_jump && instructions[0][1] != ""
         && scr_workspace_keyboard_check_pressed(vk_enter)
         && !obj_workspace_manager.is_entering_text

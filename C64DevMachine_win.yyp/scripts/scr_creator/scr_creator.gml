@@ -64,6 +64,8 @@ function scr_creator_init() {
     // TEXT params on a card or panel are typed into a small popup.
     global.creator_text_node    = noone;
     global.creator_text_pidx    = 0;
+    // GO TO arrow under the pointer this draw (label drawn by the caller).
+    global.creator_goto_hot     = undefined;
 }
 
 // --------------------------------------------------------------------
@@ -1643,6 +1645,9 @@ function scr_creator_panel_layout(_b) {
             scr_creator_param_row(_items, _n, _i, _bx1 + _pad, _bx2 - _pad, _y, _stack, _lw);
             _y += _rh;
         }
+        if (_y + CREATOR_GOTO_H <= _by2 - 4) {
+            _y += scr_creator_goto_row(_items, _n, _bx1 + _pad, _y);
+        }
     }
     return _items;
 }
@@ -1728,8 +1733,7 @@ function scr_creator_box_step(_b) {
             if (array_length(_gnodes) > 0) {
                 _b.panel_go_idx = _b.panel_go_idx mod array_length(_gnodes);
                 var _gn = _gnodes[_b.panel_go_idx];
-                scr_creator_reveal_node(_gn);
-                scr_focus_camera_on_node(_gn);
+                scr_node_jump_goto(_gn);
                 global.selected_nodes = [_gn];
                 _b.panel_go_idx += 1;
             }
@@ -1788,6 +1792,10 @@ function scr_creator_items_press(_items, _mx, _my, _bar) {
         }
         if (!instance_exists(_it.n)) {
             continue;
+        }
+        if (_it.t == "goto") {
+            scr_node_jump_goto(_it.n);
+            return true;
         }
         if (_it.pidx >= array_length(_it.n.params)) {
             continue;
@@ -1922,6 +1930,15 @@ function scr_creator_draw_items(_items, _col) {
                 draw_set_colour(make_colour_rgb(180, 180, 255));
                 draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, true);
                 break;
+            case "goto":
+                var _ghov = point_in_rectangle(global.creator_hmx, global.creator_hmy, _it.x1, _it.y1, _it.x2, _it.y2);
+                var _gcol = _col;
+                if (_ghov) {
+                    _gcol = make_colour_rgb(255, 210, 80);
+                    global.creator_goto_hot = _it;
+                }
+                draw_sprite_ext(spr_creator_goto, 0, _it.x1, _it.y1, 1, 1, 0, _gcol, 1);
+                break;
             case "textbox":
                 var _thov = point_in_rectangle(global.creator_hmx, global.creator_hmy, _it.x1, _it.y1, _it.x2, _it.y2);
                 draw_set_colour(make_colour_rgb(8, 8, 24));
@@ -1992,7 +2009,9 @@ function scr_creator_box_draw(_b) {
         }
         draw_text_transformed_l(_bx1 + CREATOR_PANEL_PAD, _by1 + CREATOR_PANEL_HEAD * 0.5, _title, _tscale, _tscale, 0);
 
+        global.creator_goto_hot = undefined;
         scr_creator_draw_items(scr_creator_panel_layout(_b), _col);
+        scr_creator_draw_goto_label(1, 0, 0);
     }
 
     draw_set_font_l(_font_b);
@@ -2293,6 +2312,7 @@ function scr_creator_card_add_node(_card, _n, _y, _sub) {
         scr_creator_param_row(_card.items, _n, _i, _x1, _x2, _y, true, 0);
         _y += scr_creator_param_row_h(_n.params[_i], true);
     }
+    _y += scr_creator_goto_row(_card.items, _n, _x1, _y);
     return _y;
 }
 
@@ -2562,7 +2582,9 @@ function scr_creator_draw_cards() {
             }
         }
         scr_creator_skin_node_frame(_c.x1, _c.y1, _c.x2 - _c.x1, _c.y2 - _c.y1, 3, _c.col);
+        global.creator_goto_hot = undefined;
         scr_creator_draw_items(_c.items, _c.col);
+        scr_creator_draw_goto_label(1, 0, 0);
     }
 
     draw_set_font_l(_font_b);
@@ -2782,6 +2804,7 @@ function scr_creator_dock_build() {
         for (var _p = 0; _p < array_length(_nodes[_i].params); _p++) {
             _h += scr_creator_param_row_h(_nodes[_i].params[_p], true);
         }
+        _h += CREATOR_GOTO_H;
     }
     _h += 8;
     _dk.content_h = _h;
@@ -2819,6 +2842,10 @@ function scr_creator_dock_build() {
             }
             _y += _rh;
         }
+        if (_y + CREATOR_GOTO_H > 0 && _y < _dk.view_h) {
+            scr_creator_goto_row(_dk.items, _n, _x1, _y);
+        }
+        _y += CREATOR_GOTO_H;
     }
     _dk.on = true;
     draw_set_font_l(_font_b);
@@ -2927,9 +2954,12 @@ function scr_creator_draw_dock() {
     draw_clear_alpha(c_black, 0);
     draw_set_font_l(fnt_c64_code);
     draw_set_alpha(1);
+    global.creator_goto_hot = undefined;
     scr_creator_draw_items(_dk.items, _col);
     surface_reset_target();
     draw_surface_ext(_dk.surf, _dk.x1, _dk.y1, _sc, _sc, 0, c_white, 1);
+    // Label outside the clipped surface, in screen space.
+    scr_creator_draw_goto_label(_sc, _dk.x1, _dk.y1);
 
     // Scroll bar on the left when there is more than fits.
     var _max_scroll = max(0, _dk.content_h - _dk.view_h);
@@ -2952,4 +2982,56 @@ function scr_creator_draw_dock() {
     draw_set_halign(_halign_b);
     draw_set_valign(_valign_b);
     draw_set_alpha(1);
+}
+
+
+// ====================================================================
+// GO TO arrow: bottom-left of each node's params in panels, cards and the
+// dock. Hover lights it and shows [GO TO MACRO] to its left (outside the
+// panel, so nothing is covered); click jumps to the node at default zoom
+// with the arrival pulse (scr_node_jump_goto).
+// ====================================================================
+
+#macro CREATOR_GOTO_H 28
+
+function scr_creator_goto_row(_items, _n, _x1, _y) {
+    var _it = scr_creator_item("goto", _x1, _y + 2, _x1 + 24, _y + 26);
+    _it.n = _n;
+    array_push(_items, _it);
+    return CREATOR_GOTO_H;
+}
+
+/// Label for the hovered arrow. _sc/_ox/_oy map item space to the space
+/// being drawn in (1,0,0 when they are the same).
+function scr_creator_draw_goto_label(_sc, _ox, _oy) {
+    if (!is_struct(global.creator_goto_hot)) {
+        exit;
+    }
+    var _it   = global.creator_goto_hot;
+    var _txt  = "[GO TO MACRO]";
+    if (instance_exists(_it.n)) {
+        if (_it.n.node_type == "MACRO_CODE") {
+            _txt = "[GO TO CODE]";
+        }
+    }
+    var _font_b   = draw_get_font();
+    var _halign_b = draw_get_halign();
+    var _valign_b = draw_get_valign();
+    draw_set_font_l(fnt_c64_code);
+    var _rx = _ox + _it.x1 * _sc - 8;
+    var _cy = _oy + (_it.y1 + _it.y2) * 0.5 * _sc;
+    var _tw = string_width_l(_txt);
+    var _th = string_height(_txt);
+    draw_set_alpha(0.85);
+    draw_set_colour(make_colour_rgb(8, 8, 24));
+    draw_rectangle(_rx - _tw - 8, _cy - _th * 0.5 - 3, _rx + 2, _cy + _th * 0.5 + 3, false);
+    draw_set_alpha(1);
+    draw_set_colour(make_colour_rgb(255, 210, 80));
+    draw_set_halign(fa_right);
+    draw_set_valign(fa_middle);
+    draw_text_l(_rx - 3, _cy, _txt);
+    draw_set_font_l(_font_b);
+    draw_set_halign(_halign_b);
+    draw_set_valign(_valign_b);
+    global.creator_goto_hot = undefined;
 }
