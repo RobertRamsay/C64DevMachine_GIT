@@ -426,6 +426,9 @@ var _addr_total = 65536;
                     var _src = (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) ? real(instructions[0][9]) : 0;
                     var _taddr = is_real(instructions[0][5]) ? real(instructions[0][5]) : 0xC000;
                     var _tlen  = string_length(string(instructions[0][6])) + 1;
+                    // Inline text gets a trailing space at compile time if it lacks one.
+                    var _ttxt  = string(instructions[0][6]);
+                    if (_src == 0 && _ttxt != "" && string_char_at(_ttxt, string_length(_ttxt)) != " ") _tlen += 1;
 
                     // If in Asset Mode, fetch the real address from the Asset Manager
                     if (_src == 1 && array_length(instructions[0]) > 10) {

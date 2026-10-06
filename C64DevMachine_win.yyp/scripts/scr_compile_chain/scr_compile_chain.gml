@@ -6540,7 +6540,9 @@ if (_use_sid == 0) {
     }
 }
 // Same line MACRO_SID chains to, so PRE/POST-NOP tuning is identical.
-var _ts_scroll_raster = clamp(50 + (_row * 8) - 1, 0, 255);
+// Two lines early: a full line of slack, so however late the handler starts
+// the raster wait below still ends at the start of the row above.
+var _ts_scroll_raster = clamp(50 + (_row * 8) - 2, 0, 255);
 
 // [14] hires_col_override - 1 = keep _colNN colour bytes literal (0-7,
 // hi-res per-cell VIC override) even when the map is MC. Does NOT affect
@@ -6644,8 +6646,6 @@ if (_jsr_mode == 0) {
 		
         array_push(_list, ["lda_imm",   0xFF,                           _id]);
         array_push(_list, ["sta_abs",   0xD019,                         _id]); // ack VIC IRQ
-        // PRE-NOP Delay
-		 repeat(_pre_nop) { array_push(_list, ["nop", 0, _id]); }
         array_push(_list, ["lda_abs",   0xD011,                         _id]);
         array_push(_list, ["sta_lab",   _v_d011,                        _id]);
         array_push(_list, ["lda_abs",   0xD016,                         _id]);
@@ -6692,10 +6692,14 @@ if (_jsr_mode == 0) {
         array_push(_list, ["ora_imm",    0x07,                         _id]);
         array_push(_list, ["sta_lab",    _v_d016,                      _id]);
         var _rwd = _p + "rwd";
-        array_push(_list, ["ldx_imm",    6,                            _id]);
+        array_push(_list, ["ldx_imm",    4,                            _id]);
         array_push(_list, ["label",      _rwd]);
         array_push(_list, ["dex",        0,                            _id]);
         array_push(_list, ["bne",        _rwd,                         _id]);
+        // PRE-NOP: fine-tunes when the scroll starts (top edge of the row),
+        // as POST-NOP does for where it ends. The default 6 lands the write
+        // in the border between the two rows.
+        repeat(_pre_nop) { array_push(_list, ["nop", 0, _id]); }
         // NOW safe to switch $D016 to HR fine scroll — we are on the scroll row
         array_push(_list, ["lda_imm",   0xC8,                           _id]); // 40-col base, HR
         array_push(_list, ["and_imm",   0xF0,                           _id]);
@@ -6989,6 +6993,11 @@ array_push(_list, ["label",   _v_dd00]);   array_push(_list, ["byte", 0x02,    _
 
 	_txt_str = string_replace_all(_txt_str, "\n", "");
 	_txt_str = string_replace_all(_txt_str, "\r", "");
+	// Inline text: end on a space so the message does not run into itself
+	// when it loops. Asset text is left exactly as written.
+	if (_text_src == 0 && string_length(_txt_str) > 0 && string_char_at(_txt_str, string_length(_txt_str)) != " ") {
+		_txt_str += " ";
+	}
     var _si = 1;
     while (_si <= string_length(_txt_str)) {
         if (string_copy(_txt_str, _si, 1) == "_") {
@@ -7797,7 +7806,7 @@ if (!_found_valid_sid) {
             if (string_digits(_sfx2) == _sfx2 && string_length(_sfx2) > 3) _saved_alias_sid = "";
         }
         var _hook_p = (_saved_alias_sid != "") ? (_saved_alias_sid + "_") : ("ts" + string(real(id)) + "_");
-		        var _scroll_raster = clamp(50 + (clamp(real(id.instructions[0][1]), 0, 24) * 8) -1, 0, 255); // EDIT for early the -1
+		        var _scroll_raster = clamp(50 + (clamp(real(id.instructions[0][1]), 0, 24) * 8) - 2, 0, 255); // two lines early: see MACRO_TEXT_SCROLL
 show_debug_message("SID raster-chain to: [" + _hook_p + "scroll] raster=$" + string_upper(decimal_to_hex(_scroll_raster)));				
 		        show_debug_message("SID scroll hook: _hook_p=[" + _hook_p + "] full label=[" + _hook_p + "scroll]");
 		        array_push(_list, ["lda_lab_lo", _hook_p + "scroll", _id]);				 
