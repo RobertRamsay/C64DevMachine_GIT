@@ -797,6 +797,14 @@ cam_y           = -64;
 cam_zoom        = 1.0;
 cam_zoom_target = 1.0;
 is_panning      = false;
+
+// Edge auto-pan while dragging a node: holding a dragged node within
+// edge_pan_buffer GUI px of the canvas edge scrolls the view that way.
+// It arms only once the pointer has been inside the canvas during the drag,
+// so picking a node up from the palette or a menu does not set it off.
+edge_pan_armed  = false;
+edge_pan_buffer = 48;     // GUI px from the canvas edge
+edge_pan_speed  = 16;     // GUI px per frame at the very edge
 cam_target_x = cam_x;
 cam_target_y = cam_y;
 // Start with the same INIT-relative view as Home, without recording an edit.

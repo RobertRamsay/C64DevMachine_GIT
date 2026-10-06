@@ -9,6 +9,8 @@ if (step_idx < 0 || step_idx >= array_length(steps)) {
 
 var _step = steps[step_idx];
 
+scr_tour_glide_step();
+
 // Short "done" flash, then move on.
 if (done_timer > 0) {
     done_timer--;

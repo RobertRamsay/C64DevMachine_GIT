@@ -4716,6 +4716,54 @@ if (is_panning) {
     }
     }
 }
+
+// ---- EDGE AUTO-PAN WHILE DRAGGING A NODE ----
+// The canvas is the area between the palette shelf, the menu bar, the asset
+// panel and the bottom of the window. Within edge_pan_buffer of one of those
+// edges the view scrolls towards it, faster the closer the pointer gets.
+// Pointer over the shelf, menu bar or asset panel itself does not pan.
+if (_any_node_dragging && !is_panning) {
+    var _ep_l = 0;
+    if (!expert_mode && !scr_shelf_hidden()) {
+        _ep_l = shelf_width;
+    }
+    var _ep_t = sprite_get_height(spr_menu_bar);
+    var _ep_r = global.gui_w;
+    if (instance_exists(obj_asset_manager)) {
+        _ep_r = obj_asset_manager.panel_x;
+    }
+    var _ep_b  = display_get_gui_height();
+    var _ep_mx = global.gui_mouse_x;
+    var _ep_my = global.gui_mouse_y;
+    var _ep_bf = edge_pan_buffer;
+
+    var _ep_in_canvas = point_in_rectangle(_ep_mx, _ep_my, _ep_l, _ep_t, _ep_r, _ep_b);
+    if (point_in_rectangle(_ep_mx, _ep_my, _ep_l + _ep_bf, _ep_t + _ep_bf, _ep_r - _ep_bf, _ep_b - _ep_bf)) {
+        edge_pan_armed = true;
+    }
+
+    if (edge_pan_armed && _ep_in_canvas) {
+        var _ep_dx = 0;
+        var _ep_dy = 0;
+        if (_ep_mx < _ep_l + _ep_bf) {
+            _ep_dx = -(1 - ((_ep_mx - _ep_l) / _ep_bf));
+        }
+        if (_ep_mx > _ep_r - _ep_bf) {
+            _ep_dx = 1 - ((_ep_r - _ep_mx) / _ep_bf);
+        }
+        if (_ep_my < _ep_t + _ep_bf) {
+            _ep_dy = -(1 - ((_ep_my - _ep_t) / _ep_bf));
+        }
+        if (_ep_my > _ep_b - _ep_bf) {
+            _ep_dy = 1 - ((_ep_b - _ep_my) / _ep_bf);
+        }
+        cam_x += _ep_dx * edge_pan_speed * cam_zoom;
+        cam_y += _ep_dy * edge_pan_speed * cam_zoom;
+    }
+} else {
+    edge_pan_armed = false;
+}
+
 camera_set_view_pos(cam_view, cam_x, cam_y);
 
 // MISC UPDATES

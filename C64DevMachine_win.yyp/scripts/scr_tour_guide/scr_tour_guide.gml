@@ -581,6 +581,14 @@ function scr_tour_enter_step() {
     if (_focus == "FIT") {
         scr_tour_fit_spine();
     }
+    // Drag steps ease the camera over to their DROP HERE spot.
+    glide_active = false;
+    glide_wait   = 0;
+    if (step_idx >= 0 && step_idx < array_length(steps)) {
+        if (steps[step_idx].drop != "") {
+            glide_wait = 90;
+        }
+    }
     if (string_copy(_focus, 1, 9) == "NODETYPE:") {
         var _fn = scr_tour_node_by_type(string_delete(_focus, 1, 9));
         if (_fn != noone) {
@@ -1871,4 +1879,97 @@ function scr_tour_draw_drop(_n, _pulse, _gw, _gh) {
 
     draw_text_l(_rt + 54, _y - 8, "DROP HERE");
     draw_set_color(c_white);
+}
+
+/// @desc Free part of the screen in GUI px, as [left, top, right, bottom]:
+///       right of the palette, below the menu bar, left of the asset panel
+///       and above the caption panel.
+function scr_tour_usable_rect() {
+    var _wm   = obj_workspace_manager;
+    var _left = 0;
+    if (!_wm.expert_mode && !scr_shelf_hidden()) {
+        _left = _wm.shelf_width;
+    }
+    var _right = global.gui_w;
+    if (instance_exists(obj_asset_manager)) {
+        _right = obj_asset_manager.panel_x - 20;
+    }
+    var _top    = sprite_get_height(spr_menu_bar) + 20;
+    var _bottom = display_get_gui_height() - 280;
+    return [_left, _top, _right, _bottom];
+}
+
+/// @desc Runs every frame on obj_tour_guide. On a drag step, once its drop
+///       node exists, ease the camera so the DROP HERE spot sits in the middle
+///       of the free screen. Skipped when the spot is already comfortably in
+///       view; stops as soon as the user pans, zooms or drags a node.
+function scr_tour_glide_step() {
+    var _wm = obj_workspace_manager;
+
+    if (glide_wait > 0 && !glide_active) {
+        glide_wait--;
+        var _n = scr_tour_drop_node(steps[step_idx].drop);
+        if (_n != noone) {
+            glide_wait = 0;
+            var _wx = _n.x + _n.x_indent + (_n.width * 0.5);
+            var _wy = _n.y + _n.height;
+            var _u  = scr_tour_usable_rect();
+            var _mx = (_u[2] - _u[0]) * 0.2;
+            var _my = (_u[3] - _u[1]) * 0.2;
+            var _gx = (_wx - _wm.cam_x) / _wm.cam_zoom;
+            var _gy = (_wy - _wm.cam_y) / _wm.cam_zoom;
+            var _comfy = point_in_rectangle(_gx, _gy, _u[0] + _mx, _u[1] + _my, _u[2] - _mx, _u[3] - _my);
+
+            // When the thing to drag is a label already on the canvas, keep
+            // it in view too: aim between the label and the drop spot.
+            var _src = noone;
+            var _tg  = steps[step_idx].targets;
+            if (array_length(_tg) > 0) {
+                if (string_copy(_tg[0], 1, 10) == "LABELNAME:") {
+                    _src = scr_tour_label(string_delete(_tg[0], 1, 10));
+                }
+                if (_tg[0] == "FREELABEL") {
+                    _src = scr_tour_free_label();
+                }
+            }
+            if (_src != noone) {
+                if (!_src.is_connected) {
+                    var _sx  = _src.x + _src.x_indent + (_src.width * 0.5);
+                    var _sy  = _src.y + (_src.height * 0.5);
+                    var _sgx = (_sx - _wm.cam_x) / _wm.cam_zoom;
+                    var _sgy = (_sy - _wm.cam_y) / _wm.cam_zoom;
+                    if (!point_in_rectangle(_sgx, _sgy, _u[0] + _mx, _u[1] + _my, _u[2] - _mx, _u[3] - _my)) {
+                        _comfy = false;
+                    }
+                    _wx = (_wx + _sx) * 0.5;
+                    _wy = (_wy + _sy) * 0.5;
+                }
+            }
+            if (!_comfy) {
+                glide_tx     = _wx - (((_u[0] + _u[2]) * 0.5) * _wm.cam_zoom);
+                glide_ty     = _wy - (((_u[1] + _u[3]) * 0.5) * _wm.cam_zoom);
+                glide_active = true;
+            }
+        }
+    }
+
+    if (!glide_active) {
+        return;
+    }
+
+    // Hand control straight back if the user takes over.
+    if (_wm.is_panning || global.any_node_dragging
+    ||  mouse_wheel_up() || mouse_wheel_down()
+    ||  abs(_wm.cam_zoom - _wm.cam_zoom_target) > 0.001) {
+        glide_active = false;
+        return;
+    }
+
+    _wm.cam_x = lerp(_wm.cam_x, glide_tx, 0.07);
+    _wm.cam_y = lerp(_wm.cam_y, glide_ty, 0.07);
+    if (abs(_wm.cam_x - glide_tx) < 1 && abs(_wm.cam_y - glide_ty) < 1) {
+        _wm.cam_x    = glide_tx;
+        _wm.cam_y    = glide_ty;
+        glide_active = false;
+    }
 }
