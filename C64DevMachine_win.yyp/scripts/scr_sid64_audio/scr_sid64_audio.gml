@@ -585,7 +585,8 @@ function scr_sound_instrument_follow_read(_m) {
 // ═══════════════════════ NODE PLAY BUTTONS ═══════════════════════
 // SID SONG, SFX and SID nodes draw a small play triangle in their header.
 // One node plays at a time; state lives on obj_asset_manager (Create).
-//   SONG - the node's Music Maker asset, song 0, through the reSID stream
+//   SONG - the node's Music Maker asset, the song selected in the Music
+//          Maker (first song by default), through the reSID stream
 //   SFX  - the node's effect number, at its own note, through the instrument preview
 //   SID  - the node's imported .sid file and track, through the PSID player
 
@@ -638,8 +639,19 @@ function scr_node_preview_toggle(_node) {
 
     if (_node.node_type == "MACRO_SID_SONG") {
         if (!global.sid64_ok || _asset.type != "MUSIC_MAKER") return;
+        // The song selected in the Music Maker (the first song unless you
+        // picked another there). The stream wants the song entry itself,
+        // as the Music Maker's own PLAY passes it - not its number.
+        var _mm = _asset.meta;
+        if (!variable_struct_exists(_mm, "songs") || !is_array(_mm.songs) || array_length(_mm.songs) == 0) return;
+        var _sel = 0;
+        if (variable_struct_exists(_mm, "sel_song") && is_real(_mm.sel_song)) _sel = floor(_mm.sel_song);
+        _sel = clamp(_sel, 0, array_length(_mm.songs) - 1);
+        var _song = _mm.songs[_sel];
+        if (!variable_struct_exists(_song, "order") || array_length(_song.order) == 0) return;
         with (obj_asset_manager) scr_sid_asset_stop();
-        scr_sid64_stream_start(_asset.meta, 0, false, 0, 0);
+        scr_sound_preview_stop_all();
+        scr_sid64_stream_start(_mm, _song, false, 0, 0);
         if (!global.sid64_stream.active) return;
         with (obj_asset_manager) {
             node_preview_node = _node;
