@@ -88,6 +88,15 @@ var _scale_y = window_get_height() div 300;
 bmp_ui_zoom_cap_base = 3;
 bmp_ui_zoom_cap      = 3;
 
+// Bitmap editor grids (OPTIONS kept in c64devmachine.ini [bitmap]):
+//   CELL GRID  - every 8x8 cell, at any zoom, black + white lines
+//   ZOOM GRID  - the same lines fading in past 100% zoom, scaled by strength
+ini_open("c64devmachine.ini");
+bmp_cell_grid     = (ini_read_real("bitmap", "cell_grid", 0) == 1);
+bmp_zoom_grid_str = clamp(ini_read_real("bitmap", "zoom_grid_strength", 1), 0, 1);
+ini_close();
+bmp_zoom_grid_drag = false;
+
 // -------------------------------------------------------
 // PANEL LAYOUT
 // -------------------------------------------------------

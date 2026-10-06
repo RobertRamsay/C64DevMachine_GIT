@@ -5453,46 +5453,47 @@ if (point_in_rectangle(_mx, _my, _sx, _sy, _sx + _sw, _sy + _sh)) {
     _asset.meta.hud_py = -1;
 }
 
-// 8x8 grid overlay when pixel-zoomed to 100%+
-if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
-	var _pxz_g   = _asset.meta.bmp_zoom / bmp_ui_zoom_cap;
+// GRIDS over the canvas. ZOOM GRID fades in past 100% zoom, scaled by its
+// strength slider; CELL GRID marks every 8x8 cell at any zoom, fully zoomed
+// out included. Each line is black with white beside it, so it shows on
+// any colour underneath.
+{
+	var _pxz_g   = max(1, _asset.meta.bmp_zoom / bmp_ui_zoom_cap);
 	var _src_w_g = max(1, 320 / _pxz_g);
 	var _src_h_g = max(1, 200 / _pxz_g);
 	var _src_x_g = clamp(_asset.meta.bmp_pan_x, 0, 320 - _src_w_g);
 	var _src_y_g = clamp(_asset.meta.bmp_pan_y, 0, 200 - _src_h_g);
-	// pixels per screen pixel
-	var _pps_x = _sw / _src_w_g;
+	if (_pxz_g <= 1) { _src_x_g = 0; _src_y_g = 0; }
+	var _pps_x = _sw / _src_w_g;   // screen pixels per surface pixel
 	var _pps_y = _sh / _src_h_g;
-	// only draw grid if each surface pixel is at least 4 screen pixels wide
-	if (_pps_x >= 4) {
+	var _g_alpha = 0;
+	if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap && _pps_x >= 4) {
+	    var _max_pps = 32;
+	    var _zoom_t  = clamp((_pps_x - 4) / max(1, _max_pps - 4), 0, 1);
+	    _g_alpha = lerp(0.6, 1.0, _zoom_t) * bmp_zoom_grid_str;
+	}
+	if (bmp_cell_grid) {
+	    _g_alpha = 1;
+	}
+	if (_g_alpha > 0.01) {
 	    var _sx_sc3 = window_get_width()  / _gui_w;
 	    var _sy_sc3 = window_get_height() / display_get_gui_height();
 	    gpu_set_scissor(
 	        floor(_sx * _sx_sc3), floor(_sy * _sy_sc3),
 	        ceil(_sw * _sx_sc3),  ceil(_sh * _sy_sc3)
 	    );
-	    
-	    // Calculate transition (t) from 0.0 at min zoom (4) to 1.0 at full zoom
-	    var _max_pps = 32; // Adjust this to match your absolute maximum _pps_x
-	    var _zoom_t = clamp((_pps_x - 4) / max(1, _max_pps - 4), 0, 1);
-	    
-	    var _col_start = make_color_rgb(40, 40, 60);
-	    var _col_end   = make_color_rgb(140, 140, 170); // Lighter target color
-	    
-	    draw_set_color(merge_color(_col_start, _col_end, _zoom_t));
-	    draw_set_alpha(lerp(0.15, 1.0, _zoom_t)); // Fade smoothly from faint to solid
-	    
-	    // vertical lines every 8 surface pixels
+	    draw_set_alpha(_g_alpha);
 	    var _first_gx = floor(_src_x_g / 8) * 8;
 	    for (var _gx = _first_gx; _gx <= _src_x_g + _src_w_g; _gx += 8) {
-	        var _screen_gx = _sx + (_gx - _src_x_g) * _pps_x;
-	        draw_line(_screen_gx, _sy, _screen_gx, _sy + _sh);
+	        var _screen_gx = floor(_sx + (_gx - _src_x_g) * _pps_x);
+	        draw_set_color(c_black); draw_line(_screen_gx - 1, _sy, _screen_gx - 1, _sy + _sh);
+	        draw_set_color(c_white); draw_line(_screen_gx,     _sy, _screen_gx,     _sy + _sh);
 	    }
-	    // horizontal lines every 8 surface pixels
 	    var _first_gy = floor(_src_y_g / 8) * 8;
 	    for (var _gy = _first_gy; _gy <= _src_y_g + _src_h_g; _gy += 8) {
-	        var _screen_gy = _sy + (_gy - _src_y_g) * _pps_y;
-	        draw_line(_sx, _screen_gy, _sx + _sw, _screen_gy);
+	        var _screen_gy = floor(_sy + (_gy - _src_y_g) * _pps_y);
+	        draw_set_color(c_black); draw_line(_sx, _screen_gy - 1, _sx + _sw, _screen_gy - 1);
+	        draw_set_color(c_white); draw_line(_sx, _screen_gy,     _sx + _sw, _screen_gy);
 	    }
 	    draw_set_alpha(1.0);
 	    gpu_set_scissor(0, 0, window_get_width(), window_get_height());
@@ -7584,6 +7585,45 @@ gpu_set_texfilter(false);
 	                        _asset.meta.bmp_pan_y *= (_asset.meta.bmp_zoom / _old_z);
 	                    }
 	                }
+
+	                // GRIDS: CELL GRID toggle and ZOOM GRID strength slider.
+	                _lty += 40;
+	                var _cg_w   = 110;
+	                var _cg_hov = point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + _cg_w, _lty + 18);
+	                draw_set_color(_cg_hov ? make_color_rgb(80, 80, 100) : (bmp_cell_grid ? make_color_rgb(30, 90, 60) : make_color_rgb(40, 40, 60)));
+	                draw_rectangle(_ltx, _lty, _ltx + _cg_w, _lty + 18, false);
+	                draw_set_color(_cg_hov ? c_white : c_black);
+	                draw_rectangle(_ltx, _lty, _ltx + _cg_w, _lty + 18, true);
+	                draw_set_color(bmp_cell_grid ? c_lime : c_white);
+	                draw_text_l(_ltx + 4, _lty + 2, L("CELL GRID: ") + (bmp_cell_grid ? L("ON") : L("OFF")));
+	                if (_cg_hov && mouse_check_button_pressed(mb_left)) {
+	                    bmp_cell_grid = !bmp_cell_grid;
+	                    ini_open("c64devmachine.ini");
+	                    ini_write_real("bitmap", "cell_grid", bmp_cell_grid ? 1 : 0);
+	                    ini_close();
+	                }
+	                _lty += 28;
+	                draw_set_color(c_white);
+	                draw_text_l(_ltx, _lty, L("ZOOM GRID ") + string(round(bmp_zoom_grid_str * 100)) + "%");
+	                _lty += 18;
+	                var _zg_x2  = _ltx + _cg_w;
+	                var _zg_hov = point_in_rectangle(_mx, _my, _ltx - 4, _lty - 4, _zg_x2 + 4, _lty + 14);
+	                if (_zg_hov && mouse_check_button_pressed(mb_left)) bmp_zoom_grid_drag = true;
+	                if (bmp_zoom_grid_drag) {
+	                    bmp_zoom_grid_str = clamp((_mx - _ltx) / _cg_w, 0, 1);
+	                    if (!mouse_check_button(mb_left)) {
+	                        bmp_zoom_grid_drag = false;
+	                        ini_open("c64devmachine.ini");
+	                        ini_write_real("bitmap", "zoom_grid_strength", bmp_zoom_grid_str);
+	                        ini_close();
+	                    }
+	                }
+	                draw_set_color(make_color_rgb(40, 40, 60));
+	                draw_rectangle(_ltx, _lty, _zg_x2, _lty + 10, false);
+	                draw_set_color(make_color_rgb(90, 200, 255));
+	                draw_rectangle(_ltx, _lty, _ltx + _cg_w * bmp_zoom_grid_str, _lty + 10, false);
+	                draw_set_color((_zg_hov || bmp_zoom_grid_drag) ? c_white : c_black);
+	                draw_rectangle(_ltx, _lty, _zg_x2, _lty + 10, true);
 
 					// RIGHT SIDE TOOLS
 	                var _rtx = _thumb_x + _thumb_w + 45;
