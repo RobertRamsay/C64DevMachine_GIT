@@ -2407,6 +2407,120 @@ var _zmx1  = _vx2 - _btn_bw * 2 - 6;
 		        _obj_bar_h = 30;
 		    }
 		    _cv_y2 -= _obj_bar_h;
+
+		    // ---- SCROLLBARS: one along the right of the map, one along the
+		    // bottom when the map is wider than the view. They sit OUTSIDE the
+		    // canvas rectangle (the canvas shrinks to make room), so a click or
+		    // drag on a bar can never paint; and painting is held off while a
+		    // bar is being dragged even if the pointer wanders onto the map.
+		    var _sb_t   = 14;                                   // bar thickness
+		    var _sb_cs  = 8 * _zoom;
+		    _cv_x2 -= (_sb_t + 2);
+		    var _sb_need_h = (_gw * _sb_cs) > (_cv_x2 - _cv_x1);
+		    if (_sb_need_h) {
+		        _cv_y2 -= (_sb_t + 2);
+		    }
+		    var _sb_vis_r = max(1, floor((_cv_y2 - _cv_y1) / _sb_cs));
+		    var _sb_vis_c = max(1, floor((_cv_x2 - _cv_x1) / _sb_cs));
+		    var _sb_max_r = max(0, _gh - _sb_vis_r);
+		    var _sb_max_c = max(0, _gw - _sb_vis_c);
+		    // vertical bar geometry
+		    var _sbv_x1 = _cv_x2 + 2;
+		    var _sbv_x2 = _sbv_x1 + _sb_t;
+		    var _sbv_y1 = _cv_y1;
+		    var _sbv_y2 = _cv_y2;
+		    var _sbv_len = _sbv_y2 - _sbv_y1;
+		    var _sbv_th  = max(20, floor(_sbv_len * min(1, _sb_vis_r / max(1, _gh))));
+		    var _sbv_pos = min(_m.scroll_y, _sb_max_r);
+		    var _sbv_ty  = _sbv_y1;
+		    if (_sb_max_r > 0) {
+		        _sbv_ty = _sbv_y1 + floor((_sbv_len - _sbv_th) * _sbv_pos / _sb_max_r);
+		    }
+		    var _sbv_hov = point_in_rectangle(_mx, _my, _sbv_x1, _sbv_y1, _sbv_x2, _sbv_y2);
+		    // horizontal bar geometry
+		    var _sbh_x1 = _cv_x1;
+		    var _sbh_x2 = _cv_x2;
+		    var _sbh_y1 = _cv_y2 + 2;
+		    var _sbh_y2 = _sbh_y1 + _sb_t;
+		    var _sbh_len = _sbh_x2 - _sbh_x1;
+		    var _sbh_tw  = max(20, floor(_sbh_len * min(1, _sb_vis_c / max(1, _gw))));
+		    var _sbh_pos = min(_m.scroll_x, _sb_max_c);
+		    var _sbh_tx  = _sbh_x1;
+		    if (_sb_max_c > 0) {
+		        _sbh_tx = _sbh_x1 + floor((_sbh_len - _sbh_tw) * _sbh_pos / _sb_max_c);
+		    }
+		    var _sbh_hov = _sb_need_h && point_in_rectangle(_mx, _my, _sbh_x1, _sbh_y1, _sbh_x2, _sbh_y2);
+		    // press: on the thumb grabs it where clicked; on the track jumps the
+		    // thumb there (centred) and keeps dragging
+		    if (mouse_check_button_pressed(mb_left) && map_sb_drag == 0) {
+		        if (_sbv_hov && _sb_max_r > 0) {
+		            map_sb_drag = 1;
+		            if (_my >= _sbv_ty && _my <= _sbv_ty + _sbv_th) {
+		                map_sb_grab = _my - _sbv_ty;
+		            } else {
+		                map_sb_grab = _sbv_th * 0.5;
+		            }
+		        } else if (_sbh_hov && _sb_max_c > 0) {
+		            map_sb_drag = 2;
+		            if (_mx >= _sbh_tx && _mx <= _sbh_tx + _sbh_tw) {
+		                map_sb_grab = _mx - _sbh_tx;
+		            } else {
+		                map_sb_grab = _sbh_tw * 0.5;
+		            }
+		        }
+		    }
+		    if (map_sb_drag != 0) {
+		        if (mouse_check_button(mb_left) == false || window_has_focus() == false) {
+		            map_sb_drag = 0;
+		        } else if (map_sb_drag == 1 && _sb_max_r > 0) {
+		            var _sbv_f = (_my - map_sb_grab - _sbv_y1) / max(1, _sbv_len - _sbv_th);
+		            _m.scroll_y = clamp(round(_sbv_f * _sb_max_r), 0, _sb_max_r);
+		        } else if (map_sb_drag == 2 && _sb_max_c > 0) {
+		            var _sbh_f = (_mx - map_sb_grab - _sbh_x1) / max(1, _sbh_len - _sbh_tw);
+		            _m.scroll_x = clamp(round(_sbh_f * _sb_max_c), 0, _sb_max_c);
+		        }
+		    }
+		    // wheel over a bar scrolls (over the map it still zooms)
+		    if (_sbv_hov) {
+		        if (mouse_wheel_up())   _m.scroll_y = max(0, _m.scroll_y - 3);
+		        if (mouse_wheel_down()) _m.scroll_y = min(_sb_max_r, _m.scroll_y + 3);
+		    }
+		    if (_sbh_hov) {
+		        if (mouse_wheel_up())   _m.scroll_x = max(0, _m.scroll_x - 3);
+		        if (mouse_wheel_down()) _m.scroll_x = min(_sb_max_c, _m.scroll_x + 3);
+		    }
+		    // recompute thumbs after any change this frame, then draw
+		    _sbv_pos = min(_m.scroll_y, _sb_max_r);
+		    if (_sb_max_r > 0) {
+		        _sbv_ty = _sbv_y1 + floor((_sbv_len - _sbv_th) * _sbv_pos / _sb_max_r);
+		    }
+		    _sbh_pos = min(_m.scroll_x, _sb_max_c);
+		    if (_sb_max_c > 0) {
+		        _sbh_tx = _sbh_x1 + floor((_sbh_len - _sbh_tw) * _sbh_pos / _sb_max_c);
+		    }
+		    draw_set_color(make_color_rgb(22, 22, 34));
+		    draw_rectangle(_sbv_x1, _sbv_y1, _sbv_x2, _sbv_y2, false);
+		    if (map_sb_drag == 1) {
+		        draw_set_color(make_color_rgb(120, 200, 255));
+		    } else if (_sbv_hov) {
+		        draw_set_color(make_color_rgb(110, 130, 170));
+		    } else {
+		        draw_set_color(make_color_rgb(75, 85, 115));
+		    }
+		    draw_rectangle(_sbv_x1 + 2, _sbv_ty, _sbv_x2 - 2, _sbv_ty + _sbv_th, false);
+		    if (_sb_need_h) {
+		        draw_set_color(make_color_rgb(22, 22, 34));
+		        draw_rectangle(_sbh_x1, _sbh_y1, _sbh_x2, _sbh_y2, false);
+		        if (map_sb_drag == 2) {
+		            draw_set_color(make_color_rgb(120, 200, 255));
+		        } else if (_sbh_hov) {
+		            draw_set_color(make_color_rgb(110, 130, 170));
+		        } else {
+		            draw_set_color(make_color_rgb(75, 85, 115));
+		        }
+		        draw_rectangle(_sbh_tx, _sbh_y1 + 2, _sbh_tx + _sbh_tw, _sbh_y2 - 2, false);
+		    }
+
 		    var _cv_w  = _cv_x2 - _cv_x1;
 		    var _cv_h  = _cv_y2 - _cv_y1;
 
@@ -2989,7 +3103,8 @@ draw_set_color(_cell_bg_col);
     if (!variable_struct_exists(_m, "map_undo_stack")) _m.map_undo_stack = [];
     if (!variable_struct_exists(_m, "map_redo_stack")) _m.map_redo_stack = [];
 
-    var _mouse_in_canvas = point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && !_m.obj_mode && !_obj_bar_hover;
+    // map_sb_drag: no painting while a scrollbar is being dragged
+    var _mouse_in_canvas = point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && !_m.obj_mode && !_obj_bar_hover && map_sb_drag == 0;
 
     // A pan ends when the pointer leaves the map or the middle button /
     // SPACE is no longer held. The release check below only runs while the

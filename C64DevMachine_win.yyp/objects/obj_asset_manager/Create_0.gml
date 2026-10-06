@@ -966,3 +966,6 @@ manifest_draw_preview = function(_asset, _viewer_x, _row_y) {
 // MAP editor: zoom request from the Z-/Z+ buttons (-1 / +1), applied where
 // the canvas geometry is known so it can keep the view centred.
 map_zoom_step = 0;
+// MAP_DATA scrollbars: 0 = none, 1 = dragging the right-hand bar, 2 = the bottom bar
+map_sb_drag = 0;
+map_sb_grab = 0;   // where on the thumb it was grabbed (px)
