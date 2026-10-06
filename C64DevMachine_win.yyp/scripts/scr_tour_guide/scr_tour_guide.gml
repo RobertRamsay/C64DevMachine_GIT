@@ -523,8 +523,8 @@ function scr_tour_define(_id) {
             "Open MACROS 1 and drag COLLIDE onto the spine between JOYSTICK and JMP MAIN.\n\nIt checks the C64's sprite collision hardware every frame.",
             ["MAC:MACRO_COLLISION", "MENU:0"], "COLL_IN_LOOP", "NODETYPE:MACRO_JOY"));
         array_push(_s, scr_tour_step("CALL HIT",
-            "Click the JSR label field at the bottom of the COLLIDE node and choose HIT.",
-            ["NODETYPE:MACRO_COLLISION"], "COLL_HIT"));
+            "Click the CALL field at the bottom of the COLLIDE node and choose HIT.",
+            ["FIELD:MACRO_COLLISION:call", "NODETYPE:MACRO_COLLISION"], "COLL_HIT"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5, or click BUILD & RUN on the right, to build and launch.",
             ["UI:BUILD & RUN"], "BUILT"));

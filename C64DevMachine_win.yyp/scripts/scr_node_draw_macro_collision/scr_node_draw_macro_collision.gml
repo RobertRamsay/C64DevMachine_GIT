@@ -148,8 +148,13 @@ function scr_node_draw_macro_collision(_draw_x) {
     draw_set_color(make_color_rgb(160, 160, 160));
     scr_node_macro_text_l(_draw_x + 6, y + 174, "CALL:");
     var _zx1  = _draw_x + 60;
-    var _zx2  = _draw_x + width - 28;
+    // The field runs to the node's edge, the same span Step treats as a click
+    // on it (the old "..." button beside it opened the same picker).
+    var _zx2  = _draw_x + width - 4;
     var _zhov = point_in_rectangle(mouse_x, mouse_y, _zx1, y + 174, _zx2, y + 190);
+    if (global.tour_active && is_connected) {
+        scr_tour_capture_world("FIELD:MACRO_COLLISION:call", _zx1, y + 174, _zx2, y + 190);
+    }
     if (_zhov) {
         draw_set_color(make_color_rgb(40, 40, 70));
     } else {
@@ -170,16 +175,4 @@ function scr_node_draw_macro_collision(_draw_x) {
         scr_node_macro_text_l(_zx1 + (_zx2 - _zx1) * 0.5, y + 176, "pick label");
     }
     draw_set_halign(fa_left);
-
-    // Picker button
-    var _pbx1 = _zx2 + 2;
-    var _pbx2 = _draw_x + width - 4;
-    if (point_in_rectangle(mouse_x, mouse_y, _pbx1, y + 174, _pbx2, y + 190)) {
-        draw_set_color(make_color_rgb(40, 80, 120));
-    } else {
-        draw_set_color(make_color_rgb(20, 40, 60));
-    }
-    scr_macro_body_rectangle(_pbx1, y + 174, _pbx2, y + 190, false);
-    draw_set_color(c_aqua);
-    scr_node_macro_text_l(_pbx1 + 2, y + 176, "...");
 }
