@@ -1087,6 +1087,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     draw_text_l(_vx1 + 360, _rowy + 6, "SID " + string(_voice_offset div 3 + 1) + "  $" + string_upper(decimal_to_hex(0xD400 + (_voice_offset div 3) * 0x20)));
     if (scr_sfx_maker_button(_vx1 + 525, _rowy, 38, ">>", _mx, _my))
         scr_music_sid_page(_m, _m.sid_page + 1, _col_pat, _se_push_undo, _se_snap);
+    if (global.tour_active) {
+        scr_tour_capture("ASSET:MUS_GEN", _vx1 + 590, _rowy, _vx1 + 740, _rowy + 26);
+    }
     if (scr_sfx_maker_button(_vx1 + 590, _rowy, 150, "GENERATE NODES", _mx, _my)) {
         scr_sound_editor_commit_cell(_m, _se_push_undo, _se_snap, _col_pat);
         if (_m.instr_edit_active && _m.sel_instr >= 0) scr_sound_editor_commit_instrument(_m, _m.instruments[_m.sel_instr]);

@@ -12,6 +12,8 @@ restore_showcode = false; // SHOW CODE panel hidden for the tour, put back after
 
 // Check baselines (set by scr_tour_enter_step)
 base_bmp_count = 0;
+base_spr_count   = 0;
+base_label_count = 0;
 base_undo_top  = undefined;
 base_undo_name = "";
 base_build     = 0;

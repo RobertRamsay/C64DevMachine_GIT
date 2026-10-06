@@ -65,6 +65,11 @@ var _c_edit = make_color_rgb(120, 220, 120); // Light Green (Interactive)
 
             draw_set_color(_enabled ? c_yellow : make_color_rgb(110, 90, 90));
             scr_node_macro_text_l(_draw_x + 6 + (_c * _col_w), _jly, _label);
+            if (global.tour_active) {
+                var _tcx = _draw_x + 8 + (_c * _col_w);
+                scr_tour_capture_world("FIELD:MACRO_JOY:" + string_trim(_label),
+                    _tcx - 4, _jly - 2, _tcx + _col_w - 6, _jly + _line_h + 2);
+            }
         }
         _jly += _line_h+2;
     }

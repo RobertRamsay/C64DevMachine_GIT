@@ -4264,6 +4264,9 @@ case "SPRITE_SET": {
         var _v2by1 = _cy;
         var _v2by2 = _cy + 22;
         spred64_v2_btn_y = _v2by1; // store for Step click detection
+        if (global.tour_active) {
+            scr_tour_capture("ASSET:SPR_EDIT", _v2bx1, _v2by1, _v2bx2, _v2by2);
+        }
         var _v2_open = (spred64_v2.active && spred64_v2.asset_index == viewer_asset);
         var _v2_hov  = point_in_rectangle(_mx, _my, _v2bx1, _v2by1, _v2bx2, _v2by2);
         draw_set_color(_v2_open

@@ -49,5 +49,11 @@ function scr_node_draw_macro_keys(_draw_x, _y) {
         draw_set_color(_enabled ? c_yellow : make_color_rgb(105, 90, 90));
         scr_node_macro_text_l(_draw_x + 6 + (_c * _col_w), _ky + (_r * (_line_h + 2)),
                   scr_key_slot_label(string(_row[0])));
+        if (global.tour_active) {
+            var _tkx = _draw_x + 4 + (_c * _col_w);
+            var _tky = _ky + (_r * (_line_h + 2));
+            scr_tour_capture_world("FIELD:" + node_type + ":" + string(_row[0]),
+                _tkx, _tky - 1, _tkx + _col_w - 2, _tky + _line_h + 2);
+        }
     }
 }
