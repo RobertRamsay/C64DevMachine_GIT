@@ -54,7 +54,7 @@ function scr_parse_asm_text_uncached(_text) {
     // ── Pre-pass: expand repeat N { ... } blocks ──────────────────
     var _expanded = "";
     var _src = _text;
-    var _rpos = string_pos("repeat", _src);
+    var _rpos = scr_asm_find_repeat(_src);
     while (_rpos > 0) {
         _expanded += string_copy(_src, 1, _rpos - 1);
         _src = string_delete(_src, 1, _rpos - 1 + 6);
@@ -83,7 +83,7 @@ function scr_parse_asm_text_uncached(_text) {
         for (var _ri = 0; _ri < _count; _ri++) {
             _expanded += _body + "\n";
         }
-        _rpos = string_pos("repeat", _src);
+        _rpos = scr_asm_find_repeat(_src);
     }
     _expanded += _src;
 
@@ -598,4 +598,43 @@ function scr_asm_pp_eval(_expr, _consts) {
         }
     }
     return scr_asm_pp_value(_e, _consts) != 0;
+}
+
+/// Position of the next real "repeat N {" directive in _src, or 0.
+/// The word must start its line (after spaces/tabs), be a whole word, and
+/// have its "{" on the same line before any ';' comment. So "repeat" inside
+/// a comment or another word ("repeats", "; joystick repeat delay") is not a
+/// directive and is left alone.
+function scr_asm_find_repeat(_src) {
+    var _from = 1;
+    var _len  = string_length(_src);
+    while (true) {
+        var _rel = string_pos("repeat", string_copy(_src, _from, _len - _from + 1));
+        if (_rel == 0) return 0;
+        var _p = _from + _rel - 1;
+        _from = _p + 6;
+        // only spaces/tabs between the start of the line and the word
+        var _ok = true;
+        var _q  = _p - 1;
+        while (_q >= 1) {
+            var _c = string_char_at(_src, _q);
+            if (_c == "\n" || _c == "\r") break;
+            if (_c != " " && _c != chr(9)) { _ok = false; break; }
+            _q -= 1;
+        }
+        if (!_ok) continue;
+        // whole word: next char is a space, tab or digit
+        var _nx = string_char_at(_src, _p + 6);
+        if (_nx != " " && _nx != chr(9) && string_digits(_nx) == "") continue;
+        // "{" on the same line, before any comment
+        var _e = _p + 6;
+        var _brace = false;
+        while (_e <= _len) {
+            var _c2 = string_char_at(_src, _e);
+            if (_c2 == "\n" || _c2 == "\r" || _c2 == ";") break;
+            if (_c2 == "{") { _brace = true; break; }
+            _e += 1;
+        }
+        if (_brace) return _p;
+    }
 }
