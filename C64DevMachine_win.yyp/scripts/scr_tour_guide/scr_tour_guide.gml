@@ -194,12 +194,23 @@ function scr_tour_welcome_geom(_px, _py, _pw, _ph) {
 
 /// @desc Step builder.
 function scr_tour_step(_title, _text, _targets, _check) {
-    return { title: _title, text: _text, targets: _targets, check: _check, focus: "" };
+    return { title: _title, text: _text, targets: _targets, check: _check, focus: "", drop: "" };
 }
 
-/// @desc Step builder for a step that brings one node into view when it
-///       starts. _focus is "NODETYPE:<type>". The camera is centred on that
-///       node at 1:1 zoom, once, as the step begins.
+/// @desc Step builder for a drag step. _drop names the node the new node
+///       should go under; the tour draws a DROP HERE line with arrows at that
+///       node's bottom edge. Keys: NODETYPE:<type>, NODEOP:<op>,
+///       LABELNAME:<name>, LASTOP:<op>, LASTTYPE:<type>.
+function scr_tour_step_at(_title, _text, _targets, _check, _drop) {
+    var _st = scr_tour_step(_title, _text, _targets, _check);
+    _st.drop = _drop;
+    return _st;
+}
+
+/// @desc Step builder for a step that moves the camera once, as it starts.
+///       _focus "NODETYPE:<type>" centres that node at 1:1 zoom.
+///       _focus "FIT" zooms out just far enough to show the whole main spine
+///       (and any label not yet attached).
 function scr_tour_step_focus(_title, _text, _targets, _check, _focus) {
     var _st = scr_tour_step(_title, _text, _targets, _check);
     _st.focus = _focus;
@@ -334,9 +345,9 @@ function scr_tour_define(_id) {
         array_push(_s, scr_tour_step("CLOSE THE VIEWER",
             "Click CLOSE at the top right of the viewer, or press ESC. Your drawing is kept.",
             ["ASSET:CLOSE"], "SPR_CLOSED"));
-        array_push(_s, scr_tour_step("DRAG IN SPRITE",
+        array_push(_s, scr_tour_step_at("DRAG IN SPRITE",
             "Open MACROS 1 and drag SPRITE onto the spine under SYSTEM INIT.",
-            ["MAC:MACRO_SPR", "MENU:0"], "HAS_SPR"));
+            ["MAC:MACRO_SPR", "MENU:0"], "HAS_SPR", "NODETYPE:INIT"));
         array_push(_s, scr_tour_step("LINK YOUR SPRITE",
             "Click the asset name on the SPRITE node and choose the sprite set you just drew.",
             ["NODETYPE:MACRO_SPR"], "SPR_LINKED"));
@@ -355,27 +366,27 @@ function scr_tour_define(_id) {
         array_push(_s, scr_tour_step("MAKE A LABEL",
             "A label is a named place in your program that you can jump back to.\n\nMove the mouse over an empty part of the canvas and press A.",
             [], "LABEL_EXISTS"));
-        array_push(_s, scr_tour_step("ATTACH THE LABEL",
+        array_push(_s, scr_tour_step_at("ATTACH THE LABEL",
             "Drag the new ADDRESS LABEL onto the spine under SYSTEM INIT.",
-            ["FREELABEL", "NODETYPE:LABEL"], "LABEL_CONNECTED"));
+            ["FREELABEL", "NODETYPE:LABEL"], "LABEL_CONNECTED", "NODETYPE:INIT"));
         array_push(_s, scr_tour_step("NAME IT MAIN",
             "Click the label's name, type MAIN and press ENTER.",
             ["NODETYPE:LABEL"], "LABEL_MAIN"));
-        array_push(_s, scr_tour_step("WAIT FOR THE FRAME",
+        array_push(_s, scr_tour_step_at("WAIT FOR THE FRAME",
             "Open MACROS 1 and drag VWAIT onto the spine under MAIN.\n\nVWAIT waits for the screen to be redrawn, so the loop runs 50 times a second.",
-            ["MAC:MACRO_VWAIT", "MENU:0"], "HAS_VWAIT"));
-        array_push(_s, scr_tour_step("PICK A RANDOM NUMBER",
+            ["MAC:MACRO_VWAIT", "MENU:0"], "HAS_VWAIT", "NODETYPE:LABEL"));
+        array_push(_s, scr_tour_step_at("PICK A RANDOM NUMBER",
             "Open MACROS 2 and drag RANDOM onto the spine under VWAIT.\n\nIt leaves a random number in the A register.",
-            ["MAC:MACRO_RANDOM", "MENU:1"], "HAS_RANDOM"));
-        array_push(_s, scr_tour_step("DRAG IN STA_ABS",
+            ["MAC:MACRO_RANDOM", "MENU:1"], "HAS_RANDOM", "NODETYPE:MACRO_VWAIT"));
+        array_push(_s, scr_tour_step_at("DRAG IN STA_ABS",
             "Drag STA_ABS from the opcode palette onto the spine under RANDOM.",
-            ["PAL:STA_ABS", "ARROW:L"], "OP_STA_ABS"));
+            ["PAL:STA_ABS", "ARROW:L"], "OP_STA_ABS", "NODETYPE:MACRO_RANDOM"));
         array_push(_s, scr_tour_step("POINT IT AT THE BORDER",
             "Click the STA value, type $D020 and press ENTER.",
             ["OPERAND0:sta_abs", "NODEOP:sta_abs"], "STA_D020"));
-        array_push(_s, scr_tour_step("DRAG IN JMP_ABS",
+        array_push(_s, scr_tour_step_at("DRAG IN JMP_ABS",
             "JMP_ABS is on a later palette page. Use the arrows to find it, then drag it onto the spine under STA.",
-            ["PAL:JMP_ABS", "ARROW:R"], "OP_JMP"));
+            ["PAL:JMP_ABS", "ARROW:R"], "OP_JMP", "NODEOP:sta_abs"));
         array_push(_s, scr_tour_step("JUMP BACK TO MAIN",
             "Click the JMP value and choose MAIN from the list.\n\nThis closes the loop.",
             ["NODEOP:jmp_abs"], "JMP_MAIN"));
@@ -388,42 +399,42 @@ function scr_tour_define(_id) {
     }
 
     if (_id == 5) {
-        array_push(_s, scr_tour_step("WELCOME",
-            "A ship sprite and a game loop (MAIN, VWAIT, JMP MAIN) are already set up for you.\n\nIn this tour you will steer the ship left and right with a joystick.",
-            [], "NONE"));
-        array_push(_s, scr_tour_step("DRAG IN JOYSTICK",
+        array_push(_s, scr_tour_step_focus("WELCOME",
+            "A ship sprite and a game loop (MAIN, VWAIT, JMP MAIN) are already set up for you.\n\nIn this tour you will steer the ship left and right with a joystick.\n\nPan with the middle mouse button and zoom with the mouse wheel.",
+            [], "NONE", "FIT"));
+        array_push(_s, scr_tour_step_at("DRAG IN JOYSTICK",
             "Open MACROS 1 and drag JOYSTICK onto the spine between VWAIT and JMP MAIN.\n\nIt reads the stick once per frame.",
-            ["MAC:MACRO_JOY", "MENU:0"], "JOY_IN_LOOP"));
+            ["MAC:MACRO_JOY", "MENU:0"], "JOY_IN_LOOP", "NODETYPE:MACRO_VWAIT"));
         array_push(_s, scr_tour_step("TURN ON LEFT",
             "Click LF on the JOYSTICK node.\n\nA label called LF appears beside it. The joystick calls it whenever the stick is pushed left.",
             ["FIELD:MACRO_JOY:LF", "NODETYPE:MACRO_JOY"], "JOY_LF"));
         array_push(_s, scr_tour_step("TURN ON RIGHT",
             "Click RT on the JOYSTICK node. A label called RT appears too.",
             ["FIELD:MACRO_JOY:RT", "NODETYPE:MACRO_JOY"], "JOY_RT"));
-        array_push(_s, scr_tour_step("ATTACH LF",
+        array_push(_s, scr_tour_step_at("ATTACH LF",
             "Drag the LF label onto the spine below JMP MAIN.\n\nCode below the JMP only runs when something calls it.",
-            ["LABELNAME:LF"], "LF_BELOW"));
-        array_push(_s, scr_tour_step("DRAG IN MOVE",
+            ["LABELNAME:LF"], "LF_BELOW", "NODEOP:jmp_abs"));
+        array_push(_s, scr_tour_step_at("DRAG IN MOVE",
             "Open MACROS 1 and drag MOVE onto the spine under LF.",
-            ["MAC:MACRO_MOVE", "MENU:0"], "MOVE_AFTER_LF"));
+            ["MAC:MACRO_MOVE", "MENU:0"], "MOVE_AFTER_LF", "LABELNAME:LF"));
         array_push(_s, scr_tour_step("MOVE LEFT",
             "Click the DX value on the MOVE node, type -2 and press ENTER.\n\nDX is how far the sprite moves across each frame.",
             ["NODETYPE:MACRO_MOVE"], "MOVE_NEG"));
-        array_push(_s, scr_tour_step("RETURN",
+        array_push(_s, scr_tour_step_at("RETURN",
             "Drag RTS from the opcode palette onto the spine under MOVE.\n\nRTS returns to the joystick, so the loop carries on.",
-            ["PAL:RTS", "ARROW:R"], "RTS_1"));
-        array_push(_s, scr_tour_step("ATTACH RT",
+            ["PAL:RTS", "ARROW:R"], "RTS_1", "LASTTYPE:MACRO_MOVE"));
+        array_push(_s, scr_tour_step_at("ATTACH RT",
             "Drag the RT label onto the spine under that RTS.",
-            ["LABELNAME:RT"], "RT_BELOW"));
-        array_push(_s, scr_tour_step("ANOTHER MOVE",
+            ["LABELNAME:RT"], "RT_BELOW", "LASTOP:rts"));
+        array_push(_s, scr_tour_step_at("ANOTHER MOVE",
             "Drag another MOVE from MACROS 1 onto the spine under RT.",
-            ["MAC:MACRO_MOVE", "MENU:0"], "MOVE_2"));
+            ["MAC:MACRO_MOVE", "MENU:0"], "MOVE_2", "LABELNAME:RT"));
         array_push(_s, scr_tour_step("MOVE RIGHT",
             "Set DX on the new MOVE node to 2 and press ENTER.",
             ["LASTTYPE:MACRO_MOVE"], "MOVE_POS"));
-        array_push(_s, scr_tour_step("RETURN AGAIN",
+        array_push(_s, scr_tour_step_at("RETURN AGAIN",
             "Drag another RTS onto the spine under the new MOVE.",
-            ["PAL:RTS", "ARROW:R"], "RTS_2"));
+            ["PAL:RTS", "ARROW:R"], "RTS_2", "LASTTYPE:MACRO_MOVE"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5, or click BUILD & RUN on the right, to build and launch.",
             ["UI:BUILD & RUN"], "BUILT"));
@@ -433,27 +444,27 @@ function scr_tour_define(_id) {
     }
 
     if (_id == 6) {
-        array_push(_s, scr_tour_step("WELCOME",
-            "A game loop (MAIN, VWAIT, JMP MAIN) is already set up for you.\n\nIn this tour a key press will change the border colour.",
-            [], "NONE"));
-        array_push(_s, scr_tour_step("DRAG IN KEYS A-Z",
+        array_push(_s, scr_tour_step_focus("WELCOME",
+            "A game loop (MAIN, VWAIT, JMP MAIN) is already set up for you.\n\nIn this tour a key press will change the border colour.\n\nPan with the middle mouse button and zoom with the mouse wheel.",
+            [], "NONE", "FIT"));
+        array_push(_s, scr_tour_step_at("DRAG IN KEYS A-Z",
             "Open MACROS 1 and drag KEYS A-Z onto the spine between VWAIT and JMP MAIN.",
-            ["MAC:MACRO_LETTERS", "MENU:0"], "KEYS_IN_LOOP"));
+            ["MAC:MACRO_LETTERS", "MENU:0"], "KEYS_IN_LOOP", "NODETYPE:MACRO_VWAIT"));
         array_push(_s, scr_tour_step("TURN ON B",
             "Click B on the KEYS A-Z node.\n\nA label called KEY_B appears beside it. It is called every frame B is held.",
             ["FIELD:MACRO_LETTERS:B", "NODETYPE:MACRO_LETTERS"], "KEY_B_ON"));
-        array_push(_s, scr_tour_step("ATTACH KEY_B",
+        array_push(_s, scr_tour_step_at("ATTACH KEY_B",
             "Drag the KEY_B label onto the spine below JMP MAIN.",
-            ["LABELNAME:KEY_B"], "KEYB_BELOW"));
-        array_push(_s, scr_tour_step("DRAG IN INC_ABS",
+            ["LABELNAME:KEY_B"], "KEYB_BELOW", "NODEOP:jmp_abs"));
+        array_push(_s, scr_tour_step_at("DRAG IN INC_ABS",
             "INC adds one to a memory location.\n\nFind INC_ABS in the opcode palette and drag it onto the spine under KEY_B.",
-            ["PAL:INC_ABS", "ARROW:R"], "OP_INC_ABS"));
+            ["PAL:INC_ABS", "ARROW:R"], "OP_INC_ABS", "LABELNAME:KEY_B"));
         array_push(_s, scr_tour_step("POINT IT AT THE BORDER",
             "Click the INC value, type $D020 and press ENTER.",
             ["OPERAND0:inc_abs", "NODEOP:inc_abs"], "INC_D020"));
-        array_push(_s, scr_tour_step("RETURN",
+        array_push(_s, scr_tour_step_at("RETURN",
             "Drag RTS onto the spine under INC.",
-            ["PAL:RTS", "ARROW:R"], "RTS_1"));
+            ["PAL:RTS", "ARROW:R"], "RTS_1", "NODEOP:inc_abs"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5, or click BUILD & RUN on the right, to build and launch.",
             ["UI:BUILD & RUN"], "BUILT"));
@@ -463,15 +474,15 @@ function scr_tour_define(_id) {
     }
 
     if (_id == 7) {
-        array_push(_s, scr_tour_step("WELCOME",
-            "A game loop (MAIN, VWAIT, JMP MAIN) is already set up for you.\n\nIn this tour you will add a smooth scrolling message.",
-            [], "NONE"));
-        array_push(_s, scr_tour_step("CLEAR THE SCREEN",
+        array_push(_s, scr_tour_step_focus("WELCOME",
+            "A game loop (MAIN, VWAIT, JMP MAIN) is already set up for you.\n\nIn this tour you will add a smooth scrolling message.\n\nPan with the middle mouse button and zoom with the mouse wheel.",
+            [], "NONE", "FIT"));
+        array_push(_s, scr_tour_step_at("CLEAR THE SCREEN",
             "Open MACROS 1 and drag CLR SCRN RAM onto the spine between SYSTEM INIT and MAIN.\n\nIt runs once, before the loop starts.",
-            ["MAC:MACRO_CLR_SCREEN", "MENU:0"], "CLR_BEFORE_LOOP"));
-        array_push(_s, scr_tour_step("DRAG IN TXT SCROLL",
+            ["MAC:MACRO_CLR_SCREEN", "MENU:0"], "CLR_BEFORE_LOOP", "NODETYPE:INIT"));
+        array_push(_s, scr_tour_step_at("DRAG IN TXT SCROLL",
             "Drag TXT SCROLL from MACROS 1 onto the spine between VWAIT and JMP MAIN.",
-            ["MAC:MACRO_TEXT_SCROLL", "MENU:0"], "TXT_IN_LOOP"));
+            ["MAC:MACRO_TEXT_SCROLL", "MENU:0"], "TXT_IN_LOOP", "NODETYPE:MACRO_VWAIT"));
         array_push(_s, scr_tour_step("WRITE YOUR MESSAGE",
             "Click the TEXT field on the TXT SCROLL node, type your own message and press ENTER.\n\nEnd it with a space so it wraps neatly.",
             ["NODETYPE:MACRO_TEXT_SCROLL"], "TXT_CHANGED"));
@@ -487,30 +498,30 @@ function scr_tour_define(_id) {
     }
 
     if (_id == 8) {
-        array_push(_s, scr_tour_step("WELCOME",
-            "Two ships, a game loop and joystick steering are already set up. This is where the JOYSTICK tour ended, plus a second ship.\n\nIn this tour the border flashes when the ships touch.",
-            [], "NONE"));
+        array_push(_s, scr_tour_step_focus("WELCOME",
+            "Two ships, a game loop and joystick steering are already set up. This is where the JOYSTICK tour ended, plus a second ship.\n\nIn this tour the border flashes when the ships touch.\n\nPan with the middle mouse button and zoom with the mouse wheel.",
+            [], "NONE", "FIT"));
         array_push(_s, scr_tour_step("MAKE A LABEL",
             "Move the mouse over an empty part of the canvas and press A.",
             [], "LABEL_EXISTS"));
         array_push(_s, scr_tour_step("NAME IT HIT",
             "Click the new label's name, type HIT and press ENTER.",
             ["FREELABEL"], "LBL_HIT"));
-        array_push(_s, scr_tour_step("ATTACH HIT",
+        array_push(_s, scr_tour_step_at("ATTACH HIT",
             "Drag HIT onto the spine under the last RTS.",
-            ["LABELNAME:HIT"], "HIT_BELOW"));
-        array_push(_s, scr_tour_step("DRAG IN INC_ABS",
+            ["LABELNAME:HIT"], "HIT_BELOW", "LASTOP:rts"));
+        array_push(_s, scr_tour_step_at("DRAG IN INC_ABS",
             "Find INC_ABS in the opcode palette and drag it onto the spine under HIT.",
-            ["PAL:INC_ABS", "ARROW:R"], "OP_INC_ABS"));
+            ["PAL:INC_ABS", "ARROW:R"], "OP_INC_ABS", "LABELNAME:HIT"));
         array_push(_s, scr_tour_step("POINT IT AT THE BORDER",
             "Click the INC value, type $D020 and press ENTER.",
             ["OPERAND0:inc_abs", "NODEOP:inc_abs"], "INC_D020"));
-        array_push(_s, scr_tour_step("RETURN",
+        array_push(_s, scr_tour_step_at("RETURN",
             "Drag RTS onto the spine under INC.",
-            ["PAL:RTS", "ARROW:R"], "RTS_3"));
-        array_push(_s, scr_tour_step("DRAG IN COLLIDE",
+            ["PAL:RTS", "ARROW:R"], "RTS_3", "NODEOP:inc_abs"));
+        array_push(_s, scr_tour_step_at("DRAG IN COLLIDE",
             "Open MACROS 1 and drag COLLIDE onto the spine between JOYSTICK and JMP MAIN.\n\nIt checks the C64's sprite collision hardware every frame.",
-            ["MAC:MACRO_COLLISION", "MENU:0"], "COLL_IN_LOOP"));
+            ["MAC:MACRO_COLLISION", "MENU:0"], "COLL_IN_LOOP", "NODETYPE:MACRO_JOY"));
         array_push(_s, scr_tour_step("CALL HIT",
             "Click the JSR label field at the bottom of the COLLIDE node and choose HIT.",
             ["NODETYPE:MACRO_COLLISION"], "COLL_HIT"));
@@ -566,6 +577,9 @@ function scr_tour_enter_step() {
     if (step_idx >= 0 && step_idx < array_length(steps)) {
         _targets = steps[step_idx].targets;
         _focus   = steps[step_idx].focus;
+    }
+    if (_focus == "FIT") {
+        scr_tour_fit_spine();
     }
     if (string_copy(_focus, 1, 9) == "NODETYPE:") {
         var _fn = scr_tour_node_by_type(string_delete(_focus, 1, 9));
@@ -1687,4 +1701,174 @@ function scr_tour_resolve_ext(_k) {
         return undefined;
     }
     return undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Camera fit and DROP HERE marker
+// ---------------------------------------------------------------------------
+
+/// @desc Zoom out (never in past 1:1) so the whole main spine, plus any
+///       label not yet attached, fits the free part of the screen: right of
+///       the palette, left of the asset panel, above the caption panel.
+function scr_tour_fit_spine() {
+    var _wm   = obj_workspace_manager;
+    var _have = false;
+    var _bx1  = 0;
+    var _by1  = 0;
+    var _bx2  = 0;
+    var _by2  = 0;
+    with (obj_c64_node) {
+        var _take = false;
+        if (org_parent == noone) {
+            if (is_connected || node_type == "INIT" || node_type == "LABEL") {
+                _take = true;
+            }
+        }
+        if (_take) {
+            var _nx = x + x_indent;
+            if (!_have) {
+                _bx1  = _nx;
+                _by1  = y;
+                _bx2  = _nx + width;
+                _by2  = y + height;
+                _have = true;
+            } else {
+                _bx1 = min(_bx1, _nx);
+                _by1 = min(_by1, y);
+                _bx2 = max(_bx2, _nx + width);
+                _by2 = max(_by2, y + height);
+            }
+        }
+    }
+    if (!_have) {
+        return;
+    }
+
+    var _left = 0;
+    if (!_wm.expert_mode && !scr_shelf_hidden()) {
+        _left = _wm.shelf_width;
+    }
+    var _right = 1920;
+    if (instance_exists(obj_asset_manager)) {
+        _right = obj_asset_manager.panel_x - 20;
+    }
+    var _top    = 80;
+    var _bottom = 1080 - 280;
+    var _uw     = max(200, _right - _left);
+    var _uh     = max(200, _bottom - _top);
+
+    var _zoom = 1.0;
+    _zoom = max(_zoom, (_bx2 - _bx1 + 160) / _uw);
+    _zoom = max(_zoom, (_by2 - _by1 + 120) / _uh);
+    _zoom = clamp(_zoom, 1.0, 6.0);
+
+    var _cx = (_bx1 + _bx2) * 0.5;
+    var _cy = (_by1 + _by2) * 0.5;
+
+    _wm.cam_zoom        = _zoom;
+    _wm.cam_zoom_target = _zoom;
+    _wm.cam_x           = _cx - (((_left + _right) * 0.5) * _zoom);
+    _wm.cam_y           = _cy - (((_top + _bottom) * 0.5) * _zoom);
+    with (_wm) {
+        camera_set_view_size(cam_view, 1920 * cam_zoom, 1080 * cam_zoom);
+        camera_set_view_pos(cam_view, cam_x, cam_y);
+    }
+}
+
+/// @desc Node a DROP HERE marker sits under, or noone. Only attached nodes
+///       count: the marker shows where on the spine to drop.
+function scr_tour_drop_node(_k) {
+    var _n = noone;
+    if (string_copy(_k, 1, 9) == "NODETYPE:") {
+        _n = scr_tour_node_by_type(string_delete(_k, 1, 9));
+    }
+    if (string_copy(_k, 1, 7) == "NODEOP:") {
+        _n = scr_tour_node_by_op(string_delete(_k, 1, 7));
+    }
+    if (string_copy(_k, 1, 10) == "LABELNAME:") {
+        _n = scr_tour_label(string_delete(_k, 1, 10));
+    }
+    if (string_copy(_k, 1, 9) == "LASTTYPE:") {
+        _n = scr_tour_last_by_type(string_delete(_k, 1, 9));
+    }
+    if (string_copy(_k, 1, 7) == "LASTOP:") {
+        _n = scr_tour_last_by_op(string_delete(_k, 1, 7));
+    }
+    if (_n == noone) {
+        return noone;
+    }
+    if (!_n.is_connected) {
+        return noone;
+    }
+    return _n;
+}
+
+/// @desc Lowest attached main-spine node running opcode _op, or noone.
+function scr_tour_last_by_op(_op) {
+    var _hit = noone;
+    var _y   = -1000000;
+    with (obj_c64_node) {
+        if (is_connected && node_type == "NORMAL" && y > _y) {
+            if (array_length(instructions) > 0) {
+                if (string_lower(string(instructions[0][0])) == _op) {
+                    _y   = y;
+                    _hit = id;
+                }
+            }
+        }
+    }
+    return _hit;
+}
+
+/// @desc Draw the DROP HERE marker under node _n: a line along its bottom
+///       edge with an arrow coming in from each side. When that spot is off
+///       screen, an arrow at the screen edge points the way to it.
+function scr_tour_draw_drop(_n, _pulse, _gw, _gh) {
+    var _r   = scr_tour_node_rect(_n);
+    var _x1  = _r[0];
+    var _x2  = _r[2];
+    var _y   = _r[3];
+    var _col = make_color_rgb(90, 255, 170);
+
+    var _top = 70;
+    var _bot = _gh - 20;
+    draw_set_font_l(fnt_c64_code);
+    draw_set_color(_col);
+    draw_set_alpha(1);
+
+    if (_y < _top || _y > _bot || _x2 < 0 || _x1 > _gw) {
+        var _tx  = (_x1 + _x2) * 0.5;
+        var _ax  = clamp(_tx, 60, _gw - 60);
+        var _ay  = clamp(_y, _top + 30, _bot - 30);
+        var _dir = point_direction(_gw * 0.5, _gh * 0.5, _tx, _y);
+        var _tip = 12 + (_pulse * 8);
+        var _px  = _ax + lengthdir_x(_tip, _dir);
+        var _py  = _ay + lengthdir_y(_tip, _dir);
+        draw_triangle(_px, _py,
+            _ax + lengthdir_x(14, _dir + 140), _ay + lengthdir_y(14, _dir + 140),
+            _ax + lengthdir_x(14, _dir - 140), _ay + lengthdir_y(14, _dir - 140), false);
+        var _lx = clamp(_ax - 40, 10, _gw - 110);
+        var _ly = _ay + 18;
+        if (_ay > _gh * 0.5) {
+            _ly = _ay - 34;
+        }
+        draw_text_l(_lx, _ly, "DROP HERE");
+        draw_set_color(c_white);
+        return;
+    }
+
+    var _th = 2 + round(_pulse * 2);
+    draw_line_width(_x1, _y, _x2, _y, _th);
+
+    var _off = 6 + ((1 - _pulse) * 14);
+    var _lt  = _x1 - _off;
+    draw_line_width(_lt - 46, _y, _lt - 12, _y, 3);
+    draw_triangle(_lt, _y, _lt - 16, _y - 10, _lt - 16, _y + 10, false);
+
+    var _rt = _x2 + _off;
+    draw_line_width(_rt + 12, _y, _rt + 46, _y, 3);
+    draw_triangle(_rt, _y, _rt + 16, _y - 10, _rt + 16, _y + 10, false);
+
+    draw_text_l(_rt + 54, _y - 8, "DROP HERE");
+    draw_set_color(c_white);
 }

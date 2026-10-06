@@ -82,6 +82,17 @@ if (hl_have) {
 }
 
 // ---------------------------------------------------------------
+// DROP HERE MARKER (drag steps)
+// ---------------------------------------------------------------
+if (_step.drop != "" && !obj_workspace_manager.text_modal_visible) {
+    var _drop_n = scr_tour_drop_node(_step.drop);
+    if (_drop_n != noone) {
+        scr_tour_draw_drop(_drop_n, _pulse, _gw, _gh);
+    }
+}
+draw_set_alpha(1);
+
+// ---------------------------------------------------------------
 // CAPTION PANEL
 // ---------------------------------------------------------------
 var _pw   = 460;
