@@ -1,0 +1,47 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 4c32f0d..8ffda24 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -2417,8 +2417,14 @@ var _zmx1  = _vx2 - _btn_bw * 2 - 6;
+ 		    var _sb_cs  = 8 * _zoom;
+ 		    _cv_x2 -= (_sb_t + 2);
+ 		    var _sb_need_h = (_gw * _sb_cs) > (_cv_x2 - _cv_x1);
++		    // _sb_h_room: the strip the bottom bar takes. The map gives it up,
++		    // and everything drawn below the map (object bar, COLOUR / help rows,
++		    // TILE row) is pushed down by the same amount - so those rows keep
++		    // their old place and the bar never sits on top of them.
++		    var _sb_h_room = 0;
+ 		    if (_sb_need_h) {
+-		        _cv_y2 -= (_sb_t + 2);
++		        _sb_h_room = _sb_t + 2;
++		        _cv_y2 -= _sb_h_room;
+ 		    }
+ 		    var _sb_vis_r = max(1, floor((_cv_y2 - _cv_y1) / _sb_cs));
+ 		    var _sb_vis_c = max(1, floor((_cv_x2 - _cv_x1) / _sb_cs));
+@@ -2944,7 +2950,7 @@ draw_set_color(_cell_bg_col);
+ 	            _m.obj_sel = clamp(_m.obj_sel, 0, _ocount - 1);
+ 	            if (_m.obj_mode) { _m.show_objects = true; }
+ 
+-	            _obj_bar_hover = point_in_rectangle(_mx, _my, _cv_x1, _cv_y2 + 2, _cv_x2, _cv_y2 + _obj_bar_h);
++	            _obj_bar_hover = point_in_rectangle(_mx, _my, _cv_x1, _cv_y2 + 2 + _sb_h_room, _cv_x2, _cv_y2 + _obj_bar_h + _sb_h_room);
+ 	            // placing / deleting / picking (EDIT on, pointer in a room, not on the bar)
+ 	            //   L-click        place the held object
+ 	            //   R-click        delete the object under the pointer
+@@ -3026,7 +3032,7 @@ draw_set_color(_cell_bg_col);
+ 	            // the bar sits outside the canvas: lift the canvas clip
+ 	            gpu_set_scissor(0, 0, window_get_width(), window_get_height());
+ 	            var _obh  = 18;
+-	            var _oby  = _cv_y2 + 6;
++	            var _oby  = _cv_y2 + 6 + _sb_h_room;   // below the bottom scrollbar
+ 	            var _obx0  = _cv_x1 + 4;
+ 	            var _obar_x2 = _cv_x2;
+ 	            draw_set_color(make_color_rgb(16, 18, 28));
+@@ -3755,7 +3761,7 @@ draw_set_color(_cell_bg_col);
+     }
+ 
+ // ---- COLOUR PALETTE STRIP (always visible) ----
+-	    var _pal_y = _cv_y2 + 6 + _obj_bar_h;
++	    var _pal_y = _cv_y2 + 6 + _obj_bar_h + _sb_h_room;   // below the bottom scrollbar
+ 	    var _sw    = 22;
+ 	    var _sh    = 16;
+ 	    draw_set_font_l(fnt_c64_tiny);
