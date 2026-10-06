@@ -50,6 +50,10 @@ function scr_node_draw_macro_clr_screen(_draw_x, _y) {
         draw_set_color(c_lime);
         scr_node_macro_text_l(_draw_x + 52, _ly, "$" + string_upper(_f_hex) + "  (" + string(_fill) + ")");
     }
+    // Guided tour: the FILL value (same rect Step clicks on).
+    if (global.tour_active && is_connected) {
+        scr_tour_capture_world("FIELD:MACRO_CLR_SCREEN:fill", _draw_x + 48, _ly, _draw_x + width - 6, _ly + 13);
+    }
     _ly += _lh;
 
     // ── Footer: coverage ──

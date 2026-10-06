@@ -485,6 +485,9 @@ function scr_tour_define(_id) {
         array_push(_s, scr_tour_step_at("CLEAR THE SCREEN",
             "Open MACROS 1 and drag CLR SCRN RAM onto the spine between SYSTEM INIT and MAIN.\n\nIt runs once, before the loop starts.",
             ["MAC:MACRO_CLR_SCREEN", "MENU:0"], "CLR_BEFORE_LOOP", "NODETYPE:INIT"));
+        array_push(_s, scr_tour_step("FILL WITH SPACES",
+            "CLR SCRN RAM fills the screen with one character, and it starts at $00, which is @.\n\nClick the FILL value, type 32 (or $20, the space character) and press ENTER.",
+            ["FIELD:MACRO_CLR_SCREEN:fill", "NODETYPE:MACRO_CLR_SCREEN"], "CLR_SPACE"));
         array_push(_s, scr_tour_step_at("DRAG IN TXT SCROLL",
             "Drag TXT SCROLL from MACROS 1 onto the spine between VWAIT and JMP MAIN.",
             ["MAC:MACRO_TEXT_SCROLL", "MENU:0"], "TXT_IN_LOOP", "NODETYPE:MACRO_VWAIT"));
@@ -1643,6 +1646,12 @@ function scr_tour_check_ext(_code) {
             return (_n.y < _ml.y);
         case "TXT_IN_LOOP":
             return scr_tour_in_loop(scr_tour_node_by_type("MACRO_TEXT_SCROLL"));
+        case "CLR_SPACE":
+            _n = scr_tour_node_by_type("MACRO_CLR_SCREEN");
+            if (_n == noone) {
+                return false;
+            }
+            return (scr_tour_num(_n.instructions[0][2]) == 32);
         case "TXT_CHANGED":
             _n = scr_tour_node_by_type("MACRO_TEXT_SCROLL");
             if (_n == noone) {

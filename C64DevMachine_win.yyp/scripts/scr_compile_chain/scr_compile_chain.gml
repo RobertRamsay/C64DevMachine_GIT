@@ -6677,15 +6677,33 @@ if (_jsr_mode == 0) {
 // Wait until we are AT the scroll row raster before touching $D016
         // This prevents map rows above seeing HR mode during the IRQ setup
         var _rw2 = _p + "rw2";
-        array_push(_list, ["lda_imm",    _raster & 0xFF,               _id]);
+        // Wait until the raster has REACHED the line (>=), not for that exact
+        // line: an IRQ that runs a few cycles long must not miss it and wait a
+        // whole frame, which starves the main loop and stops the scroll.
         array_push(_list, ["label",      _rw2]);
-        array_push(_list, ["cmp_abs",    0xD012,                       _id]);
-        array_push(_list, ["bne",        _rw2,                         _id]);
+        array_push(_list, ["lda_abs",    0xD012,                       _id]);
+        array_push(_list, ["cmp_imm",    _raster & 0xFF,               _id]);
+        array_push(_list, ["bcc",        _rw2,                         _id]);
+        // Last line of the row above. Use the wait to mask the saved $D016
+        // into its restore value (fine scroll 7), then idle so the $D016
+        // write below lands in this line's right border, not mid-line.
+        array_push(_list, ["lda_lab",    _v_d016,                      _id]);
+        array_push(_list, ["and_imm",    0xF8,                         _id]);
+        array_push(_list, ["ora_imm",    0x07,                         _id]);
+        array_push(_list, ["sta_lab",    _v_d016,                      _id]);
+        var _rwd = _p + "rwd";
+        array_push(_list, ["ldx_imm",    6,                            _id]);
+        array_push(_list, ["label",      _rwd]);
+        array_push(_list, ["dex",        0,                            _id]);
+        array_push(_list, ["bne",        _rwd,                         _id]);
         // NOW safe to switch $D016 to HR fine scroll — we are on the scroll row
         array_push(_list, ["lda_imm",   0xC8,                           _id]); // 40-col base, HR
         array_push(_list, ["and_imm",   0xF0,                           _id]);
         array_push(_list, ["ora_lab",   _v_dir,                         _id]);
         array_push(_list, ["sta_abs",   0xD016,                         _id]);
+        // Preload the restores so they can go out back to back after the wait.
+        array_push(_list, ["ldx_lab",   _v_d018,                        _id]);
+        array_push(_list, ["ldy_lab",   _v_dd00,                        _id]);
         // Wait for end of scroll row
         var _rw3 = _p + "rw3";
         array_push(_list, ["lda_imm",    (_raster + 8) & 0xFF,         _id]);
@@ -6695,11 +6713,14 @@ if (_jsr_mode == 0) {
         // POST-NOP Delay
         repeat(_post_nop) { array_push(_list, ["nop", 0, _id]); }
 		
-// Restore $DD00 and $D018 first — bank and charset pointer
-        array_push(_list, ["lda_lab",   _v_dd00,                        _id]);
-        array_push(_list, ["sta_abs",   0xDD00,                         _id]);
-        array_push(_list, ["lda_lab",   _v_d018,                        _id]);
-        array_push(_list, ["sta_abs",   0xD018,                         _id]);
+        // Restore $D016 FIRST — fine scroll back to 7 (value masked when it was
+        // saved) — then charset and bank 4 cycles apart, so all three land in
+        // the border before the next row's bad line. Doing $D016 last let the
+        // scroll leak into the top of the row below.
+        array_push(_list, ["lda_lab",   _v_d016,                        _id]);
+        array_push(_list, ["sta_abs",   0xD016,                         _id]);
+        array_push(_list, ["stx_abs",   0xD018,                         _id]);
+        array_push(_list, ["sty_abs",   0xDD00,                         _id]);
         array_push(_list, ["lda_lab",   _v_d011,                        _id]);
         array_push(_list, ["sta_abs",   0xD011,                         _id]);
         // Restore $D016 last — fine scroll=7 (no scroll active) + MC bit from map mode
@@ -6708,11 +6729,6 @@ if (_jsr_mode == 0) {
         //array_push(_list, ["ora_imm",   0x07,                           _id]);
         //array_push(_list, ["sta_abs",   0xD016,                         _id]);
 		
-		// Restore $D016 — use saved value to preserve Multicolor/40-col mode, but reset fine scroll to 7
-        array_push(_list, ["lda_lab",   _v_d016,                        _id]);
-        array_push(_list, ["and_imm",   0xF8,                           _id]); // Keep bits 7-3 (Mode/Width)
-        array_push(_list, ["ora_imm",   0x07,                           _id]); // Force bits 2-0 to 7 (No scroll)
-        array_push(_list, ["sta_abs",   0xD016,                         _id]);
 		
         if (_use_sid == 1) {
             // Repoint back to sid_irq
@@ -6955,7 +6971,7 @@ array_push(_list, ["label",   _SINIT]);
     array_push(_list, ["label",   _v_speed0]); array_push(_list, ["byte", _speed,  _id]);
     array_push(_list, ["label",   _v_speed1]); array_push(_list, ["byte", 0x00,    _id]);
 array_push(_list, ["label",   _v_d011]);   array_push(_list, ["byte", 0x1B,     _id]);
-    array_push(_list, ["label",   _v_d016]);   array_push(_list, ["byte", _ts_d016, _id]);
+    array_push(_list, ["label",   _v_d016]);   array_push(_list, ["byte", _ts_d016 | 0x07, _id]);
     array_push(_list, ["label",   _v_d018]);   array_push(_list, ["byte", 0x80,    _id]);
 array_push(_list, ["label",   _v_dd00]);   array_push(_list, ["byte", 0x02,    _id]);
 
