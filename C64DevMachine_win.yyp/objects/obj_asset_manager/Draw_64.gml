@@ -827,8 +827,8 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _vy1 = 40;
         _vy2 = _gui_h - 40;
     }
-    // LINE_COLL / PICKUP_TABLE: full screen. Must match obj_asset_manager Step.
-    if (_asset.type == "LINE_COLL" || _asset.type == "PICKUP_TABLE") {
+    // LINE_COLL / PICKUP_TABLE / CHAR_SET: full screen. Must match obj_asset_manager Step.
+    if (_asset.type == "LINE_COLL" || _asset.type == "PICKUP_TABLE" || _asset.type == "CHAR_SET") {
         _vx1 = 30;
         _vx2 = _gui_w - 30;
         _vy1 = 40;
@@ -1317,17 +1317,6 @@ case "CHAR_SET": {
     var _cp_row_h  = _cp_sw + 6;
     draw_set_font_l(fnt_c64_tiny);
 	
-	// draw some instructions to the right:
-	var _ins_x = _vx1 + 550;
-	var _ins_y = _cy ;
-	draw_set_color(c_ltgrey);
-	draw_text_l(_ins_x,_ins_y,
-	L("INSTRUCTIONS:\n")+
-	"\n"+
-	L("CTRL + Click / Drag to multi select\n")+
-	L("Delete or Backspace to clear selected\n")+
-	L("CTRL + C to COPY and CTRL + V to PASTE"));
-	// end instructions. Modfy for mac os
 	
 	
 	
@@ -1387,6 +1376,24 @@ case "CHAR_SET": {
     }
     _cy += _cp_row_count * _cp_row_h + 8;
 
+    // ---- INSTRUCTIONS (left column, under the colour rows) ----
+    draw_set_font_l(fnt_c64_tiny);
+    draw_set_color(make_color_rgb(150, 150, 190));
+    draw_text_l(_vx1 + 10, _cy, L("INSTRUCTIONS:"));
+    draw_set_color(c_ltgrey);
+    var _ins_lines = [
+        L("CTRL + CLICK / DRAG IN THE CHARSET TO MULTI SELECT"),
+        L("DELETE OR BACKSPACE CLEARS THE SELECTED CHARS"),
+        L("CTRL + C TO COPY, CTRL + V TO PASTE"),
+        L("MIDDLE DRAG OR SPACE + DRAG ON THE EDITOR SLIDES THE CHAR"),
+        L("ARROWS OVER THE EDITOR: SLIDE 1 PIXEL (WRAP BUTTON = WRAP)"),
+        L("ARROWS OVER THE CHARSET: PICK THE NEXT CHAR")
+    ];
+    for (var _ili = 0; _ili < array_length(_ins_lines); _ili++) {
+        draw_text_l(_vx1 + 20, _cy + 16 + _ili * 14, _ins_lines[_ili]);
+    }
+    _cy += 16 + array_length(_ins_lines) * 14 + 8;
+
     // Surface key for grid drawn after REFERENCED BY
     var _use_mc_surf  = (_chr_mc == 1) &&
                         variable_struct_exists(_asset.meta, "preview_surf_mc") &&
@@ -1397,10 +1404,14 @@ case "CHAR_SET": {
 
 // ---- INLINE PIXEL EDITOR (top-right) ----
     // MC/HR toggle for the tile editor
-var _ted_x1  = _vx2 - 220;
+    // editor: 32px cells (256x256 grid) + its button column, right-aligned
+    var _ced_cell = 32;
+    var _ced_x    = _vx2 - (8 * _ced_cell) - 8 - 80 - 24;
+    var _ced_y    = _vy1 + 38;
+    var _ted_x1  = _ced_x;
     var _ted_x2  = _ted_x1 + 80;
-      var _ted_y1  = _vy1 + 206;
-    var _ted_y2  = _vy1 + 220;
+    var _ted_y1  = _ced_y + 8 * _ced_cell + 40;
+    var _ted_y2  = _ted_y1 + 16;
     var _tedhov  = point_in_rectangle(_mx, _my, _ted_x1, _ted_y1, _ted_x2, _ted_y2);
     var _ted_bg_cols  = [make_color_rgb(30, 30, 45), make_color_rgb(160, 80, 20), make_color_rgb(20, 80, 90)];
     var _ted_txt_cols = [make_color_rgb(80, 80, 100), make_color_rgb(255, 160, 60), make_color_rgb(80, 220, 240)];
@@ -1410,14 +1421,16 @@ var _ted_x1  = _vx2 - 220;
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(_ted_txt_cols[_chr_mc]);
     draw_set_halign(fa_center);
-    draw_text_l(_ted_x1 + 40, _ted_y1 -1, _ted_labels[_chr_mc]);
+    draw_text_l(_ted_x1 + 40, _ted_y1 + 2, _ted_labels[_chr_mc]);
     draw_set_halign(fa_left);
     if (_tedhov && mouse_check_button_pressed(mb_left)) {
         _asset.meta.mc_mode = (_chr_mc + 1) mod 3;
         scr_asset_chr_build_preview(_asset);
 		_asset.meta.is_dirty = true;
     }
-    scr_chr_editor_draw(_asset, _vx2 - 220, _vy1 + 38, _chr_mc);
+    scr_chr_editor_draw(_asset, _ced_x, _ced_y, _chr_mc, true, true, _ced_cell);
+    // everything after this (REFERENCED BY, the charset grid) starts below the editor
+    _cy = max(_cy, _ted_y2 + 12);
 } break;	
 
 	
@@ -12146,7 +12159,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 
     // ---- CHAR_SET GRID — drawn at bottom after REFERENCED BY ----
     if (_asset.type == "CHAR_SET") {
-        _cy += 10;
+        _cy += 24;   // room for the BKG TILE label above the grid
         if (variable_struct_exists(_asset.meta, _chr_surf_key) &&
             surface_exists(variable_struct_get(_asset.meta, _chr_surf_key))) {
             var _ps  = variable_struct_get(_asset.meta, _chr_surf_key);
@@ -12213,7 +12226,21 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             var _cell_sz = 32 * _sc;
             draw_set_font_l(fnt_c64_tiny);
             draw_set_color(make_color_rgb(255, 180, 0));
-            draw_text_l(_dx, _cy - 40, "BKG\nTILE");
+            draw_text_l(_dx, _cy - 16, "BKG TILE");
+
+            // Arrow keys with the pointer over the charset: pick another char
+            if (point_in_rectangle(_mx, _my, _dx, _cy, _dx + _dw, _cy + _dh)) {
+                var _nav_max = _asset.meta.char_count - 1;
+                if (_asset.meta.mc_mode == 2) _nav_max = min(_nav_max, 63);
+                var _nav = chr_edit_idx;
+                if (keyboard_check_pressed(vk_left))  _nav -= 1;
+                if (keyboard_check_pressed(vk_right)) _nav += 1;
+                if (keyboard_check_pressed(vk_up))    _nav -= 16;
+                if (keyboard_check_pressed(vk_down))  _nav += 16;
+                if (_nav >= 0 && _nav <= _nav_max) {
+                    chr_edit_idx = _nav;
+                }
+            }
 
             _cy += _dh + 6;
             // Info line

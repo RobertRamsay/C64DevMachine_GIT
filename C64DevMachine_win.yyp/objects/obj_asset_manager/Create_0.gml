@@ -753,6 +753,13 @@ mts_plan_map      = -1;
 
 // ---- Deferred charset preview rebuild (scr_chr_preview_defer) ----
 chr_preview_pending = noone;
+// CHAR_SET editor: slide a character (middle-drag / SPACE+drag / arrows)
+chr_shift_wrap = true;   // WRAP button: pixels re-enter on the opposite edge
+chr_shift_drag = false;  // a slide drag is in progress
+chr_shift_ax   = 0;      // where the drag started (GUI px)
+chr_shift_ay   = 0;
+chr_shift_ux   = 0;      // pixels / rows already applied in this drag
+chr_shift_uy   = 0;
 chr_preview_next_ms = 0;
 
 // ---- SID relocator (scr_sid_relocate) ----

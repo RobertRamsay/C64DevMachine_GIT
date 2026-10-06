@@ -6,7 +6,7 @@
 /// _own_undo: false lets a host editor with its own undo stack (the HUD
 /// editor, whose grid undo is also on ctrl+Z) take the keys while the mouse
 /// is over its canvas, so one press doesn't pop both stacks at once.
-function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true, _own_undo = true) {
+function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true, _own_undo = true, _cell_px = 16) {
 
     var _mx = global.gui_mouse_x;
     var _my = global.gui_mouse_y;
@@ -18,7 +18,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     if (!variable_struct_exists(_asset.meta, "undo_stack"))  _asset.meta.undo_stack  = [];
     if (!variable_struct_exists(_asset.meta, "redo_stack"))  _asset.meta.redo_stack  = [];
 
-    var _scale  = 16; // pixels per C64 pixel in HR; MC pairs are 2*_scale wide
+    var _scale  = _cell_px; // pixels per C64 pixel in HR; MC pairs are 2*_scale wide (16 default, the CHAR_SET viewer uses 32)
     var _grid_w = 8 * _scale;
     var _grid_h = 8 * _scale;
 
@@ -64,6 +64,60 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
         chr_edit_idx = 0;
         _tile_base   = 0;
     }
+
+    // ---- SLIDE (shift the character's pixels) ----
+    // Middle-drag, or SPACE + left-drag, over the grid slides the graphics a
+    // pixel at a time (MC: a pixel pair). Arrow keys with the pointer over the
+    // grid slide by one. WRAP (button below FILL) decides whether pixels that
+    // leave one edge come back on the other or are lost.
+    var _over_grid  = point_in_rectangle(_mx, _my, _ox, _oy, _ox + _grid_w, _oy + _grid_h);
+    var _slide_ux   = _pixel_is_mc ? (_scale * 2) : _scale;
+    if (_over_grid && buffer_exists(_asset.buffer)) {
+        if (mouse_check_button_pressed(mb_middle)
+        || (keyboard_check(vk_space) && mouse_check_button_pressed(mb_left))) {
+            scr_chr_undo_push(_asset);
+            chr_shift_drag = true;
+            chr_shift_ax   = _mx;
+            chr_shift_ay   = _my;
+            chr_shift_ux   = 0;
+            chr_shift_uy   = 0;
+        }
+        var _key_dx = 0;
+        var _key_dy = 0;
+        if (keyboard_check_pressed(vk_left))  _key_dx = -1;
+        if (keyboard_check_pressed(vk_right)) _key_dx = 1;
+        if (keyboard_check_pressed(vk_up))    _key_dy = -1;
+        if (keyboard_check_pressed(vk_down))  _key_dy = 1;
+        if ((_key_dx != 0 || _key_dy != 0) && !chr_shift_drag) {
+            scr_chr_undo_push(_asset);
+            scr_chr_shift_tile(_asset, _tile_base, _key_dx, _key_dy, chr_shift_wrap, _pixel_is_mc);
+            scr_chr_preview_request(_asset);
+            global.undo_dirty    = true;
+            _asset.meta.is_dirty = true;
+        }
+    }
+    if (chr_shift_drag) {
+        var _held = mouse_check_button(mb_middle) || (mouse_check_button(mb_left) && keyboard_check(vk_space));
+        if (_held == false || buffer_exists(_asset.buffer) == false) {
+            chr_shift_drag = false;
+        } else {
+            // whole cells moved since the drag began (div truncates toward 0)
+            var _ux = (_mx - chr_shift_ax) div _slide_ux;
+            var _uy = (_my - chr_shift_ay) div _scale;
+            var _sdx = _ux - chr_shift_ux;
+            var _sdy = _uy - chr_shift_uy;
+            if (_sdx != 0 || _sdy != 0) {
+                scr_chr_shift_tile(_asset, _tile_base, _sdx, _sdy, chr_shift_wrap, _pixel_is_mc);
+                chr_shift_ux = _ux;
+                chr_shift_uy = _uy;
+                scr_chr_preview_request(_asset);
+                global.undo_dirty    = true;
+                _asset.meta.is_dirty = true;
+            }
+        }
+    }
+    // no painting while sliding (or while SPACE is held ready to slide)
+    var _block_paint = chr_shift_drag || keyboard_check(vk_space);
 
     // ---- DRAW PIXELS ----
     for (var _row = 0; _row < 8; _row++) {
@@ -250,7 +304,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
 
     // ---- FLOOD FILL (when fill mode is ON) — intercepts left-click ----
     var _fill_consumed = false;
-    if (chr_fill_mode &&
+    if (chr_fill_mode && !_block_paint &&
         mouse_check_button_pressed(mb_left) &&
         point_in_rectangle(_mx, _my, _ox, _oy, _ox + _grid_w, _oy + _grid_h)) {
 
@@ -347,12 +401,12 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     }
 
     // ---- CLICK HANDLER — pixel edit ----
-    if (!chr_fill_mode &&
+    if (!chr_fill_mode && !_block_paint &&
         mouse_check_button_pressed(mb_left) &&
         point_in_rectangle(_mx, _my, _ox, _oy, _ox + _grid_w, _oy + _grid_h)) {
         scr_chr_undo_push(_asset);
     }
-    if (!chr_fill_mode &&
+    if (!chr_fill_mode && !_block_paint &&
         mouse_check_button(mb_left) &&
         point_in_rectangle(_mx, _my, _ox, _oy, _ox + _grid_w, _oy + _grid_h)) {
 
@@ -391,11 +445,11 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     }
 
     // RMB — erase: MC clears bit-pair to BG, HR clears bit to 0
-    if (mouse_check_button_pressed(mb_right) &&
+    if (!_block_paint && mouse_check_button_pressed(mb_right) &&
         point_in_rectangle(_mx, _my, _ox, _oy, _ox + _grid_w, _oy + _grid_h)) {
         scr_chr_undo_push(_asset);
     }
-    if (mouse_check_button(mb_right) &&
+    if (!_block_paint && mouse_check_button(mb_right) &&
         point_in_rectangle(_mx, _my, _ox, _oy, _ox + _grid_w, _oy + _grid_h)) {
         if (_pixel_is_mc) {
             var _pair = floor((_mx - _ox) / (_scale * 2));
@@ -518,6 +572,39 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     if (_flhov && mouse_check_button_pressed(mb_left)) {
         chr_fill_mode = chr_fill_mode ? false : true;
     }
+    _btn_y += _btn_h + _btn_gap;
+
+    // WRAP (slide wrap toggle) - pixels leaving one edge re-enter on the other
+    var _wrhov = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
+    if (chr_shift_wrap) {
+        draw_set_color(make_color_rgb(200, 160, 40));
+    } else {
+        if (_wrhov) {
+            draw_set_color(make_color_rgb(110, 90, 30));
+        } else {
+            draw_set_color(make_color_rgb(70, 55, 20));
+        }
+    }
+    draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
+    if (chr_shift_wrap) {
+        draw_set_color(c_black);
+    } else {
+        draw_set_color(c_white);
+    }
+    draw_set_halign(fa_center);
+    if (chr_shift_wrap) {
+        draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, L("WRAP: ON"));
+    } else {
+        draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, L("WRAP: OFF"));
+    }
+    draw_set_halign(fa_left);
+    if (_wrhov && mouse_check_button_pressed(mb_left)) {
+        if (chr_shift_wrap) {
+            chr_shift_wrap = false;
+        } else {
+            chr_shift_wrap = true;
+        }
+    }
     _btn_y += _btn_h + _btn_gap * 2;
 
     // ---- COLOUR SWATCHES ----
@@ -574,5 +661,53 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
                 chr_active_mc_colour = _swi;
             }
         }
+    }
+}
+
+/// scr_chr_shift_tile(_asset, _base, _dx, _dy, _wrap, _mc)
+/// Slides the 8 bytes of one character at buffer offset _base by _dx
+/// pixels (MC: pixel pairs) and _dy rows. Positive = right / down.
+/// _wrap true: what leaves one edge comes back on the other; false: lost,
+/// the gap fills with background (0 bits).
+function scr_chr_shift_tile(_asset, _base, _dx, _dy, _wrap, _mc) {
+    if (!buffer_exists(_asset.buffer)) return;
+    if (_base + 7 >= buffer_get_size(_asset.buffer)) return;
+    var _rows = array_create(8, 0);
+    for (var _r = 0; _r < 8; _r++) {
+        _rows[_r] = buffer_peek(_asset.buffer, _base + _r, buffer_u8);
+    }
+    // vertical
+    var _out = array_create(8, 0);
+    for (var _r = 0; _r < 8; _r++) {
+        var _src = _r - _dy;
+        if (_wrap) {
+            _src = ((_src mod 8) + 8) mod 8;
+            _out[_r] = _rows[_src];
+        } else {
+            if (_src >= 0 && _src < 8) {
+                _out[_r] = _rows[_src];
+            }
+        }
+    }
+    // horizontal: bits per step = 1 (HR / ECM) or 2 (MC pair)
+    var _bits = _dx;
+    if (_mc) _bits = _dx * 2;
+    for (var _r = 0; _r < 8; _r++) {
+        var _b = _out[_r];
+        if (_wrap) {
+            var _n = ((_bits mod 8) + 8) mod 8;          // right rotate by _n
+            if (_n != 0) {
+                _b = ((_b >> _n) | (_b << (8 - _n))) & 0xFF;
+            }
+        } else {
+            if (_bits >= 8 || _bits <= -8) {
+                _b = 0;
+            } else if (_bits > 0) {
+                _b = (_b >> _bits) & 0xFF;
+            } else if (_bits < 0) {
+                _b = (_b << (-_bits)) & 0xFF;
+            }
+        }
+        buffer_poke(_asset.buffer, _base + _r, buffer_u8, _b);
     }
 }
