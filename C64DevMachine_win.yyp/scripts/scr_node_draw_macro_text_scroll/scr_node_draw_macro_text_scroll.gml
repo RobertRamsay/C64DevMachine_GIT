@@ -17,6 +17,14 @@ function scr_node_draw_macro_text_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
     with (obj_c64_node) {
         if (node_type == "MACRO_SID" && is_connected) { _use_sid = 1; break; }
     }
+    // Without MACRO_SID the scroller runs its own raster IRQ - unless IRQ
+    // nodes already own the interrupt (see scr_compile_chain).
+    var _irq_owned = false;
+    if (_use_sid == 0) {
+        with (obj_c64_node) {
+            if ((node_type == "MACRO_IRQ" || node_type == "MACRO_IRQ_HANDLER") && is_connected && org_parent == noone) { _irq_owned = true; break; }
+        }
+    }
 
     // Local standard colors
     var _c_edit = make_color_rgb(120, 220, 120); // Light Green for editable labels
@@ -155,14 +163,14 @@ function scr_node_draw_macro_text_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
     node_height = _ly - _y + 10;
 	
 	  // Warning banner
-    if (_use_sid == 0) {
+    if (_use_sid == 0 && _irq_owned) {
 		draw_set_alpha(0.8);
 		draw_rectangle_colour(_draw_x,_y+20,_draw_x+width,_y+height,c_red,c_black,c_red,c_black,0)
 		draw_set_alpha(1.0);
 		var _flash_col = (current_time mod 600 < 300) ? c_white : c_black;
 	    draw_set_color(_flash_col);
 		draw_set_halign(fa_center)
-	    scr_node_macro_text_l(_draw_x + (width / 2), (_y+_ly)/2, "! REQUIRES MACRO_SID !");
+	    scr_node_macro_text_l(_draw_x + (width / 2), (_y+_ly)/2, "! IRQ NODES: ADD MACRO_SID !");
 		draw_set_halign(fa_left)
 	}
 

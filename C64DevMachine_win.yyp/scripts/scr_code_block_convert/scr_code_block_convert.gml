@@ -80,15 +80,16 @@ function scr_cbc_selection() {
 // at a scroller is six instructions inside MACRO_SID's own case, keyed on the
 // scroll node's instance id. MACRO_IRQ_HANDLER is its peer; five sites in the
 // emission path treat ownership as (MACRO_SID || MACRO_IRQ_HANDLER).
-// MACRO_TEXT_SCROLL is the other end of that binding and cannot run without an
-// owner at all — its standalone path is a deliberate `jmp *`.
+// MACRO_TEXT_SCROLL is the other end of that binding. With no MACRO_SID it
+// installs its own raster IRQ; only when IRQ nodes own the interrupt without a
+// MACRO_SID does it fall back to a deliberate `jmp *`.
 //
 // Converting any of them is a one-way trapdoor in BOTH directions:
 //
 //   * The block stops seeing the graph. Whatever the scans answered at
 //     conversion time is frozen into text. Convert a scroller with no SID
-//     present and the dead loop is baked in; adding a SID afterwards cannot
-//     revive it.
+//     present and its own-IRQ install is baked in; adding a SID afterwards
+//     will not switch it to the SID chain.
 //
 //   * The graph stops seeing the block. Convert the owner — even together with
 //     everything that latches to it, which is otherwise the correct move — and

@@ -294,6 +294,7 @@
  "! PUT ABOVE TEXT SCROLL !": "! 请放在 TEXT SCROLL 上方 !",
  "! RECT OFF GRID - WILL BE TRIMMED": "! 矩形超出网格 - 将被裁剪",
  "! REQUIRES MACRO_SID !": "! 需要 MACRO_SID !",
+ "! IRQ NODES: ADD MACRO_SID !": "! 有 IRQ 节点：请添加 MACRO_SID !",
  "! SONG NOT FOUND": "! 未找到乐曲",
  "! STAMP COLOUR OVERRIDES IGNORED": "! 图章颜色覆盖已忽略",
  "! WAVE LIST NOT FOUND": "! 未找到波形列表",

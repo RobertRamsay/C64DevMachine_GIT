@@ -6526,6 +6526,22 @@ var _use_sid = 0;
     }
 var _jsr_mode = (array_length(_curr.instructions[0]) > 11 && is_real(_curr.instructions[0][11])) ? real(_curr.instructions[0][11]) : 0;
 
+// STANDALONE: with no MACRO_SID, the scroller installs and owns its own
+// raster IRQ - unless IRQ nodes (MACRO_IRQ / MACRO_IRQ_HANDLER) already own
+// the interrupt, in which case it still needs MACRO_SID to chain through.
+var _ts_own_irq = false;
+if (_use_sid == 0) {
+    _ts_own_irq = true;
+    with (obj_c64_node) {
+        if ((node_type == "MACRO_IRQ" || node_type == "MACRO_IRQ_HANDLER") && is_connected && org_parent == noone) {
+            _ts_own_irq = false;
+            break;
+        }
+    }
+}
+// Same line MACRO_SID chains to, so PRE/POST-NOP tuning is identical.
+var _ts_scroll_raster = clamp(50 + (_row * 8) - 1, 0, 255);
+
 // [14] hires_col_override - 1 = keep _colNN colour bytes literal (0-7,
 // hi-res per-cell VIC override) even when the map is MC. Does NOT affect
 // _ts_d016 below: $D016 MCM is a screen-wide register and must still
@@ -6585,10 +6601,10 @@ var _ts_hires_override = (array_length(_curr.instructions[0]) > 14 && is_real(_c
         " txt=$"     + string_upper(decimal_to_hex(_txt_addr)));
 
 // ════════════════════════════════════════════════════════
-    // STANDALONE MODE — not supported, requires MACRO_SID
-    // Warning is shown on the node itself
+    // NO OWNER - IRQ nodes own the interrupt but there is no MACRO_SID to
+    // chain through. Warning is shown on the node itself.
     // ════════════════════════════════════════════════════════
-if (_use_sid == 0) {
+if (_use_sid == 0 && !_ts_own_irq) {
 
         array_push(_list, ["jsr",      _SINIT,  _id]);
         if (_jsr_mode == 0) {
@@ -6599,7 +6615,7 @@ if (_use_sid == 0) {
         }
 
     // ════════════════════════════════════════════════════════
-    // SID MODE
+    // SID MODE (MACRO_SID chains to the scroll IRQ) or OWN IRQ MODE
     // ════════════════════════════════════════════════════════
 } else {
 
@@ -6698,13 +6714,27 @@ if (_jsr_mode == 0) {
         array_push(_list, ["ora_imm",   0x07,                           _id]); // Force bits 2-0 to 7 (No scroll)
         array_push(_list, ["sta_abs",   0xD016,                         _id]);
 		
-        // Repoint back to sid_irq
-        array_push(_list, ["lda_lab_lo", "sid_irq",                     _id]);
-        array_push(_list, ["sta_abs",    0x0314,                       _id]);
-        array_push(_list, ["lda_lab_hi", "sid_irq",                     _id]);
-        array_push(_list, ["sta_abs",    0x0315,                       _id]);
-        array_push(_list, ["lda_imm",    global.sid_irq_line,          _id]);
-        array_push(_list, ["sta_abs",    0xD012,                       _id]);
+        if (_use_sid == 1) {
+            // Repoint back to sid_irq
+            array_push(_list, ["lda_lab_lo", "sid_irq",                     _id]);
+            array_push(_list, ["sta_abs",    0x0314,                       _id]);
+            array_push(_list, ["lda_lab_hi", "sid_irq",                     _id]);
+            array_push(_list, ["sta_abs",    0x0315,                       _id]);
+            array_push(_list, ["lda_imm",    global.sid_irq_line,          _id]);
+            array_push(_list, ["sta_abs",    0xD012,                       _id]);
+        } else {
+            // Own IRQ: stay on this handler, re-arm for the next frame, and
+            // scan the keyboard as MACRO_SID's handler does (CIA IRQs are off).
+            array_push(_list, ["lda_imm",    _ts_scroll_raster,            _id]);
+            array_push(_list, ["sta_abs",    0xD012,                       _id]);
+            array_push(_list, ["lda_zp",     0x01,                         _id]);
+            array_push(_list, ["pha",        0,                            _id]);
+            array_push(_list, ["lda_imm",    0x37,                         _id]);
+            array_push(_list, ["sta_zp",     0x01,                         _id]);
+            array_push(_list, ["jsr",        0xEA87,                       _id]);
+            array_push(_list, ["pla",        0,                            _id]);
+            array_push(_list, ["sta_zp",     0x01,                         _id]);
+        }
         array_push(_list, ["pla",        0,                            _id]);
         array_push(_list, ["tay",        0,                            _id]);
         array_push(_list, ["pla",        0,                            _id]);
@@ -6733,6 +6763,27 @@ array_push(_list, ["label",   _SINIT]);
     array_push(_list, ["sta_lab", _v_speed0,               _id]);
     array_push(_list, ["lda_imm", 7,                       _id]);  // always start left
     array_push(_list, ["sta_lab", _v_dir,                  _id]);
+    if (_use_sid == 0 && _ts_own_irq) {
+        // Own IRQ: raster IRQ at the scroll row straight into the handler.
+        array_push(_list, ["sei",        0,                  _id]);
+        array_push(_list, ["lda_lab_lo", _p + "scroll",      _id]);
+        array_push(_list, ["sta_abs",    0x0314,             _id]);
+        array_push(_list, ["lda_lab_hi", _p + "scroll",      _id]);
+        array_push(_list, ["sta_abs",    0x0315,             _id]);
+        array_push(_list, ["lda_imm",    0x7F,               _id]);  // CIA1 IRQs off
+        array_push(_list, ["sta_abs",    0xDC0D,             _id]);
+        array_push(_list, ["lda_abs",    0xDC0D,             _id]);  // ack any pending
+        array_push(_list, ["lda_abs",    0xD011,             _id]);
+        array_push(_list, ["and_imm",    0x7F,               _id]);  // raster bit 8 = 0
+        array_push(_list, ["sta_abs",    0xD011,             _id]);
+        array_push(_list, ["lda_imm",    _ts_scroll_raster,  _id]);
+        array_push(_list, ["sta_abs",    0xD012,             _id]);
+        array_push(_list, ["lda_imm",    0xFF,               _id]);
+        array_push(_list, ["sta_abs",    0xD019,             _id]);
+        array_push(_list, ["lda_imm",    0x01,               _id]);  // raster IRQ on
+        array_push(_list, ["sta_abs",    0xD01A,             _id]);
+        array_push(_list, ["cli",        0,                  _id]);
+    }
     array_push(_list, ["rts",     0,                       _id]);
 
     // ════════════════════════════════════════════════════════
@@ -6841,7 +6892,9 @@ array_push(_list, ["label",   _SINIT]);
     array_push(_list, ["cmp_imm", 0xDF,      _id]);
     array_push(_list, ["bcs",     _notrk,    _id]);
     array_push(_list, ["and_imm", 0x0F,      _id]);
-    array_push(_list, ["jsr",     "sid_init_entry", _id]);
+    if (_use_sid == 1) {
+        array_push(_list, ["jsr",     "sid_init_entry", _id]);   // #/trkNN: no SID, nothing to start
+    }
     // FIX: Advance pointer and fetch next char immediately
     array_push(_list, ["jsr",     _p + "adv_ptr", _id]);
     array_push(_list, ["jmp",     _tps,      _id]);
