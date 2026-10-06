@@ -115,6 +115,12 @@ function scr_node_draw_macro_move(_draw_x) {
         draw_set_halign(fa_center);
         scr_node_macro_text_l(_val_x1 + (_val_x2 - _val_x1) / 2, _row2 + 2, string(_dx));
     }
+    // Guided tour: DX of the newest MOVE (the one the step is about).
+    if (global.tour_active && is_connected) {
+        if (id == scr_tour_last_by_type("MACRO_MOVE")) {
+            scr_tour_capture_world("FIELD:MACRO_MOVE:dx", _val_x1, _row2, _val_x2, _row2 + 18);
+        }
+    }
     draw_set_halign(fa_left);
 
     // WRAP/STOP toggle

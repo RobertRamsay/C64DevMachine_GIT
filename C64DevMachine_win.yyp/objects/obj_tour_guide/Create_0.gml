@@ -19,6 +19,7 @@ glide_active = false;   // camera is easing towards glide_tx / glide_ty
 glide_wait   = 0;       // frames left to wait for the drop node to exist
 glide_tx     = 0;
 glide_ty     = 0;
+glide_target = false;  // gliding to a field or node rather than a DROP HERE spot
 base_label_count = 0;
 base_undo_top  = undefined;
 base_undo_name = "";

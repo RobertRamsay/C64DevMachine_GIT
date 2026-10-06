@@ -23,6 +23,11 @@
 ///   FIELD:MACRO_JOY:<d> a direction cell on a JOYSTICK node, e.g. LF    (captured)
 ///   FIELD:<keys>:<k>    a key cell on a KEYS node, e.g. FIELD:MACRO_LETTERS:B
 ///   LABELNAME:<name>    LABEL node with that name, attached or not
+///   OPERAND:<op>        operand of a connected NORMAL node, any value (captured)
+///   PICK:<row>          a row in an open label / asset picker, e.g. PICK:MAIN (captured)
+///   PICKER:<kind>       an open picker: COLOUR, BITMAP or SPRITE                 (captured)
+///   BMP:TOOL:<t>        a bitmap editor tool button, e.g. BMP:TOOL:FILL          (captured)
+///   BMP:PALETTE         the bitmap editor colour strip                           (captured)
 ///   LASTTYPE:<type>     lowest attached node of that type
 ///   FREELABEL           first LABEL not yet attached to anything
 ///
@@ -225,27 +230,27 @@ function scr_tour_define(_id) {
         array_push(_s, scr_tour_step("WELCOME",
             "This tour builds a tiny program that changes the C64 border and background colours using real 6502 opcodes.\n\nEach step waits for you to do it. Click NEXT to skip a step.",
             [], "NONE"));
-        array_push(_s, scr_tour_step("DRAG IN LDA_IMM",
+        array_push(_s, scr_tour_step_at("DRAG IN LDA_IMM",
             "LDA #value loads a number into the A register.\n\nDrag LDA_IMM from the opcode palette and drop it on the spine under SYSTEM INIT.",
-            ["PAL:LDA_IMM", "ARROW:L"], "OP_LDA_IMM"));
+            ["PAL:LDA_IMM", "ARROW:L"], "OP_LDA_IMM", "NODETYPE:INIT"));
         array_push(_s, scr_tour_step("CHOOSE A COLOUR",
             "Click the value on your LDA node, type 2 (red) and press ENTER.\n\nC64 colours run from 0 to 15.",
             ["OPERAND0:lda_imm", "NODEOP:lda_imm"], "LDA_NONZERO"));
-        array_push(_s, scr_tour_step("DRAG IN STA_ABS",
+        array_push(_s, scr_tour_step_at("DRAG IN STA_ABS",
             "STA stores the A register into memory.\n\nDrag STA_ABS onto the spine, under your LDA node.",
-            ["PAL:STA_ABS", "ARROW:L"], "OP_STA_ABS"));
+            ["PAL:STA_ABS", "ARROW:L"], "OP_STA_ABS", "LASTOP:lda_imm"));
         array_push(_s, scr_tour_step("POINT IT AT THE BORDER",
             "Click the STA value and type $D020, then press ENTER.\n\n$D020 is the VIC-II border colour register.",
             ["OPERAND0:sta_abs", "NODEOP:sta_abs"], "STA_D020"));
-        array_push(_s, scr_tour_step("NOW THE BACKGROUND",
+        array_push(_s, scr_tour_step_at("NOW THE BACKGROUND",
             "Same again for the background.\n\nDrag another LDA_IMM onto the spine, under your STA node.",
-            ["PAL:LDA_IMM", "ARROW:L"], "OP_LDA_IMM_2"));
+            ["PAL:LDA_IMM", "ARROW:L"], "OP_LDA_IMM_2", "LASTOP:sta_abs"));
         array_push(_s, scr_tour_step("CHOOSE A COLOUR",
             "Click the value on the new LDA node, type 7 (yellow) and press ENTER.",
             ["OPERAND0:lda_imm", "NODEOP:lda_imm"], "LDA_NONZERO_2"));
-        array_push(_s, scr_tour_step("DRAG IN STA_ABS",
+        array_push(_s, scr_tour_step_at("DRAG IN STA_ABS",
             "Drag another STA_ABS onto the spine, under the new LDA node.",
-            ["PAL:STA_ABS", "ARROW:L"], "OP_STA_ABS_2"));
+            ["PAL:STA_ABS", "ARROW:L"], "OP_STA_ABS_2", "LASTOP:lda_imm"));
         array_push(_s, scr_tour_step("POINT IT AT THE BACKGROUND",
             "Click the new STA value, type $D021 and press ENTER.\n\n$D021 is the VIC-II background colour register.",
             ["OPERAND0:sta_abs", "NODEOP:sta_abs"], "STA_D021"));
@@ -264,9 +269,9 @@ function scr_tour_define(_id) {
         array_push(_s, scr_tour_step("OPEN THE MACROS 1 MENU",
             "Click MACROS 1 in the menu bar.",
             ["MENU:0"], "MENU_MACROS"));
-        array_push(_s, scr_tour_step("DRAG IN PRINT",
+        array_push(_s, scr_tour_step_at("DRAG IN PRINT",
             "Drag PRINT out of the list and drop it on the spine under SYSTEM INIT.",
-            ["MAC:MACRO_PRINT", "MENU:0"], "HAS_PRINT"));
+            ["MAC:MACRO_PRINT", "MENU:0"], "HAS_PRINT", "NODETYPE:INIT"));
         array_push(_s, scr_tour_step("TYPE A MESSAGE",
             "Click the text field on the PRINT node, type HELLO C64 and press ENTER.",
             ["FIELD:MACRO_PRINT:text", "NODETYPE:MACRO_PRINT"], "PRINT_TEXT"));
@@ -275,7 +280,7 @@ function scr_tour_define(_id) {
             ["FIELD:MACRO_PRINT:y", "NODETYPE:MACRO_PRINT"], "PRINT_Y"));
         array_push(_s, scr_tour_step("PICK A COLOUR",
             "Click the colour swatch on the PRINT node and choose any colour except white.",
-            ["FIELD:MACRO_PRINT:col", "NODETYPE:MACRO_PRINT"], "PRINT_COL"));
+            ["PICKER:COLOUR", "FIELD:MACRO_PRINT:col", "NODETYPE:MACRO_PRINT"], "PRINT_COL"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5, or click BUILD & RUN on the right, to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
             ["UI:BUILD & RUN"], "BUILT"));
@@ -305,16 +310,16 @@ function scr_tour_define(_id) {
             [], "BMP_PAINTED"));
         array_push(_s, scr_tour_step("FLOOD FILL",
             "Choose the FILL tool, pick another colour and click inside a shape to fill it.",
-            [], "BMP_FILLED"));
+            ["BMP:TOOL:FILL"], "BMP_FILLED"));
         array_push(_s, scr_tour_step("CLOSE THE EDITOR",
             "Click CLOSE at the top right of the viewer, or press ESC.",
             ["ASSET:CLOSE"], "BMP_CLOSED"));
-        array_push(_s, scr_tour_step("DRAG IN BITMAP",
+        array_push(_s, scr_tour_step_at("DRAG IN BITMAP",
             "Open MACROS 1 and drag BITMAP onto the spine under SYSTEM INIT.",
-            ["MAC:MACRO_BMP", "MENU:0"], "HAS_BMP_NODE"));
+            ["MAC:MACRO_BMP", "MENU:0"], "HAS_BMP_NODE", "NODETYPE:INIT"));
         array_push(_s, scr_tour_step("LINK YOUR PICTURE",
             "Click the asset field on the BITMAP node and choose the bitmap you painted.",
-            ["FIELD:MACRO_BMP:asset", "NODETYPE:MACRO_BMP"], "BMP_LINKED"));
+            ["PICKER:BITMAP", "FIELD:MACRO_BMP:asset", "NODETYPE:MACRO_BMP"], "BMP_LINKED"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5, or click BUILD & RUN on the right, to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
             ["UI:BUILD & RUN"], "BUILT"));
@@ -350,7 +355,7 @@ function scr_tour_define(_id) {
             ["MAC:MACRO_SPR", "MENU:0"], "HAS_SPR", "NODETYPE:INIT"));
         array_push(_s, scr_tour_step("LINK YOUR SPRITE",
             "Click the asset name on the SPRITE node and choose the sprite set you just drew.",
-            ["NODETYPE:MACRO_SPR"], "SPR_LINKED"));
+            ["PICKER:SPRITE", "FIELD:MACRO_SPR:asset", "NODETYPE:MACRO_SPR"], "SPR_LINKED"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5, or click BUILD & RUN on the right, to build and launch.\n\nIf you are asked about a missing loop or RTS, choose YES to add an RTS.",
             ["UI:BUILD & RUN"], "BUILT"));
@@ -371,7 +376,7 @@ function scr_tour_define(_id) {
             ["FREELABEL", "NODETYPE:LABEL"], "LABEL_CONNECTED", "NODETYPE:INIT"));
         array_push(_s, scr_tour_step("NAME IT MAIN",
             "Click the label's name, type MAIN and press ENTER.",
-            ["NODETYPE:LABEL"], "LABEL_MAIN"));
+            ["FIELD:LABEL:name", "NODETYPE:LABEL"], "LABEL_MAIN"));
         array_push(_s, scr_tour_step_at("WAIT FOR THE FRAME",
             "Open MACROS 1 and drag VWAIT onto the spine under MAIN.\n\nVWAIT waits for the screen to be redrawn, so the loop runs 50 times a second.",
             ["MAC:MACRO_VWAIT", "MENU:0"], "HAS_VWAIT", "NODETYPE:LABEL"));
@@ -389,7 +394,7 @@ function scr_tour_define(_id) {
             ["PAL:JMP_ABS", "ARROW:R"], "OP_JMP", "NODEOP:sta_abs"));
         array_push(_s, scr_tour_step("JUMP BACK TO MAIN",
             "Click the JMP value and choose MAIN from the list.\n\nThis closes the loop.",
-            ["NODEOP:jmp_abs"], "JMP_MAIN"));
+            ["PICK:MAIN", "OPERAND:jmp_abs", "NODEOP:jmp_abs"], "JMP_MAIN"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5, or click BUILD & RUN on the right, to build and launch.",
             ["UI:BUILD & RUN"], "BUILT"));
@@ -419,7 +424,7 @@ function scr_tour_define(_id) {
             ["MAC:MACRO_MOVE", "MENU:0"], "MOVE_AFTER_LF", "LABELNAME:LF"));
         array_push(_s, scr_tour_step("MOVE LEFT",
             "Click the DX value on the MOVE node, type -2 and press ENTER.\n\nDX is how far the sprite moves across each frame.",
-            ["NODETYPE:MACRO_MOVE"], "MOVE_NEG"));
+            ["FIELD:MACRO_MOVE:dx", "NODETYPE:MACRO_MOVE"], "MOVE_NEG"));
         array_push(_s, scr_tour_step_at("RETURN",
             "Drag RTS from the opcode palette onto the spine under MOVE.\n\nRTS returns to the joystick, so the loop carries on.",
             ["PAL:RTS", "ARROW:R"], "RTS_1", "LASTTYPE:MACRO_MOVE"));
@@ -431,7 +436,7 @@ function scr_tour_define(_id) {
             ["MAC:MACRO_MOVE", "MENU:0"], "MOVE_2", "LABELNAME:RT"));
         array_push(_s, scr_tour_step("MOVE RIGHT",
             "Set DX on the new MOVE node to 2 and press ENTER.",
-            ["LASTTYPE:MACRO_MOVE"], "MOVE_POS"));
+            ["FIELD:MACRO_MOVE:dx", "LASTTYPE:MACRO_MOVE"], "MOVE_POS"));
         array_push(_s, scr_tour_step_at("RETURN AGAIN",
             "Drag another RTS onto the spine under the new MOVE.",
             ["PAL:RTS", "ARROW:R"], "RTS_2", "LASTTYPE:MACRO_MOVE"));
@@ -485,10 +490,10 @@ function scr_tour_define(_id) {
             ["MAC:MACRO_TEXT_SCROLL", "MENU:0"], "TXT_IN_LOOP", "NODETYPE:MACRO_VWAIT"));
         array_push(_s, scr_tour_step("WRITE YOUR MESSAGE",
             "Click the TEXT field on the TXT SCROLL node, type your own message and press ENTER.\n\nEnd it with a space so it wraps neatly.",
-            ["NODETYPE:MACRO_TEXT_SCROLL"], "TXT_CHANGED"));
+            ["FIELD:MACRO_TEXT_SCROLL:text", "NODETYPE:MACRO_TEXT_SCROLL"], "TXT_CHANGED"));
         array_push(_s, scr_tour_step("PICK A COLOUR",
             "Click the COLOUR on the node and choose any colour except white.",
-            ["NODETYPE:MACRO_TEXT_SCROLL"], "TXT_COL"));
+            ["PICKER:COLOUR", "FIELD:MACRO_TEXT_SCROLL:col", "NODETYPE:MACRO_TEXT_SCROLL"], "TXT_COL"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5, or click BUILD & RUN on the right, to build and launch.",
             ["UI:BUILD & RUN"], "BUILT"));
@@ -506,7 +511,7 @@ function scr_tour_define(_id) {
             [], "LABEL_EXISTS"));
         array_push(_s, scr_tour_step("NAME IT HIT",
             "Click the new label's name, type HIT and press ENTER.",
-            ["FREELABEL"], "LBL_HIT"));
+            ["FIELD:FREELABEL:name", "FREELABEL"], "LBL_HIT"));
         array_push(_s, scr_tour_step_at("ATTACH HIT",
             "Drag HIT onto the spine under the last RTS.",
             ["LABELNAME:HIT"], "HIT_BELOW", "LASTOP:rts"));
@@ -524,7 +529,7 @@ function scr_tour_define(_id) {
             ["MAC:MACRO_COLLISION", "MENU:0"], "COLL_IN_LOOP", "NODETYPE:MACRO_JOY"));
         array_push(_s, scr_tour_step("CALL HIT",
             "Click the CALL field at the bottom of the COLLIDE node and choose HIT.",
-            ["FIELD:MACRO_COLLISION:call", "NODETYPE:MACRO_COLLISION"], "COLL_HIT"));
+            ["PICK:HIT", "FIELD:MACRO_COLLISION:call", "NODETYPE:MACRO_COLLISION"], "COLL_HIT"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5, or click BUILD & RUN on the right, to build and launch.",
             ["UI:BUILD & RUN"], "BUILT"));
@@ -584,9 +589,15 @@ function scr_tour_enter_step() {
     // Drag steps ease the camera over to their DROP HERE spot.
     glide_active = false;
     glide_wait   = 0;
+    glide_target = false;
     if (step_idx >= 0 && step_idx < array_length(steps)) {
         if (steps[step_idx].drop != "") {
             glide_wait = 90;
+        } else if (_focus == "" && scr_tour_has_world_target(_targets)) {
+            // A step that points at a node or one of its fields eases the
+            // camera over to it too, when it starts off screen.
+            glide_wait   = 90;
+            glide_target = true;
         }
     }
     if (string_copy(_focus, 1, 9) == "NODETYPE:") {
@@ -1881,6 +1892,59 @@ function scr_tour_draw_drop(_n, _pulse, _gw, _gh) {
     draw_set_color(c_white);
 }
 
+/// @desc True for highlight keys that live on the canvas (a node or one of
+///       its fields), as opposed to menus, the palette, assets or pickers.
+function scr_tour_is_world_key(_k) {
+    var _pre = ["FIELD:", "OPERAND0:", "OPERAND:", "NODEOP:", "NODETYPE:", "LABELNAME:", "LASTTYPE:", "FREELABEL"];
+    for (var _i = 0; _i < array_length(_pre); _i++) {
+        if (string_copy(_k, 1, string_length(_pre[_i])) == _pre[_i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function scr_tour_has_world_target(_targets) {
+    for (var _i = 0; _i < array_length(_targets); _i++) {
+        if (scr_tour_is_world_key(_targets[_i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// @desc GUI rect of the first canvas target that can be found: a field
+///       captured by last frame's draw, else the node itself. undefined if none.
+function scr_tour_world_target_rect() {
+    var _keys = global.tour_keys;
+    for (var _i = 0; _i < array_length(_keys); _i++) {
+        var _k = _keys[_i];
+        if (!scr_tour_is_world_key(_k)) {
+            continue;
+        }
+        if (global.tour_stamps[_i] >= global.tour_frame - 1) {
+            return global.tour_rects[_i];
+        }
+        if (string_copy(_k, 1, 7) == "NODEOP:") {
+            var _no = scr_tour_node_by_op(string_delete(_k, 1, 7));
+            if (_no != noone) {
+                return scr_tour_node_rect(_no);
+            }
+        }
+        if (string_copy(_k, 1, 9) == "NODETYPE:") {
+            var _nt = scr_tour_node_by_type(string_delete(_k, 1, 9));
+            if (_nt != noone) {
+                return scr_tour_node_rect(_nt);
+            }
+        }
+        var _ext = scr_tour_resolve_ext(_k);
+        if (!is_undefined(_ext)) {
+            return _ext;
+        }
+    }
+    return undefined;
+}
+
 /// @desc Free part of the screen in GUI px, as [left, top, right, bottom]:
 ///       right of the palette, below the menu bar, left of the asset panel
 ///       and above the caption panel.
@@ -1906,7 +1970,34 @@ function scr_tour_usable_rect() {
 function scr_tour_glide_step() {
     var _wm = obj_workspace_manager;
 
-    if (glide_wait > 0 && !glide_active) {
+    // Field / node steps: once the target can be found, glide to it unless
+    // it is already comfortably in view.
+    if (glide_wait > 0 && !glide_active && glide_target) {
+        glide_wait--;
+        if (instance_exists(obj_asset_manager)) {
+            if (obj_asset_manager.viewer_open) {
+                return;
+            }
+        }
+        var _r = scr_tour_world_target_rect();
+        if (!is_undefined(_r)) {
+            glide_wait = 0;
+            var _u  = scr_tour_usable_rect();
+            var _mx = (_u[2] - _u[0]) * 0.15;
+            var _my = (_u[3] - _u[1]) * 0.15;
+            var _gx = (_r[0] + _r[2]) * 0.5;
+            var _gy = (_r[1] + _r[3]) * 0.5;
+            if (!point_in_rectangle(_gx, _gy, _u[0] + _mx, _u[1] + _my, _u[2] - _mx, _u[3] - _my)) {
+                var _wx = _wm.cam_x + (_gx * _wm.cam_zoom);
+                var _wy = _wm.cam_y + (_gy * _wm.cam_zoom);
+                glide_tx     = _wx - (((_u[0] + _u[2]) * 0.5) * _wm.cam_zoom);
+                glide_ty     = _wy - (((_u[1] + _u[3]) * 0.5) * _wm.cam_zoom);
+                glide_active = true;
+            }
+        }
+    }
+
+    if (glide_wait > 0 && !glide_active && !glide_target) {
         glide_wait--;
         var _n = scr_tour_drop_node(steps[step_idx].drop);
         if (_n != noone) {

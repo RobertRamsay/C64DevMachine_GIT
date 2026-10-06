@@ -9,19 +9,13 @@ function scr_node_step_macro_text_scroll() {
 
     // GUI-space row positions — mirrors draw function _ly sequence exactly.
     // Draw starts at _ly = _y + 24 + 4, increments by _lh = 18 per row.
-    var _px  = x + 8;
+    var _px  = x + x_indent + 8;   // as Draw: _draw_x = x + x_indent
     var _ly0 = y + 28
     var _lh  = 12;
 
 	
-    // If no SID connected, warning banner adds one extra row at the top
-    var _use_sid_step = 0;
-    with (obj_c64_node) {
-        if (node_type == "MACRO_SID" && is_connected) { _use_sid_step = 1; break; }
-    }
-    if (_use_sid_step == 0) {
-        _ly0 += _lh;
-    }
+    // No SID: Draw lays its "REQUIRES MACRO_SID" warning over the rows, it
+    // does not add one, so the rows sit where Draw puts them either way.
 
     var _x1_g = (_px               - _cam_x) / _cam_zoom;
     var _x2_g = (_px + width - 16  - _cam_x) / _cam_zoom;

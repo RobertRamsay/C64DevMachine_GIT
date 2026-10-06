@@ -45,6 +45,9 @@ function scr_node_draw_macro_text_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
     
     draw_set_color(scr_c64_pepto_colour(_colour)); // Value remains Pepto
     scr_node_macro_text_l(_px + 76, _ly, string(_colour) + " (" + _c_name + ")");
+    if (global.tour_active && is_connected) {
+        scr_tour_capture_world("FIELD:MACRO_TEXT_SCROLL:col", _px - 2, _ly - 1, _px + width - 16, _ly + _lh);
+    }
     _ly += _lh;
 
     // ROW 2 — INIT SPEED
@@ -91,6 +94,9 @@ function scr_node_draw_macro_text_scroll(_draw_x, _y, _cam_x, _cam_y, _cam_zoom)
         var _preview = string_copy(_txt, 1, 12);
         if (string_length(_txt) > 12) _preview += "...";
         scr_node_macro_text_l(_px + 40, _ly, "'' " + _preview + " ''");
+        if (global.tour_active && is_connected) {
+            scr_tour_capture_world("FIELD:MACRO_TEXT_SCROLL:text", _px - 2, _ly - 1, _px + width - 16, _ly + _lh);
+        }
     } else {
         draw_set_color(_asset_name == "" ? c_orange : c_lime);
         scr_node_macro_text_l(_px + 60, _ly, _asset_name == "" ? L("< NONE >") : _asset_name);

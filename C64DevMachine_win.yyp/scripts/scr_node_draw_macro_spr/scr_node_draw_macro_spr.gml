@@ -48,6 +48,9 @@ function scr_node_draw_macro_spr(_draw_x, _y, _cam_x, _cam_y, _cam_zoom) {
     scr_macro_body_rectangle(_draw_x + 68, _mly + 3, _draw_x + width - 8, _mly + 13  , false);
     draw_set_color(_has_asset ? c_lime : (_name_hover ? c_white : make_color_rgb(200, 80, 80)));
     scr_node_macro_text_l(_draw_x + 72, _mly, _asset_name == "" ? L("CLICK TO SET") : _asset_name );
+    if (global.tour_active && is_connected) {
+        scr_tour_capture_world("FIELD:MACRO_SPR:asset", _draw_x + 68, _mly - 1, _draw_x + width - 8, _mly + 14);
+    }
     _mly += _line_h;
 
 // Row 2: Address / PTR

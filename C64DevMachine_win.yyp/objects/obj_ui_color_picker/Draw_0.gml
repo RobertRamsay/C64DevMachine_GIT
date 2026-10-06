@@ -29,3 +29,8 @@ for (var i = 0; i < 16; i++) {
         draw_rectangle(_sx - 1, y - 1, _sx + 15, y + height, true);
     }
 }
+
+// Guided tours point at the open picker.
+if (global.tour_active) {
+    scr_tour_capture_world("PICKER:COLOUR", x - 2, y - 2, x + width + 1, y + height + 1);
+}

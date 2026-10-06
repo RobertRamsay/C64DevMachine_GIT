@@ -491,6 +491,7 @@ if (bmp_picker_open && instance_exists(bmp_picker_node)) {
     draw_rectangle(_pdx, _pdy, _pdx + _pw, _pdy + _total_h, false);
     draw_set_color(make_color_rgb(80, 80, 120));
     draw_rectangle(_pdx, _pdy, _pdx + _pw, _pdy + _total_h, true);
+    if (global.tour_active) scr_tour_capture("PICKER:BITMAP", _pdx, _pdy, _pdx + _pw, _pdy + _total_h);
 
     if (array_length(_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
@@ -693,6 +694,7 @@ if (spr_picker_open && instance_exists(spr_picker_node)) {
     draw_rectangle(_pdx, _pdy, _pdx + _pw, _pdy + _total_h, false);
     draw_set_color(make_color_rgb(200, 120, 40));
     draw_rectangle(_pdx, _pdy, _pdx + _pw, _pdy + _total_h, true);
+    if (global.tour_active) scr_tour_capture("PICKER:SPRITE", _pdx, _pdy, _pdx + _pw, _pdy + _total_h);
 
     if (array_length(_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
@@ -7604,6 +7606,7 @@ gpu_set_texfilter(false);
 	                    draw_rectangle(_rtx, _rty, _rtx + 70, _rty + 16, true);
 	                    draw_set_color(_active ? c_aqua : c_white);
 	                    draw_text_l(_rtx + 4, _rty , _label);
+	                    if (global.tour_active) scr_tour_capture("BMP:TOOL:" + _tname, _rtx, _rty, _rtx + 70, _rty + 16);
                         
 	                    if (_hov && mouse_check_button_pressed(mb_left)) {
 	                        if (_active && (_tname == "CIRCLE" || _tname == "RECT")) {
@@ -7797,6 +7800,7 @@ gpu_set_texfilter(false);
 	                        if (_phov && mouse_check_button_pressed(mb_right)) _asset.meta.secondary_color = _c;
 	                    }
 	                }
+	                if (global.tour_active) scr_tour_capture("BMP:PALETTE", _px - 6, _py - 6, _px + _pw + 6, _py + 16 * (_ph + 2) + 4);
 	              
 	            } // end !goto_end_editor
 					// INITIALIZE TO INTEGER SWEET SPOT
