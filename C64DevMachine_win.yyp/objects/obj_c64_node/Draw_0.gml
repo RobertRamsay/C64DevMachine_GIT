@@ -197,7 +197,7 @@ if (height_dirty) {
 	case "MACRO_SID_SONG":   height = _G * 8;  break;   // 3 rows + 5-line pico footer
 	case "MACRO_HUD":        height = _G * 9;  break;   // 3 rows + size/entry-point report
 	case "MACRO_GET_CHAR":   height = _G * 7;  break; 
-    case "MACRO_CLR_SCREEN": height = _G * 4;  break;
+    case "MACRO_CLR_SCREEN": height = _G * 5;  break;   // + FILL hint line
 	case "MACRO_MATH":       height = _G * 5;  break;    
     case "NAMED_LOC":   height = _G * 3;  break;         // 60
     case "NEW_STR":     height = _G * 4;  break;         // 100

@@ -91,7 +91,8 @@ function scr_node_tooltip_text(_node_type) {
                 "Fills 1000 bytes of screen RAM with a fill byte, starting at a chosen base address.",
                 "",
                 "NOTES:",
-                "Stops 8 bytes short of the full 1024-byte page so it never touches the sprite pointer table at base+$3F8-$3FF."
+                "Stops 8 bytes short of the full 1024-byte page so it never touches the sprite pointer table at base+$3F8-$3FF.",
+                "FILL starts at $20, the space character. To clear with character / tile 0 instead, set FILL to 0."
             ]
         },
 

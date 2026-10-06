@@ -651,11 +651,11 @@ case "LABEL": {
 
         // -------------------------------------------------------
         // MACRO_CLR_SCREEN
-        // [0] mnem  [1] scr_base (hex)  [2] fill (0-255)
+        // [0] mnem  [1] scr_base (hex)  [2] fill (0-255, default $20 = space)
         // -------------------------------------------------------
         case "MACRO_CLR_SCREEN":
             _n.node_title   = "CLR SCRN RAM";
-            _n.instructions = [["macro_clr_screen", 0x0400, 0]];
+            _n.instructions = [["macro_clr_screen", 0x0400, 0x20]];
             _n.pc_address   = global.start_pc;
             with (_n) { event_user(0); }
             break;
