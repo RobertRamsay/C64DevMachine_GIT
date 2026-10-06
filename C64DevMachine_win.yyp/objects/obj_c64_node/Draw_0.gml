@@ -1397,6 +1397,9 @@ if (_lod_header) {
             draw_triangle(_pb_x1, _pb_y1, _pb_x1, _pb_y1 + 10, _pb_x1 + 10, _pb_y1 + 5, false);
         }
         draw_set_color(_text_col);
+        if (global.tour_active) {
+            scr_tour_capture_world("FIELD:" + node_type + ":play", _pb_x1 - 3, y + 2, _pb_x1 + 13, y + 22);
+        }
     }
 
     // ---- [INFO] BADGE ----

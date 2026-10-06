@@ -1,0 +1,132 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 872b6b1..62f7dcc 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -1397,6 +1397,9 @@ if (_lod_header) {
+             draw_triangle(_pb_x1, _pb_y1, _pb_x1, _pb_y1 + 10, _pb_x1 + 10, _pb_y1 + 5, false);
+         }
+         draw_set_color(_text_col);
++        if (global.tour_active) {
++            scr_tour_capture_world("FIELD:" + node_type + ":play", _pb_x1 - 3, y + 2, _pb_x1 + 13, y + 22);
++        }
+     }
+ 
+     // ---- [INFO] BADGE ----
+diff --git a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+index a177d46..015ca1e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_tour_guide/scr_tour_guide.gml
+@@ -122,6 +122,7 @@ function scr_tour_start(_id) {
+     // colour pickers (-9999) and inside the visible range.
+     // Tours that build on earlier ones start from a ready-made workspace.
+     // Done before the tour object exists so its step baselines see it.
++    scr_tour_remove_empty_org();
+     scr_tour_setup(_id);
+     var _t = instance_create_depth(0, 0, -14000, obj_tour_guide);
+     with (_t) {
+@@ -193,7 +194,16 @@ function scr_tour_welcome_geom(_px, _py, _pw, _ph) {
+ 
+ /// @desc Step builder.
+ function scr_tour_step(_title, _text, _targets, _check) {
+-    return { title: _title, text: _text, targets: _targets, check: _check };
++    return { title: _title, text: _text, targets: _targets, check: _check, focus: "" };
++}
++
++/// @desc Step builder for a step that brings one node into view when it
++///       starts. _focus is "NODETYPE:<type>". The camera is centred on that
++///       node at 1:1 zoom, once, as the step begins.
++function scr_tour_step_focus(_title, _text, _targets, _check, _focus) {
++    var _st = scr_tour_step(_title, _text, _targets, _check);
++    _st.focus = _focus;
++    return _st;
+ }
+ 
+ /// @desc Every tour's steps, by tour id.
+@@ -528,6 +538,12 @@ function scr_tour_define(_id) {
+         array_push(_s, scr_tour_step("CLOSE THE EDITOR",
+             "Click CLOSE at the top right, or press ESC, and look at the new nodes.",
+             ["ASSET:CLOSE"], "MUS_CLOSED"));
++        array_push(_s, scr_tour_step_focus("PLAY IT FROM THE NODE",
++            "This is the SID SONG macro that GENERATE NODES made.\n\nClick the little play button in its header to hear the tune without building.",
++            ["FIELD:MACRO_SID_SONG:play", "NODETYPE:MACRO_SID_SONG"], "SONG_PLAYING", "NODETYPE:MACRO_SID_SONG"));
++        array_push(_s, scr_tour_step("STOP IT",
++            "The play button is now a stop square. Click it to stop the tune.",
++            ["FIELD:MACRO_SID_SONG:play", "NODETYPE:MACRO_SID_SONG"], "SONG_STOPPED"));
+         array_push(_s, scr_tour_step("BUILD AND RUN",
+             "Press F5, or click BUILD & RUN on the right, to build and launch.",
+             ["UI:BUILD & RUN"], "BUILT"));
+@@ -546,8 +562,19 @@ function scr_tour_enter_step() {
+     hl_have    = false;
+ 
+     var _targets = [];
++    var _focus   = "";
+     if (step_idx >= 0 && step_idx < array_length(steps)) {
+         _targets = steps[step_idx].targets;
++        _focus   = steps[step_idx].focus;
++    }
++    if (string_copy(_focus, 1, 9) == "NODETYPE:") {
++        var _fn = scr_tour_node_by_type(string_delete(_focus, 1, 9));
++        if (_fn != noone) {
++            scr_focus_camera_on_node(_fn);
++            with (obj_workspace_manager) {
++                camera_set_view_pos(cam_view, cam_x, cam_y);
++            }
++        }
+     }
+     global.tour_keys   = _targets;
+     global.tour_rects  = array_create(array_length(_targets), 0);
+@@ -1144,6 +1171,35 @@ function scr_tour_build_starter(_kind) {
+     }
+ }
+ 
++/// @desc A fresh workspace comes with an empty ORG BLOCK. No tour uses it, so
++///       take it away rather than leave an unused block on the canvas. Only
++///       an ORG still titled ORG BLOCK with nothing attached is removed; the
++///       VARIABLES block is kept.
++function scr_tour_remove_empty_org() {
++    var _gone = [];
++    with (obj_c64_node) {
++        if (node_type == "ORG" && node_title == "ORG BLOCK") {
++            var _me   = id;
++            var _used = false;
++            with (obj_c64_node) {
++                if (org_parent == _me) {
++                    _used = true;
++                }
++            }
++            if (!_used) {
++                array_push(_gone, id);
++            }
++        }
++    }
++    for (var _i = 0; _i < array_length(_gone); _i++) {
++        instance_destroy(_gone[_i]);
++    }
++    if (array_length(_gone) > 0) {
++        global.addresses_dirty = true;
++        obj_workspace_manager.flow_overlay_dirty = true;
++    }
++}
++
+ // ---------------------------------------------------------------------------
+ // Check helpers for tours 3-9
+ // ---------------------------------------------------------------------------
+@@ -1524,6 +1580,18 @@ function scr_tour_check_ext(_code) {
+             return is_struct(_a.meta[$ "music_nodes"]);
+         case "MUS_CLOSED":
+             return !obj_asset_manager.viewer_open;
++        case "SONG_PLAYING":
++            _n = scr_tour_node_by_type("MACRO_SID_SONG");
++            if (_n == noone) {
++                return false;
++            }
++            return scr_node_preview_is(_n);
++        case "SONG_STOPPED":
++            _n = scr_tour_node_by_type("MACRO_SID_SONG");
++            if (_n == noone) {
++                return false;
++            }
++            return !scr_node_preview_is(_n);
+     }
+     return false;
+ }
