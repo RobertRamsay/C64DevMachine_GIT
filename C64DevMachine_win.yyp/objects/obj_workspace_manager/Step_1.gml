@@ -1,3 +1,8 @@
+// Guided tour caption panel takes its clicks before anything else, so a click
+// on NEXT / BACK / EXIT (or anywhere on the panel) never reaches what is
+// drawn behind it.
+scr_tour_panel_click();
+
 // Cache drag state for nodes to read (workspace manager begin step event here)
 
 // One tick per frame. Per-frame lookup caches compare against this.
