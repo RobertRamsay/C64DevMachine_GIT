@@ -1,0 +1,584 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index 499a66a..6fd2dd8 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -981,6 +981,7 @@
+     {"id":{"name":"obj_question_box","path":"objects/obj_question_box/obj_question_box.yy",},},
+     {"id":{"name":"obj_screenshot_button","path":"objects/obj_screenshot_button/obj_screenshot_button.yy",},},
+     {"id":{"name":"obj_tour_guide","path":"objects/obj_tour_guide/obj_tour_guide.yy",},},
++    {"id":{"name":"obj_manual_shots","path":"objects/obj_manual_shots/obj_manual_shots.yy",},},
+     {"id":{"name":"obj_ui_color_picker","path":"objects/obj_ui_color_picker/obj_ui_color_picker.yy",},},
+     {"id":{"name":"obj_workspace_manager","path":"objects/obj_workspace_manager/obj_workspace_manager.yy",},},
+     {"id":{"name":"MAIN_ROOM","path":"rooms/MAIN_ROOM/MAIN_ROOM.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_manual_shots/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_manual_shots/Create_0.gml
+new file mode 100644
+index 0000000..305aac0
+--- /dev/null
++++ b/C64DevMachine_win.yyp/objects/obj_manual_shots/Create_0.gml
+@@ -0,0 +1,441 @@
++/// @desc Scripted screenshot pass for the manual.
++/// Runs only when C64DM_SHOTS=<folder> is set (see obj_workspace_manager Create).
++/// Works through a queue of actions and shots, saves each frame from Draw GUI
++/// End with screen_save, logs the crop rectangle of each shot (GUI pixels) to
++/// rects.json, and writes done.txt when finished. Nothing is ever saved to a
++/// project file.
++frame        = 0;
++dir          = global.manual_shots_dir;
++queue        = [];
++qi           = 0;
++wait         = 0;
++pending_shot = "";
++pending_rect = [0, 0, 1920, 1080];
++rects        = {};
++finished     = false;
++log_lines    = [];
++saved_w      = 0;
++saved_h      = 0;
++
++// ---- queue builders -------------------------------------------------------
++q = function(_f, _wait) {
++    array_push(queue, { f: _f, w: _wait });
++};
++shot = function(_name, _rectf) {
++    array_push(queue, { shot: _name, r: _rectf, w: 2 });
++};
++logm = function(_s) {
++    array_push(log_lines, string(frame) + ": " + string(_s));
++};
++
++// ---- geometry -------------------------------------------------------------
++// Room rect -> GUI rect, padded, clamped to the screen.
++g = function(_x1, _y1, _x2, _y2, _pad) {
++    var _w = obj_workspace_manager;
++    var _z = _w.cam_zoom;
++    return [
++        max(0,    floor((_x1 - _w.cam_x) / _z) - _pad),
++        max(0,    floor((_y1 - _w.cam_y) / _z) - _pad),
++        min(1920, ceil((_x2 - _w.cam_x) / _z) + _pad),
++        min(1080, ceil((_y2 - _w.cam_y) / _z) + _pad)
++    ];
++};
++// Put room point (_cx,_cy) at GUI point (_gx,_gy) with zoom _z.
++cam = function(_cx, _cy, _z, _gx = 955, _gy = 540) {
++    with (obj_workspace_manager) {
++        cam_zoom        = _z;
++        cam_zoom_target = _z;
++        cam_x           = _cx - _gx * _z;
++        cam_y           = _cy - _gy * _z;
++        camera_set_view_size(cam_view, 1920 * _z, 1080 * _z);
++        camera_set_view_pos(cam_view, cam_x, cam_y);
++    }
++};
++union = function(_a, _b) {
++    if (!is_array(_a)) return _b;
++    return [min(_a[0], _b[0]), min(_a[1], _b[1]), max(_a[2], _b[2]), max(_a[3], _b[3])];
++};
++// Room rect of a node, P tab included.
++nrect = function(_n) {
++    var _x1 = _n.x + _n.x_indent;
++    return [_x1, _n.y, _x1 + _n.width + 22, _n.y + _n.height];
++};
++// Room rect of a mapping box, the buttons above it included.
++brect = function(_b) {
++    return [_b.x, _b.y - 20, _b.x + _b.box_w, _b.y + _b.box_h];
++};
++rg = function(_r, _pad) {
++    return g(_r[0], _r[1], _r[2], _r[3], _pad);
++};
++centre_on = function(_r, _z) {
++    cam((_r[0] + _r[2]) / 2, (_r[1] + _r[3]) / 2, _z);
++};
++
++// ---- finders --------------------------------------------------------------
++node_uid = function(_u) {
++    var _r = noone;
++    with (obj_c64_node) {
++        if (stable_uid == _u) { _r = id; break; }
++    }
++    return _r;
++};
++box_named = function(_name) {
++    var _r = noone;
++    with (obj_mapping_box) {
++        if (string_upper(box_name) == _name) { _r = id; break; }
++    }
++    return _r;
++};
++// Box + the nodes it drives (+ their ORG headers), room space.
++box_and_nodes = function(_b) {
++    var _r = brect(_b);
++    var _ns = scr_creator_panel_nodes(_b);
++    for (var _i = 0; _i < array_length(_ns); _i++) {
++        var _n = _ns[_i];
++        _r = union(_r, nrect(_n));
++        var _c = card_of(_n);
++        if (_c != undefined) _r = union(_r, _c);
++    }
++    return _r;
++};
++card_of = function(_n) {
++    for (var _i = 0; _i < array_length(global.creator_cards); _i++) {
++        var _c = global.creator_cards[_i];
++        if (variable_struct_exists(_c, "tab") && _c.tab == _n) return [_c.x1, _c.y1, _c.x2, _c.y2];
++    }
++    return undefined;
++};
++cards_all = function() {
++    var _r = undefined;
++    for (var _i = 0; _i < array_length(global.creator_cards); _i++) {
++        var _c = global.creator_cards[_i];
++        _r = union(_r, [_c.x1, _c.y1, _c.x2, _c.y2]);
++    }
++    return _r;
++};
++load_template = function(_idx) {
++    with (obj_workspace_manager) scr_template_load(_idx);
++};
++edit_box = function(_b, _edit) {
++    if (_edit) {
++        var _linked = scr_creator_panel_nodes(_b);
++        _b.is_panel      = false;
++        _b.panel_editing = false;
++        if (array_length(_linked) > 0) scr_creator_reveal_node(_linked[0]);
++    } else {
++        var _cover = scr_creator_panel_cover_uids(_b);
++        if (array_length(_cover) > 0) _b.panel_links = _cover;
++        _b.is_panel      = true;
++        _b.panel_editing = false;
++    }
++};
++editor_rect = function(_n) {
++    var _pw = 860;
++    var _ph = 130 + max(1, array_length(_n.params)) * 74 + 64;
++    var _px = floor((1920 - _pw) / 2);
++    var _py = floor((1080 - _ph) / 2);
++    return [_px - 8, _py - 8, _px + _pw + 8, _py + _ph + 8];
++};
++asset_index = function(_type, _name) {
++    var _am = obj_asset_manager;
++    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
++        var _a = _am.asset_list[| _i];
++        if (_a.type == _type && (_name == "" || _a.name == _name)) return _i;
++    }
++    return -1;
++};
++open_asset = function(_i) {
++    with (obj_asset_manager) {
++        scr_asset_inline_editor_close_all();
++        viewer_asset = _i;
++        viewer_open  = true;
++        keyboard_string = "";
++    }
++};
++close_asset = function() {
++    with (obj_asset_manager) viewer_open = false;
++};
++full = function() { return [0, 0, 1920, 1080]; };
++
++// ===========================================================================
++// THE SHOT LIST
++// ===========================================================================
++var _self = self;
++
++// ---- 13: guided tour, first step, on the startup workspace -------------------
++q(function() { with (obj_workspace_manager) scr_tour_start(0); }, 60);
++// Step 2 has a highlight on the canvas, step 1 is only the welcome text.
++q(function() { with (obj_tour_guide) { step_idx = 1; scr_tour_enter_step(); } }, 120);
++shot("13_tour", full);
++q(function() { scr_tour_end(); }, 30);
++
++// ---- SHMUP V -----------------------------------------------------------------
++q(function() { load_template(0); }, 200);
++
++// VICE before / after: two silent builds (no VICE launch) into the shot
++// folder - as shipped, then with Border set to 14 (light blue).
++q(function() {
++    with (obj_workspace_manager) {
++        export_dir = other.dir + "C64Temp\\";
++        if (!directory_exists(export_dir)) directory_create(export_dir);
++        full_save_path = export_dir + file_name;
++        silent_build  = true;
++        trigger_build = true;
++    }
++}, 150);
++q(function() {
++    file_copy(obj_workspace_manager.full_save_path, dir + "vice_before.prg");
++    if (!file_exists(dir + "vice_before.prg")) logm("before build missing");
++    var _n = node_uid(200025);
++    scr_param_write(_n, _n.params[0], 14);
++    with (obj_workspace_manager) { silent_build = true; trigger_build = true; }
++}, 150);
++q(function() {
++    file_copy(obj_workspace_manager.full_save_path, dir + "vice_after.prg");
++    if (!file_exists(dir + "vice_after.prg")) logm("after build missing");
++    var _n = node_uid(200025);
++    scr_param_write(_n, _n.params[0], 0);
++    obj_workspace_manager.silent_build = false;
++}, 30);
++
++// 09: all six panels
++q(function() {
++    var _r = undefined;
++    var _names = ["SCREEN", "SHIP", "ENEMIES", "WEAPON", "RULES", "SHIP COLOUR"];
++    for (var _i = 0; _i < array_length(_names); _i++) {
++        var _b = box_named(_names[_i]);
++        if (_b != noone) _r = union(_r, brect(_b)); else logm("missing box " + _names[_i]);
++    }
++    _r[1] -= 360;   // the section boxes the panels hang under
++    over_r = _r;
++    var _z = max((_r[2] - _r[0]) / 1300, (_r[3] - _r[1]) / 860, 0.5);
++    centre_on(_r, _z);
++}, 20);
++shot("09_shmup_overview", function() { return rg(over_r, 16); });
++
++// 10: each panel close up, at zoom 1. SCREEN as shipped, then tall enough
++// for both its controls.
++var _panels = ["SCREEN", "SHIP", "ENEMIES", "WEAPON", "RULES", "SHIP COLOUR"];
++var _files  = ["screen", "ship", "enemies", "weapon", "rules", "ship_colour"];
++for (var _i = 0; _i < 6; _i++) {
++    var _pn = _panels[_i];
++    var _fn = _files[_i];
++    q(method({ s: _self, pn: _pn }, function() {
++        var _b = s.box_named(pn);
++        s.cur_box = _b;
++        s.centre_on(s.brect(_b), 1);
++    }), 15);
++    shot("10_shmup_" + _fn + (_pn == "SCREEN" ? "_overflow" : ""), function() { return rg(brect(cur_box), 10); });
++    if (_pn == "SCREEN") {
++        q(function() { saved_h = cur_box.box_h; cur_box.box_h = max(cur_box.box_h, 210); centre_on(brect(cur_box), 1); }, 15);
++        shot("10_shmup_screen", function() { return rg(brect(cur_box), 10); });
++    }
++}
++
++// 07b: RULES narrow (as shipped) vs wide
++q(function() { cur_box = box_named("RULES"); saved_w = cur_box.box_w; saved_h = cur_box.box_h; centre_on(brect(cur_box), 1); }, 10);
++shot("07b_narrow", function() { return rg(brect(cur_box), 10); });
++q(function() {
++    saved_x = cur_box.x; saved_y = cur_box.y;
++    cur_box.y += 900;              // clear of the other panels
++    cur_box.box_w = 560; cur_box.box_h = 300;
++    centre_on(brect(cur_box), 1);
++}, 15);
++shot("07b_wide", function() { return rg(brect(cur_box), 10); });
++q(function() { cur_box.x = saved_x; cur_box.y = saved_y; cur_box.box_w = saved_w; cur_box.box_h = saved_h; }, 5);
++
++// 11: WEAPON lifted with EDIT, nodes showing; then back to UI.
++q(function() { cur_box = box_named("WEAPON"); edit_box(cur_box, true); }, 30);
++q(function() { cur_r = box_and_nodes(cur_box); centre_on(cur_r, 1); }, 20);
++shot("11_shmup_edit", function() { return rg(box_and_nodes(cur_box), 14); });
++// 04: the card that shows beside a node whose panel is down (WEAPON's code block).
++q(function() {
++    var _ns = scr_creator_panel_nodes(cur_box);
++    cur_node = (array_length(_ns) > 0) ? _ns[0] : noone;
++}, 5);
++shot("04_card_beside", function() {
++    var _r = nrect(cur_node);
++    var _c = card_of(cur_node);
++    if (_c != undefined) _r = union(_r, _c); else logm("no card for WEAPON node");
++    return rg(_r, 14);
++});
++q(function() { edit_box(cur_box, false); }, 20);
++
++// 01: a macro with its P tab and no params yet.
++q(function() {
++    cur_node = noone;
++    var _pref = ["MACRO_VWAIT", "MACRO_JOY", "MACRO_SPR", "MACRO_MOVE"];
++    for (var _k = 0; _k < array_length(_pref) && cur_node == noone; _k++) {
++        with (obj_c64_node) {
++            if (node_type == _pref[_k] && macro_owner == noone && array_length(params) == 0) { other.cur_node = id; break; }
++        }
++    }
++    if (cur_node == noone) logm("no tabbable macro found");
++    else { logm("P tab node " + cur_node.node_type); scr_creator_reveal_node(cur_node); }
++}, 30);
++q(function() { centre_on(nrect(cur_node), 1); }, 15);
++shot("01_ptab", function() { return rg(nrect(cur_node), 34); });
++
++// 02: PARAMS editor on the VIC macro (Border / Background, named slots).
++q(function() {
++    cur_node = node_uid(200025);
++    if (cur_node == noone) logm("VIC node 200025 missing");
++    global.creator_edit_node = cur_node;
++    global.creator_view_open = false;
++    scr_creator_opened();
++}, 20);
++shot("02_params_macro", function() { return editor_rect(cur_node); });
++q(function() { global.creator_edit_node = noone; }, 10);
++
++// 03: PARAMS editor on the ENEMY_SPEED code block (MODE + OPTIONS).
++q(function() {
++    cur_node = node_uid(220038);
++    if (cur_node == noone) logm("ENEMY_SPEED node 220038 missing");
++    global.creator_edit_node = cur_node;
++    scr_creator_opened();
++}, 20);
++shot("03_params_code", function() { return editor_rect(cur_node); });
++// RULES code block: three nodes, five params.
++q(function() {
++    global.creator_edit_node = node_uid(220164);
++    scr_creator_opened();
++    cur_node = global.creator_edit_node;
++}, 20);
++shot("03b_params_code_rules", function() { return editor_rect(cur_node); });
++q(function() { global.creator_edit_node = noone; }, 10);
++
++// 14: side-panel readouts
++shot("14_readouts", function() { return [0, 890, 270, 1000]; });
++
++// 08: Creator view
++q(function() { scr_creator_open_view(); }, 30);
++shot("08_creator_view", full);
++q(function() { scr_creator_close_view(); }, 15);
++
++// 15: Music Maker on the template's song
++q(function() {
++    var _i = asset_index("MUSIC_MAKER", "");
++    if (_i < 0) logm("no MUSIC_MAKER asset"); else open_asset(_i);
++}, 90);
++shot("15_music_maker", full);
++q(function() { close_asset(); }, 20);
++
++// 16: SAMPLE editor after a WAV import
++q(function() {
++    with (obj_asset_manager) {
++        var _a = {
++            type: "SAMPLE", name: "SAMPLE_1", file: "", address: scr_asset_default_address("SAMPLE"),
++            buffer: buffer_create(1, buffer_fixed, 1), meta: {}, load_later: false,
++            d64_filename: "", reu_filename: "", reu_size: 0, reu_used: 0, linked_assets: []
++        };
++        scr_sample_create(_a);
++        var _r = scr_sample_wav_decode(working_directory + "sample.wav");
++        if (_r.ok) {
++            buffer_delete(_a.buffer);
++            _a.buffer = _r.buf;
++            var _m = _a.meta;
++            _m.src_rate = _r.rate; _m.src_len = _r.len; _m.src_name = "sample.wav";
++            _m.trim_start = 0; _m.trim_end = _r.len; _m.data_ver += 1;
++            _m.wf_src_key = ""; _m.enc_dirty = true; _m.warn_msg = ""; _m.warn_timer = 0;
++        } else {
++            other.logm("wav decode failed: " + _r.msg);
++        }
++        ds_list_add(asset_list, _a);
++    }
++    open_asset(asset_index("SAMPLE", "SAMPLE_1"));
++}, 60);
++shot("16_sample_editor", full);
++q(function() { close_asset(); }, 20);
++
++// ---- PARAMS TEST: cards, folded stack, TEXT popup, NOT LINKED -----------------
++q(function() { load_template(16); }, 200);
++q(function() {
++    cur_node = node_uid(500014);   // PRINT
++    cur_node2 = node_uid(500010);  // code block
++    var _r = cards_all();
++    if (instance_exists(cur_node.org_parent)) _r = union(_r, nrect(cur_node.org_parent));
++    centre_on(_r, 1);
++}, 20);
++shot("04_cards_folded", function() {
++    var _r = undefined;
++    if (instance_exists(cur_node.org_parent))  _r = union(_r, nrect(cur_node.org_parent));
++    if (instance_exists(cur_node2.org_parent)) _r = union(_r, nrect(cur_node2.org_parent));
++    var _c = cards_all();
++    if (_c != undefined) _r = union(_r, _c);
++    return rg(_r, 14);
++});
++q(function() {
++    if (instance_exists(cur_node.org_parent))  scr_org_set_collapsed(cur_node.org_parent, false);
++    if (instance_exists(cur_node2.org_parent)) scr_org_set_collapsed(cur_node2.org_parent, false);
++}, 30);
++q(function() { centre_on(union(nrect(cur_node), nrect(cur_node2)), 1); }, 15);
++shot("04_cards", function() {
++    var _r = union(nrect(cur_node), nrect(cur_node2));
++    var _c = cards_all();
++    if (_c != undefined) _r = union(_r, _c);
++    return rg(_r, 14);
++});
++shot("04_card_print", function() {
++    var _r = nrect(cur_node);
++    var _c = card_of(cur_node);
++    if (_c != undefined) _r = union(_r, _c);
++    return rg(_r, 12);
++});
++// TEXT popup
++q(function() {
++    global.creator_text_node  = cur_node;
++    global.creator_text_pidx  = 0;
++    scr_creator_opened();
++    global.creator_field      = "ptext";
++    var _t = scr_param_read(cur_node, cur_node.params[0]).str;
++    keyboard_string           = string(_t);
++    global.creator_field_text = string(_t);
++}, 20);
++shot("08b_text_popup", function() { return [592, 447, 1328, 633]; });
++q(function() { global.creator_text_node = noone; global.creator_field = ""; }, 10);
++// NOT LINKED: point one code param at a name that is not in the block.
++q(function() {
++    saved_sym = cur_node2.params[1].sym;
++    cur_node2.params[1].sym = "NO_SUCH_NAME";
++}, 10);
++shot("04_not_linked", function() {
++    var _c = card_of(cur_node2);
++    return (_c != undefined) ? rg(_c, 10) : rg(nrect(cur_node2), 10);
++});
++q(function() { cur_node2.params[1].sym = saved_sym; }, 5);
++// GAME SPEED panel, moved away from the node it drives.
++q(function() {
++    cur_box = box_named("GAME SPEED");
++    var _r = brect(cur_box);
++    var _ns = scr_creator_panel_nodes(cur_box);
++    for (var _i = 0; _i < array_length(_ns); _i++) _r = union(_r, nrect(_ns[_i]));
++    cur_r = _r;
++    centre_on(_r, 1);
++}, 20);
++shot("06b_panel_moved", function() { return rg(cur_r, 14); });
++// 05 / 06: the GAME SPEED box drawn round its WAIT node, plain (UI button),
++// then raised as a panel.
++q(function() {
++    cur_box  = box_named("GAME SPEED");
++    cur_node = node_uid(500018);
++    var _nr  = nrect(cur_node);
++    edit_box(cur_box, true);
++    cur_box.x     = _nr[0] - 40;
++    cur_box.y     = _nr[1] - 80;
++    cur_box.box_w = (_nr[2] - _nr[0]) + 80;
++    cur_box.box_h = (_nr[3] - _nr[1]) + 110;
++}, 30);
++q(function() { cur_r = box_and_nodes(cur_box); centre_on(cur_r, 1); }, 20);
++shot("05_box_before", function() { return rg(box_and_nodes(cur_box), 16); });
++q(function() { edit_box(cur_box, false); }, 30);
++shot("06_panel_up", function() { return rg(cur_r, 16); });
++q(function() { edit_box(cur_box, true); }, 30);
++shot("07_panel_edit", function() { return rg(box_and_nodes(cur_box), 16); });
++
++// PARAMS TEST Creator view (has TEXT inline)
++q(function() { scr_creator_open_view(); }, 30);
++shot("08c_creator_view_test", full);
++q(function() { scr_creator_close_view(); }, 10);
++
++// ---- whole window, for reference ---------------------------------------------
++shot("99_full", full);
+diff --git a/C64DevMachine_win.yyp/objects/obj_manual_shots/Draw_75.gml b/C64DevMachine_win.yyp/objects/obj_manual_shots/Draw_75.gml
+new file mode 100644
+index 0000000..b2607a4
+--- /dev/null
++++ b/C64DevMachine_win.yyp/objects/obj_manual_shots/Draw_75.gml
+@@ -0,0 +1,6 @@
++/// @desc Save the frame once everything else has drawn (lowest depth).
++if (pending_shot != "") {
++    screen_save(dir + pending_shot + ".png");
++    rects[$ pending_shot] = pending_rect;
++    pending_shot = "";
++}
+diff --git a/C64DevMachine_win.yyp/objects/obj_manual_shots/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_manual_shots/Step_0.gml
+new file mode 100644
+index 0000000..7efb3d3
+--- /dev/null
++++ b/C64DevMachine_win.yyp/objects/obj_manual_shots/Step_0.gml
+@@ -0,0 +1,50 @@
++/// @desc Run the next queued action or shot.
++frame++;
++// Keep the editor awake and free of banners while nobody is at the keyboard.
++with (obj_workspace_manager) {
++    idle_timer             = 0;
++    version_banner_visible = false;
++}
++global.idle_active = false;
++global.idle_fade   = 1;
++
++if (pending_shot != "") exit;   // Draw GUI End still has to save it
++if (wait > 0) { wait--; exit; }
++
++if (qi >= array_length(queue)) {
++    if (!finished) {
++        finished = true;
++        var _f = file_text_open_write(dir + "rects.json");
++        file_text_write_string(_f, json_stringify(rects));
++        file_text_close(_f);
++        _f = file_text_open_write(dir + "log.txt");
++        for (var _i = 0; _i < array_length(log_lines); _i++) {
++            file_text_write_string(_f, log_lines[_i]);
++            file_text_writeln(_f);
++        }
++        file_text_close(_f);
++        _f = file_text_open_write(dir + "done.txt");
++        file_text_write_string(_f, "done");
++        file_text_close(_f);
++    }
++    exit;
++}
++
++var _e = queue[qi];
++qi++;
++if (variable_struct_exists(_e, "shot")) {
++    try {
++        pending_rect = _e.r();
++    } catch (_ex) {
++        logm(_e.shot + " rect failed: " + string(_ex.message));
++        pending_rect = [0, 0, 1920, 1080];
++    }
++    pending_shot = _e.shot;
++} else {
++    try {
++        _e.f();
++    } catch (_ex) {
++        logm("action " + string(qi - 1) + " failed: " + string(_ex.message) + " | " + string(_ex.stacktrace));
++    }
++}
++wait = _e.w;
+diff --git a/C64DevMachine_win.yyp/objects/obj_manual_shots/obj_manual_shots.yy b/C64DevMachine_win.yyp/objects/obj_manual_shots/obj_manual_shots.yy
+new file mode 100644
+index 0000000..8dd62fa
+--- /dev/null
++++ b/C64DevMachine_win.yyp/objects/obj_manual_shots/obj_manual_shots.yy
+@@ -0,0 +1,37 @@
++{
++  "$GMObject":"",
++  "%Name":"obj_manual_shots",
++  "eventList":[
++    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":0,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
++    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":0,"eventType":3,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
++    {"$GMEvent":"v1","%Name":"","collisionObjectId":null,"eventNum":75,"eventType":8,"isDnD":false,"name":"","resourceType":"GMEvent","resourceVersion":"2.0",},
++  ],
++  "managed":true,
++  "name":"obj_manual_shots",
++  "overriddenProperties":[],
++  "parent":{
++    "name":"OBJECTS",
++    "path":"folders/OBJECTS.yy",
++  },
++  "parentObjectId":null,
++  "persistent":false,
++  "physicsAngularDamping":0.1,
++  "physicsDensity":0.5,
++  "physicsFriction":0.2,
++  "physicsGroup":1,
++  "physicsKinematic":false,
++  "physicsLinearDamping":0.1,
++  "physicsObject":false,
++  "physicsRestitution":0.1,
++  "physicsSensor":false,
++  "physicsShape":1,
++  "physicsShapePoints":[],
++  "physicsStartAwake":true,
++  "properties":[],
++  "resourceType":"GMObject",
++  "resourceVersion":"2.0",
++  "solid":false,
++  "spriteId":null,
++  "spriteMaskId":null,
++  "visible":true,
++}
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index c0439ad..ce1eae8 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -1,5 +1,9 @@
+ /// @desc Setup Workspace, Palette & C64 Environment
+ global.lite=0;
++// MANUAL SHOTS: C64DM_SHOTS=<folder> runs the scripted screenshot pass for the
++// manual (obj_manual_shots). Unset in normal use, so nothing changes.
++global.manual_shots_dir = environment_get_variable("C64DM_SHOTS");
++if (global.manual_shots_dir != "") instance_create_depth(0, 0, -15500, obj_manual_shots);
+ // CREATOR LAYER globals (lock state, panels). Before anything can step.
+ scr_creator_init();
+ 
