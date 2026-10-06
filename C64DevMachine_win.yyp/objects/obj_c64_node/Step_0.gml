@@ -2103,6 +2103,17 @@ if (node_type == "INIT") {
 
     var _is_macro_child = (macro_owner != noone);
 
+// Play / stop button in the header (SID SONG, SFX, SID nodes). Taken before
+// the header drag so a click on the triangle plays instead of picking up the node.
+if (scr_node_has_preview(node_type) && scr_workspace_mouse_check_button_pressed(mb_left)
+&& !_mouse_in_gui && !obj_workspace_manager.is_panning && !label_picker_open && !global.any_picker_open) {
+    var _pb_x1 = draw_x + (width * 0.8) - 16;
+    if (point_in_rectangle(mouse_x, mouse_y, _pb_x1 - 3, y + 2, _pb_x1 + 13, y + 22)) {
+        scr_node_preview_toggle(id);
+        exit;
+    }
+}
+
 // Drag start — header bar only
 if (scr_workspace_mouse_check_button_pressed(mb_left) && !_mouse_in_gui && !obj_workspace_manager.is_panning && !instance_exists(obj_ui_color_picker) && _cam_zoom < 3.55 && !label_picker_open && !global.any_picker_open) {
          if (point_in_rectangle(mouse_x, mouse_y, draw_x, y, draw_x + width, y + 24) &&

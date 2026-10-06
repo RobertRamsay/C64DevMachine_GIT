@@ -485,7 +485,12 @@ function scr_sid_asset_chunk() {
 function scr_sid_asset_update() {
     var _p = sid_asset_preview;
     if (!is_struct(_p)) return;
-    if (!viewer_open || viewer_asset < 0 || viewer_asset >= ds_list_size(asset_list)
+    // Started from a node's play button: it runs with no viewer open, and
+    // stops only if the asset goes away (or STOP / another preview).
+    var _from_node = is_string(_p.owner) && _p.owner == "NODE";
+    if (_from_node) {
+        if (scr_reu_find_asset(_p.asset.name) != _p.asset) { scr_sid_asset_stop(); return; }
+    } else if (!viewer_open || viewer_asset < 0 || viewer_asset >= ds_list_size(asset_list)
     || ds_list_find_value(asset_list, viewer_asset) != _p.owner
     || scr_reu_find_asset(_p.asset.name) != _p.asset) { scr_sid_asset_stop(); return; }
     var _period = _p.cycles * 1000000 / _p.clock;
@@ -575,4 +580,127 @@ function scr_sound_instrument_follow_read(_m) {
         }
     }
     return _out;
+}
+
+// ═══════════════════════ NODE PLAY BUTTONS ═══════════════════════
+// SID SONG, SFX and SID nodes draw a small play triangle in their header.
+// One node plays at a time; state lives on obj_asset_manager (Create).
+//   SONG - the node's Music Maker asset, song 0, through the reSID stream
+//   SFX  - the node's effect number, at its own note, through the instrument preview
+//   SID  - the node's imported .sid file and track, through the PSID player
+
+/// True for the node types that get a play button.
+function scr_node_has_preview(_type) {
+    return (_type == "MACRO_SID_SONG" || _type == "MACRO_SFX" || _type == "MACRO_SID");
+}
+
+/// True while _node's preview is sounding.
+function scr_node_preview_is(_node) {
+    if (!instance_exists(obj_asset_manager)) return false;
+    return (obj_asset_manager.node_preview_node == _node);
+}
+
+/// Stop whatever a node started (leaves editor previews alone).
+function scr_node_preview_stop() {
+    if (!instance_exists(obj_asset_manager)) return;
+    with (obj_asset_manager) {
+        if (node_preview_kind == "SONG") {
+            if (global.sid64_stream.active && global.sid64_stream.sim == node_preview_sim) {
+                scr_sid64_stream_stop();
+            }
+        } else if (node_preview_kind == "SID") {
+            if (is_struct(sid_asset_preview) && is_string(sid_asset_preview.owner) && sid_asset_preview.owner == "NODE") {
+                scr_sid_asset_stop();
+            }
+        } else if (node_preview_kind == "SFX") {
+            scr_sound_preview_free_channel(0);
+        }
+        node_preview_node = noone;
+        node_preview_kind = "";
+        node_preview_sim  = undefined;
+        node_preview_end  = 0;
+    }
+}
+
+/// Play button pressed on _node: stop it if it is playing, otherwise play it.
+function scr_node_preview_toggle(_node) {
+    if (!instance_exists(obj_asset_manager) || !instance_exists(_node)) return;
+    if (scr_node_preview_is(_node)) {
+        scr_node_preview_stop();
+        return;
+    }
+    scr_node_preview_stop();
+    var _i0 = _node.instructions[0];
+    var _name = "";
+    if (array_length(_i0) > 1) _name = string(_i0[1]);
+    var _asset = scr_reu_find_asset(_name);
+    if (!is_struct(_asset)) return;
+
+    if (_node.node_type == "MACRO_SID_SONG") {
+        if (!global.sid64_ok || _asset.type != "MUSIC_MAKER") return;
+        with (obj_asset_manager) scr_sid_asset_stop();
+        scr_sid64_stream_start(_asset.meta, 0, false, 0, 0);
+        if (!global.sid64_stream.active) return;
+        with (obj_asset_manager) {
+            node_preview_node = _node;
+            node_preview_kind = "SONG";
+            node_preview_sim  = global.sid64_stream.sim;
+            node_preview_end  = 0;
+        }
+        global.node_preview_meta = _asset.meta;
+    } else if (_node.node_type == "MACRO_SFX") {
+        if (_asset.type != "SFX_MAKER") return;
+        var _fx = 0;
+        if (array_length(_i0) > 2 && is_real(_i0[2])) _fx = real(_i0[2]);
+        var _list = _asset.meta.instruments;
+        if (_fx < 0 || _fx >= array_length(_list)) return;
+        var _ins  = _list[_fx];
+        var _note = "C-4";
+        if (variable_struct_exists(_ins, "sfx_note")) _note = string(_ins.sfx_note);
+        scr_sound_instrument_preview_play(_ins, _note, 0, 3);
+        with (obj_asset_manager) {
+            node_preview_node = _node;
+            node_preview_kind = "SFX";
+            node_preview_sim  = undefined;
+            node_preview_end  = get_timer() + 3000000;   // button shows STOP for up to 3 s
+        }
+    } else if (_node.node_type == "MACRO_SID") {
+        var _track = 0;
+        if (array_length(_i0) > 2 && is_real(_i0[2])) _track = clamp(real(_i0[2]), 0, 31);
+        var _ok = false;
+        with (obj_asset_manager) {
+            _ok = scr_sid_asset_start(_asset, _track);
+            if (_ok && is_struct(sid_asset_preview)) {
+                sid_asset_preview.owner = "NODE";
+                node_preview_node = _node;
+                node_preview_kind = "SID";
+                node_preview_sim  = undefined;
+                node_preview_end  = 0;
+            }
+        }
+    }
+}
+
+/// Every frame (obj_asset_manager Step): keep a node's song streaming and
+/// notice when it has finished or something else took the player over.
+function scr_node_preview_update() {
+    if (node_preview_kind == "") return;
+    if (!instance_exists(node_preview_node)) { scr_node_preview_stop(); return; }
+    if (node_preview_kind == "SONG") {
+        if (!global.sid64_stream.active || global.sid64_stream.sim != node_preview_sim) {
+            node_preview_node = noone; node_preview_kind = ""; node_preview_sim = undefined;
+            return;
+        }
+        if (!scr_sid64_stream_update(global.node_preview_meta)) {
+            node_preview_node = noone; node_preview_kind = ""; node_preview_sim = undefined;
+        }
+    } else if (node_preview_kind == "SID") {
+        if (!is_struct(sid_asset_preview) || !is_string(sid_asset_preview.owner) || sid_asset_preview.owner != "NODE") {
+            node_preview_node = noone; node_preview_kind = "";
+        }
+    } else if (node_preview_kind == "SFX") {
+        if (get_timer() > node_preview_end) {
+            node_preview_node = noone; node_preview_kind = ""; node_preview_end = 0;
+        }
+    }
 }

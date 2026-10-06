@@ -1,4 +1,5 @@
 scr_sid_asset_update();
+scr_node_preview_update();
 if (!viewer_open) { manifest_preview_name = ""; manifest_preview_owner = undefined; }
 if (!viewer_open && scr_workspace_input_blocked()) exit;
 /// @desc obj_asset_manager Step

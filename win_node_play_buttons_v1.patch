@@ -1,0 +1,240 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+index d06652d..c65df22 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Create_0.gml
+@@ -819,6 +819,12 @@ manifest_preview_y = 300;
+ manifest_preview_rect = [0,0,0,0];
+ sid_asset_preview = undefined;
+ sid_asset_name = "";
++// Node play buttons (SID SONG / SFX / SID nodes) - see scr_node_preview_toggle
++node_preview_node = noone;      // the node whose preview is sounding
++node_preview_kind = "";         // "SONG", "SFX", "SID" or ""
++node_preview_sim  = undefined;  // the reSID stream it started (SONG)
++node_preview_end  = 0;          // get_timer() when an SFX preview is done
++global.node_preview_meta = undefined;
+ sid_asset_song = 0;
+ sid_asset_message = "";
+ manifest_draw_preview = function(_asset, _viewer_x, _row_y) {
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index 2612539..05ff49c 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -1,4 +1,5 @@
+ scr_sid_asset_update();
++scr_node_preview_update();
+ if (!viewer_open) { manifest_preview_name = ""; manifest_preview_owner = undefined; }
+ if (!viewer_open && scr_workspace_input_blocked()) exit;
+ /// @desc obj_asset_manager Step
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index de2fb75..872b6b1 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -1344,6 +1344,10 @@ if (_lod_header) {
+                 _title_max_w -= (string_width_l("[INFO]") + 8);
+                 draw_set_font_l(_tw_font);
+             }
++            if (scr_node_has_preview(node_type)) {
++                // and clear of the play button just left of it
++                _title_max_w = min(_title_max_w, (width * 0.8) - 30);
++            }
+             if (string_width_l(_disp_title) > _title_max_w && string_length(_disp_title) > 1) {
+                 while (string_length(_disp_title) > 1 && string_width_l(_disp_title) > _title_max_w) {
+                     _disp_title = string_copy(_disp_title, 1, string_length(_disp_title) - 1);
+@@ -1371,6 +1375,30 @@ if (_lod_header) {
+         draw_set_font_l(fnt_c64_code);
+     }
+ 
++    // ---- PLAY / STOP BUTTON (SID SONG, SFX and SID nodes) ----
++    // A right-pointing triangle just left of the [INFO] hotspot plays the
++    // node's music or effect; while it sounds it becomes a stop square.
++    // The click is taken in Step_0 before the header drag.
++    if (scr_node_has_preview(node_type)) {
++        var _pb_x1  = draw_x + (width * 0.8) - 16;
++        var _pb_y1  = y + 7;
++        var _pb_hot = point_in_rectangle(mouse_x, mouse_y, _pb_x1 - 3, y + 2, _pb_x1 + 13, y + 22);
++        var _pb_on  = scr_node_preview_is(id);
++        if (_pb_on) {
++            draw_set_color(make_color_rgb(120, 255, 120));
++        } else if (_pb_hot) {
++            draw_set_color(c_white);
++        } else {
++            draw_set_color(merge_colour(_text_col, _head_col, 0.35));
++        }
++        if (_pb_on) {
++            draw_rectangle(_pb_x1 + 1, _pb_y1 + 1, _pb_x1 + 9, _pb_y1 + 9, false);
++        } else {
++            draw_triangle(_pb_x1, _pb_y1, _pb_x1, _pb_y1 + 10, _pb_x1 + 10, _pb_y1 + 5, false);
++        }
++        draw_set_color(_text_col);
++    }
++
+     // ---- [INFO] BADGE ----
+     // Hovering the right fifth of the header surfaces the node's description
+     // (obj_c64_node Step_0 holds that hotspot and the dwell timer). Nothing on
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 92a9211..0e23d64 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -2103,6 +2103,17 @@ if (node_type == "INIT") {
+ 
+     var _is_macro_child = (macro_owner != noone);
+ 
++// Play / stop button in the header (SID SONG, SFX, SID nodes). Taken before
++// the header drag so a click on the triangle plays instead of picking up the node.
++if (scr_node_has_preview(node_type) && scr_workspace_mouse_check_button_pressed(mb_left)
++&& !_mouse_in_gui && !obj_workspace_manager.is_panning && !label_picker_open && !global.any_picker_open) {
++    var _pb_x1 = draw_x + (width * 0.8) - 16;
++    if (point_in_rectangle(mouse_x, mouse_y, _pb_x1 - 3, y + 2, _pb_x1 + 13, y + 22)) {
++        scr_node_preview_toggle(id);
++        exit;
++    }
++}
++
+ // Drag start — header bar only
+ if (scr_workspace_mouse_check_button_pressed(mb_left) && !_mouse_in_gui && !obj_workspace_manager.is_panning && !instance_exists(obj_ui_color_picker) && _cam_zoom < 3.55 && !label_picker_open && !global.any_picker_open) {
+          if (point_in_rectangle(mouse_x, mouse_y, draw_x, y, draw_x + width, y + 24) &&
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sid64_audio/scr_sid64_audio.gml b/C64DevMachine_win.yyp/scripts/scr_sid64_audio/scr_sid64_audio.gml
+index 6e03e8a..9333533 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sid64_audio/scr_sid64_audio.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sid64_audio/scr_sid64_audio.gml
+@@ -485,7 +485,12 @@ function scr_sid_asset_chunk() {
+ function scr_sid_asset_update() {
+     var _p = sid_asset_preview;
+     if (!is_struct(_p)) return;
+-    if (!viewer_open || viewer_asset < 0 || viewer_asset >= ds_list_size(asset_list)
++    // Started from a node's play button: it runs with no viewer open, and
++    // stops only if the asset goes away (or STOP / another preview).
++    var _from_node = is_string(_p.owner) && _p.owner == "NODE";
++    if (_from_node) {
++        if (scr_reu_find_asset(_p.asset.name) != _p.asset) { scr_sid_asset_stop(); return; }
++    } else if (!viewer_open || viewer_asset < 0 || viewer_asset >= ds_list_size(asset_list)
+     || ds_list_find_value(asset_list, viewer_asset) != _p.owner
+     || scr_reu_find_asset(_p.asset.name) != _p.asset) { scr_sid_asset_stop(); return; }
+     var _period = _p.cycles * 1000000 / _p.clock;
+@@ -576,3 +581,126 @@ function scr_sound_instrument_follow_read(_m) {
+     }
+     return _out;
+ }
++
++// ═══════════════════════ NODE PLAY BUTTONS ═══════════════════════
++// SID SONG, SFX and SID nodes draw a small play triangle in their header.
++// One node plays at a time; state lives on obj_asset_manager (Create).
++//   SONG - the node's Music Maker asset, song 0, through the reSID stream
++//   SFX  - the node's effect number, at its own note, through the instrument preview
++//   SID  - the node's imported .sid file and track, through the PSID player
++
++/// True for the node types that get a play button.
++function scr_node_has_preview(_type) {
++    return (_type == "MACRO_SID_SONG" || _type == "MACRO_SFX" || _type == "MACRO_SID");
++}
++
++/// True while _node's preview is sounding.
++function scr_node_preview_is(_node) {
++    if (!instance_exists(obj_asset_manager)) return false;
++    return (obj_asset_manager.node_preview_node == _node);
++}
++
++/// Stop whatever a node started (leaves editor previews alone).
++function scr_node_preview_stop() {
++    if (!instance_exists(obj_asset_manager)) return;
++    with (obj_asset_manager) {
++        if (node_preview_kind == "SONG") {
++            if (global.sid64_stream.active && global.sid64_stream.sim == node_preview_sim) {
++                scr_sid64_stream_stop();
++            }
++        } else if (node_preview_kind == "SID") {
++            if (is_struct(sid_asset_preview) && is_string(sid_asset_preview.owner) && sid_asset_preview.owner == "NODE") {
++                scr_sid_asset_stop();
++            }
++        } else if (node_preview_kind == "SFX") {
++            scr_sound_preview_free_channel(0);
++        }
++        node_preview_node = noone;
++        node_preview_kind = "";
++        node_preview_sim  = undefined;
++        node_preview_end  = 0;
++    }
++}
++
++/// Play button pressed on _node: stop it if it is playing, otherwise play it.
++function scr_node_preview_toggle(_node) {
++    if (!instance_exists(obj_asset_manager) || !instance_exists(_node)) return;
++    if (scr_node_preview_is(_node)) {
++        scr_node_preview_stop();
++        return;
++    }
++    scr_node_preview_stop();
++    var _i0 = _node.instructions[0];
++    var _name = "";
++    if (array_length(_i0) > 1) _name = string(_i0[1]);
++    var _asset = scr_reu_find_asset(_name);
++    if (!is_struct(_asset)) return;
++
++    if (_node.node_type == "MACRO_SID_SONG") {
++        if (!global.sid64_ok || _asset.type != "MUSIC_MAKER") return;
++        with (obj_asset_manager) scr_sid_asset_stop();
++        scr_sid64_stream_start(_asset.meta, 0, false, 0, 0);
++        if (!global.sid64_stream.active) return;
++        with (obj_asset_manager) {
++            node_preview_node = _node;
++            node_preview_kind = "SONG";
++            node_preview_sim  = global.sid64_stream.sim;
++            node_preview_end  = 0;
++        }
++        global.node_preview_meta = _asset.meta;
++    } else if (_node.node_type == "MACRO_SFX") {
++        if (_asset.type != "SFX_MAKER") return;
++        var _fx = 0;
++        if (array_length(_i0) > 2 && is_real(_i0[2])) _fx = real(_i0[2]);
++        var _list = _asset.meta.instruments;
++        if (_fx < 0 || _fx >= array_length(_list)) return;
++        var _ins  = _list[_fx];
++        var _note = "C-4";
++        if (variable_struct_exists(_ins, "sfx_note")) _note = string(_ins.sfx_note);
++        scr_sound_instrument_preview_play(_ins, _note, 0, 3);
++        with (obj_asset_manager) {
++            node_preview_node = _node;
++            node_preview_kind = "SFX";
++            node_preview_sim  = undefined;
++            node_preview_end  = get_timer() + 3000000;   // button shows STOP for up to 3 s
++        }
++    } else if (_node.node_type == "MACRO_SID") {
++        var _track = 0;
++        if (array_length(_i0) > 2 && is_real(_i0[2])) _track = clamp(real(_i0[2]), 0, 31);
++        var _ok = false;
++        with (obj_asset_manager) {
++            _ok = scr_sid_asset_start(_asset, _track);
++            if (_ok && is_struct(sid_asset_preview)) {
++                sid_asset_preview.owner = "NODE";
++                node_preview_node = _node;
++                node_preview_kind = "SID";
++                node_preview_sim  = undefined;
++                node_preview_end  = 0;
++            }
++        }
++    }
++}
++
++/// Every frame (obj_asset_manager Step): keep a node's song streaming and
++/// notice when it has finished or something else took the player over.
++function scr_node_preview_update() {
++    if (node_preview_kind == "") return;
++    if (!instance_exists(node_preview_node)) { scr_node_preview_stop(); return; }
++    if (node_preview_kind == "SONG") {
++        if (!global.sid64_stream.active || global.sid64_stream.sim != node_preview_sim) {
++            node_preview_node = noone; node_preview_kind = ""; node_preview_sim = undefined;
++            return;
++        }
++        if (!scr_sid64_stream_update(global.node_preview_meta)) {
++            node_preview_node = noone; node_preview_kind = ""; node_preview_sim = undefined;
++        }
++    } else if (node_preview_kind == "SID") {
++        if (!is_struct(sid_asset_preview) || !is_string(sid_asset_preview.owner) || sid_asset_preview.owner != "NODE") {
++            node_preview_node = noone; node_preview_kind = "";
++        }
++    } else if (node_preview_kind == "SFX") {
++        if (get_timer() > node_preview_end) {
++            node_preview_node = noone; node_preview_kind = ""; node_preview_end = 0;
++        }
++    }
++}

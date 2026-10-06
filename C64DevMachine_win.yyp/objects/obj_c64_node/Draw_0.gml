@@ -1344,6 +1344,10 @@ if (_lod_header) {
                 _title_max_w -= (string_width_l("[INFO]") + 8);
                 draw_set_font_l(_tw_font);
             }
+            if (scr_node_has_preview(node_type)) {
+                // and clear of the play button just left of it
+                _title_max_w = min(_title_max_w, (width * 0.8) - 30);
+            }
             if (string_width_l(_disp_title) > _title_max_w && string_length(_disp_title) > 1) {
                 while (string_length(_disp_title) > 1 && string_width_l(_disp_title) > _title_max_w) {
                     _disp_title = string_copy(_disp_title, 1, string_length(_disp_title) - 1);
@@ -1369,6 +1373,30 @@ if (_lod_header) {
         }
 
         draw_set_font_l(fnt_c64_code);
+    }
+
+    // ---- PLAY / STOP BUTTON (SID SONG, SFX and SID nodes) ----
+    // A right-pointing triangle just left of the [INFO] hotspot plays the
+    // node's music or effect; while it sounds it becomes a stop square.
+    // The click is taken in Step_0 before the header drag.
+    if (scr_node_has_preview(node_type)) {
+        var _pb_x1  = draw_x + (width * 0.8) - 16;
+        var _pb_y1  = y + 7;
+        var _pb_hot = point_in_rectangle(mouse_x, mouse_y, _pb_x1 - 3, y + 2, _pb_x1 + 13, y + 22);
+        var _pb_on  = scr_node_preview_is(id);
+        if (_pb_on) {
+            draw_set_color(make_color_rgb(120, 255, 120));
+        } else if (_pb_hot) {
+            draw_set_color(c_white);
+        } else {
+            draw_set_color(merge_colour(_text_col, _head_col, 0.35));
+        }
+        if (_pb_on) {
+            draw_rectangle(_pb_x1 + 1, _pb_y1 + 1, _pb_x1 + 9, _pb_y1 + 9, false);
+        } else {
+            draw_triangle(_pb_x1, _pb_y1, _pb_x1, _pb_y1 + 10, _pb_x1 + 10, _pb_y1 + 5, false);
+        }
+        draw_set_color(_text_col);
     }
 
     // ---- [INFO] BADGE ----

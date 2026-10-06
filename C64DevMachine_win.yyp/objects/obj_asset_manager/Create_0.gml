@@ -819,6 +819,12 @@ manifest_preview_y = 300;
 manifest_preview_rect = [0,0,0,0];
 sid_asset_preview = undefined;
 sid_asset_name = "";
+// Node play buttons (SID SONG / SFX / SID nodes) - see scr_node_preview_toggle
+node_preview_node = noone;      // the node whose preview is sounding
+node_preview_kind = "";         // "SONG", "SFX", "SID" or ""
+node_preview_sim  = undefined;  // the reSID stream it started (SONG)
+node_preview_end  = 0;          // get_timer() when an SFX preview is done
+global.node_preview_meta = undefined;
 sid_asset_song = 0;
 sid_asset_message = "";
 manifest_draw_preview = function(_asset, _viewer_x, _row_y) {
