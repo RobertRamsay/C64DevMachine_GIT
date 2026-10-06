@@ -193,11 +193,17 @@ function scr_sfx_maker_node_draw(_dx,_a) {
     var _valid=real(_i[2])>=0 && real(_i[2])<array_length(_a.meta.instruments);
     var _values=[_a.name,_valid?_a.meta.instruments[_fx].name:"SELECT EFFECT",string(_i[3]),_names[_mode]];
     var _labels=["ASSET:","EFFECT:","VOICE:","ACTION:"];
+    // Same spacing as MACRO_BMP: rows from y+28, 14px apart (rows y+28,
+    // y+42, y+56, y+70; note y+86; body 100). scr_node_step_macro_sfx
+    // clicks use the same row positions.
     draw_set_font_l(fnt_c64_tiny);draw_set_halign(fa_left);
     for(var _r=0;_r<4;_r++) {
-        draw_set_color(c_aqua);scr_node_macro_text_l(_dx+6,y+30+22*_r,_labels[_r]);
-        draw_set_color(c_white);scr_node_macro_text_l(_dx+72,y+30+22*_r,_values[_r]);
+        var _ry=y+28+14*_r;
+        var _hov=point_in_rectangle(mouse_x,mouse_y,_dx+68,_ry-1,_dx+width-8,_ry+13);
+        draw_set_color(c_aqua);scr_node_macro_text_l(_dx+10,_ry,_labels[_r]);
+        if(_hov) draw_set_color(c_yellow); else draw_set_color(c_white);
+        scr_node_macro_text_l(_dx+72,_ry,_values[_r]);
     }
-    draw_set_color(c_silver);scr_node_macro_text_l(_dx+6,y+120,_mode==1?"ONCE PER FRAME":(_mode==3?"ONCE AT START":"SFX MAKER"));
+    draw_set_color(c_silver);scr_node_macro_text_l(_dx+10,y+86,_mode==1?"ONCE PER FRAME":(_mode==3?"ONCE AT START":"SFX MAKER"));
     draw_set_color(c_white);
 }

@@ -269,7 +269,7 @@ function scr_macro_sync_height(_n) {
         var _sfx_asset = scr_sfx_data_find_asset(string(_n.instructions[0][1]));
         if (is_struct(_sfx_asset) && _sfx_asset.type == "SFX_MAKER") {
             // Four fields plus the action hint; resolve before layout, not after drawing.
-            scr_macro_apply_height(_n, 140);
+            scr_macro_apply_height(_n, 100);   // compact rows, like MACRO_BMP
             return;
         }
     }
