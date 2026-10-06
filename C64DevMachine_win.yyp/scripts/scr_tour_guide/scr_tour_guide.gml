@@ -514,7 +514,7 @@ function scr_tour_define(_id) {
 
     if (_id == 9) {
         array_push(_s, scr_tour_step("WELCOME",
-            "A short tune called TOUR_TUNE is already in your asset panel.\n\nIn this tour you will hear it, turn it into nodes and play it on the C64.",
+            "A tune called TOUR_TUNE is already in your asset panel: lead, bass with drums, and an arpeggio.\n\nIn this tour you will hear it, turn it into nodes and play it on the C64.",
             [], "NONE"));
         array_push(_s, scr_tour_step("OPEN MUSIC MAKER",
             "Click EDIT on the TOUR_TUNE row to open the Music Maker.",
@@ -1042,6 +1042,22 @@ function scr_tour_make_music() {
     };
     scr_sound_editor_create(_a);
     scr_music_sid_copy_meta(_src, _a.meta);
+    // copy_meta only carries the SID count and masks. The song itself
+    // (instruments, patterns, songs and playback settings) is copied here,
+    // the same fields the project loader restores.
+    var _keys = ["instruments", "patterns", "songs", "play_speed", "voice_mask",
+                 "filt_mode", "filt_res", "filt_cut", "chip_model", "instr_div",
+                 "sel_song", "sel_order_row", "song_loop", "song_loop_row",
+                 "cur_octave", "digi_on"];
+    for (var _i = 0; _i < array_length(_keys); _i++) {
+        var _v = _src[$ _keys[_i]];
+        if (!is_undefined(_v)) {
+            _a.meta[$ _keys[_i]] = _v;
+        }
+    }
+    _a.meta.sel_instr = 0;
+    _a.meta.sel_voice = 0;
+    _a.meta.sel_step  = 0;
     ds_list_add(obj_asset_manager.asset_list, _a);
 }
 
