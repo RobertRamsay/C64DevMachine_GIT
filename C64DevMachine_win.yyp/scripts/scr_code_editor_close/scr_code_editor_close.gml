@@ -2,18 +2,23 @@
 /// @description Closes the code editor. Always commits (no cancel concept).
 function scr_code_editor_close(_commit) {
     with (obj_workspace_manager) {
-        if (_commit && !global.lite && instance_exists(code_editor_node)) {
+        // Only a changed text costs anything. Closing an untouched block used
+        // to run a full address update (re-parsing every code block), an undo
+        // snapshot and an autosave all the same. Compared against the text at
+        // open: the node itself is live-synced while typing (scr_code_editor_step).
+        if (_commit && !global.lite && instance_exists(code_editor_node)
+        && code_editor_text != code_editor_open_text) {
             code_editor_node.instructions[0][1] = code_editor_text;
             code_editor_node.height_dirty = true;
+            code_editor_node.code_cache_dirty = true;   // the line count of this block only
             global.undo_dirty        = true;
             global.node_change_dirty = true;
             global.addresses_dirty   = true;
             scr_c64_do_update_addresses();
-            with (obj_c64_node) { 
-                last_overlap_check = false; 
-                overlap_check_dirty = true; 
+            with (obj_c64_node) {
+                last_overlap_check = false;
+                overlap_check_dirty = true;
                 stats_cache_dirty = true;
-                if (node_type == "MACRO_CODE") code_cache_dirty = true;
             }
         }
         // Per-node undo/redo — save this session's history onto the node

@@ -1,5 +1,6 @@
-function scr_asset_bmp_build_preview(_asset) {
-	
+/// _full = true skips the disk cache and always decodes (scr_asset_bmp_ensure_decoded).
+function scr_asset_bmp_build_preview(_asset, _full = false) {
+
 	// check guard
     if (!buffer_exists(_asset.buffer)) exit;
     var _buf = _asset.buffer;
@@ -26,6 +27,25 @@ function scr_asset_bmp_build_preview(_asset) {
     }
     if (!is_array(_asset.meta.coll_types) || array_length(_asset.meta.coll_types) != 1000) {
         _asset.meta.coll_types = array_create(1000, 0);
+    }
+
+    // ── DISK CACHE ──
+    // The decoded 320x200 picture is kept on disk, named by the MD5 of the
+    // asset's bytes, so a project that opens again (or a surface lost to a
+    // window change) uploads it instead of decoding 64000 pixels in GML.
+    // The paint data (bg_mask, HiRes role arrays) is only needed by the
+    // bitmap editor; it is built on first use by scr_asset_bmp_ensure_decoded.
+    var _ckey = scr_asset_bmp_cache_key(_asset);
+    if (!_full) {
+        var _cached = scr_asset_bmp_cache_load(_ckey);
+        if (_cached != -1) {
+            _asset.meta.preview_surf = surface_create(320, 200);
+            buffer_set_surface(_cached, _asset.meta.preview_surf, 0);
+            buffer_delete(_cached);
+            _asset.meta.has_data = true;
+            if ((_asset.meta[$ "decoded_key"] ?? "") != _ckey) _asset.meta.decode_pending = true;
+            return;
+        }
     }
 
 // Build a raw RGBA buffer and blast it directly — no draw_point clipping issues
@@ -141,9 +161,52 @@ function scr_asset_bmp_build_preview(_asset) {
     
 _asset.meta.preview_surf = surface_create(320, 200);
     buffer_set_surface(_surf_buf, _asset.meta.preview_surf, 0);
+    scr_asset_bmp_cache_save(_ckey, _surf_buf);
     buffer_delete(_surf_buf);
     _asset.meta.has_data = true;
 
     _asset.meta.bg_mask = _mask;
     _asset.meta.needs_mask_init = false;
+    _asset.meta.decode_pending  = false;
+    _asset.meta.decoded_key     = _ckey;
+}
+
+/// Before anything reads bg_mask / the HiRes role arrays: a preview that came
+/// from the disk cache has the picture only, so decode it fully once.
+function scr_asset_bmp_ensure_decoded(_asset) {
+    if (!is_struct(_asset) || !is_struct(_asset.meta)) return;
+    if (_asset.meta[$ "decode_pending"] == true) scr_asset_bmp_build_preview(_asset, true);
+}
+
+/// Cache file name for this asset's current bytes and pixel format.
+function scr_asset_bmp_cache_key(_asset) {
+    var _b = _asset.buffer;
+    return buffer_md5(_b, 0, buffer_get_size(_b)) + (scr_asset_bmp_is_hires(_asset) ? "_hr" : "_mc");
+}
+
+function scr_asset_bmp_cache_dir() {
+    return working_directory + "cache/bmp/";
+}
+
+/// The cached 320x200 RGBA picture as a new buffer, or -1.
+function scr_asset_bmp_cache_load(_key) {
+    var _path = scr_asset_bmp_cache_dir() + _key + ".bin";
+    if (!file_exists(_path)) return -1;
+    var _z = buffer_load(_path);
+    if (_z == -1) return -1;
+    var _raw = buffer_decompress(_z);
+    buffer_delete(_z);
+    if (!buffer_exists(_raw)) return -1;
+    if (buffer_get_size(_raw) < 320 * 200 * 4) { buffer_delete(_raw); return -1; }
+    return _raw;
+}
+
+function scr_asset_bmp_cache_save(_key, _rgba) {
+    var _dir = scr_asset_bmp_cache_dir();
+    if (!directory_exists(_dir)) directory_create(_dir);
+    var _path = _dir + _key + ".bin";
+    if (file_exists(_path)) return;
+    var _z = buffer_compress(_rgba, 0, 320 * 200 * 4);
+    buffer_save(_z, _path);
+    buffer_delete(_z);
 }

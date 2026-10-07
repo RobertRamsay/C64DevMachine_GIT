@@ -4568,6 +4568,8 @@ switch (node_type) {
     } break;
 
 case "BITMAP": {
+	        // Painting reads bg_mask / HiRes roles: a cache-loaded preview decodes once here
+	        scr_asset_bmp_ensure_decoded(_asset);
 	        // Recalculate UI zoom cap to match display scale — keeps pixels consistent size
 	        var _scale_f_cap = display_get_height() / window_get_height();
 	        bmp_ui_zoom_cap = floor(bmp_ui_zoom_cap_base * _scale_f_cap * 1000) / 1000;
