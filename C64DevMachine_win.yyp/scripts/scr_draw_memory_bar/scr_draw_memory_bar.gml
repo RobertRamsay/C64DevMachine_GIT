@@ -15,6 +15,12 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     }
 
     // Display-only zoom: allocations and conflict detection retain real addresses.
+    // The bank buttons now draw after the cached image, so seed their state
+    // here: the view is read before scr_memory_bar_bank_controls first runs.
+    if (!variable_global_exists("memory_bar_bank_mode")) {
+        global.memory_bar_bank_mode  = 0;
+        global.memory_bar_bank_index = 0;
+    }
     var _view = scr_memory_bar_bank_range(global.memory_bar_bank_mode, global.memory_bar_bank_index);
     var _view_start = _view.start;
     var _view_end = _view.finish;
