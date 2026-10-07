@@ -581,7 +581,9 @@ function scr_show_code_build_chunk(_compiled, _state, _userlbl) {
                     _flat[_run].sz    += 1;
                 } else {
                     var _dname = "BYTE DATA";
-                    if (_owner != "") {
+                    if (_name != "") {
+                        _dname = _name;
+                    } else if (_owner != "") {
                         _dname = _owner;
                     }
                     array_push(_flat, { kind:"data", key:_key, name:_dname, owner:_owner, inst:_inst, pc:_pc, raw:"byte", mnem:"byte", val:0, lbl:"", sz:1, res:0, hasres:false, count:1, vals:[_v], dkey:"D:" + _inst + "@" + scr_show_code_hex(_pc, 4), internal:false, used:false, used_code:false, top:false });
