@@ -272,3 +272,155 @@ function scr_sound_editor_export_sid_go(_input, _ctx) {
     }
     scr_show_message(_msg);
 }
+
+// =====================================================================
+// MUSIC MAKER FILE (.c64mm) — one MUSIC_MAKER / SFX_MAKER asset in its own
+// file, so a song can move to another project. JSON:
+//   { format:"C64DM_MUSIC_MAKER", version:1, type, name, meta, samples:[...] }
+// meta is the same field set a project save writes, so import goes through
+// the project loader's own rebuild (scr_music_maker_apply_meta). SAMPLE
+// assets named by the digi track travel with it as {name, address, blob, meta}.
+// =====================================================================
+
+/// The saved meta field set — mirrors scr_save_workspace_as_path.
+function scr_music_maker_meta_out(_a) {
+    var _m = _a.meta;
+    var _o = {};
+    scr_music_sid_copy_meta(_m, _o);
+    // GENERATE NODES links point at node uids in THIS project only
+    if (variable_struct_exists(_o, "music_nodes")) variable_struct_remove(_o, "music_nodes");
+    if (_a.type == "MUSIC_MAKER") {
+        _o.digi_rate     = _m.digi_rate;
+        _o.digi_samples  = _m.digi_samples;
+        _o.digi_patterns = _m.digi_patterns;
+        _o.digi_boost    = _m.digi_boost;
+        _o.digi_speed    = _m.digi_speed;
+        _o.instr_div     = _m.instr_div;
+        _o.digi_on       = _m.digi_on;
+    }
+    var _keys = ["voice_mask", "sfx_chip", "instruments", "sel_instr", "patterns", "bank_sel_pattern",
+                 "play_speed", "filt_mode", "filt_res", "filt_cut", "chip_model", "free_voices",
+                 "note_table", "songs", "sel_song", "song_order", "sel_order_row", "song_loop",
+                 "song_loop_row", "sel_voice", "sel_step", "cur_octave", "view_mode", "step_zoom",
+                 "list_scroll"];
+    for (var _i = 0; _i < array_length(_keys); _i++) {
+        if (variable_struct_exists(_m, _keys[_i])) _o[$ _keys[_i]] = _m[$ _keys[_i]];
+    }
+    return _o;
+}
+
+/// A free asset name built from _base (max 15 chars, _2/_3... on a clash).
+function scr_music_maker_unique_name(_base) {
+    var _am = obj_asset_manager;
+    var _name = scr_clamp_asset_name(_base, 15);
+    var _k = 1;
+    var _clash = true;
+    while (_clash) {
+        _clash = false;
+        for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
+            if (string_upper(ds_list_find_value(_am.asset_list, _i).name) == string_upper(_name)) { _clash = true; break; }
+        }
+        if (_clash) {
+            _k++;
+            _name = scr_clamp_asset_name(_base, 15 - (string_length(string(_k)) + 1)) + "_" + string(_k);
+        }
+    }
+    return _name;
+}
+
+function scr_music_maker_export(_asset) {
+    var _fn = get_save_filename("C64DM Music Maker|*.c64mm", _asset.name + ".c64mm");
+    io_clear();
+    if (_fn == "") return;
+    if (string_lower(filename_ext(_fn)) != ".c64mm") _fn += ".c64mm";
+
+    var _samples = [];
+    if (_asset.type == "MUSIC_MAKER" && is_array(_asset.meta.digi_samples)) {
+        for (var _i = 0; _i < array_length(_asset.meta.digi_samples); _i++) {
+            var _sa = scr_digi_find_sample(string(_asset.meta.digi_samples[_i]));
+            if (is_undefined(_sa)) continue;
+            var _dupe = false;
+            for (var _j = 0; _j < array_length(_samples); _j++) if (_samples[_j].name == _sa.name) _dupe = true;
+            if (_dupe) continue;
+            array_push(_samples, { name: _sa.name, address: _sa.address,
+                blob: scr_blob_encode(_sa.buffer), meta: scr_sample_save_meta(_sa) });
+        }
+    }
+    var _out = { format: "C64DM_MUSIC_MAKER", version: 1, type: _asset.type, name: _asset.name,
+                 meta: scr_music_maker_meta_out(_asset), samples: _samples };
+    var _txt = json_stringify(_out);
+    var _buf = buffer_create(string_byte_length(_txt) + 1, buffer_fixed, 1);
+    buffer_write(_buf, buffer_text, _txt);
+    buffer_save_ext(_buf, _fn, 0, string_byte_length(_txt));
+    buffer_delete(_buf);
+    scr_show_message("EXPORT MUSIC MAKER\n\n'" + _asset.name + "' written to\n" + filename_name(_fn)
+        + ((array_length(_samples) > 0) ? "\n(with " + string(array_length(_samples)) + " digi sample(s))" : ""));
+}
+
+/// IMPORT menu: a .c64mm file comes in as a new MUSIC_MAKER (or SFX_MAKER) asset.
+function scr_import_music_maker() {
+    if (!instance_exists(obj_asset_manager)) return;
+    var _fn = get_open_filename("C64DM Music Maker|*.c64mm|All Files|*.*", "");
+    io_clear();
+    if (_fn == "") return;
+    if (!file_exists(_fn)) {
+        scr_show_message("IMPORT MUSIC MAKER\n\nFile not found:\n" + _fn);
+        return;
+    }
+    var _fb = buffer_load(_fn);
+    var _txt = buffer_read(_fb, buffer_text);
+    buffer_delete(_fb);
+    var _d = undefined;
+    try { _d = json_parse(_txt); } catch (_e) { _d = undefined; }
+    if (!is_struct(_d) || _d[$ "format"] != "C64DM_MUSIC_MAKER" || !is_struct(_d[$ "meta"])) {
+        scr_show_message("IMPORT MUSIC MAKER\n\n" + filename_name(_fn) + " isn't a music maker file.");
+        return;
+    }
+    var _am   = obj_asset_manager;
+    var _type = (_d[$ "type"] == "SFX_MAKER") ? "SFX_MAKER" : "MUSIC_MAKER";
+    var _sem  = _d.meta;
+
+    // Digi samples first. One already here with identical data is reused;
+    // otherwise the sample is added (renamed on a clash) and the song's slot
+    // list is pointed at the new name.
+    var _renames = {};
+    var _added = 0;
+    var _samples = is_array(_d[$ "samples"]) ? _d.samples : [];
+    for (var _i = 0; _i < array_length(_samples); _i++) {
+        var _sd = _samples[_i];
+        if (!is_struct(_sd) || !is_string(_sd[$ "name"])) continue;
+        var _have = scr_digi_find_sample(_sd.name);
+        if (!is_undefined(_have) && scr_blob_encode(_have.buffer) == _sd[$ "blob"]) continue;
+        var _sbuf = scr_blob_decode(_sd[$ "blob"]);
+        if (_sbuf == noone) _sbuf = buffer_create(1, buffer_fixed, 1);
+        var _sname = scr_music_maker_unique_name(_sd.name);
+        var _sa = { name: _sname, type: "SAMPLE", address: real(_sd[$ "address"] ?? 0), file: "",
+                    buffer: _sbuf, meta: {}, load_later: false, d64_filename: "", reu_filename: "",
+                    reu_size: 0, reu_used: 0, linked_assets: [], group: "" };
+        scr_sample_restore(_sa, is_struct(_sd[$ "meta"]) ? _sd.meta : {});
+        ds_list_add(_am.asset_list, _sa);
+        _renames[$ _sd.name] = _sname;
+        _added++;
+    }
+    if (is_array(_sem[$ "digi_samples"])) {
+        for (var _i = 0; _i < array_length(_sem.digi_samples); _i++) {
+            var _sn = string(_sem.digi_samples[_i]);
+            if (variable_struct_exists(_renames, _sn)) _sem.digi_samples[_i] = _renames[$ _sn];
+        }
+    }
+
+    var _base = is_string(_d[$ "name"]) && _d.name != "" ? _d.name : filename_change_ext(filename_name(_fn), "");
+    var _a = { name: scr_music_maker_unique_name(string_upper(_base)), type: _type,
+               address: scr_asset_default_address(_type), file: "",
+               buffer: buffer_create(1, buffer_fixed, 1), meta: {}, load_later: false,
+               d64_filename: "", reu_filename: "", reu_size: 0, reu_used: 0,
+               linked_assets: [], group: "" };
+    scr_music_maker_apply_meta(_a, _sem);
+    ds_list_add(_am.asset_list, _a);
+
+    global.undo_dirty      = true;
+    global.addresses_dirty = true;
+    with (obj_workspace_manager) { alarm[3] = 6; }
+    scr_show_message("IMPORT MUSIC MAKER\n\nAdded '" + _a.name + "'"
+        + ((_added > 0) ? "\nplus " + string(_added) + " digi sample(s)" : ""));
+}

@@ -263,3 +263,222 @@ function scr_code_import_draw_banner() {
 function scr_code_import_primary_pressed() {
     return mouse_check_button_pressed(mb_left);
 }
+
+// =====================================================================
+// MAPPING BOX FILE (.c64box) — a box and the nodes in it, so a block of
+// work can move to another project. JSON:
+//   { format:"C64DM_MAPPING_BOX", version:1, box:{...}, nodes:[record...] }
+// Each record is exactly what a project save writes (scr_node_save_record),
+// with x/y relative to the box and parent_idx = index of its ORG in nodes[]
+// (-1 when it has none). Import builds nodes through the loader's own
+// scr_node_from_record and gives them fresh uids, so it can't collide with
+// what is already in the project.
+// =====================================================================
+
+/// Nodes a box carries: everything whose centre is inside it (the same test
+/// the box drag uses), plus the stacked children of any ORG it holds, which
+/// can hang below the box. SYSTEM INIT and EXECUTE are one-per-project.
+function scr_mapping_box_contents(_box) {
+    var _out = [];
+    with (obj_c64_node) {
+        if (node_type == "EXECUTE" || node_type == "INIT") continue;
+        var _nx = x + (width * 0.5);
+        var _ny = y + (height * 0.5);
+        if (_nx >= _box.x && _nx <= _box.x + _box.box_w && _ny >= _box.y && _ny <= _box.y + _box.box_h) {
+            array_push(_out, id);
+        }
+    }
+    var _n0 = array_length(_out);
+    for (var _i = 0; _i < _n0; _i++) {
+        var _org = _out[_i];
+        if (_org.node_type != "ORG") continue;
+        with (obj_c64_node) {
+            if (org_parent != _org) continue;
+            var _have = false;
+            for (var _j = 0; _j < array_length(_out); _j++) if (_out[_j] == id) { _have = true; break; }
+            if (!_have) array_push(_out, id);
+        }
+    }
+    return _out;
+}
+
+/// EXPORT button in the mapping box popup. _name is the name in the popup.
+function scr_mapping_box_export(_box, _name) {
+    if (!instance_exists(_box)) return;
+    var _nodes = scr_mapping_box_contents(_box);
+    if (array_length(_nodes) == 0) {
+        scr_show_message("EXPORT MAPPING BOX\n\nThere are no nodes inside '" + _name + "'.");
+        return;
+    }
+    var _fn = get_save_filename("C64DM Mapping Box|*.c64box", _name + ".c64box");
+    io_clear();
+    if (_fn == "") return;
+    if (string_lower(filename_ext(_fn)) != ".c64box") _fn += ".c64box";
+
+    var _recs = [];
+    for (var _i = 0; _i < array_length(_nodes); _i++) {
+        var _n = _nodes[_i];
+        var _r = scr_node_save_record(_n);
+        _r.x -= _box.x;
+        _r.y -= _box.y;
+        // Parent by index into this file, not by canvas position
+        _r.parent_idx = -1;
+        if (_n.org_parent != noone && instance_exists(_n.org_parent)) {
+            for (var _j = 0; _j < array_length(_nodes); _j++) {
+                if (_nodes[_j] == _n.org_parent) { _r.parent_idx = _j; break; }
+            }
+        }
+        _r.org_parent_x   = -1;
+        _r.org_parent_y   = -1;
+        _r.has_org_parent = (_r.parent_idx >= 0);
+        array_push(_recs, _r);
+    }
+    var _out = { format: "C64DM_MAPPING_BOX", version: 1,
+                 box: { box_w: _box.box_w, box_h: _box.box_h, box_name: _name, box_col_idx: _box.box_col_idx,
+                        is_panel: _box.is_panel, panel_links: _box.panel_links },
+                 nodes: _recs };
+    var _txt = json_stringify(_out);
+    var _buf = buffer_create(string_byte_length(_txt) + 1, buffer_fixed, 1);
+    buffer_write(_buf, buffer_text, _txt);
+    buffer_save_ext(_buf, _fn, 0, string_byte_length(_txt));
+    buffer_delete(_buf);
+    scr_show_message("EXPORT MAPPING BOX\n\n'" + _name + "' and " + string(array_length(_recs))
+        + " node(s) written to\n" + filename_name(_fn)
+        + "\n\nAssets the nodes use (music, sprites, maps...) are not included.");
+}
+
+/// IMPORT menu: a .c64box file comes in as a new box, centred in the view.
+function scr_import_mapping_box() {
+    var _fn = get_open_filename("C64DM Mapping Box|*.c64box|All Files|*.*", "");
+    io_clear();
+    if (_fn == "") return;
+    if (!file_exists(_fn)) {
+        scr_show_message("IMPORT MAPPING BOX\n\nFile not found:\n" + _fn);
+        return;
+    }
+    var _fb = buffer_load(_fn);
+    var _txt = buffer_read(_fb, buffer_text);
+    buffer_delete(_fb);
+    var _d = undefined;
+    try { _d = json_parse(_txt); } catch (_e) { _d = undefined; }
+    if (!is_struct(_d) || _d[$ "format"] != "C64DM_MAPPING_BOX" || !is_struct(_d[$ "box"]) || !is_array(_d[$ "nodes"])) {
+        scr_show_message("IMPORT MAPPING BOX\n\n" + filename_name(_fn) + " isn't a mapping box file.");
+        return;
+    }
+    var _bd   = _d.box;
+    var _recs = _d.nodes;
+    var _wm   = obj_workspace_manager;
+    var _bw   = max(40, real(_bd[$ "box_w"] ?? 200));
+    var _bh   = max(40, real(_bd[$ "box_h"] ?? 150));
+    var _bx   = round((_wm.cam_x + 960 * _wm.cam_zoom - _bw * 0.5) / 20) * 20;
+    var _by   = round((_wm.cam_y + 540 * _wm.cam_zoom - _bh * 0.5) / 20) * 20;
+
+    // Pass 1: create every node with a fresh stable_uid / org_uid
+    var _n_recs  = array_length(_recs);
+    var _made    = array_create(_n_recs, noone);
+    var _uid_map = {};
+    var _org_map = {};
+    for (var _i = 0; _i < _n_recs; _i++) {
+        var _r = _recs[_i];
+        if (!is_struct(_r) || !is_string(_r[$ "type"]) || !is_array(_r[$ "code"])) continue;
+        if (_r.type == "EXECUTE" || _r.type == "INIT") continue;
+        if (!variable_struct_exists(_r, "title"))     _r.title     = _r.type;
+        if (!variable_struct_exists(_r, "connected")) _r.connected = false;
+        var _old_uid = real(_r[$ "stable_uid"] ?? -1);
+        _r.stable_uid = -1;   // keep the uid Create just handed out
+        _r.x = real(_r[$ "x"] ?? 0) + _bx;
+        _r.y = real(_r[$ "y"] ?? 0) + _by;
+        var _n = scr_node_from_record(_r, -1);
+        _made[_i] = _n;
+        if (_old_uid > 0) _uid_map[$ string(_old_uid)] = _n.stable_uid;
+        if (_n.node_type == "ORG") {
+            _n.org_uid = global.next_org_uid++;
+            var _old_org = real(_r[$ "org_uid"] ?? -1);
+            if (_old_org > 0) _org_map[$ string(_old_org)] = _n.org_uid;
+        }
+    }
+
+    // Pass 2: parents by index, wires through the uid map. Anything that was
+    // on a spine outside the box comes in floating.
+    for (var _i = 0; _i < _n_recs; _i++) {
+        var _n = _made[_i];
+        if (_n == noone) continue;
+        var _r = _recs[_i];
+        if (_n.node_type == "ORG") {
+            var _wi = _org_map[$ string(_r[$ "wire_in_source"] ?? -1)];
+            var _wo = _org_map[$ string(_r[$ "wire_out_target"] ?? -1)];
+            _n.wire_in_source  = is_undefined(_wi) ? -1 : _wi;
+            _n.wire_out_target = is_undefined(_wo) ? -1 : _wo;
+        } else {
+            var _p = real(_r[$ "parent_idx"] ?? -1);
+            if (_p >= 0 && _p < _n_recs && _made[_p] != noone && _made[_p].node_type == "ORG") {
+                _n.org_parent   = _made[_p];
+                _n.is_connected = true;
+            } else {
+                _n.org_parent   = noone;
+                _n.is_connected = false;
+            }
+        }
+        if (_n.node_type == "LABEL" && array_length(_n.instructions) > 0 && array_length(_n.instructions[0]) > 1) {
+            var _lbl = string(_n.instructions[0][1]);
+            if (_lbl != "") _n.instructions[0][1] = scr_make_unique_node_name(_lbl, _n);
+        }
+        // Variables register the way project load does
+        if (_n.node_type == "NAMED_LOC" && array_length(_n.instructions) > 0 && array_length(_n.instructions[0]) > 1) {
+            var _vn = string(_n.instructions[0][1]);
+            if (_vn != "" && _vn != "< NO NAME >" && string_pos("HW_", _vn) != 1 && scr_nloc_find_meta(_vn) == undefined) {
+                var _enc = (array_length(_n.instructions[0]) > 2) ? string(_n.instructions[0][2]) : "byte";
+                var _sz  = (_enc == "word" || _enc == "bcd2") ? 2 : ((_enc == "bcd" || _enc == "bcd3") ? 3 : 1);
+                array_push(global.named_loc_meta, { name: _vn, type: "UV", addr: _n.pc_address,
+                    size: _sz, encoding: _enc, chip: "" });
+                global.named_loc_meta_dirty = true;
+                ds_map_replace(global.named_loc_map, string_upper(_vn), -1);
+            }
+        }
+        _n.is_dragging = false;
+    }
+
+    // Stack each imported ORG's children under it, as load does
+    for (var _i = 0; _i < _n_recs; _i++) {
+        var _org = _made[_i];
+        if (_org == noone || _org.node_type != "ORG") continue;
+        var _kids = [];
+        with (obj_c64_node) { if (org_parent == _org && is_connected) array_push(_kids, id); }
+        array_sort(_kids, function(_a, _b) { return _a.y - _b.y; });
+        var _sy = _org.y + _org.height;
+        for (var _k = 0; _k < array_length(_kids); _k++) {
+            _kids[_k].y = _sy;
+            _sy += _kids[_k].height;
+        }
+    }
+
+    // The box itself, named uniquely the way the box popup's CONFIRM does
+    var _name = string(_bd[$ "box_name"] ?? "BOX");
+    if (_name == "") _name = "BOX";
+    var _dupe = 0;
+    with (obj_mapping_box) { if (string_lower(box_name) == string_lower(_name)) _dupe++; }
+    if (_dupe > 0) _name += "_" + string(_dupe);
+    var _box = instance_create_layer(_bx, _by, "Layer_Boxes", obj_mapping_box);
+    _box.box_w       = _bw;
+    _box.box_h       = _bh;
+    _box.box_name    = _name;
+    _box.box_col_idx = clamp(real(_bd[$ "box_col_idx"] ?? 0), 0, 15);
+    _box.is_panel    = (_bd[$ "is_panel"] == true);
+    _box.panel_links = [];
+    if (is_array(_bd[$ "panel_links"])) {
+        for (var _i = 0; _i < array_length(_bd.panel_links); _i++) {
+            var _nu = _uid_map[$ string(_bd.panel_links[_i])];
+            if (!is_undefined(_nu)) array_push(_box.panel_links, _nu);
+        }
+    }
+
+    var _count = 0;
+    for (var _i = 0; _i < _n_recs; _i++) if (_made[_i] != noone) _count++;
+    global.addresses_dirty = true;
+    scr_c64_do_update_addresses();
+    global.relayout_frames = 2;
+    with (obj_workspace_manager) { alarm[1] = 6; }
+    global.undo_dirty     = true;
+    global.autosave_dirty = true;
+    scr_show_message("IMPORT MAPPING BOX\n\nAdded '" + _name + "' with " + string(_count) + " node(s).");
+}

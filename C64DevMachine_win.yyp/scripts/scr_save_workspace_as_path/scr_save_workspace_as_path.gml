@@ -22,69 +22,7 @@ if (!_hash_only) {
     }
     while (!ds_priority_empty(p_list)) {
         var inst = ds_priority_delete_min(p_list);
-        var _hex_data    = "";
-        var _kla_src_buf = noone;
-        if (variable_instance_exists(inst, "kla_buffer") && buffer_exists(inst.kla_buffer)) {
-            _kla_src_buf = inst.kla_buffer;
-        } else if (variable_instance_exists(inst, "sprite_buffer") && buffer_exists(inst.sprite_buffer)) {
-            _kla_src_buf = inst.sprite_buffer;
-        }
-        if (_kla_src_buf != noone) {
-            _hex_data = scr_blob_encode(_kla_src_buf);
-        }
-        var _op_x = -1;
-        var _op_y = -1;
-        if (variable_instance_exists(inst, "org_parent") &&
-            inst.org_parent != noone &&
-            instance_exists(inst.org_parent)) {
-            _op_x = inst.org_parent.x;
-            _op_y = inst.org_parent.y;
-        }
-		var _save_code = variable_clone(inst.instructions);
-		        if (inst.node_type == "NAMED_LOC" && array_length(_save_code) > 0) {
-		            var _nlm = scr_nloc_find_meta(string(_save_code[0][1]));
-		            if (_nlm != undefined) {
-		                var _nlm_enc  = variable_struct_exists(_nlm, "encoding") ? _nlm.encoding : "byte";
-		                var _nlm_size = variable_struct_exists(_nlm, "size")     ? _nlm.size     : 1;
-		                while (array_length(_save_code[0]) < 4) array_push(_save_code[0], "");
-		                _save_code[0][2] = _nlm_enc;
-		                _save_code[0][3] = _nlm_size;
-		            }
-		        }
-        array_push(node_data, {
-            title:          inst.node_title,
-            type:           inst.node_type,
-            x:              inst.x,
-            y:              inst.y,
-            height:         inst.height,
-            connected:      inst.is_connected,
-            pc_address:     inst.pc_address,
-            end_address:    variable_instance_exists(inst, "end_address") ? inst.end_address : inst.pc_address,
-            org_parent_x:   _op_x,
-            org_parent_y:   _op_y,
-            has_org_parent: (_op_x != -1),
-            // ORG fold state. Absent in projects saved before the fold
-            // existed, which load expanded — the correct default.
-            collapsed:      inst.collapsed,
-			proxy:          variable_instance_exists(inst, "proxy") ? inst.proxy : false,
-            helper_text:    variable_instance_exists(inst, "helper_text") ? inst.helper_text : "",
-			x_indent:       variable_instance_exists(inst, "x_indent") ? inst.x_indent : 0,
-			comment_w_mult: variable_instance_exists(inst, "comment_w_mult") ? inst.comment_w_mult : 1,
-			comment_w:      inst.comment_w,
-			comment_h:      inst.comment_h,
-            anim_alias:     variable_instance_exists(inst, "anim_alias") ? inst.anim_alias : "",
-            scroll_alias:   variable_instance_exists(inst, "scroll_alias") ? inst.scroll_alias : "",
-			code_descriptor: variable_instance_exists(inst, "code_descriptor") ? inst.code_descriptor : "Code Block",
-			show_only_used:  variable_instance_exists(inst, "show_only_used")  ? inst.show_only_used  : false,
-            org_uid:         variable_instance_exists(inst, "org_uid")         ? inst.org_uid         : -1,
-            wire_out_target: variable_instance_exists(inst, "wire_out_target") ? inst.wire_out_target : -1,
-            wire_in_source:  variable_instance_exists(inst, "wire_in_source")  ? inst.wire_in_source  : -1,
-            stable_uid:      variable_instance_exists(inst, "stable_uid")      ? inst.stable_uid      : -1,
-			custom_title:    variable_instance_exists(inst, "custom_title")    ? inst.custom_title    : "",
-			params:          inst.params,
-			code:           _save_code,
-            binary_blob:    _hex_data
-        });
+        array_push(node_data, scr_node_save_record(inst));
     }
     ds_priority_destroy(p_list);
 
@@ -468,4 +406,73 @@ if (instance_exists(obj_asset_manager)) {
     global.manual_saved     = true;
     global.saved_hash       = md5_string_utf8(_raw);   // what's on disk now
     window_set_caption(game_project_name + " - " + global.current_filename);
+}
+
+/// @function scr_node_save_record(inst)
+/// @desc One node as the struct a project save writes. Also used by the
+///       mapping box export, which reloads it through scr_node_from_record.
+function scr_node_save_record(inst) {
+        var _hex_data    = "";
+        var _kla_src_buf = noone;
+        if (variable_instance_exists(inst, "kla_buffer") && buffer_exists(inst.kla_buffer)) {
+            _kla_src_buf = inst.kla_buffer;
+        } else if (variable_instance_exists(inst, "sprite_buffer") && buffer_exists(inst.sprite_buffer)) {
+            _kla_src_buf = inst.sprite_buffer;
+        }
+        if (_kla_src_buf != noone) {
+            _hex_data = scr_blob_encode(_kla_src_buf);
+        }
+        var _op_x = -1;
+        var _op_y = -1;
+        if (variable_instance_exists(inst, "org_parent") &&
+            inst.org_parent != noone &&
+            instance_exists(inst.org_parent)) {
+            _op_x = inst.org_parent.x;
+            _op_y = inst.org_parent.y;
+        }
+		var _save_code = variable_clone(inst.instructions);
+		        if (inst.node_type == "NAMED_LOC" && array_length(_save_code) > 0) {
+		            var _nlm = scr_nloc_find_meta(string(_save_code[0][1]));
+		            if (_nlm != undefined) {
+		                var _nlm_enc  = variable_struct_exists(_nlm, "encoding") ? _nlm.encoding : "byte";
+		                var _nlm_size = variable_struct_exists(_nlm, "size")     ? _nlm.size     : 1;
+		                while (array_length(_save_code[0]) < 4) array_push(_save_code[0], "");
+		                _save_code[0][2] = _nlm_enc;
+		                _save_code[0][3] = _nlm_size;
+		            }
+		        }
+    return {
+            title:          inst.node_title,
+            type:           inst.node_type,
+            x:              inst.x,
+            y:              inst.y,
+            height:         inst.height,
+            connected:      inst.is_connected,
+            pc_address:     inst.pc_address,
+            end_address:    variable_instance_exists(inst, "end_address") ? inst.end_address : inst.pc_address,
+            org_parent_x:   _op_x,
+            org_parent_y:   _op_y,
+            has_org_parent: (_op_x != -1),
+            // ORG fold state. Absent in projects saved before the fold
+            // existed, which load expanded — the correct default.
+            collapsed:      inst.collapsed,
+			proxy:          variable_instance_exists(inst, "proxy") ? inst.proxy : false,
+            helper_text:    variable_instance_exists(inst, "helper_text") ? inst.helper_text : "",
+			x_indent:       variable_instance_exists(inst, "x_indent") ? inst.x_indent : 0,
+			comment_w_mult: variable_instance_exists(inst, "comment_w_mult") ? inst.comment_w_mult : 1,
+			comment_w:      inst.comment_w,
+			comment_h:      inst.comment_h,
+            anim_alias:     variable_instance_exists(inst, "anim_alias") ? inst.anim_alias : "",
+            scroll_alias:   variable_instance_exists(inst, "scroll_alias") ? inst.scroll_alias : "",
+			code_descriptor: variable_instance_exists(inst, "code_descriptor") ? inst.code_descriptor : "Code Block",
+			show_only_used:  variable_instance_exists(inst, "show_only_used")  ? inst.show_only_used  : false,
+            org_uid:         variable_instance_exists(inst, "org_uid")         ? inst.org_uid         : -1,
+            wire_out_target: variable_instance_exists(inst, "wire_out_target") ? inst.wire_out_target : -1,
+            wire_in_source:  variable_instance_exists(inst, "wire_in_source")  ? inst.wire_in_source  : -1,
+            stable_uid:      variable_instance_exists(inst, "stable_uid")      ? inst.stable_uid      : -1,
+			custom_title:    variable_instance_exists(inst, "custom_title")    ? inst.custom_title    : "",
+			params:          inst.params,
+			code:           _save_code,
+            binary_blob:    _hex_data
+    };
 }

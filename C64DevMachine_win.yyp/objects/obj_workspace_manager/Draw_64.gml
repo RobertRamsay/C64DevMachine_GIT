@@ -1605,6 +1605,8 @@ if (gui_menu_open == 6) {
 
     array_push(_imp_list, { title: "CODE BLOCK (.ASM)", action: "CODE_ASM" });
     array_push(_imp_list, { title: "REU BMP IMPORT", action: "REU_BMP" });
+    array_push(_imp_list, { title: "MUSIC MAKER ASSET", action: "MUSIC_MM" });
+    array_push(_imp_list, { title: "MAPPING BOX", action: "MAP_BOX" });
 
 	
     var _item_h_i   = 20;
@@ -1652,6 +1654,12 @@ if (gui_menu_open == 6) {
             }
             else if (_ip.action == "REU_BMP") {
                 scr_import_reu_bmp_batch();
+            }
+            else if (_ip.action == "MUSIC_MM") {
+                scr_import_music_maker();
+            }
+            else if (_ip.action == "MAP_BOX") {
+                scr_import_mapping_box();
             }
         }
     }
@@ -3362,6 +3370,22 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	        draw_rectangle(_cn_x, _ok_y, _cn_x + _ok_w, _ok_y + 24, false);
 	        draw_set_color(_cn_hov ? c_black : c_white);
 	        draw_text_l(_cn_x + _ok_w * 0.5, _ok_y + 5, "CANCEL");
+
+	        // EXPORT: the box and the nodes in it, as a .c64box file for
+	        // IMPORT > MAPPING BOX in another project. Existing boxes only.
+	        if (box_popup_is_edit) {
+	            var _ex_w   = 100;
+	            var _ex_x   = _px + (_pw - _ex_w) * 0.5;
+	            var _ex_hov = (gui_mouse_x >= _ex_x && gui_mouse_x <= _ex_x + _ex_w &&
+	                           gui_mouse_y >= _ok_y && gui_mouse_y <= _ok_y + 24);
+	            draw_set_color(_ex_hov ? c_aqua : make_color_rgb(30, 70, 100));
+	            draw_rectangle(_ex_x, _ok_y, _ex_x + _ex_w, _ok_y + 24, false);
+	            draw_set_color(_ex_hov ? c_black : c_white);
+	            draw_text_l(_ex_x + _ex_w * 0.5, _ok_y + 5, "EXPORT");
+	            if (_ex_hov && mouse_check_button_released(mb_left)) {
+	                scr_mapping_box_export(box_popup_target, (box_popup_name == "") ? box_popup_target.box_name : box_popup_name);
+	            }
+	        }
 	        draw_set_halign(fa_left);
 
 	        if (_ok_hov && mouse_check_button_released(mb_left)) {
