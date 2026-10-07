@@ -1,4 +1,5 @@
 function scr_c64_do_update_addresses() {
+var _perf_t0 = get_timer();   // PERF HUD: one full update
 
 global.named_loc_repack_gen++;
 
@@ -1536,6 +1537,7 @@ with (obj_c64_node) {
 // scr_show_code_build(): attributing rows to LABEL and plain opcode nodes needs
 // pc_address, and those are not assigned until the passes above have run.
 scr_show_code_attribute();
+scr_perf_addr(_perf_t0);
 }
 
 /// @function scr_label_is_missing(_name)

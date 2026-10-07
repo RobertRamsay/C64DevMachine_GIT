@@ -1,3 +1,4 @@
+scr_perf_node("draw", node_type);
 /// @desc Render Node (Unified Gutter, Stats, Out-dent, ORG & Comment Nodes)
 if obj_workspace_manager.code_editor_open or obj_asset_manager.viewer_open exit;
 if (scr_node_is_hidden(id)) exit;

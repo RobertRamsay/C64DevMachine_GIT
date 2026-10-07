@@ -1,3 +1,4 @@
+scr_perf_node("step", node_type);
 if (scr_workspace_input_blocked()) exit;
 // Restore cached macro sizes before hit-testing and layout, even off-screen.
 if (node_type == "MACRO_VWAIT" || node_type == "MACRO_JOY" || node_type == "MACRO_HUD" || (node_type == "MACRO_SFX" && height_dirty) || (macro_layout_type == node_type

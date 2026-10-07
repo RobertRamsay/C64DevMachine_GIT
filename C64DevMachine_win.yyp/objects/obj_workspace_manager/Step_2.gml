@@ -1,3 +1,4 @@
+scr_perf_mark("end_step");
 // All node Step handlers have completed before this event.
 
 // Deferred bitmap previews from the last project load. 10ms a frame keeps
@@ -39,3 +40,5 @@ if (global.saved_hash_pending > 0) {
         global.manual_saved = true;
     }
 }
+
+scr_perf_mark("end_step_done");

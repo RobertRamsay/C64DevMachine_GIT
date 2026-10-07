@@ -1,3 +1,4 @@
+scr_perf_mark("gui");
 /// @desc Draw GUI Event - Integrated Workspace UI
 // ---- IDLE SNAPSHOT OVERLAY (direct switch instead of node fade) ----
 // ---- IDLE SNAPSHOT OVERLAY (direct switch instead of node fade) ----

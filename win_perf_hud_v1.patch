@@ -1,0 +1,355 @@
+diff --git a/C64DevMachine_win.yyp/C64DevMachine_win.yyp b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+index 499a66a..4c9d49a 100644
+--- a/C64DevMachine_win.yyp/C64DevMachine_win.yyp
++++ b/C64DevMachine_win.yyp/C64DevMachine_win.yyp
+@@ -1332,6 +1332,7 @@
+     {"id":{"name":"scr_org_collapse","path":"scripts/scr_org_collapse/scr_org_collapse.yy",},},
+     {"id":{"name":"scr_parse_asm_byte_count","path":"scripts/scr_parse_asm_byte_count/scr_parse_asm_byte_count.yy",},},
+     {"id":{"name":"scr_parse_asm_text","path":"scripts/scr_parse_asm_text/scr_parse_asm_text.yy",},},
++    {"id":{"name":"scr_perf_hud","path":"scripts/scr_perf_hud/scr_perf_hud.yy",},},
+     {"id":{"name":"scr_qmenu_layout","path":"scripts/scr_qmenu_layout/scr_qmenu_layout.yy",},},
+     {"id":{"name":"scr_recent_files","path":"scripts/scr_recent_files/scr_recent_files.yy",},},
+     {"id":{"name":"scr_render_c64_grid","path":"scripts/scr_render_c64_grid/scr_render_c64_grid.yy",},},
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index 05ff49c..da272aa 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -1,3 +1,4 @@
++scr_perf_node("step", "(asset mgr)");
+ scr_sid_asset_update();
+ scr_node_preview_update();
+ if (!viewer_open) { manifest_preview_name = ""; manifest_preview_owner = undefined; }
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index 5c4a93c..b872e75 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -1,3 +1,4 @@
++scr_perf_node("draw", node_type);
+ /// @desc Render Node (Unified Gutter, Stats, Out-dent, ORG & Comment Nodes)
+ if obj_workspace_manager.code_editor_open or obj_asset_manager.viewer_open exit;
+ if (scr_node_is_hidden(id)) exit;
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+index 0e23d64..36f6dbc 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Step_0.gml
+@@ -1,3 +1,4 @@
++scr_perf_node("step", node_type);
+ if (scr_workspace_input_blocked()) exit;
+ // Restore cached macro sizes before hit-testing and layout, even off-screen.
+ if (node_type == "MACRO_VWAIT" || node_type == "MACRO_JOY" || node_type == "MACRO_HUD" || (node_type == "MACRO_SFX" && height_dirty) || (macro_layout_type == node_type
+diff --git a/C64DevMachine_win.yyp/objects/obj_mapping_box/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_mapping_box/Draw_0.gml
+index 5c23ab8..80436a9 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mapping_box/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mapping_box/Draw_0.gml
+@@ -1,3 +1,4 @@
++scr_perf_node("draw", "(boxes)");
+ /// @desc Mapping Box Draw
+ 
+ var _cam_x    = obj_workspace_manager.cam_x;
+diff --git a/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml
+index 6a3a5c7..12e140a 100644
+--- a/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_mapping_box/Step_0.gml
+@@ -1,3 +1,4 @@
++scr_perf_node("step", "(boxes)");
+ if (scr_workspace_input_blocked()) exit;
+ // A pinned param card drawn over this box owns the click.
+ if (global.creator_card_hot && !is_dragging && !is_resizing) exit;
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+index b005bb3..3518073 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Create_0.gml
+@@ -1181,6 +1181,10 @@ autosave_countdown = global.autosave_interval;
+ autosave_flash_timer = 0;
+ _was_panning = false;
+ 
++// ---- PERF HUD (F11, scr_perf_hud) ----
++global.perf_on = false;
++global.perf    = undefined;
++
+ // ---- IDLE SLEEP SYSTEM ----
+ global.idle_active   = false;   // true once idle threshold passed
+ idle_timer           = 0;       // seconds of no input
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_0.gml
+index b9c05bf..baa67c8 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_0.gml
+@@ -1,3 +1,4 @@
++scr_perf_node("draw", "(workspace grid)");
+ /// An open asset editor covers the screen - skip the workspace grid under it.
+ if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) exit;
+ /// @desc Draw world-space 20px grid
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+index 8aab6c8..5786511 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_64.gml
+@@ -1,3 +1,4 @@
++scr_perf_mark("gui");
+ /// @desc Draw GUI Event - Integrated Workspace UI
+ // ---- IDLE SNAPSHOT OVERLAY (direct switch instead of node fade) ----
+ // ---- IDLE SNAPSHOT OVERLAY (direct switch instead of node fade) ----
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_73.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_73.gml
+index d17b3fd..c286b14 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_73.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_73.gml
+@@ -1,3 +1,4 @@
++scr_perf_mark("draw_end");
+ /// @desc Draw End - CREATOR param cards, over every node.
+ if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) exit;
+ scr_label_jump_fx_draw();
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_75.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_75.gml
+index 5f724c0..5ad9c28 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_75.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Draw_75.gml
+@@ -1,3 +1,5 @@
++scr_perf_mark("gui_end");
++scr_perf_draw();
+ /// @desc Draw GUI End: help above every object's regular GUI, including assets.
+ // CREATOR LAYER panels sit above everything else on screen.
+ scr_creator_draw_dock();
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+index 9aa8cae..9d01e88 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_0.gml
+@@ -1,3 +1,4 @@
++scr_perf_node("step", "(workspace mgr)");
+ // ── EXOMIZER POLL (BUILD TARGET = PRG EXO) ──
+ // Exomizer runs as its own process; wait until its output exists and has
+ // stopped growing, then run it like any PRG.
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
+index b2e8098..f29546f 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_1.gml
+@@ -1,3 +1,6 @@
++// PERF HUD (F11): toggle, then open this frame's timing window
++scr_perf_toggle_check();
++scr_perf_mark("begin_step");
+ // Guided tour caption panel takes its clicks before anything else, so a click
+ // on NEXT / BACK / EXIT (or anywhere on the panel) never reaches what is
+ // drawn behind it.
+diff --git a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_2.gml b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_2.gml
+index 34ecc70..babad49 100644
+--- a/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_2.gml
++++ b/C64DevMachine_win.yyp/objects/obj_workspace_manager/Step_2.gml
+@@ -1,3 +1,4 @@
++scr_perf_mark("end_step");
+ // All node Step handlers have completed before this event.
+ 
+ // Deferred bitmap previews from the last project load. 10ms a frame keeps
+@@ -39,3 +40,5 @@ if (global.saved_hash_pending > 0) {
+         global.manual_saved = true;
+     }
+ }
++
++scr_perf_mark("end_step_done");
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml b/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
+index 1b3ab8f..a993df0 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
+@@ -1,4 +1,5 @@
+ function scr_c64_do_update_addresses() {
++var _perf_t0 = get_timer();   // PERF HUD: one full update
+ 
+ global.named_loc_repack_gen++;
+ 
+@@ -1536,6 +1537,7 @@ with (obj_c64_node) {
+ // scr_show_code_build(): attributing rows to LABEL and plain opcode nodes needs
+ // pc_address, and those are not assigned until the passes above have run.
+ scr_show_code_attribute();
++scr_perf_addr(_perf_t0);
+ }
+ 
+ /// @function scr_label_is_missing(_name)
+diff --git a/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.gml b/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.gml
+new file mode 100644
+index 0000000..604aed3
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.gml
+@@ -0,0 +1,167 @@
++/// ====================================================================
++/// PERF HUD (F11) — where a workspace frame goes.
++///
++/// Marks are dropped at fixed points of the frame by obj_workspace_manager
++/// (Begin Step, End Step, Draw End, Draw GUI, Draw GUI End). Per-type cost
++/// is measured by gap: each instrumented Step / Draw event stamps the clock
++/// on entry and the time since the previous stamp is credited to whoever
++/// stamped before it, so early exits need no matching "end" call.
++/// Everything is averaged over one second. With the HUD off every call
++/// returns on its first test.
++/// ====================================================================
++
++function scr_perf_reset_acc(_p) {
++    _p.frames     = 0;
++    _p.acc_step   = 0;
++    _p.acc_draw   = 0;
++    _p.acc_gui    = 0;
++    _p.acc_addr   = 0;
++    _p.acc_addr_n = 0;
++    _p.acc_idle   = 0;
++    _p.step_acc   = {};
++    _p.step_cnt   = {};
++    _p.draw_acc   = {};
++    _p.draw_cnt   = {};
++}
++
++function scr_perf_init() {
++    if (variable_global_exists("perf") && is_struct(global.perf)) return;
++    global.perf = { sec_t0: get_timer(), t_bs: 0, t_dr: 0, t_gui: 0,
++                    step_last: "", step_lt: 0, draw_last: "", draw_lt: 0,
++                    mx: 0, my: 0, show: undefined };
++    scr_perf_reset_acc(global.perf);
++}
++
++/// F11 toggles. Called first thing in the manager's Begin Step.
++function scr_perf_toggle_check() {
++    if (!variable_global_exists("perf_on")) global.perf_on = false;
++    if (keyboard_check_pressed(vk_f11)) {
++        global.perf_on = !global.perf_on;
++        global.perf = undefined;
++        if (global.perf_on) scr_perf_init();
++    }
++}
++
++/// Credit the time since the last stamp of this kind ("step" / "draw") to
++/// whoever made it, then stamp for _who.
++function scr_perf_node(_kind, _who) {
++    if (!global.perf_on) return;
++    var _t = get_timer();
++    var _p = global.perf;
++    var _last = _p[$ _kind + "_last"];
++    if (_last != "") {
++        var _acc = _p[$ _kind + "_acc"];
++        var _cnt = _p[$ _kind + "_cnt"];
++        _acc[$ _last] = (_acc[$ _last] ?? 0) + (_t - _p[$ _kind + "_lt"]);
++        _cnt[$ _last] = (_cnt[$ _last] ?? 0) + 1;
++    }
++    _p[$ _kind + "_last"] = _who;
++    _p[$ _kind + "_lt"]   = _t;
++}
++
++function scr_perf_mark(_phase) {
++    if (!global.perf_on) return;
++    var _t = get_timer();
++    var _p = global.perf;
++    switch (_phase) {
++        case "begin_step":
++            // A new frame: roll the one-second window when it is full
++            _p.frames++;
++            if (global.gui_mouse_x == _p.mx && global.gui_mouse_y == _p.my) _p.acc_idle++;
++            _p.mx = global.gui_mouse_x;
++            _p.my = global.gui_mouse_y;
++            if (_t - _p.sec_t0 >= 1000000) {
++                var _f = max(1, _p.frames);
++                _p.show = { fps: _p.frames * 1000000 / (_t - _p.sec_t0),
++                            step: _p.acc_step / _f / 1000, draw: _p.acc_draw / _f / 1000,
++                            gui: _p.acc_gui / _f / 1000, addr_n: _p.acc_addr_n,
++                            addr_ms: _p.acc_addr / 1000, still: _p.acc_idle / _f,
++                            step_rows: scr_perf_rows(_p.step_acc, _p.step_cnt, _f),
++                            draw_rows: scr_perf_rows(_p.draw_acc, _p.draw_cnt, _f) };
++                scr_perf_reset_acc(_p);
++                _p.sec_t0 = _t;
++            }
++            _p.t_bs = _t;
++            break;
++        case "end_step":
++            scr_perf_node("step", "");
++            _p.acc_step += _t - _p.t_bs;
++            break;
++        case "end_step_done":
++            _p.t_dr = _t;
++            _p.draw_last = "";
++            break;
++        case "draw_end":
++            scr_perf_node("draw", "");
++            _p.acc_draw += _t - _p.t_dr;
++            break;
++        case "gui":
++            _p.t_gui = _t;
++            break;
++        case "gui_end":
++            _p.acc_gui += _t - _p.t_gui;
++            break;
++    }
++}
++
++/// One full address update (layout + sizing compile) took _us microseconds.
++function scr_perf_addr(_t0) {
++    if (!global.perf_on) return;
++    global.perf.acc_addr   += get_timer() - _t0;
++    global.perf.acc_addr_n += 1;
++}
++
++/// Per-type rows, most expensive first: {name, ms per frame, calls per frame}.
++function scr_perf_rows(_acc, _cnt, _frames) {
++    var _rows = [];
++    var _names = variable_struct_get_names(_acc);
++    for (var _i = 0; _i < array_length(_names); _i++) {
++        var _n = _names[_i];
++        array_push(_rows, { name: _n, ms: _acc[$ _n] / _frames / 1000, n: (_cnt[$ _n] ?? 0) / _frames });
++    }
++    array_sort(_rows, function(_a, _b) { return (_b.ms > _a.ms) ? 1 : ((_b.ms < _a.ms) ? -1 : 0); });
++    return _rows;
++}
++
++function scr_perf_draw() {
++    if (!global.perf_on || !is_struct(global.perf)) return;
++    var _s = global.perf.show;
++    var _lines = ["PERF HUD (F11)  measuring..."];
++    if (is_struct(_s)) {
++        _lines = [
++            "PERF HUD (F11)   FPS " + string_format(_s.fps, 1, 1)
++                + "   mouse still " + string(round(_s.still * 100)) + "% of frames",
++            "STEP " + string_format(_s.step, 1, 2) + " ms   DRAW " + string_format(_s.draw, 1, 2)
++                + " ms   GUI " + string_format(_s.gui, 1, 2) + " ms   (per frame)",
++            "ADDRESS UPDATES " + string(_s.addr_n) + " /s   " + string_format(_s.addr_ms, 1, 1) + " ms /s",
++            "", "STEP by type      ms/frame  calls"
++        ];
++        for (var _i = 0; _i < min(8, array_length(_s.step_rows)); _i++) {
++            var _r = _s.step_rows[_i];
++            array_push(_lines, "  " + string_copy(_r.name + "                    ", 1, 18)
++                + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
++        }
++        array_push(_lines, "", "DRAW by type      ms/frame  calls");
++        for (var _i = 0; _i < min(8, array_length(_s.draw_rows)); _i++) {
++            var _r = _s.draw_rows[_i];
++            array_push(_lines, "  " + string_copy(_r.name + "                    ", 1, 18)
++                + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
++        }
++    }
++    draw_set_font(fnt_c64_tiny);
++    draw_set_halign(fa_left);
++    draw_set_valign(fa_top);
++    var _lh = 14;
++    var _w  = 0;
++    for (var _i = 0; _i < array_length(_lines); _i++) _w = max(_w, string_width(_lines[_i]));
++    var _x = display_get_gui_width() - _w - 24;
++    var _y = 60;
++    draw_set_alpha(0.85);
++    draw_set_color(c_black);
++    draw_rectangle(_x - 8, _y - 6, _x + _w + 8, _y + array_length(_lines) * _lh + 4, false);
++    draw_set_alpha(1);
++    for (var _i = 0; _i < array_length(_lines); _i++) {
++        draw_set_color(_i == 0 ? c_yellow : c_white);
++        draw_text(_x, _y + _i * _lh, _lines[_i]);
++    }
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.yy b/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.yy
+new file mode 100644
+index 0000000..9e39897
+--- /dev/null
++++ b/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.yy
+@@ -0,0 +1,13 @@
++{
++  "$GMScript":"v1",
++  "%Name":"scr_perf_hud",
++  "isCompatibility":false,
++  "isDnD":false,
++  "name":"scr_perf_hud",
++  "parent":{
++    "name":"MISC",
++    "path":"folders/SCRIPTS/CORE/MISC.yy",
++  },
++  "resourceType":"GMScript",
++  "resourceVersion":"2.0",
++}
+\ No newline at end of file
