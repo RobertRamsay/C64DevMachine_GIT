@@ -193,170 +193,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
         var d = _nodes[i];
         if (d.type == "EXECUTE") continue;
 
-        var _n = instance_create_layer(d.x, d.y, "Layer_Nodes", obj_c64_node);
-        _n.is_dragging = true;
-
-        _n.load_idx     = i;
-        _n.node_title   = d.title;
-        _n.node_type    = d.type;
-        _n.instructions = d.code;
-        _n.is_connected = d.connected;
-
-        if (variable_struct_exists(d, "pc_address"))   _n.pc_address   = d.pc_address;
-        if (variable_struct_exists(d, "end_address"))  _n.end_address  = d.end_address;
-        if (variable_struct_exists(d, "x_indent"))     _n.x_indent     = d.x_indent;
-        if (variable_struct_exists(d, "comment_w_mult")) _n.comment_w_mult = clamp(round(d.comment_w_mult), 1, 3);
-        // Corner-handle size (newer projects). Older ones only have
-        // comment_w_mult, which still gives their width.
-        if (variable_struct_exists(d, "comment_w")) _n.comment_w = d.comment_w;
-        if (variable_struct_exists(d, "comment_h")) _n.comment_h = d.comment_h;
-        if (variable_struct_exists(d, "anim_alias")   && d.anim_alias   != "") _n.anim_alias   = d.anim_alias;
-        if (variable_struct_exists(d, "scroll_alias") && d.scroll_alias != "") _n.scroll_alias = d.scroll_alias;
-		if (variable_struct_exists(d, "code_descriptor")) _n.code_descriptor = d.code_descriptor;
-		if (variable_struct_exists(d, "helper_text")) _n.helper_text = d.helper_text;
-		if (variable_struct_exists(d, "custom_title")) _n.custom_title = string(d.custom_title);
-		_n.params = scr_creator_params_from_data(d);
-		_n.show_only_used = variable_struct_exists(d, "show_only_used") ? d.show_only_used : false;
-
-		// Restore stable_uid (used by the ignored-conflict suppression list)
-		if (variable_struct_exists(d, "stable_uid") && d.stable_uid > 0) {
-		    _n.stable_uid = d.stable_uid;
-		}
-		if (_n.node_type == "MACRO_JOY") {
-            _n.height_dirty = true;
-            if (array_length(_n.instructions) < 19) {
-                array_push(_n.instructions, [0xFF, "NON", 0]);
-            }
-        }
-        // KEYS MISC gained KUP / KDN / KLF / KRT after it shipped. Older
-        // saves have 24 key rows; append the missing ones, disabled, in
-        // category order so existing held-bit numbering is untouched.
-        if (_n.node_type == "MACRO_MISCKEYS") {
-            _n.height_dirty = true;
-            var _mk_cat  = scr_key_category_list("MACRO_MISCKEYS");
-            var _mk_have = array_length(_n.instructions) - 1;
-            for (var _mk = _mk_have; _mk < array_length(_mk_cat.keys); _mk++) {
-                array_push(_n.instructions,
-                           [_mk_cat.keys[_mk], "KEY_" + string(_mk_cat.keys[_mk]), 0]);
-            }
-        }
-        if (_n.node_type == "MACRO_TEXT_SCROLL" && array_length(_n.instructions[0]) > 12 && is_string(_n.instructions[0][12]) && string(_n.instructions[0][12]) != "") {
-            _n.ts_alias = string(_n.instructions[0][12]);
-        }
-
-        // ── MACRO_VECTOR_PAGE layout migration ──
-        // House convention: ["macro_vector_page", asset, use_var_flag, page_or_varname]
-        //   slot 2 = 0 literal / 1 var,  slot 3 = literal page index OR var name.
-        // Legacy saves stored the literal page index in slot 2 with NO slot 3.
-        // Discriminator: slot 3 absent => legacy (both new-literal and new-var
-        // saves always write slot 3). Migrate legacy: slot 3 = old page, slot 2 = 0.
-        if (_n.node_type == "MACRO_VECTOR_PAGE" && array_length(_n.instructions) > 0) {
-            if (array_length(_n.instructions[0]) < 4) {
-                // Legacy: capture whatever was in slot 2 as the page index.
-                var _vp_old_page = (array_length(_n.instructions[0]) > 2 && is_real(_n.instructions[0][2])) ? real(_n.instructions[0][2]) : 0;
-                while (array_length(_n.instructions[0]) < 4) {
-                    array_push(_n.instructions[0], 0);
-                }
-                _n.instructions[0][2] = 0;            // use_var flag = literal
-                _n.instructions[0][3] = _vp_old_page; // page index moves to slot 3
-            } else {
-                // Already 4+ slots: just harden slot 2 to a real flag so a
-                // corrupt/hand-edited save can't crash the draw/step reads.
-                if (!is_real(_n.instructions[0][2])) _n.instructions[0][2] = 0;
-            }
-        }
-
-        if (variable_struct_exists(d, "binary_blob") && d.binary_blob != "") {
-            var _blob     = d.binary_blob;
-            var _dec_buf  = scr_blob_decode(_blob);
-            var _byte_len = (_dec_buf != noone) ? buffer_get_size(_dec_buf) : 0;
-
-            if (variable_instance_exists(_n, "sprite_buffer")) {
-                if (_n.sprite_buffer != noone) buffer_delete(_n.sprite_buffer);
-                _n.sprite_buffer = (_dec_buf != noone) ? _dec_buf : buffer_create(1, buffer_fixed, 1);
-                _dec_buf = noone; // ownership transferred to sprite_buffer
-                if (_n.node_type == "DATA_SID") {
-                    _n.sid_load_addr   = real(_n.instructions[0][2]);
-                    _n.sid_init_addr   = real(_n.instructions[0][3]);
-                    _n.sid_play_addr   = real(_n.instructions[0][4]);
-                    _n.sid_songs       = real(_n.instructions[0][5]);
-                    _n.sid_start_song  = real(_n.instructions[0][6]);
-                    _n.sid_title       = string(_n.instructions[0][7]);
-                    _n.sid_author      = (array_length(_n.instructions[0]) > 8) ? string(_n.instructions[0][8]) : "UNKNOWN";
-                    _n.total_node_size = buffer_get_size(_n.sprite_buffer);
-                    _n.binary_blob     = _blob;
-                }
-                if (_n.node_type == "SPR64") {
-                    _n.total_node_size  = 4096;
-                    _n.spr_cached_frame = -1;
-                    _n.binary_blob      = _blob;
-                }
-            }
-
-            if (_n.node_type == "BITMAP_KLA") {
-                if (buffer_exists(_n.kla_buffer)) buffer_delete(_n.kla_buffer);
-                if (_dec_buf != noone) {
-                    _n.kla_buffer = _dec_buf;
-                    _dec_buf = noone; // ownership transferred
-                } else {
-                    _n.kla_buffer = buffer_create(1, buffer_fixed, 1);
-                }
-                _n.total_node_size = _byte_len;
-                _n.binary_blob     = _blob;
-                _n.kla_surface     = -1;
-            }
-
-            if (_dec_buf != noone) { buffer_delete(_dec_buf); _dec_buf = noone; }
-        }
-
-        if (_n.node_type == "DATA_TEXT") {
-            draw_set_font_l(fnt_c64_code);
-            var _txt        = (array_length(_n.instructions) > 0) ? string(_n.instructions[0][1]) : "";
-            var _measured_w = string_width_l("\"" + _txt + "\"") + 20;
-            _n.width        = clamp(max(global.node_display_width, _measured_w), 200, 480);
-        } else if (_n.node_type == "SPR64") {
-            _n.width = 200;
-        } else {
-            _n.width = global.node_display_width;
-        }
-
-        if (_n.node_type == "COMMENT") {
-            _n.collapsed = variable_struct_exists(d, "collapsed") ? d.collapsed : false;
-            draw_set_font_l(fnt_c64_code);
-            var _comment_raw = (array_length(_n.instructions) > 0) ? string(_n.instructions[0][1]) : "";
-            var _text_w      = global.node_display_width - 20;
-            var _text_body_h = string_height_ext_l(_comment_raw, line_h, _text_w);
-            _n.height        = header_h + max(line_h, _text_body_h) + pad;
-        } else if (_n.node_type == "ORG") {
-            _n.height = header_h + (line_h * 2) + pad;
-        } else if (_n.node_type == "SPR64") {
-            _n.height = header_h + (21 * 4) + pad + 16;
-        } else {
-            _n.height = header_h + (array_length(_n.instructions) * line_h) + pad;
-        }
-        if (_n.node_type == "COMMENT") {
-            // Old saves can carry the squeezed one-line height. Derive it before repacking.
-            scr_comment_sync_layout(_n);
-            _n.height_dirty = true;
-        } else if (variable_struct_exists(d, "height")) {
-            _n.height = d.height;
-        }
-
-        if (_n.node_type == "MACRO_PRINT") scr_print_sync_height(_n);
-        if (_n.node_type == "INIT") {
-            _n.is_draggable = true;
-            _n.collapsed = variable_struct_exists(d, "collapsed") ? d.collapsed : false;
-        }
-        if (_n.node_type == "ORG") {
-            _n.is_draggable = true;
-            _n.is_connected = false;
-            _n.proxy        = variable_struct_exists(d, "proxy") ? d.proxy : true;
-            // Older projects have no fold state; expanded is the default.
-            _n.collapsed    = false;
-            if (variable_struct_exists(d, "collapsed")) {
-                _n.collapsed = d.collapsed;
-            }
-        }
+        scr_node_from_record(d, i);
     }
 ////
 // Each node finds ITS OWN record by index. This used to scan the saved
@@ -1172,79 +1009,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
 	            scr_hud_flush(_new_asset);
 	        }
 	        if ((_ad.type == "MUSIC_MAKER" || _ad.type == "SFX_MAKER")) {
-	            scr_sound_editor_create(_new_asset);
-	            var _sem = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
-                scr_music_sid_copy_meta(_sem, _new_asset.meta);
-                // Digi track (absent in files saved before it existed — the
-                // defaults from scr_sound_editor_create stand).
-                var _dg_rate = _sem[$ "digi_rate"];
-                if (!is_undefined(_dg_rate)) {
-                    _new_asset.meta.digi_rate = real(_dg_rate);
-                }
-                var _dg_smp = _sem[$ "digi_samples"];
-                if (is_array(_dg_smp)) {
-                    _new_asset.meta.digi_samples = _dg_smp;
-                }
-                var _dg_pats = _sem[$ "digi_patterns"];
-                if (is_array(_dg_pats)) {
-                    _new_asset.meta.digi_patterns = _dg_pats;
-                }
-                var _dg_boost = _sem[$ "digi_boost"];
-                if (!is_undefined(_dg_boost)) {
-                    _new_asset.meta.digi_boost = clamp(real(_dg_boost), 0, 3);
-                }
-                var _dg_speed = _sem[$ "digi_speed"];
-                if (!is_undefined(_dg_speed)) {
-                    _new_asset.meta.digi_speed = clamp(real(_dg_speed), 0, 31);
-                }
-                var _ins_div = _sem[$ "instr_div"];
-                if (!is_undefined(_ins_div)) {
-                    _new_asset.meta.instr_div = real(_ins_div);
-                }
-                var _dg_on = _sem[$ "digi_on"];
-                if (!is_undefined(_dg_on)) {
-                    _new_asset.meta.digi_on = real(_dg_on);
-                }
-                _new_asset.meta.voice_mask = variable_struct_exists(_sem,"voice_mask") ? _sem.voice_mask : 7;
-                _new_asset.meta.sfx_chip = variable_struct_exists(_sem,"sfx_chip") ? _sem.sfx_chip : 0;
-	            if (variable_struct_exists(_sem, "instruments"))      _new_asset.meta.instruments      = _sem.instruments;
-	            _new_asset.meta.sel_instr        = variable_struct_exists(_sem, "sel_instr")        ? _sem.sel_instr        : -1;
-	            if (variable_struct_exists(_sem, "patterns"))         _new_asset.meta.patterns         = _sem.patterns;
-	            _new_asset.meta.bank_sel_pattern = variable_struct_exists(_sem, "bank_sel_pattern") ? _sem.bank_sel_pattern : 0;
-	            // JSON round-trips numerics as strings on some paths, so real()
-	            // before it reaches the clamp in the editor.
-	            _new_asset.meta.play_speed       = variable_struct_exists(_sem, "play_speed")       ? real(_sem.play_speed) : 6;
-	            _new_asset.meta.filt_mode        = variable_struct_exists(_sem, "filt_mode")        ? real(_sem.filt_mode)  : 0;
-	            _new_asset.meta.filt_res         = variable_struct_exists(_sem, "filt_res")         ? real(_sem.filt_res)   : 0;
-	            _new_asset.meta.filt_cut         = variable_struct_exists(_sem, "filt_cut")         ? real(_sem.filt_cut)   : 1024;
-	            // Imported tuning: 96 SID frequency values, or [] for the shared table.
-	            // Preview chip saved with the song (0 = 6581, 1 = 8580; 8580 when absent).
-	            _new_asset.meta.chip_model       = 1;
-	            if (variable_struct_exists(_sem, "chip_model")) _new_asset.meta.chip_model = (real(_sem.chip_model) == 0) ? 0 : 1;
-	            _new_asset.meta.free_voices      = false;
-	            if (variable_struct_exists(_sem, "free_voices")) _new_asset.meta.free_voices = (_sem.free_voices == true);
-	            _new_asset.meta.note_table       = [];
-	            if (variable_struct_exists(_sem, "note_table") && is_array(_sem.note_table) && array_length(_sem.note_table) == 96) {
-	                for (var _nti = 0; _nti < 96; _nti++) array_push(_new_asset.meta.note_table, real(_sem.note_table[_nti]));
-	            }
-	            // songs[] restores first; the editor's migration guard only fires
-	            // when it's absent, so a pre-songs[] file still folds its bare
-	            // song_order into songs[0] on first open.
-	            if (variable_struct_exists(_sem, "songs") && is_array(_sem.songs) && array_length(_sem.songs) > 0) {
-	                _new_asset.meta.songs = _sem.songs;
-	            }
-	            _new_asset.meta.sel_song         = variable_struct_exists(_sem, "sel_song")         ? _sem.sel_song         : 0;
-	            if (variable_struct_exists(_sem, "song_order"))       _new_asset.meta.song_order       = _sem.song_order;
-	            _new_asset.meta.sel_order_row    = variable_struct_exists(_sem, "sel_order_row")    ? _sem.sel_order_row    : 0;
-	            _new_asset.meta.song_loop        = variable_struct_exists(_sem, "song_loop")        ? _sem.song_loop        : true;
-	            _new_asset.meta.song_loop_row    = variable_struct_exists(_sem, "song_loop_row")    ? _sem.song_loop_row    : 0;
-	            _new_asset.meta.sel_voice        = variable_struct_exists(_sem, "sel_voice")        ? _sem.sel_voice        : 0;
-	            _new_asset.meta.sel_step         = variable_struct_exists(_sem, "sel_step")         ? _sem.sel_step         : 0;
-	            _new_asset.meta.cur_octave       = variable_struct_exists(_sem, "cur_octave")       ? _sem.cur_octave       : 4;
-	            _new_asset.meta.view_mode        = variable_struct_exists(_sem, "view_mode")        ? _sem.view_mode        : "VERTICAL";
-	            _new_asset.meta.step_zoom        = variable_struct_exists(_sem, "step_zoom")        ? _sem.step_zoom        : 1;
-	            _new_asset.meta.list_scroll      = variable_struct_exists(_sem, "list_scroll")      ? _sem.list_scroll      : 0;
-                if (_ad.type=="SFX_MAKER") scr_sfx_maker_defaults(_new_asset);
+	            scr_music_maker_apply_meta(_new_asset, variable_struct_exists(_ad, "meta") ? _ad.meta : {});
 	        }
         }
     }
@@ -1476,4 +1241,182 @@ global.kernal_unlocked = variable_struct_exists(load_data, "kernal_unlocked") ? 
     global.saved_hash         = "";
     global.saved_hash_pending = 12;
 
+}
+
+
+/// @function scr_node_from_record(d, i)
+/// @desc Create one node from a saved record (see scr_node_save_record), with
+///       every per-type fix-up the loader applies. _i is stamped as load_idx
+///       (-1 when there is no loader index). Linking to an ORG parent and the
+///       ORG uid/wire fields are left to the caller.
+function scr_node_from_record(d, i) {
+    var header_h = 20;
+    var line_h   = 18;
+    var pad      = 10;
+
+    var _n = instance_create_layer(d.x, d.y, "Layer_Nodes", obj_c64_node);
+    _n.is_dragging = true;
+
+    _n.load_idx     = i;
+    _n.node_title   = d.title;
+    _n.node_type    = d.type;
+    _n.instructions = d.code;
+    _n.is_connected = d.connected;
+
+    if (variable_struct_exists(d, "pc_address"))   _n.pc_address   = d.pc_address;
+    if (variable_struct_exists(d, "end_address"))  _n.end_address  = d.end_address;
+    if (variable_struct_exists(d, "x_indent"))     _n.x_indent     = d.x_indent;
+    if (variable_struct_exists(d, "comment_w_mult")) _n.comment_w_mult = clamp(round(d.comment_w_mult), 1, 3);
+    // Corner-handle size (newer projects). Older ones only have
+    // comment_w_mult, which still gives their width.
+    if (variable_struct_exists(d, "comment_w")) _n.comment_w = d.comment_w;
+    if (variable_struct_exists(d, "comment_h")) _n.comment_h = d.comment_h;
+    if (variable_struct_exists(d, "anim_alias")   && d.anim_alias   != "") _n.anim_alias   = d.anim_alias;
+    if (variable_struct_exists(d, "scroll_alias") && d.scroll_alias != "") _n.scroll_alias = d.scroll_alias;
+		if (variable_struct_exists(d, "code_descriptor")) _n.code_descriptor = d.code_descriptor;
+		if (variable_struct_exists(d, "helper_text")) _n.helper_text = d.helper_text;
+		if (variable_struct_exists(d, "custom_title")) _n.custom_title = string(d.custom_title);
+		_n.params = scr_creator_params_from_data(d);
+		_n.show_only_used = variable_struct_exists(d, "show_only_used") ? d.show_only_used : false;
+
+		// Restore stable_uid (used by the ignored-conflict suppression list)
+		if (variable_struct_exists(d, "stable_uid") && d.stable_uid > 0) {
+		    _n.stable_uid = d.stable_uid;
+		}
+		if (_n.node_type == "MACRO_JOY") {
+        _n.height_dirty = true;
+        if (array_length(_n.instructions) < 19) {
+            array_push(_n.instructions, [0xFF, "NON", 0]);
+        }
+    }
+    // KEYS MISC gained KUP / KDN / KLF / KRT after it shipped. Older
+    // saves have 24 key rows; append the missing ones, disabled, in
+    // category order so existing held-bit numbering is untouched.
+    if (_n.node_type == "MACRO_MISCKEYS") {
+        _n.height_dirty = true;
+        var _mk_cat  = scr_key_category_list("MACRO_MISCKEYS");
+        var _mk_have = array_length(_n.instructions) - 1;
+        for (var _mk = _mk_have; _mk < array_length(_mk_cat.keys); _mk++) {
+            array_push(_n.instructions,
+                       [_mk_cat.keys[_mk], "KEY_" + string(_mk_cat.keys[_mk]), 0]);
+        }
+    }
+    if (_n.node_type == "MACRO_TEXT_SCROLL" && array_length(_n.instructions[0]) > 12 && is_string(_n.instructions[0][12]) && string(_n.instructions[0][12]) != "") {
+        _n.ts_alias = string(_n.instructions[0][12]);
+    }
+
+    // ── MACRO_VECTOR_PAGE layout migration ──
+    // House convention: ["macro_vector_page", asset, use_var_flag, page_or_varname]
+    //   slot 2 = 0 literal / 1 var,  slot 3 = literal page index OR var name.
+    // Legacy saves stored the literal page index in slot 2 with NO slot 3.
+    // Discriminator: slot 3 absent => legacy (both new-literal and new-var
+    // saves always write slot 3). Migrate legacy: slot 3 = old page, slot 2 = 0.
+    if (_n.node_type == "MACRO_VECTOR_PAGE" && array_length(_n.instructions) > 0) {
+        if (array_length(_n.instructions[0]) < 4) {
+            // Legacy: capture whatever was in slot 2 as the page index.
+            var _vp_old_page = (array_length(_n.instructions[0]) > 2 && is_real(_n.instructions[0][2])) ? real(_n.instructions[0][2]) : 0;
+            while (array_length(_n.instructions[0]) < 4) {
+                array_push(_n.instructions[0], 0);
+            }
+            _n.instructions[0][2] = 0;            // use_var flag = literal
+            _n.instructions[0][3] = _vp_old_page; // page index moves to slot 3
+        } else {
+            // Already 4+ slots: just harden slot 2 to a real flag so a
+            // corrupt/hand-edited save can't crash the draw/step reads.
+            if (!is_real(_n.instructions[0][2])) _n.instructions[0][2] = 0;
+        }
+    }
+
+    if (variable_struct_exists(d, "binary_blob") && d.binary_blob != "") {
+        var _blob     = d.binary_blob;
+        var _dec_buf  = scr_blob_decode(_blob);
+        var _byte_len = (_dec_buf != noone) ? buffer_get_size(_dec_buf) : 0;
+
+        if (variable_instance_exists(_n, "sprite_buffer")) {
+            if (_n.sprite_buffer != noone) buffer_delete(_n.sprite_buffer);
+            _n.sprite_buffer = (_dec_buf != noone) ? _dec_buf : buffer_create(1, buffer_fixed, 1);
+            _dec_buf = noone; // ownership transferred to sprite_buffer
+            if (_n.node_type == "DATA_SID") {
+                _n.sid_load_addr   = real(_n.instructions[0][2]);
+                _n.sid_init_addr   = real(_n.instructions[0][3]);
+                _n.sid_play_addr   = real(_n.instructions[0][4]);
+                _n.sid_songs       = real(_n.instructions[0][5]);
+                _n.sid_start_song  = real(_n.instructions[0][6]);
+                _n.sid_title       = string(_n.instructions[0][7]);
+                _n.sid_author      = (array_length(_n.instructions[0]) > 8) ? string(_n.instructions[0][8]) : "UNKNOWN";
+                _n.total_node_size = buffer_get_size(_n.sprite_buffer);
+                _n.binary_blob     = _blob;
+            }
+            if (_n.node_type == "SPR64") {
+                _n.total_node_size  = 4096;
+                _n.spr_cached_frame = -1;
+                _n.binary_blob      = _blob;
+            }
+        }
+
+        if (_n.node_type == "BITMAP_KLA") {
+            if (buffer_exists(_n.kla_buffer)) buffer_delete(_n.kla_buffer);
+            if (_dec_buf != noone) {
+                _n.kla_buffer = _dec_buf;
+                _dec_buf = noone; // ownership transferred
+            } else {
+                _n.kla_buffer = buffer_create(1, buffer_fixed, 1);
+            }
+            _n.total_node_size = _byte_len;
+            _n.binary_blob     = _blob;
+            _n.kla_surface     = -1;
+        }
+
+        if (_dec_buf != noone) { buffer_delete(_dec_buf); _dec_buf = noone; }
+    }
+
+    if (_n.node_type == "DATA_TEXT") {
+        draw_set_font_l(fnt_c64_code);
+        var _txt        = (array_length(_n.instructions) > 0) ? string(_n.instructions[0][1]) : "";
+        var _measured_w = string_width_l("\"" + _txt + "\"") + 20;
+        _n.width        = clamp(max(global.node_display_width, _measured_w), 200, 480);
+    } else if (_n.node_type == "SPR64") {
+        _n.width = 200;
+    } else {
+        _n.width = global.node_display_width;
+    }
+
+    if (_n.node_type == "COMMENT") {
+        _n.collapsed = variable_struct_exists(d, "collapsed") ? d.collapsed : false;
+        draw_set_font_l(fnt_c64_code);
+        var _comment_raw = (array_length(_n.instructions) > 0) ? string(_n.instructions[0][1]) : "";
+        var _text_w      = global.node_display_width - 20;
+        var _text_body_h = string_height_ext_l(_comment_raw, line_h, _text_w);
+        _n.height        = header_h + max(line_h, _text_body_h) + pad;
+    } else if (_n.node_type == "ORG") {
+        _n.height = header_h + (line_h * 2) + pad;
+    } else if (_n.node_type == "SPR64") {
+        _n.height = header_h + (21 * 4) + pad + 16;
+    } else {
+        _n.height = header_h + (array_length(_n.instructions) * line_h) + pad;
+    }
+    if (_n.node_type == "COMMENT") {
+        // Old saves can carry the squeezed one-line height. Derive it before repacking.
+        scr_comment_sync_layout(_n);
+        _n.height_dirty = true;
+    } else if (variable_struct_exists(d, "height")) {
+        _n.height = d.height;
+    }
+
+    if (_n.node_type == "MACRO_PRINT") scr_print_sync_height(_n);
+    if (_n.node_type == "INIT") {
+        _n.is_draggable = true;
+        _n.collapsed = variable_struct_exists(d, "collapsed") ? d.collapsed : false;
+    }
+    if (_n.node_type == "ORG") {
+        _n.is_draggable = true;
+        _n.is_connected = false;
+        _n.proxy        = variable_struct_exists(d, "proxy") ? d.proxy : true;
+        // Older projects have no fold state; expanded is the default.
+        _n.collapsed    = false;
+        if (variable_struct_exists(d, "collapsed")) {
+            _n.collapsed = d.collapsed;
+        }
+    }
+    return _n;
 }

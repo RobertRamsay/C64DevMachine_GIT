@@ -565,6 +565,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (scr_sfx_maker_button(_fsx + 122, _fl_y - 1, 110, "EXPORT SID", _mx, _my)) {
         scr_sound_editor_export_sid(_asset);
     }
+    // The asset itself as a .c64mm file, for IMPORT > MUSIC MAKER in another project.
+    if (scr_sfx_maker_button(_fsx + 242, _fl_y - 1, 110, "EXPORT MM", _mx, _my)) {
+        scr_music_maker_export(_asset);
+    }
 
     // In function-key order: F1 SONG, F2 HERE, F3 PAT, F4 STOP.
     var _transport_labels = ["PLAY SONG (F1)", "PLAY HERE (F2)", "PLAY PAT (F3)", "STOP (F4)"];

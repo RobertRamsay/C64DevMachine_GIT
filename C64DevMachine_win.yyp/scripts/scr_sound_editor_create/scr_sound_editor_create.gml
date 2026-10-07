@@ -951,3 +951,82 @@ function scr_music_size_digi_sig(_m) {
     }
     return _h;
 }
+
+/// @function scr_music_maker_apply_meta(_asset, _sem)
+/// @desc Rebuild a MUSIC_MAKER / SFX_MAKER asset's full meta from saved fields
+///       (_sem = the meta struct as written by save). Shared by project load
+///       and the music maker file import.
+function scr_music_maker_apply_meta(_asset, _sem) {
+    scr_sound_editor_create(_asset);
+    scr_music_sid_copy_meta(_sem, _asset.meta);
+    // Digi track (absent in files saved before it existed — the
+    // defaults from scr_sound_editor_create stand).
+    var _dg_rate = _sem[$ "digi_rate"];
+    if (!is_undefined(_dg_rate)) {
+        _asset.meta.digi_rate = real(_dg_rate);
+    }
+    var _dg_smp = _sem[$ "digi_samples"];
+    if (is_array(_dg_smp)) {
+        _asset.meta.digi_samples = _dg_smp;
+    }
+    var _dg_pats = _sem[$ "digi_patterns"];
+    if (is_array(_dg_pats)) {
+        _asset.meta.digi_patterns = _dg_pats;
+    }
+    var _dg_boost = _sem[$ "digi_boost"];
+    if (!is_undefined(_dg_boost)) {
+        _asset.meta.digi_boost = clamp(real(_dg_boost), 0, 3);
+    }
+    var _dg_speed = _sem[$ "digi_speed"];
+    if (!is_undefined(_dg_speed)) {
+        _asset.meta.digi_speed = clamp(real(_dg_speed), 0, 31);
+    }
+    var _ins_div = _sem[$ "instr_div"];
+    if (!is_undefined(_ins_div)) {
+        _asset.meta.instr_div = real(_ins_div);
+    }
+    var _dg_on = _sem[$ "digi_on"];
+    if (!is_undefined(_dg_on)) {
+        _asset.meta.digi_on = real(_dg_on);
+    }
+    _asset.meta.voice_mask = variable_struct_exists(_sem,"voice_mask") ? _sem.voice_mask : 7;
+    _asset.meta.sfx_chip = variable_struct_exists(_sem,"sfx_chip") ? _sem.sfx_chip : 0;
+    if (variable_struct_exists(_sem, "instruments"))      _asset.meta.instruments      = _sem.instruments;
+    _asset.meta.sel_instr        = variable_struct_exists(_sem, "sel_instr")        ? _sem.sel_instr        : -1;
+    if (variable_struct_exists(_sem, "patterns"))         _asset.meta.patterns         = _sem.patterns;
+    _asset.meta.bank_sel_pattern = variable_struct_exists(_sem, "bank_sel_pattern") ? _sem.bank_sel_pattern : 0;
+    // JSON round-trips numerics as strings on some paths, so real()
+    // before it reaches the clamp in the editor.
+    _asset.meta.play_speed       = variable_struct_exists(_sem, "play_speed")       ? real(_sem.play_speed) : 6;
+    _asset.meta.filt_mode        = variable_struct_exists(_sem, "filt_mode")        ? real(_sem.filt_mode)  : 0;
+    _asset.meta.filt_res         = variable_struct_exists(_sem, "filt_res")         ? real(_sem.filt_res)   : 0;
+    _asset.meta.filt_cut         = variable_struct_exists(_sem, "filt_cut")         ? real(_sem.filt_cut)   : 1024;
+    // Imported tuning: 96 SID frequency values, or [] for the shared table.
+    // Preview chip saved with the song (0 = 6581, 1 = 8580; 8580 when absent).
+    _asset.meta.chip_model       = 1;
+    if (variable_struct_exists(_sem, "chip_model")) _asset.meta.chip_model = (real(_sem.chip_model) == 0) ? 0 : 1;
+    _asset.meta.free_voices      = false;
+    if (variable_struct_exists(_sem, "free_voices")) _asset.meta.free_voices = (_sem.free_voices == true);
+    _asset.meta.note_table       = [];
+    if (variable_struct_exists(_sem, "note_table") && is_array(_sem.note_table) && array_length(_sem.note_table) == 96) {
+        for (var _nti = 0; _nti < 96; _nti++) array_push(_asset.meta.note_table, real(_sem.note_table[_nti]));
+    }
+    // songs[] restores first; the editor's migration guard only fires
+    // when it's absent, so a pre-songs[] file still folds its bare
+    // song_order into songs[0] on first open.
+    if (variable_struct_exists(_sem, "songs") && is_array(_sem.songs) && array_length(_sem.songs) > 0) {
+        _asset.meta.songs = _sem.songs;
+    }
+    _asset.meta.sel_song         = variable_struct_exists(_sem, "sel_song")         ? _sem.sel_song         : 0;
+    if (variable_struct_exists(_sem, "song_order"))       _asset.meta.song_order       = _sem.song_order;
+    _asset.meta.sel_order_row    = variable_struct_exists(_sem, "sel_order_row")    ? _sem.sel_order_row    : 0;
+    _asset.meta.song_loop        = variable_struct_exists(_sem, "song_loop")        ? _sem.song_loop        : true;
+    _asset.meta.song_loop_row    = variable_struct_exists(_sem, "song_loop_row")    ? _sem.song_loop_row    : 0;
+    _asset.meta.sel_voice        = variable_struct_exists(_sem, "sel_voice")        ? _sem.sel_voice        : 0;
+    _asset.meta.sel_step         = variable_struct_exists(_sem, "sel_step")         ? _sem.sel_step         : 0;
+    _asset.meta.cur_octave       = variable_struct_exists(_sem, "cur_octave")       ? _sem.cur_octave       : 4;
+    _asset.meta.view_mode        = variable_struct_exists(_sem, "view_mode")        ? _sem.view_mode        : "VERTICAL";
+    _asset.meta.step_zoom        = variable_struct_exists(_sem, "step_zoom")        ? _sem.step_zoom        : 1;
+    _asset.meta.list_scroll      = variable_struct_exists(_sem, "list_scroll")      ? _sem.list_scroll      : 0;
+    if (_asset.type=="SFX_MAKER") scr_sfx_maker_defaults(_asset);
+}
