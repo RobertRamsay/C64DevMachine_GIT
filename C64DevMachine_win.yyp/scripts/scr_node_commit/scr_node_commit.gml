@@ -65,6 +65,8 @@
 	    _target.stats_cache_dirty  = true;
 	    _target.height_dirty       = true;
 	    global.undo_dirty          = true;
+	    // The code panel titles macro groups with this name
+	    if (instance_exists(obj_workspace_manager) && obj_workspace_manager.showcode_open) global.addresses_dirty = true;
 	    return;
 	}
 
@@ -160,6 +162,8 @@
 	        if (_idx == -2) {
 	            _target.code_descriptor = _input;
 	            _target.height_dirty = true;
+	            // The code panel titles this block's group with its name
+	            if (instance_exists(obj_workspace_manager) && obj_workspace_manager.showcode_open) global.addresses_dirty = true;
 	        } else if (_idx == 0) {
 	            _target.instructions[0][1] = _input;
 	            _target.height_dirty = true;

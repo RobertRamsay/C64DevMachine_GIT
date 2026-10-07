@@ -1,0 +1,104 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+index 4c0079b..9e78cc7 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_node_commit/scr_node_commit.gml
+@@ -65,6 +65,8 @@
+ 	    _target.stats_cache_dirty  = true;
+ 	    _target.height_dirty       = true;
+ 	    global.undo_dirty          = true;
++	    // The code panel titles macro groups with this name
++	    if (instance_exists(obj_workspace_manager) && obj_workspace_manager.showcode_open) global.addresses_dirty = true;
+ 	    return;
+ 	}
+ 
+@@ -160,6 +162,8 @@
+ 	        if (_idx == -2) {
+ 	            _target.code_descriptor = _input;
+ 	            _target.height_dirty = true;
++	            // The code panel titles this block's group with its name
++	            if (instance_exists(obj_workspace_manager) && obj_workspace_manager.showcode_open) global.addresses_dirty = true;
+ 	        } else if (_idx == 0) {
+ 	            _target.instructions[0][1] = _input;
+ 	            _target.height_dirty = true;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml b/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
+index 8db6b3e..edd1967 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_show_code_panel/scr_show_code_panel.gml
+@@ -182,6 +182,25 @@ function scr_show_code_hex(_val, _digits) {
+     return _h;
+ }
+ 
++// =====================================================================
++// Group title for a macro node: the name shown on the node itself (a
++// renamed header, or a code block's own name), falling back to its type.
++function scr_show_code_owner_name(_node) {
++    if (_node.custom_title != "") return string_upper(_node.custom_title);
++    if (_node.node_type == "MACRO_CODE" && variable_instance_exists(_node, "code_descriptor")
++    && _node.code_descriptor != "") return string_upper(_node.code_descriptor);
++    return _node.node_type;
++}
++
++// =====================================================================
++// _s cut to fit _w pixels in the current font, ending in ".." when cut.
++function scr_show_code_fit(_s, _w) {
++    if (string_width_l(_s) <= _w) return _s;
++    var _n = string_length(_s);
++    while (_n > 1 && string_width_l(string_copy(_s, 1, _n) + "..") > _w) _n--;
++    return string_copy(_s, 1, _n) + "..";
++}
++
+ // =====================================================================
+ function scr_show_code_is_branch(_mnem) {
+     var _m = string_lower(string(_mnem));
+@@ -488,7 +507,7 @@ function scr_show_code_build_chunk(_compiled, _state, _userlbl) {
+                         _owner = string(_tag.node_type);
+                         if (string_pos("MACRO_", _owner) == 1) {
+                             _key  = string(_tag);
+-                            _name = _owner;
++                            _name = scr_show_code_owner_name(_tag);
+                         }
+                     }
+                 }
+@@ -618,7 +637,7 @@ function scr_show_code_build(_compiled) {
+         var _owners = [];
+         for (var _oi = 0; _oi < array_length(_nodes); _oi++) {
+             var _on = _nodes[_oi];
+-            array_push(_owners, [string(_on), _on.node_type, _on.is_connected,
++            array_push(_owners, [string(_on), _on.node_type, scr_show_code_owner_name(_on), _on.is_connected,
+                 string(_on.org_parent), _on.node_type == "LABEL" ? _on.instructions : []]);
+         }
+         var _signature = json_stringify([_compiled, global.start_pc, _owners, obj_opCodeManager.opcode_info]);
+@@ -674,7 +693,7 @@ function scr_show_code_build(_compiled) {
+                 if (array_length(_chunk[_ti]) <= 2) continue;
+                 var _tag = _chunk[_ti][2];
+                 if (!is_string(_tag) && _tag != noone && instance_exists(_tag))
+-                    _types[$ string(_tag)] = string(_tag.node_type);
++                    _types[$ string(_tag)] = string(_tag.node_type) + "|" + scr_show_code_owner_name(_tag);
+             }
+             var _key_state = variable_clone(_state);
+             // A real ORG sets its own PC; the preceding section's final PC
+@@ -1633,15 +1652,22 @@ function scr_show_code_draw() {
+                     _sign = "[-]";
+                 }
+ 
+-                var _gtitle = _sign + " " + _row.name;
++                var _gtail  = "";
+                 var _gcol   = make_color_rgb(255, 210, 80);
+                 if (_row.kind == "datagroup") {
+                     // Byte tables get their span in the title — the thing you
+                     // actually want to know about a data block you cannot see.
+-                    _gtitle = _sign + " " + _row.name + "  $" + scr_show_code_hex(_row.pc, 4)
++                    _gtail  = "  $" + scr_show_code_hex(_row.pc, 4)
+                             + "-$" + scr_show_code_hex(_row.pc + _row.count - 1, 4);
+                     _gcol   = make_color_rgb(180, 170, 210);
+                 }
++                // Block names are user text and can be long: trim the name (not
++                // the sign or the span) so the title stops short of the size
++                // column, or of the panel edge when the size isn't drawn.
++                var _gright = _px + _pw - 20;
++                if (_pw >= SHOWCODE_W_FULL) _gright -= string_width_l(string(_row.sz) + "B") + 8;
++                var _gname_w = _gright - (_col_byte + _indent) - string_width_l(_sign + " " + _gtail);
++                var _gtitle  = _sign + " " + scr_show_code_fit(_row.name, _gname_w) + _gtail;
+ 
+                 draw_set_color(make_color_rgb(150, 150, 160));
+                 draw_text_transformed_l(_col_addr + _indent, _ry, "." + scr_show_code_hex(_row.pc, 4), 1.0, 1.0, 0);
