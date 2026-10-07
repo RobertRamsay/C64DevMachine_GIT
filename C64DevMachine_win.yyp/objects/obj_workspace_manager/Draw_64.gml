@@ -613,6 +613,7 @@ if (gui_menu_open == 4) {
         { title: "SHOW CODE",       action: "SHOW_CODE"       },
         { title: "MINIMIZE ALL",    action: "MINIMIZE_ALL"    },
         { title: "EXPAND ALL",      action: "EXPAND_ALL"      },
+        { title: "NODE CACHE",      action: "NODE_CACHE"      },
         { title: "FLOW VIEW",    action: "FLOW_OVERLAY"    },
         { title: "FLOW TYPE",    action: "FLOW_LINE_STYLE" },
         { title: "PARAMS",       action: "PARAM_CARDS"     },
@@ -681,6 +682,10 @@ if (gui_menu_open == 4) {
         if (_op.action == "GRID") {
             _state_str = showGrid ? "ON" : "OFF";
             _state_col = showGrid ? c_lime : c_red;
+        }
+        if (_op.action == "NODE_CACHE") {
+            _state_str = global.node_cache_enabled ? "ON" : "OFF";
+            _state_col = global.node_cache_enabled ? c_lime : c_red;
         }
         if (_op.action == "EFFECTS") {
             _state_str = global.visual_fx ? "ON" : "OFF";
@@ -831,6 +836,9 @@ if (gui_menu_open == 4) {
             }
             else if (_op.action == "EXPAND_ALL") {
                 scr_org_set_all_collapsed(false);
+            }
+            else if (_op.action == "NODE_CACHE") {
+                global.node_cache_enabled = !global.node_cache_enabled;
             }
             else if (_op.action == "PARAM_CARDS") {
                 scr_creator_card_mode_cycle(_dir);

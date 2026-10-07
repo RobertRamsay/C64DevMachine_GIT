@@ -280,6 +280,12 @@ if (!variable_global_exists("ref_highlight_name"))   global.ref_highlight_name  
 
 // Display-string cache (section I header + section J opcode body)
 draw_cache_dirty  = true;
+// NODE IMAGE CACHE (scr_node_cache_begin / _end in scr_org_collapse)
+nc_surf      = -1;
+nc_key       = "";
+nc_ox        = 0;
+nc_oy        = 0;
+nc_rendering = false;
 draw_cache_sig    = "";
 draw_cache_lines  = [];   // structs: {prefix, val, suffix, implied, illegal, jump}
 hdr_cache_sig     = "";

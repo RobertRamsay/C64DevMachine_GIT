@@ -36,6 +36,9 @@ if (node_type == "COMMENT" && !global.comments_visible) exit;
 var _screen_h = height / _cam_zoom;
 var _screen_w = width / _cam_zoom;
 if (_screen_h < 3 || _screen_w < 4) exit;
+// NODE IMAGE CACHE (scr_org_collapse): blit the cached image and stop, or
+// capture this draw into it (scr_node_cache_end at every exit below).
+if (scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom)) exit;
 
 scr_perf_node("nd", "B latch fx");
 // =============================================================
@@ -929,7 +932,7 @@ var _label_edge_col = make_color_rgb(90,86,60)
 
 var _box_alpha = clamp(1.0 - (_cam_zoom - 2.5) / 0.75, 0, 1);
 _box_alpha *= global.idle_fade;
-if (_box_alpha < 0.1) { x -= x_indent; draw_set_alpha(1.0); exit; }
+if (_box_alpha < 0.1) { x -= x_indent; draw_set_alpha(1.0); scr_node_cache_end(); exit; }
 
 var _node_style = obj_workspace_manager.nodeStyle;
 // Node styles (6): 0 flat gradient, 1..n-2 tinted 9-slices, n-1 the handcrafted
@@ -2833,3 +2836,6 @@ if ((node_type == "ORG" || node_type == "INIT") && scr_org_has_children(id)) {
 // CREATOR PARAMS TAB (right side of macro / code block nodes, Pro only)
 // =============================================================
 scr_creator_draw_node_tab();
+
+// Finish a NODE IMAGE CACHE capture started near the top
+scr_node_cache_end();

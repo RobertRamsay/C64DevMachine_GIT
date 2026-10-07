@@ -191,6 +191,7 @@ scr_show_code_build(_compiled);
 // target that no longer exists (e.g. an imported sngNNN_play) in red.
 // The assembler also injects these at build, and KERNAL picks are names.
 global.known_labels = { sid_init: 1, sid_play: 1, sid_getin: 1, irq_hook_scroll: 1 };
+global.known_labels_gen = (variable_global_exists("known_labels_gen") ? global.known_labels_gen : 0) + 1;   // node image cache key
 var _krn_names = scr_kernal_routine_list();
 for (var _kni = 0; _kni < array_length(_krn_names); _kni++) global.known_labels[$ _krn_names[_kni].name] = 1;
 for (var _kli = 0; _kli < array_length(_compiled); _kli++) {
