@@ -298,8 +298,14 @@ function scr_org_collapse_hit() {
 
 // INIT is the movable anchor of the main spine, independent of room centre.
 function scr_init_anchor() {
+    // Every node's Step asks for this, so cache it for the frame: the scan
+    // made each frame O(nodes^2). Only a found INIT is cached.
+    static _tick   = -1;
+    static _cached = noone;
+    if (_tick == global.frame_tick && instance_exists(_cached)) return _cached;
     var _anchor = noone;
     with (obj_c64_node) if (node_type == "INIT") { _anchor = id; break; }
+    if (_anchor != noone) { _tick = global.frame_tick; _cached = _anchor; }
     return _anchor;
 }
 

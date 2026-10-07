@@ -1184,6 +1184,7 @@ _was_panning = false;
 // ---- PERF HUD (F11, scr_perf_hud) ----
 global.perf_on = false;
 global.perf    = undefined;
+global.nodes_quiet = false;   // set each Begin Step; read by the node Step fast exit
 
 // ---- IDLE SLEEP SYSTEM ----
 global.idle_active   = false;   // true once idle threshold passed

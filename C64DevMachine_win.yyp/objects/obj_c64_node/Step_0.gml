@@ -28,6 +28,26 @@ if (global.showcode_mouse_over && !is_dragging) exit;
 // a hidden node being interfered with in the empty space its parent leaves.
 if (scr_node_is_hidden(id)) exit;
 
+// QUIET NODE — on a frame with no click, release, wheel or key edge
+// (global.nodes_quiet, Begin Step), everything below is input-driven for a
+// node the pointer isn't over: hover timers, clicks, drags, pickers, keys.
+// What must still happen each frame stays on the full path: a height change
+// (D5 repack), first-frame setup, INIT, and the MACRO_SID / sid_exit
+// bookkeeping. Here only the "pointer is elsewhere" resets are repeated.
+if (global.nodes_quiet && node_ready && prev_height == height && rmb_flash <= 0
+&& !is_dragging && !label_picker_open && !comment_resizing
+&& node_type != "INIT" && node_type != "EXECUTE" && node_type != "MACRO_SID"
+&& !(node_type == "LABEL" && array_length(instructions) > 0 && array_length(instructions[0]) > 1
+     && string(instructions[0][1]) == "sid_exit")
+&& !(obj_workspace_manager.is_entering_text && obj_workspace_manager.input_target_node == id)
+&& !point_in_rectangle(mouse_x, mouse_y, x + x_indent - 24, y - 24, x + x_indent + width + 24, y + height + 24)) {
+    hover_timer           = 0;
+    tooltip_hover_timer   = 0;
+    label_picker_was_open = false;
+    if (obj_workspace_manager.node_tooltip_node == id) obj_workspace_manager.node_tooltip_node = noone;
+    exit;
+}
+
 // [WIRE THEM] — resolve a shared-predecessor pair by wiring left → right
 // (top → bottom breaks a tie). Falls back to the reverse direction when the
 // first ORG's output is already wired elsewhere.

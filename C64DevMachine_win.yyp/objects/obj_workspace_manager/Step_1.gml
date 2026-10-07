@@ -19,6 +19,15 @@ with (obj_c64_node) {
     if (is_dragging) { global.any_node_dragging = true; break; }
 }
 
+// Quiet frame: no button, wheel or key edge and nothing being dragged or
+// picked. On such a frame a node the pointer isn't over has nothing to react
+// to, and obj_c64_node Step takes its fast exit (see "QUIET NODE" there).
+global.nodes_quiet = !(mouse_check_button_pressed(mb_any) || mouse_check_button_released(mb_any)
+                    || mouse_wheel_up() || mouse_wheel_down()
+                    || keyboard_check_pressed(vk_anykey) || keyboard_check_released(vk_anykey))
+                  && !global.any_node_dragging && !global.group_drag_active
+                  && !instance_exists(global.wire_drag_node) && !global.any_picker_open;
+
 global.gui_mouse_x = device_mouse_x_to_gui(0);
 global.gui_mouse_y = device_mouse_y_to_gui(0);
 global.gui_w       = display_get_gui_width();
