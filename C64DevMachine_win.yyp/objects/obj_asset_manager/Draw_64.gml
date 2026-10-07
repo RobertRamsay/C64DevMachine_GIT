@@ -1,3 +1,4 @@
+scr_perf_node("gui", "(asset mgr)");
 /// @desc obj_asset_manager Draw GUI
 
 // Deferred charset preview rebuild (see scr_chr_preview_request)

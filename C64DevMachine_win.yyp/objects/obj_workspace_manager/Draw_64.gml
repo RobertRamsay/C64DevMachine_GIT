@@ -55,6 +55,7 @@ if (showPaletteHelper && !global.creator_dock.on) {
 
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: box select");
 ///// -1. BOX SELECT OVERLAY
 /////////////////////////////////////////////////////////////////
 if (box_select_active) {
@@ -138,6 +139,7 @@ if (array_length(global.selected_nodes) > 0) {
 
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: box drag preview");
 ///// 0. MAPPING BOX DRAG CURSOR + LIVE PREVIEW (TOPMOST)
 /////////////////////////////////////////////////////////////////
 if (global.box_drag_active) {
@@ -232,6 +234,7 @@ draw_sprite(spr_logobadge,badgeStyle,6,5)
 if (!scr_shelf_hidden()) {
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: opcode finder");
 ///// OPCODE FINDER BOX
 /////////////////////////////////////////////////////////////////
 var _finder_x1 = 53;
@@ -508,6 +511,7 @@ if (opcode_helper_on) {
     }
 }
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: opcode shelf");
 ///// 1. OPCODE SHELF (PAGING SYSTEM) ON TOP : PAGE
 /////////////////////////////////////////////////////////////////
 
@@ -580,6 +584,7 @@ if (shelf_page < p_count - 1) {
 /////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: menu bar + dropdowns");
 ///// MENU BAR
 /////////////////////////////////////////////////////////////////
 
@@ -1934,6 +1939,7 @@ if (opcode_helper_on && opcode_hover_key != "" && opcode_hover_timer >= opcode_h
 }
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: show code panel");
 ///// 1.9 SHOW CODE PANEL (floating, left of the shortcuts column)
 /////////////////////////////////////////////////////////////////
 // Draws before the shortcuts so the shortcuts column always wins any
@@ -1951,6 +1957,7 @@ scr_cbc_draw_button();
 scr_code_import_draw_banner();
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: shortcuts column");
 ///// 2. GLOBAL SHORTCUTS (TOP RIGHT)
 /////////////////////////////////////////////////////////////////
 var sc_x_end   = gui_w - 2;
@@ -2255,6 +2262,7 @@ case "TOGGLE AUTOSAVE MODE":
 
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: footer + logo");
 ///// 3. FOOTER & LOGO
 /////////////////////////////////////////////////////////////////
 draw_set_halign(fa_left);
@@ -2414,6 +2422,7 @@ if (gui_menu_open == -1) {
 }
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: memory bar");
 ///// 3B+3C. MEMORY MAP + WRITE ORDER BAR
 /////////////////////////////////////////////////////////////////
 
@@ -2424,6 +2433,7 @@ scr_draw_memory_bar(_bar_x1, _bar_x2, gui_h - 40);
  scr_code_editor_draw();
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: modals + code editor");
 ///// 4. DYNAMIC MODALS (EDITING & QUIT)
 /////////////////////////////////////////////////////////////////
 // A COMMENT is typed on the node itself now, so the centre-screen modal is
@@ -2565,6 +2575,7 @@ if (readyToQuit == 1) {
 }
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: perf monitor");
 ///// 5. PERFORMANCE MONITOR (BOTTOM LEFT)
 /////////////////////////////////////////////////////////////////
 draw_set_font_l(fnt_c64_tiny);
@@ -2675,6 +2686,7 @@ draw_set_valign(fa_top);
 draw_set_halign(fa_left);
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: breakdown overlay");
 ///// 6. MACRO BREAKDOWN OVERLAY
 /////////////////////////////////////////////////////////////////
 if (instance_exists(global.breakdown_node)) {
@@ -2858,6 +2870,7 @@ if (instance_exists(global.breakdown_node)) {
 
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: macro info overlay");
 ///// 7. DYNAMIC MACRO INFO OVERLAY (MONITOR STYLE)
 // Scrollable via mousewheel or UP/DOWN arrows when open.
 // Scroll state lives in info_scroll_offset on obj_workspace_manager.
@@ -3664,6 +3677,7 @@ if (global.show_info_window && instance_exists(global.info_node)) {
 	}
 	
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: helper overlay");
 ///// 8. HELPER OVERLAY
 /////////////////////////////////////////////////////////////////
 if (global.show_helper_window && instance_exists(global.helper_node)) {
