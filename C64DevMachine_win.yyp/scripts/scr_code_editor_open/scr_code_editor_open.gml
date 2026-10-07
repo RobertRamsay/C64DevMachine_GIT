@@ -7,6 +7,7 @@ function scr_code_editor_open(_node) {
         code_editor_open      = true;
         code_editor_node      = _node;
         code_editor_text      = string(_node.instructions[0][1]);
+        code_editor_open_text = code_editor_text;   // close compares against this (the node is live-synced while typing)
         code_editor_cursor    = string_length(code_editor_text);
         code_editor_sel_start = -1;
         code_editor_sel_end   = -1;

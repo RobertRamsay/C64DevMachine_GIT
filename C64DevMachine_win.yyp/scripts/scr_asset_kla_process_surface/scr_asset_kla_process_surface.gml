@@ -4,6 +4,8 @@
 ///       HiRes allows exactly 2 colours total per cell, both cell-local.
 
 function scr_asset_kla_process_surface(_asset, _do_cleanup, _old_bg) {
+    // A cache-loaded preview has no bg_mask / HiRes roles yet
+    scr_asset_bmp_ensure_decoded(_asset);
     if (!variable_struct_exists(_asset.meta, "preview_surf") || !surface_exists(_asset.meta.preview_surf)) return;
     if (!variable_struct_exists(_asset.meta, "clash_grid")) _asset.meta.clash_grid = array_create(1000, false);
     if (!variable_struct_exists(_asset.meta, "bg_mask")) _asset.meta.bg_mask = array_create(64000, 0); 

@@ -310,6 +310,7 @@ scan_speed = 10; // Speed of the downward scan
 code_editor_open      = false;
 code_editor_node      = noone;
 code_editor_text      = "";
+code_editor_open_text = "";   // text when the editor opened (scr_code_editor_close)
 code_editor_cursor    = 0;
 code_editor_sel_start = -1;
 code_editor_sel_end   = -1;
