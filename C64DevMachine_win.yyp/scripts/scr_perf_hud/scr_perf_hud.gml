@@ -26,6 +26,7 @@ function scr_perf_reset_acc(_p) {
     _p.gui_cnt    = {};
     _p.nd_acc     = {};
     _p.nd_cnt     = {};
+    _p.nc_cnt     = {};
 }
 
 function scr_perf_init() {
@@ -83,7 +84,8 @@ function scr_perf_mark(_phase) {
                             step_rows: scr_perf_rows(_p.step_acc, _p.step_cnt, _f),
                             draw_rows: scr_perf_rows(_p.draw_acc, _p.draw_cnt, _f),
                             gui_rows: scr_perf_rows(_p.gui_acc, _p.gui_cnt, _f),
-                            nd_rows: scr_perf_rows(_p.nd_acc, _p.nd_cnt, _f) };
+                            nd_rows: scr_perf_rows(_p.nd_acc, _p.nd_cnt, _f),
+                            nc_cnt: _p.nc_cnt, frames: _f };
                 scr_perf_reset_acc(_p);
                 _p.sec_t0 = _t;
             }
@@ -161,14 +163,33 @@ function scr_perf_draw() {
             array_push(_lines, "  " + string_copy(_r.name + "                    ", 1, 18)
                 + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
         }
+        // Node image cache: what each drawn node did, per frame
+        var _ncn = variable_struct_get_names(_s.nc_cnt);
+        array_sort(_ncn, true);
+        array_push(_lines, "", "NODE CACHE (per frame)");
+        for (var _i = 0; _i < array_length(_ncn); _i++) {
+            array_push(_lines, "  " + string_copy(_ncn[_i] + "                          ", 1, 24)
+                + string_format(_s.nc_cnt[$ _ncn[_i]] / _s.frames, 3, 1));
+        }
+        if (variable_global_exists("nc_last_old")) {
+            // First part of the key that differed on the last re-capture
+            var _ko = string_split(global.nc_last_old, "|");
+            var _kn = string_split(global.nc_last_new, "|");
+            for (var _k = 0; _k < min(array_length(_ko), array_length(_kn)); _k++) {
+                if (_ko[_k] != _kn[_k]) {
+                    array_push(_lines, "  key part " + string(_k) + ": " + string_copy(_ko[_k], 1, 30) + " -> " + string_copy(_kn[_k], 1, 30));
+                    break;
+                }
+            }
+        }
         array_push(_lines, "", "NODE DRAW by section  ms/frame  calls");
-        for (var _i = 0; _i < min(12, array_length(_s.nd_rows)); _i++) {
+        for (var _i = 0; _i < min(8, array_length(_s.nd_rows)); _i++) {
             var _r = _s.nd_rows[_i];
             array_push(_lines, "  " + string_copy(_r.name + "                          ", 1, 24)
                 + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
         }
         array_push(_lines, "", "GUI by section    ms/frame  calls");
-        for (var _i = 0; _i < min(12, array_length(_s.gui_rows)); _i++) {
+        for (var _i = 0; _i < min(6, array_length(_s.gui_rows)); _i++) {
             var _r = _s.gui_rows[_i];
             array_push(_lines, "  " + string_copy(_r.name + "                          ", 1, 24)
                 + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
@@ -190,4 +211,11 @@ function scr_perf_draw() {
         draw_set_color(_i == 0 ? c_yellow : c_white);
         draw_text(_x, _y + _i * _lh, _lines[_i]);
     }
+}
+
+/// NODE IMAGE CACHE outcome for one node this frame (hit / capture / why live).
+function scr_node_cache_stat(_what) {
+    if (!global.perf_on || !is_struct(global.perf)) return;
+    var _c = global.perf.nc_cnt;
+    _c[$ _what] = (_c[$ _what] ?? 0) + 1;
 }
