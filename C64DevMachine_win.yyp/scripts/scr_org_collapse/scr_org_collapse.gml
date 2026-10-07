@@ -367,6 +367,20 @@ function scr_focus_init(_record_undo = true) {
     }
 }
 
+/// OPTIONS > MINIMIZE ALL / EXPAND ALL: fold or unfold SYSTEM INIT and every
+/// ORG (code and VARIABLES alike) that has a fold tab. Folded blocks draw
+/// only their header, which is the point on a large project.
+function scr_org_set_all_collapsed(_collapsed) {
+    var _anchors = [];
+    with (obj_c64_node) {
+        if (node_type != "ORG" && node_type != "INIT") continue;
+        if (collapsed == _collapsed || !scr_org_has_children(id)) continue;
+        array_push(_anchors, id);
+    }
+    for (var _i = 0; _i < array_length(_anchors); _i++) scr_org_set_collapsed(_anchors[_i], _collapsed);
+    return array_length(_anchors);
+}
+
 /// Folding changes which cached bodies participate in the visible layout.
 function scr_org_set_collapsed(_anchor, _collapsed) {
     _anchor.collapsed = _collapsed;
