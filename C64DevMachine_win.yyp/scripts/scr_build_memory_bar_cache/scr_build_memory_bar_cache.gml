@@ -1014,6 +1014,8 @@ var _addr_total = 65536;
     scr_workspace_usage_refresh(_segments);
     global.memory_bar_conflicts = _conflicts;
     global.memory_bar_dirty     = false;
+    // Bumped on every rebuild: the memory bar's cached image keys on it
+    global.memory_bar_gen = (variable_global_exists("memory_bar_gen") ? global.memory_bar_gen : 0) + 1;
     ds_map_destroy(_runtime_assets);
 }
 

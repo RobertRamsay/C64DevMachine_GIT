@@ -611,6 +611,8 @@ if (gui_menu_open == 4) {
         { title: "EFFECTS",         action: "EFFECTS"         },
         { title: "COMMENTS",        action: "COMMENTS"        },
         { title: "SHOW CODE",       action: "SHOW_CODE"       },
+        { title: "MINIMIZE ALL",    action: "MINIMIZE_ALL"    },
+        { title: "EXPAND ALL",      action: "EXPAND_ALL"      },
         { title: "FLOW VIEW",    action: "FLOW_OVERLAY"    },
         { title: "FLOW TYPE",    action: "FLOW_LINE_STYLE" },
         { title: "PARAMS",       action: "PARAM_CARDS"     },
@@ -823,6 +825,12 @@ if (gui_menu_open == 4) {
             }
             else if (_op.action == "GRID") {
                 showGrid = !showGrid;
+            }
+            else if (_op.action == "MINIMIZE_ALL") {
+                scr_org_set_all_collapsed(true);
+            }
+            else if (_op.action == "EXPAND_ALL") {
+                scr_org_set_all_collapsed(false);
             }
             else if (_op.action == "PARAM_CARDS") {
                 scr_creator_card_mode_cycle(_dir);

@@ -14,16 +14,72 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         _labels_visible = true;
     }
 
-    draw_sprite_ext(spr_baseGradient, 0,
-        0, _y + _map_h + 25,
-        1920/sprite_get_width(spr_baseGradient), 1.6, 0, c_white, 1);
-
     // Display-only zoom: allocations and conflict detection retain real addresses.
-    scr_memory_bar_bank_controls(_x1 - 30, _y - 12);
     var _view = scr_memory_bar_bank_range(global.memory_bar_bank_mode, global.memory_bar_bank_index);
     var _view_start = _view.start;
     var _view_end = _view.finish;
     var _addr_total = _view_end - _view_start;
+
+    // -------------------------------------------------------
+    // USE CACHED SEGMENTS & CONFLICTS
+    // Rebuilt by scr_build_memory_bar_cache() which is called
+    // at the end of scr_c64_do_update_addresses().
+    // -------------------------------------------------------
+    scr_perf_node("gui", "mb: cache rebuild");
+    if (global.memory_bar_dirty) {
+        scr_build_memory_bar_cache();
+    }
+    var _segments  = global.memory_bar_segments;
+    var _conflicts = global.memory_bar_conflicts;
+    var _seg_total = array_length(_segments);
+
+    // -------------------------------------------------------
+    // CACHED IMAGE
+    // Everything that only changes with the memory layout (bar, zones,
+    // brackets, segments, conflict labels, block / region labels) is drawn
+    // into a GUI-sized surface and only redrawn when its inputs change:
+    // a cache rebuild (memory_bar_gen), the bank view, the region labels
+    // showing, BASIC / KERNAL lock state, the bar geometry or the language.
+    // Hover, pulse, the bank buttons, clicks and the popup stay per frame.
+    // This drawing was ~19 ms a frame on a large project.
+    // -------------------------------------------------------
+    var _gw = display_get_gui_width();
+    var _gh = display_get_gui_height();
+    var _chain_key = "";
+    if (!ds_list_empty(global.node_chain)) {
+        var _ck_first = ds_list_find_value(global.node_chain, 0);
+        var _ck_last  = ds_list_find_value(global.node_chain, ds_list_size(global.node_chain) - 1);
+        if (instance_exists(_ck_first) && instance_exists(_ck_last))
+            _chain_key = string(_ck_first.pc_address) + ":" + string(_ck_last.pc_address + _ck_last.total_node_size);
+    }
+    if (!variable_global_exists("memory_bar_gen")) global.memory_bar_gen = 0;
+    var _mb_key = string(global.memory_bar_gen) + "|" + string(_x1) + "|" + string(_x2) + "|" + string(_y)
+                + "|" + string(_view_start) + "|" + string(_view_end) + "|" + string(_labels_visible)
+                + "|" + string(global.basic_unlocked) + "|" + string(global.kernal_unlocked)
+                + "|" + _chain_key + "|" + string(variable_global_exists("ignored_conflicts") ? array_length(global.ignored_conflicts) : 0)
+                + "|" + string(global.lang) + "|" + string(_gw) + "x" + string(_gh);
+    if (!variable_global_exists("memory_bar_surf")) {
+        global.memory_bar_surf           = -1;
+        global.memory_bar_surf_key       = "";
+        global.memory_bar_conflict_boxes = [];
+    }
+    if (surface_exists(global.memory_bar_surf)
+    && (surface_get_width(global.memory_bar_surf) != _gw || surface_get_height(global.memory_bar_surf) != _gh)) {
+        surface_free(global.memory_bar_surf);
+    }
+    var _mb_rebuild = !surface_exists(global.memory_bar_surf) || global.memory_bar_surf_key != _mb_key;
+    if (_mb_rebuild) {
+    if (!surface_exists(global.memory_bar_surf)) global.memory_bar_surf = surface_create(_gw, _gh);
+    global.memory_bar_surf_key       = _mb_key;
+    global.memory_bar_conflict_boxes = [];
+    surface_set_target(global.memory_bar_surf);
+    draw_clear_alpha(c_black, 0);
+    // Accumulate alpha correctly on a transparent target; blitted premultiplied below.
+    gpu_set_blendmode_ext_sepalpha(bm_src_alpha, bm_inv_src_alpha, bm_one, bm_inv_src_alpha);
+
+    draw_sprite_ext(spr_baseGradient, 0,
+        0, _y + _map_h + 25,
+        1920/sprite_get_width(spr_baseGradient), 1.6, 0, c_white, 1);
 
 
     // --- DANGER ZONES ---
@@ -104,19 +160,6 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         }
     }
 
-// -------------------------------------------------------
-    // USE CACHED SEGMENTS & CONFLICTS
-    // Rebuilt by scr_build_memory_bar_cache() which is called
-    // at the end of scr_c64_do_update_addresses().
-    // -------------------------------------------------------
-    scr_perf_node("gui", "mb: cache rebuild");
-    if (global.memory_bar_dirty) {
-        scr_build_memory_bar_cache();
-    }
-    var _segments  = global.memory_bar_segments;
-    var _conflicts = global.memory_bar_conflicts;
-    var _seg_total = array_length(_segments);
-
     // -------------------------------------------------------
     scr_perf_node("gui", "mb: vic brackets");
     // VIC BANK BRACKETS
@@ -184,7 +227,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         var _cx2    = scr_memory_bar_address_x(_cf.finish, _x1, _map_w, _view_start, _addr_total);
         var _cx_mid = (_cx1 + _cx2) / 2;
 
-        draw_set_alpha(0.5 + (0.4 * _pulse));
+        draw_set_alpha(0.7);   // cached: the label rings carry the pulse
         draw_set_color(c_yellow);
         draw_rectangle(_cx1, _y, _cx2, _y + _map_h, false);
         draw_set_alpha(1.0);
@@ -305,12 +348,9 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         var _lbx2 = _start_x + _total_w + _pad;
         var _lby2 = _text_y  + _lh - 2;
 
-        var _ring_pulse = 0.3 + (0.3 * _pulse);
-        for (var _ri = 4; _ri >= 1; _ri--) {
-            draw_set_alpha(_ring_pulse * (_ri / 4));
-            draw_set_color(make_color_rgb(200, 40, 40));
-            draw_rectangle(_lbx1 - _ri * 2, _lby1 - _ri * 2, _lbx2 + _ri * 2, _lby2 + _ri * 2, true);
-        }
+        // The pulsing rings and the click test run per frame from this box
+        array_push(global.memory_bar_conflict_boxes, { x1: _lbx1, y1: _lby1, x2: _lbx2, y2: _lby2,
+                                                       start: _cf.start, finish: _cf.finish });
         draw_set_alpha(1.0);
         draw_set_color(c_black);
         draw_rectangle(_lbx1, _lby1, _lbx2, _lby2, false);
@@ -327,58 +367,6 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             draw_text_l(_px2 + string_width_l(_str_part2), _text_y - 6, _str_part3);
         }
 
-        // CLICK DETECTION: open conflict-options popup on label click
-        if (!global.conflict_popup_open &&
-            scr_workspace_mouse_check_button_pressed(mb_left) &&
-            point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y, _lbx1, _lby1, _lbx2, _lby2)) {
-
-            // Find the two distinct *container* owners (INIT BLOCK / ORG aggregate)
-            // inside this conflict range. Skip per-instruction children — they all
-            // sit at the same world position as the parent ORG and would make
-            // "Go Right" useless. Two-pass: containers first, fall back to any
-            // owner if no container is present.
-            var _owner_a = noone;
-            var _owner_b = noone;
-            var _asset_a_name = "";
-            var _asset_b_name = "";
-
-            for (var _pass = 0; _pass < 2; _pass++) {
-                for (var _osi = 0; _osi < _seg_total; _osi++) {
-                    var _oseg = _segments[_osi];
-                    if (!_oseg.conflict) continue;
-                    if (_oseg.addr > _cf.finish || (_oseg.addr + _oseg.size) < _cf.start) continue;
-
-                    // Asset segments have node_id = noone — track them separately
-                    // so the popup can show an "asset clash" notice rather than
-                    // a broken Go-Left / Go-Right pair.
-                    if (_oseg.node_id == noone) {
-                        if (_asset_a_name == "") _asset_a_name = _oseg.name;
-                        else if (_oseg.name != _asset_a_name && _asset_b_name == "") _asset_b_name = _oseg.name;
-                        continue;
-                    }
-                    if (!instance_exists(_oseg.node_id)) continue;
-
-                    var _is_container = (string_pos("INIT BLOCK", _oseg.name) > 0 ||
-                                         string_pos(" AT $",      _oseg.name) > 0);
-                    if (_pass == 0 && !_is_container) continue;
-                    if (_pass == 1 &&  _is_container) continue;
-
-                    if (_owner_a == noone) { _owner_a = _oseg.node_id; continue; }
-                    if (_oseg.node_id != _owner_a) { _owner_b = _oseg.node_id; break; }
-                }
-                if (_owner_a != noone && _owner_b != noone) break;
-            }
-
-            global.conflict_popup_open        = true;
-            global.conflict_popup_x           = global.gui_mouse_x;
-            global.conflict_popup_y           = global.gui_mouse_y;
-            global.conflict_popup_owner_a     = _owner_a;
-            global.conflict_popup_owner_b     = _owner_b;
-            global.conflict_popup_asset_a     = _asset_a_name;
-            global.conflict_popup_asset_b     = _asset_b_name;
-            global.conflict_popup_range_start = _cf.start;
-            global.conflict_popup_range_end   = _cf.finish;
-        }
     }
     draw_set_alpha(1.0);
 
@@ -390,37 +378,6 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     // are pulled into RAM on demand by MACRO_LOADER — they share the
     // address with whatever is currently resident there.
     // -------------------------------------------------------
-    var _bar_mx       = global.gui_mouse_x;
-    var _bar_my       = global.gui_mouse_y;
-    var _bar_hovered  = point_in_rectangle(_bar_mx, _bar_my, _x1, _y, _x2, _y + _map_h);
-    var _hover_addr   = -1;
-    var _hover_seg_i  = -1;
-    var _hover_seg    = noone;
-
-    if (_bar_hovered) {
-        _hover_addr = scr_memory_bar_pixel_address(_bar_mx, _x1, _map_w, _view_start, _addr_total);
-
-        // Later segments are painted over earlier ones, so search backwards and
-        // report exactly the allocation the pointer appears to be resting on.
-        for (var _hsi = _seg_total - 1; _hsi >= 0; _hsi--) {
-            var _hs = _segments[_hsi];
-            if (_hover_addr >= _hs.addr && _hover_addr < _hs.addr + max(1, _hs.size)) {
-                _hover_seg_i = _hsi;
-                _hover_seg   = _hs;
-                break;
-            }
-        }
-
-        if (is_struct(_hover_seg)) {
-            if (variable_struct_exists(_hover_seg, "node_id") &&
-                instance_exists(_hover_seg.node_id)) {
-                global.memory_bar_hover_node = _hover_seg.node_id;
-            } else if (variable_struct_exists(_hover_seg, "asset_index")) {
-                global.memory_bar_hover_asset = _hover_seg.asset_index;
-            }
-        }
-    }
-
     for (var _si = 0; _si < _seg_total; _si++) {
         var _seg = _segments[_si];
         if (_seg.addr >= _view_end || _seg.addr + _seg.size <= _view_start) continue;
@@ -443,11 +400,6 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             draw_rectangle(_sx1, _y, _sx2, _y + _map_h, false);
         }
 
-        if (_si == _hover_seg_i) {
-            draw_set_alpha(1.0);
-            draw_set_color(c_white);
-            draw_rectangle(_sx1 - 1, _y - 2, _sx2 + 1, _y + _map_h + 2, true);
-        }
     }
 
     // Second pass: draw DISK tag labels above ghosted segments so they
@@ -521,17 +473,6 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             draw_rectangle(_dsx1, _stripe_y, _dsx2, _stripe_y + _stripe_h, false);
             draw_set_alpha(1.0);
 
-            if (point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y, _dsx1, _stripe_y - 20, _dsx2, _stripe_y + _stripe_h)) {
-                draw_set_font_l(fnt_c64_tiny);
-                draw_set_halign(fa_left);
-                var _addr_lo_hex = string_upper(decimal_to_hex(_ds2.addr));
-                while (string_length(_addr_lo_hex) < 4) _addr_lo_hex = "0" + _addr_lo_hex;
-                var _addr_hi_hex = string_upper(decimal_to_hex(_ds2.addr + _ds2.size - 1));
-                while (string_length(_addr_hi_hex) < 4) _addr_hi_hex = "0" + _addr_hi_hex;
-                var _stripe_label = _ds2.load_org_name + " : " + _ds2.name + " AT $" + _addr_lo_hex + "-$" + _addr_hi_hex;
-                draw_set_color(make_color_rgb(255, 220, 50));
-                draw_text_l(_dsx1, _stripe_y - string_height(_stripe_label) - 1, _stripe_label);
-            }
         }
     }
 
@@ -612,6 +553,101 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
             var _ptr_hex = "$" + string_upper(decimal_to_hex(_ptr_base));
             draw_set_color(make_color_rgb(255, 250, 80));
             draw_text_l(_px1 + 2, _y - 18, _ptr_hex + " SPR PTRS");
+        }
+    }
+
+    draw_set_alpha(1.0);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
+    gpu_set_blendmode(bm_normal);
+    surface_reset_target();
+    } // end cached image rebuild
+
+    // Premultiplied: the surface already carries its own alpha.
+    gpu_set_blendmode_ext(bm_one, bm_inv_src_alpha);
+    draw_surface(global.memory_bar_surf, 0, 0);
+    gpu_set_blendmode(bm_normal);
+    scr_perf_node("gui", "mb: per-frame (hover, buttons)");
+
+    scr_memory_bar_bank_controls(_x1 - 30, _y - 12);
+
+    // Conflict label rings pulse; a click opens the options popup
+    var _boxes = global.memory_bar_conflict_boxes;
+    draw_set_color(make_color_rgb(200, 40, 40));
+    for (var _bi = 0; _bi < array_length(_boxes); _bi++) {
+        var _cb = _boxes[_bi];
+        var _ring_pulse = 0.3 + (0.3 * _pulse);
+        for (var _ri = 4; _ri >= 1; _ri--) {
+            draw_set_alpha(_ring_pulse * (_ri / 4));
+            draw_rectangle(_cb.x1 - _ri * 2, _cb.y1 - _ri * 2, _cb.x2 + _ri * 2, _cb.y2 + _ri * 2, true);
+        }
+        if (!global.conflict_popup_open && scr_workspace_mouse_check_button_pressed(mb_left)
+        && point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y, _cb.x1, _cb.y1, _cb.x2, _cb.y2)) {
+            scr_memory_bar_conflict_click(_cb);
+        }
+    }
+    draw_set_alpha(1.0);
+
+    // Segment under the pointer: report it to nodes / asset list, outline it
+    var _bar_mx       = global.gui_mouse_x;
+    var _bar_my       = global.gui_mouse_y;
+    var _bar_hovered  = point_in_rectangle(_bar_mx, _bar_my, _x1, _y, _x2, _y + _map_h);
+    var _hover_addr   = -1;
+    var _hover_seg_i  = -1;
+    var _hover_seg    = noone;
+
+    if (_bar_hovered) {
+        _hover_addr = scr_memory_bar_pixel_address(_bar_mx, _x1, _map_w, _view_start, _addr_total);
+
+        // Later segments are painted over earlier ones, so search backwards and
+        // report exactly the allocation the pointer appears to be resting on.
+        for (var _hsi = _seg_total - 1; _hsi >= 0; _hsi--) {
+            var _hs = _segments[_hsi];
+            if (_hover_addr >= _hs.addr && _hover_addr < _hs.addr + max(1, _hs.size)) {
+                _hover_seg_i = _hsi;
+                _hover_seg   = _hs;
+                break;
+            }
+        }
+
+        if (is_struct(_hover_seg)) {
+            if (variable_struct_exists(_hover_seg, "node_id") &&
+                instance_exists(_hover_seg.node_id)) {
+                global.memory_bar_hover_node = _hover_seg.node_id;
+            } else if (variable_struct_exists(_hover_seg, "asset_index")) {
+                global.memory_bar_hover_asset = _hover_seg.asset_index;
+            }
+        }
+    }
+    if (_hover_seg_i >= 0) {
+        var _hsx1 = scr_memory_bar_address_x(max(_hover_seg.addr, _view_start), _x1, _map_w, _view_start, _addr_total);
+        var _hsx2 = scr_memory_bar_address_x(min(_hover_seg.addr + _hover_seg.size, _view_end), _x1, _map_w, _view_start, _addr_total);
+        if (_hsx2 - _hsx1 < 2) _hsx2 = min(_x2, _hsx1 + 2);
+        draw_set_color(c_white);
+        draw_rectangle(_hsx1 - 1, _y - 2, _hsx2 + 1, _y + _map_h + 2, true);
+    }
+
+    // Disk stripe: name the LOAD_ORG asset under the pointer
+    if (variable_global_exists("memory_bar_disk_assets")) {
+        var _stripe_y = _y + _map_h + 2;
+        var _stripe_h = 3;
+        for (var _dsi = 0; _dsi < array_length(global.memory_bar_disk_assets); _dsi++) {
+            var _ds2 = global.memory_bar_disk_assets[_dsi];
+            if (_ds2.addr >= _view_end || _ds2.addr + _ds2.size <= _view_start) continue;
+            var _dsx1 = scr_memory_bar_address_x(_ds2.addr, _x1, _map_w, _view_start, _addr_total);
+            var _dsx2 = scr_memory_bar_address_x(_ds2.addr + _ds2.size, _x1, _map_w, _view_start, _addr_total);
+            if (_dsx2 - _dsx1 < 2) { _dsx2 = min(_x2, _dsx1 + 2); }
+            if (point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y, _dsx1, _stripe_y - 20, _dsx2, _stripe_y + _stripe_h)) {
+                draw_set_font_l(fnt_c64_tiny);
+                draw_set_halign(fa_left);
+                var _addr_lo_hex = string_upper(decimal_to_hex(_ds2.addr));
+                while (string_length(_addr_lo_hex) < 4) _addr_lo_hex = "0" + _addr_lo_hex;
+                var _addr_hi_hex = string_upper(decimal_to_hex(_ds2.addr + _ds2.size - 1));
+                while (string_length(_addr_hi_hex) < 4) _addr_hi_hex = "0" + _addr_hi_hex;
+                var _stripe_label = _ds2.load_org_name + " : " + _ds2.name + " AT $" + _addr_lo_hex + "-$" + _addr_hi_hex;
+                draw_set_color(make_color_rgb(255, 220, 50));
+                draw_text_l(_dsx1, _stripe_y - string_height(_stripe_label) - 1, _stripe_label);
+            }
         }
     }
 
@@ -888,4 +924,58 @@ function scr_memory_bar_open_segment(_segment) {
         return true;
     }
     return false;
+}
+
+/// Conflict label clicked: find the two owners in its range and open the
+/// options popup. _cf = {start, finish}. Was inline in the label loop; it
+/// runs on the click only, now that the labels themselves are cached.
+function scr_memory_bar_conflict_click(_cf) {
+    var _segments  = global.memory_bar_segments;
+    var _seg_total = array_length(_segments);
+    // Find the two distinct *container* owners (INIT BLOCK / ORG aggregate)
+    // inside this conflict range. Skip per-instruction children — they all
+    // sit at the same world position as the parent ORG and would make
+    // "Go Right" useless. Two-pass: containers first, fall back to any
+    // owner if no container is present.
+    var _owner_a = noone;
+    var _owner_b = noone;
+    var _asset_a_name = "";
+    var _asset_b_name = "";
+
+    for (var _pass = 0; _pass < 2; _pass++) {
+        for (var _osi = 0; _osi < _seg_total; _osi++) {
+            var _oseg = _segments[_osi];
+            if (!_oseg.conflict) continue;
+            if (_oseg.addr > _cf.finish || (_oseg.addr + _oseg.size) < _cf.start) continue;
+
+            // Asset segments have node_id = noone — track them separately
+            // so the popup can show an "asset clash" notice rather than
+            // a broken Go-Left / Go-Right pair.
+            if (_oseg.node_id == noone) {
+                if (_asset_a_name == "") _asset_a_name = _oseg.name;
+                else if (_oseg.name != _asset_a_name && _asset_b_name == "") _asset_b_name = _oseg.name;
+                continue;
+            }
+            if (!instance_exists(_oseg.node_id)) continue;
+
+            var _is_container = (string_pos("INIT BLOCK", _oseg.name) > 0 ||
+                                 string_pos(" AT $",      _oseg.name) > 0);
+            if (_pass == 0 && !_is_container) continue;
+            if (_pass == 1 &&  _is_container) continue;
+
+            if (_owner_a == noone) { _owner_a = _oseg.node_id; continue; }
+            if (_oseg.node_id != _owner_a) { _owner_b = _oseg.node_id; break; }
+        }
+        if (_owner_a != noone && _owner_b != noone) break;
+    }
+
+    global.conflict_popup_open        = true;
+    global.conflict_popup_x           = global.gui_mouse_x;
+    global.conflict_popup_y           = global.gui_mouse_y;
+    global.conflict_popup_owner_a     = _owner_a;
+    global.conflict_popup_owner_b     = _owner_b;
+    global.conflict_popup_asset_a     = _asset_a_name;
+    global.conflict_popup_asset_b     = _asset_b_name;
+    global.conflict_popup_range_start = _cf.start;
+    global.conflict_popup_range_end   = _cf.finish;
 }
