@@ -3065,12 +3065,26 @@ for (var i = 0; i < array_length(final_code); i++) {
 // Reset for pass 2
 p.bytes     = [];
 p.fixups    = _p1_fixups_save;
-p.pc_override = -1; 
+p.pc_override = -1;
+p.label_seen  = {};
 
 // Pass 2: emit all instructions with labels already resolved
 for (var i = 0; i < array_length(final_code); i++) {
     var _fc_mnem = string_lower(final_code[i][0]);
     if (_fc_mnem == "_line_map_" || _fc_mnem == "const") continue;
+    // Where an assembler error points: owning node, plus the MACRO_CODE
+    // source line when the compile chain tagged one ([4]).
+    var _fc_e = final_code[i];
+    p.err_node  = noone;
+    p.err_where = "";
+    if (array_length(_fc_e) > 2 && !is_string(_fc_e[2]) && !is_array(_fc_e[2]) && !is_struct(_fc_e[2])
+    && instance_exists(_fc_e[2]) && _fc_e[2].object_index == obj_c64_node) {
+        p.err_node  = _fc_e[2];
+        p.err_where = (p.err_node.custom_title != "") ? p.err_node.custom_title : p.err_node.node_title;
+    }
+    if (array_length(_fc_e) > 4 && is_real(_fc_e[4]) && _fc_e[4] > 0) {
+        p.err_where += ((p.err_where != "") ? " " : "") + "line " + string(_fc_e[4]);
+    }
     if (array_length(final_code[i]) < 2) {
         show_debug_message("BARE INSTRUCTION (no operand): [" + _fc_mnem + "] at index " + string(i));
         p.assemble_instruction(_fc_mnem, 0);
@@ -3086,6 +3100,21 @@ for (var _fi = 0; _fi < array_length(p.fixups); _fi++) {
         show_debug_message("FOX FIXUP: label=[" + string(_f.label) + "] pos=" + string(_f.pos) + " type=" + _f.type + " in_labels=" + string(ds_map_exists(p.labels, _f.label)));
 }
 p.assemble();
+// Bad label modes, long branches, unresolved and duplicate labels used to
+// build anyway with wrong bytes (or crash). Stop here and say where.
+if (array_length(p.errors) > 0) {
+    var _first_err_node = noone;
+    for (var _ei = 0; _ei < array_length(p.errors); _ei++) {
+        if (instance_exists(p.errors[_ei].node)) { _first_err_node = p.errors[_ei].node; break; }
+    }
+    if (_first_err_node != noone) scr_focus_camera_on_node(_first_err_node);
+    scr_show_message("BUILD FAILED: " + string(array_length(p.errors)) + " assembler error(s)\n\n" + p.error_text());
+    ds_map_destroy(p.labels);
+    buffer_delete(p_buf);
+    silent_build = false;
+    pending_dump = false;
+    exit;
+}
 var _vscroll_keys = ds_map_keys_to_array(p.labels);
 for (var _di = 0; _di < array_length(_vscroll_keys); _di++) {
     if (string_pos("vs", _vscroll_keys[_di]) > 0 || string_pos("Scroller", _vscroll_keys[_di]) > 0)
@@ -4411,6 +4440,12 @@ for (var i = 0; i < array_length(_exp_code); i++) {
 
     // === FIXUP PASS: resolve all forward JSR/JMP/branch/lab references ===
     _exp_p.assemble();
+    if (array_length(_exp_p.errors) > 0) {
+        scr_show_message("EXPORT FAILED: " + string(array_length(_exp_p.errors)) + " assembler error(s)\n\n" + _exp_p.error_text());
+        ds_map_destroy(_exp_p.labels);
+        buffer_delete(_exp_buf);
+        exit;
+    }
     // === END FIXUP PASS ===
 
     // === SAME IRQ PATCHING AS F5 ===

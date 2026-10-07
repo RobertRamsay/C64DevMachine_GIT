@@ -145,6 +145,7 @@ function scr_sound_editor_export_sid_go(_input, _ctx) {
     _p.bytes = [];
     _p.fixups = [];
     _p.pc_override = -1;
+    _p.label_seen = {};
     for (var _i = 0; _i < array_length(_list); _i++) {
         _p.assemble_instruction(string_lower(_list[_i][0]), _list[_i][1]);
     }
@@ -161,8 +162,8 @@ function scr_sound_editor_export_sid_go(_input, _ctx) {
     var _vars_at = _p.labels[? _key + "st"];
     var _skip_at = _p.labels[? _key + "rtskip"];
     ds_map_destroy(_p.labels);
-    if (_missing != "" || global.asm_branch_error) {
-        scr_show_message("EXPORT SID: the player didn't assemble (" + _missing + "). Nothing was written.");
+    if (_missing != "" || global.asm_branch_error || array_length(_p.errors) > 0) {
+        scr_show_message("EXPORT SID: the player didn't assemble. Nothing was written.\n\n" + _p.error_text());
         return;
     }
     var _n = array_length(_p.bytes);
