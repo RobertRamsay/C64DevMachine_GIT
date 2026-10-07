@@ -119,6 +119,13 @@ function _asm_resolve_mode(_mnem, _op) {
         var _addr_part = string_copy(_op, 1, _comma - 1);
         var _idx_part  = string_copy(_up_op, _comma + 1, string_length(_up_op) - _comma);
         var _is_label  = (!_asm_is_dec(_addr_part) && string_char_at(_addr_part, 1) != "$" && string_char_at(_addr_part, 1) != "%");
+        // zp_ names are zero page by name, so the size is known from the text
+        // alone (block sizes are cached per node, before other blocks' equates
+        // are parsed). The value is filled in at assembly from `zp_x = $nn`.
+        if (_is_label && string_lower(string_copy(_addr_part, 1, 3)) == "zp_") {
+            if (_idx_part == "X") return [_ml + "_zpx", _addr_part];
+            if (_ml == "ldx" || _ml == "stx" || _ml == "lax" || _ml == "sax") return [_ml + "_zpy", _addr_part];
+        }
         if (_idx_part == "X") {
             if (_is_label) return [_ml + "_abs_x", _addr_part, _addr_part];
             var _v = _asm_val(_addr_part);
@@ -159,6 +166,11 @@ function _asm_resolve_mode(_mnem, _op) {
         }
         var _op_nodot = (string_char_at(_op, 1) == ".") ? string_delete(_op, 1, 1) : _op;
         return [(_ml == "jmp" ? "jmp_abs" : _ml), _op_nodot, _op_nodot];
+    }
+
+    // ─── Named zero page: zp_ names are always zero page (see Indexed above) ───
+    if (string_lower(string_copy(_op, 1, 3)) == "zp_") {
+        return [_ml + "_zp", _op];
     }
 
     // ─── Standard Labels (Absolute) ───

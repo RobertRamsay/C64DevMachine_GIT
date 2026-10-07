@@ -106,6 +106,21 @@ assemble_instruction: function(_mnem, _val) {
 			        if (is_real(_resolved)) _val = _resolved;
 			    }
 			}
+            // zp_ names were given a zero-page mode by _asm_resolve_mode, so the
+            // value must be a defined zero-page address: anything else would
+            // emit a wrong operand byte (or crash on string & 0xFF).
+            if (string_pos("_zp", _mnem) > 0) {
+                if (is_string(_val) && _val != "" && !_asm_is_dec(_val)) {
+                    self._error("zero-page name '" + _val + "' is not defined (add `" + _val + " = $nn` before it's used)");
+                    self.add([0x00, 0x00]);
+                    return 2;
+                }
+                if (is_real(_val) && (_val < 0 || _val > 0xFF)) {
+                    self._error("'" + string(_val) + "' is not a zero-page address ($00-$FF) for " + string_upper(_mnem));
+                    self.add([0x00, 0x00]);
+                    return 2;
+                }
+            }
             // If still a string, treat as a label fixup for abs/abx/aby instructions.
             // _asm_resolve_mode spells label modes <mnem>_abs / _abs_x / _abs_y;
             // the _abx/_aby spellings are what the compile chain emits. Every
