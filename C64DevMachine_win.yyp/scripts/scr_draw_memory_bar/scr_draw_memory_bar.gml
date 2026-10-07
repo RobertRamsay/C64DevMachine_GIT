@@ -4,6 +4,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     global.memory_bar_hover_node  = noone;
     global.memory_bar_hover_asset = -1;
 	if obj_asset_manager.viewer_open exit
+    scr_perf_node("gui", "mb: setup, zones, chain");
     var _map_w      = _x2 - _x1;
     var _map_h      = 15;
     var _pulse      = abs(sin(current_time * 0.01));
@@ -108,6 +109,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     // Rebuilt by scr_build_memory_bar_cache() which is called
     // at the end of scr_c64_do_update_addresses().
     // -------------------------------------------------------
+    scr_perf_node("gui", "mb: cache rebuild");
     if (global.memory_bar_dirty) {
         scr_build_memory_bar_cache();
     }
@@ -116,6 +118,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     var _seg_total = array_length(_segments);
 
     // -------------------------------------------------------
+    scr_perf_node("gui", "mb: vic brackets");
     // VIC BANK BRACKETS
     // -------------------------------------------------------
     var _by   = _y + _map_h + 4;
@@ -142,6 +145,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     }
 
     // -------------------------------------------------------
+    if (global.perf_on) scr_perf_node("gui", "mb: conflicts x" + string(array_length(global.memory_bar_conflicts)));
     // DRAW CONFLICT LABELS
     // -------------------------------------------------------
     draw_set_font_l(fnt_c64_tiny);
@@ -379,6 +383,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
     draw_set_alpha(1.0);
 
 	// -------------------------------------------------------
+    if (global.perf_on) scr_perf_node("gui", "mb: segment bars x" + string(array_length(global.memory_bar_segments)));
     // DRAW SEGMENT BARS
     // Load_later (LO-tagged) asset segments render at reduced alpha
     // with a "DISK" tag above so users can see they live on disk and
@@ -462,6 +467,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         draw_set_halign(fa_left);
     }
     // -------------------------------------------------------
+    scr_perf_node("gui", "mb: labels, hover, rest");
     // NAMED BLOCK LABELS
     // -------------------------------------------------------
     draw_set_font_l(fnt_c64_pico);

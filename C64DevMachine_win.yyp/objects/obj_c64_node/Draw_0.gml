@@ -1,4 +1,5 @@
 scr_perf_node("draw", node_type);
+scr_perf_node("nd", "(before cull)");
 /// @desc Render Node (Unified Gutter, Stats, Out-dent, ORG & Comment Nodes)
 if obj_workspace_manager.code_editor_open or obj_asset_manager.viewer_open exit;
 if (scr_node_is_hidden(id)) exit;
@@ -8,6 +9,7 @@ if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
 // Draw must not repeat the HUD asset scan or cached-height writes.
 
 global.ui_click_consumed = (global.ui_click_block_timer > 0);
+scr_perf_node("nd", "A cull");
 // =============================================================
 // A. VIEW CULL — early exit before any setup cost
 // =============================================================
@@ -35,6 +37,7 @@ var _screen_h = height / _cam_zoom;
 var _screen_w = width / _cam_zoom;
 if (_screen_h < 3 || _screen_w < 4) exit;
 
+scr_perf_node("nd", "B latch fx");
 // =============================================================
 // B. LATCH BURST FX
 // =============================================================
@@ -56,6 +59,7 @@ if (latch_glow_alpha > 0) {
     latch_glow_alpha -= 0.05;
 }
 
+scr_perf_node("nd", "C layout");
 // =============================================================
 // C. LAYOUT CONSTANTS
 // =============================================================
@@ -78,6 +82,7 @@ var _dy          = y - _screen_cy;
 var _near_centre = ((_dx * _dx + _dy * _dy) < 640000); // 800^2, no zoom gate0^2
 // above 4.0 — header colour box only, no text at all
 
+scr_perf_node("nd", "C2 init rts");
 // =============================================================
 // C2. SYSTEM INIT AUTO-RTS ROW
 // =============================================================
@@ -129,6 +134,7 @@ if (node_type == "INIT") {
     }
 }
 
+scr_perf_node("nd", "D height");
 // =============================================================
 // D. DYNAMIC HEIGHT  (cached, only recalculates when dirty)
 // =============================================================
@@ -302,6 +308,7 @@ var _raw_h = header_h + (array_length(instructions) * _line_gap) + _bottom_pad +
     height = cached_height;
 }
 
+scr_perf_node("nd", "E width");
 // =============================================================
 // E. DYNAMIC WIDTH
 // =============================================================
@@ -324,6 +331,7 @@ switch (node_type) {
         break;
 }
 
+scr_perf_node("nd", "F label picker");
 // =============================================================
 // F. LABEL PICKER
 // =============================================================
@@ -785,6 +793,7 @@ var _active_list = [];
         }
     }
 }
+scr_perf_node("nd", "G address gutter");
 // =============================================================
 // G. ADDRESS GUTTER
 // =============================================================
@@ -895,6 +904,7 @@ var _addr_str = "";
 }
 draw_set_halign(fa_left);
 
+scr_perf_node("nd", "H box + header colour");
 // =============================================================
 // H. MAIN BOX & HEADER COLOUR
 // =============================================================
@@ -1098,6 +1108,7 @@ else {
                               draw_x, y, width, header_h, _head_col, _box_alpha);
 }
 
+scr_perf_node("nd", "H2 wire dots");
 // =============================================================
 // H2. WIRE DOTS (ORG nodes only)
 // =============================================================
@@ -1286,6 +1297,7 @@ if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTE
         draw_set_alpha(1.0);
     }
 }
+scr_perf_node("nd", "I header title + stats");
 // =============================================================
 // I. HEADER TITLE & STATS
 // =============================================================
@@ -1557,6 +1569,7 @@ if (_lod_full && (is_connected || string_pos("DATA", node_type) > 0 || node_type
     draw_set_font_l(fnt_c64_code);
 }
 
+scr_perf_node("nd", "J body");
 // =============================================================
 // J. BODY CONTENT — dispatched to per-type scripts
 // =============================================================
@@ -2122,6 +2135,7 @@ if (macro_measure_active && macro_content_bottom > 24) {
 }
 macro_measure_active = false;
 
+scr_perf_node("nd", "K address badge");
 // =============================================================
 // K. BOTTOM-LEFT ADDRESS BADGE
 // =============================================================
@@ -2168,6 +2182,7 @@ draw_set_font_l(fnt_c64_code);
     }
 }
 
+scr_perf_node("nd", "K2 comment handles");
 // =============================================================
 // K2. COMMENT WIDTH HANDLES  < >
 // One standard node width per step, 1x to 3x. Drawn last so nothing
@@ -2195,6 +2210,7 @@ if (node_type == "COMMENT" && global.comments_visible && !_cw_editing && !collap
     draw_set_alpha(1.0);
 }
 
+scr_perf_node("nd", "L outline + overlap");
 // =============================================================
 // L. OUTLINE + MEMORY OVERLAP WARNING
 // Simply use the conflict status determined by the global scanner
@@ -2227,6 +2243,7 @@ draw_rectangle(draw_x, y, draw_x + width, y + height, true);
 draw_set_alpha(1.0);
 */
 
+scr_perf_node("nd", "L2 group handle");
 // =============================================================
 // L2. GROUP DRAG HANDLE HIGHLIGHT
 // =============================================================
@@ -2281,6 +2298,7 @@ if (array_length(global.selected_nodes) > 1 && instance_exists(global.group_drag
     }
 }
 
+scr_perf_node("nd", "M drop zones");
 // =============================================================
 // M. DROP ZONE VISUALISATION
 // =============================================================
@@ -2515,6 +2533,7 @@ if (is_dragging && node_type == "ORG" && node_title != "VARIABLES" && node_title
     draw_set_alpha(1.0);
 }
 
+scr_perf_node("nd", "N flash");
 // =============================================================
 // N. FLASH OVERLAY (RMB or Editor Clash)
 // =============================================================
@@ -2544,6 +2563,7 @@ if (is_conflicted) {
 x -= x_indent;
 draw_set_alpha(1.0);
 
+scr_perf_node("nd", "Z debug monitor");
 // =============================================================
 // Z. ON-NODE DEBUG STATE MONITOR ('@' Toggle)
 // =============================================================

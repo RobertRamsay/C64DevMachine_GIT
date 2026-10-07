@@ -24,12 +24,14 @@ function scr_perf_reset_acc(_p) {
     _p.draw_cnt   = {};
     _p.gui_acc    = {};
     _p.gui_cnt    = {};
+    _p.nd_acc     = {};
+    _p.nd_cnt     = {};
 }
 
 function scr_perf_init() {
     if (variable_global_exists("perf") && is_struct(global.perf)) return;
     global.perf = { sec_t0: get_timer(), t_bs: 0, t_dr: 0, t_gui: 0,
-                    step_last: "", step_lt: 0, draw_last: "", draw_lt: 0, gui_last: "", gui_lt: 0,
+                    step_last: "", step_lt: 0, draw_last: "", draw_lt: 0, gui_last: "", gui_lt: 0, nd_last: "", nd_lt: 0,
                     mx: 0, my: 0, show: undefined };
     scr_perf_reset_acc(global.perf);
 }
@@ -80,7 +82,8 @@ function scr_perf_mark(_phase) {
                             addr_ms: _p.acc_addr / 1000, still: _p.acc_idle / _f,
                             step_rows: scr_perf_rows(_p.step_acc, _p.step_cnt, _f),
                             draw_rows: scr_perf_rows(_p.draw_acc, _p.draw_cnt, _f),
-                            gui_rows: scr_perf_rows(_p.gui_acc, _p.gui_cnt, _f) };
+                            gui_rows: scr_perf_rows(_p.gui_acc, _p.gui_cnt, _f),
+                            nd_rows: scr_perf_rows(_p.nd_acc, _p.nd_cnt, _f) };
                 scr_perf_reset_acc(_p);
                 _p.sec_t0 = _t;
             }
@@ -93,9 +96,11 @@ function scr_perf_mark(_phase) {
         case "end_step_done":
             _p.t_dr = _t;
             _p.draw_last = "";
+            _p.nd_last   = "";
             break;
         case "draw_end":
             scr_perf_node("draw", "");
+            scr_perf_node("nd", "");
             _p.acc_draw += _t - _p.t_dr;
             // GUI phase from here: remaining Draw End events, Draw GUI Begin
             // (every node), Draw GUI, Draw GUI End
@@ -156,8 +161,14 @@ function scr_perf_draw() {
             array_push(_lines, "  " + string_copy(_r.name + "                    ", 1, 18)
                 + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
         }
+        array_push(_lines, "", "NODE DRAW by section  ms/frame  calls");
+        for (var _i = 0; _i < min(12, array_length(_s.nd_rows)); _i++) {
+            var _r = _s.nd_rows[_i];
+            array_push(_lines, "  " + string_copy(_r.name + "                          ", 1, 24)
+                + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
+        }
         array_push(_lines, "", "GUI by section    ms/frame  calls");
-        for (var _i = 0; _i < min(10, array_length(_s.gui_rows)); _i++) {
+        for (var _i = 0; _i < min(12, array_length(_s.gui_rows)); _i++) {
             var _r = _s.gui_rows[_i];
             array_push(_lines, "  " + string_copy(_r.name + "                          ", 1, 24)
                 + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));

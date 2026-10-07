@@ -1,0 +1,272 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index b872e75..db80250 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -1,4 +1,5 @@
+ scr_perf_node("draw", node_type);
++scr_perf_node("nd", "(before cull)");
+ /// @desc Render Node (Unified Gutter, Stats, Out-dent, ORG & Comment Nodes)
+ if obj_workspace_manager.code_editor_open or obj_asset_manager.viewer_open exit;
+ if (scr_node_is_hidden(id)) exit;
+@@ -8,6 +9,7 @@ if (node_type == "MACRO_PRINT") scr_print_sync_height(id);
+ // Draw must not repeat the HUD asset scan or cached-height writes.
+ 
+ global.ui_click_consumed = (global.ui_click_block_timer > 0);
++scr_perf_node("nd", "A cull");
+ // =============================================================
+ // A. VIEW CULL — early exit before any setup cost
+ // =============================================================
+@@ -35,6 +37,7 @@ var _screen_h = height / _cam_zoom;
+ var _screen_w = width / _cam_zoom;
+ if (_screen_h < 3 || _screen_w < 4) exit;
+ 
++scr_perf_node("nd", "B latch fx");
+ // =============================================================
+ // B. LATCH BURST FX
+ // =============================================================
+@@ -56,6 +59,7 @@ if (latch_glow_alpha > 0) {
+     latch_glow_alpha -= 0.05;
+ }
+ 
++scr_perf_node("nd", "C layout");
+ // =============================================================
+ // C. LAYOUT CONSTANTS
+ // =============================================================
+@@ -78,6 +82,7 @@ var _dy          = y - _screen_cy;
+ var _near_centre = ((_dx * _dx + _dy * _dy) < 640000); // 800^2, no zoom gate0^2
+ // above 4.0 — header colour box only, no text at all
+ 
++scr_perf_node("nd", "C2 init rts");
+ // =============================================================
+ // C2. SYSTEM INIT AUTO-RTS ROW
+ // =============================================================
+@@ -129,6 +134,7 @@ if (node_type == "INIT") {
+     }
+ }
+ 
++scr_perf_node("nd", "D height");
+ // =============================================================
+ // D. DYNAMIC HEIGHT  (cached, only recalculates when dirty)
+ // =============================================================
+@@ -302,6 +308,7 @@ var _raw_h = header_h + (array_length(instructions) * _line_gap) + _bottom_pad +
+     height = cached_height;
+ }
+ 
++scr_perf_node("nd", "E width");
+ // =============================================================
+ // E. DYNAMIC WIDTH
+ // =============================================================
+@@ -324,6 +331,7 @@ switch (node_type) {
+         break;
+ }
+ 
++scr_perf_node("nd", "F label picker");
+ // =============================================================
+ // F. LABEL PICKER
+ // =============================================================
+@@ -785,6 +793,7 @@ var _active_list = [];
+         }
+     }
+ }
++scr_perf_node("nd", "G address gutter");
+ // =============================================================
+ // G. ADDRESS GUTTER
+ // =============================================================
+@@ -895,6 +904,7 @@ var _addr_str = "";
+ }
+ draw_set_halign(fa_left);
+ 
++scr_perf_node("nd", "H box + header colour");
+ // =============================================================
+ // H. MAIN BOX & HEADER COLOUR
+ // =============================================================
+@@ -1098,6 +1108,7 @@ else {
+                               draw_x, y, width, header_h, _head_col, _box_alpha);
+ }
+ 
++scr_perf_node("nd", "H2 wire dots");
+ // =============================================================
+ // H2. WIRE DOTS (ORG nodes only)
+ // =============================================================
+@@ -1286,6 +1297,7 @@ if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTE
+         draw_set_alpha(1.0);
+     }
+ }
++scr_perf_node("nd", "I header title + stats");
+ // =============================================================
+ // I. HEADER TITLE & STATS
+ // =============================================================
+@@ -1557,6 +1569,7 @@ if (_lod_full && (is_connected || string_pos("DATA", node_type) > 0 || node_type
+     draw_set_font_l(fnt_c64_code);
+ }
+ 
++scr_perf_node("nd", "J body");
+ // =============================================================
+ // J. BODY CONTENT — dispatched to per-type scripts
+ // =============================================================
+@@ -2122,6 +2135,7 @@ if (macro_measure_active && macro_content_bottom > 24) {
+ }
+ macro_measure_active = false;
+ 
++scr_perf_node("nd", "K address badge");
+ // =============================================================
+ // K. BOTTOM-LEFT ADDRESS BADGE
+ // =============================================================
+@@ -2168,6 +2182,7 @@ draw_set_font_l(fnt_c64_code);
+     }
+ }
+ 
++scr_perf_node("nd", "K2 comment handles");
+ // =============================================================
+ // K2. COMMENT WIDTH HANDLES  < >
+ // One standard node width per step, 1x to 3x. Drawn last so nothing
+@@ -2195,6 +2210,7 @@ if (node_type == "COMMENT" && global.comments_visible && !_cw_editing && !collap
+     draw_set_alpha(1.0);
+ }
+ 
++scr_perf_node("nd", "L outline + overlap");
+ // =============================================================
+ // L. OUTLINE + MEMORY OVERLAP WARNING
+ // Simply use the conflict status determined by the global scanner
+@@ -2227,6 +2243,7 @@ draw_rectangle(draw_x, y, draw_x + width, y + height, true);
+ draw_set_alpha(1.0);
+ */
+ 
++scr_perf_node("nd", "L2 group handle");
+ // =============================================================
+ // L2. GROUP DRAG HANDLE HIGHLIGHT
+ // =============================================================
+@@ -2281,6 +2298,7 @@ if (array_length(global.selected_nodes) > 1 && instance_exists(global.group_drag
+     }
+ }
+ 
++scr_perf_node("nd", "M drop zones");
+ // =============================================================
+ // M. DROP ZONE VISUALISATION
+ // =============================================================
+@@ -2515,6 +2533,7 @@ if (is_dragging && node_type == "ORG" && node_title != "VARIABLES" && node_title
+     draw_set_alpha(1.0);
+ }
+ 
++scr_perf_node("nd", "N flash");
+ // =============================================================
+ // N. FLASH OVERLAY (RMB or Editor Clash)
+ // =============================================================
+@@ -2544,6 +2563,7 @@ if (is_conflicted) {
+ x -= x_indent;
+ draw_set_alpha(1.0);
+ 
++scr_perf_node("nd", "Z debug monitor");
+ // =============================================================
+ // Z. ON-NODE DEBUG STATE MONITOR ('@' Toggle)
+ // =============================================================
+diff --git a/C64DevMachine_win.yyp/scripts/scr_draw_memory_bar/scr_draw_memory_bar.gml b/C64DevMachine_win.yyp/scripts/scr_draw_memory_bar/scr_draw_memory_bar.gml
+index 16c8fcd..671d5e2 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_draw_memory_bar/scr_draw_memory_bar.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_draw_memory_bar/scr_draw_memory_bar.gml
+@@ -4,6 +4,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
+     global.memory_bar_hover_node  = noone;
+     global.memory_bar_hover_asset = -1;
+ 	if obj_asset_manager.viewer_open exit
++    scr_perf_node("gui", "mb: setup, zones, chain");
+     var _map_w      = _x2 - _x1;
+     var _map_h      = 15;
+     var _pulse      = abs(sin(current_time * 0.01));
+@@ -108,6 +109,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
+     // Rebuilt by scr_build_memory_bar_cache() which is called
+     // at the end of scr_c64_do_update_addresses().
+     // -------------------------------------------------------
++    scr_perf_node("gui", "mb: cache rebuild");
+     if (global.memory_bar_dirty) {
+         scr_build_memory_bar_cache();
+     }
+@@ -116,6 +118,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
+     var _seg_total = array_length(_segments);
+ 
+     // -------------------------------------------------------
++    scr_perf_node("gui", "mb: vic brackets");
+     // VIC BANK BRACKETS
+     // -------------------------------------------------------
+     var _by   = _y + _map_h + 4;
+@@ -142,6 +145,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
+     }
+ 
+     // -------------------------------------------------------
++    if (global.perf_on) scr_perf_node("gui", "mb: conflicts x" + string(array_length(global.memory_bar_conflicts)));
+     // DRAW CONFLICT LABELS
+     // -------------------------------------------------------
+     draw_set_font_l(fnt_c64_tiny);
+@@ -379,6 +383,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
+     draw_set_alpha(1.0);
+ 
+ 	// -------------------------------------------------------
++    if (global.perf_on) scr_perf_node("gui", "mb: segment bars x" + string(array_length(global.memory_bar_segments)));
+     // DRAW SEGMENT BARS
+     // Load_later (LO-tagged) asset segments render at reduced alpha
+     // with a "DISK" tag above so users can see they live on disk and
+@@ -462,6 +467,7 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
+         draw_set_halign(fa_left);
+     }
+     // -------------------------------------------------------
++    scr_perf_node("gui", "mb: labels, hover, rest");
+     // NAMED BLOCK LABELS
+     // -------------------------------------------------------
+     draw_set_font_l(fnt_c64_pico);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.gml b/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.gml
+index 0ca41e1..a2281bf 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.gml
+@@ -24,12 +24,14 @@ function scr_perf_reset_acc(_p) {
+     _p.draw_cnt   = {};
+     _p.gui_acc    = {};
+     _p.gui_cnt    = {};
++    _p.nd_acc     = {};
++    _p.nd_cnt     = {};
+ }
+ 
+ function scr_perf_init() {
+     if (variable_global_exists("perf") && is_struct(global.perf)) return;
+     global.perf = { sec_t0: get_timer(), t_bs: 0, t_dr: 0, t_gui: 0,
+-                    step_last: "", step_lt: 0, draw_last: "", draw_lt: 0, gui_last: "", gui_lt: 0,
++                    step_last: "", step_lt: 0, draw_last: "", draw_lt: 0, gui_last: "", gui_lt: 0, nd_last: "", nd_lt: 0,
+                     mx: 0, my: 0, show: undefined };
+     scr_perf_reset_acc(global.perf);
+ }
+@@ -80,7 +82,8 @@ function scr_perf_mark(_phase) {
+                             addr_ms: _p.acc_addr / 1000, still: _p.acc_idle / _f,
+                             step_rows: scr_perf_rows(_p.step_acc, _p.step_cnt, _f),
+                             draw_rows: scr_perf_rows(_p.draw_acc, _p.draw_cnt, _f),
+-                            gui_rows: scr_perf_rows(_p.gui_acc, _p.gui_cnt, _f) };
++                            gui_rows: scr_perf_rows(_p.gui_acc, _p.gui_cnt, _f),
++                            nd_rows: scr_perf_rows(_p.nd_acc, _p.nd_cnt, _f) };
+                 scr_perf_reset_acc(_p);
+                 _p.sec_t0 = _t;
+             }
+@@ -93,9 +96,11 @@ function scr_perf_mark(_phase) {
+         case "end_step_done":
+             _p.t_dr = _t;
+             _p.draw_last = "";
++            _p.nd_last   = "";
+             break;
+         case "draw_end":
+             scr_perf_node("draw", "");
++            scr_perf_node("nd", "");
+             _p.acc_draw += _t - _p.t_dr;
+             // GUI phase from here: remaining Draw End events, Draw GUI Begin
+             // (every node), Draw GUI, Draw GUI End
+@@ -156,8 +161,14 @@ function scr_perf_draw() {
+             array_push(_lines, "  " + string_copy(_r.name + "                    ", 1, 18)
+                 + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
+         }
++        array_push(_lines, "", "NODE DRAW by section  ms/frame  calls");
++        for (var _i = 0; _i < min(12, array_length(_s.nd_rows)); _i++) {
++            var _r = _s.nd_rows[_i];
++            array_push(_lines, "  " + string_copy(_r.name + "                          ", 1, 24)
++                + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
++        }
+         array_push(_lines, "", "GUI by section    ms/frame  calls");
+-        for (var _i = 0; _i < min(10, array_length(_s.gui_rows)); _i++) {
++        for (var _i = 0; _i < min(12, array_length(_s.gui_rows)); _i++) {
+             var _r = _s.gui_rows[_i];
+             array_push(_lines, "  " + string_copy(_r.name + "                          ", 1, 24)
+                 + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
