@@ -1,3 +1,5 @@
+scr_perf_mark("gui_end");
+scr_perf_draw();
 /// @desc Draw GUI End: help above every object's regular GUI, including assets.
 // CREATOR LAYER panels sit above everything else on screen.
 scr_creator_draw_dock();

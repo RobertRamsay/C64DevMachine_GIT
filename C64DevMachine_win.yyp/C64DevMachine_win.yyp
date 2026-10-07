@@ -1332,6 +1332,7 @@
     {"id":{"name":"scr_org_collapse","path":"scripts/scr_org_collapse/scr_org_collapse.yy",},},
     {"id":{"name":"scr_parse_asm_byte_count","path":"scripts/scr_parse_asm_byte_count/scr_parse_asm_byte_count.yy",},},
     {"id":{"name":"scr_parse_asm_text","path":"scripts/scr_parse_asm_text/scr_parse_asm_text.yy",},},
+    {"id":{"name":"scr_perf_hud","path":"scripts/scr_perf_hud/scr_perf_hud.yy",},},
     {"id":{"name":"scr_qmenu_layout","path":"scripts/scr_qmenu_layout/scr_qmenu_layout.yy",},},
     {"id":{"name":"scr_recent_files","path":"scripts/scr_recent_files/scr_recent_files.yy",},},
     {"id":{"name":"scr_render_c64_grid","path":"scripts/scr_render_c64_grid/scr_render_c64_grid.yy",},},

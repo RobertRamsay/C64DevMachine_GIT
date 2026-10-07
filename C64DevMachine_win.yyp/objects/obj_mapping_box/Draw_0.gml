@@ -1,3 +1,4 @@
+scr_perf_node("draw", "(boxes)");
 /// @desc Mapping Box Draw
 
 var _cam_x    = obj_workspace_manager.cam_x;

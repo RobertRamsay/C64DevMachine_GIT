@@ -1,3 +1,4 @@
+scr_perf_node("step", "(workspace mgr)");
 // ── EXOMIZER POLL (BUILD TARGET = PRG EXO) ──
 // Exomizer runs as its own process; wait until its output exists and has
 // stopped growing, then run it like any PRG.

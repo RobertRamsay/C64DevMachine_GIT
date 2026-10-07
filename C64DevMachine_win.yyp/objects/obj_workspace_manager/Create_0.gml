@@ -1181,6 +1181,10 @@ autosave_countdown = global.autosave_interval;
 autosave_flash_timer = 0;
 _was_panning = false;
 
+// ---- PERF HUD (F11, scr_perf_hud) ----
+global.perf_on = false;
+global.perf    = undefined;
+
 // ---- IDLE SLEEP SYSTEM ----
 global.idle_active   = false;   // true once idle threshold passed
 idle_timer           = 0;       // seconds of no input

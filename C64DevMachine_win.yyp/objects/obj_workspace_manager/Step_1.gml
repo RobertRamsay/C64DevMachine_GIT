@@ -1,3 +1,6 @@
+// PERF HUD (F11): toggle, then open this frame's timing window
+scr_perf_toggle_check();
+scr_perf_mark("begin_step");
 // Guided tour caption panel takes its clicks before anything else, so a click
 // on NEXT / BACK / EXIT (or anywhere on the panel) never reaches what is
 // drawn behind it.

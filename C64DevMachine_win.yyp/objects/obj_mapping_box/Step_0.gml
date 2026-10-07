@@ -1,3 +1,4 @@
+scr_perf_node("step", "(boxes)");
 if (scr_workspace_input_blocked()) exit;
 // A pinned param card drawn over this box owns the click.
 if (global.creator_card_hot && !is_dragging && !is_resizing) exit;

@@ -1,3 +1,4 @@
+scr_perf_node("step", "(asset mgr)");
 scr_sid_asset_update();
 scr_node_preview_update();
 if (!viewer_open) { manifest_preview_name = ""; manifest_preview_owner = undefined; }
