@@ -353,8 +353,11 @@ var _parsed = scr_parse_asm_text(_ct);
                 _data_sz = 0;
                 _data_lines = [];
             } else if (_pt == "const") {
-                if (array_length(_parsed[_pi]) > 2 && is_real(_parsed[_pi][2]))
-                    array_push(code_seg_cache, { addr: _parsed[_pi][2], size: 2, lines: [_cur_line], no_conflict: false });
+                // Same rule as scr_build_memory_bar_cache: declared size, flagged as an equate
+                if (array_length(_parsed[_pi]) > 2 && is_real(_parsed[_pi][2])) {
+                    var _csz = (array_length(_parsed[_pi]) > 3 && is_real(_parsed[_pi][3])) ? max(1, _parsed[_pi][3]) : 1;
+                    array_push(code_seg_cache, { addr: _parsed[_pi][2], size: _csz, lines: [_cur_line], no_conflict: false, is_const: true });
+                }
             } else if (_pt == "byte") {
                 _data_sz += array_length(_parsed[_pi]) - 1;
             } else if (_pt != "label") {

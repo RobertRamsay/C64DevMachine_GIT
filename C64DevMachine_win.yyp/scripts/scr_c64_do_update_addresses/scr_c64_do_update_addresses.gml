@@ -1123,7 +1123,8 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
 	        // memory bar honours it; this pass was the one place that did not.
 	        if (_cs.no_conflict) { continue; }
 	        if (_cs.size > 0) {
-	            array_push(_segs, { start: _cs.addr, finish: _cs.addr + _cs.size, owner: id, node_id: id });
+	            array_push(_segs, { start: _cs.addr, finish: _cs.addr + _cs.size, owner: id, node_id: id,
+	                                is_const: variable_struct_exists(_cs, "is_const") && _cs.is_const });
 	        }
 	    }
 	}
@@ -1138,6 +1139,9 @@ for (var _oi = 0; _oi < array_length(_org_proxy_list); _oi++) {
 if (s1.finish <= s2.start) break;
 	        if (s1.owner != noone && s1.owner == s2.owner) continue;
 	        if (variable_struct_exists(s1, "node_id") && variable_struct_exists(s2, "node_id") && s1.node_id == s2.node_id) continue;
+	        // Equate vs equate: aliases for the same memory (see scr_build_memory_bar_cache)
+	        if (variable_struct_exists(s1, "is_const") && s1.is_const
+	        &&  variable_struct_exists(s2, "is_const") && s2.is_const) continue;
 	        var _c_start = max(s1.start, s2.start);
 	        var _c_end   = min(s1.finish, s2.finish);
 

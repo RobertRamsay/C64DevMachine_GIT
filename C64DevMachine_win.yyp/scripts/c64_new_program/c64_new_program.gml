@@ -9,6 +9,21 @@ function c64_new_program() {
         pc_override:  -1,
         pc_stack:     [],
 
+        // "name+3" / "name-1" / "name+$10" -> [name, offset]; undefined for a
+        // plain name or anything else (multi-label refs like "!loop-" start with !).
+        _split_offset: function(_s) {
+            if (!is_string(_s) || string_length(_s) < 3 || string_char_at(_s, 1) == "!") return undefined;
+            for (var _k = 2; _k <= string_length(_s); _k++) {
+                var _ch = string_char_at(_s, _k);
+                if (_ch != "+" && _ch != "-") continue;
+                var _num = string_delete(_s, 1, _k);
+                if (_num == "" || (string_char_at(_num, 1) != "$" && string_char_at(_num, 1) != "%" && !_asm_is_dec(_num))) return undefined;
+                var _off = _asm_val(_num);
+                return [string_copy(_s, 1, _k - 1), (_ch == "-") ? -_off : _off];
+            }
+            return undefined;
+        },
+
         // Build errors. The caller sets err_where / err_node before each
         // instruction so a message can point at the node and source line;
         // label_seen is reset by the caller at the start of each pass.
@@ -104,6 +119,13 @@ assemble_instruction: function(_mnem, _val) {
 			    if (ds_map_exists(global.named_loc_map, _upper)) {
 			        var _resolved = ds_map_find_value(global.named_loc_map, _upper);
 			        if (is_real(_resolved)) _val = _resolved;
+			    } else {
+			        // name+n / name-n on an equate or named location
+			        var _so = self._split_offset(_val);
+			        if (!is_undefined(_so) && ds_map_exists(global.named_loc_map, string_upper(_so[0]))) {
+			            var _sbase = ds_map_find_value(global.named_loc_map, string_upper(_so[0]));
+			            if (is_real(_sbase)) _val = _sbase + _so[1];
+			        }
 			    }
 			}
             // zp_ names were given a zero-page mode by _asm_resolve_mode, so the
@@ -835,7 +857,17 @@ assemble: function() {
 		        // Errors raised here belong to the instruction that made the fixup
 		        self.err_where = variable_struct_exists(f, "where") ? f.where : "";
 		        self.err_node  = variable_struct_exists(f, "node")  ? f.node  : noone;
-		        if (!ds_map_exists(self.labels, f.label)) {
+		        // label+n / label-n: look up the base label, add the offset. The
+		        // fixup list is reused by the second pass, so f is left untouched.
+		        var _f_lab = f.label, _f_off = 0;
+		        if (!ds_map_exists(self.labels, _f_lab)) {
+		            var _fso = self._split_offset(_f_lab);
+		            if (!is_undefined(_fso) && ds_map_exists(self.labels, _fso[0])) {
+		                _f_lab = _fso[0];
+		                _f_off = _fso[1];
+		            }
+		        }
+		        if (!ds_map_exists(self.labels, _f_lab)) {
 		            show_debug_message("FIXUP UNRESOLVED: label=[" + string(f.label) + "] pos=" + string(f.pos) + " type=" + f.type);
 		            // Used to leave $0000 / $00 in place and build anyway
 		            self._error("unresolved label '" + string(f.label) + "' (used near $"
@@ -844,7 +876,7 @@ assemble: function() {
 		                show_debug_message("  >>> CRITICAL: IRQ target label missing from label map!");
 		            continue;
 		        }
-		        var target = self.labels[? f.label];
+		        var target = self.labels[? _f_lab] + _f_off;
         if (f.label == "BMPMODE" || f.label == "TXTMODE" || f.label == "BMPMODE2")
 		            show_debug_message("FIXUP RESOLVED: label=[" + f.label + "] target=$" + string_upper(decimal_to_hex(target)) + " type=" + f.type + " pos=" + string(f.pos));
 		        if (f.pos < 0 || f.pos >= _blen) {

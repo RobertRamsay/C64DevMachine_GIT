@@ -108,10 +108,24 @@ probe_repair_uids = function() {
 probe_workspace_key = function() {
     probe_repair_uids();
     // Includes manual edits, wiring, reorder, undo/load and instruction changes.
+    // Leaves out state the editor derives over the next frames: pc_address (the
+    // address pass runs later) and a chained node's exact y (heights resize and
+    // nodes snap under the one above). Those made the key change after every
+    // edit, so a client's next call was refused until it re-read the summary.
+    // A chained node's place is kept as its order within its chain instead.
     var _state = [];
-    with (obj_c64_node) array_push(_state, [string(id), stable_uid, node_type,
-        node_title, custom_title, x, y, is_connected, string(org_parent),
-        pc_address, instructions, wire_out_target, wire_in_source]);
+    with (obj_c64_node) {
+        var _place = y;
+        if (is_connected) {
+            _place = 0;
+            var _me = id, _par = org_parent, _my_y = y;
+            with (obj_c64_node) if (id != _me && is_connected && org_parent == _par && y < _my_y) _place++;
+            _place = "#" + string(_place);
+        }
+        array_push(_state, [string(id), stable_uid, node_type,
+            node_title, custom_title, x, _place, is_connected, string(org_parent),
+            instructions, wire_out_target, wire_in_source]);
+    }
     if(instance_exists(obj_asset_manager)) {
         var _list=obj_asset_manager.asset_list;
         for(var _i=0;_i<ds_list_size(_list);_i++) {

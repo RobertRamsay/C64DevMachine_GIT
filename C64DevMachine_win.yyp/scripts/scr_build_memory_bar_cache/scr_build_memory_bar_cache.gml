@@ -178,8 +178,13 @@ var _addr_total = 65536;
                                 _data_sz    = 0;
                                 _data_lines = [];
                             } else if (_pt == "const") {
+                                // An equate names memory; it claims only its declared size.
+                                // is_const lets the conflict passes ignore equate-vs-equate
+                                // overlaps: two names for the same bytes are aliases (scratch
+                                // reuse, a name for one byte inside a named table), not a clash.
                                 if (array_length(_parsed[_pi]) > 2 && is_real(_parsed[_pi][2])) {
-                                    array_push(code_seg_cache, { addr: _parsed[_pi][2], size: 2, lines: [_cur_line], no_conflict: false });
+                                    var _csz = (array_length(_parsed[_pi]) > 3 && is_real(_parsed[_pi][3])) ? max(1, _parsed[_pi][3]) : 1;
+                                    array_push(code_seg_cache, { addr: _parsed[_pi][2], size: _csz, lines: [_cur_line], no_conflict: false, is_const: true });
                                 }
                             } else if (_pt == "byte" || _pt == "string") {
                                 _data_sz += array_length(_parsed[_pi]) - 1;
@@ -214,7 +219,7 @@ var _addr_total = 65536;
                     var _mc_name = (code_descriptor != "") ? code_descriptor : (node_title != "" ? node_title : "MACRO_CODE");
                     for (var _sci = 0; _sci < array_length(code_seg_cache); _sci++) {
                         var _csc = code_seg_cache[_sci];
-                        array_push(_segments, { addr: _csc.addr, size: _csc.size, lines: _csc.lines, col: make_color_rgb(180, 120, 255), type: "CODE", name: _mc_name, node_id: id, no_conflict: _csc.no_conflict, conflict: false });
+                        array_push(_segments, { addr: _csc.addr, size: _csc.size, lines: _csc.lines, col: make_color_rgb(180, 120, 255), type: "CODE", name: _mc_name, node_id: id, no_conflict: _csc.no_conflict, conflict: false, is_const: variable_struct_exists(_csc, "is_const") && _csc.is_const });
                     }
                     if (total_node_size > 0) {
                         array_push(_segments, { addr: pc_address, size: total_node_size, col: make_color_rgb(180, 120, 255), type: "CODE", name: _mc_name, lines: [], node_id: id, no_conflict: false, conflict: false });
@@ -918,6 +923,9 @@ var _addr_total = 65536;
             if (_s2.addr >= _s1.addr + _s1.size) break;
             if (_s1.node_id == _s2.node_id && _s1.node_id != noone) continue;
             if (_s1.name == _s2.name && _s1.node_id == noone && _s2.node_id == noone) continue;
+            // Two equates overlapping are two names for the same memory, never a clash
+            if (variable_struct_exists(_s1, "is_const") && _s1.is_const
+            &&  variable_struct_exists(_s2, "is_const") && _s2.is_const) continue;
             var _s1_org = (_s1.type == "NODE" || _s1.type == "VARIABLE_BLOCK");
             var _s2_org = (_s2.type == "NODE" || _s2.type == "VARIABLE_BLOCK");
             var _s1_is_dbuf = (string_pos("(BUF)", _s1.name) > 0);

@@ -223,7 +223,9 @@ function scr_parse_asm_text_uncached(_text) {
                 global.named_loc_meta_dirty = true;
 
                 array_push(_result, ["_line_map_", _li + 1]);
-                array_push(_result, ["const", _asgn_name, _asgn_num]);
+                // [3] = declared size (1 byte unless .w / .bcd...), so the memory
+                // map claims what the name really covers rather than a flat 2 bytes
+                array_push(_result, ["const", _asgn_name, _asgn_num, _sz]);
                 continue;
             }
         }
