@@ -1,0 +1,130 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml b/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml
+index fe83cf4..e570246 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml
+@@ -459,17 +459,28 @@ function scr_node_cache_frame() {
+ function scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom) {
+     nc_rendering = false;
+     scr_node_cache_frame();
+-    if (!global.node_cache_live) return false;
+-    if (node_type != "MACRO_CODE" && node_type != "COMMENT" && node_type != "LABEL" && node_type != "NORMAL") return false;
++    if (!global.node_cache_live) { scr_node_cache_stat("live: off this frame"); return false; }
++    if (node_type != "MACRO_CODE" && node_type != "COMMENT" && node_type != "LABEL" && node_type != "NORMAL") {
++        scr_node_cache_stat("live: type not cached");
++        return false;
++    }
++    // draw_cache_dirty / stats_cache_dirty / code_cache_dirty are NOT tested:
++    // they guard text data caches that only clear on some draw paths (a code
++    // block never clears draw_cache_dirty), and the key covers what they track.
+     if (is_dragging || label_picker_open || rmb_flash > 0 || latch_glow_alpha > 0 || is_conflicted
+-     || height_dirty || draw_cache_dirty || stats_cache_dirty || code_cache_dirty
+-     || global.memory_bar_hover_node == id) return false;
++     || height_dirty || global.memory_bar_hover_node == id) {
++        scr_node_cache_stat("live: node busy");
++        return false;
++    }
+     var _wm = obj_workspace_manager;
+-    if (_wm.is_entering_text && _wm.input_target_node == id) return false;
++    if (_wm.is_entering_text && _wm.input_target_node == id) { scr_node_cache_stat("live: node busy"); return false; }
+     var _dx = x + x_indent;
+-    if (point_in_rectangle(mouse_x, mouse_y, _dx - 40, y - 40, _dx + width + NC_PAD_R, y + height + 40)) return false;
++    if (point_in_rectangle(mouse_x, mouse_y, _dx - 40, y - 40, _dx + width + NC_PAD_R, y + height + 40)) {
++        scr_node_cache_stat("live: pointer near");
++        return false;
++    }
+     // The first node runs the '@' debug toggle in its Draw
+-    if (id == instance_find(obj_c64_node, 0)) return false;
++    if (id == instance_find(obj_c64_node, 0)) { scr_node_cache_stat("live: first node"); return false; }
+ 
+     // Level of detail as Draw section C works it out (the gutter only shows near the centre)
+     var _vw  = 1920 * _cam_zoom;
+@@ -493,6 +504,7 @@ function scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom) {
+     var _h = height + NC_PAD_T + NC_PAD_B;
+     var _refresh = ((global.frame_tick + real(id)) mod 45) == 0;
+     if (!_refresh && nc_key == _key && surface_exists(nc_surf)) {
++        scr_node_cache_stat("hit");
+         draw_surface(nc_surf, _dx - NC_PAD_L, y - NC_PAD_T);
+         return true;
+     }
+@@ -502,6 +514,12 @@ function scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom) {
+         surface_free(nc_surf);
+     }
+     if (!surface_exists(nc_surf)) nc_surf = surface_create(_w, _h);
++    if (_refresh) scr_node_cache_stat("capture: refresh");
++    else if (nc_key == "") scr_node_cache_stat("capture: first");
++    else {
++        scr_node_cache_stat("capture: key changed");
++        if (global.perf_on) { global.nc_last_old = nc_key; global.nc_last_new = _key; }
++    }
+     nc_key = _key;
+     nc_ox  = _dx - NC_PAD_L;
+     nc_oy  = y - NC_PAD_T;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.gml b/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.gml
+index a2281bf..1c693dd 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_perf_hud/scr_perf_hud.gml
+@@ -26,6 +26,7 @@ function scr_perf_reset_acc(_p) {
+     _p.gui_cnt    = {};
+     _p.nd_acc     = {};
+     _p.nd_cnt     = {};
++    _p.nc_cnt     = {};
+ }
+ 
+ function scr_perf_init() {
+@@ -83,7 +84,8 @@ function scr_perf_mark(_phase) {
+                             step_rows: scr_perf_rows(_p.step_acc, _p.step_cnt, _f),
+                             draw_rows: scr_perf_rows(_p.draw_acc, _p.draw_cnt, _f),
+                             gui_rows: scr_perf_rows(_p.gui_acc, _p.gui_cnt, _f),
+-                            nd_rows: scr_perf_rows(_p.nd_acc, _p.nd_cnt, _f) };
++                            nd_rows: scr_perf_rows(_p.nd_acc, _p.nd_cnt, _f),
++                            nc_cnt: _p.nc_cnt, frames: _f };
+                 scr_perf_reset_acc(_p);
+                 _p.sec_t0 = _t;
+             }
+@@ -161,14 +163,33 @@ function scr_perf_draw() {
+             array_push(_lines, "  " + string_copy(_r.name + "                    ", 1, 18)
+                 + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
+         }
++        // Node image cache: what each drawn node did, per frame
++        var _ncn = variable_struct_get_names(_s.nc_cnt);
++        array_sort(_ncn, true);
++        array_push(_lines, "", "NODE CACHE (per frame)");
++        for (var _i = 0; _i < array_length(_ncn); _i++) {
++            array_push(_lines, "  " + string_copy(_ncn[_i] + "                          ", 1, 24)
++                + string_format(_s.nc_cnt[$ _ncn[_i]] / _s.frames, 3, 1));
++        }
++        if (variable_global_exists("nc_last_old")) {
++            // First part of the key that differed on the last re-capture
++            var _ko = string_split(global.nc_last_old, "|");
++            var _kn = string_split(global.nc_last_new, "|");
++            for (var _k = 0; _k < min(array_length(_ko), array_length(_kn)); _k++) {
++                if (_ko[_k] != _kn[_k]) {
++                    array_push(_lines, "  key part " + string(_k) + ": " + string_copy(_ko[_k], 1, 30) + " -> " + string_copy(_kn[_k], 1, 30));
++                    break;
++                }
++            }
++        }
+         array_push(_lines, "", "NODE DRAW by section  ms/frame  calls");
+-        for (var _i = 0; _i < min(12, array_length(_s.nd_rows)); _i++) {
++        for (var _i = 0; _i < min(8, array_length(_s.nd_rows)); _i++) {
+             var _r = _s.nd_rows[_i];
+             array_push(_lines, "  " + string_copy(_r.name + "                          ", 1, 24)
+                 + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
+         }
+         array_push(_lines, "", "GUI by section    ms/frame  calls");
+-        for (var _i = 0; _i < min(12, array_length(_s.gui_rows)); _i++) {
++        for (var _i = 0; _i < min(6, array_length(_s.gui_rows)); _i++) {
+             var _r = _s.gui_rows[_i];
+             array_push(_lines, "  " + string_copy(_r.name + "                          ", 1, 24)
+                 + string_format(_r.ms, 3, 2) + "   " + string(round(_r.n)));
+@@ -191,3 +212,10 @@ function scr_perf_draw() {
+         draw_text(_x, _y + _i * _lh, _lines[_i]);
+     }
+ }
++
++/// NODE IMAGE CACHE outcome for one node this frame (hit / capture / why live).
++function scr_node_cache_stat(_what) {
++    if (!global.perf_on || !is_struct(global.perf)) return;
++    var _c = global.perf.nc_cnt;
++    _c[$ _what] = (_c[$ _what] ?? 0) + 1;
++}

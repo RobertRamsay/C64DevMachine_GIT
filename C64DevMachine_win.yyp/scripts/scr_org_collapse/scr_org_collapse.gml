@@ -459,17 +459,28 @@ function scr_node_cache_frame() {
 function scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom) {
     nc_rendering = false;
     scr_node_cache_frame();
-    if (!global.node_cache_live) return false;
-    if (node_type != "MACRO_CODE" && node_type != "COMMENT" && node_type != "LABEL" && node_type != "NORMAL") return false;
+    if (!global.node_cache_live) { scr_node_cache_stat("live: off this frame"); return false; }
+    if (node_type != "MACRO_CODE" && node_type != "COMMENT" && node_type != "LABEL" && node_type != "NORMAL") {
+        scr_node_cache_stat("live: type not cached");
+        return false;
+    }
+    // draw_cache_dirty / stats_cache_dirty / code_cache_dirty are NOT tested:
+    // they guard text data caches that only clear on some draw paths (a code
+    // block never clears draw_cache_dirty), and the key covers what they track.
     if (is_dragging || label_picker_open || rmb_flash > 0 || latch_glow_alpha > 0 || is_conflicted
-     || height_dirty || draw_cache_dirty || stats_cache_dirty || code_cache_dirty
-     || global.memory_bar_hover_node == id) return false;
+     || height_dirty || global.memory_bar_hover_node == id) {
+        scr_node_cache_stat("live: node busy");
+        return false;
+    }
     var _wm = obj_workspace_manager;
-    if (_wm.is_entering_text && _wm.input_target_node == id) return false;
+    if (_wm.is_entering_text && _wm.input_target_node == id) { scr_node_cache_stat("live: node busy"); return false; }
     var _dx = x + x_indent;
-    if (point_in_rectangle(mouse_x, mouse_y, _dx - 40, y - 40, _dx + width + NC_PAD_R, y + height + 40)) return false;
+    if (point_in_rectangle(mouse_x, mouse_y, _dx - 40, y - 40, _dx + width + NC_PAD_R, y + height + 40)) {
+        scr_node_cache_stat("live: pointer near");
+        return false;
+    }
     // The first node runs the '@' debug toggle in its Draw
-    if (id == instance_find(obj_c64_node, 0)) return false;
+    if (id == instance_find(obj_c64_node, 0)) { scr_node_cache_stat("live: first node"); return false; }
 
     // Level of detail as Draw section C works it out (the gutter only shows near the centre)
     var _vw  = 1920 * _cam_zoom;
@@ -493,6 +504,7 @@ function scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom) {
     var _h = height + NC_PAD_T + NC_PAD_B;
     var _refresh = ((global.frame_tick + real(id)) mod 45) == 0;
     if (!_refresh && nc_key == _key && surface_exists(nc_surf)) {
+        scr_node_cache_stat("hit");
         draw_surface(nc_surf, _dx - NC_PAD_L, y - NC_PAD_T);
         return true;
     }
@@ -502,6 +514,12 @@ function scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom) {
         surface_free(nc_surf);
     }
     if (!surface_exists(nc_surf)) nc_surf = surface_create(_w, _h);
+    if (_refresh) scr_node_cache_stat("capture: refresh");
+    else if (nc_key == "") scr_node_cache_stat("capture: first");
+    else {
+        scr_node_cache_stat("capture: key changed");
+        if (global.perf_on) { global.nc_last_old = nc_key; global.nc_last_new = _key; }
+    }
     nc_key = _key;
     nc_ox  = _dx - NC_PAD_L;
     nc_oy  = y - NC_PAD_T;
