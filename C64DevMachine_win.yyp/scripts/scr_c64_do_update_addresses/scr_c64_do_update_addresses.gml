@@ -185,6 +185,17 @@ global.compile_sizing_pass = false;
 // runs a compile of its own, so keeping it live costs one array walk here
 // rather than a second full compile inside the Draw event.
 scr_show_code_build(_compiled);
+
+// Every label this compile defines, so a JSR/JMP/branch node can show a
+// target that no longer exists (e.g. an imported sngNNN_play) in red.
+// The assembler also injects these at build, and KERNAL picks are names.
+global.known_labels = { sid_init: 1, sid_play: 1, sid_getin: 1, irq_hook_scroll: 1 };
+var _krn_names = scr_kernal_routine_list();
+for (var _kni = 0; _kni < array_length(_krn_names); _kni++) global.known_labels[$ _krn_names[_kni].name] = 1;
+for (var _kli = 0; _kli < array_length(_compiled); _kli++) {
+    var _kle = _compiled[_kli];
+    if (array_length(_kle) > 1 && string_lower(string(_kle[0])) == "label") global.known_labels[$ string(_kle[1])] = 1;
+}
 	
     // Metadata is stable during this pass. Resolve each mnemonic once,
     // then reuse its byte/cycle pair for every instruction of that kind.
@@ -1525,4 +1536,18 @@ with (obj_c64_node) {
 // scr_show_code_build(): attributing rows to LABEL and plain opcode nodes needs
 // pc_address, and those are not assigned until the passes above have run.
 scr_show_code_attribute();
+}
+
+/// @function scr_label_is_missing(_name)
+/// @desc True when _name is a label operand that the last address update's
+///       compile did not define (and is not a variable / constant). Numbers,
+///       empty operands, and anything before the first update are never missing.
+function scr_label_is_missing(_name) {
+    if (!is_string(_name) || _name == "") return false;
+    if (!variable_global_exists("known_labels")) return false;
+    var _c0 = string_char_at(_name, 1);
+    if (_c0 == "$" || _c0 == "%" || _asm_is_dec(_name)) return false;
+    if (variable_struct_exists(global.known_labels, _name)) return false;
+    if (ds_exists(global.named_loc_map, ds_type_map) && ds_map_exists(global.named_loc_map, string_upper(_name))) return false;
+    return true;
 }
