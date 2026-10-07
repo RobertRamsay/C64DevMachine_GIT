@@ -413,3 +413,116 @@ function scr_org_set_collapsed(_anchor, _collapsed) {
     // few passes so the unfolded chain closes up without waiting for a click.
     global.relayout_frames = max(global.relayout_frames, 3);
 }
+
+/// ====================================================================
+/// NODE IMAGE CACHE
+/// A quiet node of a static type (code block, comment, label, plain
+/// opcode) is drawn once into its own surface and then blitted, instead of
+/// running the whole node Draw every frame. It draws live (and re-renders)
+/// whenever anything that can change its look is going on: pointer near
+/// it, drag, picker, edit, selection, flash, conflict, dirty caches, or a
+/// change in its key (position, size, address, text, LOD, display
+/// options). Every node also re-renders about every 45 frames, which picks
+/// up anything the key does not list. OPTIONS > NODE CACHE turns it off.
+/// ====================================================================
+#macro NC_PAD_L 120   // address gutter / badge sit left of the node
+#macro NC_PAD_R 80    // params tab and stats sit right of it
+#macro NC_PAD_T 24
+#macro NC_PAD_B 24
+
+/// Once per frame: may nodes use their cached image at all, and the global
+/// display inputs every cached image depends on.
+function scr_node_cache_frame() {
+    static _tick = -1;
+    if (_tick == global.frame_tick) return;
+    _tick = global.frame_tick;
+    var _wm = obj_workspace_manager;
+    var _dbg = variable_global_exists("debug_hud_active") && global.debug_hud_active;
+    global.node_cache_live = global.node_cache_enabled
+        && !global.any_node_dragging && !global.group_drag_active && !global.box_drag_active
+        && !instance_exists(global.wire_drag_node) && !global.any_picker_open
+        && global.ref_highlight_source == noone && !global.tour_active && !_dbg
+        && array_length(global.selected_nodes) == 0
+        && !_wm.label_search_open && _wm.cam_zoom >= 1;
+    global.node_cache_gsig = string(global.use_hex_display) + string(global.show_stats) + string(global.idle_fade)
+        + string(global.comments_visible) + string(global.lite) + string(global.init_collapsed)
+        + "|" + string(global.nodepad) + "|" + string(global.node_display_width)
+        + "|" + string(_wm.opcode_headers_on) + string(_wm.opcode_extra_height)
+        + "|" + string(_wm.nodeStyle) + "|" + string(global.lang)
+        + "|" + string(variable_global_exists("known_labels_gen") ? global.known_labels_gen : 0);
+}
+
+/// Called from node Draw once the node is known to be on screen. Returns
+/// true when the cached image was drawn (Draw exits). Otherwise Draw runs as
+/// normal; if this node may be cached, its output is being captured into
+/// nc_surf and scr_node_cache_end() puts it on screen.
+function scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom) {
+    nc_rendering = false;
+    scr_node_cache_frame();
+    if (!global.node_cache_live) return false;
+    if (node_type != "MACRO_CODE" && node_type != "COMMENT" && node_type != "LABEL" && node_type != "NORMAL") return false;
+    if (is_dragging || label_picker_open || rmb_flash > 0 || latch_glow_alpha > 0 || is_conflicted
+     || height_dirty || draw_cache_dirty || stats_cache_dirty || code_cache_dirty
+     || global.memory_bar_hover_node == id) return false;
+    var _wm = obj_workspace_manager;
+    if (_wm.is_entering_text && _wm.input_target_node == id) return false;
+    var _dx = x + x_indent;
+    if (point_in_rectangle(mouse_x, mouse_y, _dx - 40, y - 40, _dx + width + NC_PAD_R, y + height + 40)) return false;
+    // The first node runs the '@' debug toggle in its Draw
+    if (id == instance_find(obj_c64_node, 0)) return false;
+
+    // Level of detail as Draw section C works it out (the gutter only shows near the centre)
+    var _vw  = 1920 * _cam_zoom;
+    var _vh  = 1080 * _cam_zoom;
+    var _cdx = _dx - (_cam_x + _vw * 0.5);
+    var _cdy = y   - (_cam_y + _vh * 0.5);
+    var _lod = string(global.show_stats && _cam_zoom < 2.0) + string(_cam_zoom < 1.6)
+             + string(_cam_zoom < 3.5) + string(_cam_zoom < 2.0) + string((_cdx * _cdx + _cdy * _cdy) < 640000)
+             + string(_cam_zoom <= 2.55)
+             // the box fades out between zoom 2.5 and 3.25 (Draw section H)
+             + string(round(clamp(1.0 - (_cam_zoom - 2.5) / 0.75, 0, 1) * 20));
+    var _key = global.node_cache_gsig + "|" + _lod
+             + "|" + string(_dx) + "," + string(y) + "," + string(width) + "," + string(height)
+             + "|" + string(is_connected) + string(collapsed)
+             + "|" + string(pc_address) + "," + string(total_node_size) + "," + string(node_cycles)
+             + "|" + custom_title + "|" + string(code_descriptor);
+    if (node_type == "MACRO_CODE") _key += "|" + string(code_cached_lines);
+    else                           _key += "|" + string(instructions);
+
+    var _w = width + NC_PAD_L + NC_PAD_R;
+    var _h = height + NC_PAD_T + NC_PAD_B;
+    var _refresh = ((global.frame_tick + real(id)) mod 45) == 0;
+    if (!_refresh && nc_key == _key && surface_exists(nc_surf)) {
+        draw_surface(nc_surf, _dx - NC_PAD_L, y - NC_PAD_T);
+        return true;
+    }
+
+    // Capture this frame's normal draw into the surface
+    if (surface_exists(nc_surf) && (surface_get_width(nc_surf) != _w || surface_get_height(nc_surf) != _h)) {
+        surface_free(nc_surf);
+    }
+    if (!surface_exists(nc_surf)) nc_surf = surface_create(_w, _h);
+    nc_key = _key;
+    nc_ox  = _dx - NC_PAD_L;
+    nc_oy  = y - NC_PAD_T;
+    surface_set_target(nc_surf);
+    draw_clear_alpha(c_black, 0);
+    // Accumulate alpha correctly on a transparent target; blitted premultiplied
+    gpu_set_blendmode_ext_sepalpha(bm_src_alpha, bm_inv_src_alpha, bm_one, bm_inv_src_alpha);
+    matrix_set(matrix_world, matrix_build(-nc_ox, -nc_oy, 0, 0, 0, 0, 1, 1, 1));
+    nc_rendering = true;
+    return false;
+}
+
+/// End of node Draw (every exit after scr_node_cache_begin): finish a
+/// capture and put it on screen.
+function scr_node_cache_end() {
+    if (!nc_rendering) return;
+    nc_rendering = false;
+    matrix_set(matrix_world, matrix_build_identity());
+    gpu_set_blendmode(bm_normal);
+    surface_reset_target();
+    gpu_set_blendmode_ext(bm_one, bm_inv_src_alpha);
+    draw_surface(nc_surf, nc_ox, nc_oy);
+    gpu_set_blendmode(bm_normal);
+}

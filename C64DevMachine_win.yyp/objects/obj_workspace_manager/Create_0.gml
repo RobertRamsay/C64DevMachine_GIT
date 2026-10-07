@@ -1185,6 +1185,9 @@ _was_panning = false;
 global.perf_on = false;
 global.perf    = undefined;
 global.nodes_quiet = false;   // set each Begin Step; read by the node Step fast exit
+global.node_cache_enabled = true;   // OPTIONS > NODE CACHE (scr_node_cache_begin)
+global.node_cache_live    = false;
+global.node_cache_gsig    = "";
 
 // ---- IDLE SLEEP SYSTEM ----
 global.idle_active   = false;   // true once idle threshold passed
