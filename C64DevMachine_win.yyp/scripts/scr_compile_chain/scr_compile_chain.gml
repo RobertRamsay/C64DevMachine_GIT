@@ -17670,6 +17670,7 @@ case "MACRO_CODE": {
                     // they're counted — an inline data table protected by
                     // a JMP rather than relocated is real, in-place bytes.
                     var _relocated = false;
+                    var _src_line  = 0;
                     for (var _pi = 0; _pi < array_length(_parsed); _pi++) {
                         var _inst = _parsed[_pi];
                         if (_inst[0] == "label") {
@@ -17686,10 +17687,13 @@ case "MACRO_CODE": {
                                 array_push(_list, ["byte", _inst[_bxi], _byte_id]);
                             }
                         } else {
-                           if (_inst[0] == "_line_map_" || _inst[0] == "const") continue;
+                           if (_inst[0] == "_line_map_") { _src_line = _inst[1]; continue; }
+                           if (_inst[0] == "const") continue;
 	                        var _tagged = [_inst[0], _inst[1], _id];
 	                        if (array_length(_inst) > 2)
 	                            array_push(_tagged, _inst[2]);
+	                        // [4] = source line, so assembler errors can name it
+	                        _tagged[4] = _src_line;
 	                        array_push(_list, _tagged);
                         }
                     }

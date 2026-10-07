@@ -9,6 +9,32 @@ function c64_new_program() {
         pc_override:  -1,
         pc_stack:     [],
 
+        // Build errors. The caller sets err_where / err_node before each
+        // instruction so a message can point at the node and source line;
+        // label_seen is reset by the caller at the start of each pass.
+        errors:       [],
+        err_where:    "",
+        err_node:     noone,
+        label_seen:   {},
+
+        _error: function(_msg) {
+            var _full = (self.err_where != "") ? (self.err_where + ": " + _msg) : _msg;
+            for (var _ei = 0; _ei < array_length(self.errors); _ei++) {
+                if (self.errors[_ei].msg == _full) return self;
+            }
+            array_push(self.errors, {msg: _full, node: self.err_node});
+            show_debug_message("ASM ERROR: " + _full);
+            return self;
+        },
+
+        error_text: function() {
+            var _txt = "";
+            var _n = array_length(self.errors);
+            for (var _ei = 0; _ei < min(_n, 12); _ei++) _txt += "- " + self.errors[_ei].msg + "\n";
+            if (_n > 12) _txt += "... and " + string(_n - 12) + " more\n";
+            return _txt;
+        },
+
         current_pc: function() {
             if (self.pc_override >= 0) return self.pc_override;
             return self.base_address + self.header_size + array_length(self.bytes);
@@ -80,42 +106,67 @@ assemble_instruction: function(_mnem, _val) {
 			        if (is_real(_resolved)) _val = _resolved;
 			    }
 			}
-            // If still a string, treat as a label fixup for abs/abx/aby instructions
+            // If still a string, treat as a label fixup for abs/abx/aby instructions.
+            // _asm_resolve_mode spells label modes <mnem>_abs / _abs_x / _abs_y;
+            // the _abx/_aby spellings are what the compile chain emits. Every
+            // real 16-bit mode is listed — a label that misses this table used
+            // to fall through to a numeric emitter and crash the editor.
+            static _lab_op_map = {
+                // abs
+                ora_abs: 0x0D, and_abs: 0x2D, eor_abs: 0x4D, adc_abs: 0x6D,
+                sta_abs: 0x8D, lda_abs: 0xAD, cmp_abs: 0xCD, sbc_abs: 0xED,
+                asl_abs: 0x0E, rol_abs: 0x2E, lsr_abs: 0x4E, ror_abs: 0x6E,
+                stx_abs: 0x8E, ldx_abs: 0xAE, dec_abs: 0xCE, inc_abs: 0xEE,
+                bit_abs: 0x2C, sty_abs: 0x8C, ldy_abs: 0xAC, cpy_abs: 0xCC, cpx_abs: 0xEC,
+                slo_abs: 0x0F, rla_abs: 0x2F, sre_abs: 0x4F, rra_abs: 0x6F,
+                sax_abs: 0x8F, lax_abs: 0xAF, dcp_abs: 0xCF, isc_abs: 0xEF, nop_abs: 0x0C,
+                jmp_ind: 0x6C,
+                // abs,X
+                ora_abs_x: 0x1D, and_abs_x: 0x3D, eor_abs_x: 0x5D, adc_abs_x: 0x7D,
+                sta_abs_x: 0x9D, lda_abs_x: 0xBD, cmp_abs_x: 0xDD, sbc_abs_x: 0xFD,
+                asl_abs_x: 0x1E, rol_abs_x: 0x3E, lsr_abs_x: 0x5E, ror_abs_x: 0x7E,
+                dec_abs_x: 0xDE, inc_abs_x: 0xFE, ldy_abs_x: 0xBC, nop_abs_x: 0x1C,
+                slo_abs_x: 0x1F, rla_abs_x: 0x3F, sre_abs_x: 0x5F, rra_abs_x: 0x7F,
+                dcp_abs_x: 0xDF, isc_abs_x: 0xFF,
+                ora_abx: 0x1D, and_abx: 0x3D, eor_abx: 0x5D, adc_abx: 0x7D,
+                sta_abx: 0x9D, lda_abx: 0xBD, lda_absx: 0xBD, cmp_abx: 0xDD, sbc_abx: 0xFD,
+                asl_abx: 0x1E, rol_abx: 0x3E, lsr_abx: 0x5E, ror_abx: 0x7E,
+                dec_abx: 0xDE, inc_abx: 0xFE, ldy_abx: 0xBC,
+                // abs,Y
+                ora_abs_y: 0x19, and_abs_y: 0x39, eor_abs_y: 0x59, adc_abs_y: 0x79,
+                sta_abs_y: 0x99, lda_abs_y: 0xB9, cmp_abs_y: 0xD9, sbc_abs_y: 0xF9,
+                ldx_abs_y: 0xBE, lax_abs_y: 0xBF,
+                slo_abs_y: 0x1B, rla_abs_y: 0x3B, sre_abs_y: 0x5B, rra_abs_y: 0x7B,
+                dcp_abs_y: 0xDB, isc_abs_y: 0xFB,
+                ora_aby: 0x19, and_aby: 0x39, eor_aby: 0x59, adc_aby: 0x79,
+                sta_aby: 0x99, lda_aby: 0xB9, cmp_aby: 0xD9, sbc_aby: 0xF9,
+                ldx_aby: 0xBE,
+            };
             if (is_string(_val) && _val != "") {
-                var _abs_mnems = ",lda_abs,ldx_abs,ldy_abs,sta_abs,stx_abs,sty_abs,"
-                               + "lda_abx,lda_absx,lda_aby,ldx_aby,ldy_abx,sta_abx,sta_aby,"
-                               + "lda_abs_x,lda_abs_y,sta_abs_x,sta_abs_y,"
-                               + "adc_abs,sbc_abs,and_abs,ora_abs,eor_abs,cmp_abs,"
-                               + "adc_abx,adc_aby,sbc_abx,sbc_aby,inc_abs,dec_abs,"
-                               + "cmp_abx,cmp_aby,cmp_abs_x,cmp_abs_y,"
-                               + "inc_abx,dec_abx,ora_abx,and_abx,eor_abx,ora_aby,and_aby,eor_aby,";
-                if (string_pos("," + _mnem + ",", _abs_mnems) > 0) {
+                // A decimal number that arrived as a string is not a label
+                if (variable_struct_exists(_lab_op_map, _mnem) && _asm_is_dec(_val)) _val = real(_val);
+                else if (variable_struct_exists(_lab_op_map, _mnem)) {
                     var _fp = (self.pc_override >= 0)
                         ? (self.pc_override + 1) - self.base_address - self.header_size
                         : array_length(self.bytes) + 1;
                     // Emit the correct opcode byte manually then 2 placeholder bytes
-                    var _op_map = {
-                        lda_abs: 0xAD, ldx_abs: 0xAE, ldy_abs: 0xAC,
-                        sta_abs: 0x8D, stx_abs: 0x8E, sty_abs: 0x8C,
-                        lda_abx: 0xBD, lda_absx: 0xBD, lda_abs_x: 0xBD,
-                        lda_aby: 0xB9, lda_abs_y: 0xB9,
-                        ldx_aby: 0xBE, ldy_abx: 0xBC,
-                        sta_abx: 0x9D, sta_abs_x: 0x9D,
-                        sta_aby: 0x99, sta_abs_y: 0x99,
-                        adc_abs: 0x6D, sbc_abs: 0xED,
-                        and_abs: 0x2D, ora_abs: 0x0D, eor_abs: 0x4D, cmp_abs: 0xCD,
-                        adc_abx: 0x7D, adc_aby: 0x79,
-                        sbc_abx: 0xFD, sbc_aby: 0xF9,
-                        inc_abs: 0xEE, dec_abs: 0xCE,
-                        cmp_abx: 0xDD, cmp_abs_x: 0xDD, cmp_aby: 0xD9, cmp_abs_y: 0xD9,
-                        inc_abx: 0xFE, dec_abx: 0xDE,
-                        ora_abx: 0x1D, and_abx: 0x3D, eor_abx: 0x5D,
-                        ora_aby: 0x19, and_aby: 0x39, eor_aby: 0x59,
-                    };
-                    var _op = variable_struct_exists(_op_map, _mnem) ? _op_map[$ _mnem] : 0xAD;
-                    self.add([_op, 0x00, 0x00]);
-                    array_push(self.fixups, {pos: _fp, label: _val, type: "abs"});
+                    self.add([_lab_op_map[$ _mnem], 0x00, 0x00]);
+                    array_push(self.fixups, {pos: _fp, label: _val, type: "abs", where: self.err_where, node: self.err_node});
                     return array_length(self.bytes) - start_count;
+                }
+                // Any other label operand would reach a numeric emitter below
+                // and crash on string & 0xFF. Report it as a build error
+                // instead. Numeric strings ("5") still convert fine, and
+                // implied / pseudo ops (size <= 1) never read the value.
+                var _c0 = is_string(_val) ? string_char_at(_val, 1) : "0";
+                var _label_like = (_c0 == "_" || _c0 == "." || string_lower(_c0) != string_upper(_c0));
+                if (_label_like && !_is_label_fixup_op
+                && _mnem != "lda_imm" && _mnem != "ldx_imm" && _mnem != "ldy_imm"
+                && instance_exists(obj_opCodeManager) && obj_opCodeManager.get_size(_mnem) > 1) {
+                    self._error(string_upper(_mnem) + " can't take label '" + _val
+                        + "' - that addressing mode doesn't exist for this instruction"
+                        + " (or labels aren't supported in it)");
+                    return 0;
                 }
             }
 			
@@ -683,6 +734,18 @@ org: function(_addr) {
 
 label: function(_name) {
     var _pc = self.current_pc();
+    // A second definition used to overwrite the first silently, so every
+    // reference landed on whichever came last. Same address is harmless.
+    var _key = string(_name);
+    if (variable_struct_exists(self.label_seen, _key) && self.label_seen[$ _key] != _pc) {
+        var _where_save = self.err_where;
+        self.err_where = "";
+        self._error("duplicate label '" + _key + "' (defined at $"
+            + string_upper(decimal_to_hex(self.label_seen[$ _key])) + " and $"
+            + string_upper(decimal_to_hex(_pc)) + ")");
+        self.err_where = _where_save;
+    }
+    self.label_seen[$ _key] = _pc;
     self.labels[? _name] = _pc;
     return self;
 },
@@ -724,7 +787,7 @@ if (is_real(lab)) {
             // assembles cleanly, which is about the worst failure mode an
             // assembler has. Say so loudly rather than emitting it quietly.
             if (_off < -128 || _off > 127) {
-                show_debug_message("ASM ERROR: branch out of range by "
+                self._error("branch out of range by "
                     + string(_off) + " bytes at $"
                     + string_upper(decimal_to_hex(_pc_next - 1))
                     + " -> $" + string_upper(decimal_to_hex(lab))
@@ -736,7 +799,7 @@ if (is_real(lab)) {
             self.bytes[pos] = lab & 0xFF;
         }
 		    } else {
-		        array_push(self.fixups, {pos: pos, label: lab, type: type});
+		        array_push(self.fixups, {pos: pos, label: lab, type: type, where: self.err_where, node: self.err_node});
 		    }
 		    return self;
 		},
@@ -754,8 +817,14 @@ assemble: function() {
 		    }
 		    for (var i = 0; i < array_length(self.fixups); i++) {
 		        var f = self.fixups[i];
+		        // Errors raised here belong to the instruction that made the fixup
+		        self.err_where = variable_struct_exists(f, "where") ? f.where : "";
+		        self.err_node  = variable_struct_exists(f, "node")  ? f.node  : noone;
 		        if (!ds_map_exists(self.labels, f.label)) {
 		            show_debug_message("FIXUP UNRESOLVED: label=[" + string(f.label) + "] pos=" + string(f.pos) + " type=" + f.type);
+		            // Used to leave $0000 / $00 in place and build anyway
+		            self._error("unresolved label '" + string(f.label) + "' (used near $"
+		                + string_upper(decimal_to_hex(self.base_address + self.header_size + f.pos - 1)) + ")");
 		            if (f.label == "BMPMODE" || f.label == "TXTMODE" || f.label == "BMPMODE2")
 		                show_debug_message("  >>> CRITICAL: IRQ target label missing from label map!");
 		            continue;
@@ -774,10 +843,10 @@ assemble: function() {
 		            // the one that fires for forward branches to a label,
 		            // which is exactly where a long branch comes from.
 		            if (off < -128 || off > 127) {
-		                show_debug_message("ASM ERROR: branch out of range by "
+		                self._error("branch to '" + string(f.label) + "' out of range by "
 		                    + string(off) + " bytes at $"
 		                    + string_upper(decimal_to_hex(pc_next - 1))
-		                    + " -> [" + string(f.label) + "] $"
+		                    + " -> $"
 		                    + string_upper(decimal_to_hex(target))
 		                    + "  (use BNE over a JMP instead)");
 		                global.asm_branch_error = true;
