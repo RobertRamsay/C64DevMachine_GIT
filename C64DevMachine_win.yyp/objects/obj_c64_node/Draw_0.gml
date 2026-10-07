@@ -2352,7 +2352,10 @@ var _step     = _dash + _gap;
 var _any_dragging = false;
 var _ref_x        = 0;
 var _ref_y        = 0;
-with (obj_c64_node) {
+// Only look for the dragged node while something is being dragged
+// (global.any_node_dragging is set once a frame in the manager's Begin Step):
+// this scan ran for every visible node every frame, O(visible x nodes).
+if (global.any_node_dragging) with (obj_c64_node) {
     if (is_dragging && node_type != "ORG"  && node_type != "INIT" &&
         node_type != "SPR64" && string_pos("DATA", node_type) == 0 &&
         node_type != "NAMED_LOC" && node_type != "NEW_STR") {

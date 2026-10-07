@@ -28,9 +28,11 @@ function scr_node_draw_macro_code(_draw_x, _y) {
 
 	// Byte/cycle stats — cached, only recomputed when text changes
 if (code_cache_dirty) {
+        // Count lines without splitting the text into an array. A line count moves no
+        // address, so it no longer raises global.addresses_dirty (each address pass
+        // re-dirties every code block, so every draw after one raised it again).
         code_cached_lines = (_code_text != "") ? array_length(string_split(_code_text, "\n")) : 0;
         code_seg_cache    = [];
-        global.addresses_dirty = true;
         code_cache_dirty  = false;
     }
     draw_set_font_l(fnt_c64_tiny);
