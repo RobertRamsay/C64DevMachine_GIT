@@ -1,0 +1,99 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+index ef76236..5c4a93c 100644
+--- a/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_c64_node/Draw_0.gml
+@@ -2069,8 +2069,13 @@ if (node_type == "LABEL") {
+     if (!_is_implied) {
+         var _cursor_x = draw_x + 10 + string_width_l(_prefix);
+ 
+-        // 2. Draw Editable Value immediately after prefix (Yellow)
+-        draw_set_color(c_yellow);
++        // 2. Draw Editable Value immediately after prefix (Yellow; red when
++        // it names a jump/branch target nothing defines any more)
++        var _ln_target = (_inst_lower == "jsr" || _inst_lower == "jmp" || _inst_lower == "jmp_abs" || _inst_lower == "jmp_ind"
++                       || (string_length(_inst_lower) == 3 && string_char_at(_inst_lower, 1) == "b"
++                           && _inst_lower != "bit" && _inst_lower != "brk"));
++        var _val_missing = _ln_target && scr_label_is_missing(_raw_val);
++        draw_set_color(_val_missing ? c_red : c_yellow);
+         draw_text_l(_cursor_x, _yy, _display_val);
+ 
+         // Guided tour: report an operand that is still 0 so the tour can
+diff --git a/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml b/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
+index 5529882..1b3ab8f 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_c64_do_update_addresses/scr_c64_do_update_addresses.gml
+@@ -185,6 +185,17 @@ global.compile_sizing_pass = false;
+ // runs a compile of its own, so keeping it live costs one array walk here
+ // rather than a second full compile inside the Draw event.
+ scr_show_code_build(_compiled);
++
++// Every label this compile defines, so a JSR/JMP/branch node can show a
++// target that no longer exists (e.g. an imported sngNNN_play) in red.
++// The assembler also injects these at build, and KERNAL picks are names.
++global.known_labels = { sid_init: 1, sid_play: 1, sid_getin: 1, irq_hook_scroll: 1 };
++var _krn_names = scr_kernal_routine_list();
++for (var _kni = 0; _kni < array_length(_krn_names); _kni++) global.known_labels[$ _krn_names[_kni].name] = 1;
++for (var _kli = 0; _kli < array_length(_compiled); _kli++) {
++    var _kle = _compiled[_kli];
++    if (array_length(_kle) > 1 && string_lower(string(_kle[0])) == "label") global.known_labels[$ string(_kle[1])] = 1;
++}
+ 	
+     // Metadata is stable during this pass. Resolve each mnemonic once,
+     // then reuse its byte/cycle pair for every instruction of that kind.
+@@ -1525,4 +1536,18 @@ with (obj_c64_node) {
+ // scr_show_code_build(): attributing rows to LABEL and plain opcode nodes needs
+ // pc_address, and those are not assigned until the passes above have run.
+ scr_show_code_attribute();
+-}
+\ No newline at end of file
++}
++
++/// @function scr_label_is_missing(_name)
++/// @desc True when _name is a label operand that the last address update's
++///       compile did not define (and is not a variable / constant). Numbers,
++///       empty operands, and anything before the first update are never missing.
++function scr_label_is_missing(_name) {
++    if (!is_string(_name) || _name == "") return false;
++    if (!variable_global_exists("known_labels")) return false;
++    var _c0 = string_char_at(_name, 1);
++    if (_c0 == "$" || _c0 == "%" || _asm_is_dec(_name)) return false;
++    if (variable_struct_exists(global.known_labels, _name)) return false;
++    if (ds_exists(global.named_loc_map, ds_type_map) && ds_map_exists(global.named_loc_map, string_upper(_name))) return false;
++    return true;
++}
+diff --git a/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.gml b/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.gml
+index ea369a9..b650945 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_import_code_block/scr_import_code_block.gml
+@@ -400,10 +400,31 @@ function scr_import_mapping_box() {
+ 
+     // Pass 2: parents by index, wires through the uid map. Anything that was
+     // on a spine outside the box comes in floating.
++    var _old_uids = variable_struct_get_names(_uid_map);
+     for (var _i = 0; _i < _n_recs; _i++) {
+         var _n = _made[_i];
+         if (_n == noone) continue;
+         var _r = _recs[_i];
++        // Generated labels carry their node's stable_uid (sng<uid>_play,
++        // hud<uid>_...). Point references inside the box at the new uids.
++        for (var _a = 0; _a < array_length(_n.instructions); _a++) {
++            if (!is_array(_n.instructions[_a])) continue;
++            for (var _b = 0; _b < array_length(_n.instructions[_a]); _b++) {
++                var _s = _n.instructions[_a][_b];
++                if (!is_string(_s)) continue;
++                // Via placeholders, so an old uid that equals another's new
++                // uid can't be renamed twice.
++                for (var _u = 0; _u < array_length(_old_uids); _u++) {
++                    var _tok = chr(1) + string(_u) + chr(1);
++                    _s = string_replace_all(_s, "sng" + _old_uids[_u] + "_", "sng" + _tok + "_");
++                    _s = string_replace_all(_s, "hud" + _old_uids[_u] + "_", "hud" + _tok + "_");
++                }
++                for (var _u = 0; _u < array_length(_old_uids); _u++) {
++                    _s = string_replace_all(_s, chr(1) + string(_u) + chr(1), string(_uid_map[$ _old_uids[_u]]));
++                }
++                _n.instructions[_a][_b] = _s;
++            }
++        }
+         if (_n.node_type == "ORG") {
+             var _wi = _org_map[$ string(_r[$ "wire_in_source"] ?? -1)];
+             var _wo = _org_map[$ string(_r[$ "wire_out_target"] ?? -1)];

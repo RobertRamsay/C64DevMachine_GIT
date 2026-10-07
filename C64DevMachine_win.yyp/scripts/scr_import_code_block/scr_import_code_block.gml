@@ -400,10 +400,31 @@ function scr_import_mapping_box() {
 
     // Pass 2: parents by index, wires through the uid map. Anything that was
     // on a spine outside the box comes in floating.
+    var _old_uids = variable_struct_get_names(_uid_map);
     for (var _i = 0; _i < _n_recs; _i++) {
         var _n = _made[_i];
         if (_n == noone) continue;
         var _r = _recs[_i];
+        // Generated labels carry their node's stable_uid (sng<uid>_play,
+        // hud<uid>_...). Point references inside the box at the new uids.
+        for (var _a = 0; _a < array_length(_n.instructions); _a++) {
+            if (!is_array(_n.instructions[_a])) continue;
+            for (var _b = 0; _b < array_length(_n.instructions[_a]); _b++) {
+                var _s = _n.instructions[_a][_b];
+                if (!is_string(_s)) continue;
+                // Via placeholders, so an old uid that equals another's new
+                // uid can't be renamed twice.
+                for (var _u = 0; _u < array_length(_old_uids); _u++) {
+                    var _tok = chr(1) + string(_u) + chr(1);
+                    _s = string_replace_all(_s, "sng" + _old_uids[_u] + "_", "sng" + _tok + "_");
+                    _s = string_replace_all(_s, "hud" + _old_uids[_u] + "_", "hud" + _tok + "_");
+                }
+                for (var _u = 0; _u < array_length(_old_uids); _u++) {
+                    _s = string_replace_all(_s, chr(1) + string(_u) + chr(1), string(_uid_map[$ _old_uids[_u]]));
+                }
+                _n.instructions[_a][_b] = _s;
+            }
+        }
         if (_n.node_type == "ORG") {
             var _wi = _org_map[$ string(_r[$ "wire_in_source"] ?? -1)];
             var _wo = _org_map[$ string(_r[$ "wire_out_target"] ?? -1)];

@@ -2069,8 +2069,13 @@ if (node_type == "LABEL") {
     if (!_is_implied) {
         var _cursor_x = draw_x + 10 + string_width_l(_prefix);
 
-        // 2. Draw Editable Value immediately after prefix (Yellow)
-        draw_set_color(c_yellow);
+        // 2. Draw Editable Value immediately after prefix (Yellow; red when
+        // it names a jump/branch target nothing defines any more)
+        var _ln_target = (_inst_lower == "jsr" || _inst_lower == "jmp" || _inst_lower == "jmp_abs" || _inst_lower == "jmp_ind"
+                       || (string_length(_inst_lower) == 3 && string_char_at(_inst_lower, 1) == "b"
+                           && _inst_lower != "bit" && _inst_lower != "brk"));
+        var _val_missing = _ln_target && scr_label_is_missing(_raw_val);
+        draw_set_color(_val_missing ? c_red : c_yellow);
         draw_text_l(_cursor_x, _yy, _display_val);
 
         // Guided tour: report an operand that is still 0 so the tour can
