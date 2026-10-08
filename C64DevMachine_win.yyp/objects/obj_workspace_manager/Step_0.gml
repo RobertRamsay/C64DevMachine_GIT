@@ -27,16 +27,24 @@ if (label_jump_reflow > 0) {
 }
 
 // Bitmap editor SETUP NODES: the new nodes were stacked before Draw had
-// measured their real heights. Half a second later mark them dirty, give Draw
-// a few frames to re-measure, then pack the ORG so they snap together.
+// measured their real heights, and node Draw (where heights are measured)
+// exits while the asset viewer or code editor is open. So hold until both are
+// closed, then mark every node's height dirty, give Draw a few frames to
+// re-measure, and pack so they snap together.
 if (setup_settle_timer > 0) {
-    setup_settle_timer -= 1;
+    var _settle_busy = code_editor_open;
+    if (instance_exists(obj_asset_manager)) {
+        if (obj_asset_manager.viewer_open) {
+            _settle_busy = true;
+        }
+    }
+    if (!_settle_busy) {
+        setup_settle_timer -= 1;
+    }
     var _settle_org = setup_settle_org;
-    if (setup_settle_timer == 3 && instance_exists(_settle_org)) {
+    if (!_settle_busy && setup_settle_timer == 3) {
         with (obj_c64_node) {
-            if (id == _settle_org || org_parent == _settle_org) {
-                height_dirty = true;
-            }
+            height_dirty = true;
         }
     }
     if (setup_settle_timer == 0) {

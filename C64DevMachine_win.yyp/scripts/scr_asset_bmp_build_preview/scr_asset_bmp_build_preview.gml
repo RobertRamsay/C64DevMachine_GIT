@@ -659,15 +659,14 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
 function scr_bmp_spr_transfer(_asset, _target_name, _quiet = false, _addr = -1, _new_name = "") {
     var _o = scr_bmp_spr_get(_asset);
     var _list = [];
-    var _rows = variable_clone(_o.rows);
-    array_sort(_rows, function(_a, _b) { return _a.y - _b.y; });
+    var _rows = scr_bmp_spr_sorted_rows(_o);
     for (var _r = 0; _r < array_length(_rows); _r++) {
         for (var _s = 0; _s < array_length(_rows[_r].sprites); _s++) {
             if (array_length(_list) < 64) array_push(_list, _rows[_r].sprites[_s]);
         }
     }
     var _n = array_length(_list);
-    if (_n == 0) { scr_show_message("TRANSFER SPRITES\n\nThere are no sprites to transfer. Add a row first."); return undefined; }
+    if (_n == 0) { scr_show_message("TRANSFER SPRITES\n\nThere are no sprites to transfer. Draw on a sprite first (empty ones are skipped)."); return undefined; }
 
     var _am  = obj_asset_manager;
     var _dst = undefined;
@@ -796,11 +795,34 @@ function scr_bmp_spr_default_row(_asset) {
 // =====================================================================
 
 /// Rows sorted top to bottom, as transfer orders the slots.
+/// Empty sprites (no pixels set) are left out, and rows with none left are
+/// dropped, so SETUP NODES / TRANSFER only output sprites that were drawn on.
 function scr_bmp_spr_sorted_rows(_o) {
     var _rows = [];
-    for (var _r = 0; _r < array_length(_o.rows); _r++) if (array_length(_o.rows[_r].sprites) > 0) array_push(_rows, _o.rows[_r]);
+    for (var _r = 0; _r < array_length(_o.rows); _r++) {
+        var _used = [];
+        var _src  = _o.rows[_r].sprites;
+        for (var _s = 0; _s < array_length(_src); _s++) {
+            if (!scr_bmp_spr_is_empty(_src[_s])) {
+                array_push(_used, _src[_s]);
+            }
+        }
+        if (array_length(_used) > 0) {
+            array_push(_rows, { y: _o.rows[_r].y, sprites: _used });
+        }
+    }
     array_sort(_rows, function(_a, _b) { return _a.y - _b.y; });
     return _rows;
+}
+
+/// True when the sprite has no pixels set.
+function scr_bmp_spr_is_empty(_sp) {
+    for (var _p = 0; _p < 504; _p++) {
+        if (_sp.px[_p] != 0) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function scr_bmp_spr_overlaps(_a1, _a2, _b1, _b2) { return (_a1 < _b2 && _b1 < _a2); }
@@ -1041,9 +1063,9 @@ function scr_bmp_spr_setup_nodes(_asset) {
     scr_undo_snapshot();
     global.undo_dirty = false;
     scr_focus_camera_on_node(_org);
-    // Re-measure and re-pack the new nodes after half a second (obj_workspace_manager Step)
+    // Re-measure and re-pack the new nodes once the editor closes (obj_workspace_manager Step)
     obj_workspace_manager.setup_settle_org   = _org;
-    obj_workspace_manager.setup_settle_timer = ceil(game_get_speed(gamespeed_fps) * 0.5) + 3;
+    obj_workspace_manager.setup_settle_timer = 4;
 
     var _msg = "SETUP NODES\n\nYour nodes are set up at " + scr_bmp_spr_hex(_org_addr, 4) + ". Just JSR " + _show + ".";
     if (_n > 0) _msg += "\n\n" + string(_n) + " sprite(s) are in " + _set.name + " at " + scr_bmp_spr_hex(_set.address, 4) + ".";
