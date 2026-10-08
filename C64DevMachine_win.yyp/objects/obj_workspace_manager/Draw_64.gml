@@ -4154,7 +4154,32 @@ if (welcome_open) {
         draw_text_l(_px + 20, _py + 66, "GUIDED TOURS");
         draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(160, 160, 160));
-        draw_text_l(_px + 180, _py + 72, "Pick one. Each step waits for you to do it.");
+        draw_text_l(_px + 180, _py + 72, "Each step waits for you.");
+
+        // Page arrows and PAGE n / N
+        var _pg_n   = _tg.pages;
+        var _pg_cur = welcome_tour_scroll div _tg.rows;
+        if (_pg_n > 1) {
+            var _pg_btns = [[_tg.prev, "<", _pg_cur > 0], [_tg.next, ">", _pg_cur < _pg_n - 1]];
+            for (var _pb = 0; _pb < 2; _pb++) {
+                var _pr  = _pg_btns[_pb][0];
+                var _pon = _pg_btns[_pb][2];
+                var _phv = _pon && point_in_rectangle(_wmx, _wmy, _pr[0], _pr[1], _pr[2], _pr[3]);
+                draw_set_color(_phv ? make_color_rgb(60, 60, 90) : make_color_rgb(40, 40, 52));
+                draw_rectangle(_pr[0], _pr[1], _pr[2], _pr[3], false);
+                draw_set_color(_pon ? make_color_rgb(200, 160, 40) : make_color_rgb(70, 70, 85));
+                draw_rectangle(_pr[0], _pr[1], _pr[2], _pr[3], true);
+                draw_set_halign(fa_center);
+                draw_set_valign(fa_middle);
+                draw_set_color(_pon ? c_white : make_color_rgb(70, 70, 85));
+                draw_text_l((_pr[0] + _pr[2]) * 0.5, (_pr[1] + _pr[3]) * 0.5, _pg_btns[_pb][1]);
+            }
+            draw_set_color(make_color_rgb(200, 160, 40));
+            draw_text_l((_tg.prev[2] + _tg.next[0]) * 0.5, (_tg.prev[1] + _tg.prev[3]) * 0.5,
+                "PAGE " + string(_pg_cur + 1) + " / " + string(_pg_n));
+            draw_set_halign(fa_left);
+            draw_set_valign(fa_top);
+        }
 
         for (var _tr = 0; _tr < _tg.rows; _tr++) {
             var _ti = welcome_tour_scroll + _tr;
@@ -4194,18 +4219,6 @@ if (welcome_open) {
         draw_set_color(make_color_rgb(200, 160, 40));
         draw_text_l(_px + 20, _py + _ph - 30, "DOCUMENTS > TAKE THE TOUR...");
 
-        // Scrollbar, only when the list is longer than the panel
-        if (array_length(_tours) > _tg.rows) {
-            var _sb_x1 = _tg.list[2] - 6;
-            var _sb_y1 = _tg.list[1];
-            var _sb_h  = _tg.rows * _tg.row_h - 4;
-            var _th_h  = max(20, _sb_h * (_tg.rows / array_length(_tours)));
-            var _th_y  = _sb_y1 + (_sb_h - _th_h) * (welcome_tour_scroll / max(1, array_length(_tours) - _tg.rows));
-            draw_set_color(make_color_rgb(40, 40, 52));
-            draw_rectangle(_sb_x1, _sb_y1, _sb_x1 + 6, _sb_y1 + _sb_h, false);
-            draw_set_color(make_color_rgb(200, 160, 40));
-            draw_rectangle(_sb_x1, _th_y, _sb_x1 + 6, _th_y + _th_h, false);
-        }
     } else {
         // What's New
         var _wy = _py + 70;
