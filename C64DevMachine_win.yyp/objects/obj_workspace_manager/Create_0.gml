@@ -15,7 +15,7 @@ scr_creator_init();
 // 1 = on. Restores the feature exactly as before. The bridge also needs
 // tools/cdm-mcp shipped alongside the editor, or the buttons hide themselves.
 // ---------------------------------------------------------------------------
-#macro MCP_ENABLED 1
+#macro MCP_ENABLED 0
 
 global.text_prompt = undefined;
 // Language first: every text wrapper below depends on it.
