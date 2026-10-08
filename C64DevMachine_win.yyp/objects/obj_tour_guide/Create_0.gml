@@ -40,4 +40,10 @@ panel_y2  = 0;
 btn_back  = [0, 0, 0, 0];
 btn_next  = [0, 0, 0, 0];
 btn_exit  = [0, 0, 0, 0];
+btn_doit  = [0, 0, 0, 0];
+doit_vis  = false;     // DO IT FOR ME shown (and clickable) this frame
+
+// What DO IT FOR ME last did, shown on that step and the one after
+did_text  = "";
+did_step  = -1;
 panel_vis = false;

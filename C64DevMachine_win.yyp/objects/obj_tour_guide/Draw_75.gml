@@ -100,7 +100,14 @@ var _in_w = _pw - 40;
 
 draw_set_font_l(fnt_c64_code);
 var _text_h = string_height_ext_l(_step.text, 16, _in_w);
-var _ph     = 70 + _text_h + 44;
+// What DO IT FOR ME did: shown on that step and the step after it
+var _show_did = (did_text != "" && (did_step == step_idx || did_step == step_idx - 1));
+var _did_h    = 0;
+if (_show_did) {
+    _did_h = string_height_ext_l("I DID IT: " + did_text, 16, _in_w - 12) + 16;
+}
+// Room for the progress dots on their own row above the buttons
+var _ph     = 70 + _text_h + _did_h + 58;
 
 // Centre it over the workspace, between the palette and the asset panel.
 var _left = 0;
@@ -182,10 +189,25 @@ draw_set_font_l(fnt_c64_code);
 draw_set_color(c_white);
 draw_text_ext_l(_px + 20, _py + 62, _step.text, 16, _in_w);
 
-// Progress dots
+// I DID IT note
+if (_show_did) {
+    var _dy1 = _py + 62 + _text_h + 6;
+    draw_set_color(make_color_rgb(20, 60, 35));
+    draw_rectangle(_px + 18, _dy1, _px + _pw - 18, _dy1 + _did_h - 6, false);
+    draw_set_color(make_color_rgb(80, 160, 90));
+    draw_rectangle(_px + 18, _dy1, _px + _pw - 18, _dy1 + _did_h - 6, true);
+    draw_set_color(c_lime);
+    draw_text_ext_l(_px + 24, _dy1 + 4, "I DID IT: " + did_text, 16, _in_w - 12);
+} else if (did_text != "" && did_step != step_idx && did_step != step_idx - 1) {
+    did_text = "";
+    did_step = -1;
+}
+
+// Progress dots, squeezed to fit long tours
 var _dots  = array_length(steps);
 var _dot_x = _px + 20;
-var _dot_y = _py + _ph - 22;
+var _dot_y = _py + _ph - 44;
+var _dot_s = min(12, (_pw - 40) / max(1, _dots));
 for (var _d = 0; _d < _dots; _d++) {
     var _dc = make_color_rgb(70, 70, 90);
     if (_d < step_idx) {
@@ -195,7 +217,7 @@ for (var _d = 0; _d < _dots; _d++) {
         _dc = c_yellow;
     }
     draw_set_color(_dc);
-    draw_circle(_dot_x + (_d * 12), _dot_y, 3, false);
+    draw_circle(_dot_x + (_d * _dot_s), _dot_y, 3, false);
 }
 
 // Buttons: EXIT  BACK  NEXT/SKIP/FINISH
@@ -245,6 +267,23 @@ for (var _b = 0; _b < 3; _b++) {
     }
     draw_set_color(_tc);
     draw_text_l((_br[0] + _br[2]) * 0.5, _br[1] + 4, _labels[_b]);
+}
+
+// DO IT FOR ME, bottom left: does this step the way the user would. Waits a
+// moment after a step starts (and while a done step flashes) so a quick
+// double click can't run two steps.
+btn_doit = [_px + 20, _by, _px + 20 + 126, _by + _bh];
+doit_vis = false;
+if (_step.check != "NONE" && scr_tour_can_do(_step)) {
+    var _ready = (step_timer >= 25 && done_timer == 0);
+    doit_vis = _ready;
+    var _dhv = _ready && point_in_rectangle(_mx, _my, btn_doit[0], btn_doit[1], btn_doit[2], btn_doit[3]);
+    draw_set_color(_ready ? (_dhv ? make_color_rgb(150, 100, 30) : make_color_rgb(110, 70, 20)) : make_color_rgb(45, 40, 35));
+    draw_rectangle(btn_doit[0], btn_doit[1], btn_doit[2], btn_doit[3], false);
+    draw_set_color(make_color_rgb(220, 160, 60));
+    draw_rectangle(btn_doit[0], btn_doit[1], btn_doit[2], btn_doit[3], true);
+    draw_set_color(_ready ? c_white : make_color_rgb(110, 110, 110));
+    draw_text_l((btn_doit[0] + btn_doit[2]) * 0.5, btn_doit[1] + 4, "DO IT FOR ME");
 }
 draw_set_halign(fa_left);
 draw_set_color(c_white);

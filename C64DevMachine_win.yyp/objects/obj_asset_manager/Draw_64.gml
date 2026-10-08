@@ -5116,7 +5116,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        var _btn_label = _has_canvas ? "EDIT" : "CREATE";
 	        draw_text_l(_ebx1 + 40, _btn_y + 5, _btn_label);
             
-if (_eb_hov && mouse_check_button_pressed(mb_left)) {
+if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASSET:BMP_EDIT")) {
 	            _asset.meta.is_editing = !_is_ed;
                 
 	            // Reset stroke tracking to prevent jump-lines when toggling edit mode

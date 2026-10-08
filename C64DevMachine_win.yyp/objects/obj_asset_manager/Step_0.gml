@@ -2070,7 +2070,20 @@ if (reu_drag_row >= 0) {
 // -------------------------------------------------------
 global.ui_click_block_timer = 0;
 global.ui_click_consumed    = false;
-if (mouse_check_button_pressed(mb_left) && !global.any_picker_open && !(_wide_modal && !_mouse_in_viewer)) {
+// Guided tour DO IT FOR ME: add an asset as if its row in the [ADD ASSET +]
+// list was clicked. The dropdown branch below runs first and exits.
+var _tour_add = false;
+if (global.tour_add_type != "") {
+    for (var _tai = 0; _tai < array_length(asset_types); _tai++) {
+        if (asset_types[_tai] == global.tour_add_type) {
+            add_dropdown_open  = true;
+            add_dropdown_hover = _tai;
+            _tour_add = true;
+        }
+    }
+    global.tour_add_type = "";
+}
+if ((mouse_check_button_pressed(mb_left) || _tour_add) && !global.any_picker_open && !(_wide_modal && !_mouse_in_viewer)) {
 
 // Close dropdown if clicking outside
     if (add_dropdown_open) {
