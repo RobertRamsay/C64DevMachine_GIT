@@ -830,8 +830,8 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _vy1 = 40;
         _vy2 = _gui_h - 40;
     }
-    // LINE_COLL / PICKUP_TABLE / CHAR_SET: full screen. Must match obj_asset_manager Step.
-    if (_asset.type == "LINE_COLL" || _asset.type == "PICKUP_TABLE" || _asset.type == "CHAR_SET") {
+    // LINE_COLL / PICKUP_TABLE / CHAR_SET / BITMAP: full screen. Must match obj_asset_manager Step.
+    if (_asset.type == "LINE_COLL" || _asset.type == "PICKUP_TABLE" || _asset.type == "CHAR_SET" || _asset.type == "BITMAP") {
         _vx1 = 30;
         _vx2 = _gui_w - 30;
         _vy1 = 40;
@@ -5406,12 +5406,12 @@ if (_eb_hov && mouse_check_button_pressed(mb_left)) {
             
 	        // Find the max whole-number scale that fits the PANEL, not the window.
 	        // _thumb dims already bake in _scale_f_cap, so divide panel space by it here.
-	        var _panel_avail_w = _vw - 180; // reserve room for left + right toolbars
+	        var _panel_avail_w = _vw - 420; // left tool column + sprite panel, right tools + palette
 	        var _fit_by_w = floor(_panel_avail_w / (320 * _scale_f_cap));
 	        var _fit_by_h = floor(_avail_h      / (200 * _scale_f_cap));
             
-	        // Pick the smaller scale so it doesn't clip, cap at 3x, minimum 1x
-	        var _frame_z = clamp(min(_fit_by_w, _fit_by_h), 1, 3);
+	        // Pick the smaller scale so it doesn't clip, cap at 4x (full-screen editor), minimum 1x
+	        var _frame_z = clamp(min(_fit_by_w, _fit_by_h), 1, 4);
             
 	        // Multiply by the GUI scale correction factor to prevent sub-pixel lapsing
 	        var _thumb_w = floor(320 * _frame_z * _scale_f_cap); 
@@ -5616,7 +5616,13 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
 }
                 
 // EDITOR TOOLS & PALETTE OVERLAYS
-            if (_is_ed && !_prev_input_blocked) {
+            // The tools and buttons always draw. While the preview window has the
+            // mouse (hover or drag) they get an off-screen pointer instead, so a
+            // click there can't reach a button or the canvas underneath.
+            var _mx_keep = _mx;
+            var _my_keep = _my;
+            if (_prev_input_blocked) { _mx = -100000; _my = -100000; }
+            if (_is_ed) {
                 
             // ══ PNG CONVERSION MODE ══════════════════════════════════════════
             if (!variable_struct_exists(_asset.meta, "bg_col"))    _asset.meta.bg_col    = 0;
@@ -7962,6 +7968,8 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
                  
                     
             } // end _is_ed
+            _mx = _mx_keep;
+            _my = _my_keep;
 	                
 
 	                
