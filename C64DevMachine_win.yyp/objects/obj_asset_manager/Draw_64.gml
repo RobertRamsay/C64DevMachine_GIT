@@ -4354,6 +4354,44 @@ case "SPRITE_SET": {
         }
         // ── END EXPORT BIN / SPD ──────────────────────────────────────────────
 
+        // ── ALL MC / ALL HR — every sprite in the open editor in one go ──────
+        // Any HiRes sprite left: the click makes them all MC; all MC already:
+        // makes them all HiRes. Same per-slot path as the HR/MC MODE button,
+        // committed to the asset with the rest of the edits on CLOSE.
+        if (_v2_open) {
+            var _am_used = clamp(spred64_v2.used_count, 1, 64);
+            var _am_all_mc = true;
+            for (var _am_i = 0; _am_i < _am_used; _am_i++) {
+                if (spred64_v2.sprite_modes[_am_i] != 1) { _am_all_mc = false; break; }
+            }
+            var _amx1 = _esx2 + 8 + 2 * 118;
+            var _amx2 = _amx1 + 110;
+            var _am_hov = point_in_rectangle(_mx, _my, _amx1, _v2by1, _amx2, _v2by2);
+            draw_set_color(_am_all_mc
+                ? (_am_hov ? make_color_rgb(80, 140, 200) : make_color_rgb(40, 80, 130))
+                : (_am_hov ? make_color_rgb(220, 120, 40) : make_color_rgb(160, 80, 20)));
+            draw_rectangle(_amx1, _v2by1, _amx2, _v2by2, false);
+            draw_set_color(c_ltgray);
+            draw_rectangle(_amx1, _v2by1, _amx2, _v2by2, true);
+            draw_set_color(c_white);
+            draw_set_halign(fa_center);
+            draw_text_l(_amx1 + 55, _v2by1 + 2, _am_all_mc ? "ALL -> HR" : "ALL -> MC");
+            draw_set_halign(fa_left);
+            if (_am_hov && mouse_check_button_pressed(mb_left)
+            && !global.ui_click_consumed && !global.any_picker_open) {
+                var _am_mode = _am_all_mc ? 0 : 1;
+                for (var _am_i = 0; _am_i < _am_used; _am_i++) {
+                    spred64_v2.sprite_modes[_am_i] = _am_mode;
+                    scr_spred64_v2_refresh_slot_sprite(_asset, _am_i);
+                }
+                spred64_v2.dirty = true;
+                if (surface_exists(spred64_v2.edit_surface)) surface_free(spred64_v2.edit_surface);
+                spred64_v2.edit_surface = -1;
+                global.ui_click_consumed = true;
+            }
+        }
+        // ── END ALL MC / HR ───────────────────────────────────────────────────
+
         _cy += 30;
 
         // If V2 is active on this asset, hand off the entire viewer area to it
