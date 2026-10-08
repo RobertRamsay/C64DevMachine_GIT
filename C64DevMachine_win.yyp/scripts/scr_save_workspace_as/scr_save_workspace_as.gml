@@ -173,6 +173,9 @@
 	            }
 	            if (_ct_any) _meta_out.coll_types = _a.meta.coll_types;
 	        }
+	        // Bitmap editor sprite overlay (scr_bmp_spr_*), only when it holds sprites
+	        if (_a.type == "BITMAP" && is_struct(_a.meta[$ "spr_overlay"]) && array_length(_a.meta.spr_overlay.rows) > 0)
+	            _meta_out.spr_overlay = _a.meta.spr_overlay;
 			if (variable_struct_exists(_a.meta, "sprite_mcs"))   _meta_out.sprite_mcs   = _a.meta.sprite_mcs;
 			if (variable_struct_exists(_a.meta, "sprite_json"))  _meta_out.sprite_json  = _a.meta.sprite_json; 
 			if (variable_struct_exists(_a.meta, "compositor"))   _meta_out.compositor   = _a.meta.compositor;

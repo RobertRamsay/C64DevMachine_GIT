@@ -4606,6 +4606,7 @@ switch (node_type) {
     } break;
 
 case "BITMAP": {
+	        var _spr_mode = false;   // sprite overlay paint mode (set in the edit block)
 	        // Painting reads bg_mask / HiRes roles: a cache-loaded preview decodes once here
 	        scr_asset_bmp_ensure_decoded(_asset);
 	        // Recalculate UI zoom cap to match display scale — keeps pixels consistent size
@@ -5463,6 +5464,8 @@ if (_asset.meta.bmp_zoom <= bmp_ui_zoom_cap) {
 	    _sw / _src_w, _sh / _src_h,
 	    c_white, 1);
 }
+// Hardware sprite overlay (scr_bmp_spr_*), always in front of the bitmap
+scr_bmp_spr_draw(_asset, _sx, _sy, _sw, _sh, bmp_ui_zoom_cap);
 gpu_set_scissor(0, 0, window_get_width(), window_get_height());
 gpu_set_texfilter(_prev_filter);
 
@@ -6035,9 +6038,13 @@ surface_reset_target();
 	                    }
 	                }
 
+	                // SPRITE OVERLAY: in sprite paint mode the sprites take the mouse,
+	                // Ctrl+Z / Ctrl+Y, and the bitmap tools below stand down.
+	                _spr_mode = scr_bmp_spr_edit(_asset, _raw_px, _raw_py, _in_bounds);
+
 // --- HOTKEYS ---
 	                // Undo: Ctrl+Z
-	                if (keyboard_check_pressed(ord("Z")) && keyboard_check(vk_control)) {
+	                if (!_spr_mode && keyboard_check_pressed(ord("Z")) && keyboard_check(vk_control)) {
 	                    if (array_length(_asset.meta.undo_stack) > 0) {
 	                        // Snapshot CURRENT pixels + mask + bg_col into redo
 	                        var _redo_buf  = buffer_create(320 * 200 * 4, buffer_fixed, 1);
@@ -6081,7 +6088,7 @@ surface_reset_target();
 	                    }
 	                }
 	                // Redo: Ctrl+Y
-	                if (keyboard_check_pressed(ord("Y")) && keyboard_check(vk_control)) {
+	                if (!_spr_mode && keyboard_check_pressed(ord("Y")) && keyboard_check(vk_control)) {
 	                    if (array_length(_asset.meta.redo_stack) > 0) {
 	                        // Snapshot CURRENT pixels + mask + bg_col into undo
 	                        var _undo_buf2  = buffer_create(320 * 200 * 4, buffer_fixed, 1);
@@ -6127,8 +6134,8 @@ surface_reset_target();
 	                if (keyboard_check_pressed(219)) _asset.meta.brush_size = max(0, _asset.meta.brush_size - 1);
 	                if (keyboard_check_pressed(221)) _asset.meta.brush_size = min(16, _asset.meta.brush_size + 1);
 
-	                var _press_flip_x = keyboard_check_pressed(ord("X"));
-	                var _press_flip_y = keyboard_check_pressed(ord("Y")) && !keyboard_check(vk_control);
+	                var _press_flip_x = !_spr_mode && keyboard_check_pressed(ord("X"));
+	                var _press_flip_y = !_spr_mode && keyboard_check_pressed(ord("Y")) && !keyboard_check(vk_control);
                     
 	                if (_press_flip_x || _press_flip_y) {
 	                    if (surface_exists(_asset.meta.grab_surf)) {
@@ -6180,7 +6187,7 @@ surface_reset_target();
 
 
 	                // --- TOOL EXECUTION LOGIC ---
-	                if (_in_bounds) {
+	                if (_in_bounds && !_spr_mode) {
 	                    if (_asset.meta.active_tool == "GRAB") {
 	                        // Marquee Drag Logic
 							if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
@@ -7244,7 +7251,7 @@ if (_asset.meta.grab_w > 0 && _asset.meta.grab_h > 0) {
 	                }
                     
 // COLOR PICKER (Eye-dropper)
-if (_in_bounds && keyboard_check(vk_alt) && !_png_mode) {
+if (_in_bounds && !_spr_mode && keyboard_check(vk_alt) && !_png_mode) {
 	if (mouse_check_button_pressed(mb_left)) {
 	    if (_bmp_is_hires) {
 	        // A HiRes character cell owns a two-colour pair. Pick the roles,
@@ -7269,7 +7276,7 @@ if (_in_bounds && keyboard_check(vk_alt) && !_png_mode) {
 // Draw cursor preview (Hidden if Alt is held for picking)
 draw_set_alpha(1.0);
 if (!variable_struct_exists(_asset.meta, "active_color")) _asset.meta.active_color = 1;
-if (_in_bounds && !keyboard_check(vk_alt) && !_png_mode) {
+if (_in_bounds && !_spr_mode && !keyboard_check(vk_alt) && !_png_mode) {
 	var _cur_snap_px = (_raw_px div _bmp_step) * _bmp_step;
 	var _cur_snap_py = _raw_py;
 	var _scale_x_cur = (_z <= bmp_ui_zoom_cap) ? (_sw / 320) : (_sw / _src_w2);
@@ -7352,7 +7359,7 @@ if (_asset.meta.active_tool == "DRAW" && !surface_exists(_asset.meta.grab_surf))
 
 // Draw Grab Stamp Preview (If holding one)
 // Added !keyboard_check(vk_alt) to hide the stamp while color picking
-if (_asset.meta.active_tool == "DRAW" && surface_exists(_asset.meta.grab_surf) && _in_bounds && !keyboard_check(vk_alt) && !_png_mode) {
+if (_asset.meta.active_tool == "DRAW" && surface_exists(_asset.meta.grab_surf) && _in_bounds && !_spr_mode && !keyboard_check(vk_alt) && !_png_mode) {
 	                    var _screen_x = 0, _screen_y = 0;
 	                    // Snap to MC pixel boundary (even x) then snap screen position to whole pixels
 	                    var _snap_px = (_raw_px div _bmp_step) * _bmp_step;
@@ -7665,6 +7672,9 @@ gpu_set_texfilter(false);
 	                draw_rectangle(_ltx, _lty, _ltx + _cg_w * bmp_zoom_grid_str, _lty + 10, false);
 	                draw_set_color((_zg_hov || bmp_zoom_grid_drag) ? c_white : c_black);
 	                draw_rectangle(_ltx, _lty, _zg_x2, _lty + 10, true);
+
+	                // SPRITE OVERLAY panel: paint target, pens, rows, colours, transfer
+	                scr_bmp_spr_panel(_asset, _ltx, _lty + 28, _mx, _my);
 
 					// RIGHT SIDE TOOLS
 	                var _rtx = _thumb_x + _thumb_w + 45;
