@@ -48,7 +48,17 @@ if (is_undefined(_r)) {
     var _ty1 = _r[1] - _pad;
     var _tx2 = _r[2] + _pad;
     var _ty2 = _r[3] + _pad;
-    if (!hl_have) {
+    // While the canvas moves (glide, pan, zoom) the box follows its target
+    // exactly; it only eases when the target itself changes on a still view.
+    var _cam = obj_workspace_manager.cam_view;
+    var _cvx = camera_get_view_x(_cam);
+    var _cvy = camera_get_view_y(_cam);
+    var _cvw = camera_get_view_width(_cam);
+    var _cam_moved = (_cvx != hl_cam_x || _cvy != hl_cam_y || _cvw != hl_cam_w);
+    hl_cam_x = _cvx;
+    hl_cam_y = _cvy;
+    hl_cam_w = _cvw;
+    if (!hl_have || _cam_moved) {
         hl_x1 = _tx1;
         hl_y1 = _ty1;
         hl_x2 = _tx2;
