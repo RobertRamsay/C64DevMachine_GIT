@@ -1041,6 +1041,9 @@ function scr_bmp_spr_setup_nodes(_asset) {
     scr_undo_snapshot();
     global.undo_dirty = false;
     scr_focus_camera_on_node(_org);
+    // Re-measure and re-pack the new nodes after half a second (obj_workspace_manager Step)
+    obj_workspace_manager.setup_settle_org   = _org;
+    obj_workspace_manager.setup_settle_timer = ceil(game_get_speed(gamespeed_fps) * 0.5) + 3;
 
     var _msg = "SETUP NODES\n\nYour nodes are set up at " + scr_bmp_spr_hex(_org_addr, 4) + ". Just JSR " + _show + ".";
     if (_n > 0) _msg += "\n\n" + string(_n) + " sprite(s) are in " + _set.name + " at " + scr_bmp_spr_hex(_set.address, 4) + ".";

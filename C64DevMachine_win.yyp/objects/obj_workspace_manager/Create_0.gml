@@ -929,6 +929,8 @@ label_jump_pending = noone;    // LABEL waiting for its folded ORG to reflow
 label_jump_reflow  = 0;        // frames left before the camera moves to it
 label_jump_fx_node = noone;    // LABEL showing the arrival pulse
 label_jump_fx_t    = 1;        // 0..1 progress of the pulse (1 = finished)
+setup_settle_org   = noone;    // ORG made by the bitmap editor's SETUP NODES
+setup_settle_timer = 0;        // frames left before its node heights are re-measured and packed
 
 // MACRO_REU asset drop-down (ASSET mode) — drawn in Draw_64 so it sits on top
 reu_pick_open   = false;

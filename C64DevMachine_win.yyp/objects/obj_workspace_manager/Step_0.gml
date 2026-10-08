@@ -26,6 +26,29 @@ if (label_jump_reflow > 0) {
     }
 }
 
+// Bitmap editor SETUP NODES: the new nodes were stacked before Draw had
+// measured their real heights. Half a second later mark them dirty, give Draw
+// a few frames to re-measure, then pack the ORG so they snap together.
+if (setup_settle_timer > 0) {
+    setup_settle_timer -= 1;
+    var _settle_org = setup_settle_org;
+    if (setup_settle_timer == 3 && instance_exists(_settle_org)) {
+        with (obj_c64_node) {
+            if (id == _settle_org || org_parent == _settle_org) {
+                height_dirty = true;
+            }
+        }
+    }
+    if (setup_settle_timer == 0) {
+        if (instance_exists(_settle_org)) {
+            global.addresses_dirty = true;
+            scr_c64_do_update_addresses();
+            flow_overlay_dirty = true;
+        }
+        setup_settle_org = noone;
+    }
+}
+
 // Record what a clean workspace looks like, then start any tour that asked
 // for the restart that produced it.
 if (tour_baseline_timer > 0) {
