@@ -588,6 +588,14 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
     _y += 20;
     if (!_on) return;
 
+    // The selection isn't saved: coming back into the editor (or after a
+    // delete / undo) pick the first sprite, so its colour strip, DEL SPR and
+    // the MC / HIRES toggle are always there.
+    if (is_undefined(scr_bmp_spr_selected(_asset)) && scr_bmp_spr_count(_o) > 0) {
+        _m.spr_sel = 0;
+        scr_bmp_spr_sync_palette(_asset);
+    }
+
     // Tools: ERASE / MOVE. Painting colours are picked from the swatches below.
     var _pen = _m[$ "spr_pen"] ?? "SPR";
     if (_btn(_x, _y, 52, "ERASE", _pen == "ERASE", _mx, _my, _click)) {
