@@ -4863,15 +4863,27 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        // SOURCE FILE PATH ROW — shown below main buttons
 	        var _src_path = variable_struct_exists(_asset.meta, "source_file") ? _asset.meta.source_file : _asset.file;
 	        var _is_working_copy = (string_pos("_imported_", _asset.file) > 0);
+	        // Drawn in the title bar, after the "BITMAP : name" title and
+	        // left of AUTOSAVE (which sits at _vx2 - 258), so it stays out of
+	        // the way of the canvas.
+	        var _path_label = "FILE: " + _src_path;
+	        var _path_col   = make_color_rgb(15, 30, 55);
+	        if (_is_working_copy) {
+	            _path_label = "SRC: " + _src_path;
+	            _path_col   = make_color_rgb(10, 80, 20);
+	        }
+	        draw_set_font_l(fnt_c64_code);
+	        var _path_x = _vx1 + 10 + string_width_l(_asset.type + " : " + _asset.name) + 24;
+	        draw_set_font_l(fnt_c64_tiny);
+	        var _max_path_w = (_vx2 - 270) - _path_x;
 	        // Truncate path from left if too long
-	        var _path_label = (_is_working_copy ? "SRC: " : "FILE: ") + _src_path;
-	        var _max_path_w = 840;
 	        while (string_width_l(_path_label) > _max_path_w && string_length(_path_label) > 10) {
 	            _path_label = "..." + string_copy(_path_label, 20, string_length(_path_label) - 19);
 	        }
-	        draw_set_color(_is_working_copy ? make_color_rgb(60, 120, 60) : make_color_rgb(60, 60, 80));
-	        draw_set_color(_is_working_copy ? make_color_rgb(80, 160, 80) : make_color_rgb(100, 100, 120));
-	        draw_text_l(_vx1 + 180, _vy1 + 106, _path_label);
+	        if (_max_path_w > 40) {
+	            draw_set_color(_path_col);
+	            draw_text_l(_path_x, _vy1 + 8, _path_label);
+	        }
 	            
 	        // RELOAD SOURCE button
 	        if (_is_working_copy && !_png_mode && string_lower(filename_ext(_src_path)) != ".png") {
@@ -4999,8 +5011,8 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
             */
 			
 	        // ── DRAGGABLE 320×200 PREVIEW WINDOW ──────────────────────────────────
-	        if (!variable_struct_exists(_asset.meta, "prev_win_x"))      _asset.meta.prev_win_x      = 114;
-	        if (!variable_struct_exists(_asset.meta, "prev_win_y"))      _asset.meta.prev_win_y      = 660;
+	        if (!variable_struct_exists(_asset.meta, "prev_win_x"))      _asset.meta.prev_win_x      = -1; // -1 = auto-place bottom right (set once the canvas rect is known)
+	        if (!variable_struct_exists(_asset.meta, "prev_win_y"))      _asset.meta.prev_win_y      = -1;
 	        if (!variable_struct_exists(_asset.meta, "prev_win_drag"))   _asset.meta.prev_win_drag   = false;
 	        if (!variable_struct_exists(_asset.meta, "prev_win_drag_ox"))_asset.meta.prev_win_drag_ox = 0;
 	        if (!variable_struct_exists(_asset.meta, "prev_win_drag_oy"))_asset.meta.prev_win_drag_oy = 0;
@@ -5416,9 +5428,20 @@ if (_eb_hov && mouse_check_button_pressed(mb_left)) {
 	        // Multiply by the GUI scale correction factor to prevent sub-pixel lapsing
 	        var _thumb_w = floor(320 * _frame_z * _scale_f_cap); 
 	        var _thumb_h = floor(200 * _frame_z * _scale_f_cap);
-	        var _thumb_x = _vx1 + (_vw * 0.5) - (_thumb_w * 0.5);
-	        var _thumb_y = _cy + (_avail_h * 0.5) - (_thumb_h * 0.5);
-	        _thumb_y = max(_thumb_y, _cy + 10);
+	        // Canvas sits just right of the left tool / sprite column (rather than
+	        // centred) so the preview window has room at the bottom right.
+	        var _thumb_x = _vx1 + 140;
+	        var _thumb_y = _cy + (_avail_h * 0.5) - (_thumb_h * 0.5);
+	        _thumb_y = max(_thumb_y, _cy + 10);
+
+	        // Default preview window position: bottom right of the editor panel,
+	        // its bottom edge level with the bottom of the canvas.
+	        if (_asset.meta.prev_win_x < 0) {
+	            _asset.meta.prev_win_x = floor(_vx2 - _pw_w - 12);
+	            _asset.meta.prev_win_y = floor(_thumb_y + _thumb_h - (_hdr_h + _pw_h));
+	            _pw_x = _asset.meta.prev_win_x;
+	            _pw_y = _asset.meta.prev_win_y;
+	        }
             
 
 	        // Allow PNG conversion mode to enter even without an existing surface
