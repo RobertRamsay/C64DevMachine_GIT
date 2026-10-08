@@ -637,10 +637,10 @@ function scr_bmp_spr_transfer(_asset, _target_name, _quiet = false, _addr = -1, 
         if (_a.type == "SPRITE_SET" && _a.name == _target_name && _target_name != "") { _dst = _a; _dst_idx = _ai; break; }
     }
     if (is_undefined(_dst)) {
-        var _addr = scr_asset_default_address("SPRITE_SET");
-        with (obj_c64_node) { if (node_type == "MACRO_BMP" && is_connected) _addr = 0x6800; }
+        var _set_addr = scr_asset_default_address("SPRITE_SET");
+        with (obj_c64_node) { if (node_type == "MACRO_BMP" && is_connected) _set_addr = 0x6800; }
         _dst = { type: "SPRITE_SET", name: scr_music_maker_unique_name((_new_name != "") ? _new_name : (string_upper(_asset.name) + "_SPR")),
-                 file: "", address: _addr, buffer: buffer_create(64, buffer_fixed, 1),
+                 file: "", address: _set_addr, buffer: buffer_create(64, buffer_fixed, 1),
                  meta: { format: "binary", has_colour: true, bg_col: _asset.meta[$ "bg_col"] ?? 0,
                          mc1_col: 1, mc2_col: 2, sprite_mcs: [0], sprite_ucs: [1],
                          spr_sprites: array_create(1, -1), found_count: 0, used_count: 0, total_size: 64 },
