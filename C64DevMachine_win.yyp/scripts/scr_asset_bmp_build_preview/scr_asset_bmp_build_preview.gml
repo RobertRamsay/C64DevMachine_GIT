@@ -236,7 +236,11 @@ function scr_asset_bmp_cache_save(_key, _rgba) {
 function scr_bmp_spr_get(_asset) {
     var _m = _asset.meta;
     if (!variable_struct_exists(_m, "spr_overlay") || !is_struct(_m.spr_overlay)) {
-        _m.spr_overlay = { version: 1, show: true, mc1: 1, mc2: 2, rows: [] };
+        _m.spr_overlay = { version: 1, show: true, mc1: 1, mc2: 2, rows: [], mux_nodes: false };
+    }
+    // Overlays saved before the MUX option existed
+    if (!variable_struct_exists(_m.spr_overlay, "mux_nodes")) {
+        _m.spr_overlay.mux_nodes = false;
     }
     if (!variable_struct_exists(_m, "spr_undo")) { _m.spr_undo = []; _m.spr_redo = []; }
     return _m.spr_overlay;
@@ -504,6 +508,16 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
     _y += 20;
     if (_btn(_x, _y, _w, _o.show ? "SPRITES: SHOW" : "SPRITES: HIDE", _o.show, _mx, _my, _click)) {
         _o.show = !_o.show; scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
+    }
+    _y += 20;
+    // How SETUP NODES builds the multiplexer (more than one row): one commented
+    // MACRO_CODE block, or VWAIT + MACRO_SPR nodes per band
+    var _mux_lbl = "MUX: CODE";
+    if (_o.mux_nodes) {
+        _mux_lbl = "MUX: NODES";
+    }
+    if (_btn(_x, _y, _w, _mux_lbl, false, _mx, _my, _click)) {
+        _o.mux_nodes = !_o.mux_nodes; global.ui_click_consumed = true;
     }
     _y += 20;
     // A callable program for this bitmap and its sprites (scr_bmp_spr_setup_nodes)
@@ -888,6 +902,7 @@ function scr_bmp_spr_frame_code(_name, _set, _rows, _o, _scr_addr, _ptr0) {
            + "// Sprite multiplexer for " + _name + ": re-places hardware sprites 0-7\n"
            + "// for each 21-line band, timed off the raster ($D012). Call once per\n"
            + "// frame before the first band, e.g. right after a VWAIT at the bottom.\n"
+           + "; shared multicolours 1 and 2 for all sprites\n"
            + "    lda #" + scr_bmp_spr_hex(_o.mc1 & 15, 2) + "\n    sta $d025\n"
            + "    lda #" + scr_bmp_spr_hex(_o.mc2 & 15, 2) + "\n    sta $d026\n";
     var _slot = 0;
@@ -896,11 +911,16 @@ function scr_bmp_spr_frame_code(_name, _set, _rows, _o, _scr_addr, _ptr0) {
         var _sp  = _row.sprites;
         var _n   = min(array_length(_sp), 8);
         var _yy  = _row.y + 50;
-        if (_r > 0) {
+        if (_r == 0) {
+            _t += "; band 0 (raster line " + string(_yy) + "): set straight away - this also moves the\n"
+                + "; sprites back up to the top row after the last band of the previous frame\n";
+        } else {
             // Wait for the last line before this band, then swap the sprites over
             var _wl = _name + "_W" + string(_r);
             _t += "; band " + string(_r) + " starts on line " + string(_yy) + "\n"
-                + _wl + ":\n    lda $d012\n    cmp #" + scr_bmp_spr_hex(_yy - 1, 2) + "\n    bcc " + _wl + "\n";
+                + "; wait until the raster ($d012) reaches the line before it\n"
+                + _wl + ":\n    lda $d012\n    cmp #" + scr_bmp_spr_hex(_yy - 1, 2) + "\n    bcc " + _wl + "\n"
+                + "; the previous band is being drawn now, so reuse the 8 hardware sprites for this one\n";
         }
         var _en = 0, _msb = 0, _mc = 0;
         for (var _k = 0; _k < _n; _k++) {
@@ -911,11 +931,13 @@ function scr_bmp_spr_frame_code(_name, _set, _rows, _o, _scr_addr, _ptr0) {
         }
         for (var _k = 0; _k < _n; _k++) {
             var _hx = _sp[_k].x + 24;
+            _t += "; sprite " + string(_k) + ": Y, X (low byte), pointer (slot " + string(_slot + _k) + "), colour\n";
             _t += "    lda #" + scr_bmp_spr_hex(_yy & 255, 2) + "\n    sta " + scr_bmp_spr_hex(0xD001 + _k * 2, 4) + "\n"
                 + "    lda #" + scr_bmp_spr_hex(_hx & 255, 2) + "\n    sta " + scr_bmp_spr_hex(0xD000 + _k * 2, 4) + "\n"
                 + "    lda #" + scr_bmp_spr_hex((_ptr0 + _slot + _k) & 255, 2) + "\n    sta " + scr_bmp_spr_hex(_scr_addr + 0x3F8 + _k, 4) + "\n"
                 + "    lda #" + scr_bmp_spr_hex(_sp[_k].col & 15, 2) + "\n    sta " + scr_bmp_spr_hex(0xD027 + _k, 4) + "\n";
         }
+        _t += "; X high bits, multicolour bits, then switch on the sprites this band uses\n";
         _t += "    lda #" + scr_bmp_spr_hex(_msb, 2) + "\n    sta $d010\n"
             + "    lda #" + scr_bmp_spr_hex(_mc, 2) + "\n    sta $d01c\n"
             + "    lda #" + scr_bmp_spr_hex(_en, 2) + "\n    sta $d015\n";
@@ -1001,9 +1023,20 @@ function scr_bmp_spr_setup_nodes(_asset) {
 
     // Size estimate for the code block: BITMAP ~160, SPRITE ~60, multiplexer per band
     var _multi = (array_length(_rows) > 1);
+    var _mux_nodes = _multi && _o.mux_nodes;
     var _code = "";
-    if (_multi) _code = scr_bmp_spr_frame_code(_clean, _set, _rows, _o, _rg.scr_addr, _ptr0);
-    var _est = 200 + (_multi ? (string_count("\n", _code) * 3 + 32) : _n * 64);
+    var _est = 200 + _n * 64;
+    if (_multi) {
+        if (_mux_nodes) {
+            // A MACRO_SPR is ~64 bytes, a VWAIT ~25
+            _est = 200 + _n * 64 + array_length(_rows) * 28;
+        } else {
+            _code = scr_bmp_spr_frame_code(_clean, _set, _rows, _o, _rg.scr_addr, _ptr0);
+            // Comment lines assemble to nothing
+            var _code_lines = string_count("\n", _code) - string_count(";", _code);
+            _est = 200 + _code_lines * 3 + 32;
+        }
+    }
     var _org_addr = scr_bmp_spr_free_code(_est, _excl);
     if (_org_addr < 0) { scr_show_message("SETUP NODES\n\nThere is no free RAM for the code block (" + string(_est) + " bytes)."); return; }
 
@@ -1040,17 +1073,48 @@ function scr_bmp_spr_setup_nodes(_asset) {
         _lbl.instructions[0][1] = scr_make_unique_node_name(_clean + "_FRAME", _lbl);
         _frame = _lbl.instructions[0][1];
         _y += _lbl.height;
-        _nd = scr_node_spawn("MACRO_CODE", _x, _y);
-        _nd.code_descriptor    = _clean + " MULTIPLEXER";
-        _nd.instructions[0][1] = _code;
-        _nd.code_cache_dirty   = true;
-        _nd.height_dirty       = true;
-        _nd.is_connected       = true;
-        _nd.org_parent         = _org;
-        with (_nd) event_user(0);
-        scr_macro_sync_height(_nd);
-        _y += _nd.height;
-        _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, _org); _nd.node_title = "RTS";
+        if (_mux_nodes) {
+            // Band 0 at the top of the frame (puts the sprites back up after the
+            // last band), then for each later band wait for the raster and move
+            // the 8 hardware sprites down onto it.
+            var _slot0 = 0;
+            for (var _r = 0; _r < array_length(_rows); _r++) {
+                var _bsp = _rows[_r].sprites;
+                var _bn  = min(array_length(_bsp), 8);
+                var _byy = _rows[_r].y + 50;
+                if (_r > 0) {
+                    // A MACRO_SPR takes ~2 raster lines, so start early enough to
+                    // finish before the band - but not before the previous band
+                    // has started, or its sprites would be moved off it.
+                    var _prev_yy = _rows[_r - 1].y + 50;
+                    var _wait = max(_prev_yy, _byy - 2 - _bn * 2);
+                    _nd = scr_bmp_spr_node("MACRO_VWAIT", [["macro_vwait", _wait, 0, ""]], _x, _y, _org);
+                    _y += _nd.height;
+                }
+                for (var _k = 0; _k < _bn; _k++) {
+                    var _glob = 0;
+                    if (_r == 0 && _k == 0) {
+                        _glob = 1;
+                    }
+                    _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _bsp[_k].x + 24, _byy, _slot0 + _k, _glob]], _x, _y, _org);
+                    _y += _nd.height;
+                }
+                _slot0 += array_length(_bsp);
+            }
+            _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, _org); _nd.node_title = "RTS";
+        } else {
+            _nd = scr_node_spawn("MACRO_CODE", _x, _y);
+            _nd.code_descriptor    = _clean + " MULTIPLEXER";
+            _nd.instructions[0][1] = _code;
+            _nd.code_cache_dirty   = true;
+            _nd.height_dirty       = true;
+            _nd.is_connected       = true;
+            _nd.org_parent         = _org;
+            with (_nd) event_user(0);
+            scr_macro_sync_height(_nd);
+            _y += _nd.height;
+            _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, _org); _nd.node_title = "RTS";
+        }
     }
     _o.gen_org = _org.stable_uid;
 
@@ -1073,6 +1137,11 @@ function scr_bmp_spr_setup_nodes(_asset) {
         _msg += "\n\nMore than one row: also JSR " + _frame + " once every frame, before the first band"
               + " (e.g. right after a VWAIT at the bottom of the screen). Rows that touch (exactly 21"
               + " lines apart) can show a line of the next row's sprites at the seam; a gap of a few lines avoids it.";
+        if (_mux_nodes) {
+            _msg += "\n\nMUX: NODES - each MACRO_SPR takes about 2 raster lines, so a full row of 8 needs ~16 lines"
+                  + " to set up. Leave a gap between rows (or use MUX: CODE, which is much faster) or the"
+                  + " bottom of the row above can jump.";
+        }
     }
     scr_show_message(_msg);
 }
