@@ -203,6 +203,12 @@ function scr_node_draw_macro_move(_draw_x) {
         draw_set_color(make_color_rgb(120, 100, 80));
     }
     scr_node_macro_text_l(_draw_x + 6 + _chk_sz + 5, _row4, "9TH BIT (X>255)");
+    // Guided tour: 9TH BIT of the newest MOVE
+    if (global.tour_active && is_connected) {
+        if (id == scr_tour_last_by_type("MACRO_MOVE")) {
+            scr_tour_capture_world("FIELD:MACRO_MOVE:wide", _draw_x + 4, _row4, _draw_x + 160, _row4 + 16);
+        }
+    }
 
     // ---- STOP-mode bound rows — only shown for an axis actually in STOP,
     // so WRAP-only setups don't waste a row on fields they never use. ----

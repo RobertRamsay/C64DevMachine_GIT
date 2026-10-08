@@ -31,6 +31,9 @@ hl_x1   = 0;
 hl_y1   = 0;
 hl_x2   = 0;
 hl_y2   = 0;
+hl_cam_x = 0;          // view the box was last placed for; a change snaps it
+hl_cam_y = 0;
+hl_cam_w = 0;
 
 // Caption panel + buttons, written by Draw GUI, read by Begin Step
 panel_x1  = 0;

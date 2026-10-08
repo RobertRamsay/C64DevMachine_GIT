@@ -665,10 +665,21 @@ function scr_tour_capture_world(_key, _x1, _y1, _x2, _y2) {
     if (!global.tour_active) {
         return;
     }
-    var _wm = obj_workspace_manager;
-    scr_tour_capture(_key,
-        (_x1 - _wm.cam_x) / _wm.cam_zoom, (_y1 - _wm.cam_y) / _wm.cam_zoom,
-        (_x2 - _wm.cam_x) / _wm.cam_zoom, (_y2 - _wm.cam_y) / _wm.cam_zoom);
+    var _r = scr_tour_world_to_gui(_x1, _y1, _x2, _y2);
+    scr_tour_capture(_key, _r[0], _r[1], _r[2], _r[3]);
+}
+
+/// @desc World rect -> GUI rect through the view the canvas is actually drawn
+///       with this frame. cam_x / cam_y are where the camera is heading: the
+///       tour's glide moves them after the workspace has already set the view,
+///       so using them put every box a frame ahead of its node while gliding.
+function scr_tour_world_to_gui(_x1, _y1, _x2, _y2) {
+    var _cam = obj_workspace_manager.cam_view;
+    var _vx  = camera_get_view_x(_cam);
+    var _vy  = camera_get_view_y(_cam);
+    var _sx  = global.gui_w / camera_get_view_width(_cam);
+    var _sy  = display_get_gui_height() / camera_get_view_height(_cam);
+    return [(_x1 - _vx) * _sx, (_y1 - _vy) * _sy, (_x2 - _vx) * _sx, (_y2 - _vy) * _sy];
 }
 
 /// @desc Operand as a number: reals pass through, "$D020" and "53280" parse.
@@ -932,13 +943,8 @@ function scr_tour_check(_code) {
 
 /// @desc GUI rect of a node (world -> GUI via the workspace camera).
 function scr_tour_node_rect(_n) {
-    var _wm = obj_workspace_manager;
     var _nx = _n.x + _n.x_indent;
-    var _x1 = (_nx - _wm.cam_x) / _wm.cam_zoom;
-    var _y1 = (_n.y - _wm.cam_y) / _wm.cam_zoom;
-    var _x2 = (_nx + _n.width - _wm.cam_x) / _wm.cam_zoom;
-    var _y2 = (_n.y + _n.height - _wm.cam_y) / _wm.cam_zoom;
-    return [_x1, _y1, _x2, _y2];
+    return scr_tour_world_to_gui(_nx, _n.y, _nx + _n.width, _n.y + _n.height);
 }
 
 /// @desc Resolve the current step's highlight. Returns [x1,y1,x2,y2] or
@@ -2029,8 +2035,11 @@ function scr_tour_glide_step() {
             var _gx = (_r[0] + _r[2]) * 0.5;
             var _gy = (_r[1] + _r[3]) * 0.5;
             if (!point_in_rectangle(_gx, _gy, _u[0] + _mx, _u[1] + _my, _u[2] - _mx, _u[3] - _my)) {
-                var _wx = _wm.cam_x + (_gx * _wm.cam_zoom);
-                var _wy = _wm.cam_y + (_gy * _wm.cam_zoom);
+                // _r is in the drawn view's GUI space (scr_tour_world_to_gui),
+                // so map it back to the world through that same view
+                var _gv = _wm.cam_view;
+                var _wx = camera_get_view_x(_gv) + (_gx * camera_get_view_width(_gv) / global.gui_w);
+                var _wy = camera_get_view_y(_gv) + (_gy * camera_get_view_height(_gv) / display_get_gui_height());
                 glide_tx     = _wx - (((_u[0] + _u[2]) * 0.5) * _wm.cam_zoom);
                 glide_ty     = _wy - (((_u[1] + _u[3]) * 0.5) * _wm.cam_zoom);
                 glide_active = true;
@@ -2125,7 +2134,7 @@ function scr_tour_define_page2(_id) {
             "Click EDIT SPRITES to open the sprite editor.",
             ["ASSET:SPR_EDIT"], "SPR_V2_OPEN"));
         array_push(_s, scr_tour_step("FRAME 1",
-            "The strip at the top holds the 4 walk drawings, slots 0 to 3. Slot 0 is selected.\n\nThe compositor at the bottom right builds each frame of the animation. Click the highlighted square to put slot 0 in FRAME 1.",
+            "The strip at the top holds the walk drawings. Slots 0 to 3 face right; 4 to 7 are the same walk flipped to face left, for the PLATFORM GAME tour. Slot 0 is selected.\n\nThe compositor at the bottom right builds each frame of the animation. Click the highlighted square to put slot 0 in FRAME 1.",
             ["SPR:SLOT:0", "SPR:CELL"], "COMP_F:1"));
         for (var _f = 2; _f <= 4; _f++) {
             array_push(_s, scr_tour_step("ADD FRAME " + string(_f),
@@ -2163,7 +2172,7 @@ function scr_tour_define_page2(_id) {
 
     if (_id == 11) {
         array_push(_s, scr_tour_step_focus("WELCOME",
-            "Everything from the earlier tours comes together here.\n\nAlready set up: WALKER with its walk in the compositor, the PLATFORM_TUNE song, a PLATFORM KIT that draws a level and handles gravity and jumping, and a game loop that calls it.\n\nYou will add the walker, steering, the walk animation, jumping and music.",
+            "Everything from the earlier tours comes together here.\n\nAlready set up: WALKER with its walk in the compositor (frames 1-4 face right, 5-8 face left), the PLATFORM_TUNE song, a PLATFORM KIT that draws a level and handles gravity and jumping, and a game loop that calls it.\n\nYou will add the walker, steering, the walk animation, jumping and music.",
             [], "NONE", "FIT"));
         array_push(_s, scr_tour_step("THE PLATFORM KIT",
             "LEVEL_DRAW clears the screen and draws the platforms.\n\nPHYS_UPDATE runs every frame: it pulls sprite 0 down, lands it on solid blocks and lets it fall off edges. PHYS_JUMP starts a jump when the sprite is standing.\n\nOpen the CODE blocks to read the 6502. Click NEXT.",
@@ -2175,8 +2184,21 @@ function scr_tour_define_page2(_id) {
             "Click EDIT SPRITES to open the sprite editor.",
             ["ASSET:SPR_EDIT"], "SPR_V2_OPEN"));
         array_push(_s, scr_tour_step("CONVERT TO NODES",
-            "The walk is already in the compositor, as you built it in the ANIMATE A SPRITE tour. Click PLAY to see it if you like.\n\nThen click CONVERT TO NODES, and OK on the message.",
+            "The walk is already in the compositor, as you built it in the ANIMATE A SPRITE tour. START and END pick the frames that play: 0 to 3 is frames 1-4, the walk to the right. Click PLAY to see it if you like.\n\nThen click CONVERT TO NODES, and OK on the message.",
             ["SPR:CONVERT"], "ANIM_MADE"));
+        // The left walk: the mirrored frames, converted into the same block
+        array_push(_s, scr_tour_step("THE LEFT WALK",
+            "Frames 5-8 hold the same walk flipped to face left. Converting them adds a second ANIMATE routine to the same block.\n\nClick EDIT on the WALKER row again.",
+            ["ASSET:EDIT:SPRITE_SET", "ASSET:PANEL"], "SPR_VIEW"));
+        array_push(_s, scr_tour_step("OPEN THE SPRITE EDITOR",
+            "Click EDIT SPRITES.",
+            ["ASSET:SPR_EDIT"], "SPR_V2_OPEN"));
+        array_push(_s, scr_tour_step("PICK FRAMES 5-8",
+            "Use the + buttons to set START to 4 and END to 7. They count from 0, so that is frames 5-8.",
+            ["SPR:RANGE"], "RANGE:4:7"));
+        array_push(_s, scr_tour_step("CONVERT AGAIN",
+            "Click CONVERT TO NODES, and OK on the message.\n\nIt adds WALKER_ANIM_F5TO8 to the WALKER - ANIMATION block: the walk facing left. WALKER_ANIM is still the walk facing right.",
+            ["SPR:CONVERT"], "ANIM_COUNT:2"));
         array_push(_s, scr_tour_step_at("SHOW THE WALKER",
             "Drag JSR from the opcode palette onto the spine under JSR LEVEL_DRAW.",
             ["PAL:JSR", "ARROW:R"], "JSR_MORE", "JSRTO:LEVEL_DRAW"));
@@ -2204,12 +2226,15 @@ function scr_tour_define_page2(_id) {
         array_push(_s, scr_tour_step("WALK LEFT",
             "Set DX on the MOVE node to -2 and press ENTER.",
             ["FIELD:MACRO_MOVE:dx", "NODETYPE:MACRO_MOVE"], "MOVE_NEG"));
+        array_push(_s, scr_tour_step("THE 9TH BIT",
+            "A sprite's X register only goes up to 255, but the screen is wider than that. The 9th bit ($D010) carries X past 255.\n\nClick 9TH BIT on the MOVE node so the walker can reach the right side of the screen.",
+            ["FIELD:MACRO_MOVE:wide", "LASTTYPE:MACRO_MOVE"], "MOVE_WIDE"));
         array_push(_s, scr_tour_step_at("MOVE THE LEGS",
             "Drag JSR from the palette onto the spine under MOVE.",
             ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LASTTYPE:MACRO_MOVE"));
-        array_push(_s, scr_tour_step("CALL WALKER_ANIM",
-            "Click the JSR value and choose WALKER_ANIM.\n\nThe walk only plays while the walker is moving.",
-            ["PICK:WALKER_ANIM", "OPERANDNEW:jsr"], "JSR_TO:WALKER_ANIM"));
+        array_push(_s, scr_tour_step("FACE LEFT",
+            "Click the JSR value and choose WALKER_ANIM_F5TO8, the walk facing left.\n\nThe walk only plays while the walker is moving, and he keeps facing the way he last walked.",
+            ["PICK:WALKER_ANIM_F5TO8", "OPERANDNEW:jsr"], "JSRX:WALKER_ANIM_F5TO8:1"));
         array_push(_s, scr_tour_step_at("RETURN",
             "Drag RTS from the palette onto the spine under that JSR.",
             ["PAL:RTS", "ARROW:R"], "RTS_MORE", "LASTOP:jsr"));
@@ -2222,12 +2247,15 @@ function scr_tour_define_page2(_id) {
         array_push(_s, scr_tour_step("WALK RIGHT",
             "Set DX on the new MOVE node to 2 and press ENTER.",
             ["FIELD:MACRO_MOVE:dx", "LASTTYPE:MACRO_MOVE"], "MOVE_POS"));
+        array_push(_s, scr_tour_step("THE 9TH BIT",
+            "Click 9TH BIT on this MOVE node too.",
+            ["FIELD:MACRO_MOVE:wide", "LASTTYPE:MACRO_MOVE"], "MOVE_WIDE"));
         array_push(_s, scr_tour_step_at("MOVE THE LEGS",
             "Drag another JSR onto the spine under the new MOVE.",
             ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LASTTYPE:MACRO_MOVE"));
-        array_push(_s, scr_tour_step("CALL WALKER_ANIM",
-            "Click the new JSR value and choose WALKER_ANIM again.",
-            ["PICK:WALKER_ANIM", "OPERANDNEW:jsr"], "JSR_TO2:WALKER_ANIM"));
+        array_push(_s, scr_tour_step("FACE RIGHT",
+            "Click the new JSR value and choose WALKER_ANIM, the walk facing right.",
+            ["PICK:WALKER_ANIM", "OPERANDNEW:jsr"], "JSRX:WALKER_ANIM:1"));
         array_push(_s, scr_tour_step_at("RETURN",
             "Drag RTS onto the spine under that JSR.",
             ["PAL:RTS", "ARROW:R"], "RTS_MORE", "LASTOP:jsr"));
@@ -2320,14 +2348,15 @@ function scr_tour_setup_page2(_id) {
     }
 }
 
-/// @desc A 4 slot multicolour SPRITE_SET called WALKER holding a side-on
-///       walk, made the way [ADD ASSET +] makes one. The 4 key poses of a
-///       walk cycle: contact, passing, contact, passing. The body is a pixel
-///       lower on contact and a pixel higher on passing (the bob), each arm
-///       swings against its leg, and the far arm and leg are in the darker
-///       MC1 colour so you can see which leg is in front. _with_anim also puts the walk in the
-///       compositor (frames 1-4 use slots 0-3 in the same square), as the
-///       ANIMATE A SPRITE tour leaves it.
+/// @desc An 8 slot multicolour SPRITE_SET called WALKER holding a side-on
+///       walk, made the way [ADD ASSET +] makes one. Slots 0-3 are the 4 key
+///       poses of a walk cycle facing right: contact, passing, contact,
+///       passing. The body is a pixel lower on contact and a pixel higher on
+///       passing (the bob), each arm swings against its leg, and the far arm
+///       and leg are in the darker MC1 colour so you can see which leg is in
+///       front. Slots 4-7 are the same poses mirrored to face left.
+///       _with_anim also puts all 8 in the compositor (frame n uses slot n-1,
+///       in the same square) with the play range on frames 1-4.
 function scr_tour_make_walker(_with_anim) {
     if (!instance_exists(obj_asset_manager)) {
         return;
@@ -2336,7 +2365,12 @@ function scr_tour_make_walker(_with_anim) {
         "000000005400017F0001F70000FF0000300000A80003A9000CA84030A81000A80000A8000060000048000108000102000402000400800400801000801400A000",
         "005400017F0001F70000FF0000300000A80000AC0001AC0001AC0000AC0000A80000200000240000210000210000240000240000250000200000200000280000",
         "000000005400017F0001F70000FF0000300000A80001AB0004A8C010A83000A80000A80000900000840002040002010008010008004008004020004028005000",
-        "005400017F0001F70000FF0000300000A80000AC0001AC0001AC0000AC0000A800002000001800001200001200001800001800001A0000100000100000140000"
+        "005400017F0001F70000FF0000300000A80000AC0001AC0001AC0000AC0000A800002000001800001200001200001800001800001A0000100000100000140000",
+        // Slots 4-7: the same walk mirrored to face left (MC pixel pairs kept whole)
+        "00000000150000FD4000DF4000FF00000C00002A00006AC0012A30042A0C002A00002A000009000021000020400080400080100200100200100200040A001400",
+        "00150000FD4000DF4000FF00000C00002A00003A00003A40003A40003A00002A0000080000180000480000480000180000180000580000080000080000280000",
+        "00000000150000FD4000DF4000FF00000C00002A0000EA40032A100C2A04002A00002A0000060000120000108000408000402001002001002001000805002800",
+        "00150000FD4000DF4000FF00000C00002A00003A00003A40003A40003A00002A0000080000240000840000840000240000240000A40000040000040000140000"
     ];
     var _n   = array_length(_frames);
     var _buf = buffer_create(64 * _n, buffer_fixed, 1);
@@ -2364,7 +2398,7 @@ function scr_tour_make_walker(_with_anim) {
             array_push(_cf, { cells : [{ layer : 0, row : 1, col : 1, slot : _f, xo : 0, yo : 0, expand : "none" }] });
         }
         _meta.compositor = { frames : _cf, active_layer : 0, active_frame : 0, active_cell : -1 };
-        _meta.anim       = { playing : false, direction : "fwd", speed : 12, start : 0, ender : _n - 1 };
+        _meta.anim       = { playing : false, direction : "fwd", speed : 12, start : 0, ender : 3 };
     } else {
         // 12 FPS: one stride of about 16 pixels every 4 frames, which matches
         // walking at 2 pixels a frame, so the feet don't skate
@@ -2553,6 +2587,12 @@ function scr_tour_check_page2(_code) {
             return (real(_n.instructions[13][2]) == 1);
         case "FR_BELOW":
             return scr_tour_below_loop(scr_tour_label("FR"));
+        case "MOVE_WIDE":
+            _n = scr_tour_last_by_type("MACRO_MOVE");
+            if (_n == noone) {
+                return false;
+            }
+            return (real(_n.instructions[0][4]) == 1);
     }
     var _colon = string_pos(":", _code);
     if (_colon == 0) {
@@ -2589,6 +2629,16 @@ function scr_tour_check_page2(_code) {
             return false;
         case "BELOW":
             return scr_tour_below_loop(scr_tour_label(_arg));
+        case "ANIM_COUNT":
+            return (scr_tour_count_type("MACRO_ANIM", true) >= real(_arg));
+        case "RANGE":
+            // RANGE:<start>:<end>, as the START / END steppers show them
+            var _rv = obj_asset_manager.spred64_v2;
+            var _rc = string_pos(":", _arg);
+            if (!_rv.active || _rc == 0) {
+                return false;
+            }
+            return (_rv.anim_start == real(string_copy(_arg, 1, _rc - 1)) && _rv.anim_end == real(string_delete(_arg, 1, _rc)));
         case "JSRX":
         case "JMPX":
             // JSRX:<label>:<n> - at least n JSRs (JMPs) to exactly that label
@@ -2757,6 +2807,36 @@ function scr_tour_do_action(_st, _dry) {
                     return "I clicked the JMP value and picked " + _jarg + ". The program carries on in " + _jarg + ", and its RTS returns to whoever called this routine.";
                 }
                 return "I clicked the JSR value and picked " + _jarg + " from the list, so the JSR now calls it.";
+            case "RANGE":
+                if (is_undefined(_v2) || !_v2.active) {
+                    return "";
+                }
+                var _r1 = real(string_copy(_arg, 1, string_pos(":", _arg) - 1));
+                var _r2 = real(string_delete(_arg, 1, string_pos(":", _arg)));
+                if (_r2 >= array_length(_v2.compositor.frames)) {
+                    return "";
+                }
+                if (_dry) {
+                    return "1";
+                }
+                _v2.anim_start = _r1;
+                _v2.anim_end   = _r2;
+                _v2.compositor.active_frame = _r1;
+                _v2.dirty = true;
+                return "I set START to " + string(_r1) + " and END to " + string(_r2) + ", so only frames "
+                     + string(_r1 + 1) + "-" + string(_r2 + 1) + " play (and get converted).";
+            case "ANIM_COUNT":
+                if (is_undefined(_v2) || !_v2.active) {
+                    return "";
+                }
+                if (_dry) {
+                    return "1";
+                }
+                var _cv = ds_list_find_value(_am.asset_list, _v2.asset_index);
+                if (!scr_spred64_v2_composition_nodes(_cv)) {
+                    return "I clicked CONVERT TO NODES, but it could not convert these frames. Read its message and try again.";
+                }
+                return "I clicked CONVERT TO NODES. It added another ANIMATE routine, for these frames, to the same block.";
             case "JOY_ROW":
                 _n = scr_tour_node_by_type("MACRO_JOY");
                 if (_n == noone) {
@@ -2833,6 +2913,20 @@ function scr_tour_do_action(_st, _dry) {
             var _dx = (_code == "MOVE_NEG") ? "-2" : "2";
             scr_tour_commit(_n, 2, _dx);
             return "I set DX on the MOVE node to " + _dx + ", so the sprite moves " + ((_dx == "2") ? "right" : "left") + " 2 pixels each time it runs.";
+        case "MOVE_WIDE":
+            _n = scr_tour_last_by_type("MACRO_MOVE");
+            if (_n == noone) {
+                return "";
+            }
+            if (_dry) {
+                return "1";
+            }
+            _n.instructions[0][4] = 1;
+            if (real(_n.instructions[0][12]) <= 255) {
+                _n.instructions[0][12] = 320;
+            }
+            scr_tour_touch(_n);
+            return "I ticked 9TH BIT on the MOVE node. MOVE now carries X past 255 in $D010, so the walker can cross the whole screen.";
         case "TXT_CHANGED":
         case "TXT_COL":
             _n = scr_tour_node_by_type("MACRO_TEXT_SCROLL");

@@ -1548,6 +1548,8 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _label_w      = 45;       // space reserved for the leading label
         var _group_w      = _label_w + _stepper_unit;
         var _row_left     = _anim_lx1;
+        // Guided tour: the START and END steppers together
+        scr_tour_capture("SPR:RANGE", _row_left, _r2_y1, _row_left + (_group_w * 2), _r2_y2);
 		var _c_butBorder = make_colour_rgb(150,180,180);
 		
         for (var _si = 0; _si < array_length(_steppers); _si++) {
@@ -2619,6 +2621,56 @@ function scr_spred64_v2_composition_nodes(_asset) {
     }
     if (_clean == "" || string_pos(string_char_at(_clean, 1), "0123456789") > 0) _clean = "SPR_" + _clean;
 
+    // Converting the same sprite set again (other frames, same placements)
+    // adds another ANIMATE routine to the block the first conversion made,
+    // named after its frames: one block can hold a walk right and a walk left.
+    if (_anim) {
+        var _blk = noone;
+        var _blk_title = _asset.name + " - ANIMATION";
+        with (obj_c64_node) {
+            if (node_type == "ORG" && node_title == _blk_title) _blk = id;
+        }
+        if (_blk != noone) {
+            var _spr_n  = 0;
+            var _bottom = _blk.y + _blk.height;
+            with (obj_c64_node) {
+                if (org_parent == _blk && is_connected) {
+                    if (node_type == "MACRO_SPR") _spr_n++;
+                    _bottom = max(_bottom, y + height);
+                }
+            }
+            if (_spr_n == array_length(_plan.sprites)) {
+                _v2.anim_playing = false;
+                _v2.dirty = true;
+                scr_spred64_v2_close(true);
+                if (global.undo_dirty) scr_c64_do_update_addresses();
+                scr_undo_snapshot();
+                var _f_a = _anim_frames[0] + 1;
+                var _f_b = _anim_frames[array_length(_anim_frames) - 1] + 1;
+                var _ay  = ceil(_bottom / 20) * 20;
+                var _al  = scr_music_sid_label(_clean + "_ANIM_F" + string(_f_a) + "TO" + string(_f_b), _blk.x, _ay, _blk);
+                _al.instructions[0][1] = scr_make_unique_node_name(_al.instructions[0][1], _al);
+                scr_macro_sync_height(_al);
+                _ay += _al.height;
+                var _an2 = scr_spred64_v2_anim_node(_v2, _offsets, _blk.x, _ay, _blk);
+                _ay += _an2.height;
+                scr_music_sid_op("rts", 0, _blk.x, _ay, _blk);
+                _blk.collapsed = false;
+                global.addresses_dirty = true;
+                global.memory_bar_dirty = true;
+                global.node_change_dirty = true;
+                scr_c64_do_update_addresses();
+                _am.viewer_open = false;
+                scr_focus_camera_on_node(_blk);
+                scr_undo_snapshot();
+                global.undo_dirty = false;
+                scr_show_message("CONVERT TO NODES\n\nAdded " + string(_al.instructions[0][1]) + " (frames " + string(_f_a) + "-" + string(_f_b)
+                    + ") to " + _blk_title + ".\n\nJSR it once every frame, in place of the other ANIM routine, to play these frames instead.");
+                return true;
+            }
+        }
+    }
+
     // Place beyond every existing node, aligned with the rightmost ORG/INIT.
     var _right = 0, _top = 100, _anchor_x = -1000000000;
     with (obj_c64_node) {
@@ -2679,21 +2731,7 @@ function scr_spred64_v2_composition_nodes(_asset) {
         _anim_name = _lbl2.instructions[0][1];
         scr_macro_sync_height(_lbl2);
         _y += _lbl2.height;
-        // ANIMATE: [1] delay in frames, [2..9] slot lists per hardware sprite,
-        // [10] loop, [11..26] X/Y deltas, [27..34] 9th bit, [35] done var.
-        // It must sit in the same ORG as the SPRITE nodes to find their pointers.
-        var _inst = ["macro_anim", clamp(round(50 / max(1, _v2.anim_speed)), 1, 255)];
-        for (var _hi = 0; _hi < 8; _hi++) array_push(_inst, _offsets[_hi]);
-        array_push(_inst, "1");
-        for (var _hi = 0; _hi < 16; _hi++) array_push(_inst, "");
-        for (var _hi = 0; _hi < 8; _hi++) array_push(_inst, "0");
-        array_push(_inst, "");
-        var _an = scr_node_spawn("MACRO_ANIM", _x, _y);
-        _an.instructions = [_inst];
-        _an.org_parent = _org;
-        _an.is_connected = true;
-        with (_an) event_user(0);
-        scr_macro_sync_height(_an);
+        var _an = scr_spred64_v2_anim_node(_v2, _offsets, _x, _y, _org);
         _y += _an.height;
         _nd = scr_music_sid_op("rts", 0, _x, _y, _org);
     }
@@ -2712,4 +2750,24 @@ function scr_spred64_v2_composition_nodes(_asset) {
             + _anim_name + " once every frame (after a VWAIT) to play it.");
     }
     return true;
+}
+
+/// ANIMATE node for a converted animation, in ORG _org (the same ORG as the
+/// SPRITE nodes, so it can find their pointers). [1] delay in frames from the
+/// editor FPS, [2..9] slot lists per hardware sprite, [10] loop, [11..26] X/Y
+/// deltas, [27..34] 9th bit, [35] done var.
+function scr_spred64_v2_anim_node(_v2, _offsets, _x, _y, _org) {
+    var _inst = ["macro_anim", clamp(round(50 / max(1, _v2.anim_speed)), 1, 255)];
+    for (var _hi = 0; _hi < 8; _hi++) array_push(_inst, _offsets[_hi]);
+    array_push(_inst, "1");
+    for (var _hi = 0; _hi < 16; _hi++) array_push(_inst, "");
+    for (var _hi = 0; _hi < 8; _hi++) array_push(_inst, "0");
+    array_push(_inst, "");
+    var _an = scr_node_spawn("MACRO_ANIM", _x, _y);
+    _an.instructions = [_inst];
+    _an.org_parent = _org;
+    _an.is_connected = true;
+    with (_an) event_user(0);
+    scr_macro_sync_height(_an);
+    return _an;
 }
