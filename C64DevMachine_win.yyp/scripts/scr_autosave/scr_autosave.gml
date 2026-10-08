@@ -246,6 +246,7 @@ var _base = "unsaved";
                 // tagged sheet to save 1000 zero bytes.
                 _mo.coll_types = _me.coll_types;
             }
+            if (_a.type == "BITMAP" && is_struct(_me[$ "spr_overlay"])) _mo.spr_overlay = _me.spr_overlay;
             if (_a.type == "BITMAP_BUILDER") {
                 _mo.src_asset  = variable_struct_exists(_me, "src_asset")  ? _me.src_asset  : "";
                 _mo.dst_asset  = variable_struct_exists(_me, "dst_asset")  ? _me.dst_asset  : "";
