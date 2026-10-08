@@ -2293,9 +2293,7 @@ function scr_tour_define_page2(_id) {
             "Press F5, or click BUILD & RUN on the right, to build and launch.",
             ["UI:BUILD & RUN"], "BUILT"));
         array_push(_s, scr_tour_step("DONE!",
-            "Push left and right to walk and press fire to jump. Walk off a ledge and you fall.\n\nFire with left or right jumps while walking.
-
-Ideas: add FLIP X so the walker faces left, or change the -7 in PHYS_JUMP for a higher jump.",
+            "Push left and right to walk and press fire to jump. Walk off a ledge and you fall.\n\nFire with left or right jumps while walking.\n\nIdeas: add FLIP X so the walker faces left, or change the -7 in PHYS_JUMP for a higher jump.",
             [], "NONE"));
     }
 
