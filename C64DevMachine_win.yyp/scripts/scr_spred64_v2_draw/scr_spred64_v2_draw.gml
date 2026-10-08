@@ -163,6 +163,10 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 
             var _is_sel = (_slot == _v2.selected_slot);
             var _is_hov = (_slot == _pick_hover);
+            // Guided tour: a slot still to be picked (the selected one is done)
+            if (global.tour_active && !_is_sel) {
+                scr_tour_capture("SPR:SLOT:" + string(_slot), _cx, _cy_p, _cx + _pick_cell_w, _cy_p + _pick_cell_h);
+            }
 
             // Cell background
             draw_set_color(_is_sel
@@ -1436,6 +1440,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
         var _play_lbl = _v2.anim_playing ? "STOP" : "PLAY";
+        if (!_v2.anim_playing) scr_tour_capture("SPR:PLAY", _play_x1, _r1_y1, _play_x2, _r1_y2);
         draw_text_l((_play_x1 + _play_x2) * 0.5, (_r1_y1 + _r1_y2) * 0.5, _play_lbl);
         draw_set_halign(fa_left);
         draw_set_valign(fa_top);
@@ -1748,6 +1753,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             draw_text_l((_fbx1 + _fbx2) * 0.5, (_fby1 + _fby2) * 0.5, _fb.lbl);
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
+            if (_fb.action == "new") scr_tour_capture("SPR:FRAME_NEW", _fbx1, _fby1, _fbx2, _fby2);
             // Click
             if (_fb_hov && mouse_check_button_pressed(mb_left)
             && !global.ui_click_consumed && !global.any_picker_open) {
@@ -1927,6 +1933,8 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                     _v2.comp_hover_row = _gr;
                     _v2.comp_hover_col = _gc;
                 }
+                // Guided tour: the square the walk frames go in
+                if (_gr == 1 && _gc == 1) scr_tour_capture("SPR:CELL", _gx1, _gy1, _gx2, _gy2);
             }
         }
 
@@ -2506,6 +2514,7 @@ if (_layer_dir != 0) {
         draw_text_l(_convert_cx, _convert_y + 10, "CONVERT");
         draw_text_l(_convert_cx, _convert_y + 22, "TO");
         draw_text_l(_convert_cx, _convert_y + 34, "NODES");
+        scr_tour_capture("SPR:CONVERT", _convert_x1, _convert_y, _convert_x2, _convert_y + 44);
         draw_set_halign(fa_left);
         draw_set_valign(fa_top);
         if (_convert_hover && mouse_check_button_pressed(mb_left)
@@ -2556,12 +2565,59 @@ function scr_spred64_v2_composition_plan(_cells, _used) {
     return { error: "", sprites: _sprites, expand_x: _expand_x, expand_y: _expand_y };
 }
 
+/// Frames in the play range (START..END) that have placements, in play order.
+function scr_spred64_v2_animation_frames(_v2) {
+    var _frames = _v2.compositor.frames;
+    var _count = array_length(_frames);
+    var _out = [];
+    if (_count == 0) return _out;
+    var _a = clamp(_v2.anim_start, 0, _count - 1);
+    var _b = clamp(_v2.anim_end, 0, _count - 1);
+    for (var _f = min(_a, _b); _f <= max(_a, _b); _f++) {
+        if (array_length(_frames[_f].cells) > 0) array_push(_out, _f);
+    }
+    return _out;
+}
+
 function scr_spred64_v2_composition_nodes(_asset) {
     var _am = obj_asset_manager;
     var _v2 = _am.spred64_v2;
     var _frame_index = _v2.compositor.active_frame;
+
+    // Two or more frames: build the first frame plus an ANIMATE node that steps
+    // every hardware sprite through its slot in each frame. Frames must share
+    // one layout (same placements), only the slots change.
+    var _anim_frames = scr_spred64_v2_animation_frames(_v2);
+    var _anim = (array_length(_anim_frames) >= 2);
+    var _offsets = array_create(8, "");
+    if (_anim) _frame_index = _anim_frames[0];
+
     var _plan = scr_spred64_v2_composition_plan(_v2.compositor.frames[_frame_index].cells, _v2.used_count);
     if (_plan.error != "") { scr_show_message(_plan.error); return false; }
+    if (_anim) {
+        for (var _af = 0; _af < array_length(_anim_frames); _af++) {
+            var _fp = scr_spred64_v2_composition_plan(_v2.compositor.frames[_anim_frames[_af]].cells, _v2.used_count);
+            if (_fp.error != "") { scr_show_message("FRAME " + string(_anim_frames[_af] + 1) + ": " + _fp.error); return false; }
+            if (array_length(_fp.sprites) != array_length(_plan.sprites)) {
+                scr_show_message("CONVERT TO NODES\n\nEvery frame of the animation needs the same number of placements, in the same squares."
+                    + "\n\nFrame " + string(_anim_frames[0] + 1) + " has " + string(array_length(_plan.sprites))
+                    + ", frame " + string(_anim_frames[_af] + 1) + " has " + string(array_length(_fp.sprites)) + ".");
+                return false;
+            }
+            for (var _si = 0; _si < array_length(_fp.sprites); _si++) {
+                var _hw = _fp.sprites[_si].hardware;
+                _offsets[_hw] += ((_af > 0) ? "," : "") + string(_fp.sprites[_si].slot);
+            }
+        }
+    }
+    // A label-safe name for the generated routines
+    var _clean = "";
+    var _nm = string_upper(_asset.name);
+    for (var _ci = 1; _ci <= string_length(_nm); _ci++) {
+        var _ch = string_char_at(_nm, _ci);
+        _clean += (string_pos(_ch, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") > 0) ? _ch : "_";
+    }
+    if (_clean == "" || string_pos(string_char_at(_clean, 1), "0123456789") > 0) _clean = "SPR_" + _clean;
 
     // Place beyond every existing node, aligned with the rightmost ORG/INIT.
     var _right = 0, _top = 100, _anchor_x = -1000000000;
@@ -2581,9 +2637,18 @@ function scr_spred64_v2_composition_nodes(_asset) {
     scr_undo_snapshot();
 
     var _org = scr_node_spawn("ORG", _x, _top);
-    _org.node_title = _asset.name + " - FRAME " + string(_frame_index + 1);
+    _org.node_title = _anim ? (_asset.name + " - ANIMATION") : (_asset.name + " - FRAME " + string(_frame_index + 1));
     _org.proxy = true;
     var _y = _top + _org.height;
+    var _show_name = "";
+    var _anim_name = "";
+    if (_anim) {
+        var _lbl = scr_music_sid_label(_clean + "_SHOW", _x, _y, _org);
+        _lbl.instructions[0][1] = scr_make_unique_node_name(_clean + "_SHOW", _lbl);
+        _show_name = _lbl.instructions[0][1];
+        scr_macro_sync_height(_lbl);
+        _y += _lbl.height;
+    }
     // Clear previous sprite enables before setting up this complete frame.
     var _disable = scr_node_spawn("MACRO_SPR_ENABLE", _x, _y);
     _disable.instructions = [["macro_spr_enable", 255, 1]];
@@ -2606,6 +2671,32 @@ function scr_spred64_v2_composition_nodes(_asset) {
         scr_macro_sync_height(_node);
         _y += _node.height;
     }
+    if (_anim) {
+        var _nd = scr_music_sid_op("rts", 0, _x, _y, _org);
+        _y += _nd.height;
+        var _lbl2 = scr_music_sid_label(_clean + "_ANIM", _x, _y, _org);
+        _lbl2.instructions[0][1] = scr_make_unique_node_name(_clean + "_ANIM", _lbl2);
+        _anim_name = _lbl2.instructions[0][1];
+        scr_macro_sync_height(_lbl2);
+        _y += _lbl2.height;
+        // ANIMATE: [1] delay in frames, [2..9] slot lists per hardware sprite,
+        // [10] loop, [11..26] X/Y deltas, [27..34] 9th bit, [35] done var.
+        // It must sit in the same ORG as the SPRITE nodes to find their pointers.
+        var _inst = ["macro_anim", clamp(round(50 / max(1, _v2.anim_speed)), 1, 255)];
+        for (var _hi = 0; _hi < 8; _hi++) array_push(_inst, _offsets[_hi]);
+        array_push(_inst, "1");
+        for (var _hi = 0; _hi < 16; _hi++) array_push(_inst, "");
+        for (var _hi = 0; _hi < 8; _hi++) array_push(_inst, "0");
+        array_push(_inst, "");
+        var _an = scr_node_spawn("MACRO_ANIM", _x, _y);
+        _an.instructions = [_inst];
+        _an.org_parent = _org;
+        _an.is_connected = true;
+        with (_an) event_user(0);
+        scr_macro_sync_height(_an);
+        _y += _an.height;
+        _nd = scr_music_sid_op("rts", 0, _x, _y, _org);
+    }
     global.addresses_dirty = true;
     global.memory_bar_dirty = true;
     global.node_change_dirty = true;
@@ -2615,5 +2706,10 @@ function scr_spred64_v2_composition_nodes(_asset) {
     scr_focus_camera_on_node(_org);
     scr_undo_snapshot();
     global.undo_dirty = false;
+    if (_anim) {
+        scr_show_message("CONVERT TO NODES\n\nYour " + string(array_length(_anim_frames)) + " frame animation is set up in "
+            + _org.node_title + ".\n\nJSR " + _show_name + " once to put the sprites on screen, then JSR "
+            + _anim_name + " once every frame (after a VWAIT) to play it.");
+    }
     return true;
 }

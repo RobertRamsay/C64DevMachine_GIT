@@ -190,16 +190,24 @@ if (welcome_open) {
         }
     } else if (welcome_open && welcome_mode == 1) {
         var _tours     = scr_tour_list();
-        var _max_scrl  = max(0, array_length(_tours) - _tg.rows);
+        // One page of tours at a time: the arrows (or the wheel) turn the page
+        var _page      = welcome_tour_scroll div _tg.rows;
+        var _clicked   = scr_workspace_mouse_check_button_pressed(mb_left);
+        if (_clicked && point_in_rectangle(_wmx, _wmy, _tg.prev[0], _tg.prev[1], _tg.prev[2], _tg.prev[3])) {
+            _page--;
+        }
+        if (_clicked && point_in_rectangle(_wmx, _wmy, _tg.next[0], _tg.next[1], _tg.next[2], _tg.next[3])) {
+            _page++;
+        }
         if (point_in_rectangle(_wmx, _wmy, _tg.list[0], _tg.list[1], _tg.list[2], _tg.list[3])) {
             if (scr_workspace_mouse_wheel_up()) {
-                welcome_tour_scroll--;
+                _page--;
             }
             if (scr_workspace_mouse_wheel_down()) {
-                welcome_tour_scroll++;
+                _page++;
             }
         }
-        welcome_tour_scroll = clamp(welcome_tour_scroll, 0, _max_scrl);
+        welcome_tour_scroll = clamp(_page, 0, _tg.pages - 1) * _tg.rows;
         if (scr_workspace_mouse_check_button_pressed(mb_left)) {
             for (var _tr = 0; _tr < _tg.rows; _tr++) {
                 var _ti = welcome_tour_scroll + _tr;
