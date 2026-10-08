@@ -642,6 +642,7 @@ function scr_tour_enter_step() {
     base_build     = global.tour_build_count;
     base_jsr_count = scr_tour_count_op("jsr", false);
     base_rts_count = scr_tour_count_op("rts", false);
+    base_jmp_count = scr_tour_count_op("jmp_abs", false);
 }
 
 /// @desc Draw loops call this with the rect they just drew for _key.
@@ -1153,13 +1154,13 @@ function scr_tour_make_ship() {
     scr_asset_spr_cache_sprites(_a, true);
 }
 
-/// @desc A MUSIC_MAKER asset called TOUR_TUNE, filled from the bundled
-///       TOURS/tour_music.json through the same path the project loader uses.
-function scr_tour_make_music() {
+/// @desc A MUSIC_MAKER asset called _name (TOUR_TUNE), filled from the bundled
+///       TOURS/_file (tour_music.json) through the same path the project loader uses.
+function scr_tour_make_music(_file = "tour_music.json", _name = "TOUR_TUNE") {
     if (!instance_exists(obj_asset_manager)) {
         return;
     }
-    var _path = working_directory + "C64DMResources/TOURS/tour_music.json";
+    var _path = working_directory + "C64DMResources/TOURS/" + _file;
     if (!file_exists(_path)) {
         scr_show_message("The tour music file is missing.");
         return;
@@ -1183,7 +1184,7 @@ function scr_tour_make_music() {
     }
     var _a = {
         type          : "MUSIC_MAKER",
-        name          : "TOUR_TUNE",
+        name          : _name,
         file          : "",
         address       : scr_asset_default_address("MUSIC_MAKER"),
         buffer        : buffer_create(1, buffer_fixed, 1),
@@ -2162,7 +2163,7 @@ function scr_tour_define_page2(_id) {
 
     if (_id == 11) {
         array_push(_s, scr_tour_step_focus("WELCOME",
-            "Everything from the earlier tours comes together here.\n\nAlready set up: WALKER with its walk in the compositor, the TOUR_TUNE song, a PLATFORM KIT that draws a level and handles gravity and jumping, and a game loop that calls it.\n\nYou will add the walker, steering, the walk animation, jumping and music.",
+            "Everything from the earlier tours comes together here.\n\nAlready set up: WALKER with its walk in the compositor, the PLATFORM_TUNE song, a PLATFORM KIT that draws a level and handles gravity and jumping, and a game loop that calls it.\n\nYou will add the walker, steering, the walk animation, jumping and music.",
             [], "NONE", "FIT"));
         array_push(_s, scr_tour_step("THE PLATFORM KIT",
             "LEVEL_DRAW clears the screen and draws the platforms.\n\nPHYS_UPDATE runs every frame: it pulls sprite 0 down, lands it on solid blocks and lets it fall off edges. PHYS_JUMP starts a jump when the sprite is standing.\n\nOpen the CODE blocks to read the 6502. Click NEXT.",
@@ -2242,8 +2243,45 @@ function scr_tour_define_page2(_id) {
         array_push(_s, scr_tour_step_at("RETURN",
             "Drag RTS onto the spine under that JSR.",
             ["PAL:RTS", "ARROW:R"], "RTS_MORE", "LASTOP:jsr"));
+        // Diagonals: fire plus left or right jumps while walking
+        array_push(_s, scr_tour_step("JUMP WHILE WALKING",
+            "The JOYSTICK runs one direction per frame, so holding fire while walking stops the walk.\n\nThe diagonals fix that. Click LFF (left + fire) on the JOYSTICK node.",
+            ["FIELD:MACRO_JOY:LFF", "NODETYPE:MACRO_JOY"], "JOY_ROW:LFF"));
+        array_push(_s, scr_tour_step("RIGHT + FIRE",
+            "Click RTF (right + fire) too.",
+            ["FIELD:MACRO_JOY:RTF", "NODETYPE:MACRO_JOY"], "JOY_ROW:RTF"));
+        array_push(_s, scr_tour_step_at("ATTACH LFF",
+            "Drag the LFF label onto the spine under the last RTS.",
+            ["LABELNAME:LFF"], "BELOW:LFF", "LASTOP:rts"));
+        array_push(_s, scr_tour_step_at("JUMP...",
+            "Drag JSR onto the spine under LFF.",
+            ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LABELNAME:LFF"));
+        array_push(_s, scr_tour_step("CALL PHYS_JUMP",
+            "Click the JSR value and choose PHYS_JUMP.",
+            ["PICK:PHYS_JUMP", "OPERANDNEW:jsr"], "JSRX:PHYS_JUMP:2"));
+        array_push(_s, scr_tour_step_at("...AND WALK",
+            "Now walk left as well. Your LF routine already does that, so jump to it.\n\nDrag JMP_ABS from the palette onto the spine under that JSR.",
+            ["PAL:JMP_ABS", "ARROW:R"], "JMP_MORE", "LASTOP:jsr"));
+        array_push(_s, scr_tour_step("JUMP TO LF",
+            "Click the JMP value and choose LF.\n\nLF ends with RTS, which returns straight to the joystick: a JMP at the end of a routine saves a JSR and an RTS.",
+            ["PICK:LF", "OPERANDNEW:jmp_abs", "OPERAND:jmp_abs"], "JMPX:LF:1"));
+        array_push(_s, scr_tour_step_at("ATTACH RTF",
+            "The same for right. Drag the RTF label onto the spine under JMP LF.",
+            ["LABELNAME:RTF"], "BELOW:RTF", "LASTOP:jmp_abs"));
+        array_push(_s, scr_tour_step_at("JUMP...",
+            "Drag JSR onto the spine under RTF.",
+            ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LABELNAME:RTF"));
+        array_push(_s, scr_tour_step("CALL PHYS_JUMP",
+            "Click the JSR value and choose PHYS_JUMP.",
+            ["PICK:PHYS_JUMP", "OPERANDNEW:jsr"], "JSRX:PHYS_JUMP:3"));
+        array_push(_s, scr_tour_step_at("...AND WALK",
+            "Drag JMP_ABS onto the spine under that JSR.",
+            ["PAL:JMP_ABS", "ARROW:R"], "JMP_MORE", "LASTOP:jsr"));
+        array_push(_s, scr_tour_step("JUMP TO RT",
+            "Click the JMP value and choose RT.",
+            ["PICK:RT", "OPERANDNEW:jmp_abs", "OPERAND:jmp_abs"], "JMPX:RT:1"));
         array_push(_s, scr_tour_step("OPEN MUSIC MAKER",
-            "Time for music. Click EDIT on the TOUR_TUNE row.",
+            "Time for music. Click EDIT on the PLATFORM_TUNE row.\n\nPress F1 to hear it first if you like: drums and bass share voice 1, fast chord arpeggios run on voice 2 and the lead sings on voice 3, in the style of the Maniacs of Noise.",
             ["ASSET:EDIT:MUSIC_MAKER", "ASSET:PANEL"], "MUS_OPEN"));
         array_push(_s, scr_tour_step("GENERATE NODES",
             "Click GENERATE NODES.\n\nIt finds your MAIN loop and adds the calls that start the tune and play it every frame.",
@@ -2255,7 +2293,9 @@ function scr_tour_define_page2(_id) {
             "Press F5, or click BUILD & RUN on the right, to build and launch.",
             ["UI:BUILD & RUN"], "BUILT"));
         array_push(_s, scr_tour_step("DONE!",
-            "Push left and right to walk and press fire to jump. Walk off a ledge and you fall.\n\nIdeas: turn on LFF and RTF to jump while walking, add FLIP X so the walker faces left, or change the -7 in PHYS_JUMP for a higher jump.",
+            "Push left and right to walk and press fire to jump. Walk off a ledge and you fall.\n\nFire with left or right jumps while walking.
+
+Ideas: add FLIP X so the walker faces left, or change the -7 in PHYS_JUMP for a higher jump.",
             [], "NONE"));
     }
 
@@ -2270,14 +2310,18 @@ function scr_tour_setup_page2(_id) {
     }
     if (_id == 11) {
         scr_tour_make_walker(true);
-        scr_tour_make_music();
+        scr_tour_make_music("tour_platform_music.json", "PLATFORM_TUNE");
         scr_tour_make_platform_kit();
         scr_tour_build_starter("PLATFORM");
     }
 }
 
-/// @desc A 4 slot SPRITE_SET called WALKER holding a walk, made the way
-///       [ADD ASSET +] makes one. _with_anim also puts the walk in the
+/// @desc A 4 slot multicolour SPRITE_SET called WALKER holding a side-on
+///       walk, made the way [ADD ASSET +] makes one. The 4 key poses of a
+///       walk cycle: contact, passing, contact, passing. The body is a pixel
+///       lower on contact and a pixel higher on passing (the bob), each arm
+///       swings against its leg, and the far arm and leg are in the darker
+///       MC1 colour so you can see which leg is in front. _with_anim also puts the walk in the
 ///       compositor (frames 1-4 use slots 0-3 in the same square), as the
 ///       ANIMATE A SPRITE tour leaves it.
 function scr_tour_make_walker(_with_anim) {
@@ -2285,10 +2329,10 @@ function scr_tour_make_walker(_with_anim) {
         return;
     }
     var _frames = [
-        "003C00007E00007E00007E00003C00001800007E0000FF0001BD8001BD8001BD80003C00003C00003C0000660000C30000C3000181800181800300C00700E000",
-        "003C00007E00007E00007E00003C00001800007E0000FF00007C00007C00003E00003C00003C00003C0000360000360000360000360000360000360000770000",
-        "003C00007E00007E00007E00003C00001800007E0000FF0001BD8001BD8001BD80003C00003C00003C0000660000C30000C1800180C001818003030007038000",
-        "003C00007E00007E00007E00003C00001800007E0000FF00007C00007C00003E00003C00003C00003C00006C00006C00006600006600006C00006C0000EE0000"
+        "000000005400017F0001F70000FF0000300000A80003A9000CA84030A81000A80000A8000060000048000108000102000402000400800400801000801400A000",
+        "005400017F0001F70000FF0000300000A80000AC0001AC0001AC0000AC0000A80000200000240000210000210000240000240000250000200000200000280000",
+        "000000005400017F0001F70000FF0000300000A80001AB0004A8C010A83000A80000A80000900000840002040002010008010008004008004020004028005000",
+        "005400017F0001F70000FF0000300000A80000AC0001AC0001AC0000AC0000A800002000001800001200001200001800001800001A0000100000100000140000"
     ];
     var _n   = array_length(_frames);
     var _buf = buffer_create(64 * _n, buffer_fixed, 1);
@@ -2301,10 +2345,10 @@ function scr_tour_make_walker(_with_anim) {
         format      : "binary",
         has_colour  : true,
         bg_col      : 0,
-        mc1_col     : 1,
-        mc2_col     : 2,
-        sprite_mcs  : array_create(_n, 0),
-        sprite_ucs  : array_create(_n, 7),
+        mc1_col     : 11,   // hair, and the far arm and leg (in shadow)
+        mc2_col     : 10,   // skin
+        sprite_mcs  : array_create(_n, 1),
+        sprite_ucs  : array_create(_n, 14),  // clothes, and the near arm and leg
         spr_sprites : array_create(_n, -1),
         found_count : _n,
         used_count  : _n,
@@ -2316,7 +2360,11 @@ function scr_tour_make_walker(_with_anim) {
             array_push(_cf, { cells : [{ layer : 0, row : 1, col : 1, slot : _f, xo : 0, yo : 0, expand : "none" }] });
         }
         _meta.compositor = { frames : _cf, active_layer : 0, active_frame : 0, active_cell : -1 };
-        _meta.anim       = { playing : false, direction : "fwd", speed : 10, start : 0, ender : _n - 1 };
+        _meta.anim       = { playing : false, direction : "fwd", speed : 12, start : 0, ender : _n - 1 };
+    } else {
+        // 12 FPS: one stride of about 16 pixels every 4 frames, which matches
+        // walking at 2 pixels a frame, so the feet don't skate
+        _meta.anim = { playing : false, direction : "fwd", speed : 12, start : 0, ender : 0 };
     }
     var _a = {
         type          : "SPRITE_SET",
@@ -2484,6 +2532,8 @@ function scr_tour_check_page2(_code) {
             return (scr_tour_count_op("jsr", false) > base_jsr_count);
         case "RTS_MORE":
             return (scr_tour_count_op("rts", false) > base_rts_count);
+        case "JMP_MORE":
+            return (scr_tour_count_op("jmp_abs", false) > base_jmp_count);
         case "SPR_PLAYING":
             return (obj_asset_manager.spred64_v2.active && obj_asset_manager.spred64_v2.anim_playing);
         case "ANIM_MADE":
@@ -2519,6 +2569,28 @@ function scr_tour_check_page2(_code) {
             return (scr_tour_jsr_count(_arg) >= 2);
         case "JSR_LOOP":
             return (scr_tour_jsr_to(_arg, true) != noone);
+        case "JOY_ROW":
+            _n = scr_tour_node_by_type("MACRO_JOY");
+            if (_n == noone) {
+                return false;
+            }
+            for (var _jr = 1; _jr < array_length(_n.instructions); _jr++) {
+                if (string(_n.instructions[_jr][1]) == _arg) {
+                    return (real(_n.instructions[_jr][2]) == 1);
+                }
+            }
+            return false;
+        case "BELOW":
+            return scr_tour_below_loop(scr_tour_label(_arg));
+        case "JSRX":
+        case "JMPX":
+            // JSRX:<label>:<n> - at least n JSRs (JMPs) to exactly that label
+            var _jc = string_pos(":", _arg);
+            if (_jc == 0) {
+                return false;
+            }
+            return (scr_tour_jump_count((_head == "JSRX") ? "jsr" : "jmp_abs", string_copy(_arg, 1, _jc - 1))
+                    >= real(string_delete(_arg, 1, _jc)));
     }
     return false;
 }
@@ -2661,6 +2733,33 @@ function scr_tour_do_action(_st, _dry) {
                 var _lname = string(_lbl.instructions[0][1]);
                 scr_tour_commit(_n, 0, _lname);
                 return "I clicked the JSR value and picked " + _lname + " from the list, so the JSR now calls it.";
+            case "JSRX":
+            case "JMPX":
+                var _jop  = (_head == "JSRX") ? "jsr" : "jmp_abs";
+                var _jarg = string_copy(_arg, 1, string_pos(":", _arg + ":") - 1);
+                var _jl   = scr_tour_label(_jarg);
+                _n = scr_tour_fresh_jump(_jop);
+                if (_jl == noone || _n == noone) {
+                    return "";
+                }
+                if (_dry) {
+                    return "1";
+                }
+                scr_tour_commit(_n, 0, string(_jl.instructions[0][1]));
+                if (_head == "JMPX") {
+                    return "I clicked the JMP value and picked " + _jarg + ". The program carries on in " + _jarg + ", and its RTS returns to whoever called this routine.";
+                }
+                return "I clicked the JSR value and picked " + _jarg + " from the list, so the JSR now calls it.";
+            case "JOY_ROW":
+                _n = scr_tour_node_by_type("MACRO_JOY");
+                if (_n == noone) {
+                    return "";
+                }
+                if (_dry) {
+                    return "1";
+                }
+                scr_tour_enable_row(_n, _arg, false);
+                return "I clicked " + _arg + " on the JOYSTICK node. A label called " + _arg + " appeared beside it; the joystick calls it while that combination is held.";
         }
         return "";
     }
@@ -3094,10 +3193,17 @@ function scr_tour_zero_op(_op) {
 
 /// @desc Connected JSR still showing its placeholder target, or noone.
 function scr_tour_fresh_jsr() {
+    return scr_tour_fresh_jump("jsr");
+}
+
+/// @desc Connected JSR / JMP_ABS (_op) still showing the placeholder the
+///       palette gives it ("target" / "label"), or noone.
+function scr_tour_fresh_jump(_op) {
     var _hit = noone;
     with (obj_c64_node) {
         if (_hit == noone && is_connected && node_type == "NORMAL" && array_length(instructions) > 0) {
-            if (string_lower(string(instructions[0][0])) == "jsr" && string_lower(string(instructions[0][1])) == "target") {
+            var _v = string_lower(string(instructions[0][1]));
+            if (string_lower(string(instructions[0][0])) == _op && (_v == "target" || _v == "label")) {
                 _hit = id;
             }
         }
@@ -3105,8 +3211,13 @@ function scr_tour_fresh_jsr() {
     return _hit;
 }
 
-/// @desc LABEL whose name starts with _name (WALKER_SHOW, WALKER_SHOW_2...).
+/// @desc LABEL called _name, else the first whose name starts with it
+///       (WALKER_SHOW_2...). An exact match wins, so LF never finds LFF.
 function scr_tour_label_like(_name) {
+    var _exact = scr_tour_label(_name);
+    if (_exact != noone) {
+        return _exact;
+    }
     var _want = string_upper(_name);
     var _hit  = noone;
     with (obj_c64_node) {
@@ -3115,6 +3226,21 @@ function scr_tour_label_like(_name) {
         }
     }
     return _hit;
+}
+
+/// @desc How many connected main-spine _op nodes (jsr / jmp_abs) target
+///       exactly the label _name.
+function scr_tour_jump_count(_op, _name) {
+    var _want = string_upper(_name);
+    var _c    = 0;
+    with (obj_c64_node) {
+        if (is_connected && org_parent == noone && node_type == "NORMAL" && array_length(instructions) > 0) {
+            if (string_lower(string(instructions[0][0])) == _op && string_upper(string(instructions[0][1])) == _want) {
+                _c++;
+            }
+        }
+    }
+    return _c;
 }
 
 /// @desc Attached LABEL not called _name, or noone.

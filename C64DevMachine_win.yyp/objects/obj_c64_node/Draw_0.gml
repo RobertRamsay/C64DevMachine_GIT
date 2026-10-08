@@ -2106,7 +2106,7 @@ if (node_type == "LABEL") {
             scr_tour_capture_world("OPERAND:" + _inst_lower,
                 _cursor_x - 2, _yy - 1, _cursor_x + max(24, string_width_l(_display_val)) + 2, _yy + 13);
             // ...and one still showing its placeholder (a JSR just dragged in)
-            if (string_lower(string(_raw_val)) == "target") {
+            if (string_lower(string(_raw_val)) == "target" || string_lower(string(_raw_val)) == "label") {
                 scr_tour_capture_world("OPERANDNEW:" + _inst_lower,
                     _cursor_x - 2, _yy - 1, _cursor_x + max(24, string_width_l(_display_val)) + 2, _yy + 13);
             }
