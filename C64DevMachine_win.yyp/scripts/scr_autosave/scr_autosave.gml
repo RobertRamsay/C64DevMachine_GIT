@@ -289,6 +289,7 @@ var _base = "unsaved";
                 reu_filename  : variable_struct_exists(_a, "reu_filename")  ? _a.reu_filename  : "",
                 reu_size      : variable_struct_exists(_a, "reu_size")      ? _a.reu_size      : 0,
                 reu_used      : variable_struct_exists(_a, "reu_used")      ? _a.reu_used      : 0,
+                reu_base_file : variable_struct_exists(_a, "reu_base_file") ? _a.reu_base_file : "",
                 linked_assets : variable_struct_exists(_a, "linked_assets") ? _a.linked_assets : [],
                 group         : variable_struct_exists(_a, "group")         ? _a.group         : "",
             });

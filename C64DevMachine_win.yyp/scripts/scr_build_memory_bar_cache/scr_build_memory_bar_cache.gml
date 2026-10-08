@@ -926,6 +926,12 @@ var _addr_total = 65536;
             // Two equates overlapping are two names for the same memory, never a clash
             if (variable_struct_exists(_s1, "is_const") && _s1.is_const
             &&  variable_struct_exists(_s2, "is_const") && _s2.is_const) continue;
+            // An equate inside an asset names that asset's bytes (a table the code
+            // reads by name, say): an alias too, not a clash
+            var _s1_const = variable_struct_exists(_s1, "is_const") && _s1.is_const;
+            var _s2_const = variable_struct_exists(_s2, "is_const") && _s2.is_const;
+            if (_s1_const && _s2.type == "ASSET" && _s1.addr >= _s2.addr && _s1.addr + _s1.size <= _s2.addr + _s2.size) continue;
+            if (_s2_const && _s1.type == "ASSET" && _s2.addr >= _s1.addr && _s2.addr + _s2.size <= _s1.addr + _s1.size) continue;
             var _s1_org = (_s1.type == "NODE" || _s1.type == "VARIABLE_BLOCK");
             var _s2_org = (_s2.type == "NODE" || _s2.type == "VARIABLE_BLOCK");
             var _s1_is_dbuf = (string_pos("(BUF)", _s1.name) > 0);

@@ -69,6 +69,7 @@ if (instance_exists(obj_asset_manager)) {
         _entry.reu_filename  = variable_struct_exists(_a, "reu_filename")  ? _a.reu_filename  : "";
         _entry.reu_size      = variable_struct_exists(_a, "reu_size")      ? _a.reu_size      : 0;
         _entry.reu_used      = variable_struct_exists(_a, "reu_used")      ? _a.reu_used      : 0;
+        _entry.reu_base_file = variable_struct_exists(_a, "reu_base_file") ? _a.reu_base_file : "";
         _entry.linked_assets = variable_struct_exists(_a, "linked_assets") ? _a.linked_assets : [];
         // Asset group name. Absent in projects saved before grouping existed;
         // scr_asset_sorted_indices normalises those to ungrouped on load.

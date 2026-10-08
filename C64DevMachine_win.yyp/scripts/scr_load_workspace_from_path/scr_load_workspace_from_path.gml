@@ -483,6 +483,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 reu_filename  : variable_struct_exists(_ad, "reu_filename")  ? _ad.reu_filename  : ((_ad.type == "LOAD_REU") ? _ad.name + ".reu" : ""),
                 reu_size      : variable_struct_exists(_ad, "reu_size")      ? _ad.reu_size      : ((_ad.type == "LOAD_REU") ? 0x1000000 : 0),
                 reu_used      : variable_struct_exists(_ad, "reu_used")      ? _ad.reu_used      : ((_ad.type == "LOAD_REU") ? 0x100 : 0),
+                reu_base_file : variable_struct_exists(_ad, "reu_base_file") ? _ad.reu_base_file : "",
                 linked_assets : variable_struct_exists(_ad, "linked_assets") ? _ad.linked_assets : [],
                 group         : variable_struct_exists(_ad, "group")         ? _ad.group         : "",
             };

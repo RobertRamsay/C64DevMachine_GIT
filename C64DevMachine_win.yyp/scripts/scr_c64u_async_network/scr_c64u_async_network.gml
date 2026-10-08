@@ -96,6 +96,16 @@ function scr_c64u_async_network()
         return true;
     }
 
+    // The program was sent (DMA RUN): the Ultimate may close the connection
+    // as it resets to run it - that is the end, not a failure to retry.
+    if (_type == network_type_disconnect && global.c64u_reu_state == "closing")
+    {
+        global.c64u_reu_socket = -1;
+        global.c64u_reu_state  = "idle";
+        global.c64u_busy       = false;
+        return true;
+    }
+
     if (_type == network_type_disconnect)
     {
         global.c64u_reu_trace =

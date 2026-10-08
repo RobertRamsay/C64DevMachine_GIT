@@ -102,6 +102,8 @@ function scr_c64u_reu_send_payload(_skip_reset)
     return true;
     }
 
+    // Tell whoever watches the C64 what is going on: the upload takes a
+    // while and the screen would otherwise sit there (or show leftovers).
     var _image = buffer_load(global.reu_last_image);
 
     if (_image < 0) {
@@ -127,6 +129,9 @@ function scr_c64u_reu_send_payload(_skip_reset)
 
     while (_offset < _total)
     {
+        // the notice and its bar every 128 KB (16 packets)
+        if ((global.c64u_reu_packets mod 16) == 0) scr_c64u_reu_send_notice(_offset, _total);
+
         var _chunk = min(
             _chunk_max,
             _total - _offset
@@ -272,6 +277,7 @@ function scr_c64u_reu_send_payload(_skip_reset)
     }
 
     buffer_delete(_image);
+    scr_c64u_reu_send_notice(_total, _total);
 
     // REUWRITE has no acknowledgement.
     // IDENTIFY is sent as a completion barrier.
@@ -335,4 +341,73 @@ function scr_c64u_reu_send_payload(_skip_reset)
     );
 
     return true;
+}
+/// @function scr_c64u_reu_send_notice(done, total)
+/// @description What the C64 shows while the REU image streams in, written
+///              by SocketDMA DMAWRITE ($FF06: payload length, 16-bit address,
+///              then data): black border and background, light grey
+///              "LOADING FROM REU" / "PLEASE WAIT", a 32-cell bar of reversed
+///              spaces (light grey done, dark grey to go) and the percentage.
+///              The whole screen and colour RAM go each time: the C64 may still
+///              be starting up (its RAM test, BASIC's screen) when the first
+///              one arrives.
+function scr_c64u_reu_send_notice(_done, _total)
+{
+    var _pct = (_total > 0) ? clamp(floor(_done * 100 / _total), 0, 100) : 0;
+    var _screen = array_create(1000, 32);  // spaces
+    var _colour = array_create(1000, 15);  // light grey
+    var _lines = [
+        [9, "LOADING FROM REU"],
+        [11, "PLEASE WAIT"],
+        [16, string(_pct) + "%"]
+    ];
+    for (var _li = 0; _li < array_length(_lines); _li++) {
+        var _row  = _lines[_li][0];
+        var _text = _lines[_li][1];
+        var _col  = (40 - string_length(_text)) div 2;
+        for (var _ci = 1; _ci <= string_length(_text); _ci++) {
+            var _ch = ord(string_char_at(_text, _ci));
+            // screen codes: A-Z are 1-26, the rest as in ASCII
+            if (_ch >= 65 && _ch <= 90) _ch -= 64;
+            _screen[_row * 40 + _col + _ci - 1] = _ch;
+        }
+    }
+    var _filled = (_pct * 32) div 100;
+    for (var _bi = 0; _bi < 32; _bi++) {
+        _screen[14 * 40 + 4 + _bi] = 160;                    // reversed space
+        _colour[14 * 40 + 4 + _bi] = (_bi < _filled) ? 15 : 11;
+    }
+    scr_c64u_reu_dma_write(0xD020, [0, 0]);                   // border, background
+    scr_c64u_reu_dma_write(0x0400, _screen);
+    scr_c64u_reu_dma_write(0xD800, _colour);
+    global.c64u_status = "C64U REU: uploading " + string(_pct) + "%";
+}
+
+/// @function scr_c64u_reu_dma_write(address, bytes)
+/// @description DMAWRITE of an array of bytes to a C64 address, all of it
+///              (a short send would leave the Ultimate reading the next
+///              command as its tail).
+function scr_c64u_reu_dma_write(_addr, _bytes)
+{
+    var _n = array_length(_bytes);
+    var _len = _n + 2;
+    var _packet = buffer_create(4 + _len, buffer_fixed, 1);
+    buffer_poke(_packet, 0, buffer_u8, 0x06);
+    buffer_poke(_packet, 1, buffer_u8, 0xFF);
+    buffer_poke(_packet, 2, buffer_u8, _len & 0xFF);
+    buffer_poke(_packet, 3, buffer_u8, (_len >> 8) & 0xFF);
+    buffer_poke(_packet, 4, buffer_u8, _addr & 0xFF);
+    buffer_poke(_packet, 5, buffer_u8, (_addr >> 8) & 0xFF);
+    for (var _i = 0; _i < _n; _i++) buffer_poke(_packet, 6 + _i, buffer_u8, _bytes[_i]);
+    var _total = 4 + _len, _sent = 0, _wait_until = current_time + 10000;
+    while (_sent < _total) {
+        var _remain = _total - _sent;
+        var _out = buffer_create(_remain, buffer_fixed, 1);
+        buffer_copy(_packet, _sent, _remain, _out, 0);
+        var _pushed = network_send_raw(global.c64u_reu_socket, _out, _remain);
+        buffer_delete(_out);
+        if (_pushed > 0) { _sent += _pushed; _wait_until = current_time + 10000; }
+        else if (current_time > _wait_until) break;
+    }
+    buffer_delete(_packet);
 }

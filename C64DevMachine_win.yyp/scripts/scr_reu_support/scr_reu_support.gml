@@ -204,6 +204,22 @@ function scr_reu_asset_payload(_asset) {
     return { buffer: _out, size: _size, c64_address: _asset.address };
 }
 
+/// Bytes of a LOAD_REU manifest's base file (reu_base_file: a raw REU image
+/// on disk, e.g. made by a project's own tools), 0 if it has none. The image
+/// starts as that file's bytes from REU address 0 - read when the image is
+/// built, so it is never stored in the project - and the linked assets go
+/// after it (auto-packed ones start at its end).
+function scr_reu_base_size(_manifest) {
+    if (!variable_struct_exists(_manifest, "reu_base_file")) return 0;
+    var _path = string(_manifest.reu_base_file);
+    if (_path == "" || !file_exists(_path)) return 0;
+    var _f = file_bin_open(_path, 0);
+    if (_f < 0) return 0;
+    var _size = file_bin_size(_f);
+    file_bin_close(_f);
+    return _size;
+}
+
 function scr_reu_repack(_manifest) {
     if (is_undefined(_manifest)) return;
     if (!variable_struct_exists(_manifest, "linked_assets")) _manifest.linked_assets = [];
@@ -222,7 +238,8 @@ function scr_reu_repack(_manifest) {
         if (!_links[_i].auto_pack) array_push(_placed, { s: real(_links[_i].reu_address), e: real(_links[_i].reu_address) + _sizes[_i], index: _i });
     }
 
-    var _cursor = 0x100;
+    var _base_size = scr_reu_base_size(_manifest);
+    var _cursor = max(0x100, _base_size);
     for (var _i = 0; _i < array_length(_manifest.linked_assets); _i++) {
         var _link = _links[_i];
         if (_link.auto_pack) {
@@ -323,9 +340,34 @@ function scr_reu_build_images(_out_dir) {
         _image_size = clamp(_image_size, 0x20000, 0x1000000);
         var _img = buffer_create(_image_size, buffer_fixed, 1);
         buffer_fill(_img, 0, buffer_u8, 0, _image_size);
+        // A base file (reu_base_file) is the image from address 0; it owns
+        // the header bytes too, so no header is written over it.
+        var _base_path = variable_struct_exists(_m, "reu_base_file") ? string(_m.reu_base_file) : "";
+        var _has_base = (_base_path != "");
+        if (_has_base) {
+            if (!file_exists(_base_path)) {
+                global.reu_build_error = "LOAD_REU base file not found: " + _base_path;
+                show_debug_message("LOAD_REU: not exporting " + _m.name + ", base file missing: " + _base_path);
+                buffer_delete(_img);
+                continue;
+            }
+            var _base = buffer_load(_base_path);
+            var _base_size = buffer_get_size(_base);
+            if (_base_size > _image_size) {
+                global.reu_build_error = "LOAD_REU base file is larger than reu_size.";
+                show_debug_message("LOAD_REU: not exporting " + _m.name + ", base file " + string(_base_size) + " bytes > reu_size");
+                buffer_delete(_base);
+                buffer_delete(_img);
+                continue;
+            }
+            buffer_copy(_base, 0, _base_size, _img, 0);
+            buffer_delete(_base);
+        }
         var _sig = "C64DMREU";
-        for (var _si = 1; _si <= string_length(_sig); _si++) buffer_poke(_img, _si - 1, buffer_u8, ord(string_char_at(_sig, _si)));
-        buffer_poke(_img, 8, buffer_u8, 1); // format version
+        if (!_has_base) {
+            for (var _si = 1; _si <= string_length(_sig); _si++) buffer_poke(_img, _si - 1, buffer_u8, ord(string_char_at(_sig, _si)));
+            buffer_poke(_img, 8, buffer_u8, 1); // format version
+        }
         var _links = variable_struct_exists(_m, "linked_assets") ? _m.linked_assets : [];
         var _invalid = false;
         for (var _vi = 0; _vi < array_length(_links); _vi++) {
@@ -337,8 +379,10 @@ function scr_reu_build_images(_out_dir) {
             buffer_delete(_img);
             continue;
         }
-        buffer_poke(_img, 9, buffer_u8, array_length(_links) & 0xFF);
-        buffer_poke(_img, 10, buffer_u8, (array_length(_links) >> 8) & 0xFF);
+        if (!_has_base) {
+            buffer_poke(_img, 9, buffer_u8, array_length(_links) & 0xFF);
+            buffer_poke(_img, 10, buffer_u8, (array_length(_links) >> 8) & 0xFF);
+        }
         var _checksum = 0;
         for (var _li = 0; _li < array_length(_links); _li++) {
             var _asset = scr_reu_find_asset(_links[_li].asset_name);
@@ -352,8 +396,10 @@ function scr_reu_build_images(_out_dir) {
             }
             if (buffer_exists(_payload.buffer)) buffer_delete(_payload.buffer);
         }
-        buffer_poke(_img, 12, buffer_u32, _image_size);
-        buffer_poke(_img, 16, buffer_u32, _checksum);
+        if (!_has_base) {
+            buffer_poke(_img, 12, buffer_u32, _image_size);
+            buffer_poke(_img, 16, buffer_u32, _checksum);
+        }
         var _name = variable_struct_exists(_m, "reu_filename") ? string(_m.reu_filename) : string(_m.name) + ".reu";
         if (string_length(_name) < 4 || string_lower(string_copy(_name, string_length(_name) - 3, 4)) != ".reu") _name += ".reu";
         var _path = _out_dir + _name;

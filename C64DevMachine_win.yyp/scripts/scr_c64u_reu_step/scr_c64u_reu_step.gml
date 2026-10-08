@@ -9,6 +9,16 @@ function scr_c64u_reu_step()
         return;
     }
 
+    if (global.c64u_reu_state == "closing")
+    {
+        // the DMA RUN has had time to leave: done with the connection
+        if (global.c64u_reu_socket >= 0) network_destroy(global.c64u_reu_socket);
+        global.c64u_reu_socket = -1;
+        global.c64u_reu_state  = "idle";
+        global.c64u_busy       = false;
+        return;
+    }
+
     if (global.c64u_reu_state == "settle")
     {
         scr_c64u_reu_continue();
