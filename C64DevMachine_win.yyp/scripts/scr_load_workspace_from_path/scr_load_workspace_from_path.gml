@@ -395,18 +395,10 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                     }
                 }
                 // Bitmap editor sprite overlay: keep only well-formed sprites
-                if (is_struct(_sm[$ "spr_overlay"]) && is_array(_sm.spr_overlay[$ "rows"])) {
-                    var _so = _sm.spr_overlay;
-                    var _so_ok = true;
-                    for (var _sri = 0; _sri < array_length(_so.rows) && _so_ok; _sri++) {
-                        var _srw = _so.rows[_sri];
-                        if (!is_struct(_srw) || !is_array(_srw[$ "sprites"])) { _so_ok = false; break; }
-                        for (var _ssi = 0; _ssi < array_length(_srw.sprites); _ssi++) {
-                            var _ssp = _srw.sprites[_ssi];
-                            if (!is_struct(_ssp) || !is_array(_ssp[$ "px"]) || array_length(_ssp.px) != 504) { _so_ok = false; break; }
-                        }
-                    }
-                    if (_so_ok) _meta.spr_overlay = _so;
+                // (older row-based overlays are flattened to free sprites)
+                if (is_struct(_sm[$ "spr_overlay"])) {
+                    var _so = scr_bmp_spr_migrate(_sm.spr_overlay);
+                    if (!is_undefined(_so)) _meta.spr_overlay = _so;
                 }
                 if (variable_struct_exists(_sm, "sprite_json"))    _meta.sprite_json    = _sm.sprite_json;
                 if (variable_struct_exists(_sm, "compositor"))     _meta.compositor     = _sm.compositor;

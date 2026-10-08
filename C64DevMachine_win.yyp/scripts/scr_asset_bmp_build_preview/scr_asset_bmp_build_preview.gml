@@ -216,34 +216,76 @@ function scr_asset_bmp_cache_save(_key, _rgba) {
 // Hardware sprites laid over a BITMAP asset in its editor, painted in a
 // mode of their own and transferred to a SPRITE_SET when done.
 //
-// Layout follows the multiplexing rule: up to 8 rows of up to 8 sprites.
-// A row is a 21-line band with its own Y; rows may not overlap, so no
-// raster line ever carries more than 8 sprites. Each sprite has its own X.
+// Each sprite has its own X and Y. The VIC shows at most 8 sprites on any
+// raster line, so the panel warns (and the canvas marks the lines in red)
+// where more than 8 overlap. SETUP NODES / TRANSFER group the sprites into
+// 21-line bands by Y (scr_bmp_spr_sorted_rows) for the multiplexer.
 // Colours follow the VIC: MC1 / MC2 shared by all sprites, one colour per
 // sprite, HiRes or multicolour per sprite. Sprites always draw in front.
 //
 // meta.spr_overlay (saved with the asset):
-//   { version, show, mc1, mc2, rows: [ { y, sprites: [ { x, col, mc, px[504] } ] } ] }
+//   { version: 2, show, mc1, mc2, mux_nodes, sprites: [ { x, y, col, mc, px[504] } ] }
+// (version 1 kept rows: [ { y, sprites } ] - scr_bmp_spr_migrate flattens it)
 // px holds one code per pixel (24 x 21): 0 transparent, 1 MC1, 2 sprite
 // colour, 3 MC2 — the same values as the sprite bit pairs. A multicolour
 // sprite keeps both pixels of a pair equal. HiRes uses 0 / 2 only.
-// Runtime (not saved): spr_mode, spr_pen, spr_sel_row / spr_sel_spr,
+// Runtime (not saved): spr_mode, spr_pen, spr_sel,
 // spr_ovl_surf / spr_ovl_ver / spr_ovl_built, spr_undo / spr_redo, drag state.
 // =====================================================================
-#macro BSO_ROWS    8
-#macro BSO_PER_ROW 8
+#macro BSO_PER_LINE 8
+#macro BSO_MAX      64
 
 function scr_bmp_spr_get(_asset) {
     var _m = _asset.meta;
     if (!variable_struct_exists(_m, "spr_overlay") || !is_struct(_m.spr_overlay)) {
-        _m.spr_overlay = { version: 1, show: true, mc1: 1, mc2: 2, rows: [], mux_nodes: false };
+        _m.spr_overlay = { version: 2, show: true, mc1: 1, mc2: 2, sprites: [], mux_nodes: false };
     }
-    // Overlays saved before the MUX option existed
-    if (!variable_struct_exists(_m.spr_overlay, "mux_nodes")) {
-        _m.spr_overlay.mux_nodes = false;
+    // Overlays from before free sprites / the MUX option
+    if (!variable_struct_exists(_m.spr_overlay, "sprites") || !variable_struct_exists(_m.spr_overlay, "mux_nodes")) {
+        var _mig = scr_bmp_spr_migrate(_m.spr_overlay);
+        if (is_undefined(_mig)) {
+            _mig = { version: 2, show: true, mc1: 1, mc2: 2, sprites: [], mux_nodes: false };
+        }
+        _m.spr_overlay = _mig;
     }
-    if (!variable_struct_exists(_m, "spr_undo")) { _m.spr_undo = []; _m.spr_redo = []; }
+    if (!variable_struct_exists(_m, "spr_undo")) { _m.spr_undo = []; _m.spr_redo = []; _m.spr_sel = -1; }
     return _m.spr_overlay;
+}
+
+/// A saved overlay brought up to version 2 (free sprites), or undefined when
+/// it is malformed. Also used by scr_load_workspace_from_path.
+function scr_bmp_spr_migrate(_so) {
+    if (!is_struct(_so)) {
+        return undefined;
+    }
+    var _list = [];
+    if (is_array(_so[$ "sprites"])) {
+        _list = _so.sprites;
+    } else if (is_array(_so[$ "rows"])) {
+        for (var _r = 0; _r < array_length(_so.rows); _r++) {
+            var _row = _so.rows[_r];
+            if (!is_struct(_row) || !is_array(_row[$ "sprites"])) {
+                return undefined;
+            }
+            for (var _s = 0; _s < array_length(_row.sprites); _s++) {
+                var _rs = _row.sprites[_s];
+                if (is_struct(_rs)) {
+                    _rs.y = _row[$ "y"] ?? 0;
+                }
+                array_push(_list, _rs);
+            }
+        }
+    }
+    var _out = [];
+    for (var _i = 0; _i < array_length(_list); _i++) {
+        var _sp = _list[_i];
+        if (!is_struct(_sp) || !is_array(_sp[$ "px"]) || array_length(_sp.px) != 504) {
+            return undefined;
+        }
+        array_push(_out, { x: _sp[$ "x"] ?? 0, y: _sp[$ "y"] ?? 0, col: _sp[$ "col"] ?? 1, mc: _sp[$ "mc"] ?? 0, px: _sp.px });
+    }
+    return { version: 2, show: _so[$ "show"] ?? true, mc1: _so[$ "mc1"] ?? 1, mc2: _so[$ "mc2"] ?? 2,
+             sprites: _out, mux_nodes: _so[$ "mux_nodes"] ?? false, gen_org: _so[$ "gen_org"] ?? -1 };
 }
 
 /// Something about the sprites changed: the overlay image is redrawn.
@@ -252,19 +294,38 @@ function scr_bmp_spr_touch(_asset) {
 }
 
 function scr_bmp_spr_count(_o) {
-    var _n = 0;
-    for (var _r = 0; _r < array_length(_o.rows); _r++) _n += array_length(_o.rows[_r].sprites);
-    return _n;
+    return array_length(_o.sprites);
+}
+
+/// Sprites on each of the 200 bitmap lines.
+function scr_bmp_spr_line_counts(_o) {
+    var _lc = array_create(200, 0);
+    for (var _i = 0; _i < array_length(_o.sprites); _i++) {
+        var _sy = _o.sprites[_i].y;
+        for (var _l = max(0, _sy); _l < min(200, _sy + 21); _l++) {
+            _lc[_l] += 1;
+        }
+    }
+    return _lc;
+}
+
+/// First bitmap line with more than 8 sprites on it, or -1.
+function scr_bmp_spr_overloaded_line(_o) {
+    var _lc = scr_bmp_spr_line_counts(_o);
+    for (var _l = 0; _l < 200; _l++) {
+        if (_lc[_l] > BSO_PER_LINE) {
+            return _l;
+        }
+    }
+    return -1;
 }
 
 /// The selected sprite struct, or undefined.
 function scr_bmp_spr_selected(_asset) {
     var _o = scr_bmp_spr_get(_asset);
-    var _r = _asset.meta[$ "spr_sel_row"] ?? -1;
-    var _s = _asset.meta[$ "spr_sel_spr"] ?? -1;
-    if (_r < 0 || _r >= array_length(_o.rows)) return undefined;
-    if (_s < 0 || _s >= array_length(_o.rows[_r].sprites)) return undefined;
-    return _o.rows[_r].sprites[_s];
+    var _s = _asset.meta.spr_sel;
+    if (_s < 0 || _s >= array_length(_o.sprites)) return undefined;
+    return _o.sprites[_s];
 }
 
 function scr_bmp_spr_push_undo(_asset) {
@@ -290,22 +351,19 @@ function scr_bmp_spr_surface(_asset) {
     }
     var _buf = buffer_create(320 * 200 * 4, buffer_fixed, 1);
     buffer_fill(_buf, 0, buffer_u32, 0, 320 * 200 * 4);
-    for (var _r = 0; _r < array_length(_o.rows); _r++) {
-        var _row = _o.rows[_r];
-        for (var _s = 0; _s < array_length(_row.sprites); _s++) {
-            var _sp  = _row.sprites[_s];
-            var _pen = [0, _pu[_o.mc1 & 15], _pu[_sp.col & 15], _pu[_o.mc2 & 15]];
-            for (var _py = 0; _py < 21; _py++) {
-                var _yy = _row.y + _py;
-                if (_yy < 0 || _yy >= 200) continue;
-                for (var _px = 0; _px < 24; _px++) {
-                    var _code = _sp.px[_py * 24 + _px];
-                    if (_code == 0) continue;
-                    if (!_sp.mc) _code = 2;
-                    var _xx = _sp.x + _px;
-                    if (_xx < 0 || _xx >= 320) continue;
-                    buffer_poke(_buf, (_yy * 320 + _xx) * 4, buffer_u32, _pen[_code]);
-                }
+    for (var _s = 0; _s < array_length(_o.sprites); _s++) {
+        var _sp  = _o.sprites[_s];
+        var _pen = [0, _pu[_o.mc1 & 15], _pu[_sp.col & 15], _pu[_o.mc2 & 15]];
+        for (var _py = 0; _py < 21; _py++) {
+            var _yy = _sp.y + _py;
+            if (_yy < 0 || _yy >= 200) continue;
+            for (var _px = 0; _px < 24; _px++) {
+                var _code = _sp.px[_py * 24 + _px];
+                if (_code == 0) continue;
+                if (!_sp.mc) _code = 2;
+                var _xx = _sp.x + _px;
+                if (_xx < 0 || _xx >= 320) continue;
+                buffer_poke(_buf, (_yy * 320 + _xx) * 4, buffer_u32, _pen[_code]);
             }
         }
     }
@@ -331,45 +389,47 @@ function scr_bmp_spr_draw(_asset, _sx, _sy, _sw, _sh, _zoom_cap) {
     if (!variable_struct_exists(_asset.meta, "spr_overlay") && !(_asset.meta[$ "spr_mode"] ?? false)) return;
     var _o = scr_bmp_spr_get(_asset);
     var _mp = scr_bmp_spr_map(_asset, _sx, _sy, _sw, _sh, _zoom_cap);
-    if (_o.show && array_length(_o.rows) > 0) {
+    if (_o.show && array_length(_o.sprites) > 0) {
         var _srf = scr_bmp_spr_surface(_asset);
         draw_surface_part_ext(_srf, _mp.ox, _mp.oy, _sw / _mp.kx, _sh / _mp.ky, _sx, _sy, _mp.kx, _mp.ky, c_white, 1);
     }
     if (!(_asset.meta[$ "spr_mode"] ?? false)) return;
-    // Sprite mode: row bands (the 8-per-line rule) and the selected sprite
-    var _sel_r = _asset.meta[$ "spr_sel_row"] ?? -1;
-    var _sel_s = _asset.meta[$ "spr_sel_spr"] ?? -1;
-    for (var _r = 0; _r < array_length(_o.rows); _r++) {
-        var _row = _o.rows[_r];
-        var _y1 = _mp.sy + (_row.y - _mp.oy) * _mp.ky;
-        var _y2 = _mp.sy + (_row.y + 21 - _mp.oy) * _mp.ky;
-        draw_set_alpha(0.5);
-        draw_set_color(make_color_rgb(80, 220, 255));
-        draw_rectangle(_sx, _y1, _sx + _sw, _y2, true);
-        draw_set_alpha(1);
-        for (var _s = 0; _s < array_length(_row.sprites); _s++) {
-            var _sp = _row.sprites[_s];
-            var _x1 = _mp.sx + (_sp.x - _mp.ox) * _mp.kx;
-            var _x2 = _mp.sx + (_sp.x + 24 - _mp.ox) * _mp.kx;
-            var _is_sel = (_r == _sel_r && _s == _sel_s);
-            draw_set_color(_is_sel ? c_yellow : make_color_rgb(80, 220, 255));
+    // Sprite mode: lines with more than 8 sprites in red, then each sprite's box
+    var _lc = scr_bmp_spr_line_counts(_o);
+    draw_set_alpha(0.35);
+    draw_set_color(c_red);
+    for (var _l = 0; _l < 200; _l++) {
+        if (_lc[_l] > BSO_PER_LINE) {
+            var _ly1 = _mp.sy + (_l - _mp.oy) * _mp.ky;
+            draw_rectangle(_sx, _ly1, _sx + _sw, _ly1 + _mp.ky, false);
+        }
+    }
+    draw_set_alpha(1);
+    var _sel = _asset.meta.spr_sel;
+    for (var _s = 0; _s < array_length(_o.sprites); _s++) {
+        var _sp = _o.sprites[_s];
+        var _x1 = _mp.sx + (_sp.x - _mp.ox) * _mp.kx;
+        var _x2 = _mp.sx + (_sp.x + 24 - _mp.ox) * _mp.kx;
+        var _y1 = _mp.sy + (_sp.y - _mp.oy) * _mp.ky;
+        var _y2 = _mp.sy + (_sp.y + 21 - _mp.oy) * _mp.ky;
+        if (_s == _sel) {
+            draw_set_color(c_yellow);
             draw_rectangle(_x1, _y1, _x2, _y2, true);
-            if (_is_sel) draw_rectangle(_x1 - 1, _y1 - 1, _x2 + 1, _y2 + 1, true);
+            draw_rectangle(_x1 - 1, _y1 - 1, _x2 + 1, _y2 + 1, true);
+        } else {
+            draw_set_color(make_color_rgb(80, 220, 255));
+            draw_rectangle(_x1, _y1, _x2, _y2, true);
         }
     }
 }
 
-/// Row index and sprite index under bitmap pixel (_px, _py), topmost first.
+/// Index of the topmost sprite under bitmap pixel (_px, _py), or -1.
 function scr_bmp_spr_hit(_o, _px, _py) {
-    for (var _r = array_length(_o.rows) - 1; _r >= 0; _r--) {
-        var _row = _o.rows[_r];
-        if (_py < _row.y || _py >= _row.y + 21) continue;
-        for (var _s = array_length(_row.sprites) - 1; _s >= 0; _s--) {
-            var _sp = _row.sprites[_s];
-            if (_px >= _sp.x && _px < _sp.x + 24) return [_r, _s];
-        }
+    for (var _s = array_length(_o.sprites) - 1; _s >= 0; _s--) {
+        var _sp = _o.sprites[_s];
+        if (_px >= _sp.x && _px < _sp.x + 24 && _py >= _sp.y && _py < _sp.y + 21) return _s;
     }
-    return undefined;
+    return -1;
 }
 
 /// Sprite paint mode input, from the bitmap editor. Returns true while
@@ -414,19 +474,23 @@ function scr_bmp_spr_edit(_asset, _raw_px, _raw_py, _in_bounds) {
                 && _in_bounds && !global.ui_click_consumed && !global.any_picker_open;
     if (_pressed) {
         var _hit = scr_bmp_spr_hit(_o, _raw_px, _raw_py);
-        if (is_undefined(_hit)) return true;
-        _m.spr_sel_row = _hit[0];
-        _m.spr_sel_spr = _hit[1];
+        if (_hit < 0) return true;
+        _m.spr_sel = _hit;
+        // A HiRes sprite has no MC1 / MC2 to paint with
+        if (!_o.sprites[_hit].mc && (_pen == "MC1" || _pen == "MC2")) {
+            _pen = "SPR";
+            _m.spr_pen = "SPR";
+        }
         scr_bmp_spr_sync_palette(_asset);
         scr_bmp_spr_push_undo(_asset);
         _o = _m.spr_overlay;
-        var _sp0 = _o.rows[_hit[0]].sprites[_hit[1]];
+        var _sp0 = _o.sprites[_hit];
         if (_pen == "MOVE" && _lmb) {
             _m.spr_dragging = true;
             _m.spr_drag_mx = _raw_px;
             _m.spr_drag_my = _raw_py;
             _m.spr_drag_x0 = _sp0.x;
-            _m.spr_drag_y0 = _o.rows[_hit[0]].y;
+            _m.spr_drag_y0 = _sp0.y;
         } else {
             _m.spr_painting = true;
         }
@@ -435,19 +499,15 @@ function scr_bmp_spr_edit(_asset, _raw_px, _raw_py, _in_bounds) {
 
     var _sp = scr_bmp_spr_selected(_asset);
     if (is_undefined(_sp)) return true;
-    var _ri  = _m.spr_sel_row;
-    var _row = _o.rows[_ri];
 
     if (_m[$ "spr_dragging"] ?? false) {
-        // X is free; the row's Y moves as a band and may not overlap its neighbours
+        // Free X and Y; the panel warns when a line ends up with more than 8
         _sp.x = clamp(_m.spr_drag_x0 + (_raw_px - _m.spr_drag_mx), -23, 319);
-        var _lo = (_ri > 0) ? _o.rows[_ri - 1].y + 21 : 0;
-        var _hi = (_ri < array_length(_o.rows) - 1) ? _o.rows[_ri + 1].y - 21 : 179;
-        _row.y = clamp(_m.spr_drag_y0 + (_raw_py - _m.spr_drag_my), _lo, max(_lo, _hi));
+        _sp.y = clamp(_m.spr_drag_y0 + (_raw_py - _m.spr_drag_my), -20, 199);
         scr_bmp_spr_touch(_asset);
     } else if ((_m[$ "spr_painting"] ?? false) && _in_bounds) {
         var _lx = _raw_px - _sp.x;
-        var _ly = _raw_py - _row.y;
+        var _ly = _raw_py - _sp.y;
         if (_lx >= 0 && _lx < 24 && _ly >= 0 && _ly < 21) {
             var _code = 2;
             if (_rmb || _pen == "ERASE") _code = 0;
@@ -528,39 +588,40 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
     _y += 20;
     if (!_on) return;
 
-    // Pens
-    var _pens = ["SPR", "MC1", "MC2", "ERASE", "MOVE"];
-    var _pen  = _m[$ "spr_pen"] ?? "SPR";
-    for (var _i = 0; _i < array_length(_pens); _i++) {
-        var _px = _x + (_i mod 2) * 56;
-        var _py = _y + (_i div 2) * 20;
-        if (_btn(_px, _py, 52, _pens[_i], _pen == _pens[_i], _mx, _my, _click)) {
-            _m.spr_pen = _pens[_i]; scr_bmp_spr_sync_palette(_asset); global.ui_click_consumed = true;
-        }
+    // Tools: ERASE / MOVE. Painting colours are picked from the swatches below.
+    var _pen = _m[$ "spr_pen"] ?? "SPR";
+    if (_btn(_x, _y, 52, "ERASE", _pen == "ERASE", _mx, _my, _click)) {
+        _m.spr_pen = "ERASE"; global.ui_click_consumed = true;
     }
-    _y += 64;
+    if (_btn(_x + 56, _y, 52, "MOVE", _pen == "MOVE", _mx, _my, _click)) {
+        _m.spr_pen = "MOVE"; global.ui_click_consumed = true;
+    }
+    _y += 20;
 
-    // Rows and sprites
+    // Add / delete. A new sprite goes right of the selected one (same Y).
     var _sel = scr_bmp_spr_selected(_asset);
-    // A new row starts under the last one, and only if a whole 21-line band still fits
-    var _ny = (array_length(_o.rows) > 0) ? _o.rows[array_length(_o.rows) - 1].y + 21 : 0;
-    if (array_length(_o.rows) < BSO_ROWS && _ny <= 179 && _btn(_x, _y, 52, "+ ROW", false, _mx, _my, _click)) {
+    if (scr_bmp_spr_count(_o) < BSO_MAX && _btn(_x, _y, 52, "+ SPR", false, _mx, _my, _click)) {
         scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay;
-        array_push(_o.rows, { y: _ny, sprites: [ { x: 0, col: _m[$ "active_color"] ?? 1, mc: 0, px: array_create(504, 0) } ] });
-        _m.spr_sel_row = array_length(_o.rows) - 1; _m.spr_sel_spr = 0;
+        var _nx = 0;
+        var _ny = 0;
+        var _nmc = 0;
+        if (!is_undefined(_sel)) {
+            _nx = min(_sel.x + 24, 296);
+            _ny = _sel.y;
+            _nmc = _sel.mc;
+        }
+        array_push(_o.sprites, { x: _nx, y: _ny, col: _m[$ "active_color"] ?? 1, mc: _nmc, px: array_create(504, 0) });
+        _m.spr_sel = array_length(_o.sprites) - 1;
         scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
     }
-    var _sr = _m[$ "spr_sel_row"] ?? -1;
-    if (_sr >= 0 && _sr < array_length(_o.rows) && array_length(_o.rows[_sr].sprites) < BSO_PER_ROW
-    && scr_bmp_spr_count(_o) < 64 && _btn(_x + 56, _y, 52, "+ SPR", false, _mx, _my, _click)) {
+    if (!is_undefined(_sel) && _btn(_x + 56, _y, 52, "DEL SPR", false, _mx, _my, _click)) {
         scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay;
-        var _rs = _o.rows[_sr].sprites;
-        var _nx = (array_length(_rs) > 0) ? min(_rs[array_length(_rs) - 1].x + 24, 296) : 0;
-        array_push(_rs, { x: _nx, col: _m[$ "active_color"] ?? 1, mc: 0, px: array_create(504, 0) });
-        _m.spr_sel_spr = array_length(_rs) - 1;
+        array_delete(_o.sprites, _m.spr_sel, 1);
+        _m.spr_sel = -1;
         scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
     }
     _y += 20;
+
     _sel = scr_bmp_spr_selected(_asset);
     if (!is_undefined(_sel)) {
         if (_btn(_x, _y, 52, _sel.mc ? "MC" : "HIRES", _sel.mc, _mx, _my, _click)) {
@@ -572,39 +633,72 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
             }
             scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
         }
-        if (_btn(_x + 56, _y, 52, "DEL SPR", false, _mx, _my, _click)) {
-            scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay;
-            array_delete(_o.rows[_m.spr_sel_row].sprites, _m.spr_sel_spr, 1);
-            if (array_length(_o.rows[_m.spr_sel_row].sprites) == 0) array_delete(_o.rows, _m.spr_sel_row, 1);
-            _m.spr_sel_row = -1; _m.spr_sel_spr = -1;
-            scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
-        }
+        draw_set_color(c_ltgray);
+        draw_text_l(_x + 56, _y + 1, "S" + string(_m.spr_sel));
         _y += 20;
-        _sel = scr_bmp_spr_selected(_asset);
-        if (!is_undefined(_sel)) {
-            draw_set_color(c_ltgray);
-            draw_text_l(_x, _y, "R" + string(_m.spr_sel_row) + " S" + string(_m.spr_sel_spr)
-                + "  X" + string(_sel.x) + " Y" + string(_o.rows[_m.spr_sel_row].y));
-            _y += 16;
-        }
+        draw_text_l(_x, _y, "X" + string(_sel.x) + "  Y" + string(_sel.y));
+        _y += 16;
     }
 
-    // Colours: sprite / MC1 / MC2 (pick a pen, then a palette colour)
+    // More than 8 sprites on one raster line can't be shown (red on the canvas)
+    var _ovl = scr_bmp_spr_overloaded_line(_o);
+    if (_ovl >= 0) {
+        draw_set_color(c_red);
+        draw_text_l(_x, _y, "OVER 8 ON LINE " + string(_ovl));
+        _y += 12;
+        draw_text_l(_x, _y, "MOVE ONE DOWN, PAST");
+        _y += 12;
+        draw_text_l(_x, _y, "THE OTHERS + A GAP");
+        _y += 16;
+    }
+
+    // Colours: click a swatch to paint with it, or a strip colour to set it
+    // (and paint with it). SPR is the selected sprite's own colour; MC1 / MC2
+    // are shared by all sprites and unused (greyed) on a HiRes sprite.
+    var _hires = false;
+    if (!is_undefined(_sel)) {
+        _hires = !_sel.mc;
+    }
+    if (_hires && (_pen == "MC1" || _pen == "MC2")) {
+        _pen = "SPR"; _m.spr_pen = "SPR"; scr_bmp_spr_sync_palette(_asset);
+    }
     var _cols = [ is_undefined(_sel) ? -1 : _sel.col, _o.mc1, _o.mc2 ];
     var _lbls = ["SPR", "MC1", "MC2"];
     for (var _i = 0; _i < 3; _i++) {
         var _cx = _x + _i * 37;
+        var _off = (_i > 0 && _hires);
+        var _live = (_cols[_i] >= 0 && !_off);
+        var _is_pen = (_pen == _lbls[_i]);
         draw_set_color(c_ltgray);
+        if (_off) {
+            draw_set_color(make_color_rgb(70, 70, 80));
+        }
         draw_text_l(_cx, _y, _lbls[_i]);
         if (_cols[_i] >= 0) {
             draw_set_color(scr_c64_pepto_colour(_cols[_i]));
+            if (_off) {
+                draw_set_color(make_color_rgb(45, 45, 55));
+            }
             draw_rectangle(_cx, _y + 12, _cx + 30, _y + 24, false);
         }
-        draw_set_color(c_gray);
-        draw_rectangle(_cx, _y + 12, _cx + 30, _y + 24, true);
+        var _sw_hov = _live && point_in_rectangle(_mx, _my, _cx, _y + 12, _cx + 30, _y + 24);
+        if (_is_pen && _live) {
+            draw_set_color(c_yellow);
+            draw_rectangle(_cx - 1, _y + 11, _cx + 31, _y + 25, true);
+        } else if (_sw_hov) {
+            draw_set_color(c_white);
+            draw_rectangle(_cx, _y + 12, _cx + 30, _y + 24, true);
+        } else {
+            draw_set_color(c_gray);
+            draw_rectangle(_cx, _y + 12, _cx + 30, _y + 24, true);
+        }
+        if (_sw_hov && _click) {
+            _m.spr_pen = _lbls[_i]; _pen = _lbls[_i];
+            scr_bmp_spr_sync_palette(_asset);
+            global.ui_click_consumed = true;
+        }
 
-        // Palette strip under the swatch: click a colour to set it directly.
-        // SPR recolours the selected sprite only; MC1 / MC2 are shared by all.
+        // Palette strip under the swatch
         if (_cols[_i] >= 0) {
             var _sy0 = _y + 28;
             for (var _c = 0; _c < 16; _c++) {
@@ -612,6 +706,13 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
                 var _cy2 = _cy1 + 7;
                 draw_set_color(scr_c64_pepto_colour(_c));
                 draw_rectangle(_cx, _cy1, _cx + 30, _cy2, false);
+                if (_off) {
+                    draw_set_alpha(0.75);
+                    draw_set_color(make_color_rgb(18, 18, 28));
+                    draw_rectangle(_cx, _cy1, _cx + 30, _cy2, false);
+                    draw_set_alpha(1);
+                    continue;
+                }
                 var _chov = point_in_rectangle(_mx, _my, _cx, _cy1, _cx + 30, _cy2);
                 if (_c == _cols[_i]) {
                     draw_set_color(c_white);
@@ -620,24 +721,27 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
                     draw_set_color(c_ltgray);
                     draw_rectangle(_cx, _cy1, _cx + 30, _cy2, true);
                 }
-                if (_chov && _click && _c != _cols[_i]) {
-                    scr_bmp_spr_push_undo(_asset);
-                    _o = _m.spr_overlay;
-                    if (_i == 0) {
-                        var _csel = scr_bmp_spr_selected(_asset);
-                        if (!is_undefined(_csel)) {
-                            _csel.col = _c;
+                if (_chov && _click) {
+                    if (_c != _cols[_i]) {
+                        scr_bmp_spr_push_undo(_asset);
+                        _o = _m.spr_overlay;
+                        if (_i == 0) {
+                            var _csel = scr_bmp_spr_selected(_asset);
+                            if (!is_undefined(_csel)) {
+                                _csel.col = _c;
+                            }
+                        } else if (_i == 1) {
+                            _o.mc1 = _c;
+                        } else {
+                            _o.mc2 = _c;
                         }
-                    } else if (_i == 1) {
-                        _o.mc1 = _c;
-                    } else {
-                        _o.mc2 = _c;
+                        scr_bmp_spr_touch(_asset);
+                        _cols[_i] = _c;
                     }
-                    // Keep the main palette on the current pen's colour so
-                    // scr_bmp_spr_edit doesn't read this as a palette click.
+                    // This colour is now the one being painted with. Syncing the
+                    // main palette stops scr_bmp_spr_edit reading it as a click.
+                    _m.spr_pen = _lbls[_i]; _pen = _lbls[_i];
                     scr_bmp_spr_sync_palette(_asset);
-                    scr_bmp_spr_touch(_asset);
-                    _cols[_i] = _c;
                     global.ui_click_consumed = true;
                 }
             }
@@ -776,18 +880,13 @@ function scr_bmp_spr_sync_palette(_asset) {
     if (_c >= 0) { _m.active_color = _c; _m.spr_last_col = _c; }
 }
 
-/// Entering sprite mode with no sprites yet: one full row of 8 side by side
-/// at the top, so there is something to paint on straight away.
+/// Entering sprite mode with no sprites yet: one sprite at the top left, so
+/// there is something to paint on straight away (+ SPR adds more).
 function scr_bmp_spr_default_row(_asset) {
     var _o = scr_bmp_spr_get(_asset);
-    if (array_length(_o.rows) > 0) return;
-    var _sprites = [];
-    for (var _i = 0; _i < BSO_PER_ROW; _i++) {
-        array_push(_sprites, { x: _i * 24, col: _asset.meta[$ "active_color"] ?? 1, mc: 0, px: array_create(504, 0) });
-    }
-    array_push(_o.rows, { y: 0, sprites: _sprites });
-    _asset.meta.spr_sel_row = 0;
-    _asset.meta.spr_sel_spr = 0;
+    if (array_length(_o.sprites) > 0) return;
+    array_push(_o.sprites, { x: 0, y: 0, col: _asset.meta[$ "active_color"] ?? 1, mc: 0, px: array_create(504, 0) });
+    _asset.meta.spr_sel = 0;
     scr_bmp_spr_touch(_asset);
 }
 
@@ -808,24 +907,38 @@ function scr_bmp_spr_default_row(_asset) {
 // first band (e.g. right after a VWAIT at the bottom of the screen).
 // =====================================================================
 
-/// Rows sorted top to bottom, as transfer orders the slots.
-/// Empty sprites (no pixels set) are left out, and rows with none left are
-/// dropped, so SETUP NODES / TRANSFER only output sprites that were drawn on.
+/// The drawn-on sprites (empty ones are left out) grouped into 21-line bands
+/// by Y, top to bottom - the order SETUP NODES / TRANSFER write the slots in.
 function scr_bmp_spr_sorted_rows(_o) {
-    var _rows = [];
-    for (var _r = 0; _r < array_length(_o.rows); _r++) {
-        var _used = [];
-        var _src  = _o.rows[_r].sprites;
-        for (var _s = 0; _s < array_length(_src); _s++) {
-            if (!scr_bmp_spr_is_empty(_src[_s])) {
-                array_push(_used, _src[_s]);
-            }
-        }
-        if (array_length(_used) > 0) {
-            array_push(_rows, { y: _o.rows[_r].y, sprites: _used });
+    var _list = [];
+    for (var _s = 0; _s < array_length(_o.sprites); _s++) {
+        if (!scr_bmp_spr_is_empty(_o.sprites[_s])) {
+            array_push(_list, _o.sprites[_s]);
         }
     }
-    array_sort(_rows, function(_a, _b) { return _a.y - _b.y; });
+    array_sort(_list, function(_a, _b) {
+        if (_a.y != _b.y) return _a.y - _b.y;
+        return _a.x - _b.x;
+    });
+    // Bands: a band starts at its top sprite and takes the sprites that start
+    // within its 21 lines, up to 8 (more than that is an overloaded line,
+    // which the editor warns about - the extras spill into the next band).
+    var _rows = [];
+    var _cur = undefined;
+    for (var _i = 0; _i < array_length(_list); _i++) {
+        var _sp = _list[_i];
+        var _new_band = is_undefined(_cur);
+        if (!_new_band) {
+            if (_sp.y >= _cur.y + 21 || array_length(_cur.sprites) >= BSO_PER_LINE) {
+                _new_band = true;
+            }
+        }
+        if (_new_band) {
+            _cur = { y: _sp.y, sprites: [] };
+            array_push(_rows, _cur);
+        }
+        array_push(_cur.sprites, _sp);
+    }
     return _rows;
 }
 
@@ -932,7 +1045,7 @@ function scr_bmp_spr_frame_code(_name, _set, _rows, _o, _scr_addr, _ptr0) {
         for (var _k = 0; _k < _n; _k++) {
             var _hx = _sp[_k].x + 24;
             _t += "; sprite " + string(_k) + ": Y, X (low byte), pointer (slot " + string(_slot + _k) + "), colour\n";
-            _t += "    lda #" + scr_bmp_spr_hex(_yy & 255, 2) + "\n    sta " + scr_bmp_spr_hex(0xD001 + _k * 2, 4) + "\n"
+            _t += "    lda #" + scr_bmp_spr_hex((_sp[_k].y + 50) & 255, 2) + "\n    sta " + scr_bmp_spr_hex(0xD001 + _k * 2, 4) + "\n"
                 + "    lda #" + scr_bmp_spr_hex(_hx & 255, 2) + "\n    sta " + scr_bmp_spr_hex(0xD000 + _k * 2, 4) + "\n"
                 + "    lda #" + scr_bmp_spr_hex((_ptr0 + _slot + _k) & 255, 2) + "\n    sta " + scr_bmp_spr_hex(_scr_addr + 0x3F8 + _k, 4) + "\n"
                 + "    lda #" + scr_bmp_spr_hex(_sp[_k].col & 15, 2) + "\n    sta " + scr_bmp_spr_hex(0xD027 + _k, 4) + "\n";
@@ -1061,7 +1174,7 @@ function scr_bmp_spr_setup_nodes(_asset) {
     if (!_multi && _n > 0) {
         var _sp = _rows[0].sprites;
         for (var _k = 0; _k < min(array_length(_sp), 8); _k++) {
-            _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _sp[_k].x + 24, _rows[0].y + 50, _k, (_k == 0) ? 1 : 0]], _x, _y, _org);
+            _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _sp[_k].x + 24, _sp[_k].y + 50, _k, (_k == 0) ? 1 : 0]], _x, _y, _org);
             _y += _nd.height;
         }
     }
@@ -1096,7 +1209,7 @@ function scr_bmp_spr_setup_nodes(_asset) {
                     if (_r == 0 && _k == 0) {
                         _glob = 1;
                     }
-                    _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _bsp[_k].x + 24, _byy, _slot0 + _k, _glob]], _x, _y, _org);
+                    _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _bsp[_k].x + 24, _bsp[_k].y + 50, _slot0 + _k, _glob]], _x, _y, _org);
                     _y += _nd.height;
                 }
                 _slot0 += array_length(_bsp);
@@ -1135,8 +1248,8 @@ function scr_bmp_spr_setup_nodes(_asset) {
     if (_n > 0) _msg += "\n\n" + string(_n) + " sprite(s) are in " + _set.name + " at " + scr_bmp_spr_hex(_set.address, 4) + ".";
     if (_multi) {
         _msg += "\n\nMore than one row: also JSR " + _frame + " once every frame, before the first band"
-              + " (e.g. right after a VWAIT at the bottom of the screen). Rows that touch (exactly 21"
-              + " lines apart) can show a line of the next row's sprites at the seam; a gap of a few lines avoids it.";
+              + " (e.g. right after a VWAIT at the bottom of the screen). Sprites are grouped into bands by Y;"
+              + " leave a gap of a few lines between bands so there is time to move the sprites down.";
         if (_mux_nodes) {
             _msg += "\n\nMUX: NODES - each MACRO_SPR takes about 2 raster lines, so a full row of 8 needs ~16 lines"
                   + " to set up. Leave a gap between rows (or use MUX: CODE, which is much faster) or the"
