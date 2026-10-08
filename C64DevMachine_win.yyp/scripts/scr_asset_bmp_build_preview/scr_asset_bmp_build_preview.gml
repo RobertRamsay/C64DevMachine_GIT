@@ -374,16 +374,20 @@ function scr_bmp_spr_surface(_asset) {
     var _buf = buffer_create(320 * 200 * 4, buffer_fixed, 1);
     buffer_fill(_buf, 0, buffer_u32, 0, 320 * 200 * 4);
 
-    // Sprites set BEHIND only show over the bitmap's background colour, so read
-    // the bitmap once if any are. (On MC bitmaps the VIC also treats the 01 pair
-    // as background; the editor goes by the background colour only.)
+    // Sprites set BEHIND are hidden by the bitmap's foreground pixels, exactly
+    // as the VIC decides it: by the bitmap bits, not the colours. MC: bit pairs
+    // 10 / 11 are foreground (00 / 01 are background, even when 01 is a drawn
+    // colour). HiRes: a set bit is foreground (even when it's black). Read from
+    // the asset's KLA bytes (2-byte load address, then the 8000-byte bitmap),
+    // which is what gets built.
     var _bmp = -1;
-    var _bg_u = 0;
+    var _bmp_hires = false;
     for (var _s = 0; _s < array_length(_o.sprites); _s++) {
-        if (_o.sprites[_s].pri && _bmp < 0 && surface_exists(_m[$ "preview_surf"] ?? -1)) {
-            _bmp = buffer_create(320 * 200 * 4, buffer_fixed, 1);
-            buffer_get_surface(_bmp, _m.preview_surf, 0);
-            _bg_u = _pu[(_m[$ "bg_col"] ?? 0) & 15];
+        if (_o.sprites[_s].pri && _bmp < 0 && buffer_exists(_asset.buffer)) {
+            if (buffer_get_size(_asset.buffer) >= 8002) {
+                _bmp = _asset.buffer;
+                _bmp_hires = scr_asset_bmp_is_hires(_asset);
+            }
         }
     }
     _m.spr_ovl_behind_t = current_time;
@@ -407,16 +411,20 @@ function scr_bmp_spr_surface(_asset) {
                         if (_xx < 0 || _xx >= 320) continue;
                         var _ofs = (_yy * 320 + _xx) * 4;
                         if (_sp.pri && _bmp >= 0) {
-                            if ((buffer_peek(_bmp, _ofs, buffer_u32) | (255 << 24)) != _bg_u) continue;
+                            var _bb = buffer_peek(_bmp, 2 + ((_yy >> 3) * 40 + (_xx >> 3)) * 8 + (_yy & 7), buffer_u8);
+                            var _fg = false;
+                            if (_bmp_hires) {
+                                _fg = ((_bb >> (7 - (_xx & 7))) & 1) == 1;
+                            } else {
+                                _fg = ((_bb >> (6 - (_xx & 6))) & 2) == 2;
+                            }
+                            if (_fg) continue;
                         }
                         buffer_poke(_buf, _ofs, buffer_u32, _pen[_code]);
                     }
                 }
             }
         }
-    }
-    if (_bmp >= 0) {
-        buffer_delete(_bmp);
     }
     buffer_set_surface(_buf, _srf, 0);
     buffer_delete(_buf);
@@ -441,8 +449,8 @@ function scr_bmp_spr_draw(_asset, _sx, _sy, _sw, _sh, _zoom_cap) {
     var _o = scr_bmp_spr_get(_asset);
     var _mp = scr_bmp_spr_map(_asset, _sx, _sy, _sw, _sh, _zoom_cap);
     if (_o.show && array_length(_o.sprites) > 0) {
-        // Sprites behind the bitmap depend on its pixels: redraw a few times a
-        // second so bitmap edits show through
+        // Sprites behind the bitmap depend on its bytes: redraw a few times a
+        // second so bitmap edits (once saved / autosaved) show through
         var _any_behind = false;
         for (var _b = 0; _b < array_length(_o.sprites); _b++) {
             if (_o.sprites[_b].pri) {
