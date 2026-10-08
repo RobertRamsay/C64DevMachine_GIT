@@ -1,0 +1,478 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 9826d25..51c0ebe 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -830,8 +830,8 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+         _vy1 = 40;
+         _vy2 = _gui_h - 40;
+     }
+-    // LINE_COLL / PICKUP_TABLE / CHAR_SET: full screen. Must match obj_asset_manager Step.
+-    if (_asset.type == "LINE_COLL" || _asset.type == "PICKUP_TABLE" || _asset.type == "CHAR_SET") {
++    // LINE_COLL / PICKUP_TABLE / CHAR_SET / BITMAP: full screen. Must match obj_asset_manager Step.
++    if (_asset.type == "LINE_COLL" || _asset.type == "PICKUP_TABLE" || _asset.type == "CHAR_SET" || _asset.type == "BITMAP") {
+         _vx1 = 30;
+         _vx2 = _gui_w - 30;
+         _vy1 = 40;
+@@ -5406,12 +5406,12 @@ if (_eb_hov && mouse_check_button_pressed(mb_left)) {
+             
+ 	        // Find the max whole-number scale that fits the PANEL, not the window.
+ 	        // _thumb dims already bake in _scale_f_cap, so divide panel space by it here.
+-	        var _panel_avail_w = _vw - 180; // reserve room for left + right toolbars
++	        var _panel_avail_w = _vw - 420; // left tool column + sprite panel, right tools + palette
+ 	        var _fit_by_w = floor(_panel_avail_w / (320 * _scale_f_cap));
+ 	        var _fit_by_h = floor(_avail_h      / (200 * _scale_f_cap));
+             
+-	        // Pick the smaller scale so it doesn't clip, cap at 3x, minimum 1x
+-	        var _frame_z = clamp(min(_fit_by_w, _fit_by_h), 1, 3);
++	        // Pick the smaller scale so it doesn't clip, cap at 4x (full-screen editor), minimum 1x
++	        var _frame_z = clamp(min(_fit_by_w, _fit_by_h), 1, 4);
+             
+ 	        // Multiply by the GUI scale correction factor to prevent sub-pixel lapsing
+ 	        var _thumb_w = floor(320 * _frame_z * _scale_f_cap); 
+@@ -5616,7 +5616,13 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
+ }
+                 
+ // EDITOR TOOLS & PALETTE OVERLAYS
+-            if (_is_ed && !_prev_input_blocked) {
++            // The tools and buttons always draw. While the preview window has the
++            // mouse (hover or drag) they get an off-screen pointer instead, so a
++            // click there can't reach a button or the canvas underneath.
++            var _mx_keep = _mx;
++            var _my_keep = _my;
++            if (_prev_input_blocked) { _mx = -100000; _my = -100000; }
++            if (_is_ed) {
+                 
+             // ══ PNG CONVERSION MODE ══════════════════════════════════════════
+             if (!variable_struct_exists(_asset.meta, "bg_col"))    _asset.meta.bg_col    = 0;
+@@ -7962,6 +7968,8 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
+                  
+                     
+             } // end _is_ed
++            _mx = _mx_keep;
++            _my = _my_keep;
+ 	                
+ 
+ 	                
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+index da272aa..2b36fd7 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Step_0.gml
+@@ -70,7 +70,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+     }
+     // LINE_COLL: full screen (left tools / centred canvas / right list) -
+     // same bounds as Draw GUI
+-    if (asset_list[|viewer_asset].type == "LINE_COLL" || asset_list[|viewer_asset].type == "PICKUP_TABLE" || asset_list[|viewer_asset].type == "CHAR_SET") {
++    if (asset_list[|viewer_asset].type == "LINE_COLL" || asset_list[|viewer_asset].type == "PICKUP_TABLE" || asset_list[|viewer_asset].type == "CHAR_SET" || asset_list[|viewer_asset].type == "BITMAP") {
+         _wide_modal = true;
+         _vx1 = 30;
+         _vx2 = _gui_w - 30;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_asset_bmp_build_preview/scr_asset_bmp_build_preview.gml b/C64DevMachine_win.yyp/scripts/scr_asset_bmp_build_preview/scr_asset_bmp_build_preview.gml
+index 880b83c..3d2b42f 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_asset_bmp_build_preview/scr_asset_bmp_build_preview.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_asset_bmp_build_preview/scr_asset_bmp_build_preview.gml
+@@ -377,7 +377,7 @@ function scr_bmp_spr_edit(_asset, _raw_px, _raw_py, _in_bounds) {
+     var _pen = _m[$ "spr_pen"] ?? "SPR";
+ 
+     // A palette click recolours what the pen paints with
+-    var _ac = _m.active_color;
++    var _ac = _m[$ "active_color"] ?? 1;
+     if ((_m[$ "spr_last_col"] ?? _ac) != _ac) {
+         var _sel = scr_bmp_spr_selected(_asset);
+         scr_bmp_spr_push_undo(_asset);
+@@ -477,6 +477,7 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
+     if (keyboard_check_pressed(ord("S")) && !keyboard_check(vk_control)) {
+         _on = !_on;
+         _m.spr_mode = _on;
++        if (_on) scr_bmp_spr_default_row(_asset);
+     }
+ 
+     draw_set_color(make_color_rgb(80, 220, 255));
+@@ -498,12 +499,19 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
+ 
+     if (_btn(_x, _y, _w, _on ? "PAINT: SPRITES" : "PAINT: BITMAP", _on, _mx, _my, _click)) {
+         _m.spr_mode = !_on; _on = !_on; global.ui_click_consumed = true;
++        if (_on) scr_bmp_spr_default_row(_asset);
+     }
+     _y += 20;
+     if (_btn(_x, _y, _w, _o.show ? "SPRITES: SHOW" : "SPRITES: HIDE", _o.show, _mx, _my, _click)) {
+         _o.show = !_o.show; scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
+     }
+     _y += 20;
++    // A callable program for this bitmap and its sprites (scr_bmp_spr_setup_nodes)
++    if (_btn(_x, _y, _w, "SETUP NODES", false, _mx, _my, _click)) {
++        global.ui_click_consumed = true;
++        scr_bmp_spr_setup_nodes(_asset);
++    }
++    _y += 20;
+     if (!_on) return;
+ 
+     // Pens
+@@ -524,7 +532,7 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
+     var _ny = (array_length(_o.rows) > 0) ? _o.rows[array_length(_o.rows) - 1].y + 21 : 0;
+     if (array_length(_o.rows) < BSO_ROWS && _ny <= 179 && _btn(_x, _y, 52, "+ ROW", false, _mx, _my, _click)) {
+         scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay;
+-        array_push(_o.rows, { y: _ny, sprites: [ { x: 0, col: _m.active_color, mc: 0, px: array_create(504, 0) } ] });
++        array_push(_o.rows, { y: _ny, sprites: [ { x: 0, col: _m[$ "active_color"] ?? 1, mc: 0, px: array_create(504, 0) } ] });
+         _m.spr_sel_row = array_length(_o.rows) - 1; _m.spr_sel_spr = 0;
+         scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
+     }
+@@ -534,7 +542,7 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
+         scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay;
+         var _rs = _o.rows[_sr].sprites;
+         var _nx = (array_length(_rs) > 0) ? min(_rs[array_length(_rs) - 1].x + 24, 296) : 0;
+-        array_push(_rs, { x: _nx, col: _m.active_color, mc: 0, px: array_create(504, 0) });
++        array_push(_rs, { x: _nx, col: _m[$ "active_color"] ?? 1, mc: 0, px: array_create(504, 0) });
+         _m.spr_sel_spr = array_length(_rs) - 1;
+         scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
+     }
+@@ -605,8 +613,10 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
+ }
+ 
+ /// Write the overlay sprites, row by row, into a SPRITE_SET from slot 0.
+-/// _target_name "" = a new set named after the bitmap.
+-function scr_bmp_spr_transfer(_asset, _target_name) {
++/// _target_name "" = a new set (named _new_name, or after the bitmap). _addr >= 0
++/// also moves the set there. _quiet skips the done message. Returns the set,
++/// or undefined when nothing was written.
++function scr_bmp_spr_transfer(_asset, _target_name, _quiet = false, _addr = -1, _new_name = "") {
+     var _o = scr_bmp_spr_get(_asset);
+     var _list = [];
+     var _rows = variable_clone(_o.rows);
+@@ -617,7 +627,7 @@ function scr_bmp_spr_transfer(_asset, _target_name) {
+         }
+     }
+     var _n = array_length(_list);
+-    if (_n == 0) { scr_show_message("TRANSFER SPRITES\n\nThere are no sprites to transfer. Add a row first."); return; }
++    if (_n == 0) { scr_show_message("TRANSFER SPRITES\n\nThere are no sprites to transfer. Add a row first."); return undefined; }
+ 
+     var _am  = obj_asset_manager;
+     var _dst = undefined;
+@@ -629,7 +639,7 @@ function scr_bmp_spr_transfer(_asset, _target_name) {
+     if (is_undefined(_dst)) {
+         var _addr = scr_asset_default_address("SPRITE_SET");
+         with (obj_c64_node) { if (node_type == "MACRO_BMP" && is_connected) _addr = 0x6800; }
+-        _dst = { type: "SPRITE_SET", name: scr_music_maker_unique_name(string_upper(_asset.name) + "_SPR"),
++        _dst = { type: "SPRITE_SET", name: scr_music_maker_unique_name((_new_name != "") ? _new_name : (string_upper(_asset.name) + "_SPR")),
+                  file: "", address: _addr, buffer: buffer_create(64, buffer_fixed, 1),
+                  meta: { format: "binary", has_colour: true, bg_col: _asset.meta[$ "bg_col"] ?? 0,
+                          mc1_col: 1, mc2_col: 2, sprite_mcs: [0], sprite_ucs: [1],
+@@ -640,7 +650,7 @@ function scr_bmp_spr_transfer(_asset, _target_name) {
+         ds_list_add(_am.asset_list, _dst);
+     } else if (_am.spred64_v2.active && _am.spred64_v2.asset_index == _dst_idx) {
+         scr_show_message("TRANSFER SPRITES\n\nClose the sprite editor on '" + _dst.name + "' first.");
+-        return;
++        return undefined;
+     }
+ 
+     // Slots past the transferred ones keep what they had
+@@ -685,14 +695,16 @@ function scr_bmp_spr_transfer(_asset, _target_name) {
+     _dst.meta.found_count = _used;
+     _dst.meta.total_size  = _used * 64;
+     _dst.meta.has_colour  = true;
++    if (_addr >= 0) _dst.address = _addr;
+     scr_asset_spr_cache_sprites(_dst, true);
+ 
+     global.memory_bar_dirty = true;
+     global.addresses_dirty  = true;
+     global.undo_dirty       = true;
+     with (obj_workspace_manager) { alarm[3] = 6; }
+-    scr_show_message("TRANSFER SPRITES\n\n" + string(_n) + " sprite(s) written to '" + _dst.name
++    if (!_quiet) scr_show_message("TRANSFER SPRITES\n\n" + string(_n) + " sprite(s) written to '" + _dst.name
+         + "', slots 0-" + string(_n - 1) + " (row by row, top to bottom).");
++    return _dst;
+ }
+ 
+ /// Show the colour the current pen paints with in the palette, so the next
+@@ -710,3 +722,292 @@ function scr_bmp_spr_sync_palette(_asset) {
+     }
+     if (_c >= 0) { _m.active_color = _c; _m.spr_last_col = _c; }
+ }
++
++/// Entering sprite mode with no sprites yet: one full row of 8 side by side
++/// at the top, so there is something to paint on straight away.
++function scr_bmp_spr_default_row(_asset) {
++    var _o = scr_bmp_spr_get(_asset);
++    if (array_length(_o.rows) > 0) return;
++    var _sprites = [];
++    for (var _i = 0; _i < BSO_PER_ROW; _i++) {
++        array_push(_sprites, { x: _i * 24, col: _asset.meta[$ "active_color"] ?? 1, mc: 0, px: array_create(504, 0) });
++    }
++    array_push(_o.rows, { y: 0, sprites: _sprites });
++    _asset.meta.spr_sel_row = 0;
++    _asset.meta.spr_sel_spr = 0;
++    scr_bmp_spr_touch(_asset);
++}
++
++// =====================================================================
++// SETUP NODES — a ready-to-call program for the bitmap and its sprites
++//
++// Builds an ORG block (placed in free RAM) holding
++//     LABEL <NAME>_SHOW
++//     SPR ENABLE (all off) / BITMAP / [ SPRITE x n  when one row ] / RTS
++// and, when there is more than one row,
++//     LABEL <NAME>_FRAME / CODE (scan-line multiplexer) / RTS
++// The sprites go to the SPRITE_SET <NAME>_SPR, placed inside the bitmap's
++// VIC bank so the pointers reach them. Running it again replaces the block.
++//
++// Multiplexer: hardware sprites 0-7 are re-placed for each band. It waits
++// on $D012 for the line before the band starts and rewrites Y, X, pointer,
++// colour, MSB, MC and enable for that row. Call it once a frame before the
++// first band (e.g. right after a VWAIT at the bottom of the screen).
++// =====================================================================
++
++/// Rows sorted top to bottom, as transfer orders the slots.
++function scr_bmp_spr_sorted_rows(_o) {
++    var _rows = [];
++    for (var _r = 0; _r < array_length(_o.rows); _r++) if (array_length(_o.rows[_r].sprites) > 0) array_push(_rows, _o.rows[_r]);
++    array_sort(_rows, function(_a, _b) { return _a.y - _b.y; });
++    return _rows;
++}
++
++function scr_bmp_spr_overlaps(_a1, _a2, _b1, _b2) { return (_a1 < _b2 && _b1 < _a2); }
++
++/// A 64-byte aligned home for _n sprites inside the bitmap's VIC bank,
++/// clear of the bitmap / screen / colour block, the VIC's char-ROM shadow
++/// and anything else in memory (except the set being replaced). -1 if none.
++function scr_bmp_spr_find_spr_addr(_bmp_addr, _n, _ignore_asset) {
++    var _rg   = scr_bmp_regions(_bmp_addr);
++    var _bb   = _rg.bank_base;
++    var _size = _n * 64;
++    scr_build_memory_bar_cache();
++    for (var _a = _bb; _a + _size <= _bb + 0x4000; _a += 64) {
++        var _e = _a + _size;
++        if (_a < 0x0800) continue;
++        if (scr_bmp_spr_overlaps(_a, _e, _rg.bmp_addr, _rg.bmp_addr + 8000)) continue;
++        if (scr_bmp_spr_overlaps(_a, _e, _rg.scr_addr, _rg.scr_addr + 1024)) continue;
++        if (scr_bmp_spr_overlaps(_a, _e, _rg.col_addr, _rg.col_addr + 1000)) continue;
++        if ((_rg.bank == 0 || _rg.bank == 2) && scr_bmp_spr_overlaps(_a, _e, _bb + 0x1000, _bb + 0x2000)) continue;
++        if (scr_bmp_spr_overlaps(_a, _e, 0xD000, 0xE000)) continue;
++        var _clash = false;
++        for (var _i = 0; _i < array_length(global.memory_bar_segments); _i++) {
++            var _s = global.memory_bar_segments[_i];
++            if (_s.type == "CODE" && _s.no_conflict) continue;
++            if (!is_undefined(_ignore_asset) && _s.addr == _ignore_asset.address) continue;
++            if (scr_bmp_spr_overlaps(_a, _e, _s.addr, _s.addr + max(1, _s.size))) { _clash = true; break; }
++        }
++        if (!_clash) return _a;
++    }
++    return -1;
++}
++
++/// Free RAM the CPU can run code in ($0900-$9FFF, $C000-$CFFF), clear of
++/// memory in use and the extra [start, end) ranges given. -1 if none.
++function scr_bmp_spr_free_code(_size, _excl) {
++    scr_build_memory_bar_cache();
++    for (var _a = 0x0900; _a + _size <= 0xD000; _a += 0x40) {
++        var _e = _a + _size;
++        if (scr_bmp_spr_overlaps(_a, _e, 0xA000, 0xC000)) continue;
++        var _ok = true;
++        for (var _x = 0; _x < array_length(_excl) && _ok; _x++) {
++            if (scr_bmp_spr_overlaps(_a, _e, _excl[_x][0], _excl[_x][1] + 32)) _ok = false;
++        }
++        for (var _i = 0; _i < array_length(global.memory_bar_segments) && _ok; _i++) {
++            var _s = global.memory_bar_segments[_i];
++            if (_s.type == "CODE" && _s.no_conflict) continue;
++            if (scr_bmp_spr_overlaps(_a, _e, _s.addr, _s.addr + max(1, _s.size) + 32)) _ok = false;
++        }
++        if (_ok) return _a;
++    }
++    return -1;
++}
++
++function scr_bmp_spr_hex(_v, _d) {
++    var _h = string_upper(decimal_to_hex(_v));
++    while (string_length(_h) < _d) _h = "0" + _h;
++    return "$" + _h;
++}
++
++/// The scan-line multiplexer as assembly for a MACRO_CODE block.
++function scr_bmp_spr_frame_code(_name, _set, _rows, _o, _scr_addr, _ptr0) {
++    var _t = "// @asset " + _set.name + "\n"
++           + "// Sprite multiplexer for " + _name + ": re-places hardware sprites 0-7\n"
++           + "// for each 21-line band, timed off the raster ($D012). Call once per\n"
++           + "// frame before the first band, e.g. right after a VWAIT at the bottom.\n"
++           + "    lda #" + scr_bmp_spr_hex(_o.mc1 & 15, 2) + "\n    sta $d025\n"
++           + "    lda #" + scr_bmp_spr_hex(_o.mc2 & 15, 2) + "\n    sta $d026\n";
++    var _slot = 0;
++    for (var _r = 0; _r < array_length(_rows); _r++) {
++        var _row = _rows[_r];
++        var _sp  = _row.sprites;
++        var _n   = min(array_length(_sp), 8);
++        var _yy  = _row.y + 50;
++        if (_r > 0) {
++            // Wait for the last line before this band, then swap the sprites over
++            var _wl = _name + "_W" + string(_r);
++            _t += "; band " + string(_r) + " starts on line " + string(_yy) + "\n"
++                + _wl + ":\n    lda $d012\n    cmp #" + scr_bmp_spr_hex(_yy - 1, 2) + "\n    bcc " + _wl + "\n";
++        }
++        var _en = 0, _msb = 0, _mc = 0;
++        for (var _k = 0; _k < _n; _k++) {
++            var _hx = _sp[_k].x + 24;
++            _en |= (1 << _k);
++            if (_hx > 255) _msb |= (1 << _k);
++            if (_sp[_k].mc) _mc |= (1 << _k);
++        }
++        for (var _k = 0; _k < _n; _k++) {
++            var _hx = _sp[_k].x + 24;
++            _t += "    lda #" + scr_bmp_spr_hex(_yy & 255, 2) + "\n    sta " + scr_bmp_spr_hex(0xD001 + _k * 2, 4) + "\n"
++                + "    lda #" + scr_bmp_spr_hex(_hx & 255, 2) + "\n    sta " + scr_bmp_spr_hex(0xD000 + _k * 2, 4) + "\n"
++                + "    lda #" + scr_bmp_spr_hex((_ptr0 + _slot + _k) & 255, 2) + "\n    sta " + scr_bmp_spr_hex(_scr_addr + 0x3F8 + _k, 4) + "\n"
++                + "    lda #" + scr_bmp_spr_hex(_sp[_k].col & 15, 2) + "\n    sta " + scr_bmp_spr_hex(0xD027 + _k, 4) + "\n";
++        }
++        _t += "    lda #" + scr_bmp_spr_hex(_msb, 2) + "\n    sta $d010\n"
++            + "    lda #" + scr_bmp_spr_hex(_mc, 2) + "\n    sta $d01c\n"
++            + "    lda #" + scr_bmp_spr_hex(_en, 2) + "\n    sta $d015\n";
++        _slot += array_length(_sp);
++    }
++    return _t;
++}
++
++/// Spawn a node of _type with _inst under _parent at (_x, _y).
++function scr_bmp_spr_node(_type, _inst, _x, _y, _parent) {
++    var _n = scr_node_spawn(_type, _x, _y);
++    _n.instructions = _inst;
++    _n.is_connected = true;
++    _n.org_parent   = _parent;
++    with (_n) event_user(0);
++    _n.height_dirty = true;
++    _n.stats_cache_dirty = true;
++    scr_macro_sync_height(_n);
++    _n.prev_height = _n.height;
++    return _n;
++}
++
++function scr_bmp_spr_setup_nodes(_asset) {
++    var _o    = scr_bmp_spr_get(_asset);
++    var _rows = scr_bmp_spr_sorted_rows(_o);
++    var _n    = 0;
++    for (var _r = 0; _r < array_length(_rows); _r++) _n += array_length(_rows[_r].sprites);
++    _n = min(_n, 64);
++    var _init = scr_init_anchor();
++    if (!instance_exists(_init)) { scr_show_message("SETUP NODES\n\nThis project has no SYSTEM INIT node."); return; }
++
++    // A name usable as a label
++    var _name = string_upper(_asset.name);
++    var _clean = "";
++    for (var _i = 1; _i <= string_length(_name); _i++) {
++        var _ch = string_char_at(_name, _i);
++        _clean += (string_pos(_ch, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") > 0) ? _ch : "_";
++    }
++    if (_clean == "" || string_pos(string_char_at(_clean, 1), "0123456789") > 0) _clean = "BMP_" + _clean;
++
++    // Settle any pending change, then one undo point for the whole setup
++    if (global.undo_dirty) scr_c64_do_update_addresses();
++    scr_undo_snapshot();
++    global.undo_dirty = false;
++
++    // Replace a block made by an earlier SETUP NODES
++    var _old_uid = _o[$ "gen_org"] ?? -1;
++    if (_old_uid > 0) {
++        var _old = noone;
++        with (obj_c64_node) { if (node_type == "ORG" && stable_uid == _old_uid) _old = id; }
++        if (instance_exists(_old)) {
++            with (obj_c64_node) { if (org_parent == _old) instance_destroy(); }
++            with (_old) instance_destroy();
++        }
++    }
++
++    var _bmp_addr = real(_asset.address);
++    var _rg = scr_bmp_regions(_bmp_addr);
++    var _excl = [[_rg.bmp_addr, _rg.bmp_addr + 8000], [_rg.scr_addr, _rg.scr_addr + 1024], [_rg.col_addr, _rg.col_addr + 1000]];
++
++    // Sprites into <NAME>_SPR, inside the bitmap's VIC bank
++    var _set = undefined;
++    var _ptr0 = 0;
++    if (_n > 0) {
++        var _set_name = scr_clamp_asset_name(_clean, 11) + "_SPR";
++        var _have = undefined;
++        var _am = obj_asset_manager;
++        for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
++            var _a = ds_list_find_value(_am.asset_list, _ai);
++            if (_a.type == "SPRITE_SET" && _a.name == _set_name) _have = _a;
++        }
++        var _spr_addr = scr_bmp_spr_find_spr_addr(_bmp_addr, max(_n, is_undefined(_have) ? 0 : (_have.meta[$ "used_count"] ?? 0)), _have);
++        if (_spr_addr < 0) {
++            scr_show_message("SETUP NODES\n\nThere is no room for " + string(_n) + " sprites in VIC bank "
++                + string(_rg.bank) + " next to this bitmap.");
++            return;
++        }
++        _set = scr_bmp_spr_transfer(_asset, is_undefined(_have) ? "" : _set_name, true, _spr_addr, _set_name);
++        if (is_undefined(_set)) return;
++        _ptr0 = (_spr_addr - _rg.bank_base) div 64;
++        array_push(_excl, [_spr_addr, _spr_addr + max(1, _set.meta.used_count) * 64]);
++    }
++
++    // Size estimate for the code block: BITMAP ~160, SPRITE ~60, multiplexer per band
++    var _multi = (array_length(_rows) > 1);
++    var _code = "";
++    if (_multi) _code = scr_bmp_spr_frame_code(_clean, _set, _rows, _o, _rg.scr_addr, _ptr0);
++    var _est = 200 + (_multi ? (string_count("\n", _code) * 3 + 32) : _n * 64);
++    var _org_addr = scr_bmp_spr_free_code(_est, _excl);
++    if (_org_addr < 0) { scr_show_message("SETUP NODES\n\nThere is no free RAM for the code block (" + string(_est) + " bytes)."); return; }
++
++    // The ORG, in its own column right of everything
++    var _x = _init.x;
++    with (obj_c64_node) { if (node_type == "ORG" || node_type == "INIT") _x = max(_x, x); }
++    _x += global.node_display_width + 120;
++    var _org = scr_spawn_org_node(_x, _init.y);
++    _org.node_title   = _clean + " SETUP";
++    _org.proxy        = false;
++    _org.proxy_address = _org_addr;
++    _org.pc_address   = _org_addr;
++    _org.instructions = [["org", _org_addr]];
++    var _y = _org.y + _org.height;
++
++    var _lbl = scr_bmp_spr_node("LABEL", [["label", _clean + "_SHOW"]], _x, _y, _org);
++    _lbl.instructions[0][1] = scr_make_unique_node_name(_clean + "_SHOW", _lbl);
++    var _show = _lbl.instructions[0][1];
++    _y += _lbl.height;
++    var _nd = scr_bmp_spr_node("MACRO_SPR_ENABLE", [["macro_spr_enable", 255, 1]], _x, _y, _org); _y += _nd.height;
++    _nd = scr_bmp_spr_node("MACRO_BMP", [["macro_bmp", _asset.name, _bmp_addr, 0, 0]], _x, _y, _org); _y += _nd.height;
++    if (!_multi && _n > 0) {
++        var _sp = _rows[0].sprites;
++        for (var _k = 0; _k < min(array_length(_sp), 8); _k++) {
++            _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _sp[_k].x + 24, _rows[0].y + 50, _k, (_k == 0) ? 1 : 0]], _x, _y, _org);
++            _y += _nd.height;
++        }
++    }
++    _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, _org); _nd.node_title = "RTS"; _y += _nd.height;
++
++    var _frame = "";
++    if (_multi) {
++        _lbl = scr_bmp_spr_node("LABEL", [["label", _clean + "_FRAME"]], _x, _y, _org);
++        _lbl.instructions[0][1] = scr_make_unique_node_name(_clean + "_FRAME", _lbl);
++        _frame = _lbl.instructions[0][1];
++        _y += _lbl.height;
++        _nd = scr_node_spawn("MACRO_CODE", _x, _y);
++        _nd.code_descriptor    = _clean + " MULTIPLEXER";
++        _nd.instructions[0][1] = _code;
++        _nd.code_cache_dirty   = true;
++        _nd.height_dirty       = true;
++        _nd.is_connected       = true;
++        _nd.org_parent         = _org;
++        with (_nd) event_user(0);
++        scr_macro_sync_height(_nd);
++        _y += _nd.height;
++        _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, _org); _nd.node_title = "RTS";
++    }
++    _o.gen_org = _org.stable_uid;
++
++    global.addresses_dirty   = true;
++    global.memory_bar_dirty  = true;
++    global.node_change_dirty = true;
++    global.autosave_dirty    = true;
++    scr_c64_do_update_addresses();
++    obj_workspace_manager.flow_overlay_dirty = true;
++    scr_undo_snapshot();
++    global.undo_dirty = false;
++    scr_focus_camera_on_node(_org);
++
++    var _msg = "SETUP NODES\n\nYour nodes are set up at " + scr_bmp_spr_hex(_org_addr, 4) + ". Just JSR " + _show + ".";
++    if (_n > 0) _msg += "\n\n" + string(_n) + " sprite(s) are in " + _set.name + " at " + scr_bmp_spr_hex(_set.address, 4) + ".";
++    if (_multi) {
++        _msg += "\n\nMore than one row: also JSR " + _frame + " once every frame, before the first band"
++              + " (e.g. right after a VWAIT at the bottom of the screen). Rows that touch (exactly 21"
++              + " lines apart) can show a line of the next row's sprites at the seam; a gap of a few lines avoids it.";
++    }
++    scr_show_message(_msg);
++}
