@@ -293,6 +293,21 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             scr_spred64_v2_remove_last_slot();
             global.ui_click_consumed = true;
         }
+        // SHIFT+click — select the range from the current slot to this one
+        // (both ends included) into the batch-edit set. The current slot stays
+        // primary, so HR/MC and the colour buttons apply to the whole range.
+        else if (_pick_hover >= 0
+        && mouse_check_button_pressed(mb_left)
+        && keyboard_check(vk_shift)
+        && !global.ui_click_consumed
+        && !global.any_picker_open) {
+            var _rg_a = min(_v2.selected_slot, _pick_hover);
+            var _rg_b = max(_v2.selected_slot, _pick_hover);
+            for (var _rg_i = 0; _rg_i < 64; _rg_i++) {
+                _v2.multi_select[_rg_i] = (_rg_i >= _rg_a && _rg_i <= _rg_b);
+            }
+            global.ui_click_consumed = true;
+        }
         // CTRL+click — toggle this slot's membership in the batch-edit
         // selection set. Does NOT move selected_slot or rebuild the edit
         // surface: the pixel canvas stays on the primary slot while the
