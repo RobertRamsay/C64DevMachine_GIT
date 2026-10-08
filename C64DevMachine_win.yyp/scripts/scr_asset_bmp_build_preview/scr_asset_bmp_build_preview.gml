@@ -224,7 +224,8 @@ function scr_asset_bmp_cache_save(_key, _rgba) {
 // sprite, HiRes or multicolour per sprite. Sprites always draw in front.
 //
 // meta.spr_overlay (saved with the asset):
-//   { version: 2, show, mc1, mc2, mux_nodes, sprites: [ { x, y, col, mc, px[504] } ] }
+//   { version: 3, show, mc1, mc2, mux_nodes, sprites: [ { x, y, col, mc, xe, ye, pri, px[504] } ] }
+// xe / ye: X / Y expand ($D01D / $D017). pri: 1 = behind the bitmap ($D01B).
 // (version 1 kept rows: [ { y, sprites } ] - scr_bmp_spr_migrate flattens it)
 // px holds one code per pixel (24 x 21): 0 transparent, 1 MC1, 2 sprite
 // colour, 3 MC2 — the same values as the sprite bit pairs. A multicolour
@@ -238,13 +239,13 @@ function scr_asset_bmp_cache_save(_key, _rgba) {
 function scr_bmp_spr_get(_asset) {
     var _m = _asset.meta;
     if (!variable_struct_exists(_m, "spr_overlay") || !is_struct(_m.spr_overlay)) {
-        _m.spr_overlay = { version: 2, show: true, mc1: 1, mc2: 2, sprites: [], mux_nodes: false };
+        _m.spr_overlay = { version: 3, show: true, mc1: 1, mc2: 2, sprites: [], mux_nodes: false };
     }
-    // Overlays from before free sprites / the MUX option
-    if (!variable_struct_exists(_m.spr_overlay, "sprites") || !variable_struct_exists(_m.spr_overlay, "mux_nodes")) {
+    // Overlays from before free sprites / the MUX option / expand + priority
+    if ((_m.spr_overlay[$ "version"] ?? 1) < 3) {
         var _mig = scr_bmp_spr_migrate(_m.spr_overlay);
         if (is_undefined(_mig)) {
-            _mig = { version: 2, show: true, mc1: 1, mc2: 2, sprites: [], mux_nodes: false };
+            _mig = { version: 3, show: true, mc1: 1, mc2: 2, sprites: [], mux_nodes: false };
         }
         _m.spr_overlay = _mig;
     }
@@ -252,7 +253,7 @@ function scr_bmp_spr_get(_asset) {
     return _m.spr_overlay;
 }
 
-/// A saved overlay brought up to version 2 (free sprites), or undefined when
+/// A saved overlay brought up to version 3 (free sprites, expand, priority), or undefined when
 /// it is malformed. Also used by scr_load_workspace_from_path.
 function scr_bmp_spr_migrate(_so) {
     if (!is_struct(_so)) {
@@ -282,9 +283,10 @@ function scr_bmp_spr_migrate(_so) {
         if (!is_struct(_sp) || !is_array(_sp[$ "px"]) || array_length(_sp.px) != 504) {
             return undefined;
         }
-        array_push(_out, { x: _sp[$ "x"] ?? 0, y: _sp[$ "y"] ?? 0, col: _sp[$ "col"] ?? 1, mc: _sp[$ "mc"] ?? 0, px: _sp.px });
+        array_push(_out, { x: _sp[$ "x"] ?? 0, y: _sp[$ "y"] ?? 0, col: _sp[$ "col"] ?? 1, mc: _sp[$ "mc"] ?? 0,
+                           xe: _sp[$ "xe"] ?? 0, ye: _sp[$ "ye"] ?? 0, pri: _sp[$ "pri"] ?? 0, px: _sp.px });
     }
-    return { version: 2, show: _so[$ "show"] ?? true, mc1: _so[$ "mc1"] ?? 1, mc2: _so[$ "mc2"] ?? 2,
+    return { version: 3, show: _so[$ "show"] ?? true, mc1: _so[$ "mc1"] ?? 1, mc2: _so[$ "mc2"] ?? 2,
              sprites: _out, mux_nodes: _so[$ "mux_nodes"] ?? false, gen_org: _so[$ "gen_org"] ?? -1 };
 }
 
@@ -297,12 +299,32 @@ function scr_bmp_spr_count(_o) {
     return array_length(_o.sprites);
 }
 
+/// On-screen width / height in bitmap pixels (doubled when expanded).
+function scr_bmp_spr_w(_sp) {
+    if (_sp.xe) {
+        return 48;
+    }
+    return 24;
+}
+function scr_bmp_spr_h(_sp) {
+    if (_sp.ye) {
+        return 42;
+    }
+    return 21;
+}
+
+/// A new blank sprite.
+function scr_bmp_spr_new(_x, _y, _col, _mc, _xe, _ye, _pri) {
+    return { x: _x, y: _y, col: _col, mc: _mc, xe: _xe, ye: _ye, pri: _pri, px: array_create(504, 0) };
+}
+
 /// Sprites on each of the 200 bitmap lines.
 function scr_bmp_spr_line_counts(_o) {
     var _lc = array_create(200, 0);
     for (var _i = 0; _i < array_length(_o.sprites); _i++) {
         var _sy = _o.sprites[_i].y;
-        for (var _l = max(0, _sy); _l < min(200, _sy + 21); _l++) {
+        var _sh = scr_bmp_spr_h(_o.sprites[_i]);
+        for (var _l = max(0, _sy); _l < min(200, _sy + _sh); _l++) {
             _lc[_l] += 1;
         }
     }
@@ -351,21 +373,50 @@ function scr_bmp_spr_surface(_asset) {
     }
     var _buf = buffer_create(320 * 200 * 4, buffer_fixed, 1);
     buffer_fill(_buf, 0, buffer_u32, 0, 320 * 200 * 4);
+
+    // Sprites set BEHIND only show over the bitmap's background colour, so read
+    // the bitmap once if any are. (On MC bitmaps the VIC also treats the 01 pair
+    // as background; the editor goes by the background colour only.)
+    var _bmp = -1;
+    var _bg_u = 0;
+    for (var _s = 0; _s < array_length(_o.sprites); _s++) {
+        if (_o.sprites[_s].pri && _bmp < 0 && surface_exists(_m[$ "preview_surf"] ?? -1)) {
+            _bmp = buffer_create(320 * 200 * 4, buffer_fixed, 1);
+            buffer_get_surface(_bmp, _m.preview_surf, 0);
+            _bg_u = _pu[(_m[$ "bg_col"] ?? 0) & 15];
+        }
+    }
+    _m.spr_ovl_behind_t = current_time;
+
     for (var _s = 0; _s < array_length(_o.sprites); _s++) {
         var _sp  = _o.sprites[_s];
         var _pen = [0, _pu[_o.mc1 & 15], _pu[_sp.col & 15], _pu[_o.mc2 & 15]];
+        var _kx  = 1 + _sp.xe;
+        var _ky  = 1 + _sp.ye;
         for (var _py = 0; _py < 21; _py++) {
-            var _yy = _sp.y + _py;
-            if (_yy < 0 || _yy >= 200) continue;
             for (var _px = 0; _px < 24; _px++) {
                 var _code = _sp.px[_py * 24 + _px];
                 if (_code == 0) continue;
                 if (!_sp.mc) _code = 2;
-                var _xx = _sp.x + _px;
-                if (_xx < 0 || _xx >= 320) continue;
-                buffer_poke(_buf, (_yy * 320 + _xx) * 4, buffer_u32, _pen[_code]);
+                // Expanded: each sprite pixel covers a 2-wide and/or 2-tall block
+                for (var _ey = 0; _ey < _ky; _ey++) {
+                    var _yy = _sp.y + _py * _ky + _ey;
+                    if (_yy < 0 || _yy >= 200) continue;
+                    for (var _ex = 0; _ex < _kx; _ex++) {
+                        var _xx = _sp.x + _px * _kx + _ex;
+                        if (_xx < 0 || _xx >= 320) continue;
+                        var _ofs = (_yy * 320 + _xx) * 4;
+                        if (_sp.pri && _bmp >= 0) {
+                            if ((buffer_peek(_bmp, _ofs, buffer_u32) | (255 << 24)) != _bg_u) continue;
+                        }
+                        buffer_poke(_buf, _ofs, buffer_u32, _pen[_code]);
+                    }
+                }
             }
         }
+    }
+    if (_bmp >= 0) {
+        buffer_delete(_bmp);
     }
     buffer_set_surface(_buf, _srf, 0);
     buffer_delete(_buf);
@@ -390,6 +441,17 @@ function scr_bmp_spr_draw(_asset, _sx, _sy, _sw, _sh, _zoom_cap) {
     var _o = scr_bmp_spr_get(_asset);
     var _mp = scr_bmp_spr_map(_asset, _sx, _sy, _sw, _sh, _zoom_cap);
     if (_o.show && array_length(_o.sprites) > 0) {
+        // Sprites behind the bitmap depend on its pixels: redraw a few times a
+        // second so bitmap edits show through
+        var _any_behind = false;
+        for (var _b = 0; _b < array_length(_o.sprites); _b++) {
+            if (_o.sprites[_b].pri) {
+                _any_behind = true;
+            }
+        }
+        if (_any_behind && current_time - (_asset.meta[$ "spr_ovl_behind_t"] ?? 0) > 250) {
+            scr_bmp_spr_touch(_asset);
+        }
         var _srf = scr_bmp_spr_surface(_asset);
         draw_surface_part_ext(_srf, _mp.ox, _mp.oy, _sw / _mp.kx, _sh / _mp.ky, _sx, _sy, _mp.kx, _mp.ky, c_white, 1);
     }
@@ -409,9 +471,9 @@ function scr_bmp_spr_draw(_asset, _sx, _sy, _sw, _sh, _zoom_cap) {
     for (var _s = 0; _s < array_length(_o.sprites); _s++) {
         var _sp = _o.sprites[_s];
         var _x1 = _mp.sx + (_sp.x - _mp.ox) * _mp.kx;
-        var _x2 = _mp.sx + (_sp.x + 24 - _mp.ox) * _mp.kx;
+        var _x2 = _mp.sx + (_sp.x + scr_bmp_spr_w(_sp) - _mp.ox) * _mp.kx;
         var _y1 = _mp.sy + (_sp.y - _mp.oy) * _mp.ky;
-        var _y2 = _mp.sy + (_sp.y + 21 - _mp.oy) * _mp.ky;
+        var _y2 = _mp.sy + (_sp.y + scr_bmp_spr_h(_sp) - _mp.oy) * _mp.ky;
         if (_s == _sel) {
             draw_set_color(c_yellow);
             draw_rectangle(_x1, _y1, _x2, _y2, true);
@@ -427,7 +489,7 @@ function scr_bmp_spr_draw(_asset, _sx, _sy, _sw, _sh, _zoom_cap) {
 function scr_bmp_spr_hit(_o, _px, _py) {
     for (var _s = array_length(_o.sprites) - 1; _s >= 0; _s--) {
         var _sp = _o.sprites[_s];
-        if (_px >= _sp.x && _px < _sp.x + 24 && _py >= _sp.y && _py < _sp.y + 21) return _s;
+        if (_px >= _sp.x && _px < _sp.x + scr_bmp_spr_w(_sp) && _py >= _sp.y && _py < _sp.y + scr_bmp_spr_h(_sp)) return _s;
     }
     return -1;
 }
@@ -474,7 +536,17 @@ function scr_bmp_spr_edit(_asset, _raw_px, _raw_py, _in_bounds) {
                 && _in_bounds && !global.ui_click_consumed && !global.any_picker_open;
     if (_pressed) {
         var _hit = scr_bmp_spr_hit(_o, _raw_px, _raw_py);
+        // Where sprites overlap, the selected one wins so it can still be painted
+        var _cur = scr_bmp_spr_selected(_asset);
+        if (!is_undefined(_cur)) {
+            if (_raw_px >= _cur.x && _raw_px < _cur.x + scr_bmp_spr_w(_cur)
+            &&  _raw_py >= _cur.y && _raw_py < _cur.y + scr_bmp_spr_h(_cur)) {
+                _hit = _m.spr_sel;
+            }
+        }
         if (_hit < 0) return true;
+        // Clicking a sprite that isn't selected just selects it (no paint)
+        var _was_sel = (_m.spr_sel == _hit);
         _m.spr_sel = _hit;
         // A HiRes sprite has no MC1 / MC2 to paint with
         if (!_o.sprites[_hit].mc && (_pen == "MC1" || _pen == "MC2")) {
@@ -482,6 +554,10 @@ function scr_bmp_spr_edit(_asset, _raw_px, _raw_py, _in_bounds) {
             _m.spr_pen = "SPR";
         }
         scr_bmp_spr_sync_palette(_asset);
+        if (!_was_sel && _pen != "MOVE") {
+            global.ui_click_consumed = true;
+            return true;
+        }
         scr_bmp_spr_push_undo(_asset);
         _o = _m.spr_overlay;
         var _sp0 = _o.sprites[_hit];
@@ -506,8 +582,9 @@ function scr_bmp_spr_edit(_asset, _raw_px, _raw_py, _in_bounds) {
         _sp.y = clamp(_m.spr_drag_y0 + (_raw_py - _m.spr_drag_my), -20, 199);
         scr_bmp_spr_touch(_asset);
     } else if ((_m[$ "spr_painting"] ?? false) && _in_bounds) {
-        var _lx = _raw_px - _sp.x;
-        var _ly = _raw_py - _sp.y;
+        // Back to sprite pixels (an expanded sprite's pixel is 2 wide / tall)
+        var _lx = floor((_raw_px - _sp.x) / (1 + _sp.xe));
+        var _ly = floor((_raw_py - _sp.y) / (1 + _sp.ye));
         if (_lx >= 0 && _lx < 24 && _ly >= 0 && _ly < 21) {
             var _code = 2;
             if (_rmb || _pen == "ERASE") _code = 0;
@@ -613,12 +690,18 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
         var _nx = 0;
         var _ny = 0;
         var _nmc = 0;
+        var _nxe = 0;
+        var _nye = 0;
+        var _npri = 0;
         if (!is_undefined(_sel)) {
-            _nx = min(_sel.x + 24, 296);
+            _nx = min(_sel.x + scr_bmp_spr_w(_sel), 296);
             _ny = _sel.y;
             _nmc = _sel.mc;
+            _nxe = _sel.xe;
+            _nye = _sel.ye;
+            _npri = _sel.pri;
         }
-        array_push(_o.sprites, { x: _nx, y: _ny, col: _m[$ "active_color"] ?? 1, mc: _nmc, px: array_create(504, 0) });
+        array_push(_o.sprites, scr_bmp_spr_new(_nx, _ny, _m[$ "active_color"] ?? 1, _nmc, _nxe, _nye, _npri));
         _m.spr_sel = array_length(_o.sprites) - 1;
         scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
     }
@@ -643,6 +726,29 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
         }
         draw_set_color(c_ltgray);
         draw_text_l(_x + 56, _y + 1, "S" + string(_m.spr_sel));
+        _y += 20;
+        // Expand X / Y and in front of / behind the bitmap, per sprite
+        _sel = scr_bmp_spr_selected(_asset);
+        if (_btn(_x, _y, 52, "X EXP", _sel.xe, _mx, _my, _click)) {
+            scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay; _sel = scr_bmp_spr_selected(_asset);
+            _sel.xe = 1 - _sel.xe;
+            scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
+        }
+        if (_btn(_x + 56, _y, 52, "Y EXP", _sel.ye, _mx, _my, _click)) {
+            scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay; _sel = scr_bmp_spr_selected(_asset);
+            _sel.ye = 1 - _sel.ye;
+            scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
+        }
+        _y += 20;
+        var _pri_lbl = "IN FRONT";
+        if (_sel.pri) {
+            _pri_lbl = "BEHIND BITMAP";
+        }
+        if (_btn(_x, _y, _w, _pri_lbl, _sel.pri, _mx, _my, _click)) {
+            scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay; _sel = scr_bmp_spr_selected(_asset);
+            _sel.pri = 1 - _sel.pri;
+            scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
+        }
         _y += 20;
         draw_text_l(_x, _y, "X" + string(_sel.x) + "  Y" + string(_sel.y));
         _y += 16;
@@ -893,7 +999,7 @@ function scr_bmp_spr_sync_palette(_asset) {
 function scr_bmp_spr_default_row(_asset) {
     var _o = scr_bmp_spr_get(_asset);
     if (array_length(_o.sprites) > 0) return;
-    array_push(_o.sprites, { x: 0, y: 0, col: _asset.meta[$ "active_color"] ?? 1, mc: 0, px: array_create(504, 0) });
+    array_push(_o.sprites, scr_bmp_spr_new(0, 0, _asset.meta[$ "active_color"] ?? 1, 0, 0, 0, 0));
     _asset.meta.spr_sel = 0;
     scr_bmp_spr_touch(_asset);
 }
@@ -929,7 +1035,7 @@ function scr_bmp_spr_sorted_rows(_o) {
         return _a.x - _b.x;
     });
     // Bands: a band starts at its top sprite and takes the sprites that start
-    // within its 21 lines, up to 8 (more than that is an overloaded line,
+    // within its 21 lines (42 with a Y-expanded sprite), up to 8 (more than that is an overloaded line,
     // which the editor warns about - the extras spill into the next band).
     var _rows = [];
     var _cur = undefined;
@@ -937,14 +1043,16 @@ function scr_bmp_spr_sorted_rows(_o) {
         var _sp = _list[_i];
         var _new_band = is_undefined(_cur);
         if (!_new_band) {
-            if (_sp.y >= _cur.y + 21 || array_length(_cur.sprites) >= BSO_PER_LINE) {
+            if (_sp.y >= _cur.y + _cur.h || array_length(_cur.sprites) >= BSO_PER_LINE) {
                 _new_band = true;
             }
         }
         if (_new_band) {
-            _cur = { y: _sp.y, sprites: [] };
+            _cur = { y: _sp.y, h: 21, sprites: [] };
             array_push(_rows, _cur);
         }
+        // A Y-expanded sprite makes its band 42 lines tall
+        _cur.h = max(_cur.h, scr_bmp_spr_h(_sp));
         array_push(_cur.sprites, _sp);
     }
     return _rows;
@@ -1044,11 +1152,15 @@ function scr_bmp_spr_frame_code(_name, _set, _rows, _o, _scr_addr, _ptr0) {
                 + "; the previous band is being drawn now, so reuse the 8 hardware sprites for this one\n";
         }
         var _en = 0, _msb = 0, _mc = 0;
+        var _xe = 0, _ye = 0, _pri = 0;
         for (var _k = 0; _k < _n; _k++) {
             var _hx = _sp[_k].x + 24;
             _en |= (1 << _k);
             if (_hx > 255) _msb |= (1 << _k);
             if (_sp[_k].mc) _mc |= (1 << _k);
+            if (_sp[_k].xe) _xe |= (1 << _k);
+            if (_sp[_k].ye) _ye |= (1 << _k);
+            if (_sp[_k].pri) _pri |= (1 << _k);
         }
         for (var _k = 0; _k < _n; _k++) {
             var _hx = _sp[_k].x + 24;
@@ -1058,6 +1170,10 @@ function scr_bmp_spr_frame_code(_name, _set, _rows, _o, _scr_addr, _ptr0) {
                 + "    lda #" + scr_bmp_spr_hex((_ptr0 + _slot + _k) & 255, 2) + "\n    sta " + scr_bmp_spr_hex(_scr_addr + 0x3F8 + _k, 4) + "\n"
                 + "    lda #" + scr_bmp_spr_hex(_sp[_k].col & 15, 2) + "\n    sta " + scr_bmp_spr_hex(0xD027 + _k, 4) + "\n";
         }
+        _t += "; X expand, Y expand, behind-bitmap bits\n";
+        _t += "    lda #" + scr_bmp_spr_hex(_xe, 2) + "\n    sta $d01d\n"
+            + "    lda #" + scr_bmp_spr_hex(_ye, 2) + "\n    sta $d017\n"
+            + "    lda #" + scr_bmp_spr_hex(_pri, 2) + "\n    sta $d01b\n";
         _t += "; X high bits, multicolour bits, then switch on the sprites this band uses\n";
         _t += "    lda #" + scr_bmp_spr_hex(_msb, 2) + "\n    sta $d010\n"
             + "    lda #" + scr_bmp_spr_hex(_mc, 2) + "\n    sta $d01c\n"
@@ -1079,6 +1195,37 @@ function scr_bmp_spr_node(_type, _inst, _x, _y, _parent) {
     scr_macro_sync_height(_n);
     _n.prev_height = _n.height;
     return _n;
+}
+
+/// SETUP NODES: MACRO_SPR_EXPAND / MACRO_PRIORITY for one band (slots 0..n-1),
+/// only when some sprite uses them. Returns the new _y.
+function scr_bmp_spr_band_reg_nodes(_band, _any_exp, _any_pri, _x, _y, _org) {
+    var _xe = 0;
+    var _ye = 0;
+    var _beh = 0;
+    var _used = 0;
+    for (var _k = 0; _k < min(array_length(_band), 8); _k++) {
+        _used |= (1 << _k);
+        if (_band[_k].xe) _xe |= (1 << _k);
+        if (_band[_k].ye) _ye |= (1 << _k);
+        if (_band[_k].pri) _beh |= (1 << _k);
+    }
+    if (_any_exp) {
+        var _en = scr_bmp_spr_node("MACRO_SPR_EXPAND", [["macro_spr_expand", _xe, _ye]], _x, _y, _org);
+        _y += _en.height;
+    }
+    if (_any_pri) {
+        if (_beh != 0) {
+            var _pb = scr_bmp_spr_node("MACRO_PRIORITY", [["macro_priority", _beh, 1]], _x, _y, _org);
+            _y += _pb.height;
+        }
+        var _front = _used & (~_beh) & 255;
+        if (_front != 0) {
+            var _pf = scr_bmp_spr_node("MACRO_PRIORITY", [["macro_priority", _front, 0]], _x, _y, _org);
+            _y += _pf.height;
+        }
+    }
+    return _y;
 }
 
 function scr_bmp_spr_setup_nodes(_asset) {
@@ -1145,12 +1292,23 @@ function scr_bmp_spr_setup_nodes(_asset) {
     // Size estimate for the code block: BITMAP ~160, SPRITE ~60, multiplexer per band
     var _multi = (array_length(_rows) > 1);
     var _mux_nodes = _multi && _o.mux_nodes;
+    // Expand / priority nodes only when a sprite uses them
+    var _any_exp = false;
+    var _any_pri = false;
+    for (var _r = 0; _r < array_length(_rows); _r++) {
+        for (var _s = 0; _s < array_length(_rows[_r].sprites); _s++) {
+            var _chk = _rows[_r].sprites[_s];
+            if (_chk.xe || _chk.ye) _any_exp = true;
+            if (_chk.pri) _any_pri = true;
+        }
+    }
     var _code = "";
-    var _est = 200 + _n * 64;
+    // Expand ~10 bytes, priority ~16 per band
+    var _est = 200 + _n * 64 + array_length(_rows) * 26;
     if (_multi) {
         if (_mux_nodes) {
             // A MACRO_SPR is ~64 bytes, a VWAIT ~25
-            _est = 200 + _n * 64 + array_length(_rows) * 28;
+            _est = 200 + _n * 64 + array_length(_rows) * (28 + 26);
         } else {
             _code = scr_bmp_spr_frame_code(_clean, _set, _rows, _o, _rg.scr_addr, _ptr0);
             // Comment lines assemble to nothing
@@ -1185,6 +1343,7 @@ function scr_bmp_spr_setup_nodes(_asset) {
             _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _sp[_k].x + 24, _sp[_k].y + 50, _k, (_k == 0) ? 1 : 0]], _x, _y, _org);
             _y += _nd.height;
         }
+        _y = scr_bmp_spr_band_reg_nodes(_sp, _any_exp, _any_pri, _x, _y, _org);
     }
     _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, _org); _nd.node_title = "RTS"; _y += _nd.height;
 
@@ -1220,6 +1379,7 @@ function scr_bmp_spr_setup_nodes(_asset) {
                     _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _bsp[_k].x + 24, _bsp[_k].y + 50, _slot0 + _k, _glob]], _x, _y, _org);
                     _y += _nd.height;
                 }
+                _y = scr_bmp_spr_band_reg_nodes(_bsp, _any_exp, _any_pri, _x, _y, _org);
                 _slot0 += array_length(_bsp);
             }
             _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, _org); _nd.node_title = "RTS";
