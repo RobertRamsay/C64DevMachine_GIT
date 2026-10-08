@@ -588,8 +588,48 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
         }
         draw_set_color(c_gray);
         draw_rectangle(_cx, _y + 12, _cx + 30, _y + 24, true);
+
+        // Palette strip under the swatch: click a colour to set it directly.
+        // SPR recolours the selected sprite only; MC1 / MC2 are shared by all.
+        if (_cols[_i] >= 0) {
+            var _sy0 = _y + 28;
+            for (var _c = 0; _c < 16; _c++) {
+                var _cy1 = _sy0 + _c * 8;
+                var _cy2 = _cy1 + 7;
+                draw_set_color(scr_c64_pepto_colour(_c));
+                draw_rectangle(_cx, _cy1, _cx + 30, _cy2, false);
+                var _chov = point_in_rectangle(_mx, _my, _cx, _cy1, _cx + 30, _cy2);
+                if (_c == _cols[_i]) {
+                    draw_set_color(c_white);
+                    draw_rectangle(_cx, _cy1, _cx + 30, _cy2, true);
+                } else if (_chov) {
+                    draw_set_color(c_ltgray);
+                    draw_rectangle(_cx, _cy1, _cx + 30, _cy2, true);
+                }
+                if (_chov && _click && _c != _cols[_i]) {
+                    scr_bmp_spr_push_undo(_asset);
+                    _o = _m.spr_overlay;
+                    if (_i == 0) {
+                        var _csel = scr_bmp_spr_selected(_asset);
+                        if (!is_undefined(_csel)) {
+                            _csel.col = _c;
+                        }
+                    } else if (_i == 1) {
+                        _o.mc1 = _c;
+                    } else {
+                        _o.mc2 = _c;
+                    }
+                    // Keep the main palette on the current pen's colour so
+                    // scr_bmp_spr_edit doesn't read this as a palette click.
+                    scr_bmp_spr_sync_palette(_asset);
+                    scr_bmp_spr_touch(_asset);
+                    _cols[_i] = _c;
+                    global.ui_click_consumed = true;
+                }
+            }
+        }
     }
-    _y += 32;
+    _y += 32 + 132;
 
     // Transfer to a SPRITE_SET: cycle the target, then send
     var _targets = ["NEW SET"];

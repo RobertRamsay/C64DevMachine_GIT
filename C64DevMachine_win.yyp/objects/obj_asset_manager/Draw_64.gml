@@ -8287,6 +8287,13 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                if (variable_struct_exists(_asset.meta, "preview_surf") && surface_exists(_asset.meta.preview_surf)) {
 	                gpu_set_texfilter(false);
 	                draw_surface_stretched(_asset.meta.preview_surf, _pw_x, _pw_y + _hdr_h, _draw_w, _draw_h);
+	                // Sprite overlay on top, same as the canvas (when shown)
+	                if (variable_struct_exists(_asset.meta, "spr_overlay")) {
+	                    var _pv_spr = scr_bmp_spr_get(_asset);
+	                    if (_pv_spr.show && array_length(_pv_spr.rows) > 0) {
+	                        draw_surface_stretched(scr_bmp_spr_surface(_asset), _pw_x, _pw_y + _hdr_h, _draw_w, _draw_h);
+	                    }
+	                }
 	                gpu_set_texfilter(_bmp_prev_filter);
 	                }
 	            } else {
