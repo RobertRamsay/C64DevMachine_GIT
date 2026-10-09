@@ -11,6 +11,7 @@ ini_write_real("Settings", "niceSliceFrm", niceSliceFrm);
 ini_write_real("Settings", "expert_mode", expert_mode ? 1 : 0);
 ini_write_real("Settings", "opcode_helper", opcode_helper_on ? 1 : 0);
 ini_write_real("Settings", "palette_helper", showPaletteHelper ? 1 : 0);
+ini_write_real("Settings", "mcp_mode", global.mcp_mode ? 1 : 0);
 ini_write_real("Settings", "visual_fx", global.visual_fx ? 1 : 0);
 ini_write_real("Settings", "comments_visible", global.comments_visible ? 1 : 0);
 ini_write_real("Settings", "opcode_headers", opcode_headers_on ? 1 : 0);

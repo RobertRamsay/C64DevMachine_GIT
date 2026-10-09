@@ -19,6 +19,9 @@
 var _mcp_blocked = false;
 if (setup_helper_path == "" && probe_state == "off" && probe_saved_key == "") _mcp_blocked = true;
 
+// OPTIONS > MCP switched off.
+if (variable_global_exists("mcp_mode") && !global.mcp_mode) _mcp_blocked = true;
+
 // Never draw over a modal, the asset viewer, or a hidden UI.
 if (!instance_exists(obj_workspace_manager)) _mcp_blocked = true;
 else if (obj_workspace_manager.hideui) _mcp_blocked = true;
