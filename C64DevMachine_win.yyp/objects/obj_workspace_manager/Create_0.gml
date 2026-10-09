@@ -31,7 +31,8 @@ editor_layout_refresh_requested = false;
 
 // MCP is a Pro-only feature; initialize the edition before creating it.
 // MCP_ENABLED (top of this event) is the single switch for the whole feature.
-if (MCP_ENABLED && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
+// Light (global.lite != 0) never creates it: no buttons, socket, hotkey or pairing.
+if (MCP_ENABLED && !global.lite && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
 global.build_date = "October 12th, 2026"; // edit this string for each release
 
 // sid64 (reSID) preview audio — see scr_sid64_audio. Model/engine changes go

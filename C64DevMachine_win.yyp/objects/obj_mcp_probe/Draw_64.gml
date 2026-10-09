@@ -64,6 +64,9 @@ else if (setup_state == "done") {
 else if (current_time <= probe_notice_until && probe_status != "") {
     _con_label = "[ MCP-CON ] " + string_copy(probe_status, 1, 70);
 }
+else if (probe_auto_pair && probe_saved_key != "") {
+    _con_label = "MCP - waiting for your assistant";
+}
 
 var _con_clickable = false;
 if (probe_state == "off" && (setup_state == "idle" || setup_state == "failed")) _con_clickable = true;
@@ -120,6 +123,79 @@ if (!reset_enabled) draw_set_colour(c_gray);
 else if (reset_hover) draw_set_colour(c_yellow);
 else draw_set_colour(c_white);
 draw_text(reset_btn_x1 + 10, reset_btn_y1 + 4, _reset_label);
+
+// --- Hover help: what to do next, for the state the connection is in -------
+var _tip_mx = device_mouse_x_to_gui(0);
+var _tip_my = device_mouse_y_to_gui(0);
+var _tip = "";
+if (point_in_rectangle(_tip_mx, _tip_my, setup_btn_x1, setup_btn_y1, setup_btn_x2, setup_btn_y2)) {
+    // Reading these steps arms pairing from the clipboard on return (Step).
+    if (probe_state == "off") clip_armed_until = current_time + 900000;
+    if (probe_state == "ready") {
+        _tip = "CONNECTED\n"
+             + "Ask your AI assistant to look at or change this project, e.g. \"use c64-dev-machine to add a comment\".\n"
+             + "Every MCP edit can be undone with Ctrl+Z. Ctrl+Shift+F12 disconnects. RESET forgets the pairing.";
+    }
+    else if (probe_state == "connecting" || probe_state == "handshake") {
+        _tip = "CONNECTING\nTalking to the bridge your assistant started. This takes a second or two.";
+    }
+    else if (setup_state == "running") {
+        _tip = "SETTING UP: " + setup_detail + "\n"
+             + "If Windows asks to install Node.js, allow it. Leave this editor open: it picks up the pairing key by itself when setup finishes.";
+    }
+    else if (setup_state == "failed") {
+        var _fix = "Click MCP-CON to try again, or RESET to start over. Details: mcp-setup-log.txt in " + game_save_id;
+        if (setup_status == "NODE_MISSING" || setup_status == "NODE_INSTALL_FAIL"
+            || setup_status == "NODE_TOO_OLD" || setup_status == "NO_WINGET") {
+            _fix = "Install Node.js 22 or newer from nodejs.org, then click MCP-CON again.";
+        }
+        else if (setup_status == "NO_HOST") {
+            _fix = "Node.js and the pairing key are ready, but no Claude Code or Codex command line was found.\n"
+                 + "Install one, then click MCP-CON again to register the bridge with it. This editor keeps retrying and connects by itself once the assistant runs the bridge.";
+        }
+        else if (setup_status == "BRIDGE_MISSING") {
+            _fix = "tools/cdm-mcp/bridge.mjs is missing. Reinstall the tools folder next to the editor, then click MCP-CON again.";
+        }
+        _tip = "SETUP STOPPED: " + setup_detail + "\n" + _fix;
+    }
+    else if (probe_saved_key != "" && probe_auto_pair) {
+        _tip = "PAIRED - WAITING FOR YOUR ASSISTANT\n"
+             + "1. Open (or restart) Claude Code or Codex. Its MCP connection starts the bridge.\n"
+             + "2. Come back here. The editor retries every 5 seconds and turns green when it connects.";
+    }
+    else if (probe_saved_key != "") {
+        _tip = "DISCONNECTED\nPress Ctrl+Shift+F12 to reconnect with the saved key, or RESET to forget it.";
+    }
+    else {
+        _tip = "CONNECT AN AI ASSISTANT (PRO)\n"
+             + "Lets Claude Code or Codex inspect, edit and build this project for you.\n"
+             + "1. Click MCP-CON. It checks Node.js 22+, registers the bridge with your assistant and pairs this editor. No key to copy.\n"
+             + "2. Open (or restart) your assistant and ask it to use c64-dev-machine.\n"
+             + "3. Come back here. It connects by itself and the button turns green.\n"
+             + "MANUAL: run  node tools/cdm-mcp/bridge.mjs --pair | Set-Clipboard  then come back to this window. "
+             + "The key is picked up from the clipboard automatically (or press Ctrl+Shift+F12).";
+    }
+}
+else if (reset_enabled && point_in_rectangle(_tip_mx, _tip_my, reset_btn_x1, reset_btn_y1, reset_btn_x2, reset_btn_y2)) {
+    _tip = "RESET\nDisconnects, forgets the saved pairing key and puts MCP-CON back to first-run setup.";
+}
+if (_tip != "") {
+    var _tip_w   = 520;
+    var _tip_sep = 18;
+    var _tip_h   = string_height_ext(_tip, _tip_sep, _tip_w - 20) + 16;
+    var _tip_x2  = _mcp_right;
+    var _tip_x1  = max(8, _tip_x2 - _tip_w);
+    var _tip_y2  = _mcp_y1 - 6;
+    var _tip_y1  = _tip_y2 - _tip_h;
+    draw_set_alpha(0.94);
+    draw_set_colour(make_colour_rgb(16, 16, 28));
+    draw_rectangle(_tip_x1, _tip_y1, _tip_x2, _tip_y2, false);
+    draw_set_alpha(1);
+    draw_set_colour(c_yellow);
+    draw_rectangle(_tip_x1, _tip_y1, _tip_x2, _tip_y2, true);
+    draw_set_colour(c_white);
+    draw_text_ext(_tip_x1 + 10, _tip_y1 + 8, _tip, _tip_sep, _tip_w - 20);
+}
 
 draw_set_font(_m_font);
 draw_set_alpha(_m_alpha);
