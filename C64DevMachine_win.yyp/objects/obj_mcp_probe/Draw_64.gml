@@ -6,7 +6,7 @@
 // labels. All state is shown in the MCP-CON button instead.
 //
 // Bottom-right occupancy at this GUI size, measured from the drawing code:
-//   asset panel     y 410 .. gui_h-100   (obj_asset_manager, _panel_bottom)
+//   asset panel     y 345 .. gui_h-100   (obj_asset_manager, _panel_bottom)
 //   snapshot button y gui_h-50 .. gui_h-10 (40x40 around 1886,1050)
 //   memory bar      y gui_h-40 .. gui_h-25 (scr_draw_memory_bar)
 // The only clear band is gui_h-100 .. gui_h-50, so both buttons sit inside it
