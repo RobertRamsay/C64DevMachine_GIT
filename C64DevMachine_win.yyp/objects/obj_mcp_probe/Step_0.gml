@@ -4,6 +4,19 @@ if (global.lite) {
     exit;
 }
 
+// OPTIONS > MCP off: no buttons (Draw_64), no connection, no hotkey, no
+// auto-reconnect. The saved pairing stays, so switching it back on
+// reconnects by itself.
+if (variable_global_exists("mcp_mode") && !global.mcp_mode) {
+    if (probe_state != "off") probe_stop("");
+    probe_status       = "";
+    probe_notice_until = 0;
+    setup_hover        = false;
+    reset_hover        = false;
+    clip_check_pending = false;
+    exit;
+}
+
 // --- Pair from the clipboard on return --------------------------------------
 // Reading the MCP-CON instructions (hovering the button) or clicking it arms
 // this for 15 minutes. While armed and not connected, coming back to the

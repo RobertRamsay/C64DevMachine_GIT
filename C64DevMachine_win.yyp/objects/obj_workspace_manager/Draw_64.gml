@@ -629,8 +629,12 @@ if (gui_menu_open == 4) {
         { title: "OPCODE HEADERS",     action: "OPCODE_HEADERS"     },
 		{ title: "OPCODE COMPACT",     action: "OPCODE_EXTRA_H"     },
         { title: "LANGUAGE",           action: "LANGUAGE"           },
-		
+
     ];
+    // MCP mode only where the feature exists (Pro, MCP_ENABLED)
+    if (instance_exists(obj_mcp_probe)) {
+        array_push(_opt_list, { title: "MCP",            action: "MCP_MODE"           });
+    }
     var _item_h_o   = 20;
     var _panel_w_o  = 220;
     var _mbar_btn_gap_o = _mbar_btn_w + 3;
@@ -678,6 +682,10 @@ if (gui_menu_open == 4) {
         if (_op.action == "PALETTE_HELPER") {
             _state_str = showPaletteHelper ? "ON" : "OFF";
             _state_col = showPaletteHelper ? c_lime : c_red;
+        }
+        if (_op.action == "MCP_MODE") {
+            _state_str = global.mcp_mode ? "ON" : "OFF";
+            _state_col = global.mcp_mode ? c_lime : c_red;
         }
         if (_op.action == "GRID") {
             _state_str = showGrid ? "ON" : "OFF";
@@ -827,6 +835,11 @@ if (gui_menu_open == 4) {
             }
             else if (_op.action == "PALETTE_HELPER") {
                 showPaletteHelper = !showPaletteHelper;
+            }
+            else if (_op.action == "MCP_MODE") {
+                // OFF hides MCP-CON / RESET and disconnects; the pairing is
+                // kept, so turning it back ON reconnects by itself.
+                global.mcp_mode = !global.mcp_mode;
             }
             else if (_op.action == "GRID") {
                 showGrid = !showGrid;
@@ -994,6 +1007,7 @@ if (gui_menu_open == 4) {
             ini_write_real("Settings", "expert_mode", expert_mode ? 1 : 0);
             ini_write_real("Settings", "opcode_helper", opcode_helper_on ? 1 : 0);
             ini_write_real("Settings", "palette_helper", showPaletteHelper ? 1 : 0);
+            ini_write_real("Settings", "mcp_mode", global.mcp_mode ? 1 : 0);
             ini_write_real("Settings", "visual_fx", global.visual_fx ? 1 : 0);
             ini_write_real("Settings", "comments_visible", global.comments_visible ? 1 : 0);
             ini_write_real("Settings", "opcode_headers", opcode_headers_on ? 1 : 0);

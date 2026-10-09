@@ -32,6 +32,9 @@ editor_layout_refresh_requested = false;
 // MCP is a Pro-only feature; initialize the edition before creating it.
 // MCP_ENABLED (top of this event) is the single switch for the whole feature.
 // Light (global.lite != 0) never creates it: no buttons, socket, hotkey or pairing.
+// OPTIONS > MCP (global.mcp_mode, read from the ini further down) hides and
+// disconnects it at run time.
+global.mcp_mode = true;
 if (MCP_ENABLED && !global.lite && !instance_exists(obj_mcp_probe)) instance_create_depth(0, 0, -15000, obj_mcp_probe);
 global.build_date = "October 12th, 2026"; // edit this string for each release
 
@@ -1243,6 +1246,7 @@ macroStyle    = clamp(ini_read_real("Settings", "macroStyle", 0), 0, 1);
 expert_mode  = ini_read_real("Settings", "expert_mode", 0) == 1;
 opcode_helper_on       = ini_read_real("Settings", "opcode_helper",       1) == 1;
 showPaletteHelper      = ini_read_real("Settings", "palette_helper",      0) == 1;
+global.mcp_mode        = ini_read_real("Settings", "mcp_mode",            1) == 1;   // OPTIONS > MCP, on by default
 global.visual_fx       = ini_read_real("Settings", "visual_fx",           1) == 1;
 global.node_destroy_fx = global.visual_fx;
 global.comments_visible = ini_read_real("Settings", "comments_visible",   1) == 1;
