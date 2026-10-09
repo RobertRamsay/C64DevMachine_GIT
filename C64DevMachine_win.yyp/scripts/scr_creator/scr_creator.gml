@@ -581,6 +581,16 @@ function scr_creator_begin_step() {
         exit;
     }
 
+    // The asset panel sits over the canvas: a click there is the panel's, so
+    // the P tabs and param cards under it must not see it (nodes already
+    // check this in their own Step).
+    if (variable_global_exists("mouse_in_asset_panel") && global.mouse_in_asset_panel) {
+        exit;
+    }
+    if (instance_exists(obj_asset_manager)) {
+        if (obj_asset_manager.add_dropdown_open) { exit; }
+    }
+
     // Param cards on the canvas own the pointer while it is over them.
     if (scr_creator_cards_step()) {
         exit;

@@ -1,0 +1,39 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+index 5f1570e..6dc1013 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_creator/scr_creator.gml
+@@ -581,6 +581,16 @@ function scr_creator_begin_step() {
+         exit;
+     }
+ 
++    // The asset panel sits over the canvas: a click there is the panel's, so
++    // the P tabs and param cards under it must not see it (nodes already
++    // check this in their own Step).
++    if (variable_global_exists("mouse_in_asset_panel") && global.mouse_in_asset_panel) {
++        exit;
++    }
++    if (instance_exists(obj_asset_manager)) {
++        if (obj_asset_manager.add_dropdown_open) { exit; }
++    }
++
+     // Param cards on the canvas own the pointer while it is over them.
+     if (scr_creator_cards_step()) {
+         exit;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml b/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml
+index e570246..ca82559 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_org_collapse/scr_org_collapse.gml
+@@ -505,7 +505,13 @@ function scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom) {
+     var _refresh = ((global.frame_tick + real(id)) mod 45) == 0;
+     if (!_refresh && nc_key == _key && surface_exists(nc_surf)) {
+         scr_node_cache_stat("hit");
++        // The image is premultiplied (see the capture below), so blit it the
++        // same way scr_node_cache_end does. Drawn with bm_normal, its soft
++        // edges came out darker than on capture frames, and each node visibly
++        // pulsed once every 45 frames when it refreshed.
++        gpu_set_blendmode_ext(bm_one, bm_inv_src_alpha);
+         draw_surface(nc_surf, _dx - NC_PAD_L, y - NC_PAD_T);
++        gpu_set_blendmode(bm_normal);
+         return true;
+     }
+ 
