@@ -1980,7 +1980,7 @@ scr_perf_node("gui", "ws: shortcuts column");
 var sc_x_end   = gui_w - 2;
 var sc_y_start = 50;
 var sc_w       = 270;
-var sc_h       = 21;
+var sc_h       = 17;   // was 21: condensed so the asset panel can start higher
 
 var shortcuts = [
     ["HOME",   "RESET VIEW"],
@@ -2000,7 +2000,7 @@ var shortcuts = [
 ];
 
 for (var j = 0; j < array_length(shortcuts); j++) {
-    var row_y  = sc_y_start + (j * (sc_h + 5));
+    var row_y  = sc_y_start + (j * (sc_h + 4));
     var box_x1 = sc_x_end - sc_w;
     var box_x2 = sc_x_end;
     var box_y1 = row_y;
@@ -2026,7 +2026,7 @@ for (var j = 0; j < array_length(shortcuts); j++) {
     var off = btn_click ? 2 : 0;
     draw_set_halign(fa_left);
     draw_set_color(c_white);
-    draw_text_transformed_l(box_x1 + 15, row_y + 2 + off, shortcuts[j][0], 1.0, 1.2, 0);
+    draw_text_transformed_l(box_x1 + 15, row_y + 1 + off, shortcuts[j][0], 1.0, 1.0, 0);
 
     draw_set_halign(fa_right);
 	
@@ -2063,10 +2063,10 @@ for (var j = 0; j < array_length(shortcuts); j++) {
             mode_text = global.use_hex_display ? "HEXADECIMAL" : "DECIMAL";
         }
         draw_set_color(label_col);
-        draw_text_transformed_l(box_x2 - 10, row_y + 3 + off, mode_text, 1.0, 1.2, 0);
+        draw_text_transformed_l(box_x2 - 10, row_y + 1 + off, mode_text, 1.0, 1.0, 0);
     } else {
         draw_set_color(btn_hover ? c_aqua : c_gray);
-        draw_text_transformed_l(box_x2 - 10, row_y + 3 + off, shortcuts[j][1], 1.0, 1.2, 0);
+        draw_text_transformed_l(box_x2 - 10, row_y + 1 + off, shortcuts[j][1], 1.0, 1.0, 0);
     }
     draw_set_halign(fa_left);
 	

@@ -31,7 +31,7 @@ var _panel_h      = _panel_bottom - panel_y;
 
 panel_w = 244;
 panel_x = _gui_w - panel_w - 30;
-panel_y = 410;
+panel_y = 345;   // just under the shortcuts column (ends at y 340)
 global.mouse_in_asset_panel = false;
 global.mouse_in_asset_panel = point_in_rectangle(_mx, _my, panel_x, panel_y, _panel_right, _panel_bottom);
 

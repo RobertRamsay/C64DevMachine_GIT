@@ -55,7 +55,7 @@ for (var _bsi = 0; _bsi < _bmp_seed_count; _bsi++) {
 
 panel_w  = 244;
 panel_x  = _gui_w - panel_w - 30;
-panel_y = 410;
+panel_y = 345;   // just under the shortcuts column (ends at y 340)
 
 if (variable_instance_exists(id, "map_chr_picker_open") && map_chr_picker_open) {
     draw_set_color(c_red);
