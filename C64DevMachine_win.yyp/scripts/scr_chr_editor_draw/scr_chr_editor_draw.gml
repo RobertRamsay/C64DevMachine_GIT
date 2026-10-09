@@ -72,6 +72,15 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     // leave one edge come back on the other or are lost.
     var _over_grid  = point_in_rectangle(_mx, _my, _ox, _oy, _ox + _grid_w, _oy + _grid_h);
     var _slide_ux   = _pixel_is_mc ? (_scale * 2) : _scale;
+    if (chr_fill_mode) {
+        scr_ui_info(_over_grid, "FILL ON: LEFT FLOOD-FILLS WITH THE SELECTED COLOUR, RIGHT ERASES. MIDDLE/SPACE-DRAG OR ARROWS SLIDE");
+    } else if (_pixel_is_mc) {
+        scr_ui_info(_over_grid, "MC PIXEL PAIRS: LEFT PAINTS SELECTED SWATCH, RIGHT ERASES TO BG. MIDDLE/SPACE-DRAG OR ARROWS SLIDE");
+    } else if (_mc_mode == 2) {
+        scr_ui_info(_over_grid, "ECM PIXELS: LEFT SETS (CLEARS IF A BG SWATCH IS PICKED), RIGHT CLEARS. MIDDLE/SPACE-DRAG/ARROWS SLIDE");
+    } else {
+        scr_ui_info(_over_grid, "HR PIXELS: LEFT SETS, RIGHT CLEARS. MIDDLE/SPACE-DRAG OR ARROWS SLIDE. CTRL+C/V COPY/PASTE, CTRL+Z/Y");
+    }
     if (_over_grid && buffer_exists(_asset.buffer)) {
         if (mouse_check_button_pressed(mb_middle)
         || (keyboard_check(vk_space) && mouse_check_button_pressed(mb_left))) {
@@ -485,6 +494,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
 
     // FLIP X
     var _fxhov = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
+    scr_ui_info(_fxhov, "FLIP X: MIRRORS THE CHARACTER LEFT TO RIGHT (MC KEEPS PIXEL PAIRS INTACT). UNDOABLE");
     draw_set_color(_fxhov ? make_color_rgb(80, 160, 200) : make_color_rgb(30, 60, 80));
     draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
     draw_set_color(c_white);
@@ -518,6 +528,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
 
     // FLIP Y
     var _fyhov = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
+    scr_ui_info(_fyhov, "FLIP Y: MIRRORS THE CHARACTER TOP TO BOTTOM. UNDOABLE");
     draw_set_color(_fyhov ? make_color_rgb(80, 160, 200) : make_color_rgb(30, 60, 80));
     draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
     draw_set_color(c_white);
@@ -540,6 +551,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
 
     // CLEAR
     var _clhov = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
+    scr_ui_info(_clhov, "CLEAR: BLANKS ALL 8 ROWS OF THIS CHARACTER TO BACKGROUND. CTRL+Z UNDOES");
     draw_set_color(_clhov ? make_color_rgb(180, 60, 60) : make_color_rgb(80, 25, 25));
     draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
     draw_set_color(c_white);
@@ -559,6 +571,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
 
     // FILL (flood-fill toggle) — highlights green when active
     var _flhov = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
+    scr_ui_info(_flhov, "FILL: TOGGLES FLOOD-FILL MODE - LEFT-CLICK ON THE GRID FILLS THE TOUCHING AREA");
     if (chr_fill_mode) {
         draw_set_color(make_color_rgb(60, 200, 60));
     } else {
@@ -576,6 +589,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
 
     // WRAP (slide wrap toggle) - pixels leaving one edge re-enter on the other
     var _wrhov = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
+    scr_ui_info(_wrhov, "WRAP: WHEN ON, PIXELS SLID OFF ONE EDGE COME BACK ON THE OTHER; OFF, THEY ARE LOST");
     if (chr_shift_wrap) {
         draw_set_color(make_color_rgb(200, 160, 40));
     } else {
@@ -648,8 +662,19 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
             draw_set_color(c_yellow);
             draw_rectangle(_sw_x1 - 2, _sw_y1 - 2, _sw_x1 + _sw_sz + 2, _sw_y1 + _sw_sz + 2, true);
         }
-        if (mouse_check_button_pressed(mb_left) &&
-            point_in_rectangle(_mx, _my, _sw_x1, _sw_y1, _sw_x1 + _sw_sz, _sw_y1 + _sw_sz)) {
+        var _sw_hov = point_in_rectangle(_mx, _my, _sw_x1, _sw_y1, _sw_x1 + _sw_sz, _sw_y1 + _sw_sz);
+        if (_mc_mode == 1) {
+            scr_ui_info(_sw_hov, "MC " + _sw_labels[_swi] + " COLOUR: CLICK TO PAINT WITH THIS BIT PAIR (BG ERASES)");
+        } else if (_mc_mode == 2) {
+            if (_swi < 4) {
+                scr_ui_info(_sw_hov, "ECM " + _sw_labels[_swi] + ": CLICK TO PREVIEW THIS BACKGROUND; LEFT-PAINTING THEN CLEARS PIXELS");
+            } else {
+                scr_ui_info(_sw_hov, "ECM FG: CLICK SO LEFT-PAINTING SETS PIXELS IN THE FOREGROUND COLOUR");
+            }
+        } else {
+            scr_ui_info(_sw_hov, "HR " + _sw_labels[_swi] + " COLOUR OF THIS CHARACTER (DISPLAY ONLY: LEFT SETS FG, RIGHT CLEARS TO BG)");
+        }
+        if (mouse_check_button_pressed(mb_left) && _sw_hov) {
             if (_mc_mode == 2) {
                 if (_swi < 4) {
                     chr_active_ecm_bg     = _swi;

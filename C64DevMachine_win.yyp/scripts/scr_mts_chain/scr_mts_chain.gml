@@ -333,8 +333,11 @@ function scr_mts_course_start(_m, _ci) {
 }
 
 /// @desc Small flat button. Returns true on the click.
-function scr_mts_ui_button(_x1, _y1, _x2, _y2, _label, _on, _mx, _my) {
+function scr_mts_ui_button(_x1, _y1, _x2, _y2, _label, _on, _mx, _my, _info = "") {
     var _hov = point_in_rectangle(_mx, _my, _x1, _y1, _x2, _y2);
+    if (_info != "") {
+        scr_ui_info(_hov, _info);
+    }
     if (_on) {
         draw_set_color(make_color_rgb(20, 70, 50));
     } else {
@@ -428,7 +431,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     draw_set_color(make_color_rgb(80, 200, 255));
     draw_text_l(_lx1, _y + 1, L("CHAINS"));
     var _cbx = _lx1 + 56;
-    if (scr_mts_ui_button(_cbx, _y, _cbx + 46, _y + _rh - 3, L("+ NEW"), false, _mx, _my)) {
+    if (scr_mts_ui_button(_cbx, _y, _cbx + 46, _y + _rh - 3, L("+ NEW"), false, _mx, _my, "NEW CHAIN: ADD AN EMPTY CHAIN AND SELECT IT")) {
         var _cols0 = array_create(array_length(_m.chain_cols), 0);
         array_push(_m.chains, { name: L("CHAIN ") + string(_nc), maps: [], cols: _cols0 });
         _m.active_chain     = _nc;
@@ -438,7 +441,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     }
     _cbx += 50;
     if (_ac >= 0) {
-        if (scr_mts_ui_button(_cbx, _y, _cbx + 50, _y + _rh - 3, L("DELETE"), false, _mx, _my)) {
+        if (scr_mts_ui_button(_cbx, _y, _cbx + 50, _y + _rh - 3, L("DELETE"), false, _mx, _my, "DELETE THE SELECTED CHAIN (LINK COLUMNS ARE RENUMBERED)")) {
             scr_mts_chain_delete(_m, _ac);
             _m.active_chain     = min(_ac, array_length(_m.chains) - 1);
             mts_chain_sel_entry = -1;
@@ -454,7 +457,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
                 _cpos = _cp;
             }
         }
-        if (scr_mts_ui_button(_cbx, _y, _cbx + 28, _y + _rh - 3, L("UP"), false, _mx, _my)) {
+        if (scr_mts_ui_button(_cbx, _y, _cbx + 28, _y + _rh - 3, L("UP"), false, _mx, _my, "MOVE THE SELECTED CHAIN UP ONE ROW IN THE LIST")) {
             if (_cpos > 0) {
                 scr_mts_chain_swap(_m, _ac, _cdisp[_cpos - 1]);
                 _m.active_chain = _cdisp[_cpos - 1];
@@ -462,7 +465,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
             }
         }
         _cbx += 32;
-        if (scr_mts_ui_button(_cbx, _y, _cbx + 28, _y + _rh - 3, L("DN"), false, _mx, _my)) {
+        if (scr_mts_ui_button(_cbx, _y, _cbx + 28, _y + _rh - 3, L("DN"), false, _mx, _my, "MOVE THE SELECTED CHAIN DOWN ONE ROW IN THE LIST")) {
             if (_cpos >= 0 && _cpos < array_length(_cdisp) - 1) {
                 scr_mts_chain_swap(_m, _ac, _cdisp[_cpos + 1]);
                 _m.active_chain = _cdisp[_cpos + 1];
@@ -492,6 +495,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         var _ci  = _cdl[_di];
         var _cy  = _cl_y0 + _r * 14;
         var _hov = point_in_rectangle(_mx, _my, _lx1, _cy, _cl_x2, _cy + 13);
+        scr_ui_info(_hov, "CLICK TO SELECT THIS CHAIN, DOUBLE-CLICK TO RENAME IT");
         if (_ci == _ac) {
             draw_set_color(make_color_rgb(30, 90, 50));
             draw_rectangle(_lx1, _cy, _cl_x2, _cy + 13, false);
@@ -545,7 +549,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         }
         var _bx  = _lx1 + 46;
         var _sbw = 46;
-        if (scr_mts_ui_button(_bx, _y, _bx + _sbw, _y + _rh - 3, L("+ MAP"), false, _mx, _my)) {
+        if (scr_mts_ui_button(_bx, _y, _bx + _sbw, _y + _rh - 3, L("+ MAP"), false, _mx, _my, "ADD THE ACTIVE MAP TAB TO THIS CHAIN, AFTER THE SELECTED ENTRY")) {
             if (_m.active_map >= 0 && _m.active_map < array_length(_m.maps)) {
                 // the new map goes straight after the selected one in feed order
                 // (on screen: next to it, on the side the chain grows towards)
@@ -565,7 +569,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
             }
         }
         _bx += _sbw + 4;
-        if (scr_mts_ui_button(_bx, _y, _bx + 36, _y + _rh - 3, L("DEL"), false, _mx, _my)) {
+        if (scr_mts_ui_button(_bx, _y, _bx + 36, _y + _rh - 3, L("DEL"), false, _mx, _my, "REMOVE THE SELECTED ENTRY FROM THIS CHAIN (THE MAP ITSELF IS KEPT)")) {
             if (mts_chain_sel_entry >= 0 && mts_chain_sel_entry < array_length(_cm)) {
                 array_delete(_cm, mts_chain_sel_entry, 1);
                 mts_chain_sel_entry = min(mts_chain_sel_entry, array_length(_cm) - 1);
@@ -573,7 +577,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
             }
         }
         _bx += 40;
-        if (scr_mts_ui_button(_bx, _y, _bx + 28, _y + _rh - 3, L("UP"), false, _mx, _my)) {
+        if (scr_mts_ui_button(_bx, _y, _bx + 28, _y + _rh - 3, L("UP"), false, _mx, _my, "MOVE THE SELECTED ENTRY UP ONE ROW")) {
             if (_epos > 0) {
                 var _ea = _edl[_epos];
                 var _eb = _edl[_epos - 1];
@@ -585,7 +589,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
             }
         }
         _bx += 32;
-        if (scr_mts_ui_button(_bx, _y, _bx + 28, _y + _rh - 3, L("DN"), false, _mx, _my)) {
+        if (scr_mts_ui_button(_bx, _y, _bx + 28, _y + _rh - 3, L("DN"), false, _mx, _my, "MOVE THE SELECTED ENTRY DOWN ONE ROW")) {
             if (_epos >= 0 && _epos < array_length(_edl) - 1) {
                 var _ea2 = _edl[_epos];
                 var _eb2 = _edl[_epos + 1];
@@ -615,6 +619,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
             var _ei   = _edl[_dj];
             var _ey   = _el_y0 + _r2 * 14;
             var _ehov = point_in_rectangle(_mx, _my, _lx1, _ey, _el_x2, _ey + 13);
+            scr_ui_info(_ehov, "CLICK TO SELECT THIS ENTRY AND SHOW ITS MAP");
             if (_ei == mts_chain_sel_entry) {
                 draw_set_color(make_color_rgb(70, 60, 20));
                 draw_rectangle(_lx1, _ey, _el_x2, _ey + 13, false);
@@ -659,7 +664,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     scr_mts_subpanel(_lx1 - 4, _y - 3, _lx2 + 3, _y + _rh + _vis_k * 14 + 3);
     draw_set_color(make_color_rgb(80, 200, 255));
     draw_text_l(_lx1, _y + 1, L("COLUMNS"));
-    if (scr_mts_ui_button(_lx2 - 50, _y, _lx2, _y + _rh - 3, L("+ COL"), false, _mx, _my)) {
+    if (scr_mts_ui_button(_lx2 - 50, _y, _lx2, _y + _rh - 3, L("+ COL"), false, _mx, _my, "ADD A COLUMN (ONE BYTE PER CHAIN): TYPE ITS NAME")) {
         scr_mts_chain_edit_start("COLNAME", "", -1, -1);
     }
     if (editing_map_dim && editing_map_field == "COLNAME" && editing_map_name_idx == -1) {
@@ -679,6 +684,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     for (var _k = mts_chain_col_scroll; _k < min(_nk, mts_chain_col_scroll + _vis_k); _k++) {
         var _ky   = _kl_y0 + (_k - mts_chain_col_scroll) * 14;
         var _khov = point_in_rectangle(_mx, _my, _lx1, _ky, _lx2, _ky + 13);
+        scr_ui_info(_khov, "CLICK NAME TO RENAME, CLICK VALUE (RIGHT) TO TYPE THIS CHAIN'S BYTE, R-CLICK DELETE");
         if (_khov) {
             draw_set_color(make_color_rgb(30, 45, 40));
             draw_rectangle(_lx1, _ky, _lx2, _ky + 13, false);
@@ -693,7 +699,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
                 _lk_on = true;
             }
         }
-        if (scr_mts_ui_button(_lx2 - 110, _ky, _lx2 - 72, _ky + 12, L("LINK"), _lk_on, _mx, _my)) {
+        if (scr_mts_ui_button(_lx2 - 110, _ky, _lx2 - 72, _ky + 12, L("LINK"), _lk_on, _mx, _my, "LINK: COLUMN HOLDS CHAIN NUMBERS, RENUMBERED WHEN CHAINS MOVE OR ARE DELETED")) {
             if (_lk_on) {
                 _m.chain_col_link[_k] = 0;
             } else {
@@ -752,7 +758,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         if (keyboard_check(vk_shift)) {
             _rp_step = 10;
         }
-        if (scr_mts_ui_button(_lx1 + 50, _y, _lx1 + 66, _y + _rh - 3, "-", false, _mx, _my)) {
+        if (scr_mts_ui_button(_lx1 + 50, _y, _lx1 + 66, _y + _rh - 3, "-", false, _mx, _my, "MAP REPEAT COUNT - 1 (SHIFT: - 10, MIN 1)")) {
             _m.map_reps[_am] = max(1, _m.map_reps[_am] - _rp_step);
             _m.is_dirty = true; global.undo_dirty = true; global.addresses_dirty = true;
         }
@@ -760,12 +766,12 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         draw_set_halign(fa_center);
         draw_text_l(_lx1 + 90, _y + 1, "x" + string(_m.map_reps[_am]));
         draw_set_halign(fa_left);
-        if (scr_mts_ui_button(_lx1 + 114, _y, _lx1 + 130, _y + _rh - 3, "+", false, _mx, _my)) {
+        if (scr_mts_ui_button(_lx1 + 114, _y, _lx1 + 130, _y + _rh - 3, "+", false, _mx, _my, "MAP REPEAT COUNT + 1 (SHIFT: + 10, MAX 255)")) {
             _m.map_reps[_am] = min(255, _m.map_reps[_am] + _rp_step);
             _m.is_dirty = true; global.undo_dirty = true; global.addresses_dirty = true;
         }
         var _ad_txt = scr_mts_chain_field_text("ADDR", _am, -1, scr_mts_addr_text(_m.map_addr[_am]));
-        if (scr_mts_ui_button(_lx1 + 136, _y, _lx2, _y + _rh - 3, L("AT ") + _ad_txt, (_m.map_addr[_am] >= 0), _mx, _my)) {
+        if (scr_mts_ui_button(_lx1 + 136, _y, _lx2, _y + _rh - 3, L("AT ") + _ad_txt, (_m.map_addr[_am] >= 0), _mx, _my, "CLICK TO TYPE A FIXED ADDRESS FOR THIS MAP (EMPTY = AUTO)")) {
             scr_mts_chain_edit_start("ADDR", "", _am, -1);
         }
     } else {
@@ -775,7 +781,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
 
     // ===== EXPORT: direction, tables on/off, table address =====
     var _dir_names = ["UP", "DOWN", "LEFT", "RIGHT"];
-    if (scr_mts_ui_button(_lx1, _y, _lx1 + 76, _y + _rh - 3, L("DIR ") + _dir_names[clamp(_m.chain_dir, 0, 3)], false, _mx, _my)) {
+    if (scr_mts_ui_button(_lx1, _y, _lx1 + 76, _y + _rh - 3, L("DIR ") + _dir_names[clamp(_m.chain_dir, 0, 3)], false, _mx, _my, "DIRECTION THE CHAINS ARE FED IN: CYCLES UP / DOWN / LEFT / RIGHT")) {
         _m.chain_dir = (_m.chain_dir + 1) mod 4;
         mts_chain_scroll = 0;
         _m.is_dirty = true;
@@ -784,7 +790,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     if (_m.chain_emit == 1) {
         _tl = L("TABLES ON");
     }
-    if (scr_mts_ui_button(_lx1 + 80, _y, _lx1 + 160, _y + _rh - 3, _tl, (_m.chain_emit == 1), _mx, _my)) {
+    if (scr_mts_ui_button(_lx1 + 80, _y, _lx1 + 160, _y + _rh - 3, _tl, (_m.chain_emit == 1), _mx, _my, "TABLES: EMIT THE CHAIN LOOKUP TABLES (_MAPLO ...). NEEDS RAW ROWS ON")) {
         if (_m.chain_emit == 1) {
             _m.chain_emit = 0;
         } else {
@@ -793,7 +799,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         _m.is_dirty = true; global.undo_dirty = true; global.memory_bar_dirty = true; global.addresses_dirty = true;
     }
     var _ta_txt = scr_mts_chain_field_text("TABADDR", 0, -1, scr_mts_addr_text(_m.chain_tab_addr));
-    if (scr_mts_ui_button(_lx1 + 164, _y, _lx2, _y + _rh - 3, L("AT ") + _ta_txt, (_m.chain_tab_addr >= 0), _mx, _my)) {
+    if (scr_mts_ui_button(_lx1 + 164, _y, _lx2, _y + _rh - 3, L("AT ") + _ta_txt, (_m.chain_tab_addr >= 0), _mx, _my, "CLICK TO TYPE A FIXED ADDRESS FOR THE CHAIN TABLES (EMPTY = AUTO)")) {
         scr_mts_chain_edit_start("TABADDR", "", 0, -1);
     }
     _y += _rh;
@@ -803,7 +809,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     if (_m.chain_rev == 1) {
         _fd = L("FEED LAST > FIRST");
     }
-    if (scr_mts_ui_button(_lx1, _y, _lx2, _y + _rh - 3, _fd, (_m.chain_rev == 1), _mx, _my)) {
+    if (scr_mts_ui_button(_lx1, _y, _lx2, _y + _rh - 3, _fd, (_m.chain_rev == 1), _mx, _my, "WHICH END OF EACH CHAIN THE ENGINE READS FIRST (PREVIEW ONLY)")) {
         if (_m.chain_rev == 1) {
             _m.chain_rev = 0;
         } else {
@@ -830,23 +836,23 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     var _py1 = _y1 + 4;
     var _py2 = _y2 - 6;
     // header: view toggle + where the active chain sits
-    if (scr_mts_ui_button(_px1, _py1, _px1 + 64, _py1 + 14, L("COURSE"), (mts_chain_view == 0), _mx, _my)) {
+    if (scr_mts_ui_button(_px1, _py1, _px1 + 64, _py1 + 14, L("COURSE"), (mts_chain_view == 0), _mx, _my, "PREVIEW THE WHOLE COURSE: EVERY CHAIN JOINED")) {
         mts_chain_view   = 0;
         mts_chain_scroll = scr_mts_course_start(_m, _ac);
     }
-    if (scr_mts_ui_button(_px1 + 68, _py1, _px1 + 132, _py1 + 14, L("SECTION"), (mts_chain_view == 1), _mx, _my)) {
+    if (scr_mts_ui_button(_px1 + 68, _py1, _px1 + 132, _py1 + 14, L("SECTION"), (mts_chain_view == 1), _mx, _my, "PREVIEW ONLY THE SELECTED CHAIN")) {
         mts_chain_view   = 1;
         mts_chain_scroll = 0;
     }
     // ZOOM OUT: - [Nx] +  (1 = fit the widest map, 4 = a quarter of that)
-    if (scr_mts_ui_button(_px1 + 144, _py1, _px1 + 160, _py1 + 14, "-", false, _mx, _my)) {
+    if (scr_mts_ui_button(_px1 + 144, _py1, _px1 + 160, _py1 + 14, "-", false, _mx, _my, "ZOOM THE PREVIEW OUT (UP TO 4X)")) {
         mts_chain_zoom = min(4, mts_chain_zoom + 1);
     }
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_px1 + 182, _py1, L("ZOOM ") + string(mts_chain_zoom) + "x");
     draw_set_halign(fa_left);
-    if (scr_mts_ui_button(_px1 + 206, _py1, _px1 + 222, _py1 + 14, "+", false, _mx, _my)) {
+    if (scr_mts_ui_button(_px1 + 206, _py1, _px1 + 222, _py1 + 14, "+", false, _mx, _my, "ZOOM THE PREVIEW IN (1X FITS THE WIDEST MAP)")) {
         mts_chain_zoom = max(1, mts_chain_zoom - 1);
     }
     _py1 += 18;
@@ -895,6 +901,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
     var _cs  = clamp(floor(floor(_side / _cross) / mts_chain_zoom), 1, 16);
     var _vis = max(1, floor(_span / _cs));
     var _maxs = max(0, _ns - _vis);
+    scr_ui_info(point_in_rectangle(_mx, _my, _px1, _py1, _px2, _py2), "PREVIEW: CLICK A PIECE TO SELECT ITS CHAIN AND MAP. WHEEL SCROLLS (SHIFT: A PAGE)");
     if (point_in_rectangle(_mx, _my, _px1, _py1, _px2, _py2)) {
         var _step = 4;
         if (keyboard_check(vk_shift)) {
@@ -914,6 +921,7 @@ function scr_mts_chain_panel(_m, _asset, _x1, _y1, _x2, _y2, _mx, _my, _gx) {
         _trk = _tx2 - _tx1;
     }
     var _thumb = max(16, floor(_trk * min(1, _vis / max(1, _ns))));
+    scr_ui_info(point_in_rectangle(_mx, _my, _tx1, _ty1, _tx2, _ty2), "CLICK OR DRAG TO SCROLL THE PREVIEW ALONG THE CHAIN");
     if (point_in_rectangle(_mx, _my, _tx1, _ty1, _tx2, _ty2) && mouse_check_button_pressed(mb_left)) {
         mts_chain_drag = true;
     }
@@ -1239,6 +1247,7 @@ function scr_mts_list_scrollbar(_x1, _y1, _x2, _y2, _total, _vis, _scroll, _mx, 
     if (_max <= 0) {
         return _s;
     }
+    scr_ui_info(point_in_rectangle(_mx, _my, _x1, _y1, _x2, _y2), "CLICK OR DRAG TO SCROLL THE LIST (OR USE THE WHEEL OVER IT)");
     var _h  = _y2 - _y1;
     var _th = max(10, floor(_h * _vis / _total));
     if (point_in_rectangle(_mx, _my, _x1, _y1, _x2, _y2) && mouse_check_button(mb_left)) {

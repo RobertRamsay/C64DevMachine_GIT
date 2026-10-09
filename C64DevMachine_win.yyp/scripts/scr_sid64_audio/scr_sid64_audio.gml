@@ -521,6 +521,8 @@ function scr_sid_asset_controls(_asset, _x, _y, _w) {
     var _bx = _x;
     for (var _i = 0; _i < 4; _i++) {
         var _hover = point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y, _bx, _y+20, _bx+_widths[_i]-3, _y+44);
+        var _sid_tips = ["PREVIOUS SUBTUNE (KEEPS PLAYING IF IT WAS)", "NEXT SUBTUNE (KEEPS PLAYING IF IT WAS)", "PLAY THIS SUBTUNE FROM THE START", "STOP PLAYBACK"];
+        scr_ui_info(_hover, _sid_tips[_i]);
         draw_set_color(_hover ? make_color_rgb(65,110,125) : make_color_rgb(35,65,78));
         draw_rectangle(_bx, _y+20, _bx+_widths[_i]-3, _y+44, false);
         draw_set_color(c_white); draw_text_l(_bx+5, _y+26, _labels[_i]);

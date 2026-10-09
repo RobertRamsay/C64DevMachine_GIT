@@ -510,6 +510,13 @@ function scr_bmp_spr_edit(_asset, _raw_px, _raw_py, _in_bounds) {
     var _o   = scr_bmp_spr_get(_asset);
     var _pen = _m[$ "spr_pen"] ?? "SPR";
 
+    // INFO strip: what a click on the canvas does in sprite paint mode
+    if (_in_bounds) {
+        if (_pen == "MOVE") scr_ui_info(true, "SPRITES (MOVE): DRAG THE SELECTED SPRITE ANYWHERE. CLICK ANOTHER TO SELECT IT. CTRL+Z UNDO");
+        else if (_pen == "ERASE") scr_ui_info(true, "SPRITES (ERASE): DRAG ON THE SELECTED SPRITE TO CLEAR PIXELS. CLICK ANOTHER TO SELECT IT");
+        else scr_ui_info(true, "SPRITES: LEFT PAINTS THE SELECTED SPRITE IN " + _pen + ", RIGHT ERASES. CLICK ANOTHER TO SELECT IT");
+    }
+
     // A palette click recolours what the pen paints with
     var _ac = _m[$ "active_color"] ?? 1;
     if ((_m[$ "spr_last_col"] ?? _ac) != _ac) {
@@ -634,8 +641,9 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
     _y += 16;
 
     // Button: label, colour when active, returns clicked
-    var _btn = function(_bx, _by, _bw, _txt, _active, _mx, _my, _click) {
+    var _btn = function(_bx, _by, _bw, _txt, _active, _mx, _my, _click, _info = "") {
         var _hov = point_in_rectangle(_mx, _my, _bx, _by, _bx + _bw, _by + 16);
+        if (_info != "") scr_ui_info(_hov, _info);
         draw_set_color(_active ? make_color_rgb(40, 120, 160) : (_hov ? make_color_rgb(70, 70, 90) : make_color_rgb(35, 35, 50)));
         draw_rectangle(_bx, _by, _bx + _bw, _by + 16, false);
         draw_set_color(_hov ? c_white : c_ltgray);
@@ -646,12 +654,14 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
         return _hov && _click;
     };
 
-    if (_btn(_x, _y, _w, _on ? "PAINT: SPRITES" : "PAINT: BITMAP", _on, _mx, _my, _click)) {
+    if (_btn(_x, _y, _w, _on ? "PAINT: SPRITES" : "PAINT: BITMAP", _on, _mx, _my, _click,
+            "PAINT TARGET (S): SWITCH BETWEEN PAINTING THE BITMAP AND THE HARDWARE SPRITE LAYER ON TOP")) {
         _m.spr_mode = !_on; _on = !_on; global.ui_click_consumed = true;
         if (_on) scr_bmp_spr_default_row(_asset);
     }
     _y += 20;
-    if (_btn(_x, _y, _w, _o.show ? "SPRITES: SHOW" : "SPRITES: HIDE", _o.show, _mx, _my, _click)) {
+    if (_btn(_x, _y, _w, _o.show ? "SPRITES: SHOW" : "SPRITES: HIDE", _o.show, _mx, _my, _click,
+            "SHOW OR HIDE THE HARDWARE SPRITES DRAWN OVER THE BITMAP (CANVAS AND PREVIEW WINDOW)")) {
         _o.show = !_o.show; scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
     }
     _y += 20;
@@ -661,12 +671,14 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
     if (_o.mux_nodes) {
         _mux_lbl = "MUX: NODES";
     }
-    if (_btn(_x, _y, _w, _mux_lbl, false, _mx, _my, _click)) {
+    if (_btn(_x, _y, _w, _mux_lbl, false, _mx, _my, _click,
+            "HOW SETUP NODES BUILDS THE MULTIPLEXER FOR 2+ SPRITE ROWS: ONE CODE BLOCK, OR VWAIT + SPRITE NODES")) {
         _o.mux_nodes = !_o.mux_nodes; global.ui_click_consumed = true;
     }
     _y += 20;
     // A callable program for this bitmap and its sprites (scr_bmp_spr_setup_nodes)
-    if (_btn(_x, _y, _w, "SETUP NODES", false, _mx, _my, _click)) {
+    if (_btn(_x, _y, _w, "SETUP NODES", false, _mx, _my, _click,
+            "BUILD A CALLABLE <NAME>_SHOW PROGRAM (NODES) THAT SHOWS THIS BITMAP AND ITS SPRITES. UNDOABLE")) {
         global.ui_click_consumed = true;
         scr_bmp_spr_setup_nodes(_asset);
     }
@@ -683,17 +695,20 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
 
     // Tools: ERASE / MOVE. Painting colours are picked from the swatches below.
     var _pen = _m[$ "spr_pen"] ?? "SPR";
-    if (_btn(_x, _y, 52, "ERASE", _pen == "ERASE", _mx, _my, _click)) {
+    if (_btn(_x, _y, 52, "ERASE", _pen == "ERASE", _mx, _my, _click,
+            "SPRITE ERASER: LEFT-DRAG ON THE SELECTED SPRITE CLEARS ITS PIXELS (PICK A COLOUR TO PAINT AGAIN)")) {
         _m.spr_pen = "ERASE"; global.ui_click_consumed = true;
     }
-    if (_btn(_x + 56, _y, 52, "MOVE", _pen == "MOVE", _mx, _my, _click)) {
+    if (_btn(_x + 56, _y, 52, "MOVE", _pen == "MOVE", _mx, _my, _click,
+            "SPRITE MOVE: LEFT-DRAG A SPRITE ON THE CANVAS TO REPOSITION IT")) {
         _m.spr_pen = "MOVE"; global.ui_click_consumed = true;
     }
     _y += 20;
 
     // Add / delete. A new sprite goes right of the selected one (same Y).
     var _sel = scr_bmp_spr_selected(_asset);
-    if (scr_bmp_spr_count(_o) < BSO_MAX && _btn(_x, _y, 52, "+ SPR", false, _mx, _my, _click)) {
+    if (scr_bmp_spr_count(_o) < BSO_MAX && _btn(_x, _y, 52, "+ SPR", false, _mx, _my, _click,
+            "ADD A BLANK SPRITE RIGHT OF THE SELECTED ONE, WITH THE SAME MODE, EXPAND AND PRIORITY")) {
         scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay;
         var _nx = 0;
         var _ny = 0;
@@ -713,7 +728,8 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
         _m.spr_sel = array_length(_o.sprites) - 1;
         scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
     }
-    if (!is_undefined(_sel) && _btn(_x + 56, _y, 52, "DEL SPR", false, _mx, _my, _click)) {
+    if (!is_undefined(_sel) && _btn(_x + 56, _y, 52, "DEL SPR", false, _mx, _my, _click,
+            "DELETE THE SELECTED SPRITE (CTRL+Z UNDOES)")) {
         scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay;
         array_delete(_o.sprites, _m.spr_sel, 1);
         _m.spr_sel = -1;
@@ -723,7 +739,8 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
 
     _sel = scr_bmp_spr_selected(_asset);
     if (!is_undefined(_sel)) {
-        if (_btn(_x, _y, 52, _sel.mc ? "MC" : "HIRES", _sel.mc, _mx, _my, _click)) {
+        if (_btn(_x, _y, 52, _sel.mc ? "MC" : "HIRES", _sel.mc, _mx, _my, _click,
+            "SWITCH THE SELECTED SPRITE BETWEEN MULTICOLOUR (3 COLOURS, WIDE PIXELS) AND HIRES (1 COLOUR)")) {
             scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay; _sel = scr_bmp_spr_selected(_asset);
             _sel.mc = _sel.mc ? 0 : 1;
             for (var _p = 0; _p < 504; _p++) {
@@ -737,12 +754,14 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
         _y += 20;
         // Expand X / Y and in front of / behind the bitmap, per sprite
         _sel = scr_bmp_spr_selected(_asset);
-        if (_btn(_x, _y, 52, "X EXP", _sel.xe, _mx, _my, _click)) {
+        if (_btn(_x, _y, 52, "X EXP", _sel.xe, _mx, _my, _click,
+            "DOUBLE THE SELECTED SPRITE'S WIDTH (48 PIXELS) ON/OFF")) {
             scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay; _sel = scr_bmp_spr_selected(_asset);
             _sel.xe = 1 - _sel.xe;
             scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
         }
-        if (_btn(_x + 56, _y, 52, "Y EXP", _sel.ye, _mx, _my, _click)) {
+        if (_btn(_x + 56, _y, 52, "Y EXP", _sel.ye, _mx, _my, _click,
+            "DOUBLE THE SELECTED SPRITE'S HEIGHT (42 LINES) ON/OFF")) {
             scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay; _sel = scr_bmp_spr_selected(_asset);
             _sel.ye = 1 - _sel.ye;
             scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
@@ -752,7 +771,8 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
         if (_sel.pri) {
             _pri_lbl = "BEHIND BITMAP";
         }
-        if (_btn(_x, _y, _w, _pri_lbl, _sel.pri, _mx, _my, _click)) {
+        if (_btn(_x, _y, _w, _pri_lbl, _sel.pri, _mx, _my, _click,
+            "SPRITE PRIORITY: IN FRONT OF THE BITMAP, OR BEHIND ITS FOREGROUND PIXELS")) {
             scr_bmp_spr_push_undo(_asset); _o = _m.spr_overlay; _sel = scr_bmp_spr_selected(_asset);
             _sel.pri = 1 - _sel.pri;
             scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
@@ -804,6 +824,9 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
             draw_rectangle(_cx, _y + 12, _cx + 30, _y + 24, false);
         }
         var _sw_hov = _live && point_in_rectangle(_mx, _my, _cx, _y + 12, _cx + 30, _y + 24);
+        if (_i == 0) scr_ui_info(_sw_hov, "PAINT WITH THE SELECTED SPRITE'S OWN COLOUR (SPR)");
+        else scr_ui_info(_sw_hov, "PAINT WITH " + _lbls[_i] + ": A MULTICOLOUR SHARED BY ALL MC SPRITES");
+        if (_off) scr_ui_info(point_in_rectangle(_mx, _my, _cx, _y + 12, _cx + 30, _y + 156), _lbls[_i] + " IS UNUSED: THE SELECTED SPRITE IS HIRES (ONE COLOUR)");
         if (_is_pen && _live) {
             draw_set_color(c_yellow);
             draw_rectangle(_cx - 1, _y + 11, _cx + 31, _y + 25, true);
@@ -836,6 +859,7 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
                     continue;
                 }
                 var _chov = point_in_rectangle(_mx, _my, _cx, _cy1, _cx + 30, _cy2);
+                scr_ui_info(_chov, "SET " + ((_i == 0) ? "THE SELECTED SPRITE'S COLOUR" : _lbls[_i] + " (ALL MC SPRITES)") + " TO COLOUR " + string(_c) + " AND PAINT WITH IT");
                 if (_c == _cols[_i]) {
                     draw_set_color(c_white);
                     draw_rectangle(_cx, _cy1, _cx + 30, _cy2, true);
@@ -880,13 +904,15 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
     }
     var _ti = clamp(_m[$ "spr_target_idx"] ?? 0, 0, array_length(_targets) - 1);
     var _thov = point_in_rectangle(_mx, _my, _x, _y, _x + _w, _y + 16);
-    if (_btn(_x, _y, _w, "TO: " + _targets[_ti], false, _mx, _my, _click)) {
+    if (_btn(_x, _y, _w, "TO: " + _targets[_ti], false, _mx, _my, _click,
+            "TRANSFER TARGET: LEFT-CLICK NEXT, RIGHT-CLICK PREVIOUS SPRITE_SET (OR A NEW SET)")) {
         _ti = (_ti + 1) mod array_length(_targets); global.ui_click_consumed = true;
     }
     if (_thov && mouse_check_button_pressed(mb_right)) _ti = (_ti + array_length(_targets) - 1) mod array_length(_targets);
     _m.spr_target_idx = _ti;
     _y += 20;
-    if (_btn(_x, _y, _w, "TRANSFER", false, _mx, _my, _click)) {
+    if (_btn(_x, _y, _w, "TRANSFER", false, _mx, _my, _click,
+            "WRITE THE NON-EMPTY SPRITES, ROW BY ROW, INTO THE TARGET SPRITE_SET FROM SLOT 0")) {
         scr_bmp_spr_transfer(_asset, (_ti == 0) ? "" : _targets[_ti]);
         global.ui_click_consumed = true;
     }

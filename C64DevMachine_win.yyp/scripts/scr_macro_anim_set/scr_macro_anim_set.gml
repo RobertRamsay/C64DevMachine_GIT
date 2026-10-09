@@ -780,8 +780,9 @@ function scr_anim_asset_open(_n) {
     scr_asset_inline_editor_close_all();
     _am.viewer_asset=_idx;_am.viewer_open=true;keyboard_string="";mouse_clear(mb_left);
 }
-function scr_anim_asset_button(_x,_y,_w,_text,_active=false) {
+function scr_anim_asset_button(_x,_y,_w,_text,_active=false,_info="") {
     var _hover=point_in_rectangle(device_mouse_x_to_gui(0),device_mouse_y_to_gui(0),_x,_y,_x+_w,_y+26);
+    scr_ui_info(_hover,_info);
     draw_set_color(_active?make_color_rgb(40,105,90):(_hover?make_color_rgb(50,70,90):make_color_rgb(28,38,48)));
     draw_rectangle(_x,_y,_x+_w,_y+26,false);draw_set_color(c_white);draw_set_halign(fa_left);
     draw_text_l(_x+6,_y+5,_text);
@@ -811,32 +812,32 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     var _b=4+_u.row*12,_x=_x1+18,_y=_cy+10,_right=_x2-18;
     draw_set_font_l(fnt_c64_tiny);draw_set_halign(fa_left);draw_set_valign(fa_top);
     draw_set_color(c_aqua);draw_text_l(_x,_y,"ANIMATION ASSET - shared sequences; SELECT and ALIAS stay on each node");_y+=28;
-    if(scr_anim_asset_button(_x,_y,40,"<")) {_u.row=max(0,_u.row-1);_u.frame=0;_u.edit=-1;return;}
-    if(scr_anim_asset_button(_x+46,_y,40,">")) {_u.row=min(_rows-1,_u.row+1);_u.frame=0;_u.edit=-1;return;}
-    if(scr_anim_asset_button(_x+94,_y,230,string(_u.row)+": "+string(_d[_b]),_u.edit==_b)) {_u.edit=_b;_u.text=string(_d[_b]);keyboard_string="";}
-    if(scr_anim_asset_button(_x+332,_y,90,"+ ROW") && _rows<32) {scr_anim_asset_checkpoint(_a);var _r=scr_anim_set_new_row("SEQ"+string(_rows));for(var _i=0;_i<12;_i++) array_push(_m.anim_data,_r[_i]);_u.row=_rows;_u.frame=0;scr_anim_asset_changed(_a);return;}
-    if(scr_anim_asset_button(_x+430,_y,90,"- ROW") && _rows>1) {scr_anim_asset_checkpoint(_a);array_delete(_m.anim_data,_b,12);_u.frame=0;scr_anim_asset_changed(_a);return;}
-    if(scr_anim_asset_button(_x+530,_y,32,"-")) {scr_anim_asset_delay(_a,_u.row,-1);return;}
-    if(scr_anim_asset_button(_x+568,_y,100,"DELAY "+string(_d[_b+1]),_u.edit==_b+1)) {_u.edit=_b+1;_u.text=string(_d[_b+1]);keyboard_string="";}
-    if(scr_anim_asset_button(_x+674,_y,32,"+")) {scr_anim_asset_delay(_a,_u.row,1);return;}
-    if(scr_anim_asset_button(_x+716,_y,85,"LOOP",string(_d[_b+2])=="1")) {scr_anim_asset_checkpoint(_a);_d[_b+2]=string(_d[_b+2])=="1"?"0":"1";_m.anim_data=_d;scr_anim_asset_changed(_a);}
-    if(scr_anim_asset_button(_x+815,_y,90,"UNDO "+string(array_length(_m.anim_undo)),array_length(_m.anim_undo)>0)) {scr_anim_asset_history(_a,false);return;}
-    if(scr_anim_asset_button(_x+913,_y,90,"REDO "+string(array_length(_m.anim_redo)),array_length(_m.anim_redo)>0)) {scr_anim_asset_history(_a,true);return;}
+    if(scr_anim_asset_button(_x,_y,40,"<",false,"PREVIOUS ANIMATION ROW (SEQUENCE)")) {_u.row=max(0,_u.row-1);_u.frame=0;_u.edit=-1;return;}
+    if(scr_anim_asset_button(_x+46,_y,40,">",false,"NEXT ANIMATION ROW (SEQUENCE)")) {_u.row=min(_rows-1,_u.row+1);_u.frame=0;_u.edit=-1;return;}
+    if(scr_anim_asset_button(_x+94,_y,230,string(_u.row)+": "+string(_d[_b]),_u.edit==_b,"CLICK TO RENAME THIS ROW: TYPE THE NAME, ENTER APPLIES (MAX 32 CHARACTERS)")) {_u.edit=_b;_u.text=string(_d[_b]);keyboard_string="";}
+    if(scr_anim_asset_button(_x+332,_y,90,"+ ROW",false,"ADD A NEW ANIMATION ROW AT THE END (MAX 32 ROWS)") && _rows<32) {scr_anim_asset_checkpoint(_a);var _r=scr_anim_set_new_row("SEQ"+string(_rows));for(var _i=0;_i<12;_i++) array_push(_m.anim_data,_r[_i]);_u.row=_rows;_u.frame=0;scr_anim_asset_changed(_a);return;}
+    if(scr_anim_asset_button(_x+430,_y,90,"- ROW",false,"DELETE THIS ANIMATION ROW (NEEDS AT LEAST ONE ROW LEFT)") && _rows>1) {scr_anim_asset_checkpoint(_a);array_delete(_m.anim_data,_b,12);_u.frame=0;scr_anim_asset_changed(_a);return;}
+    if(scr_anim_asset_button(_x+530,_y,32,"-",false,"DECREASE THE DELAY: FEWER 50 HZ FRAMES PER STEP, FASTER (MIN 1)")) {scr_anim_asset_delay(_a,_u.row,-1);return;}
+    if(scr_anim_asset_button(_x+568,_y,100,"DELAY "+string(_d[_b+1]),_u.edit==_b+1,"CLICK TO TYPE THE DELAY: 50 HZ FRAMES PER STEP, 1-255, ENTER APPLIES")) {_u.edit=_b+1;_u.text=string(_d[_b+1]);keyboard_string="";}
+    if(scr_anim_asset_button(_x+674,_y,32,"+",false,"INCREASE THE DELAY: MORE 50 HZ FRAMES PER STEP, SLOWER (MAX 255)")) {scr_anim_asset_delay(_a,_u.row,1);return;}
+    if(scr_anim_asset_button(_x+716,_y,85,"LOOP",string(_d[_b+2])=="1","TOGGLE LOOP: ON REPEATS THE ROW, OFF STOPS ON ITS LAST STEP")) {scr_anim_asset_checkpoint(_a);_d[_b+2]=string(_d[_b+2])=="1"?"0":"1";_m.anim_data=_d;scr_anim_asset_changed(_a);}
+    if(scr_anim_asset_button(_x+815,_y,90,"UNDO "+string(array_length(_m.anim_undo)),array_length(_m.anim_undo)>0,"UNDO THE LAST ANIMATION EDIT (CTRL/CMD+Z)")) {scr_anim_asset_history(_a,false);return;}
+    if(scr_anim_asset_button(_x+913,_y,90,"REDO "+string(array_length(_m.anim_redo)),array_length(_m.anim_redo)>0,"REDO THE LAST UNDONE EDIT (CTRL/CMD+Y OR CTRL/CMD+SHIFT+Z)")) {scr_anim_asset_history(_a,true);return;}
     _y+=34;
     // Sprite bank buttons cycle existing project banks; names remain visible.
     var _banks=[],_bank_at=-1;
     with(obj_asset_manager) {for(var _i=0;_i<ds_list_size(asset_list);_i++) {var _bank=asset_list[|_i];if(_bank.type=="SPRITE_SET") array_push(_banks,_bank);}}
     for(var _i=0;_i<array_length(_banks);_i++) if(_banks[_i].name==_m.anim_sprite) _bank_at=_i;
-    var _delta=0;if(scr_anim_asset_button(_x,_y,40,"<")) _delta=-1;if(scr_anim_asset_button(_x+46,_y,40,">")) _delta=1;
+    var _delta=0;if(scr_anim_asset_button(_x,_y,40,"<",false,"PREVIOUS SPRITE BANK (SPRITE_SET ASSET) TO TAKE FRAMES FROM")) _delta=-1;if(scr_anim_asset_button(_x+46,_y,40,">",false,"NEXT SPRITE BANK (SPRITE_SET ASSET) TO TAKE FRAMES FROM")) _delta=1;
     if(_delta!=0 && array_length(_banks)>0) {scr_anim_asset_checkpoint(_a);_bank_at=(_bank_at+_delta+array_length(_banks)) mod array_length(_banks);_m.anim_sprite=_banks[_bank_at].name;_u.scroll=0;scr_anim_asset_changed(_a);}
     draw_set_color(c_white);draw_text_l(_x+96,_y+5,"SPRITE BANK: "+(_m.anim_sprite==""?"choose with < >":_m.anim_sprite));
     _y+=34;draw_text_l(_x,_y+5,"LAYERS:");
-    for(var _s=0;_s<_slots;_s++) if(scr_anim_asset_button(_x+76+_s*46,_y,40,string(_s),_u.slot==_s)) {_u.slot=_s;_u.edit=-1;}
-    if(scr_anim_asset_button(_x+455,_y,38,"-" ) && _slots>1) {scr_anim_asset_checkpoint(_a);_d[2]=_slots-1;_m.anim_data=_d;_u.slot=min(_u.slot,_slots-2);scr_anim_asset_changed(_a);return;}
-    if(scr_anim_asset_button(_x+500,_y,38,"+" ) && _slots<8) {scr_anim_asset_checkpoint(_a);_d[2]=_slots+1;_m.anim_data=_d;scr_anim_asset_changed(_a);return;}
+    for(var _s=0;_s<_slots;_s++) if(scr_anim_asset_button(_x+76+_s*46,_y,40,string(_s),_u.slot==_s,"EDIT THIS LAYER (SPRITE SLOT) - LAYER 0 IS DRAWN IN FRONT")) {_u.slot=_s;_u.edit=-1;}
+    if(scr_anim_asset_button(_x+455,_y,38,"-",false,"REMOVE THE LAST LAYER (MIN 1)") && _slots>1) {scr_anim_asset_checkpoint(_a);_d[2]=_slots-1;_m.anim_data=_d;_u.slot=min(_u.slot,_slots-2);scr_anim_asset_changed(_a);return;}
+    if(scr_anim_asset_button(_x+500,_y,38,"+",false,"ADD A LAYER (MAX 8 SPRITES PER STEP)") && _slots<8) {scr_anim_asset_checkpoint(_a);_d[2]=_slots+1;_m.anim_data=_d;scr_anim_asset_changed(_a);return;}
     _y+=34;
     var _field=_b+3+_u.slot;
-    if(scr_anim_asset_button(_x,_y,_right-_x,"Layer "+string(_u.slot)+" frames: "+string(_d[_field]),_u.edit==_field)) {_u.edit=_field;_u.text=string(_d[_field]);keyboard_string="";}
+    if(scr_anim_asset_button(_x,_y,_right-_x,"Layer "+string(_u.slot)+" frames: "+string(_d[_field]),_u.edit==_field,"CLICK TO TYPE THIS LAYER'S SPRITE INDICES, ONE PER STEP, COMMA SEPARATED - ENTER APPLIES")) {_u.edit=_field;_u.text=string(_d[_field]);keyboard_string="";}
     _y+=30;
     if(_u.edit>=0) {
         _u.text+=keyboard_string;keyboard_string="";
@@ -854,15 +855,15 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     var _lists=[],_len=1;
     for(var _s=0;_s<_slots;_s++) {var _v=scr_anim_set_parse_list(_d[_b+3+_s]);array_push(_lists,_v);_len=max(_len,array_length(_v));}
     _u.frame=clamp(_u.frame,0,_len-1);
-    if(scr_anim_asset_button(_x,_y,94,_u.playing?"PAUSE":"PLAY",_u.playing)) {_u.playing=!_u.playing;_u.tick=current_time;}
-    if(scr_anim_asset_button(_x+102,_y,50,"|<")) {_u.frame=0;_u.tick=current_time;}
-    if(scr_anim_asset_button(_x+160,_y,42,"<")) {_u.frame=max(0,_u.frame-1);_u.playing=false;}
-    if(scr_anim_asset_button(_x+210,_y,42,">")) {_u.frame=min(_len-1,_u.frame+1);_u.playing=false;}
-    if(scr_anim_asset_button(_x+260,_y,100,"+ STEP") && _len<255) {
+    if(scr_anim_asset_button(_x,_y,94,_u.playing?"PAUSE":"PLAY",_u.playing,"PLAY OR PAUSE THE PREVIEW AT PAL 50 HZ USING THE ROW'S DELAY")) {_u.playing=!_u.playing;_u.tick=current_time;}
+    if(scr_anim_asset_button(_x+102,_y,50,"|<",false,"JUMP TO THE FIRST STEP")) {_u.frame=0;_u.tick=current_time;}
+    if(scr_anim_asset_button(_x+160,_y,42,"<",false,"PREVIOUS STEP (STOPS PLAYBACK)")) {_u.frame=max(0,_u.frame-1);_u.playing=false;}
+    if(scr_anim_asset_button(_x+210,_y,42,">",false,"NEXT STEP (STOPS PLAYBACK)")) {_u.frame=min(_len-1,_u.frame+1);_u.playing=false;}
+    if(scr_anim_asset_button(_x+260,_y,100,"+ STEP",false,"ADD A STEP AT THE END, COPYING EACH LAYER'S LAST SPRITE (MAX 255)") && _len<255) {
         scr_anim_asset_checkpoint(_a);for(var _s=0;_s<_slots;_s++) {var _v=_lists[_s];var _last=array_length(_v)>0?_v[array_length(_v)-1]:0;while(array_length(_v)<=_len) array_push(_v,_last);scr_anim_asset_list_set(_a,_u.row,_s,_v);}
         _u.frame=_len;scr_anim_asset_changed(_a);return;
     }
-    if(scr_anim_asset_button(_x+368,_y,100,"- STEP") && _len>1) {scr_anim_asset_checkpoint(_a);for(var _s=0;_s<_slots;_s++) {var _v=_lists[_s];if(_u.frame<array_length(_v)) array_delete(_v,_u.frame,1);scr_anim_asset_list_set(_a,_u.row,_s,_v);}scr_anim_asset_changed(_a);return;}
+    if(scr_anim_asset_button(_x+368,_y,100,"- STEP",false,"DELETE THE CURRENT STEP FROM EVERY LAYER (NEEDS AT LEAST ONE STEP LEFT)") && _len>1) {scr_anim_asset_checkpoint(_a);for(var _s=0;_s<_slots;_s++) {var _v=_lists[_s];if(_u.frame<array_length(_v)) array_delete(_v,_u.frame,1);scr_anim_asset_list_set(_a,_u.row,_s,_v);}scr_anim_asset_changed(_a);return;}
     if(_u.playing && current_time-_u.tick>=max(1,real(_d[_b+1]))*20) {_u.tick=current_time;_u.frame++;if(_u.frame>=_len) {if(string(_d[_b+2])=="1") _u.frame=0;else {_u.frame=_len-1;_u.playing=false;}}}
     draw_set_color(c_white);draw_text_l(_x+480,_y+6,"STEP "+string(_u.frame+1)+" / "+string(_len)+"   Preview: PAL 50 Hz");_y+=35;
     var _bank=(_bank_at>=0)?_banks[_bank_at]:undefined;
@@ -874,6 +875,7 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
         draw_set_color(_t==_u.frame?make_color_rgb(40,130,95):make_color_rgb(65,75,85));draw_rectangle(_tx,_y,_tx+80,_y+85,false);
         for(var _s=_slots-1;_s>=0;_s--) {var _v=_lists[_s];if(array_length(_v)>0) {var _vi=string(_d[_b+2])=="1"?(_t mod array_length(_v)):min(_t,array_length(_v)-1);scr_anim_asset_thumbnail(_bank,_v[_vi],_tx+16,_y+4,48,42);}}
         draw_set_color(c_white);draw_text_l(_tx+6,_y+53,"Step "+string(_t+1));
+        scr_ui_info(point_in_rectangle(_mx,_my,_tx,_y,_tx+80,_y+85),"TIMELINE: CLICK A STEP TO SELECT IT - THE SPRITE GRID THEN SETS THAT STEP");
         if(mouse_check_button_pressed(mb_left) && point_in_rectangle(_mx,_my,_tx,_y,_tx+80,_y+85)) {_u.frame=_t;_u.playing=false;}
     }
     _y+=98;
@@ -881,10 +883,12 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     draw_set_color(make_color_rgb(85,95,105));draw_rectangle(_right-210,_y,_right,_y+210,false);
     for(var _s=_slots-1;_s>=0;_s--) {var _v=_lists[_s];if(array_length(_v)>0) {var _ix=string(_d[_b+2])=="1"?(_u.frame mod array_length(_v)):min(_u.frame,array_length(_v)-1);scr_anim_asset_thumbnail(_bank,_v[_ix],_right-195,_y+20,180,158);}}
     draw_set_color(c_white);draw_text_l(_right-204,_y+185,"LAYERS TOGETHER");
+    scr_ui_info(point_in_rectangle(_mx,_my,_right-210,_y,_right,_y+210),"PREVIEW OF ALL LAYERS AT THE CURRENT STEP, LAYER 0 IN FRONT (DISPLAY ONLY)");
     var _grid_right=_right-230,_cols=max(1,floor((_grid_right-_x)/76)),_cell=76;
     var _grid_rows=max(1,floor((_y2-55-_y)/76));
     var _count=is_undefined(_bank)?0:(buffer_exists(_bank.buffer)?min(256,buffer_get_size(_bank.buffer) div 64):0);
     var _max_scroll=max(0,ceil(_count/_cols)-_grid_rows);
+    scr_ui_info(point_in_rectangle(_mx,_my,_x,_y,_grid_right,_y2-55),_u.edit<0?"SPRITE BANK: CLICK A SPRITE TO PUT IT IN THE CURRENT LAYER AND STEP  |  WHEEL: SCROLL":"FINISH THE TEXT EDIT (ENTER) BEFORE PICKING SPRITES  |  WHEEL: SCROLL");
     if(point_in_rectangle(_mx,_my,_x,_y,_grid_right,_y2-55)) _u.scroll=clamp(_u.scroll+mouse_wheel_down()-mouse_wheel_up(),0,_max_scroll);
     var _values=_lists[_u.slot],_current=-1;
     if(array_length(_values)>0) _current=_values[min(_u.frame,array_length(_values)-1)];

@@ -329,8 +329,9 @@ function scr_bmpobj_auto_mask(_asset, _o) {
 }
 
 /// Small UI helpers for the editor (immediate mode, return true on click).
-function scr_bmpobj_ui_button(_x1, _y1, _w, _h, _label, _on, _mx, _my) {
+function scr_bmpobj_ui_button(_x1, _y1, _w, _h, _label, _on, _mx, _my, _info = "") {
     var _hov = point_in_rectangle(_mx, _my, _x1, _y1, _x1 + _w, _y1 + _h);
+    scr_ui_info(_hov, _info);
     var _bg = make_color_rgb(31, 38, 54);
     if (_hov) { _bg = make_color_rgb(53, 61, 82); }
     if (_on)  { _bg = make_color_rgb(38, 94, 111); }
@@ -358,16 +359,17 @@ function scr_bmpobj_ui_panel(_x1, _y1, _x2, _y2, _title) {
 }
 
 /// Colour picker row: label, < swatch >. Returns the new colour index.
-function scr_bmpobj_ui_colour(_x, _y, _label, _col, _mx, _my) {
+function scr_bmpobj_ui_colour(_x, _y, _label, _col, _mx, _my, _info = "") {
     draw_set_color(make_color_rgb(154, 175, 198));
     draw_text_l(_x, _y + 8, _label);
     var _bx = _x + 50;
-    if (scr_bmpobj_ui_button(_bx, _y, 22, 24, "<", false, _mx, _my)) { _col = (_col + 15) mod 16; }
+    scr_ui_info(point_in_rectangle(_mx, _my, _bx + 28, _y, _bx + 64, _y + 24), _info);
+    if (scr_bmpobj_ui_button(_bx, _y, 22, 24, "<", false, _mx, _my, _info)) { _col = (_col + 15) mod 16; }
     draw_set_color(scr_c64_pepto_colour(_col));
     draw_rectangle(_bx + 28, _y, _bx + 64, _y + 24, false);
     draw_set_color(c_white);
     draw_rectangle(_bx + 28, _y, _bx + 64, _y + 24, true);
-    if (scr_bmpobj_ui_button(_bx + 70, _y, 22, 24, ">", false, _mx, _my)) { _col = (_col + 1) mod 16; }
+    if (scr_bmpobj_ui_button(_bx + 70, _y, 22, 24, ">", false, _mx, _my, _info)) { _col = (_col + 1) mod 16; }
     return _col;
 }
 
@@ -412,13 +414,16 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _x += 52;
     var _lnames = ["GFX", "MASK", "COMPOSITE"];
     var _lw = [56, 62, 100];
+    var _linfo = ["SHOW AND PAINT THE GRAPHICS PLANE: LMB SETS INK PIXELS, RMB CLEARS THEM",
+        "SHOW AND PAINT THE MASK PLANE: LMB MAKES PIXELS SOLID, RMB MAKES THEM TRANSPARENT",
+        "SHOW GFX AND MASK TOGETHER: LMB INK, RMB TRANSPARENT, SHIFT+RMB SOLID BLACK"];
     // only the three editor views get buttons (layers 3-5 are map-overlay surfaces)
     for (var _l = 0; _l < array_length(_lnames); _l++) {
-        if (scr_bmpobj_ui_button(_x, _top, _lw[_l], _tb_h, _lnames[_l], _m.layer == _l, _mx, _my)) { _m.layer = _l; }
+        if (scr_bmpobj_ui_button(_x, _top, _lw[_l], _tb_h, _lnames[_l], _m.layer == _l, _mx, _my, _linfo[_l])) { _m.layer = _l; }
         _x += _lw[_l] + 4;
     }
     _x += 16;
-    if (scr_bmpobj_ui_button(_x, _top, 100, _tb_h, "AUTO MASK", false, _mx, _my)) {
+    if (scr_bmpobj_ui_button(_x, _top, 100, _tb_h, "AUTO MASK", false, _mx, _my, "REBUILD THIS PART'S MASK FROM ITS GRAPHICS WITH A 1-PIXEL OUTLINE (REPLACES THE MASK)")) {
         scr_bmpobj_auto_mask(_asset, _o);
         scr_bmpobj_cache_dirty(_asset, _m.sel);
         global.addresses_dirty = true;
@@ -427,16 +432,16 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(make_color_rgb(154, 175, 198));
     draw_text_l(_x, _top + 9, "ZOOM");
     _x += 44;
-    if (scr_bmpobj_ui_button(_x, _top, 24, _tb_h, "-", false, _mx, _my)) { _m.zoom = max(2, _m.zoom - 2); }
+    if (scr_bmpobj_ui_button(_x, _top, 24, _tb_h, "-", false, _mx, _my, "ZOOM THE EDIT CANVAS OUT (MIN 2X)")) { _m.zoom = max(2, _m.zoom - 2); }
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_x + 44, _top + 9, string(_m.zoom) + "x");
     draw_set_halign(fa_left);
-    if (scr_bmpobj_ui_button(_x + 64, _top, 24, _tb_h, "+", false, _mx, _my)) { _m.zoom = min(24, _m.zoom + 2); }
+    if (scr_bmpobj_ui_button(_x + 64, _top, 24, _tb_h, "+", false, _mx, _my, "ZOOM THE EDIT CANVAS IN (MAX 24X, SHRINKS TO FIT THE PANEL)")) { _m.zoom = min(24, _m.zoom + 2); }
     _x += 108;
-    var _ink = scr_bmpobj_ui_colour(_x, _top, "INK", _m.ink, _mx, _my);
+    var _ink = scr_bmpobj_ui_colour(_x, _top, "INK", _m.ink, _mx, _my, "EDITOR PREVIEW INK COLOUR FOR DRAWING PARTS - < > STEP THROUGH 16 COLOURS");
     _x += 160;
-    var _paper = scr_bmpobj_ui_colour(_x, _top, "PAPER", _m.paper, _mx, _my);
+    var _paper = scr_bmpobj_ui_colour(_x, _top, "PAPER", _m.paper, _mx, _my, "EDITOR PREVIEW PAPER COLOUR FOR DRAWING PARTS - < > STEP THROUGH 16 COLOURS");
     _m.ink = _ink;
     _m.paper = _paper;
 
@@ -456,6 +461,7 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _row_h = 18;
     var _ly = _ptop + 26;
     var _rows = max(1, floor((_bottom - _ly - 4) / _row_h));
+    scr_ui_info(point_in_rectangle(_mx, _my, _lx1, _ly, _lx2, _bottom), "PARTS: CLICK A PART TO EDIT IT  |  WHEEL: SCROLL THE LIST");
     if (point_in_rectangle(_mx, _my, _lx1, _ly, _lx2, _bottom)) {
         if (mouse_wheel_down()) { _m.list_scroll = min(_m.list_scroll + 3, max(0, _n - _rows)); }
         if (mouse_wheel_up())   { _m.list_scroll = max(_m.list_scroll - 3, 0); }
@@ -516,6 +522,17 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // prop with gfx = none can still have its mask edited).
     var _read_only = (scr_bmpobj_byte_off(_asset, _o, _o.gfx_ptr, 0, 0) < 0)
                   && (scr_bmpobj_byte_off(_asset, _o, _o.mask_ptr, 0, 0) < 0);
+    if (point_in_rectangle(_mx, _my, _gx, _gy, _gx + _pw * _s - 1, _gy + _ph * _s - 1)) {
+        if (_read_only) {
+            scr_ui_info(true, "READ ONLY: THIS PART'S GRAPHICS AND MASK LIVE OUTSIDE THIS ASSET");
+        } else if (_m.layer == 0) {
+            scr_ui_info(true, "GFX CANVAS: LMB PAINTS INK PIXELS, RMB CLEARS THEM (HOLD AND DRAG)");
+        } else if (_m.layer == 1) {
+            scr_ui_info(true, "MASK CANVAS: LMB MAKES PIXELS SOLID, RMB MAKES THEM TRANSPARENT (HOLD AND DRAG)");
+        } else {
+            scr_ui_info(true, "COMPOSITE CANVAS: LMB INK, RMB TRANSPARENT, SHIFT+RMB SOLID BLACK (HOLD AND DRAG)");
+        }
+    }
     if (!_read_only && point_in_rectangle(_mx, _my, _gx, _gy, _gx + _pw * _s - 1, _gy + _ph * _s - 1)) {
         var _px = floor((_mx - _gx) / _s);
         var _py = floor((_my - _gy) / _s);
@@ -582,7 +599,7 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // Emitted as one byte per object at colour_addr when that is set.
     var _ccol = scr_bmpobj_get_colour(_asset, _m.sel);
     var _ccx = _ex2 - 190;
-    if (scr_bmpobj_ui_button(_ccx, _iy + 6, 80, 20, "AUTO COL", _ccol < 0, _mx, _my)) {
+    if (scr_bmpobj_ui_button(_ccx, _iy + 6, 80, 20, "AUTO COL", _ccol < 0, _mx, _my, "TOGGLE: AUTO TAKES THE SCREEN CELLS' COLOURS, OFF GIVES THIS PART A FIXED INK/PAPER")) {
         if (_ccol < 0) {
             scr_bmpobj_set_colour(_asset, _m.sel, (1 << 4) | 0);
         } else {
@@ -591,8 +608,8 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         scr_bmpobj_cache_dirty(_asset, _m.sel);
     }
     if (_ccol >= 0) {
-        var _cink = scr_bmpobj_ui_colour(_ccx, _iy + 32, "INK", (_ccol >> 4) & 0x0F, _mx, _my);
-        var _cpap = scr_bmpobj_ui_colour(_ccx, _iy + 60, "PAPER", _ccol & 0x0F, _mx, _my);
+        var _cink = scr_bmpobj_ui_colour(_ccx, _iy + 32, "INK", (_ccol >> 4) & 0x0F, _mx, _my, "THIS PART'S FIXED INK COLOUR (STORED IN ITS COLOUR BYTE) - < > STEP THROUGH 16 COLOURS");
+        var _cpap = scr_bmpobj_ui_colour(_ccx, _iy + 60, "PAPER", _ccol & 0x0F, _mx, _my, "THIS PART'S FIXED PAPER COLOUR (STORED IN ITS COLOUR BYTE) - < > STEP THROUGH 16 COLOURS");
         var _cnew = (_cink << 4) | _cpap;
         if (_cnew != _ccol) {
             scr_bmpobj_set_colour(_asset, _m.sel, _cnew);
@@ -608,14 +625,15 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // ── SHEET PANEL ──
     scr_bmpobj_ui_panel(_sx1, _ptop, _sx2, _bottom, "SHEET  - click a part to edit it, wheel scrolls");
     var _have_poses = (array_length(_m.poses) > 0);
-    if (scr_bmpobj_ui_button(_sx2 - 190, _ptop + 2, 88, 17, "PARTS", _m.sheet_mode == 0, _mx, _my)) { _m.sheet_mode = 0; _m.sheet_scroll = 0; }
+    if (scr_bmpobj_ui_button(_sx2 - 190, _ptop + 2, 88, 17, "PARTS", _m.sheet_mode == 0, _mx, _my, "SHEET SHOWS EVERY PART ON ITS OWN")) { _m.sheet_mode = 0; _m.sheet_scroll = 0; }
     if (_have_poses) {
-        if (scr_bmpobj_ui_button(_sx2 - 96, _ptop + 2, 88, 17, "POSES", _m.sheet_mode == 1, _mx, _my)) { _m.sheet_mode = 1; _m.sheet_scroll = 0; }
+        if (scr_bmpobj_ui_button(_sx2 - 96, _ptop + 2, 88, 17, "POSES", _m.sheet_mode == 1, _mx, _my, "SHEET SHOWS EACH POSE AS ITS PARTS STACKED TOP TO BOTTOM")) { _m.sheet_mode = 1; _m.sheet_scroll = 0; }
     } else {
         _m.sheet_mode = 0;
     }
     var _st = _ptop + 28;
     var _sb = _bottom - 6;
+    scr_ui_info(point_in_rectangle(_mx, _my, _sx1, _st, _sx2, _sb), "SHEET: CLICK A PART TO SELECT IT FOR EDITING  |  WHEEL: SCROLL");
     if (point_in_rectangle(_mx, _my, _sx1, _st, _sx2, _sb)) {
         if (mouse_wheel_down()) { _m.sheet_scroll += 48; }
         if (mouse_wheel_up())   { _m.sheet_scroll = max(0, _m.sheet_scroll - 48); }

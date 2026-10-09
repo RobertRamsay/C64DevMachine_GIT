@@ -40,8 +40,52 @@ function scr_sfx_maker_create(_a) {
 function scr_mm_info(_hot, _text) {
     if (_hot && _text != "") {
         global.mm_info = _text;
+        global.ui_info = _text;
     }
     return _hot;
+}
+
+/// Editor INFO strip: a control calls this with its hover flag and what it
+/// does; the asset viewer shows the last one set this frame under its panel.
+/// Returns _hot so it can wrap a hover test.
+function scr_ui_info(_hot, _text) {
+    if (_hot && _text != "") {
+        global.ui_info = _text;
+    }
+    return _hot;
+}
+
+/// Draw the INFO strip in the rect given (GUI space). Long text is trimmed.
+function scr_ui_info_draw(_x1, _y1, _x2, _y2) {
+    var _txt = variable_global_exists("ui_info") ? global.ui_info : "";
+    draw_set_alpha(1);
+    draw_set_color(make_color_rgb(14, 14, 22));
+    draw_rectangle(_x1, _y1, _x2, _y2, false);
+    draw_set_color(make_color_rgb(50, 50, 70));
+    draw_rectangle(_x1, _y1, _x2, _y2, true);
+    draw_set_font_l(fnt_c64_tiny);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_middle);
+    var _cy = (_y1 + _y2) * 0.5;
+    var _tx = _x1 + 10 + string_width_l("INFO: ");
+    if (_txt == "") {
+        draw_set_color(make_color_rgb(90, 90, 120));
+        draw_text_l(_x1 + 10, _cy, "INFO:");
+        draw_text_l(_tx, _cy, "HOVER A BUTTON TO SEE WHAT IT DOES");
+    } else {
+        var _room = _x2 - 10 - _tx;
+        if (string_width_l(_txt) > _room) {
+            while (string_length(_txt) > 1 && string_width_l(_txt + "..") > _room) {
+                _txt = string_copy(_txt, 1, string_length(_txt) - 1);
+            }
+            _txt += "..";
+        }
+        draw_set_color(make_color_rgb(255, 200, 60));
+        draw_text_l(_x1 + 10, _cy, "INFO:");
+        draw_set_color(c_white);
+        draw_text_l(_tx, _cy, _txt);
+    }
+    draw_set_valign(fa_top);
 }
 
 /// What a scr_sfx_maker_button does, by its label ("" if not known).
@@ -96,25 +140,25 @@ function scr_sfx_maker_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
         var _e=_m.instruments[_m.sel_instr];
         // ADD/PASTE may have created this effect during the shared panel draw.
         scr_sfx_maker_defaults(_a);
-        if(scr_sfx_maker_button(_rx,_ry,110,"PREVIEW",_mx,_my)) {
+        if(scr_sfx_maker_button(_rx,_ry,110,"PREVIEW",_mx,_my,"PLAYS THE SELECTED EFFECT AT ITS BASE NOTE ON PREVIEW VOICE 3 (COMMITS TEXT EDITS FIRST)")) {
             if(_m.instr_edit_active) scr_sound_editor_commit_instrument(_m,_e);
             scr_sound_instrument_preview_play(_e,_e.sfx_note,2,5);
         }
-        if(scr_sfx_maker_button(_rx+120,_ry,100,"STOP",_mx,_my)) scr_sound_preview_free_channel(2);
+        if(scr_sfx_maker_button(_rx+120,_ry,100,"STOP",_mx,_my,"STOPS THE EFFECT PREVIEW")) scr_sound_preview_free_channel(2);
         _ry+=42;
         draw_set_color(c_white);draw_text_l(_rx,_ry,"BASE NOTE: "+_e.sfx_note);
-        if(scr_sfx_maker_button(_rx,_ry+24,100,"NOTE -",_mx,_my)) {
+        if(scr_sfx_maker_button(_rx,_ry+24,100,"NOTE -",_mx,_my,"LOWERS THE EFFECT BASE NOTE BY ONE SEMITONE (N COMMANDS ARE RELATIVE TO IT)")) {
             var _n=clamp(scr_sid_song_note_index(_e.sfx_note)-1,0,95);
             var _names=["C-","C#","D-","D#","E-","F-","F#","G-","G#","A-","A#","B-"];
             _e.sfx_note=_names[_n mod 12]+string(_n div 12);global.addresses_dirty=true;global.undo_dirty=true;
         }
-        if(scr_sfx_maker_button(_rx+110,_ry+24,100,"NOTE +",_mx,_my)) {
+        if(scr_sfx_maker_button(_rx+110,_ry+24,100,"NOTE +",_mx,_my,"RAISES THE EFFECT BASE NOTE BY ONE SEMITONE (N COMMANDS ARE RELATIVE TO IT)")) {
             var _n=clamp(scr_sid_song_note_index(_e.sfx_note)+1,0,95);
             var _names=["C-","C#","D-","D#","E-","F-","F#","G-","G#","A-","A#","B-"];
             _e.sfx_note=_names[_n mod 12]+string(_n div 12);global.addresses_dirty=true;global.undo_dirty=true;
         }
         _ry+=72;
-        if(scr_sfx_maker_button(_rx,_ry,250,"PRIORITY: "+string(_e.sfx_priority),_mx,_my)) {
+        if(scr_sfx_maker_button(_rx,_ry,250,"PRIORITY: "+string(_e.sfx_priority),_mx,_my,"CYCLES PRIORITY 1-15: HIGHER INTERRUPTS LOWER, EQUAL RESTARTS, LOWER IS IGNORED")) {
             _e.sfx_priority=(_e.sfx_priority mod 15)+1;global.addresses_dirty=true;global.undo_dirty=true;
         }
         _ry+=42;
@@ -122,7 +166,7 @@ function scr_sfx_maker_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
         draw_set_color(c_white);draw_text_l(_rx,_ry,"LENGTH: "+string(array_length(_frames))+" FRAMES (PAL)");
     }
     _ry=_cy+320;
-    if(scr_sfx_maker_button(_rx,_ry,250,"SID CHIP: "+string(_m.sfx_chip+1),_mx,_my)) {
+    if(scr_sfx_maker_button(_rx,_ry,250,"SID CHIP: "+string(_m.sfx_chip+1),_mx,_my,"CYCLES WHICH SID CHIP (1-4) THE COMPILED EFFECTS WRITE TO")) {
         _m.sfx_chip=(_m.sfx_chip+1) mod 4;global.addresses_dirty=true;global.undo_dirty=true;
     }
     draw_set_color(c_silver);
