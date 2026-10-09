@@ -1,0 +1,722 @@
+diff --git a/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml b/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
+index d9a8aa9..61a90ab 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_music_digi/scr_music_digi.gml
+@@ -417,6 +417,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
+     var _by1 = _gy0 - 22;
+     var _by2 = _gy0 - 5;
+     var _bhov = point_in_rectangle(_mx, _my, _x, _by1, _x + _w, _by2);
++    scr_mm_info(_bhov, "OPENS / CLOSES THE DIGI SAMPLES PANEL: SAMPLE SLOTS, RATE, BOOST, SPEED");
+     var _bcol = make_color_rgb(120, 40, 80);
+     if (_bhov || _m.dg_slots_open) {
+         _bcol = make_color_rgb(190, 70, 120);
+@@ -442,6 +443,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
+     if (_pat != noone) {
+         var _lx = _x;
+         var _lhov = point_in_rectangle(_mx, _my, _lx, _hy - 4, _lx + 12, _hy + 10);
++        scr_mm_info(_lhov, "DIGI PATTERN LENGTH: 4 ROWS SHORTER (4-128)");
+         draw_set_color(_c_btn);
+         if (_lhov) {
+             draw_set_color(c_aqua);
+@@ -457,6 +459,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
+         draw_text_l(_lx + 12, _hy, string(_pat.pattern_len));
+         var _rx = _lx + 34;
+         var _rhov = point_in_rectangle(_mx, _my, _rx, _hy - 4, _rx + 12, _hy + 10);
++        scr_mm_info(_rhov, "DIGI PATTERN LENGTH: 4 ROWS LONGER (4-128)");
+         draw_set_color(_c_btn);
+         if (_rhov) {
+             draw_set_color(c_aqua);
+@@ -474,6 +477,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
+         // NEW: make a digi pattern and put it on the selected order row.
+         var _nx = _x;
+         var _nhov = point_in_rectangle(_mx, _my, _nx, _hy - 4, _nx + 34, _hy + 10);
++        scr_mm_info(_nhov, "MAKES A NEW DIGI PATTERN AND PUTS IT ON THE SELECTED ORDER ROW");
+         draw_set_color(_c_btn);
+         if (_nhov) {
+             draw_set_color(c_aqua);
+@@ -510,6 +514,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
+         var _ry = _gy0 + _r * _row_h;
+         var _x2 = _x + _w;
+         var _hov = point_in_rectangle(_mx, _my, _x, _ry, _x2, _ry + _row_h);
++        scr_mm_info(_hov && _pat != noone, (_mx >= _x + 84) ? "DIGI COMMAND CELL: CLICK, TYPE F01-F1F (OWN SPEED) OR F00 (SONG ROWS). RMB CLEARS IT" : "DIGI CELL: CLICK SELECTS (SHIFT EXTENDS), TYPE A NOTE TO PLACE THE CURRENT SAMPLE. RMB CLEARS");
+         if (_hov) {
+             _in_lane = true;
+         }
+@@ -1039,6 +1044,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+     scr_digi_text_fit(_x1 + 10, _y1 + 8, "DIGI SAMPLES", _x2 - (_x1 + 10) - 8);
+     var _cx = _x2 - 22;
+     var _chov = point_in_rectangle(_mx, _my, _cx, _y1 + 4, _cx + 16, _y1 + 20);
++    scr_mm_info(_chov, "CLOSES THE DIGI SAMPLES PANEL");
+     draw_set_color(c_ltgray);
+     if (_chov) {
+         draw_set_color(c_white);
+@@ -1061,12 +1067,14 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+             _ri = _i;
+         }
+     }
++    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60, _ry - 4, _x1 + 78, _ry + 12), "DIGI SAMPLE RATE: ONE PRESET LOWER (SMALLER SAMPLES, LESS CPU)");
+     if (scr_sample_button(_x1 + 60, _ry - 4, 18, 16, "<", false, (_ri > 0), _mx, _my)) {
+         _m.digi_rate = _rates[_ri - 1];
+         global.undo_dirty = true;
+     }
+     draw_set_color(c_white);
+     scr_digi_text_fit(_x1 + 86, _ry, string(_m.digi_rate) + " HZ", _x2 - (_x1 + 86) - 8);
++    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 160, _ry - 4, _x1 + 178, _ry + 12), "DIGI SAMPLE RATE: ONE PRESET HIGHER (BETTER SOUND, BIGGER, MORE CPU)");
+     if (scr_sample_button(_x1 + 160, _ry - 4, 18, 16, ">", false, (_ri < array_length(_rates) - 1), _mx, _my)) {
+         _m.digi_rate = _rates[_ri + 1];
+         global.undo_dirty = true;
+@@ -1082,6 +1090,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+     scr_digi_text_fit(_x1 + 10, _by, "BOOST", _x2 - (_x1 + 10) - 8);
+     var _bnames = ["OFF", "V1", "V2", "V3"];
+     for (var _bi = 0; _bi < 4; _bi++) {
++        scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60 + _bi * 40, _by - 4, _x1 + 96 + _bi * 40, _by + 12), (_bi == 0) ? "BOOST OFF: NO VOICE IS USED TO MAKE DIGIS LOUDER" : "BOOST: HOLDS VOICE " + string(_bi) + " AT FULL DC SO DIGIS ARE LOUDER; IT IS MUTED ON THE C64");
+         if (scr_sample_button(_x1 + 60 + _bi * 40, _by - 4, 36, 16, _bnames[_bi], (_m.digi_boost == _bi), true, _mx, _my)) {
+             _m.digi_boost = _bi;
+             global.undo_dirty = true;
+@@ -1101,6 +1110,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+     var _spy = _by + 22;
+     draw_set_color(make_color_rgb(140, 150, 180));
+     scr_digi_text_fit(_x1 + 10, _spy, "SPEED", _x2 - (_x1 + 10) - 8);
++    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60, _spy - 4, _x1 + 78, _spy + 12), "DIGI SPEED: ONE FRAME PER DIGI ROW LESS (0 = GO WITH THE SONG ROWS)");
+     if (scr_sample_button(_x1 + 60, _spy - 4, 18, 16, "<", false, (_m.digi_speed > 0), _mx, _my)) {
+         _m.digi_speed -= 1;
+         global.undo_dirty = true;
+@@ -1112,6 +1122,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+     } else {
+         scr_digi_text_fit(_x1 + 86, _spy, string(_m.digi_speed) + " FR", _x2 - (_x1 + 86) - 8);
+     }
++    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 160, _spy - 4, _x1 + 178, _spy + 12), "DIGI SPEED: ONE FRAME PER DIGI ROW MORE (OWN TEMPO, UP TO 31)");
+     if (scr_sample_button(_x1 + 160, _spy - 4, 18, 16, ">", false, (_m.digi_speed < 31), _mx, _my)) {
+         _m.digi_speed += 1;
+         global.undo_dirty = true;
+@@ -1135,6 +1146,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+         }
+         // The slot number picks the CURRENT slot: what note entry places.
+         var _nhov = point_in_rectangle(_mx, _my, _x1 + 4, _sy, _x1 + 32, _sy + 17);
++        scr_mm_info(_nhov, "MAKES SLOT " + _num + " THE CURRENT SLOT (WHAT NOTE ENTRY PLACES)");
+         if (_s == _m.dg_cur_slot) {
+             draw_set_color(make_color_rgb(190, 70, 120));
+             draw_rectangle(_x1 + 4, _sy, _x1 + 32, _sy + 17, false);
+@@ -1151,6 +1163,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+         var _bx1 = _x1 + 36;
+         var _bx2 = _x2 - 40;
+         var _hov = point_in_rectangle(_mx, _my, _bx1, _sy, _bx2, _sy + 17);
++        scr_mm_info(_hov, "SLOT " + _num + ": CLICK PICKS THE NEXT SAMPLE ASSET, RMB EMPTIES THE SLOT");
+         draw_set_color(make_color_rgb(30, 28, 44));
+         if (_hov) {
+             draw_set_color(make_color_rgb(56, 50, 80));
+@@ -1199,6 +1212,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+             global.undo_dirty = true;
+         }
+         if (!is_undefined(_a)) {
++            scr_mm_info(point_in_rectangle(_mx, _my, _x2 - 34, _sy, _x2 - 10, _sy + 17), "PLAYS THIS SLOT'S SAMPLE AT ITS OWN PITCH");
+             if (scr_sample_button(_x2 - 34, _sy, 24, 17, ">", false, true, _mx, _my)) {
+                 // Slot preview: play at the sample's own pitch
+                 scr_digi_play_step(_m, { smp: _s, vol: 3, note: DIGI_NOTE_BASE });
+@@ -1221,6 +1235,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
+         _worst = max(_worst, _chk[_ci].lvl);
+     }
+     var _chk_hov = point_in_rectangle(_mx, _my, _x1 + 4, _y2 - 20, _x2 - 4, _y2 - 4);
++    scr_mm_info(_chk_hov, "PROJECT CHECK: WHETHER THIS PROJECT LEAVES ROOM FOR SAMPLES (HOVER FOR ADVICE)");
+     if (_worst == 0) {
+         draw_set_color(make_color_rgb(120, 200, 120));
+         scr_digi_text_fit(_x1 + 10, _y2 - 18, "PROJECT CHECK: OK FOR SAMPLES", _x2 - (_x1 + 10) - 8);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sfx_maker/scr_sfx_maker.gml b/C64DevMachine_win.yyp/scripts/scr_sfx_maker/scr_sfx_maker.gml
+index 262ed75..53b269e 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sfx_maker/scr_sfx_maker.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sfx_maker/scr_sfx_maker.gml
+@@ -35,8 +35,49 @@ function scr_sfx_maker_create(_a) {
+     scr_sfx_maker_defaults(_a);
+ }
+ 
+-function scr_sfx_maker_button(_x,_y,_w,_text,_mx,_my) {
++/// Music Maker hover INFO line: a control calls this with its hover flag and
++/// a description; the editor shows the last one set this frame at the top.
++function scr_mm_info(_hot, _text) {
++    if (_hot && _text != "") {
++        global.mm_info = _text;
++    }
++    return _hot;
++}
++
++/// What a scr_sfx_maker_button does, by its label ("" if not known).
++function scr_mm_button_info(_label) {
++    switch (_label) {
++        case "SMP ON":
++        case "SMP OFF":           return "TURNS THE DIGI SAMPLE TRACK ON/OFF, IN THE PREVIEW AND THE COMPILED TUNE";
++        case "CHIP: 6581":
++        case "CHIP: 8580":        return "SWITCHES THE PREVIEW SID MODEL (6581 / 8580), SAVED WITH THE SONG; STOPS PLAYBACK";
++        case "EXPORT SID":        return "SAVES THIS TUNE AS A STANDALONE .SID FILE";
++        case "EXPORT MM":         return "SAVES THIS MUSIC MAKER ASSET AS A .C64MM FILE TO IMPORT IN ANOTHER PROJECT";
++        case "REBUILD":           return "SAVES THE PROJECT, THEN RUNS ITS MUSIC REBUILD COMMAND AND WAITS FOR THE RESULT";
++        case "TIMING: SHARED":    return "TIMING: ONE ROW CLOCK FOR ALL VOICES. CLICK FOR PER VOICE (STOPS PLAYBACK)";
++        case "TIMING: PER VOICE": return "TIMING: EACH VOICE HAS ITS OWN ORDER COLUMN + SPEED. CLICK FOR SHARED (STOPS PLAYBACK)";
++        case "GENERATE NODES":    return "CREATES OR UPDATES THE WORKSPACE NODES THAT PLAY THIS SONG";
++        case "+ PRESETS":         return "OPENS THE PRESET LIST: ADD READY-MADE INSTRUMENTS (EXISTING ONES STAY)";
++        case "CLOSE PRESETS":     return "CLOSES THE PRESET LIST AND RETURNS TO THE INSTRUMENT LIST";
++        case "TABLE SIZE":        return "SHOWS HOW MANY BYTES THE SHARED INSTRUMENT COMMAND TABLES TAKE AND SAVE";
++        case "CMD:WAVE":          return "WAVE: PICK A WAVEFORM COMMAND ($11 TRI, $21 SAW, $41 PULSE...) TO INSERT";
++        case "CMD:NOTE":          return "NOTE: PICK A PITCH STEP (N, N+12, N-1...) TO INSERT AT THE TEXT CURSOR";
++        case "CMD:HOLD":          return "HOLD: PICK A DN WAIT (FRAMES BEFORE THE NEXT STEP) TO INSERT";
++        case "CMD:LOOP":          return "LOOP: PICK AN LN JUMP BACK TO A STEP (OR AN R REPEAT) TO INSERT";
++        case "CMD:FINE":          return "FINE: PICK A FINE PITCH / PULSE / SLIDE / GATE / RESTART COMMAND TO INSERT";
++        case "CMD:END":           return "END: OFFERS --- (GATE OFF + STOP, THE NOTE RELEASES) TO INSERT";
++        case "CMD:?":             return "SHOWS / HIDES THE TABLE OF EVERY INSTRUMENT COMMAND, WITH EXAMPLES";
++    }
++    return "";
++}
++
++/// _info: optional INFO-line text; "" looks the label up in scr_mm_button_info.
++function scr_sfx_maker_button(_x,_y,_w,_text,_mx,_my,_info="") {
+     var _hot=point_in_rectangle(_mx,_my,_x,_y,_x+_w,_y+26);
++    if (_info == "") {
++        _info = scr_mm_button_info(_text);
++    }
++    scr_mm_info(_hot, _info);
+     draw_set_color(_hot?make_color_rgb(65,80,100):make_color_rgb(30,38,52));
+     draw_rectangle(_x,_y,_x+_w,_y+26,false);
+     draw_set_color(c_white);draw_text_l(_x+8,_y+5,_text);
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
+index e8e18fd..28009ba 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_cmd_menu/scr_sound_editor_cmd_menu.gml
+@@ -179,6 +179,7 @@ function scr_sound_editor_cmd_bar(_m, _instr, _x0, _x1, _y, _bx0, _by0, _bx1, _b
+             for (var _i = 0; _i < array_length(_its); _i++) {
+                 var _iy = _ly1 + 2 + _i * _row_h;
+                 var _hov = point_in_rectangle(_mx, _my, _lx1, _iy, _lx1 + _lw, _iy + _row_h - 1);
++                scr_mm_info(_hov, "INSERTS " + _its[_i].ins + " (" + _its[_i].label + ") AT THE TEXT CURSOR");
+                 if (_hov) {
+                     draw_set_color(make_color_rgb(50, 50, 90));
+                     draw_rectangle(_lx1 + 1, _iy, _lx1 + _lw - 1, _iy + _row_h - 1, false);
+@@ -220,6 +221,7 @@ function scr_sound_editor_cmd_bar(_m, _instr, _x0, _x1, _y, _bx0, _by0, _bx1, _b
+             _on = (_open == _i);
+         }
+         var _hv = point_in_rectangle(_mx, _my, _x, _yy, _x + _w, _yy + _bh);
++        scr_mm_info(_hv, scr_mm_button_info("CMD:" + _lab));
+         if (_hv || _on) {
+             draw_set_color(make_color_rgb(60, 60, 110));
+         } else {
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
+index 3c24ffc..5a68607 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_draw_instruments/scr_sound_editor_draw_instruments.gml
+@@ -97,6 +97,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+         draw_text_l(_ix0 + 36, _iry + 4, _list_name);
+ 
+         var _row_hov = point_in_rectangle(_mx, _my, _ix0, _iry, _ix0 + _list_w - 14, _iry + _list_row_h);
++        scr_mm_info(_row_hov, "INSTRUMENT " + _id_str + ": CLICK SELECTS IT FOR NOTE ENTRY, DOUBLE-CLICK RENAMES IT");
+         if (_row_hov && mouse_check_button_pressed(mb_left)) {
+             var _instr_dbl = (_m.instr_last_click_idx == _ii
+                            && (current_time - _m.instr_last_click_time) < 350);
+@@ -137,6 +138,11 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+                    || (_btns[_bi] == "PASTE"    && !variable_global_exists("se_instr_clipboard"));
+         if (variable_struct_exists(_m,"sfx_asset_name") && array_length(_m.instruments)>=64 && (_btns[_bi]=="+ ADD" || _btns[_bi]=="PASTE")) _locked=true;
+         var _hov = !_locked && point_in_rectangle(_mx, _my, _bx, _iby, _bx + _this_w, _iby + _btn_h);
++        var _bi_info = "ADDS A NEW INSTRUMENT (A PLAIN SAWTOOTH) AT THE END OF THE LIST";
++        if (_btns[_bi] == "- REMOVE") _bi_info = "REMOVES THE SELECTED INSTRUMENT; NOTES USING IT LOSE THEIR INSTRUMENT";
++        if (_btns[_bi] == "COPY") _bi_info = "COPIES THE SELECTED INSTRUMENT (SOUND, ADSR, PULSE, VIBRATO, FILTER)";
++        if (_btns[_bi] == "PASTE") _bi_info = "ADDS THE COPIED INSTRUMENT AS A NEW ONE AT THE END OF THE LIST";
++        scr_mm_info(point_in_rectangle(_mx, _my, _bx, _iby, _bx + _this_w, _iby + _btn_h), _bi_info);
+         var _base_col = make_color_rgb(30, 70, 100);
+         if (_btns[_bi] == "+ ADD") {
+             _base_col = make_color_rgb(20, 100, 40);
+@@ -275,6 +281,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+     var _nm_x1  = _ix0 + 50;
+     var _nm_x2  = _nm_x1 + 180;
+     var _nm_hov = point_in_rectangle(_mx, _my, _nm_x1, _dy - 2, _nm_x2, _dy + 16);
++    scr_mm_info(_nm_hov && !_m.instr_name_edit_active, "CLICK TO RENAME THE SELECTED INSTRUMENT (ENTER KEEPS, ESC CANCELS)");
+ 
+     if (_m.instr_name_edit_active) {
+         var _nm_blink = (current_time mod 600) < 300;
+@@ -345,6 +352,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+         var _ad_dnx1 = _adsr_x + 16;
+         var _ad_dnx2 = _ad_dnx1 + 14;
+         var _ad_hov_dn = point_in_rectangle(_mx, _my, _ad_dnx1, _adsr_y - 2, _ad_dnx2, _adsr_y + 14);
++        scr_mm_info(_ad_hov_dn, "LOWERS THE ENVELOPE " + string_upper(_adsr_key[_adi]) + " (0-15)");
+         draw_set_color(_ad_hov_dn ? c_aqua : make_color_rgb(100, 100, 100));
+         draw_text_l(_ad_dnx1 + 2, _adsr_y, "-");
+         if (_ad_hov_dn && mouse_check_button_pressed(mb_left)) {
+@@ -361,6 +369,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+         var _ad_upx1 = _ad_dnx2 + 26;
+         var _ad_upx2 = _ad_upx1 + 14;
+         var _ad_hov_up = point_in_rectangle(_mx, _my, _ad_upx1, _adsr_y - 2, _ad_upx2, _adsr_y + 14);
++        scr_mm_info(_ad_hov_up, "RAISES THE ENVELOPE " + string_upper(_adsr_key[_adi]) + " (0-15)");
+         draw_set_color(_ad_hov_up ? c_aqua : make_color_rgb(100, 100, 100));
+         draw_text_l(_ad_upx1 + 2, _adsr_y, "+");
+         if (_ad_hov_up && mouse_check_button_pressed(mb_left)) {
+@@ -388,6 +397,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+     var _pw_dnx1 = _ix0 + 50;
+     var _pw_dnx2 = _pw_dnx1 + 14;
+     var _pw_hov_dn = point_in_rectangle(_mx, _my, _pw_dnx1, _pw_y - 2, _pw_dnx2, _pw_y + 14);
++    scr_mm_info(_pw_hov_dn, "NARROWS THE INSTRUMENT'S PULSE WIDTH BY 128 (SHIFT: 16), 0-4095");
+     draw_set_color(_pw_hov_dn ? c_aqua : make_color_rgb(100, 100, 100));
+     draw_text_l(_pw_dnx1 + 2, _pw_y, "-");
+     if (_pw_hov_dn && mouse_check_button_pressed(mb_left)) {
+@@ -405,6 +415,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+     var _pw_upx1 = _pw_dnx2 + 42;
+     var _pw_upx2 = _pw_upx1 + 14;
+     var _pw_hov_up = point_in_rectangle(_mx, _my, _pw_upx1, _pw_y - 2, _pw_upx2, _pw_y + 14);
++    scr_mm_info(_pw_hov_up, "WIDENS THE INSTRUMENT'S PULSE WIDTH BY 128 (SHIFT: 16), 0-4095");
+     draw_set_color(_pw_hov_up ? c_aqua : make_color_rgb(100, 100, 100));
+     draw_text_l(_pw_upx1 + 2, _pw_y, "+");
+     if (_pw_hov_up && mouse_check_button_pressed(mb_left)) {
+@@ -429,6 +440,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+         var _vb_lbl = ["DL", "SP", "DP"];
+         var _vb_key = ["vib_delay", "vib_speed", "vib_depth"];
+         var _vb_max = [255, 15, 15];
++        var _vb_info = ["DELAY (FRAMES BEFORE IT STARTS; SHIFT: 10)", "SPEED (FRAMES PER HALF-CYCLE)", "DEPTH"];
+         var _vb_x   = _ix0 + 50;
+         for (var _vbi = 0; _vbi < 3; _vbi++) {
+             var _vb_val = scr_sid64_instr_field(_sel_instr, _vb_key[_vbi], 0);
+@@ -438,6 +450,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+             var _vb_dnx1 = _vb_x + 20;
+             var _vb_dnx2 = _vb_dnx1 + 14;
+             var _vb_hov_dn = point_in_rectangle(_mx, _my, _vb_dnx1, _vb_y - 2, _vb_dnx2, _vb_y + 14);
++            scr_mm_info(_vb_hov_dn, "LOWERS VIBRATO " + _vb_info[_vbi]);
+             draw_set_color(make_color_rgb(100, 100, 100));
+             if (_vb_hov_dn) {
+                 draw_set_color(c_aqua);
+@@ -461,6 +474,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+             var _vb_upx1 = _vb_dnx2 + 26;
+             var _vb_upx2 = _vb_upx1 + 14;
+             var _vb_hov_up = point_in_rectangle(_mx, _my, _vb_upx1, _vb_y - 2, _vb_upx2, _vb_y + 14);
++            scr_mm_info(_vb_hov_up, "RAISES VIBRATO " + _vb_info[_vbi]);
+             draw_set_color(make_color_rgb(100, 100, 100));
+             if (_vb_hov_up) {
+                 draw_set_color(c_aqua);
+@@ -489,6 +503,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+         draw_text_l(_ix0, _fi_y, "FILTER:");
+         var _fi_bx = _ix0 + 64;
+         var _fi_hov = point_in_rectangle(_mx, _my, _fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14);
++        scr_mm_info(_fi_hov, "ROUTES THIS INSTRUMENT'S VOICE THROUGH THE SONG FILTER (ON) OR NOT (OFF)");
+         if (_fi_on) {
+             draw_set_color(make_color_rgb(40, 110, 170));
+         } else if (_fi_hov) {
+@@ -774,6 +789,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+         var _tlab = _secs[_ti].head;
+         var _tw = string_width_l(_tlab) + 16;
+         var _thov = point_in_rectangle(_mx, _my, _tx, _tabbar_y + 1, _tx + _tw, _tabbar_y + _tabbar_h);
++        scr_mm_info(_thov, "SHOWS THIS INSTRUMENT'S " + _tlab + " TABLE IN THE LOWER PANE");
+         var _tsel = (!is_undefined(_sel_sec) && _secs[_ti].kind == _sel_sec.kind);
+         draw_set_color(make_color_rgb(40, 34, 64));
+         if (_tsel) {
+@@ -814,6 +830,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1,
+         var _aw = string_width_l(_alab) + 12;
+         _ax -= _aw;
+         var _ahov = point_in_rectangle(_mx, _my, _ax, _tabbar_y + 1, _ax + _aw, _tabbar_y + _tabbar_h);
++        scr_mm_info(_ahov, "ADDS A ~" + _kinds[_ki] + " TABLE TO THIS INSTRUMENT'S TEXT AND OPENS IT FOR EDITING");
+         draw_set_color(make_color_rgb(30, 38, 52));
+         if (_ahov) {
+             draw_set_color(make_color_rgb(65, 80, 100));
+@@ -1062,7 +1079,7 @@ function scr_sound_editor_preset_picker(_m, _x, _y, _w, _visible, _mx, _my) {
+     for (var _p = 0; _p < _count; _p++) {
+         var _py = _y + _p * 26;
+         var _room = array_length(_m.instruments) < 255;
+-        if (scr_sfx_maker_button(_x, _py, _w, "+ " + _presets[_p].name, _mx, _my) && _room) {
++        if (scr_sfx_maker_button(_x, _py, _w, "+ " + _presets[_p].name, _mx, _my, "ADDS AN EDITABLE COPY OF THE " + _presets[_p].name + " PRESET AS A NEW INSTRUMENT") && _room) {
+             if (scr_sound_editor_add_preset(_m, _presets[_p])) _added = 1;
+         }
+         if (point_in_rectangle(_mx, _my, _x, _py, _x + _w, _py + 24)) {
+@@ -1075,7 +1092,7 @@ function scr_sound_editor_preset_picker(_m, _x, _y, _w, _visible, _mx, _my) {
+     if (_all_room) {
+         _all_lab = "+ ADD ALL " + string(_count) + " PRESETS";
+     }
+-    if (scr_sfx_maker_button(_x, _y + _count * 26, _w, _all_lab, _mx, _my) && _all_room) {
++    if (scr_sfx_maker_button(_x, _y + _count * 26, _w, _all_lab, _mx, _my, _all_room ? "ADDS EVERY PRESET AS NEW INSTRUMENTS (EXISTING ONES STAY)" : "NOT ENOUGH FREE INSTRUMENT SLOTS (255 MAX) TO ADD EVERY PRESET") && _all_room) {
+         for (var _a = 0; _a < _count; _a++) {
+             if (scr_sound_editor_add_preset(_m, _presets[_a])) _added += 1;
+         }
+@@ -1105,6 +1122,7 @@ function scr_sound_editor_scrollbar(_m, _key, _value, _total, _visible, _sx, _sy
+     var _travel = max(0, _sh - _thumb);
+     var _top = _sy + (_limit > 0 ? _travel * _value / _limit : 0);
+     var _hover = point_in_rectangle(_mx, _my, _sx, _sy, _sx + _sw, _sy + _sh);
++    scr_mm_info(_hover, "DRAG OR CLICK TO SCROLL");
+     if (!mouse_check_button(mb_left)) _m[$ _key] = -1;
+     if (_limit > 0 && _hover && mouse_check_button_pressed(mb_left)) {
+         _m[$ _key] = (_my >= _top && _my <= _top + _thumb) ? _my - _top : _thumb * 0.5;
+@@ -1133,6 +1151,7 @@ function scr_sound_editor_hscrollbar(_m, _key, _value, _content, _view, _sx, _sy
+         _left = _sx + _travel * _value / _limit;
+     }
+     var _hover = point_in_rectangle(_mx, _my, _sx, _sy, _sx + _sw, _sy + _sh);
++    scr_mm_info(_hover, "DRAG OR CLICK TO SCROLL");
+     if (!mouse_check_button(mb_left)) {
+         _m[$ _key] = -1;
+     }
+@@ -1221,6 +1240,9 @@ function scr_sound_editor_cmd_pane(_m, _sel_instr, _p, _mx, _my) {
+     var _in_notes = _content_hov && _mx > _div_x + 4;
+     var _in_code  = _content_hov && _mx < _div_x - 4;
+     var _in_hbar  = point_in_rectangle(_mx, _my, _div_x + 4, _hs_y, _nt_x1, _y1 + _h);
++    scr_mm_info(_in_code && !_div_hov, "INSTRUMENT CODE: CLICK TO EDIT HERE (CTRL+ENTER KEEPS, ESC CANCELS), RMB DELETES A LINE");
++    scr_mm_info(_in_notes && !_div_hov, "NOTE: CLICK TO WRITE YOUR OWN NOTE FOR THIS LINE (EMPTY = BACK TO THE AUTO NOTE)");
++    scr_mm_info(_div_hov, "DRAG TO RESIZE THE CODE / NOTES COLUMNS");
+     var _busy = _div_hov || _m.instr_div_drag || _in_hbar || _m[$ _p.hdrag_key] >= 0 || _p.wave_click;
+     // The clicked row, as a line of the whole text (-1 past this pane's end).
+     var _click_line = -1;
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+index 48771d5..4dca6f1 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_editor/scr_sound_editor_editor.gml
+@@ -18,6 +18,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     _vy2 = _vy2 - _pno_h;
+     var _m = _asset.meta;
+     _m.pattern_hover_tip = "";
++    global.mm_info = "";   // INFO line: whichever control is hovered this frame sets it
+     // Pattern-command guide: while it's open nothing behind it reacts to the
+     // mouse or keys; only its CLOSE button or Escape closes it.
+     var _cg_mx = _mx;
+@@ -449,7 +450,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     draw_text_l(_vx1+540,_transport_y+5,"VOICES:");
+     for(var _mv=0;_mv<3;_mv++) {
+         var _bit=1<<_mv;
+-        if(scr_sfx_maker_button(_vx1+620+_mv*76,_transport_y,70,string(_voice_offset+_mv+1)+((scr_music_sid_mask(_m, _m.sid_page)&_bit)?" ON":" OFF"),_mx,_my)) {
++        if(scr_sfx_maker_button(_vx1+620+_mv*76,_transport_y,70,string(_voice_offset+_mv+1)+((scr_music_sid_mask(_m, _m.sid_page)&_bit)?" ON":" OFF"),_mx,_my,"MUTES / UNMUTES VOICE "+string(_voice_offset+_mv+1)+" (PLAYBACK AND THE COMPILED TUNE)")) {
+             var _mask_key = (_m.sid_page == 0) ? "voice_mask" : "sid_mask_" + string(_m.sid_page);
+             _m[$ _mask_key] = scr_music_sid_mask(_m, _m.sid_page) ^ _bit;
+             if (!(_m[$ _mask_key] & _bit)) scr_sound_preview_free_channel(_mv);
+@@ -484,6 +485,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         var _fbx = _fl_x + 62 + _fmi * 38;
+         var _fon = ((_m.filt_mode & _fbit) != 0);
+         var _fhov = point_in_rectangle(_mx, _my, _fbx, _fl_y, _fbx + 34, _fl_y + 24);
++        scr_mm_info(_fhov, "SONG FILTER MODE " + _fl_modes[_fmi] + " ON/OFF (LP LOW, BP BAND, HP HIGH PASS; COMBINABLE)");
+         if (_fon) {
+             draw_set_color(make_color_rgb(40, 110, 170));
+         } else if (_fhov) {
+@@ -514,7 +516,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         var _fdn = _fsx + 32;
+         var _fup = _fdn + 18 + _fs.w + 6;
+         var _fdn_h = point_in_rectangle(_mx, _my, _fdn, _fl_y + 2, _fdn + 14, _fl_y + 22);
++        scr_mm_info(_fdn_h, _fs.hex ? "LOWERS THE SONG FILTER CUTOFF (SHIFT: FINE STEPS)" : "LOWERS THE SONG FILTER RESONANCE (0-15)");
+         var _fup_h = point_in_rectangle(_mx, _my, _fup, _fl_y + 2, _fup + 14, _fl_y + 22);
++        scr_mm_info(_fup_h, _fs.hex ? "RAISES THE SONG FILTER CUTOFF (SHIFT: FINE STEPS)" : "RAISES THE SONG FILTER RESONANCE (0-15)");
+         draw_set_color(make_color_rgb(100, 100, 100));
+         if (_fdn_h) { draw_set_color(c_aqua); }
+         draw_text_l(_fdn + 2, _fl_y + 5, "-");
+@@ -583,12 +587,14 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     // In function-key order: F1 SONG, F2 HERE, F3 PAT, F4 STOP.
+     var _transport_labels = ["PLAY SONG (F1)", "PLAY HERE (F2)", "PLAY PAT (F3)", "STOP (F4)"];
+     var _transport_actions = ["SONG", "HERE", "PAT", "STOP"];
++    var _transport_info = ["PLAYS THE WHOLE SONG FROM THE START (F1)", "PLAYS THE SONG FROM THE SELECTED ORDER ROW ON (F2)", "LOOPS THE SELECTED ORDER ROW'S PATTERNS FROM THE TOP (F3)", "STOPS PLAYBACK (F4)"];
+     draw_set_font_l(fnt_c64_tiny);
+     draw_set_halign(fa_left);
+     for (var _tb = 0; _tb < 4; _tb++) {
+         var _tw = (_tb == 3) ? 80 : 124;
+         var _tx = _transport_x + _tb * 132;
+         var _thover = point_in_rectangle(_mx, _my, _tx, _transport_y, _tx + _tw, _transport_y + 24);
++        scr_mm_info(_thover, _transport_info[_tb]);
+         draw_set_color(_thover ? make_color_rgb(65, 130, 155) : make_color_rgb(28, 60, 80));
+         draw_rectangle(_tx, _transport_y, _tx + _tw, _transport_y + 24, false);
+         var _t_lit = false;
+@@ -874,6 +880,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _bpx1 = _vx1 + 64;
+     var _bpx2 = _bpx1 + 18;
+     var _bp_hov = point_in_rectangle(_mx, _my, _bpx1, _rowy, _bpx2, _rowy + 18);
++    scr_mm_info(_bp_hov, "PATTERN BANK: SELECTS THE PREVIOUS PATTERN (THE ONE DEL REMOVES)");
+     draw_set_color(_bp_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
+     draw_rectangle(_bpx1, _rowy, _bpx2, _rowy + 18, false);
+     draw_set_color(c_white);
+@@ -893,6 +900,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _bnx1 = _bpx2 + 172;
+     var _bnx2 = _bnx1 + 18;
+     var _bn_hov = point_in_rectangle(_mx, _my, _bnx1, _rowy, _bnx2, _rowy + 18);
++    scr_mm_info(_bn_hov, "PATTERN BANK: SELECTS THE NEXT PATTERN (THE ONE DEL REMOVES)");
+     draw_set_color(_bn_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
+     draw_rectangle(_bnx1, _rowy, _bnx2, _rowy + 18, false);
+     draw_set_color(c_white);
+@@ -906,6 +914,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _bax1 = _bnx2 + 20;
+     var _bax2 = _bax1 + 100;
+     var _ba_hov = point_in_rectangle(_mx, _my, _bax1, _rowy, _bax2, _rowy + 18);
++    scr_mm_info(_ba_hov, "ADDS A NEW EMPTY 64-ROW PATTERN TO THE BANK AND SELECTS IT");
+     draw_set_color(_ba_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
+     draw_rectangle(_bax1, _rowy, _bax2, _rowy + 18, false);
+     draw_set_color(c_white);
+@@ -934,6 +943,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     }
+     var _bd_lock = (array_length(_m.patterns) <= 1) || _bd_referenced;
+     var _bd_hov  = !_bd_lock && point_in_rectangle(_mx, _my, _bdx1, _rowy, _bdx2, _rowy + 18);
++    scr_mm_info(point_in_rectangle(_mx, _my, _bdx1, _rowy, _bdx2, _rowy + 18), "DELETES THE BANK'S SELECTED PATTERN (NOT IF A SONG USES IT, OR THE LAST ONE)");
+     draw_set_color(_bd_lock ? make_color_rgb(55, 40, 40) : (_bd_hov ? make_color_rgb(200, 60, 60) : make_color_rgb(100, 30, 30)));
+     draw_rectangle(_bdx1, _rowy, _bdx2, _rowy + 18, false);
+     draw_set_color(_bd_lock ? make_color_rgb(100, 80, 80) : c_white);
+@@ -970,6 +980,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _opx1 = _ocx0 + 60;
+     var _opx2 = _opx1 + 18;
+     var _op_hov = point_in_rectangle(_mx, _my, _opx1, _rowy, _opx2, _rowy + 18);
++    scr_mm_info(_op_hov, "OCTAVE DOWN FOR TYPED NOTES, SPACE AND THE SPLIT PIANO (1-6)");
+     draw_set_color(_op_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
+     draw_rectangle(_opx1, _rowy, _opx2, _rowy + 18, false);
+     draw_set_color(c_white);
+@@ -988,6 +999,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _onx1 = _opx2 + 32;
+     var _onx2 = _onx1 + 18;
+     var _on_hov = point_in_rectangle(_mx, _my, _onx1, _rowy, _onx2, _rowy + 18);
++    scr_mm_info(_on_hov, "OCTAVE UP FOR TYPED NOTES, SPACE AND THE SPLIT PIANO (1-6)");
+     draw_set_color(_on_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
+     draw_rectangle(_onx1, _rowy, _onx2, _rowy + 18, false);
+     draw_set_color(c_white);
+@@ -1013,6 +1025,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _tp_dx1 = _tpx0 + 58;
+     var _tp_dx2 = _tp_dx1 + 18;
+     var _tp_d_hov = point_in_rectangle(_mx, _my, _tp_dx1, _rowy, _tp_dx2, _rowy + 18);
++    scr_mm_info(_tp_d_hov, "TEMPO: ONE FRAME PER ROW LESS = FASTER (SHARED BY EVERY SONG HERE)");
+     draw_set_color(_tp_d_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
+     draw_rectangle(_tp_dx1, _rowy, _tp_dx2, _rowy + 18, false);
+     draw_set_color(c_white);
+@@ -1033,6 +1046,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _tp_ux1 = _tp_dx2 + 40;
+     var _tp_ux2 = _tp_ux1 + 18;
+     var _tp_u_hov = point_in_rectangle(_mx, _my, _tp_ux1, _rowy, _tp_ux2, _rowy + 18);
++    scr_mm_info(_tp_u_hov, "TEMPO: ONE FRAME PER ROW MORE = SLOWER (SHARED BY EVERY SONG HERE)");
+     draw_set_color(_tp_u_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
+     draw_rectangle(_tp_ux1, _rowy, _tp_ux2, _rowy + 18, false);
+     draw_set_color(c_white);
+@@ -1084,22 +1098,22 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+ 
+     _rowy += 26;
+     var _sid_count = scr_music_sid_count(_m);
+-    if (scr_sfx_maker_button(_vx1 + 20, _rowy, 32, "-", _mx, _my) && _sid_count > 1) {
++    if (scr_sfx_maker_button(_vx1 + 20, _rowy, 32, "-", _mx, _my, "REMOVES A SID CHIP (3 VOICES); ITS LANES ARE KEPT HIDDEN. STOPS PLAYBACK") && _sid_count > 1) {
+         scr_sound_editor_transport(_m, _cur_song, "STOP");
+         scr_music_sid_page(_m, min(_m.sid_page, _sid_count - 2), _col_pat, _se_push_undo, _se_snap);
+         _m.sid_count = _sid_count - 1;
+         global.undo_dirty = true; global.addresses_dirty = true;
+     }
+     draw_text_l(_vx1 + 62, _rowy + 6, string(_sid_count) + " SIDS / " + string(_sid_count * 3) + " VOICES");
+-    if (scr_sfx_maker_button(_vx1 + 260, _rowy, 32, "+", _mx, _my) && _sid_count < 8) {
++    if (scr_sfx_maker_button(_vx1 + 260, _rowy, 32, "+", _mx, _my, "ADDS A SID CHIP: 3 MORE VOICES, UP TO 8 SIDS. STOPS PLAYBACK") && _sid_count < 8) {
+         scr_sound_editor_transport(_m, _cur_song, "STOP");
+         _m.sid_count = _sid_count + 1;
+         global.undo_dirty = true; global.addresses_dirty = true;
+     }
+-    if (scr_sfx_maker_button(_vx1 + 310, _rowy, 38, "<<", _mx, _my))
++    if (scr_sfx_maker_button(_vx1 + 310, _rowy, 38, "<<", _mx, _my, "SHOWS THE PREVIOUS SID CHIP'S 3 VOICES IN THE GRID AND ORDER LIST"))
+         scr_music_sid_page(_m, _m.sid_page - 1, _col_pat, _se_push_undo, _se_snap);
+     draw_text_l(_vx1 + 360, _rowy + 6, "SID " + string(_voice_offset div 3 + 1) + "  $" + string_upper(decimal_to_hex(0xD400 + (_voice_offset div 3) * 0x20)));
+-    if (scr_sfx_maker_button(_vx1 + 525, _rowy, 38, ">>", _mx, _my))
++    if (scr_sfx_maker_button(_vx1 + 525, _rowy, 38, ">>", _mx, _my, "SHOWS THE NEXT SID CHIP'S 3 VOICES IN THE GRID AND ORDER LIST"))
+         scr_music_sid_page(_m, _m.sid_page + 1, _col_pat, _se_push_undo, _se_snap);
+     if (global.tour_active) {
+         scr_tour_capture("ASSET:MUS_GEN", _vx1 + 590, _rowy, _vx1 + 740, _rowy + 26);
+@@ -1164,6 +1178,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+             var _clx1 = _col_x[_lh] + 74;
+             var _clx2 = _clx1 + 14;
+             var _cl_hov = point_in_rectangle(_mx, _my, _clx1, _gy0 - 38, _clx2, _gy0 - 24);
++            scr_mm_info(_cl_hov, "VOICE " + string(_voice_offset + _lh + 1) + " PATTERN LENGTH: 4 ROWS SHORTER (4-128)");
+             draw_set_color(_cl_hov ? c_aqua : make_color_rgb(60, 130, 150));
+             draw_text_l(_clx1, _gy0 - 34, "<");
+             if (_cl_hov && mouse_check_button_pressed(mb_left)) {
+@@ -1178,6 +1193,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+             var _cnx1 = _clx2 + 26;
+             var _cnx2 = _cnx1 + 14;
+             var _cn_hov = point_in_rectangle(_mx, _my, _cnx1, _gy0 - 38, _cnx2, _gy0 - 24);
++            scr_mm_info(_cn_hov, "VOICE " + string(_voice_offset + _lh + 1) + " PATTERN LENGTH: 4 ROWS LONGER (4-128)");
+             draw_set_color(_cn_hov ? c_aqua : make_color_rgb(60, 130, 150));
+             draw_text_l(_cnx1, _gy0 - 34, ">");
+             if (_cn_hov && mouse_check_button_pressed(mb_left)) {
+@@ -1333,6 +1349,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+ 
+             var _is_editing = (_m.edit_active && _m.edit_voice == _cv && _m.edit_step == _row);
+             var _hov = _in_range && point_in_rectangle(_mx, _my, _cx1, _ry, _cx2, _ry + _row_h);
++            scr_mm_info(_hov, (_mx >= _cx1 + _cmd_off - 6) ? "COMMAND CELL: CLICK, THEN TYPE A LETTER + 2 HEX DIGITS. RMB CLEARS THE ROW. GUIDE LISTS ALL" : "NOTE CELL: CLICK SELECTS, DOUBLE-CLICK TYPES, SHIFT EXTENDS, ALT PICKS ITS INSTR, RMB CLEARS");
+             var _is_cursor = (_in_range && !_m.edit_active && _m.sel_voice == _cv && _m.sel_step == _row);
+             var _is_selected = (_in_range && _cv >= _sel_v_lo && _cv <= _sel_v_hi && _row >= _sel_s_lo && _row <= _sel_s_hi);
+ 
+@@ -2221,6 +2238,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         var _cl_pat = _col_pat[_cli];
+         var _cl_lock = (_cl_pat == noone);
+         var _cl_hov2 = !_cl_lock && point_in_rectangle(_mx, _my, _cl_x1, _clr_y, _cl_x2, _clr_y + 20);
++        scr_mm_info(_cl_hov2, "WIPES EVERY STEP OF THIS VOICE'S PATTERN - EVERYWHERE THAT PATTERN IS USED (UNDO WORKS)");
+ 
+         if (_cl_lock) {
+             draw_set_color(make_color_rgb(45, 40, 40));
+@@ -2298,6 +2316,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _gb_x = _col_gutter_x + _grid_full_w - _gb_w;
+     var _gb_y = _clr_y + 27;
+     var _gb_hot = point_in_rectangle(_mx, _my, _gb_x, _gb_y, _gb_x + _gb_w, _gb_y + 15);
++    scr_mm_info(_gb_hot, "OPENS THE FULL PATTERN COMMAND GUIDE (EVERY COMMAND EXPLAINED)");
+     draw_set_color(_gb_hot ? make_color_rgb(65, 80, 100) : make_color_rgb(30, 38, 52));
+     draw_rectangle(_gb_x, _gb_y, _gb_x + _gb_w, _gb_y + 15, false);
+     draw_set_color(c_white);
+@@ -2335,6 +2354,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _sg_px1 = _ox0;
+     var _sg_px2 = _sg_px1 + 18;
+     var _sg_p_hov = point_in_rectangle(_mx, _my, _sg_px1, _sgy, _sg_px2, _sgy + 18);
++    scr_mm_info(_sg_p_hov, "SELECTS THE PREVIOUS SONG IN THIS ASSET (STOPS PLAYBACK)");
+     draw_set_color(_sg_p_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
+     draw_rectangle(_sg_px1, _sgy, _sg_px2, _sgy + 18, false);
+     draw_set_color(c_white);
+@@ -2353,6 +2373,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _sg_nx1 = _sg_px2 + 6;
+     var _sg_nx2 = _sg_nx1 + 190;
+     var _sg_n_hov = point_in_rectangle(_mx, _my, _sg_nx1, _sgy, _sg_nx2, _sgy + 18);
++    scr_mm_info(_sg_n_hov && !_m.song_name_edit_active, "CLICK TO RENAME THIS SONG (ENTER KEEPS, ESC CANCELS)");
+     draw_set_color(make_color_rgb(20, 20, 32));
+     draw_rectangle(_sg_nx1, _sgy, _sg_nx2, _sgy + 18, false);
+     draw_set_halign(fa_center);
+@@ -2379,6 +2400,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _sg_nnx1 = _sg_nx2 + 6;
+     var _sg_nnx2 = _sg_nnx1 + 18;
+     var _sg_nn_hov = point_in_rectangle(_mx, _my, _sg_nnx1, _sgy, _sg_nnx2, _sgy + 18);
++    scr_mm_info(_sg_nn_hov, "SELECTS THE NEXT SONG IN THIS ASSET (STOPS PLAYBACK)");
+     draw_set_color(_sg_nn_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
+     draw_rectangle(_sg_nnx1, _sgy, _sg_nnx2, _sgy + 18, false);
+     draw_set_color(c_white);
+@@ -2397,6 +2419,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _sg_ax1 = _sg_nnx2 + 16;
+     var _sg_ax2 = _sg_ax1 + 90;
+     var _sg_a_hov = point_in_rectangle(_mx, _my, _sg_ax1, _sgy, _sg_ax2, _sgy + 18);
++    scr_mm_info(_sg_a_hov, "ADDS A NEW SONG (ONE ORDER ROW, PATTERN 0 ON V1) AND SELECTS IT");
+     draw_set_color(_sg_a_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
+     draw_rectangle(_sg_ax1, _sgy, _sg_ax2, _sgy + 18, false);
+     draw_set_color(c_white);
+@@ -2427,6 +2450,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _sg_dx2   = _sg_dx1 + 90;
+     var _sg_d_lock = (array_length(_m.songs) <= 1);
+     var _sg_d_hov  = !_sg_d_lock && point_in_rectangle(_mx, _my, _sg_dx1, _sgy, _sg_dx2, _sgy + 18);
++    scr_mm_info(point_in_rectangle(_mx, _my, _sg_dx1, _sgy, _sg_dx2, _sgy + 18), "DELETES THE SELECTED SONG (NOT THE LAST ONE); ITS PATTERNS STAY IN THE BANK");
+     draw_set_color(_sg_d_lock ? make_color_rgb(55, 40, 40) : (_sg_d_hov ? make_color_rgb(200, 60, 60) : make_color_rgb(100, 30, 30)));
+     draw_rectangle(_sg_dx1, _sgy, _sg_dx2, _sgy + 18, false);
+     draw_set_color(_sg_d_lock ? make_color_rgb(100, 80, 80) : c_white);
+@@ -2541,6 +2565,8 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+             var _minus = _mx >= _ocx && _mx < _ocx + 15 && _my >= _ory && _my < _ory + _ord_row_h;
+             var _plus = _mx >= _ocx + _ocw - 15 && _mx < _ocx + _ocw && _my >= _ory && _my < _ory + _ord_row_h;
+             var _number_hov = _mx >= _ocx + 15 && _mx < _ocx + _ocw - 15 && _my >= _ory && _my < _ory + _ord_row_h;
++            scr_mm_info(_number_hov, "V" + string(_voice_offset + _ovi + 1) + " PATTERN ON THIS ORDER ROW: CLICK, TYPE A PATTERN NUMBER, ENTER");
++            scr_mm_info(_minus || _plus, "V" + string(_voice_offset + _ovi + 1) + (_minus ? ": PREVIOUS" : ": NEXT") + " PATTERN ON THIS ROW. SHIFT: TRANSPOSE A SEMITONE, CTRL+SHIFT: AN OCTAVE");
+             var _editing = _m.order_pattern_edit_active && _m.order_pattern_edit_row == _orow && _m.order_pattern_edit_key == _voice_keys[_ovi];
+             draw_set_color(make_color_rgb(65, 85, 120));
+             if (_minus) draw_rectangle(_ocx + 1, _ory + 2, _ocx + 14, _ory + _ord_row_h - 2, false);
+@@ -2620,6 +2646,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         var _dgw = _ord_col_w[4];
+         var _dg_minus = point_in_rectangle(_mx, _my, _dgx, _ory, _dgx + 14, _ory + _ord_row_h - 1);
+         var _dg_plus  = point_in_rectangle(_mx, _my, _dgx + _dgw - 14, _ory, _dgx + _dgw, _ory + _ord_row_h - 1);
++        scr_mm_info(_dg_minus || _dg_plus, "DG: DIGI PATTERN FOR THIS ORDER ROW, - / + CYCLES THROUGH THEM (-- = NONE)");
+         draw_set_halign(fa_center);
+         draw_set_color(make_color_rgb(125, 135, 155));
+         if (_dg_minus) {
+@@ -2660,6 +2687,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         var _rsx = _ord_x[5];
+         var _rsw = _ord_col_w[5];
+         var _rs_hov = point_in_rectangle(_mx, _my, _rsx, _ory, _rsx + _rsw, _ory + _ord_row_h);
++        scr_mm_info(_rs_hov && !_m.free_voices, "RPT: SHORTER PATTERNS ON THIS ROW REPEAT TO FILL IT (NO: THEY GO SILENT)");
+         draw_set_color(_orow.repeat_short ? c_lime : make_color_rgb(140, 90, 90));
+         draw_set_halign(fa_center);
+         if (_m.free_voices) {
+@@ -2685,6 +2713,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         var _fl_upx2 = _flx + _flw;
+         var _fl_hov_dn = point_in_rectangle(_mx, _my, _fl_dnx1, _ory, _fl_dnx2, _ory + _ord_row_h);
+         var _fl_hov_up = point_in_rectangle(_mx, _my, _fl_upx1, _ory, _fl_upx2, _ory + _ord_row_h);
++        scr_mm_info((_fl_hov_dn || _fl_hov_up) && !_m.free_voices, "SIZE: FORCES THIS ORDER ROW'S LENGTH IN ROWS, - / + 4 (OFF = FROM ITS PATTERNS)");
+ 
+         if (!_m.free_voices) {
+             draw_set_color(_fl_hov_dn ? c_aqua : make_color_rgb(100, 100, 100));
+@@ -2716,6 +2745,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         }
+ 
+         var _row_hov = point_in_rectangle(_mx, _my, _ox0, _ory, _ox0 + _ord_full_w, _ory + _ord_row_h);
++        scr_mm_info(_row_hov && _mx < _ord_x[1], "SELECTS THIS ORDER ROW (THE PATTERN GRID SHOWS ITS PATTERNS)");
+         if (_row_hov && mouse_check_button_pressed(mb_left)
+         &&  !point_in_rectangle(_mx, _my, _ord_x[1], _ory, _ord_x[7], _ory + _ord_row_h)) {
+             _m.sel_order_row = _ord_i;
+@@ -2733,6 +2763,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _oax1 = _ox0;
+     var _oax2 = _oax1 + 90;
+     var _oa_hov = point_in_rectangle(_mx, _my, _oax1, _oby, _oax2, _oby + 18);
++    scr_mm_info(_oa_hov, "ADDS A ROW TO THE END OF THIS SONG'S ORDER LIST AND SELECTS IT");
+     draw_set_color(_oa_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
+     draw_rectangle(_oax1, _oby, _oax2, _oby + 18, false);
+     draw_set_color(c_white);
+@@ -2750,6 +2781,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _llx1 = _oax2 + 8;
+     var _llx2 = _llx1 + 60;
+     var _ll_hov = point_in_rectangle(_mx, _my, _llx1, _oby, _llx2, _oby + 18);
++    scr_mm_info(_ll_hov, "LOOP ON/OFF: AT THE END THE SONG JUMPS BACK TO ITS LOOP ROW, OR STOPS");
+     draw_set_color(_cur_song.loop ? make_color_rgb(30, 120, 60) : make_color_rgb(70, 40, 40));
+     draw_rectangle(_llx1, _oby, _llx2, _oby + 18, false);
+     draw_set_color(c_white);
+@@ -2767,6 +2799,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _lpx1 = _llx2 + 8;
+     var _lpx2 = _lpx1 + 130;
+     var _lp_hov2 = point_in_rectangle(_mx, _my, _lpx1, _oby, _lpx2, _oby + 18);
++    scr_mm_info(_lp_hov2, "MAKES THE SELECTED ORDER ROW THE SONG'S LOOP-BACK POINT (AQUA EDGE)");
+     draw_set_color(_lp_hov2 ? make_color_rgb(60, 130, 180) : make_color_rgb(30, 70, 100));
+     draw_rectangle(_lpx1, _oby, _lpx2, _oby + 18, false);
+     draw_set_color(c_white);
+@@ -2782,6 +2815,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+     var _odx2 = _odx1 + 90;
+     var _od_lock = (array_length(_cur_song.order) <= 1);
+     var _od_hov  = !_od_lock && point_in_rectangle(_mx, _my, _odx1, _oby, _odx2, _oby + 18);
++    scr_mm_info(point_in_rectangle(_mx, _my, _odx1, _oby, _odx2, _oby + 18), "DELETES THE SELECTED ORDER ROW (NOT THE LAST ONE)");
+     draw_set_color(_od_lock ? make_color_rgb(55, 40, 40) : (_od_hov ? make_color_rgb(200, 60, 60) : make_color_rgb(100, 30, 30)));
+     draw_rectangle(_odx1, _oby, _odx2, _oby + 18, false);
+     draw_set_color(_od_lock ? make_color_rgb(100, 80, 80) : c_white);
+@@ -2863,6 +2897,35 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my)
+         draw_set_font_l(fnt_c64_tiny);
+     }
+ 
++    // ── INFO LINE ── what the hovered control does, in the band between the
++    // title bar and the help line. The header's CLOSE / SAVE / AUTOSAVE are
++    // drawn by obj_asset_manager (same rects as there), so they're checked here.
++    scr_mm_info(point_in_rectangle(_dg_pmx, _dg_pmy, _vx2 - 80, _vy1 + 4, _vx2 - 4, _vy1 + 24),
++        "CLOSES THE MUSIC MAKER (ESC)");
++    scr_mm_info(point_in_rectangle(_dg_pmx, _dg_pmy, _vx2 - 148, _vy1 + 4, _vx2 - 88, _vy1 + 24),
++        "SAVES THIS ASSET NOW (IT PULSES AMBER WHILE THERE ARE UNSAVED CHANGES)");
++    scr_mm_info(point_in_rectangle(_dg_pmx, _dg_pmy, _vx2 - 258, _vy1 + 8, _vx2 - 158, _vy1 + 24),
++        "AUTOSAVE ON/OFF: WHEN ON, CHANGES ARE SAVED AUTOMATICALLY");
++    var _info_txt = "";
++    if (variable_global_exists("mm_info")) {
++        _info_txt = global.mm_info;
++    }
++    draw_set_font_l(fnt_c64_tiny);
++    draw_set_halign(fa_left);
++    draw_set_valign(fa_top);
++    var _info_y = _cy - 44;
++    var _info_x = _vx1 + 20 + string_width_l("INFO: ");
++    if (_info_txt == "") {
++        draw_set_color(make_color_rgb(90, 90, 120));
++        draw_text_l(_vx1 + 20, _info_y, "INFO:");
++        draw_text_l(_info_x, _info_y, "HOVER A BUTTON TO SEE WHAT IT DOES");
++    } else {
++        draw_set_color(make_color_rgb(255, 200, 60));
++        draw_text_l(_vx1 + 20, _info_y, "INFO:");
++        draw_set_color(c_white);
++        draw_text_l(_info_x, _info_y, _info_txt);
++    }
++
+     if (_cg_open) {
+         scr_sound_editor_cmd_guide(_vx1, _vy1, _vx2, _vy2_full, _cg_mx, _cg_my, _cg_click, _cg_esc);
+     }
+diff --git a/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml b/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml
+index 809ae6d..14ca6ca 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_sound_editor_piano/scr_sound_editor_piano.gml
+@@ -210,6 +210,7 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
+         var _mbx = _mb_x + _mi * 52;
+         var _mon = ((_mi == 0) == _split);
+         var _mhov = point_in_rectangle(_mx, _my, _mbx, _y0 - 2, _mbx + 48, _y0 + 12);
++        scr_mm_info(_mhov, (_mi == 0) ? "SPLIT PIANO: ONE 2-OCTAVE KEYBOARD PER VOICE, FROM THE CURRENT OCTAVE" : "FULL PIANO: ONE 6-OCTAVE KEYBOARD FOR THE SELECTED VOICE");
+         if (_mon) {
+             draw_set_color(make_color_rgb(40, 110, 170));
+         } else if (_mhov) {
+@@ -248,6 +249,7 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
+         var _tw = _tg_w;
+         if (_tgi == 1) _tw = _tg_w2;
+         var _thov = point_in_rectangle(_mx, _my, _tg_x, _y0 - 2, _tg_x + _tw, _y0 + 12);
++        scr_mm_info(_thov, (_tgi == 0) ? "EDIT / JAM: JAM PLAYS NOTE KEYS AND PIANO CLICKS WITHOUT WRITING ANYTHING" : "MONO / POLY (JAM, FULL PIANO): A NEW NOTE CUTS THE LAST, OR MOVES ON TO THE NEXT VOICE");
+         var _ton = global.music_jam;
+         if (_tgi == 1) _ton = global.music_poly;
+         if (_ton) {
+@@ -317,6 +319,13 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
+         _hover = scr_sound_editor_piano_keys(_x0, _ky0 + 12, _x1, _y1, 1, 6, _mx, _my, _mark, _lit_all);
+     }
+     draw_set_font_l(fnt_c64_tiny);
++    if (_hover >= 0) {
++        if (global.music_jam) {
++            scr_mm_info(true, "PIANO " + scr_sound_editor_piano_name(_hover) + ": CLICK OR HOLD RMB TO PLAY IT (JAM: NOTHING IS WRITTEN)");
++        } else {
++            scr_mm_info(true, "PIANO " + scr_sound_editor_piano_name(_hover) + ": CLICK WRITES IT AT THE MARKER ROW, HOLD RMB TO HEAR IT");
++        }
++    }
+ 
+     // ── right mouse held: play the key when pressed, and each new key slid onto ──
+     var _rmb_play = false;

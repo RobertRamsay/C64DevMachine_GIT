@@ -97,6 +97,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         draw_text_l(_ix0 + 36, _iry + 4, _list_name);
 
         var _row_hov = point_in_rectangle(_mx, _my, _ix0, _iry, _ix0 + _list_w - 14, _iry + _list_row_h);
+        scr_mm_info(_row_hov, "INSTRUMENT " + _id_str + ": CLICK SELECTS IT FOR NOTE ENTRY, DOUBLE-CLICK RENAMES IT");
         if (_row_hov && mouse_check_button_pressed(mb_left)) {
             var _instr_dbl = (_m.instr_last_click_idx == _ii
                            && (current_time - _m.instr_last_click_time) < 350);
@@ -137,6 +138,11 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
                    || (_btns[_bi] == "PASTE"    && !variable_global_exists("se_instr_clipboard"));
         if (variable_struct_exists(_m,"sfx_asset_name") && array_length(_m.instruments)>=64 && (_btns[_bi]=="+ ADD" || _btns[_bi]=="PASTE")) _locked=true;
         var _hov = !_locked && point_in_rectangle(_mx, _my, _bx, _iby, _bx + _this_w, _iby + _btn_h);
+        var _bi_info = "ADDS A NEW INSTRUMENT (A PLAIN SAWTOOTH) AT THE END OF THE LIST";
+        if (_btns[_bi] == "- REMOVE") _bi_info = "REMOVES THE SELECTED INSTRUMENT; NOTES USING IT LOSE THEIR INSTRUMENT";
+        if (_btns[_bi] == "COPY") _bi_info = "COPIES THE SELECTED INSTRUMENT (SOUND, ADSR, PULSE, VIBRATO, FILTER)";
+        if (_btns[_bi] == "PASTE") _bi_info = "ADDS THE COPIED INSTRUMENT AS A NEW ONE AT THE END OF THE LIST";
+        scr_mm_info(point_in_rectangle(_mx, _my, _bx, _iby, _bx + _this_w, _iby + _btn_h), _bi_info);
         var _base_col = make_color_rgb(30, 70, 100);
         if (_btns[_bi] == "+ ADD") {
             _base_col = make_color_rgb(20, 100, 40);
@@ -275,6 +281,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     var _nm_x1  = _ix0 + 50;
     var _nm_x2  = _nm_x1 + 180;
     var _nm_hov = point_in_rectangle(_mx, _my, _nm_x1, _dy - 2, _nm_x2, _dy + 16);
+    scr_mm_info(_nm_hov && !_m.instr_name_edit_active, "CLICK TO RENAME THE SELECTED INSTRUMENT (ENTER KEEPS, ESC CANCELS)");
 
     if (_m.instr_name_edit_active) {
         var _nm_blink = (current_time mod 600) < 300;
@@ -345,6 +352,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         var _ad_dnx1 = _adsr_x + 16;
         var _ad_dnx2 = _ad_dnx1 + 14;
         var _ad_hov_dn = point_in_rectangle(_mx, _my, _ad_dnx1, _adsr_y - 2, _ad_dnx2, _adsr_y + 14);
+        scr_mm_info(_ad_hov_dn, "LOWERS THE ENVELOPE " + string_upper(_adsr_key[_adi]) + " (0-15)");
         draw_set_color(_ad_hov_dn ? c_aqua : make_color_rgb(100, 100, 100));
         draw_text_l(_ad_dnx1 + 2, _adsr_y, "-");
         if (_ad_hov_dn && mouse_check_button_pressed(mb_left)) {
@@ -361,6 +369,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         var _ad_upx1 = _ad_dnx2 + 26;
         var _ad_upx2 = _ad_upx1 + 14;
         var _ad_hov_up = point_in_rectangle(_mx, _my, _ad_upx1, _adsr_y - 2, _ad_upx2, _adsr_y + 14);
+        scr_mm_info(_ad_hov_up, "RAISES THE ENVELOPE " + string_upper(_adsr_key[_adi]) + " (0-15)");
         draw_set_color(_ad_hov_up ? c_aqua : make_color_rgb(100, 100, 100));
         draw_text_l(_ad_upx1 + 2, _adsr_y, "+");
         if (_ad_hov_up && mouse_check_button_pressed(mb_left)) {
@@ -388,6 +397,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     var _pw_dnx1 = _ix0 + 50;
     var _pw_dnx2 = _pw_dnx1 + 14;
     var _pw_hov_dn = point_in_rectangle(_mx, _my, _pw_dnx1, _pw_y - 2, _pw_dnx2, _pw_y + 14);
+    scr_mm_info(_pw_hov_dn, "NARROWS THE INSTRUMENT'S PULSE WIDTH BY 128 (SHIFT: 16), 0-4095");
     draw_set_color(_pw_hov_dn ? c_aqua : make_color_rgb(100, 100, 100));
     draw_text_l(_pw_dnx1 + 2, _pw_y, "-");
     if (_pw_hov_dn && mouse_check_button_pressed(mb_left)) {
@@ -405,6 +415,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     var _pw_upx1 = _pw_dnx2 + 42;
     var _pw_upx2 = _pw_upx1 + 14;
     var _pw_hov_up = point_in_rectangle(_mx, _my, _pw_upx1, _pw_y - 2, _pw_upx2, _pw_y + 14);
+    scr_mm_info(_pw_hov_up, "WIDENS THE INSTRUMENT'S PULSE WIDTH BY 128 (SHIFT: 16), 0-4095");
     draw_set_color(_pw_hov_up ? c_aqua : make_color_rgb(100, 100, 100));
     draw_text_l(_pw_upx1 + 2, _pw_y, "+");
     if (_pw_hov_up && mouse_check_button_pressed(mb_left)) {
@@ -429,6 +440,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         var _vb_lbl = ["DL", "SP", "DP"];
         var _vb_key = ["vib_delay", "vib_speed", "vib_depth"];
         var _vb_max = [255, 15, 15];
+        var _vb_info = ["DELAY (FRAMES BEFORE IT STARTS; SHIFT: 10)", "SPEED (FRAMES PER HALF-CYCLE)", "DEPTH"];
         var _vb_x   = _ix0 + 50;
         for (var _vbi = 0; _vbi < 3; _vbi++) {
             var _vb_val = scr_sid64_instr_field(_sel_instr, _vb_key[_vbi], 0);
@@ -438,6 +450,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             var _vb_dnx1 = _vb_x + 20;
             var _vb_dnx2 = _vb_dnx1 + 14;
             var _vb_hov_dn = point_in_rectangle(_mx, _my, _vb_dnx1, _vb_y - 2, _vb_dnx2, _vb_y + 14);
+            scr_mm_info(_vb_hov_dn, "LOWERS VIBRATO " + _vb_info[_vbi]);
             draw_set_color(make_color_rgb(100, 100, 100));
             if (_vb_hov_dn) {
                 draw_set_color(c_aqua);
@@ -461,6 +474,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             var _vb_upx1 = _vb_dnx2 + 26;
             var _vb_upx2 = _vb_upx1 + 14;
             var _vb_hov_up = point_in_rectangle(_mx, _my, _vb_upx1, _vb_y - 2, _vb_upx2, _vb_y + 14);
+            scr_mm_info(_vb_hov_up, "RAISES VIBRATO " + _vb_info[_vbi]);
             draw_set_color(make_color_rgb(100, 100, 100));
             if (_vb_hov_up) {
                 draw_set_color(c_aqua);
@@ -489,6 +503,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         draw_text_l(_ix0, _fi_y, "FILTER:");
         var _fi_bx = _ix0 + 64;
         var _fi_hov = point_in_rectangle(_mx, _my, _fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14);
+        scr_mm_info(_fi_hov, "ROUTES THIS INSTRUMENT'S VOICE THROUGH THE SONG FILTER (ON) OR NOT (OFF)");
         if (_fi_on) {
             draw_set_color(make_color_rgb(40, 110, 170));
         } else if (_fi_hov) {
@@ -774,6 +789,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         var _tlab = _secs[_ti].head;
         var _tw = string_width_l(_tlab) + 16;
         var _thov = point_in_rectangle(_mx, _my, _tx, _tabbar_y + 1, _tx + _tw, _tabbar_y + _tabbar_h);
+        scr_mm_info(_thov, "SHOWS THIS INSTRUMENT'S " + _tlab + " TABLE IN THE LOWER PANE");
         var _tsel = (!is_undefined(_sel_sec) && _secs[_ti].kind == _sel_sec.kind);
         draw_set_color(make_color_rgb(40, 34, 64));
         if (_tsel) {
@@ -814,6 +830,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         var _aw = string_width_l(_alab) + 12;
         _ax -= _aw;
         var _ahov = point_in_rectangle(_mx, _my, _ax, _tabbar_y + 1, _ax + _aw, _tabbar_y + _tabbar_h);
+        scr_mm_info(_ahov, "ADDS A ~" + _kinds[_ki] + " TABLE TO THIS INSTRUMENT'S TEXT AND OPENS IT FOR EDITING");
         draw_set_color(make_color_rgb(30, 38, 52));
         if (_ahov) {
             draw_set_color(make_color_rgb(65, 80, 100));
@@ -1062,7 +1079,7 @@ function scr_sound_editor_preset_picker(_m, _x, _y, _w, _visible, _mx, _my) {
     for (var _p = 0; _p < _count; _p++) {
         var _py = _y + _p * 26;
         var _room = array_length(_m.instruments) < 255;
-        if (scr_sfx_maker_button(_x, _py, _w, "+ " + _presets[_p].name, _mx, _my) && _room) {
+        if (scr_sfx_maker_button(_x, _py, _w, "+ " + _presets[_p].name, _mx, _my, "ADDS AN EDITABLE COPY OF THE " + _presets[_p].name + " PRESET AS A NEW INSTRUMENT") && _room) {
             if (scr_sound_editor_add_preset(_m, _presets[_p])) _added = 1;
         }
         if (point_in_rectangle(_mx, _my, _x, _py, _x + _w, _py + 24)) {
@@ -1075,7 +1092,7 @@ function scr_sound_editor_preset_picker(_m, _x, _y, _w, _visible, _mx, _my) {
     if (_all_room) {
         _all_lab = "+ ADD ALL " + string(_count) + " PRESETS";
     }
-    if (scr_sfx_maker_button(_x, _y + _count * 26, _w, _all_lab, _mx, _my) && _all_room) {
+    if (scr_sfx_maker_button(_x, _y + _count * 26, _w, _all_lab, _mx, _my, _all_room ? "ADDS EVERY PRESET AS NEW INSTRUMENTS (EXISTING ONES STAY)" : "NOT ENOUGH FREE INSTRUMENT SLOTS (255 MAX) TO ADD EVERY PRESET") && _all_room) {
         for (var _a = 0; _a < _count; _a++) {
             if (scr_sound_editor_add_preset(_m, _presets[_a])) _added += 1;
         }
@@ -1105,6 +1122,7 @@ function scr_sound_editor_scrollbar(_m, _key, _value, _total, _visible, _sx, _sy
     var _travel = max(0, _sh - _thumb);
     var _top = _sy + (_limit > 0 ? _travel * _value / _limit : 0);
     var _hover = point_in_rectangle(_mx, _my, _sx, _sy, _sx + _sw, _sy + _sh);
+    scr_mm_info(_hover, "DRAG OR CLICK TO SCROLL");
     if (!mouse_check_button(mb_left)) _m[$ _key] = -1;
     if (_limit > 0 && _hover && mouse_check_button_pressed(mb_left)) {
         _m[$ _key] = (_my >= _top && _my <= _top + _thumb) ? _my - _top : _thumb * 0.5;
@@ -1133,6 +1151,7 @@ function scr_sound_editor_hscrollbar(_m, _key, _value, _content, _view, _sx, _sy
         _left = _sx + _travel * _value / _limit;
     }
     var _hover = point_in_rectangle(_mx, _my, _sx, _sy, _sx + _sw, _sy + _sh);
+    scr_mm_info(_hover, "DRAG OR CLICK TO SCROLL");
     if (!mouse_check_button(mb_left)) {
         _m[$ _key] = -1;
     }
@@ -1221,6 +1240,9 @@ function scr_sound_editor_cmd_pane(_m, _sel_instr, _p, _mx, _my) {
     var _in_notes = _content_hov && _mx > _div_x + 4;
     var _in_code  = _content_hov && _mx < _div_x - 4;
     var _in_hbar  = point_in_rectangle(_mx, _my, _div_x + 4, _hs_y, _nt_x1, _y1 + _h);
+    scr_mm_info(_in_code && !_div_hov, "INSTRUMENT CODE: CLICK TO EDIT HERE (CTRL+ENTER KEEPS, ESC CANCELS), RMB DELETES A LINE");
+    scr_mm_info(_in_notes && !_div_hov, "NOTE: CLICK TO WRITE YOUR OWN NOTE FOR THIS LINE (EMPTY = BACK TO THE AUTO NOTE)");
+    scr_mm_info(_div_hov, "DRAG TO RESIZE THE CODE / NOTES COLUMNS");
     var _busy = _div_hov || _m.instr_div_drag || _in_hbar || _m[$ _p.hdrag_key] >= 0 || _p.wave_click;
     // The clicked row, as a line of the whole text (-1 past this pane's end).
     var _click_line = -1;

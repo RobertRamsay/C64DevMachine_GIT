@@ -210,6 +210,7 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
         var _mbx = _mb_x + _mi * 52;
         var _mon = ((_mi == 0) == _split);
         var _mhov = point_in_rectangle(_mx, _my, _mbx, _y0 - 2, _mbx + 48, _y0 + 12);
+        scr_mm_info(_mhov, (_mi == 0) ? "SPLIT PIANO: ONE 2-OCTAVE KEYBOARD PER VOICE, FROM THE CURRENT OCTAVE" : "FULL PIANO: ONE 6-OCTAVE KEYBOARD FOR THE SELECTED VOICE");
         if (_mon) {
             draw_set_color(make_color_rgb(40, 110, 170));
         } else if (_mhov) {
@@ -248,6 +249,7 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
         var _tw = _tg_w;
         if (_tgi == 1) _tw = _tg_w2;
         var _thov = point_in_rectangle(_mx, _my, _tg_x, _y0 - 2, _tg_x + _tw, _y0 + 12);
+        scr_mm_info(_thov, (_tgi == 0) ? "EDIT / JAM: JAM PLAYS NOTE KEYS AND PIANO CLICKS WITHOUT WRITING ANYTHING" : "MONO / POLY (JAM, FULL PIANO): A NEW NOTE CUTS THE LAST, OR MOVES ON TO THE NEXT VOICE");
         var _ton = global.music_jam;
         if (_tgi == 1) _ton = global.music_poly;
         if (_ton) {
@@ -317,6 +319,13 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
         _hover = scr_sound_editor_piano_keys(_x0, _ky0 + 12, _x1, _y1, 1, 6, _mx, _my, _mark, _lit_all);
     }
     draw_set_font_l(fnt_c64_tiny);
+    if (_hover >= 0) {
+        if (global.music_jam) {
+            scr_mm_info(true, "PIANO " + scr_sound_editor_piano_name(_hover) + ": CLICK OR HOLD RMB TO PLAY IT (JAM: NOTHING IS WRITTEN)");
+        } else {
+            scr_mm_info(true, "PIANO " + scr_sound_editor_piano_name(_hover) + ": CLICK WRITES IT AT THE MARKER ROW, HOLD RMB TO HEAR IT");
+        }
+    }
 
     // ── right mouse held: play the key when pressed, and each new key slid onto ──
     var _rmb_play = false;

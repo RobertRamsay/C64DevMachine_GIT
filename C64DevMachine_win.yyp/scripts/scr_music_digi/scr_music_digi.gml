@@ -417,6 +417,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
     var _by1 = _gy0 - 22;
     var _by2 = _gy0 - 5;
     var _bhov = point_in_rectangle(_mx, _my, _x, _by1, _x + _w, _by2);
+    scr_mm_info(_bhov, "OPENS / CLOSES THE DIGI SAMPLES PANEL: SAMPLE SLOTS, RATE, BOOST, SPEED");
     var _bcol = make_color_rgb(120, 40, 80);
     if (_bhov || _m.dg_slots_open) {
         _bcol = make_color_rgb(190, 70, 120);
@@ -442,6 +443,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
     if (_pat != noone) {
         var _lx = _x;
         var _lhov = point_in_rectangle(_mx, _my, _lx, _hy - 4, _lx + 12, _hy + 10);
+        scr_mm_info(_lhov, "DIGI PATTERN LENGTH: 4 ROWS SHORTER (4-128)");
         draw_set_color(_c_btn);
         if (_lhov) {
             draw_set_color(c_aqua);
@@ -457,6 +459,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
         draw_text_l(_lx + 12, _hy, string(_pat.pattern_len));
         var _rx = _lx + 34;
         var _rhov = point_in_rectangle(_mx, _my, _rx, _hy - 4, _rx + 12, _hy + 10);
+        scr_mm_info(_rhov, "DIGI PATTERN LENGTH: 4 ROWS LONGER (4-128)");
         draw_set_color(_c_btn);
         if (_rhov) {
             draw_set_color(c_aqua);
@@ -474,6 +477,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
         // NEW: make a digi pattern and put it on the selected order row.
         var _nx = _x;
         var _nhov = point_in_rectangle(_mx, _my, _nx, _hy - 4, _nx + 34, _hy + 10);
+        scr_mm_info(_nhov, "MAKES A NEW DIGI PATTERN AND PUTS IT ON THE SELECTED ORDER ROW");
         draw_set_color(_c_btn);
         if (_nhov) {
             draw_set_color(c_aqua);
@@ -510,6 +514,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
         var _ry = _gy0 + _r * _row_h;
         var _x2 = _x + _w;
         var _hov = point_in_rectangle(_mx, _my, _x, _ry, _x2, _ry + _row_h);
+        scr_mm_info(_hov && _pat != noone, (_mx >= _x + 84) ? "DIGI COMMAND CELL: CLICK, TYPE F01-F1F (OWN SPEED) OR F00 (SONG ROWS). RMB CLEARS IT" : "DIGI CELL: CLICK SELECTS (SHIFT EXTENDS), TYPE A NOTE TO PLACE THE CURRENT SAMPLE. RMB CLEARS");
         if (_hov) {
             _in_lane = true;
         }
@@ -1039,6 +1044,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     scr_digi_text_fit(_x1 + 10, _y1 + 8, "DIGI SAMPLES", _x2 - (_x1 + 10) - 8);
     var _cx = _x2 - 22;
     var _chov = point_in_rectangle(_mx, _my, _cx, _y1 + 4, _cx + 16, _y1 + 20);
+    scr_mm_info(_chov, "CLOSES THE DIGI SAMPLES PANEL");
     draw_set_color(c_ltgray);
     if (_chov) {
         draw_set_color(c_white);
@@ -1061,12 +1067,14 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
             _ri = _i;
         }
     }
+    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60, _ry - 4, _x1 + 78, _ry + 12), "DIGI SAMPLE RATE: ONE PRESET LOWER (SMALLER SAMPLES, LESS CPU)");
     if (scr_sample_button(_x1 + 60, _ry - 4, 18, 16, "<", false, (_ri > 0), _mx, _my)) {
         _m.digi_rate = _rates[_ri - 1];
         global.undo_dirty = true;
     }
     draw_set_color(c_white);
     scr_digi_text_fit(_x1 + 86, _ry, string(_m.digi_rate) + " HZ", _x2 - (_x1 + 86) - 8);
+    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 160, _ry - 4, _x1 + 178, _ry + 12), "DIGI SAMPLE RATE: ONE PRESET HIGHER (BETTER SOUND, BIGGER, MORE CPU)");
     if (scr_sample_button(_x1 + 160, _ry - 4, 18, 16, ">", false, (_ri < array_length(_rates) - 1), _mx, _my)) {
         _m.digi_rate = _rates[_ri + 1];
         global.undo_dirty = true;
@@ -1082,6 +1090,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     scr_digi_text_fit(_x1 + 10, _by, "BOOST", _x2 - (_x1 + 10) - 8);
     var _bnames = ["OFF", "V1", "V2", "V3"];
     for (var _bi = 0; _bi < 4; _bi++) {
+        scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60 + _bi * 40, _by - 4, _x1 + 96 + _bi * 40, _by + 12), (_bi == 0) ? "BOOST OFF: NO VOICE IS USED TO MAKE DIGIS LOUDER" : "BOOST: HOLDS VOICE " + string(_bi) + " AT FULL DC SO DIGIS ARE LOUDER; IT IS MUTED ON THE C64");
         if (scr_sample_button(_x1 + 60 + _bi * 40, _by - 4, 36, 16, _bnames[_bi], (_m.digi_boost == _bi), true, _mx, _my)) {
             _m.digi_boost = _bi;
             global.undo_dirty = true;
@@ -1101,6 +1110,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     var _spy = _by + 22;
     draw_set_color(make_color_rgb(140, 150, 180));
     scr_digi_text_fit(_x1 + 10, _spy, "SPEED", _x2 - (_x1 + 10) - 8);
+    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60, _spy - 4, _x1 + 78, _spy + 12), "DIGI SPEED: ONE FRAME PER DIGI ROW LESS (0 = GO WITH THE SONG ROWS)");
     if (scr_sample_button(_x1 + 60, _spy - 4, 18, 16, "<", false, (_m.digi_speed > 0), _mx, _my)) {
         _m.digi_speed -= 1;
         global.undo_dirty = true;
@@ -1112,6 +1122,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     } else {
         scr_digi_text_fit(_x1 + 86, _spy, string(_m.digi_speed) + " FR", _x2 - (_x1 + 86) - 8);
     }
+    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 160, _spy - 4, _x1 + 178, _spy + 12), "DIGI SPEED: ONE FRAME PER DIGI ROW MORE (OWN TEMPO, UP TO 31)");
     if (scr_sample_button(_x1 + 160, _spy - 4, 18, 16, ">", false, (_m.digi_speed < 31), _mx, _my)) {
         _m.digi_speed += 1;
         global.undo_dirty = true;
@@ -1135,6 +1146,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
         }
         // The slot number picks the CURRENT slot: what note entry places.
         var _nhov = point_in_rectangle(_mx, _my, _x1 + 4, _sy, _x1 + 32, _sy + 17);
+        scr_mm_info(_nhov, "MAKES SLOT " + _num + " THE CURRENT SLOT (WHAT NOTE ENTRY PLACES)");
         if (_s == _m.dg_cur_slot) {
             draw_set_color(make_color_rgb(190, 70, 120));
             draw_rectangle(_x1 + 4, _sy, _x1 + 32, _sy + 17, false);
@@ -1151,6 +1163,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
         var _bx1 = _x1 + 36;
         var _bx2 = _x2 - 40;
         var _hov = point_in_rectangle(_mx, _my, _bx1, _sy, _bx2, _sy + 17);
+        scr_mm_info(_hov, "SLOT " + _num + ": CLICK PICKS THE NEXT SAMPLE ASSET, RMB EMPTIES THE SLOT");
         draw_set_color(make_color_rgb(30, 28, 44));
         if (_hov) {
             draw_set_color(make_color_rgb(56, 50, 80));
@@ -1199,6 +1212,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
             global.undo_dirty = true;
         }
         if (!is_undefined(_a)) {
+            scr_mm_info(point_in_rectangle(_mx, _my, _x2 - 34, _sy, _x2 - 10, _sy + 17), "PLAYS THIS SLOT'S SAMPLE AT ITS OWN PITCH");
             if (scr_sample_button(_x2 - 34, _sy, 24, 17, ">", false, true, _mx, _my)) {
                 // Slot preview: play at the sample's own pitch
                 scr_digi_play_step(_m, { smp: _s, vol: 3, note: DIGI_NOTE_BASE });
@@ -1221,6 +1235,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
         _worst = max(_worst, _chk[_ci].lvl);
     }
     var _chk_hov = point_in_rectangle(_mx, _my, _x1 + 4, _y2 - 20, _x2 - 4, _y2 - 4);
+    scr_mm_info(_chk_hov, "PROJECT CHECK: WHETHER THIS PROJECT LEAVES ROOM FOR SAMPLES (HOVER FOR ADVICE)");
     if (_worst == 0) {
         draw_set_color(make_color_rgb(120, 200, 120));
         scr_digi_text_fit(_x1 + 10, _y2 - 18, "PROJECT CHECK: OK FOR SAMPLES", _x2 - (_x1 + 10) - 8);
