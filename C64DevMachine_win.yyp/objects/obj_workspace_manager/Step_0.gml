@@ -1024,6 +1024,7 @@ if (is_entering_text) {
         else if (_ntype == "MACRO_PRINT"        && (_nidx == 6 || _nidx == 13)) { _is_address_field = true; }
 	// Slot 1 is the target bitmap base — typed as hex, like every other bmp addr.
 	else if (_ntype == "MACRO_CLEAR_BMP_RECT" && _nidx == 1)                { _is_address_field = true; }
+	else if (_ntype == "MACRO_BMP_OBJ" && (_nidx == 1 || _nidx == 11))      { _is_address_field = true; }
 		else if (_ntype == "MACRO_PLACE_CHAR"   && (_nidx == 16 || _nidx == 17)) { _is_address_field = true; }
 		else if (_ntype == "MACRO_CLR_SCREEN"   && _nidx == 1)                   { _is_address_field = true; }
 		else if (_ntype == "MACRO_GET_CHAR"     && (_nidx == 10 || _nidx == 11)) { _is_address_field = true; }

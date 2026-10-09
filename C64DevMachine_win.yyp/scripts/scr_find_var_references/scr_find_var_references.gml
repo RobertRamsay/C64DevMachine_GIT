@@ -41,6 +41,7 @@ function scr_find_var_references(_var_name, _exclude) {
             case "MACRO_PRINT_EXT":      _slots = [6, 13, 15, 17];                  break;
             case "MACRO_MOVE_BMP_BLOCK":  _slots = [9, 10, 11, 12, 18];  break;
             case "MACRO_CLEAR_BMP_RECT":  _slots = [6, 7, 8, 9];          break;
+            case "MACRO_BMP_OBJ":         _slots = [6, 7, 8];             break;
             case "MACRO_REU":             _slots = [12];                 break;
             default:                     _slots = [];                   break;
         }

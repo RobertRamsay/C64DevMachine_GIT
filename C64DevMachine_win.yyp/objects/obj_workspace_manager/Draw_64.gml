@@ -1710,6 +1710,7 @@ if (gui_menu_open == 0) {
         { title: "CLR SCRN RAM", type: "MACRO_CLR_SCREEN"    },
         { title: "HUD",          type: "MACRO_HUD"           },
         { title: "CLR BMP RECT", type: "MACRO_CLEAR_BMP_RECT" },
+        { title: "BMP OBJECT",   type: "MACRO_BMP_OBJ"       },
         { title: "VWAIT (ALT+V)",        type: "MACRO_VWAIT"         },
         { title: "WAIT",         type: "MACRO_WAIT"          },
         { title: "NOP REPEAT",   type: "MACRO_NOP_REPEAT"    },
