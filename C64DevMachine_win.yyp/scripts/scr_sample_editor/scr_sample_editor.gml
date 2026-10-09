@@ -1,6 +1,7 @@
 /// Small push button for the sample editor. Returns true on click.
-function scr_sample_button(_x1, _y1, _w, _h, _label, _on, _enabled, _mx, _my) {
+function scr_sample_button(_x1, _y1, _w, _h, _label, _on, _enabled, _mx, _my, _info = "") {
     var _hov = point_in_rectangle(_mx, _my, _x1, _y1, _x1 + _w, _y1 + _h);
+    scr_ui_info(_hov, _info);
     var _bg = make_color_rgb(38, 38, 58);
     var _tx = c_white;
     if (!_enabled) {
@@ -132,17 +133,17 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // TOOLBAR
     // ===============================================================
     var _ty = _cy;
-    if (scr_sample_button(_x0, _ty, 100, 18, "IMPORT WAV", false, true, _mx, _my)) {
+    if (scr_sample_button(_x0, _ty, 100, 18, "IMPORT WAV", false, true, _mx, _my, "LOADS A WAV FILE (PCM OR FLOAT, ANY RATE, MONO/STEREO) AS THE SOURCE; RESETS THE TRIM")) {
         scr_sample_wav_import(_asset);
         _have_src = (_m.src_len > 1);
     }
-    if (scr_sample_button(_x0 + 110, _ty, 110, 18, "PLAY SOURCE", (_pv_mode == 0), _have_src, _mx, _my)) {
+    if (scr_sample_button(_x0 + 110, _ty, 110, 18, "PLAY SOURCE", (_pv_mode == 0), _have_src, _mx, _my, "PLAYS THE TRIMMED ORIGINAL SOURCE AUDIO")) {
         scr_sample_preview_play(_asset, 0);
     }
-    if (scr_sample_button(_x0 + 230, _ty, 110, 18, "PLAY C64", (_pv_mode == 1), _have_src, _mx, _my)) {
+    if (scr_sample_button(_x0 + 230, _ty, 110, 18, "PLAY C64", (_pv_mode == 1), _have_src, _mx, _my, "PLAYS THE ENCODED 4-BIT C64 VERSION AS IT WILL SOUND")) {
         scr_sample_preview_play(_asset, 1);
     }
-    if (scr_sample_button(_x0 + 350, _ty, 60, 18, "STOP", false, (_pv_pos >= 0), _mx, _my)) {
+    if (scr_sample_button(_x0 + 350, _ty, 60, 18, "STOP", false, (_pv_pos >= 0), _mx, _my, "STOPS THE PREVIEW PLAYBACK")) {
         scr_sample_preview_stop();
     }
     if (_have_src) {
@@ -214,6 +215,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
         // Trim mouse
         var _in_src = point_in_rectangle(_mx, _my, _x0, _sy1, _x1, _sy2);
+        scr_ui_info(_in_src, "SOURCE WAVE: LEFT-DRAG MOVES THE NEARER TRIM HANDLE, RIGHT-CLICK RESETS THE TRIM TO ALL");
         if (_in_src && mouse_check_button_pressed(mb_left)) {
             if (abs(_mx - _tsx) <= abs(_mx - _tex)) {
                 _m.drag = 0;
@@ -302,7 +304,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             _ri = _i;
         }
     }
-    if (scr_sample_button(_kx + 40, _ky, 18, 18, "<", false, (_ri > 0), _mx, _my)) {
+    if (scr_sample_button(_kx + 40, _ky, 18, 18, "<", false, (_ri > 0), _mx, _my, "LOWER PLAYBACK RATE PRESET: SMALLER DATA, LESS TREBLE")) {
         _m.rate = _rates[_ri - 1];
         _m.enc_dirty = true;
         global.undo_dirty = true;
@@ -311,7 +313,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_halign(fa_center);
     draw_text_l(_kx + 100, _ky + 4, string(_m.rate) + " HZ");
     draw_set_halign(fa_left);
-    if (scr_sample_button(_kx + 142, _ky, 18, 18, ">", false, (_ri < array_length(_rates) - 1), _mx, _my)) {
+    if (scr_sample_button(_kx + 142, _ky, 18, 18, ">", false, (_ri < array_length(_rates) - 1), _mx, _my, "HIGHER PLAYBACK RATE PRESET: CLEARER SOUND, MORE BYTES AND CPU")) {
         _m.rate = _rates[_ri + 1];
         _m.enc_dirty = true;
         global.undo_dirty = true;
@@ -321,7 +323,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _kx += 190;
     draw_set_color(_c_lbl);
     draw_text_l(_kx, _ky + 4, "GAIN");
-    if (scr_sample_button(_kx + 40, _ky, 18, 18, "<", false, (_m.gain > 10), _mx, _my)) {
+    if (scr_sample_button(_kx + 40, _ky, 18, 18, "<", false, (_m.gain > 10), _mx, _my, "LOWERS THE GAIN BY 10% (MIN 10%)")) {
         _m.gain = max(10, _m.gain - 10);
         _m.enc_dirty = true;
         global.undo_dirty = true;
@@ -330,7 +332,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_halign(fa_center);
     draw_text_l(_kx + 90, _ky + 4, string(_m.gain) + "%");
     draw_set_halign(fa_left);
-    if (scr_sample_button(_kx + 122, _ky, 18, 18, ">", false, (_m.gain < 400), _mx, _my)) {
+    if (scr_sample_button(_kx + 122, _ky, 18, 18, ">", false, (_m.gain < 400), _mx, _my, "RAISES THE GAIN BY 10% (MAX 400%); OVER 100% DRIVES IT HARDER AND CAN CLIP")) {
         _m.gain = min(400, _m.gain + 10);
         _m.enc_dirty = true;
         global.undo_dirty = true;
@@ -344,7 +346,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     if (_m.dither == 1) {
         _dl = "ON";
     }
-    if (scr_sample_button(_kx + 56, _ky, 44, 18, _dl, (_m.dither == 1), true, _mx, _my)) {
+    if (scr_sample_button(_kx + 56, _ky, 44, 18, _dl, (_m.dither == 1), true, _mx, _my, "TOGGLES DITHER: ADDS NOISE TO HIDE 4-BIT STEPPING ON QUIET SOUNDS")) {
         _m.dither = 1 - _m.dither;
         _m.enc_dirty = true;
         global.undo_dirty = true;
@@ -354,12 +356,12 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _kx += 130;
     draw_set_color(_c_lbl);
     draw_text_l(_kx, _ky + 4, "PACK");
-    if (scr_sample_button(_kx + 40, _ky, 70, 18, "4-BIT", (_m.pack == 0), true, _mx, _my)) {
+    if (scr_sample_button(_kx + 40, _ky, 70, 18, "4-BIT", (_m.pack == 0), true, _mx, _my, "PACKS TWO 4-BIT SAMPLES PER BYTE (BEST QUALITY)")) {
         _m.pack = 0;
         _m.enc_dirty = true;
         global.undo_dirty = true;
     }
-    if (scr_sample_button(_kx + 116, _ky, 110, 18, "2-BIT DELTA", (_m.pack == 1), true, _mx, _my)) {
+    if (scr_sample_button(_kx + 116, _ky, 110, 18, "2-BIT DELTA", (_m.pack == 1), true, _mx, _my, "PACKS 2-BIT DELTAS, FOUR PER BYTE: HALF THE SIZE, LOWER QUALITY")) {
         _m.pack = 1;
         _m.enc_dirty = true;
         global.undo_dirty = true;
@@ -369,11 +371,11 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _kx += 260;
     draw_set_color(_c_lbl);
     draw_text_l(_kx, _ky + 4, "SID");
-    if (scr_sample_button(_kx + 32, _ky, 54, 18, "6581", (_m.sid_model == 0), true, _mx, _my)) {
+    if (scr_sample_button(_kx + 32, _ky, 54, 18, "6581", (_m.sid_model == 0), true, _mx, _my, "TARGET THE 6581 SID: $D418 DIGIS ARE AUDIBLE ON THEIR OWN")) {
         _m.sid_model = 0;
         global.undo_dirty = true;
     }
-    if (scr_sample_button(_kx + 92, _ky, 54, 18, "8580", (_m.sid_model == 1), true, _mx, _my)) {
+    if (scr_sample_button(_kx + 92, _ky, 54, 18, "8580", (_m.sid_model == 1), true, _mx, _my, "TARGET THE 8580 SID: THE PLAYER ADDS THE DC BOOST DIGIS NEED")) {
         _m.sid_model = 1;
         global.undo_dirty = true;
     }
@@ -387,7 +389,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     if (_m.normalise == 1) {
         _nl = "ON";
     }
-    if (scr_sample_button(_kx + 84, _ky2, 44, 18, _nl, (_m.normalise == 1), true, _mx, _my)) {
+    if (scr_sample_button(_kx + 84, _ky2, 44, 18, _nl, (_m.normalise == 1), true, _mx, _my, "TOGGLES NORMALISE: SCALES THE TRIM TO FILL ALL 16 OUTPUT LEVELS")) {
         _m.normalise = 1 - _m.normalise;
         _m.enc_dirty = true;
         global.undo_dirty = true;
@@ -395,7 +397,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _kx += 150;
     draw_set_color(_c_lbl);
     draw_text_l(_kx, _ky2 + 4, "COMPRESS");
-    if (scr_sample_button(_kx + 76, _ky2, 18, 18, "<", false, (_m.compress > 0), _mx, _my)) {
+    if (scr_sample_button(_kx + 76, _ky2, 18, 18, "<", false, (_m.compress > 0), _mx, _my, "LOWERS COMPRESSION BY 10% (LESS LIFT OF QUIET PARTS)")) {
         _m.compress = max(0, _m.compress - 10);
         _m.enc_dirty = true;
         global.undo_dirty = true;
@@ -404,7 +406,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_halign(fa_center);
     draw_text_l(_kx + 122, _ky2 + 4, string(_m.compress) + "%");
     draw_set_halign(fa_left);
-    if (scr_sample_button(_kx + 150, _ky2, 18, 18, ">", false, (_m.compress < 100), _mx, _my)) {
+    if (scr_sample_button(_kx + 150, _ky2, 18, 18, ">", false, (_m.compress < 100), _mx, _my, "RAISES COMPRESSION BY 10% (LIFTS QUIET PARTS MORE)")) {
         _m.compress = min(100, _m.compress + 10);
         _m.enc_dirty = true;
         global.undo_dirty = true;

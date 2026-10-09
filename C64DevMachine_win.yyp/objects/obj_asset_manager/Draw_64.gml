@@ -809,6 +809,8 @@ var _vx1 = 288;
 var _vy1 = 108;
 if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list)) {
     var _asset = ds_list_find_value(asset_list, viewer_asset);
+    // INFO strip: the control under the pointer sets this as the editor draws
+    global.ui_info = "";
 
 	var _wide_editor = (_asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK" || _asset.type == "BMP_OBJECTS" || _asset.type == "SAMPLE");
 	_vx1 = _wide_editor ? 30 : 288;
@@ -843,7 +845,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _vx1 = 12;
         _vx2 = _gui_w - 12;
         _vy1 = 8;
-        _vy2 = _gui_h - 8;
+        _vy2 = _gui_h - 30;   // leaves room for the INFO strip underneath
     }
 	
     var _vw    = _vx2 - _vx1;
@@ -881,6 +883,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     var _cl_x2  = _vx2 - 4;
     var _cl_y2  = _vy1 + 24;
     var _cl_hov = point_in_rectangle(_mx, _my, _cl_x1, _cl_y1, _cl_x2, _cl_y2);
+    scr_ui_info(_cl_hov, "CLOSE THIS EDITOR AND RETURN TO THE WORKSPACE (ESC)");
     var _cl_bg  = make_color_rgb(30, 30, 42);
     if (_cl_hov) {
         _cl_bg = make_color_rgb(190, 60, 60);
@@ -921,6 +924,13 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
 	&& _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "HUD" && _asset.type != "ROOM_MAP" && _asset.type != "ANIMATION" && _asset.type != "SPRITE_MASK" && _asset.type != "BMP_OBJECTS" && _asset.type != "SAMPLE"
 	&& !(_asset.type == "BYTE_DATA" && variable_struct_exists(_asset.meta, "is_save_file") && _asset.meta.is_save_file)) {
         var _lb_hover = point_in_rectangle(_mx, _my, _lbx1, _lby1, _lbx2, _lby2);
+        if (_asset.type == "VECTOR_BITMAP") {
+            scr_ui_info(_lb_hover, "LOAD A .VBM FILE FROM DISK, REPLACING THIS VECTOR BITMAP");
+        } else if (_asset.type == "BYTE_DATA") {
+            scr_ui_info(_lb_hover, "IMPORT A TEXT FILE OF BYTE VALUES FROM DISK, REPLACING THIS ASSET'S DATA");
+        } else {
+            scr_ui_info(_lb_hover, "PICK A FILE FROM DISK AND LOAD IT INTO THIS ASSET, REPLACING ITS DATA");
+        }
         draw_set_color(_lb_hover ? make_color_rgb(80, 200, 80) : make_color_rgb(30, 90, 40));
         draw_rectangle(_lbx1, _lby1, _lbx2, _lby2, false);
         draw_set_font_l(fnt_c64_tiny);
@@ -950,6 +960,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
             var _pngx1 = _lbx2 + 10;
             var _pngx2 = _lbx2 + 110;
             var _png_hov = point_in_rectangle(_mx, _my, _pngx1, _lby1, _pngx2, _lby2);
+            scr_ui_info(_png_hov, "IMPORT SPRITES FROM A PNG STRIP - OPENS A CONFIRM PANEL BEFORE ANYTHING CHANGES");
             if (_png_hov) {
                 draw_set_color(make_color_rgb(80, 200, 80));
             } else {
@@ -974,6 +985,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         var _vex1 = _lbx2 + 10;
         var _vex2 = _vex1 + 110;
         var _ve_hov = point_in_rectangle(_mx, _my, _vex1, _lby1, _vex2, _lby2);
+        scr_ui_info(_ve_hov, "SAVE THIS VECTOR BITMAP AS A .VBM FILE TO SHARE WITH OTHER PROJECTS");
         var _ve_fill = make_color_rgb(20, 80, 40);
         var _ve_edge = c_ltgray;
         if (_ve_hov) {
@@ -1026,6 +1038,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         var _ah = string_upper(decimal_to_hex(_asset.address));
         while (string_length(_ah) < 4) _ah = "0" + _ah;
         var _addr_v_hover = point_in_rectangle(_mx, _my, _vx1 + 74, _cy - 1, _vx1 + 162, _cy + 13);
+        scr_ui_info(_addr_v_hover, "CLICK TO TYPE A NEW C64 LOAD ADDRESS IN HEX, ENTER TO CONFIRM");
         draw_set_color(_addr_v_hover ? c_white : c_aqua);
         draw_text_l(_vx1 + 80, _cy, "$" + _ah);
         if (_addr_v_hover) {
@@ -1145,6 +1158,7 @@ case "CHAR_SET": {
     var _atby1 = _vy1 + 38;
     var _atby2 = _atby1 + 20;
     var _athov = point_in_rectangle(_mx, _my, _atbx1, _atby1, _atbx2, _atby2);
+    scr_ui_info(_athov, "ADD A ROW OF 16 BLANK CHARS TO THE END OF THE CHARSET (UP TO 256)");
     draw_set_color(_athov ? make_color_rgb(100, 100, 255) : make_color_rgb(40, 40, 120));
     draw_rectangle(_atbx1, _atby1, _atbx2, _atby2, false);
     draw_set_font_l(fnt_c64_tiny);
@@ -1177,6 +1191,7 @@ case "CHAR_SET": {
     var _rtby1 = _atby1 + 26;
     var _rtby2 = _atby2 + 26;
     var _rthov = point_in_rectangle(_mx, _my, _rtbx1, _rtby1, _rtbx2, _rtby2);
+    scr_ui_info(_rthov, "REMOVE THE LAST ROW OF 16 CHARS FROM THE CHARSET (UNDOABLE)");
 
     draw_set_color(_rthov ? make_color_rgb(200, 60, 60) : make_color_rgb(100, 30, 30));
     draw_rectangle(_rtbx1, _rtby1, _rtbx2, _rtby2, false);
@@ -1206,6 +1221,7 @@ case "CHAR_SET": {
     var _crby1 = _atby1;
     var _crby2 = _atby2;
     var _crhov = point_in_rectangle(_mx, _my, _crbx1, _crby1, _crbx2, _crby2);
+    scr_ui_info(_crhov, "OVERWRITE THE WHOLE CHARSET WITH THE 256 C64 ROM CHARS (UNDOABLE)");
 
     draw_set_color(_crhov ? make_color_rgb(200, 80, 80) : make_color_rgb(120, 40, 40));
     draw_rectangle(_crbx1, _crby1, _crbx2, _crby2, false);
@@ -1240,6 +1256,7 @@ case "CHAR_SET": {
     var _mcby1  = _cy;
     var _mcby2  = _cy + 18;
     var _mcbhov = point_in_rectangle(_mx, _my, _mcbx1, _mcby1, _mcbx2, _mcby2);
+    scr_ui_info(_mcbhov, "CYCLE THE CHARSET MODE: HIRES -> MULTICOLOUR -> EXTENDED COLOUR (ECM)");
     var _mode_bg_cols  = [make_color_rgb(30, 30, 45), make_color_rgb(160, 80, 20), make_color_rgb(20, 80, 90)];
     var _mode_txt_cols = [make_color_rgb(80, 80, 100), make_color_rgb(255, 160, 60), make_color_rgb(80, 220, 240)];
     var _mode_labels   = ["HR MODE", "MC MODE", "ECM MODE"];
@@ -1250,6 +1267,7 @@ case "CHAR_SET": {
         var _chx1 = _mcbx2 + 10 + _che * 110;
         var _chx2 = _chx1 + 100;
         var _ch_hov = point_in_rectangle(_mx, _my, _chx1, _mcby1, _chx2, _mcby2);
+        scr_ui_info(_ch_hov, (_che == 0) ? "SAVE THE CHARSET AS A RAW .BIN FILE (8 BYTES PER CHAR)" : "SAVE THE CHARSET AS A CHARPAD .CTM PROJECT FILE");
         draw_set_color(_ch_hov ? make_color_rgb(40, 140, 80) : make_color_rgb(20, 80, 40));
         draw_rectangle(_chx1, _mcby1, _chx2, _mcby2, false);
         draw_set_color(_ch_hov ? c_white : c_ltgray);
@@ -1332,7 +1350,8 @@ case "CHAR_SET": {
         for (var _si = 0; _si < 16; _si++) {
             var _sx1  = _vx1 + 44 + _si * (_cp_sw + _cp_gap);
             var _shov = point_in_rectangle(_mx, _my, _sx1, _cp_row_y, _sx1 + _cp_sw, _cp_row_y + _cp_sw);
-            
+            scr_ui_info(_shov, "SET THE " + _cp_labels[_cpi] + " COLOUR TO " + string(_si) + " AND MAKE IT THE ACTIVE PAINT COLOUR");
+
             draw_set_color(scr_c64_pepto_colour(_si));
             
             // Dim colours 8-15 for the FG row in MC mode (C64 hardware limitation)
@@ -1416,6 +1435,7 @@ case "CHAR_SET": {
     var _ted_y1  = _ced_y + 8 * _ced_cell + 40;
     var _ted_y2  = _ted_y1 + 16;
     var _tedhov  = point_in_rectangle(_mx, _my, _ted_x1, _ted_y1, _ted_x2, _ted_y2);
+    scr_ui_info(_tedhov, "CYCLE THE CHARSET MODE: HIRES -> MULTICOLOUR -> EXTENDED COLOUR (ECM)");
     var _ted_bg_cols  = [make_color_rgb(30, 30, 45), make_color_rgb(160, 80, 20), make_color_rgb(20, 80, 90)];
     var _ted_txt_cols = [make_color_rgb(80, 80, 100), make_color_rgb(255, 160, 60), make_color_rgb(80, 220, 240)];
     var _ted_labels   = ["HR MODE", "MC MODE", "ECM MODE"];
@@ -1452,6 +1472,7 @@ case "MAP_DATA": {
     var _crby1  = _vy1 + 38;
     var _crby2  = _crby1 + 20;
     var _crbhov = point_in_rectangle(_mx, _my, _crbx1, _crby1, _crbx2, _crby2);
+    scr_ui_info(_crbhov, "CREATE A NEW EMPTY MAP - ASKS FOR WIDTH,HEIGHT (MAX 160x160). WIPES THE CURRENT MAP");
     draw_set_color(_crbhov ? make_color_rgb(60, 180, 200) : make_color_rgb(20, 70, 90));
     draw_rectangle(_crbx1, _crby1, _crbx2, _crby2, false);
     draw_set_font_l(fnt_c64_tiny);
@@ -1552,6 +1573,7 @@ var _gh = variable_struct_exists(_m, "grid_h") ? _m.grid_h : _mh;
 			
 var _map_row_y = _vy1 + 58;
     var _whov = point_in_rectangle(_mx, _my, _wbx1, _map_row_y - 1, _wbx2, _map_row_y + 13);
+    scr_ui_info(_whov, "MAP WIDTH IN CHARS - CLICK TO TYPE A NEW WIDTH, ENTER TO APPLY");
     draw_set_color(_whov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
     draw_rectangle(_wbx1, _map_row_y - 1, _wbx2, _map_row_y + 13, false);
     if (editing_map_dim && editing_map_field == "W" && editing_map_asset_idx == viewer_asset) {
@@ -1569,6 +1591,7 @@ var _map_row_y = _vy1 + 58;
     var _hbx1 = _wbx2 + 12;
     var _hbx2 = _hbx1 + 36;
     var _hhov = point_in_rectangle(_mx, _my, _hbx1, _map_row_y - 1, _hbx2, _map_row_y + 13);
+    scr_ui_info(_hhov, "MAP HEIGHT IN CHARS - CLICK TO TYPE A NEW HEIGHT, ENTER TO APPLY");
     draw_set_color(_hhov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
     draw_rectangle(_hbx1, _map_row_y - 1, _hbx2, _map_row_y + 13, false);
     if (editing_map_dim && editing_map_field == "H" && editing_map_asset_idx == viewer_asset) {
@@ -1615,6 +1638,7 @@ draw_set_color(c_ltgray);
 
 
 		    var _cpbhov = point_in_rectangle(_mx, _my, _cpbx1, _cpby1, _cpbx2, _cpby2);
+		    scr_ui_info(_cpbhov, "CHARSET - CLICK TO PICK WHICH CHAR_SET ASSET THIS MAP'S TILES ARE DRAWN WITH");
 		    draw_set_color(_cpbhov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
 		    draw_rectangle(_cpbx1, _cpby1, _cpbx2, _cpby2, false);
 		    draw_set_color(_chr_name != "" ? c_lime : make_color_rgb(150, 150, 150));
@@ -1629,6 +1653,7 @@ draw_set_color(c_ltgray);
 		        for (var _tpi = 0; _tpi < 2; _tpi++) {
 		            var _tbx1 = _tpx1 + _tpi * 106;
 		            var _tby1 = _cpby1 - 24;
+		            scr_ui_info(point_in_rectangle(_mx, _my, _tbx1, _tby1, _tbx1 + 100, _tby1 + 18), (_tpi == 0) ? "SHOW THE STAMP STORE BANK IN THIS AREA (G TOGGLES)" : "SHOW A ROOM PREVIEW WITH ITS OWN CHARSET AND COLOUR BANDS IN THIS AREA (G TOGGLES)");
 		            if (scr_mrp_button(_tbx1, _tby1, _tbx1 + 100, _tby1 + 18, _tp_lbl[_tpi], map_top_mode == _tpi, _mx, _my) == 1) {
 		                map_top_mode = _tpi;
 		            }
@@ -1653,6 +1678,7 @@ draw_set_color(c_ltgray);
 		    var _stbx1      = _bank_ox;
 		    var _stbx2      = _stbx1 + 38;
 		    var _stbhov     = point_in_rectangle(_mx, _my, _stbx1, _bank_oy, _stbx2, _bank_oy + _bank_sh);
+		    scr_ui_info(_stbhov, "STORE THE CURRENT STAMP (COPIED SELECTION) INTO THE STAMP BANK - UP TO 128 STAMPS");
 		    draw_set_color(_has_stamp ? (_stbhov ? make_color_rgb(220, 180, 30) : make_color_rgb(120, 90, 10)) : make_color_rgb(35, 35, 35));
 		    draw_rectangle(_stbx1, _bank_oy, _stbx2, _bank_oy + _bank_sh, false);
 		    draw_set_font_l(fnt_c64_tiny);
@@ -1740,6 +1766,7 @@ draw_set_color(c_ltgray);
 
 		    // Handle wheel scroll — scrolls by row
 		    var _mouse_on_bank = point_in_rectangle(_mx, _my, _bank_strip_x1, _bank_oy, _bank_strip_x2, _bank_oy + _bank_area_h);
+		    scr_ui_info(_mouse_on_bank, "STAMP BANK - MOUSE WHEEL SCROLLS THE ROWS OF STORED STAMPS");
 		    if (_mouse_on_bank) {
 		        if (mouse_wheel_up())   global.map_tile_bank_scroll = max(0, global.map_tile_bank_scroll - 1);
 		        if (mouse_wheel_down()) global.map_tile_bank_scroll += 1;
@@ -1802,6 +1829,7 @@ draw_set_color(c_ltgray);
 
 		        var _bsel = (global.map_tile_bank_sel == _bi);
 		        var _bhov = point_in_rectangle(_mx, _my, _bx1, _by1, _bx2, _by2);
+		        scr_ui_info(_bhov, "STORED STAMP - LEFT CLICK TO PICK IT UP AS THE ACTIVE STAMP, RIGHT CLICK TO DELETE IT");
 
 		        draw_set_color(make_color_rgb(10, 10, 20));
 		        draw_rectangle(_bx1, _by1, _bx2, _by2, false);
@@ -1896,6 +1924,8 @@ draw_set_color(c_ltgray);
 		        draw_set_halign(fa_center);
 		        draw_text_l(_arr_x + 9, _arr_y + 2, "^");
 		        var _dn_hov = point_in_rectangle(_mx, _my, _arr_x, _arr_y + 16, _arr_x + 18, _arr_y + 30);
+		        scr_ui_info(_up_hov, "SCROLL THE STAMP BANK UP ONE ROW");
+		        scr_ui_info(_dn_hov, "SCROLL THE STAMP BANK DOWN ONE ROW");
 		        draw_set_color(_dn_hov ? c_white : make_color_rgb(160, 160, 200));
 		        draw_rectangle(_arr_x, _arr_y + 16, _arr_x + 18, _arr_y + 30, false);
 		        draw_set_color(c_black);
@@ -1955,6 +1985,7 @@ draw_set_color(c_ltgray);
 	        var _gby1  = _cy;
 	        var _gby2  = _cy + 16;
 	        var _gbhov = point_in_rectangle(_mx, _my, _gbx1, _gby1, _gbx2, _gby2);
+	        scr_ui_info(_gbhov, "TOGGLE HIRES ONLY / MIXED (HIRES + MULTICOLOUR CELLS) MODE FOR THIS MAP");
 	        draw_set_color(_gb_cols[_global_mixed]);
 	        draw_rectangle(_gbx1, _gby1, _gbx2, _gby2, false);
 	        draw_set_font_l(fnt_c64_tiny);
@@ -1977,6 +2008,7 @@ draw_set_color(c_ltgray);
 	        var _pby1  = _cy;
 	        var _pby2  = _cy + 16;
 	        var _pbhov = point_in_rectangle(_mx, _my, _pbx1, _pby1, _pbx2, _pby2);
+	        scr_ui_info(_pbhov, "TOGGLE WHETHER NEW PAINTED CELLS ARE HIRES OR MULTICOLOUR");
 	        draw_set_color(_pb_cols[_paint_mc]);
 	        draw_rectangle(_pbx1, _pby1, _pbx2, _pby2, false);
 	        draw_set_font_l(fnt_c64_tiny);
@@ -2052,6 +2084,7 @@ _cy += 22;
 	                var _ebx1_md  = _vx1 + 44 + _ebsi_md * (_ecm_sw_md + _ecm_gap_md);
 	                var _ebx2_md  = _ebx1_md + _ecm_sw_md;
 	                var _ebhov_md = point_in_rectangle(_mx, _my, _ebx1_md, _eby_md, _ebx2_md, _eby_md + _ecm_sw_md);
+	                scr_ui_info(_ebhov_md, "SET ECM BACKGROUND " + string(_ebi_md) + " (STORED ON THE LINKED CHARSET) TO THIS COLOUR");
 	                draw_set_color(scr_c64_pepto_colour(_ebsi_md));
 	                draw_rectangle(_ebx1_md, _eby_md, _ebx2_md, _eby_md + _ecm_sw_md, false);
 	                if (_ebval_md == _ebsi_md) {
@@ -2089,6 +2122,7 @@ _cy += 22;
 	            for (var _msi = 0; _msi < 16; _msi++) {
 	                var _msx = _vx1 + 36 + _msi * (_mc_sw + _mc_gap);
 	                var _mshov = point_in_rectangle(_mx, _my, _msx, _mpy, _msx + _mc_sw, _mpy + _mc_sw);
+	                scr_ui_info(_mshov, "LEFT CLICK: SET THIS MAP'S " + _mc_pal_labels[_mpi] + " COLOUR. RIGHT CLICK: INHERIT IT FROM THE CHARSET");
 	                draw_set_color(scr_c64_pepto_colour(_msi));
 	                draw_rectangle(_msx, _mpy, _msx + _mc_sw, _mpy + _mc_sw, false);
 	                if (_mc_pal_disp[_mpi] == _msi) {
@@ -2229,6 +2263,7 @@ _cy += 22;
 	    var _rwy1  = _cy + 2;
 	    var _rwy2  = _cy + 18;
 	    var _rwhov = point_in_rectangle(_mx, _my, _rwx1, _rwy1, _rwx2, _rwy2);
+	    scr_ui_info(_rwhov, "EXPORT FORMAT - CLICK TO CYCLE FULL MAP / RAW CHARS / RLE ROOMS / RLE STREAM");
 	    draw_set_color(_rw_cols[_raw_on]);
 	    draw_rectangle(_rwx1, _rwy1, _rwx2, _rwy2, false);
 	    draw_set_font_l(fnt_c64_tiny);
@@ -2272,6 +2307,7 @@ _cy += 22;
 	    var _ecy1  = _cy + 24;
 	    var _ecy2  = _cy + 40;
 	    var _echov = point_in_rectangle(_mx, _my, _ecx1, _ecy1, _ecx2, _ecy2);
+	    scr_ui_info(_echov, "ERASE CHAR (WHAT RIGHT CLICK PAINTS) - CLICK TO MAKE THE ACTIVE CHAR THE ERASE CHAR");
 	    var _ec_v      = real(_m.erase_char);
 	    var _ec_digits = "0123456789ABCDEF";
 	    var _ec_hex    = string_char_at(_ec_digits, ((_ec_v >> 4) & 15) + 1) + string_char_at(_ec_digits, (_ec_v & 15) + 1);
@@ -2333,6 +2369,7 @@ _cy += 22;
 
 var _zmx1  = _vx2 - _btn_bw * 2 - 6;
 	    var _zmhov = point_in_rectangle(_mx, _my, _zmx1, _btn_y, _zmx1 + _btn_bw, _btn_y + _btn_bh);
+	    scr_ui_info(_zmhov, "ZOOM THE MAP OUT (MOUSE WHEEL OVER THE MAP ALSO ZOOMS)");
 	    draw_set_color(_zmhov ? c_white : c_gray);
 	    draw_rectangle(_zmx1, _btn_y, _zmx1 + _btn_bw, _btn_y + _btn_bh, true);
 	    draw_set_halign(fa_center);
@@ -2341,6 +2378,7 @@ var _zmx1  = _vx2 - _btn_bw * 2 - 6;
 
 	    var _zpx1  = _vx2 - _btn_bw - 2;
 	    var _zphov = point_in_rectangle(_mx, _my, _zpx1, _btn_y, _zpx1 + _btn_bw, _btn_y + _btn_bh);
+	    scr_ui_info(_zphov, "ZOOM THE MAP IN (MOUSE WHEEL OVER THE MAP ALSO ZOOMS)");
 	    draw_set_color(_zphov ? c_white : c_gray);
 	    draw_rectangle(_zpx1, _btn_y, _zpx1 + _btn_bw, _btn_y + _btn_bh, true);
 	    draw_text_l(_zpx1 + _btn_bw * 0.5, _btn_y + 3, "Z+");
@@ -2363,6 +2401,7 @@ var _zmx1  = _vx2 - _btn_bw * 2 - 6;
 	    var _gbtn_x1  = _vx2 - _btn_bw * 4 - 12;
 	    var _gbtn_x2  = _gbtn_x1 + _btn_bw + 10;
 	    var _gbtn_hov = point_in_rectangle(_mx, _my, _gbtn_x1, _btn_y, _gbtn_x2, _btn_y + _btn_bh);
+	    scr_ui_info(_gbtn_hov, "SHOW / HIDE THE CELL GRID LINES ON THE MAP");
 	    draw_set_color(_show_grid ? make_color_rgb(60, 160, 60) : make_color_rgb(60, 60, 60));
 	    draw_rectangle(_gbtn_x1, _btn_y, _gbtn_x2, _btn_y + _btn_bh, false);
 	    draw_set_color(_gbtn_hov ? c_white : (_show_grid ? c_lime : c_gray));
@@ -2379,6 +2418,7 @@ var _zmx1  = _vx2 - _btn_bw * 2 - 6;
     var _fbtn_x1   = _gbtn_x1 - _btn_bw - 14;
     var _fbtn_x2   = _fbtn_x1 + _btn_bw + 4;
     var _fbtn_hov  = point_in_rectangle(_mx, _my, _fbtn_x1, _btn_y, _fbtn_x2, _btn_y + _btn_bh);
+    scr_ui_info(_fbtn_hov, "FILL MODE - WHEN ON, CLICKING THE MAP FLOOD FILLS THE CONNECTED AREA");
     draw_set_color(_fill_mode ? make_color_rgb(160, 60, 160) : make_color_rgb(60, 60, 60));
     draw_rectangle(_fbtn_x1, _btn_y, _fbtn_x2, _btn_y + _btn_bh, false);
     draw_set_color(_fbtn_hov ? c_white : (_fill_mode ? make_color_rgb(255, 120, 255) : c_gray));
@@ -2459,6 +2499,8 @@ var _zmx1  = _vx2 - _btn_bw * 2 - 6;
 		        _sbh_tx = _sbh_x1 + floor((_sbh_len - _sbh_tw) * _sbh_pos / _sb_max_c);
 		    }
 		    var _sbh_hov = _sb_need_h && point_in_rectangle(_mx, _my, _sbh_x1, _sbh_y1, _sbh_x2, _sbh_y2);
+		    scr_ui_info(_sbv_hov, "VERTICAL SCROLLBAR - DRAG THE THUMB OR CLICK THE TRACK; WHEEL HERE SCROLLS 3 ROWS");
+		    scr_ui_info(_sbh_hov, "HORIZONTAL SCROLLBAR - DRAG THE THUMB OR CLICK THE TRACK; WHEEL HERE SCROLLS 3 COLUMNS");
 		    // press: on the thumb grabs it where clicked; on the track jumps the
 		    // thumb there (centred) and keeps dragging
 		    if (mouse_check_button_pressed(mb_left) && map_sb_drag == 0) {
@@ -2981,6 +3023,7 @@ draw_set_color(_cell_bg_col);
 	                    }
 	                }
 	                var _opicking = keyboard_check(vk_alt);
+	                scr_ui_info(true, "OBJECT EDIT: LEFT CLICK PLACES THE HELD OBJECT, RIGHT CLICK DELETES, ALT+CLICK PICKS ONE UP");
 	                if (_opicking) {
 	                    // PICK: no held object shown; outline what would be picked
 	                    if (_ohit >= 0) {
@@ -3044,6 +3087,11 @@ draw_set_color(_cell_bg_col);
 	            draw_set_alpha(1.0);
 
 	            var _obx = _obx0;
+	            scr_ui_info(point_in_rectangle(_mx, _my, _obx, _oby, _obx + 78, _oby + _obh), "SHOW / HIDE THE OBJECT LAYER ON THE MAP (V)");
+	            scr_ui_info(point_in_rectangle(_mx, _my, _obx + 84, _oby, _obx + 134, _oby + _obh), "OBJECT EDIT MODE - CLICKS ON THE MAP PLACE / DELETE OBJECTS INSTEAD OF TILES (O)");
+	            scr_ui_info(point_in_rectangle(_mx, _my, _obx + 142, _oby, _obx + 162, _oby + _obh), "SELECT THE PREVIOUS OBJECT TO PLACE ([)");
+	            scr_ui_info(point_in_rectangle(_mx, _my, _obx + 290, _oby, _obx + 310, _oby + _obh), "SELECT THE NEXT OBJECT TO PLACE (])");
+	            scr_ui_info(point_in_rectangle(_mx, _my, _obx + 320, _oby, _obx + 364, _oby + _obh), "AUTO: OBJECT TAKES THE COLOURS OF THE CELLS UNDER IT. CLICK TO GIVE IT ITS OWN INK / PAPER");
 	            if (scr_bmpobj_ui_button(_obx, _oby, 78, _obh, "OBJECTS", _m.show_objects, _mx, _my)) { _m.show_objects = !_m.show_objects; }
 	            _obx += 84;
 	            if (scr_bmpobj_ui_button(_obx, _oby, 50, _obh, "EDIT", _m.obj_mode, _mx, _my)) { _m.obj_mode = !_m.obj_mode; }
@@ -3077,6 +3125,7 @@ draw_set_color(_cell_bg_col);
 	                draw_rectangle(_obx + 30, _oby + 2, _obx + 52, _oby + _obh - 2, false);
 	                draw_set_color(c_white);
 	                draw_rectangle(_obx + 30, _oby + 2, _obx + 52, _oby + _obh - 2, true);
+	                scr_ui_info(point_in_rectangle(_mx, _my, _obx + 30, _oby, _obx + 52, _oby + _obh), "OBJECT INK COLOUR - LEFT CLICK NEXT COLOUR, RIGHT CLICK PREVIOUS");
 	                if (point_in_rectangle(_mx, _my, _obx + 30, _oby, _obx + 52, _oby + _obh)) {
 	                    if (mouse_check_button_pressed(mb_left))  { _oink = (_oink + 1) mod 16; }
 	                    if (mouse_check_button_pressed(mb_right)) { _oink = (_oink + 15) mod 16; }
@@ -3088,6 +3137,7 @@ draw_set_color(_cell_bg_col);
 	                draw_rectangle(_obx + 48, _oby + 2, _obx + 70, _oby + _obh - 2, false);
 	                draw_set_color(c_white);
 	                draw_rectangle(_obx + 48, _oby + 2, _obx + 70, _oby + _obh - 2, true);
+	                scr_ui_info(point_in_rectangle(_mx, _my, _obx + 48, _oby, _obx + 70, _oby + _obh), "OBJECT PAPER COLOUR - LEFT CLICK NEXT COLOUR, RIGHT CLICK PREVIOUS");
 	                if (point_in_rectangle(_mx, _my, _obx + 48, _oby, _obx + 70, _oby + _obh)) {
 	                    if (mouse_check_button_pressed(mb_left))  { _opap = (_opap + 1) mod 16; }
 	                    if (mouse_check_button_pressed(mb_right)) { _opap = (_opap + 15) mod 16; }
@@ -3394,6 +3444,13 @@ draw_set_color(_cell_bg_col);
         map_paint_last_row = -999999;
     }
     if (point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && !_m.obj_mode && !_obj_bar_hover) {
+        if (_m.stamp_active) {
+            scr_ui_info(true, "STAMP: LMB PLACES, RMB ERASES ITS FOOTPRINT, X/Y FLIP, CTRL+D DROPS IT. WHEEL ZOOM, SPACE/MMB PAN");
+        } else if (_m.fill_mode) {
+            scr_ui_info(true, "FILL: LMB FLOOD FILLS SAME CHAR+COLOUR, RMB ERASES, ALT+LMB PICKS, CTRL+DRAG SELECTS. WHEEL ZOOM");
+        } else {
+            scr_ui_info(true, "LMB PAINT, SHIFT+LMB COLOUR ONLY, RMB ERASE, ALT+LMB PICK, CTRL+DRAG SELECT (CTRL+C COPY). WHEEL ZOOM");
+        }
         var _hcol = _start_col + (_mx - _cv_x1) div _cs;
         var _hrow = _start_row + (_my - _cv_y1) div _cs;
         
@@ -3781,6 +3838,7 @@ var _pal_count = (_global_mixed == 1) ? 8 : 16;
     for (var _pi = 0; _pi < _pal_count; _pi++) {
 	        var _px1  = _cv_x1 + _pi * (_pal_sw + 2) + 60;
 	        var _phov = point_in_rectangle(_mx, _my, _px1, _pal_y, _px1 + _pal_sw, _pal_y + _pal_sh);
+	        scr_ui_info(_phov, "PAINT COLOUR " + string(_pi) + " - CLICK TO PAINT WITH THIS COLOUR (MIXED MODE ONLY HAS 0-7)");
 	        draw_set_color(scr_c64_pepto_colour(_pi));
 	        draw_rectangle(_px1, _pal_y, _px1 + _pal_sw, _pal_y + _pal_sh, false);
 	        if (_m.active_colour == _pi) {
@@ -3820,6 +3878,7 @@ var _pal_count = (_global_mixed == 1) ? 8 : 16;
 		                var _virt_ci = (_bnd * 64) + _real_ci;
 		                var _px1  = _cv_x1 + 45 + _pi * (_cp_sz + 2);
 		                var _phov = point_in_rectangle(_mx, _my, _px1, _row_y, _px1 + _cp_sz, _row_y + _cp_sz);
+		                scr_ui_info(_phov, "CHAR " + string(_real_ci) + " ON ECM BACKGROUND " + string(_bnd) + " - CLICK TO PAINT WITH IT. WHEEL / SPACE+DRAG SCROLLS");
 		                var _sel  = (_m.active_char == _virt_ci);
 		                var _band_bg = scr_c64_pepto_colour(_map_ecm_bg_cols[_bnd]);
 
@@ -3895,6 +3954,7 @@ for (var _pi = 0; _pi < _cp_cnt; _pi++) {
 			    if (_ci >= _cp_total) break;
 		        var _px1  = _cv_x1 + 45 + _pi * (_cp_sz + 2);
 		        var _phov = point_in_rectangle(_mx, _my, _px1, _cp_y, _px1 + _cp_sz, _cp_y + _cp_sz);
+		        scr_ui_info(_phov, "CHAR " + string(_ci) + " - CLICK TO PAINT WITH IT. ALT+LMB/RMB TAG TYPE UP/DOWN. WHEEL / SPACE+DRAG SCROLLS");
 		        var _sel  = (_m.active_char == _ci);
 
 		        draw_set_color(_sel ? make_color_rgb(60, 120, 80) : scr_c64_pepto_colour(_global_bg));
@@ -4132,6 +4192,7 @@ case "SFX_DATA": {
 
     // Arrow key column scroll (only when viewer mouse is hovering)
     if (point_in_rectangle(_mx, _my, _vx1, _cy, _vx2, _vy2)) {
+        scr_ui_info(true, "WAVETABLE (READ ONLY): MOUSE WHEEL SCROLLS ROWS, LEFT / RIGHT ARROWS SCROLL INSTRUMENTS");
         if (keyboard_check_pressed(vk_left))
             _asset.meta.sfx_col_offset = max(0, _asset.meta.sfx_col_offset - 1);
         if (keyboard_check_pressed(vk_right))
@@ -4272,6 +4333,7 @@ case "SPRITE_SET": {
         }
         var _v2_open = (spred64_v2.active && spred64_v2.asset_index == viewer_asset);
         var _v2_hov  = point_in_rectangle(_mx, _my, _v2bx1, _v2by1, _v2bx2, _v2by2);
+        scr_ui_info(_v2_hov, _v2_open ? "CLOSE THE SPRITE EDITOR AND COMMIT ALL EDITS TO THIS ASSET" : "OPEN THE BUILT-IN SPRITE EDITOR ON THIS SPRITE SET");
         draw_set_color(_v2_open
             ? make_color_rgb(180, 80, 40)
             : (_v2_hov ? make_color_rgb(255, 180, 60) : make_color_rgb(120, 60, 20)));
@@ -4292,6 +4354,7 @@ case "SPRITE_SET": {
         var _esx1 = _v2bx2 + 8;
         var _esx2 = _esx1 + 150;
         var _es_hov = point_in_rectangle(_mx, _my, _esx1, _v2by1, _esx2, _v2by2);
+        scr_ui_info(_es_hov, "SAVE THE SPRITES AS A SPRED64 TEXT (.TXT) FILE");
         draw_set_color(_es_hov ? make_color_rgb(40, 140, 80) : make_color_rgb(20, 80, 40));
         draw_rectangle(_esx1, _v2by1, _esx2, _v2by2, false);
         draw_set_color(_es_hov ? c_white : c_ltgray);
@@ -4326,6 +4389,7 @@ case "SPRITE_SET": {
             var _spx1 = _esx2 + 8 + _spe * 118;
             var _spx2 = _spx1 + 110;
             var _sp_hov = point_in_rectangle(_mx, _my, _spx1, _v2by1, _spx2, _v2by2);
+            scr_ui_info(_sp_hov, (_spe == 0) ? "SAVE THE SPRITES AS A RAW .BIN FILE (64 BYTES PER SPRITE)" : "SAVE THE SPRITES AS A SPRITEPAD .SPD PROJECT FILE");
             draw_set_color(_sp_hov ? make_color_rgb(40, 140, 80) : make_color_rgb(20, 80, 40));
             draw_rectangle(_spx1, _v2by1, _spx2, _v2by2, false);
             draw_set_color(_sp_hov ? c_white : c_ltgray);
@@ -4367,6 +4431,7 @@ case "SPRITE_SET": {
             var _amx1 = _esx2 + 8 + 2 * 118;
             var _amx2 = _amx1 + 110;
             var _am_hov = point_in_rectangle(_mx, _my, _amx1, _v2by1, _amx2, _v2by2);
+            scr_ui_info(_am_hov, _am_all_mc ? "SWITCH EVERY SPRITE TO HIRES (COMMITTED ON CLOSE)" : "SWITCH EVERY SPRITE TO MULTICOLOUR (COMMITTED ON CLOSE)");
             draw_set_color(_am_all_mc
                 ? (_am_hov ? make_color_rgb(80, 140, 200) : make_color_rgb(40, 80, 130))
                 : (_am_hov ? make_color_rgb(220, 120, 40) : make_color_rgb(160, 80, 20)));
@@ -4498,6 +4563,8 @@ switch (node_type) {
             _add_hover = point_in_rectangle(_mx, _my, _asx, _asy,
                 _asx + _cell_w - 2, _asy + _cell_h - 2);
         }
+        scr_ui_info(_hover_si >= 0, "CLICK TO OPEN THE SPRITE EDITOR ON SPRITE " + string(_hover_si));
+        scr_ui_info(_add_hover, "ADD A BLANK SPRITE TO THE END OF THIS SET (UP TO 64)");
 
         // Click a picker thumbnail = open V2 already focused on that slot.
         // V2 isn't active yet (we're in the closed-viewer branch), so it's
@@ -4804,6 +4871,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            var _rtb_y1  = _vy1 + 80;
 	            var _rtb_y2  = _rtb_y1 + 22;
 	            var _rtb_hov = point_in_rectangle(_mx, _my, _rtb_x1, _rtb_y1, _rtb_x2, _rtb_y2);
+	            scr_ui_info(_rtb_hov, "SAVE THIS BITMAP, LEAVE EDIT MODE AND GO BACK TO THE BITMAP BUILDER YOU CAME FROM");
 	            draw_set_color(_rtb_hov ? make_color_rgb(180, 120, 255) : make_color_rgb(90, 50, 140));
 	            draw_rectangle(_rtb_x1, _rtb_y1, _rtb_x2, _rtb_y2, false);
 	            draw_set_color(_rtb_hov ? c_white : make_color_rgb(200, 160, 255));
@@ -4890,6 +4958,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            var _rsx1 = _vx1 + 870;
 	            var _rsx2 = _rsx1 + 114;
 	            var _rs_hov = point_in_rectangle(_mx, _my, _rsx1, _vy1 + 80, _rsx2, _vy1 + 97);
+	            scr_ui_info(_rs_hov, "OVERWRITE THE WORKING COPY WITH THE ORIGINAL SOURCE FILE (CLEARS UNDO HISTORY)");
 	            draw_set_color(_rs_hov ? make_color_rgb(180, 120, 40) : make_color_rgb(100, 70, 20));
 	            draw_rectangle(_rsx1, _vy1 + 80, _rsx2, _vy1 + 97, false);
 	            draw_set_color(_rs_hov ? c_yellow : c_ltgray);
@@ -4936,6 +5005,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	                
 	            // EXPORT PNG
 	            var _epng_hov = point_in_rectangle(_mx, _my, _ex_x1, _ex_y, _ex_x2, _ex_y + 17);
+	            scr_ui_info(_epng_hov, "SAVE THE 320X200 BITMAP AS A PNG IMAGE FILE");
 	            draw_set_color(_epng_hov ? make_color_rgb(40, 120, 180) : make_color_rgb(20, 70, 110));
 	            draw_rectangle(_ex_x1, _ex_y, _ex_x2, _ex_y + 17, false);
 	            draw_set_color(_epng_hov ? c_white : c_ltgray);
@@ -4957,6 +5027,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            var _ex_x3  = _ex_x2 + 8;
 	            var _ex_x4  = _ex_x3 + 114;
 	            var _ekla_hov = point_in_rectangle(_mx, _my, _ex_x3, _ex_y, _ex_x4, _ex_y + 17);
+	            scr_ui_info(_ekla_hov, "SAVE A COPY OF THIS BITMAP AS A KOALA PAINTER .KLA FILE");
 	            draw_set_color(_ekla_hov ? make_color_rgb(40, 140, 80) : make_color_rgb(20, 80, 40));
 	            draw_rectangle(_ex_x3, _ex_y, _ex_x4, _ex_y + 17, false);
 	            draw_set_color(_ekla_hov ? c_white : c_ltgray);
@@ -5059,6 +5130,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        var _tog_w = 70;
 	        var _tog_h = 22;
 	        var _tog_hover = point_in_rectangle(_mx, _my, _tog_x, _tog_y, _tog_x + _tog_w, _tog_y + _tog_h);
+	        scr_ui_info(_tog_hover, "SHOW OR HIDE THE FLOATING 1:1 PREVIEW WINDOW OF THE WHOLE BITMAP");
 	        draw_set_font_l(fnt_c64_tiny);
 	        draw_set_color(_asset.meta.prev_win_visible ? make_color_rgb(40,40,80) : make_color_rgb(25,25,40));
 	        draw_rectangle(_tog_x, _tog_y, _tog_x + _tog_w, _tog_y + _tog_h, false);
@@ -5080,6 +5152,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        // ── PREVIEW WINDOW: drag logic ──
 	        if (_asset.meta.prev_win_visible && _has_canvas) {
 	            var _in_hdr = point_in_rectangle(_mx, _my, _pw_x, _pw_y, _pw_x + _pw_w, _pw_y + _hdr_h);
+	            scr_ui_info(_prev_win_rect_hover, "PREVIEW: THE WHOLE BITMAP AT 1:1. DRAG ITS TITLE BAR TO MOVE IT. TOGGLE WITH THE PREVIEW BUTTON");
 	                
 	            if (_in_hdr && mouse_check_button_pressed(mb_left)) {
 	                _asset.meta.prev_win_drag    = true;
@@ -5105,6 +5178,9 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        var _ebx1 = _vx1 + 120;
 	        var _ebx2 = _ebx1 + 80;
 	        var _eb_hov = point_in_rectangle(_mx, _my, _ebx1, _btn_y, _ebx2, _btn_y + 20);
+	        scr_ui_info(_eb_hov, !_has_canvas ? "CREATE A NEW BLANK BITMAP AND START EDITING IT"
+	            : (_is_ed ? "LEAVE EDIT MODE: SAVES THE BITMAP AND REFRESHES EVERY NODE THAT USES IT"
+	                      : "ENTER EDIT MODE TO PAINT ON THIS BITMAP (MOUSE WHEEL UP OVER THE PANEL ALSO WORKS)"));
 	        if (global.tour_active) {
 	            scr_tour_capture("ASSET:BMP_EDIT", _ebx1, _btn_y, _ebx2, _btn_y + 20);
 	        }
@@ -5225,6 +5301,7 @@ if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASS
 	            var _rbx1 = _ebx2 + 10;
 	            var _rbx2 = _rbx1 + 80;
 	            var _rb_hov = point_in_rectangle(_mx, _my, _rbx1, _btn_y, _rbx2, _btn_y + 20);
+	            scr_ui_info(_rb_hov, "SAVE THE BITMAP TO ITS .KLA FILE NOW (ORANGE = UNSAVED CHANGES) AND STAY IN EDIT MODE");
 	            var _rb_unsaved = variable_struct_exists(_asset.meta, "bmp_unsaved") && _asset.meta.bmp_unsaved;
 	            // Lighten the button if hovered OR if it needs a save (unsaved)
 	            var _rb_col = make_color_rgb(140, 40, 30); // Base Dark Red
@@ -5257,6 +5334,7 @@ if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASS
 	            var _clrx1 = _rbx2 + 10;
 	            var _clrx2 = _clrx1 + 60;
 	            var _clr_hov = point_in_rectangle(_mx, _my, _clrx1, _btn_y, _clrx2, _btn_y + 20);
+	            scr_ui_info(_clr_hov, _bmp_is_hires ? "WIPE THE WHOLE BITMAP TO BLACK (UNDO WITH CTRL+Z)" : "WIPE THE WHOLE BITMAP TO THE BACKGROUND COLOUR (UNDO WITH CTRL+Z)");
 	            draw_set_color(_clr_hov ? make_color_rgb(255, 60, 60) : make_color_rgb(140, 20, 20));
 	            draw_rectangle(_clrx1, _btn_y, _clrx2, _btn_y + 20, false);
 	            draw_set_color(c_white);
@@ -5308,6 +5386,7 @@ if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASS
 	            var _clx1 = _clrx2 + 10;
 	            var _clx2 = _clx1 + 90;
 	            var _clash_hov = point_in_rectangle(_mx, _my, _clx1, _btn_y, _clx2, _btn_y + 20);
+	            scr_ui_info(_clash_hov, "FIX COLOUR CLASHES: FORCE EVERY 8X8 CELL BACK TO ITS C64 COLOUR LIMIT (BACKSPACE). FLASHES IF ANY");
 	            var _has_clashes = false;
 	            for (var _cci = 0; _cci < 1000; _cci++) {
 	                if (_asset.meta.clash_grid[_cci]) { _has_clashes = true; break; }
@@ -5326,6 +5405,7 @@ if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASS
 	            var _acx1 = _clx2 + 10;
 	            var _acx2 = _acx1 + 90;
 	            var _ac_hov = point_in_rectangle(_mx, _my, _acx1, _btn_y, _acx2, _btn_y + 20);
+	            scr_ui_info(_ac_hov, "AUTO-SAVE ON/OFF: WHEN ON, THE BITMAP IS SAVED (AND CLASH-CLEANED) SHORTLY AFTER EACH STROKE");
 	            var _ac_on = _asset.meta.auto_clean;
                 
 	            draw_set_color(_ac_hov ? make_color_rgb(100, 200, 100) : (_ac_on ? make_color_rgb(40, 100, 40) : make_color_rgb(60, 60, 60)));
@@ -5341,6 +5421,7 @@ if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASS
 	            var _mmx1 = _acx2 + 10;
 	            var _mmx2 = _mmx1 + 90;
 	            var _mm_hov = point_in_rectangle(_mx, _my, _mmx1, _btn_y, _mmx2, _btn_y + 20);
+	            scr_ui_info(_mm_hov, "SWITCH BETWEEN MULTICOLOUR (160X200, 4 COLOURS PER CELL) AND HIRES (320X200, 2 PER CELL)");
 	            var _mm_hires = scr_asset_bmp_is_hires(_asset);
                 
 	            draw_set_color(_mm_hov ? make_color_rgb(200, 140, 60) : (_mm_hires ? make_color_rgb(120, 70, 20) : make_color_rgb(30, 60, 90)));
@@ -5502,6 +5583,10 @@ draw_rectangle(_sx, _sy, _sx + _sw, _sy + _sh, true);
 // are a mirror parked on meta purely for the readout.
 if (!variable_struct_exists(_asset.meta, "hud_px")) _asset.meta.hud_px = -1;
 if (!variable_struct_exists(_asset.meta, "hud_py")) _asset.meta.hud_py = -1;
+if (!_prev_input_blocked && point_in_rectangle(_mx, _my, _sx, _sy, _sx + _sw, _sy + _sh)) {
+    if (!_is_ed) scr_ui_info(true, "BITMAP CANVAS: PRESS EDIT (OR MOUSE WHEEL UP HERE) TO START PAINTING");
+    else if (_png_mode) scr_ui_info(true, "IMPORT PREVIEW: SET IT UP WITH THE SLIDERS BELOW. WHEEL ZOOMS, MIDDLE MOUSE / SPACE PANS");
+}
 if (point_in_rectangle(_mx, _my, _sx, _sy, _sx + _sw, _sy + _sh)) {
     if (_asset.meta.bmp_zoom <= bmp_ui_zoom_cap) {
         _asset.meta.hud_px = clamp(floor(((_mx - _sx) / _sw) * 320), 0, 319);
@@ -5588,6 +5673,7 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
 	        var _hthumb_w = max(20, floor((_src_w2 / 320) * _hbar_w));
 	        var _hthumb_x = _hbar_x + floor((_pan_x / max(1, 320 - _src_w2)) * (_hbar_w - _hthumb_w));
 	        var _hthumb_hov = point_in_rectangle(_mx, _my, _hthumb_x, _hbar_y, _hthumb_x + _hthumb_w, _hbar_y + _sb_th);
+	        scr_ui_info(_hthumb_hov, "DRAG TO SCROLL THE ZOOMED CANVAS LEFT/RIGHT (OR HOLD MIDDLE MOUSE / SPACE AND DRAG)");
 	        draw_set_color(_asset.meta.hbar_dragging ? c_white : (_hthumb_hov ? make_color_rgb(110, 110, 160) : make_color_rgb(80, 80, 120)));
 	        draw_rectangle(_hthumb_x, _hbar_y, _hthumb_x + _hthumb_w, _hbar_y + _sb_th, false);
 
@@ -5614,6 +5700,7 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
 	        var _vthumb_h = max(20, floor((_src_h2 / 200) * _vbar_h));
 	        var _vthumb_y = _vbar_y + floor((_pan_y / max(1, 200 - _src_h2)) * (_vbar_h - _vthumb_h));
 	        var _vthumb_hov = point_in_rectangle(_mx, _my, _vbar_x, _vthumb_y, _vbar_x + _sb_th, _vthumb_y + _vthumb_h);
+	        scr_ui_info(_vthumb_hov, "DRAG TO SCROLL THE ZOOMED CANVAS UP/DOWN (OR HOLD MIDDLE MOUSE / SPACE AND DRAG)");
 	        draw_set_color(_asset.meta.vbar_dragging ? c_white : (_vthumb_hov ? make_color_rgb(110, 110, 160) : make_color_rgb(80, 80, 120)));
 	        draw_rectangle(_vbar_x, _vthumb_y, _vbar_x + _sb_th, _vthumb_y + _vthumb_h, false);
 
@@ -5739,10 +5826,16 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
                 var _new_con = scr_draw_slider(_mx, _my, _cx2 + 380,  _cy2 + 20, _slw, "CONTRAST",   _asset.meta.png_contrast,       0.0,  2.0,  _lmb, _asset, "CONTRAST", 1.0);
                 var _new_bri = scr_draw_slider(_mx, _my, _cx2 + 570,  _cy2 + 20, _slw, "BRIGHTNESS", _asset.meta.png_brightness,    -1.0,  1.0,  _lmb, _asset, "BRIGHTNESS", 0.0);         
                 var _new_dit = scr_draw_slider(_mx, _my, _cx2 + 760,  _cy2 + 20, _slw, "DITHER AMT", _asset.meta.png_dither_amount,  0.0,  0.5,  _lmb, _asset, "DITHER_AMT", 0.1);
+                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 - 6,       _cy2 + 18, _cx2 + _slw + 6,       _cy2 + 34), "IMPORT: SHIFT THE HUE OF THE PNG BEFORE IT IS MATCHED TO C64 COLOURS. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 184,     _cy2 + 18, _cx2 + 196 + _slw,     _cy2 + 34), "IMPORT: COLOUR SATURATION OF THE PNG BEFORE CONVERSION. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 374,     _cy2 + 18, _cx2 + 386 + _slw,     _cy2 + 34), "IMPORT: CONTRAST OF THE PNG BEFORE CONVERSION. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 564,     _cy2 + 18, _cx2 + 576 + _slw,     _cy2 + 34), "IMPORT: BRIGHTNESS OF THE PNG BEFORE CONVERSION. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 754,     _cy2 + 18, _cx2 + 766 + _slw,     _cy2 + 34), "IMPORT: HOW STRONGLY THE CHOSEN DITHER PATTERN BLENDS COLOURS. RIGHT-CLICK RESETS");
                 // Reset button for colour row
                 var _rst_c_x = _cx2 + 760 + _slw + 8;
                 var _rst_c_y = _cy2 + 20;
                 var _rst_c_hov = point_in_rectangle(_mx, _my, _rst_c_x, _rst_c_y, _rst_c_x + 50, _rst_c_y + 16);
+                scr_ui_info(_rst_c_hov, "IMPORT: RESET HUE, SATURATION, CONTRAST, BRIGHTNESS AND DITHER AMOUNT TO DEFAULTS");
                 draw_set_color(_rst_c_hov ? make_color_rgb(180, 80, 80) : make_color_rgb(80, 40, 40));
                 draw_rectangle(_rst_c_x, _rst_c_y, _rst_c_x + 50, _rst_c_y + 16, false);
                 draw_set_color(c_white);
@@ -5764,10 +5857,16 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
                 var _new_ofy = scr_draw_slider(_mx, _my, _cx2 + 380,  _cy2 - 10, _slw, "OFFSET Y",   _asset.meta.png_off_y,         -100, 100,   _lmb, _asset, "OFFSET_Y", 0);
                 var _new_fnx = scr_draw_slider(_mx, _my, _cx2 + 570,  _cy2 - 10, _slw, "FINE X",     _asset.meta.png_fine_x,        -1.0, 1.0,   _lmb, _asset, "FINE_X", 0.0);
                 var _new_fny = scr_draw_slider(_mx, _my, _cx2 + 760,  _cy2 - 10, _slw, "FINE Y",     _asset.meta.png_fine_y,        -1.0, 1.0,   _lmb, _asset, "FINE_Y", 0.0);
+                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 - 6,       _cy2 - 12, _cx2 + _slw + 6,       _cy2 + 4), "IMPORT: SCALE THE PNG ON THE 320X200 CANVAS. RIGHT-CLICK RESETS TO FIT THE WIDTH");
+                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 184,     _cy2 - 12, _cx2 + 196 + _slw,     _cy2 + 4), "IMPORT: MOVE THE PNG LEFT/RIGHT IN WHOLE PIXELS. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 374,     _cy2 - 12, _cx2 + 386 + _slw,     _cy2 + 4), "IMPORT: MOVE THE PNG UP/DOWN IN WHOLE PIXELS. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 564,     _cy2 - 12, _cx2 + 576 + _slw,     _cy2 + 4), "IMPORT: SUB-PIXEL LEFT/RIGHT NUDGE OF THE PNG. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 754,     _cy2 - 12, _cx2 + 766 + _slw,     _cy2 + 4), "IMPORT: SUB-PIXEL UP/DOWN NUDGE OF THE PNG. RIGHT-CLICK RESETS");
                 // Reset button for sizing row
                 var _rst_s_x = _cx2 + 760 + _slw + 8;
                 var _rst_s_y = _cy2 - 10;
                 var _rst_s_hov = point_in_rectangle(_mx, _my, _rst_s_x, _rst_s_y, _rst_s_x + 50, _rst_s_y + 16);
+                scr_ui_info(_rst_s_hov, "IMPORT: RESET SCALE (FIT WIDTH), OFFSET AND FINE POSITION OF THE PNG");
                 draw_set_color(_rst_s_hov ? make_color_rgb(180, 80, 80) : make_color_rgb(80, 40, 40));
                 draw_rectangle(_rst_s_x, _rst_s_y, _rst_s_x + 50, _rst_s_y + 16, false);
                 draw_set_color(c_white);
@@ -5819,6 +5918,7 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
                     var _dn   = _dithers_png[_di];
                     var _dact = (_asset.meta.png_dither == _dn);
                     var _dhov = point_in_rectangle(_mx, _my, _dbx, _dby, _dbx + 70, _dby + 14);
+                    scr_ui_info(_dhov, "IMPORT: DITHER PATTERN USED TO FAKE IN-BETWEEN COLOURS WHEN CONVERTING THE PNG (" + _dn + ")");
                     draw_set_color(_dhov ? make_color_rgb(80,80,110) : (_dact ? make_color_rgb(40,60,100) : make_color_rgb(30,30,50)));
                     draw_rectangle(_dbx, _dby, _dbx + 70, _dby + 14, false);
                     draw_set_color(_dact ? c_yellow : (_dhov ? c_white : c_ltgray));
@@ -5837,6 +5937,7 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
                 var _cfx = _cx2 + 800;
                 var _cfy = _cy2 - 60;
                 var _cf_hov = point_in_rectangle(_mx, _my, _cfx, _cfy, _cfx + 150, _cfy + 18);
+                scr_ui_info(_cf_hov, "IMPORT: ACCEPT THE CONVERTED IMAGE, FIX COLOUR CLASHES AND SAVE IT AS A .KLA WORKING COPY");
                 draw_set_color(_cf_hov ? make_color_rgb(40,160,80) : make_color_rgb(20,90,40));
                 draw_rectangle(_cfx, _cfy, _cfx + 150, _cfy + 18, false);
                 draw_set_color(_cf_hov ? c_white : c_ltgray);
@@ -5846,6 +5947,7 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
                     
                 var _cnx = _cfx + 158;
                 var _cn_hov = point_in_rectangle(_mx, _my, _cnx, _cfy, _cnx + 60, _cfy + 18);
+                scr_ui_info(_cn_hov, "IMPORT: ABANDON THE PNG IMPORT AND LEAVE EDIT MODE");
                 draw_set_color(_cn_hov ? make_color_rgb(160,40,40) : make_color_rgb(90,20,20));
                 draw_rectangle(_cnx, _cfy, _cnx + 60, _cfy + 18, false);
                 draw_set_color(_cn_hov ? c_white : c_ltgray);
@@ -7302,6 +7404,26 @@ if (_in_bounds && !_spr_mode && keyboard_check(vk_alt) && !_png_mode) {
 	}
 }
 
+// INFO strip: what the canvas does with the current tool (sprite mode sets its own)
+if (_in_bounds && !_spr_mode && !_png_mode && variable_struct_exists(_asset.meta, "active_tool")) {
+	var _cv_rmb = _bmp_is_hires ? "RIGHT = SECONDARY COLOUR" : "RIGHT = ERASE TO BACKGROUND";
+	if (keyboard_check(vk_alt)) {
+		scr_ui_info(true, _bmp_is_hires ? "ALT+CLICK: PICK THIS CELL'S PRIMARY AND SECONDARY COLOURS" : "ALT+CLICK: PICK THE COLOUR UNDER THE CURSOR AS THE PEN COLOUR");
+	} else { switch (_asset.meta.active_tool) {
+		case "DRAW":
+			if (surface_exists(_asset.meta.grab_surf)) scr_ui_info(true, "STAMP: LEFT PLACES THE GRABBED BRUSH, RIGHT ERASES (MC), CTRL TINTS, X/Y FLIP, D DROPS IT");
+			else if (_asset.meta.replace_mode) scr_ui_info(true, "REPLACE BRUSH: PAINTING TURNS COL1 PIXELS INTO COL2. [ ] SIZE, R TURNS REPLACE OFF");
+			else scr_ui_info(true, "DRAW: LEFT PAINTS, " + _cv_rmb + ", SHIFT+CLICK LINE, [ ] SIZE, ALT PICKS, CTRL+Z UNDO");
+			break;
+		case "GRAB":     scr_ui_info(true, "GRAB: DRAG A BOX TO COPY THAT AREA AS A STAMP BRUSH (BACKGROUND STAYS SEE-THROUGH)"); break;
+		case "LINE":     scr_ui_info(true, "LINE: DRAG FROM START TO END. LEFT = PEN COLOUR, " + _cv_rmb + ". CTRL+Z UNDO"); break;
+		case "RECT":     scr_ui_info(true, "RECT: DRAG CORNER TO CORNER. LEFT = PEN COLOUR, " + _cv_rmb + ". CTRL+Z UNDO"); break;
+		case "CIRCLE":   scr_ui_info(true, "CIRCLE: DRAG OUT THE ELLIPSE. LEFT = PEN COLOUR, " + _cv_rmb + ". CTRL+Z UNDO"); break;
+		case "FILL":     scr_ui_info(true, "FILL: LEFT FLOOD-FILLS WITH THE PEN COLOUR, " + _cv_rmb + ". CTRL+Z UNDO"); break;
+		case "GRADIENT": scr_ui_info(true, "GRADIENT: DRAG ACROSS AN AREA; IT FILLS WITH A DITHERED BLEND ALONG THE DRAG. CTRL+Z UNDO"); break;
+	} }
+}
+
 // Draw cursor preview (Hidden if Alt is held for picking)
 draw_set_alpha(1.0);
 if (!variable_struct_exists(_asset.meta, "active_color")) _asset.meta.active_color = 1;
@@ -7518,7 +7640,11 @@ gpu_set_texfilter(false);
 	                    if (_tname == "REPLACE") _active = _asset.meta.replace_mode;
                         
 	                    var _hov = point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 60, _lty + 16);
-                        
+	                    if (_tname == "GRAB")        scr_ui_info(_hov, "GRAB TOOL (G): DRAG A BOX ON THE CANVAS TO COPY IT AS A STAMP BRUSH");
+	                    else if (_tname == "FLIP X") scr_ui_info(_hov, "MIRROR LEFT/RIGHT (X): FLIPS THE STAMP BRUSH IF YOU HAVE ONE, OTHERWISE THE WHOLE BITMAP");
+	                    else if (_tname == "FLIP Y") scr_ui_info(_hov, "MIRROR UP/DOWN (Y): FLIPS THE STAMP BRUSH IF YOU HAVE ONE, OTHERWISE THE WHOLE BITMAP");
+	                    else                         scr_ui_info(_hov, "REPLACE MODE (R): BRUSH ONLY RECOLOURS PIXELS OF COL1 INTO COL2, LEAVING OTHERS ALONE");
+
 	                    draw_set_color(_hov ? make_color_rgb(80, 80, 100) : (_active ? make_color_rgb(20, 60, 20) : make_color_rgb(40, 40, 60)));
 	                    draw_rectangle(_ltx, _lty, _ltx + 60, _lty + 16, false);
 	                    draw_set_color(_hov ? c_white : (_active ? c_lime : c_black));
@@ -7614,7 +7740,8 @@ gpu_set_texfilter(false);
 	                    draw_set_color(scr_c64_pepto_colour(_asset.meta.replace_col_detect));
 	                    draw_rectangle(_ltx, _lty, _ltx + 28, _lty + 12, false);
 	                    draw_set_color(c_white);
-	                    draw_rectangle(_ltx, _lty, _ltx + 28, _lty + 12, true); 
+	                    draw_rectangle(_ltx, _lty, _ltx + 28, _lty + 12, true);
+	                    scr_ui_info(point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12), "REPLACE COL1: THE COLOUR TO BE REPLACED. CLICK TO SET IT TO THE CURRENT PEN COLOUR");
 	                    if (point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12) && mouse_check_button_pressed(mb_left))
 	                        _asset.meta.replace_col_detect = _asset.meta.active_color;
                         
@@ -7624,7 +7751,8 @@ gpu_set_texfilter(false);
 	                    draw_set_color(scr_c64_pepto_colour(_asset.meta.replace_col_target));
 	                    draw_rectangle(_ltx, _lty, _ltx + 28, _lty + 12, false);
 	                    draw_set_color(c_white);
-	                    draw_rectangle(_ltx, _lty, _ltx + 28, _lty + 12, true); 
+	                    draw_rectangle(_ltx, _lty, _ltx + 28, _lty + 12, true);
+	                    scr_ui_info(point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12), "REPLACE COL2: THE COLOUR COL1 PIXELS BECOME. CLICK TO SET IT TO THE CURRENT PEN COLOUR");
 	                    if (point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12) && mouse_check_button_pressed(mb_left))
 	                        _asset.meta.replace_col_target = _asset.meta.active_color;
                         
@@ -7636,6 +7764,7 @@ gpu_set_texfilter(false);
 
 	                // Zoom Buttons
 	                var _zhov_in = point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 24, _lty + 24);
+	                scr_ui_info(_zhov_in, "ZOOM IN ON THE CANVAS (OR MOUSE WHEEL OVER IT). PAN WITH MIDDLE MOUSE OR SPACE + DRAG");
 	                draw_set_color(_zhov_in ? make_color_rgb(80, 80, 100) : make_color_rgb(40, 40, 60)); 
 	                draw_rectangle(_ltx, _lty, _ltx + 24, _lty + 24, false);
 	                draw_set_color(_zhov_in ? c_white : c_black); 
@@ -7646,6 +7775,7 @@ gpu_set_texfilter(false);
 
 	                _lty += 30;
 	                var _zhov_out = point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 24, _lty + 24);
+	                scr_ui_info(_zhov_out, "ZOOM OUT (OR MOUSE WHEEL OVER THE CANVAS). GREYED WHEN ALREADY FULLY ZOOMED OUT");
 	                var _at_min_z = (_asset.meta.bmp_zoom <= bmp_ui_zoom_cap);
 	                draw_set_color(_at_min_z ? make_color_rgb(25, 25, 35) : (_zhov_out ? make_color_rgb(80, 80, 100) : make_color_rgb(40, 40, 60))); 
 	                draw_rectangle(_ltx, _lty, _ltx + 24, _lty + 24, false);
@@ -7667,6 +7797,7 @@ gpu_set_texfilter(false);
 	                _lty += 40;
 	                var _cg_w   = 110;
 	                var _cg_hov = point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + _cg_w, _lty + 18);
+	                scr_ui_info(_cg_hov, "SHOW OR HIDE LINES ROUND EVERY 8X8 COLOUR CELL AT ANY ZOOM (REMEMBERED BETWEEN SESSIONS)");
 	                draw_set_color(_cg_hov ? make_color_rgb(80, 80, 100) : (bmp_cell_grid ? make_color_rgb(30, 90, 60) : make_color_rgb(40, 40, 60)));
 	                draw_rectangle(_ltx, _lty, _ltx + _cg_w, _lty + 18, false);
 	                draw_set_color(_cg_hov ? c_white : c_black);
@@ -7685,6 +7816,7 @@ gpu_set_texfilter(false);
 	                _lty += 18;
 	                var _zg_x2  = _ltx + _cg_w;
 	                var _zg_hov = point_in_rectangle(_mx, _my, _ltx - 4, _lty - 4, _zg_x2 + 4, _lty + 14);
+	                scr_ui_info(_zg_hov || bmp_zoom_grid_drag, "DRAG TO SET HOW STRONGLY THE CELL GRID FADES IN WHEN ZOOMED PAST 100% (0% = NEVER)");
 	                if (_zg_hov && mouse_check_button_pressed(mb_left)) bmp_zoom_grid_drag = true;
 	                if (bmp_zoom_grid_drag) {
 	                    bmp_zoom_grid_str = clamp((_mx - _ltx) / _cg_w, 0, 1);
@@ -7714,7 +7846,15 @@ gpu_set_texfilter(false);
 	                    var _tname = _tools_r[_i];
 	                    var _active = (_asset.meta.active_tool == _tname);
 	                    var _hov = point_in_rectangle(_mx, _my, _rtx, _rty, _rtx + 70, _rty + 16);
-                        
+	                    switch (_tname) {
+	                        case "DRAW":     scr_ui_info(_hov, "DRAW TOOL (D): FREEHAND BRUSH. ALSO DROPS ANY GRABBED STAMP BRUSH"); break;
+	                        case "LINE":     scr_ui_info(_hov, "LINE TOOL: DRAG ON THE CANVAS FROM START TO END POINT"); break;
+	                        case "CIRCLE":   scr_ui_info(_hov, "CIRCLE TOOL: DRAG OUT AN ELLIPSE. CLICK AGAIN WHEN SELECTED TO TOGGLE FILLED (F) / OUTLINE (NF)"); break;
+	                        case "RECT":     scr_ui_info(_hov, "RECT TOOL: DRAG CORNER TO CORNER. CLICK AGAIN WHEN SELECTED TO TOGGLE FILLED (F) / OUTLINE (NF)"); break;
+	                        case "FILL":     scr_ui_info(_hov, "FILL TOOL: CLICK TO FLOOD-FILL THE TOUCHING AREA OF ONE COLOUR"); break;
+	                        case "GRADIENT": scr_ui_info(_hov, "GRADIENT TOOL: DRAG ACROSS AN AREA TO FILL IT WITH A DITHERED BLEND FROM COLOUR 1 TO COLOUR 2"); break;
+	                    }
+
 	                    var _label = _tname;
 	                    if ((_tname == "CIRCLE" || _tname == "RECT") && _active) {
 	                        _label += _asset.meta.fill_toggle ? " (F)" : " (NF)";
@@ -7751,6 +7891,9 @@ gpu_set_texfilter(false);
 	                                    && surface_exists(_asset.meta.preview_surf);
 	                    var _cal_hov = _cal_enabled
 	                                && point_in_rectangle(_mx, _my, _rtx, _rty, _rtx + 70, _rty + 16);
+	                    scr_ui_info(point_in_rectangle(_mx, _my, _rtx, _rty, _rtx + 70, _rty + 16), _cal_enabled
+	                        ? "HIRES: IN CELLS USING BOTH PEN COLOURS, MAKE PRIMARY THE FOREGROUND AND SECONDARY THE BACKGROUND"
+	                        : "UPDATE F/B: PICK TWO DIFFERENT PRIMARY AND SECONDARY COLOURS FIRST");
 	                    draw_set_color(!_cal_enabled ? make_color_rgb(25, 25, 35)
 	                                   : (_cal_hov ? make_color_rgb(100, 80, 40) : make_color_rgb(60, 45, 25)));
 	                    draw_rectangle(_rtx, _rty, _rtx + 70, _rty + 16, false);
@@ -7842,7 +7985,9 @@ gpu_set_texfilter(false);
 	                    var _dname  = _dithers[_i];
 	                    var _active = (_asset.meta.dither_mode == _dname);
 	                    var _hov    = point_in_rectangle(_mx, _my, _rtx, _rty, _rtx + 70, _rty + 16);
-                        
+	                    scr_ui_info(_hov, (_dname == "NONE") ? "DITHER OFF: PAINT SOLID COLOUR"
+	                        : "DITHER " + _dname + ": PAINTING ONLY HITS THE PIXELS OF THIS PATTERN (INVERT FLIPS IT)");
+
 	                    draw_set_color(_hov ? make_color_rgb(80, 80, 100) : (_active ? make_color_rgb(60, 60, 20) : make_color_rgb(40, 40, 60)));
 	                    draw_rectangle(_rtx, _rty, _rtx + 70, _rty + 16, false);
 	                    draw_set_color(_hov ? c_white : (_active ? c_yellow : c_black));
@@ -7859,6 +8004,9 @@ gpu_set_texfilter(false);
 	                var _inv_active  = _asset.meta.dither_invert;
 	                var _inv_enabled = (_asset.meta.dither_mode != "NONE");
 	                var _inv_hov     = _inv_enabled && point_in_rectangle(_mx, _my, _rtx, _rty, _rtx + 70, _rty + 16);
+	                scr_ui_info(point_in_rectangle(_mx, _my, _rtx, _rty, _rtx + 70, _rty + 16), _inv_enabled
+	                    ? "INVERT THE DITHER PATTERN SO PAINT LANDS ON THE OTHER HALF OF THE PIXELS"
+	                    : "INVERT DITHER: CHOOSE A DITHER PATTERN FIRST");
 	                draw_set_color(_inv_enabled
 	                    ? (_inv_hov ? make_color_rgb(100, 60, 120) : (_inv_active ? make_color_rgb(80, 20, 100) : make_color_rgb(40, 40, 60)))
 	                    : make_color_rgb(25, 25, 35));
@@ -7889,6 +8037,8 @@ gpu_set_texfilter(false);
 					for(var _c = 0; _c < 16; _c++) {
 						var _pyc = _py + (_c * (_ph + 2));
 						var _phov = point_in_rectangle(_mx, _my, _px, _pyc, _px + _pw, _pyc + _ph);
+						if (_asset.meta.replace_mode) scr_ui_info(_phov, "COLOUR " + string(_c) + ": LEFT-CLICK SETS REPLACE COL1 (FIND), RIGHT-CLICK SETS COL2 (REPLACE WITH)");
+						else scr_ui_info(_phov, "COLOUR " + string(_c) + ": LEFT-CLICK = PRIMARY PEN (WHITE BOX), RIGHT-CLICK = SECONDARY / GRADIENT COL2 (AQUA)");
 						draw_set_color(scr_c64_pepto_colour(_c));
 						draw_rectangle(_px, _pyc, _px + _pw, _pyc + _ph, false);
 						if (_asset.meta.active_color == _c) {
@@ -8117,6 +8267,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                var _gc_btn_y1 = _cy ;
 	                var _gc_btn_y2 = _cy + 16;
 	                var _gc_hov = point_in_rectangle(_mx, _my, _gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2);
+	                scr_ui_info(_gc_hov && !_prev_input_blocked, "CUSTOM GRADIENT ON/OFF: USE THE STOP SLOTS ON THE RIGHT INSTEAD OF COLOUR 1 TO COLOUR 2");
 	                draw_set_color(_asset.meta.gradient_custom_active ? make_color_rgb(20, 60, 60) : (_gc_hov ? make_color_rgb(80, 80, 100) : make_color_rgb(40, 40, 60)));
 	                draw_rectangle(_gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2, false);
 	                draw_set_color(_asset.meta.gradient_custom_active ? c_aqua : (_gc_hov ? c_white : c_black));
@@ -8138,6 +8289,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                    var _gsy1 = _cy ;
 	                    var _gsy2 = _cy + 16;
 	                    var _gs_hov = point_in_rectangle(_mx, _my, _gsx1, _gsy1, _gsx2, _gsy2);
+	                    scr_ui_info(_gs_hov && !_prev_input_blocked, "GRADIENT STOP " + string(_gs + 1) + ": LEFT-CLICK SETS IT TO THE PEN COLOUR, RIGHT-CLICK MAKES IT THE LAST STOP (^)");
 	                    draw_set_color(scr_c64_pepto_colour(_asset.meta.gradient_custom_cols[_gs]));
 	                    draw_rectangle(_gsx1, _gsy1, _gsx2, _gsy2, false);
 	                    draw_set_color(_gs_hov ? c_white : make_color_rgb(90, 90, 110));
@@ -8175,6 +8327,11 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                var _bg_rect_y1 = _cy;
 	                var _bg_rect_y2 = _cy + 12;
 	                var _bg_hov = point_in_rectangle(_mx, _my, _bg_rect_x1, _bg_rect_y1, _bg_rect_x2, _bg_rect_y2);
+	                if (_is_ed && !_prev_input_blocked) {
+	                    if (_png_mode)          scr_ui_info(_bg_hov, "IMPORT BACKGROUND COLOUR: LEFT-CLICK NEXT, RIGHT-CLICK PREVIOUS. APPLIED ON CONFIRM IMPORT");
+	                    else if (!_bmp_is_hires) scr_ui_info(_bg_hov, "BACKGROUND COLOUR (SHARED BY ALL CELLS): LEFT-CLICK NEXT, RIGHT-CLICK PREVIOUS (UNDOABLE)");
+	                    else                     scr_ui_info(_bg_hov, "HIRES HAS NO SHARED BACKGROUND: EACH CELL'S SECOND COLOUR COMES FROM THE SECONDARY PEN");
+	                }
                     
 	                var _display_bg = _png_mode ? _asset.meta.png_pending_bg : _asset.meta.bg_col;
 	                draw_set_color(scr_c64_pepto_colour(_display_bg));
@@ -8315,6 +8472,7 @@ case "BYTE_DATA": {
     var _sfy1    = _cy;
     var _sfy2    = _cy + 22;
     var _sf_hov  = point_in_rectangle(_mx, _my, _sfx1, _sfy1, _sfx2, _sfy2);
+    scr_ui_info(_sf_hov, "TOGGLE: TURN THIS ASSET INTO A ZERO-FILLED SAVE GAME AREA OF A SET SIZE");
     draw_set_color(_sf_on
         ? make_color_rgb(200, 120, 40)
         : (_sf_hov ? make_color_rgb(140, 90, 40) : make_color_rgb(70, 50, 25)));
@@ -8354,6 +8512,7 @@ case "BYTE_DATA": {
             var _stp_x1  = _stp_x + (_si * (_stp_w + 4));
             var _stp_x2  = _stp_x1 + _stp_w;
             var _stp_hov = point_in_rectangle(_mx, _my, _stp_x1, _cy, _stp_x2, _cy + 22);
+            scr_ui_info(_stp_hov, "CHANGE THE SAVE FILE SIZE BY " + _steps[_si].label + " BYTES (1 TO 16384)");
             draw_set_color(_stp_hov ? make_color_rgb(200, 120, 40) : make_color_rgb(70, 50, 25));
             draw_rectangle(_stp_x1, _cy, _stp_x2, _cy + 22, false);
             draw_set_color(c_white);
@@ -8385,6 +8544,7 @@ case "BYTE_DATA": {
     var _eby2   = _cy + 22;
     var _eb_hov = point_in_rectangle(_mx, _my, _ebx1, _eby1, _ebx2, _eby2);
     var _ed_open = _asset.meta.inline_edit_open;
+    scr_ui_info(_eb_hov, _ed_open ? "SAVE THE BYTES AND CLOSE THE TEXT EDITOR" : "OPEN THE BYTES IN A TEXT EDITOR");
 
     draw_set_color(_ed_open
         ? make_color_rgb(120, 60, 200)
@@ -8412,6 +8572,7 @@ case "BYTE_DATA": {
         var _sbx1   = _ebx2 + 8;
         var _sbx2   = _sbx1 + 60;
         var _sb_hov = point_in_rectangle(_mx, _my, _sbx1, _eby1, _sbx2, _eby2);
+        scr_ui_info(_sb_hov, "PARSE THE TEXT AND STORE THE BYTES WITHOUT CLOSING THE EDITOR");
         draw_set_color(_sb_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
         draw_rectangle(_sbx1, _eby1, _sbx2, _eby2, false);
         draw_set_font_l(fnt_c64_tiny);
@@ -8486,6 +8647,7 @@ case "BYTE_DATA": {
         }
 
         var _pv_hit_y2 = max(_cy + _pv_lh, _pv_hit_y1 + _pv_lh);
+        scr_ui_info(point_in_rectangle(_mx, _my, _vx1 + 10, _pv_hit_y1, _vx2 - 10, _pv_hit_y2), "CLICK THE BYTES TO OPEN THEM IN THE TEXT EDITOR");
         if (point_in_rectangle(_mx, _my, _vx1 + 10, _pv_hit_y1, _vx2 - 10, _pv_hit_y2)
          && mouse_check_button_pressed(mb_left)) {
             scr_asset_inline_edit_open(_asset);
@@ -8502,6 +8664,7 @@ case "TEXT_DATA": {
     var _eby2   = _cy + 22;
     var _eb_hov = point_in_rectangle(_mx, _my, _ebx1, _eby1, _ebx2, _eby2);
     var _ed_open = _asset.meta.inline_edit_open;
+    scr_ui_info(_eb_hov, _ed_open ? "SAVE THE TEXT AND CLOSE THE TEXT EDITOR" : "OPEN THE TEXT IN THE TEXT EDITOR");
 
     draw_set_color(_ed_open
         ? make_color_rgb(140, 100, 20)
@@ -8528,6 +8691,7 @@ case "TEXT_DATA": {
         var _sbx1   = _ebx2 + 8;
         var _sbx2   = _sbx1 + 60;
         var _sb_hov = point_in_rectangle(_mx, _my, _sbx1, _eby1, _sbx2, _eby2);
+        scr_ui_info(_sb_hov, "STORE THE EDITED TEXT IN THE ASSET WITHOUT CLOSING THE EDITOR");
         draw_set_color(_sb_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
         draw_rectangle(_sbx1, _eby1, _sbx2, _eby2, false);
         draw_set_font_l(fnt_c64_tiny);
@@ -8639,6 +8803,7 @@ case "TEXT_DATA": {
         // An empty asset draws no rows at all, so give the hit area a
         // minimum height or a blank TEXT_DATA would have nothing to click.
         var _tp_hit_y2 = max(_cy + _tp_lh, _tp_hit_y1 + _tp_lh);
+        scr_ui_info(point_in_rectangle(_mx, _my, _vx1 + 10, _tp_hit_y1, _vx2 - 10, _tp_hit_y2), "CLICK THE TEXT TO OPEN IT IN THE TEXT EDITOR");
         if (point_in_rectangle(_mx, _my, _vx1 + 10, _tp_hit_y1, _vx2 - 10, _tp_hit_y2)
          && mouse_check_button_pressed(mb_left)) {
             scr_asset_inline_edit_open(_asset);
@@ -8665,6 +8830,7 @@ case "LINE_COLL": {
     var _eby2   = _cy + 22;
     var _eb_hov = point_in_rectangle(_mx, _my, _ebx1, _eby1, _ebx2, _eby2);
     var _ed_open = _asset.meta.inline_edit_open;
+    scr_ui_info(_eb_hov, _ed_open ? "SAVE THE TEXT AND RETURN TO THE VISUAL LINE EDITOR" : "EDIT THE LINES AS TEXT (X1,Y1,X2,Y2,TYPE) - GOOD FOR BULK PASTE");
 
     draw_set_color(_ed_open
         ? make_color_rgb(200, 60, 60)
@@ -8701,6 +8867,7 @@ case "LINE_COLL": {
         var _sbx1   = _ebx2 + 8;
         var _sbx2   = _sbx1 + 60;
         var _sb_hov = point_in_rectangle(_mx, _my, _sbx1, _eby1, _sbx2, _eby2);
+        scr_ui_info(_sb_hov, "PARSE THE TEXT AND STORE THE LINES WITHOUT CLOSING THE EDITOR");
         draw_set_color(_sb_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
         draw_rectangle(_sbx1, _eby1, _sbx2, _eby2, false);
         draw_set_font_l(fnt_c64_tiny);
@@ -8800,6 +8967,7 @@ case "SID_MUSIC": {
             var _rl_x   = _vx1 + 104;
             var _rl_bw  = 16;
             var _rl_mh  = point_in_rectangle(_mx, _my, _rl_x, _cy, _rl_x + _rl_bw, _cy + 16);
+            scr_ui_info(_rl_mh, "MOVE THE RELOCATION TARGET DOWN ONE PAGE ($100)");
             draw_set_color(make_color_rgb(40, 60, 90));
             if (_rl_mh) { draw_set_color(make_color_rgb(70, 100, 150)); }
             draw_rectangle(_rl_x, _cy, _rl_x + _rl_bw, _cy + 16, false);
@@ -8813,6 +8981,7 @@ case "SID_MUSIC": {
             draw_text_l(_rl_tx, _cy + 2, "$" + _rl_hex);
             var _rl_px  = _rl_tx + string_width_l("$0000") + 6;
             var _rl_ph  = point_in_rectangle(_mx, _my, _rl_px, _cy, _rl_px + _rl_bw, _cy + 16);
+            scr_ui_info(_rl_ph, "MOVE THE RELOCATION TARGET UP ONE PAGE ($100)");
             draw_set_color(make_color_rgb(40, 60, 90));
             if (_rl_ph) { draw_set_color(make_color_rgb(70, 100, 150)); }
             draw_rectangle(_rl_px, _cy, _rl_px + _rl_bw, _cy + 16, false);
@@ -8828,6 +8997,7 @@ case "SID_MUSIC": {
             var _rl_ftxt = "TEST " + string(round(sid_reloc_frames / 3000)) + " MIN";
             var _rl_fw  = string_width_l("TEST 10 MIN") + 10;
             var _rl_fh  = point_in_rectangle(_mx, _my, _rl_fx, _cy, _rl_fx + _rl_fw, _cy + 16);
+            scr_ui_info(_rl_fh, "HOW LONG EACH SUB-TUNE IS EMULATED TO CHECK THE RELOCATION: 1, 5 OR 10 MINUTES");
             draw_set_color(make_color_rgb(30, 30, 45));
             if (_rl_fh) { draw_set_color(make_color_rgb(55, 55, 80)); }
             draw_rectangle(_rl_fx, _cy, _rl_fx + _rl_fw, _cy + 16, false);
@@ -8849,6 +9019,7 @@ case "SID_MUSIC": {
             var _rl_gx  = _rl_fx + _rl_fw + 8;
             var _rl_gw  = string_width_l("RELOCATE") + 14;
             var _rl_gh  = point_in_rectangle(_mx, _my, _rl_gx, _cy, _rl_gx + _rl_gw, _cy + 16);
+            scr_ui_info(_rl_gh, _rl_busy ? "STOP THE RELOCATION - NOTHING IS CHANGED" : "MOVE THE TUNE TO THE TARGET ADDRESS, PATCHED AND VERIFIED BY EMULATION FIRST");
             var _rl_glb = "RELOCATE";
             if (_rl_busy) { _rl_glb = "CANCEL"; }
             draw_set_color(make_color_rgb(90, 35, 70));
@@ -8959,6 +9130,13 @@ case "LOAD_REU": {
         if (_li < load_reu_scroll) continue;
         if (_li >= load_reu_scroll + load_reu_rows_visible) continue;
         _cy = load_reu_list_y1 + ((_li - load_reu_scroll) * 22);
+        scr_ui_info(point_in_rectangle(_mx, _my, _vx1 + 8, _cy + 2, _vx1 + 22, _cy + 18), "DRAG TO REORDER THIS ENTRY (ONLY AMONG ASSETS OF THE SAME TYPE)");
+        scr_ui_info(point_in_rectangle(_mx, _my, _vx1 + 30, _cy, _split_x - 6, _cy + 20), "HOVER TO PREVIEW THIS ASSET, DOUBLE-CLICK TO OPEN IT IN ITS EDITOR");
+        scr_ui_info(point_in_rectangle(_mx, _my, _cm, _cy + 2, _cm + 45, _cy + 18), "TOGGLE AUTO / MANUAL: AUTO LETS THE PACKER CHOOSE THIS ENTRY'S REU ADDRESS");
+        scr_ui_info(point_in_rectangle(_mx, _my, _cm + 48, _cy + 2, _cm + 64, _cy + 18), "MOVE THIS ENTRY DOWN $100 IN REU MEMORY (SWITCHES IT TO MANUAL)");
+        scr_ui_info(point_in_rectangle(_mx, _my, _cm + 66, _cy + 2, _cm + 82, _cy + 18), "MOVE THIS ENTRY UP $100 IN REU MEMORY (SWITCHES IT TO MANUAL)");
+        scr_ui_info(point_in_rectangle(_mx, _my, _vx2 - 70, _cy + 2, _vx2 - 30, _cy + 18), "DELETE THIS ASSET FROM THE WHOLE PROJECT (ASKS FIRST, CANNOT BE UNDONE)");
+        scr_ui_info(point_in_rectangle(_mx, _my, _vx2 - 26, _cy + 2, _vx2 - 8, _cy + 18), "REMOVE THIS ENTRY FROM THE REU IMAGE (THE ASSET STAYS IN THE PROJECT)");
         if (point_in_rectangle(_mx, _my, _cn, _cy, _split_x - 6, _cy + 20)) {
             _hover_preview = _la;
             _hover_y = _cy;
@@ -9004,12 +9182,14 @@ case "LOAD_REU": {
     }
 
     manifest_draw_divider(_split_x, _split_top, load_reu_list_y2, "LOAD_REU");
+    scr_ui_info(point_in_rectangle(_mx, _my, _split_x - 5, _split_top, _split_x + 5, load_reu_list_y2), "DRAG TO WIDEN OR NARROW THE ASSET NAME COLUMN");
     manifest_draw_preview(_hover_preview, _vx1, _hover_y);
 
     // Scrollbar, drawn clear of the per-row X button which ends at _vx2-8.
     load_reu_sb_x1 = _vx2 - 6;
     load_reu_sb_x2 = _vx2 - 1;
     if (load_reu_scroll_max > 0) {
+        scr_ui_info(point_in_rectangle(_mx, _my, load_reu_sb_x1, load_reu_list_y1, load_reu_sb_x2 + 4, load_reu_list_y2), "DRAG TO SCROLL THE REU LIST (MOUSE WHEEL OVER THE LIST WORKS TOO)");
         var _reu_sb_h = load_reu_list_y2 - load_reu_list_y1;
         draw_set_color(make_color_rgb(28,36,42));
         draw_rectangle(load_reu_sb_x1, load_reu_list_y1, load_reu_sb_x2, load_reu_list_y2, false);
@@ -9028,6 +9208,8 @@ case "LOAD_REU": {
         draw_text_l(_vx1+210,_cy+5,string(_reu_first) + "-" + string(_reu_last) + " / " + string(array_length(_links)));
     }
     var _hov=point_in_rectangle(_mx,_my,_vx1+10,_cy,_vx1+90,_cy+20);
+    scr_ui_info(_hov, "PICK A PROJECT ASSET TO ADD TO THE REU IMAGE");
+    scr_ui_info(point_in_rectangle(_mx,_my,_vx1+100,_cy,_vx1+200,_cy+22), "SET EVERY ENTRY BACK TO AUTO AND REPACK THE REU IMAGE");
     draw_set_color(_hov?make_color_rgb(45,150,100):make_color_rgb(25,75,55)); draw_rectangle(_vx1+10,_cy+2,_vx1+90,_cy+20,false);
     draw_set_color(c_white); draw_set_halign(fa_center); draw_text_l(_vx1+50,_cy+5,"[+ ADD]"); draw_set_halign(fa_left);
     draw_set_color(make_color_rgb(40,70,90)); draw_rectangle(_vx1+100,_cy+2,_vx1+200,_cy+20,false); draw_set_color(c_white); draw_set_halign(fa_center); draw_text_l(_vx1+150,_cy+5,"[AUTO PACK]"); draw_set_halign(fa_left);
@@ -9195,6 +9377,8 @@ case "LOAD_ORG": {
         }
 
         // Remove button (X)
+        scr_ui_info(point_in_rectangle(_mx, _my, _col_name, _cy, _col_bytes - 8, _cy + 20) && abs(_mx - _split_x) > 6, "HOVER TO PREVIEW THIS ASSET ON THE DISK");
+        scr_ui_info(point_in_rectangle(_mx, _my, _vx2 - 26, _cy + 2, _vx2 - 8, _cy + 18), "REMOVE THIS FILE FROM THE D64 (THE ASSET STAYS IN THE PROJECT)");
         draw_set_color(make_color_rgb(100, 30, 30));
         draw_rectangle(_vx2 - 8, _cy + 2, _vx2 - 26, _cy + 18, false);
         draw_set_font_l(fnt_c64_tiny);
@@ -9207,6 +9391,7 @@ case "LOAD_ORG": {
     }
 
     manifest_draw_divider(_split_x, _split_top, min(_cy, _vy2 - 34), "LOAD_ORG");
+    scr_ui_info(point_in_rectangle(_mx, _my, _split_x - 5, _split_top, _split_x + 5, min(_cy, _vy2 - 34)), "DRAG TO WIDEN OR NARROW THE ASSET NAME COLUMN");
     manifest_draw_preview(_hover_preview, _vx1, _hover_y);
 
     // ADD button
@@ -9215,6 +9400,7 @@ case "LOAD_ORG": {
     var _aby1   = _cy;
     var _aby2   = _cy + 20;
     var _ab_hov = point_in_rectangle(_mx, _my, _abx1, _aby1, _abx2, _aby2);
+    scr_ui_info(_ab_hov, "PICK A PROJECT ASSET TO ADD AS A FILE ON THE D64 DISK");
     draw_set_color(_ab_hov ? make_color_rgb(60, 180, 80) : make_color_rgb(25, 70, 35));
     draw_rectangle(_abx1, _aby1+4, _abx2, _aby2+2, false);
     draw_set_font_l(fnt_c64_tiny);
@@ -9473,6 +9659,7 @@ case "META_TILESET": {
     var _xbx1   = _szx1 + 90;
     var _xbx2   = _xbx1 + 14;
     var _xbhov  = point_in_rectangle(_mx, _my, _xbx1, _szby1, _xbx2, _szby1 + 18);
+    scr_ui_info(_xbhov, "STAMP WIDTH - 1 (MIN 1). ONLY WHILE NO STAMP IS PAINTED");
     draw_set_color(_xbhov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
     draw_rectangle(_xbx1, _szby1, _xbx2, _szby1 + 18, false);
     draw_set_color(c_white);
@@ -9488,6 +9675,7 @@ case "META_TILESET": {
     var _xbx3   = _xbx2 + 22;
     var _xbx4   = _xbx3 + 14;
     var _xbhov2 = point_in_rectangle(_mx, _my, _xbx3, _szby1, _xbx4, _szby1 + 18);
+    scr_ui_info(_xbhov2, "STAMP WIDTH + 1 (MAX 8). ONLY WHILE NO STAMP IS PAINTED");
     draw_set_color(_xbhov2 ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
     draw_rectangle(_xbx3, _szby1, _xbx4, _szby1 + 18, false);
     draw_set_color(c_white);
@@ -9506,6 +9694,7 @@ case "META_TILESET": {
     var _ybx1   = _xbx2 + 60;
     var _ybx2   = _ybx1 + 14;
     var _ybhov  = point_in_rectangle(_mx, _my, _ybx1, _szby1, _ybx2, _szby1 + 18);
+    scr_ui_info(_ybhov, "STAMP HEIGHT - 1 (MIN 1). ONLY WHILE NO STAMP IS PAINTED");
     draw_set_color(_ybhov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
     draw_rectangle(_ybx1, _szby1, _ybx2, _szby1 + 18, false);
     draw_set_color(c_white);
@@ -9520,6 +9709,7 @@ case "META_TILESET": {
     var _ybx3   = _ybx2 + 22;
     var _ybx4   = _ybx3 + 14;
     var _ybhov2 = point_in_rectangle(_mx, _my, _ybx3, _szby1, _ybx4, _szby1 + 18);
+    scr_ui_info(_ybhov2, "STAMP HEIGHT + 1 (MAX 8). ONLY WHILE NO STAMP IS PAINTED");
     draw_set_color(_ybhov2 ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
     draw_rectangle(_ybx3, _szby1, _ybx4, _szby1 + 18, false);
     draw_set_color(c_white);
@@ -9584,6 +9774,7 @@ case "META_TILESET": {
         var _mwm_x1 = _msz_x0;
         var _mwm_x2 = _mwm_x1 + 14;
         var _mwm_hov = point_in_rectangle(_mx, _my, _mwm_x1, _mvy1, _mwm_x2, _mvy1 + 14);
+        scr_ui_info(_mwm_hov, "SHRINK ACTIVE MAP WIDTH BY ONE STAMP WIDTH (CHAR CELLS)");
         draw_set_color(_mwm_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
         draw_rectangle(_mwm_x1, _mvy1, _mwm_x2, _mvy1 + 14, false);
         draw_set_color(c_white);
@@ -9600,6 +9791,7 @@ case "META_TILESET": {
         var _mwv_x1 = _mwm_x2 + 2;
         var _mwv_x2 = _mwv_x1 + 30;
         var _mwv_hov = point_in_rectangle(_mx, _my, _mwv_x1, _mvy1, _mwv_x2, _mvy1 + 14);
+        scr_ui_info(_mwv_hov, "CLICK TO TYPE MAP WIDTH IN CHARS (ROUNDS DOWN TO WHOLE STAMPS)");
         draw_set_color(_mwv_hov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
         draw_rectangle(_mwv_x1, _mvy1, _mwv_x2, _mvy1 + 14, false);
         if (editing_map_dim && editing_map_field == "W" && editing_map_asset_idx == viewer_asset)
@@ -9617,6 +9809,7 @@ case "META_TILESET": {
         var _mwp_x1 = _mwv_x2 + 2;
         var _mwp_x2 = _mwp_x1 + 14;
         var _mwp_hov = point_in_rectangle(_mx, _my, _mwp_x1, _mvy1, _mwp_x2, _mvy1 + 14);
+        scr_ui_info(_mwp_hov, "GROW ACTIVE MAP WIDTH BY ONE STAMP WIDTH (CHAR CELLS)");
         draw_set_color(_mwp_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
         draw_rectangle(_mwp_x1, _mvy1, _mwp_x2, _mvy1 + 14, false);
         draw_set_color(c_white);
@@ -9636,6 +9829,7 @@ case "META_TILESET": {
         var _mhm_x1 = _mwp_x2 + 18;
         var _mhm_x2 = _mhm_x1 + 14;
         var _mhm_hov = point_in_rectangle(_mx, _my, _mhm_x1, _mvy1, _mhm_x2, _mvy1 + 14);
+        scr_ui_info(_mhm_hov, "SHRINK ACTIVE MAP HEIGHT BY ONE STAMP HEIGHT (CHAR CELLS)");
         draw_set_color(_mhm_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
         draw_rectangle(_mhm_x1, _mvy1, _mhm_x2, _mvy1 + 14, false);
         draw_set_color(c_white);
@@ -9652,6 +9846,7 @@ case "META_TILESET": {
         var _mhv_x1 = _mhm_x2 + 2;
         var _mhv_x2 = _mhv_x1 + 30;
         var _mhv_hov = point_in_rectangle(_mx, _my, _mhv_x1, _mvy1, _mhv_x2, _mvy1 + 14);
+        scr_ui_info(_mhv_hov, "CLICK TO TYPE MAP HEIGHT IN CHARS (ROUNDS DOWN TO WHOLE STAMPS)");
         draw_set_color(_mhv_hov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
         draw_rectangle(_mhv_x1, _mvy1, _mhv_x2, _mvy1 + 14, false);
         if (editing_map_dim && editing_map_field == "H" && editing_map_asset_idx == viewer_asset)
@@ -9669,6 +9864,7 @@ case "META_TILESET": {
         var _mhp_x1 = _mhv_x2 + 2;
         var _mhp_x2 = _mhp_x1 + 14;
         var _mhp_hov = point_in_rectangle(_mx, _my, _mhp_x1, _mvy1, _mhp_x2, _mvy1 + 14);
+        scr_ui_info(_mhp_hov, "GROW ACTIVE MAP HEIGHT BY ONE STAMP HEIGHT (CHAR CELLS)");
         draw_set_color(_mhp_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
         draw_rectangle(_mhp_x1, _mvy1, _mhp_x2, _mvy1 + 14, false);
         draw_set_color(c_white);
@@ -9686,6 +9882,7 @@ case "META_TILESET": {
         var _slc_x2  = _slc_x1 + 42;
 		var _slc_y1  = _mvy1;
         var _slc_hov = point_in_rectangle(_mx, _my, _slc_x1, _slc_y1, _slc_x2, _slc_y1 + 14);
+        scr_ui_info(_slc_hov, "SLICE: ASK FOR A W X H AND RE-SLICE THE ACTIVE MAP ONLY");
         draw_set_color(_slc_hov ? make_color_rgb(200, 120, 40) : make_color_rgb(90, 55, 20));
         draw_rectangle(_slc_x1, _slc_y1, _slc_x2, _slc_y1 + 14, false);
         draw_set_color(c_white);
@@ -9730,6 +9927,7 @@ case "META_TILESET": {
     var _tscpy2   = _cy + 13;
     meta_ts_btn_y = _tscpy1;
     var _tscphov  = point_in_rectangle(_mx, _my, _tscpx1, _tscpy1, _tscpx2, _tscpy2);
+    scr_ui_info(_tscphov, "PICK THE CHARSET WHOSE GLYPHS THIS TILESET USES");
     draw_set_color(_tscphov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
     draw_rectangle(_tscpx1, _tscpy1, _tscpx2, _tscpy2, false);
     draw_set_color(_chr_name != "" ? c_lime : make_color_rgb(150, 150, 150));
@@ -9894,6 +10092,7 @@ case "META_TILESET": {
     var _rr_x2  = _rv_x1 + string_width_l("RAW ROWS: OFF") + 10;
     var _rr_y2  = _cy + 14;
     var _rr_hov = point_in_rectangle(_mx, _my, _rv_x1, _cy, _rr_x2, _rr_y2);
+    scr_ui_info(_rr_hov, "RAW ROWS: EMIT MAPS AS PLAIN CHAR ROWS. CYCLES OFF / ON (TOP FIRST) / UP (BOTTOM FIRST)");
     if (_rr_on) {
         draw_set_color(make_color_rgb(20, 70, 50));
     } else {
@@ -9953,6 +10152,7 @@ case "META_TILESET": {
         if (mts_run_view) { _rv_lbl = "RUN VIEW: ON"; }
         var _rv_x2  = _rv_x1 + string_width_l("RUN VIEW: OFF") + 10;
         var _rv_hov = point_in_rectangle(_mx, _my, _rv_x1, _rv_y1, _rv_x2, _rv_y2);
+        scr_ui_info(_rv_hov, "RUN VIEW: SHOW CELL COLOURS AS THE CONNECTED METASCROLL WILL ON THE C64");
         if (mts_run_view) {
             draw_set_color(make_color_rgb(20, 70, 50));
         } else {
@@ -9974,6 +10174,7 @@ case "META_TILESET": {
         var _md_x1  = _rv_x2 + 6;
         var _md_x2  = _rv_x2r;
         var _md_hov = point_in_rectangle(_mx, _my, _md_x1, _rv_y1, _md_x2, _rv_y2);
+        scr_ui_info(_md_hov, "METASCROLL COLOUR MODE: CYCLES FIXED / ROW BANDS / SHIFT STOCK / SHIFT C64U");
         var _md_txt = "FIXED";
         var _md_col = c_lime;
         if (_run_mode == 3) {
@@ -10015,6 +10216,7 @@ case "META_TILESET": {
         if (_run_mixed && !_ecm_mode) {
             _mc_x1 = _rv_x2r - (string_width_l("ALL > MC") + 10);
             var _mc_hov = point_in_rectangle(_mx, _my, _mc_x1, _rv_y3, _rv_x2r, _rv_y3b);
+            scr_ui_info(_mc_hov, "ALL > MC: MAKE EVERY CHAR IN THE TILESET MULTICOLOUR");
             draw_set_color(make_color_rgb(70, 35, 5));
             if (_mc_hov) { draw_set_color(make_color_rgb(140, 70, 10)); }
             draw_rectangle(_mc_x1, _rv_y3, _rv_x2r, _rv_y3b, false);
@@ -10039,6 +10241,7 @@ case "META_TILESET": {
             if (_run_nib_set < 0) { _rv_ntxt = "NIB AUTO $" + string_upper(decimal_to_hex(_run_nib)); }
             var _rv_nw   = string_width_l(_rv_ntxt);
             var _rv_nhov = point_in_rectangle(_mx, _my, _rv_x1, _rv_y3, _rv_x1 + 14 + _rv_nw, _rv_y3b);
+            scr_ui_info(_rv_nhov, "FIXED NIBBLE: TOGGLE AUTO (COMMONEST COLOUR) / SET TO THE CURRENT PAINT COLOUR");
             draw_set_color(scr_c64_pepto_colour(_run_fx_fg));
             draw_rectangle(_rv_x1, _rv_y3 + 2, _rv_x1 + 8, _rv_y3b - 2, false);
             draw_set_color(make_color_rgb(120, 120, 140));
@@ -10123,6 +10326,7 @@ case "META_TILESET": {
                 var _ebx1  = _vx1 + 44 + _ebsi * (_ecm_sw + _ecm_gap);
                 var _ebx2  = _ebx1 + _ecm_sw;
                 var _ebhov = point_in_rectangle(_mx, _my, _ebx1, _eby, _ebx2, _eby + _ecm_sw);
+                scr_ui_info(_ebhov, "SET THE CHARSET'S ECM " + _ecm_labels[_ebi] + " BACKGROUND TO THIS COLOUR");
                 draw_set_color(scr_c64_pepto_colour(_ebsi));
                 draw_rectangle(_ebx1, _eby, _ebx2, _eby + _ecm_sw, false);
                 if (_ebval == _ebsi) {
@@ -10147,6 +10351,7 @@ case "META_TILESET": {
         var _gmby1      = _cy;
         var _gmby2      = _cy + 18;
         var _gmbhov     = point_in_rectangle(_mx, _my, _gmbx1, _gmby1, _gmbx2, _gmby2);
+        scr_ui_info(_gmbhov, "TOGGLE HR ONLY / MIXED (HIRES + MULTICOLOUR CHARS) MAP MODE");
         draw_set_color(_gmb_bg[_ts_global_mixed]);
         draw_rectangle(_gmbx1, _gmby1, _gmbx2, _gmby2, false);
         draw_set_color(_gmb_border[_ts_global_mixed]);
@@ -10178,6 +10383,7 @@ case "META_TILESET": {
             for (var _tsi = 0; _tsi < 16; _tsi++) {
                 var _tsx   = _vx1 + 36 + _tsi * (_ts_sw + _ts_gap);
                 var _tshov = point_in_rectangle(_mx, _my, _tsx, _tpy, _tsx + _ts_sw, _tpy + _ts_sw);
+                scr_ui_info(_tshov, "L: SET MC " + _ts_pal_labels[_tpi] + " TO THIS COLOUR AND PAINT WITH IT. R: CLEAR BACK TO DEFAULT");
                 draw_set_color(scr_c64_pepto_colour(_tsi));
                 draw_rectangle(_tsx, _tpy, _tsx + _ts_sw, _tpy + _ts_sw, false);
                 if (_ts_pal_disp[_tpi] == _tsi) {
@@ -10460,6 +10666,7 @@ case "META_TILESET": {
         // ---- GHOST [+] SLOT ----
         if (_is_ghost) {
             var _g_hov = point_in_rectangle(_mx, _my, _sx2, _sy2, _sx2 + _slot_w3 - 2, _sy2 + _slot_h - 2);
+            scr_ui_info(_g_hov, "ADD A NEW EMPTY STAMP AND SELECT IT FOR EDITING");
             draw_set_color(_g_hov ? make_color_rgb(30, 60, 45) : make_color_rgb(15, 22, 18));
             draw_rectangle(_sx2, _sy2, _sx2 + _slot_w3 - 2, _sy2 + _slot_h - 2, false);
             draw_set_color(make_color_rgb(60, 140, 90));
@@ -10496,6 +10703,7 @@ case "META_TILESET": {
         var _foot_h = _m.stamp_h * _slot_tpx;
         var _ssel = (_m.edit_stamp == _si);
         var _shov = point_in_rectangle(_mx, _my, _sx2, _sy2, _sx2 + _slot_w3 - 2, _sy2 + _slot_h - 2);
+        scr_ui_info(_shov, "STAMP #" + string(_si) + ": L-CLICK EDIT / PLACE ON MAP, R-CLICK DELETE. WHEEL SCROLLS, CTRL+D DESELECTS");
 
         draw_set_color(_ssel ? make_color_rgb(30, 80, 60) : (_shov ? make_color_rgb(25, 25, 45) : make_color_rgb(15, 15, 28)));
         draw_rectangle(_sx2, _sy2, _sx2 + _slot_w3 - 2, _sy2 + _slot_h - 2, false);
@@ -10854,6 +11062,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     scr_mts_glyph_end();
 
     // Paint interaction on canvas
+    scr_ui_info(point_in_rectangle(_mx, _my, _canvas_x1, _canvas_y1, _canvas_x2, _canvas_y2), "STAMP CANVAS: L PAINT CHAR+COLOUR, R ERASE, ALT+L PICK CHAR, WHEEL ZOOM. CTRL+C/V COPY/PASTE");
     if (point_in_rectangle(_mx, _my, _canvas_x1, _canvas_y1, _canvas_x2, _canvas_y2)) {
         var _hcol2 = floor((_mx - _grid_ox) / _cell_sz);
         var _hrow2 = floor((_my - _grid_oy) / _cell_sz);
@@ -10915,6 +11124,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         for (var _ovi = 0; _ovi < _ov_count; _ovi++) {
             var _ovx1  = _ov_pal_x1 + _ovi * _ov_cw;
             var _ovhov = point_in_rectangle(_mx, _my, _ovx1, _ov_y1, _ovx1 + _ov_cw, _ov_y1 + _ov_h);
+            scr_ui_info(_ovhov, "OVERRIDE: FORCE THIS ONE COLOUR ACROSS THE WHOLE SELECTED STAMP");
             draw_set_color(scr_c64_pepto_colour(_ovi));
             draw_rectangle(_ovx1, _ov_y1, _ovx1 + _ov_cw, _ov_y1 + _ov_h, false);
             if (_ov_cur == _ovi) {
@@ -10930,6 +11140,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 
         var _ov_is_set  = (_ov_cur != 0x80);
         var _ov_rst_hov = point_in_rectangle(_mx, _my, _ov_rst_x1, _ov_y1, _ov_rst_x2, _ov_y1 + _ov_h);
+        scr_ui_info(_ov_rst_hov, "RESET: REMOVE THE STAMP COLOUR OVERRIDE (USE EACH CHAR'S OWN COLOUR)");
         draw_set_color(_ov_rst_hov ? make_color_rgb(180, 60, 60) : (_ov_is_set ? make_color_rgb(90, 30, 30) : make_color_rgb(40, 40, 50)));
         draw_rectangle(_ov_rst_x1, _ov_y1, _ov_rst_x2, _ov_y1 + _ov_h, false);
         draw_set_color(_ov_is_set ? c_white : make_color_rgb(110, 110, 120));
@@ -10983,6 +11194,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _vwm_x1 = _view_lx + 40;
     var _vwm_x2 = _vwm_x1 + 14;
     var _vwm_hov = point_in_rectangle(_mx, _my, _vwm_x1, _vo_y, _vwm_x2, _vo_y + 18);
+    scr_ui_info(_vwm_hov, "VIEW WINDOW WIDTH - 1 CHAR");
     draw_set_color(_vwm_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
     draw_rectangle(_vwm_x1, _vo_y, _vwm_x2, _vo_y + 18, false);
     draw_set_color(c_white);
@@ -10997,6 +11209,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _vwp_x1 = _vwm_x2 + 26;
     var _vwp_x2 = _vwp_x1 + 14;
     var _vwp_hov = point_in_rectangle(_mx, _my, _vwp_x1, _vo_y, _vwp_x2, _vo_y + 18);
+    scr_ui_info(_vwp_hov, "VIEW WINDOW WIDTH + 1 CHAR (UP TO THE MAP WIDTH)");
     draw_set_color(_vwp_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
     draw_rectangle(_vwp_x1, _vo_y, _vwp_x2, _vo_y + 18, false);
     draw_set_color(c_white);
@@ -11013,6 +11226,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _vhm_x1 = _vwp_x2 + 22;
     var _vhm_x2 = _vhm_x1 + 14;
     var _vhm_hov = point_in_rectangle(_mx, _my, _vhm_x1, _vo_y, _vhm_x2, _vo_y + 18);
+    scr_ui_info(_vhm_hov, "VIEW WINDOW HEIGHT - 1 CHAR");
     draw_set_color(_vhm_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
     draw_rectangle(_vhm_x1, _vo_y, _vhm_x2, _vo_y + 18, false);
     draw_set_color(c_white);
@@ -11026,6 +11240,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _vhp_x1 = _vhm_x2 + 26;
     var _vhp_x2 = _vhp_x1 + 14;
     var _vhp_hov = point_in_rectangle(_mx, _my, _vhp_x1, _vo_y, _vhp_x2, _vo_y + 18);
+    scr_ui_info(_vhp_hov, "VIEW WINDOW HEIGHT + 1 CHAR (UP TO THE MAP HEIGHT)");
     draw_set_color(_vhp_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
     draw_rectangle(_vhp_x1, _vo_y, _vhp_x2, _vo_y + 18, false);
     draw_set_color(c_white);
@@ -11045,6 +11260,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _oxm_x1 = _off_lx + 52;
     var _oxm_x2 = _oxm_x1 + 14;
     var _oxm_hov = point_in_rectangle(_mx, _my, _oxm_x1, _vo_y, _oxm_x2, _vo_y + 18);
+    scr_ui_info(_oxm_hov, "MOVE THE VIEW WINDOW 1 CHAR LEFT");
     draw_set_color(_oxm_hov ? make_color_rgb(200, 160, 60) : make_color_rgb(90, 70, 20));
     draw_rectangle(_oxm_x1, _vo_y, _oxm_x2, _vo_y + 18, false);
     draw_set_color(c_white);
@@ -11059,6 +11275,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _oxp_x1 = _oxm_x2 + 30;
     var _oxp_x2 = _oxp_x1 + 14;
     var _oxp_hov = point_in_rectangle(_mx, _my, _oxp_x1, _vo_y, _oxp_x2, _vo_y + 18);
+    scr_ui_info(_oxp_hov, "MOVE THE VIEW WINDOW 1 CHAR RIGHT");
     draw_set_color(_oxp_hov ? make_color_rgb(200, 160, 60) : make_color_rgb(90, 70, 20));
     draw_rectangle(_oxp_x1, _vo_y, _oxp_x2, _vo_y + 18, false);
     draw_set_color(c_white);
@@ -11075,6 +11292,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _oym_x1 = _oxp_x2 + 22;
     var _oym_x2 = _oym_x1 + 14;
     var _oym_hov = point_in_rectangle(_mx, _my, _oym_x1, _vo_y, _oym_x2, _vo_y + 18);
+    scr_ui_info(_oym_hov, "MOVE THE VIEW WINDOW 1 CHAR UP");
     draw_set_color(_oym_hov ? make_color_rgb(200, 160, 60) : make_color_rgb(90, 70, 20));
     draw_rectangle(_oym_x1, _vo_y, _oym_x2, _vo_y + 18, false);
     draw_set_color(c_white);
@@ -11088,6 +11306,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _oyp_x1 = _oym_x2 + 30;
     var _oyp_x2 = _oyp_x1 + 14;
     var _oyp_hov = point_in_rectangle(_mx, _my, _oyp_x1, _vo_y, _oyp_x2, _vo_y + 18);
+    scr_ui_info(_oyp_hov, "MOVE THE VIEW WINDOW 1 CHAR DOWN");
     draw_set_color(_oyp_hov ? make_color_rgb(200, 160, 60) : make_color_rgb(90, 70, 20));
     draw_rectangle(_oyp_x1, _vo_y, _oyp_x2, _vo_y + 18, false);
     draw_set_color(c_white);
@@ -11103,6 +11322,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _mvt_x1 = _oyp_x2 + 40;
     var _mvt_x2 = _mvt_x1 + 70;
     var _mvt_hov = point_in_rectangle(_mx, _my, _mvt_x1, _vo_y, _mvt_x2, _vo_y + 18);
+    scr_ui_info(_mvt_hov, "TOGGLE MAP MODE (WHOLE MAP) / VIEW MODE (ZOOM TO THE VIEW WINDOW)");
     var _mvt_is_view = (_m.edit_view_mode == 1);
     draw_set_color(_mvt_is_view ? make_color_rgb(10, 50, 80) : make_color_rgb(20, 40, 30));
     draw_rectangle(_mvt_x1, _vo_y, _mvt_x2, _vo_y + 18, false);
@@ -11128,6 +11348,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _chn_x1  = _mvt_x2 + 8;
     var _chn_x2  = _chn_x1 + 70;
     var _chn_hov = point_in_rectangle(_mx, _my, _chn_x1, _vo_y, _chn_x2, _vo_y + 18);
+    scr_ui_info(_chn_hov, "CHAINS: SWAP THE MAP AREA FOR THE MAP CHAINS PANEL (CLICK AGAIN TO RETURN)");
     if (mts_chain_mode) {
         draw_set_color(make_color_rgb(70, 50, 10));
     } else {
@@ -11242,6 +11463,13 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         var _scx  = _msel_x0 + _scol * (_msel_bw + _msel_gap);
         var _scy  = _msel_y0 + (_srow - _msel_scr) * _msel_lh;
         var _shov = point_in_rectangle(_mx, _my, _scx, _scy, _scx + _msel_bw, _scy + _msel_bh);
+        if (_slot == 0) {
+            scr_ui_info(_shov, "SHOW THE SCRATCH TEST MAP (NOT EXPORTED). WHEEL SCROLLS THE TABS");
+        } else if (_slot <= _m.map_count) {
+            scr_ui_info(_shov, "L-CLICK SELECT THIS MAP, DOUBLE-CLICK RENAME, R-CLICK DELETE IT");
+        } else {
+            scr_ui_info(_shov, "ADD A NEW MAP (SAME SIZE AS MAP 0) AND SELECT IT");
+        }
         if (_slot == 0) {
             var _sel = (_m.active_map < 0);
             draw_set_color(_sel ? make_color_rgb(20, 80, 100) : (_shov ? make_color_rgb(40, 60, 70) : make_color_rgb(20, 25, 30)));
@@ -11359,6 +11587,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     if (_msel_rows > _msel_vis_rows) {
         var _msarr_x = _msel_x0 + _msel_per_row * (_msel_bw + _msel_gap) + 2;
         var _msup_hov = point_in_rectangle(_mx, _my, _msarr_x, _msel_y0, _msarr_x + 16, _msel_y0 + 14);
+        scr_ui_info(_msup_hov, "SCROLL THE MAP TABS UP ONE ROW");
         draw_set_color(_msup_hov ? c_white : (_msel_scr > 0 ? make_color_rgb(160, 160, 200) : make_color_rgb(50, 50, 70)));
         draw_rectangle(_msarr_x, _msel_y0, _msarr_x + 16, _msel_y0 + 14, false);
         draw_set_color(c_black);
@@ -11366,6 +11595,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         draw_text_l(_msarr_x + 8, _msel_y0 + 2, "^");
         var _msdn_y = _msel_y0 + 16;
         var _msdn_hov = point_in_rectangle(_mx, _my, _msarr_x, _msdn_y, _msarr_x + 16, _msdn_y + 14);
+        scr_ui_info(_msdn_hov, "SCROLL THE MAP TABS DOWN ONE ROW");
         draw_set_color(_msdn_hov ? c_white : (_msel_scr < _msel_max_scr ? make_color_rgb(160, 160, 200) : make_color_rgb(50, 50, 70)));
         draw_rectangle(_msarr_x, _msdn_y, _msarr_x + 16, _msdn_y + 14, false);
         draw_set_color(c_black);
@@ -11541,6 +11771,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             draw_set_color(_sb_track_col);
             draw_rectangle(_hsb_x1, _hsb_y1, _hsb_x2, _hsb_y2, false);
             var _hthumb_hov = point_in_rectangle(_mx, _my, _hthumb_x, _hsb_y1, _hthumb_x + _hthumb_w, _hsb_y2);
+            scr_ui_info(_hthumb_hov, "DRAG TO SCROLL THE MAP LEFT / RIGHT");
             draw_set_color(_hthumb_hov ? _sb_thumb_hov : _sb_thumb_col);
             draw_rectangle(_hthumb_x, _hsb_y1, _hthumb_x + _hthumb_w, _hsb_y2, false);
             if (_hthumb_hov && !mts_chain_mode && mouse_check_button_pressed(mb_left)) {
@@ -11569,6 +11800,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             draw_set_color(_sb_track_col);
             draw_rectangle(_vsb_x1, _vsb_y1, _vsb_x2, _vsb_y2, false);
             var _vthumb_hov = point_in_rectangle(_mx, _my, _vsb_x1, _vthumb_y, _vsb_x2, _vthumb_y + _vthumb_h);
+            scr_ui_info(_vthumb_hov, "DRAG TO SCROLL THE MAP UP / DOWN");
             draw_set_color(_vthumb_hov ? _sb_thumb_hov : _sb_thumb_col);
             draw_rectangle(_vsb_x1, _vthumb_y, _vsb_x2, _vthumb_y + _vthumb_h, false);
             if (_vthumb_hov && !mts_chain_mode && mouse_check_button_pressed(mb_left)) {
@@ -11641,6 +11873,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     }
 
   // Test area interaction (suppressed while the SLICE modal is open)
+    scr_ui_info(!global.integer_box_open && !mts_chain_mode && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2), "MAP: L PLACE SELECTED STAMP, R ERASE, ALT+L PICK STAMP, WHEEL ZOOM, SPACE/MID-DRAG PAN, T TYPES");
     if (!global.integer_box_open && !mts_chain_mode && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2)) {
         // Screen cell -> grid cell. VIEW mode draws from _draw_col0/_draw_row0
         // with a sub-metatile pixel shift, so add that shift back into the mouse
@@ -11797,6 +12030,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _tclr_y1  = _map_top + 20;
     var _tclr_y2  = _tclr_y1 + 16;
     var _tclr_hov = point_in_rectangle(_mx, _my, _tclr_x1, _tclr_y1, _tclr_x2, _tclr_y2);
+    scr_ui_info(_tclr_hov, "CLEAR: REMOVE EVERY STAMP FROM THE CURRENT MAP (UNDOABLE)");
     draw_set_color(_tclr_hov ? make_color_rgb(180, 40, 40) : make_color_rgb(80, 20, 20));
     draw_rectangle(_tclr_x1, _tclr_y1, _tclr_x2, _tclr_y2, false);
     draw_set_font_l(fnt_c64_tiny);
@@ -11809,6 +12043,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _cpym_y1  = _tclr_y2 + 4;
     var _cpym_y2  = _cpym_y1 + 16;
     var _cpym_hov = point_in_rectangle(_mx, _my, _tclr_x1, _cpym_y1, _tclr_x2, _cpym_y2);
+    scr_ui_info(_cpym_hov, "COPY: COPY THE CURRENT MAP'S STAMP LAYOUT TO THE MAP CLIPBOARD");
     draw_set_color(_cpym_hov ? make_color_rgb(40, 110, 160) : make_color_rgb(20, 50, 75));
     draw_rectangle(_tclr_x1, _cpym_y1, _tclr_x2, _cpym_y2, false);
     draw_set_color(c_white);
@@ -11828,6 +12063,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
                   && metamap_clip_cols == _test_cols
                   && metamap_clip_rows == _test_rows);
     var _pstm_hov = point_in_rectangle(_mx, _my, _tclr_x1, _pstm_y1, _tclr_x2, _pstm_y2);
+    scr_ui_info(_pstm_hov, "PASTE: REPLACE THIS MAP WITH THE COPIED ONE (SAME GRID SIZE ONLY, UNDOABLE)");
     if (_clip_ok) {
         draw_set_color(_pstm_hov ? make_color_rgb(60, 160, 90) : make_color_rgb(25, 70, 40));
     } else {
@@ -11913,6 +12149,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         var _clbx2      = _clbx1 + 64;
         var _clby2      = _clby1 + 32;
         var _clbhov     = point_in_rectangle(_mx, _my, _clbx1, _clby1, _clbx2, _clby2);
+        scr_ui_info(_clbhov, _run_fx_on ? "FIXED RUN VIEW: FLIP HR/MC FOR THE WHOLE SCREEN (NODE NIBBLE, MIXED ONLY)" : "TOGGLE THE SELECTED CHAR BETWEEN HIRES AND MULTICOLOUR (KEEPS ITS COLOUR)");
         draw_set_color((_clut_mode == 1) ? make_color_rgb(80, 35, 5) : make_color_rgb(20, 20, 35));
         draw_rectangle(_clbx1, _clby1, _clbx2, _clby2, false);
         draw_set_color((_clut_mode == 1) ? make_color_rgb(220, 110, 20) : make_color_rgb(60, 90, 140));
@@ -11998,6 +12235,13 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         var _ppx1   = _pal_x0 + _pi2 * (_psw + 2);
         var _pphov  = point_in_rectangle(_mx, _my, _ppx1, _pal_y2, _ppx1 + _psw, _pal_y2 + _psh);
         var _locked = (!_ecm_mode) && (_ts_global_mixed == 1) && (_pi2 >= 8);
+        if (_locked) {
+            scr_ui_info(_pphov, "COLOURS 8-15 ARE NOT AVAILABLE IN MIXED MODE");
+        } else if (_run_fx_on) {
+            scr_ui_info(_pphov, "FIXED RUN VIEW: SET THE METASCROLL'S ONE COLOUR FOR EVERY CELL");
+        } else {
+            scr_ui_info(_pphov, "PAINT COLOUR: ALSO BAKES INTO THE SELECTED CHAR EVERYWHERE IT IS USED");
+        }
         draw_set_color(scr_c64_pepto_colour(_pi2));
         draw_set_alpha(_locked ? 0.2 : 1.0);
         draw_rectangle(_ppx1, _pal_y2, _ppx1 + _psw, _pal_y2 + _psh, false);
@@ -12047,6 +12291,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _sa_x1  = _pal_x0;
     var _sa_x2  = _sa_x1 + string_width_l("SET ALL") + 8;
     var _sa_hov = point_in_rectangle(_mx, _my, _sa_x1, _sa_y1, _sa_x2, _sa_y2);
+    scr_ui_info(_sa_hov, _run_fx_on ? "SET ALL: BAKE THE FIXED NIBBLE (COLOUR + HR/MC) INTO EVERY CHAR" : "SET ALL: BAKE THE PAINT COLOUR INTO EVERY CHAR (KEEPS EACH CHAR'S HR/MC)");
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(30, 45, 70));
     if (_sa_hov) { draw_set_color(make_color_rgb(60, 90, 140)); }
@@ -12110,6 +12355,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             var _cpx1      = _strip_x1 + 45 + _pi2 * (_cp_sz2 + 2);
             var _cp_y2_row = _cp_y2 + _crow * (_cp_sz2 + 2);
             var _cphov     = point_in_rectangle(_mx, _my, _cpx1, _cp_y2_row, _cpx1 + _cp_sz2, _cp_y2_row + _cp_sz2);
+            scr_ui_info(_cphov, "CHAR " + string(_ci2) + ": L SELECT TO PAINT/EDIT, ALT+L TILE TYPE UP, R TILE TYPE DOWN");
             var _cpsel     = (_m.active_char == _ci2);
 
             var _strip_real_char = _ecm_mode ? (_ci2 mod 64) : _ci2;
@@ -12238,6 +12484,8 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _arr_x  = _strip_x2 - 20;
     var _up_hov = point_in_rectangle(_mx, _my, _arr_x, _cp_y2, _arr_x + 18, _cp_y2 + 14);
     var _dn_hov = point_in_rectangle(_mx, _my, _arr_x, _cp_y2 + 16, _arr_x + 18, _cp_y2 + 30);
+    scr_ui_info(_up_hov, "SCROLL THE CHAR STRIP UP ONE ROW (OR WHEEL OVER THE STRIP)");
+    scr_ui_info(_dn_hov, "SCROLL THE CHAR STRIP DOWN ONE ROW (OR WHEEL OVER THE STRIP)");
     draw_set_color(_up_hov ? c_white : (_m.char_strip_scroll_row > 0 ? make_color_rgb(160, 160, 200) : make_color_rgb(50, 50, 70)));
     draw_rectangle(_arr_x, _cp_y2, _arr_x + 18, _cp_y2 + 14, false);
     draw_set_color(c_black);
@@ -12487,6 +12735,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 
             // Arrow keys with the pointer over the charset: pick another char
             if (point_in_rectangle(_mx, _my, _dx, _cy, _dx + _dw, _cy + _dh)) {
+                scr_ui_info(true, "CLICK: EDIT THIS CHAR. CTRL+CLICK/DRAG: MULTI SELECT. ARROWS: NEXT CHAR. CTRL+C/V COPY/PASTE");
                 var _nav_max = _asset.meta.char_count - 1;
                 if (_asset.meta.mc_mode == 2) _nav_max = min(_nav_max, 63);
                 var _nav = chr_edit_idx;
@@ -12518,6 +12767,12 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             draw_text_l(_vx1 + _vw * 0.5, _cy + 32, "NO CHARSET LOADED");
             draw_set_halign(fa_left);
         }
+    }
+    // ── INFO STRIP ── under every editor's panel: what the control under the
+    // pointer does. Controls set it with scr_ui_info(hover, text) as they draw.
+    // The Music Maker shows its own line inside its panel.
+    if (_asset.type != "MUSIC_MAKER") {
+        scr_ui_info_draw(_vx1, _vy2 + 4, _vx2, _vy2 + 22);
     }
 }
 

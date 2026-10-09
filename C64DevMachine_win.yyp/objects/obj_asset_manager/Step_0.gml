@@ -82,7 +82,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _vx1 = 12;
         _vx2 = _gui_w - 12;
         _vy1 = 8;
-        _vy2 = _gui_h - 8;
+        _vy2 = _gui_h - 30;   // room for the INFO strip (must match Draw GUI)
     }
 }
 var _mouse_in_viewer = viewer_open && point_in_rectangle(_mx, _my, _vx1, _vy1, _vx2, _vy2);

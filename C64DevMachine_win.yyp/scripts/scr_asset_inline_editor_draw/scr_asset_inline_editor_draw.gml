@@ -202,6 +202,7 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
 
     // Mouse wheel scroll
     if (point_in_rectangle(_mx, _my, _x1, _y1, _x2, _y2)) {
+        scr_ui_info(true, "TYPE TO EDIT. CLICK PLACES THE CARET, WHEEL SCROLLS, CTRL+A ALL, CTRL+C / CTRL+V COPY / PASTE");
         if (mouse_wheel_up()) {
             _asset.meta.inline_edit_scroll_y = max(0, _scr_y - 2);
         }

@@ -174,8 +174,9 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _c_edge = make_color_rgb(56, 56, 78);
     var _press  = mouse_check_button_pressed(mb_left);
 
-    var _button = function(_x1, _y1, _w, _h, _label, _col, _mx2, _my2) {
+    var _button = function(_x1, _y1, _w, _h, _label, _col, _mx2, _my2, _info = "") {
         var _hov = point_in_rectangle(_mx2, _my2, _x1, _y1, _x1 + _w, _y1 + _h);
+        scr_ui_info(_hov, _info);
         if (_hov) {
             draw_set_color(merge_color(_col, c_white, 0.25));
         } else {
@@ -205,7 +206,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _bh   = 96 * _z;
 
     // ── Toolbar ──
-    if (_button(_vx1 + 10, _cy, 70, 18, "+ ROOM", make_color_rgb(30, 80, 40), _mx, _my)) {
+    if (_button(_vx1 + 10, _cy, 70, 18, "+ ROOM", make_color_rgb(30, 80, 40), _mx, _my, "ADDS A NEW ROOM (TO THE RIGHT OF THE SELECTED ONE) AND SELECTS IT")) {
         var _nx = 40;
         var _ny = 40;
         if (_m.sel_room >= 0) {
@@ -218,7 +219,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         _n += 1;
         global.addresses_dirty = true;
     }
-    if (_button(_vx1 + 86, _cy, 70, 18, "DELETE", make_color_rgb(80, 30, 30), _mx, _my)) {
+    if (_button(_vx1 + 86, _cy, 70, 18, "DELETE", make_color_rgb(80, 30, 30), _mx, _my, "DELETES THE SELECTED ROOM AND UNLINKS EXITS TO IT (THE LAST ROOM STAYS)")) {
         if (_m.sel_room >= 0 && _n > 1) {
             var _dead = _m.sel_room;
             array_delete(_rooms, _dead, 1);
@@ -241,7 +242,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // REU manifest cycler
     var _reu_lbl = "REU: (none)";
     if (_m.reu != "") { _reu_lbl = "REU: " + _m.reu; }
-    if (_button(_vx1 + 170, _cy, 190, 18, _reu_lbl, make_color_rgb(25, 65, 80), _mx, _my)) {
+    if (_button(_vx1 + 170, _cy, 190, 18, _reu_lbl, make_color_rgb(25, 65, 80), _mx, _my, "CYCLES THE LOAD_REU MANIFEST WHOSE BITMAPS THE ROOMS CAN USE")) {
         var _mans = [];
         var _am = obj_asset_manager;
         for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
@@ -258,7 +259,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         }
     }
     var _zl = ["ZOOM 1", "ZOOM 2", "ZOOM 3"];
-    if (_button(_vx1 + 366, _cy, 64, 18, _zl[clamp(_m.zoom, 1, 3) - 1], make_color_rgb(38, 38, 58), _mx, _my)) {
+    if (_button(_vx1 + 366, _cy, 64, 18, _zl[clamp(_m.zoom, 1, 3) - 1], make_color_rgb(38, 38, 58), _mx, _my, "CYCLES THE MAP ZOOM (1 = LARGEST ROOM BOXES)")) {
         _m.zoom = (_m.zoom mod 3) + 1;
     }
     draw_set_color(_c_dim);
@@ -367,6 +368,17 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
     // Canvas input
     var _on_canvas = point_in_rectangle(_mx, _my, _cvx1, _cvy1, _cvx2, _cvy2);
+    if (_on_canvas) {
+        if (_m.link_exit >= 0) {
+            scr_ui_info(true, "LINKING D" + string(_m.link_exit + 2) + ": CLICK THE TARGET ROOM; EMPTY SPACE OR ESC CANCELS");
+        } else if (_hover_bitmap >= 0) {
+            scr_ui_info(true, "ROOM BITMAP: CLICK SELECTS, DRAG MOVES, DOUBLE-CLICK OPENS THE BITMAP EDITOR");
+        } else if (_hover_room >= 0) {
+            scr_ui_info(true, "ROOM: CLICK SELECTS IT, DRAG ARRANGES IT ON THE MAP (SNAPS TO 8)");
+        } else {
+            scr_ui_info(true, "ROOM MAP: ROOM 0 (*) IS THE START ROOM; ARROWS SHOW EXITS D2-D5 BETWEEN ROOMS");
+        }
+    }
     if (_press && (!_on_canvas || _hover_bitmap < 0 || _m.link_exit >= 0)) {
         _m.bmp_click_room = -1;
     }
@@ -452,6 +464,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _nbx1 = _qx + 70;
     var _nbx2 = _qx + _qw;
     var _nhov = point_in_rectangle(_mx, _my, _nbx1, _qy, _nbx2, _qy + 16);
+    scr_ui_info(_nhov, "ROOM NAME: CLICK TO EDIT (A-Z, 0-9, _), ENTER KEEPS, ESC CANCELS");
     if (_m.name_edit_active) {
         draw_set_color(make_color_rgb(20, 60, 30));
     } else {
@@ -501,7 +514,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_qx, _qy + 3, "BITMAP");
     var _bl = _ro.bmp;
     if (_bl == "") { _bl = "(choose)"; }
-    if (_button(_qx + 70, _qy, _qw - 70, 16, string_copy(_bl, 1, 52), make_color_rgb(25, 55, 75), _mx, _my)) {
+    if (_button(_qx + 70, _qy, _qw - 70, 16, string_copy(_bl, 1, 52), make_color_rgb(25, 55, 75), _mx, _my, "PICKS THE ROOM BITMAP FROM THE BITMAPS IN THE REU MANIFEST")) {
         _m.pick_mode = "BMP";
         _m.pick_scroll = 0;
     }
@@ -510,7 +523,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_qx, _qy + 3, "COLLIDERS");
     var _cl = _ro.coll;
     if (_cl == "") { _cl = "(none)"; }
-    if (_button(_qx + 70, _qy, _qw - 70, 16, string_copy(_cl, 1, 52), make_color_rgb(60, 45, 25), _mx, _my)) {
+    if (_button(_qx + 70, _qy, _qw - 70, 16, string_copy(_cl, 1, 52), make_color_rgb(60, 45, 25), _mx, _my, "PICKS THE LINE_COLL ASSET WITH THIS ROOM COLLIDER LINES (DOOR LINES D2-D5)")) {
         _m.pick_mode = "COLL";
         _m.pick_scroll = 0;
     }
@@ -519,7 +532,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_qx, _qy + 3, "MASK");
     var _mkl = _ro.mask;
     if (_mkl == "") { _mkl = "(none)"; }
-    if (_button(_qx + 70, _qy, _qw - 70, 16, string_copy(_mkl, 1, 52), make_color_rgb(70, 30, 70), _mx, _my)) {
+    if (_button(_qx + 70, _qy, _qw - 70, 16, string_copy(_mkl, 1, 52), make_color_rgb(70, 30, 70), _mx, _my, "PICKS THE SPRITE_MASK ASSET FOR THIS ROOM")) {
         _m.pick_mode = "MASK";
         _m.pick_scroll = 0;
     }
@@ -558,6 +571,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             if (_ii >= _cnt) break;
             var _ry = _qy + _li * 16;
             var _rh = point_in_rectangle(_mx, _my, _qx, _ry, _qx + _qw, _ry + 15);
+            scr_ui_info(_rh, "CLICK TO USE THIS ASSET FOR THE ROOM ((NONE) CLEARS IT); MOUSE WHEEL SCROLLS");
             if (_rh) {
                 draw_set_color(make_color_rgb(45, 105, 120));
                 draw_rectangle(_qx, _ry, _qx + _qw, _ry + 15, false);
@@ -586,7 +600,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
                 global.addresses_dirty = true;
             }
         }
-        if (_button(_qx, _cvy2 - 26, 70, 16, "CANCEL", make_color_rgb(80, 30, 30), _mx, _my)) {
+        if (_button(_qx, _cvy2 - 26, 70, 16, "CANCEL", make_color_rgb(80, 30, 30), _mx, _my, "CLOSES THE LIST WITHOUT CHANGING THE ROOM")) {
             _m.pick_mode = "";
         }
         // Thumbnail of the hovered bitmap
@@ -616,6 +630,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _ry = _qy + _e * 18;
         var _rsel = (_m.sel_exit == _e);
         var _rhov = point_in_rectangle(_mx, _my, _qx, _ry, _qx + _qw - 110, _ry + 16);
+        scr_ui_info(_rhov, "EXIT D" + string(_e + 2) + ": CLICK TO SELECT/DESELECT IT, THEN CLICK THE PREVIEW TO SET WHERE THE PLAYER ARRIVES");
         if (_rsel) {
             draw_set_color(make_color_rgb(50, 40, 70));
             draw_rectangle(_qx, _ry, _qx + _qw - 110, _ry + 16, false);
@@ -640,14 +655,14 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         }
         var _lk_col = make_color_rgb(30, 70, 90);
         if (_m.link_exit == _e) { _lk_col = make_color_rgb(160, 80, 20); }
-        if (_button(_qx + _qw - 104, _ry, 56, 16, "LINK", _lk_col, _mx, _my)) {
+        if (_button(_qx + _qw - 104, _ry, 56, 16, "LINK", _lk_col, _mx, _my, "LINK D" + string(_e + 2) + ": THEN CLICK THE ROOM ON THE MAP THIS DOOR LEADS TO (CLICK AGAIN TO CANCEL)")) {
             if (_m.link_exit == _e) {
                 _m.link_exit = -1;
             } else {
                 _m.link_exit = _e;
             }
         }
-        if (_button(_qx + _qw - 44, _ry, 44, 16, "CLEAR", make_color_rgb(80, 30, 30), _mx, _my)) {
+        if (_button(_qx + _qw - 44, _ry, 44, 16, "CLEAR", make_color_rgb(80, 30, 30), _mx, _my, "UNLINKS EXIT D" + string(_e + 2))) {
             _ex.to = -1;
             if (_m.sel_exit == _e) { _m.sel_exit = -1; }
             global.addresses_dirty = true;
@@ -723,6 +738,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_circle(_kx, _ky, 5, true);
     draw_line(_kx - 9, _ky, _kx + 9, _ky);
     draw_line(_kx, _ky - 9, _kx, _ky + 9);
+    scr_ui_info(point_in_rectangle(_mx, _my, _qx, _qy, _qx + _pw, _qy + _ph), _mode_txt);
     if (_press && point_in_rectangle(_mx, _my, _qx, _qy, _qx + _pw, _qy + _ph)) {
         var _bx = clamp(round((_mx - _qx) / _sc), 0, 319);
         var _by = clamp(round((_my - _qy) / _sc), 0, 199);
@@ -1856,6 +1872,7 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
     var _ty = _y1 + 4;
     var _mlbl = "MAP: " + _pk.map;
     if (_pk.map == "") _mlbl = "MAP: (NONE)";
+    scr_ui_info(point_in_rectangle(_mx, _my, _tx, _ty, _tx + 260, _ty + _bh), "MAP: CLICK TO CYCLE TO THE NEXT MAP_DATA ASSET THIS TABLE READS ITS PICKUPS FROM");
     if (scr_mrp_button(_tx, _ty, _tx + 260, _ty + _bh, _mlbl, false, _mx, _my) == 1) {
         var _names = [];
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
@@ -1875,6 +1892,7 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
     _tx += 260 + _gap;
     var _alb = "AUTO: OFF";
     if (_pk.auto) _alb = "AUTO: ON (FOLLOWS MAP)";
+    scr_ui_info(point_in_rectangle(_mx, _my, _tx, _ty, _tx + 200, _ty + _bh), "AUTO: ON REBUILDS EVERY ROOM'S ENTRIES FROM PICKUP TILES IN THE MAP; OFF LETS YOU EDIT BY HAND");
     if (scr_mrp_button(_tx, _ty, _tx + 200, _ty + _bh, _alb, _pk.auto, _mx, _my) == 1) {
         scr_pickup_undo_push(_a);
         _pk.auto = !_pk.auto;
@@ -1883,12 +1901,14 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
     }
     _tx += 200 + _gap;
     var _ul = "UNDO (" + string(array_length(_a.meta.pick_undo)) + ")";
+    scr_ui_info(point_in_rectangle(_mx, _my, _tx, _ty, _tx + 110, _ty + _bh), "UNDO (CTRL+Z): TAKES BACK THE LAST ENTRY CHANGE AND TURNS AUTO OFF SO IT STICKS");
     if (scr_mrp_button(_tx, _ty, _tx + 110, _ty + _bh, _ul, false, _mx, _my) == 1
         || (keyboard_check(vk_control) && keyboard_check_pressed(ord("Z")))) {
         scr_pickup_undo(_a);
     }
     _tx += 110 + _gap;
     if (array_length(_pk.orig) > 0) {
+        scr_ui_info(point_in_rectangle(_mx, _my, _tx, _ty, _tx + 160, _ty + _bh), "RESTORE ORIGINAL: PUTS BACK THE ENTRIES AS FIRST IMPORTED AND TURNS AUTO OFF (UNDOABLE)");
         if (scr_mrp_button(_tx, _ty, _tx + 160, _ty + _bh, "RESTORE ORIGINAL", false, _mx, _my) == 1) {
             scr_pickup_restore(_a);
             _pk.auto = false;
@@ -1961,6 +1981,7 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
         var _by = _ry + (_r mod _rper) * (_rbh + 4);
         var _on = 0;
         for (var _k = 0; _k < array_length(_pk.rooms[_r]); _k++) if (_pk.rooms[_r][_k].on) _on++;
+        scr_ui_info(point_in_rectangle(_mx, _my, _bx, _by, _bx + 120, _by + _rbh), "ROOM " + string(_r) + ": CLICK TO SHOW ITS ENTRIES; THE NUMBER IS HOW MANY ARE ON (EMITTED)");
         if (scr_mrp_button(_bx, _by, _bx + 120, _by + _rbh, "ROOM " + string(_r) + "   " + string(_on), _r == pickup_room, _mx, _my) == 1) {
             pickup_room = _r;
             pickup_scroll = 0;
@@ -1984,6 +2005,7 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
     var _rowh = _bh + 4;
     var _vis  = max(1, floor((_bot - _ey - _rowh - 8) / _rowh));
     if (point_in_rectangle(_mx, _my, _ex, _ey, _x2, _bot)) {
+        scr_ui_info(true, "ENTRIES: THIS ROOM'S PICKUPS; MOUSE WHEEL SCROLLS THE LIST");
         if (mouse_wheel_up())   pickup_scroll--;
         if (mouse_wheel_down()) pickup_scroll++;
     }
@@ -2000,6 +2022,17 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
             var _hit = scr_mrp_button(_bx, _ey, _bx + _cw, _ey + _bh, _lbl, false, _mx, _my);
             // X / Y / TILE come from the map in AUTO; TAKEN is always editable
             var _ok = (_k == 3) || !_pk.auto;
+            if (point_in_rectangle(_mx, _my, _bx, _ey, _bx + _cw, _ey + _bh)) {
+                if (_k == 3) {
+                    scr_ui_info(true, "TAKEN: TILE PUT IN THE MAP ONCE PICKED UP; L-CLICK +1, R-CLICK -1");
+                } else if (!_ok) {
+                    scr_ui_info(true, _hdr[_k] + ": TAKEN FROM THE MAP WHILE AUTO IS ON; TURN AUTO OFF TO EDIT");
+                } else if (_k == 2) {
+                    scr_ui_info(true, "TILE: THE PICKUP'S CHARACTER; L-CLICK +1, R-CLICK -1");
+                } else {
+                    scr_ui_info(true, _hdr[_k] + ": CELL " + _hdr[_k] + " IN THE ROOM (0-255); L-CLICK +1, R-CLICK -1");
+                }
+            }
             if (_hit != 0 && _ok) {
                 scr_pickup_undo_push(_a);
                 var _d = 1;
@@ -2014,6 +2047,7 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
         var _bx4 = _ex + 4 * (_cw + 6);
         var _onl = "OFF";
         if (_e.on) _onl = "ON";
+        scr_ui_info(point_in_rectangle(_mx, _my, _bx4, _ey, _bx4 + _cw, _ey + _bh), "EMIT: CLICK TO TOGGLE WHETHER THIS ENTRY IS WRITTEN TO THE TABLE");
         if (scr_mrp_button(_bx4, _ey, _bx4 + _cw, _ey + _bh, _onl, _e.on, _mx, _my) == 1) {
             scr_pickup_undo_push(_a);
             _e.on = !_e.on;
@@ -2021,6 +2055,7 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
         }
         if (!_pk.auto) {
             var _bx5 = _bx4 + _cw + 6;
+            scr_ui_info(point_in_rectangle(_mx, _my, _bx5, _ey, _bx5 + _bh, _ey + _bh), "X: DELETE THIS ENTRY (UNDOABLE)");
             if (scr_mrp_button(_bx5, _ey, _bx5 + _bh, _ey + _bh, "X", false, _mx, _my) == 1) _del = _i;
         }
         _ey += _rowh;
@@ -2032,6 +2067,7 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
         _ey += _lh;
     }
     if (!_pk.auto) {
+        scr_ui_info(point_in_rectangle(_mx, _my, _ex, _ey + 4, _ex + 120, _ey + 4 + _bh), "+ ENTRY: ADDS AN ENTRY AT 0,0 USING THE FIRST PICKUP TILE, SWITCHED ON");
         if (scr_mrp_button(_ex, _ey + 4, _ex + 120, _ey + 4 + _bh, "+ ENTRY", false, _mx, _my) == 1) {
             scr_pickup_undo_push(_a);
             var _t0 = 0;
@@ -2170,6 +2206,7 @@ function scr_pickup_room_preview(_a, _r, _x1, _y1, _x2, _y2, _mx, _my) {
     }
     draw_set_color(make_color_rgb(60, 60, 80));
     draw_rectangle(_x1 - 1, _top - 1, _x1 + _vw, _top + _vh, true);
+    scr_ui_info(point_in_rectangle(_mx, _my, _x1, _top, _x1 + _vw, _top + _vh), "ROOM PREVIEW (VIEW ONLY): YELLOW BOXES ARE EMITTED ENTRIES, GREY ONES ARE SWITCHED OFF");
     if (!_ok) {
         draw_set_color(c_orange);
         draw_text(_x1 + 8, _top + 8 - scr_lang_lift(), "NO PREVIEW - THE MAP NEEDS A CHARSET");
@@ -2180,6 +2217,8 @@ function scr_pickup_room_preview(_a, _r, _x1, _y1, _x2, _y2, _mx, _my) {
     var _by  = _top + _vh + 10;
     for (var _k = 0; _k < 3; _k++) {
         var _bx = _x1 + _k * 136;
+        var _vinf = ["ALL: SHOW THE WHOLE ROOM WITH THE ENTRIES OUTLINED", "HIGHLIGHT: DIM THE ROOM SO THE ENTRY CELLS STAND OUT", "PICKUPS ONLY: SHOW JUST THE ENTRY CELLS"];
+        scr_ui_info(point_in_rectangle(_mx, _my, _bx, _by, _bx + 130, _by + 24), _vinf[_k]);
         if (scr_mrp_button(_bx, _by, _bx + 130, _by + 24, _lbl[_k], pickup_view == _k, _mx, _my) == 1) pickup_view = _k;
     }
 }

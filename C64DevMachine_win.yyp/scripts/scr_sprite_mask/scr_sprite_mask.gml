@@ -377,8 +377,9 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _hires = false;
     if (!is_undefined(_bmp)) { _hires = scr_asset_bmp_is_hires(_bmp); }
 
-    var _button = function(_x1, _y1, _w, _label, _on, _mx2, _my2) {
+    var _button = function(_x1, _y1, _w, _label, _on, _mx2, _my2, _info = "") {
         var _hov = point_in_rectangle(_mx2, _my2, _x1, _y1, _x1 + _w, _y1 + 26);
+        scr_ui_info(_hov, _info);
         draw_set_color(_on ? make_color_rgb(38, 94, 111) : (_hov ? make_color_rgb(53, 61, 82) : make_color_rgb(31, 38, 54)));
         draw_rectangle(_x1, _y1, _x1 + _w, _y1 + 26, false);
         draw_set_color(_on ? c_aqua : make_color_rgb(72, 83, 103));
@@ -407,7 +408,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _sy = _top;
     draw_set_color(make_color_rgb(154, 175, 198));
     draw_text_l(_side_x, _sy, "1  CHOOSE WHEN THE CAT IS HIDDEN"); _sy += 24;
-    if (_button(_side_x, _sy, _side_w, "ALWAYS HIDE THE CAT", !_conditional, _ui_mx, _my)) {
+    if (_button(_side_x, _sy, _side_w, "ALWAYS HIDE THE CAT", !_conditional, _ui_mx, _my, "NEW MASK HIDES THE SPRITE WHEREVER IT IS (MAGENTA) - FOR FOREGROUND WALLS")) {
         _m.depth = 255; _m.pick_y = false;
     }
     _sy += 34;
@@ -415,7 +416,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_side_x + 8, _sy, "MAGENTA: object stays in front."); _sy += 16;
     draw_set_color(c_ltgray);
     draw_text_l(_side_x + 8, _sy, "Use for foreground walls."); _sy += 26;
-    if (_button(_side_x, _sy, _side_w, "HIDE ABOVE A Y LINE", _conditional, _ui_mx, _my)) {
+    if (_button(_side_x, _sy, _side_w, "HIDE ABOVE A Y LINE", _conditional, _ui_mx, _my, "NEW MASK HIDES THE SPRITE ONLY WHEN ITS FEET ARE ABOVE A Y LINE - THEN CLICK THE BITMAP")) {
         _m.pick_y = true; _m.stroke = false;
     }
     _sy += 34;
@@ -433,11 +434,11 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     if (_show_all) {
         _line_w = _side_w - 110;
     }
-    if (_button(_side_x, _sy, _line_w, _line_label, _m.pick_y, _ui_mx, _my)) {
+    if (_button(_side_x, _sy, _line_w, _line_label, _m.pick_y, _ui_mx, _my, "TOGGLE LINE PICKING: CLICK THE BITMAP WHERE THE OBJECT MEETS THE GROUND TO SET THE Y LINE")) {
         _m.pick_y = !_m.pick_y; _m.stroke = false;
     }
     if (_show_all) {
-        if (_button(_side_x + _side_w - 104, _sy, 104, "APPLY TO ALL", false, _ui_mx, _my)) {
+        if (_button(_side_x + _side_w - 104, _sy, 104, "APPLY TO ALL", false, _ui_mx, _my, "SET THE CURRENT Y LINE ON EVERY CELL THAT ALREADY HAS MASK (UNDOABLE)")) {
             scr_sprmask_push_undo(_m);
             for (var _ac = 0; _ac < 1000; _ac++) {
                 var _am_any = false;
@@ -456,12 +457,16 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_side_x, _sy, "2  CHOOSE WHAT YOUR BRUSH DOES"); _sy += 24;
     var _tools = ["PAINT", "FILL", "ERASE", "DEPTH"];
     var _names = ["PAINT MASK", "FILL AREA", "ERASE MASK", "CHANGE EXISTING MASK"];
+    var _tool_infos = ["BRUSH: LMB PAINTS MASK WITH THE STEP 1 RULE, RMB ERASES, SHIFT+CLICK DRAWS A LINE",
+        "FILL: LMB FLOOD-FILLS MASK OVER THE SAME-COLOUR AREA OF THE BITMAP",
+        "ERASE: LMB OR RMB REMOVES MASK PIXELS SO THE SPRITE SHOWS THERE",
+        "BRUSH THE STEP 1 RULE ONTO EXISTING MASK CELLS WITHOUT CHANGING THEIR SHAPE (RMB ERASES)"];
     for (var _t = 0; _t < 4; _t++) {
-        if (_button(_side_x, _sy, _side_w, _names[_t], _m.tool == _tools[_t], _ui_mx, _my)) _m.tool = _tools[_t];
+        if (_button(_side_x, _sy, _side_w, _names[_t], _m.tool == _tools[_t], _ui_mx, _my, _tool_infos[_t])) _m.tool = _tools[_t];
         _sy += 32;
     }
     _sy += 8;
-    if (_button(_side_x, _sy, _side_w, "BRUSH SIZE: " + string(_m.brush), false, _ui_mx, _my)) {
+    if (_button(_side_x, _sy, _side_w, "BRUSH SIZE: " + string(_m.brush), false, _ui_mx, _my, "LMB: BIGGER BRUSH (1/2/4/8, WRAPS)  RMB: SMALLER  -  [ AND ] KEYS ALSO STEP IT")) {
         _m.brush = (_m.brush == 8) ? 1 : _m.brush * 2;
     }
     // Right click steps the brush down.
@@ -491,11 +496,11 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_side_x, _sy, "One rule per 8x8 cell.");
     draw_text_l(_side_x, _sy + 16, "Outlined cells share your rule.");
     _sy += 38;
-    if (_button(_side_x, _sy, 134, "UNDO", false, _ui_mx, _my) && array_length(_m.undo) > 0) {
+    if (_button(_side_x, _sy, 134, "UNDO", false, _ui_mx, _my, "UNDO THE LAST MASK CHANGE (CTRL+Z)") && array_length(_m.undo) > 0) {
         var _u = array_pop(_m.undo); _m.mask = _u.mask; _m.cell_base = _u.base;
         _m.ov_dirty = true; scr_sprmask_flush(_asset); global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
     }
-    if (_button(_side_x + 146, _sy, 138, "CLEAR MASK", false, _ui_mx, _my)) {
+    if (_button(_side_x + 146, _sy, 138, "CLEAR MASK", false, _ui_mx, _my, "REMOVE ALL MASK AND LINES FROM THE WHOLE SCREEN (UNDOABLE)")) {
         scr_sprmask_push_undo(_m); _m.mask = array_create(8000, 0);
         _m.cell_base = array_create(1000, 255); _m.ov_dirty = true;
         scr_sprmask_flush(_asset); global.addresses_dirty = true; global.relayout_frames = max(global.relayout_frames, 1);
@@ -505,7 +510,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // macro would mask a sprite at that spot (hot Y from this asset's node).
     var _test_lbl = "TEST SPRITE: OFF";
     if (_m.test_on) { _test_lbl = "TEST SPRITE: ON  (DRAG IT)"; }
-    if (_button(_side_x, _sy, _side_w, _test_lbl, _m.test_on, _ui_mx, _my)) {
+    if (_button(_side_x, _sy, _side_w, _test_lbl, _m.test_on, _ui_mx, _my, "SHOW A SPRITE ON THE CANVAS, MASKED AS ON THE C64 - DRAG IT WITH LMB TO TEST")) {
         _m.test_on   = !_m.test_on;
         _m.test_drag = false;
     }
@@ -517,6 +522,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _uf_col = make_color_rgb(24, 26, 34);
     if (_m.test_on) { _uf_col = make_color_rgb(31, 38, 54); }
     if (_uf_hov) { _uf_col = make_color_rgb(53, 61, 82); }
+    scr_ui_info(_uf_hov, "SET THE Y LINE TO THE TEST SPRITE'S FEET AND APPLY IT TO EVERY MASKED CELL (UNDOABLE)");
     draw_set_color(_uf_col);
     draw_rectangle(_side_x, _sy, _side_x + _side_w, _sy + _uf_h, false);
     draw_set_color(make_color_rgb(72, 83, 103));
@@ -641,6 +647,11 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     gpu_set_tex_filter(_fl);
 
     var _on_cv = _on_stage && point_in_rectangle(_mx, _my, _cvx, _cvy, _cvx + _cw - 1, _cvy + _ch - 1);
+    if (_m.pick_y) {
+        scr_ui_info(_on_stage, "CLICK THE BITMAP TO SET THE Y LINE  |  WHEEL: ZOOM  |  MMB DRAG: PAN");
+    } else {
+        scr_ui_info(_on_stage, "LMB: USE TOOL  RMB: ERASE  SHIFT: STRAIGHT LINE  WHEEL: ZOOM  MMB: PAN  [ ]: BRUSH");
+    }
     var _px = clamp(floor((_mx - _cvx) / _sc), 0, 319);
     var _py = clamp(floor((_my - _cvy) / _sc), 0, 199);
 
@@ -869,12 +880,14 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_set_color(_selected ? c_lime : c_white);
         draw_text_l(_lx+6,_ry+6,_am.manifest_fit_name(_items[_ii],_lw-24));
         if (_hover) _detail=_items[_ii];
+        scr_ui_info(_hover, "USE THIS BITMAP AS THE PICTURE TO PAINT THE MASK OVER");
         if (_hover && _press) {
             _m.ref_bmp=_items[_ii]; _m.stroke=false;
             _press=false; mouse_clear(mb_left);
         }
     }
     if (array_length(_items)>_rows) {
+        scr_ui_info(point_in_rectangle(_mx,_my,_lx+_lw-9,_ly,_lx+_lw,_list_bottom), "BITMAP LIST POSITION - USE THE MOUSE WHEEL OVER THE LIST TO SCROLL");
         var _track_h=_rows*24;
         var _thumb_h=max(20,_track_h*_rows/array_length(_items));
         var _thumb_y=_ly+(_track_h-_thumb_h)*_m.pick_scroll/(array_length(_items)-_rows);

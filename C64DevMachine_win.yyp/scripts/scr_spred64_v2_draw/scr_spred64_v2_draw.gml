@@ -152,6 +152,10 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             _pick_add_hover = point_in_rectangle(_mx, _my, _pa_x, _pa_y,
                 _pa_x + _pick_cell_w, _pa_y + _pick_cell_h);
         }
+        scr_ui_info(_pick_hover >= 0, (_pick_hover == _pick_used - 1 && _pick_used > 1)
+            ? "LAST SLOT: CLICK SELECTS, SHIFT/CTRL+CLICK MULTI-SELECT, ALT+CLICK DELETES IT IF BLANK"
+            : "SPRITE SLOT: CLICK SELECTS, SHIFT+CLICK RANGE, CTRL+CLICK TOGGLES IN SET, CTRL+C/V COPY/PASTE");
+        scr_ui_info(_pick_add_hover, "ADD A NEW BLANK SPRITE SLOT AT THE END OF THE BANK (UP TO 64)");
 
         // Draw each slot cell
         for (var _slot = 0; _slot < _pick_used; _slot++) {
@@ -379,6 +383,9 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _hmy2 = _hmy1 + 20;
         var _hm_is_mc = (_v2.sprite_modes[_v2.selected_slot] == 1);
         var _hm_hov   = point_in_rectangle(_mx, _my, _hmx1, _hmy1, _hmx2, _hmy2);
+        scr_ui_info(_hm_hov, _hm_is_mc
+            ? "SWITCH THIS SPRITE (AND ANY MULTI-SELECTED SLOTS) TO HIRES"
+            : "SWITCH THIS SPRITE (AND ANY MULTI-SELECTED SLOTS) TO MULTICOLOUR");
         draw_set_color(_hm_is_mc
             ? (_hm_hov ? make_color_rgb(220, 120, 40) : make_color_rgb(160, 80, 20))
             : (_hm_hov ? make_color_rgb(80, 140, 200) : make_color_rgb(40, 80, 130)));
@@ -423,6 +430,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _cpy2 = _hmy2;
         var _cp_on  = _v2.comp_preview;
         var _cp_hov = point_in_rectangle(_mx, _my, _cpx1, _cpy1, _cpx2, _cpy2);
+        scr_ui_info(_cp_hov, "TOGGLE COMP VIEW: CANVAS SHOWS ALL LAYERS AT THE SELECTED GRID SQUARE, TO PAINT IN CONTEXT");
         if (_cp_on) {
             if (_cp_hov) {
                 draw_set_color(make_color_rgb(60, 140, 60));
@@ -783,6 +791,15 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         // Hover cell highlight + click-paint
         var _canvas_hover = point_in_rectangle(_mx, _my,
             _canvas_x, _canvas_y, _canvas_x + _canvas_w, _canvas_y + _canvas_h);
+        if (_v2.fill_armed) {
+            scr_ui_info(_canvas_hover, "FILL ARMED: LEFT CLICK FLOOD-FILLS FROM THIS PIXEL, RIGHT CLICK CANCELS");
+        } else if (_v2.line_armed) {
+            scr_ui_info(_canvas_hover, (_v2.line_anchor_x < 0)
+                ? "LINE: CLICK TO SET THE START POINT, RIGHT CLICK CANCELS THE TOOL"
+                : "LINE: CLICK TO DRAW THE LINE TO HERE (TOOL STAYS ARMED), RIGHT CLICK CANCELS");
+        } else {
+            scr_ui_info(_canvas_hover, "LEFT DRAG PAINTS ACTIVE COLOUR, RIGHT ERASES, MIDDLE OR SPACE+DRAG SHIFTS (WRAPS)");
+        }
 
         // ----- PAN ACTIVATION / UPDATE / DEACTIVATION -----
         // MMB or SPACE+LMB starts the pan when over the canvas.
@@ -1107,6 +1124,14 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             var _fby1 = _fx_strip_y + _fxi * (_fx_btn_h + _fx_btn_gap);
             var _fby2 = _fby1 + _fx_btn_h;
             var _fb_hov = point_in_rectangle(_mx, _my, _fbx1, _fby1, _fbx2, _fby2);
+            switch (_fxi) {
+                case 0: scr_ui_info(_fb_hov, "MIRROR THE SPRITE LEFT-RIGHT (ALSO EVERY MULTI-SELECTED SLOT)"); break;
+                case 1: scr_ui_info(_fb_hov, "FLIP THE SPRITE UPSIDE DOWN (ALSO EVERY MULTI-SELECTED SLOT)"); break;
+                case 2: scr_ui_info(_fb_hov, "ROTATE THE SPRITE 90 DEGREES CLOCKWISE (ALSO EVERY MULTI-SELECTED SLOT)"); break;
+                case 3: scr_ui_info(_fb_hov, "ERASE EVERY PIXEL OF THE SPRITE (ALSO EVERY MULTI-SELECTED SLOT)"); break;
+                case 4: scr_ui_info(_fb_hov, "ARM/DISARM FLOOD FILL: THE NEXT CANVAS CLICK FILLS AN AREA WITH THE ACTIVE COLOUR"); break;
+                case 5: scr_ui_info(_fb_hov, "ARM/DISARM LINE TOOL: CLICK START THEN END ON THE CANVAS; STAYS ARMED FOR MORE LINES"); break;
+            }
             // Fill colour and border vary by button type and state:
             //   CLEAR (index 3) — red, destructive
             //   FILL  (index 4) — bright green when armed, orange otherwise
@@ -1258,6 +1283,12 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             var _cur_y1 = _pal_strip_y + _pal_lbl_h;
             var _cur_y2 = _cur_y1 + _pal_cur_h;
             var _cur_hov = point_in_rectangle(_mx, _my, _pcol_x, _cur_y1, _pcol_x2, _cur_y2);
+            switch (_pci) {
+                case 0: scr_ui_info(_cur_hov, "PAINT WITH UC, THIS SPRITE'S OWN COLOUR (HIRES ALWAYS PAINTS UC)"); break;
+                case 1: scr_ui_info(_cur_hov, "PAINT WITH MC1, MULTICOLOUR 1 SHARED BY ALL SPRITES (MC MODE ONLY)"); break;
+                case 2: scr_ui_info(_cur_hov, "PAINT WITH MC2, MULTICOLOUR 2 SHARED BY ALL SPRITES (MC MODE ONLY)"); break;
+                case 3: scr_ui_info(_cur_hov, "BACKGROUND COLOUR: PICK BELOW. RIGHT CLICK ON THE CANVAS ERASES TO BACKGROUND"); break;
+            }
             draw_set_color(scr_c64_pepto_colour(_cur_val));
             draw_rectangle(_pcol_x, _cur_y1, _pcol_x2, _cur_y2, false);
             // Column order is now [UC, MC1, MC2, BG]. Paint roles map:
@@ -1309,6 +1340,14 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 var _psy1 = _pal_pickers_top + _pi * (_pal_sw_h + 1);
                 var _psy2 = _psy1 + _pal_sw_h;
                 var _ps_hov = point_in_rectangle(_mx, _my, _pcol_x, _psy1, _pcol_x2, _psy2);
+                if (_ps_hov) {
+                    switch (_pci) {
+                        case 0: scr_ui_info(true, "SET UC (THIS SPRITE AND ANY MULTI-SELECTED) TO COLOUR " + string(_pi) + " AND PAINT WITH IT"); break;
+                        case 1: scr_ui_info(true, "SET SHARED MULTICOLOUR 1 TO COLOUR " + string(_pi) + " AND PAINT WITH IT"); break;
+                        case 2: scr_ui_info(true, "SET SHARED MULTICOLOUR 2 TO COLOUR " + string(_pi) + " AND PAINT WITH IT"); break;
+                        case 3: scr_ui_info(true, "SET THE BACKGROUND COLOUR BEHIND ALL SPRITES TO COLOUR " + string(_pi)); break;
+                    }
+                }
                 draw_set_color(scr_c64_pepto_colour(_pi));
                 draw_rectangle(_pcol_x, _psy1, _pcol_x2, _psy2, false);
 
@@ -1421,6 +1460,9 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _play_x1 = _anim_lx1;
         var _play_x2 = _play_x1 + 44;
         var _play_hov = point_in_rectangle(_mx, _my, _play_x1, _r1_y1, _play_x2, _r1_y2);
+        scr_ui_info(_play_hov, _v2.anim_playing
+            ? "STOP THE ANIMATION ON THE CURRENT FRAME"
+            : "PLAY FRAMES START TO END AT FPS SPEED, IN THE CHOSEN DIRECTION");
         if (_v2.anim_playing) {
             draw_set_color(_play_hov ? make_color_rgb(60, 140, 200) : make_color_rgb(40, 90, 160));
         } else {
@@ -1501,6 +1543,12 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             var _dx2 = _dx1 + _dir_btn_w;
             var _d_active = (_v2.anim_direction == _dir_opts[_di]);
             var _d_hov    = point_in_rectangle(_mx, _my, _dx1, _r1_y1, _dx2, _r1_y2);
+            switch (_di) {
+                case 0: scr_ui_info(_d_hov, "PLAY DIRECTION: LOOP FORWARDS FROM START TO END"); break;
+                case 1: scr_ui_info(_d_hov, "PLAY DIRECTION: LOOP BACKWARDS FROM END TO START"); break;
+                case 2: scr_ui_info(_d_hov, "PLAY DIRECTION: PING-PONG BETWEEN START AND END"); break;
+                case 3: scr_ui_info(_d_hov, "PLAY DIRECTION: PLAY START TO END ONCE, THEN STOP"); break;
+            }
             if (_d_active) {
                 draw_set_color(_d_hov ? make_color_rgb(60, 140, 200) : make_color_rgb(40, 90, 160));
             } else {
@@ -1567,6 +1615,13 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             var _sm_x1 = _gx + _label_w;
             var _sm_x2 = _sm_x1 + _sp_btn_w;
             var _sm_hov = point_in_rectangle(_mx, _my, _sm_x1, _r2_y1, _sm_x2, _r2_y2);
+            if (_sd.kind == "start") {
+                scr_ui_info(_sm_hov, "MOVE THE FIRST FRAME OF THE PLAY RANGE BACK ONE (USED BY PLAY AND CONVERT)");
+            } else if (_sd.kind == "end") {
+                scr_ui_info(_sm_hov, "MOVE THE LAST FRAME OF THE PLAY RANGE BACK ONE (USED BY PLAY AND CONVERT)");
+            } else {
+                scr_ui_info(_sm_hov, "SLOWER: ONE FEWER FRAME PER SECOND (MIN 1). ALSO SETS THE CONVERTED ANIMATE DELAY");
+            }
             draw_set_color(_sm_hov ? make_color_rgb(60, 40, 20) : make_color_rgb(30, 25, 15));
             draw_rectangle(_sm_x1, _r2_y1, _sm_x2, _r2_y2, false);
             draw_set_color(_c_butBorder);
@@ -1606,6 +1661,13 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             var _sp_x1 = _sn_x2 + 2;
             var _sp_x2 = _sp_x1 + _sp_btn_w;
             var _sp_hov = point_in_rectangle(_mx, _my, _sp_x1, _r2_y1, _sp_x2, _r2_y2);
+            if (_sd.kind == "start") {
+                scr_ui_info(_sp_hov, "MOVE THE FIRST FRAME OF THE PLAY RANGE ON ONE (USED BY PLAY AND CONVERT)");
+            } else if (_sd.kind == "end") {
+                scr_ui_info(_sp_hov, "MOVE THE LAST FRAME OF THE PLAY RANGE ON ONE (USED BY PLAY AND CONVERT)");
+            } else {
+                scr_ui_info(_sp_hov, "FASTER: ONE MORE FRAME PER SECOND (MAX 30). ALSO SETS THE CONVERTED ANIMATE DELAY");
+            }
             draw_set_color(_sp_hov ? make_color_rgb(60, 40, 20) : make_color_rgb(30, 25, 15));
             draw_rectangle(_sp_x1, _r2_y1, _sp_x2, _r2_y2, false);
             draw_set_color(_c_butBorder);
@@ -1676,6 +1738,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _next_x2 = _next_x1 + _pn_w;
 
         var _prev_hov = point_in_rectangle(_mx, _my, _prev_x1, _pn_y1, _prev_x2, _pn_y2);
+        scr_ui_info(_prev_hov, "GO TO THE PREVIOUS FRAME, WRAPPING TO THE LAST (HOTKEY A)");
         draw_set_color(_prev_hov ? make_color_rgb(30, 50, 80) : make_color_rgb(20, 25, 40));
         draw_rectangle(_prev_x1, _pn_y1, _prev_x2, _pn_y2, false);
         draw_set_color(_prev_hov ? c_white : make_color_rgb(40, 40, 60));
@@ -1692,6 +1755,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         }
 
         var _next_hov = point_in_rectangle(_mx, _my, _next_x1, _pn_y1, _next_x2, _pn_y2);
+        scr_ui_info(_next_hov, "GO TO THE NEXT FRAME, WRAPPING TO THE FIRST (HOTKEY D)");
         draw_set_color(_next_hov ? make_color_rgb(30, 50, 80) : make_color_rgb(20, 25, 40));
         draw_rectangle(_next_x1, _pn_y1, _next_x2, _pn_y2, false);
         draw_set_color(_next_hov ? c_white : make_color_rgb(40, 40, 60));
@@ -1728,6 +1792,13 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             var _fby1 = _fm_grid_y + _fb.row * (_fm_btn_h + _fm_gap_y);
             var _fby2 = _fby1 + _fm_btn_h;
             var _fb_hov = _fb.enabled && point_in_rectangle(_mx, _my, _fbx1, _fby1, _fbx2, _fby2);
+            var _fb_in  = point_in_rectangle(_mx, _my, _fbx1, _fby1, _fbx2, _fby2);
+            switch (_fb.action) {
+                case "new":    scr_ui_info(_fb_in, "ADD AN EMPTY FRAME AT THE END, GO TO IT AND EXTEND THE PLAY RANGE"); break;
+                case "dup":    scr_ui_info(_fb_in, "COPY THIS FRAME'S PLACEMENTS INTO A NEW FRAME RIGHT AFTER IT AND GO TO IT"); break;
+                case "clear":  scr_ui_info(_fb_in, "REMOVE EVERY PLACEMENT FROM THIS FRAME (THE FRAME STAYS)"); break;
+                case "delete": scr_ui_info(_fb_in, _fb.enabled ? "DELETE THIS FRAME" : "DELETE THIS FRAME (NEEDS AT LEAST 2 FRAMES)"); break;
+            }
             // Fill
             if (!_fb.enabled) {
                 draw_set_color(make_color_rgb(28, 28, 36));
@@ -1791,6 +1862,9 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             var _lbx2 = _lbx1 + _lyr_btn_w;
             var _ly_is_active = (_comp.active_layer == _ly);
             var _ly_hov       = point_in_rectangle(_mx, _my, _lbx1, _ts_y1, _lbx2, _ts_y2);
+            scr_ui_info(_ly_hov, (_ly == 0)
+                ? "EDIT THE BASE LAYER (BOTTOM). GRID CLICKS PLACE/SELECT ON IT. W/S OR WHEEL OVER GRID CHANGE LAYER"
+                : "EDIT LAYER " + string(_ly) + " (HIGHER DRAWS ON TOP). GRID CLICKS PLACE/SELECT ON IT. W/S CHANGE LAYER");
 
             if (_ly == 0) {
                 draw_set_color(_ly_is_active
@@ -2071,6 +2145,9 @@ if (_layer_dir != 0) {
                 var _layer_cell_idx = scr_spred64_v2_compositor_find_cell(
                     _cur_frame, _comp.active_layer, _gr, _gc);
                 var _has_layer_cell = (_layer_cell_idx >= 0);
+                scr_ui_info(_gc_hov, _has_layer_cell
+                    ? "CLICK SELECTS THIS LAYER'S PLACEMENT HERE, RIGHT CLICK REMOVES IT. WHEEL CHANGES LAYER"
+                    : "CLICK PLACES SLOT " + string(_v2.selected_slot) + " HERE ON LAYER " + string(_comp.active_layer) + ". WHEEL CHANGES LAYER");
 
                 // Selection states use L-shaped corner brackets (12px arms),
                 // less visually heavy than a full border and don't obscure
@@ -2315,6 +2392,9 @@ if (_layer_dir != 0) {
                 var _dbx2 = _dbx1 + _dpad_btn;
                 var _dby2 = _dby1 + _dpad_btn;
                 var _db_hov = point_in_rectangle(_mx, _my, _dbx1, _dby1, _dbx2, _dby2);
+                scr_ui_info(_db_hov, _db.is_reset
+                    ? "RESET THE SELECTED PLACEMENT'S OFFSET TO 0,0"
+                    : "NUDGE THE SELECTED PLACEMENT ONE C64 PIXEL " + ((_db.dx < 0) ? "LEFT" : ((_db.dx > 0) ? "RIGHT" : ((_db.dy < 0) ? "UP" : "DOWN"))));
 
                 if (_db.is_reset) {
                     draw_set_color(_db_hov ? make_color_rgb(160, 40, 40) : make_color_rgb(80, 20, 20));
@@ -2380,6 +2460,12 @@ if (_layer_dir != 0) {
                 var _by1 = _stk_y + _bi * (_stk_btn_h + _stk_gap);
                 var _by2 = _by1 + _stk_btn_h;
                 var _b_hov = point_in_rectangle(_mx, _my, _stk_x1, _by1, _stk_x2, _by2);
+                switch (_b.op) {
+                    case "none": scr_ui_info(_b_hov, "SELECTED PLACEMENT AT NORMAL SIZE (NO EXPAND)"); break;
+                    case "x":    scr_ui_info(_b_hov, "EXPAND THE SELECTED PLACEMENT TO DOUBLE WIDTH (VIC X-EXPAND)"); break;
+                    case "y":    scr_ui_info(_b_hov, "EXPAND THE SELECTED PLACEMENT TO DOUBLE HEIGHT (VIC Y-EXPAND)"); break;
+                    case "both": scr_ui_info(_b_hov, "EXPAND THE SELECTED PLACEMENT TO DOUBLE WIDTH AND HEIGHT"); break;
+                }
 
                 // Fill colour by kind / state
                 if (_b.kind == "exp") {
@@ -2459,6 +2545,7 @@ if (_layer_dir != 0) {
             var _clr_y1 = _ctrl_y2 - _clr_btn_h - 6;
             var _clr_y2 = _clr_y1 + _clr_btn_h;
             var _clr_hov = point_in_rectangle(_mx, _my, _clr_x1, _clr_y1, _clr_x2, _clr_y2);
+            scr_ui_info(_clr_hov, "REMOVE THE SELECTED PLACEMENT FROM THE GRID (SAME AS RIGHT CLICKING IT)");
             // Fill — red for destructive
             if (_clr_hov) {
                 draw_set_color(make_color_rgb(160, 40, 40));
@@ -2504,6 +2591,7 @@ if (_layer_dir != 0) {
         var _convert_x1 = _ctrl_x1 + 6, _convert_x2 = _ctrl_x2 - 6;
         var _convert_y = _ctrl_y2 - 94;
         var _convert_hover = point_in_rectangle(_mx, _my, _convert_x1, _convert_y, _convert_x2, _convert_y + 44);
+        scr_ui_info(_convert_hover, "MAKE SPRITE NODES FOR THIS FRAME; 2+ FRAMES IN RANGE ADD ANIMATE; SAME SET AGAIN ADDS ANOTHER");
         draw_set_color(_convert_hover ? make_color_rgb(45,110,80) : make_color_rgb(25,65,50));
         draw_rectangle(_convert_x1, _convert_y, _convert_x2, _convert_y + 44, false);
         draw_set_color(make_color_rgb(100,200,150));

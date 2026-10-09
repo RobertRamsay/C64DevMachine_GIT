@@ -1,6 +1,7 @@
 /// @desc obj_asset_manager Create
 global.is_any_text_active = false;
 global.mouse_in_asset_panel = false;
+global.ui_info = "";   // editor INFO strip text, set by the hovered control each frame
 global.mm_instr_center = -1;   // Music Maker: instrument to bring into view after an ALT pick (-1 = none)
 // Multi-select state for CHAR_SET grid
 chr_multi_select    = []; // array of char indices currently selected

@@ -475,6 +475,12 @@ function scr_map_room_preview_panel(_asset, _x1, _y1, _x2, _y2, _mx, _my) {
     var _cy = _y1 + 2;
     var _bh = 18;
     var _st = _bh + 4;
+    scr_ui_info(point_in_rectangle(_mx, _my, _cx, _cy, _cx + 24, _cy + _bh), "PREVIEW THE PREVIOUS ROOM (TURNS FOLLOW OFF)");
+    scr_ui_info(point_in_rectangle(_mx, _my, _cx + 120, _cy, _cx + 144, _cy + _bh), "PREVIEW THE NEXT ROOM (TURNS FOLLOW OFF)");
+    scr_ui_info(point_in_rectangle(_mx, _my, _cx + 150, _cy, _cx + _colw, _cy + _bh), "FOLLOW: THE PREVIEW SHOWS WHICHEVER ROOM THE MOUSE IS OVER ON THE MAP");
+    scr_ui_info(point_in_rectangle(_mx, _my, _cx, _cy + _st, _cx + 104, _cy + _st + _bh), "DOUBLE EVERY ROW IN THE PREVIEW, LIKE BRUCE LEE'S ROOMS (H)");
+    scr_ui_info(point_in_rectangle(_mx, _my, _cx + 110, _cy + _st, _cx + _colw, _cy + _st + _bh), "SHOW / HIDE EACH CELL'S TILE TYPE TAG ON THE MAP (T)");
+    scr_ui_info(point_in_rectangle(_mx, _my, _cx, _cy + _st * 2, _cx + _colw, _cy + _st * 2 + _bh), "THIS ROOM'S CHARSET - LMB NEXT CHAR_SET, RMB BACK TO THE MAP'S OWN CHARSET");
     if (scr_mrp_button(_cx, _cy, _cx + 24, _cy + _bh, "<", false, _mx, _my) == 1) {
         map_prev_follow = false;
         map_prev_room = (map_prev_room + _rn - 1) mod _rn;
@@ -549,12 +555,15 @@ function scr_map_room_preview_panel(_asset, _x1, _y1, _x2, _y2, _mx, _my) {
     for (var _bi = 0; _bi < array_length(_bands); _bi++) {
         var _bd = _bands[_bi];
         if (_cy + _bh > _y2 - _st) break;    // keep a row for + BAND
+        scr_ui_info(point_in_rectangle(_mx, _my, _cx, _cy, _cx + 32, _cy + _bh), "ROW THIS COLOUR BAND STARTS ON - LMB +1, RMB -1");
+        scr_ui_info(point_in_rectangle(_mx, _my, _cx + _colw - 24, _cy, _cx + _colw, _cy + _bh), "DELETE THIS COLOUR BAND");
         var _rb = scr_mrp_button(_cx, _cy, _cx + 32, _cy + _bh, string(real(_bd[0])), false, _mx, _my);
         if (_rb == 1) { _bd[@ 0] = min(_rh - 1, real(_bd[0]) + 1); _edited = true; }
         if (_rb == 2) { _bd[@ 0] = max(0, real(_bd[0]) - 1); _edited = true; }
         for (var _k = 1; _k <= 3; _k++) {
             var _sx1 = _cx + 44 + (_k - 1) * 38;
             var _shov = point_in_rectangle(_mx, _my, _sx1, _cy, _sx1 + 30, _cy + _bh);
+            scr_ui_info(_shov, "BAND " + ((_k == 1) ? "BACKGROUND" : ((_k == 2) ? "MC1" : "MC2")) + " COLOUR FROM THIS ROW DOWN - LMB NEXT COLOUR, RMB PREVIOUS");
             draw_set_color(scr_c64_pepto_colour(real(_bd[_k]) & 0x0F));
             draw_rectangle(_sx1, _cy, _sx1 + 30, _cy + _bh, false);
             if (_shov) { draw_set_color(c_white); } else { draw_set_color(c_black); }
@@ -570,6 +579,7 @@ function scr_map_room_preview_panel(_asset, _x1, _y1, _x2, _y2, _mx, _my) {
         _edited = true;
     }
     if (_cy + _bh <= _y2) {
+        scr_ui_info(point_in_rectangle(_mx, _my, _cx, _cy, _cx + 104, _cy + _bh), "ADD A COLOUR BAND ONE ROW BELOW THE LAST (COPIES ITS COLOURS)");
         if (scr_mrp_button(_cx, _cy, _cx + 104, _cy + _bh, "+ BAND", false, _mx, _my) == 1) {
             var _nb = [0, 0, 1, 2];
             if (array_length(_bands) > 0) {
