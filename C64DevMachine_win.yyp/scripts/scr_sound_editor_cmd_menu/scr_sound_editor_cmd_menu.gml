@@ -179,6 +179,7 @@ function scr_sound_editor_cmd_bar(_m, _instr, _x0, _x1, _y, _bx0, _by0, _bx1, _b
             for (var _i = 0; _i < array_length(_its); _i++) {
                 var _iy = _ly1 + 2 + _i * _row_h;
                 var _hov = point_in_rectangle(_mx, _my, _lx1, _iy, _lx1 + _lw, _iy + _row_h - 1);
+                scr_mm_info(_hov, "INSERTS " + _its[_i].ins + " (" + _its[_i].label + ") AT THE TEXT CURSOR");
                 if (_hov) {
                     draw_set_color(make_color_rgb(50, 50, 90));
                     draw_rectangle(_lx1 + 1, _iy, _lx1 + _lw - 1, _iy + _row_h - 1, false);
@@ -220,6 +221,7 @@ function scr_sound_editor_cmd_bar(_m, _instr, _x0, _x1, _y, _bx0, _by0, _bx1, _b
             _on = (_open == _i);
         }
         var _hv = point_in_rectangle(_mx, _my, _x, _yy, _x + _w, _yy + _bh);
+        scr_mm_info(_hv, scr_mm_button_info("CMD:" + _lab));
         if (_hv || _on) {
             draw_set_color(make_color_rgb(60, 60, 110));
         } else {

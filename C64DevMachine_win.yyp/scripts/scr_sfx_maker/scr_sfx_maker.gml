@@ -35,8 +35,49 @@ function scr_sfx_maker_create(_a) {
     scr_sfx_maker_defaults(_a);
 }
 
-function scr_sfx_maker_button(_x,_y,_w,_text,_mx,_my) {
+/// Music Maker hover INFO line: a control calls this with its hover flag and
+/// a description; the editor shows the last one set this frame at the top.
+function scr_mm_info(_hot, _text) {
+    if (_hot && _text != "") {
+        global.mm_info = _text;
+    }
+    return _hot;
+}
+
+/// What a scr_sfx_maker_button does, by its label ("" if not known).
+function scr_mm_button_info(_label) {
+    switch (_label) {
+        case "SMP ON":
+        case "SMP OFF":           return "TURNS THE DIGI SAMPLE TRACK ON/OFF, IN THE PREVIEW AND THE COMPILED TUNE";
+        case "CHIP: 6581":
+        case "CHIP: 8580":        return "SWITCHES THE PREVIEW SID MODEL (6581 / 8580), SAVED WITH THE SONG; STOPS PLAYBACK";
+        case "EXPORT SID":        return "SAVES THIS TUNE AS A STANDALONE .SID FILE";
+        case "EXPORT MM":         return "SAVES THIS MUSIC MAKER ASSET AS A .C64MM FILE TO IMPORT IN ANOTHER PROJECT";
+        case "REBUILD":           return "SAVES THE PROJECT, THEN RUNS ITS MUSIC REBUILD COMMAND AND WAITS FOR THE RESULT";
+        case "TIMING: SHARED":    return "TIMING: ONE ROW CLOCK FOR ALL VOICES. CLICK FOR PER VOICE (STOPS PLAYBACK)";
+        case "TIMING: PER VOICE": return "TIMING: EACH VOICE HAS ITS OWN ORDER COLUMN + SPEED. CLICK FOR SHARED (STOPS PLAYBACK)";
+        case "GENERATE NODES":    return "CREATES OR UPDATES THE WORKSPACE NODES THAT PLAY THIS SONG";
+        case "+ PRESETS":         return "OPENS THE PRESET LIST: ADD READY-MADE INSTRUMENTS (EXISTING ONES STAY)";
+        case "CLOSE PRESETS":     return "CLOSES THE PRESET LIST AND RETURNS TO THE INSTRUMENT LIST";
+        case "TABLE SIZE":        return "SHOWS HOW MANY BYTES THE SHARED INSTRUMENT COMMAND TABLES TAKE AND SAVE";
+        case "CMD:WAVE":          return "WAVE: PICK A WAVEFORM COMMAND ($11 TRI, $21 SAW, $41 PULSE...) TO INSERT";
+        case "CMD:NOTE":          return "NOTE: PICK A PITCH STEP (N, N+12, N-1...) TO INSERT AT THE TEXT CURSOR";
+        case "CMD:HOLD":          return "HOLD: PICK A DN WAIT (FRAMES BEFORE THE NEXT STEP) TO INSERT";
+        case "CMD:LOOP":          return "LOOP: PICK AN LN JUMP BACK TO A STEP (OR AN R REPEAT) TO INSERT";
+        case "CMD:FINE":          return "FINE: PICK A FINE PITCH / PULSE / SLIDE / GATE / RESTART COMMAND TO INSERT";
+        case "CMD:END":           return "END: OFFERS --- (GATE OFF + STOP, THE NOTE RELEASES) TO INSERT";
+        case "CMD:?":             return "SHOWS / HIDES THE TABLE OF EVERY INSTRUMENT COMMAND, WITH EXAMPLES";
+    }
+    return "";
+}
+
+/// _info: optional INFO-line text; "" looks the label up in scr_mm_button_info.
+function scr_sfx_maker_button(_x,_y,_w,_text,_mx,_my,_info="") {
     var _hot=point_in_rectangle(_mx,_my,_x,_y,_x+_w,_y+26);
+    if (_info == "") {
+        _info = scr_mm_button_info(_text);
+    }
+    scr_mm_info(_hot, _info);
     draw_set_color(_hot?make_color_rgb(65,80,100):make_color_rgb(30,38,52));
     draw_rectangle(_x,_y,_x+_w,_y+26,false);
     draw_set_color(c_white);draw_text_l(_x+8,_y+5,_text);
