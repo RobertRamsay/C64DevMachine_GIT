@@ -46,6 +46,11 @@ setup_helper_path     = "";
 setup_helper_check_at = 0;
 // When set, probe_start uses this instead of touching the clipboard.
 probe_pair_key    = "";
+// Clipboard pairing on return to the window (see Step). Armed only by the
+// user hovering or clicking MCP-CON; current_time deadline, 0 = not armed.
+clip_armed_until   = 0;
+clip_had_focus     = true;
+clip_check_pending = false;
 
 probe_stop = function(_reason) {
     if (probe_socket >= 0) network_destroy(probe_socket);
@@ -783,6 +788,9 @@ setup_poll = function() {
         return;
     }
     // Anything else is terminal: NO_HOST, NO_WINGET, NODE_TOO_OLD, and so on.
+    // NO_HOST still left a pairing key: take it, so the editor connects by
+    // itself as soon as an assistant starts the bridge later.
+    if (_token == "NO_HOST" && file_exists(setup_pair_path)) setup_adopt_key();
     setup_state = "failed";
     probe_notice_until = current_time + 12000;
 };

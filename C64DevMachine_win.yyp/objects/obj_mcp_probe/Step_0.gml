@@ -1,4 +1,34 @@
-// Stop immediately if the running editor changes edition.
+// Stop immediately if the running editor changes edition. MCP is Pro only.
+if (global.lite) {
+    instance_destroy();   // CleanUp closes the socket
+    exit;
+}
+
+// --- Pair from the clipboard on return --------------------------------------
+// Reading the MCP-CON instructions (hovering the button) or clicking it arms
+// this for 15 minutes. While armed and not connected, coming back to the
+// editor window looks at the clipboard once for a pairing key
+// (cdm1:port:token) and pairs with it. Anything else is ignored, not kept.
+var _mcp_focus = window_has_focus();
+if (_mcp_focus && !clip_had_focus) clip_check_pending = true;
+if (!_mcp_focus) clip_check_pending = false;
+clip_had_focus = _mcp_focus;
+if (clip_check_pending && !probe_busy()) {
+    clip_check_pending = false;
+    if (current_time < clip_armed_until && probe_state == "off" && setup_state != "running"
+        && clipboard_has_text()) {
+        var _clip = string_trim(clipboard_get_text());
+        if (string_copy(_clip, 1, 5) == "cdm1:" && _clip != probe_saved_key) {
+            clip_armed_until = 0;
+            setup_state  = "idle";
+            setup_status = "";
+            setup_detail = "";
+            probe_auto_pair = true;
+            probe_start(true);
+            exit;
+        }
+    }
+}
 
 // --- MCP-CON one-click setup button ---------------------------------------
 // Look for the optional add-on every couple of seconds, so it can be installed
@@ -36,6 +66,7 @@ if (setup_btn_x2 > 0
         setup_hover = true;
         if (_mcp_can_click) {
             global.ui_click_consumed = true;
+            clip_armed_until = current_time + 900000;
             setup_run();
             exit;
         }
