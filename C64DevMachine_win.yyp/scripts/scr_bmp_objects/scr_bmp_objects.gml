@@ -1686,3 +1686,674 @@ function scr_bmpobj_draw_tinted(_asset, _i, _x, _y, _s, _cell_colour_fn) {
         }
     }
 }
+
+
+/// ====================================================================
+/// BMP OBJECT NODE (MACRO_BMP_OBJ)
+///
+/// Draws one object of a BMP_OBJECTS asset into a bitmap with its mask:
+///     screen = (screen AND mask) OR graphics     (MASK: AND assets)
+///     screen = (screen AND NOT mask) OR graphics (MASK: OR assets)
+/// honouring the asset's cell order (columns / rows) and byte order.
+///
+/// instructions[0]:
+///   [0] "macro_bmp_obj"
+///   [1] bitmap address        [2] asset name       [3] object number
+///   [4] column (0-39)         [5] row (0-24)
+///   [6] object var  [7] column var  [8] row var    ("" = use the literal)
+///   [9] mode: 0 DRAW, 1 SAVE + DRAW, 2 RESTORE, 3 MOVE
+///   [10] slot name            [11] screen RAM address (0 = no colour)
+///
+/// MODES
+///   DRAW       masked draw, nothing remembered.
+///   SAVE+DRAW  copies the bitmap bytes it covers into its own save buffer
+///              first, so a RESTORE node can put the background back.
+///   RESTORE    puts back what the SAVE+DRAW / MOVE node with the same SLOT
+///              saved (once; a second restore does nothing).
+///   MOVE       restore its own previous save, then SAVE+DRAW at the new
+///              place: one node per moving object, run once per frame.
+/// SCREEN: objects with a fixed colour also write that colour byte into the
+/// screen RAM cells they cover (AUTO objects leave the cells alone). A
+/// restore puts back bitmap bytes only, not screen colours.
+///
+/// The routine saves and restores zero page $F0-$FD and the I flag, so it is
+/// safe next to the SID player and other macros. Runtime object numbers
+/// (object var) read 7 small tables emitted inside the node; a number past
+/// the asset's last object draws garbage, and vars are not range-checked.
+/// ====================================================================
+
+/// The BMP_OBJECTS asset called _name, or undefined.
+function scr_bmpobj_find_asset(_name) {
+    if (!instance_exists(obj_asset_manager)) return undefined;
+    var _list = obj_asset_manager.asset_list;
+    for (var _i = 0; _i < ds_list_size(_list); _i++) {
+        var _a = _list[| _i];
+        if (_a.type == "BMP_OBJECTS" && _a.name == _name) return _a;
+    }
+    return undefined;
+}
+
+/// Every BMP_OBJECTS asset, in list order.
+function scr_bmpobj_assets() {
+    var _out = [];
+    if (!instance_exists(obj_asset_manager)) return _out;
+    var _list = obj_asset_manager.asset_list;
+    for (var _i = 0; _i < ds_list_size(_list); _i++) {
+        var _a = _list[| _i];
+        if (_a.type == "BMP_OBJECTS") array_push(_out, _a);
+    }
+    return _out;
+}
+
+/// Bring a node's instructions[0] up to the current layout.
+function scr_bmpobj_node_pad(_in) {
+    var _defs = ["macro_bmp_obj", 0x4000, "", 0, 0, 0, "", "", "", 0, "", 0];
+    while (array_length(_in) < array_length(_defs)) { array_push(_in, _defs[array_length(_in)]); }
+    var _nums = [1, 3, 4, 5, 9, 11];
+    for (var _i = 0; _i < array_length(_nums); _i++) {
+        if (!is_real(_in[_nums[_i]])) { _in[_nums[_i]] = _defs[_nums[_i]]; }
+    }
+}
+
+/// The SAVE+DRAW / MOVE node whose slot is _slot (connected nodes only), or noone.
+function scr_bmpobj_slot_owner(_slot) {
+    if (_slot == "") return noone;
+    var _found = noone;
+    with (obj_c64_node) {
+        if (_found == noone && node_type == "MACRO_BMP_OBJ" && is_connected
+        &&  array_length(instructions[0]) > 10 && is_real(instructions[0][9])
+        &&  (real(instructions[0][9]) == 1 || real(instructions[0][9]) == 3)
+        &&  string(instructions[0][10]) == _slot) {
+            _found = id;
+        }
+    }
+    return _found;
+}
+
+/// Node body.
+function scr_node_draw_macro_bmp_obj(_draw_x, _y) {
+    var _in = instructions[0];
+    scr_bmpobj_node_pad(_in);
+    var _line_h = 12;
+    var _c_edit = make_color_rgb(120, 220, 120);
+    var _c_dim  = make_color_rgb(120, 120, 120);
+    var _c_var  = make_color_rgb(180, 140, 220);
+    var _c_warn = make_color_rgb(230, 170, 60);
+    var _a = scr_bmpobj_find_asset(string(_in[2]));
+    var _n = is_undefined(_a) ? 0 : array_length(_a.meta.objects);
+    var _mode = clamp(real(_in[9]), 0, 3);
+    var _mode_names = ["DRAW", "SAVE + DRAW", "RESTORE", "MOVE"];
+    var _hex4 = function(_v) {
+        var _h = string_upper(decimal_to_hex(_v));
+        while (string_length(_h) < 4) _h = "0" + _h;
+        return "$" + _h;
+    };
+    draw_set_font_l(fnt_c64_tiny);
+    var _ply = _y + 28;
+
+    // ASSET
+    draw_set_color(_c_edit);
+    scr_node_macro_text_l(_draw_x + 8, _ply, "ASSET:");
+    draw_set_color(is_undefined(_a) ? _c_warn : c_yellow);
+    scr_node_macro_text_l(_draw_x + 70, _ply, is_undefined(_a) ? "<NONE>" : string(_a.name), width - 78);
+    _ply += _line_h;
+
+    // OBJECT
+    draw_set_color(_c_edit);
+    scr_node_macro_text_l(_draw_x + 8, _ply, "OBJECT:");
+    var _obj = real(_in[3]);
+    draw_set_color((_in[6] == "") ? c_aqua : _c_dim);
+    scr_node_macro_text_l(_draw_x + 70, _ply, string(_obj));
+    if (_n > 0 && _obj < _n) {
+        var _o = _a.meta.objects[_obj];
+        draw_set_color(make_color_rgb(150, 160, 180));
+        scr_node_macro_text_l(_draw_x + 96, _ply, string(_o.name) + " " + string(_o.w) + "X" + string(_o.h), width - 104);
+    }
+    _ply += _line_h;
+
+    // BMP
+    draw_set_color(_c_edit);
+    scr_node_macro_text_l(_draw_x + 8, _ply, "BMP:");
+    draw_set_color(c_yellow);
+    scr_node_macro_text_l(_draw_x + 70, _ply, _hex4(real(_in[1])));
+    _ply += _line_h;
+
+    // COL / ROW
+    draw_set_color(_c_edit);
+    scr_node_macro_text_l(_draw_x + 8, _ply, "COL:");
+    draw_set_color((_in[7] == "") ? c_aqua : _c_dim);
+    scr_node_macro_text_l(_draw_x + 40, _ply, string(_in[4]));
+    draw_set_color(_c_edit);
+    scr_node_macro_text_l(_draw_x + 70, _ply, "ROW:");
+    draw_set_color((_in[8] == "") ? c_aqua : _c_dim);
+    scr_node_macro_text_l(_draw_x + 102, _ply, string(_in[5]));
+    _ply += _line_h;
+
+    // VAR pickers
+    var _vlab = ["OBJ VAR:", "COL VAR:", "ROW VAR:"];
+    for (var _vi = 0; _vi < 3; _vi++) {
+        draw_set_color(_c_edit);
+        scr_node_macro_text_l(_draw_x + 8, _ply, _vlab[_vi]);
+        var _vn = string(_in[6 + _vi]);
+        draw_set_color((_vn == "") ? _c_dim : _c_var);
+        scr_node_macro_text_l(_draw_x + 70, _ply, (_vn == "") ? "<LIT>" : _vn);
+        _ply += _line_h;
+    }
+
+    // MODE / SLOT / SCREEN
+    draw_set_color(_c_edit);
+    scr_node_macro_text_l(_draw_x + 8, _ply, "MODE:");
+    draw_set_color(c_lime);
+    scr_node_macro_text_l(_draw_x + 70, _ply, _mode_names[_mode]);
+    _ply += _line_h;
+    draw_set_color(_c_edit);
+    scr_node_macro_text_l(_draw_x + 8, _ply, "SLOT:");
+    draw_set_color((_in[10] == "") ? _c_dim : c_yellow);
+    scr_node_macro_text_l(_draw_x + 70, _ply, (_in[10] == "") ? "<NONE>" : string(_in[10]));
+    _ply += _line_h;
+    draw_set_color(_c_edit);
+    scr_node_macro_text_l(_draw_x + 8, _ply, "SCREEN:");
+    draw_set_color((real(_in[11]) > 0) ? c_yellow : _c_dim);
+    scr_node_macro_text_l(_draw_x + 70, _ply, (real(_in[11]) > 0) ? _hex4(real(_in[11])) : "OFF");
+    _ply += _line_h;
+
+    // footer: what it does, or what is wrong
+    draw_set_font_l(fnt_c64_pico);
+    var _msg = "";
+    var _col = make_color_rgb(80, 120, 180);
+    if (_mode == 2 && _in[10] == "") {
+        _msg = "! RESTORE NEEDS THE SLOT OF A SAVE NODE"; _col = _c_warn;
+    } else if (_mode == 2 && scr_bmpobj_slot_owner(string(_in[10])) == noone) {
+        _msg = "! NO CONNECTED SAVE+DRAW/MOVE WITH THIS SLOT"; _col = _c_warn;
+    } else if (_mode == 2) {
+        _msg = "PUTS BACK WHAT SLOT " + string(_in[10]) + " SAVED";
+    } else if (is_undefined(_a)) {
+        _msg = "! CLICK ASSET TO PICK A BMP OBJECTS ASSET"; _col = _c_warn;
+    } else if (_n == 0) {
+        _msg = "! THE ASSET HAS NO OBJECTS YET"; _col = _c_warn;
+    } else if (_in[6] == "" && _obj >= _n) {
+        _msg = "! OBJECT " + string(_obj) + " DOES NOT EXIST (0-" + string(_n - 1) + ")"; _col = _c_warn;
+    } else if (_in[6] == "") {
+        var _o2 = _a.meta.objects[_obj];
+        _msg = string(_o2.w * _o2.h * 8) + "B MASKED";
+        if (_mode == 1 || _mode == 3) _msg += ", SAVES BG";
+        if (_mode == 3) _msg += ", RESTORES LAST";
+    } else {
+        _msg = "OBJECT FROM VAR (0-" + string(_n - 1) + ")";
+    }
+    draw_set_color(_col);
+    scr_node_macro_text_l(_draw_x + 8, _ply, _msg, width - 16);
+    draw_set_font_l(fnt_c64_tiny);
+}
+
+/// Node clicks (left button).
+function scr_node_step_macro_bmp_obj(_draw_x) {
+    var _in = instructions[0];
+    scr_bmpobj_node_pad(_in);
+    var _line_h = 12;
+    var _fy = y + 28;
+    var _open = function(_idx, _text) {
+        with (obj_workspace_manager) {
+            is_entering_text     = true;
+            input_target_node    = other.id;
+            input_target_index   = _idx;
+            current_input_string = _text;
+            keyboard_string      = "";
+            cursor_pos           = string_length(current_input_string);
+        }
+    };
+    var _hex = function(_v) {
+        var _h = string_upper(decimal_to_hex(_v));
+        while (string_length(_h) < 4) _h = "0" + _h;
+        return _h;
+    };
+    var _open_var = function(_idx) {
+        label_picker_open       = true;
+        label_picker_mode       = "VAR";
+        label_picker_tab        = "UV";
+        label_picker_word_only  = false;
+        label_picker_byte_only  = true;
+        label_picker_target     = id;
+        label_picker_scroll     = 0;
+        label_picker_prev_depth = depth;
+        depth                   = -10000;
+        global.any_picker_open  = true;
+        label_picker_index      = _idx;
+    };
+    // ASSET: click = next asset, SHIFT+click = previous
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _fy, _draw_x + width - 8, _fy + 12)) {
+        var _all = scr_bmpobj_assets();
+        if (array_length(_all) > 0) {
+            var _cur = -1;
+            for (var _i = 0; _i < array_length(_all); _i++) { if (_all[_i].name == _in[2]) _cur = _i; }
+            var _step = keyboard_check(vk_shift) ? -1 : 1;
+            _cur = (_cur < 0) ? 0 : (_cur + _step + array_length(_all)) mod array_length(_all);
+            scr_undo_snapshot();
+            _in[2] = _all[_cur].name;
+            _in[3] = 0;
+            global.addresses_dirty = true;
+        }
+        exit;
+    }
+    _fy += _line_h;
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 66, _fy, _draw_x + 94, _fy + 12)) { _open(3, string(_in[3])); exit; }
+    _fy += _line_h;
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 66, _fy, _draw_x + 130, _fy + 12)) { _open(1, _hex(real(_in[1]))); exit; }
+    _fy += _line_h;
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 36, _fy, _draw_x + 66,  _fy + 12)) { _open(4, string(_in[4])); exit; }
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 98, _fy, _draw_x + 128, _fy + 12)) { _open(5, string(_in[5])); exit; }
+    _fy += _line_h;
+    for (var _vi = 0; _vi < 3; _vi++) {
+        if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _fy, _draw_x + width - 8, _fy + 12)) { _open_var(6 + _vi); exit; }
+        _fy += _line_h;
+    }
+    // MODE: click cycles
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _fy, _draw_x + width - 8, _fy + 12)) {
+        scr_undo_snapshot();
+        _in[9] = (real(_in[9]) + (keyboard_check(vk_shift) ? 3 : 1)) mod 4;
+        global.addresses_dirty = true;
+        exit;
+    }
+    _fy += _line_h;
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _fy, _draw_x + width - 8, _fy + 12)) { _open(10, string(_in[10])); exit; }
+    _fy += _line_h;
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _fy, _draw_x + width - 8, _fy + 12)) {
+        _open(11, (real(_in[11]) > 0) ? _hex(real(_in[11])) : "0");
+        exit;
+    }
+}
+
+/// Typed values (called from scr_node_commit).
+function scr_bmpobj_node_commit(_target, _idx, _input) {
+    var _in = _target.instructions[0];
+    scr_bmpobj_node_pad(_in);
+    var _digits = string_digits(_input);
+    switch (_idx) {
+        case 1:
+        case 11: {
+            var _clean = string_upper(string_trim(_input));
+            if (string_char_at(_clean, 1) == "$") _clean = string_delete(_clean, 1, 1);
+            if (_clean == "" || _clean == "OFF") { _in[_idx] = (_idx == 1) ? 0x4000 : 0; break; }
+            _in[_idx] = clamp(real(hex_to_decimal(_clean)), 0, 0xFFFF);
+            break;
+        }
+        case 3: _in[3] = clamp((_digits != "") ? real(_digits) : 0, 0, 255); break;
+        case 4: _in[4] = clamp((_digits != "") ? real(_digits) : 0, 0, 39);  break;
+        case 5: _in[5] = clamp((_digits != "") ? real(_digits) : 0, 0, 24);  break;
+        case 10: {
+            // slot names become labels: letters, digits and _ only
+            var _s = string_upper(string_trim(_input));
+            var _out = "";
+            for (var _i = 1; _i <= string_length(_s) && string_length(_out) < 12; _i++) {
+                var _ch = string_char_at(_s, _i);
+                if (string_pos(_ch, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") > 0) _out += _ch;
+            }
+            _in[10] = _out;
+            break;
+        }
+    }
+    global.addresses_dirty = true;
+}
+
+/// Emit the node's 6502. _list is the compile list; entries are
+/// [op, operand, node] and ["label", name].
+function scr_bmpobj_compile(_curr, _list) {
+    var _id = _curr;
+    var _in = _curr.instructions[0];
+    scr_bmpobj_node_pad(_in);
+    var _mode = clamp(real(_in[9]), 0, 3);
+    var _slot = string(_in[10]);
+    // RESTORE uses the record, buffer and asset of the node that saved
+    var _owner = _id;
+    if (_mode == 2) {
+        _owner = scr_bmpobj_slot_owner(_slot);
+        if (_owner == noone) return _list;
+        scr_bmpobj_node_pad(_owner.instructions[0]);
+    }
+    var _a = scr_bmpobj_find_asset(string((_mode == 2) ? _owner.instructions[0][2] : _in[2]));
+    if (is_undefined(_a) || array_length(_a.meta.objects) == 0) return _list;
+    scr_bmpobj_sync_ptrs(_a);
+    var _oa   = _a;
+    var _m    = _a.meta;
+    var _objs = _m.objects;
+    var _n    = array_length(_objs);
+    var _bmp  = real((_mode == 2) ? _owner.instructions[0][1] : _in[1]);
+    var _obj  = clamp(real(_in[3]), 0, _n - 1);
+    var _col  = clamp(real(_in[4]), 0, 39);
+    var _row  = clamp(real(_in[5]), 0, 24);
+    var _scr  = real(_in[11]);
+    var _resolve = function(_nm) {
+        if (_nm == "") return 0;
+        if (ds_map_exists(global.named_loc_map, _nm)) return ds_map_find_value(global.named_loc_map, _nm);
+        return 0;
+    };
+    var _ov = _resolve(string(_in[6]));
+    var _cv = _resolve(string(_in[7]));
+    var _rv = _resolve(string(_in[8]));
+    var _pfx = "bo_" + string(real(_id)) + "_";
+
+    var _opfx = "bo_" + string(real(_owner)) + "_";
+    var _save = (_mode == 1 || _mode == 3);
+
+    // emit helpers
+    var _E = method({list:_list, nid:_id}, function(_op, _v) { array_push(list, [_op, _v, nid]); });
+    var _L = method({list:_list}, function(_nm) { array_push(list, ["label", _nm]); });
+    var _A = method({E:_E}, function(_zp, _k) {
+        E("clc", 0);
+        E("lda_zp", _zp);     E("adc_imm", _k & 0xFF);        E("sta_zp", _zp);
+        E("lda_zp", _zp + 1); E("adc_imm", (_k >> 8) & 0xFF); E("sta_zp", _zp + 1);
+    });
+    // zero page (saved on entry, restored on exit)
+    var _zd = 0xF0, _zg = 0xF2, _zm = 0xF4, _zs = 0xF6, _zt = 0xF8, _tm = 0xFA, _tg = 0xFB, _co = 0xFC, _ci = 0xFD;
+
+    // ---- entry ----
+    _E("php", 0);
+    _E("sei", 0);
+    _E("ldx_imm", 13);
+    _L(_pfx + "zs");
+    _E("lda_zpx", 0xF0);
+    _E("pha", 0);
+    _E("dex", 0);
+    _E("bpl", _pfx + "zs");
+    // a bitmap under BASIC ROM ($8000-$BFFF): bank BASIC out meanwhile
+    var _basic_off = (_bmp >= 0x8000 && _bmp < 0xC000);
+    if (_basic_off) {
+        _E("lda_zp", 0x01);
+        _E("sta_lab", _pfx + "bgval");
+        _E("lda_imm", 0x36);
+        _E("sta_zp", 0x01);
+    }
+
+    // ---- RESTORE (RESTORE, and MOVE before it draws) ----
+    if (_mode == 2 || _mode == 3) {
+        var _rcm = (_oa.meta.col_major == 1);
+        _E("lda_lab", _opfx + "rv");
+        _E("bne", _pfx + "rgo");
+        _E("jmp_abs", _pfx + "rdone");
+        _L(_pfx + "rgo");
+        _E("lda_lab", _opfx + "rdl");  _E("sta_zp", _zd);
+        _E("lda_lab", _opfx + "rdh");  _E("sta_zp", _zd + 1);
+        _E("lda_lab_lo", _opfx + "buf"); _E("sta_zp", _zs);
+        _E("lda_lab_hi", _opfx + "buf"); _E("sta_zp", _zs + 1);
+        _E("lda_lab", _rcm ? _opfx + "rw" : _opfx + "rh");
+        _E("sta_zp", _co);
+        _L(_pfx + "ro");
+        _E("lda_zp", _zd);     _E("sta_zp", _zt);
+        _E("lda_zp", _zd + 1); _E("sta_zp", _zt + 1);
+        _E("lda_lab", _rcm ? _opfx + "rh" : _opfx + "rw");
+        _E("sta_zp", _ci);
+        _L(_pfx + "ri");
+        _E("ldy_imm", 7);
+        _L(_pfx + "rb");
+        _E("lda_izy", _zs);
+        _E("sta_izy", _zt);
+        _E("dey", 0);
+        _E("bpl", _pfx + "rb");
+        _A(_zs, 8);
+        _A(_zt, _rcm ? 320 : 8);
+        _E("dec_zp", _ci);
+        _E("bne", _pfx + "ri");
+        _A(_zd, _rcm ? 8 : 320);
+        _E("dec_zp", _co);
+        _E("beq", _pfx + "rend");
+        _E("jmp_abs", _pfx + "ro");
+        _L(_pfx + "rend");
+        _E("lda_imm", 0);
+        _E("sta_lab", _opfx + "rv");
+        _L(_pfx + "rdone");
+    }
+
+    // planes an object lacks read from these blocks instead
+    var _max_cells = 0;
+    var _need_zero = false;
+    var _need_solid = false;
+    for (var _i = 0; _i < _n; _i++) {
+        if (_ov == 0 && _i != _obj) continue;
+        _max_cells = max(_max_cells, _objs[_i].w * _objs[_i].h);
+        if (_objs[_i].gfx_ptr < 0)  _need_zero = true;
+        if (_objs[_i].mask_ptr < 0) _need_solid = true;
+    }
+    var _cm = (_m.col_major == 1);
+
+    // ---- DRAW ----
+    if (_mode != 2) {
+        // source pointers and size
+        if (_ov == 0) {
+            var _o = _objs[_obj];
+            if (_o.gfx_ptr >= 0) {
+                _E("lda_imm", _o.gfx_ptr & 0xFF);        _E("sta_zp", _zg);
+                _E("lda_imm", (_o.gfx_ptr >> 8) & 0xFF); _E("sta_zp", _zg + 1);
+            } else {
+                _E("lda_lab_lo", _pfx + "zb"); _E("sta_zp", _zg);
+                _E("lda_lab_hi", _pfx + "zb"); _E("sta_zp", _zg + 1);
+            }
+            if (_o.mask_ptr >= 0) {
+                _E("lda_imm", _o.mask_ptr & 0xFF);        _E("sta_zp", _zm);
+                _E("lda_imm", (_o.mask_ptr >> 8) & 0xFF); _E("sta_zp", _zm + 1);
+            } else {
+                _E("lda_lab_lo", _pfx + "sb"); _E("sta_zp", _zm);
+                _E("lda_lab_hi", _pfx + "sb"); _E("sta_zp", _zm + 1);
+            }
+            _E("lda_imm", _o.w); _E("sta_lab", _pfx + "vw");
+            _E("lda_imm", _o.h); _E("sta_lab", _pfx + "vh");
+        } else {
+            // Y = object number; each table is read through _zt
+            var _tabs = [["tgl", _zg], ["tgh", _zg + 1], ["tml", _zm], ["tmh", _zm + 1]];
+            _E("ldy_abs", _ov);
+            for (var _t = 0; _t < array_length(_tabs); _t++) {
+                _E("lda_lab_lo", _pfx + _tabs[_t][0]); _E("sta_zp", _zt);
+                _E("lda_lab_hi", _pfx + _tabs[_t][0]); _E("sta_zp", _zt + 1);
+                _E("lda_izy", _zt);
+                _E("sta_zp", _tabs[_t][1]);
+            }
+            _E("lda_lab_lo", _pfx + "tw"); _E("sta_zp", _zt);
+            _E("lda_lab_hi", _pfx + "tw"); _E("sta_zp", _zt + 1);
+            _E("lda_izy", _zt); _E("sta_lab", _pfx + "vw");
+            _E("lda_lab_lo", _pfx + "th"); _E("sta_zp", _zt);
+            _E("lda_lab_hi", _pfx + "th"); _E("sta_zp", _zt + 1);
+            _E("lda_izy", _zt); _E("sta_lab", _pfx + "vh");
+        }
+
+        // destination: bmp + row*320 + col*8 (literal parts folded in here)
+        var _base = _bmp + ((_rv == 0) ? _row * 320 : 0) + ((_cv == 0) ? _col * 8 : 0);
+        _E("lda_imm", _base & 0xFF);        _E("sta_zp", _zd);
+        _E("lda_imm", (_base >> 8) & 0xFF); _E("sta_zp", _zd + 1);
+        if (_cv != 0) {
+            _E("ldx_abs", _cv);
+            _E("beq", _pfx + "cskp");
+            _L(_pfx + "cmul");
+            _A(_zd, 8);
+            _E("dex", 0);
+            _E("bne", _pfx + "cmul");
+            _L(_pfx + "cskp");
+        }
+        if (_rv != 0) {
+            _E("ldx_abs", _rv);
+            _E("beq", _pfx + "rskp");
+            _L(_pfx + "rmul");
+            _A(_zd, 320);
+            _E("dex", 0);
+            _E("bne", _pfx + "rmul");
+            _L(_pfx + "rskp");
+        }
+
+        // remember where, for RESTORE / the next MOVE
+        if (_save) {
+            _E("lda_zp", _zd);     _E("sta_lab", _pfx + "rdl");
+            _E("lda_zp", _zd + 1); _E("sta_lab", _pfx + "rdh");
+            _E("lda_lab", _pfx + "vw"); _E("sta_lab", _pfx + "rw");
+            _E("lda_lab", _pfx + "vh"); _E("sta_lab", _pfx + "rh");
+            _E("lda_imm", 1);     _E("sta_lab", _pfx + "rv");
+            _E("lda_lab_lo", _pfx + "buf"); _E("sta_zp", _zs);
+            _E("lda_lab_hi", _pfx + "buf"); _E("sta_zp", _zs + 1);
+        }
+
+        // cells in storage order: columns (outer = x) or rows (outer = y)
+        _E("lda_lab", _cm ? _pfx + "vw" : _pfx + "vh");
+        _E("sta_zp", _co);
+        _L(_pfx + "do");
+        _E("lda_zp", _zd);     _E("sta_zp", _zt);
+        _E("lda_zp", _zd + 1); _E("sta_zp", _zt + 1);
+        _E("lda_lab", _cm ? _pfx + "vh" : _pfx + "vw");
+        _E("sta_zp", _ci);
+        _L(_pfx + "di");
+        _E("ldy_imm", 7);
+        _L(_pfx + "db");
+        _E("lda_izy", _zm);
+        if (_m.mask_and != 1) _E("eor_imm", 0xFF);
+        _E("sta_zp", _tm);
+        _E("lda_izy", _zg);
+        _E("sta_zp", _tg);
+        // bottom-up cells: byte y of the data is pixel row 7-y (= y EOR 7)
+        if (_m.bottom_up == 1) { _E("tya", 0); _E("eor_imm", 7); _E("tay", 0); }
+        _E("lda_izy", _zt);
+        if (_save) _E("sta_izy", _zs);
+        _E("and_zp", _tm);
+        _E("ora_zp", _tg);
+        _E("sta_izy", _zt);
+        if (_m.bottom_up == 1) { _E("tya", 0); _E("eor_imm", 7); _E("tay", 0); }
+        _E("dey", 0);
+        _E("bpl", _pfx + "db");
+        _A(_zg, 8);
+        _A(_zm, 8);
+        if (_save) _A(_zs, 8);
+        _A(_zt, _cm ? 320 : 8);
+        _E("dec_zp", _ci);
+        _E("beq", _pfx + "dn");
+        _E("jmp_abs", _pfx + "di");
+        _L(_pfx + "dn");
+        _A(_zd, _cm ? 8 : 320);
+        _E("dec_zp", _co);
+        _E("beq", _pfx + "dd");
+        _E("jmp_abs", _pfx + "do");
+        _L(_pfx + "dd");
+
+        // ---- SCREEN COLOUR (fixed-colour objects only) ----
+        var _auto = real(_m.colour_auto) & 0xFF;
+        var _do_col = false;
+        if (_scr > 0) {
+            if (_ov == 0) {
+                _do_col = (scr_bmpobj_get_colour(_a, _obj) >= 0);
+            } else {
+                for (var _i = 0; _i < _n; _i++) { if (scr_bmpobj_get_colour(_a, _i) >= 0) _do_col = true; }
+            }
+        }
+        if (_do_col) {
+            if (_ov == 0) {
+                _E("lda_imm", scr_bmpobj_get_colour(_a, _obj) & 0xFF);
+                _E("sta_zp", _tm);
+            } else {
+                _E("ldy_abs", _ov);
+                _E("lda_lab_lo", _pfx + "tc"); _E("sta_zp", _zt);
+                _E("lda_lab_hi", _pfx + "tc"); _E("sta_zp", _zt + 1);
+                _E("lda_izy", _zt);
+                _E("cmp_imm", _auto);
+                _E("bne", _pfx + "cgo");
+                _E("jmp_abs", _pfx + "cdone");
+                _L(_pfx + "cgo");
+                _E("sta_zp", _tm);
+            }
+            var _sbase = _scr + ((_rv == 0) ? _row * 40 : 0) + ((_cv == 0) ? _col : 0);
+            _E("lda_imm", _sbase & 0xFF);        _E("sta_zp", _zt);
+            _E("lda_imm", (_sbase >> 8) & 0xFF); _E("sta_zp", _zt + 1);
+            if (_cv != 0) {
+                _E("ldx_abs", _cv);
+                _E("beq", _pfx + "scs");
+                _L(_pfx + "scm");
+                _A(_zt, 1);
+                _E("dex", 0);
+                _E("bne", _pfx + "scm");
+                _L(_pfx + "scs");
+            }
+            if (_rv != 0) {
+                _E("ldx_abs", _rv);
+                _E("beq", _pfx + "srs");
+                _L(_pfx + "srm");
+                _A(_zt, 40);
+                _E("dex", 0);
+                _E("bne", _pfx + "srm");
+                _L(_pfx + "srs");
+            }
+            _E("lda_lab", _pfx + "vh");
+            _E("sta_zp", _co);
+            _L(_pfx + "cr");
+            _E("lda_lab", _pfx + "vw");
+            _E("tay", 0);
+            _E("dey", 0);
+            _E("lda_zp", _tm);
+            _L(_pfx + "cc");
+            _E("sta_izy", _zt);
+            _E("dey", 0);
+            _E("bpl", _pfx + "cc");
+            _A(_zt, 40);
+            _E("dec_zp", _co);
+            _E("bne", _pfx + "cr");
+            _L(_pfx + "cdone");
+        }
+    }
+
+    // ---- exit ----
+    if (_basic_off) {
+        _E("byte", 0xA9);           // LDA #imm, operand patched on entry
+        _L(_pfx + "bgval");
+        _E("byte", 0x37);
+        _E("sta_zp", 0x01);
+    }
+    _E("ldx_imm", 0);
+    _L(_pfx + "zr");
+    _E("pla", 0);
+    _E("sta_zpx", 0xF0);
+    _E("inx", 0);
+    _E("cpx_imm", 14);
+    _E("bne", _pfx + "zr");
+    _E("plp", 0);
+
+    // ---- data (jumped over) ----
+    _E("jmp_abs", _pfx + "end");
+    if (_mode != 2) {
+        _L(_pfx + "vw"); _E("byte", 0);
+        _L(_pfx + "vh"); _E("byte", 0);
+    }
+    if (_save) {
+        _L(_pfx + "rdl"); _E("byte", 0);
+        _L(_pfx + "rdh"); _E("byte", 0);
+        _L(_pfx + "rw");  _E("byte", 0);
+        _L(_pfx + "rh");  _E("byte", 0);
+        _L(_pfx + "rv");  _E("byte", 0);
+        _L(_pfx + "buf");
+        for (var _b = 0; _b < _max_cells * 8; _b++) _E("byte", 0);
+    }
+    if (_mode != 2 && _ov != 0) {
+        var _names = ["tgl", "tgh", "tml", "tmh", "tw", "th", "tc"];
+        for (var _t = 0; _t < 7; _t++) {
+            _L(_pfx + _names[_t]);
+            for (var _i = 0; _i < _n; _i++) {
+                var _oi = _objs[_i];
+                switch (_t) {
+                    case 0: if (_oi.gfx_ptr  >= 0) { _E("byte", _oi.gfx_ptr & 0xFF); } else { _E("byte_lab_lo", _pfx + "zb"); } break;
+                    case 1: if (_oi.gfx_ptr  >= 0) { _E("byte", (_oi.gfx_ptr >> 8) & 0xFF); } else { _E("byte_lab_hi", _pfx + "zb"); } break;
+                    case 2: if (_oi.mask_ptr >= 0) { _E("byte", _oi.mask_ptr & 0xFF); } else { _E("byte_lab_lo", _pfx + "sb"); } break;
+                    case 3: if (_oi.mask_ptr >= 0) { _E("byte", (_oi.mask_ptr >> 8) & 0xFF); } else { _E("byte_lab_hi", _pfx + "sb"); } break;
+                    case 4: _E("byte", _oi.w); break;
+                    case 5: _E("byte", _oi.h); break;
+                    case 6: {
+                        var _cc = scr_bmpobj_get_colour(_a, _i);
+                        _E("byte", (_cc < 0) ? _auto : (_cc & 0xFF));
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    if (_mode != 2 && _need_zero) {
+        _L(_pfx + "zb");
+        for (var _b = 0; _b < _max_cells * 8; _b++) _E("byte", 0);
+    }
+    if (_mode != 2 && _need_solid) {
+        // "solid" mask bytes: AND masks keep nothing (0), OR masks mark all ($FF)
+        _L(_pfx + "sb");
+        for (var _b = 0; _b < _max_cells * 8; _b++) _E("byte", (_m.mask_and == 1) ? 0x00 : 0xFF);
+    }
+    _L(_pfx + "end");
+    return _list;
+}

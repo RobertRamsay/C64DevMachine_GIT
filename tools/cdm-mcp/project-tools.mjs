@@ -74,7 +74,8 @@ export const NODE_TYPES = [
   "MACRO_MOVE_MEM",
   "MACRO_VECTOR_PAGE",
   "MACRO_VECTOR_BMP",
-  "MACRO_CLEAR_BMP_RECT"
+  "MACRO_CLEAR_BMP_RECT",
+  "MACRO_BMP_OBJ"
 ];
 export const PROJECT_TOOLS = [
   {
@@ -212,7 +213,8 @@ export const PROJECT_TOOLS = [
             "MACRO_MOVE_MEM",
             "MACRO_VECTOR_PAGE",
             "MACRO_VECTOR_BMP",
-            "MACRO_CLEAR_BMP_RECT"
+            "MACRO_CLEAR_BMP_RECT",
+            "MACRO_BMP_OBJ"
           ]
         },
         "title": {

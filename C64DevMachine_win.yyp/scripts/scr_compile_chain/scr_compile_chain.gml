@@ -17701,6 +17701,14 @@ case "MACRO_CODE": {
             } break;
 
 // --------------------------------------------------------
+// MACRO_BMP_OBJ — masked bitmap object (software sprite) draw / save /
+// restore. Emitted by scr_bmpobj_compile in scr_bmp_objects.gml.
+// --------------------------------------------------------
+case "MACRO_BMP_OBJ": {
+    _list = scr_bmpobj_compile(_curr, _list);
+} break;
+
+// --------------------------------------------------------
 // MACRO_CLEAR_BMP_RECT
 // Zeroes a rectangular block of C64 bitmap data, in char-cell units.
 // Every bit-pair in the cleared cells becomes %00, which the VIC renders

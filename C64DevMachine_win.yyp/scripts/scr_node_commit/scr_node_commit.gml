@@ -596,6 +596,10 @@
 
 
 	   
+	    // --- MACRO_BMP_OBJ --- (fields parsed in scr_bmp_objects.gml)
+	    } else if (_target.node_type == "MACRO_BMP_OBJ") {
+	        scr_bmpobj_node_commit(_target, _idx, _input);
+
 	    // --- MACRO_CLEAR_BMP_RECT ---
 	    // Slot 1 is the target bitmap base (hex, like every other bmp addr).
 	    // Slots 2-5 are char-cell coords: clamped to the 40x25 grid here so a

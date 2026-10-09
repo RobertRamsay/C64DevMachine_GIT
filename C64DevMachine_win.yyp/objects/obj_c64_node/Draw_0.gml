@@ -175,6 +175,7 @@ if (height_dirty) {
     case "MACRO_TRACK": height = _G * 3;  break;         // 100
     case "MACRO_PRINT": height = ceil((scr_print_controls_offset(id) + 58) / _G) * _G;  break;
 	case "MACRO_CLEAR_BMP_RECT": height = _G * 6;  break;   // 3 value rows + 4 var rows + footer
+	case "MACRO_BMP_OBJ": height = _G * 9;  break;          // 10 value rows + footer
     case "MACRO_PRINT_EXT": height = _G * 11;  break;
     case "MACRO_PLACE_CHAR": height = _G * 9;  break;
 	case "MACRO_RANDOM":     height = _G * 8;  break;
@@ -1017,6 +1018,7 @@ switch (node_type) {
     case "MACRO_CLR_SCREEN": _head_col = is_connected ? make_color_rgb(90, 150, 200) : make_color_rgb(45, 75, 100); break;
     case "MACRO_MATH":       _head_col = is_connected ? make_color_rgb(60, 170, 140) : make_color_rgb(30, 85, 70); break;
     case "MACRO_CLEAR_BMP_RECT": _head_col = is_connected ? make_color_rgb(200, 70, 90) : make_color_rgb(100, 35, 45); break;
+    case "MACRO_BMP_OBJ":    _head_col = is_connected ? make_color_rgb(220, 120, 60) : make_color_rgb(110, 60, 30); break;
     case "MACRO_RANDOM":     _head_col = is_connected ? make_color_rgb(150, 90, 200) : make_color_rgb(70, 45, 95); break;
     case "MACRO_SID_PAUSE":    _head_col = is_connected ? make_color_rgb(190, 70, 150) : make_color_rgb(90, 34, 72); break;
     case "MACRO_VOI64_MASTER": _head_col = is_connected ? make_color_rgb(200, 120, 60) : make_color_rgb(95, 58, 30); break;
@@ -1596,6 +1598,7 @@ if (_lod_body) switch (node_type) {
 	case "MACRO_VECTOR_PAGE": scr_node_draw_macro_vector_page(draw_x, y);               break;
     case "MACRO_PRINT": scr_node_draw_macro_print(draw_x, y);                           break;
 	case "MACRO_CLEAR_BMP_RECT": scr_node_draw_macro_clear_bmp_rect(draw_x, y);         break;
+	case "MACRO_BMP_OBJ": scr_node_draw_macro_bmp_obj(draw_x, y);                       break;
     case "MACRO_PRINT_EXT": scr_node_draw_macro_print_ext(draw_x, y);                   break;
     case "MACRO_PLACE_CHAR": scr_node_draw_macro_place_char(draw_x, y); break;
     case "MACRO_CLR_SCREEN": scr_node_draw_macro_clr_screen(draw_x, y); break;

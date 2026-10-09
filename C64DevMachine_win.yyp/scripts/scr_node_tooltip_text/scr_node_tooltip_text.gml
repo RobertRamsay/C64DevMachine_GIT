@@ -96,6 +96,28 @@ function scr_node_tooltip_text(_node_type) {
             ]
         },
 
+        "MACRO_BMP_OBJ": {
+            title: "BMP OBJECT",
+            lines: [
+                "Draws one object of a BMP OBJECTS asset into a bitmap with its mask: the mask cuts a hole, the graphics fill it, so the background shows round the object.",
+                "",
+                "ASSET / OBJECT:",
+                "Click ASSET to step through BMP OBJECTS assets (SHIFT+click goes back). OBJECT is the object's number in that asset, or take it from a byte VAR at runtime.",
+                "",
+                "BMP / COL / ROW:",
+                "Bitmap address and the top-left cell (0-39, 0-24). COL and ROW can come from byte VARs, so one node can draw a moving object.",
+                "",
+                "MODE:",
+                "DRAW just draws. SAVE + DRAW first saves the bitmap bytes it covers. RESTORE puts back what the SAVE + DRAW or MOVE node with the same SLOT saved. MOVE restores its own last save, then saves and draws at the new place - one node per moving object, once a frame.",
+                "",
+                "SCREEN:",
+                "Screen RAM address. Objects with a fixed colour write it into the cells they cover; AUTO objects leave the cells alone. OFF writes no colour. A restore puts back bitmap bytes only.",
+                "",
+                "NOTES:",
+                "Uses zero page $F0-$FD but saves and restores it, and keeps the IRQ flag as it was. Var values are not range-checked."
+            ]
+        },
+
         "MACRO_CLEAR_BMP_RECT": {
             title: "CLR BMP RECT",
             lines: [

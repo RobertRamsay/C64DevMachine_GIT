@@ -1072,6 +1072,23 @@ case "LABEL": {
             break;
 
         // -------------------------------------------------------
+        // MACRO_BMP_OBJ
+        // Draws one object of a BMP_OBJECTS asset into a bitmap with its
+        // mask; can save / restore the background for moving objects.
+        // Layout and compile: scr_bmp_objects.gml (BMP OBJECT NODE).
+        // Starts on the first BMP_OBJECTS asset, if there is one.
+        // -------------------------------------------------------
+        case "MACRO_BMP_OBJ": {
+            var _bo_assets = scr_bmpobj_assets();
+            _n.node_title   = "BMP OBJECT";
+            _n.instructions = [["macro_bmp_obj", 0x4000, (array_length(_bo_assets) > 0) ? _bo_assets[0].name : "",
+                                0, 0, 0, "", "", "", 0, "", 0]];
+            _n.pc_address   = global.start_pc;
+            with (_n) { event_user(0); }
+            break;
+        }
+
+        // -------------------------------------------------------
         // NORMAL (default fallback)
         // -------------------------------------------------------
         default:

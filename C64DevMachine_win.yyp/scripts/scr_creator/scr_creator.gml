@@ -2171,6 +2171,12 @@ function scr_macro_slot_names(_type) {
                 scr_slot(7, "WIDTH",         "RANGE", 1, 40, ""),
                 scr_slot(8, "HEIGHT",        "RANGE", 1, 25, "")
             ];
+        case "MACRO_BMP_OBJ":
+            return [
+                scr_slot(3, "OBJECT", "RANGE", 0, 255, ""),
+                scr_slot(4, "COLUMN", "RANGE", 0, 39, ""),
+                scr_slot(5, "ROW",    "RANGE", 0, 24, "")
+            ];
         case "MACRO_CLEAR_BMP_RECT":
             return [
                 scr_slot(2, "COLUMN", "RANGE", 0, 39, ""),

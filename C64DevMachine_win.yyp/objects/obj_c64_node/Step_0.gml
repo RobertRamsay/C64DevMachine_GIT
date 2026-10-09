@@ -1229,6 +1229,7 @@ if (scr_workspace_mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse
         case "MACRO_MOUSE":  scr_node_step_macro_mouse(draw_x);  break;
         case "MACRO_PRINT":  scr_node_step_macro_print(draw_x);  break;
 		case "MACRO_CLEAR_BMP_RECT": scr_node_step_macro_clear_bmp_rect(draw_x); break;
+		case "MACRO_BMP_OBJ": scr_node_step_macro_bmp_obj(draw_x); break;
         case "MACRO_PRINT_EXT": scr_node_step_macro_print_ext(draw_x); break;
         case "MACRO_PLACE_CHAR": scr_node_step_macro_place_char(draw_x); break;
         case "MACRO_CLR_SCREEN": scr_node_step_macro_clr_screen(draw_x); break;
