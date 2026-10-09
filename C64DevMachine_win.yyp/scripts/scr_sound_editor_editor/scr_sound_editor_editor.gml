@@ -569,6 +569,16 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (scr_sfx_maker_button(_fsx + 242, _fl_y - 1, 110, "EXPORT MM", _mx, _my)) {
         scr_music_maker_export(_asset);
     }
+    // The project's own music build (its music_rebuild_command, e.g. a game that
+    // plays the song as a recorded stream): save, run it, wait for it.
+    if (variable_global_exists("music_rebuild_cmd") && global.music_rebuild_cmd != ""
+    &&  scr_sfx_maker_button(_fsx + 362, _fl_y - 1, 110, "REBUILD", _mx, _my)) {
+        scr_sound_editor_commit_cell(_m, _se_push_undo, _se_snap, _col_pat);
+        if (_m.instr_edit_active && _m.sel_instr >= 0 && _m.sel_instr < array_length(_m.instruments)) {
+            scr_sound_editor_commit_instrument(_m, _m.instruments[_m.sel_instr]);
+        }
+        scr_music_rebuild_start(_m);
+    }
 
     // In function-key order: F1 SONG, F2 HERE, F3 PAT, F4 STOP.
     var _transport_labels = ["PLAY SONG (F1)", "PLAY HERE (F2)", "PLAY PAT (F3)", "STOP (F4)"];
@@ -2967,4 +2977,73 @@ function scr_sound_editor_transpose(_m, _patterns, _indices, _v0, _v1, _s0, _s1,
         + ((_delta > 0) ? "+" : "") + string(_delta) + " SEMITONES";
     _m.warn_timer = game_get_speed(gamespeed_fps) * 2;
     return array_length(_changes);
+}
+
+
+/// ====================================================================
+/// MUSIC MAKER > REBUILD
+///
+/// A project can name a command that turns its songs into what the game
+/// plays (project field music_rebuild_command; Serfland records the song
+/// as a stream of SID writes). REBUILD saves the project (the command reads
+/// the saved file), then runs the command hidden in the project's folder:
+///     cmd /c (<command>) > music_rebuild.log 2>&1 & (marker: ok / fail)
+/// ShellExecute does not wait, so obj_workspace_manager's Step polls for
+/// music_rebuild.done (scr_music_rebuild_poll), up to 5 minutes.
+/// ====================================================================
+function scr_music_rebuild_start(_m) {
+    var _fps = game_get_speed(gamespeed_fps);
+    if (obj_workspace_manager.music_rebuild_pending) {
+        _m.warn_msg = "A REBUILD IS ALREADY RUNNING";
+        _m.warn_timer = _fps * 2;
+        return;
+    }
+    if (global.workspace_path == "") {
+        _m.warn_msg = "SAVE THE PROJECT FIRST";
+        _m.warn_timer = _fps * 3;
+        return;
+    }
+    with (obj_workspace_manager) scr_save_workspace_as_path(global.workspace_path);
+    var _dir  = filename_dir(global.workspace_path);
+    var _done = _dir + "\\music_rebuild.done";
+    if (file_exists(_done)) file_delete(_done);
+    var _args = "/c (" + global.music_rebuild_cmd + ") > music_rebuild.log 2>&1"
+              + " & if errorlevel 1 (echo fail> music_rebuild.done) else (echo ok> music_rebuild.done)";
+    show_debug_message("MUSIC REBUILD: cmd " + _args + " in " + _dir);
+    execute_shell_simple("cmd.exe", _args, "open", 0, _dir);
+    with (obj_workspace_manager) {
+        music_rebuild_pending = true;
+        music_rebuild_done    = _done;
+        music_rebuild_timeout = _fps * 300;
+        music_rebuild_meta    = _m;
+    }
+    _m.warn_msg = "REBUILDING THE MUSIC...";
+    _m.warn_timer = _fps;
+}
+
+/// Called every Step while a rebuild runs (obj_workspace_manager).
+function scr_music_rebuild_poll() {
+    var _m = music_rebuild_meta;
+    var _fps = game_get_speed(gamespeed_fps);
+    music_rebuild_timeout--;
+    if (music_rebuild_timeout <= 0) {
+        music_rebuild_pending = false;
+        scr_show_message("MUSIC REBUILD: no answer after 5 minutes - see music_rebuild.log in the project folder.");
+        return;
+    }
+    if (!file_exists(music_rebuild_done)) {
+        if (is_struct(_m)) { _m.warn_msg = "REBUILDING THE MUSIC..."; _m.warn_timer = max(_m.warn_timer, 2); }
+        return;
+    }
+    var _f = file_text_open_read(music_rebuild_done);
+    if (_f < 0) return;                 // still being written: next Step
+    var _s = file_text_read_string(_f);
+    file_text_close(_f);
+    music_rebuild_pending = false;
+    file_delete(music_rebuild_done);
+    if (string_pos("ok", _s) > 0) {
+        if (is_struct(_m)) { _m.warn_msg = "MUSIC REBUILT - F6 SENDS IT"; _m.warn_timer = _fps * 4; }
+    } else {
+        scr_show_message("MUSIC REBUILD FAILED - see music_rebuild.log in the project folder.");
+    }
 }

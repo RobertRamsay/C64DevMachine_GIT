@@ -490,6 +490,13 @@ exo_out_path    = "";
 exo_timeout     = 0;
 exo_last_size   = -1;
 exo_to_c64u     = false;
+// MUSIC MAKER > REBUILD runs the project's music_rebuild_command (scr_music_rebuild_start);
+// Step polls for the marker file it writes when it is done.
+global.music_rebuild_cmd = "";
+music_rebuild_pending = false;
+music_rebuild_done    = "";
+music_rebuild_timeout = 0;
+music_rebuild_meta    = undefined;
 global.breakdown_node = noone;
 
 // Normally created by obj_c64_node's Create, but the Begin Step label-highlight

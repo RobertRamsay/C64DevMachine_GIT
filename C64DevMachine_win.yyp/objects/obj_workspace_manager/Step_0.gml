@@ -5,6 +5,10 @@ scr_perf_node("step", "(workspace mgr)");
 if (exo_pending) {
     scr_exo_crunch_poll();
 }
+// ── MUSIC REBUILD POLL (MUSIC MAKER > REBUILD) ──
+if (music_rebuild_pending) {
+    scr_music_rebuild_poll();
+}
 
 scr_template_step();
 scr_tour_question_step();

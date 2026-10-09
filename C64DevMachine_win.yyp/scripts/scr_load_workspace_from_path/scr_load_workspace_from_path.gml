@@ -1096,6 +1096,8 @@ global.kernal_unlocked = variable_struct_exists(load_data, "kernal_unlocked") ? 
         global.build_target = clamp(real(load_data.build_target), 0, 2);
     }
     global.basic_unlocked  = variable_struct_exists(load_data, "basic_unlocked")  ? load_data.basic_unlocked  : false;
+    // MUSIC MAKER > REBUILD: the command the project runs after a song edit ("" = no button).
+    global.music_rebuild_cmd = variable_struct_exists(load_data, "music_rebuild_command") ? string(load_data.music_rebuild_command) : "";
 
     // CREATOR LAYER: whether this workspace opens in the Creator view. The
     // view itself is opened from Begin Step once every node exists.

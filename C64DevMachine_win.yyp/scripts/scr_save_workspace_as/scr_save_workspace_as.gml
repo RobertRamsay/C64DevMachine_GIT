@@ -465,7 +465,8 @@
 		        map_tile_bank_sel:  variable_global_exists("map_tile_bank_sel") ? global.map_tile_bank_sel : -1,
 		        next_stable_uid:    variable_global_exists("next_stable_uid")   ? global.next_stable_uid   : 100000,
 		        ignored_conflicts:  variable_global_exists("ignored_conflicts") ? global.ignored_conflicts : [],
-	        asset_sort_mode:    obj_asset_manager.asset_sort_mode
+	        asset_sort_mode:    obj_asset_manager.asset_sort_mode,
+	        music_rebuild_command: variable_global_exists("music_rebuild_cmd") ? global.music_rebuild_cmd : ""
 	    };
 	    var _raw = json_stringify(save_root);
 	    var f = file_text_open_write(path);
