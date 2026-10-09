@@ -505,7 +505,13 @@ function scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom) {
     var _refresh = ((global.frame_tick + real(id)) mod 45) == 0;
     if (!_refresh && nc_key == _key && surface_exists(nc_surf)) {
         scr_node_cache_stat("hit");
+        // The image is premultiplied (see the capture below), so blit it the
+        // same way scr_node_cache_end does. Drawn with bm_normal, its soft
+        // edges came out darker than on capture frames, and each node visibly
+        // pulsed once every 45 frames when it refreshed.
+        gpu_set_blendmode_ext(bm_one, bm_inv_src_alpha);
         draw_surface(nc_surf, _dx - NC_PAD_L, y - NC_PAD_T);
+        gpu_set_blendmode(bm_normal);
         return true;
     }
 
