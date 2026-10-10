@@ -1554,7 +1554,6 @@ if (gui_menu_open == 5) {
     var _docs_list = [
         { title: "MANUAL",          url: _manual_url }, // link under here
 		{ title: "ITCH PAGE",			url: "https://polytricity.itch.io/the-c64-dev-machine" }, // link under here	
-		{ title: "TUTORIALS",			url: "https://www.youtube.com/playlist?list=PLDwNUwlf8I7ejOY_kKW8uw60fUdK0YqU7" }, // link under here	
 		{ title: "CODE ED MANUAL",          url: "https://drive.google.com/file/d/120G8C8hGg0UAC1NIZwYK62_IZSwjHzCU/view?usp=drive_link" }, // link under here
         { title: "--- REFS ---",    url: "HEADER" },
         { title: "C64 REGS WHITE",  url: "https://drive.google.com/file/d/1y8oW2eHtnjbsFUZ565K7qgD6iHuuqCUt/view?usp=drive_link" }, // link under here

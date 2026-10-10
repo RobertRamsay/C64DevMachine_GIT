@@ -197,14 +197,14 @@ welcome_credits_y      = 0;
 welcome_mode           = 0;      // 0 = welcome / what's new, 1 = guided tour list
 welcome_tour_scroll    = 0;      // first visible row in the tour list
 welcome_whats_new = [
-    "NEW PORTS - R-TYPE and BRUCE LEE join SABOTEUR in PORTS (full games, editable).",
-    "NEW TEMPLATE - GATE-GAME: a 20-level logic-gate puzzle game.",
-    "NEW - GUIDED TOURS: step-by-step lessons with highlights (DOCUMENTS menu).",
-    "NEW - CREATOR layer: parameter cards, card modes and GO buttons on panels.",
-    "NEW - PICKUP TABLE asset and MAP TILE TAGS for room-based games.",
-    "REFINED - PLAY buttons on SID nodes, map scrollbars, bitmap CELL GRID.",
-    "REFINED - TXT SCROLL runs on its own raster IRQ when there is no SID.",
-    "REFINED - Assembler: bad branches and labels are now clear build errors.",
+    "NEW - BITMAP OBJECTS and the BMP OBJECT node: masked draw, save, restore and move.",
+    "NEW - BITMAP SPRITES: hardware sprites over the bitmap editor, MUX and SETUP NODES.",
+    "NEW - GUIDED TOURS page 2: ANIMATE A SPRITE and PLATFORM GAME, plus DO IT FOR ME.",
+    "NEW - INFO strip in every asset editor: hover any control to see what it does.",
+    "NEW - MUSIC MAKER: REBUILD button and .c64mm / .c64box export and import.",
+    "NEW - PERF HUD (F11), node image cache, OPTIONS > MINIMIZE ALL / EXPAND ALL.",
+    "REFINED - Sprite editor ALL -> MC / HR and Shift+click range select.",
+    "REFINED - JSR/JMP/branch targets with no label now draw in red.",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
     "SUPPORT the development by leaving a review on ITCH and buying the PRO version.",
