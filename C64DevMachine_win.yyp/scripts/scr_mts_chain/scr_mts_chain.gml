@@ -172,6 +172,11 @@ function scr_mts_raw_rows_ranges(_a) {
     var _pc  = _a.address;
     var _r0  = _pc;
     var _rs  = 0;
+    // STAMP IDS (raw_rows 3 / 4): the stamp table sits at the asset address.
+    if (_m.raw_rows >= 3) {
+        _rs = scr_mts_stamp_table_size(_m);
+        _pc += _rs;
+    }
     for (var _mi = 0; _mi < array_length(_m.maps); _mi++) {
         if (_mi < array_length(_m.map_addr)) {
             if (_m.map_addr[_mi] >= 0) {
@@ -185,6 +190,10 @@ function scr_mts_raw_rows_ranges(_a) {
         }
         var _d  = scr_mts_map_dims(_m, _mi);
         var _sz = _d[0] * _d[1];
+        if (_m.raw_rows >= 3) {
+            // one byte per stamp cell, not per char
+            _sz = floor(_d[0] / _m.stamp_w) * floor(_d[1] / _m.stamp_h);
+        }
         _pc += _sz;
         _rs += _sz;
     }

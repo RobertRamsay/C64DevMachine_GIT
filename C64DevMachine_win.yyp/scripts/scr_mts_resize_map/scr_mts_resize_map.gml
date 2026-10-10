@@ -58,6 +58,18 @@ function scr_mts_resize_map(_m, _map_idx, _new_w_ch, _new_h_ch) {
 /// @param {struct} _m  the META_TILESET meta
 function scr_mts_raw_rows_size(_m) {
     // Maps only (tables and fixed addresses: scr_mts_raw_rows_ranges).
+    // STAMP IDS (raw_rows 3 / 4): one byte per map cell, plus the stamp table.
+    if (_m.raw_rows >= 3) {
+        var _ids = scr_mts_stamp_table_size(_m);
+        for (var _imi = 0; _imi < array_length(_m.maps); _imi++) {
+            var _icols = 1;
+            if (_imi < array_length(_m.map_w)) {
+                _icols = max(1, floor(_m.map_w[_imi] / _m.stamp_w));
+            }
+            _ids += _icols * floor(array_length(_m.maps[_imi]) / _icols);
+        }
+        return _ids;
+    }
     var _total = 0;
     for (var _mi = 0; _mi < array_length(_m.maps); _mi++) {
         var _cols = 1;
@@ -84,6 +96,10 @@ function scr_mts_raw_rows_emit(_list, _a) {
     var _sw    = _m.stamp_w;
     var _sh    = _m.stamp_h;
     var _cells = _sw * _sh;
+    if (_m.raw_rows >= 3) {
+        scr_mts_stamp_ids_emit(_list, _a);
+        return;
+    }
     for (var _mi = 0; _mi < array_length(_m.maps); _mi++) {
         // MAP CHAINS: a map with its own address starts a new run there.
         if (_mi < array_length(_m.map_addr)) {
@@ -128,5 +144,70 @@ function scr_mts_raw_rows_emit(_list, _a) {
     // MAP CHAINS: the map / chain tables after the maps (or at chain_tab_addr).
     if (_m.chain_emit == 1) {
         scr_mts_chain_emit(_list, _a);
+    }
+}
+
+
+/// @desc STAMP IDS stamp table size: stamp_count x (stamp_w x stamp_h) bytes.
+/// @param {struct} _m  the META_TILESET meta
+function scr_mts_stamp_table_size(_m) {
+    return _m.stamp_count * _m.stamp_w * _m.stamp_h;
+}
+
+/// @desc STAMP IDS export (raw_rows 3 = IDS, 4 = IDS COL). For engines that
+///       expand their own metatiles (Fuzzball C64): at the asset address the
+///       stamp table, <NAME>_STAMPS, stamp_w x stamp_h chars per stamp - row by
+///       row (IDS) or column by column (IDS COL: top-left, bottom-left,
+///       top-right, bottom-right for 2x2). Then every map as one stamp number
+///       per cell, row by row, label <NAME>_MAP<n>; a map with its own
+///       map_addr starts there (MAP CHAINS). An empty cell (-1) or a stamp
+///       past stamp_count is 0.
+/// @param {array}  _list  instruction list
+/// @param {struct} _a     the META_TILESET asset
+function scr_mts_stamp_ids_emit(_list, _a) {
+    var _m     = _a.meta;
+    var _sw    = _m.stamp_w;
+    var _sh    = _m.stamp_h;
+    var _cells = _sw * _sh;
+    array_push(_list, ["label", _a.name + "_STAMPS"]);
+    for (var _st = 0; _st < _m.stamp_count; _st++) {
+        for (var _k = 0; _k < _cells; _k++) {
+            var _cx = _k mod _sw;
+            var _cy = _k div _sw;
+            if (_m.raw_rows == 4) {
+                _cx = _k div _sh;
+                _cy = _k mod _sh;
+            }
+            var _ch = 0;
+            var _db = _st * _cells + _cy * _sw + _cx;
+            if (_db < array_length(_m.stamp_data)) {
+                _ch = _m.stamp_data[_db];
+            }
+            if (_ch < 0) {
+                _ch = 0;
+            }
+            array_push(_list, ["byte", _ch & 0xFF]);
+        }
+    }
+    for (var _mi = 0; _mi < array_length(_m.maps); _mi++) {
+        if (_mi < array_length(_m.map_addr)) {
+            if (_m.map_addr[_mi] >= 0) {
+                array_push(_list, ["org", _m.map_addr[_mi]]);
+            }
+        }
+        array_push(_list, ["label", _a.name + "_MAP" + string(_mi)]);
+        var _grid = _m.maps[_mi];
+        var _cols = 1;
+        if (_mi < array_length(_m.map_w)) {
+            _cols = max(1, floor(_m.map_w[_mi] / _sw));
+        }
+        var _rows = floor(array_length(_grid) / _cols);
+        for (var _ci = 0; _ci < _cols * _rows; _ci++) {
+            var _id = _grid[_ci];
+            if (_id < 0 || _id >= _m.stamp_count) {
+                _id = 0;
+            }
+            array_push(_list, ["byte", _id & 0xFF]);
+        }
     }
 }

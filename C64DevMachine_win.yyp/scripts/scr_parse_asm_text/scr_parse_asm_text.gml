@@ -448,6 +448,29 @@ function scr_parse_asm_text_uncached(_text) {
             var _is_known_const = ds_map_exists(global.named_loc_map, string_upper(_op_work));
             var _needs_eval     = _is_literal || _has_math || _is_known_const;
 
+            // LABEL+n / LABEL-n where LABEL is a code label (not a named constant):
+            // leave it symbolic. global.code_block_labels holds every label at its
+            // block's START address (PASS 9 never advances _cb_pc), so evaluating it
+            // here gave the wrong address for any label below the first line of its
+            // block (e.g. LDA TABLE+1,X built as LDA <block start>+1,X). The
+            // assembler's fixups already resolve name+n (c64_new_program
+            // _split_offset), exactly as the #<LABEL+n path above does.
+            if (_has_math && !_is_literal) {
+                var _mb_base  = _op_work;
+                var _mb_plus  = string_pos("+", _op_work);
+                var _mb_minus = string_pos("-", _op_work);
+                var _mb_split = 0;
+                if (_mb_plus  > 1 && (_mb_minus <= 1 || _mb_plus  < _mb_minus)) _mb_split = _mb_plus;
+                if (_mb_minus > 1 && (_mb_plus  <= 1 || _mb_minus < _mb_plus))  _mb_split = _mb_minus;
+                if (_mb_split > 1) _mb_base = string_trim(string_copy(_op_work, 1, _mb_split - 1));
+                var _mb_is_asm = (variable_struct_exists(global.code_block_labels, _mb_base)
+                               || variable_struct_exists(global.code_block_labels, string_upper(_mb_base)))
+                              && !ds_map_exists(global.named_loc_map, string_upper(_mb_base));
+                if (_mb_is_asm) {
+                    _needs_eval = false;
+                }
+            }
+
             if (_needs_eval) {
                 var _val = _eval_expr(_op_work);
                 _operand_str = _imm_prefix + "$" + string_upper(decimal_to_hex(_val)) + _idx_suffix;
