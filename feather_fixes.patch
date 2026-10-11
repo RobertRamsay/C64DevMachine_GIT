@@ -1,0 +1,69 @@
+diff --git a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+index 042551a..f26caf0 100644
+--- a/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
++++ b/C64DevMachine_win.yyp/objects/obj_asset_manager/Draw_64.gml
+@@ -2708,8 +2708,8 @@ var _ov_val = (_ov_grid_len > _idx) ? _ov_grid[_idx] : 0;
+ 				// Per-tile colours (bitmap-built rooms, e.g. Saboteur): the tile
+ 				// itself fixes ink (high nibble); paper is set with _cell_bg_col above.
+ 				if (_char < array_length(_m.tile_colours) && _m.tile_colours[_char] >= 0) {
+-				    var _tcol = _m.tile_colours[_char];
+-				    _render_col   = (_tcol >> 4) & 0x0F;
++				    var _tile_col = _m.tile_colours[_char];
++				    _render_col   = (_tile_col >> 4) & 0x0F;
+ 				}
+ 	                if (_cell_is_mc &&
+ 	                    _chr_asset_ref != noone &&
+diff --git a/C64DevMachine_win.yyp/scripts/scr_bmp_objects/scr_bmp_objects.gml b/C64DevMachine_win.yyp/scripts/scr_bmp_objects/scr_bmp_objects.gml
+index 0305ad1..c6f4e42 100644
+--- a/C64DevMachine_win.yyp/scripts/scr_bmp_objects/scr_bmp_objects.gml
++++ b/C64DevMachine_win.yyp/scripts/scr_bmp_objects/scr_bmp_objects.gml
+@@ -116,7 +116,11 @@ function scr_bmpobj_restore(_asset, _saved) {
+     }
+     // Older files: objects already listed came from a game (fixed addresses).
+     if (!variable_struct_exists(_saved, "managed")) {
+-        _m.managed = (array_length(_m.objects) > 0) ? 0 : 1;
++        if (array_length(_m.objects) > 0) {
++            variable_struct_set(_m, "managed", 0);
++        } else {
++            variable_struct_set(_m, "managed", 1);
++        }
+     }
+ }
+ 
+@@ -422,7 +426,13 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
+     var _m = _asset.meta;
+     if (!variable_struct_exists(_m, "undo"))      { _m.undo = []; _m.redo = []; }
+     if (!variable_struct_exists(_m, "grab_on"))   { _m.grab_on = false; _m.grab_src = ""; _m.grab_sel = -1; _m.grab_drag = false; }
+-    if (!variable_struct_exists(_m, "managed"))   { _m.managed = (array_length(_m.objects) > 0) ? 0 : 1; }
++    if (!variable_struct_exists(_m, "managed")) {
++        if (array_length(_m.objects) > 0) {
++            variable_struct_set(_m, "managed", 0);
++        } else {
++            variable_struct_set(_m, "managed", 1);
++        }
++    }
+     draw_set_font_l(fnt_c64_tiny);
+     draw_set_halign(fa_left);
+     var _pad = 12;
+@@ -1327,7 +1337,7 @@ function scr_bmpobj_snap_apply(_asset, _s) {
+     _m.col_major = _s.flags[0];
+     _m.bottom_up = _s.flags[1];
+     _m.mask_and  = _s.flags[2];
+-    _m.managed   = _s.flags[3];
++    variable_struct_set(_m, "managed", _s.flags[3]);
+     _m.colour_addr = _s.colour_addr;
+     _m.colour_auto = _s.colour_auto;
+     _m.sel = _s.sel;
+@@ -2338,7 +2348,11 @@ function scr_bmpobj_compile(_curr, _list) {
+                     case 5: _E("byte", _oi.h); break;
+                     case 6: {
+                         var _cc = scr_bmpobj_get_colour(_a, _i);
+-                        _E("byte", (_cc < 0) ? _auto : (_cc & 0xFF));
++                        if (_cc < 0) {
++                            _E("byte", real(_m.colour_auto) & 0xFF);
++                        } else {
++                            _E("byte", _cc & 0xFF);
++                        }
+                         break;
+                     }
+                 }

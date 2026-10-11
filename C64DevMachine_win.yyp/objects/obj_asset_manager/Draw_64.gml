@@ -2708,8 +2708,8 @@ var _ov_val = (_ov_grid_len > _idx) ? _ov_grid[_idx] : 0;
 				// Per-tile colours (bitmap-built rooms, e.g. Saboteur): the tile
 				// itself fixes ink (high nibble); paper is set with _cell_bg_col above.
 				if (_char < array_length(_m.tile_colours) && _m.tile_colours[_char] >= 0) {
-				    var _tcol = _m.tile_colours[_char];
-				    _render_col   = (_tcol >> 4) & 0x0F;
+				    var _tile_col = _m.tile_colours[_char];
+				    _render_col   = (_tile_col >> 4) & 0x0F;
 				}
 	                if (_cell_is_mc &&
 	                    _chr_asset_ref != noone &&

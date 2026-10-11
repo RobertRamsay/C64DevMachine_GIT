@@ -116,7 +116,11 @@ function scr_bmpobj_restore(_asset, _saved) {
     }
     // Older files: objects already listed came from a game (fixed addresses).
     if (!variable_struct_exists(_saved, "managed")) {
-        _m.managed = (array_length(_m.objects) > 0) ? 0 : 1;
+        if (array_length(_m.objects) > 0) {
+            variable_struct_set(_m, "managed", 0);
+        } else {
+            variable_struct_set(_m, "managed", 1);
+        }
     }
 }
 
@@ -422,7 +426,13 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _m = _asset.meta;
     if (!variable_struct_exists(_m, "undo"))      { _m.undo = []; _m.redo = []; }
     if (!variable_struct_exists(_m, "grab_on"))   { _m.grab_on = false; _m.grab_src = ""; _m.grab_sel = -1; _m.grab_drag = false; }
-    if (!variable_struct_exists(_m, "managed"))   { _m.managed = (array_length(_m.objects) > 0) ? 0 : 1; }
+    if (!variable_struct_exists(_m, "managed")) {
+        if (array_length(_m.objects) > 0) {
+            variable_struct_set(_m, "managed", 0);
+        } else {
+            variable_struct_set(_m, "managed", 1);
+        }
+    }
     draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_left);
     var _pad = 12;
@@ -1327,7 +1337,7 @@ function scr_bmpobj_snap_apply(_asset, _s) {
     _m.col_major = _s.flags[0];
     _m.bottom_up = _s.flags[1];
     _m.mask_and  = _s.flags[2];
-    _m.managed   = _s.flags[3];
+    variable_struct_set(_m, "managed", _s.flags[3]);
     _m.colour_addr = _s.colour_addr;
     _m.colour_auto = _s.colour_auto;
     _m.sel = _s.sel;
@@ -2338,7 +2348,11 @@ function scr_bmpobj_compile(_curr, _list) {
                     case 5: _E("byte", _oi.h); break;
                     case 6: {
                         var _cc = scr_bmpobj_get_colour(_a, _i);
-                        _E("byte", (_cc < 0) ? _auto : (_cc & 0xFF));
+                        if (_cc < 0) {
+                            _E("byte", real(_m.colour_auto) & 0xFF);
+                        } else {
+                            _E("byte", _cc & 0xFF);
+                        }
                         break;
                     }
                 }
