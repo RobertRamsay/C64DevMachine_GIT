@@ -1,0 +1,21 @@
+const fs=require('fs');
+class CPU {
+ constructor(mem){this.m=Uint8Array.from(mem);this.a=0;this.x=0;this.y=0;this.sp=255;this.c=0;this.z=0;this.n=0;this.v=0;this.hook=()=>{};}
+ nz(v){v&=255;this.z=+(v===0);this.n=v>>7;return v;}
+ word(a){return this.m[a]|this.m[(a+1)&65535]<<8;}
+ push(v){this.m[256+this.sp]=v;this.sp=(this.sp-1)&255;}
+ pop(){this.sp=(this.sp+1)&255;return this.m[256+this.sp];}
+ call(pc){this.pc=pc;this.push(255);this.push(254);let lim=0;while(this.pc!==65535){if(++lim>100000)throw Error('runaway');this.step();}}
+ step(){this.hook(this);let op=this.m[this.pc++],addr,v;const b=()=>this.m[this.pc++],w=()=>{let a=this.word(this.pc);this.pc+=2;return a;};
+ const modes={0x01:()=>this.word((b()+this.x)&255),0x05:b,0x09:()=>this.pc++,0x0d:w,0x11:()=>((this.word(b())+this.y)&65535),0x15:()=>((b()+this.x)&255),0x19:()=>((w()+this.y)&65535),0x1d:()=>((w()+this.x)&65535)};
+ if((op&3)===1&&modes[op&31]){addr=modes[op&31]();v=this.m[addr];switch(op>>5){case 0:this.a=this.nz(this.a|v);break;case 1:this.a=this.nz(this.a&v);break;case 2:this.a=this.nz(this.a^v);break;case 3:{let q=this.a+v+this.c;this.v=+(!!(~(this.a^v)&(this.a^q)&128));this.c=+(q>255);this.a=this.nz(q);break;}case 4:this.m[addr]=this.a;break;case 5:this.a=this.nz(v);break;case 6:this.c=+(this.a>=v);this.nz(this.a-v);break;case 7:{let q=this.a-v-(1-this.c);this.v=+(!!((this.a^v)&(this.a^q)&128));this.c=+(q>=0);this.a=this.nz(q);break;}}return;}
+ if((op&31)===16){let d=b();if(d>127)d-=256;let cond=[!this.n,this.n,!this.v,this.v,!this.c,this.c,!this.z,this.z][op>>5];if(cond)this.pc+=d;return;}
+ if([0x0a,0x2a,0x4a,0x6a,0x06,0x26,0x46,0x66,0x0e,0x2e,0x4e,0x6e,0x16,0x36,0x56,0x76,0x1e,0x3e,0x5e,0x7e,0xc6,0xce,0xd6,0xde,0xe6,0xee,0xf6,0xfe].includes(op)){
+ let mode=op&31;addr=mode===10?-1:mode===6?b():mode===14?w():mode===22?(b()+this.x)&255:(w()+this.x)&65535;v=addr===-1?this.a:this.m[addr];let t=op>>5,old=this.c;
+ if(t===0){this.c=v>>7;v<<=1;}if(t===1){this.c=v>>7;v=(v<<1)|old;}if(t===2){this.c=v&1;v>>=1;}if(t===3){this.c=v&1;v=(v>>1)|(old<<7);}if(t===6)v--;if(t===7)v++;v=this.nz(v);if(addr===-1)this.a=v;else this.m[addr]=v;return;}
+ switch(op){case 0xa2:this.x=this.nz(b());break;case 0xa6:this.x=this.nz(this.m[b()]);break;case 0xae:this.x=this.nz(this.m[w()]);break;case 0xbe:this.x=this.nz(this.m[(w()+this.y)&65535]);break;case 0xa0:this.y=this.nz(b());break;case 0xa4:this.y=this.nz(this.m[b()]);break;case 0xac:this.y=this.nz(this.m[w()]);break;case 0xbc:this.y=this.nz(this.m[(w()+this.x)&65535]);break;
+ case 0x84:this.m[b()]=this.y;break;case 0x8c:this.m[w()]=this.y;break;case 0x86:this.m[b()]=this.x;break;case 0x8e:this.m[w()]=this.x;break;case 0x18:this.c=0;break;case 0x38:this.c=1;break;case 0x88:this.y=this.nz(this.y-1);break;case 0xc8:this.y=this.nz(this.y+1);break;case 0xca:this.x=this.nz(this.x-1);break;case 0xe8:this.x=this.nz(this.x+1);break;case 0xaa:this.x=this.nz(this.a);break;case 0xa8:this.y=this.nz(this.a);break;case 0x8a:this.a=this.nz(this.x);break;case 0x98:this.a=this.nz(this.y);break;case 0x48:this.push(this.a);break;case 0x68:this.a=this.nz(this.pop());break;case 0x4c:this.pc=w();break;case 0x6c:this.pc=this.word(w());break;case 0x20:addr=w();this.push((this.pc-1)>>8);this.push((this.pc-1)&255);this.pc=addr;break;case 0x60:this.pc=(this.pop()|(this.pop()<<8))+1;break;case 0xc0:v=b();this.c=+(this.y>=v);this.nz(this.y-v);break;case 0xe0:v=b();this.c=+(this.x>=v);this.nz(this.x-v);break;case 0xea:case 0xd8:case 0x78:case 0x58:break;default:throw Error('op '+op.toString(16)+' at '+(this.pc-1).toString(16));}
+ }
+}
+module.exports=CPU;
+if(require.main===module){const c=new CPU(fs.readFileSync(__dirname+'/memory.bin'));c.m[255]=1;c.m[0xd3a]=0;c.m[0xd41b]=0;c.m[0xd41c]=0;let frame=-1,events=[],ins=[0,0,0],loops=[];c.hook=c=>{if(c.pc===0xd3c)ins[c.x]=c.a;if(c.pc===0xb3d)events.push({f:frame,v:c.x,n:c.a,i:ins[c.x],ptr:c.word(0xfb)+c.y});if(c.pc===0xc4f)loops.push({f:frame,v:c.x,to:c.m[c.word(0xf9)+c.y+1]});};c.call(0x9a5);const frames=[];for(frame=0;frame<14000;frame++){c.call(0x9a5);frames.push(Array.from(c.m.slice(0xd400,0xd419)));}fs.writeFileSync(__dirname+'/trace.json',JSON.stringify({events,frames,loops}));console.log('events',events.length,'loops',loops.slice(0,15),'instruments',Array.from(new Set(events.map(e=>e.i))));console.log(events.slice(0,15));}

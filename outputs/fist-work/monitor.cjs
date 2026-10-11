@@ -1,0 +1,1 @@
+const net=require('net'),fs=require('fs');const cmd=process.argv.slice(2).join(' ')+'\n';const s=net.connect(6510,'127.0.0.1',()=>s.write(cmd));s.on('data',d=>process.stdout.write(d));setTimeout(()=>s.end(),1200);
