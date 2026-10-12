@@ -41,6 +41,18 @@ function scr_node_step_macro_spr(_draw_x) {
 
     var _mframe   = is_real(instructions[0][5]) ? real(instructions[0][5]) : 0;
 
+    // The preview tab's handle, left of the node: tuck it in / pull it out
+    var _tab = scr_macro_spr_tab(id, _draw_x);
+    if (point_in_rectangle(mouse_x, mouse_y, _tab.hx1, _tab.hy1, _tab.hx2, _tab.hy2)) {
+        while (array_length(instructions[0]) < 8) {
+            array_push(instructions[0], 1);
+        }
+        instructions[0][7] = _tab.out ? 0 : 1;
+        global.undo_dirty     = true;
+        global.autosave_dirty = true;
+        exit;
+    }
+
     var _header_h = 24;
     var _line_h   = 14;
     var _cell_h   = 21 * 2 + 4; // 46
@@ -137,8 +149,9 @@ function scr_node_step_macro_spr(_draw_x) {
 
     // Row 5: sprite preview — double-click opens SPRED64 V2 directly on this
     // node's sprite asset, with the frame currently shown (_mframe) selected.
-    var _prev_x = _draw_x + 10;
-    var _prev_y = _fy;
+    // The preview now lives in the tab on the node's left.
+    var _prev_x = _tab.cx;
+    var _prev_y = _tab.cy;
     var _prev_w = 24 * 2 + 4;
     var _prev_h = 21 * 2 + 4;
 
@@ -146,7 +159,7 @@ function scr_node_step_macro_spr(_draw_x) {
         spr_preview_dbl_click_timer -= 1;
     }
 
-    if (point_in_rectangle(mouse_x, mouse_y, _prev_x, _prev_y, _prev_x + _prev_w, _prev_y + _prev_h)
+    if (_tab.out && point_in_rectangle(mouse_x, mouse_y, _prev_x, _prev_y, _prev_x + _prev_w, _prev_y + _prev_h)
     && scr_workspace_mouse_check_button_pressed(mb_left)) {
         if (spr_preview_dbl_click_timer > 0) {
             spr_preview_dbl_click_timer = 0;

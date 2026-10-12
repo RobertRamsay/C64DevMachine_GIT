@@ -167,7 +167,7 @@ if (height_dirty) {
         height = _G * 7 + (_mm_dx_mod == 1 ? _G : 0) + (_mm_dy_mod == 1 ? _G : 0);
         break;
     case "MACRO_SID":    height = _G * 5;  break;         //
-    case "MACRO_SPR":   height = _G * 7;  break;         // 180
+    case "MACRO_SPR":   height = _G * 5;  break;         // rows only; the preview is a tab on the left
     case "MACRO_LOADER": height = _G * 5;  break;         // 120 — picker + status rows
     case "MACRO_SAVE_GAME": height = _G * 5;  break;
     case "MACRO_LOAD_GAME": height = _G * 5;  break;

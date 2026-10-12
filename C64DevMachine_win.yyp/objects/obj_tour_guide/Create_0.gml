@@ -49,6 +49,10 @@ doit_vis  = false;     // DO IT FOR ME shown (and clickable) this frame
 // DO IT ALL: the tour runs itself to the end (STOP, or a step it can't do,
 // hands it back). auto_wait spaces the steps out; auto_stall counts frames
 // spent on a step that won't finish.
+// DO IT FOR ME on a bitmap in edit mode: frames left to wait for EDIT to
+// end edit mode before the viewer is closed (0 = nothing pending)
+close_pending = 0;
+
 btn_all    = [0, 0, 0, 0];
 auto_all   = false;
 auto_wait  = 0;

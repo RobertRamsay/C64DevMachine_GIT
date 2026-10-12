@@ -173,9 +173,8 @@ draw_sprite_stretched(spr_glassSlice, obj_workspace_manager.niceSliceFrm, _px, _
 // Header
 draw_set_halign(fa_left);
 draw_set_valign(fa_top);
-draw_set_font_l(fnt_C64_Angled);
-draw_set_color(make_color_rgb(220, 140, 40));
-draw_text_l(_px + 20, _py + 16, tour_title);
+// The tour title is drawn after the counter and DO IT ALL, once we know how
+// much room they leave it
 // DO IT ALL (top right): the tour finishes itself; STOP hands it back
 var _all_on = (step_idx < array_length(steps) - 1);
 btn_all = [_px + _pw - 20 - 92, _py + 12, _px + _pw - 20, _py + 30];
@@ -199,10 +198,22 @@ if (_all_on) {
     draw_set_font_l(fnt_C64_Angled);
     _cnt_x = btn_all[0] - 8;
 }
+draw_set_font_l(fnt_C64_Angled);
+var _cnt_txt = string(step_idx + 1) + " / " + string(array_length(steps));
 draw_set_halign(fa_right);
 draw_set_color(make_color_rgb(140, 140, 160));
-draw_text(_cnt_x, _py + 16, string(step_idx + 1) + " / " + string(array_length(steps)));
+draw_text(_cnt_x, _py + 16, _cnt_txt);
 draw_set_halign(fa_left);
+// Title: the small font when the big one would run into the counter
+var _title_room = (_cnt_x - string_width(_cnt_txt) - 10) - (_px + 20);
+draw_set_color(make_color_rgb(220, 140, 40));
+if (string_width_l(tour_title) > _title_room) {
+    draw_set_font_l(fnt_c64_tiny);
+    draw_text_l(_px + 20, _py + 19, tour_title);
+    draw_set_font_l(fnt_C64_Angled);
+} else {
+    draw_text_l(_px + 20, _py + 16, tour_title);
+}
 
 // Step title (flashes green when done)
 var _title_col = c_yellow;

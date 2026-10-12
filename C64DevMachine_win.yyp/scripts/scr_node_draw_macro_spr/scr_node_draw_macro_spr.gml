@@ -106,71 +106,60 @@ if (_spr_vic_bank == 3) _draw_screen_ram = _spr_bank_base + 0x0400;
     draw_triangle(_nav_rx, _mly, _nav_rx, _mly + _nav_hh, _nav_rx + _nav_hw, _mly + _nav_hh * 0.5, false);
     _mly += _line_h;
 
-    // Sprite preview
-    var _prev_x = _draw_x + 10;
-    var _prev_y = _mly;
+    // Sprite preview: a tab on the node's left, so the node itself is only
+    // as tall as its rows. The handle tucks it in and pulls it out again.
+    // Drawn with plain draw_* calls: it sits outside the body, so it must
+    // not count towards the node's measured height.
+    var _tab = scr_macro_spr_tab(id, _draw_x);
     var _cell_w = 24 * 2 + 4;
     var _cell_h = 21 * 2 + 4;
-    // Cell background = the asset's C64 BG colour (so the sprite's
-    // transparent BG pixels composite correctly). Falls back to a neutral
-    // dim panel colour when there's no asset assigned yet.
-    if (_has_asset && variable_struct_exists(_asset.meta, "bg_col")) {
-        draw_set_color(scr_c64_pepto_colour(_asset.meta.bg_col));
-    } else {
-        draw_set_color(make_color_rgb(40, 40, 50));
-    }
-    scr_macro_body_rectangle(_prev_x, _prev_y, _prev_x + _cell_w, _prev_y + _cell_h, false);
-    // Thin border so the preview cell is visually distinct from the node BG
-    draw_set_color(make_color_rgb(80, 60, 30));
-    scr_macro_body_rectangle(_prev_x, _prev_y, _prev_x + _cell_w, _prev_y + _cell_h, true);
-    if (_has_asset &&
-        variable_struct_exists(_asset.meta, "spr_sprites") &&
-        _mframe < array_length(_asset.meta.spr_sprites) &&
-        _asset.meta.spr_sprites[_mframe] != -1 &&
-        sprite_exists(_asset.meta.spr_sprites[_mframe])) {
-        gpu_set_tex_filter(false);
-        draw_sprite(_asset.meta.spr_sprites[_mframe], 0, _prev_x+2, _prev_y+2);
-		gpu_set_tex_filter(true);
-    } else {
-        draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(60, 60, 80));
-        draw_set_halign(fa_center);
-        scr_node_macro_text_l(_prev_x + _cell_w * 0.5, _prev_y + _cell_h * 0.5 - 4, _has_asset ? L("NO CACHE") : L("NO ASSET"));
-        draw_set_halign(fa_left);
-    }
-	// Warning message — tell user if sprite bank mismatches active VIC config
-    draw_set_font_l(fnt_c64_tiny);
-    var _active_bank = 0;
-    var _bank_mismatch = false;
-    with (obj_c64_node) {
-        if (node_type == "MACRO_BMP" && is_connected) {
-            var _chk_addr = is_real(instructions[0][2]) ? real(instructions[0][2]) : 0x4000;
-            _active_bank = floor(_chk_addr / 0x4000);
-            break;
+    var _tab_col = make_color_rgb(180, 60, 180);
+    if (_tab.out) {
+        draw_set_color(make_color_rgb(42, 40, 72));
+        draw_rectangle(_tab.px1, _tab.py1, _tab.px2, _tab.py2, false);
+        draw_set_color(_tab_col);
+        draw_rectangle(_tab.px1, _tab.py1, _tab.px2, _tab.py2, true);
+        var _prev_x = _tab.cx;
+        var _prev_y = _tab.cy;
+        // Cell background = the asset's C64 BG colour (so the sprite's
+        // transparent BG pixels composite correctly). Falls back to a neutral
+        // dim panel colour when there's no asset assigned yet.
+        if (_has_asset && variable_struct_exists(_asset.meta, "bg_col")) {
+            draw_set_color(scr_c64_pepto_colour(_asset.meta.bg_col));
+        } else {
+            draw_set_color(make_color_rgb(40, 40, 50));
+        }
+        draw_rectangle(_prev_x, _prev_y, _prev_x + _cell_w, _prev_y + _cell_h, false);
+        draw_set_color(make_color_rgb(80, 60, 30));
+        draw_rectangle(_prev_x, _prev_y, _prev_x + _cell_w, _prev_y + _cell_h, true);
+        if (_has_asset &&
+            variable_struct_exists(_asset.meta, "spr_sprites") &&
+            _mframe < array_length(_asset.meta.spr_sprites) &&
+            _asset.meta.spr_sprites[_mframe] != -1 &&
+            sprite_exists(_asset.meta.spr_sprites[_mframe])) {
+            gpu_set_tex_filter(false);
+            draw_sprite(_asset.meta.spr_sprites[_mframe], 0, _prev_x + 2, _prev_y + 2);
+            gpu_set_tex_filter(true);
+        } else {
+            draw_set_font_l(fnt_c64_tiny);
+            draw_set_color(make_color_rgb(90, 90, 110));
+            draw_set_halign(fa_center);
+            draw_text_l(_prev_x + _cell_w * 0.5, _prev_y + _cell_h * 0.5 - 6, _has_asset ? L("NO CACHE") : L("NO ASSET"));
+            draw_set_halign(fa_left);
         }
     }
-    with (obj_c64_node) {
-        if (node_type == "MACRO_VIC" && is_connected) {
-            _active_bank = is_real(instructions[0][2]) ? real(instructions[0][2]) : 0;
-            break;
-        }
+    // The handle: points left to pull the tab out, right to tuck it in
+    var _h_hot = point_in_rectangle(mouse_x, mouse_y, _tab.hx1, _tab.hy1, _tab.hx2, _tab.hy2);
+    draw_set_color(_h_hot ? make_color_rgb(220, 110, 220) : _tab_col);
+    draw_rectangle(_tab.hx1, _tab.hy1, _tab.hx2, _tab.hy2, false);
+    draw_set_color(c_white);
+    var _tmx = (_tab.hx1 + _tab.hx2) * 0.5;
+    var _tmy = (_tab.hy1 + _tab.hy2) * 0.5;
+    if (_tab.out) {
+        draw_triangle(_tmx - 3, _tmy - 5, _tmx - 3, _tmy + 5, _tmx + 3, _tmy, false);
+    } else {
+        draw_triangle(_tmx + 3, _tmy - 5, _tmx + 3, _tmy + 5, _tmx - 3, _tmy, false);
     }
-	
-	
-    var _spr_bank = floor(_asset_addr / 0x4000);
-    if (_spr_bank != _active_bank) {
-        _bank_mismatch = true;
-    }
-	
-//var _need_base = _active_bank * 0x4000;
-//    var _need_hex  = string_upper(decimal_to_hex(_need_base + 0x0800));
-//    draw_set_color(_bank_mismatch ? c_red : c_orange);
-//    var _msg = _bank_mismatch
-//        ? ("USING VIC BANK " + string(_spr_bank) + "\nMOVE SPR TO $" + _need_hex + "+\nIF USING CHARMAP")
-//        : ("AUTO BANK SWITCH\nBUT WITH BITMAP IT\nEXPECTS VIC BANK 1");
-//    scr_node_macro_text_l(_prev_x + _cell_w + 10, _prev_y, _msg);
-	
-    _mly += _cell_h + 4;
 
     //// SET GLOBALS checkbox
     //var _sgchk_x = _draw_x + 10;
@@ -186,4 +175,25 @@ if (_spr_vic_bank == 3) _draw_screen_ram = _spr_bank_base + 0x0400;
   //  height = ceil(_raw_h / 20) * 20;
 
 
+}
+
+/// @desc Where a SPRITE node's preview tab sits, left of the node drawn at
+///       _draw_x: the handle (hx/hy), the panel (px/py) and the preview
+///       cell's corner (cx, cy). out: the tab is pulled out
+///       (instructions[0][7]: 1 out, the default; 0 tucked in).
+function scr_macro_spr_tab(_n, _draw_x) {
+    var _i0  = _n.instructions[0];
+    var _out = (array_length(_i0) < 8) || !is_real(_i0[7]) || (real(_i0[7]) != 0);
+    var _t   = { out: _out };
+    _t.hx2 = _draw_x;
+    _t.hx1 = _draw_x - 12;
+    _t.hy1 = _n.y + 28;
+    _t.hy2 = _n.y + 80;
+    _t.px2 = _t.hx1;
+    _t.px1 = _t.px2 - 58;
+    _t.py1 = _t.hy1;
+    _t.py2 = _t.hy2;
+    _t.cx  = _t.px1 + 3;
+    _t.cy  = _t.py1 + 3;
+    return _t;
 }

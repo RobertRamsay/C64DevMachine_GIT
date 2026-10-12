@@ -296,7 +296,7 @@ function scr_bmp_spr_migrate(_so) {
         }
     }
     return { version: 3, show: _so[$ "show"] ?? true, mc1: _so[$ "mc1"] ?? 1, mc2: _so[$ "mc2"] ?? 2,
-             sprites: _out, mux_nodes: _so[$ "mux_nodes"] ?? false, gen_org: _so[$ "gen_org"] ?? -1,
+             sprites: _out, mux_nodes: _so[$ "mux_nodes"] ?? false, gen_org: _so[$ "gen_org"] ?? -1, gen_org2: _so[$ "gen_org2"] ?? -1,
              gen_nodes: _gen };
 }
 
@@ -1303,8 +1303,8 @@ function scr_bmp_spr_setup_nodes(_asset) {
     scr_undo_snapshot();
     global.undo_dirty = false;
 
-    // Replace the nodes made by an earlier SETUP NODES: its spine nodes, and
-    // the ORG block that older versions made
+    // Replace the nodes made by an earlier SETUP NODES: its JSR (and the
+    // spine routine older versions made), and its ORG block
     var _old_nodes = _o[$ "gen_nodes"] ?? [];
     for (var _gi = 0; _gi < array_length(_old_nodes); _gi++) {
         var _gn = scr_music_sid_find_uid(_old_nodes[_gi]);
@@ -1313,31 +1313,46 @@ function scr_bmp_spr_setup_nodes(_asset) {
         }
     }
     _o.gen_nodes = [];
-    var _old_uid = _o[$ "gen_org"] ?? -1;
-    if (_old_uid > 0) {
+    // Its blocks: SHOW (gen_org) and the multiplexer (gen_org2). A re-run
+    // builds the new ones where the old ones were.
+    var _old_x = -1;
+    var _old_uids = [_o[$ "gen_org"] ?? -1, _o[$ "gen_org2"] ?? -1];
+    for (var _oi = 0; _oi < 2; _oi++) {
+        var _old_uid = _old_uids[_oi];
+        if (_old_uid <= 0) continue;
         var _old = noone;
         with (obj_c64_node) { if (node_type == "ORG" && stable_uid == _old_uid) _old = id; }
         if (instance_exists(_old)) {
+            if (_oi == 0) _old_x = _old.x;
             with (obj_c64_node) { if (org_parent == _old) instance_destroy(); }
             with (_old) instance_destroy();
         }
     }
-    _o.gen_org = -1;
+    _o.gen_org  = -1;
+    _o.gen_org2 = -1;
 
     var _bmp_addr = real(_asset.address);
     var _rg = scr_bmp_regions(_bmp_addr);
     var _excl = [[_rg.bmp_addr, _rg.bmp_addr + 8000], [_rg.scr_addr, _rg.scr_addr + 1024], [_rg.col_addr, _rg.col_addr + 1000]];
 
-    // The new nodes go on the main spine under SYSTEM INIT, so the program
-    // grows from where it ends now. Where the spine ends and how low it reaches
+    // The routines get an ORG block of their own, right of the rightmost
+    // block (or where the last SETUP NODES put it). Its address follows on
+    // from the block to its left.
     var _spine_end = global.start_pc;
-    var _spine_bottom = _init.y + _init.height;
     with (obj_c64_node) {
         if (is_connected && org_parent == noone && node_type != "ORG") {
             _spine_end = max(_spine_end, end_address);
-            _spine_bottom = max(_spine_bottom, y + height);
         }
     }
+    var _left = _init;
+    with (obj_c64_node) {
+        if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTERS" && x > _left.x
+            && (_old_x < 0 || x < _old_x)) {
+            _left = id;
+        }
+    }
+    var _x = (_old_x >= 0) ? _old_x : _left.x + global.node_display_width + 120;
+    var _org_start = (_left == _init) ? _spine_end + 3 : _left.end_address;
 
     // Expand / priority nodes only when a sprite uses them
     var _multi = (array_length(_rows) > 1);
@@ -1353,15 +1368,18 @@ function scr_bmp_spr_setup_nodes(_asset) {
     }
     // Room the new code may need: BITMAP ~160, SPRITE ~64, up to ~200 per band
     // for the multiplexer. Kept clear of the sprites, and checked against the
-    // bitmap so the program does not grow into it.
+    // bitmap so neither the program nor the new block grows into it.
     var _est = 200 + _n * 64 + array_length(_rows) * 200;
-    var _keep = [global.start_pc, _spine_end + _est];
-    for (var _xi = 0; _xi < array_length(_excl); _xi++) {
-        if (scr_bmp_spr_overlaps(_keep[0], _keep[1], _excl[_xi][0], _excl[_xi][1])) {
-            scr_show_message("SETUP NODES\n\nThe program under SYSTEM INIT would run into the bitmap at "
-                + scr_bmp_spr_hex(_bmp_addr, 4) + " (it needs up to " + scr_bmp_spr_hex(_keep[1], 4)
-                + "). Move the bitmap higher in memory and try again.");
-            return;
+    var _keep = [global.start_pc, max(_spine_end + 3, _org_start + _est)];
+    var _ranges = [[global.start_pc, _spine_end + 3], [_org_start, _org_start + _est]];
+    for (var _ri = 0; _ri < array_length(_ranges); _ri++) {
+        for (var _xi = 0; _xi < array_length(_excl); _xi++) {
+            if (scr_bmp_spr_overlaps(_ranges[_ri][0], _ranges[_ri][1], _excl[_xi][0], _excl[_xi][1])) {
+                scr_show_message("SETUP NODES\n\nThe program would run into the bitmap at "
+                    + scr_bmp_spr_hex(_bmp_addr, 4) + " (it needs up to " + scr_bmp_spr_hex(_ranges[_ri][1], 4)
+                    + "). Move the bitmap higher in memory and try again.");
+                return;
+            }
         }
     }
 
@@ -1392,39 +1410,44 @@ function scr_bmp_spr_setup_nodes(_asset) {
         _code = scr_bmp_spr_frame_code(_clean, _set, _rows, _o, _rg.scr_addr, _ptr0);
     }
 
-    var _x = _init.x;
     var _gen = [];
 
-    // The routine itself goes at the end of the spine, after an RTS so the
-    // program does not run on into it:
-    //     RTS / LABEL <NAME>_SHOW / SPR ENABLE / BITMAP / [SPRITE x n] / RTS
-    var _y = _spine_bottom + 20;
-    var _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, noone); _nd.node_title = "RTS"; _y += _nd.height;
-    array_push(_gen, _nd.stable_uid);
-    var _lbl = scr_bmp_spr_node("LABEL", [["label", _clean + "_SHOW"]], _x, _y, noone);
+    // The blocks, level with SYSTEM INIT, each one following on from the
+    // block to its left:
+    //     <NAME> SHOW: LABEL <NAME>_SHOW / SPR ENABLE / BITMAP / [SPRITE x n] / RTS
+    //     <NAME> MUX (more than one row): LABEL <NAME>_FRAME /
+    //         [VWAIT + SPRITEs per band, or CODE] / RTS
+    var _org = scr_spawn_org_node(_x, _init.y);
+    _org.node_title = _clean + " SHOW";
+    _o.gen_org = _org.stable_uid;
+    var _org_show = _org;
+    var _y = _org.y + _org.height;
+    var _lbl = scr_bmp_spr_node("LABEL", [["label", _clean + "_SHOW"]], _x, _y, _org);
     _lbl.instructions[0][1] = scr_make_unique_node_name(_clean + "_SHOW", _lbl);
     var _show = _lbl.instructions[0][1];
     _y += _lbl.height;
-    array_push(_gen, _lbl.stable_uid);
-    _nd = scr_bmp_spr_node("MACRO_SPR_ENABLE", [["macro_spr_enable", 255, 1]], _x, _y, noone); _y += _nd.height;
-    array_push(_gen, _nd.stable_uid);
-    _nd = scr_bmp_spr_node("MACRO_BMP", [["macro_bmp", _asset.name, _bmp_addr, 0, 0]], _x, _y, noone); _y += _nd.height;
-    array_push(_gen, _nd.stable_uid);
-    // Band expand / priority nodes are recorded too, so a re-run removes them
-    var _gen_from_y = _y;
+    var _nd = scr_bmp_spr_node("MACRO_SPR_ENABLE", [["macro_spr_enable", 255, 1]], _x, _y, _org); _y += _nd.height;
+    _nd = scr_bmp_spr_node("MACRO_BMP", [["macro_bmp", _asset.name, _bmp_addr, 0, 0]], _x, _y, _org); _y += _nd.height;
     if (!_multi && _n > 0) {
         var _sp = _rows[0].sprites;
         for (var _k = 0; _k < min(array_length(_sp), 8); _k++) {
-            _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _sp[_k].x + 24, _sp[_k].y + 50, _k, (_k == 0) ? 1 : 0]], _x, _y, noone);
+            _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _sp[_k].x + 24, _sp[_k].y + 50, _k, (_k == 0) ? 1 : 0]], _x, _y, _org);
             _y += _nd.height;
         }
-        _y = scr_bmp_spr_band_reg_nodes(_sp, _any_exp, _any_pri, _x, _y, noone);
+        _y = scr_bmp_spr_band_reg_nodes(_sp, _any_exp, _any_pri, _x, _y, _org);
     }
-    _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, noone); _nd.node_title = "RTS"; _y += _nd.height;
+    _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, _org); _nd.node_title = "RTS"; _y += _nd.height;
 
     var _frame = "";
     if (_multi) {
-        _lbl = scr_bmp_spr_node("LABEL", [["label", _clean + "_FRAME"]], _x, _y, noone);
+        // The multiplexer gets the next block along, so the long list of
+        // SPRITE nodes can be folded away on its own
+        _x   = _x + global.node_display_width + 120;
+        _org = scr_spawn_org_node(_x, _init.y);
+        _org.node_title = _clean + " MUX";
+        _o.gen_org2 = _org.stable_uid;
+        _y   = _org.y + _org.height;
+        _lbl = scr_bmp_spr_node("LABEL", [["label", _clean + "_FRAME"]], _x, _y, _org);
         _lbl.instructions[0][1] = scr_make_unique_node_name(_clean + "_FRAME", _lbl);
         _frame = _lbl.instructions[0][1];
         _y += _lbl.height;
@@ -1443,7 +1466,7 @@ function scr_bmp_spr_setup_nodes(_asset) {
                     // has started, or its sprites would be moved off it.
                     var _prev_yy = _rows[_r - 1].y + 50;
                     var _wait = max(_prev_yy, _byy - 2 - _bn * 2);
-                    _nd = scr_bmp_spr_node("MACRO_VWAIT", [["macro_vwait", _wait, 0, ""]], _x, _y, noone);
+                    _nd = scr_bmp_spr_node("MACRO_VWAIT", [["macro_vwait", _wait, 0, ""]], _x, _y, _org);
                     _y += _nd.height;
                 }
                 for (var _k = 0; _k < _bn; _k++) {
@@ -1451,13 +1474,13 @@ function scr_bmp_spr_setup_nodes(_asset) {
                     if (_r == 0 && _k == 0) {
                         _glob = 1;
                     }
-                    _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _bsp[_k].x + 24, _bsp[_k].y + 50, _slot0 + _k, _glob]], _x, _y, noone);
+                    _nd = scr_bmp_spr_node("MACRO_SPR", [["macro_spr", _set.name, _k, _bsp[_k].x + 24, _bsp[_k].y + 50, _slot0 + _k, _glob]], _x, _y, _org);
                     _y += _nd.height;
                 }
-                _y = scr_bmp_spr_band_reg_nodes(_bsp, _any_exp, _any_pri, _x, _y, noone);
+                _y = scr_bmp_spr_band_reg_nodes(_bsp, _any_exp, _any_pri, _x, _y, _org);
                 _slot0 += array_length(_bsp);
             }
-            _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, noone); _nd.node_title = "RTS";
+            _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, _org); _nd.node_title = "RTS";
         } else {
             _nd = scr_node_spawn("MACRO_CODE", _x, _y);
             _nd.code_descriptor    = _clean + " MULTIPLEXER";
@@ -1465,24 +1488,22 @@ function scr_bmp_spr_setup_nodes(_asset) {
             _nd.code_cache_dirty   = true;
             _nd.height_dirty       = true;
             _nd.is_connected       = true;
-            _nd.org_parent         = noone;
+            _nd.org_parent         = _org;
             with (_nd) event_user(0);
             scr_macro_sync_height(_nd);
             _y += _nd.height;
-            _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, noone); _nd.node_title = "RTS";
+            _nd = scr_bmp_spr_node("NORMAL", [["rts", 0]], _x, _y, _org); _nd.node_title = "RTS";
         }
     }
-    // Everything from the sprites down (also the nodes spawned inside helpers)
-    with (obj_c64_node) {
-        if (is_connected && org_parent == noone && y >= _gen_from_y && y <= _y + 40
-            && node_type != "INIT" && !array_contains(_gen, stable_uid)) {
-            array_push(_gen, stable_uid);
-        }
+    // Labels at the left, everything inside a routine one tab in
+    scr_chain_tidy_indent(_org_show);
+    if (_org != _org_show) {
+        scr_chain_tidy_indent(_org);
     }
 
     // JSR <NAME>_SHOW straight under SYSTEM INIT, ahead of the rest of the
     // program (the spine is ordered by Y and packed by the address update)
-    var _jsr = scr_music_sid_op("jsr", _show, _x, _init.y + 1, noone);
+    var _jsr = scr_music_sid_op("jsr", _show, _init.x, _init.y + 1, noone);
     array_push(_gen, _jsr.stable_uid);
     _o.gen_nodes = _gen;
 
@@ -1496,10 +1517,14 @@ function scr_bmp_spr_setup_nodes(_asset) {
     global.undo_dirty = false;
     scr_focus_camera_on_node(_jsr);
     // Re-measure and re-pack the new nodes once the editor closes (obj_workspace_manager Step)
-    obj_workspace_manager.setup_settle_org   = _jsr;
+    obj_workspace_manager.setup_settle_org   = _org_show;
     obj_workspace_manager.setup_settle_timer = 4;
 
-    var _msg = "SETUP NODES\n\nJSR " + _show + " is now under SYSTEM INIT, and the routine is at the end of the program after an RTS.";
+    var _msg = "SETUP NODES\n\nJSR " + _show + " is now under SYSTEM INIT. Its routine is in a block of its own, "
+             + _org_show.node_title + ", right of the program.";
+    if (_org != _org_show) {
+        _msg += " The multiplexer, " + _frame + ", is in the next block along, " + _org.node_title + ".";
+    }
     if (_n > 0) _msg += "\n\n" + string(_n) + " sprite(s) are in " + _set.name + " at " + scr_bmp_spr_hex(_set.address, 4) + ".";
     if (_multi) {
         _msg += "\n\nMore than one row: also JSR " + _frame + " once every frame, before the first band"

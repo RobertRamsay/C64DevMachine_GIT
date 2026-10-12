@@ -2743,6 +2743,7 @@ function scr_spred64_v2_composition_nodes(_asset) {
                 var _an2 = scr_spred64_v2_anim_node(_v2, _offsets, _blk.x, _ay, _blk);
                 _ay += _an2.height;
                 scr_music_sid_op("rts", 0, _blk.x, _ay, _blk);
+                scr_chain_tidy_indent(_blk);
                 _blk.collapsed = false;
                 global.addresses_dirty = true;
                 global.memory_bar_dirty = true;
@@ -2823,6 +2824,8 @@ function scr_spred64_v2_composition_nodes(_asset) {
         _y += _an.height;
         _nd = scr_music_sid_op("rts", 0, _x, _y, _org);
     }
+    // Labels at the left, everything inside a routine one tab in
+    scr_chain_tidy_indent(_org);
     global.addresses_dirty = true;
     global.memory_bar_dirty = true;
     global.node_change_dirty = true;

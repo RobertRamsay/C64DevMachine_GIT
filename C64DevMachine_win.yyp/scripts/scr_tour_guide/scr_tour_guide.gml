@@ -179,8 +179,8 @@ function scr_tour_list() {
         // Page 2
         { title: "ANIMATE A SPRITE",    blurb: "Set up a 4 frame walk in the compositor and CONVERT TO NODES." },
         { title: "PLATFORM GAME",       blurb: "Walk, jump and fall off platforms, with animation and music." },
-        { title: "BITMAP SPRITES",      blurb: "11 ready-made sprites over a bitmap: the 8 per line rule and SETUP NODES." },
-        { title: "BITMAP OBJECTS",      blurb: "Fly a ready-made software sprite over a bitmap with the joystick." },
+        { title: "BITMAP SPRITES",      blurb: "11 sprites over a bitmap: the 8 a line rule and SETUP NODES." },
+        { title: "BITMAP OBJECTS",      blurb: "Fly a software sprite over a bitmap with the joystick." },
     ];
 }
 
@@ -421,7 +421,7 @@ function scr_tour_define(_id) {
 
     if (_id == 5) {
         array_push(_s, scr_tour_step_focus("WELCOME",
-            "A ship sprite and a game loop (MAIN, VWAIT, JMP MAIN) are already set up for you.\n\nIn this tour you will steer the ship left and right with a joystick.\n\nPan with the middle mouse button and zoom with the mouse wheel.",
+            "A ship sprite and a game loop (MAIN, VWAIT, JMP MAIN) are already set up for you, with an empty block called CONTROLS to the right of it.\n\nIn this tour you will steer the ship left and right with a joystick.\n\nPan with the middle mouse button and zoom with the mouse wheel.",
             [], "NONE", "FIT"));
         array_push(_s, scr_tour_step_at("DRAG IN JOYSTICK",
             "Open MACROS 1 and drag JOYSTICK onto the spine between VWAIT and JMP MAIN.\n\nIt reads the stick once per frame.",
@@ -433,28 +433,28 @@ function scr_tour_define(_id) {
             "Click RT on the JOYSTICK node. A label called RT appears too.",
             ["FIELD:MACRO_JOY:RT", "NODETYPE:MACRO_JOY"], "JOY_RT"));
         array_push(_s, scr_tour_step_at("ATTACH LF",
-            "Drag the LF label onto the spine below JMP MAIN.\n\nCode below the JMP only runs when something calls it.",
-            ["LABELNAME:LF"], "LF_BELOW", "NODEOP:jmp_abs"));
+            "Drag the LF label onto the CONTROLS block, right of the main spine.\n\nA routine gets a block of its own, away from the loop: it only runs when something calls it.",
+            ["LABELNAME:LF"], "LF_BELOW", "ORGEND:CONTROLS"));
         array_push(_s, scr_tour_step_at("DRAG IN MOVE",
-            "Open MACROS 1 and drag MOVE onto the spine under LF.",
+            "Open MACROS 1 and drag MOVE onto the block under LF.\n\nThe tour tabs it in for you: the label sits at the left, the routine's nodes one TAB in, and its RTS back at the left, so you can see where each routine starts and ends.",
             ["MAC:MACRO_MOVE", "MENU:0"], "MOVE_AFTER_LF", "LABELNAME:LF"));
         array_push(_s, scr_tour_step("MOVE LEFT",
             "Click the DX value on the MOVE node, type -2 and press ENTER.\n\nDX is how far the sprite moves across each frame.",
             ["FIELD:MACRO_MOVE:dx", "NODETYPE:MACRO_MOVE"], "MOVE_NEG"));
         array_push(_s, scr_tour_step_at("RETURN",
-            "Drag RTS from the opcode palette onto the spine under MOVE.\n\nRTS returns to the joystick, so the loop carries on.",
+            "Drag RTS from the opcode palette onto the block under MOVE.\n\nRTS returns to the joystick, so the loop carries on.",
             ["PAL:RTS", "ARROW:R"], "RTS_1", "LASTTYPE:MACRO_MOVE"));
         array_push(_s, scr_tour_step_at("ATTACH RT",
-            "Drag the RT label onto the spine under that RTS.",
-            ["LABELNAME:RT"], "RT_BELOW", "LASTOP:rts"));
+            "Drag the RT label onto the CONTROLS block under that RTS.",
+            ["LABELNAME:RT"], "RT_BELOW", "ORGEND:CONTROLS"));
         array_push(_s, scr_tour_step_at("ANOTHER MOVE",
-            "Drag another MOVE from MACROS 1 onto the spine under RT.",
+            "Drag another MOVE from MACROS 1 onto the block under RT.",
             ["MAC:MACRO_MOVE", "MENU:0"], "MOVE_2", "LABELNAME:RT"));
         array_push(_s, scr_tour_step("MOVE RIGHT",
             "Set DX on the new MOVE node to 2 and press ENTER.",
             ["FIELD:MACRO_MOVE:dx", "LASTTYPE:MACRO_MOVE"], "MOVE_POS"));
         array_push(_s, scr_tour_step_at("RETURN AGAIN",
-            "Drag another RTS onto the spine under the new MOVE.",
+            "Drag another RTS onto the block under the new MOVE.",
             ["PAL:RTS", "ARROW:R"], "RTS_2", "LASTTYPE:MACRO_MOVE"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5, or click BUILD & RUN on the right, to build and launch.",
@@ -466,7 +466,7 @@ function scr_tour_define(_id) {
 
     if (_id == 6) {
         array_push(_s, scr_tour_step_focus("WELCOME",
-            "A game loop (MAIN, VWAIT, JMP MAIN) is already set up for you.\n\nIn this tour a key press will change the border colour.\n\nPan with the middle mouse button and zoom with the mouse wheel.",
+            "A game loop (MAIN, VWAIT, JMP MAIN) is already set up for you, with an empty block called KEYS to the right of it.\n\nIn this tour a key press will change the border colour.\n\nPan with the middle mouse button and zoom with the mouse wheel.",
             [], "NONE", "FIT"));
         array_push(_s, scr_tour_step_at("DRAG IN KEYS A-Z",
             "Open MACROS 1 and drag KEYS A-Z onto the spine between VWAIT and JMP MAIN.",
@@ -475,16 +475,16 @@ function scr_tour_define(_id) {
             "Click B on the KEYS A-Z node.\n\nA label called KEY_B appears beside it. It is called every frame B is held.",
             ["FIELD:MACRO_LETTERS:B", "NODETYPE:MACRO_LETTERS"], "KEY_B_ON"));
         array_push(_s, scr_tour_step_at("ATTACH KEY_B",
-            "Drag the KEY_B label onto the spine below JMP MAIN.",
-            ["LABELNAME:KEY_B"], "KEYB_BELOW", "NODEOP:jmp_abs"));
+            "Drag the KEY_B label onto the KEYS block, right of the main spine.\n\nRoutines get a block of their own, so the loop stays easy to read.",
+            ["LABELNAME:KEY_B"], "KEYB_BELOW", "ORGEND:KEYS"));
         array_push(_s, scr_tour_step_at("DRAG IN INC_ABS",
-            "INC adds one to a memory location.\n\nFind INC_ABS in the opcode palette and drag it onto the spine under KEY_B.",
+            "INC adds one to a memory location.\n\nFind INC_ABS in the opcode palette and drag it onto the block under KEY_B. The tour tabs it in, as a routine's nodes are.",
             ["PAL:INC_ABS", "ARROW:R"], "OP_INC_ABS", "LABELNAME:KEY_B"));
         array_push(_s, scr_tour_step("POINT IT AT THE BORDER",
             "Click the INC value, type $D020 and press ENTER.",
             ["OPERAND0:inc_abs", "NODEOP:inc_abs"], "INC_D020"));
         array_push(_s, scr_tour_step_at("RETURN",
-            "Drag RTS onto the spine under INC.",
+            "Drag RTS onto the block under INC.",
             ["PAL:RTS", "ARROW:R"], "RTS_1", "NODEOP:inc_abs"));
         array_push(_s, scr_tour_step("BUILD AND RUN",
             "Press F5, or click BUILD & RUN on the right, to build and launch.",
@@ -520,7 +520,7 @@ function scr_tour_define(_id) {
 
     if (_id == 8) {
         array_push(_s, scr_tour_step_focus("WELCOME",
-            "Two ships, a game loop and joystick steering are already set up. This is where the JOYSTICK tour ended, plus a second ship.\n\nIn this tour the border flashes when the ships touch.\n\nPan with the middle mouse button and zoom with the mouse wheel.",
+            "Two ships, a game loop and joystick steering are already set up. This is where the JOYSTICK tour ended, plus a second ship and an empty COLLISION block beside CONTROLS.\n\nIn this tour the border flashes when the ships touch.\n\nPan with the middle mouse button and zoom with the mouse wheel.",
             [], "NONE", "FIT"));
         array_push(_s, scr_tour_step("MAKE A LABEL",
             "Move the mouse over an empty part of the canvas and press A.",
@@ -529,16 +529,16 @@ function scr_tour_define(_id) {
             "Click the new label's name, type HIT and press ENTER.",
             ["FIELD:FREELABEL:name", "FREELABEL"], "LBL_HIT"));
         array_push(_s, scr_tour_step_at("ATTACH HIT",
-            "Drag HIT onto the spine under the last RTS.",
-            ["LABELNAME:HIT"], "HIT_BELOW", "LASTOP:rts"));
+            "Drag HIT onto the COLLISION block.\n\nThe steering routines are in CONTROLS; what happens on a hit gets a block of its own.",
+            ["LABELNAME:HIT"], "HIT_BELOW", "ORGEND:COLLISION"));
         array_push(_s, scr_tour_step_at("DRAG IN INC_ABS",
-            "Find INC_ABS in the opcode palette and drag it onto the spine under HIT.",
+            "Find INC_ABS in the opcode palette and drag it onto the block under HIT.",
             ["PAL:INC_ABS", "ARROW:R"], "OP_INC_ABS", "LABELNAME:HIT"));
         array_push(_s, scr_tour_step("POINT IT AT THE BORDER",
             "Click the INC value, type $D020 and press ENTER.",
             ["OPERAND0:inc_abs", "NODEOP:inc_abs"], "INC_D020"));
         array_push(_s, scr_tour_step_at("RETURN",
-            "Drag RTS onto the spine under INC.",
+            "Drag RTS onto the block under INC.",
             ["PAL:RTS", "ARROW:R"], "RTS_3", "NODEOP:inc_abs"));
         array_push(_s, scr_tour_step_at("DRAG IN COLLIDE",
             "Open MACROS 1 and drag COLLIDE onto the spine between JOYSTICK and JMP MAIN.\n\nIt checks the C64's sprite collision hardware every frame.",
@@ -598,6 +598,9 @@ function scr_tour_enter_step() {
     hl_have    = false;
     auto_wait  = 0;    // DO IT ALL gives every step a moment before acting
     auto_stall = 0;
+    // Whatever the last step added gets the usual tabs: labels at the left,
+    // a routine's nodes one tab in, its RTS (or the loop's JMP) back out
+    scr_tidy_all_indents();
 
     var _targets = [];
     var _focus   = "";
@@ -1106,6 +1109,9 @@ function scr_tour_setup(_id) {
     }
     if (_id == 6 || _id == 7) {
         scr_tour_build_starter("LOOP");
+        if (_id == 6) {
+            scr_tour_routine_org("KEYS");
+        }
         _made = true;
     }
     if (_id == 8) {
@@ -1236,13 +1242,13 @@ function scr_tour_make_music(_file = "tour_music.json", _name = "TOUR_TUNE") {
     ds_list_add(obj_asset_manager.asset_list, _a);
 }
 
-/// @desc Attach _n to the main spine at the cursor in _st and move the
-///       cursor down past it.
+/// @desc Attach _n to the chain at the cursor in _st (the main spine, or
+///       the ORG in _st.org) and move the cursor down past it.
 function scr_tour_spine_place(_n, _st) {
     _n.x            = _st.x;
     _n.y            = _st.y;
     _n.is_connected = true;
-    _n.org_parent   = noone;
+    _n.org_parent   = _st[$ "org"] ?? noone;
     _n.x_indent     = 0;
     _n.height_dirty = true;
     scr_macro_sync_height(_n);
@@ -1264,6 +1270,54 @@ function scr_tour_spine_op(_op, _operand, _st) {
 function scr_tour_spine_label(_name, _st) {
     var _n = scr_music_sid_label(_name, _st.x, _st.y, noone);
     return scr_tour_spine_place(_n, _st);
+}
+
+/// @desc A block for routines: an ORG called _title, level with SYSTEM INIT
+///       and right of the rightmost block. Its address follows on from the
+///       block to its left. Returns a cursor for scr_tour_spine_* that puts
+///       nodes in it.
+function scr_tour_routine_org(_title) {
+    var _init = scr_tour_node_by_type("INIT");
+    if (_init == noone) {
+        return { x: 0, y: 0, org: noone };
+    }
+    var _x = _init.x;
+    with (obj_c64_node) {
+        if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTERS") {
+            _x = max(_x, x);
+        }
+    }
+    _x += global.node_display_width + 120;
+    var _org = scr_spawn_org_node(_x, _init.y);
+    _org.node_title = _title;
+    return { x: _x, y: _org.y + (ceil(_org.height / 20) * 20), org: _org };
+}
+
+/// @desc The ORG block titled _title, or noone.
+function scr_tour_org(_title) {
+    var _hit = noone;
+    with (obj_c64_node) {
+        if (_hit == noone && node_type == "ORG" && node_title == _title) {
+            _hit = id;
+        }
+    }
+    return _hit;
+}
+
+/// @desc True when _n is attached to the main spine or a code ORG (not
+///       VARIABLES / HW REGISTERS).
+function scr_tour_on_code(_n) {
+    if (!_n.is_connected) {
+        return false;
+    }
+    if (_n.org_parent == noone) {
+        return true;
+    }
+    if (!instance_exists(_n.org_parent)) {
+        return false;
+    }
+    var _t = _n.org_parent.node_title;
+    return (_t != "VARIABLES" && _t != "HW REGISTERS");
 }
 
 /// @desc Build a starter spine under SYSTEM INIT.
@@ -1314,16 +1368,24 @@ function scr_tour_build_starter(_kind) {
     }
     scr_tour_spine_op("jmp_abs", "MAIN", _st);
 
-    if (_kind == "COLLIDE") {
-        scr_tour_spine_label("LF", _st);
-        _n = scr_tour_spine_macro("MACRO_MOVE", _st);
-        _n.instructions[0][2] = -2;
-        scr_tour_spine_op("rts", 0, _st);
-        scr_tour_spine_label("RT", _st);
-        _n = scr_tour_spine_macro("MACRO_MOVE", _st);
-        _n.instructions[0][2] = 2;
-        scr_tour_spine_op("rts", 0, _st);
+    // Routines live in blocks of their own, right of the main spine. The
+    // JOYSTICK and PLATFORM tours fill CONTROLS themselves.
+    if (_kind == "SPRITE" || _kind == "PLATFORM") {
+        scr_tour_routine_org("CONTROLS");
     }
+    if (_kind == "COLLIDE") {
+        var _rc = scr_tour_routine_org("CONTROLS");
+        scr_tour_spine_label("LF", _rc);
+        _n = scr_tour_spine_macro("MACRO_MOVE", _rc);
+        _n.instructions[0][2] = -2;
+        scr_tour_spine_op("rts", 0, _rc);
+        scr_tour_spine_label("RT", _rc);
+        _n = scr_tour_spine_macro("MACRO_MOVE", _rc);
+        _n.instructions[0][2] = 2;
+        scr_tour_spine_op("rts", 0, _rc);
+        scr_tour_routine_org("COLLISION");
+    }
+    scr_tidy_all_indents();
 }
 
 /// @desc A fresh workspace comes with an empty ORG BLOCK. No tour uses it, so
@@ -1448,13 +1510,14 @@ function scr_tour_count_type(_type, _connected_only) {
     return _c;
 }
 
-/// @desc Lowest connected node of _type on the canvas, or noone.
+/// @desc The newest node of _type on the main spine or in a code ORG (the
+///       one just added), or noone.
 function scr_tour_last_by_type(_type) {
     var _hit = noone;
-    var _y   = -1000000;
+    var _u   = -1;
     with (obj_c64_node) {
-        if (is_connected && org_parent == noone && node_type == _type && y > _y) {
-            _y   = y;
+        if (node_type == _type && stable_uid > _u && scr_tour_on_code(id)) {
+            _u   = stable_uid;
             _hit = id;
         }
     }
@@ -1508,7 +1571,7 @@ function scr_tour_in_loop(_n) {
     if (_n == noone) {
         return false;
     }
-    if (!_n.is_connected) {
+    if (!_n.is_connected || _n.org_parent != noone) {
         return false;
     }
     var _lbl = scr_tour_label("MAIN");
@@ -1519,13 +1582,17 @@ function scr_tour_in_loop(_n) {
     return (_n.y > _lbl.y && _n.y < _jmp.y);
 }
 
-/// @desc True when _n is attached below the loop's JMP MAIN.
+/// @desc True when _n is somewhere a routine can go: in a block of its own
+///       (a code ORG), or on the main spine below the loop's JMP MAIN.
 function scr_tour_below_loop(_n) {
     if (_n == noone) {
         return false;
     }
     if (!_n.is_connected) {
         return false;
+    }
+    if (_n.org_parent != noone) {
+        return scr_tour_on_code(_n);
     }
     var _jmp = scr_tour_loop_jmp();
     if (_jmp == noone) {
@@ -1782,8 +1849,9 @@ function scr_tour_resolve_ext(_k) {
 // Camera fit and DROP HERE marker
 // ---------------------------------------------------------------------------
 
-/// @desc Zoom out (never in past 1:1) so the whole main spine, plus any
-///       label not yet attached, fits the free part of the screen: right of
+/// @desc Zoom out (never in past 1:1) so the whole main spine, the routine
+///       blocks beside it and any label not yet attached fit the free part
+///       of the screen: right of
 ///       the palette, left of the asset panel, above the caption panel.
 function scr_tour_fit_spine() {
     var _wm   = obj_workspace_manager;
@@ -1798,6 +1866,12 @@ function scr_tour_fit_spine() {
             if (is_connected || node_type == "INIT" || node_type == "LABEL") {
                 _take = true;
             }
+            // Routine blocks right of the spine, too
+            if (node_type == "ORG" && node_title != "VARIABLES" && node_title != "HW REGISTERS") {
+                _take = true;
+            }
+        } else if (scr_tour_on_code(id)) {
+            _take = true;
         }
         if (_take) {
             var _nx = x + x_indent;
@@ -1872,6 +1946,23 @@ function scr_tour_drop_node(_k) {
     if (string_copy(_k, 1, 6) == "JSRTO:") {
         _n = scr_tour_jsr_to(string_delete(_k, 1, 6), false);
     }
+    // ORGEND:<title> - the bottom of that block: its last node, or the
+    // block itself while it is empty
+    if (string_copy(_k, 1, 7) == "ORGEND:") {
+        var _org = scr_tour_org(string_delete(_k, 1, 7));
+        if (_org == noone) {
+            return noone;
+        }
+        _n = _org;
+        var _ly = _org.y;
+        with (obj_c64_node) {
+            if (org_parent == _org && is_connected && y > _ly) {
+                _ly = y;
+                _n  = id;
+            }
+        }
+        return _n;
+    }
     if (_n == noone) {
         return noone;
     }
@@ -1881,15 +1972,16 @@ function scr_tour_drop_node(_k) {
     return _n;
 }
 
-/// @desc Lowest attached main-spine node running opcode _op, or noone.
+/// @desc The newest node running opcode _op on the main spine or in a code
+///       ORG (the one just added), or noone.
 function scr_tour_last_by_op(_op) {
     var _hit = noone;
-    var _y   = -1000000;
+    var _u   = -1;
     with (obj_c64_node) {
-        if (is_connected && org_parent == noone && node_type == "NORMAL" && y > _y) {
+        if (node_type == "NORMAL" && stable_uid > _u && scr_tour_on_code(id)) {
             if (array_length(instructions) > 0) {
                 if (string_lower(string(instructions[0][0])) == _op) {
-                    _y   = y;
+                    _u   = stable_uid;
                     _hit = id;
                 }
             }
@@ -2184,7 +2276,7 @@ function scr_tour_define_page2(_id) {
 
     if (_id == 11) {
         array_push(_s, scr_tour_step_focus("WELCOME",
-            "Everything from the earlier tours comes together here.\n\nAlready set up: WALKER with its walk in the compositor (frames 1-4 face right, 5-8 face left), the PLATFORM_TUNE song, a PLATFORM KIT that draws a level and handles gravity and jumping, and a game loop that calls it.\n\nYou will add the walker, steering, the walk animation, jumping and music.",
+            "Everything from the earlier tours comes together here.\n\nAlready set up: WALKER with its walk in the compositor (frames 1-4 face right, 5-8 face left), the PLATFORM_TUNE song, a PLATFORM KIT block that draws a level and handles gravity and jumping, an empty CONTROLS block for your joystick routines, and a game loop that calls the kit.\n\nYou will add the walker, steering, the walk animation, jumping and music.",
             [], "NONE", "FIT"));
         array_push(_s, scr_tour_step("THE PLATFORM KIT",
             "LEVEL_DRAW clears the screen and draws the platforms.\n\nPHYS_UPDATE runs every frame: it pulls sprite 0 down, lands it on solid blocks and lets it fall off edges. PHYS_JUMP starts a jump when the sprite is standing.\n\nOpen the CODE blocks to read the 6502. Click NEXT.",
@@ -2230,10 +2322,10 @@ function scr_tour_define_page2(_id) {
             "Click FR on the JOYSTICK node. Fire will be the jump button.",
             ["FIELD:MACRO_JOY:FR", "NODETYPE:MACRO_JOY"], "JOY_FR"));
         array_push(_s, scr_tour_step_at("ATTACH LF",
-            "Drag the LF label onto the spine below JMP MAIN.",
-            ["LABELNAME:LF"], "LF_BELOW", "NODEOP:jmp_abs"));
+            "Drag the LF label onto the CONTROLS block, right of the PLATFORM KIT.\n\nThe joystick routines get a block of their own, beside the kit's routines.",
+            ["LABELNAME:LF"], "LF_BELOW", "ORGEND:CONTROLS"));
         array_push(_s, scr_tour_step_at("DRAG IN MOVE",
-            "Open MACROS 1 and drag MOVE onto the spine under LF.",
+            "Open MACROS 1 and drag MOVE onto the block under LF.",
             ["MAC:MACRO_MOVE", "MENU:0"], "MOVE_AFTER_LF", "LABELNAME:LF"));
         array_push(_s, scr_tour_step("WALK LEFT",
             "Set DX on the MOVE node to -2 and press ENTER.",
@@ -2242,19 +2334,19 @@ function scr_tour_define_page2(_id) {
             "A sprite's X register only goes up to 255, but the screen is wider than that. The 9th bit ($D010) carries X past 255.\n\nClick 9TH BIT on the MOVE node so the walker can reach the right side of the screen.",
             ["FIELD:MACRO_MOVE:wide", "LASTTYPE:MACRO_MOVE"], "MOVE_WIDE"));
         array_push(_s, scr_tour_step_at("MOVE THE LEGS",
-            "Drag JSR from the palette onto the spine under MOVE.",
+            "Drag JSR from the palette onto the block under MOVE.",
             ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LASTTYPE:MACRO_MOVE"));
         array_push(_s, scr_tour_step("FACE LEFT",
             "Click the JSR value and choose WALKER_ANIM_F5TO8, the walk facing left.\n\nThe walk only plays while the walker is moving, and he keeps facing the way he last walked.",
             ["PICK:WALKER_ANIM_F5TO8", "OPERANDNEW:jsr"], "JSRX:WALKER_ANIM_F5TO8:1"));
         array_push(_s, scr_tour_step_at("RETURN",
-            "Drag RTS from the palette onto the spine under that JSR.",
+            "Drag RTS from the palette onto the block under that JSR.",
             ["PAL:RTS", "ARROW:R"], "RTS_MORE", "LASTOP:jsr"));
         array_push(_s, scr_tour_step_at("ATTACH RT",
-            "Now the same for right. Drag the RT label onto the spine under that RTS.",
-            ["LABELNAME:RT"], "RT_BELOW", "LASTOP:rts"));
+            "Now the same for right. Drag the RT label onto the block under that RTS.",
+            ["LABELNAME:RT"], "RT_BELOW", "ORGEND:CONTROLS"));
         array_push(_s, scr_tour_step_at("ANOTHER MOVE",
-            "Drag another MOVE from MACROS 1 onto the spine under RT.",
+            "Drag another MOVE from MACROS 1 onto the block under RT.",
             ["MAC:MACRO_MOVE", "MENU:0"], "MOVE_2", "LABELNAME:RT"));
         array_push(_s, scr_tour_step("WALK RIGHT",
             "Set DX on the new MOVE node to 2 and press ENTER.",
@@ -2263,25 +2355,25 @@ function scr_tour_define_page2(_id) {
             "Click 9TH BIT on this MOVE node too.",
             ["FIELD:MACRO_MOVE:wide", "LASTTYPE:MACRO_MOVE"], "MOVE_WIDE"));
         array_push(_s, scr_tour_step_at("MOVE THE LEGS",
-            "Drag another JSR onto the spine under the new MOVE.",
+            "Drag another JSR onto the block under the new MOVE.",
             ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LASTTYPE:MACRO_MOVE"));
         array_push(_s, scr_tour_step("FACE RIGHT",
             "Click the new JSR value and choose WALKER_ANIM, the walk facing right.",
             ["PICK:WALKER_ANIM", "OPERANDNEW:jsr"], "JSRX:WALKER_ANIM:1"));
         array_push(_s, scr_tour_step_at("RETURN",
-            "Drag RTS onto the spine under that JSR.",
+            "Drag RTS onto the block under that JSR.",
             ["PAL:RTS", "ARROW:R"], "RTS_MORE", "LASTOP:jsr"));
         array_push(_s, scr_tour_step_at("ATTACH FR",
-            "Drag the FR label onto the spine under the last RTS.",
-            ["LABELNAME:FR"], "FR_BELOW", "LASTOP:rts"));
+            "Drag the FR label onto the CONTROLS block under the last RTS.",
+            ["LABELNAME:FR"], "FR_BELOW", "ORGEND:CONTROLS"));
         array_push(_s, scr_tour_step_at("JUMP",
-            "Drag JSR onto the spine under FR.",
+            "Drag JSR onto the block under FR.",
             ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LABELNAME:FR"));
         array_push(_s, scr_tour_step("CALL PHYS_JUMP",
             "Click the JSR value and choose PHYS_JUMP.\n\nIt only jumps while the walker is standing, so holding fire does not fly.",
             ["PICK:PHYS_JUMP", "OPERANDNEW:jsr"], "JSR_TO:PHYS_JUMP"));
         array_push(_s, scr_tour_step_at("RETURN",
-            "Drag RTS onto the spine under that JSR.",
+            "Drag RTS onto the block under that JSR.",
             ["PAL:RTS", "ARROW:R"], "RTS_MORE", "LASTOP:jsr"));
         // Diagonals: fire plus left or right jumps while walking
         array_push(_s, scr_tour_step("JUMP WHILE WALKING",
@@ -2291,40 +2383,40 @@ function scr_tour_define_page2(_id) {
             "Click RTF (right + fire) too.",
             ["FIELD:MACRO_JOY:RTF", "NODETYPE:MACRO_JOY"], "JOY_ROW:RTF"));
         array_push(_s, scr_tour_step_at("ATTACH LFF",
-            "Drag the LFF label onto the spine under the last RTS.",
-            ["LABELNAME:LFF"], "BELOW:LFF", "LASTOP:rts"));
+            "Drag the LFF label onto the CONTROLS block under the last RTS.",
+            ["LABELNAME:LFF"], "BELOW:LFF", "ORGEND:CONTROLS"));
         array_push(_s, scr_tour_step_at("JUMP...",
-            "Drag JSR onto the spine under LFF.",
+            "Drag JSR onto the block under LFF.",
             ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LABELNAME:LFF"));
         array_push(_s, scr_tour_step("CALL PHYS_JUMP",
             "Click the JSR value and choose PHYS_JUMP.",
             ["PICK:PHYS_JUMP", "OPERANDNEW:jsr"], "JSRX:PHYS_JUMP:2"));
         array_push(_s, scr_tour_step_at("...AND WALK",
-            "Now walk left as well. Your LF routine already does that, so call it too.\n\nDrag another JSR onto the spine under that JSR.",
+            "Now walk left as well. Your LF routine already does that, so call it too.\n\nDrag another JSR onto the block under that JSR.",
             ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LASTOP:jsr"));
         array_push(_s, scr_tour_step("CALL LF",
             "Click the new JSR value and choose LF.\n\nA joystick routine is called with JSR and ends with RTS, so any other routine can call it the same way.",
             ["PICK:LF", "OPERANDNEW:jsr"], "JSRX:LF:1"));
         array_push(_s, scr_tour_step_at("RETURN",
-            "Drag RTS onto the spine under JSR LF.",
+            "Drag RTS onto the block under JSR LF.",
             ["PAL:RTS", "ARROW:R"], "RTS_MORE", "LASTOP:jsr"));
         array_push(_s, scr_tour_step_at("ATTACH RTF",
-            "The same for right. Drag the RTF label onto the spine under the last RTS.",
-            ["LABELNAME:RTF"], "BELOW:RTF", "LASTOP:rts"));
+            "The same for right. Drag the RTF label onto the CONTROLS block under the last RTS.",
+            ["LABELNAME:RTF"], "BELOW:RTF", "ORGEND:CONTROLS"));
         array_push(_s, scr_tour_step_at("JUMP...",
-            "Drag JSR onto the spine under RTF.",
+            "Drag JSR onto the block under RTF.",
             ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LABELNAME:RTF"));
         array_push(_s, scr_tour_step("CALL PHYS_JUMP",
             "Click the JSR value and choose PHYS_JUMP.",
             ["PICK:PHYS_JUMP", "OPERANDNEW:jsr"], "JSRX:PHYS_JUMP:3"));
         array_push(_s, scr_tour_step_at("...AND WALK",
-            "Drag another JSR onto the spine under that JSR.",
+            "Drag another JSR onto the block under that JSR.",
             ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LASTOP:jsr"));
         array_push(_s, scr_tour_step("CALL RT",
             "Click the new JSR value and choose RT.",
             ["PICK:RT", "OPERANDNEW:jsr"], "JSRX:RT:1"));
         array_push(_s, scr_tour_step_at("RETURN",
-            "Drag RTS onto the spine under JSR RT.",
+            "Drag RTS onto the block under JSR RT.",
             ["PAL:RTS", "ARROW:R"], "RTS_MORE", "LASTOP:jsr"));
         array_push(_s, scr_tour_step("OPEN MUSIC MAKER",
             "Time for music. Click EDIT on the PLATFORM_TUNE row.\n\nPress F1 to hear it first if you like: drums and bass share voice 1, fast chord arpeggios run on voice 2 and the lead sings on voice 3, in the style of the Maniacs of Noise.",
@@ -2372,7 +2464,7 @@ function scr_tour_define_page2(_id) {
             "Click CLOSE at the top right, or press ESC.",
             ["ASSET:CLOSE"], "BMP_CLOSED"));
         array_push(_s, scr_tour_step_focus("WHAT IT MADE",
-            "Under SYSTEM INIT: JSR NIGHT_SKY_SHOW. It runs once, shows the bitmap and switches the sprites off.\n\nAfter the loop, behind an RTS so the program never runs into them: NIGHT_SKY_SHOW, then NIGHT_SKY_FRAME, the multiplexer. Its SPRITE nodes place the UFOs, a VWAIT waits for the balloons' row, then the same 8 sprites become the balloons.",
+            "Under SYSTEM INIT: JSR NIGHT_SKY_SHOW. It runs once, shows the bitmap and switches the sprites off.\n\nThe routines are in blocks of their own, right of the program: NIGHT_SKY_SHOW in NIGHT_SKY SHOW, and NIGHT_SKY_FRAME, the multiplexer, in NIGHT_SKY MUX next to it. Click the fold box on a block to fold it away. The multiplexer's SPRITE nodes place the UFOs, a VWAIT waits for the balloons' row, then the same 8 sprites become the balloons.\n\nEach routine's nodes are tabbed in under its label, with the RTS back out.",
             [], "NONE", "FIT"));
         array_push(_s, scr_tour_step_at("CALL IT EVERY FRAME",
             "The multiplexer has to run every frame.\n\nDrag JSR from the opcode palette onto the spine under MAIN.",
@@ -2390,7 +2482,7 @@ function scr_tour_define_page2(_id) {
 
     if (_id == 13) {
         array_push(_s, scr_tour_step_focus("WELCOME",
-            "Bitmap objects are software sprites: shapes the CPU draws into the bitmap itself, with a mask so the picture shows round them. There is no limit of 8, but they move in whole character cells.\n\nReady made for you: NIGHT_SKY on screen, a ROCKET object, the variables UV_ROCKET_X and UV_ROCKET_Y, and a loop where the JOYSTICK changes them. LF, RT, UP and DN keep the rocket on screen.",
+            "Bitmap objects are software sprites: shapes the CPU draws into the bitmap itself, with a mask so the picture shows round them. There is no limit of 8, but they move in whole character cells.\n\nReady made for you: NIGHT_SKY on screen, a ROCKET object, the variables UV_ROCKET_X and UV_ROCKET_Y, and a loop where the JOYSTICK changes them. Its routines, LF, RT, UP and DN, are in the ROCKET CONTROLS block and keep the rocket on screen.",
             [], "NONE", "FIT"));
         array_push(_s, scr_tour_step("OPEN ROCKET",
             "Click EDIT on the ROCKET row to open the object editor.",
@@ -2470,18 +2562,30 @@ function scr_tour_sky_colour(_x, _y) {
     if (_y >= 184) return 9;            // earth (cell rows 23-24)
     if (_y >= _hill + 2) return 5;      // hills
     if (_y >= _hill) return 13;         // grass along the top
-    var _dx = (_x - 128) * 2;           // moon: pixels are twice as wide
-    var _dy = _y - 30;
-    if (_dx * _dx + _dy * _dy <= 144) return 7;
-    if (_y < 120 && ((_x * 73 + _y * 151 + ((_x * _y) mod 97)) mod 211) == 0) return 1;   // stars
-    return scr_tour_sky_band(_y div 8);
+    // Moon: an ellipse in HiRes pixels (a fat pixel's centre is 2x + 1),
+    // a little wider than tall, with a pink ring to soften its edge
+    var _dx = ((_x - 128) * 2 + 1) / 19;
+    var _dy = (_y - 34) / 16;
+    var _d  = _dx * _dx + _dy * _dy;
+    if (_d <= 1) return 7;
+    if (_d <= 1.35) return 10;
+    // Stars, high in the sky and clear of the moon
+    var _near_moon = (abs((_x - 128) * 2) < 52 && abs(_y - 34) < 30);
+    if (_y < 120 && !_near_moon && ((_x * 73 + _y * 151 + ((_x * _y) mod 97)) mod 211) == 0) return 1;
+    return scr_tour_sky_grad(_x, _y);
 }
 
-/// @desc Sky colour of cell row _cy: black (the background) at the top,
-///       then blue, then purple down to the hills.
-function scr_tour_sky_band(_cy) {
-    if (_cy < 6) return 0;
-    if (_cy < 11) return 6;
+/// @desc The sky: black at the top, a dithered fade to blue, blue, a
+///       dithered fade to purple, purple down to the hills. A 4x4 ordered
+///       (Bayer) dither on the fat pixels; every fade is between two colours
+///       only, so a cell never needs more than the C64 allows.
+function scr_tour_sky_grad(_x, _y) {
+    static _bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+    var _th = _bayer[(_y & 3) * 4 + (_x & 3)] + 0.5;
+    if (_y < 32) return 0;
+    if (_y < 64) return (((_y - 32) / 32) * 16 > _th) ? 6 : 0;
+    if (_y < 88) return 6;
+    if (_y < 112) return (((_y - 88) / 24) * 16 > _th) ? 4 : 6;
     return 4;
 }
 
@@ -2494,7 +2598,9 @@ function scr_tour_make_night_sky(_with_sprites) {
     if (!instance_exists(obj_asset_manager)) {
         return;
     }
-    var _dir = working_directory + "cache/tour/";
+    // The app's own save folder: always writable. (working_directory is
+    // inside the app bundle on macOS, where nothing can be written.)
+    var _dir = game_save_id + "tour/";
     if (!directory_exists(_dir)) {
         directory_create(_dir);
     }
@@ -2505,25 +2611,46 @@ function scr_tour_make_night_sky(_with_sprites) {
     buffer_poke(_buf, 1, buffer_u8, 0x60);
     for (var _cy = 0; _cy < 25; _cy++) {
         for (var _cx = 0; _cx < 40; _cx++) {
-            // colours for pairs 01, 10, 11 (-1 = free)
-            var _slots = [-1, -1, -1];
-            if (_cy < 16) {
-                var _band = scr_tour_sky_band(_cy);
-                _slots = [(_band == 0) ? -1 : _band, 1, 7];
+            // The cell's colours, then its slots for pairs 01, 10, 11 (-1 =
+            // free). The sky prefers the same slots everywhere - 01 the sky
+            // (blue, else purple), 10 white, 11 yellow - so the ROCKET (body
+            // in 10, flame in 11, window in 01) looks the same over most of
+            // it. Anything else goes in 11 first, so the body stays white.
+            var _px = array_create(32, 0);
+            var _has = array_create(16, false);
+            for (var _r = 0; _r < 8; _r++) {
+                for (var _p = 0; _p < 4; _p++) {
+                    var _pc = scr_tour_sky_colour(_cx * 4 + _p, _cy * 8 + _r);
+                    _px[_r * 4 + _p] = _pc;
+                    _has[_pc] = true;
+                }
             }
+            var _slots = [-1, -1, -1];
+            if (_has[6]) { _slots[0] = 6; } else if (_has[4]) { _slots[0] = 4; }
+            if (_has[1]) { _slots[1] = 1; }
+            if (_has[7]) { _slots[2] = 7; }
+            for (var _c = 1; _c < 16; _c++) {
+                if (!_has[_c] || _slots[0] == _c || _slots[1] == _c || _slots[2] == _c) continue;
+                if (_slots[2] == -1) { _slots[2] = _c; }
+                else if (_slots[1] == -1) { _slots[1] = _c; }
+                else if (_slots[0] == -1) { _slots[0] = _c; }
+            }
+            // Slots the cell doesn't use still get the usual colours. A cell
+            // of plain sky has no white or yellow of its own, and without
+            // these a ROCKET drawn there comes out black on black.
+            if (_slots[0] == -1) { _slots[0] = 6; }
+            if (_slots[1] == -1) { _slots[1] = 1; }
+            if (_slots[2] == -1) { _slots[2] = 7; }
             for (var _r = 0; _r < 8; _r++) {
                 var _byte = 0;
                 for (var _p = 0; _p < 4; _p++) {
-                    var _c = scr_tour_sky_colour(_cx * 4 + _p, _cy * 8 + _r);
+                    var _c2 = _px[_r * 4 + _p];
                     var _v = 0;
-                    if (_c != 0) {
+                    if (_c2 != 0) {
                         for (var _s = 0; _s < 3 && _v == 0; _s++) {
-                            if (_slots[_s] == _c) _v = _s + 1;
+                            if (_slots[_s] == _c2) _v = _s + 1;
                         }
-                        for (var _s = 0; _s < 3 && _v == 0; _s++) {
-                            if (_slots[_s] == -1) { _slots[_s] = _c; _v = _s + 1; }
-                        }
-                        if (_v == 0) _v = 3;
+                        if (_v == 0) _v = 3;   // a fourth colour (never planned)
                     }
                     _byte |= _v << (6 - _p * 2);
                 }
@@ -2535,15 +2662,16 @@ function scr_tour_make_night_sky(_with_sprites) {
         }
     }
     buffer_poke(_buf, 10002, buffer_u8, 0);
+    // The file is only where later edits are saved; the picture itself goes
+    // straight into the asset, so it shows even if the file can't be written
     buffer_save(_buf, _path);
-    buffer_delete(_buf);
 
     var _a = {
         type          : "BITMAP",
         name          : "NIGHT_SKY",
         file          : _path,
         address       : scr_asset_default_address("BITMAP"),
-        buffer        : buffer_create(1, buffer_fixed, 1),
+        buffer        : _buf,
         meta          : {
             format        : "koala",
             preview_surf  : -1,
@@ -2580,7 +2708,12 @@ function scr_tour_make_night_sky(_with_sprites) {
         group         : ""
     };
     ds_list_add(obj_asset_manager.asset_list, _a);
-    scr_asset_kla_reload(_a);
+    // What scr_asset_kla_reload does after loading the file
+    scr_asset_bmp_build_preview(_a);
+    if (surface_exists(_a.meta.preview_surf)) {
+        _a.meta.pixel_backup = buffer_create(320 * 200 * 4, buffer_fixed, 1);
+        buffer_get_surface(_a.meta.pixel_backup, _a.meta.preview_surf, 0);
+    }
 
     if (!_with_sprites) {
         return;
@@ -2604,11 +2737,14 @@ function scr_tour_make_night_sky(_with_sprites) {
     var _o = { version: 3, show: true, mc1: 11, mc2: 7, mux_nodes: true, sprites: [], gen_org: -1, gen_nodes: [] };
     var _ucol = [13, 3, 10, 14, 15];
     for (var _i = 0; _i < 5; _i++) {
-        var _sp = scr_bmp_spr_new(24 + _i * 50, 30, _ucol[_i], 1, 0, 0, 0);
+        // spaced so the last one stays clear of the moon
+        var _sp = scr_bmp_spr_new(16 + _i * 44, 30, _ucol[_i], 1, 0, 0, 0);
         _sp.px = scr_tour_sprite_px(_ufo);
         array_push(_o.sprites, _sp);
     }
-    var _bcol = [2, 8, 10, 4, 5, 14];
+    // red, orange, pink, light green, green, light blue: none of them the
+    // sky's blue or purple
+    var _bcol = [2, 8, 10, 13, 5, 14];
     for (var _i = 0; _i < 6; _i++) {
         var _sp2 = scr_bmp_spr_new(16 + _i * 50, 96, _bcol[_i], 1, 0, 0, 0);
         _sp2.px = scr_tour_sprite_px(_bal);
@@ -2739,15 +2875,18 @@ function scr_tour_build_rocket_starter() {
         ["UP", "UP",    "UV_ROCKET_Y", "    beq rk_up\n    dec UV_ROCKET_Y\nrk_up:\n"],
         ["DN", "DOWN",  "UV_ROCKET_Y", "    cmp #12\n    bcs rk_dn\n    inc UV_ROCKET_Y\nrk_dn:\n"]
     ];
+    // The joystick's routines: a block of their own, right of the program
+    var _rc = scr_tour_routine_org("ROCKET CONTROLS");
     for (var _d = 0; _d < 4; _d++) {
-        scr_tour_spine_label(_dirs[_d][0], _st);
+        scr_tour_spine_label(_dirs[_d][0], _rc);
         scr_tour_spine_code("ROCKET " + _dirs[_d][1],
             "; One cell " + string_lower(_dirs[_d][1]) + ", but not off the sky\n"
-          + "    lda " + _dirs[_d][2] + "\n" + _dirs[_d][3] + "    rts\n", _st);
+          + "    lda " + _dirs[_d][2] + "\n" + _dirs[_d][3] + "    rts\n", _rc);
     }
     for (var _d = 0; _d < 4; _d++) {
         scr_tour_enable_row(_joy, _dirs[_d][0], false);
     }
+    scr_tidy_all_indents();
 }
 
 /// @desc An 8 slot multicolour SPRITE_SET called WALKER holding a side-on
@@ -2921,13 +3060,14 @@ function scr_tour_make_platform_kit() {
     }
 }
 
-/// @desc Connected main-spine JSR whose target starts with _name, or noone.
+/// @desc JSR on the main spine or in a code ORG whose target starts with
+///       _name, or noone.
 ///       _loop_only: only one inside the MAIN loop.
 function scr_tour_jsr_to(_name, _loop_only) {
     var _want = string_upper(_name);
     var _hit  = noone;
     with (obj_c64_node) {
-        if (_hit == noone && is_connected && org_parent == noone && node_type == "NORMAL" && array_length(instructions) > 0) {
+        if (_hit == noone && node_type == "NORMAL" && scr_tour_on_code(id) && array_length(instructions) > 0) {
             if (string_lower(string(instructions[0][0])) == "jsr"
             &&  string_pos(_want, string_upper(string(instructions[0][1]))) == 1) {
                 if (!_loop_only || scr_tour_in_loop(id)) {
@@ -2939,12 +3079,12 @@ function scr_tour_jsr_to(_name, _loop_only) {
     return _hit;
 }
 
-/// @desc How many connected main-spine JSRs target a label starting with _name.
+/// @desc How many JSRs (main spine and code ORGs) target a label starting with _name.
 function scr_tour_jsr_count(_name) {
     var _want = string_upper(_name);
     var _c    = 0;
     with (obj_c64_node) {
-        if (is_connected && org_parent == noone && node_type == "NORMAL" && array_length(instructions) > 0) {
+        if (node_type == "NORMAL" && scr_tour_on_code(id) && array_length(instructions) > 0) {
             if (string_lower(string(instructions[0][0])) == "jsr"
             &&  string_pos(_want, string_upper(string(instructions[0][1]))) == 1) {
                 _c++;
@@ -3564,6 +3704,15 @@ function scr_tour_do_action(_st, _dry) {
             if (_dry) {
                 return "1";
             }
+            // A bitmap still being edited leaves edit mode first (the EDIT
+            // button: it saves the picture and ends the full-screen editor),
+            // then the tour Step closes the viewer once that has happened
+            var _cb = scr_tour_viewer_bitmap();
+            if (!is_undefined(_cb) && (_cb.meta[$ "is_editing"] ?? false)) {
+                global.tour_click = "ASSET:BMP_EDIT";
+                close_pending = 30;
+                return "I clicked EDIT to finish editing, which saves the picture, then CLOSE at the top right.";
+            }
             scr_tour_close_viewer();
             return "I clicked CLOSE at the top right of the viewer. Your work is kept.";
         case "BMP_LINKED":
@@ -3740,6 +3889,9 @@ function scr_tour_node_desc(_n) {
     if (_n.node_type == "INIT") {
         return "SYSTEM INIT";
     }
+    if (_n.node_type == "ORG") {
+        return "the " + string(_n.node_title) + " block";
+    }
     if (_n.node_type == "LABEL") {
         return string(_n.instructions[0][1]);
     }
@@ -3829,13 +3981,13 @@ function scr_tour_label_like(_name) {
     return _hit;
 }
 
-/// @desc How many connected main-spine _op nodes (jsr / jmp_abs) target
+/// @desc How many _op nodes (jsr / jmp_abs) on the main spine or in code ORGs target
 ///       exactly the label _name.
 function scr_tour_jump_count(_op, _name) {
     var _want = string_upper(_name);
     var _c    = 0;
     with (obj_c64_node) {
-        if (is_connected && org_parent == noone && node_type == "NORMAL" && array_length(instructions) > 0) {
+        if (node_type == "NORMAL" && scr_tour_on_code(id) && array_length(instructions) > 0) {
             if (string_lower(string(instructions[0][0])) == _op && string_upper(string(instructions[0][1])) == _want) {
                 _c++;
             }
