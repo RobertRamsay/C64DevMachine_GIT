@@ -1329,8 +1329,10 @@ if (gui_menu_open == 3) {
     if (array_length(global.recent_files) > 0) {
         array_push(_proj_list, { title: "--- RECENTS ---", action: "HEADER" });
         for (var _rfi = 0; _rfi < array_length(global.recent_files); _rfi++) {
-            array_push(_proj_list, { title: "", action: "RECENT", path: global.recent_files[_rfi] });
+            array_push(_proj_list, { title: "", action: "RECENT", path: global.recent_files[_rfi],
+                                     found: file_exists(global.recent_files[_rfi]) });
         }
+        array_push(_proj_list, { title: "CLEAR RECENTS", action: "CLEAR_RECENTS" });
     }
 
     var _item_h_p   = 20;
@@ -1380,6 +1382,10 @@ if (gui_menu_open == 3) {
             draw_set_color(_as_title_cols[global.autosave_mode]);
             draw_text_l(_ix1 + 10 + string_width_l("AUTOSAVE "), _iy + 3, _as_title_labels[global.autosave_mode]);
         } else if (_pp.action == "RECENT") {
+            // Recent files in blue; red when the file has gone (moved or deleted)
+            if (!_ihov) {
+                draw_set_color(_pp.found ? make_color_rgb(110, 170, 255) : make_color_rgb(230, 70, 70));
+            }
             draw_text_l(_ix1 + 10, _iy + 3, scr_recent_files_label(_pp.path, _panel_w_p - 20));
         } else {
             draw_text_l(_ix1 + 10, _iy + 3, _pp.title);
@@ -1516,6 +1522,9 @@ if (gui_menu_open == 3) {
                     break;
                 case "RECENT":
                     scr_recent_files_open(_pp.path);
+                    break;
+                case "CLEAR_RECENTS":
+                    scr_recent_files_clear();
                     break;
                 case "OPEN_AUTOSAVES":
                     if (os_type == os_macosx) {
@@ -4250,7 +4259,7 @@ if (welcome_open) {
                 _wy += 16;
                 continue;
             }
-            draw_text_l(_px + 30, _wy, "- " + welcome_whats_new[_wi]);
+            draw_text_l(_px + 14, _wy, "- " + welcome_whats_new[_wi]);
             _wy += 16;
         }
 

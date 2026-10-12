@@ -413,6 +413,7 @@
  "CLAMP:": "限制:",
  "CLEAR": "清除",
  "CLEAR:": "清除:",
+ "CLEAR RECENTS": "清除最近项目",
  "CLICK = ACTIVE CHAR   ALT+CLICK THE PANEL TO PICK   ARROWS MOVE THE CURSOR   CTRL+Z/Y UNDO": "点击 = 当前字符   ALT+点击面板拾取   方向键移动光标   CTRL+Z/Y 撤销",
  "CLICK A CELL, TYPE A NOTE (C-4, C#3, ---)   |   ENTER COMMITS + DROPS A ROW   |   DEL CLEARS   |   BKSP PULLS UP   |   INS PUSHES DOWN   |   UP/DOWN MOVES   |   SPACE LOOP ROW   |   SHIFT+SPACE FROM START   |   CTRL+SPACE PLAY SONG": "点击格子, 输入音符 (C-4, C#3, ---)   |   ENTER 确认并下移一行   |   DEL 清除   |   BKSP 上提   |   INS 下推   |   上/下 移动   |   空格 循环该行   |   SHIFT+空格 从头播放   |   CTRL+空格 播放乐曲",
  "CLICK A GRID": "点击网格",

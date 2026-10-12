@@ -176,9 +176,32 @@ draw_set_valign(fa_top);
 draw_set_font_l(fnt_C64_Angled);
 draw_set_color(make_color_rgb(220, 140, 40));
 draw_text_l(_px + 20, _py + 16, tour_title);
+// DO IT ALL (top right): the tour finishes itself; STOP hands it back
+var _all_on = (step_idx < array_length(steps) - 1);
+btn_all = [_px + _pw - 20 - 92, _py + 12, _px + _pw - 20, _py + 30];
+var _cnt_x = _px + _pw - 20;
+if (_all_on) {
+    var _amx = device_mouse_x_to_gui(0);
+    var _amy = device_mouse_y_to_gui(0);
+    var _ahv = point_in_rectangle(_amx, _amy, btn_all[0], btn_all[1], btn_all[2], btn_all[3]);
+    if (auto_all) {
+        draw_set_color(_ahv ? make_color_rgb(170, 60, 60) : make_color_rgb(130, 40, 40));
+    } else {
+        draw_set_color(_ahv ? make_color_rgb(60, 110, 170) : make_color_rgb(40, 80, 130));
+    }
+    draw_rectangle(btn_all[0], btn_all[1], btn_all[2], btn_all[3], false);
+    draw_set_color(make_color_rgb(120, 170, 230));
+    draw_rectangle(btn_all[0], btn_all[1], btn_all[2], btn_all[3], true);
+    draw_set_font_l(fnt_c64_tiny);
+    draw_set_halign(fa_center);
+    draw_set_color(c_white);
+    draw_text_l((btn_all[0] + btn_all[2]) * 0.5, btn_all[1] + 4, auto_all ? "STOP" : "DO IT ALL");
+    draw_set_font_l(fnt_C64_Angled);
+    _cnt_x = btn_all[0] - 8;
+}
 draw_set_halign(fa_right);
 draw_set_color(make_color_rgb(140, 140, 160));
-draw_text(_px + _pw - 20, _py + 16, string(step_idx + 1) + " / " + string(array_length(steps)));
+draw_text(_cnt_x, _py + 16, string(step_idx + 1) + " / " + string(array_length(steps)));
 draw_set_halign(fa_left);
 
 // Step title (flashes green when done)

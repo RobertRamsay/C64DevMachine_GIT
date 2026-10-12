@@ -46,6 +46,14 @@ btn_exit  = [0, 0, 0, 0];
 btn_doit  = [0, 0, 0, 0];
 doit_vis  = false;     // DO IT FOR ME shown (and clickable) this frame
 
+// DO IT ALL: the tour runs itself to the end (STOP, or a step it can't do,
+// hands it back). auto_wait spaces the steps out; auto_stall counts frames
+// spent on a step that won't finish.
+btn_all    = [0, 0, 0, 0];
+auto_all   = false;
+auto_wait  = 0;
+auto_stall = 0;
+
 // What DO IT FOR ME last did, shown on that step and the one after
 did_text  = "";
 did_step  = -1;

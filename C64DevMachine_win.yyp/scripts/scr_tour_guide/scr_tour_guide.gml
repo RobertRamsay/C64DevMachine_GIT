@@ -179,6 +179,8 @@ function scr_tour_list() {
         // Page 2
         { title: "ANIMATE A SPRITE",    blurb: "Set up a 4 frame walk in the compositor and CONVERT TO NODES." },
         { title: "PLATFORM GAME",       blurb: "Walk, jump and fall off platforms, with animation and music." },
+        { title: "BITMAP SPRITES",      blurb: "11 ready-made sprites over a bitmap: the 8 per line rule and SETUP NODES." },
+        { title: "BITMAP OBJECTS",      blurb: "Fly a ready-made software sprite over a bitmap with the joystick." },
     ];
 }
 
@@ -594,6 +596,8 @@ function scr_tour_enter_step() {
     step_timer = 0;
     done_timer = 0;
     hl_have    = false;
+    auto_wait  = 0;    // DO IT ALL gives every step a moment before acting
+    auto_stall = 0;
 
     var _targets = [];
     var _focus   = "";
@@ -1038,6 +1042,14 @@ function scr_tour_panel_click_self() {
     mouse_clear(mb_left);
 
     var _last = array_length(steps) - 1;
+
+    if (step_idx < _last && point_in_rectangle(_mx, _my, btn_all[0], btn_all[1], btn_all[2], btn_all[3])) {
+        auto_all   = !auto_all;
+        auto_wait  = 0;
+        auto_stall = 0;
+        hold_auto  = false;
+        return;
+    }
 
     if (doit_vis && point_in_rectangle(_mx, _my, btn_doit[0], btn_doit[1], btn_doit[2], btn_doit[3])) {
         doit_vis = false;
@@ -2331,6 +2343,93 @@ function scr_tour_define_page2(_id) {
             [], "NONE"));
     }
 
+    if (_id == 12) {
+        array_push(_s, scr_tour_step_focus("WELCOME",
+            "A multicolour bitmap called NIGHT_SKY is in your asset panel, with 11 hardware sprites already drawn over it: 5 UFOs and 6 balloons. A game loop (MAIN, VWAIT, JMP MAIN) is set up too.\n\nIn this tour you will look at the sprite layer, learn the 8 sprites a line rule, and turn it all into nodes with one button.",
+            [], "NONE", "FIT"));
+        array_push(_s, scr_tour_step("OPEN NIGHT_SKY",
+            "Click EDIT on the NIGHT_SKY row to open it.",
+            ["ASSET:EDIT:BITMAP", "ASSET:PANEL"], "BMP_OPEN"));
+        array_push(_s, scr_tour_step("EDIT MODE",
+            "Click EDIT at the top of the viewer to start editing.\n\nThe sprite tools are in the column on the left.",
+            ["ASSET:BMP_EDIT"], "BMP_EDITING"));
+        array_push(_s, scr_tour_step("THE SPRITE LAYER",
+            "Click PAINT: SPRITES (or press S).\n\nClicks on the canvas now go to the sprites, not the bitmap, and each sprite gets a box round it.",
+            ["BSPR:PAINT"], "BSPR_MODE"));
+        array_push(_s, scr_tour_step("HARDWARE SPRITES",
+            "Each sprite is 24 x 21 pixels with one colour of its own, plus MC1 and MC2: two colours every multicolour sprite shares. They float over the bitmap without changing it.\n\nThese are ready made, but they are yours: click one to select it and paint on it, or pick MOVE and drag it. CTRL+Z undoes.",
+            [], "NONE"));
+        array_push(_s, scr_tour_step("8 ON A LINE",
+            "The VIC chip has 8 hardware sprites, and shows at most 8 on any raster line.\n\nThe UFOs are one row (5 sprites) and the balloons another (6). That is 11 sprites, but never more than 8 on the same lines, so it works: the 8 hardware sprites draw the UFOs, then move down and draw the balloons. That trick is a multiplexer.\n\nPut a 9th sprite level with a row and those lines turn red, with OVER 8 ON LINE in the panel. Move it down, past the others plus a small gap.",
+            [], "NONE"));
+        array_push(_s, scr_tour_step("MUX: NODES",
+            "This button picks how the multiplexer is built. It is set to MUX: NODES, so you can see every step as nodes: a VWAIT to reach each row, then a SPRITE node per sprite.\n\nMUX: CODE builds one fast code block instead, which copes better with rows close together.",
+            ["BSPR:MUX"], "NONE"));
+        array_push(_s, scr_tour_step("SETUP NODES",
+            "Click SETUP NODES, then OK on the message.\n\nIt puts the sprites into a sprite set next to the bitmap and builds the nodes for you.",
+            ["BSPR:SETUP"], "BSPR_SETUP"));
+        array_push(_s, scr_tour_step("CLOSE THE EDITOR",
+            "Click CLOSE at the top right, or press ESC.",
+            ["ASSET:CLOSE"], "BMP_CLOSED"));
+        array_push(_s, scr_tour_step_focus("WHAT IT MADE",
+            "Under SYSTEM INIT: JSR NIGHT_SKY_SHOW. It runs once, shows the bitmap and switches the sprites off.\n\nAfter the loop, behind an RTS so the program never runs into them: NIGHT_SKY_SHOW, then NIGHT_SKY_FRAME, the multiplexer. Its SPRITE nodes place the UFOs, a VWAIT waits for the balloons' row, then the same 8 sprites become the balloons.",
+            [], "NONE", "FIT"));
+        array_push(_s, scr_tour_step_at("CALL IT EVERY FRAME",
+            "The multiplexer has to run every frame.\n\nDrag JSR from the opcode palette onto the spine under MAIN.",
+            ["PAL:JSR", "ARROW:R"], "JSR_MORE", "LABELNAME:MAIN"));
+        array_push(_s, scr_tour_step("CALL NIGHT_SKY_FRAME",
+            "Click the JSR value and choose NIGHT_SKY_FRAME.\n\nThe loop comes round once a frame, so the sprites are put back at the top and moved down again every time.",
+            ["PICK:NIGHT_SKY_FRAME", "OPERANDNEW:jsr"], "JSR_LOOP:NIGHT_SKY_FRAME"));
+        array_push(_s, scr_tour_step("BUILD AND RUN",
+            "Press F5, or click BUILD & RUN on the right, to build and launch.",
+            ["UI:BUILD & RUN"], "BUILT"));
+        array_push(_s, scr_tour_step("DONE!",
+            "11 sprites over your picture, from only 8 in the hardware.\n\nTry: drag a balloon up next to the UFOs and watch the lines turn red. Switch to MUX: CODE and press SETUP NODES again: it replaces the nodes it made before. Or add another row.",
+            [], "NONE"));
+    }
+
+    if (_id == 13) {
+        array_push(_s, scr_tour_step_focus("WELCOME",
+            "Bitmap objects are software sprites: shapes the CPU draws into the bitmap itself, with a mask so the picture shows round them. There is no limit of 8, but they move in whole character cells.\n\nReady made for you: NIGHT_SKY on screen, a ROCKET object, the variables UV_ROCKET_X and UV_ROCKET_Y, and a loop where the JOYSTICK changes them. LF, RT, UP and DN keep the rocket on screen.",
+            [], "NONE", "FIT"));
+        array_push(_s, scr_tour_step("OPEN ROCKET",
+            "Click EDIT on the ROCKET row to open the object editor.",
+            ["ASSET:EDIT:BMP_OBJECTS", "ASSET:PANEL"], "BOBJ_VIEW"));
+        array_push(_s, scr_tour_step("THE OBJECT EDITOR",
+            "MULTICOLOUR (top right) matches NIGHT_SKY. Objects must be the same mode as the bitmap they are drawn on: HIRES objects for a HIRES bitmap, MULTICOLOUR for a multicolour one.\n\nPaint with the PEN bar: the left button paints, SHIFT+left paints mask (solid, it hides the picture), the right button erases (see-through). The checkerboard is see-through.\n\nChange the rocket if you like, it is yours.",
+            [], "NONE"));
+        array_push(_s, scr_tour_step("CLOSE THE EDITOR",
+            "Click CLOSE at the top right, or press ESC.",
+            ["ASSET:CLOSE"], "BMP_CLOSED"));
+        array_push(_s, scr_tour_step_at("DRAG IN BMP OBJECT",
+            "Open MACROS 1 and drag BMP OBJECT onto the spine between JOYSTICK and JMP MAIN.",
+            ["MAC:MACRO_BMP_OBJ", "MENU:0"], "BOBJ_IN_LOOP", "NODETYPE:MACRO_JOY"));
+        array_push(_s, scr_tour_step("IT FILLED ITSELF IN",
+            "ASSET is ROCKET. BMP is $4000, the NIGHT_SKY bitmap your BITMAP node shows, and SCREEN is $6000, that bitmap's screen RAM.\n\nCOL and ROW are character cells: 0-39 across, 0-24 down.",
+            ["NODETYPE:MACRO_BMP_OBJ"], "NONE"));
+        array_push(_s, scr_tour_step("MAKE IT MOVE",
+            "Hold SHIFT and click MODE once, so it says MOVE. A plain click steps through DRAW, SAVE + DRAW, RESTORE and MOVE.\n\nMOVE puts back the picture it covered last time, then saves and draws at the new place, so the rocket leaves no trail.",
+            ["NODETYPE:MACRO_BMP_OBJ"], "BOBJ_MOVE"));
+        array_push(_s, scr_tour_step("COLUMN FROM A VARIABLE",
+            "Click COL VAR and choose UV_ROCKET_X.",
+            ["PICK:UV_ROCKET_X", "NODETYPE:MACRO_BMP_OBJ"], "BOBJ_CVAR"));
+        array_push(_s, scr_tour_step("ROW FROM A VARIABLE",
+            "Click ROW VAR and choose UV_ROCKET_Y.",
+            ["PICK:UV_ROCKET_Y", "NODETYPE:MACRO_BMP_OBJ"], "BOBJ_RVAR"));
+        array_push(_s, scr_tour_step("BUILD AND RUN",
+            "Press F5, or click BUILD & RUN on the right, to build and launch.",
+            ["UI:BUILD & RUN"], "BUILT"));
+        array_push(_s, scr_tour_step("FLY IT",
+            "Push the joystick in port 2 to fly the rocket over the sky.\n\nNo joystick? In VICE's joystick settings, set port 2 to a keyset and use the cursor keys.\n\nThe four VWAITs make the loop run about 12 times a second, so the rocket moves one cell at a time at a sensible speed.",
+            [], "NONE"));
+        array_push(_s, scr_tour_step("THE LIMITS",
+            "It moves in whole cells, 8 pixels a step: COL and ROW are character positions.\n\nIts colours come from the cells it covers (AUTO). In multicolour, pairs 01 and 10 use the screen RAM and 11 uses colour RAM. A fixed colour writes the cells, and a restore does not put them back.\n\nObjects must match the bitmap: HIRES or MULTICOLOUR.\n\nThe CPU copies every byte, so big objects take time. Hardware sprites are smoother; objects are for scenery, props and slow movers.",
+            [], "NONE"));
+        array_push(_s, scr_tour_step("DONE!",
+            "Your rocket flies over the bitmap without a trail.\n\nTry: add a second BMP OBJECT in DRAW mode for scenery, open ROCKET and redraw it, or GRAB FROM BITMAP to cut a new object out of a picture.",
+            [], "NONE"));
+    }
+
     return _s;
 }
 
@@ -2345,6 +2444,309 @@ function scr_tour_setup_page2(_id) {
         scr_tour_make_music("tour_platform_music.json", "PLATFORM_TUNE");
         scr_tour_make_platform_kit();
         scr_tour_build_starter("PLATFORM");
+    }
+    if (_id == 12) {
+        scr_tour_make_night_sky(true);
+        scr_tour_build_starter("LOOP");
+    }
+    if (_id == 13) {
+        scr_tour_make_night_sky(false);
+        scr_tour_make_rocket();
+        scr_tour_build_rocket_starter();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// BITMAP SPRITES / BITMAP OBJECTS tours: a ready-made night sky, sprites
+// over it, and a ROCKET bitmap object.
+// ---------------------------------------------------------------------------
+
+/// @desc C64 colour of multicolour pixel (_x 0-159, _y 0-199) of the night
+///       sky: sky bands, stars, a moon, green hills and earth. Every sky cell
+///       (rows 0-15) uses the same colour slots - 01 its band, 10 white,
+///       11 yellow - so a bitmap object over the sky looks the same anywhere.
+function scr_tour_sky_colour(_x, _y) {
+    var _hill = 150 + 12 * sin(_x * 0.07) + 6 * sin(_x * 0.19 + 1);
+    if (_y >= 184) return 9;            // earth (cell rows 23-24)
+    if (_y >= _hill + 2) return 5;      // hills
+    if (_y >= _hill) return 13;         // grass along the top
+    var _dx = (_x - 128) * 2;           // moon: pixels are twice as wide
+    var _dy = _y - 30;
+    if (_dx * _dx + _dy * _dy <= 144) return 7;
+    if (_y < 120 && ((_x * 73 + _y * 151 + ((_x * _y) mod 97)) mod 211) == 0) return 1;   // stars
+    return scr_tour_sky_band(_y div 8);
+}
+
+/// @desc Sky colour of cell row _cy: black (the background) at the top,
+///       then blue, then purple down to the hills.
+function scr_tour_sky_band(_cy) {
+    if (_cy < 6) return 0;
+    if (_cy < 11) return 6;
+    return 4;
+}
+
+/// @desc A multicolour BITMAP asset called NIGHT_SKY at the default bitmap
+///       address, written as a KLA file (cache/tour/NIGHT_SKY.kla) and loaded
+///       the way an imported one is. _with_sprites also puts 11 hardware
+///       sprites over it: a row of 5 UFOs and a row of 6 balloons, with the
+///       multiplexer set to MUX: NODES.
+function scr_tour_make_night_sky(_with_sprites) {
+    if (!instance_exists(obj_asset_manager)) {
+        return;
+    }
+    var _dir = working_directory + "cache/tour/";
+    if (!directory_exists(_dir)) {
+        directory_create(_dir);
+    }
+    var _path = _dir + "NIGHT_SKY.kla";
+    var _buf = buffer_create(10003, buffer_fixed, 1);
+    buffer_fill(_buf, 0, buffer_u8, 0, 10003);
+    buffer_poke(_buf, 0, buffer_u8, 0x00);
+    buffer_poke(_buf, 1, buffer_u8, 0x60);
+    for (var _cy = 0; _cy < 25; _cy++) {
+        for (var _cx = 0; _cx < 40; _cx++) {
+            // colours for pairs 01, 10, 11 (-1 = free)
+            var _slots = [-1, -1, -1];
+            if (_cy < 16) {
+                var _band = scr_tour_sky_band(_cy);
+                _slots = [(_band == 0) ? -1 : _band, 1, 7];
+            }
+            for (var _r = 0; _r < 8; _r++) {
+                var _byte = 0;
+                for (var _p = 0; _p < 4; _p++) {
+                    var _c = scr_tour_sky_colour(_cx * 4 + _p, _cy * 8 + _r);
+                    var _v = 0;
+                    if (_c != 0) {
+                        for (var _s = 0; _s < 3 && _v == 0; _s++) {
+                            if (_slots[_s] == _c) _v = _s + 1;
+                        }
+                        for (var _s = 0; _s < 3 && _v == 0; _s++) {
+                            if (_slots[_s] == -1) { _slots[_s] = _c; _v = _s + 1; }
+                        }
+                        if (_v == 0) _v = 3;
+                    }
+                    _byte |= _v << (6 - _p * 2);
+                }
+                buffer_poke(_buf, 2 + (_cy * 40 + _cx) * 8 + _r, buffer_u8, _byte);
+            }
+            var _idx = _cy * 40 + _cx;
+            buffer_poke(_buf, 8002 + _idx, buffer_u8, (max(_slots[0], 0) << 4) | max(_slots[1], 0));
+            buffer_poke(_buf, 9002 + _idx, buffer_u8, max(_slots[2], 0));
+        }
+    }
+    buffer_poke(_buf, 10002, buffer_u8, 0);
+    buffer_save(_buf, _path);
+    buffer_delete(_buf);
+
+    var _a = {
+        type          : "BITMAP",
+        name          : "NIGHT_SKY",
+        file          : _path,
+        address       : scr_asset_default_address("BITMAP"),
+        buffer        : buffer_create(1, buffer_fixed, 1),
+        meta          : {
+            format        : "koala",
+            preview_surf  : -1,
+            pixel_backup  : -1,
+            pixels_dirty  : false,
+            bg_col        : 0,
+            bg_mask       : array_create(64000, 0),
+            clash_grid    : array_create(1000, false),
+            coll_types    : array_create(1000, 0),
+            auto_clean    : true,
+            is_editing    : false,
+            needs_mask_init : false,
+            active_color  : 1,
+            active_tool   : "DRAW",
+            dither_mode   : "NONE",
+            dither_invert : false,
+            brush_size    : 0,
+            bmp_pan_x     : 0,
+            bmp_pan_y     : 0,
+            last_px       : undefined,
+            last_py       : undefined,
+            undo_stack    : [],
+            redo_stack    : [],
+            undo_pending  : false,
+            tone_sorted   : false,
+            has_data      : true
+        },
+        load_later    : false,
+        d64_filename  : "",
+        reu_filename  : "",
+        reu_size      : 0,
+        reu_used      : 0,
+        linked_assets : [],
+        group         : ""
+    };
+    ds_list_add(obj_asset_manager.asset_list, _a);
+    scr_asset_kla_reload(_a);
+
+    if (!_with_sprites) {
+        return;
+    }
+    // Multicolour sprites, 12 fat pixels x 21 rows: . see-through,
+    // 1 MC1 (grey), 2 the sprite's own colour, 3 MC2 (yellow)
+    var _ufo = [
+        "............", "............", "............", "............",
+        "....2222....", "...222222...", "..22222222..", "..22222222..",
+        ".1111111111.", "111111111111", "131131131131", "111111111111",
+        ".1111111111.", "...111111...", "....1..1....", "...1....1...",
+        "..1......1..", "............", "............", "............", "............"
+    ];
+    var _bal = [
+        "....2222....", "...222222...", "..22222222..", ".2222332222.",
+        ".2222332222.", ".2222332222.", ".2222332222.", "..22233222..",
+        "...222222...", "....2222....", ".....22.....", "....1..1....",
+        "....1..1....", "....1..1....", "....1111....", "....1111....",
+        "....1111....", "............", "............", "............", "............"
+    ];
+    var _o = { version: 3, show: true, mc1: 11, mc2: 7, mux_nodes: true, sprites: [], gen_org: -1, gen_nodes: [] };
+    var _ucol = [13, 3, 10, 14, 15];
+    for (var _i = 0; _i < 5; _i++) {
+        var _sp = scr_bmp_spr_new(24 + _i * 50, 30, _ucol[_i], 1, 0, 0, 0);
+        _sp.px = scr_tour_sprite_px(_ufo);
+        array_push(_o.sprites, _sp);
+    }
+    var _bcol = [2, 8, 10, 4, 5, 14];
+    for (var _i = 0; _i < 6; _i++) {
+        var _sp2 = scr_bmp_spr_new(16 + _i * 50, 96, _bcol[_i], 1, 0, 0, 0);
+        _sp2.px = scr_tour_sprite_px(_bal);
+        array_push(_o.sprites, _sp2);
+    }
+    _a.meta.spr_overlay = _o;
+    _a.meta.spr_undo    = [];
+    _a.meta.spr_redo    = [];
+    _a.meta.spr_sel     = -1;
+    scr_bmp_spr_touch(_a);
+}
+
+/// @desc 21 rows of 12 multicolour pixels ("." or 0-3) as the 504 pixel
+///       codes a bitmap sprite keeps (each fat pixel fills two).
+function scr_tour_sprite_px(_rows) {
+    var _px = array_create(504, 0);
+    for (var _r = 0; _r < 21; _r++) {
+        for (var _x = 0; _x < 12; _x++) {
+            var _ch = string_char_at(_rows[_r], _x + 1);
+            var _v = (_ch == ".") ? 0 : real(_ch);
+            _px[_r * 24 + _x * 2]     = _v;
+            _px[_r * 24 + _x * 2 + 1] = _v;
+        }
+    }
+    return _px;
+}
+
+/// @desc A multicolour BMP_OBJECTS asset called ROCKET holding one 3 x 3
+///       cell object: a white rocket (pair 10) with a window that shows the
+///       sky band (01) and a yellow flame (11), masked with a one-pixel
+///       outline so it sits on a black edge.
+function scr_tour_make_rocket() {
+    if (!instance_exists(obj_asset_manager)) {
+        return;
+    }
+    var _a = {
+        type          : "BMP_OBJECTS",
+        name          : "ROCKET",
+        file          : "",
+        address       : scr_asset_default_address("BMP_OBJECTS"),
+        buffer        : buffer_create(1, buffer_fixed, 1),
+        meta          : {},
+        load_later    : false,
+        d64_filename  : "",
+        reu_filename  : "",
+        reu_size      : 0,
+        reu_used      : 0,
+        linked_assets : [],
+        group         : ""
+    };
+    scr_bmpobj_create(_a);
+    _a.meta.mc      = 1;
+    _a.meta.mc_cols = [0, 6, 1, 7];
+    ds_list_add(obj_asset_manager.asset_list, _a);
+    // 12 fat pixels x 24 rows: . see-through, 1 window, 2 body, 3 flame
+    var _rows = [
+        "............", ".....22.....", "....2222....", "....2222....",
+        "...222222...", "...221122...", "...221122...", "...222222...",
+        "...222222...", "...222222...", "...222222...", "...222222...",
+        "..22222222..", ".2222222222.", ".22.2222.22.", ".2..2222..2.",
+        ".....33.....", "....3333....", "....3333....", ".....33.....",
+        ".....3......", "............", "............", "............"
+    ];
+    var _plane = scr_bmpobj_blank_plane(_a, 3, 3);
+    var _solid = 1 - real(_a.meta.mask_and);
+    for (var _y = 0; _y < 24; _y++) {
+        for (var _x = 0; _x < 12; _x++) {
+            var _ch = string_char_at(_rows[_y], _x + 1);
+            var _v = (_ch == ".") ? 0 : real(_ch);
+            // solid where this fat pixel or any neighbour is drawn
+            var _near = false;
+            for (var _ny = max(0, _y - 1); _ny <= min(23, _y + 1); _ny++) {
+                for (var _nx = max(0, _x - 1); _nx <= min(11, _x + 1); _nx++) {
+                    if (string_char_at(_rows[_ny], _nx + 1) != ".") _near = true;
+                }
+            }
+            for (var _h = 0; _h < 2; _h++) {
+                var _i = _y * 24 + _x * 2 + _h;
+                _plane.g[_i] = (_h == 0) ? ((_v >> 1) & 1) : (_v & 1);
+                if (_near) _plane.k[_i] = _solid;
+            }
+        }
+    }
+    scr_bmpobj_add_object(_a, "ROCKET", 3, 3, _plane, -1);
+}
+
+/// @desc A CODE block on the main spine at the cursor in _st.
+function scr_tour_spine_code(_desc, _code, _st) {
+    var _n = scr_node_spawn("MACRO_CODE", _st.x, _st.y);
+    _n.code_descriptor    = _desc;
+    _n.instructions[0][1] = _code;
+    _n.code_cache_dirty   = true;
+    with (_n) {
+        event_user(0);
+    }
+    return scr_tour_spine_place(_n, _st);
+}
+
+/// @desc The BITMAP OBJECTS tour's program, minus the BMP OBJECT node:
+///       NIGHT_SKY on screen, the rocket's start position, a loop slowed to
+///       about 12 passes a second by four VWAITs, a JOYSTICK, and LF / RT /
+///       UP / DN routines that move UV_ROCKET_X / UV_ROCKET_Y a cell at a
+///       time, kept inside the sky (columns 0-37, rows 0-12).
+function scr_tour_build_rocket_starter() {
+    var _init = scr_tour_node_by_type("INIT");
+    if (_init == noone) {
+        return;
+    }
+    scr_uv_add("UV_ROCKET_X", 1, "byte");
+    scr_uv_add("UV_ROCKET_Y", 1, "byte");
+    var _st = { x: _init.x, y: _init.y + (ceil(_init.height / 20) * 20) };
+    var _b = scr_tour_spine_macro("MACRO_BMP", _st);
+    _b.instructions[0][1] = "NIGHT_SKY";
+    _b.instructions[0][2] = scr_asset_default_address("BITMAP");
+    scr_tour_spine_code("START POSITION",
+        "; The rocket starts in the middle of the sky (column 18, row 6)\n"
+      + "    lda #18\n    sta UV_ROCKET_X\n    lda #6\n    sta UV_ROCKET_Y\n", _st);
+    scr_tour_spine_label("MAIN", _st);
+    for (var _w = 0; _w < 4; _w++) {
+        scr_tour_spine_macro("MACRO_VWAIT", _st);
+    }
+    var _joy = scr_tour_spine_macro("MACRO_JOY", _st);
+    scr_tour_spine_op("jmp_abs", "MAIN", _st);
+    // [label, what it does, variable, limit test]
+    var _dirs = [
+        ["LF", "LEFT",  "UV_ROCKET_X", "    beq rk_lf\n    dec UV_ROCKET_X\nrk_lf:\n"],
+        ["RT", "RIGHT", "UV_ROCKET_X", "    cmp #37\n    bcs rk_rt\n    inc UV_ROCKET_X\nrk_rt:\n"],
+        ["UP", "UP",    "UV_ROCKET_Y", "    beq rk_up\n    dec UV_ROCKET_Y\nrk_up:\n"],
+        ["DN", "DOWN",  "UV_ROCKET_Y", "    cmp #12\n    bcs rk_dn\n    inc UV_ROCKET_Y\nrk_dn:\n"]
+    ];
+    for (var _d = 0; _d < 4; _d++) {
+        scr_tour_spine_label(_dirs[_d][0], _st);
+        scr_tour_spine_code("ROCKET " + _dirs[_d][1],
+            "; One cell " + string_lower(_dirs[_d][1]) + ", but not off the sky\n"
+          + "    lda " + _dirs[_d][2] + "\n" + _dirs[_d][3] + "    rts\n", _st);
+    }
+    for (var _d = 0; _d < 4; _d++) {
+        scr_tour_enable_row(_joy, _dirs[_d][0], false);
     }
 }
 
@@ -2593,6 +2995,35 @@ function scr_tour_check_page2(_code) {
                 return false;
             }
             return (real(_n.instructions[0][4]) == 1);
+        // BITMAP SPRITES
+        case "BSPR_MODE":
+            var _vb = scr_tour_viewer_bitmap();
+            if (is_undefined(_vb)) {
+                return false;
+            }
+            return (_vb.meta[$ "spr_mode"] ?? false);
+        case "BSPR_SETUP":
+            return (scr_tour_jsr_to("NIGHT_SKY_SHOW", false) != noone);
+        // BITMAP OBJECTS
+        case "BOBJ_VIEW":
+            return (scr_tour_viewer_type() == "BMP_OBJECTS");
+        case "BOBJ_IN_LOOP":
+            _n = scr_tour_node_by_type("MACRO_BMP_OBJ");
+            return (_n != noone && scr_tour_in_loop(_n));
+        case "BOBJ_MOVE":
+        case "BOBJ_CVAR":
+        case "BOBJ_RVAR":
+            _n = scr_tour_node_by_type("MACRO_BMP_OBJ");
+            if (_n == noone) {
+                return false;
+            }
+            if (_code == "BOBJ_MOVE") {
+                return (real(_n.instructions[0][9]) == 3);
+            }
+            if (_code == "BOBJ_CVAR") {
+                return (string_upper(string(_n.instructions[0][7])) == "UV_ROCKET_X");
+            }
+            return (string_upper(string(_n.instructions[0][8])) == "UV_ROCKET_Y");
     }
     var _colon = string_pos(":", _code);
     if (_colon == 0) {
@@ -3176,6 +3607,61 @@ function scr_tour_do_action(_st, _dry) {
                 scr_node_preview_toggle(_n);
             }
             return (_code == "SONG_PLAYING") ? "I clicked the play button on the SID SONG node to hear the tune." : "I clicked the stop square to stop the tune.";
+
+        // ---- BITMAP SPRITES ----
+        case "BSPR_MODE":
+        case "BSPR_SETUP":
+            var _sb = scr_tour_viewer_bitmap();
+            if (is_undefined(_sb) || !(_sb.meta[$ "is_editing"] ?? false)) {
+                return "";
+            }
+            if (_dry) {
+                return "1";
+            }
+            if (_code == "BSPR_MODE") {
+                _sb.meta.spr_mode = true;
+                return "I clicked PAINT: SPRITES. Clicks on the canvas now paint the sprites, and each one has a box.";
+            }
+            scr_bmp_spr_setup_nodes(_sb);
+            return "I clicked SETUP NODES. It put the sprites in a sprite set and built NIGHT_SKY_SHOW and NIGHT_SKY_FRAME.";
+
+        // ---- BITMAP OBJECTS ----
+        case "BOBJ_VIEW":
+            var _oi = scr_tour_last_asset_index("BMP_OBJECTS");
+            if (_oi < 0) {
+                return "";
+            }
+            if (_dry) {
+                return "1";
+            }
+            scr_tour_open_viewer(_oi);
+            return "I clicked EDIT on the ROCKET row, which opened the object editor.";
+        case "BOBJ_MOVE":
+        case "BOBJ_CVAR":
+        case "BOBJ_RVAR":
+            _n = scr_tour_node_by_type("MACRO_BMP_OBJ");
+            if (_n == noone) {
+                return "";
+            }
+            if (_dry) {
+                return "1";
+            }
+            if (_code == "BOBJ_MOVE") {
+                _n.instructions[0][9] = 3;
+                if (string(_n.instructions[0][10]) == "") {
+                    _n.instructions[0][10] = scr_bmpobj_new_slot();
+                }
+                scr_tour_touch(_n);
+                return "I held SHIFT and clicked MODE, so it says MOVE. It got a SLOT of its own too.";
+            }
+            if (_code == "BOBJ_CVAR") {
+                _n.instructions[0][7] = "UV_ROCKET_X";
+                scr_tour_touch(_n);
+                return "I clicked COL VAR and chose UV_ROCKET_X, so the column comes from that variable.";
+            }
+            _n.instructions[0][8] = "UV_ROCKET_Y";
+            scr_tour_touch(_n);
+            return "I clicked ROW VAR and chose UV_ROCKET_Y, so the row comes from that variable.";
 
         case "BUILT":
             if (_dry) {

@@ -11,6 +11,49 @@ var _step = steps[step_idx];
 
 scr_tour_glide_step();
 
+// DO IT ALL: each step is done the way DO IT FOR ME does it, reading steps
+// just move on, and message boxes are OK'd. A question waits for the user;
+// a step that can't be done (or won't finish) stops it and says so.
+if (auto_all) {
+    with (obj_message_box) {
+        dismissed = true;
+    }
+    if (step_idx >= array_length(steps) - 1) {
+        auto_all = false;
+    } else if (!instance_exists(obj_question_box)) {
+        if (done_timer > 6) {
+            done_timer = 6;
+        }
+        if (done_timer == 0) {
+            auto_wait++;
+            auto_stall++;
+            if (_step.check == "NONE") {
+                if (auto_wait >= 20) {
+                    step_idx++;
+                    hold_auto  = false;
+                    auto_wait  = 0;
+                    auto_stall = 0;
+                    scr_tour_enter_step();
+                }
+                exit;
+            }
+            if (auto_wait >= 30 && !scr_tour_check(_step.check)) {
+                auto_wait = 0;
+                if (scr_tour_can_do(_step)) {
+                    scr_tour_do_it();
+                }
+            }
+            if (auto_stall > 600) {
+                auto_all = false;
+                did_text = "DO IT ALL stopped here: this step needs you. Do it, then press DO IT ALL again.";
+                did_step = step_idx;
+            }
+        } else {
+            auto_stall = 0;
+        }
+    }
+}
+
 // Short "done" flash, then move on.
 if (done_timer > 0) {
     done_timer--;

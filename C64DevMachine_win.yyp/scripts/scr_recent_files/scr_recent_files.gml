@@ -66,6 +66,12 @@ function scr_recent_files_remove(_path) {
     scr_recent_files_save();
 }
 
+/// Empty the list (PROJECT > CLEAR RECENTS). The project files are untouched.
+function scr_recent_files_clear() {
+    global.recent_files = [];
+    scr_recent_files_save();
+}
+
 /// File name only, cut down with a ".." suffix until it fits _max_w
 /// in the current font.
 function scr_recent_files_label(_path, _max_w) {

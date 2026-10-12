@@ -44,6 +44,14 @@ function scr_bmpobj_create(_asset) {
         mask_and  : 1,
         ink       : 1,
         paper     : 11,
+        // MULTICOLOUR: mc 1 = every object is multicolour (pixel pairs:
+        // 00 background, 01 screen high nibble, 10 screen low nibble,
+        // 11 colour RAM), for multicolour bitmaps. mc_cols = editor preview
+        // colours for those four. The C64 blit is the same byte-wise
+        // AND mask / OR graphics either way.
+        mc        : 0,
+        mc_cols   : [0, 11, 12, 15],
+        pen       : "",     // editor only: INK / C1 / C2 / C3 / MASK / ERASE
         sel       : 0,
         // POSES: how the game assembles parts into a figure. Each entry is
         // an array of part indices drawn top to bottom, left-aligned
@@ -94,6 +102,8 @@ function scr_bmpobj_save_meta(_asset) {
         mask_and  : _m.mask_and,
         ink       : _m.ink,
         paper     : _m.paper,
+        mc        : _m.mc,
+        mc_cols   : _m.mc_cols,
         sel       : _m.sel,
         colour_addr : _m.colour_addr,
         colour_auto : _m.colour_auto,
@@ -108,7 +118,7 @@ function scr_bmpobj_restore(_asset, _saved) {
     scr_bmpobj_create(_asset);
     if (!is_struct(_saved)) return;
     var _m = _asset.meta;
-    var _keys = ["managed", "objects", "col_major", "bottom_up", "mask_and", "ink", "paper", "sel", "colour_addr", "colour_auto", "poses", "sheet_mode", "layer", "zoom"];
+    var _keys = ["managed", "objects", "col_major", "bottom_up", "mask_and", "ink", "paper", "mc", "mc_cols", "sel", "colour_addr", "colour_auto", "poses", "sheet_mode", "layer", "zoom"];
     for (var _k = 0; _k < array_length(_keys); _k++) {
         if (variable_struct_exists(_saved, _keys[_k])) {
             variable_struct_set(_m, _keys[_k], variable_struct_get(_saved, _keys[_k]));
@@ -201,11 +211,86 @@ function scr_bmpobj_solid(_asset, _o, _px, _py) {
     return (_mk == 1);
 }
 
+/// Multicolour: the pair value 0-3 of the pixel pair holding _px.
+function scr_bmpobj_pair(_asset, _o, _px, _py) {
+    var _x0 = _px - (_px mod 2);
+    return (scr_bmpobj_get(_asset, _o, 0, _x0, _py) << 1) | scr_bmpobj_get(_asset, _o, 0, _x0 + 1, _py);
+}
+
+/// Paint one pixel (HiRes) or the pixel pair holding it (multicolour).
+/// _g = gfx value (HiRes 0/1, multicolour pair 0-3, -1 = leave it),
+/// _solid = 1 solid / 0 see-through / -1 leave the mask. True if changed.
+function scr_bmpobj_paint(_asset, _o, _px, _py, _g, _solid) {
+    var _m = _asset.meta;
+    var _x0 = _px;
+    var _n  = 1;
+    if (_m.mc == 1) {
+        _x0 = _px - (_px mod 2);
+        _n  = 2;
+    }
+    var _changed = false;
+    for (var _i = 0; _i < _n; _i++) {
+        var _x = _x0 + _i;
+        if (_g >= 0) {
+            var _bit = _g & 1;
+            if (_m.mc == 1) {
+                _bit = (_i == 0) ? ((_g >> 1) & 1) : (_g & 1);
+            }
+            if (scr_bmpobj_get(_asset, _o, 0, _x, _py) != _bit) {
+                _changed = scr_bmpobj_set(_asset, _o, 0, _x, _py, _bit) || _changed;
+            }
+        }
+        if (_solid >= 0) {
+            var _kb = _solid;
+            if (_m.mask_and == 1) {
+                _kb = 1 - _solid;
+            }
+            if (scr_bmpobj_get(_asset, _o, 1, _x, _py) != _kb) {
+                _changed = scr_bmpobj_set(_asset, _o, 1, _x, _py, _kb) || _changed;
+            }
+        }
+    }
+    return _changed;
+}
+
+/// Multicolour: a pair is solid when either of its pixels is, so the mask
+/// never splits a fat pixel. Run after any whole-mask change.
+function scr_bmpobj_mc_snap_mask(_asset, _o) {
+    if (_asset.meta.mc != 1) return;
+    for (var _py = 0; _py < _o.h * 8; _py++) {
+        for (var _px = 0; _px < _o.w * 8; _px += 2) {
+            if (scr_bmpobj_solid(_asset, _o, _px, _py) || scr_bmpobj_solid(_asset, _o, _px + 1, _py)) {
+                scr_bmpobj_paint(_asset, _o, _px, _py, -1, 1);
+            }
+        }
+    }
+}
+
+/// The four multicolour preview colours as GameMaker colours.
+function scr_bmpobj_mc_preview(_asset) {
+    var _c = _asset.meta.mc_cols;
+    return [scr_c64_pepto_colour(_c[0]), scr_c64_pepto_colour(_c[1]), scr_c64_pepto_colour(_c[2]), scr_c64_pepto_colour(_c[3])];
+}
+
 /// Colour of one pixel for a layer (0 GFX, 1 MASK, 2 COMPOSITE). -1 = transparent.
-function scr_bmpobj_pixel_colour(_asset, _o, _layer, _px, _py, _ink, _paper) {
-    var _g = scr_bmpobj_get(_asset, _o, 0, _px, _py);
+/// COMPOSITE shows solid non-ink pixels in the paper (HiRes) or background
+/// (multicolour) colour, as the C64 does, and leaves see-through pixels
+/// transparent so the editor's checkerboard shows through.
+function scr_bmpobj_pixel_colour(_asset, _o, _layer, _px, _py, _ink, _paper, _pal = undefined) {
+    var _mc = (_asset.meta.mc == 1);
+    var _g = 0;
+    var _gc = _ink;
+    var _bgc = _paper;
+    if (_mc) {
+        var _pv = is_undefined(_pal) ? scr_bmpobj_mc_preview(_asset) : _pal;
+        _g = scr_bmpobj_pair(_asset, _o, _px, _py);
+        _gc = _pv[_g];
+        _bgc = _pv[0];
+    } else {
+        _g = scr_bmpobj_get(_asset, _o, 0, _px, _py);
+    }
     if (_layer == 0) {
-        if (_g == 1) return _ink;
+        if (_g != 0) return _gc;
         return c_black;
     }
     var _solid = scr_bmpobj_solid(_asset, _o, _px, _py);
@@ -213,11 +298,9 @@ function scr_bmpobj_pixel_colour(_asset, _o, _layer, _px, _py, _ink, _paper) {
         if (_solid) return make_color_rgb(200, 60, 200);
         return make_color_rgb(30, 30, 40);
     }
-    if (_g == 1) return _ink;
-    if (_solid) return c_black;
-    // layer 3 = composite with see-through background (map overlays)
-    if (_layer == 3) return -1;
-    return _paper;
+    if (_g != 0) return _gc;
+    if (_solid) return _bgc;
+    return -1;
 }
 
 /// Tint layers for the map overlay (drawn white, coloured by blending):
@@ -264,7 +347,8 @@ function scr_bmpobj_cache_free(_asset) {
 function scr_bmpobj_surface(_asset, _i, _layer) {
     var _m = _asset.meta;
     var _n = array_length(_m.objects);
-    var _key = string(_m.ink) + "/" + string(_m.paper) + "/" + string(_m.col_major) + string(_m.bottom_up) + string(_m.mask_and) + "/" + string(_asset.address);
+    var _key = string(_m.ink) + "/" + string(_m.paper) + "/" + string(_m.col_major) + string(_m.bottom_up) + string(_m.mask_and) + "/" + string(_asset.address)
+             + "/" + string(_m.mc) + "/" + string(_m.mc_cols);
     if (_key != _m.cache_key || array_length(_m.cache_dirty) != _n) {
         // a managed asset that moved address needs its pointers to follow
         scr_bmpobj_sync_ptrs(_asset);
@@ -291,6 +375,19 @@ function scr_bmpobj_surface(_asset, _i, _layer) {
     var _ph = max(1, _o.h * 8);
     var _ink   = scr_c64_pepto_colour(_m.ink);
     var _paper = scr_c64_pepto_colour(_m.paper);
+    var _pal   = scr_bmpobj_mc_preview(_asset);
+    // A part with a fixed colour previews in its own colours
+    var _own = real(_o[$ "colour"] ?? -1);
+    if (_own >= 0) {
+        if (_m.mc == 1) {
+            _pal[1] = scr_c64_pepto_colour((_own >> 4) & 0x0F);
+            _pal[2] = scr_c64_pepto_colour(_own & 0x0F);
+            _pal[3] = scr_c64_pepto_colour((_o[$ "colour3"] ?? 1) & 0x0F);
+        } else {
+            _ink   = scr_c64_pepto_colour((_own >> 4) & 0x0F);
+            _paper = scr_c64_pepto_colour(_own & 0x0F);
+        }
+    }
     var _buf = buffer_create(_pw * _ph * 4, buffer_fixed, 1);
     for (var _py = 0; _py < _ph; _py++) {
         for (var _px = 0; _px < _pw; _px++) {
@@ -298,7 +395,7 @@ function scr_bmpobj_surface(_asset, _i, _layer) {
             if (_layer >= 4) {
                 _c = scr_bmpobj_tint_colour(_asset, _o, _layer, _px, _py);
             } else {
-                _c = scr_bmpobj_pixel_colour(_asset, _o, _layer, _px, _py, _ink, _paper);
+                _c = scr_bmpobj_pixel_colour(_asset, _o, _layer, _px, _py, _ink, _paper, _pal);
             }
             var _off = (_py * _pw + _px) * 4;
             if (_c == -1) {
@@ -407,6 +504,24 @@ function scr_bmpobj_ui_colour(_x, _y, _label, _col, _mx, _my, _info = "") {
     return _col;
 }
 
+/// Compact colour picker: label and one swatch. Click = next colour,
+/// SHIFT+click = previous. Returns the new colour index.
+function scr_bmpobj_ui_swatch(_x, _y, _label, _col, _mx, _my, _info = "") {
+    draw_set_color(make_color_rgb(154, 175, 198));
+    draw_text_l(_x, _y + 8, _label);
+    var _bx = _x + 24;
+    var _hov = point_in_rectangle(_mx, _my, _bx, _y, _bx + 32, _y + 24);
+    scr_ui_info(_hov, _info);
+    draw_set_color(scr_c64_pepto_colour(_col));
+    draw_rectangle(_bx, _y, _bx + 32, _y + 24, false);
+    draw_set_color(_hov ? c_yellow : c_white);
+    draw_rectangle(_bx, _y, _bx + 32, _y + 24, true);
+    if (_hov && mouse_check_button_pressed(mb_left)) {
+        _col = keyboard_check(vk_shift) ? (_col + 15) mod 16 : (_col + 1) mod 16;
+    }
+    return _col;
+}
+
 /// Editor entry point. Pixel art must stay crisp: texture filtering is
 /// switched off for the whole editor and restored afterwards.
 function scr_bmpobj_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
@@ -425,6 +540,13 @@ function scr_bmpobj_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _m = _asset.meta;
     if (!variable_struct_exists(_m, "undo"))      { _m.undo = []; _m.redo = []; }
+    if (!variable_struct_exists(_m, "mc"))        { _m.mc = 0; }
+    if (!variable_struct_exists(_m, "mc_cols"))   { _m.mc_cols = [0, 11, 12, 15]; }
+    if (!variable_struct_exists(_m, "pen"))       { _m.pen = ""; }
+    var _mc = (_m.mc == 1);
+    // Pens: the colours this mode can paint, then MASK and ERASE
+    var _pens = _mc ? ["C1", "C2", "C3", "MASK", "ERASE"] : ["INK", "MASK", "ERASE"];
+    if (!array_contains(_pens, _m.pen)) { _m.pen = _pens[0]; }
     if (!variable_struct_exists(_m, "grab_on"))   { _m.grab_on = false; _m.grab_src = ""; _m.grab_sel = -1; _m.grab_drag = false; }
     if (!variable_struct_exists(_m, "managed")) {
         if (array_length(_m.objects) > 0) {
@@ -521,7 +643,8 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     _x += 76;
     if (scr_bmpobj_ui_button(_x, _r1, 96, _bh, "IMPORT PNG", false, _mx, _my,
-        "ADD AN OBJECT FROM A PNG: TRANSPARENT (OR THE TOP-LEFT COLOUR) = SEE-THROUGH, DARK = SOLID BLACK, LIGHT = INK")) {
+        _mc ? "ADD AN OBJECT FROM A PNG: TRANSPARENT (OR THE TOP-LEFT COLOUR) = SEE-THROUGH, EACH PIXEL PAIR = THE NEAREST OF BG / C1 / C2 / C3"
+            : "ADD AN OBJECT FROM A PNG: TRANSPARENT (OR THE TOP-LEFT COLOUR) = SEE-THROUGH, DARK = SOLID, LIGHT = INK")) {
         scr_bmpobj_import_png(_asset);
     }
     _x += 100;
@@ -532,8 +655,14 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     _x += 144;
     if (scr_bmpobj_ui_button(_x, _r1, 96, _bh, "EXPORT PNG", false, _mx, _my,
-        "SAVE EVERY OBJECT AS ONE PNG SHEET: SEE-THROUGH BACKGROUND, BLACK = SOLID, INK = PREVIEW INK COLOUR", _has)) {
+        "SAVE EVERY OBJECT AS ONE PNG SHEET: SEE-THROUGH BACKGROUND, SOLID = PAPER / BACKGROUND, INK = PREVIEW COLOURS", _has)) {
         scr_bmpobj_export_png(_asset);
+    }
+    _x += 112;
+    if (scr_bmpobj_ui_button(_x, _r1, 130, _bh, (_m.mc == 1) ? "MULTICOLOUR" : "HIRES", _m.mc == 1, _mx, _my,
+        "OBJECT MODE - MATCH YOUR BITMAP: HIRES (1 INK COLOUR, THIN PIXELS) OR MULTICOLOUR (3 COLOURS, FAT PIXEL PAIRS). CLICK TO SWITCH")) {
+        scr_bmpobj_undo_push(_asset);
+        scr_bmpobj_set_mc(_asset, 1 - _m.mc);
     }
 
     // ── ROW 2: LAYER, MASK TOOLS, ZOOM, PREVIEW COLOURS ──
@@ -543,9 +672,9 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _x += 52;
     var _lnames = ["GFX", "MASK", "COMPOSITE"];
     var _lw = [56, 62, 100];
-    var _linfo = ["SHOW AND PAINT THE GRAPHICS PLANE: LMB SETS INK PIXELS, RMB CLEARS THEM",
-        "SHOW AND PAINT THE MASK PLANE: LMB MAKES PIXELS SOLID, RMB MAKES THEM TRANSPARENT",
-        "SHOW GFX AND MASK TOGETHER: LMB INK, RMB TRANSPARENT, SHIFT+RMB SOLID BLACK"];
+    var _linfo = ["SHOW AND PAINT THE GRAPHICS PLANE ONLY: LMB PAINTS WITH THE PEN, RMB CLEARS",
+        "SHOW AND PAINT THE MASK PLANE ONLY: LMB MAKES PIXELS SOLID, RMB SEE-THROUGH",
+        "SHOW GFX AND MASK TOGETHER (BEST FOR DRAWING): LMB PEN, SHIFT+LMB MASK, RMB SEE-THROUGH"];
     // only the three editor views get buttons (layers 3-5 are map-overlay surfaces)
     for (var _l = 0; _l < array_length(_lnames); _l++) {
         if (scr_bmpobj_ui_button(_x, _r2, _lw[_l], _bh, _lnames[_l], _m.layer == _l, _mx, _my, _linfo[_l])) { _m.layer = _l; }
@@ -586,11 +715,30 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_halign(fa_left);
     if (scr_bmpobj_ui_button(_x + 64, _r2, 24, _bh, "+", false, _mx, _my, "ZOOM THE EDIT CANVAS IN (MAX 24X, SHRINKS TO FIT THE PANEL)")) { _m.zoom = min(24, _m.zoom + 2); }
     _x += 108;
-    var _ink = scr_bmpobj_ui_colour(_x, _r2, "INK", _m.ink, _mx, _my, "EDITOR PREVIEW INK COLOUR FOR DRAWING PARTS - < > STEP THROUGH 16 COLOURS");
-    _x += 160;
-    var _paper = scr_bmpobj_ui_colour(_x, _r2, "PAPER", _m.paper, _mx, _my, "EDITOR PREVIEW PAPER COLOUR FOR DRAWING PARTS - < > STEP THROUGH 16 COLOURS");
-    _m.ink = _ink;
-    _m.paper = _paper;
+    if (_mc) {
+        // Preview colours for the four pair values (the C64 takes the real
+        // ones from the cells, or from the object's fixed colour)
+        var _mcl = ["BG", "C1", "C2", "C3"];
+        var _mci = ["BACKGROUND ($D021): PAIR 00, SHOWN WHERE THE MASK IS SOLID",
+            "C1: PAIR 01, THE SCREEN RAM HIGH NIBBLE OF EACH CELL",
+            "C2: PAIR 10, THE SCREEN RAM LOW NIBBLE OF EACH CELL",
+            "C3: PAIR 11, COLOUR RAM ($D800) OF EACH CELL"];
+        for (var _ci2 = 0; _ci2 < 4; _ci2++) {
+            var _nc = scr_bmpobj_ui_swatch(_x, _r2, _mcl[_ci2], _m.mc_cols[_ci2], _mx, _my,
+                "EDITOR PREVIEW " + _mci[_ci2] + " - CLICK NEXT COLOUR, SHIFT+CLICK PREVIOUS");
+            if (_nc != _m.mc_cols[_ci2]) {
+                _m.mc_cols[_ci2] = _nc;
+                scr_bmpobj_cache_dirty(_asset, -1);
+            }
+            _x += 64;
+        }
+    } else {
+        var _ink = scr_bmpobj_ui_colour(_x, _r2, "INK", _m.ink, _mx, _my, "EDITOR PREVIEW INK COLOUR FOR DRAWING PARTS - < > STEP THROUGH 16 COLOURS");
+        _x += 160;
+        var _paper = scr_bmpobj_ui_colour(_x, _r2, "PAPER", _m.paper, _mx, _my, "EDITOR PREVIEW PAPER COLOUR (SHOWN WHERE THE MASK IS SOLID) - < > STEP THROUGH 16 COLOURS");
+        _m.ink = _ink;
+        _m.paper = _paper;
+    }
 
     // ── ROW 3: LAYOUT SETTINGS ──
     _x = _left;
@@ -700,17 +848,19 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_text_l(_ex1 + 16, _hy,       "BITMAP OBJECTS ARE SOFTWARE SPRITES: GRAPHICS PLUS A MASK");
         draw_text_l(_ex1 + 16, _hy + 18,  "THAT GAME CODE DRAWS INTO A BITMAP SCREEN.");
         draw_set_color(make_color_rgb(140, 150, 170));
-        draw_text_l(_ex1 + 16, _hy + 46,  "1. ADD AN OBJECT: + NEW, IMPORT PNG OR GRAB FROM BITMAP.");
-        draw_text_l(_ex1 + 16, _hy + 64,  "2. PAINT IT: GFX = THE PIXELS, MASK = WHERE IT HIDES THE");
-        draw_text_l(_ex1 + 16, _hy + 82,  "   BACKGROUND. MASK > AUTO BUILDS ONE WITH AN OUTLINE.");
-        draw_text_l(_ex1 + 16, _hy + 100, "3. PLACE THEM IN ROOMS FROM A MAP'S OBJECT LAYER.");
+        draw_text_l(_ex1 + 16, _hy + 46,  "1. HIRES OR MULTICOLOUR (TOP RIGHT): MATCH YOUR BITMAP.");
+        draw_text_l(_ex1 + 16, _hy + 64,  "2. ADD AN OBJECT: + NEW, IMPORT PNG OR GRAB FROM BITMAP.");
+        draw_text_l(_ex1 + 16, _hy + 82,  "3. PAINT IT: LMB = THE PEN, SHIFT+LMB = MASK (SOLID, HIDES");
+        draw_text_l(_ex1 + 16, _hy + 100, "   THE BACKGROUND), RMB = ERASE. MASK > AUTO ADDS AN OUTLINE.");
+        draw_text_l(_ex1 + 16, _hy + 118, "4. DRAW IT WITH THE BMP OBJECT NODE (MACROS 1).");
     } else {
     scr_bmpobj_ui_panel(_ex1, _ptop, _ex2, _bottom, "EDIT  " + string(_m.sel) + ": " + string(_o.name) + "   " + string(_o.w) + "x" + string(_o.h) + " cells");
     var _pw = _o.w * 8;
     var _ph = _o.h * 8;
     var _info_h = 96;
+    var _pen_h  = 30;    // PEN bar between the canvas and the info box
     var _avail_w = _edit_w - 24;
-    var _avail_h = (_bottom - _ptop) - 26 - _info_h - 16;
+    var _avail_h = (_bottom - _ptop) - 26 - _info_h - _pen_h - 16;
     var _s = _m.zoom;
     // shrink to fit, never past 2x
     while (_s > 2 && (_pw * _s > _avail_w || _ph * _s > _avail_h)) { _s -= 1; }
@@ -718,6 +868,15 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _gy = _ptop + 30 + max(0, floor((_avail_h - _ph * _s) / 2));
     draw_set_color(make_color_rgb(10, 12, 18));
     draw_rectangle(_gx - 4, _gy - 4, _gx + _pw * _s + 3, _gy + _ph * _s + 3, false);
+    // Checkerboard under the object: see-through pixels show it, so it is
+    // clear which pixels let the background through
+    var _ck = max(_s, 4) * ((_s < 6) ? 2 : 1);
+    for (var _cyy = 0; _cyy < _ph * _s; _cyy += _ck) {
+        for (var _cxx = 0; _cxx < _pw * _s; _cxx += _ck) {
+            draw_set_color((((_cxx div _ck) + (_cyy div _ck)) mod 2 == 0) ? make_color_rgb(58, 62, 74) : make_color_rgb(38, 41, 50));
+            draw_rectangle(_gx + _cxx, _gy + _cyy, _gx + min(_cxx + _ck, _pw * _s) - 1, _gy + min(_cyy + _ck, _ph * _s) - 1, false);
+        }
+    }
     scr_bmpobj_draw_object(_asset, _m.sel, _gx, _gy, _s, _m.layer);
     // pixel grid (only when it is readable) and cell grid
     if (_s >= 8) {
@@ -731,26 +890,26 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     for (var _c = 0; _c <= _o.w; _c++) { draw_line(_gx + _c * 8 * _s, _gy, _gx + _c * 8 * _s, _gy + _ph * _s); }
     for (var _r = 0; _r <= _o.h; _r++) { draw_line(_gx, _gy + _r * 8 * _s, _gx + _pw * _s, _gy + _r * 8 * _s); }
 
-    // paint - every layer is editable:
-    //   GFX        L = ink pixel        R = clear pixel
-    //   MASK       L = solid            R = transparent (background shows)
-    //   COMPOSITE  L = ink (solid)      R = transparent    SHIFT+R = black (solid)
-    // Read-only only when neither plane lives in this asset (a mask-only
-    // prop with gfx = none can still have its mask edited).
+    // paint - every layer is editable, with the selected PEN:
+    //   LMB        the pen (a colour, MASK or ERASE)
+    //   SHIFT+LMB  MASK: a solid pixel with no ink - it hides the background
+    //              and shows the paper / background colour
+    //   RMB        ERASE: see-through, the background shows
+    // GFX only changes the graphics, MASK only the mask, COMPOSITE both
+    // (a colour pen also makes its pixels solid). Multicolour paints whole
+    // pixel pairs. Read-only only when neither plane lives in this asset (a
+    // mask-only prop with gfx = none can still have its mask edited).
     var _read_only = (scr_bmpobj_byte_off(_asset, _o, _o.gfx_ptr, 0, 0) < 0)
                   && (scr_bmpobj_byte_off(_asset, _o, _o.mask_ptr, 0, 0) < 0);
-    if (point_in_rectangle(_mx, _my, _gx, _gy, _gx + _pw * _s - 1, _gy + _ph * _s - 1)) {
+    var _over_canvas = point_in_rectangle(_mx, _my, _gx, _gy, _gx + _pw * _s - 1, _gy + _ph * _s - 1);
+    if (_over_canvas) {
         if (_read_only) {
             scr_ui_info(true, "READ ONLY: THIS PART'S GRAPHICS AND MASK LIVE OUTSIDE THIS ASSET");
-        } else if (_m.layer == 0) {
-            scr_ui_info(true, "GFX CANVAS: LMB PAINTS INK PIXELS, RMB CLEARS THEM (HOLD AND DRAG)  |  CTRL+Z UNDOES A STROKE");
-        } else if (_m.layer == 1) {
-            scr_ui_info(true, "MASK CANVAS: LMB MAKES PIXELS SOLID, RMB MAKES THEM TRANSPARENT (HOLD AND DRAG)  |  CTRL+Z UNDOES");
         } else {
-            scr_ui_info(true, "COMPOSITE CANVAS: LMB INK, RMB TRANSPARENT, SHIFT+RMB SOLID BLACK (HOLD AND DRAG)  |  CTRL+Z UNDOES");
+            scr_ui_info(true, _lnames[_m.layer] + ": LMB PAINTS WITH " + _m.pen + ", SHIFT+LMB MASK (SOLID), RMB ERASE (SEE-THROUGH)  |  CTRL+Z UNDOES A STROKE");
         }
     }
-    if (!_read_only && point_in_rectangle(_mx, _my, _gx, _gy, _gx + _pw * _s - 1, _gy + _ph * _s - 1)) {
+    if (!_read_only && _over_canvas) {
         // one undo step per stroke
         if (mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right)) {
             scr_bmpobj_undo_push(_asset);
@@ -760,35 +919,79 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _lb = mouse_check_button(mb_left);
         var _rb = mouse_check_button(mb_right);
         var _changed = false;
-        var _solid_bit = 1;
-        if (_m.mask_and == 1) { _solid_bit = 0; }
         if (_lb || _rb) {
-            var _g_old = scr_bmpobj_get(_asset, _o, 0, _px, _py);
-            var _k_old = scr_bmpobj_get(_asset, _o, 1, _px, _py);
-            var _g_new = _g_old;
-            var _k_new = _k_old;
-            if (_m.layer == 0) {
-                if (_lb) { _g_new = 1; } else { _g_new = 0; }
-            } else if (_m.layer == 1) {
-                if (_lb) { _k_new = _solid_bit; } else { _k_new = 1 - _solid_bit; }
-            } else {
-                if (_lb) {
-                    _g_new = 1; _k_new = _solid_bit;
-                } else if (keyboard_check(vk_shift)) {
-                    _g_new = 0; _k_new = _solid_bit;
-                } else {
-                    _g_new = 0; _k_new = 1 - _solid_bit;
-                }
+            var _pen = _m.pen;
+            if (_rb) {
+                _pen = "ERASE";
+            } else if (keyboard_check(vk_shift)) {
+                _pen = "MASK";
             }
-            if (_g_new != _g_old) { _changed = scr_bmpobj_set(_asset, _o, 0, _px, _py, _g_new) || _changed; }
-            if (_k_new != _k_old) { _changed = scr_bmpobj_set(_asset, _o, 1, _px, _py, _k_new) || _changed; }
+            // gfx value and solidity for this pen (-1 = leave alone)
+            var _gv = 0;
+            var _sv = 1;
+            switch (_pen) {
+                case "INK": _gv = 1; break;
+                case "C1":  _gv = 1; break;
+                case "C2":  _gv = 2; break;
+                case "C3":  _gv = 3; break;
+                case "MASK":  _gv = 0; _sv = 1; break;
+                case "ERASE": _gv = 0; _sv = 0; break;
+            }
+            if (_m.layer == 0) {
+                _sv = -1;
+            } else if (_m.layer == 1) {
+                _gv = -1;
+            }
+            _changed = scr_bmpobj_paint(_asset, _o, _px, _py, _gv, _sv);
         }
         if (_changed) {
             scr_bmpobj_cache_dirty(_asset, _m.sel);
             global.addresses_dirty = true;
         }
+        var _cx0 = _px;
+        var _cw  = 1;
+        if (_mc) {
+            _cx0 = _px - (_px mod 2);
+            _cw  = 2;
+        }
         draw_set_color(c_yellow);
-        draw_rectangle(_gx + _px * _s, _gy + _py * _s, _gx + (_px + 1) * _s - 1, _gy + (_py + 1) * _s - 1, true);
+        draw_rectangle(_gx + _cx0 * _s, _gy + _py * _s, _gx + (_cx0 + _cw) * _s - 1, _gy + (_py + 1) * _s - 1, true);
+    }
+
+    // PEN bar: what LMB paints with. Keys 1-5 pick a pen too.
+    var _pby = _bottom - _info_h - _pen_h;
+    draw_set_color(_lbl_col);
+    draw_text_l(_ex1 + 16, _pby + 8, "PEN");
+    var _pbx = _ex1 + 52;
+    var _pv = scr_bmpobj_mc_preview(_asset);
+    for (var _pi2 = 0; _pi2 < array_length(_pens); _pi2++) {
+        var _pn = _pens[_pi2];
+        var _pinfo = "PAINT WITH THIS (KEY " + string(_pi2 + 1) + ")";
+        if (_pn == "INK")   _pinfo = "INK: THE OBJECT'S PIXELS (KEY 1). SOLID IN COMPOSITE";
+        if (_pn == "C1")    _pinfo = "C1: PAIR 01, SCREEN HIGH NIBBLE (KEY 1)";
+        if (_pn == "C2")    _pinfo = "C2: PAIR 10, SCREEN LOW NIBBLE (KEY 2)";
+        if (_pn == "C3")    _pinfo = "C3: PAIR 11, COLOUR RAM (KEY 3)";
+        if (_pn == "MASK")  _pinfo = "MASK: SOLID WITH NO INK - HIDES THE BACKGROUND (KEY " + string(_pi2 + 1) + ", OR HOLD SHIFT WHILE DRAWING)";
+        if (_pn == "ERASE") _pinfo = "ERASE: SEE-THROUGH, THE BACKGROUND SHOWS (KEY " + string(_pi2 + 1) + ", OR THE RIGHT MOUSE BUTTON)";
+        var _pw2 = (_pn == "ERASE" || _pn == "MASK") ? 58 : 44;
+        if (scr_bmpobj_ui_button(_pbx, _pby, _pw2, 22, _pn, _m.pen == _pn, _mx, _my, _pinfo)) {
+            _m.pen = _pn;
+        }
+        // colour chip under colour pens
+        var _chip = -1;
+        if (_pn == "INK") _chip = scr_c64_pepto_colour(_m.ink);
+        if (_pn == "C1")  _chip = _pv[1];
+        if (_pn == "C2")  _chip = _pv[2];
+        if (_pn == "C3")  _chip = _pv[3];
+        if (_pn == "MASK") _chip = _mc ? _pv[0] : scr_c64_pepto_colour(_m.paper);
+        if (_chip != -1) {
+            draw_set_color(_chip);
+            draw_rectangle(_pbx + 3, _pby + 18, _pbx + _pw2 - 3, _pby + 21, false);
+        }
+        if (!global.is_any_text_active && keyboard_check_pressed(ord(string(_pi2 + 1)))) {
+            _m.pen = _pn;
+        }
+        _pbx += _pw2 + 4;
     }
 
     // info box
@@ -803,11 +1006,8 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_set_color(c_orange);
         draw_text_l(_ex1 + 16, _iy + 24, "GRAPHICS ARE OUTSIDE THIS ASSET - READ ONLY");
     } else {
-        var _help = "L = ink   R = clear";
-        if (_m.layer == 1) { _help = "L = solid   R = transparent"; }
-        if (_m.layer == 2) { _help = "L = ink   R = transparent   SHIFT+R = black"; }
         draw_set_color(_lbl_col);
-        draw_text_l(_ex1 + 16, _iy + 24, _lnames[_m.layer] + ":  " + _help);
+        draw_text_l(_ex1 + 16, _iy + 24, _lnames[_m.layer] + ":  L = " + _m.pen + "   SHIFT+L = MASK   R = ERASE");
     }
     var _used_in = "";
     for (var _pi = 0; _pi < array_length(_m.poses); _pi++) {
@@ -829,7 +1029,21 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         }
         scr_bmpobj_cache_dirty(_asset, _m.sel);
     }
-    if (_ccol >= 0) {
+    if (_ccol >= 0 && _mc) {
+        // Multicolour: C1 / C2 go in the screen byte, C3 in colour RAM
+        var _oc = _m.objects[_m.sel];
+        var _c3 = _oc[$ "colour3"] ?? 1;
+        var _n1 = scr_bmpobj_ui_swatch(_ccx - 10, _iy + 32, "C1", (_ccol >> 4) & 0x0F, _mx, _my, "THIS PART'S FIXED C1 (SCREEN HIGH NIBBLE) - CLICK NEXT, SHIFT+CLICK PREVIOUS");
+        var _n2 = scr_bmpobj_ui_swatch(_ccx + 56, _iy + 32, "C2", _ccol & 0x0F, _mx, _my, "THIS PART'S FIXED C2 (SCREEN LOW NIBBLE) - CLICK NEXT, SHIFT+CLICK PREVIOUS");
+        var _n3 = scr_bmpobj_ui_swatch(_ccx + 122, _iy + 32, "C3", _c3, _mx, _my, "THIS PART'S FIXED C3 (COLOUR RAM) - CLICK NEXT, SHIFT+CLICK PREVIOUS");
+        var _cmc = (_n1 << 4) | _n2;
+        if (_cmc != _ccol || _n3 != _c3) {
+            scr_bmpobj_undo_push(_asset);
+            scr_bmpobj_set_colour(_asset, _m.sel, _cmc);
+            _m.objects[_m.sel].colour3 = _n3;
+            scr_bmpobj_cache_dirty(_asset, _m.sel);
+        }
+    } else if (_ccol >= 0) {
         var _cink = scr_bmpobj_ui_colour(_ccx, _iy + 32, "INK", (_ccol >> 4) & 0x0F, _mx, _my, "THIS PART'S FIXED INK COLOUR (STORED IN ITS COLOUR BYTE) - < > STEP THROUGH 16 COLOURS");
         var _cpap = scr_bmpobj_ui_colour(_ccx, _iy + 60, "PAPER", _ccol & 0x0F, _mx, _my, "THIS PART'S FIXED PAPER COLOUR (STORED IN ITS COLOUR BYTE) - < > STEP THROUGH 16 COLOURS");
         var _cnew = (_cink << 4) | _cpap;
@@ -1192,17 +1406,34 @@ function scr_bmpobj_set_flag(_asset, _key, _val) {
     }
 }
 
+/// HiRes <-> multicolour for the whole asset. The bytes are kept (a HiRes
+/// drawing reads as pixel pairs afterwards); going multicolour snaps every
+/// mask to whole pairs. The pen follows the mode.
+function scr_bmpobj_set_mc(_asset, _mc) {
+    var _m = _asset.meta;
+    _m.mc = _mc;
+    if (_mc == 1) {
+        for (var _i = 0; _i < array_length(_m.objects); _i++) {
+            scr_bmpobj_mc_snap_mask(_asset, _m.objects[_i]);
+        }
+    }
+    _m.pen = "";
+    scr_bmpobj_cache_dirty(_asset, -1);
+    global.addresses_dirty = true;
+}
+
 /// Mask tools: auto (gfx + 1px outline), ink, grow, invert, clear, fill.
 function scr_bmpobj_mask_op(_asset, _o, _op) {
-    if (_op == "auto") { scr_bmpobj_auto_mask(_asset, _o); return; }
+    if (_op == "auto") { scr_bmpobj_auto_mask(_asset, _o); scr_bmpobj_mc_snap_mask(_asset, _o); return; }
     var _m  = _asset.meta;
+    var _mc = (_m.mc == 1);
     var _pw = _o.w * 8;
     var _ph = _o.h * 8;
     var _solid = array_create(_pw * _ph, 0);
     for (var _py = 0; _py < _ph; _py++) {
         for (var _px = 0; _px < _pw; _px++) {
             var _v = scr_bmpobj_solid(_asset, _o, _px, _py) ? 1 : 0;
-            if (_op == "ink")    { _v = scr_bmpobj_get(_asset, _o, 0, _px, _py); }
+            if (_op == "ink")    { _v = _mc ? ((scr_bmpobj_pair(_asset, _o, _px, _py) != 0) ? 1 : 0) : scr_bmpobj_get(_asset, _o, 0, _px, _py); }
             if (_op == "invert") { _v = 1 - _v; }
             if (_op == "clear")  { _v = 0; }
             if (_op == "fill")   { _v = 1; }
@@ -1232,6 +1463,7 @@ function scr_bmpobj_mask_op(_asset, _o, _op) {
             scr_bmpobj_set(_asset, _o, 1, _px, _py, _bit);
         }
     }
+    scr_bmpobj_mc_snap_mask(_asset, _o);
 }
 
 /// "$C000", "0xC000" or "49152" -> number; -1 when it does not parse.
@@ -1319,7 +1551,7 @@ function scr_bmpobj_snapshot(_asset) {
         array_push(_maps, {a:_ml[_i], ro:json_stringify(_ml[_i].meta.room_objects)});
     }
     return {buf:_b, size:_sz, objects:json_stringify(_m.objects), poses:json_stringify(_m.poses),
-            flags:[_m.col_major, _m.bottom_up, _m.mask_and, _m.managed],
+            flags:[_m.col_major, _m.bottom_up, _m.mask_and, _m.managed, _m.mc],
             colour_addr:_m.colour_addr, colour_auto:_m.colour_auto, sel:_m.sel, maps:_maps};
 }
 
@@ -1338,6 +1570,7 @@ function scr_bmpobj_snap_apply(_asset, _s) {
     _m.bottom_up = _s.flags[1];
     _m.mask_and  = _s.flags[2];
     variable_struct_set(_m, "managed", _s.flags[3]);
+    _m.mc = _s.flags[4];
     _m.colour_addr = _s.colour_addr;
     _m.colour_auto = _s.colour_auto;
     _m.sel = _s.sel;
@@ -1421,8 +1654,13 @@ function scr_bmpobj_import_png(_asset) {
     var _plane = scr_bmpobj_blank_plane(_asset, _cw, _ch);
     var _solid = 1 - real(_asset.meta.mask_and);
     var _pw = _cw * 8;
+    // Multicolour: each pixel pair (read from its left pixel) becomes the
+    // nearest of the four preview colours (BG / C1 / C2 / C3)
+    var _mc = (_asset.meta.mc == 1);
+    var _pal = scr_bmpobj_mc_preview(_asset);
     for (var _y = 0; _y < min(_h, _ch * 8); _y++) {
         for (var _x = 0; _x < min(_w, _pw); _x++) {
+            if (_mc && (_x mod 2) == 1) continue;
             var _o4 = (_y * _w + _x) * 4;
             var _r = buffer_peek(_buf, _o4, buffer_u8);
             var _g = buffer_peek(_buf, _o4 + 1, buffer_u8);
@@ -1430,6 +1668,24 @@ function scr_bmpobj_import_png(_asset) {
             var _a = buffer_peek(_buf, _o4 + 3, buffer_u8);
             var _clear = _has_alpha ? (_a < 128) : (_r == _kr && _g == _kg && _b == _kb);
             if (_clear) continue;
+            if (_mc) {
+                var _best = 0;
+                var _bd = 1000000;
+                for (var _pc = 0; _pc < 4; _pc++) {
+                    var _dr = _r - colour_get_red(_pal[_pc]);
+                    var _dg = _g - colour_get_green(_pal[_pc]);
+                    var _db = _b - colour_get_blue(_pal[_pc]);
+                    var _d = _dr * _dr + _dg * _dg + _db * _db;
+                    if (_d < _bd) { _bd = _d; _best = _pc; }
+                }
+                _plane.g[_y * _pw + _x] = (_best >> 1) & 1;
+                _plane.k[_y * _pw + _x] = _solid;
+                if (_x + 1 < _pw) {
+                    _plane.g[_y * _pw + _x + 1] = _best & 1;
+                    _plane.k[_y * _pw + _x + 1] = _solid;
+                }
+                continue;
+            }
             _plane.k[_y * _pw + _x] = _solid;
             if (0.299 * _r + 0.587 * _g + 0.114 * _b > 48) { _plane.g[_y * _pw + _x] = 1; }
         }
@@ -1503,6 +1759,20 @@ function scr_bmpobj_bitmaps() {
 function scr_bmpobj_grab(_asset, _bm, _cx, _cy, _w, _h) {
     var _buf = _bm.buffer;
     var _hires = scr_asset_bmp_is_hires(_bm);
+    // An empty asset takes the picture's mode; otherwise the mode stays and
+    // a multicolour grab into a HiRes asset (or the other way) is flattened
+    if (array_length(_asset.meta.objects) == 0) {
+        _asset.meta.mc = _hires ? 0 : 1;
+        _asset.meta.pen = "";
+        // Preview in the picture's own colours: its background and the
+        // first grabbed cell's screen and colour RAM bytes
+        if (!_hires && buffer_get_size(_buf) >= 10003) {
+            var _sb = buffer_peek(_buf, 8002 + _cy * 40 + _cx, buffer_u8);
+            var _cb = buffer_peek(_buf, 9002 + _cy * 40 + _cx, buffer_u8);
+            _asset.meta.mc_cols = [buffer_peek(_buf, 10002, buffer_u8) & 15, (_sb >> 4) & 15, _sb & 15, _cb & 15];
+        }
+    }
+    var _mc_keep = (!_hires && _asset.meta.mc == 1);
     var _plane = scr_bmpobj_blank_plane(_asset, _w, _h);
     var _solid = 1 - real(_asset.meta.mask_and);
     var _pw = _w * 8;
@@ -1518,7 +1788,9 @@ function scr_bmpobj_grab(_asset, _bm, _cx, _cy, _w, _h) {
                 _ink = ((_b >> (6 - (_bx & 6))) & 3) != 0;
             }
             if (_ink) {
-                _plane.g[_py * _pw + _px] = 1;
+                // Multicolour into multicolour: the real bits, so each pair
+                // keeps its colour; otherwise every coloured pixel is ink
+                _plane.g[_py * _pw + _px] = _mc_keep ? ((_b >> (7 - (_bx & 7))) & 1) : 1;
                 _plane.k[_py * _pw + _px] = _solid;
             }
         }
@@ -1680,6 +1952,12 @@ function scr_bmpobj_set_colour(_asset, _i, _c) {
 /// _x/_y = top-left on screen, _s = screen pixels per C64 pixel.
 function scr_bmpobj_draw_tinted(_asset, _i, _x, _y, _s, _cell_colour_fn) {
     var _o = _asset.meta.objects[_i];
+    // Multicolour: three colours per cell don't fit the ink / paper tint,
+    // so draw the preview (or the part's own fixed colours) as it is
+    if (_asset.meta.mc == 1) {
+        draw_surface_ext(scr_bmpobj_surface(_asset, _i, 3), _x, _y, _s, _s, 0, c_white, draw_get_alpha());
+        return;
+    }
     var _own = scr_bmpobj_get_colour(_asset, _i);
     var _sink = scr_bmpobj_surface(_asset, _i, 4);
     var _spap = scr_bmpobj_surface(_asset, _i, 5);
@@ -1755,6 +2033,77 @@ function scr_bmpobj_assets() {
     return _out;
 }
 
+/// The BITMAP asset placed at _addr, or undefined.
+function scr_bmpobj_bitmap_at(_addr) {
+    if (!instance_exists(obj_asset_manager)) return undefined;
+    var _list = obj_asset_manager.asset_list;
+    for (var _i = 0; _i < ds_list_size(_list); _i++) {
+        var _a = _list[| _i];
+        if (_a.type == "BITMAP" && real(_a.address) == _addr) return _a;
+    }
+    return undefined;
+}
+
+/// Every BITMAP asset, in list order.
+function scr_bmpobj_bitmap_assets() {
+    var _out = [];
+    if (!instance_exists(obj_asset_manager)) return _out;
+    var _list = obj_asset_manager.asset_list;
+    for (var _i = 0; _i < ds_list_size(_list); _i++) {
+        if (_list[| _i].type == "BITMAP") array_push(_out, _list[| _i]);
+    }
+    return _out;
+}
+
+/// Screen RAM that goes with a bitmap at _bmp ($4000 -> $6000).
+function scr_bmpobj_auto_screen(_bmp) {
+    return scr_bmp_regions(_bmp).scr_addr;
+}
+
+/// Where a new node should draw: the bitmap a connected BITMAP node shows,
+/// else the first BITMAP asset, else $4000.
+function scr_bmpobj_default_bmp() {
+    var _addr = -1;
+    with (obj_c64_node) {
+        // MACRO_BMP: [1] asset name, [2] bitmap address
+        if (_addr < 0 && node_type == "MACRO_BMP" && is_connected && array_length(instructions) > 0
+        &&  array_length(instructions[0]) > 2 && string(instructions[0][1]) != "" && is_real(instructions[0][2])) {
+            _addr = real(instructions[0][2]);
+        }
+    }
+    if (_addr >= 0) return _addr;
+    var _bms = scr_bmpobj_bitmap_assets();
+    if (array_length(_bms) > 0) return real(_bms[0].address);
+    return 0x4000;
+}
+
+/// Slots of connected SAVE + DRAW / MOVE nodes, in canvas order.
+function scr_bmpobj_slots() {
+    var _out = [];
+    with (obj_c64_node) {
+        if (node_type == "MACRO_BMP_OBJ" && is_connected && array_length(instructions[0]) > 10
+        &&  is_real(instructions[0][9]) && (real(instructions[0][9]) == 1 || real(instructions[0][9]) == 3)
+        &&  string(instructions[0][10]) != "" && !array_contains(_out, string(instructions[0][10]))) {
+            array_push(_out, string(instructions[0][10]));
+        }
+    }
+    return _out;
+}
+
+/// A slot name no BMP OBJECT node uses yet: OBJ1, OBJ2...
+function scr_bmpobj_new_slot() {
+    var _k = 1;
+    while (true) {
+        var _name = "OBJ" + string(_k);
+        var _used = false;
+        with (obj_c64_node) {
+            if (node_type == "MACRO_BMP_OBJ" && array_length(instructions[0]) > 10 && string(instructions[0][10]) == _name) _used = true;
+        }
+        if (!_used) return _name;
+        _k++;
+    }
+}
+
 /// Bring a node's instructions[0] up to the current layout.
 function scr_bmpobj_node_pad(_in) {
     var _defs = ["macro_bmp_obj", 0x4000, "", 0, 0, 0, "", "", "", 0, "", 0];
@@ -1826,6 +2175,11 @@ function scr_node_draw_macro_bmp_obj(_draw_x, _y) {
     scr_node_macro_text_l(_draw_x + 8, _ply, "BMP:");
     draw_set_color(c_yellow);
     scr_node_macro_text_l(_draw_x + 70, _ply, _hex4(real(_in[1])));
+    var _bmp_a = scr_bmpobj_bitmap_at(real(_in[1]));
+    if (!is_undefined(_bmp_a)) {
+        draw_set_color(make_color_rgb(150, 160, 180));
+        scr_node_macro_text_l(_draw_x + 116, _ply, string(_bmp_a.name), width - 124);
+    }
     _ply += _line_h;
 
     // COL / ROW
@@ -1864,7 +2218,12 @@ function scr_node_draw_macro_bmp_obj(_draw_x, _y) {
     draw_set_color(_c_edit);
     scr_node_macro_text_l(_draw_x + 8, _ply, "SCREEN:");
     draw_set_color((real(_in[11]) > 0) ? c_yellow : _c_dim);
-    scr_node_macro_text_l(_draw_x + 70, _ply, (real(_in[11]) > 0) ? _hex4(real(_in[11])) : "OFF");
+    var _scr_txt = "OFF";
+    if (real(_in[11]) > 0) {
+        _scr_txt = _hex4(real(_in[11]));
+        if (real(_in[11]) == scr_bmpobj_auto_screen(real(_in[1]))) _scr_txt += " AUTO";
+    }
+    scr_node_macro_text_l(_draw_x + 70, _ply, _scr_txt);
     _ply += _line_h;
 
     // footer: what it does, or what is wrong
@@ -1883,6 +2242,10 @@ function scr_node_draw_macro_bmp_obj(_draw_x, _y) {
         _msg = "! THE ASSET HAS NO OBJECTS YET"; _col = _c_warn;
     } else if (_in[6] == "" && _obj >= _n) {
         _msg = "! OBJECT " + string(_obj) + " DOES NOT EXIST (0-" + string(_n - 1) + ")"; _col = _c_warn;
+    } else if (!is_undefined(_bmp_a) && ((_a.meta[$ "mc"] ?? 0) == 1) == scr_asset_bmp_is_hires(_bmp_a)) {
+        // HiRes objects on a multicolour bitmap (or the other way) draw garbled
+        _msg = scr_asset_bmp_is_hires(_bmp_a) ? "! MULTICOLOUR OBJECTS, HIRES BITMAP" : "! HIRES OBJECTS, MULTICOLOUR BITMAP";
+        _col = _c_warn;
     } else if (_in[6] == "") {
         var _o2 = _a.meta.objects[_obj];
         _msg = string(_o2.w * _o2.h * 8) + "B MASKED";
@@ -1948,7 +2311,25 @@ function scr_node_step_macro_bmp_obj(_draw_x) {
     _fy += _line_h;
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 66, _fy, _draw_x + 94, _fy + 12)) { _open(3, string(_in[3])); exit; }
     _fy += _line_h;
-    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 66, _fy, _draw_x + 130, _fy + 12)) { _open(1, _hex(real(_in[1]))); exit; }
+    // BMP: click = next BITMAP asset (its address), SHIFT+click = type one.
+    // SCREEN follows the bitmap unless it is OFF.
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _fy, _draw_x + width - 8, _fy + 12)) {
+        var _bms = scr_bmpobj_bitmap_assets();
+        if (keyboard_check(vk_shift) || array_length(_bms) == 0) {
+            _open(1, _hex(real(_in[1])));
+            exit;
+        }
+        var _bcur = -1;
+        for (var _bi = 0; _bi < array_length(_bms); _bi++) { if (real(_bms[_bi].address) == real(_in[1])) _bcur = _bi; }
+        _bcur = (_bcur + 1) mod array_length(_bms);
+        scr_undo_snapshot();
+        _in[1] = real(_bms[_bcur].address);
+        if (real(_in[11]) > 0) {
+            _in[11] = scr_bmpobj_auto_screen(_in[1]);
+        }
+        global.addresses_dirty = true;
+        exit;
+    }
     _fy += _line_h;
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 36, _fy, _draw_x + 66,  _fy + 12)) { _open(4, string(_in[4])); exit; }
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 98, _fy, _draw_x + 128, _fy + 12)) { _open(5, string(_in[5])); exit; }
@@ -1961,14 +2342,46 @@ function scr_node_step_macro_bmp_obj(_draw_x) {
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _fy, _draw_x + width - 8, _fy + 12)) {
         scr_undo_snapshot();
         _in[9] = (real(_in[9]) + (keyboard_check(vk_shift) ? 3 : 1)) mod 4;
+        // SAVE + DRAW / MOVE need a slot of their own; RESTORE needs one
+        // that a SAVE + DRAW / MOVE node uses
+        var _md = real(_in[9]);
+        if ((_md == 1 || _md == 3) && string(_in[10]) == "") {
+            _in[10] = scr_bmpobj_new_slot();
+        }
+        if (_md == 2) {
+            var _sl = scr_bmpobj_slots();
+            if (array_length(_sl) > 0 && !array_contains(_sl, string(_in[10]))) {
+                _in[10] = _sl[0];
+            }
+        }
         global.addresses_dirty = true;
         exit;
     }
     _fy += _line_h;
-    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _fy, _draw_x + width - 8, _fy + 12)) { _open(10, string(_in[10])); exit; }
-    _fy += _line_h;
+    // SLOT: RESTORE steps through the slots in use; otherwise type a name
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _fy, _draw_x + width - 8, _fy + 12)) {
-        _open(11, (real(_in[11]) > 0) ? _hex(real(_in[11])) : "0");
+        var _sl2 = scr_bmpobj_slots();
+        if (real(_in[9]) == 2 && array_length(_sl2) > 0 && !keyboard_check(vk_shift)) {
+            var _scur = -1;
+            for (var _si = 0; _si < array_length(_sl2); _si++) { if (_sl2[_si] == string(_in[10])) _scur = _si; }
+            scr_undo_snapshot();
+            _in[10] = _sl2[(_scur + 1) mod array_length(_sl2)];
+            global.addresses_dirty = true;
+            exit;
+        }
+        _open(10, string(_in[10]));
+        exit;
+    }
+    _fy += _line_h;
+    // SCREEN: click = OFF / the bitmap's own screen RAM, SHIFT+click = type one
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _fy, _draw_x + width - 8, _fy + 12)) {
+        if (keyboard_check(vk_shift)) {
+            _open(11, (real(_in[11]) > 0) ? _hex(real(_in[11])) : "0");
+            exit;
+        }
+        scr_undo_snapshot();
+        _in[11] = (real(_in[11]) > 0) ? 0 : scr_bmpobj_auto_screen(real(_in[1]));
+        global.addresses_dirty = true;
         exit;
     }
 }
@@ -1985,6 +2398,10 @@ function scr_bmpobj_node_commit(_target, _idx, _input) {
             if (string_char_at(_clean, 1) == "$") _clean = string_delete(_clean, 1, 1);
             if (_clean == "" || _clean == "OFF") { _in[_idx] = (_idx == 1) ? 0x4000 : 0; break; }
             _in[_idx] = clamp(real(hex_to_decimal(_clean)), 0, 0xFFFF);
+            // a typed bitmap address brings its screen RAM along (unless OFF)
+            if (_idx == 1 && real(_in[11]) > 0) {
+                _in[11] = scr_bmpobj_auto_screen(_in[1]);
+            }
             break;
         }
         case 3: _in[3] = clamp((_digits != "") ? real(_digits) : 0, 0, 255); break;
@@ -2249,56 +2666,73 @@ function scr_bmpobj_compile(_curr, _list) {
             }
         }
         if (_do_col) {
-            if (_ov == 0) {
-                _E("lda_imm", scr_bmpobj_get_colour(_a, _obj) & 0xFF);
-                _E("sta_zp", _tm);
-            } else {
-                _E("ldy_abs", _ov);
-                _E("lda_lab_lo", _pfx + "tc"); _E("sta_zp", _zt);
-                _E("lda_lab_hi", _pfx + "tc"); _E("sta_zp", _zt + 1);
-                _E("lda_izy", _zt);
-                _E("cmp_imm", _auto);
-                _E("bne", _pfx + "cgo");
-                _E("jmp_abs", _pfx + "cdone");
-                _L(_pfx + "cgo");
-                _E("sta_zp", _tm);
-            }
-            var _sbase = _scr + ((_rv == 0) ? _row * 40 : 0) + ((_cv == 0) ? _col : 0);
-            _E("lda_imm", _sbase & 0xFF);        _E("sta_zp", _zt);
-            _E("lda_imm", (_sbase >> 8) & 0xFF); _E("sta_zp", _zt + 1);
-            if (_cv != 0) {
-                _E("ldx_abs", _cv);
-                _E("beq", _pfx + "scs");
-                _L(_pfx + "scm");
-                _A(_zt, 1);
-                _E("dex", 0);
-                _E("bne", _pfx + "scm");
-                _L(_pfx + "scs");
-            }
-            if (_rv != 0) {
-                _E("ldx_abs", _rv);
-                _E("beq", _pfx + "srs");
-                _L(_pfx + "srm");
+            // Pass 0 fills the screen RAM cells with the colour byte. A
+            // multicolour asset adds pass 1: C3 into colour RAM ($D800).
+            var _passes = (_m.mc == 1) ? 2 : 1;
+            for (var _cp = 0; _cp < _passes; _cp++) {
+                var _cq = _pfx + ((_cp == 0) ? "" : "k");
+                if (_ov == 0) {
+                    if (_cp == 0) {
+                        _E("lda_imm", scr_bmpobj_get_colour(_a, _obj) & 0xFF);
+                    } else {
+                        _E("lda_imm", (_objs[_obj][$ "colour3"] ?? 1) & 0x0F);
+                    }
+                    _E("sta_zp", _tm);
+                } else {
+                    // AUTO objects (tc = the AUTO value) leave the cells alone
+                    _E("ldy_abs", _ov);
+                    _E("lda_lab_lo", _pfx + "tc"); _E("sta_zp", _zt);
+                    _E("lda_lab_hi", _pfx + "tc"); _E("sta_zp", _zt + 1);
+                    _E("lda_izy", _zt);
+                    _E("cmp_imm", _auto);
+                    _E("bne", _cq + "cgo");
+                    _E("jmp_abs", _cq + "cdone");
+                    _L(_cq + "cgo");
+                    if (_cp == 1) {
+                        _E("lda_lab_lo", _pfx + "t3"); _E("sta_zp", _zt);
+                        _E("lda_lab_hi", _pfx + "t3"); _E("sta_zp", _zt + 1);
+                        _E("lda_izy", _zt);
+                    }
+                    _E("sta_zp", _tm);
+                }
+                var _cbase = (_cp == 0) ? _scr : 0xD800;
+                var _sbase = _cbase + ((_rv == 0) ? _row * 40 : 0) + ((_cv == 0) ? _col : 0);
+                _E("lda_imm", _sbase & 0xFF);        _E("sta_zp", _zt);
+                _E("lda_imm", (_sbase >> 8) & 0xFF); _E("sta_zp", _zt + 1);
+                if (_cv != 0) {
+                    _E("ldx_abs", _cv);
+                    _E("beq", _cq + "scs");
+                    _L(_cq + "scm");
+                    _A(_zt, 1);
+                    _E("dex", 0);
+                    _E("bne", _cq + "scm");
+                    _L(_cq + "scs");
+                }
+                if (_rv != 0) {
+                    _E("ldx_abs", _rv);
+                    _E("beq", _cq + "srs");
+                    _L(_cq + "srm");
+                    _A(_zt, 40);
+                    _E("dex", 0);
+                    _E("bne", _cq + "srm");
+                    _L(_cq + "srs");
+                }
+                _E("lda_lab", _pfx + "vh");
+                _E("sta_zp", _co);
+                _L(_cq + "cr");
+                _E("lda_lab", _pfx + "vw");
+                _E("tay", 0);
+                _E("dey", 0);
+                _E("lda_zp", _tm);
+                _L(_cq + "cc");
+                _E("sta_izy", _zt);
+                _E("dey", 0);
+                _E("bpl", _cq + "cc");
                 _A(_zt, 40);
-                _E("dex", 0);
-                _E("bne", _pfx + "srm");
-                _L(_pfx + "srs");
+                _E("dec_zp", _co);
+                _E("bne", _cq + "cr");
+                _L(_cq + "cdone");
             }
-            _E("lda_lab", _pfx + "vh");
-            _E("sta_zp", _co);
-            _L(_pfx + "cr");
-            _E("lda_lab", _pfx + "vw");
-            _E("tay", 0);
-            _E("dey", 0);
-            _E("lda_zp", _tm);
-            _L(_pfx + "cc");
-            _E("sta_izy", _zt);
-            _E("dey", 0);
-            _E("bpl", _pfx + "cc");
-            _A(_zt, 40);
-            _E("dec_zp", _co);
-            _E("bne", _pfx + "cr");
-            _L(_pfx + "cdone");
         }
     }
 
@@ -2334,8 +2768,8 @@ function scr_bmpobj_compile(_curr, _list) {
         for (var _b = 0; _b < _max_cells * 8; _b++) _E("byte", 0);
     }
     if (_mode != 2 && _ov != 0) {
-        var _names = ["tgl", "tgh", "tml", "tmh", "tw", "th", "tc"];
-        for (var _t = 0; _t < 7; _t++) {
+        var _names = ["tgl", "tgh", "tml", "tmh", "tw", "th", "tc", "t3"];
+        for (var _t = 0; _t < 8; _t++) {
             _L(_pfx + _names[_t]);
             for (var _i = 0; _i < _n; _i++) {
                 var _oi = _objs[_i];
@@ -2355,6 +2789,8 @@ function scr_bmpobj_compile(_curr, _list) {
                         }
                         break;
                     }
+                    // multicolour C3 (colour RAM), per object
+                    case 7: _E("byte", (_oi[$ "colour3"] ?? 1) & 0x0F); break;
                 }
             }
         }

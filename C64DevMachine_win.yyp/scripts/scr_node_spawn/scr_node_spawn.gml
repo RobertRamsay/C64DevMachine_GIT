@@ -1079,10 +1079,12 @@ case "LABEL": {
         // Starts on the first BMP_OBJECTS asset, if there is one.
         // -------------------------------------------------------
         case "MACRO_BMP_OBJ": {
+            // BMP: the bitmap the program already shows; SCREEN: its screen RAM
             var _bo_assets = scr_bmpobj_assets();
+            var _bo_bmp    = scr_bmpobj_default_bmp();
             _n.node_title   = "BMP OBJECT";
-            _n.instructions = [["macro_bmp_obj", 0x4000, (array_length(_bo_assets) > 0) ? _bo_assets[0].name : "",
-                                0, 0, 0, "", "", "", 0, "", 0]];
+            _n.instructions = [["macro_bmp_obj", _bo_bmp, (array_length(_bo_assets) > 0) ? _bo_assets[0].name : "",
+                                0, 0, 0, "", "", "", 0, "", scr_bmpobj_auto_screen(_bo_bmp)]];
             _n.pc_address   = global.start_pc;
             with (_n) { event_user(0); }
             break;
