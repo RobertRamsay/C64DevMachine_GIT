@@ -1812,16 +1812,28 @@ function scr_pickup_hi_offset(_a) {
     return 0;
 }
 
+/// Undo snapshot: the entries plus every setting (not the imported original).
 function scr_pickup_undo_push(_a) {
-    array_push(_a.meta.pick_undo, json_stringify(_a.meta.pick.rooms));
+    var _pk = _a.meta.pick;
+    var _snap = {
+        rooms: _pk.rooms, map: _pk.map, tiles: _pk.tiles, repl: _pk.repl, fields: _pk.fields,
+        flag: _pk.flag, x_off: _pk.x_off, y_off: _pk.y_off, index: _pk.index, term: _pk.term, empty: _pk.empty
+    };
+    array_push(_a.meta.pick_undo, json_stringify(_snap));
     if (array_length(_a.meta.pick_undo) > 50) array_delete(_a.meta.pick_undo, 0, 1);
 }
 
 function scr_pickup_undo(_a) {
     var _u = _a.meta.pick_undo;
     if (array_length(_u) == 0) return;
-    _a.meta.pick.rooms = json_parse(_u[array_length(_u) - 1]);
+    var _snap = json_parse(_u[array_length(_u) - 1]);
     array_delete(_u, array_length(_u) - 1, 1);
+    if (is_array(_snap)) {
+        _a.meta.pick.rooms = _snap;          // older snapshot: entries only
+    } else {
+        var _keys = variable_struct_get_names(_snap);
+        for (var _i = 0; _i < array_length(_keys); _i++) _a.meta.pick[$ _keys[_i]] = _snap[$ _keys[_i]];
+    }
     _a.meta.pick.auto = false;   // keep the undone state - AUTO would re-derive it
     _a.meta.is_dirty = true;
     global.addresses_dirty = true;
@@ -1831,6 +1843,125 @@ function scr_pickup_restore(_a) {
     if (array_length(_a.meta.pick.orig) == 0) return;
     scr_pickup_undo_push(_a);
     _a.meta.pick.rooms = json_parse(json_stringify(_a.meta.pick.orig));
+    _a.meta.is_dirty = true;
+    global.addresses_dirty = true;
+}
+
+/// One byte typed by the user: $41 / 0x41 hex, 65 decimal. undefined if invalid.
+function scr_pickup_parse_byte(_p) {
+    _p = string_upper(string_trim(_p));
+    var _hex = false;
+    var _v = 0;
+    if (string_char_at(_p, 1) == "$") { _hex = true; _p = string_delete(_p, 1, 1); }
+    else if (string_copy(_p, 1, 2) == "0X") { _hex = true; _p = string_delete(_p, 1, 2); }
+    if (_p == "" || string_length(_p) > 3) return undefined;
+    if (_hex) {
+        for (var _i = 1; _i <= string_length(_p); _i++) {
+            if (string_pos(string_char_at(_p, _i), "0123456789ABCDEF") == 0) return undefined;
+        }
+        _v = hex_to_decimal(_p);
+    } else {
+        if (string_digits(_p) != _p) return undefined;
+        _v = real(_p);
+    }
+    if (_v > 255) return undefined;
+    return _v;
+}
+
+/// A list of bytes separated by spaces or commas. undefined if any is invalid.
+function scr_pickup_parse_bytes(_s) {
+    var _parts = string_split(string_replace_all(_s, ",", " "), " ", true);
+    var _out = [];
+    for (var _i = 0; _i < array_length(_parts); _i++) {
+        var _v = scr_pickup_parse_byte(_parts[_i]);
+        if (is_undefined(_v)) return undefined;
+        array_push(_out, _v);
+    }
+    return _out;
+}
+
+/// Text prompt result for one SETTINGS row (_ctx: { a, key }). An empty
+/// result is a cancel; NONE clears a list.
+function scr_pickup_setting_apply(_text, _ctx) {
+    var _a = _ctx.a;
+    if (!is_struct(_a) || !variable_struct_exists(_a, "meta") || !variable_struct_exists(_a.meta, "pick")) return;
+    var _s = string_upper(string_trim(_text));
+    if (_s == "") return;
+    var _pk   = _a.meta.pick;
+    var _none = (_s == "NONE" || _s == "NOTHING" || _s == "-");
+    var _bad  = "";
+    var _v    = undefined;
+    switch (_ctx.key) {
+        case "tiles":
+            _v = _none ? [] : scr_pickup_parse_bytes(_s);
+            if (is_undefined(_v)) { _bad = "PICKUP TILES: USE BYTES LIKE $41 $42 OR 65 66"; break; }
+            scr_pickup_undo_push(_a);
+            _pk.tiles = _v;
+            break;
+        case "repl":
+            _v = [];
+            if (!_none) {
+                var _parts = string_split(string_replace_all(_s, ",", " "), " ", true);
+                for (var _i = 0; _i < array_length(_parts); _i++) {
+                    var _ab = string_split(_parts[_i], ">");
+                    if (array_length(_ab) != 2) { _v = undefined; break; }
+                    var _t0 = scr_pickup_parse_byte(_ab[0]);
+                    var _t1 = scr_pickup_parse_byte(_ab[1]);
+                    if (is_undefined(_t0) || is_undefined(_t1)) { _v = undefined; break; }
+                    array_push(_v, [_t0, _t1]);
+                }
+            }
+            if (is_undefined(_v)) { _bad = "TAKEN TILE: USE PAIRS LIKE $41>$20 $42>$20"; break; }
+            scr_pickup_undo_push(_a);
+            // Entries still on the old default follow the new one; hand edits stay
+            var _old = { tiles: _pk.tiles, repl: _pk.repl };
+            _pk.repl = _v;
+            for (var _r = 0; _r < array_length(_pk.rooms); _r++) {
+                var _ents = _pk.rooms[_r];
+                for (var _i = 0; _i < array_length(_ents); _i++) {
+                    var _t = real(_ents[_i].tile) & 0x7F;
+                    if ((real(_ents[_i].repl) & 0xFF) == scr_pickup_default_repl(_old, _t)) {
+                        _ents[_i].repl = scr_pickup_default_repl(_pk, _t);
+                    }
+                }
+            }
+            break;
+        case "fields":
+            var _ok = ["FLAG", "REPL", "X", "Y", "TILE", "ROOM"];
+            _v = string_split(string_replace_all(_s, ",", " "), " ", true);
+            for (var _i = 0; _i < array_length(_v); _i++) {
+                if (array_get_index(_ok, _v[_i]) < 0) { _v = undefined; break; }
+            }
+            if (is_undefined(_v) || array_length(_v) == 0) { _bad = "ENTRY: USE FLAG REPL X Y TILE ROOM, IN BYTE ORDER"; break; }
+            scr_pickup_undo_push(_a);
+            _pk.fields = _v;
+            break;
+        case "flag":
+            _v = scr_pickup_parse_byte(_s);
+            if (is_undefined(_v)) { _bad = "FLAG VALUE: ONE BYTE, $00-$FF OR 0-255"; break; }
+            scr_pickup_undo_push(_a);
+            _pk.flag = _v;
+            break;
+        case "term":
+            if (string_copy(_s, 1, 5) == "COUNT") _v = -1;
+            else _v = scr_pickup_parse_byte(_s);
+            if (is_undefined(_v)) { _bad = "LIST END: ONE BYTE ($FF) OR COUNT"; break; }
+            scr_pickup_undo_push(_a);
+            _pk.term = _v;
+            break;
+        case "empty":
+            _v = _none ? [] : scr_pickup_parse_bytes(_s);
+            if (is_undefined(_v)) { _bad = "EMPTY ROOM: BYTES LIKE $FF, OR NONE"; break; }
+            scr_pickup_undo_push(_a);
+            _pk.empty = _v;
+            break;
+    }
+    if (_bad != "") {
+        global.pickup_err   = _bad;
+        global.pickup_err_t = current_time;
+        return;
+    }
+    global.pickup_err = "";
     _a.meta.is_dirty = true;
     global.addresses_dirty = true;
 }
@@ -1886,7 +2017,7 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
     }
     _tx += 200 + _gap;
     var _ul = "UNDO (" + string(array_length(_a.meta.pick_undo)) + ")";
-    scr_ui_info(point_in_rectangle(_mx, _my, _tx, _ty, _tx + 110, _ty + _bh), "UNDO (CTRL+Z): TAKES BACK THE LAST ENTRY CHANGE AND TURNS AUTO OFF SO IT STICKS");
+    scr_ui_info(point_in_rectangle(_mx, _my, _tx, _ty, _tx + 110, _ty + _bh), "UNDO (CTRL+Z): TAKES BACK THE LAST ENTRY OR SETTINGS CHANGE AND TURNS AUTO OFF SO IT STICKS");
     if (scr_mrp_button(_tx, _ty, _tx + 110, _ty + _bh, _ul, false, _mx, _my) == 1
         || (keyboard_check(vk_control) && keyboard_check_pressed(ord("Z")))) {
         scr_pickup_undo(_a);
@@ -1911,38 +2042,98 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
     draw_text(_sx, _sy - scr_lang_lift(), "SETTINGS");
     _sy += _lh;
     var _hx = function(_v) { return "$" + string_upper(decimal_to_hex(real(_v) & 0xFF)); };
+    // Each row: [label, value, key, hover help]. key "" = read only;
+    // "index" / "off" step on click; the rest open a text prompt.
     var _rows = [];
     var _t = "";
     for (var _i = 0; _i < array_length(_pk.tiles); _i++) _t += _hx(_pk.tiles[_i]) + " ";
-    array_push(_rows, ["PICKUP TILES", _t]);
+    if (_t == "") _t = "NONE";
+    array_push(_rows, ["PICKUP TILES", string_trim(_t), "tiles", "PICKUP TILES: CLICK TO TYPE THE TILES THAT ARE PICKUPS ($41 $42 OR 65 66). AUTO MAKES AN ENTRY FOR EVERY ONE IN THE MAP"]);
     _t = "";
-    for (var _i = 0; _i < array_length(_pk.repl); _i++) _t += _hx(_pk.repl[_i][0]) + ">" + _hx(_pk.repl[_i][1]) + "  ";
-    array_push(_rows, ["TAKEN TILE", _t]);
+    for (var _i = 0; _i < array_length(_pk.repl); _i++) _t += _hx(_pk.repl[_i][0]) + ">" + _hx(_pk.repl[_i][1]) + " ";
+    if (_t == "") _t = "NONE";
+    array_push(_rows, ["TAKEN TILE", string_trim(_t), "repl", "TAKEN TILE: CLICK TO TYPE WHAT EACH PICKUP TILE BECOMES ONCE TAKEN, AS PAIRS LIKE $41>$20"]);
     _t = "";
     for (var _i = 0; _i < array_length(_pk.fields); _i++) _t += _pk.fields[_i] + " ";
-    array_push(_rows, ["ENTRY", _t]);
-    array_push(_rows, ["OFFSETS", "X+" + string(_pk.x_off) + "   Y+" + string(_pk.y_off)]);
-    array_push(_rows, ["FLAG VALUE", _hx(_pk.flag)]);
+    array_push(_rows, ["ENTRY", string_trim(_t), "fields", "ENTRY: CLICK TO TYPE THE BYTES OF ONE ENTRY IN ORDER - ANY OF FLAG REPL X Y TILE ROOM"]);
+    array_push(_rows, ["OFFSETS", "", "off", "OFFSETS: LEFT CLICK X OR Y TO ADD 1, RIGHT CLICK TO SUBTRACT 1. ADDED TO EVERY ENTRY'S POSITION"]);
+    array_push(_rows, ["FLAG VALUE", _hx(_pk.flag), "flag", "FLAG VALUE: CLICK TO TYPE THE BYTE WRITTEN FOR THE FLAG FIELD ($01 OR 1)"]);
     var _ixn = ["ADDRESS PER ROOM", "LO TABLE, HI TABLE", "NONE"];
-    array_push(_rows, ["ROOM INDEX", _ixn[clamp(real(_pk.index), 0, 2)]]);
+    array_push(_rows, ["ROOM INDEX", _ixn[clamp(real(_pk.index), 0, 2)], "index", "ROOM INDEX: LEFT CLICK FOR THE NEXT LAYOUT, RIGHT CLICK FOR THE PREVIOUS. HOW THE GAME FINDS EACH ROOM'S LIST"]);
     if (real(_pk.term) >= 0) {
-        array_push(_rows, ["LIST END", _hx(_pk.term)]);
+        array_push(_rows, ["LIST END", _hx(_pk.term), "term", "LIST END: CLICK TO TYPE THE BYTE THAT ENDS EACH ROOM'S LIST ($FF), OR COUNT FOR A COUNT BYTE FIRST"]);
     } else {
-        array_push(_rows, ["LIST END", "COUNT BYTE FIRST"]);
+        array_push(_rows, ["LIST END", "COUNT BYTE FIRST", "term", "LIST END: CLICK TO TYPE THE BYTE THAT ENDS EACH ROOM'S LIST ($FF), OR COUNT FOR A COUNT BYTE FIRST"]);
     }
     _t = "";
     for (var _i = 0; _i < array_length(_pk.empty); _i++) _t += _hx(_pk.empty[_i]) + " ";
     if (_t == "") _t = "NOTHING";
-    array_push(_rows, ["EMPTY ROOM", _t]);
-    array_push(_rows, ["SIZE", string(array_length(_bytes)) + " BYTES"]);
-    array_push(_rows, ["LABELS", _a.name + "_LO"]);
-    array_push(_rows, ["", _a.name + "_HI"]);
+    array_push(_rows, ["EMPTY ROOM", string_trim(_t), "empty", "EMPTY ROOM: CLICK TO TYPE THE BYTES WRITTEN FOR A ROOM WITH NO ENTRIES, OR NONE"]);
+    array_push(_rows, ["SIZE", string(array_length(_bytes)) + " BYTES", "", ""]);
+    array_push(_rows, ["LABELS", _a.name + "_LO", "", ""]);
+    array_push(_rows, ["", _a.name + "_HI", "", ""]);
+    var _vx1 = _sx + 110;
+    var _vx2 = _x1 + 385;
     for (var _i = 0; _i < array_length(_rows); _i++) {
+        var _row = _rows[_i];
         draw_set_color(c_gray);
-        draw_text(_sx, _sy - scr_lang_lift(), _rows[_i][0]);
-        draw_set_color(c_white);
-        draw_text(_sx + 110, _sy - scr_lang_lift(), _rows[_i][1]);
+        draw_text(_sx, _sy - scr_lang_lift(), _row[0]);
+        var _by1 = _sy - 3;
+        var _by2 = _sy + _lh - 5;
+        if (_row[2] == "") {
+            draw_set_color(c_white);
+            draw_text(_vx1 + 6, _sy - scr_lang_lift(), _row[1]);
+        } else if (_row[2] == "off") {
+            var _xm = (_vx1 + _vx2) div 2;
+            var _fo = function(_n, _v) { return _n + (real(_v) < 0 ? "-" : "+") + string(abs(real(_v))); };
+            scr_ui_info(point_in_rectangle(_mx, _my, _vx1, _by1, _vx2, _by2), _row[3]);
+            var _cx = scr_mrp_button(_vx1, _by1, _xm - 3, _by2, _fo("X", _pk.x_off), false, _mx, _my);
+            var _cy = scr_mrp_button(_xm + 3, _by1, _vx2, _by2, _fo("Y", _pk.y_off), false, _mx, _my);
+            if (_cx != 0 || _cy != 0) {
+                scr_pickup_undo_push(_a);
+                if (_cx != 0) _pk.x_off = clamp(real(_pk.x_off) + (_cx == 1 ? 1 : -1), -255, 255);
+                if (_cy != 0) _pk.y_off = clamp(real(_pk.y_off) + (_cy == 1 ? 1 : -1), -255, 255);
+                _a.meta.is_dirty = true;
+                global.addresses_dirty = true;
+            }
+        } else {
+            // Long lists are clipped to the button with ".." on the end
+            var _lbl = _row[1];
+            if (string_width(_lbl) > _vx2 - _vx1 - 12) {
+                while (string_length(_lbl) > 1 && string_width(_lbl + "..") > _vx2 - _vx1 - 12) _lbl = string_copy(_lbl, 1, string_length(_lbl) - 1);
+                _lbl = string_trim(_lbl) + "..";
+            }
+            scr_ui_info(point_in_rectangle(_mx, _my, _vx1, _by1, _vx2, _by2), _row[3]);
+            var _c = scr_mrp_button(_vx1, _by1, _vx2, _by2, _lbl, false, _mx, _my);
+            if (_c != 0) {
+                if (_row[2] == "index") {
+                    scr_pickup_undo_push(_a);
+                    _pk.index = (clamp(real(_pk.index), 0, 2) + (_c == 1 ? 1 : 2)) mod 3;
+                    _a.meta.is_dirty = true;
+                    global.addresses_dirty = true;
+                } else if (_c == 1) {
+                    var _msg = _row[0];
+                    switch (_row[2]) {
+                        case "tiles":  _msg = "PICKUP TILES - bytes separated by spaces ($41 $42 or 65 66), NONE to clear"; break;
+                        case "repl":   _msg = "TAKEN TILE - pickup>left-behind pairs ($41>$20 $42>$20), NONE to clear"; break;
+                        case "fields": _msg = "ENTRY - byte order, any of FLAG REPL X Y TILE ROOM"; break;
+                        case "flag":   _msg = "FLAG VALUE - one byte ($01 or 1)"; break;
+                        case "term":   _msg = "LIST END - one byte ($FF), or COUNT for a count byte first"; break;
+                        case "empty":  _msg = "EMPTY ROOM - bytes for a room with no entries, NONE for nothing"; break;
+                    }
+                    var _def = _row[1];
+                    if (_def == "NOTHING") _def = "NONE";
+                    if (_row[2] == "term" && real(_pk.term) < 0) _def = "COUNT";
+                    scr_prompt_text(_msg, _def, scr_pickup_setting_apply, { a: _a, key: _row[2] });
+                }
+            }
+        }
         _sy += _lh;
+    }
+    // Last typed value that could not be read (shown for a few seconds)
+    if (variable_global_exists("pickup_err") && global.pickup_err != "" && current_time - global.pickup_err_t < 6000) {
+        draw_set_color(c_red);
+        draw_text_ext(_sx, _sy + 2 - scr_lang_lift(), global.pickup_err, -1, 380);
     }
 
     // ---- ROOMS (middle column) ----
