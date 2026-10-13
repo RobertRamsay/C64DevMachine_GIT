@@ -93,9 +93,9 @@ for (var _soi = 0; _soi < array_length(_sort_opts); _soi++) {
     var _so_w    = 46;
     var _so_x1   = _sort_btn_x + (_soi * (_so_w + 4));
     var _so_x2   = _so_x1 + _so_w;
-    var _so_hov  = point_in_rectangle(_mx, _my, _so_x1, _sort_row_y, _so_x2, _sort_row_y + 16);
+    var _so_hov  = point_in_rectangle(_mx, _my, _so_x1, _sort_row_y, _so_x2, _sort_row_y + 19);
     var _so_on   = (asset_sort_mode == _sort_opts[_soi]);
-    scr_editor_control(_so_x1, _sort_row_y, _so_x2, _sort_row_y + 16, _so_hov, _so_on);
+    scr_editor_control(_so_x1, _sort_row_y, _so_x2, _sort_row_y + 20, _so_hov, _so_on);
     draw_set_color(_so_on ? c_white : c_white);
     draw_set_halign(fa_center);
     draw_text_l((_so_x1 + _so_x2) / 2, _sort_row_y + 2, _sort_opts[_soi]);
@@ -109,8 +109,8 @@ for (var _soi = 0; _soi < array_length(_sort_opts); _soi++) {
 // which end at panel_x + 208 inside a 270-wide panel.
 var _grp_x1  = _sort_btn_x + (3 * 50) + 4;
 var _grp_x2  = _grp_x1 + 48;
-var _grp_hov = point_in_rectangle(_mx, _my, _grp_x1, _sort_row_y, _grp_x2, _sort_row_y + 16);
-scr_editor_control(_grp_x1, _sort_row_y, _grp_x2, _sort_row_y + 16, _grp_hov, false);
+var _grp_hov = point_in_rectangle(_mx, _my, _grp_x1, _sort_row_y, _grp_x2, _sort_row_y + 19);
+scr_editor_control(_grp_x1, _sort_row_y, _grp_x2, _sort_row_y + 20, _grp_hov, false);
 draw_set_color(c_white);
 draw_set_halign(fa_center);
 draw_set_color(_grp_hov ? c_white : c_white);
@@ -178,7 +178,7 @@ if (_disp_n == 0) {
     }
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(151, 170, 192));
-    draw_text_l(panel_x + 12, _list_y + 3 * (item_h + 6) + 8, "ADD AN ASSET TO GET STARTED");
+    draw_text_l(panel_x + 41, _list_y + 3 * (item_h + 6) + 8, "ADD AN ASSET TO GET STARTED");
 }
 
 
@@ -416,8 +416,8 @@ if (_count == 0) {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(60, 60, 80));
     draw_set_halign(fa_center);
-    draw_text_l(panel_x + (_panel_w * 0.5), _list_y + 20, "NO ASSETS");
-    draw_text_l(panel_x + (_panel_w * 0.5), _list_y + 34, "CLICK [ADD ASSET +]");
+    draw_text_l(panel_x + (_panel_w * 0.5), _list_y + 160, "NO ASSETS");
+    draw_text_l(panel_x + (_panel_w * 0.5), _list_y + 184, "CLICK [ADD ASSET +]");
     draw_set_halign(fa_left);
 }
 } // end hide panel when viewer open
