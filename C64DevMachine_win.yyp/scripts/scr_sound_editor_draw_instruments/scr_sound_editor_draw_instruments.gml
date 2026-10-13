@@ -498,14 +498,14 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         draw_set_color(make_color_rgb(126, 126, 166));
         draw_text_l(_ix0, _fi_y, "FILTER:");
         var _fi_bx = _ix0 + 64;
-        var _fi_hov = point_in_rectangle(_mx, _my, _fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14);
+        var _fi_hov = point_in_rectangle(_mx, _my, _fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 18);
         scr_mm_info(_fi_hov, "ROUTES THIS INSTRUMENT'S VOICE THROUGH THE SONG FILTER (ON) OR NOT (OFF)");
-        scr_editor_control(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14, _fi_hov, _fi_on);
+        scr_editor_control(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 18, _fi_hov, _fi_on);
         draw_set_color(c_white);
         if (_fi_on) {
-            scr_editor_label(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14, "ON");
+            scr_editor_label(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 18, "ON");
         } else {
-            scr_editor_label(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14, "OFF");
+            scr_editor_label(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 18, "OFF");
         }
         if (_fi_hov && mouse_check_button_pressed(mb_left)) {
             if (_fi_on) {

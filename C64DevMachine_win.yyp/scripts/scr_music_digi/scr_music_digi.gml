@@ -1064,15 +1064,15 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
             _ri = _i;
         }
     }
-    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60, _ry - 4, _x1 + 78, _ry + 12), "DIGI SAMPLE RATE: ONE PRESET LOWER (SMALLER SAMPLES, LESS CPU)");
-    if (scr_sample_button(_x1 + 60, _ry - 4, 18, 16, "<", false, (_ri > 0), _mx, _my)) {
+    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60, _ry - 4, _x1 + 78, _ry + 16), "DIGI SAMPLE RATE: ONE PRESET LOWER (SMALLER SAMPLES, LESS CPU)");
+    if (scr_sample_button(_x1 + 60, _ry - 4, 18, 20, "<", false, (_ri > 0), _mx, _my)) {
         _m.digi_rate = _rates[_ri - 1];
         global.undo_dirty = true;
     }
     draw_set_color(c_white);
     scr_digi_text_fit(_x1 + 86, _ry, string(_m.digi_rate) + " HZ", _x2 - (_x1 + 86) - 8);
-    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 160, _ry - 4, _x1 + 178, _ry + 12), "DIGI SAMPLE RATE: ONE PRESET HIGHER (BETTER SOUND, BIGGER, MORE CPU)");
-    if (scr_sample_button(_x1 + 160, _ry - 4, 18, 16, ">", false, (_ri < array_length(_rates) - 1), _mx, _my)) {
+    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 160, _ry - 4, _x1 + 178, _ry + 16), "DIGI SAMPLE RATE: ONE PRESET HIGHER (BETTER SOUND, BIGGER, MORE CPU)");
+    if (scr_sample_button(_x1 + 160, _ry - 4, 18, 20, ">", false, (_ri < array_length(_rates) - 1), _mx, _my)) {
         _m.digi_rate = _rates[_ri + 1];
         global.undo_dirty = true;
     }
@@ -1087,8 +1087,8 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     scr_digi_text_fit(_x1 + 10, _by, "BOOST", _x2 - (_x1 + 10) - 8);
     var _bnames = ["OFF", "V1", "V2", "V3"];
     for (var _bi = 0; _bi < 4; _bi++) {
-        scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60 + _bi * 40, _by - 4, _x1 + 96 + _bi * 40, _by + 12), (_bi == 0) ? "BOOST OFF: NO VOICE IS USED TO MAKE DIGIS LOUDER" : "BOOST: HOLDS VOICE " + string(_bi) + " AT FULL DC SO DIGIS ARE LOUDER; IT IS MUTED ON THE C64");
-        if (scr_sample_button(_x1 + 60 + _bi * 40, _by - 4, 36, 16, _bnames[_bi], (_m.digi_boost == _bi), true, _mx, _my)) {
+        scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60 + _bi * 40, _by - 4, _x1 + 96 + _bi * 40, _by + 16), (_bi == 0) ? "BOOST OFF: NO VOICE IS USED TO MAKE DIGIS LOUDER" : "BOOST: HOLDS VOICE " + string(_bi) + " AT FULL DC SO DIGIS ARE LOUDER; IT IS MUTED ON THE C64");
+        if (scr_sample_button(_x1 + 60 + _bi * 40, _by - 4, 36, 20, _bnames[_bi], (_m.digi_boost == _bi), true, _mx, _my)) {
             _m.digi_boost = _bi;
             global.undo_dirty = true;
             global.addresses_dirty = true;
@@ -1107,8 +1107,8 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     var _spy = _by + 22;
     draw_set_color(make_color_rgb(140, 150, 180));
     scr_digi_text_fit(_x1 + 10, _spy, "SPEED", _x2 - (_x1 + 10) - 8);
-    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60, _spy - 4, _x1 + 78, _spy + 12), "DIGI SPEED: ONE FRAME PER DIGI ROW LESS (0 = GO WITH THE SONG ROWS)");
-    if (scr_sample_button(_x1 + 60, _spy - 4, 18, 16, "<", false, (_m.digi_speed > 0), _mx, _my)) {
+    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 60, _spy - 4, _x1 + 78, _spy + 16), "DIGI SPEED: ONE FRAME PER DIGI ROW LESS (0 = GO WITH THE SONG ROWS)");
+    if (scr_sample_button(_x1 + 60, _spy - 4, 18, 20, "<", false, (_m.digi_speed > 0), _mx, _my)) {
         _m.digi_speed -= 1;
         global.undo_dirty = true;
         global.addresses_dirty = true;
@@ -1119,8 +1119,8 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     } else {
         scr_digi_text_fit(_x1 + 86, _spy, string(_m.digi_speed) + " FR", _x2 - (_x1 + 86) - 8);
     }
-    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 160, _spy - 4, _x1 + 178, _spy + 12), "DIGI SPEED: ONE FRAME PER DIGI ROW MORE (OWN TEMPO, UP TO 31)");
-    if (scr_sample_button(_x1 + 160, _spy - 4, 18, 16, ">", false, (_m.digi_speed < 31), _mx, _my)) {
+    scr_mm_info(point_in_rectangle(_mx, _my, _x1 + 160, _spy - 4, _x1 + 178, _spy + 16), "DIGI SPEED: ONE FRAME PER DIGI ROW MORE (OWN TEMPO, UP TO 31)");
+    if (scr_sample_button(_x1 + 160, _spy - 4, 18, 20, ">", false, (_m.digi_speed < 31), _mx, _my)) {
         _m.digi_speed += 1;
         global.undo_dirty = true;
         global.addresses_dirty = true;
@@ -1131,7 +1131,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     } else {
         scr_digi_text_fit(_x1 + 190, _spy, "= SONG ROWS", _x2 - (_x1 + 190) - 8);
     }
-    scr_digi_text_fit(_x1 + 10, _spy + 14, "IN THE LANE: F01-F1F SPEED, F00 SONG ROWS", _x2 - (_x1 + 10) - 8);
+    scr_digi_text_fit(_x1 + 10, _spy + 18, "IN THE LANE: F01-F1F SPEED, F00 SONG ROWS", _x2 - (_x1 + 10) - 8);
 
     // SLOTS
     var _names = scr_digi_sample_names();

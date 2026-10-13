@@ -1043,7 +1043,7 @@ if (asset_drag_idx < 0 && mouse_check_button_pressed(mb_left) && _mouse_in_panel
         if (_my < _hgr.y || _my >= _hgr.y + item_h) continue;
         _hdr_hit = true;
         if (_hgr.count == 0
-        &&  point_in_rectangle(_mx, _my, _panel_right - 26, _hgr.y + 8, _panel_right - 8, _hgr.y + item_h - 8)) {
+        &&  point_in_rectangle(_mx, _my, _panel_right - 26, _hgr.y + 8, _panel_right - 8, _hgr.y + item_h - 4)) {
             for (var _rg = 0; _rg < array_length(asset_groups); _rg++) {
                 if (asset_groups[_rg] != _hgr.group) continue;
                 array_delete(asset_groups, _rg, 1);
@@ -1139,7 +1139,7 @@ if (sid_picker_open) {
         var _px       = ((_node.x + _node.width + 8) - _cam_x) / _cam_zoom;
         var _py       = ((_node.y + 24)              - _cam_y) / _cam_zoom;
         var _pw       = 180;
-        var _ih       = 20;
+        var _ih       = 24;
 var _matches  = [];
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
             var _a = ds_list_find_value(asset_list, _i);
@@ -1181,7 +1181,7 @@ if (sfx_picker_open) {
         var _px       = ((_node.x + _node.width + 8) - _cam_x) / _cam_zoom;
         var _py       = ((_node.y + 24)              - _cam_y) / _cam_zoom;
         var _pw       = 220;
-        var _ih       = 20;
+        var _ih       = 24;
 
         // Build match list
         var _match_labels  = []; // display strings
@@ -1274,7 +1274,7 @@ if (spr_picker_open) {
         var _px       = ((_node.x + _node.width + 8) - _cam_x) / _cam_zoom;
         var _py       = ((_node.y + 24)              - _cam_y) / _cam_zoom;
         var _pw       = 180;
-        var _ih       = 20;
+        var _ih       = 24;
         var _matches  = [];
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
             var _a = ds_list_find_value(asset_list, _i);
@@ -1332,7 +1332,7 @@ if (chr_picker_open) {
         var _px       = ((_node.x + _node.width + 8) - _cam_x) / _cam_zoom;
         var _py       = ((_node.y + 24)              - _cam_y) / _cam_zoom;
         var _pw       = 180;
-        var _ih       = 20;
+        var _ih       = 24;
         var _matches  = [];
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
             var _a = ds_list_find_value(asset_list, _i);
@@ -1586,8 +1586,8 @@ if (load_reu_picker_open) {
 			var _drop_x = (loader_file_picker_node.x + 68 - _pk_vx) * _pk_sx;
 			var _drop_y = (loader_file_picker_node.y + 48 - _pk_vy) * _pk_sy;
 			for (var _i = 0; _i < array_length(_lfp_matches); _i++) {
-				var _ry = _drop_y + (_i * 16);
-				if (point_in_rectangle(_mx, _my, _drop_x, _ry, _drop_x + 220, _ry + 15)) {
+				var _ry = _drop_y + (_i * 20);
+				if (point_in_rectangle(_mx, _my, _drop_x, _ry, _drop_x + 220, _ry + 19)) {
 					loader_file_picker_hover = _i;
 					break;
 				}
@@ -1636,8 +1636,8 @@ if (load_reu_picker_open) {
 			var _drop_x = (loader_org_picker_node.x + 68 - _pk_vx) * _pk_sx;
 			var _drop_y = (loader_org_picker_node.y + 36 - _pk_vy) * _pk_sy;
 			for (var _i = 0; _i < array_length(_lop_matches); _i++) {
-				var _ry = _drop_y + (_i * 16);
-				if (point_in_rectangle(_mx, _my, _drop_x, _ry, _drop_x + 180, _ry + 15)) {
+				var _ry = _drop_y + (_i * 20);
+				if (point_in_rectangle(_mx, _my, _drop_x, _ry, _drop_x + 180, _ry + 19)) {
 					loader_org_picker_hover = _i;
 					break;
 				}
@@ -1735,9 +1735,9 @@ if (load_reu_picker_open) {
 // -------------------------------------------------------
 if (meta_ts_picker_open) {
     var _tspw  = 180;
-    var _tsih  = 20;
+    var _tsih  = 24;
     var _tspx  = _vx1 + 74;
-    var _tspy  = meta_ts_btn_y + 14;
+    var _tspy  = meta_ts_btn_y + 18;
     var _ts_matches = [];
     for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
         var _a = ds_list_find_value(asset_list, _i);
@@ -1784,7 +1784,7 @@ if (meta_ts_picker_open) {
 // -------------------------------------------------------
 if (map_chr_picker_open) {
     var _mcpw       = 180;
-    var _mcih       = 20;
+    var _mcih       = 24;
     var _mcpx       = _vx1 + 274;
     var _mcpy       = map_chr_picker_draw_y;
     var _mc_matches = [];
@@ -1845,7 +1845,7 @@ if (map_picker_open) {
         var _px       = ((_node.x + _node.width + 8) - _cam_x) / _cam_zoom;
         var _py       = ((_node.y + 24)              - _cam_y) / _cam_zoom;
         var _pw       = 180;
-        var _ih       = 20;
+        var _ih       = 24;
         var _matches  = [];
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
             var _a = ds_list_find_value(asset_list, _i);
@@ -1889,7 +1889,7 @@ if (metamap_picker_open) {
         var _px       = ((_node.x + _node.width + 8) - _cam_x) / _cam_zoom;
         var _py       = ((_node.y + 24)              - _cam_y) / _cam_zoom;
         var _pw       = 180;
-        var _ih       = 20;
+        var _ih       = 24;
         var _matches  = [];
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
             var _a = ds_list_find_value(asset_list, _i);
@@ -1934,7 +1934,7 @@ if (metamap_picker_open) {
 // meta.dst_asset, then forces a preview rebuild.
 if (bbuild_picker_open) {
     var _bbp_w   = 180;
-    var _bbp_ih  = 18;
+    var _bbp_ih  = 22;
     var _bbp_x   = bbuild_picker_x;
     var _bbp_y   = bbuild_picker_y;
 
@@ -1995,7 +1995,7 @@ if (bmp_picker_open) {
         var _px       = ((_node.x + _node.width + 8) - _cam_x) / _cam_zoom;
         var _py       = ((_node.y + 24)              - _cam_y) / _cam_zoom;
         var _pw       = 180;
-        var _ih       = 20;
+        var _ih       = 24;
         var _matches  = [];
         for (var _i = 0; _i < ds_list_size(asset_list); _i++) {
             var _a = ds_list_find_value(asset_list, _i);
@@ -2593,7 +2593,7 @@ if (_asset.type == "META_TILESET") {
             var _tscpx1 = _vx1 + 74;
             var _tscpx2 = _tscpx1 + 130;
             var _tscpy1 = meta_ts_btn_y;
-            var _tscpy2 = _tscpy1 + 14;
+            var _tscpy2 = _tscpy1 + 18;
             if (point_in_rectangle(_mx, _my, _tscpx1, _tscpy1, _tscpx2, _tscpy2)) {
                 meta_ts_picker_open  = true;
                 meta_ts_picker_hover = -1;
@@ -2610,7 +2610,7 @@ if (_asset.type == "META_TILESET") {
             var _cpbx1 = _vx1 + 268;
             var _cpbx2 = _cpbx1 + 140;
             var _cpby1 = map_chr_btn_y;
-            var _cpby2 = _cpby1 + 14;
+            var _cpby2 = _cpby1 + 18;
 			show_debug_message("btn y=" + string(_cpby1) + " my=" + string(_my));
             if (point_in_rectangle(_mx, _my, _cpbx1, _cpby1, _cpbx2, _cpby2)) {
                 map_chr_picker_open   = true;
