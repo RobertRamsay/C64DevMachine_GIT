@@ -476,14 +476,14 @@ function scr_bmpobj_ui_panel(_x1, _y1, _x2, _y2, _title) {
     draw_set_color(make_color_rgb(30, 37, 53));
     draw_rectangle(_x1 + 1, _y1 + 1, _x2 - 1, _y1 + 20, false);
     draw_set_color(make_color_rgb(154, 175, 198));
-    draw_text_l(_x1 + 8, _y1 + 6, _title);
+    scr_editor_label(_x1, _y1 + 1, _x2, _y1 + 20, _title, fa_left, 8);
 }
 
 /// Colour picker row: label, < swatch >. Returns the new colour index.
 function scr_bmpobj_ui_colour(_x, _y, _label, _col, _mx, _my, _info = "") {
     draw_set_color(make_color_rgb(154, 175, 198));
-    draw_text_l(_x, _y + 8, _label);
     var _bx = _x + 50;
+    scr_editor_label(_x, _y, _bx, _y + 24, _label, fa_left, 0);
     scr_ui_info(point_in_rectangle(_mx, _my, _bx + 28, _y, _bx + 64, _y + 24), _info);
     if (scr_bmpobj_ui_button(_bx, _y, 22, 24, "<", false, _mx, _my, _info)) { _col = (_col + 15) mod 16; }
     scr_editor_swatch(_bx + 28, _y, _bx + 64, _y + 24, scr_c64_pepto_colour(_col));
@@ -495,15 +495,11 @@ function scr_bmpobj_ui_colour(_x, _y, _label, _col, _mx, _my, _info = "") {
 /// SHIFT+click = previous. Returns the new colour index.
 function scr_bmpobj_ui_swatch(_x, _y, _label, _col, _mx, _my, _info = "") {
     draw_set_color(make_color_rgb(154, 175, 198));
-    draw_text_l(_x, _y + 8, _label);
     var _bx = _x + 24;
+    scr_editor_label(_x, _y, _bx, _y + 24, _label, fa_left, 0);
     var _hov = point_in_rectangle(_mx, _my, _bx, _y, _bx + 32, _y + 24);
     scr_ui_info(_hov, _info);
-    scr_editor_swatch(_bx, _y, _bx + 32, _y + 24, scr_c64_pepto_colour(_col));
-    if (_hov) {
-        draw_set_color(c_yellow);
-        draw_rectangle(_bx, _y, _bx + 32, _y + 24, true);
-    }
+    scr_editor_swatch(_bx, _y, _bx + 32, _y + 24, scr_c64_pepto_colour(_col), _hov);
     if (_hov && mouse_check_button_pressed(mb_left)) {
         _col = keyboard_check(vk_shift) ? (_col + 15) mod 16 : (_col + 1) mod 16;
     }
@@ -576,7 +572,8 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // ── ROW 1: OBJECTS, UNDO, IMPORT / EXPORT ──
     var _x = _left;
     draw_set_color(_lbl_col);
-    draw_text_l(_x, _r1 + 8, "OBJECT");
+    // Row captions are centred on the _bh-tall button row they label.
+    scr_editor_label(_x, _r1, _x + 58, _r1 + _bh, "OBJECT", fa_left, 0);
     _x += 58;
     if (scr_bmpobj_ui_button(_x, _r1, 62, _bh, "+ NEW", false, _mx, _my,
         _managed ? "ADD A BLANK OBJECT AFTER THIS ONE: TYPE ITS SIZE IN CELLS (WIDTH,HEIGHT), UP TO 40,25"
@@ -656,7 +653,7 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // ── ROW 2: LAYER, MASK TOOLS, ZOOM, PREVIEW COLOURS ──
     _x = _left;
     draw_set_color(_lbl_col);
-    draw_text_l(_x, _r2 + 8, "LAYER");
+    scr_editor_label(_x, _r2, _x + 52, _r2 + _bh, "LAYER", fa_left, 0);
     _x += 52;
     var _lnames = ["GFX", "MASK", "COMPOSITE"];
     var _lw = [56, 62, 100];
@@ -670,7 +667,7 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     _x += 16;
     draw_set_color(_lbl_col);
-    draw_text_l(_x, _r2 + 8, "MASK");
+    scr_editor_label(_x, _r2, _x + 42, _r2 + _bh, "MASK", fa_left, 0);
     _x += 42;
     var _mops   = ["auto", "ink", "grow", "invert", "clear", "fill"];
     var _mnames = ["AUTO", "= INK", "GROW", "INVERT", "CLEAR", "FILL"];
@@ -694,13 +691,11 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     _x += 16;
     draw_set_color(_lbl_col);
-    draw_text_l(_x, _r2 + 8, "ZOOM");
+    scr_editor_label(_x, _r2, _x + 44, _r2 + _bh, "ZOOM", fa_left, 0);
     _x += 44;
     if (scr_bmpobj_ui_button(_x, _r2, 24, _bh, "-", false, _mx, _my, "ZOOM THE EDIT CANVAS OUT (MIN 2X)")) { _m.zoom = max(2, _m.zoom - 2); }
     draw_set_color(c_white);
-    draw_set_halign(fa_center);
-    draw_text_l(_x + 44, _r2 + 8, string(_m.zoom) + "x");
-    draw_set_halign(fa_left);
+    scr_editor_label(_x + 24, _r2, _x + 64, _r2 + _bh, string(_m.zoom) + "x");
     if (scr_bmpobj_ui_button(_x + 64, _r2, 24, _bh, "+", false, _mx, _my, "ZOOM THE EDIT CANVAS IN (MAX 24X, SHRINKS TO FIT THE PANEL)")) { _m.zoom = min(24, _m.zoom + 2); }
     _x += 108;
     if (_mc) {
@@ -732,7 +727,7 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _x = _left;
     var _lay_txt = _managed ? "LAYOUT: MANAGED" : "LAYOUT: IMPORTED";
     draw_set_color(_managed ? make_color_rgb(120, 220, 160) : c_orange);
-    draw_text_l(_x, _r3 + 8, _lay_txt);
+    scr_editor_label(_x, _r3, _x + 150, _r3 + _bh, _lay_txt, fa_left, 0);
     scr_ui_info(point_in_rectangle(_mx, _my, _x, _r3, _x + 150, _r3 + _bh),
         _managed ? "MANAGED: THE EDITOR PACKS EACH OBJECT'S GRAPHICS THEN MASK FROM THE ASSET ADDRESS AND KEEPS EVERY POINTER RIGHT"
                  : "IMPORTED: GRAPHICS AND MASKS SIT AT FIXED ADDRESSES A GAME'S CODE EXPECTS. EDITS CHANGE BYTES IN PLACE");
@@ -771,9 +766,7 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     var _bytes = buffer_exists(_asset.buffer) ? buffer_get_size(_asset.buffer) : 0;
     draw_set_color(make_color_rgb(140, 150, 170));
-    draw_set_halign(fa_right);
-    draw_text_l(_right, _r3 + 8, string(_n) + " OBJECTS   " + string(_bytes) + " BYTES AT $" + string_upper(decimal_to_hex(real(_asset.address))));
-    draw_set_halign(fa_left);
+    scr_editor_label(_x, _r3, _right, _r3 + _bh, string(_n) + " OBJECTS   " + string(_bytes) + " BYTES AT $" + string_upper(decimal_to_hex(real(_asset.address))), fa_right, 0);
 
     // ── COLUMNS ──
     var _ptop = _r3 + _bh + 12;
@@ -817,14 +810,14 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             draw_set_color(make_color_rgb(42, 50, 70));
             draw_rectangle(_lx1 + 2, _y, _lx2 - 2, _y + _row_h - 2, false);
         }
+        // Columns centred on the row highlight.
+        var _ry2 = _y + _row_h - 2;
         draw_set_color(make_color_rgb(120, 130, 149));
-        draw_text_l(_lx1 + 8, _y + 4, string(_i));
+        scr_editor_label(_lx1, _y, _lx1 + 34, _ry2, string(_i), fa_left, 8);
         draw_set_color(c_white);
-        draw_text_l(_lx1 + 34, _y + 4, string(_oi.name));
+        scr_editor_label(_lx1 + 34, _y, _lx2, _ry2, string(_oi.name), fa_left, 0);
         draw_set_color(make_color_rgb(140, 150, 170));
-        draw_set_halign(fa_right);
-        draw_text_l(_lx2 - 8, _y + 4, string(_oi.w) + "x" + string(_oi.h));
-        draw_set_halign(fa_left);
+        scr_editor_label(_lx1, _y, _lx2, _ry2, string(_oi.w) + "x" + string(_oi.h), fa_right, 8);
         if (_hov && mouse_check_button_pressed(mb_left)) { _m.sel = _i; }
     }
 
@@ -949,8 +942,8 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // PEN bar: what LMB paints with. Keys 1-5 pick a pen too.
     var _pby = _bottom - _info_h - _pen_h;
     draw_set_color(_lbl_col);
-    draw_text_l(_ex1 + 16, _pby + 8, "PEN");
     var _pbx = _ex1 + 52;
+    scr_editor_label(_ex1 + 16, _pby, _pbx, _pby + 22, "PEN", fa_left, 0);
     var _pv = scr_bmpobj_mc_preview(_asset);
     for (var _pi2 = 0; _pi2 < array_length(_pens); _pi2++) {
         var _pn = _pens[_pi2];
@@ -1828,7 +1821,7 @@ function scr_bmpobj_grab_panel(_asset, _x1, _y1, _x2, _y2, _mx, _my) {
     _m.grab_src = _bm.name;
     var _hires = scr_asset_bmp_is_hires(_bm);
     draw_set_color(c_white);
-    draw_text_l(_x1 + 66, _ry + 7, string(_bm.name) + (_hires ? "  (HIRES)" : "  (MULTICOLOUR)"));
+    scr_editor_label(_x1 + 66, _ry, _x2 - 130, _ry + 22, string(_bm.name) + (_hires ? "  (HIRES)" : "  (MULTICOLOUR)"), fa_left, 0);
     var _sel_ok = is_array(_m.grab_sel);
     var _gx1 = 0, _gy1 = 0, _gw = 0, _gh = 0;
     if (_sel_ok) {

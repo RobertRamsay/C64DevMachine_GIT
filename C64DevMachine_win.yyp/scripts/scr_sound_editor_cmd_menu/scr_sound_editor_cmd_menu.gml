@@ -219,18 +219,14 @@ function scr_sound_editor_cmd_bar(_m, _instr, _x0, _x1, _y, _bx0, _by0, _bx1, _b
         }
         var _hv = point_in_rectangle(_mx, _my, _x, _yy, _x + _w, _yy + _bh);
         scr_mm_info(_hv, scr_mm_button_info("CMD:" + _lab));
-        if (_hv || _on) {
-            draw_set_color(make_color_rgb(60, 60, 110));
-        } else {
-            draw_set_color(make_color_rgb(40, 40, 70));
-        }
-        draw_rectangle(_x, _yy, _x + _w, _yy + _bh, false);
+        // Menu-bar button: skinned on exactly its hit rect, selected while open.
+        scr_editor_control(_x, _yy, _x + _w, _yy + _bh, _hv, _on);
         if (_hv) {
             draw_set_color(c_yellow);
         } else {
             draw_set_color(c_white);
         }
-        draw_text_l(_x + 5, _yy + 3, _lab);
+        scr_editor_label(_x, _yy, _x + _w, _yy + _bh, _lab);
     }
     draw_set_font_l(fnt_c64_tiny);
 

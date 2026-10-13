@@ -4,12 +4,8 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
     var _dx = _px + _pw - _dw - 20;
     var _dy = _py + 40;
 
-    // Background fill
-    draw_set_color(make_color_rgb(22, 26, 35));
-    draw_rectangle(_dx, _dy, _dx + _dw, _dy + _dh, false);
-    // Border
-    draw_set_color(make_color_rgb(70, 180, 120));
-    draw_rectangle(_dx, _dy, _dx + _dw, _dy + _dh, true);
+    // Background: shared editor panel (same rounded skin as its fields/buttons)
+    scr_editor_panel(_dx, _dy, _dx + _dw, _dy + _dh, false);
 
     draw_set_font_l(fnt_c64_tiny);
 

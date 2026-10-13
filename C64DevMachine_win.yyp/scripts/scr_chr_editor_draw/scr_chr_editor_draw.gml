@@ -635,15 +635,13 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
                          || (_mc_mode == 2 && _swi < 4 && chr_active_ecm_bg == _swi);
         var _sw_x1 = _btn_x + 32;
         var _sw_y1 = _btn_y + _swi * (_sw_sz + 3);
-        draw_set_color(_sw_selected ? c_yellow : make_color_rgb(127, 127, 165));
-        draw_text_l(_btn_x, _sw_y1 + 3, _sw_labels[_swi] + ":");
-        scr_editor_swatch(_sw_x1, _sw_y1, _sw_x1 + _sw_sz, _sw_y1 + _sw_sz, scr_c64_pepto_colour(_sw_col_idx));
-        if (_sw_selected) {
-            draw_set_color(c_yellow);
-            draw_rectangle(_sw_x1, _sw_y1, _sw_x1 + _sw_sz, _sw_y1 + _sw_sz, true);
-            draw_rectangle(_sw_x1 - 2, _sw_y1 - 2, _sw_x1 + _sw_sz + 2, _sw_y1 + _sw_sz + 2, true);
-        }
         var _sw_hov = point_in_rectangle(_mx, _my, _sw_x1, _sw_y1, _sw_x1 + _sw_sz, _sw_y1 + _sw_sz);
+        draw_set_color(_sw_selected ? c_yellow : make_color_rgb(127, 127, 165));
+        // Caption centred on the swatch row it labels.
+        scr_editor_label(_btn_x, _sw_y1, _sw_x1, _sw_y1 + _sw_sz, _sw_labels[_swi] + ":", fa_left, 0);
+        // HR swatches are display-only, so they never show the hover frame.
+        scr_editor_swatch(_sw_x1, _sw_y1, _sw_x1 + _sw_sz, _sw_y1 + _sw_sz, scr_c64_pepto_colour(_sw_col_idx),
+            _sw_hov && _mc_mode != 0, _sw_selected);
         if (_mc_mode == 1) {
             scr_ui_info(_sw_hov, "MC " + _sw_labels[_swi] + " COLOUR: CLICK TO PAINT WITH THIS BIT PAIR (BG ERASES)");
         } else if (_mc_mode == 2) {

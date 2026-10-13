@@ -193,7 +193,11 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 }
             }
             if (_slot_empty) {
-                scr_editor_empty_slot(_cx, _cy_p, _cx + _pick_cell_w, _cy_p + _pick_cell_h);
+                // Keep the control's hover / selected frame visible on a
+                // blank slot; only idle blank slots use the empty-slot well.
+                if (!_is_sel && !_is_hov) {
+                    scr_editor_empty_slot(_cx, _cy_p, _cx + _pick_cell_w, _cy_p + _pick_cell_h);
+                }
                 draw_set_font_l(fnt_c64_tiny);
                 draw_set_color(make_color_rgb(160, 160, 80));
                 draw_text_l(_cx + 2, _cy_p + _pick_cell_h - 14, string(_slot));
@@ -216,19 +220,11 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 
             
 
-            // Selection / hover outline
-            if (_is_sel) {
-                draw_set_color(make_color_rgb(255, 220, 120));
-                draw_rectangle(_cx, _cy_p,
-                               _cx + _pick_cell_w +4, _cy_p + _pick_cell_h +4, true);
-            } else if (_is_hov) {
-                draw_set_color(c_white);
-                draw_rectangle(_cx, _cy_p,
-                               _cx + _pick_cell_w +4, _cy_p + _pick_cell_h +4, true);
-            }
+            // Selection / hover state comes from the cell's control frame
+            // (drawn above) — no extra outline box.
 
             // Batch-select bracket — cyan, doubled so it reads clearly over
-            // the yellow (primary) and white (hover) outlines. Drawn last so
+            // the selected / hover control frames. Drawn last so
             // a slot that's both primary AND multi-selected still shows the
             // cyan membership marker on top.
             if (_v2.multi_select[_slot]) {
@@ -357,13 +353,14 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 // Header text
         draw_set_font_l(fnt_c64_code);
         draw_set_color(make_color_rgb(255, 200, 120));
-        draw_text_l(_ed_x1 + 8, _ed_y1 + 6,
-            L("SLOT ") + string(_v2.selected_slot)
-            + L("   MODE: ") + ((_v2.sprite_modes[_v2.selected_slot] == 1) ? L("MULTICOLOUR") : L("HIRES")));
-
         // ----- HR/MC TOGGLE ROW (on the same line as the title, to the right) -----
         // Sits on the title row to save vertical space — the canvas moves up.
         var _toolrow_y = _ed_y1 + 4;
+        // Title is centred on the same 24px row as the toggles beside it.
+        scr_editor_label(_ed_x1, _toolrow_y, _ed_x1 + 360, _toolrow_y + 24,
+            L("SLOT ") + string(_v2.selected_slot)
+            + L("   MODE: ") + ((_v2.sprite_modes[_v2.selected_slot] == 1) ? L("MULTICOLOUR") : L("HIRES")),
+            fa_left, 8);
 
         // ----- HR/MC TOGGLE -----
         // X-shifted past the SLOT/MODE title text since it shares the title row.
@@ -1215,7 +1212,6 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 case 2: scr_ui_info(_cur_hov, "PAINT WITH MC2, MULTICOLOUR 2 SHARED BY ALL SPRITES (MC MODE ONLY)"); break;
                 case 3: scr_ui_info(_cur_hov, "BACKGROUND COLOUR: PICK BELOW. RIGHT CLICK ON THE CANVAS ERASES TO BACKGROUND"); break;
             }
-            scr_editor_swatch(_pcol_x, _cur_y1, _pcol_x2, _cur_y2, scr_c64_pepto_colour(_cur_val));
             // Column order is now [UC, MC1, MC2, BG]. Paint roles map:
             //   col 0 = UC  (active_colour 3)
             //   col 1 = MC1 (active_colour 1)
@@ -1224,16 +1220,10 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             var _is_paint_active = (_pci == 0 && _v2.active_colour == 3)
                                 || (_pci == 1 && _v2.active_colour == 1)
                                 || (_pci == 2 && _v2.active_colour == 2);
-            if (_is_paint_active) {
-                draw_set_color(make_color_rgb(120, 255, 120));
-                draw_rectangle(_pcol_x,     _cur_y1,     _pcol_x2,     _cur_y2,     true);
-                draw_rectangle(_pcol_x + 1, _cur_y1 + 1, _pcol_x2 - 1, _cur_y2 - 1, true);
-            } else if (_cur_hov && _pci < 3) {
-                // Hover hint for selectable columns (UC/MC1/MC2) — white border.
-                // Column 3 is now BG, which isn't a paint target.
-                draw_set_color(c_white);
-                draw_rectangle(_pcol_x, _cur_y1, _pcol_x2, _cur_y2, true);
-            }
+            // Active paint role = selected frame; UC/MC1/MC2 hover = hover
+            // frame. BG (col 3) isn't a paint target so never hovers.
+            scr_editor_swatch(_pcol_x, _cur_y1, _pcol_x2, _cur_y2, scr_c64_pepto_colour(_cur_val),
+                _cur_hov && _pci < 3, _is_paint_active);
             // Click: set active paint role to this column's role. BG (col 3)
             // can't be a paint target so its click is a no-op. Other columns
             // map: UC=0 -> active 3, MC1=1 -> active 1, MC2=2 -> active 2.
@@ -1246,16 +1236,18 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                     _v2.active_colour = _pci;
                 }
             }
-            // Index label — small, on a contrasting strip for legibility
+            // Index label — small, on a contrasting strip for legibility.
+            // Kept inside the swatch's 2px colour inset so the well frame
+            // stays visible.
             var _idx_txt = string(_cur_val);
             var _idx_tw  = string_width_l(_idx_txt) + 4;
             draw_set_color(make_color_rgb(0, 0, 0));
             draw_set_alpha(0.6);
-            draw_rectangle(_pcol_x2 - _idx_tw, _cur_y2 - 10,
-                           _pcol_x2,             _cur_y2,        false);
+            draw_rectangle(_pcol_x2 - 2 - _idx_tw, _cur_y2 - 12,
+                           _pcol_x2 - 2,             _cur_y2 - 2,    false);
             draw_set_alpha(1.0);
             draw_set_color(c_white);
-            draw_text_l(_pcol_x2 - _idx_tw + 2, _cur_y2 - 11, _idx_txt);
+            draw_text_l(_pcol_x2 - 2 - _idx_tw + 2, _cur_y2 - 13, _idx_txt);
 
             // 16 picker swatches stacked vertically
             for (var _pi = 0; _pi < 16; _pi++) {
@@ -1270,17 +1262,16 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                         case 3: scr_ui_info(true, "SET THE BACKGROUND COLOUR BEHIND ALL SPRITES TO COLOUR " + string(_pi)); break;
                     }
                 }
-                draw_set_color(scr_c64_pepto_colour(_pi));
-                draw_rectangle(_pcol_x, _psy1, _pcol_x2, _psy2, false);
-
-                // Selection / hover border
-                if (_cur_val == _pi) {
-                    draw_set_color(make_color_rgb(255, 220, 120));
-                    draw_rectangle(_pcol_x,     _psy1,     _pcol_x2,     _psy2,     true);
-                    draw_rectangle(_pcol_x + 1, _psy1 + 1, _pcol_x2 - 1, _psy2 - 1, true);
-                } else if (_ps_hov) {
-                    draw_set_color(c_white);
-                    draw_rectangle(_pcol_x, _psy1, _pcol_x2, _psy2, true);
+                // Bars >= 8px tall are full swatches; thinner bars stay flat
+                // and only switch to the swatch frame when hovered / chosen,
+                // so the highlight is the same rounded frame as the UI.
+                var _ps_sel = (_cur_val == _pi);
+                if (_pal_sw_h >= 8 || _ps_sel || _ps_hov) {
+                    scr_editor_swatch(_pcol_x, _psy1, _pcol_x2, _psy2,
+                        scr_c64_pepto_colour(_pi), _ps_hov, _ps_sel);
+                } else {
+                    draw_set_color(scr_c64_pepto_colour(_pi));
+                    draw_rectangle(_pcol_x, _psy1, _pcol_x2, _psy2, false);
                 }
 
                 if (_ps_hov && mouse_check_button_pressed(mb_left)
@@ -1491,9 +1482,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 
             // Label
             draw_set_color(make_color_rgb(160, 160, 200));
-            draw_set_valign(fa_middle);
-            draw_text_l(_gx, (_r2_y1 + _r2_y2) * 0.5, _sd.lbl);
-            draw_set_valign(fa_top);
+            scr_editor_label(_gx, _r2_y1, _gx + _label_w, _r2_y2, _sd.lbl, fa_left, 0);
 
 			
             // - button
@@ -1509,12 +1498,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             }
             scr_editor_control(_sm_x1, _r2_y1, _sm_x2, _r2_y2, _sm_hov, false);
             draw_set_color(_c_butBorder);
-            draw_set_halign(fa_center);
-            draw_set_valign(fa_middle);
-            //draw_text_l( (_sm_x1 + _sm_x2) * 0.5, (_r2_y1 + _r2_y2) * 0.5, "-");
-			draw_text_l(((_sm_x1 + _sm_x2) * 0.5) -1, ((_r2_y1 + _r2_y2) * 0.5)-1 , "-");
-            draw_set_halign(fa_left);
-            draw_set_valign(fa_top);
+            scr_editor_label(_sm_x1, _r2_y1, _sm_x2, _r2_y2, "-");
             if (_sm_hov && mouse_check_button_pressed(mb_left)
             && !global.ui_click_consumed && !global.any_picker_open) {
                 if (_sd.kind == "start") {
@@ -1531,11 +1515,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             var _sn_x2 = _sn_x1 + _sp_num_w;
             scr_editor_panel(_sn_x1, _r2_y1, _sn_x2, _r2_y2, true);
             draw_set_color(c_white);
-            draw_set_halign(fa_center);
-            draw_set_valign(fa_middle);
-            draw_text_l((_sn_x1 + _sn_x2) * 0.5, (_r2_y1 + _r2_y2) * 0.5, string(_sd.value));
-            draw_set_halign(fa_left);
-            draw_set_valign(fa_top);
+            scr_editor_label(_sn_x1, _r2_y1, _sn_x2, _r2_y2, string(_sd.value));
 
             // + button
             var _sp_x1 = _sn_x2 + 2;
@@ -1550,11 +1530,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             }
             scr_editor_control(_sp_x1, _r2_y1, _sp_x2, _r2_y2, _sp_hov, false);
             draw_set_color(_c_butBorder);
-            draw_set_halign(fa_center);
-            draw_set_valign(fa_middle);
-            draw_text_l(((_sp_x1 + _sp_x2) * 0.5) -1, ((_r2_y1 + _r2_y2) * 0.5)-1 , "+");
-            draw_set_halign(fa_left);
-            draw_set_valign(fa_top);
+            scr_editor_label(_sp_x1, _r2_y1, _sp_x2, _r2_y2, "+");
             if (_sp_hov && mouse_check_button_pressed(mb_left)
             && !global.ui_click_consumed && !global.any_picker_open) {
                 if (_sd.kind == "start") {
@@ -1596,11 +1572,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 		var _reposx = 100;
 		var _reposy = 63;
         scr_editor_panel(_pill_x1+_reposx, _pill_y1+_reposy, _pill_x2+_reposx, _pill_y2+_reposy, true);
-        draw_set_halign(fa_center);
-        draw_set_valign(fa_middle);
-        draw_text_l(_mid_cx+_reposx, ((_pill_y1 + _pill_y2) * 0.5)+_reposy, _state_lbl);
-        draw_set_halign(fa_left);
-        draw_set_valign(fa_top);
+        scr_editor_label(_pill_x1+_reposx, _pill_y1+_reposy, _pill_x2+_reposx, _pill_y2+_reposy, _state_lbl);
 
         // PREV / NEXT — narrow, centred under the pill. Compact.
         var _pn_w = 48;
@@ -1751,9 +1723,10 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 
         var _fr_x = _lyr_x + 8 * (_lyr_btn_w + _lyr_btn_g) + 50;
         draw_set_color(make_color_rgb(160, 160, 200));
-        draw_text_l(_fr_x, _ts_y1 + 8,
+        // Centred on the layer-button row it sits beside.
+        scr_editor_label(_fr_x, _ts_y1, _fr_x + 160, _ts_y2,
             L("FRAME ") + string(_comp.active_frame+1)
-            + " / " + string(array_length(_comp.frames)));
+            + " / " + string(array_length(_comp.frames)), fa_left, 0);
 
         // ----- HORIZONTAL SPLIT : LEFT CONTROLS / RIGHT GRID -----
         var _ctrl_w   = 90;
@@ -2353,9 +2326,10 @@ if (_layer_dir != 0) {
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
         var _convert_cx = (_convert_x1 + _convert_x2) * 0.5;
-        draw_text_l(_convert_cx, _convert_y + 10, "CONVERT");
-        draw_text_l(_convert_cx, _convert_y + 22, "TO");
-        draw_text_l(_convert_cx, _convert_y + 34, "NODES");
+        // Same +1 optical offset as scr_editor_label, centred on the 44px body.
+        draw_text_l(_convert_cx, _convert_y + 11, "CONVERT");
+        draw_text_l(_convert_cx, _convert_y + 23, "TO");
+        draw_text_l(_convert_cx, _convert_y + 35, "NODES");
         scr_tour_capture("SPR:CONVERT", _convert_x1, _convert_y, _convert_x2, _convert_y + 44);
         draw_set_halign(fa_left);
         draw_set_valign(fa_top);

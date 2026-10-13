@@ -297,9 +297,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _rd_w = 40;
     scr_editor_panel(_rd_x, _ty, _rd_x + _rd_w, _ty + 18, false);
     draw_set_color(c_aqua);
-    draw_set_halign(fa_center);
-    draw_text_l(_rd_x + _rd_w / 2, _ty + 3, string(_m.active_page) + "/" + string(_pg_count - 1));
-    draw_set_halign(fa_left);
+    scr_editor_label(_rd_x, _ty, _rd_x + _rd_w, _ty + 18, string(_m.active_page) + "/" + string(_pg_count - 1));
 
     // ▶ button
     var _nx_x = _rd_x + _rd_w + 4;
@@ -374,11 +372,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _bx = _tx + (_s * (_sw2 + 4));
         var _bhov = point_in_rectangle(_mx, _my, _bx, _ty, _bx + _sw2, _ty + 24);
         scr_ui_info(_bhov, (_s == 0) ? "BACKGROUND SLOT - LEFT CLICK TO DRAW IN BG COLOUR, RIGHT CLICK CYCLES THE BG COLOUR" : "COLOUR SLOT " + string(_s) + " - LEFT CLICK TO DRAW WITH IT, RIGHT CLICK CYCLES ITS C64 COLOUR");
-        scr_editor_swatch(_bx, _ty, _bx + _sw2, _ty + 24, scr_c64_pepto_colour(_slots[_s]));
-        if (_m.active_col == _s) {
-            draw_set_color(c_white);
-            draw_rectangle(_bx - 2, _ty - 2, _bx + _sw2 + 2, _ty + 26, true);
-        }
+        scr_editor_swatch(_bx, _ty, _bx + _sw2, _ty + 24, scr_c64_pepto_colour(_slots[_s]), _bhov, _m.active_col == _s);
         draw_set_color(c_white);
         draw_text_l(_bx + 3, _ty + 26, _slot_lbl[_s]);
         if (_bhov && mouse_check_button_pressed(mb_left)) _m.active_col = _s;
@@ -422,15 +416,16 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         }
         _ty += 3 * 20 + 4;
         // Second colour swatch (only meaningful when pattern > 0)
+        // Caption, swatch and slot number share the swatch's row centre.
         draw_set_color(c_ltgray);
-        draw_text_l(_tx, _ty, "2ND COL:");
         var _d2x = _tx + 74;
+        scr_editor_label(_tx, _ty - 2, _d2x, _ty + 16, "2ND COL:", fa_left, 0);
         var _d2hov = point_in_rectangle(_mx, _my, _d2x, _ty - 2, _d2x + 18, _ty + 16);
         scr_ui_info(_d2hov, "DITHER 2ND COLOUR - CLICK TO CYCLE WHICH SELECTOR SLOT (0-3) MIXES WITH THE ACTIVE COLOUR");
         var _d2slots = [_m.bg, _m.col1, _m.col2, _m.col3];
-        scr_editor_swatch(_d2x, _ty - 2, _d2x + 18, _ty + 16, scr_c64_pepto_colour(_d2slots[_m.dither_colb]));
+        scr_editor_swatch(_d2x, _ty - 2, _d2x + 18, _ty + 16, scr_c64_pepto_colour(_d2slots[_m.dither_colb]), _d2hov);
         draw_set_color(c_white);
-        draw_text_l(_d2x + 22, _ty, string(_m.dither_colb));
+        scr_editor_label(_d2x + 22, _ty - 2, _d2x + 60, _ty + 16, string(_m.dither_colb), fa_left, 0);
         // Left-click cycles which selector slot (0..3) is the 2nd colour
         if (_d2hov && mouse_check_button_pressed(mb_left)) {
             _m.dither_colb = (_m.dither_colb + 1) mod 4;
@@ -462,7 +457,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             var _rcx = _tx;
             var _rc_hov = point_in_rectangle(_mx, _my, _rcx, _ty, _rcx + 25, _ty + 24);
             scr_ui_info(_rc_hov, "RECOLOUR COL3 - RIGHT CLICK CYCLES THE COLOUR-RAM COLOUR (0-15) USED BY RECOL_C");
-            scr_editor_swatch(_rcx, _ty, _rcx + 25, _ty + 24, scr_c64_pepto_colour(vbmp_recol_c3));
+            scr_editor_swatch(_rcx, _ty, _rcx + 25, _ty + 24, scr_c64_pepto_colour(vbmp_recol_c3), _rc_hov);
             draw_set_color(c_white);
             draw_text_l(_rcx + 3, _ty + 26, "C3:" + string(vbmp_recol_c3));
             if (_rc_hov && mouse_check_button_pressed(mb_right)) vbmp_recol_c3 = (vbmp_recol_c3 + 1) mod 16;
@@ -470,7 +465,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             var _rc1x = _tx;
             var _rc1_hov = point_in_rectangle(_mx, _my, _rc1x, _ty, _rc1x + 25, _ty + 24);
             scr_ui_info(_rc1_hov, "RECOLOUR COL1 - RIGHT CLICK CYCLES THE FIRST SCREEN-RAM COLOUR (0-15) USED BY RECOL_S");
-            scr_editor_swatch(_rc1x, _ty, _rc1x + 25, _ty + 24, scr_c64_pepto_colour(vbmp_recol_c1));
+            scr_editor_swatch(_rc1x, _ty, _rc1x + 25, _ty + 24, scr_c64_pepto_colour(vbmp_recol_c1), _rc1_hov);
             draw_set_color(c_white);
             draw_text_l(_rc1x + 3, _ty + 26, "C1:" + string(vbmp_recol_c1));
             if (_rc1_hov && mouse_check_button_pressed(mb_right)) vbmp_recol_c1 = (vbmp_recol_c1 + 1) mod 16;
@@ -478,7 +473,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             var _rc2x = _tx + 35;
             var _rc2_hov = point_in_rectangle(_mx, _my, _rc2x, _ty, _rc2x + 25, _ty + 24);
             scr_ui_info(_rc2_hov, "RECOLOUR COL2 - RIGHT CLICK CYCLES THE SECOND SCREEN-RAM COLOUR (0-15) USED BY RECOL_S");
-            scr_editor_swatch(_rc2x, _ty, _rc2x + 25, _ty + 24, scr_c64_pepto_colour(vbmp_recol_c2));
+            scr_editor_swatch(_rc2x, _ty, _rc2x + 25, _ty + 24, scr_c64_pepto_colour(vbmp_recol_c2), _rc2_hov);
             draw_set_color(c_white);
             draw_text_l(_rc2x + 3, _ty + 26, "C2:" + string(vbmp_recol_c2));
             if (_rc2_hov && mouse_check_button_pressed(mb_right)) vbmp_recol_c2 = (vbmp_recol_c2 + 1) mod 16;
@@ -599,13 +594,14 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         if (variable_struct_exists(_cmd, "sc"))  _lbl += " s" + string(_cmd.sc) + "," + string(_cmd.sr) + "->" + string(_cmd.dc) + "," + string(_cmd.dr) + " " + string(_cmd.w) + "x" + string(_cmd.h);
         // Per-command stream byte cost, right-aligned-ish before the [X] button.
         _lbl += "  <" + string(_vbmp_cmd_bytes(_cmd)) + "b>";
-        draw_text_l(_clx + 2, _ry + 1, _lbl);
+        scr_editor_label(_clx, _ry, _clx + _col_w - 24, _ry + _row_h, _lbl, fa_left, 2);
         // Delete button at the column's right edge
         var _delx = _clx + _col_w - 24;
         var _dhov = point_in_rectangle(_mx, _my, _delx, _ry, _delx + 24, _ry + _row_h);
         scr_ui_info(_dhov, "[X] - DELETE THIS COMMAND FROM THE LIST");
+        scr_editor_control(_delx, _ry, _delx + 24, _ry + _row_h, _dhov, false);
         draw_set_color(_dhov ? c_red : make_color_rgb(174, 115, 115));
-        draw_text_l(_delx, _ry + 1, "[X]");
+        scr_editor_label(_delx, _ry, _delx + 24, _ry + _row_h, "X");
         if (_dhov && mouse_check_button_pressed(mb_left)) {
             array_delete(_m.commands, _idx, 1);
             _m.vbmp_dirty = true;
