@@ -1560,19 +1560,15 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         if (_v2.anim_playing) {
             _state_col = make_color_rgb(120, 255, 120);
             switch (_v2.anim_direction) {
-                case "fwd":  _state_lbl = "PLAYING - FWD LOOP";   break;
-                case "rev":  _state_lbl = "PLAYING - REV LOOP";   break;
-                case "png":  _state_lbl = "PLAYING - PING-PONG";  break;
-                case "once": _state_lbl = "PLAYING - ONCE";       break;
+                case "fwd":  _state_lbl = "PLAY FWD";   break;
+                case "rev":  _state_lbl = "PLAY REV";   break;
+                case "png":  _state_lbl = "PING-PONG";  break;
+                case "once": _state_lbl = "PLAY ONCE";  break;
             }
         } else {
             _state_col = make_color_rgb(140, 140, 160);
             _state_lbl = "STOPPED";
         }
-		var _reposx = 100;
-		var _reposy = 63;
-        scr_editor_panel(_pill_x1+_reposx, _pill_y1+_reposy, _pill_x2+_reposx, _pill_y2+_reposy, true);
-        scr_editor_label(_pill_x1+_reposx, _pill_y1+_reposy, _pill_x2+_reposx, _pill_y2+_reposy, _state_lbl);
 
         // PREV / NEXT — narrow, centred under the pill. Compact.
         var _pn_w = 48;
@@ -1673,7 +1669,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 
         // ----- TOP STRIP : LAYER BUTTONS + FRAME READOUT -----
         var _ts_h      = 22;
-        var _ts_y1     = _rsv_y1 + 10;
+        var _ts_y1     = _rsv_y1 + 6;
         var _ts_y2     = _ts_y1 + _ts_h;
         var _lyr_btn_w = 36;
         var _lyr_btn_g = 2;
@@ -1721,19 +1717,26 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             }
         }
 
-        var _fr_x = _lyr_x + 8 * (_lyr_btn_w + _lyr_btn_g) + 50;
+        // State and frame readout share one pill on the layer-button row:
+        // state on the left, FRAME n / N on the right, one centre line.
+        var _fr_x1 = _lyr_x + 8 * (_lyr_btn_w + _lyr_btn_g) + 8;
+        var _fr_x2 = _rsv_x2 - 8;
+        var _fr_txt = string(_comp.active_frame + 1) + " / " + string(array_length(_comp.frames));
+        if (string_width_l(_state_lbl) + string_width_l(L("FRAME ") + _fr_txt) + 22 <= _fr_x2 - _fr_x1) {
+            _fr_txt = L("FRAME ") + _fr_txt;
+        }
+        scr_editor_panel(_fr_x1, _ts_y1, _fr_x2, _ts_y2, true);
+        draw_set_color(_state_col);
+        scr_editor_label(_fr_x1, _ts_y1, _fr_x2, _ts_y2, _state_lbl, fa_left, 6);
         draw_set_color(make_color_rgb(160, 160, 200));
-        // Centred on the layer-button row it sits beside.
-        scr_editor_label(_fr_x, _ts_y1, _fr_x + 160, _ts_y2,
-            L("FRAME ") + string(_comp.active_frame+1)
-            + " / " + string(array_length(_comp.frames)), fa_left, 0);
+        scr_editor_label(_fr_x1, _ts_y1, _fr_x2, _ts_y2, _fr_txt, fa_right, 6);
 
         // ----- HORIZONTAL SPLIT : LEFT CONTROLS / RIGHT GRID -----
         var _ctrl_w   = 90;
         var _ctrl_x1  = _rsv_x1 + 8;
         var _ctrl_x2  = _ctrl_x1 + _ctrl_w;
-        var _ctrl_y1  = _ts_y2 + 8;
-        var _ctrl_y2  = _rsv_y2 - 8;
+        var _ctrl_y1  = _ts_y2 + 6;
+        var _ctrl_y2  = _rsv_y2 - 6;
 
         var _grid_x1  = _ctrl_x2 + 8;
         var _grid_x2  = _rsv_x2 - 8;
@@ -1754,7 +1757,9 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _cell_max_w = floor((_grid_w_av - _grid_gap * 5) / 4);
         var _cell_max_h = floor((_grid_h_av - _grid_gap * 5) / 4);
         // Source preview is 48x42; integer scale
-        var _cell_scale = min(floor(_cell_max_w / 48), floor(_cell_max_h / 42));
+        // +1px slack per cell: the grid may borrow a few pixels of padding
+        // rather than dropping a whole scale step.
+        var _cell_scale = min(floor((_cell_max_w + 1) / 48), floor((_cell_max_h + 1) / 42));
         if (_cell_scale < 1) _cell_scale = 1;
         // Double the rendered cell size — _cell_scale stays the same so that
         // sprite scaling, offsets, and expand maths in pass 2 (which multiply
