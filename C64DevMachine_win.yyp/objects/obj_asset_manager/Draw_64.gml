@@ -2432,6 +2432,16 @@ var _zmx1  = _vx2 - _btn_bw * 2 - 6;
 
 		    var _cs = 8 * _zoom;
 
+		    // A map smaller than the canvas sits centred in it. Cells, grid, hover
+		    // and painting all measure from _map_ox/_map_oy; there is nothing to
+		    // scroll on an axis that fits, so its scroll is pinned to 0.
+		    var _map_ox = _cv_x1;
+		    var _map_oy = _cv_y1;
+		    if (_gw * _cs <= _cv_w) { _m.scroll_x = 0; _map_ox += floor((_cv_w - _gw * _cs) * 0.5); }
+		    if (_gh * _cs <= _cv_h) { _m.scroll_y = 0; _map_oy += floor((_cv_h - _gh * _cs) * 0.5); }
+		    var _map_x2 = min(_cv_x2, _map_ox + (_gw - _m.scroll_x) * _cs);
+		    var _map_y2 = min(_cv_y2, _map_oy + (_gh - _m.scroll_y) * _cs);
+
 		    draw_set_color(c_black);
 		    draw_rectangle(_cv_x1, _cv_y1, _cv_x2, _cv_y2, false);
 		    draw_set_color(make_color_rgb(40, 40, 60));
@@ -2503,7 +2513,7 @@ var _chr_cols = 16;
 		        draw_surface_part_ext(map_view_cache.surf,
 		            _start_col * 8, _start_row * 8,
 		            (_end_col - _start_col) * 8, (_end_row - _start_row) * 8,
-		            _cv_x1, _cv_y1, _zoom, _zoom, c_white, 1);
+		            _map_ox, _map_oy, _zoom, _zoom, c_white, 1);
 		        gpu_set_tex_filter(_mvc_tf);
 		        // Selection highlight (live, pulsing - not cached)
 		        draw_set_color(c_white);
@@ -2511,8 +2521,8 @@ var _chr_cols = 16;
 		        for (var _row = _start_row; _row < _end_row; _row++) {
 		            for (var _col = _start_col; _col < _end_col; _col++) {
 		                if (_m.sel_grid[_row * _gw + _col]) {
-		                    var _scx1 = _cv_x1 + (_col - _start_col) * _cs;
-		                    var _scy1 = _cv_y1 + (_row - _start_row) * _cs;
+		                    var _scx1 = _map_ox + (_col - _start_col) * _cs;
+		                    var _scy1 = _map_oy + (_row - _start_row) * _cs;
 		                    draw_rectangle(_scx1, _scy1, _scx1 + _cs, _scy1 + _cs, false);
 		                }
 		            }
@@ -2524,8 +2534,8 @@ var _chr_cols = 16;
 		            var _idx   = _row * _gw + _col;
 		            var _char  = _m.char_grid[_idx];
 		            var _col_v = _m.colour_grid[_idx];
-		            var _cx    = _cv_x1 + (_col - _start_col) * _cs;
-		            var _cy2   = _cv_y1 + (_row - _start_row) * _cs;
+		            var _cx    = _map_ox + (_col - _start_col) * _cs;
+		            var _cy2   = _map_oy + (_row - _start_row) * _cs;
 		            var _cell_real_char = _map_ecm_mode ? (_char mod 64) : _char;
 		            var _cell_bg_col    = _map_ecm_mode ? scr_c64_pepto_colour(_map_ecm_bg_cols[_char div 64]) : scr_c64_pepto_colour(_global_bg);
 		            // Per-tile paper (low nibble of the tile's screen colour)
@@ -2651,9 +2661,9 @@ draw_set_color(_cell_bg_col);
 	        draw_set_color(make_color_rgb(30, 50, 80));
 	        draw_set_alpha(0.5);
 	        for (var _gc = 0; _gc <= (_end_col - _start_col); _gc++)
-	            draw_line(_cv_x1 + _gc * _cs, _cv_y1, _cv_x1 + _gc * _cs, _cv_y2);
+	            draw_line(_map_ox + _gc * _cs, _map_oy, _map_ox + _gc * _cs, _map_y2);
 	        for (var _gr = 0; _gr <= (_end_row - _start_row); _gr++)
-	            draw_line(_cv_x1, _cv_y1 + _gr * _cs, _cv_x2, _cv_y1 + _gr * _cs);
+	            draw_line(_map_ox, _map_oy + _gr * _cs, _map_x2, _map_oy + _gr * _cs);
 	        draw_set_alpha(1.0);
 
 	    }
@@ -2688,8 +2698,8 @@ draw_set_color(_cell_bg_col);
 	                if (_tg_t <= 0) continue;
 	                _tg_used[clamp(_tg_t, 0, 255)] = true;
 	                _tg_any = true;
-	                var _tgx = _cv_x1 + (_col - _start_col) * _cs;
-	                var _tgy = _cv_y1 + (_row - _start_row) * _cs;
+	                var _tgx = _map_ox + (_col - _start_col) * _cs;
+	                var _tgy = _map_oy + (_row - _start_row) * _cs;
 	                var _tgs = max(3, _cs div 3);
 	                draw_set_color(scr_room_map_type_col(_tg_t));
 	                draw_rectangle(_tgx, _tgy, _tgx + _tgs, _tgy + _tgs, false);
@@ -2728,9 +2738,9 @@ draw_set_color(_cell_bg_col);
 	        }
 	        // room under the mouse
 	        var _hov_room = -1;
-	        if (point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2)) {
-	            var _hc = _start_col + floor((_mx - _cv_x1) / _cs);
-	            var _hr = _start_row + floor((_my - _cv_y1) / _cs);
+	        if (point_in_rectangle(_mx, _my, _map_ox, _map_oy, _map_x2, _map_y2)) {
+	            var _hc = _start_col + floor((_mx - _map_ox) / _cs);
+	            var _hr = _start_row + floor((_my - _map_oy) / _cs);
 	            if (_hc < _rx_n * _rw_c && _hr < _ry_n * _rh_c) {
 	                _hov_room = (_hr div _rh_c) * _rx_n + (_hc div _rw_c);
 	            }
@@ -2757,8 +2767,8 @@ draw_set_color(_cell_bg_col);
 	                    for (var _ok = 0; _ok < array_length(_olist); _ok++) {
 	                        var _oid = real(_olist[_ok][0]);
 	                        if (_oid < 0 || _oid >= _ocount) continue;
-	                        var _opx = _cv_x1 + (_orx * _rw_c + real(_olist[_ok][2]) - _start_col) * _cs;
-	                        var _opy = _cv_y1 + (_ory * _rh_c + real(_olist[_ok][1]) - _start_row) * _cs;
+	                        var _opx = _map_ox + (_orx * _rw_c + real(_olist[_ok][2]) - _start_col) * _cs;
+	                        var _opy = _map_oy + (_ory * _rh_c + real(_olist[_ok][1]) - _start_row) * _cs;
 	                        // C64 colours: ink + paper of the cells underneath
 	                        // (AUTO) or the object's own colour byte
 	                        var _ocell = method({ m: _m, gw: _gw, gh: _gh, bg: _global_bg,
@@ -2793,8 +2803,8 @@ draw_set_color(_cell_bg_col);
 	        for (var _ry = _rr0; _ry <= _rr1; _ry++) {
 	            for (var _rx = _rc0; _rx <= _rc1; _rx++) {
 	                var _rn  = _ry * _rx_n + _rx;
-	                var _bx1 = _cv_x1 + (_rx * _rw_c - _start_col) * _cs;
-	                var _by1 = _cv_y1 + (_ry * _rh_c - _start_row) * _cs;
+	                var _bx1 = _map_ox + (_rx * _rw_c - _start_col) * _cs;
+	                var _by1 = _map_oy + (_ry * _rh_c - _start_row) * _cs;
 	                var _bx2 = _bx1 + _rw_c * _cs;
 	                var _by2 = _by1 + _rh_c * _cs;
 	                if (_rn >= _r_used) {
@@ -2855,12 +2865,12 @@ draw_set_color(_cell_bg_col);
 	            //   R-click        delete the object under the pointer
 	            //   ALT + L-click  pick the object under the pointer (it becomes the held one)
 	            if (_m.obj_mode && !_obj_bar_hover && _hov_room >= 0 && _hov_room < _r_used) {
-	                var _ohc = _start_col + floor((_mx - _cv_x1) / _cs);
-	                var _ohr = _start_row + floor((_my - _cv_y1) / _cs);
+	                var _ohc = _start_col + floor((_mx - _map_ox) / _cs);
+	                var _ohr = _start_row + floor((_my - _map_oy) / _cs);
 	                var _orow = _ohr - (_hov_room div _rx_n) * _rh_c;
 	                var _ocol = _ohc - (_hov_room mod _rx_n) * _rw_c;
-	                var _ogx = _cv_x1 + (_ohc - _start_col) * _cs;
-	                var _ogy = _cv_y1 + (_ohr - _start_row) * _cs;
+	                var _ogx = _map_ox + (_ohc - _start_col) * _cs;
+	                var _ogy = _map_oy + (_ohr - _start_row) * _cs;
 	                while (array_length(_m.room_objects) <= _hov_room) { array_push(_m.room_objects, []); }
 	                var _olst = _m.room_objects[_hov_room];
 	                // topmost object under the pointer (-1 = none)
@@ -2883,8 +2893,8 @@ draw_set_color(_cell_bg_col);
 	                    if (_ohit >= 0) {
 	                        var _ph  = _olst[_ohit];
 	                        var _pho = _oasset.meta.objects[real(_ph[0])];
-	                        var _phx = _cv_x1 + ((_hov_room mod _rx_n) * _rw_c + real(_ph[2]) - _start_col) * _cs;
-	                        var _phy = _cv_y1 + ((_hov_room div _rx_n) * _rh_c + real(_ph[1]) - _start_row) * _cs;
+	                        var _phx = _map_ox + ((_hov_room mod _rx_n) * _rw_c + real(_ph[2]) - _start_col) * _cs;
+	                        var _phy = _map_oy + ((_hov_room div _rx_n) * _rh_c + real(_ph[1]) - _start_row) * _cs;
 	                        draw_set_color(c_yellow);
 	                        draw_rectangle(_phx, _phy, _phx + _pho.w * _cs - 1, _phy + _pho.h * _cs - 1, true);
 	                        draw_rectangle(_phx + 1, _phy + 1, _phx + _pho.w * _cs - 2, _phy + _pho.h * _cs - 2, true);
@@ -3032,8 +3042,8 @@ draw_set_color(_cell_bg_col);
     }
 
     if (_mouse_in_canvas) {
-        var _mcol = _m.scroll_x + floor((_mx - _cv_x1) / _cs);
-        var _mrow = _m.scroll_y + floor((_my - _cv_y1) / _cs);
+        var _mcol = _m.scroll_x + floor((_mx - _map_ox) / _cs);
+        var _mrow = _m.scroll_y + floor((_my - _map_oy) / _cs);
         var _midx = _mrow * _gw + _mcol;
 
         if (_mcol >= 0 && _mcol < _gw && _mrow >= 0 && _mrow < _gh) {
@@ -3206,8 +3216,8 @@ draw_set_color(_cell_bg_col);
         var _scx2 = _m.scroll_x;
 		
         var _scy2 = _m.scroll_y;
-        var _mcol = _scx2 + floor((_mx - _cv_x1) / _cs);
-        var _mrow = _scy2 + floor((_my - _cv_y1) / _cs);
+        var _mcol = _scx2 + floor((_mx - _map_ox) / _cs);
+        var _mrow = _scy2 + floor((_my - _map_oy) / _cs);
 
         draw_set_color(c_black);
         draw_set_alpha(0.15);
@@ -3218,8 +3228,8 @@ draw_set_color(_cell_bg_col);
             var _stamp  = _m.stamp_data[_i];
             var _px_col = _mcol + _stamp.dx;
             var _px_row = _mrow + _stamp.dy;
-            var _px_x   = _cv_x1 + (_px_col - _scx2) * _cs;
-            var _px_y   = _cv_y1 + (_px_row - _scy2) * _cs;
+            var _px_x   = _map_ox + (_px_col - _scx2) * _cs;
+            var _px_y   = _map_oy + (_px_row - _scy2) * _cs;
 
             if (_px_x >= _cv_x1 && _px_x < _cv_x2 && _px_y >= _cv_y1 && _px_y < _cv_y2) {
                 var _s_ov  = variable_struct_exists(_stamp, "ov") ? _stamp.ov : 0;
@@ -3279,14 +3289,14 @@ draw_set_color(_cell_bg_col);
 
     // Grey out inactive region (beyond map_w x map_h)
     if (_gw > _mw || _gh > _mh) {
-        var _active_x2 = _cv_x1 + (_mw - _scx) * _cs;
-        var _active_y2 = _cv_y1 + (_mh - _scy) * _cs;
+        var _active_x2 = _map_ox + (_mw - _scx) * _cs;
+        var _active_y2 = _map_oy + (_mh - _scy) * _cs;
         draw_set_color(make_color_rgb(0, 0, 0));
         draw_set_alpha(0.5);
-        if (_active_x2 < _cv_x2)
-            draw_rectangle(_active_x2, _cv_y1, _cv_x2, _cv_y2, false);
-        if (_active_y2 < _cv_y2)
-            draw_rectangle(_cv_x1, _active_y2, _active_x2, _cv_y2, false);
+        if (_active_x2 < _map_x2)
+            draw_rectangle(_active_x2, _map_oy, _map_x2, _map_y2, false);
+        if (_active_y2 < _map_y2)
+            draw_rectangle(_map_ox, _active_y2, _active_x2, _map_y2, false);
         draw_set_alpha(1.0);
     }
 			
@@ -3305,12 +3315,13 @@ draw_set_color(_cell_bg_col);
         } else {
             scr_ui_info(true, "LMB PAINT, SHIFT+LMB COLOUR ONLY, RMB ERASE, ALT+LMB PICK, CTRL+DRAG SELECT (CTRL+C COPY). WHEEL ZOOM");
         }
-        var _hcol = _start_col + (_mx - _cv_x1) div _cs;
-        var _hrow = _start_row + (_my - _cv_y1) div _cs;
+        // floor, not div: left of / above a centred map must not round into cell 0
+        var _hcol = _start_col + floor((_mx - _map_ox) / _cs);
+        var _hrow = _start_row + floor((_my - _map_oy) / _cs);
         
         if (_hcol >= 0 && _hcol < _mw && _hrow >= 0 && _hrow < _mh) {
-            var _hx = _cv_x1 + (_hcol - _start_col) * _cs;
-            var _hy = _cv_y1 + (_hrow - _start_row) * _cs;
+            var _hx = _map_ox + (_hcol - _start_col) * _cs;
+            var _hy = _map_oy + (_hrow - _start_row) * _cs;
             
             draw_set_color(c_white);
             draw_set_alpha(0.3);
@@ -3502,9 +3513,9 @@ draw_set_color(_cell_bg_col);
 		            if (_new_zoom != _zoom) {
 		                var _ax = (_cv_x2 - _cv_x1) * 0.5;
 		                var _ay = (_cv_y2 - _cv_y1) * 0.5;
-		                if (_zanchor_mouse && point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2)) {
-		                    _ax = _mx - _cv_x1;
-		                    _ay = _my - _cv_y1;
+		                if (_zanchor_mouse && point_in_rectangle(_mx, _my, _map_ox, _map_oy, _map_x2, _map_y2)) {
+		                    _ax = _mx - _map_ox;
+		                    _ay = _my - _map_oy;
 		                }
 		                // map position (in cells, fractional) under the anchor
 		                var _anc_cx = _m.scroll_x + _ax / _cs;
@@ -3543,7 +3554,7 @@ draw_set_color(_cell_bg_col);
 	    // Object EDIT mode skips the tile block above (no painting), but zoom
 	    // (wheel, Z-/Z+) and pan (middle button / SPACE) keep working - same
 	    // code as above.
-	    if (point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && _m.obj_mode && !_obj_bar_hover) {
+	    if (point_in_rectangle(_mx, _my, _map_ox, _map_oy, _map_x2, _map_y2) && _m.obj_mode && !_obj_bar_hover) {
 		        // Zoom keeps the cell under the pointer where it is (Z-/Z+ buttons
 		        // anchor on the canvas centre instead). Scroll is in whole cells,
 		        // so the anchor is held to the nearest cell.
@@ -3557,9 +3568,9 @@ draw_set_color(_cell_bg_col);
 		            if (_new_zoom_om != _zoom) {
 		                var _ax_om = (_cv_x2 - _cv_x1) * 0.5;
 		                var _ay_om = (_cv_y2 - _cv_y1) * 0.5;
-		                if (_zanchor_mouse_om && point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2)) {
-		                    _ax_om = _mx - _cv_x1;
-		                    _ay_om = _my - _cv_y1;
+		                if (_zanchor_mouse_om && point_in_rectangle(_mx, _my, _map_ox, _map_oy, _map_x2, _map_y2)) {
+		                    _ax_om = _mx - _map_ox;
+		                    _ay_om = _my - _map_oy;
 		                }
 		                // map position (in cells, fractional) under the anchor
 		                var _anc_cx_om = _m.scroll_x + _ax_om / _cs;
@@ -3603,8 +3614,8 @@ draw_set_color(_cell_bg_col);
     if (_m.stamp_active) {
         var _scx3 = _m.scroll_x;
         var _scy3 = _m.scroll_y;
-        var _pcol = _scx3 + floor((_mx - _cv_x1) / _cs);
-        var _prow = _scy3 + floor((_my - _cv_y1) / _cs);
+        var _pcol = _scx3 + floor((_mx - _map_ox) / _cs);
+        var _prow = _scy3 + floor((_my - _map_oy) / _cs);
 
         draw_set_color(c_black);
         draw_set_alpha(0.15);
@@ -3615,8 +3626,8 @@ draw_set_color(_cell_bg_col);
             var _stamp  = _m.stamp_data[_i];
             var _px_col = _pcol + _stamp.dx;
             var _px_row = _prow + _stamp.dy;
-            var _px_x   = _cv_x1 + (_px_col - _scx3) * _cs;
-            var _px_y   = _cv_y1 + (_px_row - _scy3) * _cs;
+            var _px_x   = _map_ox + (_px_col - _scx3) * _cs;
+            var _px_y   = _map_oy + (_px_row - _scy3) * _cs;
      
             if (_px_x >= _cv_x1 && _px_x < _cv_x2 && _px_y >= _cv_y1 && _px_y < _cv_y2) {
                 var _s_ov  = variable_struct_exists(_stamp, "ov") ? _stamp.ov : 0;
