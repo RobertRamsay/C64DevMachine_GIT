@@ -9,7 +9,7 @@ function scr_node_step_macro_spr(_draw_x) {
         var _pdx = _draw_x + width + 8;
         var _pdy = y + 24;
         var _pw  = 180;
-        var _ih  = 20;
+        var _ih  = 24;
 
         var _matches = [];
         var _am = obj_asset_manager;

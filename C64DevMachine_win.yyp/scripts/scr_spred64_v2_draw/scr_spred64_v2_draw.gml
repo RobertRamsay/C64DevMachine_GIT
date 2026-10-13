@@ -94,7 +94,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         // Reserve a compact band between the editor and compositor for the
         // animation controls panel. With tight button heights the panel
         // fits comfortably in ~52px.
-        var _anim_band_h = 54;
+        var _anim_band_h = 62;
         var _rsv_x1 = _right_x1;
         var _rsv_y1 = _split_y + 4 + _anim_band_h;
         var _rsv_x2 = _right_x2;
@@ -370,7 +370,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _hmx1 = _ed_x1 + 374;
         var _hmx2 = _hmx1 + 100;
         var _hmy1 = _toolrow_y;
-        var _hmy2 = _hmy1 + 20;
+        var _hmy2 = _hmy1 + 24;
         var _hm_is_mc = (_v2.sprite_modes[_v2.selected_slot] == 1);
         var _hm_hov   = point_in_rectangle(_mx, _my, _hmx1, _hmy1, _hmx2, _hmy2);
         scr_ui_info(_hm_hov, _hm_is_mc
@@ -1371,7 +1371,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 
         // ===== LEFT COLUMN : transport =====
         // Row 1: PLAY + direction tabs — compact heights, smaller padding.
-        var _row_h = 16;
+        var _row_h = 20;
         var _r1_y1 = _anim_y1 + 4;
         var _r1_y2 = _r1_y1 + _row_h;
 
@@ -1466,7 +1466,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 // Row 2: START / END / SPEED — all on one row, three steppers.
         // Each stepper: LABEL - [num] +   spaced equally across the left column.
         var _r2_y1 = _r1_y2 + 12;
-        var _r2_y2 = _r2_y1 + 14;
+        var _r2_y2 = _r2_y1 + 18;
         var _sp_btn_w = 14;
         var _sp_num_w = 22;
 
@@ -1594,7 +1594,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             _state_lbl = "STOPPED";
         }
 		var _reposx = 100;
-		var _reposy = 55;
+		var _reposy = 63;
         scr_editor_panel(_pill_x1+_reposx, _pill_y1+_reposy, _pill_x2+_reposx, _pill_y2+_reposy, true);
         draw_set_halign(fa_center);
         draw_set_valign(fa_middle);
@@ -1606,7 +1606,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
         var _pn_w = 48;
         var _pn_gap = 3;
         var _pn_y1 = _pill_y2 -14;
-        var _pn_y2 = _pn_y1 + 14;
+        var _pn_y2 = _pn_y1 + 18;
         var _prev_x1 = _mid_cx - _pn_w - _pn_gap * 0.5;
         var _prev_x2 = _prev_x1 + _pn_w;
         var _next_x1 = _mid_cx + _pn_gap * 0.5;
@@ -1644,7 +1644,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 
         // ===== RIGHT COLUMN : frame management (2x2 compact buttons) =====
         var _fm_btn_w = 58;
-        var _fm_btn_h = 14;
+        var _fm_btn_h = 18;
         var _fm_gap_x = 3;
         var _fm_gap_y = 3;
         var _fm_grid_x = _anim_rx1 + (_anim_right_w - (_fm_btn_w * 2 + _fm_gap_x)) * 0.5;

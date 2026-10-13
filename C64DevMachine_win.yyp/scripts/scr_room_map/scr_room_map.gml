@@ -452,14 +452,14 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_qx, _qy + 3, "NAME");
     var _nbx1 = _qx + 70;
     var _nbx2 = _qx + _qw;
-    var _nhov = point_in_rectangle(_mx, _my, _nbx1, _qy, _nbx2, _qy + 16);
+    var _nhov = point_in_rectangle(_mx, _my, _nbx1, _qy, _nbx2, _qy + 20);
     scr_ui_info(_nhov, "ROOM NAME: CLICK TO EDIT (A-Z, 0-9, _), ENTER KEEPS, ESC CANCELS");
-    scr_editor_control(_nbx1, _qy, _nbx2, _qy + 16, _nhov, _m.name_edit_active);
+    scr_editor_control(_nbx1, _qy, _nbx2, _qy + 20, _nhov, _m.name_edit_active);
     draw_set_color(c_lime);
     if (_m.name_edit_active) {
         var _blink = " ";
         if ((current_time mod 600) < 300) { _blink = "_"; }
-        scr_editor_label(_nbx1, _qy, _nbx2, _qy + 16, _m.name_edit_buf + _blink, fa_left, 5);
+        scr_editor_label(_nbx1, _qy, _nbx2, _qy + 20, _m.name_edit_buf + _blink, fa_left, 5);
         if (keyboard_check_pressed(vk_backspace) && string_length(_m.name_edit_buf) > 0) {
             _m.name_edit_buf = string_delete(_m.name_edit_buf, string_length(_m.name_edit_buf), 1);
         }
@@ -484,7 +484,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             keyboard_clear(vk_escape);
         }
     } else {
-        scr_editor_label(_nbx1, _qy, _nbx2, _qy + 16, _ro.name, fa_left, 5);
+        scr_editor_label(_nbx1, _qy, _nbx2, _qy + 20, _ro.name, fa_left, 5);
         if (_nhov && _press) {
             _m.name_edit_active = true;
             _m.name_edit_buf    = _ro.name;
@@ -498,25 +498,25 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_qx, _qy + 3, "BITMAP");
     var _bl = _ro.bmp;
     if (_bl == "") { _bl = "(choose)"; }
-    if (_button(_qx + 70, _qy, _qw - 70, 16, string_copy(_bl, 1, 52), make_color_rgb(25, 55, 75), _mx, _my, "PICKS THE ROOM BITMAP FROM THE BITMAPS IN THE REU MANIFEST")) {
+    if (_button(_qx + 70, _qy, _qw - 70, 20, string_copy(_bl, 1, 52), make_color_rgb(25, 55, 75), _mx, _my, "PICKS THE ROOM BITMAP FROM THE BITMAPS IN THE REU MANIFEST")) {
         _m.pick_mode = "BMP";
         _m.pick_scroll = 0;
     }
-    _qy += 20;
+    _qy += 22;
     draw_set_color(_c_lbl);
     draw_text_l(_qx, _qy + 3, "COLLIDERS");
     var _cl = _ro.coll;
     if (_cl == "") { _cl = "(none)"; }
-    if (_button(_qx + 70, _qy, _qw - 70, 16, string_copy(_cl, 1, 52), make_color_rgb(60, 45, 25), _mx, _my, "PICKS THE LINE_COLL ASSET WITH THIS ROOM COLLIDER LINES (DOOR LINES D2-D5)")) {
+    if (_button(_qx + 70, _qy, _qw - 70, 20, string_copy(_cl, 1, 52), make_color_rgb(60, 45, 25), _mx, _my, "PICKS THE LINE_COLL ASSET WITH THIS ROOM COLLIDER LINES (DOOR LINES D2-D5)")) {
         _m.pick_mode = "COLL";
         _m.pick_scroll = 0;
     }
-    _qy += 20;
+    _qy += 22;
     draw_set_color(_c_lbl);
     draw_text_l(_qx, _qy + 3, "MASK");
     var _mkl = _ro.mask;
     if (_mkl == "") { _mkl = "(none)"; }
-    if (_button(_qx + 70, _qy, _qw - 70, 16, string_copy(_mkl, 1, 52), make_color_rgb(70, 30, 70), _mx, _my, "PICKS THE SPRITE_MASK ASSET FOR THIS ROOM")) {
+    if (_button(_qx + 70, _qy, _qw - 70, 20, string_copy(_mkl, 1, 52), make_color_rgb(70, 30, 70), _mx, _my, "PICKS THE SPRITE_MASK ASSET FOR THIS ROOM")) {
         _m.pick_mode = "MASK";
         _m.pick_scroll = 0;
     }
@@ -584,7 +584,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
                 global.addresses_dirty = true;
             }
         }
-        if (_button(_qx, _cvy2 - 26, 70, 16, "CANCEL", make_color_rgb(80, 30, 30), _mx, _my, "CLOSES THE LIST WITHOUT CHANGING THE ROOM")) {
+        if (_button(_qx, _cvy2 - 26, 70, 20, "CANCEL", make_color_rgb(80, 30, 30), _mx, _my, "CLOSES THE LIST WITHOUT CHANGING THE ROOM")) {
             _m.pick_mode = "";
         }
         // Thumbnail of the hovered bitmap
@@ -611,16 +611,16 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     _qy += 16;
     for (var _e = 0; _e < ROOMMAP_EXITS; _e++) {
         var _ex = _ro.exits[_e];
-        var _ry = _qy + _e * 18;
+        var _ry = _qy + _e * 22;
         var _rsel = (_m.sel_exit == _e);
-        var _rhov = point_in_rectangle(_mx, _my, _qx, _ry, _qx + _qw - 110, _ry + 16);
+        var _rhov = point_in_rectangle(_mx, _my, _qx, _ry, _qx + _qw - 110, _ry + 20);
         scr_ui_info(_rhov, "EXIT D" + string(_e + 2) + ": CLICK TO SELECT/DESELECT IT, THEN CLICK THE PREVIEW TO SET WHERE THE PLAYER ARRIVES");
         if (_rsel) {
             draw_set_color(make_color_rgb(50, 40, 70));
-            draw_rectangle(_qx, _ry, _qx + _qw - 110, _ry + 16, false);
+            draw_rectangle(_qx, _ry, _qx + _qw - 110, _ry + 20, false);
         } else if (_rhov) {
             draw_set_color(make_color_rgb(34, 34, 50));
-            draw_rectangle(_qx, _ry, _qx + _qw - 110, _ry + 16, false);
+            draw_rectangle(_qx, _ry, _qx + _qw - 110, _ry + 20, false);
         }
         draw_set_color(scr_room_map_type_col(_e + 2));
         draw_text_l(_qx + 4, _ry + 3, "D" + string(_e + 2));
@@ -639,20 +639,20 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         }
         var _lk_col = make_color_rgb(30, 70, 90);
         if (_m.link_exit == _e) { _lk_col = make_color_rgb(160, 80, 20); }
-        if (_button(_qx + _qw - 104, _ry, 56, 16, "LINK", _lk_col, _mx, _my, "LINK D" + string(_e + 2) + ": THEN CLICK THE ROOM ON THE MAP THIS DOOR LEADS TO (CLICK AGAIN TO CANCEL)")) {
+        if (_button(_qx + _qw - 104, _ry, 56, 20, "LINK", _lk_col, _mx, _my, "LINK D" + string(_e + 2) + ": THEN CLICK THE ROOM ON THE MAP THIS DOOR LEADS TO (CLICK AGAIN TO CANCEL)")) {
             if (_m.link_exit == _e) {
                 _m.link_exit = -1;
             } else {
                 _m.link_exit = _e;
             }
         }
-        if (_button(_qx + _qw - 44, _ry, 44, 16, "CLEAR", make_color_rgb(80, 30, 30), _mx, _my, "UNLINKS EXIT D" + string(_e + 2))) {
+        if (_button(_qx + _qw - 44, _ry, 44, 20, "CLEAR", make_color_rgb(80, 30, 30), _mx, _my, "UNLINKS EXIT D" + string(_e + 2))) {
             _ex.to = -1;
             if (_m.sel_exit == _e) { _m.sel_exit = -1; }
             global.addresses_dirty = true;
         }
     }
-    _qy += ROOMMAP_EXITS * 18 + 8;
+    _qy += ROOMMAP_EXITS * 22 + 8;
 
     // ── Preview: this room with its lines + spawn, or the arrival point ──
     var _show_room = _m.sel_room;
