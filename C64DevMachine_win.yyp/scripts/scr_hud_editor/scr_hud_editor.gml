@@ -481,12 +481,8 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _cy1 = _swy + (_ci div 8) * 21;
         var _chov2 = point_in_rectangle(_mx, _my, _cx1, _cy1, _cx1 + 18, _cy1 + 18);
         scr_ui_info(_chov2, "COLOUR " + string(_ci) + ": LEFT = PAINT COLOUR, RIGHT = SCREEN BACKGROUND $D021");
-        scr_editor_swatch(_cx1, _cy1, _cx1 + 18, _cy1 + 18, scr_c64_pepto_colour(_ci));
-        if (((_m.active_colour & 15) == _ci) || _chov2) {
-            draw_set_color(c_white);
-            if (_chov2) { draw_set_color(c_yellow); }
-            draw_rectangle(_cx1, _cy1, _cx1 + 18, _cy1 + 18, true);
-        }
+        scr_editor_swatch(_cx1, _cy1, _cx1 + 18, _cy1 + 18, scr_c64_pepto_colour(_ci),
+            _chov2, (_m.active_colour & 15) == _ci);
         if (_chov2 && mouse_check_button_pressed(mb_left)) {
             // On an MC screen with an MC cell active the swatch picks the
             // cell's own colour (0-7) and keeps bit 3; otherwise it is the
@@ -525,14 +521,17 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // Row 3: shared MC colours ($D022 / $D023) — click to step through the palette
     if (_scr_mc) {
         var _hy3 = _hy2 + 16;
+        // Captions centred on the 16px swatch row.
         draw_set_color(_c_dim);
-        draw_text_l(_swx, _hy3 + 3, "C1");
-        scr_editor_swatch(_swx + 20, _hy3, _swx + 36, _hy3 + 16, scr_c64_pepto_colour(_col1));
+        scr_editor_label(_swx, _hy3, _swx + 20, _hy3 + 16, "C1", fa_left, 0);
+        scr_editor_swatch(_swx + 20, _hy3, _swx + 36, _hy3 + 16, scr_c64_pepto_colour(_col1),
+            point_in_rectangle(_mx, _my, _swx + 20, _hy3, _swx + 36, _hy3 + 16));
         draw_set_color(_c_dim);
-        draw_text_l(_swx + 46, _hy3 + 3, "C2");
-        scr_editor_swatch(_swx + 66, _hy3, _swx + 82, _hy3 + 16, scr_c64_pepto_colour(_col2));
+        scr_editor_label(_swx + 46, _hy3, _swx + 66, _hy3 + 16, "C2", fa_left, 0);
+        scr_editor_swatch(_swx + 66, _hy3, _swx + 82, _hy3 + 16, scr_c64_pepto_colour(_col2),
+            point_in_rectangle(_mx, _my, _swx + 66, _hy3, _swx + 82, _hy3 + 16));
         draw_set_color(_c_dim);
-        draw_text_l(_swx + 92, _hy3 + 3, "SHARED MC COLOURS $D022 / $D023  -  CLICK = NEXT");
+        scr_editor_label(_swx + 92, _hy3, _rcx + _rcw, _hy3 + 16, "SHARED MC COLOURS $D022 / $D023  -  CLICK = NEXT", fa_left, 0);
         scr_ui_info(point_in_rectangle(_mx, _my, _swx + 20, _hy3, _swx + 36, _hy3 + 16), "SHARED MULTICOLOUR 1 ($D022): CLICK FOR THE NEXT COLOUR");
         scr_ui_info(point_in_rectangle(_mx, _my, _swx + 66, _hy3, _swx + 82, _hy3 + 16), "SHARED MULTICOLOUR 2 ($D023): CLICK FOR THE NEXT COLOUR");
         if (mouse_check_button_pressed(mb_left) && point_in_rectangle(_mx, _my, _swx + 20, _hy3, _swx + 36, _hy3 + 16)) {

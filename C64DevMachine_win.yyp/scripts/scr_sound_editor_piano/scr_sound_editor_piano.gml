@@ -198,10 +198,11 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
     draw_set_font_l(fnt_c64_pico);
 
     // header: title + mode toggle
+    // Header text shares the centre of the 14px toggle row (_y0 - 2 .. _y0 + 12).
     draw_set_color(make_color_rgb(255, 200, 100));
-    draw_text_l(_x0, _y0, "PIANO");
     var _split = (_m.pno_mode == "SPLIT");
     var _mb_x = _x0 + 50;
+    scr_editor_label(_x0, _y0 - 2, _mb_x, _y0 + 12, "PIANO", fa_left, 0);
     for (var _mi = 0; _mi < 2; _mi++) {
         var _mlbl = "SPLIT";
         if (_mi == 1) {
@@ -211,16 +212,9 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
         var _mon = ((_mi == 0) == _split);
         var _mhov = point_in_rectangle(_mx, _my, _mbx, _y0 - 2, _mbx + 48, _y0 + 12);
         scr_mm_info(_mhov, (_mi == 0) ? "SPLIT PIANO: ONE 2-OCTAVE KEYBOARD PER VOICE, FROM THE CURRENT OCTAVE" : "FULL PIANO: ONE 6-OCTAVE KEYBOARD FOR THE SELECTED VOICE");
-        if (_mon) {
-            draw_set_color(make_color_rgb(40, 110, 170));
-        } else if (_mhov) {
-            draw_set_color(make_color_rgb(65, 80, 100));
-        } else {
-            draw_set_color(make_color_rgb(30, 38, 52));
-        }
-        draw_rectangle(_mbx, _y0 - 2, _mbx + 48, _y0 + 12, false);
+        scr_editor_control(_mbx, _y0 - 2, _mbx + 48, _y0 + 12, _mhov, _mon);
         draw_set_color(c_white);
-        draw_text_l(_mbx + 8, _y0, _mlbl);
+        scr_editor_label(_mbx, _y0 - 2, _mbx + 48, _y0 + 12, _mlbl);
         if (_mhov && mouse_check_button_pressed(mb_left)) {
             _m.pno_mode = _mlbl;
             _m.pno_hover = -1;
@@ -230,9 +224,9 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
     var _hint_jam  = "JAM: LEFT CLICK OR HOLD RIGHT MOUSE ON THE KEYS TO PLAY - NOTHING IS WRITTEN";
     var _hint_edit = "HOLD RIGHT MOUSE ON THE KEYS TO HEAR THE SELECTED INSTRUMENT, LEFT CLICK TO WRITE THE NOTE AT THE MARKER";
     if (global.music_jam) {
-        draw_text_l(_mb_x + 116, _y0, _hint_jam);
+        scr_editor_label(_mb_x + 116, _y0 - 2, _mb_x + 116 + string_width_l(_hint_jam), _y0 + 12, _hint_jam, fa_left, 0);
     } else {
-        draw_text_l(_mb_x + 116, _y0, _hint_edit);
+        scr_editor_label(_mb_x + 116, _y0 - 2, _mb_x + 116 + string_width_l(_hint_edit), _y0 + 12, _hint_edit, fa_left, 0);
     }
 
     // [EDIT MODE] / [JAM MODE]: JAM plays note keys and piano clicks without
@@ -252,16 +246,9 @@ function scr_sound_editor_piano(_m, _x0, _y0, _x1, _y1, _mx, _my, _col_pat, _vis
         scr_mm_info(_thov, (_tgi == 0) ? "EDIT / JAM: JAM PLAYS NOTE KEYS AND PIANO CLICKS WITHOUT WRITING ANYTHING" : "MONO / POLY (JAM, FULL PIANO): A NEW NOTE CUTS THE LAST, OR MOVES ON TO THE NEXT VOICE");
         var _ton = global.music_jam;
         if (_tgi == 1) _ton = global.music_poly;
-        if (_ton) {
-            draw_set_color(_thov ? make_color_rgb(200, 120, 60) : make_color_rgb(150, 80, 30));
-        } else if (_thov) {
-            draw_set_color(make_color_rgb(65, 80, 100));
-        } else {
-            draw_set_color(make_color_rgb(30, 38, 52));
-        }
-        draw_rectangle(_tg_x, _y0 - 2, _tg_x + _tw, _y0 + 12, false);
+        scr_editor_control(_tg_x, _y0 - 2, _tg_x + _tw, _y0 + 12, _thov, _ton);
         draw_set_color(c_white);
-        draw_text_l(_tg_x + 8, _y0, _tg_labels[_tgi]);
+        scr_editor_label(_tg_x, _y0 - 2, _tg_x + _tw, _y0 + 12, _tg_labels[_tgi]);
         if (_thov && mouse_check_button_pressed(mb_left)) {
             if (_tgi == 0) {
                 global.music_jam = !global.music_jam;

@@ -26,7 +26,8 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
 
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(255, 200, 100));
-    draw_text_l(_ix0, _iy0 - 20, "INSTRUMENTS");
+    // Centred on the + PRESETS button row (_iy0 - 24, 26px) beside it.
+    scr_editor_label(_ix0, _iy0 - 24, _ix0 + 150, _iy0 + 2, "INSTRUMENTS", fa_left, 0);
 
     // Presets append independent instruments and never replace existing slots.
     if (_two_col) {
@@ -272,21 +273,24 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     }
     var _dy        = _iby + _btn_h + 20;
 
+    // Name field: a control on exactly its hit rect (selected while typing);
+    // the caption shares its row centre.
     draw_set_color(make_color_rgb(126, 126, 166));
-    draw_text_l(_ix0, _dy, "NAME:");
     var _nm_x1  = _ix0 + 50;
     var _nm_x2  = _nm_x1 + 180;
+    scr_editor_label(_ix0, _dy - 2, _nm_x1, _dy + 16, "NAME:", fa_left, 0);
     var _nm_hov = point_in_rectangle(_mx, _my, _nm_x1, _dy - 2, _nm_x2, _dy + 16);
     scr_mm_info(_nm_hov && !_m.instr_name_edit_active, "CLICK TO RENAME THE SELECTED INSTRUMENT (ENTER KEEPS, ESC CANCELS)");
+    scr_editor_control(_nm_x1, _dy - 2, _nm_x2, _dy + 16, _nm_hov, _m.instr_name_edit_active);
 
     if (_m.instr_name_edit_active) {
         var _nm_blink = (current_time mod 600) < 300;
         var _nm_disp  = _nm_blink ? string_insert("|", _m.instr_name_edit_buf, _m.instr_name_edit_cursor + 1) : _m.instr_name_edit_buf;
         draw_set_color(c_lime);
-        draw_text_l(_nm_x1, _dy, _nm_disp);
+        scr_editor_label(_nm_x1, _dy - 2, _nm_x2, _dy + 16, _nm_disp, fa_left, 5);
     } else {
         draw_set_color(_nm_hov ? c_aqua : c_white);
-        draw_text_l(_nm_x1, _dy, _sel_instr.name);
+        scr_editor_label(_nm_x1, _dy - 2, _nm_x2, _dy + 16, _sel_instr.name, fa_left, 5);
         if (_nm_hov && mouse_check_button_pressed(mb_left)) {
             _m.instr_name_edit_active      = true;
             _m.instr_name_edit_buf         = _sel_instr.name;
@@ -336,21 +340,24 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     var _adsr_y   = _dy + 24;
     var _adsr_lbl = ["A", "D", "S", "R"];
     var _adsr_key = ["attack", "decay", "sustain", "release"];
+    // Stepper rows: -/+ are controls on their hit rects (row - 2 .. row + 14)
+    // and every caption / value is centred on that same row.
     draw_set_color(make_color_rgb(126, 126, 166));
-    draw_text_l(_ix0, _adsr_y, "ADSR:");
+    scr_editor_label(_ix0, _adsr_y - 2, _ix0 + 50, _adsr_y + 14, "ADSR:", fa_left, 0);
     var _adsr_x = _ix0 + 50;
     for (var _adi = 0; _adi < 4; _adi++) {
         var _ad_val = _sel_instr[$ _adsr_key[_adi]];
 
         draw_set_color(make_color_rgb(180, 180, 200));
-        draw_text_l(_adsr_x, _adsr_y, _adsr_lbl[_adi] + ":");
+        scr_editor_label(_adsr_x, _adsr_y - 2, _adsr_x + 16, _adsr_y + 14, _adsr_lbl[_adi] + ":", fa_left, 0);
 
         var _ad_dnx1 = _adsr_x + 16;
         var _ad_dnx2 = _ad_dnx1 + 14;
         var _ad_hov_dn = point_in_rectangle(_mx, _my, _ad_dnx1, _adsr_y - 2, _ad_dnx2, _adsr_y + 14);
         scr_mm_info(_ad_hov_dn, "LOWERS THE ENVELOPE " + string_upper(_adsr_key[_adi]) + " (0-15)");
-        draw_set_color(_ad_hov_dn ? c_aqua : make_color_rgb(128, 128, 128));
-        draw_text_l(_ad_dnx1 + 2, _adsr_y, "-");
+        scr_editor_control(_ad_dnx1, _adsr_y - 2, _ad_dnx2, _adsr_y + 14, _ad_hov_dn);
+        draw_set_color(_ad_hov_dn ? c_aqua : make_color_rgb(150, 150, 180));
+        scr_editor_label(_ad_dnx1, _adsr_y - 2, _ad_dnx2, _adsr_y + 14, "-");
         if (_ad_hov_dn && mouse_check_button_pressed(mb_left)) {
             _sel_instr[$ _adsr_key[_adi]] = max(0, _ad_val - 1);
             global.undo_dirty      = true;
@@ -360,14 +367,15 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         draw_set_color(c_white);
         var _ad_str = string(_ad_val);
         while (string_length(_ad_str) < 2) { _ad_str = "0" + _ad_str; }
-        draw_text_l(_ad_dnx2 + 4, _adsr_y, _ad_str);
-
         var _ad_upx1 = _ad_dnx2 + 26;
         var _ad_upx2 = _ad_upx1 + 14;
+        scr_editor_label(_ad_dnx2, _adsr_y - 2, _ad_upx1, _adsr_y + 14, _ad_str);
+
         var _ad_hov_up = point_in_rectangle(_mx, _my, _ad_upx1, _adsr_y - 2, _ad_upx2, _adsr_y + 14);
         scr_mm_info(_ad_hov_up, "RAISES THE ENVELOPE " + string_upper(_adsr_key[_adi]) + " (0-15)");
-        draw_set_color(_ad_hov_up ? c_aqua : make_color_rgb(128, 128, 128));
-        draw_text_l(_ad_upx1 + 2, _adsr_y, "+");
+        scr_editor_control(_ad_upx1, _adsr_y - 2, _ad_upx2, _adsr_y + 14, _ad_hov_up);
+        draw_set_color(_ad_hov_up ? c_aqua : make_color_rgb(150, 150, 180));
+        scr_editor_label(_ad_upx1, _adsr_y - 2, _ad_upx2, _adsr_y + 14, "+");
         if (_ad_hov_up && mouse_check_button_pressed(mb_left)) {
             _sel_instr[$ _adsr_key[_adi]] = min(15, _ad_val + 1);
             global.undo_dirty      = true;
@@ -386,7 +394,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     // ── PULSE WIDTH ──
     var _pw_y = _adsr_y + 24;
     draw_set_color(make_color_rgb(126, 126, 166));
-    draw_text_l(_ix0, _pw_y, "PULSE:");
+    scr_editor_label(_ix0, _pw_y - 2, _ix0 + 50, _pw_y + 14, "PULSE:", fa_left, 0);
 
     var _pw_val = _sel_instr.pulse_width;
 
@@ -394,8 +402,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     var _pw_dnx2 = _pw_dnx1 + 14;
     var _pw_hov_dn = point_in_rectangle(_mx, _my, _pw_dnx1, _pw_y - 2, _pw_dnx2, _pw_y + 14);
     scr_mm_info(_pw_hov_dn, "NARROWS THE INSTRUMENT'S PULSE WIDTH BY 128 (SHIFT: 16), 0-4095");
-    draw_set_color(_pw_hov_dn ? c_aqua : make_color_rgb(128, 128, 128));
-    draw_text_l(_pw_dnx1 + 2, _pw_y, "-");
+    scr_editor_control(_pw_dnx1, _pw_y - 2, _pw_dnx2, _pw_y + 14, _pw_hov_dn);
+    draw_set_color(_pw_hov_dn ? c_aqua : make_color_rgb(150, 150, 180));
+    scr_editor_label(_pw_dnx1, _pw_y - 2, _pw_dnx2, _pw_y + 14, "-");
     if (_pw_hov_dn && mouse_check_button_pressed(mb_left)) {
         var _step = keyboard_check(vk_shift) ? 16 : 128;
         _sel_instr.pulse_width = max(0, _pw_val - _step);
@@ -406,14 +415,15 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     draw_set_color(c_white);
     var _pw_str = string(_pw_val);
     while (string_length(_pw_str) < 4) { _pw_str = "0" + _pw_str; }
-    draw_text_l(_pw_dnx2 + 4, _pw_y, _pw_str);
-
     var _pw_upx1 = _pw_dnx2 + 42;
     var _pw_upx2 = _pw_upx1 + 14;
+    scr_editor_label(_pw_dnx2, _pw_y - 2, _pw_upx1, _pw_y + 14, _pw_str);
+
     var _pw_hov_up = point_in_rectangle(_mx, _my, _pw_upx1, _pw_y - 2, _pw_upx2, _pw_y + 14);
     scr_mm_info(_pw_hov_up, "WIDENS THE INSTRUMENT'S PULSE WIDTH BY 128 (SHIFT: 16), 0-4095");
-    draw_set_color(_pw_hov_up ? c_aqua : make_color_rgb(128, 128, 128));
-    draw_text_l(_pw_upx1 + 2, _pw_y, "+");
+    scr_editor_control(_pw_upx1, _pw_y - 2, _pw_upx2, _pw_y + 14, _pw_hov_up);
+    draw_set_color(_pw_hov_up ? c_aqua : make_color_rgb(150, 150, 180));
+    scr_editor_label(_pw_upx1, _pw_y - 2, _pw_upx2, _pw_y + 14, "+");
     if (_pw_hov_up && mouse_check_button_pressed(mb_left)) {
         var _step = keyboard_check(vk_shift) ? 16 : 128;
         _sel_instr.pulse_width = min(4095, _pw_val + _step);
@@ -423,7 +433,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
 
     draw_set_color(make_color_rgb(128, 128, 148));
     draw_set_font_l(fnt_c64_pico);
-    draw_text_l(_pw_upx2 + 8, _pw_y + 2, "(SHIFT: FINE)");
+    scr_editor_label(_pw_upx2 + 8, _pw_y - 2, _pw_upx2 + 8 + string_width_l("(SHIFT: FINE)"), _pw_y + 14, "(SHIFT: FINE)", fa_left, 0);
     draw_set_font_l(fnt_c64_tiny);
 
     // ── VIBRATO (Music Maker only — the SFX player has no vibrato) ──
@@ -432,7 +442,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     if (_two_col) {
         var _vb_y = _pw_y + 24;
         draw_set_color(make_color_rgb(126, 126, 166));
-        draw_text_l(_ix0, _vb_y, "VIB:");
+        scr_editor_label(_ix0, _vb_y - 2, _ix0 + 50, _vb_y + 14, "VIB:", fa_left, 0);
         var _vb_lbl = ["DL", "SP", "DP"];
         var _vb_key = ["vib_delay", "vib_speed", "vib_depth"];
         var _vb_max = [255, 15, 15];
@@ -441,17 +451,18 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         for (var _vbi = 0; _vbi < 3; _vbi++) {
             var _vb_val = scr_sid64_instr_field(_sel_instr, _vb_key[_vbi], 0);
             draw_set_color(make_color_rgb(180, 180, 200));
-            draw_text_l(_vb_x, _vb_y, _vb_lbl[_vbi]);
+            scr_editor_label(_vb_x, _vb_y - 2, _vb_x + 20, _vb_y + 14, _vb_lbl[_vbi], fa_left, 0);
 
             var _vb_dnx1 = _vb_x + 20;
             var _vb_dnx2 = _vb_dnx1 + 14;
             var _vb_hov_dn = point_in_rectangle(_mx, _my, _vb_dnx1, _vb_y - 2, _vb_dnx2, _vb_y + 14);
             scr_mm_info(_vb_hov_dn, "LOWERS VIBRATO " + _vb_info[_vbi]);
-            draw_set_color(make_color_rgb(100, 100, 100));
+            scr_editor_control(_vb_dnx1, _vb_y - 2, _vb_dnx2, _vb_y + 14, _vb_hov_dn);
+            draw_set_color(make_color_rgb(150, 150, 180));
             if (_vb_hov_dn) {
                 draw_set_color(c_aqua);
             }
-            draw_text_l(_vb_dnx1 + 2, _vb_y, "-");
+            scr_editor_label(_vb_dnx1, _vb_y - 2, _vb_dnx2, _vb_y + 14, "-");
             if (_vb_hov_dn && mouse_check_button_pressed(mb_left)) {
                 var _vb_step_dn = 1;
                 if (_vbi == 0 && keyboard_check(vk_shift)) {
@@ -465,17 +476,18 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             draw_set_color(c_white);
             var _vb_str = string(_vb_val);
             while (string_length(_vb_str) < 2) { _vb_str = "0" + _vb_str; }
-            draw_text_l(_vb_dnx2 + 3, _vb_y, _vb_str);
-
             var _vb_upx1 = _vb_dnx2 + 26;
             var _vb_upx2 = _vb_upx1 + 14;
+            scr_editor_label(_vb_dnx2, _vb_y - 2, _vb_upx1, _vb_y + 14, _vb_str);
+
             var _vb_hov_up = point_in_rectangle(_mx, _my, _vb_upx1, _vb_y - 2, _vb_upx2, _vb_y + 14);
             scr_mm_info(_vb_hov_up, "RAISES VIBRATO " + _vb_info[_vbi]);
-            draw_set_color(make_color_rgb(100, 100, 100));
+            scr_editor_control(_vb_upx1, _vb_y - 2, _vb_upx2, _vb_y + 14, _vb_hov_up);
+            draw_set_color(make_color_rgb(150, 150, 180));
             if (_vb_hov_up) {
                 draw_set_color(c_aqua);
             }
-            draw_text_l(_vb_upx1 + 2, _vb_y, "+");
+            scr_editor_label(_vb_upx1, _vb_y - 2, _vb_upx2, _vb_y + 14, "+");
             if (_vb_hov_up && mouse_check_button_pressed(mb_left)) {
                 var _vb_step_up = 1;
                 if (_vbi == 0 && keyboard_check(vk_shift)) {
@@ -496,8 +508,8 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         var _fi_y = _vb_y + 24;
         var _fi_on = (scr_sid64_instr_field(_sel_instr, "filt", 0) != 0);
         draw_set_color(make_color_rgb(126, 126, 166));
-        draw_text_l(_ix0, _fi_y, "FILTER:");
         var _fi_bx = _ix0 + 64;
+        scr_editor_label(_ix0, _fi_y - 2, _fi_bx, _fi_y + 18, "FILTER:", fa_left, 0);
         var _fi_hov = point_in_rectangle(_mx, _my, _fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 18);
         scr_mm_info(_fi_hov, "ROUTES THIS INSTRUMENT'S VOICE THROUGH THE SONG FILTER (ON) OR NOT (OFF)");
         scr_editor_control(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 18, _fi_hov, _fi_on);
@@ -519,7 +531,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         // Routed through a filter with no mode set = silence on the SID.
         if (_fi_on && (_m.filt_mode & 0x07) == 0) {
             draw_set_color(make_color_rgb(230, 90, 90));
-            draw_text_l(_fi_bx + 50, _fi_y, "SET A FILTER MODE - SILENT");
+            scr_editor_label(_fi_bx + 50, _fi_y - 2, _fi_bx + 50 + string_width_l("SET A FILTER MODE - SILENT"), _fi_y + 18, "SET A FILTER MODE - SILENT", fa_left, 0);
         }
     }
 
@@ -777,13 +789,8 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         var _thov = point_in_rectangle(_mx, _my, _tx, _tabbar_y + 1, _tx + _tw, _tabbar_y + _tabbar_h);
         scr_mm_info(_thov, "SHOWS THIS INSTRUMENT'S " + _tlab + " TABLE IN THE LOWER PANE");
         var _tsel = (!is_undefined(_sel_sec) && _secs[_ti].kind == _sel_sec.kind);
-        draw_set_color(make_color_rgb(40, 34, 64));
-        if (_tsel) {
-            draw_set_color(make_color_rgb(95, 55, 150));
-        } else if (_thov) {
-            draw_set_color(make_color_rgb(64, 50, 100));
-        }
-        draw_rectangle(_tx, _tabbar_y + 1, _tx + _tw, _tabbar_y + _tabbar_h, false);
+        // Tab = control on exactly its hit rect; the open tab is selected.
+        scr_editor_control(_tx, _tabbar_y + 1, _tx + _tw, _tabbar_y + _tabbar_h, _thov, _tsel);
         // A tab whose table is running right now gets a lit dot.
         for (var _tl = 0; _tl < array_length(_table_lines); _tl++) {
             if (_table_lines[_tl] >= _secs[_ti].l0 && _table_lines[_tl] < _secs[_ti].l1) {
@@ -792,7 +799,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             }
         }
         draw_set_color(make_color_rgb(220, 200, 255));
-        draw_text_l(_tx + 6, _tabbar_y + 4, _tlab);
+        scr_editor_label(_tx, _tabbar_y + 1, _tx + _tw, _tabbar_y + _tabbar_h, _tlab);
         if (_thov && mouse_check_button_pressed(mb_left) && !_wave_click) {
             _m.instr_tab = _secs[_ti].kind;
             _m.instr_tab_scroll = 0;
@@ -839,7 +846,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     }
     if (array_length(_secs) == 0) {
         draw_set_color(make_color_rgb(128, 128, 152));
-        draw_text_l(_tb_x0 + 4, _tabbar_y + 4, "NO TABLES");
+        scr_editor_label(_tb_x0, _tabbar_y + 1, _ax, _tabbar_y + _tabbar_h, "NO TABLES", fa_left, 4);
     }
     draw_set_font_l(fnt_c64_tiny);
 

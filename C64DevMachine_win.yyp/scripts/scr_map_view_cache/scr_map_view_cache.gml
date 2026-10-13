@@ -403,16 +403,11 @@ function scr_map_cache_update(_c, _asset, _chr, _p) {
 /// Returns 1 on a left click, 2 on a right click, 0 otherwise.
 function scr_mrp_button(_x1, _y1, _x2, _y2, _label, _on, _mx, _my) {
     var _hov = point_in_rectangle(_mx, _my, _x1, _y1, _x2, _y2);
-    var _col = make_color_rgb(30, 30, 45);
-    if (_on) { _col = make_color_rgb(40, 110, 60); }
-    else if (_hov) { _col = make_color_rgb(55, 55, 80); }
-    draw_set_color(_col);
-    draw_rectangle(_x1, _y1, _x2, _y2, false);
+    // Shared editor skin on exactly the hit rect; _on = selected frame.
+    scr_editor_control(_x1, _y1, _x2, _y2, _hov, _on);
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_white);
-    draw_set_halign(fa_center);
-    draw_set_valign(fa_middle);
-    draw_text((_x1 + _x2) * 0.5, (_y1 + _y2) * 0.5 - scr_lang_lift(), _label);
+    scr_editor_label(_x1, _y1, _x2, _y2, _label);
     draw_set_valign(fa_top);
     draw_set_halign(fa_left);
     if (_hov && mouse_check_button_pressed(mb_left)) return 1;
@@ -487,11 +482,7 @@ function scr_map_room_preview_panel(_asset, _x1, _y1, _x2, _y2, _mx, _my) {
     }
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_yellow);
-    draw_set_halign(fa_center);
-    draw_set_valign(fa_middle);
-    draw_text(_cx + 72, _cy + _bh * 0.5 - scr_lang_lift(), "ROOM " + string(_r));
-    draw_set_valign(fa_top);
-    draw_set_halign(fa_left);
+    scr_editor_label(_cx + 24, _cy, _cx + 120, _cy + _bh, "ROOM " + string(_r));
     if (scr_mrp_button(_cx + 120, _cy, _cx + 144, _cy + _bh, ">", false, _mx, _my) == 1) {
         map_prev_follow = false;
         map_prev_room = (map_prev_room + 1) mod _rn;
@@ -564,10 +555,7 @@ function scr_map_room_preview_panel(_asset, _x1, _y1, _x2, _y2, _mx, _my) {
             var _sx1 = _cx + 44 + (_k - 1) * 38;
             var _shov = point_in_rectangle(_mx, _my, _sx1, _cy, _sx1 + 30, _cy + _bh);
             scr_ui_info(_shov, "BAND " + ((_k == 1) ? "BACKGROUND" : ((_k == 2) ? "MC1" : "MC2")) + " COLOUR FROM THIS ROW DOWN - LMB NEXT COLOUR, RMB PREVIOUS");
-            draw_set_color(scr_c64_pepto_colour(real(_bd[_k]) & 0x0F));
-            draw_rectangle(_sx1, _cy, _sx1 + 30, _cy + _bh, false);
-            if (_shov) { draw_set_color(c_white); } else { draw_set_color(c_black); }
-            draw_rectangle(_sx1, _cy, _sx1 + 30, _cy + _bh, true);
+            scr_editor_swatch(_sx1, _cy, _sx1 + 30, _cy + _bh, scr_c64_pepto_colour(real(_bd[_k]) & 0x0F), _shov);
             if (_shov && mouse_check_button_pressed(mb_left))  { _bd[@ _k] = (real(_bd[_k]) + 1) & 0x0F; _edited = true; }
             if (_shov && mouse_check_button_pressed(mb_right)) { _bd[@ _k] = (real(_bd[_k]) + 15) & 0x0F; _edited = true; }
         }

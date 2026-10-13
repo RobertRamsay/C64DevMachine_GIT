@@ -174,10 +174,10 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _c_edge = make_color_rgb(66, 82, 103);
     var _press  = mouse_check_button_pressed(mb_left);
 
-    var _button = function(_x1, _y1, _w, _h, _label, _col, _mx2, _my2, _info = "") {
+    var _button = function(_x1, _y1, _w, _h, _label, _col, _mx2, _my2, _info = "", _on = false) {
         var _hov = point_in_rectangle(_mx2, _my2, _x1, _y1, _x1 + _w, _y1 + _h);
         scr_ui_info(_hov, _info);
-        scr_editor_control(_x1, _y1, _x1 + _w, _y1 + _h, _hov);
+        scr_editor_control(_x1, _y1, _x1 + _w, _y1 + _h, _hov, _on);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
         scr_editor_label(_x1, _y1, _x1 + _w, _y1 + _h, _label);
@@ -262,7 +262,8 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     if (_m.link_exit >= 0) {
         _hint = "CLICK THE ROOM EXIT D" + string(_m.link_exit + 2) + " LEADS TO  -  EMPTY SPACE / ESC CANCELS";
     }
-    draw_text_l(_vx1 + 440, _cy + 4, _hint);
+    // Centred on the 18px toolbar button row.
+    scr_editor_label(_vx1 + 440, _cy, _cvx2, _cy + 18, _hint, fa_left, 0);
 
     // ── Canvas ──
     scr_editor_panel(_cvx1, _cvy1, _cvx2, _cvy2, true);
@@ -639,7 +640,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         }
         var _lk_col = make_color_rgb(30, 70, 90);
         if (_m.link_exit == _e) { _lk_col = make_color_rgb(160, 80, 20); }
-        if (_button(_qx + _qw - 104, _ry, 56, 20, "LINK", _lk_col, _mx, _my, "LINK D" + string(_e + 2) + ": THEN CLICK THE ROOM ON THE MAP THIS DOOR LEADS TO (CLICK AGAIN TO CANCEL)")) {
+        if (_button(_qx + _qw - 104, _ry, 56, 20, "LINK", _lk_col, _mx, _my, "LINK D" + string(_e + 2) + ": THEN CLICK THE ROOM ON THE MAP THIS DOOR LEADS TO (CLICK AGAIN TO CANCEL)", _m.link_exit == _e)) {
             if (_m.link_exit == _e) {
                 _m.link_exit = -1;
             } else {

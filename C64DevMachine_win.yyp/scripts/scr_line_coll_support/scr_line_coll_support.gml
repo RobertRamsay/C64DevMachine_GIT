@@ -231,10 +231,9 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _offs = [["REF X", "ref_offset_x"], ["REF Y", "ref_offset_y"]];
     for (var _oi = 0; _oi < 2; _oi++) {
         var _fld = _offs[_oi][1];
-        draw_set_color(make_color_rgb(16, 19, 29));
-        draw_rectangle(_lx, _sy, _lx + _lw - 64, _sy + 22, false);
+        scr_editor_panel(_lx, _sy, _lx + _lw - 64, _sy + 22, true);
         draw_set_color(c_white);
-        draw_text_l(_lx + 8, _sy + 5, _offs[_oi][0] + ": " + string(_m[$ _fld]));
+        scr_editor_label(_lx, _sy, _lx + _lw - 64, _sy + 22, _offs[_oi][0] + ": " + string(_m[$ _fld]), fa_left, 8);
         scr_ui_info(point_in_rectangle(_mx, _ui_my, _lx + _lw - 58, _sy, _lx + _lw - 32, _sy + 22), "NUDGE THE REFERENCE BITMAP 1 PIXEL " + ((_oi == 0) ? "LEFT" : "UP"));
         scr_ui_info(point_in_rectangle(_mx, _ui_my, _lx + _lw - 26, _sy, _lx + _lw, _sy + 22), "NUDGE THE REFERENCE BITMAP 1 PIXEL " + ((_oi == 0) ? "RIGHT" : "DOWN"));
         if (_btn(_lx + _lw - 58, _sy, 26, 22, "-", false, _mx, _ui_my)) {
@@ -285,20 +284,14 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _tby2 = _tby1 + 26;
         var _tb_hov = point_in_rectangle(_mx, _ui_my, _tbx1, _tby1, _tbx2, _tby2);
         scr_ui_info(_tb_hov, "DRAW NEW LINES AS TYPE " + string(_ti) + " - THE VALUE A HIT WRITES TO THE RESULT VARIABLE");
-        draw_set_color(_type_colours[_ti]);
-        draw_rectangle(_tbx1, _tby1, _tbx2, _tby2, false);
-        draw_set_color(make_color_rgb(60, 60, 60));
-        if (_tb_hov) { draw_set_color(make_color_rgb(200, 200, 200)); }
-        if (_m.active_type == _ti) { draw_set_color(c_white); }
-        draw_rectangle(_tbx1, _tby1, _tbx2, _tby2, true);
-        if (_m.active_type == _ti) {
-            draw_rectangle(_tbx1 + 1, _tby1 + 1, _tbx2 - 1, _tby2 - 1, true);
-        }
+        // Type chip: hover / active come from the swatch's own frame.
+        scr_editor_swatch(_tbx1, _tby1, _tbx2, _tby2, _type_colours[_ti], _tb_hov, _m.active_type == _ti);
         // Number in a contrasting box so it reads on every swatch colour
+        // (inside the swatch's 2px colour inset).
         draw_set_color(c_black);
         draw_rectangle(_tbx1 + 2, _tby1 + 2, _tbx1 + 14, _tby1 + 14, false);
         draw_set_color(c_white);
-        draw_text_l(_tbx1 + 5, _tby1 + 2, string(_ti));
+        scr_editor_label(_tbx1 + 2, _tby1 + 2, _tbx1 + 14, _tby1 + 14, string(_ti));
         if (_tb_hov && _press) {
             _m.active_type = _ti;
         }
@@ -511,7 +504,8 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_set_color(make_color_rgb(23, 29, 42));
     draw_rectangle(_rx - 10, _top - 6, _rx + _rw + 10, _bottom, false);
     draw_set_color(_c_head);
-    draw_text_l(_rx, _top + 4, "LINES (" + string(array_length(_m.lines)) + ")");
+    // Centred on the CLEAR button row beside it.
+    scr_editor_label(_rx, _top, _rx + _rw - 60, _top + 20, "LINES (" + string(array_length(_m.lines)) + ")", fa_left, 0);
     var _has_lines = array_length(_m.lines) > 0;
     if (_has_lines) {
         scr_ui_info(point_in_rectangle(_mx, _ui_my, _rx + _rw - 60, _top, _rx + _rw, _top + 20), "DELETE EVERY LINE (CTRL+Z TO UNDO)");
@@ -546,15 +540,16 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         draw_set_color(_type_colours[clamp(_row_ln.type, 0, 7)]);
         draw_rectangle(_rx, _ry1, _rx + 6, _ry2, false);
         draw_set_color(c_white);
-        draw_text_l(_rx + 12, _ry1 + 4, string(_idx + 1) + ":  " + string(_row_ln.x1) + "," + string(_row_ln.y1)
-            + " -> " + string(_row_ln.x2) + "," + string(_row_ln.y2) + "   T" + string(_row_ln.type));
         var _dx1 = _rx + _rw - 22;
+        scr_editor_label(_rx, _ry1, _dx1, _ry2, string(_idx + 1) + ":  " + string(_row_ln.x1) + "," + string(_row_ln.y1)
+            + " -> " + string(_row_ln.x2) + "," + string(_row_ln.y2) + "   T" + string(_row_ln.type), fa_left, 12);
         var _del_hov = point_in_rectangle(_mx, _ui_my, _dx1, _ry1, _rx + _rw, _ry2);
         scr_ui_info(_row_hov, "LINE " + string(_idx + 1) + ": X1,Y1 -> X2,Y2 AND TYPE. MOUSE WHEEL SCROLLS THE LIST");
         scr_ui_info(_del_hov, "DELETE THIS LINE (CTRL+Z TO UNDO)");
-        draw_set_color(make_color_rgb(120, 60, 60));
+        scr_editor_control(_dx1, _ry1, _rx + _rw, _ry2, _del_hov);
+        draw_set_color(make_color_rgb(174, 115, 115));
         if (_del_hov) { draw_set_color(c_red); }
-        draw_text_l(_dx1 + 6, _ry1 + 4, "X");
+        scr_editor_label(_dx1, _ry1, _rx + _rw, _ry2, "X");
         if (_del_hov && _press) {
             _delete_idx = _idx;
         }

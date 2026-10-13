@@ -147,13 +147,13 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     if (_have_src) {
         draw_set_color(_c_lbl);
-        draw_text_l(_x0 + 430, _ty + 4, "SOURCE: ");
+        draw_text_l(_x0 + 430, _ty + 2,"SOURCE: ");
         draw_set_color(c_white);
-        draw_text_l(_x0 + 500, _ty + 4, _m.src_name + "   " + string(_m.src_rate) + " HZ   "
+        draw_text_l(_x0 + 500, _ty + 2,_m.src_name + "   " + string(_m.src_rate) + " HZ   "
             + scr_sample_secs(_m.src_len, _m.src_rate) + "   " + string(_m.src_len) + " SAMPLES");
     } else {
         draw_set_color(_c_dim);
-        draw_text_l(_x0 + 430, _ty + 4, "NO SOURCE - IMPORT A WAV FILE (PCM OR FLOAT, ANY RATE, MONO OR STEREO)");
+        draw_text_l(_x0 + 430, _ty + 2,"NO SOURCE - IMPORT A WAV FILE (PCM OR FLOAT, ANY RATE, MONO OR STEREO)");
     }
 
     // ===============================================================
@@ -290,10 +290,12 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // ===============================================================
     var _ky = _ey2 + 16;
     var _kx = _x0;
+    // Captions / readouts beside the 18px buttons are drawn at row + 2 so
+    // they share scr_editor_label's centre (fnt_c64_tiny, 16px line).
 
     // RATE
     draw_set_color(_c_lbl);
-    draw_text_l(_kx, _ky + 4, "RATE");
+    draw_text_l(_kx, _ky + 2,"RATE");
     var _rates = scr_sample_rate_presets();
     var _ri = 0;
     var _best = 1000000;
@@ -310,7 +312,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_kx + 100, _ky + 4, string(_m.rate) + " HZ");
+    draw_text_l(_kx + 100, _ky + 2,string(_m.rate) + " HZ");
     draw_set_halign(fa_left);
     if (scr_sample_button(_kx + 142, _ky, 18, 18, ">", false, (_ri < array_length(_rates) - 1), _mx, _my, "HIGHER PLAYBACK RATE PRESET: CLEARER SOUND, MORE BYTES AND CPU")) {
         _m.rate = _rates[_ri + 1];
@@ -321,7 +323,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // GAIN
     _kx += 190;
     draw_set_color(_c_lbl);
-    draw_text_l(_kx, _ky + 4, "GAIN");
+    draw_text_l(_kx, _ky + 2,"GAIN");
     if (scr_sample_button(_kx + 40, _ky, 18, 18, "<", false, (_m.gain > 10), _mx, _my, "LOWERS THE GAIN BY 10% (MIN 10%)")) {
         _m.gain = max(10, _m.gain - 10);
         _m.enc_dirty = true;
@@ -329,7 +331,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_kx + 90, _ky + 4, string(_m.gain) + "%");
+    draw_text_l(_kx + 90, _ky + 2,string(_m.gain) + "%");
     draw_set_halign(fa_left);
     if (scr_sample_button(_kx + 122, _ky, 18, 18, ">", false, (_m.gain < 400), _mx, _my, "RAISES THE GAIN BY 10% (MAX 400%); OVER 100% DRIVES IT HARDER AND CAN CLIP")) {
         _m.gain = min(400, _m.gain + 10);
@@ -340,7 +342,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // DITHER
     _kx += 170;
     draw_set_color(_c_lbl);
-    draw_text_l(_kx, _ky + 4, "DITHER");
+    draw_text_l(_kx, _ky + 2,"DITHER");
     var _dl = "OFF";
     if (_m.dither == 1) {
         _dl = "ON";
@@ -354,7 +356,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // PACK
     _kx += 130;
     draw_set_color(_c_lbl);
-    draw_text_l(_kx, _ky + 4, "PACK");
+    draw_text_l(_kx, _ky + 2,"PACK");
     if (scr_sample_button(_kx + 40, _ky, 70, 18, "4-BIT", (_m.pack == 0), true, _mx, _my, "PACKS TWO 4-BIT SAMPLES PER BYTE (BEST QUALITY)")) {
         _m.pack = 0;
         _m.enc_dirty = true;
@@ -369,7 +371,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // SID
     _kx += 260;
     draw_set_color(_c_lbl);
-    draw_text_l(_kx, _ky + 4, "SID");
+    draw_text_l(_kx, _ky + 2,"SID");
     if (scr_sample_button(_kx + 32, _ky, 54, 18, "6581", (_m.sid_model == 0), true, _mx, _my, "TARGET THE 6581 SID: $D418 DIGIS ARE AUDIBLE ON THEIR OWN")) {
         _m.sid_model = 0;
         global.undo_dirty = true;
@@ -383,7 +385,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _ky2 = _ky + 26;
     _kx = _x0;
     draw_set_color(_c_lbl);
-    draw_text_l(_kx, _ky2 + 4, "NORMALISE");
+    draw_text_l(_kx, _ky2 + 2,"NORMALISE");
     var _nl = "OFF";
     if (_m.normalise == 1) {
         _nl = "ON";
@@ -395,7 +397,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     _kx += 150;
     draw_set_color(_c_lbl);
-    draw_text_l(_kx, _ky2 + 4, "COMPRESS");
+    draw_text_l(_kx, _ky2 + 2,"COMPRESS");
     if (scr_sample_button(_kx + 76, _ky2, 18, 18, "<", false, (_m.compress > 0), _mx, _my, "LOWERS COMPRESSION BY 10% (LESS LIFT OF QUIET PARTS)")) {
         _m.compress = max(0, _m.compress - 10);
         _m.enc_dirty = true;
@@ -403,7 +405,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_kx + 122, _ky2 + 4, string(_m.compress) + "%");
+    draw_text_l(_kx + 122, _ky2 + 2,string(_m.compress) + "%");
     draw_set_halign(fa_left);
     if (scr_sample_button(_kx + 150, _ky2, 18, 18, ">", false, (_m.compress < 100), _mx, _my, "RAISES COMPRESSION BY 10% (LIFTS QUIET PARTS MORE)")) {
         _m.compress = min(100, _m.compress + 10);
@@ -411,7 +413,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         global.undo_dirty = true;
     }
     draw_set_color(_c_dim);
-    draw_text_l(_kx + 190, _ky2 + 4, "NORMALISE FILLS ALL 16 LEVELS FROM THE TRIM.  COMPRESS LIFTS THE QUIET PARTS.  GAIN > 100% DRIVES IT HARDER (CLIPS).");
+    draw_text_l(_kx + 190, _ky2 + 2,"NORMALISE FILLS ALL 16 LEVELS FROM THE TRIM.  COMPRESS LIFTS THE QUIET PARTS.  GAIN > 100% DRIVES IT HARDER (CLIPS).");
 
     // ===============================================================
     // STATS

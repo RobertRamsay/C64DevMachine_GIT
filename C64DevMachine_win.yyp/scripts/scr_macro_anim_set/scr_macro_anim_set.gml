@@ -780,10 +780,11 @@ function scr_anim_asset_open(_n) {
     scr_asset_inline_editor_close_all();
     _am.viewer_asset=_idx;_am.viewer_open=true;keyboard_string="";mouse_clear(mb_left);
 }
-function scr_anim_asset_button(_x,_y,_w,_text,_active=false,_info="") {
+/// _enabled is visual only (greyed frame + label); the click result is unchanged.
+function scr_anim_asset_button(_x,_y,_w,_text,_active=false,_info="",_enabled=true) {
     var _hover=point_in_rectangle(device_mouse_x_to_gui(0),device_mouse_y_to_gui(0),_x,_y,_x+_w,_y+26);
     scr_ui_info(_hover,_info);
-    scr_editor_control(_x,_y,_x+_w,_y+26, _hover, _active);draw_set_color(c_white);draw_set_halign(fa_left);
+    scr_editor_control(_x,_y,_x+_w,_y+26, _hover && _enabled, _active, _enabled);draw_set_color(_enabled?c_white:make_color_rgb(120,132,147));draw_set_halign(fa_left);
     scr_editor_label(_x, _y, _x+_w, _y+26, _text);
     return _hover && mouse_check_button_pressed(mb_left);
 }
@@ -820,8 +821,8 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     if(scr_anim_asset_button(_x+568,_y,100,"DELAY "+string(_d[_b+1]),_u.edit==_b+1,"CLICK TO TYPE THE DELAY: 50 HZ FRAMES PER STEP, 1-255, ENTER APPLIES")) {_u.edit=_b+1;_u.text=string(_d[_b+1]);keyboard_string="";}
     if(scr_anim_asset_button(_x+674,_y,32,"+",false,"INCREASE THE DELAY: MORE 50 HZ FRAMES PER STEP, SLOWER (MAX 255)")) {scr_anim_asset_delay(_a,_u.row,1);return;}
     if(scr_anim_asset_button(_x+716,_y,85,"LOOP",string(_d[_b+2])=="1","TOGGLE LOOP: ON REPEATS THE ROW, OFF STOPS ON ITS LAST STEP")) {scr_anim_asset_checkpoint(_a);_d[_b+2]=string(_d[_b+2])=="1"?"0":"1";_m.anim_data=_d;scr_anim_asset_changed(_a);}
-    if(scr_anim_asset_button(_x+815,_y,90,"UNDO "+string(array_length(_m.anim_undo)),array_length(_m.anim_undo)>0,"UNDO THE LAST ANIMATION EDIT (CTRL/CMD+Z)")) {scr_anim_asset_history(_a,false);return;}
-    if(scr_anim_asset_button(_x+913,_y,90,"REDO "+string(array_length(_m.anim_redo)),array_length(_m.anim_redo)>0,"REDO THE LAST UNDONE EDIT (CTRL/CMD+Y OR CTRL/CMD+SHIFT+Z)")) {scr_anim_asset_history(_a,true);return;}
+    if(scr_anim_asset_button(_x+815,_y,90,"UNDO "+string(array_length(_m.anim_undo)),false,"UNDO THE LAST ANIMATION EDIT (CTRL/CMD+Z)",array_length(_m.anim_undo)>0)) {scr_anim_asset_history(_a,false);return;}
+    if(scr_anim_asset_button(_x+913,_y,90,"REDO "+string(array_length(_m.anim_redo)),false,"REDO THE LAST UNDONE EDIT (CTRL/CMD+Y OR CTRL/CMD+SHIFT+Z)",array_length(_m.anim_redo)>0)) {scr_anim_asset_history(_a,true);return;}
     _y+=34;
     // Sprite bank buttons cycle existing project banks; names remain visible.
     var _banks=[],_bank_at=-1;
@@ -829,8 +830,9 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     for(var _i=0;_i<array_length(_banks);_i++) if(_banks[_i].name==_m.anim_sprite) _bank_at=_i;
     var _delta=0;if(scr_anim_asset_button(_x,_y,40,"<",false,"PREVIOUS SPRITE BANK (SPRITE_SET ASSET) TO TAKE FRAMES FROM")) _delta=-1;if(scr_anim_asset_button(_x+46,_y,40,">",false,"NEXT SPRITE BANK (SPRITE_SET ASSET) TO TAKE FRAMES FROM")) _delta=1;
     if(_delta!=0 && array_length(_banks)>0) {scr_anim_asset_checkpoint(_a);_bank_at=(_bank_at+_delta+array_length(_banks)) mod array_length(_banks);_m.anim_sprite=_banks[_bank_at].name;_u.scroll=0;scr_anim_asset_changed(_a);}
-    draw_set_color(c_white);draw_text_l(_x+96,_y+5,"SPRITE BANK: "+(_m.anim_sprite==""?"choose with < >":_m.anim_sprite));
-    _y+=34;draw_text_l(_x,_y+5,"LAYERS:");
+    // Row captions centred on the 26px button row they sit beside.
+    draw_set_color(c_white);scr_editor_label(_x+96,_y,_right,_y+26,"SPRITE BANK: "+(_m.anim_sprite==""?"choose with < >":_m.anim_sprite),fa_left,0);
+    _y+=34;scr_editor_label(_x,_y,_x+76,_y+26,"LAYERS:",fa_left,0);
     for(var _s=0;_s<_slots;_s++) if(scr_anim_asset_button(_x+76+_s*46,_y,40,string(_s),_u.slot==_s,"EDIT THIS LAYER (SPRITE SLOT) - LAYER 0 IS DRAWN IN FRONT")) {_u.slot=_s;_u.edit=-1;}
     if(scr_anim_asset_button(_x+455,_y,38,"-",false,"REMOVE THE LAST LAYER (MIN 1)") && _slots>1) {scr_anim_asset_checkpoint(_a);_d[2]=_slots-1;_m.anim_data=_d;_u.slot=min(_u.slot,_slots-2);scr_anim_asset_changed(_a);return;}
     if(scr_anim_asset_button(_x+500,_y,38,"+",false,"ADD A LAYER (MAX 8 SPRITES PER STEP)") && _slots<8) {scr_anim_asset_checkpoint(_a);_d[2]=_slots+1;_m.anim_data=_d;scr_anim_asset_changed(_a);return;}
@@ -864,14 +866,14 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     }
     if(scr_anim_asset_button(_x+368,_y,100,"- STEP",false,"DELETE THE CURRENT STEP FROM EVERY LAYER (NEEDS AT LEAST ONE STEP LEFT)") && _len>1) {scr_anim_asset_checkpoint(_a);for(var _s=0;_s<_slots;_s++) {var _v=_lists[_s];if(_u.frame<array_length(_v)) array_delete(_v,_u.frame,1);scr_anim_asset_list_set(_a,_u.row,_s,_v);}scr_anim_asset_changed(_a);return;}
     if(_u.playing && current_time-_u.tick>=max(1,real(_d[_b+1]))*20) {_u.tick=current_time;_u.frame++;if(_u.frame>=_len) {if(string(_d[_b+2])=="1") _u.frame=0;else {_u.frame=_len-1;_u.playing=false;}}}
-    draw_set_color(c_white);draw_text_l(_x+480,_y+6,"STEP "+string(_u.frame+1)+" / "+string(_len)+"   Preview: PAL 50 Hz");_y+=35;
+    draw_set_color(c_white);scr_editor_label(_x+480,_y,_right,_y+26,"STEP "+string(_u.frame+1)+" / "+string(_len)+"   Preview: PAL 50 Hz",fa_left,0);_y+=35;
     var _bank=(_bank_at>=0)?_banks[_bank_at]:undefined;
     if(!is_undefined(_bank) && (!variable_struct_exists(_bank.meta,"spr_sprites") || _u.message!=_bank.name)) {scr_asset_spr_cache_sprites(_bank);_u.message=_bank.name;}
     // Timeline shows the actual paired layers for each animation step.
     var _visible=max(1,floor((_right-_x)/86)),_first=(_u.frame div _visible)*_visible;
     for(var _t=_first;_t<min(_len,_first+_visible);_t++) {
         var _tx=_x+(_t-_first)*86;
-        draw_set_color(_t==_u.frame?make_color_rgb(40,130,95):make_color_rgb(65,75,85));draw_rectangle(_tx,_y,_tx+80,_y+85,false);
+        scr_editor_control(_tx,_y,_tx+80,_y+85,point_in_rectangle(_mx,_my,_tx,_y,_tx+80,_y+85),_t==_u.frame);
         for(var _s=_slots-1;_s>=0;_s--) {var _v=_lists[_s];if(array_length(_v)>0) {var _vi=string(_d[_b+2])=="1"?(_t mod array_length(_v)):min(_t,array_length(_v)-1);scr_anim_asset_thumbnail(_bank,_v[_vi],_tx+16,_y+4,48,42);}}
         draw_set_color(c_white);draw_text_l(_tx+6,_y+53,"Step "+string(_t+1));
         scr_ui_info(point_in_rectangle(_mx,_my,_tx,_y,_tx+80,_y+85),"TIMELINE: CLICK A STEP TO SELECT IT - THE SPRITE GRID THEN SETS THAT STEP");
@@ -879,7 +881,7 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     }
     _y+=98;
     // Layered preview, slot 0 in front just like VIC-II sprite priority.
-    draw_set_color(make_color_rgb(85,95,105));draw_rectangle(_right-210,_y,_right,_y+210,false);
+    scr_editor_panel(_right-210,_y,_right,_y+210,true);
     for(var _s=_slots-1;_s>=0;_s--) {var _v=_lists[_s];if(array_length(_v)>0) {var _ix=string(_d[_b+2])=="1"?(_u.frame mod array_length(_v)):min(_u.frame,array_length(_v)-1);scr_anim_asset_thumbnail(_bank,_v[_ix],_right-195,_y+20,180,158);}}
     draw_set_color(c_white);draw_text_l(_right-204,_y+185,"LAYERS TOGETHER");
     scr_ui_info(point_in_rectangle(_mx,_my,_right-210,_y,_right,_y+210),"PREVIEW OF ALL LAYERS AT THE CURRENT STEP, LAYER 0 IN FRONT (DISPLAY ONLY)");
@@ -894,7 +896,7 @@ function scr_anim_asset_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     for(var _i=0;_i<_cols*_grid_rows;_i++) {
         var _idx=_u.scroll*_cols+_i;if(_idx>=_count) break;
         var _gx=_x+(_i mod _cols)*_cell,_gy=_y+(_i div _cols)*_cell;
-        draw_set_color(_idx==_current?make_color_rgb(40,130,95):make_color_rgb(65,75,85));draw_rectangle(_gx,_gy,_gx+72,_gy+72,false);
+        scr_editor_control(_gx,_gy,_gx+72,_gy+72,_u.edit<0 && point_in_rectangle(_mx,_my,_gx,_gy,_gx+72,_gy+72),_idx==_current);
         scr_anim_asset_thumbnail(_bank,_idx,_gx+12,_gy+4,48,42);draw_set_color(c_white);draw_text_l(_gx+6,_gy+51,string(_idx));
         if(_u.edit<0 && mouse_check_button_pressed(mb_left) && point_in_rectangle(_mx,_my,_gx,_gy,_gx+72,_gy+72)) {
             scr_anim_asset_checkpoint(_a);while(array_length(_values)<=_u.frame) array_push(_values,0);_values[_u.frame]=_idx;scr_anim_asset_list_set(_a,_u.row,_u.slot,_values);_u.playing=false;scr_anim_asset_changed(_a);return;
