@@ -486,10 +486,7 @@ function scr_bmpobj_ui_colour(_x, _y, _label, _col, _mx, _my, _info = "") {
     var _bx = _x + 50;
     scr_ui_info(point_in_rectangle(_mx, _my, _bx + 28, _y, _bx + 64, _y + 24), _info);
     if (scr_bmpobj_ui_button(_bx, _y, 22, 24, "<", false, _mx, _my, _info)) { _col = (_col + 15) mod 16; }
-    draw_set_color(scr_c64_pepto_colour(_col));
-    draw_rectangle(_bx + 28, _y, _bx + 64, _y + 24, false);
-    draw_set_color(c_white);
-    draw_rectangle(_bx + 28, _y, _bx + 64, _y + 24, true);
+    scr_editor_swatch(_bx + 28, _y, _bx + 64, _y + 24, scr_c64_pepto_colour(_col));
     if (scr_bmpobj_ui_button(_bx + 70, _y, 22, 24, ">", false, _mx, _my, _info)) { _col = (_col + 1) mod 16; }
     return _col;
 }
@@ -502,10 +499,11 @@ function scr_bmpobj_ui_swatch(_x, _y, _label, _col, _mx, _my, _info = "") {
     var _bx = _x + 24;
     var _hov = point_in_rectangle(_mx, _my, _bx, _y, _bx + 32, _y + 24);
     scr_ui_info(_hov, _info);
-    draw_set_color(scr_c64_pepto_colour(_col));
-    draw_rectangle(_bx, _y, _bx + 32, _y + 24, false);
-    draw_set_color(_hov ? c_yellow : c_white);
-    draw_rectangle(_bx, _y, _bx + 32, _y + 24, true);
+    scr_editor_swatch(_bx, _y, _bx + 32, _y + 24, scr_c64_pepto_colour(_col));
+    if (_hov) {
+        draw_set_color(c_yellow);
+        draw_rectangle(_bx, _y, _bx + 32, _y + 24, true);
+    }
     if (_hov && mouse_check_button_pressed(mb_left)) {
         _col = keyboard_check(vk_shift) ? (_col + 15) mod 16 : (_col + 1) mod 16;
     }

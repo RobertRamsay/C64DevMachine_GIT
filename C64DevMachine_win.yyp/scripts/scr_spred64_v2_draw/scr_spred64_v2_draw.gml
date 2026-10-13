@@ -1215,8 +1215,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 case 2: scr_ui_info(_cur_hov, "PAINT WITH MC2, MULTICOLOUR 2 SHARED BY ALL SPRITES (MC MODE ONLY)"); break;
                 case 3: scr_ui_info(_cur_hov, "BACKGROUND COLOUR: PICK BELOW. RIGHT CLICK ON THE CANVAS ERASES TO BACKGROUND"); break;
             }
-            draw_set_color(scr_c64_pepto_colour(_cur_val));
-            draw_rectangle(_pcol_x, _cur_y1, _pcol_x2, _cur_y2, false);
+            scr_editor_swatch(_pcol_x, _cur_y1, _pcol_x2, _cur_y2, scr_c64_pepto_colour(_cur_val));
             // Column order is now [UC, MC1, MC2, BG]. Paint roles map:
             //   col 0 = UC  (active_colour 3)
             //   col 1 = MC1 (active_colour 1)
@@ -1233,9 +1232,6 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 // Hover hint for selectable columns (UC/MC1/MC2) — white border.
                 // Column 3 is now BG, which isn't a paint target.
                 draw_set_color(c_white);
-                draw_rectangle(_pcol_x, _cur_y1, _pcol_x2, _cur_y2, true);
-            } else {
-                draw_set_color(make_color_rgb(120, 120, 140));
                 draw_rectangle(_pcol_x, _cur_y1, _pcol_x2, _cur_y2, true);
             }
             // Click: set active paint role to this column's role. BG (col 3)

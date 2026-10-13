@@ -481,12 +481,12 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _cy1 = _swy + (_ci div 8) * 21;
         var _chov2 = point_in_rectangle(_mx, _my, _cx1, _cy1, _cx1 + 18, _cy1 + 18);
         scr_ui_info(_chov2, "COLOUR " + string(_ci) + ": LEFT = PAINT COLOUR, RIGHT = SCREEN BACKGROUND $D021");
-        draw_set_color(scr_c64_pepto_colour(_ci));
-        draw_rectangle(_cx1, _cy1, _cx1 + 18, _cy1 + 18, false);
-        draw_set_color(make_color_rgb(60, 60, 80));
-        if ((_m.active_colour & 15) == _ci) { draw_set_color(c_white); }
-        if (_chov2) { draw_set_color(c_yellow); }
-        draw_rectangle(_cx1, _cy1, _cx1 + 18, _cy1 + 18, true);
+        scr_editor_swatch(_cx1, _cy1, _cx1 + 18, _cy1 + 18, scr_c64_pepto_colour(_ci));
+        if (((_m.active_colour & 15) == _ci) || _chov2) {
+            draw_set_color(c_white);
+            if (_chov2) { draw_set_color(c_yellow); }
+            draw_rectangle(_cx1, _cy1, _cx1 + 18, _cy1 + 18, true);
+        }
         if (_chov2 && mouse_check_button_pressed(mb_left)) {
             // On an MC screen with an MC cell active the swatch picks the
             // cell's own colour (0-7) and keeps bit 3; otherwise it is the
@@ -527,12 +527,10 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _hy3 = _hy2 + 16;
         draw_set_color(_c_dim);
         draw_text_l(_swx, _hy3 + 3, "C1");
-        draw_set_color(scr_c64_pepto_colour(_col1));
-        draw_rectangle(_swx + 20, _hy3, _swx + 36, _hy3 + 16, false);
+        scr_editor_swatch(_swx + 20, _hy3, _swx + 36, _hy3 + 16, scr_c64_pepto_colour(_col1));
         draw_set_color(_c_dim);
         draw_text_l(_swx + 46, _hy3 + 3, "C2");
-        draw_set_color(scr_c64_pepto_colour(_col2));
-        draw_rectangle(_swx + 66, _hy3, _swx + 82, _hy3 + 16, false);
+        scr_editor_swatch(_swx + 66, _hy3, _swx + 82, _hy3 + 16, scr_c64_pepto_colour(_col2));
         draw_set_color(_c_dim);
         draw_text_l(_swx + 92, _hy3 + 3, "SHARED MC COLOURS $D022 / $D023  -  CLICK = NEXT");
         scr_ui_info(point_in_rectangle(_mx, _my, _swx + 20, _hy3, _swx + 36, _hy3 + 16), "SHARED MULTICOLOUR 1 ($D022): CLICK FOR THE NEXT COLOUR");

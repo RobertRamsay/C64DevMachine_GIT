@@ -1960,8 +1960,7 @@ _cy += 22;
 	                var _ebx2_md  = _ebx1_md + _ecm_sw_md;
 	                var _ebhov_md = point_in_rectangle(_mx, _my, _ebx1_md, _eby_md, _ebx2_md, _eby_md + _ecm_sw_md);
 	                scr_ui_info(_ebhov_md, "SET ECM BACKGROUND " + string(_ebi_md) + " (STORED ON THE LINKED CHARSET) TO THIS COLOUR");
-	                draw_set_color(scr_c64_pepto_colour(_ebsi_md));
-	                draw_rectangle(_ebx1_md, _eby_md, _ebx2_md, _eby_md + _ecm_sw_md, false);
+	                scr_editor_swatch(_ebx1_md, _eby_md, _ebx2_md, _eby_md + _ecm_sw_md, scr_c64_pepto_colour(_ebsi_md));
 	                if (_ebval_md == _ebsi_md) {
 	                    draw_set_color(c_white);
 	                    draw_rectangle(_ebx1_md, _eby_md, _ebx2_md, _eby_md + _ecm_sw_md, true);
@@ -1998,8 +1997,7 @@ _cy += 22;
 	                var _msx = _vx1 + 36 + _msi * (_mc_sw + _mc_gap);
 	                var _mshov = point_in_rectangle(_mx, _my, _msx, _mpy, _msx + _mc_sw, _mpy + _mc_sw);
 	                scr_ui_info(_mshov, "LEFT CLICK: SET THIS MAP'S " + _mc_pal_labels[_mpi] + " COLOUR. RIGHT CLICK: INHERIT IT FROM THE CHARSET");
-	                draw_set_color(scr_c64_pepto_colour(_msi));
-	                draw_rectangle(_msx, _mpy, _msx + _mc_sw, _mpy + _mc_sw, false);
+	                scr_editor_swatch(_msx, _mpy, _msx + _mc_sw, _mpy + _mc_sw, scr_c64_pepto_colour(_msi));
 	                if (_mc_pal_disp[_mpi] == _msi) {
 	                    draw_set_color(c_white);
 	                    draw_rectangle(_msx, _mpy, _msx + _mc_sw, _mpy + _mc_sw, true);
@@ -2027,10 +2025,8 @@ _cy += 22;
 	    draw_text_l(_vx1 + 10, _cy + 3, "PAINT:");
 
 		// Colour swatch
-		    draw_set_color(scr_c64_pepto_colour(_m.active_colour));
-		    draw_rectangle(_vx1 + 54, _cy + 2, _vx1 + 70, _cy + 14, false);
+		    scr_editor_swatch(_vx1 + 54, _cy + 2, _vx1 + 70, _cy + 14, scr_c64_pepto_colour(_m.active_colour));
 		    draw_set_color(c_white);
-		    draw_rectangle(_vx1 + 54, _cy + 2, _vx1 + 70, _cy + 14, true);
 		    draw_text_l(_vx1 + 74, _cy + 3, "COL " + string(_m.active_colour));
 
 // Paint mode follows global — no secondary toggle needed
@@ -2975,10 +2971,7 @@ draw_set_color(_cell_bg_col);
 	                var _opap = _occ & 0x0F;
 	                draw_set_color(make_color_rgb(154, 175, 198));
 	                draw_text_l(_obx, _oby + 5, "INK");
-	                draw_set_color(scr_c64_pepto_colour(_oink));
-	                draw_rectangle(_obx + 30, _oby + 2, _obx + 52, _oby + _obh - 2, false);
-	                draw_set_color(c_white);
-	                draw_rectangle(_obx + 30, _oby + 2, _obx + 52, _oby + _obh - 2, true);
+	                scr_editor_swatch(_obx + 30, _oby + 2, _obx + 52, _oby + _obh - 2, scr_c64_pepto_colour(_oink));
 	                scr_ui_info(point_in_rectangle(_mx, _my, _obx + 30, _oby, _obx + 52, _oby + _obh), "OBJECT INK COLOUR - LEFT CLICK NEXT COLOUR, RIGHT CLICK PREVIOUS");
 	                if (point_in_rectangle(_mx, _my, _obx + 30, _oby, _obx + 52, _oby + _obh)) {
 	                    if (mouse_check_button_pressed(mb_left))  { _oink = (_oink + 1) mod 16; }
@@ -2987,10 +2980,7 @@ draw_set_color(_cell_bg_col);
 	                _obx += 60;
 	                draw_set_color(make_color_rgb(154, 175, 198));
 	                draw_text_l(_obx, _oby + 5, "PAPER");
-	                draw_set_color(scr_c64_pepto_colour(_opap));
-	                draw_rectangle(_obx + 48, _oby + 2, _obx + 70, _oby + _obh - 2, false);
-	                draw_set_color(c_white);
-	                draw_rectangle(_obx + 48, _oby + 2, _obx + 70, _oby + _obh - 2, true);
+	                scr_editor_swatch(_obx + 48, _oby + 2, _obx + 70, _oby + _obh - 2, scr_c64_pepto_colour(_opap));
 	                scr_ui_info(point_in_rectangle(_mx, _my, _obx + 48, _oby, _obx + 70, _oby + _obh), "OBJECT PAPER COLOUR - LEFT CLICK NEXT COLOUR, RIGHT CLICK PREVIOUS");
 	                if (point_in_rectangle(_mx, _my, _obx + 48, _oby, _obx + 70, _oby + _obh)) {
 	                    if (mouse_check_button_pressed(mb_left))  { _opap = (_opap + 1) mod 16; }
@@ -3693,8 +3683,7 @@ var _pal_count = (_global_mixed == 1) ? 8 : 16;
 	        var _px1  = _cv_x1 + _pi * (_pal_sw + 2) + 60;
 	        var _phov = point_in_rectangle(_mx, _my, _px1, _pal_y, _px1 + _pal_sw, _pal_y + _pal_sh);
 	        scr_ui_info(_phov, "PAINT COLOUR " + string(_pi) + " - CLICK TO PAINT WITH THIS COLOUR (MIXED MODE ONLY HAS 0-7)");
-	        draw_set_color(scr_c64_pepto_colour(_pi));
-	        draw_rectangle(_px1, _pal_y, _px1 + _pal_sw, _pal_y + _pal_sh, false);
+	        scr_editor_swatch(_px1, _pal_y, _px1 + _pal_sw, _pal_y + _pal_sh, scr_c64_pepto_colour(_pi));
 	        if (_m.active_colour == _pi) {
 	            draw_set_color(c_white);
 	            draw_rectangle(_px1, _pal_y, _px1 + _pal_sw, _pal_y + _pal_sh, true);
@@ -4307,18 +4296,15 @@ case "SPRITE_SET": {
         if (variable_struct_exists(_asset.meta, "bg_col")) {
             draw_set_font_l(fnt_c64_tiny);
             draw_set_color(c_ltgray); draw_text_l(_vx1 + 10, _cy, "BG:");
-            draw_set_color(scr_c64_pepto_colour(_asset.meta.bg_col));
-            draw_rectangle(_vx1 + 36, _cy, _vx1 + 52, _cy + 12, false);
+            scr_editor_swatch(_vx1 + 36, _cy, _vx1 + 52, _cy + 12, scr_c64_pepto_colour(_asset.meta.bg_col));
             draw_set_color(c_white);
             draw_text_l(_vx1 + 56, _cy, string(_asset.meta.bg_col));
             draw_set_color(c_ltgray); draw_text_l(_vx1 + 90, _cy, "MC1:");
-            draw_set_color(scr_c64_pepto_colour(_asset.meta.mc1_col));
-            draw_rectangle(_vx1 + 120, _cy, _vx1 + 136, _cy + 12, false);
+            scr_editor_swatch(_vx1 + 120, _cy, _vx1 + 136, _cy + 12, scr_c64_pepto_colour(_asset.meta.mc1_col));
             draw_set_color(c_white);
             draw_text_l(_vx1 + 140, _cy, string(_asset.meta.mc1_col));
             draw_set_color(c_ltgray); draw_text_l(_vx1 + 174, _cy, "MC2:");
-            draw_set_color(scr_c64_pepto_colour(_asset.meta.mc2_col));
-            draw_rectangle(_vx1 + 204, _cy, _vx1 + 220, _cy + 12, false);
+            scr_editor_swatch(_vx1 + 204, _cy, _vx1 + 220, _cy + 12, scr_c64_pepto_colour(_asset.meta.mc2_col));
             draw_set_color(c_white);
             draw_text_l(_vx1 + 224, _cy, string(_asset.meta.mc2_col));
             if (!variable_struct_exists(_asset.meta, "has_colour") || !_asset.meta.has_colour) {
@@ -4497,8 +4483,7 @@ switch (node_type) {
             draw_set_color(_hmc ? make_color_rgb(200,120,40) : c_aqua);
             draw_text_l(_vx1 + 144, _info_y, _hmc ? L("MULTICOLOUR") : L("HIRES"));
             draw_set_color(c_ltgray);  draw_text_l(_vx1 + 240, _info_y, "UC:");
-            draw_set_color(scr_c64_pepto_colour(_huc));
-            draw_rectangle(_vx1 + 266, _info_y, _vx1 + 280, _info_y + 10, false);
+            scr_editor_swatch(_vx1 + 266, _info_y, _vx1 + 280, _info_y + 10, scr_c64_pepto_colour(_huc));
             draw_set_color(c_white);   draw_text_l(_vx1 + 284, _info_y, string(_huc));
         } else {
             draw_set_font_l(fnt_c64_tiny);
@@ -7538,10 +7523,7 @@ gpu_set_texfilter(false);
 
 	                // Replace Color Selectors
 	                if (_asset.meta.replace_mode) {
-	                    draw_set_color(scr_c64_pepto_colour(_asset.meta.replace_col_detect));
-	                    draw_rectangle(_ltx, _lty, _ltx + 28, _lty + 12, false);
-	                    draw_set_color(c_white);
-	                    draw_rectangle(_ltx, _lty, _ltx + 28, _lty + 12, true);
+	                    scr_editor_swatch(_ltx, _lty, _ltx + 28, _lty + 12, scr_c64_pepto_colour(_asset.meta.replace_col_detect));
 	                    scr_ui_info(point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12), "REPLACE COL1: THE COLOUR TO BE REPLACED. CLICK TO SET IT TO THE CURRENT PEN COLOUR");
 	                    if (point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12) && mouse_check_button_pressed(mb_left))
 	                        _asset.meta.replace_col_detect = _asset.meta.active_color;
@@ -7549,10 +7531,7 @@ gpu_set_texfilter(false);
 	                    draw_set_color(c_white); draw_text_l(_ltx + 32, _lty + 2, "COL1");
 	                    _lty += 18;
                         
-	                    draw_set_color(scr_c64_pepto_colour(_asset.meta.replace_col_target));
-	                    draw_rectangle(_ltx, _lty, _ltx + 28, _lty + 12, false);
-	                    draw_set_color(c_white);
-	                    draw_rectangle(_ltx, _lty, _ltx + 28, _lty + 12, true);
+	                    scr_editor_swatch(_ltx, _lty, _ltx + 28, _lty + 12, scr_c64_pepto_colour(_asset.meta.replace_col_target));
 	                    scr_ui_info(point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12), "REPLACE COL2: THE COLOUR COL1 PIXELS BECOME. CLICK TO SET IT TO THE CURRENT PEN COLOUR");
 	                    if (point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12) && mouse_check_button_pressed(mb_left))
 	                        _asset.meta.replace_col_target = _asset.meta.active_color;
@@ -7822,8 +7801,7 @@ gpu_set_texfilter(false);
 						var _phov = point_in_rectangle(_mx, _my, _px, _pyc, _px + _pw, _pyc + _ph);
 						if (_asset.meta.replace_mode) scr_ui_info(_phov, "COLOUR " + string(_c) + ": LEFT-CLICK SETS REPLACE COL1 (FIND), RIGHT-CLICK SETS COL2 (REPLACE WITH)");
 						else scr_ui_info(_phov, "COLOUR " + string(_c) + ": LEFT-CLICK = PRIMARY PEN (WHITE BOX), RIGHT-CLICK = SECONDARY / GRADIENT COL2 (AQUA)");
-						draw_set_color(scr_c64_pepto_colour(_c));
-						draw_rectangle(_px, _pyc, _px + _pw, _pyc + _ph, false);
+						scr_editor_swatch(_px, _pyc, _px + _pw, _pyc + _ph, scr_c64_pepto_colour(_c));
 						if (_asset.meta.active_color == _c) {
 	                        // Primary (LMB / col1) — white double-border box outline.
 	                        draw_set_color(c_white);
@@ -8070,10 +8048,11 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                    var _gsy2 = _cy + 16;
 	                    var _gs_hov = point_in_rectangle(_mx, _my, _gsx1, _gsy1, _gsx2, _gsy2);
 	                    scr_ui_info(_gs_hov && !_prev_input_blocked, "GRADIENT STOP " + string(_gs + 1) + ": LEFT-CLICK SETS IT TO THE PEN COLOUR, RIGHT-CLICK MAKES IT THE LAST STOP (^)");
-	                    draw_set_color(scr_c64_pepto_colour(_asset.meta.gradient_custom_cols[_gs]));
-	                    draw_rectangle(_gsx1, _gsy1, _gsx2, _gsy2, false);
-	                    draw_set_color(_gs_hov ? c_white : make_color_rgb(90, 90, 110));
-	                    draw_rectangle(_gsx1, _gsy1, _gsx2, _gsy2, true);
+	                    scr_editor_swatch(_gsx1, _gsy1, _gsx2, _gsy2, scr_c64_pepto_colour(_asset.meta.gradient_custom_cols[_gs]));
+	                    if (_gs_hov) {
+	                        draw_set_color(c_white);
+	                        draw_rectangle(_gsx1, _gsy1, _gsx2, _gsy2, true);
+	                    }
 	                    if (_gs_hov && mouse_check_button_pressed(mb_left)) {
 	                        _asset.meta.gradient_custom_cols[_gs] = _asset.meta.active_color;
 	                        // Editing a slot is a clear signal the person wants
@@ -8114,8 +8093,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                }
                     
 	                var _display_bg = _png_mode ? _asset.meta.png_pending_bg : _asset.meta.bg_col;
-	                draw_set_color(scr_c64_pepto_colour(_display_bg));
-	                draw_rectangle(_bg_rect_x1, _bg_rect_y1, _bg_rect_x2, _bg_rect_y2, false);
+	                scr_editor_swatch(_bg_rect_x1, _bg_rect_y1, _bg_rect_x2, _bg_rect_y2, scr_c64_pepto_colour(_display_bg));
                     
 					if (_bg_hov && _is_ed && _png_mode) {
 	                draw_set_color(c_white);
@@ -10041,8 +10019,7 @@ case "META_TILESET": {
                 var _ebx2  = _ebx1 + _ecm_sw;
                 var _ebhov = point_in_rectangle(_mx, _my, _ebx1, _eby, _ebx2, _eby + _ecm_sw);
                 scr_ui_info(_ebhov, "SET THE CHARSET'S ECM " + _ecm_labels[_ebi] + " BACKGROUND TO THIS COLOUR");
-                draw_set_color(scr_c64_pepto_colour(_ebsi));
-                draw_rectangle(_ebx1, _eby, _ebx2, _eby + _ecm_sw, false);
+                scr_editor_swatch(_ebx1, _eby, _ebx2, _eby + _ecm_sw, scr_c64_pepto_colour(_ebsi));
                 if (_ebval == _ebsi) {
                     draw_set_color(c_white);
                     draw_rectangle(_ebx1, _eby, _ebx2, _eby + _ecm_sw, true);
@@ -10091,8 +10068,7 @@ case "META_TILESET": {
                 var _tsx   = _vx1 + 36 + _tsi * (_ts_sw + _ts_gap);
                 var _tshov = point_in_rectangle(_mx, _my, _tsx, _tpy, _tsx + _ts_sw, _tpy + _ts_sw);
                 scr_ui_info(_tshov, "L: SET MC " + _ts_pal_labels[_tpi] + " TO THIS COLOUR AND PAINT WITH IT. R: CLEAR BACK TO DEFAULT");
-                draw_set_color(scr_c64_pepto_colour(_tsi));
-                draw_rectangle(_tsx, _tpy, _tsx + _ts_sw, _tpy + _ts_sw, false);
+                scr_editor_swatch(_tsx, _tpy, _tsx + _ts_sw, _tpy + _ts_sw, scr_c64_pepto_colour(_tsi));
                 if (_ts_pal_disp[_tpi] == _tsi) {
                     draw_set_color(c_white);
                     draw_rectangle(_tsx, _tpy, _tsx + _ts_sw, _tpy + _ts_sw, true);
@@ -10165,10 +10141,8 @@ case "META_TILESET": {
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_ltgray);
     draw_text_l(_vx1 + 10, _cy + 3, "PAINT:");
-    draw_set_color(scr_c64_pepto_colour(_m.active_colour));
-    draw_rectangle(_vx1 + 54, _cy + 2, _vx1 + 70, _cy + 14, false);
+    scr_editor_swatch(_vx1 + 54, _cy + 2, _vx1 + 70, _cy + 14, scr_c64_pepto_colour(_m.active_colour));
     draw_set_color(c_white);
-    draw_rectangle(_vx1 + 54, _cy + 2, _vx1 + 70, _cy + 14, true);
     draw_text_l(_vx1 + 74, _cy + 3, "COL " + string(_m.active_colour));
     draw_text_l(_vx1 + 160, _cy + 3, "CHR " + string(_m.active_char));
     _cy += 20;
@@ -10833,8 +10807,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             var _ovx1  = _ov_pal_x1 + _ovi * _ov_cw;
             var _ovhov = point_in_rectangle(_mx, _my, _ovx1, _ov_y1, _ovx1 + _ov_cw, _ov_y1 + _ov_h);
             scr_ui_info(_ovhov, "OVERRIDE: FORCE THIS ONE COLOUR ACROSS THE WHOLE SELECTED STAMP");
-            draw_set_color(scr_c64_pepto_colour(_ovi));
-            draw_rectangle(_ovx1, _ov_y1, _ovx1 + _ov_cw, _ov_y1 + _ov_h, false);
+            scr_editor_swatch(_ovx1, _ov_y1, _ovx1 + _ov_cw, _ov_y1 + _ov_h, scr_c64_pepto_colour(_ovi));
             if (_ov_cur == _ovi) {
                 draw_set_color(c_white);
                 draw_rectangle(_ovx1, _ov_y1, _ovx1 + _ov_cw, _ov_y1 + _ov_h, true);
@@ -11906,9 +11879,8 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         } else {
             scr_ui_info(_pphov, "PAINT COLOUR: ALSO BAKES INTO THE SELECTED CHAR EVERYWHERE IT IS USED");
         }
-        draw_set_color(scr_c64_pepto_colour(_pi2));
         draw_set_alpha(_locked ? 0.2 : 1.0);
-        draw_rectangle(_ppx1, _pal_y2, _ppx1 + _psw, _pal_y2 + _psh, false);
+        scr_editor_swatch(_ppx1, _pal_y2, _ppx1 + _psw, _pal_y2 + _psh, scr_c64_pepto_colour(_pi2));
         draw_set_alpha(1.0);
         var _pal_cur = _m.active_colour;
         if (_run_fx_on) { _pal_cur = _run_fx_fg; }
@@ -12842,10 +12814,11 @@ if (pngstrip.open) {
         var _s_hov = point_in_rectangle(_mx, _my, _ppx + 60, _sy, _ppx + 84, _sy + 18);
         draw_set_color(c_ltgray);
         draw_text_l(_ppx + 10, _sy + 4, _sw_lab[_si]);
-        draw_set_color(scr_c64_pepto_colour(_sw_col[_si]));
-        draw_rectangle(_ppx + 60, _sy, _ppx + 84, _sy + 18, false);
-        if (_s_hov) draw_set_color(c_white); else draw_set_color(c_dkgray);
-        draw_rectangle(_ppx + 60, _sy, _ppx + 84, _sy + 18, true);
+        scr_editor_swatch(_ppx + 60, _sy, _ppx + 84, _sy + 18, scr_c64_pepto_colour(_sw_col[_si]));
+        if (_s_hov) {
+            draw_set_color(c_white);
+            draw_rectangle(_ppx + 60, _sy, _ppx + 84, _sy + 18, true);
+        }
         draw_set_color(c_ltgray);
         draw_text_l(_ppx + 92, _sy + 4, string(_sw_col[_si]) + "  " + _sw_reg[_si]
             + "  " + string(pngstrip.hist[_sw_col[_si]]) + "PX");
