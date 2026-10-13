@@ -654,13 +654,9 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
     var _btn = function(_bx, _by, _bw, _txt, _active, _mx, _my, _click, _info = "") {
         var _hov = point_in_rectangle(_mx, _my, _bx, _by, _bx + _bw, _by + 16);
         if (_info != "") scr_ui_info(_hov, _info);
-        draw_set_color(_active ? make_color_rgb(40, 120, 160) : (_hov ? make_color_rgb(70, 70, 90) : make_color_rgb(35, 35, 50)));
-        draw_rectangle(_bx, _by, _bx + _bw, _by + 16, false);
-        draw_set_color(_hov ? c_white : c_ltgray);
-        draw_rectangle(_bx, _by, _bx + _bw, _by + 16, true);
-        draw_set_halign(fa_center);
-        draw_text_l(_bx + _bw * 0.5, _by + 1, _txt);
-        draw_set_halign(fa_left);
+        scr_editor_control(_bx, _by, _bx + _bw, _by + 16, _hov, _active);
+        draw_set_color(_active ? c_aqua : c_white);
+        scr_editor_label(_bx, _by, _bx + _bw, _by + 16, _txt);
         return _hov && _click;
     };
 
@@ -763,7 +759,7 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
             scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
         }
         draw_set_color(c_ltgray);
-        draw_text_l(_x + 56, _y + 1, "S" + string(_m.spr_sel));
+        scr_editor_label(_x + 56, _y, _x + _w, _y + 16, "S" + string(_m.spr_sel), fa_left, 0);
         _y += 20;
         // Expand X / Y and in front of / behind the bitmap, per sprite
         _sel = scr_bmp_spr_selected(_asset);
@@ -791,6 +787,7 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
             scr_bmp_spr_touch(_asset); global.ui_click_consumed = true;
         }
         _y += 20;
+        draw_set_color(c_ltgray);
         draw_text_l(_x, _y, "X" + string(_sel.x) + "  Y" + string(_sel.y));
         _y += 16;
     }
@@ -829,27 +826,16 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
             draw_set_color(make_color_rgb(70, 70, 80));
         }
         draw_text_l(_cx, _y, _lbls[_i]);
-        if (_cols[_i] >= 0) {
-            draw_set_color(scr_c64_pepto_colour(_cols[_i]));
-            if (_off) {
-                draw_set_color(make_color_rgb(45, 45, 55));
-            }
-            draw_rectangle(_cx, _y + 12, _cx + 30, _y + 24, false);
-        }
         var _sw_hov = _live && point_in_rectangle(_mx, _my, _cx, _y + 12, _cx + 30, _y + 24);
+        if (_cols[_i] >= 0) {
+            var _sw_col = _off ? make_color_rgb(45, 45, 55) : scr_c64_pepto_colour(_cols[_i]);
+            scr_editor_swatch(_cx, _y + 12, _cx + 30, _y + 24, _sw_col, _sw_hov, _is_pen && _live);
+        } else {
+            scr_editor_panel(_cx, _y + 12, _cx + 30, _y + 24, true);
+        }
         if (_i == 0) scr_ui_info(_sw_hov, "PAINT WITH THE SELECTED SPRITE'S OWN COLOUR (SPR)");
         else scr_ui_info(_sw_hov, "PAINT WITH " + _lbls[_i] + ": A MULTICOLOUR SHARED BY ALL MC SPRITES");
         if (_off) scr_ui_info(point_in_rectangle(_mx, _my, _cx, _y + 12, _cx + 30, _y + 156), _lbls[_i] + " IS UNUSED: THE SELECTED SPRITE IS HIRES (ONE COLOUR)");
-        if (_is_pen && _live) {
-            draw_set_color(c_yellow);
-            draw_rectangle(_cx - 1, _y + 11, _cx + 31, _y + 25, true);
-        } else if (_sw_hov) {
-            draw_set_color(c_white);
-            draw_rectangle(_cx, _y + 12, _cx + 30, _y + 24, true);
-        } else {
-            draw_set_color(c_gray);
-            draw_rectangle(_cx, _y + 12, _cx + 30, _y + 24, true);
-        }
         if (_sw_hov && _click) {
             _m.spr_pen = _lbls[_i]; _pen = _lbls[_i];
             scr_bmp_spr_sync_palette(_asset);

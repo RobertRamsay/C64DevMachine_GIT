@@ -4752,7 +4752,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        // REFERENCED BY — inline in header row
 	        draw_set_font_l(fnt_c64_tiny);
 	        draw_set_color(c_ltgray);
-	        draw_text_l(_vx1 + 900, _vy1 + 43, "USED BY:");
+	        scr_editor_label(_vx1 + 900, _vy1 + 38, _vx1 + 1000, _vy1 + 58, "USED BY:", fa_left, 0);
 	            
 	        // PNG mode flag — needed early to gate several UI sections
 	        var _png_mode = variable_struct_exists(_asset.meta, "png_import_mode") && _asset.meta.png_import_mode;
@@ -4780,7 +4780,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        }
 	        if (_max_path_w > 40) {
 	            draw_set_color(_path_col);
-	            draw_text_l(_path_x, _vy1 + 8, _path_label);
+	            scr_editor_label(_path_x, _vy1, _path_x + _max_path_w, _vy1 + 28, _path_label, fa_left, 0);
 	        }
 	            
 	        // RELOAD SOURCE button
@@ -4894,7 +4894,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            if (_rn == other.bmp_ref_asset_name) {
 	                other.bmp_ref_found = true;
 	                draw_set_color(c_yellow);
-	                draw_text_l(other.bmp_ref_x, other.bmp_ref_vy1 + 43, node_title + " $" + string_upper(decimal_to_hex(pc_address)));
+	                scr_editor_label(other.bmp_ref_x, other.bmp_ref_vy1 + 38, other.bmp_ref_x + 1, other.bmp_ref_vy1 + 58, node_title + " $" + string_upper(decimal_to_hex(pc_address)), fa_left, 0);
 	                other.bmp_ref_x += string_width_l(node_title + " $" + string_upper(decimal_to_hex(pc_address))) + 12;
 	            }
 	        }
@@ -5206,7 +5206,7 @@ if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASS
 	                if (_asset.meta.clash_grid[_cci]) { _has_clashes = true; break; }
 	            }
 	            var _cl_flash = _has_clashes && ((current_time mod 600) < 300);
-	            scr_editor_control(_clx1, _btn_y, _clx2, _btn_y + 20, _clash_hov, false);
+	            scr_editor_control(_clx1, _btn_y, _clx2, _btn_y + 20, _clash_hov, _cl_flash);
 	            draw_set_color(c_white);
 	            scr_editor_label(_clx1, _btn_y, _clx2, _btn_y + 20, "CLEANUP");
                 
@@ -7534,20 +7534,20 @@ gpu_set_texfilter(false);
 
 	                // Replace Color Selectors
 	                if (_asset.meta.replace_mode) {
-	                    scr_editor_swatch(_ltx, _lty, _ltx + 28, _lty + 12, scr_c64_pepto_colour(_asset.meta.replace_col_detect));
+	                    scr_editor_swatch(_ltx, _lty, _ltx + 28, _lty + 12, scr_c64_pepto_colour(_asset.meta.replace_col_detect), point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12));
 	                    scr_ui_info(point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12), "REPLACE COL1: THE COLOUR TO BE REPLACED. CLICK TO SET IT TO THE CURRENT PEN COLOUR");
 	                    if (point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12) && mouse_check_button_pressed(mb_left))
 	                        _asset.meta.replace_col_detect = _asset.meta.active_color;
-                        
-	                    draw_set_color(c_white); draw_text_l(_ltx + 32, _lty + 2, "COL1");
+
+	                    draw_set_color(c_white); scr_editor_label(_ltx + 28, _lty, _ltx + 90, _lty + 12, "COL1", fa_left, 4);
 	                    _lty += 18;
-                        
-	                    scr_editor_swatch(_ltx, _lty, _ltx + 28, _lty + 12, scr_c64_pepto_colour(_asset.meta.replace_col_target));
+
+	                    scr_editor_swatch(_ltx, _lty, _ltx + 28, _lty + 12, scr_c64_pepto_colour(_asset.meta.replace_col_target), point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12));
 	                    scr_ui_info(point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12), "REPLACE COL2: THE COLOUR COL1 PIXELS BECOME. CLICK TO SET IT TO THE CURRENT PEN COLOUR");
 	                    if (point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12) && mouse_check_button_pressed(mb_left))
 	                        _asset.meta.replace_col_target = _asset.meta.active_color;
-                        
-	                    draw_set_color(c_white); draw_text_l(_ltx + 32, _lty + 2, "COL2");
+
+	                    draw_set_color(c_white); scr_editor_label(_ltx + 28, _lty, _ltx + 90, _lty + 12, "COL2", fa_left, 4);
 	                    _lty += 24;
 	                } else {
 	                    _lty += 42; 
@@ -7612,12 +7612,12 @@ gpu_set_texfilter(false);
 	                        ini_close();
 	                    }
 	                }
-	                draw_set_color(make_color_rgb(40, 40, 60));
-	                draw_rectangle(_ltx, _lty, _zg_x2, _lty + 10, false);
-	                draw_set_color(make_color_rgb(90, 200, 255));
-	                draw_rectangle(_ltx, _lty, _ltx + _cg_w * bmp_zoom_grid_str, _lty + 10, false);
-	                draw_set_color((_zg_hov || bmp_zoom_grid_drag) ? c_white : c_black);
-	                draw_rectangle(_ltx, _lty, _zg_x2, _lty + 10, true);
+	                if (_zg_hov || bmp_zoom_grid_drag) scr_editor_control(_ltx, _lty, _zg_x2, _lty + 10, _zg_hov, bmp_zoom_grid_drag);
+	                else scr_editor_panel(_ltx, _lty, _zg_x2, _lty + 10, true);
+	                if (bmp_zoom_grid_str > 0) {
+	                    draw_set_color(make_color_rgb(90, 200, 255));
+	                    draw_rectangle(_ltx + 2, _lty + 2, _ltx + 2 + (_cg_w - 4) * bmp_zoom_grid_str, _lty + 8, false);
+	                }
 
 	                // SPRITE OVERLAY panel: paint target, pens, rows, colours, transfer
 	                scr_bmp_spr_panel(_asset, _ltx, _lty + 28, _mx, _my);
@@ -7811,30 +7811,22 @@ gpu_set_texfilter(false);
 						var _pyc = _py + (_c * (_ph + 2));
 						var _phov = point_in_rectangle(_mx, _my, _px, _pyc, _px + _pw, _pyc + _ph);
 						if (_asset.meta.replace_mode) scr_ui_info(_phov, "COLOUR " + string(_c) + ": LEFT-CLICK SETS REPLACE COL1 (FIND), RIGHT-CLICK SETS COL2 (REPLACE WITH)");
-						else scr_ui_info(_phov, "COLOUR " + string(_c) + ": LEFT-CLICK = PRIMARY PEN (WHITE BOX), RIGHT-CLICK = SECONDARY / GRADIENT COL2 (AQUA)");
-						scr_editor_swatch(_px, _pyc, _px + _pw, _pyc + _ph, scr_c64_pepto_colour(_c));
-						if (_asset.meta.active_color == _c) {
-	                        // Primary (LMB / col1) — white double-border box outline.
-	                        draw_set_color(c_white);
-	                        draw_rectangle(_px-2, _pyc-2, _px + _pw+2, _pyc + _ph+2, true);
-	                        draw_rectangle(_px-4, _pyc-4, _px + _pw+4, _pyc + _ph+4, true);
-	                    }
-	                    if (!_asset.meta.replace_mode && _asset.meta.secondary_color == _c) {
-	                        // Secondary (RMB / col2) — aqua double-border box outline.
-	                        // Shown in MC too (not just HiRes) now that GRADIENT reads it.
-	                        draw_set_color(c_aqua);
-	                        draw_rectangle(_px-2, _pyc-2, _px + _pw+2, _pyc + _ph+2, true);
-	                        draw_rectangle(_px-6, _pyc-6, _px + _pw+6, _pyc + _ph+6, true);
-	                    }
+						else scr_ui_info(_phov, "COLOUR " + string(_c) + ": LEFT-CLICK = PRIMARY PEN (MARKED 1), RIGHT-CLICK = SECONDARY / GRADIENT COL2 (MARKED 2)");
+						var _pmark = "";
+						if (_asset.meta.replace_mode) {
+							if (_asset.meta.replace_col_detect == _c) _pmark += "1";
+							if (_asset.meta.replace_col_target == _c) _pmark += "2";
+						} else {
+							if (_asset.meta.active_color == _c)    _pmark += "1";
+							if (_asset.meta.secondary_color == _c) _pmark += "2";
+						}
+						scr_editor_swatch(_px, _pyc, _px + _pw, _pyc + _ph, scr_c64_pepto_colour(_c), _phov, _pmark != "");
+						if (_pmark != "") {
+							draw_set_font_l(fnt_c64_pico);
+							draw_set_color(colour_get_value(scr_c64_pepto_colour(_c)) > 140 ? c_black : c_white);
+							scr_editor_label(_px, _pyc, _px + _pw, _pyc + _ph, _pmark);
+						}
 	                    if (_asset.meta.replace_mode) {
-	                        if (_asset.meta.replace_col_detect == _c) {
-	                            draw_set_color(c_lime);
-	                            draw_rectangle(_px-2, _pyc-2, _px + _pw+2, _pyc + _ph+2, true);
-	                        }
-	                        if (_asset.meta.replace_col_target == _c) {
-	                            draw_set_color(c_red);
-	                            draw_rectangle(_px-2, _pyc-2, _px + _pw+2, _pyc + _ph+2, true);
-	                        }
 	                        if (_phov && mouse_check_button_pressed(mb_left))  _asset.meta.replace_col_detect = _c;
 	                        if (_phov && mouse_check_button_pressed(mb_right)) _asset.meta.replace_col_target = _c;
 	                    } else {
@@ -8032,12 +8024,11 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                }
 	                draw_set_font_l(fnt_c64_tiny);
 	                draw_set_color(make_color_rgb(128, 128, 158));
-	                draw_text_l(_thumb_x, _cy, "GRADIENT:");
-
 	                var _gc_btn_x1 = _thumb_x + 68;
 	                var _gc_btn_x2 = _gc_btn_x1 + 60;
 	                var _gc_btn_y1 = _cy ;
 	                var _gc_btn_y2 = _cy + 20;
+	                scr_editor_label(_thumb_x, _gc_btn_y1, _gc_btn_x1, _gc_btn_y2, "GRADIENT:", fa_left, 0);
 	                var _gc_hov = point_in_rectangle(_mx, _my, _gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2);
 	                scr_ui_info(_gc_hov && !_prev_input_blocked, "CUSTOM GRADIENT ON/OFF: USE THE STOP SLOTS ON THE RIGHT INSTEAD OF COLOUR 1 TO COLOUR 2");
 	                scr_editor_control(_gc_btn_x1, _gc_btn_y1, _gc_btn_x2, _gc_btn_y2, _gc_hov, _asset.meta.gradient_custom_active);
@@ -8059,11 +8050,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                    var _gsy2 = _cy + 16;
 	                    var _gs_hov = point_in_rectangle(_mx, _my, _gsx1, _gsy1, _gsx2, _gsy2);
 	                    scr_ui_info(_gs_hov && !_prev_input_blocked, "GRADIENT STOP " + string(_gs + 1) + ": LEFT-CLICK SETS IT TO THE PEN COLOUR, RIGHT-CLICK MAKES IT THE LAST STOP (^)");
-	                    scr_editor_swatch(_gsx1, _gsy1, _gsx2, _gsy2, scr_c64_pepto_colour(_asset.meta.gradient_custom_cols[_gs]));
-	                    if (_gs_hov) {
-	                        draw_set_color(c_white);
-	                        draw_rectangle(_gsx1, _gsy1, _gsx2, _gsy2, true);
-	                    }
+	                    scr_editor_swatch(_gsx1, _gsy1, _gsx2, _gsy2, scr_c64_pepto_colour(_asset.meta.gradient_custom_cols[_gs]), _gs_hov);
 	                    if (_gs_hov && mouse_check_button_pressed(mb_left)) {
 	                        _asset.meta.gradient_custom_cols[_gs] = _asset.meta.active_color;
 	                        // Editing a slot is a clear signal the person wants
@@ -8104,11 +8091,10 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                }
                     
 	                var _display_bg = _png_mode ? _asset.meta.png_pending_bg : _asset.meta.bg_col;
-	                scr_editor_swatch(_bg_rect_x1, _bg_rect_y1, _bg_rect_x2, _bg_rect_y2, scr_c64_pepto_colour(_display_bg));
-                    
+	                scr_editor_swatch(_bg_rect_x1, _bg_rect_y1, _bg_rect_x2, _bg_rect_y2, scr_c64_pepto_colour(_display_bg),
+	                    _bg_hov && _is_ed && !_prev_input_blocked && (_png_mode || !_bmp_is_hires));
+
 					if (_bg_hov && _is_ed && _png_mode) {
-	                draw_set_color(c_white);
-	                draw_rectangle(_bg_rect_x1-1, _bg_rect_y1-1, _bg_rect_x2+1, _bg_rect_y2+1, true);
 	                if (mouse_check_button_pressed(mb_left))
 	                    _asset.meta.png_pending_bg = (_asset.meta.png_pending_bg + 1) mod 16;
 	                if (mouse_check_button_pressed(mb_right))
@@ -8119,8 +8105,6 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                // canvas is always a fixed black, and every touched cell's second
 	                // colour is decided per-cell by the secondary swatch instead. So
 	                // this swatch is MC-only; in HiRes it's a static readout below.
-	                draw_set_color(c_white);
-	                draw_rectangle(_bg_rect_x1-1, _bg_rect_y1-1, _bg_rect_x2+1, _bg_rect_y2+1, true);
 	                var _clicked = false;
 	                var _old_bg = _asset.meta.bg_col;
 	                if (mouse_check_button_pressed(mb_left) && !global.ui_click_consumed && !global.any_picker_open) {
@@ -8159,17 +8143,19 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	            }
                     
 	                draw_set_color(c_white);
-	                draw_text_l(_thumb_x + 46, _cy, string(_asset.meta.bg_col));
+	                scr_editor_label(_bg_rect_x2, _bg_rect_y1, _bg_rect_x2 + 40, _bg_rect_y2, string(_asset.meta.bg_col), fa_left, 4);
 	            }
 				_cy+=40;
-	            draw_set_color(c_ltgray); draw_text_l(_vx1 + 120, _vy1 + 76, "SIZE:");
-	            draw_set_color(c_aqua);    draw_text_l(_vx1 + 158, _vy1 + 76, "320 x 200");
-	            draw_set_color(c_ltgray); draw_text_l(_vx1 + 260, _vy1 + 76, "FORMAT:");
-	            draw_set_color(c_yellow); draw_text_l(_vx1 + 312, _vy1 + 76, "KOALA PAINT");
-	            draw_set_color(c_ltgray); draw_text_l(_vx1 + 410, _vy1 + 76, "ADDR:");
+	            var _inf_y1 = _vy1 + 80;
+	            var _inf_y2 = _vy1 + 97;
+	            draw_set_color(c_ltgray); scr_editor_label(_vx1 + 120, _inf_y1, _vx1 + 158, _inf_y2, "SIZE:", fa_left, 0);
+	            draw_set_color(c_aqua);   scr_editor_label(_vx1 + 158, _inf_y1, _vx1 + 260, _inf_y2, "320 x 200", fa_left, 0);
+	            draw_set_color(c_ltgray); scr_editor_label(_vx1 + 260, _inf_y1, _vx1 + 312, _inf_y2, "FORMAT:", fa_left, 0);
+	            draw_set_color(c_yellow); scr_editor_label(_vx1 + 312, _inf_y1, _vx1 + 410, _inf_y2, "KOALA PAINT", fa_left, 0);
+	            draw_set_color(c_ltgray); scr_editor_label(_vx1 + 410, _inf_y1, _vx1 + 448, _inf_y2, "ADDR:", fa_left, 0);
 	            var _bah = string_upper(decimal_to_hex(_asset.address));
 	            while (string_length(_bah) < 4) _bah = "0" + _bah;
-	            draw_set_color(c_aqua);    draw_text_l(_vx1 + 448, _vy1 + 76, "$" + _bah);
+	            draw_set_color(c_aqua);   scr_editor_label(_vx1 + 448, _inf_y1, _vx1 + 520, _inf_y2, "$" + _bah, fa_left, 0);
 	        } else {
 	            scr_editor_panel(_thumb_x, _thumb_y, _thumb_x + _thumb_w, _thumb_y + _thumb_h, false);
 	            draw_set_font_l(fnt_c64_tiny);
@@ -8193,13 +8179,11 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	            draw_set_alpha(1);
 
 	            // ── TITLE BAR ─────────────────────────────────────────────────────
-	            draw_set_color(_asset.meta.prev_win_drag ? make_color_rgb(50,50,90) : make_color_rgb(30,30,55));
-	            draw_rectangle(_pw_x, _pw_y, _pw_x + _pw_w, _pw_y + _hdr_h, false);
-	            draw_set_color(make_color_rgb(80, 80, 140));
-	            draw_rectangle(_pw_x, _pw_y, _pw_x + _pw_w, _pw_y + _hdr_h, true);
+	            var _pw_hdr_hov = point_in_rectangle(_mx, _my, _pw_x, _pw_y, _pw_x + _pw_w, _pw_y + _hdr_h);
+	            scr_editor_control(_pw_x, _pw_y, _pw_x + _pw_w, _pw_y + _hdr_h, _pw_hdr_hov, _asset.meta.prev_win_drag);
 	            draw_set_color(_asset.meta.prev_win_drag ? c_yellow : c_ltgray);
 	            draw_set_font_l(fnt_c64_tiny);
-	            draw_text_l(_pw_x + 6, _pw_y + (_hdr_h * 0.15), L("PREVIEW  320x200  --- drag to move ")+string(_pw_x)+":"+string(_pw_y));
+	            scr_editor_label(_pw_x, _pw_y, _pw_x + _pw_w, _pw_y + _hdr_h, L("PREVIEW  320x200  --- drag to move ")+string(_pw_x)+":"+string(_pw_y), fa_left, 6);
 
 	            // ── CANVAS BORDER ─────────────────────────────────────────────────
 	            draw_set_color(make_color_rgb(80,80,140));

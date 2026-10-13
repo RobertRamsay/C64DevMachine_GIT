@@ -25,15 +25,13 @@ function scr_draw_slider(_mx, _my, _x, _y, _w, _label, _val, _min, _max, _presse
     }
     
     // Track
-    draw_set_color(make_color_rgb(25, 25, 45));
-    draw_rectangle(_x, _track_y - 2, _x + _w, _track_y + 2, false);
-    draw_set_color(make_color_rgb(50, 90, 150));
-    draw_rectangle(_x, _track_y - 2, _knob_x, _track_y + 2, false);
+    scr_editor_panel(_x, _track_y - 4, _x + _w, _track_y + 4, true);
+    if (_knob_x > _x + 2) {
+        draw_set_color(make_color_rgb(50, 90, 150));
+        draw_rectangle(_x + 2, _track_y - 2, _knob_x, _track_y + 2, false);
+    }
     // Knob
-    draw_set_color((_in_track || _is_owner) ? c_white : make_color_rgb(140, 140, 210));
-    draw_rectangle(_knob_x - 4, _y, _knob_x + 4, _y + _h, false);
-    draw_set_color(make_color_rgb(70, 70, 130));
-    draw_rectangle(_knob_x - 4, _y, _knob_x + 4, _y + _h, true);
+    scr_editor_control(_knob_x - 6, _y, _knob_x + 6, _y + _h, _in_track, _is_owner);
     // Label
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_ltgray);
