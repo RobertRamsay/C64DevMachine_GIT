@@ -973,10 +973,10 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     }
 
     if (editing_address && editing_address_idx == viewer_asset) {
-        scr_editor_panel(_vx1 + 74, _cy - 1, _vx1 + 162, _cy + 13, true);
+        scr_editor_panel(_vx1 + 74, _cy - 1, _vx1 + 116, _cy + 13, true);
         draw_set_color(c_lime);
         var _blink = ((current_time mod 600) < 300) ? "_" : " ";
-        scr_editor_label(_vx1 + 74, _ar_y1, _vx1 + 162, _ar_y2, editing_addr_string + _blink, fa_left, 4);
+        scr_editor_label(_vx1 + 74, _ar_y1, _vx1 + 116, _ar_y2, editing_addr_string + _blink, fa_left, 4);
         // The hint goes on the INFO strip: inline it ran into whatever shares
         // this row (SPRITE_SET FORMAT, MAP_DATA W x H, CHAR_SET REM ROW).
         scr_ui_info(true, "TYPE THE NEW LOAD ADDRESS IN HEX, ENTER TO CONFIRM");
@@ -985,20 +985,16 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         // and SOUND_EDITOR are internal-only; their emitted BYTE_DATA/TEXT_DATA
         // assets hold the real addresses. Show a dash, no hover/edit affordance.
         draw_set_color(make_color_rgb(127, 127, 148));
-        scr_editor_label(_vx1 + 80, _ar_y1, _vx1 + 162, _ar_y2, "--", fa_left, 0);
+        scr_editor_label(_vx1 + 80, _ar_y1, _vx1 + 116, _ar_y2, "--", fa_left, 0);
     } else {
         var _ah = string_upper(decimal_to_hex(_asset.address));
         while (string_length(_ah) < 4) _ah = "0" + _ah;
-        var _addr_v_hover = point_in_rectangle(_mx, _my, _vx1 + 74, _cy - 1, _vx1 + 162, _cy + 13);
+        var _addr_v_hover = point_in_rectangle(_mx, _my, _vx1 + 74, _cy - 1, _vx1 + 116, _cy + 13);
         scr_ui_info(_addr_v_hover, "CLICK TO TYPE A NEW C64 LOAD ADDRESS IN HEX, ENTER TO CONFIRM");
-        // Inline value: hover brightens it and adds the EDIT hint on the same
-        // baseline (no outline box around the text).
+        // Inline value: hover brightens it; the INFO strip says how to edit
+        // (an inline hint would run into CHAR_SET [-] REM ROW at _vx1 + 120).
         draw_set_color(_addr_v_hover ? c_white : c_aqua);
-        scr_editor_label(_vx1 + 80, _ar_y1, _vx1 + 162, _ar_y2, "$" + _ah, fa_left, 0);
-        if (_addr_v_hover) {
-            draw_set_color(c_gray);
-            scr_editor_label(_vx1 + 80 + string_width_l("$" + _ah) + 6, _ar_y1, _vx2, _ar_y2, "< EDIT", fa_left, 0);
-        }
+        scr_editor_label(_vx1 + 80, _ar_y1, _vx1 + 116, _ar_y2, "$" + _ah, fa_left, 0);
     }
 if (variable_struct_exists(_asset.meta, "source_file") && _asset.meta.source_file != "" && _asset.type != "BITMAP") {
         // On the IMPORT button row, centred on it
@@ -1014,7 +1010,7 @@ if (variable_struct_exists(_asset.meta, "source_file") && _asset.meta.source_fil
     }
 
     if (_asset.type == "SPRITE_SET" && variable_struct_exists(_asset.meta, "format")) {
-        // Starts clear of the address field (its hit rect runs to _vx1 + 162)
+        // Starts clear of the address field (its hit rect runs to _vx1 + 116)
         // and the "< EDIT" hint shown while it is hovered.
         draw_set_color(c_ltgray); scr_editor_label(_vx1 + 190, _ar_y1, _vx1 + 260, _ar_y2, "FORMAT:", fa_left, 0);
         draw_set_color(c_yellow); scr_editor_label(_vx1 + 260, _ar_y1, _vx1 + 360, _ar_y2, string_upper(_asset.meta.format), fa_left, 0);

@@ -2830,7 +2830,7 @@ if (_asset.type == "META_TILESET") {
     _asset.type != "LOAD_REU" &&
     _asset.type != "BITMAP_BUILDER" &&
     _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" &&
-            point_in_rectangle(_mx, _my, _vx1 + 74, _vy1 + 65, _vx1 + 162, _vy1 + 79)) {
+            point_in_rectangle(_mx, _my, _vx1 + 74, _vy1 + 65, _vx1 + 116, _vy1 + 79)) {   // ends short of CHAR_SET [-] REM ROW at _vx1 + 120
             editing_address     = true;
             editing_address_idx = viewer_asset;
             editing_addr_string = string_upper(decimal_to_hex(_asset.address));
