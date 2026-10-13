@@ -33,7 +33,6 @@ function scr_panel_help_wf_maps() {
             { title: "AN OLDER ASSET", text: "META_MAP is an older asset type: a grid of stamp numbers that points at a META_TILESET by name. This panel has no painting tools for it, and it is no longer offered for new assets.", targets: [] },
             { title: "WHERE MAPS LIVE NOW", text: "Build stamp maps inside the META_TILESET instead. Its map tabs hold as many maps as you need.\n\nMACRO_METAMAP and MACRO_METASCROLL read those maps straight from the tileset.", targets: [] },
             { title: "LOAD ADDRESS", text: "ADDRESS shows where this data sits in C64 memory. Click the value and type a new hex address if it clashes with something else.", targets: ["ADDRESS:"] },
-            { title: "CAREFUL WITH IMPORT", text: "For this type IMPORT does not read a file. It resets the asset to an empty 40x25 map with no tileset linked.", targets: ["IMPORT"] },
             { title: "MOVING ON", text: "To carry an old map forward, rebuild it as a map tab in its META_TILESET and point the nodes at that tileset. Once nothing uses this asset, it can be removed.", targets: [] }
         ],
         ROOM_MAP : [

@@ -2849,8 +2849,10 @@ if (_asset.type == "META_TILESET") {
                 case "SFX_DATA":   scr_asset_sfx_data_import(_asset); break;
                 case "CHAR_SET":   scr_asset_chr_import(_asset); break;
                 case "MAP_DATA":      scr_asset_map_import(_asset);           break;
-				case "META_TILESET":  scr_asset_meta_tileset_create(_asset);  break;
-				case "META_MAP":      scr_asset_meta_map_create(_asset);      break;
+				// META_TILESET / META_MAP have no file to import: these used to call
+				// the *_create initialisers, which wiped the asset to an empty one.
+				// META_TILESET never reaches here (its viewer exits above) and
+				// META_MAP no longer draws an IMPORT button.
                 case "TEXT_DATA":  scr_asset_txt_import(_asset); break;
                 case "BYTE_DATA":  scr_asset_byte_import_as_text(_asset); break;
                 // Vector bitmaps import their own JSON, written by the EXPORT VBM
