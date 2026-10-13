@@ -979,3 +979,6 @@ map_zoom_step = 0;
 // MAP_DATA scrollbars: 0 = none, 1 = dragging the right-hand bar, 2 = the bottom bar
 map_sb_drag = 0;
 map_sb_grab = 0;   // where on the thumb it was grabbed (px)
+
+// Bitmap open in edit mode; Step commits it when the viewer leaves it.
+bmp_edit_ref = undefined;

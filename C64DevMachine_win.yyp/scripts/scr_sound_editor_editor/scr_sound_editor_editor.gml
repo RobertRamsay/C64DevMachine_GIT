@@ -2859,14 +2859,14 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     }
 
     // ── INFO LINE ── what the hovered control does, in the band between the
-    // title bar and the help line. The header's CLOSE / SAVE / AUTOSAVE are
+    // title bar and the help line. The header's CLOSE / SAVE / HELP GUIDE are
     // drawn by obj_asset_manager (same rects as there), so they're checked here.
     scr_mm_info(point_in_rectangle(_dg_pmx, _dg_pmy, _vx2 - 80, _vy1 + 4, _vx2 - 4, _vy1 + 24),
         "CLOSES THE MUSIC MAKER (ESC)");
     scr_mm_info(point_in_rectangle(_dg_pmx, _dg_pmy, _vx2 - 148, _vy1 + 4, _vx2 - 88, _vy1 + 24),
         "SAVES THIS ASSET NOW (IT PULSES AMBER WHILE THERE ARE UNSAVED CHANGES)");
-    scr_mm_info(point_in_rectangle(_dg_pmx, _dg_pmy, _vx2 - 258, _vy1 + 8, _vx2 - 158, _vy1 + 24),
-        "AUTOSAVE ON/OFF: WHEN ON, CHANGES ARE SAVED AUTOMATICALLY");
+    scr_mm_info(point_in_rectangle(_dg_pmx, _dg_pmy, _vx2 - 252, _vy1 + 4, _vx2 - 156, _vy1 + 24),
+        "HELP GUIDE: A STEP-BY-STEP TOUR OF EVERY PART OF THIS PANEL");
     var _info_txt = "";
     if (variable_global_exists("mm_info")) {
         _info_txt = global.mm_info;

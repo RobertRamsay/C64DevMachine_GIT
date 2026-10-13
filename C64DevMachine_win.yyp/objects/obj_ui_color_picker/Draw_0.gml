@@ -8,25 +8,19 @@ var _split_y = y + (height / 2);
 for (var i = 0; i < 16; i++) {
     var _sx = x + (i * 16);
     
+    // Rounded colour tiles (scr_editor_colour_tile); hover is a rounded ring.
     if (i < 8) {
         // --- FIRST 8: FULL HEIGHT ---
-        draw_set_color(scr_c64_pepto_colour(i));
-        draw_rectangle(_sx, y, _sx + 14, y + height - 1, false);
+        scr_editor_colour_tile(_sx, y, _sx + 15, y + height, scr_c64_pepto_colour(i));
     } else {
         // --- SECOND 8: SPLIT (Upper 8 on top, Lower 8 on bottom) ---
-        // Top half (Upper color: 8-15)
-        draw_set_color(scr_c64_pepto_colour(i));
-        draw_rectangle(_sx, y, _sx + 14, _split_y - 1, false);
-        
-        // Bottom half (Lower color: 0-7)
-        draw_set_color(scr_c64_pepto_colour(i - 8));
-        draw_rectangle(_sx, _split_y, _sx + 14, y + height - 1, false);
+        scr_editor_colour_tile(_sx, y, _sx + 15, _split_y, scr_c64_pepto_colour(i));
+        scr_editor_colour_tile(_sx, _split_y + 1, _sx + 15, y + height, scr_c64_pepto_colour(i - 8));
     }
     
     // Draw highlight for the column
     if (point_in_rectangle(mouse_x, mouse_y, _sx, y, _sx + 14, y + height - 1)) {
-        draw_set_color(c_white);
-        draw_rectangle(_sx - 1, y - 1, _sx + 15, y + height, true);
+        scr_editor_colour_ring(_sx - 2, y - 2, _sx + 17, y + height + 2, c_white);
     }
 }
 

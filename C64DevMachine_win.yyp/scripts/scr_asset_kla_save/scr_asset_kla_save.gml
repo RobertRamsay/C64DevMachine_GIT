@@ -4,10 +4,13 @@
 /// @param {struct} _asset        BITMAP asset
 /// @param {string} _export_path  Optional. Also write the encoded bytes
 ///                               straight to this path (EXPORT KLA).
+/// @param {bool}   _clean       Optional. false leaves the canvas as drawn
+///                               (AUTO-CLEAN off); clashing pixels are
+///                               simply not representable in the file.
 /// @returns {bool} false when nothing could be encoded, or the export
 ///                 file did not land on disk.
 
-function scr_asset_kla_save(_asset, _export_path = "") {
+function scr_asset_kla_save(_asset, _export_path = "", _clean = true) {
     if (!variable_struct_exists(_asset.meta, "preview_surf") || !surface_exists(_asset.meta.preview_surf)) return false;
 
     var _is_hires = scr_asset_bmp_is_hires(_asset);
@@ -20,7 +23,7 @@ function scr_asset_kla_save(_asset, _export_path = "") {
             if (_cg[_ci]) { _has_clashes = true; break; }
         }
     }
-    if (_has_clashes) scr_asset_kla_process_surface(_asset, true, -1);
+    if (_has_clashes && _clean) scr_asset_kla_process_surface(_asset, true, -1);
 
     var _bg = _asset.meta.bg_col;
 
@@ -394,4 +397,47 @@ _asset.buffer = _buf;
         }
     }
     return _export_ok;
+}
+
+
+/// @function scr_asset_bmp_commit_edit(_asset)
+/// @desc Leave bitmap edit mode and commit: encode + save to disk, rebuild the
+///       canvas from the saved bytes (so it shows what the file holds), and
+///       refresh every node thumbnail that shows this bitmap. Used by the EDIT
+///       toggle, RETURN TO BITMAP BUILDER and by obj_asset_manager Step when
+///       the viewer is closed or moved to another asset mid-edit, whatever
+///       AUTO-CLEAN is set to.
+function scr_asset_bmp_commit_edit(_asset) {
+    gpu_set_texfilter(true);
+    if (scr_asset_kla_save(_asset)) {
+        scr_asset_bmp_build_preview(_asset);
+        if (variable_struct_exists(_asset.meta, "preview_surf") && surface_exists(_asset.meta.preview_surf)) {
+            if (!buffer_exists(_asset.meta.pixel_backup)) {
+                _asset.meta.pixel_backup = buffer_create(320 * 200 * 4, buffer_fixed, 1);
+            }
+            buffer_get_surface(_asset.meta.pixel_backup, _asset.meta.preview_surf, 0);
+        }
+    }
+    _asset.meta.bmp_unsaved = false;
+    _asset.meta.has_data    = true;
+    _asset.meta.is_editing  = false;
+    _asset.meta.dirty_timer = -1;
+    _asset.meta.last_px     = undefined;
+    _asset.meta.last_py     = undefined;
+    var _name = _asset.name;
+    var _file = _asset.file;
+    with (all) {
+        if (variable_instance_exists(id, "instructions")) {
+            if (is_array(instructions) && array_length(instructions) > 0
+            &&  is_array(instructions[0]) && array_length(instructions[0]) > 1
+            &&  string(instructions[0][1]) == _name) {
+                if (variable_instance_exists(id, "kla_filename")) kla_filename = filename_name(_file);
+                if (variable_instance_exists(id, "preview_surf")) {
+                    if (surface_exists(preview_surf)) surface_free(preview_surf);
+                    preview_surf = -1;
+                }
+            }
+        }
+    }
+    global.undo_dirty = true;
 }

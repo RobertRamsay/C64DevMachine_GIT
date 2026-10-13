@@ -1,6 +1,22 @@
 scr_perf_node("step", "(asset mgr)");
 scr_sid_asset_update();
 scr_node_preview_update();
+// HELP GUIDE: it takes the real mouse and keys; the editor sees only the
+// guide's virtual pointer and no clicks.
+if (global.ph_active && !viewer_open) scr_panel_help_end();
+scr_panel_help_step_input();
+// A bitmap left while still in edit mode (CLOSE, ESC, another asset picked)
+// is committed exactly like pressing EDIT again, so nothing is lost on exit.
+if (is_struct(bmp_edit_ref)) {
+    var _bmp_cur = (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+                 ? ds_list_find_value(asset_list, viewer_asset) : undefined;
+    if (_bmp_cur != bmp_edit_ref) {
+        if (ds_list_find_index(asset_list, bmp_edit_ref) >= 0 && bmp_edit_ref.meta.is_editing) {
+            scr_asset_bmp_commit_edit(bmp_edit_ref);
+        }
+        bmp_edit_ref = undefined;
+    }
+}
 if (!viewer_open) { manifest_preview_name = ""; manifest_preview_owner = undefined; }
 if (!viewer_open && scr_workspace_input_blocked()) exit;
 /// @desc obj_asset_manager Step

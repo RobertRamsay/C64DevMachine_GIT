@@ -2,10 +2,12 @@
 /// Geometry is supplied by the caller's hit test; drawing never moves a control.
 function scr_editor_control(_x1, _y1, _x2, _y2, _hover, _selected = false, _enabled = true) {
     var _frame = !_enabled ? 3 : (_selected ? 2 : (_hover ? 1 : 0));
+    if (global.ph_capture) scr_panel_help_capture(_x1, _y1, _x2, _y2);
     draw_sprite_stretched(spr_editor_slate, _frame, _x1, _y1, max(1, _x2 - _x1), max(1, _y2 - _y1));
 }
 
 function scr_editor_panel(_x1, _y1, _x2, _y2, _recessed = false) {
+    if (_recessed && global.ph_capture) scr_panel_help_capture(_x1, _y1, _x2, _y2);
     draw_sprite_stretched(spr_editor_slate, _recessed ? 5 : 4, _x1, _y1, max(1, _x2 - _x1), max(1, _y2 - _y1));
 }
 
@@ -13,6 +15,7 @@ function scr_editor_panel(_x1, _y1, _x2, _y2, _recessed = false) {
 /// current font and colour. _halign fa_center centres across the rect;
 /// fa_left / fa_right inset by _pad. Alignment state is restored afterwards.
 function scr_editor_label(_x1, _y1, _x2, _y2, _text, _halign = fa_center, _pad = 6) {
+    if (global.ph_capture) scr_panel_help_capture_label(_x1, _y1, _x2, _y2, _text);
     var _old_h = draw_get_halign();
     var _old_v = draw_get_valign();
     var _tx = floor((_x1 + _x2) * 0.5);
@@ -25,20 +28,49 @@ function scr_editor_label(_x1, _y1, _x2, _y2, _text, _halign = fa_center, _pad =
     draw_set_valign(_old_v);
 }
 
-/// C64 colour swatch set in a small recessed well. The colour is inset 2px
-/// so the footprint (and the caller's hit test) stays the given rect.
-/// Hovered / selected swatches use the control frames (same rounded shape),
-/// so no extra outline rectangle is needed around them.
-function scr_editor_swatch(_x1, _y1, _x2, _y2, _col, _hover = false, _selected = false) {
+/// C64 colour swatch: a rounded white tile (spr_editor_swatch frame 0,
+/// nine-sliced so the corners stay round at any size) tinted with the
+/// colour. No button frame around it. The colour is inset 2px so the
+/// footprint (and the caller's hit test) stays the given rect; that margin
+/// holds a rounded ring (frame 1) when hovered (grey) or selected (white).
+function scr_editor_swatch(_x1, _y1, _x2, _y2, _col, _hover = false, _selected = false, _inset = 2) {
+    if (global.ph_capture) scr_panel_help_capture(_x1, _y1, _x2, _y2);
+    scr_editor_colour_tile(_x1 + _inset, _y1 + _inset, _x2 - _inset, _y2 - _inset, _col);
     if (_selected || _hover) {
-        scr_editor_control(_x1, _y1, _x2, _y2, _hover, _selected);
-    } else {
-        scr_editor_panel(_x1, _y1, _x2, _y2, true);
+        scr_editor_colour_ring(_x1, _y1, _x2, _y2, _selected ? c_white : make_color_rgb(151, 170, 192));
     }
-    var _old_col = draw_get_color();
-    draw_set_color(_col);
-    draw_rectangle(_x1 + 2, _y1 + 2, _x2 - 2, _y2 - 2, false);
-    draw_set_color(_old_col);
+}
+
+/// Rounded colour tile filling the rect (x2/y2 exclusive). Rects under 8px
+/// either way are too small for the rounded corners and stay flat.
+function scr_editor_colour_tile(_x1, _y1, _x2, _y2, _col, _alpha = 1) {
+    var _w = _x2 - _x1;
+    var _h = _y2 - _y1;
+    if (_w < 8 || _h < 8) {
+        var _old_col = draw_get_color();
+        var _old_a   = draw_get_alpha();
+        draw_set_color(_col);
+        draw_set_alpha(_alpha);
+        draw_rectangle(_x1, _y1, _x2 - 1, _y2 - 1, false);
+        draw_set_color(_old_col);
+        draw_set_alpha(_old_a);
+        return;
+    }
+    draw_sprite_stretched_ext(spr_editor_swatch, 0, _x1, _y1, _w, _h, _col, _alpha);
+}
+
+/// Rounded 2px ring around a colour tile: hover (grey) / chosen (white).
+function scr_editor_colour_ring(_x1, _y1, _x2, _y2, _col) {
+    var _w = _x2 - _x1;
+    var _h = _y2 - _y1;
+    if (_w < 8 || _h < 8) {
+        var _old_col = draw_get_color();
+        draw_set_color(_col);
+        draw_rectangle(_x1, _y1, _x2 - 1, _y2 - 1, true);
+        draw_set_color(_old_col);
+        return;
+    }
+    draw_sprite_stretched_ext(spr_editor_swatch, 1, _x1, _y1, _w, _h, _col, 1);
 }
 
 /// Decorative slots do not capture input or allocate an asset.

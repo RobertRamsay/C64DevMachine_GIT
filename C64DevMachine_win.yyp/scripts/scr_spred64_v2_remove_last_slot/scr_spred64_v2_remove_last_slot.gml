@@ -1,10 +1,10 @@
 /// @function scr_spred64_v2_remove_last_slot()
 /// @desc Removes the trailing sprite slot from the V2 editor working state.
-///       Only valid when used_count > 1 AND the last slot is blank (no set
-///       bits) — matching the "EMPTY, ALT-click to remove" affordance. The
+///       Only valid when used_count > 1. A slot with pixels is only removed
+///       with _force (the right-click handler asks the user first). The
 ///       packed buffer and meta arrays are re-trimmed to the new used_count
 ///       on commit (repack_bits + close), so this only touches working state.
-function scr_spred64_v2_remove_last_slot() {
+function scr_spred64_v2_remove_last_slot(_force = false) {
     with (obj_asset_manager) {
         var _v2 = spred64_v2;
         if (!_v2.active) exit;
@@ -26,7 +26,7 @@ function scr_spred64_v2_remove_last_slot() {
                 break;
             }
         }
-        if (!_blank) {
+        if (!_blank && !_force) {
             show_debug_message("REMOVE_LAST_SLOT: refused — slot " + string(_last) + " is not blank");
             exit;
         }

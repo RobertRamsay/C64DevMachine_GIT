@@ -1036,8 +1036,7 @@ function scr_creator_draw_editor(_n) {
             draw_set_colour(make_colour_rgb(120, 255, 140));
             draw_text(_px + 590, _ly + 13, "VALUE " + string(_cur.val));
             if (_p.kind == "COLOUR") {
-                draw_set_colour(scr_c64_pepto_colour(clamp(round(_cur.val), 0, 15)));
-                draw_rectangle(_px + 720, _ly + 3, _px + 760, _ly + 23, false);
+                scr_editor_colour_tile(_px + 720, _ly + 3, _px + 761, _ly + 24, scr_c64_pepto_colour(clamp(round(_cur.val), 0, 15)));
             }
         } else {
             draw_set_colour(make_colour_rgb(255, 110, 110));
@@ -1210,12 +1209,9 @@ function scr_creator_draw_view() {
             } else if (_p.kind == "COLOUR") {
                 for (var _c = 0; _c < 16; _c++) {
                     var _sx = _cx + _c * 30;
-                    draw_set_colour(scr_c64_pepto_colour(_c));
-                    draw_rectangle(_sx, _cy - 12, _sx + 24, _cy + 12, false);
+                    scr_editor_colour_tile(_sx, _cy - 12, _sx + 25, _cy + 13, scr_c64_pepto_colour(_c));
                     if (round(_cur.val) == _c) {
-                        draw_set_colour(c_white);
-                        draw_rectangle(_sx - 2, _cy - 14, _sx + 26, _cy + 14, true);
-                        draw_rectangle(_sx - 3, _cy - 15, _sx + 27, _cy + 15, true);
+                        scr_editor_colour_ring(_sx - 3, _cy - 15, _sx + 28, _cy + 16, c_white);
                     }
                     if (global.creator_click && point_in_rectangle(global.creator_mx, global.creator_my, _sx, _cy - 12, _sx + 24, _cy + 12)) {
                         scr_param_write(_n, _p, _c);
@@ -1887,12 +1883,9 @@ function scr_creator_draw_items(_items, _col) {
                 draw_text((_it.x1 + _it.x2) * 0.5, _my, _it.text);
                 break;
             case "swatch":
-                draw_set_colour(scr_c64_pepto_colour(_it.v));
-                draw_rectangle(_it.x1, _it.y1, _it.x2, _it.y2, false);
+                scr_editor_colour_tile(_it.x1, _it.y1, _it.x2 + 1, _it.y2 + 1, scr_c64_pepto_colour(_it.v));
                 if (_it.on) {
-                    draw_set_colour(c_white);
-                    draw_rectangle(_it.x1 - 2, _it.y1 - 2, _it.x2 + 2, _it.y2 + 2, true);
-                    draw_rectangle(_it.x1 - 3, _it.y1 - 3, _it.x2 + 3, _it.y2 + 3, true);
+                    scr_editor_colour_ring(_it.x1 - 3, _it.y1 - 3, _it.x2 + 4, _it.y2 + 4, c_white);
                 }
                 break;
             case "minus":

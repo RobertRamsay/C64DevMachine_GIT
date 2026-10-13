@@ -774,6 +774,8 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     var _asset = ds_list_find_value(asset_list, viewer_asset);
     // INFO strip: the control under the pointer sets this as the editor draws
     global.ui_info = "";
+    // HELP GUIDE records what the editor draws this frame
+    scr_panel_help_frame_begin();
 
 	var _wide_editor = (_asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK" || _asset.type == "BMP_OBJECTS" || _asset.type == "SAMPLE");
 	_vx1 = _wide_editor ? 30 : 288;
@@ -854,6 +856,20 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     draw_set_halign(fa_left);
     if (global.tour_active) {
         scr_tour_capture("ASSET:CLOSE", _cl_x1, _cl_y1, _cl_x2, _cl_y2);
+    }
+
+    // HELP GUIDE: left of SAVE where the header has one, else left of CLOSE.
+    // Steps through every control of this panel (scr_panel_help).
+    var _hdr_save = (_asset.type != "CHAR_SET" && _asset.type != "META_TILESET" && _asset.type != "BITMAP_BUILDER");
+    var _hp_x2  = _hdr_save ? (_cl_x1 - 8 - 60 - 8) : (_cl_x1 - 8);
+    var _hp_x1  = _hp_x2 - 96;
+    var _hp_hov = !global.ph_active && point_in_rectangle(_mx, _my, _hp_x1, _cl_y1, _hp_x2, _cl_y2);
+    scr_ui_info(_hp_hov, "HELP GUIDE: A STEP-BY-STEP TOUR OF EVERY PART OF THIS PANEL");
+    scr_editor_control(_hp_x1, _cl_y1, _hp_x2, _cl_y2, _hp_hov, global.ph_active);
+    draw_set_color(c_white);
+    scr_editor_label(_hp_x1, _cl_y1, _hp_x2, _cl_y2, "HELP GUIDE");
+    if (_hp_hov && mouse_check_button_pressed(mb_left)) {
+        scr_panel_help_start(_asset, [_vx1, _vy1, _vx2, _vy2], [_hp_x1, _cl_y1, _hp_x2, _cl_y2]);
     }
 
     var _cy = _vy1 + 38;
@@ -4576,14 +4592,15 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            }
                 
 	            if (_asset.meta.dirty_timer == 0) {
-	                // Only auto-save (and thus auto-clean) if the toggle is ON
-	                if (_asset.meta.auto_clean && variable_struct_exists(_asset.meta, "preview_surf") && surface_exists(_asset.meta.preview_surf) && buffer_exists(_asset.meta.pixel_backup)) {
-					
+	                // Always autosave shortly after a stroke. AUTO-CLEAN only
+	                // decides whether clashes on the canvas are fixed as it saves;
+	                // with it off the canvas keeps its red clash cells to fix by hand.
+	                if (variable_struct_exists(_asset.meta, "preview_surf") && surface_exists(_asset.meta.preview_surf)) {
 	                    if (!buffer_exists(_asset.meta.pixel_backup)) {
 	                        _asset.meta.pixel_backup = buffer_create(320 * 200 * 4, buffer_fixed, 1);
 	                    }
 	                    buffer_get_surface(_asset.meta.pixel_backup, _asset.meta.preview_surf, 0);
-	                    scr_asset_kla_save(_asset);
+	                    scr_asset_kla_save(_asset, "", _asset.meta.auto_clean);
 	                    _asset.meta.bmp_unsaved = false;
 	                }
 	            }
@@ -4675,6 +4692,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        if (!variable_struct_exists(_asset.meta, "bmp_mode"))   _asset.meta.bmp_mode = "MC"; // "MC" or "HIRES" — defaults to Multicolour
 
 	        var _is_ed = _asset.meta.is_editing;
+	        if (_is_ed) bmp_edit_ref = _asset;
 	        var _has_canvas = variable_struct_exists(_asset.meta, "preview_surf") && surface_exists(_asset.meta.preview_surf);
 	        var _bmp_is_hires = scr_asset_bmp_is_hires(_asset);
 	        var _bmp_step     = _bmp_is_hires ? 1 : 2; // world-px per addressable unit: 1 for HiRes, 2 for MC pairs
@@ -4709,30 +4727,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            if (_rtb_hov && mouse_check_button_pressed(mb_left)) {
 	                // Commit the edit — same sequence as the EDIT button's exit path.
 	                if (_asset.meta.is_editing) {
-	                    gpu_set_texfilter(true);
-	                    scr_asset_kla_save(_asset);
-	                    _asset.meta.bmp_unsaved = false;
-	                    _asset.meta.has_data    = true;
-	                    _asset.meta.is_editing  = false;
-	                    _asset.meta.last_px     = undefined;
-	                    _asset.meta.last_py     = undefined;
-	                    // Kill node thumbnail caches so the freshly edited pixels
-	                    // show on any MACRO_BMP referencing this asset.
-	                    with (all) {
-	                        if (variable_instance_exists(id, "instructions")) {
-	                            if (is_array(instructions) && array_length(instructions) > 0
-	                            &&  string(instructions[0][1]) == _asset.name) {
-	                                if (variable_instance_exists(id, "kla_filename")) {
-	                                    kla_filename = filename_name(_asset.file);
-	                                }
-	                                if (variable_instance_exists(id, "preview_surf")) {
-	                                    if (surface_exists(preview_surf)) surface_free(preview_surf);
-	                                    preview_surf = -1;
-	                                }
-	                            }
-	                        }
-	                    }
-	                    global.undo_dirty = true;
+	                    scr_asset_bmp_commit_edit(_asset);
 	                }
 	                // Jump back to the builder and clear the breadcrumb. The builder's
 	                // own prev_dirty path rebuilds its scratch preview next frame, so
@@ -5015,39 +5010,9 @@ if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASS
 	            _asset.meta.last_py = undefined;
 
 	            // EXITING EDITOR: Commit changes and broadcast to workspace
+	            // (saves whatever AUTO-CLEAN is set to; see scr_asset_bmp_commit_edit)
 	            if (!_asset.meta.is_editing) {
-	                gpu_set_texfilter(true);
-	                scr_asset_kla_save(_asset);
-	                // See RESAVE's comment — HiRes encode always forces every cell to
-	                // exactly 2 colours, so the saved file can differ from an
-	                // un-cleaned-up on-screen canvas. Rebuild from the just-saved
-	                // bytes so what you see next time you open the editor matches
-	                // what's actually on disk, without needing a forced reload.
-	                scr_asset_bmp_build_preview(_asset);
-	                if (!buffer_exists(_asset.meta.pixel_backup)) {
-	                    _asset.meta.pixel_backup = buffer_create(320 * 200 * 4, buffer_fixed, 1);
-	                }
-	                buffer_get_surface(_asset.meta.pixel_backup, _asset.meta.preview_surf, 0);
-	                _asset.meta.bmp_unsaved = false;
-                    
-	                // Force meta flag so nodes know data physically exists
-	                _asset.meta.has_data = true;
-                    
-	                with (all) {
-	                    if (variable_instance_exists(id, "instructions")) {
-	                        if (is_array(instructions) && array_length(instructions) > 0 && string(instructions[0][1]) == _asset.name) {
-	                            // Sync filename display
-	                            if (variable_instance_exists(id, "kla_filename")) kla_filename = filename_name(_asset.file);
-                                
-	                            // Kill thumbnail cache to force redraw of new pixels
-	                            if (variable_instance_exists(id, "preview_surf")) {
-	                                if (surface_exists(preview_surf)) surface_free(preview_surf);
-	                                preview_surf = -1;
-	                            }
-	                        }
-	                    }
-	                }
-	                global.undo_dirty = true;
+	                scr_asset_bmp_commit_edit(_asset);
 	            }
 
 // ENTERING EDITOR: Initialize canvas and paths
@@ -5213,12 +5178,12 @@ if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASS
 	            var _acx1 = _clx2 + 10;
 	            var _acx2 = _acx1 + 90;
 	            var _ac_hov = point_in_rectangle(_mx, _my, _acx1, _btn_y, _acx2, _btn_y + 20);
-	            scr_ui_info(_ac_hov, "AUTO-SAVE ON/OFF: WHEN ON, THE BITMAP IS SAVED (AND CLASH-CLEANED) SHORTLY AFTER EACH STROKE");
+	            scr_ui_info(_ac_hov, "AUTO-CLEAN ON/OFF: WHEN ON, COLOUR CLASHES ARE FIXED AS SOON AS YOU LIFT THE PEN. THE BITMAP AUTOSAVES EITHER WAY");
 	            var _ac_on = _asset.meta.auto_clean;
                 
 	            scr_editor_control(_acx1, _btn_y, _acx2, _btn_y + 20, _ac_hov, _ac_on);
 	            draw_set_color(c_white);
-	            scr_editor_label(_acx1, _btn_y, _acx2, _btn_y + 20, L("AUTO:") + (_ac_on ? L("ON") : L("OFF")));
+	            scr_editor_label(_acx1, _btn_y, _acx2, _btn_y + 20, L("CLEAN:") + (_ac_on ? L("ON") : L("OFF")));
                 
 	            if (_ac_hov && mouse_check_button_pressed(mb_left)) {
 	                _asset.meta.auto_clean = !_asset.meta.auto_clean;
@@ -12114,42 +12079,22 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 	
 	
 	
-	// ---- SAVE & AUTOSAVE UI ----
+	// ---- SAVE UI ---- (editors always autosave; SAVE forces a write now)
     if (_asset.type != "CHAR_SET" && _asset.type != "META_TILESET" && _asset.type != "BITMAP_BUILDER") {
-    if (!variable_struct_exists(_asset.meta, "autosave"))    _asset.meta.autosave    = true;
     if (!variable_struct_exists(_asset.meta, "is_dirty"))    _asset.meta.is_dirty    = false;
     if (!variable_struct_exists(_asset.meta, "flash_timer")) _asset.meta.flash_timer = 0;
 	
-    var _as_x = 0;
-    var _as_y = 0;
     var _sv_w = 60;
     var _sv_x = 0;
     var _sv_y1 = 0;
     var _sv_y2 = 0;
 	
-    if (_asset.type == "META_TILESET") {
-        _as_x = _vx1 + 20;
-        _as_y = _vy2 - 305;
-        _sv_x  = _as_x + 100;
-        _sv_y1 = _as_y;
-        _sv_y2 = _as_y + 18;
-    } else {
-        // Header: SAVE sits just left of CLOSE and is drawn like it;
-        // AUTOSAVE: ON/OFF sits just left of SAVE.
-        _sv_x  = _vx2 - 80 - 8 - _sv_w;
-        _sv_y1 = _vy1 + 4;
-        _sv_y2 = _vy1 + 24;
-        _as_x  = _sv_x - 110;
-        _as_y  = _vy1 + 8;
-    }
-    var _ashov = point_in_rectangle(_mx, _my, _as_x, _as_y, _as_x + 100, _as_y + 16);
+    // Header: SAVE sits just left of CLOSE and is drawn like it;
+    // HELP GUIDE sits just left of SAVE.
+    _sv_x  = _vx2 - 80 - 8 - _sv_w;
+    _sv_y1 = _vy1 + 4;
+    _sv_y2 = _vy1 + 24;
     draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(_asset.meta.autosave ? make_color_rgb(255, 255, 255) : make_color_rgb(128, 128, 128));
-    // Shares the SAVE button's centre line so the two read as one row.
-    scr_editor_label(_as_x, _sv_y1, _as_x, _sv_y2, L("AUTOSAVE: ") + (_asset.meta.autosave ? L("ON") : L("OFF")), fa_left, 0);
-    if (_ashov && mouse_check_button_pressed(mb_left)) {
-        _asset.meta.autosave = !_asset.meta.autosave;
-    }
     var _svhov = point_in_rectangle(_mx, _my, _sv_x, _sv_y1, _sv_x + _sv_w, _sv_y2);
     // Unsaved changes: the button pulses amber; otherwise it matches CLOSE
     // (dark, lighter edge), turning green on hover.
@@ -12167,7 +12112,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     }
     draw_set_color(c_white);
     scr_editor_label(_sv_x, _sv_y1, _sv_x + _sv_w, _sv_y2, "SAVE");
-	    if ((_svhov && mouse_check_button_pressed(mb_left)) || (_asset.meta.is_dirty && _asset.meta.autosave)) {
+	    if ((_svhov && mouse_check_button_pressed(mb_left)) || _asset.meta.is_dirty) {
 	        // SPRITE_SET is never written back to its source file. The
 	        // workspace JSON already preserves the buffer + meta (including
 	        // compositor and anim data), and the source may be a SPRED64
@@ -12956,4 +12901,13 @@ if (reload_notify_timer > 0 && array_length(reload_notify_names) > 0) {
         draw_text_l(_nx + 8, _ny + 18 + (_ni * 14), reload_notify_names[_ni]);
     }
     draw_set_alpha(1.0);
+}
+
+// -------------------------------------------------------
+// HELP GUIDE overlay - drawn over everything the editor drew this frame
+// -------------------------------------------------------
+if (global.ph_active) {
+    var _ph_asset = (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+                  ? ds_list_find_value(asset_list, viewer_asset) : undefined;
+    scr_panel_help_draw(_ph_asset, display_get_gui_width(), display_get_gui_height());
 }

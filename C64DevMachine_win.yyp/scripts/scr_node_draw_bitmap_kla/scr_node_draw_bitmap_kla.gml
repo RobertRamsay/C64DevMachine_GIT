@@ -40,8 +40,7 @@ function scr_node_draw_bitmap_kla(_draw_x, _y) {
     // Row 3: BG Swatch (Interactive cycling)
     draw_set_color(_c_edit); 
     draw_text_l(_draw_x + 10, _ly, "BG:");
-    draw_set_color(scr_c64_pepto_colour(_bg_col));
-    draw_rectangle(_draw_x + 46, _ly + 1, _draw_x + 62, _ly + _line_h - 2, false);
+    scr_editor_colour_tile(_draw_x + 46, _ly + 1, _draw_x + 63, _ly + _line_h - 1, scr_c64_pepto_colour(_bg_col));
     draw_set_color(c_white);
     draw_text_l(_draw_x + 68, _ly, string(_bg_col));
     _ly += _line_h + 4;

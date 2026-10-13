@@ -848,24 +848,13 @@ function scr_bmp_spr_panel(_asset, _x, _y, _mx, _my) {
             for (var _c = 0; _c < 16; _c++) {
                 var _cy1 = _sy0 + _c * 8;
                 var _cy2 = _cy1 + 7;
-                draw_set_color(scr_c64_pepto_colour(_c));
-                draw_rectangle(_cx, _cy1, _cx + 30, _cy2, false);
                 if (_off) {
-                    draw_set_alpha(0.75);
-                    draw_set_color(make_color_rgb(18, 18, 28));
-                    draw_rectangle(_cx, _cy1, _cx + 30, _cy2, false);
-                    draw_set_alpha(1);
+                    scr_editor_colour_tile(_cx, _cy1, _cx + 31, _cy2 + 1, scr_c64_pepto_colour(_c), 0.25);
                     continue;
                 }
                 var _chov = point_in_rectangle(_mx, _my, _cx, _cy1, _cx + 30, _cy2);
                 scr_ui_info(_chov, "SET " + ((_i == 0) ? "THE SELECTED SPRITE'S COLOUR" : _lbls[_i] + " (ALL MC SPRITES)") + " TO COLOUR " + string(_c) + " AND PAINT WITH IT");
-                if (_c == _cols[_i]) {
-                    draw_set_color(c_white);
-                    draw_rectangle(_cx, _cy1, _cx + 30, _cy2, true);
-                } else if (_chov) {
-                    draw_set_color(c_ltgray);
-                    draw_rectangle(_cx, _cy1, _cx + 30, _cy2, true);
-                }
+                scr_editor_swatch(_cx, _cy1, _cx + 31, _cy2 + 1, scr_c64_pepto_colour(_c), _chov, _c == _cols[_i], 0);
                 if (_chov && _click) {
                     if (_c != _cols[_i]) {
                         scr_bmp_spr_push_undo(_asset);

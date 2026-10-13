@@ -144,7 +144,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 _pa_x + _pick_cell_w, _pa_y + _pick_cell_h);
         }
         scr_ui_info(_pick_hover >= 0, (_pick_hover == _pick_used - 1 && _pick_used > 1)
-            ? "LAST SLOT: CLICK SELECTS, SHIFT/CTRL+CLICK MULTI-SELECT, ALT+CLICK DELETES IT IF BLANK"
+            ? "LAST SLOT: CLICK SELECTS, SHIFT/CTRL+CLICK MULTI-SELECT, RIGHT-CLICK REMOVES IT"
             : "SPRITE SLOT: CLICK SELECTS, SHIFT+CLICK RANGE, CTRL+CLICK TOGGLES IN SET, CTRL+C/V COPY/PASTE");
         scr_ui_info(_pick_add_hover, "ADD A NEW BLANK SPRITE SLOT AT THE END OF THE BANK (UP TO 64)");
 
@@ -203,16 +203,16 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 draw_text_l(_cx + 2, _cy_p + _pick_cell_h - 14, string(_slot));
             }
 
-            // ALT-click-to-remove hint — only on the LAST slot, only when
+            // Right-click-to-remove hint — only on the LAST slot, only when
             // it's blank and there's more than one slot. Peels back from
-            // the end; clear a sprite first, then ALT-click to drop it.
+            // the end; a slot with pixels asks before it goes.
             if (_slot == _pick_used - 1 && _pick_used > 1 && _slot_empty && _is_hov) {
                 draw_set_font_l(fnt_c64_tiny);
                 draw_set_color(make_color_rgb(255, 120, 120));
                 draw_set_halign(fa_center);
                 draw_set_valign(fa_middle);
                 draw_text_l(_cx + _pick_cell_w * 0.5, _cy_p + 14, "EMPTY");
-                draw_text_l(_cx + _pick_cell_w * 0.5, _cy_p + _pick_cell_h * 0.5, "ALT-CLICK");
+                draw_text_l(_cx + _pick_cell_w * 0.5, _cy_p + _pick_cell_h * 0.5, "RIGHT-CLICK");
                 draw_text_l(_cx + _pick_cell_w * 0.5, _cy_p + _pick_cell_h * 0.5 + 12, "TO REMOVE");
                 draw_set_halign(fa_left);
                 draw_set_valign(fa_top);
@@ -274,19 +274,29 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             }
         }
 
-        // Click on picker = select slot, OR ALT/OPT-click the LAST slot to
-        // remove it (trailing-only, blank-only — the remove script enforces
-        // both guards). ALT-click is checked first so it doesn't fall through
-        // to a normal select.
+        // Right-click the LAST slot to remove it. Only the last one: the
+        // compositor and the workspace nodes refer to sprites by slot
+        // number, so removing one mid-bank would renumber everything after
+        // it. A slot with pixels asks first.
         if (_pick_hover >= 0
-        && mouse_check_button_pressed(mb_left)
-        && (keyboard_check(vk_alt) || keyboard_check(vk_lalt) || keyboard_check(vk_ralt))
-        && _pick_hover == _pick_used - 1
+        && _pick_hover == _pick_used - 1 && _pick_used > 1
+        && mouse_check_button_pressed(mb_right)
         && !global.ui_click_consumed
         && !global.any_picker_open) {
-            scr_spred64_v2_remove_last_slot();
+            var _rm_has_px = false;
+            var _rm_base   = _pick_hover * 504;
+            for (var _rm_b = 0; _rm_b < 504; _rm_b++) {
+                if (_v2.bits[_rm_base + _rm_b] == 1) { _rm_has_px = true; break; }
+            }
+            if (!_rm_has_px
+            || scr_show_question_bool("Sprite " + string(_pick_hover) + " has pixels drawn in it.\n\nRemove it anyway?\n(It can't be undone.)")) {
+                scr_spred64_v2_remove_last_slot(true);
+            }
             global.ui_click_consumed = true;
+            mouse_clear(mb_right);
         }
+
+        // Click on picker = select slot.
         // SHIFT+click — select the range from the current slot to this one
         // (both ends included) into the batch-edit set. The current slot stays
         // primary, so HR/MC and the colour buttons apply to the whole range.
@@ -1270,8 +1280,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                     scr_editor_swatch(_pcol_x, _psy1, _pcol_x2, _psy2,
                         scr_c64_pepto_colour(_pi), _ps_hov, _ps_sel);
                 } else {
-                    draw_set_color(scr_c64_pepto_colour(_pi));
-                    draw_rectangle(_pcol_x, _psy1, _pcol_x2, _psy2, false);
+                    scr_editor_colour_tile(_pcol_x, _psy1, _pcol_x2 + 1, _psy2 + 1, scr_c64_pepto_colour(_pi));
                 }
 
                 if (_ps_hov && mouse_check_button_pressed(mb_left)
