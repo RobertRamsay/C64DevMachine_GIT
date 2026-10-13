@@ -977,8 +977,9 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         draw_set_color(c_lime);
         var _blink = ((current_time mod 600) < 300) ? "_" : " ";
         scr_editor_label(_vx1 + 74, _ar_y1, _vx1 + 162, _ar_y2, editing_addr_string + _blink, fa_left, 4);
-        draw_set_color(c_gray);
-        scr_editor_label(_vx1 + 170, _ar_y1, _vx2, _ar_y2, "ENTER TO CONFIRM", fa_left, 0);
+        // The hint goes on the INFO strip: inline it ran into whatever shares
+        // this row (SPRITE_SET FORMAT, MAP_DATA W x H, CHAR_SET REM ROW).
+        scr_ui_info(true, "TYPE THE NEW LOAD ADDRESS IN HEX, ENTER TO CONFIRM");
     } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK" || _asset.type == "SAMPLE") {
         // LOAD_ORG is a manifest — no meaningful load address. BITMAP_BUILDER
         // and SOUND_EDITOR are internal-only; their emitted BYTE_DATA/TEXT_DATA
@@ -1003,9 +1004,13 @@ if (variable_struct_exists(_asset.meta, "source_file") && _asset.meta.source_fil
         // On the IMPORT button row, centred on it
         draw_set_font_l(fnt_c64_tiny);
         draw_set_color(make_color_rgb(80, 230, 100));
-        scr_editor_label(_vx1 + 240, _lby1, _vx1 + 300, _lby2, "SOURCE:", fa_left, 0);
+        // MAP_DATA has MAP SIZE: at _vx1 + 240 on this row, so start after it;
+        // the path is fitted so it stops short of the file name at _lbx2 + 580.
+        var _src_x = (_asset.type == "MAP_DATA") ? _vx1 + 340 : _vx1 + 240;
+        scr_editor_label(_src_x, _lby1, _src_x + 60, _lby2, "SOURCE:", fa_left, 0);
         draw_set_color(make_color_rgb(140, 140, 240));
-        scr_editor_label(_vx1 + 300, _lby1, _vx2, _lby2, _asset.meta.source_file, fa_left, 0);
+        var _src_w = max(40, (_lbx2 + 580 - 16) - (_src_x + 60));
+        scr_editor_label(_src_x + 60, _lby1, _src_x + 60 + _src_w, _lby2, manifest_fit_name(_asset.meta.source_file, _src_w), fa_left, 0);
     }
 
     if (_asset.type == "SPRITE_SET" && variable_struct_exists(_asset.meta, "format")) {
