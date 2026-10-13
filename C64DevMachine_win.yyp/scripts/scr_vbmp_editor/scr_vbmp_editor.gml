@@ -374,14 +374,10 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _bx = _tx + (_s * (_sw2 + 4));
         var _bhov = point_in_rectangle(_mx, _my, _bx, _ty, _bx + _sw2, _ty + 24);
         scr_ui_info(_bhov, (_s == 0) ? "BACKGROUND SLOT - LEFT CLICK TO DRAW IN BG COLOUR, RIGHT CLICK CYCLES THE BG COLOUR" : "COLOUR SLOT " + string(_s) + " - LEFT CLICK TO DRAW WITH IT, RIGHT CLICK CYCLES ITS C64 COLOUR");
-        draw_set_color(scr_c64_pepto_colour(_slots[_s]));
-        draw_rectangle(_bx, _ty, _bx + _sw2, _ty + 24, false);
+        scr_editor_swatch(_bx, _ty, _bx + _sw2, _ty + 24, scr_c64_pepto_colour(_slots[_s]));
         if (_m.active_col == _s) {
             draw_set_color(c_white);
             draw_rectangle(_bx - 2, _ty - 2, _bx + _sw2 + 2, _ty + 26, true);
-        } else {
-            draw_set_color(make_color_rgb(90, 90, 110));
-            draw_rectangle(_bx, _ty, _bx + _sw2, _ty + 24, true);
         }
         draw_set_color(c_white);
         draw_text_l(_bx + 3, _ty + 26, _slot_lbl[_s]);
@@ -432,10 +428,8 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _d2hov = point_in_rectangle(_mx, _my, _d2x, _ty - 2, _d2x + 18, _ty + 16);
         scr_ui_info(_d2hov, "DITHER 2ND COLOUR - CLICK TO CYCLE WHICH SELECTOR SLOT (0-3) MIXES WITH THE ACTIVE COLOUR");
         var _d2slots = [_m.bg, _m.col1, _m.col2, _m.col3];
-        draw_set_color(scr_c64_pepto_colour(_d2slots[_m.dither_colb]));
-        draw_rectangle(_d2x, _ty - 2, _d2x + 18, _ty + 16, false);
+        scr_editor_swatch(_d2x, _ty - 2, _d2x + 18, _ty + 16, scr_c64_pepto_colour(_d2slots[_m.dither_colb]));
         draw_set_color(c_white);
-        draw_rectangle(_d2x, _ty - 2, _d2x + 18, _ty + 16, true);
         draw_text_l(_d2x + 22, _ty, string(_m.dither_colb));
         // Left-click cycles which selector slot (0..3) is the 2nd colour
         if (_d2hov && mouse_check_button_pressed(mb_left)) {
@@ -468,30 +462,24 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             var _rcx = _tx;
             var _rc_hov = point_in_rectangle(_mx, _my, _rcx, _ty, _rcx + 25, _ty + 24);
             scr_ui_info(_rc_hov, "RECOLOUR COL3 - RIGHT CLICK CYCLES THE COLOUR-RAM COLOUR (0-15) USED BY RECOL_C");
-            draw_set_color(scr_c64_pepto_colour(vbmp_recol_c3));
-            draw_rectangle(_rcx, _ty, _rcx + 25, _ty + 24, false);
+            scr_editor_swatch(_rcx, _ty, _rcx + 25, _ty + 24, scr_c64_pepto_colour(vbmp_recol_c3));
             draw_set_color(c_white);
-            draw_rectangle(_rcx, _ty, _rcx + 25, _ty + 24, true);
             draw_text_l(_rcx + 3, _ty + 26, "C3:" + string(vbmp_recol_c3));
             if (_rc_hov && mouse_check_button_pressed(mb_right)) vbmp_recol_c3 = (vbmp_recol_c3 + 1) mod 16;
         } else {
             var _rc1x = _tx;
             var _rc1_hov = point_in_rectangle(_mx, _my, _rc1x, _ty, _rc1x + 25, _ty + 24);
             scr_ui_info(_rc1_hov, "RECOLOUR COL1 - RIGHT CLICK CYCLES THE FIRST SCREEN-RAM COLOUR (0-15) USED BY RECOL_S");
-            draw_set_color(scr_c64_pepto_colour(vbmp_recol_c1));
-            draw_rectangle(_rc1x, _ty, _rc1x + 25, _ty + 24, false);
+            scr_editor_swatch(_rc1x, _ty, _rc1x + 25, _ty + 24, scr_c64_pepto_colour(vbmp_recol_c1));
             draw_set_color(c_white);
-            draw_rectangle(_rc1x, _ty, _rc1x + 25, _ty + 24, true);
             draw_text_l(_rc1x + 3, _ty + 26, "C1:" + string(vbmp_recol_c1));
             if (_rc1_hov && mouse_check_button_pressed(mb_right)) vbmp_recol_c1 = (vbmp_recol_c1 + 1) mod 16;
 
             var _rc2x = _tx + 35;
             var _rc2_hov = point_in_rectangle(_mx, _my, _rc2x, _ty, _rc2x + 25, _ty + 24);
             scr_ui_info(_rc2_hov, "RECOLOUR COL2 - RIGHT CLICK CYCLES THE SECOND SCREEN-RAM COLOUR (0-15) USED BY RECOL_S");
-            draw_set_color(scr_c64_pepto_colour(vbmp_recol_c2));
-            draw_rectangle(_rc2x, _ty, _rc2x + 25, _ty + 24, false);
+            scr_editor_swatch(_rc2x, _ty, _rc2x + 25, _ty + 24, scr_c64_pepto_colour(vbmp_recol_c2));
             draw_set_color(c_white);
-            draw_rectangle(_rc2x, _ty, _rc2x + 25, _ty + 24, true);
             draw_text_l(_rc2x + 3, _ty + 26, "C2:" + string(vbmp_recol_c2));
             if (_rc2_hov && mouse_check_button_pressed(mb_right)) vbmp_recol_c2 = (vbmp_recol_c2 + 1) mod 16;
         }
