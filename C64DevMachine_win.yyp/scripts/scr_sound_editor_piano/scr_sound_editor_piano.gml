@@ -81,7 +81,7 @@ function scr_sound_editor_piano_keys(_x0, _y0, _x1, _y1, _oct0, _n_oct, _mx, _my
         var _wro = scr_sound_editor_piano_lit_oct(_lit, _wn);
         if (_wro != -1 && _wro != (_wn div 12)) {
             // folded in from another octave: show where it really is
-            draw_set_color(c_black);
+            draw_set_color(c_white);
             draw_set_halign(fa_center);
             draw_text_l(_wx + _ww * 0.5, _y0 + _bh + 2, string(_wro));
             draw_set_halign(fa_left);

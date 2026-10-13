@@ -595,8 +595,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         var _tx = _transport_x + _tb * 132;
         var _thover = point_in_rectangle(_mx, _my, _tx, _transport_y, _tx + _tw, _transport_y + 24);
         scr_mm_info(_thover, _transport_info[_tb]);
-        draw_set_color(_thover ? make_color_rgb(65, 130, 155) : make_color_rgb(28, 60, 80));
-        draw_rectangle(_tx, _transport_y, _tx + _tw, _transport_y + 24, false);
+        scr_editor_control(_tx, _transport_y, _tx + _tw, _transport_y + 24, _thover, false);
         var _t_lit = false;
         if (_transport_actions[_tb] == "PAT" && _m.playing) _t_lit = true;
         if ((_transport_actions[_tb] == "SONG" || _transport_actions[_tb] == "HERE") && _m.song_playing) _t_lit = true;
@@ -881,8 +880,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _bpx2 = _bpx1 + 18;
     var _bp_hov = point_in_rectangle(_mx, _my, _bpx1, _rowy, _bpx2, _rowy + 18);
     scr_mm_info(_bp_hov, "PATTERN BANK: SELECTS THE PREVIOUS PATTERN (THE ONE DEL REMOVES)");
-    draw_set_color(_bp_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_bpx1, _rowy, _bpx2, _rowy + 18, false);
+    scr_editor_control(_bpx1, _rowy, _bpx2, _rowy + 18, _bp_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_bpx1 + 9, _rowy + 4, "<");
@@ -901,8 +899,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _bnx2 = _bnx1 + 18;
     var _bn_hov = point_in_rectangle(_mx, _my, _bnx1, _rowy, _bnx2, _rowy + 18);
     scr_mm_info(_bn_hov, "PATTERN BANK: SELECTS THE NEXT PATTERN (THE ONE DEL REMOVES)");
-    draw_set_color(_bn_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_bnx1, _rowy, _bnx2, _rowy + 18, false);
+    scr_editor_control(_bnx1, _rowy, _bnx2, _rowy + 18, _bn_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_bnx1 + 9, _rowy + 4, ">");
@@ -915,8 +912,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _bax2 = _bax1 + 100;
     var _ba_hov = point_in_rectangle(_mx, _my, _bax1, _rowy, _bax2, _rowy + 18);
     scr_mm_info(_ba_hov, "ADDS A NEW EMPTY 64-ROW PATTERN TO THE BANK AND SELECTS IT");
-    draw_set_color(_ba_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
-    draw_rectangle(_bax1, _rowy, _bax2, _rowy + 18, false);
+    scr_editor_control(_bax1, _rowy, _bax2, _rowy + 18, _ba_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_bax1 + _bax2) * 0.5, _rowy + 4, "+ NEW");
@@ -944,8 +940,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _bd_lock = (array_length(_m.patterns) <= 1) || _bd_referenced;
     var _bd_hov  = !_bd_lock && point_in_rectangle(_mx, _my, _bdx1, _rowy, _bdx2, _rowy + 18);
     scr_mm_info(point_in_rectangle(_mx, _my, _bdx1, _rowy, _bdx2, _rowy + 18), "DELETES THE BANK'S SELECTED PATTERN (NOT IF A SONG USES IT, OR THE LAST ONE)");
-    draw_set_color(_bd_lock ? make_color_rgb(55, 40, 40) : (_bd_hov ? make_color_rgb(200, 60, 60) : make_color_rgb(100, 30, 30)));
-    draw_rectangle(_bdx1, _rowy, _bdx2, _rowy + 18, false);
+    scr_editor_control(_bdx1, _rowy, _bdx2, _rowy + 18, _bd_hov, false);
     draw_set_color(_bd_lock ? make_color_rgb(100, 80, 80) : c_white);
     draw_set_halign(fa_center);
     draw_text_l((_bdx1 + _bdx2) * 0.5, _rowy + 4, "DEL");
@@ -981,8 +976,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _opx2 = _opx1 + 18;
     var _op_hov = point_in_rectangle(_mx, _my, _opx1, _rowy, _opx2, _rowy + 18);
     scr_mm_info(_op_hov, "OCTAVE DOWN FOR TYPED NOTES, SPACE AND THE SPLIT PIANO (1-6)");
-    draw_set_color(_op_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_opx1, _rowy, _opx2, _rowy + 18, false);
+    scr_editor_control(_opx1, _rowy, _opx2, _rowy + 18, _op_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_opx1 + 9, _rowy + 4, "<");
@@ -1000,8 +994,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _onx2 = _onx1 + 18;
     var _on_hov = point_in_rectangle(_mx, _my, _onx1, _rowy, _onx2, _rowy + 18);
     scr_mm_info(_on_hov, "OCTAVE UP FOR TYPED NOTES, SPACE AND THE SPLIT PIANO (1-6)");
-    draw_set_color(_on_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_onx1, _rowy, _onx2, _rowy + 18, false);
+    scr_editor_control(_onx1, _rowy, _onx2, _rowy + 18, _on_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_onx1 + 9, _rowy + 4, ">");
@@ -1026,8 +1019,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _tp_dx2 = _tp_dx1 + 18;
     var _tp_d_hov = point_in_rectangle(_mx, _my, _tp_dx1, _rowy, _tp_dx2, _rowy + 18);
     scr_mm_info(_tp_d_hov, "TEMPO: ONE FRAME PER ROW LESS = FASTER (SHARED BY EVERY SONG HERE)");
-    draw_set_color(_tp_d_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_tp_dx1, _rowy, _tp_dx2, _rowy + 18, false);
+    scr_editor_control(_tp_dx1, _rowy, _tp_dx2, _rowy + 18, _tp_d_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_tp_dx1 + 9, _rowy + 4, "<");
@@ -1047,8 +1039,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _tp_ux2 = _tp_ux1 + 18;
     var _tp_u_hov = point_in_rectangle(_mx, _my, _tp_ux1, _rowy, _tp_ux2, _rowy + 18);
     scr_mm_info(_tp_u_hov, "TEMPO: ONE FRAME PER ROW MORE = SLOWER (SHARED BY EVERY SONG HERE)");
-    draw_set_color(_tp_u_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_tp_ux1, _rowy, _tp_ux2, _rowy + 18, false);
+    scr_editor_control(_tp_ux1, _rowy, _tp_ux2, _rowy + 18, _tp_u_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_tp_ux1 + 9, _rowy + 4, ">");
@@ -1205,10 +1196,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         draw_set_font_l(fnt_c64_tiny);
     }
 	_txt_scale = 1.5;
-    draw_set_color(make_color_rgb(14, 14, 22));
-    draw_rectangle(_col_gutter_x - 4, _gy0 - 2, _col_gutter_x + _grid_full_w + 4, _gy0 + _vis * _row_h + 2, false);
-    draw_set_color(make_color_rgb(50, 50, 70));
-    draw_rectangle(_col_gutter_x - 4, _gy0 - 2, _col_gutter_x + _grid_full_w + 4, _gy0 + _vis * _row_h + 2, true);
+    scr_editor_panel(_col_gutter_x - 4, _gy0 - 2, _col_gutter_x + _grid_full_w + 4, _gy0 + _vis * _row_h + 2, true);
 
     _m.list_scroll = clamp(_m.list_scroll, 0, max(0, _grid_len - _vis));
 
@@ -2317,8 +2305,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _gb_y = _clr_y + 27;
     var _gb_hot = point_in_rectangle(_mx, _my, _gb_x, _gb_y, _gb_x + _gb_w, _gb_y + 15);
     scr_mm_info(_gb_hot, "OPENS THE FULL PATTERN COMMAND GUIDE (EVERY COMMAND EXPLAINED)");
-    draw_set_color(_gb_hot ? make_color_rgb(65, 80, 100) : make_color_rgb(30, 38, 52));
-    draw_rectangle(_gb_x, _gb_y, _gb_x + _gb_w, _gb_y + 15, false);
+    scr_editor_control(_gb_x, _gb_y, _gb_x + _gb_w, _gb_y + 15, _gb_hot, false);
     draw_set_color(c_white);
     draw_text_l(_gb_x + 7, _gb_y + 2, "GUIDE");
     draw_set_font_l(fnt_c64_tiny);
@@ -2355,8 +2342,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _sg_px2 = _sg_px1 + 18;
     var _sg_p_hov = point_in_rectangle(_mx, _my, _sg_px1, _sgy, _sg_px2, _sgy + 18);
     scr_mm_info(_sg_p_hov, "SELECTS THE PREVIOUS SONG IN THIS ASSET (STOPS PLAYBACK)");
-    draw_set_color(_sg_p_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_sg_px1, _sgy, _sg_px2, _sgy + 18, false);
+    scr_editor_control(_sg_px1, _sgy, _sg_px2, _sgy + 18, _sg_p_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_sg_px1 + 9, _sgy + 4, "<");
@@ -2401,8 +2387,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _sg_nnx2 = _sg_nnx1 + 18;
     var _sg_nn_hov = point_in_rectangle(_mx, _my, _sg_nnx1, _sgy, _sg_nnx2, _sgy + 18);
     scr_mm_info(_sg_nn_hov, "SELECTS THE NEXT SONG IN THIS ASSET (STOPS PLAYBACK)");
-    draw_set_color(_sg_nn_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_sg_nnx1, _sgy, _sg_nnx2, _sgy + 18, false);
+    scr_editor_control(_sg_nnx1, _sgy, _sg_nnx2, _sgy + 18, _sg_nn_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_sg_nnx1 + 9, _sgy + 4, ">");
@@ -2420,8 +2405,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _sg_ax2 = _sg_ax1 + 90;
     var _sg_a_hov = point_in_rectangle(_mx, _my, _sg_ax1, _sgy, _sg_ax2, _sgy + 18);
     scr_mm_info(_sg_a_hov, "ADDS A NEW SONG (ONE ORDER ROW, PATTERN 0 ON V1) AND SELECTS IT");
-    draw_set_color(_sg_a_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
-    draw_rectangle(_sg_ax1, _sgy, _sg_ax2, _sgy + 18, false);
+    scr_editor_control(_sg_ax1, _sgy, _sg_ax2, _sgy + 18, _sg_a_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_sg_ax1 + _sg_ax2) * 0.5, _sgy + 4, "+ SONG");
@@ -2451,8 +2435,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _sg_d_lock = (array_length(_m.songs) <= 1);
     var _sg_d_hov  = !_sg_d_lock && point_in_rectangle(_mx, _my, _sg_dx1, _sgy, _sg_dx2, _sgy + 18);
     scr_mm_info(point_in_rectangle(_mx, _my, _sg_dx1, _sgy, _sg_dx2, _sgy + 18), "DELETES THE SELECTED SONG (NOT THE LAST ONE); ITS PATTERNS STAY IN THE BANK");
-    draw_set_color(_sg_d_lock ? make_color_rgb(55, 40, 40) : (_sg_d_hov ? make_color_rgb(200, 60, 60) : make_color_rgb(100, 30, 30)));
-    draw_rectangle(_sg_dx1, _sgy, _sg_dx2, _sgy + 18, false);
+    scr_editor_control(_sg_dx1, _sgy, _sg_dx2, _sgy + 18, _sg_d_hov, false);
     draw_set_color(_sg_d_lock ? make_color_rgb(100, 80, 80) : c_white);
     draw_set_halign(fa_center);
     draw_text_l((_sg_dx1 + _sg_dx2) * 0.5, _sgy + 4, "DEL SONG");
@@ -2506,10 +2489,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         draw_set_halign(fa_left);
     }
 
-    draw_set_color(make_color_rgb(14, 14, 22));
-    draw_rectangle(_ox0 - 4, _oy0 - 2, _ox0 + _ord_full_w + 4, _oy0 + _ord_vis * _ord_row_h + 2, false);
-    draw_set_color(make_color_rgb(100, 100, 140));
-    draw_rectangle(_ox0 - 4, _oy0 - 2, _ox0 + _ord_full_w + 4, _oy0 + _ord_vis * _ord_row_h + 2, true);
+    scr_editor_panel(_ox0 - 4, _oy0 - 2, _ox0 + _ord_full_w + 4, _oy0 + _ord_vis * _ord_row_h + 2, true);
 
     // Song playback follows the playing order row: it sits in the middle of the
     // table, and only near the start or end (where the clamp below stops the
@@ -2764,8 +2744,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _oax2 = _oax1 + 90;
     var _oa_hov = point_in_rectangle(_mx, _my, _oax1, _oby, _oax2, _oby + 18);
     scr_mm_info(_oa_hov, "ADDS A ROW TO THE END OF THIS SONG'S ORDER LIST AND SELECTS IT");
-    draw_set_color(_oa_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
-    draw_rectangle(_oax1, _oby, _oax2, _oby + 18, false);
+    scr_editor_control(_oax1, _oby, _oax2, _oby + 18, _oa_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_oax1 + _oax2) * 0.5, _oby + 4, "+ ADD ROW");
@@ -2800,8 +2779,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _lpx2 = _lpx1 + 130;
     var _lp_hov2 = point_in_rectangle(_mx, _my, _lpx1, _oby, _lpx2, _oby + 18);
     scr_mm_info(_lp_hov2, "MAKES THE SELECTED ORDER ROW THE SONG'S LOOP-BACK POINT (AQUA EDGE)");
-    draw_set_color(_lp_hov2 ? make_color_rgb(60, 130, 180) : make_color_rgb(30, 70, 100));
-    draw_rectangle(_lpx1, _oby, _lpx2, _oby + 18, false);
+    scr_editor_control(_lpx1, _oby, _lpx2, _oby + 18, _lp_hov2, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_lpx1 + _lpx2) * 0.5, _oby + 4, L("SET LOOP @ ROW ") + string(_m.sel_order_row));
@@ -2816,8 +2794,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _od_lock = (array_length(_cur_song.order) <= 1);
     var _od_hov  = !_od_lock && point_in_rectangle(_mx, _my, _odx1, _oby, _odx2, _oby + 18);
     scr_mm_info(point_in_rectangle(_mx, _my, _odx1, _oby, _odx2, _oby + 18), "DELETES THE SELECTED ORDER ROW (NOT THE LAST ONE)");
-    draw_set_color(_od_lock ? make_color_rgb(55, 40, 40) : (_od_hov ? make_color_rgb(200, 60, 60) : make_color_rgb(100, 30, 30)));
-    draw_rectangle(_odx1, _oby, _odx2, _oby + 18, false);
+    scr_editor_control(_odx1, _oby, _odx2, _oby + 18, _od_hov, false);
     draw_set_color(_od_lock ? make_color_rgb(100, 80, 80) : c_white);
     draw_set_halign(fa_center);
     draw_text_l((_odx1 + _odx2) * 0.5, _oby + 4, "DEL ROW");
@@ -2860,10 +2837,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         var _wm_w = string_width_l(_m.warn_msg) + 24;
         var _wm_cx = (_vx1 + _vx2) * 0.5;
         var _wm_y = _vy2 - 20;
-        draw_set_color(make_color_rgb(30, 26, 12));
-        draw_rectangle(_wm_cx - _wm_w * 0.5, _wm_y - 3, _wm_cx + _wm_w * 0.5, _wm_y + 15, false);
-        draw_set_color(make_color_rgb(150, 120, 50));
-        draw_rectangle(_wm_cx - _wm_w * 0.5, _wm_y - 3, _wm_cx + _wm_w * 0.5, _wm_y + 15, true);
+        scr_editor_panel(_wm_cx - _wm_w * 0.5, _wm_y - 3, _wm_cx + _wm_w * 0.5, _wm_y + 15, false);
         draw_set_color(make_color_rgb(255, 200, 90));
         draw_set_halign(fa_center);
         draw_text_l(_wm_cx, _wm_y, _m.warn_msg);
@@ -2946,10 +2920,7 @@ function scr_sound_editor_cmd_guide(_x1, _y1, _x2, _y2, _mx, _my, _click, _esc) 
     var _ph = min(_y2 - _y1 - 40, 900);
     var _px = _x1 + floor((_x2 - _x1 - _pw) / 2);
     var _py = _y1 + floor((_y2 - _y1 - _ph) / 2);
-    draw_set_color(make_color_rgb(14, 14, 24));
-    draw_rectangle(_px, _py, _px + _pw, _py + _ph, false);
-    draw_set_color(make_color_rgb(120, 120, 170));
-    draw_rectangle(_px, _py, _px + _pw, _py + _ph, true);
+    scr_editor_panel(_px, _py, _px + _pw, _py + _ph, true);
     draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_left);
     draw_set_color(make_color_rgb(255, 200, 100));
@@ -2991,8 +2962,7 @@ function scr_sound_editor_cmd_guide(_x1, _y1, _x2, _y2, _mx, _my, _click, _esc) 
     var _cbx = _px + _pw - 110;
     var _cby = _py + _ph - 34;
     var _cb_hot = point_in_rectangle(_mx, _my, _cbx, _cby, _cbx + 96, _cby + 26);
-    draw_set_color(_cb_hot ? make_color_rgb(65, 80, 100) : make_color_rgb(30, 38, 52));
-    draw_rectangle(_cbx, _cby, _cbx + 96, _cby + 26, false);
+    scr_editor_control(_cbx, _cby, _cbx + 96, _cby + 26, _cb_hot, false);
     draw_set_color(c_white);
     draw_text_l(_cbx + 8, _cby + 5, "CLOSE");
     if ((_cb_hot && _click) || _esc) {

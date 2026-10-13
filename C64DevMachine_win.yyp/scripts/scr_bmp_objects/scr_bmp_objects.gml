@@ -463,14 +463,7 @@ function scr_bmpobj_auto_mask(_asset, _o) {
 function scr_bmpobj_ui_button(_x1, _y1, _w, _h, _label, _on, _mx, _my, _info = "", _enabled = true) {
     var _hov = point_in_rectangle(_mx, _my, _x1, _y1, _x1 + _w, _y1 + _h);
     scr_ui_info(_hov, _info);
-    var _bg = make_color_rgb(31, 38, 54);
-    if (_hov && _enabled) { _bg = make_color_rgb(53, 61, 82); }
-    if (_on)  { _bg = make_color_rgb(38, 94, 111); }
-    draw_set_color(_bg);
-    draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _h, false);
-    draw_set_color(make_color_rgb(72, 83, 103));
-    if (_on) { draw_set_color(c_aqua); }
-    draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _h, true);
+    scr_editor_control(_x1, _y1, _x1 + _w, _y1 + _h, _hov, _on, _enabled);
     draw_set_color(_enabled ? c_white : make_color_rgb(90, 98, 115));
     draw_set_halign(fa_center);
     draw_text_l(_x1 + _w / 2, _y1 + (_h div 2) - 4, _label);
@@ -479,10 +472,7 @@ function scr_bmpobj_ui_button(_x1, _y1, _w, _h, _label, _on, _mx, _my, _info = "
 }
 
 function scr_bmpobj_ui_panel(_x1, _y1, _x2, _y2, _title) {
-    draw_set_color(make_color_rgb(20, 25, 37));
-    draw_rectangle(_x1, _y1, _x2, _y2, false);
-    draw_set_color(make_color_rgb(52, 62, 84));
-    draw_rectangle(_x1, _y1, _x2, _y2, true);
+    scr_editor_panel(_x1, _y1, _x2, _y2, false);
     draw_set_color(make_color_rgb(30, 37, 53));
     draw_rectangle(_x1 + 1, _y1 + 1, _x2 - 1, _y1 + 20, false);
     draw_set_color(make_color_rgb(154, 175, 198));

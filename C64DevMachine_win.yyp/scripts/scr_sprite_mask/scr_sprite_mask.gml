@@ -380,10 +380,9 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _button = function(_x1, _y1, _w, _label, _on, _mx2, _my2, _info = "") {
         var _hov = point_in_rectangle(_mx2, _my2, _x1, _y1, _x1 + _w, _y1 + 26);
         scr_ui_info(_hov, _info);
-        draw_set_color(_on ? make_color_rgb(38, 94, 111) : (_hov ? make_color_rgb(53, 61, 82) : make_color_rgb(31, 38, 54)));
-        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + 26, false);
+        scr_editor_control(_x1, _y1, _x1 + _w, _y1 + 26, _hov, false);
         draw_set_color(_on ? c_aqua : make_color_rgb(72, 83, 103));
-        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + 26, true);
+        draw_roundrect_ext(_x1, _y1, _x1 + _w, _y1 + 26, 5, 5, true);
         draw_set_color(c_white);
         draw_text_l(_x1 + 10, _y1 + 8, _label);
         return (_hov && mouse_check_button_pressed(mb_left));
@@ -875,8 +874,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _ry=_ly+_li*24;
         var _hover=point_in_rectangle(_mx,_my,_lx,_ry,_lx+_lw-10,_ry+23);
         var _selected=_items[_ii]==_m.ref_bmp;
-        draw_set_color(_selected ? make_color_rgb(35,83,77) : (_hover ? make_color_rgb(45,70,90) : make_color_rgb(16,19,29)));
-        draw_rectangle(_lx,_ry,_lx+_lw-10,_ry+22,false);
+        scr_editor_control(_lx,_ry,_lx+_lw-10,_ry+22, _hover, false);
         draw_set_color(_selected ? c_lime : c_white);
         draw_text_l(_lx+6,_ry+6,_am.manifest_fit_name(_items[_ii],_lw-24));
         if (_hover) _detail=_items[_ii];

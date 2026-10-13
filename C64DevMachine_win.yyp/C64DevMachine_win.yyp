@@ -955,6 +955,8 @@
   },
   "name":"C64DevMachine_win",
   "resources":[
+    {"id":{"name":"spr_editor_slate","path":"sprites/spr_editor_slate/spr_editor_slate.yy",},},
+    {"id":{"name":"scr_editor_skin","path":"scripts/scr_editor_skin/scr_editor_skin.yy",},},
     {"id":{"name":"execute_shell_simple_ext","path":"extensions/execute_shell_simple_ext/execute_shell_simple_ext.yy",},},
     {"id":{"name":"sid64","path":"extensions/sid64/sid64.yy",},},
     {"id":{"name":"fnt_big","path":"fonts/fnt_big/fnt_big.yy",},},

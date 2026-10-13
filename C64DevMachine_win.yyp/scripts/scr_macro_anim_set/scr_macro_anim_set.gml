@@ -783,8 +783,7 @@ function scr_anim_asset_open(_n) {
 function scr_anim_asset_button(_x,_y,_w,_text,_active=false,_info="") {
     var _hover=point_in_rectangle(device_mouse_x_to_gui(0),device_mouse_y_to_gui(0),_x,_y,_x+_w,_y+26);
     scr_ui_info(_hover,_info);
-    draw_set_color(_active?make_color_rgb(40,105,90):(_hover?make_color_rgb(50,70,90):make_color_rgb(28,38,48)));
-    draw_rectangle(_x,_y,_x+_w,_y+26,false);draw_set_color(c_white);draw_set_halign(fa_left);
+    scr_editor_control(_x,_y,_x+_w,_y+26, _hover, _active);draw_set_color(c_white);draw_set_halign(fa_left);
     draw_text_l(_x+6,_y+5,_text);
     return _hover && mouse_check_button_pressed(mb_left);
 }

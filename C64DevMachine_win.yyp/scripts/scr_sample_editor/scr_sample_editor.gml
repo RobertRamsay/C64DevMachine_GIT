@@ -13,8 +13,7 @@ function scr_sample_button(_x1, _y1, _w, _h, _label, _on, _enabled, _mx, _my, _i
     } else if (_hov) {
         _bg = make_color_rgb(66, 66, 98);
     }
-    draw_set_color(_bg);
-    draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _h, false);
+    scr_editor_control(_x1, _y1, _x1 + _w, _y1 + _h, _hov, _on, _enabled);
     draw_set_color(_tx);
     draw_set_halign(fa_center);
     draw_text_l(_x1 + _w * 0.5, _y1 + 4, _label);

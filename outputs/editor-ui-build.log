@@ -1,0 +1,93 @@
+Options: C:/ProgramData/GameMakerStudio2/Cache/runtimes/runtime-2024.14.4.268\bin\platform_setting_defaults.json
+Options: C:\Users\Robert\AppData\Roaming/GameMakerStudio2/me_1710\local_settings.json
+Setting up the Asset compiler
+Found Project Format 2
++++ GMSC serialisation:  SUCCESSFUL LOAD AND LINK TIME: 450.1036ms
+Success
+finished adding assets from D:/POLYTRICITY/C64DevMachine_GIT/C64DevMachine_win.yyp/C64DevMachine_win.yyp.
+Release build
+Options: C:\Users\Robert\AppData\Local\Temp/c64dm-editor-ui-cache\ExtensionOptions.json
+OptionsIni
+Options: C:\Users\Robert\AppData\Local\Temp/c64dm-editor-ui-cache\PlatformOptions.json
+[Compile] Run asset compiler
+Looking for built-in fallback image in C:/ProgramData/GameMakerStudio2/Cache/runtimes/runtime-2024.14.4.268\bin\BuiltinImages
+Compile Constants...finished.
+Remove DnD...finished.
+Compile Scripts...finished.
+Compile Rooms...finished..... 0 CC empty
+finished..... 0 CC empty
+Compile Objects...finished.... 2 empty events
+Compile Timelines...finished.
+Compile Triggers...finished.
+Compile Extensions...Compile UI Layers...finished.
+Global scripts...finished.
+collapsing enums.
+Final Compile...Final Compile finished.
+Looking for built-in particle images in C:/ProgramData/GameMakerStudio2/Cache/runtimes/runtime-2024.14.4.268\bin\assetcompiler\ParticleImages
+Saving IFF file... C:\Users\Robert\AppData\Local\Temp\C64DevMachine_win.win
+Writing Chunk... GEN8 size ... -0.00 MB
+option_game_speed=60
+Writing Chunk... OPTN size ... 0.00 MB
+Writing Chunk... LANG size ... 0.00 MB
+Writing Chunk... EXTN size ... 0.00 MB
+Writing Chunk... SOND size ... 0.00 MB
+Writing Chunk... AGRP size ... 0.00 MB
+Writing Chunk... SPRT size ... 0.00 MB
+Writing Chunk... BGND size ... 0.00 MB
+Writing Chunk... PATH size ... 0.00 MB
+Writing Chunk... SCPT size ... 0.00 MB
+Writing Chunk... GLOB size ... 0.04 MB
+Writing Chunk... SHDR size ... 0.00 MB
+Compiling Shader Shader_shd_png_import... compiled with vs_4_0_level_9_1 (optimised)
+Compiling Shader Shader_shd_png_import... compiled with ps_4_0 (optimised)
+Writing Chunk... FONT size ... 0.01 MB
+Writing Chunk... TMLN size ... 0.02 MB
+Writing Chunk... OBJT size ... 0.00 MB
+Writing Chunk... FEDS size ... 0.01 MB
+Writing Chunk... ACRV size ... 0.00 MB
+Writing Chunk... SEQN size ... 0.00 MB
+Writing Chunk... TAGS size ... 0.00 MB
+Writing Chunk... ROOM size ... 0.00 MB
+Writing Chunk... UILR size ... 0.00 MB
+Writing Chunk... DAFL size ... 0.00 MB
+Writing Chunk... EMBI size ... 0.00 MB
+Writing Chunk... PSEM size ... 0.00 MB
+Writing Chunk... PSYS size ... 0.00 MB
+Writing Chunk... TPAGE size ... 0.00 MB
+Texture Group - __YY__0fallbacktexture.png_YYG_AUTO_GEN_TEX_GROUP_NAME_
+Texture Group - Default
+Writing Chunk... TGIN size ... 0.00 MB
+Writing Chunk... CODE size ... 0.00 MB
+Writing Chunk... VARI size ... 4.92 MB
+Writing Chunk... FUNC size ... 0.57 MB
+Writing Chunk... FEAT size ... 0.04 MB
+Writing Chunk... STRG size ... 0.00 MB
+Writing Chunk... TXTR size ... 0.95 MB
+0 Compressing texture... writing texture __yy__0fallbacktexture.png_yyg_auto_gen_tex_group_name__0.yytex... 
+1 Compressing texture... writing texture default_0.yytex... 
+2 Compressing texture... writing texture default_1.yytex... 
+3 Compressing texture... writing texture default_2.yytex... 
+4 Compressing texture... writing texture default_3.yytex... 
+5 Compressing texture... writing texture default_4.yytex... 
+6 Compressing texture... writing texture default_5.yytex... 
+7 Compressing texture... writing texture default_6.yytex... 
+Writing Chunk... AUDO size ... 3.84 MB
+Stats : GMA : Elapsed=12149.4876
+Stats : GMA : sp=25,au=0,bk=0,pt=0,sc=3601,sh=1,fo=10,tl=0,ob=16,ro=1,da=900,ex=2,ma=6,fm=0x5040B39D6FB73EB1
+DoSplash
+Igor complete.
+PlatformOptions
+DoVersion
+DoIcon
+Exception during processing System.UnauthorizedAccessException: Access to the path 'C:\Users\Robert\AppData\Local\Temp\DA4AB3E7-2EE0-4EC8-B7E0-BEFF9C0C8AC1' is denied.
+   at System.IO.Enumeration.FileSystemEnumerator`1.Init()
+   at System.IO.Enumeration.FileSystemEnumerableFactory.UserFiles(String directory, String expression, EnumerationOptions options)
+   at Igor.Utils.addFolderToZip(ZipFile f, String root, String folder, String no_compress_suffix)
+   at Igor.Utils.addFolderToZip(ZipFile f, String root, String folder, String no_compress_suffix)
+   at Igor.Utils.MakeZipFile(String _directory, String _zipfile, String no_compress_suffix)
+System.IO.IOException: The process cannot access the file because it is being used by another process.
+   at System.IO.FileSystem.MoveFile(String sourceFullPath, String destFullPath, Boolean overwrite)
+   at Igor.WindowsBuilder.PackageZip()
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+Igor complete.

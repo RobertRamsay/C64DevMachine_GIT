@@ -156,8 +156,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _sbx2 = _sbx1 + 150;
     var _sb_hov = point_in_rectangle(_mx, _my, _sbx1, _rowy, _sbx2, _rowy + 18);
     scr_ui_info(_sb_hov, "SOURCE BITMAP - CLICK TO PICK THE BITMAP ASSET USED AS THE TILE SHEET TO GRAB FROM");
-    draw_set_color(_sb_hov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
-    draw_rectangle(_sbx1, _rowy, _sbx2, _rowy + 18, false);
+    scr_editor_control(_sbx1, _rowy, _sbx2, _rowy + 18, _sb_hov, false);
     draw_set_color((_m.src_asset != "") ? c_aqua : make_color_rgb(150, 150, 150));
     draw_text_l(_sbx1 + 6, _rowy + 4, (_m.src_asset != "") ? scr_bbuild_fit_name(_m.src_asset, _sbx2 - _sbx1 - 12) : L("-- PICK --"));
     if (_sb_hov && mouse_check_button_pressed(mb_left)) {
@@ -175,8 +174,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _dbx2 = _dbx1 + 150;
     var _db_hov = point_in_rectangle(_mx, _my, _dbx1, _rowy, _dbx2, _rowy + 18);
     scr_ui_info(_db_hov, "DEST BITMAP - CLICK TO PICK THE BITMAP ASSET THE BLOCKS ARE PLACED ONTO (BAKE WRITES INTO IT)");
-    draw_set_color(_db_hov ? make_color_rgb(40, 80, 60) : make_color_rgb(20, 35, 25));
-    draw_rectangle(_dbx1, _rowy, _dbx2, _rowy + 18, false);
+    scr_editor_control(_dbx1, _rowy, _dbx2, _rowy + 18, _db_hov, false);
     draw_set_color((_m.dst_asset != "") ? c_yellow : make_color_rgb(150, 150, 150));
     draw_text_l(_dbx1 + 6, _rowy + 4, (_m.dst_asset != "") ? scr_bbuild_fit_name(_m.dst_asset, _dbx2 - _dbx1 - 12) : L("-- PICK --"));
     if (_db_hov && mouse_check_button_pressed(mb_left)) {
@@ -195,13 +193,11 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _bl_hov = point_in_rectangle(_mx, _my, _blx1, _rowy, _blx2, _rowy + 18);
     scr_ui_info(_bl_hov, "BLEND - TOGGLE SOLID (OPAQUE COPY) OR MASK 00 (COLOUR 00 PIXELS LEAVE THE DEST SHOWING)");
     if (_m.blend == 1) {
-        draw_set_color(_bl_hov ? make_color_rgb(120, 160, 200) : make_color_rgb(30, 70, 110));
-        draw_rectangle(_blx1, _rowy, _blx2, _rowy + 18, false);
+        scr_editor_control(_blx1, _rowy, _blx2, _rowy + 18, _bl_hov, false);
         draw_set_color(make_color_rgb(140, 210, 255));
         draw_text_l(_blx1 + 6, _rowy + 4, "MASK 00");
     } else {
-        draw_set_color(_bl_hov ? make_color_rgb(200, 150, 80) : make_color_rgb(110, 70, 25));
-        draw_rectangle(_blx1, _rowy, _blx2, _rowy + 18, false);
+        scr_editor_control(_blx1, _rowy, _blx2, _rowy + 18, _bl_hov, false);
         draw_set_color(make_color_rgb(255, 190, 110));
         draw_text_l(_blx1 + 6, _rowy + 4, "SOLID");
     }
@@ -240,15 +236,13 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _tag_hov = point_in_rectangle(_mx, _my, _tag_x1, _rowy, _tag_x2, _rowy + 18);
     scr_ui_info(_tag_hov, "TAG MODE - TOGGLE PAINTING COLLISION TYPES ONTO THE SOURCE SHEET (LMB PAINT, RMB ERASE)");
     if (_m.tag_mode == 1) {
-        draw_set_color(_tag_hov ? make_color_rgb(220, 100, 100) : make_color_rgb(140, 40, 40));
-        draw_rectangle(_tag_x1, _rowy, _tag_x2, _rowy + 18, false);
+        scr_editor_control(_tag_x1, _rowy, _tag_x2, _rowy + 18, _tag_hov, false);
         draw_set_color(make_color_rgb(255, 180, 180));
         draw_set_halign(fa_center);
         draw_text_l((_tag_x1 + _tag_x2) * 0.5, _rowy + 4, "TAG ON");
         draw_set_halign(fa_left);
     } else {
-        draw_set_color(_tag_hov ? make_color_rgb(80, 80, 110) : make_color_rgb(35, 35, 50));
-        draw_rectangle(_tag_x1, _rowy, _tag_x2, _rowy + 18, false);
+        scr_editor_control(_tag_x1, _rowy, _tag_x2, _rowy + 18, _tag_hov, false);
         draw_set_color(make_color_rgb(120, 120, 150));
         draw_set_halign(fa_center);
         draw_text_l((_tag_x1 + _tag_x2) * 0.5, _rowy + 4, "TAG OFF");
@@ -295,8 +289,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _tt_px2   = _tt_px1 + 16;
     var _tt_p_hov = point_in_rectangle(_mx, _my, _tt_px1, _rowy, _tt_px2, _rowy + 18);
     scr_ui_info(_tt_p_hov, "TAG TYPE DOWN - STEP THE TYPE TAG MODE PAINTS (T1-T16, 0 = ERASE), WRAPS AROUND");
-    draw_set_color(_tt_p_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_tt_px1, _rowy, _tt_px2, _rowy + 18, false);
+    scr_editor_control(_tt_px1, _rowy, _tt_px2, _rowy + 18, _tt_p_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_tt_px1 + 8, _rowy + 4, "<");
@@ -308,10 +301,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _tt_sw1 = _tt_px2 + 4;
     var _tt_sw2 = _tt_sw1 + 44;
     if (_m.tag_type == 0) {
-        draw_set_color(make_color_rgb(30, 30, 40));
-        draw_rectangle(_tt_sw1, _rowy, _tt_sw2, _rowy + 18, false);
-        draw_set_color(make_color_rgb(90, 90, 110));
-        draw_rectangle(_tt_sw1, _rowy, _tt_sw2, _rowy + 18, true);
+        scr_editor_panel(_tt_sw1, _rowy, _tt_sw2, _rowy + 18, false);
         draw_set_color(make_color_rgb(140, 140, 160));
         draw_set_halign(fa_center);
         draw_text_l((_tt_sw1 + _tt_sw2) * 0.5, _rowy + 4, "ERASE");
@@ -321,7 +311,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         draw_rectangle(_tt_sw1, _rowy, _tt_sw2, _rowy + 18, false);
         draw_set_color(c_black);
         draw_rectangle(_tt_sw1, _rowy, _tt_sw2, _rowy + 18, true);
-        draw_set_color(c_black);
+        draw_set_color(c_white);
         draw_set_halign(fa_center);
         draw_text_l((_tt_sw1 + _tt_sw2) * 0.5, _rowy + 4, "T" + string(_m.tag_type));
         draw_set_halign(fa_left);
@@ -331,8 +321,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _tt_nx2   = _tt_nx1 + 16;
     var _tt_n_hov = point_in_rectangle(_mx, _my, _tt_nx1, _rowy, _tt_nx2, _rowy + 18);
     scr_ui_info(_tt_n_hov, "TAG TYPE UP - STEP THE TYPE TAG MODE PAINTS (T1-T16, 0 = ERASE), WRAPS AROUND");
-    draw_set_color(_tt_n_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_tt_nx1, _rowy, _tt_nx2, _rowy + 18, false);
+    scr_editor_control(_tt_nx1, _rowy, _tt_nx2, _rowy + 18, _tt_n_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_tt_nx1 + 8, _rowy + 4, ">");
@@ -402,8 +391,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _gpx2   = _gpx1 + 18;
     var _gp_hov = point_in_rectangle(_mx, _my, _gpx1, _rowy, _gpx2, _rowy + 18);
     scr_ui_info(_gp_hov, "PREVIOUS GROUP - SHOW AND PREVIEW THE GROUP BEFORE THIS ONE (THE NODE'S ENTRY VAR NUMBER)");
-    draw_set_color(_gp_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_gpx1, _rowy, _gpx2, _rowy + 18, false);
+    scr_editor_control(_gpx1, _rowy, _gpx2, _rowy + 18, _gp_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_gpx1 + 9, _rowy + 4, "<");
@@ -429,8 +417,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _gnx2   = _gnx1 + 18;
     var _gn_hov2 = point_in_rectangle(_mx, _my, _gnx1, _rowy, _gnx2, _rowy + 18);
     scr_ui_info(_gn_hov2, "NEXT GROUP - SHOW AND PREVIEW THE GROUP AFTER THIS ONE (THE NODE'S ENTRY VAR NUMBER)");
-    draw_set_color(_gn_hov2 ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_gnx1, _rowy, _gnx2, _rowy + 18, false);
+    scr_editor_control(_gnx1, _rowy, _gnx2, _rowy + 18, _gn_hov2, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_gnx1 + 9, _rowy + 4, ">");
@@ -456,8 +443,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _gax2   = _gax1 + 70;
     var _ga_hov = point_in_rectangle(_mx, _my, _gax1, _rowy, _gax2, _rowy + 18);
     scr_ui_info(_ga_hov, "ADD GROUP - CLOSE THE LAST GROUP WITH $FF AND START A NEW EMPTY GROUP AT THE END");
-    draw_set_color(_ga_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
-    draw_rectangle(_gax1, _rowy, _gax2, _rowy + 18, false);
+    scr_editor_control(_gax1, _rowy, _gax2, _rowy + 18, _ga_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_gax1 + _gax2) * 0.5, _rowy + 4, "+ ADD");
@@ -520,8 +506,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _rdx2 = _rdx1 + 80;
     var _rd_hov = point_in_rectangle(_mx, _my, _rdx1, _rowy, _rdx2, _rowy + 18);
     scr_ui_info(_rd_hov, "REDRAW - WIPE THE DEST PREVIEW AND REPLAY THE CURRENT GROUP'S RECORDS");
-    draw_set_color(_rd_hov ? make_color_rgb(60, 160, 200) : make_color_rgb(25, 70, 95));
-    draw_rectangle(_rdx1, _rowy, _rdx2, _rowy + 18, false);
+    scr_editor_control(_rdx1, _rowy, _rdx2, _rowy + 18, _rd_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_rdx1 + _rdx2) * 0.5, _rowy + 4, "REDRAW");
@@ -547,8 +532,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         draw_text_l((_gnx1 + _gnx2) * 0.5, _rowy + 4, "BBD AUTO");
         draw_set_halign(fa_left);
     } else {
-        draw_set_color(_gn_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
-        draw_rectangle(_gnx1, _rowy, _gnx2, _rowy + 18, false);
+        scr_editor_control(_gnx1, _rowy, _gnx2, _rowy + 18, _gn_hov, false);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
         draw_text_l((_gnx1 + _gnx2) * 0.5, _rowy + 4, "GENERATE BBD");
@@ -571,8 +555,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _bkx2 = _bkx1 + 110;
     var _bk_hov = point_in_rectangle(_mx, _my, _bkx1, _rowy, _bkx2, _rowy + 18);
     scr_ui_info(_bk_hov, "BAKE - WRITE THE PREVIEW INTO THE REAL DEST BITMAP ASSET");
-    draw_set_color(_bk_hov ? make_color_rgb(200, 120, 40) : make_color_rgb(100, 55, 15));
-    draw_rectangle(_bkx1, _rowy, _bkx2, _rowy + 18, false);
+    scr_editor_control(_bkx1, _rowy, _bkx2, _rowy + 18, _bk_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_bkx1 + _bkx2) * 0.5, _rowy + 4, "BAKE -> DEST");
@@ -1033,7 +1016,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
                 draw_rectangle(_tx1, _ty1, _tx1 + _cs, _ty1 + _cs, false);
                 draw_set_alpha(1.0);
                 if (_m.tag_mode == 1) {
-                    draw_set_color(c_black);
+                    draw_set_color(c_white);
                     draw_text_l(_tx1 + 1, _ty1 + 1, "T" + string(_tv));
                 }
             }
@@ -1094,7 +1077,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
                 draw_set_alpha(0.75);
                 draw_rectangle(_dtx1, _dty1, _dtx1 + _cs, _dty1 + _cs, false);
                 draw_set_alpha(1.0);
-                draw_set_color(c_black);
+                draw_set_color(c_white);
 				draw_text_l(_dtx1 + 1, _dty1 + 1, "T" + string(_dtv));
             }
         }
@@ -1246,10 +1229,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
             _bb_edit_bitmap(_src_idx, _src);
         }
     } else {
-        draw_set_color(make_color_rgb(30, 30, 40));
-        draw_rectangle(_esb_x1, _eb_y, _esb_x2, _eb_y + _eb_h, false);
-        draw_set_color(make_color_rgb(80, 80, 100));
-        draw_rectangle(_esb_x1, _eb_y, _esb_x2, _eb_y + _eb_h, true);
+        scr_editor_panel(_esb_x1, _eb_y, _esb_x2, _eb_y + _eb_h, false);
         draw_set_color(make_color_rgb(90, 90, 110));
         draw_set_halign(fa_center);
         draw_text_l((_esb_x1 + _esb_x2) * 0.5, _eb_y + 4, "NO SRC LINKED");
@@ -1276,10 +1256,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
             _bb_edit_bitmap(_dst_idx, _dst);
         }
     } else {
-        draw_set_color(make_color_rgb(30, 30, 40));
-        draw_rectangle(_edb_x1, _eb_y, _edb_x2, _eb_y + _eb_h, false);
-        draw_set_color(make_color_rgb(80, 80, 100));
-        draw_rectangle(_edb_x1, _eb_y, _edb_x2, _eb_y + _eb_h, true);
+        scr_editor_panel(_edb_x1, _eb_y, _edb_x2, _eb_y + _eb_h, false);
         draw_set_color(make_color_rgb(90, 90, 110));
         draw_set_halign(fa_center);
         draw_text_l((_edb_x1 + _edb_x2) * 0.5, _eb_y + 4, "NO DST LINKED");
@@ -1414,8 +1391,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _mpx2   = _mpx1 + 18;
     var _mp_hov = point_in_rectangle(_mx, _my, _mpx1, _mgy, _mpx2, _mgy + 18);
     scr_ui_info(_mp_hov, "PREVIOUS GROUP - SHOW AND PREVIEW THE GROUP BEFORE THIS ONE");
-    draw_set_color(_mp_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_mpx1, _mgy, _mpx2, _mgy + 18, false);
+    scr_editor_control(_mpx1, _mgy, _mpx2, _mgy + 18, _mp_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_mpx1 + 9, _mgy + 4, "<");
@@ -1438,8 +1414,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _mnx2   = _mnx1 + 18;
     var _mn_hov = point_in_rectangle(_mx, _my, _mnx1, _mgy, _mnx2, _mgy + 18);
     scr_ui_info(_mn_hov, "NEXT GROUP - SHOW AND PREVIEW THE GROUP AFTER THIS ONE");
-    draw_set_color(_mn_hov ? make_color_rgb(60, 180, 200) : make_color_rgb(30, 80, 100));
-    draw_rectangle(_mnx1, _mgy, _mnx2, _mgy + 18, false);
+    scr_editor_control(_mnx1, _mgy, _mnx2, _mgy + 18, _mn_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_mnx1 + 9, _mgy + 4, ">");
@@ -1463,8 +1438,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _max2   = _max1 + 70;
     var _ma_hov = point_in_rectangle(_mx, _my, _max1, _mgy, _max2, _mgy + 18);
     scr_ui_info(_ma_hov, "ADD GROUP - CLOSE THE LAST GROUP WITH $FF AND START A NEW EMPTY GROUP AT THE END");
-    draw_set_color(_ma_hov ? make_color_rgb(60, 200, 80) : make_color_rgb(20, 100, 40));
-    draw_rectangle(_max1, _mgy, _max2, _mgy + 18, false);
+    scr_editor_control(_max1, _mgy, _max2, _mgy + 18, _ma_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_max1 + _max2) * 0.5, _mgy + 4, "+ ADD");
@@ -1519,10 +1493,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         + string(_emit_recs) + "x6 = "
         + string(_emit_recs * 6) + "B");
 
-    draw_set_color(make_color_rgb(14, 14, 22));
-    draw_rectangle(_lx0 - 4, _ly0 - 2, _lx0 + _lw + 4, _ly0 + _vis * _row_h + 2, false);
-    draw_set_color(make_color_rgb(50, 50, 70));
-    draw_rectangle(_lx0 - 4, _ly0 - 2, _lx0 + _lw + 4, _ly0 + _vis * _row_h + 2, true);
+    scr_editor_panel(_lx0 - 4, _ly0 - 2, _lx0 + _lw + 4, _ly0 + _vis * _row_h + 2, true);
 
     // Column header
     draw_set_font_l(fnt_c64_pico);
@@ -1788,8 +1759,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _aex2 = _aex1 + 80;
     var _ae_hov = point_in_rectangle(_mx, _my, _aex1, _by, _aex2, _by + 18);
     scr_ui_info(_ae_hov, "+ $FF END - SAME AS + ADD: END THE LAST GROUP AND START A NEW EMPTY ONE");
-    draw_set_color(_ae_hov ? make_color_rgb(180, 70, 70) : make_color_rgb(90, 30, 30));
-    draw_rectangle(_aex1, _by, _aex2, _by + 18, false);
+    scr_editor_control(_aex1, _by, _aex2, _by + 18, _ae_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_aex1 + _aex2) * 0.5, _by + 4, "+ $FF END");
@@ -1821,8 +1791,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _upx2 = _upx1 + 34;
     var _up_hov = point_in_rectangle(_mx, _my, _upx1, _by, _upx2, _by + 18);
     scr_ui_info(_up_hov, "UP - MOVE THE SELECTED RECORD ONE PLACE EARLIER (SHIFT+UP)");
-    draw_set_color(_up_hov ? make_color_rgb(80, 80, 110) : make_color_rgb(40, 40, 60));
-    draw_rectangle(_upx1, _by, _upx2, _by + 18, false);
+    scr_editor_control(_upx1, _by, _upx2, _by + 18, _up_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_upx1 + _upx2) * 0.5, _by + 4, "UP");
@@ -1843,8 +1812,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _dnx2 = _dnx1 + 46;
     var _dn_hov = point_in_rectangle(_mx, _my, _dnx1, _by, _dnx2, _by + 18);
     scr_ui_info(_dn_hov, "DOWN - MOVE THE SELECTED RECORD ONE PLACE LATER (SHIFT+DOWN)");
-    draw_set_color(_dn_hov ? make_color_rgb(80, 80, 110) : make_color_rgb(40, 40, 60));
-    draw_rectangle(_dnx1, _by, _dnx2, _by + 18, false);
+    scr_editor_control(_dnx1, _by, _dnx2, _by + 18, _dn_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_dnx1 + _dnx2) * 0.5, _by + 4, "DOWN");
@@ -1866,8 +1834,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _clx2 = _clx1 + 70;
     var _cl_hov = point_in_rectangle(_mx, _my, _clx1, _by, _clx2, _by + 18);
     scr_ui_info(_cl_hov, "CLR GRP - DELETE EVERY RECORD IN THIS GROUP, KEEPING ITS $FF END (CTRL+Z UNDOES)");
-    draw_set_color(_cl_hov ? make_color_rgb(200, 60, 60) : make_color_rgb(120, 30, 30));
-    draw_rectangle(_clx1, _by, _clx2, _by + 18, false);
+    scr_editor_control(_clx1, _by, _clx2, _by + 18, _cl_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l((_clx1 + _clx2) * 0.5, _by + 4, "CLR GRP");

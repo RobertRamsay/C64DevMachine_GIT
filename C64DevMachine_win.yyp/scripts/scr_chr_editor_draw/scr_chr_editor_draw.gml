@@ -495,8 +495,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     // FLIP X
     var _fxhov = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
     scr_ui_info(_fxhov, "FLIP X: MIRRORS THE CHARACTER LEFT TO RIGHT (MC KEEPS PIXEL PAIRS INTACT). UNDOABLE");
-    draw_set_color(_fxhov ? make_color_rgb(80, 160, 200) : make_color_rgb(30, 60, 80));
-    draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
+    scr_editor_control(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, _fxhov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, "FLIP X");
@@ -529,8 +528,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     // FLIP Y
     var _fyhov = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
     scr_ui_info(_fyhov, "FLIP Y: MIRRORS THE CHARACTER TOP TO BOTTOM. UNDOABLE");
-    draw_set_color(_fyhov ? make_color_rgb(80, 160, 200) : make_color_rgb(30, 60, 80));
-    draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
+    scr_editor_control(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, _fyhov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, "FLIP Y");
@@ -552,8 +550,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     // CLEAR
     var _clhov = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
     scr_ui_info(_clhov, "CLEAR: BLANKS ALL 8 ROWS OF THIS CHARACTER TO BACKGROUND. CTRL+Z UNDOES");
-    draw_set_color(_clhov ? make_color_rgb(180, 60, 60) : make_color_rgb(80, 25, 25));
-    draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
+    scr_editor_control(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, _clhov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
     draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, "CLEAR");
@@ -578,7 +575,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
         draw_set_color(_flhov ? make_color_rgb(40, 120, 40) : make_color_rgb(25, 80, 25));
     }
     draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
-    draw_set_color(chr_fill_mode ? c_black : c_white);
+    draw_set_color(chr_fill_mode ? c_white : c_white);
     draw_set_halign(fa_center);
     draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, chr_fill_mode ? L("FILL: ON") : L("FILL"));
     draw_set_halign(fa_left);

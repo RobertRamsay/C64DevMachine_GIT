@@ -26,12 +26,13 @@ var _mx           = global.gui_mouse_x;
 var _my           = global.gui_mouse_y;
 var _panel_right  = _gui_w - 2;
 var _panel_bottom = _gui_h - 100;
-var _panel_w      = _panel_right - panel_x;
-var _panel_h      = _panel_bottom - panel_y;
+
 
 panel_w = 244;
 panel_x = _gui_w - panel_w - 30;
 panel_y = 345;   // just under the shortcuts column (ends at y 340)
+var _panel_w = _panel_right - panel_x;
+var _panel_h = _panel_bottom - panel_y;
 global.mouse_in_asset_panel = false;
 global.mouse_in_asset_panel = point_in_rectangle(_mx, _my, panel_x, panel_y, _panel_right, _panel_bottom);
 
@@ -2420,7 +2421,7 @@ if ((mouse_check_button_pressed(mb_left) || _tour_add) && !global.any_picker_ope
     }
 
     // ADD ASSET button
-    if (point_in_rectangle(_mx, _my, panel_x + 4, panel_y + 4, panel_x + panel_w - 4, panel_y + 26)) {
+    if (point_in_rectangle(_mx, _my, panel_x + 4, panel_y + 4, _panel_right - 4, panel_y + 26)) {
         add_dropdown_open = !add_dropdown_open;
         exit;
     }

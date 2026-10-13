@@ -33,10 +33,7 @@ function scr_code_editor_draw() {
     var _ph = 900;
     var _px = (_gui_w - _pw) / 2;
     var _py = (_gui_h - _ph) / 2;
-    draw_set_color(make_color_rgb(20, 22, 30));
-    draw_rectangle(_px, _py, _px + _pw, _py + _ph, false);
-    draw_set_color(make_color_rgb(50, 140, 100));
-    draw_rectangle(_px, _py, _px + _pw, _py + _ph, true);
+    scr_editor_panel(_px, _py, _px + _pw, _py + _ph, false);
     // ─── Header ───
     draw_set_color(make_color_rgb(40, 100, 70));
     draw_rectangle(_px, _py, _px + _pw, _py + 28, false);
@@ -62,10 +59,9 @@ draw_set_halign(fa_center);
 	var _exp_hover = (_mx >= _exp_x && _mx <= _exp_x + _exp_w
                      && _my >= _exp_y && _my <= _exp_y + _exp_h);
 
-	draw_set_color(_exp_hover ? make_color_rgb(50, 100, 180) : make_color_rgb(30, 50, 80));
-	draw_rectangle(_exp_x, _exp_y, _exp_x + _exp_w, _exp_y + _exp_h, false);
+	scr_editor_control(_exp_x, _exp_y, _exp_x + _exp_w, _exp_y + _exp_h, _exp_hover, false);
 	draw_set_color(_exp_hover ? c_white : make_color_rgb(120, 160, 220));
-	draw_rectangle(_exp_x, _exp_y, _exp_x + _exp_w, _exp_y + _exp_h, true);
+	draw_roundrect_ext(_exp_x, _exp_y, _exp_x + _exp_w, _exp_y + _exp_h, 5, 5, true);
 	
 	draw_set_font_l(fnt_c64_code);
 	draw_set_halign(fa_center);
@@ -83,10 +79,9 @@ draw_set_halign(fa_center);
 	var _imp_hover = (_mx >= _imp_x && _mx <= _imp_x + _imp_w
 	                 && _my >= _imp_y && _my <= _imp_y + _imp_h);
 
-	draw_set_color(_imp_hover ? make_color_rgb(50, 100, 180) : make_color_rgb(30, 50, 80));
-	draw_rectangle(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, false);
+	scr_editor_control(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, _imp_hover, false);
 	draw_set_color(_imp_hover ? c_white : make_color_rgb(120, 160, 220));
-	draw_rectangle(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, true);
+	draw_roundrect_ext(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, 5, 5, true);
 
 	draw_set_font_l(fnt_c64_code);
 	draw_set_halign(fa_center);
@@ -188,10 +183,9 @@ draw_set_halign(fa_center);
 	}
     var _close_hover = (_mx >= _close_x && _mx <= _close_x + _close_w
                      && _my >= _close_y && _my <= _close_y + _close_h);
-    draw_set_color(_close_hover ? make_color_rgb(180, 50, 50) : make_color_rgb(60, 30, 30));
-    draw_rectangle(_close_x, _close_y, _close_x + _close_w, _close_y + _close_h, false);
+    scr_editor_control(_close_x, _close_y, _close_x + _close_w, _close_y + _close_h, _close_hover, false);
     draw_set_color(_close_hover ? c_white : make_color_rgb(200, 120, 120));
-    draw_rectangle(_close_x, _close_y, _close_x + _close_w, _close_y + _close_h, true);
+    draw_roundrect_ext(_close_x, _close_y, _close_x + _close_w, _close_y + _close_h, 5, 5, true);
     draw_set_font_l(_code_font);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);

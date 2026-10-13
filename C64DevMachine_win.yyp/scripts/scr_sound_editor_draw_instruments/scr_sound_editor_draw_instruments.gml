@@ -47,10 +47,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     }
 
     // ── LIST BOX ──
-    draw_set_color(make_color_rgb(14, 14, 22));
-    draw_rectangle(_ix0 - 4, _iy0 - 2, _ix0 + _list_w + 4, _iy0 + _list_vis * _list_row_h + 2, false);
-    draw_set_color(make_color_rgb(100, 100, 140));
-    draw_rectangle(_ix0 - 4, _iy0 - 2, _ix0 + _list_w + 4, _iy0 + _list_vis * _list_row_h + 2, true);
+    scr_editor_panel(_ix0 - 4, _iy0 - 2, _ix0 + _list_w + 4, _iy0 + _list_vis * _list_row_h + 2, true);
 
     if (global.mm_instr_center >= 0) {
         // ALT-picked from the pattern grid: centre it when it is out of view
@@ -149,8 +146,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
 	        } else if (_btns[_bi] == "- REMOVE") {
 	            _base_col = make_color_rgb(100, 30, 30);
 	        }
-        draw_set_color(_locked ? make_color_rgb(45, 45, 55) : (_hov ? make_color_rgb(80, 140, 200) : _base_col));
-        draw_rectangle(_bx, _iby, _bx + _this_w, _iby + _btn_h, false);
+        scr_editor_control(_bx, _iby, _bx + _this_w, _iby + _btn_h, _hov, false);
         draw_set_color(_locked ? make_color_rgb(90, 90, 100) : c_white);
         draw_set_halign(fa_center);
         draw_text_l(_bx + _this_w * 0.5, _iby + 4, _btns[_bi]);
@@ -556,10 +552,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         _wave_click = scr_sound_editor_cmd_bar(_m, _sel_instr, _tb_x0, _tb_x0 + _tb_w + 4, _iy0 - 22,
                                                _tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, _mx, _my, false);
     }
-    draw_set_color(make_color_rgb(14, 14, 22));
-    draw_rectangle(_tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, false);
-    draw_set_color(make_color_rgb(100, 100, 140));
-    draw_rectangle(_tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, true);
+    scr_editor_panel(_tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2, true);
 
     var _tb_hov = point_in_rectangle(_mx, _my, _tb_x0 - 4, _tb_y1 - 2, _tb_x0 + _tb_w + 4, _tb_y1 + _tb_h + 2);
     if (!_tb_hov && mouse_check_button_pressed(mb_left) && _m.instr_edit_active && !_wave_click) {

@@ -1035,10 +1035,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
     var _y1 = _rect[1];
     var _x2 = _rect[2];
     var _y2 = _rect[3];
-    draw_set_color(make_color_rgb(16, 14, 24));
-    draw_rectangle(_x1, _y1, _x2, _y2, false);
-    draw_set_color(make_color_rgb(255, 130, 170));
-    draw_rectangle(_x1, _y1, _x2, _y2, true);
+    scr_editor_panel(_x1, _y1, _x2, _y2, true);
     draw_set_font_l(fnt_c64_tiny);
 
     scr_digi_text_fit(_x1 + 10, _y1 + 8, "DIGI SAMPLES", _x2 - (_x1 + 10) - 8);
@@ -1403,10 +1400,7 @@ function scr_digi_check_draw_advice(_chk, _x, _y) {
     var _h = string_height_ext_l(_txt, 14, _w - 16) + 16;
     var _x2 = _x + _w;
     var _y1 = _y - _h;
-    draw_set_color(make_color_rgb(24, 18, 28));
-    draw_rectangle(_x, _y1, _x2, _y, false);
-    draw_set_color(make_color_rgb(255, 170, 70));
-    draw_rectangle(_x, _y1, _x2, _y, true);
+    scr_editor_panel(_x, _y1, _x2, _y, true);
     draw_set_color(c_white);
     draw_text_ext_l(_x + 8, _y1 + 8, _txt, 14, _w - 16);
 }

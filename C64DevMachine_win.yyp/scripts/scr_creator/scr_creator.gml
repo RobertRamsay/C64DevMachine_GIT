@@ -674,11 +674,7 @@ function scr_creator_run_action(_act) {
 // --------------------------------------------------------------------
 
 function scr_creator_skin_panel(_x1, _y1, _w, _h) {
-    var _frm = 0;
-    if (instance_exists(obj_workspace_manager)) {
-        _frm = obj_workspace_manager.niceSliceFrm;
-    }
-    draw_sprite_stretched(spr_glassSlice, _frm, _x1, _y1, _w, _h);
+    scr_editor_panel(_x1, _y1, _x1 + _w, _y1 + _h);
 }
 
 function scr_creator_skin_btn_frame() {
@@ -695,31 +691,7 @@ function scr_creator_skin_btn_frame() {
 
 /// Themed button body. _on = selected/active, _hov = pointer over it.
 function scr_creator_skin_btn(_x1, _y1, _x2, _y2, _label, _on, _hov) {
-    var _frm = scr_creator_skin_btn_frame();
-    var _w   = max(1, _x2 - _x1);
-    var _h   = max(1, _y2 - _y1);
-    var _sx  = _w / sprite_get_width(spr_menu_button);
-    var _sy  = _h / sprite_get_height(spr_menu_button);
-    var _add = true;
-    if (instance_exists(obj_workspace_manager)) {
-        if (obj_workspace_manager.uiChromeStyle != 0) {
-            _add = false;
-        }
-    }
-    draw_sprite_ext(spr_menu_button, _frm, _x1, _y1, _sx, _sy, 0, c_white, 1);
-    if (_hov || _on) {
-        var _glow = 0.2;
-        if (_on) {
-            _glow = 0.35;
-        }
-        if (_add) {
-            gpu_set_blendmode(bm_add);
-        }
-        draw_sprite_ext(spr_menu_button, _frm, _x1, _y1, _sx, _sy, 0, c_white, _glow);
-        if (_add) {
-            gpu_set_blendmode(bm_normal);
-        }
-    }
+    scr_editor_control(_x1, _y1, _x2, _y2, _hov, _on);
     draw_set_colour(c_white);
     if (_on) {
         draw_set_colour(c_yellow);

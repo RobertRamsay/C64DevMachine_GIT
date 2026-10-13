@@ -25,10 +25,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
     draw_text_l(_label_x, _ty, "FIND:");
 
     var _f1_active = (code_editor_find_active_field == 1);
-    draw_set_color(make_color_rgb(15, 18, 28));
-    draw_rectangle(_field_x, _ty - 2, _field_x + _field_w, _ty + _field_h, false);
-    draw_set_color(_f1_active ? make_color_rgb(80, 180, 120) : make_color_rgb(50, 55, 70));
-    draw_rectangle(_field_x, _ty - 2, _field_x + _field_w, _ty + _field_h, true);
+    scr_editor_panel(_field_x, _ty - 2, _field_x + _field_w, _ty + _field_h, true);
     draw_set_color(_f1_active ? c_white : make_color_rgb(150, 150, 150));
     var _f1_text = code_editor_find_text + ((_f1_active && _blink_on) ? "|" : "");
     draw_text_l(_field_x + 5, _ty, _f1_text);
@@ -42,10 +39,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
     draw_text_l(_label_x, _ty, "REPLACE:");
 
     var _f2_active = (code_editor_find_active_field == 2);
-    draw_set_color(make_color_rgb(15, 18, 28));
-    draw_rectangle(_field_x, _ty - 2, _field_x + _field_w, _ty + _field_h, false);
-    draw_set_color(_f2_active ? make_color_rgb(80, 180, 120) : make_color_rgb(50, 55, 70));
-    draw_rectangle(_field_x, _ty - 2, _field_x + _field_w, _ty + _field_h, true);
+    scr_editor_panel(_field_x, _ty - 2, _field_x + _field_w, _ty + _field_h, true);
     draw_set_color(_f2_active ? c_white : make_color_rgb(150, 150, 150));
     var _f2_text = code_editor_replace_text + ((_f2_active && _blink_on) ? "|" : "");
     draw_text_l(_field_x + 5, _ty, _f2_text);
@@ -62,10 +56,9 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
 
     var draw_btn = function(_x, _y, _w, _label, _enabled, _msx, _msy, _bth) {
         var _hov = (_enabled && _msx >= _x && _msx <= _x + _w && _msy >= _y && _msy <= _y + _bth);
-        draw_set_color(_hov ? make_color_rgb(60, 160, 100) : (_enabled ? make_color_rgb(30, 50, 40) : make_color_rgb(25, 25, 30)));
-        draw_rectangle(_x, _y, _x + _w, _y + _bth, false);
+        scr_editor_control(_x, _y, _x + _w, _y + _bth, _hov, false);
         draw_set_color(_hov ? c_white : (_enabled ? make_color_rgb(100, 200, 140) : make_color_rgb(60, 60, 70)));
-        draw_rectangle(_x, _y, _x + _w, _y + _bth, true);
+        draw_roundrect_ext(_x, _y, _x + _w, _y + _bth, 5, 5, true);
         draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
         draw_text_l(_x + _w / 2, _y + 4, _label);

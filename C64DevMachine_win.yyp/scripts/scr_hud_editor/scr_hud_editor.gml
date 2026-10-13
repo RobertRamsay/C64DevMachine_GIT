@@ -35,8 +35,8 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _c_lbl   = make_color_rgb(140, 150, 180);
     var _c_dim   = make_color_rgb(95, 95, 115);
     var _c_head  = make_color_rgb(90, 220, 190);
-    var _c_box   = make_color_rgb(24, 24, 36);
-    var _c_edge  = make_color_rgb(56, 56, 78);
+    var _c_box   = make_color_rgb(30, 40, 53);
+    var _c_edge  = make_color_rgb(66, 82, 103);
     var _c_btn   = make_color_rgb(38, 38, 58);
     var _c_btnh  = make_color_rgb(66, 66, 98);
     var _c_on    = make_color_rgb(160, 80, 20);
@@ -106,8 +106,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _tx = c_white;
         if (_on) { _bg = _con; _tx = _ctx; }
         if (_hov && !_on) { _bg = _cbh; }
-        draw_set_color(_bg);
-        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _h, false);
+        scr_editor_control(_x1, _y1, _x1 + _w, _y1 + _h, _hov, _on);
         draw_set_color(_tx);
         draw_set_halign(fa_center);
         draw_text_l(_x1 + _w * 0.5, _y1 + 3, _label);
@@ -401,10 +400,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
 
     // ── TILE — the charset's own editor, on the active char ──
     var _tile_h = 196;
-    draw_set_color(_c_box);
-    draw_rectangle(_rcx, _ry0, _rcx + _rcw, _ry0 + _tile_h, false);
-    draw_set_color(_c_edge);
-    draw_rectangle(_rcx, _ry0, _rcx + _rcw, _ry0 + _tile_h, true);
+    scr_editor_panel(_rcx, _ry0, _rcx + _rcw, _ry0 + _tile_h, true);
     draw_set_color(_c_head);
     draw_text_l(_rcx + 8, _ry0 + 5, "TILE");
     draw_set_color(_c_dim);
@@ -461,10 +457,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // ── PAINT ──
     var _py0 = _ry0 + _tile_h + 10;
     var _paint_h = 118;
-    draw_set_color(_c_box);
-    draw_rectangle(_rcx, _py0, _rcx + _rcw, _py0 + _paint_h, false);
-    draw_set_color(_c_edge);
-    draw_rectangle(_rcx, _py0, _rcx + _rcw, _py0 + _paint_h, true);
+    scr_editor_panel(_rcx, _py0, _rcx + _rcw, _py0 + _paint_h, true);
     draw_set_color(_c_head);
     draw_text_l(_rcx + 8, _py0 + 5, "PAINT");
 
@@ -560,10 +553,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _fy0 = _py0 + _paint_h + 10;
     var _fh  = (_csy + _strip_h) - _fy0;
     if (_fh < 200) { _fh = 200; }
-    draw_set_color(_c_box);
-    draw_rectangle(_rcx, _fy0, _rcx + _rcw, _fy0 + _fh, false);
-    draw_set_color(_c_edge);
-    draw_rectangle(_rcx, _fy0, _rcx + _rcw, _fy0 + _fh, true);
+    scr_editor_panel(_rcx, _fy0, _rcx + _rcw, _fy0 + _fh, true);
     draw_set_color(_c_head);
     draw_text_l(_rcx + 8, _fy0 + 5, "FIELDS");
     draw_set_color(_c_dim);

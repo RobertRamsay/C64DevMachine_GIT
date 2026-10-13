@@ -59,10 +59,7 @@ function scr_ui_info(_hot, _text) {
 function scr_ui_info_draw(_x1, _y1, _x2, _y2) {
     var _txt = variable_global_exists("ui_info") ? global.ui_info : "";
     draw_set_alpha(1);
-    draw_set_color(make_color_rgb(14, 14, 22));
-    draw_rectangle(_x1, _y1, _x2, _y2, false);
-    draw_set_color(make_color_rgb(50, 50, 70));
-    draw_rectangle(_x1, _y1, _x2, _y2, true);
+    scr_editor_panel(_x1, _y1, _x2, _y2, true);
     draw_set_font_l(fnt_c64_tiny);
     draw_set_halign(fa_left);
     draw_set_valign(fa_middle);
@@ -122,8 +119,7 @@ function scr_sfx_maker_button(_x,_y,_w,_text,_mx,_my,_info="") {
         _info = scr_mm_button_info(_text);
     }
     scr_mm_info(_hot, _info);
-    draw_set_color(_hot?make_color_rgb(65,80,100):make_color_rgb(30,38,52));
-    draw_rectangle(_x,_y,_x+_w,_y+26,false);
+    scr_editor_control(_x,_y,_x+_w,_y+26, _hot, false);
     draw_set_color(c_white);draw_text_l(_x+8,_y+5,_text);
     return _hot && mouse_check_button_pressed(mb_left);
 }

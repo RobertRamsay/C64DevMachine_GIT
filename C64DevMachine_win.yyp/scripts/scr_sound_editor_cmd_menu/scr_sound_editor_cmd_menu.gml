@@ -172,10 +172,7 @@ function scr_sound_editor_cmd_bar(_m, _instr, _x0, _x1, _y, _bx0, _by0, _bx1, _b
         draw_set_font_l(fnt_c64_pico);
         if (_open >= 0) {
             var _its = _menus[_open].items;
-            draw_set_color(make_color_rgb(20, 20, 32));
-            draw_rectangle(_lx1, _ly1, _lx1 + _lw, _ly2, false);
-            draw_set_color(make_color_rgb(120, 120, 170));
-            draw_rectangle(_lx1, _ly1, _lx1 + _lw, _ly2, true);
+            scr_editor_panel(_lx1, _ly1, _lx1 + _lw, _ly2, false);
             for (var _i = 0; _i < array_length(_its); _i++) {
                 var _iy = _ly1 + 2 + _i * _row_h;
                 var _hov = point_in_rectangle(_mx, _my, _lx1, _iy, _lx1 + _lw, _iy + _row_h - 1);
@@ -288,10 +285,7 @@ function scr_sound_editor_cmd_bar(_m, _instr, _x0, _x1, _y, _bx0, _by0, _bx1, _b
 
 /// The ? table: what each instrument command does, with an example.
 function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
-    draw_set_color(make_color_rgb(14, 14, 24));
-    draw_rectangle(_x0, _y0, _x1, _y1, false);
-    draw_set_color(make_color_rgb(120, 120, 170));
-    draw_rectangle(_x0, _y0, _x1, _y1, true);
+    scr_editor_panel(_x0, _y0, _x1, _y1, true);
     var _rows = [
         ["INSTRUMENT PROGRAM: RUNS FROM STEP 00 WHEN A NOTE PLAYS", ""],
         ["", ""],

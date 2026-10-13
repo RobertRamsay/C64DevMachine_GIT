@@ -171,18 +171,13 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _c_lbl  = make_color_rgb(140, 150, 180);
     var _c_dim  = make_color_rgb(95, 95, 115);
     var _c_box  = make_color_rgb(20, 22, 32);
-    var _c_edge = make_color_rgb(56, 56, 78);
+    var _c_edge = make_color_rgb(66, 82, 103);
     var _press  = mouse_check_button_pressed(mb_left);
 
     var _button = function(_x1, _y1, _w, _h, _label, _col, _mx2, _my2, _info = "") {
         var _hov = point_in_rectangle(_mx2, _my2, _x1, _y1, _x1 + _w, _y1 + _h);
         scr_ui_info(_hov, _info);
-        if (_hov) {
-            draw_set_color(merge_color(_col, c_white, 0.25));
-        } else {
-            draw_set_color(_col);
-        }
-        draw_rectangle(_x1, _y1, _x1 + _w, _y1 + _h, false);
+        scr_editor_control(_x1, _y1, _x1 + _w, _y1 + _h, _hov);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
         draw_text_l(_x1 + _w * 0.5, _y1 + 3, _label);
@@ -270,10 +265,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_vx1 + 440, _cy + 4, _hint);
 
     // ── Canvas ──
-    draw_set_color(_c_box);
-    draw_rectangle(_cvx1, _cvy1, _cvx2, _cvy2, false);
-    draw_set_color(_c_edge);
-    draw_rectangle(_cvx1, _cvy1, _cvx2, _cvy2, true);
+    scr_editor_panel(_cvx1, _cvy1, _cvx2, _cvy2, true);
     // light grid
     draw_set_alpha(0.25);
     for (var _gx = _cvx1 + 40 * _z; _gx < _cvx2; _gx += 40 * _z) {
@@ -438,10 +430,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     }
 
     // ── Right panel ──
-    draw_set_color(_c_box);
-    draw_rectangle(_px1, _cvy1, _px2, _cvy2, false);
-    draw_set_color(_c_edge);
-    draw_rectangle(_px1, _cvy1, _px2, _cvy2, true);
+    scr_editor_panel(_px1, _cvy1, _px2, _cvy2, true);
     if (_m.sel_room < 0 || _m.sel_room >= _n) {
         draw_set_color(_c_dim);
         draw_text_l(_px1 + 10, _cvy1 + 10, "SELECT A ROOM");
@@ -2093,10 +2082,7 @@ function scr_pickup_editor(_a, _x1, _y1, _x2, _y2, _mx, _my) {
     // ---- EMITTED BYTES (bottom box) ----
     var _bx1 = _x1;
     var _by1 = _bot + 10;
-    draw_set_color(make_color_rgb(12, 12, 20));
-    draw_rectangle(_bx1, _by1, _x2, _y2, false);
-    draw_set_color(make_color_rgb(60, 60, 80));
-    draw_rectangle(_bx1, _by1, _x2, _y2, true);
+    scr_editor_panel(_bx1, _by1, _x2, _y2, true);
     draw_set_color(c_yellow);
     var _a1 = real(_a.address);
     draw_text(_bx1 + 8, _by1 + 6 - scr_lang_lift(), "EMITTED BYTES  $" + string_upper(decimal_to_hex(_a1)) + "-$"
