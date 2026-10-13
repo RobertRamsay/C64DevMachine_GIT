@@ -169,7 +169,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     if (_m.sel_room >= _n) { _m.sel_room = _n - 1; }
 
     var _c_lbl  = make_color_rgb(140, 150, 180);
-    var _c_dim  = make_color_rgb(95, 95, 115);
+    var _c_dim  = make_color_rgb(129, 129, 149);
     var _c_box  = make_color_rgb(20, 22, 32);
     var _c_edge = make_color_rgb(66, 82, 103);
     var _press  = mouse_check_button_pressed(mb_left);

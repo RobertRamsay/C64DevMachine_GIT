@@ -731,7 +731,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                       "PANNING — RELEASE TO COMMIT");
             draw_set_halign(fa_left);
         } else {
-            draw_set_color(make_color_rgb(100, 100, 120));
+            draw_set_color(make_color_rgb(127, 127, 147));
             draw_set_halign(fa_center);
             draw_text_l(_canvas_x + _canvas_w * 0.5,
                       _canvas_y + _canvas_h + 4,
@@ -1678,7 +1678,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
             if (_fb.enabled) {
                 draw_set_color(c_white);
             } else {
-                draw_set_color(make_color_rgb(110, 122, 138));
+                draw_set_color(make_color_rgb(120, 132, 147));
             }
             scr_editor_label(_fbx1, _fby1, _fbx2, _fby2, _fb.lbl);
             if (_fb.action == "new") scr_tour_capture("SPR:FRAME_NEW", _fbx1, _fby1, _fbx2, _fby2);
@@ -2332,7 +2332,7 @@ if (_layer_dir != 0) {
         } else {
             // No active cell — show a prompt centred in the controls column
 			
-            draw_set_color(make_color_rgb(100, 100, 120));
+            draw_set_color(make_color_rgb(127, 127, 147));
             draw_set_halign(fa_center);
             draw_set_valign(fa_middle);
             var _ph_cx = (_ctrl_x1 + _ctrl_x2) * 0.5;

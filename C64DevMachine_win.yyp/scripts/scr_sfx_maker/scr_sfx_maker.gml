@@ -66,7 +66,7 @@ function scr_ui_info_draw(_x1, _y1, _x2, _y2) {
     var _cy = (_y1 + _y2) * 0.5;
     var _tx = _x1 + 10 + string_width_l("INFO: ");
     if (_txt == "") {
-        draw_set_color(make_color_rgb(90, 90, 120));
+        draw_set_color(make_color_rgb(128, 128, 158));
         draw_text_l(_x1 + 10, _cy, "INFO:");
         draw_text_l(_tx, _cy, "HOVER A BUTTON TO SEE WHAT IT DOES");
     } else {

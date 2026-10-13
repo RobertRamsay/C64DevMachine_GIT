@@ -21,7 +21,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
 
     // --- FIND FIELD ---
     var _ty = _dy + 14;
-    draw_set_color(make_color_rgb(120, 120, 180));
+    draw_set_color(make_color_rgb(124, 124, 183));
     draw_text_l(_label_x, _ty, "FIND:");
 
     var _f1_active = (code_editor_find_active_field == 1);
@@ -35,7 +35,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
 
     // --- REPLACE FIELD ---
     _ty += 28;
-    draw_set_color(make_color_rgb(120, 120, 180));
+    draw_set_color(make_color_rgb(124, 124, 183));
     draw_text_l(_label_x, _ty, "REPLACE:");
 
     var _f2_active = (code_editor_find_active_field == 2);
@@ -57,7 +57,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
     var draw_btn = function(_x, _y, _w, _label, _enabled, _msx, _msy, _bth) {
         var _hov = (_enabled && _msx >= _x && _msx <= _x + _w && _msy >= _y && _msy <= _y + _bth);
         scr_editor_control(_x, _y, _x + _w, _y + _bth, _hov, false, _enabled);
-        draw_set_color(_hov ? c_white : (_enabled ? make_color_rgb(100, 200, 140) : make_color_rgb(110, 122, 138)));
+        draw_set_color(_hov ? c_white : (_enabled ? make_color_rgb(100, 200, 140) : make_color_rgb(120, 132, 147)));
         draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
         scr_editor_label(_x, _y, _x + _w, _y + _bth, _label);
@@ -132,7 +132,7 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
 
     // Hint
     draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(make_color_rgb(70, 90, 80));
+    draw_set_color(make_color_rgb(112, 133, 122));
     draw_text_l(_dx + 8, _bt_y - 25, "TAB: switch field  |  ESC: close  |  ENTER: next");
 
     // ─── CLICK AWAY ───────────────────────────────────────────────

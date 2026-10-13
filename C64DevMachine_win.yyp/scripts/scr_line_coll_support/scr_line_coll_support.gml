@@ -333,7 +333,7 @@ function scr_line_coll_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             }
         } else {
             scr_editor_control(_hb_x, _sy, _hb_x + _hw, _sy + 24, false, false, false);
-            draw_set_color(make_color_rgb(110, 122, 138));
+            draw_set_color(make_color_rgb(120, 132, 147));
             scr_editor_label(_hb_x, _sy, _hb_x + _hw, _sy + 24, _hist_lbl[_hb]);
         }
     }

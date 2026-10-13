@@ -662,7 +662,7 @@ draw_set_font_l(_code_font);
         // ─── Syntax colouring ───
         if (_is_comment) {
             // Comments — grey-green
-            draw_set_color(make_color_rgb(90, 120, 98));
+            draw_set_color(make_color_rgb(106, 136, 114));
             draw_text_l(_code_x_s + _auto_indent, _ly, _line_text);
 
         } else if (_is_cond) {
@@ -714,7 +714,7 @@ draw_set_font_l(_code_font);
 
         } else if (!_is_valid && _trimmed != "") {
             // Nonsense — dark grey
-            draw_set_color(make_color_rgb(90, 90, 90));
+            draw_set_color(make_color_rgb(130, 130, 130));
             draw_text_l(_code_x_s + _auto_indent, _ly, _line_text);
 
 } else if (_is_const) {
@@ -771,7 +771,7 @@ var _cname_trim = string_trim(_cname);
 
 } else if (_is_rep_line) {
             // Repeat syntax — purple
-            draw_set_color(make_color_rgb(110, 50, 180));
+            draw_set_color(make_color_rgb(154, 104, 213));
             draw_text_l(_code_x_s + _auto_indent, _ly, _line_text);
 
         } else if (_is_byte_dir || _is_org_dir) {
@@ -780,7 +780,7 @@ var _cname_trim = string_trim(_cname);
             var _idt2   = string_length(_line_text) - string_length(string_trim_start(_line_text));
             var _idt2px = string_width_l(string_copy(_line_text, 1, _idt2));
             if (_idt2 > 0) {
-                draw_set_color(make_color_rgb(40, 40, 50));
+                draw_set_color(make_color_rgb(128, 128, 144));
                 draw_text_l(_code_x_s + _auto_indent, _ly, string_copy(_line_text, 1, _idt2));
             }
             draw_set_color(make_color_rgb(0, 210, 180));   // teal keyword
@@ -828,7 +828,7 @@ var _cname_trim = string_trim(_cname);
 
                 // Leading whitespace (dim)
                 if (_indent > 0) {
-                    draw_set_color(make_color_rgb(40, 40, 50));
+                    draw_set_color(make_color_rgb(128, 128, 144));
                     draw_text_l(_code_x_s + _auto_indent, _ly, string_copy(_line_text, 1, _indent));
                 }
 
@@ -1059,7 +1059,7 @@ draw_set_alpha(0.85);
         if (_g_line_idx >= _total_lines) break;
         var _g_ly = _code_y + (_gi * _line_h);
         var _g_line_num = string(_g_line_idx + 1);
-        draw_set_color(make_color_rgb(50, 100, 70)); // New Gutter Color
+        draw_set_color(make_color_rgb(88, 140, 109)); // New Gutter Color
         draw_text_l(_px + 4, _g_ly, _g_line_num);
 		
         // PC address
@@ -1261,7 +1261,7 @@ var _g_is_valid = false;
 
 // ─── Type suffix legend ───
     draw_set_font_l(fnt_c64_code);
-    draw_set_color(make_color_rgb(120, 120, 120));
+    draw_set_color(make_color_rgb(128, 128, 128));
     draw_text_l(_px + 8, _py + _ph - 49,
               "VAR.W=WORD(2B)  VAR.B/none=BYTE(1B)  VAR.BCD=3B  VAR.BCD2=2B  VAR.BCD3=3B");
 

@@ -25,6 +25,16 @@ function scr_editor_label(_x1, _y1, _x2, _y2, _text, _halign = fa_center, _pad =
     draw_set_valign(_old_v);
 }
 
+/// C64 colour swatch set in a small recessed well. The colour is inset 2px
+/// so the footprint (and the caller's hit test) stays the given rect.
+function scr_editor_swatch(_x1, _y1, _x2, _y2, _col) {
+    scr_editor_panel(_x1, _y1, _x2, _y2, true);
+    var _old_col = draw_get_color();
+    draw_set_color(_col);
+    draw_rectangle(_x1 + 2, _y1 + 2, _x2 - 2, _y2 - 2, false);
+    draw_set_color(_old_col);
+}
+
 /// Decorative slots do not capture input or allocate an asset.
 function scr_editor_empty_slot(_x1, _y1, _x2, _y2) {
     scr_editor_panel(_x1, _y1, _x2, _y2, true);

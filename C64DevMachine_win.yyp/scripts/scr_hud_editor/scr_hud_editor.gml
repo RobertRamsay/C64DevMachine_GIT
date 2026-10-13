@@ -33,7 +33,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _alt   = keyboard_check(vk_alt);
 
     var _c_lbl   = make_color_rgb(140, 150, 180);
-    var _c_dim   = make_color_rgb(95, 95, 115);
+    var _c_dim   = make_color_rgb(129, 129, 149);
     var _c_head  = make_color_rgb(90, 220, 190);
     var _c_box   = make_color_rgb(30, 40, 53);
     var _c_edge  = make_color_rgb(66, 82, 103);

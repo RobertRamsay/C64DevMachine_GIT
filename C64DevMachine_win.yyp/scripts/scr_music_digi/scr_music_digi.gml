@@ -471,7 +471,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
             scr_digi_ensure_steps(_pat);
             global.undo_dirty = true;
         }
-        draw_set_color(make_color_rgb(110, 100, 130));
+        draw_set_color(make_color_rgb(135, 126, 155));
         draw_text_l(_lx + 56, _hy, _pat.name);
     } else {
         // NEW: make a digi pattern and put it on the selected order row.
@@ -522,7 +522,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
         if (_pat == noone) {
             draw_set_color(make_color_rgb(26, 22, 26));
             draw_rectangle(_x, _ry, _x2, _ry + _row_h, false);
-            draw_set_color(make_color_rgb(110, 90, 100));
+            draw_set_color(make_color_rgb(145, 125, 135));
             draw_text_transformed_l(_x + 8, _ry + _ty, "----", _txt_scale, _txt_scale, 0);
         } else if (_row >= _pat.pattern_len) {
             draw_set_color(make_color_rgb(18, 18, 24));
@@ -553,7 +553,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
                 draw_text_transformed_l(_x + 8, _ry + _ty, _n_str, _txt_scale, _txt_scale, 0);
                 draw_set_color(make_color_rgb(255, 190, 210));
                 if (is_undefined(scr_digi_find_sample(_m.digi_samples[_st.smp]))) {
-                    draw_set_color(make_color_rgb(200, 90, 70));   // empty / missing slot
+                    draw_set_color(make_color_rgb(203, 96, 77));   // empty / missing slot
                 }
                 draw_text_transformed_l(_x + 8 + string_width_l(_n_str) * _txt_scale, _ry + _ty, _s_str, _txt_scale, _txt_scale, 0);
                 draw_set_font_l(fnt_c64_pico);
@@ -566,7 +566,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
                 draw_set_color(make_color_rgb(230, 120, 90));
                 draw_text_transformed_l(_x + 8, _ry + _ty, "OFF", _txt_scale, _txt_scale, 0);
             } else {
-                draw_set_color(make_color_rgb(70, 60, 80));
+                draw_set_color(make_color_rgb(138, 126, 150));
                 draw_text_transformed_l(_x + 8, _ry + _ty, "...", _txt_scale, _txt_scale, 0);
             }
             // Command column: F01-F1F own tempo, F00 back to the song's rows.
@@ -589,7 +589,7 @@ function scr_digi_lane(_m, _order_row, _x, _gy0, _w, _row_h, _vis, _grid_len, _t
                 draw_set_color(make_color_rgb(255, 170, 90));
                 draw_text_transformed_l(_cmd_x, _ry + _ty, _cmd_txt, _txt_scale, _txt_scale, 0);
             } else {
-                draw_set_color(make_color_rgb(60, 60, 70));
+                draw_set_color(make_color_rgb(128, 128, 140));
                 draw_text_transformed_l(_cmd_x, _ry + _ty, "...", _txt_scale, _txt_scale, 0);
             }
             if (_hov && mouse_check_button_pressed(mb_right)) {
@@ -1165,7 +1165,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
         var _nm = _m.digi_samples[_s];
         var _a = scr_digi_find_sample(_nm);
         if (_nm == "") {
-            draw_set_color(make_color_rgb(110, 122, 138));
+            draw_set_color(make_color_rgb(120, 132, 147));
             scr_editor_label(_bx1, _sy, _bx2, _sy + 17, "-- EMPTY --", fa_left, 6);
         } else if (is_undefined(_a)) {
             draw_set_color(make_color_rgb(220, 100, 80));

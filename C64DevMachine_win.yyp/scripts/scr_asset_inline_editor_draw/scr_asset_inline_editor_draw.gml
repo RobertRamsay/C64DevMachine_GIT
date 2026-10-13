@@ -123,7 +123,7 @@ function scr_asset_inline_editor_draw(_asset, _x1, _y1, _x2, _y2, _mx, _my, _acc
         // so the numbers still count real lines.
         if (!_row.iscont) {
             draw_set_font_l(fnt_c64_tiny);
-            draw_set_color(make_color_rgb(60, 70, 90));
+            draw_set_color(make_color_rgb(120, 131, 153));
             draw_text_l(_x1 + 4, _ly, string(_row.lnum + 1));
         }
         draw_set_font_l(fnt_C64_Angled);

@@ -400,7 +400,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         }
     }
     _ty += 44;
-    draw_set_color(make_color_rgb(70, 70, 90));
+    draw_set_color(make_color_rgb(128, 128, 149));
     draw_text_l(_tx, _ty, "L=select  R=cycle colour");
     _ty += 20;
 
@@ -496,7 +496,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             if (_rc2_hov && mouse_check_button_pressed(mb_right)) vbmp_recol_c2 = (vbmp_recol_c2 + 1) mod 16;
         }
         _ty += 44;
-        draw_set_color(make_color_rgb(70, 70, 90));
+        draw_set_color(make_color_rgb(128, 128, 149));
         draw_text_l(_tx, _ty, "R=cycle colour  drag=cell area");
         _ty += 18;
     }
@@ -616,7 +616,7 @@ function scr_vbmp_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _delx = _clx + _col_w - 24;
         var _dhov = point_in_rectangle(_mx, _my, _delx, _ry, _delx + 24, _ry + _row_h);
         scr_ui_info(_dhov, "[X] - DELETE THIS COMMAND FROM THE LIST");
-        draw_set_color(_dhov ? c_red : make_color_rgb(120, 60, 60));
+        draw_set_color(_dhov ? c_red : make_color_rgb(174, 115, 115));
         draw_text_l(_delx, _ry + 1, "[X]");
         if (_dhov && mouse_check_button_pressed(mb_left)) {
             array_delete(_m.commands, _idx, 1);

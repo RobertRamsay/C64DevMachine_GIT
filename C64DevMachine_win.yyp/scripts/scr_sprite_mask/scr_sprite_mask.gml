@@ -520,7 +520,7 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     scr_ui_info(_uf_hov, "SET THE Y LINE TO THE TEST SPRITE'S FEET AND APPLY IT TO EVERY MASKED CELL (UNDOABLE)");
     scr_editor_control(_side_x, _sy, _side_x + _side_w, _sy + _uf_h, _uf_hov, false, _m.test_on);
     draw_set_color(c_white);
-    if (!_m.test_on) { draw_set_color(make_color_rgb(110, 122, 138)); }
+    if (!_m.test_on) { draw_set_color(make_color_rgb(120, 132, 147)); }
     scr_editor_label(_side_x, _sy, _side_x + _side_w, _sy + _uf_h * 0.5, "USE TEST SPRITE'S");
     scr_editor_label(_side_x, _sy + _uf_h * 0.5, _side_x + _side_w, _sy + _uf_h, "FEET AS THE LINE");
     if (_uf_hov && mouse_check_button_pressed(mb_left)) {

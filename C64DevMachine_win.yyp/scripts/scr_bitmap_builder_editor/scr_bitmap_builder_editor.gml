@@ -211,9 +211,9 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     }
 
     // BBD name readout
-    draw_set_color(make_color_rgb(90, 90, 110));
+    draw_set_color(make_color_rgb(127, 127, 148));
     draw_text_l(_blx2 + 20, _rowy + 4, "TABLE:");
-    draw_set_color((_m.bbd_name != "") ? make_color_rgb(180, 120, 255) : make_color_rgb(70, 70, 90));
+    draw_set_color((_m.bbd_name != "") ? make_color_rgb(180, 120, 255) : make_color_rgb(128, 128, 149));
     draw_text_l(_blx2 + 66, _rowy + 4, (_m.bbd_name != "") ? _m.bbd_name : L("-- NOT GENERATED --"));
 
     // ── TAG MODE + TYPE PICKER ───────────────────────────────────────────
@@ -243,7 +243,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         draw_set_halign(fa_left);
     } else {
         scr_editor_control(_tag_x1, _rowy, _tag_x2, _rowy + 18, _tag_hov, false);
-        draw_set_color(make_color_rgb(120, 120, 150));
+        draw_set_color(make_color_rgb(127, 127, 156));
         draw_set_halign(fa_center);
         scr_editor_label(_tag_x1, _rowy, _tag_x2, _rowy + 18, "TAG OFF");
         draw_set_halign(fa_left);
@@ -331,9 +331,9 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     }
 
     // BBT readout — the tag table the MOVE BMP BLK node reads.
-    draw_set_color(make_color_rgb(90, 90, 110));
+    draw_set_color(make_color_rgb(127, 127, 148));
     draw_text_l(_tt_nx2 + 16, _rowy + 4, "TAGS:");
-    draw_set_color((_m.bbt_name != "") ? make_color_rgb(255, 140, 140) : make_color_rgb(70, 70, 90));
+    draw_set_color((_m.bbt_name != "") ? make_color_rgb(255, 140, 140) : make_color_rgb(128, 128, 149));
     draw_text_l(_tt_nx2 + 58, _rowy + 4, (_m.bbt_name != "") ? _m.bbt_name : L("-- NO TAGS --"));
 
     _rowy += 24;
@@ -431,7 +431,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
 
     // Group count readout
     draw_set_font_l(fnt_c64_pico);
-    draw_set_color(make_color_rgb(90, 90, 120));
+    draw_set_color(make_color_rgb(128, 128, 158));
     draw_text_l(_gnx2 + 8, _rowy + 6, L("OF ") + string(_grp_count));
     draw_set_font_l(fnt_c64_tiny);
 
@@ -576,7 +576,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         draw_set_color(make_color_rgb(255, 180, 180));
         scr_editor_label(_stx1, _rowy, _stx2, _rowy + 18, "HIDE TAGS  T");
     } else {
-        draw_set_color(make_color_rgb(120, 120, 150));
+        draw_set_color(make_color_rgb(127, 127, 156));
         scr_editor_label(_stx1, _rowy, _stx2, _rowy + 18, "SHOW TAGS  T");
     }
     // Click OR the T key flips the overlay. Plain key check — this editor has no
@@ -649,7 +649,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         gpu_set_texfilter(true);
     } else {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_set_halign(fa_center);
         draw_text_l(_sx0 + _pw * 0.5, _sy0 + _ph * 0.5, "NO SOURCE BITMAP LINKED");
         draw_set_halign(fa_left);
@@ -1121,24 +1121,24 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
     var _ry_out = _sy0 + _ph + 6;
 
     // SOURCE readout (under the source panel)
-    draw_set_color(make_color_rgb(90, 90, 120));
+    draw_set_color(make_color_rgb(128, 128, 158));
     draw_text_l(_sx0, _ry_out, "CELL:");
     if (_in_src) {
         draw_set_color(c_aqua);
         draw_text_l(_sx0 + 48, _ry_out, "COL " + string(_sc) + L("   ROW ") + string(_sr));
     } else {
-        draw_set_color(make_color_rgb(60, 60, 80));
+        draw_set_color(make_color_rgb(126, 126, 150));
         draw_text_l(_sx0 + 48, _ry_out, "--");
     }
 
     // DEST readout (under the dest panel)
-    draw_set_color(make_color_rgb(90, 90, 120));
+    draw_set_color(make_color_rgb(128, 128, 158));
     draw_text_l(_dx0, _ry_out, "CELL:");
     if (_in_dst) {
         draw_set_color(c_yellow);
         draw_text_l(_dx0 + 48, _ry_out, "COL " + string(_dc) + L("   ROW ") + string(_dr));
     } else {
-        draw_set_color(make_color_rgb(60, 60, 80));
+        draw_set_color(make_color_rgb(126, 126, 150));
         draw_text_l(_dx0 + 48, _ry_out, "--");
     }
 
@@ -1208,7 +1208,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         }
     } else {
         scr_editor_panel(_esb_x1, _eb_y, _esb_x2, _eb_y + _eb_h, false);
-        draw_set_color(make_color_rgb(90, 90, 110));
+        draw_set_color(make_color_rgb(127, 127, 148));
         draw_set_halign(fa_center);
         draw_text_l((_esb_x1 + _esb_x2) * 0.5, _eb_y + 4, "NO SRC LINKED");
         draw_set_halign(fa_left);
@@ -1228,7 +1228,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         }
     } else {
         scr_editor_panel(_edb_x1, _eb_y, _edb_x2, _eb_y + _eb_h, false);
-        draw_set_color(make_color_rgb(90, 90, 110));
+        draw_set_color(make_color_rgb(127, 127, 148));
         draw_set_halign(fa_center);
         draw_text_l((_edb_x1 + _edb_x2) * 0.5, _eb_y + 4, "NO DST LINKED");
         draw_set_halign(fa_left);
@@ -1268,7 +1268,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         var _hy = _hlp_y0 + 18 + (_hi * _hlp_row_h);
         draw_set_color(make_color_rgb(180, 180, 200));
         draw_text_l(_sx0, _hy, _hlp_mouse[_hi][0]);
-        draw_set_color(make_color_rgb(100, 100, 120));
+        draw_set_color(make_color_rgb(127, 127, 147));
         draw_text_l(_sx0 + 170, _hy, "- " + _hlp_mouse[_hi][1]);
     }
 
@@ -1276,7 +1276,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         var _hyk = _hlp_y0 + 18 + (_hk * _hlp_row_h);
         draw_set_color(make_color_rgb(180, 180, 200));
         draw_text_l(_dx0, _hyk, _hlp_keys[_hk][0]);
-        draw_set_color(make_color_rgb(100, 100, 120));
+        draw_set_color(make_color_rgb(127, 127, 147));
         draw_text_l(_dx0 + 170, _hyk, "- " + _hlp_keys[_hk][1]);
     }
 
@@ -1399,7 +1399,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
 
     // Count
     draw_set_font_l(fnt_c64_pico);
-    draw_set_color(make_color_rgb(90, 90, 120));
+    draw_set_color(make_color_rgb(128, 128, 158));
     draw_text_l(_mnx2 + 8, _mgy + 6, L("OF ") + string(_grp_count));
     draw_set_font_l(fnt_c64_tiny);
 
@@ -1468,7 +1468,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
 
     // Column header
     draw_set_font_l(fnt_c64_pico);
-    draw_set_color(make_color_rgb(90, 90, 120));
+    draw_set_color(make_color_rgb(128, 128, 158));
     draw_text_l(_lx0 + 44, _ly0 - 16, "SX  SY   DX  DY    W   H");
     draw_set_font_l(fnt_c64_tiny);
 
@@ -1499,7 +1499,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
             draw_text_l(_lx0 + 2, _rry, ">");
         }
 
-        draw_set_color(make_color_rgb(100, 100, 140));
+        draw_set_color(make_color_rgb(127, 127, 165));
         draw_text_l(_lx0 + 12, _rry, string(_ridx));
 
         // Group tag — the number you feed the node's ENTRY VAR to draw this run.
@@ -1508,7 +1508,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         if (_row_grp == _cur_grp) {
             draw_set_color(make_color_rgb(255, 200, 100));
         } else {
-            draw_set_color(make_color_rgb(70, 90, 120));
+            draw_set_color(make_color_rgb(111, 131, 161));
         }
         draw_set_font_l(fnt_c64_pico);
         draw_text_l(_lx0 + 28, _rry + 2, "G" + string(_row_grp) + " :  ");
@@ -1552,7 +1552,7 @@ function scr_bitmap_builder_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my
         if (_dl_locked) {
             draw_set_color(make_color_rgb(55, 45, 45));
         } else {
-            draw_set_color(_dhov ? c_red : make_color_rgb(120, 60, 60));
+            draw_set_color(_dhov ? c_red : make_color_rgb(174, 115, 115));
         }
         draw_text_l(_dlx, _rry, "[X]");
         if (_dhov && !_dl_locked && mouse_check_button_pressed(mb_left)) {

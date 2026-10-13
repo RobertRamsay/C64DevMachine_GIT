@@ -464,7 +464,7 @@ function scr_bmpobj_ui_button(_x1, _y1, _w, _h, _label, _on, _mx, _my, _info = "
     var _hov = point_in_rectangle(_mx, _my, _x1, _y1, _x1 + _w, _y1 + _h);
     scr_ui_info(_hov, _info);
     scr_editor_control(_x1, _y1, _x1 + _w, _y1 + _h, _hov, _on, _enabled);
-    draw_set_color(_enabled ? c_white : make_color_rgb(90, 98, 115));
+    draw_set_color(_enabled ? c_white : make_color_rgb(121, 129, 146));
     draw_set_halign(fa_center);
     scr_editor_label(_x1, _y1, _x1 + _w, _y1 + _h, _label);
     draw_set_halign(fa_left);
@@ -819,7 +819,7 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             draw_set_color(make_color_rgb(42, 50, 70));
             draw_rectangle(_lx1 + 2, _y, _lx2 - 2, _y + _row_h - 2, false);
         }
-        draw_set_color(make_color_rgb(110, 120, 140));
+        draw_set_color(make_color_rgb(120, 130, 149));
         draw_text_l(_lx1 + 8, _y + 4, string(_i));
         draw_set_color(c_white);
         draw_text_l(_lx1 + 34, _y + 4, string(_oi.name));
@@ -1102,7 +1102,7 @@ function scr_bmpobj_editor_body(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         }
         if (_cx2 + _iw > _sx2 - 10) { _cx2 = _sx1 + 10; _cy2 += _line_h + _gap + 12; _line_h = 0; }
         // label above each item
-        draw_set_color(make_color_rgb(110, 120, 140));
+        draw_set_color(make_color_rgb(120, 130, 149));
         draw_text_l(_cx2, _cy2, string(_k));
         var _yy = _cy2 + 12;
         for (var _pk = 0; _pk < array_length(_parts); _pk++) {

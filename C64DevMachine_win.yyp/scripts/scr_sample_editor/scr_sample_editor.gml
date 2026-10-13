@@ -107,7 +107,7 @@ function scr_sample_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     scr_sample_preview_tick();
 
     var _c_lbl  = make_color_rgb(140, 150, 180);
-    var _c_dim  = make_color_rgb(95, 95, 115);
+    var _c_dim  = make_color_rgb(129, 129, 149);
     var _c_head = make_color_rgb(90, 220, 190);
     var _c_box  = make_color_rgb(14, 14, 22);
     var _c_edge = make_color_rgb(56, 56, 78);

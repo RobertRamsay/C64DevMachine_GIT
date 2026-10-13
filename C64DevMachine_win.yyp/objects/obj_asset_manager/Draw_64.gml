@@ -367,7 +367,7 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
         // load address (each linked asset carries its own). BITMAP_BUILDER is
         // an internal editor asset: it emits a derived BYTE_DATA table which
         // carries the real address, so the builder itself has none. Show a dash.
-        draw_set_color(make_color_rgb(90, 90, 110));
+        draw_set_color(make_color_rgb(127, 127, 148));
         draw_text_l(_panel_right - 6, _iy + 12, "--");
     } else {
         var _ah = string_upper(decimal_to_hex(_asset.address));
@@ -489,7 +489,7 @@ if (bmp_picker_open && instance_exists(bmp_picker_node)) {
 
     if (array_length(_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_pdx + 8, _pdy + 6, "NO BITMAP ASSETS");
     } else {
         for (var _i = 0; _i < array_length(_matches); _i++) {
@@ -527,7 +527,7 @@ if (vbmp_picker_open && instance_exists(vbmp_picker_node)) {
 
     if (array_length(_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_pdx + 8, _pdy + 6, "NO VECTOR BITMAP ASSETS");
     } else {
         var _vbmp_mouse_i = -1;
@@ -566,7 +566,7 @@ if (sid_picker_open && instance_exists(sid_picker_node)) {
 
     if (array_length(_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_pdx + 8, _pdy + 6, "NO SID ASSETS");
     } else {
         for (var _i = 0; _i < array_length(_matches); _i++) {
@@ -633,7 +633,7 @@ if (sfx_picker_open && instance_exists(sfx_picker_node)) {
     draw_text_l(_pdx + 6, _pdy + 4, _header);
 
     if (array_length(_match_labels) == 0) {
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_pdx + 8, _pdy + 24,
             sfx_picker_field == "asset" ? L("NO SFX ASSETS") : L("NO INSTRUMENTS"));
     } else {
@@ -676,7 +676,7 @@ if (spr_picker_open && instance_exists(spr_picker_node)) {
 
     if (array_length(_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_pdx + 8, _pdy + 6, "NO SPRITE ASSETS");
     } else {
         for (var _i = 0; _i < array_length(_matches); _i++) {
@@ -716,7 +716,7 @@ if (map_picker_open && instance_exists(map_picker_node)) {
 
     if (array_length(_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_pdx + 8, _pdy + 6, "NO MAP ASSETS");
     } else {
         for (var _i = 0; _i < array_length(_matches); _i++) {
@@ -754,7 +754,7 @@ if (metamap_picker_open && instance_exists(metamap_picker_node)) {
 
     if (array_length(_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_pdx + 8, _pdy + 6, "NO META_TILESET ASSETS");
     } else {
         for (var _i = 0; _i < array_length(_matches); _i++) {
@@ -972,7 +972,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         // LOAD_ORG is a manifest — no meaningful load address. BITMAP_BUILDER
         // and SOUND_EDITOR are internal-only; their emitted BYTE_DATA/TEXT_DATA
         // assets hold the real addresses. Show a dash, no hover/edit affordance.
-        draw_set_color(make_color_rgb(90, 90, 110));
+        draw_set_color(make_color_rgb(127, 127, 148));
         draw_text_l(_vx1 + 80, _cy, "--");
     } else {
         var _ah = string_upper(decimal_to_hex(_asset.address));
@@ -1195,7 +1195,7 @@ case "CHAR_SET": {
     var _mcbhov = point_in_rectangle(_mx, _my, _mcbx1, _mcby1, _mcbx2, _mcby2);
     scr_ui_info(_mcbhov, "CYCLE THE CHARSET MODE: HIRES -> MULTICOLOUR -> EXTENDED COLOUR (ECM)");
     var _mode_bg_cols  = [make_color_rgb(30, 30, 45), make_color_rgb(160, 80, 20), make_color_rgb(20, 80, 90)];
-    var _mode_txt_cols = [make_color_rgb(80, 80, 100), make_color_rgb(255, 160, 60), make_color_rgb(80, 220, 240)];
+    var _mode_txt_cols = [make_color_rgb(129, 129, 150), make_color_rgb(255, 160, 60), make_color_rgb(80, 220, 240)];
     var _mode_labels   = ["HR MODE", "MC MODE", "ECM MODE"];
 
     // ── EXPORT BIN / EXPORT CTM — raw charset and a CharPad project ──────────
@@ -1280,7 +1280,7 @@ case "CHAR_SET": {
     var _cp_fg_row     = _cp_row_count - 1;
     for (var _cpi = 0; _cpi < _cp_row_count; _cpi++) {
         var _cp_row_y = _cy + _cpi * _cp_row_h;
-        draw_set_color(make_color_rgb(120, 120, 160));
+        draw_set_color(make_color_rgb(126, 126, 166));
         draw_text_l(_vx1 + 10, _cp_row_y + 6, _cp_labels[_cpi] + ":");
         for (var _si = 0; _si < 16; _si++) {
             var _sx1  = _vx1 + 44 + _si * (_cp_sw + _cp_gap);
@@ -1371,7 +1371,7 @@ case "CHAR_SET": {
     var _ted_y2  = _ted_y1 + 16;
     var _tedhov  = point_in_rectangle(_mx, _my, _ted_x1, _ted_y1, _ted_x2, _ted_y2);
     scr_ui_info(_tedhov, "CYCLE THE CHARSET MODE: HIRES -> MULTICOLOUR -> EXTENDED COLOUR (ECM)");
-    var _ted_txt_cols = [make_color_rgb(80, 80, 100), make_color_rgb(255, 160, 60), make_color_rgb(80, 220, 240)];
+    var _ted_txt_cols = [make_color_rgb(129, 129, 150), make_color_rgb(255, 160, 60), make_color_rgb(80, 220, 240)];
     var _ted_labels   = ["HR MODE", "MC MODE", "ECM MODE"];
     scr_editor_control(_ted_x1, _ted_y1, _ted_x2, _ted_y2, _tedhov, (_chr_mc != 0));
     draw_set_font_l(fnt_c64_tiny);
@@ -1465,7 +1465,7 @@ case "MAP_DATA": {
 		        draw_set_color(make_color_rgb(40, 40, 60));
 		        draw_rectangle(_vx1 + 10, _cy, _vx2 - 10, _cy + 60, false);
 		        draw_set_font_l(fnt_c64_tiny);
-		        draw_set_color(make_color_rgb(80, 80, 80));
+		        draw_set_color(make_color_rgb(129, 129, 129));
 		        draw_set_halign(fa_center);
 		        draw_text_l(_vx1 + _vw * 0.5, _cy + 22, "NO MAP  —  CLICK LOAD FILE OR CREATE");
 		        draw_set_halign(fa_left);
@@ -1533,7 +1533,7 @@ var _map_row_y = _vy1 + 58;
     draw_set_color(c_ltgray);
     draw_text_l(_hbx2 + 6, _map_row_y, "(" + string(_mw * _mh) + L(" CELLS)"));
     if (_gw != _mw || _gh != _mh) {
-        draw_set_color(make_color_rgb(100, 100, 60));
+        draw_set_color(make_color_rgb(131, 131, 90));
         draw_text_l(_hbx2 + 100, _map_row_y, "PHYS: " + string(_gw) + "x" + string(_gh));
     }
     // Click detection for W and H fields
@@ -1621,7 +1621,7 @@ draw_set_color(c_ltgray);
 		    scr_ui_info(_stbhov, "STORE THE CURRENT STAMP (COPIED SELECTION) INTO THE STAMP BANK - UP TO 128 STAMPS");
 		    scr_editor_control(_stbx1, _bank_oy, _stbx2, _bank_oy + _bank_sh, _stbhov, false, _has_stamp);
 		    draw_set_font_l(fnt_c64_tiny);
-		    draw_set_color(_has_stamp ? c_white : make_color_rgb(110, 122, 138));
+		    draw_set_color(_has_stamp ? c_white : make_color_rgb(120, 132, 147));
 		    draw_set_halign(fa_center);
 		    scr_editor_label(_stbx1, _bank_oy, _stbx2, _bank_oy + _bank_sh, "STORE");
 			draw_text_l(_stbx1 + 16, _bank_oy + 20, "MAX:6x6");
@@ -1952,7 +1952,7 @@ _cy += 22;
 	        draw_set_font_l(fnt_c64_tiny);
 	        for (var _ebi_md = 0; _ebi_md < 4; _ebi_md++) {
 	            var _eby_md = _cy + _ebi_md * (_ecm_sw_md + 4);
-	            draw_set_color(make_color_rgb(80, 80, 100));
+	            draw_set_color(make_color_rgb(129, 129, 150));
 	            draw_text_l(_vx1 + 10, _eby_md + 4, _ecm_labels_md[_ebi_md] + ":");
 	            var _ebval_md = variable_struct_get(_chr_asset_ref.meta, _ecm_fields_md[_ebi_md]);
 	            for (var _ebsi_md = 0; _ebsi_md < 16; _ebsi_md++) {
@@ -1992,7 +1992,7 @@ _cy += 22;
 	        draw_set_font_l(fnt_c64_tiny);
 	        for (var _mpi = 0; _mpi < 3; _mpi++) {
 	            var _mpy = _cy + _mpi * (_mc_sw + 4);
-	            draw_set_color(make_color_rgb(80, 80, 100));
+	            draw_set_color(make_color_rgb(129, 129, 150));
 	            draw_text_l(_vx1 + 10, _mpy + 3, _mc_pal_labels[_mpi] + ":");
 	            for (var _msi = 0; _msi < 16; _msi++) {
 	                var _msx = _vx1 + 36 + _msi * (_mc_sw + _mc_gap);
@@ -2011,7 +2011,7 @@ _cy += 22;
 	            }
 	            // Show inherit indicator
 	            if (variable_struct_get(_m, _mc_pal_fields[_mpi]) < 0) {
-	                draw_set_color(make_color_rgb(60, 60, 80));
+	                draw_set_color(make_color_rgb(126, 126, 150));
 	                draw_text_l(_vx1 + 36 + 16 * (_mc_sw + _mc_gap) + 4, _mpy + 3, "CHR");
 	            }
 	        }
@@ -3959,7 +3959,7 @@ case "SFX_DATA": {
 
     // Song name
     if (_sng_name != "") {
-        draw_set_color(make_color_rgb(120, 80, 200));
+        draw_set_color(make_color_rgb(145, 110, 215));
         draw_text_l(_vx1 + 10, _cy, "SONG:");
         draw_set_color(c_white);
         draw_text_l(_vx1 + 52, _cy, _sng_name);
@@ -3967,14 +3967,14 @@ case "SFX_DATA": {
     }
 
     // Instrument count
-    draw_set_color(make_color_rgb(120, 80, 200));
+    draw_set_color(make_color_rgb(145, 110, 215));
     draw_text_l(_vx1 + 10, _cy, "INSTRUMENTS:");
     draw_set_color(c_white);
     draw_text_l(_vx1 + 106, _cy, string(_icount));
     _cy += 24;
 
     if (_icount == 0) {
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_vx1 + 10, _cy, "NO INSTRUMENTS  —  CLICK LOAD FILE TO IMPORT .SNG");
         _cy += 16;
         break;
@@ -3988,7 +3988,7 @@ case "SFX_DATA": {
     var _cx_wpos = _vx1 + 260;
     var _cx_rows = _vx1 + 310;
 
-    draw_set_color(make_color_rgb(130, 120, 90));
+    draw_set_color(make_color_rgb(138, 128, 98));
     draw_text_l(_cx_idx,  _cy, "#");
     draw_text_l(_cx_name, _cy, "NAME");
     draw_text_l(_cx_ad,   _cy, "AD");
@@ -4010,7 +4010,7 @@ case "SFX_DATA": {
         draw_rectangle(_vx1 + 8, _cy, _vx2 - 8, _cy + 18, false);
 
         draw_set_font_l(fnt_c64_code);
-        draw_set_color(make_color_rgb(100, 80, 160));
+        draw_set_color(make_color_rgb(136, 118, 190));
         draw_text_l(_cx_idx,  _cy + 2, string(_ii));
         draw_set_color(make_color_rgb(210, 170, 255));
         draw_text_l(_cx_name, _cy + 2, _ins.name);
@@ -4019,7 +4019,7 @@ case "SFX_DATA": {
         draw_text_l(_cx_sr,   _cy + 2, "$" + string_upper(decimal_to_hex(variable_struct_exists(_ins,"sr")?_ins.sr:((_ins.sustain<<4)|_ins.release))));
         draw_text_l(_cx_wpos, _cy + 2, "$" + string_upper(decimal_to_hex(_ins.wave_pos)));
         var _nr = array_length(_ins.wavetable_rows);
-        draw_set_color(_nr > 0 ? c_lime : make_color_rgb(80, 80, 80));
+        draw_set_color(_nr > 0 ? c_lime : make_color_rgb(129, 129, 129));
         draw_text_l(_cx_rows, _cy + 2, string(_nr));
         _cy += 18;
     }
@@ -4067,7 +4067,7 @@ case "SFX_DATA": {
 
     // Section label + arrow hints
     draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(make_color_rgb(130, 120, 90));
+    draw_set_color(make_color_rgb(138, 128, 98));
     draw_text_l(_vx1 + 10, _cy, L("WAVETABLE  (") + string(_wtn) + L(" rows)"));
     if (_icount > _vis_cols) {
         draw_set_color(_col_offset > 0
@@ -4103,7 +4103,7 @@ case "SFX_DATA": {
         draw_set_font_l(fnt_c64_code);
         draw_text_l(_cx2 + 4, _cy + 6, string(_ii) + ": " + _instrs[_ii].name);
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(100, 100, 120));
+        draw_set_color(make_color_rgb(127, 127, 147));
        // var _nr2 = array_length(_instrs[_ii].wavetable_rows);
        // draw_text_l(_cx2 + 4, _cy + 18, string(_nr2) + L(" rows"));
     }
@@ -4135,7 +4135,7 @@ case "SFX_DATA": {
 
         // Row index (shared, leftmost)
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(55, 55, 75));
+        draw_set_color(make_color_rgb(126, 126, 151));
         var _ri_hex = string_upper(decimal_to_hex(_ridx + 1));
         if (string_length(_ri_hex) < 2) _ri_hex = "0" + _ri_hex;
         draw_text_l(_vx1 + 10, _ry + 1, _ri_hex + ":");
@@ -4160,7 +4160,7 @@ case "SFX_DATA": {
             } else {
                 // This instrument has no row here — dash
                 draw_set_font_l(fnt_c64_tiny);
-                draw_set_color(make_color_rgb(35, 35, 50));
+                draw_set_color(make_color_rgb(128, 128, 153));
                 draw_text_l(_cx2 + 14, _ry + 2, "--");
             }
         }
@@ -4169,7 +4169,7 @@ case "SFX_DATA": {
     // Scroll indicator
     if (_max_rows > _vis_rows) {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 100));
+        draw_set_color(make_color_rgb(129, 129, 150));
         draw_text_l(_vx1 + 10, _cy + _vis_rows * _row_h + 2,
             "... " + string(_max_rows - _vis_rows - _row_offset) + L(" more rows  (SCROLL)"));
     }
@@ -4363,7 +4363,7 @@ switch (node_type) {
         }
         if (_ref_count == 0) {
             draw_set_font_l(fnt_c64_tiny);
-            draw_set_color(make_color_rgb(80,80,80));
+            draw_set_color(make_color_rgb(129, 129, 129));
             draw_text_l(_vx1 + 20, _cy, "NONE - ASSET NOT IN USE");
             _cy += 16;
         }
@@ -4502,7 +4502,7 @@ switch (node_type) {
             draw_set_color(c_white);   draw_text_l(_vx1 + 284, _info_y, string(_huc));
         } else {
             draw_set_font_l(fnt_c64_tiny);
-            draw_set_color(make_color_rgb(60,60,80));
+            draw_set_color(make_color_rgb(126, 126, 150));
             draw_text_l(_vx1 + 10, _info_y, "HOVER A SPRITE FOR INFO");
         }
         _cy = _info_y + 20;
@@ -4769,7 +4769,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        // left of AUTOSAVE (which sits at _vx2 - 258), so it stays out of
 	        // the way of the canvas.
 	        var _path_label = "FILE: " + _src_path;
-	        var _path_col   = make_color_rgb(15, 30, 55);
+	        var _path_col   = make_color_rgb(106, 130, 171);
 	        if (_is_working_copy) {
 	            _path_label = "SRC: " + _src_path;
 	            _path_col   = make_color_rgb(10, 80, 20);
@@ -4904,7 +4904,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        }
 			/*
 	        if (!bmp_ref_found) {
-	            draw_set_color(make_color_rgb(60, 60, 80));
+	            draw_set_color(make_color_rgb(126, 126, 150));
 	            draw_text_l(_vx1 + 780, _vy1 + 43, "NONE");
 	        }
             */
@@ -5533,7 +5533,7 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
 			
 	// Zoom level indicator
 	draw_set_font_l(fnt_c64_tiny);
-	draw_set_color(make_color_rgb(100, 100, 140));
+	draw_set_color(make_color_rgb(127, 127, 165));
 	var _zoom_hud_y = min(_hbar_y + _sb_th + 50, _gui_h - 14);
 	draw_text_l(_sx + 80, _zoom_hud_y, L("ZOOM: ") + string(floor(_pxz * 100)) + L("%  [SCROLL=ZOOM]  [MMB/SPACEBAR=PAN]  [G=GRAB]  [D=DRAW]  [R=REPLACE]  [X=FLIP X]  [Y=FLIP Y]  [ [ / ] =BRUSH SIZE] [ALT+LCLICK=PICK] [CTRL=TINT STAMP]"));
 }
@@ -7578,7 +7578,7 @@ gpu_set_texfilter(false);
 	                var _at_min_z = (_asset.meta.bmp_zoom <= bmp_ui_zoom_cap);
 	                scr_editor_control(_ltx, _lty, _ltx + 24, _lty + 24, _zhov_out, false, !_at_min_z);
 	                draw_set_color(_at_min_z ? make_color_rgb(40, 40, 50) : (_zhov_out ? c_white : c_black));
-	                draw_set_color(_at_min_z ? make_color_rgb(110, 122, 138) : c_white);
+	                draw_set_color(_at_min_z ? make_color_rgb(120, 132, 147) : c_white);
 	                scr_editor_label(_ltx, _lty, _ltx + 24, _lty + 24, "Z-");
                     
 	                if (_zhov_out && mouse_check_button_pressed(mb_left) && _asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
@@ -7796,7 +7796,7 @@ gpu_set_texfilter(false);
 	                    ? "INVERT THE DITHER PATTERN SO PAINT LANDS ON THE OTHER HALF OF THE PIXELS"
 	                    : "INVERT DITHER: CHOOSE A DITHER PATTERN FIRST");
 	                scr_editor_control(_rtx, _rty, _rtx + 70, _rty + 16, _inv_hov, _inv_active, _inv_enabled);
-	                draw_set_color(_inv_enabled ? (_inv_active ? make_color_rgb(200, 120, 255) : c_ltgray) : make_color_rgb(110, 122, 138));
+	                draw_set_color(_inv_enabled ? (_inv_active ? make_color_rgb(200, 120, 255) : c_ltgray) : make_color_rgb(120, 132, 147));
 	                scr_editor_label(_rtx, _rty, _rtx + 70, _rty + 16, "INVERT", fa_left, 4);
 	                if (_inv_hov && mouse_check_button_pressed(mb_left)) _asset.meta.dither_invert = !_asset.meta.dither_invert;
 	                _rty += 20;
@@ -7940,7 +7940,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	            var _hud_y = _asset.meta.hud_py;
 
 	            // ---- LINE 1: MOUSE ----
-	            draw_set_color(make_color_rgb(90, 90, 120));
+	            draw_set_color(make_color_rgb(128, 128, 158));
 	            draw_text_l(_thumb_x, _cy, "MOUSE:");
 	            if (_hud_x >= 0) {
 	                var _hud_col = _hud_x div 8;
@@ -7948,7 +7948,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                var _hud_mc  = (_hud_x div 2) * 2;
 	                draw_set_color(c_ltgray);  draw_text_l(_thumb_x + 60,  _cy, "X:");
 	                draw_set_color(c_aqua);    draw_text_l(_thumb_x + 78,  _cy, string(_hud_x));
-	                draw_set_color(make_color_rgb(70, 110, 140));
+	                draw_set_color(make_color_rgb(96, 134, 163));
 	                draw_text_l(_thumb_x + 112, _cy, "(MC " + string(_hud_mc) + ")");
 	                draw_set_color(c_ltgray);  draw_text_l(_thumb_x + 176, _cy, "Y:");
 	                draw_set_color(c_aqua);    draw_text_l(_thumb_x + 194, _cy, string(_hud_y));
@@ -7957,13 +7957,13 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                draw_set_color(c_ltgray);  draw_text_l(_thumb_x + 308, _cy, "ROW:");
 	                draw_set_color(c_yellow);  draw_text_l(_thumb_x + 342, _cy, string(_hud_row));
 	            } else {
-	                draw_set_color(make_color_rgb(60, 60, 80));
+	                draw_set_color(make_color_rgb(126, 126, 150));
 	                draw_text_l(_thumb_x + 60, _cy, "OFF CANVAS");
 	            }
 	            _cy += 14;
 
 	            // ---- LINE 2: SELECTION / STAMP ----
-	            draw_set_color(make_color_rgb(90, 90, 120));
+	            draw_set_color(make_color_rgb(128, 128, 158));
 	            draw_text_l(_thumb_x, _cy, "SEL:");
 
 	            var _sel_shown = false;
@@ -8023,7 +8023,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	            }
 
 	            if (!_sel_shown) {
-	                draw_set_color(make_color_rgb(60, 60, 80));
+	                draw_set_color(make_color_rgb(126, 126, 150));
 	                draw_text_l(_thumb_x + 60, _cy, "-- NO SELECTION --");
 	            }
 	            _cy += 16;
@@ -8042,7 +8042,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                    _asset.meta.gradient_custom_cols = array_create(12, variable_struct_exists(_asset.meta, "active_color") ? _asset.meta.active_color : 1);
 	                }
 	                draw_set_font_l(fnt_c64_tiny);
-	                draw_set_color(make_color_rgb(90, 90, 120));
+	                draw_set_color(make_color_rgb(128, 128, 158));
 	                draw_text_l(_thumb_x, _cy, "GRADIENT:");
 
 	                var _gc_btn_x1 = _thumb_x + 68;
@@ -8184,7 +8184,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	        } else {
 	            scr_editor_panel(_thumb_x, _thumb_y, _thumb_x + _thumb_w, _thumb_y + _thumb_h, false);
 	            draw_set_font_l(fnt_c64_tiny);
-	            draw_set_color(make_color_rgb(80,80,80));
+	            draw_set_color(make_color_rgb(129, 129, 129));
 	            draw_set_halign(fa_center);
 	            draw_text_l(_thumb_x + _thumb_w * 0.5, _thumb_y + _thumb_h * 0.5 - 4, "NO FILE LOADED");
 	            draw_set_halign(fa_left);
@@ -8234,7 +8234,7 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                // While dragging just show a placeholder so it's snappy
 	                draw_set_color(make_color_rgb(20,20,35));
 	                draw_rectangle(_pw_x, _pw_y + _hdr_h, _pw_x + _draw_w, _pw_y + _hdr_h + _draw_h, false);
-	                draw_set_color(make_color_rgb(60,60,100));
+	                draw_set_color(make_color_rgb(126, 126, 168));
 	                draw_text_l(_pw_x + _draw_w * 0.5 - 20, _pw_y + _hdr_h + _draw_h * 0.5 - 6, "MOVING...");
 	            }
 	        }
@@ -8268,7 +8268,7 @@ case "BYTE_DATA": {
     if (_sf_on) {
         var _bc_sf = buffer_exists(_asset.buffer) ? buffer_get_size(_asset.buffer) : 0;
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_vx1 + 10, _cy, L("RESERVED: ") + string(_bc_sf) + L(" BYTES   $")
             + string_upper(decimal_to_hex(_asset.address))
             + " - $" + string_upper(decimal_to_hex(_asset.address + max(0, _bc_sf - 1))));
@@ -8355,7 +8355,7 @@ case "BYTE_DATA": {
     // ── BYTE COUNT / ADDRESS BAR ──────────────────────────────────────────
     var _bc = buffer_exists(_asset.buffer) ? buffer_get_size(_asset.buffer) : 0;
     draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(make_color_rgb(80, 80, 80));
+    draw_set_color(make_color_rgb(129, 129, 129));
     draw_text_l(_vx1 + 10, _cy, string(_bc) + L(" BYTES   $")
         + string_upper(decimal_to_hex(_asset.address))
         + " - $" + string_upper(decimal_to_hex(_asset.address + max(0, _bc - 1))));
@@ -8407,7 +8407,7 @@ case "BYTE_DATA": {
             _cy += _pv_lh;
         }
         if (_pv_cut || array_length(_pv_rows) > _pv_n) {
-            draw_set_color(make_color_rgb(80, 80, 80));
+            draw_set_color(make_color_rgb(129, 129, 129));
             draw_text_l(_vx1 + 10, _cy, "(MORE - OPEN THE EDITOR TO SEE ALL)");
         }
 
@@ -8555,7 +8555,7 @@ case "TEXT_DATA": {
             _cy += _tp_lh;
         }
         if (_tp_cut || array_length(_tp_rows) > _tp_n) {
-            draw_set_color(make_color_rgb(80, 80, 80));
+            draw_set_color(make_color_rgb(129, 129, 129));
             draw_text_l(_vx1 + 10, _cy, "(MORE - OPEN THE EDITOR TO SEE ALL)");
         }
 
@@ -8639,7 +8639,7 @@ case "LINE_COLL": {
     var _lc_count = variable_struct_exists(_asset.meta, "lines") ? array_length(_asset.meta.lines) : 0;
     var _lc_bytes = (_lc_count * 6) + 3; // 6 bytes/record + 3-byte sentinel
     draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(make_color_rgb(80, 80, 80));
+    draw_set_color(make_color_rgb(129, 129, 129));
     draw_text_l(_vx1 + 10, _cy, string(_lc_count) + L(" LINES   ") + string(_lc_bytes) + L(" BYTES   $")
         + string_upper(decimal_to_hex(_asset.address))
         + " - $" + string_upper(decimal_to_hex(_asset.address + max(0, _lc_bytes - 1))));
@@ -8666,7 +8666,7 @@ case "SID_MUSIC": {
             _cy += 112;
             if (!buffer_exists(_asset.buffer)) {
                 draw_set_font_l(fnt_c64_tiny);
-                draw_set_color(make_color_rgb(80, 80, 80));
+                draw_set_color(make_color_rgb(129, 129, 129));
                 draw_text_l(_vx1 + 10, _cy, "NO FILE LOADED");
                 _cy += 16;
                 break;
@@ -8855,7 +8855,7 @@ case "LOAD_REU": {
     var _split_x = _vx1 + manifest_reu_offset(_vx2-_vx1);
     var _split_top = _cy;
     var _cn=_vx1+30, _cc=_split_x+8, _cr=_cc+90, _cs=_cc+190, _cm=_cc+275, _ci=_cm+95;
-    draw_set_color(make_color_rgb(120,120,140));
+    draw_set_color(make_color_rgb(127, 127, 147));
     draw_text_l(_cn,_cy,"ASSET"); draw_text_l(_cc,_cy,"C64"); draw_text_l(_cr,_cy,"REU"); draw_text_l(_cs,_cy,"BYTES"); draw_text_l(_cm,_cy,"PACK"); draw_text_l(_ci,_cy,"IDX");
     _cy += 14;
     var _links=variable_struct_exists(_asset,"linked_assets")?_asset.linked_assets:[];
@@ -8917,7 +8917,7 @@ case "LOAD_REU": {
         if (_is_bmp) {
             draw_set_color(c_white); draw_text_l(_ci,_cy+4,string(_row_bmp_idx));
         } else {
-            draw_set_color(make_color_rgb(90,90,100)); draw_text_l(_ci,_cy+4,"--");
+            draw_set_color(make_color_rgb(130, 130, 140)); draw_text_l(_ci,_cy+4,"--");
         }
         draw_set_color(make_color_rgb(115,35,25));
         draw_rectangle(_vx2-70,_cy+2,_vx2-30,_cy+18,false);
@@ -8958,7 +8958,7 @@ case "LOAD_REU": {
     if (load_reu_scroll_max > 0) {
         var _reu_first = load_reu_scroll + 1;
         var _reu_last  = min(array_length(_links), load_reu_scroll + load_reu_rows_visible);
-        draw_set_color(make_color_rgb(120,120,140));
+        draw_set_color(make_color_rgb(127, 127, 147));
         draw_text_l(_vx1+210,_cy+5,string(_reu_first) + "-" + string(_reu_last) + " / " + string(array_length(_links)));
     }
     var _hov=point_in_rectangle(_mx,_my,_vx1+10,_cy,_vx1+90,_cy+20);
@@ -9001,7 +9001,7 @@ case "LOAD_ORG": {
     var _col_x      = _vx2 - 26;
 
     draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(make_color_rgb(120, 120, 140));
+    draw_set_color(make_color_rgb(127, 127, 147));
     draw_text_l(_col_name,   _cy, "ASSET");
     draw_text_l(_col_d64,    _cy, "D64 FILE");
     draw_text_l(_col_bytes,  _cy, "BYTES");
@@ -9116,7 +9116,7 @@ case "LOAD_ORG": {
             }
         } else {
             // Asset not found / no buffer
-            draw_set_color(make_color_rgb(180, 80, 80));
+            draw_set_color(make_color_rgb(195, 102, 102));
             draw_text_l(_col_bytes, _cy + 5, "MISSING");
         }
 
@@ -9870,7 +9870,7 @@ case "META_TILESET": {
     _cy += 18;
 
     if (_run_node == noone) {
-        draw_set_color(make_color_rgb(110, 110, 130));
+        draw_set_color(make_color_rgb(128, 128, 148));
         draw_text_l(_rv_x1, _cy + 1, "RUN VIEW: CONNECT A METASCROLL");
         _cy += 18;
     } else {
@@ -10004,7 +10004,7 @@ case "META_TILESET": {
     }
 
     draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(make_color_rgb(80, 80, 100));
+    draw_set_color(make_color_rgb(129, 129, 150));
     draw_text_l(_vx1 + 10, _cy + 4, "MODE:");
 
     if (_ecm_mode) {
@@ -10032,7 +10032,7 @@ case "META_TILESET": {
         draw_set_font_l(fnt_c64_tiny);
         for (var _ebi = 0; _ebi < 4; _ebi++) {
             var _eby = _cy + _ebi * (_ecm_sw + 4);
-            draw_set_color(make_color_rgb(80, 80, 100));
+            draw_set_color(make_color_rgb(129, 129, 150));
             draw_text_l(_vx1 + 10, _eby + 4, _ecm_labels[_ebi] + ":");
             var _ebval = (_ts_chr_ref != noone && variable_struct_exists(_ts_chr_ref.meta, _ecm_fields[_ebi]))
                        ? variable_struct_get(_ts_chr_ref.meta, _ecm_fields[_ebi]) : 0;
@@ -10085,7 +10085,7 @@ case "META_TILESET": {
         draw_set_font_l(fnt_c64_tiny);
         for (var _tpi = 0; _tpi < 3; _tpi++) {
             var _tpy = _cy + _tpi * (_ts_sw + 4);
-            draw_set_color(make_color_rgb(80, 80, 100));
+            draw_set_color(make_color_rgb(129, 129, 150));
             draw_text_l(_vx1 + 10, _tpy + 3, _ts_pal_labels[_tpi] + ":");
             for (var _tsi = 0; _tsi < 16; _tsi++) {
                 var _tsx   = _vx1 + 36 + _tsi * (_ts_sw + _ts_gap);
@@ -10420,7 +10420,7 @@ case "META_TILESET": {
         if (_shov || _ssel) scr_editor_control(_sx2, _sy2, _sx2 + _slot_w3 - 2, _sy2 + _slot_h - 2, _shov, _ssel);
 
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(100, 100, 140));
+        draw_set_color(make_color_rgb(127, 127, 165));
         scr_editor_label(_sx2, _sy2, _sx2 + _slot_w3 - 2, _sy2 + 16, string(_si), fa_left, 5);
 
         var _base_off = _si * _m.stamp_w * _m.stamp_h;
@@ -10850,7 +10850,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         var _ov_rst_hov = point_in_rectangle(_mx, _my, _ov_rst_x1, _ov_y1, _ov_rst_x2, _ov_y1 + _ov_h);
         scr_ui_info(_ov_rst_hov, "RESET: REMOVE THE STAMP COLOUR OVERRIDE (USE EACH CHAR'S OWN COLOUR)");
         scr_editor_control(_ov_rst_x1, _ov_y1, _ov_rst_x2, _ov_y1 + _ov_h, _ov_rst_hov, false, _ov_is_set);
-        draw_set_color(_ov_is_set ? c_white : make_color_rgb(110, 110, 120));
+        draw_set_color(_ov_is_set ? c_white : make_color_rgb(129, 129, 139));
         draw_set_halign(fa_center);
         scr_editor_label(_ov_rst_x1, _ov_y1, _ov_rst_x2, _ov_y1 + _ov_h, "RESET");
         draw_set_halign(fa_left);
@@ -11741,7 +11741,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _pstm_hov = point_in_rectangle(_mx, _my, _tclr_x1, _pstm_y1, _tclr_x2, _pstm_y2);
     scr_ui_info(_pstm_hov, "PASTE: REPLACE THIS MAP WITH THE COPIED ONE (SAME GRID SIZE ONLY, UNDOABLE)");
     scr_editor_control(_tclr_x1, _pstm_y1, _tclr_x2, _pstm_y2, _pstm_hov, false, _clip_ok);
-    draw_set_color(_clip_ok ? c_white : make_color_rgb(110, 122, 138));
+    draw_set_color(_clip_ok ? c_white : make_color_rgb(120, 132, 147));
     scr_editor_label(_tclr_x1, _pstm_y1, _tclr_x2, _pstm_y2, "PASTE");
     if (_clip_ok && _pstm_hov && mouse_check_button_pressed(mb_left)) {
         if (!variable_struct_exists(_m, "mt_undo_stack")) _m.mt_undo_stack = [];
@@ -11963,7 +11963,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     // What a colour pick does right now. Kept within the palette's width -
     // the map's help text sits directly to the right on these rows.
     var _hint_txt = "COLOUR SETS THE SELECTED CHAR";
-    var _hint_col = make_color_rgb(110, 130, 150);
+    var _hint_col = make_color_rgb(112, 132, 152);
     if (_run_fx_on) {
         _hint_txt = "FIXED $" + string_upper(decimal_to_hex(_run_nib)) + ": COLOUR + HR/MC SET ALL CELLS";
         _hint_col = make_color_rgb(255, 170, 60);
@@ -12175,7 +12175,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             draw_set_color(_tcol);    draw_text_l(_vx1 + 90, _cy, _asset.type);
             _cy += 20;
             draw_set_color(c_ltgray); draw_text_l(_vx1 + 10, _cy, "FILE:");
-            draw_set_color(_asset.file != "" ? c_lime : make_color_rgb(200,60,60));
+            draw_set_color(_asset.file != "" ? c_lime : make_color_rgb(213, 88, 88));
             draw_text_l(_vx1 + 360, _cy, _asset.file != "" ? _asset.file : L("NO FILE LOADED"));
             _cy += 30;
         } break;
@@ -12214,7 +12214,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     }
     var _ashov = point_in_rectangle(_mx, _my, _as_x, _as_y, _as_x + 100, _as_y + 16);
     draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(_asset.meta.autosave ? make_color_rgb(255, 255, 255) : make_color_rgb(100, 100, 100));
+    draw_set_color(_asset.meta.autosave ? make_color_rgb(255, 255, 255) : make_color_rgb(128, 128, 128));
     draw_text_l(_as_x, _as_y, L("AUTOSAVE: ") + (_asset.meta.autosave ? L("ON") : L("OFF")));
     if (_ashov && mouse_check_button_pressed(mb_left)) {
         _asset.meta.autosave = !_asset.meta.autosave;
@@ -12290,7 +12290,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         _ref_count = array_length(_ref_collect);
         if (_ref_count == 0) {
             draw_set_font_l(fnt_c64_tiny);
-            draw_set_color(make_color_rgb(80, 80, 80));
+            draw_set_color(make_color_rgb(129, 129, 129));
             var _status_msg = (_asset.type == "BYTE_DATA" || _asset.type == "TEXT_DATA" || _asset.type == "LINE_COLL") ? "OCCUPIES RAM AT STATED ADDRESSES" : "NONE - ASSET NOT IN USE";
             draw_text_l(_vx1 + 20, _cy, _status_msg);
             _cy += 20;
@@ -12410,7 +12410,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             draw_set_color(make_color_rgb(40, 40, 60));
             draw_rectangle(_vx1 + 10, _cy, _vx2 - 10, _cy + 80, false);
             draw_set_font_l(fnt_c64_tiny);
-            draw_set_color(make_color_rgb(80, 80, 80));
+            draw_set_color(make_color_rgb(129, 129, 129));
             draw_set_halign(fa_center);
             draw_text_l(_vx1 + _vw * 0.5, _cy + 32, "NO CHARSET LOADED");
             draw_set_halign(fa_left);
@@ -12454,7 +12454,7 @@ if (loader_org_picker_open && instance_exists(loader_org_picker_node)) {
 
     draw_set_font_l(fnt_c64_tiny);
     if (array_length(_lop_matches) == 0) {
-        draw_set_color(make_color_rgb(150, 80, 80));
+        draw_set_color(make_color_rgb(177, 111, 111));
         draw_text_l(_drop_x + 4, _drop_y + 4, "(NO LOAD_ORG ASSETS)");
     } else {
         for (var _i = 0; _i < array_length(_lop_matches); _i++) {
@@ -12509,7 +12509,7 @@ if (loader_file_picker_open && instance_exists(loader_file_picker_node)) {
 
     draw_set_font_l(fnt_c64_tiny);
     if (array_length(_lfp_matches) == 0) {
-        draw_set_color(make_color_rgb(150, 80, 80));
+        draw_set_color(make_color_rgb(177, 111, 111));
         draw_text_l(_drop_x + 4, _drop_y + 4, "(NO LINKED FILES)");
     } else {
         for (var _i = 0; _i < array_length(_lfp_matches); _i++) {
@@ -12522,7 +12522,7 @@ if (loader_file_picker_open && instance_exists(loader_file_picker_node)) {
             scr_editor_control(_drop_x, _ry, _drop_x + _drop_w, _ry + 16, _hov);
             draw_set_color(_hov ? c_white : c_yellow);
             scr_editor_label(_drop_x, _ry, _drop_x + _drop_w, _ry + 16, _name, fa_left, 4);
-            draw_set_color(_ll ? make_color_rgb(60, 100, 200) : make_color_rgb(80, 80, 80));
+            draw_set_color(_ll ? make_color_rgb(90, 125, 214) : make_color_rgb(129, 129, 129));
             scr_editor_label(_drop_x, _ry, _drop_x + _drop_w, _ry + 16, "→ " + _d64, fa_left, 110);
         }
     }
@@ -12622,7 +12622,7 @@ if (load_org_picker_open) {
     draw_text_l(_lpx + 6, _lpy + 4, "ADD TO DISK");
 
     if (array_length(_matches) == 0) {
-        draw_set_color(make_color_rgb(120, 100, 80));
+        draw_set_color(make_color_rgb(147, 127, 107));
         draw_text_l(
             _lpx + 8,
             _lpy + 24,
@@ -12752,7 +12752,7 @@ if (load_reu_picker_open) {
     draw_text_l(_lpx + 6, _lpy + 4, "ADD TO REU IMAGE");
 
     if (array_length(_matches) == 0) {
-        draw_set_color(make_color_rgb(100, 120, 120));
+        draw_set_color(make_color_rgb(114, 134, 134));
         draw_text_l(
             _lpx + 8,
             _lpy + 24,
@@ -12909,7 +12909,7 @@ if (meta_ts_picker_open) {
     scr_editor_panel(_tspx, _tspy, _tspx + _tspw, _tspy + _ts_total_h, true);
     if (array_length(_ts_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_tspx + 8, _tspy + 6, "NO CHARSET ASSETS");
     } else {
         for (var _i = 0; _i < array_length(_ts_matches); _i++) {
@@ -12950,7 +12950,7 @@ if (chr_picker_open && instance_exists(chr_picker_node)) {
 
     if (array_length(_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_pdx + 8, _pdy + 6, "NO CHARSET ASSETS");
     } else {
         for (var _i = 0; _i < array_length(_matches); _i++) {
@@ -12990,7 +12990,7 @@ if (map_chr_picker_open) {
 
     if (array_length(_mc_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_mcpx + 8, _mcpy + 6, "NO CHARSET ASSETS");
     } else {
         for (var _i = 0; _i < array_length(_mc_matches); _i++) {
@@ -13028,7 +13028,7 @@ if (bbuild_picker_open) {
 
     if (array_length(_bb_matches) == 0) {
         draw_set_font_l(fnt_c64_tiny);
-        draw_set_color(make_color_rgb(80, 80, 80));
+        draw_set_color(make_color_rgb(129, 129, 129));
         draw_text_l(_bbpx + 8, _bbpy + 4, "NO BITMAP ASSETS");
     } else {
         for (var _i = 0; _i < array_length(_bb_matches); _i++) {

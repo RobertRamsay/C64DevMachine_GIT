@@ -635,7 +635,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
                          || (_mc_mode == 2 && _swi < 4 && chr_active_ecm_bg == _swi);
         var _sw_x1 = _btn_x + 32;
         var _sw_y1 = _btn_y + _swi * (_sw_sz + 3);
-        draw_set_color(_sw_selected ? c_yellow : make_color_rgb(100, 100, 140));
+        draw_set_color(_sw_selected ? c_yellow : make_color_rgb(127, 127, 165));
         draw_text_l(_btn_x, _sw_y1 + 3, _sw_labels[_swi] + ":");
         draw_set_color(scr_c64_pepto_colour(_sw_col_idx));
         draw_rectangle(_sw_x1, _sw_y1, _sw_x1 + _sw_sz, _sw_y1 + _sw_sz, false);
