@@ -36,6 +36,7 @@ var _mx           = global.gui_mouse_x;
 var _my           = global.gui_mouse_y;
 var _panel_right  = _gui_w - 2;
 var _panel_bottom = _gui_h - 100;
+scr_ui_tint_update();      // theme tint for all panel chrome (recomputed only on a theme change)
 
 
 // Seed pixel_backup for every BITMAP asset that has a valid surface but no backup yet
@@ -84,13 +85,13 @@ draw_set_halign(fa_left);
 // SORT BY control
 // -------------------------------------------------------
 var _sort_row_y = panel_y + 30;
-var _sort_opts  = ["NAME", "TYPE", "ADDR"];
+var _sort_opts  = ["NAME", "TYPE", "ADDR", "OWN"];   // OWN = the order rows were dragged into
 draw_set_font_l(fnt_c64_tiny);
 draw_set_color(make_color_rgb(140, 140, 140));
-scr_editor_label(panel_x, _sort_row_y, panel_x + 60, _sort_row_y + 20, "SORT BY:", fa_left, 6);
-var _sort_btn_x = panel_x + 62;
-// Four equal buttons (3 sorts + GRP) fill the row with a 6px right margin.
-var _so_w = floor((_panel_right - 6 - _sort_btn_x - 3 * 4) / 4);
+scr_editor_label(panel_x, _sort_row_y, panel_x + 44, _sort_row_y + 20, "SORT:", fa_left, 6);
+var _sort_btn_x = panel_x + 44;
+// Five equal buttons (4 sorts + GRP) fill the row with a 6px right margin.
+var _so_w = floor((_panel_right - 6 - _sort_btn_x - 4 * 4) / 5);
 for (var _soi = 0; _soi < array_length(_sort_opts); _soi++) {
     var _so_x1   = _sort_btn_x + (_soi * (_so_w + 4));
     var _so_x2   = _so_x1 + _so_w;
@@ -108,7 +109,7 @@ for (var _soi = 0; _soi < array_length(_sort_opts); _soi++) {
 
 // [+GRP] — creates an empty group. Fourth slot of the sort row, same
 // width and gap as the sort buttons.
-var _grp_x1  = _sort_btn_x + 3 * (_so_w + 4);
+var _grp_x1  = _sort_btn_x + 4 * (_so_w + 4);
 var _grp_x2  = _grp_x1 + _so_w;
 var _grp_hov = point_in_rectangle(_mx, _my, _grp_x1, _sort_row_y, _grp_x2, _sort_row_y + 19);
 scr_editor_control(_grp_x1, _sort_row_y, _grp_x2, _sort_row_y + 20, _grp_hov, false);
@@ -145,6 +146,7 @@ var _list_y = panel_y + 66;
 // Shared with Step_0's hit-testing via scr_asset_display_rows() so the
 // two can never disagree about display order.
 var _rows   = scr_asset_display_rows();
+asset_grip_hot = false;   // set by a row whose drag handle is under the pointer
 var _disp_n = array_length(_rows);
 
 // ---- MEMBERSHIP LOOKUP -------------------------------------------------
@@ -264,7 +266,7 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
         _row_col = merge_color(_row_col, make_color_rgb(150, 0, 0), 0.4 * _p);
     }
 	
-    draw_set_color(_row_col);
+    draw_set_color(scr_ui_tinted(_row_col));
     draw_roundrect_ext(panel_x + 2, _iy + 1, _panel_right - 2, _iy + item_h - 1, 5, 5, false);
 
     // Memory-bar ownership highlight. Keep the asset-list position unchanged;
@@ -284,14 +286,37 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
     draw_set_color(_tcol);
     draw_rectangle(panel_x, _iy, panel_x + 4, _iy + item_h, false);
 
-    // Type label
-    draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(_tcol);
-    draw_text_l(panel_x + 8, _iy + 2, _asset.type);
-
     // Zone boundaries
     var _addr_x = _panel_right - 58;
     var _edit_x = _addr_x - 30;
+
+    // Drag handle: the type strip (upper half of the row, left of EDIT) - the
+    // same rect obj_asset_manager Step arms a drag from. Hovering it tints the
+    // strip in the type colour, shows grip dots and the move cursor; the row
+    // being dragged stays lit until it is dropped.
+    var _grip_hov  = (asset_drag_idx < 0) && !add_dropdown_open && !(editing_name && editing_idx == _i)
+                  && point_in_rectangle(_mx, _my, panel_x, _iy, _edit_x, _iy + (item_h / 2));
+    var _grip_drag = (asset_drag_idx == _i);
+    if (_grip_hov) asset_grip_hot = true;
+    if (_grip_hov || _grip_drag) {
+        draw_set_alpha(_grip_drag ? 0.45 : 0.28);
+        draw_set_color(_tcol);
+        draw_roundrect_ext(panel_x + 6, _iy + 2, _edit_x - 4, _iy + floor(item_h / 2), 4, 4, false);
+        draw_set_alpha(1);
+        draw_set_color(merge_color(_tcol, c_white, 0.55));
+        var _gdx = _edit_x - 16;
+        var _gdy = _iy + floor(item_h / 4) - 3;
+        for (var _gc = 0; _gc < 3; _gc++) {
+            for (var _gr = 0; _gr < 2; _gr++) {
+                draw_rectangle(_gdx + _gc * 4, _gdy + _gr * 4, _gdx + _gc * 4 + 1, _gdy + _gr * 4 + 1, false);
+            }
+        }
+    }
+
+    // Type label (brightened while its handle is lit)
+    draw_set_font_l(fnt_c64_tiny);
+    draw_set_color((_grip_hov || _grip_drag) ? merge_color(_tcol, c_white, 0.45) : _tcol);
+    draw_text_l(panel_x + 8, _iy + 2, _asset.type);
 
     // Name - editing or display
     draw_set_font_l(fnt_c64_code);
@@ -410,6 +435,15 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
 	}
 } // end hide panel when viewer open
 
+// Move cursor over a drag handle and while dragging. Only resets a cursor it
+// set itself, so editors that hide the cursor are left alone.
+var _grip_cursor = asset_grip_hot || (asset_drag_idx >= 0);
+if (_grip_cursor != asset_grip_cursor) {
+    window_set_cursor(_grip_cursor ? cr_size_all : cr_default);
+    asset_grip_cursor = _grip_cursor;
+}
+asset_grip_hot = false;   // rows set it again next frame (not drawn while an editor is open)
+
 // -------------------------------------------------------
 // GROUP DRAG FEEDBACK
 // A row being dragged follows the cursor as a label. Releasing over a group
@@ -429,6 +463,13 @@ if (asset_drag_idx >= 0 && asset_drag_idx < ds_list_size(asset_list)) {
     if (asset_drag_over_group == "" && asset_drag_over_loose) {
         draw_set_color(make_color_rgb(200, 160, 40));
         draw_text_l(panel_x + 6, _panel_bottom - 52, "RELEASE TO UNGROUP");
+    }
+    // Between two rows: a divider where the asset will land
+    if (asset_drag_ins_y >= panel_y + 66 && asset_drag_ins_y <= _panel_bottom - 38) {
+        draw_set_color(make_color_rgb(100, 220, 200));
+        draw_rectangle(panel_x + 6, asset_drag_ins_y - 1, _panel_right - 6, asset_drag_ins_y + 1, false);
+        draw_triangle(panel_x + 2, asset_drag_ins_y - 4, panel_x + 2, asset_drag_ins_y + 4, panel_x + 7, asset_drag_ins_y, false);
+        draw_triangle(_panel_right - 2, asset_drag_ins_y - 4, _panel_right - 2, asset_drag_ins_y + 4, _panel_right - 7, asset_drag_ins_y, false);
     }
 }
 
@@ -818,7 +859,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
 
      //Backdrop - solid: nothing of the workspace (nodes, boxes, asset panel)
      //shows behind an open editor
-    draw_set_color(make_color_rgb(13, 20, 29));
+    draw_set_color(scr_ui_tinted(make_color_rgb(13, 20, 29)));
     draw_set_alpha(1.0);
     draw_rectangle(0, 0, _gui_w, _gui_h, false);
 
@@ -913,7 +954,10 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         draw_set_color(_asset.file != "" ? c_lime : make_color_rgb(100, 200, 120));
         draw_set_font_l(fnt_c64_tiny);
         var _imp_file_txt = _asset.file != "" ? filename_name(_asset.file) : L("CUSTOM: ") + _asset.name;
-        scr_editor_label(_lbx2 + 580, _lby1, _vx2, _lby2, _imp_file_txt, fa_left, 0);
+        // BITMAP shows its full path in the title bar; its toolbar row is full.
+        if (_asset.type != "BITMAP") {
+            scr_editor_label(_lbx2 + 580, _lby1, _vx2, _lby2, _imp_file_txt, fa_left, 0);
+        }
         if (_asset.type == "SPRITE_SET" &&
             variable_struct_exists(_asset.meta, "has_colour") &&
             !_asset.meta.has_colour) {
@@ -4742,7 +4786,8 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        // REFERENCED BY — inline in header row
 	        draw_set_font_l(fnt_c64_tiny);
 	        draw_set_color(c_ltgray);
-	        scr_editor_label(_vx1 + 900, _vy1 + 38, _vx1 + 1000, _vy1 + 58, "USED BY:", fa_left, 0);
+	        // Same 20px band as the toolbar buttons, after MC MODE.
+	        scr_editor_label(_vx1 + 640, _vy1 + 38, _vx1 + 720, _vy1 + 58, "USED BY:", fa_left, 0);
 	            
 	        // PNG mode flag — needed early to gate several UI sections
 	        var _png_mode = variable_struct_exists(_asset.meta, "png_import_mode") && _asset.meta.png_import_mode;
@@ -4777,12 +4822,12 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        if (_is_working_copy && !_png_mode && string_lower(filename_ext(_src_path)) != ".png") {
 	            var _rsx1 = _vx1 + 870;
 	            var _rsx2 = _rsx1 + 114;
-	            var _rs_hov = point_in_rectangle(_mx, _my, _rsx1, _vy1 + 80, _rsx2, _vy1 + 97);
+	            var _rs_hov = point_in_rectangle(_mx, _my, _rsx1, _vy1 + 64, _rsx2, _vy1 + 84);
 	            scr_ui_info(_rs_hov, "OVERWRITE THE WORKING COPY WITH THE ORIGINAL SOURCE FILE (CLEARS UNDO HISTORY)");
-	            scr_editor_control(_rsx1, _vy1 + 80, _rsx2, _vy1 + 97, _rs_hov, false);
+	            scr_editor_control(_rsx1, _vy1 + 64, _rsx2, _vy1 + 84, _rs_hov, false);
 	            draw_set_color(_rs_hov ? c_yellow : c_ltgray);
 	            draw_set_color(_rs_hov ? c_yellow : c_white);
-	            scr_editor_label(_rsx1, _vy1 + 80, _rsx2, _vy1 + 97, "RELOAD SOURCE");
+	            scr_editor_label(_rsx1, _vy1 + 64, _rsx2, _vy1 + 84, "RELOAD SOURCE");
 	            if (_rs_hov && mouse_check_button_pressed(mb_left)) {
 	                // Reload the working copy from the original source
 	                   
@@ -4817,17 +4862,17 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            
 	        // ── EXPORT BUTTONS ────────────────────────────────────────────────────
 	        if (_has_canvas && !_png_mode) {
-	            var _ex_x1 = _vx1 + 992;  // right of RELOAD SOURCE (_vx1+870 + 114 + 8)
+	            var _ex_x1 = _vx1 + 996;  // toolbar row, ending 8px left of PREVIEW (_vx1+1240)
 	            var _ex_x2 = _ex_x1 + 114;
-	            var _ex_y  = _vy1 + 80;   // same row as RELOAD SOURCE
+	            var _ex_y  = _vy1 + 38;   // same row as PREVIEW and the toolbar buttons
 	                
 	            // EXPORT PNG
-	            var _epng_hov = point_in_rectangle(_mx, _my, _ex_x1, _ex_y, _ex_x2, _ex_y + 17);
+	            var _epng_hov = point_in_rectangle(_mx, _my, _ex_x1, _ex_y, _ex_x2, _ex_y + 20);
 	            scr_ui_info(_epng_hov, "SAVE THE 320X200 BITMAP AS A PNG IMAGE FILE");
-	            scr_editor_control(_ex_x1, _ex_y, _ex_x2, _ex_y + 17, _epng_hov, false);
+	            scr_editor_control(_ex_x1, _ex_y, _ex_x2, _ex_y + 20, _epng_hov, false);
 	            draw_set_color(_epng_hov ? c_white : c_ltgray);
 	            draw_set_color(_epng_hov ? c_white : c_ltgray);
-	            scr_editor_label(_ex_x1, _ex_y, _ex_x2, _ex_y + 17, "EXPORT PNG");
+	            scr_editor_label(_ex_x1, _ex_y, _ex_x2, _ex_y + 20, "EXPORT PNG");
 	            if (_epng_hov && mouse_check_button_pressed(mb_left)) {
 	                var _png_base = filename_name(_asset.file);
 	                var _png_ext  = filename_ext(_png_base);
@@ -4842,12 +4887,12 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            // EXPORT KLA — right of EXPORT PNG
 	            var _ex_x3  = _ex_x2 + 8;
 	            var _ex_x4  = _ex_x3 + 114;
-	            var _ekla_hov = point_in_rectangle(_mx, _my, _ex_x3, _ex_y, _ex_x4, _ex_y + 17);
+	            var _ekla_hov = point_in_rectangle(_mx, _my, _ex_x3, _ex_y, _ex_x4, _ex_y + 20);
 	            scr_ui_info(_ekla_hov, "SAVE A COPY OF THIS BITMAP AS A KOALA PAINTER .KLA FILE");
-	            scr_editor_control(_ex_x3, _ex_y, _ex_x4, _ex_y + 17, _ekla_hov, false);
+	            scr_editor_control(_ex_x3, _ex_y, _ex_x4, _ex_y + 20, _ekla_hov, false);
 	            draw_set_color(_ekla_hov ? c_white : c_ltgray);
 	            draw_set_color(_ekla_hov ? c_white : c_ltgray);
-	            scr_editor_label(_ex_x3, _ex_y, _ex_x4, _ex_y + 17, "EXPORT KLA");
+	            scr_editor_label(_ex_x3, _ex_y, _ex_x4, _ex_y + 20, "EXPORT KLA");
 	            if (_ekla_hov && mouse_check_button_pressed(mb_left)) {
 	                var _kla_def = filename_name(_asset.file);
 	                if (_kla_def == "") {
@@ -4870,13 +4915,60 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            }
 	        }
 	        // ── END EXPORT BUTTONS ────────────────────────────────────────────────
+
+	        // ── BACK TO IMPORT ─────────────────────────────────────────────────────
+	        // CONFIRM IMPORT keeps the PNG path and every setting it used
+	        // (meta.png_last). This reopens the importer exactly there, so a
+	        // slider can be nudged or MC / HIRES switched and confirmed again.
+	        // CANCEL in the importer goes back to the bitmap as it was.
+	        if (!_png_mode && variable_struct_exists(_asset.meta, "png_last")
+	        &&  is_struct(_asset.meta.png_last) && file_exists(_asset.meta.png_last.path)) {
+	            var _bi_x1 = _vx1 + 996;   // second row, under EXPORT PNG
+	            var _bi_x2 = _bi_x1 + 130;
+	            var _bi_y1 = _vy1 + 64;
+	            var _bi_y2 = _vy1 + 84;
+	            var _bi_hov = point_in_rectangle(_mx, _my, _bi_x1, _bi_y1, _bi_x2, _bi_y2);
+	            scr_ui_info(_bi_hov, "REOPEN THE PNG IMPORTER WITH THE SETTINGS FROM YOUR LAST CONFIRM IMPORT, TO ADJUST AND CONFIRM AGAIN (CANCEL KEEPS THIS BITMAP)");
+	            scr_editor_control(_bi_x1, _bi_y1, _bi_x2, _bi_y2, _bi_hov, false);
+	            draw_set_font_l(fnt_c64_tiny);
+	            draw_set_color(c_white);
+	            scr_editor_label(_bi_x1, _bi_y1, _bi_x2, _bi_y2, "BACK TO IMPORT");
+	            if (_bi_hov && mouse_check_button_pressed(mb_left) && !global.ui_click_consumed) {
+	                var _pl = _asset.meta.png_last;
+	                _asset.meta.png_import_path   = _pl.path;
+	                _asset.meta.png_hue           = _pl.hue;
+	                _asset.meta.png_saturation    = _pl.sat;
+	                _asset.meta.png_contrast      = _pl.con;
+	                _asset.meta.png_brightness    = _pl.bri;
+	                _asset.meta.png_dither        = _pl.dither;
+	                _asset.meta.png_dither_amount = _pl.dither_amount;
+	                _asset.meta.png_blur          = _pl.blur;
+	                _asset.meta.png_colorize      = _pl.colorize;
+	                _asset.meta.png_colorize_col  = _pl.colorize_col;
+	                _asset.meta.png_scale         = _pl.scale;
+	                _asset.meta.png_off_x         = _pl.off_x;
+	                _asset.meta.png_off_y         = _pl.off_y;
+	                _asset.meta.png_fine_x        = _pl.fine_x;
+	                _asset.meta.png_fine_y        = _pl.fine_y;
+	                _asset.meta.png_pending_bg    = _pl.bg;
+	                if (variable_struct_exists(_asset.meta, "png_source_surf") && surface_exists(_asset.meta.png_source_surf)) {
+	                    surface_free(_asset.meta.png_source_surf);
+	                }
+	                _asset.meta.png_source_surf = -1;
+	                _asset.meta.png_conv_dirty  = true;
+	                _asset.meta.png_import_mode = true;
+	                _asset.meta.is_editing      = true;
+	                global.ui_click_consumed    = true;
+	            }
+	        }
 				
 	        var _ref_inline_x = _vx1 + 750;
 	        var _ref_found = false;
 			bmp_ref_asset_name = _asset.name;
 	        bmp_ref_vy1        = _vy1;
 	        bmp_ref_found      = false;
-	        bmp_ref_x          = _vx1 + 1000;
+	        bmp_ref_x          = _vx1 + 720;
+	        bmp_ref_vx1        = _vx1;
 	        with (obj_c64_node) {
 	            var _rn = "";
 	            if (node_type == "MACRO_BMP" && array_length(instructions[0]) > 1)
@@ -4884,16 +4976,18 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	            if (_rn == other.bmp_ref_asset_name) {
 	                other.bmp_ref_found = true;
 	                draw_set_color(c_yellow);
+	                // Stops short of EXPORT PNG on the same row
+	                if (other.bmp_ref_x + string_width_l(node_title + " $" + string_upper(decimal_to_hex(pc_address))) <= other.bmp_ref_vx1 + 986)
 	                scr_editor_label(other.bmp_ref_x, other.bmp_ref_vy1 + 38, other.bmp_ref_x + 1, other.bmp_ref_vy1 + 58, node_title + " $" + string_upper(decimal_to_hex(pc_address)), fa_left, 0);
 	                other.bmp_ref_x += string_width_l(node_title + " $" + string_upper(decimal_to_hex(pc_address))) + 12;
 	            }
 	        }
-			/*
+			
 	        if (!bmp_ref_found) {
 	            draw_set_color(make_color_rgb(126, 126, 150));
-	            draw_text_l(_vx1 + 780, _vy1 + 43, "NONE");
+	            scr_editor_label(_vx1 + 720, _vy1 + 38, _vx1 + 800, _vy1 + 58, "NONE", fa_left, 0);
 	        }
-            */
+            
 			
 	        // ── DRAGGABLE 320×200 PREVIEW WINDOW ──────────────────────────────────
 	        if (!variable_struct_exists(_asset.meta, "prev_win_x"))      _asset.meta.prev_win_x      = -1; // -1 = auto-place bottom right (set once the canvas rect is known)
@@ -4940,9 +5034,9 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 
 	        // Toggle button — PREVIEW (aligned with source path row)
 	        var _tog_x = _vx1 + 1240;
-	        var _tog_y = _vy1 + 40;
+	        var _tog_y = _vy1 + 38;
 	        var _tog_w = 70;
-	        var _tog_h = 22;
+	        var _tog_h = 20;
 	        var _tog_hover = point_in_rectangle(_mx, _my, _tog_x, _tog_y, _tog_x + _tog_w, _tog_y + _tog_h);
 	        scr_ui_info(_tog_hover, "SHOW OR HIDE THE FLOATING 1:1 PREVIEW WINDOW OF THE WHOLE BITMAP");
 	        draw_set_font_l(fnt_c64_tiny);
@@ -4986,23 +5080,25 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 
 
 	        var _btn_y = _vy1 + 38; 
+	        // No EDIT button: opening a bitmap from the asset panel puts it
+	        // straight into edit mode, and leaving the viewer commits it
+	        // (obj_asset_manager Step > scr_asset_bmp_commit_edit). RESAVE
+	        // takes the button's old place on the row.
 	        var _ebx1 = _vx1 + 120;
-	        var _ebx2 = _ebx1 + 80;
-	        var _eb_hov = point_in_rectangle(_mx, _my, _ebx1, _btn_y, _ebx2, _btn_y + 20);
-	        scr_ui_info(_eb_hov, !_has_canvas ? "CREATE A NEW BLANK BITMAP AND START EDITING IT"
-	            : (_is_ed ? "LEAVE EDIT MODE: SAVES THE BITMAP AND REFRESHES EVERY NODE THAT USES IT"
-	                      : "ENTER EDIT MODE TO PAINT ON THIS BITMAP (MOUSE WHEEL UP OVER THE PANEL ALSO WORKS)"));
-	        if (global.tour_active) {
-	            scr_tour_capture("ASSET:BMP_EDIT", _ebx1, _btn_y, _ebx2, _btn_y + 20);
-	        }
-	        scr_editor_control(_ebx1, _btn_y, _ebx2, _btn_y + 20, _eb_hov, _is_ed);
+	        var _ebx2 = _ebx1 - 10;
 	        draw_set_font_l(fnt_c64_tiny);
-	        draw_set_color(c_white);
 	        draw_set_halign(fa_center);
-	        var _btn_label = _has_canvas ? "EDIT" : "CREATE";
-	        scr_editor_label(_ebx1, _btn_y, _ebx2, _btn_y + 20, _btn_label);
-            
-if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASSET:BMP_EDIT")) {
+
+	        // Enter edit mode as soon as there is a canvas. A brand-new bitmap
+	        // (no canvas, no file on disk) gets a blank one first - nothing is
+	        // written to disk until the first stroke autosaves. One that is
+	        // still loading (file or backup, no surface yet) waits a frame for
+	        // the surface restore above. Never during a PNG import.
+	        var _bmp_auto_enter = !_is_ed && !_png_mode
+	            && (_has_canvas
+	                || ((_asset.file == "" || !file_exists(_asset.file))
+	                    && !buffer_exists(_asset.meta.pixel_backup)));
+	        if (_bmp_auto_enter) {
 	            _asset.meta.is_editing = !_is_ed;
                 
 	            // Reset stroke tracking to prevent jump-lines when toggling edit mode
@@ -5079,9 +5175,9 @@ if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASS
 			// RESAVE & CLEANUP BUTTONS
 	        if (_is_ed) {
 	            var _rbx1 = _ebx2 + 10;
-	            var _rbx2 = _rbx1 + 80;
+	            var _rbx2 = _rbx1 + 90;
 	            var _rb_hov = point_in_rectangle(_mx, _my, _rbx1, _btn_y, _rbx2, _btn_y + 20);
-	            scr_ui_info(_rb_hov, "SAVE THE BITMAP TO ITS .KLA FILE NOW (ORANGE = UNSAVED CHANGES) AND STAY IN EDIT MODE");
+	            scr_ui_info(_rb_hov, "SAVE THE BITMAP TO ITS .KLA FILE NOW (ORANGE = UNSAVED CHANGES). IT ALSO AUTOSAVES AFTER EACH STROKE AND ON CLOSE");
 	            var _rb_unsaved = variable_struct_exists(_asset.meta, "bmp_unsaved") && _asset.meta.bmp_unsaved;
 	            // Highlight the button while it needs a save (unsaved)
 	            scr_editor_control(_rbx1, _btn_y, _rbx2, _btn_y + 20, _rb_hov, _rb_unsaved);
@@ -5107,7 +5203,7 @@ if ((_eb_hov && mouse_check_button_pressed(mb_left)) || scr_tour_take_click("ASS
 				
 
 	            var _clrx1 = _rbx2 + 10;
-	            var _clrx2 = _clrx1 + 60;
+	            var _clrx2 = _clrx1 + 90;
 	            var _clr_hov = point_in_rectangle(_mx, _my, _clrx1, _btn_y, _clrx2, _btn_y + 20);
 	            scr_ui_info(_clr_hov, _bmp_is_hires ? "WIPE THE WHOLE BITMAP TO BLACK (UNDO WITH CTRL+Z)" : "WIPE THE WHOLE BITMAP TO THE BACKGROUND COLOUR (UNDO WITH CTRL+Z)");
 	            scr_editor_control(_clrx1, _btn_y, _clrx2, _btn_y + 20, _clr_hov, false);
@@ -5355,8 +5451,7 @@ draw_rectangle(_sx, _sy, _sx + _sw, _sy + _sh, true);
 if (!variable_struct_exists(_asset.meta, "hud_px")) _asset.meta.hud_px = -1;
 if (!variable_struct_exists(_asset.meta, "hud_py")) _asset.meta.hud_py = -1;
 if (!_prev_input_blocked && point_in_rectangle(_mx, _my, _sx, _sy, _sx + _sw, _sy + _sh)) {
-    if (!_is_ed) scr_ui_info(true, "BITMAP CANVAS: PRESS EDIT (OR MOUSE WHEEL UP HERE) TO START PAINTING");
-    else if (_png_mode) scr_ui_info(true, "IMPORT PREVIEW: SET IT UP WITH THE SLIDERS BELOW. WHEEL ZOOMS, MIDDLE MOUSE / SPACE PANS");
+    if (_png_mode) scr_ui_info(true, "IMPORT PREVIEW: SET IT UP WITH THE CONTROLS ON THE RIGHT. WHEEL ZOOMS, MIDDLE MOUSE / SPACE PANS");
 }
 if (point_in_rectangle(_mx, _my, _sx, _sy, _sx + _sw, _sy + _sh)) {
     if (_asset.meta.bmp_zoom <= bmp_ui_zoom_cap) {
@@ -5576,84 +5671,144 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
 					    _asset.meta.png_scale = min(_scale_by_w, _scale_by_h);
 					}
 	                    
-	                // Controls layout — anchored BELOW the canvas rather than
-	                // above it, so the sliders and CONFIRM/CANCEL don't sit
-	                // under the top toolbar row. Top-to-bottom: canvas ->
-	                // SCALE/OFFSET/FINE row (_cy2-30) -> HUE/SAT/etc row (_cy2)
-	                // -> CONFIRM/CANCEL (_cy2+30, defined further below).
-                var _cx2  = _sx;
-                var _cy2  = _sy + _sh + 100;
-                var _slw  = 160; // slider width
+                // Controls layout — a column in the free space right of the canvas
+                // (the bitmap editor is full screen, so below the canvas is off the
+                // panel). Top to bottom: CONFIRM / CANCEL, POSITION sliders + RESET,
+                // COLOUR sliders + RESET. Sliders draw their label underneath, so rows
+                // are 38px apart. The floating preview window sits below the column.
+                var _pcx  = clamp(_sx + _sw + 40, _vx1 + 300, _vx2 - 300);
+                var _pcy  = _sy;
+                var _cx2  = _pcx;                 // headings + CONFIRM / CANCEL
+                var _slx  = _cx2 + 20;            // sliders sit 20px in from their heading
+                var _slw  = clamp(_vx2 - 30 - _slx - 70, 120, 240); // slider width
                 var _lmb  = mouse_check_button(mb_left);
                 var _lmb_released = mouse_check_button(mb_left);
-                    
-                // Sliders — drag updates the value live but conversion only fires on release
+                var _row  = 36;                   // slider + its label underneath
+                var _y_pos_cap = _pcy + 40;
+                var _y_scl = _y_pos_cap + 26;
+                var _y_ofx = _y_scl + _row;
+                var _y_ofy = _y_ofx + _row;
+                var _y_fnx = _y_ofy + _row;
+                var _y_fny = _y_fnx + _row;
+                var _y_col_cap = _y_fny + _row + 16;
+                var _y_hue = _y_col_cap + 26;
+                var _y_sat = _y_hue + _row;
+                var _y_con = _y_sat + _row;
+                var _y_bri = _y_con + _row;
+                var _y_dit = _y_bri + _row;
+                var _y_blr = _y_dit + _row;
+                var _y_clz = _y_blr + _row;
+                var _y_czc = _y_clz + _row;       // colorize colour picker
+
                 if (!variable_struct_exists(_asset.meta, "png_dither_amount")) _asset.meta.png_dither_amount = 0.1;
-          
-                var _new_hue = scr_draw_slider(_mx, _my, _cx2,        _cy2 + 20, _slw, "HUE",        _asset.meta.png_hue,           -1.0, 1.0,  _lmb, _asset, "HUE", 0.0);
-                var _new_sat = scr_draw_slider(_mx, _my, _cx2 + 190,  _cy2 + 20, _slw, "SAT",        _asset.meta.png_saturation,     0.0,  2.0,  _lmb, _asset, "SAT", 1.0);
-                var _new_con = scr_draw_slider(_mx, _my, _cx2 + 380,  _cy2 + 20, _slw, "CONTRAST",   _asset.meta.png_contrast,       0.0,  2.0,  _lmb, _asset, "CONTRAST", 1.0);
-                var _new_bri = scr_draw_slider(_mx, _my, _cx2 + 570,  _cy2 + 20, _slw, "BRIGHTNESS", _asset.meta.png_brightness,    -1.0,  1.0,  _lmb, _asset, "BRIGHTNESS", 0.0);         
-                var _new_dit = scr_draw_slider(_mx, _my, _cx2 + 760,  _cy2 + 20, _slw, "DITHER AMT", _asset.meta.png_dither_amount,  0.0,  0.5,  _lmb, _asset, "DITHER_AMT", 0.1);
-                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 - 6,       _cy2 + 18, _cx2 + _slw + 6,       _cy2 + 34), "IMPORT: SHIFT THE HUE OF THE PNG BEFORE IT IS MATCHED TO C64 COLOURS. RIGHT-CLICK RESETS");
-                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 184,     _cy2 + 18, _cx2 + 196 + _slw,     _cy2 + 34), "IMPORT: COLOUR SATURATION OF THE PNG BEFORE CONVERSION. RIGHT-CLICK RESETS");
-                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 374,     _cy2 + 18, _cx2 + 386 + _slw,     _cy2 + 34), "IMPORT: CONTRAST OF THE PNG BEFORE CONVERSION. RIGHT-CLICK RESETS");
-                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 564,     _cy2 + 18, _cx2 + 576 + _slw,     _cy2 + 34), "IMPORT: BRIGHTNESS OF THE PNG BEFORE CONVERSION. RIGHT-CLICK RESETS");
-                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 754,     _cy2 + 18, _cx2 + 766 + _slw,     _cy2 + 34), "IMPORT: HOW STRONGLY THE CHOSEN DITHER PATTERN BLENDS COLOURS. RIGHT-CLICK RESETS");
-                // Reset button for colour row
-                var _rst_c_x = _cx2 + 760 + _slw + 8;
-                var _rst_c_y = _cy2 + 20;
-                var _rst_c_hov = point_in_rectangle(_mx, _my, _rst_c_x, _rst_c_y, _rst_c_x + 50, _rst_c_y + 20);
-                scr_ui_info(_rst_c_hov, "IMPORT: RESET HUE, SATURATION, CONTRAST, BRIGHTNESS AND DITHER AMOUNT TO DEFAULTS");
-                scr_editor_control(_rst_c_x, _rst_c_y, _rst_c_x + 50, _rst_c_y + 20, _rst_c_hov, false);
+                if (!variable_struct_exists(_asset.meta, "png_blur"))          _asset.meta.png_blur          = 0.0;
+                if (!variable_struct_exists(_asset.meta, "png_colorize"))      _asset.meta.png_colorize      = 0.0;
+                if (!variable_struct_exists(_asset.meta, "png_colorize_col"))  _asset.meta.png_colorize_col  = 14;
+
+                // Sub-headings: caption, underline to the end of the sliders,
+                // and the group's RESET at the right end of the heading.
+                var _rst_w = 50;
+                var _rst_x1 = _slx + _slw - _rst_w;
+                var _rst_x2 = _slx + _slw;
+                draw_set_font_l(fnt_c64_tiny);
+                draw_set_halign(fa_left);
+                draw_set_valign(fa_top);
+                draw_set_color(make_color_rgb(151, 170, 192));
+                draw_text_l(_cx2, _y_pos_cap, "POSITION");
+                draw_text_l(_cx2, _y_col_cap, "COLOUR");
+                draw_set_color(make_color_rgb(90, 110, 134));
+                draw_line(_cx2, _y_pos_cap + 19, _rst_x2, _y_pos_cap + 19);
+                draw_line(_cx2, _y_col_cap + 19, _rst_x2, _y_col_cap + 19);
+                var _rst_s_x = _rst_x1;
+                var _rst_s_y = _y_pos_cap - 4;
+                var _rst_c_x = _rst_x1;
+                var _rst_c_y = _y_col_cap - 4;
+
+                // ---- COLOUR ----
+                var _new_hue = scr_draw_slider(_mx, _my, _slx, _y_hue, _slw, "HUE",        _asset.meta.png_hue,           -1.0, 1.0,  _lmb, _asset, "HUE", 0.0);
+                var _new_sat = scr_draw_slider(_mx, _my, _slx, _y_sat, _slw, "SAT",        _asset.meta.png_saturation,     0.0,  2.0,  _lmb, _asset, "SAT", 1.0);
+                var _new_con = scr_draw_slider(_mx, _my, _slx, _y_con, _slw, "CONTRAST",   _asset.meta.png_contrast,       0.0,  2.0,  _lmb, _asset, "CONTRAST", 1.0);
+                var _new_bri = scr_draw_slider(_mx, _my, _slx, _y_bri, _slw, "BRIGHTNESS", _asset.meta.png_brightness,    -1.0,  1.0,  _lmb, _asset, "BRIGHTNESS", 0.0);
+                var _new_dit = scr_draw_slider(_mx, _my, _slx, _y_dit, _slw, "DITHER AMT", _asset.meta.png_dither_amount,  0.0,  0.5,  _lmb, _asset, "DITHER_AMT", 0.1);
+                var _new_blr = scr_draw_slider(_mx, _my, _slx, _y_blr, _slw, "BLUR",       _asset.meta.png_blur,           0.0,  3.0,  _lmb, _asset, "BLUR", 0.0);
+                var _new_clz = scr_draw_slider(_mx, _my, _slx, _y_clz, _slw, "COLORIZE",   _asset.meta.png_colorize,       0.0,  1.0,  _lmb, _asset, "COLORIZE", 0.0);
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_hue - 2, _slx + _slw + 6, _y_hue + 30), "IMPORT: SHIFT THE HUE OF THE PNG BEFORE IT IS MATCHED TO C64 COLOURS. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_sat - 2, _slx + _slw + 6, _y_sat + 30), "IMPORT: COLOUR SATURATION OF THE PNG BEFORE CONVERSION. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_con - 2, _slx + _slw + 6, _y_con + 30), "IMPORT: CONTRAST OF THE PNG BEFORE CONVERSION. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_bri - 2, _slx + _slw + 6, _y_bri + 30), "IMPORT: BRIGHTNESS OF THE PNG BEFORE CONVERSION. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_dit - 2, _slx + _slw + 6, _y_dit + 30), "IMPORT: HOW STRONGLY THE CHOSEN DITHER PATTERN BLENDS COLOURS. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_blr - 2, _slx + _slw + 6, _y_blr + 30), "IMPORT: SOFTEN THE PNG BEFORE CONVERSION (IN PIXELS) TO SMOOTH NOISE AND FINE DETAIL INTO CLEANER AREAS. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_clz - 2, _slx + _slw + 6, _y_clz + 30), "IMPORT: TINT THE PNG TOWARDS THE COLORIZE COLOUR BELOW, KEEPING ITS LIGHTS AND DARKS. RIGHT-CLICK RESETS");
+
+                // Colorize colour: the 16 C64 colours, one swatch each
+                var _czw = floor(_slw / 16);
+                for (var _czi = 0; _czi < 16; _czi++) {
+                    var _czx1 = _slx + _czi * _czw;
+                    var _czx2 = _czx1 + _czw - 1;
+                    var _cz_hov = point_in_rectangle(_mx, _my, _czx1, _y_czc, _czx2, _y_czc + 16);
+                    scr_editor_swatch(_czx1, _y_czc, _czx2, _y_czc + 16, scr_c64_pepto_colour(_czi), _cz_hov, _asset.meta.png_colorize_col == _czi, 1);
+                    if (_cz_hov) scr_ui_info(true, "IMPORT: COLORIZE COLOUR " + string(_czi) + ". CLICK TO TINT TOWARDS IT (SET THE COLORIZE AMOUNT ABOVE)");
+                    if (_cz_hov && mouse_check_button_pressed(mb_left)) {
+                        _asset.meta.png_colorize_col = _czi;
+                        if (_new_clz <= 0) _new_clz = 0.5;
+                        _asset.meta.png_conv_dirty = true;
+                    }
+                }
+                draw_set_font_l(fnt_c64_tiny);
+                draw_set_color(c_ltgray);
+                draw_text_l(_slx, _y_czc + 18, "COLORIZE COLOUR: " + string(_asset.meta.png_colorize_col));
+
+                var _rst_c_hov = point_in_rectangle(_mx, _my, _rst_c_x, _rst_c_y, _rst_c_x + _rst_w, _rst_c_y + 20);
+                scr_ui_info(_rst_c_hov, "IMPORT: RESET HUE, SATURATION, CONTRAST, BRIGHTNESS, DITHER AMOUNT, BLUR AND COLORIZE TO DEFAULTS");
+                scr_editor_control(_rst_c_x, _rst_c_y, _rst_c_x + _rst_w, _rst_c_y + 20, _rst_c_hov, false);
                 draw_set_color(c_white);
-                scr_editor_label(_rst_c_x, _rst_c_y, _rst_c_x + 50, _rst_c_y + 20, "RESET");
-                    
+                scr_editor_label(_rst_c_x, _rst_c_y, _rst_c_x + _rst_w, _rst_c_y + 20, "RESET");
                 if (_rst_c_hov && mouse_check_button_pressed(mb_left)) {
                     _asset.meta.png_hue = 0.0; _new_hue = 0.0;
                     _asset.meta.png_saturation = 1.0; _new_sat = 1.0;
                     _asset.meta.png_contrast = 1.0; _new_con = 1.0;
                     _asset.meta.png_brightness = 0.0; _new_bri = 0.0;
                     _asset.meta.png_dither_amount = 0.1; _new_dit = 0.1;
+                    _asset.meta.png_blur = 0.0; _new_blr = 0.0;
+                    _asset.meta.png_colorize = 0.0; _new_clz = 0.0;
                     _asset.meta.png_conv_dirty = true;
                 }
-                    
+
+                // ---- POSITION ----
                 var _fit_scale_default = 320 / (variable_struct_exists(_asset.meta, "png_src_w") ? _asset.meta.png_src_w : 320);
-                var _new_scl = scr_draw_slider(_mx, _my, _cx2,        _cy2 - 10, _slw, "SCALE",      _asset.meta.png_scale,          0.01,  2.0,  _lmb, _asset, "SCALE", _fit_scale_default);
-                var _new_ofx = scr_draw_slider(_mx, _my, _cx2 + 190,  _cy2 - 10, _slw, "OFFSET X",   _asset.meta.png_off_x,         -160, 160,   _lmb, _asset, "OFFSET_X", 0);
-                var _new_ofy = scr_draw_slider(_mx, _my, _cx2 + 380,  _cy2 - 10, _slw, "OFFSET Y",   _asset.meta.png_off_y,         -100, 100,   _lmb, _asset, "OFFSET_Y", 0);
-                var _new_fnx = scr_draw_slider(_mx, _my, _cx2 + 570,  _cy2 - 10, _slw, "FINE X",     _asset.meta.png_fine_x,        -1.0, 1.0,   _lmb, _asset, "FINE_X", 0.0);
-                var _new_fny = scr_draw_slider(_mx, _my, _cx2 + 760,  _cy2 - 10, _slw, "FINE Y",     _asset.meta.png_fine_y,        -1.0, 1.0,   _lmb, _asset, "FINE_Y", 0.0);
-                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 - 6,       _cy2 - 12, _cx2 + _slw + 6,       _cy2 + 4), "IMPORT: SCALE THE PNG ON THE 320X200 CANVAS. RIGHT-CLICK RESETS TO FIT THE WIDTH");
-                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 184,     _cy2 - 12, _cx2 + 196 + _slw,     _cy2 + 4), "IMPORT: MOVE THE PNG LEFT/RIGHT IN WHOLE PIXELS. RIGHT-CLICK RESETS");
-                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 374,     _cy2 - 12, _cx2 + 386 + _slw,     _cy2 + 4), "IMPORT: MOVE THE PNG UP/DOWN IN WHOLE PIXELS. RIGHT-CLICK RESETS");
-                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 564,     _cy2 - 12, _cx2 + 576 + _slw,     _cy2 + 4), "IMPORT: SUB-PIXEL LEFT/RIGHT NUDGE OF THE PNG. RIGHT-CLICK RESETS");
-                scr_ui_info(point_in_rectangle(_mx, _my, _cx2 + 754,     _cy2 - 12, _cx2 + 766 + _slw,     _cy2 + 4), "IMPORT: SUB-PIXEL UP/DOWN NUDGE OF THE PNG. RIGHT-CLICK RESETS");
-                // Reset button for sizing row
-                var _rst_s_x = _cx2 + 760 + _slw + 8;
-                var _rst_s_y = _cy2 - 10;
-                var _rst_s_hov = point_in_rectangle(_mx, _my, _rst_s_x, _rst_s_y, _rst_s_x + 50, _rst_s_y + 20);
+                var _new_scl = scr_draw_slider(_mx, _my, _slx, _y_scl, _slw, "SCALE",      _asset.meta.png_scale,          0.01,  2.0,  _lmb, _asset, "SCALE", _fit_scale_default);
+                var _new_ofx = scr_draw_slider(_mx, _my, _slx, _y_ofx, _slw, "OFFSET X",   _asset.meta.png_off_x,         -160, 160,   _lmb, _asset, "OFFSET_X", 0);
+                var _new_ofy = scr_draw_slider(_mx, _my, _slx, _y_ofy, _slw, "OFFSET Y",   _asset.meta.png_off_y,         -100, 100,   _lmb, _asset, "OFFSET_Y", 0);
+                var _new_fnx = scr_draw_slider(_mx, _my, _slx, _y_fnx, _slw, "FINE X",     _asset.meta.png_fine_x,        -1.0, 1.0,   _lmb, _asset, "FINE_X", 0.0);
+                var _new_fny = scr_draw_slider(_mx, _my, _slx, _y_fny, _slw, "FINE Y",     _asset.meta.png_fine_y,        -1.0, 1.0,   _lmb, _asset, "FINE_Y", 0.0);
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_scl - 2, _slx + _slw + 6, _y_scl + 30), "IMPORT: SCALE THE PNG ON THE 320X200 CANVAS. RIGHT-CLICK RESETS TO FIT THE WIDTH");
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_ofx - 2, _slx + _slw + 6, _y_ofx + 30), "IMPORT: MOVE THE PNG LEFT/RIGHT IN WHOLE PIXELS. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_ofy - 2, _slx + _slw + 6, _y_ofy + 30), "IMPORT: MOVE THE PNG UP/DOWN IN WHOLE PIXELS. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_fnx - 2, _slx + _slw + 6, _y_fnx + 30), "IMPORT: SUB-PIXEL LEFT/RIGHT NUDGE OF THE PNG. RIGHT-CLICK RESETS");
+                scr_ui_info(point_in_rectangle(_mx, _my, _slx - 6, _y_fny - 2, _slx + _slw + 6, _y_fny + 30), "IMPORT: SUB-PIXEL UP/DOWN NUDGE OF THE PNG. RIGHT-CLICK RESETS");
+                var _rst_s_hov = point_in_rectangle(_mx, _my, _rst_s_x, _rst_s_y, _rst_s_x + _rst_w, _rst_s_y + 20);
                 scr_ui_info(_rst_s_hov, "IMPORT: RESET SCALE (FIT WIDTH), OFFSET AND FINE POSITION OF THE PNG");
-                scr_editor_control(_rst_s_x, _rst_s_y, _rst_s_x + 50, _rst_s_y + 20, _rst_s_hov, false);
+                scr_editor_control(_rst_s_x, _rst_s_y, _rst_s_x + _rst_w, _rst_s_y + 20, _rst_s_hov, false);
                 draw_set_color(c_white);
-                scr_editor_label(_rst_s_x, _rst_s_y, _rst_s_x + 50, _rst_s_y + 20, "RESET");
+                scr_editor_label(_rst_s_x, _rst_s_y, _rst_s_x + _rst_w, _rst_s_y + 20, "RESET");
                 if (_rst_s_hov && mouse_check_button_pressed(mb_left)) {
-	                    var _fit_w2 = variable_struct_exists(_asset.meta, "png_src_w") ? _asset.meta.png_src_w : 320;
-	                    _asset.meta.png_scale = 320 / _fit_w2; _new_scl = _asset.meta.png_scale;
+                    var _fit_w2 = variable_struct_exists(_asset.meta, "png_src_w") ? _asset.meta.png_src_w : 320;
+                    _asset.meta.png_scale = 320 / _fit_w2; _new_scl = _asset.meta.png_scale;
                     _asset.meta.png_off_x = 0; _new_ofx = 0;
                     _asset.meta.png_off_y = 0; _new_ofy = 0;
                     _asset.meta.png_fine_x = 0.0; _new_fnx = 0.0;
                     _asset.meta.png_fine_y = 0.0; _new_fny = 0.0;
                     _asset.meta.png_conv_dirty = true;
                 }
-                    
-                    
+
                 // Always store latest dragged values so label shows live position
                 _asset.meta.png_hue            = _new_hue;
                 _asset.meta.png_saturation     = _new_sat;
                 _asset.meta.png_contrast       = _new_con;
                 _asset.meta.png_brightness     = _new_bri;
                 _asset.meta.png_dither_amount  = _new_dit;
+                _asset.meta.png_blur           = _new_blr;
+                _asset.meta.png_colorize       = _new_clz;
                 if (_new_scl != _asset.meta.png_scale ||
                     floor(_new_ofx) != _asset.meta.png_off_x ||
                     floor(_new_ofy) != _asset.meta.png_off_y ||
@@ -5674,31 +5829,30 @@ if (_asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
                     
                 // Dither buttons
                 var _dithers_png = ["NONE", "CHECKER", "INTERLACE", "BAYER"];
-                var _dbx = _vx1 +70;
-                var _dby = _vy1 + 200;
+                var _dbx = _vx1 + 10;   // same column as the editing tools
+                var _dby = _vy1 + 132;
                 draw_set_font_l(fnt_c64_tiny);
                 draw_set_color(c_ltgray);
-                draw_text_l(_dbx, _dby-30 , "DITHER:");
+                draw_text_l(_dbx, _dby - 22, "DITHER");
                 for (var _di = 0; _di < array_length(_dithers_png); _di++) {
                     var _dn   = _dithers_png[_di];
                     var _dact = (_asset.meta.png_dither == _dn);
-                    var _dhov = point_in_rectangle(_mx, _my, _dbx, _dby, _dbx + 70, _dby + 18);
+                    var _dhov = point_in_rectangle(_mx, _my, _dbx, _dby, _dbx + 110, _dby + 20);
                     scr_ui_info(_dhov, "IMPORT: DITHER PATTERN USED TO FAKE IN-BETWEEN COLOURS WHEN CONVERTING THE PNG (" + _dn + ")");
-                    scr_editor_control(_dbx, _dby, _dbx + 70, _dby + 18, _dhov, _dact);
+                    scr_editor_control(_dbx, _dby, _dbx + 110, _dby + 20, _dhov, _dact);
                     draw_set_color(_dact ? c_yellow : (_dhov ? c_white : c_ltgray));
                     draw_set_color(_dact ? c_yellow : c_white);
-                    scr_editor_label(_dbx, _dby, _dbx + 70, _dby + 18, _dn);
+                    scr_editor_label(_dbx, _dby, _dbx + 110, _dby + 20, _dn);
                     if (_dhov && mouse_check_button_pressed(mb_left)) {
                         _asset.meta.png_dither = _dn;
                         _asset.meta.png_conv_dirty = true;
                     }
-                    _dby += 30;
+                    _dby += 26;
                 }
                     
-                // CONFIRM / CANCEL buttons — sit ABOVE both slider rows, in the
-                // gap right below the canvas.
-                var _cfx = _cx2 + 800;
-                var _cfy = _cy2 - 60;
+                // CONFIRM / CANCEL buttons — top of the import column.
+                var _cfx = _cx2;
+                var _cfy = _pcy;
                 var _cf_hov = point_in_rectangle(_mx, _my, _cfx, _cfy, _cfx + 150, _cfy + 18);
                 scr_ui_info(_cf_hov, "IMPORT: ACCEPT THE CONVERTED IMAGE, FIX COLOUR CLASHES AND SAVE IT AS A .KLA WORKING COPY");
                 scr_editor_control(_cfx, _cfy, _cfx + 150, _cfy + 18, _cf_hov, false);
@@ -5791,6 +5945,10 @@ surface_reset_target();
 	                    shader_set_uniform_i(shader_get_uniform(shd_png_import, "u_dither_mode"), _d_mode);
 	                    shader_set_uniform_i(shader_get_uniform(shd_png_import, "u_is_hires"), _bmp_is_hires ? 1 : 0);
 	                    shader_set_uniform_f_array(shader_get_uniform(shd_png_import, "u_palette"), _pal_array);
+	                    var _czc = scr_c64_pepto_colour(variable_struct_exists(_asset.meta, "png_colorize_col") ? _asset.meta.png_colorize_col : 14);
+	                    shader_set_uniform_f(shader_get_uniform(shd_png_import, "u_blur"), variable_struct_exists(_asset.meta, "png_blur") ? _asset.meta.png_blur : 0);
+	                    shader_set_uniform_f(shader_get_uniform(shd_png_import, "u_colorize"), variable_struct_exists(_asset.meta, "png_colorize") ? _asset.meta.png_colorize : 0);
+	                    shader_set_uniform_f(shader_get_uniform(shd_png_import, "u_colorize_col"), color_get_red(_czc) / 255, color_get_green(_czc) / 255, color_get_blue(_czc) / 255);
 	                    draw_clear(c_black);
 	                    draw_surface(_intermed, 0, 0);
 	                    shader_reset();
@@ -5800,6 +5958,25 @@ surface_reset_target();
 	                    
 	                // CONFIRM — bake and run cleanup pass
 	                if (_cf_hov && mouse_check_button_pressed(mb_left)) {
+    // Remember this import so BACK TO IMPORT can reopen it as it was
+    _asset.meta.png_last = {
+        path          : _asset.meta.png_import_path,
+        hue           : _asset.meta.png_hue,
+        sat           : _asset.meta.png_saturation,
+        con           : _asset.meta.png_contrast,
+        bri           : _asset.meta.png_brightness,
+        dither        : _asset.meta.png_dither,
+        dither_amount : _asset.meta.png_dither_amount,
+        blur          : _asset.meta.png_blur,
+        colorize      : _asset.meta.png_colorize,
+        colorize_col  : _asset.meta.png_colorize_col,
+        scale         : _asset.meta.png_scale,
+        off_x         : _asset.meta.png_off_x,
+        off_y         : _asset.meta.png_off_y,
+        fine_x        : _asset.meta.png_fine_x,
+        fine_y        : _asset.meta.png_fine_y,
+        bg            : _asset.meta.png_pending_bg
+    };
     // Commit the pending bg colour as the real one now
     _asset.meta.bg_col = _asset.meta.png_pending_bg;
     // Run full KLA clash cleanup with fresh mask
@@ -7390,7 +7567,8 @@ gpu_set_texfilter(false);
                 // --- CLEANED UP TOOLBARS ---
 	                // LEFT SIDE TOOLS
 	                var _ltx = _vx1 + 10;
-	                var _lty = _vy1 + 110; 
+	                var _lty = _vy1 + 110;
+	                var _lw  = 110; // every left-column control is this wide
 
 	                var _tools_l = ["GRAB", "FLIP X", "FLIP Y", "REPLACE"];
 	                for(var _i = 0; _i < array_length(_tools_l); _i++) {
@@ -7398,17 +7576,17 @@ gpu_set_texfilter(false);
 	                    var _active = (_asset.meta.active_tool == _tname);
 	                    if (_tname == "REPLACE") _active = _asset.meta.replace_mode;
                         
-	                    var _hov = point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 60, _lty + 20);
+	                    var _hov = point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + _lw, _lty + 20);
 	                    if (_tname == "GRAB")        scr_ui_info(_hov, "GRAB TOOL (G): DRAG A BOX ON THE CANVAS TO COPY IT AS A STAMP BRUSH");
 	                    else if (_tname == "FLIP X") scr_ui_info(_hov, "MIRROR LEFT/RIGHT (X): FLIPS THE STAMP BRUSH IF YOU HAVE ONE, OTHERWISE THE WHOLE BITMAP");
 	                    else if (_tname == "FLIP Y") scr_ui_info(_hov, "MIRROR UP/DOWN (Y): FLIPS THE STAMP BRUSH IF YOU HAVE ONE, OTHERWISE THE WHOLE BITMAP");
 	                    else                         scr_ui_info(_hov, "REPLACE MODE (R): BRUSH ONLY RECOLOURS PIXELS OF COL1 INTO COL2, LEAVING OTHERS ALONE");
 
-	                    scr_editor_control(_ltx, _lty, _ltx + 60, _lty + 20, _hov, _active);
+	                    scr_editor_control(_ltx, _lty, _ltx + _lw, _lty + 20, _hov, _active);
 	                    draw_set_color(_hov ? c_white : (_active ? c_lime : c_black));
 	                    draw_set_font_l(fnt_c64_tiny);
 	                    draw_set_color(_active ? c_lime : c_white);
-	                    scr_editor_label(_ltx, _lty, _ltx + 60, _lty + 20, _tname, fa_left, 4);
+	                    scr_editor_label(_ltx, _lty, _ltx + _lw, _lty + 20, _tname);
                         
 	                    if (_hov && mouse_check_button_pressed(mb_left)) {
 	                        if (_tname == "REPLACE") {
@@ -7487,49 +7665,51 @@ gpu_set_texfilter(false);
 	                            _asset.meta.active_tool = _tname;
 	                        }
 	                    }
-	                    _lty += 22;
+	                    _lty += 26;
 	                }
 
-	                _lty += 10; 
+	                _lty += 4;
 
 	                // Replace Color Selectors
 	                if (_asset.meta.replace_mode) {
-	                    scr_editor_swatch(_ltx, _lty, _ltx + 28, _lty + 12, scr_c64_pepto_colour(_asset.meta.replace_col_detect), point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12));
-	                    scr_ui_info(point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12), "REPLACE COL1: THE COLOUR TO BE REPLACED. CLICK TO SET IT TO THE CURRENT PEN COLOUR");
-	                    if (point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12) && mouse_check_button_pressed(mb_left))
+	                    scr_editor_swatch(_ltx, _lty, _ltx + 40, _lty + 18, scr_c64_pepto_colour(_asset.meta.replace_col_detect), point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 40, _lty + 18));
+	                    scr_ui_info(point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 40, _lty + 18), "REPLACE COL1: THE COLOUR TO BE REPLACED. CLICK TO SET IT TO THE CURRENT PEN COLOUR");
+	                    if (point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 40, _lty + 18) && mouse_check_button_pressed(mb_left))
 	                        _asset.meta.replace_col_detect = _asset.meta.active_color;
 
-	                    draw_set_color(c_white); scr_editor_label(_ltx + 28, _lty, _ltx + 90, _lty + 12, "COL1", fa_left, 4);
-	                    _lty += 18;
+	                    draw_set_color(c_white); scr_editor_label(_ltx + 40, _lty, _ltx + _lw, _lty + 18, "COL1", fa_left, 4);
+	                    _lty += 24;
 
-	                    scr_editor_swatch(_ltx, _lty, _ltx + 28, _lty + 12, scr_c64_pepto_colour(_asset.meta.replace_col_target), point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12));
-	                    scr_ui_info(point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12), "REPLACE COL2: THE COLOUR COL1 PIXELS BECOME. CLICK TO SET IT TO THE CURRENT PEN COLOUR");
-	                    if (point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 28, _lty + 12) && mouse_check_button_pressed(mb_left))
+	                    scr_editor_swatch(_ltx, _lty, _ltx + 40, _lty + 18, scr_c64_pepto_colour(_asset.meta.replace_col_target), point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 40, _lty + 18));
+	                    scr_ui_info(point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 40, _lty + 18), "REPLACE COL2: THE COLOUR COL1 PIXELS BECOME. CLICK TO SET IT TO THE CURRENT PEN COLOUR");
+	                    if (point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 40, _lty + 18) && mouse_check_button_pressed(mb_left))
 	                        _asset.meta.replace_col_target = _asset.meta.active_color;
 
-	                    draw_set_color(c_white); scr_editor_label(_ltx + 28, _lty, _ltx + 90, _lty + 12, "COL2", fa_left, 4);
-	                    _lty += 24;
+	                    draw_set_color(c_white); scr_editor_label(_ltx + 40, _lty, _ltx + _lw, _lty + 18, "COL2", fa_left, 4);
+	                    _lty += 30;
 	                } else {
-	                    _lty += 42; 
+	                    _lty += 54;
 	                }
 
 	                // Zoom Buttons
-	                var _zhov_in = point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 24, _lty + 24);
+	                var _zx1 = _ltx + floor((_lw - 6) / 2);   // Z+ right edge
+	                var _zx2 = _zx1 + 6;                       // Z- left edge
+	                var _zhov_in = point_in_rectangle(_mx, _my, _ltx, _lty, _zx1, _lty + 20);
 	                scr_ui_info(_zhov_in, "ZOOM IN ON THE CANVAS (OR MOUSE WHEEL OVER IT). PAN WITH MIDDLE MOUSE OR SPACE + DRAG");
-	                scr_editor_control(_ltx, _lty, _ltx + 24, _lty + 24, _zhov_in, false);
+	                scr_editor_control(_ltx, _lty, _zx1, _lty + 20, _zhov_in, false);
 	                draw_set_color(c_white);
-	                draw_set_color(c_white); scr_editor_label(_ltx, _lty, _ltx + 24, _lty + 24, "Z+");
+	                draw_set_color(c_white); scr_editor_label(_ltx, _lty, _zx1, _lty + 20, "Z+");
                     
 	                if (_zhov_in && mouse_check_button_pressed(mb_left)) _asset.meta.bmp_zoom += 0.2;
 
-	                _lty += 30;
-	                var _zhov_out = point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + 24, _lty + 24);
+	                // Z- shares the row
+	                var _zhov_out = point_in_rectangle(_mx, _my, _zx2, _lty, _ltx + _lw, _lty + 20);
 	                scr_ui_info(_zhov_out, "ZOOM OUT (OR MOUSE WHEEL OVER THE CANVAS). GREYED WHEN ALREADY FULLY ZOOMED OUT");
 	                var _at_min_z = (_asset.meta.bmp_zoom <= bmp_ui_zoom_cap);
-	                scr_editor_control(_ltx, _lty, _ltx + 24, _lty + 24, _zhov_out, false, !_at_min_z);
+	                scr_editor_control(_zx2, _lty, _ltx + _lw, _lty + 20, _zhov_out, false, !_at_min_z);
 	                draw_set_color(_at_min_z ? make_color_rgb(40, 40, 50) : (_zhov_out ? c_white : c_black));
 	                draw_set_color(_at_min_z ? make_color_rgb(120, 132, 147) : c_white);
-	                scr_editor_label(_ltx, _lty, _ltx + 24, _lty + 24, "Z-");
+	                scr_editor_label(_zx2, _lty, _ltx + _lw, _lty + 20, "Z-");
                     
 	                if (_zhov_out && mouse_check_button_pressed(mb_left) && _asset.meta.bmp_zoom > bmp_ui_zoom_cap) {
 	                    var _old_z = _asset.meta.bmp_zoom;
@@ -7541,14 +7721,14 @@ gpu_set_texfilter(false);
 	                }
 
 	                // GRIDS: CELL GRID toggle and ZOOM GRID strength slider.
-	                _lty += 40;
-	                var _cg_w   = 110;
-	                var _cg_hov = point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + _cg_w, _lty + 18);
+	                _lty += 32;
+	                var _cg_w   = _lw;
+	                var _cg_hov = point_in_rectangle(_mx, _my, _ltx, _lty, _ltx + _cg_w, _lty + 20);
 	                scr_ui_info(_cg_hov, "SHOW OR HIDE LINES ROUND EVERY 8X8 COLOUR CELL AT ANY ZOOM (REMEMBERED BETWEEN SESSIONS)");
-	                scr_editor_control(_ltx, _lty, _ltx + _cg_w, _lty + 18, _cg_hov, bmp_cell_grid);
+	                scr_editor_control(_ltx, _lty, _ltx + _cg_w, _lty + 20, _cg_hov, bmp_cell_grid);
 	                draw_set_color(_cg_hov ? c_white : c_black);
 	                draw_set_color(bmp_cell_grid ? c_lime : c_white);
-	                scr_editor_label(_ltx, _lty, _ltx + _cg_w, _lty + 18, L("CELL GRID: ") + (bmp_cell_grid ? L("ON") : L("OFF")));
+	                scr_editor_label(_ltx, _lty, _ltx + _cg_w, _lty + 20, L("CELL GRID: ") + (bmp_cell_grid ? L("ON") : L("OFF")));
 	                if (_cg_hov && mouse_check_button_pressed(mb_left)) {
 	                    bmp_cell_grid = !bmp_cell_grid;
 	                    ini_open("c64devmachine.ini");
@@ -8039,10 +8219,10 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	            if (variable_struct_exists(_asset.meta, "bg_col")) {
                     
 	                // BG Color Cyclying Logic
-	                var _bg_rect_x1 = _thumb_x + 26;
-	                var _bg_rect_x2 = _thumb_x + 42;
+	                var _bg_rect_x1 = _thumb_x + 30;
+	                var _bg_rect_x2 = _thumb_x + 52;
 	                var _bg_rect_y1 = _cy;
-	                var _bg_rect_y2 = _cy + 12;
+	                var _bg_rect_y2 = _cy + 16;
 	                var _bg_hov = point_in_rectangle(_mx, _my, _bg_rect_x1, _bg_rect_y1, _bg_rect_x2, _bg_rect_y2);
 	                if (_is_ed && !_prev_input_blocked) {
 	                    if (_png_mode)          scr_ui_info(_bg_hov, "IMPORT BACKGROUND COLOUR: LEFT-CLICK NEXT, RIGHT-CLICK PREVIOUS. APPLIED ON CONFIRM IMPORT");
@@ -8051,6 +8231,8 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                }
                     
 	                var _display_bg = _png_mode ? _asset.meta.png_pending_bg : _asset.meta.bg_col;
+	                draw_set_color(make_color_rgb(128, 128, 158));
+	                scr_editor_label(_thumb_x, _bg_rect_y1, _bg_rect_x1, _bg_rect_y2, "BG:", fa_left, 0);
 	                scr_editor_swatch(_bg_rect_x1, _bg_rect_y1, _bg_rect_x2, _bg_rect_y2, scr_c64_pepto_colour(_display_bg),
 	                    _bg_hov && _is_ed && !_prev_input_blocked && (_png_mode || !_bmp_is_hires));
 
@@ -8106,16 +8288,13 @@ var _new_z = max(2, _old_z + (_wheel * 1.0));
 	                scr_editor_label(_bg_rect_x2, _bg_rect_y1, _bg_rect_x2 + 40, _bg_rect_y2, string(_asset.meta.bg_col), fa_left, 4);
 	            }
 				_cy+=40;
-	            var _inf_y1 = _vy1 + 80;
-	            var _inf_y2 = _vy1 + 97;
-	            draw_set_color(c_ltgray); scr_editor_label(_vx1 + 120, _inf_y1, _vx1 + 158, _inf_y2, "SIZE:", fa_left, 0);
-	            draw_set_color(c_aqua);   scr_editor_label(_vx1 + 158, _inf_y1, _vx1 + 260, _inf_y2, "320 x 200", fa_left, 0);
-	            draw_set_color(c_ltgray); scr_editor_label(_vx1 + 260, _inf_y1, _vx1 + 312, _inf_y2, "FORMAT:", fa_left, 0);
-	            draw_set_color(c_yellow); scr_editor_label(_vx1 + 312, _inf_y1, _vx1 + 410, _inf_y2, "KOALA PAINT", fa_left, 0);
-	            draw_set_color(c_ltgray); scr_editor_label(_vx1 + 410, _inf_y1, _vx1 + 448, _inf_y2, "ADDR:", fa_left, 0);
-	            var _bah = string_upper(decimal_to_hex(_asset.address));
-	            while (string_length(_bah) < 4) _bah = "0" + _bah;
-	            draw_set_color(c_aqua);   scr_editor_label(_vx1 + 448, _inf_y1, _vx1 + 520, _inf_y2, "$" + _bah, fa_left, 0);
+	            var _inf_y1 = _vy1 + 64;
+	            var _inf_y2 = _vy1 + 84;
+	            draw_set_color(c_ltgray); scr_editor_label(_vx1 + 140, _inf_y1, _vx1 + 178, _inf_y2, "SIZE:", fa_left, 0);
+	            draw_set_color(c_aqua);   scr_editor_label(_vx1 + 178, _inf_y1, _vx1 + 280, _inf_y2, "320 x 200", fa_left, 0);
+	            draw_set_color(c_ltgray); scr_editor_label(_vx1 + 290, _inf_y1, _vx1 + 342, _inf_y2, "FORMAT:", fa_left, 0);
+	            draw_set_color(c_yellow); scr_editor_label(_vx1 + 342, _inf_y1, _vx1 + 440, _inf_y2, "KOALA PAINT", fa_left, 0);
+	            // (load address is already on this row: ADDRESS, editable)
 	        } else {
 	            scr_editor_panel(_thumb_x, _thumb_y, _thumb_x + _thumb_w, _thumb_y + _thumb_h, false);
 	            draw_set_font_l(fnt_c64_tiny);

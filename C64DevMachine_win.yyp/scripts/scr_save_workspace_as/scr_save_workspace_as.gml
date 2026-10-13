@@ -138,6 +138,7 @@
 	        // Asset group name. Absent in projects saved before grouping existed;
 	        // scr_asset_sorted_indices normalises those to ungrouped on load.
 	        _entry.group         = variable_struct_exists(_a, "group")         ? _a.group         : "";
+	        _entry.order         = variable_struct_exists(_a, "order")         ? _a.order         : -1;
 			if (variable_struct_exists(_a.meta, "source_file")) _entry.source_file = _a.meta.source_file;
 	        // Serialize meta struct
 	        var _meta_out = {};

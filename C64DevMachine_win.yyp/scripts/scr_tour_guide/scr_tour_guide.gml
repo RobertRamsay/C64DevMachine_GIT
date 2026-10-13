@@ -318,11 +318,8 @@ function scr_tour_define(_id) {
         array_push(_s, scr_tour_step("OPEN THE EDITOR",
             "Click EDIT on your new BITMAP row to open the bitmap editor.",
             ["ASSET:EDIT:BITMAP", "ASSET:PANEL"], "BMP_OPEN"));
-        array_push(_s, scr_tour_step("CREATE THE CANVAS",
-            "A new bitmap starts empty, so there is nothing to draw on yet.\n\nClick CREATE at the top of the viewer to make a blank canvas and switch painting on.",
-            ["ASSET:BMP_EDIT"], "BMP_EDITING"));
         array_push(_s, scr_tour_step("DRAW SOMETHING",
-            "Pick a colour and draw on the canvas with the left mouse button.",
+            "A new bitmap opens on a blank canvas, ready to paint.\n\nPick a colour and draw on the canvas with the left mouse button.",
             [], "BMP_PAINTED"));
         array_push(_s, scr_tour_step("FLOOD FILL",
             "Choose the FILL tool, pick another colour and click inside a shape to fill it.",
@@ -2442,9 +2439,6 @@ function scr_tour_define_page2(_id) {
         array_push(_s, scr_tour_step("OPEN NIGHT_SKY",
             "Click EDIT on the NIGHT_SKY row to open it.",
             ["ASSET:EDIT:BITMAP", "ASSET:PANEL"], "BMP_OPEN"));
-        array_push(_s, scr_tour_step("EDIT MODE",
-            "Click EDIT at the top of the viewer to start editing.\n\nThe sprite tools are in the column on the left.",
-            ["ASSET:BMP_EDIT"], "BMP_EDITING"));
         array_push(_s, scr_tour_step("THE SPRITE LAYER",
             "Click PAINT: SPRITES (or press S).\n\nClicks on the canvas now go to the sprites, not the bitmap, and each sprite gets a box round it.",
             ["BSPR:PAINT"], "BSPR_MODE"));
@@ -3632,8 +3626,8 @@ function scr_tour_do_action(_st, _dry) {
             if (_dry) {
                 return "1";
             }
-            global.tour_click = "ASSET:BMP_EDIT";
-            return "I clicked CREATE, which made a blank canvas and switched painting on.";
+            // Opening a bitmap puts it in edit mode; nothing to click.
+            return "";
         case "BMP_PAINTED":
         case "BMP_FILLED":
             _a = scr_tour_viewer_bitmap();
@@ -3704,15 +3698,7 @@ function scr_tour_do_action(_st, _dry) {
             if (_dry) {
                 return "1";
             }
-            // A bitmap still being edited leaves edit mode first (the EDIT
-            // button: it saves the picture and ends the full-screen editor),
-            // then the tour Step closes the viewer once that has happened
-            var _cb = scr_tour_viewer_bitmap();
-            if (!is_undefined(_cb) && (_cb.meta[$ "is_editing"] ?? false)) {
-                global.tour_click = "ASSET:BMP_EDIT";
-                close_pending = 30;
-                return "I clicked EDIT to finish editing, which saves the picture, then CLOSE at the top right.";
-            }
+            // Closing a bitmap commits it (saves the picture) on its own.
             scr_tour_close_viewer();
             return "I clicked CLOSE at the top right of the viewer. Your work is kept.";
         case "BMP_LINKED":

@@ -8,6 +8,9 @@ uniform float u_dither_amount;
 uniform int u_dither_mode; // 0=None, 1=Checker, 2=Interlace, 3=Bayer
 uniform int u_is_hires;    // 0=MC (2x1 double-wide pixels), 1=HiRes (1:1 square pixels)
 uniform vec3 u_palette[16];
+uniform float u_blur;          // softening radius in source pixels (0 = off)
+uniform float u_colorize;      // 0..1 blend towards u_colorize_col
+uniform vec3 u_colorize_col;   // tint colour (a C64 palette colour)
 vec3 rgb2hsv(vec3 c) {
     vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
     vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
@@ -30,6 +33,20 @@ void main() {
     uv.y = floor(uv.y * 200.0) / 200.0;
     vec4 texColor = texture2D(gm_BaseTexture, uv);
     vec3 col = texColor.rgb;
+    // Blur: 5x5 gaussian-weighted taps spanning +/- u_blur source pixels
+    if (u_blur > 0.0) {
+        vec2 stp = vec2(1.0 / 320.0, 1.0 / 200.0) * (u_blur * 0.5);
+        vec3 acc = vec3(0.0);
+        float wsum = 0.0;
+        for (int bx = -2; bx <= 2; bx++) {
+            for (int by = -2; by <= 2; by++) {
+                float w = exp(-float(bx * bx + by * by) / 4.0);
+                acc += texture2D(gm_BaseTexture, uv + vec2(float(bx), float(by)) * stp).rgb * w;
+                wsum += w;
+            }
+        }
+        col = acc / wsum;
+    }
     // Brightness & Contrast
     col = clamp(col + vec3(u_bri), 0.0, 1.0);
     col = clamp((col - vec3(0.5)) * u_con + vec3(0.5), 0.0, 1.0);
@@ -39,6 +56,13 @@ void main() {
     if (hsv.x < 0.0) hsv.x += 1.0;
     hsv.y = clamp(hsv.y * u_sat, 0.0, 1.0);
     col = hsv2rgb(hsv);
+    // Colorize: tint towards u_colorize_col, keeping each pixel's brightness
+    if (u_colorize > 0.0) {
+        float lum = dot(col, vec3(0.299, 0.587, 0.114));
+        float tl  = max(dot(u_colorize_col, vec3(0.299, 0.587, 0.114)), 0.05);
+        vec3 tinted = clamp(u_colorize_col * (lum / tl), 0.0, 1.0);
+        col = mix(col, tinted, u_colorize);
+    }
     // Dither
     if (u_dither_mode > 0) {
         float dval = 0.0;

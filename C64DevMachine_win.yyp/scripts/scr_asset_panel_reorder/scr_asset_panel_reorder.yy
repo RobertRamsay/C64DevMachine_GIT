@@ -1,0 +1,10 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_asset_panel_reorder",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_asset_panel_reorder",
+  "parent":{"name":"SCRIPTS","path":"folders/SCRIPTS.yy"},
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0"
+}

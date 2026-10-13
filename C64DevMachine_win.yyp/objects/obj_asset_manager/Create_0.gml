@@ -74,6 +74,7 @@ bmp_ref_asset_name = "";
 bmp_ref_vy1        = 0;
 bmp_ref_found      = false;
 bmp_ref_x          = 0;
+bmp_ref_vx1        = 0;
 
 chr_active_mc_colour = 0;
 
@@ -387,6 +388,11 @@ sfx_picker_field = "asset";
 	asset_drag_y          = 0;
 	asset_drag_over_group = "";
 	asset_drag_over_loose = false;
+	// Drop BETWEEN rows (reorder): the asset the line sits against, which
+	// side of it, and the line's y for Draw. -1 = no insert line.
+	asset_drag_ins_idx    = -1;
+	asset_drag_ins_after  = false;
+	asset_drag_ins_y      = -1;
 	asset_group_rows      = [];
 
 	load_reu_rows_y       = 0;
@@ -982,3 +988,7 @@ map_sb_grab = 0;   // where on the thumb it was grabbed (px)
 
 // Bitmap open in edit mode; Step commits it when the viewer leaves it.
 bmp_edit_ref = undefined;
+
+// Asset panel drag handle: pointer over one this frame / move cursor shown
+asset_grip_hot    = false;
+asset_grip_cursor = false;

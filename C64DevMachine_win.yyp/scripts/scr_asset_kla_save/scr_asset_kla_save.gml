@@ -409,6 +409,17 @@ _asset.buffer = _buf;
 ///       AUTO-CLEAN is set to.
 function scr_asset_bmp_commit_edit(_asset) {
     gpu_set_texfilter(true);
+    // A new bitmap that was never drawn on has no file yet; leave it that
+    // way rather than writing an empty .kla.
+    var _untouched = (_asset.file == "" || !file_exists(_asset.file))
+                  && !(variable_struct_exists(_asset.meta, "bmp_unsaved") && _asset.meta.bmp_unsaved);
+    if (_untouched) {
+        _asset.meta.is_editing = false;
+        _asset.meta.dirty_timer = -1;
+        _asset.meta.last_px = undefined;
+        _asset.meta.last_py = undefined;
+        return;
+    }
     if (scr_asset_kla_save(_asset)) {
         scr_asset_bmp_build_preview(_asset);
         if (variable_struct_exists(_asset.meta, "preview_surf") && surface_exists(_asset.meta.preview_surf)) {

@@ -486,6 +486,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
                 reu_base_file : variable_struct_exists(_ad, "reu_base_file") ? _ad.reu_base_file : "",
                 linked_assets : variable_struct_exists(_ad, "linked_assets") ? _ad.linked_assets : [],
                 group         : variable_struct_exists(_ad, "group")         ? _ad.group         : "",
+                order         : variable_struct_exists(_ad, "order")         ? _ad.order         : -1,
             };
             if (variable_struct_exists(_ad, "source_file") && _ad.source_file != "")
                 _new_asset.meta.source_file = _ad.source_file;

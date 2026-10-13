@@ -37,16 +37,19 @@ function scr_asset_sorted_indices() {
     var _stale = false;
     if (asset_sort_cache_mode != asset_sort_mode) _stale = true;
     if (array_length(asset_sort_sig_name) != _count) _stale = true;
+    if (!variable_instance_exists(id, "asset_sort_sig_ord") || array_length(asset_sort_sig_ord) != _count) _stale = true;
 
     var _names = array_create(_count, "");
     var _types = array_create(_count, "");
     var _addrs = array_create(_count, 0);
+    var _ords  = array_create(_count, -1);   // OWN mode: the order the user dragged into
 
     for (var _si = 0; _si < _count; _si++) {
         var _sa = ds_list_find_value(asset_list, _si);
         _names[_si] = _sa.name;
         _types[_si] = _sa.type;
         _addrs[_si] = _sa.address;
+        _ords[_si]  = (variable_struct_exists(_sa, "order") && is_real(_sa.order)) ? _sa.order : -1;
 
         if (!_stale) {
             if (_names[_si] != asset_sort_sig_name[_si]) {
@@ -54,6 +57,8 @@ function scr_asset_sorted_indices() {
             } else if (_types[_si] != asset_sort_sig_type[_si]) {
                 _stale = true;
             } else if (_addrs[_si] != asset_sort_sig_addr[_si]) {
+                _stale = true;
+            } else if (_ords[_si] != asset_sort_sig_ord[_si]) {
                 _stale = true;
             }
         }
@@ -97,7 +102,8 @@ function scr_asset_sorted_indices() {
         t  : _types,
         ad : _addrs,
         na : _noaddr,
-        rk : _rank
+        rk : _rank,
+        od : _ords
     };
 
     var _sorted = array_create(_count, 0);
@@ -136,6 +142,18 @@ function scr_asset_sorted_indices() {
                 return -1;
             }
             return 1;
+        }));
+    } else if (asset_sort_mode == "OWN") {
+        // Hand-arranged order (drag between rows). An asset with no place yet
+        // (-1: new, or from an older project) goes after the arranged ones,
+        // in creation order.
+        array_sort(_sorted, method(_ctx, function(_a, _b) {
+            var _oa = od[_a];
+            var _ob = od[_b];
+            if (_oa < 0 && _ob >= 0) return 1;
+            if (_ob < 0 && _oa >= 0) return -1;
+            if (_oa != _ob) return _oa - _ob;
+            return _a - _b;
         }));
     } else if (asset_sort_mode == "ADDR") {
         array_sort(_sorted, method(_ctx, function(_a, _b) {
@@ -196,6 +214,7 @@ function scr_asset_sorted_indices() {
     asset_sort_sig_name   = _names;
     asset_sort_sig_type   = _types;
     asset_sort_sig_addr   = _addrs;
+    asset_sort_sig_ord    = _ords;
 
     // Hand back a copy. The cache is the authority, and a caller that sorted
     // or rewrote what it got back would silently corrupt every later frame.

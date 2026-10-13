@@ -76,6 +76,8 @@ function scr_asset_kla_import(_asset) {
         _asset.meta.png_saturation     = 1.0;
         _asset.meta.png_contrast       = 1.0;
         _asset.meta.png_brightness     = 0.0;
+        _asset.meta.png_blur           = 0.0;
+        _asset.meta.png_colorize       = 0.0;
         _asset.meta.png_dither         = "BAYER";
         _asset.meta.png_dither_amount  = 0.1;
         _asset.meta.png_conv_dirty     = true;  // force first conversion

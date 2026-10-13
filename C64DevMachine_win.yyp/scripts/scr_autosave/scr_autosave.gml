@@ -292,6 +292,7 @@ var _base = "unsaved";
                 reu_base_file : variable_struct_exists(_a, "reu_base_file") ? _a.reu_base_file : "",
                 linked_assets : variable_struct_exists(_a, "linked_assets") ? _a.linked_assets : [],
                 group         : variable_struct_exists(_a, "group")         ? _a.group         : "",
+                order         : variable_struct_exists(_a, "order")         ? _a.order         : -1,
             });
         }
     }

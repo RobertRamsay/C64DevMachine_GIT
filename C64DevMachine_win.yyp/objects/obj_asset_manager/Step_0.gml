@@ -1021,6 +1021,9 @@ if (_mouse_in_panel && _my >= panel_y + 66 && _my <= _panel_bottom - 38) {
 // -------------------------------------------------------
 asset_drag_over_group = "";
 asset_drag_over_loose = false;
+asset_drag_ins_idx    = -1;
+asset_drag_ins_after  = false;
+asset_drag_ins_y      = -1;
 
 if (asset_drag_idx >= 0) {
     if (_mouse_in_panel && _my >= panel_y + 66 && _my <= _panel_bottom - 38) {
@@ -1033,9 +1036,34 @@ if (asset_drag_idx >= 0) {
                 break;
             }
         }
+        // Over an asset row: drop BETWEEN rows. The upper half of a row puts
+        // the line above it, the lower half below it; the dropped asset
+        // takes that row's group and its place in the order.
+        if (asset_drag_over_group == "") {
+            var _drows = scr_asset_display_rows();
+            for (var _dp = 0; _dp < array_length(_drows); _dp++) {
+                if (_drows[_dp].kind != "asset") continue;
+                var _dy1 = panel_y + 66 + (_dp * item_h) - panel_scroll;
+                if (_my < _dy1 || _my >= _dy1 + item_h) continue;
+                asset_drag_ins_idx   = _drows[_dp].idx;
+                asset_drag_ins_after = (_my >= _dy1 + item_h / 2);
+                asset_drag_ins_y     = asset_drag_ins_after ? _dy1 + item_h : _dy1;
+                asset_drag_over_loose = false;
+                // Next to itself: nothing would move, so no line.
+                if (asset_drag_ins_idx == asset_drag_idx) {
+                    asset_drag_ins_idx = -1;
+                    asset_drag_ins_y   = -1;
+                }
+                break;
+            }
+        }
     }
     if (!mouse_check_button(mb_left)) {
-        if (asset_drag_idx < ds_list_size(asset_list)
+        if (asset_drag_idx < ds_list_size(asset_list) && asset_drag_ins_idx >= 0
+        &&  asset_drag_ins_idx < ds_list_size(asset_list)) {
+            scr_asset_panel_reorder(asset_drag_idx, asset_drag_ins_idx, asset_drag_ins_after);
+        }
+        else if (asset_drag_idx < ds_list_size(asset_list)
         && (asset_drag_over_group != "" || asset_drag_over_loose)) {
             var _moved = ds_list_find_value(asset_list, asset_drag_idx);
             if (_moved.group != asset_drag_over_group) {
@@ -1048,6 +1076,8 @@ if (asset_drag_idx >= 0) {
         asset_drag_armed      = false;
         asset_drag_over_group = "";
         asset_drag_over_loose = false;
+        asset_drag_ins_idx    = -1;
+        asset_drag_ins_y      = -1;
     }
 }
 

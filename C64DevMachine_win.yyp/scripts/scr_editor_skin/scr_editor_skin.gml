@@ -1,14 +1,77 @@
 /// Shared editor chrome. Native nine-slice corners stay six pixels at any size.
 /// Geometry is supplied by the caller's hit test; drawing never moves a control.
+/// All chrome is multiplied by global.ui_tint, the current theme's tint.
+
+// THEME TINT: a near-white colour carrying the hue of the active theme's
+// artwork (its opcode palette page and top bar). Multiplying the slate by it
+// shifts the hue a little without changing how light the UI reads.
+global.ui_tint     = c_white;
+global.ui_tint_key = "";
+
+/// @desc Recompute global.ui_tint when the theme changes. Cheap when it has
+///       not (one string compare); call once per frame from a draw event.
+function scr_ui_tint_update() {
+    if (!instance_exists(obj_workspace_manager)) return;
+    var _wm  = obj_workspace_manager;
+    var _pn  = max(1, sprite_get_number(spr_palette_page));
+    var _mn  = max(1, sprite_get_number(spr_menu_bar));
+    var _pf  = clamp(_wm.paletteStyle, 0, _pn - 1);
+    var _mf  = clamp((_wm.uiChromeStyle == 0) ? _wm.paletteStyle : _mn - 1, 0, _mn - 1);
+    var _key = string(_pf) + ":" + string(_mf);
+    if (_key == global.ui_tint_key) return;
+    global.ui_tint_key = _key;
+
+    // Average colour of both pieces of art, by shrinking them onto a small
+    // surface (filtered) and reading it back.
+    var _w = 32;
+    var _h = 16;
+    var _s = surface_create(_w, _h * 2);
+    var _old_filter = gpu_get_texfilter();
+    surface_set_target(_s);
+    draw_clear_alpha(c_black, 0);
+    gpu_set_texfilter(true);
+    draw_sprite_stretched(spr_palette_page, _pf, 0, 0, _w, _h);
+    draw_sprite_stretched(spr_menu_bar, _mf, 0, _h, _w, _h);
+    gpu_set_texfilter(_old_filter);
+    surface_reset_target();
+    var _buf = buffer_create(_w * _h * 2 * 4, buffer_fixed, 1);
+    buffer_get_surface(_buf, _s, 0);
+    surface_free(_s);
+    var _r = 0, _g = 0, _b = 0, _n = 0;
+    for (var _i = 0; _i < _w * _h * 2; _i++) {
+        var _a = buffer_peek(_buf, _i * 4 + 3, buffer_u8);
+        if (_a < 64) continue;
+        _r += buffer_peek(_buf, _i * 4,     buffer_u8);   // RGBA, as the bitmap code reads surfaces
+        _g += buffer_peek(_buf, _i * 4 + 1, buffer_u8);
+        _b += buffer_peek(_buf, _i * 4 + 2, buffer_u8);
+        _n++;
+    }
+    buffer_delete(_buf);
+    if (_n == 0) { global.ui_tint = c_white; return; }
+    var _avg = make_color_rgb(_r / _n, _g / _n, _b / _n);
+    // Hue of the art, at a fraction of its saturation: a hint, never a wash.
+    var _sat = min(color_get_saturation(_avg) * 0.65, 90);
+    global.ui_tint = (_sat < 6) ? c_white : make_color_hsv(color_get_hue(_avg), _sat, 255);
+}
+
+/// @desc A colour multiplied by the theme tint (for chrome drawn as plain
+///       rectangles, e.g. asset panel rows).
+function scr_ui_tinted(_col) {
+    var _t = global.ui_tint;
+    return make_color_rgb(color_get_red(_col)   * color_get_red(_t)   / 255,
+                          color_get_green(_col) * color_get_green(_t) / 255,
+                          color_get_blue(_col)  * color_get_blue(_t)  / 255);
+}
+
 function scr_editor_control(_x1, _y1, _x2, _y2, _hover, _selected = false, _enabled = true) {
     var _frame = !_enabled ? 3 : (_selected ? 2 : (_hover ? 1 : 0));
     if (global.ph_capture) scr_panel_help_capture(_x1, _y1, _x2, _y2);
-    draw_sprite_stretched(spr_editor_slate, _frame, _x1, _y1, max(1, _x2 - _x1), max(1, _y2 - _y1));
+    draw_sprite_stretched_ext(spr_editor_slate, _frame, _x1, _y1, max(1, _x2 - _x1), max(1, _y2 - _y1), global.ui_tint, draw_get_alpha());
 }
 
 function scr_editor_panel(_x1, _y1, _x2, _y2, _recessed = false) {
     if (_recessed && global.ph_capture) scr_panel_help_capture(_x1, _y1, _x2, _y2);
-    draw_sprite_stretched(spr_editor_slate, _recessed ? 5 : 4, _x1, _y1, max(1, _x2 - _x1), max(1, _y2 - _y1));
+    draw_sprite_stretched_ext(spr_editor_slate, _recessed ? 5 : 4, _x1, _y1, max(1, _x2 - _x1), max(1, _y2 - _y1), global.ui_tint, draw_get_alpha());
 }
 
 /// Label inside a control rect, vertically centred on the glyphs. Uses the
