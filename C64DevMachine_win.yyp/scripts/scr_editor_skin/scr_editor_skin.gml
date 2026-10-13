@@ -97,7 +97,7 @@ function scr_editor_label(_x1, _y1, _x2, _y2, _text, _halign = fa_center, _pad =
 /// footprint (and the caller's hit test) stays the given rect; that margin
 /// holds a rounded ring (frame 1) when hovered (grey) or selected (white).
 function scr_editor_swatch(_x1, _y1, _x2, _y2, _col, _hover = false, _selected = false, _inset = 2) {
-    if (global.ph_capture) scr_panel_help_capture(_x1, _y1, _x2, _y2);
+    if (global.ph_capture) scr_panel_help_capture(_x1, _y1, _x2, _y2, "swatch");
     scr_editor_colour_tile(_x1 + _inset, _y1 + _inset, _x2 - _inset, _y2 - _inset, _col);
     if (_selected || _hover) {
         scr_editor_colour_ring(_x1, _y1, _x2, _y2, _selected ? c_white : make_color_rgb(151, 170, 192));

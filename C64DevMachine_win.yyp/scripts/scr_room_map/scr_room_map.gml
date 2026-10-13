@@ -369,7 +369,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         } else if (_hover_room >= 0) {
             scr_ui_info(true, "ROOM: CLICK SELECTS IT, DRAG ARRANGES IT ON THE MAP (SNAPS TO 8)");
         } else {
-            scr_ui_info(true, "ROOM MAP: ROOM 0 (*) IS THE START ROOM; ARROWS SHOW EXITS D2-D5 BETWEEN ROOMS");
+            scr_ui_info(true, "ROOM MAP: ROOM 0 (*) IS THE START ROOM; ARROWS SHOW EXITS D2-D7 BETWEEN ROOMS");
         }
     }
     if (_press && (!_on_canvas || _hover_bitmap < 0 || _m.link_exit >= 0)) {
@@ -508,7 +508,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     draw_text_l(_qx, _qy + 3, "COLLIDERS");
     var _cl = _ro.coll;
     if (_cl == "") { _cl = "(none)"; }
-    if (_button(_qx + 70, _qy, _qw - 70, 20, string_copy(_cl, 1, 52), make_color_rgb(60, 45, 25), _mx, _my, "PICKS THE LINE_COLL ASSET WITH THIS ROOM COLLIDER LINES (DOOR LINES D2-D5)")) {
+    if (_button(_qx + 70, _qy, _qw - 70, 20, string_copy(_cl, 1, 52), make_color_rgb(60, 45, 25), _mx, _my, "PICKS THE LINE_COLL ASSET WITH THIS ROOM COLLIDER LINES (DOOR LINES D2-D7)")) {
         _m.pick_mode = "COLL";
         _m.pick_scroll = 0;
     }

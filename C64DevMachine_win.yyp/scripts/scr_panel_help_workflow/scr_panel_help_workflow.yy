@@ -1,0 +1,10 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_panel_help_workflow",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_panel_help_workflow",
+  "parent":{"name":"SCRIPTS","path":"folders/SCRIPTS.yy"},
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0"
+}

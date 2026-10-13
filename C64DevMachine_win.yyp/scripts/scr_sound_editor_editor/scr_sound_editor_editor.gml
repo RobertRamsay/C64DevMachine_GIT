@@ -2867,6 +2867,8 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         "SAVES THIS ASSET NOW (IT PULSES AMBER WHILE THERE ARE UNSAVED CHANGES)");
     scr_mm_info(point_in_rectangle(_dg_pmx, _dg_pmy, _vx2 - 252, _vy1 + 4, _vx2 - 156, _vy1 + 24),
         "HELP GUIDE: A STEP-BY-STEP TOUR OF EVERY PART OF THIS PANEL");
+    scr_mm_info(point_in_rectangle(_dg_pmx, _dg_pmy, _vx2 - 350, _vy1 + 4, _vx2 - 260, _vy1 + 24),
+        "WORKFLOW: A SHORT BUILT-IN TUTORIAL - THE CORE STEPS OF USING THIS PANEL, IN ORDER");
     var _info_txt = "";
     if (variable_global_exists("mm_info")) {
         _info_txt = global.mm_info;

@@ -1,0 +1,81 @@
+/// WORKFLOW tour steps for: MAP_DATA, META_TILESET, META_MAP, ROOM_MAP, HUD, LINE_COLL, PICKUP_TABLE
+/// (see scr_panel_help_workflow for the format)
+function scr_panel_help_wf_maps() {
+    return {
+        MAP_DATA : [
+            { title: "WHAT A MAP IS", text: "A MAP_DATA asset is a grid of character cells: each cell holds a char from a linked charset plus a colour.\n\nYou paint it here like a picture, then nodes such as MACRO_MAP or MACRO_SCROLL put it on the C64 screen.", targets: [] },
+            { title: "START A MAP", text: "CREATE asks for a size such as 40,25 (up to 160x160) and gives you an empty map - it wipes the current one. IMPORT loads a raw binary map (.bin) instead.\n\nTo resize later, click the width or height beside MAP SIZE, type a number and press ENTER.", targets: ["CREATE", "IMPORT", "MAP SIZE:"] },
+            { title: "LINK A CHARSET", text: "Click the button beside CHARSET to choose which CHAR_SET asset draws the tiles. Until a charset is linked the map has nothing to show.", targets: ["CHARSET:", "-- PICK --"] },
+            { title: "HIRES OR MIXED", text: "HR ONLY keeps every cell hires. MIXED lets hires and multicolour cells sit side by side.\n\nIn MIXED, a PAINT HR / PAINT MC button appears (or press P) to decide what new cells become.", targets: ["HR ONLY", "MIXED"] },
+            { title: "CHOOSE COLOURS", text: "Click a colour in the COLOUR palette to set the paint colour for new cells. In MIXED mode only colours 0-7 can be used, as on the real machine.\n\nThe BG, C1 and C2 rows set the shared background and multicolours; right click one to take it from the charset instead.", targets: ["COLOUR", "@PALETTE"] },
+            { title: "PICK A TILE", text: "The TILE strip shows every char of the linked charset. Click one to make it the active char you paint with. The wheel scrolls the strip.\n\nThe small editor at the top right edits that char's pixels in the charset itself.", targets: ["TILE"] },
+            { title: "PAINT THE MAP", text: "Left click or drag on the map to paint the active char and colour. Right click erases, SHIFT + left click changes only the colour, and ALT + left click picks up what is under the pointer.\n\nThe wheel zooms; hold SPACE or the middle button and drag to pan.", targets: ["@LARGEST"] },
+            { title: "VIEW AND FILL", text: "Z- and Z+ zoom, and GRID shows or hides the cell lines.\n\nTurn FILL on and a left click floods the connected area of the same char and colour with your tile. Turn it off to paint normally again.", targets: ["Z-", "Z+", "GRID", "FILL"] },
+            { title: "COPY AND STAMP", text: "Hold CTRL and drag to select cells, then press CTRL + C: the block becomes a stamp. Left click places it, right click erases its footprint, X / Y flip it and CTRL + D drops it.\n\nSTORE keeps the stamp in the bank (up to 128); click a stored stamp to pick it up again.", targets: ["STORE"] },
+            { title: "EXPORT FORMAT", text: "This button cycles how the map is written into the build: FULL MAP (chars and colours), RAW CHARS, RLE ROOMS or RLE STREAM.\n\nMACRO_MAP and MACRO_SCROLL need FULL MAP. The RLE formats cut the map into rooms for flick-screen games.", targets: ["FULL MAP", "RAW CHARS", "RLE ROOMS", "RLE STREAM"] },
+            { title: "INTO THE BUILD", text: "ADDRESS sets where the map data loads in C64 memory - click the value and type a hex address.\n\nThen connect the map to a MACRO_MAP node to draw a screen or a MACRO_SCROLL node to scroll it.", targets: ["ADDRESS:"] }
+        ],
+        META_TILESET : [
+            { title: "WHAT A TILESET IS", text: "A META_TILESET builds stamps (metatiles) out of chars, then builds maps out of those stamps, which keeps big maps small.\n\nTo bring in a CharPad project instead, use the workspace IMPORT menu and pick CHARPAD (.CTM).", targets: [] },
+            { title: "LINK A CHARSET", text: "Click the button beside CHARSET to choose the CHAR_SET whose glyphs the stamps are made of.", targets: ["CHARSET:", "-- PICK --"] },
+            { title: "STAMP SIZE", text: "Set the stamp width and height with - and + (1 to 8 chars each).\n\nDo this first: the size locks as soon as you paint a stamp or add a second one.", targets: ["STAMP SIZE:"] },
+            { title: "ADD A STAMP", text: "Click the [ + ] slot in the stamp list to add a new empty stamp and start editing it.\n\nLater, left click a stamp to edit it or to place it on the map, and right click to delete it.", targets: ["CLICK [ + ] TO ADD", "STAMPS: *"] },
+            { title: "PICK A CHAR", text: "The TILE strip holds every char of the charset. Left click one to paint with it.\n\nALT + left click and right click step a char's tile type, which is exported as a TILE_TYPES table for collision code.", targets: ["TILE"] },
+            { title: "PAINT THE STAMP", text: "Paint on the stamp canvas: left click places the char, right click erases and ALT + left click picks a char. The wheel zooms.\n\nChanges go straight into the stamp you are editing.", targets: ["EDITING #*"] },
+            { title: "CHOOSE COLOURS", text: "Here a colour belongs to the char: picking one in the COLOUR palette bakes it into the selected char wherever it is used.\n\nHR ONLY / MIXED sets the colour mode, and BG, C1 and C2 set the shared colours.", targets: ["COLOUR", "@PALETTE"] },
+            { title: "MAPS AND TABS", text: "A tileset can hold many maps, one per tab. + ADD makes a new map; double-click a tab to rename it, right click to delete it.\n\nTEST is a scratch map that is never exported.", targets: ["+ ADD", "TEST"] },
+            { title: "MAP SIZE", text: "Width and height are in chars and always round to whole stamps. Use - and + to change them by one stamp, or click a value and type it.", targets: ["MAP SIZE:"] },
+            { title: "BUILD THE MAP", text: "With a stamp selected, left click the map to place it. Right click erases and ALT + left click picks up the stamp under the pointer.\n\nThe wheel zooms and SPACE or middle-drag pans.", targets: ["@LARGEST"] },
+            { title: "EXPORT LAYOUT", text: "RAW ROWS chooses how the maps are written: as stamp data, plain char rows, or stamp ids. Leave it OFF unless your engine needs a raw layout.\n\nCHAINS opens a panel for joining maps into levels.", targets: ["RAW ROWS: *", "CHAINS"] },
+            { title: "INTO THE BUILD", text: "Connect the tileset to a MACRO_METAMAP node to draw a map, or a MACRO_METASCROLL node to scroll one. Each node picks the map by its number.\n\nThis editor saves as you work, so it has no SAVE button.", targets: [] }
+        ],
+        META_MAP : [
+            { title: "AN OLDER ASSET", text: "META_MAP is an older asset type: a grid of stamp numbers that points at a META_TILESET by name. This panel has no painting tools for it, and it is no longer offered for new assets.", targets: [] },
+            { title: "WHERE MAPS LIVE NOW", text: "Build stamp maps inside the META_TILESET instead. Its map tabs hold as many maps as you need.\n\nMACRO_METAMAP and MACRO_METASCROLL read those maps straight from the tileset.", targets: [] },
+            { title: "LOAD ADDRESS", text: "ADDRESS shows where this data sits in C64 memory. Click the value and type a new hex address if it clashes with something else.", targets: ["ADDRESS:"] },
+            { title: "CAREFUL WITH IMPORT", text: "For this type IMPORT does not read a file. It resets the asset to an empty 40x25 map with no tileset linked.", targets: ["IMPORT"] },
+            { title: "MOVING ON", text: "To carry an old map forward, rebuild it as a map tab in its META_TILESET and point the nodes at that tileset. Once nothing uses this asset, it can be removed.", targets: [] }
+        ],
+        ROOM_MAP : [
+            { title: "WHAT A ROOM MAP IS", text: "A ROOM_MAP links full-screen bitmap scenes into a world. Each room has a bitmap, optional collider lines and a mask, and exits leading to other rooms.\n\nThe MACRO_ROOMS node turns it into room tables and code.", targets: [] },
+            { title: "CHOOSE THE REU", text: "The room bitmaps come from a LOAD_REU manifest. Click REU to cycle through the manifests in the project.\n\nAdd your room bitmaps to that manifest first, so they can be picked.", targets: ["REU: *"] },
+            { title: "ADD ROOMS", text: "+ ROOM adds a room and selects it; DELETE removes the selected room and unlinks exits to it. Room 0, marked *, is the start room.\n\nClick a room's name in the right-hand panel to rename it.", targets: ["+ ROOM", "DELETE"] },
+            { title: "ARRANGE THE MAP", text: "Click a room to select it and drag it to arrange the layout; positions snap to 8. Arrows between rooms show the exits.\n\nZOOM cycles the size of the room boxes.", targets: ["@LARGEST", "ZOOM *"] },
+            { title: "SET THE BITMAP", text: "Click the BITMAP button in the room panel to list the bitmaps in the REU manifest, then click one to use it.\n\nDouble-click a room's thumbnail on the map to open that bitmap in the bitmap editor.", targets: ["(choose)"] },
+            { title: "COLLIDERS AND MASK", text: "COLLIDERS picks the LINE_COLL asset with this room's collision lines. Lines of type 2 and up are doors: type 2 is exit D2, type 3 is D3, and so on.\n\nMASK picks a SPRITE_MASK so sprites can pass behind scenery.", targets: ["(none)"] },
+            { title: "LINK AN EXIT", text: "The EXITS list has one row per door. Press LINK on a row, then click the room on the map that door leads to. CLEAR removes the link again.", targets: ["LINK"] },
+            { title: "ARRIVAL AND SPAWN", text: "Click an exit row to select it, then click the room preview to set where the player arrives in the target room.\n\nWith no exit selected, clicking the preview sets this room's spawn point instead.", targets: [] },
+            { title: "INTO THE BUILD", text: "Add a MACRO_ROOMS node and pick this room map and a room variable. It emits start, door and enter routines for your game to call.\n\nA MACRO_COLL_LINE node set to this ROOM_MAP reads the current room's lines automatically.", targets: [] }
+        ],
+        HUD : [
+            { title: "WHAT A HUD IS", text: "A HUD is a panel of text-screen chars - score, lives, energy bars - drawn on the full 40x25 screen so you can see the space it leaves for the game.\n\nThe MACRO_HUD node copies it to the screen and gives every field a routine.", targets: [] },
+            { title: "PLACE THE PANEL", text: "In the toolbar, RECT X and Y move the panel on the screen and W and H set its size in chars, using the - and + buttons.\n\nThe screen outside the panel is dimmed.", targets: [] },
+            { title: "LINK A CHARSET", text: "Click CHARSET to cycle through the CHAR_SET assets; right click clears it. The canvas and char strip use this charset.", targets: ["CHARSET*"] },
+            { title: "SCREEN MODE", text: "SCREEN HR / SCREEN MC sets the VIC text mode. In MC mode the CELL HR / CELL MC button and the shared C1 and C2 colours appear.\n\nThe canvas follows the mode, so what you see is what the C64 shows.", targets: ["SCREEN HR", "SCREEN MC"] },
+            { title: "PICK A CHAR", text: "The CHARSET strip under the screen holds all 256 chars. Click one to make it the active char for painting.\n\nThe TILE box on the right edits that char's pixels in the charset.", targets: [] },
+            { title: "CHOOSE COLOURS", text: "In the PAINT box, left click a colour to paint with it. Right click a colour to make it the screen background.", targets: ["@PALETTE"] },
+            { title: "PAINT AND TYPE", text: "Left click or drag on the panel to paint; this also places the type cursor. Right click erases and ALT + click picks up a char and colour.\n\nTo write words such as SCORE, click a cell and just type. CTRL + Z and CTRL + Y undo and redo.", targets: ["@LARGEST"] },
+            { title: "ADD A FIELD", text: "Fields are the cells your game writes at run time. + FIELD adds a 2-cell number field at the type cursor; DELETE removes the selected one.\n\nClick a field in the list to select it, and SHIFT + click the panel to move it. Click its NAME to rename it.", targets: ["+ FIELD", "DELETE"] },
+            { title: "FIELD KIND", text: "KIND cycles TEXT (a position only), DIGITS (prints the number in A) and BAR (fills A cells). LEN sets how many cells it covers.\n\nUse the CHR ... < ACTIVE buttons to choose the digit or bar chars from the active char.", targets: ["TEXT", "DIGITS", "BAR"] },
+            { title: "INTO THE BUILD", text: "Add a MACRO_HUD node and pick this HUD. Call its _draw routine once the screen is set up.\n\nEach DIGITS or BAR field gets its own routine: load the value into A and call it.", targets: [] }
+        ],
+        LINE_COLL : [
+            { title: "WHAT LINE COLLISION IS", text: "A LINE_COLL asset is a list of line segments, each with a type from 0 to 7. When something hits a line, collision code reports that type.\n\nYou draw the lines here over a picture of the level.", targets: [] },
+            { title: "TRACE OVER A BITMAP", text: "Click the bitmap button to choose a BITMAP to draw over, and SHOW REFERENCE turns it on or off. REF X and REF Y nudge it into place.\n\nThe X units button switches between 0-255 pixels and the full 320 width.", targets: ["-- PICK BITMAP --", "SHOW REFERENCE: *"] },
+            { title: "PICK A LINE TYPE", text: "Click a type chip (0-7) to choose the type new lines get, so walls, floors and hazards can report different values.\n\nIn a ROOM_MAP, types 2 and up are doors.", targets: ["0", "1", "2", "3", "4", "5", "6", "7"] },
+            { title: "DRAW LINES", text: "Click and drag on the canvas to draw a line of the active type. Lines can run at any angle.", targets: ["@LARGEST"] },
+            { title: "FIX MISTAKES", text: "Turn EDIT POINTS on, or hold ALT, and drag a line end to move it. UNDO and REDO (CTRL + Z / CTRL + Y) step through your changes.\n\nThe list on the right shows every line; X on a row deletes it.", targets: ["EDIT POINTS: *", "UNDO", "REDO"] },
+            { title: "TEXT EDIT", text: "TEXT EDIT shows the lines as text, one X1,Y1,X2,Y2,TYPE per line - ideal for pasting many at once. CLOSE stores the text and returns to the canvas.", targets: ["TEXT EDIT"] },
+            { title: "INTO THE BUILD", text: "ADDRESS sets where the line table loads; it is added to the build automatically.\n\nUse a MACRO_COLL_LINE node to test a sprite against the lines, or pick this asset as a room's colliders in a ROOM_MAP.", targets: ["ADDRESS:"] }
+        ],
+        PICKUP_TABLE : [
+            { title: "WHAT A PICKUP TABLE IS", text: "A PICKUP_TABLE is a per-room list of pickups - coins, keys, lanterns - built from a room map. Each entry says where the pickup is and which tile to leave once it is taken.", targets: [] },
+            { title: "LINK A ROOM MAP", text: "Click MAP to cycle to the MAP_DATA this table reads from. The map must use RLE ROOMS or RLE STREAM so it is split into rooms.", targets: ["MAP: *"] },
+            { title: "AUTO MODE", text: "With AUTO on, the entries follow the map: every cell holding a pickup tile becomes an entry.\n\nTurn AUTO off to edit or add entries by hand.", targets: ["AUTO: *"] },
+            { title: "CHOOSE A ROOM", text: "Each ROOM button shows the room number and how many of its entries are switched on. Click one to list its entries.", targets: ["ROOM *"] },
+            { title: "EDIT ENTRIES", text: "Left click a value to add 1, right click to subtract 1. TAKEN is the tile left in the map, and ON / OFF decides whether the entry is written.\n\nWith AUTO off, + ENTRY adds one and X deletes one. UNDO (CTRL + Z) takes back a change.", targets: ["ON", "OFF", "UNDO (*"] },
+            { title: "ROOM PREVIEW", text: "The preview shows the room with the entries outlined: yellow boxes are emitted, grey ones are off.\n\nALL, HIGHLIGHT and PICKUPS ONLY change how much of the room is shown.", targets: ["ALL", "HIGHLIGHT", "PICKUPS ONLY"] },
+            { title: "INTO THE BUILD", text: "The table is written at its ADDRESS, and the EMITTED BYTES box shows exactly what goes in.\n\nIn your code, the labels NAME_LO and NAME_HI (with this asset's name) point at each room's list.", targets: ["ADDRESS:"] }
+        ]
+    };
+}

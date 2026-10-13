@@ -1,0 +1,10 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_panel_help_wf_sprites",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_panel_help_wf_sprites",
+  "parent":{"name":"SCRIPTS","path":"folders/SCRIPTS.yy"},
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0"
+}

@@ -8,8 +8,16 @@
 /// INFO texts become the steps, in draw order, one per distinct text
 /// (a palette of 16 swatches sharing one text is one step).
 ///
-/// Phases: "collect" (one frame, pointer parked off screen, rects recorded)
-///         "scan"    (one candidate per frame, texts recorded)
+/// Two tours per panel, from two title-bar buttons:
+///   WORKFLOW   - hand-written steps (scr_panel_help_workflow) on how the panel
+///              is used, start to finish. Each step names the controls it is
+///              about by their on-screen label; the guide finds them in what
+///              the editor drew.
+///   HELP GUIDE - every control, in draw order, explained by its INFO text.
+///
+/// Phases: "arm"     (clicked mid-frame: wait for one whole frame)
+///         "collect" (one frame, pointer parked off screen, rects recorded)
+///         "scan"    (complete tour: one candidate per frame, texts recorded)
 ///         "show"    (the user steps through with NEXT / BACK)
 ///
 /// While active, obj_asset_manager Step reads the real mouse and keys for
@@ -37,12 +45,19 @@ global.ph_asset   = undefined;
 global.ph_view    = [0, 0, 0, 0];
 global.ph_skip    = [0, 0, 0, 0];
 global.ph_surf    = -1;
+global.ph_snap_rects  = [];
+global.ph_snap_labels = [];
+global.ph_kind    = "";
 
 /// @desc Start the guide for the asset open in the viewer. _view is the
 ///       viewer rect; _skip is the HELP button rect (left out of the steps).
-function scr_panel_help_start(_asset, _view, _skip) {
+function scr_panel_help_start(_asset, _view, _skip, _kind = "COMPLETE") {
     global.ph_active = true;
-    global.ph_phase  = "collect";
+    // The click arrives part-way through a frame, after the editor has
+    // already drawn (and not reported) its controls: start capturing on the
+    // next whole frame, or the guide would be built from nothing.
+    global.ph_phase  = "arm";
+    global.ph_kind   = _kind;
     global.ph_asset  = _asset;
     global.ph_view   = _view;
     global.ph_skip   = _skip;
@@ -88,6 +103,7 @@ function scr_panel_help_step_input() {
 /// @desc obj_asset_manager Draw GUI, as the viewer starts drawing.
 function scr_panel_help_frame_begin() {
     global.ph_capture = global.ph_active;
+    if (global.ph_active && global.ph_phase == "arm") global.ph_phase = "collect";
     if (global.ph_capture) {
         global.ph_rects  = [];
         global.ph_labels = [];
@@ -95,8 +111,15 @@ function scr_panel_help_frame_begin() {
 }
 
 /// @desc Skin helpers report each rect they draw while the guide runs.
-function scr_panel_help_capture(_x1, _y1, _x2, _y2) {
-    array_push(global.ph_rects, [_x1, _y1, _x2, _y2]);
+function scr_panel_help_capture(_x1, _y1, _x2, _y2, _kind = "") {
+    array_push(global.ph_rects, [_x1, _y1, _x2, _y2, _kind]);
+}
+
+/// @desc The rects a candidate stands for: a colour palette (run of touching
+///       swatches) is one candidate holding every swatch in it.
+function scr_panel_help_cand_rects(_c) {
+    if (array_length(_c) > 5 && is_array(_c[5])) return _c[5];
+    return [_c];
 }
 
 function scr_panel_help_capture_label(_x1, _y1, _x2, _y2, _text) {
@@ -144,6 +167,26 @@ function scr_panel_help_collect() {
     for (var _i = 0; _i < array_length(_head); _i++) array_push(_body, _head[_i]);
     // A guide over a few hundred grid cells would take seconds to prepare;
     // the first cells of a grid already describe it.
+    // Runs of touching swatches (a palette) become one candidate, so the
+    // tour explains choosing a colour once instead of once per colour.
+    var _grouped = [];
+    for (var _i = 0; _i < array_length(_body); _i++) {
+        var _r = _body[_i];
+        var _is_sw = (array_length(_r) > 4 && _r[4] == "swatch");
+        var _ng = array_length(_grouped);
+        if (_is_sw && _ng > 0) {
+            var _g = _grouped[_ng - 1];
+            if (array_length(_g) > 5 && is_array(_g[5])) {
+                var _last = _g[5][array_length(_g[5]) - 1];
+                var _near_x = (_r[0] <= _last[2] + 8 && _r[2] >= _last[0] - 8);
+                var _near_y = (_r[1] <= _last[3] + 8 && _r[3] >= _last[1] - 8);
+                if (_near_x && _near_y) { array_push(_g[5], _r); continue; }
+            }
+        }
+        if (_is_sw) array_push(_grouped, [_r[0], _r[1], _r[2], _r[3], "swatch", [_r]]);
+        else array_push(_grouped, _r);
+    }
+    _body = _grouped;
     if (array_length(_body) > 240) array_resize(_body, 240);
     global.ph_cands = _body;
     global.ph_texts = array_create(array_length(_body), "");
@@ -161,6 +204,101 @@ function scr_panel_help_label_for(_r) {
     return "";
 }
 
+/// @desc Rects for a workflow step's targets, from the collect frame.
+///       "IMPORT"   a control whose label reads exactly that (any case)
+///       "CLEAN*"   a control whose label starts with that
+///       "@LARGEST" the biggest thing drawn (the canvas / main work area)
+///       "@PALETTE" the biggest run of touching colour swatches
+///       Several targets may be given; every match is highlighted.
+function scr_panel_help_resolve(_targets) {
+    var _out = [];
+    var _v = global.ph_view;
+    for (var _ti = 0; _ti < array_length(_targets); _ti++) {
+        var _t = string_upper(string_trim(_targets[_ti]));
+        if (_t == "") continue;
+        if (_t == "@LARGEST") {
+            var _best = undefined, _ba = 0;
+            for (var _ri = 0; _ri < array_length(global.ph_snap_rects); _ri++) {
+                var _r = global.ph_snap_rects[_ri];
+                if (_r[0] < _v[0] || _r[1] < _v[1] || _r[2] > _v[2] || _r[3] > _v[3]) continue;
+                if (_r[2] - _r[0] >= (_v[2] - _v[0]) - 4) continue;   // the panel itself
+                var _a = (_r[2] - _r[0]) * (_r[3] - _r[1]);
+                if (_a > _ba) { _ba = _a; _best = _r; }
+            }
+            if (!is_undefined(_best)) array_push(_out, _best);
+            continue;
+        }
+        if (_t == "@PALETTE") {
+            // The biggest run of touching colour swatches (the main palette)
+            var _best_g = [], _cur_g = [];
+            for (var _ri = 0; _ri <= array_length(global.ph_snap_rects); _ri++) {
+                var _r = (_ri < array_length(global.ph_snap_rects)) ? global.ph_snap_rects[_ri] : undefined;
+                var _sw = !is_undefined(_r) && array_length(_r) > 4 && _r[4] == "swatch";
+                if (_sw && array_length(_cur_g) > 0) {
+                    var _lr = _cur_g[array_length(_cur_g) - 1];
+                    if (!(_r[0] <= _lr[2] + 8 && _r[2] >= _lr[0] - 8 && _r[1] <= _lr[3] + 8 && _r[3] >= _lr[1] - 8)) {
+                        if (array_length(_cur_g) > array_length(_best_g)) _best_g = _cur_g;
+                        _cur_g = [];
+                    }
+                }
+                if (_sw) { array_push(_cur_g, _r); continue; }
+                if (array_length(_cur_g) > array_length(_best_g)) _best_g = _cur_g;
+                _cur_g = [];
+            }
+            for (var _bi = 0; _bi < array_length(_best_g); _bi++) array_push(_out, _best_g[_bi]);
+            continue;
+        }
+        var _pre = (string_char_at(_t, string_length(_t)) == "*");
+        if (_pre) _t = string_copy(_t, 1, string_length(_t) - 1);
+        for (var _li = 0; _li < array_length(global.ph_snap_labels); _li++) {
+            var _l  = global.ph_snap_labels[_li];
+            var _lt = string_upper(string_trim(_l[4]));
+            var _hit = _pre ? (string_pos(_t, _lt) == 1) : (_lt == _t);
+            if (!_hit) continue;
+            // The control the label sits in (smallest rect holding its centre)
+            var _lx = (_l[0] == _l[2]) ? _l[0] + 2 : (_l[0] + _l[2]) * 0.5;
+            var _ly = (_l[1] + _l[3]) * 0.5;
+            var _own = undefined, _oa = 1000000000;
+            for (var _ri = 0; _ri < array_length(global.ph_snap_rects); _ri++) {
+                var _r = global.ph_snap_rects[_ri];
+                if (_lx < _r[0] || _lx > _r[2] || _ly < _r[1] || _ly > _r[3]) continue;
+                var _a = (_r[2] - _r[0]) * (_r[3] - _r[1]);
+                if (_a < _oa) { _oa = _a; _own = _r; }
+            }
+            if (is_undefined(_own) || _oa > 200000) {
+                // A caption with no control round it: highlight the text itself
+                var _w = string_width_l(_l[4]);
+                var _x1 = (_l[0] == _l[2]) ? _l[0] : _l[0];
+                _own = [_x1 - 2, _l[1], max(_l[2], _x1 + _w) + 2, _l[3]];
+            }
+            var _dup = false;
+            for (var _oi = 0; _oi < array_length(_out); _oi++) {
+                var _o = _out[_oi];
+                if (_o[0] == _own[0] && _o[1] == _own[1] && _o[2] == _own[2] && _o[3] == _own[3]) { _dup = true; break; }
+            }
+            if (!_dup) array_push(_out, _own);
+        }
+    }
+    return _out;
+}
+
+/// @desc WORKFLOW tour: the panel's hand-written steps (scr_panel_help_workflow).
+function scr_panel_help_build_workflow(_type, _wf) {
+    var _steps = [];
+    for (var _i = 0; _i < array_length(_wf); _i++) {
+        var _w = _wf[_i];
+        var _tg = variable_struct_exists(_w, "targets") ? _w.targets : [];
+        array_push(_steps, { title: _w.title, text: _w.text, rects: scr_panel_help_resolve(_tg) });
+    }
+    array_push(_steps, {
+        title : "THAT'S THE WORKFLOW",
+        text  : "This panel saves as you work - there is nothing to turn on.\n\nFor every single control, use HELP GUIDE beside WORKFLOW in the title bar. Hovering any control also shows what it does in the INFO strip.",
+        rects : []
+    });
+    global.ph_steps = _steps;
+    global.ph_step  = 0;
+}
+
 /// @desc One step per distinct INFO text, in the order first met.
 function scr_panel_help_build(_type) {
     var _steps = [];
@@ -173,12 +311,18 @@ function scr_panel_help_build(_type) {
     for (var _i = 0; _i < array_length(global.ph_cands); _i++) {
         var _t = global.ph_texts[_i];
         if (_t == "") continue;
+        var _cr = scr_panel_help_cand_rects(global.ph_cands[_i]);
+        var _is_pal = (array_length(_cr) > 1);
+        if (_is_pal) {
+            // A whole palette: one step about choosing a colour from it
+            _t = "COLOUR CHOICES: CLICK ANY COLOUR HERE TO PICK IT. FOR EXAMPLE, THIS ONE - " + _t;
+        }
         if (variable_struct_exists(_seen, _t)) {
-            array_push(_steps[_seen[$ _t]].rects, global.ph_cands[_i]);
+            for (var _k = 0; _k < array_length(_cr); _k++) array_push(_steps[_seen[$ _t]].rects, _cr[_k]);
             continue;
         }
         _seen[$ _t] = array_length(_steps);
-        array_push(_steps, { title: "", text: _t, rects: [global.ph_cands[_i]] });
+        array_push(_steps, { title: _is_pal ? "COLOURS" : "", text: _t, rects: _cr });
     }
     for (var _i = 1; _i < array_length(_steps); _i++) {
         var _st = _steps[_i];
@@ -216,10 +360,20 @@ function scr_panel_help_draw(_asset, _gui_w, _gui_h) {
     if (_asset != global.ph_asset) { scr_panel_help_end(); return; }
 
     if (global.ph_phase == "collect") {
+        global.ph_snap_rects  = global.ph_rects;
+        global.ph_snap_labels = global.ph_labels;
         scr_panel_help_collect();
-        global.ph_phase  = "scan";
-        global.ph_scan_i = 0;
-        global.ph_vm_idx = -1;
+        var _wf = scr_panel_help_workflow(_asset.type);
+        if (global.ph_kind == "WORKFLOW" && is_array(_wf) && array_length(_wf) > 0) {
+            scr_panel_help_build_workflow(_asset.type, _wf);
+            global.ph_phase = "show";
+            scr_panel_help_park();
+        } else {
+            global.ph_kind   = "COMPLETE";
+            global.ph_phase  = "scan";
+            global.ph_scan_i = 0;
+            global.ph_vm_idx = -1;
+        }
     } else if (global.ph_phase == "scan" && global.ph_vm_idx >= 0) {
         // This frame was drawn with the pointer on candidate ph_vm_idx.
         global.ph_texts[global.ph_vm_idx] = string(global.ui_info);
@@ -271,7 +425,7 @@ function scr_panel_help_draw(_asset, _gui_w, _gui_h) {
     draw_set_alpha(1);
 
     // ---- callout ----
-    var _cw = 440;
+    var _cw = 480;
     var _pad = 12;
     draw_set_font_l(fnt_c64_tiny);
     var _title = "";
@@ -282,6 +436,9 @@ function scr_panel_help_draw(_asset, _gui_w, _gui_h) {
         _n     = array_length(global.ph_steps);
         _title = _st.title;
         _body  = _st.text;
+    } else if (global.ph_phase == "arm" || global.ph_phase == "collect") {
+        _title = "PREPARING GUIDE";
+        _body  = "LOOKING OVER THIS PANEL...";
     } else {
         _title = "PREPARING GUIDE";
         _body  = "LOOKING OVER THIS PANEL... " + string(global.ph_scan_i) + " / " + string(array_length(global.ph_cands));
@@ -336,6 +493,7 @@ function scr_panel_help_draw(_asset, _gui_w, _gui_h) {
     draw_set_color(c_white);
     scr_editor_label(_ex_x1, _b_y1, _ex_x2, _b_y2, "EXIT GUIDE");
     if (_ex_hov && global.ph_click) _act = "ESC";
+
 
     if (global.ph_phase == "show") {
         var _last = (global.ph_step >= _n - 1);

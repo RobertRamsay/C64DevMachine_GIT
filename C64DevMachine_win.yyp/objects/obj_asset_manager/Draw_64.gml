@@ -906,11 +906,27 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     var _hp_x1  = _hp_x2 - 96;
     var _hp_hov = !global.ph_active && point_in_rectangle(_mx, _my, _hp_x1, _cl_y1, _hp_x2, _cl_y2);
     scr_ui_info(_hp_hov, "HELP GUIDE: A STEP-BY-STEP TOUR OF EVERY PART OF THIS PANEL");
-    scr_editor_control(_hp_x1, _cl_y1, _hp_x2, _cl_y2, _hp_hov, global.ph_active);
+    scr_editor_control(_hp_x1, _cl_y1, _hp_x2, _cl_y2, _hp_hov, global.ph_active && global.ph_kind == "COMPLETE");
     draw_set_color(c_white);
     scr_editor_label(_hp_x1, _cl_y1, _hp_x2, _cl_y2, "HELP GUIDE");
+    // WORKFLOW: the panel's built-in tutorial (core steps, in order), left of
+    // HELP GUIDE. Only for panels that have one (scr_panel_help_workflow).
+    var _wfl = scr_panel_help_workflow(_asset.type);
+    var _wf_x2 = _hp_x1 - 8;
+    var _wf_x1 = _wf_x2 - 90;
+    var _has_wf = is_array(_wfl) && array_length(_wfl) > 0;
+    if (_has_wf) {
+        var _wf_hov = !global.ph_active && point_in_rectangle(_mx, _my, _wf_x1, _cl_y1, _wf_x2, _cl_y2);
+        scr_ui_info(_wf_hov, "WORKFLOW: A SHORT BUILT-IN TUTORIAL - THE CORE STEPS OF USING THIS PANEL, IN ORDER");
+        scr_editor_control(_wf_x1, _cl_y1, _wf_x2, _cl_y2, _wf_hov, global.ph_active && global.ph_kind == "WORKFLOW");
+        draw_set_color(c_white);
+        scr_editor_label(_wf_x1, _cl_y1, _wf_x2, _cl_y2, "WORKFLOW");
+        if (_wf_hov && mouse_check_button_pressed(mb_left)) {
+            scr_panel_help_start(_asset, [_vx1, _vy1, _vx2, _vy2], [_wf_x1, _cl_y1, _hp_x2, _cl_y2], "WORKFLOW");
+        }
+    }
     if (_hp_hov && mouse_check_button_pressed(mb_left)) {
-        scr_panel_help_start(_asset, [_vx1, _vy1, _vx2, _vy2], [_hp_x1, _cl_y1, _hp_x2, _cl_y2]);
+        scr_panel_help_start(_asset, [_vx1, _vy1, _vx2, _vy2], [_has_wf ? _wf_x1 : _hp_x1, _cl_y1, _hp_x2, _cl_y2], "COMPLETE");
     }
 
     var _cy = _vy1 + 38;
@@ -4808,7 +4824,7 @@ if (!variable_struct_exists(_asset.meta, "dirty_timer")) _asset.meta.dirty_timer
 	        draw_set_font_l(fnt_c64_code);
 	        var _path_x = _vx1 + 10 + string_width_l(_asset.type + " : " + _asset.name) + 24;
 	        draw_set_font_l(fnt_c64_tiny);
-	        var _max_path_w = (_vx2 - 270) - _path_x;
+	        var _max_path_w = (_vx2 - 360) - _path_x;   // stops before WORKFLOW / HELP GUIDE
 	        // Truncate path from left if too long
 	        while (string_width_l(_path_label) > _max_path_w && string_length(_path_label) > 10) {
 	            _path_label = "..." + string_copy(_path_label, 20, string_length(_path_label) - 19);
