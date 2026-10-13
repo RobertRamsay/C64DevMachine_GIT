@@ -27,8 +27,14 @@ function scr_editor_label(_x1, _y1, _x2, _y2, _text, _halign = fa_center, _pad =
 
 /// C64 colour swatch set in a small recessed well. The colour is inset 2px
 /// so the footprint (and the caller's hit test) stays the given rect.
-function scr_editor_swatch(_x1, _y1, _x2, _y2, _col) {
-    scr_editor_panel(_x1, _y1, _x2, _y2, true);
+/// Hovered / selected swatches use the control frames (same rounded shape),
+/// so no extra outline rectangle is needed around them.
+function scr_editor_swatch(_x1, _y1, _x2, _y2, _col, _hover = false, _selected = false) {
+    if (_selected || _hover) {
+        scr_editor_control(_x1, _y1, _x2, _y2, _hover, _selected);
+    } else {
+        scr_editor_panel(_x1, _y1, _x2, _y2, true);
+    }
     var _old_col = draw_get_color();
     draw_set_color(_col);
     draw_rectangle(_x1 + 2, _y1 + 2, _x2 - 2, _y2 - 2, false);
