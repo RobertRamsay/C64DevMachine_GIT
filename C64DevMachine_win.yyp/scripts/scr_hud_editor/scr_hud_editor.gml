@@ -109,7 +109,7 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         scr_editor_control(_x1, _y1, _x1 + _w, _y1 + _h, _hov, _on);
         draw_set_color(_tx);
         draw_set_halign(fa_center);
-        draw_text_l(_x1 + _w * 0.5, _y1 + 3, _label);
+        scr_editor_label(_x1, _y1, _x1 + _w, _y1 + _h, _label);
         draw_set_halign(fa_left);
         return (_hov && mouse_check_button_pressed(mb_left));
     };
@@ -194,13 +194,11 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _cb_w = 200;
     var _chov = point_in_rectangle(_mx, _my, _tx, _tool_y, _tx + _cb_w, _tool_y + 16);
     scr_ui_info(_chov, "CHARSET THE PANEL USES: CLICK = NEXT CHAR_SET ASSET, RIGHT-CLICK = NONE");
-    draw_set_color(make_color_rgb(20, 35, 25));
-    if (_chov) { draw_set_color(make_color_rgb(40, 80, 60)); }
-    draw_rectangle(_tx, _tool_y, _tx + _cb_w, _tool_y + 16, false);
+    scr_editor_control(_tx, _tool_y, _tx + _cb_w, _tool_y + 16, _chov);
     draw_set_color(make_color_rgb(150, 150, 150));
     var _cb_label = "CHARSET  -- PICK --";
     if (_m.chr_asset != "") { draw_set_color(c_lime); _cb_label = "CHARSET  " + _m.chr_asset; }
-    draw_text_l(_tx + 6, _tool_y + 3, _cb_label);
+    scr_editor_label(_tx, _tool_y, _tx + _cb_w, _tool_y + 16, _cb_label, fa_left, 6);
     if (_chov && (mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right))) {
         var _sets = [];
         if (instance_exists(obj_asset_manager)) {
@@ -621,16 +619,14 @@ function scr_hud_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _nbx2 = _ppx + _ppw;
         var _nhov = point_in_rectangle(_mx, _my, _nbx1, _ppy, _nbx2, _ppy + 16);
         scr_ui_info(_nhov, "FIELD NAME: CLICK TO EDIT (A-Z, 0-9, _), ENTER KEEPS, ESC CANCELS");
-        draw_set_color(make_color_rgb(20, 35, 25));
-        if (_m.name_edit_active) { draw_set_color(make_color_rgb(20, 60, 30)); }
-        draw_rectangle(_nbx1, _ppy, _nbx2, _ppy + 16, false);
+        scr_editor_control(_nbx1, _ppy, _nbx2, _ppy + 16, _nhov, _m.name_edit_active);
         draw_set_color(c_lime);
         if (_m.name_edit_active) {
             var _blink = " ";
             if ((current_time mod 600) < 300) { _blink = "_"; }
-            draw_text_l(_nbx1 + 5, _ppy + 3, _m.name_edit_buf + _blink);
+            scr_editor_label(_nbx1, _ppy, _nbx2, _ppy + 16, _m.name_edit_buf + _blink, fa_left, 5);
         } else {
-            draw_text_l(_nbx1 + 5, _ppy + 3, _f2.name);
+            scr_editor_label(_nbx1, _ppy, _nbx2, _ppy + 16, _f2.name, fa_left, 5);
         }
         if (_nhov && mouse_check_button_pressed(mb_left) && !_m.name_edit_active) {
             _m.name_edit_active = true;

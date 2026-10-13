@@ -1116,7 +1116,7 @@ if (add_dropdown_open) {
     for (var _i = 0; _i < array_length(asset_types); _i++) {
         var _dy1 = panel_y + 28 + (_i * 20);
         var _dy2 = _dy1 + 20;
-        if (point_in_rectangle(_mx, _my, panel_x, _dy1, panel_x + panel_w, _dy2)) {
+        if (point_in_rectangle(_mx, _my, panel_x, _dy1, _panel_right, _dy2 - 1)) {
             // Category headings can't be picked.
             if (string_char_at(asset_types[_i], 1) != "-") {
                 add_dropdown_hover = _i;
@@ -1578,11 +1578,16 @@ if (load_reu_picker_open) {
 				}
 			}
 			loader_file_picker_hover = -1;
-			var _drop_x = loader_file_picker_node.x + 68;
-			var _drop_y = loader_file_picker_node.y + 48;
+			// Same GUI-space rows Draw_64 draws (node position through the camera).
+			var _pk_vx = camera_get_view_x(view_camera[0]);
+			var _pk_vy = camera_get_view_y(view_camera[0]);
+			var _pk_sx = global.gui_w / camera_get_view_width(view_camera[0]);
+			var _pk_sy = display_get_gui_height() / camera_get_view_height(view_camera[0]);
+			var _drop_x = (loader_file_picker_node.x + 68 - _pk_vx) * _pk_sx;
+			var _drop_y = (loader_file_picker_node.y + 48 - _pk_vy) * _pk_sy;
 			for (var _i = 0; _i < array_length(_lfp_matches); _i++) {
 				var _ry = _drop_y + (_i * 16);
-				if (point_in_rectangle(mouse_x, mouse_y, _drop_x, _ry, _drop_x + 180, _ry + 16)) {
+				if (point_in_rectangle(_mx, _my, _drop_x, _ry, _drop_x + 220, _ry + 15)) {
 					loader_file_picker_hover = _i;
 					break;
 				}
@@ -1623,11 +1628,16 @@ if (load_reu_picker_open) {
 				}
 			}
 			loader_org_picker_hover = -1;
-			var _drop_x = loader_org_picker_node.x + 68;
-			var _drop_y = loader_org_picker_node.y + 36;
+			// Same GUI-space rows Draw_64 draws (node position through the camera).
+			var _pk_vx = camera_get_view_x(view_camera[0]);
+			var _pk_vy = camera_get_view_y(view_camera[0]);
+			var _pk_sx = global.gui_w / camera_get_view_width(view_camera[0]);
+			var _pk_sy = display_get_gui_height() / camera_get_view_height(view_camera[0]);
+			var _drop_x = (loader_org_picker_node.x + 68 - _pk_vx) * _pk_sx;
+			var _drop_y = (loader_org_picker_node.y + 36 - _pk_vy) * _pk_sy;
 			for (var _i = 0; _i < array_length(_lop_matches); _i++) {
 				var _ry = _drop_y + (_i * 16);
-				if (point_in_rectangle(mouse_x, mouse_y, _drop_x, _ry, _drop_x + 180, _ry + 16)) {
+				if (point_in_rectangle(_mx, _my, _drop_x, _ry, _drop_x + 180, _ry + 15)) {
 					loader_org_picker_hover = _i;
 					break;
 				}

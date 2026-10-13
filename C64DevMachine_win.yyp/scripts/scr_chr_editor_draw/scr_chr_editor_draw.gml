@@ -498,7 +498,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     scr_editor_control(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, _fxhov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, "FLIP X");
+    scr_editor_label(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, "FLIP X");
     draw_set_halign(fa_left);
     if (_fxhov && mouse_check_button_pressed(mb_left)) {
         scr_chr_undo_push(_asset);
@@ -531,7 +531,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     scr_editor_control(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, _fyhov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, "FLIP Y");
+    scr_editor_label(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, "FLIP Y");
     draw_set_halign(fa_left);
     if (_fyhov && mouse_check_button_pressed(mb_left)) {
         scr_chr_undo_push(_asset);
@@ -553,7 +553,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     scr_editor_control(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, _clhov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, "CLEAR");
+    scr_editor_label(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, "CLEAR");
     draw_set_halign(fa_left);
     if (_clhov && mouse_check_button_pressed(mb_left)) {
         scr_chr_undo_push(_asset);
@@ -569,15 +569,10 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     // FILL (flood-fill toggle) — highlights green when active
     var _flhov = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
     scr_ui_info(_flhov, "FILL: TOGGLES FLOOD-FILL MODE - LEFT-CLICK ON THE GRID FILLS THE TOUCHING AREA");
-    if (chr_fill_mode) {
-        draw_set_color(make_color_rgb(60, 200, 60));
-    } else {
-        draw_set_color(_flhov ? make_color_rgb(40, 120, 40) : make_color_rgb(25, 80, 25));
-    }
-    draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
+    scr_editor_control(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, _flhov, chr_fill_mode);
     draw_set_color(chr_fill_mode ? c_white : c_white);
     draw_set_halign(fa_center);
-    draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, chr_fill_mode ? L("FILL: ON") : L("FILL"));
+    scr_editor_label(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, chr_fill_mode ? L("FILL: ON") : L("FILL"));
     draw_set_halign(fa_left);
     if (_flhov && mouse_check_button_pressed(mb_left)) {
         chr_fill_mode = chr_fill_mode ? false : true;
@@ -587,16 +582,7 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     // WRAP (slide wrap toggle) - pixels leaving one edge re-enter on the other
     var _wrhov = point_in_rectangle(_mx, _my, _btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h);
     scr_ui_info(_wrhov, "WRAP: WHEN ON, PIXELS SLID OFF ONE EDGE COME BACK ON THE OTHER; OFF, THEY ARE LOST");
-    if (chr_shift_wrap) {
-        draw_set_color(make_color_rgb(200, 160, 40));
-    } else {
-        if (_wrhov) {
-            draw_set_color(make_color_rgb(110, 90, 30));
-        } else {
-            draw_set_color(make_color_rgb(70, 55, 20));
-        }
-    }
-    draw_rectangle(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, false);
+    scr_editor_control(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, _wrhov, chr_shift_wrap);
     if (chr_shift_wrap) {
         draw_set_color(c_black);
     } else {
@@ -604,9 +590,9 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
     }
     draw_set_halign(fa_center);
     if (chr_shift_wrap) {
-        draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, L("WRAP: ON"));
+        scr_editor_label(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, L("WRAP: ON"));
     } else {
-        draw_text_l(_btn_x + _btn_w * 0.5, _btn_y + 3, L("WRAP: OFF"));
+        scr_editor_label(_btn_x, _btn_y, _btn_x + _btn_w, _btn_y + _btn_h, L("WRAP: OFF"));
     }
     draw_set_halign(fa_left);
     if (_wrhov && mouse_check_button_pressed(mb_left)) {

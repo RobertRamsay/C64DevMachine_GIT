@@ -784,7 +784,7 @@ function scr_anim_asset_button(_x,_y,_w,_text,_active=false,_info="") {
     var _hover=point_in_rectangle(device_mouse_x_to_gui(0),device_mouse_y_to_gui(0),_x,_y,_x+_w,_y+26);
     scr_ui_info(_hover,_info);
     scr_editor_control(_x,_y,_x+_w,_y+26, _hover, _active);draw_set_color(c_white);draw_set_halign(fa_left);
-    draw_text_l(_x+6,_y+5,_text);
+    scr_editor_label(_x, _y, _x+_w, _y+26, _text);
     return _hover && mouse_check_button_pressed(mb_left);
 }
 function scr_anim_asset_list_set(_a,_row,_slot,_values) {

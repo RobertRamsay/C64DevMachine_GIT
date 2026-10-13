@@ -61,12 +61,11 @@ draw_set_halign(fa_center);
 
 	scr_editor_control(_exp_x, _exp_y, _exp_x + _exp_w, _exp_y + _exp_h, _exp_hover, false);
 	draw_set_color(_exp_hover ? c_white : make_color_rgb(120, 160, 220));
-	draw_roundrect_ext(_exp_x, _exp_y, _exp_x + _exp_w, _exp_y + _exp_h, 5, 5, true);
 	
 	draw_set_font_l(fnt_c64_code);
 	draw_set_halign(fa_center);
 	draw_set_valign(fa_middle);
-	draw_text_l(_exp_x + _exp_w / 2, _exp_y + _exp_h / 2, "EXPORT");
+	scr_editor_label(_exp_x, _exp_y, _exp_x + _exp_w, _exp_y + _exp_h, "EXPORT");
 	
 	// ─── Import button ───
 	// Mirrors EXPORT, sitting to its left. Appends or replaces the block being
@@ -81,12 +80,11 @@ draw_set_halign(fa_center);
 
 	scr_editor_control(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, _imp_hover, false);
 	draw_set_color(_imp_hover ? c_white : make_color_rgb(120, 160, 220));
-	draw_roundrect_ext(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, 5, 5, true);
 
 	draw_set_font_l(fnt_c64_code);
 	draw_set_halign(fa_center);
 	draw_set_valign(fa_middle);
-	draw_text_l(_imp_x + _imp_w / 2, _imp_y + _imp_h / 2, global.lite ? "LOCKED" : "IMPORT");
+	scr_editor_label(_imp_x, _imp_y, _imp_x + _imp_w, _imp_y + _imp_h, global.lite ? "LOCKED" : "IMPORT");
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 
@@ -185,12 +183,11 @@ draw_set_halign(fa_center);
                      && _my >= _close_y && _my <= _close_y + _close_h);
     scr_editor_control(_close_x, _close_y, _close_x + _close_w, _close_y + _close_h, _close_hover, false);
     draw_set_color(_close_hover ? c_white : make_color_rgb(200, 120, 120));
-    draw_roundrect_ext(_close_x, _close_y, _close_x + _close_w, _close_y + _close_h, 5, 5, true);
     draw_set_font_l(_code_font);
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
 	draw_set_font_l(fnt_c64_code)
-    draw_text_l(_close_x + _close_w / 2, _close_y + _close_h / 2, "CLOSE");
+    scr_editor_label(_close_x, _close_y, _close_x + _close_w, _close_y + _close_h, "CLOSE");
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
 

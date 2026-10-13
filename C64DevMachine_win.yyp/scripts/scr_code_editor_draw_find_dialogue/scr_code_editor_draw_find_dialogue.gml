@@ -56,12 +56,11 @@ function scr_code_editor_draw_find_dialogue(_px, _py, _pw, _ph, _mx, _my) {
 
     var draw_btn = function(_x, _y, _w, _label, _enabled, _msx, _msy, _bth) {
         var _hov = (_enabled && _msx >= _x && _msx <= _x + _w && _msy >= _y && _msy <= _y + _bth);
-        scr_editor_control(_x, _y, _x + _w, _y + _bth, _hov, false);
-        draw_set_color(_hov ? c_white : (_enabled ? make_color_rgb(100, 200, 140) : make_color_rgb(60, 60, 70)));
-        draw_roundrect_ext(_x, _y, _x + _w, _y + _bth, 5, 5, true);
+        scr_editor_control(_x, _y, _x + _w, _y + _bth, _hov, false, _enabled);
+        draw_set_color(_hov ? c_white : (_enabled ? make_color_rgb(100, 200, 140) : make_color_rgb(110, 122, 138)));
         draw_set_font_l(fnt_c64_tiny);
         draw_set_halign(fa_center);
-        draw_text_l(_x + _w / 2, _y + 4, _label);
+        scr_editor_label(_x, _y, _x + _w, _y + _bth, _label);
         draw_set_halign(fa_left);
         return (_hov && mouse_check_button_pressed(mb_left));
     };

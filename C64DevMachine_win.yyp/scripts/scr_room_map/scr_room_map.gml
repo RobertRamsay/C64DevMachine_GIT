@@ -180,7 +180,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         scr_editor_control(_x1, _y1, _x1 + _w, _y1 + _h, _hov);
         draw_set_color(c_white);
         draw_set_halign(fa_center);
-        draw_text_l(_x1 + _w * 0.5, _y1 + 3, _label);
+        scr_editor_label(_x1, _y1, _x1 + _w, _y1 + _h, _label);
         draw_set_halign(fa_left);
         return (_hov && mouse_check_button_pressed(mb_left));
     };
@@ -454,17 +454,12 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _nbx2 = _qx + _qw;
     var _nhov = point_in_rectangle(_mx, _my, _nbx1, _qy, _nbx2, _qy + 16);
     scr_ui_info(_nhov, "ROOM NAME: CLICK TO EDIT (A-Z, 0-9, _), ENTER KEEPS, ESC CANCELS");
-    if (_m.name_edit_active) {
-        draw_set_color(make_color_rgb(20, 60, 30));
-    } else {
-        draw_set_color(make_color_rgb(20, 35, 25));
-    }
-    draw_rectangle(_nbx1, _qy, _nbx2, _qy + 16, false);
+    scr_editor_control(_nbx1, _qy, _nbx2, _qy + 16, _nhov, _m.name_edit_active);
     draw_set_color(c_lime);
     if (_m.name_edit_active) {
         var _blink = " ";
         if ((current_time mod 600) < 300) { _blink = "_"; }
-        draw_text_l(_nbx1 + 5, _qy + 3, _m.name_edit_buf + _blink);
+        scr_editor_label(_nbx1, _qy, _nbx2, _qy + 16, _m.name_edit_buf + _blink, fa_left, 5);
         if (keyboard_check_pressed(vk_backspace) && string_length(_m.name_edit_buf) > 0) {
             _m.name_edit_buf = string_delete(_m.name_edit_buf, string_length(_m.name_edit_buf), 1);
         }
@@ -489,7 +484,7 @@ function scr_room_map_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
             keyboard_clear(vk_escape);
         }
     } else {
-        draw_text_l(_nbx1 + 5, _qy + 3, _ro.name);
+        scr_editor_label(_nbx1, _qy, _nbx2, _qy + 16, _ro.name, fa_left, 5);
         if (_nhov && _press) {
             _m.name_edit_active = true;
             _m.name_edit_buf    = _ro.name;

@@ -16,7 +16,7 @@ function scr_sample_button(_x1, _y1, _w, _h, _label, _on, _enabled, _mx, _my, _i
     scr_editor_control(_x1, _y1, _x1 + _w, _y1 + _h, _hov, _on, _enabled);
     draw_set_color(_tx);
     draw_set_halign(fa_center);
-    draw_text_l(_x1 + _w * 0.5, _y1 + 4, _label);
+    scr_editor_label(_x1, _y1, _x1 + _w, _y1 + _h, _label);
     draw_set_halign(fa_left);
     if (!_enabled) {
         return false;

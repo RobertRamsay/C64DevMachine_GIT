@@ -120,7 +120,7 @@ function scr_sfx_maker_button(_x,_y,_w,_text,_mx,_my,_info="") {
     }
     scr_mm_info(_hot, _info);
     scr_editor_control(_x,_y,_x+_w,_y+26, _hot, false);
-    draw_set_color(c_white);draw_text_l(_x+8,_y+5,_text);
+    draw_set_color(c_white);scr_editor_label(_x, _y, _x+_w, _y+26, _text);
     return _hot && mouse_check_button_pressed(mb_left);
 }
 

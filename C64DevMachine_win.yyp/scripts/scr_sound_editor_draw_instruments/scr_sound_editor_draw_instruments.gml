@@ -146,10 +146,10 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
 	        } else if (_btns[_bi] == "- REMOVE") {
 	            _base_col = make_color_rgb(100, 30, 30);
 	        }
-        scr_editor_control(_bx, _iby, _bx + _this_w, _iby + _btn_h, _hov, false);
-        draw_set_color(_locked ? make_color_rgb(90, 90, 100) : c_white);
+        scr_editor_control(_bx, _iby, _bx + _this_w, _iby + _btn_h, _hov, false, !_locked);
+        draw_set_color(_locked ? make_color_rgb(110, 122, 138) : c_white);
         draw_set_halign(fa_center);
-        draw_text_l(_bx + _this_w * 0.5, _iby + 4, _btns[_bi]);
+        scr_editor_label(_bx, _iby, _bx + _this_w, _iby + _btn_h, _btns[_bi]);
         draw_set_halign(fa_left);
 
         if (!_locked && _hov && mouse_check_button_pressed(mb_left)) {
@@ -500,19 +500,12 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         var _fi_bx = _ix0 + 64;
         var _fi_hov = point_in_rectangle(_mx, _my, _fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14);
         scr_mm_info(_fi_hov, "ROUTES THIS INSTRUMENT'S VOICE THROUGH THE SONG FILTER (ON) OR NOT (OFF)");
-        if (_fi_on) {
-            draw_set_color(make_color_rgb(40, 110, 170));
-        } else if (_fi_hov) {
-            draw_set_color(make_color_rgb(65, 80, 100));
-        } else {
-            draw_set_color(make_color_rgb(30, 38, 52));
-        }
-        draw_rectangle(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14, false);
+        scr_editor_control(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14, _fi_hov, _fi_on);
         draw_set_color(c_white);
         if (_fi_on) {
-            draw_text_l(_fi_bx + 8, _fi_y, "ON");
+            scr_editor_label(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14, "ON");
         } else {
-            draw_text_l(_fi_bx + 6, _fi_y, "OFF");
+            scr_editor_label(_fi_bx, _fi_y - 2, _fi_bx + 40, _fi_y + 14, "OFF");
         }
         if (_fi_hov && mouse_check_button_pressed(mb_left)) {
             if (_fi_on) {
@@ -824,13 +817,9 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         _ax -= _aw;
         var _ahov = point_in_rectangle(_mx, _my, _ax, _tabbar_y + 1, _ax + _aw, _tabbar_y + _tabbar_h);
         scr_mm_info(_ahov, "ADDS A ~" + _kinds[_ki] + " TABLE TO THIS INSTRUMENT'S TEXT AND OPENS IT FOR EDITING");
-        draw_set_color(make_color_rgb(30, 38, 52));
-        if (_ahov) {
-            draw_set_color(make_color_rgb(65, 80, 100));
-        }
-        draw_rectangle(_ax, _tabbar_y + 1, _ax + _aw, _tabbar_y + _tabbar_h, false);
+        scr_editor_control(_ax, _tabbar_y + 1, _ax + _aw, _tabbar_y + _tabbar_h, _ahov);
         draw_set_color(make_color_rgb(170, 190, 220));
-        draw_text_l(_ax + 6, _tabbar_y + 4, _alab);
+        scr_editor_label(_ax, _tabbar_y + 1, _ax + _aw, _tabbar_y + _tabbar_h, _alab);
         if (_ahov && mouse_check_button_pressed(mb_left) && !_wave_click) {
             if (!_m.instr_edit_active) {
                 _m.instr_edit_active = true;

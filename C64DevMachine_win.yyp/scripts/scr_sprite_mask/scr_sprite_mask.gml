@@ -380,11 +380,10 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     var _button = function(_x1, _y1, _w, _label, _on, _mx2, _my2, _info = "") {
         var _hov = point_in_rectangle(_mx2, _my2, _x1, _y1, _x1 + _w, _y1 + 26);
         scr_ui_info(_hov, _info);
-        scr_editor_control(_x1, _y1, _x1 + _w, _y1 + 26, _hov, false);
+        scr_editor_control(_x1, _y1, _x1 + _w, _y1 + 26, _hov, _on);
         draw_set_color(_on ? c_aqua : make_color_rgb(72, 83, 103));
-        draw_roundrect_ext(_x1, _y1, _x1 + _w, _y1 + 26, 5, 5, true);
         draw_set_color(c_white);
-        draw_text_l(_x1 + 10, _y1 + 8, _label);
+        scr_editor_label(_x1, _y1, _x1 + _w, _y1 + 26, _label);
         return (_hov && mouse_check_button_pressed(mb_left));
     };
     draw_set_font_l(fnt_c64_tiny);
@@ -518,20 +517,12 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
     // feet Y and is set on every cell already masked (one undo step).
     var _uf_h   = 40;
     var _uf_hov = _m.test_on && point_in_rectangle(_ui_mx, _my, _side_x, _sy, _side_x + _side_w, _sy + _uf_h);
-    var _uf_col = make_color_rgb(24, 26, 34);
-    if (_m.test_on) { _uf_col = make_color_rgb(31, 38, 54); }
-    if (_uf_hov) { _uf_col = make_color_rgb(53, 61, 82); }
     scr_ui_info(_uf_hov, "SET THE Y LINE TO THE TEST SPRITE'S FEET AND APPLY IT TO EVERY MASKED CELL (UNDOABLE)");
-    draw_set_color(_uf_col);
-    draw_rectangle(_side_x, _sy, _side_x + _side_w, _sy + _uf_h, false);
-    draw_set_color(make_color_rgb(72, 83, 103));
-    draw_rectangle(_side_x, _sy, _side_x + _side_w, _sy + _uf_h, true);
+    scr_editor_control(_side_x, _sy, _side_x + _side_w, _sy + _uf_h, _uf_hov, false, _m.test_on);
     draw_set_color(c_white);
-    if (!_m.test_on) { draw_set_color(make_color_rgb(90, 90, 90)); }
-    draw_set_halign(fa_center);
-    draw_text_l(_side_x + _side_w * 0.5, _sy + 6,  "USE TEST SPRITE'S");
-    draw_text_l(_side_x + _side_w * 0.5, _sy + 22, "FEET AS THE LINE");
-    draw_set_halign(fa_left);
+    if (!_m.test_on) { draw_set_color(make_color_rgb(110, 122, 138)); }
+    scr_editor_label(_side_x, _sy, _side_x + _side_w, _sy + _uf_h * 0.5, "USE TEST SPRITE'S");
+    scr_editor_label(_side_x, _sy + _uf_h * 0.5, _side_x + _side_w, _sy + _uf_h, "FEET AS THE LINE");
     if (_uf_hov && mouse_check_button_pressed(mb_left)) {
         var _uf_hot = 20;
         with (obj_c64_node) {
@@ -874,9 +865,9 @@ function scr_sprmask_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) {
         var _ry=_ly+_li*24;
         var _hover=point_in_rectangle(_mx,_my,_lx,_ry,_lx+_lw-10,_ry+23);
         var _selected=_items[_ii]==_m.ref_bmp;
-        scr_editor_control(_lx,_ry,_lx+_lw-10,_ry+22, _hover, false);
+        scr_editor_control(_lx,_ry,_lx+_lw-10,_ry+22, _hover, _selected);
         draw_set_color(_selected ? c_lime : c_white);
-        draw_text_l(_lx+6,_ry+6,_am.manifest_fit_name(_items[_ii],_lw-24));
+        scr_editor_label(_lx, _ry, _lx+_lw-10, _ry+22, _am.manifest_fit_name(_items[_ii],_lw-24), fa_left, 6);
         if (_hover) _detail=_items[_ii];
         scr_ui_info(_hover, "USE THIS BITMAP AS THE PICTURE TO PAINT THE MASK OVER");
         if (_hover && _press) {

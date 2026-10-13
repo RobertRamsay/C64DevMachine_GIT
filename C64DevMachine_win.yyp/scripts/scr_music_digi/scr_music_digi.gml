@@ -1161,19 +1161,15 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
         var _bx2 = _x2 - 40;
         var _hov = point_in_rectangle(_mx, _my, _bx1, _sy, _bx2, _sy + 17);
         scr_mm_info(_hov, "SLOT " + _num + ": CLICK PICKS THE NEXT SAMPLE ASSET, RMB EMPTIES THE SLOT");
-        draw_set_color(make_color_rgb(30, 28, 44));
-        if (_hov) {
-            draw_set_color(make_color_rgb(56, 50, 80));
-        }
-        draw_rectangle(_bx1, _sy, _bx2, _sy + 17, false);
+        scr_editor_control(_bx1, _sy, _bx2, _sy + 17, _hov);
         var _nm = _m.digi_samples[_s];
         var _a = scr_digi_find_sample(_nm);
         if (_nm == "") {
-            draw_set_color(make_color_rgb(90, 90, 110));
-            draw_text_l(_bx1 + 6, _sy + 3, "-- EMPTY --");
+            draw_set_color(make_color_rgb(110, 122, 138));
+            scr_editor_label(_bx1, _sy, _bx2, _sy + 17, "-- EMPTY --", fa_left, 6);
         } else if (is_undefined(_a)) {
             draw_set_color(make_color_rgb(220, 100, 80));
-            draw_text_l(_bx1 + 6, _sy + 3, _nm + "  (MISSING)");
+            scr_editor_label(_bx1, _sy, _bx2, _sy + 17, _nm + "  (MISSING)", fa_left, 6);
         } else {
             draw_set_color(c_white);
             var _cnt = scr_digi_sample_count(_a, _m.digi_rate);
@@ -1182,7 +1178,7 @@ function scr_digi_slots_panel(_m, _rect, _mx, _my) {
                 _bytes = ceil(_cnt / 4);
             }
             var _info = _nm + "   " + scr_sample_secs(_cnt, _m.digi_rate) + "   " + string(_bytes) + " B";
-            draw_text_l(_bx1 + 6, _sy + 3, _info);
+            scr_editor_label(_bx1, _sy, _bx2, _sy + 17, _info, fa_left, 6);
         }
         if (_hov && mouse_check_button_pressed(mb_left)) {
             // Cycle: empty -> first sample -> ... -> last -> empty
