@@ -172,14 +172,9 @@ for (var _tmi = 0; _tmi < _tm_n; _tmi++) {
 }
 asset_group_rows = [];   // Step_0 hit-tests group headers against this
 if (_disp_n == 0) {
-    for (var _empty_row = 0; _empty_row < 3; _empty_row++) {
-        var _empty_y = _list_y + _empty_row * (item_h + 6);
-        if (_empty_y + item_h > _panel_bottom - 38) break;
-        scr_editor_empty_slot(panel_x + 6, _empty_y, _panel_right - 6, _empty_y + item_h);
-    }
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(151, 170, 192));
-    var _empty_msg_y = _list_y + 3 * (item_h + 6);
+    var _empty_msg_y = _list_y + 8;
     scr_editor_label(panel_x, _empty_msg_y, _panel_right, _empty_msg_y + 20, "ADD AN ASSET TO GET STARTED");
 }
 
