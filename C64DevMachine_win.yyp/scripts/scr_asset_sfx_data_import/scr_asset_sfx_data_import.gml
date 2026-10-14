@@ -33,6 +33,20 @@ function scr_asset_sfx_data_import(_asset, _force_file = "") {
     if (!buffer_exists(_buf)) exit;
     var _sz = buffer_get_size(_buf);
 
+    // An empty or partly written .sng (e.g. caught mid-save by the focus
+    // reload) has no header/orderlist bytes. buffer_peek past the end returns
+    // undefined, which crashed chr() below. Bail out cleanly instead; on a
+    // reload, clear the stored hash so the next focus return tries again.
+    if (_sz < 101) {
+        buffer_delete(_buf);
+        if (global.asset_reload_in_progress) {
+            _asset.meta._mtime = "";
+        } else {
+            scr_show_message("SNG file is empty or truncated.");
+        }
+        exit;
+    }
+
     // ── Header check ──────────────────────────────────────────────────────
     var _hdr = "";
     for (var _i = 0; _i < 4; _i++) _hdr += chr(buffer_peek(_buf, _i, buffer_u8));
