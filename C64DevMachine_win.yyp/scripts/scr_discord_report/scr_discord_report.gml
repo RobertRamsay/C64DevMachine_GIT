@@ -232,6 +232,22 @@ function scr_report_check_previous_crash() {
     if (string_length(_txt) > REPORT_DISCORD_MAX) {
         _txt = string_copy(_txt, 1, REPORT_DISCORD_MAX) + "\n... trimmed";
     }
+    // The crash happened in the build that wrote the file (its "v..." line),
+    // which can be older than this one if the user updated before relaunching.
+    // Head the message with that build; say who sent it only when it differs.
+    var _now     = scr_report_who();
+    var _crashed = "";
+    var _lines   = string_split(_txt, "\n");
+    for (var _i = 0; _i < min(array_length(_lines), 5); _i++) {
+        if (string_char_at(_lines[_i], 1) == "v") {
+            _crashed = string_trim(_lines[_i]);
+            break;
+        }
+    }
+    var _head = "**CRASH** - " + _now;
+    if (_crashed != "" && _crashed != _now) {
+        _head = "**CRASH** in " + _crashed + " (reported by " + _now + ")";
+    }
     // Code fence so Discord shows the stack as written.
-    scr_report_queue("**CRASH** - " + scr_report_who() + "\n```\n" + _txt + "\n```", "crash");
+    scr_report_queue(_head + "\n```\n" + _txt + "\n```", "crash");
 }

@@ -293,3 +293,87 @@ test('oversized command rejection does not disconnect an authenticated editor',a
   await assert.rejects(client.request('create_node',{expected_workspace:'r',type:'MACRO_CODE',text:'漢'.repeat(12000)},1),/28000/);
   assert.equal((await client.status()).editor_connected,true);
 });
+function turnEditor(socket, state) {
+  const parser = new Lines(line => {
+    const m = JSON.parse(line); if (!m.method) return;
+    state.calls.push(m.method);
+    const result = m.method === 'turn_begin' ? { turn_mode: true, owner: state.owner, seq: state.seq }
+      : { turn_mode: true, owner: state.owner, seq: state.seq, changes: { added: [{ uid: 7, type: 'COMMENT', title: 'Hi' }] } };
+    socket.write(JSON.stringify({ id: m.id, ok: true, result }) + '\n');
+  });
+  socket.on('data', c => parser.push(c));
+}
+test('wait_for_turn blocks until the editor hands the turn over, then returns the changes', async t => {
+  const { link, socket } = await connectedLink(t);
+  const state = { owner: 'user', seq: 0, calls: [] }; turnEditor(socket, state);
+  let done = false;
+  const waiting = link.request('wait_for_turn', { timeout_seconds: 30 }, 'w1').then(r => { done = true; return r; });
+  await waitFor(() => link.waiters.size === 1);
+  // A hand-back event must not wake the waiter.
+  socket.write(JSON.stringify({ event: 'turn', owner: 'user', seq: 0 }) + '\n');
+  await delay(30); assert.equal(done, false);
+  state.owner = 'claude'; state.seq = 1;
+  socket.write(JSON.stringify({ event: 'turn', owner: 'claude', seq: 1 }) + '\n');
+  const result = await waiting;
+  assert.equal(result.owner, 'claude'); assert.equal(result.changes.added[0].uid, 7);
+  assert.deepEqual(state.calls, ['turn_begin', 'turn_status']);
+});
+test('wait_for_turn returns at once when it is already the assistant turn, and times out politely', async t => {
+  const { link, socket } = await connectedLink(t);
+  const state = { owner: 'claude', seq: 3, calls: [] }; turnEditor(socket, state);
+  assert.equal((await link.request('wait_for_turn', {}, 'a')).owner, 'claude');
+  state.owner = 'user';
+  const waiting = link.request('wait_for_turn', { timeout_seconds: 1 }, 'b');
+  const result = await waiting;
+  assert.equal(result.timed_out, true); assert.equal(link.waiters.size, 0);
+});
+test('wait_for_turn is rejected on editor disconnect and on cancellation', async t => {
+  const { link, socket } = await connectedLink(t);
+  const state = { owner: 'user', seq: 0, calls: [] }; turnEditor(socket, state);
+  const cancelled = link.request('wait_for_turn', {}, 'c');
+  await waitFor(() => link.waiters.size === 1);
+  link.cancel('c'); await assert.rejects(cancelled, /cancelled/);
+  assert.equal(link.status().editor_connected, true);
+  const dropped = link.request('wait_for_turn', {}, 'd');
+  await waitFor(() => link.waiters.size === 1);
+  socket.destroy(); await assert.rejects(dropped, /disconnected while waiting/);
+});
+test('turn tool schemas', () => {
+  assert.deepEqual(validateArgs('cdm_end_turn', { summary: 'Added a comment', stop: false }), { summary: 'Added a comment', stop: false });
+  assert.throws(() => validateArgs('cdm_end_turn', { summary: 'x\n' }));
+  assert.throws(() => validateArgs('cdm_wait_for_turn', { timeout_seconds: 0 }));
+  assert.throws(() => validateArgs('cdm_wait_for_turn', { timeout_seconds: 86401 }));
+  assert.deepEqual(validateArgs('cdm_turn_status', {}), {});
+});
+test('asset tool schemas accept free-form saved fields but reject unsafe input', () => {
+  const base = { expected_workspace: 'k', name: 'SPRITES' };
+  const ok = { ...base, meta: { bg_col: 6, songs: [{ name: 'A', order: [{ v1: 0, t1: -2 }] }] },
+    slices: [{ key: 'char_grid', offset: 40, values: [1, 2, 3] }], bytes: [{ offset: 2, hex: '00FFa0' }],
+    buffer_size: 128, pixels: [{ index: 1, rows: ['....####....####........'] }], address: 0x2000 };
+  assert.deepEqual(validateArgs('cdm_write_asset', ok), ok);
+  assert.ok(validateArgs('cdm_write_asset', { ...base, create_type: 'MUSIC_MAKER' }));
+  for (const bad of [{ ...base, name: '../x' }, { ...base, create_type: 'sprite set' },
+    { ...base, meta: [1] }, { ...base, meta: { x: Infinity } }, { ...base, bytes: [{ offset: 0, hex: 'abc' }] },
+    { ...base, pixels: [{ index: 0, rows: ['ab'] }] }, { ...base, buffer_size: 0 }, { ...base, address: 70000 },
+    { ...base, slices: [{ key: 'char_grid', offset: 0, values: [] }] }, { ...base, shell: 'x' }]) {
+    assert.throws(() => validateArgs('cdm_write_asset', bad), JSON.stringify(bad));
+  }
+  assert.ok(validateArgs('cdm_read_asset', { ...base, keys: ['songs'], bytes: { offset: 0, length: 8192 }, pixels: { index: 0, count: 16 } }));
+  assert.throws(() => validateArgs('cdm_read_asset', { ...base, bytes: { offset: 0, length: 8193 } }));
+  for (const name of ['cdm_delete_asset', 'cdm_revert_asset', 'cdm_render_asset']) {
+    assert.ok(validateArgs(name, base)); assert.throws(() => validateArgs(name, { name: 'X' }));
+  }
+});
+test('asset writes reach the editor unchanged and only once', async t => {
+  const { link, socket } = await connectedLink(t);
+  const seen = [];
+  const parser = new Lines(line => {
+    const m = JSON.parse(line); if (!m.method) return;
+    seen.push(m);
+    socket.write(JSON.stringify({ id: m.id, ok: true, result: { name: m.args.name, changed: ['pixels'] } }) + '\n');
+  });
+  socket.on('data', c => parser.push(c));
+  const args = validateArgs('cdm_write_asset', { expected_workspace: 'k', name: 'SPR', pixels: [{ index: 0, rows: ['#'.repeat(24)] }] });
+  assert.deepEqual(await link.request('write_asset', args, 1), { name: 'SPR', changed: ['pixels'] });
+  assert.equal(seen.length, 1); assert.deepEqual(seen[0].args, args);
+});

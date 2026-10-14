@@ -1,3 +1,6 @@
+// Set by obj_mcp_probe while the assistant has the MCP turn: workspace edits are locked.
+global.mcp_turn_lock = false;
+
 /// @function scr_ctrl_held()
 /// @description Returns true if the platform's "Ctrl-equivalent" modifier is
 ///              held: real Ctrl on Windows, Cmd (left or right) on Mac. Use
@@ -77,6 +80,8 @@ function scr_workspace_input_blocked() {
 }
 
 function scr_workspace_mouse_check_button_pressed(_key) {
+    // Assistant's MCP turn: no new clicks on the workspace (pan/zoom still work).
+    if (global.mcp_turn_lock && (_key == mb_left || _key == mb_right)) return false;
     return !scr_workspace_input_blocked() && mouse_check_button_pressed(_key);
 }
 
@@ -97,13 +102,13 @@ function scr_workspace_mouse_wheel_down() {
 }
 
 function scr_workspace_keyboard_check_pressed(_key) {
-    return !scr_workspace_input_blocked() && keyboard_check_pressed(_key);
+    return !global.mcp_turn_lock && !scr_workspace_input_blocked() && keyboard_check_pressed(_key);
 }
 
 function scr_workspace_keyboard_check_released(_key) {
-    return !scr_workspace_input_blocked() && keyboard_check_released(_key);
+    return !global.mcp_turn_lock && !scr_workspace_input_blocked() && keyboard_check_released(_key);
 }
 
 function scr_workspace_keyboard_check(_key) {
-    return !scr_workspace_input_blocked() && keyboard_check(_key);
+    return !global.mcp_turn_lock && !scr_workspace_input_blocked() && keyboard_check(_key);
 }

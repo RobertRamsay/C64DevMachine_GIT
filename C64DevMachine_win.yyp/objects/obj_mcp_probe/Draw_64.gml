@@ -28,6 +28,99 @@ else if (obj_workspace_manager.hideui) _mcp_blocked = true;
 if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) _mcp_blocked = true;
 if (instance_exists(obj_message_box) || instance_exists(obj_question_box)) _mcp_blocked = true;
 
+// --- Turn badge over the C64 DEV MACHINE logo (top left) ----------------------
+// Shown only in turn mode. The pill sits on the rainbow stripes; the whole logo
+// is the hover/click area. Step reads turn_btn_* for the hover and click.
+turn_btn_x1 = 0;
+turn_btn_y1 = 0;
+turn_btn_x2 = 0;
+turn_btn_y2 = 0;
+// Unlike the MCP-CON buttons this stays up over the asset viewer, so the
+// user can always see whose turn it is and take it back.
+var _turn_show = turn_mode && probe_state == "ready" && instance_exists(obj_workspace_manager)
+    && !obj_workspace_manager.hideui && !instance_exists(obj_message_box) && !instance_exists(obj_question_box);
+if (_turn_show) {
+    turn_btn_x1 = 6;
+    turn_btn_y1 = 5;
+    turn_btn_x2 = 262;
+    turn_btn_y2 = 39;
+    var _t_font = draw_get_font();
+    var _t_alpha = draw_get_alpha();
+    var _t_colour = draw_get_colour();
+    var _t_ha = draw_get_halign();
+    var _t_va = draw_get_valign();
+    var _t_claude = turn_owner == "claude";
+    var _t_warn = _t_claude && array_length(turn_interference) > 0;
+    var _t_pulse = 0.5 + 0.5 * sin(current_time / 180);
+    var _t_label = "YOUR TURN";
+    var _t_col = c_lime;
+    if (turn_pending) { _t_label = "HANDING OVER"; _t_col = c_yellow; }
+    else if (_t_warn) { _t_label = "CLAUDE EDITING!"; _t_col = c_red; }
+    else if (_t_claude) { _t_label = "CLAUDE EDITING"; _t_col = c_orange; }
+    var _t_x1 = 146, _t_y1 = 10, _t_x2 = 257, _t_y2 = 34;
+    draw_set_alpha(0.92);
+    draw_set_colour(c_black);
+    draw_rectangle(_t_x1, _t_y1, _t_x2, _t_y2, false);
+    draw_set_alpha(_t_claude ? 0.6 + 0.4 * _t_pulse : 1);
+    draw_set_colour(_t_col);
+    draw_rectangle(_t_x1, _t_y1, _t_x2, _t_y2, true);
+    draw_set_alpha(1);
+    // Hover progress: a bar filling along the bottom over two seconds.
+    if (!_t_claude && turn_hover_since > 0) {
+        var _t_p = clamp((current_time - turn_hover_since) / turn_hover_ms, 0, 1);
+        draw_set_colour(c_yellow);
+        draw_rectangle(_t_x1 + 2, _t_y2 - 4, _t_x1 + 2 + (_t_x2 - _t_x1 - 4) * _t_p, _t_y2 - 2, false);
+    }
+    draw_set_font(fnt_c64_tiny);
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_middle);
+    draw_set_colour(_t_col);
+    draw_text((_t_x1 + _t_x2) / 2, (_t_y1 + _t_y2) / 2 - 1, _t_label);
+    // A thin frame round the whole window while the assistant has the turn.
+    if (_t_claude) {
+        var _t_gw = display_get_gui_width();
+        var _t_gh = display_get_gui_height();
+        draw_set_alpha(0.35 + 0.35 * _t_pulse);
+        draw_set_colour(_t_col);
+        for (var _t_i = 0; _t_i < 3; _t_i++) draw_rectangle(_t_i, _t_i, _t_gw - 1 - _t_i, _t_gh - 1 - _t_i, true);
+        draw_set_alpha(1);
+    }
+    // Hover help.
+    var _t_mx = device_mouse_x_to_gui(0);
+    var _t_my = device_mouse_y_to_gui(0);
+    if (point_in_rectangle(_t_mx, _t_my, turn_btn_x1, turn_btn_y1, turn_btn_x2, turn_btn_y2)) {
+        var _t_tip;
+        if (turn_pending) {
+            _t_tip = "HANDING OVER\nClose open editors and dialogs and release the mouse; the turn passes to Claude as soon as the editor is idle.";
+        } else if (_t_claude) {
+            _t_tip = "CLAUDE EDITING\nNode editing and workspace shortcuts are locked while Claude works. You can still pan and zoom.\nClick here to take the turn back.";
+            if (_t_warn) _t_tip += "\nYou changed the project during Claude's turn. Claude will be told what changed.";
+        } else {
+            _t_tip = "YOUR TURN\nRest the pointer here for 2 seconds to hand the turn to Claude. Claude is told what you changed since its last turn.";
+            if (turn_note != "") _t_tip += "\nClaude's last turn: " + string_copy(turn_note, 1, 200);
+        }
+        draw_set_font(-1);
+        draw_set_halign(fa_left);
+        draw_set_valign(fa_top);
+        var _t_w = 420;
+        var _t_h = string_height_ext(_t_tip, 18, _t_w - 20) + 16;
+        var _t_tx1 = 6, _t_ty1 = 44;
+        draw_set_alpha(0.94);
+        draw_set_colour(make_colour_rgb(16, 16, 28));
+        draw_rectangle(_t_tx1, _t_ty1, _t_tx1 + _t_w, _t_ty1 + _t_h, false);
+        draw_set_alpha(1);
+        draw_set_colour(_t_col);
+        draw_rectangle(_t_tx1, _t_ty1, _t_tx1 + _t_w, _t_ty1 + _t_h, true);
+        draw_set_colour(c_white);
+        draw_text_ext(_t_tx1 + 10, _t_ty1 + 8, _t_tip, 18, _t_w - 20);
+    }
+    draw_set_font(_t_font);
+    draw_set_alpha(_t_alpha);
+    draw_set_colour(_t_colour);
+    draw_set_halign(_t_ha);
+    draw_set_valign(_t_va);
+}
+
 if (_mcp_blocked) {
     // Keep both hit rectangles empty while the buttons are off screen.
     setup_btn_x1 = 0;

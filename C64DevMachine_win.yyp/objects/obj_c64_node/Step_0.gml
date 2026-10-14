@@ -15,6 +15,7 @@ if (global.idle_active && global.idle_fade < 0.1) exit;
 
 if global.gui_mouse_y<50 exit; // skip menu bars clicks from hitting buttons etc
 if !global.canEditNode exit;
+if (global.mcp_turn_lock && !is_dragging) exit; // assistant's MCP turn
 if (obj_workspace_manager.gui_menu_open != -1) exit;
 
 // SHOW CODE panel owns the pointer — no node reacts to anything under it.

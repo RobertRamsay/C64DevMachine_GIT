@@ -49,7 +49,9 @@ export class SharedClient {
     if(!this.socket || this.socket.destroyed)return Promise.reject(new Error('Broker disconnected; restart the MCP client.'));
     const id=++this.seq;
     return new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>{this.socket.destroy();reject(new Error('Broker timed out. Inspect the project before retrying any edit.'));},16000);
+      // A turn wait legitimately blocks for its own timeout; everything else is short.
+      const ms=method==='wait_for_turn'?((args.timeout_seconds??300)+30)*1000:16000;
+      const timer=setTimeout(()=>{this.socket.destroy();reject(new Error('Broker timed out. Inspect the project before retrying any edit.'));},ms);
       this.pending.set(id,{resolve,reject,timer,callId});
       this.socket.write(JSON.stringify({id,method,args})+'\n');
     });
