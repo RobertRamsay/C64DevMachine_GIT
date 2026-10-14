@@ -30,7 +30,7 @@ def _vars():
     names = """ROOM PX FACE FORM MOVING JOYID PREVJOY MHI MLO BAGS DAY HOUR MIN TICK
                NEED NEED1 NEED2 NEED3 NEED4 JOBLV JOBXP COIN COINX COINY BEE BEEX BEEY
                CASTING RNG OBJ MUSIC T0 T1 T2 DRAIN SWAPT STING FRAME SKYCOL SPLIT
-               COINCD ZZZ WARNED SPRX SPRHI T3 T4""".split()
+               COINCD ZZZ HARD SPRX SPRHI T3 T4""".split()
     for i, n in enumerate(names):
         V["V_" + n] = VARS + i
 _vars()
@@ -721,7 +721,8 @@ JoyFire:
 LDA #$01
 STA V_JOYID
 LDA V_NEED1
-BNE JFCast
+CMP #2
+BCS JFCast
 LDA V_PREVJOY
 CMP #$01
 BEQ JFDone
@@ -806,7 +807,14 @@ LDA V_PX
 CMP #146
 BCS JREdge
 INC V_PX
-RTS
+LDA V_ROOM             ; just reached the park fence?
+CMP #$04
+BNE JRDone
+LDA V_PX
+CMP #146
+BNE JRDone
+LDA #C_M_FENCE
+JMP PrintMsg
 JREdge:
 LDA V_ROOM
 CMP #$04
@@ -1207,7 +1215,7 @@ LDA #100               ; STING!
 STA V_STING
 LDA #$F8
 LDX #3
-JSR AddNeed
+JSR AddNeedSoft
 JSR RefreshBars
 JSR SndOuch
 LDA V_FORM
@@ -1265,8 +1273,11 @@ CMP #C_TICKS
 BCC CTDone
 LDA #$00
 STA V_TICK
-LDA #$01
+LDA #$01               ; a real-time hour can empty a need (faint);
+STA V_HARD             ; hours spent inside an action stop at 1
 JSR AddTime
+LDA #$00
+STA V_HARD
 JMP RefreshClock
 CTDone:
 RTS
@@ -1309,7 +1320,13 @@ EOR #$FF
 CLC
 ADC #$01
 STX V_T4
+LDY V_HARD
+BEQ NHSoft
 JSR AddNeed
+JMP NHNext
+NHSoft:
+JSR AddNeedSoft
+NHNext:
 LDX V_T4
 DEX
 BPL NHNeed
@@ -1351,6 +1368,17 @@ ANZero:
 LDA #$00
 ANStore:
 STA V_NEED,X
+RTS
+
+; AddNeedSoft: as AddNeed, but never below 1. Actions, stings, sleep and
+; magic can run a need low; only the hourly drop can empty it (faint).
+AddNeedSoft:
+JSR AddNeed
+LDA V_NEED,X
+BNE ANSDone
+LDA #$01
+STA V_NEED,X
+ANSDone:
 RTS
 """
 
@@ -1476,7 +1504,7 @@ ADC V_T4
 TAX
 LDA T_ACT,X
 LDX V_T4
-JSR AddNeed
+JSR AddNeedSoft
 INC V_T4
 LDA V_T4
 CMP #5
@@ -1501,7 +1529,7 @@ LDA V_FORM             ; Sunny's attraction: everyone loves her
 BNE DATime
 LDA #8
 LDX #4
-JSR AddNeed
+JSR AddNeedSoft
 JMP DATime
 DANotChat:
 CMP #C_SP_WORK
@@ -1546,14 +1574,14 @@ JSR AddMoney
 LDA V_NEED2
 CMP #12
 BCS DWXp
-LDA #C_M_SCRUFFY
-JSR PrintMsg
 PLA                    ; skip the normal result message
 PLA
 LDX V_T2
 LDA T_ACT+6,X
 JSR AddTime
 JSR RefreshHud
+LDA #C_M_SCRUFFY
+JSR PrintMsg
 JMP SndError
 DWXp:
 INC V_JOBXP
@@ -1599,7 +1627,7 @@ CMP #16
 BCC DSSleep
 LDA #12
 LDX #1
-JSR AddNeed
+JSR AddNeedSoft
 LDA #6
 JSR AddTime
 JSR SndUse
@@ -1644,10 +1672,10 @@ LDA #48
 STA V_NEED1
 LDA #$F6
 LDX #0
-JSR AddNeed
+JSR AddNeedSoft
 LDA #$F8
 LDX #2
-JSR AddNeed
+JSR AddNeedSoft
 LDA #$03
 STA $D015
 JSR SetSky
@@ -1895,6 +1923,10 @@ SBC #10
 BCS WEDiv
 ADC #58
 STA """ + "$%04X" % screen(14, 24) + """
+CPX #$30               ; no leading zero
+BNE WETens
+LDX #$20
+WETens:
 STX """ + "$%04X" % screen(14, 23) + """
 LDA #$07
 STA """ + "$%04X" % (COLRAM + 14 * 40 + 23) + """
