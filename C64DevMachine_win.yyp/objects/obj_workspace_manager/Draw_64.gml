@@ -4236,6 +4236,11 @@ if (welcome_open) {
             draw_text_l(_rx1 + 36, _ry + 4, _tours[_ti].title);
             draw_set_color(make_color_rgb(140, 200, 200));
             draw_text_l(_rx1 + 36, _ry + 19, _tours[_ti].blurb);
+
+            // Finished with no skips or help: a DONE stamp over the top right corner
+            if (global.tour_done[_ti]) {
+                scr_tour_draw_done_stamp(_rx2 - 36, _ry + 4);
+            }
         }
 
         // Where to find this list again, bottom-left beside the BACK button
