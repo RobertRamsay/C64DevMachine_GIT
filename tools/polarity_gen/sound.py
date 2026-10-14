@@ -51,14 +51,14 @@ def ins(name, main, loop_to=None, pulse=None, cutoff=None, a=0, d=9, s=8, r=4, p
             "vib_delay": 0.0, "vib_speed": 0.0, "vib_depth": 0.0, "dirty": True}
 
 INSTRUMENTS = [
-    # bass voice: pulse with a 1-frame noise click; cutoff jumps on the note, sweeps down
-    ins("CLICK BASS", ["$41", "C$600", "D1", "$81", "N=95", "D1", "$41", "N", "D1"], 8, (96, 24), (-14, 40),
+    # bass voice: a clean pulse bass (no noise click: too chirpy), the cutoff
+    # jumps on each note and sweeps down
+    ins("CLICK BASS", ["$41", "C$600", "N", "D1"], 3, (96, 24), (-14, 40),
         a=0, d=8, s=8, r=9, pw=1280, filt=1),
     ins("KICK BASS", ["$11", "N=60", "D1", "N=44", "D1", "N=36", "D1", "$41", "N", "D1"], 9, (96, 24),
         a=0, d=9, s=8, r=9, pw=1280, filt=1),
     ins("SNARE BASS", ["$81", "N=72", "D1", "$41", "N=48", "D1", "$81", "N=70", "D1", "$41", "N", "D1"], 11, (96, 24),
         a=0, d=9, s=8, r=9, pw=1280, filt=1),
-    ins("HAT", ["$81", "N=95", "D1", "$80"], end=True, a=0, d=2, s=0, r=0),
     # lead voice
     ins("LEAD", ["$21", "D1", "$41", "D14", "V$24", "D1"], 5, (16, 48), a=0, d=0, s=11, r=8, pw=1600),
     ins("ARP MAJOR", ["$41", "N", "D1", "N+7", "D1", "N+4", "D1"], 1, (32, 32), a=0, d=8, s=6, r=3, pw=1024),
@@ -94,8 +94,9 @@ def pattern(name, notes):
 
 def groove(name, roots, style="normal"):
     """Bass + drums in one voice. roots: 1, 2 or 4 per pattern.
-    styles: pedal (eighth clicks, no drums), build (pedal + kick + hats),
-    normal (kick, snare, hats, octave clicks), busy (16th clicks)."""
+    styles: pedal (eighth notes, no drums), build (pedal + kick),
+    normal (kick, snare, octave bass), busy (16th-note bass, kick + snare).
+    No hi-hats: high noise sounds chirpy against this bass."""
     span = 32 // len(roots)
     notes = []
     for i, r in enumerate(roots):
@@ -104,14 +105,12 @@ def groove(name, roots, style="normal"):
         if style == "pedal":
             cell = [(o, r, "CLICK BASS") for o in range(0, 8, 2)]
         elif style == "build":
-            cell = [(0, r, "KICK BASS"), (2, r, "CLICK BASS"), (3, "C-7", "HAT"),
-                    (4, r, "CLICK BASS"), (6, r, "CLICK BASS"), (7, "C-7", "HAT")]
+            cell = [(0, r, "KICK BASS"), (2, r, "CLICK BASS"), (4, r, "CLICK BASS"), (6, r, "CLICK BASS")]
         elif style == "busy":
             cell = [(0, r, "KICK BASS"), (1, r, "CLICK BASS"), (2, hi, "CLICK BASS"), (3, r, "CLICK BASS"),
                     (4, r, "SNARE BASS"), (5, r, "CLICK BASS"), (6, hi, "CLICK BASS"), (7, r, "CLICK BASS")]
         else:
-            cell = [(0, r, "KICK BASS"), (2, r, "CLICK BASS"), (3, "C-7", "HAT"),
-                    (4, r, "SNARE BASS"), (6, hi, "CLICK BASS"), (7, "C-7", "HAT")]
+            cell = [(0, r, "KICK BASS"), (2, r, "CLICK BASS"), (4, r, "SNARE BASS"), (6, hi, "CLICK BASS")]
         for off in range(0, span, 8):
             notes += [(b + off + o, n, I[k]) for o, n, k in cell]
     return pattern(name, notes)
@@ -135,8 +134,8 @@ PATTERNS = [
     # intro: a slow build over an A pedal
     groove("PEDAL A", ["A-2"], "pedal"),                                              # 1
     groove("PEDAL A + KICK", ["A-2"], "build"),                                       # 2
-    stabs("STABS Am", "A-3", "MIN", [0, 16]),                                         # 3
-    stabs("STABS Am 2", "A-3", "MIN", [0, 6, 16, 22, 28]),                            # 4
+    pattern("SPARE 3", []),                                                           # 3 (free)
+    pattern("SPARE 4", []),                                                           # 4 (free)
     # Sunny's theme, C major, chords every half bar
     groove("GROOVE C F G C", ["C-3", "F-2", "G-2", "C-3"]),                           # 5
     groove("GROOVE Am F G G", ["A-2", "F-2", "G-2", "G-2"]),                          # 6
@@ -164,21 +163,46 @@ PATTERNS = [
     lead("TRILL 2", "0:A-4 8:G-4 16:A-4 24:A#4", "TRILL"),                                                                       # 26
     lead("PLUCK ANSWER 1", "0:A-5 2:A-5 4:G-5 6:A-5 8:B-5 10:A-5 12:G-5 14:D-5 16:E-5 18:E-5 20:F-5 22:E-5 24:D-5 26:A#4 28:A-4", "OCT PLUCK"),  # 27
     lead("PLUCK ANSWER 2", "0:E-5 4:A-5 8:G-5 12:D-5 16:F-5 20:A#5 24:A-5 28:A#5", "OCT PLUCK"),                                  # 28
+    # Hex part two: i - iv - bVII - III - bVI - iv - V - V, lead phrases
+    # answered by arp bars, then the lead alone
+    groove("BUSY Dm", ["D-3"], "busy"),                                               # 29
+    groove("BUSY C", ["C-3"], "busy"),                                                # 30
+    groove("BUSY E", ["E-2"], "busy"),                                                # 31
+    fast_arps("FAST ARPS Dm", "D-4", "MINOR"),                                        # 32
+    fast_arps("FAST ARPS C", "C-4", "MAJOR"),                                         # 33
+    fast_arps("FAST ARPS E", "E-4", "MAJOR"),                                         # 34
+    lead("HEX 5", "0:E-6 2:D-6 4:C-6 6:B-5 8:C-6 12:A-5 16:E-5 18:A-5 20:B-5 22:C-6 24:B-5 28:A-5"),                            # 35
+    lead("HEX 6", "0:B-5 4:D-6 6:E-6 8:D-6 12:B-5 16:G-5 18:A-5 20:B-5 24:D-6 28:C-6"),                                          # 36
+    lead("HEX 7", "0:A-5 2:C-6 4:F-6 8:E-6 10:D-6 12:C-6 16:A-5 20:F-5 24:G-5 28:A-5"),                                          # 37
+    lead("HEX 8", "0:G#5 4:B-5 6:E-6 8:D-6 12:B-5 16:G#5 18:A-5 20:B-5 24:E-5"),                                                 # 38
+    # Sunny bridge: delayed-arp stabs over her chords, every half bar
+    pattern("SUNNY STABS 1", [(o, n, I["DELAY ARP " + q]) for o, n, q in
+                              ((0, "C-4", "MAJ"), (4, "C-4", "MAJ"), (8, "F-3", "MAJ"), (12, "F-3", "MAJ"),
+                               (16, "G-3", "MAJ"), (20, "G-3", "MAJ"), (24, "C-4", "MAJ"), (28, "C-4", "MAJ"))]),   # 39
+    pattern("SUNNY STABS 2", [(o, n, I["DELAY ARP " + q]) for o, n, q in
+                              ((0, "A-3", "MIN"), (4, "A-3", "MIN"), (8, "F-3", "MAJ"), (12, "F-3", "MAJ"),
+                               (16, "G-3", "MAJ"), (20, "G-3", "MAJ"), (24, "G-3", "MAJ"), (28, "G-3", "MAJ"))]),   # 40
 ]
 
 def row(v1, v2):
     return {"v1": float(v1), "v2": float(v2), "v3": 0.0, "dg": -1.0, "force_len": 32.0, "repeat_short": False}
 
 SUNNY = [row(5, 9), row(6, 10), row(7, 11), row(8, 12)]
+HEX_ARPS = [row(13, 16), row(14, 17), row(15, 18), row(14, 17)]          # Am G F G, arps
+HEX_LEAD = [row(13, 19), row(14, 20), row(15, 21), row(14, 22)]          # the lead takes over
 ORDER = (
-    [row(1, 3), row(2, 4)]                                    # intro: pedal build
-    + SUNNY + SUNNY                                           # Sunny's theme x2 (loop point: row 2)
-    + [row(13, 16), row(14, 17), row(15, 18), row(14, 17)]    # Hex: fast arps over the changes
-    + [row(13, 19), row(14, 20), row(15, 21), row(14, 22)]    # Hex: the lead takes over
-    + [row(23, 25), row(24, 26), row(23, 27), row(24, 28)]    # breakdown
-    + SUNNY                                                   # home again
+    [row(0, 16), row(0, 18), row(1, 17), row(2, 34)]       # opens on arps alone (Am F), bass joins (G E)
+    + HEX_ARPS + HEX_LEAD                                  # Hex, part one
+    + [row(13, 35), row(29, 32), row(14, 36), row(30, 33), # Hex, part two: lead phrases answered
+       row(15, 37), row(29, 32), row(31, 38), row(31, 34)] #   by arp bars (Am Dm G C F Dm E E)
+    + SUNNY + SUNNY                                        # Sunny's theme x2
+    + [row(5, 39), row(6, 40), row(7, 39), row(8, 40)]     # Sunny bridge: stabs
+    + [row(23, 25), row(24, 26), row(23, 27), row(24, 28)] # breakdown
+    + [row(13, 35), row(14, 36), row(15, 37), row(31, 38)] # Hex part two, the lead alone
+    + HEX_LEAD                                             # Hex part one reprise
+    + [row(13, 16), row(29, 32), row(31, 34), row(31, 34)] # finale: arps Am Dm E E, back to the top
 )
-SONGS = [{"loop_row": 2.0, "name": "POLARITY THEME", "loop": True, "order": ORDER}]
+SONGS = [{"loop_row": 0.0, "name": "POLARITY THEME", "loop": True, "order": ORDER}]
 
 SFX = [
     # name, text, note, attack, decay, sustain, release, priority
@@ -202,7 +226,7 @@ def music_meta(gate_music_meta):
     m["play_speed"] = 6.0
     m["voice_mask"] = 3.0
     m["song_loop"] = True
-    m["song_loop_row"] = 2.0
+    m["song_loop_row"] = 0.0
     m["filt_mode"] = 1.0          # low-pass, for the bass voice
     m["filt_res"] = 15.0
     m["filt_cut"] = 1280.0

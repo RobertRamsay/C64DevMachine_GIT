@@ -311,20 +311,19 @@ def layout():
     F = lambda n: float(sprites.INDEX[n])
     cols = [
         dict(name="01 BOOT", x=360, org=None, items=[('code', 'BOOT')]),
-        dict(name="02 TITLE + HOW TO PLAY", x=680, org=0x0900, items=[
+        dict(name="02 TITLE + THEME TUNE", x=680, org=0x0900, items=[
             ('label', 'Title'),
             ('macro', 'MACRO_BMP', 'TITLE PICTURE', [["macro_bmp", "TITLE_PIC", 16384.0, 1.0, 0.0]]),
-            ('macro', 'MACRO_SID_SONG', 'POLARITY THEME', [["macro_sid_song", "POL_MUSIC", 1.0, 3.0, 2.0, 0.0, 0.0]], game.UID_SONG),
+            # SFX INIT first: it writes $D418 = $0F (filter mode off). The song's
+            # init then sets $D418 = $1F, so the low-pass filter on the bass
+            # voice stays on. The other way round, the bass voice is silent.
             ('macro', 'MACRO_SFX', 'SFX INIT', [["macro_sfx", "POL_SFX", 0.0, 3.0, 3.0]]),
+            ('macro', 'MACRO_SID_SONG', 'POLARITY THEME', [["macro_sid_song", "POL_MUSIC", 1.0, 3.0, 2.0, 0.0, 0.0]], game.UID_SONG),
             ('code', 'TITLE_IRQ'),
             ('label', 'TitlePic'),
             ('macro', 'MACRO_BMP', 'TITLE PICTURE', [["macro_bmp", "TITLE_PIC", 16384.0, 1.0, 0.0]]),
             ('code', 'TITLE_HOLD'),
-            ('label', 'ShowHelp'),
-            ('code', 'HELP_PREP'),
-            ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),
-            ('macro', 'MACRO_CLR_SCREEN', 'CLEAR SCREEN', [["macro_clr_screen", 1024.0, 32.0]]),
-        ] + pr(HELP_LINES, 'HELP_TEXT') + [('op', 'rts', 0.0)]),
+        ]),
         dict(name="03 FRAME SYNC / IRQ / SOUNDS", x=1000, org=0x2600, items=[
             ('label', 'FrameTick'),
             ('macro', 'MACRO_VWAIT', 'FRAME SYNC', [["macro_vwait", 248.0, 0.0, ""]]),
@@ -362,6 +361,14 @@ def layout():
         dict(name="07 SISTERS, MAGIC, COIN, BEE", x=2280, org=0x7060, items=[('code', 'SPRITES'), ('code', 'THINGS')]),
         dict(name="08 CLOCK, NEEDS, ACTIONS", x=2600, org=0x75E0, items=[('code', 'CLOCK'), ('code', 'ACTIONS')]),
         dict(name="09 MONEY, MESSAGES, HUD", x=2920, org=0x79C0, items=[('code', 'HUD')]),
+        # The HOW TO PLAY page lives in its own column at $7C40, leaving the
+        # title column's space ($0900-$25FF) to the theme tune.
+        dict(name="11 HOW TO PLAY", x=3560, org=0x7C40, items=[
+            ('label', 'ShowHelp'),
+            ('code', 'HELP_PREP'),
+            ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),
+            ('macro', 'MACRO_CLR_SCREEN', 'CLEAR SCREEN', [["macro_clr_screen", 1024.0, 32.0]]),
+        ] + pr(HELP_LINES, 'HELP_TEXT') + [('op', 'rts', 0.0)]),
         dict(name="10 DREAM COME TRUE", x=3240, org=0x7B00, items=[
             ('label', 'WinGame'),
             ('code', 'WIN_PREP'),
@@ -371,7 +378,7 @@ def layout():
     ]
     comments = {
         "01 BOOT": "POLARITY - a sisterly life sim.\nBOOT: BASIC off, CIA IRQs off,\nthen the title.",
-        "02 TITLE + HOW TO PLAY": "Title picture + theme tune.\nAlternates with HOW TO PLAY.\nFIRE starts a new life.",
+        "02 TITLE + THEME TUNE": "Title picture + theme tune.\nAlternates with HOW TO PLAY.\nFIRE starts a new life.",
         "03 FRAME SYNC / IRQ / SOUNDS": "FrameTick: frame wait.\nIrqMusic: raster IRQ chain\n(tune, SFX, sky/HUD split).",
         "04 NEW LIFE: SCREEN, SPRITES, HUD": "MC text screen, 5 sprites,\nstatus row + needs panel HUDs.\nReset the sisters' life.",
         "05 ROOMS": "Each place: own CHAR_SET +\nMAP (40x20) + colour table.\nHOME STREET SHOP CAFE PARK",
@@ -380,6 +387,7 @@ def layout():
         "08 CLOCK, NEEDS, ACTIONS": "2 s = 10 minutes. Needs drop\nhourly. UP uses an object:\nACTION table drives it.",
         "09 MONEY, MESSAGES, HUD": "Money in base-100 bytes.\nMessage line + HUD field\nroutines from the HUD nodes.",
         "10 DREAM COME TRUE": "Job level 5: the sisters\nown the cafe. FIRE: title.",
+        "11 HOW TO PLAY": "The HOW TO PLAY page:\nPRINT nodes reading the\nHELP_TEXT asset.",
     }
     return cols, comments
 
@@ -514,17 +522,27 @@ def stub(item, test_input):
         s += "joy_done:\n"
         return s
     if typ == 'MACRO_PRINT':
+        # Like the real node: the text sits in memory (inline text at the
+        # node's text address, injected into the PRG; asset text inside the
+        # TEXT_DATA asset) and a short loop copies it, so sizes match.
         x, y, colr, text = int(r[1]), int(r[2]), int(r[3]), r[5]
         if len(r) > 9 and r[9] == 1.0:
-            text = text_assets()[0][r[10]][1][int(r[11]):int(r[12])]
+            base, full, _ = text_assets()[0][r[10]]
+            text = full[int(r[11]):int(r[12])]
+            src = base + int(r[11])
+        else:
+            src = int(r[6])
+            for i, c in enumerate(text):
+                INLINE_TEXT[src + i] = font.screen_code(c)
         if r[7] == 2.0:
             x = (40 - len(text)) // 2
-        codes = [font.screen_code(c) for c in text]
         k = "pr%d_" % u
-        return ("JMP %ss\n%sd:\n.byte %s\n%ss:\nLDX #$00\n%sl:\nLDA %sd,X\nSTA $%04X,X\nLDA #$%02X\nSTA $%04X,X\nINX\nCPX #%d\nBNE %sl\n"
-                % (k, k, ",".join(str(c) for c in codes), k, k, k, 0x0400 + y * 40 + x, colr, 0xD800 + y * 40 + x, len(codes), k))
+        return ("LDX #$00\n%sl:\nLDA $%04X,X\nSTA $%04X,X\nLDA #$%02X\nSTA $%04X,X\nINX\nCPX #%d\nBNE %sl\n"
+                % (k, src, 0x0400 + y * 40 + x, colr, 0xD800 + y * 40 + x, len(text), k))
     raise ValueError(typ)
 
+
+INLINE_TEXT = {}      # address -> screen code: inline PRINT text (the IDE injects it)
 
 def build_test_prg(tables, mem, path, test_input):
     cols, _ = layout()
@@ -555,6 +573,7 @@ def build_test_prg(tables, mem, path, test_input):
         print("  %-38s $%04X-$%04X (%d bytes)" % (name, s, e - 1, e - s))
     code = a.link()
     allm = dict(mem)
+    allm.update(INLINE_TEXT)
     for k, v in code.items():
         if k in allm:
             raise SystemExit("code overlaps data at $%04X" % k)
