@@ -117,6 +117,12 @@ def build_assets():
     place(0x6000, koala[8002:9002])
     place(0x63E8, koala[9002:10002])
 
+    # page text (TEXT_DATA, read by the asset-mode PRINT nodes)
+    for name, (addr, text, _) in text_assets()[0].items():
+        codes = [font.screen_code(c) for c in text] + [0]
+        assets.append(asset(name, "TEXT_DATA", addr, codes, {"text": text}))
+        place(addr, codes)
+
     # HUDs
     assets.append(hud_top_asset())
     assets.append(hud_bot_asset())
@@ -188,7 +194,11 @@ def uid():
     NEXT_UID[0] += 1
     return NEXT_UID[0]
 
-HEIGHT = {"ORG": 80, "INIT": 80, "LABEL": 40, "NORMAL": 60, "MACRO_CODE": 100}
+# Node heights as the editor lays them out (read back from a live load), so
+# the column boxes fit their nodes.
+HEIGHT = {"ORG": 80, "INIT": 80, "LABEL": 40, "NORMAL": 60, "MACRO_CODE": 100,
+          "MACRO_PRINT": 180, "MACRO_HUD": 200, "MACRO_SID_SONG": 140, "MACRO_VIC": 120,
+          "MACRO_JOY": 120, "MACRO_VWAIT": 60}
 
 def node(typ, title, code, x, y, parent=None, stable=None, custom=""):
     n = {"binary_blob": "", "x": float(x), "y": float(y), "type": typ, "params": [],
@@ -219,6 +229,11 @@ def print_code(x, y, colour, text, addr, centre=False):
     return [["macro_print", float(x), float(y), float(colour), 0.0, text, float(addr), 2.0 if centre else 0.0,
              0.0, 0.0, "", 0.0, 0.0, 1024.0, 0.0, "", 0.0, "", 0.0, "", 0.0, "", 0.0, ""]]
 
+def print_asset_code(x, y, colour, asset_name, start, end, centre=False):
+    """PRINT in ASSET mode: text = asset bytes [start, end)."""
+    return [["macro_print", float(x), float(y), float(colour), 0.0, "", 0.0, 2.0 if centre else 0.0,
+             0.0, 1.0, asset_name, float(start), float(end), 1024.0, 0.0, "", 0.0, "", 0.0, "", 0.0, "", 0.0, ""]]
+
 HELP_LINES = [
     (1, 7, "*  P O L A R I T Y  *", True),
     (3, 1, "TWO SISTERS, ONE LIFE, OPPOSITE POWERS", True),
@@ -245,20 +260,44 @@ WIN_LINES = [
     (20, 7, "PRESS FIRE", True),
 ]
 
+# The headline and PRESS FIRE lines of each page are inline PRINT text; the
+# body lines come from a TEXT_DATA asset (PRINT in ASSET mode, one START/END
+# window per line), so the page text can be edited in the asset editor.
+TEXT_PAGES = [("HELP_TEXT", HELP_LINES), ("ENDING_TEXT", WIN_LINES)]
+
+def text_assets():
+    """name -> (address, text, {line index: (start, end)}); inline texts follow."""
+    out, addr = {}, game.PRINT_TEXT
+    for name, lines in TEXT_PAGES:
+        text, spans = "", {}
+        for i, (_, _, t, _) in enumerate(lines):
+            if 0 < i < len(lines) - 1:
+                spans[i] = (len(text), len(text) + len(t))
+                text += t
+        out[name] = (addr, text, spans)
+        addr += len(text) + 1                      # + the null the flush appends
+    return out, addr
+
 def layout():
     """Returns (columns, comments). A column: dict(name, x, org, items).
     Items: ('code', block) | ('label', name) | ('op', mnem, operand)
          | ('macro', TYPE, title, code_rows[, stable_uid])"""
     S = sound.SFX_ID
     sfx = lambda n: ('macro', 'MACRO_SFX', 'SFX ' + n, [["macro_sfx", "POL_SFX", float(S[n]), 3.0, 0.0]])
-    text_addr = [game.PRINT_TEXT]
-    def pr(lines):
+    tassets, inline_start = text_assets()
+    text_addr = [inline_start]
+    def pr(lines, asset_name):
         out = []
-        for row, col, text, centre in lines:
+        _, _, spans = tassets[asset_name]
+        for i, (row, col, text, centre) in enumerate(lines):
             assert len(text) <= 39, text
             x = (40 - len(text)) // 2 if centre is True else (1 if centre is False else centre)
-            out.append(('macro', 'MACRO_PRINT', 'PRINT', print_code(x, row, col, text, text_addr[0])))
-            text_addr[0] += len(text)
+            if i in spans:
+                s0, s1 = spans[i]
+                out.append(('macro', 'MACRO_PRINT', 'PRINT', print_asset_code(x, row, col, asset_name, s0, s1, centre is True)))
+            else:
+                out.append(('macro', 'MACRO_PRINT', 'PRINT', print_code(x, row, col, text, text_addr[0], centre is True)))
+                text_addr[0] += len(text)
         assert text_addr[0] <= 0x4000, hex(text_addr[0])
         return out
     vic_game = ["macro_vic", "MCT", 0.0, 1024.0, 12288.0, 0.0, 14.0, 9.0, 0.0, 0.0]
@@ -279,7 +318,7 @@ def layout():
             ('code', 'HELP_PREP'),
             ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),
             ('macro', 'MACRO_CLR_SCREEN', 'CLEAR SCREEN', [["macro_clr_screen", 1024.0, 32.0]]),
-        ] + pr(HELP_LINES) + [('op', 'rts', 0.0)]),
+        ] + pr(HELP_LINES, 'HELP_TEXT') + [('op', 'rts', 0.0)]),
         dict(name="03 FRAME SYNC / IRQ / SOUNDS", x=1000, org=0x2600, items=[
             ('label', 'FrameTick'),
             ('macro', 'MACRO_VWAIT', 'FRAME SYNC', [["macro_vwait", 248.0, 0.0, ""]]),
@@ -322,7 +361,7 @@ def layout():
             ('code', 'WIN_PREP'),
             ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),
             ('macro', 'MACRO_CLR_SCREEN', 'CLEAR SCREEN', [["macro_clr_screen", 1024.0, 32.0]]),
-        ] + pr(WIN_LINES) + [('code', 'WIN_END')]),
+        ] + pr(WIN_LINES, 'ENDING_TEXT') + [('code', 'WIN_END')]),
     ]
     comments = {
         "01 BOOT": "POLARITY - a sisterly life sim.\nBOOT: BASIC off, CIA IRQs off,\nthen the title.",
@@ -470,6 +509,10 @@ def stub(item, test_input):
         return s
     if typ == 'MACRO_PRINT':
         x, y, colr, text = int(r[1]), int(r[2]), int(r[3]), r[5]
+        if len(r) > 9 and r[9] == 1.0:
+            text = text_assets()[0][r[10]][1][int(r[11]):int(r[12])]
+        if r[7] == 2.0:
+            x = (40 - len(text)) // 2
         codes = [font.screen_code(c) for c in text]
         k = "pr%d_" % u
         return ("JMP %ss\n%sd:\n.byte %s\n%ss:\nLDX #$00\n%sl:\nLDA %sd,X\nSTA $%04X,X\nLDA #$%02X\nSTA $%04X,X\nINX\nCPX #%d\nBNE %sl\n"
