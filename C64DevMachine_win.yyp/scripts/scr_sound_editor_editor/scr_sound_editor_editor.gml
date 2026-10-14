@@ -611,10 +611,12 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     // Function keys: F1 song from the start, F2 song from the cursor row (same
     // as PLAY HERE — carries on through the order list), F3 this pattern from
     // the top (looping), F4 stop.
-    // They type nothing, so they also work while an instrument's text is open.
-    var _fkeys_ok = !_m.edit_active && !_m.instr_name_edit_active && !_m.song_name_edit_active && !_order_typing
-                 && !_m.instr_note_edit_active;
-    if (_fkeys_ok) {
+    // They type nothing, so they work whatever is being edited: the transport
+    // below commits an open pattern cell or instrument text before it plays.
+    // (They used to be blocked while a pattern cell was in edit mode. That
+    // state outlives closing the editor, so F1 could be dead on entry until
+    // PLAY SONG's commit ended it.)
+    {
         if (keyboard_check_pressed(vk_f1)) {
             _transport_action = "SONG";
         } else if (keyboard_check_pressed(vk_f2)) {

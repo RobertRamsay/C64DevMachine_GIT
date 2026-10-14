@@ -481,7 +481,8 @@ function scr_instrument_parse(_text) {
                     _back = array_length(_out.bytes) - variable_struct_get(_records, string(_n));
                 }
                 if (_back < 1 || _back > 254) {
-                    array_push(_out.errors, "step " + string(_lt) + ": a table's Ln must go back to an earlier " + _letter + " or D in the same table, within 84 lines");
+                    array_push(_out.errors, "step " + string(_lt) + ": L" + string(_n) + " must jump back to one of this table's own "
+                        + _letter + " or D lines (step " + string(_n) + " is not one). Inserting or deleting a line moves the step numbers: renumber the L.");
                     _back = 0;
                 }
                 array_push(_out.bytes, 0, _back);
