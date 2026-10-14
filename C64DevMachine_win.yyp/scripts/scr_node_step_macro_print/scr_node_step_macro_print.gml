@@ -1,5 +1,5 @@
 function scr_node_step_macro_print(_draw_x) {
-    if (scr_print_dynamic_step(_draw_x, y + scr_print_controls_offset(id), 18, 7, 8)) exit;
+    if (scr_print_dynamic_step(_draw_x, y + scr_print_controls_offset(id), 18, 7, 8, true)) exit;
 
     var _header_h = 24;
     var _line_h   = 12;
@@ -8,40 +8,8 @@ function scr_node_step_macro_print(_draw_x) {
     var _align_v  = (array_length(instructions[0]) > 8) ? real(instructions[0][8]) : 0;
     var _src_mode = (array_length(instructions[0]) > 9 && is_real(instructions[0][9])) ? real(instructions[0][9]) : 0;
 
-    // Row 1: X click
-    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 28, _fy, _draw_x + 60, _fy + 16)) {
-        while (array_length(instructions[0]) < 8) array_push(instructions[0], 0);
-        instructions[0][7] = 0;
-        with (obj_workspace_manager) {
-            is_entering_text     = true;
-            input_target_node    = other.id;
-            input_target_index   = 1;
-            if (array_length(other.instructions[0]) > 18) other.instructions[0][18] = 0;
-            current_input_string = string(other.instructions[0][1]);
-            keyboard_string      = "";
-            cursor_pos           = string_length(current_input_string);
-        }
-        exit;
-    }
-
-    // Row 1: Y click
-    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 85, _fy, _draw_x + 110, _fy + 16)) {
-        while (array_length(instructions[0]) < 9) array_push(instructions[0], 0);
-        instructions[0][8] = 0;
-        with (obj_workspace_manager) {
-            is_entering_text     = true;
-            input_target_node    = other.id;
-            input_target_index   = 2;
-            if (array_length(other.instructions[0]) > 20) other.instructions[0][20] = 0;
-            current_input_string = string(other.instructions[0][2]);
-            keyboard_string      = "";
-            cursor_pos           = string_length(current_input_string);
-        }
-        exit;
-    }
-
-    // Row 1: LOC click — only editable in inline mode
-    if (_src_mode == 0 && point_in_rectangle(mouse_x, mouse_y, _draw_x + 144, _fy, _draw_x + width - 8, _fy + 16)) {
+    // Row 1: LOC click (inline mode only) — X, Y and COL live in the bottom rows
+    if (_src_mode == 0 && point_in_rectangle(mouse_x, mouse_y, _draw_x + 36, _fy, _draw_x + 96, _fy + 14)) {
         with (obj_workspace_manager) {
             is_entering_text     = true;
             input_target_node    = other.id;
@@ -55,27 +23,20 @@ function scr_node_step_macro_print(_draw_x) {
         }
         exit;
     }
-    _fy += _line_h;
 
-    // Row 2: COL swatch
-    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 50, _fy, _draw_x + 110, _fy + 16)) {
-        if (array_length(instructions[0]) > 22) instructions[0][22] = 0;
-        instance_destroy(obj_ui_color_picker);
-        var _picker_w     = 256;
-        var _swatch_center = _draw_x + 60;
-        var _spawn_x      = _swatch_center - (_picker_w / 2);
-        var _py           = _fy + _line_h;
-        var _picker       = instance_create_depth(_spawn_x, _py, -9999, obj_ui_color_picker);
-        _picker.target_node = id;
-        _picker.target_row  = 0;
-        _picker.target_col  = 3;
-        mouse_clear(mb_left);
+    // Row 1: CLEAR checkbox — box at (_draw_x+104 .. +116), label after it;
+    // the hit zone spans box + label so either is clickable.
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 102, _fy + 1, _draw_x + width - 10, _fy + 14)) {
+        while (array_length(instructions[0]) <= 4) array_push(instructions[0], 0);
+        var _cur = is_real(instructions[0][4]) ? real(instructions[0][4]) : 0;
+        instructions[0][4] = (_cur == 1) ? 0 : 1;
+        global.addresses_dirty = true;
         exit;
     }
     _fy += _line_h;
 
-    // Row 2b: SCR BASE click
-    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 76, _fy, _draw_x + width - 8, _fy + 12)) {
+    // Row 2: SCR base click
+    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 36, _fy, _draw_x + 96, _fy + 12)) {
         while (array_length(instructions[0]) <= 13) array_push(instructions[0], 0x0400);
         with (obj_workspace_manager) {
             is_entering_text     = true;
@@ -88,14 +49,6 @@ function scr_node_step_macro_print(_draw_x) {
             keyboard_string      = "";
             cursor_pos           = string_length(current_input_string);
         }
-        exit;
-    }
-    _fy += _line_h;
-
-    // Row 3: CLR toggle
-    if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 10, _fy - 2, _draw_x + 100, _fy + 12)) {
-        var _cur = (array_length(instructions[0]) > 4) ? real(instructions[0][4]) : 0;
-        instructions[0][4] = (_cur == 1) ? 0 : 1;
         exit;
     }
     _fy += _line_h;

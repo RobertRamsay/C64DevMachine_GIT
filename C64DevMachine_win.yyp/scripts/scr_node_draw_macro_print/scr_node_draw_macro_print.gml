@@ -60,43 +60,47 @@ function scr_node_draw_macro_print(_draw_x, _y) {
     draw_set_font_l(fnt_c64_tiny);
     var _ply = _y + _header_h + 4;
 
-    // Guided tour: Y value and COL swatch hit areas (match scr_node_step_macro_print).
-    if (global.tour_active && is_connected) {
-        scr_tour_capture_world("FIELD:MACRO_PRINT:y",   _draw_x + 82, _ply - 1, _draw_x + 112, _ply + 14);
-        scr_tour_capture_world("FIELD:MACRO_PRINT:col", _draw_x + 48, _ply + _line_h - 1, _draw_x + 112, _ply + _line_h + 14);
-    }
-
-    // Row 1: X / Y / LOC
-    draw_set_color(_c_edit);
-    scr_node_macro_text_l(_draw_x + 8, _ply, "X:");
-    draw_set_color(_col_x_determined ? make_color_rgb(220, 40, 220) : c_aqua);
-    scr_node_macro_text_l(_draw_x + 28, _ply, ((array_length(instructions[0]) > 18 && instructions[0][18] == 1) ? L("VAR") : string(_sx)));
-    draw_set_color(_c_edit);
-    scr_node_macro_text_l(_draw_x + 65, _ply, "Y:");
-    draw_set_color(_col_y_determined ? make_color_rgb(220, 40, 220) : c_aqua);
-    scr_node_macro_text_l(_draw_x + 85, _ply, ((array_length(instructions[0]) > 20 && instructions[0][20] == 1) ? L("VAR") : string(_sy)));
-
-    // LOC field is dim in asset mode (driven by asset addr + start offset)
-    if (_src_mode == 1) {
-        draw_set_color(_c_dim);
-        scr_node_macro_text_l(_draw_x + 115, _ply, "LOC:");
-        draw_set_color(make_color_rgb(100, 120, 100));
-        scr_node_macro_text_l(_draw_x + 148, _ply, "$" + _loch);
+    // Row 1: LOC (inline text address) + CLEAR checkbox.
+    // X, Y and COL are edited in the LIT/VAR rows at the bottom of the node.
+    // LOC is dim in asset mode (driven by asset addr + start offset).
+    var _loc_editing = (obj_workspace_manager.is_entering_text &&
+                        obj_workspace_manager.input_target_node  == id &&
+                        obj_workspace_manager.input_target_index == 6);
+    draw_set_color(_src_mode == 1 ? _c_dim : _c_edit);
+    scr_node_macro_text_l(_draw_x + 8, _ply, "LOC:");
+    if (_loc_editing) {
+        draw_set_color(c_lime);
+        scr_node_macro_text_l(_draw_x + 40, _ply, "$" + obj_workspace_manager.current_input_string);
     } else {
-        draw_set_color(_c_edit);
-        scr_node_macro_text_l(_draw_x + 115, _ply, "LOC:");
-        draw_set_color(c_aqua);
-        scr_node_macro_text_l(_draw_x + 148, _ply, "$" + _loch);
+        draw_set_color(_src_mode == 1 ? make_color_rgb(100, 120, 100) : c_aqua);
+        scr_node_macro_text_l(_draw_x + 40, _ply, "$" + _loch);
     }
+
+    // CLEAR checkbox (same look as PRINT EXT)
+    var _cbx = _draw_x + 112;
+    draw_set_color(_clr ? c_lime : make_color_rgb(60, 60, 60));
+    scr_macro_body_rectangle(_cbx - 8, _ply + 2, _cbx + 4, _ply + 14, false);
+    draw_set_color(c_gray);
+    scr_macro_body_rectangle(_cbx - 8, _ply + 2, _cbx + 4, _ply + 14, true);
+    draw_set_color(_clr ? c_lime : c_gray);
+    scr_node_macro_text_l(_cbx + 8, _ply, "CLEAR");
     _ply += _line_h;
 
-    // Row 2: COL + resolved screen address
+    // Row 2: SCR base (VIC screen-matrix base for the copy loop) + resolved address
+    var _base_hex = string_upper(decimal_to_hex(_scr_base));
+    while (string_length(_base_hex) < 4) _base_hex = "0" + _base_hex;
+    var _base_editing = (obj_workspace_manager.is_entering_text &&
+                         obj_workspace_manager.input_target_node  == id &&
+                         obj_workspace_manager.input_target_index == 13);
     draw_set_color(_c_edit);
-    scr_node_macro_text_l(_draw_x + 8, _ply, "COL:");
-    draw_set_color(scr_c64_pepto_colour(_col));
-    scr_macro_body_rectangle(_draw_x + 50, _ply + 5, _draw_x + 70, _ply + _line_h, false);
-    draw_set_color(c_yellow);
-    scr_node_macro_text_l(_draw_x + 76, _ply, ((array_length(instructions[0]) > 22 && instructions[0][22] == 1) ? L("VAR") : string(_col)));
+    scr_node_macro_text_l(_draw_x + 8, _ply, "SCR:");
+    if (_base_editing) {
+        draw_set_color(c_lime);
+        scr_node_macro_text_l(_draw_x + 40, _ply, "$" + obj_workspace_manager.current_input_string);
+    } else {
+        draw_set_color(c_aqua);
+        scr_node_macro_text_l(_draw_x + 40, _ply, "$" + _base_hex);
+    }
 
     var _cell_off = (_sy * 40) + _sx;
     var _scr_addr = _scr_base + _cell_off;
@@ -111,31 +115,7 @@ function scr_node_draw_macro_print(_draw_x, _y) {
     scr_node_macro_text_l(_draw_x + 100, _ply + 3, "ADDR:");
     draw_set_color(c_orange);
     scr_node_macro_text_l(_draw_x + 130, _ply + 3, ((array_length(instructions[0]) > 20 && (instructions[0][18] == 1 || instructions[0][20] == 1)) ? L("RUNTIME") : "$" + _scr_hex + " $" + _col_hex));
-    _ply += _line_h;
-
-    // Row 2b: SCR BASE (VIC screen-matrix base for the copy loop)
-    var _base_hex = string_upper(decimal_to_hex(_scr_base));
-    while (string_length(_base_hex) < 4) _base_hex = "0" + _base_hex;
-    var _base_editing = (obj_workspace_manager.is_entering_text &&
-                         obj_workspace_manager.input_target_node  == id &&
-                         obj_workspace_manager.input_target_index == 13);
     draw_set_font_l(fnt_c64_tiny);
-    draw_set_color(_c_edit);
-    scr_node_macro_text_l(_draw_x + 8, _ply, "SCR BASE:");
-    if (_base_editing) {
-        draw_set_color(c_lime);
-        scr_node_macro_text_l(_draw_x + 80, _ply, "$" + obj_workspace_manager.current_input_string);
-    } else {
-        draw_set_color(c_aqua);
-        scr_node_macro_text_l(_draw_x + 80, _ply, "$" + _base_hex);
-    }
-    _ply += _line_h;
-
-    draw_set_font_l(fnt_c64_tiny);
-    // Row 3: CLR toggle
-    draw_set_color(_c_edit);
-    scr_node_macro_text_l(_draw_x + 8, _ply, "PRE-CLEAR?: ");
-    scr_node_macro_text_l(_draw_x + 8 + string_width_l("PRE-CLEAR?: "), _ply, _clr ? L("YES") : L("NO"));
     _ply += _line_h;
 
     // Row 4: H-ALIGN buttons
@@ -266,21 +246,49 @@ function scr_node_draw_macro_print(_draw_x, _y) {
         _ply += 8;
     }
 
-    scr_print_dynamic_draw(_draw_x, _y + scr_print_controls_offset(id), 18);
+    var _cy = _y + scr_print_controls_offset(id);
+    // Guided tour: Y value and COL swatch hit areas (match scr_print_dynamic_step).
+    if (global.tour_active && is_connected) {
+        scr_tour_capture_world("FIELD:MACRO_PRINT:y",   _draw_x + 4,  _cy + 18 - 1, _draw_x + width - 40, _cy + 18 + 14);
+        scr_tour_capture_world("FIELD:MACRO_PRINT:col", _draw_x + 40, _cy + 36 - 1, _draw_x + width - 40, _cy + 36 + 14);
+    }
+    scr_print_dynamic_draw(_draw_x, _cy, 18, 7, 8, true);
 }
 // Appended field pairs: PRINT 18..23, PRINT VALUE 12..17.
-function scr_print_dynamic_draw(_dx, _dy, _slot) {
+// _ah/_av: H/V align slots (-1 = none). While an alignment is set, that
+// row shows the alignment in magenta instead of the number it overrides.
+// _swatch: the COL row shows a colour swatch (click it for the picker).
+function scr_print_dynamic_draw(_dx, _dy, _slot, _ah = -1, _av = -1, _swatch = false) {
     var _names = ["X", "Y", "COL"];
+    var _align_lbl = [["", "LEFT", "CENT", "RGHT"], ["", "TOP", "MID", "BOT"]];
     draw_set_font_l(fnt_c64_tiny);
     for (var _d = 0; _d < 3; _d++) {
         var _m = _slot + _d * 2;
         var _var = array_length(instructions[0]) > _m && instructions[0][_m] == 1;
         var _value = _var ? ((array_length(instructions[0]) > _m + 1 && string(instructions[0][_m + 1]) != "") ? string(instructions[0][_m + 1]) : L("<PICK>")) : string(instructions[0][_d + 1]);
+        var _vcol = _var ? c_yellow : c_aqua;
+        var _vx = _dx + 44;
+        if (!_var && _d < 2) {
+            var _as = (_d == 0) ? _ah : _av;
+            var _a = (_as >= 0 && array_length(instructions[0]) > _as && is_real(instructions[0][_as])) ? clamp(real(instructions[0][_as]), 0, 3) : 0;
+            if (_a != 0) {
+                _value = _align_lbl[_d][_a];
+                _vcol  = make_color_rgb(220, 40, 220);
+            }
+        }
+        if (_swatch && _d == 2 && !_var) {
+            var _ci = is_real(instructions[0][3]) ? clamp(real(instructions[0][3]), 0, 15) : 1;
+            draw_set_color(scr_c64_pepto_colour(_ci));
+            scr_macro_body_rectangle(_dx + 44, _dy + 2, _dx + 64, _dy + 12, false);
+            draw_set_color(c_gray);
+            scr_macro_body_rectangle(_dx + 44, _dy + 2, _dx + 64, _dy + 12, true);
+            _vx = _dx + 70;
+        }
         while (string_width_l(_value) > width - 100 && string_length(_value) > 1) _value = string_delete(_value, string_length(_value), 1);
         draw_set_color(c_ltgray);
         scr_node_macro_text_l(_dx + 10, _dy, _names[_d] + ":");
-        draw_set_color(_var ? c_yellow : c_aqua);
-        scr_node_macro_text_l(_dx + 44, _dy, _value);
+        draw_set_color(_vcol);
+        scr_node_macro_text_l(_vx, _dy, _value);
         draw_set_color(_var ? make_color_rgb(180, 140, 30) : make_color_rgb(50, 50, 60));
         scr_macro_body_rectangle(_dx + width - 38, _dy + 1, _dx + width - 10, _dy + 13, false);
         draw_set_color(c_yellow);
@@ -291,7 +299,7 @@ function scr_print_dynamic_draw(_dx, _dy, _slot) {
     }
 }
 
-function scr_print_dynamic_step(_dx, _dy, _slot, _ah, _av) {
+function scr_print_dynamic_step(_dx, _dy, _slot, _ah, _av, _swatch = false) {
     if (!point_in_rectangle(mouse_x, mouse_y, _dx + 4, _dy, _dx + width - 8, _dy + 50)) return false;
     var _d = floor((mouse_y - _dy) / 18);
     if (_d < 0 || _d > 2 || (mouse_y - _dy) mod 18 > 13) return false;
@@ -306,6 +314,16 @@ function scr_print_dynamic_step(_dx, _dy, _slot, _ah, _av) {
     if (mouse_x >= _dx + width - 38) {
         instructions[0][_m] = instructions[0][_m] == 1 ? 0 : 1;
         if (_d < 2) instructions[0][_d == 0 ? _ah : _av] = 0;
+    } else if (_swatch && _d == 2 && instructions[0][_m] != 1 && mouse_x < _dx + 68) {
+        // COL swatch -> colour picker
+        instance_destroy(obj_ui_color_picker);
+        var _picker_w = 256;
+        var _picker   = instance_create_depth(_dx + 54 - (_picker_w / 2), _dy + 36 + 14, -9999, obj_ui_color_picker);
+        _picker.target_node = id;
+        _picker.target_row  = 0;
+        _picker.target_col  = 3;
+        mouse_clear(mb_left);
+        return true;
     } else if (instructions[0][_m] == 1) {
         if (_d < 2) instructions[0][_d == 0 ? _ah : _av] = 0;
         label_picker_open = true;
@@ -337,7 +355,7 @@ function scr_print_dynamic_step(_dx, _dy, _slot, _ah, _av) {
 // Keep drawing, click targets and height calculations on the same layout.
 function scr_print_controls_offset(_n) {
     var _asset = array_length(_n.instructions[0]) > 9 && _n.instructions[0][9] == 1;
-    return _asset ? 162 : 138;
+    return _asset ? 138 : 114;
 }
 
 function scr_print_sync_height(_n) {
