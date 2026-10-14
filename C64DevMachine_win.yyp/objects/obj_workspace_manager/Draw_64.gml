@@ -1252,6 +1252,7 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
         ,17 // GATE-GAME (logic gate puzzle)
         ,-3 // --- TEST ---
         ,16 // PARAMS TEST (Creator params / cards / panels test bed)
+        ,18 // POLARITY (sisterly life sim: attraction / repulsion)
         // ,1 // V.SHMUP (PRO)
         // ,2 // H.SHMUP (LITE)
         // ,3 // H.SHMUP (PRO)
