@@ -12313,7 +12313,10 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 	        // compositor and anim data), and the source may be a SPRED64
 	        // text file that this script would corrupt with binary data.
 	        // All other asset types still round-trip via buffer_save.
-	        if (_asset.type != "SPRITE_SET") {
+	        // Only when there is a buffer and a file to write: an asset with no
+	        // buffer yet (-1) crashed buffer_save, and an asset with no file is
+	        // kept in the project JSON, which the project save writes.
+	        if (_asset.type != "SPRITE_SET" && buffer_exists(_asset.buffer) && _asset.file != "") {
 	            buffer_save(_asset.buffer, _asset.file);
 	        }
 	        _asset.meta.is_dirty    = false;
