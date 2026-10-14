@@ -2469,7 +2469,8 @@ scr_perf_node("gui", "ws: memory bar");
 
 var _bar_x1 = shelf_width + 60;
 var _bar_x2 = gui_w - 60;
-scr_draw_memory_bar(_bar_x1, _bar_x2, gui_h - 40);
+// The code editor covers the bar: skip it (and its cache rebuild) meanwhile.
+if (!code_editor_open) scr_draw_memory_bar(_bar_x1, _bar_x2, gui_h - 40);
 
  scr_code_editor_draw();
 

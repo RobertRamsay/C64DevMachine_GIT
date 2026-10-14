@@ -1,5 +1,7 @@
 scr_perf_node("draw", "(boxes)");
 /// @desc Mapping Box Draw
+// Hidden under an open asset editor or the code editor: don't draw.
+if (obj_workspace_manager.code_editor_open || (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open)) exit;
 
 var _cam_x    = obj_workspace_manager.cam_x;
 var _cam_y    = obj_workspace_manager.cam_y;

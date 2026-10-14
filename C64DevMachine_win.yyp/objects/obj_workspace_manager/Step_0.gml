@@ -1,4 +1,15 @@
 scr_perf_node("step", "(workspace mgr)");
+// ── EDITOR CLOSED: CATCH UP ──
+// While an asset editor or the code editor is open the workspace neither
+// draws nor recalculates. When the last one closes, relayout for two frames:
+// Draw re-measures the node heights in between, so the address pass packs
+// against fresh sizes rather than ones from before the editor opened.
+var _editor_open = (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) || code_editor_open;
+if (editor_was_open && !_editor_open) {
+    global.relayout_frames = max(global.relayout_frames, 2);
+    global.addresses_dirty = true;
+}
+editor_was_open = _editor_open;
 // ── EXOMIZER POLL (BUILD TARGET = PRG EXO) ──
 // Exomizer runs as its own process; wait until its output exists and has
 // stopped growing, then run it like any PRG.

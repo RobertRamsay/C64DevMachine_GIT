@@ -1,4 +1,6 @@
 scr_perf_node("gui", "(boxes)");
+// Hidden under an open asset editor or the code editor: don't draw.
+if (obj_workspace_manager.code_editor_open || (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open)) exit;
 // DRAW GUI BEGIN - event 74. (Draw_72 is Draw BEGIN, room space: the 8 Sep
 // move landed there by mistake, so this overlay drew in the wrong space and
 // was effectively invisible.) Was Draw GUI. This object sits at a nearer depth than

@@ -1353,6 +1353,7 @@ global.code_import_release = 0;
 // frame out of date. Whoever does that asks for a couple of extra passes here
 // instead of trying to re-derive every height itself.
 global.relayout_frames = 0;
+editor_was_open = false;          // Step: catch-up relayout when an editor closes
 
 scr_uqmenu_load();
 
