@@ -40,46 +40,52 @@ def build_assets():
         for i, b in enumerate(data):
             mem[addr + i] = b
 
-    map_addrs = [game.MAP_BASE + i * 800 for i in range(5)]
-    chr_addrs = [game.CHR_BASE + i * 0x800 for i in range(5)]
+    nrooms, ngroups = len(rooms.ROOM_NAMES), len(rooms.GROUP_NAMES)
+    map_addrs = [game.MAP_BASE + i * 800 for i in range(nrooms)]
+    chr_addrs = [game.CHR_BASE + g * 0x800 for g in range(ngroups)]
     tilecol = []
-    for i, rname in enumerate(rooms.ROOM_NAMES):
-        tb, co, grid, cgrid, ogrid, used = rooms.build_room(i)
-        # CHAR_SET: font + UI (0-71) then this room's MC tiles
+    for g, gname in enumerate(rooms.GROUP_NAMES):
+        tb, co, maps, used = rooms.build_group(g)
+        # CHAR_SET: the font + UI glyphs, with this room pair's MC tiles in the
+        # slots no text uses (rooms.TILE_CODES)
         cs = []
         for code in range(256):
-            if code < rooms.FIRST_TILE:
-                cs += font.glyph_bytes(code)
-            else:
-                cs += tb.get(code, [0] * 8)
+            cs += tb[code] if code in tb else font.glyph_bytes(code)
         cmeta = copy.deepcopy(GA["GATE_CHARS"]["meta"])
         cmeta.update({"format": "RAW", "char_count": 256.0, "total_size": 2048.0, "mc_mode": 1.0,
                       "mc_fg": 1.0, "mc_bg": 14.0, "mc_col1": 9.0, "mc_col2": 0.0, "bmp_mode": "MC",
                       "tile_types": [0.0] * 256})
-        assets.append(asset("CHARS_" + rname, "CHAR_SET", chr_addrs[i], cs, cmeta))
-        place(chr_addrs[i], cs)
-        # MAP_DATA 40x20, RAW CHARS (char plane only; colours come from TILE_COLOURS)
-        mmeta = {k: v for k, v in GA["GATE_LEVELS"]["meta"].items()
-                 if k not in ("char_grid", "colour_grid", "override_grid")}
-        mmeta.update({"map_w": 40.0, "map_h": 20.0, "grid_w": 40.0, "grid_h": 20.0,
-                      "room_w": 40.0, "room_h": 20.0, "room_count": 1.0, "raw_chars": 1.0,
-                      "map_mixed": 1.0, "mc_mode": 1.0, "mc_bg": 14.0, "mc_col1": 9.0, "mc_col2": 0.0,
-                      "map_mc_bg": 14.0, "map_mc_col1": 9.0, "map_mc_col2": 0.0,
-                      "chr_asset": "CHARS_" + rname, "active_char": 72.0, "erase_char": 32.0,
-                      "char_grid": [float(c) for c in grid], "colour_grid": [float(c) for c in cgrid],
-                      "override_grid": [float(c) for c in ogrid], "scroll_x": 0.0, "scroll_y": 0.0,
-                      "room_view": [], "room_objects": [], "obj_regions": [], "tile_colours": []})
-        colour_plane = [(c & 7) | (8 if o else 0) for c, o in zip(cgrid, ogrid)]
-        blob = list(grid) + colour_plane + list(ogrid)
-        assets.append(asset("MAP_" + rname, "MAP_DATA", map_addrs[i], blob, mmeta))
-        place(map_addrs[i], grid)
-        # colour table: font chars use the room's sign colour
-        page = []
-        for code in range(256):
-            page.append(rooms.ROOM_TEXT_COL[i] if code < rooms.FIRST_TILE else co.get(code, 8))
-        tilecol += page
+        assets.append(asset("CHARS_" + gname, "CHAR_SET", chr_addrs[g], cs, cmeta))
+        place(chr_addrs[g], cs)
+        for i, (grid, cgrid, ogrid) in maps.items():
+            rname = rooms.ROOM_NAMES[i]
+            # MAP_DATA 40x20, RAW CHARS (char plane only; colours come from TILE_COLOURS)
+            mmeta = {k: v for k, v in GA["GATE_LEVELS"]["meta"].items()
+                     if k not in ("char_grid", "colour_grid", "override_grid")}
+            mmeta.update({"map_w": 40.0, "map_h": 20.0, "grid_w": 40.0, "grid_h": 20.0,
+                          "room_w": 40.0, "room_h": 20.0, "room_count": 1.0, "raw_chars": 1.0,
+                          "map_mixed": 1.0, "mc_mode": 1.0, "mc_bg": 14.0, "mc_col1": 9.0, "mc_col2": 0.0,
+                          "map_mc_bg": 14.0, "map_mc_col1": 9.0, "map_mc_col2": 0.0,
+                          "chr_asset": "CHARS_" + gname, "active_char": 72.0, "erase_char": 32.0,
+                          "char_grid": [float(c) for c in grid], "colour_grid": [float(c) for c in cgrid],
+                          "override_grid": [float(c) for c in ogrid], "scroll_x": 0.0, "scroll_y": 0.0,
+                          "room_view": [], "room_objects": [], "obj_regions": [], "tile_colours": []})
+            colour_plane = [(c & 7) | (8 if o else 0) for c, o in zip(cgrid, ogrid)]
+            blob = list(grid) + colour_plane + list(ogrid)
+            assets.append(asset("MAP_" + rname, "MAP_DATA", map_addrs[i], blob, mmeta))
+            place(map_addrs[i], grid)
+        # colour table: font chars use the pair's sign colour
+        tilecol += [co[c] if c in co else rooms.GROUP_TEXT_COL[g] for c in range(256)]
     assets.append(byte_asset("TILE_COLOURS", game.T_TILECOL_ADDR, tilecol))
     place(game.T_TILECOL_ADDR, tilecol)
+
+    # no text may use a glyph slot that room tiles can take
+    reclaimed = set(rooms.TILE_CODES) - set(range(rooms.FIRST_TILE, 256))
+    texts = [m[1] for m in game.MSGS] + [l[2] for _, ls in TEXT_PAGES for l in ls] + [TOP_ROW] + BOT_ROWS \
+        + game.NAMES + game.POWERS + game.PLACES
+    for t in texts:
+        bad = [c for c in t if c not in "{}|~" and font.screen_code(c) in reclaimed]
+        assert not bad, ("text uses a reclaimed glyph", t, bad)
 
     tables = game.build_tables(map_addrs, chr_addrs)
     tables["T_TILECOL"] = (game.T_TILECOL_ADDR, tilecol)
@@ -159,7 +165,7 @@ TOP_ROW = "SUNNY  ATTRACT  HOME     $0020 08:00 D01"
 def hud_top_asset():
     col = [7] * 6 + [1] + [7] * 7 + [1, 1] + [3] * 6 + [1] * 3 + [7] * 5 + [1] + [1] * 5 + [1] + [3] * 3
     col = (col + [1] * 40)[:40]
-    fields = [field("NAME", 0, 0, 6, 0), field("POWER", 7, 0, 7, 0), field("PLACE", 16, 0, 6, 0),
+    fields = [field("NAME", 0, 0, 6, 0), field("POWER", 7, 0, 7, 0), field("PLACE", 16, 0, 7, 0),
               field("MHI", 26, 0, 2, 1), field("MLO", 28, 0, 2, 1), field("HH", 31, 0, 2, 1),
               field("MM", 34, 0, 1, 1), field("DAY", 38, 0, 2, 1)]
     return hud_asset("HUD_TOP", 0, [TOP_ROW], [col], fields)
@@ -298,7 +304,7 @@ def layout():
             else:
                 out.append(('macro', 'MACRO_PRINT', 'PRINT', print_code(x, row, col, text, text_addr[0], centre is True)))
                 text_addr[0] += len(text)
-        assert text_addr[0] <= 0x4000, hex(text_addr[0])
+        assert text_addr[0] <= 0x3000, hex(text_addr[0])
         return out
     vic_game = ["macro_vic", "MCT", 0.0, 1024.0, 12288.0, 0.0, 14.0, 9.0, 0.0, 0.0]
     vic_text = ["macro_vic", "MCT", 0.0, 1024.0, 12288.0, 0.0, 0.0, 9.0, 0.0, 0.0]
@@ -343,8 +349,8 @@ def layout():
             ('macro', 'MACRO_HUD', 'NEEDS PANEL', [["macro_hud", "HUD_BOT", 1024.0, 55296.0, 1.0, 1.0]], game.UID_HUD_BOT),
             ('code', 'NEW_GAME'),
         ]),
-        dict(name="05 ROOMS", x=1640, org=0x6E00, items=[('code', 'ROOM')]),
-        dict(name="06 MAIN LOOP + JOYSTICK", x=1960, org=0x7000, items=[
+        dict(name="05 ROOMS", x=1640, org=0x6D40, items=[('code', 'ROOM')]),
+        dict(name="06 MAIN LOOP + JOYSTICK", x=1960, org=0x6EC0, items=[
             ('label', 'MainLoop'),
             ('op', 'jsr', 'FrameTick'),
             ('code', 'MAIN_PRE'),
@@ -353,10 +359,10 @@ def layout():
             ('op', 'jmp_abs', 'MainLoop'),
             ('code', 'JOY'),
         ]),
-        dict(name="07 SISTERS, MAGIC, COIN, BEE", x=2280, org=0x7200, items=[('code', 'SPRITES'), ('code', 'THINGS')]),
-        dict(name="08 CLOCK, NEEDS, ACTIONS", x=2600, org=0x7600, items=[('code', 'CLOCK'), ('code', 'ACTIONS')]),
-        dict(name="09 MONEY, MESSAGES, HUD", x=2920, org=0x7A00, items=[('code', 'HUD')]),
-        dict(name="10 DREAM COME TRUE", x=3240, org=0x7C00, items=[
+        dict(name="07 SISTERS, MAGIC, COIN, BEE", x=2280, org=0x7060, items=[('code', 'SPRITES'), ('code', 'THINGS')]),
+        dict(name="08 CLOCK, NEEDS, ACTIONS", x=2600, org=0x75E0, items=[('code', 'CLOCK'), ('code', 'ACTIONS')]),
+        dict(name="09 MONEY, MESSAGES, HUD", x=2920, org=0x79C0, items=[('code', 'HUD')]),
+        dict(name="10 DREAM COME TRUE", x=3240, org=0x7B00, items=[
             ('label', 'WinGame'),
             ('code', 'WIN_PREP'),
             ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),

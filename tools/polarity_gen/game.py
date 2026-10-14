@@ -3,7 +3,7 @@
 Code is written with symbolic names (V_ variables, T_ tables, C_ constants)
 which resolve() turns into plain hex, so the project JSON holds ordinary
 assembly in the same style as the other bundled templates."""
-import re
+import math, re
 import font, rooms, sprites
 
 # ------------------------------------------------------------------ memory map
@@ -11,26 +11,28 @@ SCREEN, COLRAM = 0x0400, 0xD800
 CHR_ACTIVE = 0x3000                 # VIC charset (copied in per room)
 SPR_BASE = 0x3800                   # SPRITE_SET (pointer $E0)
 TITLE_BMP = 0x4000                  # BITMAP ($4000 bmp, $6000 screen, $63E8 colour)
-MAP_BASE = 0x8000                   # 5 x MAP_DATA 40x20 (800 bytes each)
-CHR_BASE = 0x9000                   # 5 x CHAR_SET (2K each) $9000-$B7FF
-T_TILECOL_ADDR = 0xB800             # 5 x 256 colour tables $B800-$BCFF
-SMALL_TABLES = 0xBD00               # small BYTE_DATA tables
+MAP_BASE = 0x8000                   # 7 x MAP_DATA 40x20 (800 bytes each) $8000-$95DF
+CHR_BASE = 0x9600                   # 4 x CHAR_SET (2K each, shared per room pair) $9600-$B5FF
+T_TILECOL_ADDR = 0xB600             # 4 x 256 colour tables $B600-$B9FF
+SMALL_TABLES = 0xBA00               # small BYTE_DATA tables $BA00-$BFFF
 VARS = 0xC000
-COLPAGE = 0xC100                    # active room colour table (copied in)
-MSG_BASE = 0xC200                   # MESSAGES (40 bytes each)
-PRINT_TEXT = 0x3D40                 # inline PRINT node texts (after the sprites)
+COLPAGE = 0xC100                    # active charset's colour table (copied in)
+MSG_BASE = 0xC200                   # MESSAGES (variable length, 0-terminated)
+PRINT_TEXT = 0x2D00                 # page text + inline PRINT texts ($2D00-$2FFF)
+NUM_ROOMS = len(rooms.ROOM_NAMES)
 
 FLOOR_Y = 166                       # sprite Y for the girls
 COIN_Y = 108
 BEE_Y = 146
-FRAMES_PER_10MIN = 100
+FRAMES_PER_10MIN = 150
 
 V = {}
 def _vars():
     names = """ROOM PX FACE FORM MOVING JOYID PREVJOY MHI MLO BAGS DAY HOUR MIN TICK
                NEED NEED1 NEED2 NEED3 NEED4 JOBLV JOBXP COIN COINX COINY BEE BEEX BEEY
                CASTING RNG OBJ MUSIC T0 T1 T2 DRAIN SWAPT STING FRAME SKYCOL SPLIT
-               COINCD ZZZ HARD SPRX SPRHI T3 T4""".split()
+               COINCD ZZZ HARD SPRX SPRHI T3 T4
+               POSE POSET POSEY POSEPX SLEEPING GROUP GB GH GX GY MY""".split()
     for i, n in enumerate(names):
         V["V_" + n] = VARS + i
 _vars()
@@ -52,12 +54,46 @@ ACTIONS = [
  ("GROCERY", [0, 0, 0, 0, 0],        10, 2, SP_GROCERY),
  ("SWEETS",  [8, 0, 0, 8, 0],        3,  1, SP_NONE),
  ("OUTFIT",  [0, 0, 0, 30, 8],       30, 3, SP_NONE),
- ("WORK",    [-6, -10, -8, -6, 6],   0,  12, SP_WORK),
+ ("WORK",    [-6, -8, -6, -6, 6],    0,  12, SP_WORK),
  ("COFFEE",  [2, 12, 0, 0, 2],       2,  1, SP_NONE),
  ("SWING",   [-2, -4, -2, 16, 0],    0,  6, SP_NONE),
  ("SPLASH",  [0, 0, 12, 6, 0],       0,  2, SP_NONE),
  ("CHAT",    [0, 0, 0, 4, 20],       0,  6, SP_CHAT),
+ ("COMPUTER", [0, -2, 0, 14, 10],    0,  6, SP_NONE),
+ ("SLIDE",   [0, -3, -2, 12, 0],     0,  2, SP_NONE),
+ ("DUCKS",   [0, 0, 0, 10, 4],       1,  3, SP_NONE),
 ]
+
+# Poses: what she does while an action runs (input waits until it ends).
+P_NONE, P_SIT, P_SWING, P_SLIDE, P_LIE, P_PHONE, P_EAT, P_CHEER, P_SHOWER, P_WORK, P_CAST = range(11)
+def seat_y(canvas_y):                    # sprite Y that puts her lap on a seat
+    return 50 + 8 + canvas_y - 15
+#          pose      PX   face  Y
+POSES = {
+ "SLEEP":   (P_LIE,    11, 0, 50 + 8 + 116 - 14),
+ "TV":      (P_SIT,    18, 0, seat_y(114)),
+ "EAT":     (P_EAT,    62, 0, 166),
+ "SHOWER":  (P_SHOWER, 96, 0, 144),
+ "BENCH":   (P_SIT,    54, 0, seat_y(117)),
+ "PHONE":   (P_PHONE,  82, 0, 166),
+ "GROCERY": (P_CHEER,  16, 0, 166),
+ "SWEETS":  (P_EAT,    50, 0, 166),
+ "OUTFIT":  (P_CHEER,  88, 0, 166),
+ "WORK":    (P_WORK,   10, 0, 166),
+ "COFFEE":  (P_EAT,    30, 0, 166),
+ "SWING":   (P_SWING,  19, 0, seat_y(111)),
+ "SPLASH":  (P_CHEER,  60, 0, 166),
+ "CHAT":    (P_SIT,   100, 0, seat_y(117)),
+ "COMPUTER": (P_SIT,   48, 0, seat_y(116)),
+ "SLIDE":   (P_SLIDE,  58, 0, seat_y(78)),
+ "DUCKS":   (P_CAST,   40, 1, 166),
+}
+POSE_FRAMES = 90
+SLEEP_FRAMES = 200
+SWING_X = [round(7 * math.sin(2 * math.pi * k / 32)) for k in range(32)]
+SWING_Y = [-round(3 * abs(math.sin(2 * math.pi * k / 32))) for k in range(32)]
+SLIDE_X = [58 + round(k * 24 / 31) for k in range(32)]
+SLIDE_Y = [seat_y(78) + round(k * (166 - seat_y(78)) / 31) for k in range(32)]
 ACT_ID = {a[0]: i for i, a in enumerate(ACTIONS)}
 
 # ------------------------------------------------------------------ messages
@@ -69,11 +105,13 @@ def msg(name, text, colour=WHITE):
 
 msg("BLANK", "")
 msg("NOTHING", "NOTHING TO DO HERE. TRY ANOTHER SPOT.")
-msg("HINT0", " HOME SWEET HOME!     WALK RIGHT TO GO >", CYAN)
-msg("HINT1", "< HOME          THE STREET        SHOP >", CYAN)
-msg("HINT2", "< STREET        SUPER SHOP        CAFE >", CYAN)
-msg("HINT3", "< SHOP           THE CAFE         PARK >", CYAN)
-msg("HINT4", "< CAFE           THE PARK", CYAN)
+msg("HINT0", " MY ROOM!                       HOME >", CYAN)
+msg("HINT1", "< BEDROOM          HOME         STREET >", CYAN)
+msg("HINT2", "< HOME          THE STREET        CAFE >", CYAN)
+msg("HINT3", "< STREET          THE CAFE        SHOP >", CYAN)
+msg("HINT4", "< CAFE          SUPER SHOP      SWINGS >", CYAN)
+msg("HINT5", "< SHOP          SWING PARK        PARK >", CYAN)
+msg("HINT6", "< SWINGS          THE PARK", CYAN)
 PROMPTS = {
  "SLEEP": "~ UP: GO TO BED              REST+",
  "TV": "~ UP: WATCH TV               FUN+",
@@ -89,6 +127,9 @@ PROMPTS = {
  "SWING": "~ UP: PLAY ON THE SWINGS     FUN+",
  "SPLASH": "~ UP: SPLASH IN THE FOUNTAIN WASH+",
  "CHAT": "~ UP: CHAT WITH PIP          CHAT+",
+ "COMPUTER": "~ UP: USE THE COMPUTER   FUN+ CHAT+",
+ "SLIDE": "~ UP: GO DOWN THE SLIDE      FUN+",
+ "DUCKS": "~ UP: FEED THE DUCKS  $1     FUN+",
 }
 for a in ACTIONS:
     msg("P_" + a[0], PROMPTS[a[0]], YELLOW)
@@ -107,6 +148,9 @@ RESULTS = {
  "SWING": ("WHEEE! HIGHER! HIGHER!", "HEX SWINGS UPSIDE DOWN. WHY NOT."),
  "SPLASH": ("SUNNY SPLASHES ABOUT. REFRESHING!", "HEX MAKES THE FOUNTAIN BUBBLE. HEE!"),
  "CHAT": ("PIP ADORES SUNNY! BEST FRIENDS!", "HEX AND PIP SHARE SPOOKY GOSSIP."),
+ "COMPUTER": ("SUNNY VIDEO-CHATS WITH HER FRIENDS!", "HEX RESEARCHES ANCIENT SPELLS ONLINE."),
+ "SLIDE": ("WHEEE! DOWN THE BIG SLIDE!", "HEX SLIDES DOWN HEAD FIRST. OF COURSE."),
+ "DUCKS": ("THE DUCKS ADORE SUNNY! QUACK QUACK!", "HEX FEEDS THE DUCKS. THEY BOW TO HER."),
 }
 for a in ACTIONS:
     s, h = RESULTS[a[0]]
@@ -136,28 +180,35 @@ msg("W_REST", "SO SLEEPY... BED OR COFFEE, QUICK!", LRED)
 msg("W_WASH", "PHEW, SMELLY! TIME FOR A SHOWER.", LRED)
 msg("W_FUN", "SO BORED... GO AND HAVE SOME FUN!", LRED)
 msg("W_CHAT", "SO LONELY... PHONE GRAN OR SEE PIP!", LRED)
-msg("FAINT", "SHE FAINTED! WOKE AT HOME. DOCTOR $10", LRED)
+msg("FAINT", "SHE FAINTED! WOKE UP IN BED. DOCTOR $10", LRED)
+msg("SLEEPING", "ZZZ... SWEET DREAMS.", CYAN)
 msg("WELCOME", "A NEW LIFE! KEEP ALL FIVE NEEDS HAPPY.", WHITE)
 msg("FENCE", "THE PARK FENCE. NO WAY THROUGH.", CYAN)
 msg("CLOSING", "THE CAFE IS CLOSING. GOOD WORK TODAY!", CYAN)
 MSG_ID = {m[0]: i for i, m in enumerate(MSGS)}
-assert MSG_BASE + len(MSGS) * 40 <= 0xD000, len(MSGS)
 
 def msg_codes(text):
-    out = []
-    for ch in text.ljust(40):
-        out.append(30 if ch == '~' else font.screen_code(ch))
-    return out
+    """A message: its screen codes, trailing spaces dropped, 0-terminated.
+    PrintMsg pads the rest of the line with spaces."""
+    return [30 if ch == '~' else font.screen_code(ch) for ch in text.rstrip()] + [0]
+
+MSG_ADDRS = []
+_a = MSG_BASE
+for _m in MSGS:
+    MSG_ADDRS.append(_a)
+    _a += len(msg_codes(_m[1]))
+MSG_END = _a
+assert MSG_END <= 0xD000, hex(MSG_END)
 
 # ------------------------------------------------------------------ tables
 SKY = [6, 6, 6, 6, 6, 4, 4, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 10, 4, 6, 6, 6, 6]
 DRESS = [2, 4]      # Sunny red, Hex purple (body sprite colour)
 HAIR = [7, 0]       # blonde, black
 NAMECOL = [7, 4]
-SPAWN = [0, 3, 1, 0, 3]     # bit0 coin, bit1 bee
+SPAWN = [0, 0, 3, 0, 1, 3, 3]     # bit0 coin, bit1 bee (street, shop, swings, park)
 NAMES = ["SUNNY ", "HEX   "]
 POWERS = ["ATTRACT", "REPEL  "]
-PLACES = ["HOME  ", "STREET", "SHOP  ", "CAFE  ", "PARK  "]
+PLACES = ["BEDROOM", "HOME   ", "STREET ", "CAFE   ", "SHOP   ", "SWINGS ", "PARK   "]
 JOB_WAGE = [0, 8, 11, 14, 17, 20]
 
 
@@ -177,7 +228,8 @@ def build_tables(map_addrs, chr_addrs):
     add("T_DECAY", DECAY)
     add("T_MAPLO", [a & 255 for a in map_addrs])
     add("T_MAPHI", [a >> 8 for a in map_addrs])
-    add("T_CHRHI", [a >> 8 for a in chr_addrs])
+    add("T_GROUP", rooms.ROOM_GROUP)
+    add("T_GCHRHI", [a >> 8 for a in chr_addrs])
     add("T_NAMES", sum((font.text_codes(n) for n in NAMES), []))
     add("T_POWERS", sum((font.text_codes(n) for n in POWERS), []))
     add("T_PLACES", sum((font.text_codes(n) for n in PLACES), []))
@@ -190,18 +242,26 @@ def build_tables(map_addrs, chr_addrs):
         row += [0xFF] * (12 - len(row))
         objs += row
     add("T_OBJ", objs)
-    add("T_ROOMOFS", [0, 12, 24, 36, 48])
+    add("T_ROOMOFS", [i * 12 for i in range(NUM_ROOMS)])
     # per action: d0..d4, cost, time, msgS, msgH, special, prompt, pad
     act = []
     for name, d, cost, tm, sp in ACTIONS:
         act += [x & 255 for x in d] + [cost, tm, MSG_ID["S_" + name], MSG_ID["H_" + name], sp, MSG_ID["P_" + name], 0]
     add("T_ACT", act)
     add("T_ACTOFS", [i * 12 for i in range(len(ACTIONS))])
-    add("T_MSGLO", [(MSG_BASE + i * 40) & 255 for i in range(len(MSGS))])
-    add("T_MSGHI", [(MSG_BASE + i * 40) >> 8 for i in range(len(MSGS))])
+    add("T_MSGLO", [a & 255 for a in MSG_ADDRS])
+    add("T_MSGHI", [a >> 8 for a in MSG_ADDRS])
     add("T_MSGCOL", [m[2] for m in MSGS])
     add("T_WARN", [MSG_ID["W_" + n] for n in NEEDS])
-    add("T_HINT", [MSG_ID["HINT%d" % i] for i in range(5)])
+    add("T_HINT", [MSG_ID["HINT%d" % i] for i in range(NUM_ROOMS)])
+    add("T_PID", [POSES[a[0]][0] for a in ACTIONS])
+    add("T_PPX", [POSES[a[0]][1] for a in ACTIONS])
+    add("T_PFACE", [POSES[a[0]][2] for a in ACTIONS])
+    add("T_PY", [POSES[a[0]][3] for a in ACTIONS])
+    add("T_SWX", SWING_X)
+    add("T_SWY", SWING_Y)
+    add("T_SLX", SLIDE_X)
+    add("T_SLY", SLIDE_Y)
     add("T_MAGCOL", [10, 14])
     add("T_PROMO", [0, 0, MSG_ID["PROMO2"], MSG_ID["PROMO3"], MSG_ID["PROMO4"], MSG_ID["PROMO5"]])
     assert addr <= 0xC000, hex(addr)
@@ -226,6 +286,12 @@ for n, i in sprites.INDEX.items():
 for k, v in MSG_ID.items():
     C["C_M_" + k] = v
 C["C_A_SLEEP"] = ACT_ID["SLEEP"]
+C["C_LASTROOM"] = NUM_ROOMS - 1
+C["C_CAFE"] = rooms.ROOM_NAMES.index("CAFE")
+C["C_POSET"] = POSE_FRAMES
+C["C_SLEEPT"] = SLEEP_FRAMES
+for _i, _n in enumerate(["NONE", "SIT", "SWING", "SLIDE", "LIE", "PHONE", "EAT", "CHEER", "SHOWER", "WORK", "CAST"]):
+    C["C_P_" + _n] = _i
 C["C_A_CHAT"] = ACT_ID["CHAT"]
 for i, n in enumerate(["NONE", "SLEEP", "EAT", "GROCERY", "WORK", "CHAT"]):
     C["C_SP_" + n] = i
@@ -256,6 +322,8 @@ STA V_SPLIT
 STA $D015
 LDA #$A7
 STA V_RNG
+LDA #$FF               ; no charset copied into VIC memory yet
+STA V_GROUP
 JMP Title
 """
 
@@ -425,7 +493,6 @@ BLOCKS["NEW_GAME"] = """
 ; Reset the sisters' needs, money, clock and job, then walk into HOME.
 ; ---------------------------------------------------------------
 LDA #$00
-STA V_ROOM
 STA V_FACE
 STA V_FORM
 STA V_MIN
@@ -440,12 +507,15 @@ STA V_COINCD
 STA V_MHI
 STA V_PREVJOY
 STA V_JOYID
+STA V_POSE
+STA V_SLEEPING
 LDA #20
 STA V_MLO
 LDA #$01
 STA V_DAY
 STA V_JOBLV
 STA V_BAGS
+STA V_ROOM             ; a new life starts at HOME
 LDA #8
 STA V_HOUR
 LDA #36
@@ -473,17 +543,8 @@ STA V_OBJ
 JMP EnterRoomKeep
 """
 
-BLOCKS["ROOM"] = """
-// @asset CHARS_HOME
-// @asset CHARS_STREET
-// @asset CHARS_SHOP
-// @asset CHARS_CAFE
-// @asset CHARS_PARK
-// @asset MAP_HOME
-// @asset MAP_STREET
-// @asset MAP_SHOP
-// @asset MAP_CAFE
-// @asset MAP_PARK
+BLOCKS["ROOM"] = ("\n" + "".join("// @asset CHARS_%s\n" % g for g in rooms.GROUP_NAMES)
+                  + "".join("// @asset MAP_%s\n" % r for r in rooms.ROOM_NAMES)) + """
 ; (these lines tell the build to include every place's charset and map:
 ;  this block copies them in itself, no node marks them as used)
 ; ---------------------------------------------------------------
@@ -512,9 +573,17 @@ STA $D011
 JMP MainLoop
 
 ; CopyRoomGfx: this room's CHAR_SET -> $3000 (2K), its colour table -> $C100.
+; Rooms share a charset in pairs; walking between a pair copies nothing.
 CopyRoomGfx:
 LDX V_ROOM
-LDA T_CHRHI,X
+LDA T_GROUP,X
+CMP V_GROUP
+BNE CRGNew
+RTS
+CRGNew:
+STA V_GROUP
+TAX
+LDA T_GCHRHI,X
 STA $55
 LDA #$00
 STA $54
@@ -532,7 +601,7 @@ INC $55
 INC $51
 DEX
 BNE CRGLoop
-LDA V_ROOM
+LDA V_GROUP
 CLC
 ADC #>T_TILECOL
 STA $55
@@ -591,14 +660,14 @@ DEC V_T0
 BNE DRRow
 RTS
 
-; PlaceName: 6-char place name into the top status row.
+; PlaceName: 7-char place name into the top status row.
 PlaceName:
 LDA V_ROOM
 ASL
-STA V_T0
 ASL
-CLC
-ADC V_T0
+ASL
+SEC
+SBC V_ROOM
 TAX
 LDY #$00
 PNLoop:
@@ -608,7 +677,7 @@ LDA #$03
 STA """ + "$%04X" % (COLRAM + 16) + """,Y
 INX
 INY
-CPY #6
+CPY #7
 BNE PNLoop
 RTS
 
@@ -720,6 +789,8 @@ BLOCKS["JOY"] = """
 JoyFire:
 LDA #$01
 STA V_JOYID
+LDA V_POSE             ; busy (sitting, sleeping...): no input
+BNE JFDone
 LDA V_NEED1
 CMP #2
 BCS JFCast
@@ -748,6 +819,8 @@ RTS
 JoyUp:
 LDA #$02
 STA V_JOYID
+LDA V_POSE
+BNE JUDone
 LDA V_PREVJOY
 CMP #$02
 BEQ JUDone
@@ -758,6 +831,8 @@ RTS
 JoyDown:
 LDA #$03
 STA V_JOYID
+LDA V_POSE
+BNE JDDone
 LDA V_PREVJOY
 CMP #$03
 BEQ JDDone
@@ -778,6 +853,8 @@ RTS
 JoyLeft:
 LDA #$04
 STA V_JOYID
+LDA V_POSE
+BNE JLWall
 LDA #$01
 STA V_FACE
 STA V_MOVING
@@ -799,6 +876,8 @@ RTS
 JoyRight:
 LDA #$05
 STA V_JOYID
+LDA V_POSE
+BNE JRDone
 LDA #$00
 STA V_FACE
 LDA #$01
@@ -808,7 +887,7 @@ CMP #146
 BCS JREdge
 INC V_PX
 LDA V_ROOM             ; just reached the park fence?
-CMP #$04
+CMP #C_LASTROOM
 BNE JRDone
 LDA V_PX
 CMP #146
@@ -817,7 +896,7 @@ LDA #C_M_FENCE
 JMP PrintMsg
 JREdge:
 LDA V_ROOM
-CMP #$04
+CMP #C_LASTROOM
 BEQ JRFence
 INC V_ROOM
 LDA #$02
@@ -842,20 +921,14 @@ BLOCKS["SPRITES"] = """
 ; X = PX*2+24 (9 bits). Body frame: walk A/B, cast pose, facing L/R.
 ; ---------------------------------------------------------------
 DrawGirl:
+LDA V_POSE
+BEQ DGNormal
+JMP DrawPose
+DGNormal:
 LDA V_PX
-JSR SprX
-STA $D000
-STA $D002
-LDA $D010
-AND #$FC
-LDX V_SPRHI
-BEQ DGHi
-ORA #$03
-DGHi:
-STA $D010
+STA V_GX
 LDA #C_FLOORY
-STA $D001
-STA $D003
+STA V_GY
 LDA V_FACE
 ASL
 STA V_T0               ; 0 right, 2 left
@@ -882,19 +955,247 @@ DGBodyA:
 CLC
 ADC #C_F_BODY_R_A
 DGBody:
-STA $07F9
+STA V_GB
+JSR HairStd
+JMP PlaceGirl
+
+; HairStd: GH = standing hair frame for this sister and facing.
+HairStd:
 LDA V_FORM
 ASL
 CLC
 ADC V_FACE
 CLC
 ADC #C_F_SUNNY_R
+STA V_GH
+RTS
+
+; PlaceGirl: GB/GH frames at GX (half pixels), GY (raster) -> sprites 0/1.
+PlaceGirl:
+LDA V_GX
+JSR SprX
+STA $D000
+STA $D002
+LDA $D010
+AND #$FC
+LDX V_SPRHI
+BEQ PGHi
+ORA #$03
+PGHi:
+STA $D010
+LDA V_GY
+STA $D001
+STA $D003
+LDA V_GB
+STA $07F9
+LDA V_GH
 STA $07F8
 LDX V_FORM
 LDA T_HAIR,X
 STA $D027
 LDA T_DRESS,X
 STA $D028
+RTS
+
+; ---------------------------------------------------------------
+; DrawPose: she is busy with an action (T_PID gives the pose). Sitting
+; swings its legs, the swing rocks on an arc, the slide runs down a path,
+; work paces behind the counter, eating munches, cheering hops.
+; ---------------------------------------------------------------
+DrawPose:
+LDA V_PX
+STA V_GX
+LDA V_POSEY
+STA V_GY
+JSR HairStd
+LDA $D015
+ORA #$03
+STA $D015
+LDA V_POSE
+CMP #C_P_SIT
+BNE DPNotSit
+DPSitFrame:
+LDA V_POSET            ; legs swing
+LSR
+LSR
+LSR
+AND #$01
+CLC
+ADC #C_F_SIT_A
+STA V_GB
+JMP DPPlace
+DPNotSit:
+CMP #C_P_SWING
+BNE DPNotSwing
+LDA V_POSET
+AND #$1F
+TAX
+LDA V_PX
+CLC
+ADC T_SWX,X
+STA V_GX
+LDA V_POSEY
+CLC
+ADC T_SWY,X
+STA V_GY
+JMP DPSitFrame
+DPNotSwing:
+CMP #C_P_SLIDE
+BNE DPNotSlide
+LDA V_POSET            ; 90..67 sit at the top, 66..35 slide, then cheer
+CMP #67
+BCS DPSitFrame
+CMP #35
+BCC DPSlideEnd
+SEC
+SBC #35
+EOR #$1F
+TAX
+LDA T_SLX,X
+STA V_GX
+LDA T_SLY,X
+STA V_GY
+JMP DPSitFrame
+DPSlideEnd:
+LDA T_SLX+31
+STA V_GX
+STA V_PX               ; she ends the pose at the bottom
+LDA #C_FLOORY
+STA V_GY
+LDA #C_F_CHEER
+STA V_GB
+JMP DPPlace
+DPNotSlide:
+CMP #C_P_LIE
+BNE DPNotLie
+LDA #C_F_LIE
+STA V_GB
+LDA V_FORM
+CLC
+ADC #C_F_SUNNY_LIE
+STA V_GH
+JMP DPPlace
+DPNotLie:
+CMP #C_P_SHOWER
+BNE DPNotShower
+LDA $D015              ; behind the curtain: just bubbles
+AND #$FC
+STA $D015
+JMP DPTick
+DPNotShower:
+CMP #C_P_WORK
+BNE DPNotWork
+LDA V_FRAME            ; pace behind the counter
+AND #$01
+BNE DPWorkDraw
+LDA V_FACE
+BNE DPWorkLeft
+INC V_PX
+LDA V_PX
+SEC
+SBC V_POSEPX
+CMP #22
+BCC DPWorkDraw
+LDA #$01
+STA V_FACE
+JMP DPWorkDraw
+DPWorkLeft:
+DEC V_PX
+LDA V_PX
+CMP V_POSEPX
+BNE DPWorkDraw
+LDA #$00
+STA V_FACE
+DPWorkDraw:
+LDA V_PX
+STA V_GX
+JSR HairStd
+LDA V_FRAME
+LSR
+LSR
+LSR
+AND #$01
+STA V_T0
+LDA V_FACE
+ASL
+CLC
+ADC V_T0
+CLC
+ADC #C_F_BODY_R_A
+STA V_GB
+JMP DPPlace
+DPNotWork:
+CMP #C_P_CAST
+BNE DPNotCast
+LDA V_FACE
+CLC
+ADC #C_F_BODY_R_CAST
+STA V_GB
+JMP DPPlace
+DPNotCast:
+CMP #C_P_CHEER
+BNE DPNotCheer
+LDA #C_F_CHEER
+STA V_GB
+LDA V_POSET            ; hop
+AND #$08
+BEQ DPPlace
+DEC V_GY
+DEC V_GY
+JMP DPPlace
+DPNotCheer:
+CMP #C_P_PHONE
+BNE DPEat
+LDA #C_F_PHONE
+STA V_GB
+JMP DPPlace
+DPEat:
+LDA V_POSET            ; munch
+AND #$10
+BEQ DPEat2
+LDA #C_F_EAT
+JMP DPEatSet
+DPEat2:
+LDA #C_F_BODY_R_A
+DPEatSet:
+STA V_GB
+DPPlace:
+JSR PlaceGirl
+DPTick:
+DEC V_POSET
+BNE DPDone
+JMP EndPose
+DPDone:
+RTS
+
+; StartPose: X = action -> her pose, spot, facing and height for it.
+StartPose:
+LDA T_PID,X
+BEQ SPDone
+STA V_POSE
+LDA T_PPX,X
+STA V_PX
+STA V_POSEPX
+LDA T_PFACE,X
+STA V_FACE
+LDA T_PY,X
+STA V_POSEY
+LDA #C_POSET
+STA V_POSET
+SPDone:
+RTS
+
+; EndPose: back to normal; a finished night's sleep wakes her up.
+EndPose:
+LDA #$00
+STA V_POSE
+LDA $D015
+ORA #$03
+STA $D015
+LDA V_SLEEPING
+BEQ EPDone
+JMP WakeUp
+EPDone:
 RTS
 
 ; SprX: A = position (0-159 half pixels) -> A = low byte of A*2+24,
@@ -943,6 +1244,15 @@ RTS
 ; ATTRACTION, zaps for Hex's REPULSION.
 ; ---------------------------------------------------------------
 DrawMagic:
+LDA V_POSE
+CMP #C_P_LIE
+BNE DMNotZzz
+JMP DMZzz
+DMNotZzz:
+CMP #C_P_SHOWER
+BNE DMNotBub
+JMP DMBubbles
+DMNotBub:
 LDA V_SWAPT
 BEQ DMNoSwap
 DEC V_SWAPT
@@ -992,14 +1302,60 @@ SBC #10
 BCS DMShow
 LDA #$00
 DMShow:
+PHA
+LDA #C_FLOORY
+STA V_MY
+PLA
+DMShowY:
 JSR SprX
 STA $D004
 LDA #$04
 JSR SetHi
-LDA #C_FLOORY
+LDA V_MY
 STA $D005
 LDA #$04
 JMP SprOn
+
+DMZzz:
+LDA #C_F_ZZZ
+STA $07FA
+LDA #$00
+STA $D029
+LDA V_FRAME
+LSR
+LSR
+LSR
+LSR
+AND #$03
+STA V_T0
+LDA V_POSEY
+SEC
+SBC #20
+SEC
+SBC V_T0
+STA V_MY
+LDA V_PX
+CLC
+ADC #8
+JMP DMShowY
+
+DMBubbles:
+LDA #C_F_BUBBLES
+STA $07FA
+LDA #$01
+STA $D029
+LDA V_FRAME
+LSR
+LSR
+LSR
+AND #$03
+STA V_T0
+LDA V_POSEY
+SEC
+SBC V_T0
+STA V_MY
+LDA V_PX
+JMP DMShowY
 """
 
 BLOCKS["THINGS"] = """
@@ -1263,10 +1619,14 @@ RTS
 
 BLOCKS["CLOCK"] = """
 ; ---------------------------------------------------------------
-; ClockTick: every 100 frames (2 s) = 10 game minutes.
+; ClockTick: every 150 frames (3 s) = 10 game minutes.
 ; Each hour the needs drop a little (T_DECAY) and the sky changes.
 ; ---------------------------------------------------------------
 ClockTick:
+LDA V_SLEEPING         ; the clock stands still while she sleeps
+BEQ CTRun
+RTS
+CTRun:
 INC V_TICK
 LDA V_TICK
 CMP #C_TICKS
@@ -1336,7 +1696,7 @@ LDA V_HOUR             ; cafe closing time while she is there
 CMP #18
 BNE NHWarn
 LDA V_ROOM
-CMP #3
+CMP #C_CAFE
 BNE NHWarn
 LDA #C_M_CLOSING
 JMP PrintMsg
@@ -1388,6 +1748,10 @@ BLOCKS["ACTIONS"] = """
 ; show its prompt (or the room hint) on the message line.
 ; ---------------------------------------------------------------
 CheckSpot:
+LDA V_POSE             ; busy: keep the action's message up
+BEQ CSFree
+RTS
+CSFree:
 LDA V_PX
 CLC
 ADC #6
@@ -1509,6 +1873,8 @@ INC V_T4
 LDA V_T4
 CMP #5
 BNE DANLoop
+LDX V_OBJ              ; act it out
+JSR StartPose
 LDX V_T2
 LDA T_ACT+9,X
 CMP #C_SP_GROCERY
@@ -1615,7 +1981,8 @@ DWDone:
 RTS
 
 ; DoSleep: in bed at night (20:00-5:59) or when very tired: sleep till
-; 7:00 next morning, REST full. Otherwise just a nap.
+; 7:00 next morning, REST full. Otherwise just a nap. Either way she lies
+; in bed (the LIE pose) with a Zzz; the clock stands still while she sleeps.
 DoSleep:
 LDA V_HOUR
 CMP #20
@@ -1633,36 +2000,37 @@ JSR AddTime
 JSR SndUse
 LDA #C_M_NAP
 JSR PrintMsg
-JMP RefreshHud
+JSR RefreshHud
+LDX #C_A_SLEEP
+JMP StartPose
 DSSleep:
 JSR SndSleep
 LDA #$00
 STA V_COIN
 STA V_BEE
-LDA #$00
-STA $D015              ; hide the girl: she is under the covers
-LDA #C_F_ZZZ
-STA $07FA
-LDA #$00
-STA $D029
-LDA #20
-JSR SprX
-STA $D004
-LDA #$04
-JSR SetHi
-LDA #132
-STA $D005
-LDA #$04
-JSR SprOn
-LDA #$06
+LDA $D015              ; no coin or bee while she sleeps
+AND #$07
+STA $D015
+LDX #C_A_SLEEP
+JSR StartPose
+LDA #C_SLEEPT
+STA V_POSET
+LDA #$01
+STA V_SLEEPING
+LDA #$06               ; night sky
 STA V_SKYCOL
-LDA #180
-JSR Pause
+LDA #C_M_SLEEPING
+JMP PrintMsg
+
+; WakeUp: the night is over (the LIE pose ended).
+WakeUp:
+LDA #$00
+STA V_SLEEPING
 LDA V_HOUR
 CMP #7
-BCC DSSameDay
+BCC WUSameDay
 INC V_DAY
-DSSameDay:
+WUSameDay:
 LDA #7
 STA V_HOUR
 LDA #$00
@@ -1676,16 +2044,14 @@ JSR AddNeedSoft
 LDA #$F8
 LDX #2
 JSR AddNeedSoft
-LDA #$03
-STA $D015
 JSR SetSky
 JSR RefreshHud
 LDX V_FORM
 LDA #C_M_S_SLEEP
 CPX #$00
-BEQ DSMsg
+BEQ WUMsg
 LDA #C_M_H_SLEEP
-DSMsg:
+WUMsg:
 JMP PrintMsg
 
 ; Pause: A = frames to wait (music keeps playing).
@@ -1712,6 +2078,8 @@ LDA #C_M_FAINT
 JSR PrintMsg
 LDA #$00
 STA $D015
+STA V_POSE
+STA V_SLEEPING
 LDA #120
 JSR Pause
 LDA #24                ; 4 hours pass while she recovers...
@@ -1741,8 +2109,8 @@ JSR PrintMsg
 LDA #$03
 STA $D015
 LDA #$00
-STA V_ROOM
-LDA #52
+STA V_ROOM             ; she wakes up in the bedroom
+LDA #40
 STA V_PX
 JSR RefreshHud
 LDA #$FF
@@ -1805,14 +2173,23 @@ LDA T_MSGHI,X
 STA $57
 LDA T_MSGCOL,X
 STA V_T0
-LDY #39
+LDY #$00
 PMLoop:
-LDA ($56),Y
+LDA ($56),Y            ; 0 ends the message...
+BEQ PMPad
 STA """ + "$%04X" % screen(24, 0) + """,Y
 LDA V_T0
 STA """ + "$%04X" % (COLRAM + 24 * 40) + """,Y
-DEY
-BPL PMLoop
+INY
+CPY #40
+BNE PMLoop
+RTS
+PMPad:
+LDA #$20               ; ...and spaces fill the rest of the line
+STA """ + "$%04X" % screen(24, 0) + """,Y
+INY
+CPY #40
+BNE PMPad
 RTS
 
 ; RefreshHud: every HUD field (the HUD nodes give the field routines).
