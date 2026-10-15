@@ -127,47 +127,129 @@ function scr_sfx_maker_button(_x,_y,_w,_text,_mx,_my,_info="") {
 function scr_sfx_maker_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
     scr_sfx_maker_defaults(_a);
     var _m=_a.meta;
+    // Three columns centred in the panel: GUIDE, the shared instrument column
+    // and the effect column. The instrument column is as wide as its ADSR row
+    // (label 50 + four 86px steppers, less the last gap = 378) plus its frame.
+    var _gw=300, _lw=386, _gap=40;
+    var _rw=clamp(_x2-_x1-48-_gw-_lw-2*_gap, 380, 520);
+    var _tot=_gw+_lw+_rw+2*_gap;
+    var _bx=max(_x1+24, round((_x1+_x2-_tot)*0.5));
+    var _ix=_bx+_gw+_gap;
+    var _rx=_ix+_lw+_gap, _px=_rx+12, _pw=_rw-24;
+    var _c_head=make_color_rgb(255,200,100);
     draw_set_font_l(fnt_c64_tiny);draw_set_color(c_aqua);
-    draw_text_l(_x1+24,_cy,"SFX MAKER - independent sound effects");
-    scr_sound_editor_draw_instruments(_m,_x1+24,_cy+48,_mx,_my);
-    var _rx=_x1+420, _ry=_cy+48;
+    scr_editor_label(_bx,_cy-4,_bx+_tot,_cy+16,"SFX MAKER - INDEPENDENT SOUND EFFECTS");
+    scr_sound_editor_draw_instruments(_m,_ix+4,_cy+48,_mx,_my);
     draw_set_font_l(fnt_c64_tiny);
-    if (_m.sel_instr>=0 && _m.sel_instr<array_length(_m.instruments)) {
+    scr_sfx_maker_guide(_bx,_cy+24,_gw,_y2-16);
+
+    // ── EFFECT ── settings of the effect selected in the list. ADD/PASTE may
+    // have created it during the shared panel draw, so resolve it after that.
+    scr_sfx_maker_defaults(_a);
+    var _sel_ok=_m.sel_instr>=0 && _m.sel_instr<array_length(_m.instruments);
+    var _ry=_cy+24;
+    draw_set_color(_c_head);
+    scr_editor_label(_rx,_ry,_rx+_rw,_ry+26,_sel_ok?"EFFECT: "+_m.instruments[_m.sel_instr].name:"EFFECT",fa_left,0);
+    _ry+=24;
+    scr_editor_panel(_rx-4,_ry-2,_rx+_rw+4,_ry+168,true);
+    if (_sel_ok) {
         var _e=_m.instruments[_m.sel_instr];
-        // ADD/PASTE may have created this effect during the shared panel draw.
-        scr_sfx_maker_defaults(_a);
-        if(scr_sfx_maker_button(_rx,_ry,110,"PREVIEW",_mx,_my,"PLAYS THE SELECTED EFFECT AT ITS BASE NOTE ON PREVIEW VOICE 3 (COMMITS TEXT EDITS FIRST)")) {
+        var _hw=floor((_pw-10)/2);
+        var _y=_ry+10;
+        if(scr_sfx_maker_button(_px,_y,_hw,"PREVIEW",_mx,_my,"PLAYS THE SELECTED EFFECT AT ITS BASE NOTE ON PREVIEW VOICE 3 (COMMITS TEXT EDITS FIRST)")) {
             if(_m.instr_edit_active) scr_sound_editor_commit_instrument(_m,_e);
             scr_sound_instrument_preview_play(_e,_e.sfx_note,2,5);
         }
-        if(scr_sfx_maker_button(_rx+120,_ry,100,"STOP",_mx,_my,"STOPS THE EFFECT PREVIEW")) scr_sound_preview_free_channel(2);
-        _ry+=42;
-        draw_set_color(c_white);draw_text_l(_rx,_ry,"BASE NOTE: "+_e.sfx_note);
-        if(scr_sfx_maker_button(_rx,_ry+24,100,"NOTE -",_mx,_my,"LOWERS THE EFFECT BASE NOTE BY ONE SEMITONE (N COMMANDS ARE RELATIVE TO IT)")) {
+        if(scr_sfx_maker_button(_px+_hw+10,_y,_pw-_hw-10,"STOP",_mx,_my,"STOPS THE EFFECT PREVIEW")) scr_sound_preview_free_channel(2);
+        _y+=40;
+        draw_set_color(c_ltgray);scr_editor_label(_px,_y,_px+120,_y+26,"BASE NOTE:",fa_left,0);
+        var _names=["C-","C#","D-","D#","E-","F-","F#","G-","G#","A-","A#","B-"];
+        if(scr_sfx_maker_button(_px+120,_y,90,"NOTE -",_mx,_my,"LOWERS THE EFFECT BASE NOTE BY ONE SEMITONE (N COMMANDS ARE RELATIVE TO IT)")) {
             var _n=clamp(scr_sid_song_note_index(_e.sfx_note)-1,0,95);
-            var _names=["C-","C#","D-","D#","E-","F-","F#","G-","G#","A-","A#","B-"];
             _e.sfx_note=_names[_n mod 12]+string(_n div 12);global.addresses_dirty=true;global.undo_dirty=true;
         }
-        if(scr_sfx_maker_button(_rx+110,_ry+24,100,"NOTE +",_mx,_my,"RAISES THE EFFECT BASE NOTE BY ONE SEMITONE (N COMMANDS ARE RELATIVE TO IT)")) {
+        draw_set_color(c_white);scr_editor_label(_px+210,_y,_px+_pw-90,_y+26,_e.sfx_note);
+        if(scr_sfx_maker_button(_px+_pw-90,_y,90,"NOTE +",_mx,_my,"RAISES THE EFFECT BASE NOTE BY ONE SEMITONE (N COMMANDS ARE RELATIVE TO IT)")) {
             var _n=clamp(scr_sid_song_note_index(_e.sfx_note)+1,0,95);
-            var _names=["C-","C#","D-","D#","E-","F-","F#","G-","G#","A-","A#","B-"];
             _e.sfx_note=_names[_n mod 12]+string(_n div 12);global.addresses_dirty=true;global.undo_dirty=true;
         }
-        _ry+=72;
-        if(scr_sfx_maker_button(_rx,_ry,250,"PRIORITY: "+string(_e.sfx_priority),_mx,_my,"CYCLES PRIORITY 1-15: HIGHER INTERRUPTS LOWER, EQUAL RESTARTS, LOWER IS IGNORED")) {
+        _y+=40;
+        if(scr_sfx_maker_button(_px,_y,_pw,"PRIORITY: "+string(_e.sfx_priority),_mx,_my,"CYCLES PRIORITY 1-15: HIGHER INTERRUPTS LOWER, EQUAL RESTARTS, LOWER IS IGNORED")) {
             _e.sfx_priority=(_e.sfx_priority mod 15)+1;global.addresses_dirty=true;global.undo_dirty=true;
         }
-        _ry+=42;
-        var _frames=scr_sfx_maker_frames(_e);
-        draw_set_color(c_white);draw_text_l(_rx,_ry,"LENGTH: "+string(array_length(_frames))+" FRAMES (PAL)");
+        _y+=40;
+        draw_set_color(c_ltgray);scr_editor_label(_px,_y,_px+120,_y+26,"LENGTH:",fa_left,0);
+        draw_set_color(c_white);scr_editor_label(_px+120,_y,_px+_pw,_y+26,string(array_length(scr_sfx_maker_frames(_e)))+" FRAMES (PAL)",fa_left,0);
+    } else {
+        draw_set_color(c_gray);scr_editor_label(_rx,_ry,_rx+_rw,_ry+166,"SELECT OR ADD AN EFFECT IN THE LIST");
     }
-    _ry=_cy+320;
-    if(scr_sfx_maker_button(_rx,_ry,250,"SID CHIP: "+string(_m.sfx_chip+1),_mx,_my,"CYCLES WHICH SID CHIP (1-4) THE COMPILED EFFECTS WRITE TO")) {
+    _ry+=194;
+
+    // ── OUTPUT ── applies to every effect in this asset
+    draw_set_color(_c_head);scr_editor_label(_rx,_ry,_rx+_rw,_ry+26,"OUTPUT",fa_left,0);
+    _ry+=24;
+    scr_editor_panel(_rx-4,_ry-2,_rx+_rw+4,_ry+48,true);
+    if(scr_sfx_maker_button(_px,_ry+10,_pw,"SID CHIP: "+string(_m.sfx_chip+1),_mx,_my,"CYCLES WHICH SID CHIP (1-4) THE COMPILED EFFECTS WRITE TO")) {
         _m.sfx_chip=(_m.sfx_chip+1) mod 4;global.addresses_dirty=true;global.undo_dirty=true;
     }
-    draw_set_color(c_silver);
-    draw_text_ext_l(_rx,_ry+46,"Use an SFX macro to choose this asset, effect and voice.\nPLAY triggers it. UPDATE runs once per frame. STOP silences it.\n\nReserve that voice in Music Maker using its VOICES buttons.\nFor example: music 1 + 2, effects 3.\n\nHigher priority interrupts lower priority. Equal priority restarts.\nLower priority is ignored while a stronger effect is active.\n\nEffects finish automatically (maximum 255 frames).\nThe music position is never reset.\n\nSFX DATA remains the separate GoatTracker/Zed import path.\nUse COPY / PASTE to share instruments with Music Maker.",22,700);
+    _ry+=74;
+
+    // ── HOW IT WORKS ──
+    var _help="Use an SFX macro to choose this asset, effect and voice. PLAY triggers it, UPDATE runs once per frame, STOP silences it.\n\nReserve that voice in Music Maker with its VOICES buttons, e.g. music on 1 + 2, effects on 3.\n\nHigher priority interrupts lower, equal priority restarts, lower is ignored while a stronger effect is active.\n\nEffects finish by themselves (max 255 frames) and never reset the music position.\n\nSFX DATA stays the separate GoatTracker / Zed import path. COPY / PASTE shares instruments with Music Maker.";
+    draw_set_color(_c_head);scr_editor_label(_rx,_ry,_rx+_rw,_ry+26,"HOW IT WORKS",fa_left,0);
+    _ry+=24;
+    var _hh=min(string_height_ext_l(_help,20,_pw),max(40,_y2-16-_ry));
+    scr_editor_panel(_rx-4,_ry-2,_rx+_rw+4,_ry+_hh+22,true);
+    draw_set_color(c_silver);draw_set_halign(fa_left);
+    draw_text_ext_l(_px,_ry+10,_help,20,_pw);
     draw_set_color(c_white);
+}
+
+/// GUIDE column of the SFX Maker: quick start steps and the commands an effect
+/// can use (only those scr_sfx_maker_frames plays). _y is the heading row; the
+/// panel stops at _ybot.
+function scr_sfx_maker_guide(_x,_y,_w,_ybot) {
+    var _px=_x+12, _pw=_w-24;
+    draw_set_font_l(fnt_c64_tiny);draw_set_halign(fa_left);
+    draw_set_color(make_color_rgb(255,200,100));
+    scr_editor_label(_x,_y,_x+_w,_y+26,"GUIDE",fa_left,0);
+    _y+=24;
+    var _steps="1. + ADD an effect, or pick one in the list.\n"
+        +"2. Type its commands in the box, one per line.\n"
+        +"3. PREVIEW to hear it. NOTE - / + moves the base pitch.\n"
+        +"4. In your program add an SFX node: pick this asset, the effect and a voice. ACTION PLAY triggers it.\n"
+        +"5. Add an SFX node set to UPDATE that runs once per frame.\n"
+        +"6. In Music Maker turn that voice off so the music leaves it free.";
+    var _cmds=[["$xx","WAVEFORM"],["N  N+n  N-n","NOTE, FROM BASE NOTE"],["Dn","HOLD n FRAMES"],
+        ["Ln","LOOP BACK TO STEP n"],["Rc:n","REPEAT FROM n, c MORE TIMES"],["F+n","FINE PITCH"],
+        ["S+n","PITCH SLIDE PER FRAME"],["P$xxx","PULSE WIDTH"],["Q+n","PULSE SWEEP"],
+        ["G$xx","RAW GATE / WAVE"],["---","END: GATE OFF, RELEASE"]];
+    var _notes="WAVES: $11 TRI  $21 SAW  $41 PULSE  $81 NOISE\n\n"
+        +"LASER: $21, D2, N-12, D2, N-24, D2, ---\n\n"
+        +"~PITCH / ~PULSE / ~FILTER tables, vibrato and filter are Music Maker only - effects ignore them.";
+    var _sh=string_height_ext_l(_steps,18,_pw);
+    draw_set_font_l(fnt_c64_pico);
+    var _nh=string_height_ext_l(_notes,12,_pw);
+    var _h=12+22+_sh+16+22+array_length(_cmds)*14+10+_nh+12;
+    scr_editor_panel(_x-4,_y-2,_x+_w+4,min(_y+_h,_ybot),true);
+
+    var _ty=_y+12;
+    draw_set_font_l(fnt_c64_tiny);
+    draw_set_color(c_aqua);draw_text_l(_px,_ty,"QUICK START");
+    _ty+=22;
+    draw_set_color(c_silver);draw_text_ext_l(_px,_ty,_steps,18,_pw);
+    _ty+=_sh+16;
+    draw_set_color(c_aqua);draw_text_l(_px,_ty,"COMMANDS");
+    _ty+=22;
+    draw_set_font_l(fnt_c64_pico);
+    for(var _i=0;_i<array_length(_cmds);_i++) {
+        draw_set_color(c_yellow);draw_text_l(_px,_ty,_cmds[_i][0]);
+        draw_set_color(c_ltgray);draw_text_l(_px+90,_ty,_cmds[_i][1]);
+        _ty+=14;
+    }
+    _ty+=10;
+    draw_set_color(make_color_rgb(140,140,170));draw_text_ext_l(_px,_ty,_notes,12,_pw);
+    draw_set_font_l(fnt_c64_tiny);draw_set_color(c_white);
 }
 
 /// Pre-expand the existing instrument language into bounded per-frame SID values.
@@ -277,14 +359,46 @@ function scr_sfx_maker_node_draw(_dx,_a) {
     // Same spacing as MACRO_BMP: rows from y+28, 14px apart (rows y+28,
     // y+42, y+56, y+70; note y+86; body 100). scr_node_step_macro_sfx
     // clicks use the same row positions.
+    // ASSET row ends at the EDIT chip (_dx+width-46); the step script matches.
     draw_set_font_l(fnt_c64_tiny);draw_set_halign(fa_left);
     for(var _r=0;_r<4;_r++) {
         var _ry=y+28+14*_r;
-        var _hov=point_in_rectangle(mouse_x,mouse_y,_dx+68,_ry-1,_dx+width-8,_ry+13);
+        var _rx2=(_r==0)?_dx+width-50:_dx+width-8;
+        var _hov=point_in_rectangle(mouse_x,mouse_y,_dx+68,_ry-1,_rx2,_ry+13);
         draw_set_color(c_aqua);scr_node_macro_text_l(_dx+10,_ry,_labels[_r]);
         if(_hov) draw_set_color(c_yellow); else draw_set_color(c_white);
-        scr_node_macro_text_l(_dx+72,_ry,_values[_r]);
+        scr_node_macro_text_l(_dx+72,_ry,_values[_r],_rx2-_dx-74);
     }
+    scr_node_asset_edit_draw(_dx+width-46,y+27,_dx+width-8,y+41);
+    draw_set_font_l(fnt_c64_tiny);
     draw_set_color(c_silver);scr_node_macro_text_l(_dx+10,y+86,_mode==1?"ONCE PER FRAME":(_mode==3?"ONCE AT START":"SFX MAKER"));
     draw_set_color(c_white);
+}
+
+
+/// EDIT chip on a node (SFX, SID SONG): opens the asset the node names in its
+/// editor. Same look as the ANIM SET [EDIT] box. Returns the hit rect hover.
+function scr_node_asset_edit_draw(_x1, _y1, _x2, _y2) {
+    scr_anim_set_draw_box(_x1, _y1, _x2, _y2, "EDIT", c_aqua);
+    return point_in_rectangle(mouse_x, mouse_y, _x1, _y1, _x2, _y2);
+}
+
+/// Open the viewer on the first asset called _name whose type is in _types.
+/// Returns false (and does nothing) when the name is empty or not found.
+function scr_node_asset_open(_name, _types) {
+    if (!instance_exists(obj_asset_manager) || _name == "" || _name == "0" || _name == "[clear]") return false;
+    var _am = obj_asset_manager;
+    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
+        var _a = _am.asset_list[| _i];
+        if (_a.name == _name && array_contains(_types, _a.type)) {
+            scr_asset_inline_editor_close_all();
+            _am.viewer_asset = _i;
+            _am.viewer_open = true;
+            _am.bb_return_asset = -1;
+            keyboard_string = "";
+            mouse_clear(mb_left);
+            return true;
+        }
+    }
+    return false;
 }

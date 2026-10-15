@@ -27,20 +27,27 @@ function scr_node_draw_macro_sfx(_draw_x) {
     draw_set_font_l(fnt_c64_tiny);
 
     // ── Asset field ───────────────────────────────────────────────────────
+    // With an asset set, the field stops short of an EDIT chip on its right
+    // (step script uses the same _ax2).
     var _ay   = y + 30;
-    var _ahov = point_in_rectangle(mouse_x, mouse_y, _val_x1, _ay, _val_x2, _ay + _fld_h);
+    var _ax2  = _asset_set ? _val_x2 - 42 : _val_x2;
+    var _ahov = point_in_rectangle(mouse_x, mouse_y, _val_x1, _ay, _ax2, _ay + _fld_h);
 
     draw_set_color(make_color_rgb(120, 80, 200));
     scr_node_macro_text_l(_lbl_x, _ay, "SFX DATA:");
     draw_set_color(_ahov ? make_color_rgb(100, 60, 180) : make_color_rgb(50, 30, 90));
-    scr_macro_body_rectangle(_val_x1, _ay, _val_x2, _ay + _fld_h, false);
+    scr_macro_body_rectangle(_val_x1, _ay, _ax2, _ay + _fld_h, false);
     draw_set_color(_asset_set ? make_color_rgb(160, 100, 255) : make_color_rgb(80, 50, 120));
-    scr_macro_body_rectangle(_val_x1, _ay, _val_x2, _ay + _fld_h, true);
+    scr_macro_body_rectangle(_val_x1, _ay, _ax2, _ay + _fld_h, true);
     draw_set_halign(fa_center);
     draw_set_color(_asset_set ? c_white : c_gray);
-    scr_node_macro_text_l(_val_x1 + (_val_x2 - _val_x1) * 0.5, _ay ,
-              _asset_set ? _asset_name : L("PICK SFX"));
+    scr_node_macro_text_l(_val_x1 + (_ax2 - _val_x1) * 0.5, _ay ,
+              _asset_set ? _asset_name : L("PICK SFX"), _ax2 - _val_x1 - 4);
     draw_set_halign(fa_left);
+    if (_asset_set) {
+        scr_node_asset_edit_draw(_ax2 + 4, _ay, _val_x2, _ay + _fld_h);
+        draw_set_font_l(fnt_c64_tiny);
+    }
 
     // ── Instrument field — shows "N: NAME" ────────────────────────────────
     var _iy   = y + 52;

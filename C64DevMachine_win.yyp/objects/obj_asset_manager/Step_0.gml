@@ -69,7 +69,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
         _wide_modal = true;
         _vx1 = 30;
         _vx2 = panel_x + 20;
-        if (_vb_type == "MUSIC_MAKER" || _vb_type == "SPRITE_MASK" || _vb_type == "BMP_OBJECTS") {
+        if (_vb_type == "MUSIC_MAKER" || _vb_type == "SFX_MAKER" || _vb_type == "SPRITE_MASK" || _vb_type == "BMP_OBJECTS") {
             _vx2 = _gui_w - _vx1;   // full width, centred — must match Draw
         }
     }

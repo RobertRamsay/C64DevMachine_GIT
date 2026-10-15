@@ -35,11 +35,10 @@ function scr_node_draw_macro_sid_song(_draw_x, _y) {
         scr_node_macro_text_l(_draw_x + 62, _ly, "< PICK SONG >");
     } else {
         draw_set_color(_c_ast);
-        var _disp = _asset_name;
-        if (string_length(_disp) > 14) {
-            _disp = string_copy(_disp, 1, 14) + "...";
-        }
-        scr_node_macro_text_l(_draw_x + 62, _ly, _disp);
+        scr_node_macro_text_l(_draw_x + 62, _ly, _asset_name, width - 112);
+        // EDIT chip opens the song in Music Maker (step script: same rect)
+        scr_node_asset_edit_draw(_draw_x + width - 46, _ly - 1, _draw_x + width - 8, _ly + 13);
+        draw_set_font_l(fnt_c64_tiny);
     }
     _ly += _lh;
 

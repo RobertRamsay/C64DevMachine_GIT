@@ -12,7 +12,12 @@ function scr_node_step_macro_sfx(_draw_x) {
         // VOICE y+56, ACTION y+70, each 14px tall.
         var _nx1 = _draw_x + 68;
         var _nx2 = _draw_x + width - 8;
-        if (point_in_rectangle(mouse_x, mouse_y, _nx1, y + 27, _nx2, y + 41)) {
+        // EDIT chip at the end of the ASSET row opens the SFX Maker on it.
+        if (point_in_rectangle(mouse_x, mouse_y, _draw_x + width - 46, y + 27, _nx2, y + 41)) {
+            scr_node_asset_open(_native_sfx.name, ["SFX_MAKER"]);
+            exit;
+        }
+        if (point_in_rectangle(mouse_x, mouse_y, _nx1, y + 27, _draw_x + width - 50, y + 41)) {
             if (instance_exists(obj_asset_manager)) {
                 obj_asset_manager.sfx_picker_open  = true;
                 obj_asset_manager.sfx_picker_node  = id;
@@ -53,7 +58,17 @@ function scr_node_step_macro_sfx(_draw_x) {
 
     // ── Asset field — open SFX_DATA picker ───────────────────────────────
     var _ay = y + 30;
-    if (point_in_rectangle(mouse_x, mouse_y, _val_x1, _ay, _val_x2, _ay + _fld_h)) {
+    var _set_name = string(instructions[0][1]);
+    var _ax2 = _val_x2;
+    if (_set_name != "" && _set_name != "0") {
+        // EDIT chip at the right end of the field (matches the draw script)
+        _ax2 = _val_x2 - 42;
+        if (point_in_rectangle(mouse_x, mouse_y, _ax2 + 4, _ay, _val_x2, _ay + _fld_h)) {
+            scr_node_asset_open(_set_name, ["SFX_DATA", "SFX_MAKER"]);
+            exit;
+        }
+    }
+    if (point_in_rectangle(mouse_x, mouse_y, _val_x1, _ay, _ax2, _ay + _fld_h)) {
         if (instance_exists(obj_asset_manager)) {
             obj_asset_manager.sfx_picker_open  = true;
             obj_asset_manager.sfx_picker_node  = id;

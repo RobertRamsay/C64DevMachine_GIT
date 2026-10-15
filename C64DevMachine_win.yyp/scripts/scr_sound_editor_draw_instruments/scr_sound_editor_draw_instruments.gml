@@ -985,6 +985,8 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     }
 
     // ── COMMAND LEGEND ──
+    // The SFX Maker draws its own command list in its GUIDE column.
+    if (!variable_struct_exists(_m, "sfx_asset_name")) {
     var _lg_y = _pv_y + 32 + (_err_n * 12) + 10;
     draw_set_font_l(fnt_c64_pico);
     draw_set_color(make_color_rgb(110, 110, 130));
@@ -1000,6 +1002,7 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
     ];
     for (var _qgi = 0; _qgi < array_length(_qg); _qgi++) {
         draw_text_l(_tb_x0, _lg_y + _qgi * 12, _qg[_qgi]);
+    }
     }
     draw_set_font_l(fnt_c64_tiny);
 

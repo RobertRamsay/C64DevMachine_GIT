@@ -824,7 +824,7 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
 	var _vx2 = _wide_editor ? (panel_x + 20) : (panel_x - 10);
 	// The Music Maker is modal and uses the full width, centred: 30px margins
 	// both sides (matching its 108px top/bottom), over the asset panel.
-	if (_asset.type == "MUSIC_MAKER" || _asset.type == "SPRITE_MASK" || _asset.type == "BMP_OBJECTS") {
+	if (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER" || _asset.type == "SPRITE_MASK" || _asset.type == "BMP_OBJECTS") {
 		_vx2 = _gui_w - _vx1;
 	}
 	var _vy2 = 972;
@@ -1054,9 +1054,13 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK" || _asset.type == "SAMPLE") {
         // LOAD_ORG is a manifest — no meaningful load address. BITMAP_BUILDER
         // and SOUND_EDITOR are internal-only; their emitted BYTE_DATA/TEXT_DATA
-        // assets hold the real addresses. Show a dash, no hover/edit affordance.
-        draw_set_color(make_color_rgb(127, 127, 148));
-        scr_editor_label(_vx1 + 80, _ar_y1, _vx1 + 116, _ar_y2, "--", fa_left, 0);
+        // assets hold the real addresses. Show a dash, no hover/edit affordance
+        // — only where the ADDRESS: label is drawn (LOAD_ORG / LOAD_REU); the
+        // other types hide the label, so a lone dash was left floating.
+        if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU") {
+            draw_set_color(make_color_rgb(127, 127, 148));
+            scr_editor_label(_vx1 + 80, _ar_y1, _vx1 + 116, _ar_y2, "--", fa_left, 0);
+        }
     } else {
         var _ah = string_upper(decimal_to_hex(_asset.address));
         while (string_length(_ah) < 4) _ah = "0" + _ah;

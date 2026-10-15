@@ -25,6 +25,14 @@ function scr_node_step_macro_sid_song(_draw_x) {
 
     var _auto_init = is_real(instructions[0][2]) ? real(instructions[0][2]) : 1;
 
+    // ===== EDIT chip — opens the song in Music Maker =====
+    var _song = string(instructions[0][1]);
+    if (_song != "" && _song != "[clear]"
+    && point_in_rectangle(mouse_x, mouse_y, _draw_x + width - 46, _ly - 1, _draw_x + width - 8, _ly + 13)) {
+        scr_node_asset_open(_song, ["MUSIC_MAKER"]);
+        exit;
+    }
+
     // ===== SONG picker (slot 1) =====
     if (point_in_rectangle(mouse_x, mouse_y, _draw_x + 4, _ly, _draw_x + width - 6, _ly + 13)) {
         label_picker_open       = true;
