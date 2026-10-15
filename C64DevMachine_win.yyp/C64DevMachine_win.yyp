@@ -1119,6 +1119,7 @@
     {"id":{"name":"scr_code_editor_step","path":"scripts/scr_code_editor_step/scr_code_editor_step.yy",},},
     {"id":{"name":"scr_colour_name","path":"scripts/scr_colour_name/scr_colour_name.yy",},},
     {"id":{"name":"scr_compile_chain","path":"scripts/scr_compile_chain/scr_compile_chain.yy",},},
+    {"id":{"name":"scr_comment_arrows","path":"scripts/scr_comment_arrows/scr_comment_arrows.yy",},},
     {"id":{"name":"scr_compile_macro_load_game","path":"scripts/scr_compile_macro_load_game/scr_compile_macro_load_game.yy",},},
     {"id":{"name":"scr_compile_macro_save_game","path":"scripts/scr_compile_macro_save_game/scr_compile_macro_save_game.yy",},},
     {"id":{"name":"scr_compile_macro_uci_reu","path":"scripts/scr_compile_macro_uci_reu/scr_compile_macro_uci_reu.yy",},},

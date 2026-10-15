@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_comment_arrows",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_comment_arrows",
+  "parent":{
+    "name":"SPAWNS",
+    "path":"folders/SCRIPTS/CORE/SPAWNS.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

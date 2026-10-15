@@ -91,6 +91,7 @@ function scr_undo_snapshot() {
             comment_w_mult: variable_instance_exists(_inst, "comment_w_mult") ? _inst.comment_w_mult : 1,
             comment_w:      _inst.comment_w,
             comment_h:      _inst.comment_h,
+            comment_arrows: (_inst.node_type == "COMMENT") ? scr_comment_arrows_sanitize(_inst.comment_arrows) : [],
 			anim_alias:      variable_instance_exists(_inst, "anim_alias")      ? _inst.anim_alias      : "",
             scroll_alias:    variable_instance_exists(_inst, "scroll_alias")     ? _inst.scroll_alias    : "",
             code_descriptor: variable_instance_exists(_inst, "code_descriptor")  ? _inst.code_descriptor : "",

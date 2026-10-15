@@ -610,6 +610,7 @@ if (gui_menu_open == 4) {
         { title: "GRID",            action: "GRID"            },
         { title: "EFFECTS",         action: "EFFECTS"         },
         { title: "COMMENTS",        action: "COMMENTS"        },
+        { title: "COMMENT ARROWS",  action: "COMMENT_ARROWS"  },
         { title: "SHOW CODE",       action: "SHOW_CODE"       },
         { title: "MINIMIZE ALL",    action: "MINIMIZE_ALL"    },
         { title: "EXPAND ALL",      action: "EXPAND_ALL"      },
@@ -702,6 +703,10 @@ if (gui_menu_open == 4) {
         if (_op.action == "COMMENTS") {
             _state_str = global.comments_visible ? "ON" : "OFF";
             _state_col = global.comments_visible ? c_lime : c_red;
+        }
+        if (_op.action == "COMMENT_ARROWS") {
+            _state_str = global.comment_arrows_on ? "ON" : "OFF";
+            _state_col = global.comment_arrows_on ? c_lime : c_red;
         }
         if (_op.action == "SHOW_CODE") {
             // showcode_enabled, not showcode_open. Open is the header's
@@ -863,6 +868,9 @@ if (gui_menu_open == 4) {
             else if (_op.action == "COMMENTS") {
                 global.comments_visible = !global.comments_visible;
             }
+            else if (_op.action == "COMMENT_ARROWS") {
+                global.comment_arrows_on = !global.comment_arrows_on;
+            }
             else if (_op.action == "SHOW_CODE") {
                 showcode_enabled = !showcode_enabled;
                 scr_show_code_save_ini();
@@ -988,6 +996,7 @@ if (gui_menu_open == 4) {
                 global.visual_fx       = true;
                 global.node_destroy_fx = true;
                 global.comments_visible = true;
+                global.comment_arrows_on = true;
                 opcode_headers_on      = false;
                 opcode_extra_height    = true;
                 with (obj_c64_node) { height_dirty = true; }
@@ -1010,6 +1019,7 @@ if (gui_menu_open == 4) {
             ini_write_real("Settings", "mcp_mode", global.mcp_mode ? 1 : 0);
             ini_write_real("Settings", "visual_fx", global.visual_fx ? 1 : 0);
             ini_write_real("Settings", "comments_visible", global.comments_visible ? 1 : 0);
+            ini_write_real("Settings", "comment_arrows", global.comment_arrows_on ? 1 : 0);
             ini_write_real("Settings", "opcode_headers", opcode_headers_on ? 1 : 0);
             ini_write_real("Settings", "opcode_extra_height", opcode_extra_height ? 1 : 0);
             ini_close();

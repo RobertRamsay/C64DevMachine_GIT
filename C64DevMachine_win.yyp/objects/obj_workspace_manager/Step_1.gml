@@ -51,6 +51,10 @@ scr_org_collapse_hit();
 // open-locked rule. Begin Step for the same reason as the fold tab.
 scr_creator_begin_step();
 
+// COMMENT ARROWS: a press on a comment's yellow handle is taken here, before
+// any node Step can read it as a drag or a caret click.
+scr_comment_arrows_begin_step();
+
 // ---- IDLE DETECTION ----
 var _mx = global.gui_mouse_x;
 var _my = global.gui_mouse_y;

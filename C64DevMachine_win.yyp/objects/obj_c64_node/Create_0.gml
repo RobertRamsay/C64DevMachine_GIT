@@ -232,6 +232,9 @@ comment_rs_mx        = 0;    // pointer and size when the corner was grabbed
 comment_rs_my        = 0;
 comment_rs_w         = 0;
 comment_rs_h         = 0;
+// COMMENT ARROWS (scr_comment_arrows): one [on, target_x, target_y] per
+// bottom-edge handle - left, middle, right. Targets are fixed world points.
+comment_arrows       = scr_comment_arrows_empty();
 
 // ORG BLOCK COLLAPSE. Meaningful only on ORG nodes, but every node carries it
 // so scr_node_is_hidden() can read a parent's flag without testing for the

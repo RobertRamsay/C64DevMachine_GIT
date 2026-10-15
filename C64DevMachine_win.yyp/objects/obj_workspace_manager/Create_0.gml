@@ -2,6 +2,7 @@
 global.lite=0;
 // CREATOR LAYER globals (lock state, panels). Before anything can step.
 scr_creator_init();
+scr_comment_arrows_init();
 
 // ---------------------------------------------------------------------------
 // MCP / external control feature switch.
@@ -558,6 +559,7 @@ global.node_link_max_dist = 500;
 //  3. BUFFER & PATH PERSISTENCE 
 global.vice_path_cache = "";
 global.comments_visible = true;
+global.comment_arrows_on = true;
 p_buf                  = -1;
 
 //  4. SHELF PALETTE 
@@ -1253,6 +1255,7 @@ global.mcp_mode        = ini_read_real("Settings", "mcp_mode",            1) == 
 global.visual_fx       = ini_read_real("Settings", "visual_fx",           1) == 1;
 global.node_destroy_fx = global.visual_fx;
 global.comments_visible = ini_read_real("Settings", "comments_visible",   1) == 1;
+global.comment_arrows_on = ini_read_real("Settings", "comment_arrows",     1) == 1;
 opcode_headers_on      = ini_read_real("Settings", "opcode_headers",      0) == 1;
 opcode_extra_height    = ini_read_real("Settings", "opcode_extra_height", 1) == 1;
 flow_line_style        = ini_read_real("Settings", "flow_line_style",     1);

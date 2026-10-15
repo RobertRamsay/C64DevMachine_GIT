@@ -617,6 +617,7 @@ function scr_node_from_record(d, i) {
     // comment_w_mult, which still gives their width.
     if (variable_struct_exists(d, "comment_w")) _n.comment_w = d.comment_w;
     if (variable_struct_exists(d, "comment_h")) _n.comment_h = d.comment_h;
+    if (variable_struct_exists(d, "comment_arrows")) _n.comment_arrows = scr_comment_arrows_sanitize(d.comment_arrows);
     if (variable_struct_exists(d, "anim_alias")   && d.anim_alias   != "") _n.anim_alias   = d.anim_alias;
     if (variable_struct_exists(d, "scroll_alias") && d.scroll_alias != "") _n.scroll_alias = d.scroll_alias;
 		if (variable_struct_exists(d, "code_descriptor")) _n.code_descriptor = d.code_descriptor;
