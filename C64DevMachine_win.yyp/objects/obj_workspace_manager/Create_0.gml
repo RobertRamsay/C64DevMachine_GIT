@@ -1267,6 +1267,8 @@ if (_tour_after_restart >= 0) {
     tour_start_pending = _tour_after_restart;
     welcome_open       = false;
 }
+// Tours finished by hand, for the DONE stamps in the tour list
+scr_tour_done_load();
 
 // ---- SHOW CODE PANEL (floating live listing, left of the shortcuts column) ----
 // First-run position and layout, set by hand. This used to default x to -1,
@@ -1353,6 +1355,7 @@ global.code_import_release = 0;
 // frame out of date. Whoever does that asks for a couple of extra passes here
 // instead of trying to re-derive every height itself.
 global.relayout_frames = 0;
+editor_was_open = false;          // Step: catch-up relayout when an editor closes
 
 scr_uqmenu_load();
 

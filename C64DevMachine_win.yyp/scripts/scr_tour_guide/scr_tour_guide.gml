@@ -647,6 +647,70 @@ function scr_tour_enter_step() {
     base_jsr_count = scr_tour_count_op("jsr", false);
     base_rts_count = scr_tour_count_op("rts", false);
     base_jmp_count = scr_tour_count_op("jmp_abs", false);
+
+    // Reached the DONE! step with every step done by hand: stamp it
+    if (tour_clean && step_idx == array_length(steps) - 1) {
+        scr_tour_mark_done(tour_id);
+    }
+}
+
+/// @desc Done flags for the welcome list, one per scr_tour_list() entry.
+///       Keyed by title so reordering the list keeps them. Reads from the
+///       ini the caller already has open.
+function scr_tour_done_load() {
+    var _list = scr_tour_list();
+    global.tour_done = array_create(array_length(_list), false);
+    for (var _i = 0; _i < array_length(_list); _i++) {
+        global.tour_done[_i] = (ini_read_real("TourDone", _list[_i].title, 0) != 0);
+    }
+}
+
+/// @desc Remember that tour _id was finished with no skips or help.
+function scr_tour_mark_done(_id) {
+    var _list = scr_tour_list();
+    if (_id < 0 || _id >= array_length(_list) || global.tour_done[_id]) {
+        return;
+    }
+    global.tour_done[_id] = true;
+    ini_open("c64devmachine.ini");
+    ini_write_real("TourDone", _list[_id].title, 1);
+    ini_close();
+}
+
+/// @desc A [DONE] rubber stamp centred on _cx,_cy, tilted up to the right.
+function scr_tour_draw_done_stamp(_cx, _cy) {
+    var _ang = 12;
+    var _txt = "DONE";
+    draw_set_font_l(fnt_c64_tiny);
+    var _hw = string_width_l(_txt) * 0.5 + 8;
+    var _hh = string_height(_txt) * 0.5 + 3;
+    // Box corners rotated anticlockwise on screen (y runs down)
+    var _c  = dcos(_ang);
+    var _s  = dsin(_ang);
+    var _px = [-_hw, _hw, _hw, -_hw];
+    var _py = [-_hh, -_hh, _hh, _hh];
+    var _xs = array_create(4, 0);
+    var _ys = array_create(4, 0);
+    for (var _i = 0; _i < 4; _i++) {
+        _xs[_i] = _cx + _px[_i] * _c + _py[_i] * _s;
+        _ys[_i] = _cy - _px[_i] * _s + _py[_i] * _c;
+    }
+    var _ink = make_color_rgb(90, 230, 110);
+    draw_set_alpha(0.9);
+    draw_set_color(make_color_rgb(20, 60, 30));
+    draw_triangle(_xs[0], _ys[0], _xs[1], _ys[1], _xs[2], _ys[2], false);
+    draw_triangle(_xs[0], _ys[0], _xs[2], _ys[2], _xs[3], _ys[3], false);
+    draw_set_alpha(1);
+    draw_set_color(_ink);
+    for (var _i = 0; _i < 4; _i++) {
+        var _j = (_i + 1) mod 4;
+        draw_line_width(_xs[_i], _ys[_i], _xs[_j], _ys[_j], 2);
+    }
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_middle);
+    draw_text_transformed_l(_cx, _cy, _txt, 1, 1, _ang);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
 }
 
 /// @desc Draw loops call this with the rect they just drew for _key.
@@ -1045,6 +1109,9 @@ function scr_tour_panel_click_self() {
 
     if (step_idx < _last && point_in_rectangle(_mx, _my, btn_all[0], btn_all[1], btn_all[2], btn_all[3])) {
         auto_all   = !auto_all;
+        if (auto_all) {
+            tour_clean = false;
+        }
         auto_wait  = 0;
         auto_stall = 0;
         hold_auto  = false;
@@ -1075,6 +1142,10 @@ function scr_tour_panel_click_self() {
         if (step_idx >= _last) {
             scr_tour_end();
             return;
+        }
+        // NEXT on a step that waits for the user is SKIP
+        if (steps[step_idx].check != "NONE") {
+            tour_clean = false;
         }
         step_idx++;
         hold_auto = false;
@@ -3244,6 +3315,7 @@ function scr_tour_do_it() {
     did_text = _msg;
     did_step = step_idx;
     hold_auto = false;
+    tour_clean = false;
     global.undo_dirty     = true;
     global.autosave_dirty = true;
     obj_workspace_manager.alarm[3] = 6;

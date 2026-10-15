@@ -2476,7 +2476,8 @@ scr_perf_node("gui", "ws: memory bar");
 
 var _bar_x1 = shelf_width + 60;
 var _bar_x2 = gui_w - 60;
-scr_draw_memory_bar(_bar_x1, _bar_x2, gui_h - 40);
+// The code editor covers the bar: skip it (and its cache rebuild) meanwhile.
+if (!code_editor_open) scr_draw_memory_bar(_bar_x1, _bar_x2, gui_h - 40);
 
  scr_code_editor_draw();
 
@@ -4242,6 +4243,11 @@ if (welcome_open) {
             draw_text_l(_rx1 + 36, _ry + 4, _tours[_ti].title);
             draw_set_color(make_color_rgb(140, 200, 200));
             draw_text_l(_rx1 + 36, _ry + 19, _tours[_ti].blurb);
+
+            // Finished with no skips or help: a DONE stamp over the top right corner
+            if (global.tour_done[_ti]) {
+                scr_tour_draw_done_stamp(_rx2 - 36, _ry + 4);
+            }
         }
 
         // Where to find this list again, bottom-left beside the BACK button

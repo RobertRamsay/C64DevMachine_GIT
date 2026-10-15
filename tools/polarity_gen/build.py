@@ -40,46 +40,52 @@ def build_assets():
         for i, b in enumerate(data):
             mem[addr + i] = b
 
-    map_addrs = [game.MAP_BASE + i * 800 for i in range(5)]
-    chr_addrs = [game.CHR_BASE + i * 0x800 for i in range(5)]
+    nrooms, ngroups = len(rooms.ROOM_NAMES), len(rooms.GROUP_NAMES)
+    map_addrs = [game.MAP_BASE + i * 800 for i in range(nrooms)]
+    chr_addrs = [game.CHR_BASE + g * 0x800 for g in range(ngroups)]
     tilecol = []
-    for i, rname in enumerate(rooms.ROOM_NAMES):
-        tb, co, grid, cgrid, ogrid, used = rooms.build_room(i)
-        # CHAR_SET: font + UI (0-71) then this room's MC tiles
+    for g, gname in enumerate(rooms.GROUP_NAMES):
+        tb, co, maps, used = rooms.build_group(g)
+        # CHAR_SET: the font + UI glyphs, with this room pair's MC tiles in the
+        # slots no text uses (rooms.TILE_CODES)
         cs = []
         for code in range(256):
-            if code < rooms.FIRST_TILE:
-                cs += font.glyph_bytes(code)
-            else:
-                cs += tb.get(code, [0] * 8)
+            cs += tb[code] if code in tb else font.glyph_bytes(code)
         cmeta = copy.deepcopy(GA["GATE_CHARS"]["meta"])
         cmeta.update({"format": "RAW", "char_count": 256.0, "total_size": 2048.0, "mc_mode": 1.0,
                       "mc_fg": 1.0, "mc_bg": 14.0, "mc_col1": 9.0, "mc_col2": 0.0, "bmp_mode": "MC",
                       "tile_types": [0.0] * 256})
-        assets.append(asset("CHARS_" + rname, "CHAR_SET", chr_addrs[i], cs, cmeta))
-        place(chr_addrs[i], cs)
-        # MAP_DATA 40x20, RAW CHARS (char plane only; colours come from TILE_COLOURS)
-        mmeta = {k: v for k, v in GA["GATE_LEVELS"]["meta"].items()
-                 if k not in ("char_grid", "colour_grid", "override_grid")}
-        mmeta.update({"map_w": 40.0, "map_h": 20.0, "grid_w": 40.0, "grid_h": 20.0,
-                      "room_w": 40.0, "room_h": 20.0, "room_count": 1.0, "raw_chars": 1.0,
-                      "map_mixed": 1.0, "mc_mode": 1.0, "mc_bg": 14.0, "mc_col1": 9.0, "mc_col2": 0.0,
-                      "map_mc_bg": 14.0, "map_mc_col1": 9.0, "map_mc_col2": 0.0,
-                      "chr_asset": "CHARS_" + rname, "active_char": 72.0, "erase_char": 32.0,
-                      "char_grid": [float(c) for c in grid], "colour_grid": [float(c) for c in cgrid],
-                      "override_grid": [float(c) for c in ogrid], "scroll_x": 0.0, "scroll_y": 0.0,
-                      "room_view": [], "room_objects": [], "obj_regions": [], "tile_colours": []})
-        colour_plane = [(c & 7) | (8 if o else 0) for c, o in zip(cgrid, ogrid)]
-        blob = list(grid) + colour_plane + list(ogrid)
-        assets.append(asset("MAP_" + rname, "MAP_DATA", map_addrs[i], blob, mmeta))
-        place(map_addrs[i], grid)
-        # colour table: font chars use the room's sign colour
-        page = []
-        for code in range(256):
-            page.append(rooms.ROOM_TEXT_COL[i] if code < rooms.FIRST_TILE else co.get(code, 8))
-        tilecol += page
+        assets.append(asset("CHARS_" + gname, "CHAR_SET", chr_addrs[g], cs, cmeta))
+        place(chr_addrs[g], cs)
+        for i, (grid, cgrid, ogrid) in maps.items():
+            rname = rooms.ROOM_NAMES[i]
+            # MAP_DATA 40x20, RAW CHARS (char plane only; colours come from TILE_COLOURS)
+            mmeta = {k: v for k, v in GA["GATE_LEVELS"]["meta"].items()
+                     if k not in ("char_grid", "colour_grid", "override_grid")}
+            mmeta.update({"map_w": 40.0, "map_h": 20.0, "grid_w": 40.0, "grid_h": 20.0,
+                          "room_w": 40.0, "room_h": 20.0, "room_count": 1.0, "raw_chars": 1.0,
+                          "map_mixed": 1.0, "mc_mode": 1.0, "mc_bg": 14.0, "mc_col1": 9.0, "mc_col2": 0.0,
+                          "map_mc_bg": 14.0, "map_mc_col1": 9.0, "map_mc_col2": 0.0,
+                          "chr_asset": "CHARS_" + gname, "active_char": 72.0, "erase_char": 32.0,
+                          "char_grid": [float(c) for c in grid], "colour_grid": [float(c) for c in cgrid],
+                          "override_grid": [float(c) for c in ogrid], "scroll_x": 0.0, "scroll_y": 0.0,
+                          "room_view": [], "room_objects": [], "obj_regions": [], "tile_colours": []})
+            colour_plane = [(c & 7) | (8 if o else 0) for c, o in zip(cgrid, ogrid)]
+            blob = list(grid) + colour_plane + list(ogrid)
+            assets.append(asset("MAP_" + rname, "MAP_DATA", map_addrs[i], blob, mmeta))
+            place(map_addrs[i], grid)
+        # colour table: font chars use the pair's sign colour
+        tilecol += [co[c] if c in co else rooms.GROUP_TEXT_COL[g] for c in range(256)]
     assets.append(byte_asset("TILE_COLOURS", game.T_TILECOL_ADDR, tilecol))
     place(game.T_TILECOL_ADDR, tilecol)
+
+    # no text may use a glyph slot that room tiles can take
+    reclaimed = set(rooms.TILE_CODES) - set(range(rooms.FIRST_TILE, 256))
+    texts = [m[1] for m in game.MSGS] + [l[2] for _, ls in TEXT_PAGES for l in ls] + [TOP_ROW] + BOT_ROWS \
+        + game.NAMES + game.POWERS + game.PLACES
+    for t in texts:
+        bad = [c for c in t if c not in "{}|~" and font.screen_code(c) in reclaimed]
+        assert not bad, ("text uses a reclaimed glyph", t, bad)
 
     tables = game.build_tables(map_addrs, chr_addrs)
     tables["T_TILECOL"] = (game.T_TILECOL_ADDR, tilecol)
@@ -159,7 +165,7 @@ TOP_ROW = "SUNNY  ATTRACT  HOME     $0020 08:00 D01"
 def hud_top_asset():
     col = [7] * 6 + [1] + [7] * 7 + [1, 1] + [3] * 6 + [1] * 3 + [7] * 5 + [1] + [1] * 5 + [1] + [3] * 3
     col = (col + [1] * 40)[:40]
-    fields = [field("NAME", 0, 0, 6, 0), field("POWER", 7, 0, 7, 0), field("PLACE", 16, 0, 6, 0),
+    fields = [field("NAME", 0, 0, 6, 0), field("POWER", 7, 0, 7, 0), field("PLACE", 16, 0, 7, 0),
               field("MHI", 26, 0, 2, 1), field("MLO", 28, 0, 2, 1), field("HH", 31, 0, 2, 1),
               field("MM", 34, 0, 1, 1), field("DAY", 38, 0, 2, 1)]
     return hud_asset("HUD_TOP", 0, [TOP_ROW], [col], fields)
@@ -298,27 +304,26 @@ def layout():
             else:
                 out.append(('macro', 'MACRO_PRINT', 'PRINT', print_code(x, row, col, text, text_addr[0], centre is True)))
                 text_addr[0] += len(text)
-        assert text_addr[0] <= 0x4000, hex(text_addr[0])
+        assert text_addr[0] <= 0x3000, hex(text_addr[0])
         return out
     vic_game = ["macro_vic", "MCT", 0.0, 1024.0, 12288.0, 0.0, 14.0, 9.0, 0.0, 0.0]
     vic_text = ["macro_vic", "MCT", 0.0, 1024.0, 12288.0, 0.0, 0.0, 9.0, 0.0, 0.0]
     F = lambda n: float(sprites.INDEX[n])
     cols = [
         dict(name="01 BOOT", x=360, org=None, items=[('code', 'BOOT')]),
-        dict(name="02 TITLE + HOW TO PLAY", x=680, org=0x0900, items=[
+        dict(name="02 TITLE + THEME TUNE", x=680, org=0x0900, items=[
             ('label', 'Title'),
             ('macro', 'MACRO_BMP', 'TITLE PICTURE', [["macro_bmp", "TITLE_PIC", 16384.0, 1.0, 0.0]]),
-            ('macro', 'MACRO_SID_SONG', 'POLARITY THEME', [["macro_sid_song", "POL_MUSIC", 1.0, 3.0, 2.0, 0.0, 0.0]], game.UID_SONG),
+            # SFX INIT first: it writes $D418 = $0F (filter mode off). The song's
+            # init then sets $D418 = $1F, so the low-pass filter on the bass
+            # voice stays on. The other way round, the bass voice is silent.
             ('macro', 'MACRO_SFX', 'SFX INIT', [["macro_sfx", "POL_SFX", 0.0, 3.0, 3.0]]),
+            ('macro', 'MACRO_SID_SONG', 'POLARITY THEME', [["macro_sid_song", "POL_MUSIC", 1.0, 3.0, 2.0, 0.0, 0.0]], game.UID_SONG),
             ('code', 'TITLE_IRQ'),
             ('label', 'TitlePic'),
             ('macro', 'MACRO_BMP', 'TITLE PICTURE', [["macro_bmp", "TITLE_PIC", 16384.0, 1.0, 0.0]]),
             ('code', 'TITLE_HOLD'),
-            ('label', 'ShowHelp'),
-            ('code', 'HELP_PREP'),
-            ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),
-            ('macro', 'MACRO_CLR_SCREEN', 'CLEAR SCREEN', [["macro_clr_screen", 1024.0, 32.0]]),
-        ] + pr(HELP_LINES, 'HELP_TEXT') + [('op', 'rts', 0.0)]),
+        ]),
         dict(name="03 FRAME SYNC / IRQ / SOUNDS", x=1000, org=0x2600, items=[
             ('label', 'FrameTick'),
             ('macro', 'MACRO_VWAIT', 'FRAME SYNC', [["macro_vwait", 248.0, 0.0, ""]]),
@@ -343,8 +348,8 @@ def layout():
             ('macro', 'MACRO_HUD', 'NEEDS PANEL', [["macro_hud", "HUD_BOT", 1024.0, 55296.0, 1.0, 1.0]], game.UID_HUD_BOT),
             ('code', 'NEW_GAME'),
         ]),
-        dict(name="05 ROOMS", x=1640, org=0x6E00, items=[('code', 'ROOM')]),
-        dict(name="06 MAIN LOOP + JOYSTICK", x=1960, org=0x7000, items=[
+        dict(name="05 ROOMS", x=1640, org=0x6D40, items=[('code', 'ROOM')]),
+        dict(name="06 MAIN LOOP + JOYSTICK", x=1960, org=0x6EC0, items=[
             ('label', 'MainLoop'),
             ('op', 'jsr', 'FrameTick'),
             ('code', 'MAIN_PRE'),
@@ -353,10 +358,18 @@ def layout():
             ('op', 'jmp_abs', 'MainLoop'),
             ('code', 'JOY'),
         ]),
-        dict(name="07 SISTERS, MAGIC, COIN, BEE", x=2280, org=0x7200, items=[('code', 'SPRITES'), ('code', 'THINGS')]),
-        dict(name="08 CLOCK, NEEDS, ACTIONS", x=2600, org=0x7600, items=[('code', 'CLOCK'), ('code', 'ACTIONS')]),
-        dict(name="09 MONEY, MESSAGES, HUD", x=2920, org=0x7A00, items=[('code', 'HUD')]),
-        dict(name="10 DREAM COME TRUE", x=3240, org=0x7C00, items=[
+        dict(name="07 SISTERS, MAGIC, COIN, BEE", x=2280, org=0x7060, items=[('code', 'SPRITES'), ('code', 'THINGS')]),
+        dict(name="08 CLOCK, NEEDS, ACTIONS", x=2600, org=0x75E0, items=[('code', 'CLOCK'), ('code', 'ACTIONS')]),
+        dict(name="09 MONEY, MESSAGES, HUD", x=2920, org=0x79C0, items=[('code', 'HUD')]),
+        # The HOW TO PLAY page lives in its own column at $7C40, leaving the
+        # title column's space ($0900-$25FF) to the theme tune.
+        dict(name="11 HOW TO PLAY", x=3560, org=0x7C40, items=[
+            ('label', 'ShowHelp'),
+            ('code', 'HELP_PREP'),
+            ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),
+            ('macro', 'MACRO_CLR_SCREEN', 'CLEAR SCREEN', [["macro_clr_screen", 1024.0, 32.0]]),
+        ] + pr(HELP_LINES, 'HELP_TEXT') + [('op', 'rts', 0.0)]),
+        dict(name="10 DREAM COME TRUE", x=3240, org=0x7B00, items=[
             ('label', 'WinGame'),
             ('code', 'WIN_PREP'),
             ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),
@@ -365,7 +378,7 @@ def layout():
     ]
     comments = {
         "01 BOOT": "POLARITY - a sisterly life sim.\nBOOT: BASIC off, CIA IRQs off,\nthen the title.",
-        "02 TITLE + HOW TO PLAY": "Title picture + theme tune.\nAlternates with HOW TO PLAY.\nFIRE starts a new life.",
+        "02 TITLE + THEME TUNE": "Title picture + theme tune.\nAlternates with HOW TO PLAY.\nFIRE starts a new life.",
         "03 FRAME SYNC / IRQ / SOUNDS": "FrameTick: frame wait.\nIrqMusic: raster IRQ chain\n(tune, SFX, sky/HUD split).",
         "04 NEW LIFE: SCREEN, SPRITES, HUD": "MC text screen, 5 sprites,\nstatus row + needs panel HUDs.\nReset the sisters' life.",
         "05 ROOMS": "Each place: own CHAR_SET +\nMAP (40x20) + colour table.\nHOME STREET SHOP CAFE PARK",
@@ -374,6 +387,7 @@ def layout():
         "08 CLOCK, NEEDS, ACTIONS": "2 s = 10 minutes. Needs drop\nhourly. UP uses an object:\nACTION table drives it.",
         "09 MONEY, MESSAGES, HUD": "Money in base-100 bytes.\nMessage line + HUD field\nroutines from the HUD nodes.",
         "10 DREAM COME TRUE": "Job level 5: the sisters\nown the cafe. FIRE: title.",
+        "11 HOW TO PLAY": "The HOW TO PLAY page:\nPRINT nodes reading the\nHELP_TEXT asset.",
     }
     return cols, comments
 
@@ -508,17 +522,27 @@ def stub(item, test_input):
         s += "joy_done:\n"
         return s
     if typ == 'MACRO_PRINT':
+        # Like the real node: the text sits in memory (inline text at the
+        # node's text address, injected into the PRG; asset text inside the
+        # TEXT_DATA asset) and a short loop copies it, so sizes match.
         x, y, colr, text = int(r[1]), int(r[2]), int(r[3]), r[5]
         if len(r) > 9 and r[9] == 1.0:
-            text = text_assets()[0][r[10]][1][int(r[11]):int(r[12])]
+            base, full, _ = text_assets()[0][r[10]]
+            text = full[int(r[11]):int(r[12])]
+            src = base + int(r[11])
+        else:
+            src = int(r[6])
+            for i, c in enumerate(text):
+                INLINE_TEXT[src + i] = font.screen_code(c)
         if r[7] == 2.0:
             x = (40 - len(text)) // 2
-        codes = [font.screen_code(c) for c in text]
         k = "pr%d_" % u
-        return ("JMP %ss\n%sd:\n.byte %s\n%ss:\nLDX #$00\n%sl:\nLDA %sd,X\nSTA $%04X,X\nLDA #$%02X\nSTA $%04X,X\nINX\nCPX #%d\nBNE %sl\n"
-                % (k, k, ",".join(str(c) for c in codes), k, k, k, 0x0400 + y * 40 + x, colr, 0xD800 + y * 40 + x, len(codes), k))
+        return ("LDX #$00\n%sl:\nLDA $%04X,X\nSTA $%04X,X\nLDA #$%02X\nSTA $%04X,X\nINX\nCPX #%d\nBNE %sl\n"
+                % (k, src, 0x0400 + y * 40 + x, colr, 0xD800 + y * 40 + x, len(text), k))
     raise ValueError(typ)
 
+
+INLINE_TEXT = {}      # address -> screen code: inline PRINT text (the IDE injects it)
 
 def build_test_prg(tables, mem, path, test_input):
     cols, _ = layout()
@@ -549,6 +573,7 @@ def build_test_prg(tables, mem, path, test_input):
         print("  %-38s $%04X-$%04X (%d bytes)" % (name, s, e - 1, e - s))
     code = a.link()
     allm = dict(mem)
+    allm.update(INLINE_TEXT)
     for k, v in code.items():
         if k in allm:
             raise SystemExit("code overlaps data at $%04X" % k)

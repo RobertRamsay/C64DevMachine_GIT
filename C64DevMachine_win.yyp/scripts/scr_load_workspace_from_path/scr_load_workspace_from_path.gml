@@ -354,671 +354,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
         scr_bmp_preview_queue_reset();
 
         for (var _ai = 0; _ai < array_length(_ads); _ai++) {
-            var _ad = _ads[_ai];
-            var _buf = noone;
-            if (variable_struct_exists(_ad, "blob") && string_length(_ad.blob) > 0) {
-                _buf = scr_blob_decode(_ad.blob);
-            }
-            if (_buf == noone) {
-                _buf = buffer_create(1, buffer_fixed, 1);
-            }
-
-            var _meta = {};
-            if (variable_struct_exists(_ad, "meta")) {
-                var _sm = _ad.meta;
-                if (variable_struct_exists(_sm, "sprite_mcs"))     _meta.sprite_mcs     = _sm.sprite_mcs;
-                if (variable_struct_exists(_sm, "sprite_ucs"))     _meta.sprite_ucs     = _sm.sprite_ucs;
-                if (variable_struct_exists(_sm, "mc1_col"))        _meta.mc1_col        = _sm.mc1_col;
-                if (variable_struct_exists(_sm, "mc2_col"))        _meta.mc2_col        = _sm.mc2_col;
-                if (variable_struct_exists(_sm, "used_count"))     _meta.used_count     = _sm.used_count;
-                if (variable_struct_exists(_sm, "strip_frames"))   _meta.strip_frames   = _sm.strip_frames;
-                if (variable_struct_exists(_sm, "strip_base"))     _meta.strip_base     = _sm.strip_base;
-                if (variable_struct_exists(_sm, "bg_col"))         _meta.bg_col         = _sm.bg_col;
-                // GRADIENT tool CUSTOM stop run — see scr_save_workspace_as.
-                if (variable_struct_exists(_sm, "gradient_custom_active")) _meta.gradient_custom_active = _sm.gradient_custom_active;
-                if (variable_struct_exists(_sm, "gradient_custom_cols"))   _meta.gradient_custom_cols   = _sm.gradient_custom_cols;
-                if (variable_struct_exists(_sm, "gradient_custom_count"))  _meta.gradient_custom_count  = _sm.gradient_custom_count;
-                // Absent = pre-HiRes-support project, which means it was always MC.
-                _meta.bmp_mode = variable_struct_exists(_sm, "bmp_mode") ? _sm.bmp_mode : "MC";
-                // TONE-SORTED flag. Absent = pre-flag project, which means the
-                // bytes were quantised count-sorted, so false is correct.
-                _meta.tone_sorted = variable_struct_exists(_sm, "tone_sorted") ? _sm.tone_sorted : false;
-                // BITMAP collision tags. Absent = untagged / pre-tag project;
-                // scr_asset_bmp_build_preview backfills an all-zero grid when
-                // it runs. That is now deferred to the preview queue, so for
-                // a few frames after a load an untagged BITMAP may have no
-                // grid at all - every consumer already guards for that, and a
-                // grid restored from the file above is never touched either way.
-                if (variable_struct_exists(_sm, "coll_types") && is_array(_sm.coll_types)) {
-                    if (array_length(_sm.coll_types) == 1000) {
-                        _meta.coll_types = _sm.coll_types;
-                    }
-                }
-                // Bitmap editor sprite overlay: keep only well-formed sprites
-                // (older row-based overlays are flattened to free sprites)
-                if (is_struct(_sm[$ "spr_overlay"])) {
-                    var _so = scr_bmp_spr_migrate(_sm.spr_overlay);
-                    if (!is_undefined(_so)) _meta.spr_overlay = _so;
-                }
-                if (variable_struct_exists(_sm, "sprite_json"))    _meta.sprite_json    = _sm.sprite_json;
-                if (variable_struct_exists(_sm, "compositor"))     _meta.compositor     = _sm.compositor;
-                if (variable_struct_exists(_sm, "anim"))           _meta.anim           = _sm.anim;
-                if (variable_struct_exists(_sm, "sid_init_addr"))  _meta.sid_init_addr  = _sm.sid_init_addr;
-                if (variable_struct_exists(_sm, "sid_play_addr"))  _meta.sid_play_addr  = _sm.sid_play_addr;
-                if (variable_struct_exists(_sm, "sid_data_start")) _meta.sid_data_start = _sm.sid_data_start;
-                if (variable_struct_exists(_sm, "format"))         _meta.format         = _sm.format;
-                if (variable_struct_exists(_sm, "tile_types"))     _meta.tile_types     = _sm.tile_types;
-                if (variable_struct_exists(_sm, "char_count"))     _meta.char_count     = _sm.char_count;
-                if (variable_struct_exists(_sm, "total_size"))     _meta.total_size     = _sm.total_size;
-                _meta.mc_mode  = variable_struct_exists(_sm, "mc_mode")  ? _sm.mc_mode  : 0;
-                _meta.mc_fg    = variable_struct_exists(_sm, "mc_fg")    ? _sm.mc_fg    : 1;
-                _meta.mc_bg    = variable_struct_exists(_sm, "mc_bg")    ? _sm.mc_bg    : 0;
-                _meta.mc_col1  = variable_struct_exists(_sm, "mc_col1")  ? _sm.mc_col1  : 1;
-                _meta.mc_col2  = variable_struct_exists(_sm, "mc_col2")  ? _sm.mc_col2  : 2;
-                _meta.ecm_bg1  = variable_struct_exists(_sm, "ecm_bg1")  ? _sm.ecm_bg1  : 6;
-                _meta.ecm_bg2  = variable_struct_exists(_sm, "ecm_bg2")  ? _sm.ecm_bg2  : 14;
-                _meta.ecm_bg3  = variable_struct_exists(_sm, "ecm_bg3")  ? _sm.ecm_bg3  : 3;
-                _meta.preview_surf = -1;
-                _meta.preview_surf = -1;
-                if (variable_struct_exists(_sm, "map_w"))          _meta.map_w          = _sm.map_w;
-                if (variable_struct_exists(_sm, "map_h"))          _meta.map_h          = _sm.map_h;
-                if (variable_struct_exists(_sm, "grid_w"))         _meta.grid_w         = _sm.grid_w;
-                if (variable_struct_exists(_sm, "grid_h"))         _meta.grid_h         = _sm.grid_h;
-                if (variable_struct_exists(_sm, "char_grid"))      _meta.char_grid      = _sm.char_grid;
-                if (variable_struct_exists(_sm, "colour_grid"))    _meta.colour_grid    = _sm.colour_grid;
-                if (variable_struct_exists(_sm, "chr_asset"))      _meta.chr_asset      = _sm.chr_asset;
-                if (variable_struct_exists(_sm, "scroll_x"))       _meta.scroll_x       = _sm.scroll_x;
-                if (variable_struct_exists(_sm, "scroll_y"))       _meta.scroll_y       = _sm.scroll_y;
-                if (variable_struct_exists(_sm, "zoom"))           _meta.zoom           = _sm.zoom;
-                if (variable_struct_exists(_sm, "active_char"))    _meta.active_char    = _sm.active_char;
-                if (variable_struct_exists(_sm, "active_colour"))  _meta.active_colour  = _sm.active_colour;
-                if (variable_struct_exists(_sm, "tool"))           _meta.tool           = _sm.tool;
-                if (variable_struct_exists(_sm, "text"))           _meta.text           = _sm.text;
-                if (variable_struct_exists(_sm, "byte_string"))    _meta.byte_string    = _sm.byte_string;
-                if (variable_struct_exists(_sm, "line_string"))    _meta.line_string    = _sm.line_string;
-                if (variable_struct_exists(_sm, "lines"))          _meta.lines          = _sm.lines;
-                if (variable_struct_exists(_sm, "pick"))           _meta.pick           = _sm.pick;
-                if (variable_struct_exists(_sm, "active_type"))    _meta.active_type    = _sm.active_type;
-                if (variable_struct_exists(_sm, "ref_enabled"))    _meta.ref_enabled    = _sm.ref_enabled;
-                if (variable_struct_exists(_sm, "ref_asset_name")) _meta.ref_asset_name = _sm.ref_asset_name;
-                if (variable_struct_exists(_sm, "ref_offset_x"))   _meta.ref_offset_x   = _sm.ref_offset_x;
-                if (variable_struct_exists(_sm, "ref_offset_y"))   _meta.ref_offset_y   = _sm.ref_offset_y;
-                if (variable_struct_exists(_sm, "wide_x"))         _meta.wide_x         = _sm.wide_x;
-                if (variable_struct_exists(_sm, "is_save_file"))   _meta.is_save_file   = _sm.is_save_file;
-                if (variable_struct_exists(_sm, "save_file_size")) _meta.save_file_size = _sm.save_file_size;
-                if (variable_struct_exists(_sm, "mc_mode"))        _meta.mc_mode        = _sm.mc_mode;
-                if (variable_struct_exists(_sm, "paint_mc"))       _meta.paint_mc       = _sm.paint_mc;
-                if (variable_struct_exists(_sm, "map_mixed"))      _meta.map_mixed      = _sm.map_mixed;
-                if (variable_struct_exists(_sm, "raw_chars"))      _meta.raw_chars      = _sm.raw_chars;
-                if (variable_struct_exists(_sm, "room_w"))         _meta.room_w         = _sm.room_w;
-                if (variable_struct_exists(_sm, "room_h"))         _meta.room_h         = _sm.room_h;
-                if (variable_struct_exists(_sm, "room_count"))     _meta.room_count     = _sm.room_count;
-                if (variable_struct_exists(_sm, "stream_flag_colour")) _meta.stream_flag_colour = _sm.stream_flag_colour;
-                if (variable_struct_exists(_sm, "room_view"))      _meta.room_view      = _sm.room_view;
-                if (variable_struct_exists(_sm, "view_y2"))        _meta.view_y2        = _sm.view_y2;
-                if (variable_struct_exists(_sm, "erase_char"))     _meta.erase_char     = _sm.erase_char;
-                if (variable_struct_exists(_sm, "override_grid"))  _meta.override_grid  = _sm.override_grid;
-                if (variable_struct_exists(_sm, "map_mc_bg"))      _meta.map_mc_bg      = _sm.map_mc_bg;
-                if (variable_struct_exists(_sm, "tile_colours"))   _meta.tile_colours   = _sm.tile_colours;
-                if (variable_struct_exists(_sm, "obj_asset")) _meta.obj_asset = _sm.obj_asset;
-                if (variable_struct_exists(_sm, "room_objects")) _meta.room_objects = _sm.room_objects;
-                if (variable_struct_exists(_sm, "obj_row_off")) _meta.obj_row_off = _sm.obj_row_off;
-                if (variable_struct_exists(_sm, "obj_col_off")) _meta.obj_col_off = _sm.obj_col_off;
-                if (variable_struct_exists(_sm, "obj_table_addr")) _meta.obj_table_addr = _sm.obj_table_addr;
-                if (variable_struct_exists(_sm, "obj_regions")) _meta.obj_regions = _sm.obj_regions;
-                if (variable_struct_exists(_sm, "map_mc_col1"))    _meta.map_mc_col1    = _sm.map_mc_col1;
-                if (variable_struct_exists(_sm, "map_mc_col2"))    _meta.map_mc_col2    = _sm.map_mc_col2;
-            }
-            if (_ad.type == "SPRITE_SET") _meta.spr_sprites = array_create(64, -1);
-
-			var _new_asset = {
-                name          : _ad.name,
-                type          : _ad.type,
-                address       : _ad.address,
-                file          : variable_struct_exists(_ad, "file") ? _ad.file : "",
-                buffer        : _buf,
-                meta          : _meta,
-                load_later    : variable_struct_exists(_ad, "load_later")    ? _ad.load_later    : false,
-                d64_filename  : variable_struct_exists(_ad, "d64_filename")  ? _ad.d64_filename  : "",
-                reu_filename  : variable_struct_exists(_ad, "reu_filename")  ? _ad.reu_filename  : ((_ad.type == "LOAD_REU") ? _ad.name + ".reu" : ""),
-                reu_size      : variable_struct_exists(_ad, "reu_size")      ? _ad.reu_size      : ((_ad.type == "LOAD_REU") ? 0x1000000 : 0),
-                reu_used      : variable_struct_exists(_ad, "reu_used")      ? _ad.reu_used      : ((_ad.type == "LOAD_REU") ? 0x100 : 0),
-                reu_base_file : variable_struct_exists(_ad, "reu_base_file") ? _ad.reu_base_file : "",
-                linked_assets : variable_struct_exists(_ad, "linked_assets") ? _ad.linked_assets : [],
-                group         : variable_struct_exists(_ad, "group")         ? _ad.group         : "",
-                order         : variable_struct_exists(_ad, "order")         ? _ad.order         : -1,
-            };
-            if (variable_struct_exists(_ad, "source_file") && _ad.source_file != "")
-                _new_asset.meta.source_file = _ad.source_file;
-
-            ds_list_add(_am.asset_list, _new_asset);
-
-            if (_ad.type == "SPRITE_SET") scr_asset_spr_cache_sprites(_new_asset);
-			// NOTE: there used to be an unconditional scr_asset_bmp_build_preview()
-			// call on this line. The block below already builds the preview, after
-			// it has checked the buffer against the size this asset's own bmp_mode
-			// implies and reloaded from source if the buffer was short. So the old
-			// call decoded all 64000 pixels, built the mask, uploaded a surface —
-			// and the block below immediately freed that surface and did it again.
-			// Every bitmap in a project cost exactly twice what it should.
-			if (_ad.type == "BITMAP" && buffer_exists(_buf)) {
-			    // bmp_mode was just restored onto _new_asset.meta above (or defaulted
-			    // to MC), so this is the correct expected size for THIS asset — a
-			    // hardcoded 10003 here is exactly what silently dropped HiRes bitmaps:
-			    // a valid 9002-byte HiRes buffer always failed both checks below,
-			    // so build_preview was never called and the asset looked empty.
-			    var _expected_bmp_size = scr_asset_bmp_is_hires(_new_asset) ? 9002 : 10003;
-			    if (buffer_get_size(_buf) < _expected_bmp_size && _new_asset.file != "" && file_exists(_new_asset.file)) {
-			        buffer_delete(_buf);
-			        _buf = buffer_load(_new_asset.file);
-			        _new_asset.buffer = _buf;
-			    }
-			    if (buffer_exists(_buf) && buffer_get_size(_buf) >= _expected_bmp_size) {
-			        // Queued, not built. See scr_bmp_preview_queue for why: a
-			        // project with a 60-frame REU animation would otherwise
-			        // decode 60 full-screen bitmaps before the window redraws.
-			        scr_bmp_preview_queue_push(_new_asset);
-			    }
-			}
-            if (_ad.type == "CHAR_SET"   && buffer_exists(_buf) && buffer_get_size(_buf) > 8) {
-                _new_asset.file_name = filename_name(_new_asset.file);
-                // Always reload from source file to ensure correct text/binary parsing
-                if (_new_asset.file != "" && file_exists(_new_asset.file)) {
-                    scr_asset_chr_reload(_new_asset);
-                } else {
-                    scr_asset_chr_build_preview(_new_asset);
-                }
-            }
-            if (_ad.type == "TEXT_DATA") {
-                if (!variable_struct_exists(_new_asset.meta, "text")) _new_asset.meta.text = "";
-				_new_asset.meta.inline_edit_open      = false;
-				_new_asset.meta.inline_edit_text      = _new_asset.meta.text;
-				_new_asset.meta.inline_edit_cursor    = 0;
-				_new_asset.meta.inline_edit_scroll_y  = 0;
-				_new_asset.meta.inline_edit_sel_start = -1;
-				_new_asset.meta.inline_edit_sel_end   = -1;
-				_new_asset.meta.inline_edit_blink     = 0;
-				_new_asset.meta.inline_edit_key_timer = 0;
-				
-                scr_asset_text_flush(_new_asset);
-            }
-			
-			
-			
-            if (_ad.type == "BYTE_DATA") {
-               if (!variable_struct_exists(_new_asset.meta, "byte_string")) _new_asset.meta.byte_string = "";
-               if (!variable_struct_exists(_new_asset.meta, "is_save_file")) _new_asset.meta.is_save_file = false;
-               if (!variable_struct_exists(_new_asset.meta, "save_file_size")) _new_asset.meta.save_file_size = 256;
-				_new_asset.meta.inline_edit_open      = false;
-				// Sync the edit buffer with the loaded string so the editor isn't empty
-				_new_asset.meta.inline_edit_text      = _new_asset.meta.byte_string;
-				_new_asset.meta.inline_edit_cursor    = 0;
-				_new_asset.meta.inline_edit_scroll_y  = 0;
-				_new_asset.meta.inline_edit_sel_start = -1;
-				_new_asset.meta.inline_edit_sel_end   = -1;
-				_new_asset.meta.inline_edit_blink     = 0;
-				_new_asset.meta.inline_edit_key_timer = 0;
-                if (!_new_asset.meta.is_save_file) {
-                    // Only re-derive the buffer from byte_string for normal BYTE_DATA
-                    // assets. Save-file-mode assets already have their real buffer
-                    // restored from the saved blob above — byte_string there is just
-                    // the stale creation-time default and has nothing to do with the
-                    // actual reserved size.
-                    scr_asset_byte_data_flush(_new_asset);
-                }
-            }
-            if (_ad.type == "PICKUP_TABLE") {
-                if (!variable_struct_exists(_new_asset.meta, "pick")) _new_asset.meta.pick = scr_pickup_default();
-                _new_asset.meta.pick_undo = [];
-            }
-            if (_ad.type == "LINE_COLL") {
-                if (!variable_struct_exists(_new_asset.meta, "lines"))          _new_asset.meta.lines = [];
-                if (!variable_struct_exists(_new_asset.meta, "line_string"))    _new_asset.meta.line_string = "";
-                if (!variable_struct_exists(_new_asset.meta, "active_type"))    _new_asset.meta.active_type = 1;
-                if (!variable_struct_exists(_new_asset.meta, "ref_enabled"))    _new_asset.meta.ref_enabled = false;
-                if (!variable_struct_exists(_new_asset.meta, "ref_asset_name")) _new_asset.meta.ref_asset_name = "";
-                if (!variable_struct_exists(_new_asset.meta, "ref_offset_x"))   _new_asset.meta.ref_offset_x = 0;
-                if (!variable_struct_exists(_new_asset.meta, "ref_offset_y"))   _new_asset.meta.ref_offset_y = 0;
-                if (!variable_struct_exists(_new_asset.meta, "wide_x"))         _new_asset.meta.wide_x = false;
-                _new_asset.meta.draw_x1            = -1;
-                _new_asset.meta.draw_y1            = -1;
-                _new_asset.meta.undo               = [];
-                _new_asset.meta.redo               = [];
-                _new_asset.meta.edit_mode          = false;
-                _new_asset.meta.drag_line          = -1;
-                _new_asset.meta.drag_end           = 0;
-                _new_asset.meta.line_scroll        = 0;
-                _new_asset.meta.ref_picker_open    = false;
-                _new_asset.meta.inline_edit_open      = false;
-                _new_asset.meta.inline_edit_text      = _new_asset.meta.line_string;
-                _new_asset.meta.inline_edit_cursor    = 0;
-                _new_asset.meta.inline_edit_scroll_y  = 0;
-                _new_asset.meta.inline_edit_sel_start = -1;
-                _new_asset.meta.inline_edit_sel_end   = -1;
-                _new_asset.meta.inline_edit_blink     = 0;
-                _new_asset.meta.inline_edit_key_timer = 0;
-                // lines[] is the saved source of truth — rebuild the compiled
-                // buffer and line_string from it directly (no text re-parse).
-                scr_line_coll_commit(_new_asset);
-            }
-            if (_ad.type == "SFX_DATA") {
-                var _sfx_sm = _ad.meta;
-                if (variable_struct_exists(_sfx_sm, "song_name"))   _new_asset.meta.song_name   = _sfx_sm.song_name;
-                if (variable_struct_exists(_sfx_sm, "sfx_count"))   _new_asset.meta.sfx_count   = _sfx_sm.sfx_count;
-                if (variable_struct_exists(_sfx_sm, "wavetable"))   _new_asset.meta.wavetable   = _sfx_sm.wavetable;
-                if (variable_struct_exists(_sfx_sm, "instruments")) {
-                    _new_asset.meta.instruments = _sfx_sm.instruments;
-                    var _wt     = variable_struct_exists(_new_asset.meta, "wavetable") ? _new_asset.meta.wavetable : noone;
-                    var _instrs = _new_asset.meta.instruments;
-                    for (var _ii = 0; _ii < array_length(_instrs); _ii++) {
-                        var _instr = _instrs[_ii];
-                        _instr.wavetable_rows = [];
-                        if (_wt == noone || _instr.wave_pos == 0) continue;
-                        var _pos    = _instr.wave_pos - 1;
-                        var _wt_len = array_length(_wt.left);
-                        var _seen   = ds_map_create();
-                        while (_pos >= 0 && _pos < _wt_len) {
-                            if (ds_map_exists(_seen, _pos)) break;
-                            ds_map_add(_seen, _pos, true);
-                            var _L = _wt.left[_pos];
-                            var _R = _wt.right[_pos];
-                            array_push(_instr.wavetable_rows, { left: _L, right: _R, row: _pos + 1 });
-                            if (_L == 0xFF) break;
-                            _pos++;
-                        }
-                        ds_map_destroy(_seen);
-                    }
-                }
-            }
-            if (_ad.type == "MAP_DATA") {
-                if (!variable_struct_exists(_new_asset.meta, "preview_surf"))      _new_asset.meta.preview_surf      = -1;
-                if (!variable_struct_exists(_new_asset.meta, "tool"))              _new_asset.meta.tool              = "CHAR";
-                if (!variable_struct_exists(_new_asset.meta, "zoom"))              _new_asset.meta.zoom              = 2;
-                if (!variable_struct_exists(_new_asset.meta, "scroll_x"))          _new_asset.meta.scroll_x          = 0;
-                if (!variable_struct_exists(_new_asset.meta, "scroll_y"))          _new_asset.meta.scroll_y          = 0;
-                if (!variable_struct_exists(_new_asset.meta, "active_char"))       _new_asset.meta.active_char       = 0;
-                if (!variable_struct_exists(_new_asset.meta, "active_colour"))     _new_asset.meta.active_colour     = 1;
-                _new_asset.meta.active_colour = clamp(_new_asset.meta.active_colour, 0, 7);
-                if (!variable_struct_exists(_new_asset.meta, "char_strip_offset")) _new_asset.meta.char_strip_offset = 0;
-                if (!variable_struct_exists(_new_asset.meta, "mc_mode"))           _new_asset.meta.mc_mode           = 2;
-                if (!variable_struct_exists(_new_asset.meta, "paint_mc"))          _new_asset.meta.paint_mc          = 0;
-                if (!variable_struct_exists(_new_asset.meta, "map_mixed"))         _new_asset.meta.map_mixed         = obj_workspace_manager.map_global_mixed;
-                if (!variable_struct_exists(_new_asset.meta, "raw_chars"))         _new_asset.meta.raw_chars         = 0;
-                if (!variable_struct_exists(_new_asset.meta, "room_w"))            _new_asset.meta.room_w            = 40;
-                if (!variable_struct_exists(_new_asset.meta, "room_h"))            _new_asset.meta.room_h            = 25;
-                if (!variable_struct_exists(_new_asset.meta, "room_count"))        _new_asset.meta.room_count        = 0;
-                if (!variable_struct_exists(_new_asset.meta, "stream_flag_colour")) _new_asset.meta.stream_flag_colour = -1;
-                if (!variable_struct_exists(_new_asset.meta, "room_view"))         _new_asset.meta.room_view         = [];
-                if (!variable_struct_exists(_new_asset.meta, "view_y2"))           _new_asset.meta.view_y2           = false;
-                if (!variable_struct_exists(_new_asset.meta, "erase_char"))        _new_asset.meta.erase_char        = 0;
-                if (!variable_struct_exists(_new_asset.meta, "map_mc_bg"))         _new_asset.meta.map_mc_bg         = -1;
-                if (!variable_struct_exists(_new_asset.meta, "tile_colours"))      _new_asset.meta.tile_colours      = [];
-                if (!variable_struct_exists(_new_asset.meta, "obj_asset")) _new_asset.meta.obj_asset = "";
-                if (!variable_struct_exists(_new_asset.meta, "room_objects")) _new_asset.meta.room_objects = [];
-                if (!variable_struct_exists(_new_asset.meta, "obj_row_off")) _new_asset.meta.obj_row_off = 0;
-                if (!variable_struct_exists(_new_asset.meta, "obj_col_off")) _new_asset.meta.obj_col_off = 0;
-                if (!variable_struct_exists(_new_asset.meta, "obj_table_addr")) _new_asset.meta.obj_table_addr = 0;
-                if (!variable_struct_exists(_new_asset.meta, "obj_regions")) _new_asset.meta.obj_regions = [];
-                if (!variable_struct_exists(_new_asset.meta, "obj_mode")) _new_asset.meta.obj_mode = false;
-                if (!variable_struct_exists(_new_asset.meta, "obj_sel")) _new_asset.meta.obj_sel = 0;
-                if (!variable_struct_exists(_new_asset.meta, "show_objects")) _new_asset.meta.show_objects = true;
-                if (!variable_struct_exists(_new_asset.meta, "map_mc_col1"))       _new_asset.meta.map_mc_col1       = -1;
-                if (!variable_struct_exists(_new_asset.meta, "map_mc_col2"))       _new_asset.meta.map_mc_col2       = -1;
-                // Physical stride is grid_w x grid_h, NOT map_w x map_h. Backfill
-                // grid dims from saved meta, else from the restored char_grid length,
-                // else fall back to logical size for genuinely fresh assets.
-                if (!variable_struct_exists(_new_asset.meta, "grid_w") ||
-                    !variable_struct_exists(_new_asset.meta, "grid_h")) {
-                    var _ml_known = 0;
-                    if (variable_struct_exists(_new_asset.meta, "char_grid")) {
-                        _ml_known = array_length(_new_asset.meta.char_grid);
-                    } else if (variable_struct_exists(_new_asset.meta, "colour_grid")) {
-                        _ml_known = array_length(_new_asset.meta.colour_grid);
-                    }
-                    if (_ml_known > 0 && _new_asset.meta.map_h > 0 &&
-                        (_ml_known mod _new_asset.meta.map_h) == 0) {
-                        _new_asset.meta.grid_w = _ml_known div _new_asset.meta.map_h;
-                        _new_asset.meta.grid_h = _new_asset.meta.map_h;
-                    } else {
-                        _new_asset.meta.grid_w = _new_asset.meta.map_w;
-                        _new_asset.meta.grid_h = _new_asset.meta.map_h;
-                    }
-                }
-                var _ml_phys = _new_asset.meta.grid_w * _new_asset.meta.grid_h;
-                // Restore override_grid at physical stride. If the saved array is the
-                // wrong size, reallocate but preserve any surviving cells rather than
-                // zero-wiping the whole plane (which loses all per-tile HR/MC flags).
-                if (!variable_struct_exists(_new_asset.meta, "override_grid")) {
-                    _new_asset.meta.override_grid = array_create(_ml_phys, 0);
-                } else if (array_length(_new_asset.meta.override_grid) != _ml_phys) {
-                    var _ml_old = _new_asset.meta.override_grid;
-                    var _ml_old_len = array_length(_ml_old);
-                    var _ml_new = array_create(_ml_phys, 0);
-                    var _ml_copy = min(_ml_old_len, _ml_phys);
-                    for (var _ml_i = 0; _ml_i < _ml_copy; _ml_i++) {
-                        _ml_new[_ml_i] = _ml_old[_ml_i];
-                    }
-                    _new_asset.meta.override_grid = _ml_new;
-                }
-            }
-				if (_ad.type == "META_TILESET") {
-	            scr_asset_meta_tileset_create(_new_asset);
-                // Creation defaults must not replace the saved asset address.
-                _new_asset.address = _ad.address;
-	            var _tsm = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
-	            _new_asset.meta.stamp_w               = variable_struct_exists(_tsm, "stamp_w")      ? _tsm.stamp_w      : 2;
-	            _new_asset.meta.stamp_h               = variable_struct_exists(_tsm, "stamp_h")      ? _tsm.stamp_h      : 2;
-	            _new_asset.meta.stamp_count           = variable_struct_exists(_tsm, "stamp_count")  ? _tsm.stamp_count  : 0;
-	            _new_asset.meta.chr_asset             = variable_struct_exists(_tsm, "chr_asset")    ? _tsm.chr_asset    : "";
-	            _new_asset.meta.stamp_data            = variable_struct_exists(_tsm, "stamp_data")   ? _tsm.stamp_data   : [];
-	            // Per-stamp HR(0)/MC(1) flag. Backfill to stamp_count for pre-field saves.
-	            if (variable_struct_exists(_tsm, "stamp_mc")) {
-	                _new_asset.meta.stamp_mc = _tsm.stamp_mc;
-	            } else {
-	                _new_asset.meta.stamp_mc = array_create(_new_asset.meta.stamp_count, 0);
-	            }
-	            while (array_length(_new_asset.meta.stamp_mc) < _new_asset.meta.stamp_count) {
-	                array_push(_new_asset.meta.stamp_mc, 0);
-	            }
-	            // Per-char mode LUT (0 = HR, 1 = MC). Old files lack it: default all-HR, 256 long.
-	            if (variable_struct_exists(_tsm, "char_lut")) {
-	                _new_asset.meta.char_lut = _tsm.char_lut;
-	            } else {
-	                _new_asset.meta.char_lut = array_create(256, 0);
-	            }
-	            while (array_length(_new_asset.meta.char_lut) < 256) {
-	                array_push(_new_asset.meta.char_lut, 0);
-	            }
-	            _new_asset.meta.char_lut_len = variable_struct_exists(_tsm, "char_lut_len") ? _tsm.char_lut_len : 0;
-	            // Per-stamp colour override (0-15 = force, $80 = none). Backfill to stamp_count with $80.
-	            if (variable_struct_exists(_tsm, "stamp_override")) {
-	                _new_asset.meta.stamp_override = _tsm.stamp_override;
-	            } else {
-	                _new_asset.meta.stamp_override = array_create(_new_asset.meta.stamp_count, 0x80);
-	            }
-	            while (array_length(_new_asset.meta.stamp_override) < _new_asset.meta.stamp_count) {
-	                array_push(_new_asset.meta.stamp_override, 0x80);
-	            }
-	            _new_asset.meta.zoom                  = variable_struct_exists(_tsm, "zoom")         ? _tsm.zoom         : 4;
-				_new_asset.meta.test_zoom             = variable_struct_exists(_tsm, "test_zoom")    ? _tsm.test_zoom    : 1;
-	            _new_asset.meta.map_mc_col1           = variable_struct_exists(_tsm, "map_mc_col1")  ? _tsm.map_mc_col1  : 1;
-	            _new_asset.meta.map_mc_col2           = variable_struct_exists(_tsm, "map_mc_col2")  ? _tsm.map_mc_col2  : 2;
-	            _new_asset.meta.stamp_list_scroll     = 0;
-	            _new_asset.meta.char_strip_offset     = 0;
-	            _new_asset.meta.stamp_clip            = [];
-	            _new_asset.meta.stamp_clip_valid      = false;
-	            _new_asset.meta.active_stamp_grid_col  = array_create(_new_asset.meta.stamp_w * _new_asset.meta.stamp_h, 1);
-	            // Select stamp 0 (if any) and pre-fill the edit grid from its
-	            // stamp_data, so the canvas shows the correct metatile on first
-	            // open rather than a blank grid until the user clicks a slot.
-	            var _mts_cells = _new_asset.meta.stamp_w * _new_asset.meta.stamp_h;
-	            _new_asset.meta.active_stamp_grid_char = array_create(_mts_cells, 0);
-	            if (_new_asset.meta.stamp_count > 0)
-	            {
-	                _new_asset.meta.edit_stamp = 0;
-	                for (var _mts_i = 0; _mts_i < _mts_cells; _mts_i++)
-	                {
-	                    if (_mts_i < array_length(_new_asset.meta.stamp_data))
-	                    {
-	                        _new_asset.meta.active_stamp_grid_char[_mts_i] = _new_asset.meta.stamp_data[_mts_i];
-	                    }
-	                }
-	            }
-	            else
-	            {
-	                _new_asset.meta.edit_stamp = -1;
-	            }
-	            // Restore map placement data (flat int arrays, -1 = empty)
-	            _new_asset.meta.maps       = variable_struct_exists(_tsm, "maps")       ? _tsm.maps       : [];
-	            _new_asset.meta.map_count  = variable_struct_exists(_tsm, "map_count")  ? _tsm.map_count  : array_length(_new_asset.meta.maps);
-	            _new_asset.meta.active_map = variable_struct_exists(_tsm, "active_map") ? _tsm.active_map : -1;
-	            _new_asset.meta.test_grid  = variable_struct_exists(_tsm, "test_grid")  ? _tsm.test_grid  : [];
-	            _new_asset.meta.map_bytes  = array_create(_new_asset.meta.map_count, 0);
-	            _new_asset.meta.map_tab_scroll = 0;
-	            // Restore per-map dims + the size guard key so the viewer's
-	            // "size changed -> clear maps" guard does NOT fire on first open
-	            // and wipe the just-loaded maps. If the key is absent (old saves),
-	            // rebuild it from the restored stamp size so it still matches.
-	            if (variable_struct_exists(_tsm, "map_w")) {
-	                _new_asset.meta.map_w = _tsm.map_w;
-	            } else {
-	                _new_asset.meta.map_w = [];
-	            }
-	            if (variable_struct_exists(_tsm, "map_h")) {
-	                _new_asset.meta.map_h = _tsm.map_h;
-	            } else {
-	                _new_asset.meta.map_h = [];
-	            }
-                // This is a runtime resize guard, not map data. Seed it from
-                // the dimensions just loaded; a stale saved key must never
-                // masquerade as a user resize and erase the restored maps.
-                _new_asset.meta.map_size_key = string(_new_asset.meta.stamp_w) + "x" + string(_new_asset.meta.stamp_h);
-                // RAW ROWS export flag (scr_mts_raw_rows_emit). Older saves don't have it.
-                if (variable_struct_exists(_tsm, "raw_rows")) {
-                    _new_asset.meta.raw_rows = real(_tsm.raw_rows);
-                } else {
-                    _new_asset.meta.raw_rows = 0;
-                }
-                // Per-map names (tabs). Padded to the map count.
-                if (variable_struct_exists(_tsm, "map_names")) {
-                    _new_asset.meta.map_names = _tsm.map_names;
-                } else {
-                    _new_asset.meta.map_names = [];
-                }
-                while (array_length(_new_asset.meta.map_names) < array_length(_new_asset.meta.maps)) {
-                    array_push(_new_asset.meta.map_names, "");
-                }
-                // MAP CHAINS (scr_mts_chain). Older saves have none of these.
-                if (variable_struct_exists(_tsm, "map_reps")) {
-                    _new_asset.meta.map_reps = _tsm.map_reps;
-                }
-                if (variable_struct_exists(_tsm, "map_addr")) {
-                    _new_asset.meta.map_addr = _tsm.map_addr;
-                }
-                if (variable_struct_exists(_tsm, "chains")) {
-                    _new_asset.meta.chains = _tsm.chains;
-                }
-                if (variable_struct_exists(_tsm, "chain_cols")) {
-                    _new_asset.meta.chain_cols = _tsm.chain_cols;
-                }
-                if (variable_struct_exists(_tsm, "chain_dir")) {
-                    _new_asset.meta.chain_dir = real(_tsm.chain_dir);
-                }
-                if (variable_struct_exists(_tsm, "chain_emit")) {
-                    _new_asset.meta.chain_emit = real(_tsm.chain_emit);
-                }
-                if (variable_struct_exists(_tsm, "chain_tab_addr")) {
-                    _new_asset.meta.chain_tab_addr = real(_tsm.chain_tab_addr);
-                }
-                if (variable_struct_exists(_tsm, "chain_col_link")) {
-                    _new_asset.meta.chain_col_link = _tsm.chain_col_link;
-                }
-                if (variable_struct_exists(_tsm, "chain_rev")) {
-                    _new_asset.meta.chain_rev = real(_tsm.chain_rev);
-                }
-                if (variable_struct_exists(_tsm, "active_chain")) {
-                    _new_asset.meta.active_chain = real(_tsm.active_chain);
-                }
-                scr_mts_maps_sync(_new_asset.meta);
-
-	            // Backfill per-map dim arrays to map_count so the viewer never
-	            // indexes past a short or empty array (old saves store no map_w/map_h).
-	            while (array_length(_new_asset.meta.map_w) < _new_asset.meta.map_count) {
-	                array_push(_new_asset.meta.map_w, 40);
-	            }
-	            while (array_length(_new_asset.meta.map_h) < _new_asset.meta.map_count) {
-	                array_push(_new_asset.meta.map_h, 25);
-	            }
-
-	            // Clamp active_map into the valid range for the restored map set.
-	            if (_new_asset.meta.map_count <= 0) {
-	                _new_asset.meta.active_map = -1;
-	            } else if (_new_asset.meta.active_map >= _new_asset.meta.map_count) {
-	                _new_asset.meta.active_map = _new_asset.meta.map_count - 1;
-	            }
-	        }
-			
-	        if (_ad.type == "BITMAP_BUILDER") {
-	            // Seed every editor field, then overlay the persisted ones.
-	            // Transient state (prev_surf, phase, anchors) is deliberately NOT
-	            // serialised — it rebuilds on first draw.
-	            scr_bitmap_builder_create(_new_asset);
-	            var _bbm = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
-	            _new_asset.meta.src_asset  = variable_struct_exists(_bbm, "src_asset")  ? _bbm.src_asset  : "";
-	            _new_asset.meta.dst_asset  = variable_struct_exists(_bbm, "dst_asset")  ? _bbm.dst_asset  : "";
-	            _new_asset.meta.blend      = variable_struct_exists(_bbm, "blend")      ? _bbm.blend      : 0;
-	            _new_asset.meta.records    = variable_struct_exists(_bbm, "records")    ? _bbm.records    : [];
-	            _new_asset.meta.bbd_name   = variable_struct_exists(_bbm, "bbd_name")   ? _bbm.bbd_name   : "";
-	            _new_asset.meta.prev_entry = variable_struct_exists(_bbm, "prev_entry") ? _bbm.prev_entry : 0;
-	            _new_asset.meta.bbt_name   = variable_struct_exists(_bbm, "bbt_name")   ? _bbm.bbt_name   : "";
-	            _new_asset.meta.tag_type   = variable_struct_exists(_bbm, "tag_type")   ? _bbm.tag_type   : 1;
-	            // json_stringify round-trips struct fields as-is, but a hand-edited
-	            // or partial save could leave a record short a field. Harden every
-	            // entry so the editor and generator can read it without guards.
-	            var _bb_recs = _new_asset.meta.records;
-	            for (var _bri = 0; _bri < array_length(_bb_recs); _bri++) {
-	                var _br = _bb_recs[_bri];
-	                if (!is_struct(_br)) {
-	                    continue;
-	                }
-	                if (!variable_struct_exists(_br, "kind")) _br.kind = "REC";
-	                if (_br.kind == "END") {
-	                    continue;
-	                }
-	                if (!variable_struct_exists(_br, "sx")) _br.sx = 0;
-	                if (!variable_struct_exists(_br, "sy")) _br.sy = 0;
-	                if (!variable_struct_exists(_br, "dx")) _br.dx = 0;
-	                if (!variable_struct_exists(_br, "dy")) _br.dy = 0;
-	                if (!variable_struct_exists(_br, "w"))  _br.w  = 1;
-	                if (!variable_struct_exists(_br, "h"))  _br.h  = 1;
-	            }
-	            _new_asset.meta.prev_dirty = true;
-	        }
-
-	        if (_ad.type == "META_MAP") {
-	            scr_asset_meta_map_create(_new_asset);
-	            var _mmm = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
-	            _new_asset.meta.map_w        = variable_struct_exists(_mmm, "map_w")        ? _mmm.map_w        : 40;
-	            _new_asset.meta.map_h        = variable_struct_exists(_mmm, "map_h")        ? _mmm.map_h        : 25;
-	            _new_asset.meta.tileset_name = variable_struct_exists(_mmm, "tileset_name") ? _mmm.tileset_name : "";
-	            _new_asset.meta.index_data   = variable_struct_exists(_mmm, "index_data")   ? _mmm.index_data   : [];
-	        }
-	        if (_ad.type == "VECTOR_BITMAP") {
-	            var _vbm = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
-	            _new_asset.meta.mode        = variable_struct_exists(_vbm, "mode")        ? _vbm.mode        : 1;
-	            _new_asset.meta.bg          = variable_struct_exists(_vbm, "bg")          ? _vbm.bg          : 0;
-	            _new_asset.meta.col1        = variable_struct_exists(_vbm, "col1")        ? _vbm.col1        : 1;
-	            _new_asset.meta.col2        = variable_struct_exists(_vbm, "col2")        ? _vbm.col2        : 2;
-	            _new_asset.meta.col3        = variable_struct_exists(_vbm, "col3")        ? _vbm.col3        : 3;
-	            _new_asset.meta.fill_stack  = variable_struct_exists(_vbm, "fill_stack")  ? _vbm.fill_stack  : 0xC000;
-	            _new_asset.meta.stream_addr = variable_struct_exists(_vbm, "stream_addr") ? _vbm.stream_addr : 0xC800;
-	            // Migrate legacy $A000 (under BASIC ROM, unreadable) to safe RAM.
-	            if (_new_asset.meta.stream_addr == 0xA000) {
-	                _new_asset.meta.stream_addr = 0xC800;
-	            }
-	            _new_asset.meta.commands    = variable_struct_exists(_vbm, "commands")    ? _vbm.commands    : [];
-	            // Carry saved multi-page data across so the migration guard below
-	            // sees it and does NOT collapse pages 1..N into a single page 0.
-	            if (variable_struct_exists(_vbm, "pages"))       _new_asset.meta.pages       = _vbm.pages;
-	            if (variable_struct_exists(_vbm, "active_page")) _new_asset.meta.active_page = _vbm.active_page;
-	            _new_asset.meta.active_col  = variable_struct_exists(_vbm, "active_col")  ? _vbm.active_col  : 1;
-	            _new_asset.meta.active_pat  = variable_struct_exists(_vbm, "active_pat")  ? _vbm.active_pat  : 0;
-	            _new_asset.meta.tool        = variable_struct_exists(_vbm, "tool")        ? _vbm.tool        : "LINE";
-	            _new_asset.meta.zoom        = variable_struct_exists(_vbm, "zoom")        ? _vbm.zoom        : 2;
-	            // editor preview state — never serialised, rebuilt lazily
-	            _new_asset.meta.preview_surf    = -1;
-	            _new_asset.meta.draw_x1         = -1;
-	            _new_asset.meta.draw_y1         = -1;
-	            _new_asset.meta.vbmp_undo_stack = [];
-	            _new_asset.meta.vbmp_redo_stack = [];
-	            // ── MULTI-PAGE MIGRATION ──
-	            // Newer saves serialise pages[]. Older saves have only the
-	            // top-level commands/bg/col1/col2/col3 — wrap those as page 0
-	            // so every asset has a valid pages[] going forward.
-	            if (!variable_struct_exists(_new_asset.meta, "pages") || !is_array(_new_asset.meta.pages) || array_length(_new_asset.meta.pages) == 0) {
-	                var _p0_cmds = variable_struct_exists(_new_asset.meta, "commands") ? _new_asset.meta.commands : [];
-	                var _p0_bg   = variable_struct_exists(_new_asset.meta, "bg")   ? _new_asset.meta.bg   : 0;
-	                var _p0_c1   = variable_struct_exists(_new_asset.meta, "col1") ? _new_asset.meta.col1 : 1;
-	                var _p0_c2   = variable_struct_exists(_new_asset.meta, "col2") ? _new_asset.meta.col2 : 2;
-	                var _p0_c3   = variable_struct_exists(_new_asset.meta, "col3") ? _new_asset.meta.col3 : 3;
-	                _new_asset.meta.pages = [ { commands: _p0_cmds, bg: _p0_bg, col1: _p0_c1, col2: _p0_c2, col3: _p0_c3 } ];
-	            }
-	            if (!variable_struct_exists(_new_asset.meta, "active_page")) _new_asset.meta.active_page = 0;
-	            // KLA-compat fields (editor-only, rebuilt fresh — never serialised)
-	            _new_asset.meta.bg_mask       = array_create(64000, 0);
-	            _new_asset.meta.dither_mode   = "NONE";
-	            _new_asset.meta.dither_invert = false;
-	            _new_asset.meta.brush_size    = 0;
-	        }
-	        if (_ad.type == "ANIMATION") {
-                scr_anim_asset_ensure(_new_asset);
-                if (variable_struct_exists(_ad,"meta")) {
-                    if(variable_struct_exists(_ad.meta,"anim_data")) _new_asset.meta.anim_data=_ad.meta.anim_data;
-                    if(variable_struct_exists(_ad.meta,"anim_sprite")) _new_asset.meta.anim_sprite=_ad.meta.anim_sprite;
-                }
-            }
-            if (_ad.type == "SPRITE_MASK") {
-	            var _smm = {};
-	            if (variable_struct_exists(_ad, "meta")) {
-	                _smm = _ad.meta;
-	            }
-	            scr_sprmask_restore(_new_asset, _smm);
-	        }
-	        if (_ad.type == "BMP_OBJECTS") {
-	            var _bom = {};
-	            if (variable_struct_exists(_ad, "meta")) {
-	                _bom = _ad.meta;
-	            }
-	            scr_bmpobj_restore(_new_asset, _bom);
-	        }
-	        if (_ad.type == "ROOM_MAP") {
-	            var _rmm = {};
-	            if (variable_struct_exists(_ad, "meta")) {
-	                _rmm = _ad.meta;
-	            }
-	            scr_room_map_restore(_new_asset, _rmm);
-	        }
-	        if (_ad.type == "SAMPLE") {
-	            // The blob above already decoded the source PCM into the buffer.
-	            var _sam = _ad[$ "meta"];
-	            if (is_undefined(_sam)) {
-	                _sam = {};
-	            }
-	            scr_sample_restore(_new_asset, _sam);
-	        }
-	        if (_ad.type == "HUD") {
-	            // Seed a complete meta first, then lay the saved fields over it —
-	            // an asset written by an older build simply keeps the defaults for
-	            // anything it never had, and the editor never sees a gap.
-	            scr_hud_create(_new_asset);
-	            var _hdm = {};
-	            if (variable_struct_exists(_ad, "meta")) {
-	                _hdm = _ad.meta;
-	            }
-	            var _hd_keys = ["hud_x","hud_y","hud_w","hud_h","char_grid","colour_grid",
-	                            "chr_asset","fields","sel_field","active_char","active_colour",
-	                            "paint_mc","hud_mc_mode","hud_mc_bg","hud_mc_col1","hud_mc_col2",
-	                            "zoom","cur_x","cur_y","show_grid"];
-	            for (var _hki = 0; _hki < array_length(_hd_keys); _hki++) {
-	                var _hk = _hd_keys[_hki];
-	                if (variable_struct_exists(_hdm, _hk)) {
-	                    _new_asset.meta[$ _hk] = _hdm[$ _hk];
-	                }
-	            }
-	            // json_parse hands numbers back as reals but a field struct that
-	            // came from an older file may be missing the newer members.
-	            for (var _hfi = 0; _hfi < array_length(_new_asset.meta.fields); _hfi++) {
-	                var _hf = _new_asset.meta.fields[_hfi];
-	                if (!variable_struct_exists(_hf, "base"))  { _hf.base  = 48; }
-	                if (!variable_struct_exists(_hf, "pad"))   { _hf.pad   = 0;  }
-	                if (!variable_struct_exists(_hf, "full"))  { _hf.full  = 81; }
-	                if (!variable_struct_exists(_hf, "empty")) { _hf.empty = 32; }
-	            }
-	            scr_hud_flush(_new_asset);
-	        }
-	        if ((_ad.type == "MUSIC_MAKER" || _ad.type == "SFX_MAKER")) {
-	            scr_music_maker_apply_meta(_new_asset, variable_struct_exists(_ad, "meta") ? _ad.meta : {});
-	        }
+            scr_asset_from_saved(_ads[_ai], -1);
         }
     }
 
@@ -1429,4 +765,678 @@ function scr_node_from_record(d, i) {
         }
     }
     return _n;
+}
+
+/// Rebuild one live asset from its saved form (see scr_asset_to_saved), with
+/// every per-type fix-up a project load applies. _index < 0 appends it to the
+/// asset list; otherwise it replaces the asset at that index. Shared by project
+/// load and the MCP bridge (write_asset / revert_asset).
+function scr_asset_from_saved(_ad, _index) {
+    var _am = obj_asset_manager;
+    var _buf = noone;
+    if (variable_struct_exists(_ad, "blob") && string_length(_ad.blob) > 0) {
+        _buf = scr_blob_decode(_ad.blob);
+    }
+    if (_buf == noone) {
+        _buf = buffer_create(1, buffer_fixed, 1);
+    }
+
+    var _meta = {};
+    if (variable_struct_exists(_ad, "meta")) {
+        var _sm = _ad.meta;
+        if (variable_struct_exists(_sm, "sprite_mcs"))     _meta.sprite_mcs     = _sm.sprite_mcs;
+        if (variable_struct_exists(_sm, "sprite_ucs"))     _meta.sprite_ucs     = _sm.sprite_ucs;
+        if (variable_struct_exists(_sm, "mc1_col"))        _meta.mc1_col        = _sm.mc1_col;
+        if (variable_struct_exists(_sm, "mc2_col"))        _meta.mc2_col        = _sm.mc2_col;
+        if (variable_struct_exists(_sm, "used_count"))     _meta.used_count     = _sm.used_count;
+        if (variable_struct_exists(_sm, "strip_frames"))   _meta.strip_frames   = _sm.strip_frames;
+        if (variable_struct_exists(_sm, "strip_base"))     _meta.strip_base     = _sm.strip_base;
+        if (variable_struct_exists(_sm, "bg_col"))         _meta.bg_col         = _sm.bg_col;
+        // GRADIENT tool CUSTOM stop run — see scr_save_workspace_as.
+        if (variable_struct_exists(_sm, "gradient_custom_active")) _meta.gradient_custom_active = _sm.gradient_custom_active;
+        if (variable_struct_exists(_sm, "gradient_custom_cols"))   _meta.gradient_custom_cols   = _sm.gradient_custom_cols;
+        if (variable_struct_exists(_sm, "gradient_custom_count"))  _meta.gradient_custom_count  = _sm.gradient_custom_count;
+        // Absent = pre-HiRes-support project, which means it was always MC.
+        _meta.bmp_mode = variable_struct_exists(_sm, "bmp_mode") ? _sm.bmp_mode : "MC";
+        // TONE-SORTED flag. Absent = pre-flag project, which means the
+        // bytes were quantised count-sorted, so false is correct.
+        _meta.tone_sorted = variable_struct_exists(_sm, "tone_sorted") ? _sm.tone_sorted : false;
+        // BITMAP collision tags. Absent = untagged / pre-tag project;
+        // scr_asset_bmp_build_preview backfills an all-zero grid when
+        // it runs. That is now deferred to the preview queue, so for
+        // a few frames after a load an untagged BITMAP may have no
+        // grid at all - every consumer already guards for that, and a
+        // grid restored from the file above is never touched either way.
+        if (variable_struct_exists(_sm, "coll_types") && is_array(_sm.coll_types)) {
+            if (array_length(_sm.coll_types) == 1000) {
+                _meta.coll_types = _sm.coll_types;
+            }
+        }
+        // Bitmap editor sprite overlay: keep only well-formed sprites
+        // (older row-based overlays are flattened to free sprites)
+        if (is_struct(_sm[$ "spr_overlay"])) {
+            var _so = scr_bmp_spr_migrate(_sm.spr_overlay);
+            if (!is_undefined(_so)) _meta.spr_overlay = _so;
+        }
+        if (variable_struct_exists(_sm, "sprite_json"))    _meta.sprite_json    = _sm.sprite_json;
+        if (variable_struct_exists(_sm, "compositor"))     _meta.compositor     = _sm.compositor;
+        if (variable_struct_exists(_sm, "anim"))           _meta.anim           = _sm.anim;
+        if (variable_struct_exists(_sm, "sid_init_addr"))  _meta.sid_init_addr  = _sm.sid_init_addr;
+        if (variable_struct_exists(_sm, "sid_play_addr"))  _meta.sid_play_addr  = _sm.sid_play_addr;
+        if (variable_struct_exists(_sm, "sid_data_start")) _meta.sid_data_start = _sm.sid_data_start;
+        if (variable_struct_exists(_sm, "format"))         _meta.format         = _sm.format;
+        if (variable_struct_exists(_sm, "tile_types"))     _meta.tile_types     = _sm.tile_types;
+        if (variable_struct_exists(_sm, "char_count"))     _meta.char_count     = _sm.char_count;
+        if (variable_struct_exists(_sm, "total_size"))     _meta.total_size     = _sm.total_size;
+        _meta.mc_mode  = variable_struct_exists(_sm, "mc_mode")  ? _sm.mc_mode  : 0;
+        _meta.mc_fg    = variable_struct_exists(_sm, "mc_fg")    ? _sm.mc_fg    : 1;
+        _meta.mc_bg    = variable_struct_exists(_sm, "mc_bg")    ? _sm.mc_bg    : 0;
+        _meta.mc_col1  = variable_struct_exists(_sm, "mc_col1")  ? _sm.mc_col1  : 1;
+        _meta.mc_col2  = variable_struct_exists(_sm, "mc_col2")  ? _sm.mc_col2  : 2;
+        _meta.ecm_bg1  = variable_struct_exists(_sm, "ecm_bg1")  ? _sm.ecm_bg1  : 6;
+        _meta.ecm_bg2  = variable_struct_exists(_sm, "ecm_bg2")  ? _sm.ecm_bg2  : 14;
+        _meta.ecm_bg3  = variable_struct_exists(_sm, "ecm_bg3")  ? _sm.ecm_bg3  : 3;
+        _meta.preview_surf = -1;
+        _meta.preview_surf = -1;
+        if (variable_struct_exists(_sm, "map_w"))          _meta.map_w          = _sm.map_w;
+        if (variable_struct_exists(_sm, "map_h"))          _meta.map_h          = _sm.map_h;
+        if (variable_struct_exists(_sm, "grid_w"))         _meta.grid_w         = _sm.grid_w;
+        if (variable_struct_exists(_sm, "grid_h"))         _meta.grid_h         = _sm.grid_h;
+        if (variable_struct_exists(_sm, "char_grid"))      _meta.char_grid      = _sm.char_grid;
+        if (variable_struct_exists(_sm, "colour_grid"))    _meta.colour_grid    = _sm.colour_grid;
+        if (variable_struct_exists(_sm, "chr_asset"))      _meta.chr_asset      = _sm.chr_asset;
+        if (variable_struct_exists(_sm, "scroll_x"))       _meta.scroll_x       = _sm.scroll_x;
+        if (variable_struct_exists(_sm, "scroll_y"))       _meta.scroll_y       = _sm.scroll_y;
+        if (variable_struct_exists(_sm, "zoom"))           _meta.zoom           = _sm.zoom;
+        if (variable_struct_exists(_sm, "active_char"))    _meta.active_char    = _sm.active_char;
+        if (variable_struct_exists(_sm, "active_colour"))  _meta.active_colour  = _sm.active_colour;
+        if (variable_struct_exists(_sm, "tool"))           _meta.tool           = _sm.tool;
+        if (variable_struct_exists(_sm, "text"))           _meta.text           = _sm.text;
+        if (variable_struct_exists(_sm, "byte_string"))    _meta.byte_string    = _sm.byte_string;
+        if (variable_struct_exists(_sm, "line_string"))    _meta.line_string    = _sm.line_string;
+        if (variable_struct_exists(_sm, "lines"))          _meta.lines          = _sm.lines;
+        if (variable_struct_exists(_sm, "pick"))           _meta.pick           = _sm.pick;
+        if (variable_struct_exists(_sm, "active_type"))    _meta.active_type    = _sm.active_type;
+        if (variable_struct_exists(_sm, "ref_enabled"))    _meta.ref_enabled    = _sm.ref_enabled;
+        if (variable_struct_exists(_sm, "ref_asset_name")) _meta.ref_asset_name = _sm.ref_asset_name;
+        if (variable_struct_exists(_sm, "ref_offset_x"))   _meta.ref_offset_x   = _sm.ref_offset_x;
+        if (variable_struct_exists(_sm, "ref_offset_y"))   _meta.ref_offset_y   = _sm.ref_offset_y;
+        if (variable_struct_exists(_sm, "wide_x"))         _meta.wide_x         = _sm.wide_x;
+        if (variable_struct_exists(_sm, "is_save_file"))   _meta.is_save_file   = _sm.is_save_file;
+        if (variable_struct_exists(_sm, "save_file_size")) _meta.save_file_size = _sm.save_file_size;
+        if (variable_struct_exists(_sm, "mc_mode"))        _meta.mc_mode        = _sm.mc_mode;
+        if (variable_struct_exists(_sm, "paint_mc"))       _meta.paint_mc       = _sm.paint_mc;
+        if (variable_struct_exists(_sm, "map_mixed"))      _meta.map_mixed      = _sm.map_mixed;
+        if (variable_struct_exists(_sm, "raw_chars"))      _meta.raw_chars      = _sm.raw_chars;
+        if (variable_struct_exists(_sm, "room_w"))         _meta.room_w         = _sm.room_w;
+        if (variable_struct_exists(_sm, "room_h"))         _meta.room_h         = _sm.room_h;
+        if (variable_struct_exists(_sm, "room_count"))     _meta.room_count     = _sm.room_count;
+        if (variable_struct_exists(_sm, "stream_flag_colour")) _meta.stream_flag_colour = _sm.stream_flag_colour;
+        if (variable_struct_exists(_sm, "room_view"))      _meta.room_view      = _sm.room_view;
+        if (variable_struct_exists(_sm, "view_y2"))        _meta.view_y2        = _sm.view_y2;
+        if (variable_struct_exists(_sm, "erase_char"))     _meta.erase_char     = _sm.erase_char;
+        if (variable_struct_exists(_sm, "override_grid"))  _meta.override_grid  = _sm.override_grid;
+        if (variable_struct_exists(_sm, "map_mc_bg"))      _meta.map_mc_bg      = _sm.map_mc_bg;
+        if (variable_struct_exists(_sm, "tile_colours"))   _meta.tile_colours   = _sm.tile_colours;
+        if (variable_struct_exists(_sm, "obj_asset")) _meta.obj_asset = _sm.obj_asset;
+        if (variable_struct_exists(_sm, "room_objects")) _meta.room_objects = _sm.room_objects;
+        if (variable_struct_exists(_sm, "obj_row_off")) _meta.obj_row_off = _sm.obj_row_off;
+        if (variable_struct_exists(_sm, "obj_col_off")) _meta.obj_col_off = _sm.obj_col_off;
+        if (variable_struct_exists(_sm, "obj_table_addr")) _meta.obj_table_addr = _sm.obj_table_addr;
+        if (variable_struct_exists(_sm, "obj_regions")) _meta.obj_regions = _sm.obj_regions;
+        if (variable_struct_exists(_sm, "map_mc_col1"))    _meta.map_mc_col1    = _sm.map_mc_col1;
+        if (variable_struct_exists(_sm, "map_mc_col2"))    _meta.map_mc_col2    = _sm.map_mc_col2;
+    }
+    if (_ad.type == "SPRITE_SET") _meta.spr_sprites = array_create(64, -1);
+
+var _new_asset = {
+        name          : _ad.name,
+        type          : _ad.type,
+        address       : _ad.address,
+        file          : variable_struct_exists(_ad, "file") ? _ad.file : "",
+        buffer        : _buf,
+        meta          : _meta,
+        load_later    : variable_struct_exists(_ad, "load_later")    ? _ad.load_later    : false,
+        d64_filename  : variable_struct_exists(_ad, "d64_filename")  ? _ad.d64_filename  : "",
+        reu_filename  : variable_struct_exists(_ad, "reu_filename")  ? _ad.reu_filename  : ((_ad.type == "LOAD_REU") ? _ad.name + ".reu" : ""),
+        reu_size      : variable_struct_exists(_ad, "reu_size")      ? _ad.reu_size      : ((_ad.type == "LOAD_REU") ? 0x1000000 : 0),
+        reu_used      : variable_struct_exists(_ad, "reu_used")      ? _ad.reu_used      : ((_ad.type == "LOAD_REU") ? 0x100 : 0),
+        reu_base_file : variable_struct_exists(_ad, "reu_base_file") ? _ad.reu_base_file : "",
+        linked_assets : variable_struct_exists(_ad, "linked_assets") ? _ad.linked_assets : [],
+        group         : variable_struct_exists(_ad, "group")         ? _ad.group         : "",
+        order         : variable_struct_exists(_ad, "order")         ? _ad.order         : -1,
+    };
+    if (variable_struct_exists(_ad, "source_file") && _ad.source_file != "")
+        _new_asset.meta.source_file = _ad.source_file;
+
+    if (_index < 0) ds_list_add(_am.asset_list, _new_asset);
+    else ds_list_replace(_am.asset_list, _index, _new_asset);
+
+    if (_ad.type == "SPRITE_SET") scr_asset_spr_cache_sprites(_new_asset);
+// NOTE: there used to be an unconditional scr_asset_bmp_build_preview()
+// call on this line. The block below already builds the preview, after
+// it has checked the buffer against the size this asset's own bmp_mode
+// implies and reloaded from source if the buffer was short. So the old
+// call decoded all 64000 pixels, built the mask, uploaded a surface —
+// and the block below immediately freed that surface and did it again.
+// Every bitmap in a project cost exactly twice what it should.
+if (_ad.type == "BITMAP" && buffer_exists(_buf)) {
+// bmp_mode was just restored onto _new_asset.meta above (or defaulted
+// to MC), so this is the correct expected size for THIS asset — a
+// hardcoded 10003 here is exactly what silently dropped HiRes bitmaps:
+// a valid 9002-byte HiRes buffer always failed both checks below,
+// so build_preview was never called and the asset looked empty.
+var _expected_bmp_size = scr_asset_bmp_is_hires(_new_asset) ? 9002 : 10003;
+if (buffer_get_size(_buf) < _expected_bmp_size && _new_asset.file != "" && file_exists(_new_asset.file)) {
+   buffer_delete(_buf);
+   _buf = buffer_load(_new_asset.file);
+   _new_asset.buffer = _buf;
+}
+if (buffer_exists(_buf) && buffer_get_size(_buf) >= _expected_bmp_size) {
+   // Queued, not built. See scr_bmp_preview_queue for why: a
+   // project with a 60-frame REU animation would otherwise
+   // decode 60 full-screen bitmaps before the window redraws.
+   scr_bmp_preview_queue_push(_new_asset);
+}
+}
+    if (_ad.type == "CHAR_SET"   && buffer_exists(_buf) && buffer_get_size(_buf) > 8) {
+        _new_asset.file_name = filename_name(_new_asset.file);
+        // Always reload from source file to ensure correct text/binary parsing
+        if (_new_asset.file != "" && file_exists(_new_asset.file)) {
+            scr_asset_chr_reload(_new_asset);
+        } else {
+            scr_asset_chr_build_preview(_new_asset);
+        }
+    }
+    if (_ad.type == "TEXT_DATA") {
+        if (!variable_struct_exists(_new_asset.meta, "text")) _new_asset.meta.text = "";
+_new_asset.meta.inline_edit_open      = false;
+_new_asset.meta.inline_edit_text      = _new_asset.meta.text;
+_new_asset.meta.inline_edit_cursor    = 0;
+_new_asset.meta.inline_edit_scroll_y  = 0;
+_new_asset.meta.inline_edit_sel_start = -1;
+_new_asset.meta.inline_edit_sel_end   = -1;
+_new_asset.meta.inline_edit_blink     = 0;
+_new_asset.meta.inline_edit_key_timer = 0;
+
+        scr_asset_text_flush(_new_asset);
+    }
+
+
+
+    if (_ad.type == "BYTE_DATA") {
+       if (!variable_struct_exists(_new_asset.meta, "byte_string")) _new_asset.meta.byte_string = "";
+       if (!variable_struct_exists(_new_asset.meta, "is_save_file")) _new_asset.meta.is_save_file = false;
+       if (!variable_struct_exists(_new_asset.meta, "save_file_size")) _new_asset.meta.save_file_size = 256;
+_new_asset.meta.inline_edit_open      = false;
+// Sync the edit buffer with the loaded string so the editor isn't empty
+_new_asset.meta.inline_edit_text      = _new_asset.meta.byte_string;
+_new_asset.meta.inline_edit_cursor    = 0;
+_new_asset.meta.inline_edit_scroll_y  = 0;
+_new_asset.meta.inline_edit_sel_start = -1;
+_new_asset.meta.inline_edit_sel_end   = -1;
+_new_asset.meta.inline_edit_blink     = 0;
+_new_asset.meta.inline_edit_key_timer = 0;
+        if (!_new_asset.meta.is_save_file) {
+            // Only re-derive the buffer from byte_string for normal BYTE_DATA
+            // assets. Save-file-mode assets already have their real buffer
+            // restored from the saved blob above — byte_string there is just
+            // the stale creation-time default and has nothing to do with the
+            // actual reserved size.
+            scr_asset_byte_data_flush(_new_asset);
+        }
+    }
+    if (_ad.type == "PICKUP_TABLE") {
+        if (!variable_struct_exists(_new_asset.meta, "pick")) _new_asset.meta.pick = scr_pickup_default();
+        _new_asset.meta.pick_undo = [];
+    }
+    if (_ad.type == "LINE_COLL") {
+        if (!variable_struct_exists(_new_asset.meta, "lines"))          _new_asset.meta.lines = [];
+        if (!variable_struct_exists(_new_asset.meta, "line_string"))    _new_asset.meta.line_string = "";
+        if (!variable_struct_exists(_new_asset.meta, "active_type"))    _new_asset.meta.active_type = 1;
+        if (!variable_struct_exists(_new_asset.meta, "ref_enabled"))    _new_asset.meta.ref_enabled = false;
+        if (!variable_struct_exists(_new_asset.meta, "ref_asset_name")) _new_asset.meta.ref_asset_name = "";
+        if (!variable_struct_exists(_new_asset.meta, "ref_offset_x"))   _new_asset.meta.ref_offset_x = 0;
+        if (!variable_struct_exists(_new_asset.meta, "ref_offset_y"))   _new_asset.meta.ref_offset_y = 0;
+        if (!variable_struct_exists(_new_asset.meta, "wide_x"))         _new_asset.meta.wide_x = false;
+        _new_asset.meta.draw_x1            = -1;
+        _new_asset.meta.draw_y1            = -1;
+        _new_asset.meta.undo               = [];
+        _new_asset.meta.redo               = [];
+        _new_asset.meta.edit_mode          = false;
+        _new_asset.meta.drag_line          = -1;
+        _new_asset.meta.drag_end           = 0;
+        _new_asset.meta.line_scroll        = 0;
+        _new_asset.meta.ref_picker_open    = false;
+        _new_asset.meta.inline_edit_open      = false;
+        _new_asset.meta.inline_edit_text      = _new_asset.meta.line_string;
+        _new_asset.meta.inline_edit_cursor    = 0;
+        _new_asset.meta.inline_edit_scroll_y  = 0;
+        _new_asset.meta.inline_edit_sel_start = -1;
+        _new_asset.meta.inline_edit_sel_end   = -1;
+        _new_asset.meta.inline_edit_blink     = 0;
+        _new_asset.meta.inline_edit_key_timer = 0;
+        // lines[] is the saved source of truth — rebuild the compiled
+        // buffer and line_string from it directly (no text re-parse).
+        scr_line_coll_commit(_new_asset);
+    }
+    if (_ad.type == "SFX_DATA") {
+        var _sfx_sm = _ad.meta;
+        if (variable_struct_exists(_sfx_sm, "song_name"))   _new_asset.meta.song_name   = _sfx_sm.song_name;
+        if (variable_struct_exists(_sfx_sm, "sfx_count"))   _new_asset.meta.sfx_count   = _sfx_sm.sfx_count;
+        if (variable_struct_exists(_sfx_sm, "wavetable"))   _new_asset.meta.wavetable   = _sfx_sm.wavetable;
+        if (variable_struct_exists(_sfx_sm, "instruments")) {
+            _new_asset.meta.instruments = _sfx_sm.instruments;
+            var _wt     = variable_struct_exists(_new_asset.meta, "wavetable") ? _new_asset.meta.wavetable : noone;
+            var _instrs = _new_asset.meta.instruments;
+            for (var _ii = 0; _ii < array_length(_instrs); _ii++) {
+                var _instr = _instrs[_ii];
+                _instr.wavetable_rows = [];
+                if (_wt == noone || _instr.wave_pos == 0) continue;
+                var _pos    = _instr.wave_pos - 1;
+                var _wt_len = array_length(_wt.left);
+                var _seen   = ds_map_create();
+                while (_pos >= 0 && _pos < _wt_len) {
+                    if (ds_map_exists(_seen, _pos)) break;
+                    ds_map_add(_seen, _pos, true);
+                    var _L = _wt.left[_pos];
+                    var _R = _wt.right[_pos];
+                    array_push(_instr.wavetable_rows, { left: _L, right: _R, row: _pos + 1 });
+                    if (_L == 0xFF) break;
+                    _pos++;
+                }
+                ds_map_destroy(_seen);
+            }
+        }
+    }
+    if (_ad.type == "MAP_DATA") {
+        if (!variable_struct_exists(_new_asset.meta, "preview_surf"))      _new_asset.meta.preview_surf      = -1;
+        if (!variable_struct_exists(_new_asset.meta, "tool"))              _new_asset.meta.tool              = "CHAR";
+        if (!variable_struct_exists(_new_asset.meta, "zoom"))              _new_asset.meta.zoom              = 2;
+        if (!variable_struct_exists(_new_asset.meta, "scroll_x"))          _new_asset.meta.scroll_x          = 0;
+        if (!variable_struct_exists(_new_asset.meta, "scroll_y"))          _new_asset.meta.scroll_y          = 0;
+        if (!variable_struct_exists(_new_asset.meta, "active_char"))       _new_asset.meta.active_char       = 0;
+        if (!variable_struct_exists(_new_asset.meta, "active_colour"))     _new_asset.meta.active_colour     = 1;
+        _new_asset.meta.active_colour = clamp(_new_asset.meta.active_colour, 0, 7);
+        if (!variable_struct_exists(_new_asset.meta, "char_strip_offset")) _new_asset.meta.char_strip_offset = 0;
+        if (!variable_struct_exists(_new_asset.meta, "mc_mode"))           _new_asset.meta.mc_mode           = 2;
+        if (!variable_struct_exists(_new_asset.meta, "paint_mc"))          _new_asset.meta.paint_mc          = 0;
+        if (!variable_struct_exists(_new_asset.meta, "map_mixed"))         _new_asset.meta.map_mixed         = obj_workspace_manager.map_global_mixed;
+        if (!variable_struct_exists(_new_asset.meta, "raw_chars"))         _new_asset.meta.raw_chars         = 0;
+        if (!variable_struct_exists(_new_asset.meta, "room_w"))            _new_asset.meta.room_w            = 40;
+        if (!variable_struct_exists(_new_asset.meta, "room_h"))            _new_asset.meta.room_h            = 25;
+        if (!variable_struct_exists(_new_asset.meta, "room_count"))        _new_asset.meta.room_count        = 0;
+        if (!variable_struct_exists(_new_asset.meta, "stream_flag_colour")) _new_asset.meta.stream_flag_colour = -1;
+        if (!variable_struct_exists(_new_asset.meta, "room_view"))         _new_asset.meta.room_view         = [];
+        if (!variable_struct_exists(_new_asset.meta, "view_y2"))           _new_asset.meta.view_y2           = false;
+        if (!variable_struct_exists(_new_asset.meta, "erase_char"))        _new_asset.meta.erase_char        = 0;
+        if (!variable_struct_exists(_new_asset.meta, "map_mc_bg"))         _new_asset.meta.map_mc_bg         = -1;
+        if (!variable_struct_exists(_new_asset.meta, "tile_colours"))      _new_asset.meta.tile_colours      = [];
+        if (!variable_struct_exists(_new_asset.meta, "obj_asset")) _new_asset.meta.obj_asset = "";
+        if (!variable_struct_exists(_new_asset.meta, "room_objects")) _new_asset.meta.room_objects = [];
+        if (!variable_struct_exists(_new_asset.meta, "obj_row_off")) _new_asset.meta.obj_row_off = 0;
+        if (!variable_struct_exists(_new_asset.meta, "obj_col_off")) _new_asset.meta.obj_col_off = 0;
+        if (!variable_struct_exists(_new_asset.meta, "obj_table_addr")) _new_asset.meta.obj_table_addr = 0;
+        if (!variable_struct_exists(_new_asset.meta, "obj_regions")) _new_asset.meta.obj_regions = [];
+        if (!variable_struct_exists(_new_asset.meta, "obj_mode")) _new_asset.meta.obj_mode = false;
+        if (!variable_struct_exists(_new_asset.meta, "obj_sel")) _new_asset.meta.obj_sel = 0;
+        if (!variable_struct_exists(_new_asset.meta, "show_objects")) _new_asset.meta.show_objects = true;
+        if (!variable_struct_exists(_new_asset.meta, "map_mc_col1"))       _new_asset.meta.map_mc_col1       = -1;
+        if (!variable_struct_exists(_new_asset.meta, "map_mc_col2"))       _new_asset.meta.map_mc_col2       = -1;
+        // Physical stride is grid_w x grid_h, NOT map_w x map_h. Backfill
+        // grid dims from saved meta, else from the restored char_grid length,
+        // else fall back to logical size for genuinely fresh assets.
+        if (!variable_struct_exists(_new_asset.meta, "grid_w") ||
+            !variable_struct_exists(_new_asset.meta, "grid_h")) {
+            var _ml_known = 0;
+            if (variable_struct_exists(_new_asset.meta, "char_grid")) {
+                _ml_known = array_length(_new_asset.meta.char_grid);
+            } else if (variable_struct_exists(_new_asset.meta, "colour_grid")) {
+                _ml_known = array_length(_new_asset.meta.colour_grid);
+            }
+            if (_ml_known > 0 && _new_asset.meta.map_h > 0 &&
+                (_ml_known mod _new_asset.meta.map_h) == 0) {
+                _new_asset.meta.grid_w = _ml_known div _new_asset.meta.map_h;
+                _new_asset.meta.grid_h = _new_asset.meta.map_h;
+            } else {
+                _new_asset.meta.grid_w = _new_asset.meta.map_w;
+                _new_asset.meta.grid_h = _new_asset.meta.map_h;
+            }
+        }
+        var _ml_phys = _new_asset.meta.grid_w * _new_asset.meta.grid_h;
+        // Restore override_grid at physical stride. If the saved array is the
+        // wrong size, reallocate but preserve any surviving cells rather than
+        // zero-wiping the whole plane (which loses all per-tile HR/MC flags).
+        if (!variable_struct_exists(_new_asset.meta, "override_grid")) {
+            _new_asset.meta.override_grid = array_create(_ml_phys, 0);
+        } else if (array_length(_new_asset.meta.override_grid) != _ml_phys) {
+            var _ml_old = _new_asset.meta.override_grid;
+            var _ml_old_len = array_length(_ml_old);
+            var _ml_new = array_create(_ml_phys, 0);
+            var _ml_copy = min(_ml_old_len, _ml_phys);
+            for (var _ml_i = 0; _ml_i < _ml_copy; _ml_i++) {
+                _ml_new[_ml_i] = _ml_old[_ml_i];
+            }
+            _new_asset.meta.override_grid = _ml_new;
+        }
+    }
+if (_ad.type == "META_TILESET") {
+     scr_asset_meta_tileset_create(_new_asset);
+        // Creation defaults must not replace the saved asset address.
+        _new_asset.address = _ad.address;
+     var _tsm = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
+     _new_asset.meta.stamp_w               = variable_struct_exists(_tsm, "stamp_w")      ? _tsm.stamp_w      : 2;
+     _new_asset.meta.stamp_h               = variable_struct_exists(_tsm, "stamp_h")      ? _tsm.stamp_h      : 2;
+     _new_asset.meta.stamp_count           = variable_struct_exists(_tsm, "stamp_count")  ? _tsm.stamp_count  : 0;
+     _new_asset.meta.chr_asset             = variable_struct_exists(_tsm, "chr_asset")    ? _tsm.chr_asset    : "";
+     _new_asset.meta.stamp_data            = variable_struct_exists(_tsm, "stamp_data")   ? _tsm.stamp_data   : [];
+     // Per-stamp HR(0)/MC(1) flag. Backfill to stamp_count for pre-field saves.
+     if (variable_struct_exists(_tsm, "stamp_mc")) {
+         _new_asset.meta.stamp_mc = _tsm.stamp_mc;
+     } else {
+         _new_asset.meta.stamp_mc = array_create(_new_asset.meta.stamp_count, 0);
+     }
+     while (array_length(_new_asset.meta.stamp_mc) < _new_asset.meta.stamp_count) {
+         array_push(_new_asset.meta.stamp_mc, 0);
+     }
+     // Per-char mode LUT (0 = HR, 1 = MC). Old files lack it: default all-HR, 256 long.
+     if (variable_struct_exists(_tsm, "char_lut")) {
+         _new_asset.meta.char_lut = _tsm.char_lut;
+     } else {
+         _new_asset.meta.char_lut = array_create(256, 0);
+     }
+     while (array_length(_new_asset.meta.char_lut) < 256) {
+         array_push(_new_asset.meta.char_lut, 0);
+     }
+     _new_asset.meta.char_lut_len = variable_struct_exists(_tsm, "char_lut_len") ? _tsm.char_lut_len : 0;
+     // Per-stamp colour override (0-15 = force, $80 = none). Backfill to stamp_count with $80.
+     if (variable_struct_exists(_tsm, "stamp_override")) {
+         _new_asset.meta.stamp_override = _tsm.stamp_override;
+     } else {
+         _new_asset.meta.stamp_override = array_create(_new_asset.meta.stamp_count, 0x80);
+     }
+     while (array_length(_new_asset.meta.stamp_override) < _new_asset.meta.stamp_count) {
+         array_push(_new_asset.meta.stamp_override, 0x80);
+     }
+     _new_asset.meta.zoom                  = variable_struct_exists(_tsm, "zoom")         ? _tsm.zoom         : 4;
+_new_asset.meta.test_zoom             = variable_struct_exists(_tsm, "test_zoom")    ? _tsm.test_zoom    : 1;
+     _new_asset.meta.map_mc_col1           = variable_struct_exists(_tsm, "map_mc_col1")  ? _tsm.map_mc_col1  : 1;
+     _new_asset.meta.map_mc_col2           = variable_struct_exists(_tsm, "map_mc_col2")  ? _tsm.map_mc_col2  : 2;
+     _new_asset.meta.stamp_list_scroll     = 0;
+     _new_asset.meta.char_strip_offset     = 0;
+     _new_asset.meta.stamp_clip            = [];
+     _new_asset.meta.stamp_clip_valid      = false;
+     _new_asset.meta.active_stamp_grid_col  = array_create(_new_asset.meta.stamp_w * _new_asset.meta.stamp_h, 1);
+     // Select stamp 0 (if any) and pre-fill the edit grid from its
+     // stamp_data, so the canvas shows the correct metatile on first
+     // open rather than a blank grid until the user clicks a slot.
+     var _mts_cells = _new_asset.meta.stamp_w * _new_asset.meta.stamp_h;
+     _new_asset.meta.active_stamp_grid_char = array_create(_mts_cells, 0);
+     if (_new_asset.meta.stamp_count > 0)
+     {
+         _new_asset.meta.edit_stamp = 0;
+         for (var _mts_i = 0; _mts_i < _mts_cells; _mts_i++)
+         {
+             if (_mts_i < array_length(_new_asset.meta.stamp_data))
+             {
+                 _new_asset.meta.active_stamp_grid_char[_mts_i] = _new_asset.meta.stamp_data[_mts_i];
+             }
+         }
+     }
+     else
+     {
+         _new_asset.meta.edit_stamp = -1;
+     }
+     // Restore map placement data (flat int arrays, -1 = empty)
+     _new_asset.meta.maps       = variable_struct_exists(_tsm, "maps")       ? _tsm.maps       : [];
+     _new_asset.meta.map_count  = variable_struct_exists(_tsm, "map_count")  ? _tsm.map_count  : array_length(_new_asset.meta.maps);
+     _new_asset.meta.active_map = variable_struct_exists(_tsm, "active_map") ? _tsm.active_map : -1;
+     _new_asset.meta.test_grid  = variable_struct_exists(_tsm, "test_grid")  ? _tsm.test_grid  : [];
+     _new_asset.meta.map_bytes  = array_create(_new_asset.meta.map_count, 0);
+     _new_asset.meta.map_tab_scroll = 0;
+     // Restore per-map dims + the size guard key so the viewer's
+     // "size changed -> clear maps" guard does NOT fire on first open
+     // and wipe the just-loaded maps. If the key is absent (old saves),
+     // rebuild it from the restored stamp size so it still matches.
+     if (variable_struct_exists(_tsm, "map_w")) {
+         _new_asset.meta.map_w = _tsm.map_w;
+     } else {
+         _new_asset.meta.map_w = [];
+     }
+     if (variable_struct_exists(_tsm, "map_h")) {
+         _new_asset.meta.map_h = _tsm.map_h;
+     } else {
+         _new_asset.meta.map_h = [];
+     }
+        // This is a runtime resize guard, not map data. Seed it from
+        // the dimensions just loaded; a stale saved key must never
+        // masquerade as a user resize and erase the restored maps.
+        _new_asset.meta.map_size_key = string(_new_asset.meta.stamp_w) + "x" + string(_new_asset.meta.stamp_h);
+        // RAW ROWS export flag (scr_mts_raw_rows_emit). Older saves don't have it.
+        if (variable_struct_exists(_tsm, "raw_rows")) {
+            _new_asset.meta.raw_rows = real(_tsm.raw_rows);
+        } else {
+            _new_asset.meta.raw_rows = 0;
+        }
+        // Per-map names (tabs). Padded to the map count.
+        if (variable_struct_exists(_tsm, "map_names")) {
+            _new_asset.meta.map_names = _tsm.map_names;
+        } else {
+            _new_asset.meta.map_names = [];
+        }
+        while (array_length(_new_asset.meta.map_names) < array_length(_new_asset.meta.maps)) {
+            array_push(_new_asset.meta.map_names, "");
+        }
+        // MAP CHAINS (scr_mts_chain). Older saves have none of these.
+        if (variable_struct_exists(_tsm, "map_reps")) {
+            _new_asset.meta.map_reps = _tsm.map_reps;
+        }
+        if (variable_struct_exists(_tsm, "map_addr")) {
+            _new_asset.meta.map_addr = _tsm.map_addr;
+        }
+        if (variable_struct_exists(_tsm, "chains")) {
+            _new_asset.meta.chains = _tsm.chains;
+        }
+        if (variable_struct_exists(_tsm, "chain_cols")) {
+            _new_asset.meta.chain_cols = _tsm.chain_cols;
+        }
+        if (variable_struct_exists(_tsm, "chain_dir")) {
+            _new_asset.meta.chain_dir = real(_tsm.chain_dir);
+        }
+        if (variable_struct_exists(_tsm, "chain_emit")) {
+            _new_asset.meta.chain_emit = real(_tsm.chain_emit);
+        }
+        if (variable_struct_exists(_tsm, "chain_tab_addr")) {
+            _new_asset.meta.chain_tab_addr = real(_tsm.chain_tab_addr);
+        }
+        if (variable_struct_exists(_tsm, "chain_col_link")) {
+            _new_asset.meta.chain_col_link = _tsm.chain_col_link;
+        }
+        if (variable_struct_exists(_tsm, "chain_rev")) {
+            _new_asset.meta.chain_rev = real(_tsm.chain_rev);
+        }
+        if (variable_struct_exists(_tsm, "active_chain")) {
+            _new_asset.meta.active_chain = real(_tsm.active_chain);
+        }
+        scr_mts_maps_sync(_new_asset.meta);
+
+     // Backfill per-map dim arrays to map_count so the viewer never
+     // indexes past a short or empty array (old saves store no map_w/map_h).
+     while (array_length(_new_asset.meta.map_w) < _new_asset.meta.map_count) {
+         array_push(_new_asset.meta.map_w, 40);
+     }
+     while (array_length(_new_asset.meta.map_h) < _new_asset.meta.map_count) {
+         array_push(_new_asset.meta.map_h, 25);
+     }
+
+     // Clamp active_map into the valid range for the restored map set.
+     if (_new_asset.meta.map_count <= 0) {
+         _new_asset.meta.active_map = -1;
+     } else if (_new_asset.meta.active_map >= _new_asset.meta.map_count) {
+         _new_asset.meta.active_map = _new_asset.meta.map_count - 1;
+     }
+ }
+
+ if (_ad.type == "BITMAP_BUILDER") {
+     // Seed every editor field, then overlay the persisted ones.
+     // Transient state (prev_surf, phase, anchors) is deliberately NOT
+     // serialised — it rebuilds on first draw.
+     scr_bitmap_builder_create(_new_asset);
+     var _bbm = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
+     _new_asset.meta.src_asset  = variable_struct_exists(_bbm, "src_asset")  ? _bbm.src_asset  : "";
+     _new_asset.meta.dst_asset  = variable_struct_exists(_bbm, "dst_asset")  ? _bbm.dst_asset  : "";
+     _new_asset.meta.blend      = variable_struct_exists(_bbm, "blend")      ? _bbm.blend      : 0;
+     _new_asset.meta.records    = variable_struct_exists(_bbm, "records")    ? _bbm.records    : [];
+     _new_asset.meta.bbd_name   = variable_struct_exists(_bbm, "bbd_name")   ? _bbm.bbd_name   : "";
+     _new_asset.meta.prev_entry = variable_struct_exists(_bbm, "prev_entry") ? _bbm.prev_entry : 0;
+     _new_asset.meta.bbt_name   = variable_struct_exists(_bbm, "bbt_name")   ? _bbm.bbt_name   : "";
+     _new_asset.meta.tag_type   = variable_struct_exists(_bbm, "tag_type")   ? _bbm.tag_type   : 1;
+     // json_stringify round-trips struct fields as-is, but a hand-edited
+     // or partial save could leave a record short a field. Harden every
+     // entry so the editor and generator can read it without guards.
+     var _bb_recs = _new_asset.meta.records;
+     for (var _bri = 0; _bri < array_length(_bb_recs); _bri++) {
+         var _br = _bb_recs[_bri];
+         if (!is_struct(_br)) {
+             continue;
+         }
+         if (!variable_struct_exists(_br, "kind")) _br.kind = "REC";
+         if (_br.kind == "END") {
+             continue;
+         }
+         if (!variable_struct_exists(_br, "sx")) _br.sx = 0;
+         if (!variable_struct_exists(_br, "sy")) _br.sy = 0;
+         if (!variable_struct_exists(_br, "dx")) _br.dx = 0;
+         if (!variable_struct_exists(_br, "dy")) _br.dy = 0;
+         if (!variable_struct_exists(_br, "w"))  _br.w  = 1;
+         if (!variable_struct_exists(_br, "h"))  _br.h  = 1;
+     }
+     _new_asset.meta.prev_dirty = true;
+ }
+
+ if (_ad.type == "META_MAP") {
+     scr_asset_meta_map_create(_new_asset);
+     var _mmm = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
+     _new_asset.meta.map_w        = variable_struct_exists(_mmm, "map_w")        ? _mmm.map_w        : 40;
+     _new_asset.meta.map_h        = variable_struct_exists(_mmm, "map_h")        ? _mmm.map_h        : 25;
+     _new_asset.meta.tileset_name = variable_struct_exists(_mmm, "tileset_name") ? _mmm.tileset_name : "";
+     _new_asset.meta.index_data   = variable_struct_exists(_mmm, "index_data")   ? _mmm.index_data   : [];
+ }
+ if (_ad.type == "VECTOR_BITMAP") {
+     var _vbm = variable_struct_exists(_ad, "meta") ? _ad.meta : {};
+     _new_asset.meta.mode        = variable_struct_exists(_vbm, "mode")        ? _vbm.mode        : 1;
+     _new_asset.meta.bg          = variable_struct_exists(_vbm, "bg")          ? _vbm.bg          : 0;
+     _new_asset.meta.col1        = variable_struct_exists(_vbm, "col1")        ? _vbm.col1        : 1;
+     _new_asset.meta.col2        = variable_struct_exists(_vbm, "col2")        ? _vbm.col2        : 2;
+     _new_asset.meta.col3        = variable_struct_exists(_vbm, "col3")        ? _vbm.col3        : 3;
+     _new_asset.meta.fill_stack  = variable_struct_exists(_vbm, "fill_stack")  ? _vbm.fill_stack  : 0xC000;
+     _new_asset.meta.stream_addr = variable_struct_exists(_vbm, "stream_addr") ? _vbm.stream_addr : 0xC800;
+     // Migrate legacy $A000 (under BASIC ROM, unreadable) to safe RAM.
+     if (_new_asset.meta.stream_addr == 0xA000) {
+         _new_asset.meta.stream_addr = 0xC800;
+     }
+     _new_asset.meta.commands    = variable_struct_exists(_vbm, "commands")    ? _vbm.commands    : [];
+     // Carry saved multi-page data across so the migration guard below
+     // sees it and does NOT collapse pages 1..N into a single page 0.
+     if (variable_struct_exists(_vbm, "pages"))       _new_asset.meta.pages       = _vbm.pages;
+     if (variable_struct_exists(_vbm, "active_page")) _new_asset.meta.active_page = _vbm.active_page;
+     _new_asset.meta.active_col  = variable_struct_exists(_vbm, "active_col")  ? _vbm.active_col  : 1;
+     _new_asset.meta.active_pat  = variable_struct_exists(_vbm, "active_pat")  ? _vbm.active_pat  : 0;
+     _new_asset.meta.tool        = variable_struct_exists(_vbm, "tool")        ? _vbm.tool        : "LINE";
+     _new_asset.meta.zoom        = variable_struct_exists(_vbm, "zoom")        ? _vbm.zoom        : 2;
+     // editor preview state — never serialised, rebuilt lazily
+     _new_asset.meta.preview_surf    = -1;
+     _new_asset.meta.draw_x1         = -1;
+     _new_asset.meta.draw_y1         = -1;
+     _new_asset.meta.vbmp_undo_stack = [];
+     _new_asset.meta.vbmp_redo_stack = [];
+     // ── MULTI-PAGE MIGRATION ──
+     // Newer saves serialise pages[]. Older saves have only the
+     // top-level commands/bg/col1/col2/col3 — wrap those as page 0
+     // so every asset has a valid pages[] going forward.
+     if (!variable_struct_exists(_new_asset.meta, "pages") || !is_array(_new_asset.meta.pages) || array_length(_new_asset.meta.pages) == 0) {
+         var _p0_cmds = variable_struct_exists(_new_asset.meta, "commands") ? _new_asset.meta.commands : [];
+         var _p0_bg   = variable_struct_exists(_new_asset.meta, "bg")   ? _new_asset.meta.bg   : 0;
+         var _p0_c1   = variable_struct_exists(_new_asset.meta, "col1") ? _new_asset.meta.col1 : 1;
+         var _p0_c2   = variable_struct_exists(_new_asset.meta, "col2") ? _new_asset.meta.col2 : 2;
+         var _p0_c3   = variable_struct_exists(_new_asset.meta, "col3") ? _new_asset.meta.col3 : 3;
+         _new_asset.meta.pages = [ { commands: _p0_cmds, bg: _p0_bg, col1: _p0_c1, col2: _p0_c2, col3: _p0_c3 } ];
+     }
+     if (!variable_struct_exists(_new_asset.meta, "active_page")) _new_asset.meta.active_page = 0;
+     // KLA-compat fields (editor-only, rebuilt fresh — never serialised)
+     _new_asset.meta.bg_mask       = array_create(64000, 0);
+     _new_asset.meta.dither_mode   = "NONE";
+     _new_asset.meta.dither_invert = false;
+     _new_asset.meta.brush_size    = 0;
+ }
+ if (_ad.type == "ANIMATION") {
+        scr_anim_asset_ensure(_new_asset);
+        if (variable_struct_exists(_ad,"meta")) {
+            if(variable_struct_exists(_ad.meta,"anim_data")) _new_asset.meta.anim_data=_ad.meta.anim_data;
+            if(variable_struct_exists(_ad.meta,"anim_sprite")) _new_asset.meta.anim_sprite=_ad.meta.anim_sprite;
+        }
+    }
+    if (_ad.type == "SPRITE_MASK") {
+     var _smm = {};
+     if (variable_struct_exists(_ad, "meta")) {
+         _smm = _ad.meta;
+     }
+     scr_sprmask_restore(_new_asset, _smm);
+ }
+ if (_ad.type == "BMP_OBJECTS") {
+     var _bom = {};
+     if (variable_struct_exists(_ad, "meta")) {
+         _bom = _ad.meta;
+     }
+     scr_bmpobj_restore(_new_asset, _bom);
+ }
+ if (_ad.type == "ROOM_MAP") {
+     var _rmm = {};
+     if (variable_struct_exists(_ad, "meta")) {
+         _rmm = _ad.meta;
+     }
+     scr_room_map_restore(_new_asset, _rmm);
+ }
+ if (_ad.type == "SAMPLE") {
+     // The blob above already decoded the source PCM into the buffer.
+     var _sam = _ad[$ "meta"];
+     if (is_undefined(_sam)) {
+         _sam = {};
+     }
+     scr_sample_restore(_new_asset, _sam);
+ }
+ if (_ad.type == "HUD") {
+     // Seed a complete meta first, then lay the saved fields over it —
+     // an asset written by an older build simply keeps the defaults for
+     // anything it never had, and the editor never sees a gap.
+     scr_hud_create(_new_asset);
+     var _hdm = {};
+     if (variable_struct_exists(_ad, "meta")) {
+         _hdm = _ad.meta;
+     }
+     var _hd_keys = ["hud_x","hud_y","hud_w","hud_h","char_grid","colour_grid",
+                     "chr_asset","fields","sel_field","active_char","active_colour",
+                     "paint_mc","hud_mc_mode","hud_mc_bg","hud_mc_col1","hud_mc_col2",
+                     "zoom","cur_x","cur_y","show_grid"];
+     for (var _hki = 0; _hki < array_length(_hd_keys); _hki++) {
+         var _hk = _hd_keys[_hki];
+         if (variable_struct_exists(_hdm, _hk)) {
+             _new_asset.meta[$ _hk] = _hdm[$ _hk];
+         }
+     }
+     // json_parse hands numbers back as reals but a field struct that
+     // came from an older file may be missing the newer members.
+     for (var _hfi = 0; _hfi < array_length(_new_asset.meta.fields); _hfi++) {
+         var _hf = _new_asset.meta.fields[_hfi];
+         if (!variable_struct_exists(_hf, "base"))  { _hf.base  = 48; }
+         if (!variable_struct_exists(_hf, "pad"))   { _hf.pad   = 0;  }
+         if (!variable_struct_exists(_hf, "full"))  { _hf.full  = 81; }
+         if (!variable_struct_exists(_hf, "empty")) { _hf.empty = 32; }
+     }
+     scr_hud_flush(_new_asset);
+ }
+ if ((_ad.type == "MUSIC_MAKER" || _ad.type == "SFX_MAKER")) {
+     scr_music_maker_apply_meta(_new_asset, variable_struct_exists(_ad, "meta") ? _ad.meta : {});
+ }
+    return _new_asset;
 }

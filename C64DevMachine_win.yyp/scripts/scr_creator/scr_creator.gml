@@ -561,6 +561,7 @@ function scr_creator_begin_step() {
 
     if (!instance_exists(obj_workspace_manager)) { exit; }
     if (!global.canEditNode)                     { exit; }
+    if (global.mcp_turn_lock)                    { exit; }
     if (global.idle_active && global.idle_fade < 0.1) { exit; }
     if (global.showcode_mouse_over)              { exit; }
     if (global.any_picker_open)                  { exit; }

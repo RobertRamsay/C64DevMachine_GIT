@@ -197,16 +197,27 @@ assemble_instruction: function(_mnem, _val) {
                 // implied / pseudo ops (size <= 1) never read the value.
                 var _c0 = is_string(_val) ? string_char_at(_val, 1) : "0";
                 var _label_like = (_c0 == "_" || _c0 == "." || string_lower(_c0) != string_upper(_c0));
+                // byte / org are pseudo ops (get_size 0) that still do maths on
+                // the value - ".byte SKID_COL_LO" crashed 1.3.0.0 this way.
                 if (_label_like && !_is_label_fixup_op
                 && _mnem != "lda_imm" && _mnem != "ldx_imm" && _mnem != "ldy_imm"
-                && instance_exists(obj_opCodeManager) && obj_opCodeManager.get_size(_mnem) > 1) {
-                    self._error(string_upper(_mnem) + " can't take label '" + _val
-                        + "' - that addressing mode doesn't exist for this instruction"
-                        + " (or labels aren't supported in it)");
+                && (_mnem == "byte" || _mnem == "org"
+                    || (instance_exists(obj_opCodeManager) && obj_opCodeManager.get_size(_mnem) > 1))) {
+                    if (_mnem == "byte" || _mnem == "org") {
+                        self._error(string_upper(_mnem) + " value '" + _val + "' is not defined"
+                            + " (add `" + _val + " = $nn` before it's used)");
+                    } else {
+                        self._error(string_upper(_mnem) + " can't take label '" + _val
+                            + "' - that addressing mode doesn't exist for this instruction"
+                            + " (or labels aren't supported in it)");
+                    }
                     return 0;
                 }
             }
-			
+
+            // Last line of defence: an operand of the wrong type that slips
+            // past the checks above becomes a build error, not an editor crash.
+            try {
             switch(_mnem) {
                 //  PAGE 0: DATA MOVEMENT 
                 case "brk":      self.add(0x00); break; // Count 1  - $00: Force Break
@@ -621,7 +632,11 @@ case "store_hi": {
                 case "label": self.label(_val); break;
                 case "org":   self.org(_val);   break;
 
-				
+
+            }
+            } catch (_asm_ex) {
+                self._error(string_upper(_mnem) + " can't use operand '" + string(_val) + "' ("
+                    + string(is_struct(_asm_ex) ? _asm_ex.message : _asm_ex) + ")");
             }
             return array_length(self.bytes) - start_count;
         },

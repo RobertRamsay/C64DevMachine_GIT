@@ -9,6 +9,9 @@ if (global.lite) {
 // reconnects by itself.
 if (variable_global_exists("mcp_mode") && !global.mcp_mode) {
     if (probe_state != "off") probe_stop("");
+    turn_mode = false;
+    turn_pending = false;
+    probe_turn_set_owner("user");
     probe_status       = "";
     probe_notice_until = 0;
     setup_hover        = false;
@@ -118,6 +121,76 @@ if (keyboard_check(vk_control) && keyboard_check(vk_shift)
     exit;
 }
 if (probe_restart_pending) { game_restart(); exit; }
+
+// --- Turn-taking ---------------------------------------------------------------
+// Draw_64 places the badge hit area (turn_btn_*), only while turn mode is on.
+if (turn_mode && probe_state != "ready") {
+    // No bridge, no assistant edits: never leave the user locked out.
+    turn_mode = false;
+    turn_pending = false;
+    probe_turn_set_owner("user");
+}
+if (turn_mode) { try {
+    var _tmx = device_mouse_x_to_gui(0);
+    var _tmy = device_mouse_y_to_gui(0);
+    var _over = turn_btn_x2 > 0 && point_in_rectangle(_tmx, _tmy, turn_btn_x1, turn_btn_y1, turn_btn_x2, turn_btn_y2);
+    if (!_over) turn_hover_used = false;
+    if (turn_owner == "user") {
+        // Resting the pointer on the badge for two seconds hands the turn over.
+        if (_over && !turn_hover_used && !turn_pending && !mouse_check_button(mb_any) && window_has_focus()) {
+            if (turn_hover_since == 0) turn_hover_since = current_time;
+            else if (current_time - turn_hover_since >= turn_hover_ms) {
+                turn_hover_since = 0;
+                turn_hover_used = true;
+                turn_pending = true;
+            }
+        } else turn_hover_since = 0;
+        // Wait for open editors/dialogs to close so the assistant can act.
+        if (turn_pending && !probe_busy()) {
+            turn_pending = false;
+            probe_turn_handover();
+        }
+        // Re-take the baseline once the assistant's last edit has settled,
+        // unless the user has already started working.
+        if (turn_rebase_at > 0) {
+            if (keyboard_check(vk_anykey) || mouse_check_button(mb_any)) turn_rebase_at = 0;
+            else if (current_time >= turn_rebase_at) {
+                turn_rebase_at = 0;
+                turn_baseline = probe_turn_snapshot(true);
+            }
+        }
+    } else {
+        turn_pending = false;
+        turn_hover_since = 0;
+        if (_over && mouse_check_button_pressed(mb_left) && !global.ui_click_consumed) {
+            global.ui_click_consumed = true;
+            probe_turn_reclaim();
+        } else {
+            // Anything that changes the project while the user is giving input
+            // is reported to the assistant; changes the assistant's own edits
+            // cause (relayout, macro resizing) are absorbed silently.
+            if (keyboard_check(vk_anykey) || mouse_check_button(mb_any)) turn_input_seen = true;
+            if (current_time >= turn_check_at && array_length(probe_queue) == 0) {
+                turn_check_at = current_time + 750;
+                var _tsnap = probe_turn_snapshot(false);
+                if (current_time >= turn_known_at && turn_input_seen && !is_undefined(turn_known)) {
+                    var _tdiff = probe_turn_diff(turn_known, _tsnap);
+                    if (_tdiff.changed && array_length(turn_interference) < 10) array_push(turn_interference, _tdiff);
+                }
+                turn_known = _tsnap;
+                turn_input_seen = false;
+            }
+        }
+    }
+} catch (_turn_err) {
+    // A project the snapshot cannot read must not take the editor down:
+    // leave turn mode, unlock, and tell the user why.
+    turn_mode = false;
+    turn_pending = false;
+    probe_turn_set_owner("user");
+    probe_status = "Turn-taking stopped: " + string_copy(string(_turn_err), 1, 60);
+    probe_notice_until = current_time + 10000;
+} }
 if (probe_state == "off") {
     if (probe_auto_pair && probe_saved_key != "" && current_time >= probe_retry_at && !probe_busy()) {
         probe_retry_at = current_time + 5000;
@@ -182,3 +255,5 @@ probe_last_id = _msg.id;
 probe_last_wire = _wire;
 probe_last_reply = json_stringify(_reply);
 probe_send(probe_last_reply);
+// The assistant's own edit: absorb the relayout it triggers over the next frames.
+if (turn_mode && turn_owner == "claude") turn_known_at = current_time + 1500;
