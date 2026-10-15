@@ -1253,6 +1253,7 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
         ,-3 // --- TEST ---
         ,16 // PARAMS TEST (Creator params / cards / panels test bed)
         ,18 // POLARITY (sisterly life sim: attraction / repulsion)
+        ,19 // PUMPKINVILLE (Spooky jam 26: grow and guard pumpkins)
         // ,1 // V.SHMUP (PRO)
         // ,2 // H.SHMUP (LITE)
         // ,3 // H.SHMUP (PRO)
@@ -1263,6 +1264,12 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
         // ,8 // TOP DOWN (LITE)
         // ,9 // TOP DOWN (PRO)
     ];
+    // LITE never shows the TEST header or anything listed under it.
+    if (global.lite) {
+        for (var _tti = 0; _tti < array_length(_visible_templates); _tti++) {
+            if (_visible_templates[_tti] == -3) { array_resize(_visible_templates, _tti); break; }
+        }
+    }
     // PORTS: negative entries are sub-headers (-1 GAMES, -2 MUSIC+GFX), not clickable
     var _port_headers = ["GAMES", "MUSIC+GFX", "TEST"];
     if (gui_menu_open == 8) {

@@ -8,6 +8,7 @@ function scr_template_catalog(_index) {
     if (_index == 15) return {title:"BRUCE LEE", pro:false, path:working_directory + "C64DMResources/TEMPLATES/BRUCE_LEE.json"};
     if (_index == 17) return {title:"GATE-GAME", pro:false, path:working_directory + "C64DMResources/TEMPLATES/GATE_GAME.json"};
     if (_index == 18) return {title:"POLARITY", pro:false, path:working_directory + "C64DMResources/TEMPLATES/POLARITY.json"};
+    if (_index == 19) return {title:"PUMPKINVILLE", pro:false, path:working_directory + "C64DMResources/TEMPLATES/PUMPKINVILLE.json"};
     if (_index == 16) return {title:"PARAMS TEST", pro:false, path:working_directory + "C64DMResources/TEMPLATES/PARAMS_TEST.json"};
     if (_index == 0) return {title:"SHMUP V", pro:false, path:working_directory + "C64DMResources/TEMPLATES/SHMUP_V.json"};
     var _titles = ["V.SHMUP", "H.SHMUP", "PFORMER", "PFRMR.SCRL", "TOP DOWN"];
@@ -19,7 +20,7 @@ function scr_template_catalog(_index) {
 }
 
 function scr_template_load(_index) {
-    if (_index < 0 || _index >= 19) return;
+    if (_index < 0 || _index >= 20) return;
     var _entry = scr_template_catalog(_index);
     // Validate before the native loader destroys the current workspace.
     if (!file_exists(_entry.path)) { scr_show_message("Template file is missing: " + _entry.title); return; }
