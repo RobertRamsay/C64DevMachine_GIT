@@ -482,9 +482,31 @@ function scr_creator_tab_rect(_n) {
     return _r;
 }
 
+// The tab is only shown where it means something: on a node that already
+// has params, on the node being edited, or while the pointer is over the
+// node or the strip just right of it where the tab sits. Everything else
+// skips drawing and hit testing it.
+#macro CREATOR_TAB_REACH 20
+
+function scr_creator_tab_visible(_n) {
+    if (array_length(_n.params) > 0) {
+        return true;
+    }
+    if (global.creator_edit_node == _n) {
+        return true;
+    }
+    var _x1 = _n.x + _n.x_indent;
+    var _x2 = _x1 + _n.width + CREATOR_TAB_REACH;
+    var _y2 = max(_n.y + _n.height, _n.y + 48);
+    return point_in_rectangle(mouse_x, mouse_y, _x1, _n.y, _x2, _y2);
+}
+
 /// Called from obj_c64_node Draw, as the node.
 function scr_creator_draw_node_tab() {
     if (!scr_creator_node_tabbable(id)) {
+        exit;
+    }
+    if (!scr_creator_tab_visible(id)) {
         exit;
     }
     var _r   = scr_creator_tab_rect(id);
@@ -601,7 +623,7 @@ function scr_creator_begin_step() {
     var _my  = mouse_y;
     var _hot = noone;
     with (obj_c64_node) {
-        if (!scr_creator_node_tabbable(id)) {
+        if (!scr_creator_node_tabbable(id) || !scr_creator_tab_visible(id)) {
             continue;
         }
         var _r = scr_creator_tab_rect(id);

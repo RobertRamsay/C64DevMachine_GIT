@@ -498,7 +498,8 @@ function scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom) {
              + "|" + string(is_connected) + string(collapsed)
              + "|" + string(pc_address) + "," + string(total_node_size) + "," + string(node_cycles)
              + "|" + custom_title + "|" + string(code_descriptor);
-    if (node_type == "MACRO_CODE") _key += "|" + string(code_cached_lines);
+    // params count: the P tab shows (and only exists) with params > 0
+    if (node_type == "MACRO_CODE") _key += "|" + string(code_cached_lines) + "|" + string(array_length(params));
     else                           _key += "|" + string(instructions);
 
     var _w = width + NC_PAD_L + NC_PAD_R;
