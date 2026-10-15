@@ -1,6 +1,9 @@
 scr_perf_mark("gui_end");
 scr_perf_draw();
 /// @desc Draw GUI End: help above every object's regular GUI, including assets.
+// Conflict suggestion: its line reaches into the asset list, so it draws
+// above both the memory bar and the list.
+scr_conflict_suggest_draw();
 // CREATOR LAYER panels sit above everything else on screen.
 scr_creator_draw_dock();
 scr_creator_draw();

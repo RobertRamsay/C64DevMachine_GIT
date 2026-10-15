@@ -93,207 +93,7 @@ var _base = "unsaved";
         _am = obj_asset_manager;
         for (var _ai = 0; _ai < ds_list_size(_am.asset_list); _ai++) {
             var _a     = ds_list_find_value(_am.asset_list, _ai);
-            var _hex   = "";
-            if (buffer_exists(_a.buffer)) {
-                _hex = scr_blob_encode(_a.buffer);
-            }
-            // Full meta mirror — reuse the same field list as scr_save_workspace_as
-            _mo = {};
-            var _me = _a.meta;
-            var _fields = ["sprite_mcs","sprite_ucs","mc1_col","mc2_col","used_count","strip_frames","strip_base","bg_col","bmp_mode","tone_sorted",
-                           "sprite_json","compositor","anim",
-                           "sid_init_addr","sid_play_addr","sid_data_start",
-                           "format","char_count","total_size","mc_mode","mc_fg","mc_bg","mc_col1","mc_col2",
-                           "ecm_bg1","ecm_bg2","ecm_bg3",
-                           "map_w","map_h","grid_w","grid_h","char_grid","colour_grid","chr_asset",
-                           "scroll_x","scroll_y","zoom","active_char","active_colour","tool",
-                           "text","byte_string","is_save_file","save_file_size","paint_mc","map_mixed","raw_chars","tile_colours","obj_asset","room_objects","obj_row_off","obj_col_off","obj_table_addr","obj_regions","show_objects","room_w","room_h","room_count","stream_flag_colour","room_view","view_y2","erase_char","override_grid","map_mc_bg","map_mc_col1","map_mc_col2",
-                           "song_name","sfx_count","instruments","wavetable","source_file",
-                           "tile_types",
-                           "line_string","lines","pick","active_type","ref_enabled","ref_asset_name","ref_offset_x","ref_offset_y","wide_x",
-                           "gradient_custom_active","gradient_custom_cols","gradient_custom_count"];
-            for (var _fi = 0; _fi < array_length(_fields); _fi++) {
-                var _fk = _fields[_fi];
-                if (variable_struct_exists(_me, _fk)) _mo[$ _fk] = _me[$ _fk];
-            }
-            if (_a.type == "META_TILESET") {
-                _mo.stamp_w     = _me.stamp_w;
-                _mo.stamp_h     = _me.stamp_h;
-                _mo.stamp_count = _me.stamp_count;
-                _mo.chr_asset   = _me.chr_asset;
-                _mo.stamp_data  = _me.stamp_data;
-                _mo.stamp_mc    = variable_struct_exists(_me, "stamp_mc") ? _me.stamp_mc : [];
-                _mo.char_lut       = variable_struct_exists(_me, "char_lut")       ? _me.char_lut       : array_create(256, 0);
-                _mo.char_lut_len   = variable_struct_exists(_me, "char_lut_len")   ? _me.char_lut_len   : 0;
-                _mo.stamp_override = variable_struct_exists(_me, "stamp_override") ? _me.stamp_override : [];
-                _mo.zoom        = _me.zoom;
-                _mo.test_zoom   = _me.test_zoom;
-                _mo.map_mc_bg   = _me.map_mc_bg;
-                _mo.map_mc_col1 = _me.map_mc_col1;
-                _mo.map_mc_col2 = _me.map_mc_col2;
-                _mo.maps       = variable_struct_exists(_me, "maps")       ? _me.maps       : [];
-                _mo.map_count  = variable_struct_exists(_me, "map_count")  ? _me.map_count  : 0;
-                _mo.active_map = variable_struct_exists(_me, "active_map") ? _me.active_map : -1;
-                _mo.test_grid  = variable_struct_exists(_me, "test_grid")  ? _me.test_grid  : [];
-                // Size-guard key + per-map dims — without these the viewer's
-                // "size changed -> clear maps" guard fires on first open after
-                // an autosave recovery and wipes the maps.
-                _mo.map_size_key = variable_struct_exists(_me, "map_size_key") ? _me.map_size_key : "";
-                _mo.map_w        = variable_struct_exists(_me, "map_w")        ? _me.map_w        : [];
-                _mo.map_h        = variable_struct_exists(_me, "map_h")        ? _me.map_h        : [];
-                _mo.raw_rows     = _me.raw_rows;
-                _mo.map_names    = _me.map_names;
-                _mo.map_reps       = _me.map_reps;
-                _mo.map_addr       = _me.map_addr;
-                _mo.chains         = _me.chains;
-                _mo.chain_cols     = _me.chain_cols;
-                _mo.chain_dir      = _me.chain_dir;
-                _mo.chain_emit     = _me.chain_emit;
-                _mo.chain_tab_addr = _me.chain_tab_addr;
-                _mo.chain_rev      = _me.chain_rev;
-                _mo.chain_col_link = _me.chain_col_link;
-                _mo.active_chain   = _me.active_chain;
-            }
-            if (_a.type == "SPRITE_MASK") {
-                _mo = scr_sprmask_save_meta(_a);
-            }
-            if (_a.type == "BMP_OBJECTS") {
-                _mo = scr_bmpobj_save_meta(_a);
-            }
-            if (_a.type == "SAMPLE") {
-                _mo = scr_sample_save_meta(_a);
-            }
-            if (_a.type == "ROOM_MAP") {
-                _mo.rooms    = _me.rooms;
-                _mo.reu      = _me.reu;
-                _mo.zoom     = _me.zoom;
-                _mo.sel_room = _me.sel_room;
-            }
-            if (_a.type == "HUD") {
-                // Same field set as scr_save_workspace_as — surfaces excluded.
-                _mo.hud_x         = _me.hud_x;
-                _mo.hud_y         = _me.hud_y;
-                _mo.hud_w         = _me.hud_w;
-                _mo.hud_h         = _me.hud_h;
-                _mo.char_grid     = _me.char_grid;
-                _mo.colour_grid   = _me.colour_grid;
-                _mo.chr_asset     = _me.chr_asset;
-                _mo.fields        = _me.fields;
-                _mo.sel_field     = _me.sel_field;
-                _mo.active_char   = _me.active_char;
-                _mo.active_colour = _me.active_colour;
-                _mo.paint_mc      = _me.paint_mc;
-                _mo.hud_mc_mode   = _me.hud_mc_mode;
-                _mo.hud_mc_bg     = _me.hud_mc_bg;
-                _mo.hud_mc_col1   = _me.hud_mc_col1;
-                _mo.hud_mc_col2   = _me.hud_mc_col2;
-                _mo.zoom          = _me.zoom;
-                _mo.cur_x         = _me.cur_x;
-                _mo.cur_y         = _me.cur_y;
-                _mo.show_grid     = _me.show_grid;
-            }
-            if ((_a.type == "MUSIC_MAKER" || _a.type == "SFX_MAKER")) {
-                scr_music_sid_copy_meta(_me, _mo);
-                if (_a.type == "MUSIC_MAKER") {
-                    _mo.digi_rate     = _me.digi_rate;
-                    _mo.digi_samples  = _me.digi_samples;
-                    _mo.digi_patterns = _me.digi_patterns;
-                    _mo.digi_boost    = _me.digi_boost;
-                    _mo.digi_speed    = _me.digi_speed;
-                    _mo.instr_div     = _me.instr_div;
-                    _mo.digi_on       = _me.digi_on;
-                }
-                _mo.voice_mask = variable_struct_exists(_me, "voice_mask") ? _me.voice_mask : 7;
-            _mo.sfx_chip = variable_struct_exists(_me, "sfx_chip") ? _me.sfx_chip : 0;
-            _mo.instruments      = variable_struct_exists(_me, "instruments")      ? _me.instruments      : [];
-                _mo.sel_instr        = variable_struct_exists(_me, "sel_instr")        ? _me.sel_instr        : -1;
-                _mo.patterns         = variable_struct_exists(_me, "patterns")         ? _me.patterns         : [];
-                _mo.bank_sel_pattern = variable_struct_exists(_me, "bank_sel_pattern") ? _me.bank_sel_pattern : 0;
-                _mo.play_speed       = variable_struct_exists(_me, "play_speed")       ? _me.play_speed       : 6;
-                _mo.filt_mode        = variable_struct_exists(_me, "filt_mode")        ? _me.filt_mode        : 0;
-                _mo.filt_res         = variable_struct_exists(_me, "filt_res")         ? _me.filt_res         : 0;
-                _mo.filt_cut         = variable_struct_exists(_me, "filt_cut")         ? _me.filt_cut         : 1024;
-                _mo.chip_model       = 1;
-                if (variable_struct_exists(_me, "chip_model")) _mo.chip_model = _me.chip_model;
-                _mo.free_voices      = false;
-                if (variable_struct_exists(_me, "free_voices")) _mo.free_voices = _me.free_voices;
-                _mo.note_table       = [];
-                if (variable_struct_exists(_me, "note_table")) _mo.note_table = _me.note_table;
-                // songs[] is the source of truth. song_order/song_loop/song_loop_row
-                // are legacy and written only so an older build can still open the
-                // file; nothing in the current editor or emitter reads them.
-                _mo.songs            = variable_struct_exists(_me, "songs")            ? _me.songs            : [];
-                _mo.sel_song         = variable_struct_exists(_me, "sel_song")         ? _me.sel_song         : 0;
-                _mo.song_order       = variable_struct_exists(_me, "song_order")       ? _me.song_order       : [];
-                _mo.sel_order_row    = variable_struct_exists(_me, "sel_order_row")    ? _me.sel_order_row    : 0;
-                _mo.song_loop        = variable_struct_exists(_me, "song_loop")        ? _me.song_loop        : true;
-                _mo.song_loop_row    = variable_struct_exists(_me, "song_loop_row")    ? _me.song_loop_row    : 0;
-                _mo.sel_voice        = variable_struct_exists(_me, "sel_voice")        ? _me.sel_voice        : 0;
-                _mo.sel_step         = variable_struct_exists(_me, "sel_step")         ? _me.sel_step         : 0;
-                _mo.cur_octave       = variable_struct_exists(_me, "cur_octave")       ? _me.cur_octave       : 4;
-                _mo.view_mode        = variable_struct_exists(_me, "view_mode")        ? _me.view_mode        : "VERTICAL";
-                _mo.step_zoom        = variable_struct_exists(_me, "step_zoom")        ? _me.step_zoom        : 1;
-                _mo.list_scroll      = variable_struct_exists(_me, "list_scroll")      ? _me.list_scroll      : 0;
-            }
-            if (_a.type == "META_MAP") {
-                _mo.map_w        = _me.map_w;
-                _mo.map_h        = _me.map_h;
-                _mo.tileset_name = _me.tileset_name;
-                _mo.index_data   = _me.index_data;
-            }
-            if (_a.type == "BITMAP" && variable_struct_exists(_me, "coll_types") && is_array(_me.coll_types)) {
-                // Autosave writes unconditionally — a crash net shouldn't drop a
-                // tagged sheet to save 1000 zero bytes.
-                _mo.coll_types = _me.coll_types;
-            }
-            if (_a.type == "BITMAP" && is_struct(_me[$ "spr_overlay"])) _mo.spr_overlay = _me.spr_overlay;
-            if (_a.type == "BITMAP_BUILDER") {
-                _mo.src_asset  = variable_struct_exists(_me, "src_asset")  ? _me.src_asset  : "";
-                _mo.dst_asset  = variable_struct_exists(_me, "dst_asset")  ? _me.dst_asset  : "";
-                _mo.blend      = variable_struct_exists(_me, "blend")      ? _me.blend      : 0;
-                _mo.records    = variable_struct_exists(_me, "records")    ? _me.records    : [];
-                _mo.bbd_name   = variable_struct_exists(_me, "bbd_name")   ? _me.bbd_name   : "";
-                _mo.prev_entry = variable_struct_exists(_me, "prev_entry") ? _me.prev_entry : 0;
-                _mo.bbt_name   = variable_struct_exists(_me, "bbt_name")   ? _me.bbt_name   : "";
-                _mo.tag_type   = variable_struct_exists(_me, "tag_type")   ? _me.tag_type   : 1;
-            }
-            if (_a.type == "VECTOR_BITMAP") {
-                // Flush the live editor fields into pages[active_page] so the
-                // currently-edited page is captured even if the user never
-                // switched pages since drawing. Makes pages[] authoritative.
-                scr_vbmp_page_store(_a);
-                _mo.mode        = variable_struct_exists(_me, "mode")        ? _me.mode        : 1;
-                _mo.bg          = variable_struct_exists(_me, "bg")          ? _me.bg          : 0;
-                _mo.col1        = variable_struct_exists(_me, "col1")        ? _me.col1        : 1;
-                _mo.col2        = variable_struct_exists(_me, "col2")        ? _me.col2        : 2;
-                _mo.col3        = variable_struct_exists(_me, "col3")        ? _me.col3        : 3;
-                _mo.fill_stack  = variable_struct_exists(_me, "fill_stack")  ? _me.fill_stack  : 0xC000;
-                _mo.stream_addr = variable_struct_exists(_me, "stream_addr") ? _me.stream_addr : 0xC800;
-                _mo.commands    = variable_struct_exists(_me, "commands")    ? _me.commands    : [];
-                _mo.pages       = variable_struct_exists(_me, "pages")       ? _me.pages       : [];
-                _mo.active_page = variable_struct_exists(_me, "active_page") ? _me.active_page : 0;
-                _mo.active_col  = variable_struct_exists(_me, "active_col")  ? _me.active_col  : 1;
-                _mo.active_pat  = variable_struct_exists(_me, "active_pat")  ? _me.active_pat  : 0;
-                _mo.tool        = variable_struct_exists(_me, "tool")        ? _me.tool        : "LINE";
-                _mo.zoom        = variable_struct_exists(_me, "zoom")        ? _me.zoom        : 2;
-            }
-            array_push(asset_data, {
-                name          : _a.name,
-                type          : _a.type,
-                address       : _a.address,
-                file          : _a.file,
-                blob          : _hex,
-                meta          : _mo,
-                load_later    : variable_struct_exists(_a, "load_later")    ? _a.load_later    : false,
-                d64_filename  : variable_struct_exists(_a, "d64_filename")  ? _a.d64_filename  : "",
-                reu_filename  : variable_struct_exists(_a, "reu_filename")  ? _a.reu_filename  : "",
-                reu_size      : variable_struct_exists(_a, "reu_size")      ? _a.reu_size      : 0,
-                reu_used      : variable_struct_exists(_a, "reu_used")      ? _a.reu_used      : 0,
-                reu_base_file : variable_struct_exists(_a, "reu_base_file") ? _a.reu_base_file : "",
-                linked_assets : variable_struct_exists(_a, "linked_assets") ? _a.linked_assets : [],
-                group         : variable_struct_exists(_a, "group")         ? _a.group         : "",
-                order         : variable_struct_exists(_a, "order")         ? _a.order         : -1,
-            });
+            array_push(asset_data, scr_autosave_asset_entry(_a, true));
         }
     }
 
@@ -332,4 +132,241 @@ var _root = { nodes:node_data, boxes:box_data, assets:asset_data,
 	obj_workspace_manager.autosave_hour = current_hour;
 	obj_workspace_manager.autosave_minute = current_minute;
 	with (obj_workspace_manager) { autosave_flash_timer = game_get_speed(gamespeed_fps) * 3; }
+}
+
+/// One asset's autosave record (an assets[] entry). _with_blob=false leaves
+/// the hex blob empty: scr_panel_asset_fingerprint hashes the buffer instead.
+function scr_autosave_asset_entry(_a, _with_blob) {
+    var _hex   = "";
+    if (_with_blob && buffer_exists(_a.buffer)) {
+        _hex = scr_blob_encode(_a.buffer);
+    }
+    // Full meta mirror — reuse the same field list as scr_save_workspace_as
+    var _mo = {};
+    var _me = _a.meta;
+    var _fields = ["sprite_mcs","sprite_ucs","mc1_col","mc2_col","used_count","strip_frames","strip_base","bg_col","bmp_mode","tone_sorted",
+                   "sprite_json","compositor","anim",
+                   "sid_init_addr","sid_play_addr","sid_data_start",
+                   "format","char_count","total_size","mc_mode","mc_fg","mc_bg","mc_col1","mc_col2",
+                   "ecm_bg1","ecm_bg2","ecm_bg3",
+                   "map_w","map_h","grid_w","grid_h","char_grid","colour_grid","chr_asset",
+                   "scroll_x","scroll_y","zoom","active_char","active_colour","tool",
+                   "text","byte_string","is_save_file","save_file_size","paint_mc","map_mixed","raw_chars","tile_colours","obj_asset","room_objects","obj_row_off","obj_col_off","obj_table_addr","obj_regions","show_objects","room_w","room_h","room_count","stream_flag_colour","room_view","view_y2","erase_char","override_grid","map_mc_bg","map_mc_col1","map_mc_col2",
+                   "song_name","sfx_count","instruments","wavetable","source_file",
+                   "tile_types",
+                   "line_string","lines","pick","active_type","ref_enabled","ref_asset_name","ref_offset_x","ref_offset_y","wide_x",
+                   "gradient_custom_active","gradient_custom_cols","gradient_custom_count"];
+    for (var _fi = 0; _fi < array_length(_fields); _fi++) {
+        var _fk = _fields[_fi];
+        if (variable_struct_exists(_me, _fk)) _mo[$ _fk] = _me[$ _fk];
+    }
+    if (_a.type == "META_TILESET") {
+        _mo.stamp_w     = _me.stamp_w;
+        _mo.stamp_h     = _me.stamp_h;
+        _mo.stamp_count = _me.stamp_count;
+        _mo.chr_asset   = _me.chr_asset;
+        _mo.stamp_data  = _me.stamp_data;
+        _mo.stamp_mc    = variable_struct_exists(_me, "stamp_mc") ? _me.stamp_mc : [];
+        _mo.char_lut       = variable_struct_exists(_me, "char_lut")       ? _me.char_lut       : array_create(256, 0);
+        _mo.char_lut_len   = variable_struct_exists(_me, "char_lut_len")   ? _me.char_lut_len   : 0;
+        _mo.stamp_override = variable_struct_exists(_me, "stamp_override") ? _me.stamp_override : [];
+        _mo.zoom        = _me.zoom;
+        _mo.test_zoom   = _me.test_zoom;
+        _mo.map_mc_bg   = _me.map_mc_bg;
+        _mo.map_mc_col1 = _me.map_mc_col1;
+        _mo.map_mc_col2 = _me.map_mc_col2;
+        _mo.maps       = variable_struct_exists(_me, "maps")       ? _me.maps       : [];
+        _mo.map_count  = variable_struct_exists(_me, "map_count")  ? _me.map_count  : 0;
+        _mo.active_map = variable_struct_exists(_me, "active_map") ? _me.active_map : -1;
+        _mo.test_grid  = variable_struct_exists(_me, "test_grid")  ? _me.test_grid  : [];
+        // Size-guard key + per-map dims — without these the viewer's
+        // "size changed -> clear maps" guard fires on first open after
+        // an autosave recovery and wipes the maps.
+        _mo.map_size_key = variable_struct_exists(_me, "map_size_key") ? _me.map_size_key : "";
+        _mo.map_w        = variable_struct_exists(_me, "map_w")        ? _me.map_w        : [];
+        _mo.map_h        = variable_struct_exists(_me, "map_h")        ? _me.map_h        : [];
+        _mo.raw_rows     = _me.raw_rows;
+        _mo.map_names    = _me.map_names;
+        _mo.map_reps       = _me.map_reps;
+        _mo.map_addr       = _me.map_addr;
+        _mo.chains         = _me.chains;
+        _mo.chain_cols     = _me.chain_cols;
+        _mo.chain_dir      = _me.chain_dir;
+        _mo.chain_emit     = _me.chain_emit;
+        _mo.chain_tab_addr = _me.chain_tab_addr;
+        _mo.chain_rev      = _me.chain_rev;
+        _mo.chain_col_link = _me.chain_col_link;
+        _mo.active_chain   = _me.active_chain;
+    }
+    if (_a.type == "SPRITE_MASK") {
+        _mo = scr_sprmask_save_meta(_a);
+    }
+    if (_a.type == "BMP_OBJECTS") {
+        _mo = scr_bmpobj_save_meta(_a);
+    }
+    if (_a.type == "SAMPLE") {
+        _mo = scr_sample_save_meta(_a);
+    }
+    if (_a.type == "ROOM_MAP") {
+        _mo.rooms    = _me.rooms;
+        _mo.reu      = _me.reu;
+        _mo.zoom     = _me.zoom;
+        _mo.sel_room = _me.sel_room;
+    }
+    if (_a.type == "HUD") {
+        // Same field set as scr_save_workspace_as — surfaces excluded.
+        _mo.hud_x         = _me.hud_x;
+        _mo.hud_y         = _me.hud_y;
+        _mo.hud_w         = _me.hud_w;
+        _mo.hud_h         = _me.hud_h;
+        _mo.char_grid     = _me.char_grid;
+        _mo.colour_grid   = _me.colour_grid;
+        _mo.chr_asset     = _me.chr_asset;
+        _mo.fields        = _me.fields;
+        _mo.sel_field     = _me.sel_field;
+        _mo.active_char   = _me.active_char;
+        _mo.active_colour = _me.active_colour;
+        _mo.paint_mc      = _me.paint_mc;
+        _mo.hud_mc_mode   = _me.hud_mc_mode;
+        _mo.hud_mc_bg     = _me.hud_mc_bg;
+        _mo.hud_mc_col1   = _me.hud_mc_col1;
+        _mo.hud_mc_col2   = _me.hud_mc_col2;
+        _mo.zoom          = _me.zoom;
+        _mo.cur_x         = _me.cur_x;
+        _mo.cur_y         = _me.cur_y;
+        _mo.show_grid     = _me.show_grid;
+    }
+    if ((_a.type == "MUSIC_MAKER" || _a.type == "SFX_MAKER")) {
+        scr_music_sid_copy_meta(_me, _mo);
+        if (_a.type == "MUSIC_MAKER") {
+            _mo.digi_rate     = _me.digi_rate;
+            _mo.digi_samples  = _me.digi_samples;
+            _mo.digi_patterns = _me.digi_patterns;
+            _mo.digi_boost    = _me.digi_boost;
+            _mo.digi_speed    = _me.digi_speed;
+            _mo.instr_div     = _me.instr_div;
+            _mo.digi_on       = _me.digi_on;
+        }
+        _mo.voice_mask = variable_struct_exists(_me, "voice_mask") ? _me.voice_mask : 7;
+    _mo.sfx_chip = variable_struct_exists(_me, "sfx_chip") ? _me.sfx_chip : 0;
+    _mo.instruments      = variable_struct_exists(_me, "instruments")      ? _me.instruments      : [];
+        _mo.sel_instr        = variable_struct_exists(_me, "sel_instr")        ? _me.sel_instr        : -1;
+        _mo.patterns         = variable_struct_exists(_me, "patterns")         ? _me.patterns         : [];
+        _mo.bank_sel_pattern = variable_struct_exists(_me, "bank_sel_pattern") ? _me.bank_sel_pattern : 0;
+        _mo.play_speed       = variable_struct_exists(_me, "play_speed")       ? _me.play_speed       : 6;
+        _mo.filt_mode        = variable_struct_exists(_me, "filt_mode")        ? _me.filt_mode        : 0;
+        _mo.filt_res         = variable_struct_exists(_me, "filt_res")         ? _me.filt_res         : 0;
+        _mo.filt_cut         = variable_struct_exists(_me, "filt_cut")         ? _me.filt_cut         : 1024;
+        _mo.chip_model       = 1;
+        if (variable_struct_exists(_me, "chip_model")) _mo.chip_model = _me.chip_model;
+        _mo.free_voices      = false;
+        if (variable_struct_exists(_me, "free_voices")) _mo.free_voices = _me.free_voices;
+        _mo.note_table       = [];
+        if (variable_struct_exists(_me, "note_table")) _mo.note_table = _me.note_table;
+        // songs[] is the source of truth. song_order/song_loop/song_loop_row
+        // are legacy and written only so an older build can still open the
+        // file; nothing in the current editor or emitter reads them.
+        _mo.songs            = variable_struct_exists(_me, "songs")            ? _me.songs            : [];
+        _mo.sel_song         = variable_struct_exists(_me, "sel_song")         ? _me.sel_song         : 0;
+        _mo.song_order       = variable_struct_exists(_me, "song_order")       ? _me.song_order       : [];
+        _mo.sel_order_row    = variable_struct_exists(_me, "sel_order_row")    ? _me.sel_order_row    : 0;
+        _mo.song_loop        = variable_struct_exists(_me, "song_loop")        ? _me.song_loop        : true;
+        _mo.song_loop_row    = variable_struct_exists(_me, "song_loop_row")    ? _me.song_loop_row    : 0;
+        _mo.sel_voice        = variable_struct_exists(_me, "sel_voice")        ? _me.sel_voice        : 0;
+        _mo.sel_step         = variable_struct_exists(_me, "sel_step")         ? _me.sel_step         : 0;
+        _mo.cur_octave       = variable_struct_exists(_me, "cur_octave")       ? _me.cur_octave       : 4;
+        _mo.view_mode        = variable_struct_exists(_me, "view_mode")        ? _me.view_mode        : "VERTICAL";
+        _mo.step_zoom        = variable_struct_exists(_me, "step_zoom")        ? _me.step_zoom        : 1;
+        _mo.list_scroll      = variable_struct_exists(_me, "list_scroll")      ? _me.list_scroll      : 0;
+    }
+    if (_a.type == "META_MAP") {
+        _mo.map_w        = _me.map_w;
+        _mo.map_h        = _me.map_h;
+        _mo.tileset_name = _me.tileset_name;
+        _mo.index_data   = _me.index_data;
+    }
+    if (_a.type == "BITMAP" && variable_struct_exists(_me, "coll_types") && is_array(_me.coll_types)) {
+        // Autosave writes unconditionally — a crash net shouldn't drop a
+        // tagged sheet to save 1000 zero bytes.
+        _mo.coll_types = _me.coll_types;
+    }
+    if (_a.type == "BITMAP" && is_struct(_me[$ "spr_overlay"])) _mo.spr_overlay = _me.spr_overlay;
+    if (_a.type == "BITMAP_BUILDER") {
+        _mo.src_asset  = variable_struct_exists(_me, "src_asset")  ? _me.src_asset  : "";
+        _mo.dst_asset  = variable_struct_exists(_me, "dst_asset")  ? _me.dst_asset  : "";
+        _mo.blend      = variable_struct_exists(_me, "blend")      ? _me.blend      : 0;
+        _mo.records    = variable_struct_exists(_me, "records")    ? _me.records    : [];
+        _mo.bbd_name   = variable_struct_exists(_me, "bbd_name")   ? _me.bbd_name   : "";
+        _mo.prev_entry = variable_struct_exists(_me, "prev_entry") ? _me.prev_entry : 0;
+        _mo.bbt_name   = variable_struct_exists(_me, "bbt_name")   ? _me.bbt_name   : "";
+        _mo.tag_type   = variable_struct_exists(_me, "tag_type")   ? _me.tag_type   : 1;
+    }
+    if (_a.type == "VECTOR_BITMAP") {
+        // Flush the live editor fields into pages[active_page] so the
+        // currently-edited page is captured even if the user never
+        // switched pages since drawing. Makes pages[] authoritative.
+        scr_vbmp_page_store(_a);
+        _mo.mode        = variable_struct_exists(_me, "mode")        ? _me.mode        : 1;
+        _mo.bg          = variable_struct_exists(_me, "bg")          ? _me.bg          : 0;
+        _mo.col1        = variable_struct_exists(_me, "col1")        ? _me.col1        : 1;
+        _mo.col2        = variable_struct_exists(_me, "col2")        ? _me.col2        : 2;
+        _mo.col3        = variable_struct_exists(_me, "col3")        ? _me.col3        : 3;
+        _mo.fill_stack  = variable_struct_exists(_me, "fill_stack")  ? _me.fill_stack  : 0xC000;
+        _mo.stream_addr = variable_struct_exists(_me, "stream_addr") ? _me.stream_addr : 0xC800;
+        _mo.commands    = variable_struct_exists(_me, "commands")    ? _me.commands    : [];
+        _mo.pages       = variable_struct_exists(_me, "pages")       ? _me.pages       : [];
+        _mo.active_page = variable_struct_exists(_me, "active_page") ? _me.active_page : 0;
+        _mo.active_col  = variable_struct_exists(_me, "active_col")  ? _me.active_col  : 1;
+        _mo.active_pat  = variable_struct_exists(_me, "active_pat")  ? _me.active_pat  : 0;
+        _mo.tool        = variable_struct_exists(_me, "tool")        ? _me.tool        : "LINE";
+        _mo.zoom        = variable_struct_exists(_me, "zoom")        ? _me.zoom        : 2;
+    }
+    return {
+        name          : _a.name,
+        type          : _a.type,
+        address       : _a.address,
+        file          : _a.file,
+        blob          : _hex,
+        meta          : _mo,
+        load_later    : variable_struct_exists(_a, "load_later")    ? _a.load_later    : false,
+        d64_filename  : variable_struct_exists(_a, "d64_filename")  ? _a.d64_filename  : "",
+        reu_filename  : variable_struct_exists(_a, "reu_filename")  ? _a.reu_filename  : "",
+        reu_size      : variable_struct_exists(_a, "reu_size")      ? _a.reu_size      : 0,
+        reu_used      : variable_struct_exists(_a, "reu_used")      ? _a.reu_used      : 0,
+        reu_base_file : variable_struct_exists(_a, "reu_base_file") ? _a.reu_base_file : "",
+        linked_assets : variable_struct_exists(_a, "linked_assets") ? _a.linked_assets : [],
+        group         : variable_struct_exists(_a, "group")         ? _a.group         : "",
+        order         : variable_struct_exists(_a, "order")         ? _a.order         : -1,
+    };
+}
+
+/// Hash of what an autosave would write for this asset, so a panel can tell
+/// whether its data actually changed. "" if it can't be serialised.
+function scr_panel_asset_fingerprint(_a) {
+    try {
+        var _buf_md5 = "";
+        if (buffer_exists(_a.buffer) && buffer_get_size(_a.buffer) > 0) {
+            _buf_md5 = buffer_md5(_a.buffer, 0, buffer_get_size(_a.buffer));
+        }
+        return md5_string_utf8(json_stringify(scr_autosave_asset_entry(_a, false))) + _buf_md5;
+    } catch (_ex) {
+        return "";
+    }
+}
+
+/// Asset panel closed, switched away, or its SAVE pressed: if the asset differs
+/// from the snapshot taken when the panel opened (or at the last check),
+/// autosave now. Runs whatever the autosave mode, so an unsaved project still
+/// gets a recovery file even with autosave switched OFF.
+function scr_panel_autosave_check(_a) {
+    with (obj_asset_manager) {
+        if (!is_struct(_a) || ds_list_find_index(asset_list, _a) < 0) exit;
+        var _fp = scr_panel_asset_fingerprint(_a);
+        if (_fp == "") exit;
+        var _changed = (panel_as_fp != "" && _fp != panel_as_fp);
+        panel_as_fp = _fp;
+        // scr_autosave reads obj_workspace_manager instance vars
+        // (code_editor_font_index), so it must run in that scope.
+        if (_changed) with (obj_workspace_manager) scr_autosave();
+    }
 }

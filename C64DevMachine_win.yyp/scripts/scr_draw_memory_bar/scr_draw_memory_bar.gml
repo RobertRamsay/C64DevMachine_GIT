@@ -356,7 +356,8 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
 
         // The pulsing rings and the click test run per frame from this box
         array_push(global.memory_bar_conflict_boxes, { x1: _lbx1, y1: _lby1, x2: _lbx2, y2: _lby2,
-                                                       start: _cf.start, finish: _cf.finish });
+                                                       start: _cf.start, finish: _cf.finish,
+                                                       assets: scr_conflict_suggest_assets(_cf.start, _cf.finish) });
         draw_set_alpha(1.0);
         draw_set_color(c_black);
         draw_rectangle(_lbx1, _lby1, _lbx2, _lby2, false);
@@ -593,6 +594,42 @@ function scr_draw_memory_bar(_x1, _x2, _y) {
         }
     }
     draw_set_alpha(1.0);
+
+    // "? SUGGEST FIX" tag above each label with an asset in the clash; to its
+    // right instead when a stacked label sits too close above.
+    draw_set_font_l(fnt_c64_tiny);
+    for (var _bi = 0; _bi < array_length(_boxes); _bi++) {
+        var _cb = _boxes[_bi];
+        if (!variable_struct_exists(_cb, "assets") || array_length(_cb.assets) == 0) continue;
+        var _tg_txt = L("? SUGGEST FIX");
+        var _tg_w   = string_width_l(_tg_txt) + 14;
+        var _tg_x1  = _cb.x1;
+        var _tg_y2  = _cb.y1 - 10;   // clear of the label's pulsing rings
+        var _tg_y1  = _tg_y2 - 16;
+        for (var _bj = 0; _bj < array_length(_boxes); _bj++) {
+            var _ob = _boxes[_bj];
+            if (_bj != _bi && rectangle_in_rectangle(_tg_x1, _tg_y1 - 8, _tg_x1 + _tg_w, _tg_y2, _ob.x1, _ob.y1, _ob.x2, _ob.y2 + 8) != 0) {
+                _tg_x1 = _cb.x2 + 12;
+                _tg_y1 = _cb.y1;
+                _tg_y2 = _cb.y2;
+                break;
+            }
+        }
+        var _tg_x2  = _tg_x1 + _tg_w;
+        var _tg_hov = point_in_rectangle(global.gui_mouse_x, global.gui_mouse_y, _tg_x1, _tg_y1, _tg_x2, _tg_y2);
+        draw_set_color(_tg_hov ? make_color_rgb(70, 60, 10) : make_color_rgb(35, 30, 5));
+        draw_rectangle(_tg_x1, _tg_y1, _tg_x2, _tg_y2, false);
+        draw_set_color(c_yellow);
+        draw_set_alpha(_tg_hov ? 1 : 0.6 + 0.4 * _pulse);
+        draw_rectangle(_tg_x1, _tg_y1, _tg_x2, _tg_y2, true);
+        draw_set_alpha(1);
+        scr_editor_label(_tg_x1, _tg_y1, _tg_x2, _tg_y2, _tg_txt);
+        if (_tg_hov && !global.conflict_popup_open && !global.ui_click_consumed
+        && scr_workspace_mouse_check_button_pressed(mb_left)) {
+            scr_conflict_suggest_open(_cb);
+            global.ui_click_consumed = true;
+        }
+    }
 
     // Segment under the pointer: report it to nodes / asset list, outline it
     var _bar_mx       = global.gui_mouse_x;
@@ -984,4 +1021,277 @@ function scr_memory_bar_conflict_click(_cf) {
     global.conflict_popup_asset_b     = _asset_b_name;
     global.conflict_popup_range_start = _cf.start;
     global.conflict_popup_range_end   = _cf.finish;
+}
+
+// -------------------------------------------------------
+// CONFLICT SUGGESTIONS
+// A "? SUGGEST FIX" tag over a conflict label that involves an asset. Clicked,
+// it works out a free address for each asset in the clash and shows it in a
+// callout, with a line to the asset list's address text that would change.
+// -------------------------------------------------------
+
+/// The asset a memory bar segment belongs to: its name is the asset name, or
+/// the asset name plus a suffix (" (ATTR)", " COL", ...). Longest name wins, so
+/// SPRITE_SET_2 is never mistaken for SPRITE_SET.
+function scr_conflict_suggest_seg_asset(_seg_name) {
+    if (!instance_exists(obj_asset_manager)) return undefined;
+    var _am   = obj_asset_manager;
+    var _best = undefined;
+    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
+        var _a = ds_list_find_value(_am.asset_list, _i);
+        if (_seg_name != _a.name && string_pos(_a.name + " ", _seg_name) != 1) continue;
+        if (is_undefined(_best) || string_length(_a.name) > string_length(_best.name)) _best = _a;
+    }
+    return _best;
+}
+
+function scr_conflict_suggest_find(_name) {
+    if (!instance_exists(obj_asset_manager)) return undefined;
+    var _am = obj_asset_manager;
+    for (var _i = 0; _i < ds_list_size(_am.asset_list); _i++) {
+        var _a = ds_list_find_value(_am.asset_list, _i);
+        if (_a.name == _name) return _a;
+    }
+    return undefined;
+}
+
+/// Assets whose load address the user can type in (the asset list shows "--"
+/// for the rest).
+function scr_conflict_suggest_movable(_a) {
+    switch (_a.type) {
+        case "LOAD_ORG": case "LOAD_REU": case "BITMAP_BUILDER": case "MUSIC_MAKER": case "SFX_MAKER":
+        case "HUD": case "ROOM_MAP": case "ANIMATION": case "SPRITE_MASK": case "SAMPLE":
+            return false;
+    }
+    return true;
+}
+
+/// Names of the movable assets clashing inside [_start, _finish].
+function scr_conflict_suggest_assets(_start, _finish) {
+    var _out  = [];
+    var _segs = global.memory_bar_segments;
+    for (var _i = 0; _i < array_length(_segs); _i++) {
+        var _s = _segs[_i];
+        if (!_s.conflict || _s.node_id != noone) continue;
+        if (_s.addr > _finish || (_s.addr + _s.size) < _start) continue;
+        var _a = scr_conflict_suggest_seg_asset(_s.name);
+        if (!is_struct(_a) || !scr_conflict_suggest_movable(_a)) continue;
+        if (!array_contains(_out, _a.name)) array_push(_out, _a.name);
+    }
+    return _out;
+}
+
+/// A free load address for _a, or -1. Everything that moves with the address
+/// (the asset's own segment and its " (ATTR)" half) must fit clear of every
+/// other allocation, inside $0800-$CFFF, off BASIC ROM unless it is banked
+/// out. Graphics stay inside one VIC bank, off the char ROM shadows at
+/// $1000/$9000, aligned as the VIC needs, and prefer their current bank.
+/// Nearest address above the current one first, then from the bottom up.
+function scr_conflict_suggest_address(_a) {
+    var _segs  = global.memory_bar_segments;
+    var _base  = real(_a.address);
+    var _parts = [];
+    var _other = [];
+    for (var _i = 0; _i < array_length(_segs); _i++) {
+        var _s = _segs[_i];
+        if (_s.size <= 0) continue;
+        if (_s.node_id == noone && scr_conflict_suggest_seg_asset(_s.name) == _a) {
+            if (_s.name == _a.name || _s.name == _a.name + " (ATTR)") {
+                array_push(_parts, { off: _s.addr - _base, size: _s.size });
+            }
+            continue;
+        }
+        array_push(_other, _s);
+    }
+    if (array_length(_parts) == 0) {
+        var _bsz = buffer_exists(_a.buffer) ? buffer_get_size(_a.buffer) : 1;
+        array_push(_parts, { off: 0, size: max(1, _bsz) });
+    }
+
+    var _align = 256;
+    var _vic   = false;
+    switch (_a.type) {
+        case "SPRITE_SET":    _align = 64;   _vic = true; break;
+        case "CHAR_SET":      _align = 2048; _vic = true; break;
+        case "BITMAP":
+        case "VECTOR_BITMAP": _align = 8192; _vic = true; break;
+    }
+    var _lo   = 0x0800;
+    var _hi   = 0xD000;
+    var _bank = _base div 16384;
+
+    for (var _pass = 0; _pass < (_vic ? 2 : 1); _pass++) {
+        // Above the current address first, then from the bottom up to it
+        var _first = (floor(_base / _align) + 1) * _align;
+        for (var _sweep = 0; _sweep < 2; _sweep++) {
+            var _c0 = (_sweep == 0) ? _first : ceil(_lo / _align) * _align;
+            var _c1 = (_sweep == 0) ? _hi    : _first;
+            for (var _c = _c0; _c < _c1; _c += _align) {
+                if (_c == _base) continue;
+                if (_vic && _pass == 0 && (_c div 16384) != _bank) continue;
+                var _fits = true;
+                for (var _p = 0; _p < array_length(_parts) && _fits; _p++) {
+                    var _p0 = _c + _parts[_p].off;
+                    var _p1 = _p0 + _parts[_p].size;
+                    if (_p0 < _lo || _p1 > _hi) { _fits = false; break; }
+                    if (!global.basic_unlocked && _p0 < 0xC000 && _p1 > 0xA000) { _fits = false; break; }
+                    if (_vic) {
+                        if ((_p1 - 1) div 16384 != _c div 16384) { _fits = false; break; }
+                        if ((_p0 < 0x2000 && _p1 > 0x1000) || (_p0 < 0xA000 && _p1 > 0x9000)) { _fits = false; break; }
+                    }
+                    for (var _o = 0; _o < array_length(_other); _o++) {
+                        var _os = _other[_o];
+                        if (_p0 < _os.addr + _os.size && _os.addr < _p1) { _fits = false; break; }
+                    }
+                }
+                if (_fits) return _c;
+            }
+        }
+    }
+    return -1;
+}
+
+function scr_conflict_suggest_hex(_v) {
+    var _h = string_upper(decimal_to_hex(_v));
+    while (string_length(_h) < 4) _h = "0" + _h;
+    return "$" + _h;
+}
+
+/// Conflict tag clicked: _cb is its label box (with .assets).
+function scr_conflict_suggest_open(_cb) {
+    var _items = [];
+    for (var _i = 0; _i < array_length(_cb.assets); _i++) {
+        var _a = scr_conflict_suggest_find(_cb.assets[_i]);
+        if (!is_struct(_a)) continue;
+        array_push(_items, { name: _a.name, from: real(_a.address), to: scr_conflict_suggest_address(_a) });
+    }
+    global.conflict_popup_open = false;
+    global.conflict_suggest = { x: _cb.x1, y: _cb.y1, items: _items, skip_click: true };
+}
+
+/// Same effect as typing the address into the asset list and pressing ENTER.
+function scr_conflict_suggest_apply(_name, _to) {
+    var _a = scr_conflict_suggest_find(_name);
+    if (!is_struct(_a) || _to < 0) return;
+    _a.address = _to;
+    if (_a.type == "CHAR_SET") {
+        with (obj_c64_node) {
+            if (node_type == "MACRO_CHR" && array_length(instructions[0]) > 1
+            && string(instructions[0][1]) == _name) {
+                scr_macro_chr_sync(id);
+            }
+        }
+    }
+    global.addresses_dirty  = true;
+    global.memory_bar_dirty = true;
+    global.autosave_dirty   = true;
+}
+
+/// Draw GUI End: the callout, plus a line from each suggestion to the address
+/// text it would change in the asset list. Hidden while an editor is open.
+function scr_conflict_suggest_draw() {
+    if (!variable_global_exists("conflict_suggest") || !is_struct(global.conflict_suggest)) return;
+    if (!instance_exists(obj_asset_manager) || obj_asset_manager.viewer_open) {
+        global.conflict_suggest = undefined;
+        return;
+    }
+    var _cs = global.conflict_suggest;
+    // Drop rows whose asset has gone (deleted, renamed)
+    for (var _i = array_length(_cs.items) - 1; _i >= 0; _i--) {
+        if (!is_struct(scr_conflict_suggest_find(_cs.items[_i].name))) array_delete(_cs.items, _i, 1);
+    }
+    if (array_length(_cs.items) == 0) { global.conflict_suggest = undefined; return; }
+
+    var _mx    = global.gui_mouse_x;
+    var _my    = global.gui_mouse_y;
+    var _gw    = display_get_gui_width();
+    var _title = L("ADDRESS CONFLICT, PLEASE CHANGE WHERE THIS ASSET WILL BE PLACED IN MEMORY");
+    draw_set_font_l(fnt_c64_tiny);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
+
+    var _row_h = 26;
+    var _pad   = 10;
+    var _btn_w = 120;
+    var _texts = [];
+    var _w     = string_width_l(_title);
+    for (var _i = 0; _i < array_length(_cs.items); _i++) {
+        var _it = _cs.items[_i];
+        var _t  = _it.name + ":  " + scr_conflict_suggest_hex(_it.from) + "  ->  "
+                + ((_it.to >= 0) ? scr_conflict_suggest_hex(_it.to) : L("NO FREE SPACE - MOVE ANOTHER ASSET"));
+        array_push(_texts, _t);
+        _w = max(_w, string_width_l(_t) + _btn_w + 16);
+    }
+    var _pw = _w + _pad * 2 + 70;   // 70: CLOSE on the title row
+    var _ph = 28 + array_length(_cs.items) * _row_h + _pad;
+    var _x1 = clamp(_cs.x, 8, _gw - _pw - 8);
+    var _y2 = _cs.y - 34;            // above the tag over the label
+    var _y1 = _y2 - _ph;
+    var _x2 = _x1 + _pw;
+
+    draw_set_alpha(1);
+    draw_set_color(make_color_rgb(20, 20, 30));
+    draw_rectangle(_x1, _y1, _x2, _y2, false);
+    draw_set_color(c_yellow);
+    draw_rectangle(_x1, _y1, _x2, _y2, true);
+    draw_text_l(_x1 + _pad, _y1 + 8, _title);
+
+    var _cl_x1  = _x2 - 64;
+    var _cl_hov = point_in_rectangle(_mx, _my, _cl_x1, _y1 + 4, _x2 - 4, _y1 + 24);
+    scr_editor_control(_cl_x1, _y1 + 4, _x2 - 4, _y1 + 24, _cl_hov);
+    draw_set_color(c_white);
+    scr_editor_label(_cl_x1, _y1 + 4, _x2 - 4, _y1 + 24, "CLOSE");
+
+    var _pulse    = 0.5 + 0.5 * abs(sin(current_time * 0.006));
+    var _rects    = variable_global_exists("asset_addr_rects") ? global.asset_addr_rects : {};
+    var _apply_i  = -1;
+    for (var _i = 0; _i < array_length(_cs.items); _i++) {
+        var _it = _cs.items[_i];
+        var _ry = _y1 + 28 + _i * _row_h;
+        draw_set_color((_it.to >= 0) ? c_white : make_color_rgb(255, 120, 120));
+        draw_text_l(_x1 + _pad, _ry + 5, _texts[_i]);
+
+        var _ax2 = _x2 - _pad;
+        var _ax1 = _ax2 - _btn_w;
+        if (_it.to >= 0) {
+            var _ap_hov = point_in_rectangle(_mx, _my, _ax1, _ry + 2, _ax2, _ry + _row_h - 4);
+            scr_editor_control(_ax1, _ry + 2, _ax2, _ry + _row_h - 4, _ap_hov);
+            draw_set_color(c_lime);
+            scr_editor_label(_ax1, _ry + 2, _ax2, _ry + _row_h - 4, L("APPLY ") + scr_conflict_suggest_hex(_it.to));
+            if (_ap_hov) _apply_i = _i;
+        }
+
+        // ----[highlight] on the asset list address this row would change
+        var _r = _rects[$ _it.name];
+        if (is_array(_r)) {
+            var _lx = (_r[0] > _x2) ? _x2 : _x1;
+            var _ly = _ry + _row_h / 2;
+            var _tx = (_r[0] > _x2) ? _r[0] - 4 : _r[2] + 4;
+            var _ty = (_r[1] + _r[3]) / 2;
+            draw_set_color(c_yellow);
+            draw_set_alpha(0.5 + 0.4 * _pulse);
+            draw_line_width(_lx, _ly, _tx, _ty, 2);
+            draw_circle(_tx, _ty, 3, false);
+            draw_set_alpha(1);
+            for (var _k = 0; _k < 2; _k++) {
+                draw_set_alpha((_k == 0) ? 1 : 0.35 * _pulse);
+                draw_rectangle(_r[0] - 2 - _k * 3, _r[1] - 2 - _k * 3, _r[2] + 2 + _k * 3, _r[3] + 2 + _k * 3, true);
+            }
+            draw_set_alpha(1);
+        }
+    }
+
+    // The click that opened the callout is still "pressed" this frame
+    if (_cs.skip_click) { _cs.skip_click = false; return; }
+    if (scr_workspace_mouse_check_button_pressed(mb_left)) {
+        if (_apply_i >= 0) {
+            scr_conflict_suggest_apply(_cs.items[_apply_i].name, _cs.items[_apply_i].to);
+            global.conflict_suggest = undefined;
+            global.ui_click_consumed = true;
+        } else if (_cl_hov || !point_in_rectangle(_mx, _my, _x1, _y1, _x2, _y2)) {
+            global.conflict_suggest = undefined;
+        } else {
+            global.ui_click_consumed = true;
+        }
+    }
 }

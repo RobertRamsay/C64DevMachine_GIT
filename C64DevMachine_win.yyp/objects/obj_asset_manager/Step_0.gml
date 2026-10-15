@@ -17,6 +17,27 @@ if (is_struct(bmp_edit_ref)) {
         bmp_edit_ref = undefined;
     }
 }
+// REMOVE ASSET (viewer header): confirm, delete, and the editor closes with it.
+if (viewer_remove_req != "") {
+    var _rm_name = viewer_remove_req;
+    viewer_remove_req = "";
+    scr_reu_delete_project_asset(_rm_name);
+}
+// Panel autosave: the asset left (CLOSE, ESC, click-out, another asset picked)
+// is autosaved if its data changed while open. Runs after the bitmap commit so
+// that lands first. The new asset is fingerprinted a frame after opening, once
+// its first draw has filled in any defaults.
+var _pa_cur = (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
+            ? ds_list_find_value(asset_list, viewer_asset) : undefined;
+if (_pa_cur != panel_as_ref) {
+    if (is_struct(panel_as_ref)) scr_panel_autosave_check(panel_as_ref);
+    panel_as_ref   = _pa_cur;
+    panel_as_fp    = is_struct(_pa_cur) ? scr_panel_asset_fingerprint(_pa_cur) : "";
+    panel_as_check = false;
+} else if (panel_as_check) {
+    panel_as_check = false;
+    if (is_struct(panel_as_ref)) scr_panel_autosave_check(panel_as_ref);
+}
 if (!viewer_open) { manifest_preview_name = ""; manifest_preview_owner = undefined; }
 if (!viewer_open && scr_workspace_input_blocked()) exit;
 /// @desc obj_asset_manager Step

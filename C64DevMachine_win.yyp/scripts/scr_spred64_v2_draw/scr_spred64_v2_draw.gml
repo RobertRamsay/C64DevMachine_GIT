@@ -133,20 +133,30 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 break;
             }
         }
-        // Hover for the + add cell
-        var _pick_add_hover = false;
+        // Hover for the + add cell. Any empty position can be added at, not
+        // just the one after the last slot: the bank grows up to it and the
+        // slots in between come in blank, so sprites can be laid out freely.
+        var _pick_add_target = -1;   // empty position under the cursor
         if (_pick_add_slot >= 0) {
-            var _pa_col = _pick_add_slot mod _pick_cols;
-            var _pa_row = _pick_add_slot div _pick_cols;
-            var _pa_x   = _pick_x1 + 2 + _pa_col * (_pick_cell_w + _pick_gap);
-            var _pa_y   = _pick_y1 + 2 + _pa_row * (_pick_cell_h + _pick_gap);
-            _pick_add_hover = point_in_rectangle(_mx, _my, _pa_x, _pa_y,
-                _pa_x + _pick_cell_w, _pa_y + _pick_cell_h);
+            for (var _pa_slot = _pick_used; _pa_slot < 64; _pa_slot++) {
+                var _pa_x = _pick_x1 + 2 + (_pa_slot mod _pick_cols) * (_pick_cell_w + _pick_gap);
+                var _pa_y = _pick_y1 + 2 + (_pa_slot div _pick_cols) * (_pick_cell_h + _pick_gap);
+                if (point_in_rectangle(_mx, _my, _pa_x, _pa_y,
+                    _pa_x + _pick_cell_w, _pa_y + _pick_cell_h)) {
+                    _pick_add_target = _pa_slot;
+                    break;
+                }
+            }
         }
+        var _pick_add_hover = (_pick_add_target >= 0);
         scr_ui_info(_pick_hover >= 0, (_pick_hover == _pick_used - 1 && _pick_used > 1)
             ? "LAST SLOT: CLICK SELECTS, SHIFT/CTRL+CLICK MULTI-SELECT, RIGHT-CLICK REMOVES IT"
             : "SPRITE SLOT: CLICK SELECTS, SHIFT+CLICK RANGE, CTRL+CLICK TOGGLES IN SET, CTRL+C/V COPY/PASTE");
-        scr_ui_info(_pick_add_hover, "ADD A NEW BLANK SPRITE SLOT AT THE END OF THE BANK (UP TO 64)");
+        scr_ui_info(_pick_add_hover, (_pick_add_target == _pick_add_slot)
+            ? "ADD A NEW BLANK SPRITE SLOT AT THE END OF THE BANK (UP TO 64)"
+            : "ADD SPRITE " + string(_pick_add_target) + " HERE; SLOTS " + string(_pick_used)
+              + ((_pick_add_target - 1 > _pick_used) ? "-" + string(_pick_add_target - 1) : "")
+              + " COME IN BLANK");
 
         // Draw each slot cell
         for (var _slot = 0; _slot < _pick_used; _slot++) {
@@ -238,38 +248,43 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
 
         // Empty positions reserve the same footprint as populated sprites.
         for (var _empty_slot = _pick_used + 1; _empty_slot < 64; _empty_slot++) {
+            if (_empty_slot == _pick_add_target) continue; // drawn as a hovered + below
             var _ex = _pick_x1 + 2 + (_empty_slot mod _pick_cols) * (_pick_cell_w + _pick_gap);
             var _ey = _pick_y1 + 2 + (_empty_slot div _pick_cols) * (_pick_cell_h + _pick_gap);
             scr_editor_empty_slot(_ex, _ey, _ex + _pick_cell_w, _ey + _pick_cell_h);
         }
 
         // ----- "+" ADD-SLOT CELL -----
-        // Sits immediately after the last used slot. Click adds one blank
-        // sprite (up to the 64 cap) via scr_spred64_v2_add_slot.
+        // Always shown immediately after the last used slot; also shown on
+        // whichever further empty position is hovered. Click adds blank
+        // sprites up to and including that position (up to the 64 cap) via
+        // scr_spred64_v2_add_slot, which leaves the last one selected.
         if (_pick_add_slot >= 0) {
-            var _add_col = _pick_add_slot mod _pick_cols;
-            var _add_row = _pick_add_slot div _pick_cols;
-            var _add_cx  = _pick_x1 + 2 + _add_col * (_pick_cell_w + _pick_gap);
-            var _add_cy  = _pick_y1 + 2 + _add_row * (_pick_cell_h + _pick_gap);
-
-            scr_editor_control(_add_cx, _add_cy,
-                           _add_cx + _pick_cell_w, _add_cy + _pick_cell_h, _pick_add_hover, false);
-
-            draw_set_color(_pick_add_hover
-                ? make_color_rgb(120, 255, 120)
-                : make_color_rgb(80, 160, 90));
-
+            var _add_cells = [_pick_add_slot];
+            if (_pick_add_target > _pick_add_slot) array_push(_add_cells, _pick_add_target);
             draw_set_font_l(fnt_c64_code);
-            draw_set_color(_pick_add_hover ? c_white : make_color_rgb(120, 200, 130));
             draw_set_halign(fa_center);
             draw_set_valign(fa_middle);
-            scr_editor_label(_add_cx, _add_cy, _add_cx + _pick_cell_w, _add_cy + _pick_cell_h, "+");
+            for (var _ac = 0; _ac < array_length(_add_cells); _ac++) {
+                var _add_i   = _add_cells[_ac];
+                var _add_hov = (_add_i == _pick_add_target);
+                var _add_cx  = _pick_x1 + 2 + (_add_i mod _pick_cols) * (_pick_cell_w + _pick_gap);
+                var _add_cy  = _pick_y1 + 2 + (_add_i div _pick_cols) * (_pick_cell_h + _pick_gap);
+                scr_editor_control(_add_cx, _add_cy,
+                               _add_cx + _pick_cell_w, _add_cy + _pick_cell_h, _add_hov, false);
+                draw_set_color(_add_hov ? c_white : make_color_rgb(120, 200, 130));
+                scr_editor_label(_add_cx, _add_cy, _add_cx + _pick_cell_w, _add_cy + _pick_cell_h, "+");
+            }
             draw_set_halign(fa_left);
             draw_set_valign(fa_top);
 
             if (_pick_add_hover && mouse_check_button_pressed(mb_left)
             && !global.ui_click_consumed && !global.any_picker_open) {
-                scr_spred64_v2_add_slot();
+                while (_v2.used_count <= _pick_add_target && _v2.used_count < 64) {
+                    scr_spred64_v2_add_slot();
+                }
+                if (surface_exists(_v2.edit_surface)) surface_free(_v2.edit_surface);
+                _v2.edit_surface = -1;
                 global.ui_click_consumed = true;
             }
         }
@@ -771,7 +786,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 ? "LINE: CLICK TO SET THE START POINT, RIGHT CLICK CANCELS THE TOOL"
                 : "LINE: CLICK TO DRAW THE LINE TO HERE (TOOL STAYS ARMED), RIGHT CLICK CANCELS");
         } else {
-            scr_ui_info(_canvas_hover, "LEFT DRAG PAINTS ACTIVE COLOUR, RIGHT ERASES, MIDDLE OR SPACE+DRAG SHIFTS (WRAPS)");
+            scr_ui_info(_canvas_hover, "LEFT DRAG PAINTS ACTIVE COLOUR, RIGHT ERASES, ALT+CLICK PICKS PEN (AND SPRITE), MIDDLE OR SPACE+DRAG SHIFTS (WRAPS)");
         }
 
         // ----- PAN ACTIVATION / UPDATE / DEACTIVATION -----
@@ -840,6 +855,75 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 }
                 if (_hit.layer == _cu_comp.active_layer) break;
             }
+        }
+        // ----- ALT+CLICK : PICK PEN -----
+        // Picks the paint role (UC / MC1 / MC2) of the opaque pixel under the
+        // cursor. COMP OFF reads the selected slot. COMP ON reads the topmost
+        // visible sprite at that spot (top layer down, later cells first, same
+        // footprint rules as the composite render); when that pixel belongs to
+        // another sprite, that slot (and its layer) becomes the edited one.
+        // Transparent pixels pick nothing.
+        if (_canvas_hover && !_v2.pan_active && keyboard_check(vk_alt)
+        && mouse_check_button_pressed(mb_left)
+        && !global.ui_click_consumed && !global.any_picker_open) {
+            var _ap_slot = -1, _ap_role = 0, _ap_cell = -1;
+            if (!_comp_view_active) {
+                var _ap_x = floor((_mx - _canvas_x) / _cell_size);
+                var _ap_y = floor((_my - _canvas_y) / _cell_size);
+                if (_ap_x >= 0 && _ap_x < 24 && _ap_y >= 0 && _ap_y < 21) {
+                    _ap_slot = _slot;
+                    if (_is_mc) _ap_x -= _ap_x mod 2;
+                    var _ap_b0 = _v2.bits[_bit_base + _ap_y * 24 + _ap_x];
+                    var _ap_b1 = _is_mc ? _v2.bits[_bit_base + _ap_y * 24 + _ap_x + 1] : 0;
+                    _ap_role = _is_mc ? (_ap_b0 ? (_ap_b1 ? 2 : 3) : (_ap_b1 ? 1 : 0)) : (_ap_b0 ? 3 : 0);
+                }
+            } else {
+                for (var _ap_ly = 7; _ap_ly >= 0 && _ap_role == 0; _ap_ly--) {
+                    for (var _ap_i = array_length(_cu_frame.cells) - 1; _ap_i >= 0; _ap_i--) {
+                        var _ap_c = _cu_frame.cells[_ap_i];
+                        if (_ap_c.layer != _ap_ly) continue;
+                        if (_ap_c.slot < 0 || _ap_c.slot >= _v2.used_count) continue;
+                        var _ap_dr = _cu_row - _ap_c.row, _ap_dc = _cu_col - _ap_c.col;
+                        var _ap_ex = (_ap_c.expand == "x" || _ap_c.expand == "both") ? 2 : 1;
+                        var _ap_ey = (_ap_c.expand == "y" || _ap_c.expand == "both") ? 2 : 1;
+                        if (_ap_dr < 0 || _ap_dr >= _ap_ey || _ap_dc < 0 || _ap_dc >= _ap_ex) continue;
+                        var _ap_px = floor((_mx - (_canvas_x + (_ap_c.xo - _ap_dc * 24) * _cell_size)) / (_cell_size * _ap_ex));
+                        var _ap_py = floor((_my - (_canvas_y + (_ap_c.yo - _ap_dr * 21) * _cell_size)) / (_cell_size * _ap_ey));
+                        if (_ap_px < 0 || _ap_px >= 24 || _ap_py < 0 || _ap_py >= 21) continue;
+                        var _ap_mc = (_v2.sprite_modes[_ap_c.slot] == 1);
+                        if (_ap_mc) _ap_px -= _ap_px mod 2;
+                        var _ap_base = _ap_c.slot * 504 + _ap_py * 24 + _ap_px;
+                        var _ap_c0 = _v2.bits[_ap_base];
+                        var _ap_c1 = _ap_mc ? _v2.bits[_ap_base + 1] : 0;
+                        var _ap_r = _ap_mc ? (_ap_c0 ? (_ap_c1 ? 2 : 3) : (_ap_c1 ? 1 : 0)) : (_ap_c0 ? 3 : 0);
+                        if (_ap_r == 0) continue;
+                        _ap_slot = _ap_c.slot;
+                        _ap_role = _ap_r;
+                        _ap_cell = _ap_i;
+                        break;
+                    }
+                }
+            }
+            if (_ap_role != 0) {
+                if (_ap_cell >= 0) {
+                    var _ap_hit = _cu_frame.cells[_ap_cell];
+                    _cu_comp.active_layer = _ap_hit.layer;
+                    _cu_comp.active_cell  = scr_spred64_v2_compositor_find_cell(
+                        _cu_frame, _ap_hit.layer, _cu_row, _cu_col);
+                }
+                if (_ap_slot != _v2.selected_slot) {
+                    for (var _ap_ms = 0; _ap_ms < 64; _ap_ms++) _v2.multi_select[_ap_ms] = false;
+                    _v2.selected_slot = _ap_slot;
+                    if (surface_exists(_v2.edit_surface)) surface_free(_v2.edit_surface);
+                    _v2.edit_surface  = -1;
+                    _v2.fill_armed    = false;
+                    _v2.line_armed    = false;
+                    _v2.line_anchor_x = -1;
+                    _v2.line_anchor_y = -1;
+                }
+                _v2.active_colour = _ap_role;
+            }
+            global.ui_click_consumed = true;
         }
         if (_canvas_hover && !_v2.pan_active && (!_comp_view_active || _hover_comp_cell >= 0)) {
             var _hx = floor((_mx - _hover_origin_x) / _hover_step_x);
@@ -1027,7 +1111,7 @@ function scr_spred64_v2_draw(_asset, _vx1, _vy1, _vx2, _vy2, _mx, _my) {
                 // and skipped during cooldown after V2 opened from a picker
                 // click so the opening click doesn't bleed through).
                 else if ((mouse_check_button(mb_left) || mouse_check_button(mb_right))
-                && !global.ui_click_consumed && !global.any_picker_open
+                && !global.ui_click_consumed && !global.any_picker_open && !keyboard_check(vk_alt)
                 && !_v2.fill_armed && !_v2.line_armed && _v2.paint_cooldown <= 0) {
 
                     var _idx = _bit_base + _hy * 24 + _snap_x;

@@ -558,6 +558,11 @@ function scr_reu_commit_project_asset_delete(_index, _owner) {
             scr_sound_preview_cache_clear();
         }
 
+        if (_asset.type == "SAMPLE") {
+            // A preview of the asset being deleted would otherwise play on.
+            scr_sample_preview_stop();
+            scr_digi_free_sample_sound(_asset);
+        }
 
     ds_list_delete(asset_list, _index);
     viewer_asset = -1;

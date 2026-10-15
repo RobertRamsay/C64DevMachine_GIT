@@ -305,6 +305,9 @@ global.conflict_popup_asset_a = "";
 global.conflict_popup_asset_b = "";
 global.conflict_popup_range_start = 0;
 global.conflict_popup_range_end   = 0;
+// "? SUGGEST FIX" callout (scr_conflict_suggest_open / _draw); undefined = closed.
+global.conflict_suggest = undefined;
+global.asset_addr_rects = {};
 
 // scan effect when building
 scan_active = false;

@@ -72,6 +72,9 @@ scr_editor_panel(panel_x, panel_y, _panel_right, _panel_bottom, true);
 // -------------------------------------------------------
 // ADD ASSET BUTTON
 // -------------------------------------------------------
+// Where each visible row's address text sits, by asset name, for the conflict
+// suggestion's highlight line (scr_conflict_suggest_draw). Rebuilt every frame.
+global.asset_addr_rects = {};
 if (!viewer_open || viewer_asset < 0 || viewer_asset >= ds_list_size(asset_list)) {
 var _btn_hover = point_in_rectangle(_mx, _my, panel_x + 4, panel_y + 4, _panel_right - 4, panel_y + 26);
 scr_editor_control(panel_x + 4, panel_y + 4, _panel_right - 4, panel_y + 26, _btn_hover, false);
@@ -395,6 +398,8 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
         var _addr_hover = point_in_rectangle(_mx, _my, _addr_x, _iy, _panel_right, _iy + item_h);
         draw_set_color(_addr_hover ? c_white : c_aqua);
         scr_editor_label(_addr_x, _iy, _panel_right, _iy + item_h, "$" + _ah, fa_right, 6);
+        var _ah_w = string_width_l("$" + _ah);
+        global.asset_addr_rects[$ _asset.name] = [_panel_right - 6 - _ah_w - 2, _iy + 4, _panel_right - 4, _iy + item_h - 4];
     }
     draw_set_halign(fa_left);
 
@@ -927,6 +932,20 @@ if (viewer_open && viewer_asset >= 0 && viewer_asset < ds_list_size(asset_list))
     }
     if (_hp_hov && mouse_check_button_pressed(mb_left)) {
         scr_panel_help_start(_asset, [_vx1, _vy1, _vx2, _vy2], [_has_wf ? _wf_x1 : _hp_x1, _cl_y1, _hp_x2, _cl_y2], "COMPLETE");
+    }
+    // REMOVE ASSET: left of WORKFLOW / HELP GUIDE. Queued for Step, which asks
+    // to confirm, deletes the asset and closes this editor - deleting here
+    // would free the buffer while the rest of the panel is still drawing.
+    var _rm_x2  = (_has_wf ? _wf_x1 : _hp_x1) - 8;
+    var _rm_x1  = _rm_x2 - 110;
+    var _rm_hov = !global.ph_active && point_in_rectangle(_mx, _my, _rm_x1, _cl_y1, _rm_x2, _cl_y2);
+    scr_ui_info(_rm_hov, "REMOVE THIS ASSET FROM THE PROJECT AND CLOSE ITS EDITOR (ASKS FIRST)");
+    scr_editor_control(_rm_x1, _cl_y1, _rm_x2, _cl_y2, _rm_hov);
+    draw_set_color(_rm_hov ? make_color_rgb(255, 120, 120) : make_color_rgb(220, 90, 90));
+    scr_editor_label(_rm_x1, _cl_y1, _rm_x2, _cl_y2, "REMOVE ASSET");
+    if (_rm_hov && mouse_check_button_pressed(mb_left)) {
+        viewer_remove_req = _asset.name;
+        mouse_clear(mb_left);
     }
 
     var _cy = _vy1 + 38;
@@ -8460,6 +8479,7 @@ case "BYTE_DATA": {
         } else {
             // Close — parse and save
             scr_asset_byte_data_save(_asset);
+            panel_as_check = true;   // autosave if the panel data changed
             _asset.meta.inline_edit_open = false;
             global.is_any_text_active    = false;
         }
@@ -8479,6 +8499,7 @@ case "BYTE_DATA": {
         draw_set_halign(fa_left);
         if (_sb_hov && mouse_check_button_pressed(mb_left)) {
             scr_asset_byte_data_save(_asset);
+            panel_as_check = true;   // autosave if the panel data changed
         }
     }
 
@@ -8573,6 +8594,7 @@ case "TEXT_DATA": {
             scr_asset_inline_edit_open(_asset);
         } else {
             scr_asset_text_data_save(_asset);
+            panel_as_check = true;   // autosave if the panel data changed
             _asset.meta.inline_edit_open = false;
             global.is_any_text_active    = false;
         }
@@ -8592,6 +8614,7 @@ case "TEXT_DATA": {
         draw_set_halign(fa_left);
         if (_sb_hov && mouse_check_button_pressed(mb_left)) {
             scr_asset_text_data_save(_asset);
+            panel_as_check = true;   // autosave if the panel data changed
         }
     }
 
@@ -8744,6 +8767,7 @@ case "LINE_COLL": {
         } else {
             // Close — parse and save
             scr_line_coll_save(_asset);
+            panel_as_check = true;   // autosave if the panel data changed
             _asset.meta.inline_edit_open = false;
             global.is_any_text_active    = false;
         }
@@ -8762,6 +8786,7 @@ case "LINE_COLL": {
         draw_set_halign(fa_left);
         if (_sb_hov && mouse_check_button_pressed(mb_left)) {
             scr_line_coll_save(_asset);
+            panel_as_check = true;   // autosave if the panel data changed
         }
     }
 
@@ -12325,6 +12350,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
 	        }
 	        _asset.meta.is_dirty    = false;
 	        _asset.meta.flash_timer = 0;
+	        if (_svhov && mouse_check_button_pressed(mb_left)) panel_as_check = true;   // autosave if the panel data changed
 	    }
 	}
 	
