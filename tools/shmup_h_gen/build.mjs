@@ -6,7 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { reflow } from './reflow.mjs';
+import { reflow } from '../shmup_common/reflow.mjs';
 import { V_ASSETS, buildCharset, buildMap, buildSprites, buildTitle, buildSpawns, SPAWN_TYPES, STAMPS, MAP_ROWS, MAP_COLS, LOOP_COL, CH } from './art.mjs';
 import { C, STATE, stateMapCode, stateUsed } from './code.mjs';
 

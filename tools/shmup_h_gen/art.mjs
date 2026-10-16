@@ -4,9 +4,11 @@
 // FRONT_END) and nothing reads these back.
 import fs from 'fs';
 
-const V_JSON = 'D:/POLYTRICITY/C64DevMachine_GIT/C64DevMachine_win.yyp/datafiles/C64DMResources/TEMPLATES/SHMUP_V.json';
-export const SHMUP_V = JSON.parse(fs.readFileSync(V_JSON, 'utf8'));
-export const V_ASSETS = Object.fromEntries(SHMUP_V.assets.map(a => [a.name, a]));
+// The font, sounds, music, HUD and editor metadata both SHMUP generators
+// start from (taken from the original hand-made SHMUP V).
+const BASE_JSON = new URL('../shmup_common/base_assets.json', import.meta.url);
+export const BASE = JSON.parse(fs.readFileSync(BASE_JSON, 'utf8'));
+export const V_ASSETS = Object.fromEntries(BASE.assets.map(a => [a.name, a]));
 export const blobOf = a => Buffer.from(a.blob.slice(4), 'base64');
 
 // Seeded PRNG so a rebuild gives the same map and title stars.
