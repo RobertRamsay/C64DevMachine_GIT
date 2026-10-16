@@ -203,11 +203,59 @@ def build_assets():
                   "sprite_ucs": [float(f[3]) for f in sprites.FRAMES],
                   "bg_col": 14.0, "mc1_col": float(sprites.SKIN), "mc2_col": float(sprites.HAIR[0]),
                   "mc_mode": 1.0, "mc_col1": float(sprites.SKIN), "mc_col2": float(sprites.HAIR[0])})
-    smeta["compositor"] = {"active_layer": 0.0, "active_frame": 0.0, "active_cell": -1.0, "frames": [{"cells": []}]}
+    # compositor: the six buffers as they stand at the start (sister, Mo),
+    # then the two-frame effects in sequence
+    seq = [("BUFFERS", [figure(0, 1, 2), figure(3, 4, 5)])]
+    I = sprites.INDEX
+    for fx in ("COIN", "BEE", "HEARTS", "ZAP", "STAR"):
+        seq.append((fx, [[cell(0, I[fx + "_A"])], [cell(0, I[fx + "_B"])]]))
+    seq.append(("ZZZ + BUBBLES", [[cell(0, I["ZZZ"])], [cell(0, I["BUBBLES"])]]))
+    seq.append(("CLUES", [[cell(0, I["CLUE_" + n])] for n in sprites.CLUE_NAMES]))
+    smeta["compositor"], smeta["anim"], SPR_SEQS["POL_SPRITES"] = compositor(seq, "COIN", 6)
     assets.append(asset("POL_SPRITES", "SPRITE_SET", game.SPR_BASE, sblob, smeta))
     place(game.SPR_BASE, sblob)
+
+    # the library: a SPRITE_SET too, so every frame shows in the sprite editor.
+    # Overlays are hires black; bodies are multicolour in the dress / NPC
+    # colour. $D026 (hair) is one colour per set: Sunny's, so Hex's hair shows
+    # yellow here (the game switches $D026 when the sisters swap).
+    look = {}
+    for form, poses in enumerate(sprites.SISTER_FRAMES):
+        for top, bot, body in poses:
+            look.setdefault(top, (0, 0)); look.setdefault(bot, (0, 0))
+            look.setdefault(body, (1, sprites.DRESS[form]))
+    for n, (top, bot, body) in enumerate(sprites.NPC_FRAMES):
+        look.setdefault(top, (0, 0)); look.setdefault(bot, (0, 0))
+        look.setdefault(body, (1, sprites.NPC_COL[n]))
+    assert sorted(look) == list(range(len(sprites.LIB))), "a library block nobody uses"
+    assert len(sprites.LIB) <= 64
     lib = [b for blk in sprites.LIB for b in blk]
-    assets.append(byte_asset("SPR_LIB", game.SPR_LIB, lib))
+    lmeta = copy.deepcopy(smeta)
+    lmeta.update({"used_count": float(len(sprites.LIB)),
+                  "sprite_mcs": [float(look[i][0]) for i in range(len(sprites.LIB))],
+                  "sprite_ucs": [float(look[i][1]) for i in range(len(sprites.LIB))]})
+    # compositor: each figure is its body (Y-expanded) under the two
+    # overlays; the game's animations follow one another (SPR_SEQS lists
+    # where each starts), the playback range set to Sunny's walk
+    seq = []
+    P = {p: i for i, p in enumerate(sprites.POSES)}
+    for name, poses in zip([n.strip() for n in game.NAMES], sprites.SISTER_FRAMES):
+        f = lambda pose, yo=0: figure(*poses[P[pose]], yo=yo)
+        seq += [
+            (name + " WALK", [f("WALK", 2), f("STEP")]),       # the stride sits 2 lines lower
+            (name + " JUMP", [f("STEP")] + [f("JUMP", -game.JUMP[i]) for i in range(0, len(game.JUMP), 3)]
+                              + [f("STEP")]),
+            (name + " MAGIC", [f("STAND"), f("CAST")]),
+            (name + " CHEER", [f("CHEER"), f("CHEER", -2)]),
+            (name + " EAT", [f("EAT"), f("STAND")]),
+            (name + " SIT + SWING", [f("SIT_A"), f("SIT_B")]),
+            (name + " PHONE", [f("PHONE")]),
+            (name + " SLEEP", [f("LIE")]),
+        ]
+    for name, fr in zip(sprites.NPC_NAMES, sprites.NPC_FRAMES):
+        seq.append((name + " TALK", [figure(*fr), figure(*fr, yo=-1)]))   # they bob as they talk
+    lmeta["compositor"], lmeta["anim"], SPR_SEQS["SPR_LIB"] = compositor(seq, game.NAMES[0].strip() + " WALK", 6)
+    assets.append(asset("SPR_LIB", "SPRITE_SET", game.SPR_LIB, lib, lmeta))
     place(game.SPR_LIB, lib)
 
     # title bitmap
@@ -233,6 +281,33 @@ def build_assets():
     assets.append(asset("POL_MUSIC", "MUSIC_MAKER", 0, [0], sound.music_meta(GA["GATE_MUSIC"]["meta"])))
     assets.append(asset("POL_SFX", "SFX_MAKER", 0, [0], sound.sfx_meta(GA["GATE_SFX"]["meta"])))
     return assets, mem, tables
+
+
+SPR_SEQS = {}          # sprite set -> [(animation, first frame, last frame)]
+
+def cell(layer, slot, yo=0, expand="none", row=1):
+    """A compositor placement in column 1 of the editor's 4x4 grid."""
+    return {"layer": float(layer), "row": float(row), "col": 1.0, "slot": float(slot),
+            "xo": 0.0, "yo": float(yo), "expand": expand}
+
+def figure(top, bot, body, yo=0):
+    """A character: the body Y-expanded at the back, the two hires overlays
+    over it (the bottom one 21 lines down), all raised / lowered by yo.
+    Anchored on grid row 2, so a jump (yo up to -40) stays on the grid."""
+    return [cell(0, body, yo, "y", 2), cell(1, top, yo, row=2), cell(2, bot, yo + 21, row=2)]
+
+def compositor(seq, play, fps):
+    """Sprite editor compositor + animation state from [(name, [frame cells])]:
+    the animations one after another; the playback range is animation
+    `play`. Returns (compositor, anim, [(name, first, last)])."""
+    frames, spans = [], []
+    for name, cells in seq:
+        spans.append((name, len(frames), len(frames) + len(cells) - 1))
+        frames += [{"cells": c} for c in cells]
+    _, start, end = [sp for sp in spans if sp[0] == play][0]
+    comp = {"active_layer": 0.0, "active_frame": float(start), "active_cell": -1.0, "frames": frames}
+    anim = {"playing": False, "direction": "fwd", "speed": float(fps), "start": float(start), "ender": float(end)}
+    return comp, anim, spans
 
 
 def hud_asset(name, y, rows, colours, fields):

@@ -1626,11 +1626,15 @@ STA V_FACE
 DPWorkDraw:
 LDA V_PX
 STA V_GX
-LDA V_FRAME
-LSR
-LSR
-LSR
-AND #$01
+LDA V_FRAME            ; walking in profile: stride (2 lines lower) /
+AND #$08               ; legs together, as in DrawGirl
+BNE DPWorkStep
+INC V_GY
+INC V_GY
+LDA #C_G_WALK
+JMP DPSet
+DPWorkStep:
+LDA #C_G_STEP
 JMP DPSet
 DPNotWork:
 CMP #C_P_CAST
