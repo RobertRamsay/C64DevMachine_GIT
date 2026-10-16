@@ -217,6 +217,138 @@ function scr_music_sid_transpose(_row, _voice) {
     }
     return clamp(round(real(_tv)), -48, 48);
 }
+/// Quarter rows this order row delays voice _voice's pattern by (d1..d9,
+/// 0..256, 0 when unset): D1 = a quarter row, D4 = one row. The voice holds,
+/// then the pattern starts. Whole rows (d div 4) become a shifted pattern copy
+/// for the player (scr_music_sid_delay_pattern); the quarters left (d mod 4)
+/// hold every row of it back by that part of a row, in frames worked out from
+/// the row's live length (scr_music_sid_delay_frames). With shared timing the
+/// order row's length doesn't change: a pattern that fills it loses its tail,
+/// unless RPT is on, which rotates the loop instead. With per-voice timing the
+/// voice's column just runs that much longer.
+function scr_music_sid_delay(_row, _voice) {
+    var _dv = _row[$ "d" + string(_voice + 1)];
+    if (is_undefined(_dv)) {
+        return 0;
+    }
+    return clamp(round(real(_dv)), 0, 256);
+}
+/// Frames a quarter-row remainder _q (0..3) holds a row back, for a row _t
+/// frames long, rounded as the C64 player works it out: q1 = (t + 2) >> 2,
+/// q2 = (t + 1) >> 1, q3 = t - q1. With _clamp (shared timing) it stays under
+/// _t, so the held row still sounds before the next one is due.
+function scr_music_sid_delay_frames(_q, _t, _clamp) {
+    _t = clamp(_t, 0, 255);
+    var _q1 = (_t >> 2) + ((_t >> 1) & 1);
+    var _f = 0;
+    if (_q == 1) _f = _q1;
+    else if (_q == 2) _f = (_t >> 1) + (_t & 1);
+    else if (_q == 3) _f = _t - _q1;
+    if (_clamp && _f >= _t) _f = max(0, _t - 1);
+    return _f;
+}
+/// ── UNDO: EVERYTHING BESIDES THE PATTERNS ── songs (order lists, loop
+/// points, names), instruments and the song settings, as one deep copy. Every
+/// undo / redo entry carries one (field st) next to its pattern snapshot.
+function scr_music_undo_state(_m) {
+    return variable_clone({ songs: _m.songs, ins: _m.instruments, sel_song: _m.sel_song,
+        spd: _m.play_speed, fm: _m.filt_mode, fr: _m.filt_res, fc: _m.filt_cut,
+        fv: _m[$ "free_voices"] ?? false });
+}
+function scr_music_undo_state_apply(_m, _st) {
+    if (!is_struct(_st)) return;   // entry from before songs were undoable
+    _m.songs       = _st.songs;
+    _m.instruments = _st.ins;
+    _m.sel_song    = clamp(_st.sel_song, 0, array_length(_m.songs) - 1);
+    _m.play_speed  = _st.spd;
+    _m.filt_mode   = _st.fm;
+    _m.filt_res    = _st.fr;
+    _m.filt_cut    = _st.fc;
+    _m.free_voices = _st.fv;
+    _m.sel_instr   = clamp(_m.sel_instr, -1, array_length(_m.instruments) - 1);
+    // half-typed text points at structs that were just replaced
+    _m.order_pattern_edit_active = false;
+    _m.instr_edit_active         = false;
+    _m.instr_name_edit_active    = false;
+    _m.song_name_edit_active     = false;
+    _m.instr_note_edit_active    = false;
+    // nothing is waiting to record: the undo itself isn't an edit
+    _m.undo_probe = undefined;
+}
+/// Edits with no undo push of their own (order list, songs, instruments,
+/// settings) are caught here: _begin copies the state as a click or key press
+/// starts; _end, once the mouse is let go, compares, and if anything changed
+/// records an undo entry holding the copy. An edit that pushes its own entry
+/// during the gesture takes the copy (scr_music_undo_state_for_push), so one
+/// undo covers the lot.
+function scr_music_undo_probe_begin(_m) {
+    if (is_struct(_m[$ "undo_probe"])) return;
+    if (!mouse_check_button_pressed(mb_any) && !keyboard_check_pressed(vk_anykey)) return;
+    var _st = scr_music_undo_state(_m);
+    _m.undo_probe = { st: _st, key: json_stringify(_st), pushed: false,
+        voice: _m.sel_voice, step: _m.sel_step, sub: _m.sel_sub, chip: _m.sid_page, ord: _m.sel_order_row };
+}
+/// The st for an undo entry being pushed now: the gesture's before-copy (and
+/// the gesture then counts as recorded), or a fresh copy outside a gesture.
+function scr_music_undo_state_for_push(_m) {
+    var _pr = _m[$ "undo_probe"];
+    if (is_struct(_pr) && !_pr.pushed) {
+        _pr.pushed = true;
+        return _pr.st;
+    }
+    return scr_music_undo_state(_m);
+}
+function scr_music_undo_probe_end(_m, _snapf) {
+    var _pr = _m[$ "undo_probe"];
+    if (!is_struct(_pr)) return;
+    if (mouse_check_button(mb_any)) return;   // a drag is still going
+    // a text field is open: the whole typed edit becomes one step when it closes
+    if (_m[$ "instr_edit_active"] == true || _m[$ "instr_name_edit_active"] == true
+    ||  _m[$ "song_name_edit_active"] == true || _m[$ "order_pattern_edit_active"] == true
+    ||  _m[$ "instr_note_edit_active"] == true) return;
+    _m.undo_probe = undefined;
+    if (_pr.pushed) return;
+    if (json_stringify(scr_music_undo_state(_m)) == _pr.key) return;
+    array_push(_m.undo_stack, { pats: _snapf(_m), voice: _pr.voice, step: _pr.step, sub: _pr.sub,
+        chip: _pr.chip, ord: _pr.ord, dgs: scr_digi_snapshot(_m), dgf: false, dgstep: _m.dg_sel_step,
+        st: _pr.st });
+    if (array_length(_m.undo_stack) > 50) array_delete(_m.undo_stack, 0, 1);
+    _m.redo_stack = [];
+    global.undo_dirty = true;
+}
+/// True when any order row of any song delays a voice.
+function scr_music_sid_has_delay(_m) {
+    if (!is_array(_m[$ "songs"])) return false;
+    for (var _s = 0; _s < array_length(_m.songs); _s++) {
+        var _ord = _m.songs[_s].order;
+        for (var _r = 0; _r < array_length(_ord); _r++) {
+            for (var _v = 0; _v < 9; _v++) {
+                if (scr_music_sid_delay(_ord[_r], _v) > 0) return true;
+            }
+        }
+    }
+    return false;
+}
+/// _pat shifted later by _delay rows, as a new pattern for the compiler. With
+/// _wrap (RPT) the rows rotate within the same length; without, _delay empty
+/// rows are put in front and the pattern grows by that much.
+function scr_music_sid_delay_pattern(_pat, _delay, _wrap) {
+    var _len = clamp(real(_pat.pattern_len), 1, 255);
+    var _out_len = _wrap ? _len : min(_len + _delay, 255);
+    var _steps = [];
+    for (var _i = 0; _i < _out_len; _i++) {
+        var _src = _wrap ? ((((_i - _delay) mod _len) + _len) mod _len) : (_i - _delay);
+        if (_src >= 0 && _src < array_length(_pat.steps)) {
+            var _st = _pat.steps[_src];
+            array_push(_steps, { instr_idx: _st[$ "instr_idx"] ?? -1, note: _st[$ "note"] ?? "",
+                                 empty: _st[$ "empty"] ?? false,
+                                 cmd: _st[$ "cmd"] ?? -1, cmd_val: _st[$ "cmd_val"] ?? 0 });
+        } else {
+            array_push(_steps, { instr_idx: -1, note: "", empty: true, cmd: -1, cmd_val: 0 });
+        }
+    }
+    return { name: _pat.name, steps: _steps, pattern_len: _out_len };
+}
 function scr_music_sid_length(_m, _row) {
     if (variable_struct_exists(_row, "force_len") && _row.force_len > 0) return clamp(_row.force_len, 1, 255);
     var _len = 0;
@@ -242,13 +374,42 @@ function scr_music_sid_project(_m, _chip) {
         _out.digi_on       = _m[$ "digi_on"];
         _out.digi_speed    = _m[$ "digi_speed"];
     }
+    // Delayed voices play a shifted copy of their pattern for the whole rows,
+    // appended after the real ones (one per pattern / rows / RPT combination);
+    // the quarter rows left over go to the player as q1..q3.
+    var _free = (_m[$ "free_voices"] == true);
+    var _delayed = {};
+    var _pats_copied = false;
     for (var _s = 0; _s < array_length(_m.songs); _s++) {
         var _source = _m.songs[_s];
         var _song = { name: _source.name, loop: _source.loop, loop_row: _source.loop_row, order: [] };
         for (var _r = 0; _r < array_length(_source.order); _r++) {
             var _row = _source.order[_r];
-            array_push(_song.order, { v1: scr_music_sid_pattern(_row, _chip * 3),
-                v2: scr_music_sid_pattern(_row, _chip * 3 + 1), v3: scr_music_sid_pattern(_row, _chip * 3 + 2),
+            var _pv = [];
+            var _pq = [];   // quarter rows left over, per voice (q1..q3)
+            for (var _dv = 0; _dv < 3; _dv++) {
+                var _p = scr_music_sid_pattern(_row, _chip * 3 + _dv);
+                var _dq = scr_music_sid_delay(_row, _chip * 3 + _dv);
+                var _d = _dq div 4;   // whole rows: the shifted copy
+                array_push(_pq, _dq mod 4);
+                if (_d > 0 && _p >= 0 && _p < array_length(_m.patterns)) {
+                    var _wrap = !_free && (_row[$ "repeat_short"] == true);
+                    var _dkey = string(_p) + ":" + string(_d) + (_wrap ? "w" : "");
+                    if (!variable_struct_exists(_delayed, _dkey)) {
+                        if (!_pats_copied) {
+                            // never grow the editor's own pattern list
+                            _out.patterns = [];
+                            array_copy(_out.patterns, 0, _m.patterns, 0, array_length(_m.patterns));
+                            _pats_copied = true;
+                        }
+                        _delayed[$ _dkey] = array_length(_out.patterns);
+                        array_push(_out.patterns, scr_music_sid_delay_pattern(_m.patterns[_p], _d, _wrap));
+                    }
+                    _p = _delayed[$ _dkey];
+                }
+                array_push(_pv, _p);
+            }
+            array_push(_song.order, { v1: _pv[0], v2: _pv[1], v3: _pv[2], q1: _pq[0], q2: _pq[1], q3: _pq[2],
                 t1: scr_music_sid_transpose(_row, _chip * 3),
                 t2: scr_music_sid_transpose(_row, _chip * 3 + 1), t3: scr_music_sid_transpose(_row, _chip * 3 + 2),
                 repeat_short: _row.repeat_short, force_len: scr_music_sid_length(_m, _row),
@@ -859,7 +1020,12 @@ function scr_music_size_signature(_m) {
         for (var _r = 0; _r < array_length(_order); _r++) {
             for (var _v = 0; _v < scr_music_sid_count(_m) * 3; _v++) {
                 _h = (_h * 31 + real(scr_music_sid_pattern(_order[_r], _v)) + 2) mod 1000000007;
+                // transpose adds the transpose tables; delays add shifted
+                // pattern copies and the quarter-row code
+                _h = (_h * 31 + scr_music_sid_transpose(_order[_r], _v) + 64) mod 1000000007;
+                _h = (_h * 31 + scr_music_sid_delay(_order[_r], _v)) mod 1000000007;
             }
+            _h = (_h * 31 + ((_order[_r][$ "repeat_short"] == true) ? 5 : 3)) mod 1000000007;
             _h = (_h * 31 + real(scr_music_size_field(_order[_r], "force_len", 0))) mod 1000000007;
         }
     }

@@ -225,8 +225,8 @@ function scr_map_cache_update(_c, _asset, _chr, _p) {
     //   last band whose first row is at or above them; no band = the map's.
     var _rv    = _m[$ "room_view"];
     var _rv_on = false;
-    if (is_array(_rv) && array_length(_rv) > 0 && real(_m.raw_chars) >= 2
-        && real(_m.room_w) > 0 && real(_m.room_h) > 0) {
+    if (is_array(_rv) && array_length(_rv) > 0 && real(_m[$ "raw_chars"] ?? 0) >= 2
+        && real(_m[$ "room_w"] ?? 0) > 0 && real(_m[$ "room_h"] ?? 0) > 0) {
         _rv_on = true;
     }
     var _rv_key = "";

@@ -931,7 +931,9 @@ var _label_edge_col = make_color_rgb(90,86,60)
 
 // Draw the subtle gradient (Top colors = base, Bottom colors = darker)
 
-var _box_alpha = clamp(1.0 - (_cam_zoom - 2.5) / 0.75, 0, 1);
+// Fades out between zoom 2.0 and 2.5, so by 2.5 the map is already the clean
+// far view (labels only, drawn by Draw_74) rather than boxes under labels.
+var _box_alpha = clamp(1.0 - (_cam_zoom - 2.0) / 0.5, 0, 1);
 _box_alpha *= global.idle_fade;
 if (_box_alpha < 0.1) { x -= x_indent; draw_set_alpha(1.0); scr_node_cache_end(); exit; }
 
@@ -2688,8 +2690,9 @@ if (node_type == "INIT" && array_length(instructions) == 0) {
 // moment a node is connected below (the compile chain stops emitting it),
 // and CLEAR takes it away with the rest of INIT's body.
 if (node_type == "INIT") {
-    // State and height were both settled in section C2 above.
-    if (init_rts_marker) {
+    // State and height were both settled in section C2 above. Not drawn
+    // zoomed out (same cut-off as the node body text).
+    if (init_rts_marker && _lod_body) {
         // Drawn as the next instruction row, in the same font and on the same
         // 12px pitch as the real ones, because that is what it is — the compile
         // chain emits it immediately after these.

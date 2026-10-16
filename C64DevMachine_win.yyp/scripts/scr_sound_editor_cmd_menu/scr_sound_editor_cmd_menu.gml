@@ -48,7 +48,8 @@ function scr_sound_editor_cmd_menus(_lines) {
             { ins: "N+1",  label: "SEMITONE UP" },
             { ins: "N-1",  label: "SEMITONE DOWN" },
             { ins: "N+24", label: "TWO OCTAVES UP" },
-            { ins: "N=81", label: "FIXED NOTE 81 (ANY ROW NOTE) - NOISE CLICKS" }
+            { ins: "N=81", label: "FIXED NOTE 81 (ANY ROW NOTE) - NOISE CLICKS" },
+            { ins: "$81&N=81", label: "NOISE + FIXED NOTE IN ONE FRAME (& = SAME FRAME)" }
         ] },
         { id: "HOLD", items: [
             { ins: "D1",   label: "1 FRAME (FASTEST ARP)" },
@@ -92,6 +93,7 @@ function scr_sound_editor_cmd_insert(_m, _instr, _ins) {
         _m.instr_edit_buf         = _instr.text;
         _m.instr_edit_cursor      = string_length(_m.instr_edit_buf);
         _m.instr_name_edit_active = false;
+        _m.instr_remap_prev       = _m.instr_edit_buf;   // so loops after the insert get renumbered
     }
     var _buf = _m.instr_edit_buf;
     var _cur = _m.instr_edit_cursor;
@@ -291,6 +293,9 @@ function scr_sound_editor_cmd_help(_x0, _y0, _x1, _y1) {
         ["N", "play the pattern's note"],
         ["N+n / N-n", "the note shifted n semitones"],
         ["", "N+12 octave up, N+7 fifth, N+4 3rd"],
+        ["N=n", "a fixed note 0-95, whatever the row plays"],
+        ["$81&N=88", "& joins: both in the SAME frame"],
+        ["", "(each line on its own takes a frame)"],
         ["F+n / F-n", "add/subtract SID pitch units once"],
         ["S+n / S-n", "pitch slide each frame; S0 stops"],
         ["P$xxx", "exact pulse width $000-$FFF"],
@@ -344,6 +349,25 @@ function scr_sound_editor_instr_comment(_line, _lines) {
     var _up  = string_upper(_raw);
     if (_raw == "") {
         return { text: "", bad: false };
+    }
+
+    // "$81&n=88": commands joined by & (or spaces) share one frame.
+    var _same = string_split(string_replace_all(_raw, "&", " "), " ", true);
+    if (array_length(_same) > 1 && string_char_at(_raw, 1) != "~") {
+        var _parts = [];
+        var _bad = false;
+        for (var _sp = 0; _sp < array_length(_same); _sp++) {
+            var _pu = string_upper(_same[_sp]);
+            var _p0 = string_char_at(_pu, 1);
+            if (_sp < array_length(_same) - 1 && (_p0 == "L" || _p0 == "R" || _p0 == "D" || _p0 == "-" || _p0 == ">"
+            || _pu == "H0" || _pu == "H1" || _pu == "PK")) {
+                return { text: "? only the last command on a line may be Dn; L/R/--- go on their own line", bad: true };
+            }
+            var _pc = scr_sound_editor_instr_comment(_same[_sp], _lines);
+            if (_pc.bad) _bad = true;
+            array_push(_parts, _pc.text);
+        }
+        return { text: string_join_ext(" + ", _parts) + " (same frame)", bad: _bad };
     }
 
     // ~PITCH / ~PULSE : table sections that run alongside the program

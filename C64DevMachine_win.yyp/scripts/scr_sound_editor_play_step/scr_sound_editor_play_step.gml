@@ -112,7 +112,8 @@ function scr_sound_editor_transport(_m, _song, _action) {
     if (_action == "SONG") {
         _order_index = 0;
         _step_index = 0;
-    } else if (_action == "PAT") {
+    } else if (_action == "PAT" || _action == "HERE_TOP") {
+        // HERE_TOP (F2) plays the song from the top of the selected order row.
         _step_index = 0;
     }
     var _row = _song.order[_order_index];

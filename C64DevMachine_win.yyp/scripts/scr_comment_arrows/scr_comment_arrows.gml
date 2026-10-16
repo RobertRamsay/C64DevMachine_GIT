@@ -191,6 +191,8 @@ function scr_comment_arrows_draw() {
     if (instance_exists(obj_asset_manager) && obj_asset_manager.viewer_open) exit;
 
     var _z  = obj_workspace_manager.cam_zoom;
+    // Zoomed out the map shows names only - no arrows.
+    if (_z >= 2.0) exit;
     var _vx1 = obj_workspace_manager.cam_x - 200;
     var _vy1 = obj_workspace_manager.cam_y - 200;
     var _vx2 = obj_workspace_manager.cam_x + 1920 * _z + 200;

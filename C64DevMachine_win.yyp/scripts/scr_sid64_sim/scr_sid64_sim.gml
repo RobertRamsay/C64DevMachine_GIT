@@ -797,13 +797,18 @@ function scr_sid64_sim_fetch(_sim, _v, _orow) {
     }
     var _pat = _sim.m.patterns[_pi];
     var _len = clamp(real(_pat.pattern_len), 1, 255);
-    var _local = _sim.row;
-    if (_local >= _len) {
-        var _wrap = _orow[$ "repeat_short"];
-        if (is_undefined(_wrap) || _wrap != true) {
-            return undefined;
-        }
-        _local = _local mod _len;
+    // The order row's whole-row delay for this voice — mirrors the shifted
+    // pattern copy scr_music_sid_delay_pattern builds for the C64 player. (The
+    // quarter rows left over are frames, held back by the callers.)
+    var _delay = scr_music_sid_delay(_orow, _sim.chip * 3 + _v) div 4;
+    var _wrap = !_sim.free && (_orow[$ "repeat_short"] == true);
+    var _local = _sim.row - _delay;
+    if (_wrap) {
+        _local = ((_local mod _len) + _len) mod _len;
+    } else if (_local >= _len) {
+        return undefined;
+    } else if (_local < 0) {
+        return { note: 254, instr: undefined, cmd: 255, val: 0 };   // still waiting: hold
     }
     var _note = 254;
     var _instr = undefined;
@@ -868,6 +873,22 @@ function scr_sid64_sim_frame(_sim) {
     if (is_struct(_sim.song) && !_sim.finished && _sim.free) {
         scr_sid64_sim_free_rows(_sim);
     } else if (is_struct(_sim.song) && !_sim.finished) {
+        // A row held back by a quarter-row delay sounds when its frames run
+        // out — before the tick, as the player's hook runs first in PLAY.
+        for (var _dv = 0; _dv < 3; _dv++) {
+            var _dvc = _sim.voices[_dv];
+            if ((_dvc[$ "dq_cd"] ?? 0) <= 0) continue;
+            _dvc.dq_cd -= 1;
+            if (_dvc.dq_cd > 0) continue;
+            if (!scr_sid64_sim_voice_on(_sim, _dv)) continue;
+            var _dq_keep = _sim.row;
+            _sim.row = _dvc.dq_row;
+            var _dq_rd = scr_sid64_sim_fetch(_sim, _dv, _dvc.dq_orow);
+            _sim.row = _dq_keep;
+            if (is_struct(_dq_rd)) {
+                scr_sid64_sim_row(_sim, _dv, _dq_rd.note, _dq_rd.instr, _dq_rd.cmd, _dq_rd.val);
+            }
+        }
         _sim.tick -= 1;
         if (_sim.tick <= 0) {
             _sim.tick = _sim.spd;
@@ -878,6 +899,16 @@ function scr_sid64_sim_frame(_sim) {
             _sim.shown_row = _sim.row;
             for (var _v = 0; _v < 3; _v++) {
                 if (!scr_sid64_sim_voice_on(_sim, _v)) {
+                    continue;
+                }
+                // Quarter rows left over from this voice's delay: park the
+                // row for that many frames of this row's length.
+                var _dq_f = scr_music_sid_delay_frames(scr_music_sid_delay(_orow, _sim.chip * 3 + _v) mod 4, _sim.tick, true);
+                if (_dq_f > 0) {
+                    var _qvc = _sim.voices[_v];
+                    _qvc.dq_cd   = _dq_f;
+                    _qvc.dq_orow = _orow;
+                    _qvc.dq_row  = _sim.row;
                     continue;
                 }
                 var _rd = scr_sid64_sim_fetch(_sim, _v, _orow);
@@ -953,6 +984,20 @@ function scr_sid64_sim_free_rows(_sim) {
                 _sim.shown_ord = _vc.vord;
                 _sim.shown_row = _vc.vrow;
             }
+            // Quarter rows left over from this voice's delay: before row 0 of
+            // the order row, wait that many frames of its own speed (once).
+            if (_vc.vrow == 0) {
+                var _fq = scr_music_sid_delay(_orow, _sim.chip * 3 + _v) mod 4;
+                if (_fq > 0 && !(_vc[$ "dq_wait"] ?? false)) {
+                    var _fq_f = scr_music_sid_delay_frames(_fq, _vc.vspd, false);
+                    if (_fq_f > 0) {
+                        _vc.dq_wait = true;
+                        _vc.vtick   = _fq_f;
+                        break;
+                    }
+                }
+                _vc.dq_wait = false;
+            }
             _vc.shown_ord = _vc.vord;
             _vc.shown_row = _vc.vrow;
             _sim.row = _vc.vrow;
@@ -967,7 +1012,9 @@ function scr_sid64_sim_free_rows(_sim) {
             var _end = false;
             if (_pi < 0 || _pi >= array_length(_sim.m.patterns)) {
                 _end = true;
-            } else if (_vc.vrow >= clamp(real(_sim.m.patterns[_pi].pattern_len), 1, 255)) {
+            } else if (_vc.vrow >= min(clamp(real(_sim.m.patterns[_pi].pattern_len), 1, 255)
+                                     + (scr_music_sid_delay(_orow, _sim.chip * 3 + _v) div 4), 255)) {
+                // (a delayed voice runs its delay longer, as its shifted copy does)
                 _vc.vrow = 0;
                 if (!_sim.loop_row) {
                     _vc.vord += 1;

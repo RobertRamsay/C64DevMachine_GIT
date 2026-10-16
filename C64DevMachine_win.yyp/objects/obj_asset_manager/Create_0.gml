@@ -110,6 +110,7 @@ panel_y = 345;   // just under the shortcuts column (ends at y 340)
 panel_h         = _gui_h - panel_y + 200;
 panel_scroll    = 0;
 panel_max_scroll = 0;
+panel_sb_drag    = false;   // dragging the asset list scrollbar
 item_h          = 32;
 hover_idx       = -1;
 hover_pos       = -1;

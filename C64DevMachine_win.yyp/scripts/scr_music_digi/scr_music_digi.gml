@@ -175,8 +175,10 @@ function scr_digi_undo_step(_m, _redo, _snapf, _gotof, _vis) {
         _chip = _ent.chip;
     }
     array_push(_to, { pats: _snapf(_m), voice: _ent.voice, step: _ent.step, sub: _ent.sub, ord: _ent.ord, chip: _chip,
-                      dgs: scr_digi_snapshot(_m), dgf: _ent[$ "dgf"] == true, dgstep: _m.dg_sel_step });
+                      dgs: scr_digi_snapshot(_m), dgf: _ent[$ "dgf"] == true, dgstep: _m.dg_sel_step,
+                      st: scr_music_undo_state(_m) });
     _m.patterns = _ent.pats;
+    scr_music_undo_state_apply(_m, _ent[$ "st"]);
     _gotof(_m, _ent, _vis);
     scr_digi_undo_apply(_m, _ent);
     _m.bank_sel_pattern = clamp(_m.bank_sel_pattern, 0, array_length(_m.patterns) - 1);

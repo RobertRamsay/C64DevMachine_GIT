@@ -2,7 +2,9 @@
 /// Compiles an instrument mini-language string into a flat byte array the
 /// 6502 interpreter walks one command per instrument-tick.
 ///
-/// GRAMMAR (tokens separated by commas or newlines, whitespace ignored):
+/// GRAMMAR (steps separated by commas or newlines). Commands on one step
+/// joined by & (or spaces) run in the same frame: "$81&n=88" is noise and
+/// the fixed note together; on their own lines they'd be a frame apart.
 ///   $21 or 21   waveform/control byte   -> [$00, byte]
 ///   N+n / Nn    note, +n semitones      -> [$01, n signed]
 ///   N-n         note, -n semitones      -> [$01, n signed]
@@ -50,7 +52,7 @@
 /// errors       — human-readable strings for malformed tokens (never throws)
 function scr_instrument_parse(_text) {
 
-    var _out    = { bytes: [], step_offsets: [], errors: [], version: 7, byte_lines: [], source: string(_text), no_hr: false, keep_pw: false, main_len: 0, lanes: [] };
+    var _out    = { bytes: [], step_offsets: [], errors: [], version: 8, byte_lines: [], source: string(_text), no_hr: false, keep_pw: false, main_len: 0, lanes: [] };
     var _tokens = [];
 
     // ── Tokenise: newlines act as commas, then split, trim, drop empties ──
@@ -125,6 +127,39 @@ function scr_instrument_parse(_text) {
 
         // Record this step's byte offset before emitting it.
         array_push(_out.step_offsets, array_length(_out.bytes));
+
+        // ── SAME FRAME ── commands on one line joined by & (or spaces) run in
+        // the same frame, e.g. "$81&n=88" = noise AND the fixed note at once.
+        // (& because Space auditions the instrument while its text is open.)
+        // Each command but the last is compiled with no hold of its own; the
+        // last goes through the normal code below, which gives the frame its
+        // hold (implicit D1, or the next line's Dn — or "$81&n=88&d3").
+        var _same = string_split(string_replace_all(_tok, "&", " "), " ", true);
+        if (array_length(_same) > 1) {
+            for (var _sp = 0; _sp < array_length(_same) - 1; _sp++) {
+                var _part = string_upper(_same[_sp]);
+                var _p0   = string_char_at(_part, 1);
+                if (_p0 == "L" || _p0 == "R" || _p0 == "D" || _p0 == "~" || _p0 == "-" || _p0 == ">"
+                ||  _part == "H0" || _part == "H1" || _part == "PK") {
+                    array_push(_out.errors, "step " + string(_ti) + ": '" + _same[_sp] + "' can't share a frame (only the last command on a line may be Dn)");
+                    continue;
+                }
+                // Compiled on its own with an explicit D1 after it (so no
+                // implicit hold), then that D1 and the END are dropped.
+                var _sub = scr_instrument_parse(_same[_sp] + ",D1");
+                if (array_length(_sub.errors) > 0) {
+                    array_push(_out.errors, "step " + string(_ti) + ": " + _sub.errors[0]);
+                    continue;
+                }
+                var _sb = _sub.bytes;
+                var _sn = array_length(_sb) - 3;   // minus [$02, 1] and [$04]
+                for (var _sbi = 0; _sbi < _sn; _sbi++) array_push(_out.bytes, _sb[_sbi]);
+                if (_sub.no_hr) _out.no_hr = true;
+                if (_sub.keep_pw) _out.keep_pw = true;
+            }
+            _tok = _same[array_length(_same) - 1];
+            _up  = string_upper(_tok);
+        }
 
         var _c0 = string_char_at(_up, 1);
 
@@ -529,7 +564,7 @@ function scr_instrument_ensure_compiled(_instr) {
     if (_valid) _valid = variable_struct_exists(_instr.compiled, "bytes") && variable_struct_exists(_instr.compiled, "errors");
     if (_valid) _valid = is_array(_instr.compiled.bytes) && is_array(_instr.compiled.errors);
     if (_valid) _valid = variable_struct_exists(_instr.compiled, "version") && variable_struct_exists(_instr.compiled, "source");
-    if (_valid) _valid = _instr.compiled.version == 7 && _instr.compiled.source == _instr.text;
+    if (_valid) _valid = _instr.compiled.version == 8 && _instr.compiled.source == _instr.text;
     if (!_valid) _instr.compiled = scr_instrument_parse(_instr.text);
     return _instr.compiled;
 }
@@ -932,4 +967,82 @@ function scr_music_op_len(_op) {
     if (_op >= 5 && _op <= 9) return 3;
     if (_op >= 14 && _op <= 26) return 3;
     return 2;
+}
+
+/// Keeps Ln / Rc:n step references pointing at the same steps when steps are
+/// inserted into or deleted from an instrument program. _old / _new are the
+/// text before and after an edit, _cursor the 0-based text cursor in _new.
+/// Every step counts, tables included: a table's Ln uses the same step
+/// numbers as the program (~PITCH at step 7 makes its first line step 8),
+/// so a line inserted above a table renumbers the table's loops too. The
+/// steps both texts share at the start
+/// and the end stay put; references in them to a step after the change move
+/// by the number of steps added or removed (a reference to a deleted step
+/// lands on the step that took its place). The changed steps themselves —
+/// what is being typed — are never rewritten.
+/// Returns { text, cursor } (unchanged when the step count didn't change).
+function scr_instrument_remap_loops(_old, _new, _cursor) {
+    var _o = scr_instrument_step_spans(_old);
+    var _n = scr_instrument_step_spans(_new);
+    var _no = array_length(_o), _nn = array_length(_n);
+    var _res = { text: _new, cursor: _cursor };
+    if (_no == _nn) return _res;
+    var _p = 0;
+    while (_p < _no && _p < _nn && _o[_p].up == _n[_p].up) _p++;
+    var _s = 0;
+    while (_s < min(_no, _nn) - _p && _o[_no - 1 - _s].up == _n[_nn - 1 - _s].up) _s++;
+    var _delta  = _nn - _no;
+    var _oend   = _no - _s;    // first old step after the change
+    var _text   = _new;
+    // last to first, so earlier character positions stay valid
+    for (var _i = _nn - 1; _i >= 0; _i--) {
+        if (_i >= _p && _i < _nn - _s) continue;   // a changed step
+        var _up = _n[_i].up;
+        var _c0 = string_char_at(_up, 1);
+        var _head = "", _num = "";
+        if (_c0 == "L") {
+            _num = string_delete(_up, 1, 1);
+            _head = string_copy(_n[_i].raw, 1, 1);
+        } else if (_c0 == "R" && string_pos(":", _up) > 0) {
+            var _colon = string_pos(":", _up);
+            _num  = string_delete(_up, 1, _colon);
+            _head = string_copy(_n[_i].raw, 1, _colon);
+        } else continue;
+        if (_num == "" || string_digits(_num) != _num) continue;
+        var _t = real(_num);
+        var _nt = _t;
+        if (_t >= _oend) _nt = _t + _delta;
+        else if (_t >= _p && _delta < 0) _nt = _p;
+        if (_nt == _t) continue;
+        var _rep = _head + string(max(0, _nt));
+        var _a = _n[_i].start;                    // 0-based
+        var _len = string_length(_n[_i].raw);
+        _text = string_insert(_rep, string_delete(_text, _a + 1, _len), _a + 1);
+        if (_a < _res.cursor) _res.cursor += string_length(_rep) - _len;
+    }
+    _res.text = _text;
+    return _res;
+}
+
+/// Every step in _text as { raw, up, start } (start 0-based, raw trimmed),
+/// split on commas / newlines as scr_instrument_parse does. Tables included:
+/// their lines carry on the program's step numbers (~PITCH is a step too).
+function scr_instrument_step_spans(_text) {
+    var _out = [];
+    var _s = string(_text);
+    var _len = string_length(_s);
+    var _seg = 0;   // 0-based start of the current piece
+    for (var _i = 1; _i <= _len + 1; _i++) {
+        var _ch = (_i <= _len) ? string_char_at(_s, _i) : "\n";
+        if (_ch != "," && _ch != "\n" && _ch != "\r") continue;
+        var _piece = string_copy(_s, _seg + 1, (_i - 1) - _seg);
+        var _trim = string_trim(_piece);
+        if (_trim != "") {
+            var _lead = 0;
+            while (string_char_at(_piece, _lead + 1) == " " || string_char_at(_piece, _lead + 1) == "\t") _lead++;
+            array_push(_out, { raw: _trim, up: string_upper(_trim), start: _seg + _lead });
+        }
+        _seg = _i;
+    }
+    return _out;
 }

@@ -15,6 +15,17 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     if (_prefix == "" && scr_music_sid_count(_sm) > 1) {
         return scr_music_sid_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, _chip_base);
     }
+    // Order-row delays become shifted pattern copies (scr_music_sid_project);
+    // the multi-SID path above already gets them. Untouched when no row delays.
+    if (_prefix == "" && scr_music_sid_has_delay(_sm)) {
+        var _dly = scr_music_sid_project(_sm, 0);
+        var _dly_sm = {};
+        var _dly_keys = variable_struct_get_names(_sm);
+        for (var _dk = 0; _dk < array_length(_dly_keys); _dk++) _dly_sm[$ _dly_keys[_dk]] = _sm[$ _dly_keys[_dk]];
+        _dly_sm.patterns = _dly.patterns;
+        _dly_sm.songs    = _dly.songs;
+        _sm = _dly_sm;
+    }
     var _voice_mask=variable_struct_exists(_sm,"voice_mask") ? (real(_sm.voice_mask)&7) : 7;
 
     var _instruments = (variable_struct_exists(_sm, "instruments") && is_array(_sm.instruments)) ? _sm.instruments : [];
@@ -429,6 +440,18 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
     if (_tables_used) array_push(_sng_state_tables, "trl", "trh");
     // Free timing: per-voice order row, row, ticks left, speed, stopped flag.
     if (_free) array_push(_sng_state_tables, "vor", "vrw", "vtk", "vsp", "vst");
+    // Quarter-row delays (order rows' q1..q3, from scr_music_sid_project): a
+    // voice's row is held back that part of a row in frames. Shared timing:
+    // frames left (dlc), the held row's order row / row (dlo / dlr), and the
+    // held-row-running flag (dqrun_0). Free timing: the waited-already flag (dqw).
+    var _dq_used = false;
+    for (var _dqi = 0; _dqi < array_length(_song_order) && !_dq_used; _dqi++) {
+        for (var _dqv = 0; _dqv < 3; _dqv++) {
+            if ((_voice_mask & (1 << _dqv)) == 0) continue;
+            if (clamp(real(_song_order[_dqi][$ "q" + string(_dqv + 1)] ?? 0), 0, 3) != 0) _dq_used = true;
+        }
+    }
+    if (_dq_used) array_push(_sng_state_tables, "dlc", "dlo", "dlr", "dqw", "dqrun");
     // Scratch bytes before the filter shadows (see section 7): seek clears
     // these with the state tables.
     _sng_clear_n = array_length(_sng_state_tables) * 3 + 7;
@@ -913,6 +936,16 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         }
         array_push(_list, ["label", _key + "trn"], ["byte", 0, _id]);
     }
+    // Per-voice quarter-row delay (0..3) per order row.
+    if (_dq_used) {
+        for (var _vi = 0; _vi < 3; _vi++) {
+            if ((_voice_mask & (1 << _vi)) == 0) continue;
+            array_push(_list, ["label", _key + "ordq" + string(_vi + 1)]);
+            for (var _oi = 0; _oi < _n_ord; _oi++) {
+                array_push(_list, ["byte", clamp(real(_song_order[_oi][$ "q" + string(_vi + 1)] ?? 0), 0, 3), _id]);
+            }
+        }
+    }
     // Row counts / short-pattern wrap flags drive the shared row clock only;
     // in free timing each pattern plays its own length, so they're left out.
     if (!_free) {
@@ -1114,6 +1147,34 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["and_imm", 0xF0, _id]);
         array_push(_list, ["sta_abs", _key + "dghi", _id]);
     }
+    if (!_free && _dq_used) {
+        // QUARTER-ROW DELAY: a voice's row held back on its row frame (dlc =
+        // frames left) runs when they run out, through that voice's own row
+        // code with the held order row / row in S_ORD / S_ROW. Its row code
+        // jumps back to dqret<v> (dqrun_0 set) instead of falling through to
+        // the next voice. dlc is kept under the row's length, so this always
+        // lands before the voice's next row.
+        for (var _hv = 0; _hv < 3; _hv++) {
+            if ((_voice_mask & (1 << _hv)) == 0) continue;
+            var _hvp = _key + "v" + string(_hv) + "_";
+            var _hvn = string(_hv);
+            array_push(_list, ["lda_abs", _key + "dlc_" + _hvn, _id]);
+            array_push(_list, ["beq", _hvp + "dqnone", _id]);
+            array_push(_list, ["dec_abs", _key + "dlc_" + _hvn, _id]);
+            array_push(_list, ["bne", _hvp + "dqnone", _id]);
+            array_push(_list, ["lda_zp", _S_ORD, _id], ["pha", 0, _id]);
+            array_push(_list, ["lda_zp", _S_ROW, _id], ["pha", 0, _id]);
+            array_push(_list, ["lda_abs", _key + "dlo_" + _hvn, _id], ["sta_zp", _S_ORD, _id]);
+            array_push(_list, ["lda_abs", _key + "dlr_" + _hvn, _id], ["sta_zp", _S_ROW, _id]);
+            array_push(_list, ["lda_imm", 1, _id], ["sta_abs", _key + "dqrun_0", _id]);
+            array_push(_list, ["jmp_abs", _hvp + "dqgo", _id]);
+            array_push(_list, ["label", _key + "dqret" + _hvn]);
+            array_push(_list, ["lda_imm", 0, _id], ["sta_abs", _key + "dqrun_0", _id]);
+            array_push(_list, ["pla", 0, _id], ["sta_zp", _S_ROW, _id]);
+            array_push(_list, ["pla", 0, _id], ["sta_zp", _S_ORD, _id]);
+            array_push(_list, ["label", _hvp + "dqnone"]);
+        }
+    }
     if (!_free) {
         array_push(_list, ["dec_zp",  _S_TICK,   _id]);
         array_push(_list, ["beq",     _L_rowadv, _id]);
@@ -1153,6 +1214,45 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
             array_push(_list, ["sta_zp", _S_ORD, _id]);
             array_push(_list, ["lda_abs", _key + "vrw_" + _vn, _id]);
             array_push(_list, ["sta_zp", _S_ROW, _id]);
+            if (_dq_used) {
+                // QUARTER-ROW DELAY (free timing): before row 0 of an order
+                // row, wait that part of a row at this voice's speed, once.
+                array_push(_list, ["lda_abs", _key + "vrw_" + _vn, _id]);
+                array_push(_list, ["bne", _vp + "fqn", _id]);
+                array_push(_list, ["ldx_abs", _key + "vor_" + _vn, _id]);
+                array_push(_list, ["lda_abx", _key + "ordq" + string(_vi + 1), _id]);
+                array_push(_list, ["beq", _vp + "fqn", _id]);
+                array_push(_list, ["ldy_abs", _key + "dqw_" + _vn, _id]);
+                array_push(_list, ["bne", _vp + "fqclr", _id]);
+                scr_sid_song_emit_dq_frames(_list, _id, _vp + "fq", -1, _key + "vsp_" + _vn, _S_TMP);
+                array_push(_list, ["cmp_imm", 0, _id]);
+                array_push(_list, ["beq", _vp + "fqn", _id]);
+                array_push(_list, ["sta_abs", _key + "vtk_" + _vn, _id]);
+                array_push(_list, ["lda_imm", 1, _id], ["sta_abs", _key + "dqw_" + _vn, _id]);
+                array_push(_list, ["jmp_abs", _vp + "fdone2", _id]);
+                array_push(_list, ["label", _vp + "fqclr"]);
+                array_push(_list, ["lda_imm", 0, _id], ["sta_abs", _key + "dqw_" + _vn, _id]);
+                array_push(_list, ["label", _vp + "fqn"]);
+            }
+        }
+
+        if (!_free && _dq_used) {
+            // QUARTER-ROW DELAY (shared timing): park this row for that part
+            // of the row's length (S_TICK, just reloaded) — the PLAY hook runs
+            // it later. Skipped while the hook is running the held row.
+            array_push(_list, ["lda_abs", _key + "dqrun_0", _id]);
+            array_push(_list, ["bne", _vp + "dqgo", _id]);
+            array_push(_list, ["ldx_zp", _S_ORD, _id]);
+            array_push(_list, ["lda_abx", _key + "ordq" + string(_vi + 1), _id]);
+            array_push(_list, ["beq", _vp + "dqgo", _id]);
+            scr_sid_song_emit_dq_frames(_list, _id, _vp + "dq", _S_TICK, "", _S_TMP);
+            array_push(_list, ["cmp_imm", 0, _id]);
+            array_push(_list, ["beq", _vp + "dqgo", _id]);
+            array_push(_list, ["sta_abs", _key + "dlc_" + string(_vi), _id]);
+            array_push(_list, ["lda_zp", _S_ORD, _id], ["sta_abs", _key + "dlo_" + string(_vi), _id]);
+            array_push(_list, ["lda_zp", _S_ROW, _id], ["sta_abs", _key + "dlr_" + string(_vi), _id]);
+            array_push(_list, ["jmp_abs", _L_vskip, _id]);
+            array_push(_list, ["label", _vp + "dqgo"]);
         }
 
         if (_sfx) {
@@ -1621,6 +1721,13 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["ldx_imm", _vi,              _id]);
         array_push(_list, ["jsr",     _key + "cmdr",    _id]);
         array_push(_list, ["label",   _L_vskip]);
+        if (!_free && _dq_used) {
+            // A held row run by the PLAY hook returns there.
+            array_push(_list, ["lda_abs", _key + "dqrun_0", _id]);
+            array_push(_list, ["beq", _vp + "dqnr", _id]);
+            array_push(_list, ["jmp_abs", _key + "dqret" + string(_vi), _id]);
+            array_push(_list, ["label", _vp + "dqnr"]);
+        }
         if (_free) {
             var _vn2 = string(_vi);
             // This row lasts the voice's speed (an FXX on it already applied).
@@ -1754,6 +1861,7 @@ function scr_sid_song_build(_list, _id, _se, _asset_name, _auto_init, _zp, _hr, 
         array_push(_list, ["sta_zp",  _vbk[_vi][6],   _id]);
         array_push(_list, ["sta_zp",  _hbk[_vi][2],   _id]);
         array_push(_list, ["sta_zp",  _c_base[_vi],       _id]);
+        if (_dq_used) array_push(_list, ["sta_abs", _key + "dlc_" + string(_vi), _id]);   // no held row after the end
     }
     }   // end !_free shared row clock
 
@@ -2972,4 +3080,36 @@ function scr_music_sid_build(_list, _id, _se, _name, _auto, _zp, _hr, _base) {
         array_push(_list, ["jsr", _key + "init", _id]);
     }
     return true;
+}
+
+/// Quarter-row delay frames, as scr_music_sid_delay_frames works them out.
+/// In: A = q (1..3). Out: A = frames (test with cmp_imm 0 — flags aren't set).
+/// _t_zp: the row length is a ZP byte (shared timing: S_TICK) and the result
+/// is clamped under it; otherwise _t_abs labels the voice's speed byte (free
+/// timing), unclamped. _tmp is a ZP scratch byte. _lb prefixes the labels.
+function scr_sid_song_emit_dq_frames(_list, _id, _lb, _t_zp, _t_abs, _tmp) {
+    var _ld = (_t_zp >= 0) ? ["lda_zp", _t_zp, _id] : ["lda_abs", _t_abs, _id];
+    array_push(_list, ["cmp_imm", 2, _id]);
+    array_push(_list, ["beq", _lb + "q2", _id]);
+    array_push(_list, ["bcs", _lb + "q3", _id]);
+    // q1 = (t + 2) >> 2: two shifts, the second one's carry rounds
+    array_push(_list, _ld, ["lsr_a", 0, _id], ["lsr_a", 0, _id], ["adc_imm", 0, _id]);
+    array_push(_list, ["jmp_abs", _lb + "qset", _id]);
+    // q2 = (t + 1) >> 1
+    array_push(_list, ["label", _lb + "q2"]);
+    array_push(_list, _ld, ["lsr_a", 0, _id], ["adc_imm", 0, _id]);
+    array_push(_list, ["jmp_abs", _lb + "qset", _id]);
+    // q3 = t - q1
+    array_push(_list, ["label", _lb + "q3"]);
+    array_push(_list, _ld, ["lsr_a", 0, _id], ["lsr_a", 0, _id], ["adc_imm", 0, _id]);
+    array_push(_list, ["sta_zp", _tmp, _id]);
+    array_push(_list, _ld, ["sec", 0, _id], ["sbc_zp", _tmp, _id]);
+    array_push(_list, ["label", _lb + "qset"]);
+    if (_t_zp >= 0) {
+        // keep it under the row's length: the held row sounds before the next
+        array_push(_list, ["cmp_zp", _t_zp, _id]);
+        array_push(_list, ["bcc", _lb + "qok", _id]);
+        array_push(_list, ["lda_zp", _t_zp, _id], ["sec", 0, _id], ["sbc_imm", 1, _id]);
+        array_push(_list, ["label", _lb + "qok"]);
+    }
 }

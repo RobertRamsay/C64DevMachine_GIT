@@ -141,6 +141,32 @@ if (viewer_open) {
     _mouse_in_panel = false;
 }
 
+// ASSET LIST SCROLL EXTENT + SCROLLBAR
+// Worked out every frame, not only while the pointer is over the panel, so the
+// bar appears as soon as the list outgrows the panel. Closed asset groups
+// collapse to one row, so the extent follows the display list rather than the
+// raw asset count. While the list overflows, rows stop short of the bar and
+// _list_right is their right edge (Draw_64 uses the same rule).
+var _list_top     = panel_y + 66;
+var _list_bot     = _panel_bottom - 38;
+var _list_content = array_length(scr_asset_display_rows()) * item_h;
+var _list_visible = floor((_list_bot - _list_top) / item_h) * item_h;
+panel_max_scroll = max(0, _list_content - _list_visible);
+panel_scroll     = clamp(panel_scroll, 0, panel_max_scroll);
+var _list_right  = (panel_max_scroll > 0) ? _panel_right - 10 : _panel_right;
+if (panel_max_scroll <= 0 || !mouse_check_button(mb_left)) panel_sb_drag = false;
+if (panel_max_scroll > 0 && _mouse_in_panel && mouse_check_button_pressed(mb_left)
+&&  point_in_rectangle(_mx, _my, _list_right, _list_top, _panel_right, _list_bot)) {
+    panel_sb_drag = true;
+}
+if (panel_sb_drag) {
+    // Centre the thumb on the pointer; a press on the track jumps there.
+    var _psb_track = _list_bot - _list_top;
+    var _psb_thumb = max(24, _psb_track * (_list_visible / _list_content));
+    var _psb_frac  = clamp((_my - _list_top - _psb_thumb / 2) / max(1, _psb_track - _psb_thumb), 0, 1);
+    panel_scroll   = round(_psb_frac * panel_max_scroll);
+}
+
 // -------------------------------------------------------
 // Manifest name divider. Capture the press before row buttons/reordering,
 // and keep dragging outside the viewer until the mouse is released.
@@ -1001,13 +1027,7 @@ for (var _di = 0; _di < ds_list_size(asset_list); _di++) {
 // SCROLL
 // -------------------------------------------------------
 if (_mouse_in_panel) {
-    // Closed asset groups collapse to one row, so scroll extent follows the
-    // display list rather than the raw asset count.
-    var _count       = array_length(scr_asset_display_rows());
-    var _content_h   = _count * item_h;
-    var _visible_h   = _panel_bottom - 38 - (panel_y + 66);
-    var _max_visible = floor(_visible_h / item_h) * item_h;
-    panel_max_scroll = max(0, _content_h - _max_visible);
+    // Extent (panel_max_scroll) is worked out near the top of this event.
     if (mouse_wheel_up())   panel_scroll = max(0, panel_scroll - item_h);
     if (mouse_wheel_down()) panel_scroll = min(panel_max_scroll, panel_scroll + item_h);
     panel_scroll = clamp(panel_scroll, 0, panel_max_scroll);
@@ -1024,7 +1044,7 @@ if (_mouse_in_panel && _my >= panel_y + 66 && _my <= _panel_bottom - 38) {
         var _iy1 = panel_y + 66 + (_pos * item_h) - panel_scroll;
         var _iy2 = _iy1 + item_h;
         if (_iy2 < panel_y + 66 || _iy1 > _panel_bottom - 38) continue;
-        if (point_in_rectangle(_mx, _my, panel_x, _iy1, _panel_right, _iy2)) {
+        if (point_in_rectangle(_mx, _my, panel_x, _iy1, _list_right, _iy2)) {
             hover_pos = _pos;
             // Group headers are not assets; they are hit-tested from
             // asset_group_rows, which Draw_64 rebuilds each frame.
@@ -1108,9 +1128,10 @@ if (asset_drag_idx < 0 && mouse_check_button_pressed(mb_left) && _mouse_in_panel
     for (var _hg = 0; _hg < array_length(asset_group_rows); _hg++) {
         var _hgr = asset_group_rows[_hg];
         if (_my < _hgr.y || _my >= _hgr.y + item_h) continue;
+        if (_mx > _list_right) continue;   // over the scrollbar
         _hdr_hit = true;
         if (_hgr.count == 0
-        &&  point_in_rectangle(_mx, _my, _panel_right - 26, _hgr.y + 8, _panel_right - 8, _hgr.y + item_h - 4)) {
+        &&  point_in_rectangle(_mx, _my, _list_right - 26, _hgr.y + 8, _list_right - 8, _hgr.y + item_h - 4)) {
             for (var _rg = 0; _rg < array_length(asset_groups); _rg++) {
                 if (asset_groups[_rg] != _hgr.group) continue;
                 array_delete(asset_groups, _rg, 1);
@@ -1167,7 +1188,7 @@ if (asset_drag_idx < 0 && mouse_check_button_pressed(mb_left) && _mouse_in_panel
     // label strip. The lower half carries the name and keeps the rename click.
     if (!_hdr_hit && hover_idx >= 0 && hover_pos >= 0) {
         var _drag_y  = panel_y + 66 + (hover_pos * item_h) - panel_scroll;
-        var _drag_x2 = (_panel_right - 58) - 30;   // stop short of EDIT / address
+        var _drag_x2 = (_list_right - 58) - 30;   // stop short of EDIT / address
         if (point_in_rectangle(_mx, _my, panel_x, _drag_y, _drag_x2, _drag_y + (item_h / 2))) {
             asset_drag_idx   = hover_idx;
             asset_drag_armed = true;
@@ -2632,7 +2653,7 @@ if (_asset.type == "META_TILESET") {
         var _asset  = ds_list_find_value(asset_list, hover_idx);
         var _list_y = panel_y + 66;
         var _iy     = _list_y + (hover_pos * item_h) - panel_scroll;
-        var _addr_x = _panel_right - 58;
+        var _addr_x = _list_right - 58;
         var _edit_x = _addr_x - 30;
 
         if (_asset.type == "SPRITE_SET" && _asset.file != "")
@@ -2642,7 +2663,7 @@ if (_asset.type == "META_TILESET") {
     _asset.type != "LOAD_REU" &&
     _asset.type != "BITMAP_BUILDER" &&
     _asset.type != "MUSIC_MAKER" && _asset.type != "SFX_MAKER" && _asset.type != "SAMPLE" &&
-            point_in_rectangle(_mx, _my, _addr_x, _iy, _panel_right, _iy + item_h)) {
+            point_in_rectangle(_mx, _my, _addr_x, _iy, _list_right, _iy + item_h)) {
             editing_address     = true;
             editing_address_idx = hover_idx;
             editing_addr_string = string_upper(decimal_to_hex(_asset.address));

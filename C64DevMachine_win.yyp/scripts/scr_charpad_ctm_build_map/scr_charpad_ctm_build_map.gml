@@ -195,6 +195,8 @@ function scr_charpad_ctm_build_map(
         linked_assets : [],
     };
 
+    scr_map_meta_defaults(_mp_asset.meta);
+
     // Buffer is the single source of truth — build it via flush.
     scr_asset_map_flush(_mp_asset);
     ds_list_add(_am.asset_list, _mp_asset);

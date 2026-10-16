@@ -58,6 +58,9 @@ panel_x  = _gui_w - panel_w - 30;
 panel_y = 345;   // just under the shortcuts column (ends at y 340)
 var _panel_w = _panel_right - panel_x;
 var _panel_h = _panel_bottom - panel_y;
+// While the asset list overflows, rows stop short of its scrollbar. Step_0
+// works out panel_max_scroll and uses the same edge for hit-testing.
+var _list_right = (panel_max_scroll > 0) ? _panel_right - 10 : _panel_right;
 
 if (variable_instance_exists(id, "map_chr_picker_open") && map_chr_picker_open) {
     draw_set_color(c_red);
@@ -192,7 +195,7 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
     if (_row.kind == "group") {
         if (_row_y + item_h > panel_y + 66 && _row_y < _panel_bottom - 38) {
             var _gh_hot = (asset_drag_idx >= 0 && asset_drag_over_group == _row.group);
-            scr_editor_control(panel_x, _row_y, _panel_right, _row_y + item_h, _gh_hot, false);
+            scr_editor_control(panel_x, _row_y, _list_right, _row_y + item_h, _gh_hot, false);
             draw_set_color(make_color_rgb(100, 200, 180));
             draw_rectangle(panel_x, _row_y, panel_x + 4, _row_y + item_h, false);
             draw_set_font_l(fnt_c64_tiny);
@@ -202,16 +205,16 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
             // The label is a separate hit zone from the chevron: chevron folds,
             // label renames. Highlighted on hover so the split is visible.
             var _gl_x = panel_x + 44;
-            var _gl_hov = point_in_rectangle(_mx, _my, _gl_x, _row_y, _panel_right - 30, _row_y + item_h);
+            var _gl_hov = point_in_rectangle(_mx, _my, _gl_x, _row_y, _list_right - 30, _row_y + item_h);
             draw_set_color(_gl_hov ? c_yellow : make_color_rgb(100, 200, 180));
-            scr_editor_label(_gl_x, _row_y, _panel_right - 30, _row_y + item_h, _row.group + " (" + string(_row.count) + ")", fa_left, 0);
+            scr_editor_label(_gl_x, _row_y, _list_right - 30, _row_y + item_h, _row.group + " (" + string(_row.count) + ")", fa_left, 0);
             // Delete: only offered while the group is empty, so no asset
             // can lose its group by accident.
             if (_row.count == 0) {
-                var _gx_hov = point_in_rectangle(_mx, _my, _panel_right - 26, _row_y + 8, _panel_right - 8, _row_y + item_h - 4);
-                scr_editor_control(_panel_right - 26, _row_y + 8, _panel_right - 8, _row_y + item_h - 4, _gx_hov);
+                var _gx_hov = point_in_rectangle(_mx, _my, _list_right - 26, _row_y + 8, _list_right - 8, _row_y + item_h - 4);
+                scr_editor_control(_list_right - 26, _row_y + 8, _list_right - 8, _row_y + item_h - 4, _gx_hov);
                 draw_set_color(c_white);
-                scr_editor_label(_panel_right - 26, _row_y + 8, _panel_right - 8, _row_y + item_h - 4, "X");
+                scr_editor_label(_list_right - 26, _row_y + 8, _list_right - 8, _row_y + item_h - 4, "X");
             }
         }
         array_push(asset_group_rows, { group: _row.group, y: _row_y, count: _row.count });
@@ -270,7 +273,7 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
     }
 	
     draw_set_color(scr_ui_tinted(_row_col));
-    draw_roundrect_ext(panel_x + 2, _iy + 1, _panel_right - 2, _iy + item_h - 1, 5, 5, false);
+    draw_roundrect_ext(panel_x + 2, _iy + 1, _list_right - 2, _iy + item_h - 1, 5, 5, false);
 
     // Memory-bar ownership highlight. Keep the asset-list position unchanged;
     // if the row is visible, this outline ties it directly to the hovered range.
@@ -278,7 +281,7 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
         global.memory_bar_hover_asset == _i) {
         draw_set_color(c_aqua);
         draw_set_alpha(0.95);
-        draw_rectangle(panel_x + 1, _iy + 1, _panel_right - 1, _iy + item_h - 1, true);
+        draw_rectangle(panel_x + 1, _iy + 1, _list_right - 1, _iy + item_h - 1, true);
         draw_set_alpha(1.0);
     }
 
@@ -290,7 +293,7 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
     draw_rectangle(panel_x, _iy, panel_x + 4, _iy + item_h, false);
 
     // Zone boundaries
-    var _addr_x = _panel_right - 58;
+    var _addr_x = _list_right - 58;
     var _edit_x = _addr_x - 30;
 
     // Drag handle: the type strip (upper half of the row, left of EDIT) - the
@@ -381,25 +384,25 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
     draw_set_halign(fa_right);
     if (editing_address && editing_address_idx == _i) {
         draw_set_color(make_color_rgb(20, 50, 30));
-        draw_rectangle(_addr_x + 2, _iy + 4, _panel_right - 4, _iy + item_h - 4, false);
+        draw_rectangle(_addr_x + 2, _iy + 4, _list_right - 4, _iy + item_h - 4, false);
         draw_set_color(c_lime);
         var _blink = ((current_time mod 600) < 300) ? "_" : " ";
-        scr_editor_label(_addr_x + 2, _iy + 4, _panel_right - 4, _iy + item_h - 4, editing_addr_string + _blink, fa_right, 2);
+        scr_editor_label(_addr_x + 2, _iy + 4, _list_right - 4, _iy + item_h - 4, editing_addr_string + _blink, fa_right, 2);
     } else if (_asset.type == "LOAD_ORG" || _asset.type == "LOAD_REU" || _asset.type == "BITMAP_BUILDER" || (_asset.type == "MUSIC_MAKER" || _asset.type == "SFX_MAKER") || _asset.type == "HUD" || (_asset.type == "ROOM_MAP" || _asset.type == "ANIMATION") || _asset.type == "SPRITE_MASK" || _asset.type == "SAMPLE") {
         // LOAD_ORG is a manifest, not physical data — it has no meaningful
         // load address (each linked asset carries its own). BITMAP_BUILDER is
         // an internal editor asset: it emits a derived BYTE_DATA table which
         // carries the real address, so the builder itself has none. Show a dash.
         draw_set_color(make_color_rgb(127, 127, 148));
-        scr_editor_label(_addr_x, _iy, _panel_right, _iy + item_h, "--", fa_right, 6);
+        scr_editor_label(_addr_x, _iy, _list_right, _iy + item_h, "--", fa_right, 6);
     } else {
         var _ah = string_upper(decimal_to_hex(_asset.address));
         while (string_length(_ah) < 4) _ah = "0" + _ah;
-        var _addr_hover = point_in_rectangle(_mx, _my, _addr_x, _iy, _panel_right, _iy + item_h);
+        var _addr_hover = point_in_rectangle(_mx, _my, _addr_x, _iy, _list_right, _iy + item_h);
         draw_set_color(_addr_hover ? c_white : c_aqua);
-        scr_editor_label(_addr_x, _iy, _panel_right, _iy + item_h, "$" + _ah, fa_right, 6);
+        scr_editor_label(_addr_x, _iy, _list_right, _iy + item_h, "$" + _ah, fa_right, 6);
         var _ah_w = string_width_l("$" + _ah);
-        global.asset_addr_rects[$ _asset.name] = [_panel_right - 6 - _ah_w - 2, _iy + 4, _panel_right - 4, _iy + item_h - 4];
+        global.asset_addr_rects[$ _asset.name] = [_list_right - 6 - _ah_w - 2, _iy + 4, _list_right - 4, _iy + item_h - 4];
     }
     draw_set_halign(fa_left);
 
@@ -436,8 +439,27 @@ for (var _pos = 0; _pos < _disp_n; _pos++) {
 
 	    // Row divider
 	    draw_set_color(make_color_rgb(35, 35, 50));
-	    draw_line(panel_x, _iy + item_h, _panel_right, _iy + item_h);
+	    draw_line(panel_x, _iy + item_h, _list_right, _iy + item_h);
 	}
+
+// Scrollbar, only while the list is longer than the panel. Thumb skinned like
+// the LOAD_REU list's. Drag/click handling lives in Step_0.
+if (panel_max_scroll > 0) {
+    var _psb_x1    = _panel_right - 8;
+    var _psb_x2    = _panel_right - 2;
+    var _psb_y1    = panel_y + 66;
+    var _psb_y2    = _panel_bottom - 38;
+    var _psb_track = _psb_y2 - _psb_y1;
+    var _psb_vis   = floor(_psb_track / item_h) * item_h;
+    var _psb_thumb = max(24, _psb_track * (_psb_vis / (_psb_vis + panel_max_scroll)));
+    var _psb_ty    = _psb_y1 + (_psb_track - _psb_thumb) * (panel_scroll / panel_max_scroll);
+    var _psb_hov   = point_in_rectangle(_mx, _my, _list_right, _psb_y1, _panel_right, _psb_y2);
+    scr_ui_info(_psb_hov, "DRAG TO SCROLL THE ASSET LIST (MOUSE WHEEL OVER THE LIST WORKS TOO)");
+    draw_set_color(make_color_rgb(28, 36, 42));
+    draw_rectangle(_psb_x1, _psb_y1, _psb_x2, _psb_y2, false);
+    scr_editor_control(_psb_x1, _psb_ty, _psb_x2, _psb_ty + _psb_thumb,
+        (_psb_hov && _my >= _psb_ty && _my <= _psb_ty + _psb_thumb) || panel_sb_drag, false);
+}
 } // end hide panel when viewer open
 
 // Move cursor over a drag handle and while dragging. Only resets a cursor it
@@ -472,9 +494,9 @@ if (asset_drag_idx >= 0 && asset_drag_idx < ds_list_size(asset_list)) {
     // Between two rows: a divider where the asset will land
     if (asset_drag_ins_y >= panel_y + 66 && asset_drag_ins_y <= _panel_bottom - 38) {
         draw_set_color(make_color_rgb(100, 220, 200));
-        draw_rectangle(panel_x + 6, asset_drag_ins_y - 1, _panel_right - 6, asset_drag_ins_y + 1, false);
+        draw_rectangle(panel_x + 6, asset_drag_ins_y - 1, _list_right - 6, asset_drag_ins_y + 1, false);
         draw_triangle(panel_x + 2, asset_drag_ins_y - 4, panel_x + 2, asset_drag_ins_y + 4, panel_x + 7, asset_drag_ins_y, false);
-        draw_triangle(_panel_right - 2, asset_drag_ins_y - 4, _panel_right - 2, asset_drag_ins_y + 4, _panel_right - 7, asset_drag_ins_y, false);
+        draw_triangle(_list_right - 2, asset_drag_ins_y - 4, _list_right - 2, asset_drag_ins_y + 4, _list_right - 7, asset_drag_ins_y, false);
     }
 }
 
@@ -1673,6 +1695,8 @@ var _map_row_y = _vy1 + 58;
 		    scr_editor_label(_cpbx1, _cpby1, _cpbx2, _cpby2, _chr_name != "" ? _chr_name : L("-- PICK --"), fa_left, 10);
 
 		    // ---- STAMPS / ROOM PREVIEW (room maps share the stamp area) ----
+		    // Retrofit before first read - maps from imports / older files may lack these.
+		    scr_map_meta_defaults(_m);
 		    var _tp_rooms = (real(_m.raw_chars) >= 2 && real(_m.room_w) > 0 && real(_m.room_h) > 0);
 		    map_prev_on = false;
 		    if (_tp_rooms) {

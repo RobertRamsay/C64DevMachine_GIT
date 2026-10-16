@@ -158,6 +158,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (!variable_struct_exists(_m, "list_scroll")) _m.list_scroll = 0;
     if (!variable_struct_exists(_m, "undo_stack"))  _m.undo_stack  = [];
     if (!variable_struct_exists(_m, "redo_stack"))  _m.redo_stack  = [];
+    // Edits without an undo push of their own (order list, songs, instruments,
+    // settings) become undo steps: copy the state as a click / key starts,
+    // compare when it ends (scr_music_undo_probe_end, bottom of this script).
+    scr_music_undo_probe_begin(_m);
     if (!variable_struct_exists(_m, "warn_msg"))    _m.warn_msg    = "";
     if (!variable_struct_exists(_m, "warn_timer"))  _m.warn_timer  = 0;
     if (!variable_struct_exists(_m, "cur_octave"))  _m.cur_octave  = 4;
@@ -318,7 +322,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             // digi track: its data and whether the edit was made in its lane
             dgs    : scr_digi_snapshot(_mm),
             dgf    : _mm.dg_focus,
-            dgstep : _mm.dg_sel_step
+            dgstep : _mm.dg_sel_step,
+            // songs / order lists, instruments, settings (scr_music_undo_state)
+            st     : scr_music_undo_state_for_push(_mm)
         });
         if (array_length(_mm.undo_stack) > 50) {
             array_delete(_mm.undo_stack, 0, 1);
@@ -608,8 +614,8 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     var _transport_typing = _m.edit_active || _m.instr_edit_active
                          || _m.instr_name_edit_active || _m.song_name_edit_active || _order_typing
                          || _m.instr_note_edit_active;
-    // Function keys: F1 song from the start, F2 song from the cursor row (same
-    // as PLAY HERE — carries on through the order list), F3 this pattern from
+    // Function keys: F1 song from the start, F2 song from the top of the order
+    // row under the mouse (carries on through the order list), F3 this pattern from
     // the top (looping), F4 stop.
     // They type nothing, so they work whatever is being edited: the transport
     // below commits an open pattern cell or instrument text before it plays.
@@ -620,7 +626,13 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         if (keyboard_check_pressed(vk_f1)) {
             _transport_action = "SONG";
         } else if (keyboard_check_pressed(vk_f2)) {
-            _transport_action = "HERE";
+            // F2 restarts the song at the top of the pattern under the mouse,
+            // even mid-song: over the order list that is the hovered row,
+            // anywhere else the row the grid is showing. sel_order_row follows
+            // the song while it plays, so it can't stand in for the mouse.
+            var _f2_row = variable_struct_exists(_m, "order_hover_row") ? _m.order_hover_row : -1;
+            if (_f2_row >= 0 && _f2_row < array_length(_cur_song.order)) _m.sel_order_row = _f2_row;
+            _transport_action = "HERE_TOP";
         } else if (keyboard_check_pressed(vk_f3)) {
             _transport_action = "PAT";
         } else if (keyboard_check_pressed(vk_f4)) {
@@ -1750,8 +1762,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 var _un = _m.undo_stack[_un_top];
                 array_delete(_m.undo_stack, _un_top, 1);
                 array_push(_m.redo_stack, { pats: _se_snap(_m), voice: _un.voice, step: _un.step, sub: _un.sub, ord: _un.ord, chip: variable_struct_exists(_un, "chip") ? _un.chip : 0,
-                                            dgs: scr_digi_snapshot(_m), dgf: _un[$ "dgf"] == true, dgstep: _m.dg_sel_step });
+                                            dgs: scr_digi_snapshot(_m), dgf: _un[$ "dgf"] == true, dgstep: _m.dg_sel_step,
+                                            st: scr_music_undo_state(_m) });
                 _m.patterns = _un.pats;
+                scr_music_undo_state_apply(_m, _un[$ "st"]);
                 _se_undo_goto(_m, _un, _vis);
                 scr_digi_undo_apply(_m, _un);
                 _m.bank_sel_pattern = clamp(_m.bank_sel_pattern, 0, array_length(_m.patterns) - 1);
@@ -1771,8 +1785,10 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 var _re = _m.redo_stack[_re_top];
                 array_delete(_m.redo_stack, _re_top, 1);
                 array_push(_m.undo_stack, { pats: _se_snap(_m), voice: _re.voice, step: _re.step, sub: _re.sub, ord: _re.ord, chip: variable_struct_exists(_re, "chip") ? _re.chip : 0,
-                                            dgs: scr_digi_snapshot(_m), dgf: _re[$ "dgf"] == true, dgstep: _m.dg_sel_step });
+                                            dgs: scr_digi_snapshot(_m), dgf: _re[$ "dgf"] == true, dgstep: _m.dg_sel_step,
+                                            st: scr_music_undo_state(_m) });
                 _m.patterns = _re.pats;
+                scr_music_undo_state_apply(_m, _re[$ "st"]);
                 _se_undo_goto(_m, _re, _vis);
                 scr_digi_undo_apply(_m, _re);
                 _m.bank_sel_pattern = clamp(_m.bank_sel_pattern, 0, array_length(_m.patterns) - 1);
@@ -2031,7 +2047,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         // Walks backwards from the end so each destination is written before
         // it is read as a source; a forward loop would smear the cursor row
         // down the whole pattern.
-        if (_cur_step != noone && keyboard_check(vk_insert)) {
+        // (Not while the mouse is over the song order list: Insert there
+        // inserts an order row instead.)
+        if (_cur_step != noone && keyboard_check(vk_insert) && (_m[$ "order_hover_row"] ?? -1) < 0) {
             var _do_ins = false;
             if (keyboard_check_pressed(vk_insert)) {
                 _do_ins       = true;
@@ -2465,7 +2483,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     }
 
     draw_set_color(make_color_rgb(255, 200, 100));
-    var _ord_title = "SONG ORDER   SHIFT +/- TRANSPOSE (CTRL: OCTAVE)";
+    var _ord_title = "SONG ORDER   SHIFT +/- TRANSPOSE   CTRL +/- DELAY UP/DOWN";
     if (_m.order_pattern_edit_active) {
         _ord_title = "ENTER: SET / ESC: CANCEL";
     }
@@ -2489,6 +2507,9 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     }
     _m.order_scroll = clamp(_m.order_scroll, 0, max(0, array_length(_cur_song.order) - _ord_vis));
 
+    // Order row under the mouse, for F2 (read by the transport next frame,
+    // which runs before this list is drawn).
+    _m.order_hover_row = -1;
     for (var _orv = 0; _orv < _ord_vis; _orv++) {
         var _ord_i = _orv + _m.order_scroll;
         if (_ord_i >= array_length(_cur_song.order)) {
@@ -2496,6 +2517,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         }
         var _orow = _cur_song.order[_ord_i];
         var _ory  = _oy0 + _orv * _ord_row_h;
+        if (point_in_rectangle(_mx, _my, _ox0, _ory, _ox0 + _ord_full_w, _ory + _ord_row_h - 1)) _m.order_hover_row = _ord_i;
 
         var _ord_active = (_m.song_playing && _ord_i == _m.preview_display_order);
         // TIMING: PER VOICE: voices sit on different order rows, so each
@@ -2536,7 +2558,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             var _plus = _mx >= _ocx + _ocw - 15 && _mx < _ocx + _ocw && _my >= _ory && _my < _ory + _ord_row_h;
             var _number_hov = _mx >= _ocx + 15 && _mx < _ocx + _ocw - 15 && _my >= _ory && _my < _ory + _ord_row_h;
             scr_mm_info(_number_hov, "V" + string(_voice_offset + _ovi + 1) + " PATTERN ON THIS ORDER ROW: CLICK, TYPE A PATTERN NUMBER, ENTER");
-            scr_mm_info(_minus || _plus, "V" + string(_voice_offset + _ovi + 1) + (_minus ? ": PREVIOUS" : ": NEXT") + " PATTERN ON THIS ROW. SHIFT: TRANSPOSE A SEMITONE, CTRL+SHIFT: AN OCTAVE");
+            scr_mm_info(_minus || _plus, "V" + string(_voice_offset + _ovi + 1) + (_minus ? ": PREVIOUS" : ": NEXT") + " PATTERN ON THIS ROW. SHIFT: TRANSPOSE A SEMITONE (CTRL+SHIFT: AN OCTAVE). CTRL: DELAY UP/DOWN A QUARTER ROW (D4 = A ROW; ECHOES)");
             var _editing = _m.order_pattern_edit_active && _m.order_pattern_edit_row == _orow && _m.order_pattern_edit_key == _voice_keys[_ovi];
             draw_set_color(make_color_rgb(65, 85, 120));
             if (_minus) draw_rectangle(_ocx + 1, _ory + 2, _ocx + 14, _ory + _ord_row_h - 2, false);
@@ -2571,9 +2593,27 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
                 draw_text_l(_oc_numx + 16, _ory + 8, _tr_str);
                 draw_set_font_l(fnt_c64_tiny);
             }
+            // Delay (rows this voice's pattern starts late), under the number.
+            var _oc_dl = scr_music_sid_delay(_orow, _voice_offset + _ovi);
+            if (_oc_dl > 0 && !_editing) {
+                draw_set_font_l(fnt_c64_pico);
+                draw_set_color(make_color_rgb(200, 140, 255));
+                // squashed (and a touch wider) so it fits the row's bottom edge
+                draw_text_transformed_l(_ocx + _ocw * 0.5, _ory + 19, "D" + string(_oc_dl), 1.15, 0.75, 0);
+                draw_set_font_l(fnt_c64_tiny);
+            }
             draw_set_halign(fa_left);
+            // CTRL + -/+ : delay this voice's pattern on this row by a quarter row
+            // (D1 = 1/4 row, D4 = a row; echoes / offsets of a reused pattern, 0..256).
+            if ((_minus || _plus) && mouse_check_button_pressed(mb_left)
+            && keyboard_check(vk_control) && !keyboard_check(vk_shift)) {
+                _se_push_undo(_m, _se_snap);
+                _orow[$ "d" + string(_voice_offset + _ovi + 1)] = clamp(_oc_dl + (_plus ? 1 : -1), 0, 256);
+                global.undo_dirty = true;
+                global.addresses_dirty = true;
+            }
             // SHIFT + -/+ : transpose this voice on this row (CTRL+SHIFT: an octave).
-            if ((_minus || _plus) && mouse_check_button_pressed(mb_left) && keyboard_check(vk_shift)) {
+            else if ((_minus || _plus) && mouse_check_button_pressed(mb_left) && keyboard_check(vk_shift)) {
                 _se_push_undo(_m, _se_snap);
                 var _tr_step = 1;
                 if (keyboard_check(vk_control)) {
@@ -2730,14 +2770,41 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     }
 
     var _oby = _oy0 + _ord_vis * _ord_row_h + 10;
-    var _oax1 = _ox0;
-    var _oax2 = _oax1 + 90;
+    // ── INSERT ROW ── a new row goes in AT the target, pushing it and every
+    // row below down one. INS inserts at the selected row; the Insert key
+    // inserts at the row under the mouse. The loop point moves with its row.
+    var _ord_insert = function(_song, _mm, _at) {
+        _at = clamp(_at, 0, array_length(_song.order));
+        array_insert(_song.order, _at, { v1: 0, v2: -1, v3: -1, dg: -1, repeat_short: false, force_len: 0 });
+        if (real(_song.loop_row) >= _at && array_length(_song.order) > 1) _song.loop_row = real(_song.loop_row) + 1;
+        _mm.sel_order_row      = _at;
+        global.undo_dirty      = true;
+        global.addresses_dirty = true;
+    };
+    var _oix1 = _ox0;
+    var _oix2 = _oix1 + 44;
+    var _oi_hov = point_in_rectangle(_mx, _my, _oix1, _oby, _oix2, _oby + 18);
+    scr_mm_info(_oi_hov, "INSERTS A ROW AT THE SELECTED ORDER ROW, PUSHING IT AND THE ROWS BELOW DOWN (OR PRESS INSERT OVER A ROW)");
+    scr_editor_control(_oix1, _oby, _oix2, _oby + 18, _oi_hov, false);
+    draw_set_color(c_white);
+    draw_set_halign(fa_center);
+    scr_editor_label(_oix1, _oby, _oix2, _oby + 18, "INS");
+    draw_set_halign(fa_left);
+    if (_oi_hov && mouse_check_button_pressed(mb_left)) {
+        _ord_insert(_cur_song, _m, _m.sel_order_row);
+    }
+    if (keyboard_check_pressed(vk_insert) && _m.order_hover_row >= 0 && !_m.order_pattern_edit_active) {
+        _ord_insert(_cur_song, _m, _m.order_hover_row);
+    }
+
+    var _oax1 = _oix2 + 6;
+    var _oax2 = _oax1 + 60;
     var _oa_hov = point_in_rectangle(_mx, _my, _oax1, _oby, _oax2, _oby + 18);
     scr_mm_info(_oa_hov, "ADDS A ROW TO THE END OF THIS SONG'S ORDER LIST AND SELECTS IT");
     scr_editor_control(_oax1, _oby, _oax2, _oby + 18, _oa_hov, false);
     draw_set_color(c_white);
     draw_set_halign(fa_center);
-    scr_editor_label(_oax1, _oby, _oax2, _oby + 18, "+ ADD ROW");
+    scr_editor_label(_oax1, _oby, _oax2, _oby + 18, "+ ADD");
     draw_set_halign(fa_left);
     if (_oa_hov && mouse_check_button_pressed(mb_left)) {
         array_push(_cur_song.order, { v1: 0, v2: -1, v3: -1, dg: -1, repeat_short: false, force_len: 0 });
@@ -2778,7 +2845,7 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
         global.addresses_dirty = true;
     }
 
-    var _odx1 = _lpx2 + 16;
+    var _odx1 = _lpx2 + 8;
     var _odx2 = _odx1 + 90;
     var _od_lock = (array_length(_cur_song.order) <= 1);
     var _od_hov  = !_od_lock && point_in_rectangle(_mx, _my, _odx1, _oby, _odx2, _oby + 18);
@@ -2894,6 +2961,8 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (_cg_open) {
         scr_sound_editor_cmd_guide(_vx1, _vy1, _vx2, _vy2_full, _cg_mx, _cg_my, _cg_click, _cg_esc);
     }
+
+    scr_music_undo_probe_end(_m, _se_snap);
 
     draw_set_alpha(1.0);
     draw_set_color(c_white);

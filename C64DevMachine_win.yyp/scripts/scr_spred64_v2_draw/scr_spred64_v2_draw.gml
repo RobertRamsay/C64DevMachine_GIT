@@ -2022,20 +2022,39 @@ if (_layer_dir != 0) {
                                 // by _base_scale * 2 to visually match one
                                 // on-screen pixel step.
                                 var _pixel_step = _base_scale * 2;
-                               var _draw_x = _gx1 + _cd.xo * _pixel_step;
+                                var _draw_x = _gx1 + _cd.xo * _pixel_step;
                                 var _draw_y = _gy1 + _cd.yo * _pixel_step;
-                                // Y-expanded (and BOTH) sprites sit one
-                                // screen pixel high relative to the
-                                // unexpanded ones in the grid render —
-                                // nudge them down by 1 to line up.
-                                if (_cd.expand == "y" || _cd.expand == "both") {
-                                    _draw_y = _draw_y + 1;
-                                }
+                                // Cells are _grid_gap apart, so the part of a
+                                // sprite that spills into the next column or
+                                // row (expanded, or pushed by XO/YO) is drawn
+                                // as its own piece shifted across the gap, the
+                                // same way a placement in that cell would sit.
+                                // Drawn in one piece, an expanded sprite's
+                                // lower half sat a pixel above the row below.
+                                // Cell edges fall on whole source pixels
+                                // (48 and 42 source px per cell), so the
+                                // split never cuts a pixel.
+                                var _fp_w = 48 * _sx;
+                                var _fp_h = 42 * _sy;
+                                var _fp_c1 = floor((_draw_x - _gx1) / _gc_w);
+                                var _fp_c2 = floor((_draw_x + _fp_w - 1 - _gx1) / _gc_w);
+                                var _fp_r1 = floor((_draw_y - _gy1) / _gc_h);
+                                var _fp_r2 = floor((_draw_y + _fp_h - 1 - _gy1) / _gc_h);
                                 gpu_set_tex_filter(false);
-                                draw_sprite_ext(_asset.meta.spr_sprites[_cd.slot], 0,
-                                    _draw_x, _draw_y, _sx, _sy,
-                                    0, c_white, 1);
-									gpu_set_tex_filter(true);
+                                for (var _fp_r = _fp_r1; _fp_r <= _fp_r2; _fp_r++) {
+                                    var _fp_y1 = max(_draw_y, _gy1 + _fp_r * _gc_h);
+                                    var _fp_y2 = min(_draw_y + _fp_h, _gy1 + (_fp_r + 1) * _gc_h);
+                                    for (var _fp_c = _fp_c1; _fp_c <= _fp_c2; _fp_c++) {
+                                        var _fp_x1 = max(_draw_x, _gx1 + _fp_c * _gc_w);
+                                        var _fp_x2 = min(_draw_x + _fp_w, _gx1 + (_fp_c + 1) * _gc_w);
+                                        draw_sprite_part_ext(_asset.meta.spr_sprites[_cd.slot], 0,
+                                            (_fp_x1 - _draw_x) / _sx, (_fp_y1 - _draw_y) / _sy,
+                                            (_fp_x2 - _fp_x1) / _sx, (_fp_y2 - _fp_y1) / _sy,
+                                            _fp_x1 + _fp_c * _grid_gap, _fp_y1 + _fp_r * _grid_gap,
+                                            _sx, _sy, c_white, 1);
+                                    }
+                                }
+                                gpu_set_tex_filter(true);
                             }
                         }
                     }
@@ -2205,10 +2224,12 @@ if (_layer_dir != 0) {
                 if (_mk_expand == "y" || _mk_expand == "both") { _mk_px_step_y = _mk_step * 2; }
 
                 // Placement offsets are native pixels, not expanded pixels.
-                // Match the sprite origin and Y-expand nudge in pass 2 exactly.
+                // Match pass 2 exactly: a pixel that lands past the cell's
+                // edge steps across the grid gap like the sprite piece does.
                 var _mk_x1 = _mk_gx1 + _mk_xo * _mk_step + _v2.canvas_pix_x * _mk_px_step_x;
                 var _mk_y1 = _mk_gy1 + _mk_yo * _mk_step + _v2.canvas_pix_y * _mk_px_step_y;
-                if (_mk_expand == "y" || _mk_expand == "both") _mk_y1 += 1;
+                _mk_x1 += floor((_mk_x1 - _mk_gx1) / _gc_w) * _grid_gap;
+                _mk_y1 += floor((_mk_y1 - _mk_gy1) / _gc_h) * _grid_gap;
                 var _mk_x2 = _mk_x1 + _mk_w;
                 var _mk_y2 = _mk_y1 + _mk_h;
 

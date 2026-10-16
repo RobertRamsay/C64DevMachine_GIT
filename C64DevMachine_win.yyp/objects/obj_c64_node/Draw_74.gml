@@ -27,9 +27,10 @@ if (obj_workspace_manager.is_entering_text) exit;
 var _cam_x = obj_workspace_manager.cam_x;
 var _cam_y = obj_workspace_manager.cam_y;
 var _alpha_comment = clamp((_cam_zoom - 2.5) / 1.5, 0, 1);
-// Fades in between zoom 2 and 3 and then stays: the camera goes out to
-// 6.0 and the old fade-out past 4.5 left the far view with no labels at all.
-var _alpha_header  = clamp((_cam_zoom - 2.0) / 1.0, 0, 1);
+// Fades in between zoom 2 and 2.5 (as the room-space boxes fade out) and then
+// stays: the camera goes out to 6.0 and the old fade-out past 4.5 left the far
+// view with no labels at all.
+var _alpha_header  = clamp((_cam_zoom - 2.0) / 0.5, 0, 1);
 
 var _shelf_edge = obj_workspace_manager.shelf_width + 40;
 var _sc_edge    = global.sc_x_start - 40;
@@ -93,6 +94,54 @@ if (node_type == "COMMENT") {
     draw_set_color(c_white);
     draw_text_l(_sx, _sy+8, _display_text);
 
+} else if (node_type == "ORG" || node_type == "INIT") {
+    // Start address on the block itself, end address of the whole chain
+    // under its bottom-most node. Nothing else from the chain is shown.
+    var _wx = x + x_indent + width * 0.5;
+    var _sx = (_wx - _cam_x) / _cam_zoom;
+    if (_sx < _shelf_edge || _sx > _sc_edge) exit;
+    var _edge_alpha = clamp((_sx - _shelf_edge) / 30.0, 0, 1)
+                    * clamp((_sc_edge - _sx)    / 30.0, 0, 1);
+    draw_set_valign(fa_middle);
+
+    var _org_ref  = id;
+    var _is_init  = (node_type == "INIT");
+    var _is_vars  = (node_title == "VARIABLES");
+    var _end_addr = pc_address + (_is_vars ? 0 : total_node_size);
+    var _bottom   = y + height;
+    with (obj_c64_node) {
+        if (id == _org_ref || scr_node_is_hidden(id)) continue;
+        // INIT spine: connected nodes with no ORG parent, packed under INIT
+        // (same rule scr_c64_do_update_addresses uses). ORG chain: its children.
+        if (_is_init) {
+            if (org_parent != noone || node_type == "ORG" || x != _org_ref.x) continue;
+        } else if (org_parent != _org_ref) continue;
+        if (_is_vars) {
+            if (node_type != "NAMED_LOC") continue;
+            var _m = scr_nloc_find_meta(string(instructions[0][1]));
+            if (_m != undefined) _end_addr += _m.size;
+        } else {
+            if (!is_connected || node_type == "NAMED_LOC" || node_type == "NEW_STR") continue;
+            _end_addr = max(_end_addr, pc_address + total_node_size);
+        }
+        _bottom = max(_bottom, y + height);
+    }
+
+    var _sy_start = (y + height * 0.5 - _cam_y) / _cam_zoom;
+    var _sy_end   = (_bottom - _cam_y) / _cam_zoom + 8;
+    var _labels   = [[_sy_start, pc_address, ""], [_sy_end, _end_addr, ">"]];
+    // HW REGISTERS is just a list of fixed addresses - no chain end to show.
+    var _count    = (node_title == "HW REGISTERS") ? 1 : 2;
+    for (var _i = 0; _i < _count; _i++) {
+        var _ly = _labels[_i][0];
+        if (_ly < 0 || _ly > 1080) continue;
+        var _h = decimal_to_hex(_labels[_i][1]);
+        while (string_length(_h) < 4) _h = "0" + _h;
+        var _display = _labels[_i][2] + "$" + string_upper(_h);
+        draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black); draw_text_l(_sx+1, _ly+1, _display);
+        draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_aqua);  draw_text_l(_sx, _ly, _display);
+    }
+
 } else {
     var _wx = x + x_indent + width * 0.5;
     var _wy = y + height * 0.5;
@@ -121,15 +170,6 @@ if (node_type == "COMMENT") {
             draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_yellow); draw_text_l(_sx, _sy, _display);
         } break;
 
-        case "ORG":
-        case "INIT": {
-            var _h = decimal_to_hex(pc_address);
-            while (string_length(_h) < 4) _h = "0" + _h;
-            _display = "$" + string_upper(_h);
-            draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black); draw_text_l(_sx+1, _sy+1, _display);
-            draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_aqua);  draw_text_l(_sx, _sy, _display);
-        } break;
-
         case "GET_VAR":
         case "SET_VAR":
         case "INC_VAR":
@@ -146,41 +186,28 @@ if (node_type == "COMMENT") {
 
         case "NORMAL":
         default: {
-            if (array_length(instructions) > 0) {
-                var _mn     = string_upper(string(instructions[0][0]));
-                var _raw    = (array_length(instructions[0]) > 1) ? instructions[0][1] : "";
-                var _val    = "";
-                if (global.use_hex_display && is_real(_raw)) {
-                    var _h      = decimal_to_hex(_raw);
-                    var _inst_l = string_lower(string(instructions[0][0]));
-                    var _is_16bit = (string_pos("_abs", _inst_l) > 0 || string_pos("_abx", _inst_l) > 0 ||
-                                     string_pos("_aby", _inst_l) > 0 || string_pos("_ind", _inst_l) > 0);
-                    var _pad = _is_16bit ? 4 : 2;
-                    while (string_length(_h) < _pad) _h = "0" + _h;
-                    _val = "$" + string_upper(_h);
-                } else {
-                    _val = string(_raw);
-                }
-                var _mn_str  = _mn + " ";
-                var _val_str = _val;
-                var _mn_w    = string_width_l(_mn_str);
-                var _total_w = string_width_l(_mn_str + _val_str);
-                draw_set_alpha(_alpha_header * _edge_alpha * 0.6);
-                draw_set_color(c_black);
-                draw_text_l(_sx + 1, _sy + 1, _mn_str + _val_str);
-                draw_set_alpha(_alpha_header * _edge_alpha);
-                draw_set_halign(fa_left);
-                draw_set_color(c_ltgray);
-                draw_text_l(_sx - _total_w * 0.5, _sy, _mn_str);
-                draw_set_color(c_yellow);
-                draw_text_l(_sx - _total_w * 0.5 + _mn_w, _sy, _val_str);
-                draw_set_halign(fa_center);
-            } else {
-                _display = (custom_title != "") ? custom_title : node_title;
-                _display = _trunc6(_display);
-                draw_set_alpha(_alpha_header * _edge_alpha * 0.6); draw_set_color(c_black);  draw_text_l(_sx+1, _sy+1, _display);
-                draw_set_alpha(_alpha_header * _edge_alpha);       draw_set_color(c_ltgray); draw_text_l(_sx, _sy, _display);
-            }
+            // Zoomed out the map is kept as plain as possible: of the ordinary
+            // instructions only a JSR / JMP to a label is shown - those are the
+            // jumps between the labels you can see. No operand values.
+            if (array_length(instructions) == 0 || array_length(instructions[0]) < 2) break;
+            var _inst_l = string_lower(string(instructions[0][0]));
+            var _raw    = instructions[0][1];
+            var _is_jump = (string_pos("jsr", _inst_l) == 1 || string_pos("jmp", _inst_l) == 1);
+            if (!_is_jump || is_real(_raw) || string(_raw) == "") break;
+            var _mn_str  = string_upper(string_copy(_inst_l, 1, 3)) + " ";
+            var _val_str = _trunc6(string(_raw));
+            var _mn_w    = string_width_l(_mn_str);
+            var _total_w = string_width_l(_mn_str + _val_str);
+            draw_set_alpha(_alpha_header * _edge_alpha * 0.6);
+            draw_set_color(c_black);
+            draw_text_l(_sx + 1, _sy + 1, _mn_str + _val_str);
+            draw_set_alpha(_alpha_header * _edge_alpha);
+            draw_set_halign(fa_left);
+            draw_set_color(c_ltgray);
+            draw_text_l(_sx - _total_w * 0.5, _sy, _mn_str);
+            draw_set_color(c_yellow);
+            draw_text_l(_sx - _total_w * 0.5 + _mn_w, _sy, _val_str);
+            draw_set_halign(fa_center);
         } break;
     }
 }

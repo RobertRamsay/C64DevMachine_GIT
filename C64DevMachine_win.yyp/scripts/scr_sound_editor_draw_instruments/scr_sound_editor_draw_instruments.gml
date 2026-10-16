@@ -936,6 +936,21 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
         }
     }
 
+    // Steps inserted or deleted (typed, pasted or from the command menus)
+    // keep Ln / Rc:n pointing at the same steps: L7 becomes L8 when a step
+    // goes in above step 7. Compared against the text as of last frame.
+    if (_m.instr_edit_active) {
+        var _rm_prev = _m[$ "instr_remap_prev"];
+        if (is_string(_rm_prev) && _rm_prev != _m.instr_edit_buf) {
+            var _rm = scr_instrument_remap_loops(_rm_prev, _m.instr_edit_buf, _m.instr_edit_cursor);
+            _m.instr_edit_buf    = _rm.text;
+            _m.instr_edit_cursor = clamp(_rm.cursor, 0, string_length(_rm.text));
+        }
+        _m.instr_remap_prev = _m.instr_edit_buf;
+    } else {
+        _m.instr_remap_prev = undefined;
+    }
+
     // ── COMPILED PREVIEW / ERRORS ──
     scr_instrument_ensure_compiled(_sel_instr);
     var _pv_y = _tb_y1 + _tb_h + 16;
@@ -1275,6 +1290,9 @@ function scr_sound_editor_cmd_pane(_m, _sel_instr, _p, _mx, _my) {
                 _m.instr_edit_buf    = _rc_new;
                 _m.instr_edit_cursor = min(_m.instr_edit_cursor, string_length(_rc_new));
             } else {
+                // committed straight away, so renumber the loops here (an open
+                // text is renumbered by the per-frame check after the keys)
+                _rc_new = scr_instrument_remap_loops(_rc_src, _rc_new, 0).text;
                 _m.instr_edit_active      = true;
                 _m.instr_edit_buf         = _rc_new;
                 _m.instr_edit_cursor      = 0;

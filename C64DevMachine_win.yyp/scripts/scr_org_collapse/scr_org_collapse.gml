@@ -491,8 +491,8 @@ function scr_node_cache_begin(_cam_x, _cam_y, _cam_zoom) {
     var _lod = string(global.show_stats && _cam_zoom < 2.0) + string(_cam_zoom < 1.6)
              + string(_cam_zoom < 3.5) + string(_cam_zoom < 2.0) + string((_cdx * _cdx + _cdy * _cdy) < 640000)
              + string(_cam_zoom <= 2.55)
-             // the box fades out between zoom 2.5 and 3.25 (Draw section H)
-             + string(round(clamp(1.0 - (_cam_zoom - 2.5) / 0.75, 0, 1) * 20));
+             // the box fades out between zoom 2.0 and 2.5 (Draw section H)
+             + string(round(clamp(1.0 - (_cam_zoom - 2.0) / 0.5, 0, 1) * 20));
     var _key = global.node_cache_gsig + "|" + _lod
              + "|" + string(_dx) + "," + string(y) + "," + string(width) + "," + string(height)
              + "|" + string(is_connected) + string(collapsed)
