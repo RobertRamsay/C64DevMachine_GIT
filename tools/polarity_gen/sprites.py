@@ -20,7 +20,8 @@ HAIR = [7, 6]                      # $D026: Sunny blonde, Hex blue-black
 DRESS = [2, 4]                     # body sprite colour: Sunny red, Hex purple
 NPC_NAMES = ["MO", "GRAN", "PIP", "PAGE"]
 NPC_COL = [5, 15, 3, 14]           # Mo's green apron, Gran's grey cardigan, Pip's cyan, Page's lilac
-POSES = ["STAND", "WALK", "JUMP", "CAST", "SIT_A", "SIT_B", "PHONE", "EAT", "CHEER", "LIE"]
+POSES = ["STAND", "WALK", "STEP", "JUMP", "CAST", "SIT_A", "SIT_B", "PHONE", "EAT", "CHEER", "LIE"]
+SIDE_POSES = ("WALK", "STEP", "JUMP")    # drawn in profile (side heads)
 
 
 SUNNY_HEAD = [
@@ -100,47 +101,131 @@ LEGS_STAND = [
  ".......KKKKKK.KKKKKK....",
  "........................",
 ]
-LEGS_WALK = [
- "......KSSK......KSSK....",
- ".....KSSK........KSSK...",
- ".....KSSK........KSSK...",
- "....KSSK..........KSSK..",
- "...KKKKK..........KKKKK.",
- "..KKKKKK..........KKKKKK",
+# Walking and jumping are drawn in profile, facing right (mirrored for left).
+SUNNY_SIDE = [
+ "....KKK.KKK.............",
+ "...KDDDKDDDK............",
+ "...KDDDDDDDK.KKKKK......",
+ "....KDDKDDKKKHHHHHKK....",
+ ".....KKKKKHHHHHHHHHHK...",
+ "......KHHHHHHHHHHHHHHK..",
+ ".....KHHHHHHHHHHHHHHHHK.",
+ ".....KHHHHHHHHHHHHHHHHK.",
+ "....KHHHHHHHHHHHKHHKHHK.",
+ "....KHHHHHHHHHHKSSKSSKK.",
+ "....KHHHHHHHHHKSSSSSSSK.",
+ "...KHHHHHHHHHKSSSKKSSSK.",
+ "...KHHHHHHHHHKSSKKKKSSK.",
+ "...KHHHHHHHHHKSSKKSKSSKK",
+ "...KHHHHHHHHHKSSKKKKSSSK",
+ "...KHHHHHHHHHKSSSKKSSSK.",
+ "...KHHHHHHHHHKSSSSSSSK..",
+ "..KHHHHHHHHHHKSSSSSKKK..",
+ "..KHHHHHHHHHHKKSSSSSSK..",
+ "..KHHHHHHHHHHHKKSSSKK...",
+ "....KKKKKKKKKKSSKKK.....",
+ ".............KSSK.......",
+]
+HEX_SIDE = [
+ "..KK....................",
+ "..KDKK..................",
+ "...KDDKK................",
+ "....KDDDKK..............",
+ ".....KDDDDKK............",
+ "......KDDDDDKK..........",
+ ".....KDDDDDDDDK.........",
+ "KKKKKKKKKKKKKKKKKKKKKKK.",
+ "..KKHHHHHHHHHHHHHHHHHKK.",
+ "...KHHHHHHHHHHHKHHKHHK..",
+ "...KHHHHHHHHHHKSSKSSSK..",
+ "...KHHHHHHHHHKSSSKKSSSK.",
+ "...KHHHHHHHHHKSSKKKKSSK.",
+ "...KHHHHHHHHHKSSKKSKSSKK",
+ "...KHHHHHHHHHKSSKKKKSSSK",
+ "...KHHHHHHHHHKSSSKKSSSK.",
+ "...KHHHHHHHHHKSSSSSSSK..",
+ "...KHHHHHHHHHKSSSSSKKK..",
+ "...KHHHHHHHHHKKSSSSSSK..",
+ "...KKHHHHHHHHHKKSSSKK...",
+ ".....KKKKKKKKKSSKKK.....",
+ ".............KSSK.......",
+]
+# bodies: 20 rows. Neck at cols 13-16 (KSSK).
+SIDE_TORSO = [
+ "..........KKDDDDKK......",
+ ".........KDDDDDDDDK.....",
+ ".........KDDDDKDDDK.....",
+]
+# open stride: drawn 2 rows short (the game lowers this frame 2 lines,
+# so the feet still meet the floor and her head dips: the walking bob)
+SIDE_WALK = SIDE_TORSO + [
+ ".........KDDDKDDDDK.....",
+ "........KDDDKSKDDDK.....",
+ "........KDDDKSKDDDK.....",
+ "........KDDDDKSKDDK.....",
+ "........KKDDDKSSKDK.....",
+ "........KKKDDDKSSKKK....",
+ ".......KDDDDDDDKKDDDK...",
+ "......KDDDDDDDDDDDDDDK..",
+ ".....KDDDDDDDDDDDDDDDDK.",
+ ".....KKKKKKKKKKKKKKKKKK.",
+ "........KSSK....KSSK....",
+ ".......KSSK......KSSK...",
+ ".....KKKKK........KKKKK.",
+ "....KKKKKK........KKKKKK",
+ "........................",
+ "........................",
+ "........................",
+]
+# legs together (the high point of the step)
+SIDE_STEP = SIDE_TORSO + [
+ ".........KDDDKDDDDK.....",
+ ".........KDDKSKDDDK.....",
+ ".........KDDKSKDDDK.....",
+ ".........KDDKSKDDDK.....",
+ ".........KDDKSSKDDK.....",
+ "........KKKDKSSKKKKK....",
+ ".......KDDDDDKKDDDDDK...",
+ "......KDDDDDDDDDDDDDDK..",
+ ".....KDDDDDDDDDDDDDDDDK.",
+ ".....KKKKKKKKKKKKKKKKKK.",
+ "...........KSSK.........",
+ "...........KSSK.........",
+ "...........KSSK.........",
+ "...........KSSK.........",
+ "..........KKKKKK........",
+ "..........KKKKKKK.......",
+ "........................",
+]
+# side jump: arms flung up and forward, front knee up, back leg trailing
+SIDE_JUMP = [
+ "..........KKDDDDKK..KKK.",
+ ".........KDDDDDDDDKKSSK.",
+ ".........KDDDDKDDDKSSK..",
+ ".........KDDDDDDDKSSK...",
+ ".........KDDDDDDKSSK....",
+ ".........KDDDDDDKKK.....",
+ ".........KDDDDDDDDK.....",
+ "........KKKDDDDDDKKK....",
+ ".......KDDDDDDDDDDDDK...",
+ "......KDDDDDDDDDDDDDDK..",
+ ".....KDDDDDDDDDDDDDDDDK.",
+ ".....KKKKKKKKKKKKKKKKKK.",
+ "......KSSK....KSSSSSK...",
+ ".....KSSK.....KKKKKSSK..",
+ "....KSSK.........KKKKK..",
+ "...KKKK..........KKKKKK.",
+ "..KKKKK.................",
+ "........................",
+ "........................",
  "........................",
 ]
 
 BODIES = {
  "STAND": TORSO + ARMS_DOWN + SKIRT + LEGS_STAND,
- "WALK": TORSO + [
-  "...KSKDDDDDKKDDDDDKSK...",
-  "..KSKKDDDDDDDDDDDDKKSK..",
-  "..KSKKDDDDDDDDDDDDKKSK..",
-  ".KSKKKDDDDDDDDDDDDKKKSK.",
-  ".KSSKKKKKKKKKKKKKKKKSSK.",
- ] + SKIRT + LEGS_WALK,
- "JUMP": [
-  "..KK..KKDDDDDDDDKK..KK..",
-  ".KSSKKDDDKDDDDKDDDKKSSK.",
-  "..KSSKDDDDKDDKDDDDKSSK..",
-  "...KSKDDDDDKKDDDDDKSK...",
-  "....KKDDDDDDDDDDDDKK....",
-  "....KDDDDDDDDDDDDDDK....",
-  "....KKKKKKKKKKKKKKKK....",
-  "...KDDDDDDDDDDDDDDDDK...",
-  "..KDDDDDDDDDDDDDDDDDDK..",
-  ".KDDDDDDDDDDDDDDDDDDDDK.",
-  ".KKKKKKKKKKKKKKKKKKKKKK.",
-  ".....KSSSK....KSSSK.....",
-  "....KSSSK......KSSSK....",
-  "....KKKKKK....KKKKKK....",
-  "....KKKKKKK..KKKKKKK....",
-  "........................",
-  "........................",
-  "........................",
-  "........................",
-  "........................",
- ],
+ "WALK": SIDE_WALK,
+ "STEP": SIDE_STEP,
+ "JUMP": SIDE_JUMP,
  "CAST": TORSO[:2] + [
   "....KDDDDDKDDKDDDDDKKKKK",
   "...KSKDDDDDKKDDDDDKSSSSK",
@@ -587,8 +672,10 @@ CLUE_NAMES = ["PHOTO", "TIN", "DIARY", "LOCKET", "TAGS", "PAPER"]
 CLUE_COL = [1, 15, 10, 7, 3, 1]
 
 
-def master(head, pose):
-    """The 24x42 master of a pose: head rows + body rows (+ arm stamps)."""
+def master(heads, pose):
+    """The 24x42 master of a pose: head rows (front or side) + body rows
+    (+ arm stamps). heads = (front head, side head)."""
+    head = heads[1] if pose in SIDE_POSES else heads[0]
     rows = [list(r) for r in (LIE_BASE if pose == "LIE" else head + BODIES[pose])]
     for (r, c, t) in STAMPS.get(pose, []):
         for i, ch in enumerate(t):
@@ -647,7 +734,8 @@ def _three(m):
     return (_lib(enc_hr(top)), _lib(enc_hr(bot)), _lib(enc_mc(mc)))
 
 # [sister][pose] and [npc] -> (top, bottom, body) library block numbers
-SISTER_FRAMES = [[_three(master(h, p)) for p in POSES] for h in (SUNNY_HEAD, HEX_HEAD)]
+SISTER_FRAMES = [[_three(master(h, p)) for p in POSES]
+                 for h in ((SUNNY_HEAD, SUNNY_SIDE), (HEX_HEAD, HEX_SIDE))]
 NPC_FRAMES = [_three(h + NPC_BODY) for h in (MO, GRAN, PIP, PAGE)]
 
 # ---------------------------------------------------------------- bank 0

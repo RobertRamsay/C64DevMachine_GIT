@@ -1296,11 +1296,17 @@ LDX V_CASTING
 BNE DGSet
 LDA V_MOVING
 BEQ DGStand
-LDA V_FRAME            ; walk: stand / stride every 8 frames
-LSR
-LSR
-LSR
-AND #$01
+LDA V_FRAME            ; walk (in profile): stride / legs together, 8 frames each
+AND #$08
+BNE DGStep
+LDA V_GY               ; the stride sits 2 lines lower: her head bobs
+CLC
+ADC #2
+STA V_GY
+LDA #C_G_WALK
+JMP DGSet
+DGStep:
+LDA #C_G_STEP
 JMP DGSet
 DGStand:
 LDA #C_G_STAND
