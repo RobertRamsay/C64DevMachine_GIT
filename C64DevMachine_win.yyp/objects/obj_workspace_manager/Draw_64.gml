@@ -1286,7 +1286,8 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
     // PORTS: negative entries are sub-headers (-1 GAMES, -2 MUSIC+GFX), not clickable
     var _port_headers = ["GAMES", "MUSIC+GFX", "TEST"];
     if (gui_menu_open == 8) {
-        _visible_templates = [-1, 10, 11, 13 // ZYRONS ESCAPE, SPY HUNTER, SABOTEUR
+        _visible_templates = [-1, 22 // ALIEN BREED 64 (stock C64 SID / C64 Ultimate REU audio)
+             ,10, 11, 13 // ZYRONS ESCAPE, SPY HUNTER, SABOTEUR
              ,14 // R-TYPE - reserved for a future version
              ,15 // BRUCE LEE - reserved for a future version
             , -2, 12]; // | WIZBALL

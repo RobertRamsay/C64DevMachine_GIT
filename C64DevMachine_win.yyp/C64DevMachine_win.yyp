@@ -52,6 +52,7 @@
     {"$GMIncludedFile":"","%Name":"lang_zh_CN.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/LANG","name":"lang_zh_CN.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"c64dmstart.prg","CopyToMask":-1,"filePath":"datafiles/C64DMResources/PRG","name":"c64dmstart.prg","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"NULLSID.sid","CopyToMask":-1,"filePath":"datafiles/C64DMResources/SID","name":"NULLSID.sid","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
+    {"$GMIncludedFile":"","%Name":"ALIEN_BREED.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"ALIEN_BREED.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"BRUCE_LEE.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"BRUCE_LEE.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"GATE_GAME.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"GATE_GAME.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
     {"$GMIncludedFile":"","%Name":"GOLAZO.json","CopyToMask":-1,"filePath":"datafiles/C64DMResources/TEMPLATES","name":"GOLAZO.json","resourceType":"GMIncludedFile","resourceVersion":"2.0",},
