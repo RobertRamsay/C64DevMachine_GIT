@@ -271,14 +271,47 @@ function scr_spawn_editor(_ctx, _mx, _my) {
     if (keyboard_check_pressed(ord("E")) && !scr_ctrl_held() && !global.integer_box_open) _s.mode = !_s.mode;
     if (!_s.mode) return _busy;
 
-    // ---- type panel, top-left of the canvas ----
+    // ---- type panel: drag its title bar anywhere over the canvas; the
+    // corner button snaps it to the other side. Kept as an offset from the
+    // canvas corner, so it stays put when the editor resizes.
+    if (!variable_struct_exists(_s, "dock")) _s.dock = 0;
     var _pw = 236;
-    var _px1 = _ctx.x1 + 6, _py1 = _ctx.y1 + 4;
     var _rows = array_length(_s.types);
-    var _ph = 22 + 22 + _rows * 18 + 8 + 9 * 20 + 26;
+    var _ph = 22 + 22 + _rows * 18 + 4 + 24 + 4 * 20 + 4 + 38;
+    var _cw = _ctx.x2 - _ctx.x1, _ch = _ctx.y2 - _ctx.y1;
+    if (!variable_struct_exists(_s, "pan_x")) {
+        _s.pan_x = (_s.dock == 1) ? _cw - _pw - 6 : 6;
+        _s.pan_y = (_s.dock == 1) ? 26 : 4;
+    }
+    if (!variable_global_exists("spawn_pdrag")) { global.spawn_pdrag = false; global.spawn_pdrag_ox = 0; global.spawn_pdrag_oy = 0; }
+    if (global.spawn_pdrag) {
+        if (mouse_check_button(mb_left)) {
+            _s.pan_x = _mx - global.spawn_pdrag_ox - _ctx.x1;
+            _s.pan_y = _my - global.spawn_pdrag_oy - _ctx.y1;
+        } else {
+            global.spawn_pdrag = false;
+        }
+    }
+    _s.pan_x = clamp(_s.pan_x, 0, max(0, _cw - _pw));
+    _s.pan_y = clamp(_s.pan_y, 0, max(0, _ch - 24));
+    var _px1 = _ctx.x1 + _s.pan_x, _py1 = _ctx.y1 + _s.pan_y;
     var _px2 = _px1 + _pw, _py2 = _py1 + _ph;
     scr_bmpobj_ui_panel(_px1, _py1, _px2, _py2, "SPAWN LAYER - " + string(array_length(_list)) + " PLACED");
-    var _over_panel = point_in_rectangle(_mx, _my, _px1, _py1, _px2, _py2);
+    var _snap_right = (_s.pan_x + _pw * 0.5 < _cw * 0.5);
+    if (scr_bmpobj_ui_button(_px2 - 28, _py1 + 2, 22, 16, _snap_right ? ">" : "<", false, _mx, _my, "SNAP THIS PANEL TO THE OTHER SIDE OF THE MAP (OR DRAG ITS TITLE BAR)")) {
+        _s.pan_x = _snap_right ? _cw - _pw - 6 : 6;
+        _s.pan_y = _snap_right ? 26 : 4;    // right: under SHOW / SPAWNS
+        _s.dock  = _snap_right ? 1 : 0;
+    }
+    var _title_hov = point_in_rectangle(_mx, _my, _px1, _py1, _px2 - 30, _py1 + 20);
+    scr_ui_info(_title_hov && !global.spawn_pdrag, "SPAWN LAYER PANEL - DRAG THE TITLE BAR TO MOVE IT");
+    if (_title_hov && mouse_check_button_pressed(mb_left)) {
+        global.spawn_pdrag = true;
+        global.spawn_pdrag_ox = _mx - _px1;
+        global.spawn_pdrag_oy = _my - _py1;
+    }
+    if (global.spawn_pdrag) _busy = true;
+    var _over_panel = point_in_rectangle(_mx, _my, _px1, _py1, _px2, _py2) || global.spawn_pdrag;
     if (_over_panel) _busy = true;
     var _lx = _px1 + 6;
     var _ly = _py1 + 24;
@@ -355,13 +388,16 @@ function scr_spawn_editor(_ctx, _mx, _my) {
         ["POINTS", "pts", 0, 99, "SCORE VALUE - YOUR CODE READS SPN_T_PTS"],
         ["DROP", "drop", 0, 15, "WHAT IT LEAVES BEHIND, 0 = NOTHING - YOUR CODE READS SPN_T_DROP"],
     ];
+    // two columns: FRAME COLOUR / MOVE VALUE / SPEED HP / POINTS DROP
+    var _fcw = (_pw - 12) div 2;
     for (var _fi = 0; _fi < array_length(_fields); _fi++) {
         var _f = _fields[_fi];
-        var _fy = _ly + _fi * 20;
+        var _fx = _lx + (_fi mod 2) * _fcw;
+        var _fy = _ly + (_fi div 2) * 20;
         draw_set_color(make_color_rgb(154, 175, 198));
-        scr_editor_label(_lx, _fy, _lx + 64, _fy + 18, _f[0], fa_left, 0);
+        scr_editor_label(_fx, _fy, _fx + 50, _fy + 18, _f[0], fa_left, 0);
         var _v = variable_struct_get(_ty, _f[1]);
-        var _vx1 = _lx + 70, _vx2 = _px2 - 6;
+        var _vx1 = _fx + 54, _vx2 = _fx + _fcw - 4;
         var _vhov = point_in_rectangle(_mx, _my, _vx1, _fy, _vx2, _fy + 18);
         scr_editor_control(_vx1, _fy, _vx2, _fy + 18, _vhov, false);
         var _vtxt = string(_v);
@@ -380,9 +416,51 @@ function scr_spawn_editor(_ctx, _mx, _my) {
             }
         }
     }
-    _ly += array_length(_fields) * 20 + 4;
+    _ly += ((array_length(_fields) + 1) div 2) * 20 + 4;
     draw_set_color(make_color_rgb(120, 130, 150));
-    scr_editor_label(_lx, _ly, _px2 - 6, _ly + 16, "L PLACE  R DELETE  ALT+L PICK  E OFF", fa_left, 0);
+    scr_editor_label(_lx, _ly, _px2 - 6, _ly + 16, "L PLACE / DRAG TO MOVE   R DELETE", fa_left, 0);
+    scr_editor_label(_lx, _ly + 16, _px2 - 6, _ly + 32, "ARROWS NUDGE  ALT+L PICK  E OFF", fa_left, 0);
+
+    // ---- moving placed entities: drag one, or nudge the picked one ----
+    if (!variable_global_exists("spawn_drag")) { global.spawn_drag = -1; global.spawn_drag_ox = 0; global.spawn_drag_oy = 0; global.spawn_pick = -1; }
+    if (global.spawn_drag >= array_length(_list)) global.spawn_drag = -1;
+    if (global.spawn_pick >= array_length(_list)) global.spawn_pick = -1;
+    if (global.spawn_drag >= 0) {
+        _busy = true;
+        if (mouse_check_button(mb_left)) {
+            var _de = _list[global.spawn_drag];
+            var _nx = clamp(floor((_mx - _ctx.ox) / _cs) - global.spawn_drag_ox, 0, _ctx.map_w - 1);
+            var _ny = clamp(floor((_my - _ctx.oy) / _cs) - global.spawn_drag_oy, 0, _ctx.map_h - 1);
+            if (_nx != real(_de[0]) || _ny != real(_de[1])) {
+                _de[@ 0] = _nx; _de[@ 1] = _ny;
+                global.addresses_dirty = true;
+                _m.is_dirty = true;
+            }
+            scr_ui_info(true, "SPAWN: MOVING - RELEASE TO DROP IT HERE");
+        } else {
+            global.spawn_drag = -1;
+        }
+    }
+    // the picked entity: yellow frame; arrows move it a char (SHIFT: 8)
+    if (global.spawn_pick >= 0) {
+        var _pe = _list[global.spawn_pick];
+        var _pex = _ctx.ox + real(_pe[0]) * _cs, _pey = _ctx.oy + real(_pe[1]) * _cs;
+        if (_pex >= _ctx.x1 && _pey >= _ctx.y1 && _pex + 3 * _cs <= _ctx.x2 && _pey + 3 * _cs <= _ctx.y2) {
+            draw_set_color(c_yellow);
+            draw_rectangle(_pex - 1, _pey - 1, _pex + 3 * _cs, _pey + 21 * _cs / 8, true);
+        }
+        if (point_in_rectangle(_mx, _my, _ctx.x1, _ctx.y1, _ctx.x2, _ctx.y2) && !global.integer_box_open) {
+            var _step = keyboard_check(vk_shift) ? 8 : 1;
+            var _ndx = (keyboard_check_pressed(vk_right) ? _step : 0) - (keyboard_check_pressed(vk_left) ? _step : 0);
+            var _ndy = (keyboard_check_pressed(vk_down) ? _step : 0) - (keyboard_check_pressed(vk_up) ? _step : 0);
+            if (_ndx != 0 || _ndy != 0) {
+                _pe[@ 0] = clamp(real(_pe[0]) + _ndx, 0, _ctx.map_w - 1);
+                _pe[@ 1] = clamp(real(_pe[1]) + _ndy, 0, _ctx.map_h - 1);
+                global.addresses_dirty = true;
+                _m.is_dirty = true;
+            }
+        }
+    }
 
     // ---- placing on the map ----
     var _in_canvas = point_in_rectangle(_mx, _my, _ctx.x1, _ctx.y1, _ctx.x2, _ctx.y2);
@@ -408,18 +486,29 @@ function scr_spawn_editor(_ctx, _mx, _my) {
                     if (mouse_check_button_pressed(mb_left)) _s.sel = clamp(real(_he[2]), 0, _rows - 1);
                 }
             } else {
-                scr_ui_info(true, "SPAWN: L-CLICK PLACES " + string(_ty.name) + " (TOP-LEFT OF ITS SPRITE), R-CLICK DELETES, ALT+CLICK PICKS");
+                scr_ui_info(true, "SPAWN: L-CLICK PLACES " + string(_ty.name) + ", L-DRAG A PLACED ONE TO MOVE IT, ARROWS NUDGE IT, R-CLICK DELETES, ALT+CLICK PICKS ITS TYPE");
                 scr_spawn_draw_entity(_s, _s.sel, _gx, _gy, _cs, 0.6);
                 draw_set_color(c_aqua);
                 draw_rectangle(_gx, _gy, _gx + 3 * _cs - 1, _gy + 21 * _cs / 8 - 1, true);
-                if (mouse_check_button_pressed(mb_left) && _hit < 0) {
+                if (mouse_check_button_pressed(mb_left) && _hit < 0 && global.spawn_drag < 0) {
                     if (array_length(_list) < 255) {
                         array_push(_list, [_cx, _cy, _s.sel]);
+                        global.spawn_pick = array_length(_list) - 1;
                         global.addresses_dirty = true;
                         _m.is_dirty = true;
                     }
                 }
+                // L-press on a placed entity picks it and starts a drag
+                if (mouse_check_button_pressed(mb_left) && _hit >= 0) {
+                    var _he2 = _list[_hit];
+                    global.spawn_pick = _hit;
+                    global.spawn_drag = _hit;
+                    global.spawn_drag_ox = _cx - real(_he2[0]);
+                    global.spawn_drag_oy = _cy - real(_he2[1]);
+                }
                 if (mouse_check_button_pressed(mb_right) && _hit >= 0) {
+                    global.spawn_pick = -1;
+                    global.spawn_drag = -1;
                     array_delete(_list, _hit, 1);
                     global.addresses_dirty = true;
                     _m.is_dirty = true;

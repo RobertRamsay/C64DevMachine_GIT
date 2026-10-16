@@ -626,19 +626,26 @@ function scr_chr_editor_draw(_asset, _ox, _oy, _mc_mode, _show_fg_swatch = true,
         _sw_labels = ["BG", "FG"];
         _sw_keys   = ["mc_bg", "mc_fg"];
     }
-    var _sw_sz = 18;
+    // Two to a row under the 80px button column, so the block stays short
+    // enough not to run off the bottom of the panel. MC reads BG FG / C1 C2.
+    var _sw_slot = (_mc_mode == 1) ? [0, 2, 3, 1] : [0, 1, 2, 3, 4];
+    var _sw_sz  = 16;
+    var _sw_cw  = _btn_w div 2;
+    var _sw_lab = _sw_cw - _sw_sz - 2;
     draw_set_font_l(fnt_c64_tiny);
     for (var _swi = 0; _swi < array_length(_sw_labels); _swi++) {
         var _sw_col_idx = variable_struct_exists(_asset.meta, _sw_keys[_swi])
                         ? variable_struct_get(_asset.meta, _sw_keys[_swi]) : 0;
         var _sw_selected = (_mc_mode == 1 && chr_active_mc_colour == _swi)
                          || (_mc_mode == 2 && _swi < 4 && chr_active_ecm_bg == _swi);
-        var _sw_x1 = _btn_x + 32;
-        var _sw_y1 = _btn_y + _swi * (_sw_sz + 3);
+        var _sw_at = _sw_slot[_swi];
+        var _sw_cx = _btn_x + (_sw_at mod 2) * _sw_cw;
+        var _sw_x1 = _sw_cx + _sw_lab;
+        var _sw_y1 = _btn_y + (_sw_at div 2) * (_sw_sz + 4);
         var _sw_hov = point_in_rectangle(_mx, _my, _sw_x1, _sw_y1, _sw_x1 + _sw_sz, _sw_y1 + _sw_sz);
         draw_set_color(_sw_selected ? c_yellow : make_color_rgb(127, 127, 165));
         // Caption centred on the swatch row it labels.
-        scr_editor_label(_btn_x, _sw_y1, _sw_x1, _sw_y1 + _sw_sz, _sw_labels[_swi] + ":", fa_left, 0);
+        scr_editor_label(_sw_cx, _sw_y1, _sw_x1, _sw_y1 + _sw_sz, _sw_labels[_swi], fa_left, 0);
         // HR swatches are display-only, so they never show the hover frame.
         scr_editor_swatch(_sw_x1, _sw_y1, _sw_x1 + _sw_sz, _sw_y1 + _sw_sz, scr_c64_pepto_colour(_sw_col_idx),
             _sw_hov && _mc_mode != 0, _sw_selected);

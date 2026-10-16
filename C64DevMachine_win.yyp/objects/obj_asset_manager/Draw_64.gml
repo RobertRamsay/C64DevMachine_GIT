@@ -3619,10 +3619,12 @@ draw_set_color(_cell_bg_col);
     
 
 		        if (keyboard_check_pressed(ord("P")) && _global_mixed == 1) _m.paint_mc = (_paint_mc == 0) ? 1 : 0;
-			    if (keyboard_check_pressed(vk_right)) _m.scroll_x = min(_mw - 1, _m.scroll_x + 1);
-		        if (keyboard_check_pressed(vk_left))  _m.scroll_x = max(0, _m.scroll_x - 1);
-		        if (keyboard_check_pressed(vk_down))  _m.scroll_y = min(_mh - 1, _m.scroll_y + 1);
-		        if (keyboard_check_pressed(vk_up))    _m.scroll_y = max(0, _m.scroll_y - 1);
+		        // In SPAWN mode with an entity picked, the arrows nudge it instead
+		        var _spn_nudge = variable_struct_exists(_m, "spawn") && _m.spawn.mode && variable_global_exists("spawn_pick") && global.spawn_pick >= 0;
+			    if (!_spn_nudge && keyboard_check_pressed(vk_right)) _m.scroll_x = min(_mw - 1, _m.scroll_x + 1);
+		        if (!_spn_nudge && keyboard_check_pressed(vk_left))  _m.scroll_x = max(0, _m.scroll_x - 1);
+		        if (!_spn_nudge && keyboard_check_pressed(vk_down))  _m.scroll_y = min(_mh - 1, _m.scroll_y + 1);
+		        if (!_spn_nudge && keyboard_check_pressed(vk_up))    _m.scroll_y = max(0, _m.scroll_y - 1);
 				if (keyboard_check_pressed(ord("M")) && !_early_chr_ecm) {
 				    _m.map_mixed = (_global_mixed == 0) ? 1 : 0;
 				    obj_workspace_manager.map_global_mixed = _m.map_mixed;
@@ -9873,12 +9875,15 @@ case "META_TILESET": {
     var _map_mem   = variable_struct_exists(_m, "cur_map_bytes_disp") ? _m.cur_map_bytes_disp : 0;
     var _mem_total = _tb_disp;  // all maps + metatile data + char_lut table
     var _tb_head = "CHAR LUT:  " + string(_clut_disp) + "b\nMETATILE:  " + string(_mtd_disp) + "b\nMAPS:      " + string(_map_disp) + "b\nMAP MEM:   " + string(_map_mem) + "b\nTOTAL:  ";
-    draw_set_color(make_color_rgb(140, 140, 160));
-    draw_text_l(_tscpx2 + 142, _cy + 36, _tb_head);
-	draw_line(_tscpx2 + 142,_cy + 100,_tscpx2 + 230,_cy + 100)
+    // Listed straight under STAMPS, in the column it heads.
+    var _tb_x  = _tscpx2 + 10;
+    var _tb_y  = _cy + 42;
     var _tb_lh = string_height("X");
+    draw_set_color(make_color_rgb(140, 140, 160));
+    draw_text_l(_tb_x, _tb_y, _tb_head);
+    draw_line(_tb_x, _tb_y + _tb_lh * 4 - 1, _tb_x + 88, _tb_y + _tb_lh * 4 - 1);
     draw_set_color(_tb_col);
-    draw_text_l(_tscpx2 + 200, _cy + 36 + _tb_lh * 4, string(_mem_total) + "b");
+    draw_text_l(_tb_x + 58, _tb_y + _tb_lh * 4, string(_mem_total) + "b");
     _cy += 22;
 
     // ---- RESOLVE CHARSET ----
