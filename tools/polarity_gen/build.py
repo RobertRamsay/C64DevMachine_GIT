@@ -540,6 +540,8 @@ def place_columns(cols, sizes):
     return cols
 
 
+COLLAPSED_BOX_H = 440.0   # a column box around its comment + folded ORG block
+
 def build_nodes(tables, cols, comments):
     nodes, orgs, boxes = [], [], []
     org_uid = 1
@@ -559,6 +561,7 @@ def build_nodes(tables, cols, comments):
             o["org_uid"] = float(org_uid)
             org_uid += 1
             o["connected"] = False
+            o["collapsed"] = True          # columns start folded to their ORG block
             orgs.append(o)
             parent = (x, y)
             y += 80
@@ -578,7 +581,7 @@ def build_nodes(tables, cols, comments):
             y += int(n["height"])
         boxes.append({"x": float(x - 20), "y": 120.0, "panel_links": [], "is_panel": False,
                       "box_col_idx": float(ci % 8), "box_name": c["name"],
-                      "box_h": float(y - 120 + 40), "box_w": 280.0})
+                      "box_h": COLLAPSED_BOX_H, "box_w": 280.0})
     return orgs + nodes, boxes
 
 
