@@ -19,7 +19,31 @@ from asm6502 import Assembler
 import os
 TEMPLATES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "C64DevMachine_win.yyp", "datafiles", "C64DMResources", "TEMPLATES")
 GATE = os.path.join(TEMPLATES, "GATE_GAME.json")   # stock instrument set for the music / SFX
-GROUP = "POLARITY"
+# Asset panel groups: every asset goes in one (build_assets checks).
+ASSET_GROUPS = [
+    ("TITLE SCREEN", ["TITLE_PIC"]),
+    ("SPRITES", ["POL_SPRITES", "SPR_LIB"]),
+    ("ROOM CHARSETS", ["CHARS_*", "TILE_COLOURS"]),
+    ("ROOM MAPS", ["MAP_*"]),
+    ("HUD", ["HUD_TOP", "HUD_BOT"]),
+    ("MUSIC + SFX", ["POL_MUSIC", "POL_SFX"]),
+    ("TEXT + MESSAGES", ["MESSAGES", "MESSAGES2", "MSGLO", "MSGHI", "MSGCOL"]),
+    ("PAGES: HELP + ENDINGS", ["HELP_TEXT", "ENDING_TEXT", "TRUTH_TEXT", "PGL*", "PGTLO", "PGTHI",
+                               "PGLLO", "PGLHI", "ROWLO", "ROWHI"]),
+    ("TABLES: ROOMS", ["SKY", "SPAWN", "MAPLO", "MAPHI", "GROUP", "GCHRHI", "GD022", "OBJ", "ROOMOFS",
+                       "HINT", "PLACES"]),
+    ("TABLES: SISTERS", ["DRESS", "HAIR", "NAMECOL", "NAMES", "POWERS", "MAGCOL", "JUMP", "SFRM", "SFOFS"]),
+    ("TABLES: ACTIONS + POSES", ["ACT", "ACTOFS", "PID", "PPX", "PFACE", "PY", "SWX", "SWY", "SLX", "SLY"]),
+    ("TABLES: NEEDS + JOB", ["DECAY", "WARN", "WAGE", "PROMO"]),
+    ("TABLES: PEOPLE + CLUES", ["NFRM", "NCOL", "NMSG", "RNPC", "RNPCX", "CLROOM", "CLTYPE", "CLX", "CLY",
+                                "CLCOL", "CLMSG", "CLHINT", "BIT"]),
+]
+
+def group_of(name):
+    import fnmatch
+    hits = [g for g, pats in ASSET_GROUPS if any(fnmatch.fnmatchcase(name, p) for p in pats)]
+    assert len(hits) == 1, ("asset needs exactly one group", name, hits)
+    return hits[0]
 
 def b64(data):
     return "b64:" + base64.b64encode(bytes(data)).decode()
@@ -29,7 +53,7 @@ def byte_string(data):
 
 def asset(name, typ, address, blob, meta):
     return {"name": name, "type": typ, "address": float(address), "blob": b64(blob), "meta": meta,
-            "group": GROUP, "linked_assets": [], "file": "", "load_later": False, "d64_filename": "",
+            "group": group_of(name), "linked_assets": [], "file": "", "load_later": False, "d64_filename": "",
             "reu_used": 0.0, "reu_size": 0.0, "reu_filename": ""}
 
 def byte_asset(name, address, data):
@@ -695,7 +719,7 @@ def main():
     check_layout(cols, sizes)
     nodes, boxes = build_nodes(tables, cols, comments)
     proj = {
-        "ignored_conflicts": [], "asset_groups": [GROUP],
+        "ignored_conflicts": [], "asset_groups": [g for g, _ in ASSET_GROUPS],
         "next_stable_uid": float(NEXT_UID[0] + 10), "map_tile_bank_sel": -1.0, "map_tile_bank": [],
         "code_editor_font_index": 1.0, "creator_locked": False, "build_target": 2.0,
         "kernal_unlocked": False, "basic_unlocked": True, "asset_sort_mode": "ADDR",
