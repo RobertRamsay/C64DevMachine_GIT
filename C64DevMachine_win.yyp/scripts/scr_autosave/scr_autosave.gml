@@ -123,6 +123,8 @@ var _root = { nodes:node_data, boxes:box_data, assets:asset_data,
     file_text_write_string(_f, _json);
     file_text_close(_f);
 
+    scr_autosave_prune(_dir, AUTOSAVE_KEEP);
+
     global.autosave_dirty       = false;
     global.autosave_last_path   = _path;
     ini_open("c64devmachine.ini");
@@ -137,6 +139,32 @@ var _root = { nodes:node_data, boxes:box_data, assets:asset_data,
 
 /// One asset's autosave record (an assets[] entry). _with_blob=false leaves
 /// the hex blob empty: scr_panel_asset_fingerprint hashes the buffer instead.
+#macro AUTOSAVE_KEEP 10
+
+/// Keep the _keep newest autosave_*.json files in _dir and delete the rest.
+/// Newest by the yymmddhhmmss stamp every autosave name ends with, so it
+/// works across projects (autosave_unsaved_..., autosave_<name>_...).
+function scr_autosave_prune(_dir, _keep) {
+    var _files = [];
+    var _f = file_find_first(_dir + "autosave_*.json", fa_none);
+    while (_f != "") {
+        var _len = string_length(_f);
+        // the 12-digit stamp just before ".json"
+        var _stamp = (_len > 17) ? string_copy(_f, _len - 16, 12) : "";
+        array_push(_files, { name: _f, stamp: _stamp });
+        _f = file_find_next();
+    }
+    file_find_close();
+    if (array_length(_files) <= _keep) return;
+    array_sort(_files, function(_a, _b) {
+        if (_a.stamp == _b.stamp) return 0;
+        return (_a.stamp < _b.stamp) ? 1 : -1;   // newest first
+    });
+    for (var _i = _keep; _i < array_length(_files); _i++) {
+        file_delete(_dir + _files[_i].name);
+    }
+}
+
 function scr_autosave_asset_entry(_a, _with_blob) {
     var _hex   = "";
     if (_with_blob && buffer_exists(_a.buffer)) {
