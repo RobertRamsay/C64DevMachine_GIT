@@ -1,6 +1,7 @@
 // Memory map, variables and constants shared by every code block.
 import { IDX } from './sprites.mjs';
 import { G } from './pitch.mjs';
+import { TITLE_CHARS, TITLE_SCR, TITLE_COL, TITLE_D018 } from './title.mjs';
 
 export const MEM = {
   SCRA: 0x4000, SCRB: 0x4400, CHARSET: 0x4800, SPRITES: 0x5000,
@@ -16,6 +17,8 @@ Object.assign(C, MEM);
 C.SPR_PTR0 = SPR_PTR0;
 // $D018: screen A ($4000) / B ($4400), charset at $4800 (bits 3-1 = 1)
 C.D018_A = 0x02; C.D018_B = 0x12;
+// title picture: own PETSCII charset at $7800, screen/colour copies below it
+Object.assign(C, { TITLE_CHARS, TITLE_SCR, TITLE_COL, TITLE_D018 });
 C.BALL = 22;
 C.NOBJ = 26;
 C.NPL = 22;
@@ -46,7 +49,7 @@ function v(name, size = 1) { C[name] = va; va += size; }
   'MSG_T', 'MSG_ID', 'BZL', 'BZH', 'BVZL', 'BVZH', 'BANIM', 'BFRAME', 'DRIFT0', 'DRIFT1',
   'TT_TIMER', 'TT_X', 'TT_XH', 'DEMO_T', 'WAITMIN', 'WAITCNT', 'IDLE_T',
   'AI_X', 'UP_X', 'GOALSIDE', 'SHOT_P', 'SHOT_SIDE',
-  'FLOCK1', 'FLOCK2', 'HCTRL0', 'HCTRL1', 'RD_BUSY', 'KICKED', 'CC_LAST', 'CC_TURN', 'AI_SKIP', 'CMT_FC', 'BK_C', 'BK_R', 'BK_OK', 'AI_STEP', 'TATT', 'TATT1', 'TSHL', 'TSHL1', 'TSHH', 'TSHH1', 'YOFFL', 'YOFFH', 'ITER_FC', 'OVRCNT',
+  'FLOCK1', 'FLOCK2', 'HCTRL0', 'HCTRL1', 'RD_BUSY', 'KICKED', 'FIXM', 'CLIPY', 'CC_LAST', 'CC_TURN', 'AI_SKIP', 'CMT_FC', 'BK_C', 'BK_R', 'BK_OK', 'AI_STEP', 'TATT', 'TATT1', 'TSHL', 'TSHL1', 'TSHH', 'TSHH1', 'YOFFL', 'YOFFH', 'ITER_FC', 'OVRCNT',
   'JOY1', 'JOY2', 'FHOLD1', 'FHOLD2', 'FPRESS1', 'FPRESS2', 'FREL1', 'FREL2',
 ].forEach(n => v(n));
 v('CAM1X', 2); v('CAMNX', 2); v('CAMTX', 2); v('PRED_Y', 2); v('RS_X', 2); v('RS_Y', 2);
@@ -56,6 +59,7 @@ for (const n of ['PXF', 'PXL', 'PXH', 'PYF', 'PYL', 'PYH', 'VXL', 'VXH', 'VYL', 
   'PSTATE', 'PTIMER', 'PCOOL', 'PMOVE', 'PSPD', 'PFRAME', 'PVI']) v(n, 24);
 // sprite objects
 for (const n of ['OBY', 'OBXL', 'OBXH', 'OBP', 'OBC', 'SORT', 'ALIST', 'SKEY']) v(n, 32);
+v('FIXP', 8);
 // display lists: two buffers of 32 entries (base 0 / 32)
 for (const n of ['DLY', 'DLXL', 'DLXH', 'DLP', 'DLC', 'DLT']) v(n, 64);
 C.VARS_END = va;

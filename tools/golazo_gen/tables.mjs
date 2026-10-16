@@ -95,72 +95,11 @@ export function buildTables(cs) {
   t('SFXOFS', ofs);
   t('SFXDATA', sfx);
 
-  // ---- title screen text rows (screen codes) + colour: [row, col, colour, text]
-  const TITLE_TEXT = [
-    [9, 4, 7, 'THE BEAUTIFUL GAME - 8-BIT STYLE'],
-    [12, 7, 1, 'PORT 2 FIRE  -  ONE PLAYER'],
-    [14, 6, 1, 'PORT 1 FIRE  -  TWO PLAYERS'],
-    [16, 6, 3, 'C64 IN BLUE  V  VIC IN WHITE'],
-    [18, 7, 5, 'MADE WITH C64 DEV MACHINE'],
-  ];
-  // plain text uses only kept glyphs; '(' ')' ',' are not kept, swap them
-  const clean = s => s.replace(/[(),]/g, m => ({ '(': '-', ')': '-', ',': ' ' }[m]));
-  const ttext = [];
-  for (const [row, col, colour, s] of TITLE_TEXT) {
-    const cs = clean(s);
-    ttext.push(row, col, colour, cs.length, ...[...cs].map(scr));
-  }
-  ttext.push(255);
-  t('TITLETXT', ttext);
-  t('ROWLO', Array.from({ length: 25 }, (_, r) => lo(MEM.SCRA + r * 40)));
-  t('ROWHI', Array.from({ length: 25 }, (_, r) => hi(MEM.SCRA + r * 40)));
   t('MARKCOL', [7, 3]);
   t('BALLFR', [C.F_BALL0, C.F_BALL1, C.F_BALL2, C.F_BALL1]);
   t('RSMSG', [C.MSG_THROW, C.MSG_CORNER, C.MSG_GOALKICK, C.MSG_KICKOFF]);
 
-  // ---- title logo: 3x5 block letters, rounded corners, rows 2-8
-  const findChar = bytes => {
-    const k = bytes.join(',');
-    const i = cs.charset.findIndex(c => c.join(',') === k);
-    if (i < 0) throw new Error('char not in set: ' + k);
-    return i;
-  };
-  const E = cs.extraIdx;
-  C.CH_BAR = E.BAR;
-  const FILL1 = findChar(Array(8).fill(0x55)), FILL2 = findChar(Array(8).fill(0xAA));
-  const LET = {
-    G: ['###', '#..', '#.#', '#.#', '###'], O: ['###', '#.#', '#.#', '#.#', '###'],
-    L: ['#..', '#..', '#..', '#..', '###'], A: ['###', '#.#', '###', '#.#', '#.#'],
-    Z: ['###', '..#', '.#.', '#..', '###'], 6: ['###', '#..', '###', '#.#', '###'],
-    4: ['#.#', '#.#', '###', '..#', '..#'], ' ': ['.', '.', '.', '.', '.'],
-  };
-  const word = 'GOLAZO 64';
-  const grid = Array.from({ length: 5 }, () => []);
-  const colOf = [];
-  for (const ch of word) {
-    const g = LET[ch];
-    for (let r = 0; r < 5; r++) grid[r].push(...g[r].split(''), '.');
-    for (let i = 0; i < g[0].length + 1; i++) colOf.push(ch === '6' || ch === '4' ? 1 : 0);
-  }
-  const W = grid[0].length - 1, x0 = Math.floor((40 - W) / 2);
-  const logoCh = Array(280).fill(32), logoCol = Array(280).fill(1);
-  const ROWCOL = [[1, 7, 7, 7, 2], [1, 3, 3, 3, 6]];
-  const solid = (r, c) => r >= 0 && r < 5 && c >= 0 && c < W && grid[r][c] === '#';
-  for (let r = 0; r < 5; r++) for (let c = 0; c < W; c++) {
-    if (!solid(r, c)) continue;
-    let ch = E.SOLID;
-    const u = solid(r - 1, c), d = solid(r + 1, c), l = solid(r, c - 1), rr = solid(r, c + 1);
-    if (!u && !l) ch = E.TRI_TL; else if (!u && !rr) ch = E.TRI_TR;
-    else if (!d && !l) ch = E.TRI_BL; else if (!d && !rr) ch = E.TRI_BR;
-    const i = (r + 1) * 40 + x0 + c;
-    logoCh[i] = ch;
-    logoCol[i] = 8 + ROWCOL[colOf[c]][r];
-  }
-  t('LOGOCH', logoCh);
-  t('LOGOCOL', logoCol);
-  t('TGRASS', Array.from({ length: 40 }, (_, x) => ((x >> 2) & 1) ? FILL2 : FILL1));
-  // a touchline: map row 9 (the line is the cell's top pixel row) in the middle
-  t('TLINE', Array.from({ length: 40 }, (_, x) => cs.map[9 * 128 + 66 + x]));
+  C.CH_BAR = cs.extraIdx.BAR;
 
   // assign addresses
   let a = MEM.TABLES;

@@ -7,6 +7,7 @@ export const BOOT = `
 // GOLAZO 64 - boot: all RAM + I/O, CIA interrupts off, raster IRQ chain on
 // @asset GOLAZO_CHARS
 // @asset GOLAZO_SPRITES
+// @asset TITLE_CHARS
 Boot:
  LDA #$35
  STA $01
@@ -93,11 +94,19 @@ function muxHandlers() {
   }
   return L.join('\n');
 }
+// Bottom IRQ: the first 8 entries. One that starts above the pitch's first
+// line shows the blank frame until IrqSplit puts its real frame back on that
+// line, so sprites never draw over the HUD (and are cut cleanly, since the
+// VIC keeps counting through the sprite's rows meanwhile).
 function bottomSprites() {
-  const L = [' LDY FRONT_DL'];
+  const L = [' LDA #$00', ' STA FIXM', ' LDY FRONT_DL'];
   for (let k = 0; k < 8; k++) {
     const o = k ? '+' + k : '';
-    L.push(` LDA DLY${o},Y`, ' CMP #$FF', ` BEQ IbE${k}`, setSlot(k, k));
+    const s = setSlot(k, k).split('\n');
+    const ptr = s.findIndex(l => l.startsWith(' LDA DLP'));
+    L.push(` LDA DLY${o},Y`, ' CMP #$FF', ` BEQ IbE${k}`, ...s.slice(0, ptr),
+      ` LDA DLP${o},Y`, ` STA FIXP+${k}`, ` LDX DLY${o},Y`, ' CPX CLIPY', ` BCS IbP${k}`,
+      ' LDA FIXM', ` ORA #${hx(1 << k, 2)}`, ' STA FIXM', ' LDA #SPR_PTR0+F_BLANK', `IbP${k}:`, ...s.slice(ptr + 1));
   }
   L.push(' LDA #$FF', ' STA $D015', ' TYA', ' CLC', ' ADC #$08', ' STA Z_MUX', ' JMP IbSprEnd');
   for (let k = 0; k < 8; k++) {
@@ -129,6 +138,10 @@ IbNoFlip:
  LDA #$00
  STA READY
 IbKeep:
+ LDA CUR_S
+ CLC
+ ADC #$42
+ STA CLIPY
  LDA CUR_D018
  STA $D018
  LDA #$1B
@@ -139,37 +152,92 @@ ${bottomSprites()}
 IbSprEnd:
  JSR SoundUpdate
  INC FRAMECNT
- LDA #$3F
+ LDA #$42
  STA $D012
  LDA #<IrqSplit
  STA $FFFE
  LDA #>IrqSplit
  STA $FFFF
  JMP IrqRet
+// HUD/pitch split on line $42, the last line of HUD row 1 (rows at $33,
+// $3B with Y scroll 3). The pitch's first badline is $43 + k (k = fine
+// scroll 0-7), so the HUD row always finishes before it. Y scroll 3+k is
+// set now; k = 7 needs Y scroll 2, which matches this very line, so it parks
+// on 1 first and sets 2 from line $44. RSEL 0 puts the bottom border at
+// $F7: a steady bottom edge whatever the scroll.
 IrqSplit:
  STA Z_SA
  STX Z_SX
  STY Z_SY
  LDA CUR_S
- BNE IsWait
- LDA #$18
+ CMP #$07
+ BEQ IsK7
+ CLC
+ ADC #$03
+ AND #$07
+ ORA #$10
  STA $D011
  JMP IsGo
-IsWait:
- ORA #$18
- TAX
-IsLoop:
+IsK7:
+ LDA #$11
+ STA $D011
+IsW7:
  LDA $D012
- CMP #$40
- BCC IsLoop
- STX $D011
+ CMP #$44
+ BCC IsW7
+ LDA #$12
+ STA $D011
 IsGo:
  LDA CUR_D016
  STA $D016
+// sprites cut at the top: real frames back on the line before the pitch
+ LDA FIXM
+ BEQ IsMux
+ LDA CLIPY
+IsWc:
+ CMP $D012
+ BEQ IsSw
+ BCS IsWc
+IsSw:
+ LDA FIXM
+${[0, 1, 2, 3, 4, 5, 6, 7].map(k => ` LSR
+ BCC IsS${k}
+ LDX FIXP+${k}
+ STX ${hx(C.SCRA + 0x3F8 + k)}
+ STX ${hx(C.SCRB + 0x3F8 + k)}
+IsS${k}:`).join('\n')}
+IsMux:
  LDY Z_MUX
  JMP MN7
 ${muxHandlers()}
 MuxDone:
+ LDA TITLE_MODE
+ BEQ MdGame
+// title: hires picture down to row 19, then multicolour for the grass
+ LDA #$D0
+ CMP $D012
+ BCC MdGame
+ LDA #$D1
+ STA $D012
+ LDA #<IrqTitleMC
+ STA $FFFE
+ LDA #>IrqTitleMC
+ STA $FFFF
+ JMP IrqRet
+IrqTitleMC:
+ STA Z_SA
+ LDA #$18
+ STA $D016
+ LDA #$FC
+ STA $D012
+ LDA #<IrqBottom
+ STA $FFFE
+ LDA #>IrqBottom
+ STA $FFFF
+ ASL $D019
+ LDA Z_SA
+ RTI
+MdGame:
  LDA #$FC
  STA $D012
  LDA #<IrqBottom
@@ -274,9 +342,9 @@ CmIt:
  STA NEW_S
  JMP CmFlip
 CmTitle:
- LDA #$18
+ LDA #$08
  STA NEW_D016
- LDA #$03
+ LDA #$00
  STA NEW_S
 CmFlip:
  LDA FLIP_REQ
@@ -992,7 +1060,7 @@ ProjectAll:
  STA Z_U1
  SEC
  LDA CAM1Y
- SBC #$34
+ SBC #$37
  STA Z_U2
  LDA #$00
  SBC #$00
@@ -1021,7 +1089,7 @@ PaX0:
  LDA PYH,X
  SBC Z_U3
  BNE PaHide
- CPY #$30
+ CPY #$32
  BCC PaHide
  CPY #$F5
  BCS PaHide
@@ -1099,7 +1167,7 @@ PbXok:
  STA Z_T3
  LDA Z_T2
  CLC
- ADC #$33
+ ADC #$36
  STA Z_T2
  LDA Z_T3
  ADC #$00

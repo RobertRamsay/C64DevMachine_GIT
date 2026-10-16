@@ -13,6 +13,7 @@ import { CONSTS as C, MEM } from './defs.mjs';
 import { buildCharset, MAPW, MAPH } from './pitch.mjs';
 import { spriteBytes, FRAMES } from './sprites.mjs';
 import { buildTables } from './tables.mjs';
+import { buildTitle, TITLE_CHARS, TITLE_SCR, TITLE_COL } from './title.mjs';
 import * as E from './engine.mjs';
 import * as M from './match.mjs';
 
@@ -26,13 +27,14 @@ const cs = buildCharset();
 const tables = buildTables(cs);
 const charBytes = cs.charset.flat();
 const sprBytes = spriteBytes();
+const title = buildTitle();
 if (MEM.SPRITES + sprBytes.length > 0x7F00) throw new Error('sprites overflow');
 
 // ------------------------------------------------------------ code layout
 const INIT_ROWS = [['sei', 0], ['lda_imm', 0], ['sta_abs', 53280], ['sta_abs', 53281]];
 const INIT_BYTES = [0x78, 0xA9, 0x00, 0x8D, 0x20, 0xD0, 0x8D, 0x21, 0xD0];
 const REDRAW_ORG = 0x0900;
-const LOW_END = 0x3C00, HIGH_ORG = 0x6000, HIGH_END = 0x8000;   // code areas
+const LOW_END = 0x3C00, HIGH_ORG = 0x6000, HIGH_END = TITLE_SCR;   // code areas (title picture + charset above)
 const rd = E.redrawBlock(REDRAW_ORG);
 Object.assign(C, rd.consts);
 
@@ -255,7 +257,7 @@ if (boot[2] > REDRAW_ORG) throw new Error('BOOT runs into the redraw column');
 const lowEnd = Math.max(...sizes.filter(s => s[1] < LOW_END).map(s => s[2]));
 const highEnd = Math.max(HIGH_ORG, ...sizes.filter(s => s[1] >= HIGH_ORG).map(s => s[2]));
 if (lowEnd > LOW_END) throw new Error('code overflows $3C00: $' + lowEnd.toString(16));
-if (highEnd > HIGH_END) throw new Error('code overflows $8000: $' + highEnd.toString(16));
+if (highEnd > HIGH_END) throw new Error('code overflows $' + HIGH_END.toString(16) + ': $' + highEnd.toString(16));
 if (MEM.SPRITES + sprBytes.length > HIGH_ORG) throw new Error('sprites run into the high code area');
 const codeEnd = lowEnd;
 console.log('  code ends at $%s (%d bytes free below $3C00), high code $6000-$%s', lowEnd.toString(16), LOW_END - lowEnd, (highEnd - 1).toString(16));
@@ -270,6 +272,9 @@ for (const [k, v] of code) mem.set(k, v);
 place(MEM.CHARSET, charBytes, 'charset');
 place(MEM.SPRITES, sprBytes, 'sprites');
 place(MEM.MAP, Array.from(cs.map), 'map');
+place(TITLE_SCR, title.scr, 'title screen');
+place(TITLE_COL, title.col, 'title colours');
+place(TITLE_CHARS, title.charset, 'title charset');
 for (const t of tables) place(t.address, t.bytes, t.name);
 if (C.VARS_END > 0xD000) throw new Error('vars overflow');
 
@@ -304,6 +309,11 @@ function buildProject() {
   smeta.compositor = { active_layer: 0, active_frame: 0, active_cell: -1, frames: [{ cells: [] }] };
   assets.push(asset('GOLAZO_SPRITES', 'SPRITE_SET', MEM.SPRITES, sprBytes, smeta));
   const bmeta = d => ({ byte_string: byteString(d), is_save_file: false, save_file_size: 256, tone_sorted: false, ecm_bg1: 6, ecm_bg2: 14 });
+  const tmeta = structuredClone(cmeta);
+  Object.assign(tmeta, { mc_mode: 0, mc_fg: 1 });
+  assets.push(asset('TITLE_CHARS', 'CHAR_SET', TITLE_CHARS, title.charset, tmeta));
+  assets.push(asset('TITLE_SCR', 'BYTE_DATA', TITLE_SCR, title.scr, bmeta(title.scr)));
+  assets.push(asset('TITLE_COL', 'BYTE_DATA', TITLE_COL, title.col, bmeta(title.col)));
   assets.push(asset('PITCH_MAP', 'BYTE_DATA', MEM.MAP, Array.from(cs.map), bmeta(Array.from(cs.map))));
   for (const t of tables) assets.push(asset(t.name, 'BYTE_DATA', t.address, t.bytes, bmeta(t.bytes)));
 

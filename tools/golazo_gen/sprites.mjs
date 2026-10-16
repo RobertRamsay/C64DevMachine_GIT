@@ -437,6 +437,7 @@ add('HOLD', pad21(grid(HOLD_D)));
 BALL.forEach((b, i) => add('BALL' + i, pad21(grid(b), 16)));
 add('SHADOW', pad21(grid(SHADOW), 19));
 add('MARKER', pad21(grid(MARKER), 0));
+add('BLANK', Array(21).fill('.'.repeat(12)));
 
 export const IDX = Object.fromEntries(FRAMES.map(([n], i) => [n, i]));
 

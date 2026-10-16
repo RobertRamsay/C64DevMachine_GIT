@@ -66,6 +66,8 @@ GfNoSnap:
 // A = humans (bit 0 port 2 plays C64, bit 1 port 1 plays VIC; 0 = demo)
 MatchInit:
  STA HUMANS
+ LDA #D018_A
+ STA CUR_D018
  LDA #$00
  STA TITLE_MODE
  STA SCORE0
@@ -4204,14 +4206,19 @@ Title:
  STA TT_XH
  LDA #$01
  STA TITLE_MODE
- LDA #$18
- STA HUD_D016
- LDA #D018_A
- STA CUR_D018
  LDA #$10
  STA CROWD_T
  JSR InitSort
  JSR TitleDraw
+// drop any frame the match left pending (it may carry a screen flip)
+ SEI
+ LDA #$00
+ STA READY
+ LDA #$08
+ STA HUD_D016
+ LDA #TITLE_D018
+ STA CUR_D018
+ CLI
 TitleLoop:
  JSR FrameSync
  JSR ReadInput
@@ -4243,109 +4250,28 @@ TlAnim:
  JSR BuildDL
  JSR Commit
  JMP TitleLoop
-// screen A: logo, text, a strip of grass with a little chase on it
+// screen A: the PETSCII title picture (TITLE_SCR / TITLE_COL, 1000 bytes each)
 TitleDraw:
  LDX #$00
-TdClr:
- LDA #$20
+TdCopy:
+ LDA TITLE_SCR,X
  STA SCRA,X
+ LDA TITLE_SCR+$100,X
  STA SCRA+$100,X
+ LDA TITLE_SCR+$200,X
  STA SCRA+$200,X
+ LDA TITLE_SCR+$2E8,X
  STA SCRA+$2E8,X
- LDA #$01
+ LDA TITLE_COL,X
  STA $D800,X
+ LDA TITLE_COL+$100,X
  STA $D900,X
+ LDA TITLE_COL+$200,X
  STA $DA00,X
+ LDA TITLE_COL+$2E8,X
  STA $DAE8,X
  INX
- BNE TdClr
- LDX #$00
-TdLogo:
- LDA LOGOCH,X
- STA SCRA+80,X
- LDA LOGOCOL,X
- STA $D800+80,X
- LDA LOGOCH+140,X
- STA SCRA+80+140,X
- LDA LOGOCOL+140,X
- STA $D800+80+140,X
- INX
- CPX #140
- BNE TdLogo
- LDX #39
-TdGrass:
- LDA TGRASS,X
- STA SCRA+840,X
- STA SCRA+880,X
- STA SCRA+920,X
- STA SCRA+960,X
- LDA #$09
- STA $D800+840,X
- STA $D800+880,X
- STA $D800+920,X
- STA $D800+960,X
- LDA TLINE,X
- STA SCRA+800,X
- LDA #$09
- STA $D800+800,X
- DEX
- BPL TdGrass
-// text rows: row, col, colour, length, codes ... $FF
- LDY #$00
-TdTxt:
- LDA TITLETXT,Y
- CMP #$FF
- BEQ TdDone
- TAX
- LDA ROWLO,X
- STA Z_PTR
- LDA ROWHI,X
- STA Z_PTRH
- LDA ROWLO,X
- STA Z_PTR2
- LDA ROWHI,X
- CLC
- ADC #$98
- STA Z_PTR2H
- INY
- LDA TITLETXT,Y
- CLC
- ADC Z_PTR
- STA Z_PTR
- BCC TdT1
- INC Z_PTRH
-TdT1:
- LDA TITLETXT,Y
- CLC
- ADC Z_PTR2
- STA Z_PTR2
- BCC TdT2
- INC Z_PTR2H
-TdT2:
- INY
- LDA TITLETXT,Y
- STA Z_T0
- INY
- LDA TITLETXT,Y
- STA Z_T1
- INY
- STY Z_T2
- LDY #$00
-TdCh:
- STY Z_T3
- LDY Z_T2
- LDA TITLETXT,Y
- INC Z_T2
- LDY Z_T3
- STA (Z_PTR),Y
- LDA Z_T0
- STA (Z_PTR2),Y
- INY
- CPY Z_T1
- BNE TdCh
- LDY Z_T2
- JMP TdTxt
-TdDone:
+ BNE TdCopy
  RTS
 // one blue player dribbling right, two white ones chasing
 TitleSprites:
