@@ -41,6 +41,15 @@ export const CH = {
   BLANK: 0, HUD_LINE: 96, STAR1: 97, STAR2: 98, STAR3: 99, FILL: 100, FILL2: 101,
   FLOOR_TOP: 102, CEIL_BOT: 103, UP: 104, DN: 105, CUP: 106, CDN: 107,
   HATCH_L: 108, HATCH_R: 109, CHATCH_L: 110, CHATCH_R: 111, RUBBLE: 112, CRUBBLE: 113,
+  SHOT0: 120,     // 120-135: the enemy shot, 4 x 4 positions in a cell
+};
+// The enemy shot: a 2 x 4 multicolour-pixel pellet (4 x 4 hires pixels).
+// Char SHOT0 + down * 4 + across. Across 0-3 = 0, 1, 2, 2 multicolour
+// pixels in, down 0-3 = rows 0, 2, 4, 4: the pellet must stay inside its
+// cell, so the last step each way stays put.
+const shotChar = n => {
+  const x = Math.min(n & 3, 2), y = Math.min(n >> 2, 2) * 2;
+  return Array.from({ length: 8 }, (_, r) => (r >= y && r < y + 4) ? '....'.slice(0, x) + 'ss' + '....'.slice(0, 2 - x) : '....');
 };
 const CHARS = [
   [CH.HUD_LINE, hiChar(['........', '........', '........', '########', '........', '#.#.#.#.', '........', '........'])],
@@ -61,6 +70,7 @@ const CHARS = [
   [CH.CHATCH_R, mcChar(vflip(HATCH_R))],
   [CH.RUBBLE, mcChar(RUBBLE)],
   [CH.CRUBBLE, mcChar(vflip(RUBBLE))],
+  ...Array.from({ length: 16 }, (_, n) => [CH.SHOT0 + n, mcChar(shotChar(n))]),
 ];
 export const TAG_WALL = 1, TAG_TARGET = 2;
 

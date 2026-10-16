@@ -223,7 +223,7 @@ const COLUMNS = [
       { k: 'newgame', t: 'MACRO_CODE', title: 'NEW GAME', body: C.newGame, params: [P('Ships', 'RANGE', 'START_LIVES', 1, 9)] },
     ],
     notes: [
-      { at: 'chr', text: 'ASSET: TILES\nThe charset: font (32-90)\nand the canyon (96-112).\nTags: T1 = rock (wall),\nT2 = bunker (target).\nRight-click a char to tag.' },
+      { at: 'chr', text: 'ASSET: TILES\nThe charset: font (32-90),\nthe canyon (96-112) and\nthe enemy shot (120-135).\nTags: T1 = rock (wall),\nT2 = bunker (target).\nRight-click a char to tag.' },
       { at: 'msc', text: 'ASSET: WORLD\nThe level: 2x2 stamps,\n20 x 76, flown bottom to\ntop. Paint it in the\ntileset editor. The bottom\n12 rows must repeat the top\n12 - that is where the\nlevel loops (LOOP_ROW,\nFRAME LOOP).' },
       { at: 'spr0', text: 'ASSET: ACTORS\n26 sprite frames, $A0 up:\n0-3 ship (level, flame,\nbanking left / right),\n4 shot, 5 laser, 6 double,\n7 missile, 8-9 option,\n10-17 enemies (in pairs),\n18-19 capsule, 20-23\nexplosion, 24-25 tank.' },
       { at: 'spr5', text: 'The sprites only get their\nstart frame here - every\nframe DrawActors (SPRITE\nDRAW) sets position, frame\nand colour.' },
@@ -301,7 +301,20 @@ const COLUMNS = [
       { at: 'enemy', text: 'Movements: STRAIGHT, SINE,\nCHASE, ZIGZAG, DIVE,\nWALKER (rides the ground,\nlike the TANK) and TURRET\n(fixed to the map,\nSPN_FIRE cues shots).' },
     ] },
 
-  { name: '09 WEAPONS', org: 0x9C00,
+  { name: '09 ENEMY FIRE', org: 0xAA00,
+    head: 'ENEMY FIRE\nEnemies shoot at the ship.\nThe shots are characters,\nnot sprites: all 8 sprites\nare already taken.',
+    items: [
+      { k: 'efire', t: 'MACRO_CODE', title: 'ENEMY FIRE', body: C.enemyFire,
+        params: [P('Enemy shots', 'MODE', 'ENEMY_SHOTS', 0, 1, 'Off=0,On=1'), P('Frames between shots', 'RANGE', 'FIRE_RATE', 10, 120), P('Shot speed', 'RANGE', 'ENEMY_SHOT_SPEED', 1, 3)] },
+      { k: 'sdraw', t: 'MACRO_CODE', title: 'SHOT DRAW', body: C.shotDraw },
+    ],
+    notes: [
+      { at: 'efire', text: 'Enemies take turns to\nshoot, every FIRE_RATE\nframes; TURRETs fire when\nthe SPAWNER cues them.\nEach shot is aimed at the\nship (16 directions).' },
+      { at: 'sdraw', text: 'A shot is a pellet char\n(TILES 120-135: 4 x 4\npositions in a cell). It is\nrubbed out before the\nscroll and drawn again\nafter it. Rock stops it.' },
+    ],
+    panels: [{ name: 'ENEMY FIRE', links: ['efire'], at: 'efire' }] },
+
+  { name: '10 WEAPONS', org: 0x9C00,
     head: 'WEAPONS\nShot or LASER, DOUBLE,\nhoming MISSILE and the\nOPTION. Shots fly over the\nrock and blow up bunkers.',
     items: [
       { k: 'fw', t: 'MACRO_CODE', title: 'FIRE WEAPONS', body: C.fireWeapons },
@@ -316,7 +329,7 @@ const COLUMNS = [
     ],
     panels: [{ name: 'WEAPONS', links: ['weapons', 'missile', 'option'], at: 'fw' }] },
 
-  { name: '10 COLLISIONS / LIVES', org: 0x9E80,
+  { name: '11 COLLISIONS / LIVES', org: 0x9E80,
     head: 'COLLISIONS / LIVES\nShip vs canyon and enemies,\nweapons vs enemies, score,\nshield and lives.',
     items: [
       { k: 'hits', t: 'MACRO_CODE', title: 'HITS', body: C.hits,
@@ -333,7 +346,7 @@ const COLUMNS = [
     ],
     panels: [{ name: 'RULES', links: ['hits', 'terrain'], at: 'hits' }] },
 
-  { name: '11 SPRITE DRAW', org: 0xA280,
+  { name: '12 SPRITE DRAW', org: 0xA280,
     head: 'SPRITE DRAW\nGame state into the VIC:\npositions (9-bit X),\nframes, colours, blinking\nand explosions.',
     items: [
       { k: 'draw', t: 'MACRO_CODE', title: 'DRAW ACTORS', body: C.draw,
@@ -348,7 +361,7 @@ const COLUMNS = [
     ],
     panels: [{ name: 'COLOURS', links: ['draw'], at: 'draw' }] },
 
-  { name: '12 HUD VALUES', org: 0xA500,
+  { name: '13 HUD VALUES', org: 0xA500,
     head: 'HUD VALUES\nScore, high score and\nships into the HUD, and\nthe meter slot colours.',
     items: [
       { k: 'status', t: 'MACRO_CODE', title: 'STATUS', body: C.status,
@@ -356,11 +369,11 @@ const COLUMNS = [
     ],
     panels: [{ name: 'HUD', links: ['status'], at: 'status' }] },
 
-  { name: '13 FIXED HUD / RASTER', org: 0xA600,
+  { name: '14 FIXED HUD / RASTER', org: 0xA600,
     head: 'FIXED HUD / RASTER\nThe IRQ callbacks: HUD\nsteady and hires, then\nthe scrolling multicolour\nplayfield.',
     items: [{ k: 'raster', t: 'MACRO_CODE', title: 'HUD SPLIT', body: C.raster }] },
 
-  { name: '14 EXPLOSIONS / SFX', org: 0xA680,
+  { name: '15 EXPLOSIONS / SFX', org: 0xA680,
     head: 'EXPLOSIONS / SFX\nSound effects on voice 3,\nexplosion timers, and\nGAME OVER back to the\ntitle.',
     items: [
       { t: 'MACRO_CODE', title: 'SILENCE', body: C.silence },
@@ -414,8 +427,9 @@ The CONTROL panels below
 hold every setting (F9 =
 Creator view): screen,
 scroll, ship, power meter,
-weapons, rules, colours
-and HUD. Change a value,
+weapons, enemy fire, rules,
+colours and HUD. Change a
+value,
 rebuild with F5.
 
 PLAY: joystick port 2.
@@ -494,7 +508,7 @@ function build() {
 
   // CONTROLS block, left of the spine: the READ ME across the top, the
   // settings panels under it in a grid, PANEL_COLS to a row
-  const PANEL_COLS = 4, PW = 280, GAP = 20;
+  const PANEL_COLS = 3, PW = 280, GAP = 20;
   const blockW = PANEL_COLS * PW + (PANEL_COLS - 1) * GAP;
   const bx = X0 - 20 - 40 - blockW - 40;          // box left edge, a gap before column 01
   const ix = bx + 20;                              // inside edge

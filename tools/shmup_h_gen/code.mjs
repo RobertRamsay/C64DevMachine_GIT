@@ -48,6 +48,22 @@ const STATE_LIST = [
   ['SPR_ON', 1, '$D015 being built'], ['SPR_MSB', 1, '$D010 being built'],
   ['T0', 1, 'scratch'], ['T1', 1, ''], ['T2', 1, ''],
 ];
+// Enemy shots (ENEMY FIRE column), page $C1. Not in the range BootTitle
+// clears: NEW GAME and ResetActors clear what has to be.
+const SHOT_STATE = [
+  ['ES_ON', 4, 'enemy shot flying'],
+  ['ES_X', 4, 'X in 2-pixel steps from the screen edge (0-159)'], ['ES_XF', 4, 'X fraction'],
+  ['ES_Y', 4, 'Y (sprite coordinates)'], ['ES_YF', 4, 'Y fraction'],
+  ['ES_VXL', 4, 'X speed, 8.8 signed'], ['ES_VXH', 4, ''],
+  ['ES_VYL', 4, 'Y speed, 8.8 signed'], ['ES_VYH', 4, ''],
+  ['ES_SHOWN', 4, '1 = drawn on the screen at ES_AL/ES_AH'],
+  ['ES_AL', 4, 'screen address of the drawn shot'], ['ES_AH', 4, ''],
+  ['ES_UNDER', 4, 'the char it covers, put back by EraseShots'],
+  ['ES_TICK', 1, 'frames to the next shot'], ['ES_NEXT', 1, 'enemy slot that shoots next'],
+  ['ES_AX', 1, 'aim: |dx|'], ['ES_AY', 1, 'aim: |dy|'], ['ES_SX', 1, 'aim: 1 = dx negative'], ['ES_SY', 1, 'aim: 1 = dy negative'],
+  ['ES_K', 1, 'aim: angle from level, 22.5 degree steps'],
+  ['SHIP_CX', 1, "the ship's centre in shot units"], ['SHIP_CY', 1, ''],
+];
 export const STATE = {};
 {
   let a = STATE_BASE;
@@ -55,6 +71,8 @@ export const STATE = {};
   if (a > 0xC080) throw new Error('GAME STATE overflows into the trail: $' + a.toString(16));
   STATE.TRAIL_XL = 0xC080; STATE.TRAIL_XH = 0xC0A0; STATE.TRAIL_Y = 0xC0C0;
   STATE.HI1 = 0xC0FE; STATE.HI2 = 0xC0FF;
+  let e = 0xC100;
+  for (const [n, size] of SHOT_STATE) { STATE[n] = e; e += size; }
 }
 const POWER_NAMES = ['SPEEDUPS', 'HAS_MISSILE', 'HAS_DOUBLE', 'HAS_LASER', 'HAS_OPTION', 'SHIELD'];
 POWER_NAMES.forEach((n, i) => { STATE[n] = STATE.POWERS + i; });
@@ -72,6 +90,8 @@ export function stateMapCode() {
   }
   out += '\n; OPTION trail: 32 remembered ship positions\n';
   out += `TRAIL_XL    = $C080\nTRAIL_XH    = $C0A0\nTRAIL_Y     = $C0C0\n`;
+  out += '\n; Enemy shots (ENEMY FIRE), 4 of each per-shot byte\n';
+  for (const [n, size, note] of SHOT_STATE) out += `${pad(n)}= ${hex(STATE[n])}` + (note ? `   ; ${note}${size > 1 ? ` (${size} bytes)` : ''}` : '') + '\n';
   out += '\n; High score - outside the cleared range so it survives a game over\n';
   out += 'HI1         = $C0FE   ; hundreds + thousands (BCD)\nHI2         = $C0FF   ; 10 thousands + 100 thousands (BCD)\n';
   return out;
@@ -183,6 +203,12 @@ STA LIVES
 LDA #$00
 STA SCORE1
 STA SCORE2
+; the screen is fresh: no enemy shot is drawn on it
+LDX #$03
+ClearShown:
+STA ES_SHOWN,X
+DEX
+BPL ClearShown
 JSR ResetActors
 JSR DrawActors
 JSR InstallHudSplit
@@ -199,6 +225,7 @@ JSR Effects
 JSR Input
 JSR PowerKey
 JSR Enemy
+JSR EnemyFire
 JSR Weapons
 JSR OptionMove
 JSR Hits
@@ -211,6 +238,8 @@ C.scroll = `; In the border: place the sprites, then scroll the world.
 SCROLL_SPEED = 1   ; 0 slow (1 pixel every 2 frames), 1 normal, 2 fast
 
 JSR DrawActors
+; enemy shots are chars: off the screen while it scrolls, then back on
+JSR EraseShots
 .IF SCROLL_SPEED == 0
 INC SCROLL_TICK
 LDA SCROLL_TICK
@@ -225,6 +254,7 @@ JSR ScrollStep
 JSR ScrollStep
 .ENDIF
 ScrollDone:
+JSR DrawShots
 JMP GameLoop
 
 ; ScrollStep - the world moves one pixel left.
@@ -286,8 +316,15 @@ ClearBooms:
 STA EN_BOOM,X
 DEX
 BPL ClearBooms
+LDX #$03
+ClearShots:
+STA ES_ON,X
+DEX
+BPL ClearShots
 ; The SPAWNER clears its slots and relaunches what is on screen.
 JSR SPN_Reset
+LDA #$40
+STA ES_TICK
 LDA #RESPAWN_SAFE
 STA INVULN
 ; Fill the OPTION trail with the new position.
@@ -1354,6 +1391,403 @@ ProbeRowLo:
 .byte ${rowTable(false)}
 ProbeRowHi:
 .byte ${rowTable(true)}
+`;
+
+// ---------------- ENEMY FIRE
+C.enemyFire = `; EnemyFire - the enemies shoot at the ship. All 8 sprites are taken,
+; so a shot is a character: a dot drawn into the screen, rubbed out and
+; drawn again every frame (SHOT DRAW). Up to 4 fly at once.
+; On the ENEMY FIRE panel:
+ENEMY_SHOTS = 1       ; 0 = the enemies never shoot
+FIRE_RATE = 50        ; frames between shots
+ENEMY_SHOT_SPEED = 2  ; pixels per frame
+SHOT_CHAR = $78       ; the first of the 16 shot chars in TILES (120-135)
+
+EnemyFire:
+.IF ENEMY_SHOTS == 1
+; The ship's centre in shot units: X in 2-pixel steps from the left
+; edge of the screen, Y as sprites have it.
+LDA PLAYER_XL
+SEC
+SBC #$0C          ; +12 to the middle of the ship, -24 to the edge
+STA T0
+LDA PLAYER_XH
+SBC #$00
+LSR
+LDA T0
+ROR
+STA SHIP_CX
+LDA PLAYER_Y
+CLC
+ADC #$0A
+STA SHIP_CY
+JSR MoveShots
+LDA PLAYER_BOOM
+BNE EFDone
+; TURRET entities fire when the SPAWNER cues them (SPN_FIRE)
+LDX #$02
+EFCue:
+LDA SPN_ON,X
+BEQ EFCueNext
+LDA SPN_FIRE,X
+BEQ EFCueNext
+JSR LaunchShot
+EFCueNext:
+DEX
+BPL EFCue
+; Every FIRE_RATE frames the next enemy in turn shoots - one that is
+; ahead of the ship (to its right) and far enough away to dodge.
+DEC ES_TICK
+BNE EFDone
+LDA #FIRE_RATE
+STA ES_TICK
+LDY #$03
+EFPick:
+LDX ES_NEXT
+INX
+CPX #$03
+BCC EFPickSlot
+LDX #$00
+EFPickSlot:
+STX ES_NEXT
+LDA SPN_ON,X
+BEQ EFPickNext
+LDA SPN_XL,X      ; its X in shot units...
+SEC
+SBC #$0C
+STA T0
+LDA SPN_XH,X
+SBC #$00
+LSR
+LDA T0
+ROR
+SEC
+SBC SHIP_CX       ; ...at least 32 pixels right of the ship
+BCC EFPickNext
+CMP #$10
+BCC EFPickNext
+JMP LaunchShot    ; its RTS ends EnemyFire
+EFPickNext:
+DEY
+BNE EFPick
+EFDone:
+.ENDIF
+RTS
+
+; LaunchShot - SPAWNER slot X fires a shot at the ship. Keeps X.
+LaunchShot:
+LDY #$03
+LaunchFind:
+LDA ES_ON,Y
+BEQ LaunchFree
+DEY
+BPL LaunchFind
+LaunchNone:
+RTS               ; all 4 are flying (or no room)
+LaunchFree:
+; from the middle of the enemy, if that is on the playfield
+LDA SPN_Y,X
+CLC
+ADC #$0A
+CMP #$50
+BCC LaunchNone
+CMP #$F0
+BCS LaunchNone
+STA ES_Y,Y
+LDA SPN_XL,X
+SEC
+SBC #$0C
+STA T0
+LDA SPN_XH,X
+SBC #$00
+BMI LaunchNone
+LSR
+LDA T0
+ROR
+CMP #$A0
+BCS LaunchNone
+CMP #$04
+BCC LaunchNone
+STA ES_X,Y
+LDA #$80
+STA ES_XF,Y
+STA ES_YF,Y
+; aim: |dx| and |dy| to the ship, and their signs
+LDA #$00
+STA ES_SX
+STA ES_SY
+LDA SHIP_CX
+SEC
+SBC ES_X,Y
+BCS AimX
+EOR #$FF
+ADC #$01
+INC ES_SX
+AimX:
+STA ES_AX
+LDA SHIP_CY
+SEC
+SBC ES_Y,Y
+BCS AimY
+EOR #$FF
+ADC #$01
+INC ES_SY
+AimY:
+STA ES_AY
+; halve both until they are under 32, so the sums below fit a byte
+AimShrink:
+LDA ES_AX
+CMP #$20
+BCS AimHalve
+LDA ES_AY
+CMP #$20
+BCC AimAngle
+AimHalve:
+LSR ES_AX
+LSR ES_AY
+JMP AimShrink
+; ES_K = the angle from level in 22.5 degree steps, 0-4:
+; tan 11.25 is about 1/5, tan 33.75 about 2/3.
+AimAngle:
+LDA ES_AX
+CMP ES_AY
+BCC AimSteep
+LDA #$00          ; mostly sideways
+STA ES_K
+LDA ES_AY
+ASL
+ASL
+ADC ES_AY
+CMP ES_AX
+BCC AimGo         ; dy * 5 < dx: level
+INC ES_K
+LDA ES_AY
+ASL
+ADC ES_AY
+STA T0
+LDA ES_AX
+ASL
+CMP T0
+BCS AimGo         ; dy * 3 <= dx * 2: 22.5
+INC ES_K
+JMP AimGo         ; 45
+AimSteep:
+LDA #$04          ; mostly up or down
+STA ES_K
+LDA ES_AX
+ASL
+ASL
+ADC ES_AX
+CMP ES_AY
+BCC AimGo         ; dx * 5 < dy: straight
+DEC ES_K
+LDA ES_AX
+ASL
+ADC ES_AX
+STA T0
+LDA ES_AY
+ASL
+CMP T0
+BCS AimGo         ; 67.5
+DEC ES_K          ; 45
+AimGo:
+STX T1
+LDX ES_K
+LDA AimVX,X
+STA ES_VXL,Y
+LDA #$00
+STA ES_VXH,Y
+LDA AimVYL,X
+STA ES_VYL,Y
+LDA AimVYH,X
+STA ES_VYH,Y
+LDX T1
+LDA ES_SX
+BEQ AimXSign
+LDA #$00
+SEC
+SBC ES_VXL,Y
+STA ES_VXL,Y
+LDA #$00
+SBC ES_VXH,Y
+STA ES_VXH,Y
+AimXSign:
+LDA ES_SY
+BEQ AimYSign
+LDA #$00
+SEC
+SBC ES_VYL,Y
+STA ES_VYL,Y
+LDA #$00
+SBC ES_VYH,Y
+STA ES_VYH,Y
+AimYSign:
+LDA #$01
+STA ES_ON,Y
+RTS
+
+; 1 pixel per frame at each angle, 8.8: X in shot units (2 pixels),
+; so cos / 2; Y in pixels, sin.
+AimVX:
+.byte $80,$76,$5B,$31,$00
+AimVYL:
+.byte $00,$62,$B5,$ED,$00
+AimVYH:
+.byte $00,$00,$00,$00,$01
+
+; MoveShots - ENEMY_SHOT_SPEED steps a frame; off the playfield they go,
+; into the ship they cost a life (or a SHIELD hit).
+MoveShots:
+LDX #$03
+ESMove:
+LDA ES_ON,X
+BEQ ESNext
+LDY #ENEMY_SHOT_SPEED
+ESStep:
+LDA ES_XF,X
+CLC
+ADC ES_VXL,X
+STA ES_XF,X
+LDA ES_X,X
+ADC ES_VXH,X
+STA ES_X,X
+LDA ES_YF,X
+CLC
+ADC ES_VYL,X
+STA ES_YF,X
+LDA ES_Y,X
+ADC ES_VYH,X
+STA ES_Y,X
+DEY
+BNE ESStep
+LDA ES_X,X
+CMP #$A0          ; past either side (left wraps round to $FF)
+BCS ESOff
+CMP #$04          ; column 0 is under the border (38 columns)
+BCC ESOff
+LDA ES_Y,X
+CMP #$50          ; up into the HUD
+BCC ESOff
+CMP #$F4          ; the bottom border
+BCS ESOff
+LDA PLAYER_BOOM
+ORA INVULN
+BNE ESNext
+LDA ES_X,X        ; within 8 pixels across...
+SEC
+SBC SHIP_CX
+CLC
+ADC #$03
+CMP #$07
+BCS ESNext
+LDA ES_Y,X        ; ...and 7 down
+SEC
+SBC SHIP_CY
+CLC
+ADC #$07
+CMP #$0E
+BCS ESNext
+LDA #$00
+STA ES_ON,X
+JSR ShipHit
+JMP ESNext
+ESOff:
+LDA #$00
+STA ES_ON,X
+ESNext:
+DEX
+BPL ESMove
+RTS
+`;
+
+C.shotDraw = `; EraseShots - before the WORLD SCROLLER moves the screen: put back the
+; char under every drawn shot, so the scroll never carries a shot along.
+EraseShots:
+LDX #$03
+ESErase:
+LDA ES_SHOWN,X
+BEQ ESEraseNext
+LDA ES_AL,X
+STA $FB
+LDA ES_AH,X
+STA $FC
+LDA ES_UNDER,X
+LDY #$00
+STA ($FB),Y
+TYA
+STA ES_SHOWN,X
+ESEraseNext:
+DEX
+BPL ESErase
+RTS
+
+; DrawShots - after the scroll: each flying shot into the screen. A shot
+; that meets a tagged char (rock, a bunker) is gone; one that meets
+; another shot waits a frame.
+DrawShots:
+LDX #$03
+ESDraw:
+LDA ES_ON,X
+BEQ ESDrawNext
+LDA ES_X,X        ; sprite X = 24 + 2 * X
+ASL
+STA T0
+LDA #$00
+ROL
+STA T1
+LDA T0
+CLC
+ADC #$18
+STA PROBE_XL
+LDA T1
+ADC #$00
+STA PROBE_XH
+LDA ES_Y,X
+STA PROBE_Y
+JSR ProbeChar
+BEQ ESFree
+LDA #$00
+STA ES_ON,X
+JMP ESDrawNext
+ESFree:
+LDA PROBE_CHAR
+SEC
+SBC #SHOT_CHAR
+CMP #$10
+BCC ESDrawNext
+LDA $FB
+STA ES_AL,X
+LDA $FC
+STA ES_AH,X
+LDA PROBE_CHAR
+STA ES_UNDER,X
+LDA #$01
+STA ES_SHOWN,X
+; which shot char: 2-pixel steps down and across the cell. The world
+; scrolls sideways, so across counts from the cell's edge: 2 * X - fine X.
+LDA ES_Y,X
+SEC
+SBC #$30
+SEC
+SBC $63
+AND #$06
+ASL
+STA T0
+LDA ES_X,X
+ASL
+SEC
+SBC $62
+LSR
+AND #$03
+ORA T0
+CLC
+ADC #SHOT_CHAR
+LDY #$00
+STA ($FB),Y
+ESDrawNext:
+DEX
+BPL ESDraw
+RTS
 `;
 
 // ---------------- 11 SPRITE DRAW
