@@ -1259,6 +1259,7 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
     // All bundled JSONs and catalog IDs remain available for later work.
     var _visible_templates = [
         0 // SHMUP V
+        ,21 // SHMUP H (sideways, Nemesis-style power meter)
         ,17 // GATE-GAME (logic gate puzzle)
         ,-3 // --- TEST ---
         ,16 // PARAMS TEST (Creator params / cards / panels test bed)

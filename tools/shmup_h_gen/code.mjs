@@ -1,0 +1,1988 @@
+// SHMUP H game code, one string per code block. build.mjs places them in
+// columns between the Dev Machine macro nodes. Names in CAPS are GAME STATE
+// variables (see STATE below) or NAME = value settings; CamelCase are labels.
+import { CH, LOOP_COL } from './art.mjs';
+
+// ------------------------------------------------------------ GAME STATE
+// One page at $C000. Allocated in this order; $C0FE/$C0FF keep the high
+// score through a game over (BootTitle clears $C000-$C0FD).
+export const STATE_BASE = 0xC000;
+const STATE_LIST = [
+  ['PLAYER_XL', 1, 'ship X, low byte (sprite coordinates)'],
+  ['PLAYER_XH', 1, 'ship X, ninth bit (0 or 1)'],
+  ['PLAYER_Y', 1, 'ship Y'],
+  ['SHIP_STEP', 1, 'pixels the ship moves this frame'],
+  ['SHIP_TILT', 1, '0 level, 1 climbing, 2 diving'],
+  ['PLAYER_BOOM', 1, 'ship explosion timer, 0 = flying'],
+  ['INVULN', 1, 'frames of safety left (respawn / shield)'],
+  ['LIVES', 1, 'ships left'],
+  ['FIRE_LATCH', 1, '1 while fire is held (tap-fire mode)'],
+  ['KEY_LATCH', 1, '1 while the power key is held'],
+  ['ANIM', 1, 'counts frames, drives every animation'],
+  ['SCROLL_TICK', 1, 'counts frames for the slow scroll'],
+  ['SCORE1', 1, 'score: hundreds + thousands (BCD)'],
+  ['SCORE2', 1, 'score: 10 thousands + 100 thousands (BCD)'],
+  ['WAVE_IDX', 1, 'next WAVE_SCRIPT record, 0-7'],
+  ['WAVE_LEFT', 1, 'enemies of this wave still to launch'],
+  ['WAVE_TIMER', 1, 'frames until the next launch'],
+  ['WAVE_PATH', 1, 'this wave: flight path'],
+  ['WAVE_Y', 1, 'this wave: start height'],
+  ['WAVE_GAP', 1, 'this wave: frames between enemies'],
+  ['WAVE_FRAME', 1, 'this wave: first ACTORS frame'],
+  ['WAVE_COL', 1, 'this wave: sprite colour'],
+  ['EN_ON', 3, 'enemy slot 0-2 flying'],
+  ['EN_XL', 3, 'enemy X low byte'],
+  ['EN_XH', 3, 'enemy X ninth bit'],
+  ['EN_Y', 3, 'enemy Y'],
+  ['EN_BASEY', 3, 'enemy start Y (paths swing round it)'],
+  ['EN_PATH', 3, 'enemy flight path 0-3'],
+  ['EN_PHASE', 3, 'enemy frames since launch'],
+  ['EN_FRAME', 3, 'enemy first ACTORS frame'],
+  ['EN_COL', 3, 'enemy colour'],
+  ['EN_BOOM', 3, 'enemy explosion timer'],
+  ['EN_LAST', 3, '1 = last of its wave, carries a capsule'],
+  ['SHOT_ON', 1, 'main shot / laser flying'],
+  ['SHOT_XL', 1, ''], ['SHOT_XH', 1, ''], ['SHOT_Y', 1, ''],
+  ['DBL_ON', 1, 'DOUBLE shot flying'],
+  ['DBL_XL', 1, ''], ['DBL_XH', 1, ''], ['DBL_Y', 1, ''],
+  ['MSL_ON', 1, 'MISSILE flying'],
+  ['MSL_XL', 1, ''], ['MSL_XH', 1, ''], ['MSL_Y', 1, ''],
+  ['OPT_XL', 1, 'OPTION position'], ['OPT_XH', 1, ''], ['OPT_Y', 1, ''],
+  ['CAP_ON', 1, 'a capsule is out'],
+  ['CAP_SLOT', 1, 'enemy slot whose sprite it borrows'],
+  ['CAP_XL', 1, ''], ['CAP_XH', 1, ''], ['CAP_Y', 1, ''],
+  ['METER', 1, 'lit power meter slot, 0 = none, 1-6'],
+  ['POWERS', 6, 'owned powers, one byte per meter slot:'],
+  ['TRAIL_POS', 1, 'newest entry of the OPTION trail'],
+  ['PROBE_XL', 1, 'ProbeChar input point'], ['PROBE_XH', 1, ''], ['PROBE_Y', 1, ''],
+  ['PROBE_COL', 1, 'ProbeChar scratch'], ['PROBE_CHAR', 1, ''],
+  ['BOX_XL', 1, 'BoxTest first sprite'], ['BOX_XH', 1, ''], ['BOX_Y', 1, ''],
+  ['BOX_W', 1, 'BoxTest hit distance X'], ['BOX_H', 1, 'BoxTest hit distance Y'],
+  ['TGT_XL', 1, 'BoxTest second sprite'], ['TGT_XH', 1, ''], ['TGT_Y', 1, ''],
+  ['D_XL', 1, 'PutSprite inputs'], ['D_XH', 1, ''], ['D_Y', 1, ''], ['D_PTR', 1, ''], ['D_COL', 1, ''],
+  ['SPR_ON', 1, '$D015 being built'], ['SPR_MSB', 1, '$D010 being built'],
+  ['T0', 1, 'scratch'], ['T1', 1, ''], ['T2', 1, ''],
+];
+export const STATE = {};
+{
+  let a = STATE_BASE;
+  for (const [n, size] of STATE_LIST) { STATE[n] = a; a += size; }
+  if (a > 0xC080) throw new Error('GAME STATE overflows into the trail: $' + a.toString(16));
+  STATE.TRAIL_XL = 0xC080; STATE.TRAIL_XH = 0xC0A0; STATE.TRAIL_Y = 0xC0C0;
+  STATE.HI1 = 0xC0FE; STATE.HI2 = 0xC0FF;
+}
+const POWER_NAMES = ['SPEEDUPS', 'HAS_MISSILE', 'HAS_DOUBLE', 'HAS_LASER', 'HAS_OPTION', 'SHIELD'];
+POWER_NAMES.forEach((n, i) => { STATE[n] = STATE.POWERS + i; });
+
+const hex = (v, w = 4) => '$' + v.toString(16).toUpperCase().padStart(w, '0');
+
+export function stateMapCode() {
+  const pad = s => s.padEnd(12);
+  let out = '; GAME STATE MAP\n; Every variable the game uses, one page at $C000. The other code\n'
+    + '; blocks use these names; change an address here and they follow.\n'
+    + '; BootTitle clears $C000-$C0FD for every new game.\n\n';
+  for (const [n, size, note] of STATE_LIST) {
+    out += `${pad(n)}= ${hex(STATE[n])}` + (note ? `   ; ${note}${size > 1 ? ` (${size} bytes)` : ''}` : (size > 1 ? `   ; (${size} bytes)` : '')) + '\n';
+    if (n === 'POWERS') POWER_NAMES.forEach((p, i) => { out += `${pad(p)}= ${hex(STATE[p])}   ;   ${['SPEED: speed-ups taken', 'MISSILE owned', 'DOUBLE owned', 'LASER owned', 'OPTION owned', 'SHIELD: hits left'][i]}\n`; });
+  }
+  out += '\n; OPTION trail: 32 remembered ship positions\n';
+  out += `TRAIL_XL    = $C080\nTRAIL_XH    = $C0A0\nTRAIL_Y     = $C0C0\n`;
+  out += '\n; High score - outside the cleared range so it survives a game over\n';
+  out += 'HI1         = $C0FE   ; hundreds + thousands (BCD)\nHI2         = $C0FF   ; 10 thousands + 100 thousands (BCD)\n';
+  return out;
+}
+
+// Which GAME STATE names a block uses, for its header.
+export function stateUsed(code) {
+  const names = Object.keys(STATE).filter(n => new RegExp(`\\b${n}\\b`).test(code.replace(/;.*$/gm, '')));
+  return names;
+}
+
+// Screen row addresses for ProbeChar
+const rowTable = (hi) => Array.from({ length: 25 }, (_, r) => hex(hi ? (0x0400 + r * 40) >> 8 : (0x0400 + r * 40) & 0xFF, 2)).join(',');
+
+// ------------------------------------------------------------ the blocks
+export const C = {};
+
+// ---------------- 01 STARTUP
+C.startup = `; Bank BASIC out, clear the high score (power-on RAM is random),
+; then straight to the title screen.
+LDA #$36
+STA $01
+LDA #$00
+STA HI1
+STA HI2
+JMP BootTitle
+
+; InstallHudSplit - called once per game from GAME SETUP.
+; Stops the CIA timer IRQs, points NMI at a bare RTI and banks
+; out the KERNAL ($01 = $35). The HUD RASTER HANDLER macro below
+; finishes the job by installing the two raster IRQs.
+InstallHudSplit:
+SEI
+LDA #$7F
+STA $DC0D
+STA $DD0D
+LDA $DC0D
+LDA $DD0D
+LDA #<HudNmi
+STA $FFFA
+LDA #>HudNmi
+STA $FFFB
+LDA #$1B
+STA $D011
+LDA #$08
+STA $D016
+LDA #$35
+STA $01
+`;
+
+// ---------------- 02 BOOT / TITLE
+C.bootTitle = `; BootTitle - also where a game over comes back to.
+BootTitle:
+SEI
+CLD
+LDX #$FF         ; fresh stack: a game over jumps here mid-call
+TXS
+LDA #$36
+.byte $8D,$01,$00 ; STA $0001 (absolute, as SHMUP V)
+LDA #$00
+STA $D01A        ; no raster IRQs on the title
+STA $D015        ; no sprites
+LDA #$FF
+STA $D019
+; Clear GAME STATE ($C000-$C0FD). $C0FE/$C0FF keep the high score.
+LDA #$00
+LDX #$00
+ClearState:
+STA $C000,X
+INX
+CPX #$FE
+BNE ClearState
+; Port 2 as input, keyboard rows released.
+LDA #$00
+STA $DC02
+LDA #$FF
+STA $DC00
+`;
+
+C.titleLoop = `; Wait for fire to be pressed, then released, then start.
+TitleLoop:
+JSR TitleFrame
+LDA $DC00
+AND #$10
+BNE TitleLoop
+TitleRelease:
+JSR TitleFrame
+LDA $DC00
+AND #$10
+BEQ TitleRelease
+JMP SetupGame
+
+; One title frame: wait for the border, play the tune.
+TitleFrame:
+`;
+
+// ---------------- 03 GAME SETUP
+C.newGame = `; A fresh game: ships, score, first wave, then into the loop.
+START_LIVES = 3
+
+; Every sprite hires, in front of the scenery, not expanded.
+LDA #$00
+STA $D01B
+STA $D01C
+STA $D017
+STA $D01D
+LDA #START_LIVES
+STA LIVES
+LDA #$00
+STA SCORE1
+STA SCORE2
+STA WAVE_IDX
+STA WAVE_LEFT
+LDA #$40
+STA WAVE_TIMER
+JSR ResetActors
+JSR DrawActors
+JSR InstallHudSplit
+JMP GameLoop
+`;
+
+// ---------------- 04 FRAME LOOP
+C.gameLoop = `; One pass = one frame. All the game logic runs here, while the
+; screen is still being drawn; drawing and scrolling wait for the
+; bottom border (FRAME SYNC below).
+GameLoop:
+JSR SfxTick
+JSR Effects
+JSR Input
+JSR PowerKey
+JSR Enemy
+JSR Weapons
+JSR OptionMove
+JSR Hits
+JSR Capsule
+JSR Status
+`;
+
+C.scroll = `; In the border: place the sprites, then scroll the world.
+; Scroll speed - on the SCROLL panel.
+SCROLL_SPEED = 1   ; 0 slow (1 pixel every 2 frames), 1 normal, 2 fast
+
+JSR DrawActors
+.IF SCROLL_SPEED == 0
+INC SCROLL_TICK
+LDA SCROLL_TICK
+AND #$01
+BEQ ScrollDone
+JSR ScrollStep
+.ENDIF
+.IF SCROLL_SPEED >= 1
+JSR ScrollStep
+.ENDIF
+.IF SCROLL_SPEED >= 2
+JSR ScrollStep
+.ENDIF
+ScrollDone:
+JMP GameLoop
+
+; ScrollStep - the world moves one pixel left.
+; MSC_R moves the WORLD SCROLLER camera right, MSC_Update finishes a
+; coarse (whole char) step. $60 is the camera's map column. The
+; WORLD map's last 40 columns repeat its first 40, so at LOOP_COL
+; the camera can jump back to column 0 without the screen changing.
+LOOP_COL = ${LOOP_COL}
+ScrollStep:
+JSR MSC_R
+JSR MSC_Update
+LDA $60
+CMP #LOOP_COL
+BCC ScrollCapsule
+LDA #$00
+STA $60
+; A capsule sits in the world, so it drifts left with it.
+ScrollCapsule:
+LDA CAP_XL
+BNE ScrollCapLo
+DEC CAP_XH
+ScrollCapLo:
+DEC CAP_XL
+RTS
+`;
+
+// ---------------- 05 RESPAWN
+C.respawn = `; ResetActors - a new ship at the left of the screen.
+; On the SHIP panel:
+KEEP_POWERS = 0     ; 0 = a lost ship loses its power-ups (Nemesis rules)
+RESPAWN_SAFE = 100  ; frames the new ship cannot be hit
+
+ResetActors:
+LDA #$40
+STA PLAYER_XL
+LDA #$00
+STA PLAYER_XH
+LDA #$90
+STA PLAYER_Y
+LDA #$00
+STA PLAYER_BOOM
+STA SHIP_TILT
+STA SHOT_ON
+STA DBL_ON
+STA MSL_ON
+STA CAP_ON
+STA WAVE_LEFT    ; abandon the wave that was flying
+.IF KEEP_POWERS == 0
+STA METER
+LDX #$05
+ClearPowers:
+STA POWERS,X
+DEX
+BPL ClearPowers
+.ENDIF
+LDX #$02
+ClearEnemies:
+STA EN_ON,X
+STA EN_BOOM,X
+DEX
+BPL ClearEnemies
+LDA #$60
+STA WAVE_TIMER   ; a breather before the next wave
+LDA #RESPAWN_SAFE
+STA INVULN
+; Fill the OPTION trail with the new position.
+LDX #$1F
+FillTrail:
+LDA PLAYER_XL
+STA TRAIL_XL,X
+LDA PLAYER_XH
+STA TRAIL_XH,X
+LDA PLAYER_Y
+STA TRAIL_Y,X
+DEX
+BPL FillTrail
+RTS
+`;
+
+// ---------------- 06 JOYSTICK / FIRE
+C.input = `; Input - the JOYSTICK macro below reads port 2 into $F8 and calls
+; one of the Joy... labels for the direction held.
+; Ship speed in pixels per frame - on the SHIP panel.
+SHIP_SPEED = 2
+
+Input:
+LDA PLAYER_BOOM
+BEQ InputAlive
+RTS
+InputAlive:
+; This frame's step = SHIP_SPEED + SPEED power-ups taken.
+LDA #SHIP_SPEED
+CLC
+ADC SPEEDUPS
+STA SHIP_STEP
+LDA #$00
+STA SHIP_TILT
+`;
+
+C.fire = `; Fire. Hold fire for auto-fire, or tap mode: one press, one shot.
+AUTO_FIRE = 1     ; on the SHIP panel
+
+LDA $F8           ; joystick bits from the JOYSTICK macro, 0 = pressed
+AND #$10
+BNE FireReleased
+.IF AUTO_FIRE == 0
+LDA FIRE_LATCH
+BNE InputDone
+LDA #$01
+STA FIRE_LATCH
+.ENDIF
+JMP FireWeapons   ; launches whatever is free (WEAPONS column)
+FireReleased:
+LDA #$00
+STA FIRE_LATCH
+InputDone:
+RTS
+`;
+
+C.joyLeft = `; Left, as far as X_MIN. X is 9 bits: PLAYER_XL + PLAYER_XH.
+X_MIN = $18
+
+LDA PLAYER_XL
+SEC
+SBC SHIP_STEP
+STA PLAYER_XL
+LDA PLAYER_XH
+SBC #$00
+STA PLAYER_XH
+BMI JoyLeftClamp
+BNE JoyLeftDone
+LDA PLAYER_XL
+CMP #X_MIN
+BCS JoyLeftDone
+JoyLeftClamp:
+LDA #X_MIN
+STA PLAYER_XL
+LDA #$00
+STA PLAYER_XH
+JoyLeftDone:
+RTS
+`;
+
+C.joyRight = `; Right, as far as $100 + X_MAX_LO (a little short of the edge,
+; so enemies arriving from the right can be seen).
+X_MAX_LO = $20
+
+LDA PLAYER_XL
+CLC
+ADC SHIP_STEP
+STA PLAYER_XL
+LDA PLAYER_XH
+ADC #$00
+STA PLAYER_XH
+BEQ JoyRightDone
+LDA PLAYER_XL
+CMP #X_MAX_LO
+BCC JoyRightDone
+LDA #X_MAX_LO
+STA PLAYER_XL
+JoyRightDone:
+RTS
+`;
+
+C.joyUp = `; Up, no higher than Y_MIN (just under the HUD). Tilts the ship.
+Y_MIN = $50
+
+LDA #$01
+STA SHIP_TILT
+LDA PLAYER_Y
+SEC
+SBC SHIP_STEP
+CMP #Y_MIN
+BCS JoyUpStore
+LDA #Y_MIN
+JoyUpStore:
+STA PLAYER_Y
+RTS
+`;
+
+C.joyDown = `; Down, no lower than Y_MAX (the bottom of the screen).
+Y_MAX = $DE
+
+LDA #$02
+STA SHIP_TILT
+LDA PLAYER_Y
+CLC
+ADC SHIP_STEP
+CMP #Y_MAX
+BCC JoyDownStore
+LDA #Y_MAX
+JoyDownStore:
+STA PLAYER_Y
+RTS
+`;
+
+// ---------------- 07 POWER METER
+C.powerKey = `; PowerKey - the key that cashes in the lit meter slot.
+POWER_KEY = 0      ; on the POWER METER panel: 0 SPACE, 1 RETURN, 2 C=
+
+.IF POWER_KEY == 0
+KEY_ROW = $7F
+KEY_BIT = $10
+.ENDIF
+.IF POWER_KEY == 1
+KEY_ROW = $FE
+KEY_BIT = $02
+.ENDIF
+.IF POWER_KEY == 2
+KEY_ROW = $7F
+KEY_BIT = $20
+.ENDIF
+
+PowerKey:
+LDA #$FF
+STA $DC02        ; port A drives the keyboard rows for a moment
+LDA #KEY_ROW
+STA $DC00
+LDA $DC01        ; the row's keys, 0 = pressed
+LDX #$FF
+STX $DC00
+LDX #$00
+STX $DC02        ; port A back to input for the joystick
+AND #KEY_BIT
+BNE KeyUp
+LDA KEY_LATCH    ; one power per press
+BNE KeyDone
+LDA #$01
+STA KEY_LATCH
+JMP ApplyPower
+KeyUp:
+LDA #$00
+STA KEY_LATCH
+KeyDone:
+RTS
+`;
+
+C.applyPower = `; ApplyPower - turn the lit slot into its power-up.
+; Slots: 1 SPEED  2 MISSILE  3 DOUBLE  4 LASER  5 OPTION  6 SHIELD
+; A power you already own is refused and the slot stays lit.
+; On the POWER METER panel:
+MAX_SPEEDUPS = 3   ; SPEED can be taken this many times
+SHIELD_HITS = 3    ; hits a SHIELD soaks up
+
+ApplyPower:
+LDA METER
+BNE PowerPick
+RTS
+PowerPick:
+CMP #$01
+BEQ PowSpeed
+CMP #$02
+BEQ PowMissile
+CMP #$03
+BEQ PowDouble
+CMP #$04
+BEQ PowLaser
+CMP #$05
+BEQ PowOption
+; 6 = SHIELD, always refills
+LDA #SHIELD_HITS
+STA SHIELD
+JMP PowerTaken
+
+PowSpeed:
+LDA SPEEDUPS
+CMP #MAX_SPEEDUPS
+BCS PowerRefused
+INC SPEEDUPS
+JMP PowerTaken
+
+PowMissile:
+LDA HAS_MISSILE
+BNE PowerRefused
+INC HAS_MISSILE
+JMP PowerTaken
+
+; DOUBLE and LASER replace each other.
+PowDouble:
+LDA HAS_DOUBLE
+BNE PowerRefused
+LDA #$01
+STA HAS_DOUBLE
+LDA #$00
+STA HAS_LASER
+JMP PowerTaken
+
+PowLaser:
+LDA HAS_LASER
+BNE PowerRefused
+LDA #$01
+STA HAS_LASER
+LDA #$00
+STA HAS_DOUBLE
+JMP PowerTaken
+
+PowOption:
+LDA HAS_OPTION
+BNE PowerRefused
+INC HAS_OPTION
+
+PowerTaken:
+LDA #$00
+STA METER
+JMP PowerSound
+PowerRefused:
+RTS
+`;
+
+C.capsule = `; Capsule - dropped by the last enemy of a wave (see KillEnemy).
+; It borrows that enemy slot's sprite, drifts left with the world
+; (ScrollStep) and lights the next meter slot when you fly into it.
+Capsule:
+LDA CAP_ON
+BNE CapsuleLive
+RTS
+CapsuleLive:
+; gone off the left edge?
+LDA CAP_XH
+BNE CapsuleShown
+LDA CAP_XL
+CMP #$10
+BCS CapsuleShown
+LDA #$00
+STA CAP_ON
+RTS
+; still hidden behind its enemy's explosion?
+CapsuleShown:
+LDY CAP_SLOT
+LDA EN_BOOM,Y
+ORA PLAYER_BOOM
+BNE CapsuleDone
+LDA CAP_XL
+STA BOX_XL
+LDA CAP_XH
+STA BOX_XH
+LDA CAP_Y
+STA BOX_Y
+LDA #$10
+STA BOX_W
+STA BOX_H
+JSR BoxVsShip
+BCS CapsuleDone
+; collected: light the next slot, 6 wraps round to 1
+LDA #$00
+STA CAP_ON
+INC METER
+LDA METER
+CMP #$07
+BCC CapsuleGot
+LDA #$01
+STA METER
+CapsuleGot:
+JMP CapsuleSound
+CapsuleDone:
+RTS
+`;
+
+// ---------------- 08 ATTACK WAVES
+C.enemy = `; Enemy - launch from WAVE_SCRIPT, then fly the three enemy slots.
+; On the ENEMIES panel:
+ENEMY_SPEED = 2   ; pixels left per frame: 1 slow, 2 normal, 3 fast
+WAVE_PAUSE = $50  ; frames between the end of a wave and the next
+
+Enemy:
+INC ANIM
+JSR WaveSpawn
+LDX #$02
+EnemyLoop:
+LDA EN_ON,X
+BNE EnemyFly
+JMP EnemyNext
+
+; Every enemy flies left; off the left edge it is gone.
+EnemyFly:
+LDA EN_XL,X
+SEC
+SBC #ENEMY_SPEED
+STA EN_XL,X
+LDA EN_XH,X
+SBC #$00
+STA EN_XH,X
+BNE EnemyPath
+LDA EN_XL,X
+CMP #$08
+BCS EnemyPath
+LDA #$00
+STA EN_ON,X
+JMP EnemyNext
+
+; Up and down by path: 0 straight, 1 sine, 2 chase, 3 zigzag.
+EnemyPath:
+INC EN_PHASE,X
+LDA EN_PATH,X
+BEQ EnemyStraight
+CMP #$01
+BEQ EnemySine
+CMP #$02
+BEQ EnemyChase
+
+; 3 ZIGZAG: a triangle wave, 32 pixels each side of the start.
+LDA EN_PHASE,X
+AND #$3F
+CMP #$20
+BCC ZigRising
+EOR #$3F
+ZigRising:
+ASL
+SEC
+SBC #$20
+CLC
+ADC EN_BASEY,X
+JMP EnemyStoreY
+
+; 0 STRAIGHT: the height never changes.
+EnemyStraight:
+JMP EnemyNext
+
+; 1 SINE: start Y + SINE_PATH ($B100, 128 signed bytes).
+; Every enemy of a wave starts at phase 0, so they snake in a line.
+EnemySine:
+LDA EN_PHASE,X
+ASL
+AND #$7F
+TAY
+LDA $B100,Y
+CLC
+ADC EN_BASEY,X
+JMP EnemyStoreY
+
+; 2 CHASE: one pixel towards the ship's height every other frame.
+EnemyChase:
+LDA EN_PHASE,X
+AND #$01
+BNE ChaseStep
+JMP EnemyNext
+ChaseStep:
+LDA EN_Y,X
+CMP PLAYER_Y
+BEQ EnemyNext
+BCC ChaseDown
+DEC EN_Y,X
+JMP EnemyNext
+ChaseDown:
+INC EN_Y,X
+JMP EnemyNext
+
+EnemyStoreY:
+STA EN_Y,X
+EnemyNext:
+DEX
+BMI EnemyDone
+JMP EnemyLoop
+EnemyDone:
+RTS
+`;
+
+C.waveSpawn = `; WaveSpawn - WAVE_SCRIPT ($B000) is 8 waves of 6 bytes:
+;   path, start Y, enemies in the wave, frames between them,
+;   first ACTORS frame (two-frame animation), colour
+WaveSpawn:
+LDA WAVE_TIMER
+BEQ WaveReady
+DEC WAVE_TIMER
+RTS
+WaveReady:
+LDA WAVE_LEFT
+BNE WaveFindSlot
+; Start the next wave: its record is at WAVE_IDX * 6.
+LDA WAVE_IDX
+ASL
+STA T0
+ASL
+CLC
+ADC T0
+TAY
+LDA $B000,Y
+STA WAVE_PATH
+INY
+LDA $B000,Y
+STA WAVE_Y
+INY
+LDA $B000,Y
+STA WAVE_LEFT
+INY
+LDA $B000,Y
+STA WAVE_GAP
+INY
+LDA $B000,Y
+STA WAVE_FRAME
+INY
+LDA $B000,Y
+STA WAVE_COL
+INC WAVE_IDX
+LDA WAVE_IDX
+AND #$07
+STA WAVE_IDX
+
+; A slot is free when it is not flying, not exploding and not
+; lending its sprite to the capsule.
+WaveFindSlot:
+LDX #$02
+WaveSlot:
+LDA EN_ON,X
+ORA EN_BOOM,X
+BNE WaveSlotBusy
+LDA CAP_ON
+BEQ WaveLaunch
+CPX CAP_SLOT
+BNE WaveLaunch
+WaveSlotBusy:
+DEX
+BPL WaveSlot
+RTS              ; all busy - try again next frame
+
+; Launch at X = $158, just past the right edge.
+WaveLaunch:
+LDA #$58
+STA EN_XL,X
+LDA #$01
+STA EN_XH,X
+LDA WAVE_Y
+STA EN_Y,X
+STA EN_BASEY,X
+LDA WAVE_PATH
+STA EN_PATH,X
+LDA WAVE_FRAME
+STA EN_FRAME,X
+LDA WAVE_COL
+STA EN_COL,X
+LDA #$00
+STA EN_PHASE,X
+STA EN_LAST,X
+LDA #$01
+STA EN_ON,X
+LDA WAVE_GAP
+STA WAVE_TIMER
+DEC WAVE_LEFT
+BNE WaveLaunched
+; The wave's last enemy carries a capsule; then a pause.
+LDA #$01
+STA EN_LAST,X
+LDA #WAVE_PAUSE
+STA WAVE_TIMER
+WaveLaunched:
+RTS
+`;
+
+// ---------------- 09 WEAPONS
+C.fireWeapons = `; FireWeapons - fire pressed: launch every weapon that is free.
+FireWeapons:
+LDA SHOT_ON
+BNE FireDouble
+LDA #$01
+STA SHOT_ON
+LDA PLAYER_XL      ; from the ship's nose
+CLC
+ADC #$10
+STA SHOT_XL
+LDA PLAYER_XH
+ADC #$00
+STA SHOT_XH
+LDA PLAYER_Y
+STA SHOT_Y
+JSR FireSound
+
+FireDouble:
+LDA HAS_DOUBLE
+BEQ FireMissile
+LDA DBL_ON
+BNE FireMissile
+LDA #$01
+STA DBL_ON
+LDA PLAYER_XL
+CLC
+ADC #$08
+STA DBL_XL
+LDA PLAYER_XH
+ADC #$00
+STA DBL_XH
+LDA PLAYER_Y
+SEC
+SBC #$06
+STA DBL_Y
+
+FireMissile:
+LDA HAS_MISSILE
+BEQ FireDone
+LDA MSL_ON
+BNE FireDone
+LDA #$01
+STA MSL_ON
+LDA PLAYER_XL
+STA MSL_XL
+LDA PLAYER_XH
+STA MSL_XH
+LDA PLAYER_Y
+CLC
+ADC #$06
+STA MSL_Y
+FireDone:
+RTS
+`;
+
+C.weapons = `; Weapons - move everything the ship has fired.
+; Speeds in pixels per frame - on the WEAPONS panel.
+SHOT_SPEED = 6
+LASER_SPEED = 9
+DOUBLE_SPEED = 4
+
+Weapons:
+JSR MoveShot
+JSR MoveDouble
+JMP MoveMissile
+
+; The shot (or laser) flies right until the edge or the scenery.
+MoveShot:
+LDA SHOT_ON
+BNE ShotLive
+RTS
+ShotLive:
+LDA #SHOT_SPEED
+LDY HAS_LASER
+BEQ ShotStep
+LDA #LASER_SPEED
+ShotStep:
+CLC
+ADC SHOT_XL
+STA SHOT_XL
+LDA SHOT_XH
+ADC #$00
+STA SHOT_XH
+BEQ ShotTerrain
+LDA SHOT_XL
+CMP #$50
+BCC ShotTerrain
+ShotGone:
+LDA #$00
+STA SHOT_ON
+RTS
+; Probe the scenery at the tip of the shot.
+ShotTerrain:
+LDA SHOT_XL
+CLC
+ADC #$10
+STA PROBE_XL
+LDA SHOT_XH
+ADC #$00
+STA PROBE_XH
+LDA SHOT_Y
+CLC
+ADC #$09
+STA PROBE_Y
+JSR ProbeChar
+JSR TerrainHit
+BCS ShotGone
+RTS
+
+; DOUBLE flies up and right at 45 degrees.
+MoveDouble:
+LDA DBL_ON
+BNE DoubleLive
+RTS
+DoubleLive:
+LDA DBL_XL
+CLC
+ADC #DOUBLE_SPEED
+STA DBL_XL
+LDA DBL_XH
+ADC #$00
+STA DBL_XH
+BEQ DoubleUp
+LDA DBL_XL
+CMP #$50
+BCS DoubleGone
+DoubleUp:
+LDA DBL_Y
+SEC
+SBC #DOUBLE_SPEED
+STA DBL_Y
+CMP #$40
+BCC DoubleGone
+LDA DBL_XL
+CLC
+ADC #$0C
+STA PROBE_XL
+LDA DBL_XH
+ADC #$00
+STA PROBE_XH
+LDA DBL_Y
+CLC
+ADC #$09
+STA PROBE_Y
+JSR ProbeChar
+JSR TerrainHit
+BCS DoubleGone
+RTS
+DoubleGone:
+LDA #$00
+STA DBL_ON
+RTS
+`;
+
+C.missile = `; MISSILE drops until it meets the ground, then runs along it.
+MISSILE_SPEED = 3   ; on the WEAPONS panel
+
+MoveMissile:
+LDA MSL_ON
+BNE MissileLive
+RTS
+MissileLive:
+LDA MSL_XL
+CLC
+ADC #MISSILE_SPEED
+STA MSL_XL
+LDA MSL_XH
+ADC #$00
+STA MSL_XH
+BEQ MissileGround
+LDA MSL_XL
+CMP #$50
+BCS MissileGone
+; Anything just underneath?
+MissileGround:
+LDA MSL_XL
+CLC
+ADC #$0C
+STA PROBE_XL
+LDA MSL_XH
+ADC #$00
+STA PROBE_XH
+LDA MSL_Y
+CLC
+ADC #$0E
+STA PROBE_Y
+JSR ProbeChar
+CMP #$00
+BNE MissileLanded
+; Nothing: keep falling.
+LDA MSL_Y
+CLC
+ADC #MISSILE_SPEED
+STA MSL_Y
+CMP #$E8
+BCS MissileGone
+RTS
+; On the ground: a hatch underneath is blown up, rock is followed.
+MissileLanded:
+JSR GroundHit
+BCS MissileGone
+; Running into a wall ends it.
+MissileAhead:
+LDA MSL_XL
+CLC
+ADC #$12
+STA PROBE_XL
+LDA MSL_XH
+ADC #$00
+STA PROBE_XH
+LDA MSL_Y
+CLC
+ADC #$0A
+STA PROBE_Y
+JSR ProbeChar
+JSR TerrainHit
+BCS MissileGone
+RTS
+MissileGone:
+LDA #$00
+STA MSL_ON
+RTS
+`;
+
+C.option = `; OPTION - an orb that follows the ship's path OPTION_GAP moves
+; behind. It destroys any enemy it touches (Hits). A C64 has eight
+; sprites and every one is in use, so this OPTION rams instead of
+; firing - free a sprite to give it a shot of its own.
+OPTION_GAP = 12    ; on the WEAPONS panel, 4-30
+
+; The trail is 32 positions; a new one is stored only when the
+; ship moves, so a still ship keeps its OPTION where it is.
+OptionMove:
+LDY TRAIL_POS
+LDA PLAYER_XL
+CMP TRAIL_XL,Y
+BNE TrailPush
+LDA PLAYER_Y
+CMP TRAIL_Y,Y
+BEQ TrailRead
+TrailPush:
+INY
+TYA
+AND #$1F
+STA TRAIL_POS
+TAY
+LDA PLAYER_XL
+STA TRAIL_XL,Y
+LDA PLAYER_XH
+STA TRAIL_XH,Y
+LDA PLAYER_Y
+STA TRAIL_Y,Y
+TrailRead:
+LDA TRAIL_POS
+SEC
+SBC #OPTION_GAP
+AND #$1F
+TAY
+LDA TRAIL_XL,Y
+STA OPT_XL
+LDA TRAIL_XH,Y
+STA OPT_XH
+LDA TRAIL_Y,Y
+STA OPT_Y
+RTS
+`;
+
+// ---------------- 10 COLLISIONS / LIVES
+C.hits = `; Hits - the ship against walls and enemies, and every weapon
+; against every enemy. On the RULES panel:
+WALLS_KILL = 1     ; 1 = flying into the scenery costs a ship
+DROPS = 1          ; 1 = the last enemy of a wave drops a capsule
+ENEMY_POINTS = 1   ; score per enemy, in hundreds (BCD, 1-9)
+
+Hits:
+LDA PLAYER_BOOM
+BEQ HitsAlive
+RTS
+HitsAlive:
+LDA INVULN
+BEQ HitsWalls
+DEC INVULN
+JMP HitsEnemies
+HitsWalls:
+.IF WALLS_KILL == 1
+JSR ShipVsTerrain
+BCC HitsEnemies
+JSR ShipHit
+.ENDIF
+
+HitsEnemies:
+LDX #$02
+HitLoop:
+LDA EN_ON,X
+BNE HitShip
+JMP HitNext
+
+; the ship (skipped while invulnerable)
+HitShip:
+LDA INVULN
+ORA PLAYER_BOOM
+BNE HitShot
+LDA PLAYER_XL
+STA BOX_XL
+LDA PLAYER_XH
+STA BOX_XH
+LDA PLAYER_Y
+STA BOX_Y
+LDA #$0E
+STA BOX_W
+LDA #$0A
+STA BOX_H
+JSR BoxVsEnemy
+BCS HitShot
+JSR KillEnemy
+JSR ShipHit
+JMP HitNext
+
+; the shot - a LASER keeps going through
+HitShot:
+LDA SHOT_ON
+BEQ HitDouble
+LDA SHOT_XL
+STA BOX_XL
+LDA SHOT_XH
+STA BOX_XH
+LDA SHOT_Y
+STA BOX_Y
+LDA #$0E
+STA BOX_W
+LDA #$09
+STA BOX_H
+JSR BoxVsEnemy
+BCS HitDouble
+LDA HAS_LASER
+BNE HitShotKill
+LDA #$00
+STA SHOT_ON
+HitShotKill:
+JSR KillEnemy
+JMP HitNext
+
+HitDouble:
+LDA DBL_ON
+BEQ HitMissile
+LDA DBL_XL
+STA BOX_XL
+LDA DBL_XH
+STA BOX_XH
+LDA DBL_Y
+STA BOX_Y
+LDA #$0C
+STA BOX_W
+STA BOX_H
+JSR BoxVsEnemy
+BCS HitMissile
+LDA #$00
+STA DBL_ON
+JSR KillEnemy
+JMP HitNext
+
+HitMissile:
+LDA MSL_ON
+BEQ HitOption
+LDA MSL_XL
+STA BOX_XL
+LDA MSL_XH
+STA BOX_XH
+LDA MSL_Y
+STA BOX_Y
+LDA #$0C
+STA BOX_W
+STA BOX_H
+JSR BoxVsEnemy
+BCS HitOption
+LDA #$00
+STA MSL_ON
+JSR KillEnemy
+JMP HitNext
+
+HitOption:
+LDA HAS_OPTION
+BEQ HitNext
+LDA OPT_XL
+STA BOX_XL
+LDA OPT_XH
+STA BOX_XH
+LDA OPT_Y
+STA BOX_Y
+LDA #$0E
+STA BOX_W
+LDA #$0C
+STA BOX_H
+JSR BoxVsEnemy
+BCS HitNext
+JSR KillEnemy
+
+HitNext:
+DEX
+BMI HitsDone
+JMP HitLoop
+HitsDone:
+RTS
+
+; KillEnemy - X = slot. Explosion, points, maybe a capsule.
+KillEnemy:
+LDA #$00
+STA EN_ON,X
+LDA #$18
+STA EN_BOOM,X
+LDA #ENEMY_POINTS
+JSR AddScore
+JSR ExplosionSound
+.IF DROPS == 1
+LDA EN_LAST,X
+BEQ KillDone
+LDA CAP_ON
+BNE KillDone
+LDA #$01
+STA CAP_ON
+STX CAP_SLOT
+LDA EN_XL,X
+STA CAP_XL
+LDA EN_XH,X
+STA CAP_XH
+LDA EN_Y,X
+STA CAP_Y
+.ENDIF
+KillDone:
+RTS
+
+; ShipHit - a SHIELD soaks the hit, otherwise the ship bursts.
+ShipHit:
+LDA SHIELD
+BEQ ShipBurst
+DEC SHIELD
+LDA #$30
+STA INVULN
+JMP ExplosionSound
+ShipBurst:
+LDA #$20
+STA PLAYER_BOOM
+LDA #$00
+STA SHOT_ON
+STA DBL_ON
+STA MSL_ON
+DEC LIVES
+JMP ExplosionSound
+
+; AddScore - A = points in hundreds (BCD).
+AddScore:
+SED
+CLC
+ADC SCORE1
+STA SCORE1
+LDA SCORE2
+ADC #$00
+STA SCORE2
+CLD
+RTS
+`;
+
+C.boxTest = `; BoxTest - do two sprites overlap?
+;  In: BOX_XL/BOX_XH/BOX_Y  one sprite's position
+;      TGT_XL/TGT_XH/TGT_Y  the other's (BoxVsShip / BoxVsEnemy set it)
+;      BOX_W / BOX_H        how close counts as touching, in pixels
+; Out: carry clear = touching. X and Y are kept.
+; Every ACTORS frame is drawn centred, so comparing the sprites'
+; corners compares their middles.
+BoxVsShip:
+LDA PLAYER_XL
+STA TGT_XL
+LDA PLAYER_XH
+STA TGT_XH
+LDA PLAYER_Y
+STA TGT_Y
+JMP BoxTest
+
+BoxVsEnemy:
+LDA EN_XL,X
+STA TGT_XL
+LDA EN_XH,X
+STA TGT_XH
+LDA EN_Y,X
+STA TGT_Y
+
+BoxTest:
+LDA BOX_XL
+SEC
+SBC TGT_XL
+STA T0
+LDA BOX_XH
+SBC TGT_XH
+STA T1           ; T1:T0 = distance in X, signed
+LDA T0
+CLC
+ADC BOX_W
+STA T0
+LDA T1
+ADC #$00
+BNE BoxMiss      ; more than 255 apart, either way
+LDA BOX_W
+ASL
+STA T1
+LDA T0
+CMP T1
+BCS BoxMiss
+LDA BOX_Y
+SEC
+SBC TGT_Y
+CLC
+ADC BOX_H
+STA T0
+LDA BOX_H
+ASL
+STA T1
+LDA T0
+CMP T1
+BCS BoxMiss
+CLC
+RTS
+BoxMiss:
+SEC
+RTS
+`;
+
+C.terrain = `; The scenery. Chars are tagged in the TILES charset (char editor:
+; right-click a char to set its tag). The WORLD SCROLLER emits
+; the tags as WORLD_TILE_TYPES. On the RULES panel:
+WALL_TAG = 1        ; rock: stops shots, wrecks the ship
+TARGET_TAG = 2      ; ground hatches: shots blow them up
+TARGET_POINTS = 3   ; score for a hatch, in hundreds (BCD)
+
+; TILES chars the hatches are made of, and their wreckage.
+CH_HATCH_L = ${CH.HATCH_L}
+CH_HATCH_R = ${CH.HATCH_R}
+CH_CHATCH_L = ${CH.CHATCH_L}
+CH_CHATCH_R = ${CH.CHATCH_R}
+CH_RUBBLE = ${CH.RUBBLE}
+CH_CRUBBLE = ${CH.CRUBBLE}
+
+; TerrainHit - A = tag from ProbeChar.
+; Out: carry set = the weapon is stopped (a hatch is blown up too).
+TerrainHit:
+CMP #WALL_TAG
+BEQ TerrainStop
+CMP #TARGET_TAG
+BEQ TerrainTarget
+CLC
+RTS
+TerrainTarget:
+JSR BlastTarget
+TerrainStop:
+SEC
+RTS
+
+; GroundHit - like TerrainHit, but rock underneath is fine (the
+; MISSILE runs along it). Carry set = a hatch was blown up.
+GroundHit:
+CMP #TARGET_TAG
+BNE GroundRock
+JSR BlastTarget
+SEC
+RTS
+GroundRock:
+CLC
+RTS
+
+; BlastTarget - ($FB) is a hatch char: swap both halves for rubble.
+BlastTarget:
+LDY #$00
+LDA ($FB),Y
+CMP #CH_HATCH_R
+BEQ BlastStepBack
+CMP #CH_CHATCH_R
+BNE BlastPair
+BlastStepBack:
+LDA $FB          ; right half hit: step back to the left half
+BNE BlastDecLo
+DEC $FC
+BlastDecLo:
+DEC $FB
+BlastPair:
+LDA ($FB),Y
+CMP #CH_HATCH_L
+BEQ BlastFloor
+LDA #CH_CRUBBLE
+STA ($FB),Y
+INY
+STA ($FB),Y
+JMP BlastScore
+BlastFloor:
+LDA #CH_RUBBLE
+STA ($FB),Y
+INY
+STA ($FB),Y
+BlastScore:
+LDA #TARGET_POINTS
+JSR AddScore
+JMP ExplosionSound
+
+; ShipVsTerrain - carry set when the nose or a wing tip is in rock.
+ShipVsTerrain:
+LDA #$17
+LDY #$09
+JSR ShipProbe
+BCS ShipTerrainDone
+LDA #$06
+LDY #$04
+JSR ShipProbe
+BCS ShipTerrainDone
+LDA #$06
+LDY #$10
+JSR ShipProbe
+ShipTerrainDone:
+RTS
+
+; ShipProbe - A / Y = x / y offset into the ship sprite.
+ShipProbe:
+CLC
+ADC PLAYER_XL
+STA PROBE_XL
+LDA PLAYER_XH
+ADC #$00
+STA PROBE_XH
+TYA
+CLC
+ADC PLAYER_Y
+STA PROBE_Y
+JSR ProbeChar
+CMP #WALL_TAG
+BEQ ShipSolid
+CMP #TARGET_TAG
+BEQ ShipSolid
+CLC
+RTS
+ShipSolid:
+SEC
+RTS
+`;
+
+C.probe = `; ProbeChar - which char is under a point, and what is its tag?
+;  In: PROBE_XL/PROBE_XH/PROBE_Y, a point in sprite coordinates.
+; Out: A = the char's tag (0 = untagged, off screen or in the HUD),
+;      $FB/$FC + Y=0 = the char on the screen.
+; $62 / $63 are the WORLD SCROLLER's fine X / fine Y.
+ProbeNone:
+LDA #$00
+RTS
+
+ProbeChar:
+; column = (X - 24 - fine X) / 8
+LDA PROBE_XL
+SEC
+SBC #$18
+STA T0
+LDA PROBE_XH
+SBC #$00
+STA T1
+LDA T0
+SEC
+SBC $62
+STA T0
+LDA T1
+SBC #$00
+BMI ProbeNone
+LSR
+ROR T0
+LSR
+ROR T0
+LSR
+ROR T0
+LDA T0
+CMP #$27
+BCS ProbeNone
+STA PROBE_COL
+; row = (Y - 48 - fine Y) / 8. Rows 0-2 are the HUD.
+LDA PROBE_Y
+SEC
+SBC #$30
+BCC ProbeNone
+SEC
+SBC $63
+BCC ProbeNone
+LSR
+LSR
+LSR
+CMP #$03
+BCC ProbeNone
+CMP #$19
+BCS ProbeNone
+; $FB/$FC = $0400 + row * 40 + column
+TAY
+LDA ProbeRowLo,Y
+CLC
+ADC PROBE_COL
+STA $FB
+LDA ProbeRowHi,Y
+ADC #$00
+STA $FC
+LDY #$00
+LDA ($FB),Y
+STA PROBE_CHAR
+; Look it up in WORLD_TILE_TYPES: [char, tag] pairs, $FF ends.
+ProbeScan:
+LDA WORLD_TILE_TYPES,Y
+CMP #$FF
+BEQ ProbeNone
+CMP PROBE_CHAR
+BEQ ProbeTag
+INY
+INY
+BNE ProbeScan
+JMP ProbeNone
+ProbeTag:
+INY
+LDA WORLD_TILE_TYPES,Y
+RTS
+
+ProbeRowLo:
+.byte ${rowTable(false)}
+ProbeRowHi:
+.byte ${rowTable(true)}
+`;
+
+// ---------------- 11 SPRITE DRAW
+C.draw = `; DrawActors - copy the game state into the VIC sprite registers.
+; Sprites: 0 ship, 1 shot/laser, 2 DOUBLE, 3 MISSILE, 4 OPTION,
+; 5-7 the three enemy slots (or the capsule, in a free slot).
+; Colours - on the COLOURS panel (enemy colours are in WAVE_SCRIPT).
+SHIP_COL = 1
+SHIELD_COL = 14
+SHOT_COL = 7
+LASER_COL = 3
+MISSILE_COL = 10
+OPTION_COL = 8
+CAPSULE_COL = 2
+BOOM_COL = 7
+
+; ACTORS frames as sprite pointers ($2800 / 64 = $A0 is frame 0).
+FR_BASE = $A0
+FR_SHIP = $A0
+FR_SHIP_FLAME = $A1   ; +1 climb, +2 dive
+FR_SHOT = $A4
+FR_LASER = $A5
+FR_DOUBLE = $A6
+FR_MISSILE = $A7
+FR_OPTION = $A8
+FR_CAPSULE = $B2
+FR_BOOM = $B4
+
+DrawActors:
+LDA #$00
+STA SPR_ON
+STA SPR_MSB
+
+; --- sprite 0: the ship ---
+LDA PLAYER_XL
+STA D_XL
+LDA PLAYER_XH
+STA D_XH
+LDA PLAYER_Y
+STA D_Y
+LDA PLAYER_BOOM
+BEQ ShipFlying
+JSR BoomFrame
+JMP ShipPut
+ShipFlying:
+LDA INVULN          ; blink while it cannot be hit
+AND #$04
+BNE DrawShot
+LDA SHIP_TILT
+BEQ ShipLevel
+CLC
+ADC #FR_SHIP_FLAME
+STA D_PTR
+JMP ShipColour
+ShipLevel:
+LDA ANIM            ; exhaust flicker
+AND #$02
+LSR
+CLC
+ADC #FR_SHIP
+STA D_PTR
+ShipColour:
+LDA #SHIP_COL
+LDY SHIELD
+BEQ ShipColourSet
+LDA #SHIELD_COL
+ShipColourSet:
+STA D_COL
+ShipPut:
+LDX #$00
+JSR PutSprite
+
+; --- sprite 1: shot or laser ---
+DrawShot:
+LDA SHOT_ON
+BEQ DrawDouble
+LDA SHOT_XL
+STA D_XL
+LDA SHOT_XH
+STA D_XH
+LDA SHOT_Y
+STA D_Y
+LDA #FR_SHOT
+LDY #SHOT_COL
+LDX HAS_LASER
+BEQ ShotLook
+LDA #FR_LASER
+LDY #LASER_COL
+ShotLook:
+STA D_PTR
+STY D_COL
+LDX #$01
+JSR PutSprite
+
+; --- sprite 2: DOUBLE ---
+DrawDouble:
+LDA DBL_ON
+BEQ DrawMissile
+LDA DBL_XL
+STA D_XL
+LDA DBL_XH
+STA D_XH
+LDA DBL_Y
+STA D_Y
+LDA #FR_DOUBLE
+STA D_PTR
+LDA #SHOT_COL
+STA D_COL
+LDX #$02
+JSR PutSprite
+
+; --- sprite 3: MISSILE ---
+DrawMissile:
+LDA MSL_ON
+BEQ DrawOption
+LDA MSL_XL
+STA D_XL
+LDA MSL_XH
+STA D_XH
+LDA MSL_Y
+STA D_Y
+LDA #FR_MISSILE
+STA D_PTR
+LDA #MISSILE_COL
+STA D_COL
+LDX #$03
+JSR PutSprite
+
+; --- sprite 4: OPTION ---
+DrawOption:
+LDA HAS_OPTION
+BEQ DrawEnemies
+LDA PLAYER_BOOM
+BNE DrawEnemies
+LDA OPT_XL
+STA D_XL
+LDA OPT_XH
+STA D_XH
+LDA OPT_Y
+STA D_Y
+LDA ANIM
+LSR
+LSR
+LSR
+AND #$01
+CLC
+ADC #FR_OPTION
+STA D_PTR
+LDA #OPTION_COL
+STA D_COL
+LDX #$04
+JSR PutSprite
+`;
+
+C.drawEnemies = `; --- sprites 5-7: enemy slots 0-2 ---
+DrawEnemies:
+LDA #$02
+STA T2
+DrawEnemyLoop:
+LDY T2
+LDA EN_XL,Y
+STA D_XL
+LDA EN_XH,Y
+STA D_XH
+LDA EN_Y,Y
+STA D_Y
+LDA EN_BOOM,Y
+BEQ DrawEnemyLive
+JSR BoomFrame
+JMP DrawEnemyPut
+DrawEnemyLive:
+LDA EN_ON,Y
+BEQ DrawCapsule
+LDA ANIM            ; two frames, swapped every 8 frames
+LSR
+LSR
+LSR
+AND #$01
+CLC
+ADC EN_FRAME,Y
+CLC
+ADC #FR_BASE
+STA D_PTR
+LDA EN_COL,Y
+STA D_COL
+DrawEnemyPut:
+LDA T2
+CLC
+ADC #$05
+TAX
+JSR PutSprite
+JMP DrawEnemyNext
+
+; A free slot may be lending its sprite to the capsule.
+DrawCapsule:
+LDA CAP_ON
+BEQ DrawEnemyNext
+CPY CAP_SLOT
+BNE DrawEnemyNext
+LDA CAP_XL
+STA D_XL
+LDA CAP_XH
+STA D_XH
+LDA CAP_Y
+STA D_Y
+LDA ANIM
+LSR
+LSR
+AND #$01
+CLC
+ADC #FR_CAPSULE
+STA D_PTR
+LDA #CAPSULE_COL
+STA D_COL
+LDA ANIM            ; flash white
+AND #$08
+BEQ DrawEnemyPut
+LDA #$01
+STA D_COL
+JMP DrawEnemyPut
+
+DrawEnemyNext:
+DEC T2
+BMI DrawEnemiesDone
+JMP DrawEnemyLoop
+DrawEnemiesDone:
+
+; All sprites placed: switch on exactly the ones in use.
+LDA SPR_ON
+STA $D015
+LDA SPR_MSB
+STA $D010
+RTS
+`;
+
+C.putSprite = `; PutSprite - sprite X (0-7) at D_XL/D_XH/D_Y, pointer D_PTR,
+; colour D_COL; marks it in SPR_ON and the ninth-bit mask SPR_MSB.
+PutSprite:
+LDA D_PTR
+STA $07F8,X
+LDA D_COL
+STA $D027,X
+LDA SprBit,X
+ORA SPR_ON
+STA SPR_ON
+LDA D_XH
+BEQ PutLowX
+LDA SprBit,X
+ORA SPR_MSB
+STA SPR_MSB
+PutLowX:
+TXA
+ASL
+TAY
+LDA D_XL
+STA $D000,Y
+LDA D_Y
+STA $D001,Y
+RTS
+SprBit:
+.byte $01,$02,$04,$08,$10,$20,$40,$80
+
+; BoomFrame - A = explosion timer -> one of the four BOOM frames.
+BoomFrame:
+LSR
+LSR
+LSR
+CMP #$04
+BCC BoomStep
+LDA #$03
+BoomStep:
+EOR #$03          ; counts down, so big timer = first frame
+CLC
+ADC #FR_BOOM
+STA D_PTR
+LDA #BOOM_COL
+STA D_COL
+RTS
+`;
+
+// ---------------- 12 HUD VALUES
+C.status = `; Status - numbers and meter colours into the fixed HUD (rows 0-2,
+; drawn by the TOP STATUS macro from the STATUS asset).
+; Meter colours - on the HUD panel.
+METER_COL = 14       ; a slot you can buy
+METER_LIT_COL = 7    ; the lit slot (flashes white)
+METER_OWNED_COL = 11 ; a power you already own
+
+Status:
+LDY #$07          ; score at row 0, column 7 (the HUD adds "00")
+LDA SCORE2
+JSR PutBcd
+LDA SCORE1
+JSR PutBcd
+LDY #$14          ; high score at column 20
+LDA HI2
+JSR PutBcd
+LDA HI1
+JSR PutBcd
+LDA LIVES         ; ships at column 37
+CLC
+ADC #$30
+STA $0425
+
+; Meter word n is 5 cells of colour RAM at row 1, column 2 + 6n.
+LDX #$00
+LDY #$00
+MeterLoop:
+JSR MeterColour
+STA $D82A,Y
+STA $D82B,Y
+STA $D82C,Y
+STA $D82D,Y
+STA $D82E,Y
+TYA
+CLC
+ADC #$06
+TAY
+INX
+CPX #$06
+BNE MeterLoop
+RTS
+
+; MeterColour - A = colour for meter slot X (0-5).
+MeterColour:
+TXA
+CLC
+ADC #$01
+CMP METER
+BNE MeterNotLit
+LDA ANIM
+AND #$08
+BEQ MeterLit
+LDA #$01
+RTS
+MeterLit:
+LDA #METER_LIT_COL
+RTS
+MeterNotLit:
+CPX #$00          ; SPEED can be bought again
+BEQ MeterNormal
+LDA POWERS,X
+BEQ MeterNormal
+LDA #METER_OWNED_COL
+RTS
+MeterNormal:
+LDA #METER_COL
+RTS
+
+; PutBcd - BCD byte A as two digits at $0400 + Y; Y moves on by 2.
+PutBcd:
+PHA
+LSR
+LSR
+LSR
+LSR
+CLC
+ADC #$30
+STA $0400,Y
+INY
+PLA
+AND #$0F
+CLC
+ADC #$30
+STA $0400,Y
+INY
+RTS
+`;
+
+// ---------------- 13 FIXED HUD / RASTER
+C.raster = `; The two raster IRQ callbacks (STARTUP column). The HUD rows are
+; hires and 40 columns wide and never scroll; the playfield below
+; is multicolour, 38 columns, with the WORLD SCROLLER's fine X ($62)
+; and fine Y ($63).
+HudFixed:
+LDA #$1B          ; fine Y 3: HUD row 0 starts on the first visible line
+STA $D011
+LDA #$08
+STA $D016
+RTS
+
+HudPlayfield:
+LDA $63
+ORA #$10
+STA $D011
+LDA $62
+ORA #$10
+STA $D016
+RTS
+
+HudNmi:
+RTI
+`;
+
+// ---------------- 14 EXPLOSIONS / SFX
+C.silence = `; SilenceGame - quiet voices 1 and 2, then set up the SFX player.
+SilenceGame:
+LDA #$00
+STA $D404
+STA $D40B
+`;
+C.sfxExplosionEntry = `RTS
+
+; ExplosionSound keeps X (it is called from the enemy loops).
+ExplosionSound:
+TXA
+PHA
+`;
+C.sfxCapsuleEntry = `PLA
+TAX
+RTS
+
+CapsuleSound:
+`;
+C.sfxPowerEntry = `RTS
+
+PowerSound:
+`;
+C.sfxTickEntry = `RTS
+
+; SfxTick - once per frame from GameLoop.
+SfxTick:
+`;
+C.effects = `RTS
+
+; Effects - run the explosion timers. When the ship's burst ends:
+; another ship, or GAME OVER back to the title.
+Effects:
+LDX #$02
+EffectEnemy:
+LDA EN_BOOM,X
+BEQ EffectNext
+DEC EN_BOOM,X
+EffectNext:
+DEX
+BPL EffectEnemy
+LDA PLAYER_BOOM
+BEQ EffectsDone
+DEC PLAYER_BOOM
+BNE EffectsDone
+LDA LIVES
+BEQ GameOver
+JMP ResetActors
+EffectsDone:
+RTS
+
+; GameOver - keep the best score, then back to the title.
+GameOver:
+LDA SCORE2
+CMP HI2
+BCC GameOverTitle
+BNE GameOverHi
+LDA SCORE1
+CMP HI1
+BCC GameOverTitle
+GameOverHi:
+LDA SCORE2
+STA HI2
+LDA SCORE1
+STA HI1
+GameOverTitle:
+SEI
+LDA #$00
+STA $D01A          ; raster IRQs off before the KERNAL comes back
+STA $D015
+LDA #$FF
+STA $D019
+JSR SilenceGame
+JMP BootTitle
+`;
