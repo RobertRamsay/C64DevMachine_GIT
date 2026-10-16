@@ -540,7 +540,11 @@ def place_columns(cols, sizes):
     return cols
 
 
-COLLAPSED_BOX_H = 440.0   # a column box around its comment + folded ORG block
+# Columns that start folded to their ORG block (the 10 SFX nodes make column
+# 03 long and there is nothing to edit in it); their box only fits the
+# comment and the ORG block.
+COLLAPSED = {"03 FRAME SYNC / IRQ / SOUNDS"}
+COLLAPSED_BOX_H = 440.0
 
 def build_nodes(tables, cols, comments):
     nodes, orgs, boxes = [], [], []
@@ -561,7 +565,7 @@ def build_nodes(tables, cols, comments):
             o["org_uid"] = float(org_uid)
             org_uid += 1
             o["connected"] = False
-            o["collapsed"] = True          # columns start folded to their ORG block
+            o["collapsed"] = c["name"] in COLLAPSED   # folded to its ORG block
             orgs.append(o)
             parent = (x, y)
             y += 80
@@ -581,7 +585,8 @@ def build_nodes(tables, cols, comments):
             y += int(n["height"])
         boxes.append({"x": float(x - 20), "y": 120.0, "panel_links": [], "is_panel": False,
                       "box_col_idx": float(ci % 8), "box_name": c["name"],
-                      "box_h": COLLAPSED_BOX_H, "box_w": 280.0})
+                      "box_h": COLLAPSED_BOX_H if c["name"] in COLLAPSED else float(y - 120 + 40),
+                      "box_w": 280.0})
     return orgs + nodes, boxes
 
 
