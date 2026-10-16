@@ -72,31 +72,44 @@ function buildAssets() {
   return out;
 }
 
-// Title tune: a rising E-minor line over an octave-bouncing bass.
+// Title tune: E minor, Em C | G D | Em C | Am B. A pulse lead, a busy octave bass and
+// one-frame chord arpeggios (ARP MINOR / ARP MAJOR) on voice 3.
 function buildMusic() {
   const m = structuredClone(V_ASSETS.MUSIC_AND_SFX.meta);
+  // instr: one instrument for the pattern, or [first half, second half]
   const pat = (name, str, instr) => {
-    const steps = str.trim().split(/\s+/).map(t => t === '.' ? { note: '', instr_idx: -1, empty: true }
-      : t === '-' ? { note: '---', instr_idx: -1, empty: false } : { note: t, instr_idx: instr, empty: false });
+    const steps = str.trim().split(/\s+/).map((t, i) => {
+      const ins = Array.isArray(instr) ? instr[i < 16 ? 0 : 1] : instr;
+      return t === '.' ? { note: '', instr_idx: -1, empty: true }
+        : t === '-' ? { note: '---', instr_idx: -1, empty: false } : { note: t, instr_idx: ins, empty: false };
+    });
     if (steps.length !== 32) throw new Error(`${name}: ${steps.length} steps`);
     return { pattern_len: 32, steps, name };
   };
   m.instruments = [
-    { release: 3, pulse_width: 1024, text: '$41,D6,$40,D2,---', name: 'LEAD PULSE', attack: 0, decay: 5, sustain: 9 },
-    { release: 2, pulse_width: 2048, text: '$11,D8,$10,D2,---', name: 'BASS', attack: 0, decay: 7, sustain: 8 },
+    { release: 4, pulse_width: 1024, text: '$41&V$23,D14,$40,D2,---', name: 'LEAD PULSE', attack: 0, decay: 6, sustain: 10 },
+    { release: 1, pulse_width: 1536, text: '$41&N+12,N,D2,$40,---', name: 'BASS', attack: 0, decay: 6, sustain: 9 },
+    { release: 3, pulse_width: 2048, text: '$41&N,N+3,N+7,N,L1', name: 'ARP MINOR', attack: 0, decay: 9, sustain: 5 },
+    { release: 3, pulse_width: 2048, text: '$41&N,N+4,N+7,N,L1', name: 'ARP MAJOR', attack: 0, decay: 9, sustain: 5 },
   ];
   m.patterns = [
-    pat('LEAD A', 'E-4 . G-4 . B-4 . . . E-5 . . . D-5 . B-4 . A-4 . . . B-4 . G-4 . F#4 . . . D-4 . . .', 0),
-    pat('LEAD B', 'C-5 . . . B-4 . A-4 . G-4 . . . A-4 . B-4 . D-5 . . . F#5 . E-5 . . . . . - . . .', 0),
-    pat('BASS A', 'E-2 . E-3 . E-2 . E-3 . E-2 . E-3 . E-2 . E-3 . D-2 . D-3 . D-2 . D-3 . D-2 . D-3 . B-1 . B-2 .', 1),
-    pat('BASS B', 'C-2 . C-3 . C-2 . C-3 . G-1 . G-2 . G-1 . G-2 . D-2 . D-3 . D-2 . D-3 . B-1 . B-2 . B-1 . B-2 .', 1),
-    pat('SILENT', Array(32).fill('-').join(' '), -1),
+    pat('LEAD A', 'E-5 . . . B-4 . E-5 . G-5 . . . F#5 . E-5 . E-5 . . . C-5 . E-5 . G-5 . . . A-5 . G-5 .', 0),
+    pat('LEAD B', 'B-5 . . . G-5 . D-5 . G-5 . . . A-5 . B-5 . A-5 . . . F#5 . D-5 . F#5 . . . E-5 . D-5 .', 0),
+    pat('LEAD C', 'E-5 . G-5 . B-5 . . . A-5 . G-5 . E-5 . . . G-5 . . . E-5 . C-5 . E-5 . G-5 . C-6 . . .', 0),
+    pat('LEAD D', 'C-6 . . . B-5 . A-5 . E-5 . . . A-5 . C-6 . B-5 . . . A-5 . F#5 . D#5 . . . B-4 . . .', 0),
+    pat('BASS A', 'E-2 . E-3 E-2 . E-3 E-2 E-3 E-2 . E-3 E-2 . E-3 B-2 B-3 C-2 . C-3 C-2 . C-3 C-2 C-3 C-2 . C-3 C-2 . C-3 G-2 G-3', 1),
+    pat('BASS B', 'G-1 . G-2 G-1 . G-2 G-1 G-2 G-1 . G-2 G-1 . G-2 D-2 D-3 D-2 . D-3 D-2 . D-3 D-2 D-3 D-2 . D-3 D-2 . D-3 A-2 A-3', 1),
+    pat('BASS C', 'E-2 . E-3 E-2 . E-3 E-2 E-3 E-2 . E-3 E-2 . E-3 B-2 B-3 C-2 . C-3 C-2 . C-3 C-2 C-3 C-2 . C-3 C-2 . C-3 G-2 G-3', 1),
+    pat('BASS D', 'A-1 . A-2 A-1 . A-2 A-1 A-2 A-1 . A-2 A-1 . A-2 E-2 E-3 B-1 . B-2 B-1 . B-2 B-1 B-2 B-1 . B-2 B-1 . B-2 F#2 F#3', 1),
+    pat('ARP A', 'E-4 . . . E-4 . . . E-5 . . . E-4 . . . C-4 . . . C-4 . . . C-5 . . . C-4 . . .', [2, 3]),
+    pat('ARP B', 'G-4 . . . G-4 . . . G-5 . . . G-4 . . . D-4 . . . D-4 . . . D-5 . . . D-4 . . .', [3, 3]),
+    pat('ARP C', 'E-4 . . . E-4 . . . E-5 . . . E-4 . . . C-4 . . . C-4 . . . C-5 . . . C-4 . . .', [2, 3]),
+    pat('ARP D', 'A-4 . . . A-4 . . . A-5 . . . A-4 . . . B-4 . . . B-4 . . . B-5 . . . B-4 . . .', [2, 3]),
   ];
-  m.songs = [{ loop: true, loop_row: 0, name: 'TITLE THEME', order: [
-    { force_len: 32, v1: 0, v2: 2, repeat_short: false, v3: 4 },
-    { force_len: 32, v1: 1, v2: 3, repeat_short: false, v3: 4 },
-  ] }];
-  m.play_speed = 5;
+  // voice 1 lead, voice 2 bass, voice 3 arpeggios
+  m.songs = [{ loop: true, loop_row: 0, name: 'TITLE THEME', order: [0, 1, 2, 3].map(i =>
+    ({ force_len: 32, v1: i, v2: 4 + i, repeat_short: false, v3: 8 + i })) }];
+  m.play_speed = 4;
   return m;
 }
 
@@ -195,11 +208,11 @@ const COLUMNS = [
       { t: 'NORMAL', code: [['rts', 0]] },
     ],
     notes: [
-      { at: 'sid', text: 'ASSET: MUSIC_AND_SFX\nThe title tune. Open it in\nthe Music Maker: patterns\nLEAD A/B and BASS A/B,\nsong TITLE THEME.' },
+      { at: 'sid', text: 'ASSET: MUSIC_AND_SFX\nThe title tune. Open it in\nthe Music Maker: LEAD,\nBASS and ARP patterns A-D,\nsong TITLE THEME.' },
       { at: 'bmp', text: 'ASSET: FRONT_END\nThe title picture, a hires\nbitmap at $4000. Paint it\nin the bitmap editor.' },
     ] },
 
-  { name: '03 GAME SETUP', org: 0x8C00,
+  { name: '03 GAME SETUP', org: 0xB600,
     head: 'GAME SETUP\nScreen mode and charset,\nthe scrolling WORLD, the\nsprites and the HUD. Then\na new game starts.',
     items: [
       { t: 'LABEL', code: [['label', 'SetupGame']] },
@@ -309,8 +322,8 @@ const COLUMNS = [
       { k: 'sdraw', t: 'MACRO_CODE', title: 'SHOT DRAW', body: C.shotDraw },
     ],
     notes: [
-      { at: 'efire', text: 'Enemies take turns to\nshoot, every FIRE_RATE\nframes; TURRETs fire when\nthe SPAWNER cues them.\nEach shot is aimed at the\nship (16 directions).' },
-      { at: 'sdraw', text: 'A shot is a pellet char\n(TILES 120-135: 4 x 4\npositions in a cell). It is\nrubbed out before the\nscroll and drawn again\nafter it. Rock stops it.' },
+      { at: 'efire', text: 'Enemies take turns to\nshoot, every FIRE_RATE\nframes; TURRETs fire when\nthe SPAWNER cues them.\nSpinners (FAN) fire four\nways along their spokes.\nThe rest aim at the\nship (16 directions).' },
+      { at: 'sdraw', text: 'A shot is a pellet char\n(TILES 120-135: 4 x 4\npositions in a cell). It is\nrubbed out before the\nscroll and drawn again\nafter it. Rock stops it,\nand so do our shot,\nDOUBLE and MISSILE.' },
     ],
     panels: [{ name: 'ENEMY FIRE', links: ['efire'], at: 'efire' }] },
 

@@ -51,14 +51,14 @@ const STATE_LIST = [
 // Enemy shots (ENEMY FIRE column), page $C1. Not in the range BootTitle
 // clears: NEW GAME and ResetActors clear what has to be.
 const SHOT_STATE = [
-  ['ES_ON', 4, 'enemy shot flying'],
-  ['ES_X', 4, 'X in 2-pixel steps from the screen edge (0-159)'], ['ES_XF', 4, 'X fraction'],
-  ['ES_Y', 4, 'Y (sprite coordinates)'], ['ES_YF', 4, 'Y fraction'],
-  ['ES_VXL', 4, 'X speed, 8.8 signed'], ['ES_VXH', 4, ''],
-  ['ES_VYL', 4, 'Y speed, 8.8 signed'], ['ES_VYH', 4, ''],
-  ['ES_SHOWN', 4, '1 = drawn on the screen at ES_AL/ES_AH'],
-  ['ES_AL', 4, 'screen address of the drawn shot'], ['ES_AH', 4, ''],
-  ['ES_UNDER', 4, 'the char it covers, put back by EraseShots'],
+  ['ES_ON', 6, 'enemy shot flying'],
+  ['ES_X', 6, 'X in 2-pixel steps from the screen edge (0-159)'], ['ES_XF', 6, 'X fraction'],
+  ['ES_Y', 6, 'Y (sprite coordinates)'], ['ES_YF', 6, 'Y fraction'],
+  ['ES_VXL', 6, 'X speed, 8.8 signed'], ['ES_VXH', 6, ''],
+  ['ES_VYL', 6, 'Y speed, 8.8 signed'], ['ES_VYH', 6, ''],
+  ['ES_SHOWN', 6, '1 = drawn on the screen at ES_AL/ES_AH'],
+  ['ES_AL', 6, 'screen address of the drawn shot'], ['ES_AH', 6, ''],
+  ['ES_UNDER', 6, 'the char it covers, put back by EraseShots'],
   ['ES_TICK', 1, 'frames to the next shot'], ['ES_NEXT', 1, 'enemy slot that shoots next'],
   ['ES_AX', 1, 'aim: |dx|'], ['ES_AY', 1, 'aim: |dy|'], ['ES_SX', 1, 'aim: 1 = dx negative'], ['ES_SY', 1, 'aim: 1 = dy negative'],
   ['ES_K', 1, 'aim: angle from level, 22.5 degree steps'],
@@ -90,7 +90,7 @@ export function stateMapCode() {
   }
   out += '\n; OPTION trail: 32 remembered ship positions\n';
   out += `TRAIL_XL    = $C080\nTRAIL_XH    = $C0A0\nTRAIL_Y     = $C0C0\n`;
-  out += '\n; Enemy shots (ENEMY FIRE), 4 of each per-shot byte\n';
+  out += '\n; Enemy shots (ENEMY FIRE), 6 of each per-shot byte\n';
   for (const [n, size, note] of SHOT_STATE) out += `${pad(n)}= ${hex(STATE[n])}` + (note ? `   ; ${note}${size > 1 ? ` (${size} bytes)` : ''}` : '') + '\n';
   out += '\n; High score - outside the cleared range so it survives a game over\n';
   out += 'HI1         = $C0FE   ; hundreds + thousands (BCD)\nHI2         = $C0FF   ; 10 thousands + 100 thousands (BCD)\n';
@@ -204,7 +204,7 @@ LDA #$00
 STA SCORE1
 STA SCORE2
 ; the screen is fresh: no enemy shot is drawn on it
-LDX #$03
+LDX #$05
 ClearShown:
 STA ES_SHOWN,X
 DEX
@@ -316,7 +316,7 @@ ClearBooms:
 STA EN_BOOM,X
 DEX
 BPL ClearBooms
-LDX #$03
+LDX #$05
 ClearShots:
 STA ES_ON,X
 DEX
@@ -1396,7 +1396,7 @@ ProbeRowHi:
 // ---------------- ENEMY FIRE
 C.enemyFire = `; EnemyFire - the enemies shoot at the ship. All 8 sprites are taken,
 ; so a shot is a character: a dot drawn into the screen, rubbed out and
-; drawn again every frame (SHOT DRAW). Up to 4 fly at once.
+; drawn again every frame (SHOT DRAW). Up to 6 fly at once.
 ; On the ENEMY FIRE panel:
 ENEMY_SHOTS = 1       ; 0 = the enemies never shoot
 FIRE_RATE = 50        ; frames between shots
@@ -1474,44 +1474,21 @@ EFDone:
 .ENDIF
 RTS
 
-; LaunchShot - SPAWNER slot X fires a shot at the ship. Keeps X.
+; LaunchShot - SPAWNER slot X fires. The four-spoke spinner (the
+; FAN types: ACTORS frame 10) sprays four shots along its spokes, any
+; other enemy fires one shot at the ship. Keeps X.
+SPIN_PTR = $AA        ; the spinner's first frame: $A0 + 10
 LaunchShot:
-LDY #$03
-LaunchFind:
-LDA ES_ON,Y
-BEQ LaunchFree
-DEY
-BPL LaunchFind
+LDY SPN_TYPE,X
+LDA SPN_T_PTR,Y
+CMP #SPIN_PTR
+BNE LaunchAimed
+JMP SprayShots
 LaunchNone:
-RTS               ; all 4 are flying (or no room)
-LaunchFree:
-; from the middle of the enemy, if that is on the playfield
-LDA SPN_Y,X
-CLC
-ADC #$0A
-CMP #$50
-BCC LaunchNone
-CMP #$F0
+RTS
+LaunchAimed:
+JSR ShotStart
 BCS LaunchNone
-STA ES_Y,Y
-LDA SPN_XL,X
-SEC
-SBC #$0C
-STA T0
-LDA SPN_XH,X
-SBC #$00
-BMI LaunchNone
-LSR
-LDA T0
-ROR
-CMP #$A0
-BCS LaunchNone
-CMP #$04
-BCC LaunchNone
-STA ES_X,Y
-LDA #$80
-STA ES_XF,Y
-STA ES_YF,Y
 ; aim: |dx| and |dy| to the ship, and their signs
 LDA #$00
 STA ES_SX
@@ -1559,7 +1536,7 @@ ASL
 ASL
 ADC ES_AY
 CMP ES_AX
-BCC AimGo         ; dy * 5 < dx: level
+BCC ShotGo         ; dy * 5 < dx: level
 INC ES_K
 LDA ES_AY
 ASL
@@ -1568,9 +1545,9 @@ STA T0
 LDA ES_AX
 ASL
 CMP T0
-BCS AimGo         ; dy * 3 <= dx * 2: 22.5
+BCS ShotGo         ; dy * 3 <= dx * 2: 22.5
 INC ES_K
-JMP AimGo         ; 45
+JMP ShotGo         ; 45
 AimSteep:
 LDA #$04          ; mostly up or down
 STA ES_K
@@ -1579,7 +1556,7 @@ ASL
 ASL
 ADC ES_AX
 CMP ES_AY
-BCC AimGo         ; dx * 5 < dy: straight
+BCC ShotGo         ; dx * 5 < dy: straight
 DEC ES_K
 LDA ES_AX
 ASL
@@ -1588,9 +1565,11 @@ STA T0
 LDA ES_AY
 ASL
 CMP T0
-BCS AimGo         ; 67.5
+BCS ShotGo         ; 67.5
 DEC ES_K          ; 45
-AimGo:
+; ShotGo - shot Y flies at angle ES_K (0 level - 4 straight up or
+; down, 22.5 degrees a step), X negative if ES_SX, Y negative if ES_SY.
+ShotGo:
 STX T1
 LDX ES_K
 LDA AimVX,X
@@ -1626,6 +1605,84 @@ LDA #$01
 STA ES_ON,Y
 RTS
 
+; ShotStart - a free shot (Y) at the middle of SPAWNER slot X.
+; Carry set: no shot (all flying, or the enemy is off the playfield).
+ShotStart:
+LDY #$05
+SSFind:
+LDA ES_ON,Y
+BEQ SSFree
+DEY
+BPL SSFind
+SSNone:
+SEC
+RTS
+SSFree:
+LDA SPN_Y,X
+CLC
+ADC #$0A
+CMP #$50
+BCC SSNone
+CMP #$F0
+BCS SSNone
+STA ES_Y,Y
+LDA SPN_XL,X
+SEC
+SBC #$0C
+STA T0
+LDA SPN_XH,X
+SBC #$00
+BMI SSNone
+LSR
+LDA T0
+ROR
+CMP #$A0
+BCS SSNone
+CMP #$04          ; column 0 is under the border (38 columns)
+BCC SSNone
+STA ES_X,Y
+LDA #$80
+STA ES_XF,Y
+STA ES_YF,Y
+CLC
+RTS
+
+; SprayShots - spinner slot X fires along its four spokes. It is drawn
+; as an X (frame +0) or a + (frame +1), swapped every 8 frames: the X
+; shoots the diagonals, the + straight across and up and down.
+SprayShots:
+LDA ANIM
+LSR
+AND #$04          ; frame +1: spokes 4-7
+STA T2
+LDA #$04
+STA ES_AX         ; spokes to go
+SprayLoop:
+JSR ShotStart
+BCS SprayDone
+STX ES_AY
+LDX T2
+LDA SprayK,X
+STA ES_K
+LDA SpraySX,X
+STA ES_SX
+LDA SpraySY,X
+STA ES_SY
+LDX ES_AY
+JSR ShotGo
+INC T2
+DEC ES_AX
+BNE SprayLoop
+SprayDone:
+RTS
+; spokes 0-3: the X, 4-7: the +
+SprayK:
+.byte $02,$02,$02,$02,$00,$00,$04,$04
+SpraySX:
+.byte $00,$01,$00,$01,$00,$01,$00,$00
+SpraySY:
+.byte $00,$00,$01,$01,$00,$00,$00,$01
+
 ; 1 pixel per frame at each angle, 8.8: X in shot units (2 pixels),
 ; so cos / 2; Y in pixels, sin.
 AimVX:
@@ -1638,10 +1695,12 @@ AimVYH:
 ; MoveShots - ENEMY_SHOT_SPEED steps a frame; off the playfield they go,
 ; into the ship they cost a life (or a SHIELD hit).
 MoveShots:
-LDX #$03
+LDX #$05
 ESMove:
 LDA ES_ON,X
-BEQ ESNext
+BNE ESLive
+JMP ESNext
+ESLive:
 LDY #ENEMY_SHOT_SPEED
 ESStep:
 LDA ES_XF,X
@@ -1670,6 +1729,61 @@ CMP #$50          ; up into the HUD
 BCC ESOff
 CMP #$F4          ; the bottom border
 BCS ESOff
+JMP ESInside
+ESOff:
+LDA #$00
+STA ES_ON,X
+JMP ESNext
+ESInside:
+; our shot, DOUBLE or MISSILE meets it: both are gone (a LASER keeps
+; going)
+LDA SHOT_ON
+BEQ ESCDouble
+LDA SHOT_XL
+STA T0
+LDA SHOT_XH
+STA T1
+LDA SHOT_Y
+STA T2
+JSR ShotVsWeapon
+BCS ESCDouble
+LDA HAS_LASER
+BNE ESCancel
+LDA #$00
+STA SHOT_ON
+JMP ESCancel
+ESCDouble:
+LDA DBL_ON
+BEQ ESCMissile
+LDA DBL_XL
+STA T0
+LDA DBL_XH
+STA T1
+LDA DBL_Y
+STA T2
+JSR ShotVsWeapon
+BCS ESCMissile
+LDA #$00
+STA DBL_ON
+JMP ESCancel
+ESCMissile:
+LDA MSL_ON
+BEQ ESShip
+LDA MSL_XL
+STA T0
+LDA MSL_XH
+STA T1
+LDA MSL_Y
+STA T2
+JSR ShotVsWeapon
+BCS ESShip
+LDA #$00
+STA MSL_ON
+ESCancel:
+LDA #$00
+STA ES_ON,X
+JMP ESNext
+ESShip:
 LDA PLAYER_BOOM
 ORA INVULN
 BNE ESNext
@@ -1691,19 +1805,53 @@ LDA #$00
 STA ES_ON,X
 JSR ShipHit
 JMP ESNext
-ESOff:
-LDA #$00
-STA ES_ON,X
 ESNext:
 DEX
-BPL ESMove
+BMI ESDone
+JMP ESMove
+ESDone:
+RTS
+
+; ShotVsWeapon - does enemy shot X touch our weapon sprite at
+; T0/T1 (X, 9 bits) / T2 (Y)? Carry clear: yes. Within 10 pixels each
+; way of the sprite's middle (+12, +9); the shot's middle is +2, +2.
+ShotVsWeapon:
+LDA T0
+SEC
+SBC #$0E          ; +12 to the middle, -24 to the edge, -2 for the shot
+STA T0
+LDA T1
+SBC #$00
+BMI SVWMiss
+LSR
+LDA T0
+ROR               ; in shot units (2 pixels)
+SEC
+SBC ES_X,X
+CLC
+ADC #$05
+CMP #$0B
+BCS SVWMiss
+LDA T2
+CLC
+ADC #$07          ; +9 to the middle, -2 for the shot
+SEC
+SBC ES_Y,X
+CLC
+ADC #$0A
+CMP #$15
+BCS SVWMiss
+CLC
+RTS
+SVWMiss:
+SEC
 RTS
 `;
 
 C.shotDraw = `; EraseShots - before the WORLD SCROLLER moves the screen: put back the
 ; char under every drawn shot, so the scroll never carries a shot along.
 EraseShots:
-LDX #$03
+LDX #$05
 ESErase:
 LDA ES_SHOWN,X
 BEQ ESEraseNext
@@ -1725,7 +1873,7 @@ RTS
 ; that meets a tagged char (rock, a bunker) is gone; one that meets
 ; another shot waits a frame.
 DrawShots:
-LDX #$03
+LDX #$05
 ESDraw:
 LDA ES_ON,X
 BEQ ESDrawNext
@@ -2193,11 +2341,13 @@ RTI
 `;
 
 // ---------------- 14 EXPLOSIONS / SFX
-C.silence = `; SilenceGame - quiet voices 1 and 2, then set up the SFX player.
+C.silence = `; SilenceGame - quiet the title tune's three voices, then set up the
+; SFX player.
 SilenceGame:
 LDA #$00
 STA $D404
 STA $D40B
+STA $D412
 `;
 C.sfxExplosionEntry = `RTS
 
