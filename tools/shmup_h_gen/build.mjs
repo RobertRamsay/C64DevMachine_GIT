@@ -6,6 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { reflow } from './reflow.mjs';
 import { V_ASSETS, buildCharset, buildMap, buildSprites, buildTitle, buildSpawns, SPAWN_TYPES, STAMPS, MAP_ROWS, MAP_COLS, LOOP_COL, CH } from './art.mjs';
 import { C, STATE, stateMapCode, stateUsed } from './code.mjs';
 
@@ -126,6 +127,8 @@ const HEIGHT = { ORG: 80, INIT: 80, MACRO_CODE: 100, NORMAL: 60, LABEL: 40, MACR
 const TITLE = { ORG: 'ORG BLOCK', INIT: 'SYSTEM INIT', MACRO_CODE: 'CODE BLOCK', NORMAL: 'Opcode', LABEL: 'ADDRESS LABEL', COMMENT: 'COMMENT' };
 
 function rawNode(type, code, x, y, extra = {}) {
+  // comments are stored as paragraphs so a widened box reflows them
+  if (type === 'COMMENT') code = [['Comment', reflow(code[0][1])]];
   return Object.assign({ anim_alias: '', x, helper_text: '', y, comment_w_mult: 1, comment_w: 0, comment_h: 0, x_indent: 0,
     proxy: true, collapsed: false, end_address: 0, type, pc_address: 0, height: HEIGHT[type] || 100, title: TITLE[type] || type,
     connected: type !== 'COMMENT', org_parent_x: -1, org_parent_y: -1, has_org_parent: false, code, binary_blob: '',
@@ -136,7 +139,7 @@ const P = (label, kind, sym, vmin, vmax, options = '', row = 0, slot = 1) => ({ 
 const COL_P = (label, sym) => P(label, 'COLOUR', sym, 0, 15);
 const commentText = s => s.replace(/^\n/, '').replace(/\n$/, '');
 const estLines = s => commentText(s).split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 30)), 0);
-const commentH = s => 40 + estLines(s) * 20;   // what the editor sizes a comment to
+const commentH = s => 40 + estLines(reflow(s)) * 20;   // what the editor sizes a comment to
 
 // A code block gets a short header naming its column and what it uses.
 function codeText(colName, title, body) {
