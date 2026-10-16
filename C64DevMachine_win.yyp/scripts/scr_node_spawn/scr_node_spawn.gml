@@ -200,6 +200,15 @@ case "LABEL": {
             with (_n) { event_user(0); }
             break;
 			
+		case "MACRO_SPAWNER":
+            _n.node_title   = "SPAWNER";
+            // [1]=map asset [2]=map index [3]=mode 0 H, 1 V, 2 ROOMS [4]=slots
+            // [5]/[6]=ROOMS column / row offset (scr_spawn)
+            _n.instructions = [["MACRO_SPAWNER", "", 0, 0, 4, 0, 0]];
+            _n.pc_address   = global.start_pc;
+            with (_n) { event_user(0); }
+        break;
+
 		case "MACRO_METASCROLL":
             _n.node_title   = "METASCROLL";
             _n.scroll_alias = "";

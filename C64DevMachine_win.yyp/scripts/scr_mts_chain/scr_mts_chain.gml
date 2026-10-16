@@ -46,6 +46,7 @@ function scr_mts_maps_sync(_m) {
 /// @desc A map was deleted: drop its per-map entries and its uses in chains
 ///       (later maps move down one, so chain references are renumbered).
 function scr_mts_map_removed(_m, _idx) {
+    scr_spawn_map_removed(_m, _idx);
     if (_idx < array_length(_m.map_w)) {
         array_delete(_m.map_w, _idx, 1);
     }

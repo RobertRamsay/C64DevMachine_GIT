@@ -28,6 +28,11 @@ function scr_macro_entry_labels() {
 
         switch (node_type) {
 
+            case "MACRO_SPAWNER": {
+                var _spl = scr_spawn_entry_labels(scr_spawn_node_args(id).axis);
+                for (var _spk = 0; _spk < array_length(_spl); _spk++) _out[$ _spl[_spk]] = true;
+            } break;
+
             case "MACRO_METASCROLL":
                 _out[$ "MSC_L"]      = true;
                 _out[$ "MSC_R"]      = true;

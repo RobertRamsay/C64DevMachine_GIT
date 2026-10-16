@@ -1260,6 +1260,7 @@ if (scr_workspace_mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse
         case "MACRO_MAP":        scr_node_step_macro_map(id);        break;
 		case "MACRO_METAMAP":    scr_node_step_macro_metamap(draw_x);    break;
 		case "MACRO_METASCROLL": scr_node_step_macro_metascroll(draw_x); break;
+		case "MACRO_SPAWNER":    scr_node_step_macro_spawner(draw_x); break;
 		case "MACRO_MAP_SWITCH": scr_node_step_macro_map_switch(id); break;
         case "NEW_STR":      scr_node_step_new_str();            break;
        
@@ -1951,6 +1952,10 @@ if (scr_workspace_mouse_check_button_pressed(mb_left) && !is_dragging && !_mouse
                                 if (node_type == "MACRO_VSCROLL") {
                                     array_push(other.label_picker_list, "Scroller_U");
                                     array_push(other.label_picker_list, "Scroller_D");
+                                }
+                                if (node_type == "MACRO_SPAWNER") {
+                                    var _spl = scr_spawn_entry_labels(scr_spawn_node_args(id).axis);
+                                    for (var _spk = 0; _spk < array_length(_spl); _spk++) array_push(other.label_picker_list, _spl[_spk]);
                                 }
                                 if (node_type == "MACRO_METASCROLL") {
                                     array_push(other.label_picker_list, "MSC_L");

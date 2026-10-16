@@ -156,6 +156,59 @@ export function buildMap() {
   return { grid: full.flat(), floor, ceil };
 }
 
+// ------------------------------------------------------------ spawn layer
+// Entity types for the WORLD map's SPAWN layer (frames are ACTORS frames,
+// the runtime adds 1 every 8 frames, so each type uses a pair).
+// move: 0 STRAIGHT 1 SINE 2 CHASE 3 ZIGZAG 4 DIVE 5 WALKER 6 TURRET
+export const SPAWN_TYPES = [
+  { name: 'FAN', frame: 10, col: 14, hp: 1, pts: 1, speed: 2, move: 1, value: 2, drop: 0 },
+  { name: 'RED FAN', frame: 10, col: 2, hp: 1, pts: 2, speed: 2, move: 1, value: 2, drop: 1 },
+  { name: 'JET', frame: 12, col: 10, hp: 1, pts: 1, speed: 3, move: 0, value: 0, drop: 0 },
+  { name: 'RING', frame: 14, col: 7, hp: 2, pts: 2, speed: 1, move: 2, value: 1, drop: 0 },
+  { name: 'DART', frame: 16, col: 13, hp: 1, pts: 1, speed: 2, move: 3, value: 2, drop: 0 },
+  { name: 'DIVER', frame: 12, col: 4, hp: 1, pts: 2, speed: 2, move: 4, value: 3, drop: 0 },
+  { name: 'WALKER', frame: 24, col: 15, hp: 2, pts: 3, speed: 0, move: 5, value: 1, drop: 0 },
+];
+
+// Placements [col, row, type] in WORLD map chars (row 0 = screen row 3).
+// Three enemy sprites means three alive at once, so groups are spaced out.
+// The first and last 40 columns stay empty: that is where the map loops.
+export function buildSpawns(map) {
+  const out = [];
+  const free = c => {                       // usable rows at map column c
+    const s = Math.floor(c / 2) % map.floor.length;
+    const top = map.ceil[s] * 2 + 1;
+    const bottom = 22 - map.floor[s] * 2 - 4;   // 3-char sprite clear of the floor
+    return [top, Math.max(top, bottom)];
+  };
+  const mid = c => { const [a, b] = free(c); return Math.round((a + b) / 2); };
+  const groups = ['fans', 'jets', 'walker', 'rings', 'fans_red', 'darts', 'diver', 'walker', 'fans', 'jets', 'darts', 'fans_red'];
+  let c = 44;
+  for (const g of groups) {
+    if (c > 176) break;
+    const [top, bottom] = free(c);
+    if (g === 'fans' || g === 'fans_red') {
+      const y = mid(c);
+      for (let i = 0; i < 3; i++) out.push([c + i * 3, y, g === 'fans_red' && i === 2 ? 1 : 0]);
+    } else if (g === 'jets') {
+      out.push([c, top + 1, 2]); out.push([c + 4, bottom - 1, 2]);
+    } else if (g === 'rings') {
+      out.push([c, mid(c), 3]); out.push([c + 8, top + 1, 3]);
+    } else if (g === 'darts') {
+      out.push([c, mid(c) - 2, 4]); out.push([c + 5, mid(c) + 2, 4]);
+    } else if (g === 'diver') {
+      out.push([c, top + 1, 5]); out.push([c + 6, bottom - 1, 5]);
+    } else if (g === 'walker') {
+      // on the first flat stretch of floor from here
+      let x = c;
+      while (x < c + 10 && !(map.floor[Math.floor(x / 2)] === map.floor[Math.floor(x / 2) + 1] && map.floor[Math.floor(x / 2) - 1] === map.floor[Math.floor(x / 2)])) x += 2;
+      out.push([x & ~1, 22 - map.floor[Math.floor(x / 2)] * 2 - 3, 6]);
+    }
+    c += 12;
+  }
+  return out;
+}
+
 // ------------------------------------------------------------ sprites
 // 24x21, '#' = set. Hires, one colour each (set by DrawActors).
 const blank = () => Array.from({ length: 21 }, () => Array(24).fill(0));
@@ -265,6 +318,17 @@ const boom = n => {
   return g;
 };
 
+// a two-legged ground walker (Nemesis "ducker"), bottom of the sprite on the ground
+const walker = step => {
+  const g = blank();
+  disc(g, 12, 9, 5);
+  disc(g, 12, 9, 2, 0);
+  g[9][9] = 1; g[9][10] = 1;               // the eye looks left, at the player
+  const legs = step ? [[9, 6], [15, 18]] : [[7, 9], [17, 15]];
+  for (const [top, foot] of legs) line(g, top + 2, 13, foot, 20);
+  return g;
+};
+
 // [name, grid, colour shown in the editor] - order = sprite pointer $A0 + n
 export function buildSprites() {
   const list = [
@@ -292,6 +356,8 @@ export function buildSprites() {
     ['BOOM 2', boom(1), 7],
     ['BOOM 3', boom(2), 7],
     ['BOOM 4', boom(3), 7],
+    ['WALKER A', walker(0), 15],
+    ['WALKER B', walker(1), 15],
   ];
   const bytes = Buffer.alloc(list.length * 64);
   list.forEach(([, g], i) => {

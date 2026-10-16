@@ -1404,6 +1404,7 @@
     {"id":{"name":"scr_spawn_raw_data_node","path":"scripts/scr_spawn_raw_data_node/scr_spawn_raw_data_node.yy",},},
     {"id":{"name":"scr_spawn_spr64_node","path":"scripts/scr_spawn_spr64_node/scr_spawn_spr64_node.yy",},},
     {"id":{"name":"scr_spawn_text_node","path":"scripts/scr_spawn_text_node/scr_spawn_text_node.yy",},},
+    {"id":{"name":"scr_spawn","path":"scripts/scr_spawn/scr_spawn.yy",},},
     {"id":{"name":"scr_spr64_get_frame_mc","path":"scripts/scr_spr64_get_frame_mc/scr_spr64_get_frame_mc.yy",},},
     {"id":{"name":"scr_spr64_get_frame_uc","path":"scripts/scr_spr64_get_frame_uc/scr_spr64_get_frame_uc.yy",},},
     {"id":{"name":"scr_spr64_import","path":"scripts/scr_spr64_import/scr_spr64_import.yy",},},

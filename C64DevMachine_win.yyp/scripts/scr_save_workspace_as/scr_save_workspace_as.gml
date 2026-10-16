@@ -242,6 +242,7 @@
 	        if (variable_struct_exists(_a.meta, "tile_colours"))  _meta_out.tile_colours  = _a.meta.tile_colours;
 	        if (variable_struct_exists(_a.meta, "obj_asset")) _meta_out.obj_asset = _a.meta.obj_asset;
 	        if (variable_struct_exists(_a.meta, "room_objects")) _meta_out.room_objects = _a.meta.room_objects;
+	        if (variable_struct_exists(_a.meta, "spawn")) _meta_out.spawn = _a.meta.spawn;   // entity spawn layer (scr_spawn)
 	        if (variable_struct_exists(_a.meta, "obj_row_off")) _meta_out.obj_row_off = _a.meta.obj_row_off;
 	        if (variable_struct_exists(_a.meta, "obj_col_off")) _meta_out.obj_col_off = _a.meta.obj_col_off;
 	        if (variable_struct_exists(_a.meta, "obj_table_addr")) _meta_out.obj_table_addr = _a.meta.obj_table_addr;

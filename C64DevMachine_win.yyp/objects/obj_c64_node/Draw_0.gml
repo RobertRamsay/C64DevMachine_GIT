@@ -267,6 +267,7 @@ if (height_dirty) {
         height = _G * _sc_rows;
     } break;
 	case "MACRO_METASCROLL": height = _G * 11; break;   // 15 tiny-font rows + header
+	case "MACRO_SPAWNER":    height = _G * 7;  break;   // 5 settings, count, JSR row
 	case "MACRO_VSCROLL": height = _G * 6;  break;         // 160
     case "MACRO_TEXT_SCROLL": height = _G * 9; break;  
     case "MACRO_IRQ":         height = _G * 5;  break;   
@@ -701,6 +702,10 @@ var _active_list = [];
                     array_push(other.label_picker_list, "Scroller_U");
                     array_push(other.label_picker_list, "Scroller_D");
                 }
+                if (node_type == "MACRO_SPAWNER") {
+                    var _spl = scr_spawn_entry_labels(scr_spawn_node_args(id).axis);
+                    for (var _spk = 0; _spk < array_length(_spl); _spk++) array_push(other.label_picker_list, _spl[_spk]);
+                }
                 if (node_type == "MACRO_METASCROLL") {
                     array_push(other.label_picker_list, "MSC_L");
                     array_push(other.label_picker_list, "MSC_R");
@@ -1066,6 +1071,7 @@ switch (node_type) {
 	case "MACRO_MAP":        _head_col = is_connected ? make_color_rgb(40, 180, 100) : make_color_rgb(20,  90, 50); break;
 	case "MACRO_MAP_SWITCH": _head_col = is_connected ? make_color_rgb(40, 160, 180) : make_color_rgb(20,  80, 90); break;
 	case "MACRO_METASCROLL": _head_col = is_connected ? make_color_rgb(150, 100, 220) : make_color_rgb(70, 45, 110); break;
+	case "MACRO_SPAWNER":    _head_col = is_connected ? make_color_rgb(220, 90, 140) : make_color_rgb(110, 45, 70); break;
 	case "MACRO_VSCROLL": _head_col = is_connected ? make_color_rgb(40, 140, 200) : make_color_rgb(20, 70, 100); break;
     case "MACRO_SCROLL": _head_col = is_connected ? make_color_rgb(40, 180, 100) : make_color_rgb( 20, 90,  50); break;
 	case "NEW_STR":     _head_col = make_color_rgb(30, 120, 180);  break;
@@ -1643,6 +1649,7 @@ if (_lod_body) switch (node_type) {
 	case "MACRO_SPR_ENABLE":  scr_node_draw_macro_spr_enable(draw_x);  break;
 	case "MACRO_SPR_EXPAND":  scr_node_draw_macro_spr_expand(draw_x);  break;
 	case "MACRO_METASCROLL": scr_node_draw_macro_metascroll(draw_x, y, _cam_x, _cam_y, _cam_zoom); break;
+	case "MACRO_SPAWNER":    scr_node_draw_macro_spawner(draw_x, y); break;
 	case "MACRO_VSCROLL":  scr_node_draw_macro_vscroll(draw_x, y, _cam_x, _cam_y, _cam_zoom); break;
 	case "MACRO_SCROLL": scr_node_draw_macro_scroll(draw_x, y, _cam_x, _cam_y, _cam_zoom); break;
 	case "MACRO_IRQ":         scr_node_draw_macro_irq(draw_x, y, _cam_x, _cam_y, _cam_zoom);         break;

@@ -4776,6 +4776,11 @@ case "MACRO_VSCROLL": {
 // Eight fine steps per coarse step, so the shifts cost ~18% of a frame
 // amortised. Proven cycle-exact in VICE before being emitted here.
 // --------------------------------------------------------
+case "MACRO_SPAWNER": {
+    // the spawn layer of a map: tables + runtime (scr_spawn)
+    _list = scr_spawn_compile(_curr, _list);
+} break;
+
 case "MACRO_METASCROLL": {
 
     var _id = _curr;

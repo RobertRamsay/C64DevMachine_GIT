@@ -3134,6 +3134,18 @@ draw_set_color(_cell_bg_col);
 	
     gpu_set_scissor(0, 0, window_get_width(), window_get_height());
 
+    // ---- SPAWN LAYER (scr_spawn): entities on the map (rooms come from
+    // their position at build time). In SPAWN mode (E) it owns the mouse.
+    var _spawn_busy = false;
+    if (!global.integer_box_open && !_m.obj_mode) {
+        _spawn_busy = scr_spawn_editor({
+            m: _m, map: 0,
+            ox: _map_ox - _start_col * _cs, oy: _map_oy - _start_row * _cs, cs: _cs,
+            x1: _cv_x1, y1: _cv_y1, x2: _cv_x2, y2: _cv_y2,
+            map_w: _gw, map_h: _gh
+        }, _mx, _my);
+    }
+
 
 	// ==========================================
     // STAMP, SELECTION & PAINTING INTERACTION
@@ -3144,7 +3156,7 @@ draw_set_color(_cell_bg_col);
     if (!variable_struct_exists(_m, "map_redo_stack")) _m.map_redo_stack = [];
 
     // map_sb_drag: no painting while a scrollbar is being dragged
-    var _mouse_in_canvas = point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && !_m.obj_mode && !_obj_bar_hover && map_sb_drag == 0;
+    var _mouse_in_canvas = point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && !_m.obj_mode && !_obj_bar_hover && !_spawn_busy && map_sb_drag == 0;
 
     // A pan ends when the pointer leaves the map or the middle button /
     // SPACE is no longer held. The release check below only runs while the
@@ -3424,7 +3436,7 @@ draw_set_color(_cell_bg_col);
         map_paint_last_col = -999999;
         map_paint_last_row = -999999;
     }
-    if (point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && !_m.obj_mode && !_obj_bar_hover) {
+    if (point_in_rectangle(_mx, _my, _cv_x1, _cv_y1, _cv_x2, _cv_y2) && !_m.obj_mode && !_obj_bar_hover && !_spawn_busy) {
         if (_m.stamp_active) {
             scr_ui_info(true, "STAMP: LMB PLACES, RMB ERASES ITS FOOTPRINT, X/Y FLIP, CTRL+D DROPS IT. WHEEL ZOOM, SPACE/MMB PAN");
         } else if (_m.fill_mode) {
@@ -11694,9 +11706,23 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         draw_set_valign(fa_top);
     }
 
+  // ---- SPAWN LAYER (scr_spawn): entities placed on a real map ----
+    // Drawn over the map; in SPAWN mode (E / SPAWNS) it owns the mouse.
+    var _spawn_busy = false;
+    if (_m.active_map >= 0 && _m.active_map < _m.map_count && !global.integer_box_open && !mts_chain_mode) {
+        var _sp_dims = scr_mts_map_dims(_m, _m.active_map);
+        _spawn_busy = scr_spawn_editor({
+            m: _m, map: _m.active_map,
+            ox: _test_ox - _view_px_shift_x - _draw_col0 * _m.stamp_w * _test_cs,
+            oy: _test_oy - _view_px_shift_y - _draw_row0 * _m.stamp_h * _test_cs,
+            cs: _test_cs, x1: _test_x1, y1: _map_top, x2: _test_x2, y2: _canvas_y2,
+            map_w: _sp_dims[0], map_h: _sp_dims[1]
+        }, _mx, _my);
+    }
+
   // Test area interaction (suppressed while the SLICE modal is open)
-    scr_ui_info(!global.integer_box_open && !mts_chain_mode && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2), "MAP: L PLACE SELECTED STAMP, R ERASE, ALT+L PICK STAMP, WHEEL ZOOM, SPACE/MID-DRAG PAN, T TYPES");
-    if (!global.integer_box_open && !mts_chain_mode && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2)) {
+    scr_ui_info(!global.integer_box_open && !mts_chain_mode && !_spawn_busy && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2), "MAP: L PLACE SELECTED STAMP, R ERASE, ALT+L PICK STAMP, WHEEL ZOOM, SPACE/MID-DRAG PAN, T TYPES, E SPAWNS");
+    if (!global.integer_box_open && !mts_chain_mode && !_spawn_busy && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2)) {
         // Screen cell -> grid cell. VIEW mode draws from _draw_col0/_draw_row0
         // with a sub-metatile pixel shift, so add that shift back into the mouse
         // pixel before dividing, then add the draw-range start.

@@ -881,6 +881,7 @@ function scr_asset_from_saved(_ad, _index) {
         if (variable_struct_exists(_sm, "tile_colours"))   _meta.tile_colours   = _sm.tile_colours;
         if (variable_struct_exists(_sm, "obj_asset")) _meta.obj_asset = _sm.obj_asset;
         if (variable_struct_exists(_sm, "room_objects")) _meta.room_objects = _sm.room_objects;
+        if (variable_struct_exists(_sm, "spawn")) _meta.spawn = _sm.spawn;   // entity spawn layer (scr_spawn)
         if (variable_struct_exists(_sm, "obj_row_off")) _meta.obj_row_off = _sm.obj_row_off;
         if (variable_struct_exists(_sm, "obj_col_off")) _meta.obj_col_off = _sm.obj_col_off;
         if (variable_struct_exists(_sm, "obj_table_addr")) _meta.obj_table_addr = _sm.obj_table_addr;

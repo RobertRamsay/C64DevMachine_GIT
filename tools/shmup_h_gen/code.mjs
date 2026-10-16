@@ -22,25 +22,10 @@ const STATE_LIST = [
   ['SCROLL_TICK', 1, 'counts frames for the slow scroll'],
   ['SCORE1', 1, 'score: hundreds + thousands (BCD)'],
   ['SCORE2', 1, 'score: 10 thousands + 100 thousands (BCD)'],
-  ['WAVE_IDX', 1, 'next WAVE_SCRIPT record, 0-7'],
-  ['WAVE_LEFT', 1, 'enemies of this wave still to launch'],
-  ['WAVE_TIMER', 1, 'frames until the next launch'],
-  ['WAVE_PATH', 1, 'this wave: flight path'],
-  ['WAVE_Y', 1, 'this wave: start height'],
-  ['WAVE_GAP', 1, 'this wave: frames between enemies'],
-  ['WAVE_FRAME', 1, 'this wave: first ACTORS frame'],
-  ['WAVE_COL', 1, 'this wave: sprite colour'],
-  ['EN_ON', 3, 'enemy slot 0-2 flying'],
-  ['EN_XL', 3, 'enemy X low byte'],
-  ['EN_XH', 3, 'enemy X ninth bit'],
-  ['EN_Y', 3, 'enemy Y'],
-  ['EN_BASEY', 3, 'enemy start Y (paths swing round it)'],
-  ['EN_PATH', 3, 'enemy flight path 0-3'],
-  ['EN_PHASE', 3, 'enemy frames since launch'],
-  ['EN_FRAME', 3, 'enemy first ACTORS frame'],
-  ['EN_COL', 3, 'enemy colour'],
-  ['EN_BOOM', 3, 'enemy explosion timer'],
-  ['EN_LAST', 3, '1 = last of its wave, carries a capsule'],
+  ['EN_BOOM', 3, 'explosion timer per enemy slot (SPN slot 0-2)'],
+  ['EN_BXL', 3, 'where that explosion is: X low byte'],
+  ['EN_BXH', 3, 'X ninth bit'],
+  ['EN_BY', 3, 'Y'],
   ['SHOT_ON', 1, 'main shot / laser flying'],
   ['SHOT_XL', 1, ''], ['SHOT_XH', 1, ''], ['SHOT_Y', 1, ''],
   ['DBL_ON', 1, 'DOUBLE shot flying'],
@@ -184,7 +169,7 @@ TitleFrame:
 `;
 
 // ---------------- 03 GAME SETUP
-C.newGame = `; A fresh game: ships, score, first wave, then into the loop.
+C.newGame = `; A fresh game: ships and score, then into the loop.
 START_LIVES = 3
 
 ; Every sprite hires, in front of the scenery, not expanded.
@@ -198,10 +183,6 @@ STA LIVES
 LDA #$00
 STA SCORE1
 STA SCORE2
-STA WAVE_IDX
-STA WAVE_LEFT
-LDA #$40
-STA WAVE_TIMER
 JSR ResetActors
 JSR DrawActors
 JSR InstallHudSplit
@@ -260,8 +241,10 @@ CMP #LOOP_COL
 BCC ScrollCapsule
 LDA #$00
 STA $60
-; A capsule sits in the world, so it drifts left with it.
+; A capsule sits in the world, so it drifts left with it; so do
+; the SPAWNER's TURRET and WALKER entities (SPN_Scroll).
 ScrollCapsule:
+JSR SPN_Scroll
 LDA CAP_XL
 BNE ScrollCapLo
 DEC CAP_XH
@@ -290,7 +273,6 @@ STA SHOT_ON
 STA DBL_ON
 STA MSL_ON
 STA CAP_ON
-STA WAVE_LEFT    ; abandon the wave that was flying
 .IF KEEP_POWERS == 0
 STA METER
 LDX #$05
@@ -300,13 +282,12 @@ DEX
 BPL ClearPowers
 .ENDIF
 LDX #$02
-ClearEnemies:
-STA EN_ON,X
+ClearBooms:
 STA EN_BOOM,X
 DEX
-BPL ClearEnemies
-LDA #$60
-STA WAVE_TIMER   ; a breather before the next wave
+BPL ClearBooms
+; The SPAWNER clears its slots and relaunches what is on screen.
+JSR SPN_Reset
 LDA #RESPAWN_SAFE
 STA INVULN
 ; Fill the OPTION trail with the new position.
@@ -553,9 +534,10 @@ PowerRefused:
 RTS
 `;
 
-C.capsule = `; Capsule - dropped by the last enemy of a wave (see KillEnemy).
-; It borrows that enemy slot's sprite, drifts left with the world
-; (ScrollStep) and lights the next meter slot when you fly into it.
+C.capsule = `; Capsule - dropped by an entity whose type has a DROP (the RED FAN in
+; the WORLD map's spawn layer). It borrows that enemy slot's sprite,
+; drifts left with the world (ScrollStep) and lights the next meter
+; slot when you fly into it.
 Capsule:
 LDA CAP_ON
 BNE CapsuleLive
@@ -570,10 +552,11 @@ BCS CapsuleShown
 LDA #$00
 STA CAP_ON
 RTS
-; still hidden behind its enemy's explosion?
+; hidden while its slot shows an explosion or a new enemy
 CapsuleShown:
 LDY CAP_SLOT
 LDA EN_BOOM,Y
+ORA SPN_ON,Y
 ORA PLAYER_BOOM
 BNE CapsuleDone
 LDA CAP_XL
@@ -603,193 +586,19 @@ RTS
 `;
 
 // ---------------- 08 ATTACK WAVES
-C.enemy = `; Enemy - launch from WAVE_SCRIPT, then fly the three enemy slots.
-; On the ENEMIES panel:
-ENEMY_SPEED = 2   ; pixels left per frame: 1 slow, 2 normal, 3 fast
-WAVE_PAUSE = $50  ; frames between the end of a wave and the next
-
+C.enemy = `; Enemy - the SPAWNER node (GAME SETUP column) launches the entities
+; placed on the WORLD map's SPAWN layer as they scroll in, and flies
+; them by their type's movement. Tell it where the ship is - CHASE and
+; DIVE home in on SPN_TGT.
 Enemy:
 INC ANIM
-JSR WaveSpawn
-LDX #$02
-EnemyLoop:
-LDA EN_ON,X
-BNE EnemyFly
-JMP EnemyNext
-
-; Every enemy flies left; off the left edge it is gone.
-EnemyFly:
-LDA EN_XL,X
-SEC
-SBC #ENEMY_SPEED
-STA EN_XL,X
-LDA EN_XH,X
-SBC #$00
-STA EN_XH,X
-BNE EnemyPath
-LDA EN_XL,X
-CMP #$08
-BCS EnemyPath
-LDA #$00
-STA EN_ON,X
-JMP EnemyNext
-
-; Up and down by path: 0 straight, 1 sine, 2 chase, 3 zigzag.
-EnemyPath:
-INC EN_PHASE,X
-LDA EN_PATH,X
-BEQ EnemyStraight
-CMP #$01
-BEQ EnemySine
-CMP #$02
-BEQ EnemyChase
-
-; 3 ZIGZAG: a triangle wave, 32 pixels each side of the start.
-LDA EN_PHASE,X
-AND #$3F
-CMP #$20
-BCC ZigRising
-EOR #$3F
-ZigRising:
-ASL
-SEC
-SBC #$20
-CLC
-ADC EN_BASEY,X
-JMP EnemyStoreY
-
-; 0 STRAIGHT: the height never changes.
-EnemyStraight:
-JMP EnemyNext
-
-; 1 SINE: start Y + SINE_PATH ($B100, 128 signed bytes).
-; Every enemy of a wave starts at phase 0, so they snake in a line.
-EnemySine:
-LDA EN_PHASE,X
-ASL
-AND #$7F
-TAY
-LDA $B100,Y
-CLC
-ADC EN_BASEY,X
-JMP EnemyStoreY
-
-; 2 CHASE: one pixel towards the ship's height every other frame.
-EnemyChase:
-LDA EN_PHASE,X
-AND #$01
-BNE ChaseStep
-JMP EnemyNext
-ChaseStep:
-LDA EN_Y,X
-CMP PLAYER_Y
-BEQ EnemyNext
-BCC ChaseDown
-DEC EN_Y,X
-JMP EnemyNext
-ChaseDown:
-INC EN_Y,X
-JMP EnemyNext
-
-EnemyStoreY:
-STA EN_Y,X
-EnemyNext:
-DEX
-BMI EnemyDone
-JMP EnemyLoop
-EnemyDone:
-RTS
-`;
-
-C.waveSpawn = `; WaveSpawn - WAVE_SCRIPT ($B000) is 8 waves of 6 bytes:
-;   path, start Y, enemies in the wave, frames between them,
-;   first ACTORS frame (two-frame animation), colour
-WaveSpawn:
-LDA WAVE_TIMER
-BEQ WaveReady
-DEC WAVE_TIMER
-RTS
-WaveReady:
-LDA WAVE_LEFT
-BNE WaveFindSlot
-; Start the next wave: its record is at WAVE_IDX * 6.
-LDA WAVE_IDX
-ASL
-STA T0
-ASL
-CLC
-ADC T0
-TAY
-LDA $B000,Y
-STA WAVE_PATH
-INY
-LDA $B000,Y
-STA WAVE_Y
-INY
-LDA $B000,Y
-STA WAVE_LEFT
-INY
-LDA $B000,Y
-STA WAVE_GAP
-INY
-LDA $B000,Y
-STA WAVE_FRAME
-INY
-LDA $B000,Y
-STA WAVE_COL
-INC WAVE_IDX
-LDA WAVE_IDX
-AND #$07
-STA WAVE_IDX
-
-; A slot is free when it is not flying, not exploding and not
-; lending its sprite to the capsule.
-WaveFindSlot:
-LDX #$02
-WaveSlot:
-LDA EN_ON,X
-ORA EN_BOOM,X
-BNE WaveSlotBusy
-LDA CAP_ON
-BEQ WaveLaunch
-CPX CAP_SLOT
-BNE WaveLaunch
-WaveSlotBusy:
-DEX
-BPL WaveSlot
-RTS              ; all busy - try again next frame
-
-; Launch at X = $158, just past the right edge.
-WaveLaunch:
-LDA #$58
-STA EN_XL,X
-LDA #$01
-STA EN_XH,X
-LDA WAVE_Y
-STA EN_Y,X
-STA EN_BASEY,X
-LDA WAVE_PATH
-STA EN_PATH,X
-LDA WAVE_FRAME
-STA EN_FRAME,X
-LDA WAVE_COL
-STA EN_COL,X
-LDA #$00
-STA EN_PHASE,X
-STA EN_LAST,X
-LDA #$01
-STA EN_ON,X
-LDA WAVE_GAP
-STA WAVE_TIMER
-DEC WAVE_LEFT
-BNE WaveLaunched
-; The wave's last enemy carries a capsule; then a pause.
-LDA #$01
-STA EN_LAST,X
-LDA #WAVE_PAUSE
-STA WAVE_TIMER
-WaveLaunched:
-RTS
+LDA PLAYER_XL
+STA SPN_TGT_XL
+LDA PLAYER_XH
+STA SPN_TGT_XH
+LDA PLAYER_Y
+STA SPN_TGT_Y
+JMP SPN_Update
 `;
 
 // ---------------- 09 WEAPONS
@@ -1064,8 +873,7 @@ RTS
 C.hits = `; Hits - the ship against walls and enemies, and every weapon
 ; against every enemy. On the RULES panel:
 WALLS_KILL = 1     ; 1 = flying into the scenery costs a ship
-DROPS = 1          ; 1 = the last enemy of a wave drops a capsule
-ENEMY_POINTS = 1   ; score per enemy, in hundreds (BCD, 1-9)
+DROPS = 1          ; 1 = types with a DROP leave a capsule behind
 
 Hits:
 LDA PLAYER_BOOM
@@ -1086,7 +894,7 @@ JSR ShipHit
 HitsEnemies:
 LDX #$02
 HitLoop:
-LDA EN_ON,X
+LDA SPN_ON,X
 BNE HitShip
 JMP HitNext
 
@@ -1107,7 +915,8 @@ LDA #$0A
 STA BOX_H
 JSR BoxVsEnemy
 BCS HitShot
-JSR KillEnemy
+LDA #$FF          ; ramming destroys it outright
+JSR HitEnemy
 JSR ShipHit
 JMP HitNext
 
@@ -1132,7 +941,8 @@ BNE HitShotKill
 LDA #$00
 STA SHOT_ON
 HitShotKill:
-JSR KillEnemy
+LDA #$01
+JSR HitEnemy
 JMP HitNext
 
 HitDouble:
@@ -1151,7 +961,8 @@ JSR BoxVsEnemy
 BCS HitMissile
 LDA #$00
 STA DBL_ON
-JSR KillEnemy
+LDA #$01
+JSR HitEnemy
 JMP HitNext
 
 HitMissile:
@@ -1170,7 +981,8 @@ JSR BoxVsEnemy
 BCS HitOption
 LDA #$00
 STA MSL_ON
-JSR KillEnemy
+LDA #$02          ; a missile hits twice as hard
+JSR HitEnemy
 JMP HitNext
 
 HitOption:
@@ -1188,7 +1000,8 @@ LDA #$0C
 STA BOX_H
 JSR BoxVsEnemy
 BCS HitNext
-JSR KillEnemy
+LDA #$01
+JSR HitEnemy
 
 HitNext:
 DEX
@@ -1197,31 +1010,56 @@ JMP HitLoop
 HitsDone:
 RTS
 
-; KillEnemy - X = slot. Explosion, points, maybe a capsule.
-KillEnemy:
-LDA #$00
-STA EN_ON,X
+; HitEnemy - X = slot, A = damage. SPN_Hit takes it off the entity's HP
+; (its type's HP in the spawn layer); carry set = destroyed: explosion,
+; its type's POINTS, and a capsule if its type has a DROP.
+HitEnemy:
+JSR SPN_Hit
+BCS EnemyDown
+RTS
+EnemyDown:
+LDA SPN_XL,X
+STA EN_BXL,X
+LDA SPN_XH,X
+STA EN_BXH,X
+LDA SPN_Y,X
+STA EN_BY,X
 LDA #$18
 STA EN_BOOM,X
-LDA #ENEMY_POINTS
-JSR AddScore
+LDY SPN_TYPE,X
+LDA SPN_T_PTS,Y
+JSR AddHundreds
 JSR ExplosionSound
 .IF DROPS == 1
-LDA EN_LAST,X
+LDY SPN_TYPE,X
+LDA SPN_T_DROP,Y
 BEQ KillDone
 LDA CAP_ON
 BNE KillDone
 LDA #$01
 STA CAP_ON
 STX CAP_SLOT
-LDA EN_XL,X
+LDA SPN_XL,X
 STA CAP_XL
-LDA EN_XH,X
+LDA SPN_XH,X
 STA CAP_XH
-LDA EN_Y,X
+LDA SPN_Y,X
 STA CAP_Y
 .ENDIF
 KillDone:
+RTS
+
+; AddHundreds - A = how many hundreds to add (0-99).
+AddHundreds:
+STA T0
+AddHundredsLoop:
+LDA T0
+BEQ AddHundredsDone
+LDA #$01
+JSR AddScore
+DEC T0
+JMP AddHundredsLoop
+AddHundredsDone:
 RTS
 
 ; ShipHit - a SHIELD soaks the hit, otherwise the ship bursts.
@@ -1272,11 +1110,11 @@ STA TGT_Y
 JMP BoxTest
 
 BoxVsEnemy:
-LDA EN_XL,X
+LDA SPN_XL,X
 STA TGT_XL
-LDA EN_XH,X
+LDA SPN_XH,X
 STA TGT_XH
-LDA EN_Y,X
+LDA SPN_Y,X
 STA TGT_Y
 
 BoxTest:
@@ -1521,8 +1359,8 @@ ProbeRowHi:
 // ---------------- 11 SPRITE DRAW
 C.draw = `; DrawActors - copy the game state into the VIC sprite registers.
 ; Sprites: 0 ship, 1 shot/laser, 2 DOUBLE, 3 MISSILE, 4 OPTION,
-; 5-7 the three enemy slots (or the capsule, in a free slot).
-; Colours - on the COLOURS panel (enemy colours are in WAVE_SCRIPT).
+; 5-7 the three SPAWNER slots (or the capsule, in a free slot).
+; Colours - on the COLOURS panel (enemy colours are their spawn types).
 SHIP_COL = 1
 SHIELD_COL = 14
 SHOT_COL = 7
@@ -1670,37 +1508,47 @@ LDX #$04
 JSR PutSprite
 `;
 
-C.drawEnemies = `; --- sprites 5-7: enemy slots 0-2 ---
+C.drawEnemies = `; --- sprites 5-7: SPAWNER slots 0-2 ---
+; A live entity shows its type's frame pair (SPN_T_PTR + 0 / 1) and
+; colour; otherwise the slot's explosion; otherwise the capsule, if it
+; is borrowing this slot.
 DrawEnemies:
 LDA #$02
 STA T2
 DrawEnemyLoop:
 LDY T2
-LDA EN_XL,Y
+LDA SPN_ON,Y
+BEQ DrawEnemyBoom
+LDA SPN_XL,Y
 STA D_XL
-LDA EN_XH,Y
+LDA SPN_XH,Y
 STA D_XH
-LDA EN_Y,Y
+LDA SPN_Y,Y
 STA D_Y
-LDA EN_BOOM,Y
-BEQ DrawEnemyLive
-JSR BoomFrame
-JMP DrawEnemyPut
-DrawEnemyLive:
-LDA EN_ON,Y
-BEQ DrawCapsule
+LDA SPN_TYPE,Y
+TAX
 LDA ANIM            ; two frames, swapped every 8 frames
 LSR
 LSR
 LSR
 AND #$01
 CLC
-ADC EN_FRAME,Y
-CLC
-ADC #FR_BASE
+ADC SPN_T_PTR,X
 STA D_PTR
-LDA EN_COL,Y
+LDA SPN_T_COL,X
 STA D_COL
+JMP DrawEnemyPut
+DrawEnemyBoom:
+LDA EN_BOOM,Y
+BEQ DrawCapsule
+LDA EN_BXL,Y
+STA D_XL
+LDA EN_BXH,Y
+STA D_XH
+LDA EN_BY,Y
+STA D_Y
+LDA EN_BOOM,Y
+JSR BoomFrame
 DrawEnemyPut:
 LDA T2
 CLC

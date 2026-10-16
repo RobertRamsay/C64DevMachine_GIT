@@ -262,6 +262,10 @@ function scr_node_step_macro_coll_adv(_draw_x) {
                         array_push(other.label_picker_list, "Scroller_U");
                         array_push(other.label_picker_list, "Scroller_D");
                     }
+                    if (node_type == "MACRO_SPAWNER") {
+                        var _spl = scr_spawn_entry_labels(scr_spawn_node_args(id).axis);
+                        for (var _spk = 0; _spk < array_length(_spl); _spk++) array_push(other.label_picker_list, _spl[_spk]);
+                    }
                     if (node_type == "MACRO_METASCROLL") {
                         array_push(other.label_picker_list, "MSC_L");
                         array_push(other.label_picker_list, "MSC_R");

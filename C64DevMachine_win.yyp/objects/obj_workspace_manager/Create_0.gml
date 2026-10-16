@@ -198,14 +198,12 @@ welcome_credits_y      = 0;
 welcome_mode           = 0;      // 0 = welcome / what's new, 1 = guided tour list
 welcome_tour_scroll    = 0;      // first visible row in the tour list
 welcome_whats_new = [
-    "NEW - SFX MAKER: centred layout with GUIDE; EDIT chips on SFX and SID SONG nodes.",
-    "NEW - COMMENT ARROWS: drag a yellow handle on a comment to point at the workspace.",
-    "NEW - REMOVE ASSET button, and asset editors autosave when they close with changes.",
-    "NEW - Memory bar ? SUGGEST FIX callout for address conflicts.",
-    "NEW - Guided tours: a DONE stamp for tours finished with no skips or help.",
-    "NEW - MCP v0.4: the assistant can edit assets, with turn-taking via the title badge.",
-    "REFINED - PRINT node 24px shorter; sprite editor + cell anywhere and ALT+CLICK pick.",
-    "FIXED - Assembler errors instead of crashes, mapping box drags, asset SAVE crash.",
+    "NEW - SPAWN LAYER: place enemies on META_TILESET and MAP_DATA maps (E or SPAWNS).",
+    "NEW - Enemy TYPES per map: frame, colour, movement, speed, HP, points and drop.",
+    "NEW - SPAWNER macro (EXTRA menu) launches and flies them: SCROLL H, V or ROOMS.",
+    "NEW - Movements: STRAIGHT, SINE, CHASE, ZIGZAG, DIVE, WALKER and TURRET.",
+    "NEW - SHMUP H template: a sideways Nemesis-style shooter built on the SPAWNER.",
+    "REFINED - SHMUP V uses the spawn layer; both SHMUPs have one CONTROL PANEL.",
     "",
     "SHARE your Custom Code blocks like a PRO in the Discord user-code-blocks channel.",
     "SUPPORT the development by leaving a review on ITCH and buying the PRO version.",

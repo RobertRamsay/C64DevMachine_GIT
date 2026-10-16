@@ -6,7 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { V_ASSETS, buildCharset, buildMap, buildSprites, buildTitle, STAMPS, MAP_ROWS, MAP_COLS, LOOP_COL, CH } from './art.mjs';
+import { V_ASSETS, buildCharset, buildMap, buildSprites, buildTitle, buildSpawns, SPAWN_TYPES, STAMPS, MAP_ROWS, MAP_COLS, LOOP_COL, CH } from './art.mjs';
 import { C, STATE, stateMapCode, stateUsed } from './code.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -22,7 +22,7 @@ const asset = (name, type, address, blob, meta) => ({ group: GROUP, file: '', ty
 const dataMeta = d => ({ tone_sorted: false, mc_fg: 1, mc_col1: 1, mc_bg: 0, mc_mode: 0, mc_col2: 2, bmp_mode: 'MC', ecm_bg3: 3,
   byte_string: byteString(d), ecm_bg2: 14, save_file_size: 256, ecm_bg1: 6, is_save_file: false });
 
-const ADDR = { TILES: 0x2000, ACTORS: 0x2800, FRONT_END: 0x4000, WORLD: 0x6800, WAVE_SCRIPT: 0xB000, SINE_PATH: 0xB100 };
+const ADDR = { TILES: 0x2000, ACTORS: 0x2800, FRONT_END: 0x4000, WORLD: 0x6800 };
 const COLOURS = { space: 0, speckle: 12, rock: 8, terrain: 13, border: 0 };
 
 const charset = buildCharset();
@@ -52,25 +52,12 @@ function buildAssets() {
     map_w: [MAP_COLS * 2], map_h: [MAP_ROWS * 2], maps: [map.grid], test_grid: [...map.grid], map_count: 1, active_map: 0,
     chr_asset: 'TILES', map_mc_bg: COLOURS.space, map_mc_col1: COLOURS.speckle, map_mc_col2: COLOURS.rock,
     mc_bg: COLOURS.space, mc_col1: COLOURS.speckle, mc_col2: COLOURS.rock, active_char: 0 });
+  // SPAWN layer (editor: open WORLD, press E): the enemy types and where they appear
+  wmeta.spawn = { sprite_set: 'ACTORS', types: SPAWN_TYPES.map(t => ({ ...t })), maps: [buildSpawns(map)], sel: 0, mode: false, show: true };
   out.push(asset('WORLD', 'META_TILESET', ADDR.WORLD, stampData, wmeta));   // blob = the stamps, as in SHMUP V
 
   out.push(asset('MUSIC_AND_SFX', 'MUSIC_MAKER', 0, [0], buildMusic()));
   out.push(asset('STATUS', 'HUD', 0, ...buildHud()));
-
-  // 8 waves x 6 bytes: path, start Y, count, gap, first frame, colour
-  const waves = [
-    [1, 0x90, 3, 12, 10, 14],   // fans snaking through the middle
-    [0, 0x68, 3, 20, 12, 10],   // jets straight across the top
-    [2, 0xB0, 3, 30, 14, 7],    // rings that chase your height
-    [3, 0xA0, 3, 14, 16, 13],   // darts zigzagging
-    [1, 0xB8, 3, 12, 10, 3],    // fans, low
-    [0, 0xC8, 3, 16, 12, 10],   // jets along the bottom
-    [2, 0x70, 3, 24, 14, 7],    // chasing rings from above
-    [1, 0x78, 3, 10, 10, 14],   // fans, high and tight
-  ].flat();
-  out.push(asset('WAVE_SCRIPT', 'BYTE_DATA', ADDR.WAVE_SCRIPT, waves, dataMeta(waves)));
-  const sine = [...Buffer.from(V_ASSETS.SINE_PATH.blob.slice(4), 'base64')];
-  out.push(asset('SINE_PATH', 'BYTE_DATA', ADDR.SINE_PATH, sine, dataMeta(sine)));
 
   const sfx = structuredClone(V_ASSETS.GAME_SFX.meta);
   sfx.instruments = [
@@ -135,7 +122,7 @@ let uid = 400000;
 const nuid = () => ++uid;
 const HEIGHT = { ORG: 80, INIT: 80, MACRO_CODE: 100, NORMAL: 60, LABEL: 40, MACRO_IRQ_HANDLER: 100, MACRO_IRQ: 100,
   MACRO_SID_SONG: 140, MACRO_BMP: 100, MACRO_VWAIT: 60, MACRO_VIC: 120, MACRO_CHR: 120, MACRO_METASCROLL: 220,
-  MACRO_SPR: 140, MACRO_HUD: 120, MACRO_JOY: 140, MACRO_SFX: 140, COMMENT: 100 };
+  MACRO_SPR: 140, MACRO_SPAWNER: 140, MACRO_HUD: 120, MACRO_JOY: 140, MACRO_SFX: 140, COMMENT: 100 };
 const TITLE = { ORG: 'ORG BLOCK', INIT: 'SYSTEM INIT', MACRO_CODE: 'CODE BLOCK', NORMAL: 'Opcode', LABEL: 'ADDRESS LABEL', COMMENT: 'COMMENT' };
 
 function rawNode(type, code, x, y, extra = {}) {
@@ -232,7 +219,7 @@ const COLUMNS = [
     notes: [
       { at: 'chr', text: 'ASSET: TILES\nThe charset: font (32-90)\nand the terrain (96-113).\nTags: T1 = rock (wall),\nT2 = hatch (target).\nRight-click a char to tag.' },
       { at: 'msc', text: 'ASSET: WORLD\nThe level: 2x2 stamps,\n116 x 11. Paint it in the\ntileset editor. The last\n20 columns must repeat\nthe first 20 - that is\nwhere the level loops\n(LOOP_COL, FRAME LOOP).' },
-      { at: 'spr0', text: 'ASSET: ACTORS\n24 sprite frames, $A0 up:\n0-3 ship, 4 shot, 5 laser,\n6 double, 7 missile,\n8-9 option, 10-17 enemies\n(in pairs), 18-19 capsule,\n20-23 explosion.' },
+      { at: 'spr0', text: 'ASSET: ACTORS\n26 sprite frames, $A0 up:\n0-3 ship, 4 shot, 5 laser,\n6 double, 7 missile,\n8-9 option, 10-17 enemies\n(in pairs), 18-19 capsule,\n20-23 explosion,\n24-25 walker.' },
       { at: 'spr5', text: 'The sprites only get their\nstart frame here - every\nframe DrawActors (SPRITE\nDRAW) sets position, frame\nand colour.' },
       { at: 'hud', text: 'ASSET: STATUS\nThe HUD layout, rows 0-2.\nStatus (HUD VALUES) fills\nin the numbers and the\nmeter colours.' },
     ],
@@ -292,22 +279,21 @@ const COLUMNS = [
     ],
     notes: [
       { at: 'pkey', text: 'The keyboard shares CIA 1\nwith the joystick: the row\nis selected for one read,\nthen port A goes back to\ninput for the stick.' },
-      { at: 'capsule', text: 'A capsule borrows a free\nenemy sprite (5-7), so the\nwave launcher skips that\nslot until it is picked up\nor scrolls away.' },
+      { at: 'capsule', text: 'A capsule borrows the\nsprite (5-7) of the enemy\nthat dropped it. It hides\nwhile the SPAWNER flies a\nnew enemy in that slot.' },
     ],
     panels: [{ name: 'POWER METER', links: ['pkey', 'apply'], at: 'apply' }] },
 
-  { name: '08 ATTACK WAVES', org: 0x9A00,
-    head: 'ATTACK WAVES\nRead WAVE_SCRIPT, launch\nenemies from the right,\nfly them left on a path:\nstraight, sine, chase or\nzigzag.',
+  { name: '08 ATTACK WAVES', org: 0xB000,
+    head: 'ATTACK WAVES\nEnemies are placed on the\nWORLD map (SPAWN layer)\nand flown by the SPAWNER.\nThis just keeps it fed.',
     items: [
-      { k: 'enemy', t: 'MACRO_CODE', title: 'ENEMY FLIGHT', body: C.enemy,
-        params: [P('Enemy speed', 'MODE', 'ENEMY_SPEED', 1, 3, 'Slow=1,Normal=2,Fast=3'), P('Pause between waves', 'RANGE', 'WAVE_PAUSE', 16, 200)] },
-      { k: 'wave', t: 'MACRO_CODE', title: 'WAVE LAUNCHER', body: C.waveSpawn },
+      { k: 'spawner', t: 'MACRO_SPAWNER', title: 'SPAWNER', code: [['MACRO_SPAWNER', 'WORLD', 0, 0, 3, 0, 0]] },
+      { k: 'enemy', t: 'MACRO_CODE', title: 'ENEMY FLIGHT', body: C.enemy },
     ],
     notes: [
-      { at: 'enemy', text: 'ASSET: SINE_PATH ($B100)\n128 signed offsets for the\nsine path. Edit the bytes\nto change the swing.' },
-      { at: 'wave', text: 'ASSET: WAVE_SCRIPT ($B000)\n8 waves x 6 bytes:\npath 0-3, start Y, count,\ngap (frames), first ACTORS\nframe, colour.\nFrames: 10 fan, 12 jet,\n14 ring, 16 dart.' },
-    ],
-    panels: [{ name: 'ENEMIES', links: ['enemy'], at: 'enemy' }] },
+      { at: 'spawner', text: 'SPAWNER\nLaunches the WORLD map\'s\nSPAWN layer as it scrolls\nin (MODE SCROLL H), into\n3 slots = sprites 5-7.\nOpen WORLD, press E to\nplace enemies and edit\ntheir types: frame,\ncolour, movement, speed,\nHP, points, drop.' },
+      { at: 'enemy', text: 'ASSET: WORLD - SPAWN layer\nOpen WORLD, press E. Pick\na type, L-click to place,\nR-click to delete. Each\ntype sets frame, colour,\nmovement + VALUE, speed,\nHP, points and drop.' },
+      { at: 'enemy', text: 'Movements: STRAIGHT, SINE,\nCHASE, ZIGZAG, DIVE,\nWALKER (rides the ground)\nand TURRET (fixed to the\nmap, SPN_FIRE cues shots).' },
+    ] },
 
   { name: '09 WEAPONS', org: 0x9C00,
     head: 'WEAPONS\nShot or LASER, DOUBLE,\nMISSILE and the OPTION.\nShots stop at rock and\nblow up hatches.',
@@ -328,7 +314,7 @@ const COLUMNS = [
     head: 'COLLISIONS / LIVES\nShip vs rock and enemies,\nweapons vs enemies, score,\nshield and lives.',
     items: [
       { k: 'hits', t: 'MACRO_CODE', title: 'HITS', body: C.hits,
-        params: [P('Rock crash', 'MODE', 'WALLS_KILL', 0, 1, 'Off=0,On=1'), P('Capsules', 'MODE', 'DROPS', 0, 1, 'Off=0,On=1'), P('Enemy points x100', 'RANGE', 'ENEMY_POINTS', 1, 9)] },
+        params: [P('Rock crash', 'MODE', 'WALLS_KILL', 0, 1, 'Off=0,On=1'), P('Capsules', 'MODE', 'DROPS', 0, 1, 'Off=0,On=1')] },
       { k: 'terrain', t: 'MACRO_CODE', title: 'TERRAIN', body: C.terrain,
         params: [P('Rock tag', 'RANGE', 'WALL_TAG', 1, 16), P('Hatch tag', 'RANGE', 'TARGET_TAG', 1, 16), P('Hatch points x100', 'RANGE', 'TARGET_POINTS', 1, 9)] },
       { k: 'box', t: 'MACRO_CODE', title: 'BOX TEST', body: C.boxTest },
@@ -340,7 +326,7 @@ const COLUMNS = [
     ],
     panels: [{ name: 'RULES', links: ['hits', 'terrain'], at: 'hits' }] },
 
-  { name: '11 SPRITE DRAW', org: 0xA200,
+  { name: '11 SPRITE DRAW', org: 0xA280,
     head: 'SPRITE DRAW\nGame state into the VIC:\npositions (9-bit X),\nframes, colours, blinking\nand explosions.',
     items: [
       { k: 'draw', t: 'MACRO_CODE', title: 'DRAW ACTORS', body: C.draw,
@@ -350,12 +336,12 @@ const COLUMNS = [
       { k: 'put', t: 'MACRO_CODE', title: 'PUT SPRITE', body: C.putSprite },
     ],
     notes: [
-      { at: 'drawen', text: 'Enemy frame = its WAVE\nframe + 0 or 1, swapped\nevery 8 frames, so enemy\nframes come in pairs in\nACTORS.' },
+      { at: 'drawen', text: 'Enemy frame = its spawn\ntype FRAME + 0 or 1, swapped\nevery 8 frames, so enemy\nframes come in pairs in\nACTORS.' },
       { at: 'put', text: 'Sprites past X = 255 need\ntheir bit in $D010. SPR_MSB\ncollects them, written\nonce at the end.' },
     ],
     panels: [{ name: 'COLOURS', links: ['draw'], at: 'draw' }] },
 
-  { name: '12 HUD VALUES', org: 0xA480,
+  { name: '12 HUD VALUES', org: 0xA500,
     head: 'HUD VALUES\nScore, high score and\nships into the HUD, and\nthe meter slot colours.',
     items: [
       { k: 'status', t: 'MACRO_CODE', title: 'STATUS', body: C.status,
@@ -363,11 +349,11 @@ const COLUMNS = [
     ],
     panels: [{ name: 'HUD', links: ['status'], at: 'status' }] },
 
-  { name: '13 FIXED HUD / RASTER', org: 0xA580,
+  { name: '13 FIXED HUD / RASTER', org: 0xA600,
     head: 'FIXED HUD / RASTER\nThe IRQ callbacks: HUD\nsteady and hires, then\nthe scrolling multicolour\nplayfield.',
     items: [{ k: 'raster', t: 'MACRO_CODE', title: 'HUD SPLIT', body: C.raster }] },
 
-  { name: '14 EXPLOSIONS / SFX', org: 0xA600,
+  { name: '14 EXPLOSIONS / SFX', org: 0xA680,
     head: 'EXPLOSIONS / SFX\nSound effects on voice 3,\nexplosion timers, and\nGAME OVER back to the\ntitle.',
     items: [
       { t: 'MACRO_CODE', title: 'SILENCE', body: C.silence },
@@ -409,22 +395,24 @@ WORLD     the level map
 ACTORS    every sprite
 FRONT_END title picture
 STATUS    the HUD
-WAVE_SCRIPT enemy waves
-SINE_PATH   sine swing
+WORLD also holds the SPAWN
+layer: press E in it to
+place and edit enemies.
 MUSIC_AND_SFX title tune
 GAME_SFX  sound effects
 
-PANELS hold the settings
-(F9 = Creator view):
-SCREEN, SCROLL, SHIP,
-POWER METER, ENEMIES,
-WEAPONS, RULES, COLOURS
-and HUD.
+The CONTROL PANEL below
+holds every setting (F9 =
+Creator view): screen,
+scroll, ship, power meter,
+weapons, rules, colours
+and HUD. Change a value,
+rebuild with F5.
 
 PLAY: joystick port 2.
-Shoot the last enemy of a
-wave for a capsule; SPACE
-buys the lit power.`;
+Shoot a RED FAN for a
+capsule; SPACE buys the
+lit power.`;
 
 function build() {
   const nodes = [], boxes = [];
@@ -433,7 +421,7 @@ function build() {
   const PITCH = 640, X0 = 400;
 
   nodes.push(rawNode('COMMENT', [['Comment', README]], 20, 160, { comment_w: 300, custom_title: 'READ ME', title: 'READ ME' }));
-  boxes.push({ x: 0, y: 120, panel_links: [], is_panel: false, box_col_idx: 3, box_name: 'SHMUP H', box_h: commentH(README) + 90, box_w: 340 });
+  const controlLinks = [];
 
   COLUMNS.forEach((col, ci) => {
     const x = X0 + ci * PITCH;
@@ -462,7 +450,8 @@ function build() {
     }
     let bottom = y;
     // notes lane: notes and panels in order of the node they sit beside
-    const lane = [...(col.notes || []).map(n => ({ ...n, kind: 'note' })), ...(col.panels || []).map(p => ({ ...p, kind: 'panel' }))]
+    for (const p of col.panels || []) for (const k of p.links) controlLinks.push(byKey[k]);
+    const lane = [...(col.notes || []).map(n => ({ ...n, kind: 'note' }))]
       .sort((a, b) => (a.kind === b.kind ? byKey[a.at].y - byKey[b.at].y : a.kind === 'note' ? -1 : 1));   // notes beside their nodes, panels under them
     let laneY = 340;
     for (const item of lane) {
@@ -492,6 +481,16 @@ function build() {
     bottom = Math.max(bottom, laneY);
     boxes.push({ x: x - 20, y: 120, panel_links: [], is_panel: false, box_col_idx: ci % 10, box_name: col.name, box_h: bottom - 120 + 40, box_w: 620 });
   });
+
+  // ONE control panel under the READ ME, left of SYSTEM INIT: every
+  // node with settings, in column order
+  let ph = 36;
+  for (const n of controlLinks) { ph += 22 + 28; for (const p of n.params) ph += p.kind === 'COLOUR' ? 70 : 52; }
+  ph += 10;
+  const py = 160 + commentH(README) + 30;
+  boxes.push({ x: 20, y: py, panel_links: controlLinks.map(n => n.stable_uid), is_panel: true, box_col_idx: 3,
+    box_name: 'CONTROL PANEL', box_h: ph, box_w: 300 });
+  boxes.push({ x: 0, y: 120, panel_links: [], is_panel: false, box_col_idx: 3, box_name: 'SHMUP H', box_h: py - 120 + ph + 30, box_w: 340 });
 
   // the title loop calls the song player by its macro label
   for (const n of nodes) if (n.type === 'NORMAL' && n.code[0][0] === 'jsr' && n.code[0][1].includes(SNG)) n.code[0][1] = n.code[0][1].replace(SNG, String(sngUid));
