@@ -25,7 +25,13 @@ var _rh_y1  = _sy2 - 16;
 var _rh_hov = (_gmx >= _rh_x1 && _gmx <= _sx2 &&
                _gmy >= _rh_y1 && _gmy <= _sy2);
 
-if (_rh_hov && scr_workspace_mouse_check_button_pressed(mb_left) && !is_resizing && !is_dragging) {
+// One box per press: an earlier box in this step may already have taken it.
+var _box_taken = false;
+with (obj_mapping_box) {
+    if (id != other.id && (is_dragging || is_resizing)) { _box_taken = true; break; }
+}
+
+if (_rh_hov && scr_workspace_mouse_check_button_pressed(mb_left) && !is_resizing && !is_dragging && !_box_taken) {
     is_resizing = true;
     resize_ox   = mouse_x;
     resize_oy   = mouse_y;
@@ -62,15 +68,19 @@ if (_del_hov && scr_workspace_mouse_check_button_pressed(mb_left) && !is_resizin
 /////////////////////////////////////////////////////////////////
 // TAB LABEL - DRAG + DOUBLE-CLICK EDIT
 /////////////////////////////////////////////////////////////////
+// The grab width is in screen px, but the box shrinks as the camera zooms out,
+// so it is kept inside this box's own width. Unclamped, a long name reached
+// over the neighbouring boxes' tabs from about zoom 2.2 and one click grabbed
+// two boxes.
 var _tw      = max(60, string_length(box_name) * 9 + 20);
 var _tab_x1  = _sx1;
 var _tab_y1  = _sy1 - 18;
-var _tab_x2  = _sx1 + _tw;
+var _tab_x2  = min(_sx1 + _tw, _sx2);
 var _tab_y2  = _sy1;
 var _tab_hov = (_gmx >= _tab_x1 && _gmx <= _tab_x2 &&
                 _gmy >= _tab_y1 && _gmy <= _tab_y2);
 
-if (_tab_hov && scr_workspace_mouse_check_button_pressed(mb_left) && !is_resizing) {
+if (_tab_hov && scr_workspace_mouse_check_button_pressed(mb_left) && !is_resizing && !_box_taken) {
     if (dbl_click_timer > 0) {
         // Double-click → open edit popup
         with (obj_workspace_manager) {

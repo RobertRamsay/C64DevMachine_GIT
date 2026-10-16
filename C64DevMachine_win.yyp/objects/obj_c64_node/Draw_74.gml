@@ -32,7 +32,8 @@ var _alpha_comment = clamp((_cam_zoom - 2.5) / 1.5, 0, 1);
 // view with no labels at all.
 var _alpha_header  = clamp((_cam_zoom - 2.0) / 0.5, 0, 1);
 
-var _shelf_edge = obj_workspace_manager.shelf_width + 40;
+// Labels fade out only towards the right-hand panel. No fade at the left edge:
+// the shelf's GUI paints over this event anyway (see the note at the top).
 var _sc_edge    = global.sc_x_start - 40;
 
 draw_set_font_l(fnt_c64_nano);
@@ -49,9 +50,8 @@ if (node_type == "COMMENT") {
     var _sx = (_wx - _cam_x) / _cam_zoom;
     var _sy = (_wy - _cam_y) / _cam_zoom;
     if (_sx < 0 || _sx > 1920 || _sy < 0 || _sy > 1080) exit;
-    if (_sx < _shelf_edge || _sx > _sc_edge) exit;
-    var _edge_alpha = clamp((_sx - _shelf_edge) / 30.0, 0, 1)
-                    * clamp((_sc_edge - _sx)    / 30.0, 0, 1);
+    if (_sx > _sc_edge) exit;
+    var _edge_alpha = clamp((_sc_edge - _sx) / 30.0, 0, 1);
     var _is_editing = (obj_workspace_manager.is_entering_text &&
                        obj_workspace_manager.input_target_node == id &&
                        obj_workspace_manager.input_target_index == 0);
@@ -74,9 +74,8 @@ if (node_type == "COMMENT") {
     var _sx = (_wx - _cam_x) / _cam_zoom;
     var _sy = (_wy - _cam_y) / _cam_zoom;
     if (_sx < 0 || _sx > 1920 || _sy < 0 || _sy > 1080) exit;
-    if (_sx < _shelf_edge || _sx > _sc_edge) exit;
-    var _edge_alpha = clamp((_sx - _shelf_edge) / 30.0, 0, 1)
-                    * clamp((_sc_edge - _sx)    / 30.0, 0, 1);
+    if (_sx > _sc_edge) exit;
+    var _edge_alpha = clamp((_sc_edge - _sx) / 30.0, 0, 1);
     draw_set_valign(fa_top);
 	draw_set_font_l(fnt_c64_nano);
     draw_set_alpha(_alpha_header * _edge_alpha * 0.8);
@@ -99,9 +98,8 @@ if (node_type == "COMMENT") {
     // under its bottom-most node. Nothing else from the chain is shown.
     var _wx = x + x_indent + width * 0.5;
     var _sx = (_wx - _cam_x) / _cam_zoom;
-    if (_sx < _shelf_edge || _sx > _sc_edge) exit;
-    var _edge_alpha = clamp((_sx - _shelf_edge) / 30.0, 0, 1)
-                    * clamp((_sc_edge - _sx)    / 30.0, 0, 1);
+    if (_sx > _sc_edge) exit;
+    var _edge_alpha = clamp((_sc_edge - _sx) / 30.0, 0, 1);
     draw_set_valign(fa_middle);
 
     var _org_ref  = id;
@@ -110,7 +108,7 @@ if (node_type == "COMMENT") {
     var _end_addr = pc_address + (_is_vars ? 0 : total_node_size);
     var _bottom   = y + height;
     with (obj_c64_node) {
-        if (id == _org_ref || scr_node_is_hidden(id)) continue;
+        if (id == _org_ref) continue;
         // INIT spine: connected nodes with no ORG parent, packed under INIT
         // (same rule scr_c64_do_update_addresses uses). ORG chain: its children.
         if (_is_init) {
@@ -124,7 +122,9 @@ if (node_type == "COMMENT") {
             if (!is_connected || node_type == "NAMED_LOC" || node_type == "NEW_STR") continue;
             _end_addr = max(_end_addr, pc_address + total_node_size);
         }
-        _bottom = max(_bottom, y + height);
+        // A folded block's nodes still compile, so they count for the end
+        // address above; the label still sits under what is on screen.
+        if (!scr_node_is_hidden(id)) _bottom = max(_bottom, y + height);
     }
 
     var _sy_start = (y + height * 0.5 - _cam_y) / _cam_zoom;
@@ -148,9 +148,8 @@ if (node_type == "COMMENT") {
     var _sx = (_wx - _cam_x) / _cam_zoom;
     var _sy = (_wy - _cam_y) / _cam_zoom;
     if (_sx < 0 || _sx > 1920 || _sy < 0 || _sy > 1080) exit;
-    if (_sx < _shelf_edge || _sx > _sc_edge) exit;
-    var _edge_alpha = clamp((_sx - _shelf_edge) / 30.0, 0, 1)
-                    * clamp((_sc_edge - _sx)    / 30.0, 0, 1);
+    if (_sx > _sc_edge) exit;
+    var _edge_alpha = clamp((_sc_edge - _sx) / 30.0, 0, 1);
     draw_set_valign(fa_middle);
 
     var _display = "";
