@@ -2480,6 +2480,12 @@ if (gui_menu_open == -1) {
         draw_set_color(make_color_rgb(80, 160, 80));
         draw_text_transformed_l(_path_x1, _auto_y, _auto_str, _auto_scl, 1.0, 0);
     }
+    // A template opened as a new project: say which one, until it is saved
+    if (variable_global_exists("template_title") && global.template_title != "" && global.workspace_path == "") {
+        var _tpl_y = (autosave_last_path != "") ? _auto_y + 16 : _auto_y;
+        draw_set_color(make_color_rgb(120, 200, 255));
+        draw_text_transformed_l(_path_x1, _tpl_y, L("PROJECT: TEMPLATE ") + global.template_title + L("  (NEW - SAVE AS TO KEEP IT)"), 1.0, 1.0, 0);
+    }
 }
 
 /////////////////////////////////////////////////////////////////

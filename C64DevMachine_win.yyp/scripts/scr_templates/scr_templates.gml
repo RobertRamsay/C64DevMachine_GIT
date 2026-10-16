@@ -44,6 +44,8 @@ function scr_template_load(_index) {
     global.saved_hash_pending = 0;
     global.autosave_dirty = true;
     window_set_caption(game_project_name + " - " + _entry.title + " (new project)");
+    // Named under the CURRENT FILE line until it is saved somewhere
+    global.template_title = _entry.title;
 }
 
 function scr_template_step() {

@@ -516,6 +516,7 @@ global.show_helper_window = false;
 global.helper_node = noone;
 window_set_caption(game_project_name);
 global.workspace_path       = "";
+global.template_title       = "";   // the template this project came from (scr_template_load)
 
 
 // initial window:

@@ -140,6 +140,7 @@ function scr_load_workspace_from_path_core(_path, _mcp = false) {
     io_clear();
 
     global.workspace_path = path;
+    global.template_title = "";   // scr_template_load sets it again after the load
     scr_recent_files_add(path);
 
     var _temp_sprites = working_directory + "temp/sprites";

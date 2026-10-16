@@ -405,8 +405,8 @@ WORLD also holds the SPAWN
 layer: press E in it to
 place and edit enemies.
 
-The CONTROL PANEL below
-holds every setting (F9 =
+The CONTROL panels below
+hold every setting (F9 =
 Creator view): screen,
 scroll, ship, power meter,
 weapons, rules, colours
@@ -424,8 +424,9 @@ function build() {
   let sngUid = 0, orgUid = 1;
   const PITCH = 640, X0 = 400;
 
-  nodes.push(rawNode('COMMENT', [['Comment', README]], 20, 160, { comment_w: 300, custom_title: 'READ ME', title: 'READ ME' }));
-  const controlLinks = [];
+  const readme = rawNode('COMMENT', [['Comment', README]], 20, 160, { comment_w: 300, custom_title: 'READ ME', title: 'READ ME' });
+  nodes.push(readme);
+  const controlPanels = [];   // { name, nodes } - laid out left of the spine at the end
 
   COLUMNS.forEach((col, ci) => {
     const x = X0 + ci * PITCH;
@@ -454,7 +455,7 @@ function build() {
     }
     let bottom = y;
     // notes lane: notes and panels in order of the node they sit beside
-    for (const p of col.panels || []) for (const k of p.links) controlLinks.push(byKey[k]);
+    for (const p of col.panels || []) controlPanels.push({ name: p.name, nodes: p.links.map(k => byKey[k]) });
     const lane = [...(col.notes || []).map(n => ({ ...n, kind: 'note' }))]
       .sort((a, b) => (a.kind === b.kind ? byKey[a.at].y - byKey[b.at].y : a.kind === 'note' ? -1 : 1));   // notes beside their nodes, panels under them
     let laneY = 340;
@@ -486,15 +487,32 @@ function build() {
     boxes.push({ x: x - 20, y: 120, panel_links: [], is_panel: false, box_col_idx: ci % 10, box_name: col.name, box_h: bottom - 120 + 40, box_w: 620 });
   });
 
-  // ONE control panel under the READ ME, left of SYSTEM INIT: every
-  // node with settings, in column order
-  let ph = 36;
-  for (const n of controlLinks) { ph += 22 + 28; for (const p of n.params) ph += p.kind === 'COLOUR' ? 70 : 52; }
-  ph += 10;
-  const py = 160 + commentH(README) + 30;
-  boxes.push({ x: 20, y: py, panel_links: controlLinks.map(n => n.stable_uid), is_panel: true, box_col_idx: 3,
-    box_name: 'CONTROL PANEL', box_h: ph, box_w: 300 });
-  boxes.push({ x: 0, y: 120, panel_links: [], is_panel: false, box_col_idx: 3, box_name: 'SHMUP H', box_h: py - 120 + ph + 30, box_w: 340 });
+  // CONTROLS block, left of the spine: the READ ME across the top, the
+  // settings panels under it in a grid, PANEL_COLS to a row
+  const PANEL_COLS = 4, PW = 280, GAP = 20;
+  const blockW = PANEL_COLS * PW + (PANEL_COLS - 1) * GAP;
+  const bx = X0 - 20 - 40 - blockW - 40;          // box left edge, a gap before column 01
+  const ix = bx + 20;                              // inside edge
+  const charsPerLine = Math.floor(30 * blockW / 280);
+  const readmeH = 40 + reflow(README).split(/\n/).reduce((n, l) => n + Math.max(1, Math.ceil(l.length / charsPerLine)), 0) * 20;
+  Object.assign(readme, { x: ix, y: 160, comment_w: blockW });
+  const panelH = nodes_ => {
+    let h = 36;
+    for (const n of nodes_) { h += (nodes_.length > 1 ? 22 : 0) + 28; for (const p of n.params) h += p.kind === 'COLOUR' ? 70 : 52; }
+    return h + 10;
+  };
+  let rowY = 160 + readmeH + 30;
+  for (let r = 0; r < controlPanels.length; r += PANEL_COLS) {
+    let rowH = 0;
+    controlPanels.slice(r, r + PANEL_COLS).forEach((p, c) => {
+      const h = panelH(p.nodes);
+      boxes.push({ x: ix + c * (PW + GAP), y: rowY, panel_links: p.nodes.map(n => n.stable_uid), is_panel: true,
+        box_col_idx: (r + c) % 10, box_name: p.name, box_h: h, box_w: PW });
+      rowH = Math.max(rowH, h);
+    });
+    rowY += rowH + GAP;
+  }
+  boxes.push({ x: bx, y: 120, panel_links: [], is_panel: false, box_col_idx: 3, box_name: 'SHMUP H - CONTROLS', box_h: rowY - 120 + 20, box_w: blockW + 40 });
 
   // the title loop calls the song player by its macro label
   for (const n of nodes) if (n.type === 'NORMAL' && n.code[0][0] === 'jsr' && n.code[0][1].includes(SNG)) n.code[0][1] = n.code[0][1].replace(SNG, String(sngUid));
