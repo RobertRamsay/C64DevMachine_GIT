@@ -409,16 +409,19 @@ SFX_LABELS = (("Coin", "COIN"), ("Use", "USE"), ("Magic", "MAGIC"), ("Swap", "SW
               ("Promote", "PROMOTE"), ("Error", "ERROR"), ("Sleep", "SLEEP"), ("Jump", "JUMP"), ("Clue", "CLUE"))
 
 # Where each column's code goes. The 64K map: $0801 boot, $0900 title +
-# tune, $20C0 pages, $2600 IRQ + sounds, $3000 charset, $3800 sprites,
-# $4000 title picture, $6800-$7FFF the game, $8000 charsets / tables /
-# messages, $C000 variables, $D000 maps + sprite library (under ROM).
+# tune (then HOW TO PLAY and the endings, wired on after it), $2600 IRQ +
+# sounds, $3000 charset, $3800 sprites, $4000 title picture, $6800-$7FFF
+# the game, $8000 charsets / tables / messages, $C000 variables, $D000 maps
+# + sprite library (under ROM).
 ORGS = {
     "02 TITLE + THEME TUNE": 0x0900,
-    "11 HOW TO PLAY + PAGES": 0x20C0,
     "03 FRAME SYNC / IRQ / SOUNDS": 0x2600,
     "04 NEW LIFE: SCREEN, SPRITES, HUD": 0x6800,
-    "12 ENDINGS": 0x2200,
 }
+# ORG wires (source column -> column that starts where it ends): the pages
+# follow the title column, whatever size the tune comes out at, instead of
+# sitting at fixed addresses the title chain could grow into.
+WIRED = [("02 TITLE + THEME TUNE", "11 HOW TO PLAY + PAGES"), ("11 HOW TO PLAY + PAGES", "12 ENDINGS")]
 
 def layout():
     """Returns (columns, comments). A column: dict(name, x, org, items).
@@ -534,9 +537,12 @@ def place_columns(cols, sizes):
     for c in cols:
         if c["name"] == "04 NEW LIFE: SCREEN, SPRITES, HUD":
             pc = c["org"] + sizes[c["name"]] + 160      # the HUD / SPR macros run larger in the editor
-        elif c["org"] is None and c["name"] != "01 BOOT":
+        elif c["org"] is None and c["name"] != "01 BOOT" and c["name"] not in [d for _, d in WIRED]:
             c["org"] = (pc + 15) & ~15
             pc = c["org"] + sizes[c["name"]] + 8
+    by = {c["name"]: c for c in cols}
+    for src, dst in WIRED:            # (in the editor these follow the real end)
+        by[dst]["org"] = by[src]["org"] + sizes[src]
     return cols
 
 
@@ -548,6 +554,7 @@ COLLAPSED_BOX_H = 440.0
 
 def build_nodes(tables, cols, comments):
     nodes, orgs, boxes = [], [], []
+    org_of = {}
     org_uid = 1
     for ci, c in enumerate(cols):
         x = c["x"]
@@ -567,6 +574,7 @@ def build_nodes(tables, cols, comments):
             o["connected"] = False
             o["collapsed"] = c["name"] in COLLAPSED   # folded to its ORG block
             orgs.append(o)
+            org_of[c["name"]] = o
             parent = (x, y)
             y += 80
         for it in c["items"]:
@@ -587,6 +595,9 @@ def build_nodes(tables, cols, comments):
                       "box_col_idx": float(ci % 8), "box_name": c["name"],
                       "box_h": COLLAPSED_BOX_H if c["name"] in COLLAPSED else float(y - 120 + 40),
                       "box_w": 280.0})
+    for src, dst in WIRED:
+        org_of[src]["wire_out_target"] = org_of[dst]["org_uid"]
+        org_of[dst]["wire_in_source"] = org_of[src]["org_uid"]
     return orgs + nodes, boxes
 
 
@@ -765,7 +776,9 @@ def check_layout(cols, sizes):
     spans = sorted((0x080E if c["name"] == "01 BOOT" else c["org"], sizes[c["name"]], c["name"]) for c in cols)
     for (s0, n0, a), (s1, _, b) in zip(spans, spans[1:]):
         assert s0 + n0 <= s1, "%s ($%04X-$%04X) runs into %s ($%04X)" % (a, s0, s0 + n0, b, s1)
-    limits = {"02 TITLE + THEME TUNE": 0x20C0, "11 HOW TO PLAY + PAGES": 0x2200, "12 ENDINGS": 0x2600,
+    # 02 + 11 + 12 (wired one after the other) must end before the IRQ column;
+    # the stubs leave the tune out, so this is checked again on the editor build
+    limits = {"12 ENDINGS": 0x2600,
               "03 FRAME SYNC / IRQ / SOUNDS": 0x3000}   # the SFX data runs to ~$2DF4 in the editor
     for s, n, name in spans:
         if name in limits:
