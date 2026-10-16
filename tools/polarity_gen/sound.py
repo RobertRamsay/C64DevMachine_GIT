@@ -1,23 +1,18 @@
 """POLARITY music (MUSIC_MAKER) and sound effects (SFX_MAKER) metas.
 
-An original tune: no melodies or chord sequences are taken from anywhere.
-It is arranged with production techniques of three C64 greats, studied at
-register level (style only) from HVSC tunes by Reyn Ouwehand, Jeroen Tel
-and Charles Deenen:
-  - Ouwehand: a slow build over a filtered pedal bass (the cutoff jumps on
-    each note and sweeps down), delayed-arp chord stabs (root first, then
-    the chord tones), chords changing every half bar in the major section,
-    octave-pluck lead attacks.
-  - Tel: a long minor i-bVII-bVI-bVII progression, two bars per chord,
-    carried by fast 1-frame arpeggio chords re-triggered every other row
-    over a busy 16th-note click bass with the kick and snare folded in;
-    then a vibrato lead over the same changes.
-  - Deenen: a Phrygian i-bVII-i-bII breakdown with a minor-third trill
-    lead and an octave-pluck answer.
-6 frames per row, 16 rows per bar, 2-bar patterns. Voice 1 carries bass and
-drums, voice 2 lead / arps; voice 3 stays free for the game's sound effects.
-Form: intro (build), Sunny (C major) x2, Hex (A minor), breakdown, Sunny
-again, then back to Sunny (about 100 s per loop).
+An original tune, written to be sung: clear four-bar phrases (a question,
+then its answer) over real chord changes, rather than riffs over a drone.
+Two voices carry it, as voice 3 belongs to the game's sound effects:
+  - voice 1 is the harmony: the bass plays each chord broken up (root,
+    fifth, octave, tenth...) with the kick and snare folded into its notes,
+    so the full chord is heard even with one voice;
+  - voice 2 is the tune: a soft triangle flute for the verses, a brighter
+    pulse lead with delayed vibrato for the chorus, and a music-box bell
+    playing the chords for the intro and the interlude.
+6 frames per row, 16 rows per bar, 2-bar patterns (one chord a bar).
+Form: intro (music box) -> Sunny's verse (C major) -> chorus -> Hex's
+verse (A minor, with E major pulling home) -> music-box interlude ->
+verse -> chorus, then back to the verse (about 100 s per loop).
 """
 import copy
 
@@ -51,25 +46,19 @@ def ins(name, main, loop_to=None, pulse=None, cutoff=None, a=0, d=9, s=8, r=4, p
             "vib_delay": 0.0, "vib_speed": 0.0, "vib_depth": 0.0, "dirty": True}
 
 INSTRUMENTS = [
-    # bass voice: a clean pulse bass (no noise click: too chirpy), the cutoff
-    # jumps on each note and sweeps down
-    ins("CLICK BASS", ["$41", "C$600", "N", "D1"], 3, (96, 24), (-14, 40),
-        a=0, d=8, s=8, r=9, pw=1280, filt=1),
-    ins("KICK BASS", ["$11", "N=60", "D1", "N=44", "D1", "N=36", "D1", "$41", "N", "D1"], 9, (96, 24),
-        a=0, d=9, s=8, r=9, pw=1280, filt=1),
-    ins("SNARE BASS", ["$81", "N=72", "D1", "$41", "N=48", "D1", "$81", "N=70", "D1", "$41", "N", "D1"], 11, (96, 24),
-        a=0, d=9, s=8, r=9, pw=1280, filt=1),
-    # lead voice
-    ins("LEAD", ["$21", "N-12", "D1", "$41", "D14", "V$24", "D1"], 6, (16, 48), a=0, d=0, s=11, r=8, pw=1600),
-    ins("ARP MAJOR", ["$41", "N", "D1", "N+7", "D1", "N+4", "D1"], 1, (32, 32), a=0, d=8, s=6, r=3, pw=1024),
-    ins("ARP MINOR", ["$41", "N", "D1", "N+7", "D1", "N+3", "D1"], 1, (32, 32), a=0, d=8, s=6, r=3, pw=1024),
-    ins("ECHO LEAD", ["$21", "D1", "$41", "D14", "V$24", "D1"], 5, (16, 48), a=0, d=0, s=6, r=6, pw=1600),
-    ins("PAD", ["$41", "D60", "V$23", "D1"], 3, (120, 28), a=10, d=10, s=12, r=8),
-    ins("SNARE LEAD", ["$81", "N=72", "D1", "$41", "N=50", "D1", "$80", "D3"], end=True, a=0, d=8, s=0, r=4),
-    ins("DELAY ARP MIN", ["$41", "N", "D3", "N+3", "D2", "N+7", "D1", "N+12", "D2"], 1, (24, 40), a=0, d=9, s=5, r=4, pw=1200),
-    ins("DELAY ARP MAJ", ["$41", "N", "D3", "N+4", "D2", "N+9", "D1", "N+12", "D2"], 1, (24, 40), a=0, d=9, s=5, r=4, pw=1200),
-    ins("OCT PLUCK", ["$21", "N+12", "D2", "$41", "N", "D10", "V$24", "D1"], 7, (12, 56), a=0, d=0, s=10, r=7, pw=1800),
-    ins("TRILL", ["$41", "N", "D2", "N+3", "D4", "N", "D4"], 1, (16, 40), a=0, d=0, s=10, r=6, pw=1500),
+    # voice 1: a round filtered pulse bass (the cutoff opens on each note and
+    # closes again), plus the same bass with a kick or a snare on its front
+    ins("BASS", ["$41", "C$500", "N", "D1"], 3, (64, 32), (-10, 40),
+        a=0, d=8, s=9, r=6, pw=1200, filt=1),
+    ins("KICK BASS", ["$11", "N=60", "D1", "N=44", "D1", "N=36", "D1", "$41", "N", "D1"], 9, (64, 32),
+        a=0, d=8, s=9, r=6, pw=1200, filt=1),
+    ins("SNARE BASS", ["$81", "N=72", "D1", "$41", "N=48", "D1", "$81", "N=70", "D1", "$41", "N", "D1"], 11, (64, 32),
+        a=0, d=8, s=9, r=6, pw=1200, filt=1),
+    # voice 2: the tune
+    ins("FLUTE", ["$11", "N", "D10", "V$23", "D1"], 4, a=1, d=6, s=11, r=7),
+    ins("SWEET LEAD", ["$41", "N+12", "D1", "N", "D12", "V$24", "D1"], 6, (12, 64),
+        a=0, d=4, s=11, r=8, pw=1700),
+    ins("BELL", ["$11", "N+12", "D1", "N", "D1"], end=True, a=0, d=9, s=0, r=9),
 ]
 I = {n["name"]: i for i, n in enumerate(INSTRUMENTS)}
 for _ins in INSTRUMENTS:                      # absolute notes are N=0 .. N=95
@@ -92,117 +81,95 @@ def pattern(name, notes):
         steps[pos] = step(note, instr)
     return {"pattern_len": 32.0, "steps": steps, "name": name}
 
-def groove(name, roots, style="normal"):
-    """Bass + drums in one voice. roots: 1, 2 or 4 per pattern.
-    styles: pedal (eighth notes, no drums), build (pedal + kick),
-    normal (kick, snare, octave bass), busy (16th-note bass, kick + snare).
-    No hi-hats: high noise sounds chirpy against this bass."""
-    span = 32 // len(roots)
+# chord name -> (bass root, third in semitones)
+CHORDS = {"C": ("C-3", 4), "Am": ("A-2", 3), "F": ("F-2", 4), "G": ("G-2", 4), "Em": ("E-2", 3),
+          "Dm": ("D-3", 3), "E": ("E-2", 4)}
+
+def bass(chords, drums=True):
+    """Two bars, one chord each, broken up in eighths: root, fifth, octave,
+    tenth, root, fifth, octave, fifth. Kick on beat 1 (and 3 with drums),
+    snare on beats 2 and 4 (with drums)."""
     notes = []
-    for i, r in enumerate(roots):
-        b = i * span
-        hi = transpose(r, 12)
-        if style == "pedal":
-            cell = [(o, r, "CLICK BASS") for o in range(0, 8, 2)]
-        elif style == "build":
-            cell = [(0, r, "KICK BASS"), (2, r, "CLICK BASS"), (4, r, "CLICK BASS"), (6, r, "CLICK BASS")]
-        elif style == "busy":
-            cell = [(0, r, "KICK BASS"), (1, r, "CLICK BASS"), (2, hi, "CLICK BASS"), (3, r, "CLICK BASS"),
-                    (4, r, "SNARE BASS"), (5, r, "CLICK BASS"), (6, hi, "CLICK BASS"), (7, r, "CLICK BASS")]
-        else:
-            cell = [(0, r, "KICK BASS"), (2, r, "CLICK BASS"), (4, r, "SNARE BASS"), (6, hi, "CLICK BASS")]
-        for off in range(0, span, 8):
-            notes += [(b + off + o, n, I[k]) for o, n, k in cell]
-    return pattern(name, notes)
+    for b, ch in enumerate(chords):
+        root, third = CHORDS[ch]
+        tones = [root, transpose(root, 7), transpose(root, 12), transpose(root, 12 + third),
+                 root, transpose(root, 7), transpose(root, 12), transpose(root, 7)]
+        for k, n in enumerate(tones):
+            if k == 0 or (drums and k == 4):
+                instr = "KICK BASS"
+            elif drums and k in (2, 6):
+                instr = "SNARE BASS"
+            else:
+                instr = "BASS"
+            notes.append((b * 16 + k * 2, n, I[instr]))
+    return pattern("BASS " + " ".join(chords) + ("" if drums else " SOFT"), notes)
 
-def stabs(name, root, quality, rows):
-    return pattern(name, [(o, root, I["DELAY ARP " + quality]) for o in rows])
+def music_box(chords):
+    """The chords as a bell arpeggio up high: 1 5 3' 5 | 1' 5 3' 5 per bar."""
+    notes = []
+    for b, ch in enumerate(chords):
+        root, third = CHORDS[ch]
+        r = transpose(root, 24 if root[2] == "2" else 12)          # octave 4
+        seq = [r, transpose(r, 7), transpose(r, 12 + third), transpose(r, 7),
+               transpose(r, 12), transpose(r, 7), transpose(r, 12 + third), transpose(r, 19)]
+        notes += [(b * 16 + k * 2, n, I["BELL"]) for k, n in enumerate(seq)]
+    return pattern("BOX " + " ".join(chords), notes)
 
-def fast_arps(name, root, quality):
-    """A 1-frame arp chord re-triggered every other row."""
-    return pattern(name, [(o, root, I["ARP " + quality]) for o in range(0, 32, 2)])
-
-def lead(name, seq, instr="LEAD"):
+def tune(name, seq, instr):
     out = []
     for tok in seq.split():
         pos, note = tok.split(":")
         out.append((int(pos), note, I[instr]))
     return pattern(name, out)
 
-PATTERNS = [
-    pattern("REST", []),                                                              # 0
-    # intro: a slow build over an A pedal
-    groove("PEDAL A", ["A-2"], "pedal"),                                              # 1
-    groove("PEDAL A + KICK", ["A-2"], "build"),                                       # 2
-    pattern("SPARE 3", []),                                                           # 3 (free)
-    pattern("SPARE 4", []),                                                           # 4 (free)
-    # Sunny's theme, C major, chords every half bar
-    groove("GROOVE C F G C", ["C-3", "F-2", "G-2", "C-3"]),                           # 5
-    groove("GROOVE Am F G G", ["A-2", "F-2", "G-2", "G-2"]),                          # 6
-    groove("GROOVE F G Em Am", ["F-2", "G-2", "E-2", "A-2"]),                         # 7
-    groove("GROOVE F G C C", ["F-2", "G-2", "C-3", "C-3"]),                           # 8
-    lead("SUNNY 1", "0:G-5 2:E-5 4:C-5 6:E-5 8:A-5 10:F-5 12:C-6 14:A-5 16:B-5 18:D-6 20:G-5 22:B-5 24:C-6 28:E-5", "OCT PLUCK"),   # 9
-    lead("SUNNY 2", "0:C-6 2:A-5 4:E-5 6:A-5 8:F-5 10:A-5 12:C-6 14:D-6 16:B-5 18:G-5 20:D-5 22:G-5 24:B-5 26:D-6 28:B-5 30:A-5", "OCT PLUCK"),  # 10
-    lead("SUNNY 3", "0:A-5 4:C-6 6:A-5 8:B-5 12:D-6 14:B-5 16:G-5 18:B-5 20:E-6 24:C-6 26:A-5 28:E-5", "OCT PLUCK"),             # 11
-    lead("SUNNY 4", "0:F-5 2:A-5 4:C-6 6:A-5 8:G-5 10:B-5 12:D-6 14:B-5 16:C-6 20:G-5 24:E-5 26:G-5 28:C-6", "OCT PLUCK"),       # 12
-    # Hex's theme, A minor: i - bVII - bVI - bVII, two bars each
-    groove("BUSY Am", ["A-2"], "busy"),                                               # 13
-    groove("BUSY G", ["G-2"], "busy"),                                                # 14
-    groove("BUSY F", ["F-2"], "busy"),                                                # 15
-    fast_arps("FAST ARPS Am", "A-4", "MINOR"),                                        # 16
-    fast_arps("FAST ARPS G", "G-4", "MAJOR"),                                         # 17
-    fast_arps("FAST ARPS F", "F-4", "MAJOR"),                                         # 18
-    lead("HEX 1", "0:A-5 6:C-6 8:B-5 10:A-5 12:E-5 16:A-5 18:B-5 20:C-6 22:D-6 24:E-6 28:D-6"),                                  # 19
-    lead("HEX 2", "0:D-6 4:B-5 6:G-5 8:D-5 12:G-5 14:A-5 16:B-5 20:D-6 22:B-5 24:G-5 28:D-5"),                                   # 20
-    lead("HEX 3", "0:C-6 4:A-5 6:F-5 8:C-5 12:F-5 14:G-5 16:A-5 20:C-6 24:E-6 26:D-6 28:C-6"),                                   # 21
-    lead("HEX 4", "0:B-5 2:C-6 4:D-6 8:G-5 12:B-5 16:D-6 20:C-6 22:B-5 24:A-5 28:E-5"),                                          # 22
-    # breakdown: Phrygian i - bVII - i - bII
-    groove("GROOVE Am G", ["A-2", "G-2"]),                                            # 23
-    groove("GROOVE Am Bb", ["A-2", "A#2"]),                                           # 24
-    lead("TRILL 1", "0:E-5 4:D-5 8:D-5 12:B-4 16:E-5 20:C-5 24:F-5 28:D-5", "TRILL"),                                            # 25
-    lead("TRILL 2", "0:A-4 8:G-4 16:A-4 24:A#4", "TRILL"),                                                                       # 26
-    lead("PLUCK ANSWER 1", "0:A-5 2:A-5 4:G-5 6:A-5 8:B-5 10:A-5 12:G-5 14:D-5 16:E-5 18:E-5 20:F-5 22:E-5 24:D-5 26:A#4 28:A-4", "OCT PLUCK"),  # 27
-    lead("PLUCK ANSWER 2", "0:E-5 4:A-5 8:G-5 12:D-5 16:F-5 20:A#5 24:A-5 28:A#5", "OCT PLUCK"),                                  # 28
-    # Hex part two: i - iv - bVII - III - bVI - iv - V - V, lead phrases
-    # answered by arp bars, then the lead alone
-    groove("BUSY Dm", ["D-3"], "busy"),                                               # 29
-    groove("BUSY C", ["C-3"], "busy"),                                                # 30
-    groove("BUSY E", ["E-2"], "busy"),                                                # 31
-    fast_arps("FAST ARPS Dm", "D-4", "MINOR"),                                        # 32
-    fast_arps("FAST ARPS C", "C-4", "MAJOR"),                                         # 33
-    fast_arps("FAST ARPS E", "E-4", "MAJOR"),                                         # 34
-    lead("HEX 5", "0:E-6 2:D-6 4:C-6 6:B-5 8:C-6 12:A-5 16:E-5 18:A-5 20:B-5 22:C-6 24:B-5 28:A-5"),                            # 35
-    lead("HEX 6", "0:B-5 4:D-6 6:E-6 8:D-6 12:B-5 16:G-5 18:A-5 20:B-5 24:D-6 28:C-6"),                                          # 36
-    lead("HEX 7", "0:A-5 2:C-6 4:F-6 8:E-6 10:D-6 12:C-6 16:A-5 20:F-5 24:G-5 28:A-5"),                                          # 37
-    lead("HEX 8", "0:G#5 4:B-5 6:E-6 8:D-6 12:B-5 16:G#5 18:A-5 20:B-5 24:E-5"),                                                 # 38
-    # Sunny bridge: delayed-arp stabs over her chords, every half bar
-    pattern("SUNNY STABS 1", [(o, n, I["DELAY ARP " + q]) for o, n, q in
-                              ((0, "C-4", "MAJ"), (4, "C-4", "MAJ"), (8, "F-3", "MAJ"), (12, "F-3", "MAJ"),
-                               (16, "G-3", "MAJ"), (20, "G-3", "MAJ"), (24, "C-4", "MAJ"), (28, "C-4", "MAJ"))]),   # 39
-    pattern("SUNNY STABS 2", [(o, n, I["DELAY ARP " + q]) for o, n, q in
-                              ((0, "A-3", "MIN"), (4, "A-3", "MIN"), (8, "F-3", "MAJ"), (12, "F-3", "MAJ"),
-                               (16, "G-3", "MAJ"), (20, "G-3", "MAJ"), (24, "G-3", "MAJ"), (28, "G-3", "MAJ"))]),   # 40
-]
+VERSE_CHORDS = [("C", "Am"), ("F", "G"), ("Em", "Am"), ("Dm", "G")]
+CHORUS_CHORDS = [("F", "G"), ("Em", "Am"), ("Dm", "G"), ("C", "C")]
+HEX_CHORDS = [("Am", "F"), ("C", "G"), ("Am", "F"), ("E", "E")]
+
+PATTERNS = [pattern("REST", [])]
+def add(p):
+    PATTERNS.append(p)
+    return len(PATTERNS) - 1
+
+BASS = {c: add(bass(c)) for c in VERSE_CHORDS + CHORUS_CHORDS + HEX_CHORDS if c != ("C", "C")}
+BASS[("C", "C")] = add(bass(("C", "C")))
+SOFT = {c: add(bass(c, drums=False)) for c in VERSE_CHORDS}
+BOX = {c: add(music_box(c)) for c in VERSE_CHORDS}
+
+# Sunny's verse, C major: a question (bars 1-4), then its answer (5-8)
+VERSE = [add(tune(n, s, "FLUTE")) for n, s in (
+    ("VERSE 1", "0:E-5 6:D-5 8:C-5 12:E-5 14:G-5 16:A-5 24:G-5 26:E-5 28:C-5"),
+    ("VERSE 2", "0:F-5 4:A-5 8:C-6 14:A-5 16:G-5 22:F-5 24:E-5 28:D-5"),
+    ("VERSE 3", "0:E-5 6:G-5 8:B-5 14:A-5 16:A-5 22:C-6 24:E-6 30:D-6"),
+    ("VERSE 4", "0:D-6 4:C-6 8:A-5 12:F-5 16:G-5 24:A-5 26:B-5 28:D-6"),
+)]
+# chorus: it climbs to the top F, then comes home to C
+CHORUS = [add(tune(n, s, "SWEET LEAD")) for n, s in (
+    ("CHORUS 1", "0:C-6 6:A-5 8:C-6 12:D-6 16:D-6 22:B-5 24:G-5 28:B-5"),
+    ("CHORUS 2", "0:B-5 6:G-5 8:E-5 12:G-5 16:A-5 22:C-6 24:E-6"),
+    ("CHORUS 3", "0:F-6 6:E-6 8:D-6 12:A-5 16:B-5 22:A-5 24:G-5 28:F-5"),
+    ("CHORUS 4", "0:E-5 8:G-5 12:C-6 16:C-6"),
+)]
+# Hex's verse, A minor: lower and darker, the E major chord's G# leading home
+HEX = [add(tune(n, s, "FLUTE")) for n, s in (
+    ("HEX 1", "0:A-5 6:B-5 8:C-6 14:B-5 16:A-5 22:G-5 24:F-5 28:A-5"),
+    ("HEX 2", "0:G-5 6:E-5 8:C-5 12:E-5 16:D-5 22:G-5 24:B-5"),
+    ("HEX 3", "0:C-6 6:B-5 8:A-5 12:E-5 16:F-5 20:A-5 24:C-6 28:A-5"),
+    ("HEX 4", "0:G#5 8:B-5 12:E-6 16:D-6 22:B-5 24:G#5 28:E-5"),
+)]
 
 def row(v1, v2):
     return {"v1": float(v1), "v2": float(v2), "v3": 0.0, "dg": -1.0, "force_len": 32.0, "repeat_short": False}
 
-SUNNY = [row(5, 9), row(6, 10), row(7, 11), row(8, 12)]
-HEX_ARPS = [row(13, 16), row(14, 17), row(15, 18), row(14, 17)]          # Am G F G, arps
-HEX_LEAD = [row(13, 19), row(14, 20), row(15, 21), row(14, 22)]          # the lead takes over
-ORDER = (
-    [row(0, 16), row(0, 18), row(1, 17), row(2, 34)]       # opens on arps alone (Am F), bass joins (G E)
-    + HEX_ARPS + HEX_LEAD                                  # Hex, part one
-    + [row(13, 35), row(29, 32), row(14, 36), row(30, 33), # Hex, part two: lead phrases answered
-       row(15, 37), row(29, 32), row(31, 38), row(31, 34)] #   by arp bars (Am Dm G C F Dm E E)
-    + SUNNY + SUNNY                                        # Sunny's theme x2
-    + [row(5, 39), row(6, 40), row(7, 39), row(8, 40)]     # Sunny bridge: stabs
-    + [row(23, 25), row(24, 26), row(23, 27), row(24, 28)] # breakdown
-    + [row(13, 35), row(14, 36), row(15, 37), row(31, 38)] # Hex part two, the lead alone
-    + HEX_LEAD                                             # Hex part one reprise
-    + [row(13, 16), row(29, 32), row(31, 34), row(31, 34)] # finale: arps Am Dm E E, back to the top
-)
-SONGS = [{"loop_row": 0.0, "name": "POLARITY THEME", "loop": True, "order": ORDER}]
+INTRO = [row(SOFT[c], BOX[c]) for c in VERSE_CHORDS[:2]]
+SECTION_VERSE = [row(BASS[c], p) for c, p in zip(VERSE_CHORDS, VERSE)]
+SECTION_CHORUS = [row(BASS[c], p) for c, p in zip(CHORUS_CHORDS, CHORUS)]
+SECTION_HEX = [row(BASS[c], p) for c, p in zip(HEX_CHORDS, HEX)]
+INTERLUDE = [row(SOFT[c], BOX[c]) for c in VERSE_CHORDS]
+ORDER = (INTRO + SECTION_VERSE + SECTION_CHORUS + SECTION_HEX + INTERLUDE
+         + SECTION_VERSE + SECTION_CHORUS)
+LOOP_ROW = len(INTRO)                          # the intro plays once
+SONGS = [{"loop_row": float(LOOP_ROW), "name": "POLARITY THEME", "loop": True, "order": ORDER}]
 
 SFX = [
     # name, text, note, attack, decay, sustain, release, priority
@@ -214,6 +181,8 @@ SFX = [
     ("PROMOTE", "$21,D4,N+4,D4,N+7,D4,N+12,D10,---", "C-5", 0, 6, 8, 3, 3),
     ("ERROR",   "$41,D6,N-1,D6,---",                "C-3", 0, 8, 6, 2, 2),
     ("SLEEP",   "$11,D8,N-3,D8,N-7,D12,---",        "C-4", 2, 8, 6, 6, 2),
+    ("JUMP",    "$41,D1,N+5,D1,N+10,D1,N+15,D2,---", "C-4", 0, 4, 0, 1, 1),
+    ("CLUE",    "$11,D2,N+7,D2,N+12,D2,N+19,D2,N+24,D2,N+31,D8,---", "C-5", 0, 8, 6, 4, 3),
 ]
 SFX_ID = {s[0]: i for i, s in enumerate(SFX)}
 
@@ -226,7 +195,7 @@ def music_meta(gate_music_meta):
     m["play_speed"] = 6.0
     m["voice_mask"] = 3.0
     m["song_loop"] = True
-    m["song_loop_row"] = 0.0
+    m["song_loop_row"] = float(LOOP_ROW)
     m["filt_mode"] = 1.0          # low-pass, for the bass voice
     m["filt_res"] = 15.0
     m["filt_cut"] = 1280.0

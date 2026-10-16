@@ -1,189 +1,363 @@
-"""POLARITY sprites. MC sprites: '.'=transparent '1'=$D025 (skin) '2'=own colour
-'3'=$D026 (black), 12 fat pixels wide. Hires: '#' set, 24 wide."""
+"""POLARITY sprites.
 
-SKIN, OUTLINE = 10, 0          # $D025 light red, $D026 black
+The sisters (and the people they meet) are three sprites each:
+  * a multicolour body, Y-expanded to 42 lines: skin ($D025), hair ($D026,
+    switched when the sisters swap) and the dress (the sprite's own colour);
+  * two hires overlays in black on top of it, one for lines 0-20 (head and
+    face) and one for lines 21-41 (body and legs): crisp line art over the
+    chunky colour fills.
+Each pose is drawn once as a 24x42 master ('K' line, 'H' hair, 'S' skin,
+'D' dress) facing right; split() derives the three sprites and the game
+mirrors them at run time when she faces left. The unique 64-byte blocks
+go into SPR_LIB (under the KERNAL ROM); the game copies the current ones
+into six buffer sprites in VIC bank 0.
 
-BODY_A = [
- "............",
- "....1111....",
- "...111111...",
- "..11111111..",
- "..11113131..",
- "..11113131..",
- "..111111111.",
- "...1111311..",
- "....11111...",
- ".....11.....",
- "....2222....",
- "...222222...",
- "..12222221..",
- "..12222221..",
- "...222222...",
- "..22222222..",
- ".2222222222.",
- "....1..1....",
- "....1..1....",
- "...33..33...",
- "............",
+The other sprites live in VIC bank 0 directly (POL_SPRITES, after the six
+buffers): coins, bees, magic, the Zzz, bubbles and the six clues."""
+
+SKIN = 10                          # $D025
+HAIR = [7, 6]                      # $D026: Sunny blonde, Hex blue-black
+DRESS = [2, 4]                     # body sprite colour: Sunny red, Hex purple
+NPC_NAMES = ["MO", "GRAN", "PIP", "PAGE"]
+NPC_COL = [5, 15, 3, 14]           # Mo's green apron, Gran's grey cardigan, Pip's cyan, Page's lilac
+POSES = ["STAND", "WALK", "JUMP", "CAST", "SIT_A", "SIT_B", "PHONE", "EAT", "CHEER", "LIE"]
+
+
+SUNNY_HEAD = [
+ "..............KKK.KKK...",
+ "........KKKKKKDDDKDDDK..",
+ "......KKHHHHHKKDDDDDK...",
+ ".....KHHHHHHHHKKDDKK....",
+ "....KHHHKHHHHHKDDKDDK...",
+ "...KHHHKHHHHHHHKKHKKK...",
+ "..KHHHKHHKHHHHKHHHKHHK..",
+ "..KHHKHKKSSSSSSKKHKHHK..",
+ ".KHHHKKSSSSSSSSSSKKHHHK.",
+ "KHHHHKSSSSSSSSSSSSKHHHHK",
+ "KHHHKSSKKSSSSSSKKSSKHHHK",
+ "KHHHKSKKKKSSSSKKKKSKHHHK",
+ "KHHHKSKKSKSSSSKKSKSKHHHK",
+ "KHHHKSKKKKSSSSKKKKSKHHHK",
+ "KHHHKSSKKSSSSSSKKSSKHHHK",
+ "KHHHKKSSSSSSSSSSSSKKHHHK",
+ ".KHHHKSSSSSKKSSSSSKHHHK.",
+ ".KHHHHKKSSSSSSSSKKHHHHK.",
+ "..KHHK.KKKSSSSKKK.KHHK..",
+ "..KHHK....KSSK....KHHK..",
+ "...KK.....KSSK.....KK...",
+ "..........KSSK..........",
 ]
-BODY_B = BODY_A[:10] + [
- "....2222....",
- "...222222...",
- "...1222221..",
- "..12222221..",
- "...222222...",
- "..22222222..",
- ".2222222222.",
- "...1....1...",
- "..1......1..",
- ".33......33.",
- "............",
-]
-BODY_CAST = BODY_A[:10] + [
- "....2222....",
- "...222222111",
- "..1222222...",
- "..1222222...",
- "...222222...",
- "..22222222..",
- ".2222222222.",
- "....1..1....",
- "....1..1....",
- "...33..33...",
- "............",
+HEX_HEAD = [
+ "...............KK.......",
+ ".............KKDK.......",
+ "...........KKDDK........",
+ "..........KDDDDK........",
+ ".........KDDDDDDK.......",
+ "........KDDKKKKDDK......",
+ ".KKKKKKKKKKKKKKKKKKKKKK.",
+ "..KKHHHHHHHHHHHHHHHHKK..",
+ "..KHHHKKKKKKKKKKKKHHHK..",
+ "..KHHKSSSSSSSSSSSSKHHK..",
+ "..KHHKSSKKSSSSSSKKSKHK..",
+ "..KHHKSKKKKSSSSKKKKKHK..",
+ "..KHHKSKKSKSSSSKKSKKHK..",
+ "..KHHKSKKKKSSSSKKKKKHK..",
+ "..KHHKSSKKSSSSSSKKSKHK..",
+ "..KHHHKSSSSSSSSSSSSKHK..",
+ "..KHHHKSSSSSKKSSSSKHHK..",
+ "..KHHHHKKSSSSSSSSKKHHK..",
+ "..KHHHHHHKKSSSSKKHHHHK..",
+ "..KHHHHHHHKKSSKKHHHHHK..",
+ "..KKHHHHHHKSSSSKHHHHKK..",
+ "..........KSSK..........",
 ]
 
-# --- poses -----------------------------------------------------------
-SIT_A = BODY_A[:10] + [          # sitting, facing right; legs hang
- "....2222....",
- "...222222...",
- "...222222...",
- "..1222222...",
- "..22222222..",
- "...22222221.",
- ".........1..",
- ".........1..",
- "........33..",
- "............",
- "............",
+TORSO = [
+ "......KKDDDDDDDDKK......",
+ ".....KDDDKDDDDKDDDK.....",
+ "....KDDDDDKDDKDDDDDK....",
 ]
-SIT_B = SIT_A[:16] + [           # ...and swing forward
- "..........1.",
- "..........1.",
- "..........33",
- "............",
- "............",
+SKIRT = [
+ "....KKKDDDDDDDDDDKKK....",
+ "....KDDDDDDDDDDDDDDK....",
+ "...KDDDDDDDDDDDDDDDDK...",
+ "..KDDDDDDDDDDDDDDDDDDK..",
+ "..KKKKKKKKKKKKKKKKKKKK..",
 ]
-LIE = [                          # in bed: head on the pillow, blanket on
- "............", "............", "............", "............",
- "............", "............", "............", "............",
- "............", "............",
- ".111........",
- "11111.22222.",
- "13131222222.",
- "11111222222.",
- ".111..22222.",
+ARMS_DOWN = [
+ "...KSKDDDDDKKDDDDDKSK...",
+ "...KSKDDDDDDDDDDDDKSK...",
+ "...KSKDDDDDDDDDDDDKSK...",
+ "...KSKKDDDDDDDDDDKKSK...",
+ "...KSSKKKKKKKKKKKKSSK...",
 ]
-PHONE = [
- "............",
- "....1111....",
- "...111111...",
- "..11111111..",
- "..11113133..",
- "..111131333.",
- "..111111133.",
- "...11113113.",
- "....11111.1.",
- ".....11...1.",
- "....2222.1..",
- "...2222221..",
- "..12222222..",
-] + BODY_A[13:]
-EAT = BODY_A[:7] + [
- "...11113133.",
- "....1111133.",
- ".....11.11..",
- "....222211..",
- "...222222...",
- "..12222222..",
-] + BODY_A[13:]
-CHEER = BODY_A[:8] + [
- "1...11111..1",
- "1....11....1",
- ".1..2222..1.",
- "..1222222.1.",
- "...222222...",
- "...222222...",
-] + BODY_A[14:]
-SUNNY_LIE = [
- "", "", "", "", "", "", "", "",
- ".########...............",
- "##########..............",
- "##......................",
- "#.......................",
- "#.......................",
- "##......................",
- ".##.....................",
-]
-HEX_LIE = [
- "", "", "", "", "", "", "", "",
- "#.#.#.#.................",
- "########................",
- "###.....................",
- "##......................",
- "###.....................",
- "##......................",
- "#.#.#...................",
-]
-BUBBLES = [
+LEGS_STAND = [
+ "........KSSK.KSSK.......",
+ "........KSSK.KSSK.......",
+ "........KSSK.KSSK.......",
+ "........KSSK.KSSK.......",
+ ".......KKKKK.KKKKK......",
+ ".......KKKKKK.KKKKKK....",
  "........................",
- "..........###...........",
- ".........#...#.....##...",
- ".........#...#....#..#..",
- "..##......###.....#..#..",
- ".#..#..............##...",
- ".#..#......##...........",
- "..##......#..#..........",
- "..........#..#.....###..",
- "...........##.....#...#.",
- "....###...........#...#.",
- "...#...#...........###..",
- "...#...#................",
- "....###.................",
+]
+LEGS_WALK = [
+ "......KSSK......KSSK....",
+ ".....KSSK........KSSK...",
+ ".....KSSK........KSSK...",
+ "....KSSK..........KSSK..",
+ "...KKKKK..........KKKKK.",
+ "..KKKKKK..........KKKKKK",
+ "........................",
 ]
 
-SUNNY_HAIR = [
- "..##....########........",
- ".####.############......",
- "..#################.....",
- "...#################....",
- "..#########.............",
- ".#########..............",
- "##########..............",
- "#########...............",
- "########................",
- ".######.................",
- "..####..................",
- "...##...................",
+BODIES = {
+ "STAND": TORSO + ARMS_DOWN + SKIRT + LEGS_STAND,
+ "WALK": TORSO + [
+  "...KSKDDDDDKKDDDDDKSK...",
+  "..KSKKDDDDDDDDDDDDKKSK..",
+  "..KSKKDDDDDDDDDDDDKKSK..",
+  ".KSKKKDDDDDDDDDDDDKKKSK.",
+  ".KSSKKKKKKKKKKKKKKKKSSK.",
+ ] + SKIRT + LEGS_WALK,
+ "JUMP": [
+  "..KK..KKDDDDDDDDKK..KK..",
+  ".KSSKKDDDKDDDDKDDDKKSSK.",
+  "..KSSKDDDDKDDKDDDDKSSK..",
+  "...KSKDDDDDKKDDDDDKSK...",
+  "....KKDDDDDDDDDDDDKK....",
+  "....KDDDDDDDDDDDDDDK....",
+  "....KKKKKKKKKKKKKKKK....",
+  "...KDDDDDDDDDDDDDDDDK...",
+  "..KDDDDDDDDDDDDDDDDDDK..",
+  ".KDDDDDDDDDDDDDDDDDDDDK.",
+  ".KKKKKKKKKKKKKKKKKKKKKK.",
+  ".....KSSSK....KSSSK.....",
+  "....KSSSK......KSSSK....",
+  "....KKKKKK....KKKKKK....",
+  "....KKKKKKK..KKKKKKK....",
+  "........................",
+  "........................",
+  "........................",
+  "........................",
+  "........................",
+ ],
+ "CAST": TORSO[:2] + [
+  "....KDDDDDKDDKDDDDDKKKKK",
+  "...KSKDDDDDKKDDDDDKSSSSK",
+  "...KSKDDDDDDDDDDDDKKKKKK",
+  "...KSKDDDDDDDDDDDDK.....",
+  "...KSKKDDDDDDDDDDKK.....",
+  "...KSSKKKKKKKKKKKK......",
+ ] + SKIRT + LEGS_STAND,
+ "SIT_A": TORSO + ARMS_DOWN + [
+  "....KKKDDDDDDDDDDKKK....",
+  "....KDDDDDDDDDDDDDDKKKK.",
+  "...KDDDDDDDDDDDDDDDDDDK.",
+  "...KKKKKKKKKKKKKKKKKKKK.",
+  "...................KSSK.",
+  "...................KSSK.",
+  "...................KSSK.",
+  "...................KSSK.",
+  "..................KKKKK.",
+  "..................KKKKKK",
+  "........................",
+  "........................",
+ ],
+ "SIT_B": TORSO + ARMS_DOWN + [
+  "....KKKDDDDDDDDDDKKK....",
+  "....KDDDDDDDDDDDDDDKKKK.",
+  "...KDDDDDDDDDDDDDDDDDDK.",
+  "...KKKKKKKKKKKKKKKKKKKK.",
+  "....................KSSK",
+  "....................KSSK",
+  ".....................KSK",
+  ".....................KSK",
+  ".....................KKK",
+  "......................KK",
+  "........................",
+  "........................",
+ ],
+ "PHONE": TORSO + [
+  "...KSKDDDDDKKDDDDDKSK...",
+  "...KSKDDDDDDDDDDDDKSK...",
+  "...KSKDDDDDDDDDDDDKK....",
+  "...KSKKDDDDDDDDDDKK.....",
+  "...KSSKKKKKKKKKKKK......",
+ ] + SKIRT + LEGS_STAND,
+ "EAT": TORSO + [
+  "...KSKDDDDDKKDDDDKSK....",
+  "...KSKDDDDDDDDDDKSK.....",
+  "...KSKDDDDDDDDDKSK......",
+  "...KSKKDDDDDDDDKK.......",
+  "...KSSKKKKKKKKKKK.......",
+ ] + SKIRT + LEGS_STAND,
+ "CHEER": TORSO + [
+  "....KKDDDDDKKDDDDDKK....",
+  "....KDDDDDDDDDDDDDDK....",
+  "....KDDDDDDDDDDDDDDK....",
+  "....KKDDDDDDDDDDDDKK....",
+  ".....KKKKKKKKKKKKKK.....",
+ ] + SKIRT + LEGS_STAND,
+}
+# arm pixels that reach into the head rows: (row, col, text)
+STAMPS = {
+ "PHONE": [(14, 18, "KK"), (15, 17, "KDDK"), (16, 18, "KDDK"), (17, 19, "KSK"), (18, 19, "KSK"),
+           (19, 19, "KSK"), (20, 19, "KSK"), (21, 19, "KSK"), (13, 19, "KKK"), (14, 20, "KK")],
+ "EAT": [(15, 14, "KKKK"), (16, 13, "KDDDDK"), (17, 13, "KKKKKK"), (18, 15, "KSK"), (19, 15, "KSK"),
+         (20, 15, "KSK"), (21, 16, "KSK")],
+ "CHEER": [(6, 0, "KK"), (7, 0, "KSK"), (8, 0, "KSK"), (9, 0, "KSK"), (10, 1, "KSK"), (11, 1, "KSK"),
+           (12, 1, "KSK"), (13, 2, "KSK"), (14, 2, "KSK"), (15, 2, "KSK"), (16, 2, "KSK"), (17, 2, "KSK"),
+           (18, 3, "KSK"), (19, 3, "KSK"), (20, 3, "KSK"), (21, 3, "KSK"),
+           (6, 22, "KK"), (7, 21, "KSK"), (8, 21, "KSK"), (9, 21, "KSK"), (10, 20, "KSK"), (11, 20, "KSK"),
+           (12, 20, "KSK"), (13, 19, "KSK"), (14, 19, "KSK"), (15, 19, "KSK"), (16, 19, "KSK"), (17, 19, "KSK"),
+           (18, 18, "KSK"), (19, 18, "KSK"), (20, 18, "KSK"), (21, 18, "KSK")],
+}
+LIE_BASE = ["." * 24] * 22 + [
+ "........................",
+ "..KKKK..................",
+ ".KHHHHKK................",
+ "KHHHHHHHK...............",
+ "KHHKKKKKHK..............",
+ "KHKSSSSSKHK.............",
+ "KHKSKKSSSKHKKKKKKKKKKKKK",
+ "KHKSSSSKKKKDDDDDDDDDDDDK",
+ "KHKSKKSSKDDDDDDDDDDDDDDK",
+ "KHKSSSSSKDDKDDDDDDKDDDDK",
+ ".KHKSSSKKDDDDDDDDDDDDDDK",
+ "..KKKKKKDDDDDKDDDDDDDKDK",
+ "......KDDDDDDDDDDDDDDDDK",
+ "......KKKKKKKKKKKKKKKKKK",
+ "........................",
+ "........................",
+ "........................",
+ "........................",
+ "........................",
+ "........................",
 ]
 
-HEX_HAIR = [
- "....#..#...#..#.........",
- "....##.##.###.##.#......",
- "...###############......",
- "..##################....",
- ".##################.....",
- "##########.##.#.........",
- "##########..............",
- ".##########.............",
- "##########..............",
- ".#########..............",
- "##########..............",
- ".#######................",
- "##.####.................",
- "...##...................",
+FACE = [   # rows 8-17 shared face: eyes + mouth line (talk variant swaps row 16)
+ "..KKKSSSSSSSSSSSSSSKKK..",
+ "...KSSKKSSSSSSSKKSSK....",
 ]
-
+MO = [   # barista: black quiff, green apron over a white-less shirt (skin arms)
+ "........................",
+ "........KKKKKKKK........",
+ "......KKKKKKKKKKKK......",
+ ".....KKKKKKKKKKKKKKK....",
+ "....KKKKKKKKKKKKKKKKK...",
+ "....KKKKKKKKKKKKKKKKK...",
+ "....KKKKSSSSSSKKKKKKK...",
+ "....KKKSSSSSSSSSSKKKK...",
+ "....KKSSSSSSSSSSSSSKK...",
+ "....KKSSKKSSSSSSKKSSK...",
+ "....KSSKKKKSSSSKKKKSK...",
+ "....KSSKKSKSSSSKKSKSK...",
+ "....KSSKKKKSSSSKKKKSK...",
+ "....KSSSKKSSSSSSKKSSK...",
+ ".....KSSSSSSSSSSSSSK....",
+ ".....KSSSSSSSSSSSSSK....",
+ "......KSSSSKKKKSSSK.....",
+ "......KKSSSSSSSSSKK.....",
+ "........KKSSSSSKK.......",
+ "..........KSSK..........",
+ "..........KSSK..........",
+ "......KKKKKSSKKKKK......",
+]
+GRAN = [
+ "..........KKKK..........",
+ ".........KDDDDK.........",
+ "........KDDKDDDK........",
+ ".......KKDDDDDDKK.......",
+ "......KDDDDKDDDDDK......",
+ ".....KDDDKDDDDKDDDK.....",
+ "....KDDDKDDDDDDKDDDK....",
+ "....KDDKSSSSSSSSKDDK....",
+ "....KDKSSSSSSSSSSKDK....",
+ "....KDKSSSSSSSSSSSKDK...",
+ "....KKKKKKKSSKKKKKKK....",
+ "....KSKSSSKKKKSSSKSK....",
+ "....KSKKKKKSSKKKKKSK....",
+ "....KSSSSSSSSSSSSSSK....",
+ "....KSSSSSSSSSSSSSSK....",
+ ".....KSSSSSSSSSSSSK.....",
+ "......KSSSKKKKSSSK......",
+ "......KKSSSSSSSSKK......",
+ "........KKSSSSKK........",
+ "..........KSSK..........",
+ "..........KSSK..........",
+ "......KKKKKSSKKKKK......",
+]
+PIP = [
+ "........................",
+ "........KKKKKKKK........",
+ "......KKDDDDDDDDKK......",
+ ".....KDDDDDKKDDDDDK.....",
+ "....KDDDDDDDDDDDDDDK....",
+ "....KKKKKKKKKKKKKKKKKKK.",
+ "....KKKSSSSSSSSSSSKKKKK.",
+ "....KKSSSSSSSSSSSSSKK...",
+ "....KSSSSSSSSSSSSSSSK...",
+ "....KSSKKSSSSSSKKSSSK...",
+ "....KSKKKKSSSSKKKKSSK...",
+ "....KSKKSKSSSSKKSKSSK...",
+ "....KSKKKKSSSSKKKKSSK...",
+ "....KSSKKSSSSSSKKSSSK...",
+ ".....KSSSSSSSSSSSSSK....",
+ ".....KSSSSSSSSSSSSSK....",
+ "......KSSSKKKKSSSSK.....",
+ "......KKSSSSSSSSSKK.....",
+ "........KKSSSSSKK.......",
+ "..........KSSK..........",
+ "..........KSSK..........",
+ "......KKKKKSSKKKKK......",
+]
+PAGE = [
+ "........KKKKKK..........",
+ ".......KKKKKKKK.........",
+ "........KKKKKK..........",
+ "......KKKKKKKKKK........",
+ ".....KKKKKKKKKKKKK......",
+ "....KKKKKKKKKKKKKKK.....",
+ "....KKKKSSSSSSSSKKKK....",
+ "....KKKSSSSSSSSSSKKK....",
+ "....KKSSSSSSSSSSSSKK....",
+ "....KKKKKKKSSKKKKKKK....",
+ "....KKSSSKKKKKSSSKKK....",
+ "....KKKKKKKSSKKKKKKK....",
+ "....KKSSSSSSSSSSSSKK....",
+ "....KKSSSSSSSSSSSSKK....",
+ "....KKSSSSSSSSSSSSKK....",
+ ".....KSSSSSSSSSSSSK.....",
+ "......KSSSKKKKSSSK......",
+ "......KKSSSSSSSSKK......",
+ "........KKSSSSKK........",
+ "..........KSSK..........",
+ "..........KSSK..........",
+ "......KKKKKSSKKKKK......",
+]
+NPC_BODY = [
+ ".....KDDDDDKKDDDDDDK....",
+ "....KDDDDDDKKDDDDDDDK...",
+ "...KSKDDDDDDDDDDDDKSK...",
+ "...KSKDDDDDDDDDDDDKSK...",
+ "...KSKDDDDDDDDDDDDKSK...",
+ "...KSKDDDDDDDDDDDDKSK...",
+ "...KSSKDDDDDDDDDDKSSK...",
+ "....KKKDDDDDDDDDDKKK....",
+ "......KDDDDDDDDDDK......",
+ "......KDDDDDDDDDDK......",
+ "......KDDDDDDDDDDK......",
+ "......KDDDDDDDDDDK......",
+ "......KKKKKKKKKKKK......",
+ ".......KSSK..KSSK.......",
+ ".......KSSK..KSSK.......",
+ ".......KSSK..KSSK.......",
+ ".......KSSK..KSSK.......",
+ "......KKKKK..KKKKK......",
+ "......KKKKKK.KKKKKK.....",
+ "........................",
+]
+TALK_MOUTH = {16: "......KSSSKSSKSSSK......", 17: "......KKSSSKKSSSKK......"}
 COIN_A = [
  "........................",
  "........................",
@@ -216,33 +390,6 @@ COIN_B = [
  ".........##..##.........",
  "..........####..........",
  "...........##...........",
-]
-# bee: MC, own colour yellow, '3' black stripes, '1' skin-pink wings
-BEE_A = [
- "............",
- "............",
- "....11......",
- "...1111.....",
- "...1111.....",
- "....11......",
- "...232323...",
- "..32323233..",
- "..32323233..",
- "...232323...",
- "........3...",
-]
-BEE_B = [
- "............",
- "............",
- "............",
- "............",
- ".111........",
- "11111.......",
- "..1.232323..",
- "...32323233.",
- "...32323233.",
- "....232323..",
- ".........3..",
 ]
 HEARTS_A = [
  "........................",
@@ -358,23 +505,126 @@ ZZZ = [
  "..#####.................",
  "..#####.................",
 ]
+BUBBLES = [
+ "........................",
+ "..........###...........",
+ ".........#...#.....##...",
+ ".........#...#....#..#..",
+ "..##......###.....#..#..",
+ ".#..#..............##...",
+ ".#..#......##...........",
+ "..##......#..#..........",
+ "..........#..#.....###..",
+ "...........##.....#...#.",
+ "....###...........#...#.",
+ "...#...#...........###..",
+ "...#...#................",
+ "....###.................",
+]
+BEE_A = [
+ "........................",
+ "........##..##..........",
+ ".......#..##..#.........",
+ ".......#..##..#.........",
+ "........##..##..........",
+ ".......#########........",
+ "......###.##.####.......",
+ "......###.##.#####......",
+ "......###.##.####.......",
+ ".......#########........",
+ "...............#........",
+]
+BEE_B = [
+ "........................",
+ "........................",
+ "........................",
+ "......###....###........",
+ ".....#...####...#.......",
+ "......###....###........",
+ ".......#########........",
+ "......###.##.####.......",
+ "......###.##.#####......",
+ ".......#########........",
+ "...............#........",
+]
+# the six clues about the sisters' past (hires, one colour each)
+CLUE_ART = {
+ "PHOTO": [
+  "........................", "........................", "........................",
+  "......############......", "......#..........#......", "......#.##....##.#......",
+  "......#.##....##.#......", "......#..........#......", "......#.#..##..#.#......",
+  "......#.########.#......", "......#..........#......", "......############......",
+  "......############......"],
+ "TIN": [
+  "........................", "........................", "........................",
+  "........................", ".......##########.......", "......############......",
+  "......#..........#......", "......#.#.#..#.#.#......", "......#..........#......",
+  "......#.#.#..#.#.#......", "......#..........#......", "......############......"],
+ "DIARY": [
+  "........................", "........................", "........................",
+  ".......##########.......", ".......#.#######.#......", ".......#.#.....#.#......",
+  ".......#.#.###.#.#......", ".......#.#.....#.#......", ".......#.#.##..#.#......",
+  ".......#.#######.#......", ".......#..........#.....", ".......###########......"],
+ "LOCKET": [
+  "........................", "...........#............", "..........#.#...........",
+  ".........#...#..........", "..........#.#...........", "........#######.........",
+  ".......##.....##........", "......##..###..##.......", "......#..#.#.#..#.......",
+  "......#..#####..#.......", "......##..###..##.......", ".......##.....##........",
+  "........#######........."],
+ "TAGS": [
+  "........................", "........................", "........................",
+  "....#######..#######....", "...#.......##.......#...", "...#.#####.##.#####.#...",
+  "...#.......##.......#...", "....#######..#######....", "........................",
+  ".....#...#......#...#...", "....#.....#....#.....#..", ".....#...#......#...#..."],
+ "PAPER": [
+  "........................", "........................", "......############......",
+  "......#.########.#......", "......#..........#......", "......#.###..###.#......",
+  "......#.#.#..###.#......", "......#.###..###.#......", "......#..........#......",
+  "......#.########.#......", "......#.########.#......", "......#..........#......",
+  "......############......"],
+}
+CLUE_NAMES = ["PHOTO", "TIN", "DIARY", "LOCKET", "TAGS", "PAPER"]
+CLUE_COL = [1, 15, 10, 7, 3, 1]
 
 
-def mirror_mc(rows):
-    return [r[::-1] for r in rows]
+def master(head, pose):
+    """The 24x42 master of a pose: head rows + body rows (+ arm stamps)."""
+    rows = [list(r) for r in (LIE_BASE if pose == "LIE" else head + BODIES[pose])]
+    for (r, c, t) in STAMPS.get(pose, []):
+        for i, ch in enumerate(t):
+            rows[r][c + i] = ch
+    m = ["".join(r) for r in rows]
+    assert len(m) == 42 and all(len(r) == 24 for r in m), (pose, [len(r) for r in m])
+    return m
 
-def mirror_hr(rows):
-    return [r.ljust(24, '.')[::-1] for r in rows]
+
+def split(m):
+    """Master -> (MC body 12x21, top overlay 24x21, bottom overlay 24x21).
+    Each MC pixel covers 2x2 master pixels: the commonest fill wins; a block
+    that is mostly clear (or only line art) stays clear."""
+    mc = []
+    for r in range(21):
+        row = ""
+        for c in range(12):
+            blk = [m[r * 2 + dy][c * 2 + dx] for dy in (0, 1) for dx in (0, 1)]
+            fills = [p for p in blk if p in "HSD"]
+            row += "." if (not fills or blk.count('.') >= 2) else max("SDH", key=fills.count)
+        mc.append(row)
+    top = ["".join('#' if ch == 'K' else '.' for ch in m[r]) for r in range(21)]
+    bot = ["".join('#' if ch == 'K' else '.' for ch in m[r]) for r in range(21, 42)]
+    return mc, top, bot
+
 
 def enc_mc(rows):
-    rows = [r.ljust(12, '.') for r in rows] + ["." * 12] * (21 - len(rows))
+    """'.' clear, 'S' skin ($D025, %01), 'D' own colour (%10), 'H' hair ($D026, %11)."""
     out = []
-    for r in rows[:21]:
+    for r in (list(rows) + ["." * 12] * 21)[:21]:
         bits = 0
-        for ch in r:
-            bits = (bits << 2) | {'.': 0, '1': 1, '2': 2, '3': 3}[ch]
+        for ch in r.ljust(12, '.'):
+            bits = (bits << 2) | {'.': 0, 'S': 1, 'D': 2, 'H': 3}[ch]
         out += [(bits >> 16) & 255, (bits >> 8) & 255, bits & 255]
     return out + [0]
+
 
 def enc_hr(rows):
     rows = [(r or '').ljust(24, '.') for r in rows] + ["." * 24] * (21 - len(rows))
@@ -384,38 +634,45 @@ def enc_hr(rows):
         out += [(bits >> 16) & 255, (bits >> 8) & 255, bits & 255]
     return out + [0]
 
-# (name, data, multicolour, colour)
+
+# ---------------------------------------------------------------- library
+LIB = []
+def _lib(block):
+    if block not in LIB:
+        LIB.append(block)
+    return LIB.index(block)
+
+def _three(m):
+    mc, top, bot = split(m)
+    return (_lib(enc_hr(top)), _lib(enc_hr(bot)), _lib(enc_mc(mc)))
+
+# [sister][pose] and [npc] -> (top, bottom, body) library block numbers
+SISTER_FRAMES = [[_three(master(h, p)) for p in POSES] for h in (SUNNY_HEAD, HEX_HEAD)]
+NPC_FRAMES = [_three(h + NPC_BODY) for h in (MO, GRAN, PIP, PAGE)]
+
+# ---------------------------------------------------------------- bank 0
+# (name, data, multicolour, colour). The first six are the buffers the game
+# copies library blocks into: sister top / bottom / body, NPC top / bottom / body.
+_s, _n = SISTER_FRAMES[0][0], NPC_FRAMES[0]
 FRAMES = [
-    ("BODY_R_A",   enc_mc(BODY_A),            1, 2),
-    ("BODY_R_B",   enc_mc(BODY_B),            1, 2),
-    ("BODY_L_A",   enc_mc(mirror_mc(BODY_A)), 1, 2),
-    ("BODY_L_B",   enc_mc(mirror_mc(BODY_B)), 1, 2),
-    ("BODY_R_CAST", enc_mc(BODY_CAST),        1, 2),
-    ("BODY_L_CAST", enc_mc(mirror_mc(BODY_CAST)), 1, 2),
-    ("SUNNY_R",    enc_hr(SUNNY_HAIR),        0, 7),
-    ("SUNNY_L",    enc_hr(mirror_hr(SUNNY_HAIR)), 0, 7),
-    ("HEX_R",      enc_hr(HEX_HAIR),          0, 0),
-    ("HEX_L",      enc_hr(mirror_hr(HEX_HAIR)), 0, 0),
-    ("COIN_A",     enc_hr(COIN_A),            0, 7),
-    ("COIN_B",     enc_hr(COIN_B),            0, 7),
-    ("BEE_A",      enc_mc(BEE_A),             1, 7),
-    ("BEE_B",      enc_mc(BEE_B),             1, 7),
-    ("HEARTS_A",   enc_hr(HEARTS_A),          0, 10),
-    ("HEARTS_B",   enc_hr(HEARTS_B),          0, 10),
-    ("ZAP_A",      enc_hr(ZAP_A),             0, 14),
-    ("ZAP_B",      enc_hr(ZAP_B),             0, 14),
-    ("STAR_A",     enc_hr(STAR_A),            0, 1),
-    ("STAR_B",     enc_hr(STAR_B),            0, 1),
-    ("ZZZ",        enc_hr(ZZZ),               0, 0),
-    ("SIT_A",      enc_mc(SIT_A),             1, 2),
-    ("SIT_B",      enc_mc(SIT_B),             1, 2),
-    ("LIE",        enc_mc(LIE),               1, 2),
-    ("SUNNY_LIE",  enc_hr(SUNNY_LIE),         0, 7),
-    ("HEX_LIE",    enc_hr(HEX_LIE),           0, 0),
-    ("PHONE",      enc_mc(PHONE),             1, 2),
-    ("EAT",        enc_mc(EAT),               1, 2),
-    ("CHEER",      enc_mc(CHEER),             1, 2),
-    ("BUBBLES",    enc_hr(BUBBLES),           0, 1),
-]
+    ("BUF_TOP",    LIB[_s[0]], 0, 0),
+    ("BUF_BOT",    LIB[_s[1]], 0, 0),
+    ("BUF_BODY",   LIB[_s[2]], 1, DRESS[0]),
+    ("NPC_TOP",    LIB[_n[0]], 0, 0),
+    ("NPC_BOT",    LIB[_n[1]], 0, 0),
+    ("NPC_BODY",   LIB[_n[2]], 1, NPC_COL[0]),
+    ("COIN_A",     enc_hr(COIN_A),   0, 7),
+    ("COIN_B",     enc_hr(COIN_B),   0, 7),
+    ("BEE_A",      enc_hr(BEE_A),    0, 7),
+    ("BEE_B",      enc_hr(BEE_B),    0, 7),
+    ("HEARTS_A",   enc_hr(HEARTS_A), 0, 10),
+    ("HEARTS_B",   enc_hr(HEARTS_B), 0, 10),
+    ("ZAP_A",      enc_hr(ZAP_A),    0, 14),
+    ("ZAP_B",      enc_hr(ZAP_B),    0, 14),
+    ("STAR_A",     enc_hr(STAR_A),   0, 1),
+    ("STAR_B",     enc_hr(STAR_B),   0, 1),
+    ("ZZZ",        enc_hr(ZZZ),      0, 1),
+    ("BUBBLES",    enc_hr(BUBBLES),  0, 1),
+] + [("CLUE_" + n, enc_hr(CLUE_ART[n]), 0, c) for n, c in zip(CLUE_NAMES, CLUE_COL)]
 assert len(FRAMES) <= 32, len(FRAMES)
 INDEX = {n: i for i, (n, *_r) in enumerate(FRAMES)}

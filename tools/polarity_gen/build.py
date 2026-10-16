@@ -1,10 +1,16 @@
 """Build POLARITY.json (the Dev Machine project) and a stand-alone test PRG.
 
-    python build.py OUT.json [TEST.prg] [--test-input]
+    python build.py OUT.json [TEST.prg] [--test-input] [--script=FILE]
 
 The test PRG replaces each macro node with equivalent stub code (no music)
-so the game logic can be run in VICE without the editor. --test-input
-reads the joystick from $02A7 instead of $DC00 (poke it from the monitor).
+so the game logic can be run in VICE without the editor. It covers all
+64K (maps and sprites live under the I/O area and the KERNAL), so crunch
+it with Exomizer (sfx sys) before running it, as the PRG EXO build does.
+--test-input reads the joystick from $02A7 instead of $DC00 (poke it from
+the monitor); --script=FILE plays a joystick script instead: lines of
+"frames value" (value = the $DC00 byte, e.g. 127 = nothing, 119 = right;
+0 = freeze the game there, for screenshots). --room=N starts in room N,
+--clues=MASK with those clues.
 """
 import base64, copy, json, sys
 import font, rooms, sprites, title, sound, game
@@ -31,6 +37,65 @@ def byte_asset(name, address, data):
                  {"byte_string": byte_string(data), "is_save_file": False, "save_file_size": 256.0,
                   "tone_sorted": False, "ecm_bg1": 6.0, "ecm_bg2": 14.0})
 
+
+# ================================================================== pages
+# (row, colour, text, x): x True = centred, a number = that column.
+HELP_LINES = [
+    (1, 7, "*  P O L A R I T Y  *", True),
+    (3, 1, "TWO SISTERS, ONE LIFE, OPPOSITE POWERS", True),
+    (5, 7, "SUNNY: SWEET & SASSY.  POWER: ATTRACT", True),
+    (6, 4, "HEX: FEISTY & WITCHY.  POWER: REPEL", True),
+    (8, 3, "LEFT/RIGHT  WALK        UP  JUMP", 3),
+    (9, 3, "FIRE  USE OR TALK  (HOLD FOR MAGIC)", 3),
+    (10, 3, "FIRE+DOWN  SWAP SISTERS", 3),
+    (12, 1, "KEEP FOOD, REST, WASH, FUN, CHAT UP!", True),
+    (13, 1, "MO'S COFFEE PERKS YOU UP. WORK FOR $.", True),
+    (15, 5, "ARE WE REALLY SISTERS? FIND 6 CLUES.", True),
+    (16, 1, "JUMP UP HIGH, ASK PEOPLE, USE MAGIC:", True),
+    (17, 1, "SUNNY PULLS THINGS IN, HEX BLASTS!", True),
+    (19, 1, "OR WORK HARD AND OWN THE CAFE.", True),
+    (22, 7, "PRESS FIRE TO START", True),
+]
+WIN_LINES = [
+    (4, 7, "*  DREAM COME TRUE  *", True),
+    (8, 1, "SUNNY AND HEX NOW OWN THE CAFE!", True),
+    (10, 3, "ATTRACTION AND REPULSION:", True),
+    (11, 3, "TOGETHER, AN UNSTOPPABLE TEAM.", True),
+    (13, 5, "BUT ARE THEY REALLY SISTERS...?", True),
+    (game.DAYS_ROW, 1, "IT TOOK THEM    DAYS.", 10),
+    (21, 7, "PRESS FIRE", True),
+]
+TRUTH_LINES = [
+    (2, 7, "*  THE TRUTH  *", True),
+    (5, 1, "A PHOTO. A TIN. A DIARY. A LOCKET.", True),
+    (6, 1, "TWO HOSPITAL TAGS. AN OLD NEWSPAPER:", True),
+    (8, 7, "TWINS BORN DURING THE GREAT ECLIPSE!", True),
+    (10, 3, "SUNNY CAME FIRST, AS THE SUN WENT OUT.", True),
+    (11, 4, "HEX CAME SECOND, IN THE DARK.", True),
+    (13, 1, "OPPOSITES... AND REAL SISTERS.", True),
+    (14, 5, "TWINS, IN FACT. ALWAYS TOGETHER.", True),
+    (game.DAYS_ROW, 1, "IT TOOK THEM    DAYS.", 10),
+    (21, 7, "PRESS FIRE", True),
+]
+# Each page is a TEXT_DATA asset (its lines back to back) + a line table
+# (row, column, colour, length) that PrintPage walks.
+TEXT_PAGES = [("HELP_TEXT", HELP_LINES), ("ENDING_TEXT", WIN_LINES), ("TRUTH_TEXT", TRUTH_LINES)]
+
+def page_layout(text_base):
+    """-> [(asset name, address, text, [(row, col, colour, len)])]"""
+    out, addr = [], text_base
+    for name, lines in TEXT_PAGES:
+        text, table = "", []
+        for row, colour, t, x in lines:
+            assert len(t) <= 40, t
+            col = (40 - len(t)) // 2 if x is True else x
+            table.append((row, col, colour, len(t)))
+            text += t
+        out.append((name, addr, text, table))
+        addr += len(text) + 1                      # + the null the flush appends
+    return out, addr
+
+
 # ================================================================== assets
 def build_assets():
     gate = json.load(open(GATE))
@@ -43,17 +108,19 @@ def build_assets():
     nrooms, ngroups = len(rooms.ROOM_NAMES), len(rooms.GROUP_NAMES)
     map_addrs = [game.MAP_BASE + i * 800 for i in range(nrooms)]
     chr_addrs = [game.CHR_BASE + g * 0x800 for g in range(ngroups)]
+    assert chr_addrs[-1] + 0x800 <= game.T_TILECOL_ADDR
     tilecol = []
     for g, gname in enumerate(rooms.GROUP_NAMES):
         tb, co, maps, used = rooms.build_group(g)
-        # CHAR_SET: the font + UI glyphs, with this room pair's MC tiles in the
+        # CHAR_SET: the font + UI glyphs, with this group's MC tiles in the
         # slots no text uses (rooms.TILE_CODES)
         cs = []
         for code in range(256):
             cs += tb[code] if code in tb else font.glyph_bytes(code)
+        d022 = float(rooms.GROUP_D022[g])
         cmeta = copy.deepcopy(GA["GATE_CHARS"]["meta"])
         cmeta.update({"format": "RAW", "char_count": 256.0, "total_size": 2048.0, "mc_mode": 1.0,
-                      "mc_fg": 1.0, "mc_bg": 14.0, "mc_col1": 9.0, "mc_col2": 0.0, "bmp_mode": "MC",
+                      "mc_fg": 1.0, "mc_bg": 14.0, "mc_col1": d022, "mc_col2": 0.0, "bmp_mode": "MC",
                       "tile_types": [0.0] * 256})
         assets.append(asset("CHARS_" + gname, "CHAR_SET", chr_addrs[g], cs, cmeta))
         place(chr_addrs[g], cs)
@@ -64,8 +131,8 @@ def build_assets():
                      if k not in ("char_grid", "colour_grid", "override_grid")}
             mmeta.update({"map_w": 40.0, "map_h": 20.0, "grid_w": 40.0, "grid_h": 20.0,
                           "room_w": 40.0, "room_h": 20.0, "room_count": 1.0, "raw_chars": 1.0,
-                          "map_mixed": 1.0, "mc_mode": 1.0, "mc_bg": 14.0, "mc_col1": 9.0, "mc_col2": 0.0,
-                          "map_mc_bg": 14.0, "map_mc_col1": 9.0, "map_mc_col2": 0.0,
+                          "map_mixed": 1.0, "mc_mode": 1.0, "mc_bg": 14.0, "mc_col1": d022, "mc_col2": 0.0,
+                          "map_mc_bg": 14.0, "map_mc_col1": d022, "map_mc_col2": 0.0,
                           "chr_asset": "CHARS_" + gname, "active_char": 72.0, "erase_char": 32.0,
                           "char_grid": [float(c) for c in grid], "colour_grid": [float(c) for c in cgrid],
                           "override_grid": [float(c) for c in ogrid], "scroll_x": 0.0, "scroll_y": 0.0,
@@ -74,33 +141,35 @@ def build_assets():
             blob = list(grid) + colour_plane + list(ogrid)
             assets.append(asset("MAP_" + rname, "MAP_DATA", map_addrs[i], blob, mmeta))
             place(map_addrs[i], grid)
-        # colour table: font chars use the pair's sign colour
+        # colour table: font chars use the group's sign colour
         tilecol += [co[c] if c in co else rooms.GROUP_TEXT_COL[g] for c in range(256)]
     assets.append(byte_asset("TILE_COLOURS", game.T_TILECOL_ADDR, tilecol))
     place(game.T_TILECOL_ADDR, tilecol)
 
+    # tables, messages, then the page texts after them
+    pages0, _ = page_layout(0)
+    probe = game.build_tables(map_addrs, chr_addrs, [(0, p[3]) for p in pages0])
+    text_base = max(a + len(d) for n, (a, d) in probe.items() if n != "MESSAGES")
+    pages, text_end = page_layout(text_base)
+    assert text_end <= 0xC000, hex(text_end)
+    tables = game.build_tables(map_addrs, chr_addrs, [(p[1], p[3]) for p in pages])
+
     # no text may use a glyph slot that room tiles can take
     reclaimed = set(rooms.TILE_CODES) - set(range(rooms.FIRST_TILE, 256))
-    texts = [m[1] for m in game.MSGS] + [l[2] for _, ls in TEXT_PAGES for l in ls] + [TOP_ROW] + BOT_ROWS \
+    texts = [m[1] for m in game.MSGS] + [p[2] for p in pages] + [TOP_ROW] + BOT_ROWS \
         + game.NAMES + game.POWERS + game.PLACES
     for t in texts:
-        bad = [c for c in t if c not in "{}|~" and font.screen_code(c) in reclaimed]
+        bad = [c for c in t if c not in "{}|" and font.screen_code(c) in reclaimed]
         assert not bad, ("text uses a reclaimed glyph", t, bad)
 
-    tables = game.build_tables(map_addrs, chr_addrs)
-    tables["T_TILECOL"] = (game.T_TILECOL_ADDR, tilecol)
     for name, (addr, data) in tables.items():
-        if name == "T_TILECOL":
-            continue
-        assets.append(byte_asset(name[2:], addr, data))
+        if name.startswith("MESSAGES"):
+            assets.append(byte_asset(name, addr, data))
+        else:
+            assets.append(byte_asset(name[2:], addr, data))
         place(addr, data)
-    msgs = []
-    for _, text, _c in game.MSGS:
-        msgs += game.msg_codes(text)
-    assets.append(byte_asset("MESSAGES", game.MSG_BASE, msgs))
-    place(game.MSG_BASE, msgs)
 
-    # sprites
+    # sprites: the bank 0 set (6 buffers + statics) and the library under the KERNAL
     sblob = []
     for _, data, _, _ in sprites.FRAMES:
         sblob += data
@@ -108,11 +177,14 @@ def build_assets():
     smeta.update({"used_count": float(len(sprites.FRAMES)), "format": "RAW",
                   "sprite_mcs": [float(f[2]) for f in sprites.FRAMES],
                   "sprite_ucs": [float(f[3]) for f in sprites.FRAMES],
-                  "bg_col": 14.0, "mc1_col": float(sprites.SKIN), "mc2_col": float(sprites.OUTLINE),
-                  "mc_mode": 1.0, "mc_col1": float(sprites.SKIN), "mc_col2": float(sprites.OUTLINE)})
+                  "bg_col": 14.0, "mc1_col": float(sprites.SKIN), "mc2_col": float(sprites.HAIR[0]),
+                  "mc_mode": 1.0, "mc_col1": float(sprites.SKIN), "mc_col2": float(sprites.HAIR[0])})
     smeta["compositor"] = {"active_layer": 0.0, "active_frame": 0.0, "active_cell": -1.0, "frames": [{"cells": []}]}
     assets.append(asset("POL_SPRITES", "SPRITE_SET", game.SPR_BASE, sblob, smeta))
     place(game.SPR_BASE, sblob)
+    lib = [b for blk in sprites.LIB for b in blk]
+    assets.append(byte_asset("SPR_LIB", game.SPR_LIB, lib))
+    place(game.SPR_LIB, lib)
 
     # title bitmap
     koala = title.to_koala(title.build_picture())
@@ -123,8 +195,8 @@ def build_assets():
     place(0x6000, koala[8002:9002])
     place(0x63E8, koala[9002:10002])
 
-    # page text (TEXT_DATA, read by the asset-mode PRINT nodes)
-    for name, (addr, text, _) in text_assets()[0].items():
+    # page text (TEXT_DATA, read by PrintPage)
+    for name, addr, text, _ in pages:
         codes = [font.screen_code(c) for c in text] + [0]
         assets.append(asset(name, "TEXT_DATA", addr, codes, {"text": text}))
         place(addr, codes)
@@ -150,7 +222,7 @@ def hud_asset(name, y, rows, colours, fields):
     meta = {"hud_x": 0.0, "hud_y": float(y), "hud_w": float(w), "hud_h": float(h),
             "fields": fields, "sel_field": -1.0, "hud_mc_mode": 0.0, "hud_mc_bg": 0.0,
             "hud_mc_col1": 9.0, "hud_mc_col2": 0.0, "show_grid": True, "cur_x": 0.0, "cur_y": 0.0,
-            "char_grid": [float(c) for c in cg], "chr_asset": "CHARS_HOME",
+            "char_grid": [float(c) for c in cg], "chr_asset": "CHARS_HOUSE",
             "colour_grid": [float(c) for c in kg], "zoom": 2.0, "active_char": 32.0,
             "active_colour": 1.0, "paint_mc": 0.0}
     a = asset(name, "HUD", 0, cg + kg, meta)
@@ -163,7 +235,7 @@ def field(name, fx, fy, flen, kind):
 
 TOP_ROW = "SUNNY  ATTRACT  HOME     $0020 08:00 D01"
 def hud_top_asset():
-    col = [7] * 6 + [1] + [7] * 7 + [1, 1] + [3] * 6 + [1] * 3 + [7] * 5 + [1] + [1] * 5 + [1] + [3] * 3
+    col = [7] * 6 + [1] + [7] * 7 + [1, 1] + [3] * 7 + [1] * 2 + [7] * 5 + [1] + [1] * 5 + [1] + [3] * 3
     col = (col + [1] * 40)[:40]
     fields = [field("NAME", 0, 0, 6, 0), field("POWER", 7, 0, 7, 0), field("PLACE", 16, 0, 7, 0),
               field("MHI", 26, 0, 2, 1), field("MLO", 28, 0, 2, 1), field("HH", 31, 0, 2, 1),
@@ -171,14 +243,14 @@ def hud_top_asset():
     return hud_asset("HUD_TOP", 0, [TOP_ROW], [col], fields)
 
 BOT_ROWS = [
-    "||||||||||||||||||||||||||||||||||||||||",
+    "|" * 15 + " CLUES 0/6 " + "|" * 14,
     "FOOD }}}}}}   REST }}}}}}   WASH }}}}}} ",
     "FUN  }}}}}}   CHAT }}}}}}   JOB 1  BAG 1",
     "",
 ]
+assert len(BOT_ROWS[0]) == 40
 def hud_bot_asset():
-    div = [4] * 40
-    r1 = [3] * 5 + [5] * 6 + [1] * 3 + [3] * 5 + [6 if False else 3] * 0 + [3] * 0
+    div = [4] * 15 + [7] * 11 + [4] * 14
     def bar_row(lbl_cols):
         c = [1] * 40
         for (x0, x1, colr) in lbl_cols:
@@ -190,7 +262,8 @@ def hud_bot_asset():
     r3 = [1] * 40
     fields = [field("FOOD", 5, 1, 6, 2), field("REST", 19, 1, 6, 2), field("WASH", 33, 1, 6, 2),
               field("FUN", 5, 2, 6, 2), field("CHAT", 19, 2, 6, 2),
-              field("JOB", 32, 2, 1, 1), field("BAGS", 39, 2, 1, 1), field("MSG", 0, 3, 40, 0)]
+              field("JOB", 32, 2, 1, 1), field("BAGS", 39, 2, 1, 1), field("CLUE", 22, 0, 1, 1),
+              field("MSG", 0, 3, 40, 0)]
     return hud_asset("HUD_BOT", 21, BOT_ROWS, [div, r1, r2, r3], fields)
 
 
@@ -222,67 +295,31 @@ def node(typ, title, code, x, y, parent=None, stable=None, custom=""):
 
 JOY_ROWS_DEFAULT = [(0x19, "URF"), (0x15, "ULF"), (0x1A, "DRF"), (0x16, "DLF"), (0x09, "UPR"), (0x05, "UPL"),
                     (0x0A, "DNR"), (0x06, "DNL"), (0x11, "UPF"), (0x12, "DNF"), (0x14, "LFF"), (0x18, "RTF")]
+JOY_USED = {0x09: "JoyUpRight", 0x05: "JoyUpLeft",     # diagonal jumps
+            0x12: "JoySwap"}                          # FIRE + DOWN swaps the sisters
 
 def joy_code():
     rows = [["macro_joy", 2.0, 248.0]]
     for m, _ in JOY_ROWS_DEFAULT:
-        rows.append([float(m), "Unused", 0.0])
-    for m, l in ((16, "JoyFire"), (1, "JoyUp"), (2, "JoyDown"), (4, "JoyLeft"), (8, "JoyRight"), (255, "JoyNone")):
+        rows.append([float(m), JOY_USED[m], 1.0] if m in JOY_USED else [float(m), "Unused", 0.0])
+    for m, l in ((16, "JoyFire"), (1, "JoyUp"), (4, "JoyLeft"), (8, "JoyRight"), (255, "JoyNone")):
         rows.append([float(m), l, 1.0])
     return rows
 
-def print_code(x, y, colour, text, addr, centre=False):
-    return [["macro_print", float(x), float(y), float(colour), 0.0, text, float(addr), 2.0 if centre else 0.0,
-             0.0, 0.0, "", 0.0, 0.0, 1024.0, 0.0, "", 0.0, "", 0.0, "", 0.0, "", 0.0, ""]]
+SFX_LABELS = (("Coin", "COIN"), ("Use", "USE"), ("Magic", "MAGIC"), ("Swap", "SWAP"), ("Ouch", "OUCH"),
+              ("Promote", "PROMOTE"), ("Error", "ERROR"), ("Sleep", "SLEEP"), ("Jump", "JUMP"), ("Clue", "CLUE"))
 
-def print_asset_code(x, y, colour, asset_name, start, end, centre=False):
-    """PRINT in ASSET mode: text = asset bytes [start, end)."""
-    return [["macro_print", float(x), float(y), float(colour), 0.0, "", 0.0, 2.0 if centre else 0.0,
-             0.0, 1.0, asset_name, float(start), float(end), 1024.0, 0.0, "", 0.0, "", 0.0, "", 0.0, "", 0.0, ""]]
-
-HELP_LINES = [
-    (1, 7, "*  P O L A R I T Y  *", True),
-    (3, 1, "TWO SISTERS, ONE LIFE, OPPOSITE POWERS", True),
-    (5, 7, "SUNNY: SWEET & SASSY.  POWER: ATTRACT", False),
-    (6, 3, "HEX: FEISTY & WITCHY.  POWER: REPEL", False),
-    (8, 1, "LEFT/RIGHT  WALK TO THE NEXT PLACE", False),
-    (9, 1, "UP          USE THE THING YOU STAND AT", False),
-    (10, 1, "DOWN        SWAP SISTERS", False),
-    (11, 1, "FIRE        HOLD FOR MAGIC (COSTS REST)", False),
-    (13, 5, "KEEP FOOD, REST, WASH, FUN, CHAT UP!", False),
-    (14, 7, "SUNNY PULLS IN COINS... AND BEES!", False),
-    (15, 3, "HEX BLASTS BEES AWAY... AND COINS!", False),
-    (17, 1, "WORK AT THE CAFE 8:00-18:00 FOR $.", False),
-    (18, 1, "SUNNY EARNS TIPS. HEX LEARNS 2X FASTER.", False),
-    (19, 1, "4 PROMOTIONS AND THE CAFE IS YOURS!", False),
-    (22, 7, "PRESS FIRE TO START", True),
-]
-WIN_LINES = [
-    (4, 7, "*  DREAM COME TRUE  *", True),
-    (8, 1, "SUNNY AND HEX NOW OWN THE CAFE!", True),
-    (10, 3, "ATTRACTION AND REPULSION:", True),
-    (11, 3, "TOGETHER, AN UNSTOPPABLE TEAM.", True),
-    (14, 1, "IT TOOK THEM    DAYS.", 10),
-    (20, 7, "PRESS FIRE", True),
-]
-
-# The headline and PRESS FIRE lines of each page are inline PRINT text; the
-# body lines come from a TEXT_DATA asset (PRINT in ASSET mode, one START/END
-# window per line), so the page text can be edited in the asset editor.
-TEXT_PAGES = [("HELP_TEXT", HELP_LINES), ("ENDING_TEXT", WIN_LINES)]
-
-def text_assets():
-    """name -> (address, text, {line index: (start, end)}); inline texts follow."""
-    out, addr = {}, game.PRINT_TEXT
-    for name, lines in TEXT_PAGES:
-        text, spans = "", {}
-        for i, (_, _, t, _) in enumerate(lines):
-            if 0 < i < len(lines) - 1:
-                spans[i] = (len(text), len(text) + len(t))
-                text += t
-        out[name] = (addr, text, spans)
-        addr += len(text) + 1                      # + the null the flush appends
-    return out, addr
+# Where each column's code goes. The 64K map: $0801 boot, $0900 title +
+# tune, $20C0 pages, $2600 IRQ + sounds, $3000 charset, $3800 sprites,
+# $4000 title picture, $6800-$7FFF the game, $8000 charsets / tables /
+# messages, $C000 variables, $D000 maps + sprite library (under ROM).
+ORGS = {
+    "02 TITLE + THEME TUNE": 0x0900,
+    "11 HOW TO PLAY + PAGES": 0x20C0,
+    "03 FRAME SYNC / IRQ / SOUNDS": 0x2600,
+    "04 NEW LIFE: SCREEN, SPRITES, HUD": 0x6800,
+    "12 ENDINGS": 0x2200,
+}
 
 def layout():
     """Returns (columns, comments). A column: dict(name, x, org, items).
@@ -290,28 +327,13 @@ def layout():
          | ('macro', TYPE, title, code_rows[, stable_uid])"""
     S = sound.SFX_ID
     sfx = lambda n: ('macro', 'MACRO_SFX', 'SFX ' + n, [["macro_sfx", "POL_SFX", float(S[n]), 3.0, 0.0]])
-    tassets, inline_start = text_assets()
-    text_addr = [inline_start]
-    def pr(lines, asset_name):
-        out = []
-        _, _, spans = tassets[asset_name]
-        for i, (row, col, text, centre) in enumerate(lines):
-            assert len(text) <= 39, text
-            x = (40 - len(text)) // 2 if centre is True else (1 if centre is False else centre)
-            if i in spans:
-                s0, s1 = spans[i]
-                out.append(('macro', 'MACRO_PRINT', 'PRINT', print_asset_code(x, row, col, asset_name, s0, s1, centre is True)))
-            else:
-                out.append(('macro', 'MACRO_PRINT', 'PRINT', print_code(x, row, col, text, text_addr[0], centre is True)))
-                text_addr[0] += len(text)
-        assert text_addr[0] <= 0x3000, hex(text_addr[0])
-        return out
-    vic_game = ["macro_vic", "MCT", 0.0, 1024.0, 12288.0, 0.0, 14.0, 9.0, 0.0, 0.0]
+    vic_game = ["macro_vic", "MCT", 0.0, 1024.0, 12288.0, 0.0, 14.0, float(rooms.GROUP_D022[0]), 0.0, 0.0]
     vic_text = ["macro_vic", "MCT", 0.0, 1024.0, 12288.0, 0.0, 0.0, 9.0, 0.0, 0.0]
     F = lambda n: float(sprites.INDEX[n])
+    spr = lambda title_, slot, n, y: ('macro', 'MACRO_SPR', title_, [["macro_spr", "POL_SPRITES", float(slot), 104.0, float(y), F(n), 1.0]])
     cols = [
         dict(name="01 BOOT", x=360, org=None, items=[('code', 'BOOT')]),
-        dict(name="02 TITLE + THEME TUNE", x=680, org=0x0900, items=[
+        dict(name="02 TITLE + THEME TUNE", x=680, items=[
             ('label', 'Title'),
             ('macro', 'MACRO_BMP', 'TITLE PICTURE', [["macro_bmp", "TITLE_PIC", 16384.0, 1.0, 0.0]]),
             # SFX INIT first: it writes $D418 = $0F (filter mode off). The song's
@@ -324,7 +346,7 @@ def layout():
             ('macro', 'MACRO_BMP', 'TITLE PICTURE', [["macro_bmp", "TITLE_PIC", 16384.0, 1.0, 0.0]]),
             ('code', 'TITLE_HOLD'),
         ]),
-        dict(name="03 FRAME SYNC / IRQ / SOUNDS", x=1000, org=0x2600, items=[
+        dict(name="03 FRAME SYNC / IRQ / SOUNDS", x=1000, items=[
             ('label', 'FrameTick'),
             ('macro', 'MACRO_VWAIT', 'FRAME SYNC', [["macro_vwait", 248.0, 0.0, ""]]),
             ('op', 'rts', 0.0),
@@ -332,24 +354,23 @@ def layout():
             ('code', 'FRAME_IRQ'),
             ('macro', 'MACRO_SFX', 'SFX UPDATE', [["macro_sfx", "POL_SFX", 0.0, 3.0, 1.0]]),
             ('code', 'FRAME_IRQ_END'),
-        ] + sum([[('label', 'Snd' + lbl), sfx(n), ('op', 'rts', 0.0)] for lbl, n in
-                 (("Coin", "COIN"), ("Use", "USE"), ("Magic", "MAGIC"), ("Swap", "SWAP"), ("Ouch", "OUCH"),
-                  ("Promote", "PROMOTE"), ("Error", "ERROR"), ("Sleep", "SLEEP"))], [])),
-        dict(name="04 NEW LIFE: SCREEN, SPRITES, HUD", x=1320, org=0x6800, items=[
+        ] + sum([[('label', 'Snd' + lbl), sfx(n), ('op', 'rts', 0.0)] for lbl, n in SFX_LABELS], [])),
+        dict(name="04 NEW LIFE: SCREEN, SPRITES, HUD", x=1320, items=[
             ('label', 'StartGame'),
             ('macro', 'MACRO_VIC', 'GAME SCREEN (MC TEXT)', [vic_game]),
             ('macro', 'MACRO_CLR_SCREEN', 'CLEAR SCREEN', [["macro_clr_screen", 1024.0, 32.0]]),
-            ('macro', 'MACRO_SPR', 'HAIR (SPRITE 0)', [["macro_spr", "POL_SPRITES", 0.0, 104.0, float(game.FLOOR_Y), F("SUNNY_R"), 1.0]]),
-            ('macro', 'MACRO_SPR', 'BODY (SPRITE 1)', [["macro_spr", "POL_SPRITES", 1.0, 104.0, float(game.FLOOR_Y), F("BODY_R_A"), 1.0]]),
-            ('macro', 'MACRO_SPR', 'MAGIC (SPRITE 2)', [["macro_spr", "POL_SPRITES", 2.0, 124.0, float(game.FLOOR_Y), F("HEARTS_A"), 1.0]]),
-            ('macro', 'MACRO_SPR', 'COIN (SPRITE 3)', [["macro_spr", "POL_SPRITES", 3.0, 150.0, float(game.COIN_Y), F("COIN_A"), 1.0]]),
-            ('macro', 'MACRO_SPR', 'BEE (SPRITE 4)', [["macro_spr", "POL_SPRITES", 4.0, 200.0, float(game.BEE_Y), F("BEE_A"), 1.0]]),
+            spr('SISTER TOP (SPRITE 0)', 0, "BUF_TOP", game.FLOOR_Y),
+            spr('SISTER LEGS (SPRITE 1)', 1, "BUF_BOT", game.FLOOR_Y + 21),
+            spr('SISTER BODY (SPRITE 2)', 2, "BUF_BODY", game.FLOOR_Y),
+            spr('MAGIC (SPRITE 3)', 3, "HEARTS_A", game.FLOOR_Y),
+            spr('COIN / CLUE (SPRITE 4)', 4, "COIN_A", game.COIN_Y),
+            spr('BEE (SPRITE 5)', 5, "BEE_A", game.BEE_Y),
             ('macro', 'MACRO_HUD', 'STATUS ROW', [["macro_hud", "HUD_TOP", 1024.0, 55296.0, 1.0, 1.0]], game.UID_HUD_TOP),
             ('macro', 'MACRO_HUD', 'NEEDS PANEL', [["macro_hud", "HUD_BOT", 1024.0, 55296.0, 1.0, 1.0]], game.UID_HUD_BOT),
             ('code', 'NEW_GAME'),
         ]),
-        dict(name="05 ROOMS", x=1640, org=0x6D40, items=[('code', 'ROOM')]),
-        dict(name="06 MAIN LOOP + JOYSTICK", x=1960, org=0x6EC0, items=[
+        dict(name="05 ROOMS", x=1640, items=[('code', 'ROOM')]),
+        dict(name="06 MAIN LOOP + JOYSTICK", x=1960, items=[
             ('label', 'MainLoop'),
             ('op', 'jsr', 'FrameTick'),
             ('code', 'MAIN_PRE'),
@@ -358,42 +379,69 @@ def layout():
             ('op', 'jmp_abs', 'MainLoop'),
             ('code', 'JOY'),
         ]),
-        dict(name="07 SISTERS, MAGIC, COIN, BEE", x=2280, org=0x7060, items=[('code', 'SPRITES'), ('code', 'THINGS')]),
-        dict(name="08 CLOCK, NEEDS, ACTIONS", x=2600, org=0x75E0, items=[('code', 'CLOCK'), ('code', 'ACTIONS')]),
-        dict(name="09 MONEY, MESSAGES, HUD", x=2920, org=0x79C0, items=[('code', 'HUD')]),
-        # The HOW TO PLAY page lives in its own column at $7C40, leaving the
-        # title column's space ($0900-$25FF) to the theme tune.
-        dict(name="11 HOW TO PLAY", x=3560, org=0x7C40, items=[
-            ('label', 'ShowHelp'),
-            ('code', 'HELP_PREP'),
-            ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),
-            ('macro', 'MACRO_CLR_SCREEN', 'CLEAR SCREEN', [["macro_clr_screen", 1024.0, 32.0]]),
-        ] + pr(HELP_LINES, 'HELP_TEXT') + [('op', 'rts', 0.0)]),
-        dict(name="10 DREAM COME TRUE", x=3240, org=0x7B00, items=[
+        dict(name="07 THE SISTERS + MAGIC", x=2280, items=[('code', 'SPRITES')]),
+        dict(name="08 COINS, CLUES, PEOPLE, BEES", x=2600, items=[('code', 'THINGS')]),
+        dict(name="09 CLOCK, NEEDS, ACTIONS", x=2920, items=[('code', 'CLOCK'), ('code', 'ACTIONS')]),
+        dict(name="10 MONEY, MESSAGES, HUD", x=3240, items=[('code', 'HUD')]),
+        dict(name="12 ENDINGS", x=3880, items=[
             ('label', 'WinGame'),
             ('code', 'WIN_PREP'),
             ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),
             ('macro', 'MACRO_CLR_SCREEN', 'CLEAR SCREEN', [["macro_clr_screen", 1024.0, 32.0]]),
-        ] + pr(WIN_LINES, 'ENDING_TEXT') + [('code', 'WIN_END')]),
+            ('code', 'WIN_DRAW'),
+            ('label', 'ShowTruth'),
+            ('code', 'WIN_PREP'),
+            ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),
+            ('macro', 'MACRO_CLR_SCREEN', 'CLEAR SCREEN', [["macro_clr_screen", 1024.0, 32.0]]),
+            ('code', 'TRUTH_DRAW'),
+            ('code', 'WIN_END'),
+        ]),
+        # HOW TO PLAY and PrintPage live in the gap after the title column
+        dict(name="11 HOW TO PLAY + PAGES", x=3560, items=[
+            ('label', 'ShowHelp'),
+            ('code', 'HELP_PREP'),
+            ('macro', 'MACRO_VIC', 'TEXT SCREEN', [vic_text]),
+            ('macro', 'MACRO_CLR_SCREEN', 'CLEAR SCREEN', [["macro_clr_screen", 1024.0, 32.0]]),
+            ('code', 'HELP_DRAW'),
+            ('code', 'PAGES'),
+        ]),
     ]
+    for c in cols:
+        if "org" not in c:
+            c["org"] = ORGS.get(c["name"])
     comments = {
-        "01 BOOT": "POLARITY - a sisterly life sim.\nBOOT: BASIC off, CIA IRQs off,\nthen the title.",
+        "01 BOOT": "POLARITY - a sisterly life sim.\nBOOT: BASIC off, CIA IRQs off,\nmirror tables, then the title.",
         "02 TITLE + THEME TUNE": "Title picture + theme tune.\nAlternates with HOW TO PLAY.\nFIRE starts a new life.",
         "03 FRAME SYNC / IRQ / SOUNDS": "FrameTick: frame wait.\nIrqMusic: raster IRQ chain\n(tune, SFX, sky/HUD split).",
-        "04 NEW LIFE: SCREEN, SPRITES, HUD": "MC text screen, 5 sprites,\nstatus row + needs panel HUDs.\nReset the sisters' life.",
-        "05 ROOMS": "Each place: own CHAR_SET +\nMAP (40x20) + colour table.\nHOME STREET SHOP CAFE PARK",
-        "06 MAIN LOOP + JOYSTICK": "Once per frame: sync, joystick\n(walk/use/swap/magic), update.",
-        "07 SISTERS, MAGIC, COIN, BEE": "Sunny ATTRACTS, Hex REPELS:\ncoins float out of reach,\nbees chase and sting.",
-        "08 CLOCK, NEEDS, ACTIONS": "2 s = 10 minutes. Needs drop\nhourly. UP uses an object:\nACTION table drives it.",
-        "09 MONEY, MESSAGES, HUD": "Money in base-100 bytes.\nMessage line + HUD field\nroutines from the HUD nodes.",
-        "10 DREAM COME TRUE": "Job level 5: the sisters\nown the cafe. FIRE: title.",
-        "11 HOW TO PLAY": "The HOW TO PLAY page:\nPRINT nodes reading the\nHELP_TEXT asset.",
+        "04 NEW LIFE: SCREEN, SPRITES, HUD": "MC text screen, 6 sprites,\nstatus row + needs panel HUDs.\nReset the sisters' life.",
+        "05 ROOMS": "11 places: 5 CHAR_SETs, MAPs\nunder the I/O + KERNAL, the\nperson and clue in each.",
+        "06 MAIN LOOP + JOYSTICK": "Once per frame: sync, joystick\n(walk/jump/use/swap/magic).",
+        "07 THE SISTERS + MAGIC": "3 sprites a sister: 2x high\nMC body + 2 hires overlays,\ncopied from SPR_LIB, mirrored.",
+        "08 COINS, CLUES, PEOPLE, BEES": "Sunny ATTRACTS, Hex REPELS.\n6 clues: jump, pull, blast,\nor ask Gran / Miss Page.",
+        "09 CLOCK, NEEDS, ACTIONS": "3 s = 10 minutes. Needs drop\nhourly. FIRE uses an object:\nACTION table drives it.",
+        "10 MONEY, MESSAGES, HUD": "Money in base-100 bytes.\nMessage line + HUD field\nroutines from the HUD nodes.",
+        "11 HOW TO PLAY + PAGES": "HOW TO PLAY page, and\nPrintPage: one loop prints\nevery page from its table.",
+        "12 ENDINGS": "Job level 5: own the cafe.\nAll 6 clues: THE TRUTH.\nFIRE: back to the title.",
     }
     return cols, comments
 
 
-def build_nodes(tables):
-    cols, comments = layout()
+def place_columns(cols, sizes):
+    """Fill in the ORG of every column without a fixed one: the game columns
+    pack one after another from $6800 (after column 04), leaving headroom
+    for macro nodes whose editor size differs from the test stubs."""
+    fixed_end = {}
+    pc = None
+    for c in cols:
+        if c["name"] == "04 NEW LIFE: SCREEN, SPRITES, HUD":
+            pc = c["org"] + sizes[c["name"]] + 160      # the HUD / SPR macros run larger in the editor
+        elif c["org"] is None and c["name"] != "01 BOOT":
+            c["org"] = (pc + 15) & ~15
+            pc = c["org"] + sizes[c["name"]] + 8
+    return cols
+
+
+def build_nodes(tables, cols, comments):
     nodes, orgs, boxes = [], [], []
     org_uid = 1
     for ci, c in enumerate(cols):
@@ -402,7 +450,7 @@ def build_nodes(tables):
         comment = node("COMMENT", "COMMENT", [["Comment", comments[c["name"]]]], x, 160)
         nodes.append(comment)
         parent = None
-        if c["org"] is None:
+        if c["name"] == "01 BOOT":
             init = node("INIT", "SYSTEM INIT", [["sei", 0.0], ["lda_imm", 0.0], ["sta_abs", 53280.0], ["sta_abs", 53281.0]], x, y)
             nodes.append(init)
             y += 80
@@ -454,7 +502,10 @@ def stub(item, test_input):
     if typ in ('MACRO_SFX',):
         return ""
     if typ == 'MACRO_VWAIT':
-        return "vwa%d:\nLDA $D012\nCMP #248\nBEQ vwa%d\nvwb%d:\nLDA $D012\nCMP #248\nBNE vwb%d\n" % (u, u, u, u)
+        s = "vwa%d:\nLDA $D012\nCMP #248\nBEQ vwa%d\nvwb%d:\nLDA $D012\nCMP #248\nBNE vwb%d\n" % (u, u, u, u)
+        if SCRIPT:
+            s += "INC $02\nBNE vwc%d\nINC $03\nvwc%d:\n" % (u, u)        # frame counter for the script
+        return s
     if typ == 'MACRO_VIC':
         _, mode, bank, scr, chr_, brd, b0, b1, b2, b3 = r
         return ("SEI\nLDA $DD00\nORA #$03\nSTA $DD00\nLDA #$1C\nSTA $D018\nLDA #$1B\nSTA $D011\nLDA #$18\nSTA $D016\n"
@@ -472,7 +523,7 @@ def stub(item, test_input):
         s += "LDA $D010\n" + ("ORA #$%02X\n" % bit if x > 255 else "AND #$%02X\n" % (255 - bit)) + "STA $D010\n"
         s += "LDA $D015\nORA #$%02X\nSTA $D015\n" % bit
         s += "LDA $D01C\n" + ("ORA #$%02X\n" % bit if f[2] else "AND #$%02X\n" % (255 - bit)) + "STA $D01C\n"
-        s += "LDA #$%02X\nSTA $%04X\nLDA #$%02X\nSTA $D025\nLDA #$%02X\nSTA $D026\n" % (f[3], 0xD027 + slot, sprites.SKIN, sprites.OUTLINE)
+        s += "LDA #$%02X\nSTA $%04X\nLDA #$%02X\nSTA $D025\nLDA #$%02X\nSTA $D026\n" % (f[3], 0xD027 + slot, sprites.SKIN, sprites.HAIR[0])
         return s
     if typ == 'MACRO_HUD':
         a = hud_top_asset() if r[1] == "HUD_TOP" else hud_bot_asset()
@@ -507,8 +558,11 @@ def stub(item, test_input):
             s += "JSR %sdraw\n" % k
         return s
     if typ == 'MACRO_JOY':
-        src = "$02A7" if test_input else "$DC00"
-        s = "jrd:\nLDA %s\nSTA $F8\n" % src
+        if SCRIPT:
+            s = "JSR TestJoy\nSTA $F8\n"
+        else:
+            src = "$02A7" if test_input else "$DC00"
+            s = "jrd:\nLDA %s\nSTA $F8\n" % src
         i = 0
         for row in code[1:]:
             m, lbl, en = int(row[0]), row[1], row[2]
@@ -521,43 +575,45 @@ def stub(item, test_input):
             i += 1
         s += "joy_done:\n"
         return s
-    if typ == 'MACRO_PRINT':
-        # Like the real node: the text sits in memory (inline text at the
-        # node's text address, injected into the PRG; asset text inside the
-        # TEXT_DATA asset) and a short loop copies it, so sizes match.
-        x, y, colr, text = int(r[1]), int(r[2]), int(r[3]), r[5]
-        if len(r) > 9 and r[9] == 1.0:
-            base, full, _ = text_assets()[0][r[10]]
-            text = full[int(r[11]):int(r[12])]
-            src = base + int(r[11])
-        else:
-            src = int(r[6])
-            for i, c in enumerate(text):
-                INLINE_TEXT[src + i] = font.screen_code(c)
-        if r[7] == 2.0:
-            x = (40 - len(text)) // 2
-        k = "pr%d_" % u
-        return ("LDX #$00\n%sl:\nLDA $%04X,X\nSTA $%04X,X\nLDA #$%02X\nSTA $%04X,X\nINX\nCPX #%d\nBNE %sl\n"
-                % (k, src, 0x0400 + y * 40 + x, colr, 0xD800 + y * 40 + x, len(text), k))
     raise ValueError(typ)
 
 
-INLINE_TEXT = {}      # address -> screen code: inline PRINT text (the IDE injects it)
+SCRIPT = []           # [(frame, $DC00 value)] for --script test runs
+TEST_ROOM = None      # --room=N: a new life starts in room N (test PRG only)
+TEST_CLUES = 0        # --clues=MASK: ...holding these clues (bit n = clue n)
 
-def build_test_prg(tables, mem, path, test_input):
-    cols, _ = layout()
+def test_joy_code():
+    """TestJoy: A = the scripted joystick for the frame counter at $02/$03."""
+    s = "TestJoy:\nSTX $04\nLDX #$00\ntjl:\nLDA tjt_hi,X\nCMP $03\nBCC tjn\nBNE tjv\nLDA tjt_lo,X\nCMP $02\nBCC tjn\nBEQ tjn\ntjv:\nLDA tjt_v,X\nBEQ tjv\nLDX $04\nRTS\ntjn:\nINX\nCPX #%d\nBNE tjl\nLDA #$7F\nLDX $04\nRTS\n" % len(SCRIPT)
+    s += "tjt_lo:\n.byte " + ",".join("$%02X" % (f & 255) for f, _ in SCRIPT) + "\n"
+    s += "tjt_hi:\n.byte " + ",".join("$%02X" % (f >> 8) for f, _ in SCRIPT) + "\n"
+    s += "tjt_v:\n.byte " + ",".join("$%02X" % v for _, v in SCRIPT) + "\n"
+    return s
+
+
+def assemble(tables, cols, test_input=False):
+    """Assemble every column (macros as stubs) -> (assembler, sizes)."""
     a = Assembler()
     sizes = {}
     for c in cols:
-        org = 0x080E if c["org"] is None else c["org"]
+        org = 0x080E if c["name"] == "01 BOOT" else c["org"]
         a.pc = org
         start = org
-        if c["org"] is None:
-            a.add_block("SEI\nLDA #$00\nSTA $D020\nSTA $D021\n" + ("LDA #$FF\nSTA $02A7\n" if test_input else ""), where="INIT")
+        if c["name"] == "01 BOOT":
+            a.add_block("SEI\nLDA #$00\nSTA $D020\nSTA $D021\n" + ("LDA #$FF\nSTA $02A7\n" if test_input else "")
+                        + ("LDA #$00\nSTA $02\nSTA $03\n" if SCRIPT else ""), where="INIT")
         for it in c["items"]:
             if it[0] == 'code':
-                text = game.resolve(game.BLOCKS[it[1]], tables)
-                if test_input:
+                src = game.BLOCKS[it[1]]
+                if TEST_CLUES and it[1] == "NEW_GAME":
+                    src = src.replace("STA V_ITEM\n", "STA V_ITEM\nLDA #$%02X\nSTA V_CLUES\nLDA #%d\nSTA V_NCLUE\nLDA #$00\n"
+                                      % (TEST_CLUES, bin(TEST_CLUES).count("1")), 1)
+                if TEST_ROOM is not None and it[1] == "NEW_GAME":
+                    src = src.replace("LDA #C_HOME            ; a new life starts at HOME", "LDA #%d" % TEST_ROOM)
+                text = game.resolve(src, tables)
+                if SCRIPT:
+                    text = text.replace("LDA $DC00", "JSR TestJoy")
+                elif test_input:
                     text = text.replace("LDA $DC00", "LDA $02A7")
                 a.add_block(text, where=it[1])
             elif it[0] == 'label':
@@ -568,12 +624,19 @@ def build_test_prg(tables, mem, path, test_input):
                 a.add_block("%s %s" % (mn, "" if opd == 0.0 else opd), where="op")
             else:
                 a.add_block(stub(it, test_input), where=it[2])
-        sizes[c["name"]] = (start, a.pc)
-    for name, (s, e) in sizes.items():
-        print("  %-38s $%04X-$%04X (%d bytes)" % (name, s, e - 1, e - s))
+        if c["name"] == "11 HOW TO PLAY + PAGES" and SCRIPT:
+            a.add_block(test_joy_code(), where="testjoy")
+        sizes[c["name"]] = a.pc - start
+    return a, sizes
+
+
+def build_test_prg(tables, mem, cols, path, test_input):
+    a, sizes = assemble(tables, cols, test_input)
+    for c in cols:
+        org = 0x080E if c["name"] == "01 BOOT" else c["org"]
+        print("  %-38s $%04X-$%04X (%d bytes)" % (c["name"], org, org + sizes[c["name"]] - 1, sizes[c["name"]]))
     code = a.link()
     allm = dict(mem)
-    allm.update(INLINE_TEXT)
     for k, v in code.items():
         if k in allm:
             raise SystemExit("code overlaps data at $%04X" % k)
@@ -590,22 +653,59 @@ def build_test_prg(tables, mem, path, test_input):
     return sizes, a.labels
 
 
+def check_layout(cols, sizes):
+    """No column may run into the next one or into data."""
+    spans = sorted((0x080E if c["name"] == "01 BOOT" else c["org"], sizes[c["name"]], c["name"]) for c in cols)
+    for (s0, n0, a), (s1, _, b) in zip(spans, spans[1:]):
+        assert s0 + n0 <= s1, "%s ($%04X-$%04X) runs into %s ($%04X)" % (a, s0, s0 + n0, b, s1)
+    limits = {"02 TITLE + THEME TUNE": 0x20C0, "11 HOW TO PLAY + PAGES": 0x2200, "12 ENDINGS": 0x2600,
+              "03 FRAME SYNC / IRQ / SOUNDS": 0x3000}   # the SFX data runs to ~$2DF4 in the editor
+    for s, n, name in spans:
+        if name in limits:
+            assert s + n <= limits[name], "%s ends at $%04X" % (name, s + n)
+        elif s >= 0x6800:
+            assert s + n <= 0x8000, "%s ends at $%04X (the game must stay below $8000)" % (name, s + n)
+
+
 def main():
     out = sys.argv[1]
+    global TEST_ROOM, TEST_CLUES
+    for arg in sys.argv[2:]:
+        if arg.startswith("--clues="):
+            TEST_CLUES = int(arg.split("=", 1)[1], 0)
+        if arg.startswith("--room="):
+            TEST_ROOM = int(arg.split("=", 1)[1])
+        if arg.startswith("--script="):
+            for line in open(arg.split("=", 1)[1]):
+                parts = line.split("#")[0].split()
+                if len(parts) == 2:
+                    SCRIPT.append((int(parts[0]), int(parts[1])))
     assets, mem, tables = build_assets()
-    nodes, boxes = build_nodes(tables)
+    cols, comments = layout()
+    # first pass with temporary ORGs to measure the columns, then pack them
+    for c in cols:
+        if c["org"] is None and c["name"] != "01 BOOT":
+            c["org"] = 0x6800
+    _, sizes = assemble(tables, cols)
+    for c in cols:
+        if c["name"] not in ORGS and c["name"] != "01 BOOT":
+            c["org"] = None
+    place_columns(cols, sizes)
+    _, sizes = assemble(tables, cols)
+    check_layout(cols, sizes)
+    nodes, boxes = build_nodes(tables, cols, comments)
     proj = {
         "ignored_conflicts": [], "asset_groups": [GROUP],
         "next_stable_uid": float(NEXT_UID[0] + 10), "map_tile_bank_sel": -1.0, "map_tile_bank": [],
-        "code_editor_font_index": 1.0, "creator_locked": False, "build_target": 0.0,
+        "code_editor_font_index": 1.0, "creator_locked": False, "build_target": 2.0,
         "kernal_unlocked": False, "basic_unlocked": True, "asset_sort_mode": "ADDR",
         "nodes": nodes, "boxes": boxes, "assets": assets, "map_global_mixed": 1.0,
     }
     with open(out, "w") as f:
         json.dump(proj, f, separators=(",", ":"))
     print("wrote", out, "nodes", len(nodes), "assets", len(assets))
-    if len(sys.argv) > 2:
-        build_test_prg(tables, mem, sys.argv[2], "--test-input" in sys.argv)
+    if len(sys.argv) > 2 and not sys.argv[2].startswith("--"):
+        build_test_prg(tables, mem, cols, sys.argv[2], "--test-input" in sys.argv)
         print("wrote", sys.argv[2])
 
 if __name__ == "__main__":
