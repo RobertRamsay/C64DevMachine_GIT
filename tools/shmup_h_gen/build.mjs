@@ -294,7 +294,7 @@ const COLUMNS = [
     ],
     notes: [
       { at: 'spawner', text: 'SPAWNER\nLaunches the WORLD map\'s\nSPAWN layer as it scrolls\nin (MODE SCROLL H), into\n3 slots = sprites 5-7.\nOpen WORLD, press E to\nplace enemies and edit\ntheir types: frame,\ncolour, movement, speed,\nHP, points, drop.' },
-      { at: 'enemy', text: 'ASSET: WORLD - SPAWN layer\nOpen WORLD, press E. Pick\na type, L-click to place,\nR-click to delete. Each\ntype sets frame, colour,\nmovement + VALUE, speed,\nHP, points and drop.' },
+      { at: 'enemy', text: 'ASSET: WORLD - SPAWN LAYER\nOpen WORLD, press E. Pick\na type, L-click to place,\nR-click to delete. Each\ntype sets frame, colour,\nmovement + VALUE, speed,\nHP, points and drop.' },
       { at: 'enemy', text: 'Movements: STRAIGHT, SINE,\nCHASE, ZIGZAG, DIVE,\nWALKER (rides the ground)\nand TURRET (fixed to the\nmap, SPN_FIRE cues shots).' },
     ] },
 
@@ -398,11 +398,12 @@ WORLD     the level map
 ACTORS    every sprite
 FRONT_END title picture
 STATUS    the HUD
+MUSIC_AND_SFX title tune
+GAME_SFX  sound effects
+
 WORLD also holds the SPAWN
 layer: press E in it to
 place and edit enemies.
-MUSIC_AND_SFX title tune
-GAME_SFX  sound effects
 
 The CONTROL PANEL below
 holds every setting (F9 =
