@@ -13,7 +13,8 @@ export const SNG_PLAY = `sng${SONG_UID}_play`;
 export const BOOT = `
 // @asset AB_CHARS
 // @asset AB_SPRITES
-// @asset AB_TITLE_CHARS
+// @asset AB_TITLE_BMP
+// @asset AB_TITLE_SPR
 // BOOT: RAM + I/O only, VIC bank 1, our IRQ/NMI vectors, then the title
 Boot:
  SEI
@@ -42,6 +43,16 @@ Boot:
  STA $DD00
  JSR ClearVars
  JSR SidClear
+// the title picture's screen + colour (AB_TITLE_BMP, emitted at $C400 /
+// $C7E8 in the level area) go to TITLE_STORE before a deck overwrites them
+ LDX #$00
+BtSave:
+${[0, 250, 500, 750, 1000, 1250, 1500, 1750].map(o => ` LDA TITLE_VSCR+${o},X\n STA TITLE_STORE+${o},X`).join('\n')}
+ INX
+ CPX #250
+ BNE BtSave
+ LDA #BANK_GAME
+ STA NEW_BANK
  LDA #<IrqVbl
  STA $FFFE
  LDA #>IrqVbl
@@ -120,7 +131,7 @@ IrqVbl:
  LDA #$FF
  STA $D019
  LDA READY
- BEQ IvApply
+ BEQ IvNoNew
  LDA NEW_D011
  STA CUR_D011
  LDA NEW_D016
@@ -129,21 +140,19 @@ IrqVbl:
  STA $D018
  LDA NEW_D020
  STA CUR_D020
- LDA SH_EN
- STA CUR_EN
- LDA SH_MSB
- STA $D010
-${[0, 1, 2, 3, 4, 5, 6, 7].map(i => ` LDA SH_X+${i}
- STA $D0${(i * 2).toString(16).padStart(2, '0').toUpperCase()}
- LDA SH_Y+${i}
- STA $D0${(i * 2 + 1).toString(16).padStart(2, '0').toUpperCase()}
- LDA SH_COL+${i}
- STA $D0${(0x27 + i).toString(16).toUpperCase()}
- LDA SH_PTR+${i}
- STA SPTRA+${i}
- STA SPTRB+${i}`).join('\n')}
+ LDA $DD00
+ AND #$FC
+ ORA NEW_BANK
+ STA $DD00
+ JSR SprApply
  LDA #$00
  STA READY
+ JMP IvApply
+// the title's split IRQ moved the sprites: put the upper band back
+IvNoNew:
+ LDA TITLE_ON
+ BEQ IvApply
+ JSR SprApply
 IvApply:
  LDA CUR_D011
  STA $D011
@@ -170,6 +179,8 @@ IvNoSfx:
  BEQ IvNoStr
  JSR AudioTick
 IvNoStr:
+ LDA TITLE_ON
+ BNE IvTitle
  LDA #LINE_HUD
  STA $D012
  LDA #<IrqHud
@@ -178,6 +189,17 @@ IvNoStr:
  LDA #>IrqHud
  STA $FFFF
  STA $0315
+ JMP IvOut
+IvTitle:
+ LDA #LINE_TSPLIT
+ STA $D012
+ LDA #<IrqTSplit
+ STA $FFFE
+ STA $0314
+ LDA #>IrqTSplit
+ STA $FFFF
+ STA $0315
+IvOut:
  PLA
  TAY
  PLA
@@ -235,6 +257,85 @@ IhFldX:
  TAX
  PLA
  RTI
+
+// the sprite shadow into the VIC; pointers into both game screens, and the
+// title screen's while the title is up
+SprApply:
+ LDA SH_EN
+ STA CUR_EN
+ LDA SH_MSB
+ STA $D010
+${[0, 1, 2, 3, 4, 5, 6, 7].map(i => ` LDA SH_X+${i}
+ STA $D0${(i * 2).toString(16).padStart(2, '0').toUpperCase()}
+ LDA SH_Y+${i}
+ STA $D0${(i * 2 + 1).toString(16).padStart(2, '0').toUpperCase()}
+ LDA SH_COL+${i}
+ STA $D0${(0x27 + i).toString(16).toUpperCase()}
+ LDA SH_PTR+${i}
+ STA SPTRA+${i}
+ STA SPTRB+${i}`).join('\n')}
+ LDA TITLE_ON
+ BEQ SaOut
+ LDX #$07
+SaPtr:
+ LDA SH_PTR,X
+ STA TITLE_PTRS,X
+ DEX
+ BPL SaPtr
+SaOut:
+ RTS
+
+// TITLE: line $A0, the upper text band is done - the sprites move down to
+// the lower band (PRESS FIRE | TO PLAY), flashing in TCOL
+IrqTSplit:
+ PHA
+ TXA
+ PHA
+ LDA #$FF
+ STA $D019
+ LDX #TLO_N-1
+TsLoop:
+ LDA TLoPtr,X
+ STA TITLE_PTRS,X
+ LDA TCOL
+ STA $D027,X
+ DEX
+ BPL TsLoop
+ TYA
+ PHA
+ LDX #$07
+ LDY #$0E
+TsPos:
+ LDA TLoX,X
+ STA $D000,Y
+ LDA #TLO_Y
+ STA $D001,Y
+ DEY
+ DEY
+ DEX
+ BPL TsPos
+ PLA
+ TAY
+ LDA #TLO_MSB
+ STA $D010
+ LDA #TLO_EN
+ STA $D015
+ LDA #LINE_VBL
+ STA $D012
+ LDA #<IrqVbl
+ STA $FFFE
+ STA $0314
+ LDA #>IrqVbl
+ STA $FFFF
+ STA $0315
+ PLA
+ TAX
+ PLA
+ RTI
+TLoX:
+ .byte {{TLO_X}}
+TLoPtr:
+ .byte {{TLO_PTR}}
 
 // NMI: one REU byte straight into $D418 (the stream is set up by
 // AudioPlay: C64 address fixed at $D418, length 1). CIA 2 timer A clocks it.

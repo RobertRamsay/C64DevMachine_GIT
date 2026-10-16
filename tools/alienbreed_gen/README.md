@@ -8,7 +8,16 @@ two machines:
 | Machine | Audio |
 |---|---|
 | Stock C64 | Title theme from the Music Maker (`AB_MUSIC`), effects from the SFX Maker (`AB_SFX`, voice 3) |
-| C64 Ultimate (or any 17xx REU) | `AB_REU` (LOAD_REU) carries the theme and every effect as 4-bit samples. An NMI DMAs them byte by byte into `$D418`. RUN ON ULTIMATE uploads the image and F5 attaches it in VICE. UP on the title switches to it. |
+| C64 Ultimate (or any 17xx REU) | `AB_REU` (LOAD_REU) carries the theme and every effect as 4-bit samples. An NMI DMAs them byte by byte into `$D418`. RUN ON ULTIMATE uploads the image and F5 attaches it in VICE. |
+
+## Title
+
+The title is `AB_TITLE_BMP`, a Koala BITMAP (`art/title.kla`) in VIC bank 3 at `$E000`. It carries sprite text in the logo's tall font and shading (`AB_TITLE_SPR`, drawn by `titlespr.mjs`):
+
+- **Top band:** C64 | C64U. LEFT picks the stock C64 (SID); RIGHT picks the C64 Ultimate (REU stream), and only works with an REU. With an REU present, C64U is selected from the start.
+- **Bottom band:** PRESS FIRE | TO PLAY.
+
+A raster IRQ at line `$A0` moves the sprites from the top band to the bottom one. The editor emits the bitmap's screen and colour at `$C400` / `$C7E8`, which is inside the level area, so BOOT saves them to `$7800` and the title puts them back.
 
 Requires Node 22+ (no packages).
 
@@ -40,10 +49,10 @@ node editor.mjs                # round trip through a running, paired Dev Machin
 | `$4800` | Station charset |
 | `$5000` | Sprites |
 | `$6000-$77FF` | High code |
-| `$7800` | Title charset |
+| `$7800-$7FCF` | Title screen + colour, saved at boot |
 | `$8000-$9FFF` | Data |
 | `$A000-$CFFF` | The expanded deck |
-| `$E000-$FFEF` | Top code (runs with the KERNAL banked out) |
+| `$E000-$FF3F` | Title bitmap (bank 3, under the KERNAL) |
 
 The full map is in `defs.mjs`.
 
@@ -52,9 +61,11 @@ The full map is in `defs.mjs`.
 | File | Contents |
 |---|---|
 | `defs.mjs` | Memory map, variables, constants |
-| `art.mjs` | Charsets (autotiled walls, floors, pickups, lift, cores), logo, sprites |
+| `art.mjs` | Charset (autotiled walls, floors, pickups, lift, cores), sprites |
+| `titlespr.mjs` | Title sprite text: font, shading, layout |
+| `koala.mjs` | Koala reader / PNG preview (`node koala.mjs art/title.kla out.png`) |
 | `levels.mjs` | Decks as rooms + corridors. Carving, a key/door reachability check, metatile RLE |
-| `texts.mjs` | HUD, messages, Intex / end pages, title screen |
+| `texts.mjs` | HUD, messages, Intex / end pages |
 | `audio.mjs` | Music Maker song, SFX Maker effects, REU converter (WAV in `audio_src/`, else a rendered version) |
 | `code_core.mjs` | Boot, IRQs, REU stream, sound dispatch, helpers |
 | `code_game.mjs` | Title, deck load, game states, marine, weapons, aliens |

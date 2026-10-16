@@ -12,9 +12,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Assembler, resolve } from '../golazo_gen/asm.mjs';
 import { CONSTS as C, MEM, SPR_PTR0, SFX } from './defs.mjs';
-import { buildCharset, buildCharTypes, buildTitle, buildSprites, CH, SPR, CHAR_COUNT, BASE_ASSETS } from './art.mjs';
+import { buildCharset, buildCharTypes, buildSprites, CH, SPR, CHAR_COUNT, BASE_ASSETS } from './art.mjs';
+import { readKoala } from './koala.mjs';
+import { buildTitleSprites, TITLE_SPR_COLS, BANDS } from './titlespr.mjs';
 import { buildDecks, DT } from './levels.mjs';
-import { buildHud, buildTexts, buildTitleScreen, MSG_LEN, INTEX_ROWS, TITLE_FIRE_ROW } from './texts.mjs';
+import { buildHud, buildTexts, MSG_LEN, INTEX_ROWS } from './texts.mjs';
 import { buildMusicMeta, buildSfxMeta, buildReuAudio, SFX_LABELS, REU_DIR } from './audio.mjs';
 import * as K from './code_core.mjs';
 import * as G from './code_game.mjs';
@@ -33,8 +35,11 @@ const outJson = argv.filter((a, i) => !a.startsWith("--") && (ti < 0 || i !== ti
 // ------------------------------------------------------------ data
 const charset = buildCharset();
 const charTypes = buildCharTypes(C);
-const title = buildTitle(C);
-const titleScreen = buildTitleScreen(title);
+// the title picture (Koala) and its sprite text
+const TITLE_KLA = path.join(HERE, 'art', 'title.kla');
+const titleKla = fs.readFileSync(TITLE_KLA);
+const title = readKoala(TITLE_KLA);
+const tspr = buildTitleSprites();
 const sprites = buildSprites();
 const { decks, metaTable, metaCount } = buildDecks();
 const hud = buildHud();
@@ -52,8 +57,11 @@ C.META_TL = C.AB_META; C.META_TR = C.AB_META + 64; C.META_BL = C.AB_META + 128; 
 decks.forEach((d, i) => dput('DECK_TAB' + i, d.table, 16));
 dput('HUD_TPL', hud.chars, 16);
 dput('HUD_TCOL', hud.cols, 16);
-dput('TITLE_SCR', titleScreen.scr, 256);
-dput('TITLE_COL', titleScreen.col, 256);
+// AB_TITLE_SPR is a SPRITE_SET (placed here, not a BYTE_DATA)
+dp = Math.ceil(dp / 256) * 256;
+C.AB_TITLE_SPR = dp;
+const TITLE_SPR_AT = dp;
+dp += 1024;
 const texts = buildTexts(Math.ceil(dp / 256) * 256);
 dput('TEXTS', texts.bytes, 256);
 decks.forEach((d, i) => dput('DECK_RLE' + i, d.packed, 256));
@@ -73,41 +81,56 @@ Object.assign(C, {
   SPEED_INT: 1, SPEED_FRAC: 0x80, FIRE_RATE: 7, BULLET_LIFE: 22,
   SPAWN_FAR_X: 24, SPAWN_FAR_Y: 18, SPAWN_NEAR: 5, SPAWN_FRAMES: 32, DIE_FRAMES: 16, CORE_HITS: 12,
   SD_START_MIN: 0x01, SD_START_SEC: 0x30, MSG_LEN, MSG_TIME: 150, PAGE_WAIT: 50, DECKS: decks.length,
-  INTEX_ITEMS: INTEX_ROWS.length, INTEX_CURSOR_COL: 1, INTEX_COL: 3, INTEX_SEL_COL: 1, TITLE_FIRE_ROW,
+  INTEX_ITEMS: INTEX_ROWS.length, INTEX_CURSOR_COL: 1, INTEX_COL: 3, INTEX_SEL_COL: 1,
 });
+// title: picture background, sprite text colours, frames (pointer = frame,
+// the text is copied to $C000 = pointer 0) and the two bands
+const msb = xs => xs.reduce((m, x, i) => m | (x > 255 ? 1 << i : 0), 0);
+Object.assign(C, {
+  TITLE_BG: title.bg, TSPR_IND: TITLE_SPR_COLS.individual, TSPR_DIM: TITLE_SPR_COLS.dim, TSPR_MC1: TITLE_SPR_COLS.mc1, TSPR_MC2: TITLE_SPR_COLS.mc2,
+  TF_C64: tspr.W.C64.first, TF_C64D: tspr.W.C64D.first, TF_C64U: tspr.W.C64U.first, TF_C64UD: tspr.W.C64UD.first,
+  TTOP_Y: BANDS.TOP_Y, TTOP_MSB: msb(tspr.top), TLO_Y: BANDS.LOW_Y, TLO_MSB: msb(tspr.low),
+  TLO_N: tspr.low.length, TLO_EN: (1 << tspr.low.length) - 1,
+});
+if (tspr.top.length !== 4) throw new Error('the C64 | C64U band must be 4 sprites');
+const hexList = a => a.map(v => '$' + (v & 255).toString(16).toUpperCase().padStart(2, '0')).join(',');
+const lowPtr = [...Array(tspr.W.PRESS.n).keys()].map(k => tspr.W.PRESS.first + k).concat([...Array(tspr.W.PLAY.n).keys()].map(k => tspr.W.PLAY.first + k));
+const fillTitle = s => s.replace('{{TTOP_X}}', hexList(tspr.top))
+  .replace('{{TLO_X}}', hexList([...tspr.low, ...Array(8 - tspr.low.length).fill(0)]))
+  .replace('{{TLO_PTR}}', hexList(lowPtr));
 
 // ------------------------------------------------------------ columns
-// area: 'spine' (after INIT), 'low' $0900-$27FF, 'high' $6000-$77FF,
-// 'top' $E000-$FFEF. MusicInit (AUDIO) and the IRQ must stay below $E000:
-// the Music Maker init / play may page the KERNAL in.
+// area: 'spine' (after INIT), 'low' $0900-$1FFF, 'high' $6000-$77FF
+// ($E000 holds the title bitmap). MusicInit (AUDIO) and the IRQ stay below
+// $E000 anyway: the Music Maker init / play may page the KERNAL in.
 const INTEX_ROWS_TXT = INTEX_ROWS.map(r => '$' + r.toString(16).toUpperCase().padStart(2, '0')).join(',');
 const COLUMNS = [
   { name: '01 BOOT', area: 'spine', blocks: [['BOOT', K.BOOT]],
     note: 'BOOT\nRAM + I/O only ($01 = $35),\nVIC bank 1, raster IRQ and\nNMI vectors, REU check,\nthen the TITLE.' },
-  { name: '02 IRQ + AUDIO', area: 'low', blocks: [['IRQ', K.IRQ], ['AUDIO', K.AUDIO]],
-    note: 'IRQ + AUDIO\nLine $FA: apply the frame,\ntick music / SFX / REU.\nLine $DD: HUD split.\nNMI: one REU byte into\n$D418 (the REU stream).' },
+  { name: '02 IRQ + AUDIO', area: 'low', blocks: [['IRQ', fillTitle(K.IRQ)], ['AUDIO', K.AUDIO]],
+    note: 'IRQ + AUDIO\nLine $FA: apply the frame,\ntick music / SFX / REU.\nLine $D4: HUD FLD split\n(title: line $A0 band).\nNMI: one REU byte into\n$D418 (the REU stream).' },
   { name: '03 HELPERS', area: 'low', blocks: [['UTIL', K.UTIL]],
     note: 'HELPERS\nMap pointer, char under a\nbox, tiles to map + screen,\nBCD score, joystick.' },
-  { name: '04 TITLE', area: 'low', blocks: [['TITLE', G.TITLE]],
-    note: 'TITLE\nLogo, credits, title tune.\nUP = REU stream (C64\nUltimate), DOWN = SID.' },
+  { name: '04 TITLE', area: 'low', blocks: [['TITLE', fillTitle(G.TITLE)]],
+    note: 'TITLE\nAB_TITLE_BMP (bank 3) with\nsprite text in two bands.\nLEFT = C64 (SID), RIGHT =\nC64U (REU stream).' },
   { name: '05 GAME STATES', area: 'low', blocks: [['STATES', G.STATES]],
     note: 'GAME STATES\nNew game, deck load (RLE\nmetatiles -> 128 x 96 map),\nthe frame loop, death,\nself-destruct clock.' },
   { name: '06 SCROLL', area: 'high', blocks: [['SCROLL', V.SCROLL]],
     note: 'SCROLL\n8-way, double buffered:\na new char cell redraws the\nback screen (unrolled),\nshown with the new fine\nscroll at the next frame.' },
   { name: '07 MARINE', area: 'high', blocks: [['PLAYER', G.PLAYER]],
     note: 'MARINE\n8-way at 1.5 px a frame,\nwalls per axis, keys open\ndoors, terminals open the\nIntex network, pickups.' },
-  { name: '08 WEAPONS', area: 'top', blocks: [['WEAPONS', G.WEAPONS]],
+  { name: '08 WEAPONS', area: 'high', blocks: [['WEAPONS', G.WEAPONS]],
     note: 'WEAPONS\nTwo shots at a time, one\nround each. Walls stop\nthem, cores take hits,\naliens die.' },
-  { name: '09 ALIENS', area: 'top', blocks: [['ALIENS', G.ALIENS]],
+  { name: '09 ALIENS', area: 'high', blocks: [['ALIENS', G.ALIENS]],
     note: 'ALIENS\nOut of the vents near you,\nchase along the walls,\nbite on contact.' },
-  { name: '10 SPRITES', area: 'top', blocks: [['SPRITES', V.SPRITES]],
+  { name: '10 SPRITES', area: 'high', blocks: [['SPRITES', V.SPRITES]],
     note: 'SPRITES\nWorld to screen: marine,\n2 bullets, 5 aliens into\nthe shadow the IRQ applies.' },
-  { name: '11 HUD', area: 'top', blocks: [['HUD', V.HUD]],
+  { name: '11 HUD', area: 'high', blocks: [['HUD', V.HUD]],
     note: 'HUD\nRows 22-24 of both\nscreens: energy, lives,\nammo, keys, credits, score\nand the message line.' },
-  { name: '12 INTEX + PAGES', area: 'top', blocks: [['PAGES', V.PAGES], ['INTEX', V.INTEX.replace('{{INTEX_ROWS}}', INTEX_ROWS_TXT)]],
+  { name: '12 INTEX + PAGES', area: 'high', blocks: [['PAGES', V.PAGES], ['INTEX', V.INTEX.replace('{{INTEX_ROWS}}', INTEX_ROWS_TXT)]],
     note: 'INTEX + PAGES\nThe Intex terminal shop,\ndeck complete, victory and\ngame over screens.' },
 ];
-const AREAS = { low: [0x0900, MEM.LOW_END], high: [MEM.HIGH_ORG, MEM.HIGH_END], top: [MEM.TOP_ORG, MEM.TOP_END] };
+const AREAS = { low: [0x0900, MEM.LOW_END], high: [MEM.HIGH_ORG, MEM.HIGH_END] };
 const INIT_ROWS = [['sei', 0], ['lda_imm', 0], ['sta_abs', 53280], ['sta_abs', 53281]];
 const INIT_BYTES = [0x78, 0xA9, 0x00, 0x8D, 0x20, 0xD0, 0x8D, 0x21, 0xD0];
 
@@ -190,7 +213,7 @@ function layout() {
     a.pc = 0x080E;
     a.addBlock(INIT_BYTES.map(b => '.byte $' + b.toString(16)).join('\n'), 0x080E, 'INIT');
     const sizes = [];
-    const fill = { low: null, high: AREAS.high[0], top: AREAS.top[0] };
+    const fill = { low: null, high: AREAS.high[0] };
     for (const col of COLUMNS) {
       if (col.area === 'spine') {
         for (const [name] of col.blocks) a.addBlock(col.resolved[name], null, name);
@@ -230,8 +253,8 @@ function layout() {
 const { a, code, sizes, fill } = layout();
 if (relaxN) console.log('  relaxed %d long branches', relaxN);
 for (const s of sizes) console.log('  %s $%s-$%s  %d bytes', s.name.padEnd(20), s.start.toString(16), (s.end - 1).toString(16), s.end - s.start);
-console.log('  free: low %d, high %d, top %d bytes', AREAS.low[1] - fill.low, AREAS.high[1] - fill.high, AREAS.top[1] - fill.top);
-console.log('  data $8000-$%s (%d free), metatiles %d, chars %d, sprites %d, logo chars %d', (dp - 1).toString(16), MEM.DATA_END - dp, metaCount, CHAR_COUNT, sprites.count, title.chars);
+console.log('  free: low %d, high %d bytes', AREAS.low[1] - fill.low, AREAS.high[1] - fill.high);
+console.log('  data $8000-$%s (%d free), metatiles %d, chars %d, sprites %d, title text sprites %d', (dp - 1).toString(16), MEM.DATA_END - dp, metaCount, CHAR_COUNT, sprites.count, tspr.count);
 decks.forEach(d => console.log('  %s: %d bytes RLE, %d vents, %d cores, %d keys', d.deck.name, d.packed.length, d.vents, d.cores, d.keysFound));
 console.log('  REU audio: %d KB, clips %s', Math.round(reu.total / 1024), reu.clips.map(c => `${c.name}(${c.source})`).join(' '));
 
@@ -240,7 +263,11 @@ const mem = new Map();
 const place = (addr, bytes, what) => bytes.forEach((b, i) => { if (mem.has(addr + i)) throw new Error(`${what} overlaps at $${(addr + i).toString(16)}`); mem.set(addr + i, b & 255); });
 for (const [k, v] of code) mem.set(k, v);
 place(MEM.CHARSET, charset, 'charset');
-place(MEM.TITLE_CHARS, title.charset, 'title charset');
+// the Koala as the editor emits a bank-3 BITMAP: bitmap, screen at bank + $400, colour after it
+place(MEM.TITLE_BMP, title.bitmap, 'title bitmap');
+place(MEM.TITLE_VSCR, title.screen, 'title screen');
+place(MEM.TITLE_VCOL, title.colour, 'title colour');
+place(TITLE_SPR_AT, tspr.bytes, 'title sprite text');
 place(MEM.SPRITES, sprites.bytes, 'sprites');
 for (const d of DATA) place(d.address, d.bytes, d.name);
 fs.mkdirSync(OUTDIR, { recursive: true });
@@ -276,9 +303,17 @@ function buildAssets() {
   Object.assign(cmeta, { format: 'RAW', char_count: 256, total_size: 2048, mc_mode: 1, mc_fg: 6, mc_bg: 0, mc_col1: 11, mc_col2: 15,
     bmp_mode: 'MC', tile_types: Array(256).fill(0) });
   out.push(asset('AB_CHARS', 'CHAR_SET', MEM.CHARSET, charset, cmeta));
-  const tmeta = structuredClone(cmeta);
-  Object.assign(tmeta, { mc_fg: 3, mc_col1: 11, mc_col2: 15 });
-  out.push(asset('AB_TITLE_CHARS', 'CHAR_SET', MEM.TITLE_CHARS, title.charset, tmeta));
+  // the title picture: a Koala BITMAP in bank 3 (edit it in the bitmap editor)
+  const bm = structuredClone(BASE_ASSETS.FRONT_END.meta);
+  Object.assign(bm, { bmp_mode: 'MC', bg_col: title.bg, mc_bg: title.bg });
+  out.push(asset('AB_TITLE_BMP', 'BITMAP', MEM.TITLE_BMP, [...titleKla], bm));
+  // the title's sprite text (TITLE copies it to $C000)
+  const tm = structuredClone(BASE_ASSETS.ACTORS.meta);
+  Object.assign(tm, { used_count: tspr.count, format: 'RAW', bg_col: title.bg, mc1_col: TITLE_SPR_COLS.mc1, mc2_col: TITLE_SPR_COLS.mc2,
+    mc_mode: 1, mc_col1: TITLE_SPR_COLS.mc1, mc_col2: TITLE_SPR_COLS.mc2,
+    sprite_mcs: Array(tspr.count).fill(1), sprite_ucs: Array(tspr.count).fill(TITLE_SPR_COLS.individual) });
+  if (tm.compositor) tm.compositor = { active_layer: 0, active_frame: 0, active_cell: -1, frames: [{ cells: [] }] };
+  out.push(asset('AB_TITLE_SPR', 'SPRITE_SET', TITLE_SPR_AT, tspr.bytes, tm));
   const smeta = structuredClone(BASE_ASSETS.ACTORS.meta);
   Object.assign(smeta, { used_count: sprites.count, format: 'RAW', bg_col: 0, mc1_col: 0, mc2_col: 15, mc_mode: 1, mc_col1: 0, mc_col2: 15,
     sprite_mcs: sprites.mcs, sprite_ucs: sprites.mcs.map((m, i) => i < SPR.ALIEN ? 5 : i < SPR.BOOM ? 10 : i < SPR.BULLET ? 8 : i < SPR.GOO ? 7 : 13) });
@@ -333,12 +368,14 @@ RUN ON ULTIMATE uploads the
 AB_REU image; the title tune
 and every effect stream from
 the REU as 4-bit samples.
-UP on the title picks it.
+RIGHT on the title (C64U)
+picks it.
 
 ASSETS
 AB_CHARS   station tiles+font
 AB_SPRITES marine, aliens
-AB_TITLE_CHARS  the logo
+AB_TITLE_BMP  title picture
+AB_TITLE_SPR  its sprite text
 DECK_RLE0/1 the two decks
 AB_MUSIC / AB_SFX  SID audio
 AB_REU     REU audio streams

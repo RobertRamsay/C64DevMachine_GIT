@@ -13,18 +13,23 @@
 // $4800-$4FFF  game charset (0-95 font, 96-254 station tiles)
 // $5000-$5FFF  sprites (64 frames, pointer $40 up)
 // $6000-$77FF  high code
-// $7800-$7FFF  title charset (logo + font)
-// $8000-$9FFF  data: levels (RLE), char types, tables, title screen
+// $7800-$7FCF  title screen RAM + colour, saved here at boot (see below)
+// $8000-$9FFF  data: levels (RLE), char types, tables, title sprite text
 // $A000-$CFFF  the expanded level: 128 x 96 chars (RAM under BASIC)
-// $E000-$FFF9  code under the KERNAL (never runs with the KERNAL in)
+// $E000-$FF3F  TITLE BITMAP (AB_TITLE_BMP, VIC bank 3, under the KERNAL)
+//
+// The title is the Koala picture in bank 3: bitmap $E000, screen $C400,
+// colour source $C7E8 (the editor's bank-3 layout). Screen and colour sit
+// in the level area, so BOOT saves them to $7800 and the title puts them
+// back; the title's sprite text is copied to $C000 the same way.
 export const MEM = {
-  SCRA: 0x4000, SCRB: 0x4400, CHARSET: 0x4800, SPRITES: 0x5000, TITLE_CHARS: 0x7800,
+  SCRA: 0x4000, SCRB: 0x4400, CHARSET: 0x4800, SPRITES: 0x5000,
   MAP: 0xA000, MAPW: 128, MAPH: 96,
   DATA: 0x8000, DATA_END: 0xA000,
   SFX_ORG: 0x2000, MUSIC_ORG: 0x2C00, MUSIC_END: 0x4000,
   LOW_ORG: 0x0900, LOW_END: 0x2000,
   HIGH_ORG: 0x6000, HIGH_END: 0x7800,
-  TOP_ORG: 0xE000, TOP_END: 0xFFF0,
+  TITLE_BMP: 0xE000, TITLE_VSCR: 0xC400, TITLE_VCOL: 0xC7E8, TITLE_STORE: 0x7800, TITLE_VSPR: 0xC000,
 };
 export const SPR_PTR0 = (MEM.SPRITES - 0x4000) / 64;   // $40
 
@@ -36,10 +41,15 @@ C.PFROWS = 21;                                  // playfield rows 0-20
 C.HUDROW = 21;                                  // HUD rows 21-23 in both screens
 C.HUDA = MEM.SCRA + 21 * 40; C.HUDB = MEM.SCRB + 21 * 40; C.HUDC = 0xD800 + 21 * 40;
 C.SPTRA = MEM.SCRA + 0x3F8; C.SPTRB = MEM.SCRB + 0x3F8;
-// $D018: screen A ($4000) / B ($4400) with the game charset ($4800), title charset ($7800)
-C.D018_A = 0x02; C.D018_B = 0x12; C.D018_T = 0x0E;
-// raster lines: HUD split (FLD from $D7, row 21 = HUD at $E0) and the frame IRQ
-C.LINE_HUD = 0xD4; C.LINE_HUD_GO = 0xD7; C.LINE_HUD_END = 0xDE; C.LINE_VBL = 0xFA;
+// $D018: screen A ($4000) / B ($4400) with the game charset ($4800);
+// title: screen $C400 + bitmap $E000 in bank 3
+C.D018_A = 0x02; C.D018_B = 0x12; C.D018_T = 0x18;
+// $DD00 bank bits: 2 = bank 1 ($4000, the game), 0 = bank 3 ($C000, the title)
+C.BANK_GAME = 2; C.BANK_TITLE = 0;
+C.TITLE_PTRS = MEM.TITLE_VSCR + 0x3F8;
+// raster lines: HUD split (FLD from $D7, row 21 = HUD at $E0) and the frame
+// IRQ; on the title the second IRQ moves the sprites to the lower text band
+C.LINE_HUD = 0xD4; C.LINE_HUD_GO = 0xD7; C.LINE_HUD_END = 0xDE; C.LINE_VBL = 0xFA; C.LINE_TSPLIT = 0xA0;
 // camera limits (world is 1024 x 768 pixels)
 C.CAMX_MAX = (MEM.MAPW - 40) * 8;               // 704
 C.CAMY_MAX = (MEM.MAPH - 21) * 8;               // 600
@@ -83,6 +93,7 @@ function v(name, size = 1) {
   // display state applied by the frame IRQ, deck settings, misc
   'CUR_D011', 'CUR_D016', 'CUR_EN', 'CUR_D020', 'COL_REQ', 'TOUCH_TERM', 'GAME_COL', 'ALIEN_COL', 'ALIEN_HP', 'SPAWN_RATE', 'ALIEN_SPD',
   'TITLE_T', 'MSG_DEF', 'SEL_ROW', 'BUY_I', 'DEAD_CAUSE', 'RD_COUNT',
+  'NEW_BANK', 'TITLE_ON', 'TCOL',
 ].forEach(n => v(n));
 v('CAMX', 2); v('CAMY', 2); v('PX', 2); v('PY', 2);
 v('SCORE', 3); v('CREDITS', 3);

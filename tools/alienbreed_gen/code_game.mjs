@@ -3,8 +3,10 @@
 // and the self-destruct.
 
 export const TITLE = `
-// TITLE: logo + credits on screen A with the title charset, title tune.
-// UP = REU stream (if an REU with the audio is there), DOWN = SID.
+// TITLE: the Koala picture (bank 3) with sprite text in the logo's font.
+// Top band: C64 | C64U - LEFT picks the stock C64 (SID music + SFX), RIGHT
+// the C64 Ultimate / REU version (streamed audio, only with an REU).
+// Bottom band: PRESS FIRE | TO PLAY.
 Title:
  SEI
  LDX #$FF
@@ -16,41 +18,66 @@ Title:
  STA $D015
  STA CUR_D020
  STA NEW_D020
+ LDA #$01
+ STA TITLE_ON
  LDX #$00
 TiCopy:
- LDA TITLE_SCR,X
- STA $4000,X
- LDA TITLE_SCR+250,X
- STA $40FA,X
- LDA TITLE_SCR+500,X
- STA $41F4,X
- LDA TITLE_SCR+750,X
- STA $42EE,X
- LDA TITLE_COL,X
+ LDA TITLE_STORE,X
+ STA TITLE_VSCR,X
+ LDA TITLE_STORE+250,X
+ STA TITLE_VSCR+250,X
+ LDA TITLE_STORE+500,X
+ STA TITLE_VSCR+500,X
+ LDA TITLE_STORE+750,X
+ STA TITLE_VSCR+750,X
+ LDA TITLE_STORE+1000,X
  STA $D800,X
- LDA TITLE_COL+250,X
+ LDA TITLE_STORE+1250,X
  STA $D8FA,X
- LDA TITLE_COL+500,X
+ LDA TITLE_STORE+1500,X
  STA $D9F4,X
- LDA TITLE_COL+750,X
+ LDA TITLE_STORE+1750,X
  STA $DAEE,X
  INX
  CPX #250
  BNE TiCopy
- LDA #$0B
- STA $D022
- LDA #$0F
- STA $D023
- LDA #$00
+ LDX #$00
+TiSpr:
+ LDA AB_TITLE_SPR,X
+ STA TITLE_VSPR,X
+ LDA AB_TITLE_SPR+256,X
+ STA TITLE_VSPR+256,X
+ LDA AB_TITLE_SPR+512,X
+ STA TITLE_VSPR+512,X
+ LDA AB_TITLE_SPR+768,X
+ STA TITLE_VSPR+768,X
+ INX
+ BNE TiSpr
+ LDA #TITLE_BG
  STA $D021
- LDA #$17
+ LDA #TSPR_MC1
+ STA $D025
+ LDA #TSPR_MC2
+ STA $D026
+ LDA #$FF
+ STA $D01C
+ STA $D017
+ LDA #$00
+ STA $D01D
+ STA $D01B
+ LDA #$3B
  STA NEW_D011
+ LDA #$18
  STA NEW_D016
  LDA #D018_T
  STA NEW_D018
+ LDA #BANK_TITLE
+ STA NEW_BANK
+ LDA #TSPR_IND
+ STA TCOL
+ JSR TiSprites
  CLI
  JSR Commit
- JSR TitleAudioText
  JSR MusicStartAny
  LDA #$00
  STA TITLE_T
@@ -64,68 +91,104 @@ TiLoop:
  AND #$07
  TAX
  LDA FlashCol,X
- LDX #39
-TiFlash:
- STA $D800+TITLE_FIRE_ROW*40,X
- DEX
- BPL TiFlash
+ STA TCOL
  LDA JOYNEW
- AND #$01
- BEQ TiNoUp
- LDA REU_OK
- BEQ TiNoUp
+ AND #$04
+ BEQ TiNoL
  LDA AUDIO_MODE
- BNE TiNoUp
- LDA #$01
- STA AUDIO_MODE
- JSR TiSwitch
-TiNoUp:
- LDA JOYNEW
- AND #$02
- BEQ TiNoDn
- LDA AUDIO_MODE
- BEQ TiNoDn
+ BEQ TiNoL
  LDA #$00
  STA AUDIO_MODE
  JSR TiSwitch
-TiNoDn:
+TiNoL:
+ LDA JOYNEW
+ AND #$08
+ BEQ TiNoR
+ LDA REU_OK
+ BEQ TiNoR
+ LDA AUDIO_MODE
+ BNE TiNoR
+ LDA #$01
+ STA AUDIO_MODE
+ JSR TiSwitch
+TiNoR:
  LDA JOYNEW
  AND #$10
  BNE TiStart
+ JSR TiSprites
  JSR Commit
  JMP TiLoop
+// leave with the screen blanked while the deck loads
 TiStart:
+ LDA #$00
+ STA SH_EN
+ LDA #$0B
+ STA NEW_D011
+ JSR Commit
+ LDA #$00
+ STA TITLE_ON
+ LDA #BANK_GAME
+ STA NEW_BANK
  JMP NewGame
 TiSwitch:
  JSR MusicStopAll
- JSR TitleAudioText
  JMP MusicStartAny
-// text colours stay 0-7 (8+ would make the font chars multicolour)
+// the logo's colours, top to bottom, for PRESS FIRE
 FlashCol:
- .byte 1,7,1,3,6,3,1,7
+ .byte 6,6,14,14,1,1,14,14
 
-// the AUDIO line: which sound system is playing
-TitleAudioText:
+// upper band: C64 (sprites 0-1) and C64U (2-3); the version in use is
+// shaded, the other one flat dark grey
+TiSprites:
+ LDX #$03
+TsSet:
+ LDA TTopX,X
+ STA SH_X,X
+ LDA #TTOP_Y
+ STA SH_Y,X
+ DEX
+ BPL TsSet
+ LDA #TTOP_MSB
+ STA SH_MSB
+ LDA #$0F
+ STA SH_EN
  LDA AUDIO_MODE
- BEQ TaSid
- LDA #<TX_AUD_REU
- LDX #>TX_AUD_REU
- JMP TaPrint
-TaSid:
- LDA REU_OK
- BNE TaSid2
- LDA #<TX_AUD_SID
- LDX #>TX_AUD_SID
- JMP TaPrint
-TaSid2:
- LDA #<TX_AUD_SID2
- LDX #>TX_AUD_SID2
-TaPrint:
- STA Z_PTR
- STX Z_PTRH
- LDA #$40
- STA Z_T7
- JMP PrintDirect
+ BNE TsU
+ LDA #TF_C64
+ LDX #TF_C64UD
+ JMP TsPut
+TsU:
+ LDA #TF_C64D
+ LDX #TF_C64U
+TsPut:
+ STA SH_PTR
+ CLC
+ ADC #$01
+ STA SH_PTR+1
+ TXA
+ STA SH_PTR+2
+ CLC
+ ADC #$01
+ STA SH_PTR+3
+ LDA AUDIO_MODE
+ BNE TsCu
+ LDA #TSPR_IND
+ STA SH_COL
+ STA SH_COL+1
+ LDA #TSPR_DIM
+ STA SH_COL+2
+ STA SH_COL+3
+ RTS
+TsCu:
+ LDA #TSPR_DIM
+ STA SH_COL
+ STA SH_COL+1
+ LDA #TSPR_IND
+ STA SH_COL+2
+ STA SH_COL+3
+ RTS
+TTopX:
+ .byte {{TTOP_X}}
 `;
 
 export const STATES = `
@@ -151,6 +214,14 @@ StartDeck:
  SEI
  LDX #$FF
  TXS
+// the game's sprite set-up (the title changes it)
+ LDA #$00
+ STA $D025
+ STA $D017
+ LDA #$0F
+ STA $D026
+ LDA #$F9
+ STA $D01C
  LDA #$00
  STA SH_EN
  STA CUR_EN

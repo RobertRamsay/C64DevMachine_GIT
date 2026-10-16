@@ -2,7 +2,6 @@
 // screen. The font is the Dev Machine template font in ASCII order, so a
 // screen code is the ASCII code (32-95). Text colours are 0-7: the screens
 // run in multicolour char mode, where 8+ would make a font char multicolour.
-import { LOGO } from './art.mjs';
 
 export const MSG_LEN = 36;
 const enc = s => [...s.toUpperCase()].map(c => { const v = c.charCodeAt(0); if (v < 32 || v > 95) throw new Error('char not in font: ' + c); return v; });
@@ -67,11 +66,6 @@ export function buildTexts(base) {
   msg('TX_MSG_TIMER', timer);
   C.TIMER_O = timer.indexOf('0:00');
 
-  // title audio line (all the same length so they overwrite each other)
-  const AUD_ROW = 15;
-  str('TX_AUD_REU', AUD_ROW, 1, 5, 'AUDIO  REU STREAM  (C64 ULTIMATE)   ');
-  str('TX_AUD_SID', AUD_ROW, 1, 3, 'AUDIO  SID MUSIC MAKER   NO REU     ');
-  str('TX_AUD_SID2', AUD_ROW, 1, 3, 'AUDIO  SID MUSIC MAKER   UP = REU   ');
   // Intex status line
   str('TX_INT_OK', 18, 3, 5, 'TRANSACTION APPROVED       ');
   str('TX_INT_POOR', 18, 3, 2, 'INSUFFICIENT CREDITS       ');
@@ -118,22 +112,5 @@ export function buildTexts(base) {
     scoreLine, fire,
   ]);
   C.PAGE_SCORE_AT = PAGE_SCORE[0] * 40 + PAGE_SCORE[1];
-  return { bytes: out, C, AUD_ROW };
-}
-
-// ------------------------------------------------------------ title screen
-export const TITLE_FIRE_ROW = 19;
-export function buildTitleScreen(title) {
-  const scr = [...title.scr], col = [...title.col];
-  const put = (row, c0, colour, s) => enc(s).forEach((ch, i) => { scr[row * 40 + c0 + i] = ch; col[row * 40 + c0 + i] = colour; });
-  const centre = (row, colour, s, w = 38, x0 = 0) => put(row, x0 + Math.floor((w - s.length) / 2), colour, s);
-  centre(LOGO.row + LOGO.h + 1, 1, 'COMMODORE 64   -   C64 ULTIMATE');
-  centre(10, 3, 'AN UNOFFICIAL CONVERSION PITCH OF');
-  centre(11, 7, 'ALIEN BREED - TEAM17 1991');
-  centre(13, 5, 'BUILT WITH C64 DEV MACHINE 1.3.4');
-  centre(17, 6, 'JOYSTICK PORT 2    UP DOWN  AUDIO');
-  centre(TITLE_FIRE_ROW, 1, 'PRESS FIRE TO ENTER THE STATION');
-  // rows 22-24 are shown with no X scroll (the HUD split): columns 1-37
-  centre(23, 4, 'STOCK C64 AND C64 ULTIMATE READY', 37, 1);
-  return { scr, col };
+  return { bytes: out, C };
 }
