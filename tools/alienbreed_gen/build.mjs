@@ -348,7 +348,7 @@ function buildAssets() {
     stamp_w: 2, stamp_h: 2, stamp_count: STAMP_SLOTS, chr_asset: 'AB_CHARS', stamp_data: [...stampTable],
     stamp_mc: Array(STAMP_SLOTS).fill(1), stamp_override: Array(STAMP_SLOTS).fill(0x80), char_lut: lut, char_lut_len: 256,
     maps: decks.map(d => [...d.ids]), map_count: decks.length, active_map: 0, map_size_key: '2x2',
-    map_w: decks.map(d => d.box.w * 2), map_h: decks.map(d => d.box.h * 2), map_names: decks.map(d => d.deck.name.replace(/s+/g, ' ')),
+    map_w: decks.map(d => d.box.w * 2), map_h: decks.map(d => d.box.h * 2), map_names: decks.map(d => d.deck.name.replace(/ +/g, ' ')),
     map_reps: decks.map(() => 1), map_addr: decks.map(() => -1),
     chains: [], chain_cols: [], chain_col_link: [], chain_dir: 0, chain_emit: 0, chain_tab_addr: -1, chain_rev: 0, active_chain: -1,
     raw_rows: 3, test_grid: [], test_zoom: 1, zoom: 4, tone_sorted: false, bmp_mode: 'MC',
