@@ -1008,7 +1008,9 @@ with (_n_org) { event_user(0); }
 
 
 // ---- MENU BAR STATE ----
-gui_menu_open         = -1;    // -1 = closed, 0..7 = which button is open
+gui_menu_open         = -1;    // -1 = closed, 0..8 = which button is open
+gui_menu_rect         = [0, 0, 0, 0]; // open dropdown's GUI rect (x1,y1,x2,y2), set as it draws
+sc_press_row          = -1;    // shortcuts-column row the left press started on
 opcode_hover_key      = "";    // mnemonic currently being hovered
 opcode_hover_timer    = 0;     // frames hovered so far
 opcode_hover_delay    = 30;    // frames before tooltip shows (30 = 0.5s at 60fps)

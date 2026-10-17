@@ -1,4 +1,4 @@
-scr_perf_mark("gui");
+	scr_perf_mark("gui");
 /// @desc Draw GUI Event - Integrated Workspace UI
 // ---- IDLE SNAPSHOT OVERLAY (direct switch instead of node fade) ----
 // ---- IDLE SNAPSHOT OVERLAY (direct switch instead of node fade) ----
@@ -584,6 +584,339 @@ if (shelf_page < p_count - 1) {
 /////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: show code panel");
+///// 1.9 SHOW CODE PANEL (floating, left of the shortcuts column)
+/////////////////////////////////////////////////////////////////
+// Draws before the shortcuts so the shortcuts column always wins any
+// overlap, and hides itself whenever a dropdown menu is open.
+scr_show_code_draw();
+
+/////////////////////////////////////////////////////////////////
+///// 1.95 CONVERT TO CODE BLOCK BUTTON (appears with a selection)
+/////////////////////////////////////////////////////////////////
+scr_cbc_draw_button();
+
+/////////////////////////////////////////////////////////////////
+///// 1.96 CODE BLOCK IMPORT — "click to drop it" strip
+/////////////////////////////////////////////////////////////////
+scr_code_import_draw_banner();
+
+/////////////////////////////////////////////////////////////////
+scr_perf_node("gui", "ws: shortcuts column");
+///// 2. GLOBAL SHORTCUTS (TOP RIGHT)
+/////////////////////////////////////////////////////////////////
+var sc_x_end   = gui_w - 2;
+var sc_y_start = 50;
+var sc_w       = 270;
+var sc_h       = 17;   // was 21: condensed so the asset panel can start higher
+
+var shortcuts = [
+    ["HOME",   "RESET VIEW"],
+	["CTRL+L",   "LOAD FILE"],
+    ["CTRL+S",   "SAVE"],
+    ["CTRL+SHFT+S", "SAVE AS"],
+    ["F5",     "BUILD & RUN"],
+    ["F6",     "RUN ON ULTIMATE"],
+    ["A",      "ADD ADDRESS LABEL"],
+    ["J",      "ADD JMP NODE"],
+    ["V",      "ADD ORG VARIABLES"],
+    ["C",      "ADD COMMENT NODE"],
+    ["B",      "ADD MAPPING BOX"],
+    ["O",      "ADD ORG BLOCK"],
+    ["X",      "TOGGLE HEX/DEC"],
+    ["I",      "TOGGLE NODE INFO"],
+];
+
+for (var j = 0; j < array_length(shortcuts); j++) {
+    var row_y  = sc_y_start + (j * (sc_h + 4));
+    var box_x1 = sc_x_end - sc_w;
+    var box_x2 = sc_x_end;
+    var box_y1 = row_y;
+    var box_y2 = row_y + sc_h;
+
+    // The dropdowns draw over this column, so an open panel's area (last
+    // frame's rect) hides the rows underneath from the mouse.
+    var _sc_under_menu = (gui_menu_open != -1 &&
+                          point_in_rectangle(gui_mouse_x, gui_mouse_y, gui_menu_rect[0], gui_menu_rect[1], gui_menu_rect[2], gui_menu_rect[3]));
+    var btn_hover = (!_sc_under_menu &&
+                     gui_mouse_x > box_x1 && gui_mouse_x < box_x2 &&
+                     gui_mouse_y > box_y1 && gui_mouse_y < box_y2);
+    // Only a press that started on this row may fire it on release, so a
+    // click on a menu item above it cannot fall through once the menu shuts.
+    if (btn_hover && scr_workspace_mouse_check_button_pressed(mb_left)) {
+        sc_press_row = j;
+    }
+    var btn_click = btn_hover && scr_workspace_mouse_check_button(mb_left);
+    if (global.tour_active) {
+        scr_tour_capture("UI:" + shortcuts[j][1], box_x1, box_y1, box_x2, box_y2);
+    }
+    var is_toggle = (shortcuts[j][1] == "TOGGLE HEX/DEC" || shortcuts[j][1] == "TOGGLE AUTOSAVE MODE");
+
+    var body_col = is_toggle
+                 ? (global.use_hex_display ? make_color_rgb(20, 40, 45) : make_color_rgb(30, 30, 35))
+                 : (btn_hover ? make_color_rgb(30, 30, 40) : make_color_rgb(10, 10, 15));
+
+    draw_set_color(body_col);
+    draw_rectangle(box_x1, box_y1, box_x2, box_y2, false);
+    draw_set_color(btn_hover ? c_white : c_gray);
+    draw_rectangle(box_x1, box_y1, box_x2, box_y2, true);
+
+    var off = btn_click ? 2 : 0;
+    draw_set_halign(fa_left);
+    draw_set_color(c_white);
+    draw_text_transformed_l(box_x1 + 15, row_y + 1 + off, shortcuts[j][0], 1.0, 1.0, 0);
+
+    draw_set_halign(fa_right);
+	
+	if (shortcuts[j][1] == "RUN ON ULTIMATE") { // cant show until approved
+		/*
+		var _c64usc = 0.4;
+		var _xscc64u = 1.0;
+		var _tone = make_colour_rgb(220,220,220);
+		if btn_hover 
+			{
+				_tone=c_white;
+				_xscc64u = sin(degtorad(current_time * 0.16));
+				draw_sprite_ext(spr_c64u,0,box_x1+62,row_y+2,_c64usc * _xscc64u ,_c64usc *1.1,0,c_black,0.4)
+				(spr_c64u,0,box_x1+60,row_y+4,_c64usc * _xscc64u,_c64usc *1.2 ,0,c_black,0.25)
+				if _xscc64u<0 _tone=c_dkgray
+			}
+			
+		
+		draw_sprite_ext(spr_c64u,0,box_x1+64,row_y,_c64usc * _xscc64u,_c64usc,0,_tone,1.0)
+		*/
+	}
+	
+	
+	
+   if (is_toggle) {
+        var label_col, mode_text;
+        if (shortcuts[j][1] == "TOGGLE AUTOSAVE MODE") {
+            var _mode_labels = ["AUTOSAVE: 3 MIN", "AUTOSAVE: 5 MIN", "AUTOSAVE: 10 MIN", "AUTOSAVE: OFF"];
+            var _mode_cols   = [c_lime, c_lime, c_lime, c_red];
+            label_col = _mode_cols[global.autosave_mode];
+            mode_text = _mode_labels[global.autosave_mode];
+        } else {
+            label_col = global.use_hex_display ? c_aqua : c_white;
+            mode_text = global.use_hex_display ? "HEXADECIMAL" : "DECIMAL";
+        }
+        draw_set_color(label_col);
+        draw_text_transformed_l(box_x2 - 10, row_y + 1 + off, mode_text, 1.0, 1.0, 0);
+    } else {
+        draw_set_color(btn_hover ? c_aqua : c_gray);
+        draw_text_transformed_l(box_x2 - 10, row_y + 1 + off, shortcuts[j][1], 1.0, 1.0, 0);
+    }
+    draw_set_halign(fa_left);
+	
+	
+
+    if (btn_hover && sc_press_row == j && scr_workspace_mouse_check_button_released(mb_left)) {
+        sc_press_row = -1;
+        switch (shortcuts[j][1]) {
+            case "CLEANUP":
+                scr_cleanup_nodes();
+                scr_c64_update_addresses();
+                break;
+			case "ASSEMBLY DUMP":
+		    silent_build = true;
+		    pending_dump = true;
+		    trigger_build = true;
+		    break;
+				
+            case "BUILD & RUN":      execute_shell_simple("taskkill", "/f /im x64sc.exe"); trigger_build = true; break;
+			case "RUN ON ULTIMATE":
+			if (global.c64u_ip == "") {
+				// No IP saved — open overlay; it sets trigger_c64u + trigger_build on confirm
+				global.c64u_overlay_active = true;
+				global.c64u_overlay_text   = "";
+				global.c64u_overlay_error  = "";
+				global.c64u_overlay_after  = "send_prg";
+				global.canEditNode=0; // dont allow node editing until we close
+				keyboard_string = "";
+				keyboard_clear(vk_anykey);
+			} else {
+				trigger_c64u  = true;
+				trigger_build = true;
+			}
+			break;
+			
+			case "RESET C64U IP":
+			scr_c64u_reset_ip();
+			
+			break;
+			
+            case "TOGGLE FULLSCREEN": 
+			
+			
+				do_windowSizing();
+			break;
+			case "EXPORT .PRG": {
+			    var _export_path = get_save_filename("C64 Program|*.prg", "export");
+			    io_clear();
+			    if (_export_path != "") {
+			        // Ensure .prg extension
+			        if (string_lower(filename_ext(_export_path)) != ".prg") {
+			            _export_path += ".prg";
+			        }
+			        with (obj_workspace_manager) {
+			            pending_export_path = _export_path;
+			            trigger_export      = true;
+			        }
+			    }
+			} break;
+
+            case "SAVE AS":           scr_save_workspace_as(); break;
+            case "LOAD FILE":         scr_load_workspace_dialog(); break;
+            case "RESET VIEW":
+                scr_focus_init();
+                break;
+            case "TOGGLE HEX/DEC":
+                global.use_hex_display = !global.use_hex_display;
+                scr_c64_update_addresses();
+                break;
+case "TOGGLE AUTOSAVE MODE":
+                global.autosave_mode = (global.autosave_mode + 1) mod 4;
+                var _ivs = [180, 300, 600, -1];
+                global.autosave_interval = _ivs[global.autosave_mode];
+                ini_open("c64devmachine.ini");
+                ini_write_real("autosave", "mode", global.autosave_mode);
+                ini_close();
+                // Reset alarm to new interval
+                var _next_iv = (global.autosave_mode != 3) ? global.autosave_interval : 9999;
+                alarm[4] = game_get_speed(gamespeed_fps) * _next_iv;
+                autosave_countdown = _next_iv;
+                break;
+            case "ADD ORG BLOCK":
+                scr_spawn_org_node(mouse_x - 400, mouse_y);
+                break;
+
+			case "ADD JMP NODE": {
+                var _n          = instance_create_layer(mouse_x - 400, mouse_y, "Layer_Nodes", obj_c64_node);
+                _n.node_title   = "JMP";
+                _n.node_type    = "NORMAL";
+                _n.instructions = [["jmp_abs", "target"]];
+                with(_n) { event_user(0); }
+                _n.pc_address         = 0;
+                _n.last_overlap_check = false;
+                with (obj_c64_node) { last_overlap_check = false; }
+            } break;
+			
+            case "ADD ORG VARIABLES": {
+                var _n            = instance_create_layer(mouse_x - 400, mouse_y , "Layer_Nodes", obj_c64_node);
+                _n.node_title     = "VARIABLES";
+                _n.node_type      = "ORG";
+                _n.proxy          = false;
+                _n.is_draggable   = true;
+                with (_n) { event_user(0); }
+                _n.pc_address     = 0xC000;
+                _n.proxy_address  = 0xC000;
+                _n.end_address    = 0xC000;
+            } break;
+			
+			case "TOGGLE NODE INFO":
+				global.show_stats = !global.show_stats;
+				break;
+				
+            case "ADD COMMENT NODE":
+                scr_spawn_comment_node(mouse_x - 400, mouse_y );
+                break;
+            case "ADD ASCII DATA":
+                scr_spawn_text_node(mouse_x - 400, mouse_y );
+                break;
+            case "ADD ADDRESS LABEL":
+                var _nl        = instance_create_layer(mouse_x - 400, mouse_y , "Layer_Nodes", obj_c64_node);
+                _nl.node_title   = "LABEL";
+                _nl.node_type    = "LABEL";
+                _nl.instructions = [["label", "target"]];
+                _nl.pc_address   = global.start_pc;
+                with(_nl) { event_user(0); }
+                break;
+            case "ADD SID MUSIC":
+                var _n = instance_create_layer(mouse_x - 400, mouse_y , "Layer_Nodes", obj_c64_node);
+                _n.node_title   = "SID MUSIC";
+                _n.node_type    = "DATA_SID";
+                _n.instructions = [["sid_file", "", 0, 0, 0, 0, 0, ""]];
+                _n.pc_address   = 0x1000;
+                with(_n) { event_user(0); }
+                break;
+			case "ADD BITMAP KLA":
+			    _n          = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
+			    _n.node_title   = "BITMAP KLA";
+			    _n.node_type    = "BITMAP_KLA";
+			    _n.instructions = [["bitmap_kla", "", 0]];
+			    _n.pc_address   = 0x6000;
+			    with (_n) { event_user(0); }
+			    break;
+				
+				// Add TEXT_DATA asset
+			case "ADD TEXT DATA":
+				var _new = {
+				    name:    "TEXT_" + string(ds_list_size(asset_list) + 1),
+				    type:    "TEXT_DATA",
+				    address: 0x2600,
+				    file:    "",
+				    buffer:  buffer_create(1, buffer_fixed, 1),
+				    meta:    { text: "HELLO WORLD" }
+				};
+				scr_asset_text_flush(_new);
+				ds_list_add(asset_list, _new);
+			break;
+				
+				
+				
+            case "ADD SPR64":
+                _n = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
+                _n.node_title   = "SPR64";
+                _n.node_type    = "SPR64";
+                _n.instructions = [["spr", "", "", 0, "SPRITES", 0, 0, 0]];
+                _n.pc_address   = 0x7000;
+                with(_n) { event_user(0); }
+                break;
+            case "ADD RAW DATA":
+                _n = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
+                _n.node_title   = "RAW DATA";
+                _n.node_type    = "RAW_DATA";
+                _n.instructions = [["raw", "FF,FF,FF"]];
+                _n.pc_address   = global.start_pc;
+                with(_n) { event_user(0); }
+                break;
+            case "ADD HEX TABLE":
+                _n = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
+                _n.node_title   = "HEX TABLE";
+                _n.node_type    = "RAW_DATA";
+                _n.instructions = [["byte_row", "00,01,02"]];
+                _n.pc_address   = global.start_pc;
+                with(_n) { event_user(0); }
+                break;
+			case "TOGGLE COMMENTS" : global.comments_visible = !global.comments_visible; break;
+            case "RESET/CLEAR": game_restart(); break;
+			case "ADD SCROLL MACRO":
+			    _n          = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
+			    _n.node_title   = "MAP H SCROLL";
+			    _n.node_type    = "MACRO_SCROLL";
+			    _n.instructions = [["MACRO_SCROLL", 0, 25, 1, 1, 1, "", 0]];
+			    _n.pc_address   = global.start_pc;
+			    with(_n) { event_user(0); }
+			    break;
+			case "ADD VWAIT":
+			    _n          = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
+			    _n.node_title   = "VWAIT";
+			    _n.node_type    = "MACRO_VWAIT";
+			    _n.instructions = [["macro_vwait", 0xFB]];
+			    _n.pc_address   = global.start_pc;
+			    with(_n) { event_user(0); }
+			    break;
+			case "ADD MAPPING BOX":
+				global.box_drag_active = true;
+				box_drag_live          = false;
+			//
+				
+				break;
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////
 scr_perf_node("gui", "ws: menu bar + dropdowns");
 ///// MENU BAR
 /////////////////////////////////////////////////////////////////
@@ -646,6 +979,7 @@ if (gui_menu_open == 4) {
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_o, _panel_y_o,
                           _panel_w_o, _panel_h_o);
+    gui_menu_rect = [_panel_x_o, _panel_y_o, _panel_x_o + _panel_w_o, _panel_y_o + _panel_h_o];
 
     draw_set_font_l(fnt_C64_Angled);
 
@@ -1081,6 +1415,7 @@ if (gui_menu_open == 1) {
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_e, _panel_y_e,
                           _panel_w_e, _panel_h_e);
+    gui_menu_rect = [_panel_x_e, _panel_y_e, _panel_x_e + _panel_w_e, _panel_y_e + _panel_h_e];
 
     draw_set_font_l(fnt_C64_Angled);
     // Same hover capture as MACROS 1, so SHIFT+Q adds these to the quick menu too.
@@ -1171,6 +1506,7 @@ if (gui_menu_open == 2) {
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_v, _panel_y_v,
                           _panel_w_v, _panel_h_v);
+    gui_menu_rect = [_panel_x_v, _panel_y_v, _panel_x_v + _panel_w_v, _panel_y_v + _panel_h_v];
 
     draw_set_font_l(fnt_C64_Angled);
 
@@ -1226,6 +1562,14 @@ for (var _bi = 0; _bi < _menuitems; _bi++) {
     if (global.tour_active) {
         scr_tour_capture("MENU:" + string(_bi), _bx, _by, _bx + _mbar_btn_w, _by + _mbar_btn_h);
     }
+    // While any menu is open, hovering another button opens its menu instead;
+    // it stays open until a click away or a click on its own button.
+    if (_bhover && gui_menu_open != -1 && gui_menu_open != _bi && !global.tour_active
+        && !scr_workspace_mouse_check_button(mb_left)) {
+        gui_menu_open = _bi;
+        _bopen = true;
+    }
+
     if (_bhover || _bopen) {
         var _menu_overlay_additive = (uiChromeStyle == 0);
         if (_menu_overlay_additive) gpu_set_blendmode(bm_add);
@@ -1264,9 +1608,9 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
         ,17 // GATE-GAME (logic gate puzzle)
         ,-3 // --- TEST ---
         ,16 // PARAMS TEST (Creator params / cards / panels test bed)
-        // ,18 // POLARITY (sisterly life sim: attraction / repulsion)
-        // ,19 // PUMPKINVILLE (Spooky jam 26: grow and guard pumpkins)
-        // ,20 // GOLAZO 64 (side-on 11-a-side football, multiplexed sprites)
+        ,18 // POLARITY (sisterly life sim: attraction / repulsion)
+         ,19 // PUMPKINVILLE (Spooky jam 26: grow and guard pumpkins)
+         ,20 // GOLAZO 64 (side-on 11-a-side football, multiplexed sprites)
         // ,1 // V.SHMUP (PRO)
         // ,2 // H.SHMUP (LITE)
         // ,3 // H.SHMUP (PRO)
@@ -1294,6 +1638,7 @@ if (gui_menu_open == 7 || gui_menu_open == 8) {
     }
     var _th = array_length(_visible_templates) * 24 + 24;
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm, _tx, _ty, _tw, _th);
+    gui_menu_rect = [_tx, _ty, _tx + _tw, _ty + _th];
     draw_set_font_l(fnt_C64_Angled);
     draw_set_halign(fa_left);
     // Indent for the whole list, fixed before the loop: a click closes the
@@ -1367,6 +1712,7 @@ if (gui_menu_open == 3) {
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_p, _panel_y_p,
                           _panel_w_p, _panel_h_p);
+    gui_menu_rect = [_panel_x_p, _panel_y_p, _panel_x_p + _panel_w_p, _panel_y_p + _panel_h_p];
 
     draw_set_font_l(fnt_C64_Angled);
 
@@ -1444,8 +1790,26 @@ if (gui_menu_open == 3) {
             }
         }
 
+        // Cycling options (AUTOSAVE) keep the menu open, like OPTIONS does:
+        // left click steps forward, right click steps back. Everything else
+        // launches something, so it still shuts the menu.
+        var _proj_cycle = (_pp.action == "AUTOSAVE");
+        if (_ihov && _proj_cycle && scr_workspace_mouse_check_button_pressed(mb_right)) {
+            global.ui_click_block_timer = 6;
+            global.autosave_mode = (global.autosave_mode + 3) mod 4;
+            var _ivs_r = [180, 300, 600, -1];
+            global.autosave_interval = _ivs_r[global.autosave_mode];
+            ini_open("c64devmachine.ini");
+            ini_write_real("autosave", "mode", global.autosave_mode);
+            ini_close();
+            var _next_iv_r = (global.autosave_mode != 3) ? global.autosave_interval : 9999;
+            alarm[4]           = game_get_speed(gamespeed_fps) * _next_iv_r;
+            autosave_countdown = _next_iv_r;
+        }
         if (_ihov && scr_workspace_mouse_check_button_pressed(mb_left)) {
-            gui_menu_open = -1;
+            if (!_proj_cycle) {
+                gui_menu_open = -1;
+            }
             switch (_pp.action) {
                 case "SAVE":
                     global.isSaving = true;
@@ -1610,6 +1974,7 @@ if (gui_menu_open == 5) {
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_d, _panel_y_d,
                           _panel_w_d, _panel_h_d);
+    gui_menu_rect = [_panel_x_d, _panel_y_d, _panel_x_d + _panel_w_d, _panel_y_d + _panel_h_d];
 
     draw_set_font_l(fnt_C64_Angled);
 
@@ -1686,6 +2051,7 @@ if (gui_menu_open == 6) {
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x_i, _panel_y_i,
                           _panel_w_i, _panel_h_i);
+    gui_menu_rect = [_panel_x_i, _panel_y_i, _panel_x_i + _panel_w_i, _panel_y_i + _panel_h_i];
 
     draw_set_font_l(fnt_C64_Angled);
 
@@ -1806,6 +2172,7 @@ if (gui_menu_open == 0) {
     draw_sprite_stretched(spr_glassSlice, niceSliceFrm,
                           _panel_x, _panel_y,
                           _panel_w, _panel_h);
+    gui_menu_rect = [_panel_x, _panel_y, _panel_x + _panel_w, _panel_y + _panel_h];
 
     // ---- Draw items & handle hover + drag ----
     draw_set_font_l(fnt_C64_Angled);
@@ -2000,327 +2367,6 @@ if (opcode_helper_on && opcode_hover_key != "" && opcode_hover_timer >= opcode_h
     }
 }
 
-/////////////////////////////////////////////////////////////////
-scr_perf_node("gui", "ws: show code panel");
-///// 1.9 SHOW CODE PANEL (floating, left of the shortcuts column)
-/////////////////////////////////////////////////////////////////
-// Draws before the shortcuts so the shortcuts column always wins any
-// overlap, and hides itself whenever a dropdown menu is open.
-scr_show_code_draw();
-
-/////////////////////////////////////////////////////////////////
-///// 1.95 CONVERT TO CODE BLOCK BUTTON (appears with a selection)
-/////////////////////////////////////////////////////////////////
-scr_cbc_draw_button();
-
-/////////////////////////////////////////////////////////////////
-///// 1.96 CODE BLOCK IMPORT — "click to drop it" strip
-/////////////////////////////////////////////////////////////////
-scr_code_import_draw_banner();
-
-/////////////////////////////////////////////////////////////////
-scr_perf_node("gui", "ws: shortcuts column");
-///// 2. GLOBAL SHORTCUTS (TOP RIGHT)
-/////////////////////////////////////////////////////////////////
-var sc_x_end   = gui_w - 2;
-var sc_y_start = 50;
-var sc_w       = 270;
-var sc_h       = 17;   // was 21: condensed so the asset panel can start higher
-
-var shortcuts = [
-    ["HOME",   "RESET VIEW"],
-	["CTRL+L",   "LOAD FILE"],
-    ["CTRL+S",   "SAVE"],
-    ["CTRL+SHFT+S", "SAVE AS"],
-    ["F5",     "BUILD & RUN"],
-    ["F6",     "RUN ON ULTIMATE"],
-    ["A",      "ADD ADDRESS LABEL"],
-    ["J",      "ADD JMP NODE"],
-    ["V",      "ADD ORG VARIABLES"],
-    ["C",      "ADD COMMENT NODE"],
-    ["B",      "ADD MAPPING BOX"],
-    ["O",      "ADD ORG BLOCK"],
-    ["X",      "TOGGLE HEX/DEC"],
-    ["I",      "TOGGLE NODE INFO"],
-];
-
-for (var j = 0; j < array_length(shortcuts); j++) {
-    var row_y  = sc_y_start + (j * (sc_h + 4));
-    var box_x1 = sc_x_end - sc_w;
-    var box_x2 = sc_x_end;
-    var box_y1 = row_y;
-    var box_y2 = row_y + sc_h;
-
-    var btn_hover = (gui_mouse_x > box_x1 && gui_mouse_x < box_x2 &&
-                     gui_mouse_y > box_y1 && gui_mouse_y < box_y2);
-    var btn_click = btn_hover && scr_workspace_mouse_check_button(mb_left);
-    if (global.tour_active) {
-        scr_tour_capture("UI:" + shortcuts[j][1], box_x1, box_y1, box_x2, box_y2);
-    }
-    var is_toggle = (shortcuts[j][1] == "TOGGLE HEX/DEC" || shortcuts[j][1] == "TOGGLE AUTOSAVE MODE");
-
-    var body_col = is_toggle
-                 ? (global.use_hex_display ? make_color_rgb(20, 40, 45) : make_color_rgb(30, 30, 35))
-                 : (btn_hover ? make_color_rgb(30, 30, 40) : make_color_rgb(10, 10, 15));
-
-    draw_set_color(body_col);
-    draw_rectangle(box_x1, box_y1, box_x2, box_y2, false);
-    draw_set_color(btn_hover ? c_white : c_gray);
-    draw_rectangle(box_x1, box_y1, box_x2, box_y2, true);
-
-    var off = btn_click ? 2 : 0;
-    draw_set_halign(fa_left);
-    draw_set_color(c_white);
-    draw_text_transformed_l(box_x1 + 15, row_y + 1 + off, shortcuts[j][0], 1.0, 1.0, 0);
-
-    draw_set_halign(fa_right);
-	
-	if (shortcuts[j][1] == "RUN ON ULTIMATE") { // cant show until approved
-		/*
-		var _c64usc = 0.4;
-		var _xscc64u = 1.0;
-		var _tone = make_colour_rgb(220,220,220);
-		if btn_hover 
-			{
-				_tone=c_white;
-				_xscc64u = sin(degtorad(current_time * 0.16));
-				draw_sprite_ext(spr_c64u,0,box_x1+62,row_y+2,_c64usc * _xscc64u ,_c64usc *1.1,0,c_black,0.4)
-				(spr_c64u,0,box_x1+60,row_y+4,_c64usc * _xscc64u,_c64usc *1.2 ,0,c_black,0.25)
-				if _xscc64u<0 _tone=c_dkgray
-			}
-			
-		
-		draw_sprite_ext(spr_c64u,0,box_x1+64,row_y,_c64usc * _xscc64u,_c64usc,0,_tone,1.0)
-		*/
-	}
-	
-	
-	
-   if (is_toggle) {
-        var label_col, mode_text;
-        if (shortcuts[j][1] == "TOGGLE AUTOSAVE MODE") {
-            var _mode_labels = ["AUTOSAVE: 3 MIN", "AUTOSAVE: 5 MIN", "AUTOSAVE: 10 MIN", "AUTOSAVE: OFF"];
-            var _mode_cols   = [c_lime, c_lime, c_lime, c_red];
-            label_col = _mode_cols[global.autosave_mode];
-            mode_text = _mode_labels[global.autosave_mode];
-        } else {
-            label_col = global.use_hex_display ? c_aqua : c_white;
-            mode_text = global.use_hex_display ? "HEXADECIMAL" : "DECIMAL";
-        }
-        draw_set_color(label_col);
-        draw_text_transformed_l(box_x2 - 10, row_y + 1 + off, mode_text, 1.0, 1.0, 0);
-    } else {
-        draw_set_color(btn_hover ? c_aqua : c_gray);
-        draw_text_transformed_l(box_x2 - 10, row_y + 1 + off, shortcuts[j][1], 1.0, 1.0, 0);
-    }
-    draw_set_halign(fa_left);
-	
-	
-
-    if (btn_hover && scr_workspace_mouse_check_button_released(mb_left)) {
-        switch (shortcuts[j][1]) {
-            case "CLEANUP":
-                scr_cleanup_nodes();
-                scr_c64_update_addresses();
-                break;
-			case "ASSEMBLY DUMP":
-		    silent_build = true;
-		    pending_dump = true;
-		    trigger_build = true;
-		    break;
-				
-            case "BUILD & RUN":      execute_shell_simple("taskkill", "/f /im x64sc.exe"); trigger_build = true; break;
-			case "RUN ON ULTIMATE":
-			if (global.c64u_ip == "") {
-				// No IP saved — open overlay; it sets trigger_c64u + trigger_build on confirm
-				global.c64u_overlay_active = true;
-				global.c64u_overlay_text   = "";
-				global.c64u_overlay_error  = "";
-				global.c64u_overlay_after  = "send_prg";
-				global.canEditNode=0; // dont allow node editing until we close
-				keyboard_string = "";
-				keyboard_clear(vk_anykey);
-			} else {
-				trigger_c64u  = true;
-				trigger_build = true;
-			}
-			break;
-			
-			case "RESET C64U IP":
-			scr_c64u_reset_ip();
-			
-			break;
-			
-            case "TOGGLE FULLSCREEN": 
-			
-			
-				do_windowSizing();
-			break;
-			case "EXPORT .PRG": {
-			    var _export_path = get_save_filename("C64 Program|*.prg", "export");
-			    io_clear();
-			    if (_export_path != "") {
-			        // Ensure .prg extension
-			        if (string_lower(filename_ext(_export_path)) != ".prg") {
-			            _export_path += ".prg";
-			        }
-			        with (obj_workspace_manager) {
-			            pending_export_path = _export_path;
-			            trigger_export      = true;
-			        }
-			    }
-			} break;
-
-            case "SAVE AS":           scr_save_workspace_as(); break;
-            case "LOAD FILE":         scr_load_workspace_dialog(); break;
-            case "RESET VIEW":
-                scr_focus_init();
-                break;
-            case "TOGGLE HEX/DEC":
-                global.use_hex_display = !global.use_hex_display;
-                scr_c64_update_addresses();
-                break;
-case "TOGGLE AUTOSAVE MODE":
-                global.autosave_mode = (global.autosave_mode + 1) mod 4;
-                var _ivs = [180, 300, 600, -1];
-                global.autosave_interval = _ivs[global.autosave_mode];
-                ini_open("c64devmachine.ini");
-                ini_write_real("autosave", "mode", global.autosave_mode);
-                ini_close();
-                // Reset alarm to new interval
-                var _next_iv = (global.autosave_mode != 3) ? global.autosave_interval : 9999;
-                alarm[4] = game_get_speed(gamespeed_fps) * _next_iv;
-                autosave_countdown = _next_iv;
-                break;
-            case "ADD ORG BLOCK":
-                scr_spawn_org_node(mouse_x - 400, mouse_y);
-                break;
-
-			case "ADD JMP NODE": {
-                var _n          = instance_create_layer(mouse_x - 400, mouse_y, "Layer_Nodes", obj_c64_node);
-                _n.node_title   = "JMP";
-                _n.node_type    = "NORMAL";
-                _n.instructions = [["jmp_abs", "target"]];
-                with(_n) { event_user(0); }
-                _n.pc_address         = 0;
-                _n.last_overlap_check = false;
-                with (obj_c64_node) { last_overlap_check = false; }
-            } break;
-			
-            case "ADD ORG VARIABLES": {
-                var _n            = instance_create_layer(mouse_x - 400, mouse_y , "Layer_Nodes", obj_c64_node);
-                _n.node_title     = "VARIABLES";
-                _n.node_type      = "ORG";
-                _n.proxy          = false;
-                _n.is_draggable   = true;
-                with (_n) { event_user(0); }
-                _n.pc_address     = 0xC000;
-                _n.proxy_address  = 0xC000;
-                _n.end_address    = 0xC000;
-            } break;
-			
-			case "TOGGLE NODE INFO":
-				global.show_stats = !global.show_stats;
-				break;
-				
-            case "ADD COMMENT NODE":
-                scr_spawn_comment_node(mouse_x - 400, mouse_y );
-                break;
-            case "ADD ASCII DATA":
-                scr_spawn_text_node(mouse_x - 400, mouse_y );
-                break;
-            case "ADD ADDRESS LABEL":
-                var _nl        = instance_create_layer(mouse_x - 400, mouse_y , "Layer_Nodes", obj_c64_node);
-                _nl.node_title   = "LABEL";
-                _nl.node_type    = "LABEL";
-                _nl.instructions = [["label", "target"]];
-                _nl.pc_address   = global.start_pc;
-                with(_nl) { event_user(0); }
-                break;
-            case "ADD SID MUSIC":
-                var _n = instance_create_layer(mouse_x - 400, mouse_y , "Layer_Nodes", obj_c64_node);
-                _n.node_title   = "SID MUSIC";
-                _n.node_type    = "DATA_SID";
-                _n.instructions = [["sid_file", "", 0, 0, 0, 0, 0, ""]];
-                _n.pc_address   = 0x1000;
-                with(_n) { event_user(0); }
-                break;
-			case "ADD BITMAP KLA":
-			    _n          = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
-			    _n.node_title   = "BITMAP KLA";
-			    _n.node_type    = "BITMAP_KLA";
-			    _n.instructions = [["bitmap_kla", "", 0]];
-			    _n.pc_address   = 0x6000;
-			    with (_n) { event_user(0); }
-			    break;
-				
-				// Add TEXT_DATA asset
-			case "ADD TEXT DATA":
-				var _new = {
-				    name:    "TEXT_" + string(ds_list_size(asset_list) + 1),
-				    type:    "TEXT_DATA",
-				    address: 0x2600,
-				    file:    "",
-				    buffer:  buffer_create(1, buffer_fixed, 1),
-				    meta:    { text: "HELLO WORLD" }
-				};
-				scr_asset_text_flush(_new);
-				ds_list_add(asset_list, _new);
-			break;
-				
-				
-				
-            case "ADD SPR64":
-                _n = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
-                _n.node_title   = "SPR64";
-                _n.node_type    = "SPR64";
-                _n.instructions = [["spr", "", "", 0, "SPRITES", 0, 0, 0]];
-                _n.pc_address   = 0x7000;
-                with(_n) { event_user(0); }
-                break;
-            case "ADD RAW DATA":
-                _n = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
-                _n.node_title   = "RAW DATA";
-                _n.node_type    = "RAW_DATA";
-                _n.instructions = [["raw", "FF,FF,FF"]];
-                _n.pc_address   = global.start_pc;
-                with(_n) { event_user(0); }
-                break;
-            case "ADD HEX TABLE":
-                _n = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
-                _n.node_title   = "HEX TABLE";
-                _n.node_type    = "RAW_DATA";
-                _n.instructions = [["byte_row", "00,01,02"]];
-                _n.pc_address   = global.start_pc;
-                with(_n) { event_user(0); }
-                break;
-			case "TOGGLE COMMENTS" : global.comments_visible = !global.comments_visible; break;
-            case "RESET/CLEAR": game_restart(); break;
-			case "ADD SCROLL MACRO":
-			    _n          = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
-			    _n.node_title   = "MAP H SCROLL";
-			    _n.node_type    = "MACRO_SCROLL";
-			    _n.instructions = [["MACRO_SCROLL", 0, 25, 1, 1, 1, "", 0]];
-			    _n.pc_address   = global.start_pc;
-			    with(_n) { event_user(0); }
-			    break;
-			case "ADD VWAIT":
-			    _n          = instance_create_layer(mouse_x - 400, mouse_y + 20, "Layer_Nodes", obj_c64_node);
-			    _n.node_title   = "VWAIT";
-			    _n.node_type    = "MACRO_VWAIT";
-			    _n.instructions = [["macro_vwait", 0xFB]];
-			    _n.pc_address   = global.start_pc;
-			    with(_n) { event_user(0); }
-			    break;
-			case "ADD MAPPING BOX":
-				global.box_drag_active = true;
-				box_drag_live          = false;
-			//
-				
-				break;
-        }
-    }
-}
 
 
 /////////////////////////////////////////////////////////////////
@@ -2453,12 +2499,10 @@ if (gui_menu_open == -1) {
     var _path_scl  = (_full_w > _path_w) ? (_path_w / _full_w) : 1.0;
     var _path_lower = string_lower(_path_str);
     var _cur_is_autosave = (string_pos("autosave", _path_lower) > 0);
-    if (_cur_is_autosave) {
-        draw_set_colour(make_color_rgb(255, 140, 0));
-    } else {
-        draw_set_colour(c_white);
-    }
-    draw_text_transformed_l(_path_x1, _file_y, _display_str, _path_scl, 1.0, 0);
+
+    // Build every line first so the backing can be sized to fit them all.
+    var _auto_str = "";
+    var _auto_scl = 1.0;
     if (autosave_last_path != "")
     {
         var _h = string(autosave_hour);
@@ -2471,21 +2515,53 @@ if (gui_menu_open == -1) {
         {
             _m = "0" + _m;
         }
-        var _auto_str = L("AUTOSAVE: ") + autosave_last_path + L("   TIME: ") + _h + ":" + _m;
+        _auto_str = L("AUTOSAVE: ") + autosave_last_path + L("   TIME: ") + _h + ":" + _m;
         var _auto_w = string_width_l(_auto_str);
-        var _auto_scl = 1.0;
         if (_auto_w > 1328)
         {
             _auto_scl = 1328 / _auto_w;
         }
+    }
+    // A template opened as a new project: say which one, until it is saved
+    var _tpl_str = "";
+    var _tpl_y   = _auto_y;
+    if (variable_global_exists("template_title") && global.template_title != "" && global.workspace_path == "") {
+        _tpl_str = L("PROJECT: TEMPLATE ") + global.template_title + L("  (NEW - SAVE AS TO KEEP IT)");
+        if (_auto_str != "") {
+            _tpl_y = _auto_y + 16;
+        }
+    }
+
+    // 80% black backing behind the whole status block
+    var _bk_w = string_width_l(_display_str) * _path_scl;
+    var _bk_y2 = _file_y + 16;
+    if (_auto_str != "") {
+        _bk_w  = max(_bk_w, string_width_l(_auto_str) * _auto_scl);
+        _bk_y2 = _auto_y + 16;
+    }
+    if (_tpl_str != "") {
+        _bk_w  = max(_bk_w, string_width_l(_tpl_str));
+        _bk_y2 = _tpl_y + 16;
+    }
+    draw_set_alpha(0.8);
+    draw_set_colour(c_black);
+    draw_rectangle(_path_x1 - 4, _file_y - 2, _path_x1 + _bk_w + 4, _bk_y2, false);
+    draw_set_alpha(1.0);
+
+    if (_cur_is_autosave) {
+        draw_set_colour(make_color_rgb(255, 140, 0));
+    } else {
+        draw_set_colour(c_white);
+    }
+    draw_text_transformed_l(_path_x1, _file_y, _display_str, _path_scl, 1.0, 0);
+    if (_auto_str != "")
+    {
         draw_set_color(make_color_rgb(80, 160, 80));
         draw_text_transformed_l(_path_x1, _auto_y, _auto_str, _auto_scl, 1.0, 0);
     }
-    // A template opened as a new project: say which one, until it is saved
-    if (variable_global_exists("template_title") && global.template_title != "" && global.workspace_path == "") {
-        var _tpl_y = (autosave_last_path != "") ? _auto_y + 16 : _auto_y;
+    if (_tpl_str != "") {
         draw_set_color(make_color_rgb(120, 200, 255));
-        draw_text_transformed_l(_path_x1, _tpl_y, L("PROJECT: TEMPLATE ") + global.template_title + L("  (NEW - SAVE AS TO KEEP IT)"), 1.0, 1.0, 0);
+        draw_text_transformed_l(_path_x1, _tpl_y, _tpl_str, 1.0, 1.0, 0);
     }
 }
 
