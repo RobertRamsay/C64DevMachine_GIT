@@ -97,8 +97,8 @@ export class CPU {
       case 'STA': this.wr(addr, this.a); break;
       case 'STX': this.wr(addr, this.x); break;
       case 'STY': this.wr(addr, this.y); break;
-      case 'ADC': { const v = this.rd(addr); const r = this.a + v + this.c; this.v = (~(this.a ^ v) & (this.a ^ r) & 0x80) ? 1 : 0; this.c = r > 255 ? 1 : 0; this.a = this.nz(r); break; }
-      case 'SBC': { const v = this.rd(addr); const r = this.a - v - (1 - this.c); this.v = ((this.a ^ v) & (this.a ^ r) & 0x80) ? 1 : 0; this.c = r >= 0 ? 1 : 0; this.a = this.nz(r); break; }
+      case 'ADC': if (this.d && this.decimal) { this.bcd(this.rd(addr), 1); break; } { const v = this.rd(addr); const r = this.a + v + this.c; this.v = (~(this.a ^ v) & (this.a ^ r) & 0x80) ? 1 : 0; this.c = r > 255 ? 1 : 0; this.a = this.nz(r); break; }
+      case 'SBC': if (this.d && this.decimal) { this.bcd(this.rd(addr), -1); break; } { const v = this.rd(addr); const r = this.a - v - (1 - this.c); this.v = ((this.a ^ v) & (this.a ^ r) & 0x80) ? 1 : 0; this.c = r >= 0 ? 1 : 0; this.a = this.nz(r); break; }
       case 'AND': this.a = this.nz(this.a & this.rd(addr)); break;
       case 'ORA': this.a = this.nz(this.a | this.rd(addr)); break;
       case 'EOR': this.a = this.nz(this.a ^ this.rd(addr)); break;
@@ -140,6 +140,14 @@ export class CPU {
       case 'BNE': br(!this.z); break; case 'BEQ': br(this.z); break;
       case 'BRK': throw new Error('BRK at $' + pc0.toString(16));
     }
-    if (this.d && (mn === 'ADC' || mn === 'SBC')) throw new Error('decimal mode used at $' + pc0.toString(16));
+    if (this.d && !this.decimal && (mn === 'ADC' || mn === 'SBC')) throw new Error('decimal mode used at $' + pc0.toString(16));
+  }
+  // decimal ADC (dir 1) / SBC (dir -1) for valid BCD operands, NMOS carry
+  // rules; set cpu.decimal = true to allow it (GOLAZO never uses it)
+  bcd(v, dir) {
+    const dec = x => (x >> 4) * 10 + (x & 15), enc = x => ((Math.floor(x / 10) % 10) << 4) | (x % 10);
+    let r = dir > 0 ? dec(this.a) + dec(v) + this.c : dec(this.a) - dec(v) - (1 - this.c);
+    if (dir > 0) { this.c = r > 99 ? 1 : 0; if (r > 99) r -= 100; } else { this.c = r >= 0 ? 1 : 0; if (r < 0) r += 100; }
+    this.a = this.nz(enc(r));
   }
 }

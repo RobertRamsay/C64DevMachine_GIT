@@ -268,6 +268,19 @@ function scr_spawn_editor(_ctx, _mx, _my) {
         _s.show = !_s.show;
     }
     if (point_in_rectangle(_mx, _my, _ex, _by, _ex + 44, _by + _bh)) _busy = true;
+    // TABLE: a STAMP IDS tileset can export the placements itself, after its
+    // maps (<NAME>_SPAWNS, see scr_mts_spawn_emit) - for game code that reads
+    // them without a MACRO_SPAWNER node
+    if (variable_struct_exists(_m, "raw_rows") && _m.raw_rows >= 3) {
+        if (!variable_struct_exists(_s, "emit")) _s.emit = 0;
+        var _tx = _ex - 56;
+        if (scr_bmpobj_ui_button(_tx, _by, 50, _bh, "TABLE", _s.emit == 1, _mx, _my,
+            "EXPORT THE PLACEMENTS AFTER THE MAPS: <NAME>_SPAWNS = A COUNT PER MAP, THEN X LO, X HI, Y, TYPE PER ENTITY")) {
+            _s.emit = (_s.emit == 1) ? 0 : 1;
+            global.addresses_dirty = true;
+        }
+        if (point_in_rectangle(_mx, _my, _tx, _by, _tx + 50, _by + _bh)) _busy = true;
+    }
     if (keyboard_check_pressed(ord("E")) && !scr_ctrl_held() && !global.integer_box_open) _s.mode = !_s.mode;
     if (!_s.mode) return _busy;
 
