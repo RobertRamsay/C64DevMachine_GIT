@@ -851,7 +851,7 @@ PkNk:
  CMP #T_AMMO
  BNE PkNa
  JSR AddAmmo
- LDA #S_PICKUP
+ LDA #S_CLIP
  JSR PlaySfx
  LDA #<TX_MSG_AMMO
  LDX #>TX_MSG_AMMO
@@ -986,6 +986,7 @@ FcSlot:
  ORA #HD_AMMO
  STA HUD_DIRTY
  JSR BulletStep
+ JSR BulletStep
  LDA #S_GUN
  JMP PlaySfx
 
@@ -998,6 +999,10 @@ MbOne:
  BEQ MbNone
  DEC ATM,X
  BEQ MbKill
+// a new shot holds at the muzzle for two frames (the muzzle flash)
+ LDA ATM,X
+ CMP #BULLET_LIFE-2
+ BCS MbNone
  JSR BulletStep
  JSR BulletStep
 MbNone:
@@ -1435,6 +1440,7 @@ AsYd:
  LDA Z_DX
  CLC
  ADC #$01
+ CLC
  ADC Z_T0
  TAY
  LDA AlDir,Y

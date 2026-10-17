@@ -61,7 +61,7 @@ const zp = [
   'Z_PTR', 'Z_PTRH', 'Z_PTR2', 'Z_PTR2H', 'Z_MP', 'Z_MPH', 'Z_SP', 'Z_SPH',
   'Z_BX', 'Z_BXH', 'Z_BY', 'Z_BYH', 'Z_BH', 'Z_CX', 'Z_CY', 'Z_HX', 'Z_HY', 'Z_HT', 'Z_HIT',
   'Z_TX', 'Z_TY', 'Z_I', 'Z_J', 'Z_K', 'Z_DX', 'Z_DXH', 'Z_DY', 'Z_DYH',
-  'Z_SX', 'Z_SXH', 'Z_SY', 'Z_SYH', 'Z_SND',
+  'Z_SX', 'Z_SXH', 'Z_SY', 'Z_SYH', 'Z_SND', 'Z_DG', 'Z_DGH', 'Z_DGP',
 ];
 zp.forEach((n, i) => { C[n] = 0x30 + i; });
 // the redraw's 22 row pointers (44 bytes)
@@ -93,7 +93,7 @@ function v(name, size = 1) {
   // display state applied by the frame IRQ, deck settings, misc
   'CUR_D011', 'CUR_D016', 'CUR_EN', 'CUR_D020', 'COL_REQ', 'TOUCH_TERM', 'GAME_COL', 'ALIEN_COL', 'ALIEN_HP', 'SPAWN_RATE', 'ALIEN_SPD',
   'TITLE_T', 'MSG_DEF', 'SEL_ROW', 'BUY_I', 'DEAD_CAUSE', 'RD_COUNT',
-  'NEW_BANK', 'TITLE_ON', 'TCOL',
+  'NEW_BANK', 'TITLE_ON', 'TCOL', 'RAM_DIGI', 'SFX_WAS',
 ].forEach(n => v(n));
 v('CAMX', 2); v('CAMY', 2); v('PX', 2); v('PY', 2);
 v('SCORE', 3); v('CREDITS', 3);
@@ -124,6 +124,10 @@ Object.assign(C, { GS_PLAY: 0, GS_DEAD: 1, GS_INTEX: 2, GS_DONE: 3, GS_OVER: 4, 
 export const SFX = ['GUN', 'ALIEN_DIE', 'HURT', 'PICKUP', 'DOOR', 'KEY', 'TERMINAL', 'ALARM', 'CORE_HIT', 'EXPLODE'];
 SFX.forEach((n, i) => { C['S_' + n] = i; });
 C.NSFX = SFX.length;
+// digitised samples (stock C64: RAM under I/O at $D000; REU: clips after the SFX)
+export const SAMPLES = ['INTEX_VOICE', 'CLIP'];
+SAMPLES.forEach((n, i) => { C['S_' + n] = SFX.length + i; });
+C.DIGI_RAM = 0xD000; C.DIGI_SRC = 0xA000;
 // clip 0 = title music, 1.. = SFX in SFX[] order
 C.CLIP_MUSIC = 0;
 // HUD dirty bits

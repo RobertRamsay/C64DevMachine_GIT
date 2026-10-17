@@ -244,10 +244,16 @@ BsAct:
  STA Z_SYH
  CPX #NBUL
  BCS BsAlien
+ LDY #BULLET_COL
+ LDA ATM,X
+ CMP #BULLET_LIFE-2
+ BCC BsShot
+ LDA #SPR_FLASH
+ JMP BsPut
+BsShot:
  LDA ADIR,X
  CLC
  ADC #SPR_BULLET
- LDY #BULLET_COL
  JMP BsPut
 BsAlien:
  LDA AST,X
@@ -860,7 +866,7 @@ EnterIntex:
  STA GSTATE
  LDA #$00
  STA MENU_I
- LDA #S_TERMINAL
+ LDA #S_INTEX_VOICE
  JSR PlaySfx
  LDA #<PG_INTEX
  LDX #>PG_INTEX
@@ -982,7 +988,9 @@ IfRich:
  TXA
  BNE IfB1
  JSR AddAmmo
- JMP IfSold
+ LDA #S_CLIP
+ JSR PlaySfx
+ JMP IfSoldMsg
 IfB1:
  CMP #$01
  BNE IfB2
@@ -1010,6 +1018,7 @@ IfB3:
 IfSold:
  LDA #S_TERMINAL
  JSR PlaySfx
+IfSoldMsg:
  LDA #<TX_INT_OK
  LDX #>TX_INT_OK
  JMP IfStatus

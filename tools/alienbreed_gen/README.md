@@ -10,6 +10,18 @@ two machines:
 | Stock C64 | The original title tune (ALIENMENU) converted note for note into the Music Maker (`AB_MUSIC`); effects from the SFX Maker (`AB_SFX`, voice 3) |
 | C64 Ultimate (or any 17xx REU) | `AB_REU` (LOAD_REU) carries the original tune, rendered from its own Amiga samples, plus every effect, as 4-bit samples. An NMI DMAs them byte by byte into `$D418`. RUN ON ULTIMATE uploads the image and F5 attaches it in VICE. |
 
+## Samples
+
+Two digitised sounds play on both machines: "Welcome to Intex Systems" when a terminal opens, and the ammo-clip reload when you pick up or buy ammo.
+
+- **Stock C64:** 4-bit, two samples per byte, at about 4.6 kHz. The voice lives in the 4 KB of RAM under the I/O at `$D000` (BOOT copies it there from `$A000`) and the clip in the data area. An NMI player banks the I/O out for each read. The SID effects pause while a sample plays.
+- **C64 Ultimate / REU:** the same sounds are REU clips 11 and 12, at 5.5 kHz.
+- **Sources:** `audio_src/intex_voice.wav` is a stand-in made with the Windows voice "Microsoft Hazel". Replace it with the original line and rebuild. `audio_src/clip.wav`, if present, replaces the synthesised reload.
+
+## Building for real hardware
+
+The project uses the **PRG EXO** build target. The plain PRG runs from `$0801` to `$FF3F`, so a disk load would write its `$D000-$DFFF` bytes into the I/O chips and fail. The Exomizer PRG unpacks safely, is about 11 KB, and loads from disk on a stock C64.
+
 ## Title
 
 The title is `AB_TITLE_BMP`, a Koala BITMAP (`art/title.kla`) in VIC bank 3 at `$E000`. It carries sprite text in the logo's tall font and shading (`AB_TITLE_SPR`, drawn by `titlespr.mjs`):
@@ -51,7 +63,8 @@ node editor.mjs                # round trip through a running, paired Dev Machin
 | `$6000-$77FF` | High code |
 | `$7800-$7FCF` | Title screen + colour, saved at boot |
 | `$8000-$9FFF` | Data |
-| `$A000-$CFFF` | The expanded deck |
+| `$A000-$CFFF` | The expanded deck (at load: the Intex voice at `$A000`, title screen/colour at `$C400`) |
+| `$D000-$DFFF` | RAM under the I/O: the Intex voice (stock C64) |
 | `$E000-$FF3F` | Title bitmap (bank 3, under the KERNAL) |
 
 The full map is in `defs.mjs`.

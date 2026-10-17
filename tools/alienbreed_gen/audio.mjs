@@ -11,7 +11,7 @@
 import fs from 'fs';
 import path from 'path';
 import { BASE_ASSETS } from './art.mjs';
-import { SFX } from './defs.mjs';
+import { SFX, SAMPLES } from './defs.mjs';
 import { convertBpsm } from './bp2mm.mjs';
 import { renderBpsm } from './bprender.mjs';
 
@@ -56,7 +56,7 @@ function makeRng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1
 
 export function renderSfx(name, SR) {
   const rnd = makeRng(name.length * 977);
-  const dur = { GUN: 0.11, ALIEN_DIE: 0.45, HURT: 0.3, PICKUP: 0.32, DOOR: 0.7, KEY: 0.4, TERMINAL: 0.45, ALARM: 0.9, CORE_HIT: 0.3, EXPLODE: 1.3 }[name];
+  const dur = { GUN: 0.11, ALIEN_DIE: 0.45, HURT: 0.3, PICKUP: 0.32, DOOR: 0.7, KEY: 0.4, TERMINAL: 0.45, ALARM: 0.9, CORE_HIT: 0.3, EXPLODE: 1.3, CLIP: 0.34 }[name];
   const n = Math.floor(dur * SR), out = new Float32Array(n);
   let ph = 0, ph2 = 0, lp = 0, lp2 = 0;
   for (let k = 0; k < n; k++) {
@@ -71,6 +71,9 @@ export function renderSfx(name, SR) {
       case 'TERMINAL': { const on = Math.floor(t / 0.06) % 2 === 0; ph += (on ? 1200 : 900) / SR; v = (Math.sin(2 * Math.PI * ph) > 0 ? 0.5 : -0.5) * Math.exp(-t * 3); break; }
       case 'ALARM': { const f = 520 + 260 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 2.2 * t)); ph = (ph + f / SR) % 1; v = (ph * 2 - 1) * 0.6 * Math.min(1, (dur - t) / 0.1); break; }
       case 'CORE_HIT': { ph += 310 / SR; ph2 += 777 / SR; v = (Math.sin(2 * Math.PI * ph) * 0.6 + Math.sin(2 * Math.PI * ph2) * 0.4 + rnd() * 0.4 * Math.exp(-t * 40)) * Math.exp(-t * 9); break; }
+      // the ammo clip: magazine in (thud + click), then the bolt (two bright clacks)
+      case 'CLIP': { const x = rnd(); const hit = (t0, dec, f, g) => t >= t0 ? Math.exp(-(t - t0) * dec) * (Math.sin(2 * Math.PI * f * (t - t0)) * 0.6 + x * 0.6) * g : 0;
+        v = hit(0, 60, 180, 0.9) + hit(0.01, 120, 2400, 0.5) + hit(0.17, 90, 1700, 0.8) + hit(0.21, 110, 2900, 0.6); break; }
       case 'EXPLODE': { const x = rnd(); const c = 0.03 + 0.4 * Math.exp(-t * 3); lp += c * (x - lp); lp2 += 0.1 * (lp - lp2); v = (lp * 0.9 + lp2 * 1.5) * Math.min(1, t / 0.01) * Math.exp(-t * 2.4) * 1.3; break; }
     }
     out[k] = v;
@@ -143,7 +146,31 @@ export function toNibbles(pcm) {
 // ------------------------------------------------------------ REU image
 export const RATE_MUSIC = 7884, RATE_SFX = 5512;
 export const REU_DIR = 0x000100, REU_CLIPS = 0x000200;
-const CLIP_FILES = ['title', ...SFX.map(s => s.toLowerCase())];
+const CLIP_FILES = ['title', ...SFX.map(s => s.toLowerCase()), ...SAMPLES.map(s => s.toLowerCase())];
+
+// a digitised sample's source: audio_src/<name>.wav if there, else synthesised;
+// trimmed, band-limited and compressed so 4 bits keep the words clear
+export function samplePcm(name, rate, srcDir) {
+  const wav = path.join(srcDir, name.toLowerCase() + '.wav');
+  let pcm, source;
+  if (fs.existsSync(wav)) { const w = readWav(wav); pcm = resample(w.pcm, w.rate, rate * 4); source = 'audio_src/' + name.toLowerCase() + '.wav'; }
+  else { pcm = renderSfx(name, rate * 4); source = 'synthesised'; }
+  // trim silence (1% of peak), keep 20 ms either side
+  let peak = 1e-6; for (const v of pcm) peak = Math.max(peak, Math.abs(v));
+  let a = 0, b = pcm.length - 1;
+  while (a < b && Math.abs(pcm[a]) < peak * 0.01) a++;
+  while (b > a && Math.abs(pcm[b]) < peak * 0.01) b--;
+  const pad = Math.round(rate * 4 * 0.02);
+  pcm = pcm.subarray(Math.max(0, a - pad), Math.min(pcm.length, b + pad));
+  // high-pass (rumble eats the 16 levels), then down to the play rate with a low-pass
+  let prev = 0, hp = 0; const hpf = new Float32Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) { hp = 0.985 * (hp + pcm[i] - prev); prev = pcm[i]; hpf[i] = hp; }
+  const out = resample(hpf, rate * 4, rate, Math.min(2600, rate * 0.45));
+  // compressor: follow the envelope, lift quiet syllables
+  let env = 0; let pk = 1e-6; for (const v of out) pk = Math.max(pk, Math.abs(v));
+  for (let i = 0; i < out.length; i++) { const x = out[i] / pk; env = Math.max(Math.abs(x), env * 0.995); out[i] = x / Math.max(0.25, env) * 0.9; }
+  return { pcm: out, source };
+}
 export function buildReuAudio(srcDir) {
   const clips = [];
   CLIP_FILES.forEach((name, i) => {
@@ -152,7 +179,8 @@ export function buildReuAudio(srcDir) {
     let pcm, source;
     if (fs.existsSync(wav)) { const w = readWav(wav); pcm = resample(w.pcm, w.rate, rate); source = 'audio_src/' + name + '.wav'; }
     else if (i === 0) { const hi = renderBpsm(fs.readFileSync(MODULE), 0, rate * 4).pcm; pcm = resample(hi, rate * 4, rate, 3400); source = 'ALIENMENU module render'; }
-    else { const hi = renderSfx(SFX[i - 1], rate * 4); pcm = resample(hi, rate * 4, rate); source = 'synthesised'; }
+    else if (i <= SFX.length) { const hi = renderSfx(SFX[i - 1], rate * 4); pcm = resample(hi, rate * 4, rate); source = 'synthesised'; }
+    else { ({ pcm, source } = samplePcm(SAMPLES[i - 1 - SFX.length], rate, srcDir)); }
     clips.push({ name, rate, nib: toNibbles(pcm), loop: i === 0 ? 1 : 0, source });
   });
   // layout: clips one after the other, each followed by 256 bytes of silence
@@ -173,4 +201,21 @@ export function buildReuAudio(srcDir) {
   while (dir.length < 256) dir.push(0);
   const total = at;
   return { clips, dir, total };
+}
+
+// ------------------------------------------------------------ stock C64 digi
+// The samples for the stock C64: 4-bit, two per byte (low nibble first).
+// The Intex voice fills the 4 KB of RAM under the I/O at  (BOOT copies
+// it there from DIGI_SRC); the short ammo clip sits in the data area. One
+// rate for both: the highest at which the voice fits.
+export const DIGI_BYTES = 4096;
+const packNibbles = nib => { const b = []; for (let i = 0; i < nib.length; i += 2) b.push(nib[i] | ((nib[i + 1] ?? 8) << 4)); for (let k = 0; k < 32; k++) b.push(0x88); return b; };
+export function buildDigi(srcDir) {
+  const voiceSec = samplePcm('INTEX_VOICE', 8000, srcDir).pcm.length / 8000;
+  const rate = Math.min(5512, Math.floor((DIGI_BYTES - 32) * 2 / voiceSec));
+  const latch = Math.round(985248 / rate) - 1;
+  const clip = n => { const nib = toNibbles(samplePcm(n, rate, srcDir).pcm); return { bytes: packNibbles(nib), frames: Math.max(1, Math.floor(nib.length * 50.125 / rate) - 1) }; };
+  const voice = clip('INTEX_VOICE'), ammo = clip('CLIP');
+  if (voice.bytes.length > DIGI_BYTES) throw new Error('Intex voice overflows $D000-$DFFF: ' + voice.bytes.length);
+  return { rate, latch, voice, ammo, voiceSec };
 }

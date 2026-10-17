@@ -397,6 +397,9 @@ function marine(d, phase) {
     leg(1), leg(-1),
     ell(cx - fx * 3.2, cy - fy * 3.2, 2.2, 4, ang, 1),                                       // backpack
     ell(cx, cy, 4.2, 6.2, ang, 2),                                                          // shoulders
+    // armour shading: a black dither over the rear half darkens the green to a mid tone
+    { c: 1, hit: (x, y) => ell(cx, cy, 4.2, 6.2, ang, 0).hit(x, y) && ((x - cx) * fx + (y - cy) * fy) < -0.6
+      && (Math.floor(x / 2) + Math.floor(y)) % 2 === 0 },
     seg(cx + qx * 2.8, cy + qy * 2.8, cx + qx * 2.8 + fx * 9.5, cy + qy * 2.8 + fy * 9.5, 1.5, 3),   // rifle
     ell(cx + fx * 0.6, cy + fy * 0.6, 2.9, 2.9, 0, 3),                                      // helmet
     ell(cx + fx * 1.3, cy + fy * 1.3, 1.4, 1.4, 0, 2),                                      // visor
@@ -438,8 +441,19 @@ function bullet(d) {
   return px;
 }
 
+// muzzle flash: a hires star burst (shown in the bullet's yellow)
+function flash() {
+  const px = Array.from({ length: 21 }, () => Array(24).fill(0));
+  for (let a = 0; a < 8; a++) {
+    const len = a % 2 ? 4 : 6, dx = Math.sin(a * Math.PI / 4), dy = -Math.cos(a * Math.PI / 4);
+    for (let t = 0; t <= len; t += 0.5) px[Math.round(10 + dy * t)][Math.round(12 + dx * t)] = 1;
+  }
+  for (let y = 8; y <= 12; y++) for (let x = 10; x <= 14; x++) if (Math.abs(x - 12) + Math.abs(y - 10) <= 3) px[y][x] = 1;
+  return px;
+}
+
 // frame order (pointer = SPR_PTR0 + index)
-export const SPR = { MARINE: 0, ALIEN: 16, BOOM: 32, BULLET: 36, GOO: 44, COUNT: 48 };
+export const SPR = { MARINE: 0, ALIEN: 16, BOOM: 32, BULLET: 36, GOO: 44, FLASH: 48, COUNT: 49 };
 export function buildSprites() {
   const frames = [];
   for (let d = 0; d < 8; d++) for (const ph of [1, -1]) frames.push(packMc(marine(d, ph)));
@@ -447,6 +461,7 @@ export function buildSprites() {
   for (let n = 0; n < 4; n++) frames.push(packMc(boom(n)));
   for (let d = 0; d < 8; d++) frames.push(packHi(bullet(d)));
   for (let n = 0; n < 4; n++) frames.push(packMc(boom(3 - n)));   // GOO: an alien climbing out of a vent
-  const mcs = frames.map((_, i) => (i >= SPR.BULLET && i < SPR.GOO) ? 0 : 1);
+  frames.push(packHi(flash()));
+  const mcs = frames.map((_, i) => ((i >= SPR.BULLET && i < SPR.GOO) || i === SPR.FLASH) ? 0 : 1);
   return { bytes: frames.flat(), count: frames.length, mcs };
 }

@@ -53,6 +53,31 @@ ${[0, 250, 500, 750, 1000, 1250, 1500, 1750].map(o => ` LDA TITLE_VSCR+${o},X\n 
  BNE BtSave
  LDA #BANK_GAME
  STA NEW_BANK
+// the stock C64's Intex voice: 4 KB from DIGI_SRC (in the level area) into
+// the RAM under the I/O at DIGI_RAM, with the I/O banked out for the copy
+ LDA #<DIGI_SRC
+ STA Z_PTR
+ LDA #>DIGI_SRC
+ STA Z_PTRH
+ LDA #<DIGI_RAM
+ STA Z_PTR2
+ LDA #>DIGI_RAM
+ STA Z_PTR2H
+ LDA #$34
+ STA $01
+ LDX #$10
+ LDY #$00
+BtDigi:
+ LDA (Z_PTR),Y
+ STA (Z_PTR2),Y
+ INY
+ BNE BtDigi
+ INC Z_PTRH
+ INC Z_PTR2H
+ DEX
+ BNE BtDigi
+ LDA #$35
+ STA $01
  LDA #<IrqVbl
  STA $FFFE
  LDA #>IrqVbl
@@ -226,25 +251,31 @@ IhWait:
 IhDelay:
  DEX
  BNE IhDelay
+// from here to the HUD the screen is black (ECM + multicolour is the VIC's
+// "illegal" mode), so the playfield ends on the same line whatever the
+// scroll, and the sprites stop there too
+ LDA #$00
+ STA $D015
 IhFld:
  LDA $D012
  TAX
  CLC
  ADC #$02
  AND #$07
- ORA #$10
+ ORA #$50
  STA $D011
+// at or past the last FLD line: an NMI (sample) can make the loop skip a
+// line, and waiting for the exact line would then hang here for a frame
  CPX #LINE_HUD_END
- BEQ IhFldX
+ BCS IhFldX
 IhLine:
  CPX $D012
  BEQ IhLine
  JMP IhFld
 IhFldX:
  LDA #$10
+ STA $D011
  STA $D016
- LDA #$00
- STA $D015
  LDA #LINE_VBL
  STA $D012
  LDA #<IrqVbl
@@ -535,7 +566,118 @@ AudioStop:
  STA A_PRI
  LDA #$08
  STA $D418
+// a stock-C64 sample ended: NMI back to the REU player, SID effects back on
+ LDA RAM_DIGI
+ BEQ AuOut
+ LDA #$00
+ STA RAM_DIGI
+ LDA #<Nmi
+ STA $FFFA
+ STA $0318
+ LDA #>Nmi
+ STA $FFFB
+ STA $0319
+ LDA SFX_WAS
+ BEQ AuOut
+ JSR SfxInit
+ LDA #$35
+ STA $01
+ LDA #$01
+ STA SFX_ON
+AuOut:
  RTS
+
+// STOCK C64 SAMPLES: A = sample (0 Intex voice, 1 ammo clip), played from
+// RAM - 4-bit, two to a byte - by NmiRam, timed by CIA 2 like the REU
+// stream. The SID effects pause meanwhile ($D418 is the sample).
+RamPlay:
+ PHP
+ SEI
+ TAX
+ LDA RAM_DIGI
+ BEQ RpFree
+ CPX #$01
+ BNE RpKeep
+ PLP
+ RTS
+RpFree:
+ LDA SFX_ON
+ STA SFX_WAS
+ LDA #$00
+ STA SFX_ON
+RpKeep:
+ LDA #$00
+ STA $DD0E
+ STA Z_DGP
+ STA A_REM1
+ STA A_LOOP
+ LDA DgAddrL,X
+ STA Z_DG
+ LDA DgAddrH,X
+ STA Z_DGH
+ LDA DgFrames,X
+ STA A_REM0
+ LDA #$01
+ STA A_ON
+ STA RAM_DIGI
+ JSR DigiBoost
+ LDA #<NmiRam
+ STA $FFFA
+ STA $0318
+ LDA #>NmiRam
+ STA $FFFB
+ STA $0319
+ LDA #<DIGI_LATCH
+ STA $DD04
+ LDA #>DIGI_LATCH
+ STA $DD05
+ LDA #$81
+ STA $DD0D
+ LDA #$11
+ STA $DD0E
+ PLP
+ RTS
+DgAddrL:
+ .byte <DIGI_RAM,<DIGI_CLIP
+DgAddrH:
+ .byte >DIGI_RAM,>DIGI_CLIP
+DgFrames:
+ .byte DIGI_V_FRAMES,DIGI_C_FRAMES
+
+// one 4-bit sample from RAM (the voice lives under the I/O: bank it out
+// for the read, back in for $D418)
+NmiRam:
+ PHA
+ TYA
+ PHA
+ LDA #$34
+ STA $01
+ LDY #$00
+ LDA (Z_DG),Y
+ LDY #$35
+ STY $01
+ LDY Z_DGP
+ BNE NrHi
+ AND #$0F
+ INC Z_DGP
+ JMP NrOut
+NrHi:
+ LSR A
+ LSR A
+ LSR A
+ LSR A
+ LDY #$00
+ STY Z_DGP
+ INC Z_DG
+ BNE NrOut
+ INC Z_DGH
+NrOut:
+ STA $D418
+ LDA $DD0D
+ PLA
+ TAY
+ PLA
+ RTI
 
 // voice 3 as a steady DC level so $D418 samples are loud on the 8580 too
 DigiBoost:
@@ -612,6 +754,12 @@ PlaySfx:
  TYA
  JMP AudioPlay
 PsSid:
+ CMP #NSFX
+ BCC PsSfx
+ SEC
+ SBC #NSFX
+ JMP RamPlay
+PsSfx:
  LDX SFX_ON
  BNE PsGo
  RTS
@@ -622,8 +770,9 @@ PsOut:
  LDA #$35
  STA $01
  RTS
+// priority per sound: the SFX, then the samples (Intex voice, ammo clip)
 SfxPri:
- .byte 1,2,3,2,2,3,2,4,2,4
+ .byte 1,2,3,2,2,3,2,4,2,4,4,2
 
 // MusicInit: the Music Maker init sets $01 to $36 (KERNAL in), so it runs
 // with IRQs off from here (below $E000) and $01 goes back to $35.

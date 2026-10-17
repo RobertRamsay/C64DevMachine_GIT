@@ -1,6 +1,7 @@
 // A small C64 for headless tests: GOLAZO's 6502 core plus the parts the
 // game leans on - raster line counter + raster IRQ, CIA 2 timer A NMI, a
-// 17xx REU (DMA), joystick port 2 - and a log of SID writes.
+// 17xx REU (DMA), joystick port 2, the RAM under the I/O - and a log of
+// SID writes.
 //
 //   node machine.mjs PRG seconds [--reu image] [--script joy.json]
 // prints SID activity per second: $D418 writes (digi samples), gate-on
@@ -24,7 +25,11 @@ export class Machine {
     this.log = { d418: 0, notes: [0, 0, 0], frames: 0, nmi: 0, dma: 0 };
     this.script = script; this.sp = 0; this.left = 0; this.joy = 0;
     const m = this.mem;
+    // RAM under the I/O ($D000-$DFFF): seen when $01 bits 0-1 are both 0
+    this.ioRam = new Uint8Array(4096);
+    const ioOff = a => a >= 0xD000 && a < 0xE000 && (m[1] & 3) === 0;
     this.cpu.onRead = a => {
+      if (ioOff(a)) return this.ioRam[a - 0xD000];
       if (a === 0xD012) return this.line() & 255;
       if (a === 0xD011) return (m[a] & 0x7F) | ((this.line() & 0x100) >> 1);
       if (a === 0xD019) return this.irqFlag | (this.irqFlag ? 0x80 : 0);
@@ -34,6 +39,7 @@ export class Machine {
       return m[a];
     };
     this.cpu.onWrite = (a, v) => {
+      if (ioOff(a)) { this.ioRam[a - 0xD000] = v; return true; }
       if (a === 0xD012) { this.rasterCmp = (this.rasterCmp & 0x100) | v; return false; }
       if (a === 0xD011) { this.rasterCmp = (this.rasterCmp & 0xFF) | ((v & 0x80) << 1); }
       if (a === 0xD01A) this.irqOn = v & 1;

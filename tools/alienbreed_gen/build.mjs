@@ -17,7 +17,7 @@ import { readKoala } from './koala.mjs';
 import { buildTitleSprites, TITLE_SPR_COLS, BANDS } from './titlespr.mjs';
 import { buildDecks, DT } from './levels.mjs';
 import { buildHud, buildTexts, MSG_LEN, INTEX_ROWS } from './texts.mjs';
-import { buildMusicMeta, buildSfxMeta, buildReuAudio, SFX_LABELS, REU_DIR } from './audio.mjs';
+import { buildMusicMeta, buildSfxMeta, buildReuAudio, buildDigi, SFX_LABELS, REU_DIR } from './audio.mjs';
 import * as K from './code_core.mjs';
 import * as G from './code_game.mjs';
 import * as V from './code_view.mjs';
@@ -44,6 +44,7 @@ const sprites = buildSprites();
 const { decks, metaTable, metaCount } = buildDecks();
 const hud = buildHud();
 const reu = buildReuAudio(path.join(HERE, 'audio_src'));
+const digi = buildDigi(path.join(HERE, 'audio_src'));   // stock C64 samples
 
 // data area $8000-$9FFF
 const DATA = [];
@@ -64,9 +65,14 @@ const TITLE_SPR_AT = dp;
 dp += 1024;
 const texts = buildTexts(Math.ceil(dp / 256) * 256);
 dput('TEXTS', texts.bytes, 256);
+dput('AB_DIGI_CLIP', digi.ammo.bytes, 16);
+C.DIGI_CLIP = C.AB_DIGI_CLIP;
 decks.forEach((d, i) => dput('DECK_RLE' + i, d.packed, 256));
 if (dp > MEM.DATA_END) throw new Error('data overflows $A000: $' + dp.toString(16));
 Object.assign(C, texts.C, hud.O);
+Object.assign(C, { DIGI_LATCH: digi.latch, DIGI_V_FRAMES: digi.voice.frames, DIGI_C_FRAMES: digi.ammo.frames });
+// the Intex voice: loaded into the level area, copied under the I/O by BOOT
+DATA.push({ name: 'AB_DIGI_VOICE', address: C.DIGI_SRC, bytes: digi.voice.bytes });
 
 // ------------------------------------------------------------ constants
 for (const [k, v] of Object.entries(CH)) C['CH_' + k] = v;
@@ -111,7 +117,7 @@ const COLUMNS = [
     note: 'IRQ + AUDIO\nLine $FA: apply the frame,\ntick music / SFX / REU.\nLine $D4: HUD FLD split\n(title: line $A0 band).\nNMI: one REU byte into\n$D418 (the REU stream).' },
   { name: '03 HELPERS', area: 'low', blocks: [['UTIL', K.UTIL]],
     note: 'HELPERS\nMap pointer, char under a\nbox, tiles to map + screen,\nBCD score, joystick.' },
-  { name: '04 TITLE', area: 'low', blocks: [['TITLE', fillTitle(G.TITLE)]],
+  { name: '04 TITLE', area: 'high', blocks: [['TITLE', fillTitle(G.TITLE)]],
     note: 'TITLE\nAB_TITLE_BMP (bank 3) with\nsprite text in two bands.\nLEFT = C64 (SID), RIGHT =\nC64U (REU stream).' },
   { name: '05 GAME STATES', area: 'high', blocks: [['STATES', G.STATES]],
     note: 'GAME STATES\nNew game, deck load (RLE\nmetatiles -> 128 x 96 map),\nthe frame loop, death,\nself-destruct clock.' },
@@ -185,7 +191,7 @@ TjEnd:
  LDA #$FF
  RTS
 ${bytes.map((b, i) => (i === 0 ? 'TScript:\n' : '') + '.byte $' + b.toString(16)).join('\n')}`;
-  if (bytes.length > 0x300) throw new Error('test script too long');
+  if (bytes.length > 0x280) throw new Error('test script too long');
 }
 
 for (const col of COLUMNS) {
@@ -233,7 +239,7 @@ function layout() {
     // stubs (test PRG only; the JSON has the real macro columns here)
     a.addBlock(STUB_SFX, MEM.SFX_ORG, 'STUB_SFX');
     a.addBlock(STUB_MUSIC, MEM.MUSIC_ORG, 'STUB_MUSIC');
-    if (testBlock) a.addBlock(resolve(testBlock, C, 'TEST'), 0x5C00, 'TEST');
+    if (testBlock) a.addBlock(resolve(testBlock, C, 'TEST'), 0x5C80, 'TEST');
     try {
       return { a, code: a.link(), sizes, fill };
     } catch (e) {
@@ -318,7 +324,7 @@ function buildAssets() {
   out.push(asset('AB_TITLE_SPR', 'SPRITE_SET', TITLE_SPR_AT, tspr.bytes, tm));
   const smeta = structuredClone(BASE_ASSETS.ACTORS.meta);
   Object.assign(smeta, { used_count: sprites.count, format: 'RAW', bg_col: 0, mc1_col: 0, mc2_col: 15, mc_mode: 1, mc_col1: 0, mc_col2: 15,
-    sprite_mcs: sprites.mcs, sprite_ucs: sprites.mcs.map((m, i) => i < SPR.ALIEN ? 5 : i < SPR.BOOM ? 10 : i < SPR.BULLET ? 8 : i < SPR.GOO ? 7 : 13) });
+    sprite_mcs: sprites.mcs, sprite_ucs: sprites.mcs.map((m, i) => i < SPR.ALIEN ? 5 : i < SPR.BOOM ? 10 : i < SPR.BULLET ? 8 : i < SPR.GOO ? 7 : i === SPR.FLASH ? 7 : 13) });
   if (smeta.compositor) smeta.compositor = { active_layer: 0, active_frame: 0, active_cell: -1, frames: [{ cells: [] }] };
   out.push(asset('AB_SPRITES', 'SPRITE_SET', MEM.SPRITES, sprites.bytes, smeta));
   for (const d of DATA) out.push(asset(d.name, 'BYTE_DATA', d.address, d.bytes, bmeta(d.bytes)));
@@ -439,7 +445,8 @@ if (uid >= K.SONG_UID && uid < K.SONG_UID + 100) throw new Error('uid clash');
 const project = {
   asset_groups: [GROUP], asset_sort_mode: 'ADDR', ignored_conflicts: [], next_stable_uid: uid + 10, map_tile_bank_sel: -1,
   map_tile_bank: [], code_editor_font_index: 1, map_global_mixed: 1, kernal_unlocked: true, basic_unlocked: true,
-  creator_locked: false, build_target: 0, nodes, boxes, assets: buildAssets(),
+  // PRG EXO: the plain PRG spans $D000-$DFFF (I/O), which breaks a disk load
+  creator_locked: false, build_target: 2, nodes, boxes, assets: buildAssets(),
 };
 fs.writeFileSync(outJson, JSON.stringify(project));
 console.log('wrote %s: %d nodes, %d assets, %d KB', outJson, nodes.length, project.assets.length, Math.round(fs.statSync(outJson).size / 1024));
