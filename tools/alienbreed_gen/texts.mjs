@@ -74,15 +74,15 @@ export function buildTexts(base) {
   const fire = () => centre(19, 7, 'PRESS FIRE');
   page('PG_INTEX', [
     () => str(null, 1, 1, 3, 'INTEX NETWORK SYSTEMS   TERMINAL 7.2'),
-    () => str(null, 2, 1, 6, '------------------------------------'),
+    () => str(null, 2, 1, 5, '------------------------------------'),
     () => str(null, 3, 1, 3, 'ISRC-4 RESEARCH STATION  STATUS RED'),
-    () => str(null, 5, 3, 1, 'CREDITS'),
+    () => str(null, 5, 3, 5, 'CREDITS'),
     () => str(null, INTEX_ROWS[0], 3, 3, 'AMMO CLIP    50 ROUNDS     1000 CR'),
     () => str(null, INTEX_ROWS[1], 3, 3, 'FIRST AID    24 ENERGY     1500 CR'),
     () => str(null, INTEX_ROWS[2], 3, 3, 'KEY PASS     ONE DOOR      2500 CR'),
     () => str(null, INTEX_ROWS[3], 3, 3, 'EXTRA LIFE   ONE MARINE   10000 CR'),
     () => str(null, INTEX_ROWS[4], 3, 3, 'LOG OFF'),
-    () => str(null, 20, 1, 6, 'UP DOWN SELECT     FIRE CONFIRM'),
+    () => str(null, 19, 1, 5, 'UP DOWN SELECT     FIRE CONFIRM'),   // row 20 runs into the HUD split
   ]);
   C.INTEX_CRED_AT = 5 * 40 + 12;
   page('PG_DONE', [

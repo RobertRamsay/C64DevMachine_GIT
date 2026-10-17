@@ -275,8 +275,10 @@ BsAlien:
  LSR A
  LSR A
  LSR A
+// climbing out of the vent: the explosion frames backwards
+ EOR #$03
  CLC
- ADC #SPR_GOO
+ ADC #SPR_BOOM
  LDY #GOO_COL
  JMP BsPut
 BsNs:
@@ -878,14 +880,17 @@ EnterIntex:
  STA MENU_I
  LDA #S_INTEX_VOICE
  JSR PlaySfx
+ JSR HumOn
  LDA #<PG_INTEX
  LDX #>PG_INTEX
  JMP ShowPage
 
 IntexFrame:
+ JSR HumTick
  LDA JOYNEW
  AND #$01
  BEQ IfNu
+ JSR IntexBleep
  DEC MENU_I
  BPL IfNu
  LDA #INTEX_ITEMS-1
@@ -894,6 +899,7 @@ IfNu:
  LDA JOYNEW
  AND #$02
  BEQ IfNd
+ JSR IntexBleep
  INC MENU_I
  LDA MENU_I
  CMP #INTEX_ITEMS
@@ -1043,6 +1049,7 @@ IfStatus:
  JMP PrintDirect
 
 ExitIntex:
+ JSR HumOff
  LDA #GS_PLAY
  STA GSTATE
  LDA #$00
@@ -1060,6 +1067,94 @@ ExCol:
  LDA #RESPAWN_SAFE
  STA P_INV
  JMP Camera
+
+// THE MAINFRAME: SID voice 1 whirs while the terminal is open - a low
+// pulse whose pitch wobbles and whose width sweeps, like a fan - and voice
+// 2 bleeps when the selection moves (the effects keep voice 3). A sample
+// (the Intex voice, the ammo clip) drives $D418, so the hum rests while
+// one plays and the volume is put back after it.
+HumOn:
+ LDA #$00
+ STA HUM_LFO
+ STA HUM_BLP
+ STA $D402
+ LDA #$80
+ STA $D405
+ LDA #$58
+ STA $D406
+ LDA #$00
+ STA $D40C
+ LDA #$A0
+ STA $D40D
+ LDA #$01
+ STA HUM_WAS
+ RTS
+// once a frame while the terminal is open
+HumTick:
+ INC HUM_LFO
+ LDA HUM_LFO
+ AND #$3F
+ CMP #$20
+ BCC HtUp
+ EOR #$3F
+HtUp:
+ ASL A
+ ASL A
+ STA $D400
+ LDA #$07
+ STA $D401
+ LDA HUM_LFO
+ LSR A
+ LSR A
+ LSR A
+ AND #$07
+ ORA #$04
+ STA $D403
+ LDA A_ON
+ BEQ HtOn
+ LDA #$40
+ STA $D404
+ LDA #$01
+ STA HUM_WAS
+ JMP HtBlp
+HtOn:
+ LDA HUM_WAS
+ BEQ HtGate
+ LDA #$00
+ STA HUM_WAS
+ LDA #$0F
+ STA $D418
+HtGate:
+ LDA #$41
+ STA $D404
+HtBlp:
+ LDA HUM_BLP
+ BEQ HtOut
+ DEC HUM_BLP
+ BNE HtOut
+ LDA #$10
+ STA $D40B
+HtOut:
+ RTS
+// the selection moved: a short high blip on voice 2
+IntexBleep:
+ LDA #$D0
+ STA $D407
+ LDA #$84
+ STA $D408
+ LDA #$10
+ STA $D40B
+ LDA #$11
+ STA $D40B
+ LDA #$03
+ STA HUM_BLP
+ RTS
+HumOff:
+ LDA #$40
+ STA $D404
+ LDA #$10
+ STA $D40B
+ RTS
 
 IntexRow:
  .byte ${'{{INTEX_ROWS}}'}
