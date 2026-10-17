@@ -162,9 +162,18 @@ export function samplePcm(name, rate, srcDir) {
   while (b > a && Math.abs(pcm[b]) < peak * 0.01) b--;
   const pad = Math.round(rate * 4 * 0.02);
   pcm = pcm.subarray(Math.max(0, a - pad), Math.min(pcm.length, b + pad));
+  // close up the pauses between words: no silent run longer than 30 ms
+  {
+    const keep = Math.round(rate * 4 * 0.03), kept = [];
+    let quiet = 0;
+    for (const v of pcm) { quiet = Math.abs(v) < peak * 0.02 ? quiet + 1 : 0; if (quiet <= keep) kept.push(v); }
+    pcm = Float32Array.from(kept);
+  }
   // high-pass (rumble eats the 16 levels), then down to the play rate with a low-pass
   let prev = 0, hp = 0; const hpf = new Float32Array(pcm.length);
   for (let i = 0; i < pcm.length; i++) { hp = 0.985 * (hp + pcm[i] - prev); prev = pcm[i]; hpf[i] = hp; }
+  // pre-emphasis: lift the treble so consonants (the t and ks of "Intex") survive 4 bits
+  for (let i = hpf.length - 1; i > 0; i--) hpf[i] -= 0.7 * hpf[i - 1];
   const out = resample(hpf, rate * 4, rate, Math.min(2600, rate * 0.45));
   // compressor: follow the envelope, lift quiet syllables
   let env = 0; let pk = 1e-6; for (const v of out) pk = Math.max(pk, Math.abs(v));
@@ -214,7 +223,7 @@ export function buildDigi(srcDir) {
   const voiceSec = samplePcm('INTEX_VOICE', 8000, srcDir).pcm.length / 8000;
   const rate = Math.min(5512, Math.floor((DIGI_BYTES - 32) * 2 / voiceSec));
   const latch = Math.round(985248 / rate) - 1;
-  const clip = n => { const nib = toNibbles(samplePcm(n, rate, srcDir).pcm); return { bytes: packNibbles(nib), frames: Math.max(1, Math.floor(nib.length * 50.125 / rate) - 1) }; };
+  const clip = n => { const nib = toNibbles(samplePcm(n, rate, srcDir).pcm); return { bytes: packNibbles(nib), frames: Math.max(1, Math.floor(nib.length * 50.125 / rate * 1.02) - 1) }; };   // +2%: the HUD split holds the NMI a moment each frame
   const voice = clip('INTEX_VOICE'), ammo = clip('CLIP');
   if (voice.bytes.length > DIGI_BYTES) throw new Error('Intex voice overflows $D000-$DFFF: ' + voice.bytes.length);
   return { rate, latch, voice, ammo, voiceSec };

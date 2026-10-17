@@ -387,13 +387,15 @@ RsClr:
  STA FORCE_RD
  JMP CameraSnap
 
-// LOAD DECK: expand the metatile RLE into the 128 x 96 char map at $A000,
-// read the deck table (start, vents, cores, colours, alien settings)
+// LOAD DECK: the deck's map of stamp ids (AB_DECKS) into the 128 x 96 char
+// map at $A000 - void everywhere, then the cropped map at its place, one
+// 2 x 2 char stamp per id; read the deck table (start, vents, cores,
+// colours, alien settings)
 LoadDeck:
  LDX LEVEL
- LDA DeckRleL,X
+ LDA DeckMapL,X
  STA Z_PTR
- LDA DeckRleH,X
+ LDA DeckMapH,X
  STA Z_PTRH
  LDA DeckTabL,X
  STA Z_PTR2
@@ -403,57 +405,58 @@ LoadDeck:
  STA Z_MP
  LDA #$A0
  STA Z_MPH
- LDA #$00
+ LDY #$00
+ LDA #CH_VOID
+LdFill:
+ STA (Z_MP),Y
+ INY
+ BNE LdFill
+ INC Z_MPH
+ LDX Z_MPH
+ CPX #$D0
+ BNE LdFill
+ LDY #DT_MY
+ LDA (Z_PTR2),Y
+ CLC
+ ADC #$A0
+ STA Z_MPH
+ LDY #DT_MH
+ LDA (Z_PTR2),Y
+ STA Z_J
+LdRow:
+ LDY #DT_MX
+ LDA (Z_PTR2),Y
+ ASL A
+ STA Z_MP
+ LDY #DT_MW
+ LDA (Z_PTR2),Y
  STA Z_I
-LdNext:
+LdCell:
  LDY #$00
  LDA (Z_PTR),Y
  JSR LdInc
- CMP #$FF
- BNE LdOne
- LDA (Z_PTR),Y
- STA Z_J
- JSR LdInc
- LDA (Z_PTR),Y
- JSR LdInc
- JMP LdRun
-LdOne:
- LDX #$01
- STX Z_J
-LdRun:
- TAX
-LdRep:
- LDA Z_I
  ASL A
- TAY
+ ASL A
+ TAX
  LDA META_TL,X
  STA (Z_MP),Y
- LDA META_TR,X
  INY
+ LDA META_TR,X
  STA (Z_MP),Y
- TYA
- CLC
- ADC #$7F
- TAY
+ LDY #$80
  LDA META_BL,X
  STA (Z_MP),Y
  INY
  LDA META_BR,X
  STA (Z_MP),Y
- INC Z_I
- LDA Z_I
- CMP #64
- BNE LdSame
- LDA #$00
- STA Z_I
+ INC Z_MP
+ INC Z_MP
+ DEC Z_I
+ BNE LdCell
  INC Z_MPH
- LDA Z_MPH
- CMP #$D0
- BEQ LdDone
-LdSame:
  DEC Z_J
- BNE LdRep
- JMP LdNext
+ BNE LdRow
+ JMP LdDone
 LdInc:
  INC Z_PTR
  BNE LdIo
@@ -541,10 +544,10 @@ LdCore2:
  LDA #$00
  STA $D021
  RTS
-DeckRleL:
- .byte <DECK_RLE0,<DECK_RLE1
-DeckRleH:
- .byte >DECK_RLE0,>DECK_RLE1
+DeckMapL:
+ .byte <DECK_MAP0,<DECK_MAP1
+DeckMapH:
+ .byte >DECK_MAP0,>DECK_MAP1
 DeckTabL:
  .byte <DECK_TAB0,<DECK_TAB1
 DeckTabH:

@@ -25,13 +25,18 @@ export const BP_INSTR = {
   6: { name: 'KICK', fixed: true, attack: 0, decay: 6, sustain: 0, release: 2, pulse_width: 2048, text: '$41&N=50,$11&N=36,N=31,N=27,N=24,N=21,$10,---' },
   7: { name: 'SNARE', fixed: true, attack: 0, decay: 7, sustain: 0, release: 4, pulse_width: 2048, text: '$81&N=74,$41&N=43,$81&N=70,D2,$80,---' },
   8: { name: 'HIHAT', fixed: true, attack: 0, decay: 3, sustain: 0, release: 1, pulse_width: 2048, text: '$81&N=92,D1,$80,---' },
-  9: { name: 'MINCHOIR', oct: 1, attack: 7, decay: 12, sustain: 0, release: 9, pulse_width: 1800, text: '$41&V$12,D2,L1' },
+  // the choir: soft triangle with a slow vibrato - low it is the choir pad,
+  // transposed two octaves up (late in the tune) it is the eerie whistle
+  9: { name: 'MINCHOIR', oct: 1, attack: 7, decay: 12, sustain: 0, release: 9, pulse_width: 1800, text: '$11&V$23,D2,L1' },
   10: { name: 'SYNTH LEAD', oct: 1, attack: 0, decay: 10, sustain: 0, release: 6, pulse_width: 1400, text: '$41&V$23,D2,L1' },
   13: { name: 'SAW LEAD', oct: 0, attack: 1, decay: 10, sustain: 0, release: 6, pulse_width: 2048, text: '$21&V$22,D2,L1' },
   14: { name: 'SYNTH PAD', oct: 0, attack: 2, decay: 10, sustain: 0, release: 6, pulse_width: 2000, text: '$41&V$12,D2,L1' },
 };
-// how much a voice matters in a step, per note of each instrument
-const WEIGHT = { 1: 6, 2: 4, 3: 3, 4: 4, 5: 5, 6: 2.5, 7: 2.5, 8: 1, 9: 4, 10: 5, 13: 5, 14: 4 };
+// how much a voice matters in a step: per row each note sounds (up to 8), so
+// one long note counts like a run of short ones. The gargle voice and the
+// choir (whose long high notes are the eerie whistle) first, hi-hat last.
+const WEIGHT = { 1: 8, 2: 5, 4: 4, 5: 5, 9: 7, 10: 6, 13: 5, 14: 3 };
+const HIT = { 3: 6, 6: 6, 7: 6, 8: 2 };
 const NAMES = ['C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#', 'B-'];
 const noteName = i => NAMES[i % 12] + Math.floor(i / 12);
 
@@ -79,7 +84,44 @@ export function convertBpsm(buf, base) {
   const order = [];
   let prevMap = [-1, -1, -1];
   m.seq.forEach((row, s) => {
-    const weight = row.map(c => (m.patterns[c.pat] || []).reduce((w, r) => w + (r.note ? (WEIGHT[(r.instr || 0) + c.st] || WEIGHT[r.instr] || 1) : 0), 0));
+    // drums and slap count per hit (they are short but carry the beat), the
+    // rest by how long each note sounds
+    const pcs = [];
+    const weight = row.map((c, v) => {
+      const rows = m.patterns[c.pat] || [];
+      let w = 0, ins = 0;
+      pcs[v] = [];
+      rows.forEach((r, i) => {
+        if (!r.note) return;
+        ins = r.instr ? r.instr + c.st : ins;
+        if (HIT[ins]) { w += HIT[ins]; return; }
+        let dur = 1;
+        while (i + dur < 16 && !rows[i + dur].note) dur++;
+        // the pattern's last note rings on while this voice's next steps are empty
+        if (i + dur >= 16) for (let k = 1; k <= 3 && s + k < m.seq.length; k++) {
+          const nx = m.patterns[m.seq[s + k][v].pat];
+          if (nx && nx.some(x => x.note)) break;
+          dur += 16;
+        }
+        w += (WEIGHT[ins] || 1) * Math.min(dur, 24);
+        pcs[v].push(((r.note + c.tr) % 12 + 12) % 12);
+      });
+      return w;
+    });
+    // a voice whose notes mostly double a busier voice's (an octave bass, a
+    // second bass riff) is the one to lose
+    const main = row.map(c => {
+      const n = {};
+      let ins = 0;
+      (m.patterns[c.pat] || []).forEach(r => { if (r.note) { ins = r.instr ? r.instr + c.st : ins; if (!HIT[ins]) n[ins] = (n[ins] || 0) + 1; } });
+      return +(Object.entries(n).sort((a, b) => b[1] - a[1])[0] || [0])[0];
+    });
+    for (let v = 0; v < 4; v++) for (let u = 0; u < 4; u++) {
+      if (u === v || !pcs[v].length || pcs[u].length < pcs[v].length || main[u] !== main[v]) continue;
+      if (pcs[u].length === pcs[v].length && u > v) continue;
+      const shared = pcs[v].filter(p => pcs[u].includes(p)).length;
+      if (shared / pcs[v].length >= 0.6) weight[v] = Math.min(weight[v], weight[v] / 3);
+    }
     // a voice doubling another (same pattern, transposes) adds nothing on the SID
     row.forEach((c, v) => { if (row.slice(0, v).some(p => p.pat === c.pat && p.st === c.st && p.tr === c.tr)) weight[v] = -1; });
     let drop = 0;

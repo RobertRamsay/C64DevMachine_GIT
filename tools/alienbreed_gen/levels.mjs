@@ -1,7 +1,7 @@
 // ALIEN BREED 64 decks. Each deck is described as rooms and corridors on a
 // 64 x 48 tile grid (a tile is 2 x 2 chars), carved out of solid void. Walls
 // grow round every floor tile and are autotiled per char; the result is the
-// 128 x 96 char map the game expands into $A000 (RLE packed in the PRG).
+// 128 x 96 char map the game expands into $A000 (stamp ids in the PRG).
 import { CH } from './art.mjs';
 
 export const TW = 64, TH = 48;
@@ -159,19 +159,6 @@ function charMap(T) {
   return m;
 }
 
-// RLE: $FF n c = n copies of c (n 1-255); anything else is itself. Char
-// $FF is never used in a map.
-export function rle(m) {
-  const out = [];
-  for (let i = 0; i < m.length;) {
-    let n = 1;
-    while (i + n < m.length && m[i + n] === m[i] && n < 255) n++;
-    if (n >= 4 || m[i] === 0xFF) { out.push(0xFF, n, m[i]); i += n; }
-    else { for (let k = 0; k < n; k++) out.push(m[i]); i += n; }
-  }
-  return out;
-}
-
 // ------------------------------------------------------------ checks
 // Walk from the start, opening a door only with a key in hand, until the
 // lift is reached; cores must be reachable too.
@@ -206,8 +193,10 @@ function check(deck, T, items) {
   }
 }
 
-// Every deck is stored as metatile indices (one byte per 2 x 2 char tile,
-// RLE packed) plus one shared table of the 2 x 2 char blocks: TL TR BL BR.
+// Every deck is a map of stamp ids (one byte per 2 x 2 char tile) cropped to
+// the part of the 64 x 48 grid that is not void, plus one shared stamp table
+// of the 2 x 2 char blocks: TL TR BL BR. Both go into the AB_DECKS
+// META_TILESET, where the decks can be edited in the Dev Machine map editor.
 export function buildDecks() {
   const meta = new Map();
   const decks = DECKS.map((deck, n) => {
@@ -221,6 +210,12 @@ export function buildDecks() {
       if (!meta.has(k)) meta.set(k, meta.size);
       tiles.push(meta.get(k));
     }
+    // the crop: the box round everything that is not void
+    let x0 = TW, y0 = TH, x1 = -1, y1 = -1;
+    for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) if (T[y][x] !== ' ') { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    const box = { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+    const ids = [];
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) ids.push(tiles[y * TW + x]);
     const start = items.find(i => i.ch === 'P');
     const vents = items.filter(i => i.ch === 'v');
     const cores = items.filter(i => i.ch === 'R');
@@ -229,17 +224,18 @@ export function buildDecks() {
     // deck table: start x,y (pixels, centre of the tile), vents, cores
     const px = start.x * 16 + 8, py = start.y * 16 + 8;
     const table = [px & 255, px >> 8, py & 255, py >> 8, vents.length, cores.length, deck.colour, deck.alien,
-      deck.alienHp, deck.spawnRate, deck.alienSpeed, 0, 0, 0, 0, 0];
+      deck.alienHp, deck.spawnRate, deck.alienSpeed, box.x, box.y, box.w, box.h, 0];
     for (let i = 0; i < 32; i++) table.push(vents[i] ? vents[i].x * 2 : 0);
     for (let i = 0; i < 32; i++) table.push(vents[i] ? vents[i].y * 2 : 0);
     for (let i = 0; i < 4; i++) table.push(cores[i] ? cores[i].x * 2 : 0);
     for (let i = 0; i < 4; i++) table.push(cores[i] ? cores[i].y * 2 : 0);
-    return { n, deck, T, map, tiles, packed: rle(Uint8Array.from(tiles)), table, keysFound: res.keysFound, vents: vents.length, cores: cores.length };
+    return { n, deck, T, map, tiles, ids, box, table, keysFound: res.keysFound, vents: vents.length, cores: cores.length };
   });
   if (meta.size > 64) throw new Error('too many metatiles: ' + meta.size);
-  const metaTable = [[], [], [], []];
-  for (const k of meta.keys()) k.split(',').map(Number).forEach((c, i) => metaTable[i].push(c));
-  return { decks, metaTable, metaCount: meta.size };
+  // stamp table: per stamp TL TR BL BR (the META_TILESET's stamp_data order)
+  const stamps = [];
+  for (const k of meta.keys()) stamps.push(...k.split(',').map(Number));
+  return { decks, stamps, metaCount: meta.size };
 }
 // deck table layout (offsets into the per-deck BYTE_DATA table)
-export const DT = { PX: 0, PY: 2, NVENT: 4, NCORE: 5, COLOUR: 6, ALIEN: 7, HP: 8, RATE: 9, SPEED: 10, VX: 16, VY: 48, CX: 80, CY: 84, SIZE: 88 };
+export const DT = { PX: 0, PY: 2, NVENT: 4, NCORE: 5, COLOUR: 6, ALIEN: 7, HP: 8, RATE: 9, SPEED: 10, MX: 11, MY: 12, MW: 13, MH: 14, VX: 16, VY: 48, CX: 80, CY: 84, SIZE: 88 };

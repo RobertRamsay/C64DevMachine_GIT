@@ -241,6 +241,14 @@ IrqHud:
  PHA
  LDA #$FF
  STA $D019
+// a stock-C64 sample's NMI (~70 cycles) is longer than a raster line and
+// would throw the FLD off: hold it for the split (the tick that comes due
+// meanwhile fires as soon as it is allowed again)
+ LDA RAM_DIGI
+ BEQ IhNoDg
+ LDA #$01
+ STA $DD0D
+IhNoDg:
  LDA #LINE_HUD_GO
 IhWait:
  CMP $D012
@@ -276,6 +284,11 @@ IhFldX:
  LDA #$10
  STA $D011
  STA $D016
+ LDA RAM_DIGI
+ BEQ IhNoDg2
+ LDA #$81
+ STA $DD0D
+IhNoDg2:
  LDA #LINE_VBL
  STA $D012
  LDA #<IrqVbl

@@ -42,7 +42,7 @@ node editor.mjs                # round trip through a running, paired Dev Machin
 
 ## The game
 
-- 8-way, double-buffered char scroll over a 128 x 96 char deck (two decks, RLE metatiles).
+- 8-way, double-buffered char scroll over a 128 x 96 char deck (two decks, stamp-id maps in the AB_DECKS META_TILESET, editable in the map editor).
 - HUD in rows 21-23. An FLD split from line `$D7` keeps it still whatever the vertical scroll.
 - 8-way marine at 1.5 px a frame. Two bullets at a time; ammo, keys, credits, energy and lives.
 - Aliens climb out of vents near you, chase along walls and bite.
@@ -56,18 +56,30 @@ node editor.mjs                # round trip through a running, paired Dev Machin
 |---|---|
 | `$0801-$118F` | Boot + low code |
 | `$1190-$19FF` | SFX column (editor macros) |
-| `$1A00-$3FFF` | Music column (editor macros; ALIENMENU ends near `$33CE`) |
+| `$1A00-$3FFF` | Music column (editor macros) |
 | `$4000/$4400` | Screens A/B |
 | `$4800` | Station charset |
 | `$5000` | Sprites |
+| `$5C40-$5FFF` | Deck tables, HUD template, ammo-clip sample |
 | `$6000-$77FF` | High code |
 | `$7800-$7FCF` | Title screen + colour, saved at boot |
-| `$8000-$9FFF` | Data |
+| `$8000-$9FFF` | Data: char types, title sprite text, texts, AB_DECKS (stamp table + both deck maps) |
 | `$A000-$CFFF` | The expanded deck (at load: the Intex voice at `$A000`, title screen/colour at `$C400`) |
 | `$D000-$DFFF` | RAM under the I/O: the Intex voice (stock C64) |
 | `$E000-$FF3F` | Title bitmap (bank 3, under the KERNAL) |
 
 The full map is in `defs.mjs`.
+
+## Asset groups
+
+TITLE, GRAPHICS, DECKS, TEXT + HUD, SID AUDIO, SAMPLES, REU AUDIO.
+The decks are the AB_DECKS META_TILESET (2 x 2 char stamps on AB_CHARS),
+exported as STAMP IDS: the stamp table, then one map per deck, each cropped
+to the part of the 64 x 48 grid that is not void. Its crop (x, y, w, h in
+tiles) sits in DECK_TAB0/1 bytes 11-14, so a deck edited in the map editor
+loads as long as its size stays the same. A resized map needs the crop
+updated in the deck table. All 64 stamp slots are exported (32 used): a new
+stamp goes into a blank slot, so the maps never move.
 
 ## Files
 
@@ -77,7 +89,7 @@ The full map is in `defs.mjs`.
 | `art.mjs` | Charset (autotiled walls, floors, pickups, lift, cores), sprites |
 | `titlespr.mjs` | Title sprite text: font, shading, layout |
 | `koala.mjs` | Koala reader / PNG preview (`node koala.mjs art/title.kla out.png`) |
-| `levels.mjs` | Decks as rooms + corridors. Carving, a key/door reachability check, metatile RLE |
+| `levels.mjs` | Decks as rooms + corridors. Carving, a key/door reachability check, the crop to stamp ids for AB_DECKS |
 | `texts.mjs` | HUD, messages, Intex / end pages |
 | `audio.mjs` | Music Maker song, SFX Maker effects, REU converter (WAV in `audio_src/`, else the module render / synthesised effects) |
 | `bpsm.mjs` | Reader for Brian Postma SoundMon v2 modules (the format of the title tune) |
@@ -97,6 +109,7 @@ constants only in `.byte`, no label arithmetic, and zero-page names `Z_*`.
 | `node shots.mjs tests/walk.json 6,12 name` | Scripted joystick build + VICE screenshots |
 | `node machine.mjs PRG seconds [--reu img]` | Headless C64 (6502 + raster IRQ + CIA2 NMI + REU): SID / `$D418` activity |
 | `node soak.mjs PRG 120` | Random walker with fire held. State every 5 s, frame-loop check |
+| `node deckcheck.mjs PRG` | Loads both decks in the game, compares `$A000` with the generator's maps |
 | `node deck2.mjs PRG` | Deck 2: shoot the cores, self-destruct, lift, back to the title |
 | `node hybrid.mjs script out.prg` | The editor's build with a test joystick spliced in |
 | `node compare.mjs a.prg b.prg` | Byte compare of two PRGs |

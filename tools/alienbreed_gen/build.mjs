@@ -26,7 +26,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..', '..');
 const TEMPLATES = path.join(ROOT, 'C64DevMachine_win.yyp', 'datafiles', 'C64DMResources', 'TEMPLATES');
 const OUTDIR = path.join(HERE, 'out');
-const GROUP = 'ALIEN BREED';
+// asset groups, in the order the asset list shows them
+const GROUPS = ['TITLE', 'GRAPHICS', 'DECKS', 'TEXT + HUD', 'SID AUDIO', 'SAMPLES', 'REU AUDIO'];
 const argv = process.argv.slice(2);
 const ti = argv.indexOf('--test');
 const TEST = ti >= 0 ? JSON.parse(fs.readFileSync(argv[ti + 1], 'utf8')) : null;
@@ -41,38 +42,49 @@ const titleKla = fs.readFileSync(TITLE_KLA);
 const title = readKoala(TITLE_KLA);
 const tspr = buildTitleSprites();
 const sprites = buildSprites();
-const { decks, metaTable, metaCount } = buildDecks();
+const { decks, stamps, metaCount } = buildDecks();
 const hud = buildHud();
 const reu = buildReuAudio(path.join(HERE, 'audio_src'));
 const digi = buildDigi(path.join(HERE, 'audio_src'));   // stock C64 samples
 
-// data area $8000-$9FFF
+// the small tables: after the sprite frames, up to $5FFF
 const DATA = [];
-let dp = MEM.DATA;
-const dput = (name, bytes, align = 1) => { dp = Math.ceil(dp / align) * align; DATA.push({ name, address: dp, bytes: Array.from(bytes) }); C[name] = dp; dp += bytes.length; };
-dput('CHAR_TYPES', charTypes, 256);
-const meta = [];
-for (let q = 0; q < 4; q++) for (let i = 0; i < 64; i++) meta.push(metaTable[q][i] ?? CH.VOID);
-dput('AB_META', meta, 256);
-C.META_TL = C.AB_META; C.META_TR = C.AB_META + 64; C.META_BL = C.AB_META + 128; C.META_BR = C.AB_META + 192;
+let dp = (MEM.SPRITES + sprites.count * 64 + 15) & ~15;
+const dput = (name, bytes, align = 1, group = 'DECKS') => { dp = Math.ceil(dp / align) * align; DATA.push({ name, address: dp, bytes: Array.from(bytes), group }); C[name] = dp; dp += bytes.length; };
 decks.forEach((d, i) => dput('DECK_TAB' + i, d.table, 16));
-dput('HUD_TPL', hud.chars, 16);
-dput('HUD_TCOL', hud.cols, 16);
+dput('HUD_TPL', hud.chars, 16, 'TEXT + HUD');
+dput('HUD_TCOL', hud.cols, 16, 'TEXT + HUD');
+dput('AB_DIGI_CLIP', digi.ammo.bytes, 16, 'SAMPLES');
+C.DIGI_CLIP = C.AB_DIGI_CLIP;
+if (dp > 0x6000) throw new Error('tables overflow $6000: $' + dp.toString(16));
+const TABLES_END = dp;
+// data area $8000-$9FFF
+dp = MEM.DATA;
+dput('CHAR_TYPES', charTypes, 256, 'GRAPHICS');
 // AB_TITLE_SPR is a SPRITE_SET (placed here, not a BYTE_DATA)
 dp = Math.ceil(dp / 256) * 256;
 C.AB_TITLE_SPR = dp;
 const TITLE_SPR_AT = dp;
 dp += 1024;
 const texts = buildTexts(Math.ceil(dp / 256) * 256);
-dput('TEXTS', texts.bytes, 256);
-dput('AB_DIGI_CLIP', digi.ammo.bytes, 16);
-C.DIGI_CLIP = C.AB_DIGI_CLIP;
-decks.forEach((d, i) => dput('DECK_RLE' + i, d.packed, 256));
+dput('TEXTS', texts.bytes, 256, 'TEXT + HUD');
+// AB_DECKS (META_TILESET, STAMP IDS export): the stamp table, then each
+// deck's map of stamp ids, back to back
+dp = Math.ceil(dp / 16) * 16;
+const DECKS_AT = dp;
+C.META_TL = dp; C.META_TR = dp + 1; C.META_BL = dp + 2; C.META_BR = dp + 3;
+// all 64 stamp slots (the game's id * 4 must fit a byte): stamps added in
+// the map editor take a blank slot and the maps stay where the game reads them
+const STAMP_SLOTS = 64;
+const stampTable = [...stamps, ...Array(STAMP_SLOTS * 4 - stamps.length).fill(CH.VOID)];
+const deckBytes = [...stampTable];
+decks.forEach((d, i) => { C['DECK_MAP' + i] = DECKS_AT + deckBytes.length; deckBytes.push(...d.ids); });
+dp += deckBytes.length;
 if (dp > MEM.DATA_END) throw new Error('data overflows $A000: $' + dp.toString(16));
 Object.assign(C, texts.C, hud.O);
 Object.assign(C, { DIGI_LATCH: digi.latch, DIGI_V_FRAMES: digi.voice.frames, DIGI_C_FRAMES: digi.ammo.frames });
 // the Intex voice: loaded into the level area, copied under the I/O by BOOT
-DATA.push({ name: 'AB_DIGI_VOICE', address: C.DIGI_SRC, bytes: digi.voice.bytes });
+DATA.push({ name: 'AB_DIGI_VOICE', address: C.DIGI_SRC, bytes: digi.voice.bytes, group: 'SAMPLES' });
 
 // ------------------------------------------------------------ constants
 for (const [k, v] of Object.entries(CH)) C['CH_' + k] = v;
@@ -120,7 +132,7 @@ const COLUMNS = [
   { name: '04 TITLE', area: 'high', blocks: [['TITLE', fillTitle(G.TITLE)]],
     note: 'TITLE\nAB_TITLE_BMP (bank 3) with\nsprite text in two bands.\nLEFT = C64 (SID), RIGHT =\nC64U (REU stream).' },
   { name: '05 GAME STATES', area: 'high', blocks: [['STATES', G.STATES]],
-    note: 'GAME STATES\nNew game, deck load (RLE\nmetatiles -> 128 x 96 map),\nthe frame loop, death,\nself-destruct clock.' },
+    note: 'GAME STATES\nNew game, deck load (AB_DECKS\nstamp ids -> 128 x 96 map),\nthe frame loop, death,\nself-destruct clock.' },
   { name: '06 SCROLL', area: 'high', blocks: [['SCROLL', V.SCROLL]],
     note: 'SCROLL\n8-way, double buffered:\na new char cell redraws the\nback screen (unrolled),\nshown with the new fine\nscroll at the next frame.' },
   { name: '07 MARINE', area: 'high', blocks: [['PLAYER', G.PLAYER]],
@@ -239,7 +251,7 @@ function layout() {
     // stubs (test PRG only; the JSON has the real macro columns here)
     a.addBlock(STUB_SFX, MEM.SFX_ORG, 'STUB_SFX');
     a.addBlock(STUB_MUSIC, MEM.MUSIC_ORG, 'STUB_MUSIC');
-    if (testBlock) a.addBlock(resolve(testBlock, C, 'TEST'), 0x5C80, 'TEST');
+    if (testBlock) a.addBlock(resolve(testBlock, C, 'TEST'), (fill.high + 15) & ~15, 'TEST');
     try {
       return { a, code: a.link(), sizes, fill };
     } catch (e) {
@@ -261,7 +273,8 @@ if (relaxN) console.log('  relaxed %d long branches', relaxN);
 for (const s of sizes) console.log('  %s $%s-$%s  %d bytes', s.name.padEnd(20), s.start.toString(16), (s.end - 1).toString(16), s.end - s.start);
 console.log('  free: low %d, high %d bytes', AREAS.low[1] - fill.low, AREAS.high[1] - fill.high);
 console.log('  data $8000-$%s (%d free), metatiles %d, chars %d, sprites %d, title text sprites %d', (dp - 1).toString(16), MEM.DATA_END - dp, metaCount, CHAR_COUNT, sprites.count, tspr.count);
-decks.forEach(d => console.log('  %s: %d bytes RLE, %d vents, %d cores, %d keys', d.deck.name, d.packed.length, d.vents, d.cores, d.keysFound));
+console.log('  tables $%s-$%s, decks (stamps + maps) $%s-$%s', C.DECK_TAB0.toString(16), (TABLES_END - 1).toString(16), DECKS_AT.toString(16), (DECKS_AT + deckBytes.length - 1).toString(16));
+decks.forEach(d => console.log('  %s: map %dx%d tiles at %d,%d, %d vents, %d cores, %d keys', d.deck.name, d.box.w, d.box.h, d.box.x, d.box.y, d.vents, d.cores, d.keysFound));
 console.log('  REU audio: %d KB, clips %s', Math.round(reu.total / 1024), reu.clips.map(c => `${c.name}(${c.source})`).join(' '));
 
 // ------------------------------------------------------------ memory image / PRG
@@ -276,6 +289,7 @@ place(MEM.TITLE_VCOL, title.colour, 'title colour');
 place(TITLE_SPR_AT, tspr.bytes, 'title sprite text');
 place(MEM.SPRITES, sprites.bytes, 'sprites');
 for (const d of DATA) place(d.address, d.bytes, d.name);
+place(DECKS_AT, deckBytes, 'AB_DECKS');
 fs.mkdirSync(OUTDIR, { recursive: true });
 function writePrg(file) {
   const top = Math.max(...mem.keys());
@@ -300,7 +314,7 @@ if (TEST) process.exit(0);
 const b64 = d => 'b64:' + Buffer.from(d).toString('base64');
 const byteString = d => d.map(b => '$' + b.toString(16).toUpperCase().padStart(2, '0')).join(', ');
 function asset(name, type, address, blob, metaObj, extra = {}) {
-  return { name, type, address, blob: b64(blob), meta: metaObj, group: GROUP, linked_assets: [], file: '', load_later: false,
+  return { name, type, address, blob: b64(blob), meta: metaObj, group: GROUPS[0], linked_assets: [], file: '', load_later: false,
     d64_filename: '', reu_used: 0, reu_size: 0, reu_filename: '', reu_base_file: '', order: -1, ...extra };
 }
 const bmeta = d => ({ byte_string: byteString(d), is_save_file: false, save_file_size: 256, tone_sorted: false, ecm_bg1: 6, ecm_bg2: 14 });
@@ -310,39 +324,53 @@ function buildAssets() {
   const cmeta = structuredClone(BASE_ASSETS.TILES.meta);
   Object.assign(cmeta, { format: 'RAW', char_count: 256, total_size: 2048, mc_mode: 1, mc_fg: 6, mc_bg: 0, mc_col1: 11, mc_col2: 15,
     bmp_mode: 'MC', tile_types: Array(256).fill(0) });
-  out.push(asset('AB_CHARS', 'CHAR_SET', MEM.CHARSET, charset, cmeta));
+  out.push(asset('AB_CHARS', 'CHAR_SET', MEM.CHARSET, charset, cmeta, { group: 'GRAPHICS' }));
   // the title picture: a Koala BITMAP in bank 3 (edit it in the bitmap editor)
   const bm = structuredClone(BASE_ASSETS.FRONT_END.meta);
   Object.assign(bm, { bmp_mode: 'MC', bg_col: title.bg, mc_bg: title.bg });
-  out.push(asset('AB_TITLE_BMP', 'BITMAP', MEM.TITLE_BMP, [...titleKla], bm));
+  out.push(asset('AB_TITLE_BMP', 'BITMAP', MEM.TITLE_BMP, [...titleKla], bm, { group: 'TITLE' }));
   // the title's sprite text (TITLE copies it to $C000)
   const tm = structuredClone(BASE_ASSETS.ACTORS.meta);
   Object.assign(tm, { used_count: tspr.count, format: 'RAW', bg_col: title.bg, mc1_col: TITLE_SPR_COLS.mc1, mc2_col: TITLE_SPR_COLS.mc2,
     mc_mode: 1, mc_col1: TITLE_SPR_COLS.mc1, mc_col2: TITLE_SPR_COLS.mc2,
     sprite_mcs: Array(tspr.count).fill(1), sprite_ucs: Array(tspr.count).fill(TITLE_SPR_COLS.individual) });
   if (tm.compositor) tm.compositor = { active_layer: 0, active_frame: 0, active_cell: -1, frames: [{ cells: [] }] };
-  out.push(asset('AB_TITLE_SPR', 'SPRITE_SET', TITLE_SPR_AT, tspr.bytes, tm));
+  out.push(asset('AB_TITLE_SPR', 'SPRITE_SET', TITLE_SPR_AT, tspr.bytes, tm, { group: 'TITLE' }));
   const smeta = structuredClone(BASE_ASSETS.ACTORS.meta);
   Object.assign(smeta, { used_count: sprites.count, format: 'RAW', bg_col: 0, mc1_col: 0, mc2_col: 15, mc_mode: 1, mc_col1: 0, mc_col2: 15,
     sprite_mcs: sprites.mcs, sprite_ucs: sprites.mcs.map((m, i) => i < SPR.ALIEN ? 5 : i < SPR.BOOM ? 10 : i < SPR.BULLET ? 8 : i < SPR.GOO ? 7 : i === SPR.FLASH ? 7 : 13) });
   if (smeta.compositor) smeta.compositor = { active_layer: 0, active_frame: 0, active_cell: -1, frames: [{ cells: [] }] };
-  out.push(asset('AB_SPRITES', 'SPRITE_SET', MEM.SPRITES, sprites.bytes, smeta));
-  for (const d of DATA) out.push(asset(d.name, 'BYTE_DATA', d.address, d.bytes, bmeta(d.bytes)));
-  out.push(asset('AB_MUSIC', 'MUSIC_MAKER', 0, [0], buildMusicMeta()));
-  out.push(asset('AB_SFX', 'SFX_MAKER', 0, [0], buildSfxMeta()));
+  out.push(asset('AB_SPRITES', 'SPRITE_SET', MEM.SPRITES, sprites.bytes, smeta, { group: 'GRAPHICS' }));
+  // the decks: a META_TILESET of 2 x 2 char stamps on AB_CHARS, one map per
+  // deck, exported as STAMP IDS (the stamp table, then the maps)
+  const lut = Array(256).fill(0x10 | (decks[0].deck.colour & 7));
+  out.push(asset('AB_DECKS', 'META_TILESET', DECKS_AT, [0], {
+    stamp_w: 2, stamp_h: 2, stamp_count: STAMP_SLOTS, chr_asset: 'AB_CHARS', stamp_data: [...stampTable],
+    stamp_mc: Array(STAMP_SLOTS).fill(1), stamp_override: Array(STAMP_SLOTS).fill(0x80), char_lut: lut, char_lut_len: 256,
+    maps: decks.map(d => [...d.ids]), map_count: decks.length, active_map: 0, map_size_key: '2x2',
+    map_w: decks.map(d => d.box.w * 2), map_h: decks.map(d => d.box.h * 2), map_names: decks.map(d => d.deck.name.replace(/s+/g, ' ')),
+    map_reps: decks.map(() => 1), map_addr: decks.map(() => -1),
+    chains: [], chain_cols: [], chain_col_link: [], chain_dir: 0, chain_emit: 0, chain_tab_addr: -1, chain_rev: 0, active_chain: -1,
+    raw_rows: 3, test_grid: [], test_zoom: 1, zoom: 4, tone_sorted: false, bmp_mode: 'MC',
+    mc_mode: 1, mc_fg: decks[0].deck.colour, mc_bg: 0, mc_col1: 11, mc_col2: 15, map_mc_bg: 0, map_mc_col1: 11, map_mc_col2: 15,
+    ecm_bg1: 6, ecm_bg2: 14, ecm_bg3: 3, active_char: 0, active_colour: 1, paint_mc: 1,
+  }, { group: 'DECKS' }));
+  for (const d of DATA) out.push(asset(d.name, 'BYTE_DATA', d.address, d.bytes, bmeta(d.bytes), { group: d.group }));
+  out.push(asset('AB_MUSIC', 'MUSIC_MAKER', 0, [0], buildMusicMeta(), { group: 'SID AUDIO' }));
+  out.push(asset('AB_SFX', 'SFX_MAKER', 0, [0], buildSfxMeta(), { group: 'SID AUDIO' }));
   // REU audio: directory + clips (<= 64 KB per asset), at fixed REU addresses
   const links = [];
-  out.push(asset('REU_DIR', 'BYTE_DATA', 0xC000, reu.dir, rawMeta(reu.dir.length)));
+  out.push(asset('REU_DIR', 'BYTE_DATA', 0xC000, reu.dir, rawMeta(reu.dir.length), { group: 'REU AUDIO' }));
   links.push({ asset_name: 'REU_DIR', reu_address: REU_DIR, auto_pack: false });
   for (const c of reu.clips) {
     for (let o = 0, part = 0; o < c.bytes.length; o += 0x10000, part++) {
       const chunk = Array.from(c.bytes.subarray(o, o + 0x10000));
       const name = `REU_${c.name.toUpperCase()}_${String(part).padStart(2, '0')}`;
-      out.push(asset(name, 'BYTE_DATA', 0xC000, chunk, rawMeta(chunk.length)));
+      out.push(asset(name, 'BYTE_DATA', 0xC000, chunk, rawMeta(chunk.length), { group: 'REU AUDIO' }));
       links.push({ asset_name: name, reu_address: c.start + o, auto_pack: false });
     }
   }
-  out.push(asset('AB_REU', 'LOAD_REU', 0, [0], {}, { reu_filename: 'ALIEN_BREED.reu', reu_size: 0x1000000, reu_used: reu.total, linked_assets: links }));
+  out.push(asset('AB_REU', 'LOAD_REU', 0, [0], {}, { group: 'REU AUDIO', reu_filename: 'ALIEN_BREED.reu', reu_size: 0x1000000, reu_used: reu.total, linked_assets: links }));
   return out;
 }
 
@@ -384,7 +412,7 @@ AB_CHARS   station tiles+font
 AB_SPRITES marine, aliens
 AB_TITLE_BMP  title picture
 AB_TITLE_SPR  its sprite text
-DECK_RLE0/1 the two decks
+AB_DECKS   the two decks (map editor)
 AB_MUSIC / AB_SFX  SID audio
 AB_REU     REU audio streams
 
@@ -443,7 +471,7 @@ function buildNodes() {
 const { nodes, boxes } = buildNodes();
 if (uid >= K.SONG_UID && uid < K.SONG_UID + 100) throw new Error('uid clash');
 const project = {
-  asset_groups: [GROUP], asset_sort_mode: 'ADDR', ignored_conflicts: [], next_stable_uid: uid + 10, map_tile_bank_sel: -1,
+  asset_groups: GROUPS, asset_sort_mode: 'ADDR', ignored_conflicts: [], next_stable_uid: uid + 10, map_tile_bank_sel: -1,
   map_tile_bank: [], code_editor_font_index: 1, map_global_mixed: 1, kernal_unlocked: true, basic_unlocked: true,
   // PRG EXO: the plain PRG spans $D000-$DFFF (I/O), which breaks a disk load
   creator_locked: false, build_target: 2, nodes, boxes, assets: buildAssets(),
