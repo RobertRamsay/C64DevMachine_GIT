@@ -10,4 +10,4 @@ for (let i = 0; i < 65536; i++) {
 }
 for (const [a, b] of ranges) console.log('  differ $%s-$%s (%d bytes)', a.toString(16), b.toString(16), b - a + 1);
 // where does the editor's code in the macro columns end?
-for (const [lo, hi, n] of [[0x1190, 0x1A00, 'SFX'], [0x1A00, 0x4000, 'MUSIC']]) { let last = -1; for (let i = lo; i < hi + 0x400 && i < 65536; i++) if (e.m[i] > 0) last = i; console.log('  %s column last non-zero byte $%s', n, last.toString(16)); }
+for (const [lo, hi, n] of [[0x1190, 0x1A00, 'SFX'], [0x1A00, 0x4000, 'MUSIC']]) { let last = -1; for (let i = lo; i < hi; i++) if (e.m[i] > 0) last = i; console.log('  %s column last non-zero byte $%s', n, last.toString(16)); }
