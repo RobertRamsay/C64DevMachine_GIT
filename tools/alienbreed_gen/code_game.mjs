@@ -389,8 +389,10 @@ RsClr:
 
 // LOAD DECK: the deck's map of stamp ids (AB_DECKS) into the 128 x 96 char
 // map at $A000 - void everywhere, then the cropped map at its place, one
-// 2 x 2 char stamp per id; read the deck table (start, vents, cores,
-// colours, alien settings)
+// 2 x 2 char stamp per id. Vents and reactor cores are found in the map as
+// it goes (a vent / core stamp is one), the marine's start comes from the
+// spawn layer (AB_DECKS_SPAWNS) and the deck table gives colours and the
+// alien settings.
 LoadDeck:
  LDX LEVEL
  LDA DeckMapL,X
@@ -415,6 +417,9 @@ LdFill:
  LDX Z_MPH
  CPX #$D0
  BNE LdFill
+ LDA #$00
+ STA NVENTS
+ STA NCORES
  LDY #DT_MY
  LDA (Z_PTR2),Y
  CLC
@@ -449,6 +454,7 @@ LdCell:
  INY
  LDA META_BR,X
  STA (Z_MP),Y
+ JSR LdMark
  INC Z_MP
  INC Z_MP
  DEC Z_I
@@ -464,27 +470,142 @@ LdInc:
 LdIo:
  LDY #$00
  RTS
-LdDone:
- LDY #DT_PX
- LDA (Z_PTR2),Y
+// a vent or core stamp (its top-left char): note where it is, in chars
+LdMark:
+ LDA META_TL,X
+ CMP #CH_VENT
+ BEQ LmVent
+ CMP #CH_CORE
+ BNE LmOut
+ LDY NCORES
+ CPY #$04
+ BCS LmOut
+ LDA Z_MP
+ STA CORE_X,Y
+ JSR LmRow
+ STA CORE_Y,Y
+ INC NCORES
+LmOut:
+ RTS
+LmVent:
+ LDY NVENTS
+ CPY #32
+ BCS LmOut
+ LDA Z_MP
+ STA VENT_X,Y
+ JSR LmRow
+ STA VENT_Y,Y
+ INC NVENTS
+ RTS
+LmRow:
+ LDA Z_MPH
+ SEC
+ SBC #$A0
+ ASL A
+ RTS
+// the marine's start: the first MARINE START (spawn type 0) on this deck's
+// map. AB_DECKS_SPAWNS = a count per map, then 4 bytes per entity
+// (x lo, x hi, y, type; x / y in chars). Start = x * 8 + 8, y * 8 + 8.
+LdStart:
+ LDA #<DECK_SPAWN_E
+ STA Z_PTR
+ LDA #>DECK_SPAWN_E
+ STA Z_PTRH
+ LDX #$00
+LsMap:
+ CPX LEVEL
+ BEQ LsFind
+ LDA DECK_SPAWNS,X
+ STA Z_J
+LsSkip:
+ LDA Z_J
+ BEQ LsNext
+ JSR LsAdv
+ DEC Z_J
+ JMP LsSkip
+LsNext:
+ INX
+ JMP LsMap
+LsFind:
+ LDA DECK_SPAWNS,X
+ STA Z_J
+LsLook:
+ LDA Z_J
+ BEQ LsNone
+ LDY #$03
+ LDA (Z_PTR),Y
+ BEQ LsGot
+ JSR LsAdv
+ DEC Z_J
+ JMP LsLook
+LsGot:
+ LDY #$00
+ LDA (Z_PTR),Y
  STA START_X
  INY
- LDA (Z_PTR2),Y
+ LDA (Z_PTR),Y
  STA START_XH
  INY
- LDA (Z_PTR2),Y
+ LDA (Z_PTR),Y
  STA START_Y
- INY
+ JMP LsPix
+// none placed: the middle of the map
+LsNone:
+ LDY #DT_MW
  LDA (Z_PTR2),Y
+ LSR A
+ LDY #DT_MX
+ CLC
+ ADC (Z_PTR2),Y
+ ASL A
+ STA START_X
+ LDY #DT_MH
+ LDA (Z_PTR2),Y
+ LSR A
+ LDY #DT_MY
+ CLC
+ ADC (Z_PTR2),Y
+ ASL A
+ STA START_Y
+ LDA #$00
+ STA START_XH
+LsPix:
+ LDA #$00
  STA START_YH
- INY
- LDA (Z_PTR2),Y
- STA NVENTS
- INY
- LDA (Z_PTR2),Y
- STA NCORES
- STA CORES
- INY
+ LDX #$03
+LsMul:
+ ASL START_X
+ ROL START_XH
+ ASL START_Y
+ ROL START_YH
+ DEX
+ BNE LsMul
+ LDA START_X
+ CLC
+ ADC #$08
+ STA START_X
+ BCC LsPx
+ INC START_XH
+LsPx:
+ LDA START_Y
+ CLC
+ ADC #$08
+ STA START_Y
+ BCC LsPy
+ INC START_YH
+LsPy:
+ RTS
+LsAdv:
+ LDA Z_PTR
+ CLC
+ ADC #$04
+ STA Z_PTR
+ BCC LsAo
+ INC Z_PTRH
+LsAo:
+ RTS
+LdDone:
+ LDY #DT_COLOUR
  LDA (Z_PTR2),Y
  ORA #$08
  STA GAME_COL
@@ -500,41 +621,16 @@ LdDone:
  INY
  LDA (Z_PTR2),Y
  STA ALIEN_SPD
- LDX #$00
- LDY #DT_VX
-LdVent:
- LDA (Z_PTR2),Y
- STA VENT_X,X
- INY
- INX
- CPX #32
- BNE LdVent
- LDX #$00
-LdVent2:
- LDA (Z_PTR2),Y
- STA VENT_Y,X
- INY
- INX
- CPX #32
- BNE LdVent2
- LDX #$00
-LdCore:
- LDA (Z_PTR2),Y
- STA CORE_X,X
- INY
- INX
- CPX #$04
- BNE LdCore
+ LDA NCORES
+ STA CORES
  LDX #$00
 LdCore2:
- LDA (Z_PTR2),Y
- STA CORE_Y,X
  LDA #CORE_HITS
  STA CORE_HP,X
- INY
  INX
  CPX #$04
  BNE LdCore2
+ JSR LdStart
  LDA #$00
  STA VENT_I
  LDA #$0B
@@ -651,9 +747,13 @@ MpNu:
 MpNd:
  DEC Z_K
  BNE MpStep
- LDA FRAMECNT
- AND #$07
- BNE MpStill
+// a step every 6 frames while moving (one stride is about 9 pixels)
+ INC P_STEP
+ LDA P_STEP
+ CMP #$06
+ BCC MpStill
+ LDA #$00
+ STA P_STEP
  LDA P_ANIM
  EOR #$01
  STA P_ANIM

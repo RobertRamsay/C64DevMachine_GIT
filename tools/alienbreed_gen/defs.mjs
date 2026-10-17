@@ -84,7 +84,7 @@ function v(name, size = 1) {
   'DISP_CX', 'DISP_CY', 'NCX', 'NCY',
   // player
   'P_DIR', 'P_ANIM', 'P_ACC', 'P_INV', 'P_DEAD', 'P_MOVED', 'ENERGY', 'LIVES', 'KEYS', 'AMMOL', 'AMMOH',
-  'FIRE_CD', 'TERM_LOCK', 'LEVEL', 'CORES', 'SD_ON', 'SD_MIN', 'SD_SEC', 'SD_SUB', 'MSG_T',
+  'FIRE_CD', 'P_STEP', 'TERM_LOCK', 'LEVEL', 'CORES', 'SD_ON', 'SD_MIN', 'SD_SEC', 'SD_SUB', 'MSG_T',
   'HUD_DIRTY', 'SPAWN_T', 'VENT_I', 'NVENTS', 'NCORES', 'MENU_I', 'MENU_CD', 'BORDER_T',
   'START_X', 'START_XH', 'START_Y', 'START_YH',
   // audio

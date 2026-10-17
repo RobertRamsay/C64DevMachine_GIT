@@ -54,8 +54,6 @@ const dput = (name, bytes, align = 1, group = 'DECKS') => { dp = Math.ceil(dp / 
 decks.forEach((d, i) => dput('DECK_TAB' + i, d.table, 16));
 dput('HUD_TPL', hud.chars, 16, 'TEXT + HUD');
 dput('HUD_TCOL', hud.cols, 16, 'TEXT + HUD');
-dput('AB_DIGI_CLIP', digi.ammo.bytes, 16, 'SAMPLES');
-C.DIGI_CLIP = C.AB_DIGI_CLIP;
 if (dp > 0x6000) throw new Error('tables overflow $6000: $' + dp.toString(16));
 const TABLES_END = dp;
 // data area $8000-$9FFF
@@ -79,7 +77,17 @@ const STAMP_SLOTS = 64;
 const stampTable = [...stamps, ...Array(STAMP_SLOTS * 4 - stamps.length).fill(CH.VOID)];
 const deckBytes = [...stampTable];
 decks.forEach((d, i) => { C['DECK_MAP' + i] = DECKS_AT + deckBytes.length; deckBytes.push(...d.ids); });
+// the spawn layer's TABLE export (AB_DECKS_SPAWNS): a count per map, then
+// x lo, x hi, y, type per entity - here one MARINE START (type 0) per deck
+const SPAWN_TYPES = [{ name: 'MARINE START', frame: SPR.MARINE + 8, col: 5, hp: 1, pts: 0, speed: 0, move: 0, value: 0, drop: 0 }];
+const spawnMaps = decks.map(d => [[d.startChar.x, d.startChar.y, 0]]);
+C.DECK_SPAWNS = DECKS_AT + deckBytes.length;
+deckBytes.push(...spawnMaps.map(l => l.length));
+C.DECK_SPAWN_E = DECKS_AT + deckBytes.length;
+for (const l of spawnMaps) for (const [x, y, t] of l) deckBytes.push(x & 255, x >> 8, y, t);
 dp += deckBytes.length;
+dput('AB_DIGI_CLIP', digi.ammo.bytes, 1, 'SAMPLES');
+C.DIGI_CLIP = C.AB_DIGI_CLIP;
 if (dp > MEM.DATA_END) throw new Error('data overflows $A000: $' + dp.toString(16));
 Object.assign(C, texts.C, hud.O);
 Object.assign(C, { DIGI_LATCH: digi.latch, DIGI_V_FRAMES: digi.voice.frames, DIGI_C_FRAMES: digi.ammo.frames });
@@ -338,7 +346,7 @@ function buildAssets() {
   out.push(asset('AB_TITLE_SPR', 'SPRITE_SET', TITLE_SPR_AT, tspr.bytes, tm, { group: 'TITLE' }));
   const smeta = structuredClone(BASE_ASSETS.ACTORS.meta);
   Object.assign(smeta, { used_count: sprites.count, format: 'RAW', bg_col: 0, mc1_col: 0, mc2_col: 15, mc_mode: 1, mc_col1: 0, mc_col2: 15,
-    sprite_mcs: sprites.mcs, sprite_ucs: sprites.mcs.map((m, i) => i < SPR.ALIEN ? 5 : i < SPR.BOOM ? 10 : i < SPR.BULLET ? 8 : i < SPR.GOO ? 7 : i === SPR.FLASH ? 7 : 13) });
+    sprite_mcs: sprites.mcs, sprite_ucs: sprites.mcs.map((m, i) => i < SPR.ALIEN ? 5 : i < SPR.BOOM ? 10 : i < SPR.BULLET ? 8 : i < SPR.GOO ? 7 : i === SPR.FLASH ? 7 : i >= SPR.RECOIL ? 5 : 13) });
   if (smeta.compositor) smeta.compositor = { active_layer: 0, active_frame: 0, active_cell: -1, frames: [{ cells: [] }] };
   out.push(asset('AB_SPRITES', 'SPRITE_SET', MEM.SPRITES, sprites.bytes, smeta, { group: 'GRAPHICS' }));
   // the decks: a META_TILESET of 2 x 2 char stamps on AB_CHARS, one map per
@@ -351,6 +359,7 @@ function buildAssets() {
     map_w: decks.map(d => d.box.w * 2), map_h: decks.map(d => d.box.h * 2), map_names: decks.map(d => d.deck.tab),   // map tabs take 12 chars
     map_reps: decks.map(() => 1), map_addr: decks.map(() => -1),
     chains: [], chain_cols: [], chain_col_link: [], chain_dir: 0, chain_emit: 0, chain_tab_addr: -1, chain_rev: 0, active_chain: -1,
+    spawn: { sprite_set: 'AB_SPRITES', types: SPAWN_TYPES, maps: spawnMaps, sel: 0, mode: false, show: true, emit: 1 },
     raw_rows: 3, test_grid: [], test_zoom: 1, zoom: 4, tone_sorted: false, bmp_mode: 'MC',
     mc_mode: 1, mc_fg: decks[0].deck.colour, mc_bg: 0, mc_col1: 11, mc_col2: 15, map_mc_bg: 0, map_mc_col1: 11, map_mc_col2: 15,
     ecm_bg1: 6, ecm_bg2: 14, ecm_bg3: 3, active_char: 0, active_colour: 1, paint_mc: 1,

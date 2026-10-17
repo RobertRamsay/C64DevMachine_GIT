@@ -68,6 +68,7 @@ function scr_mts_raw_rows_size(_m) {
             }
             _ids += _icols * floor(array_length(_m.maps[_imi]) / _icols);
         }
+        _ids += scr_mts_spawn_table_size(_m);
         return _ids;
     }
     var _total = 0;
@@ -154,6 +155,56 @@ function scr_mts_stamp_table_size(_m) {
     return _m.stamp_count * _m.stamp_w * _m.stamp_h;
 }
 
+/// @desc Is the spawn layer's TABLE export on (STAMP IDS only)?
+/// @param {struct} _m  the META_TILESET meta
+function scr_mts_spawn_emit_on(_m) {
+    if (_m.raw_rows < 3) return false;
+    if (!variable_struct_exists(_m, "spawn") || !is_struct(_m.spawn)) return false;
+    return variable_struct_exists(_m.spawn, "emit") && _m.spawn.emit == 1;
+}
+
+/// @desc The spawn table's size: a count byte per map + 4 bytes per entity.
+/// @param {struct} _m  the META_TILESET meta
+function scr_mts_spawn_table_size(_m) {
+    if (!scr_mts_spawn_emit_on(_m)) return 0;
+    var _n  = array_length(_m.maps);
+    var _sz = _n;
+    for (var _mi = 0; _mi < _n; _mi++) {
+        if (_mi < array_length(_m.spawn.maps)) _sz += 4 * min(255, array_length(_m.spawn.maps[_mi]));
+    }
+    return _sz;
+}
+
+/// @desc SPAWN TABLE (spawn layer TABLE on, STAMP IDS): after the maps,
+///       <NAME>_SPAWNS = one count byte per map (in map order), then every
+///       map's entities in turn, 4 bytes each: x lo, x hi, y, type - x / y in
+///       chars (the sprite's top-left, as placed), type = spawn type number.
+///       For game code that places its own actors (no MACRO_SPAWNER node).
+/// @param {array}  _list  instruction list
+/// @param {struct} _a     the META_TILESET asset
+function scr_mts_spawn_emit(_list, _a) {
+    var _m = _a.meta;
+    if (!scr_mts_spawn_emit_on(_m)) return;
+    var _n = array_length(_m.maps);
+    array_push(_list, ["label", _a.name + "_SPAWNS"]);
+    for (var _mi = 0; _mi < _n; _mi++) {
+        var _c = (_mi < array_length(_m.spawn.maps)) ? min(255, array_length(_m.spawn.maps[_mi])) : 0;
+        array_push(_list, ["byte", _c]);
+    }
+    for (var _mj = 0; _mj < _n; _mj++) {
+        if (_mj >= array_length(_m.spawn.maps)) continue;
+        var _l = _m.spawn.maps[_mj];
+        for (var _ei = 0; _ei < min(255, array_length(_l)); _ei++) {
+            var _e = _l[_ei];
+            var _ex = max(0, floor(real(_e[0])));
+            array_push(_list, ["byte", _ex & 0xFF]);
+            array_push(_list, ["byte", (_ex >> 8) & 0xFF]);
+            array_push(_list, ["byte", max(0, floor(real(_e[1]))) & 0xFF]);
+            array_push(_list, ["byte", max(0, floor(real(_e[2]))) & 0xFF]);
+        }
+    }
+}
+
 /// @desc STAMP IDS export (raw_rows 3 = IDS, 4 = IDS COL). For engines that
 ///       expand their own metatiles (Fuzzball C64): at the asset address the
 ///       stamp table, <NAME>_STAMPS, stamp_w x stamp_h chars per stamp - row by
@@ -210,4 +261,5 @@ function scr_mts_stamp_ids_emit(_list, _a) {
             array_push(_list, ["byte", _id & 0xFF]);
         }
     }
+    scr_mts_spawn_emit(_list, _a);
 }

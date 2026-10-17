@@ -389,10 +389,16 @@ const packHi = px => { const b = []; for (const r of px) { for (let k = 0; k < 3
 
 // direction d: 0 up, 1 up-right ... 7 up-left; screen y grows down
 const dirVec = d => { const a = d * Math.PI / 4; return [Math.sin(a), -Math.cos(a)]; };
-function marine(d, phase) {
+// phase +1 / -1: the two walk frames (one boot forward, the other back, the
+// shoulders swaying towards the back boot); recoil: the frame just after a
+// shot - the body knocked back, the rifle pulled in, its muzzle lit
+function marine(d, phase, recoil = false) {
   const [fx, fy] = dirVec(d), [qx, qy] = [-fy, fx];   // q = to the marine's right
-  const cx = 12, cy = 10.5, ang = Math.atan2(fy, fx);
-  const leg = (side) => ell(cx + qx * 3.2 * side + fx * 2.6 * phase * side, cy + qy * 3.2 * side + fy * 2.6 * phase * side, 2.6, 2.2, ang, 1);
+  const kick = recoil ? -1.6 : 0, sway = recoil ? 0 : phase * 0.7;
+  const cx = 12 + fx * kick + qx * sway, cy = 10.5 + fy * kick + qy * sway, ang = Math.atan2(fy, fx);
+  const stride = recoil ? 0.8 : 4.2;
+  const leg = (side) => ell(12 + qx * 3.2 * side + fx * stride * phase * side, 10.5 + qy * 3.2 * side + fy * stride * phase * side, 2.6, 2.2, ang, 1);
+  const gun = recoil ? 7.5 : 9.5;
   return drawSprite([
     leg(1), leg(-1),
     ell(cx - fx * 3.2, cy - fy * 3.2, 2.2, 4, ang, 1),                                       // backpack
@@ -400,7 +406,8 @@ function marine(d, phase) {
     // armour shading: a black dither over the rear half darkens the green to a mid tone
     { c: 1, hit: (x, y) => ell(cx, cy, 4.2, 6.2, ang, 0).hit(x, y) && ((x - cx) * fx + (y - cy) * fy) < -0.6
       && (Math.floor(x / 2) + Math.floor(y)) % 2 === 0 },
-    seg(cx + qx * 2.8, cy + qy * 2.8, cx + qx * 2.8 + fx * 9.5, cy + qy * 2.8 + fy * 9.5, 1.5, 3),   // rifle
+    seg(cx + qx * 2.8, cy + qy * 2.8, cx + qx * 2.8 + fx * gun, cy + qy * 2.8 + fy * gun, 1.5, 3),   // rifle
+    ...(recoil ? [ell(cx + qx * 2.8 + fx * (gun + 1.6), cy + qy * 2.8 + fy * (gun + 1.6), 1.6, 1.6, 0, 2)] : []),   // muzzle
     ell(cx + fx * 0.6, cy + fy * 0.6, 2.9, 2.9, 0, 3),                                      // helmet
     ell(cx + fx * 1.3, cy + fy * 1.3, 1.4, 1.4, 0, 2),                                      // visor
   ]);
@@ -453,7 +460,7 @@ function flash() {
 }
 
 // frame order (pointer = SPR_PTR0 + index)
-export const SPR = { MARINE: 0, ALIEN: 16, BOOM: 32, BULLET: 36, GOO: 44, FLASH: 48, COUNT: 49 };
+export const SPR = { MARINE: 0, ALIEN: 16, BOOM: 32, BULLET: 36, GOO: 44, FLASH: 48, RECOIL: 49, COUNT: 57 };
 export function buildSprites() {
   const frames = [];
   for (let d = 0; d < 8; d++) for (const ph of [1, -1]) frames.push(packMc(marine(d, ph)));
@@ -462,6 +469,7 @@ export function buildSprites() {
   for (let d = 0; d < 8; d++) frames.push(packHi(bullet(d)));
   for (let n = 0; n < 4; n++) frames.push(packMc(boom(3 - n)));   // GOO: an alien climbing out of a vent
   frames.push(packHi(flash()));
+  for (let d = 0; d < 8; d++) frames.push(packMc(marine(d, 1, true)));   // RECOIL: one per direction
   const mcs = frames.map((_, i) => ((i >= SPR.BULLET && i < SPR.GOO) || i === SPR.FLASH) ? 0 : 1);
   return { bytes: frames.flat(), count: frames.length, mcs };
 }

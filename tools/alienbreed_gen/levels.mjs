@@ -221,15 +221,12 @@ export function buildDecks() {
     const cores = items.filter(i => i.ch === 'R');
     if (vents.length > 32) throw new Error(deck.name + ': more than 32 vents');
     if (cores.length > 4) throw new Error(deck.name + ': more than 4 cores');
-    // deck table: start x,y (pixels, centre of the tile), vents, cores
-    const px = start.x * 16 + 8, py = start.y * 16 + 8;
-    const table = [px & 255, px >> 8, py & 255, py >> 8, vents.length, cores.length, deck.colour, deck.alien,
-      deck.alienHp, deck.spawnRate, deck.alienSpeed, box.x, box.y, box.w, box.h, 0];
-    for (let i = 0; i < 32; i++) table.push(vents[i] ? vents[i].x * 2 : 0);
-    for (let i = 0; i < 32; i++) table.push(vents[i] ? vents[i].y * 2 : 0);
-    for (let i = 0; i < 4; i++) table.push(cores[i] ? cores[i].x * 2 : 0);
-    for (let i = 0; i < 4; i++) table.push(cores[i] ? cores[i].y * 2 : 0);
-    return { n, deck, T, map, tiles, ids, box, table, keysFound: res.keysFound, vents: vents.length, cores: cores.length };
+    // deck table: colours, alien settings, the map's crop (in tiles). The
+    // start is a spawn-layer entity, vents and cores are found in the map.
+    const table = [deck.colour, deck.alien, deck.alienHp, deck.spawnRate, deck.alienSpeed, box.x, box.y, box.w, box.h];
+    // the marine's start for the spawn layer: x / y in chars, top-left
+    const startChar = { x: start.x * 2, y: start.y * 2 };
+    return { n, deck, T, map, tiles, ids, box, table, startChar, keysFound: res.keysFound, vents: vents.length, cores: cores.length };
   });
   if (meta.size > 64) throw new Error('too many metatiles: ' + meta.size);
   // stamp table: per stamp TL TR BL BR (the META_TILESET's stamp_data order)
@@ -238,4 +235,4 @@ export function buildDecks() {
   return { decks, stamps, metaCount: meta.size };
 }
 // deck table layout (offsets into the per-deck BYTE_DATA table)
-export const DT = { PX: 0, PY: 2, NVENT: 4, NCORE: 5, COLOUR: 6, ALIEN: 7, HP: 8, RATE: 9, SPEED: 10, MX: 11, MY: 12, MW: 13, MH: 14, VX: 16, VY: 48, CX: 80, CY: 84, SIZE: 88 };
+export const DT = { COLOUR: 0, ALIEN: 1, HP: 2, RATE: 3, SPEED: 4, MX: 5, MY: 6, MW: 7, MH: 8, SIZE: 9 };

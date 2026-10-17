@@ -219,11 +219,21 @@ BsAlive:
  LDA P_INV
  AND #$04
  BNE BsP
+// the 3 frames after a shot: the recoil frame for this direction
+ LDA FIRE_CD
+ CMP #FIRE_RATE-2
+ BCC BsWalk
+ LDA P_DIR
+ CLC
+ ADC #SPR_RECOIL
+ JMP BsMar
+BsWalk:
  LDA P_DIR
  ASL A
  ORA P_ANIM
  CLC
  ADC #SPR_MARINE
+BsMar:
  LDY #MARINE_COL
 BsPlace:
  LDX #$00

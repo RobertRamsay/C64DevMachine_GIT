@@ -198,6 +198,8 @@ function scr_mts_raw_rows_ranges(_a) {
         _pc += _sz;
         _rs += _sz;
     }
+    // STAMP IDS: the spawn table (spawn layer TABLE on) follows the last map
+    _rs += scr_mts_spawn_table_size(_m);
     if (_m.chain_emit == 1) {
         if (_m.chain_tab_addr >= 0) {
             if (_rs > 0) {

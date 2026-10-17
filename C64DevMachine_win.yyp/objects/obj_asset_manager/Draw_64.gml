@@ -10440,8 +10440,15 @@ case "META_TILESET": {
     // a stamp at a time (SHIFT: 8 stamps), VIEW mode moves the view window a
     // char at a time (SHIFT: a stamp). Held keys repeat after a short delay.
     // Read here, before the draw range is worked out, so the move shows on
-    // the same frame. Not while a text field has the keyboard.
-    if (!global.is_any_text_active) {
+    // the same frame. Only with the pointer over the map canvas (its rect is
+    // kept from the last frame, where the canvas is laid out), never while a
+    // text field has the keyboard, and not when the arrows nudge a picked
+    // spawn instead (scr_spawn_editor).
+    var _ak_canvas = variable_struct_exists(_m, "arrow_canvas") ? _m.arrow_canvas : [0, 0, -1, -1];
+    var _ak_spawn  = variable_struct_exists(_m, "spawn") && is_struct(_m.spawn) && _m.spawn.mode
+                  && variable_global_exists("spawn_pick") && global.spawn_pick >= 0;
+    if (!global.is_any_text_active && !global.integer_box_open && !_ak_spawn
+     && point_in_rectangle(_mx, _my, _ak_canvas[0], _ak_canvas[1], _ak_canvas[2], _ak_canvas[3])) {
         var _ak_dx = keyboard_check(vk_right) - keyboard_check(vk_left);
         var _ak_dy = keyboard_check(vk_down) - keyboard_check(vk_up);
         if (!variable_struct_exists(_m, "arrow_hold")) _m.arrow_hold = 0;
@@ -11759,6 +11766,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     }
 
   // Test area interaction (suppressed while the SLICE modal is open)
+    _m.arrow_canvas = [_test_x1, _map_top, _test_x2, _canvas_y2];   // where the arrow keys pan (next frame)
     scr_ui_info(!global.integer_box_open && !mts_chain_mode && !_spawn_busy && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2), "MAP: L PLACE SELECTED STAMP, R ERASE, ALT+L PICK STAMP, WHEEL ZOOM, SPACE/MID-DRAG OR ARROWS PAN (SHIFT FASTER), T TYPES, E SPAWNS");
     if (!global.integer_box_open && !mts_chain_mode && !_spawn_busy && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2)) {
         // Screen cell -> grid cell. VIEW mode draws from _draw_col0/_draw_row0
@@ -12215,6 +12223,34 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _ssx2 = window_get_width()  / global.gui_w;
     var _ssy2 = window_get_height() / display_get_gui_height();
 
+    // ARROW KEYS with the pointer over the strip: step the active char
+    // (LEFT / RIGHT one char, UP / DOWN one strip row), held keys repeat,
+    // and the strip scrolls to keep it in sight. Its colour is adopted as a
+    // click would.
+    var _cp_sx2 = _strip_x1 + 45 + _cp_cnt2 * (_cp_sz2 + 2);
+    if (!global.is_any_text_active && !global.integer_box_open
+     && point_in_rectangle(_mx, _my, _strip_x1 + 45, _cp_y2, _cp_sx2, _cp_y2 + _cp_strip_h)) {
+        var _sk_d = (keyboard_check(vk_right) - keyboard_check(vk_left)) + _cp_cnt2 * (keyboard_check(vk_down) - keyboard_check(vk_up));
+        if (!variable_struct_exists(_m, "strip_arrow_hold")) _m.strip_arrow_hold = 0;
+        if (_sk_d == 0) {
+            _m.strip_arrow_hold = 0;
+        } else {
+            if (_m.strip_arrow_hold == 0 || (_m.strip_arrow_hold >= 15 && (_m.strip_arrow_hold mod 3) == 0)) {
+                var _sk_new = _m.active_char + _sk_d;
+                if (_sk_new >= 0 && _sk_new < _cp_tot2) {
+                    _m.active_char = _sk_new;
+                    if (_sk_new < array_length(_m.char_lut)) _m.active_colour = _m.char_lut[_sk_new] & 0x0F;
+                    var _sk_row = _sk_new div _cp_cnt2;
+                    if (_sk_row < _m.char_strip_scroll_row) _m.char_strip_scroll_row = _sk_row;
+                    if (_sk_row >= _m.char_strip_scroll_row + _cp_rows) _m.char_strip_scroll_row = _sk_row - _cp_rows + 1;
+                    _m.char_strip_scroll_row = clamp(_m.char_strip_scroll_row, 0, _cp_max_scroll);
+                    _cp_start_row = _m.char_strip_scroll_row;
+                }
+            }
+            _m.strip_arrow_hold++;
+        }
+    }
+
     scr_mts_glyph_begin();
     for (var _crow = 0; _crow < _cp_rows; _crow++) {
         for (var _pi2 = 0; _pi2 < _cp_cnt2; _pi2++) {
@@ -12223,7 +12259,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
             var _cpx1      = _strip_x1 + 45 + _pi2 * (_cp_sz2 + 2);
             var _cp_y2_row = _cp_y2 + _crow * (_cp_sz2 + 2);
             var _cphov     = point_in_rectangle(_mx, _my, _cpx1, _cp_y2_row, _cpx1 + _cp_sz2, _cp_y2_row + _cp_sz2);
-            scr_ui_info(_cphov, "CHAR " + string(_ci2) + ": L SELECT TO PAINT/EDIT, ALT+L TILE TYPE UP, R TILE TYPE DOWN");
+            scr_ui_info(_cphov, "CHAR " + string(_ci2) + ": L SELECT TO PAINT/EDIT, ARROWS STEP, ALT+L TILE TYPE UP, R TILE TYPE DOWN");
             var _cpsel     = (_m.active_char == _ci2);
 
             var _strip_real_char = _ecm_mode ? (_ci2 mod 64) : _ci2;

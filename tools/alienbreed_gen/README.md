@@ -109,7 +109,8 @@ constants only in `.byte`, no label arithmetic, and zero-page names `Z_*`.
 | `node shots.mjs tests/walk.json 6,12 name` | Scripted joystick build + VICE screenshots |
 | `node machine.mjs PRG seconds [--reu img]` | Headless C64 (6502 + raster IRQ + CIA2 NMI + REU): SID / `$D418` activity |
 | `node soak.mjs PRG 120` | Random walker with fire held. State every 5 s, frame-loop check |
-| `node deckcheck.mjs PRG` | Loads both decks in the game, compares `$A000` with the generator's maps |
+| `node deckcheck.mjs PRG` | Loads both decks in the game: the `$A000` map, vents and cores found, the marine start |
+| `node marinesheet.mjs out.png` | The marine frames (walk A, walk B, recoil per direction) as a PNG |
 | `node deck2.mjs PRG` | Deck 2: shoot the cores, self-destruct, lift, back to the title |
 | `node hybrid.mjs script out.prg` | The editor's build with a test joystick spliced in |
 | `node compare.mjs a.prg b.prg` | Byte compare of two PRGs |
