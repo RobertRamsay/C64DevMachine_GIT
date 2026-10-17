@@ -8,6 +8,6 @@ node build.mjs again; each one replaces the generator's own version:
   key.wav  terminal.wav  alarm.wav  core_hit.wav  explode.wav
                                                 -> 5512 Hz, 4-bit
 
-This is where the original Amiga audio goes once Team17 supplies it: the
-tracks in the GamesNostalgia package are in Team17's packed module format
-and could not be extracted cleanly.
+alienmenu.bp is the original title tune (SoundMon module, from the Amiga
+disk): build.mjs converts it into the Music Maker song and renders it for
+the REU title clip. A title.wav here replaces that render.

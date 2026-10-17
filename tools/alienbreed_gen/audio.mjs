@@ -1,81 +1,31 @@
 // ALIEN BREED 64 audio.
 //
-// STOCK C64: the title theme is a MUSIC_MAKER asset (edit it in the Music
-// Maker), the effects a SFX_MAKER asset on voice 3.
+// STOCK C64: the title theme is the original tune converted into a
+// MUSIC_MAKER asset (edit it in the Music Maker), the effects a SFX_MAKER
+// asset on voice 3.
 //
-// C64 ULTIMATE / REU: the same theme and effects as 4-bit sample streams in
-// the REU, played into $D418 by an NMI (one REU DMA byte per sample). The
-// converter takes audio_src/<clip>.wav when it is there (drop the original
-// Amiga audio in to replace a clip) and otherwise renders its own version:
-// the Music Maker song through a sample-style synth (choir pad, resonant
-// bass, real drums, echo) and synthesised effects.
+// C64 ULTIMATE / REU: the theme and effects as 4-bit sample streams in the
+// REU, played into $D418 by an NMI (one REU DMA byte per sample). The title
+// clip is the original Amiga module rendered with its own samples
+// (bprender.mjs); effects are synthesised. audio_src/<clip>.wav replaces a clip.
 import fs from 'fs';
 import path from 'path';
 import { BASE_ASSETS } from './art.mjs';
 import { SFX } from './defs.mjs';
+import { convertBpsm } from './bp2mm.mjs';
+import { renderBpsm } from './bprender.mjs';
 
 // ------------------------------------------------------------ the song
-// tokens: '.' hold, '-' note off, 'C-4' note (pattern instrument),
-// 'n:C-4' note with instrument n
-export const INSTR = [
-  { name: 'LEAD', text: '$41&V$24,D2,L1', attack: 1, decay: 8, sustain: 10, release: 6, pulse_width: 1400 },
-  { name: 'RESOBASS', text: '$21,D4,$20,---', attack: 0, decay: 7, sustain: 6, release: 3, pulse_width: 2048 },
-  { name: 'KICK', text: '$11&N+12,N+5,N,N-7,N-12,$10,---', attack: 0, decay: 6, sustain: 0, release: 2, pulse_width: 2048 },
-  { name: 'SNARE', text: '$81&N+24,$41&N+2,$81&N+22,D2,$80,---', attack: 0, decay: 7, sustain: 0, release: 4, pulse_width: 2048 },
-  { name: 'HIHAT', text: '$81&N+40,D1,$80,---', attack: 0, decay: 3, sustain: 0, release: 1, pulse_width: 2048 },
-  { name: 'CHOIR PAD', text: '$41&V$12,D2,L1', attack: 7, decay: 9, sustain: 10, release: 8, pulse_width: 1800 },
-  { name: 'ARP MINOR', text: '$41&N,N+3,N+7,N,L1', attack: 0, decay: 9, sustain: 5, release: 3, pulse_width: 2048 },
-  { name: 'ARP MAJOR', text: '$41&N,N+4,N+7,N,L1', attack: 0, decay: 9, sustain: 5, release: 3, pulse_width: 2048 },
-];
-const bassPat = (r) => {
-  const n1 = r + '1', n2 = r + '2';
-  const bar = [n1, '.', n2, '.', '.', n1, n2, '.', n1, '.', n2, n1, '.', n2, '.', n2];
-  return [...bar, ...bar].join(' ');
-};
-const drum = bar => (bar + ' ' + bar);
-export const PATTERNS = [
-  ['LEAD A1', 0, 'E-5 . . . . . A-4 . C-5 . . . B-4 . A-4 . E-5 . . . . . . . D-5 . C-5 . B-4 . G-4 .'],
-  ['LEAD A2', 0, 'A-4 . . . . . . . . . . . - . . . C-5 . D-5 . E-5 . . . G-5 . . . E-5 . . .'],
-  ['LEAD F', 0, 'F-5 . . . E-5 . . . C-5 . . . A-4 . . . C-5 . . . . . . . A-4 . G-4 . F-4 . . .'],
-  ['LEAD G', 0, 'G-4 . . . . . B-4 . D-5 . . . G-5 . . . F-5 . . . E-5 . . . D-5 . . . B-4 . . .'],
-  ['LEAD E', 0, 'E-5 . . . . . . . G#4 . . . B-4 . . . E-5 . . . D-5 . . . B-4 . . . G#4 . . .'],
-  ['BASS A', 1, bassPat('A-')],
-  ['BASS F', 1, bassPat('F-')],
-  ['BASS G', 1, bassPat('G-')],
-  ['BASS E', 1, bassPat('E-')],
-  ['DRUMS', 2, drum('2:C-3 . 4:C-5 . 3:C-3 . 4:C-5 . 2:C-3 2:C-3 4:C-5 . 3:C-3 . 4:C-5 4:C-5')],
-  ['DRUMS INTRO', 2, drum('2:C-3 . . . 4:C-5 . . . 2:C-3 . . . 4:C-5 . . .')],
-  ['CHOIR A', 5, 'A-4 . . . . . . . . . . . . . . . C-5 . . . . . . . . . . . . . . .'],
-  ['CHOIR F', 5, 'F-4 . . . . . . . . . . . . . . . G-4 . . . . . . . . . . . . . . .'],
-  ['ARP A', 6, 'A-4 . . . A-4 . . . A-5 . . . A-4 . . . A-4 . . . A-4 . . . A-5 . . . A-4 . . .'],
-  ['ARP F', 7, 'F-4 . . . F-4 . . . F-5 . . . F-4 . . . G-4 . . . G-4 . . . G-5 . . . G-4 . . .'],
-];
-const R = (v1, v2, v3) => ({ v1, v2, v3 });
-export const ORDER = [
-  R(-1, 5, 10), R(-1, 5, 10), R(-1, 6, 10), R(-1, 7, 9),
-  R(0, 5, 9), R(1, 5, 9), R(2, 6, 9), R(3, 7, 9), R(0, 5, 9), R(1, 5, 9), R(2, 6, 9), R(4, 8, 9),
-  R(11, 5, 13), R(11, 5, 13), R(12, 6, 14), R(12, 7, 14),
-];
-export const PLAY_SPEED = 6;
-
-function parsePat([name, instr, str]) {
-  const toks = str.trim().split(/\s+/);
-  if (toks.length !== 32) throw new Error(`${name}: ${toks.length} steps`);
-  return toks.map(t => {
-    if (t === '.') return { note: '', instr_idx: -1, empty: true };
-    if (t === '-') return { note: '---', instr_idx: -1, empty: false };
-    const m = t.match(/^(?:(\d+):)?([A-G][-#]\d)$/);
-    if (!m) throw new Error(`${name}: bad token ${t}`);
-    return { note: m[2], instr_idx: m[1] !== undefined ? +m[1] : instr, empty: false };
-  });
-}
-
+// The original title tune: Brian Postma SoundMon module ALIENMENU from the
+// Amiga disk (audio_src/alienmenu.bp), converted note for note by bp2mm.mjs.
+export const MODULE = new URL('./audio_src/alienmenu.bp', import.meta.url);
 export function buildMusicMeta() {
+  const r = convertBpsm(fs.readFileSync(MODULE), 0);
   const m = structuredClone(BASE_ASSETS.MUSIC_AND_SFX.meta);
-  m.instruments = INSTR.map(i => ({ ...i }));
-  m.patterns = PATTERNS.map(p => ({ name: p[0], pattern_len: 32, steps: parsePat(p) }));
-  m.songs = [{ loop: true, loop_row: 0, name: 'ALIEN BREED THEME', order: ORDER.map(o => ({ force_len: 32, v1: o.v1, v2: o.v2, v3: o.v3, repeat_short: false })) }];
-  m.play_speed = PLAY_SPEED;
+  m.instruments = r.instruments;
+  m.patterns = r.patterns;
+  m.songs = [{ loop: true, loop_row: 0, name: 'ALIENMENU (ALIEN BREED)', order: r.order }];
+  m.play_speed = r.speed;
   m.voice_mask = 7;            // all three voices: no SFX run on the title
   return m;
 }
@@ -101,84 +51,8 @@ export function buildSfxMeta() {
 }
 
 // ------------------------------------------------------------ renderer
-const NOTE = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
-const freqOf = n => { const m = n.match(/^([A-G])([-#])(\d)$/); const k = NOTE[m[1] + (m[2] === '#' ? '#' : '')] + 12 * +m[3]; return 440 * Math.pow(2, (k - 57) / 12); };
-const FRAME_S = 1 / 50.125;
 
 function makeRng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 * 2 - 1; }; }
-
-// The theme as a studio track: one pass of the song order.
-export function renderTheme(SR) {
-  const rowS = PLAY_SPEED * FRAME_S;
-  const total = Math.ceil(ORDER.length * 32 * rowS * SR);
-  const mix = new Float32Array(total);
-  const pats = PATTERNS.map(parsePat);
-  const noise = makeRng(17);
-  const events = [];   // {voice, t, dur, instr, f}
-  for (const [voice, key] of [[0, 'v1'], [1, 'v2'], [2, 'v3']]) {
-    let open = null;
-    ORDER.forEach((o, oi) => {
-      const p = o[key];
-      for (let s = 0; s < 32; s++) {
-        const t = (oi * 32 + s) * rowS;
-        const st = p < 0 ? { note: '---', empty: false } : pats[p][s];
-        if (st.empty) continue;
-        if (open) { open.dur = t - open.t; events.push(open); open = null; }
-        if (st.note !== '---') open = { voice, t, instr: st.instr_idx, f: freqOf(st.note) };
-      }
-    });
-    if (open) { open.dur = ORDER.length * 32 * rowS - open.t; events.push(open); }
-  }
-  for (const e of events) {
-    const i0 = Math.floor(e.t * SR);
-    const name = INSTR[e.instr].name;
-    const len = name === 'KICK' ? 0.35 : name === 'SNARE' ? 0.3 : name === 'HIHAT' ? 0.06 : name === 'RESOBASS' ? Math.min(e.dur, 0.28) : e.dur + 0.25;
-    const n = Math.min(Math.floor(len * SR), total - i0);
-    let ph = [0, 0, 0, 0, 0], lp = 0, bp = 0;
-    for (let k = 0; k < n; k++) {
-      const t = k / SR;
-      let v = 0;
-      if (name === 'KICK') {
-        const f = 45 + 110 * Math.exp(-t * 30); ph[0] += f / SR;
-        v = Math.sin(2 * Math.PI * ph[0]) * Math.exp(-t * 9) * 1.1;
-      } else if (name === 'SNARE') {
-        ph[0] += 185 / SR;
-        v = (noise() * 0.8 * Math.exp(-t * 18) + Math.sin(2 * Math.PI * ph[0]) * 0.5 * Math.exp(-t * 30)) * 0.9;
-      } else if (name === 'HIHAT') {
-        const x = noise(); v = (x - lp) * Math.exp(-t * 60) * 0.35; lp = x;
-      } else if (name === 'RESOBASS') {
-        ph[0] = (ph[0] + e.f / SR) % 1;
-        const saw = ph[0] * 2 - 1;
-        const cut = 0.04 + 0.25 * Math.exp(-t * 14);       // resonant filter sweep
-        bp += cut * (saw - lp - 0.6 * bp); lp += cut * bp;
-        v = (lp * 0.9 + bp * 0.5) * Math.exp(-t * 3) * 0.9;
-      } else if (name === 'CHOIR PAD') {
-        for (let d = 0; d < 5; d++) ph[d] = (ph[d] + e.f * (1 + (d - 2) * 0.006) / SR) % 1;
-        const s = ph.reduce((a, p) => a + (p * 2 - 1), 0) / 5;
-        lp += 0.08 * (s - lp);
-        const env = Math.min(1, t / 0.6) * (t > e.dur ? Math.exp(-(t - e.dur) * 5) : 1);
-        v = lp * env * 0.55;
-      } else if (name.startsWith('ARP')) {
-        const steps = name === 'ARP MINOR' ? [0, 3, 7, 0] : [0, 4, 7, 0];
-        const f = e.f * Math.pow(2, steps[Math.floor(t / FRAME_S) % 4] / 12);
-        ph[0] = (ph[0] + f / SR) % 1;
-        v = (ph[0] < 0.5 ? 0.3 : -0.3) * Math.exp(-t * 2.5) * (t > e.dur ? Math.exp(-(t - e.dur) * 12) : 1);
-      } else {   // LEAD: detuned pulse + saw with vibrato
-        const vib = 1 + 0.006 * Math.sin(2 * Math.PI * 5.5 * t) * Math.min(1, t / 0.3);
-        ph[0] = (ph[0] + e.f * vib / SR) % 1; ph[1] = (ph[1] + e.f * vib * 1.004 / SR) % 1;
-        const s = (ph[0] < 0.35 ? 1 : -1) * 0.5 + (ph[1] * 2 - 1) * 0.5;
-        lp += 0.18 * (s - lp);
-        const env = Math.min(1, t / 0.02) * (t > e.dur ? Math.exp(-(t - e.dur) * 8) : 0.75 + 0.25 * Math.exp(-t * 3));
-        v = lp * env * 0.5;
-      }
-      mix[i0 + k] += v;
-    }
-  }
-  // echo (the Amiga menu tune is drenched in it)
-  const d = Math.floor(0.36 * SR);
-  for (let i = d; i < total; i++) mix[i] += mix[i - d] * 0.32;
-  return mix;
-}
 
 export function renderSfx(name, SR) {
   const rnd = makeRng(name.length * 977);
@@ -227,25 +101,40 @@ export function readWav(file) {
   }
   return { rate: fmt.rate, pcm: out };
 }
-function resample(pcm, from, to) {
+// Resample with a windowed-sinc low-pass (cutoff in Hz, default 0.43 x the
+// new rate): anything above it only comes back as aliasing noise.
+export function resample(pcm, from, to, cutoff = 0.43 * to) {
   if (from === to) return pcm;
   const n = Math.floor(pcm.length * to / from), out = new Float32Array(n), r = from / to;
-  // box-filter down to avoid aliasing, then linear interpolation
+  const fc = Math.min(cutoff, 0.5 * to) / from, half = Math.ceil(4 / fc);
+  const kernel = new Float32Array(2 * half + 1);
+  let sum = 0;
+  for (let k = -half; k <= half; k++) {
+    const sinc = k === 0 ? 2 * fc : Math.sin(2 * Math.PI * fc * k) / (Math.PI * k);
+    const w = 0.42 + 0.5 * Math.cos(Math.PI * k / half) + 0.08 * Math.cos(2 * Math.PI * k / half);   // Blackman
+    kernel[k + half] = sinc * w; sum += sinc * w;
+  }
+  for (let k = 0; k < kernel.length; k++) kernel[k] /= sum;
   for (let i = 0; i < n; i++) {
-    const a = i * r, b = a + r; let s = 0, c = 0;
-    for (let j = Math.floor(a); j < Math.max(Math.floor(a) + 1, Math.floor(b)); j++) { if (j < pcm.length) { s += pcm[j]; c++; } }
-    out[i] = c ? s / c : 0;
+    const c = Math.round(i * r);
+    let s = 0;
+    for (let k = -half; k <= half; k++) { const j = c + k; if (j >= 0 && j < pcm.length) s += pcm[j] * kernel[k + half]; }
+    out[i] = s;
   }
   return out;
 }
 
-// float PCM -> 4-bit $D418 values (0-15), normalised, softly limited, dithered
-function toNibbles(pcm, seed = 1) {
+// float PCM -> 4-bit $D418 values (0-15): normalised and softly limited to
+// use all 16 levels, rounded without dither (dither on 4 bits is a constant
+// hiss), and held on the centre level in near-silence
+export function toNibbles(pcm) {
   let peak = 1e-6; for (const v of pcm) peak = Math.max(peak, Math.abs(v));
-  const rnd = makeRng(seed), out = new Uint8Array(pcm.length);
+  const out = new Uint8Array(pcm.length);
+  let env = 0;
   for (let i = 0; i < pcm.length; i++) {
-    const x = Math.tanh(1.6 * pcm[i] / peak) / Math.tanh(1.6);
-    const q = Math.round(7.5 + x * 7.4 + (rnd() + rnd()) * 0.35);
+    const x = Math.tanh(1.8 * pcm[i] / peak) / Math.tanh(1.8);
+    env = Math.max(Math.abs(x), env * 0.999);
+    const q = env < 0.04 ? 8 : Math.round(7.5 + x * 7.49);
     out[i] = Math.max(0, Math.min(15, q));
   }
   return out;
@@ -262,9 +151,9 @@ export function buildReuAudio(srcDir) {
     const wav = path.join(srcDir, name + '.wav');
     let pcm, source;
     if (fs.existsSync(wav)) { const w = readWav(wav); pcm = resample(w.pcm, w.rate, rate); source = 'audio_src/' + name + '.wav'; }
-    else if (i === 0) { const hi = renderTheme(rate * 4); pcm = resample(hi, rate * 4, rate); source = 'rendered theme'; }
+    else if (i === 0) { const hi = renderBpsm(fs.readFileSync(MODULE), 0, rate * 4).pcm; pcm = resample(hi, rate * 4, rate, 3400); source = 'ALIENMENU module render'; }
     else { const hi = renderSfx(SFX[i - 1], rate * 4); pcm = resample(hi, rate * 4, rate); source = 'synthesised'; }
-    clips.push({ name, rate, nib: toNibbles(pcm, i + 3), loop: i === 0 ? 1 : 0, source });
+    clips.push({ name, rate, nib: toNibbles(pcm), loop: i === 0 ? 1 : 0, source });
   });
   // layout: clips one after the other, each followed by 256 bytes of silence
   let at = REU_CLIPS;

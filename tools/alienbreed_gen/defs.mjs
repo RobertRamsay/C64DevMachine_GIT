@@ -6,9 +6,9 @@
 // $0030-$00FF  game zero page (Z_*)
 // $0200-$02FF  variables          $0340-$03FF  variables
 // $0400-$07FF  arrays (sprite shadow, actors, HUD buffers)
-// $0801-$1FFF  BASIC stub, INIT, low code
-// $2000-$2BFF  SFX column (SFX_MAKER driver, built by the editor's macros)
-// $2C00-$3FFF  MUSIC column (Music Maker player + TITLE THEME)
+// $0801-$118F  BASIC stub, INIT, low code
+// $1190-$19FF  SFX column (SFX_MAKER driver, built by the editor's macros)
+// $1A00-$3FFF  MUSIC column (Music Maker player + ALIENMENU)
 // $4000/$4400  game screens A/B (double buffered), HUD rows 22-24 in both
 // $4800-$4FFF  game charset (0-95 font, 96-254 station tiles)
 // $5000-$5FFF  sprites (64 frames, pointer $40 up)
@@ -26,8 +26,8 @@ export const MEM = {
   SCRA: 0x4000, SCRB: 0x4400, CHARSET: 0x4800, SPRITES: 0x5000,
   MAP: 0xA000, MAPW: 128, MAPH: 96,
   DATA: 0x8000, DATA_END: 0xA000,
-  SFX_ORG: 0x2000, MUSIC_ORG: 0x2C00, MUSIC_END: 0x4000,
-  LOW_ORG: 0x0900, LOW_END: 0x2000,
+  SFX_ORG: 0x1190, MUSIC_ORG: 0x1A00, MUSIC_END: 0x4000,
+  LOW_ORG: 0x0900, LOW_END: 0x1190,
   HIGH_ORG: 0x6000, HIGH_END: 0x7800,
   TITLE_BMP: 0xE000, TITLE_VSCR: 0xC400, TITLE_VCOL: 0xC7E8, TITLE_STORE: 0x7800, TITLE_VSPR: 0xC000,
 };

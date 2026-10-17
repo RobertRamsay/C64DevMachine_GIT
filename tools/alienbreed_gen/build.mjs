@@ -113,7 +113,7 @@ const COLUMNS = [
     note: 'HELPERS\nMap pointer, char under a\nbox, tiles to map + screen,\nBCD score, joystick.' },
   { name: '04 TITLE', area: 'low', blocks: [['TITLE', fillTitle(G.TITLE)]],
     note: 'TITLE\nAB_TITLE_BMP (bank 3) with\nsprite text in two bands.\nLEFT = C64 (SID), RIGHT =\nC64U (REU stream).' },
-  { name: '05 GAME STATES', area: 'low', blocks: [['STATES', G.STATES]],
+  { name: '05 GAME STATES', area: 'high', blocks: [['STATES', G.STATES]],
     note: 'GAME STATES\nNew game, deck load (RLE\nmetatiles -> 128 x 96 map),\nthe frame loop, death,\nself-destruct clock.' },
   { name: '06 SCROLL', area: 'high', blocks: [['SCROLL', V.SCROLL]],
     note: 'SCROLL\n8-way, double buffered:\na new char cell redraws the\nback screen (unrolled),\nshown with the new fine\nscroll at the next frame.' },
@@ -280,7 +280,9 @@ function writePrg(file) {
   console.log('wrote %s (%d bytes)', file, img.length + 2);
 }
 writePrg(path.join(OUTDIR, TEST ? 'alienbreed_test.prg' : 'alienbreed.prg'));
-const reuImg = Buffer.alloc(Math.max(0x20000, Math.ceil(reu.total / 0x10000) * 0x10000));
+// VICE wants a standard REU size (128 KB .. 16 MB, a power of two)
+let reuSize = 0x20000; while (reuSize < reu.total) reuSize *= 2;
+const reuImg = Buffer.alloc(reuSize);
 Buffer.from(reu.dir).copy(reuImg, REU_DIR);
 for (const c of reu.clips) Buffer.from(c.bytes).copy(reuImg, c.start);
 fs.writeFileSync(path.join(OUTDIR, 'alienbreed.reu'), reuImg);
@@ -322,13 +324,13 @@ function buildAssets() {
   for (const d of DATA) out.push(asset(d.name, 'BYTE_DATA', d.address, d.bytes, bmeta(d.bytes)));
   out.push(asset('AB_MUSIC', 'MUSIC_MAKER', 0, [0], buildMusicMeta()));
   out.push(asset('AB_SFX', 'SFX_MAKER', 0, [0], buildSfxMeta()));
-  // REU audio: directory + clips (<= 32 KB per asset), at fixed REU addresses
+  // REU audio: directory + clips (<= 64 KB per asset), at fixed REU addresses
   const links = [];
   out.push(asset('REU_DIR', 'BYTE_DATA', 0xC000, reu.dir, rawMeta(reu.dir.length)));
   links.push({ asset_name: 'REU_DIR', reu_address: REU_DIR, auto_pack: false });
   for (const c of reu.clips) {
-    for (let o = 0, part = 0; o < c.bytes.length; o += 0x8000, part++) {
-      const chunk = Array.from(c.bytes.subarray(o, o + 0x8000));
+    for (let o = 0, part = 0; o < c.bytes.length; o += 0x10000, part++) {
+      const chunk = Array.from(c.bytes.subarray(o, o + 0x10000));
       const name = `REU_${c.name.toUpperCase()}_${String(part).padStart(2, '0')}`;
       out.push(asset(name, 'BYTE_DATA', 0xC000, chunk, rawMeta(chunk.length)));
       links.push({ asset_name: name, reu_address: c.start + o, auto_pack: false });

@@ -7,8 +7,8 @@ two machines:
 
 | Machine | Audio |
 |---|---|
-| Stock C64 | Title theme from the Music Maker (`AB_MUSIC`), effects from the SFX Maker (`AB_SFX`, voice 3) |
-| C64 Ultimate (or any 17xx REU) | `AB_REU` (LOAD_REU) carries the theme and every effect as 4-bit samples. An NMI DMAs them byte by byte into `$D418`. RUN ON ULTIMATE uploads the image and F5 attaches it in VICE. |
+| Stock C64 | The original title tune (ALIENMENU) converted note for note into the Music Maker (`AB_MUSIC`); effects from the SFX Maker (`AB_SFX`, voice 3) |
+| C64 Ultimate (or any 17xx REU) | `AB_REU` (LOAD_REU) carries the original tune, rendered from its own Amiga samples, plus every effect, as 4-bit samples. An NMI DMAs them byte by byte into `$D418`. RUN ON ULTIMATE uploads the image and F5 attaches it in VICE. |
 
 ## Title
 
@@ -42,9 +42,9 @@ node editor.mjs                # round trip through a running, paired Dev Machin
 
 | Range | Use |
 |---|---|
-| `$0801-$1FFF` | Boot + low code |
-| `$2000-$2BFF` | SFX column (editor macros) |
-| `$2C00-$3FFF` | Music column (editor macros) |
+| `$0801-$118F` | Boot + low code |
+| `$1190-$19FF` | SFX column (editor macros) |
+| `$1A00-$3FFF` | Music column (editor macros; ALIENMENU ends near `$33CE`) |
 | `$4000/$4400` | Screens A/B |
 | `$4800` | Station charset |
 | `$5000` | Sprites |
@@ -66,7 +66,10 @@ The full map is in `defs.mjs`.
 | `koala.mjs` | Koala reader / PNG preview (`node koala.mjs art/title.kla out.png`) |
 | `levels.mjs` | Decks as rooms + corridors. Carving, a key/door reachability check, metatile RLE |
 | `texts.mjs` | HUD, messages, Intex / end pages |
-| `audio.mjs` | Music Maker song, SFX Maker effects, REU converter (WAV in `audio_src/`, else a rendered version) |
+| `audio.mjs` | Music Maker song, SFX Maker effects, REU converter (WAV in `audio_src/`, else the module render / synthesised effects) |
+| `bpsm.mjs` | Reader for Brian Postma SoundMon v2 modules (the format of the title tune) |
+| `bp2mm.mjs` | SoundMon to Music Maker: patterns, order + transposes, tempo, 4 voices onto 3, SID instruments |
+| `bprender.mjs` | Renders the module to PCM with its own samples (the REU title clip; `node bprender.mjs FILE 0 out.wav`) |
 | `code_core.mjs` | Boot, IRQs, REU stream, sound dispatch, helpers |
 | `code_game.mjs` | Title, deck load, game states, marine, weapons, aliens |
 | `code_view.mjs` | Camera + redraw, sprites, HUD, pages, Intex |
@@ -87,8 +90,8 @@ constants only in `.byte`, no label arithmetic, and zero-page names `Z_*`.
 
 ## Audio sources
 
-The Amiga data in the GamesNostalgia package is packed in Team17's own
-formats. Only the menu module's sample names (DEEPVOICEBASS, RESOBASS, SNARE,
-HIHAT, MINCHOIR, ...) were readable, so the theme is a new composition in
-that style. Put real WAVs in `audio_src/` (see its README) and rebuild to
-replace any REU clip.
+`audio_src/alienmenu.bp` is the title tune exactly as stored on the Amiga disk (Disk.2, offset `$2C00`): a Brian Postma SoundMon v2 module by Allister Brimble. It is Team17's music and is included for this pitch only.
+
+The SID version keeps every note, transpose and tempo change. The SoundMon synth instruments become Music Maker instrument programs. Instrument 1, the DEEPVOICEBASS "gargle" that opens the tune, is a sawtooth with a fast warble stepping down in pitch. Each sequence step drops the least important of the four Amiga voices, so empty and doubled voices go first.
+
+Put WAVs in `audio_src/` (see its README) and rebuild to replace any REU clip.
