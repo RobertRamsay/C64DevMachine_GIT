@@ -1,6 +1,9 @@
 // ALIEN BREED 64 - game code blocks: title, deck load, the frame loop and
 // game states, the marine, bullets, aliens, pickups, doors, reactor cores
 // and the self-destruct.
+import { nozzle } from './art.mjs';
+const NOZ = [0, 1, 2, 3, 4, 5, 6, 7].map(nozzle);
+const sb = v => '$' + (v & 255).toString(16).toUpperCase().padStart(2, '0');
 
 export const TITLE = `
 // TITLE: the Koala picture (bank 3) with sprite text in the logo's font.
@@ -1066,13 +1069,20 @@ FcSlot:
  LDY P_DIR
  TYA
  STA ADIR,X
+// from the rifle's muzzle for this direction (signed offsets)
+ CLC
  LDA PX
+ ADC NozX,Y
  STA AXL,X
  LDA PX+1
+ ADC NozXH,Y
  STA AXH,X
+ CLC
  LDA PY
+ ADC NozY,Y
  STA AYL,X
  LDA PY+1
+ ADC NozYH,Y
  STA AYH,X
  LDA #FIRE_RATE
  STA FIRE_CD
@@ -1300,6 +1310,15 @@ ChLeft:
  JMP SetMsg
 ChOut:
  RTS
+// the muzzle per direction (up, up-right ... up-left), low byte + sign byte
+NozX:
+ .byte ${NOZ.map(n => sb(n[0])).join(',')}
+NozXH:
+ .byte ${NOZ.map(n => n[0] < 0 ? '$FF' : '$00').join(',')}
+NozY:
+ .byte ${NOZ.map(n => sb(n[1])).join(',')}
+NozYH:
+ .byte ${NOZ.map(n => n[1] < 0 ? '$FF' : '$00').join(',')}
 `;
 
 export const ALIENS = `

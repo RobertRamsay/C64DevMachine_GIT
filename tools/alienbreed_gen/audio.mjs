@@ -56,7 +56,7 @@ function makeRng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1
 
 export function renderSfx(name, SR) {
   const rnd = makeRng(name.length * 977);
-  const dur = { GUN: 0.11, ALIEN_DIE: 0.45, HURT: 0.3, PICKUP: 0.32, DOOR: 0.7, KEY: 0.4, TERMINAL: 0.45, ALARM: 0.9, CORE_HIT: 0.3, EXPLODE: 1.3, CLIP: 0.16 }[name];
+  const dur = { GUN: 0.11, ALIEN_DIE: 0.45, HURT: 0.3, PICKUP: 0.32, DOOR: 0.7, KEY: 0.4, TERMINAL: 0.45, ALARM: 0.9, CORE_HIT: 0.3, EXPLODE: 1.3, CLIP: 0.26 }[name];
   const n = Math.floor(dur * SR), out = new Float32Array(n);
   let ph = 0, ph2 = 0, lp = 0, lp2 = 0;
   for (let k = 0; k < n; k++) {
@@ -71,9 +71,16 @@ export function renderSfx(name, SR) {
       case 'TERMINAL': { const on = Math.floor(t / 0.06) % 2 === 0; ph += (on ? 1200 : 900) / SR; v = (Math.sin(2 * Math.PI * ph) > 0 ? 0.5 : -0.5) * Math.exp(-t * 3); break; }
       case 'ALARM': { const f = 520 + 260 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 2.2 * t)); ph = (ph + f / SR) % 1; v = (ph * 2 - 1) * 0.6 * Math.min(1, (dur - t) / 0.1); break; }
       case 'CORE_HIT': { ph += 310 / SR; ph2 += 777 / SR; v = (Math.sin(2 * Math.PI * ph) * 0.6 + Math.sin(2 * Math.PI * ph2) * 0.4 + rnd() * 0.4 * Math.exp(-t * 40)) * Math.exp(-t * 9); break; }
-      // the ammo clip: one magazine in - a thud with its click on top
-      case 'CLIP': { const x = rnd(); const hit = (t0, dec, f, g) => t >= t0 ? Math.exp(-(t - t0) * dec) * (Math.sin(2 * Math.PI * f * (t - t0)) * 0.6 + x * 0.6) * g : 0;
-        v = hit(0, 60, 180, 0.9) + hit(0.008, 120, 2400, 0.55) + hit(0.03, 150, 1600, 0.3); break; }
+      // the ammo clip, snappy "ka-kunk chink": a bright snap, the magazine's
+      // low thunk home, then a short metallic ring (partials kept under
+      // 2.1 kHz - the stock C64 plays it at ~4.3 kHz)
+      case 'CLIP': { const x = rnd(); lp += 0.6 * (x - lp); const hp = x - lp, P = 2 * Math.PI;
+        if (t < 0.012) v += hp * (1 - t / 0.012) * 0.9;
+        const t1 = t - 0.035;
+        if (t1 >= 0) v += Math.exp(-t1 * 38) * (Math.sin(P * 150 * t1) * 0.8 + Math.sin(P * 310 * t1) * 0.4 + x * 0.3 * Math.exp(-t1 * 90));
+        const t2 = t - 0.115;
+        if (t2 >= 0) v += Math.exp(-t2 * 34) * (Math.sin(P * 1580 * t2) * 0.35 + Math.sin(P * 2030 * t2) * 0.25 + Math.sin(P * 1170 * t2) * 0.2) + (t2 < 0.004 ? hp * 0.5 : 0);
+        break; }
       case 'EXPLODE': { const x = rnd(); const c = 0.03 + 0.4 * Math.exp(-t * 3); lp += c * (x - lp); lp2 += 0.1 * (lp - lp2); v = (lp * 0.9 + lp2 * 1.5) * Math.min(1, t / 0.01) * Math.exp(-t * 2.4) * 1.3; break; }
     }
     out[k] = v;

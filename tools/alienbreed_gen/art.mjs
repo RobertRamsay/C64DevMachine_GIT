@@ -392,6 +392,12 @@ const dirVec = d => { const a = d * Math.PI / 4; return [Math.sin(a), -Math.cos(
 // phase +1 / -1: the two walk frames (one boot forward, the other back, the
 // shoulders swaying towards the back boot); recoil: the frame just after a
 // shot - the body knocked back, the rifle pulled in, its muzzle lit
+// where the rifle's muzzle is, in pixels from the sprite's centre (the
+// bullets and the muzzle flash start there)
+export function nozzle(d) {
+  const [fx, fy] = dirVec(d), [qx, qy] = [-fy, fx];
+  return [Math.round(qx * 2.8 + fx * 10.5), Math.round(qy * 2.8 + fy * 10.5)];
+}
 function marine(d, phase, recoil = false) {
   const [fx, fy] = dirVec(d), [qx, qy] = [-fy, fx];   // q = to the marine's right
   const kick = recoil ? -1.6 : 0, sway = recoil ? 0 : phase * 0.7;
@@ -460,16 +466,16 @@ function flash() {
 }
 
 // frame order (pointer = SPR_PTR0 + index)
-export const SPR = { MARINE: 0, ALIEN: 16, BOOM: 32, BULLET: 36, GOO: 44, FLASH: 48, RECOIL: 49, COUNT: 57 };
+// (an alien climbing out of a vent plays the BOOM frames backwards)
+export const SPR = { MARINE: 0, ALIEN: 16, BOOM: 32, BULLET: 36, FLASH: 44, RECOIL: 45, COUNT: 53 };
 export function buildSprites() {
   const frames = [];
   for (let d = 0; d < 8; d++) for (const ph of [1, -1]) frames.push(packMc(marine(d, ph)));
   for (let d = 0; d < 8; d++) for (const ph of [1, -1]) frames.push(packMc(alien(d, ph)));
   for (let n = 0; n < 4; n++) frames.push(packMc(boom(n)));
   for (let d = 0; d < 8; d++) frames.push(packHi(bullet(d)));
-  for (let n = 0; n < 4; n++) frames.push(packMc(boom(3 - n)));   // GOO: an alien climbing out of a vent
   frames.push(packHi(flash()));
   for (let d = 0; d < 8; d++) frames.push(packMc(marine(d, 1, true)));   // RECOIL: one per direction
-  const mcs = frames.map((_, i) => ((i >= SPR.BULLET && i < SPR.GOO) || i === SPR.FLASH) ? 0 : 1);
+  const mcs = frames.map((_, i) => (i >= SPR.BULLET && i <= SPR.FLASH) ? 0 : 1);
   return { bytes: frames.flat(), count: frames.length, mcs };
 }

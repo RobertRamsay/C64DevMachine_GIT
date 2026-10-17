@@ -54,18 +54,17 @@ const dput = (name, bytes, align = 1, group = 'DECKS') => { dp = Math.ceil(dp / 
 decks.forEach((d, i) => dput('DECK_TAB' + i, d.table, 16));
 dput('HUD_TPL', hud.chars, 16, 'TEXT + HUD');
 dput('HUD_TCOL', hud.cols, 16, 'TEXT + HUD');
+dput('CHAR_TYPES', charTypes, 256, 'GRAPHICS');
 if (dp > 0x6000) throw new Error('tables overflow $6000: $' + dp.toString(16));
 const TABLES_END = dp;
 // data area $8000-$9FFF
 dp = MEM.DATA;
-dput('CHAR_TYPES', charTypes, 256, 'GRAPHICS');
 // AB_TITLE_SPR is a SPRITE_SET (placed here, not a BYTE_DATA)
-dp = Math.ceil(dp / 256) * 256;
 C.AB_TITLE_SPR = dp;
 const TITLE_SPR_AT = dp;
-dp += 1024;
-const texts = buildTexts(Math.ceil(dp / 256) * 256);
-dput('TEXTS', texts.bytes, 256, 'TEXT + HUD');
+dp += tspr.count * 64;
+const texts = buildTexts(dp);
+dput('TEXTS', texts.bytes, 1, 'TEXT + HUD');
 // AB_DECKS (META_TILESET, STAMP IDS export): the stamp table, then each
 // deck's map of stamp ids, back to back
 dp = Math.ceil(dp / 16) * 16;
@@ -107,7 +106,7 @@ Object.assign(C, {
   SPEED_INT: 1, SPEED_FRAC: 0x80, FIRE_RATE: 7, BULLET_LIFE: 22,
   SPAWN_FAR_X: 24, SPAWN_FAR_Y: 18, SPAWN_NEAR: 5, SPAWN_FRAMES: 32, DIE_FRAMES: 16, CORE_HITS: 12,
   SD_START_MIN: 0x01, SD_START_SEC: 0x30, MSG_LEN, MSG_TIME: 150, PAGE_WAIT: 50, DECKS: decks.length,
-  INTEX_ITEMS: INTEX_ROWS.length, INTEX_CURSOR_COL: 1, INTEX_COL: 3, INTEX_SEL_COL: 1,
+  INTEX_ITEMS: INTEX_ROWS.length, INTEX_CURSOR_COL: 1, INTEX_COL: 3, INTEX_SEL_COL: 5,
 });
 // title: picture background, sprite text colours, frames (pointer = frame,
 // the text is copied to $C000 = pointer 0) and the two bands
@@ -170,7 +169,11 @@ if (TEST) {
   const bytes = [];
   for (const [n, b] of TEST) { let left = n; while (left > 0) { const k = Math.min(255, left); bytes.push(k, b); left -= k; } }
   bytes.push(0);
-  Object.assign(C, { T_REM: 0x03F0, T_B: 0x03F1, T_PTR: 0x03F2, T_PTRH: 0x03F3 });
+  // the script player keeps its state in 4 bytes no game variable uses
+  const T_AT = 0x02FC;
+  const clash = Object.entries(C).find(([k, v]) => typeof v === "number" && k.length > 1 && v >= T_AT && v < T_AT + 4 && !k.startsWith("T_"));
+  if (clash) throw new Error("test block variables at $" + T_AT.toString(16) + " clash with " + clash[0]);
+  Object.assign(C, { T_REM: T_AT, T_B: T_AT + 1, T_PTR: T_AT + 2, T_PTRH: T_AT + 3 });
   testBlock = `TestJoy:
  LDA T_PTRH
  BNE TjGo
@@ -346,7 +349,7 @@ function buildAssets() {
   out.push(asset('AB_TITLE_SPR', 'SPRITE_SET', TITLE_SPR_AT, tspr.bytes, tm, { group: 'TITLE' }));
   const smeta = structuredClone(BASE_ASSETS.ACTORS.meta);
   Object.assign(smeta, { used_count: sprites.count, format: 'RAW', bg_col: 0, mc1_col: 0, mc2_col: 15, mc_mode: 1, mc_col1: 0, mc_col2: 15,
-    sprite_mcs: sprites.mcs, sprite_ucs: sprites.mcs.map((m, i) => i < SPR.ALIEN ? 5 : i < SPR.BOOM ? 10 : i < SPR.BULLET ? 8 : i < SPR.GOO ? 7 : i === SPR.FLASH ? 7 : i >= SPR.RECOIL ? 5 : 13) });
+    sprite_mcs: sprites.mcs, sprite_ucs: sprites.mcs.map((m, i) => i < SPR.ALIEN ? 5 : i < SPR.BOOM ? 10 : i < SPR.BULLET ? 8 : i <= SPR.FLASH ? 7 : 5) });
   if (smeta.compositor) smeta.compositor = { active_layer: 0, active_frame: 0, active_cell: -1, frames: [{ cells: [] }] };
   out.push(asset('AB_SPRITES', 'SPRITE_SET', MEM.SPRITES, sprites.bytes, smeta, { group: 'GRAPHICS' }));
   // the decks: a META_TILESET of 2 x 2 char stamps on AB_CHARS, one map per
