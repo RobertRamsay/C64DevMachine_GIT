@@ -9860,8 +9860,11 @@ case "META_TILESET": {
     var _stamp_cap       = floor((8192 - _meta_idx_size) / max(1, _bytes_per_stamp));
     draw_set_font_l(fnt_c64_tiny);
     draw_set_color(make_color_rgb(120, 200, 255));
-    // Centred on the RAW ROWS button row (_cy+22 .. _cy+40) beside it.
-    scr_editor_label(_tscpx2 + 10, _cy + 22, _tscpx2 + 10, _cy + 40, L("STAMPS: ") + string(_m.stamp_count) + " / " + string(_stamp_cap), fa_left, 0);
+    // Centred on the RAW ROWS button row (_cy+22 .. _cy+40). Its column sits
+    // just right of the BG / C1 / C2 swatch rows (16 x 17 px from _vx1 + 36),
+    // which run underneath it.
+    var _si_x = _vx1 + 36 + 16 * 17 + 8;
+    scr_editor_label(_si_x, _cy + 22, _si_x, _cy + 40, L("STAMPS: ") + string(_m.stamp_count) + " / " + string(_stamp_cap), fa_left, 0);
     // Byte breakdown (uses _m.total_bytes computed below; falls back to 0 first frame)
     var _tb_disp  = variable_struct_exists(_m, "total_bytes") ? _m.total_bytes : 0;
     var _mtd_disp  = variable_struct_exists(_m, "mt_data_bytes_disp") ? _m.mt_data_bytes_disp : 0;
@@ -9876,7 +9879,7 @@ case "META_TILESET": {
     var _mem_total = _tb_disp;  // all maps + metatile data + char_lut table
     var _tb_head = "CHAR LUT:  " + string(_clut_disp) + "b\nMETATILE:  " + string(_mtd_disp) + "b\nMAPS:      " + string(_map_disp) + "b\nMAP MEM:   " + string(_map_mem) + "b\nTOTAL:  ";
     // Listed straight under STAMPS, in the column it heads.
-    var _tb_x  = _tscpx2 + 10;
+    var _tb_x  = _si_x;
     var _tb_y  = _cy + 42;
     var _tb_lh = string_height("X");
     draw_set_color(make_color_rgb(140, 140, 160));
@@ -10438,7 +10441,7 @@ case "META_TILESET": {
     var _view_zoom_cap = max(4, min(floor(_map_fit_w / max(1, _m.view_w)), floor(_map_fit_h / max(1, _m.view_h))));
     // ARROW KEYS shift the part of the map in view: MAP mode pans the camera
     // a stamp at a time (SHIFT: 8 stamps), VIEW mode moves the view window a
-    // char at a time (SHIFT: a stamp). Held keys repeat after a short delay.
+    // char at a time (SHIFT: a stamp). Held for 0.5 s, they scroll on every frame.
     // Read here, before the draw range is worked out, so the move shows on
     // the same frame. Only with the pointer over the map canvas (its rect is
     // kept from the last frame, where the canvas is laid out), never while a
@@ -10456,7 +10459,7 @@ case "META_TILESET": {
         if (_ak_dx == 0 && _ak_dy == 0) {
             _m.arrow_hold = 0;
         } else {
-            _ak_step = (_m.arrow_hold == 0) || (_m.arrow_hold >= 15 && (_m.arrow_hold mod 3) == 0);
+            _ak_step = (_m.arrow_hold == 0) || (_m.arrow_hold >= round(game_get_speed(gamespeed_fps) * 0.5));
             _m.arrow_hold++;
         }
         if (_ak_step) {
@@ -12224,7 +12227,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     var _ssy2 = window_get_height() / display_get_gui_height();
 
     // ARROW KEYS with the pointer over the strip: step the active char
-    // (LEFT / RIGHT one char, UP / DOWN one strip row), held keys repeat,
+    // (LEFT / RIGHT one char, UP / DOWN one strip row), held for 0.5 s they run on,
     // and the strip scrolls to keep it in sight. Its colour is adopted as a
     // click would.
     var _cp_sx2 = _strip_x1 + 45 + _cp_cnt2 * (_cp_sz2 + 2);
@@ -12235,7 +12238,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
         if (_sk_d == 0) {
             _m.strip_arrow_hold = 0;
         } else {
-            if (_m.strip_arrow_hold == 0 || (_m.strip_arrow_hold >= 15 && (_m.strip_arrow_hold mod 3) == 0)) {
+            if (_m.strip_arrow_hold == 0 || (_m.strip_arrow_hold >= round(game_get_speed(gamespeed_fps) * 0.5))) {
                 var _sk_new = _m.active_char + _sk_d;
                 if (_sk_new >= 0 && _sk_new < _cp_tot2) {
                     _m.active_char = _sk_new;
