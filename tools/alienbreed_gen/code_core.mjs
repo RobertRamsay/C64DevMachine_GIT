@@ -241,14 +241,11 @@ IrqHud:
  PHA
  LDA #$FF
  STA $D019
-// a stock-C64 sample's NMI (~70 cycles) is longer than a raster line and
-// would throw the FLD off: hold it for the split (the tick that comes due
-// meanwhile fires as soon as it is allowed again)
- LDA RAM_DIGI
- BEQ IhNoDg
+// any sample NMI (REU stream or stock C64 sample) landing between the
+// FLD's line writes throws them off: hold it for the split (the tick that
+// comes due meanwhile fires once it is allowed again)
  LDA #$01
  STA $DD0D
-IhNoDg:
  LDA #LINE_HUD_GO
 IhWait:
  CMP $D012
@@ -284,7 +281,7 @@ IhFldX:
  LDA #$10
  STA $D011
  STA $D016
- LDA RAM_DIGI
+ LDA A_ON
  BEQ IhNoDg2
  LDA #$81
  STA $DD0D
@@ -383,13 +380,31 @@ TLoPtr:
 
 // NMI: one REU byte straight into $D418 (the stream is set up by
 // AudioPlay: C64 address fixed at $D418, length 1). CIA 2 timer A clocks it.
+// The REU's address counter carries through 19 bits only: at each 512 KB
+// boundary ($x80000, low 19 bits back to 0) the bank bits above it are
+// stepped here, or a long clip (the title) would wrap to its block's start.
 Nmi:
  PHA
  LDA #$91
  STA $DF01
+ LDA $DF05
+ BEQ NmPage
+NmOut:
  LDA $DD0D
  PLA
  RTI
+NmPage:
+ LDA $DF04
+ BNE NmOut
+ LDA $DF06
+ AND #$07
+ BNE NmOut
+ LDA A_BANK
+ CLC
+ ADC #$08
+ STA A_BANK
+ STA $DF06
+ JMP NmOut
 
 // Commit the frame: the next LINE_VBL IRQ applies it. Waits until it has.
 Commit:
@@ -538,6 +553,8 @@ ApLoad:
  STA $DF05
  LDA REU_HDR+10,X
  STA $DF06
+ AND #$F8
+ STA A_BANK
  LDA #$01
  STA $DF07
  LDA #$00

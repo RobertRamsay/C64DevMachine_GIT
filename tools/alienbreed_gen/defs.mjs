@@ -88,7 +88,7 @@ function v(name, size = 1) {
   'HUD_DIRTY', 'SPAWN_T', 'VENT_I', 'NVENTS', 'NCORES', 'MENU_I', 'MENU_CD', 'BORDER_T',
   'START_X', 'START_XH', 'START_Y', 'START_YH',
   // audio
-  'AUDIO_MODE', 'REU_OK', 'A_ON', 'A_PRI', 'A_LOOP', 'A_REM0', 'A_REM1', 'A_REM2', 'A_SPF', 'A_CLIP',
+  'AUDIO_MODE', 'REU_OK', 'A_ON', 'A_PRI', 'A_LOOP', 'A_BANK', 'A_REM0', 'A_REM1', 'A_REM2', 'A_SPF', 'A_CLIP',
   'A_LATL', 'A_LATH', 'MUSIC_ON', 'SFX_ON',
   // display state applied by the frame IRQ, deck settings, misc
   'CUR_D011', 'CUR_D016', 'CUR_EN', 'CUR_D020', 'COL_REQ', 'TOUCH_TERM', 'GAME_COL', 'ALIEN_COL', 'ALIEN_HP', 'SPAWN_RATE', 'ALIEN_SPD',

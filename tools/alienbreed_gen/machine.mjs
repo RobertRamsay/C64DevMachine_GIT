@@ -63,7 +63,9 @@ export class Machine {
       if ((cmd & 3) === 1) this.cpu.onWrite(c, this.reu[e % this.reu.length]) || (this.mem[c] = this.reu[e % this.reu.length]);
       else if ((cmd & 3) === 0) this.reu[e % this.reu.length] = this.cpu.onRead(c);
       if (!fixC) c = (c + 1) & 0xFFFF;
-      if (!fixR) e = (e + 1) & 0xFFFFFF;
+      // the REC address counter carries through 19 bits only (512 KB): the bank
+      // bits above it stay put, as on a real REU, VICE and the C64 Ultimate
+      if (!fixR) e = (e & 0xF80000) | ((e + 1) & 0x7FFFF);
     }
     this.log.dma++;
     if (!(cmd & 0x20)) { r[2] = c & 255; r[3] = c >> 8; r[4] = e & 255; r[5] = (e >> 8) & 255; r[6] = e >> 16; r[7] = 1; r[8] = 0; }
