@@ -13,7 +13,7 @@ export const TW = 64, TH = 48;
 //   D door (on a corridor: spans its width), = hazard floor
 export const DECKS = [
   {
-    name: 'DECK 1  INTEX CONTROL',
+    name: 'DECK 1  INTEX CONTROL', tab: 'DECK1 INTEX',
     goal: 'LOCATE THE LIFT TO DECK 2',
     colour: 6,           // colour RAM: blue plating
     alien: 10, alienHp: 2, spawnRate: 70, alienSpeed: 0xA0,
@@ -44,7 +44,7 @@ export const DECKS = [
     ],
   },
   {
-    name: 'DECK 2  REACTOR',
+    name: 'DECK 2  REACTOR', tab: 'DECK2 REACTR',
     goal: 'DESTROY THE 4 REACTOR CORES',
     colour: 2,           // colour RAM: red alert plating
     alien: 4, alienHp: 3, spawnRate: 50, alienSpeed: 0xC0,

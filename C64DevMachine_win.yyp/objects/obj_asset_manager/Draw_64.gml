@@ -10436,6 +10436,39 @@ case "META_TILESET": {
     // out of VIEW mode drops back into MAP mode starting at this same value,
     // so the two modes read as one continuous zoom rather than two systems.
     var _view_zoom_cap = max(4, min(floor(_map_fit_w / max(1, _m.view_w)), floor(_map_fit_h / max(1, _m.view_h))));
+    // ARROW KEYS shift the part of the map in view: MAP mode pans the camera
+    // a stamp at a time (SHIFT: 8 stamps), VIEW mode moves the view window a
+    // char at a time (SHIFT: a stamp). Held keys repeat after a short delay.
+    // Read here, before the draw range is worked out, so the move shows on
+    // the same frame. Not while a text field has the keyboard.
+    if (!global.is_any_text_active) {
+        var _ak_dx = keyboard_check(vk_right) - keyboard_check(vk_left);
+        var _ak_dy = keyboard_check(vk_down) - keyboard_check(vk_up);
+        if (!variable_struct_exists(_m, "arrow_hold")) _m.arrow_hold = 0;
+        var _ak_step = false;
+        if (_ak_dx == 0 && _ak_dy == 0) {
+            _m.arrow_hold = 0;
+        } else {
+            _ak_step = (_m.arrow_hold == 0) || (_m.arrow_hold >= 15 && (_m.arrow_hold mod 3) == 0);
+            _m.arrow_hold++;
+        }
+        if (_ak_step) {
+            var _ak_fast = keyboard_check(vk_shift);
+            if (_m.edit_view_mode == 1 && _m.active_map >= 0 && _m.active_map < array_length(_m.map_w)) {
+                var _ak_cx = _ak_fast ? _m.stamp_w : 1;
+                var _ak_cy = _ak_fast ? _m.stamp_h : 1;
+                _m.offset_x = clamp(_m.offset_x + _ak_dx * _ak_cx, 0, max(0, _m.map_w[_m.active_map] - _m.view_w));
+                _m.offset_y = clamp(_m.offset_y + _ak_dy * _ak_cy, 0, max(0, _m.map_h[_m.active_map] - _m.view_h));
+            } else if (_m.edit_view_mode != 1) {
+                // clamped to the map below, once the visible size is known
+                var _ak_n = _ak_fast ? 8 : 1;
+                if (!variable_struct_exists(_m, "map_pan_col")) _m.map_pan_col = 0;
+                if (!variable_struct_exists(_m, "map_pan_row")) _m.map_pan_row = 0;
+                _m.map_pan_col = max(0, _m.map_pan_col + _ak_dx * _ak_n);
+                _m.map_pan_row = max(0, _m.map_pan_row + _ak_dy * _ak_n);
+            }
+        }
+    }
     if (_m.edit_view_mode == 1 && _m.active_map >= 0)
     {
         // Char window [offset .. offset+view). First/last metatile that touches it.
@@ -11726,7 +11759,7 @@ for (var _row = 0; _row < _m.stamp_h; _row++) {
     }
 
   // Test area interaction (suppressed while the SLICE modal is open)
-    scr_ui_info(!global.integer_box_open && !mts_chain_mode && !_spawn_busy && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2), "MAP: L PLACE SELECTED STAMP, R ERASE, ALT+L PICK STAMP, WHEEL ZOOM, SPACE/MID-DRAG PAN, T TYPES, E SPAWNS");
+    scr_ui_info(!global.integer_box_open && !mts_chain_mode && !_spawn_busy && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2), "MAP: L PLACE SELECTED STAMP, R ERASE, ALT+L PICK STAMP, WHEEL ZOOM, SPACE/MID-DRAG OR ARROWS PAN (SHIFT FASTER), T TYPES, E SPAWNS");
     if (!global.integer_box_open && !mts_chain_mode && !_spawn_busy && point_in_rectangle(_mx, _my, _test_x1, _map_top, _test_x2, _canvas_y2)) {
         // Screen cell -> grid cell. VIEW mode draws from _draw_col0/_draw_row0
         // with a sub-metatile pixel shift, so add that shift back into the mouse
