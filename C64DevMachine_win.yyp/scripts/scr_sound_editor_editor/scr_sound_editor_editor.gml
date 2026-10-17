@@ -2166,9 +2166,18 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
             _m.nav_down_timer = 0;   // (Ctrl+Down's own repeat keeps it while held)
         }
 
-        if (keyboard_check_pressed(vk_home)) {
+        // HOME / END: first / last step of the pattern, unless the song order
+        // list has them (pointer over it, or it was clicked last: order_keys).
+        var _grid_home_end = !(_m[$ "order_keys"] ?? false);
+        if (_grid_home_end && keyboard_check_pressed(vk_home)) {
             _m.sel_step = 0;
             if (_m.sel_step < _m.list_scroll) { _m.list_scroll = _m.sel_step; }
+            _m.sel_anchor_voice = _m.sel_voice;
+            _m.sel_anchor_step  = _m.sel_step;
+        }
+        if (_grid_home_end && keyboard_check_pressed(vk_end)) {
+            _m.sel_step = _grid_len - 1;
+            if (_m.sel_step >= _m.list_scroll + _vis) { _m.list_scroll = _m.sel_step - _vis + 1; }
             _m.sel_anchor_voice = _m.sel_voice;
             _m.sel_anchor_step  = _m.sel_step;
         }
@@ -2870,6 +2879,48 @@ function scr_sound_editor_editor(_asset, _vx1, _vy1, _vx2, _vy2, _cy, _mx, _my) 
     if (point_in_rectangle(_mx, _my, _ox0 - 4, _oy0 - 2, _ox0 + _ord_full_w + 4, _oy0 + _ord_vis * _ord_row_h + 2)) {
         if (mouse_wheel_up())   { _m.order_scroll = max(0, _m.order_scroll - 1); }
         if (mouse_wheel_down()) { _m.order_scroll = min(max(0, array_length(_cur_song.order) - _ord_vis), _m.order_scroll + 1); }
+    }
+
+    // ── SCROLLBAR + FIRST / LAST ROW ── right of the table: a jump-to-first
+    // button, the scrollbar, a jump-to-last button. HOME / END do the same
+    // while the order list has them: the pointer is over it, or it was the
+    // last thing clicked and the pointer is not over the pattern grid (whose
+    // own HOME / END move the cursor to the first / last step).
+    var _ord_n  = array_length(_cur_song.order);
+    var _osb_x1 = _ox0 + _ord_full_w + 8;
+    var _osb_x2 = _osb_x1 + 14;
+    var _osb_y1 = _oy0 - 2;
+    var _osb_y2 = _oy0 + _ord_vis * _ord_row_h + 2;
+    var _ord_jump = 0;   // -1 first row, 1 last row
+    var _ot_hov = point_in_rectangle(_mx, _my, _osb_x1, _osb_y1, _osb_x2, _osb_y1 + 16);
+    var _oe_hov = point_in_rectangle(_mx, _my, _osb_x1, _osb_y2 - 16, _osb_x2, _osb_y2);
+    scr_mm_info(_ot_hov, "JUMPS TO THE FIRST ORDER ROW (HOME OVER THE ORDER LIST)");
+    scr_mm_info(_oe_hov, "JUMPS TO THE LAST ORDER ROW (END OVER THE ORDER LIST)");
+    scr_editor_control(_osb_x1, _osb_y1, _osb_x2, _osb_y1 + 16, _ot_hov, false);
+    scr_editor_control(_osb_x1, _osb_y2 - 16, _osb_x2, _osb_y2, _oe_hov, false);
+    var _osb_cx = (_osb_x1 + _osb_x2) * 0.5;
+    draw_set_color(_ot_hov ? c_white : make_color_rgb(150, 160, 185));
+    draw_line(_osb_x1 + 3, _osb_y1 + 4, _osb_x2 - 3, _osb_y1 + 4);
+    draw_triangle(_osb_cx, _osb_y1 + 6, _osb_x1 + 3, _osb_y1 + 12, _osb_x2 - 3, _osb_y1 + 12, false);
+    draw_set_color(_oe_hov ? c_white : make_color_rgb(150, 160, 185));
+    draw_line(_osb_x1 + 3, _osb_y2 - 4, _osb_x2 - 3, _osb_y2 - 4);
+    draw_triangle(_osb_cx, _osb_y2 - 6, _osb_x1 + 3, _osb_y2 - 12, _osb_x2 - 3, _osb_y2 - 12, false);
+    if (_ot_hov && mouse_check_button_pressed(mb_left)) _ord_jump = -1;
+    if (_oe_hov && mouse_check_button_pressed(mb_left)) _ord_jump = 1;
+    _m.order_scroll = scr_sound_editor_scrollbar(_m, "order_scroll_drag", _m.order_scroll, _ord_n, _ord_vis,
+        _osb_x1, _osb_y1 + 18, _osb_x2 - _osb_x1, (_osb_y2 - 18) - (_osb_y1 + 18), _mx, _my);
+
+    var _ord_area  = point_in_rectangle(_mx, _my, _ox0 - 4, _oy0 - 2, _osb_x2, _oby + 18);
+    var _grid_area = point_in_rectangle(_mx, _my, _gx0, _gy0, _gx0 + _grid_full_w, _gy0 + _vis * _row_h);
+    if (mouse_check_button_pressed(mb_left) || mouse_check_button_pressed(mb_right)) _m.order_focus = _ord_area;
+    _m.order_keys = _ord_area || ((_m[$ "order_focus"] ?? false) && !_grid_area);
+    if (_m.order_keys && !_transport_typing && !_m.order_pattern_edit_active) {
+        if (keyboard_check_pressed(vk_home)) _ord_jump = -1;
+        if (keyboard_check_pressed(vk_end))  _ord_jump = 1;
+    }
+    if (_ord_jump != 0 && _ord_n > 0) {
+        _m.sel_order_row = (_ord_jump < 0) ? 0 : _ord_n - 1;
+        _m.order_scroll  = (_ord_jump < 0) ? 0 : max(0, _ord_n - _ord_vis);
     }
 
 

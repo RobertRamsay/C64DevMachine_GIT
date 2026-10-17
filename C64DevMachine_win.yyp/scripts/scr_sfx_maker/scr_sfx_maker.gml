@@ -156,8 +156,14 @@ function scr_sfx_maker_editor(_a,_x1,_y1,_x2,_y2,_cy,_mx,_my) {
         var _e=_m.instruments[_m.sel_instr];
         var _hw=floor((_pw-10)/2);
         var _y=_ry+10;
-        if(scr_sfx_maker_button(_px,_y,_hw,"PREVIEW",_mx,_my,"PLAYS THE SELECTED EFFECT AT ITS BASE NOTE ON PREVIEW VOICE 3 (COMMITS TEXT EDITS FIRST)")) {
+        if(scr_sfx_maker_button(_px,_y,_hw,"PREVIEW",_mx,_my,"PLAYS THE SELECTED EFFECT AT ITS BASE NOTE ON PREVIEW VOICE 3 (COMMITS TEXT EDITS FIRST). SPACE DOES THE SAME")) {
             if(_m.instr_edit_active) scr_sound_editor_commit_instrument(_m,_e);
+            scr_sound_instrument_preview_play(_e,_e.sfx_note,2,5);
+        }
+        // SPACE previews the selected effect like PREVIEW, unless a name or
+        // note is being typed. Open effect text has its own Space preview
+        // (scr_sound_editor_draw_instruments), which plays the text as typed.
+        if(!_m.instr_edit_active && !_m.instr_name_edit_active && !_m.instr_note_edit_active && keyboard_check_pressed(vk_space)) {
             scr_sound_instrument_preview_play(_e,_e.sfx_note,2,5);
         }
         if(scr_sfx_maker_button(_px+_hw+10,_y,_pw-_hw-10,"STOP",_mx,_my,"STOPS THE EFFECT PREVIEW")) scr_sound_preview_free_channel(2);

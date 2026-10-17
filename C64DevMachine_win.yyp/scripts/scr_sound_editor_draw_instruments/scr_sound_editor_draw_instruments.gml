@@ -887,11 +887,17 @@ function scr_sound_editor_draw_instruments(_m, _ix0, _iy0, _mx, _my, _ix1 = -1, 
             filt        : scr_sid64_instr_field(_sel_instr, "filt", 0)
         };
         // The SFX Maker has no song filter; the Music Maker plays through its own.
+        // An effect plays at its own base note on voice 3, as PREVIEW does.
         var _sp_filt = undefined;
+        var _sp_note = "C-" + string(_sp_oct);
+        var _sp_chan = 0;
         if (!is_undefined(_m[$ "filt_mode"])) {
             _sp_filt = _m;
+        } else if (!is_undefined(_sel_instr[$ "sfx_note"])) {
+            _sp_note = _sel_instr.sfx_note;
+            _sp_chan = 2;
         }
-        scr_sound_instrument_preview_play(_sp_ins, "C-" + string(_sp_oct), 0, -1, false, _sp_filt);
+        scr_sound_instrument_preview_play(_sp_ins, _sp_note, _sp_chan, -1, false, _sp_filt);
     }
 
     if (_m.instr_edit_active) {

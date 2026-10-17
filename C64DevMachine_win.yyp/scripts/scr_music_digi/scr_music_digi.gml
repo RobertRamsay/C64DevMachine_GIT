@@ -783,8 +783,15 @@ function scr_digi_keys(_m, _order_row, _grid_len, _vis, _pushf, _snapf, _gotof) 
     } else {
         _m.nav_down_timer = 0;
     }
-    if (keyboard_check_pressed(vk_home)) {
+    // HOME / END belong to the song order list while it has them
+    // (order_keys, set by scr_sound_editor_editor).
+    var _dg_home_end = !(_m[$ "order_keys"] ?? false);
+    if (_dg_home_end && keyboard_check_pressed(vk_home)) {
         _m.dg_sel_step = 0;
+        _moved = true;
+    }
+    if (_dg_home_end && keyboard_check_pressed(vk_end)) {
+        _m.dg_sel_step = _grid_len - 1;
         _moved = true;
     }
     if (_moved) {
